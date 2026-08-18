@@ -1,28 +1,36 @@
-//! `ifc-validate` — schema conformance checking.
+//! `ifc-validate` -- Schema and model validation: is this file actually legal IFC?
 //!
-//! # Why this is its own crate
 //!
-//! The EXPRESS schema is not just a type list: IFC4 defines **47 functions and
-//! 2 global rules**, plus per-entity WHERE clauses and inverse-attribute
-//! cardinalities. A file can parse cleanly and still be invalid, and knowing
-//! *which* is the difference between "this tool is broken" and "this file is
-//! broken."
+//! Split from parsing on purpose. A reader that rejects everything imperfect is
+//! useless on real data -- roughly half of production files violate something --
+//! so parsing is permissive and validation is an explicit, separate pass.
 //!
-//! Separating validation from parsing keeps the parser fast: the hot path never
-//! pays for rules a consumer did not ask for.
+//! The `test/fixtures/ifcopenshell-validate/` corpus is named `pass-*` and
+//! `fail-*` precisely to drive this crate.
 //!
-//! # Scope
+//! # Module map
 //!
-//! - WHERE-rule evaluation against the schema
-//! - Cardinality and inverse-attribute integrity
-//! - GUID validity, uniqueness, and the compressed-GUID encoding
-//! - Reference integrity: no dangling `#id`, no type mismatches
-//! - Header conformance (`FILE_SCHEMA` versus actual content)
+//! | Module | Role |
+//! |---|---|
+//! | [`header`] | Header well-formedness and schema declaration checks |
+//! | [`cardinality`] | Required attributes present, aggregate sizes in range |
+//! | [`type_check`] | Attribute values match their declared EXPRESS types |
+//! | [`where_rule`] | EXPRESS `WHERE` rules and the 2 global rules in IFC4 |
+//! | [`uniqueness`] | GlobalId uniqueness and duplicate detection |
+//! | [`mod@reference`] | Dangling references and orphaned entities |
+//! | [`report`] | Structured findings: severity, entity, rule, message |
+//! | [`error`] | Why validation could not run |
 //!
-//! # Design note
+//! # Status
 //!
-//! Findings are **structured diagnostics with severity**, not a boolean. Real
-//! models routinely carry hundreds of minor violations; a validator that
-//! answers only pass/fail is unusable on production data. This mirrors the
-//! fixture corpus, whose files are named `pass-*` and `fail-*` precisely
-//! because both are expected outcomes.
+//! Scaffold -- modules are reserved with intent, not implemented. See
+//! `docs/ROADMAP.md` for the stage that fills them.
+
+pub mod cardinality;
+pub mod error;
+pub mod header;
+pub mod reference;
+pub mod report;
+pub mod type_check;
+pub mod uniqueness;
+pub mod where_rule;

@@ -1,22 +1,26 @@
-//! `ifc-classification` — classification, documents, and external references.
+//! `ifc-classification` -- Classification systems, document references and external libraries.
 //!
-//! # Why this is its own crate
 //!
-//! IFC4 has **12 entities** here, and they carry disproportionate practical
-//! weight: national delivery specifications are written in terms of
-//! classification (Uniclass, OmniClass, DIN 276, IFC-SB), and the single most
-//! common model-checking question in practice is *"is every element
-//! classified?"*.
+//! 12 entities in IFC4. This is how Uniclass, OmniClass and national systems
+//! attach to elements, which is what most compliance checking keys on.
 //!
-//! # Scope
+//! # Module map
 //!
-//! - `IfcClassification` and reference hierarchies
-//! - Document information, references, and relationships
-//! - Library information and references
-//! - The `IfcExternalReferenceRelationship` association machinery
+//! | Module | Role |
+//! |---|---|
+//! | [`classification`] | `IfcClassification` and `IfcClassificationReference` |
+//! | [`document`] | `IfcDocumentInformation` and document references |
+//! | [`library`] | `IfcLibraryInformation` external library links |
+//! | [`assignment`] | Binding a classification or document to objects |
+//! | [`error`] | Why a classification lookup failed |
 //!
-//! # Pitfall
+//! # Status
 //!
-//! Classification arrives both as a *reference* (an identifier plus a source)
-//! and, in imported models, sometimes flattened into a property set. A checker
-//! that only looks at one of the two under-reports.
+//! Scaffold -- modules are reserved with intent, not implemented. See
+//! `docs/ROADMAP.md` for the stage that fills them.
+
+pub mod assignment;
+pub mod classification;
+pub mod document;
+pub mod error;
+pub mod library;

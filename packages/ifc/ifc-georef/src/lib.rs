@@ -1,25 +1,26 @@
-//! `ifc-georef` — georeferencing and coordinate reference systems.
+//! `ifc-georef` -- Georeferencing: map conversion, coordinate reference systems, true north.
 //!
-//! # Why this is its own crate
 //!
-//! IFC4 has **8 georeferencing entities** and IFC4x3 adds `IfcGeographicCRS`
-//! and `IfcMapConversionScaled`. This is small in entity count and large in
-//! consequence: it is how a model's local millimetre coordinates relate to a
-//! real position on Earth, which is what makes federation with survey data, GIS
-//! and civil alignments possible at all.
+//! 8 entities in IFC4. Small in entity count, disproportionately important:
+//! getting this wrong puts an entire model kilometres from where it belongs.
 //!
-//! # Scope
+//! # Module map
 //!
-//! - `IfcMapConversion` (eastings/northings, orthogonal height, X-axis
-//!   abscissa/ordinate, scale) and the projected CRS
-//! - Site placement and the local ↔ map transform in both directions
-//! - True north versus project north
+//! | Module | Role |
+//! |---|---|
+//! | [`crs`] | `IfcProjectedCRS` and geographic CRS identification |
+//! | [`conversion`] | `IfcMapConversion`: local engineering to map coordinates |
+//! | [`north`] | True north versus project north |
+//! | [`elevation`] | Site elevation and height datums |
+//! | [`error`] | Why a georeferencing operation failed |
 //!
-//! # Pitfalls
+//! # Status
 //!
-//! - **Precision.** National-grid coordinates are large numbers; applying the
-//!   map conversion in `f32`, or before centring geometry, destroys precision.
-//!   Keep models in local coordinates and convert at the boundary.
-//! - **Two competing conventions.** Older models express georeferencing through
-//!   site latitude/longitude plus a rotated placement rather than
-//!   `IfcMapConversion`. Both occur in the wild.
+//! Scaffold -- modules are reserved with intent, not implemented. See
+//! `docs/ROADMAP.md` for the stage that fills them.
+
+pub mod conversion;
+pub mod crs;
+pub mod elevation;
+pub mod error;
+pub mod north;

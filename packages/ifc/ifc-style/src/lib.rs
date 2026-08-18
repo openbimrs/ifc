@@ -1,23 +1,31 @@
-//! `ifc-style` — presentation, styling, and annotation.
+//! `ifc-style` -- Presentation: colours, styles, textures and layer assignment.
 //!
-//! # Why this is its own crate
 //!
-//! IFC4 carries **48 presentation/style entities**. Keeping them out of the
-//! geometry kernel is a hard invariant of this project (`docs/adr/0001`): a
-//! kernel whose base type knows about colour cannot be refactored without
-//! touching a renderer.
+//! 48 entities in IFC4. Deliberately **separate from geometry**: the kernel
+//! must never carry a colour (see `docs/adr/0001` invariants), so appearance
+//! lives here and is joined to shapes only at the consumer.
 //!
-//! Separating them also means a headless checker never compiles texture
-//! handling.
+//! # Module map
 //!
-//! # Scope
+//! | Module | Role |
+//! |---|---|
+//! | [`colour`] | `IfcColourRgb`, colour specification and normalisation |
+//! | [`surface_style`] | `IfcSurfaceStyle` shading, rendering, lighting, refraction |
+//! | [`curve_style`] | `IfcCurveStyle` fonts, widths and patterns |
+//! | [`texture`] | `IfcSurfaceTexture` and UV coordinate mapping |
+//! | [`assignment`] | `IfcStyledItem`: binding a style to a representation item |
+//! | [`layer`] | `IfcPresentationLayerAssignment` and visibility |
+//! | [`error`] | Why a style resolution failed |
 //!
-//! - Surface/curve/fill styles, shading, rendering, lighting, refraction
-//! - Colour (RGB, colour maps) and indexed colouring of tessellations
-//! - Textures: image, pixel, blob; texture coordinate mapping
-//! - Presentation layer assignment, annotation, draughting predefined styles
+//! # Status
 //!
-//! # Not here
-//!
-//! Any rendering. This crate reports what a model *says* about appearance; how
-//! that becomes pixels belongs to an application.
+//! Scaffold -- modules are reserved with intent, not implemented. See
+//! `docs/ROADMAP.md` for the stage that fills them.
+
+pub mod assignment;
+pub mod colour;
+pub mod curve_style;
+pub mod error;
+pub mod layer;
+pub mod surface_style;
+pub mod texture;

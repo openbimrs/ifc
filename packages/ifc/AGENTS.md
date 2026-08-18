@@ -31,6 +31,34 @@ Sizing evidence (IFC4 entity counts): presentation/style 48, structural 39,
 ports/systems 23, materials 22, resources 21, classification/document 12,
 georeferencing 8. IFC4x3 adds 14 alignment entities plus transition spirals.
 
+## Module layout — modular by default, enforced
+
+Every crate is split into focused modules; `lib.rs` declares and documents them
+and holds no behaviour. The intent is that a file is never the place a whole
+subsystem lives:
+
+- `ifc-step` — one module per pipeline stage (`lexer`, `partition`, `scan`,
+  `resolve`, `escape`, `value`, `header`, `reader`).
+- `ifc-schema` — one per schema concern (`entity`, `attribute`, `types`,
+  `inheritance`, `registry`, `express`, `version`).
+- `ifc-geometry` — **one per representation family** (`swept`, `brep`, `csg`,
+  `tessellated`, `mapped`, `profile`, `placement`, `opening`, `units`,
+  `context`). This is where a monolith would otherwise form: IFC4 has ~119
+  curve/surface entities and 11 swept-solid forms.
+- Every crate has an `error` module; failures are named per domain.
+
+Two tests in `ifc-model/tests/no_monolithic_files.rs` enforce this and are
+mutation-verified (a 900-line file and a fat `lib.rs` both make them fail):
+
+| Test | Rule |
+| --- | --- |
+| `no_source_file_is_a_monolith` | no `.rs` file over 800 lines, workspace-wide |
+| `lib_rs_delegates_rather_than_implements` | `lib.rs` with modules carries <40 lines of code |
+
+If a file approaches the limit, split it by responsibility rather than raising
+`MAX_LINES`. `EXEMPT` exists but is empty on purpose — an entry needs a written
+justification.
+
 ## The invariant, and how it is enforced
 
 `packages/ifc/` depends on the geometry **contract**, never on an

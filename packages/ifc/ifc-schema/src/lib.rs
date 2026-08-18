@@ -3,53 +3,50 @@
 //! # The decision
 //!
 //! IfcOpenShell generates a C++ class per IFC entity per schema version. That
-//! is a very large amount of code to compile, and it makes supporting a new
-//! schema a code-generation event. We instead represent the schema as a table:
-//! entity name → type id → supertype chain. Subtype tests become an integer
-//! walk, and adding IFC4X3 is adding data.
+//! is a very large amount of code to compile, and it multiplies by the number
+//! of supported schemas.
 //!
-//! This mirrors the "one record type, not 2,500 classes" decision that the
-//! sibling `solibri-rs` workspace validated on real models.
+//! Evidence from the schemas in `references/ifc-spec/`:
+//!
+//! | Schema | Entities |
+//! |---|---|
+//! | IFC2x3 TC1 | 653 |
+//! | IFC4 ADD2 TC1 | 776 |
+//! | IFC4x3 ADD2 | 876 |
+//!
+//! Worse, names are *not* stable across versions: IFC4x3 renames
+//! `IfcBuildingElement` to `IfcBuiltElement` and removes `IfcProxy`, the whole
+//! `*StandardCase` family, `IfcDoorStyle` and `IfcWindowStyle`. Generated
+//! per-version types would triple the API surface and force every consumer to
+//! choose a version at compile time.
+//!
+//! We instead treat the schema as a **lookup table** built from the official
+//! EXPRESS files. One code path serves every schema version; supporting a new
+//! one is data, not a release.
+//!
+//! # Module map
+//!
+//! | Module | Role |
+//! |---|---|
+//! | [`version`] | which schema a file declares |
+//! | [`entity`] | entity table: name, supertype, attribute slots |
+//! | [`attribute`] | attribute descriptors and their declared types |
+//! | [`types`] | defined types, enums, and selects |
+//! | [`inheritance`] | supertype chain walking and subtype tests |
+//! | [`registry`] | the assembled, queryable schema |
+//! | [`express`] | parser for the official `.exp` files |
 //!
 //! # Status
 //!
-//! Scaffold. The generator that lowers an EXPRESS `.exp` file into this table
-//! is Stage 1 in `docs/ROADMAP.md`.
+//! Scaffold. [`version`] detection is implemented and tested; the rest is
+//! Stage 1 in `docs/ROADMAP.md`.
 
-/// Which IFC schema version a table describes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SchemaVersion {
-    Ifc2x3,
-    Ifc4,
-    Ifc4x3,
-}
+pub mod attribute;
+pub mod entity;
+pub mod express;
+pub mod inheritance;
+pub mod registry;
+pub mod types;
+pub mod version;
 
-impl SchemaVersion {
-    /// Parse the token found in a STEP file's `FILE_SCHEMA` header entry.
-    pub fn from_header_token(token: &str) -> Option<Self> {
-        match token.trim().to_ascii_uppercase().as_str() {
-            "IFC2X3" => Some(Self::Ifc2x3),
-            "IFC4" => Some(Self::Ifc4),
-            "IFC4X3" | "IFC4X3_ADD2" => Some(Self::Ifc4x3),
-            _ => None,
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn recognizes_the_schema_tokens_our_fixtures_carry() {
-        assert_eq!(
-            SchemaVersion::from_header_token("IFC4"),
-            Some(SchemaVersion::Ifc4)
-        );
-        assert_eq!(
-            SchemaVersion::from_header_token("ifc2x3"),
-            Some(SchemaVersion::Ifc2x3)
-        );
-        assert_eq!(SchemaVersion::from_header_token("STEP"), None);
-    }
-}
+pub use version::SchemaVersion;

@@ -1,28 +1,31 @@
-//! `ifc-alignment` — linear referencing and alignments (IFC4x3).
+//! `ifc-alignment` -- Linear referencing and alignment -- the IFC4x3 civil layer.
 //!
-//! # Why this is its own crate
 //!
-//! IFC4x3 adds **116 entities** over IFC4, and alignment is the core of them:
-//! `IfcAlignment` with horizontal, vertical and cant layers, plus
-//! `IfcLinearPlacement`, `IfcReferent`, `IfcPointByDistanceExpression`, and the
-//! transition spirals (`IfcClothoid`, `IfcCosineSpiral`, `IfcSineSpiral`).
+//! IFC4x3 adds 14 alignment entities plus spiral curve types (`IfcClothoid`,
+//! `IfcCosineSpiral`). Isolated in its own crate because building-only
+//! consumers should never compile clothoid integration.
 //!
-//! This is infrastructure geometry — roads, rail, bridges. A consumer working
-//! on buildings should not compile clothoid evaluation, which is why it is
-//! separate rather than folded into `ifc-geometry`.
+//! # Module map
 //!
-//! # Scope
+//! | Module | Role |
+//! |---|---|
+//! | [`alignment`] | `IfcAlignment` and its horizontal/vertical/cant parts |
+//! | [`horizontal`] | Horizontal segments: line, arc, spiral transitions |
+//! | [`vertical`] | Vertical segments: grades and parabolic curves |
+//! | [`cant`] | Superelevation (`IfcAlignmentCant`) for rail |
+//! | [`referent`] | `IfcReferent` stationing and chainage |
+//! | [`placement`] | `IfcLinearPlacement` and distance expressions |
+//! | [`error`] | Why an alignment operation failed |
 //!
-//! - Horizontal alignment (lines, arcs, transition spirals)
-//! - Vertical alignment (grades, parabolic/circular vertical curves)
-//! - Cant (superelevation) for rail
-//! - Linear placement: position an element by *station along an alignment*
-//!   rather than by cartesian transform
-//! - Station ↔ cartesian conversion in both directions
+//! # Status
 //!
-//! # The hard part
-//!
-//! Linear placement requires **arc-length parameterisation** of the alignment
-//! curve. For clothoids this has no closed form and needs numerical
-//! integration, where accuracy directly becomes positional error on a
-//! kilometre-scale object.
+//! Scaffold -- modules are reserved with intent, not implemented. See
+//! `docs/ROADMAP.md` for the stage that fills them.
+
+pub mod alignment;
+pub mod cant;
+pub mod error;
+pub mod horizontal;
+pub mod placement;
+pub mod referent;
+pub mod vertical;

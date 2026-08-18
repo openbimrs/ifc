@@ -12,6 +12,7 @@ ifc-model.workspace = true
 ifc-schema.workspace = true
 geom-core.workspace = true
 geom-mesh.workspace = true
+thiserror.workspace = true
 # CONTRACT ONLY — default-features = false excludes every backend
 # implementation, so this crate cannot accidentally bind to one. Enforced by
 # tests/no_backend_dependency.rs. See docs/adr/0001.

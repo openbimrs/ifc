@@ -1,23 +1,34 @@
-//! `ifc-properties` — property sets, quantities, and units.
+//! `ifc-properties` -- Property sets, quantities and units -- the non-geometric payload most
 //!
-//! # Why this is a separate crate from `ifc-model`
+//! consumers actually want.
 //!
-//! Properties are where most real IFC work happens — COBie handover, LOD
-//! audits, quantity takeoff, classification checks — and **none of it needs
-//! geometry**. Keeping it separate means a consumer doing a property audit
-//! compiles no mesh code at all. That is a concrete advantage over
-//! IfcOpenShell, where the geometry engine is not optional in practice.
+//! `references/ifc-spec/` ships the official property set definitions as XML:
+//! 317 for IFC2x3 and 420 for IFC4. That is a machine-readable catalogue, so
+//! standard Psets are data here rather than hand-written tables.
 //!
-//! # Scope
+//! # Module map
 //!
-//! - `IfcPropertySet` / `IfcElementQuantity` lookup by element.
-//! - Property *inheritance*: an occurrence inherits from its type
-//!   (`IfcRelDefinesByType`), and the occurrence value wins. Getting this
-//!   precedence wrong silently reports the wrong value, so it is tested
-//!   directly rather than assumed.
-//! - Unit resolution against `IfcUnitAssignment`, including prefixed and
-//!   derived units. A quantity without its unit is a number, not a fact.
+//! | Module | Role |
+//! |---|---|
+//! | [`pset`] | `IfcPropertySet` and single/enumerated/list/table properties |
+//! | [`quantity`] | `IfcElementQuantity`: length, area, volume, weight, count |
+//! | [`template`] | `IfcPropertySetTemplate` and property templates |
+//! | [`standard`] | The official Pset catalogue from the shipped XML definitions |
+//! | [`mod@unit`] | Unit assignment, prefixes and conversion-based units |
+//! | [`value`] | `IfcValue` measure types and their interpretation |
+//! | [`query`] | Lookup helpers: property by name, pset by element |
+//! | [`error`] | Why a property lookup failed |
 //!
 //! # Status
 //!
-//! Reserved. See `docs/ROADMAP.md` Stage 3.
+//! Scaffold -- modules are reserved with intent, not implemented. See
+//! `docs/ROADMAP.md` for the stage that fills them.
+
+pub mod error;
+pub mod pset;
+pub mod quantity;
+pub mod query;
+pub mod standard;
+pub mod template;
+pub mod unit;
+pub mod value;

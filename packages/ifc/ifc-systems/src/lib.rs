@@ -1,22 +1,26 @@
-//! `ifc-systems` — distribution systems, ports, and connectivity.
+//! `ifc-systems` -- Distribution systems: ports, connectivity and system grouping.
 //!
-//! # Why this is its own crate
 //!
-//! IFC4 carries **23 port/system entities**. MEP models are graphs, not just
-//! collections of solids: a duct network's meaning is in which port connects to
-//! which, and that connectivity supports flow analysis, system-completeness
-//! checking, and "what is downstream of this valve?" queries that no amount of
-//! geometry answers.
+//! 23 entities in IFC4. Turns a bag of pipes and ducts into a connected network
+//! that can be traced -- the basis of any MEP analysis.
 //!
-//! # Scope
+//! # Module map
 //!
-//! - `IfcDistributionPort`, port nesting, `IfcRelConnectsPorts`
-//! - Systems, building systems, and (4x3) built systems; group assignment
-//! - Element connectivity and the derived network graph
-//! - Flow direction (source/sink/both)
+//! | Module | Role |
+//! |---|---|
+//! | [`system`] | `IfcSystem`, `IfcDistributionSystem` and grouping |
+//! | [`port`] | `IfcDistributionPort` and port assignment to elements |
+//! | [`connectivity`] | `IfcRelConnectsPorts` and network traversal |
+//! | [`flow`] | Flow direction and segment/fitting/terminal roles |
+//! | [`error`] | Why a system query failed |
 //!
-//! # Why the graph is worth building explicitly
+//! # Status
 //!
-//! Connectivity in the file is a set of relationship objects; answering
-//! reachability questions over it requires an actual adjacency structure. This
-//! crate owns that derivation so consumers do not each rebuild it.
+//! Scaffold -- modules are reserved with intent, not implemented. See
+//! `docs/ROADMAP.md` for the stage that fills them.
+
+pub mod connectivity;
+pub mod error;
+pub mod flow;
+pub mod port;
+pub mod system;

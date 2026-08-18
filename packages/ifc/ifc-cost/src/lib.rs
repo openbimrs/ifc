@@ -1,10 +1,26 @@
-//! `ifc-cost` — `IfcCostItem` / `IfcCostSchedule` (5D).
+//! `ifc-cost` -- Cost schedules, cost items and cost values -- the 5D layer.
 //!
-//! Cost lives in its own crate because it is a distinct domain that most
-//! consumers do not need, and because it depends on quantities
-//! (`ifc-properties`) rather than on geometry: a cost item references a
-//! quantity, which may or may not have been derived from a shape.
+//!
+//! Separate from `ifc-schedule` because plenty of consumers want cost without
+//! time, or time without cost.
+//!
+//! # Module map
+//!
+//! | Module | Role |
+//! |---|---|
+//! | [`item`] | `IfcCostItem` and the cost breakdown tree |
+//! | [`schedule`] | `IfcCostSchedule` and its predefined types |
+//! | [`value`] | `IfcCostValue`, applied values and rates |
+//! | [`takeoff`] | Binding cost items to quantities |
+//! | [`error`] | Why a cost query failed |
 //!
 //! # Status
 //!
-//! Reserved. See `docs/ROADMAP.md` Stage 6.
+//! Scaffold -- modules are reserved with intent, not implemented. See
+//! `docs/ROADMAP.md` for the stage that fills them.
+
+pub mod error;
+pub mod item;
+pub mod schedule;
+pub mod takeoff;
+pub mod value;

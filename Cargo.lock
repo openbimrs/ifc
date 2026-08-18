@@ -248,6 +248,7 @@ dependencies = [
  "geom-mesh",
  "ifc-model",
  "ifc-schema",
+ "thiserror",
 ]
 
 [[package]]

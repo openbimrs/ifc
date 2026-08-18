@@ -1,22 +1,29 @@
-//! `ifc-material` — material definitions and their association to elements.
+//! `ifc-material` -- Material definitions: layer sets, profile sets, constituents and usage.
 //!
-//! # Why this is its own crate
 //!
-//! IFC4 has **22 material entities**. Materials are not a cosmetic concern:
-//! `IfcMaterialLayerSetUsage` defines the *actual layered build-up* of a wall
-//! (its thicknesses, their order, and which side the reference line sits on),
-//! which is what a thermal calculation, a quantity takeoff, and a correct
-//! wall-axis geometry all read.
+//! 22 entities in IFC4. Material layer sets are what let a wall know it is
+//! 200 mm concrete plus 60 mm insulation, which is required for quantity
+//! takeoff and thermal analysis alike.
 //!
-//! # Scope
+//! # Module map
 //!
-//! - `IfcMaterial`, material lists, constituent sets
-//! - Layer sets + `IfcMaterialLayerSetUsage` (offsets, priorities, direction)
-//! - Profile sets for extruded members
-//! - Material properties, and association to elements and types
+//! | Module | Role |
+//! |---|---|
+//! | [`material`] | `IfcMaterial` and material properties |
+//! | [`layer`] | `IfcMaterialLayerSet` and `IfcMaterialLayerSetUsage` |
+//! | [`profile`] | `IfcMaterialProfileSet` for profiled members |
+//! | [`constituent`] | `IfcMaterialConstituentSet` for non-layered composites |
+//! | [`usage`] | Resolving which material applies to a given element |
+//! | [`error`] | Why a material lookup failed |
 //!
-//! # The subtlety worth knowing
+//! # Status
 //!
-//! Layer usage carries a *reference direction and offset*: the geometric axis
-//! of a wall is generally not its centreline. Getting this wrong shifts every
-//! layer boundary while the wall still looks correct at a glance.
+//! Scaffold -- modules are reserved with intent, not implemented. See
+//! `docs/ROADMAP.md` for the stage that fills them.
+
+pub mod constituent;
+pub mod error;
+pub mod layer;
+pub mod material;
+pub mod profile;
+pub mod usage;

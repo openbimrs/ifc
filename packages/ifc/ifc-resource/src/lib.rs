@@ -1,15 +1,28 @@
-//! `ifc-resource` — construction resources.
+//! `ifc-resource` -- Construction resources: labour, equipment, material and crew.
 //!
-//! # Why this is its own crate
 //!
-//! IFC4 has **21 resource entities**. Resources are the third leg of
-//! construction planning: `ifc-schedule` says *when*, `ifc-cost` says *how
-//! much*, and this says *with what* — the crews, plant, and materials a task
-//! consumes. 4D/5D tools need all three, but plenty of consumers need only one.
+//! 21 entities in IFC4. Resources link the schedule to cost -- a task consumes
+//! a resource, and the resource carries a rate.
 //!
-//! # Scope
+//! # Module map
 //!
-//! - Labour, equipment, material, product, crew, subcontract resources
-//! - Resource types and their quantities
-//! - Assignment of resources to processes
-//! - Resource time (work, usage, utilisation)
+//! | Module | Role |
+//! |---|---|
+//! | [`resource`] | The resource hierarchy and common attributes |
+//! | [`labour`] | `IfcLaborResource` and crew composition |
+//! | [`equipment`] | `IfcConstructionEquipmentResource` |
+//! | [`material`] | `IfcConstructionMaterialResource` |
+//! | [`usage`] | Resource time, quantity and levelling |
+//! | [`error`] | Why a resource query failed |
+//!
+//! # Status
+//!
+//! Scaffold -- modules are reserved with intent, not implemented. See
+//! `docs/ROADMAP.md` for the stage that fills them.
+
+pub mod equipment;
+pub mod error;
+pub mod labour;
+pub mod material;
+pub mod resource;
+pub mod usage;

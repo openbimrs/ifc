@@ -1,9 +1,27 @@
-//! `ifc-schedule` — `IfcTask` / `IfcWorkSchedule` (4D).
+//! `ifc-schedule` -- Work schedules, tasks, sequencing and calendars -- the 4D layer.
 //!
-//! Task sequencing, work calendars, and the element↔task linkage that drives 4D
-//! construction simulation. Independent of `ifc-cost`: a project can be
-//! scheduled without being costed, and vice versa.
+//!
+//! 19 process entities in IFC4, including the event and lag-time machinery.
+//!
+//! # Module map
+//!
+//! | Module | Role |
+//! |---|---|
+//! | [`task`] | `IfcTask`, task time and predefined types |
+//! | [`schedule`] | `IfcWorkSchedule`, `IfcWorkPlan`, `IfcWorkCalendar` |
+//! | [`sequence`] | `IfcRelSequence`: predecessors, successors and lag |
+//! | [`calendar`] | Working times, exceptions and recurrence |
+//! | [`event`] | `IfcEvent` and event triggers |
+//! | [`error`] | Why a schedule query failed |
 //!
 //! # Status
 //!
-//! Reserved. See `docs/ROADMAP.md` Stage 6.
+//! Scaffold -- modules are reserved with intent, not implemented. See
+//! `docs/ROADMAP.md` for the stage that fills them.
+
+pub mod calendar;
+pub mod error;
+pub mod event;
+pub mod schedule;
+pub mod sequence;
+pub mod task;

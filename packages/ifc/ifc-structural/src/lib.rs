@@ -1,21 +1,31 @@
-//! `ifc-structural` — the structural analysis model.
+//! `ifc-structural` -- Structural analysis model: members, connections, actions and reactions.
 //!
-//! # Why this is its own crate
 //!
-//! IFC4 defines **39 structural entities**, and they describe an *analysis*
-//! model that is deliberately distinct from the physical one: a beam is a
-//! curve member with a section and end releases, not a solid. Two different
-//! idealisations of the same building coexist in one file.
+//! 39 entities in IFC4. This is an analysis view that parallels the physical
+//! model rather than describing it -- a structural curve member is the idealised
+//! line of a beam, not the beam's shape.
 //!
-//! # Scope
+//! # Module map
 //!
-//! - Analysis model, curve/surface/point members and connections
-//! - Actions (loads) and reactions; linear, planar, and point variants
-//! - Load cases, load groups, load combinations
-//! - Boundary conditions and connection stiffness
+//! | Module | Role |
+//! |---|---|
+//! | [`model`] | `IfcStructuralAnalysisModel` and its contents |
+//! | [`member`] | Curve and surface members, and their varying forms |
+//! | [`connection`] | Point, curve and surface connections; support conditions |
+//! | [`action`] | Applied actions and load cases |
+//! | [`reaction`] | Computed reactions |
+//! | [`load`] | Load definitions, groups and combinations |
+//! | [`error`] | Why a structural query failed |
 //!
-//! # Why an IFC library should carry this at all
+//! # Status
 //!
-//! Structural analysis is one of the few areas where IFC is genuinely used for
-//! round-trip exchange rather than one-way handover, so it is a real
-//! interoperability target rather than a checkbox.
+//! Scaffold -- modules are reserved with intent, not implemented. See
+//! `docs/ROADMAP.md` for the stage that fills them.
+
+pub mod action;
+pub mod connection;
+pub mod error;
+pub mod load;
+pub mod member;
+pub mod model;
+pub mod reaction;
