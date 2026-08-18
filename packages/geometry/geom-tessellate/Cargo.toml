@@ -1,0 +1,15 @@
+[package]
+name = "geom-tessellate"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Curves, surfaces and B-reps to triangles under an explicit tolerance."
+
+[dependencies]
+geom-core.workspace = true
+geom-mesh.workspace = true
+geom-curve.workspace = true
+geom-surface.workspace = true
+geom-topology.workspace = true

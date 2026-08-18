@@ -1,0 +1,13 @@
+[package]
+name = "ifc-validate"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Schema conformance: WHERE rules, cardinality, GUID and reference integrity."
+
+[dependencies]
+ifc-schema.workspace = true
+ifc-step.workspace = true
+ifc-model.workspace = true

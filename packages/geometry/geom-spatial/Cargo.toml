@@ -1,0 +1,12 @@
+[package]
+name = "geom-spatial"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Acceleration structures: BVH, octree, uniform grid, and their queries."
+
+[dependencies]
+geom-core.workspace = true
+geom-mesh.workspace = true

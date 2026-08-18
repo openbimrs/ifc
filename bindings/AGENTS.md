@@ -1,39 +1,29 @@
 # AGENTS.md — bindings/
 
-Language bindings. Both are **reserved, not wired** — the crates compile and
-document intent, and neither `pyo3` nor `wasm-bindgen` is in a manifest yet.
+Language bindings. Neither is wired yet: no `pyo3` or `wasm-bindgen` dependency
+is in any manifest, because both need build-time toolchain support and would
+break `cargo build --workspace` on a machine lacking it. The crates exist to
+hold the decision and the doc.
 
-That is deliberate: both need build-time toolchain support (Python dev headers;
-a wasm target), and adding them before there is anything to bind would trade a
-working `cargo build --workspace` for an empty capability. Each gets added in the
-same commit that wires its first real binding.
+## `python/` — planned, in the workspace
 
-| Crate | Target | Kernel features |
-| --- | --- | --- |
-| `nehirde-python` | pyo3 + maturin, abi3 wheels | `["scalar","simd"]` |
-| `nehirde-wasm` | wasm-bindgen | **contract only** |
+Target: pyo3 + maturin, abi3 wheels, exposing the read path first
+(parse → model → properties/quantities). This is the binding that matters
+commercially — the existing IFC ecosystem is Python, and ifcopenshell-python is
+what a user would be switching from.
 
-## Why these targets matter
+## `_deferred-wasm/` — DEFERRED, not a workspace member
 
-- **Python** is why IfcOpenShell is dominant. Competing means shipping this.
-  Bindings also constrain API design, so the slot is reserved early rather than
-  discovered late.
-- **wasm** is where the no-OpenCascade decision (`docs/adr/0003`) pays off most:
-  a pure-Rust graph compiles to wasm nearly for free, and the incumbent's C++
-  geometry dependency makes following expensive.
+**WASM is explicitly later, not now.** The directory is prefixed with `_` and
+listed in the root `Cargo.toml` `exclude`, so it is not built, not tested, and
+not linted. Re-enabling it is a deliberate act: remove the `exclude` entry and
+rename the directory.
 
-## Constraints wasm imposes on the whole workspace
+Why deferred rather than deleted: the constraint it imposes is worth recording
+while the kernel is still being designed. A wasm target means no threads by
+default, no `is_x86_feature_detected!`, and a hard size budget — which is
+precisely the argument for `geom-kernel`'s backend selection being runtime and
+feature-gated rather than assumed. When wasm returns it should map to a
+`backend::wasm` (or simply scalar-only) build, not a fork of the kernel.
 
-These must hold *before* the binding is written, so they are listed where they
-will be read:
-
-- **No native backend may be mandatory** — `nehirde-wasm` takes `geom-kernel`
-  with `default-features = false`. Keep `std::arch` SIMD and any GPU path behind
-  features.
-- **No mmap-only parse path** — `memmap2` does not exist in the browser.
-  `ifc-step` must accept a `&[u8]`, with mmap as one input strategy.
-- **No `std::fs` or thread spawning below the API surface.**
-
-## Status
-
-Reserved. See `docs/ROADMAP.md` Stage 7.
+Do not add dependencies or code here until it is un-deferred.

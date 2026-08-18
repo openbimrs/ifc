@@ -1,4 +1,9 @@
-//! WebAssembly bindings — **not yet wired**, deliberately.
+//! **DEFERRED — not a workspace member. Do not develop against this yet.**
+//!
+//! See `bindings/AGENTS.md`. Excluded in the root `Cargo.toml`; re-enabling is
+//! a deliberate act (remove the `exclude` entry, rename the directory).
+//!
+//! # WebAssembly bindings
 //!
 //! # Why this is a strategic target
 //!

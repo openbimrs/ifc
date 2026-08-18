@@ -2,15 +2,15 @@
 
 **These entries are symlinks, not real directories.** The actual clones live on
 `/mnt/backup/references/` (bulk storage; root disk on bbv-dev is sparse). Do
-not `git add` anything under here except this file and `README.md` — see the
-root `.gitignore` (`references/*` ignored, `!references/AGENTS.md` /
-`!references/README.md` un-ignored).
+not `git add` anything under here except this file, `README.md`, and
+`AGENTS-ifc-spec.md` — see the root `.gitignore`.
 
 ## What's here
 
 | Symlink | Real path | Upstream | License | Purpose |
 |---|---|---|---|---|
 | `ifcopenshell` | `/mnt/backup/references/ifcopenshell` | github.com/IfcOpenShell/IfcOpenShell | LGPL-3.0-or-later | Reference C++/Python IFC toolkit + geometry engine. Design evidence for schema handling, validation semantics, geometry edge cases. |
+| `ifc-spec` | `/mnt/backup/references/ifc-spec` | standards.buildingsmart.org | CC BY-ND 4.0 | **The official EXPRESS schemas** for IFC2x3 TC1, IFC4 ADD2 TC1 and IFC4x3 ADD2, plus 737 property-set XMLs and the IFC4 HTML documentation. The authority for every schema question — read `AGENTS-ifc-spec.md` before using it. |
 | `ifclite` | `/mnt/backup/references/ifclite` | github.com/LTplus-AG/ifc-lite | MPL-2.0 | Reference Rust IFC processing/geometry crates. Closest prior-art in the same language; its `rust/geometry/tests/fixtures` and `rust/processing/tests/fixtures` are curated edge-case `.ifc` files (mapped items, swept-disk solids, CSG, halfspace flyaway, void-order invariance, etc.) — see `test/fixtures/AGENTS.md` for the subset copied into this repo.
 
 Both were `git clone --depth 1`'d on 2026-08-18; re-clone (don't `pull`, upstream

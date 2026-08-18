@@ -1,0 +1,12 @@
+[package]
+name = "ifc-style"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Presentation: styles, colours, textures, layers, annotation."
+
+[dependencies]
+ifc-schema.workspace = true
+ifc-model.workspace = true

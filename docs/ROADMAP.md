@@ -38,7 +38,12 @@ Hardware on the dev box: Intel Xeon w7-3565X, 20 vCPU, AVX-512
 ## Stage 1 — Parser & schema
 
 - [ ] EXPRESS `.exp` → schema table (entity, supertype chain, attribute names)
-      for IFC2X3 + IFC4, as data rather than generated code.
+      for IFC2x3 TC1, IFC4 ADD2 TC1 **and** IFC4x3 ADD2, as data rather than
+      generated code. Inputs are already local: `references/ifc-spec/`.
+      Generator reads `/mnt/backup`, commits its output, so a clean checkout
+      still builds.
+- [ ] Handle the cross-version rename problem explicitly: `IfcBuildingElement`
+      (2x3/4) vs `IfcBuiltElement` (4x3), and the 16 entities 4x3 drops.
 - [ ] mmap + **record-aligned** partitioning (resync to `#<digits>=`; see the
       pitfall in `packages/ifc/AGENTS.md`) + rayon parallel scan.
 - [ ] Value scanner: refs, lists, typed values, enums, strings, reals.
@@ -68,7 +73,7 @@ This is what determines whether the OpenCascade-free premise holds.
 
 - [ ] Swept solids (extrusion, revolution), B-rep, tessellation, mapped items,
       half-space clipping, CSG trees.
-- [ ] `geom-brep`: exact topology for the surfaces IFC actually uses
+- [ ] `geom-topology`: exact topology for the surfaces IFC actually uses
       (plane/cylinder/cone/sphere/torus) + `Tessellate` to `geom-mesh`. Scope
       discipline matters — a full NURBS kernel is not the goal.
 - [ ] `IfcRelVoidsElement` opening cuts end-to-end through `ShapeLowerer`.

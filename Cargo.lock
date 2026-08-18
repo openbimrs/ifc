@@ -79,21 +79,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e5e8f6c15a24b9a3ee5efec809ccd006d3b30e8b3bb63c39af737c7f87daa1d"
 
 [[package]]
-name = "geom-brep"
-version = "0.1.0"
-dependencies = [
- "geom-core",
- "geom-mesh",
- "thiserror",
-]
-
-[[package]]
 name = "geom-core"
 version = "0.1.0"
 dependencies = [
  "glam",
  "smallvec",
  "thiserror",
+]
+
+[[package]]
+name = "geom-curve"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
 ]
 
 [[package]]
@@ -106,10 +104,72 @@ dependencies = [
 ]
 
 [[package]]
+name = "geom-measure"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+ "geom-mesh",
+ "geom-profile",
+]
+
+[[package]]
 name = "geom-mesh"
 version = "0.1.0"
 dependencies = [
  "geom-core",
+]
+
+[[package]]
+name = "geom-profile"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+]
+
+[[package]]
+name = "geom-spatial"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+ "geom-mesh",
+]
+
+[[package]]
+name = "geom-surface"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+ "geom-curve",
+]
+
+[[package]]
+name = "geom-sweep"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+ "geom-curve",
+ "geom-mesh",
+ "geom-profile",
+]
+
+[[package]]
+name = "geom-tessellate"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+ "geom-curve",
+ "geom-mesh",
+ "geom-surface",
+ "geom-topology",
+]
+
+[[package]]
+name = "geom-topology"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+ "geom-curve",
+ "geom-surface",
 ]
 
 [[package]]
@@ -136,6 +196,24 @@ version = "0.1.0"
 dependencies = [
  "ifc-model",
  "ifc-properties",
+ "ifc-schema",
+]
+
+[[package]]
+name = "ifc-alignment"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+ "geom-curve",
+ "ifc-model",
+ "ifc-schema",
+]
+
+[[package]]
+name = "ifc-classification"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
  "ifc-schema",
 ]
 
@@ -173,6 +251,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ifc-georef"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+ "ifc-model",
+ "ifc-schema",
+]
+
+[[package]]
+name = "ifc-material"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+ "ifc-schema",
+]
+
+[[package]]
 name = "ifc-model"
 version = "0.1.0"
 dependencies = [
@@ -183,6 +278,14 @@ dependencies = [
 
 [[package]]
 name = "ifc-properties"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+ "ifc-schema",
+]
+
+[[package]]
+name = "ifc-resource"
 version = "0.1.0"
 dependencies = [
  "ifc-model",
@@ -216,6 +319,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "ifc-structural"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+ "ifc-schema",
+]
+
+[[package]]
+name = "ifc-style"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+ "ifc-schema",
+]
+
+[[package]]
+name = "ifc-systems"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+ "ifc-schema",
+]
+
+[[package]]
+name = "ifc-validate"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+ "ifc-schema",
+ "ifc-step",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.189"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -237,16 +373,6 @@ dependencies = [
  "geom-kernel",
  "ifc-model",
  "ifc-properties",
- "ifc-schema",
- "ifc-step",
-]
-
-[[package]]
-name = "nehirde-wasm"
-version = "0.1.0"
-dependencies = [
- "geom-kernel",
- "ifc-model",
  "ifc-schema",
  "ifc-step",
 ]

@@ -10,6 +10,44 @@ section on release.
 
 ## [Unreleased]
 
+### Added
+- **Official IFC schemas as reference material** (`references/ifc-spec/`, 249 MB
+  on `/mnt/backup`, symlinked, never committed): EXPRESS schemas for IFC2x3 TC1,
+  IFC4 ADD2 TC1 and IFC4x3 ADD2, the IFC4 ifcXML `.xsd`, 737 property-set
+  definition XMLs, and the full IFC4 HTML documentation. Documented in
+  `references/AGENTS-ifc-spec.md`, including the browser-User-Agent requirement
+  that otherwise 403s every download.
+- **8 geometry crates**, sized from the schema rather than guessed:
+  `geom-profile` (23 `IfcProfileDef` subtypes), `geom-curve` (36 curve
+  entities), `geom-surface` (37 surface entities), `geom-sweep` (11 swept-solid
+  forms), `geom-topology` (~37 topology entities), `geom-tessellate`,
+  `geom-spatial`, `geom-measure`.
+- **9 IFC crates**, each backed by an entity count: `ifc-style` (48),
+  `ifc-structural` (39), `ifc-systems` (23), `ifc-material` (22),
+  `ifc-resource` (21), `ifc-classification` (12), `ifc-georef` (8),
+  `ifc-alignment` (IFC4x3 linear referencing), `ifc-validate` (47 schema
+  functions + 2 global rules).
+- ADR 0005 recording the spec-driven expansion and the evidence behind it.
+
+### Changed
+- `geom-brep` renamed to `geom-topology` (the standard's own vocabulary); its
+  `Tessellate` trait and `ChordTolerance` moved to `geom-tessellate`, tests
+  intact.
+- **The architecture gate is now an allowlist.** "Only `ifc-geometry` may touch
+  geometry" was too narrow once `ifc-georef` and `ifc-alignment` existed —
+  alignment geometry is deliberately not part of the building-shape pipeline.
+  `MAY_USE_GEOMETRY` names the three permitted crates; a fourth requires editing
+  the list and saying why. Three tests, each mutation-verified: non-allowlisted
+  crate gaining geometry, allowlisted crate enabling a backend feature, and the
+  allowlist naming a crate that does not exist.
+
+### Deferred
+- **WASM bindings.** `bindings/wasm` → `bindings/_deferred-wasm`, removed from
+  workspace members and added to `exclude`, so it is not built, tested or
+  linted. Kept rather than deleted because its constraints (no threads, no
+  `is_x86_feature_detected!`, size budget) are an argument for the runtime
+  backend selection already in `geom-kernel`.
+
 ### Changed
 - **Restructured into role-grouped packages.** `geom/` and `ifc/` became
   `packages/geometry/` and `packages/ifc/`, joined by `packages/openbim/`

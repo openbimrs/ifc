@@ -10,7 +10,7 @@
 //! # Design notes
 //!
 //! Broad phase (AABB/BVH) then narrow phase (triangle-triangle, or exact
-//! surface intersection once `geom-brep` lands). The broad phase is where the
+//! surface intersection once `geom-topology` lands). The broad phase is where the
 //! parallelism and the hardware backends pay off — it is a large batch of
 //! independent overlap tests, which is exactly the shape SIMD and GPU want.
 //!

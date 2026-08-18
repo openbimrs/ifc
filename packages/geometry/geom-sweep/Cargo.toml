@@ -1,13 +1,14 @@
 [package]
-name = "geom-brep"
+name = "geom-sweep"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "Boundary representation: exact topology (shell/face/edge/vertex) and the tessellation bridge to geom-mesh."
+description = "Swept solids: extrusion, revolution, sweeping along a directrix, lofts."
 
 [dependencies]
 geom-core.workspace = true
+geom-profile.workspace = true
+geom-curve.workspace = true
 geom-mesh.workspace = true
-thiserror.workspace = true

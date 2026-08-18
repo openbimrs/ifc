@@ -17,16 +17,20 @@ Layout is grouped by role: `packages/` holds libraries, with `bindings/` and
 packages/geometry  →  packages/ifc  →  packages/openbim  →  bindings, apps
 ```
 
-- **`packages/geometry/`** — format-agnostic kernel (`geom-core`, `geom-mesh`,
-  `geom-brep`, `geom-kernel`). Knows nothing about IFC; other formats can use it.
+- **`packages/geometry/`** — format-agnostic kernel, 11 crates (`geom-core`,
+  `geom-mesh`, `geom-profile`, `geom-curve`, `geom-surface`, `geom-sweep`,
+  `geom-topology`, `geom-tessellate`, `geom-spatial`, `geom-measure`,
+  `geom-kernel`). Knows nothing about IFC; other formats can use it.
   Hardware backends are *features* of `geom-kernel`: `scalar` + `simd` on by
   default, `gpu` off.
-- **`packages/ifc/`** — pure IFC logic. Only `ifc-geometry` touches geometry, and
+- **`packages/ifc/`** — pure IFC logic, 16 crates. Geometry access is an
+  explicit allowlist (`ifc-geometry`, `ifc-georef`, `ifc-alignment`), and
   only via `geom-kernel` traits with `default-features = false`, so the kernel is
   swappable **and** property/quantity consumers compile no geometry code.
 - **`packages/openbim/`** — standards built on the IFC layer (`ids`, `bcf`,
   `clash`, `diff`). Consumers only; `packages/ifc/` never depends on these.
-- **`bindings/`** — `python` (pyo3), `wasm`. Reserved, not yet wired.
+- **`bindings/`** — `python` (pyo3), reserved. **wasm is deferred** and
+  excluded from the workspace.
 - **`apps/`** — `ifc-cli`. The one place binding to a concrete backend is right.
 
 That swap boundary is enforced by a mutation-verified test, not by convention —
@@ -34,21 +38,23 @@ see `packages/ifc/AGENTS.md`.
 
 Read `docs/adr/0001` (the split), `0002` (hardware abstraction), `0003`
 (pure-Rust boolean — the decision the project rests on), `0004` (layout +
-backends-as-features).
+backends-as-features), `0005` (spec-driven crate expansion).
 
 ## Layout
 
-- `packages/geometry/` — `geom-core`, `geom-mesh`, `geom-brep`, `geom-kernel`.
-  See `packages/geometry/AGENTS.md`.
-- `packages/ifc/` — `ifc-schema`, `ifc-step`, `ifc-model`, `ifc-geometry`,
-  `ifc-properties`, `ifc-cost`, `ifc-schedule`. See `packages/ifc/AGENTS.md`.
+- `packages/geometry/` — 11 crates. See `packages/geometry/AGENTS.md`.
+- `packages/ifc/` — 16 crates. See `packages/ifc/AGENTS.md`.
 - `packages/openbim/` — `ids`, `bcf`, `clash`, `diff`. See
   `packages/openbim/AGENTS.md`.
-- `bindings/` — `python`, `wasm`. See `bindings/AGENTS.md`.
+- `bindings/` — `python`; `_deferred-wasm/` excluded. See `bindings/AGENTS.md`.
 - `apps/` — `ifc-cli`. See `apps/AGENTS.md`.
 - `references/` — **symlinks only**, real trees on `/mnt/backup/` (see
-  `references/AGENTS.md`). Read-only design evidence: IfcOpenShell (LGPL-3.0)
-  and ifc-lite (MPL-2.0). Never a build dependency.
+  `references/AGENTS.md`). Read-only evidence: IfcOpenShell (LGPL-3.0), ifc-lite
+  (MPL-2.0), and **`ifc-spec/`** — the official buildingSMART EXPRESS schemas
+  for IFC2x3 TC1, IFC4 ADD2 TC1 and IFC4x3 ADD2, plus 737 property-set XMLs
+  (see `references/AGENTS-ifc-spec.md`). The schemas are the authority for any
+  schema question; re-derive counts with `grep` rather than trusting a doc.
+  Never a build dependency — a generator may read them and commit its output.
 - `test/fixtures/` — small `.ifc` edge-case files. See
   `test/fixtures/AGENTS.md`.
 - `docs/` — `ROADMAP.md`, `adr/`, `CHANGELOG.md`. See `docs/AGENTS.md`.
@@ -110,5 +116,11 @@ checking provenance, or anything under `references/*` besides its `AGENTS.md`.
   emits a warning. This nearly made the whole kernel boundary cosmetic — the
   root entry for `geom-kernel` sets it, and applications opt back in with
   `features = [...]`. Do not "simplify" that back to a plain `{ path = ... }`.
-- Fixture paths from a crate are now three levels up
+- Fixture paths from a crate are three levels up
   (`packages/ifc/<crate>` → `../../../test/fixtures`).
+- `standards.buildingsmart.org` returns **403 without a browser User-Agent**.
+  Set `-A "Mozilla/5.0 ..."` on any curl to it. The IFC4x3 `.exp` lives under
+  `HTML/`, not `EXPRESS/`.
+- Geometry access inside `packages/ifc/` is an **allowlist**, not a single
+  crate: `ifc-geometry`, `ifc-georef`, `ifc-alignment`. Adding a fourth requires
+  editing `MAY_USE_GEOMETRY` and justifying it; the test fails otherwise.

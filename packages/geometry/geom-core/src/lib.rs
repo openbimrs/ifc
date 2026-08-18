@@ -4,7 +4,7 @@
 //! passes around: points, transforms, boxes, and the tolerance policy. It
 //! contains **no algorithms** and **no backend code** — those live in
 //! `geom-kernel` (the trait contract plus its hardware backends). Meshes live
-//! in `geom-mesh`, exact topology in `geom-brep`.
+//! in `geom-mesh`, exact topology in `geom-topology`.
 //!
 //! # Why data is split from algorithms
 //!

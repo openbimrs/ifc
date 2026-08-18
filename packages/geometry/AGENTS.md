@@ -3,58 +3,70 @@
 The shared geometry kernel. **Knows nothing about IFC.** If a type here mentions
 `IfcWall`, a property set, or a GUID, it belongs in `packages/ifc/`.
 
-Read `docs/adr/0002` (hardware abstraction), `0003` (pure-Rust boolean), and
-`0004` (why backends are features, not crates).
+Read `docs/adr/0002` (hardware abstraction), `0003` (pure-Rust boolean, the
+decision the project rests on) and `0005` (why these crates exist).
 
-## Crates
+## Crates, low → high
 
 | Crate | Role | Depends on |
 | --- | --- | --- |
-| `geom-core` | Data only: `Vec3`, `Mat4`, `Aabb`, `Tolerance` | — (graph root) |
-| `geom-mesh` | `TriMesh`: the discrete form every backend consumes | `geom-core` |
-| `geom-brep` | Exact topology + `Tessellate` bridge to `geom-mesh` | `geom-core`, `geom-mesh` |
-| `geom-kernel` | The trait CONTRACT + `backend::{scalar,simd,gpu}` | `geom-core`, `geom-mesh` |
+| `geom-core` | scalars, tolerance, `Vec3`/`Mat4`, `Aabb` | — (root) |
+| `geom-mesh` | `TriMesh`: the exchange currency | core |
+| `geom-profile` | 2D cross-sections, polygons, triangulation | core |
+| `geom-curve` | line/arc/NURBS evaluation, trimming, arc length | core |
+| `geom-surface` | plane/cylinder/cone/sphere/torus, NURBS patches | core, curve |
+| `geom-sweep` | extrude, revolve, sweep along directrix | core, profile, curve, mesh |
+| `geom-topology` | exact B-rep: vertex→edge→loop→face→shell→solid | core, curve, surface |
+| `geom-tessellate` | exact geometry → triangles, chord tolerance | core, mesh, curve, surface, topology |
+| `geom-spatial` | BVH / octree / grid + queries | core, mesh |
+| `geom-measure` | area, volume, centroid, inertia | core, mesh, profile |
+| `geom-kernel` | **the trait contract** + hardware backends | core, mesh |
 
-Add a new crate here only if it is genuinely format-agnostic. If it needs to
-know what an `IfcWall` is, it belongs in `packages/ifc/`.
+Sizing evidence (IFC4 entity counts): 23 `IfcProfileDef` subtypes, 36 curve
+entities, 37 surface entities, 11 swept-solid forms, ~37 topology entities. Each
+crate above corresponds to a real cluster in the standard, not an invented one.
 
-## The contract/implementation split (the thing to not break)
+## The two swaps (do not break these)
 
-`geom-kernel` carries both the traits and the backends, separated by features:
+1. **Whole-kernel swap.** `packages/ifc/` depends on `geom-kernel` *traits*,
+   never on a backend implementation. A better kernel implements the traits and
+   the IFC layer gains it with no call-site change.
+2. **Hardware-backend swap.** `geom-kernel::backend::{scalar,simd,gpu}` are
+   cargo features, selected at runtime by `backend::Dispatcher`. Adding AVX-512
+   or a GPU path = adding an impl, never editing callers.
 
-```toml
-default = ["scalar", "simd"]   # scalar is the correctness oracle
-gpu     = []                   # OFF: pulls a driver stack
-```
-
-- **Consumers (libraries) take `default-features = false`** — traits only, zero
-  backend code compiled. `packages/ifc/*` and `packages/openbim/clash` do this,
-  and `ifc-geometry/tests/no_backend_dependency.rs` fails the build if one
-  forgets.
-- **Applications opt in** — `apps/ifc-cli` sets `features = ["scalar", "simd"]`.
-
-🚨 **`default-features = false` on a workspace dependency is IGNORED unless the
-root `[workspace.dependencies]` entry also sets it.** Cargo only warns. The root
-entry sets it; if you ever move `geom-kernel` to a plain `{ path = ... }` there,
-every consumer silently gains the backends and the boundary becomes cosmetic.
+`scalar` is the **correctness oracle**: it must compile everywhere and take no
+`target_feature`. Every other backend is validated *against* it by differential
+test. A backend without a differential test is not trusted.
 
 ## Rules
 
-1. **No rendering types.** No colour, material, or presentation flag.
-2. **No serialization derives.** Persisting geometry belongs to a codec layer;
-   a `Serialize` derive here freezes the layout forever.
-3. **Tolerance is a parameter, never a global.** Models arrive in millimetres
-   *and* metres.
-4. **Backends never diverge silently.** A new backend must be differential-tested
-   against `backend::scalar` on the same input. That is the entire reason the
-   design uses traits rather than `#[cfg]` — preserve the ability to build
-   several backends at once.
-5. **A backend that cannot do something reports `false` in `Capabilities` and
-   returns `GeomError::Unsupported`.** Never emit a wrong mesh. A corrupt solid
-   propagates into every downstream area, volume, and clash result.
+- **`geom-core` gains no dependencies.** It is the shared vocabulary; if it
+  depended on a sibling, the siblings would stop being siblings.
+- **No rendering types anywhere.** No colour, material, or presentation flag —
+  that is `ifc-style`'s job. A kernel with `getColorBuffer()` on its base type
+  cannot be refactored without touching a renderer.
+- **No serialization derives.** Persisting geometry belongs to a codec layer;
+  a derived `Serialize` on a kernel type freezes its layout forever.
+- **Tolerance is a parameter, never a global.** BIM arrives in millimetres *and*
+  metres; a file-scope `1e-9` is wrong in one of them.
+- **Dirty geometry is a state, not an error.** Non-manifold input is normal;
+  represent it, report it, do not panic on it.
+- **Coarse trait granularity.** Backends receive whole meshes and batches, never
+  one triangle, so dynamic dispatch is amortised.
 
-## Status
+## Scope discipline (the thing that kills geometry kernels)
 
-Scaffold. `backend::scalar`'s boolean returns `Unsupported`; `geom-brep` has the
-`Tessellate` trait and no topology types yet. `docs/ROADMAP.md` Stage 2 (boolean)
-and Stage 4 (B-rep) are the real work.
+`geom-curve`, `geom-surface` and `geom-topology` are where a NURBS effort
+balloons into a multi-year CAD project. Target **what real IFC files contain**:
+planes and cylinders dominate, extrusion covers most solids, NURBS appears at
+the margin. Curve/curve intersection and general surface interrogation stay out
+until a fixture demands them.
+
+## Status — read before assuming a capability exists
+
+Scaffold. Every crate here is documentation + intent; `geom-tessellate` carries
+the `Tessellate` trait and `ChordTolerance`, `geom-kernel` carries the traits and
+backend detection, and `backend::scalar`'s boolean deliberately returns
+`Unsupported` rather than a wrong mesh. Check the module doc before assuming
+behaviour is implemented.

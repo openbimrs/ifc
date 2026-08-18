@@ -4,9 +4,14 @@ members = [
     "packages/geometry/*",
     "packages/ifc/*",
     "packages/openbim/*",
-    "bindings/*",
+    "bindings/python",
     "apps/*",
 ]
+
+# `bindings/_deferred-wasm/` is intentionally NOT a member. WASM is deferred
+# (see bindings/AGENTS.md); the underscore prefix keeps it out of any future
+# `bindings/*` glob as well, so re-adding it is a deliberate act.
+exclude = ["bindings/_deferred-wasm"]
 
 [workspace.package]
 version = "0.1.0"
@@ -19,7 +24,14 @@ authors = ["point-grey"]
 # --- packages/geometry: format-agnostic geometry. Knows nothing about IFC. ---
 geom-core = { path = "packages/geometry/geom-core" }
 geom-mesh = { path = "packages/geometry/geom-mesh" }
-geom-brep = { path = "packages/geometry/geom-brep" }
+geom-profile = { path = "packages/geometry/geom-profile" }
+geom-curve = { path = "packages/geometry/geom-curve" }
+geom-surface = { path = "packages/geometry/geom-surface" }
+geom-sweep = { path = "packages/geometry/geom-sweep" }
+geom-topology = { path = "packages/geometry/geom-topology" }
+geom-tessellate = { path = "packages/geometry/geom-tessellate" }
+geom-spatial = { path = "packages/geometry/geom-spatial" }
+geom-measure = { path = "packages/geometry/geom-measure" }
 geom-kernel = { path = "packages/geometry/geom-kernel", default-features = false }
 
 # --- packages/ifc: pure IFC. Only ifc-geometry may touch the geometry kernel. ---
@@ -30,6 +42,15 @@ ifc-geometry = { path = "packages/ifc/ifc-geometry" }
 ifc-properties = { path = "packages/ifc/ifc-properties" }
 ifc-cost = { path = "packages/ifc/ifc-cost" }
 ifc-schedule = { path = "packages/ifc/ifc-schedule" }
+ifc-material = { path = "packages/ifc/ifc-material" }
+ifc-style = { path = "packages/ifc/ifc-style" }
+ifc-structural = { path = "packages/ifc/ifc-structural" }
+ifc-resource = { path = "packages/ifc/ifc-resource" }
+ifc-classification = { path = "packages/ifc/ifc-classification" }
+ifc-georef = { path = "packages/ifc/ifc-georef" }
+ifc-systems = { path = "packages/ifc/ifc-systems" }
+ifc-alignment = { path = "packages/ifc/ifc-alignment" }
+ifc-validate = { path = "packages/ifc/ifc-validate" }
 
 # --- packages/openbim: standards built ON the IFC layer, never inside it. ---
 ids = { path = "packages/openbim/ids" }

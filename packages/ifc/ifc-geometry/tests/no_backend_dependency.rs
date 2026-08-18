@@ -16,10 +16,6 @@
 
 use std::path::{Path, PathBuf};
 
-/// The crate that may carry geometry in `packages/ifc/`. Everything else must
-/// be free of it entirely.
-const GEOMETRY_BRIDGE: &str = "ifc-geometry";
-
 fn ifc_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../packages/ifc")
 }
@@ -71,34 +67,51 @@ fn ifc_crates_take_the_kernel_contract_without_implementations() {
     );
 }
 
-/// Only `ifc-geometry` may touch geometry at all. If another IFC crate grows a
-/// geometry dependency, the "pure IFC logic" separation has been lost — and with
-/// it the property that a consumer doing property/quantity work compiles no
-/// geometry code.
+/// Geometry access is an explicit allowlist, not an accident.
+///
+/// The original rule was "only `ifc-geometry` may touch geometry." That held
+/// when it was the single seam, but `ifc-alignment` (IFC4x3 linear referencing)
+/// and `ifc-georef` (map conversion) legitimately need curve and transform
+/// types of their own — alignment geometry is deliberately NOT part of the
+/// building-shape pipeline, so folding it into `ifc-geometry` would force every
+/// building-only consumer to compile clothoid evaluation.
+///
+/// So the invariant is now: geometry-touching IFC crates are **declared here**.
+/// Adding a geometry dependency to any other crate fails this test, which
+/// forces the question "does this really belong in the IFC layer?" to be
+/// answered deliberately rather than by whoever edited a manifest last.
+const MAY_USE_GEOMETRY: &[&str] = &["ifc-geometry", "ifc-alignment", "ifc-georef"];
+
 #[test]
-fn only_ifc_geometry_touches_geometry() {
-    let mut saw_bridge = false;
-    for entry in std::fs::read_dir(ifc_dir()).expect("packages/ifc must exist") {
+fn geometry_access_is_limited_to_the_allowlist() {
+    for entry in std::fs::read_dir(ifc_dir()).expect("ifc dir must exist") {
         let path = entry.unwrap().path();
         let name = path.file_name().unwrap().to_string_lossy().to_string();
         let manifest = path.join("Cargo.toml");
-        if !manifest.exists() {
-            continue;
-        }
-        if name == GEOMETRY_BRIDGE {
-            saw_bridge = true;
+        if !manifest.exists() || MAY_USE_GEOMETRY.contains(&name.as_str()) {
             continue;
         }
         let body = uncommented(&std::fs::read_to_string(&manifest).unwrap());
         assert!(
             !body.contains("geom-"),
-            "packages/ifc/{name} depends on geometry. Only {GEOMETRY_BRIDGE} may — \
-             the rest of the IFC layer is pure IFC logic so consumers doing \
-             property/quantity work never compile the geometry stack."
+            "packages/ifc/{name} depends on geometry but is not in \
+             MAY_USE_GEOMETRY.\n\
+             The IFC layer stays pure so a consumer doing property, quantity, \
+             cost or classification work never compiles the geometry stack. \
+             If this crate genuinely needs geometry, add it to the allowlist \
+             with a comment saying why."
         );
     }
-    assert!(
-        saw_bridge,
-        "{GEOMETRY_BRIDGE} not found — this test's premise has moved"
-    );
+}
+
+/// The allowlist itself must stay honest: every crate named in it has to exist.
+/// A stale entry would silently permit geometry in a crate that was renamed.
+#[test]
+fn allowlist_names_only_real_crates() {
+    for allowed in MAY_USE_GEOMETRY {
+        assert!(
+            ifc_dir().join(allowed).join("Cargo.toml").exists(),
+            "MAY_USE_GEOMETRY names `{allowed}`, which is not a crate under packages/ifc/"
+        );
+    }
 }

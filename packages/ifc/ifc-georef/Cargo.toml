@@ -1,0 +1,13 @@
+[package]
+name = "ifc-georef"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Georeferencing: map conversion, coordinate reference systems, site placement."
+
+[dependencies]
+ifc-schema.workspace = true
+ifc-model.workspace = true
+geom-core.workspace = true
