@@ -5,18 +5,23 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "Facade for the nehirde IFC library: pick your codecs and domains as cargo features."
+description = "Facade for the nehirde IFC library: pick codecs and domains as features."
 
 [dependencies]
-# The model is the only mandatory dependency. Everything else is opt-in, which
-# is what lets a thin application avoid compiling domains it never uses.
+# The model is unconditional: it is the thing every feature agrees on.
 ifc-model.workspace = true
 
+# --- serialization backends ---
 ifc-step = { workspace = true, optional = true }
+ifc-xml = { workspace = true, optional = true }
+
+# --- schema (optional: needed for conformant ifcXML names and subtype queries) ---
 ifc-schema = { workspace = true, optional = true }
+
+# --- domain views ---
+ifc-properties = { workspace = true, optional = true }
 ifc-cost = { workspace = true, optional = true }
 ifc-schedule = { workspace = true, optional = true }
-ifc-properties = { workspace = true, optional = true }
 ifc-material = { workspace = true, optional = true }
 ifc-classification = { workspace = true, optional = true }
 ifc-structural = { workspace = true, optional = true }
@@ -29,20 +34,22 @@ ifc-georef = { workspace = true, optional = true }
 ifc-alignment = { workspace = true, optional = true }
 
 [features]
-# Default: read and write STEP, nothing interpreted. This is the "thin" build
-# and is what an application that only moves files around should use.
+# Reading STEP is what almost everyone wants; nothing else is assumed.
+# A domain in `default` would make every downstream build fat, which is the
+# mistake `tests/thin_build.rs` exists to catch.
 default = ["step"]
 
-# --- serialization ---
+# --- codecs ---
 step = ["dep:ifc-step"]
+ifcxml = ["dep:ifc-xml"]
 
-# --- schema services ---
+# --- schema ---
 schema = ["dep:ifc-schema"]
 
-# --- domain views, each independently selectable ---
+# --- domains ---
+properties = ["dep:ifc-properties"]
 cost = ["dep:ifc-cost"]
 schedule = ["dep:ifc-schedule"]
-properties = ["dep:ifc-properties"]
 material = ["dep:ifc-material"]
 classification = ["dep:ifc-classification"]
 structural = ["dep:ifc-structural"]
@@ -50,22 +57,16 @@ resource = ["dep:ifc-resource"]
 systems = ["dep:ifc-systems"]
 style = ["dep:ifc-style"]
 validate = ["dep:ifc-validate"]
-
-# --- geometry-touching domains (pull in the kernel CONTRACT only) ---
 geometry = ["dep:ifc-geometry"]
 georef = ["dep:ifc-georef"]
 alignment = ["dep:ifc-alignment"]
 
-# 4D/5D: the combination a quantity-surveying app wants.
-quantities = ["cost", "schedule", "properties"]
-
-# Everything. Convenient for tests, wrong for shipping.
-full = [
-    "step",
-    "schema",
+# Convenience bundles.
+codecs = ["step", "ifcxml"]
+domains = [
+    "properties",
     "cost",
     "schedule",
-    "properties",
     "material",
     "classification",
     "structural",
@@ -73,7 +74,5 @@ full = [
     "systems",
     "style",
     "validate",
-    "geometry",
-    "georef",
-    "alignment",
 ]
+full = ["codecs", "schema", "domains", "geometry", "georef", "alignment"]

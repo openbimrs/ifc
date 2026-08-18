@@ -1,27 +1,46 @@
-//! Attribute descriptors and their declared types.
+//! One positional attribute slot on an entity.
 
-/// One positional attribute slot on an entity.
+/// An explicit attribute declared by an entity.
+///
+/// Only *explicit* attributes are recorded. `DERIVE` attributes do not occupy
+/// a positional slot in a STEP record, and `INVERSE` attributes are
+/// back-references rather than stored data, so including either would shift
+/// every subsequent index and corrupt attribute lookup.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attribute {
-    /// Attribute name as declared in EXPRESS (e.g. `GlobalId`).
+    /// Attribute name as declared in EXPRESS, e.g. `Coordinates`.
+    ///
+    /// ifcXML writes this as the XML attribute or child element name, which is
+    /// why the schema is required for a conformant XML codec.
     pub name: String,
-    /// Whether the schema marks it `OPTIONAL` (may legitimately be `$`).
+    /// The declared type token, e.g. `IfcLengthMeasure`.
+    pub type_name: String,
+    /// Whether the slot may be `$` (unset).
     pub optional: bool,
-    /// Whether it is `DERIVE`d in this entity (appears as `*` in the record).
-    pub derived: bool,
-    /// The declared type, used to interpret the raw STEP value.
-    pub kind: AttributeKind,
+    /// Whether the slot holds an aggregate (`LIST`, `SET`, `ARRAY`, `BAG`).
+    pub aggregate: bool,
 }
 
-/// The declared type of an attribute, at the granularity a reader needs.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum AttributeKind {
-    /// A simple value: integer, real, string, boolean, logical.
-    Simple,
-    /// A reference to another entity instance.
-    Reference,
-    /// An aggregate (`SET`, `LIST`, `ARRAY`, `BAG`) of the inner kind.
-    Aggregate(Box<AttributeKind>),
-    /// A named `TYPE`, `ENUMERATION` or `SELECT` declared in the schema.
-    Named(String),
+impl Attribute {
+    /// A required, scalar attribute.
+    pub fn new(name: impl Into<String>, type_name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            type_name: type_name.into(),
+            optional: false,
+            aggregate: false,
+        }
+    }
+
+    /// Mark this slot optional.
+    pub fn optional(mut self) -> Self {
+        self.optional = true;
+        self
+    }
+
+    /// Mark this slot an aggregate.
+    pub fn aggregate(mut self) -> Self {
+        self.aggregate = true;
+        self
+    }
 }

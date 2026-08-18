@@ -2,44 +2,48 @@
 //!
 //! # The decision
 //!
-//! IfcOpenShell generates a C++ class per IFC entity per schema version. That
-//! is a very large amount of code to compile, and it multiplies by the number
-//! of supported schemas.
+//! IfcOpenShell generates a class per IFC entity per schema version. That is a
+//! very large amount of code, and it must be regenerated for every schema
+//! release. This crate instead reads the normative EXPRESS files into tables
+//! and answers questions against them.
 //!
-//! Evidence from the schemas in `references/ifc-spec/`:
+//! The evidence that this is the right call: IFC4x3 renames
+//! `IfcBuildingElement` to `IfcBuiltElement` and drops `IfcProxy` and the whole
+//! `*StandardCase` family. Generated types would fork the entire API surface;
+//! a table just holds different rows.
 //!
-//! | Schema | Entities |
-//! |---|---|
-//! | IFC2x3 TC1 | 653 |
-//! | IFC4 ADD2 TC1 | 776 |
-//! | IFC4x3 ADD2 | 876 |
-//!
-//! Worse, names are *not* stable across versions: IFC4x3 renames
-//! `IfcBuildingElement` to `IfcBuiltElement` and removes `IfcProxy`, the whole
-//! `*StandardCase` family, `IfcDoorStyle` and `IfcWindowStyle`. Generated
-//! per-version types would triple the API surface and force every consumer to
-//! choose a version at compile time.
-//!
-//! We instead treat the schema as a **lookup table** built from the official
-//! EXPRESS files. One code path serves every schema version; supporting a new
-//! one is data, not a release.
-//!
-//! # Module map
+//! # What this crate is for
 //!
 //! | Module | Role |
-//! |---|---|
-//! | [`version`] | which schema a file declares |
-//! | [`entity`] | entity table: name, supertype, attribute slots |
-//! | [`attribute`] | attribute descriptors and their declared types |
-//! | [`types`] | defined types, enums, and selects |
-//! | [`inheritance`] | supertype chain walking and subtype tests |
-//! | [`registry`] | the assembled, queryable schema |
-//! | [`express`] | parser for the official `.exp` files |
+//! | --- | --- |
+//! | [`version`] | Which schema a file declares |
+//! | [`express`] | Parser for the official `.exp` files |
+//! | [`entity`] | Entity descriptors: name, supertype, slots |
+//! | [`attribute`] | Attribute descriptors and declared types |
+//! | [`types`] | Defined types, enumerations, selects |
+//! | [`registry`] | The assembled, queryable schema |
+//! | [`inheritance`] | Supertype-chain walking |
 //!
-//! # Status
+//! # Relationship to the model
 //!
-//! Scaffold. [`version`] detection is implemented and tested; the rest is
-//! Stage 1 in `docs/ROADMAP.md`.
+//! [`ifc_model`](https://docs.rs/ifc-model) does **not** depend on this crate.
+//! The model stores whatever a file contains, valid or not. The schema is what
+//! you consult to *interpret* what was stored, and it is optional: a file whose
+//! schema is unknown still parses, and its entities still round-trip.
+//!
+//! ```
+//! use ifc_schema::Schema;
+//!
+//! let schema = Schema::from_express(
+//!     "SCHEMA IFC4;\n\
+//!      ENTITY IfcRoot; GlobalId : IfcGloballyUniqueId; END_ENTITY;\n\
+//!      ENTITY IfcWall SUBTYPE OF (IfcRoot); Name : IfcLabel; END_ENTITY;\n\
+//!      END_SCHEMA;",
+//! );
+//!
+//! assert!(schema.is_a("IFCWALL", "IfcRoot"));
+//! assert_eq!(schema.attribute_names("IfcWall"), ["GlobalId", "Name"]);
+//! ```
 
 pub mod attribute;
 pub mod entity;
@@ -49,4 +53,8 @@ pub mod registry;
 pub mod types;
 pub mod version;
 
+pub use attribute::Attribute;
+pub use entity::EntityDef;
+pub use registry::Schema;
+pub use types::{TypeDef, TypeKind};
 pub use version::SchemaVersion;

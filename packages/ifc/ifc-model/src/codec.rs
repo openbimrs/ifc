@@ -33,6 +33,16 @@ pub trait Codec {
     /// Conventional file extensions, lower-case, without the dot.
     fn extensions(&self) -> &'static [&'static str];
 
+    /// Does this look like a file this codec can read?
+    ///
+    /// Content sniffing, so a file with the wrong extension still opens.
+    /// Defaults to `false` — a codec that cannot cheaply recognize its own
+    /// format should say so rather than claim every input, which would make
+    /// codec selection order-dependent.
+    fn detect(&self, _bytes: &[u8]) -> bool {
+        false
+    }
+
     /// Parse a model from bytes.
     ///
     /// Bytes rather than `&str` because IFC files are not guaranteed UTF-8:

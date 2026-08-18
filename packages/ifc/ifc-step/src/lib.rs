@@ -56,6 +56,10 @@ impl Codec for StepCodec {
         &["ifc", "step", "stp"]
     }
 
+    fn detect(&self, bytes: &[u8]) -> bool {
+        is_step_file(bytes)
+    }
+
     fn read_bytes(&self, bytes: &[u8]) -> Result<Model, ModelError> {
         if !is_step_file(bytes) {
             return Err(ModelError::WrongFormat {

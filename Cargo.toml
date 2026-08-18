@@ -38,6 +38,7 @@ geom-kernel = { path = "packages/geometry/geom-kernel", default-features = false
 ifc-schema = { path = "packages/ifc/ifc-schema" }
 ifc = { path = "packages/ifc/ifc" }
 ifc-step = { path = "packages/ifc/ifc-step" }
+ifc-xml = { path = "packages/ifc/ifc-xml" }
 ifc-model = { path = "packages/ifc/ifc-model" }
 ifc-geometry = { path = "packages/ifc/ifc-geometry" }
 ifc-properties = { path = "packages/ifc/ifc-properties" }
@@ -68,6 +69,7 @@ smallvec = "1.13"
 ahash = "0.8"
 memmap2 = "0.9"
 criterion = { version = "0.5", features = ["html_reports"] }
+quick-xml = "0.37"
 
 [profile.release]
 opt-level = 3

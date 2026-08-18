@@ -2,31 +2,32 @@
 //!
 //! IFC4 declares 397 of these alongside its 776 entities. They matter for
 //! reading because a STEP value may be wrapped in its type name
-//! (`IFCLENGTHMEASURE(3.2)`), and for validation because a select restricts
-//! which entities may legally appear in a slot.
+//! (`IFCLENGTHMEASURE(0.2)`), and for ifcXML because the wrapper becomes an
+//! element name.
 
-/// A non-entity type declaration from the schema.
+/// What an EXPRESS `TYPE` declaration actually declares.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TypeDef {
-    /// `TYPE X = REAL;` — a simple type alias, possibly with constraints.
-    Defined {
-        /// The declared name.
-        name: String,
-        /// The underlying primitive, as written.
-        underlying: String,
-    },
-    /// `TYPE X = ENUMERATION OF (...);`
-    Enumeration {
-        /// The declared name.
-        name: String,
-        /// Permitted values, uppercase as written.
-        values: Vec<String>,
-    },
-    /// `TYPE X = SELECT (...);`
-    Select {
-        /// The declared name.
-        name: String,
-        /// Permitted member type names.
-        members: Vec<String>,
-    },
+pub enum TypeKind {
+    /// An alias for a base type, e.g. `IfcLengthMeasure = REAL`.
+    Defined(String),
+    /// A closed set of names, e.g. `IfcWallTypeEnum`.
+    Enumeration(Vec<String>),
+    /// A union of other types, e.g. `IfcValue`.
+    Select(Vec<String>),
+}
+
+/// One `TYPE` declaration.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypeDef {
+    /// Name as declared, e.g. `IfcLengthMeasure`.
+    pub name: String,
+    /// What it declares.
+    pub kind: TypeKind,
+}
+
+impl TypeDef {
+    /// Is this a measure-like alias whose STEP wrapper carries a number?
+    pub fn is_defined(&self) -> bool {
+        matches!(self.kind, TypeKind::Defined(_))
+    }
 }

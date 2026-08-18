@@ -1,0 +1,24 @@
+[package]
+name = "ifc-xml"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "ifcXML (ISO 10303-28) codec for the nehirde IFC model."
+
+[dependencies]
+ifc-model.workspace = true
+# Optional: without a schema the codec still round-trips, using positional
+# fallback names. With one, it emits conformant named attributes.
+ifc-schema = { workspace = true, optional = true }
+quick-xml.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+ifc-step.workspace = true
+
+[features]
+default = ["schema"]
+# Emit/read schema-correct attribute NAMES rather than positional fallbacks.
+schema = ["dep:ifc-schema"]

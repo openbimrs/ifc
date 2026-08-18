@@ -11,6 +11,28 @@ section on release.
 ## [Unreleased]
 
 ### Added
+- **ifcXML codec (`ifc-xml`)** implementing the same `Codec` trait as
+  `ifc-step`, proving serialization is genuinely pluggable: the model crate did
+  not change to accommodate it. Schema-aware attribute naming is optional, with
+  a positional fallback so files from unknown schemas still round-trip.
+- **EXPRESS schema parser (`ifc-schema`)** reading the official `.exp` files.
+  Verified against all three shipped schemas: IFC2x3 TC1 (653 entities),
+  IFC4 ADD2 TC1 (776 entities, 397 types), IFC4x3 ADD2 (876 entities).
+  Provides `is_a` subtype queries and STEP-positional attribute names.
+- **`ifc` facade features** for codecs (`step`, `ifcxml`), `schema`, and each
+  domain, plus `codecs` / `domains` / `full` bundles. `default = ["step"]`.
+- **`Codec::detect`** (defaulting to `false`) so `ifc::read_path` selects a
+  codec by content sniffing, then extension.
+- Costing fixture `test/fixtures/costing/costing_schedule.ifc` with cost
+  schedules, items, values, quantities, property sets, and an entity type from
+  no IFC schema.
+
+### Fixed
+- ifcXML wrote numeric-looking strings (`IfcApplication.Version = "0.1"`) as
+  plain XML attributes, so re-reading inferred `Real(0.1)` and silently changed
+  the value's kind. Such strings now become typed child elements.
+
+### Added
 - **Working STEP codec and entity model.** `ifc-model` holds the entity graph
   (`Value`, `Entity`, `Model`, GUID codec, type index, dangling-reference
   detection); `ifc-step` implements lexer, parser and writer over it. All 19

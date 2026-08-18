@@ -11,7 +11,9 @@ EXPRESS schemas. Re-derive facts with `grep` rather than trusting a doc.
 | Crate | Role | Geometry? |
 | --- | --- | --- |
 | `ifc-schema` | Schema as data: entity table, supertype chain, attributes | no |
-| `ifc-step` | STEP/IFC-SPF reader: mmap, partition, parallel scan | no |
+| `ifc-step` | STEP/IFC-SPF codec: lexer, parser, writer | no |
+| `ifc-xml` | ifcXML codec (ISO 10303-28); schema optional | no |
+| `ifc` | Facade: codecs + domains as cargo features | no |
 | `ifc-model` | Indexed semantic views: type buckets, spatial tree, rels | no |
 | `ifc-properties` | Property sets, quantities, units | no |
 | `ifc-material` | Layer sets, profile sets, constituents, usage | no |
@@ -43,16 +45,36 @@ ifc-json  --+             (entities)     +-- ifc-properties
 ```
 
 - **Codecs depend on the model, never the reverse.** `Codec` is a trait *in*
-  `ifc-model`; `ifc-step` implements it. Adding ifcXML changes nothing here.
+  `ifc-model`; `ifc-step` and `ifc-xml` implement it. A third encoding is
+  additive — the model did not change to accept the second one (`docs/adr/0007`).
 - **Domain crates are views.** They borrow `&Model` and interpret entities.
   They own no storage, so removing one cannot lose data.
 - **The model stores structure only.** `Entity { type_name, attributes }`. No
   `if type_name == "IFCWALL"` anywhere in `ifc-model` — enforced by
   `ifc-model/tests/model_invariants.rs`.
+- **The schema is optional, never required to read a file.** `ifc-schema` parses
+  the official `.exp` files into tables; `ifc-model` does not depend on it. An
+  unrecognized schema token is stored, not rejected.
 
-The payoff, verified in `ifc-step/tests/roundtrip.rs`: **a file full of cost
-data parses and re-exports intact in a build with no cost crate compiled.**
-Read `docs/adr/0006` before changing any of this.
+The payoff, verified in `ifc/tests/costing_roundtrip.rs`: **a file full of cost
+data parses and re-exports intact in a build with no cost crate compiled**, and
+so does an entity type from no schema that exists.
+
+## Features on the `ifc` facade
+
+```bash
+cargo build -p ifc --no-default-features     # model only
+cargo build -p ifc --features step           # default: read .ifc
+cargo build -p ifc --features step,ifcxml    # both codecs
+cargo build -p ifc --all-features            # everything
+```
+
+`default = ["step"]` and nothing more. A domain in `default` makes every
+downstream build fat, so `ifc/tests/thin_build.rs` checks the **default**
+feature set specifically, not only an explicit one.
+
+Read `docs/adr/0006` (the separations) and `0007` (codecs) before changing any
+of this.
 
 ## Module layout — modular by default, enforced
 
@@ -63,7 +85,10 @@ subsystem lives:
 - `ifc-step` — one module per pipeline stage (`lexer`, `partition`, `scan`,
   `resolve`, `escape`, `value`, `header`, `reader`).
 - `ifc-schema` — one per schema concern (`entity`, `attribute`, `types`,
-  `inheritance`, `registry`, `express`, `version`).
+  `inheritance`, `registry`, `express`, `version`). `express` parses the real
+  `.exp` files; `registry` answers `is_a` and positional attribute names.
+- `ifc-xml` — `reader`, `writer`, `error`. The writer's `looks_numeric` must
+  mirror the reader's `infer_scalar`; they are a matched pair.
 - `ifc-geometry` — **one per representation family** (`swept`, `brep`, `csg`,
   `tessellated`, `mapped`, `profile`, `placement`, `opening`, `units`,
   `context`). This is where a monolith would otherwise form: IFC4 has ~119
