@@ -1,6 +1,12 @@
 [workspace]
 resolver = "2"
-members = ["geom/*", "ifc/*"]
+members = [
+    "packages/geometry/*",
+    "packages/ifc/*",
+    "packages/openbim/*",
+    "bindings/*",
+    "apps/*",
+]
 
 [workspace.package]
 version = "0.1.0"
@@ -10,23 +16,29 @@ license = "MIT"
 authors = ["point-grey"]
 
 [workspace.dependencies]
-# --- geom/ : the shared geometry kernel (swappable, hardware-abstracted) ---
-geom-core = { path = "geom/core" }
-geom-kernel = { path = "geom/kernel" }
-geom-cpu = { path = "geom/cpu" }
-geom-simd = { path = "geom/simd" }
-geom-gpu = { path = "geom/gpu" }
-geom-dispatch = { path = "geom/dispatch" }
+# --- packages/geometry: format-agnostic geometry. Knows nothing about IFC. ---
+geom-core = { path = "packages/geometry/geom-core" }
+geom-mesh = { path = "packages/geometry/geom-mesh" }
+geom-brep = { path = "packages/geometry/geom-brep" }
+geom-kernel = { path = "packages/geometry/geom-kernel", default-features = false }
 
-# --- ifc/ : pure IFC logic (depends on geom-kernel traits ONLY, never a backend) ---
-ifc-schema = { path = "ifc/schema" }
-ifc-parser = { path = "ifc/parser" }
-ifc-model = { path = "ifc/model" }
-ifc-shape = { path = "ifc/shape" }
+# --- packages/ifc: pure IFC. Only ifc-geometry may touch the geometry kernel. ---
+ifc-schema = { path = "packages/ifc/ifc-schema" }
+ifc-step = { path = "packages/ifc/ifc-step" }
+ifc-model = { path = "packages/ifc/ifc-model" }
+ifc-geometry = { path = "packages/ifc/ifc-geometry" }
+ifc-properties = { path = "packages/ifc/ifc-properties" }
+ifc-cost = { path = "packages/ifc/ifc-cost" }
+ifc-schedule = { path = "packages/ifc/ifc-schedule" }
+
+# --- packages/openbim: standards built ON the IFC layer, never inside it. ---
+ids = { path = "packages/openbim/ids" }
+bcf = { path = "packages/openbim/bcf" }
+clash = { path = "packages/openbim/clash" }
+diff = { path = "packages/openbim/diff" }
 
 # --- third-party ---
-# glam: SIMD-accelerated vector math, pure Rust, no C++. The f64 (D*) types are
-# what we store; see docs/adr/0002.
+# glam: SIMD-accelerated vector math, pure Rust, no C++. See docs/adr/0003.
 glam = "0.29"
 thiserror = "2.0"
 rayon = "1.10"

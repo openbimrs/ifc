@@ -1,0 +1,12 @@
+[package]
+name = "ifc-properties"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Property sets, quantities, and unit resolution. No geometry."
+
+[dependencies]
+ifc-model.workspace = true
+ifc-schema.workspace = true

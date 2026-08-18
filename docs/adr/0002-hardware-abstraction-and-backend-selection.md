@@ -5,6 +5,12 @@
 - **Deciders:** GeneralPawz, Hermes
 - **Supersedes:** —
 
+> **Amended by [0004](0004-package-layout-and-backend-features.md).** The
+> reasoning below stands. The backends are no longer separate crates: they are
+> `geom-kernel`'s `backend::{scalar,simd,gpu}` modules behind cargo features,
+> and `geom-dispatch` is now `geom_kernel::backend::Dispatcher`.
+
+
 ## Context
 
 Performance is a first-class goal: we intend to beat the IfcOpenShell stack on

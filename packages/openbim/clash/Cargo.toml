@@ -1,0 +1,16 @@
+[package]
+name = "clash"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Clash detection over IFC models, on the shared geometry kernel."
+
+[dependencies]
+ifc-model.workspace = true
+ifc-geometry.workspace = true
+geom-core.workspace = true
+geom-mesh.workspace = true
+# CONTRACT ONLY — clash runs on whatever kernel it is handed.
+geom-kernel = { workspace = true, default-features = false }

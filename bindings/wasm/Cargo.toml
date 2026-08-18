@@ -1,0 +1,19 @@
+[package]
+name = "nehirde-wasm"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "WebAssembly bindings (wasm-bindgen). Deps intentionally not yet wired — see lib.rs."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+ifc-schema.workspace = true
+ifc-step.workspace = true
+ifc-model.workspace = true
+# Contract only: a wasm build must not drag in native SIMD/GPU backends.
+geom-kernel = { workspace = true, default-features = false }
+# wasm-bindgen is NOT added yet — see lib.rs.

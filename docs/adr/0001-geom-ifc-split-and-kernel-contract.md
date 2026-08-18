@@ -5,6 +5,12 @@
 - **Deciders:** GeneralPawz, Hermes
 - **Supersedes:** —
 
+> **Amended by [0004](0004-package-layout-and-backend-features.md).** The
+> reasoning below stands. Paths have moved: `geom/` → `packages/geometry/`,
+> `ifc/` → `packages/ifc/`, and `ifc-parser`/`ifc-shape` are now
+> `ifc-step`/`ifc-geometry`.
+
+
 ## Context
 
 The goal is the best IFC library in Rust — a lightweight, high-performance

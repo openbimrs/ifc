@@ -1,0 +1,11 @@
+[package]
+name = "ifc-schedule"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage."
+
+[dependencies]
+ifc-model.workspace = true

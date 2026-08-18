@@ -25,7 +25,7 @@ rm -rf ifclite      && git clone --depth 1 https://github.com/LTplus-AG/ifc-lite
 ## Agent rules
 
 1. **Read-only design evidence, never a build dependency.** No crate under
-   `crates/` may `include!`, vendor, or `path = "../references/..."` into
+   `packages/` may `include!`, vendor, or `path = "../references/..."` into
    these trees. If code here is genuinely useful (e.g. schema tables), port the
    *idea* independently and cite the source in a comment — same clean-room
    posture as `../vendor/solibri` (see its `docs/PROVENANCE.md`).
@@ -39,5 +39,5 @@ rm -rf ifclite      && git clone --depth 1 https://github.com/LTplus-AG/ifc-lite
    specific file's header/license note first; don't copy anything that looks
    like a real client project export.
 4. If `/mnt/backup` is ever unmounted or these symlinks go stale, re-run the
-   clone commands above — nothing under `crates/` should break, since nothing
+   clone commands above — nothing under `packages/` should break, since nothing
    depends on this directory at build time.

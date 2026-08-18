@@ -1,0 +1,12 @@
+[package]
+name = "ifc-cost"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "IFC cost: IfcCostItem/IfcCostSchedule and quantity linkage."
+
+[dependencies]
+ifc-model.workspace = true
+ifc-properties.workspace = true

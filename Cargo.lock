@@ -16,10 +16,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "bcf"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
+
+[[package]]
+name = "clash"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+ "geom-kernel",
+ "geom-mesh",
+ "ifc-geometry",
+ "ifc-model",
+]
 
 [[package]]
 name = "crossbeam-deque"
@@ -47,10 +65,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61803da095bee82a81bb1a452ecc25d3b2f1416d1897eb86430c6159ef717c17"
 
 [[package]]
+name = "diff"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+ "ifc-properties",
+]
+
+[[package]]
 name = "either"
 version = "1.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e5e8f6c15a24b9a3ee5efec809ccd006d3b30e8b3bb63c39af737c7f87daa1d"
+
+[[package]]
+name = "geom-brep"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+ "geom-mesh",
+ "thiserror",
+]
 
 [[package]]
 name = "geom-core"
@@ -62,46 +97,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "geom-cpu"
-version = "0.1.0"
-dependencies = [
- "geom-core",
- "geom-kernel",
-]
-
-[[package]]
-name = "geom-dispatch"
-version = "0.1.0"
-dependencies = [
- "geom-core",
- "geom-cpu",
- "geom-gpu",
- "geom-kernel",
- "geom-simd",
-]
-
-[[package]]
-name = "geom-gpu"
-version = "0.1.0"
-dependencies = [
- "geom-core",
- "geom-kernel",
-]
-
-[[package]]
 name = "geom-kernel"
 version = "0.1.0"
 dependencies = [
  "geom-core",
+ "geom-mesh",
  "thiserror",
 ]
 
 [[package]]
-name = "geom-simd"
+name = "geom-mesh"
 version = "0.1.0"
 dependencies = [
  "geom-core",
- "geom-kernel",
 ]
 
 [[package]]
@@ -123,24 +131,69 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8babf46d4c1c9d92deac9f7be466f76dfc4482b6452fc5024b5e8daf6ffeb3ee"
 
 [[package]]
-name = "ifc-model"
+name = "ids"
 version = "0.1.0"
 dependencies = [
- "ahash",
- "ifc-parser",
+ "ifc-model",
+ "ifc-properties",
  "ifc-schema",
 ]
 
 [[package]]
-name = "ifc-parser"
+name = "ifc-cli"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+ "geom-kernel",
+ "geom-mesh",
+ "ifc-geometry",
+ "ifc-model",
+ "ifc-properties",
+ "ifc-schema",
+ "ifc-step",
+]
+
+[[package]]
+name = "ifc-cost"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+ "ifc-properties",
+]
+
+[[package]]
+name = "ifc-geometry"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+ "geom-kernel",
+ "geom-mesh",
+ "ifc-model",
+ "ifc-schema",
+]
+
+[[package]]
+name = "ifc-model"
 version = "0.1.0"
 dependencies = [
  "ahash",
  "ifc-schema",
- "memmap2",
- "rayon",
- "smallvec",
- "thiserror",
+ "ifc-step",
+]
+
+[[package]]
+name = "ifc-properties"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+ "ifc-schema",
+]
+
+[[package]]
+name = "ifc-schedule"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
 ]
 
 [[package]]
@@ -151,13 +204,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "ifc-shape"
+name = "ifc-step"
 version = "0.1.0"
 dependencies = [
- "geom-core",
- "geom-kernel",
- "ifc-model",
+ "ahash",
  "ifc-schema",
+ "memmap2",
+ "rayon",
+ "smallvec",
+ "thiserror",
 ]
 
 [[package]]
@@ -173,6 +228,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d1219ed1b7f229ee7104d281dd01d6802fe28bb6e95d292942c4daacdeb798c0"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "nehirde-python"
+version = "0.1.0"
+dependencies = [
+ "geom-kernel",
+ "ifc-model",
+ "ifc-properties",
+ "ifc-schema",
+ "ifc-step",
+]
+
+[[package]]
+name = "nehirde-wasm"
+version = "0.1.0"
+dependencies = [
+ "geom-kernel",
+ "ifc-model",
+ "ifc-schema",
+ "ifc-step",
 ]
 
 [[package]]
