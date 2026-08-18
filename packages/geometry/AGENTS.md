@@ -26,6 +26,29 @@ Sizing evidence (IFC4 entity counts): 23 `IfcProfileDef` subtypes, 36 curve
 entities, 37 surface entities, 11 swept-solid forms, ~37 topology entities. Each
 crate above corresponds to a real cluster in the standard, not an invented one.
 
+## Tiers (enforced, not advisory)
+
+```text
+  L0  math / data      geom-core
+   ^
+  L1  representation   geom-mesh, geom-profile, geom-curve, geom-surface,
+                       geom-topology
+   ^
+  L2  algorithms       geom-sweep, geom-tessellate, geom-spatial, geom-measure,
+                       geom-kernel
+```
+
+Dependencies point **down or sideways, never up**. Same-tier edges are fine —
+`geom-surface` needs `geom-curve` to trim. The edge that matters is the L1 rule:
+representation types stay usable without dragging in an algorithm crate, which
+is what lets a foreign kernel accept our `TriMesh` without accepting our kernel.
+
+`geom-core.tests/layering.rs` enforces all of this, plus "no crate here depends
+on `packages/ifc/`". A new crate with no entry in its `TIERS` table fails the
+build — declaring the layer is part of creating the crate. The gate is
+mutation-verified by `scripts/probe_layering_gate.sh` (5 probes: reversed seam,
+tier inversion, root gaining a sibling, untiered crate, commented-out decoy).
+
 ## The two swaps (do not break these)
 
 1. **Whole-kernel swap.** `packages/ifc/` depends on `geom-kernel` *traits*,
