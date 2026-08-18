@@ -4,7 +4,7 @@
 //! a tree rather than a flat list.
 
 use crate::item::CostItem;
-use crate::CostView;
+use crate::view::CostView;
 
 /// Total the direct cost values of one item.
 ///
