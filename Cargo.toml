@@ -1,0 +1,31 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT"
+authors = ["point-grey"]
+
+[workspace.dependencies]
+# Internal crates — add here as new crates land under crates/.
+# nehirde-core = { path = "crates/nehirde-core" }
+
+# Third-party — pin here once real crates need them; keep in sync with
+# solibri-rs (../vendor/solibri) where the same class of dependency applies,
+# see docs/ROADMAP.md.
+thiserror = "2.0"
+anyhow    = "1.0"
+
+# --- Release profile ---
+[profile.release]
+opt-level     = 3
+lto           = "thin"
+codegen-units = 1
+strip         = true
+
+# Fast iteration
+[profile.dev]
+opt-level = 1
