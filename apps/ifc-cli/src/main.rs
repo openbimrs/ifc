@@ -1,52 +1,104 @@
-//! `ifc` — the reference consumer of this library.
+//! `ifc` — command line tool for inspecting IFC files.
 //!
-//! The CLI exists for three reasons beyond being useful:
-//!
-//! 1. **It proves the library is usable.** An API that is awkward to drive from
-//!    a binary is awkward to drive from an application.
-//! 2. **It is where backend selection legitimately happens.** Libraries take a
-//!    kernel by injection; an application must choose one. This is that place.
-//! 3. **It is the harness for the performance claims** in `docs/ROADMAP.md`.
-//!    Wall-clock numbers come from here, not from assertions.
+//! An application, so this is the right place to bind concrete
+//! implementations: a codec and a geometry backend. Library crates must not.
 
-use geom_kernel::backend::Dispatcher;
+use ifc_model::Codec;
+use ifc_step::StepCodec;
+use std::path::PathBuf;
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    match args.first().map(String::as_str) {
-        Some("capabilities") => print_capabilities(),
-        Some("--version") | Some("-V") => {
-            println!("ifc {}", env!("CARGO_PKG_VERSION"));
-        }
+    let command = args.first().map(String::as_str);
+
+    match command {
+        Some("capabilities") => capabilities(),
+        Some("info") => match args.get(1) {
+            Some(path) => info(PathBuf::from(path)),
+            None => {
+                eprintln!("usage: ifc info <file.ifc>");
+                std::process::exit(2);
+            }
+        },
+        Some("types") => match args.get(1) {
+            Some(path) => types(PathBuf::from(path)),
+            None => {
+                eprintln!("usage: ifc types <file.ifc>");
+                std::process::exit(2);
+            }
+        },
+        Some("--version") | Some("-V") => println!("ifc {}", env!("CARGO_PKG_VERSION")),
         _ => {
-            eprintln!("usage: ifc <command>");
-            eprintln!();
-            eprintln!("commands:");
-            eprintln!("  capabilities   show detected geometry backends");
-            eprintln!("  --version      print version");
-            std::process::exit(2);
+            println!("usage: ifc <command>");
+            println!();
+            println!("  info <file>      header, entity count, dangling references");
+            println!("  types <file>     entity type histogram");
+            println!("  capabilities     geometry backends compiled into this build");
+            println!("  --version");
         }
     }
 }
 
-/// Dump what the geometry kernel detected on this machine.
-///
-/// This is a real diagnostic, not a placeholder: when a performance number
-/// looks wrong, the first question is which backend actually ran.
-fn print_capabilities() {
-    let d = Dispatcher::detect();
+/// Report the geometry backends this build can use.
+fn capabilities() {
+    let dispatcher = geom_kernel::backend::Dispatcher::detect();
     println!("{:<8} {:<10} MESH_BOOLEAN", "BACKEND", "AVAILABLE");
-    for c in d.capabilities() {
-        // `{:<8?}` does not pad Debug output, so format to a String first.
+    for cap in dispatcher.capabilities() {
         println!(
             "{:<8} {:<10} {}",
-            format!("{:?}", c.backend),
-            c.available,
-            c.mesh_boolean
+            format!("{:?}", cap.backend),
+            cap.available,
+            cap.mesh_boolean
         );
     }
-    match d.best_for_mesh_boolean() {
-        Some(b) => println!("\nselected for mesh boolean: {b:?}"),
-        None => println!("\nselected for mesh boolean: none (not implemented yet)"),
+    println!();
+    match dispatcher.best_for_mesh_boolean() {
+        Some(b) => println!("selected for mesh boolean: {b:?}"),
+        None => println!("selected for mesh boolean: none (not implemented yet)"),
+    }
+}
+
+/// Summarize one file.
+fn info(path: PathBuf) {
+    let codec = StepCodec;
+    let model = match codec.read_path(&path) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("error: {e}");
+            std::process::exit(1);
+        }
+    };
+
+    let header = model.header();
+    println!("file:        {}", path.display());
+    println!("schema:      {}", header.schema_token().unwrap_or("(none)"));
+    println!("name:        {}", header.name);
+    println!("timestamp:   {}", header.time_stamp);
+    println!("application: {}", header.originating_system);
+    println!("entities:    {}", model.len());
+
+    let dangling = model.dangling_references();
+    if dangling.is_empty() {
+        println!("references:  all resolve");
+    } else {
+        println!("references:  {} DANGLING", dangling.len());
+        for (from, to) in dangling.iter().take(5) {
+            println!("               {from} -> {to} (missing)");
+        }
+    }
+}
+
+/// Print the entity type histogram.
+fn types(path: PathBuf) {
+    let codec = StepCodec;
+    let model = match codec.read_path(&path) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("error: {e}");
+            std::process::exit(1);
+        }
+    };
+    for (type_name, count) in model.type_histogram().into_iter().take(30) {
+        println!("{count:>7}  {type_name}");
     }
 }

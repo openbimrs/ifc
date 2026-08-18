@@ -200,6 +200,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "ifc"
+version = "0.1.0"
+dependencies = [
+ "ifc-alignment",
+ "ifc-classification",
+ "ifc-cost",
+ "ifc-geometry",
+ "ifc-georef",
+ "ifc-material",
+ "ifc-model",
+ "ifc-properties",
+ "ifc-resource",
+ "ifc-schedule",
+ "ifc-schema",
+ "ifc-step",
+ "ifc-structural",
+ "ifc-style",
+ "ifc-systems",
+ "ifc-validate",
+]
+
+[[package]]
 name = "ifc-alignment"
 version = "0.1.0"
 dependencies = [
@@ -236,7 +258,7 @@ name = "ifc-cost"
 version = "0.1.0"
 dependencies = [
  "ifc-model",
- "ifc-properties",
+ "thiserror",
 ]
 
 [[package]]
@@ -273,8 +295,7 @@ name = "ifc-model"
 version = "0.1.0"
 dependencies = [
  "ahash",
- "ifc-schema",
- "ifc-step",
+ "thiserror",
 ]
 
 [[package]]
@@ -311,11 +332,9 @@ dependencies = [
 name = "ifc-step"
 version = "0.1.0"
 dependencies = [
- "ahash",
- "ifc-schema",
+ "ifc-model",
  "memmap2",
  "rayon",
- "smallvec",
  "thiserror",
 ]
 

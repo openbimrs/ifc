@@ -36,6 +36,7 @@ geom-kernel = { path = "packages/geometry/geom-kernel", default-features = false
 
 # --- packages/ifc: pure IFC. Only ifc-geometry may touch the geometry kernel. ---
 ifc-schema = { path = "packages/ifc/ifc-schema" }
+ifc = { path = "packages/ifc/ifc" }
 ifc-step = { path = "packages/ifc/ifc-step" }
 ifc-model = { path = "packages/ifc/ifc-model" }
 ifc-geometry = { path = "packages/ifc/ifc-geometry" }

@@ -1,0 +1,79 @@
+[package]
+name = "ifc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Facade for the nehirde IFC library: pick your codecs and domains as cargo features."
+
+[dependencies]
+# The model is the only mandatory dependency. Everything else is opt-in, which
+# is what lets a thin application avoid compiling domains it never uses.
+ifc-model.workspace = true
+
+ifc-step = { workspace = true, optional = true }
+ifc-schema = { workspace = true, optional = true }
+ifc-cost = { workspace = true, optional = true }
+ifc-schedule = { workspace = true, optional = true }
+ifc-properties = { workspace = true, optional = true }
+ifc-material = { workspace = true, optional = true }
+ifc-classification = { workspace = true, optional = true }
+ifc-structural = { workspace = true, optional = true }
+ifc-resource = { workspace = true, optional = true }
+ifc-systems = { workspace = true, optional = true }
+ifc-style = { workspace = true, optional = true }
+ifc-validate = { workspace = true, optional = true }
+ifc-geometry = { workspace = true, optional = true }
+ifc-georef = { workspace = true, optional = true }
+ifc-alignment = { workspace = true, optional = true }
+
+[features]
+# Default: read and write STEP, nothing interpreted. This is the "thin" build
+# and is what an application that only moves files around should use.
+default = ["step"]
+
+# --- serialization ---
+step = ["dep:ifc-step"]
+
+# --- schema services ---
+schema = ["dep:ifc-schema"]
+
+# --- domain views, each independently selectable ---
+cost = ["dep:ifc-cost"]
+schedule = ["dep:ifc-schedule"]
+properties = ["dep:ifc-properties"]
+material = ["dep:ifc-material"]
+classification = ["dep:ifc-classification"]
+structural = ["dep:ifc-structural"]
+resource = ["dep:ifc-resource"]
+systems = ["dep:ifc-systems"]
+style = ["dep:ifc-style"]
+validate = ["dep:ifc-validate"]
+
+# --- geometry-touching domains (pull in the kernel CONTRACT only) ---
+geometry = ["dep:ifc-geometry"]
+georef = ["dep:ifc-georef"]
+alignment = ["dep:ifc-alignment"]
+
+# 4D/5D: the combination a quantity-surveying app wants.
+quantities = ["cost", "schedule", "properties"]
+
+# Everything. Convenient for tests, wrong for shipping.
+full = [
+    "step",
+    "schema",
+    "cost",
+    "schedule",
+    "properties",
+    "material",
+    "classification",
+    "structural",
+    "resource",
+    "systems",
+    "style",
+    "validate",
+    "geometry",
+    "georef",
+    "alignment",
+]

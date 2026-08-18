@@ -5,13 +5,12 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "STEP/IFC-SPF reader: mmap, record-aligned partitioning, parallel scan."
+description = "STEP physical file (ISO 10303-21) codec for the IFC model."
 
-# NO geometry dependency — parsing is text to records.
 [dependencies]
-ifc-schema.workspace = true
+# Depends on the MODEL, never the reverse: a codec is a client of the data
+# model. See docs/adr/0006.
+ifc-model.workspace = true
 memmap2.workspace = true
 rayon.workspace = true
-ahash.workspace = true
-smallvec.workspace = true
 thiserror.workspace = true

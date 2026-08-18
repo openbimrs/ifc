@@ -5,10 +5,13 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "Indexed semantic views over a parsed IFC model: type buckets, spatial tree, properties."
+description = "The IFC entity graph: storage and structural queries, free of domain semantics and serialization."
 
-# NO geometry dependency. Semantics are not shapes.
 [dependencies]
-ifc-schema.workspace = true
-ifc-step.workspace = true
+# NOTE: deliberately NO codec dependency. The model must not know about STEP,
+# ifcXML, or any other serialization -- codecs depend on the model, not the
+# reverse. Enforced by ifc/tests/thin_build.rs. See docs/adr/0006.
+#
+# NO geometry dependency either: semantics are not shapes.
 ahash.workspace = true
+thiserror.workspace = true

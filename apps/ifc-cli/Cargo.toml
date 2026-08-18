@@ -10,6 +10,11 @@ description = "Command-line interface: the reference consumer of the library."
 [[bin]]
 name = "ifc"
 path = "src/main.rs"
+# The facade library is also called `ifc`, which collides on rustdoc's output
+# path (cargo#6313). The CLI's rustdoc has no audience -- users read `--help`,
+# not generated docs for a binary -- so it is excluded rather than renaming the
+# command, which is the user-facing name.
+doc = false
 
 [dependencies]
 ifc-schema.workspace = true

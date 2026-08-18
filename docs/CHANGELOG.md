@@ -11,6 +11,31 @@ section on release.
 ## [Unreleased]
 
 ### Added
+- **Working STEP codec and entity model.** `ifc-model` holds the entity graph
+  (`Value`, `Entity`, `Model`, GUID codec, type index, dangling-reference
+  detection); `ifc-step` implements lexer, parser and writer over it. All 19
+  committed fixtures parse (7,920 entities across IFC2x3, IFC4 and IFC4X3_ADD2)
+  and round-trip structurally intact.
+- **`Codec` trait in `ifc-model`**, so serialization is pluggable: STEP today,
+  ifcXML and IFC-JSON as future crates implementing the same trait. The model
+  depends on no codec.
+- **`ifc` facade crate** exposing every domain as a cargo feature. A thin
+  (`step`) build resolves 26 crates; `full` resolves 51, and the thin build
+  links no geometry kernel and no `glam`.
+- **`ifc-cost` as the worked example of a domain view** — borrows `&Model`,
+  owns no storage, therefore optional at compile time with no data loss.
+- `ifc-cli`: `info` and `types` commands over real files.
+- ADR 0006 recording the model/domain and model/serialization separations.
+
+### Fixed
+- Two architectural tests found to be passing vacuously, caught by mutation
+  testing: the feature-gating test never checked the `default` feature set, and
+  nothing checked `Model::insert` id reuse (dropping its guard duplicated the
+  entity in export order while all tests stayed green).
+- An earlier dependency test read `cargo metadata`'s package list, which lists
+  every workspace member regardless of features; it now reads `cargo tree`.
+
+### Added
 - **Official IFC schemas as reference material** (`references/ifc-spec/`, 249 MB
   on `/mnt/backup`, symlinked, never committed): EXPRESS schemas for IFC2x3 TC1,
   IFC4 ADD2 TC1 and IFC4x3 ADD2, the IFC4 ifcXML `.xsd`, 737 property-set

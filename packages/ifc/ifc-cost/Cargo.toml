@@ -5,8 +5,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "IFC cost: IfcCostItem/IfcCostSchedule and quantity linkage."
+description = "Cost semantics as a borrowed view over the IFC model."
 
 [dependencies]
+# A domain VIEW: borrows the model, owns no storage, and is therefore optional
+# at compile time without any data loss. See docs/adr/0006.
 ifc-model.workspace = true
-ifc-properties.workspace = true
+thiserror.workspace = true

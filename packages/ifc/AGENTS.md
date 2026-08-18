@@ -31,6 +31,29 @@ Sizing evidence (IFC4 entity counts): presentation/style 48, structural 39,
 ports/systems 23, materials 22, resources 21, classification/document 12,
 georeferencing 8. IFC4x3 adds 14 alignment entities plus transition spirals.
 
+## Layering — the two separations
+
+`ifc-model` is the centre. It knows **no domain semantics** and **no
+serialization**:
+
+```
+ifc-step  --+                            +-- ifc-cost
+ifc-xml   --+-- Codec --> ifc-model <----+-- ifc-schedule    (views)
+ifc-json  --+             (entities)     +-- ifc-properties
+```
+
+- **Codecs depend on the model, never the reverse.** `Codec` is a trait *in*
+  `ifc-model`; `ifc-step` implements it. Adding ifcXML changes nothing here.
+- **Domain crates are views.** They borrow `&Model` and interpret entities.
+  They own no storage, so removing one cannot lose data.
+- **The model stores structure only.** `Entity { type_name, attributes }`. No
+  `if type_name == "IFCWALL"` anywhere in `ifc-model` — enforced by
+  `ifc-model/tests/model_invariants.rs`.
+
+The payoff, verified in `ifc-step/tests/roundtrip.rs`: **a file full of cost
+data parses and re-exports intact in a build with no cost crate compiled.**
+Read `docs/adr/0006` before changing any of this.
+
 ## Module layout — modular by default, enforced
 
 Every crate is split into focused modules; `lib.rs` declares and documents them
