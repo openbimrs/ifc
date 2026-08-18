@@ -1,0 +1,12 @@
+[package]
+name = "geom-cpu"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Portable scalar CPU backend. The correctness reference for all other backends."
+
+[dependencies]
+geom-core.workspace = true
+geom-kernel.workspace = true

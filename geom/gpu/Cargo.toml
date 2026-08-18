@@ -1,0 +1,19 @@
+[package]
+name = "geom-gpu"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Optional GPU backend. Off by default — never a required dependency."
+
+[dependencies]
+geom-core.workspace = true
+geom-kernel.workspace = true
+
+[features]
+# GPU support is OPT-IN. The whole point of this project is a lightweight
+# dependency footprint; nobody parsing an IFC file should be made to compile a
+# GPU stack. Enabling this feature is what would pull `wgpu` et al.
+default = []
+gpu = []

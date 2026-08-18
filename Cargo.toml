@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/*"]
+members = ["geom/*", "ifc/*"]
 
 [workspace.package]
 version = "0.1.0"
@@ -10,22 +10,41 @@ license = "MIT"
 authors = ["point-grey"]
 
 [workspace.dependencies]
-# Internal crates — add here as new crates land under crates/.
-# nehirde-core = { path = "crates/nehirde-core" }
+# --- geom/ : the shared geometry kernel (swappable, hardware-abstracted) ---
+geom-core = { path = "geom/core" }
+geom-kernel = { path = "geom/kernel" }
+geom-cpu = { path = "geom/cpu" }
+geom-simd = { path = "geom/simd" }
+geom-gpu = { path = "geom/gpu" }
+geom-dispatch = { path = "geom/dispatch" }
 
-# Third-party — pin here once real crates need them; keep in sync with
-# solibri-rs (../vendor/solibri) where the same class of dependency applies,
-# see docs/ROADMAP.md.
+# --- ifc/ : pure IFC logic (depends on geom-kernel traits ONLY, never a backend) ---
+ifc-schema = { path = "ifc/schema" }
+ifc-parser = { path = "ifc/parser" }
+ifc-model = { path = "ifc/model" }
+ifc-shape = { path = "ifc/shape" }
+
+# --- third-party ---
+# glam: SIMD-accelerated vector math, pure Rust, no C++. The f64 (D*) types are
+# what we store; see docs/adr/0002.
+glam = "0.29"
 thiserror = "2.0"
-anyhow    = "1.0"
+rayon = "1.10"
+smallvec = "1.13"
+ahash = "0.8"
+memmap2 = "0.9"
+criterion = { version = "0.5", features = ["html_reports"] }
 
-# --- Release profile ---
 [profile.release]
-opt-level     = 3
-lto           = "thin"
+opt-level = 3
+lto = "thin"
 codegen-units = 1
-strip         = true
+strip = true
 
-# Fast iteration
 [profile.dev]
 opt-level = 1
+
+[profile.bench]
+lto = "thin"
+codegen-units = 1
+debug = true

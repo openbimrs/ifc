@@ -1,0 +1,12 @@
+[package]
+name = "geom-simd"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "SIMD CPU backend with runtime feature detection (SSE/AVX2/AVX-512)."
+
+[dependencies]
+geom-core.workspace = true
+geom-kernel.workspace = true

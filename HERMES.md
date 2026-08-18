@@ -6,13 +6,30 @@ the one for the directory you're about to touch, not this file again.
 
 ## What this is
 
-Clean-room Rust workspace for IFC/BIM tooling. Scaffold stage: crates are not
-yet written. This file plus the nested `AGENTS.md`s are the map.
+The best IFC library in Rust — a **lightweight, high-performance alternative to
+IfcOpenShell**, which is capable but couples IFC to OpenCascade, a very heavy
+C++ geometry dependency. Applications are meant to be built on top of this.
+
+Two package groups, each holding crates:
+
+- **`geom/`** — shared geometry kernel (CSG, meshes, spatial queries). Knows
+  nothing about IFC; other formats can use it. Hardware-abstracted from the
+  start: scalar / SIMD / optional GPU behind one contract.
+- **`ifc/`** — pure IFC logic. Depends on the geom **contract** (`geom-kernel`
+  traits), never on a geometry backend, so the whole geometry kernel can be
+  swapped for a better one without touching the IFC layer.
+
+That swap boundary is enforced by a test, not by convention — see
+`ifc/AGENTS.md`.
+
+Read `docs/adr/0001` (the split), `0002` (hardware abstraction), `0003`
+(pure-Rust boolean, the decision the project rests on).
 
 ## Layout
 
-- `crates/` — Cargo workspace members. Empty so far; see `crates/AGENTS.md`
-  before adding the first crate (naming, layering rules).
+- `geom/` — geometry kernel crates: `core`, `kernel`, `cpu`, `simd`, `gpu`,
+  `dispatch`. See `geom/AGENTS.md`.
+- `ifc/` — IFC crates: `schema`, `parser`, `model`, `shape`. See `ifc/AGENTS.md`.
 - `references/` — **symlinks only**, real trees live on `/mnt/backup/` (see
   `references/AGENTS.md`). Read-only design evidence: IfcOpenShell (LGPL-3.0)
   and ifc-lite (MPL-2.0). Never a build dependency — no crate may
@@ -62,5 +79,10 @@ checking provenance, or anything under `references/*` besides its `AGENTS.md`.
 
 - `cargo`/`rustfmt` live in `~/.cargo/bin`; export `PATH` before running them
   (inherited from `../vendor/solibri`'s AGENTS.md — same host, same issue).
-- `crates/*` glob member list is currently empty (no crates yet) — `cargo
-  metadata`/`cargo build --workspace` is a no-op until the first crate is added.
+- `.cargo/config.toml` sets `-C target-cpu=native`. Fine on this dev box,
+  **wrong for anything published** — it SIGILLs on older CPUs. `geom-simd`'s
+  runtime detection is the intended mechanism; remove or gate the flag before
+  release (tracked in `docs/ROADMAP.md`).
+- The architecture gate in `ifc/shape/tests/no_backend_dependency.rs` strips
+  `#` comments before scanning, so a `# NOTE: geom-cpu must not appear` line in
+  a manifest does not false-positive.

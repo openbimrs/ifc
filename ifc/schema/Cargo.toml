@@ -1,0 +1,12 @@
+[package]
+name = "ifc-schema"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "IFC schema as data: entity table, supertype chain, attribute names."
+
+# NO geometry dependency. A schema is a lookup table.
+[dependencies]
+ahash.workspace = true
