@@ -42,6 +42,7 @@ pub mod constraint;
 pub mod curve;
 pub mod error;
 pub mod kernel;
+pub mod lower;
 pub mod resource;
 pub mod rules;
 pub mod select;
