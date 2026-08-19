@@ -138,6 +138,9 @@ lowering emits the neutral graph rather than IFC-local profiles, primitives, or
 CSG requests; its legacy `kernel` namespace only preserves pre-DAG source
 compatibility and is not accepted by execution providers. The names remain
 warning-clean because additive compatibility includes clients that deny warnings.
+Where an established legacy root name collides with a neutral value, the legacy
+type keeps the short name and the neutral value uses an explicit alias such as
+`AnalyticPrimitive`, `ExactProfile`, or `GeometryBooleanOperator`.
 
 ## 6. Facade capabilities
 

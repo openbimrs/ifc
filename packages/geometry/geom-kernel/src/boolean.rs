@@ -129,6 +129,11 @@ fn matches_device(preference: DevicePreference, id: BackendId, target: Execution
 
 #[cfg(test)]
 mod tests {
+    use std::sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    };
+
     use geom_core::Tolerance;
 
     use super::*;
@@ -161,6 +166,49 @@ mod tests {
         }
     }
 
+    #[derive(Debug, Clone, Copy)]
+    enum ProbeResult {
+        Success,
+        Unsupported,
+        Invalid,
+    }
+
+    #[derive(Debug)]
+    struct ProbeBoolean {
+        id: BackendId,
+        target: ExecutionTarget,
+        result: ProbeResult,
+        calls: Arc<AtomicUsize>,
+    }
+
+    impl Backend for ProbeBoolean {
+        fn descriptor(&self) -> BackendDescriptor {
+            BackendDescriptor::new(self.id, self.target)
+        }
+    }
+
+    impl MeshBoolean for ProbeBoolean {
+        fn boolean(
+            &self,
+            subject: &TriMesh,
+            _tool: &TriMesh,
+            _operation: BooleanOperator,
+            _options: &ExecutionOptions,
+        ) -> GeomResult<TriMesh> {
+            self.calls.fetch_add(1, Ordering::Relaxed);
+            match self.result {
+                ProbeResult::Success => Ok(subject.clone()),
+                ProbeResult::Unsupported => Err(GeomError::Unsupported {
+                    backend: self.id,
+                    operation: Operation::MeshBoolean,
+                }),
+                ProbeResult::Invalid => {
+                    Err(GeomError::InvalidInput("probe rejected input".to_owned()))
+                }
+            }
+        }
+    }
+
     #[test]
     fn registry_stores_executable_traits_not_capability_flags() {
         let mut registry = MeshBooleanRegistry::new();
@@ -179,5 +227,72 @@ mod tests {
                 .expect("registered provider executes"),
             mesh
         );
+    }
+
+    #[test]
+    fn registry_falls_back_only_for_retryable_errors_and_honors_device_policy() {
+        let high_calls = Arc::new(AtomicUsize::new(0));
+        let low_calls = Arc::new(AtomicUsize::new(0));
+        let mut registry = MeshBooleanRegistry::new();
+        registry.register(
+            100,
+            ProbeBoolean {
+                id: BackendId::new("unavailable-gpu"),
+                target: ExecutionTarget::Gpu,
+                result: ProbeResult::Unsupported,
+                calls: high_calls.clone(),
+            },
+        );
+        registry.register(
+            10,
+            ProbeBoolean {
+                id: BackendId::new("portable-fallback"),
+                target: ExecutionTarget::PortableCpu,
+                result: ProbeResult::Success,
+                calls: low_calls.clone(),
+            },
+        );
+        let mesh = TriMesh::default();
+        let auto = ExecutionOptions::new(Tolerance::METRE);
+        assert!(registry
+            .boolean(&mesh, &mesh, BooleanOperator::Union, &auto)
+            .is_ok());
+        assert_eq!(high_calls.load(Ordering::Relaxed), 1);
+        assert_eq!(low_calls.load(Ordering::Relaxed), 1);
+
+        let cpu = auto.with_device(DevicePreference::Cpu);
+        assert!(registry
+            .boolean(&mesh, &mesh, BooleanOperator::Union, &cpu)
+            .is_ok());
+        assert_eq!(high_calls.load(Ordering::Relaxed), 1);
+        assert_eq!(low_calls.load(Ordering::Relaxed), 2);
+
+        let invalid_calls = Arc::new(AtomicUsize::new(0));
+        let skipped_calls = Arc::new(AtomicUsize::new(0));
+        let mut fail_fast = MeshBooleanRegistry::new();
+        fail_fast.register(
+            100,
+            ProbeBoolean {
+                id: BackendId::new("invalid-input"),
+                target: ExecutionTarget::PortableCpu,
+                result: ProbeResult::Invalid,
+                calls: invalid_calls.clone(),
+            },
+        );
+        fail_fast.register(
+            10,
+            ProbeBoolean {
+                id: BackendId::new("must-not-run"),
+                target: ExecutionTarget::PortableCpu,
+                result: ProbeResult::Success,
+                calls: skipped_calls.clone(),
+            },
+        );
+        assert!(matches!(
+            fail_fast.boolean(&mesh, &mesh, BooleanOperator::Union, &auto),
+            Err(GeomError::InvalidInput(_))
+        ));
+        assert_eq!(invalid_calls.load(Ordering::Relaxed), 1);
+        assert_eq!(skipped_calls.load(Ordering::Relaxed), 0);
     }
 }
