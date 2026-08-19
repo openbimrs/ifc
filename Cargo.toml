@@ -44,6 +44,9 @@ geom-scalar = { path = "packages/geometry/geom-scalar" }
 geom-kernel = { path = "packages/geometry/geom-kernel", default-features = false }
 geom-backend-cpu = { path = "packages/geometry/geom-backend-cpu", default-features = false }
 geom-backend-gpu = { path = "packages/geometry/geom-backend-gpu", default-features = false }
+# boolmesh-backed provider (ADR 0014). Isolated so `boolmesh` never enters
+# geom-kernel's graph; the contract crate stays implementation-free.
+geom-boolmesh = { path = "packages/geometry/geom-boolmesh" }
 
 # --- packages/ifc: pure IFC. Only ifc-geometry may touch the geometry kernel. ---
 ifc-schema = { path = "packages/ifc/ifc-schema" }

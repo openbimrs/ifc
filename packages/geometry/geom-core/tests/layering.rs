@@ -76,6 +76,9 @@ const TIERS: &[(&str, u8)] = &[
     // contracts to report certified results; owns algorithms, not scheduling.
     ("geom-scalar", 2),
     // L3 -- execution contexts and operation adapters.
+    // L3 -- concrete implementations. `geom-boolmesh` adapts an adopted
+    // upstream crate (ADR 0014); it is an implementation, not a contract.
+    ("geom-boolmesh", 3),
     ("geom-backend-cpu", 3),
     ("geom-backend-gpu", 3),
     // L4 -- opt-in facade over lower layers.

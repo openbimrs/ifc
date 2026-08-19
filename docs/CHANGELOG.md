@@ -11,6 +11,15 @@ section on release.
 ## [Unreleased]
 
 ### Added
+- **`geom-boolmesh`: the `boolmesh`-backed `MeshBoolean` provider.** Owns
+  `TriMesh` <-> `Manifold` conversion and contract enforcement; the algorithm is
+  upstream's. Orientation is gated on input per argument, because an inside-out
+  mesh is structurally valid and manifold and would turn `Difference` into
+  `Union` silently. Input faults blame the caller, result faults blame the
+  backend. `boolmesh` is not re-exported and reaches neither `geom-kernel` nor
+  `ifc-geometry`, verified by `cargo tree`. First real consumer of
+  `ScratchRequirement` and `MeshBooleanRegistry`.
+### Added
 - **ADR 0014: `boolmesh` adopted as the mesh boolean**, resolving the open
   evaluation in ADR 0003. Measured against the two hard fixtures: exact volume
   conservation on a wall minus three mutually overlapping rotated openings
