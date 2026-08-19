@@ -1,0 +1,75 @@
+[package]
+name = "geom"
+description = "Feature-gated facade for Nehirde's format-neutral geometry stack"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[features]
+default = ["mesh", "cpu"]
+
+# Representation capabilities. These features are additive.
+mesh = ["dep:geom-mesh"]
+profiles = ["dep:geom-profile"]
+curves = ["dep:geom-curve"]
+surfaces = ["curves", "dep:geom-surface"]
+topology = ["curves", "surfaces", "dep:geom-topology"]
+primitives = ["dep:geom-primitive"]
+model = [
+    "mesh",
+    "profiles",
+    "curves",
+    "surfaces",
+    "topology",
+    "primitives",
+    "dep:geom-model",
+]
+
+# Algorithms. Heavy implementations remain optional.
+sweeps = ["mesh", "profiles", "curves", "dep:geom-sweep"]
+tessellation = ["mesh", "curves", "surfaces", "topology", "dep:geom-tessellate"]
+spatial = ["mesh", "dep:geom-spatial"]
+measure = ["mesh", "dep:geom-measure"]
+heal = ["mesh", "dep:geom-heal"]
+kernel = ["mesh", "dep:geom-kernel"]
+
+# Concrete execution backends. CPU stays portable by default; optimized paths
+# are selected at runtime, never by building the whole crate for one host CPU.
+cpu = ["kernel", "dep:geom-backend-cpu"]
+parallel = ["cpu", "geom-backend-cpu/parallel"]
+simd = ["cpu", "geom-backend-cpu/simd"]
+gpu = ["kernel", "model", "dep:geom-backend-gpu"]
+
+# Named bundles describe capability, not a source format.
+discrete = [
+    "mesh",
+    "profiles",
+    "primitives",
+    "sweeps",
+    "tessellation",
+    "spatial",
+    "measure",
+    "cpu",
+]
+parametric = ["model", "curves", "surfaces", "topology"]
+advanced = ["discrete", "parametric", "heal"]
+full = ["advanced", "parallel", "simd", "gpu"]
+
+[dependencies]
+geom-core.workspace = true
+geom-mesh = { workspace = true, optional = true }
+geom-profile = { workspace = true, optional = true }
+geom-curve = { workspace = true, optional = true }
+geom-surface = { workspace = true, optional = true }
+geom-topology = { workspace = true, optional = true }
+geom-primitive = { workspace = true, optional = true }
+geom-model = { workspace = true, optional = true }
+geom-sweep = { workspace = true, optional = true }
+geom-tessellate = { workspace = true, optional = true }
+geom-spatial = { workspace = true, optional = true }
+geom-measure = { workspace = true, optional = true }
+geom-heal = { workspace = true, optional = true }
+geom-kernel = { workspace = true, optional = true }
+geom-backend-cpu = { workspace = true, optional = true }
+geom-backend-gpu = { workspace = true, optional = true }

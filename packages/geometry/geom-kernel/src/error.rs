@@ -1,39 +1,48 @@
-//! Structured failure. A geometry operation that cannot succeed says why.
+//! Structured geometry failures suitable for fallback and diagnostics.
 
 use thiserror::Error;
 
-/// Result alias for kernel operations.
+use crate::{BackendId, Operation};
+
+/// Result alias for geometry operations.
 pub type GeomResult<T> = Result<T, GeomError>;
 
-/// Why a geometry operation failed.
-///
-/// These are **structured diagnostics, not strings**: the IFC layer needs to
-/// distinguish "this model is dirty" (report and continue processing the other
-/// 40,000 elements) from "this backend cannot do that" (fall back to another
-/// backend). A stringly-typed error forces the caller to guess.
-#[derive(Debug, Error, PartialEq)]
+/// Why a backend-neutral geometry operation failed.
+#[non_exhaustive]
+#[derive(Debug, Clone, Error, PartialEq, Eq)]
 pub enum GeomError {
-    /// The input mesh is not manifold, and this operation requires manifoldness.
-    /// Common in real IFC data — expected, not exceptional.
-    #[error("input mesh is not manifold: {0}")]
-    NotManifold(String),
-
-    /// Index buffer references a vertex that does not exist, or is not a whole
-    /// number of triangles.
-    #[error("mesh is structurally invalid: {0}")]
-    StructurallyInvalid(String),
-
-    /// The operation is defined but this particular backend does not implement
-    /// it. The dispatcher uses this to fall back to another backend rather than
-    /// failing the whole model.
-    #[error("operation not supported by backend `{backend}`: {operation}")]
+    /// Input violates the operation's structural preconditions.
+    #[error("invalid geometry input: {0}")]
+    InvalidInput(String),
+    /// Backend cannot implement this capability.
+    #[error("backend `{backend}` does not support {operation:?}")]
     Unsupported {
-        backend: &'static str,
-        operation: &'static str,
+        /// Backend.
+        backend: BackendId,
+        /// Missing capability.
+        operation: Operation,
     },
-
-    /// The algorithm ran but could not produce a reliable result (degenerate
-    /// configuration, coplanar overlap it cannot resolve).
+    /// Backend exists but its hardware/runtime is unavailable.
+    #[error("backend `{backend}` is unavailable: {reason}")]
+    Unavailable {
+        /// Backend.
+        backend: BackendId,
+        /// Diagnostic reason.
+        reason: String,
+    },
+    /// Dirty topology violates a manifold precondition.
+    #[error("input is not manifold: {0}")]
+    NotManifold(String),
+    /// Numerical configuration could not be resolved reliably.
     #[error("numerically degenerate input: {0}")]
     Degenerate(String),
+    /// Explicit operation budget was exceeded.
+    #[error("operation exceeded its {resource} budget")]
+    BudgetExceeded {
+        /// Resource name, e.g. memory or iterations.
+        resource: &'static str,
+    },
+    /// Cooperative cancellation.
+    #[error("operation cancelled")]
+    Cancelled,
 }

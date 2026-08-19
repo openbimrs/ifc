@@ -1,23 +1,39 @@
-//! `geom-profile` — 2D cross-sections and polygon operations.
+//! Exact two-dimensional section profiles.
 //!
-//! # Why this is its own crate
-//!
-//! IFC4 defines **23 `IfcProfileDef` subtypes** — I/L/T/U/Z/C shapes, circles,
-//! rectangles (hollow and rounded), ellipses, trapezia, plus arbitrary,
-//! composite, derived and mirrored profiles. Nearly every solid in a real model
-//! begins as one of these swept along something.
-//!
-//! All of it is strictly 2D, which makes it independently testable: a profile's
-//! area and centroid can be checked in closed form against the standard's own
-//! formulae, with no 3D machinery involved.
-//!
-//! # Scope
-//!
-//! - Parameterized shapes → boundary polygon (the 23 subtypes)
-//! - Polygon predicates: orientation, self-intersection, containment
-//! - 2D boolean (union/difference/intersection) for profiles with voids
-//! - Triangulation of holed polygons
-//!
-//! # Not here
-//!
-//! Anything with a Z coordinate. Sweeping a profile is `geom-sweep`'s job.
+//! The crate stores profile intent. Boolean cleanup and triangulation are
+//! algorithms in higher tiers so a consumer can use profile data without them.
+
+pub mod contour;
+pub mod parameterized;
+pub mod validate;
+
+use geom_core::Transform2;
+
+pub use contour::{Contour, ContourProfile};
+pub use parameterized::{CircleProfile, EllipseProfile, RectangleProfile, SectionProfile};
+pub use validate::ValidateProfile;
+
+/// Format-neutral profile representation.
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq)]
+pub enum Profile {
+    /// Rectangle or rounded rectangle.
+    Rectangle(RectangleProfile),
+    /// Circle or annulus.
+    Circle(CircleProfile),
+    /// Ellipse.
+    Ellipse(EllipseProfile),
+    /// Structural parameterized section.
+    Section(SectionProfile),
+    /// Arbitrary exact contour with holes.
+    Contour(ContourProfile),
+    /// Profile transformed from another profile.
+    Derived {
+        /// Base profile.
+        basis: Box<Profile>,
+        /// Two-dimensional transform.
+        transform: Transform2,
+    },
+    /// Ordered collection of profiles used as one section.
+    Composite(Vec<Profile>),
+}

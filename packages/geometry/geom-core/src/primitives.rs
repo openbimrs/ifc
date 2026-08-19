@@ -1,77 +1,84 @@
-//! Positions, transforms, and bounds. Data only.
+//! Coordinate, direction, transform, and analytic support types.
 
-use crate::scalar::Scalar;
+use crate::Scalar;
 
-/// Double-precision 3D vector. Re-exported from `glam`, which provides SIMD
-/// acceleration in pure Rust — no C++ dependency.
+/// Double-precision two-dimensional vector.
+pub type Vec2 = glam::DVec2;
+/// Double-precision three-dimensional vector.
 pub type Vec3 = glam::DVec3;
+/// A semantic alias used when a value is a two-dimensional position.
+pub type Point2 = Vec2;
+/// A semantic alias used when a value is a three-dimensional position.
+pub type Point3 = Vec3;
+/// Double-precision 2D affine transform.
+pub type Transform2 = glam::DAffine2;
+/// Double-precision affine transform.
+pub type Transform3 = glam::DAffine3;
+/// Backward-compatible name for [`Transform3`].
+pub type Mat4 = Transform3;
 
-/// Double-precision 4x4 affine transform (IFC `IfcObjectPlacement` lowers here).
-pub type Mat4 = glam::DAffine3;
-
-/// Axis-aligned bounding box. The broad-phase currency of the whole kernel.
+/// Right-handed 2D local frame. Algorithms validate orthonormality explicitly.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Aabb {
-    pub min: Vec3,
-    pub max: Vec3,
+pub struct Frame2 {
+    /// Local origin.
+    pub origin: Point2,
+    /// Local x axis.
+    pub x: Vec2,
+    /// Local y axis.
+    pub y: Vec2,
 }
 
-impl Aabb {
-    /// An empty box that absorbs any point on the first [`Aabb::extend`].
-    pub fn empty() -> Self {
-        Self {
-            min: Vec3::splat(Scalar::INFINITY),
-            max: Vec3::splat(Scalar::NEG_INFINITY),
-        }
+/// Right-handed 3D local frame. Dirty imported frames remain representable.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Frame3 {
+    /// Local origin.
+    pub origin: Point3,
+    /// Local x axis.
+    pub x: Vec3,
+    /// Local y axis.
+    pub y: Vec3,
+    /// Local z axis.
+    pub z: Vec3,
+}
+
+/// A finite parameter interval. The endpoint order carries orientation.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Interval {
+    /// Start parameter.
+    pub start: Scalar,
+    /// End parameter.
+    pub end: Scalar,
+}
+
+impl Interval {
+    /// Construct an oriented interval without sorting its endpoints.
+    pub const fn new(start: Scalar, end: Scalar) -> Self {
+        Self { start, end }
     }
 
-    /// Grow to include `p`.
-    #[inline]
-    pub fn extend(&mut self, p: Vec3) {
-        self.min = self.min.min(p);
-        self.max = self.max.max(p);
-    }
-
-    /// Does this box overlap `other`? Touching counts as overlap.
-    #[inline]
-    pub fn intersects(&self, other: &Self) -> bool {
-        self.min.x <= other.max.x
-            && self.max.x >= other.min.x
-            && self.min.y <= other.max.y
-            && self.max.y >= other.min.y
-            && self.min.z <= other.max.z
-            && self.max.z >= other.min.z
-    }
-
-    /// True when no point has ever been added.
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.min.x > self.max.x
+    /// Absolute parameter span.
+    pub fn length(self) -> Scalar {
+        (self.end - self.start).abs()
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+/// A plane represented by an origin and unit-normal candidate.
+///
+/// Adapters may construct dirty input. Algorithms validate normalization using
+/// the operation's tolerance instead of hiding a global epsilon here.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Plane3 {
+    /// Point on the plane.
+    pub origin: Point3,
+    /// Expected outward normal.
+    pub normal: Vec3,
+}
 
-    #[test]
-    fn empty_box_is_empty_and_absorbs_first_point() {
-        let mut b = Aabb::empty();
-        assert!(b.is_empty());
-        b.extend(Vec3::new(1.0, 2.0, 3.0));
-        assert!(!b.is_empty());
-        assert_eq!(b.min, b.max);
-    }
-
-    #[test]
-    fn disjoint_boxes_do_not_intersect() {
-        let mut a = Aabb::empty();
-        a.extend(Vec3::ZERO);
-        a.extend(Vec3::splat(1.0));
-        let mut b = Aabb::empty();
-        b.extend(Vec3::splat(2.0));
-        b.extend(Vec3::splat(3.0));
-        assert!(!a.intersects(&b));
-        assert!(a.intersects(&a));
-    }
+/// A parametric three-dimensional ray.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Ray3 {
+    /// Ray start.
+    pub origin: Point3,
+    /// Ray direction. It need not be normalized at the storage boundary.
+    pub direction: Vec3,
 }

@@ -1,77 +1,118 @@
-//! What a backend can do, and on what hardware.
-//!
-//! The dispatcher needs to answer "can this backend run here, and is it worth
-//! choosing?" **before** handing it work. Capability reporting is how a backend
-//! declines gracefully instead of failing at call time.
+//! Backend capability vocabulary used for explicit, inspectable dispatch.
 
-/// Which execution strategy a backend uses.
-///
-/// This is deliberately an open-ended, ordered notion of "more specialized":
-/// [`Backend::Scalar`] must always be available as the correctness reference
-/// that every other backend is differentially tested against.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Backend {
-    /// Portable scalar CPU. Always available. The correctness oracle.
-    Scalar,
-    /// SIMD-accelerated CPU (SSE/AVX2/AVX-512 chosen at runtime).
-    Simd,
-    /// GPU offload. Only worth it above a work-size threshold — see
-    /// [`Capabilities::gpu_threshold_triangles`].
+use core::fmt;
+
+/// Stable backend identifier for logs, configuration, and differential tests.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct BackendId(&'static str);
+
+impl BackendId {
+    /// Construct from a process-static identifier.
+    pub const fn new(value: &'static str) -> Self {
+        Self(value)
+    }
+
+    /// Identifier string.
+    pub const fn as_str(self) -> &'static str {
+        self.0
+    }
+}
+
+impl fmt::Display for BackendId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.0)
+    }
+}
+
+/// Broad execution target; custom accelerators remain first-class.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ExecutionTarget {
+    /// Portable scalar CPU path.
+    PortableCpu,
+    /// Runtime-selected CPU specialization.
+    OptimizedCpu,
+    /// General-purpose GPU compute.
     Gpu,
+    /// Other accelerator supplied by a downstream crate.
+    Accelerator,
 }
 
-impl Backend {
-    /// Stable string for logs and differential-test reports.
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Backend::Scalar => "scalar",
-            Backend::Simd => "simd",
-            Backend::Gpu => "gpu",
-        }
-    }
+/// Geometry capability that can be selected independently.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Operation {
+    /// Curve position/derivative evaluation.
+    CurveEvaluation,
+    /// Surface position/normal evaluation.
+    SurfaceEvaluation,
+    /// Profile boolean or normalization.
+    ProfileOperation,
+    /// Sweep/extrusion/revolution construction.
+    Sweep,
+    /// Exact or approximate tessellation.
+    Tessellation,
+    /// Mesh boolean.
+    MeshBoolean,
+    /// Spatial broad/narrow phase query.
+    SpatialQuery,
+    /// Area, volume, length, or centroid measurement.
+    Measurement,
+    /// Explicit diagnosis or repair.
+    Healing,
+    /// Batched affine transform.
+    BatchTransform,
+    /// Compile a complete geometry graph.
+    GraphCompilation,
 }
 
-/// What a backend supports on the current machine.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Capabilities {
-    /// Which strategy this backend implements.
-    pub backend: Backend,
-    /// Is it usable on THIS machine right now? A SIMD backend compiled for
-    /// AVX-512 reports `false` on a machine without it; a GPU backend reports
-    /// `false` when no device is present. The dispatcher must never select a
-    /// backend that reports `false` here.
+/// Numeric precision a backend can honor for an operation.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Precision {
+    /// IEEE 754 binary64 throughout correctness-sensitive work.
+    F64,
+    /// IEEE 754 binary32; caller must accept reduced coordinate precision.
+    F32,
+    /// Backend chooses per stage and documents the error bound.
+    Mixed,
+}
+
+/// Support statement for one operation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OperationSupport {
+    /// Operation.
+    pub operation: Operation,
+    /// Supported precision modes.
+    pub precision: Vec<Precision>,
+    /// Whether deterministic output ordering is available.
+    pub deterministic: bool,
+    /// Work-item count below which this backend should not be auto-selected.
+    /// This is backend data, not a global guessed GPU threshold.
+    pub minimum_batch_size: usize,
+}
+
+/// Runtime facts and implemented operations for one backend instance.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BackendDescriptor {
+    /// Stable identity.
+    pub id: BackendId,
+    /// Hardware class.
+    pub target: ExecutionTarget,
+    /// Whether the required hardware/runtime is usable now.
     pub available: bool,
-    /// Whether mesh boolean is implemented by this backend.
-    pub mesh_boolean: bool,
-    /// Below this triangle count, dispatching to this backend is not worth the
-    /// setup cost (PCIe transfer for GPU, or none for CPU backends). `None`
-    /// means no threshold — always worth using when available.
-    pub gpu_threshold_triangles: Option<usize>,
+    /// Human-readable reason when unavailable.
+    pub unavailable_reason: Option<String>,
+    /// Capabilities implemented by this backend.
+    pub operations: Vec<OperationSupport>,
 }
 
-impl Capabilities {
-    /// The baseline every workspace build must be able to construct: portable
-    /// scalar CPU, always available, no threshold.
-    pub fn scalar_baseline() -> Self {
-        Self {
-            backend: Backend::Scalar,
-            available: true,
-            mesh_boolean: true,
-            gpu_threshold_triangles: None,
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn scalar_is_always_available_and_is_the_least_specialized() {
-        let c = Capabilities::scalar_baseline();
-        assert!(c.available);
-        assert_eq!(c.backend, Backend::Scalar);
-        assert!(Backend::Scalar < Backend::Simd);
-        assert!(Backend::Simd < Backend::Gpu);
+impl BackendDescriptor {
+    /// Whether the backend advertises one operation and precision.
+    pub fn supports(&self, operation: Operation, precision: Precision) -> bool {
+        self.available
+            && self.operations.iter().any(|support| {
+                support.operation == operation && support.precision.contains(&precision)
+            })
     }
 }

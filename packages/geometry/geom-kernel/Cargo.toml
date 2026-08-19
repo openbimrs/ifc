@@ -1,31 +1,13 @@
 [package]
 name = "geom-kernel"
+description = "Backend-neutral geometry capability contracts"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-authors.workspace = true
-description = "Geometry kernel contract (traits) plus the hardware backends that implement it."
 
 [dependencies]
 geom-core.workspace = true
 geom-mesh.workspace = true
+geom-model.workspace = true
 thiserror.workspace = true
-
-[features]
-# The contract alone. `default-features = false` gives you the traits with NO
-# implementation — this is what a consumer swapping in a foreign kernel uses,
-# and what the architecture gate checks packages/ifc/* against.
-default = ["scalar", "simd"]
-
-# Portable scalar backend. Always correct, no intrinsics. The differential
-# oracle every other backend is checked against.
-scalar = []
-
-# SIMD backend with RUNTIME feature detection (AVX2/AVX-512). Adds no
-# dependency; gated so a consumer can exclude the code entirely.
-simd = ["scalar"]
-
-# GPU offload. OFF by default: pulls a driver stack, and the project's premise
-# is a lightweight dependency graph. See docs/adr/0002.
-gpu = ["scalar"]

@@ -20,10 +20,15 @@
 //!   L0  math / data      geom-core                      (no siblings at all)
 //!    ^
 //!   L1  representation   geom-mesh, geom-profile, geom-curve,
-//!                        geom-surface, geom-topology
+//!                        geom-surface, geom-topology, geom-primitive,
+//!                        geom-model
 //!    ^
 //!   L2  algorithms       geom-sweep, geom-tessellate, geom-spatial,
-//!                        geom-measure, geom-kernel
+//!                        geom-measure, geom-heal, geom-kernel
+//!    ^
+//!   L3  implementations  geom-backend-cpu, geom-backend-gpu
+//!    ^
+//!   L4  facade           geom
 //! ```
 //!
 //! A crate may depend on a lower tier or on its own tier (`geom-surface` needs
@@ -54,7 +59,8 @@ const TIERS: &[(&str, u8)] = &[
     ("geom-curve", 1),
     ("geom-surface", 1),
     ("geom-topology", 1),
-    // `geom-model` is the format-neutral item tree every front end lowers into
+    ("geom-primitive", 1),
+    // `geom-model` is the format-neutral item graph every front end lowers into
     // and every kernel consumes. It sits at the top of L1 because it is a
     // representation that composes the other representations -- it solves
     // nothing itself.
@@ -64,9 +70,13 @@ const TIERS: &[(&str, u8)] = &[
     ("geom-tessellate", 2),
     ("geom-spatial", 2),
     ("geom-measure", 2),
-    ("geom-primitive", 2),
     ("geom-heal", 2),
     ("geom-kernel", 2),
+    // L3 -- concrete runtime implementations.
+    ("geom-backend-cpu", 3),
+    ("geom-backend-gpu", 3),
+    // L4 -- opt-in facade over lower layers.
+    ("geom", 4),
 ];
 
 fn geometry_dir() -> PathBuf {
@@ -158,7 +168,8 @@ fn every_geometry_crate_has_a_declared_tier() {
         untiered.is_empty(),
         "packages/geometry crates with no tier in TIERS: {untiered:?}\n\
          Add each to TIERS in this file with the layer it belongs to:\n\
-         \t0 = math/data, 1 = representation, 2 = algorithms/kernel.\n\
+         \t0 = math/data, 1 = representation, 2 = algorithms/contract,\n\
+         \t3 = backend implementation, 4 = facade.\n\
          A crate outside the table is exempt from the layering rules, which is \
          how a layered design quietly stops being one."
     );

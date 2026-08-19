@@ -13,3 +13,4 @@ geom-mesh.workspace = true
 geom-curve.workspace = true
 geom-surface.workspace = true
 geom-topology.workspace = true
+geom-model.workspace = true

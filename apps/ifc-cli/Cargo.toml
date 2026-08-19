@@ -25,6 +25,7 @@ ifc-properties.workspace = true
 # The CLI is an APPLICATION, so it picks a concrete kernel. The workspace dep
 # defaults to contract-only, so backends are opted INTO here explicitly. This is
 # the one place in the workspace where binding to implementations is correct.
-geom-kernel = { workspace = true, features = ["scalar", "simd"] }
+geom-kernel = { workspace = true, default-features = false }
+geom-backend-cpu = { workspace = true, features = ["simd"] }
 geom-core.workspace = true
 geom-mesh.workspace = true

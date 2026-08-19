@@ -41,21 +41,24 @@ fn main() {
 
 /// Report the geometry backends this build can use.
 fn capabilities() {
-    let dispatcher = geom_kernel::backend::Dispatcher::detect();
-    println!("{:<8} {:<10} MESH_BOOLEAN", "BACKEND", "AVAILABLE");
-    for cap in dispatcher.capabilities() {
-        println!(
-            "{:<8} {:<10} {}",
-            format!("{:?}", cap.backend),
-            cap.available,
-            cap.mesh_boolean
-        );
-    }
+    use geom_kernel::{Backend, Operation, Precision};
+
+    let cpu = geom_backend_cpu::CpuBackend::detect();
+    let descriptor = cpu.descriptor();
+    println!(
+        "{:<18} {:<16} {:<10} MESH_BOOLEAN",
+        "BACKEND", "TARGET", "AVAILABLE"
+    );
+    println!(
+        "{:<18} {:<16?} {:<10} {}",
+        descriptor.id,
+        descriptor.target,
+        descriptor.available,
+        descriptor.supports(Operation::MeshBoolean, Precision::F64)
+    );
     println!();
-    match dispatcher.best_for_mesh_boolean() {
-        Some(b) => println!("selected for mesh boolean: {b:?}"),
-        None => println!("selected for mesh boolean: none (not implemented yet)"),
-    }
+    println!("CPU features: {:?}", cpu.features());
+    println!("selected for mesh boolean: none (not implemented yet)");
 }
 
 /// Summarize one file.

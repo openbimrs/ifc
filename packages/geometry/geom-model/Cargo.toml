@@ -11,6 +11,7 @@ description = "Format-neutral geometry item tree. The currency between a format 
 geom-core.workspace = true
 geom-mesh.workspace = true
 geom-profile.workspace = true
+geom-primitive.workspace = true
 geom-curve.workspace = true
 geom-surface.workspace = true
 geom-topology.workspace = true

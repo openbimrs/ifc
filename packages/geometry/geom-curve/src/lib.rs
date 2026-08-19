@@ -1,28 +1,46 @@
-//! `geom-curve` — parametric curve evaluation.
+//! Exact, format-neutral curve representations and evaluation contracts.
 //!
-//! # Why this is its own crate
-//!
-//! IFC4 carries **36 curve entities** and IFC4x3 adds transition spirals
-//! (`IfcClothoid`, `IfcCosineSpiral`) for civil alignments. A curve is defined
-//! by what it answers — point at parameter, tangent, arc length, closest
-//! parameter to a point — and those questions are the same whether the curve is
-//! a line, an arc, a B-spline or a clothoid.
-//!
-//! Keeping evaluation here means `geom-sweep` and `geom-surface` consume one
-//! interface instead of matching on curve kinds.
-//!
-//! # Scope
-//!
-//! - Line, circle, ellipse, polyline, indexed poly-curve
-//! - B-spline / rational B-spline (NURBS) curves with knots
-//! - Composite curves and segment continuity
-//! - Trimming (by parameter or by cartesian point) and offsets
-//! - Arc-length parameterisation — needed for sweeps and for alignment
-//!   stationing, and the most common source of subtle error
-//!
-//! # Scope discipline
-//!
-//! NURBS is where a geometry kernel balloons into a multi-year CAD project.
-//! The target is **what real IFC files contain**: degree ≤ 3 in practice,
-//! evaluation and tessellation. Curve/curve intersection and surface
-//! interrogation are explicitly out until a fixture demands them.
+//! Composite, trimmed, offset, and surface-bound curves are graph relations in
+//! `geom-model`; keeping them there avoids a curve/surface dependency cycle.
+
+pub mod conic;
+pub mod evaluate;
+pub mod linear;
+pub mod spline;
+
+pub use conic::{Circle2, Circle3, Ellipse2, Ellipse3};
+pub use evaluate::CurveEvaluator;
+pub use linear::{Line, Line2, Line3, Polyline, Polyline2, Polyline3};
+pub use spline::{BSplineCurve, BSplineCurve2, BSplineCurve3, KnotSpec};
+
+/// Atomic two-dimensional curve values.
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq)]
+pub enum Curve2 {
+    /// Infinite line.
+    Line(Line2),
+    /// Circle.
+    Circle(Circle2),
+    /// Ellipse.
+    Ellipse(Ellipse2),
+    /// Piecewise linear curve.
+    Polyline(Polyline2),
+    /// Polynomial or rational B-spline.
+    BSpline(BSplineCurve2),
+}
+
+/// Atomic three-dimensional curve values.
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq)]
+pub enum Curve3 {
+    /// Infinite line.
+    Line(Line3),
+    /// Circle in a plane.
+    Circle(Circle3),
+    /// Ellipse in a plane.
+    Ellipse(Ellipse3),
+    /// Piecewise linear curve.
+    Polyline(Polyline3),
+    /// Polynomial or rational B-spline.
+    BSpline(BSplineCurve3),
+}

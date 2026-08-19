@@ -1,13 +1,10 @@
 [package]
 name = "geom-topology"
+description = "Typed-handle B-rep topology independent of curve and surface implementations"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-authors.workspace = true
-description = "Exact B-rep topology: vertex, edge, loop, face, shell, solid."
 
 [dependencies]
 geom-core.workspace = true
-geom-curve.workspace = true
-geom-surface.workspace = true

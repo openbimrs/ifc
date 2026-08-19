@@ -79,6 +79,48 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e5e8f6c15a24b9a3ee5efec809ccd006d3b30e8b3bb63c39af737c7f87daa1d"
 
 [[package]]
+name = "geom"
+version = "0.1.0"
+dependencies = [
+ "geom-backend-cpu",
+ "geom-backend-gpu",
+ "geom-core",
+ "geom-curve",
+ "geom-heal",
+ "geom-kernel",
+ "geom-measure",
+ "geom-mesh",
+ "geom-model",
+ "geom-primitive",
+ "geom-profile",
+ "geom-spatial",
+ "geom-surface",
+ "geom-sweep",
+ "geom-tessellate",
+ "geom-topology",
+]
+
+[[package]]
+name = "geom-backend-cpu"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+ "geom-kernel",
+ "geom-mesh",
+ "rayon",
+]
+
+[[package]]
+name = "geom-backend-gpu"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+ "geom-kernel",
+ "geom-mesh",
+ "geom-model",
+]
+
+[[package]]
 name = "geom-core"
 version = "0.1.0"
 dependencies = [
@@ -99,8 +141,6 @@ name = "geom-heal"
 version = "0.1.0"
 dependencies = [
  "geom-core",
- "geom-mesh",
- "geom-topology",
 ]
 
 [[package]]
@@ -109,6 +149,7 @@ version = "0.1.0"
 dependencies = [
  "geom-core",
  "geom-mesh",
+ "geom-model",
  "thiserror",
 ]
 
@@ -135,6 +176,7 @@ dependencies = [
  "geom-core",
  "geom-curve",
  "geom-mesh",
+ "geom-primitive",
  "geom-profile",
  "geom-surface",
  "geom-topology",
@@ -145,7 +187,6 @@ name = "geom-primitive"
 version = "0.1.0"
 dependencies = [
  "geom-core",
- "geom-mesh",
 ]
 
 [[package]]
@@ -153,6 +194,7 @@ name = "geom-profile"
 version = "0.1.0"
 dependencies = [
  "geom-core",
+ "geom-curve",
 ]
 
 [[package]]
@@ -176,9 +218,8 @@ name = "geom-sweep"
 version = "0.1.0"
 dependencies = [
  "geom-core",
- "geom-curve",
  "geom-mesh",
- "geom-profile",
+ "geom-model",
 ]
 
 [[package]]
@@ -188,6 +229,7 @@ dependencies = [
  "geom-core",
  "geom-curve",
  "geom-mesh",
+ "geom-model",
  "geom-surface",
  "geom-topology",
 ]
@@ -197,8 +239,6 @@ name = "geom-topology"
 version = "0.1.0"
 dependencies = [
  "geom-core",
- "geom-curve",
- "geom-surface",
 ]
 
 [[package]]
@@ -273,6 +313,7 @@ dependencies = [
 name = "ifc-cli"
 version = "0.1.0"
 dependencies = [
+ "geom-backend-cpu",
  "geom-core",
  "geom-kernel",
  "geom-mesh",
@@ -438,6 +479,7 @@ dependencies = [
 name = "nehirde-python"
 version = "0.1.0"
 dependencies = [
+ "geom-backend-cpu",
  "geom-kernel",
  "ifc-model",
  "ifc-properties",
