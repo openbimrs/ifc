@@ -5,8 +5,8 @@ use std::sync::{
 
 use geom_core::{Tolerance, Vec3};
 use geom_kernel::{
-    Backend, BackendId, DevicePreference, ExecutionOptions, GeomError, GeomResult,
-    GeometryCompiler, Operation,
+    Backend, BackendId, DataResidency, DevicePreference, ExecutionOptions, GeomError, GeomResult,
+    GeometryCompiler, Operation, Residency,
 };
 use geom_mesh::TriMesh;
 use geom_model::{GeometryGraph, GeometryGraphBuilder, GeometryNode, NodeId};
@@ -215,4 +215,41 @@ fn point_graph(point: Vec3) -> (GeometryGraph, NodeId) {
     let mut builder = GeometryGraphBuilder::new();
     let root = builder.push(GeometryNode::Point3(point)).expect("root");
     (builder.finish(vec![root]).expect("graph"), root)
+}
+
+/// A device cannot deliver results into a *different* device's memory.
+/// Catching that before dispatch is the point of tracking residency.
+#[test]
+fn results_wanted_on_a_foreign_device_are_refused_before_dispatch() {
+    let compiler = GpuCompiler::new(fake_executor("home-gpu", true));
+    let (graph, root) = point_graph(Vec3::ZERO);
+    let options = ExecutionOptions::new(Tolerance::METRE).with_residency(DataResidency::new(
+        Residency::Host,
+        Residency::Device(BackendId::new("other-gpu")),
+    ));
+
+    assert!(matches!(
+        compiler.compile(&graph, root, &options),
+        Err(GeomError::Unsupported { backend, .. }) if backend == BackendId::new("home-gpu")
+    ));
+}
+
+/// Results wanted on the executing device itself, or on the host, are fine.
+#[test]
+fn results_wanted_on_the_executing_device_or_host_are_accepted() {
+    let compiler = GpuCompiler::new(fake_executor("home-gpu", true));
+    let (graph, root) = point_graph(Vec3::ZERO);
+
+    for output in [
+        Residency::Host,
+        Residency::Device(BackendId::new("home-gpu")),
+        Residency::Unified(BackendId::new("home-gpu")),
+    ] {
+        let options = ExecutionOptions::new(Tolerance::METRE)
+            .with_residency(DataResidency::new(Residency::Host, output));
+        assert!(
+            compiler.compile(&graph, root, &options).is_ok(),
+            "{output:?} must be deliverable"
+        );
+    }
 }

@@ -2,7 +2,7 @@
 
 use geom_kernel::{
     Backend, BackendDescriptor, BackendId, DevicePreference, ExecutionOptions, ExecutionTarget,
-    GeomError, GeomResult, GeometryCompiler, Operation, Precision,
+    GeomError, GeomResult, GeometryCompiler, Operation, Precision, Residency,
 };
 use geom_mesh::TriMesh;
 use geom_model::{GeometryGraph, NodeId};
@@ -46,6 +46,24 @@ impl<E> GpuCompiler<E> {
         };
         if !compatible_device || (options.precision() == Precision::F64 && !device.features.float64)
         {
+            return Err(GeomError::Unsupported {
+                backend: device.id,
+                operation: Operation::GraphCompilation,
+            });
+        }
+        // Residency is part of the plan, not an afterthought: a device without
+        // unified memory cannot serve a request whose results must stay in
+        // another device's memory, and saying so here beats discovering it
+        // after the upload.
+        let output = options.residency().output();
+        let deliverable = match output {
+            Residency::Host => true,
+            Residency::Device(owner) | Residency::Unified(owner) => owner == device.id,
+            // `Residency` is non-exhaustive; an unrecognized future location is
+            // refused rather than optimistically assumed deliverable.
+            _ => false,
+        };
+        if !deliverable {
             return Err(GeomError::Unsupported {
                 backend: device.id,
                 operation: Operation::GraphCompilation,
