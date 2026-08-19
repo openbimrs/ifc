@@ -47,7 +47,7 @@ impl CpuExecution {
     pub fn detect() -> Self {
         let features = CpuFeatures::detect();
         #[cfg(feature = "simd")]
-        let instruction_set = CpuInstructionSet::Portable;
+        let instruction_set = features.best();
         #[cfg(not(feature = "simd"))]
         let instruction_set = CpuInstructionSet::Portable;
         Self {
@@ -138,7 +138,7 @@ mod tests {
     fn auto_selection_stays_portable_without_the_simd_feature() {
         assert_eq!(
             CpuExecution::detect().instruction_set(),
-            features.best()
+            CpuInstructionSet::Portable
         );
     }
 
