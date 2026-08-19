@@ -19,5 +19,11 @@ never boolean capability claims. Registry batch methods dispatch to provider
 batch overrides; only `Unsupported` and `Unavailable` permit fallback, while
 all other errors fail fast.
 
+`BackendId` stores fixed-capacity inline UTF-8 so a driver-enumerated
+accelerator identity (`cuda:0`, `hip:1`) is constructible at runtime without
+leaking, while staying `Copy` inside error variants. Over-long identities are
+rejected, never truncated: truncation would alias two distinct devices. See
+`docs/adr/0011`.
+
 Public values derive `Debug` and `Clone`; add other standard traits only when
 semantically valid. Validate unsupported and unavailable paths in tests.
