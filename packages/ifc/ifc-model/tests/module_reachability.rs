@@ -117,6 +117,39 @@ fn path_override(attributes: &[Attribute]) -> Option<PathBuf> {
     })
 }
 
+fn external_module_path(
+    module: &syn::ItemMod,
+    source: &Path,
+    base: &Path,
+) -> Result<PathBuf, String> {
+    let name = module.ident.unraw().to_string();
+    if let Some(path) = path_override(&module.attrs) {
+        let child = base.join(path);
+        return child.is_file().then_some(child.clone()).ok_or_else(|| {
+            format!(
+                "{} declares {name}, but path override {} does not exist",
+                source.display(),
+                child.display()
+            )
+        });
+    }
+
+    let flat = base.join(format!("{name}.rs"));
+    let nested = base.join(&name).join("mod.rs");
+    if flat.is_file() {
+        Ok(flat)
+    } else if nested.is_file() {
+        Ok(nested)
+    } else {
+        Err(format!(
+            "{} declares {name}, but neither {} nor {} exists",
+            source.display(),
+            flat.display(),
+            nested.display()
+        ))
+    }
+}
+
 fn module_base(source: &Path) -> PathBuf {
     let stem = source
         .file_stem()
@@ -149,22 +182,10 @@ fn visit_items(
             continue;
         }
 
-        let child = if let Some(path) = path_override(&module.attrs) {
-            source.parent().expect("module source parent").join(path)
-        } else {
-            let flat = base.join(format!("{name}.rs"));
-            let nested = base.join(&name).join("mod.rs");
-            if flat.is_file() {
-                flat
-            } else if nested.is_file() {
-                nested
-            } else {
-                missing.push(format!(
-                    "{} declares {name}, but neither {} nor {} exists",
-                    source.display(),
-                    flat.display(),
-                    nested.display()
-                ));
+        let child = match external_module_path(module, source, base) {
+            Ok(child) => child,
+            Err(error) => {
+                missing.push(error);
                 continue;
             }
         };
@@ -254,6 +275,29 @@ fn cargo_target_modules_resolve_beside_the_target_root() {
 }
 
 #[test]
+fn nested_path_overrides_resolve_from_the_inline_module_base() {
+    let dir = std::env::temp_dir().join(format!("nehirde-nested-path-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("outer")).unwrap();
+    let root = dir.join("custom_target.rs");
+    let redirected = dir.join("outer/redirected.rs");
+    std::fs::write(
+        &root,
+        "mod outer { #[path = \"redirected.rs\"] mod child; }\n",
+    )
+    .unwrap();
+    std::fs::write(&redirected, "pub fn helper() {}\n").unwrap();
+
+    let mut reached = BTreeSet::new();
+    let mut missing = Vec::new();
+    visit_target_root(&root, &mut reached, &mut missing);
+
+    assert!(missing.is_empty(), "{missing:#?}");
+    assert_eq!(reached, BTreeSet::from([root, redirected]));
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
 fn every_ifc_source_file_is_reachable_from_a_cargo_target() {
     let packages = ifc_packages();
     assert!(
@@ -309,87 +353,164 @@ fn is_public(visibility: &syn::Visibility) -> bool {
     matches!(visibility, syn::Visibility::Public(_))
 }
 
-fn has_public_contract(items: &[Item]) -> bool {
-    items.iter().any(|item| match item {
-        Item::Const(item) => is_public(&item.vis),
-        Item::Enum(item) => is_public(&item.vis),
-        Item::ExternCrate(item) => is_public(&item.vis),
-        Item::Fn(item) => is_public(&item.vis),
-        Item::Mod(item) => is_public(&item.vis),
-        Item::Static(item) => is_public(&item.vis),
-        Item::Struct(item) => is_public(&item.vis),
-        Item::Trait(item) => is_public(&item.vis),
-        Item::TraitAlias(item) => is_public(&item.vis),
-        Item::Type(item) => is_public(&item.vis),
-        Item::Union(item) => is_public(&item.vis),
-        Item::Use(item) => is_public(&item.vis),
+fn is_public_contract_item(item: &Item) -> bool {
+    match item {
+        Item::Const(item) => is_public(&item.vis) && !is_statically_disabled(&item.attrs),
+        Item::Enum(item) => is_public(&item.vis) && !is_statically_disabled(&item.attrs),
+        Item::ExternCrate(item) => is_public(&item.vis) && !is_statically_disabled(&item.attrs),
+        Item::Fn(item) => is_public(&item.vis) && !is_statically_disabled(&item.attrs),
+        Item::Static(item) => is_public(&item.vis) && !is_statically_disabled(&item.attrs),
+        Item::Struct(item) => is_public(&item.vis) && !is_statically_disabled(&item.attrs),
+        Item::Trait(item) => is_public(&item.vis) && !is_statically_disabled(&item.attrs),
+        Item::TraitAlias(item) => is_public(&item.vis) && !is_statically_disabled(&item.attrs),
+        Item::Type(item) => is_public(&item.vis) && !is_statically_disabled(&item.attrs),
+        Item::Union(item) => is_public(&item.vis) && !is_statically_disabled(&item.attrs),
+        Item::Use(item) => is_public(&item.vis) && !is_statically_disabled(&item.attrs),
         _ => false,
+    }
+}
+
+fn module_has_public_contract(
+    module: &syn::ItemMod,
+    source: &Path,
+    base: &Path,
+    visiting: &mut BTreeSet<PathBuf>,
+) -> bool {
+    let name = module.ident.unraw().to_string();
+    let key = base.join(&name);
+    if !visiting.insert(key.clone()) {
+        return false;
+    }
+
+    let result = if let Some((_, inline_items)) = &module.content {
+        items_have_public_contract(inline_items, source, &base.join(name), visiting)
+    } else {
+        let child = external_module_path(module, source, base)
+            .unwrap_or_else(|error| panic!("cannot resolve public module: {error}"));
+        let text = std::fs::read_to_string(&child)
+            .unwrap_or_else(|error| panic!("cannot inspect {}: {error}", child.display()));
+        let syntax = syn::parse_file(&text)
+            .unwrap_or_else(|error| panic!("cannot parse {}: {error}", child.display()));
+        items_have_public_contract(&syntax.items, &child, &module_base(&child), visiting)
+    };
+
+    visiting.remove(&key);
+    result
+}
+
+fn items_have_public_contract(
+    items: &[Item],
+    source: &Path,
+    base: &Path,
+    visiting: &mut BTreeSet<PathBuf>,
+) -> bool {
+    items.iter().any(|item| {
+        if is_public_contract_item(item) {
+            return true;
+        }
+        match item {
+            Item::Mod(module)
+                if is_public(&module.vis) && !is_statically_disabled(&module.attrs) =>
+            {
+                module_has_public_contract(module, source, base, visiting)
+            }
+            _ => false,
+        }
     })
+}
+
+fn inspect_public_modules(
+    items: &[Item],
+    source: &Path,
+    base: &Path,
+    empty: &mut BTreeSet<String>,
+) {
+    for item in items {
+        let Item::Mod(module) = item else {
+            continue;
+        };
+        if is_statically_disabled(&module.attrs) {
+            continue;
+        }
+
+        let name = module.ident.unraw().to_string();
+        if is_public(&module.vis)
+            && !module_has_public_contract(module, source, base, &mut BTreeSet::new())
+        {
+            empty.insert(format!("{}: pub mod {name}", source.display()));
+        }
+
+        if let Some((_, inline_items)) = &module.content {
+            inspect_public_modules(inline_items, source, &base.join(name), empty);
+            continue;
+        }
+
+        let child = external_module_path(module, source, base)
+            .unwrap_or_else(|error| panic!("cannot resolve module: {error}"));
+        let text = std::fs::read_to_string(&child)
+            .unwrap_or_else(|error| panic!("cannot inspect {}: {error}", child.display()));
+        let syntax = syn::parse_file(&text)
+            .unwrap_or_else(|error| panic!("cannot parse {}: {error}", child.display()));
+        inspect_public_modules(&syntax.items, &child, &module_base(&child), empty);
+    }
+}
+
+fn inspect_target_root(root: &Path, empty: &mut BTreeSet<String>) {
+    let text = std::fs::read_to_string(root)
+        .unwrap_or_else(|error| panic!("cannot inspect {}: {error}", root.display()));
+    let syntax = syn::parse_file(&text)
+        .unwrap_or_else(|error| panic!("cannot parse {}: {error}", root.display()));
+    let base = root.parent().expect("Cargo target root parent");
+    inspect_public_modules(&syntax.items, root, base, empty);
+}
+
+#[test]
+fn recursive_public_contract_check_rejects_empty_namespaces() {
+    let dir = std::env::temp_dir().join(format!("nehirde-public-api-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("api")).unwrap();
+    let root = dir.join("api/custom_root.rs");
+    std::fs::write(
+        &root,
+        "pub mod outer { pub mod empty {} }\n\
+         pub mod disabled { #[cfg(any())] pub struct Ghost; }\n",
+    )
+    .unwrap();
+
+    let mut empty = BTreeSet::new();
+    inspect_target_root(&root, &mut empty);
+
+    assert!(empty.iter().any(|item| item.ends_with("pub mod outer")));
+    assert!(empty.iter().any(|item| item.ends_with("pub mod empty")));
+    assert!(empty.iter().any(|item| item.ends_with("pub mod disabled")));
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn recursive_public_contract_check_accepts_a_nested_contract() {
+    let syntax = syn::parse_file("pub mod outer { pub mod inner { pub struct Contract; } }")
+        .expect("valid nested public contract");
+    let mut empty = BTreeSet::new();
+    inspect_public_modules(
+        &syntax.items,
+        Path::new("virtual.rs"),
+        Path::new("."),
+        &mut empty,
+    );
+    assert!(empty.is_empty(), "{empty:#?}");
 }
 
 #[test]
 fn public_modules_expose_a_real_contract() {
-    let mut empty = Vec::new();
+    let mut empty = BTreeSet::new();
     for package in ifc_packages() {
-        let crate_dir = package
-            .manifest_path
-            .as_std_path()
-            .parent()
-            .expect("manifest parent");
-        let target_roots: BTreeSet<_> = package
-            .targets
-            .iter()
-            .map(|target| target.src_path.as_std_path().to_path_buf())
-            .collect();
-        let mut sources = BTreeSet::new();
-        rust_files(&crate_dir.join("src"), &mut sources);
-        for source in sources {
-            let text = std::fs::read_to_string(&source).unwrap();
-            let syntax = syn::parse_file(&text).unwrap();
-            let base = if target_roots.contains(&source) {
-                source.parent().expect("Cargo target parent").to_path_buf()
-            } else {
-                module_base(&source)
-            };
-            for module in syntax.items.iter().filter_map(|item| match item {
-                Item::Mod(module)
-                    if is_public(&module.vis) && !is_statically_disabled(&module.attrs) =>
-                {
-                    Some(module)
-                }
-                _ => None,
-            }) {
-                let owned_items;
-                let items = if let Some((_, inline)) = &module.content {
-                    inline.as_slice()
-                } else {
-                    let name = module.ident.unraw().to_string();
-                    let child = if let Some(path) = path_override(&module.attrs) {
-                        source.parent().unwrap().join(path)
-                    } else {
-                        let flat = base.join(format!("{name}.rs"));
-                        let nested = base.join(&name).join("mod.rs");
-                        if flat.is_file() {
-                            flat
-                        } else {
-                            nested
-                        }
-                    };
-                    let child_text = std::fs::read_to_string(&child).unwrap_or_else(|error| {
-                        panic!("cannot inspect public module {}: {error}", child.display())
-                    });
-                    owned_items = syn::parse_file(&child_text).unwrap().items;
-                    owned_items.as_slice()
-                };
-                if !has_public_contract(items) {
-                    empty.push(format!("{}: pub mod {}", source.display(), module.ident));
-                }
-            }
+        for target in package.targets {
+            inspect_target_root(target.src_path.as_std_path(), &mut empty);
         }
     }
     assert!(
         empty.is_empty(),
-        "public modules without a public item or re-export:\n{}",
-        empty.join("\n")
+        "public modules without a concrete public item or re-export:\n{}",
+        empty.into_iter().collect::<Vec<_>>().join("\n")
     );
 }
