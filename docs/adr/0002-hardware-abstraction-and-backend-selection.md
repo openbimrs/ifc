@@ -44,6 +44,8 @@ not a compile-time `#[cfg]` choice.
   operation.
 - `geom-cpu` is the **correctness oracle**: portable, no intrinsics, always
   available. Every other backend is validated by differential test against it.
+  <!-- Superseded by 0012: the oracle is `geom-scalar`; `geom-backend-cpu` is an
+  execution context and explicitly not the oracle. The principle stands. -->
 - SIMD uses `is_x86_feature_detected!` + `#[target_feature]`, so a single
   portable binary still uses AVX-512 where present.
 - GPU is behind an off-by-default `gpu` feature and carries a work-size

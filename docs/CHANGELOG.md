@@ -204,6 +204,5 @@ section on release.
 
 ### Notes
 - No C++ geometry dependency anywhere in the graph — the premise of the project.
-  `geom-cpu`'s boolean currently returns `Unsupported` and reports
-  `mesh_boolean: false` rather than emitting a wrong mesh; a real implementation
-  is Stage 2 in `docs/ROADMAP.md`.
+  The mesh boolean currently returns `Unsupported` rather than emitting a wrong
+  mesh; a real implementation is Stage 2 in `docs/ROADMAP.md`.
