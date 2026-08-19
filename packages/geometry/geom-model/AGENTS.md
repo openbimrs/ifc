@@ -23,5 +23,11 @@ reference family; it must not erase dimensional semantics. Keep source IDs
 outside the graph. Preserve instancing and exact operations; never lower to
 meshes here.
 
+Public payload types stay owned plain data so a future native (CUDA/HIP)
+backend can copy them across FFI: no trait objects, callables, borrowed
+references, raw pointers, shared-ownership handles, or interior mutability.
+Error types are exempt as diagnostics. Enforced by
+`tests/native_backend_readiness.rs`; see `docs/adr/0011`.
+
 Public values derive `Debug` and `Clone`; add other standard traits only when
 semantically valid. Tests must exercise invalid input as well as happy paths.

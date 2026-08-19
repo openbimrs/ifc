@@ -15,3 +15,7 @@ geom-primitive.workspace = true
 geom-curve.workspace = true
 geom-surface.workspace = true
 geom-topology.workspace = true
+
+[dev-dependencies]
+# The native-backend readiness gate parses the data-plane crates' own sources.
+syn = { version = "2", features = ["full", "parsing", "visit"] }
