@@ -11,6 +11,18 @@ section on release.
 ## [Unreleased]
 
 ### Added
+- **`geom-compile`: profile triangulation and linear extrusion.** Rectangle
+  (solid and hollow) and circle (disk and annulus) profiles flatten under an
+  explicit chord budget; holes are triangulated by the adopted `earcut`
+  (ADR 0015) and extruded into closed solids. Output is gated on exact volume,
+  **directed-edge manifoldness**, disk convergence from below, a differential
+  comparison against `geom-scalar`'s certified triangulator, and end-to-end
+  acceptance by `geom-boolmesh` — an extruded wall minus an opening yields
+  exactly 2.16 and partitions conservatively.
+- **ADR 0015: `earcut` adopted for polygon triangulation.** A hand-rolled ear
+  clipper passed simple polygons, reflex vertices, and one hole but stalled on
+  two holes; earcut triangulates the same case exactly (area 175). Licence
+  MIT OR Apache-2.0, dependency graph `num-traits` + `autocfg`, pure Rust.
 - **`geom-boolmesh`: the `boolmesh`-backed `MeshBoolean` provider.** Owns
   `TriMesh` <-> `Manifold` conversion and contract enforcement; the algorithm is
   upstream's. Orientation is gated on input per argument, because an inside-out

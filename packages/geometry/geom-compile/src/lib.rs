@@ -1,0 +1,11 @@
+#![forbid(unsafe_code)]
+
+//! Scalar reference `GeometryCompiler`.
+
+pub mod extrude;
+pub mod profile;
+
+use geom_kernel::BackendId;
+
+/// This provider's identity.
+pub const BACKEND_ID: BackendId = BackendId::new("scalar-compile");

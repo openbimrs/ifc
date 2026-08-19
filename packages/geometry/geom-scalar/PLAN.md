@@ -1,18 +1,27 @@
 # geom-scalar plan
 
 ## Done
+- Error-free transformations (`two_sum`, `two_diff`, `two_product`).
+- `orient2d`: f64 filter with magnitude-scaled error bound, escalating to exact
+  expansion arithmetic. Differential-tested against an independent i128 oracle
+  and against known naive-f64 failures.
 
-- Error-free transformations: `two_sum`, `two_diff`, `two_product`.
-- `orient2d` with filter -> exact escalation, certified results.
+## Goal A: GeometryCompiler (in progress)
+Evaluate the three node families `ifc-geometry` actually emits.
 
-## Next
+- [ ] M1 profile triangulation: Rectangle, Circle, Contour (ear clipping with
+      holes via bridge insertion). Orientation certified by `orient2d`.
+- [ ] M2 linear extrusion: profile -> closed manifold prism, outward-oriented.
+- [ ] M3 transform composition: Instance chains, nested placements.
+- [ ] M4 SolidOperation::Boolean -> dispatch to a MeshBoolean provider.
+- [ ] M5 `ifc-cli mesh <file.ifc>` end to end.
 
-- `orient3d`: 3x3 determinant, same cascade shape.
-- `incircle` / `insphere`: needed by Delaunay and by robust mesh repair.
-- Static filters: precompute bounds when coordinate ranges are known, to skip
-  the magnitude computation per call.
+## Gates
+- Wall-minus-openings volume vs Monte-Carlo oracle.
+- Manifold in -> manifold out on every fixture that lowers.
+- `ifc capabilities` no longer reports "none".
 
-## Deliberately absent
-
-- SIMD, threading, GPU. This crate is the oracle; optimized paths live in
-  `geom-backend-*` and are validated against it.
+## Deferred
+- Revolution (seam handling), SweptDisk, SectionedSpine, BRep, surfaces.
+- Reason: `ifc-geometry` does not emit them yet; adding them before there is a
+  producer would be untested speculation.

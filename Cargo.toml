@@ -39,6 +39,7 @@ geom-spatial = { path = "packages/geometry/geom-spatial" }
 geom-measure = { path = "packages/geometry/geom-measure" }
 # The scalar reference implementation and correctness oracle (ADR 0012).
 geom-scalar = { path = "packages/geometry/geom-scalar" }
+geom-compile = { path = "packages/geometry/geom-compile" }
 # Contract and implementations are separate crates so feature unification can
 # never pull a concrete backend into a format adapter.
 geom-kernel = { path = "packages/geometry/geom-kernel", default-features = false }

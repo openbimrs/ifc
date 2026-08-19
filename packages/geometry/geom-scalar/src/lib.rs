@@ -8,6 +8,8 @@
 
 pub mod expansion;
 pub mod orientation;
+pub mod polygon;
 
 pub use expansion::{two_diff, two_product, two_sum};
 pub use orientation::{orient2d, orient2d_filter};
+pub use polygon::{ring_orientation, signed_area2, triangulate_simple};
