@@ -36,10 +36,10 @@
 //! | [`header`] | File metadata and the declared schema token |
 //! | [`codec`] | The read/write trait every serialization implements |
 //! | [`guid`] | IFC's base-64 GlobalId encoding |
-//! | [`index`] | Derived indices: inverse references |
-//! | [`relation`] | Structural relationship traversal (no domain meaning) |
-//! | [`spatial`] | The spatial containment tree |
-//! | [`traverse`] | Graph walks over references |
+//! | `index` | Derived indices: inverse references |
+//! | `relation` | Structural relationship traversal (no domain meaning) |
+//! | `spatial` | The spatial containment tree |
+//! | `traverse` | Graph walks over references |
 //! | [`error`] | Failure modes |
 
 pub mod codec;
@@ -47,11 +47,13 @@ pub mod entity;
 pub mod error;
 pub mod guid;
 pub mod header;
-pub mod index;
+mod index;
 pub mod model;
-pub mod relation;
-pub mod spatial;
-pub mod traverse;
+mod mutation;
+mod provenance;
+mod relation;
+mod spatial;
+mod traverse;
 pub mod value;
 
 pub use codec::Codec;

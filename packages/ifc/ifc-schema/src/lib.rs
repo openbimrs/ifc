@@ -22,7 +22,7 @@
 //! | [`attribute`] | Attribute descriptors and declared types |
 //! | [`types`] | Defined types, enumerations, selects |
 //! | [`registry`] | The assembled, queryable schema |
-//! | [`inheritance`] | Supertype-chain walking |
+//! | `inheritance` | Supertype-chain walking |
 //!
 //! # Relationship to the model
 //!
@@ -48,7 +48,7 @@
 pub mod attribute;
 pub mod entity;
 pub mod express;
-pub mod inheritance;
+mod inheritance;
 pub mod registry;
 pub mod types;
 pub mod version;

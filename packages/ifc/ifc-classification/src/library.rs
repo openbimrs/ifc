@@ -1,4 +1,12 @@
 //! `IfcLibraryInformation` external library links.
 //!
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `information.rs`: library metadata.
+//! - `reference.rs`: library entries.
+
+mod information;
+mod reference;

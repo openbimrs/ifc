@@ -1,4 +1,10 @@
 //! True north versus project north.
 //!
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `directions.rs`: true/grid/project north.
+
+mod directions;

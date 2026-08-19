@@ -1,4 +1,12 @@
 //! Resource time, quantity and levelling.
 //!
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `time.rs`: usage time.
+//! - `quantity.rs`: usage quantities.
+
+mod quantity;
+mod time;

@@ -8,19 +8,21 @@
 //!
 //! | Module | Role |
 //! |---|---|
-//! | [`crs`] | `IfcProjectedCRS` and geographic CRS identification |
-//! | [`conversion`] | `IfcMapConversion`: local engineering to map coordinates |
-//! | [`north`] | True north versus project north |
-//! | [`elevation`] | Site elevation and height datums |
-//! | [`error`] | Why a georeferencing operation failed |
+//! | `crs` | `IfcProjectedCRS` and geographic CRS identification |
+//! | `conversion` | `IfcMapConversion`: local engineering to map coordinates |
+//! | `north` | True north versus project north |
+//! | `elevation` | Site elevation and height datums |
+//! | `error` | Why a georeferencing operation failed |
 //!
 //! # Status
 //!
 //! Scaffold -- modules are reserved with intent, not implemented. See
-//! `docs/ROADMAP.md` for the stage that fills them.
+//! `PLAN.md` for the stage that fills them.
 
-pub mod conversion;
-pub mod crs;
-pub mod elevation;
-pub mod error;
-pub mod north;
+mod conversion;
+mod crs;
+mod elevation;
+mod error;
+mod north;
+
+mod context;

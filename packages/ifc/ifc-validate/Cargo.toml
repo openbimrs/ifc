@@ -9,5 +9,4 @@ description = "Schema conformance: WHERE rules, cardinality, GUID and reference 
 
 [dependencies]
 ifc-schema.workspace = true
-ifc-step.workspace = true
 ifc-model.workspace = true

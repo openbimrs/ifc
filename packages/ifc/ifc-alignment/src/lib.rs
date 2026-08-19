@@ -9,23 +9,24 @@
 //!
 //! | Module | Role |
 //! |---|---|
-//! | [`alignment`] | `IfcAlignment` and its horizontal/vertical/cant parts |
-//! | [`horizontal`] | Horizontal segments: line, arc, spiral transitions |
-//! | [`vertical`] | Vertical segments: grades and parabolic curves |
-//! | [`cant`] | Superelevation (`IfcAlignmentCant`) for rail |
-//! | [`referent`] | `IfcReferent` stationing and chainage |
-//! | [`placement`] | `IfcLinearPlacement` and distance expressions |
-//! | [`error`] | Why an alignment operation failed |
+//! | `alignment` | `IfcAlignment` and its horizontal/vertical/cant parts |
+//! | `horizontal` | Horizontal segments: line, arc, spiral transitions |
+//! | `vertical` | Vertical segments: grades and parabolic curves |
+//! | `cant` | Superelevation (`IfcAlignmentCant`) for rail |
+//! | `referent` | `IfcReferent` stationing and chainage |
+//! | `placement` | `IfcLinearPlacement` and distance expressions |
+//! | `error` | Why an alignment operation failed |
 //!
 //! # Status
 //!
 //! Scaffold -- modules are reserved with intent, not implemented. See
-//! `docs/ROADMAP.md` for the stage that fills them.
+//! `PLAN.md` for the stage that fills them.
 
-pub mod alignment;
-pub mod cant;
-pub mod error;
-pub mod horizontal;
-pub mod placement;
-pub mod referent;
-pub mod vertical;
+mod alignment;
+mod cant;
+mod curve;
+mod error;
+mod horizontal;
+mod placement;
+mod referent;
+mod vertical;

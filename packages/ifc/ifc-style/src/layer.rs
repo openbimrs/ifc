@@ -1,4 +1,12 @@
 //! `IfcPresentationLayerAssignment` and visibility.
 //!
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `assignment.rs`: layer membership.
+//! - `style.rs`: layer presentation.
+
+mod assignment;
+mod style;

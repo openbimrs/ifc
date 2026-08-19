@@ -10,25 +10,25 @@
 //!
 //! | Module | Role |
 //! |---|---|
-//! | [`pset`] | `IfcPropertySet` and single/enumerated/list/table properties |
-//! | [`quantity`] | `IfcElementQuantity`: length, area, volume, weight, count |
-//! | [`template`] | `IfcPropertySetTemplate` and property templates |
-//! | [`standard`] | The official Pset catalogue from the shipped XML definitions |
-//! | [`mod@unit`] | Unit assignment, prefixes and conversion-based units |
-//! | [`value`] | `IfcValue` measure types and their interpretation |
-//! | [`query`] | Lookup helpers: property by name, pset by element |
-//! | [`error`] | Why a property lookup failed |
+//! | `pset` | `IfcPropertySet` and single/enumerated/list/table properties |
+//! | `quantity` | `IfcElementQuantity`: length, area, volume, weight, count |
+//! | `template` | `IfcPropertySetTemplate` and property templates |
+//! | `standard` | The official Pset catalogue from the shipped XML definitions |
+//! | `unit` | Unit assignment, prefixes and conversion-based units |
+//! | `value` | `IfcValue` measure types and their interpretation |
+//! | `query` | Lookup helpers: property by name, pset by element |
+//! | `error` | Why a property lookup failed |
 //!
 //! # Status
 //!
 //! Scaffold -- modules are reserved with intent, not implemented. See
-//! `docs/ROADMAP.md` for the stage that fills them.
+//! `PLAN.md` for the stage that fills them.
 
-pub mod error;
-pub mod pset;
-pub mod quantity;
-pub mod query;
-pub mod standard;
-pub mod template;
-pub mod unit;
-pub mod value;
+mod error;
+mod pset;
+mod quantity;
+mod query;
+mod standard;
+mod template;
+mod unit;
+mod value;

@@ -1,4 +1,12 @@
 //! `IfcDocumentInformation` and document references.
 //!
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `information.rs`: document metadata.
+//! - `reference.rs`: document locations/identifiers.
+
+mod information;
+mod reference;

@@ -1,4 +1,14 @@
 //! `IfcStyledItem`: binding a style to a representation item.
 //!
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `styled_item.rs`: IfcStyledItem and style selects.
+//! - `layer.rs`: layer assignment links.
+
+mod layer;
+mod styled_item;
+
+mod resolution;

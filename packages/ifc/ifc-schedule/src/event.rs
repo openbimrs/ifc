@@ -1,4 +1,12 @@
 //! `IfcEvent` and event triggers.
 //!
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `definition.rs`: events.
+//! - `time.rs`: event time.
+
+mod definition;
+mod time;

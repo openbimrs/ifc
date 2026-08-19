@@ -1,4 +1,12 @@
 //! `IfcWorkSchedule`, `IfcWorkPlan`, `IfcWorkCalendar`.
 //!
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `plan.rs`: IfcWorkPlan.
+//! - `work_schedule.rs`: IfcWorkSchedule.
+
+mod plan;
+mod work_schedule;

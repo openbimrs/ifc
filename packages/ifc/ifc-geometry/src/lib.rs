@@ -65,3 +65,4 @@ pub use kernel::{BooleanOp, CsgShape, Primitive, Profile};
 pub use slots::Slots;
 pub use transform::Transform;
 pub use units::UnitScale;
+mod input;

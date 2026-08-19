@@ -4,4 +4,4 @@
 //! type assignment, property assignment and containment are all `IfcRel*`
 //! instances. Traversal helpers belong here.
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Not yet implemented -- see `PLAN.md`.

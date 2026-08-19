@@ -9,21 +9,21 @@
 //!
 //! | Module | Role |
 //! |---|---|
-//! | [`material`] | `IfcMaterial` and material properties |
-//! | [`layer`] | `IfcMaterialLayerSet` and `IfcMaterialLayerSetUsage` |
-//! | [`profile`] | `IfcMaterialProfileSet` for profiled members |
-//! | [`constituent`] | `IfcMaterialConstituentSet` for non-layered composites |
-//! | [`usage`] | Resolving which material applies to a given element |
-//! | [`error`] | Why a material lookup failed |
+//! | `material` | `IfcMaterial` and material properties |
+//! | `layer` | `IfcMaterialLayerSet` and `IfcMaterialLayerSetUsage` |
+//! | `profile` | `IfcMaterialProfileSet` for profiled members |
+//! | `constituent` | `IfcMaterialConstituentSet` for non-layered composites |
+//! | `usage` | Resolving which material applies to a given element |
+//! | `error` | Why a material lookup failed |
 //!
 //! # Status
 //!
 //! Scaffold -- modules are reserved with intent, not implemented. See
-//! `docs/ROADMAP.md` for the stage that fills them.
+//! `PLAN.md` for the stage that fills them.
 
-pub mod constituent;
-pub mod error;
-pub mod layer;
-pub mod material;
-pub mod profile;
-pub mod usage;
+mod constituent;
+mod error;
+mod layer;
+mod material;
+mod profile;
+mod usage;

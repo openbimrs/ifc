@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "The ONLY bridge between IFC and geometry. Depends on the kernel CONTRACT, never on a backend."
+description = "IFC semantic views lowered into the format-neutral geometry DAG."
 
 [dependencies]
 ifc-model.workspace = true

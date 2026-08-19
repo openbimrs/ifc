@@ -1,4 +1,4 @@
 //! `IfcValue` measure types and their interpretation.
 //!
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Not yet implemented -- see `PLAN.md`.

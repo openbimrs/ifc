@@ -1,6 +1,16 @@
-//! `IfcMaterialLayerSet` and `IfcMaterialLayerSetUsage`.
+//! `IfcMaterialLayer` and `IfcMaterialLayerSet` semantic projections.
 //!
-//! Layer sets carry thickness and order; usage carries the offset and direction
-//! relative to the element's axis. Both are needed to place layers in space.
+//! Geometry-affecting usage direction, sense, offset, and reference extent are
+//! owned by `ifc-geometry::input`; this module owns material composition only.
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `definition.rs`: identity, material link, and authored thickness.
+//! - `set.rs`: ordered layer membership.
+//! - `usage.rs`: association to a layer set, without geometry slots.
+
+mod definition;
+mod set;
+mod usage;

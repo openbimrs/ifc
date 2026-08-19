@@ -1,7 +1,9 @@
-//! Architecture gates for the IFC/geometry swap boundary.
+//! Fast local smoke gates for the IFC/geometry swap boundary.
 //!
-//! IFC adapters may depend on format-neutral representation and contract crates,
+//! IFC adapters may depend on format-neutral representation crates,
 //! but CPU/GPU execution and adapter crates are application choices.
+//! `ifc-model/tests/package_architecture.rs` is the authoritative,
+//! Cargo-metadata-backed boundary gate.
 
 use std::path::PathBuf;
 
@@ -27,9 +29,8 @@ fn ifc_crates_never_depend_on_geometry_execution_crates() {
         }
         let body = uncommented(&std::fs::read_to_string(&manifest).expect("manifest readable"));
         assert!(
-            !body.contains("geom-backend-"),
-            "{} binds IFC semantics to a geometry execution/adapter crate. Depend on geom-model or \
-             geom-kernel contracts and select execution contexts/providers in an app crate.",
+            !body.contains("geom-backend-") && !body.contains("geom-kernel"),
+            "{} binds IFC semantics to a geometry contract/execution crate. Emit neutral geom-model values and select operation providers in an app crate.",
             manifest.display()
         );
         checked += 1;

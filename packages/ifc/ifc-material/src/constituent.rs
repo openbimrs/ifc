@@ -1,4 +1,12 @@
 //! `IfcMaterialConstituentSet` for non-layered composites.
 //!
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `definition.rs`: constituent semantics.
+//! - `set.rs`: set membership.
+
+mod definition;
+mod set;

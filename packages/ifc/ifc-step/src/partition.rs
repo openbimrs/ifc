@@ -11,7 +11,7 @@
 //! and with N partitions must yield identical entity counts. That test is
 //! cheap and catches every misalignment.
 //!
-//! Not yet implemented — Stage 1 in `docs/ROADMAP.md`.
+//! Not yet implemented -- Stage 1 in `PLAN.md`.
 
 /// A byte range covering whole records, safe to scan independently.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

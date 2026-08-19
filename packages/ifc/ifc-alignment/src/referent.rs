@@ -3,4 +3,10 @@
 //! Stationing is not arc length: it restarts at equations and can run backwards.
 //! Treating them as interchangeable is the classic linear-referencing bug.
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `station.rs`: station referents.
+
+mod station;

@@ -17,33 +17,33 @@ Layout is grouped by role: `packages/` holds libraries, with `bindings/` and
 packages/geometry  →  packages/ifc  →  packages/openbim  →  bindings, apps
 ```
 
-- **`packages/geometry/`** — format-agnostic kernel, 11 crates (`geom-core`,
-  `geom-mesh`, `geom-profile`, `geom-curve`, `geom-surface`, `geom-sweep`,
-  `geom-topology`, `geom-tessellate`, `geom-spatial`, `geom-measure`,
-  `geom-kernel`). Knows nothing about IFC; other formats can use it.
-  Hardware backends are *features* of `geom-kernel`: `scalar` + `simd` on by
-  default, `gpu` off.
-- **`packages/ifc/`** — pure IFC logic, 16 crates. Geometry access is an
-  explicit allowlist (`ifc-geometry`, `ifc-georef`, `ifc-alignment`), and
-  only via `geom-kernel` traits with `default-features = false`, so the kernel is
-  swappable **and** property/quantity consumers compile no geometry code.
+- **`packages/geometry/`** -- IFC-agnostic representation, graph, algorithm,
+  contract, backend, and facade crates. Source formats lower exact intent into
+  `geom-model`; concrete CPU/GPU execution remains behind separate backend
+  crates.
+- **`packages/ifc/`** -- pure IFC logic. Geometry access is an
+  explicit bridge allowlist (`ifc-geometry`, `ifc-georef`, `ifc-alignment`).
+  Those bridges may depend on neutral geometry representation crates, but never
+  `geom-kernel`, geometry algorithm crates, or concrete backends. Property,
+  material, style, quantity, and other semantic consumers compile no geometry
+  code.
 - **`packages/openbim/`** — standards built on the IFC layer (`ids`, `bcf`,
   `clash`, `diff`). Consumers only; `packages/ifc/` never depends on these.
 - **`bindings/`** — `python` (pyo3), reserved. **wasm is deferred** and
   excluded from the workspace.
 - **`apps/`** — `ifc-cli`. The one place binding to a concrete backend is right.
 
-That swap boundary is enforced by a mutation-verified test, not by convention —
-see `packages/ifc/AGENTS.md`.
+Those boundaries are enforced by mutation-verified tests, not by convention -
+see `packages/ifc/AGENTS.md` and `ifc-model/tests/package_architecture.rs`.
 
-Read `docs/adr/0001` (the split), `0002` (hardware abstraction), `0003`
-(pure-Rust boolean — the decision the project rests on), `0004` (layout +
-backends-as-features), `0005` (spec-driven crate expansion).
+Read ADR 0009 for the current neutral DAG/provider architecture and ADR 0008
+for the semantic/geometric split. ADRs 0001-0004 preserve historical rationale;
+0009 supersedes their old direct-kernel and backend-packaging decisions.
 
 ## Layout
 
-- `packages/geometry/` — 11 crates. See `packages/geometry/AGENTS.md`.
-- `packages/ifc/` — 16 crates. See `packages/ifc/AGENTS.md`.
+- `packages/geometry/` -- geometry package; see `packages/geometry/AGENTS.md`.
+- `packages/ifc/` -- IFC package; see `packages/ifc/AGENTS.md`.
 - `packages/openbim/` — `ids`, `bcf`, `clash`, `diff`. See
   `packages/openbim/AGENTS.md`.
 - `bindings/` — `python`; `_deferred-wasm/` excluded. See `bindings/AGENTS.md`.
@@ -104,18 +104,11 @@ checking provenance, or anything under `references/*` besides its `AGENTS.md`.
 
 - `cargo`/`rustfmt` live in `~/.cargo/bin`; export `PATH` before running them
   (inherited from `../vendor/solibri`'s AGENTS.md — same host, same issue).
-- `.cargo/config.toml` sets `-C target-cpu=native`. Fine on this dev box,
-  **wrong for anything published** — it SIGILLs on older CPUs. the `simd` backend's
-  runtime detection is the intended mechanism; remove or gate the flag before
-  release (tracked in `docs/ROADMAP.md`).
-- The architecture gate in `packages/ifc/ifc-geometry/tests/no_backend_dependency.rs`
-  strips `#` comments before scanning, so a `# NOTE: ...` line in a manifest does
-  not false-positive.
-- 🚨 **`default-features = false` on a member's dependency is SILENTLY IGNORED
-  unless the root `[workspace.dependencies]` entry sets it too.** Cargo only
-  emits a warning. This nearly made the whole kernel boundary cosmetic — the
-  root entry for `geom-kernel` sets it, and applications opt back in with
-  `features = [...]`. Do not "simplify" that back to a plain `{ path = ... }`.
+- `.cargo/config.toml` scopes `-C target-cpu=native` to local x86_64 builds.
+  Published crates do not include it; portable local binaries must override it.
+- `ifc-model/tests/package_architecture.rs` resolves dependency identities with
+  Cargo metadata. `ifc-geometry/tests/no_backend_dependency.rs` is only a fast
+  local smoke test and must not grow a second handwritten policy parser.
 - Fixture paths from a crate are three levels up
   (`packages/ifc/<crate>` → `../../../test/fixtures`).
 - `standards.buildingsmart.org` returns **403 without a browser User-Agent**.
@@ -123,4 +116,4 @@ checking provenance, or anything under `references/*` besides its `AGENTS.md`.
   `HTML/`, not `EXPRESS/`.
 - Geometry access inside `packages/ifc/` is an **allowlist**, not a single
   crate: `ifc-geometry`, `ifc-georef`, `ifc-alignment`. Adding a fourth requires
-  editing `MAY_USE_GEOMETRY` and justifying it; the test fails otherwise.
+  editing the authoritative `BRIDGES` list and justifying it; the test fails.

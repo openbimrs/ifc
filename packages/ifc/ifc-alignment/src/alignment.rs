@@ -1,4 +1,10 @@
 //! `IfcAlignment` and its horizontal/vertical/cant parts.
 //!
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `root.rs`: IfcAlignment hierarchy.
+
+mod root;

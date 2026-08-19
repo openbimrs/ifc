@@ -1,4 +1,14 @@
 //! Superelevation (`IfcAlignmentCant`) for rail.
 //!
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `layout.rs`: cant segment order.
+//! - `segment.rs`: cant transitions.
+
+mod layout;
+mod segment;
+
+mod transition;

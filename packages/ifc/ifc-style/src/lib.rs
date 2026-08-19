@@ -9,23 +9,23 @@
 //!
 //! | Module | Role |
 //! |---|---|
-//! | [`colour`] | `IfcColourRgb`, colour specification and normalisation |
-//! | [`surface_style`] | `IfcSurfaceStyle` shading, rendering, lighting, refraction |
-//! | [`curve_style`] | `IfcCurveStyle` fonts, widths and patterns |
-//! | [`texture`] | `IfcSurfaceTexture` and UV coordinate mapping |
-//! | [`assignment`] | `IfcStyledItem`: binding a style to a representation item |
-//! | [`layer`] | `IfcPresentationLayerAssignment` and visibility |
-//! | [`error`] | Why a style resolution failed |
+//! | `colour` | `IfcColourRgb`, colour specification and normalisation |
+//! | `surface_style` | `IfcSurfaceStyle` shading, rendering, lighting, refraction |
+//! | `curve_style` | `IfcCurveStyle` fonts, widths and patterns |
+//! | `texture` | `IfcSurfaceTexture` and UV coordinate mapping |
+//! | `assignment` | `IfcStyledItem`: binding a style to a representation item |
+//! | `layer` | `IfcPresentationLayerAssignment` and visibility |
+//! | `error` | Why a style resolution failed |
 //!
 //! # Status
 //!
 //! Scaffold -- modules are reserved with intent, not implemented. See
-//! `docs/ROADMAP.md` for the stage that fills them.
+//! `PLAN.md` for the stage that fills them.
 
-pub mod assignment;
-pub mod colour;
-pub mod curve_style;
-pub mod error;
-pub mod layer;
-pub mod surface_style;
-pub mod texture;
+mod assignment;
+mod colour;
+mod curve_style;
+mod error;
+mod layer;
+mod surface_style;
+mod texture;

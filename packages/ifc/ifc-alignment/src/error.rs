@@ -1,4 +1,4 @@
 //! Why an alignment operation failed.
 //!
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Not yet implemented -- see `PLAN.md`.

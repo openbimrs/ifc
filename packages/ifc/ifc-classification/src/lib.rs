@@ -8,19 +8,21 @@
 //!
 //! | Module | Role |
 //! |---|---|
-//! | [`classification`] | `IfcClassification` and `IfcClassificationReference` |
-//! | [`document`] | `IfcDocumentInformation` and document references |
-//! | [`library`] | `IfcLibraryInformation` external library links |
-//! | [`assignment`] | Binding a classification or document to objects |
-//! | [`error`] | Why a classification lookup failed |
+//! | `classification` | `IfcClassification` and `IfcClassificationReference` |
+//! | `document` | `IfcDocumentInformation` and document references |
+//! | `library` | `IfcLibraryInformation` external library links |
+//! | `assignment` | Binding a classification or document to objects |
+//! | `error` | Why a classification lookup failed |
 //!
 //! # Status
 //!
 //! Scaffold -- modules are reserved with intent, not implemented. See
-//! `docs/ROADMAP.md` for the stage that fills them.
+//! `PLAN.md` for the stage that fills them.
 
-pub mod assignment;
-pub mod classification;
-pub mod document;
-pub mod error;
-pub mod library;
+mod assignment;
+mod classification;
+mod document;
+mod error;
+mod library;
+
+mod query;

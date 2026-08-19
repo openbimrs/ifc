@@ -1,4 +1,14 @@
 //! Horizontal segments: line, arc, spiral transitions.
 //!
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `layout.rs`: segment order and continuity.
+//! - `segment.rs`: line/arc/transition parameters.
+
+mod layout;
+mod segment;
+
+mod transition;

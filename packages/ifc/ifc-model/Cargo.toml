@@ -15,3 +15,7 @@ description = "The IFC entity graph: storage and structural queries, free of dom
 # NO geometry dependency either: semantics are not shapes.
 ahash.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+cargo_metadata = "0.19"
+syn = { version = "2", features = ["full", "parsing"] }

@@ -1,4 +1,10 @@
 //! Lookup helpers: property by name, pset by element.
 //!
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `assignment.rs`: object/type set assignment.
+
+mod assignment;

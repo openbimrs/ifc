@@ -7,4 +7,14 @@
 //! Site coordinates routinely exceed `f32` precision -- another reason the
 //! kernel stores `f64` (see `docs/adr/0001`).
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `map.rs`: IfcMapConversion parameters.
+//! - `rigid.rs`: rigid coordinate operations where schema permits.
+
+mod map;
+mod rigid;
+
+mod validation;

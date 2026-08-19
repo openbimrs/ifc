@@ -8,21 +8,26 @@
 //!
 //! | Module | Role |
 //! |---|---|
-//! | [`resource`] | The resource hierarchy and common attributes |
-//! | [`labour`] | `IfcLaborResource` and crew composition |
-//! | [`equipment`] | `IfcConstructionEquipmentResource` |
-//! | [`material`] | `IfcConstructionMaterialResource` |
-//! | [`usage`] | Resource time, quantity and levelling |
-//! | [`error`] | Why a resource query failed |
+//! | `resource` | The resource hierarchy and common attributes |
+//! | `labour` | `IfcLaborResource` and crew composition |
+//! | `equipment` | `IfcConstructionEquipmentResource` |
+//! | `material` | `IfcConstructionMaterialResource` |
+//! | `usage` | Resource time, quantity and levelling |
+//! | `error` | Why a resource query failed |
 //!
 //! # Status
 //!
 //! Scaffold -- modules are reserved with intent, not implemented. See
-//! `docs/ROADMAP.md` for the stage that fills them.
+//! `PLAN.md` for the stage that fills them.
 
-pub mod equipment;
-pub mod error;
-pub mod labour;
-pub mod material;
-pub mod resource;
-pub mod usage;
+mod equipment;
+mod error;
+mod labour;
+mod material;
+mod resource;
+mod usage;
+
+mod actor;
+mod crew;
+mod inventory;
+mod query;

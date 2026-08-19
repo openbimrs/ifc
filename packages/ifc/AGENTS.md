@@ -1,156 +1,116 @@
-# AGENTS.md — packages/ifc/
+# IFC package instructions
 
-Pure IFC logic. Read `docs/adr/0001` (the split) and `docs/adr/0005` (why these
-crates exist) before changing the dependency structure.
+Applies to `packages/ifc/**`. Read the nearest deeper `AGENTS.md` before
+editing a crate or complex module; deeper files add local rules and do not
+repeat this file.
 
-The authority for every schema question is `references/ifc-spec/` — the official
-EXPRESS schemas. Re-derive facts with `grep` rather than trusting a doc.
+## Context protocol
 
-## Crates
+`AGENTS.md` is stable ambient context: purpose, boundaries, invariants, and
+gates. `PLAN.md` is implementation state. Read a plan only when assigned
+roadmap work, architecture review, or a blocked dependency. When finishing a
+plan item, check it off, add the proof command/result, and record newly found
+follow-up work there. Do not put progress logs or speculative TODOs in
+`AGENTS.md`.
 
-| Crate | Role | Geometry? |
-| --- | --- | --- |
-| `ifc-schema` | Schema as data: entity table, supertype chain, attributes | no |
-| `ifc-step` | STEP/IFC-SPF codec: lexer, parser, writer | no |
-| `ifc-xml` | ifcXML codec (ISO 10303-28); schema optional | no |
-| `ifc` | Facade: codecs + domains as cargo features | no |
-| `ifc-model` | Indexed semantic views: type buckets, spatial tree, rels | no |
-| `ifc-properties` | Property sets, quantities, units | no |
-| `ifc-material` | Layer sets, profile sets, constituents, usage | no |
-| `ifc-classification` | Classification, documents, libraries, external refs | no |
-| `ifc-style` | Presentation: styles, colours, textures, layers | no |
-| `ifc-structural` | Structural analysis model: members, actions, loads | no |
-| `ifc-resource` | Labour, equipment, material, crew resources | no |
-| `ifc-systems` | Distribution systems, ports, connectivity graph | no |
-| `ifc-cost` | Cost items, schedules, values | no |
-| `ifc-schedule` | Tasks, sequencing, work calendars | no |
-| `ifc-validate` | WHERE rules, cardinality, GUID + reference integrity | no |
-| `ifc-geometry` | Lowers representation items to meshes | **traits only** |
-| `ifc-georef` | Map conversion, CRS, local ↔ map transform | **traits only** |
-| `ifc-alignment` | IFC4x3 alignments, linear placement, spirals | **traits only** |
+## Package role
 
-Sizing evidence (IFC4 entity counts): presentation/style 48, structural 39,
-ports/systems 23, materials 22, resources 21, classification/document 12,
-georeferencing 8. IFC4x3 adds 14 alignment entities plus transition spirals.
+This package interprets and serializes IFC. IFC resource names are evidence,
+not crate boundaries: the schema mixes storage, geometry input, presentation,
+and domain semantics. Partition code by role in the pipeline (ADR 0008):
 
-## Layering — the two separations
+1. Geometry input is lowered by `ifc-geometry`, `ifc-alignment`, or
+   `ifc-georef` into format-neutral geometry values.
+2. Domain semantics are borrowed projections over `ifc-model` in crates such
+   as `ifc-material`, `ifc-properties`, and `ifc-style`.
+3. Geometry-derived outputs such as area and volume are computed outside the
+   semantic crate, then written through that crate by an application service.
 
-`ifc-model` is the centre. It knows **no domain semantics** and **no
-serialization**:
+One IFC entity may therefore have projections in two crates. `ifc-model` owns
+the record; neither projection owns or duplicates it.
 
+## Dependency tiers
+
+```text
+L0 record core       ifc-model
+L1 schema metadata   ifc-schema                 -> ifc-model only when needed
+L1 codecs            ifc-step, ifc-xml          -> ifc-model
+L2 domain views       ifc-{material,...,cost}    -> ifc-model
+L2 validation         ifc-validate               -> ifc-model + ifc-schema
+L2 geometry bridges   ifc-geometry/alignment/georef
+                                               -> ifc-model + neutral geom crates
+L3 facade             ifc                       -> selected L1/L2 crates
+L4 orchestration      apps / openbim / bindings (outside this package)
 ```
-ifc-step  --+                            +-- ifc-cost
-ifc-xml   --+-- Codec --> ifc-model <----+-- ifc-schedule    (views)
-ifc-json  --+             (entities)     +-- ifc-properties
-```
 
-- **Codecs depend on the model, never the reverse.** `Codec` is a trait *in*
-  `ifc-model`; `ifc-step` and `ifc-xml` implement it. A third encoding is
-  additive — the model did not change to accept the second one (`docs/adr/0007`).
-- **Domain crates are views.** They borrow `&Model` and interpret entities.
-  They own no storage, so removing one cannot lose data.
-- **The model stores structure only.** `Entity { type_name, attributes }`. No
-  `if type_name == "IFCWALL"` anywhere in `ifc-model` — enforced by
-  `ifc-model/tests/model_invariants.rs`.
-- **The schema is optional, never required to read a file.** `ifc-schema` parses
-  the official `.exp` files into tables; `ifc-model` does not depend on it. An
-  unrecognized schema token is stored, not rejected.
+Dependencies point down. Sibling domain crates do not depend on one another.
+Cross-domain workflows belong in L4. Codecs never import domain semantics;
+domain crates never import codecs. `ifc-model` remains schema-, codec-, and
+domain-agnostic.
 
-The payoff, verified in `ifc/tests/costing_roundtrip.rs`: **a file full of cost
-data parses and re-exports intact in a build with no cost crate compiled**, and
-so does an entity type from no schema that exists.
 
-## Features on the `ifc` facade
+## Geometry boundary
+
+- IFC adapters resolve source units, source references, representation choice,
+  and IFC placement semantics.
+- They preserve exact intent in neutral geometry values/DAG nodes. They do not
+  tessellate, heal, execute booleans, or select CPU/GPU implementations.
+- Source IDs and diagnostics stay in an IFC-side provenance table; they do not
+  leak into generic geometry values.
+- Only `ifc-geometry`, `ifc-alignment`, and `ifc-georef` may depend on neutral
+  `geom-*` representation/contract crates. No IFC crate may depend on a
+  concrete geometry backend.
+- `ifc-style` may reference the ID of a representation item but never changes
+  its shape. `ifc-properties` stores quantities but never computes geometry.
+
+## Model and view rules
+
+- Typed projections borrow `&Model`; do not copy the entity graph into owned
+  domain objects.
+- Absolute STEP slot indices include inherited attributes. Cite the EXPRESS
+  declaration or generated manifest beside non-obvious slot constants.
+- Unknown entities and unknown attributes must survive codec round trips.
+- Traversal is iterative or explicitly budgeted. Detect reference cycles where
+  the schema permits malformed cyclic files.
+- Mutation must be transactional enough that failed validation cannot leave a
+  half-written model. Do not add ad hoc setters to borrowed read views.
+- Unsupported, invalid, missing-reference, and budget-exceeded are distinct
+  structured errors. Never silently substitute geometry or semantics.
+
+## Module and API rules
+
+- `lib.rs` delegates and re-exports; implementation belongs in modules.
+- Split data/view definitions, resolution, mutation, validation, and traversal
+  before they grow together. Prefer roughly 500 lines; 800 is the hard gate.
+- Scaffold modules may document ownership without inventing a public API.
+  Keep child modules crate-private until a real public type is implemented and
+  deliberately re-exported by its parent.
+- Every `.rs` file must be in the compiled module tree. Future-only file names
+  belong in `PLAN.md`, not as orphan source files.
+- Public values implement `Debug` and `Clone`; derive stronger traits only when
+  semantically honest. Mark extensible public errors/enums non-exhaustive.
+
+## Authoritative evidence
+
+Use the checked-out official EXPRESS and HTML docs under
+`references/ifc-spec/`; never make schema claims from memory. Generated
+manifests may be committed, but references are read-only and never a build
+dependency. IFC4 ADD2 TC1 is the current geometry baseline; version-specific
+behavior must be explicit rather than folded into guessed common behavior.
+
+## Gates
+
+Run targeted tests while iterating. Before an IFC-wide merge:
 
 ```bash
-cargo build -p ifc --no-default-features     # model only
-cargo build -p ifc --features step           # default: read .ifc
-cargo build -p ifc --features step,ifcxml    # both codecs
-cargo build -p ifc --all-features            # everything
+cargo test -p ifc-model --test package_architecture
+cargo test -p ifc-model --test progressive_context
+cargo test -p ifc-model --test module_reachability
+cargo test -p ifc-model --test no_monolithic_files
+cargo test -p ifc-geometry --test declaration_manifest
+cargo test -p ifc-geometry --test no_backend_dependency
+scripts/gate.sh
 ```
 
-`default = ["step"]` and nothing more. A domain in `default` makes every
-downstream build fat, so `ifc/tests/thin_build.rs` checks the **default**
-feature set specifically, not only an explicit one.
-
-Read `docs/adr/0006` (the separations) and `0007` (codecs) before changing any
-of this.
-
-## Module layout — modular by default, enforced
-
-Every crate is split into focused modules; `lib.rs` declares and documents them
-and holds no behaviour. The intent is that a file is never the place a whole
-subsystem lives:
-
-- `ifc-step` — one module per pipeline stage (`lexer`, `partition`, `scan`,
-  `resolve`, `escape`, `value`, `header`, `reader`).
-- `ifc-schema` — one per schema concern (`entity`, `attribute`, `types`,
-  `inheritance`, `registry`, `express`, `version`). `express` parses the real
-  `.exp` files; `registry` answers `is_a` and positional attribute names.
-- `ifc-xml` — `reader`, `writer`, `error`. The writer's `looks_numeric` must
-  mirror the reader's `infer_scalar`; they are a matched pair.
-- `ifc-geometry` — **one per representation family** (`swept`, `brep`, `csg`,
-  `tessellated`, `mapped`, `profile`, `placement`, `opening`, `units`,
-  `context`). This is where a monolith would otherwise form: IFC4 has ~119
-  curve/surface entities and 11 swept-solid forms.
-- Every crate has an `error` module; failures are named per domain.
-
-Two tests in `ifc-model/tests/no_monolithic_files.rs` enforce this and are
-mutation-verified (a 900-line file and a fat `lib.rs` both make them fail):
-
-| Test | Rule |
-| --- | --- |
-| `no_source_file_is_a_monolith` | no `.rs` file over 800 lines, workspace-wide |
-| `lib_rs_delegates_rather_than_implements` | `lib.rs` with modules carries <40 lines of code |
-
-If a file approaches the limit, split it by responsibility rather than raising
-`MAX_LINES`. `EXEMPT` exists but is empty on purpose — an entry needs a written
-justification.
-
-## The invariant, and how it is enforced
-
-`packages/ifc/` depends on the geometry **contract**, never on an
-implementation. Geometry-touching crates are an explicit allowlist
-(`MAY_USE_GEOMETRY` in `ifc-geometry/tests/no_backend_dependency.rs`):
-`ifc-geometry`, `ifc-georef`, `ifc-alignment`. Everything else must compile with
-no geometry stack at all — that is what lets a property/quantity/cost consumer
-stay lightweight.
-
-Three tests enforce it, and all three are mutation-verified:
-
-- a non-allowlisted crate gaining `geom-*` → fail
-- an allowlisted crate enabling a backend feature → fail
-- the allowlist naming a crate that does not exist → fail
-
-If you need geometry in a crate that is not on the list, the design is probably
-wrong. If it genuinely belongs, add it to the allowlist **with a reason**.
-
-## Why alignment is separate from geometry
-
-IFC4x3's alignment entities are civil-infrastructure geometry: clothoids, cant,
-station-based placement. A consumer working on buildings should not compile
-numerical clothoid integration, so it is its own crate rather than part of
-`ifc-geometry`.
-
-## Pitfalls
-
-- **Partition boundaries must resync to a record start (`#<digits>=`).**
-  Counting paren depth from an arbitrary offset collapses the file to one
-  partition, because the depth never returns to zero mid-record. This is a
-  validated finding from the sibling `../vendor/solibri` parser.
-- **Entity names differ across schema versions.** IFC4x3 renamed
-  `IfcBuildingElement` → `IfcBuiltElement` and dropped `IfcProxy`, the
-  `*StandardCase` family, `IfcDoorStyle`/`IfcWindowStyle`. Never hardcode a
-  single version's name — resolve through `ifc-schema`.
-- **A file can parse cleanly and still be invalid.** Parsing and conformance are
-  different questions; `ifc-validate` owns the second so the parser hot path
-  stays fast.
-- **Fixture paths** are `env!("CARGO_MANIFEST_DIR")` joined with
-  `../../../test/fixtures` (three levels up from `packages/ifc/<crate>`).
-
-## Status
-
-Scaffold. `ifc-step` recognises STEP headers and schema tokens against the
-committed fixtures; `ifc-geometry` carries the `ShapeLowerer` seam generic over
-`K: MeshBoolean`. Everything else is documented intent — read the crate's own
-module doc before assuming behaviour exists.
+Architecture and context gates must be mutation-verified before being trusted.
+On shared master, stage only owned paths and re-check HEAD before committing.

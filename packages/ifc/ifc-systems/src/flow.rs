@@ -1,4 +1,12 @@
 //! Flow direction and segment/fitting/terminal roles.
 //!
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `direction.rs`: flow direction/select semantics.
+//! - `role.rs`: source/sink role.
+
+mod direction;
+mod role;

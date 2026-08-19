@@ -1,6 +1,6 @@
 # 0001 — Split the workspace into `geom/` and `ifc/`, with a trait contract between them
 
-- **Status:** Accepted
+- **Status:** Amended by [0009](0009-layered-geometry-dag.md)
 - **Date:** 2026-08-18
 - **Deciders:** GeneralPawz, Hermes
 - **Supersedes:** —
@@ -9,6 +9,11 @@
 > reasoning below stands. Paths have moved: `geom/` → `packages/geometry/`,
 > `ifc/` → `packages/ifc/`, and `ifc-parser`/`ifc-shape` are now
 > `ifc-step`/`ifc-geometry`.
+>
+> **Current seam:** 0009 supersedes the direct `ifc-geometry` to
+> `geom-kernel` trait dependency below. Format adapters now emit a neutral
+> `geom-model::GeometryGraph`; applications select operation providers. The
+> package split and backend-isolation rationale remain in force.
 
 
 ## Context

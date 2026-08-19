@@ -18,3 +18,16 @@ pub struct LoweredGeometry {
     /// Root node for this source representation item.
     pub root: NodeId,
 }
+
+mod boolean;
+mod brep;
+mod context;
+mod curve;
+mod dispatch;
+mod mapped;
+mod placement;
+mod provenance;
+mod session;
+mod solid;
+mod surface;
+mod tessellated;

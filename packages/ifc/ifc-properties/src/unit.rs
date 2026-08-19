@@ -4,4 +4,18 @@
 //! units (imperial, US survey feet) must be resolved before a value means
 //! anything.
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `assignment.rs`: project unit context.
+//! - `si.rs`: SI prefixes/dimensions.
+//! - `conversion.rs`: conversion-based units.
+//! - `derived.rs`: derived dimensions/elements.
+
+mod assignment;
+mod conversion;
+mod derived;
+mod si;
+
+mod monetary;

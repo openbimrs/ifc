@@ -9,23 +9,26 @@
 //!
 //! | Module | Role |
 //! |---|---|
-//! | [`model`] | `IfcStructuralAnalysisModel` and its contents |
-//! | [`member`] | Curve and surface members, and their varying forms |
-//! | [`connection`] | Point, curve and surface connections; support conditions |
-//! | [`action`] | Applied actions and load cases |
-//! | [`reaction`] | Computed reactions |
-//! | [`load`] | Load definitions, groups and combinations |
-//! | [`error`] | Why a structural query failed |
+//! | `model` | `IfcStructuralAnalysisModel` and its contents |
+//! | `member` | Curve and surface members, and their varying forms |
+//! | `connection` | Point, curve and surface connections; support conditions |
+//! | `action` | Applied actions and load cases |
+//! | `reaction` | Computed reactions |
+//! | `load` | Load definitions, groups and combinations |
+//! | `error` | Why a structural query failed |
 //!
 //! # Status
 //!
 //! Scaffold -- modules are reserved with intent, not implemented. See
-//! `docs/ROADMAP.md` for the stage that fills them.
+//! `PLAN.md` for the stage that fills them.
 
-pub mod action;
-pub mod connection;
-pub mod error;
-pub mod load;
-pub mod member;
-pub mod model;
-pub mod reaction;
+mod action;
+mod connection;
+mod error;
+mod load;
+mod member;
+mod model;
+mod reaction;
+
+mod condition;
+mod result;

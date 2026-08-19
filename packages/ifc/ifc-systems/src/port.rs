@@ -1,4 +1,12 @@
 //! `IfcDistributionPort` and port assignment to elements.
 //!
 //!
-//! Not yet implemented -- see `docs/ROADMAP.md`.
+//! Implementation is tracked in the adjacent `PLAN.md`.
+
+//! ## Internal split
+//!
+//! - `definition.rs`: IfcPort/DistributionPort.
+//! - `assignment.rs`: port nesting/attachment.
+
+mod assignment;
+mod definition;
