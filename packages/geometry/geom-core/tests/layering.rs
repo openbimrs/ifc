@@ -100,7 +100,7 @@ fn operation_traits_are_the_only_capability_claim() {
 #[test]
 fn every_geometry_crate_has_an_explicit_unsafe_policy() {
     for crate_name in geometry_crates() {
-        let root = std::fs::read_to_string(geometry_dir().join(crate_name).join("src/lib.rs"))
+        let root = std::fs::read_to_string(geometry_dir().join(&crate_name).join("src/lib.rs"))
             .expect("read crate root");
         if crate_name == "geom-backend-cpu" {
             assert!(root.contains("#![deny(unsafe_op_in_unsafe_fn)]"));
