@@ -7,8 +7,11 @@ Allowed internal dependencies: all L1 representation crates. Follow parent `../A
 
 ## Module ownership
 
-id.rs; graph.rs; node.rs; curve_relation.rs; surface_relation.rs; solid_operation.rs. Split a module before unrelated data, validation, and algorithms grow
-together. Add no empty placeholder files.
+id.rs; graph.rs; node.rs; value.rs; curve_relation.rs; surface_relation.rs;
+solid_operation.rs. `value.rs` owns sealed built-in-to-node conversions only;
+execution/provider traits must remain open in `geom-kernel`. Split a module before
+unrelated data, validation, and algorithms grow together. Add no empty
+placeholder files.
 
 ## Invariants
 

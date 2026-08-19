@@ -40,6 +40,48 @@ fn ifc_crates_never_depend_on_geometry_execution_crates() {
     );
 }
 
+#[test]
+fn active_lowering_does_not_use_the_deprecated_request_vocabulary() {
+    fn collect_rs(dir: &std::path::Path, files: &mut Vec<PathBuf>) {
+        for entry in std::fs::read_dir(dir).expect("read lower directory") {
+            let path = entry.expect("lower entry").path();
+            if path.is_dir() {
+                collect_rs(&path, files);
+            } else if path.extension().and_then(|extension| extension.to_str()) == Some("rs") {
+                files.push(path);
+            }
+        }
+    }
+
+    let lower = ifc_dir().join("ifc-geometry/src/lower");
+    let mut files = Vec::new();
+    collect_rs(&lower, &mut files);
+    assert!(!files.is_empty(), "expected active lowering modules");
+
+    let forbidden = [
+        "crate::kernel",
+        "crate::BooleanOp",
+        "crate::CsgShape",
+        "crate::Primitive",
+        "crate::Profile",
+    ];
+    for file in files {
+        let source = std::fs::read_to_string(&file).expect("lower module readable");
+        let code = source
+            .lines()
+            .map(|line| line.split("//").next().unwrap_or(""))
+            .collect::<Vec<_>>()
+            .join("\n");
+        for &name in &forbidden {
+            assert!(
+                !code.contains(name),
+                "{} imports deprecated pre-DAG value `{name}`; lower directly to geom-model",
+                file.display()
+            );
+        }
+    }
+}
+
 /// Geometry access is an explicit allowlist, not an accident.
 const MAY_USE_GEOMETRY: &[&str] = &["ifc-geometry", "ifc-alignment", "ifc-georef"];
 

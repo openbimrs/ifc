@@ -7,6 +7,7 @@ use std::fmt::Display;
 use std::hash::Hash;
 
 fn value<T: Debug + Clone + PartialEq>() {}
+fn default_value<T: Debug + Default>() {}
 #[cfg(feature = "model")]
 fn id<T: Debug + Display + Copy + Eq + Ord + Hash>() {}
 fn error<T: std::error::Error + Send + Sync + 'static>() {}
@@ -16,6 +17,8 @@ fn default_surface_has_standard_traits() {
     value::<geom::Tolerance>();
     value::<geom::Aabb>();
     value::<geom::mesh::TriMesh>();
+    default_value::<geom::Aabb>();
+    default_value::<geom::mesh::TriMesh>();
     error::<geom_core::ToleranceError>();
     error::<geom::mesh::MeshValidationError>();
 }
@@ -37,6 +40,8 @@ fn model_handles_and_values_have_standard_traits() {
     id::<geom::model::NodeId>();
     value::<geom::model::GeometryGraph>();
     value::<geom::model::GeometryNode>();
+    default_value::<geom::model::GeometryGraph>();
+    default_value::<geom::model::GeometryGraphBuilder>();
 }
 
 #[cfg(feature = "profiles")]

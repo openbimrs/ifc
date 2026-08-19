@@ -325,6 +325,36 @@ fn geometry_sources_are_format_agnostic() {
     }
 }
 
+#[test]
+fn geometry_sources_have_no_panicking_placeholders() {
+    fn collect_rs(dir: &Path, out: &mut Vec<PathBuf>) {
+        for entry in std::fs::read_dir(dir).expect("read geometry source directory") {
+            let path = entry.expect("read geometry source entry").path();
+            if path.is_dir() {
+                collect_rs(&path, out);
+            } else if path.extension().and_then(|ext| ext.to_str()) == Some("rs") {
+                out.push(path);
+            }
+        }
+    }
+
+    let forbidden = [concat!("to", "do!("), concat!("unimplemented", "!(")];
+    for crate_name in geometry_crates() {
+        let mut files = Vec::new();
+        collect_rs(&geometry_dir().join(crate_name).join("src"), &mut files);
+        for file in files {
+            let source = std::fs::read_to_string(&file).expect("read geometry source");
+            for &placeholder in &forbidden {
+                assert!(
+                    !source.contains(placeholder),
+                    "{} contains panicking scaffold placeholder {placeholder}; expose a contract or return structured Unsupported instead",
+                    file.display()
+                );
+            }
+        }
+    }
+}
+
 /// Scaffold files must participate in compilation; orphan `.rs` files rot.
 #[test]
 fn every_geometry_source_module_is_declared() {

@@ -1,18 +1,14 @@
-//! How finely curves become line segments.
+//! Legacy chord-tolerance policy retained for source compatibility.
 //!
-//! # Why this decision lives on the IFC side
+//! Active lowering preserves exact profiles and construction intent in
+//! `geom_model::GeometryGraph`; it does not polygonize curves here. Existing
+//! callers still pass this value through the pre-DAG lowering signatures, but
+//! supported exact profile paths deliberately ignore it. New tessellation
+//! providers consume explicit execution-time tolerance instead.
 //!
-//! `crate::kernel::Contour` holds points, not arcs. Something must choose how
-//! many segments approximate a curve, and that something is this crate: the
-//! kernel receives polygons by design so it needs no curve evaluator for the
-//! common case.
-//!
-//! # The policy
-//!
-//! Sagitta (chord height): the maximum distance between the true arc and the
-//! chord replacing it. It is a length, so it is expressed in metres and
-//! applied after unit conversion. A fixed segment count would be wrong: it
-//! over-refines a door handle and under-refines a silo.
+//! Sagitta (chord height) remains the correct policy for any compatibility path
+//! that must approximate a circular arc: it scales with radius and sweep rather
+//! than imposing a global segment count.
 
 /// Chord tolerance controlling curve approximation.
 #[derive(Debug, Clone, Copy, PartialEq)]

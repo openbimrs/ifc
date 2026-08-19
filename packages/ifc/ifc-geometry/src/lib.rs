@@ -36,12 +36,15 @@
 //! approximate geometry.
 //!
 //! **Neutral DAG output.** Implemented lowerers resolve IFC units, placements,
-//! profiles, and representation relationships into `geom-model` nodes. This
-//! crate owns no duplicate geometry types and never selects a CPU/GPU provider.
+//! profiles, and representation relationships into `geom-model` nodes. Active
+//! lowering owns no duplicate geometry types and never selects a CPU/GPU
+//! provider. The deprecated [`kernel`] namespace is retained only as a source-
+//! compatibility shell for the pre-DAG public API.
 
 pub mod constraint;
 pub mod curve;
 pub mod error;
+pub mod kernel;
 pub mod lower;
 pub mod resource;
 pub mod rules;
@@ -54,8 +57,11 @@ pub mod units;
 
 pub use error::{GeometryError, GeometryResult};
 pub use geom_model::{BooleanOperator, GeometryGraph, GeometryNode, NodeId, SolidOperation};
-pub use geom_primitive::Primitive;
-pub use geom_profile::Profile;
+pub use geom_primitive::Primitive as AnalyticPrimitive;
+pub use geom_profile::Profile as ExactProfile;
+#[allow(deprecated)]
+#[deprecated(note = "use geom-model/geom-profile/geom-primitive values")]
+pub use kernel::{BooleanOp, CsgShape, Primitive, Profile};
 pub use slots::Slots;
 pub use transform::Transform;
 pub use units::UnitScale;

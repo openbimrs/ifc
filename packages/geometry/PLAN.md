@@ -59,6 +59,24 @@ Build a pure-Rust, IFC-agnostic geometry package family that:
 - Robust 2D boolean and pure-Rust mesh CSG dependencies remain implementation-
   wave decisions and require measured dependency/quality evidence.
 
+### Normative per-declaration checklist
+
+The checked per-entity/type/function map is the committed
+[`ifc4-add2-tc1-geometry-support.tsv`](../ifc/ifc-geometry/references/ifc4-add2-tc1-geometry-support.tsv).
+Each of its 163 rows names the IFC bridge owner, neutral geometry owner, and
+current support status. It is the PLAN checklist rather than a duplicated prose
+table, so the executable coverage test and human plan cannot drift apart.
+
+- [x] `IfcGeometryResource`: 98 declarations mapped.
+- [x] `IfcGeometricModelResource`: 48 declarations mapped.
+- [x] `IfcGeometricConstraintResource`: 17 declarations mapped.
+- [x] Every bridge owner is unique and every neutral owner is non-empty.
+- [x] Every non-`geom_core` function owner resolves to a Rust module on disk.
+
+`Scaffolded` means ownership and a compiling target exist; it does not mean the
+geometry is evaluated. Capability claims advance only when executable provider
+traits and behavior tests exist.
+
 ## 4. Prior-art decisions
 
 Detailed source pins and observations live in
@@ -115,8 +133,10 @@ L5 format bridges     ifc-geometry and future adapters (outside this directory)
 ```
 
 The graph direction is executable in `geom-core/tests/layering.rs`.
-`geom-kernel` contains no implementation features. `ifc-geometry` no longer owns
-or imports an IFC-local duplicate of profiles, primitives, or CSG requests.
+`geom-kernel` contains no implementation features. Active `ifc-geometry`
+lowering emits the neutral graph rather than IFC-local profiles, primitives, or
+CSG requests; its deprecated `kernel` namespace only preserves pre-DAG source
+compatibility and is not accepted by execution providers.
 
 ## 6. Facade capabilities
 
@@ -136,15 +156,16 @@ Additive facade features:
 `parallel` and `simd` are opt-in. `gpu` exposes the executor adapter but claims no
 working API-specific compute kernels. Leaf crates remain directly consumable.
 
-Measured 2026-08-19 with `cargo tree -e normal` (package count, not binary size):
+Measured 2026-08-19 with `cargo tree -e normal` (unique package count,
+including the `geom` facade; not binary size):
 
 | Build | Packages |
 | --- | ---: |
 | core-only (`--no-default-features`) | 3 |
-| default (`mesh + cpu`) | 6 |
-| `parametric` | 17 |
-| `discrete` | 32 |
-| `full` | 41 |
+| default (`mesh + cpu`) | 5 |
+| `parametric` | 10 |
+| `discrete` | 22 |
+| `full` | 30 |
 
 These are regression baselines, not permanent targets; dependencies must justify
 any increase.
@@ -154,8 +175,8 @@ any increase.
 Completed scaffold:
 
 - [x] Authoritative 163-declaration manifest and executable owner coverage.
-- [x] One canonical neutral vocabulary; IFC-local profile/primitive/CSG types
-      removed.
+- [x] One canonical active neutral vocabulary; pre-DAG IFC-local request names
+      retained only as deprecated source-compatibility values.
 - [x] Growth-shaped modules plus progressive `AGENTS.md`/`PLAN.md` boundaries.
 - [x] Narrow operation traits, executable mesh-boolean registry, CPU context,
       and GPU graph-compiler adapter.

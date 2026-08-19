@@ -26,7 +26,8 @@ section on release.
 - **Layered geometry package scaffold** with one immutable neutral DAG,
   typed-handle B-rep topology, exact curve/surface/profile values, narrow
   operation-provider traits, separate CPU execution/GPU adapter crates, and a
-  feature-gated `geom` facade. Core-only resolves 3 packages; default resolves 6.
+  feature-gated `geom` facade. Core-only resolves 3 unique packages; default
+  resolves 5, including the facade itself.
 - **Authoritative IFC geometry support ledger** covering all 163 IFC4 ADD2 TC1
   declarations: 112 entities (23 abstract, 89 concrete), 13 selects, seven
   enums, three defined types, and 28 functions. Coverage and ownership gates are
@@ -36,8 +37,9 @@ section on release.
   no IFC schema.
 
 ### Changed
-- `ifc-geometry` no longer owns duplicate profile, primitive, CSG, or backend
-  vocabulary; implemented profiles and swept solids lower into `geom-model`.
+- Active `ifc-geometry` lowering uses the canonical profile, primitive, CSG, and
+  backend-neutral `geom-model` vocabulary. The pre-DAG request values remain
+  deprecated source-compatibility shims and are rejected from active lowering.
 - Local `target-cpu=native` flags are scoped to x86_64 so AArch64 cross-checks do
   not inherit invalid x86 features.
 

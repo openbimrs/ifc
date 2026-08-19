@@ -13,6 +13,7 @@ pub mod id;
 pub mod node;
 pub mod solid_operation;
 pub mod surface_relation;
+pub mod value;
 
 pub use curve_relation::{
     CurveRelation, CurveSegment, MasterRepresentation, Transition, TrimSelector, TrimmingPreference,
@@ -23,3 +24,4 @@ pub use id::NodeId;
 pub use node::{GeometryNode, Instance, PointOnCurve, PointOnSurface};
 pub use solid_operation::{Section, SolidOperation};
 pub use surface_relation::SurfaceRelation;
+pub use value::BuiltInNode;

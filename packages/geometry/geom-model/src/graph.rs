@@ -2,7 +2,7 @@
 
 use core::fmt;
 
-use crate::{GeometryNode, NodeId};
+use crate::{BuiltInNode, GeometryNode, NodeId};
 
 /// Invalid graph construction.
 #[non_exhaustive]
@@ -95,6 +95,17 @@ impl GeometryGraphBuilder {
         Ok(id)
     }
 
+    /// Insert one canonical representation without spelling its enum variant.
+    ///
+    /// The accepted set is deliberately sealed; adapters must translate custom
+    /// values into a built-in neutral representation before graph construction.
+    pub fn push_value<T>(&mut self, value: T) -> Result<NodeId, GraphError>
+    where
+        T: BuiltInNode,
+    {
+        self.push(value.into())
+    }
+
     /// Freeze the graph after validating roots.
     pub fn finish(self, roots: Vec<NodeId>) -> Result<GeometryGraph, GraphError> {
         if let Some(&root) = roots.iter().find(|root| root.index() >= self.nodes.len()) {
@@ -130,5 +141,20 @@ mod tests {
         let graph = builder.finish(vec![instance]).unwrap();
         assert_eq!(graph.len(), 2);
         assert_eq!(graph.roots(), &[instance]);
+    }
+
+    #[test]
+    fn sealed_built_in_values_have_an_ergonomic_builder_path() {
+        let mut builder = GeometryGraphBuilder::new();
+        let sphere = builder
+            .push_value(geom_primitive::Primitive::Sphere { radius: 1.0 })
+            .unwrap();
+        let graph = builder.finish(vec![sphere]).unwrap();
+        assert!(matches!(
+            graph.get(sphere),
+            Some(GeometryNode::Primitive(geom_primitive::Primitive::Sphere {
+                radius: 1.0
+            }))
+        ));
     }
 }

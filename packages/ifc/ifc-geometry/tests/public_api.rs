@@ -170,3 +170,35 @@ fn the_neutral_geometry_dag_is_part_of_the_public_api() {
         Some(GeometryNode::SolidOperation(SolidOperation::Boolean { .. }))
     ));
 }
+
+/// Public names from the pre-DAG adapter remain available as deprecated source
+/// compatibility shims. This compile-time test prevents an additive scaffold
+/// change from silently becoming an API break.
+#[test]
+#[allow(deprecated)]
+fn pre_dag_public_names_remain_source_compatible() {
+    use ifc_geometry::kernel::Contour;
+    use ifc_geometry::{BooleanOp, CsgShape, Primitive, Profile};
+
+    let profile = Profile {
+        outer: Contour {
+            points: vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
+        },
+        inner: Vec::new(),
+    };
+    let shape = CsgShape::Sphere { radius: 1.0 };
+    let primitive = Primitive::Csg {
+        shape,
+        placement: ifc_geometry::Transform::identity(),
+    };
+
+    let _: BooleanOp = BooleanOp::Difference;
+    let legacy_operator = ifc_geometry::solid::BooleanOperator::parse("DIFFERENCE")
+        .expect("deprecated alias keeps inherent methods");
+    assert_eq!(
+        legacy_operator,
+        ifc_geometry::solid::IfcBooleanOperator::Difference
+    );
+    assert_eq!(profile.outer.points.len(), 3);
+    assert_eq!(primitive.kind(), "csg primitive");
+}
