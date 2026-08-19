@@ -13,6 +13,11 @@ use syn::parse::Parser;
 use syn::punctuated::Punctuated;
 use syn::{Attribute, Expr, Item, Lit, Meta, Token};
 
+#[path = "support/module_reachability_cases.rs"]
+mod module_reachability_cases;
+
+type ModuleContext = (PathBuf, PathBuf);
+
 fn metadata() -> Metadata {
     MetadataCommand::new()
         .no_deps()
@@ -50,7 +55,7 @@ fn rust_files(dir: &Path, out: &mut BTreeSet<PathBuf>) {
                 rust_files(&path, out);
             }
         } else if path.extension().is_some_and(|extension| extension == "rs") {
-            out.insert(path);
+            out.insert(path.canonicalize().unwrap_or(path));
         }
     }
 }
@@ -88,23 +93,63 @@ fn cfg_value(meta: &Meta) -> Option<bool> {
     }
 }
 
+fn collect_effective_meta(meta: &Meta, effective: &mut Vec<Meta>) {
+    let Meta::List(list) = meta else {
+        effective.push(meta.clone());
+        return;
+    };
+    if !list.path.is_ident("cfg_attr") {
+        effective.push(meta.clone());
+        return;
+    }
+
+    let Ok(arguments) = Punctuated::<Meta, Token![,]>::parse_terminated.parse2(list.tokens.clone())
+    else {
+        return;
+    };
+    let mut arguments = arguments.into_iter();
+    let Some(predicate) = arguments.next() else {
+        return;
+    };
+    if cfg_value(&predicate) == Some(true) {
+        for nested in arguments {
+            collect_effective_meta(&nested, effective);
+        }
+    }
+}
+
+fn effective_metas(attributes: &[Attribute]) -> Vec<Meta> {
+    let mut effective = Vec::new();
+    for attribute in attributes {
+        collect_effective_meta(&attribute.meta, &mut effective);
+    }
+    effective
+}
+
+fn cfg_attribute_value(meta: &Meta) -> Option<bool> {
+    let Meta::List(list) = meta else {
+        return None;
+    };
+    if !list.path.is_ident("cfg") {
+        return None;
+    }
+    syn::parse2::<Meta>(list.tokens.clone())
+        .ok()
+        .and_then(|predicate| cfg_value(&predicate))
+}
+
 fn is_statically_disabled(attributes: &[Attribute]) -> bool {
-    attributes.iter().any(|attribute| {
-        attribute.path().is_ident("cfg")
-            && attribute
-                .parse_args::<Meta>()
-                .ok()
-                .and_then(|meta| cfg_value(&meta))
-                == Some(false)
-    })
+    effective_metas(attributes)
+        .iter()
+        .any(|meta| cfg_attribute_value(meta) == Some(false))
 }
 
 fn path_override(attributes: &[Attribute]) -> Option<PathBuf> {
-    attributes.iter().find_map(|attribute| {
-        if !attribute.path().is_ident("path") {
+    effective_metas(attributes).iter().find_map(|meta| {
+        if !meta.path().is_ident("path") {
             return None;
         }
-        let Meta::NameValue(value) = &attribute.meta else {
+        let Meta::NameValue(value) = meta else {
             return None;
         };
         let Expr::Lit(expression) = &value.value else {
@@ -117,29 +162,50 @@ fn path_override(attributes: &[Attribute]) -> Option<PathBuf> {
     })
 }
 
+struct ResolvedModule {
+    source: PathBuf,
+    base: PathBuf,
+}
+
 fn external_module_path(
     module: &syn::ItemMod,
     source: &Path,
     base: &Path,
-) -> Result<PathBuf, String> {
+    path_base: &Path,
+) -> Result<ResolvedModule, String> {
     let name = module.ident.unraw().to_string();
     if let Some(path) = path_override(&module.attrs) {
-        let child = base.join(path);
-        return child.is_file().then_some(child.clone()).ok_or_else(|| {
-            format!(
+        let child = path_base.join(path);
+        if !child.is_file() {
+            return Err(format!(
                 "{} declares {name}, but path override {} does not exist",
                 source.display(),
                 child.display()
-            )
+            ));
+        }
+        let child_base = child
+            .parent()
+            .expect("path-overridden Rust source must have a parent")
+            .to_path_buf();
+        return Ok(ResolvedModule {
+            source: child,
+            base: child_base,
         });
     }
 
+    let child_base = base.join(&name);
     let flat = base.join(format!("{name}.rs"));
-    let nested = base.join(&name).join("mod.rs");
+    let nested = child_base.join("mod.rs");
     if flat.is_file() {
-        Ok(flat)
+        Ok(ResolvedModule {
+            source: flat,
+            base: child_base,
+        })
     } else if nested.is_file() {
-        Ok(nested)
+        Ok(ResolvedModule {
+            source: nested,
+            base: child_base,
+        })
     } else {
         Err(format!(
             "{} declares {name}, but neither {} nor {} exists",
@@ -150,26 +216,13 @@ fn external_module_path(
     }
 }
 
-fn module_base(source: &Path) -> PathBuf {
-    let stem = source
-        .file_stem()
-        .expect("Rust source stem")
-        .to_string_lossy();
-    if stem == "lib" || stem == "main" || stem == "mod" {
-        source.parent().expect("Rust source parent").to_path_buf()
-    } else {
-        source
-            .parent()
-            .expect("Rust source parent")
-            .join(stem.as_ref())
-    }
-}
-
 fn visit_items(
     items: &[Item],
     source: &Path,
     base: &Path,
+    path_base: &Path,
     reached: &mut BTreeSet<PathBuf>,
+    visited: &mut BTreeSet<ModuleContext>,
     missing: &mut Vec<String>,
 ) {
     for module in items.iter().filter_map(|item| match item {
@@ -178,18 +231,27 @@ fn visit_items(
     }) {
         let name = module.ident.unraw().to_string();
         if let Some((_, inline_items)) = &module.content {
-            visit_items(inline_items, source, &base.join(name), reached, missing);
+            let child_base = base.join(name);
+            visit_items(
+                inline_items,
+                source,
+                &child_base,
+                &child_base,
+                reached,
+                visited,
+                missing,
+            );
             continue;
         }
 
-        let child = match external_module_path(module, source, base) {
+        let child = match external_module_path(module, source, base, path_base) {
             Ok(child) => child,
             Err(error) => {
                 missing.push(error);
                 continue;
             }
         };
-        visit_file(&child, reached, missing);
+        visit_file_at_base(&child.source, child.base, reached, visited, missing);
     }
 }
 
@@ -197,21 +259,35 @@ fn visit_file_at_base(
     source: &Path,
     base: PathBuf,
     reached: &mut BTreeSet<PathBuf>,
+    visited: &mut BTreeSet<ModuleContext>,
     missing: &mut Vec<String>,
 ) {
-    let source = source.to_path_buf();
-    if !reached.insert(source.clone()) {
+    let identity = source
+        .canonicalize()
+        .unwrap_or_else(|_| source.to_path_buf());
+    if !visited.insert((identity.clone(), base.clone())) {
         return;
     }
-    let text = std::fs::read_to_string(&source)
+    reached.insert(identity);
+    let text = std::fs::read_to_string(source)
         .unwrap_or_else(|error| panic!("cannot read {}: {error}", source.display()));
     let syntax = syn::parse_file(&text)
         .unwrap_or_else(|error| panic!("cannot parse {}: {error}", source.display()));
-    visit_items(&syntax.items, &source, &base, reached, missing);
-}
-
-fn visit_file(source: &Path, reached: &mut BTreeSet<PathBuf>, missing: &mut Vec<String>) {
-    visit_file_at_base(source, module_base(source), reached, missing);
+    if is_statically_disabled(&syntax.attrs) {
+        return;
+    }
+    let path_base = source
+        .parent()
+        .expect("Rust module source must have a parent");
+    visit_items(
+        &syntax.items,
+        source,
+        &base,
+        path_base,
+        reached,
+        visited,
+        missing,
+    );
 }
 
 fn visit_target_root(source: &Path, reached: &mut BTreeSet<PathBuf>, missing: &mut Vec<String>) {
@@ -219,82 +295,7 @@ fn visit_target_root(source: &Path, reached: &mut BTreeSet<PathBuf>, missing: &m
         .parent()
         .expect("Cargo target root must have a parent")
         .to_path_buf();
-    visit_file_at_base(source, base, reached, missing);
-}
-
-#[test]
-fn syntax_parser_ignores_comments_and_provably_disabled_modules() {
-    let syntax = syn::parse_file(
-        r#"
-/* mod block_comment; */
-// mod line_comment;
-mod live;
-#[cfg(any())]
-mod never;
-#[path = "alternate.rs"]
-mod redirected;
-"#,
-    )
-    .expect("valid Rust probe");
-    let modules: Vec<_> = syntax
-        .items
-        .iter()
-        .filter_map(|item| match item {
-            Item::Mod(module) if !is_statically_disabled(&module.attrs) => Some(module),
-            _ => None,
-        })
-        .collect();
-    let names: Vec<_> = modules
-        .iter()
-        .map(|module| module.ident.unraw().to_string())
-        .collect();
-    assert_eq!(names, ["live", "redirected"]);
-    assert_eq!(
-        path_override(&modules[1].attrs),
-        Some(PathBuf::from("alternate.rs"))
-    );
-}
-
-#[test]
-fn cargo_target_modules_resolve_beside_the_target_root() {
-    let dir = std::env::temp_dir().join(format!("nehirde-module-root-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    let root = dir.join("custom_target.rs");
-    let common = dir.join("common.rs");
-    std::fs::write(&root, "mod common;\n").unwrap();
-    std::fs::write(&common, "pub fn helper() {}\n").unwrap();
-
-    let mut reached = BTreeSet::new();
-    let mut missing = Vec::new();
-    visit_target_root(&root, &mut reached, &mut missing);
-
-    assert!(missing.is_empty(), "{missing:#?}");
-    assert_eq!(reached, BTreeSet::from([root, common]));
-    std::fs::remove_dir_all(dir).unwrap();
-}
-
-#[test]
-fn nested_path_overrides_resolve_from_the_inline_module_base() {
-    let dir = std::env::temp_dir().join(format!("nehirde-nested-path-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(dir.join("outer")).unwrap();
-    let root = dir.join("custom_target.rs");
-    let redirected = dir.join("outer/redirected.rs");
-    std::fs::write(
-        &root,
-        "mod outer { #[path = \"redirected.rs\"] mod child; }\n",
-    )
-    .unwrap();
-    std::fs::write(&redirected, "pub fn helper() {}\n").unwrap();
-
-    let mut reached = BTreeSet::new();
-    let mut missing = Vec::new();
-    visit_target_root(&root, &mut reached, &mut missing);
-
-    assert!(missing.is_empty(), "{missing:#?}");
-    assert_eq!(reached, BTreeSet::from([root, redirected]));
-    std::fs::remove_dir_all(dir).unwrap();
+    visit_file_at_base(source, base, reached, &mut BTreeSet::new(), missing);
 }
 
 #[test]
@@ -353,6 +354,14 @@ fn is_public(visibility: &syn::Visibility) -> bool {
     matches!(visibility, syn::Visibility::Public(_))
 }
 
+fn use_tree_exports_name(tree: &syn::UseTree) -> bool {
+    match tree {
+        syn::UseTree::Path(path) => use_tree_exports_name(&path.tree),
+        syn::UseTree::Group(group) => group.items.iter().any(use_tree_exports_name),
+        syn::UseTree::Name(_) | syn::UseTree::Rename(_) | syn::UseTree::Glob(_) => true,
+    }
+}
+
 fn is_public_contract_item(item: &Item) -> bool {
     match item {
         Item::Const(item) => is_public(&item.vis) && !is_statically_disabled(&item.attrs),
@@ -365,7 +374,11 @@ fn is_public_contract_item(item: &Item) -> bool {
         Item::TraitAlias(item) => is_public(&item.vis) && !is_statically_disabled(&item.attrs),
         Item::Type(item) => is_public(&item.vis) && !is_statically_disabled(&item.attrs),
         Item::Union(item) => is_public(&item.vis) && !is_statically_disabled(&item.attrs),
-        Item::Use(item) => is_public(&item.vis) && !is_statically_disabled(&item.attrs),
+        Item::Use(item) => {
+            is_public(&item.vis)
+                && !is_statically_disabled(&item.attrs)
+                && use_tree_exports_name(&item.tree)
+        }
         _ => false,
     }
 }
@@ -374,26 +387,55 @@ fn module_has_public_contract(
     module: &syn::ItemMod,
     source: &Path,
     base: &Path,
-    visiting: &mut BTreeSet<PathBuf>,
+    path_base: &Path,
+    visiting: &mut BTreeSet<ModuleContext>,
 ) -> bool {
     let name = module.ident.unraw().to_string();
-    let key = base.join(&name);
+    if let Some((_, inline_items)) = &module.content {
+        let child_base = base.join(name);
+        let key = (
+            source
+                .canonicalize()
+                .unwrap_or_else(|_| source.to_path_buf()),
+            child_base.clone(),
+        );
+        if !visiting.insert(key.clone()) {
+            return false;
+        }
+        let result =
+            items_have_public_contract(inline_items, source, &child_base, &child_base, visiting);
+        visiting.remove(&key);
+        return result;
+    }
+
+    let child = external_module_path(module, source, base, path_base)
+        .unwrap_or_else(|error| panic!("cannot resolve public module: {error}"));
+    let key = (
+        child
+            .source
+            .canonicalize()
+            .unwrap_or_else(|_| child.source.clone()),
+        child.base.clone(),
+    );
     if !visiting.insert(key.clone()) {
         return false;
     }
-
-    let result = if let Some((_, inline_items)) = &module.content {
-        items_have_public_contract(inline_items, source, &base.join(name), visiting)
-    } else {
-        let child = external_module_path(module, source, base)
-            .unwrap_or_else(|error| panic!("cannot resolve public module: {error}"));
-        let text = std::fs::read_to_string(&child)
-            .unwrap_or_else(|error| panic!("cannot inspect {}: {error}", child.display()));
-        let syntax = syn::parse_file(&text)
-            .unwrap_or_else(|error| panic!("cannot parse {}: {error}", child.display()));
-        items_have_public_contract(&syntax.items, &child, &module_base(&child), visiting)
-    };
-
+    let text = std::fs::read_to_string(&child.source)
+        .unwrap_or_else(|error| panic!("cannot inspect {}: {error}", child.source.display()));
+    let syntax = syn::parse_file(&text)
+        .unwrap_or_else(|error| panic!("cannot parse {}: {error}", child.source.display()));
+    let child_path_base = child
+        .source
+        .parent()
+        .expect("Rust module source must have a parent");
+    let result = !is_statically_disabled(&syntax.attrs)
+        && items_have_public_contract(
+            &syntax.items,
+            &child.source,
+            &child.base,
+            child_path_base,
+            visiting,
+        );
     visiting.remove(&key);
     result
 }
@@ -402,7 +444,8 @@ fn items_have_public_contract(
     items: &[Item],
     source: &Path,
     base: &Path,
-    visiting: &mut BTreeSet<PathBuf>,
+    path_base: &Path,
+    visiting: &mut BTreeSet<ModuleContext>,
 ) -> bool {
     items.iter().any(|item| {
         if is_public_contract_item(item) {
@@ -412,7 +455,7 @@ fn items_have_public_contract(
             Item::Mod(module)
                 if is_public(&module.vis) && !is_statically_disabled(&module.attrs) =>
             {
-                module_has_public_contract(module, source, base, visiting)
+                module_has_public_contract(module, source, base, path_base, visiting)
             }
             _ => false,
         }
@@ -423,8 +466,16 @@ fn inspect_public_modules(
     items: &[Item],
     source: &Path,
     base: &Path,
+    path_base: &Path,
     empty: &mut BTreeSet<String>,
+    inspected: &mut BTreeSet<ModuleContext>,
 ) {
+    let source_key = source
+        .canonicalize()
+        .unwrap_or_else(|_| source.to_path_buf());
+    if !inspected.insert((source_key, base.to_path_buf())) {
+        return;
+    }
     for item in items {
         let Item::Mod(module) = item else {
             continue;
@@ -435,23 +486,45 @@ fn inspect_public_modules(
 
         let name = module.ident.unraw().to_string();
         if is_public(&module.vis)
-            && !module_has_public_contract(module, source, base, &mut BTreeSet::new())
+            && !module_has_public_contract(module, source, base, path_base, &mut BTreeSet::new())
         {
             empty.insert(format!("{}: pub mod {name}", source.display()));
         }
 
         if let Some((_, inline_items)) = &module.content {
-            inspect_public_modules(inline_items, source, &base.join(name), empty);
+            let child_base = base.join(name);
+            inspect_public_modules(
+                inline_items,
+                source,
+                &child_base,
+                &child_base,
+                empty,
+                inspected,
+            );
             continue;
         }
 
-        let child = external_module_path(module, source, base)
+        let child = external_module_path(module, source, base, path_base)
             .unwrap_or_else(|error| panic!("cannot resolve module: {error}"));
-        let text = std::fs::read_to_string(&child)
-            .unwrap_or_else(|error| panic!("cannot inspect {}: {error}", child.display()));
+        let text = std::fs::read_to_string(&child.source)
+            .unwrap_or_else(|error| panic!("cannot inspect {}: {error}", child.source.display()));
         let syntax = syn::parse_file(&text)
-            .unwrap_or_else(|error| panic!("cannot parse {}: {error}", child.display()));
-        inspect_public_modules(&syntax.items, &child, &module_base(&child), empty);
+            .unwrap_or_else(|error| panic!("cannot parse {}: {error}", child.source.display()));
+        if is_statically_disabled(&syntax.attrs) {
+            continue;
+        }
+        let child_path_base = child
+            .source
+            .parent()
+            .expect("Rust module source must have a parent");
+        inspect_public_modules(
+            &syntax.items,
+            &child.source,
+            &child.base,
+            child_path_base,
+            empty,
+            inspected,
+        );
     }
 }
 
@@ -460,44 +533,11 @@ fn inspect_target_root(root: &Path, empty: &mut BTreeSet<String>) {
         .unwrap_or_else(|error| panic!("cannot inspect {}: {error}", root.display()));
     let syntax = syn::parse_file(&text)
         .unwrap_or_else(|error| panic!("cannot parse {}: {error}", root.display()));
+    if is_statically_disabled(&syntax.attrs) {
+        return;
+    }
     let base = root.parent().expect("Cargo target root parent");
-    inspect_public_modules(&syntax.items, root, base, empty);
-}
-
-#[test]
-fn recursive_public_contract_check_rejects_empty_namespaces() {
-    let dir = std::env::temp_dir().join(format!("nehirde-public-api-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(dir.join("api")).unwrap();
-    let root = dir.join("api/custom_root.rs");
-    std::fs::write(
-        &root,
-        "pub mod outer { pub mod empty {} }\n\
-         pub mod disabled { #[cfg(any())] pub struct Ghost; }\n",
-    )
-    .unwrap();
-
-    let mut empty = BTreeSet::new();
-    inspect_target_root(&root, &mut empty);
-
-    assert!(empty.iter().any(|item| item.ends_with("pub mod outer")));
-    assert!(empty.iter().any(|item| item.ends_with("pub mod empty")));
-    assert!(empty.iter().any(|item| item.ends_with("pub mod disabled")));
-    std::fs::remove_dir_all(dir).unwrap();
-}
-
-#[test]
-fn recursive_public_contract_check_accepts_a_nested_contract() {
-    let syntax = syn::parse_file("pub mod outer { pub mod inner { pub struct Contract; } }")
-        .expect("valid nested public contract");
-    let mut empty = BTreeSet::new();
-    inspect_public_modules(
-        &syntax.items,
-        Path::new("virtual.rs"),
-        Path::new("."),
-        &mut empty,
-    );
-    assert!(empty.is_empty(), "{empty:#?}");
+    inspect_public_modules(&syntax.items, root, base, base, empty, &mut BTreeSet::new());
 }
 
 #[test]

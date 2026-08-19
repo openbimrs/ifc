@@ -8,6 +8,13 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsStr;
 use std::path::{Component, Path, PathBuf};
 
+#[path = "support/progressive_markdown.rs"]
+mod progressive_markdown;
+use progressive_markdown::{
+    context_pointer_tokens, inline_code_tokens, task_checkbox_line_count, task_entries, task_ids,
+    task_prerequisites, task_references,
+};
+
 // This registry deliberately duplicates the initial capability set. A coordinated
 // source/module/PLAN deletion must still change a separate reviewable baseline.
 const REQUIRED_SCAFFOLD_PATHS: &str = include_str!("required_scaffold_paths.txt");
@@ -70,92 +77,6 @@ fn walk(dir: &Path, files: &mut Vec<PathBuf>) {
             files.push(path);
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct Task {
-    id: String,
-    complete: bool,
-}
-
-fn valid_task_id(token: &str) -> bool {
-    let mut segments = token.split('-');
-    let Some(first) = segments.next() else {
-        return false;
-    };
-    let rest: Vec<_> = segments.collect();
-    !first.is_empty()
-        && !rest.is_empty()
-        && first
-            .chars()
-            .all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit())
-        && rest.iter().all(|segment| {
-            !segment.is_empty()
-                && segment
-                    .chars()
-                    .all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit())
-        })
-}
-
-fn task_from_line(line: &str) -> Option<Task> {
-    let line = line.trim_start();
-    let (complete, rest) = [(false, "- [ ] "), (true, "- [x] "), (true, "- [X] ")]
-        .into_iter()
-        .find_map(|(complete, prefix)| line.strip_prefix(prefix).map(|rest| (complete, rest)))?;
-    let rest = rest.strip_prefix('`')?;
-    let (id, description) = rest.split_once('`')?;
-    (valid_task_id(id) && description.starts_with(" - ")).then(|| Task {
-        id: id.to_owned(),
-        complete,
-    })
-}
-
-fn task_entries(plan: &str) -> Vec<Task> {
-    let mut fenced = false;
-    plan.lines()
-        .filter_map(|line| {
-            if line.trim_start().starts_with("```") {
-                fenced = !fenced;
-                return None;
-            }
-            (!fenced).then(|| task_from_line(line)).flatten()
-        })
-        .collect()
-}
-
-fn task_ids(plan: &str) -> Vec<String> {
-    task_entries(plan).into_iter().map(|task| task.id).collect()
-}
-
-fn inline_code_tokens(markdown: &str) -> Vec<String> {
-    let mut fenced = false;
-    let mut tokens = Vec::new();
-    for line in markdown.lines() {
-        if line.trim_start().starts_with("```") {
-            fenced = !fenced;
-            continue;
-        }
-        if fenced {
-            continue;
-        }
-        let mut rest = line;
-        while let Some(open) = rest.find('`') {
-            rest = &rest[open + 1..];
-            let Some(close) = rest.find('`') else {
-                break;
-            };
-            tokens.push(rest[..close].to_owned());
-            rest = &rest[close + 1..];
-        }
-    }
-    tokens
-}
-
-fn task_references(plan: &str) -> BTreeSet<String> {
-    inline_code_tokens(plan)
-        .into_iter()
-        .filter(|token| valid_task_id(token))
-        .collect()
 }
 
 #[test]
@@ -227,15 +148,7 @@ fn every_context_boundary_pairs_standing_rules_with_an_opt_in_plan() {
             );
         }
         let ids = task_ids(&plan_text);
-        let checkbox_lines = plan_text
-            .lines()
-            .filter(|line| {
-                let line = line.trim_start();
-                line.starts_with("- [ ] ")
-                    || line.starts_with("- [x] ")
-                    || line.starts_with("- [X] ")
-            })
-            .count();
+        let checkbox_lines = task_checkbox_line_count(&plan_text);
         assert_eq!(
             ids.len(),
             checkbox_lines,
@@ -418,7 +331,9 @@ fn required_scaffold_capability_seams_are_preserved() {
 }
 
 fn is_context_pointer(token: &str) -> bool {
-    !token.chars().any(char::is_whitespace)
+    !token.contains("://")
+        && !token.starts_with("mailto:")
+        && !token.chars().any(char::is_whitespace)
         && Path::new(token)
             .file_name()
             .is_some_and(|name| name == OsStr::new("AGENTS.md") || name == OsStr::new("PLAN.md"))
@@ -437,7 +352,7 @@ fn context_document_pointers_resolve_and_chain_to_their_parent() {
             .is_some_and(|ext| ext == OsStr::new("md") || ext == OsStr::new("rs"))
     }) {
         let text = std::fs::read_to_string(file).unwrap();
-        let targets: Vec<_> = inline_code_tokens(&text)
+        let targets: Vec<_> = context_pointer_tokens(&text)
             .into_iter()
             .filter(|token| is_context_pointer(token))
             .map(|token| (file.parent().unwrap().join(&token), token))
@@ -515,75 +430,6 @@ fn plan_paths(root: &Path) -> Vec<PathBuf> {
         .into_iter()
         .filter(|path| path.file_name().is_some_and(|name| name == "PLAN.md"))
         .collect()
-}
-
-fn task_prerequisites(plan: &str) -> BTreeMap<String, BTreeSet<String>> {
-    let mut current = None;
-    let mut fenced = false;
-    let mut prerequisites = BTreeMap::<String, BTreeSet<String>>::new();
-    for line in plan.lines() {
-        if line.trim_start().starts_with("```") {
-            fenced = !fenced;
-            continue;
-        }
-        if fenced {
-            continue;
-        }
-        if let Some(task) = task_from_line(line) {
-            current = Some(task.id);
-            continue;
-        }
-        let line = line.trim_start();
-        if line.starts_with("- Requires:") || line.starts_with("- Prerequisites:") {
-            let owner = current
-                .as_ref()
-                .expect("Requires line must follow a task declaration");
-            prerequisites
-                .entry(owner.clone())
-                .or_default()
-                .extend(task_references(line));
-        }
-    }
-    prerequisites
-}
-
-#[test]
-fn markdown_task_parser_is_line_local_and_strict() {
-    let plan = r#"
-- [ ] `REAL-TASK` - pending
-  - Requires: `DONE-TASK`.
-- [X] `DONE-TASK` - complete
-```text
-- [ ] `FAKE-TASK` - fenced example
-  - Requires: `REAL-TASK`.
-```
-unmatched `BROKEN-TASK
-- [ ] `not-a-task` - invalid grammar
-"#;
-    assert_eq!(
-        task_entries(plan),
-        [
-            Task {
-                id: "REAL-TASK".to_owned(),
-                complete: false,
-            },
-            Task {
-                id: "DONE-TASK".to_owned(),
-                complete: true,
-            },
-        ]
-    );
-    assert_eq!(
-        task_references(plan),
-        BTreeSet::from(["DONE-TASK".to_owned(), "REAL-TASK".to_owned()])
-    );
-    assert_eq!(
-        task_prerequisites(plan),
-        BTreeMap::from([(
-            "REAL-TASK".to_owned(),
-            BTreeSet::from(["DONE-TASK".to_owned()]),
-        )])
-    );
 }
 
 fn prerequisite_cycles(graph: &BTreeMap<String, BTreeSet<String>>) -> BTreeSet<String> {
