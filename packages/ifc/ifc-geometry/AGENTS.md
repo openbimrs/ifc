@@ -37,4 +37,6 @@ resolution, lowering, mutation, and validation before they grow together.
 ## Verification
 
 Run targeted tests/clippy, isolated build, and the package architecture/context
-gates. Geometry bridges also run declaration/corpus coverage and the full gate.
+gates. The active-lowering vocabulary gate parses Rust paths/imports (including
+root aliases, globs, and macro tokens); do not replace it with substring scans.
+Geometry bridges also run declaration/corpus coverage and the full gate.

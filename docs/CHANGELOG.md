@@ -48,9 +48,15 @@ section on release.
   not inherit invalid x86 features.
 
 ### Fixed
-- Geometry graph handles are now graph-owned, reference families are validated
-  before insertion, GPU adapters reject incompatible policy/roots/cardinality,
-  and the pre-scaffold IFC boolean enum namespace remains source-compatible.
+- Geometry graph handles are graph-owned; semantic references preserve
+  Curve2/Curve3 dimensionality through instances and relation chains.
+- GPU adapters validate executor-specific policy before submission and report
+  wrong result cardinality as a backend contract violation. Mesh-boolean batch
+  dispatch reaches provider overrides and only retries unsupported/unavailable
+  providers. CPU feature behavior is covered in each feature combination.
+- Active IFC lowering isolation now parses Rust paths, aliases, globs, and macro
+  tokens instead of relying on bypassable source substrings. The pre-scaffold IFC
+  boolean enum namespace remains warning-clean and source-compatible.
 - ifcXML wrote numeric-looking strings (`IfcApplication.Version = "0.1"`) as
   plain XML attributes, so re-reading inferred `Real(0.1)` and silently changed
   the value's kind. Such strings now become typed child elements.

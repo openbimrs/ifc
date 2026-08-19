@@ -182,11 +182,11 @@ Completed scaffold:
 - [x] One canonical active neutral vocabulary; pre-DAG IFC-local request names
       retained only as legacy source-compatibility values.
 - [x] Growth-shaped modules plus progressive `AGENTS.md`/`PLAN.md` boundaries.
-- [x] Narrow operation traits, executable mesh-boolean registry, graph-owned and
-      family-validated DAG references, CPU context, and policy-validating GPU
-      graph-compiler adapter.
-- [x] Facade feature matrix, architecture gates, API-trait checks, and mutation
-      verification.
+- [x] Narrow operation traits, batch-capable executable mesh-boolean registry,
+      graph-owned family- and dimension-validated DAG references, runtime-gated
+      CPU context, and policy-validating GPU graph-compiler adapter.
+- [x] Rust-AST active-lowering isolation, facade feature matrix, architecture
+      gates, API-trait checks, and mutation verification.
 
 Implementation waves:
 
