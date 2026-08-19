@@ -1,0 +1,13 @@
+[package]
+name = "geom-heal"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Diagnose and repair dirty geometry. The OCCT ShapeFix/ShapeAnalysis role, scoped to what real IFC needs."
+
+[dependencies]
+geom-core.workspace = true
+geom-mesh.workspace = true
+geom-topology.workspace = true

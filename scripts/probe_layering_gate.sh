@@ -17,6 +17,14 @@ GATE=(cargo test -p geom-core --test layering)
 BAK=/tmp/layering_mut.bak
 fail=0
 
+# Content hash of every file under packages/geometry, so we can prove the probe
+# reverted exactly what it changed regardless of unrelated work in the tree.
+snapshot() {
+    find packages/geometry -type f \( -name '*.rs' -o -name '*.toml' \) \
+        -exec md5sum {} + 2>/dev/null | sort -k2
+}
+BEFORE="$(snapshot)"
+
 # Run the gate; echo "GREEN" or "RED".
 run_gate() {
     if "${GATE[@]}" >/tmp/layering_mut_out.txt 2>&1; then echo GREEN; else echo RED; fi
@@ -111,7 +119,19 @@ mutate "COMMENTED-OUT ifc-model dep (must NOT trip)" \
 
 echo "=== restored ==="
 printf '  %-58s %s\n' "tree after restore" "$(run_gate)"
-git -C . diff --quiet -- packages/geometry && echo "  worktree clean under packages/geometry" || { echo "  DIRTY -- restore failed"; fail=1; }
+
+# Verify THIS SCRIPT reverted its own mutations -- not that the tree is
+# pristine. Demanding a clean worktree conflates "the probe leaked a mutation"
+# with "the developer has unrelated work in progress", and the second is the
+# normal case: you run this right after editing the gate or adding a crate.
+# Compare against the snapshot taken at startup instead.
+if [ "$(snapshot)" = "$BEFORE" ]; then
+    echo "  packages/geometry identical to pre-probe state"
+else
+    echo "  DIRTY -- restore failed; probe mutations leaked:"
+    diff <(printf '%s\n' "$BEFORE") <(snapshot) | sed 's/^/    /'
+    fail=1
+fi
 
 echo
 [ "$fail" -eq 0 ] && echo "MUTATION MATRIX PASSED" || echo "MUTATION MATRIX FAILED"

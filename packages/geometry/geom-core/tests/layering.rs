@@ -54,11 +54,18 @@ const TIERS: &[(&str, u8)] = &[
     ("geom-curve", 1),
     ("geom-surface", 1),
     ("geom-topology", 1),
+    // `geom-model` is the format-neutral item tree every front end lowers into
+    // and every kernel consumes. It sits at the top of L1 because it is a
+    // representation that composes the other representations -- it solves
+    // nothing itself.
+    ("geom-model", 1),
     // L2 -- algorithms over those representations, plus the backend contract.
     ("geom-sweep", 2),
     ("geom-tessellate", 2),
     ("geom-spatial", 2),
     ("geom-measure", 2),
+    ("geom-primitive", 2),
+    ("geom-heal", 2),
     ("geom-kernel", 2),
 ];
 

@@ -17,3 +17,6 @@ thiserror.workspace = true
 # implementation, so this crate cannot accidentally bind to one. Enforced by
 # tests/no_backend_dependency.rs. See docs/adr/0001.
 geom-kernel = { workspace = true, default-features = false }
+
+[dev-dependencies]
+ifc-step.workspace = true

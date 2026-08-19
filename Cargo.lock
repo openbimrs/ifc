@@ -95,6 +95,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "geom-heal"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+ "geom-mesh",
+ "geom-topology",
+]
+
+[[package]]
 name = "geom-kernel"
 version = "0.1.0"
 dependencies = [
@@ -117,6 +126,26 @@ name = "geom-mesh"
 version = "0.1.0"
 dependencies = [
  "geom-core",
+]
+
+[[package]]
+name = "geom-model"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+ "geom-curve",
+ "geom-mesh",
+ "geom-profile",
+ "geom-surface",
+ "geom-topology",
+]
+
+[[package]]
+name = "geom-primitive"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+ "geom-mesh",
 ]
 
 [[package]]
@@ -271,6 +300,7 @@ dependencies = [
  "geom-mesh",
  "ifc-model",
  "ifc-schema",
+ "ifc-step",
  "thiserror",
 ]
 

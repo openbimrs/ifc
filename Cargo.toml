@@ -24,6 +24,9 @@ authors = ["point-grey"]
 # --- packages/geometry: format-agnostic geometry. Knows nothing about IFC. ---
 geom-core = { path = "packages/geometry/geom-core" }
 geom-mesh = { path = "packages/geometry/geom-mesh" }
+geom-model = { path = "packages/geometry/geom-model" }
+geom-primitive = { path = "packages/geometry/geom-primitive" }
+geom-heal = { path = "packages/geometry/geom-heal" }
 geom-profile = { path = "packages/geometry/geom-profile" }
 geom-curve = { path = "packages/geometry/geom-curve" }
 geom-surface = { path = "packages/geometry/geom-surface" }

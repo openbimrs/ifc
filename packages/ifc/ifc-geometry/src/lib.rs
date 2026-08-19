@@ -1,56 +1,47 @@
-//! `ifc-geometry` — lower IFC representation items into geometry.
+//! `ifc-geometry` — the IFC side of geometry.
 //!
-//! # This crate is the seam
+//! # What this crate is
 //!
-//! It is the primary place where IFC meets geometry, and it meets it through
-//! [`geom_kernel`] **traits**, never through a backend implementation. That is
-//! what makes the geometry kernel swappable:
+//! It answers *"what does this IFC entity mean geometrically"* and emits
+//! kernel-neutral work orders. It does not triangulate, does not evaluate
+//! NURBS, and does not perform booleans. Those belong to a geometry kernel,
+//! which this crate only ever depends on as a **trait**.
 //!
 //! ```text
-//!   ifc-step ─→ ifc-model ─→ ifc-geometry ──uses trait──→ geom-kernel
-//!                                                              ▲
-//!                              a better kernel implements it ──┘
+//!   ifc-model            this crate                     geometry kernel
+//!   (untyped graph) -->  typed views  -->  requests -->  (implemented
+//!                        + resolution                     elsewhere)
 //! ```
 //!
-//! # Module map — one representation family per module
+//! # Scope
 //!
-//! IFC4 has ~119 curve/surface entities, 11 swept-solid forms and ~37 topology
-//! entities (counted from `references/ifc-spec/`). Lowering them in one file is
-//! precisely how a 5,000-line module happens, so the split is by representation
-//! family:
+//! The three IFC geometry resource schemas, counted from IFC4 ADD2 TC1:
 //!
-//! | Module | IFC entities it handles |
-//! |---|---|
-//! | [`lowerer`] | the `ShapeLowerer` façade and kernel injection |
-//! | [`placement`] | `IfcLocalPlacement`, `IfcAxis2Placement2D/3D` chains |
-//! | [`profile`] | the 23 `IfcProfileDef` subtypes → 2D profiles |
-//! | [`swept`] | `IfcExtrudedAreaSolid`, `IfcRevolvedAreaSolid`, swept disks |
-//! | [`brep`] | `IfcFacetedBrep`, `IfcAdvancedBrep`, shells and faces |
-//! | [`csg`] | `IfcBooleanResult`, `IfcHalfSpaceSolid`, clipping |
-//! | [`tessellated`] | `IfcTriangulatedFaceSet`, `IfcPolygonalFaceSet` |
-//! | [`mapped`] | `IfcMappedItem` instancing and nested transforms |
-//! | [`opening`] | `IfcRelVoidsElement` void cutting |
-//! | [`units`] | length/angle unit scaling into kernel units |
-//! | [`context`] | `IfcGeometricRepresentationContext`, precision |
-//! | [`error`] | why a lowering failed, per representation |
+//! | Schema | Entities | Types | Functions |
+//! | --- | ---: | ---: | ---: |
+//! | `IfcGeometryResource` | 59 | 14 | 25 |
+//! | `IfcGeometricModelResource` | 42 | 4 | 2 |
+//! | `IfcGeometricConstraintResource` | 11 | 5 | 1 |
 //!
-//! # Status
+//! # Design
 //!
-//! Scaffold: the generic seam is defined and tested with a stub backend. The
-//! representation lowerings are Stage 3 in `docs/ROADMAP.md`.
+//! **Typed views over borrowed entities.** Every geometry entity gets a
+//! newtype wrapping `(EntityId, &Entity)` with named accessors and `mod slot`
+//! constants citing the EXPRESS declaration. Views own nothing, so
+//! constructing one is free and the model stays the single source of truth.
+//!
+//! **Total lowering.** Every unhandled case returns a typed
+//! [`GeometryError::Unsupported`] naming the entity. Nothing panics and
+//! nothing silently substitutes wrong geometry — a missing shape is
+//! recoverable, a wrong one is not.
+//!
+//! **The kernel is demanded, not provided.** [`kernel`] states the capability
+//! surface a geometry backend must satisfy.
 
-pub mod brep;
-pub mod context;
-pub mod csg;
 pub mod error;
-pub mod lowerer;
-pub mod mapped;
-pub mod opening;
-pub mod placement;
-pub mod profile;
-pub mod swept;
-pub mod tessellated;
+pub mod slots;
 pub mod units;
 
-pub use error::ShapeError;
-pub use lowerer::ShapeLowerer;
+pub use error::{GeometryError, GeometryResult};
+pub use slots::Slots;
+pub use units::UnitScale;
