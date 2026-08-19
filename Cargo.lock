@@ -262,6 +262,7 @@ dependencies = [
  "geom-profile",
  "geom-surface",
  "geom-topology",
+ "syn 2.0.119",
 ]
 
 [[package]]
