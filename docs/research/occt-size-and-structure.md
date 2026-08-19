@@ -424,4 +424,38 @@ for f in *.deb; do dpkg-deb -x $f ex; done
 find ex -name '*.so.*' -type f -printf '%s %f\n' | sort -rn
 ```
 
-Helper scripts used for this report live at `/home/friedrich/occt-research/measure.sh` and `/home/friedrich/occt-research/measure_modules.py`.
+Helper scripts used for this report are committed at
+`scripts/research/occt_measure.sh` and `scripts/research/occt_measure_modules.py`.
+
+### 7.1 Independent re-verification (2026-08-19)
+
+The headline numbers were re-measured from a second, independent checkout
+by a different agent. Results agree.
+
+| Claim | Report | Re-measured | Delta |
+|---|---:|---:|---:|
+| 13-toolkit minimal subset | 1,381,611 | 1,355,006 | 1.9% |
+| Total source (excl Draw/Deprecated) | 2,636,741 | 2,566,219 | 2.7% |
+| `TKGeomBase` | 325k | 333,224 | ok |
+| `TKGeomAlgo` | 209k | 225,236 | ok |
+| `TKBO` + `TKBool` | 228k | 227,769 | ok |
+
+Deltas come from the file-extension set. **`.gxx` and `.pxx` must be
+included** — OCCT keeps template bodies in them, and `TKGeomBase` drops from
+333k to 175k if they are omitted, which would understate the NURBS cost by
+half. A first pass here made exactly that mistake.
+
+Minimal subset as a share of source is **~53%** (1.36M / 2.57M). The 46%
+figure in section 3.2 is the *binary* share (34.5 MB / 75.2 MB); the two are
+not interchangeable.
+
+```bash
+# the 13-toolkit floor, re-derived
+cd occt/src
+for tk in TKernel TKMath TKG2d TKG3d TKGeomBase TKBRep TKGeomAlgo \
+          TKTopAlgo TKPrim TKMesh TKShHealing TKBO TKBool; do
+  find . -maxdepth 2 -type d -name "$tk"
+done | xargs -I{} find {} -type f \
+  \( -name '*.cxx' -o -name '*.hxx' -o -name '*.lxx' \
+     -o -name '*.gxx' -o -name '*.pxx' \) | sort -u | xargs cat | wc -l
+```
