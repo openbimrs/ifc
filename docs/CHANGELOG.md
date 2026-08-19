@@ -27,6 +27,14 @@ section on release.
   domain, plus `codecs` / `domains` / `full` bundles. `default = ["step"]`.
 - **`Codec::detect`** (defaulting to `false`) so `ifc::read_path` selects a
   codec by content sniffing, then extension.
+- **Native-accelerator readiness for the geometry data plane** (ADR 0011):
+  pure-Rust GPU stays the first path, while a native CUDA/HIP backend remains a
+  later out-of-tree addition behind the existing `GpuGraphExecutor` seam.
+  `BackendId` now stores fixed-capacity inline UTF-8, so driver-enumerated
+  identities (`cuda:0`, `hip:1`) are constructible at runtime without leaking
+  and are rejected rather than truncated when over-long. Two executable gates
+  keep the option open: the representation crates must stay FFI-transferable,
+  and the executor seam must stay satisfiable with published API only.
 - **Layered geometry package scaffold** with one immutable neutral DAG,
   typed-handle B-rep topology, exact curve/surface/profile values, narrow
   operation-provider traits, separate CPU execution/GPU adapter crates, and a
