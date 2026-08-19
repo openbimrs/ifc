@@ -41,9 +41,9 @@ pub struct Instance {
 
 /// One node in an immutable geometry DAG.
 ///
-/// The enum is non-exhaustive for downstream matching. Kernel orchestration is
-/// centralized in `geom-kernel`, so adding a node cannot silently become a
-/// wildcard no-op inside source-format adapters.
+/// The enum is non-exhaustive so representation growth is semver-compatible.
+/// Compilers must turn unknown/unsupported families into a structured
+/// `Unsupported` result rather than a wildcard no-op.
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq)]
 pub enum GeometryNode {

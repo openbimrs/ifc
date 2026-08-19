@@ -1,7 +1,8 @@
 //! Adapter from an API-specific GPU executor to graph compilation.
 
 use geom_kernel::{
-    Backend, BackendDescriptor, ExecutionOptions, GeomError, GeomResult, GeometryCompiler,
+    Backend, BackendDescriptor, ExecutionOptions, ExecutionTarget, GeomError, GeomResult,
+    GeometryCompiler, Operation, Precision,
 };
 use geom_mesh::TriMesh;
 use geom_model::{GeometryGraph, NodeId};
@@ -32,11 +33,25 @@ impl<E> GpuCompiler<E> {
     pub const fn executor(&self) -> &E {
         &self.executor
     }
+
+    fn validate_options(&self, options: &ExecutionOptions) -> GeomResult<()>
+    where
+        E: GpuGraphExecutor,
+    {
+        let device = self.executor.device();
+        if options.precision() == Precision::F64 && !device.features.float64 {
+            return Err(GeomError::Unsupported {
+                backend: device.id,
+                operation: Operation::GraphCompilation,
+            });
+        }
+        Ok(())
+    }
 }
 
 impl<E: GpuGraphExecutor> Backend for GpuCompiler<E> {
     fn descriptor(&self) -> BackendDescriptor {
-        self.executor.descriptor()
+        BackendDescriptor::new(self.executor.device().id, ExecutionTarget::Gpu)
     }
 }
 
@@ -47,6 +62,7 @@ impl<E: GpuGraphExecutor> GeometryCompiler for GpuCompiler<E> {
         root: NodeId,
         options: &ExecutionOptions,
     ) -> GeomResult<TriMesh> {
+        self.validate_options(options)?;
         let results = self.executor.compile_batch(graph, &[root], options)?;
         if results.len() != 1 {
             return Err(GeomError::InvalidInput(format!(
@@ -65,6 +81,7 @@ impl<E: GpuGraphExecutor> GeometryCompiler for GpuCompiler<E> {
         roots: &[NodeId],
         options: &ExecutionOptions,
     ) -> GeomResult<Vec<TriMesh>> {
+        self.validate_options(options)?;
         self.executor.compile_batch(graph, roots, options)
     }
 }

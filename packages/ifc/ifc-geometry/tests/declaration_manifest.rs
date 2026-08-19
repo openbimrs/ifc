@@ -141,5 +141,16 @@ fn all_normative_functions_have_exactly_one_owner() {
             "{} has no owner",
             support.name
         );
+        if !support.owner.starts_with("geom_core::") {
+            let owner_path = support.owner.replace("::", "/");
+            let source_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+            assert!(
+                source_root.join(format!("{owner_path}.rs")).is_file()
+                    || source_root.join(&owner_path).join("mod.rs").is_file(),
+                "function owner module is missing: {} -> {}",
+                support.name,
+                support.owner
+            );
+        }
     }
 }

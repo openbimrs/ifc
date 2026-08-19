@@ -113,6 +113,26 @@ fn every_geometry_crate_has_an_explicit_unsafe_policy() {
     }
 }
 
+#[test]
+fn geometry_crates_do_not_declare_native_cpp_bridges() {
+    const FORBIDDEN: &[&str] = &[
+        "bindgen",
+        "cmake",
+        "cxx",
+        "cxx-build",
+        "manifold3d",
+        "opencascade",
+    ];
+    for crate_name in geometry_crates() {
+        for dependency in declared_dependencies(&manifest_of(&crate_name)) {
+            assert!(
+                !FORBIDDEN.contains(&dependency.as_str()),
+                "{crate_name} directly depends on forbidden native bridge {dependency}"
+            );
+        }
+    }
+}
+
 fn geometry_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..")
 }

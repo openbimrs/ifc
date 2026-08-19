@@ -1,5 +1,7 @@
 //! API-neutral GPU device description.
 
+use geom_kernel::BackendId;
+
 /// Relevant compute features without exposing CUDA, Metal, Vulkan, or WebGPU
 /// types in the public kernel contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -17,6 +19,8 @@ pub struct GpuFeatures {
 /// Runtime GPU identity for diagnostics and selection.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GpuDeviceDescriptor {
+    /// Stable operation-provider/device identifier.
+    pub id: BackendId,
     /// Human-readable adapter name.
     pub name: String,
     /// Driver/API name, e.g. CUDA, Metal, Vulkan, or WebGPU.

@@ -1,7 +1,6 @@
 use geom_core::{Tolerance, Vec3};
 use geom_kernel::{
-    Backend, BackendDescriptor, BackendId, ExecutionOptions, ExecutionTarget, GeomResult,
-    GeometryCompiler,
+    Backend, BackendId, ExecutionOptions, GeomError, GeomResult, GeometryCompiler, Operation,
 };
 use geom_mesh::TriMesh;
 use geom_model::{GeometryGraph, GeometryGraphBuilder, GeometryNode, NodeId};
@@ -18,13 +17,6 @@ impl GpuGraphExecutor for FakeExecutor {
         &self.device
     }
 
-    fn descriptor(&self) -> BackendDescriptor {
-        BackendDescriptor {
-            id: BackendId::new("test-gpu-compiler"),
-            target: ExecutionTarget::Gpu,
-        }
-    }
-
     fn compile_batch(
         &self,
         _graph: &GeometryGraph,
@@ -39,6 +31,7 @@ impl GpuGraphExecutor for FakeExecutor {
 fn downstream_executor_proves_its_capability_by_implementing_the_trait() {
     let executor = FakeExecutor {
         device: GpuDeviceDescriptor {
+            id: BackendId::new("test-gpu-compiler"),
             name: "test".to_owned(),
             api: "mock".to_owned(),
             features: GpuFeatures {
@@ -64,4 +57,16 @@ fn downstream_executor_proves_its_capability_by_implementing_the_trait() {
         compiler.descriptor().id,
         BackendId::new("test-gpu-compiler")
     );
+
+    let mut f32_device = compiler.device().clone();
+    f32_device.id = BackendId::new("f32-only");
+    f32_device.features.float64 = false;
+    let f32_only = GpuCompiler::new(FakeExecutor { device: f32_device });
+    assert!(matches!(
+        f32_only.compile(&graph, root, &options),
+        Err(GeomError::Unsupported {
+            backend,
+            operation: Operation::GraphCompilation,
+        }) if backend == BackendId::new("f32-only")
+    ));
 }

@@ -75,3 +75,10 @@ pub struct BackendDescriptor {
     /// Hardware class used by execution policy.
     pub target: ExecutionTarget,
 }
+
+impl BackendDescriptor {
+    /// Construct provider identity metadata.
+    pub const fn new(id: BackendId, target: ExecutionTarget) -> Self {
+        Self { id, target }
+    }
+}
