@@ -31,16 +31,21 @@
 //! constructing one is free and the model stays the single source of truth.
 //!
 //! **Total lowering.** Every unhandled case returns a typed
-//! [`GeometryError::Unsupported`] naming the entity. Nothing panics and
+//! [`crate::GeometryError::Unsupported`] naming the entity. Nothing panics and
 //! nothing silently substitutes wrong geometry — a missing shape is
 //! recoverable, a wrong one is not.
 //!
 //! **The kernel is demanded, not provided.** This crate states the capability
 //! surface a geometry backend must satisfy. See [`kernel::Primitive`].
 
+pub mod constraint;
+pub mod curve;
 pub mod error;
 pub mod kernel;
+pub mod resource;
 pub mod slots;
+pub mod solid;
+pub mod surface;
 pub mod transform;
 pub mod units;
 

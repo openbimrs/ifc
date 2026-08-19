@@ -1,0 +1,378 @@
+# Absolute STEP slot indices for IFC geometry entities
+# Generated from references/ifc-spec/ifc4-add2-tc1/IFC4.exp
+# Inherited attributes come FIRST -- this is what positional records use.
+# Format: EntityName | index | AttrName | declared-in | type
+
+IfcAdvancedBrep | 0 | Outer | IfcManifoldSolidBrep | IfcClosedShell
+
+IfcAdvancedBrepWithVoids | 0 | Outer | IfcManifoldSolidBrep | IfcClosedShell
+IfcAdvancedBrepWithVoids | 1 | Voids | IfcAdvancedBrepWithVoids | SET [1:?] OF IfcClosedShell
+
+IfcAxis1Placement | 0 | Location | IfcPlacement | IfcCartesianPoint
+IfcAxis1Placement | 1 | Axis | IfcAxis1Placement | OPTIONAL IfcDirection
+
+IfcAxis2Placement2D | 0 | Location | IfcPlacement | IfcCartesianPoint
+IfcAxis2Placement2D | 1 | RefDirection | IfcAxis2Placement2D | OPTIONAL IfcDirection
+
+IfcAxis2Placement3D | 0 | Location | IfcPlacement | IfcCartesianPoint
+IfcAxis2Placement3D | 1 | Axis | IfcAxis2Placement3D | OPTIONAL IfcDirection
+IfcAxis2Placement3D | 2 | RefDirection | IfcAxis2Placement3D | OPTIONAL IfcDirection
+
+IfcBSplineCurveWithKnots | 0 | Degree | IfcBSplineCurve | IfcInteger
+IfcBSplineCurveWithKnots | 1 | ControlPointsList | IfcBSplineCurve | LIST [2:?] OF IfcCartesianPoint
+IfcBSplineCurveWithKnots | 2 | CurveForm | IfcBSplineCurve | IfcBSplineCurveForm
+IfcBSplineCurveWithKnots | 3 | ClosedCurve | IfcBSplineCurve | IfcLogical
+IfcBSplineCurveWithKnots | 4 | SelfIntersect | IfcBSplineCurve | IfcLogical
+IfcBSplineCurveWithKnots | 5 | KnotMultiplicities | IfcBSplineCurveWithKnots | LIST [2:?] OF IfcInteger
+IfcBSplineCurveWithKnots | 6 | Knots | IfcBSplineCurveWithKnots | LIST [2:?] OF IfcParameterValue
+IfcBSplineCurveWithKnots | 7 | KnotSpec | IfcBSplineCurveWithKnots | IfcKnotType
+
+IfcBSplineSurfaceWithKnots | 0 | UDegree | IfcBSplineSurface | IfcInteger
+IfcBSplineSurfaceWithKnots | 1 | VDegree | IfcBSplineSurface | IfcInteger
+IfcBSplineSurfaceWithKnots | 2 | ControlPointsList | IfcBSplineSurface | LIST [2:?] OF LIST [2:?] OF IfcCartesianPoint
+IfcBSplineSurfaceWithKnots | 3 | SurfaceForm | IfcBSplineSurface | IfcBSplineSurfaceForm
+IfcBSplineSurfaceWithKnots | 4 | UClosed | IfcBSplineSurface | IfcLogical
+IfcBSplineSurfaceWithKnots | 5 | VClosed | IfcBSplineSurface | IfcLogical
+IfcBSplineSurfaceWithKnots | 6 | SelfIntersect | IfcBSplineSurface | IfcLogical
+IfcBSplineSurfaceWithKnots | 7 | UMultiplicities | IfcBSplineSurfaceWithKnots | LIST [2:?] OF IfcInteger
+IfcBSplineSurfaceWithKnots | 8 | VMultiplicities | IfcBSplineSurfaceWithKnots | LIST [2:?] OF IfcInteger
+IfcBSplineSurfaceWithKnots | 9 | UKnots | IfcBSplineSurfaceWithKnots | LIST [2:?] OF IfcParameterValue
+IfcBSplineSurfaceWithKnots | 10 | VKnots | IfcBSplineSurfaceWithKnots | LIST [2:?] OF IfcParameterValue
+IfcBSplineSurfaceWithKnots | 11 | KnotSpec | IfcBSplineSurfaceWithKnots | IfcKnotType
+
+IfcBlock | 0 | Position | IfcCsgPrimitive3D | IfcAxis2Placement3D
+IfcBlock | 1 | XLength | IfcBlock | IfcPositiveLengthMeasure
+IfcBlock | 2 | YLength | IfcBlock | IfcPositiveLengthMeasure
+IfcBlock | 3 | ZLength | IfcBlock | IfcPositiveLengthMeasure
+
+IfcBooleanClippingResult | 0 | Operator | IfcBooleanResult | IfcBooleanOperator
+IfcBooleanClippingResult | 1 | FirstOperand | IfcBooleanResult | IfcBooleanOperand
+IfcBooleanClippingResult | 2 | SecondOperand | IfcBooleanResult | IfcBooleanOperand
+
+IfcBooleanResult | 0 | Operator | IfcBooleanResult | IfcBooleanOperator
+IfcBooleanResult | 1 | FirstOperand | IfcBooleanResult | IfcBooleanOperand
+IfcBooleanResult | 2 | SecondOperand | IfcBooleanResult | IfcBooleanOperand
+
+IfcBoundaryCurve | 0 | Segments | IfcCompositeCurve | LIST [1:?] OF IfcCompositeCurveSegment
+IfcBoundaryCurve | 1 | SelfIntersect | IfcCompositeCurve | IfcLogical
+
+IfcBoundingBox | 0 | Corner | IfcBoundingBox | IfcCartesianPoint
+IfcBoundingBox | 1 | XDim | IfcBoundingBox | IfcPositiveLengthMeasure
+IfcBoundingBox | 2 | YDim | IfcBoundingBox | IfcPositiveLengthMeasure
+IfcBoundingBox | 3 | ZDim | IfcBoundingBox | IfcPositiveLengthMeasure
+
+IfcBoxedHalfSpace | 0 | BaseSurface | IfcHalfSpaceSolid | IfcSurface
+IfcBoxedHalfSpace | 1 | AgreementFlag | IfcHalfSpaceSolid | IfcBoolean
+IfcBoxedHalfSpace | 2 | Enclosure | IfcBoxedHalfSpace | IfcBoundingBox
+
+IfcCartesianPoint | 0 | Coordinates | IfcCartesianPoint | LIST [1:3] OF IfcLengthMeasure
+
+IfcCartesianPointList2D | 0 | CoordList | IfcCartesianPointList2D | LIST [1:?] OF LIST [2:2] OF IfcLengthMeasure
+
+IfcCartesianPointList3D | 0 | CoordList | IfcCartesianPointList3D | LIST [1:?] OF LIST [3:3] OF IfcLengthMeasure
+
+IfcCartesianTransformationOperator2D | 0 | Axis1 | IfcCartesianTransformationOperator | OPTIONAL IfcDirection
+IfcCartesianTransformationOperator2D | 1 | Axis2 | IfcCartesianTransformationOperator | OPTIONAL IfcDirection
+IfcCartesianTransformationOperator2D | 2 | LocalOrigin | IfcCartesianTransformationOperator | IfcCartesianPoint
+IfcCartesianTransformationOperator2D | 3 | Scale | IfcCartesianTransformationOperator | OPTIONAL IfcReal
+
+IfcCartesianTransformationOperator2DnonUniform | 0 | Axis1 | IfcCartesianTransformationOperator | OPTIONAL IfcDirection
+IfcCartesianTransformationOperator2DnonUniform | 1 | Axis2 | IfcCartesianTransformationOperator | OPTIONAL IfcDirection
+IfcCartesianTransformationOperator2DnonUniform | 2 | LocalOrigin | IfcCartesianTransformationOperator | IfcCartesianPoint
+IfcCartesianTransformationOperator2DnonUniform | 3 | Scale | IfcCartesianTransformationOperator | OPTIONAL IfcReal
+IfcCartesianTransformationOperator2DnonUniform | 4 | Scale2 | IfcCartesianTransformationOperator2DnonUniform | OPTIONAL IfcReal
+
+IfcCartesianTransformationOperator3D | 0 | Axis1 | IfcCartesianTransformationOperator | OPTIONAL IfcDirection
+IfcCartesianTransformationOperator3D | 1 | Axis2 | IfcCartesianTransformationOperator | OPTIONAL IfcDirection
+IfcCartesianTransformationOperator3D | 2 | LocalOrigin | IfcCartesianTransformationOperator | IfcCartesianPoint
+IfcCartesianTransformationOperator3D | 3 | Scale | IfcCartesianTransformationOperator | OPTIONAL IfcReal
+IfcCartesianTransformationOperator3D | 4 | Axis3 | IfcCartesianTransformationOperator3D | OPTIONAL IfcDirection
+
+IfcCartesianTransformationOperator3DnonUniform | 0 | Axis1 | IfcCartesianTransformationOperator | OPTIONAL IfcDirection
+IfcCartesianTransformationOperator3DnonUniform | 1 | Axis2 | IfcCartesianTransformationOperator | OPTIONAL IfcDirection
+IfcCartesianTransformationOperator3DnonUniform | 2 | LocalOrigin | IfcCartesianTransformationOperator | IfcCartesianPoint
+IfcCartesianTransformationOperator3DnonUniform | 3 | Scale | IfcCartesianTransformationOperator | OPTIONAL IfcReal
+IfcCartesianTransformationOperator3DnonUniform | 4 | Axis3 | IfcCartesianTransformationOperator3D | OPTIONAL IfcDirection
+IfcCartesianTransformationOperator3DnonUniform | 5 | Scale2 | IfcCartesianTransformationOperator3DnonUniform | OPTIONAL IfcReal
+IfcCartesianTransformationOperator3DnonUniform | 6 | Scale3 | IfcCartesianTransformationOperator3DnonUniform | OPTIONAL IfcReal
+
+IfcCircle | 0 | Position | IfcConic | IfcAxis2Placement
+IfcCircle | 1 | Radius | IfcCircle | IfcPositiveLengthMeasure
+
+IfcCompositeCurve | 0 | Segments | IfcCompositeCurve | LIST [1:?] OF IfcCompositeCurveSegment
+IfcCompositeCurve | 1 | SelfIntersect | IfcCompositeCurve | IfcLogical
+
+IfcCompositeCurveOnSurface | 0 | Segments | IfcCompositeCurve | LIST [1:?] OF IfcCompositeCurveSegment
+IfcCompositeCurveOnSurface | 1 | SelfIntersect | IfcCompositeCurve | IfcLogical
+
+IfcCompositeCurveSegment | 0 | Transition | IfcCompositeCurveSegment | IfcTransitionCode
+IfcCompositeCurveSegment | 1 | SameSense | IfcCompositeCurveSegment | IfcBoolean
+IfcCompositeCurveSegment | 2 | ParentCurve | IfcCompositeCurveSegment | IfcCurve
+
+IfcConnectionCurveGeometry | 0 | CurveOnRelatingElement | IfcConnectionCurveGeometry | IfcCurveOrEdgeCurve
+IfcConnectionCurveGeometry | 1 | CurveOnRelatedElement | IfcConnectionCurveGeometry | OPTIONAL IfcCurveOrEdgeCurve
+
+IfcConnectionPointEccentricity | 0 | PointOnRelatingElement | IfcConnectionPointGeometry | IfcPointOrVertexPoint
+IfcConnectionPointEccentricity | 1 | PointOnRelatedElement | IfcConnectionPointGeometry | OPTIONAL IfcPointOrVertexPoint
+IfcConnectionPointEccentricity | 2 | EccentricityInX | IfcConnectionPointEccentricity | OPTIONAL IfcLengthMeasure
+IfcConnectionPointEccentricity | 3 | EccentricityInY | IfcConnectionPointEccentricity | OPTIONAL IfcLengthMeasure
+IfcConnectionPointEccentricity | 4 | EccentricityInZ | IfcConnectionPointEccentricity | OPTIONAL IfcLengthMeasure
+
+IfcConnectionPointGeometry | 0 | PointOnRelatingElement | IfcConnectionPointGeometry | IfcPointOrVertexPoint
+IfcConnectionPointGeometry | 1 | PointOnRelatedElement | IfcConnectionPointGeometry | OPTIONAL IfcPointOrVertexPoint
+
+IfcConnectionSurfaceGeometry | 0 | SurfaceOnRelatingElement | IfcConnectionSurfaceGeometry | IfcSurfaceOrFaceSurface
+IfcConnectionSurfaceGeometry | 1 | SurfaceOnRelatedElement | IfcConnectionSurfaceGeometry | OPTIONAL IfcSurfaceOrFaceSurface
+
+IfcConnectionVolumeGeometry | 0 | VolumeOnRelatingElement | IfcConnectionVolumeGeometry | IfcSolidOrShell
+IfcConnectionVolumeGeometry | 1 | VolumeOnRelatedElement | IfcConnectionVolumeGeometry | OPTIONAL IfcSolidOrShell
+
+IfcCsgSolid | 0 | TreeRootExpression | IfcCsgSolid | IfcCsgSelect
+
+IfcCurveBoundedPlane | 0 | BasisSurface | IfcCurveBoundedPlane | IfcPlane
+IfcCurveBoundedPlane | 1 | OuterBoundary | IfcCurveBoundedPlane | IfcCurve
+IfcCurveBoundedPlane | 2 | InnerBoundaries | IfcCurveBoundedPlane | SET [0:?] OF IfcCurve
+
+IfcCurveBoundedSurface | 0 | BasisSurface | IfcCurveBoundedSurface | IfcSurface
+IfcCurveBoundedSurface | 1 | Boundaries | IfcCurveBoundedSurface | SET [1:?] OF IfcBoundaryCurve
+IfcCurveBoundedSurface | 2 | ImplicitOuter | IfcCurveBoundedSurface | IfcBoolean
+
+IfcCylindricalSurface | 0 | Position | IfcElementarySurface | IfcAxis2Placement3D
+IfcCylindricalSurface | 1 | Radius | IfcCylindricalSurface | IfcPositiveLengthMeasure
+
+IfcDirection | 0 | DirectionRatios | IfcDirection | LIST [2:3] OF IfcReal
+
+IfcEllipse | 0 | Position | IfcConic | IfcAxis2Placement
+IfcEllipse | 1 | SemiAxis1 | IfcEllipse | IfcPositiveLengthMeasure
+IfcEllipse | 2 | SemiAxis2 | IfcEllipse | IfcPositiveLengthMeasure
+
+IfcExtrudedAreaSolid | 0 | SweptArea | IfcSweptAreaSolid | IfcProfileDef
+IfcExtrudedAreaSolid | 1 | Position | IfcSweptAreaSolid | OPTIONAL IfcAxis2Placement3D
+IfcExtrudedAreaSolid | 2 | ExtrudedDirection | IfcExtrudedAreaSolid | IfcDirection
+IfcExtrudedAreaSolid | 3 | Depth | IfcExtrudedAreaSolid | IfcPositiveLengthMeasure
+
+IfcExtrudedAreaSolidTapered | 0 | SweptArea | IfcSweptAreaSolid | IfcProfileDef
+IfcExtrudedAreaSolidTapered | 1 | Position | IfcSweptAreaSolid | OPTIONAL IfcAxis2Placement3D
+IfcExtrudedAreaSolidTapered | 2 | ExtrudedDirection | IfcExtrudedAreaSolid | IfcDirection
+IfcExtrudedAreaSolidTapered | 3 | Depth | IfcExtrudedAreaSolid | IfcPositiveLengthMeasure
+IfcExtrudedAreaSolidTapered | 4 | EndSweptArea | IfcExtrudedAreaSolidTapered | IfcProfileDef
+
+IfcFaceBasedSurfaceModel | 0 | FbsmFaces | IfcFaceBasedSurfaceModel | SET [1:?] OF IfcConnectedFaceSet
+
+IfcFacetedBrep | 0 | Outer | IfcManifoldSolidBrep | IfcClosedShell
+
+IfcFacetedBrepWithVoids | 0 | Outer | IfcManifoldSolidBrep | IfcClosedShell
+IfcFacetedBrepWithVoids | 1 | Voids | IfcFacetedBrepWithVoids | SET [1:?] OF IfcClosedShell
+
+IfcFixedReferenceSweptAreaSolid | 0 | SweptArea | IfcSweptAreaSolid | IfcProfileDef
+IfcFixedReferenceSweptAreaSolid | 1 | Position | IfcSweptAreaSolid | OPTIONAL IfcAxis2Placement3D
+IfcFixedReferenceSweptAreaSolid | 2 | Directrix | IfcFixedReferenceSweptAreaSolid | IfcCurve
+IfcFixedReferenceSweptAreaSolid | 3 | StartParam | IfcFixedReferenceSweptAreaSolid | OPTIONAL IfcParameterValue
+IfcFixedReferenceSweptAreaSolid | 4 | EndParam | IfcFixedReferenceSweptAreaSolid | OPTIONAL IfcParameterValue
+IfcFixedReferenceSweptAreaSolid | 5 | FixedReference | IfcFixedReferenceSweptAreaSolid | IfcDirection
+
+IfcGeometricCurveSet | 0 | Elements | IfcGeometricSet | SET [1:?] OF IfcGeometricSetSelect
+
+IfcGeometricSet | 0 | Elements | IfcGeometricSet | SET [1:?] OF IfcGeometricSetSelect
+
+IfcGridAxis | 0 | AxisTag | IfcGridAxis | OPTIONAL IfcLabel
+IfcGridAxis | 1 | AxisCurve | IfcGridAxis | IfcCurve
+IfcGridAxis | 2 | SameSense | IfcGridAxis | IfcBoolean
+
+IfcGridPlacement | 0 | PlacementLocation | IfcGridPlacement | IfcVirtualGridIntersection
+IfcGridPlacement | 1 | PlacementRefDirection | IfcGridPlacement | OPTIONAL IfcGridPlacementDirectionSelect
+
+IfcHalfSpaceSolid | 0 | BaseSurface | IfcHalfSpaceSolid | IfcSurface
+IfcHalfSpaceSolid | 1 | AgreementFlag | IfcHalfSpaceSolid | IfcBoolean
+
+IfcIndexedPolyCurve | 0 | Points | IfcIndexedPolyCurve | IfcCartesianPointList
+IfcIndexedPolyCurve | 1 | Segments | IfcIndexedPolyCurve | OPTIONAL LIST [1:?] OF IfcSegmentIndexSelect
+IfcIndexedPolyCurve | 2 | SelfIntersect | IfcIndexedPolyCurve | OPTIONAL IfcBoolean
+
+IfcIndexedPolygonalFace | 0 | CoordIndex | IfcIndexedPolygonalFace | LIST [3:?] OF IfcPositiveInteger
+
+IfcIndexedPolygonalFaceWithVoids | 0 | CoordIndex | IfcIndexedPolygonalFace | LIST [3:?] OF IfcPositiveInteger
+IfcIndexedPolygonalFaceWithVoids | 1 | InnerCoordIndices | IfcIndexedPolygonalFaceWithVoids | LIST [1:?] OF LIST [3:?] OF
+
+IfcIntersectionCurve | 0 | Curve3D | IfcSurfaceCurve | IfcCurve
+IfcIntersectionCurve | 1 | AssociatedGeometry | IfcSurfaceCurve | LIST [1:2] OF IfcPcurve
+IfcIntersectionCurve | 2 | MasterRepresentation | IfcSurfaceCurve | IfcPreferredSurfaceCurveRepresentation
+
+IfcLine | 0 | Pnt | IfcLine | IfcCartesianPoint
+IfcLine | 1 | Dir | IfcLine | IfcVector
+
+IfcLocalPlacement | 0 | PlacementRelTo | IfcLocalPlacement | OPTIONAL IfcObjectPlacement
+IfcLocalPlacement | 1 | RelativePlacement | IfcLocalPlacement | IfcAxis2Placement
+
+IfcMappedItem | 0 | MappingSource | IfcMappedItem | IfcRepresentationMap
+IfcMappedItem | 1 | MappingTarget | IfcMappedItem | IfcCartesianTransformationOperator
+
+IfcOffsetCurve2D | 0 | BasisCurve | IfcOffsetCurve2D | IfcCurve
+IfcOffsetCurve2D | 1 | Distance | IfcOffsetCurve2D | IfcLengthMeasure
+IfcOffsetCurve2D | 2 | SelfIntersect | IfcOffsetCurve2D | IfcLogical
+
+IfcOffsetCurve3D | 0 | BasisCurve | IfcOffsetCurve3D | IfcCurve
+IfcOffsetCurve3D | 1 | Distance | IfcOffsetCurve3D | IfcLengthMeasure
+IfcOffsetCurve3D | 2 | SelfIntersect | IfcOffsetCurve3D | IfcLogical
+IfcOffsetCurve3D | 3 | RefDirection | IfcOffsetCurve3D | IfcDirection
+
+IfcOuterBoundaryCurve | 0 | Segments | IfcCompositeCurve | LIST [1:?] OF IfcCompositeCurveSegment
+IfcOuterBoundaryCurve | 1 | SelfIntersect | IfcCompositeCurve | IfcLogical
+
+IfcPcurve | 0 | BasisSurface | IfcPcurve | IfcSurface
+IfcPcurve | 1 | ReferenceCurve | IfcPcurve | IfcCurve
+
+IfcPlane | 0 | Position | IfcElementarySurface | IfcAxis2Placement3D
+
+IfcPointOnCurve | 0 | BasisCurve | IfcPointOnCurve | IfcCurve
+IfcPointOnCurve | 1 | PointParameter | IfcPointOnCurve | IfcParameterValue
+
+IfcPointOnSurface | 0 | BasisSurface | IfcPointOnSurface | IfcSurface
+IfcPointOnSurface | 1 | PointParameterU | IfcPointOnSurface | IfcParameterValue
+IfcPointOnSurface | 2 | PointParameterV | IfcPointOnSurface | IfcParameterValue
+
+IfcPolygonalBoundedHalfSpace | 0 | BaseSurface | IfcHalfSpaceSolid | IfcSurface
+IfcPolygonalBoundedHalfSpace | 1 | AgreementFlag | IfcHalfSpaceSolid | IfcBoolean
+IfcPolygonalBoundedHalfSpace | 2 | Position | IfcPolygonalBoundedHalfSpace | IfcAxis2Placement3D
+IfcPolygonalBoundedHalfSpace | 3 | PolygonalBoundary | IfcPolygonalBoundedHalfSpace | IfcBoundedCurve
+
+IfcPolygonalFaceSet | 0 | Coordinates | IfcTessellatedFaceSet | IfcCartesianPointList3D
+IfcPolygonalFaceSet | 1 | Closed | IfcPolygonalFaceSet | OPTIONAL IfcBoolean
+IfcPolygonalFaceSet | 2 | Faces | IfcPolygonalFaceSet | LIST [1:?] OF IfcIndexedPolygonalFace
+IfcPolygonalFaceSet | 3 | PnIndex | IfcPolygonalFaceSet | OPTIONAL LIST [1:?] OF IfcPositiveInteger
+
+IfcPolyline | 0 | Points | IfcPolyline | LIST [2:?] OF IfcCartesianPoint
+
+IfcRationalBSplineCurveWithKnots | 0 | Degree | IfcBSplineCurve | IfcInteger
+IfcRationalBSplineCurveWithKnots | 1 | ControlPointsList | IfcBSplineCurve | LIST [2:?] OF IfcCartesianPoint
+IfcRationalBSplineCurveWithKnots | 2 | CurveForm | IfcBSplineCurve | IfcBSplineCurveForm
+IfcRationalBSplineCurveWithKnots | 3 | ClosedCurve | IfcBSplineCurve | IfcLogical
+IfcRationalBSplineCurveWithKnots | 4 | SelfIntersect | IfcBSplineCurve | IfcLogical
+IfcRationalBSplineCurveWithKnots | 5 | KnotMultiplicities | IfcBSplineCurveWithKnots | LIST [2:?] OF IfcInteger
+IfcRationalBSplineCurveWithKnots | 6 | Knots | IfcBSplineCurveWithKnots | LIST [2:?] OF IfcParameterValue
+IfcRationalBSplineCurveWithKnots | 7 | KnotSpec | IfcBSplineCurveWithKnots | IfcKnotType
+IfcRationalBSplineCurveWithKnots | 8 | WeightsData | IfcRationalBSplineCurveWithKnots | LIST [2:?] OF IfcReal
+
+IfcRationalBSplineSurfaceWithKnots | 0 | UDegree | IfcBSplineSurface | IfcInteger
+IfcRationalBSplineSurfaceWithKnots | 1 | VDegree | IfcBSplineSurface | IfcInteger
+IfcRationalBSplineSurfaceWithKnots | 2 | ControlPointsList | IfcBSplineSurface | LIST [2:?] OF LIST [2:?] OF IfcCartesianPoint
+IfcRationalBSplineSurfaceWithKnots | 3 | SurfaceForm | IfcBSplineSurface | IfcBSplineSurfaceForm
+IfcRationalBSplineSurfaceWithKnots | 4 | UClosed | IfcBSplineSurface | IfcLogical
+IfcRationalBSplineSurfaceWithKnots | 5 | VClosed | IfcBSplineSurface | IfcLogical
+IfcRationalBSplineSurfaceWithKnots | 6 | SelfIntersect | IfcBSplineSurface | IfcLogical
+IfcRationalBSplineSurfaceWithKnots | 7 | UMultiplicities | IfcBSplineSurfaceWithKnots | LIST [2:?] OF IfcInteger
+IfcRationalBSplineSurfaceWithKnots | 8 | VMultiplicities | IfcBSplineSurfaceWithKnots | LIST [2:?] OF IfcInteger
+IfcRationalBSplineSurfaceWithKnots | 9 | UKnots | IfcBSplineSurfaceWithKnots | LIST [2:?] OF IfcParameterValue
+IfcRationalBSplineSurfaceWithKnots | 10 | VKnots | IfcBSplineSurfaceWithKnots | LIST [2:?] OF IfcParameterValue
+IfcRationalBSplineSurfaceWithKnots | 11 | KnotSpec | IfcBSplineSurfaceWithKnots | IfcKnotType
+IfcRationalBSplineSurfaceWithKnots | 12 | WeightsData | IfcRationalBSplineSurfaceWithKnots | LIST [2:?] OF LIST [2:?] OF IfcReal
+
+IfcRectangularPyramid | 0 | Position | IfcCsgPrimitive3D | IfcAxis2Placement3D
+IfcRectangularPyramid | 1 | XLength | IfcRectangularPyramid | IfcPositiveLengthMeasure
+IfcRectangularPyramid | 2 | YLength | IfcRectangularPyramid | IfcPositiveLengthMeasure
+IfcRectangularPyramid | 3 | Height | IfcRectangularPyramid | IfcPositiveLengthMeasure
+
+IfcRectangularTrimmedSurface | 0 | BasisSurface | IfcRectangularTrimmedSurface | IfcSurface
+IfcRectangularTrimmedSurface | 1 | U1 | IfcRectangularTrimmedSurface | IfcParameterValue
+IfcRectangularTrimmedSurface | 2 | V1 | IfcRectangularTrimmedSurface | IfcParameterValue
+IfcRectangularTrimmedSurface | 3 | U2 | IfcRectangularTrimmedSurface | IfcParameterValue
+IfcRectangularTrimmedSurface | 4 | V2 | IfcRectangularTrimmedSurface | IfcParameterValue
+IfcRectangularTrimmedSurface | 5 | Usense | IfcRectangularTrimmedSurface | IfcBoolean
+IfcRectangularTrimmedSurface | 6 | Vsense | IfcRectangularTrimmedSurface | IfcBoolean
+
+IfcReparametrisedCompositeCurveSegment | 0 | Transition | IfcCompositeCurveSegment | IfcTransitionCode
+IfcReparametrisedCompositeCurveSegment | 1 | SameSense | IfcCompositeCurveSegment | IfcBoolean
+IfcReparametrisedCompositeCurveSegment | 2 | ParentCurve | IfcCompositeCurveSegment | IfcCurve
+IfcReparametrisedCompositeCurveSegment | 3 | ParamLength | IfcReparametrisedCompositeCurveSegment | IfcParameterValue
+
+IfcRepresentationMap | 0 | MappingOrigin | IfcRepresentationMap | IfcAxis2Placement
+IfcRepresentationMap | 1 | MappedRepresentation | IfcRepresentationMap | IfcRepresentation
+
+IfcRevolvedAreaSolid | 0 | SweptArea | IfcSweptAreaSolid | IfcProfileDef
+IfcRevolvedAreaSolid | 1 | Position | IfcSweptAreaSolid | OPTIONAL IfcAxis2Placement3D
+IfcRevolvedAreaSolid | 2 | Axis | IfcRevolvedAreaSolid | IfcAxis1Placement
+IfcRevolvedAreaSolid | 3 | Angle | IfcRevolvedAreaSolid | IfcPlaneAngleMeasure
+
+IfcRevolvedAreaSolidTapered | 0 | SweptArea | IfcSweptAreaSolid | IfcProfileDef
+IfcRevolvedAreaSolidTapered | 1 | Position | IfcSweptAreaSolid | OPTIONAL IfcAxis2Placement3D
+IfcRevolvedAreaSolidTapered | 2 | Axis | IfcRevolvedAreaSolid | IfcAxis1Placement
+IfcRevolvedAreaSolidTapered | 3 | Angle | IfcRevolvedAreaSolid | IfcPlaneAngleMeasure
+IfcRevolvedAreaSolidTapered | 4 | EndSweptArea | IfcRevolvedAreaSolidTapered | IfcProfileDef
+
+IfcRightCircularCone | 0 | Position | IfcCsgPrimitive3D | IfcAxis2Placement3D
+IfcRightCircularCone | 1 | Height | IfcRightCircularCone | IfcPositiveLengthMeasure
+IfcRightCircularCone | 2 | BottomRadius | IfcRightCircularCone | IfcPositiveLengthMeasure
+
+IfcRightCircularCylinder | 0 | Position | IfcCsgPrimitive3D | IfcAxis2Placement3D
+IfcRightCircularCylinder | 1 | Height | IfcRightCircularCylinder | IfcPositiveLengthMeasure
+IfcRightCircularCylinder | 2 | Radius | IfcRightCircularCylinder | IfcPositiveLengthMeasure
+
+IfcSeamCurve | 0 | Curve3D | IfcSurfaceCurve | IfcCurve
+IfcSeamCurve | 1 | AssociatedGeometry | IfcSurfaceCurve | LIST [1:2] OF IfcPcurve
+IfcSeamCurve | 2 | MasterRepresentation | IfcSurfaceCurve | IfcPreferredSurfaceCurveRepresentation
+
+IfcSectionedSpine | 0 | SpineCurve | IfcSectionedSpine | IfcCompositeCurve
+IfcSectionedSpine | 1 | CrossSections | IfcSectionedSpine | LIST [2:?] OF IfcProfileDef
+IfcSectionedSpine | 2 | CrossSectionPositions | IfcSectionedSpine | LIST [2:?] OF IfcAxis2Placement3D
+
+IfcShellBasedSurfaceModel | 0 | SbsmBoundary | IfcShellBasedSurfaceModel | SET [1:?] OF IfcShell
+
+IfcSphere | 0 | Position | IfcCsgPrimitive3D | IfcAxis2Placement3D
+IfcSphere | 1 | Radius | IfcSphere | IfcPositiveLengthMeasure
+
+IfcSphericalSurface | 0 | Position | IfcElementarySurface | IfcAxis2Placement3D
+IfcSphericalSurface | 1 | Radius | IfcSphericalSurface | IfcPositiveLengthMeasure
+
+IfcSurfaceCurve | 0 | Curve3D | IfcSurfaceCurve | IfcCurve
+IfcSurfaceCurve | 1 | AssociatedGeometry | IfcSurfaceCurve | LIST [1:2] OF IfcPcurve
+IfcSurfaceCurve | 2 | MasterRepresentation | IfcSurfaceCurve | IfcPreferredSurfaceCurveRepresentation
+
+IfcSurfaceCurveSweptAreaSolid | 0 | SweptArea | IfcSweptAreaSolid | IfcProfileDef
+IfcSurfaceCurveSweptAreaSolid | 1 | Position | IfcSweptAreaSolid | OPTIONAL IfcAxis2Placement3D
+IfcSurfaceCurveSweptAreaSolid | 2 | Directrix | IfcSurfaceCurveSweptAreaSolid | IfcCurve
+IfcSurfaceCurveSweptAreaSolid | 3 | StartParam | IfcSurfaceCurveSweptAreaSolid | OPTIONAL IfcParameterValue
+IfcSurfaceCurveSweptAreaSolid | 4 | EndParam | IfcSurfaceCurveSweptAreaSolid | OPTIONAL IfcParameterValue
+IfcSurfaceCurveSweptAreaSolid | 5 | ReferenceSurface | IfcSurfaceCurveSweptAreaSolid | IfcSurface
+
+IfcSurfaceOfLinearExtrusion | 0 | SweptCurve | IfcSweptSurface | IfcProfileDef
+IfcSurfaceOfLinearExtrusion | 1 | Position | IfcSweptSurface | OPTIONAL IfcAxis2Placement3D
+IfcSurfaceOfLinearExtrusion | 2 | ExtrudedDirection | IfcSurfaceOfLinearExtrusion | IfcDirection
+IfcSurfaceOfLinearExtrusion | 3 | Depth | IfcSurfaceOfLinearExtrusion | IfcLengthMeasure
+
+IfcSurfaceOfRevolution | 0 | SweptCurve | IfcSweptSurface | IfcProfileDef
+IfcSurfaceOfRevolution | 1 | Position | IfcSweptSurface | OPTIONAL IfcAxis2Placement3D
+IfcSurfaceOfRevolution | 2 | AxisPosition | IfcSurfaceOfRevolution | IfcAxis1Placement
+
+IfcSweptDiskSolid | 0 | Directrix | IfcSweptDiskSolid | IfcCurve
+IfcSweptDiskSolid | 1 | Radius | IfcSweptDiskSolid | IfcPositiveLengthMeasure
+IfcSweptDiskSolid | 2 | InnerRadius | IfcSweptDiskSolid | OPTIONAL IfcPositiveLengthMeasure
+IfcSweptDiskSolid | 3 | StartParam | IfcSweptDiskSolid | OPTIONAL IfcParameterValue
+IfcSweptDiskSolid | 4 | EndParam | IfcSweptDiskSolid | OPTIONAL IfcParameterValue
+
+IfcSweptDiskSolidPolygonal | 0 | Directrix | IfcSweptDiskSolid | IfcCurve
+IfcSweptDiskSolidPolygonal | 1 | Radius | IfcSweptDiskSolid | IfcPositiveLengthMeasure
+IfcSweptDiskSolidPolygonal | 2 | InnerRadius | IfcSweptDiskSolid | OPTIONAL IfcPositiveLengthMeasure
+IfcSweptDiskSolidPolygonal | 3 | StartParam | IfcSweptDiskSolid | OPTIONAL IfcParameterValue
+IfcSweptDiskSolidPolygonal | 4 | EndParam | IfcSweptDiskSolid | OPTIONAL IfcParameterValue
+IfcSweptDiskSolidPolygonal | 5 | FilletRadius | IfcSweptDiskSolidPolygonal | OPTIONAL IfcPositiveLengthMeasure
+
+IfcToroidalSurface | 0 | Position | IfcElementarySurface | IfcAxis2Placement3D
+IfcToroidalSurface | 1 | MajorRadius | IfcToroidalSurface | IfcPositiveLengthMeasure
+IfcToroidalSurface | 2 | MinorRadius | IfcToroidalSurface | IfcPositiveLengthMeasure
+
+IfcTriangulatedFaceSet | 0 | Coordinates | IfcTessellatedFaceSet | IfcCartesianPointList3D
+IfcTriangulatedFaceSet | 1 | Normals | IfcTriangulatedFaceSet | OPTIONAL LIST [1:?] OF LIST [3:3] OF IfcParameterValue
+IfcTriangulatedFaceSet | 2 | Closed | IfcTriangulatedFaceSet | OPTIONAL IfcBoolean
+IfcTriangulatedFaceSet | 3 | CoordIndex | IfcTriangulatedFaceSet | LIST [1:?] OF LIST [3:3] OF IfcPositiveInteger
+IfcTriangulatedFaceSet | 4 | PnIndex | IfcTriangulatedFaceSet | OPTIONAL LIST [1:?] OF IfcPositiveInteger
+
+IfcTrimmedCurve | 0 | BasisCurve | IfcTrimmedCurve | IfcCurve
+IfcTrimmedCurve | 1 | Trim1 | IfcTrimmedCurve | SET [1:2] OF IfcTrimmingSelect
+IfcTrimmedCurve | 2 | Trim2 | IfcTrimmedCurve | SET [1:2] OF IfcTrimmingSelect
+IfcTrimmedCurve | 3 | SenseAgreement | IfcTrimmedCurve | IfcBoolean
+IfcTrimmedCurve | 4 | MasterRepresentation | IfcTrimmedCurve | IfcTrimmingPreference
+
+IfcVector | 0 | Orientation | IfcVector | IfcDirection
+IfcVector | 1 | Magnitude | IfcVector | IfcLengthMeasure
+
+IfcVirtualGridIntersection | 0 | IntersectingAxes | IfcVirtualGridIntersection | LIST [2:2] OF

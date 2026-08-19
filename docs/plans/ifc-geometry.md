@@ -104,14 +104,31 @@ units/, placement/, lower/, kernel/
 
 ## Stages
 
-| # | Stage | Verification |
-| --- | --- | --- |
-| 1 | Foundation: error, slot-accessor helpers, units | unit tests |
-| 2 | `IfcGeometryResource` typed views | parse all 19 fixtures |
-| 3 | `IfcGeometricConstraintResource` + placement resolution | known-coordinate test |
-| 4 | `IfcGeometricModelResource` typed views | fixture coverage |
-| 5 | Kernel contract + lowering | request emitted per fixture entity |
-| 6 | Coverage + inventory test proving all 112 entities are handled | gate |
+| # | Stage | State | Verification |
+| --- | --- | --- | --- |
+| 1 | Foundation: `error`, `slots`, `units` | **done** | 20 tests, all 19 fixtures |
+| 2 | `transform` + `kernel` request vocabulary | **done** | 25 tests |
+| 3 | `constraint/`: local placement, grid, connection | **in progress** | cycle + composition tests |
+| 4 | `resource/`: points, directions, placements, operators | delegated | |
+| 5 | `curve/` + `surface/` | delegated | |
+| 6 | `solid/`: swept, brep, csg, halfspace, boolean, tessellated | delegated | |
+| 7 | `lower/`: views to `kernel::Primitive` | pending | request per fixture entity |
+| 8 | Inventory test: all 112 entities recognised | pending | the honesty check |
 
-Stage 6 is the honesty check: a test enumerating every concrete entity in the
-three schemas and asserting the dispatcher recognises it.
+Stage 8 is the honesty check: a test enumerating every concrete entity in the
+three schemas and asserting the dispatcher recognises it, so "we support the
+geometry resources" becomes a claim the build verifies rather than a claim I
+make.
+
+## Reference generated for implementers
+
+`references/absolute-slots.txt` lists the **absolute** positional STEP index of
+every attribute of every concrete geometry entity, inherited attributes first,
+generated from `IFC4.exp`. This exists because the EXPRESS declaration of, say,
+`IfcExtrudedAreaSolid` lists only `ExtrudedDirection` and `Depth`, while the
+STEP record is `(SweptArea, Position, ExtrudedDirection, Depth)` -- the two
+inherited slots come first. Reading local indices off the schema and using them
+as record positions misreads every solid in the file, silently.
+
+Verified against a real record:
+`#338081= IFCEXTRUDEDAREASOLID(#338077,#338080,#19,2.41)`.
