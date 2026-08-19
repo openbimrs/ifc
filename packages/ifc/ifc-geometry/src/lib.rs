@@ -35,13 +35,17 @@
 //! nothing silently substitutes wrong geometry — a missing shape is
 //! recoverable, a wrong one is not.
 //!
-//! **The kernel is demanded, not provided.** [`kernel`] states the capability
-//! surface a geometry backend must satisfy.
+//! **The kernel is demanded, not provided.** This crate states the capability
+//! surface a geometry backend must satisfy. See [`kernel::Primitive`].
 
 pub mod error;
+pub mod kernel;
 pub mod slots;
+pub mod transform;
 pub mod units;
 
 pub use error::{GeometryError, GeometryResult};
+pub use kernel::{BooleanOp, CsgShape, Primitive, Profile};
 pub use slots::Slots;
+pub use transform::Transform;
 pub use units::UnitScale;
