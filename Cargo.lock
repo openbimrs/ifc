@@ -431,6 +431,8 @@ dependencies = [
  "ifc-model",
  "ifc-schema",
  "ifc-step",
+ "proc-macro2",
+ "syn 2.0.119",
  "thiserror",
 ]
 
