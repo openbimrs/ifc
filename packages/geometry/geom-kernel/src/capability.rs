@@ -168,6 +168,8 @@ pub enum Precision {
     F64,
     /// Deliberate mixed-precision path with documented error bounds.
     Mixed,
+    /// Exact arithmetic: the result carries no rounding error at all.
+    Exact,
 }
 
 /// Operation name used for diagnostics only. Implementing an operation trait is

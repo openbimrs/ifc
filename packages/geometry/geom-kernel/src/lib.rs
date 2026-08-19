@@ -10,6 +10,7 @@ pub mod backend;
 #[cfg(feature = "mesh-boolean")]
 pub mod boolean;
 pub mod capability;
+pub mod certainty;
 #[cfg(feature = "model")]
 pub mod compile;
 pub mod error;
@@ -19,10 +20,11 @@ pub use backend::Backend;
 #[cfg(feature = "mesh-boolean")]
 pub use boolean::{MeshBoolean, MeshBooleanRegistry};
 pub use capability::{BackendDescriptor, BackendId, ExecutionTarget, Operation, Precision};
+pub use certainty::{Certified, EscalationLadder, Sign};
 #[cfg(feature = "model")]
 pub use compile::GeometryCompiler;
 pub use error::{GeomError, GeomResult};
 pub use execution::{
-    DataResidency, Determinism, DevicePreference, ExecutionOptions, Parallelism, Residency,
-    ScratchRequirement,
+    DataResidency, Determinism, DevicePreference, ExecutionOptions, OutputBound, Parallelism,
+    Residency, ScratchRequirement,
 };
