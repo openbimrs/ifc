@@ -63,6 +63,8 @@ pub(crate) fn validate_reference_types(
     node: &GeometryNode,
     nodes: &[GeometryNode],
 ) -> Result<(), GraphError> {
+    // Keep this match exhaustive so adding a node variant cannot silently bypass
+    // semantic reference validation.
     match node {
         GeometryNode::CurveRelation(value) => validate_curve_relation(value, nodes),
         GeometryNode::PointOnCurve(value) => {
@@ -86,7 +88,26 @@ pub(crate) fn validate_reference_types(
             }
             Ok(())
         }
-        _ => Ok(()),
+        GeometryNode::Point2(_)
+        | GeometryNode::Point3(_)
+        | GeometryNode::Vector2(_)
+        | GeometryNode::Vector3(_)
+        | GeometryNode::Frame2(_)
+        | GeometryNode::Frame3(_)
+        | GeometryNode::Transform(_)
+        | GeometryNode::PointList2(_)
+        | GeometryNode::PointList3(_)
+        | GeometryNode::Curve2(_)
+        | GeometryNode::Curve3(_)
+        | GeometryNode::Surface(_)
+        | GeometryNode::Profile(_) => Ok(()),
+        GeometryNode::Primitive(_) | GeometryNode::HalfSpace(_) | GeometryNode::PolygonMesh(_) => {
+            Ok(())
+        }
+        GeometryNode::TriMesh(_)
+        | GeometryNode::BoundingBox(_)
+        | GeometryNode::Instance(_)
+        | GeometryNode::Collection(_) => Ok(()),
     }
 }
 
