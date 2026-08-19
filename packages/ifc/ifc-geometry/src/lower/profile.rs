@@ -6,12 +6,14 @@
 
 use geom_core::{Interval, Transform2, Vec2};
 use geom_curve::{Curve2, Line2};
+use geom_model::{GeometryNode, NodeId};
 use geom_profile::{
     CircleProfile, Contour, ContourProfile, Profile, ProfileSegment, RectangleProfile,
 };
 use ifc_model::{EntityId, Model};
 
 use crate::error::{GeometryError, GeometryResult};
+use crate::lower::session::LoweringSession;
 use crate::lower::Tolerance;
 use crate::slots::Slots;
 use crate::units::UnitScale;
@@ -28,6 +30,30 @@ mod slot {
     pub const RECT_INNER_RADIUS: usize = 6;
     pub const RECT_OUTER_RADIUS: usize = 7;
     pub const ROUNDED_RECT_RADIUS: usize = 5;
+}
+
+/// Family label used for profile memoization.
+const PROFILE: &str = "profile";
+
+/// Append one `IfcProfileDef` to a shared session and return its node.
+///
+/// Profiles are the most-shared geometry in a real model: one section
+/// definition backs every beam of a type. Memoizing here is what keeps a
+/// shared profile a single node instead of one copy per referencing solid.
+/// The frame is the identity because a profile is defined in its own 2D space;
+/// placement is applied by the referencing solid, not baked into the section.
+pub fn lower_profile_node(
+    session: &mut LoweringSession<'_>,
+    id: EntityId,
+) -> GeometryResult<NodeId> {
+    let frame = crate::transform::Transform::identity();
+    if let Some(node) = session.memoized(id, PROFILE, frame) {
+        return Ok(node);
+    }
+    let profile = lower_profile(session.model(), id, session.units(), &session.tolerance())?;
+    let node = session.node_for(id, GeometryNode::Profile(profile))?;
+    session.memoize(id, PROFILE, frame, node);
+    Ok(node)
 }
 
 /// Lower one `IfcProfileDef` to an exact, format-neutral profile.

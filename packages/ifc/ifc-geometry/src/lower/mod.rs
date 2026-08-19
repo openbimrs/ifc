@@ -1,13 +1,22 @@
 //! IFC-to-neutral-geometry lowering entry points.
 
+pub mod boolean;
+pub mod dispatch;
 pub mod profile;
+pub mod session;
 pub mod swept;
 pub mod tolerance;
 
 use geom_model::{GeometryGraph, NodeId};
 
-pub use profile::lower_profile;
-pub use swept::{lower_extruded_area_solid, lower_revolved_area_solid};
+pub use boolean::lower_boolean_result_node;
+pub use dispatch::lower_representation_item;
+pub use profile::{lower_profile, lower_profile_node};
+pub use session::{LoweringSession, SessionLimits};
+pub use swept::{
+    lower_extruded_area_solid, lower_extruded_area_solid_node, lower_revolved_area_solid,
+    lower_revolved_area_solid_node,
+};
 pub use tolerance::Tolerance;
 
 /// One lowered root and the immutable DAG that owns all of its dependencies.
@@ -19,15 +28,12 @@ pub struct LoweredGeometry {
     pub root: NodeId,
 }
 
-mod boolean;
 mod brep;
 mod context;
 mod curve;
-mod dispatch;
 mod mapped;
 mod placement;
 mod provenance;
-mod session;
 mod solid;
 mod surface;
 mod tessellated;

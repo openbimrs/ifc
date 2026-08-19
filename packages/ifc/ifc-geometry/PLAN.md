@@ -1,6 +1,6 @@
 # ifc-geometry implementation plan
 
-Status: active implementation and concurrent neutral-DAG migration; views are broad, lowering covers exact swept solids but not all representation families.
+Status: active implementation on a shared lowering session; views are broad and dispatch is total, but only swept-solid and boolean families are lowered today.
 Last updated: 2026-08-19
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
@@ -37,15 +37,12 @@ parallel placeholders.
 - `src/input/profile.rs`: compiled private scaffold; implementation owned by `src/input/PLAN.md`
 - `src/input/representation.rs`: compiled private scaffold; implementation owned by `src/input/PLAN.md`
 - `src/input/topology.rs`: compiled private scaffold; implementation owned by `src/input/PLAN.md`
-- `src/lower/boolean.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
 - `src/lower/brep.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
 - `src/lower/context.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
 - `src/lower/curve.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
-- `src/lower/dispatch.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
 - `src/lower/mapped.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
 - `src/lower/placement.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
 - `src/lower/provenance.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
-- `src/lower/session.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
 - `src/lower/solid.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
 - `src/lower/surface.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
 - `src/lower/tessellated.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
@@ -55,9 +52,14 @@ parallel placeholders.
 - [ ] `GEOM-CONTRACT` - agree validated direction/axis invariants with `geom-model`
   - Contract: axes, normals, and orientation fields become finite non-zero unit directions; displacement, derivative, scale, and other magnitude-bearing vectors are never normalized implicitly.
   - Evidence: contract docs plus non-unit, zero-vector, and magnitude-preservation tests on both sides.
-- [ ] `GEOM-SESSION` - introduce one recursive lowering session and shared graph builder
-  - Requires: `GEOM-CONTRACT`.
-  - Evidence: boolean/mapped/shared-profile tests prove reuse without graph remapping.
+- [x] `GEOM-SESSION` - introduce one recursive lowering session and shared graph builder
+  - Evidence: `cargo test -p ifc-geometry` (413 passing) plus 4/4 mutation
+    probes; `tests/lower_session.rs` proves boolean composition across families,
+    shared-profile reuse, frame-distinct memo keys, cycle/depth limits, and
+    entity-attributed graph faults. Owned by `src/lower/PLAN.md:LOW-SESSION`.
+  - Decision: `GEOM-CONTRACT` was not an actual prerequisite; the session is
+    agnostic to direction normalization, which already lives in
+    `resource::direction`.
 - [ ] `GEOM-SEAM` - finish neutral-DAG migration; remove stale kernel-trait wording and obsolete adapter tessellation tolerance
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [ ] `GEOM-INPUT` - add cross-resource input views without importing semantic domain crates
@@ -96,4 +98,8 @@ parallel placeholders.
 ## Completion log
 
 Append concise entries as `TASK-ID - proof command/result - material decision`.
+
+- `GEOM-SESSION` - `cargo test -p ifc-geometry` 413 passing, 4/4 mutation
+  probes caught - recursive lowering shares one builder; `LoweredGeometry` is
+  produced only by `LoweringSession::finish`.
 Do not paste long logs or move standing invariants out of `AGENTS.md`.
