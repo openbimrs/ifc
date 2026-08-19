@@ -11,15 +11,18 @@ set -uo pipefail
 export PATH="$HOME/.cargo/bin:$PATH"
 cd "$(dirname "$0")/.."
 
+gate_out="$(mktemp "${TMPDIR:-/tmp}/nehirde-gate.XXXXXX")" || exit 1
+trap 'rm -f "$gate_out"' EXIT
+
 fail=0
 step() {
     local name="$1"; shift
     printf '%-46s' "$name"
-    if "$@" >/tmp/gate_out.txt 2>&1; then
+    if "$@" >"$gate_out" 2>&1; then
         echo "ok"
     else
         echo "FAIL (exit $?)"
-        tail -25 /tmp/gate_out.txt | sed 's/^/    /'
+        tail -25 "$gate_out" | sed 's/^/    /'
         fail=1
     fi
 }
