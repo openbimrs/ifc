@@ -15,7 +15,7 @@ committed, not the input.
 | `ifc2x3-tc1/psd/` | 317 property-set definition XMLs | 2 MB |
 | `ifc4-add2-tc1/IFC4.exp` | EXPRESS schema, IFC4 ADD2 TC1 (the ISO one) | 364 KB |
 | `ifc4-add2-tc1/IFC4.xsd` | ifcXML schema | 630 KB |
-| `ifc4-add2-tc1/dist/` | Full HTML documentation + 420 psd/qto XMLs | 246 MB |
+| `ifc4-add2-tc1/dist/` | Full HTML documentation + 420 PSD and 93 QTO XMLs | 246 MB |
 | `ifc4x3-add2/IFC4X3_ADD2.exp` | EXPRESS schema, IFC4x3 ADD2 | 394 KB |
 
 Source: `https://standards.buildingsmart.org/IFC/RELEASE/...`.

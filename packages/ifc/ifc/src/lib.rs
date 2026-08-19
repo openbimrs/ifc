@@ -80,6 +80,10 @@ pub use ifc_cost as cost;
 #[cfg(feature = "properties")]
 pub use ifc_properties as properties;
 
+/// Versioned external PSD/QTO template catalogs and correction profiles.
+#[cfg(feature = "property-catalog")]
+pub use ifc_template_catalog as property_catalog;
+
 /// Tasks, sequencing, calendars.
 #[cfg(feature = "schedule")]
 pub use ifc_schedule as schedule;
@@ -197,6 +201,8 @@ pub fn compiled_features() -> Vec<&'static str> {
     features.push("schema");
     #[cfg(feature = "properties")]
     features.push("properties");
+    #[cfg(feature = "property-catalog")]
+    features.push("property-catalog");
     #[cfg(feature = "cost")]
     features.push("cost");
     #[cfg(feature = "schedule")]

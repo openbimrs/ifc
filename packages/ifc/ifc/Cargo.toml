@@ -20,6 +20,7 @@ ifc-schema = { workspace = true, optional = true }
 
 # --- domain views ---
 ifc-properties = { workspace = true, optional = true }
+ifc-template-catalog = { workspace = true, optional = true }
 ifc-cost = { workspace = true, optional = true }
 ifc-schedule = { workspace = true, optional = true }
 ifc-material = { workspace = true, optional = true }
@@ -44,10 +45,11 @@ step = ["dep:ifc-step"]
 ifcxml = ["dep:ifc-xml"]
 
 # --- schema ---
-schema = ["dep:ifc-schema"]
+schema = ["dep:ifc-schema", "ifc-template-catalog?/schema"]
 
 # --- domains ---
 properties = ["dep:ifc-properties"]
+property-catalog = ["dep:ifc-template-catalog"]
 cost = ["dep:ifc-cost"]
 schedule = ["dep:ifc-schedule"]
 material = ["dep:ifc-material"]
@@ -75,4 +77,4 @@ domains = [
     "style",
     "validate",
 ]
-full = ["codecs", "schema", "domains", "geometry", "georef", "alignment"]
+full = ["codecs", "schema", "domains", "property-catalog", "geometry", "georef", "alignment"]

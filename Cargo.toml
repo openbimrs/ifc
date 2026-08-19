@@ -51,6 +51,7 @@ ifc-xml = { path = "packages/ifc/ifc-xml" }
 ifc-model = { path = "packages/ifc/ifc-model" }
 ifc-geometry = { path = "packages/ifc/ifc-geometry" }
 ifc-properties = { path = "packages/ifc/ifc-properties" }
+ifc-template-catalog = { path = "packages/ifc/ifc-template-catalog" }
 ifc-cost = { path = "packages/ifc/ifc-cost" }
 ifc-schedule = { path = "packages/ifc/ifc-schedule" }
 ifc-material = { path = "packages/ifc/ifc-material" }

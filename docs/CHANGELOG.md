@@ -11,6 +11,10 @@ section on release.
 ## [Unreleased]
 
 ### Added
+- **Versioned PSD/QTO template catalogs (`ifc-template-catalog`)** with a
+  committed IFC4 ADD2 TC1 artifact, official/corrected profiles,
+  provenance-bearing overlays, bounded XML import, schema-aware applicability,
+  and format-neutral application/compliance APIs.
 - **ifcXML codec (`ifc-xml`)** implementing the same `Codec` trait as
   `ifc-step`, proving serialization is genuinely pluggable: the model crate did
   not change to accommodate it. Schema-aware attribute naming is optional, with
