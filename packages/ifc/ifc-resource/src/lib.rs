@@ -18,7 +18,7 @@
 //! # Status
 //!
 //! Scaffold -- modules are reserved with intent, not implemented. See
-//! `PLAN.md` for the stage that fills them.
+//! `../PLAN.md` for the stage that fills them.
 
 mod equipment;
 mod error;

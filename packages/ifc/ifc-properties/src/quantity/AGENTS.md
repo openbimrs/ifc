@@ -1,6 +1,6 @@
 # ifc-properties quantity instructions
 
-Scope: authored quantity views, validation, and transactional edits. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: authored quantity views, validation, and transactional edits. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `PROP-QTY, PROP-EDIT, PROP-CHECK` and keep implementation state there.
 
 ## Owns

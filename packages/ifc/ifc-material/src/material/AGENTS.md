@@ -1,6 +1,6 @@
 # ifc-material material instructions
 
-Scope: material identity, category, and attached semantic properties. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: material identity, category, and attached semantic properties. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `MAT-BASE` and keep implementation state there.
 
 ## Owns

@@ -1,7 +1,7 @@
 //! `IfcSurfaceTexture` and UV coordinate mapping.
 //!
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

@@ -1,6 +1,6 @@
 # ifc-alignment curve instructions
 
-Scope: assemble exact neutral alignment curves from three design axes. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: assemble exact neutral alignment curves from three design axes. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `ALIGN-CURVE`; keep progress and blockers there.
 
 ## Owns

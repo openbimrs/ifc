@@ -1,6 +1,6 @@
 # ifc-model mutation instructions
 
-Scope: schema-agnostic transactional edits to records and values. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: schema-agnostic transactional edits to records and values. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `MODEL-MUT` and keep implementation state there.
 
 ## Owns

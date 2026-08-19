@@ -1,6 +1,6 @@
 # ifc-georef conversion instructions
 
-Scope: project-context to map-coordinate operations. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: project-context to map-coordinate operations. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `GEOREF-MAP`; keep progress and blockers there.
 
 ## Owns

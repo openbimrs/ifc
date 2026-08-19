@@ -1,7 +1,7 @@
 //! Attribute values match their declared EXPRESS types.
 //!
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

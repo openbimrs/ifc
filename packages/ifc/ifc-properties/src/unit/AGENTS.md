@@ -1,6 +1,6 @@
 # ifc-properties unit instructions
 
-Scope: dimensional project and per-value unit interpretation. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: dimensional project and per-value unit interpretation. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `PROP-UNIT` and keep implementation state there.
 
 ## Owns

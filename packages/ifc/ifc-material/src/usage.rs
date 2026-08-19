@@ -3,7 +3,7 @@
 //! Material can be assigned to the element or to its type, with the element
 //! winning. Resolution order is a common source of wrong answers.
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

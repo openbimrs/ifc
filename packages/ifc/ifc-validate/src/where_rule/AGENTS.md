@@ -1,6 +1,6 @@
 # ifc-validate where_rule instructions
 
-Scope: explicit registry and bounded execution of supported WHERE rules. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: explicit registry and bounded execution of supported WHERE rules. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `VAL-WHERE` and keep implementation state there.
 
 ## Owns

@@ -1,6 +1,6 @@
 # ifc-validate report instructions
 
-Scope: stable deterministic validation findings and summaries. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: stable deterministic validation findings and summaries. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `VAL-REPORT` and keep implementation state there.
 
 ## Owns

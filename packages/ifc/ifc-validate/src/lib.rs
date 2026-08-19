@@ -21,7 +21,7 @@
 //! # Status
 //!
 //! Scaffold -- contract-free modules remain private; behavior and deliberate
-//! public contracts remain tracked in `PLAN.md`.
+//! public contracts remain tracked in `../PLAN.md`.
 
 mod error;
 mod header;

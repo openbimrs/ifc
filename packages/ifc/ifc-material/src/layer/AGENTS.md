@@ -1,6 +1,6 @@
 # ifc-material layer instructions
 
-Scope: material-layer identity and composition. Follow the crate `AGENTS.md`.
+Scope: material-layer identity and composition. Follow the crate `../../AGENTS.md`.
 Read `PLAN.md` only for assigned task(s) `MAT-LAYER`; keep implementation state
 there.
 

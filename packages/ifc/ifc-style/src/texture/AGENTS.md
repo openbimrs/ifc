@@ -1,6 +1,6 @@
 # ifc-style texture instructions
 
-Scope: texture descriptors and coordinate associations. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: texture descriptors and coordinate associations. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `STYLE-TEXTURE`; keep progress and blockers there.
 
 ## Owns

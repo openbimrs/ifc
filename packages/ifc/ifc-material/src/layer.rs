@@ -3,7 +3,7 @@
 //! Geometry-affecting usage direction, sense, offset, and reference extent are
 //! owned by `ifc-geometry::input`; this module owns material composition only.
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

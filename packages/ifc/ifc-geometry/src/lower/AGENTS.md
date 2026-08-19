@@ -2,7 +2,7 @@
 
 Scope: Total translation from validated IFC views to an exact format-neutral GeometryGraph.
 
-Follow the crate `AGENTS.md`. Read this directory's `PLAN.md` only for assigned
+Follow the crate `../../AGENTS.md`. Read this directory's `PLAN.md` only for assigned
 work under parent task(s) `GEOM-CONTRACT, GEOM-SESSION, GEOM-CTX, GEOM-PLACE,
 GEOM-PROFILE, GEOM-CURVE, GEOM-SURFACE, GEOM-BREP, GEOM-SOLID, GEOM-MAP`.
 Record progress there.

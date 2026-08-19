@@ -1,7 +1,7 @@
 //! Binding a classification or document to objects.
 //!
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

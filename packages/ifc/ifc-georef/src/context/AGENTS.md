@@ -1,6 +1,6 @@
 # ifc-georef context instructions
 
-Scope: source-context association and composition boundary. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: source-context association and composition boundary. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `GEOREF-CHAIN`; keep progress and blockers there.
 
 ## Owns

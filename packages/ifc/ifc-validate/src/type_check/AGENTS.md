@@ -1,6 +1,6 @@
 # ifc-validate type_check instructions
 
-Scope: schema type compatibility for entity attributes and values. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: schema type compatibility for entity attributes and values. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `VAL-TYPE` and keep implementation state there.
 
 ## Owns

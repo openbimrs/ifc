@@ -1,7 +1,7 @@
 //! `IfcTask`, task time and predefined types.
 //!
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

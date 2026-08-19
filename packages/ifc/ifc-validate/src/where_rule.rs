@@ -3,7 +3,7 @@
 //! IFC4 declares 47 functions and 2 global rules. These are the expensive
 //! checks, so they are opt-in rather than part of a default validation pass.
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

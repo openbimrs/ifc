@@ -1,7 +1,7 @@
 //! Applied actions and load cases.
 //!
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

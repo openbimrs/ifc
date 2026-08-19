@@ -1,6 +1,6 @@
 # ifc-validate structure instructions
 
-Scope: schema structural checks over generic model records. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: schema structural checks over generic model records. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `VAL-STRUCT` and keep implementation state there.
 
 ## Owns

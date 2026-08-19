@@ -3,7 +3,7 @@
 //! Depth-first and breadth-first walks over the relationship graph, bounded
 //! against the cycles that occur in malformed files.
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

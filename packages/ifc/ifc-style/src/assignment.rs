@@ -1,7 +1,7 @@
 //! `IfcStyledItem`: binding a style to a representation item.
 //!
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

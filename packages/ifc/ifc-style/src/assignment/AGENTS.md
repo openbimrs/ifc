@@ -1,6 +1,6 @@
 # ifc-style assignment instructions
 
-Scope: style and presentation-layer associations to representation EntityIds. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: style and presentation-layer associations to representation EntityIds. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `STYLE-ASSIGN`; keep progress and blockers there.
 
 ## Owns

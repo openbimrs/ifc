@@ -4,7 +4,7 @@
 //! units (imperial, US survey feet) must be resolved before a value means
 //! anything.
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

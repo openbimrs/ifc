@@ -2,7 +2,7 @@
 
 Scope: Borrowed views and local semantic validation for IFC surface entities.
 
-Follow the crate `AGENTS.md`. Read this directory's `PLAN.md` only for assigned
+Follow the crate `../../AGENTS.md`. Read this directory's `PLAN.md` only for assigned
 work under parent task(s) `GEOM-SURFACE`. Record progress there.
 
 ## Owns

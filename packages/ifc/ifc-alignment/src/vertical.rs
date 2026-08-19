@@ -1,7 +1,7 @@
 //! Vertical segments: grades and parabolic curves.
 //!
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

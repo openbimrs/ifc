@@ -3,7 +3,7 @@
 //! Finish-to-start and friends, with `IfcLagTime`. Cycle detection matters --
 //! a cyclic schedule must be reported, not looped over.
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

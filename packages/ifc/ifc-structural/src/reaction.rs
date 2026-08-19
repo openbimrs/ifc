@@ -1,4 +1,4 @@
 //! Computed reactions.
 //!
 //!
-//! Not yet implemented -- see `PLAN.md`.
+//! Not yet implemented -- see `../PLAN.md`.

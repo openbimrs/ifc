@@ -7,7 +7,7 @@
 //! Site coordinates routinely exceed `f32` precision -- another reason the
 //! kernel stores `f64` (see `docs/adr/0001`).
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

@@ -11,4 +11,4 @@
 //! ancestor bitsets) happens in one file, and the version-drift handling has an
 //! obvious home.
 //!
-//! Not yet implemented -- Stage 1 in `PLAN.md`.
+//! Not yet implemented -- Stage 1 in `../PLAN.md`.

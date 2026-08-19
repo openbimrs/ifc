@@ -7,4 +7,4 @@
 //! Real files omit levels, duplicate storeys, or attach elements directly to the
 //! building. The tree must tolerate that rather than assume the canonical shape.
 //!
-//! Not yet implemented -- see `PLAN.md`.
+//! Not yet implemented -- see `../PLAN.md`.

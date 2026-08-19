@@ -3,7 +3,7 @@
 //! `all_of_type("IfcWall")` and 'who references me' must both be O(1)-ish; a
 //! linear scan over millions of entities per query is the naive trap.
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

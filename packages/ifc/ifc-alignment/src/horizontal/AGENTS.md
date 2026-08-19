@@ -1,6 +1,6 @@
 # ifc-alignment horizontal instructions
 
-Scope: horizontal layout and exact horizontal segment parameters. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: horizontal layout and exact horizontal segment parameters. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `ALIGN-H`; keep progress and blockers there.
 
 ## Owns

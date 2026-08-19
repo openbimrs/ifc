@@ -1,6 +1,6 @@
 # ifc-model traverse instructions
 
-Scope: generic bounded graph traversal primitives. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: generic bounded graph traversal primitives. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `MODEL-TRV` and keep implementation state there.
 
 ## Owns

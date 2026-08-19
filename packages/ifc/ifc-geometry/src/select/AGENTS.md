@@ -2,7 +2,7 @@
 
 Scope: Compiled EXPRESS SELECT membership and subtype classification.
 
-Follow the crate `AGENTS.md`. Read this directory's `PLAN.md` only for assigned
+Follow the crate `../../AGENTS.md`. Read this directory's `PLAN.md` only for assigned
 work under parent task(s) `GEOM-CENSUS`. Record progress there.
 
 ## Owns

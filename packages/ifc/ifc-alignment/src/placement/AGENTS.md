@@ -1,6 +1,6 @@
 # ifc-alignment placement instructions
 
-Scope: linear placement and point-by-distance interpretation. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: linear placement and point-by-distance interpretation. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `ALIGN-PLACE`; keep progress and blockers there.
 
 ## Owns

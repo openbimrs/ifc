@@ -1,6 +1,6 @@
 # ifc-material usage instructions
 
-Scope: product/type material associations and deterministic semantic resolution. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: product/type material associations and deterministic semantic resolution. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `MAT-ASSIGN` and keep implementation state there.
 
 ## Owns

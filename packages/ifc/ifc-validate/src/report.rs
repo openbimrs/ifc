@@ -3,7 +3,7 @@
 //! A validation result must be machine-readable so `ids` can consume it and a
 //! CI gate can act on it.
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

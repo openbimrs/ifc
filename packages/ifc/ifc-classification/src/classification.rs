@@ -3,7 +3,7 @@
 //! References nest: a reference may point at a parent reference rather than
 //! the classification root, forming a facet path.
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

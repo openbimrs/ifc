@@ -2,7 +2,7 @@
 
 Scope: Geometry-affecting borrowed views from IFC resources outside the three geometry resources.
 
-Follow the crate `AGENTS.md`. Read this directory's `PLAN.md` only for assigned
+Follow the crate `../../AGENTS.md`. Read this directory's `PLAN.md` only for assigned
 work under parent task(s) `GEOM-INPUT`. Record progress there.
 
 ## Owns

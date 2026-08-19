@@ -1,6 +1,6 @@
 //! Guard the progressive context and implementation-plan protocol.
 //!
-//! `AGENTS.md` is standing context; `PLAN.md` is opt-in implementation state.
+//! `../AGENTS.md` is standing context; `../PLAN.md` is opt-in implementation state.
 //! Pairing and shape are checked so a new crate/module cannot silently fall
 //! outside the handoff system.
 
@@ -417,6 +417,77 @@ fn required_scaffold_capability_seams_are_preserved() {
     }
 }
 
+fn is_context_pointer(token: &str) -> bool {
+    !token.chars().any(char::is_whitespace)
+        && Path::new(token)
+            .file_name()
+            .is_some_and(|name| name == OsStr::new("AGENTS.md") || name == OsStr::new("PLAN.md"))
+}
+
+#[test]
+fn context_document_pointers_resolve_and_chain_to_their_parent() {
+    let root = ifc_root();
+    let canonical_root = root.canonicalize().expect("canonical IFC package root");
+    let mut files = Vec::new();
+    walk(&root, &mut files);
+    let mut broken = Vec::new();
+
+    for file in files.iter().filter(|path| {
+        path.extension()
+            .is_some_and(|ext| ext == OsStr::new("md") || ext == OsStr::new("rs"))
+    }) {
+        let text = std::fs::read_to_string(file).unwrap();
+        let targets: Vec<_> = inline_code_tokens(&text)
+            .into_iter()
+            .filter(|token| is_context_pointer(token))
+            .map(|token| (file.parent().unwrap().join(&token), token))
+            .collect();
+        for (target, token) in &targets {
+            if Path::new(token).is_absolute() {
+                broken.push(format!("{} -> absolute {token}", file.display()));
+                continue;
+            }
+            if !target.is_file() {
+                broken.push(format!("{} -> missing {token}", file.display()));
+                continue;
+            }
+            match target.canonicalize() {
+                Ok(resolved) if resolved.starts_with(&canonical_root) => {}
+                Ok(_) => broken.push(format!("{} -> outside package {token}", file.display())),
+                Err(_) => broken.push(format!("{} -> unreadable {token}", file.display())),
+            }
+        }
+
+        if file.file_name() != Some(OsStr::new("AGENTS.md")) || file == &root.join("AGENTS.md") {
+            continue;
+        }
+        let expected_parent = file
+            .parent()
+            .unwrap()
+            .ancestors()
+            .skip(1)
+            .map(|ancestor| ancestor.join("AGENTS.md"))
+            .find(|candidate| candidate.is_file())
+            .expect("non-root AGENTS.md must have parent context");
+        let points_to_parent = targets
+            .iter()
+            .any(|(target, _)| target.canonicalize().ok() == expected_parent.canonicalize().ok());
+        if !points_to_parent {
+            broken.push(format!(
+                "{} does not point to parent {}",
+                file.display(),
+                expected_parent.display()
+            ));
+        }
+    }
+
+    assert!(
+        broken.is_empty(),
+        "broken progressive-context pointers:\n{}",
+        broken.join("\n")
+    );
+}
+
 #[test]
 fn source_docs_point_to_local_plans_not_the_global_roadmap() {
     let root = ifc_root();
@@ -448,13 +519,22 @@ fn plan_paths(root: &Path) -> Vec<PathBuf> {
 
 fn task_prerequisites(plan: &str) -> BTreeMap<String, BTreeSet<String>> {
     let mut current = None;
+    let mut fenced = false;
     let mut prerequisites = BTreeMap::<String, BTreeSet<String>>::new();
     for line in plan.lines() {
+        if line.trim_start().starts_with("```") {
+            fenced = !fenced;
+            continue;
+        }
+        if fenced {
+            continue;
+        }
         if let Some(task) = task_from_line(line) {
             current = Some(task.id);
             continue;
         }
-        if line.trim_start().starts_with("- Requires:") {
+        let line = line.trim_start();
+        if line.starts_with("- Requires:") || line.starts_with("- Prerequisites:") {
             let owner = current
                 .as_ref()
                 .expect("Requires line must follow a task declaration");
@@ -471,9 +551,11 @@ fn task_prerequisites(plan: &str) -> BTreeMap<String, BTreeSet<String>> {
 fn markdown_task_parser_is_line_local_and_strict() {
     let plan = r#"
 - [ ] `REAL-TASK` - pending
+  - Requires: `DONE-TASK`.
 - [X] `DONE-TASK` - complete
 ```text
 - [ ] `FAKE-TASK` - fenced example
+  - Requires: `REAL-TASK`.
 ```
 unmatched `BROKEN-TASK
 - [ ] `not-a-task` - invalid grammar
@@ -494,6 +576,63 @@ unmatched `BROKEN-TASK
     assert_eq!(
         task_references(plan),
         BTreeSet::from(["DONE-TASK".to_owned(), "REAL-TASK".to_owned()])
+    );
+    assert_eq!(
+        task_prerequisites(plan),
+        BTreeMap::from([(
+            "REAL-TASK".to_owned(),
+            BTreeSet::from(["DONE-TASK".to_owned()]),
+        )])
+    );
+}
+
+fn prerequisite_cycles(graph: &BTreeMap<String, BTreeSet<String>>) -> BTreeSet<String> {
+    fn visit(
+        node: &str,
+        graph: &BTreeMap<String, BTreeSet<String>>,
+        state: &mut BTreeMap<String, u8>,
+        stack: &mut Vec<String>,
+        cycles: &mut BTreeSet<String>,
+    ) {
+        match state.get(node).copied() {
+            Some(1) => {
+                let start = stack.iter().position(|item| item == node).unwrap();
+                let mut cycle = stack[start..].to_vec();
+                cycle.push(node.to_owned());
+                cycles.insert(cycle.join(" -> "));
+                return;
+            }
+            Some(2) => return,
+            _ => {}
+        }
+        state.insert(node.to_owned(), 1);
+        stack.push(node.to_owned());
+        if let Some(requirements) = graph.get(node) {
+            for requirement in requirements {
+                visit(requirement, graph, state, stack, cycles);
+            }
+        }
+        stack.pop();
+        state.insert(node.to_owned(), 2);
+    }
+
+    let mut state = BTreeMap::new();
+    let mut cycles = BTreeSet::new();
+    for task in graph.keys() {
+        visit(task, graph, &mut state, &mut Vec::new(), &mut cycles);
+    }
+    cycles
+}
+
+#[test]
+fn prerequisite_graph_detects_cycles() {
+    let graph = BTreeMap::from([
+        ("TASK-A".to_owned(), BTreeSet::from(["TASK-B".to_owned()])),
+        ("TASK-B".to_owned(), BTreeSet::from(["TASK-A".to_owned()])),
+    ]);
+    assert_eq!(
+        prerequisite_cycles(&graph),
+        BTreeSet::from(["TASK-A -> TASK-B -> TASK-A".to_owned()])
     );
 }
 
@@ -526,6 +665,7 @@ fn every_plan_reference_resolves_to_one_task_owner() {
     );
 
     let known: BTreeSet<_> = owners.keys().cloned().collect();
+    let mut graph = BTreeMap::<String, BTreeSet<String>>::new();
     let mut unresolved = Vec::new();
     let mut premature = Vec::new();
     for path in &plans {
@@ -534,6 +674,10 @@ fn every_plan_reference_resolves_to_one_task_owner() {
             unresolved.push(format!("{}: {reference}", path.display()));
         }
         for (task, requirements) in task_prerequisites(&text) {
+            graph
+                .entry(task.clone())
+                .or_default()
+                .extend(requirements.iter().cloned());
             let complete = owners.get(&task).expect("task owner").1;
             for requirement in requirements {
                 let prerequisite_complete = owners
@@ -557,6 +701,12 @@ fn every_plan_reference_resolves_to_one_task_owner() {
         premature.is_empty(),
         "completed tasks with pending prerequisites:\n{}",
         premature.join("\n")
+    );
+    let cycles = prerequisite_cycles(&graph);
+    assert!(
+        cycles.is_empty(),
+        "cyclic PLAN prerequisites:\n{}",
+        cycles.into_iter().collect::<Vec<_>>().join("\n")
     );
 }
 

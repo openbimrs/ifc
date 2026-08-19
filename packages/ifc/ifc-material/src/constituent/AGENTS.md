@@ -1,6 +1,6 @@
 # ifc-material constituent instructions
 
-Scope: material constituent definitions and sets. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: material constituent definitions and sets. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `MAT-CONST` and keep implementation state there.
 
 ## Owns

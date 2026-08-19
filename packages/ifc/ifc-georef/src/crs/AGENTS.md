@@ -1,6 +1,6 @@
 # ifc-georef crs instructions
 
-Scope: coordinate reference system identity, datum, axis, and map-unit metadata. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: coordinate reference system identity, datum, axis, and map-unit metadata. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `GEOREF-CRS`; keep progress and blockers there.
 
 ## Owns

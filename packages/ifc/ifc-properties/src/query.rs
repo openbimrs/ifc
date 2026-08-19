@@ -1,7 +1,7 @@
 //! Lookup helpers: property by name, pset by element.
 //!
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

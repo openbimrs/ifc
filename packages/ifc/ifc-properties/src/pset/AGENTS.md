@@ -1,6 +1,6 @@
 # ifc-properties pset instructions
 
-Scope: property sets and all property value forms. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: property sets and all property value forms. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `PROP-PSET` and keep implementation state there.
 
 ## Owns

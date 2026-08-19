@@ -3,7 +3,7 @@
 //! Quantities authored in the file, as distinct from quantities derived from
 //! geometry -- the two disagree often enough that mixing them silently is a bug.
 //!
-//! Implementation is tracked in the adjacent `PLAN.md`.
+//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

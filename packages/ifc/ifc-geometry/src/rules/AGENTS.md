@@ -2,7 +2,7 @@
 
 Scope: Actionable IFC geometry WHERE-rule validation with stable violations.
 
-Follow the crate `AGENTS.md`. Read this directory's `PLAN.md` only for assigned
+Follow the crate `../../AGENTS.md`. Read this directory's `PLAN.md` only for assigned
 work under parent task(s) `GEOM-CENSUS`. Record progress there.
 
 ## Owns

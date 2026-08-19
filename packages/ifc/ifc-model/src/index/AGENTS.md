@@ -1,6 +1,6 @@
 # ifc-model index instructions
 
-Scope: derived lookup structures coherent with the generic entity graph. Follow the crate `AGENTS.md`. Read `PLAN.md` only for
+Scope: derived lookup structures coherent with the generic entity graph. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
 assigned task(s) `MODEL-INV` and keep implementation state there.
 
 ## Owns
