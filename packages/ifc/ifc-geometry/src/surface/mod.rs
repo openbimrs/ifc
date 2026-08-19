@@ -80,7 +80,7 @@ pub enum SurfaceKind {
 
 impl SurfaceKind {
     /// Classify by IFC type name, `None` if not an `IfcSurface` subtype.
-    pub fn from_type_name(type_name: &str) -> Option<Self> {
+    pub fn classify(type_name: &str) -> Option<Self> {
         match type_name.to_ascii_uppercase().as_str() {
             "IFCPLANE" => Some(Self::Plane),
             "IFCCYLINDRICALSURFACE" => Some(Self::CylindricalSurface),
@@ -168,7 +168,7 @@ mod tests {
         ];
         for name in names {
             assert!(
-                SurfaceKind::from_type_name(name).is_some(),
+                SurfaceKind::classify(name).is_some(),
                 "{name} is unclassified"
             );
         }
@@ -179,16 +179,13 @@ mod tests {
     #[test]
     fn non_surface_entities_are_not_classified_as_surfaces() {
         for name in ["IFCPOLYLINE", "IFCCIRCLE", "IFCWALL", "IFCBSPLINECURVE"] {
-            assert_eq!(SurfaceKind::from_type_name(name), None, "{name}");
+            assert_eq!(SurfaceKind::classify(name), None, "{name}");
         }
     }
 
     #[test]
     fn type_names_are_matched_case_insensitively() {
-        assert_eq!(
-            SurfaceKind::from_type_name("IfcPlane"),
-            Some(SurfaceKind::Plane)
-        );
+        assert_eq!(SurfaceKind::classify("IfcPlane"), Some(SurfaceKind::Plane));
     }
 
     /// Only the bounded branch carries its own extent; everything elementary

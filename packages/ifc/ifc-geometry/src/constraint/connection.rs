@@ -45,7 +45,7 @@ pub enum ConnectionKind {
 
 impl ConnectionKind {
     /// Classify by IFC type name, or `None` if not a connection geometry.
-    pub fn from_type_name(type_name: &str) -> Option<Self> {
+    pub fn classify(type_name: &str) -> Option<Self> {
         match type_name.to_ascii_uppercase().as_str() {
             "IFCCONNECTIONPOINTGEOMETRY" => Some(Self::Point),
             "IFCCONNECTIONPOINTECCENTRICITY" => Some(Self::PointEccentricity),
@@ -79,7 +79,7 @@ pub struct ConnectionGeometry<'m> {
 impl<'m> ConnectionGeometry<'m> {
     /// Wrap an entity, or `None` if it is not a connection geometry.
     pub fn new(id: EntityId, entity: &'m Entity) -> Option<Self> {
-        let kind = ConnectionKind::from_type_name(&entity.type_name)?;
+        let kind = ConnectionKind::classify(&entity.type_name)?;
         Some(Self {
             slots: Slots::new(id, entity),
             kind,
@@ -143,9 +143,9 @@ mod tests {
             ("IFCCONNECTIONSURFACEGEOMETRY", ConnectionKind::Surface),
             ("IFCCONNECTIONVOLUMEGEOMETRY", ConnectionKind::Volume),
         ] {
-            assert_eq!(ConnectionKind::from_type_name(name), Some(expected));
+            assert_eq!(ConnectionKind::classify(name), Some(expected));
         }
-        assert_eq!(ConnectionKind::from_type_name("IFCWALL"), None);
+        assert_eq!(ConnectionKind::classify("IFCWALL"), None);
     }
 
     #[test]
