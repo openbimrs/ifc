@@ -72,6 +72,9 @@ const TIERS: &[(&str, u8)] = &[
     ("geom-measure", 2),
     ("geom-heal", 2),
     ("geom-kernel", 2),
+    // The scalar reference implementation (ADR 0012). Consumes the kernel
+    // contracts to report certified results; owns algorithms, not scheduling.
+    ("geom-scalar", 2),
     // L3 -- execution contexts and operation adapters.
     ("geom-backend-cpu", 3),
     ("geom-backend-gpu", 3),

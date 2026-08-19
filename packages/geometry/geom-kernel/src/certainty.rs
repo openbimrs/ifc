@@ -18,6 +18,22 @@ pub enum Sign {
     Positive,
 }
 
+impl Sign {
+    /// The sign of the negated value.
+    ///
+    /// Orientation predicates are antisymmetric: swapping two arguments must
+    /// flip the result. Expressing that as one operation keeps callers from
+    /// open-coding a match that silently mishandles `Zero`.
+    #[must_use]
+    pub const fn flip(self) -> Self {
+        match self {
+            Self::Positive => Self::Negative,
+            Self::Negative => Self::Positive,
+            Self::Zero => Self::Zero,
+        }
+    }
+}
+
 /// A predicate evaluation that may or may not be trustworthy.
 ///
 /// `Uncertain` is deliberately not a sign: it carries no `Sign` payload, so a
@@ -75,6 +91,20 @@ impl Certified {
     ///
     /// An exact zero is a *certain* answer -- the configuration is genuinely
     /// degenerate -- which is different from being unable to decide.
+    /// A sign established by exact arithmetic, where no integer value exists.
+    ///
+    /// An exact predicate cascade produces a proven sign without producing a
+    /// representable magnitude: the determinant lives in a multi-term
+    /// expansion, not one `i64`. Without this constructor such a result could
+    /// only be reported as `Uncertain`, which would discard the very proof the
+    /// exact path was paid for.
+    pub const fn exact_sign(sign: Sign) -> Self {
+        Self::Certain {
+            sign,
+            precision: Precision::Exact,
+        }
+    }
+
     pub const fn exact(value: i64) -> Self {
         let sign = if value > 0 {
             Sign::Positive

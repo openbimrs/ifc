@@ -37,6 +37,8 @@ geom-topology = { path = "packages/geometry/geom-topology" }
 geom-tessellate = { path = "packages/geometry/geom-tessellate" }
 geom-spatial = { path = "packages/geometry/geom-spatial" }
 geom-measure = { path = "packages/geometry/geom-measure" }
+# The scalar reference implementation and correctness oracle (ADR 0012).
+geom-scalar = { path = "packages/geometry/geom-scalar" }
 # Contract and implementations are separate crates so feature unification can
 # never pull a concrete backend into a format adapter.
 geom-kernel = { path = "packages/geometry/geom-kernel", default-features = false }
@@ -45,6 +47,8 @@ geom-backend-gpu = { path = "packages/geometry/geom-backend-gpu", default-featur
 
 # --- packages/ifc: pure IFC. Only ifc-geometry may touch the geometry kernel. ---
 ifc-schema = { path = "packages/ifc/ifc-schema" }
+ifc-migrate = { path = "packages/ifc/ifc-migrate" }
+ifc-infer = { path = "packages/ifc/ifc-infer" }
 ifc = { path = "packages/ifc/ifc" }
 ifc-step = { path = "packages/ifc/ifc-step" }
 ifc-xml = { path = "packages/ifc/ifc-xml" }

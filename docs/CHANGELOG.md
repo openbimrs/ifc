@@ -11,6 +11,16 @@ section on release.
 ## [Unreleased]
 
 ### Added
+- **`geom-scalar`: the scalar reference implementation begins (ADR 0012).**
+  Error-free transformations (`two_sum`, `two_diff`, `two_product`) and a
+  certified `orient2d` that filters in f64 and escalates to exact expansion
+  arithmetic when the determinant falls inside its own error bound. This is the
+  first producer of `Certified`, so that contract is now validated against real
+  numerics rather than test doubles. Verified by a differential gate against an
+  independent i128 oracle over 40,000 inputs -- including mixed-magnitude
+  coordinates where the f64 subtraction genuinely rounds -- and by three
+  searched triples where the naive determinant reports collinear and is
+  provably wrong.
 - **Certified predicates and the precision escalation ladder.**
   `geom_kernel::certainty` adds `Sign`, `Certified`, and `EscalationLadder`:
   a filtered predicate reports `Uncertain` when its value lies within its own

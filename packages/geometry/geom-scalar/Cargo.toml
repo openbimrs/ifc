@@ -1,0 +1,11 @@
+[package]
+name = "geom-scalar"
+description = "Portable scalar reference implementation and certified predicates"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+geom-core.workspace = true
+geom-kernel.workspace = true
