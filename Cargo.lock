@@ -52,6 +52,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "boolmesh"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ede2e53d77b54cd1aae2a8641693c4c65b0ecd0d423194ca4ef78278b53313a"
+dependencies = [
+ "glam 0.30.10",
+]
+
+[[package]]
 name = "camino"
 version = "1.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -207,10 +216,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "geom-boolmesh"
+version = "0.1.0"
+dependencies = [
+ "boolmesh",
+ "geom-core",
+ "geom-kernel",
+ "geom-mesh",
+]
+
+[[package]]
 name = "geom-core"
 version = "0.1.0"
 dependencies = [
- "glam",
+ "glam 0.29.3",
 ]
 
 [[package]]
@@ -281,6 +300,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "geom-scalar"
+version = "0.1.0"
+dependencies = [
+ "geom-core",
+ "geom-kernel",
+]
+
+[[package]]
 name = "geom-spatial"
 version = "0.1.0"
 dependencies = [
@@ -339,6 +366,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8babf46d4c1c9d92deac9f7be466f76dfc4482b6452fc5024b5e8daf6ffeb3ee"
 
 [[package]]
+name = "glam"
+version = "0.30.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "19fc433e8437a212d1b6f1e68c7824af3aed907da60afa994e7f542d18d12aa9"
+
+[[package]]
 name = "hybrid-array"
 version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -365,7 +398,9 @@ dependencies = [
  "ifc-cost",
  "ifc-geometry",
  "ifc-georef",
+ "ifc-infer",
  "ifc-material",
+ "ifc-migrate",
  "ifc-model",
  "ifc-properties",
  "ifc-resource",
@@ -447,7 +482,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ifc-infer"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+ "ifc-schema",
+]
+
+[[package]]
 name = "ifc-material"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+ "ifc-schema",
+]
+
+[[package]]
+name = "ifc-migrate"
 version = "0.1.0"
 dependencies = [
  "ifc-model",
