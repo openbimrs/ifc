@@ -10,6 +10,8 @@ pub type Vec3 = glam::DVec3;
 pub type Point2 = Vec2;
 /// A semantic alias used when a value is a three-dimensional position.
 pub type Point3 = Vec3;
+/// Double-precision 3x3 matrix.
+pub type Mat3 = glam::DMat3;
 /// Double-precision 2D affine transform.
 pub type Transform2 = glam::DAffine2;
 /// Double-precision affine transform.
@@ -51,6 +53,12 @@ pub struct Interval {
 }
 
 impl Interval {
+    /// Unit parameter interval.
+    pub const UNIT: Self = Self {
+        start: 0.0,
+        end: 1.0,
+    };
+
     /// Construct an oriented interval without sorting its endpoints.
     pub const fn new(start: Scalar, end: Scalar) -> Self {
         Self { start, end }

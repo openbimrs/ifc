@@ -9,4 +9,3 @@ description = "Acceleration structures: BVH, octree, uniform grid, and their que
 
 [dependencies]
 geom-core.workspace = true
-geom-mesh.workspace = true

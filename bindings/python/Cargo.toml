@@ -16,7 +16,6 @@ ifc-schema.workspace = true
 ifc-step.workspace = true
 ifc-model.workspace = true
 ifc-properties.workspace = true
-geom-kernel = { workspace = true, default-features = false }
 geom-backend-cpu = { workspace = true, features = ["simd"] }
 # pyo3 is NOT added yet: it needs Python dev headers present at build time and
 # would break `cargo build --workspace` on a machine without them. Added in the

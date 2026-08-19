@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-08-19
-- **Relates to:** 0001, 0005
+- **Relates to:** 0001, 0005, 0009
 ## Context
 
 IFC resources mix semantic and geometric concerns by design. IfcProfileResource
@@ -26,8 +26,9 @@ Partition by ROLE IN THE PIPELINE, not by IFC resource name. Three roles:
    depends on the other.
 Concretely:
 
-- No ifc-profile crate. Profile SHAPE evaluation stays in
-  ifc-geometry::lower::profile (it exists only to feed kernel requests).
+- No ifc-profile crate. IFC profile parsing, unit conversion, and placement
+  resolution stay in `ifc-geometry::lower::profile`; exact format-neutral
+  profile values live in `geom-profile` and are referenced by the neutral DAG.
   Profile IDENTITY (name, type enum, external refs) is semantic and may later
   get a thin view in a domain crate if a consumer needs it. The shape math is
   not duplicated there.

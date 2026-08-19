@@ -68,7 +68,10 @@ pub mod tessellated;
 pub(crate) mod testkit;
 
 pub use bbox::BoundingBox;
-pub use boolean::{BooleanClippingResult, BooleanOperator, BooleanResult, OperandKind};
+pub use boolean::{
+    BooleanClippingResult, BooleanResult, IfcBooleanOperator, OperandKind,
+    ParseIfcBooleanOperatorError,
+};
 pub use brep::{
     AdvancedBrep, AdvancedBrepWithVoids, FacetedBrep, FacetedBrepWithVoids, ManifoldSolidBrep,
 };

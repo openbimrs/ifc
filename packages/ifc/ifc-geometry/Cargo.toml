@@ -11,12 +11,12 @@ description = "The ONLY bridge between IFC and geometry. Depends on the kernel C
 ifc-model.workspace = true
 ifc-schema.workspace = true
 geom-core.workspace = true
-geom-mesh.workspace = true
+geom-curve.workspace = true
+geom-model.workspace = true
+geom-primitive.workspace = true
+geom-profile.workspace = true
 thiserror.workspace = true
-# CONTRACT ONLY — default-features = false excludes every backend
-# implementation, so this crate cannot accidentally bind to one. Enforced by
-# tests/no_backend_dependency.rs. See docs/adr/0001.
-geom-kernel = { workspace = true, default-features = false }
+# Representation crates only. Operation-provider selection belongs to the app.
 
 [dev-dependencies]
 ifc-step.workspace = true

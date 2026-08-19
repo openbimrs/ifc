@@ -3,7 +3,7 @@
 use core::fmt;
 use std::num::NonZeroUsize;
 
-use crate::{CpuBackend, CpuFeatures, CpuInstructionSet};
+use crate::{CpuExecution, CpuFeatures, CpuInstructionSet};
 
 /// Instruction-selection policy.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,12 +47,12 @@ impl std::error::Error for CpuConfigError {}
 
 /// Builder for a validated backend bound to current runtime capabilities.
 #[derive(Debug, Clone, Copy)]
-pub struct CpuBackendBuilder {
+pub struct CpuExecutionBuilder {
     instruction_policy: InstructionPolicy,
     threads: NonZeroUsize,
 }
 
-impl Default for CpuBackendBuilder {
+impl Default for CpuExecutionBuilder {
     fn default() -> Self {
         Self {
             instruction_policy: InstructionPolicy::Auto,
@@ -61,7 +61,7 @@ impl Default for CpuBackendBuilder {
     }
 }
 
-impl CpuBackendBuilder {
+impl CpuExecutionBuilder {
     /// New portable-safe builder.
     pub fn new() -> Self {
         Self::default()
@@ -80,7 +80,7 @@ impl CpuBackendBuilder {
     }
 
     /// Detect hardware, validate policy, and construct the backend.
-    pub fn build(self) -> Result<CpuBackend, CpuConfigError> {
+    pub fn build(self) -> Result<CpuExecution, CpuConfigError> {
         let features = CpuFeatures::detect();
         let instruction_set = match self.instruction_policy {
             InstructionPolicy::Portable => CpuInstructionSet::Portable,
@@ -104,6 +104,6 @@ impl CpuBackendBuilder {
                 value
             }
         };
-        CpuBackend::from_configuration(instruction_set, features, self.threads)
+        CpuExecution::from_configuration(instruction_set, features, self.threads)
     }
 }

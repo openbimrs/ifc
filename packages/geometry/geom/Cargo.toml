@@ -32,14 +32,17 @@ tessellation = ["mesh", "curves", "surfaces", "topology", "dep:geom-tessellate"]
 spatial = ["mesh", "dep:geom-spatial"]
 measure = ["mesh", "dep:geom-measure"]
 heal = ["mesh", "dep:geom-heal"]
-kernel = ["mesh", "dep:geom-kernel"]
+kernel = ["dep:geom-kernel"]
+mesh-boolean = ["kernel", "mesh", "geom-kernel/mesh-boolean"]
+graph-compile = ["kernel", "model", "mesh", "geom-kernel/model"]
 
-# Concrete execution backends. CPU stays portable by default; optimized paths
-# are selected at runtime, never by building the whole crate for one host CPU.
-cpu = ["kernel", "dep:geom-backend-cpu"]
+# Execution contexts and operation adapters. CPU stays portable by default;
+# optimized paths are selected at runtime, never by building the whole crate for
+# one host CPU.
+cpu = ["dep:geom-backend-cpu"]
 parallel = ["cpu", "geom-backend-cpu/parallel"]
 simd = ["cpu", "geom-backend-cpu/simd"]
-gpu = ["kernel", "model", "dep:geom-backend-gpu"]
+gpu = ["graph-compile", "dep:geom-backend-gpu"]
 
 # Named bundles describe capability, not a source format.
 discrete = [
@@ -50,6 +53,7 @@ discrete = [
     "tessellation",
     "spatial",
     "measure",
+    "mesh-boolean",
     "cpu",
 ]
 parametric = ["model", "curves", "surfaces", "topology"]

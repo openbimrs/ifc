@@ -1,19 +1,8 @@
 //! Solid construction relationships and CSG instructions.
 
-use geom_core::{Point3, Scalar, Transform3, Vec3};
+use geom_core::{BooleanOperator, Point3, Scalar, Transform3, Vec3};
 
 use crate::NodeId;
-
-/// Boolean operation over two solid nodes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum BooleanOperator {
-    /// Set union.
-    Union,
-    /// Set intersection.
-    Intersection,
-    /// Left minus right.
-    Difference,
-}
 
 /// Position of one section along a sectioned sweep.
 #[derive(Debug, Clone, Copy, PartialEq)]

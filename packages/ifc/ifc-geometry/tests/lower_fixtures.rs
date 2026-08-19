@@ -7,8 +7,9 @@
 //! layer can look complete against synthetic input and still misread the
 //! first real record it meets.
 
-use ifc_geometry::kernel::Primitive;
-use ifc_geometry::lower::{lower_extruded_area_solid, Tolerance};
+use geom_model::{GeometryNode, SolidOperation};
+use geom_profile::Profile;
+use ifc_geometry::lower::{lower_extruded_area_solid, LoweredGeometry, Tolerance};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
 use ifc_model::Codec;
@@ -19,6 +20,33 @@ fn fixture(rel: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../../test/fixtures")
         .join(rel)
+}
+
+fn extrusion(lowered: &LoweredGeometry) -> (&Profile, geom_core::Vec3, f64) {
+    let operation_id = match lowered.graph.get(lowered.root).expect("root exists") {
+        GeometryNode::Instance(instance) => instance.source,
+        other => panic!("expected instance root, got {other:?}"),
+    };
+    let (profile_id, direction, depth) =
+        match lowered.graph.get(operation_id).expect("operation exists") {
+            GeometryNode::SolidOperation(SolidOperation::Extrusion {
+                profile,
+                direction,
+                depth,
+            }) => (*profile, *direction, *depth),
+            other => panic!("expected extrusion, got {other:?}"),
+        };
+    match lowered.graph.get(profile_id).expect("profile exists") {
+        GeometryNode::Profile(profile) => (profile, direction, depth),
+        other => panic!("expected profile, got {other:?}"),
+    }
+}
+
+fn base_profile(mut profile: &Profile) -> &Profile {
+    while let Profile::Derived { basis, .. } = profile {
+        profile = basis;
+    }
+    profile
 }
 
 /// The wall file's first extrusion, lowered end to end.
@@ -46,27 +74,16 @@ fn the_wall_fixture_lowers_to_an_extrusion_with_the_documented_numbers() {
         .copied()
         .expect("the wall file contains extrusions");
 
-    let primitive = lower_extruded_area_solid(&model, id, Transform::identity(), &scale, &tol)
+    let lowered = lower_extruded_area_solid(&model, id, Transform::identity(), &scale, &tol)
         .expect("a real extrusion must lower");
 
-    match primitive {
-        Primitive::Extrusion {
-            profile,
-            direction,
-            depth,
-            ..
-        } => {
-            assert_eq!(direction, [0.0, 0.0, 1.0], "#19 is the +Z direction");
-            assert!(depth > 0.0, "depth must be positive, got {depth}");
-            assert_eq!(
-                profile.outer.points.len(),
-                4,
-                "a rectangle profile is four corners"
-            );
-            assert!(profile.inner.is_empty(), "a solid rectangle has no voids");
-        }
-        other => panic!("expected an extrusion, got {other:?}"),
-    }
+    let (profile, direction, depth) = extrusion(&lowered);
+    assert_eq!(direction, geom_core::Vec3::Z, "#19 is the +Z direction");
+    assert!(depth > 0.0, "depth must be positive, got {depth}");
+    assert!(
+        matches!(base_profile(profile), Profile::Rectangle(_)),
+        "the fixture uses an exact rectangle profile"
+    );
 }
 
 /// Lower EVERY extrusion in EVERY fixture and report what happens.
@@ -93,15 +110,11 @@ fn every_extrusion_in_the_corpus_lowers_or_reports_why() {
         let scale = units::resolve(&model);
         for id in model.ids_of_type("IFCEXTRUDEDAREASOLID") {
             match lower_extruded_area_solid(&model, *id, Transform::identity(), &scale, &tol) {
-                Ok(Primitive::Extrusion { profile, depth, .. }) => {
+                Ok(lowered) => {
+                    let (_profile, _direction, depth) = extrusion(&lowered);
                     assert!(depth > 0.0, "{path:?} {id}: non-positive depth");
-                    assert!(
-                        profile.outer.points.len() >= 3,
-                        "{path:?} {id}: degenerate outer contour"
-                    );
                     ok += 1;
                 }
-                Ok(other) => panic!("expected an extrusion, got {other:?}"),
                 Err(e) => {
                     failed += 1;
                     reasons.push(format!(
@@ -167,29 +180,15 @@ fn a_hollow_rectangle_section_keeps_its_void() {
     let profile = ifc_geometry::lower::lower_profile(&model, id, &scale, &tol)
         .expect("a 250x250x7 box section is valid geometry");
 
-    assert_eq!(profile.outer.points.len(), 4, "outer boundary");
-    assert_eq!(
-        profile.inner.len(),
-        1,
-        "a hollow section must keep its void, not lose it"
-    );
-
-    // The void is inset by twice the wall thickness in each direction.
-    let outer_w = span(&profile.outer.points, 0);
-    let inner_w = span(&profile.inner[0].points, 0);
-    let inset = outer_w - inner_w;
-    let expected = 2.0 * scale.length(7.0);
-    assert!(
-        (inset - expected).abs() < 1e-9,
-        "expected a {expected} inset from a 7 unit wall, got {inset}"
-    );
-}
-
-/// Width of a contour along one axis.
-fn span(points: &[[f64; 2]], axis: usize) -> f64 {
-    let lo = points.iter().map(|p| p[axis]).fold(f64::MAX, f64::min);
-    let hi = points.iter().map(|p| p[axis]).fold(f64::MIN, f64::max);
-    hi - lo
+    match base_profile(&profile) {
+        Profile::Rectangle(rectangle) => {
+            let thickness = rectangle.thickness.expect("hollow profile keeps thickness");
+            assert!((thickness - scale.length(7.0)).abs() < 1e-12);
+            assert_eq!(rectangle.x, scale.length(250.0));
+            assert_eq!(rectangle.y, scale.length(250.0));
+        }
+        other => panic!("expected exact hollow rectangle, got {other:?}"),
+    }
 }
 
 /// A census of geometry entities across the corpus.

@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Spatial acceleration contracts.
 //!
 //! BVH, octree, GPU broad phase, or a migrated Solibri index can implement the

@@ -9,5 +9,3 @@ description = "Metric properties: area, volume, centroid, moments of inertia."
 
 [dependencies]
 geom-core.workspace = true
-geom-mesh.workspace = true
-geom-profile.workspace = true

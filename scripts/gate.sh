@@ -41,25 +41,18 @@ for f in "--no-default-features" "--features step" "--features ifcxml" "--all-fe
     step "ifc clippy $f" cargo clippy -p ifc $f --all-targets -- -D warnings
 done
 
-# --- Isolated per-crate builds. ---------------------------------------------
-# `cargo build --workspace` UNIFIES features: apps/ifc-cli enables geom-kernel's
-# `scalar`+`simd`, which switches those features on for every crate in the same
-# resolve. A crate under packages/ifc/ can therefore CALL a backend impl
-# (geom_kernel::backend::scalar::...) and the workspace build stays green, even
-# though its own manifest says default-features = false.
-#
-# Verified, not theoretical: adding that exact line to ifc-geometry passed
-# `build --workspace` while `build -p ifc-geometry` failed with E0433, and the
-# manifest-reading test could not see it (it inspects Cargo.toml, not code).
-#
-# Building each crate ALONE resolves features for that crate only, so the leak
-# becomes a compile error. This is the check that makes the kernel swap real.
-for c in ifc-geometry ifc-alignment ifc-georef ifc-model geom-core geom-mesh; do
+# --- Geometry capability and isolation matrices. ----------------------------
+# Concrete backends are separate packages, so Cargo feature unification cannot
+# make them visible through `geom-kernel`. Isolated builds still prove each
+# package declares its own complete dependency set.
+step "geometry feature matrix" scripts/geometry-feature-matrix.sh
+
+geometry_crates="geom-core geom-mesh geom-profile geom-curve geom-surface \
+geom-topology geom-model geom-primitive geom-sweep geom-tessellate geom-spatial \
+geom-measure geom-heal geom-kernel geom-backend-cpu geom-backend-gpu geom"
+for c in ifc-geometry ifc-alignment ifc-georef ifc-model $geometry_crates; do
     step "isolated build -p $c" cargo build -p "$c"
 done
-
-# The contract must compile with no backend behind it at all.
-step "geom-kernel contract only" cargo build -p geom-kernel --no-default-features
 
 echo
 if [ "$fail" -eq 0 ]; then

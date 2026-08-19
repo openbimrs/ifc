@@ -2,15 +2,14 @@
 //!
 //! # What this crate is
 //!
-//! It answers *"what does this IFC entity mean geometrically"* and emits
-//! kernel-neutral work orders. It does not triangulate, does not evaluate
-//! NURBS, and does not perform booleans. Those belong to a geometry kernel,
-//! which this crate only ever depends on as a **trait**.
+//! It answers *"what does this IFC entity mean geometrically"* and lowers
+//! implemented slices into the format-neutral `geom-model` DAG. It does not
+//! triangulate, evaluate NURBS, perform booleans, or select execution providers.
 //!
 //! ```text
-//!   ifc-model            this crate                     geometry kernel
-//!   (untyped graph) -->  typed views  -->  requests -->  (implemented
-//!                        + resolution                     elsewhere)
+//!   ifc-model            this crate                    geometry package
+//!   (untyped graph) -->  typed/family views  -->  GeometryGraph
+//!                        + IFC resolution       (implemented elsewhere)
 //! ```
 //!
 //! # Scope
@@ -25,23 +24,24 @@
 //!
 //! # Design
 //!
-//! **Typed views over borrowed entities.** Every geometry entity gets a
-//! newtype wrapping `(EntityId, &Entity)` with named accessors and `mod slot`
-//! constants citing the EXPRESS declaration. Views own nothing, so
-//! constructing one is free and the model stays the single source of truth.
+//! **Views and explicit inventory.** The 89 concrete entities are represented by
+//! dedicated or shared subtype-aware borrowed views. The 23 abstract entities
+//! are inheritance/inventory entries, not falsely presented as constructible
+//! views. All 23 schema types are modeled.
 //!
-//! **Total lowering.** Every unhandled case returns a typed
-//! [`crate::GeometryError::Unsupported`] naming the entity. Nothing panics and
-//! nothing silently substitutes wrong geometry — a missing shape is
-//! recoverable, a wrong one is not.
+//! **Honest partial lowering.** Exact profiles and extrusion/revolution are
+//! implemented vertical slices. Every other assigned declaration is tracked in
+//! the support ledger; attempting an unimplemented lowering returns typed
+//! [`crate::GeometryError::Unsupported`] rather than panicking or substituting
+//! approximate geometry.
 //!
-//! **The kernel is demanded, not provided.** This crate states the capability
-//! surface a geometry backend must satisfy. See [`kernel::Primitive`].
+//! **Neutral DAG output.** Implemented lowerers resolve IFC units, placements,
+//! profiles, and representation relationships into `geom-model` nodes. This
+//! crate owns no duplicate geometry types and never selects a CPU/GPU provider.
 
 pub mod constraint;
 pub mod curve;
 pub mod error;
-pub mod kernel;
 pub mod lower;
 pub mod resource;
 pub mod rules;
@@ -53,7 +53,9 @@ pub mod transform;
 pub mod units;
 
 pub use error::{GeometryError, GeometryResult};
-pub use kernel::{BooleanOp, CsgShape, Primitive, Profile};
+pub use geom_model::{BooleanOperator, GeometryGraph, GeometryNode, NodeId, SolidOperation};
+pub use geom_primitive::Primitive;
+pub use geom_profile::Profile;
 pub use slots::Slots;
 pub use transform::Transform;
 pub use units::UnitScale;

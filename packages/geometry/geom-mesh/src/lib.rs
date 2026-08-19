@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Mesh representations and zero-copy interoperability views.
 //!
 //! N-gons remain [`PolygonMesh`] until explicit triangulation. [`TriMesh`] is

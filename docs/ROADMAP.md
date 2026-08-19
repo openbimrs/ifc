@@ -9,31 +9,37 @@ Validation-gated stages. No stage is "done" on a claim. Every stage lands with
 number, never asserted.
 
 Hardware on the dev box: Intel Xeon w7-3565X, 20 vCPU, AVX-512
-(f/dq/bw/vl/vbmi/ifma/cd) + AMX (tile/int8/bf16), 62 GB RAM.
+(f/dq/bw/vl/vbmi/ifma/cd) + AMX (tile/int8/bf16), 62 GB RAM; NVIDIA RTX
+4000 Ada Generation, compute capability 8.9, 20 GB VRAM. These are benchmark
+targets, never the portable compile baseline.
 
-## Stage 0 — Architecture scaffold ✅ DONE
+## Stage 0 - Architecture scaffold DONE
 
-- [x] Role-grouped layout: `packages/{geometry,ifc,openbim}`, `bindings/`,
-      `apps/` — 17 crates, one-way dependency direction.
-- [x] `geom-kernel` trait contract (`MeshBoolean`, `Capabilities`, `GeomError`)
-      plus `backend::{scalar,simd,gpu}` behind cargo features and
-      `backend::Dispatcher` runtime selection.
-- [x] SIMD runtime feature detection (`is_x86_feature_detected!`), no
-      compile-time hardware lock-in.
-- [x] `ifc-geometry` seam generic over `K: MeshBoolean`; proven backend-agnostic
-      by a test injecting a kernel that is not one of ours.
-- [x] `apps/ifc-cli` runs: `ifc capabilities` reports detected backends and
-      honestly reports no boolean implementation.
-- [x] ADRs 0001–0004.
-- [x] **Validated:** `cargo build/test/clippy -D warnings/fmt --check/doc` all
-      green from a clean target; 22 tests pass, including a fixture test that
-      reads all 19 committed `.ifc` files.
-- [x] **Architecture gate mutation-verified (2 distinct violations):** adding a
-      geometry dep to `ifc-model`, and switching `ifc-geometry` to
-      `features = ["scalar"]`, each make `no_backend_dependency.rs` FAIL;
-      restoring makes it green. The gate is real, not decorative.
-- [x] **Kernel boundary proven by construction:** `cargo build -p geom-kernel
-      --no-default-features` compiles the contract with zero backend code.
+- [x] Downward-only geometry graph: core, representation, algorithm/contract,
+      backend, facade, then external format adapters.
+- [x] `geom-model` immutable typed-handle DAG for exact values, mapped instances,
+      CSG, sweeps, B-rep, and tessellated geometry; forward references rejected.
+- [x] `geom-kernel` contains opt-in operation contracts only.
+      `geom-backend-cpu` is a runtime execution context and
+      `geom-backend-gpu` holds operation-specific adapters.
+- [x] `geom` facade exposes lean `mesh`/`cpu` defaults plus additive
+      `discrete`, `parametric`, `advanced`, `parallel`, `simd`, `gpu`, and
+      `full` bundles; every important combination is built in isolation.
+- [x] Runtime x86/AArch64 feature detection, optional local Rayon pool, no
+      compile-time host lock-in. GPU APIs plug in through operation-specific
+      seams such as `GpuGraphExecutor`.
+- [x] `ifc-geometry` resolves units/placements into neutral profile and DAG
+      values; it owns no duplicate primitive/kernel vocabulary and imports no
+      concrete backend.
+- [x] Authoritative IFC4 geometry-resource manifest: 112 entities + 23 types +
+      28 functions = 163 declarations. Every declaration has explicit bridge
+      and neutral ownership; scaffold status remains distinct from executable
+      implementation status.
+- [x] Progressive `AGENTS.md` plus non-ambient `PLAN.md` at every geometry crate.
+- [x] ADRs 0001-0009.
+- [x] Architecture, source-vocabulary, orphan-module, standard-trait, feature,
+      and declaration gates. The dependency, source-vocabulary, and declaration
+      gates were each mutation-verified to fail on a real injected violation.
 
 ## Stage 1 — Parser & schema
 
@@ -57,38 +63,56 @@ Hardware on the dev box: Intel Xeon w7-3565X, 20 vCPU, AVX-512
 
 This is what determines whether the OpenCascade-free premise holds.
 
-- [ ] Evaluate `boolmesh` (MPL-2.0, pure Rust, glam-only) and `manifold-rust`
-      against the CSG fixtures (`bath_csg_solid`,
+- [ ] Port/adopt the proven 2D coplanar profile subtraction seam first; keep
+      validation area-based rather than tied to one triangulation.
+- [ ] Evaluate `boolmesh` (MPL-2.0, pure Rust, glam-only) and pure-Rust
+      alternatives against the CSG fixtures (`bath_csg_solid`,
       `issue_1155_halfspace_flyaway`,
-      `issue_2019_wall_two_overlapping_openings`). **Adopting beats building**
-      if one passes — check MPL-2.0 vs our MIT before vendoring.
-- [ ] Implement `MeshBoolean` for `backend::scalar` (own or wrapping the above).
-- [ ] **Validation:** manifold-in → manifold-out on every fixture; volume of
-      `a \ b` plus volume of `a ∩ b` equals volume of `a` within tolerance
-      (a triangulation-invariant check, not an index-buffer comparison).
+      `issue_2019_wall_two_overlapping_openings`). Adopting beats building if a
+      candidate passes license, robustness, and dependency-weight gates.
+- [ ] Implement a portable CPU `MeshBoolean` provider that composes the CPU
+      execution context, retains scalar behavior as oracle, and accepts many
+      opening tools in one call.
+- [ ] **Validation:** manifold-in -> manifold-out on every fixture; volume of
+      `a \ b` plus volume of `a intersection b` equals volume of `a` within
+      tolerance (a triangulation-invariant check, not an index-buffer match).
 - [ ] **Measure:** wall-minus-N-openings throughput vs IfcOpenShell on the same
       input. Publish the number, whichever way it falls.
 
-## Stage 3 — Shape lowering
+## Stage 3 - Exact shape lowering and evaluation
 
-- [ ] Swept solids (extrusion, revolution), B-rep, tessellation, mapped items,
-      half-space clipping, CSG trees.
-- [ ] `geom-topology`: exact topology for the surfaces IFC actually uses
-      (plane/cylinder/cone/sphere/torus) + `Tessellate` to `geom-mesh`. Scope
-      discipline matters — a full NURBS kernel is not the goal.
-- [ ] `IfcRelVoidsElement` opening cuts end-to-end through `ShapeLowerer`.
-- [ ] **Validation:** every fixture lowers to a structurally valid mesh; the
-      `issue_*` fixtures reproduce the behaviour their names describe.
+- [ ] Close the 163-declaration ledger by implementation status, not just owner:
+      point/placement -> curves -> profiles/sweeps -> surfaces -> topology/B-rep
+      -> CSG/half-space -> tessellated sets -> derived/validation functions.
+- [ ] Implement curve families: line/conics, polyline/indexed polycurve,
+      composite/trim/offset, polynomial and rational B-spline.
+- [ ] Implement analytic and B-spline surfaces, bounded/trimmed/swept/offset
+      surface relationships, and shared-edge discretization.
+- [ ] Implement swept solids (extrusion, revolution, directrix and fixed-reference
+      sweep, swept disk, tapered and sectioned solids), B-rep, mapped instances,
+      half-space clipping, and CSG DAG compilation.
+- [ ] `IfcRelVoidsElement` opening cuts end to end through neutral DAG lowering
+      and a selected backend, without `ifc-geometry` importing that backend.
+- [ ] **Validation:** differential oracle fixtures from IfcOpenShell, schema
+      function unit tests, invariant mesh checks, and cross-process determinism.
+      Every unsupported declaration must return structured `Unsupported` rather
+      than approximate or panic.
 
-## Stage 4 — SIMD acceleration
+## Stage 4 - Measured hardware acceleration
 
-- [ ] AVX2 + AVX-512 paths for the wide regular passes: vertex transform,
-      per-triangle AABB, broad-phase overlap, batch tri-tri intersection.
-      (Not topological work — SIMD does not help there.)
-- [ ] **Validation:** differential test vs `backend::scalar` on identical input, bitwise
-      or within an explicit tolerance. No differential test → not trusted.
-- [ ] **Measure:** speedup per pass, and end-to-end. Report honestly, including
-      passes where SIMD did not help.
+- [ ] Portable CPU implementations first; then AVX2/AVX-512 paths for wide,
+      regular passes: vertex transforms, per-triangle AABBs, broad phase, and
+      batched triangle tests. Keep branchy topology scalar.
+- [ ] Add AArch64 NEON implementations under the same operation contracts and
+      exercise them in cross-target CI plus real ARM hardware when available.
+- [ ] Add one concrete GPU operation executor only for measured batch-friendly
+      workloads (broad phase, ray batches, voxelization, large
+      transforms/tessellation). Validate requested precision in that operation;
+      fall back explicitly when the device cannot satisfy it.
+- [ ] **Validation:** differential tests against portable CPU plus cross-process
+      determinism. No differential test means the optimized path is disabled.
+- [ ] **Measure:** startup/transfer threshold, per-pass speedup, memory, and end
+      to end latency. Report regressions as well as wins.
 
 ## Stage 5 — Properties, and the openBIM layer
 

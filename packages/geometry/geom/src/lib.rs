@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Feature-gated facade for Nehirde geometry.
 //!
 //! The default build is intentionally small: core values, meshes, and the

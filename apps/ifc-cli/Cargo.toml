@@ -22,10 +22,9 @@ ifc-step.workspace = true
 ifc-model.workspace = true
 ifc-geometry.workspace = true
 ifc-properties.workspace = true
-# The CLI is an APPLICATION, so it picks a concrete kernel. The workspace dep
-# defaults to contract-only, so backends are opted INTO here explicitly. This is
-# the one place in the workspace where binding to implementations is correct.
-geom-kernel = { workspace = true, default-features = false }
+# Applications may select execution contexts and concrete operation providers.
+# The current CLI exposes CPU runtime detection only; it claims no geometry
+# operation until a verified provider is wired here.
 geom-backend-cpu = { workspace = true, features = ["simd"] }
 geom-core.workspace = true
 geom-mesh.workspace = true

@@ -1,24 +1,25 @@
-//! API-neutral GPU adapter layer.
+#![forbid(unsafe_code)]
+
+//! API-neutral GPU operation adapters.
 //!
-//! This crate intentionally does not choose CUDA, Metal, Vulkan, or WebGPU.
-//! Concrete API crates implement [`GpuExecutor`], report precision/capability
-//! truthfully, and submit batches through [`GpuBackend`]. Default geometry builds
-//! therefore carry no GPU dependency or driver stack.
+//! This crate intentionally chooses no CUDA, Metal, Vulkan, or WebGPU library.
+//! Concrete API crates implement a narrow operation executor and submit batches;
+//! default geometry builds carry no GPU dependency or driver stack.
 
 pub mod adapter;
 pub mod device;
 pub mod executor;
 
-pub use adapter::GpuBackend;
+pub use adapter::GpuCompiler;
 pub use device::{GpuDeviceDescriptor, GpuFeatures};
-pub use executor::GpuExecutor;
+pub use executor::GpuGraphExecutor;
 
 #[cfg(test)]
 mod tests {
     use geom_core::{Tolerance, Vec3};
     use geom_kernel::{
         Backend, BackendDescriptor, BackendId, ExecutionOptions, ExecutionTarget, GeomResult,
-        GeometryCompiler, Operation, OperationSupport, Precision,
+        GeometryCompiler,
     };
     use geom_mesh::TriMesh;
     use geom_model::{GeometryGraph, GeometryGraphBuilder, GeometryNode, NodeId};
@@ -30,23 +31,15 @@ mod tests {
         device: GpuDeviceDescriptor,
     }
 
-    impl GpuExecutor for FakeExecutor {
+    impl GpuGraphExecutor for FakeExecutor {
         fn device(&self) -> &GpuDeviceDescriptor {
             &self.device
         }
 
         fn descriptor(&self) -> BackendDescriptor {
             BackendDescriptor {
-                id: BackendId::new("test-gpu"),
+                id: BackendId::new("test-gpu-compiler"),
                 target: ExecutionTarget::Gpu,
-                available: true,
-                unavailable_reason: None,
-                operations: vec![OperationSupport {
-                    operation: Operation::GraphCompilation,
-                    precision: vec![Precision::F64],
-                    deterministic: true,
-                    minimum_batch_size: 1,
-                }],
             }
         }
 
@@ -61,7 +54,7 @@ mod tests {
     }
 
     #[test]
-    fn downstream_executor_plugs_in_without_vendor_types_in_kernel() {
+    fn downstream_executor_proves_its_capability_by_implementing_the_trait() {
         let executor = FakeExecutor {
             device: GpuDeviceDescriptor {
                 name: "test".to_owned(),
@@ -74,15 +67,20 @@ mod tests {
                 },
             },
         };
-        let backend = GpuBackend::new(executor);
+        let compiler = GpuCompiler::new(executor);
         let mut builder = GeometryGraphBuilder::new();
-        let root = builder.push(GeometryNode::Point3(Vec3::ZERO)).unwrap();
-        let graph = builder.finish(vec![root]).unwrap();
+        let root = builder
+            .push(GeometryNode::Point3(Vec3::ZERO))
+            .expect("root");
+        let graph = builder.finish(vec![root]).expect("graph");
         let options = ExecutionOptions::new(Tolerance::METRE);
         assert_eq!(
-            backend.compile(&graph, root, &options).unwrap(),
+            compiler.compile(&graph, root, &options).expect("compile"),
             TriMesh::default()
         );
-        assert_eq!(backend.descriptor().id, BackendId::new("test-gpu"));
+        assert_eq!(
+            compiler.descriptor().id,
+            BackendId::new("test-gpu-compiler")
+        );
     }
 }

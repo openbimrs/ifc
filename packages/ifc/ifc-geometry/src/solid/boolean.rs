@@ -45,12 +45,11 @@ mod slot {
 
 /// `IfcBooleanOperator`: the three set operations IFC defines.
 ///
-/// Deliberately separate from [`crate::kernel::BooleanOp`]: this is what the
-/// file said, that is what the kernel is asked to do. Keeping them distinct
-/// means the IFC layer can change its parsing without touching the kernel
-/// contract.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BooleanOperator {
+/// The IFC-file enumeration is distinct from the neutral
+/// [`geom_core::BooleanOperator`], with an explicit lossless conversion at the
+/// adapter boundary.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum IfcBooleanOperator {
     /// `.UNION.` -- everything in either operand.
     Union,
     /// `.INTERSECTION.` -- everything in both operands.
@@ -61,22 +60,51 @@ pub enum BooleanOperator {
     Difference,
 }
 
-impl BooleanOperator {
+/// Invalid `IfcBooleanOperator` token.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("unknown IfcBooleanOperator token")]
+pub struct ParseIfcBooleanOperatorError;
+
+impl core::str::FromStr for IfcBooleanOperator {
+    type Err = ParseIfcBooleanOperatorError;
+
+    fn from_str(token: &str) -> Result<Self, Self::Err> {
+        let bare = token.trim_matches('.');
+        if bare.eq_ignore_ascii_case("UNION") {
+            Ok(Self::Union)
+        } else if bare.eq_ignore_ascii_case("INTERSECTION") {
+            Ok(Self::Intersection)
+        } else if bare.eq_ignore_ascii_case("DIFFERENCE") {
+            Ok(Self::Difference)
+        } else {
+            Err(ParseIfcBooleanOperatorError)
+        }
+    }
+}
+
+impl core::fmt::Display for IfcBooleanOperator {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(formatter, ".{}.", self.as_token())
+    }
+}
+
+impl From<IfcBooleanOperator> for geom_core::BooleanOperator {
+    fn from(value: IfcBooleanOperator) -> Self {
+        match value {
+            IfcBooleanOperator::Union => Self::Union,
+            IfcBooleanOperator::Intersection => Self::Intersection,
+            IfcBooleanOperator::Difference => Self::Difference,
+        }
+    }
+}
+
+impl IfcBooleanOperator {
     /// Parse an enumeration token, with or without its surrounding dots.
     ///
     /// Accepts any case because STEP keywords are case-insensitive and real
     /// exporters are inconsistent about it.
     pub fn parse(token: &str) -> Option<Self> {
-        let bare = token.trim_matches('.');
-        if bare.eq_ignore_ascii_case("UNION") {
-            Some(Self::Union)
-        } else if bare.eq_ignore_ascii_case("INTERSECTION") {
-            Some(Self::Intersection)
-        } else if bare.eq_ignore_ascii_case("DIFFERENCE") {
-            Some(Self::Difference)
-        } else {
-            None
-        }
+        token.parse().ok()
     }
 
     /// The EXPRESS token, without dots.
@@ -193,12 +221,12 @@ impl<'m> BooleanResult<'m> {
     ///
     /// An unrecognised token is an error rather than a silent UNION, because
     /// substituting the wrong operator produces a solid that looks built.
-    pub fn operator(&self) -> GeometryResult<BooleanOperator> {
+    pub fn operator(&self) -> GeometryResult<IfcBooleanOperator> {
         let token = self
             .slots
             .opt_enum(slot::OPERATOR)
             .ok_or_else(|| self.missing("Operator"))?;
-        BooleanOperator::parse(token).ok_or_else(|| {
+        IfcBooleanOperator::parse(token).ok_or_else(|| {
             self.slots
                 .degenerate(format!("unknown IfcBooleanOperator '.{token}.'"))
         })
@@ -217,7 +245,7 @@ impl<'m> BooleanResult<'m> {
     /// Both operands in schema order.
     ///
     /// Order is preserved and must never be normalised for a DIFFERENCE; see
-    /// [`BooleanOperator::is_order_sensitive`].
+    /// [`IfcBooleanOperator::is_order_sensitive`].
     pub fn operands(&self) -> GeometryResult<(EntityId, EntityId)> {
         Ok((self.first_operand()?, self.second_operand()?))
     }
@@ -290,9 +318,9 @@ impl<'m> BooleanClippingResult<'m> {
     ///
     /// Files do violate it. Reporting rather than assuming DIFFERENCE means a
     /// mislabelled union is visible instead of quietly cutting the element.
-    pub fn checked_operator(&self) -> GeometryResult<BooleanOperator> {
+    pub fn checked_operator(&self) -> GeometryResult<IfcBooleanOperator> {
         let op = self.base().operator()?;
-        if op == BooleanOperator::Difference {
+        if op == IfcBooleanOperator::Difference {
             Ok(op)
         } else {
             Err(self.slots.degenerate(format!(
@@ -316,13 +344,16 @@ mod tests {
     #[test]
     fn operator_parses_every_express_token_case_insensitively() {
         for (token, expected) in [
-            ("UNION", BooleanOperator::Union),
-            ("intersection", BooleanOperator::Intersection),
-            (".DIFFERENCE.", BooleanOperator::Difference),
+            ("UNION", IfcBooleanOperator::Union),
+            ("intersection", IfcBooleanOperator::Intersection),
+            (".DIFFERENCE.", IfcBooleanOperator::Difference),
         ] {
-            assert_eq!(BooleanOperator::parse(token), Some(expected));
+            assert_eq!(IfcBooleanOperator::parse(token), Some(expected));
         }
-        assert_eq!(BooleanOperator::parse("SUBTRACT"), None);
+        assert_eq!(IfcBooleanOperator::parse("SUBTRACT"), None);
+        assert_eq!(IfcBooleanOperator::Difference.to_string(), ".DIFFERENCE.");
+        let neutral: geom_core::BooleanOperator = IfcBooleanOperator::Difference.into();
+        assert_eq!(neutral, geom_core::BooleanOperator::Difference);
     }
 
     /// An unknown operator must not degrade into a default; a wrong operator
@@ -337,9 +368,9 @@ mod tests {
     /// DIFFERENCE is not commutative, so operand order is load-bearing.
     #[test]
     fn difference_is_the_only_order_sensitive_operator() {
-        assert!(BooleanOperator::Difference.is_order_sensitive());
-        assert!(!BooleanOperator::Union.is_order_sensitive());
-        assert!(!BooleanOperator::Intersection.is_order_sensitive());
+        assert!(IfcBooleanOperator::Difference.is_order_sensitive());
+        assert!(!IfcBooleanOperator::Union.is_order_sensitive());
+        assert!(!IfcBooleanOperator::Intersection.is_order_sensitive());
     }
 
     #[test]
@@ -347,7 +378,7 @@ mod tests {
         let e_ = result("DIFFERENCE", 100, 200);
         let view = BooleanResult::new(EntityId(1), &e_);
         assert_eq!(view.operands().unwrap(), (EntityId(100), EntityId(200)));
-        assert_eq!(view.operator().unwrap(), BooleanOperator::Difference);
+        assert_eq!(view.operator().unwrap(), IfcBooleanOperator::Difference);
     }
 
     /// The structure is a tree: an operand may itself be a boolean result, and
@@ -476,7 +507,7 @@ mod tests {
             BooleanClippingResult::new(EntityId(1), &ok)
                 .checked_operator()
                 .unwrap(),
-            BooleanOperator::Difference
+            IfcBooleanOperator::Difference
         );
 
         let bad = entity("IFCBOOLEANCLIPPINGRESULT", vec![e("UNION"), r(2), r(3)]);

@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Metric-property contracts.
 //!
 //! Algorithms are generic over representation and return structured failures;

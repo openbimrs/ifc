@@ -1,6 +1,6 @@
 # 0002 — Hardware abstraction: runtime backend selection, scalar as oracle
 
-- **Status:** Accepted
+- **Status:** Superseded by [0009](0009-layered-geometry-dag.md)
 - **Date:** 2026-08-18
 - **Deciders:** GeneralPawz, Hermes
 - **Supersedes:** —

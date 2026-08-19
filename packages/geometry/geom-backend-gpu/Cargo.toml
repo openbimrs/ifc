@@ -10,7 +10,9 @@ license.workspace = true
 default = []
 
 [dependencies]
-geom-core.workspace = true
 geom-mesh.workspace = true
 geom-model.workspace = true
-geom-kernel.workspace = true
+geom-kernel = { workspace = true, features = ["model"] }
+
+[dev-dependencies]
+geom-core.workspace = true

@@ -1,19 +1,48 @@
 //! Arbitrary closed contours.
 
+use geom_core::Interval;
 use geom_curve::Curve2;
 
-/// One oriented closed contour assembled from exact curve segments.
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct Contour {
-    /// Consecutive segments. Validation checks endpoint continuity and closure.
-    pub segments: Vec<Curve2>,
+/// One bounded oriented curve segment.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProfileSegment {
+    /// Exact supporting curve.
+    pub curve: Curve2,
+    /// Parameter interval on `curve`.
+    pub domain: Interval,
+    /// Whether parameter direction follows contour orientation.
+    pub same_sense: bool,
 }
 
-/// Arbitrary profile with one outer contour and zero or more holes.
-#[derive(Debug, Clone, PartialEq)]
+/// One oriented closed contour assembled from bounded exact curve segments.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Contour {
+    /// Consecutive bounded segments; closure is validated separately.
+    pub segments: Vec<ProfileSegment>,
+}
+
+impl Contour {
+    /// Construct from oriented segments without silently repairing gaps.
+    pub fn new(segments: Vec<ProfileSegment>) -> Self {
+        Self { segments }
+    }
+
+    /// Number of exact segments.
+    pub fn len(&self) -> usize {
+        self.segments.len()
+    }
+
+    /// Whether this contour has no segments.
+    pub fn is_empty(&self) -> bool {
+        self.segments.is_empty()
+    }
+}
+
+/// Closed outer contour and zero or more closed holes.
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct ContourProfile {
     /// Outer boundary.
     pub outer: Contour,
-    /// Interior boundaries.
+    /// Inner boundaries.
     pub holes: Vec<Contour>,
 }

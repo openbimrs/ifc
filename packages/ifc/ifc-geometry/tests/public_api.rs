@@ -126,37 +126,47 @@ fn placement_resolution_is_reachable_from_outside_the_crate() {
     );
 }
 
-/// The kernel vocabulary must be public: it is the contract a geometry
-/// backend is written against.
+/// The adapter's public output is the format-neutral geometry DAG, not a
+/// duplicate IFC-local kernel vocabulary.
 #[test]
-fn the_kernel_contract_is_part_of_the_public_api() {
-    use ifc_geometry::kernel::{BooleanOp, Contour, CsgShape, Primitive, Profile};
-    use ifc_geometry::Transform;
+fn the_neutral_geometry_dag_is_part_of_the_public_api() {
+    use geom_model::{BooleanOperator, GeometryGraphBuilder, GeometryNode, SolidOperation};
+    use geom_primitive::Primitive;
+    use geom_profile::{Profile, RectangleProfile};
 
-    let square = Profile {
-        outer: Contour {
-            points: vec![[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
-        },
-        inner: vec![],
-    };
-
-    let cut = Primitive::Boolean {
-        op: BooleanOp::Difference,
-        first: Box::new(Primitive::Extrusion {
-            profile: square,
-            direction: [0.0, 0.0, 1.0],
+    let mut builder = GeometryGraphBuilder::new();
+    let profile = builder
+        .push(GeometryNode::Profile(Profile::Rectangle(
+            RectangleProfile {
+                x: 1.0,
+                y: 1.0,
+                thickness: None,
+                outer_radius: None,
+                inner_radius: None,
+            },
+        )))
+        .expect("profile");
+    let body = builder
+        .push(GeometryNode::SolidOperation(SolidOperation::Extrusion {
+            profile,
+            direction: geom_core::Vec3::Z,
             depth: 2.0,
-            placement: Transform::identity(),
-        }),
-        second: Box::new(Primitive::Csg {
-            shape: CsgShape::Sphere { radius: 0.5 },
-            placement: Transform::identity(),
-        }),
-    };
-
-    assert!(
-        cut.requires_boolean(),
-        "a backend must be able to ask whether it needs boolean support"
-    );
-    assert_eq!(cut.kind(), "boolean");
+        }))
+        .expect("body");
+    let tool = builder
+        .push(GeometryNode::Primitive(Primitive::Sphere { radius: 0.5 }))
+        .expect("tool");
+    let cut = builder
+        .push(GeometryNode::SolidOperation(SolidOperation::Boolean {
+            left: body,
+            right: tool,
+            operator: BooleanOperator::Difference,
+        }))
+        .expect("boolean");
+    let graph = builder.finish(vec![cut]).expect("valid DAG");
+    assert_eq!(graph.roots(), &[cut]);
+    assert!(matches!(
+        graph.get(cut),
+        Some(GeometryNode::SolidOperation(SolidOperation::Boolean { .. }))
+    ));
 }

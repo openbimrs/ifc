@@ -10,7 +10,4 @@ description = "Curves, surfaces and B-reps to triangles under an explicit tolera
 [dependencies]
 geom-core.workspace = true
 geom-mesh.workspace = true
-geom-curve.workspace = true
-geom-surface.workspace = true
-geom-topology.workspace = true
 geom-model.workspace = true

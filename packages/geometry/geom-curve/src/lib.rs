@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Exact, format-neutral curve representations and evaluation contracts.
 //!
 //! Composite, trimmed, offset, and surface-bound curves are graph relations in

@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Format-neutral geometry intermediate representation.
 //!
 //! Source adapters lower into an immutable [`GeometryGraph`]. Nodes preserve
@@ -15,8 +17,9 @@ pub mod surface_relation;
 pub use curve_relation::{
     CurveRelation, CurveSegment, MasterRepresentation, Transition, TrimSelector, TrimmingPreference,
 };
+pub use geom_core::BooleanOperator;
 pub use graph::{GeometryGraph, GeometryGraphBuilder, GraphError};
 pub use id::NodeId;
 pub use node::{GeometryNode, Instance, PointOnCurve, PointOnSurface};
-pub use solid_operation::{BooleanOperator, Section, SolidOperation};
+pub use solid_operation::{Section, SolidOperation};
 pub use surface_relation::SurfaceRelation;

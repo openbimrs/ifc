@@ -9,8 +9,12 @@ pub struct RectangleProfile {
     pub x: Scalar,
     /// Extent along local y.
     pub y: Scalar,
-    /// Optional corner radius.
-    pub radius: Option<Scalar>,
+    /// Optional wall thickness. `None` denotes a filled section.
+    pub thickness: Option<Scalar>,
+    /// Optional outer corner radius.
+    pub outer_radius: Option<Scalar>,
+    /// Optional inner corner radius for hollow sections.
+    pub inner_radius: Option<Scalar>,
 }
 
 /// Circle or annulus.

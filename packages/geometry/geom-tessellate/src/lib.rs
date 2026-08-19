@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Exact-to-discrete tessellation contracts.
 //!
 //! Shared topological edges must be discretized once and reused by adjacent

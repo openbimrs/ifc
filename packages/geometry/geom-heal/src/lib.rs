@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Explicit geometry diagnosis and opt-in repair.
 //!
 //! Healing never runs inside another algorithm. Callers diagnose first, choose

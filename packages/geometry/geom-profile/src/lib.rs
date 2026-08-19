@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Exact two-dimensional section profiles.
 //!
 //! The crate stores profile intent. Boolean cleanup and triangulation are
@@ -9,7 +11,7 @@ pub mod validate;
 
 use geom_core::Transform2;
 
-pub use contour::{Contour, ContourProfile};
+pub use contour::{Contour, ContourProfile, ProfileSegment};
 pub use parameterized::{CircleProfile, EllipseProfile, RectangleProfile, SectionProfile};
 pub use validate::ValidateProfile;
 

@@ -1,95 +1,130 @@
-# AGENTS.md — packages/geometry/
+# Geometry package instructions
 
-The shared geometry kernel. **Knows nothing about IFC.** If a type here mentions
-`IfcWall`, a property set, or a GUID, it belongs in `packages/ifc/`.
+Applies to `packages/geometry/**`. A deeper `AGENTS.md` adds crate/module
+specific invariants.
 
-Read `docs/adr/0002` (hardware abstraction), `0003` (pure-Rust boolean, the
-decision the project rests on) and `0005` (why these crates exist).
+## Scope
 
-## Crates, low → high
+This package is a pure-Rust, IFC-agnostic geometry stack. No file-format entity,
+GlobalId, IFC unit, IFC placement, representation identifier, or vendor model
+type may cross this directory boundary. Source adapters lower into
+`geom-model::GeometryGraph`; applications choose operation providers and
+execution contexts.
 
-| Crate | Role | Depends on |
-| --- | --- | --- |
-| `geom-core` | scalars, tolerance, `Vec3`/`Mat4`, `Aabb` | — (root) |
-| `geom-mesh` | `TriMesh`: the exchange currency | core |
-| `geom-profile` | 2D cross-sections, polygons, triangulation | core |
-| `geom-curve` | line/arc/NURBS evaluation, trimming, arc length | core |
-| `geom-surface` | plane/cylinder/cone/sphere/torus, NURBS patches | core, curve |
-| `geom-sweep` | extrude, revolve, sweep along directrix | core, profile, curve, mesh |
-| `geom-topology` | exact B-rep: vertex→edge→loop→face→shell→solid | core, curve, surface |
-| `geom-tessellate` | exact geometry → triangles, chord tolerance | core, mesh, curve, surface, topology |
-| `geom-spatial` | BVH / octree / grid + queries | core, mesh |
-| `geom-measure` | area, volume, centroid, inertia | core, mesh, profile |
-| `geom-kernel` | **the trait contract** + hardware backends | core, mesh |
+`PLAN.md` files are deliberately not ambient context. Read a plan only when the
+assigned task is implementing or reviewing roadmap work. Ordinary consumers and
+maintenance agents should follow `AGENTS.md` without ingesting speculative work.
 
-Sizing evidence (IFC4 entity counts): 23 `IfcProfileDef` subtypes, 36 curve
-entities, 37 surface entities, 11 swept-solid forms, ~37 topology entities. Each
-crate above corresponds to a real cluster in the standard, not an invented one.
-
-## Tiers (enforced, not advisory)
+## Dependency direction
 
 ```text
-  L0  math / data      geom-core
-   ^
-  L1  representation   geom-mesh, geom-profile, geom-curve, geom-surface,
-                       geom-topology
-   ^
-  L2  algorithms       geom-sweep, geom-tessellate, geom-spatial, geom-measure,
-                       geom-kernel
+L0 values
+  geom-core
+       |
+L1 representations
+  geom-mesh  geom-profile  geom-curve  geom-surface
+  geom-topology  geom-primitive  geom-model
+       |
+L2 algorithms and contracts
+  geom-sweep  geom-tessellate  geom-spatial  geom-measure
+  geom-heal   geom-kernel
+       |
+L3 execution/adapters
+  geom-backend-cpu  geom-backend-gpu
+       |
+L4 opt-in facade
+  geom
 ```
 
-Dependencies point **down or sideways, never up**. Same-tier edges are fine —
-`geom-surface` needs `geom-curve` to trim. The edge that matters is the L1 rule:
-representation types stay usable without dragging in an algorithm crate, which
-is what lets a foreign kernel accept our `TriMesh` without accepting our kernel.
+Dependencies point downward only. `geom-model` composes L1 values but performs
+no algorithms. `geom-kernel` is operation traits/policy/errors only. Execution
+contexts and operation adapters remain separate crates so Cargo feature
+unification cannot leak an implementation into `ifc-geometry`.
 
-`geom-core.tests/layering.rs` enforces all of this, plus "no crate here depends
-on `packages/ifc/`". A new crate with no entry in its `TIERS` table fails the
-build — declaring the layer is part of creating the crate. The gate is
-mutation-verified by `scripts/probe_layering_gate.sh` (5 probes: reversed seam,
-tier inversion, root gaining a sibling, untiered crate, commented-out decoy).
+## Stable boundaries
 
-## The two swaps (do not break these)
+- `geom-core`: f64 values, transforms, bounds, explicit tolerance. No algorithms
+  beyond local value operations and no serialization policy.
+- `geom-model`: immutable append-only DAG. Every edge references a prior node,
+  making CSG/mapped-item cycles impossible after construction.
+- `geom-kernel`: narrow operation traits (`GeometryCompiler`, `MeshBoolean`),
+  identity descriptors, execution policy, structured errors. Implementing an
+  operation trait is the only capability claim; never duplicate it with flags.
+- Backend crates: runtime hardware contexts or operation-specific adapters. They
+  do not implement an operation trait until a working algorithm exists.
+- `geom`: convenience reexports and semantic feature bundles only.
 
-1. **Whole-kernel swap.** `packages/ifc/` depends on `geom-kernel` *traits*,
-   never on a backend implementation. A better kernel implements the traits and
-   the IFC layer gains it with no call-site change.
-2. **Hardware-backend swap.** `geom-kernel::backend::{scalar,simd,gpu}` are
-   cargo features, selected at runtime by `backend::Dispatcher`. Adding AVX-512
-   or a GPU path = adding an impl, never editing callers.
+## Representation rules
 
-`scalar` is the **correctness oracle**: it must compile everywhere and take no
-`target_feature`. Every other backend is validated *against* it by differential
-test. A backend without a differential test is not trusted.
+- Preserve exact intent until an explicit tessellation call. Never approximate
+  circles, NURBS, profiles, booleans, or placements in a source adapter.
+- Keep n-gons and holes as `PolygonMesh`; emit `TriMesh` only after explicit
+  triangulation.
+- Keep topology separate from geometry. `BRep<G>` uses typed handles and a
+  caller-chosen geometry handle.
+- Reuse geometry via DAG `NodeId` and `Instance`; do not recursively clone
+  mapped geometry.
+- Units are already resolved when data enters this package. Generic geometry
+  does not know which source unit was used.
+- Every costly or tolerance-sensitive operation receives policy explicitly.
+  No process-global epsilon, thread pool, backend, or model tolerance.
 
-## Rules
+## Backend and hardware rules
 
-- **`geom-core` gains no dependencies.** It is the shared vocabulary; if it
-  depended on a sibling, the siblings would stop being siblings.
-- **No rendering types anywhere.** No colour, material, or presentation flag —
-  that is `ifc-style`'s job. A kernel with `getColorBuffer()` on its base type
-  cannot be refactored without touching a renderer.
-- **No serialization derives.** Persisting geometry belongs to a codec layer;
-  a derived `Serialize` on a kernel type freezes its layout forever.
-- **Tolerance is a parameter, never a global.** BIM arrives in millimetres *and*
-  metres; a file-scope `1e-9` is wrong in one of them.
-- **Dirty geometry is a state, not an error.** Non-manifold input is normal;
-  represent it, report it, do not panic on it.
-- **Coarse trait granularity.** Backends receive whole meshes and batches, never
-  one triangle, so dynamic dispatch is amortised.
+- Every optimized operation provider requires a portable scalar oracle. Until
+  that oracle works, the provider does not implement/register the trait.
+- SIMD code uses target-specific modules plus runtime feature detection. Never
+  set workspace-wide `target-cpu=native`.
+- Parallel execution is optional and bounded. Use context-local pools; do not
+  mutate Rayon's global pool from a library.
+- GPU contracts expose device facts and narrow batch operations, not
+  CUDA/Metal/Vulkan/WebGPU types. API-specific crates implement
+  `GpuGraphExecutor` or another operation-specific executor.
+- GPU f32 is not equivalent to the f64 model. Each operation provider validates
+  `ExecutionOptions` and rejects work whose precision it cannot honor.
+- Third-party or future AArch64/x86/GPU/accelerator providers remain possible by
+  implementing open traits for downstream-owned types.
+- Do not rank GPU above CPU by folklore. Selection thresholds require benchmark
+  evidence for the workload and target.
 
-## Scope discipline (the thing that kills geometry kernels)
+## Public API conventions
 
-`geom-curve`, `geom-surface` and `geom-topology` are where a NURBS effort
-balloons into a multi-year CAD project. Target **what real IFC files contain**:
-planes and cylinders dominate, extrusion covers most solids, NURBS appears at
-the margin. Curve/curve intersection and general surface interrogation stay out
-until a fixture demands them.
+- Public value types implement `Debug` and `Clone`; add `Copy`, `Eq`, `Hash`,
+  `Default`, `Display`, `Error`, `IntoIterator`, or `AsRef` only when their
+  semantics are honest.
+- Use typed newtype IDs instead of interchangeable integers.
+- Use builders for validated multi-field configuration; do not use builders for
+  trivial values.
+- Mark extensible public enums/errors `#[non_exhaustive]` unless exhaustiveness
+  is a deliberate compatibility contract.
+- Return structured errors. Unsupported capability is distinct from invalid
+  input, unavailable hardware, cancellation, and numerical failure.
+- Prefer borrowed views (`MeshView`) and batch APIs to forced copies and one-item
+  accelerator dispatch.
+- Representation, facade, contract, and GPU adapter crates forbid unsafe code.
+  CPU provider crates may use localized unsafe intrinsics only with an invariant
+  comment, Miri-capable scalar tests where applicable, and measured need.
 
-## Status — read before assuming a capability exists
+## File and module growth
 
-Scaffold. Every crate here is documentation + intent; `geom-tessellate` carries
-the `Tessellate` trait and `ChordTolerance`, `geom-kernel` carries the traits and
-backend detection, and `backend::scalar`'s boolean deliberately returns
-`Unsupported` rather than a wrong mesh. Check the module doc before assuming
-behaviour is implemented.
+Split by responsibility before a Rust file reaches roughly 500 lines. A file may
+exceed that only when generated or when splitting would obscure one cohesive
+algorithm. Keep data, validation, algorithms, dispatch, and tests in separate
+modules. Do not add empty placeholder modules: add the file when it owns a real
+type, trait, invariant, test, or implementation.
+
+## Gates
+
+Run targeted crate tests while iterating. Before merging geometry-wide changes:
+
+```bash
+cargo test -p geom-core --test layering
+scripts/geometry-feature-matrix.sh
+cargo test -p ifc-geometry --test declaration_manifest
+cargo test -p ifc-geometry --test no_backend_dependency
+scripts/gate.sh
+```
+
+The feature matrix must include no-default, every facade capability alone, full,
+CPU parallel/SIMD, and a non-x86 compile target. Architecture gates must be
+mutation-verified before being trusted.

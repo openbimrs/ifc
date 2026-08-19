@@ -16,6 +16,7 @@
 
 pub mod axes;
 pub mod direction;
+pub mod functions;
 pub mod mapped;
 pub mod operator;
 pub mod placement;

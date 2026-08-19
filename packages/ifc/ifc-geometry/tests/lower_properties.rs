@@ -1,28 +1,19 @@
-//! Lowering properties that the corpus alone cannot prove.
-//!
-//! # Why these are separate from the fixture tests
-//!
-//! The committed fixtures that lower are all metre-based and rectangle-based,
-//! so they cannot detect a missing unit conversion, an ignored solid
-//! placement, or a hardcoded circle segment count. Those need models built to
-//! isolate exactly one variable. Each test here corresponds to a mutation
-//! that survived the fixture suite.
+//! Lowering properties the IFC corpus alone cannot prove.
 
-use ifc_geometry::kernel::Primitive;
-use ifc_geometry::lower::{lower_extruded_area_solid, lower_profile, Tolerance};
-use ifc_geometry::transform::Transform;
-use ifc_geometry::units::UnitScale;
+use geom_model::{GeometryNode, SolidOperation};
+use geom_profile::Profile;
+use ifc_geometry::lower::{lower_extruded_area_solid, lower_profile, LoweredGeometry, Tolerance};
+use ifc_geometry::{Transform, UnitScale};
 use ifc_model::{Entity, EntityId, Model, Value};
 
 fn r(id: u64) -> Value {
     Value::Ref(EntityId(id))
 }
 
-fn n(v: f64) -> Value {
-    Value::Real(v)
+fn n(value: f64) -> Value {
+    Value::Real(value)
 }
 
-/// A millimetre-scale unit assignment.
 fn millimetres() -> UnitScale {
     let mut model = Model::new();
     model.insert(
@@ -47,17 +38,16 @@ fn millimetres() -> UnitScale {
     ifc_geometry::units::resolve(&model)
 }
 
-/// A minimal extruded solid: rectangle profile, +Z direction, given depth.
 fn extrusion_model(depth: f64, with_position: bool) -> (Model, EntityId) {
-    let mut m = Model::new();
-    m.insert(
+    let mut model = Model::new();
+    model.insert(
         EntityId(1),
         Entity::new(
             "IFCDIRECTION",
             vec![Value::List(vec![n(0.0), n(0.0), n(1.0)])],
         ),
     );
-    m.insert(
+    model.insert(
         EntityId(2),
         Entity::new(
             "IFCRECTANGLEPROFILEDEF",
@@ -71,14 +61,14 @@ fn extrusion_model(depth: f64, with_position: bool) -> (Model, EntityId) {
         ),
     );
     let position = if with_position {
-        m.insert(
+        model.insert(
             EntityId(3),
             Entity::new(
                 "IFCCARTESIANPOINT",
                 vec![Value::List(vec![n(1000.0), n(0.0), n(0.0)])],
             ),
         );
-        m.insert(
+        model.insert(
             EntityId(4),
             Entity::new("IFCAXIS2PLACEMENT3D", vec![r(3), Value::Null, Value::Null]),
         );
@@ -86,176 +76,170 @@ fn extrusion_model(depth: f64, with_position: bool) -> (Model, EntityId) {
     } else {
         Value::Null
     };
-    m.insert(
+    model.insert(
         EntityId(5),
         Entity::new("IFCEXTRUDEDAREASOLID", vec![r(2), position, r(1), n(depth)]),
     );
-    (m, EntityId(5))
+    (model, EntityId(5))
 }
 
-/// M1: depth must be converted to metres.
-///
-/// A 2500 mm extrusion is 2.5 m. Skipping the conversion yields a solid a
-/// thousand times too tall, and no metre-based fixture can reveal it.
-#[test]
-fn extrusion_depth_is_converted_to_metres() {
-    let (m, id) = extrusion_model(2500.0, false);
-    let tol = Tolerance::building_scale();
-    let p = lower_extruded_area_solid(&m, id, Transform::identity(), &millimetres(), &tol)
-        .expect("lowers");
-    match p {
-        Primitive::Extrusion { depth, .. } => assert!(
-            (depth - 2.5).abs() < 1e-12,
-            "2500 mm must lower to 2.5 m, got {depth}"
-        ),
-        other => panic!("expected an extrusion, got {other:?}"),
+fn operation(lowered: &LoweredGeometry) -> &SolidOperation {
+    let source = match lowered.graph.get(lowered.root).expect("root exists") {
+        GeometryNode::Instance(instance) => instance.source,
+        other => panic!("expected instance root, got {other:?}"),
+    };
+    match lowered.graph.get(source).expect("source exists") {
+        GeometryNode::SolidOperation(operation) => operation,
+        other => panic!("expected solid operation, got {other:?}"),
     }
 }
 
-/// Profile dimensions are lengths too, and get the same conversion.
 #[test]
-fn profile_dimensions_are_converted_to_metres() {
-    let (m, _) = extrusion_model(1.0, false);
-    let tol = Tolerance::building_scale();
-    let profile = lower_profile(&m, EntityId(2), &millimetres(), &tol).expect("lowers");
-    let width = span(&profile.outer.points, 0);
-    assert!(
-        (width - 0.1).abs() < 1e-12,
-        "a 100 mm profile is 0.1 m wide, got {width}"
-    );
-}
-
-/// M5: the solid's own Position must reach the kernel.
-///
-/// Dropping it puts every solid that carries one at the product origin.
-#[test]
-fn the_solid_position_is_composed_into_the_placement() {
-    let tol = Tolerance::building_scale();
-    let (with_pos, id_with) = extrusion_model(1000.0, true);
-    let (without_pos, id_without) = extrusion_model(1000.0, false);
-
-    let a = lower_extruded_area_solid(
-        &with_pos,
-        id_with,
+fn extrusion_depth_is_converted_to_metres() {
+    let (model, id) = extrusion_model(2500.0, false);
+    let lowered = lower_extruded_area_solid(
+        &model,
+        id,
         Transform::identity(),
         &millimetres(),
-        &tol,
+        &Tolerance::building_scale(),
+    )
+    .expect("lowers");
+    match operation(&lowered) {
+        SolidOperation::Extrusion { depth, .. } => assert!((depth - 2.5).abs() < 1e-12),
+        other => panic!("expected extrusion, got {other:?}"),
+    }
+}
+
+#[test]
+fn profile_dimensions_are_converted_to_metres() {
+    let (model, _) = extrusion_model(1.0, false);
+    let profile = lower_profile(
+        &model,
+        EntityId(2),
+        &millimetres(),
+        &Tolerance::building_scale(),
+    )
+    .expect("lowers");
+    match profile {
+        Profile::Rectangle(rectangle) => {
+            assert!((rectangle.x - 0.1).abs() < 1e-12);
+            assert!((rectangle.y - 0.2).abs() < 1e-12);
+        }
+        other => panic!("expected rectangle, got {other:?}"),
+    }
+}
+
+#[test]
+fn solid_position_is_composed_into_instance_transform() {
+    let tolerance = Tolerance::building_scale();
+    let (with_position, with_id) = extrusion_model(1000.0, true);
+    let (without_position, without_id) = extrusion_model(1000.0, false);
+    let a = lower_extruded_area_solid(
+        &with_position,
+        with_id,
+        Transform::identity(),
+        &millimetres(),
+        &tolerance,
     )
     .expect("lowers");
     let b = lower_extruded_area_solid(
-        &without_pos,
-        id_without,
+        &without_position,
+        without_id,
         Transform::identity(),
         &millimetres(),
-        &tol,
+        &tolerance,
     )
     .expect("lowers");
 
-    let (pa, pb) = match (a, b) {
-        (
-            Primitive::Extrusion { placement: pa, .. },
-            Primitive::Extrusion { placement: pb, .. },
-        ) => (pa, pb),
-        _ => panic!("expected extrusions"),
-    };
-    assert_ne!(
-        pa, pb,
-        "a solid with a Position must not land in the same place as one without"
-    );
-    // The position offsets 1000 mm along X, which is 1 m.
-    let moved = pa.apply([0.0, 0.0, 0.0]);
-    assert!(
-        (moved[0] - 1.0).abs() < 1e-12,
-        "expected a 1 m offset, got {moved:?}"
-    );
+    let transform =
+        |lowered: &LoweredGeometry| match lowered.graph.get(lowered.root).expect("root exists") {
+            GeometryNode::Instance(instance) => instance.transform,
+            other => panic!("expected instance, got {other:?}"),
+        };
+    let moved = transform(&a).transform_point3(geom_core::Point3::ZERO);
+    assert!((moved.x - 1.0).abs() < 1e-12);
+    assert_ne!(transform(&a), transform(&b));
 }
 
-/// Width of a contour along one axis.
-fn span(points: &[[f64; 2]], axis: usize) -> f64 {
-    let lo = points.iter().map(|p| p[axis]).fold(f64::MAX, f64::min);
-    let hi = points.iter().map(|p| p[axis]).fold(f64::MIN, f64::max);
-    hi - lo
-}
-
-/// M6: circle refinement must follow the tolerance, not a fixed count.
-///
-/// Two circles of very different radii at the same tolerance must not receive
-/// the same number of segments; a hardcoded count would give identical
-/// contours and silently over- or under-refine.
 #[test]
-fn circle_refinement_follows_the_tolerance() {
-    let tol = Tolerance::building_scale();
-    let mut m = Model::new();
-    m.insert(
+fn circles_remain_exact_and_tolerance_independent() {
+    let mut model = Model::new();
+    model.insert(
         EntityId(1),
-        Entity::new(
-            "IFCCIRCLEPROFILEDEF",
-            vec![
-                Value::Enum("AREA".into()),
-                Value::Null,
-                Value::Null,
-                n(0.05),
-            ],
-        ),
-    );
-    m.insert(
-        EntityId(2),
         Entity::new(
             "IFCCIRCLEPROFILEDEF",
             vec![Value::Enum("AREA".into()), Value::Null, Value::Null, n(5.0)],
         ),
     );
-    let metres = UnitScale::default();
-    let small = lower_profile(&m, EntityId(1), &metres, &tol).expect("lowers");
-    let large = lower_profile(&m, EntityId(2), &metres, &tol).expect("lowers");
-
-    assert!(
-        large.outer.points.len() > small.outer.points.len(),
-        "a 5 m circle needs more segments than a 5 cm one at equal tolerance: \
-         small={} large={}",
-        small.outer.points.len(),
-        large.outer.points.len()
-    );
-
-    // And the actual chord error must respect the requested sagitta.
-    let n_large = large.outer.points.len() as f64;
-    let per = std::f64::consts::TAU / n_large;
-    let sagitta = 5.0 * (1.0 - (per / 2.0).cos());
-    assert!(
-        sagitta <= 1e-3 + 1e-12,
-        "chord height {sagitta} exceeds the 1 mm tolerance"
-    );
-
-    // A coarser tolerance must produce a coarser contour.
-    let coarse = Tolerance::from_sagitta(0.05).unwrap();
-    let coarser = lower_profile(&m, EntityId(2), &metres, &coarse).expect("lowers");
-    assert!(
-        coarser.outer.points.len() < large.outer.points.len(),
-        "a coarser tolerance must not refine further"
-    );
+    let fine = lower_profile(
+        &model,
+        EntityId(1),
+        &UnitScale::default(),
+        &Tolerance::building_scale(),
+    )
+    .expect("lowers");
+    let coarse = lower_profile(
+        &model,
+        EntityId(1),
+        &UnitScale::default(),
+        &Tolerance::from_sagitta(0.05).expect("valid"),
+    )
+    .expect("lowers");
+    assert_eq!(fine, coarse, "IFC lowering must not tessellate a circle");
+    match fine {
+        Profile::Circle(circle) => assert_eq!(circle.radius, 5.0),
+        other => panic!("expected exact circle, got {other:?}"),
+    }
 }
 
-/// A circle contour must not repeat its first point.
-///
-/// `Contour` closes implicitly; a duplicated vertex is a zero-length edge.
 #[test]
-fn a_circle_contour_does_not_repeat_its_first_point() {
-    let tol = Tolerance::building_scale();
-    let mut m = Model::new();
-    m.insert(
+fn parameterized_profile_position_is_preserved() {
+    let mut model = Model::new();
+    model.insert(
         EntityId(1),
         Entity::new(
-            "IFCCIRCLEPROFILEDEF",
-            vec![Value::Enum("AREA".into()), Value::Null, Value::Null, n(1.0)],
+            "IFCCARTESIANPOINT",
+            vec![Value::List(vec![n(1000.0), n(2000.0)])],
         ),
     );
-    let profile = lower_profile(&m, EntityId(1), &UnitScale::default(), &tol).expect("lowers");
-    let pts = &profile.outer.points;
-    let first = pts[0];
-    let last = pts[pts.len() - 1];
-    let d = ((first[0] - last[0]).powi(2) + (first[1] - last[1]).powi(2)).sqrt();
-    assert!(
-        d > 1e-9,
-        "first and last point coincide: {first:?} {last:?}"
+    model.insert(
+        EntityId(2),
+        Entity::new("IFCDIRECTION", vec![Value::List(vec![n(0.0), n(1.0)])]),
     );
+    model.insert(
+        EntityId(3),
+        Entity::new("IFCAXIS2PLACEMENT2D", vec![r(1), r(2)]),
+    );
+    model.insert(
+        EntityId(4),
+        Entity::new(
+            "IFCRECTANGLEPROFILEDEF",
+            vec![
+                Value::Enum("AREA".into()),
+                Value::Null,
+                r(3),
+                n(100.0),
+                n(200.0),
+            ],
+        ),
+    );
+    let profile = lower_profile(
+        &model,
+        EntityId(4),
+        &millimetres(),
+        &Tolerance::building_scale(),
+    )
+    .expect("lowers");
+    match profile {
+        Profile::Derived { transform, .. } => {
+            let origin = transform.transform_point2(geom_core::Point2::ZERO);
+            let x = transform.transform_vector2(geom_core::Vec2::X);
+            assert!((origin.x - 1.0).abs() < 1e-12);
+            assert!((origin.y - 2.0).abs() < 1e-12);
+            assert!(x.x.abs() < 1e-12);
+            assert!((x.y - 1.0).abs() < 1e-12);
+        }
+        other => panic!("expected positioned profile, got {other:?}"),
+    }
 }

@@ -42,7 +42,7 @@
 //! siblings and the backends stop being swappable for one another.
 
 use std::collections::BTreeSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Tier of each crate under `packages/geometry/`, low to high.
 ///
@@ -72,12 +72,46 @@ const TIERS: &[(&str, u8)] = &[
     ("geom-measure", 2),
     ("geom-heal", 2),
     ("geom-kernel", 2),
-    // L3 -- concrete runtime implementations.
+    // L3 -- execution contexts and operation adapters.
     ("geom-backend-cpu", 3),
     ("geom-backend-gpu", 3),
     // L4 -- opt-in facade over lower layers.
     ("geom", 4),
 ];
+
+#[test]
+fn operation_traits_are_the_only_capability_claim() {
+    let geometry = geometry_dir();
+    let metadata = std::fs::read_to_string(geometry.join("geom-kernel/src/capability.rs"))
+        .expect("read capability metadata");
+    assert!(
+        !metadata.contains("OperationSupport"),
+        "operation support metadata duplicates Rust trait implementations"
+    );
+
+    let cpu = std::fs::read_to_string(geometry.join("geom-backend-cpu/src/execution.rs"))
+        .expect("read CPU context");
+    assert!(
+        !cpu.contains("impl MeshBoolean for CpuExecution"),
+        "an execution context must not implement an unavailable operation"
+    );
+}
+
+#[test]
+fn every_geometry_crate_has_an_explicit_unsafe_policy() {
+    for crate_name in geometry_crates() {
+        let root = std::fs::read_to_string(geometry_dir().join(crate_name).join("src/lib.rs"))
+            .expect("read crate root");
+        if crate_name == "geom-backend-cpu" {
+            assert!(root.contains("#![deny(unsafe_op_in_unsafe_fn)]"));
+        } else {
+            assert!(
+                root.contains("#![forbid(unsafe_code)]"),
+                "{crate_name} must forbid unsafe code"
+            );
+        }
+    }
+}
 
 fn geometry_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..")
@@ -240,5 +274,82 @@ fn geom_core_has_no_geometry_dependencies() {
              its types. If it depends on a sibling, that sibling is dragged into \
              everything and the backends stop being true alternatives."
         );
+    }
+}
+
+/// Dependency checks cannot catch format vocabulary hidden in source names.
+#[test]
+fn geometry_sources_are_format_agnostic() {
+    fn collect_rs(dir: &Path, out: &mut Vec<PathBuf>) {
+        for entry in std::fs::read_dir(dir).expect("read geometry source directory") {
+            let path = entry.expect("read geometry source entry").path();
+            if path.is_dir() {
+                collect_rs(&path, out);
+            } else if path.extension().and_then(|ext| ext.to_str()) == Some("rs") {
+                out.push(path);
+            }
+        }
+    }
+
+    for crate_name in geometry_crates() {
+        let mut files = Vec::new();
+        collect_rs(&geometry_dir().join(crate_name).join("src"), &mut files);
+        for file in files {
+            let source = std::fs::read_to_string(&file).expect("read geometry source");
+            assert!(
+                !source.to_ascii_lowercase().contains("ifc"),
+                "{} contains IFC vocabulary; source-format semantics belong in an adapter",
+                file.display()
+            );
+        }
+    }
+}
+
+/// Scaffold files must participate in compilation; orphan `.rs` files rot.
+#[test]
+fn every_geometry_source_module_is_declared() {
+    fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
+        for entry in std::fs::read_dir(dir).expect("read source directory") {
+            let path = entry.expect("read source entry").path();
+            if path.is_dir() {
+                collect(&path, out);
+            } else if path.extension().and_then(|v| v.to_str()) == Some("rs") {
+                out.push(path);
+            }
+        }
+    }
+
+    for crate_name in geometry_crates() {
+        let src = geometry_dir().join(crate_name).join("src");
+        let mut files = Vec::new();
+        collect(&src, &mut files);
+        for file in files {
+            if file.file_name().and_then(|v| v.to_str()) == Some("lib.rs") {
+                continue;
+            }
+            let stem = file
+                .file_stem()
+                .and_then(|v| v.to_str())
+                .expect("Rust file stem");
+            let parent = file.parent().expect("module parent");
+            let candidate = if parent == src {
+                src.join("lib.rs")
+            } else {
+                parent.with_extension("rs")
+            };
+            let declaration = if candidate.exists() {
+                candidate
+            } else {
+                parent.join("mod.rs")
+            };
+            let source =
+                std::fs::read_to_string(&declaration).expect("read module declaration file");
+            assert!(
+                source.contains(&format!("mod {stem};")),
+                "{} is not declared by {}",
+                file.display(),
+                declaration.display()
+            );
+        }
     }
 }

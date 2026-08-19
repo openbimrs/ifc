@@ -1,4 +1,4 @@
-//! Adapter from an API-specific GPU executor to the generic kernel traits.
+//! Adapter from an API-specific GPU executor to graph compilation.
 
 use geom_kernel::{
     Backend, BackendDescriptor, ExecutionOptions, GeomError, GeomResult, GeometryCompiler,
@@ -6,15 +6,15 @@ use geom_kernel::{
 use geom_mesh::TriMesh;
 use geom_model::{GeometryGraph, NodeId};
 
-use crate::{GpuDeviceDescriptor, GpuExecutor};
+use crate::{GpuDeviceDescriptor, GpuGraphExecutor};
 
-/// Generic ownership adapter for a concrete GPU executor.
+/// Graph-compiler provider backed by one initialized GPU executor.
 #[derive(Debug)]
-pub struct GpuBackend<E> {
+pub struct GpuCompiler<E> {
     executor: E,
 }
 
-impl<E> GpuBackend<E> {
+impl<E> GpuCompiler<E> {
     /// Wrap one initialized concrete executor.
     pub const fn new(executor: E) -> Self {
         Self { executor }
@@ -23,7 +23,7 @@ impl<E> GpuBackend<E> {
     /// Underlying device facts.
     pub fn device(&self) -> &GpuDeviceDescriptor
     where
-        E: GpuExecutor,
+        E: GpuGraphExecutor,
     {
         self.executor.device()
     }
@@ -34,13 +34,13 @@ impl<E> GpuBackend<E> {
     }
 }
 
-impl<E: GpuExecutor> Backend for GpuBackend<E> {
+impl<E: GpuGraphExecutor> Backend for GpuCompiler<E> {
     fn descriptor(&self) -> BackendDescriptor {
         self.executor.descriptor()
     }
 }
 
-impl<E: GpuExecutor> GeometryCompiler for GpuBackend<E> {
+impl<E: GpuGraphExecutor> GeometryCompiler for GpuCompiler<E> {
     fn compile(
         &self,
         graph: &GeometryGraph,

@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Exact, format-neutral surface representations and evaluation contracts.
 //!
 //! Bounded, swept, offset, and curve-on-surface relationships are nodes in

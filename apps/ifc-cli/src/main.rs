@@ -39,26 +39,14 @@ fn main() {
     }
 }
 
-/// Report the geometry backends this build can use.
+/// Report execution contexts and implemented geometry providers in this build.
 fn capabilities() {
-    use geom_kernel::{Backend, Operation, Precision};
-
-    let cpu = geom_backend_cpu::CpuBackend::detect();
-    let descriptor = cpu.descriptor();
-    println!(
-        "{:<18} {:<16} {:<10} MESH_BOOLEAN",
-        "BACKEND", "TARGET", "AVAILABLE"
-    );
-    println!(
-        "{:<18} {:<16?} {:<10} {}",
-        descriptor.id,
-        descriptor.target,
-        descriptor.available,
-        descriptor.supports(Operation::MeshBoolean, Precision::F64)
-    );
-    println!();
-    println!("CPU features: {:?}", cpu.features());
-    println!("selected for mesh boolean: none (not implemented yet)");
+    let cpu = geom_backend_cpu::CpuExecution::detect();
+    println!("CPU execution context");
+    println!("  instruction set: {:?}", cpu.instruction_set());
+    println!("  worker bound: {}", cpu.thread_count());
+    println!("  detected features: {:?}", cpu.features());
+    println!("operation providers: none (scaffold only)");
 }
 
 /// Summarize one file.

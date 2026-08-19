@@ -23,9 +23,23 @@ section on release.
   domain, plus `codecs` / `domains` / `full` bundles. `default = ["step"]`.
 - **`Codec::detect`** (defaulting to `false`) so `ifc::read_path` selects a
   codec by content sniffing, then extension.
+- **Layered geometry package scaffold** with one immutable neutral DAG,
+  typed-handle B-rep topology, exact curve/surface/profile values, narrow
+  operation-provider traits, separate CPU execution/GPU adapter crates, and a
+  feature-gated `geom` facade. Core-only resolves 3 packages; default resolves 6.
+- **Authoritative IFC geometry support ledger** covering all 163 IFC4 ADD2 TC1
+  declarations: 112 entities (23 abstract, 89 concrete), 13 selects, seven
+  enums, three defined types, and 28 functions. Coverage and ownership gates are
+  mutation-verified.
 - Costing fixture `test/fixtures/costing/costing_schedule.ifc` with cost
   schedules, items, values, quantities, property sets, and an entity type from
   no IFC schema.
+
+### Changed
+- `ifc-geometry` no longer owns duplicate profile, primitive, CSG, or backend
+  vocabulary; implemented profiles and swept solids lower into `geom-model`.
+- Local `target-cpu=native` flags are scoped to x86_64 so AArch64 cross-checks do
+  not inherit invalid x86 features.
 
 ### Fixed
 - ifcXML wrote numeric-looking strings (`IfcApplication.Version = "0.1"`) as

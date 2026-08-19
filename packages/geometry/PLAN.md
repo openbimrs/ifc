@@ -28,90 +28,167 @@ Build a pure-Rust, IFC-agnostic geometry package family that:
 - No IFC, rendering, persistence, product-domain, GUID, or rule-engine types in
   `packages/geometry/`.
 - Units and tolerances are explicit values. No process-global epsilon.
-- The portable scalar implementation is always available as correctness oracle.
+- Every optimized provider requires a portable scalar correctness oracle; until
+  that oracle exists, the operation trait is not implemented or registered.
 - Feature-disabled configurations compile and test independently; workspace
   feature unification is not accepted as proof.
-- Capability absence is data (`Unsupported` / capability query), never a panic
-  or silent approximation.
+- Capability absence is a structured `Unsupported` result, never a panic,
+  descriptor flag, or silent approximation.
 - Invalid and dirty geometry remains diagnosable and, where safe, representable.
 - Performance claims require benchmarks. Optimized backends require
   differential tests against the scalar oracle.
 - Public data types implement the standard traits clients reasonably expect;
   floating-point types do not claim `Eq` or `Hash` unless canonicalized.
 
-## 3. Current unknowns to close before freezing the graph
+## 3. Audited baseline
 
-- Exact responsibility mapping for all declarations in IFC4 ADD2 TC1
-  `IfcGeometryResource`, `IfcGeometricModelResource`, and
-  `IfcGeometricConstraintResource` (112 entities, 23 types, 28 functions).
-- Which declarations need a neutral geometry value, which are IFC-only views,
-  and which are schema validation/derived functions rather than kernel work.
-- Whether backend implementations belong inside `geom-kernel` features or in
-  leaf backend crates; feature-unification evidence currently favors separate
-  backend crates.
-- Minimum dependency set for robust 2D profile work and pure-Rust mesh boolean.
-- GPU contract granularity: whole batch / mesh buffers, never per triangle.
+- IFC4 ADD2 TC1 contributes exactly 163 declarations: 112 entities, 23 types,
+  and 28 functions. The committed normative manifest and tests guard all 163.
+- `ifc-geometry` has owners for every declaration. Its 89 concrete entity views
+  or family views are present; the 23 types are 13 selects, seven enums, and
+  three defined types. Six vector helpers delegate to standard geometry
+  primitives and 22 EXPRESS functions are explicitly scaffolded, not falsely
+  reported as implemented.
+- Exact profiles and extrusion/revolution lower into `GeometryGraph`. Remaining
+  representation families have neutral node/type owners but still need lowering
+  and algorithm implementations.
+- Backend implementations are separate crates. This closes the Cargo feature-
+  unification leak and lets format adapters depend on representations only.
+- GPU integration is batch-oriented through open `GpuGraphExecutor`; no API or
+  hardware vendor is selected by the contract.
+- Robust 2D boolean and pure-Rust mesh CSG dependencies remain implementation-
+  wave decisions and require measured dependency/quality evidence.
 
-## 4. Planned layers
+## 4. Prior-art decisions
+
+Detailed source pins and observations live in
+`docs/research/geometry-prior-art-synthesis.md`.
+
+### IfcOpenShell
+
+Adopt its explicit IFC-to-neutral taxonomy boundary, broad representation
+coverage, corpus/oracle testing, and batching of openings. Avoid its OpenCascade
+coupling, process-wide tolerance conventions, and a build where advanced exact
+machinery is inseparable from simple data use.
+
+### IFC-Lite
+
+Adopt the pure-Rust exact-predicate cascade, operation routing, profile-level 2D
+cuts, union-before-subtract strategy, mapped-geometry cache, relative-to-center
+coordinates, property tests, and independent triangulation oracle. Improve on
+its current monolithic IFC-coupled geometry crate: schema parsing, texture
+serialization, Rayon, and exact CSG must remain independently selectable here.
+
+### That Open
+
+Adopt the reusable-geometry/placed-instance split, lazy derived meshes, compact
+typed buffers, batched worker protocol, cancellation, and memory-budgeted cache
+policy. Avoid copying web-ifc's parser/schema/geometry processor coupling, early
+mesh flattening, global segment/tolerance settings, recursive flag-heavy shape
+types, rendering colors in geometry, and API-specific WASM/Three.js types.
+
+### Solibri sibling
+
+Adopt the narrow subtractor seam, cheap 2D common-case path, invariant-based
+validation, Python oracle generation, and cross-process determinism tests. Do
+not import BIM query vocabulary, rendering/serialization concerns, C++
+`manifold3d`, stale placeholder modules, or vendor compatibility constraints.
+
+### Resulting Rust design
+
+Use immutable typed-handle DAG composition, narrow open operation traits,
+operation-specific executable registries, builders only for validated
+configuration, explicit policy values, borrowed views, and batch-first APIs.
+Trait implementation is capability proof; descriptor booleans are forbidden.
+
+## 5. Implemented layers
 
 ```text
-L0 policy/math       geom-core
-L1 values            geom-mesh, geom-profile, geom-curve, geom-surface,
-                     geom-topology, geom-model
-L2 algorithms        geom-primitive, geom-sweep, geom-tessellate,
-                     geom-spatial, geom-measure, geom-heal
-L3 contracts         geom-kernel (capabilities, requests, reports, traits only)
-L4 implementations   backend crates or feature-isolated implementation modules
-L5 format bridges    ifc-geometry, future STEP-CAD/CityGML/etc. (outside here)
+L0 values            geom-core
+L1 representations   geom-mesh, geom-profile, geom-curve, geom-surface,
+                     geom-topology, geom-primitive, geom-model
+L2 algorithms/traits geom-sweep, geom-tessellate, geom-spatial, geom-measure,
+                     geom-heal, geom-kernel
+L3 execution/adapters geom-backend-cpu, geom-backend-gpu
+L4 facade             geom
+L5 format bridges     ifc-geometry and future adapters (outside this directory)
 ```
 
-Dependencies point downward. Same-layer edges require a documented reason.
-Representation crates never depend on algorithms or backends.
+The graph direction is executable in `geom-core/tests/layering.rs`.
+`geom-kernel` contains no implementation features. `ifc-geometry` no longer owns
+or imports an IFC-local duplicate of profiles, primitives, or CSG requests.
 
-## 5. Capability tiers (target user experience)
+## 6. Facade capabilities
 
-- `core`: math, transforms, bounds, tolerances, diagnostics; tiny and portable.
-- `mesh`: mesh data, validation, normals, deterministic canonicalization.
-- `basic`: profiles, primitives, extrusion/revolution, tessellation of analytic
-  forms, measurement; enough for common building IFC.
-- `spatial`: BVH and batch queries; optional Rayon parallel execution.
-- `boolean`: pure-Rust mesh CSG behind a coarse batch trait.
-- `advanced`: NURBS evaluation, exact topology, advanced B-rep tessellation.
-- `gpu`: optional GPU implementation selected by capability at runtime.
-- architecture-specific acceleration is provided by backend implementation,
-  not by changing public geometry types or compiling for the developer CPU.
+`geom` defaults to `mesh + cpu`: f64 core values, discrete mesh values, and the
+portable CPU execution context. It does not pull operation contracts, the exact
+model graph, Rayon, or GPU code.
 
-A facade may offer these bundles later. Individual crates remain directly
-usable, and no facade feature is allowed to hide undeclared backend coupling.
+Additive facade features:
 
-## 6. Workstreams
+| Family | Features | Pulls |
+| --- | --- | --- |
+| representation | `mesh`, `profiles`, `curves`, `surfaces`, `topology`, `primitives`, `model` | exact/data crates only |
+| algorithms/contracts | `sweeps`, `tessellation`, `spatial`, `measure`, `heal`, `kernel`, `mesh-boolean`, `graph-compile` | selected traits/algorithms |
+| execution | `cpu`, `parallel`, `simd`, `gpu` | context or operation adapter only |
+| bundles | `discrete`, `parametric`, `advanced`, `full` | named additive sets |
 
-1. Generate an authoritative IFC declaration manifest from local specification
-   HTML and map every declaration to IFC bridge and neutral geometry ownership.
-2. Replace the duplicate IFC-local primitive vocabulary with `geom-model`,
-   preserving compatibility through explicit re-exports only where justified.
-3. Split each crate's root into growth-shaped modules with honest status docs.
-4. Define compact capability traits and request/report data; avoid a god trait.
-5. Separate portable algorithms from execution policy and hardware backends.
-6. Add progressive `AGENTS.md` files at ownership boundaries.
-7. Add architecture, feature-isolation, API-trait, orphan-module, and schema
-   coverage gates; mutation-test the gates.
-8. Add benchmark harnesses but do not claim wins before measurements exist.
+`parallel` and `simd` are opt-in. `gpu` exposes the executor adapter but claims no
+working API-specific compute kernels. Leaf crates remain directly consumable.
 
-## 7. Validation strategy
+Measured 2026-08-19 with `cargo tree -e normal` (package count, not binary size):
+
+| Build | Packages |
+| --- | ---: |
+| core-only (`--no-default-features`) | 3 |
+| default (`mesh + cpu`) | 6 |
+| `parametric` | 17 |
+| `discrete` | 32 |
+| `full` | 41 |
+
+These are regression baselines, not permanent targets; dependencies must justify
+any increase.
+
+## 7. Implementation waves
+
+Completed scaffold:
+
+- [x] Authoritative 163-declaration manifest and executable owner coverage.
+- [x] One canonical neutral vocabulary; IFC-local profile/primitive/CSG types
+      removed.
+- [x] Growth-shaped modules plus progressive `AGENTS.md`/`PLAN.md` boundaries.
+- [x] Narrow operation traits, executable mesh-boolean registry, CPU context,
+      and GPU graph-compiler adapter.
+- [x] Facade feature matrix, architecture gates, API-trait checks, and mutation
+      verification.
+
+Implementation waves:
+
+1. Portable providers: profile triangulation and 2D subtraction first, then
+   tessellation/sweeps, then a separately justified pure-Rust mesh CSG provider.
+2. Complete IFC graph lowering by family: points/transforms, curves, surfaces,
+   topology/B-rep, tessellated sets, half-spaces/CSG, mapped representations.
+3. Add spatial, measurement, and explicit heal providers with corpus invariants.
+4. Add bounded caches, diagnostics, cancellation, and workload/budget reporting.
+5. Add measured SIMD and local-Rayon paths with differential scalar tests.
+6. Add a concrete GPU provider only for proven batch-friendly operations; keep
+   CPU fallbacks explicit and precision-correct.
+7. Add benchmark harnesses; make no performance claim before measurements.
+
+## 8. Validation strategy
 
 - `cargo build/test/clippy/doc` for the full workspace and relevant feature
   combinations, checking command exit codes.
 - Isolated builds for every bridge, contract, and backend crate.
 - `cargo tree -e features` assertions for lean configurations.
 - Compile-fail or manifest/source architecture tests for forbidden edges.
-- Generated declaration coverage test: 112 entities + 23 types + 28 functions,
-  with no hand-trimmed allowlist.
+- Generated normative manifest plus explicit owner ledger: 112 entities + 23
+  types + 28 functions; missing or duplicate declarations fail the gate.
 - Stub/foreign kernel implementation proving contracts are implementable.
 - Differential scalar vs SIMD/parallel/GPU tests once implementations exist.
 - Determinism tests across process boundaries for output ordering and caches.
 
-## 8. Risks and rollback
+## 9. Risks and rollback
 
 - Too many crates: keep crates at independently useful compile/dependency
   boundaries; use modules for ordinary code organization.
@@ -124,7 +201,9 @@ usable, and no facade feature is allowed to hide undeclared backend coupling.
   evidence before funding surface/surface intersection machinery.
 - Shared master: stage paths narrowly and verify HEAD before every commit.
 
-## 9. Next concrete action
+## 10. Next concrete action
 
-Generate the authoritative three-resource declaration manifest and compare it
-with compiled `ifc-geometry` API coverage before changing the public contracts.
+Implement the first complete vertical slice: exact profile -> invariant-checked
+triangulation -> 2D subtract provider -> extrusion mesh. Verify against Solibri
+area invariants, an independent triangulator, and IFC corpus fixtures before
+starting general 3D CSG.

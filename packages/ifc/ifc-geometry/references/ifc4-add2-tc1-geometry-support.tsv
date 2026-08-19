@@ -1,0 +1,164 @@
+resource	kind	name	abstract	type_kind	bridge_owner	neutral_owner	status
+ifcgeometryresource	type	ifcarcindex	false	defined	curve::polyline	geom-model	modeled-type
+ifcgeometryresource	function	ifcassociatedsurface	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	entity	ifcaxis1placement	false	-	resource::placement	geom-core	view-or-family
+ifcgeometryresource	type	ifcaxis2placement	false	select	resource::placement	geom-core	modeled-type
+ifcgeometryresource	entity	ifcaxis2placement2d	false	-	resource::placement	geom-core	view-or-family
+ifcgeometryresource	entity	ifcaxis2placement3d	false	-	resource::placement	geom-core	view-or-family
+ifcgeometryresource	function	ifcbaseaxis	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	entity	ifcboundarycurve	false	-	curve::composite	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	entity	ifcboundedcurve	true	-	select::subtype	geom-curve + geom-model::CurveRelation	inventory
+ifcgeometryresource	entity	ifcboundedsurface	true	-	surface::bounded	geom-surface + geom-model::SurfaceRelation	inventory
+ifcgeometryresource	entity	ifcbsplinecurve	true	-	curve::bspline	geom-curve + geom-model::CurveRelation	inventory
+ifcgeometryresource	type	ifcbsplinecurveform	false	enum	curve::bspline	geom-curve + geom-model::CurveRelation	modeled-type
+ifcgeometryresource	entity	ifcbsplinecurvewithknots	false	-	curve::bspline	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	entity	ifcbsplinesurface	true	-	surface::bspline	geom-surface + geom-model::SurfaceRelation	inventory
+ifcgeometryresource	type	ifcbsplinesurfaceform	false	enum	surface::bspline	geom-surface + geom-model::SurfaceRelation	modeled-type
+ifcgeometryresource	entity	ifcbsplinesurfacewithknots	false	-	surface::bspline	geom-surface + geom-model::SurfaceRelation	view-or-family
+ifcgeometryresource	function	ifcbuild2axes	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifcbuildaxes	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	entity	ifccartesianpoint	false	-	resource::point	geom-core	view-or-family
+ifcgeometryresource	entity	ifccartesiantransformationoperator	true	-	resource::operator	geom-core	inventory
+ifcgeometryresource	entity	ifccartesiantransformationoperator2d	false	-	resource::operator	geom-core	view-or-family
+ifcgeometryresource	entity	ifccartesiantransformationoperator2dnonuniform	false	-	resource::operator	geom-core	view-or-family
+ifcgeometryresource	entity	ifccartesiantransformationoperator3d	false	-	resource::operator	geom-core	view-or-family
+ifcgeometryresource	entity	ifccartesiantransformationoperator3dnonuniform	false	-	resource::operator	geom-core	view-or-family
+ifcgeometryresource	entity	ifccircle	false	-	curve	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	entity	ifccompositecurve	false	-	curve::composite	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	entity	ifccompositecurveonsurface	false	-	curve::composite	geom-surface + geom-model::SurfaceRelation	view-or-family
+ifcgeometryresource	entity	ifccompositecurvesegment	false	-	curve::composite	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	entity	ifcconic	true	-	curve::conic	geom-curve + geom-model::CurveRelation	inventory
+ifcgeometryresource	function	ifcconsecutivesegments	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifcconstraintsparambspline	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifccrossproduct	false	-	resource::functions	geom-core	native-primitive
+ifcgeometryresource	entity	ifccurve	true	-	select::subtype	geom-curve + geom-model::CurveRelation	inventory
+ifcgeometryresource	entity	ifccurveboundedplane	false	-	surface::bounded	geom-surface + geom-model::SurfaceRelation	view-or-family
+ifcgeometryresource	entity	ifccurveboundedsurface	false	-	surface::bounded	geom-surface + geom-model::SurfaceRelation	view-or-family
+ifcgeometryresource	function	ifccurvedim	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	type	ifccurveonsurface	false	select	select::aggregate_selects	geom-surface + geom-model::SurfaceRelation	modeled-type
+ifcgeometryresource	function	ifccurveweightspositive	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	entity	ifccylindricalsurface	false	-	surface::elementary	geom-surface + geom-model::SurfaceRelation	view-or-family
+ifcgeometryresource	type	ifcdimensioncount	false	defined	select::aggregate_selects	geom-model	modeled-type
+ifcgeometryresource	entity	ifcdirection	false	-	resource::direction	geom-core	view-or-family
+ifcgeometryresource	function	ifcdotproduct	false	-	resource::functions	geom-core	native-primitive
+ifcgeometryresource	entity	ifcelementarysurface	true	-	surface::elementary	geom-surface + geom-model::SurfaceRelation	inventory
+ifcgeometryresource	entity	ifcellipse	false	-	curve	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	function	ifcfirstprojaxis	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	entity	ifcgeometricrepresentationitem	true	-	select::subtype	geom-model	inventory
+ifcgeometryresource	function	ifcgetbasissurface	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	entity	ifcindexedpolycurve	false	-	curve::polyline	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	entity	ifcintersectioncurve	false	-	curve::offset	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	type	ifcknottype	false	enum	curve::bspline	geom-model	modeled-type
+ifcgeometryresource	entity	ifcline	false	-	curve::line	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	type	ifclineindex	false	defined	curve::polyline	geom-curve + geom-model::CurveRelation	modeled-type
+ifcgeometryresource	function	ifclisttoarray	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifcmakearrayofarray	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	entity	ifcmappeditem	false	-	resource::mapped	geom-model	view-or-family
+ifcgeometryresource	function	ifcnormalise	false	-	resource::functions	geom-core	native-primitive
+ifcgeometryresource	entity	ifcoffsetcurve2d	false	-	curve::offset	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	entity	ifcoffsetcurve3d	false	-	curve::offset	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	function	ifcorthogonalcomplement	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	entity	ifcouterboundarycurve	false	-	curve::composite	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	entity	ifcpcurve	false	-	curve::offset	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	entity	ifcplacement	true	-	resource::placement	geom-core	inventory
+ifcgeometryresource	entity	ifcplane	false	-	surface::elementary	geom-surface + geom-model::SurfaceRelation	view-or-family
+ifcgeometryresource	entity	ifcpoint	true	-	resource::point	geom-core	inventory
+ifcgeometryresource	entity	ifcpointoncurve	false	-	resource::point	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	entity	ifcpointonsurface	false	-	resource::point	geom-surface + geom-model::SurfaceRelation	view-or-family
+ifcgeometryresource	entity	ifcpolyline	false	-	curve::polyline	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	type	ifcpreferredsurfacecurverepresentation	false	enum	curve::offset	geom-surface + geom-model::SurfaceRelation	modeled-type
+ifcgeometryresource	entity	ifcrationalbsplinecurvewithknots	false	-	curve::bspline	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	entity	ifcrationalbsplinesurfacewithknots	false	-	surface::bspline	geom-surface + geom-model::SurfaceRelation	view-or-family
+ifcgeometryresource	entity	ifcrectangulartrimmedsurface	false	-	surface::bounded	geom-surface + geom-model::SurfaceRelation	view-or-family
+ifcgeometryresource	entity	ifcreparametrisedcompositecurvesegment	false	-	curve::composite	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	entity	ifcrepresentationitem	true	-	select::subtype	geom-model	inventory
+ifcgeometryresource	entity	ifcrepresentationmap	false	-	resource::mapped	geom-model	view-or-family
+ifcgeometryresource	function	ifcsameaxis2placement	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifcsamecartesianpoint	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifcsamedirection	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifcsamevalue	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifcscalartimesvector	false	-	resource::functions	geom-core	native-primitive
+ifcgeometryresource	entity	ifcseamcurve	false	-	curve::offset	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	function	ifcsecondprojaxis	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	type	ifcsegmentindexselect	false	select	curve::polyline	geom-model	modeled-type
+ifcgeometryresource	entity	ifcsphericalsurface	false	-	surface::elementary	geom-surface + geom-model::SurfaceRelation	view-or-family
+ifcgeometryresource	entity	ifcsurface	true	-	select::subtype	geom-surface + geom-model::SurfaceRelation	inventory
+ifcgeometryresource	entity	ifcsurfacecurve	false	-	curve::offset	geom-surface + geom-model::SurfaceRelation	view-or-family
+ifcgeometryresource	entity	ifcsurfaceoflinearextrusion	false	-	surface::swept	geom-surface + geom-model::SurfaceRelation	view-or-family
+ifcgeometryresource	entity	ifcsurfaceofrevolution	false	-	surface::swept	geom-surface + geom-model::SurfaceRelation	view-or-family
+ifcgeometryresource	function	ifcsurfaceweightspositive	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	entity	ifcsweptsurface	true	-	surface::swept	geom-surface + geom-model::SurfaceRelation	inventory
+ifcgeometryresource	entity	ifctoroidalsurface	false	-	surface::elementary	geom-surface + geom-model::SurfaceRelation	view-or-family
+ifcgeometryresource	type	ifctransitioncode	false	enum	curve::composite	geom-model	modeled-type
+ifcgeometryresource	entity	ifctrimmedcurve	false	-	curve::trimmed	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometryresource	type	ifctrimmingpreference	false	enum	curve::trimmed	geom-model	modeled-type
+ifcgeometryresource	type	ifctrimmingselect	false	select	curve::trimmed	geom-model	modeled-type
+ifcgeometryresource	entity	ifcvector	false	-	resource::direction	geom-core	view-or-family
+ifcgeometryresource	function	ifcvectordifference	false	-	resource::functions	geom-core	native-primitive
+ifcgeometryresource	type	ifcvectorordirection	false	select	select::entity_selects	geom-core	modeled-type
+ifcgeometryresource	function	ifcvectorsum	false	-	resource::functions	geom-core	native-primitive
+ifcgeometricmodelresource	entity	ifcadvancedbrep	false	-	solid::brep	geom-topology	view-or-family
+ifcgeometricmodelresource	entity	ifcadvancedbrepwithvoids	false	-	solid::brep	geom-topology	view-or-family
+ifcgeometricmodelresource	entity	ifcblock	false	-	solid::csg	geom-model	view-or-family
+ifcgeometricmodelresource	entity	ifcbooleanclippingresult	false	-	solid::boolean	geom-model::SolidOperation	view-or-family
+ifcgeometricmodelresource	type	ifcbooleanoperand	false	select	solid::boolean	geom-model::SolidOperation	modeled-type
+ifcgeometricmodelresource	type	ifcbooleanoperator	false	enum	solid::boolean	geom-model::SolidOperation	modeled-type
+ifcgeometricmodelresource	entity	ifcbooleanresult	false	-	solid::boolean	geom-model::SolidOperation	view-or-family
+ifcgeometricmodelresource	entity	ifcboundingbox	false	-	solid::bbox	geom-model	view-or-family
+ifcgeometricmodelresource	entity	ifcboxedhalfspace	false	-	solid::halfspace	geom-model::SolidOperation	view-or-family
+ifcgeometricmodelresource	entity	ifccartesianpointlist	true	-	resource::point	geom-core	inventory
+ifcgeometricmodelresource	entity	ifccartesianpointlist2d	false	-	resource::point	geom-core	view-or-family
+ifcgeometricmodelresource	entity	ifccartesianpointlist3d	false	-	resource::point	geom-core	view-or-family
+ifcgeometricmodelresource	entity	ifccsgprimitive3d	true	-	solid::csg	geom-model::SolidOperation	inventory
+ifcgeometricmodelresource	type	ifccsgselect	false	select	solid::csg	geom-model::SolidOperation	modeled-type
+ifcgeometricmodelresource	entity	ifccsgsolid	false	-	solid::csg	geom-model::SolidOperation	view-or-family
+ifcgeometricmodelresource	entity	ifcextrudedareasolid	false	-	solid::swept::area	geom-model::SolidOperation	view-or-family
+ifcgeometricmodelresource	entity	ifcextrudedareasolidtapered	false	-	solid::swept::area	geom-model::SolidOperation	view-or-family
+ifcgeometricmodelresource	entity	ifcfacebasedsurfacemodel	false	-	solid::surface_model	geom-topology	view-or-family
+ifcgeometricmodelresource	entity	ifcfacetedbrep	false	-	solid::brep	geom-topology	view-or-family
+ifcgeometricmodelresource	entity	ifcfacetedbrepwithvoids	false	-	solid::brep	geom-topology	view-or-family
+ifcgeometricmodelresource	entity	ifcfixedreferencesweptareasolid	false	-	solid::swept::directrix	geom-model::SolidOperation	view-or-family
+ifcgeometricmodelresource	entity	ifcgeometriccurveset	false	-	solid::surface_model	geom-curve + geom-model::CurveRelation	view-or-family
+ifcgeometricmodelresource	entity	ifcgeometricset	false	-	solid::surface_model	geom-model	view-or-family
+ifcgeometricmodelresource	type	ifcgeometricsetselect	false	select	solid::surface_model	geom-model	modeled-type
+ifcgeometricmodelresource	entity	ifchalfspacesolid	false	-	solid::halfspace	geom-model::SolidOperation	view-or-family
+ifcgeometricmodelresource	entity	ifcindexedpolygonalface	false	-	solid::tessellated::polygonal	geom-model	view-or-family
+ifcgeometricmodelresource	entity	ifcindexedpolygonalfacewithvoids	false	-	solid::tessellated::polygonal	geom-model	view-or-family
+ifcgeometricmodelresource	entity	ifcmanifoldsolidbrep	true	-	solid::brep	geom-model::SolidOperation	inventory
+ifcgeometricmodelresource	function	ifcpointlistdim	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometricmodelresource	entity	ifcpolygonalboundedhalfspace	false	-	solid::halfspace	geom-model::SolidOperation	view-or-family
+ifcgeometricmodelresource	entity	ifcpolygonalfaceset	false	-	solid::tessellated::polygonal	geom-mesh	view-or-family
+ifcgeometricmodelresource	entity	ifcrectangularpyramid	false	-	solid::csg	geom-model	view-or-family
+ifcgeometricmodelresource	entity	ifcrevolvedareasolid	false	-	solid::swept::area	geom-model::SolidOperation	view-or-family
+ifcgeometricmodelresource	entity	ifcrevolvedareasolidtapered	false	-	solid::swept::area	geom-model::SolidOperation	view-or-family
+ifcgeometricmodelresource	entity	ifcrightcircularcone	false	-	solid::csg	geom-model	view-or-family
+ifcgeometricmodelresource	entity	ifcrightcircularcylinder	false	-	solid::csg	geom-model	view-or-family
+ifcgeometricmodelresource	entity	ifcsectionedspine	false	-	solid	geom-model::SolidOperation	view-or-family
+ifcgeometricmodelresource	entity	ifcshellbasedsurfacemodel	false	-	solid::surface_model	geom-topology	view-or-family
+ifcgeometricmodelresource	entity	ifcsolidmodel	true	-	solid::swept	geom-model::SolidOperation	inventory
+ifcgeometricmodelresource	entity	ifcsphere	false	-	solid::csg	geom-model	view-or-family
+ifcgeometricmodelresource	entity	ifcsurfacecurvesweptareasolid	false	-	solid::swept::directrix	geom-model::SolidOperation	view-or-family
+ifcgeometricmodelresource	entity	ifcsweptareasolid	true	-	solid::swept::area	geom-model::SolidOperation	inventory
+ifcgeometricmodelresource	entity	ifcsweptdisksolid	false	-	solid::swept::directrix	geom-model::SolidOperation	view-or-family
+ifcgeometricmodelresource	entity	ifcsweptdisksolidpolygonal	false	-	solid::swept::directrix	geom-model::SolidOperation	view-or-family
+ifcgeometricmodelresource	function	ifctaperedsweptareaprofiles	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometricmodelresource	entity	ifctessellatedfaceset	true	-	solid::tessellated	geom-mesh	inventory
+ifcgeometricmodelresource	entity	ifctessellateditem	true	-	solid::tessellated	geom-mesh	inventory
+ifcgeometricmodelresource	entity	ifctriangulatedfaceset	false	-	solid::tessellated::triangulated	geom-mesh	view-or-family
+ifcgeometricconstraintresource	entity	ifcconnectioncurvegeometry	false	-	constraint::connection	ifc-geometry::constraint + geom-model::NodeId	view-or-family
+ifcgeometricconstraintresource	entity	ifcconnectiongeometry	true	-	constraint::connection	ifc-geometry::constraint + geom-model::NodeId	inventory
+ifcgeometricconstraintresource	entity	ifcconnectionpointeccentricity	false	-	constraint::connection	ifc-geometry::constraint + geom-model::NodeId	view-or-family
+ifcgeometricconstraintresource	entity	ifcconnectionpointgeometry	false	-	constraint::connection	ifc-geometry::constraint + geom-model::NodeId	view-or-family
+ifcgeometricconstraintresource	entity	ifcconnectionsurfacegeometry	false	-	constraint::connection	ifc-geometry::constraint + geom-model::NodeId	view-or-family
+ifcgeometricconstraintresource	entity	ifcconnectionvolumegeometry	false	-	constraint::connection	ifc-geometry::constraint + geom-model::NodeId	view-or-family
+ifcgeometricconstraintresource	function	ifccorrectlocalplacement	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometricconstraintresource	type	ifccurveoredgecurve	false	select	select::aggregate_selects	ifc-geometry::constraint + geom-model::NodeId	modeled-type
+ifcgeometricconstraintresource	entity	ifcgridaxis	false	-	constraint::grid	ifc-geometry::constraint + geom-model::NodeId	view-or-family
+ifcgeometricconstraintresource	entity	ifcgridplacement	false	-	constraint::grid	ifc-geometry::constraint + geom-model::NodeId	view-or-family
+ifcgeometricconstraintresource	type	ifcgridplacementdirectionselect	false	select	constraint::grid	ifc-geometry::constraint + geom-model::NodeId	modeled-type
+ifcgeometricconstraintresource	entity	ifclocalplacement	false	-	constraint::local	ifc-geometry::constraint + geom-model::NodeId	view-or-family
+ifcgeometricconstraintresource	entity	ifcobjectplacement	true	-	constraint	ifc-geometry::constraint + geom-model::NodeId	inventory
+ifcgeometricconstraintresource	type	ifcpointorvertexpoint	false	select	select::aggregate_selects	ifc-geometry::constraint + geom-model::NodeId	modeled-type
+ifcgeometricconstraintresource	type	ifcsolidorshell	false	select	select::entity_selects	ifc-geometry::constraint + geom-model::NodeId	modeled-type
+ifcgeometricconstraintresource	type	ifcsurfaceorfacesurface	false	select	select::aggregate_selects	ifc-geometry::constraint + geom-model::NodeId	modeled-type
+ifcgeometricconstraintresource	entity	ifcvirtualgridintersection	false	-	constraint::grid	ifc-geometry::constraint + geom-model::NodeId	view-or-family

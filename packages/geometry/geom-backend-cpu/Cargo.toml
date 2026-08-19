@@ -1,19 +1,15 @@
 [package]
 name = "geom-backend-cpu"
-description = "Portable and runtime-optimized CPU backend for Nehirde geometry"
+description = "Portable and runtime-optimized CPU execution context for Nehirde geometry"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
 [features]
-default = ["portable"]
-portable = []
+default = []
 simd = []
 parallel = ["dep:rayon"]
 
 [dependencies]
-geom-core.workspace = true
-geom-mesh.workspace = true
-geom-kernel.workspace = true
 rayon = { workspace = true, optional = true }

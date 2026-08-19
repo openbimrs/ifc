@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Exact B-rep topology with typed handles and caller-owned geometry links.
 //!
 //! The topology graph is independent of any curve/surface implementation. A

@@ -10,5 +10,3 @@ description = "Geometry data types and tolerance policy. No algorithms, no backe
 # ROOT OF THE GRAPH — no internal dependencies, ever.
 [dependencies]
 glam.workspace = true
-smallvec.workspace = true
-thiserror.workspace = true

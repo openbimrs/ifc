@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Exact primitive solids and half-spaces.
 //!
 //! Values remain exact until an explicit tessellation operation. The crate has

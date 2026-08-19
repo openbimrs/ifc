@@ -1,6 +1,6 @@
 # 0004 — Package-group layout; backends as features of `geom-kernel`
 
-- **Status:** Accepted
+- **Status:** Superseded by [0009](0009-layered-geometry-dag.md)
 - **Date:** 2026-08-18
 - **Deciders:** GeneralPawz, Hermes
 - **Supersedes:** amends the *layout* in 0001 and the *packaging* in 0002. The
