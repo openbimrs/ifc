@@ -73,15 +73,34 @@ fn parses_qto_measurement_types() {
 }
 
 #[test]
-fn parses_qto_set_classification_when_published() {
-    let xml = "<QtoSetDef templatetype=\"QTO_TYPEDRIVENONLY\"><Name>Qto_Test</Name></QtoSetDef>";
-    let set = parse_template(xml).unwrap();
+fn parses_every_qto_set_classification_and_rejects_unknown_values() {
+    for (attribute, expected) in [
+        ("", QuantitySetType::Unspecified),
+        (
+            " templatetype=\"QTO_TYPEDRIVENOVERRIDE\"",
+            QuantitySetType::TypeDrivenOverride,
+        ),
+        (
+            " templatetype=\"QTO_TYPEDRIVENONLY\"",
+            QuantitySetType::TypeDrivenOnly,
+        ),
+        (
+            " templatetype=\"QTO_OCCURRENCEDRIVEN\"",
+            QuantitySetType::OccurrenceDriven,
+        ),
+    ] {
+        let xml = format!("<QtoSetDef{attribute}><Name>Qto_Test</Name></QtoSetDef>");
+        let set = parse_template(&xml).unwrap();
+        let SetTemplateKind::Quantity { set_type, .. } = set.kind else {
+            panic!("expected quantity set")
+        };
+        assert_eq!(set_type, expected, "attribute: {attribute}");
+    }
+
+    let xml = "<QtoSetDef templatetype=\"QTO_UNKNOWN\"><Name>Qto_Test</Name></QtoSetDef>";
     assert!(matches!(
-        set.kind,
-        SetTemplateKind::Quantity {
-            set_type: QuantitySetType::TypeDrivenOnly,
-            ..
-        }
+        parse_template(xml),
+        Err(XmlImportError::UnsupportedSetType { value, .. }) if value == "QTO_UNKNOWN"
     ));
 }
 

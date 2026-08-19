@@ -134,6 +134,41 @@ fn applicability_conflicts_survive_separate_overlay_calls() {
 }
 
 #[test]
+fn replace_conflicts_survive_separate_overlay_calls() {
+    let mut qto = property_set("Qto_WallBaseQuantities");
+    qto.applicability = vec![
+        Applicability::entity("IfcWall"),
+        Applicability::entity("IfcWallType"),
+    ];
+    let official = Catalog::try_new(manifest(1, 0), CatalogProfile::Official, vec![qto]).unwrap();
+    let corrected = official
+        .with_patches(CatalogProfile::Corrected, &[replace_patch("replace-1")])
+        .unwrap();
+
+    for patch in [add_type_patch("add"), replace_patch("replace-2")] {
+        assert!(matches!(
+            corrected.with_patches(CatalogProfile::Custom, &[patch]),
+            Err(PatchError::ConflictingApplicability { .. })
+        ));
+    }
+}
+
+#[test]
+fn applicability_dedup_is_case_insensitive_for_predefined_types() {
+    let mut qto = property_set("Qto_WallBaseQuantities");
+    qto.applicability = vec![Applicability::parse("IfcWall/USERDEFINED").unwrap()];
+    let official = Catalog::try_new(manifest(1, 0), CatalogProfile::Official, vec![qto]).unwrap();
+    let mut duplicate = add_type_patch("duplicate");
+    duplicate.operation =
+        PatchOperation::AddApplicability(Applicability::parse("ifcwall/userdefined").unwrap());
+
+    assert!(matches!(
+        official.with_patches(CatalogProfile::Corrected, &[duplicate]),
+        Err(PatchError::AlreadyApplied { .. })
+    ));
+}
+
+#[test]
 fn advisories_are_provenance_bearing_and_do_not_rewrite_templates() {
     let pset = property_set("Pset_EnvironmentalImpactValues");
     let official = Catalog::try_new(manifest(1, 0), CatalogProfile::Official, vec![pset]).unwrap();

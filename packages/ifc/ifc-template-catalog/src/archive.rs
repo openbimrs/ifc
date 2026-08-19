@@ -117,6 +117,16 @@ mod tests {
     }
 
     #[test]
+    fn rejects_trailing_bytes() {
+        let mut bytes = include_bytes!("../data/ifc4-add2-tc1.bin").to_vec();
+        bytes.push(0);
+        assert!(matches!(
+            decode_catalog(&bytes),
+            Err(ArchiveError::TrailingBytes(1))
+        ));
+    }
+
+    #[test]
     fn decode_rejects_input_above_resource_budget() {
         let bytes = vec![0; MAX_ARCHIVE_BYTES + 1];
         assert!(matches!(
