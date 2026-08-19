@@ -18,7 +18,8 @@ transfer. The adapter validates device preference, f32/f64 policy, graph-root
 ownership, and result cardinality, then invokes the executor's required
 operation-specific option-validation hook before submission. Result residency is
 validated before dispatch: a device cannot deliver into another device's memory,
-and an unrecognized future residency is refused rather than assumed. Executor output
+and an unrecognized future residency is refused rather than assumed. The adapter overrides `compile_batch_into` (not `compile_batch`) so both batch
+call shapes reach the device in one submission. Executor output
 contract violations use `BackendContractViolation`; they are not caller input
 errors. Concrete executors must honor forwarded determinism and memory-budget
 requirements.

@@ -7,7 +7,7 @@ Allowed internal dependencies: geom-core, geom-model, geom-mesh. Follow parent `
 
 ## Module ownership
 
-backend.rs; capability.rs; execution.rs; error.rs; compile.rs; boolean.rs. Split a module before unrelated data, validation, and algorithms grow
+backend.rs; capability.rs; certainty.rs; execution.rs; error.rs; compile.rs; boolean.rs. Split a module before unrelated data, validation, and algorithms grow
 together. Add no empty placeholder files.
 
 ## Invariants
@@ -20,6 +20,15 @@ strength, never equality. Residency is part of the plan: an operation declares
 where inputs live and where outputs are wanted. Hot-path traits declare a
 `ScratchRequirement`; the registry checks it against the memory budget *before*
 dispatch, and an unbounded requirement never fits a declared budget.
+
+A topology decision may only consume a `Certified` sign, never a bare float:
+`Certified::Uncertain` carries no sign, so an undecided predicate cannot be
+misread as zero. `EscalationLadder` steps f32 -> f64 -> exact; `Precision::Mixed`
+is a strategy, not a rung. Batch-producing operations declare an `OutputBound`
+so callers can scan per-element counts into disjoint write offsets instead of
+using a global atomic or a growing vector. `compile_batch_into` is the seam a
+batching provider overrides; overriding only `compile_batch` leaves the `_into`
+shape on the serial fallback.
 
 Registries store executable trait objects,
 never boolean capability claims. Registry batch methods dispatch to provider

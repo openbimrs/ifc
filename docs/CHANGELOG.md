@@ -11,6 +11,22 @@ section on release.
 ## [Unreleased]
 
 ### Added
+- **Certified predicates and the precision escalation ladder.**
+  `geom_kernel::certainty` adds `Sign`, `Certified`, and `EscalationLadder`:
+  a filtered predicate reports `Uncertain` when its value lies within its own
+  error bound, so an undecided floating-point sign cannot reach a topology
+  decision. `Precision` gains an `Exact` tier and the ladder steps
+  f32 -> f64 -> exact (`Mixed` is a strategy, not a rung).
+- **Output bounds and a batch destination seam.** `OutputBound::write_offsets`
+  is the exclusive prefix scan that turns per-element output counts into
+  disjoint write offsets, so a batching provider needs no global atomic counter
+  and no dynamically growing vector. `GeometryCompiler::compile_batch_into`
+  writes into a caller-owned buffer; the GPU adapter overrides that seam so both
+  batch call shapes reach the device in a single submission.
+- **ADR 0013** recording deferred performance techniques (SoA/AoSoA, GPU shared
+  memory, atomics vs. block-aggregated scan, compaction, SVE/SVE2, quantisation,
+  Morton codes, divergence queues) each with the trigger that should un-defer
+  it, and rejecting tensor cores outright with the FP64-rate rationale.
 - **Execution policy contracts for determinism, residency, and scratch.**
   `Determinism` is now three distinct contracts (`Topological`,
   `NumericallyBounded`, `Bitwise`) compared by strength rather than equality, so
