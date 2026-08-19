@@ -183,6 +183,19 @@ fn cyclic_path_graph_produces_bounded_public_diagnostics() {
 }
 
 #[test]
+fn dot_segment_path_cycle_has_one_effective_context() {
+    let tree = TestTree::new("dot-segment-path-cycle");
+    tree.write("root.rs", "#[path = \"cycle.rs\"] pub mod cycle;\n");
+    tree.write("cycle.rs", "#[path = \"sub/../cycle.rs\"] pub mod again;\n");
+    std::fs::create_dir_all(tree.path("sub")).unwrap();
+
+    let mut empty = BTreeSet::new();
+    inspect_target_root(&tree.path("root.rs"), &mut empty);
+
+    assert_eq!(empty.len(), 2, "unexpected cycle diagnostics: {empty:#?}");
+}
+
+#[test]
 fn zero_export_use_does_not_count_as_a_public_contract() {
     let tree = TestTree::new("empty-use");
     tree.write(
@@ -293,10 +306,10 @@ fn file_level_cfg_disables_external_module_contents() {
 
     let mut empty = BTreeSet::new();
     inspect_target_root(&tree.path("root.rs"), &mut empty);
-    assert!(empty.iter().any(|name| name.ends_with("pub mod direct")));
-    assert!(empty
-        .iter()
-        .any(|name| name.ends_with("pub mod attributed")));
+    assert!(
+        empty.is_empty(),
+        "file-level cfg removes the module item: {empty:#?}"
+    );
 }
 
 #[test]

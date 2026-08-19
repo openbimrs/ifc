@@ -5,7 +5,7 @@
 //! modules.
 
 use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use cargo_metadata::{Metadata, MetadataCommand, Package};
 use syn::ext::IdentExt;
@@ -17,6 +17,55 @@ use syn::{Attribute, Expr, Item, Lit, Meta, Token};
 mod module_reachability_cases;
 
 type ModuleContext = (PathBuf, PathBuf);
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum PublicContract {
+    Disabled,
+    Empty,
+    Present,
+}
+
+fn contract_status(present: bool) -> PublicContract {
+    if present {
+        PublicContract::Present
+    } else {
+        PublicContract::Empty
+    }
+}
+
+fn lexical_normalize(path: &Path) -> PathBuf {
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => match normalized.components().next_back() {
+                Some(Component::Normal(_)) => {
+                    normalized.pop();
+                }
+                Some(Component::ParentDir) | None if !normalized.has_root() => {
+                    normalized.push("..");
+                }
+                _ => {}
+            },
+            _ => normalized.push(component.as_os_str()),
+        }
+    }
+    normalized
+}
+
+fn normalized_context(base: &Path) -> PathBuf {
+    base.canonicalize()
+        .unwrap_or_else(|_| lexical_normalize(base))
+}
+
+fn module_context(source: &Path, base: &Path) -> ModuleContext {
+    (
+        source
+            .canonicalize()
+            .unwrap_or_else(|_| lexical_normalize(source)),
+        normalized_context(base),
+    )
+}
 
 fn metadata() -> Metadata {
     MetadataCommand::new()
@@ -262,13 +311,11 @@ fn visit_file_at_base(
     visited: &mut BTreeSet<ModuleContext>,
     missing: &mut Vec<String>,
 ) {
-    let identity = source
-        .canonicalize()
-        .unwrap_or_else(|_| source.to_path_buf());
-    if !visited.insert((identity.clone(), base.clone())) {
+    let key = module_context(source, &base);
+    if !visited.insert(key.clone()) {
         return;
     }
-    reached.insert(identity);
+    reached.insert(key.0);
     let text = std::fs::read_to_string(source)
         .unwrap_or_else(|error| panic!("cannot read {}: {error}", source.display()));
     let syntax = syn::parse_file(&text)
@@ -383,42 +430,31 @@ fn is_public_contract_item(item: &Item) -> bool {
     }
 }
 
-fn module_has_public_contract(
+fn module_public_contract(
     module: &syn::ItemMod,
     source: &Path,
     base: &Path,
     path_base: &Path,
     visiting: &mut BTreeSet<ModuleContext>,
-) -> bool {
+) -> PublicContract {
     let name = module.ident.unraw().to_string();
     if let Some((_, inline_items)) = &module.content {
         let child_base = base.join(name);
-        let key = (
-            source
-                .canonicalize()
-                .unwrap_or_else(|_| source.to_path_buf()),
-            child_base.clone(),
-        );
+        let key = module_context(source, &child_base);
         if !visiting.insert(key.clone()) {
-            return false;
+            return PublicContract::Empty;
         }
-        let result =
+        let present =
             items_have_public_contract(inline_items, source, &child_base, &child_base, visiting);
         visiting.remove(&key);
-        return result;
+        return contract_status(present);
     }
 
     let child = external_module_path(module, source, base, path_base)
         .unwrap_or_else(|error| panic!("cannot resolve public module: {error}"));
-    let key = (
-        child
-            .source
-            .canonicalize()
-            .unwrap_or_else(|_| child.source.clone()),
-        child.base.clone(),
-    );
+    let key = module_context(&child.source, &child.base);
     if !visiting.insert(key.clone()) {
-        return false;
+        return PublicContract::Empty;
     }
     let text = std::fs::read_to_string(&child.source)
         .unwrap_or_else(|error| panic!("cannot inspect {}: {error}", child.source.display()));
@@ -428,16 +464,19 @@ fn module_has_public_contract(
         .source
         .parent()
         .expect("Rust module source must have a parent");
-    let result = !is_statically_disabled(&syntax.attrs)
-        && items_have_public_contract(
-            &syntax.items,
-            &child.source,
-            &child.base,
-            child_path_base,
-            visiting,
-        );
+    if is_statically_disabled(&syntax.attrs) {
+        visiting.remove(&key);
+        return PublicContract::Disabled;
+    }
+    let present = items_have_public_contract(
+        &syntax.items,
+        &child.source,
+        &child.base,
+        child_path_base,
+        visiting,
+    );
     visiting.remove(&key);
-    result
+    contract_status(present)
 }
 
 fn items_have_public_contract(
@@ -455,7 +494,10 @@ fn items_have_public_contract(
             Item::Mod(module)
                 if is_public(&module.vis) && !is_statically_disabled(&module.attrs) =>
             {
-                module_has_public_contract(module, source, base, path_base, visiting)
+                matches!(
+                    module_public_contract(module, source, base, path_base, visiting),
+                    PublicContract::Present
+                )
             }
             _ => false,
         }
@@ -470,10 +512,7 @@ fn inspect_public_modules(
     empty: &mut BTreeSet<String>,
     inspected: &mut BTreeSet<ModuleContext>,
 ) {
-    let source_key = source
-        .canonicalize()
-        .unwrap_or_else(|_| source.to_path_buf());
-    if !inspected.insert((source_key, base.to_path_buf())) {
+    if !inspected.insert(module_context(source, base)) {
         return;
     }
     for item in items {
@@ -485,10 +524,13 @@ fn inspect_public_modules(
         }
 
         let name = module.ident.unraw().to_string();
-        if is_public(&module.vis)
-            && !module_has_public_contract(module, source, base, path_base, &mut BTreeSet::new())
-        {
+        let contract = is_public(&module.vis)
+            .then(|| module_public_contract(module, source, base, path_base, &mut BTreeSet::new()));
+        if contract == Some(PublicContract::Empty) {
             empty.insert(format!("{}: pub mod {name}", source.display()));
+        }
+        if contract == Some(PublicContract::Disabled) {
+            continue;
         }
 
         if let Some((_, inline_items)) = &module.content {
