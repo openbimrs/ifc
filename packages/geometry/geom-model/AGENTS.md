@@ -16,7 +16,11 @@ placeholder files.
 
 ## Invariants
 
-Every reference points to a prior NodeId. Keep source IDs outside the graph. Preserve instancing and exact operations; never lower to meshes here.
+Every reference points to a prior node in the same graph and satisfies the
+edge's accepted reference family. An instance preserves its source node's
+reference family; it must not erase dimensional semantics. Keep source IDs
+outside the graph. Preserve instancing and exact operations; never lower to
+meshes here.
 
 Public values derive `Debug` and `Clone`; add other standard traits only when
 semantically valid. Tests must exercise invalid input as well as happy paths.

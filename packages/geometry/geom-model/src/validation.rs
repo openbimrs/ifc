@@ -24,7 +24,14 @@ impl ExpectedReference {
         }
     }
 
-    fn accepts(self, node: &GeometryNode) -> bool {
+    fn accepts<'a>(self, mut node: &'a GeometryNode, nodes: &'a [GeometryNode]) -> bool {
+        // An instance preserves the dimensional/reference family of its source.
+        // Walk iteratively because a valid append-only graph may contain a deep
+        // chain of instances and validation must not consume call-stack depth.
+        while let GeometryNode::Instance(instance) = node {
+            node = &nodes[instance.source.index()];
+        }
+
         let curve = matches!(
             node,
             GeometryNode::Curve2(_) | GeometryNode::Curve3(_) | GeometryNode::CurveRelation(_)
@@ -46,7 +53,6 @@ impl ExpectedReference {
                     | GeometryNode::BRep(_)
                     | GeometryNode::PolygonMesh(_)
                     | GeometryNode::TriMesh(_)
-                    | GeometryNode::Instance(_)
             ),
             Self::HalfSpace => matches!(node, GeometryNode::HalfSpace(_)),
         }
@@ -90,7 +96,7 @@ fn expect_reference(
     expected: ExpectedReference,
 ) -> Result<(), GraphError> {
     let actual = &nodes[reference.index()];
-    if expected.accepts(actual) {
+    if expected.accepts(actual, nodes) {
         return Ok(());
     }
     Err(GraphError::InvalidReferenceType {

@@ -272,4 +272,58 @@ mod tests {
             } if reference == point
         ));
     }
+
+    #[test]
+    fn instance_nodes_preserve_their_source_reference_family() {
+        let mut builder = GeometryGraphBuilder::new();
+        let point = builder.push(GeometryNode::Point3(Vec3::ZERO)).unwrap();
+        let instance = builder
+            .push(GeometryNode::Instance(Instance {
+                source: point,
+                transform: geom_core::Transform3::IDENTITY,
+            }))
+            .unwrap();
+
+        let error = builder
+            .push(GeometryNode::SolidOperation(
+                crate::SolidOperation::Boolean {
+                    left: instance,
+                    right: instance,
+                    operator: geom_core::BooleanOperator::Union,
+                },
+            ))
+            .unwrap_err();
+        let GraphError::InvalidReferenceType {
+            reference,
+            expected,
+            actual,
+        } = error
+        else {
+            panic!("unexpected graph error: {error:?}");
+        };
+        assert_eq!(reference, instance);
+        assert_eq!(expected, "solid");
+        assert_eq!(actual, "instance");
+
+        let solid = builder
+            .push(GeometryNode::Primitive(geom_primitive::Primitive::Sphere {
+                radius: 1.0,
+            }))
+            .unwrap();
+        let solid_instance = builder
+            .push(GeometryNode::Instance(Instance {
+                source: solid,
+                transform: geom_core::Transform3::IDENTITY,
+            }))
+            .unwrap();
+        assert!(builder
+            .push(GeometryNode::SolidOperation(
+                crate::SolidOperation::Boolean {
+                    left: solid_instance,
+                    right: solid_instance,
+                    operator: geom_core::BooleanOperator::Union,
+                },
+            ))
+            .is_ok());
+    }
 }
