@@ -6,8 +6,8 @@
 - Inventory: 420 PSD, 93 QTO, 2,550 properties, 257 quantities
 - Ordered source digest: `57227d4c82f9903bc59cb5bade18a49f2c5f2c9363d0293ccb68fed8765d36e3`
 
-- Artifact: 1,537,163 bytes
-- Artifact SHA-256: `9a3d0fa550027a89b6ede563daeac05d8f8155f30d25115ece1804dcc67b3eb8`
+- Artifact: 1,537,256 bytes
+- Artifact SHA-256: `fe5567f0d30f8a4eb87a31bd34b8f43df95e2d28d72e7b56ffd082206bd48363`
 - Generator: `cargo run -p ifc-template-catalog --features generation --bin ifc-template-catalog-generate -- <HTML-root>`
 
 Upstream names, descriptions, aliases, GUIDs, applicability, units, and type declarations are copyright buildingSMART International Limited and published under CC BY-ND 4.0: https://technical.buildingsmart.org/standards/ifc/ifc-schema-specifications/

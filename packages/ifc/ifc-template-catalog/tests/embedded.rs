@@ -1,4 +1,6 @@
-use ifc_template_catalog::definition::{CatalogEdition, PropertyKind, SetTemplateKind};
+use ifc_template_catalog::definition::{
+    CatalogEdition, PropertyKind, QuantitySetType, SetTemplateKind,
+};
 use ifc_template_catalog::embedded::official_catalog;
 
 #[test]
@@ -42,8 +44,25 @@ fn embedded_catalog_preserves_published_alias_and_enumeration_structure() {
         .sum();
     let mut counts = GrammarCounts::default();
     for template in catalog.iter() {
-        if let SetTemplateKind::Property { properties, .. } = &template.kind {
-            grammar_counts(properties, &mut counts);
+        match &template.kind {
+            SetTemplateKind::Property { properties, .. } => grammar_counts(properties, &mut counts),
+            SetTemplateKind::Quantity {
+                set_type,
+                quantities,
+                ..
+            } => {
+                counts.unspecified_quantity_sets +=
+                    usize::from(*set_type == QuantitySetType::Unspecified);
+                counts.quantity_name_aliases += quantities
+                    .iter()
+                    .map(|quantity| quantity.name_aliases.len())
+                    .sum::<usize>();
+                counts.quantity_definition_aliases += quantities
+                    .iter()
+                    .map(|quantity| quantity.definition_aliases.len())
+                    .sum::<usize>();
+            }
+            _ => unreachable!("test and catalog model versions differ"),
         }
     }
     assert_eq!(set_definition_aliases, 896);
@@ -52,6 +71,11 @@ fn embedded_catalog_preserves_published_alias_and_enumeration_structure() {
     assert_eq!(counts.constant_name_aliases, 2_614);
     assert_eq!(counts.constant_definition_aliases, 2_614);
     assert_eq!(counts.blank_table_expressions, 88);
+    assert_eq!(counts.property_name_aliases, 5_802);
+    assert_eq!(counts.property_definition_aliases, 5_802);
+    assert_eq!(counts.quantity_name_aliases, 463);
+    assert_eq!(counts.quantity_definition_aliases, 463);
+    assert_eq!(counts.unspecified_quantity_sets, 93);
 }
 
 #[derive(Default)]
@@ -61,6 +85,11 @@ struct GrammarCounts {
     constant_name_aliases: usize,
     constant_definition_aliases: usize,
     blank_table_expressions: usize,
+    property_name_aliases: usize,
+    property_definition_aliases: usize,
+    quantity_name_aliases: usize,
+    quantity_definition_aliases: usize,
+    unspecified_quantity_sets: usize,
 }
 
 fn grammar_counts(
@@ -68,6 +97,8 @@ fn grammar_counts(
     counts: &mut GrammarCounts,
 ) {
     for property in properties {
+        counts.property_name_aliases += property.name_aliases.len();
+        counts.property_definition_aliases += property.definition_aliases.len();
         match &property.kind {
             PropertyKind::EnumeratedValue {
                 values, constants, ..

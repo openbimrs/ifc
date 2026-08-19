@@ -2,7 +2,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use ifc_template_catalog::definition::{
-    CatalogEdition, SetTemplate, SetTemplateKind, SourceManifest, TemplateSource,
+    CatalogEdition, PropertySetType, QuantitySetType, SetTemplate, SetTemplateKind, SourceManifest,
+    TemplateSource,
 };
 use ifc_template_catalog::xml::parse_template;
 use sha2::{Digest, Sha256};
@@ -62,6 +63,13 @@ pub fn import(source: &Path) -> Result<ImportedCatalog, String> {
             "IFC4 catalog counts {actual:?}, expected {expected:?}"
         ));
     }
+    let actual_classifications = classification_counts(&templates)?;
+    let expected_classifications = ([353, 0, 16, 42, 9], [0, 0, 0, 93]);
+    if actual_classifications != expected_classifications {
+        return Err(format!(
+            "IFC4 set classifications {actual_classifications:?}, expected {expected_classifications:?}"
+        ));
+    }
     let sha256 = hasher
         .finalize()
         .iter()
@@ -79,6 +87,38 @@ pub fn import(source: &Path) -> Result<ImportedCatalog, String> {
         },
         templates,
     })
+}
+
+fn classification_counts(templates: &[SetTemplate]) -> Result<([usize; 5], [usize; 4]), String> {
+    let mut property = [0; 5];
+    let mut quantity = [0; 4];
+    for template in templates {
+        match &template.kind {
+            SetTemplateKind::Property { set_type, .. } => {
+                let index = match set_type {
+                    PropertySetType::TypeDrivenOverride => 0,
+                    PropertySetType::TypeDrivenOnly => 1,
+                    PropertySetType::OccurrenceDriven => 2,
+                    PropertySetType::PerformanceDriven => 3,
+                    PropertySetType::Unspecified => 4,
+                    _ => return Err("generator does not classify a property-set type".into()),
+                };
+                property[index] += 1;
+            }
+            SetTemplateKind::Quantity { set_type, .. } => {
+                let index = match set_type {
+                    QuantitySetType::TypeDrivenOverride => 0,
+                    QuantitySetType::TypeDrivenOnly => 1,
+                    QuantitySetType::OccurrenceDriven => 2,
+                    QuantitySetType::Unspecified => 3,
+                    _ => return Err("generator does not classify a quantity-set type".into()),
+                };
+                quantity[index] += 1;
+            }
+            _ => return Err("generator and catalog model versions differ".into()),
+        }
+    }
+    Ok((property, quantity))
 }
 
 fn counts(templates: &[SetTemplate]) -> (usize, usize, usize, usize) {

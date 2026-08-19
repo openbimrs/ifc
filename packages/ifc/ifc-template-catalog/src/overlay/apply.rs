@@ -13,12 +13,38 @@ impl Catalog {
         profile: CatalogProfile,
         patches: &[Patch],
     ) -> Result<Self, PatchError> {
+        if patches.is_empty() {
+            return Err(PatchError::EmptyLedger);
+        }
+        if profile == CatalogProfile::Official
+            || (profile == CatalogProfile::Corrected
+                && (self.profile() != CatalogProfile::Official
+                    || !self.applied_patches().is_empty()))
+        {
+            return Err(PatchError::InvalidProfileTransition {
+                from: self.profile(),
+                to: profile,
+            });
+        }
         let mut templates = self.clone().into_templates();
         let mut applied = self.applied_patches().to_vec();
         let mut advisories = self.advisories().to_vec();
         let mut ids: BTreeSet<String> = applied.iter().map(|patch| patch.id.clone()).collect();
-        let mut replaced_applicability = BTreeSet::new();
-        let mut added_applicability = BTreeSet::new();
+        let mut replaced_applicability: BTreeSet<String> = applied
+            .iter()
+            .filter(|patch| {
+                matches!(
+                    &patch.operation,
+                    PatchOperation::ReplaceApplicability { .. }
+                )
+            })
+            .map(|patch| patch.target_template.clone())
+            .collect();
+        let mut added_applicability: BTreeSet<String> = applied
+            .iter()
+            .filter(|patch| matches!(&patch.operation, PatchOperation::AddApplicability(_)))
+            .map(|patch| patch.target_template.clone())
+            .collect();
 
         for patch in patches {
             if !ids.insert(patch.id.clone()) {
@@ -91,11 +117,13 @@ impl Catalog {
             applied.push(AppliedPatch {
                 id: patch.id.clone(),
                 target_template: patch.target_template.clone(),
+                rationale: patch.rationale.clone(),
                 evidence: patch.evidence.clone(),
+                operation: patch.operation.clone(),
             });
         }
 
-        let catalog = Catalog::try_new(self.manifest().clone(), profile, templates)?;
+        let catalog = Catalog::try_new_with_profile(self.manifest().clone(), profile, templates)?;
         Ok(catalog.with_overlay_state(profile, applied, advisories))
     }
 }

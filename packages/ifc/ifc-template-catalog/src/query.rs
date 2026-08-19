@@ -1,7 +1,9 @@
 //! Catalog lookup and applicability matching.
 
 use crate::catalog::Catalog;
-use crate::definition::{Applicability, PropertySetType, SetTemplate, SetTemplateKind};
+use crate::definition::{
+    Applicability, PropertySetType, QuantitySetType, SetTemplate, SetTemplateKind,
+};
 
 /// Semantic context in which a template would be assigned.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -153,19 +155,31 @@ fn context_matches(template: &SetTemplate, target: &ApplicabilityTarget) -> bool
     let Some(context) = target.context else {
         return true;
     };
-    let SetTemplateKind::Property { set_type, .. } = &template.kind else {
-        return true;
-    };
-    match set_type {
-        PropertySetType::TypeDrivenOverride => matches!(
-            context,
-            ApplicabilityContext::Occurrence | ApplicabilityContext::Type
-        ),
-        PropertySetType::TypeDrivenOnly => matches!(context, ApplicabilityContext::Type),
-        PropertySetType::OccurrenceDriven => matches!(context, ApplicabilityContext::Occurrence),
-        PropertySetType::PerformanceDriven => {
-            matches!(context, ApplicabilityContext::PerformanceHistory)
-        }
-        PropertySetType::Unspecified => true,
+    match &template.kind {
+        SetTemplateKind::Property { set_type, .. } => match set_type {
+            PropertySetType::TypeDrivenOverride => matches!(
+                context,
+                ApplicabilityContext::Occurrence | ApplicabilityContext::Type
+            ),
+            PropertySetType::TypeDrivenOnly => matches!(context, ApplicabilityContext::Type),
+            PropertySetType::OccurrenceDriven => {
+                matches!(context, ApplicabilityContext::Occurrence)
+            }
+            PropertySetType::PerformanceDriven => {
+                matches!(context, ApplicabilityContext::PerformanceHistory)
+            }
+            PropertySetType::Unspecified => true,
+        },
+        SetTemplateKind::Quantity { set_type, .. } => match set_type {
+            QuantitySetType::TypeDrivenOverride => matches!(
+                context,
+                ApplicabilityContext::Occurrence | ApplicabilityContext::Type
+            ),
+            QuantitySetType::TypeDrivenOnly => matches!(context, ApplicabilityContext::Type),
+            QuantitySetType::OccurrenceDriven => {
+                matches!(context, ApplicabilityContext::Occurrence)
+            }
+            QuantitySetType::Unspecified => true,
+        },
     }
 }

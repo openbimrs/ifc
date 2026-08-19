@@ -41,6 +41,15 @@ Accepted by ADR 0010. This crate is external schema metadata, separate from auth
 - [x] `CAT-INTEGRATE` - workspace/facade feature and dependency-boundary gates.
 - [x] `CAT-VERIFY` - focused/full gates, mutation checks, size/timing measurements, review.
 
+- [x] `CAT-REVIEW-FIX` - reconcile late review findings, fix confirmed invariants, regenerate, and gate.
+
+## Late review follow-up
+
+- Classify both asynchronous reviews against commit `e3ff514`.
+- Fix confirmed profile-transition and cross-call overlay conflicts with regression tests.
+- Make absent/published QTO template classification explicit in the typed model and queries.
+- Regenerate the archive, rerun corpus-fidelity assertions, and land a separate fix-forward commit.
+
 ## Decisions during implementation
 
 - The attributed official artifact preserves published names, descriptions, aliases, GUIDs, applicability, units, and type declarations; 16 empty official `DataType` declarations remain empty and diagnostic.
@@ -53,5 +62,6 @@ Accepted by ADR 0010. This crate is external schema metadata, separate from auth
 
 Append entries as `TASK-ID - command/result - material decision`. Do not paste full logs.
 
-- `CAT-GEN` - generator imported 513/513 XML files and reproduced byte-identical 1,537,163-byte artifacts after the grammar audit added set-level and enumeration-constant aliases; source digest `57227d...36e3`, artifact digest `9a3d0f...3eb8`.
+- `CAT-GEN` - generator imported 513/513 XML files and reproduced byte-identical 1,537,256-byte format-v2 artifacts; source digest `57227d...36e3`, artifact digest `fe5567...8363`.
 - `CAT-VERIFY` - all-feature tests/clippy and IFC architecture/context/reachability/monolith gates passed; architecture, context, and artifact corruption mutations each failed as expected. Full `scripts/gate.sh` passed after removing an unnecessary `quick-xml/encoding` feature that broke sibling `ifc-xml` through Cargo feature unification. Release measurements across three processes: official first load 3.27-3.77 ms, 100k exact-name lookups 5.35-5.69 ms, corrected first load 2.05-2.67 ms.
+- `CAT-REVIEW-FIX` - late reviews reconciled; QTO/profile/cross-call findings fixed, stale findings pinned by regressions, format-v2 artifact reproduced, corruption mutation exited 101, and exact scoped gates passed. The full gate is currently blocked by the pre-existing `ifc-geometry::no_backend_dependency` macro fixture on HEAD.

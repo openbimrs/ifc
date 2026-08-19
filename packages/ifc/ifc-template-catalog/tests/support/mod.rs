@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use ifc_template_catalog::definition::{
-    CatalogEdition, PropertySetType, SetTemplate, SetTemplateKind, SourceManifest,
+    CatalogEdition, PropertySetType, QuantitySetType, SetTemplate, SetTemplateKind, SourceManifest,
 };
 
 pub fn manifest(property_set_count: usize, quantity_set_count: usize) -> SourceManifest {
@@ -12,6 +12,24 @@ pub fn manifest(property_set_count: usize, quantity_set_count: usize) -> SourceM
         sha256: "fixture".into(),
         property_set_count,
         quantity_set_count,
+    }
+}
+
+pub fn quantity_set(name: &str, set_type: QuantitySetType) -> SetTemplate {
+    SetTemplate {
+        name: name.into(),
+        guid: None,
+        definition: None,
+        name_aliases: Vec::new(),
+        definition_aliases: Vec::new(),
+        source: None,
+        raw_applicability: None,
+        applicability: Vec::new(),
+        kind: SetTemplateKind::Quantity {
+            set_type,
+            method_of_measurement: None,
+            quantities: Vec::new(),
+        },
     }
 }
 

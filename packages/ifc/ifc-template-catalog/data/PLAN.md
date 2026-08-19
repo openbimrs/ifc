@@ -14,4 +14,4 @@ Status: implemented and verified.
 
 Append exact counts, digest, artifact size, and proof commands.
 
-- Two post-review runs compared byte-identical at 1,537,163 bytes; embedded tests verify 420/93 sets, 2,550/257 members, set/constant aliases, and per-template SHA-256 provenance.
+- Two late-review runs compared byte-identical at 1,537,256 bytes; embedded tests verify 420/93 sets, 2,550/257 members, set/property/quantity/constant aliases, all set classifications, and per-template SHA-256 provenance.

@@ -17,6 +17,8 @@ pub enum MemberForm {
 pub struct ObservedMember {
     pub name: String,
     pub form: MemberForm,
+    /// Observed IFC type metadata. An empty vector means "not observed";
+    /// validation then skips type conformance rather than proving it.
     pub data_types: Vec<String>,
     pub enumeration_value: Option<String>,
 }
@@ -111,6 +113,8 @@ pub struct ValidationReport {
     pub issues: Vec<ValidationIssue>,
 }
 impl ValidationReport {
+    /// Returns true when validation found no errors in the metadata the caller supplied.
+    /// Missing observed type metadata is unresolved, not proof of type conformance.
     pub fn is_valid(&self) -> bool {
         !self
             .issues

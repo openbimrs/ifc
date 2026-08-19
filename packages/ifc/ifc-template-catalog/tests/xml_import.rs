@@ -1,6 +1,8 @@
 #![cfg(feature = "xml")]
 
-use ifc_template_catalog::definition::{PropertyKind, QuantityKind, SetTemplateKind};
+use ifc_template_catalog::definition::{
+    PropertyKind, QuantityKind, QuantitySetType, SetTemplateKind,
+};
 use ifc_template_catalog::xml::{
     parse_template, parse_template_with_limits, ImportLimits, XmlImportError,
 };
@@ -56,16 +58,31 @@ fn parses_every_psd_property_form_and_normalizes_applicability() {
 fn parses_qto_measurement_types() {
     let set = parse_template(QTO).unwrap();
     let SetTemplateKind::Quantity {
+        set_type,
         quantities,
         method_of_measurement,
     } = set.kind
     else {
         panic!()
     };
+    assert_eq!(set_type, QuantitySetType::Unspecified);
     assert_eq!(method_of_measurement.as_deref(), Some("ISO fixture"));
     assert_eq!(set.definition_aliases[0].text, "Mengendefinition");
     assert_eq!(quantities[0].kind, QuantityKind::Length);
     assert_eq!(quantities[1].kind, QuantityKind::Count);
+}
+
+#[test]
+fn parses_qto_set_classification_when_published() {
+    let xml = "<QtoSetDef templatetype=\"QTO_TYPEDRIVENONLY\"><Name>Qto_Test</Name></QtoSetDef>";
+    let set = parse_template(xml).unwrap();
+    assert!(matches!(
+        set.kind,
+        SetTemplateKind::Quantity {
+            set_type: QuantitySetType::TypeDrivenOnly,
+            ..
+        }
+    ));
 }
 
 #[test]
@@ -76,6 +93,13 @@ fn rejects_unknown_typed_content() {
         error,
         XmlImportError::UnsupportedPropertyType { .. }
     ));
+}
+
+#[test]
+fn preserves_cdata_text() {
+    let xml = "<QtoSetDef><Name>Qto_Test</Name><Definition><![CDATA[Area < gross]]></Definition></QtoSetDef>";
+    let set = parse_template(xml).unwrap();
+    assert_eq!(set.definition.as_deref(), Some("Area < gross"));
 }
 
 #[test]

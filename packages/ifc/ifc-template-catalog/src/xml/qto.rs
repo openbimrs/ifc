@@ -1,12 +1,26 @@
 //! QTO set decoding.
 
-use crate::definition::{QuantityKind, QuantityTemplate, SetTemplate, SetTemplateKind};
+use crate::definition::{
+    QuantityKind, QuantitySetType, QuantityTemplate, SetTemplate, SetTemplateKind,
+};
 
 use super::common::{applicability, localized, required_text};
 use super::{Node, XmlImportError};
 
 pub(super) fn parse(root: &Node) -> Result<SetTemplate, XmlImportError> {
     let name = required_text(root, "Name", "QtoSetDef")?.to_owned();
+    let set_type = match root.attribute("templatetype").unwrap_or_default() {
+        "" => QuantitySetType::Unspecified,
+        "QTO_TYPEDRIVENOVERRIDE" => QuantitySetType::TypeDrivenOverride,
+        "QTO_TYPEDRIVENONLY" => QuantitySetType::TypeDrivenOnly,
+        "QTO_OCCURRENCEDRIVEN" => QuantitySetType::OccurrenceDriven,
+        value => {
+            return Err(XmlImportError::UnsupportedSetType {
+                set: name,
+                value: value.to_owned(),
+            });
+        }
+    };
     let mut quantities = Vec::new();
     if let Some(definitions) = root.child("QtoDefs") {
         for definition in definitions.children_named("QtoDef") {
@@ -29,6 +43,7 @@ pub(super) fn parse(root: &Node) -> Result<SetTemplate, XmlImportError> {
         raw_applicability,
         applicability,
         kind: SetTemplateKind::Quantity {
+            set_type,
             method_of_measurement: root.child_text("MethodOfMeasurement").map(str::to_owned),
             quantities,
         },

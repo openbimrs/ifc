@@ -11,5 +11,5 @@ pub use applicability::{Applicability, ApplicabilityError};
 pub use localization::LocalizedText;
 pub use property::{EnumerationConstant, PropertyDataType, PropertyKind, PropertyTemplate};
 pub use quantity::{QuantityKind, QuantityTemplate};
-pub use set::{PropertySetType, SetTemplate, SetTemplateKind};
+pub use set::{PropertySetType, QuantitySetType, SetTemplate, SetTemplateKind};
 pub use source::{CatalogEdition, SourceManifest, TemplateSource};

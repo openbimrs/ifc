@@ -37,6 +37,17 @@ impl Catalog {
         profile: CatalogProfile,
         templates: Vec<SetTemplate>,
     ) -> Result<Self, CatalogError> {
+        if profile == CatalogProfile::Corrected {
+            return Err(CatalogError::CorrectedProfileRequiresPatches);
+        }
+        Self::try_new_with_profile(manifest, profile, templates)
+    }
+
+    pub(crate) fn try_new_with_profile(
+        manifest: SourceManifest,
+        profile: CatalogProfile,
+        templates: Vec<SetTemplate>,
+    ) -> Result<Self, CatalogError> {
         let mut by_name = BTreeMap::new();
         let mut property_sets = 0;
         let mut quantity_sets = 0;
@@ -140,6 +151,8 @@ impl Catalog {
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[non_exhaustive]
 pub enum CatalogError {
+    #[error("the corrected profile requires an applied patch ledger")]
+    CorrectedProfileRequiresPatches,
     #[error("template name is empty")]
     EmptyTemplateName,
     #[error("duplicate template `{0}`")]

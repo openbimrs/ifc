@@ -2,10 +2,12 @@
 mod support;
 
 use ifc_template_catalog::catalog::{Catalog, CatalogProfile};
-use ifc_template_catalog::definition::{Applicability, PropertySetType, SetTemplateKind};
+use ifc_template_catalog::definition::{
+    Applicability, PropertySetType, QuantitySetType, SetTemplateKind,
+};
 use ifc_template_catalog::query::{ApplicabilityContext, ApplicabilityTarget, EntityHierarchy};
 
-use support::{manifest, property_set};
+use support::{manifest, property_set, quantity_set};
 
 struct Hierarchy;
 
@@ -100,4 +102,18 @@ fn property_set_mode_filters_explicit_target_context() {
         catalog.applicable_to(&occurrence_target, &Hierarchy).len(),
         1
     );
+}
+
+#[test]
+fn quantity_set_mode_filters_explicit_target_context() {
+    let mut set = quantity_set("Qto_WallBaseQuantities", QuantitySetType::TypeDrivenOnly);
+    set.applicability = vec![Applicability::entity("IfcWall")];
+    let catalog = Catalog::try_new(manifest(0, 1), CatalogProfile::Official, vec![set]).unwrap();
+
+    let occurrence = ApplicabilityTarget::new("IfcWall", None::<String>)
+        .with_context(ApplicabilityContext::Occurrence);
+    assert!(catalog.applicable_to(&occurrence, &Hierarchy).is_empty());
+    let type_target = ApplicabilityTarget::new("IfcWall", None::<String>)
+        .with_context(ApplicabilityContext::Type);
+    assert_eq!(catalog.applicable_to(&type_target, &Hierarchy).len(), 1);
 }

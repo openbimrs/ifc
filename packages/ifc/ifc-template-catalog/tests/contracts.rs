@@ -67,6 +67,13 @@ fn duplicate_set_names_are_rejected() {
 }
 
 #[test]
+fn corrected_profile_requires_an_applied_patch_ledger() {
+    let error =
+        Catalog::try_new(manifest(), CatalogProfile::Corrected, vec![wall_common()]).unwrap_err();
+    assert_eq!(error, CatalogError::CorrectedProfileRequiresPatches);
+}
+
+#[test]
 fn applicability_keeps_raw_and_normalized_forms() {
     let applicability = Applicability::parse("IfcWall/USERDEFINED").unwrap();
     assert_eq!(applicability.raw, "IfcWall/USERDEFINED");

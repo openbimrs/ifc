@@ -17,6 +17,23 @@ fn add_type_patch(id: &str) -> Patch {
     }
 }
 
+fn replace_patch(id: &str) -> Patch {
+    Patch {
+        id: id.into(),
+        edition: CatalogEdition::Ifc4Add2Tc1,
+        target_template: "Qto_WallBaseQuantities".into(),
+        rationale: "replace fixture applicability".into(),
+        evidence: "fixture".into(),
+        operation: PatchOperation::ReplaceApplicability {
+            expected: vec![
+                Applicability::entity("IfcWall"),
+                Applicability::entity("IfcWallType"),
+            ],
+            replacement: vec![Applicability::entity("IfcBuildingElement")],
+        },
+    }
+}
+
 #[test]
 fn overlays_create_a_new_snapshot_and_preserve_official_data() {
     let mut qto = property_set("Qto_WallBaseQuantities");
@@ -47,12 +64,38 @@ fn overlays_create_a_new_snapshot_and_preserve_official_data() {
         2
     );
     assert_eq!(corrected.applied_patches()[0].id, "NEH-IFC4-QTO-0001");
+    assert_eq!(
+        corrected.applied_patches()[0].rationale,
+        "backport type applicability"
+    );
+    assert!(matches!(
+        corrected.applied_patches()[0].operation,
+        PatchOperation::AddApplicability(_)
+    ));
+}
+
+#[test]
+fn overlays_cannot_relabel_or_create_empty_corrected_snapshots() {
+    let official = Catalog::try_new(
+        manifest(1, 0),
+        CatalogProfile::Official,
+        vec![property_set("Qto_WallBaseQuantities")],
+    )
+    .unwrap();
+    assert!(matches!(
+        official.with_patches(CatalogProfile::Official, &[add_type_patch("add")]),
+        Err(PatchError::InvalidProfileTransition { .. })
+    ));
+    assert!(matches!(
+        official.with_patches(CatalogProfile::Corrected, &[]),
+        Err(PatchError::EmptyLedger)
+    ));
 }
 
 #[test]
 fn stale_or_duplicate_corrections_fail_loudly() {
     let mut qto = property_set("Qto_WallBaseQuantities");
-    qto.applicability = vec![Applicability::entity("IfcWallType")];
+    qto.applicability = vec![Applicability::entity("ifcwalltype")];
     let official = Catalog::try_new(manifest(1, 0), CatalogProfile::Official, vec![qto]).unwrap();
 
     let error = official
@@ -69,22 +112,23 @@ fn add_then_replace_applicability_is_a_conflict() {
     let mut qto = property_set("Qto_WallBaseQuantities");
     qto.applicability = vec![Applicability::entity("IfcWall")];
     let official = Catalog::try_new(manifest(1, 0), CatalogProfile::Official, vec![qto]).unwrap();
-    let replace = Patch {
-        id: "replace".into(),
-        edition: CatalogEdition::Ifc4Add2Tc1,
-        target_template: "Qto_WallBaseQuantities".into(),
-        rationale: "fixture".into(),
-        evidence: "fixture".into(),
-        operation: PatchOperation::ReplaceApplicability {
-            expected: vec![
-                Applicability::entity("IfcWall"),
-                Applicability::entity("IfcWallType"),
-            ],
-            replacement: vec![Applicability::entity("IfcBuildingElement")],
-        },
-    };
+    let replace = replace_patch("replace");
     let error = official
         .with_patches(CatalogProfile::Custom, &[add_type_patch("add"), replace])
+        .unwrap_err();
+    assert!(matches!(error, PatchError::ConflictingApplicability { .. }));
+}
+
+#[test]
+fn applicability_conflicts_survive_separate_overlay_calls() {
+    let mut qto = property_set("Qto_WallBaseQuantities");
+    qto.applicability = vec![Applicability::entity("IfcWall")];
+    let official = Catalog::try_new(manifest(1, 0), CatalogProfile::Official, vec![qto]).unwrap();
+    let corrected = official
+        .with_patches(CatalogProfile::Corrected, &[add_type_patch("add")])
+        .unwrap();
+    let error = corrected
+        .with_patches(CatalogProfile::Custom, &[replace_patch("replace")])
         .unwrap_err();
     assert!(matches!(error, PatchError::ConflictingApplicability { .. }));
 }

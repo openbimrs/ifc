@@ -36,9 +36,21 @@ pub enum SetTemplateKind {
         properties: Vec<PropertyTemplate>,
     },
     Quantity {
+        set_type: QuantitySetType,
         method_of_measurement: Option<String>,
         quantities: Vec<QuantityTemplate>,
     },
+}
+
+/// IFC quantity-set template applicability mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, bincode::Encode, bincode::Decode)]
+#[non_exhaustive]
+pub enum QuantitySetType {
+    TypeDrivenOverride,
+    TypeDrivenOnly,
+    OccurrenceDriven,
+    /// The publication omitted its optional `templatetype` classification.
+    Unspecified,
 }
 
 /// IFC property-set template applicability mode.

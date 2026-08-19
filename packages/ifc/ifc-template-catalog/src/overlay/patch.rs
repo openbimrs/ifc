@@ -49,12 +49,21 @@ pub struct Advisory {
 pub struct AppliedPatch {
     pub id: String,
     pub target_template: String,
+    pub rationale: String,
     pub evidence: String,
+    pub operation: PatchOperation,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[non_exhaustive]
 pub enum PatchError {
+    #[error("a patch ledger must not be empty")]
+    EmptyLedger,
+    #[error("cannot apply patches from {from:?} into {to:?}")]
+    InvalidProfileTransition {
+        from: crate::catalog::CatalogProfile,
+        to: crate::catalog::CatalogProfile,
+    },
     #[error("duplicate patch id `{0}`")]
     DuplicateId(String),
     #[error("patch `{patch_id}` targets {patch_edition:?}, catalog is {catalog_edition:?}")]
