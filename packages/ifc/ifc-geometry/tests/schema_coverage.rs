@@ -285,6 +285,9 @@ fn every_schema_type_is_modelled() {
             !(source.contains(&format!("pub enum {stem}"))
                 || source.contains(&format!("pub struct {stem}"))
                 || source.contains(&format!("pub type {stem}"))
+                || source.contains(&format!("pub enum {name}"))
+                || source.contains(&format!("pub struct {name}"))
+                || source.contains(&format!("pub type {name}"))
                 || source
                     .to_ascii_uppercase()
                     .contains(&format!("\"{}\"", name.to_ascii_uppercase())))
