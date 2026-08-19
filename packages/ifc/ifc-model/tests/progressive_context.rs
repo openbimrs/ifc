@@ -52,7 +52,13 @@ const REQUIRED_NESTED_CONTEXTS: &[&str] = &[
 ];
 
 fn ifc_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..")
+    cargo_metadata::MetadataCommand::new()
+        .no_deps()
+        .exec()
+        .expect("cargo metadata must describe the runtime workspace")
+        .workspace_root
+        .into_std_path_buf()
+        .join("packages/ifc")
 }
 
 fn walk(dir: &Path, files: &mut Vec<PathBuf>) {

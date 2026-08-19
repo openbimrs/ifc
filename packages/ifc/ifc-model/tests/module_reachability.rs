@@ -13,24 +13,17 @@ use syn::parse::Parser;
 use syn::punctuated::Punctuated;
 use syn::{Attribute, Expr, Item, Lit, Meta, Token};
 
-fn workspace_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../..")
-        .canonicalize()
-        .expect("canonical workspace root")
-}
-
 fn metadata() -> Metadata {
     MetadataCommand::new()
-        .manifest_path(workspace_root().join("Cargo.toml"))
         .no_deps()
         .exec()
-        .expect("cargo metadata must describe the workspace")
+        .expect("cargo metadata must describe the runtime workspace")
 }
 
 fn ifc_packages() -> Vec<Package> {
-    let root = workspace_root().join("packages/ifc");
-    metadata()
+    let metadata = metadata();
+    let root = metadata.workspace_root.as_std_path().join("packages/ifc");
+    metadata
         .packages
         .into_iter()
         .filter(|package| {
@@ -179,7 +172,12 @@ fn visit_items(
     }
 }
 
-fn visit_file(source: &Path, reached: &mut BTreeSet<PathBuf>, missing: &mut Vec<String>) {
+fn visit_file_at_base(
+    source: &Path,
+    base: PathBuf,
+    reached: &mut BTreeSet<PathBuf>,
+    missing: &mut Vec<String>,
+) {
     let source = source.to_path_buf();
     if !reached.insert(source.clone()) {
         return;
@@ -188,13 +186,19 @@ fn visit_file(source: &Path, reached: &mut BTreeSet<PathBuf>, missing: &mut Vec<
         .unwrap_or_else(|error| panic!("cannot read {}: {error}", source.display()));
     let syntax = syn::parse_file(&text)
         .unwrap_or_else(|error| panic!("cannot parse {}: {error}", source.display()));
-    visit_items(
-        &syntax.items,
-        &source,
-        &module_base(&source),
-        reached,
-        missing,
-    );
+    visit_items(&syntax.items, &source, &base, reached, missing);
+}
+
+fn visit_file(source: &Path, reached: &mut BTreeSet<PathBuf>, missing: &mut Vec<String>) {
+    visit_file_at_base(source, module_base(source), reached, missing);
+}
+
+fn visit_target_root(source: &Path, reached: &mut BTreeSet<PathBuf>, missing: &mut Vec<String>) {
+    let base = source
+        .parent()
+        .expect("Cargo target root must have a parent")
+        .to_path_buf();
+    visit_file_at_base(source, base, reached, missing);
 }
 
 #[test]
@@ -231,6 +235,25 @@ mod redirected;
 }
 
 #[test]
+fn cargo_target_modules_resolve_beside_the_target_root() {
+    let dir = std::env::temp_dir().join(format!("nehirde-module-root-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let root = dir.join("custom_target.rs");
+    let common = dir.join("common.rs");
+    std::fs::write(&root, "mod common;\n").unwrap();
+    std::fs::write(&common, "pub fn helper() {}\n").unwrap();
+
+    let mut reached = BTreeSet::new();
+    let mut missing = Vec::new();
+    visit_target_root(&root, &mut reached, &mut missing);
+
+    assert!(missing.is_empty(), "{missing:#?}");
+    assert_eq!(reached, BTreeSet::from([root, common]));
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
 fn every_ifc_source_file_is_reachable_from_a_cargo_target() {
     let packages = ifc_packages();
     assert!(
@@ -263,7 +286,7 @@ fn every_ifc_source_file_is_reachable_from_a_cargo_target() {
             package.name
         );
         for root in roots {
-            visit_file(&root, &mut reached, &mut missing);
+            visit_target_root(&root, &mut reached, &mut missing);
         }
         for path in all.difference(&reached) {
             orphaned.push(path.display().to_string());
@@ -313,12 +336,21 @@ fn public_modules_expose_a_real_contract() {
             .as_std_path()
             .parent()
             .expect("manifest parent");
+        let target_roots: BTreeSet<_> = package
+            .targets
+            .iter()
+            .map(|target| target.src_path.as_std_path().to_path_buf())
+            .collect();
         let mut sources = BTreeSet::new();
         rust_files(&crate_dir.join("src"), &mut sources);
         for source in sources {
             let text = std::fs::read_to_string(&source).unwrap();
             let syntax = syn::parse_file(&text).unwrap();
-            let base = module_base(&source);
+            let base = if target_roots.contains(&source) {
+                source.parent().expect("Cargo target parent").to_path_buf()
+            } else {
+                module_base(&source)
+            };
             for module in syntax.items.iter().filter_map(|item| match item {
                 Item::Mod(module)
                     if is_public(&module.vis) && !is_statically_disabled(&module.attrs) =>

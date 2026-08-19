@@ -5,7 +5,6 @@
 //! while permanently coupling unrelated capabilities.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::PathBuf;
 
 use cargo_metadata::{DependencyKind, Metadata, MetadataCommand, Package};
 
@@ -23,24 +22,17 @@ const NEUTRAL_GEOMETRY: &[&str] = &[
     "geom-topology",
 ];
 
-fn workspace_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../..")
-        .canonicalize()
-        .expect("canonical workspace root")
-}
-
 fn metadata() -> Metadata {
     MetadataCommand::new()
-        .manifest_path(workspace_root().join("Cargo.toml"))
         .no_deps()
         .exec()
-        .expect("cargo metadata must describe the workspace")
+        .expect("cargo metadata must describe the runtime workspace")
 }
 
 fn ifc_packages() -> BTreeMap<String, Package> {
-    let root = workspace_root().join("packages/ifc");
-    metadata()
+    let metadata = metadata();
+    let root = metadata.workspace_root.as_std_path().join("packages/ifc");
+    metadata
         .packages
         .into_iter()
         .filter_map(|package| {

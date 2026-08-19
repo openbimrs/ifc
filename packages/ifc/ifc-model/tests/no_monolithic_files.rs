@@ -26,7 +26,12 @@ const MAX_LINES: usize = 800;
 const EXEMPT: &[(&str, &str)] = &[];
 
 fn workspace_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..")
+    cargo_metadata::MetadataCommand::new()
+        .no_deps()
+        .exec()
+        .expect("cargo metadata must describe the runtime workspace")
+        .workspace_root
+        .into_std_path_buf()
 }
 
 /// Every `.rs` file under a directory, recursively, skipping `target`.
