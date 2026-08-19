@@ -7,7 +7,7 @@ use geom_mesh::TriMesh;
 
 use crate::{
     Backend, BackendId, DevicePreference, ExecutionOptions, ExecutionTarget, GeomError, GeomResult,
-    Operation,
+    Operation, ScratchRequirement,
 };
 
 /// Mesh boolean provider.
@@ -15,6 +15,15 @@ use crate::{
 /// Implementing this trait is the capability declaration. Providers that do not
 /// implement mesh booleans must not implement this trait.
 pub trait MeshBoolean: Backend {
+    /// Scratch this provider needs beyond its inputs and result.
+    ///
+    /// Callers budget against this before dispatch. Defaults to
+    /// [`ScratchRequirement::Unbounded`] so an unaudited provider is treated as
+    /// unbudgetable rather than silently assumed cheap.
+    fn scratch_requirement(&self) -> ScratchRequirement {
+        ScratchRequirement::Unbounded
+    }
+
     /// Apply one set operation.
     fn boolean(
         &self,
@@ -87,12 +96,25 @@ impl MeshBooleanRegistry {
     fn dispatch(
         &self,
         options: &ExecutionOptions,
+        elements: usize,
         execute: impl Fn(&dyn MeshBoolean) -> GeomResult<TriMesh>,
     ) -> GeomResult<TriMesh> {
         let mut last_retryable = None;
+        let mut over_budget = None;
         for entry in &self.providers {
             let descriptor = entry.provider.descriptor();
             if !matches_device(options.device(), descriptor.id, descriptor.target) {
+                continue;
+            }
+            // Budget is checked before dispatch, not after: a provider that
+            // cannot fit the caller's memory bound must never get the chance to
+            // allocate. Treated as retryable so a leaner provider can still run.
+            if !entry
+                .provider
+                .scratch_requirement()
+                .fits_budget(options, elements)
+            {
+                over_budget = Some(GeomError::BudgetExceeded { resource: "memory" });
                 continue;
             }
             match execute(entry.provider.as_ref()) {
@@ -103,10 +125,12 @@ impl MeshBooleanRegistry {
                 Err(error) => return Err(error),
             }
         }
-        Err(last_retryable.unwrap_or(GeomError::Unsupported {
-            backend: BackendId::new("mesh-boolean-registry"),
-            operation: Operation::MeshBoolean,
-        }))
+        Err(last_retryable
+            .or(over_budget)
+            .unwrap_or(GeomError::Unsupported {
+                backend: BackendId::new("mesh-boolean-registry"),
+                operation: Operation::MeshBoolean,
+            }))
     }
 
     /// Execute according to device policy with narrow fallback semantics.
@@ -117,7 +141,7 @@ impl MeshBooleanRegistry {
         operation: BooleanOperator,
         options: &ExecutionOptions,
     ) -> GeomResult<TriMesh> {
-        self.dispatch(options, |provider| {
+        self.dispatch(options, subject.triangle_count(), |provider| {
             provider.boolean(subject, tool, operation, options)
         })
     }
@@ -129,7 +153,9 @@ impl MeshBooleanRegistry {
         tools: &[TriMesh],
         options: &ExecutionOptions,
     ) -> GeomResult<TriMesh> {
-        self.dispatch(options, |provider| {
+        let elements =
+            subject.triangle_count() + tools.iter().map(TriMesh::triangle_count).sum::<usize>();
+        self.dispatch(options, elements, |provider| {
             provider.subtract_many(subject, tools, options)
         })
     }

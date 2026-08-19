@@ -14,7 +14,14 @@ together. Add no empty placeholder files.
 
 No concrete implementation or hardware API dependency. Open traits remain
 downstream-implementable. A trait implementation is the capability proof;
-descriptors carry identity only. Registries store executable trait objects,
+descriptors carry identity only. Determinism is three
+distinct contracts (topological, numerically bounded, bitwise) compared by
+strength, never equality. Residency is part of the plan: an operation declares
+where inputs live and where outputs are wanted. Hot-path traits declare a
+`ScratchRequirement`; the registry checks it against the memory budget *before*
+dispatch, and an unbounded requirement never fits a declared budget.
+
+Registries store executable trait objects,
 never boolean capability claims. Registry batch methods dispatch to provider
 batch overrides; only `Unsupported` and `Unavailable` permit fallback, while
 all other errors fail fast.

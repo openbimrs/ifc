@@ -2,15 +2,44 @@
 
 use geom_core::Tolerance;
 
-use crate::{BackendId, Precision};
+use crate::{BackendId, GeomError, GeomResult, Precision};
 
 /// Reproducibility requirement.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+///
+/// These are three genuinely different contracts, not degrees of one. A backend
+/// that reduces in a deterministic order satisfies [`Self::Topological`] while
+/// still failing [`Self::Bitwise`] against a differently-scheduled backend, so
+/// collapsing them into one flag lets two backends both claim "deterministic"
+/// and still disagree. Ordered weakest to strongest.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Determinism {
-    /// Same inputs and options must produce stable ordering and values.
-    Required,
-    /// Backend may use faster nondeterministic scheduling.
+    /// No guarantee. The backend may reorder, re-associate, and reschedule.
     BestEffort,
+    /// Same connectivity and same output ordering for the same inputs.
+    ///
+    /// Coordinates may differ within tolerance. This is what a clash result or
+    /// a topology commit needs; it does not promise identical floats.
+    Topological,
+    /// Topological determinism plus values within the operation's stated
+    /// numerical error bound.
+    NumericallyBounded,
+    /// Bit-for-bit identical output for the same inputs and options.
+    ///
+    /// The only contract that supports hashing a result or comparing artifacts
+    /// across machines.
+    Bitwise,
+}
+
+impl Determinism {
+    /// Whether this guarantee is at least as strong as `required`.
+    ///
+    /// Strength is the declaration order, so a backend offering
+    /// [`Self::Bitwise`] satisfies a [`Self::Topological`] request but never
+    /// the reverse. Routing must use this instead of equality, or a stronger
+    /// backend gets rejected for being too good.
+    pub const fn satisfies(self, required: Self) -> bool {
+        (self as u8) >= (required as u8)
+    }
 }
 
 /// CPU scheduling preference.
@@ -38,6 +67,131 @@ pub enum DevicePreference {
     Backend(BackendId),
 }
 
+/// Where an operation's data physically lives.
+///
+/// Device preference says *where to run*; residency says *where the bytes
+/// already are*. Routing needs both: a GPU-resident batch is cheap to run on
+/// the GPU and expensive to run on the CPU, and the reverse holds for a
+/// host-resident one. Without this, a planner cannot see a transfer that
+/// dominates the operation it is scheduling.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Residency {
+    /// Host (CPU) memory.
+    Host,
+    /// Memory owned by the named device.
+    Device(BackendId),
+    /// Host-visible memory shared with the named device; no copy is needed.
+    Unified(BackendId),
+}
+
+impl Residency {
+    /// Whether `backend` can read this data without a host/device transfer.
+    pub fn is_local_to(self, backend: BackendId) -> bool {
+        match self {
+            Self::Host => false,
+            Self::Device(owner) | Self::Unified(owner) => owner == backend,
+        }
+    }
+
+    /// Whether the host can read this data without a transfer.
+    pub const fn is_host_readable(self) -> bool {
+        matches!(self, Self::Host | Self::Unified(_))
+    }
+}
+
+/// Where an operation's inputs live and where its outputs are wanted.
+///
+/// Kept as a pair because they genuinely differ: a GPU broad phase may consume
+/// device-resident geometry and still have to deliver host-readable results.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct DataResidency {
+    input: Residency,
+    output: Residency,
+}
+
+impl DataResidency {
+    /// Both inputs and outputs in host memory. The portable default.
+    pub const HOST: Self = Self {
+        input: Residency::Host,
+        output: Residency::Host,
+    };
+
+    /// Construct an explicit input/output residency plan.
+    pub const fn new(input: Residency, output: Residency) -> Self {
+        Self { input, output }
+    }
+
+    /// Where inputs currently live.
+    pub const fn input(self) -> Residency {
+        self.input
+    }
+
+    /// Where outputs are wanted.
+    pub const fn output(self) -> Residency {
+        self.output
+    }
+
+    /// Whether running on `backend` needs no host/device transfer either way.
+    pub fn is_transfer_free_on(self, backend: BackendId) -> bool {
+        self.input.is_local_to(backend) && self.output.is_local_to(backend)
+    }
+}
+
+/// Scratch memory an operation needs beyond its inputs and outputs.
+///
+/// Declared up front so a caller can budget, pre-reserve, or refuse before any
+/// work starts. `Unbounded` is deliberately representable and deliberately
+/// unpleasant: an operation that cannot bound its scratch must say so rather
+/// than allocating silently in a hot loop.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ScratchRequirement {
+    /// Operates in place; no scratch beyond inputs and outputs.
+    None,
+    /// At most `bytes` of scratch, independent of input size.
+    Fixed {
+        /// Upper bound in bytes.
+        bytes: usize,
+    },
+    /// At most `bytes_per_element * elements` of scratch.
+    PerElement {
+        /// Upper bound per input element, in bytes.
+        bytes_per_element: usize,
+    },
+    /// Scratch cannot be bounded ahead of time.
+    ///
+    /// Callers must treat this as "may allocate arbitrarily"; a memory budget
+    /// cannot be enforced against it.
+    Unbounded,
+}
+
+impl ScratchRequirement {
+    /// Upper bound for `elements` inputs, or `None` when unbounded.
+    pub const fn upper_bound_bytes(self, elements: usize) -> Option<usize> {
+        match self {
+            Self::None => Some(0),
+            Self::Fixed { bytes } => Some(bytes),
+            Self::PerElement { bytes_per_element } => bytes_per_element.checked_mul(elements),
+            Self::Unbounded => None,
+        }
+    }
+
+    /// Whether this requirement fits `options`' memory budget for `elements`.
+    ///
+    /// An unbounded requirement never fits a declared budget: allowing it would
+    /// make the budget advisory, which is the failure this type exists to stop.
+    pub const fn fits_budget(self, options: &ExecutionOptions, elements: usize) -> bool {
+        match options.memory_budget_bytes() {
+            None => true,
+            Some(budget) => match self.upper_bound_bytes(elements) {
+                Some(needed) => needed <= budget,
+                None => false,
+            },
+        }
+    }
+}
+
 /// Operation policy with explicit tolerance and precision.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ExecutionOptions {
@@ -46,6 +200,7 @@ pub struct ExecutionOptions {
     determinism: Determinism,
     parallelism: Parallelism,
     device: DevicePreference,
+    residency: DataResidency,
     memory_budget_bytes: Option<usize>,
 }
 
@@ -55,9 +210,10 @@ impl ExecutionOptions {
         Self {
             tolerance,
             precision: Precision::F64,
-            determinism: Determinism::Required,
+            determinism: Determinism::NumericallyBounded,
             parallelism: Parallelism::Auto,
             device: DevicePreference::Auto,
+            residency: DataResidency::HOST,
             memory_budget_bytes: None,
         }
     }
@@ -86,6 +242,12 @@ impl ExecutionOptions {
     /// Set device preference.
     pub const fn with_device(mut self, value: DevicePreference) -> Self {
         self.device = value;
+        self
+    }
+
+    /// Declare where inputs live and where outputs are wanted.
+    pub const fn with_residency(mut self, value: DataResidency) -> Self {
+        self.residency = value;
         self
     }
 
@@ -123,5 +285,23 @@ impl ExecutionOptions {
     /// Optional temporary-memory budget.
     pub const fn memory_budget_bytes(self) -> Option<usize> {
         self.memory_budget_bytes
+    }
+
+    /// Where inputs live and where outputs are wanted.
+    pub const fn residency(self) -> DataResidency {
+        self.residency
+    }
+
+    /// Charge `bytes` of scratch against the budget before allocating it.
+    ///
+    /// The budget is only real if something checks it, so this is the single
+    /// enforcement point every hot path routes through. Backends must call it
+    /// *before* the allocation, not after: reporting an overrun once the
+    /// allocation already succeeded defeats the purpose of a budget.
+    pub fn charge_scratch(self, bytes: usize) -> GeomResult<()> {
+        match self.memory_budget_bytes {
+            Some(budget) if bytes > budget => Err(GeomError::BudgetExceeded { resource: "memory" }),
+            _ => Ok(()),
+        }
     }
 }

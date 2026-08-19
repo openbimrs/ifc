@@ -22,4 +22,7 @@ pub use capability::{BackendDescriptor, BackendId, ExecutionTarget, Operation, P
 #[cfg(feature = "model")]
 pub use compile::GeometryCompiler;
 pub use error::{GeomError, GeomResult};
-pub use execution::{Determinism, DevicePreference, ExecutionOptions, Parallelism};
+pub use execution::{
+    DataResidency, Determinism, DevicePreference, ExecutionOptions, Parallelism, Residency,
+    ScratchRequirement,
+};
