@@ -15,6 +15,10 @@ pub trait GpuGraphExecutor: core::fmt::Debug + Send + Sync {
     /// Hardware/API facts.
     fn device(&self) -> &GpuDeviceDescriptor;
 
+    /// Validate algorithm-specific precision, determinism, and resource policy
+    /// before any work is submitted to the device.
+    fn validate_options(&self, options: &ExecutionOptions) -> GeomResult<()>;
+
     /// Compile graph roots as one batch to amortize upload and synchronization.
     ///
     /// Return exactly one mesh per root, in input order. Honor every forwarded

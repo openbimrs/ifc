@@ -15,8 +15,11 @@ together. Add no empty placeholder files.
 No fake device or claimed operation. Concrete API crates implement
 `GpuGraphExecutor` or another narrow executor. Batch boundaries amortize
 transfer. The adapter validates device preference, f32/f64 policy, graph-root
-ownership, and result cardinality; concrete executors must honor forwarded
-determinism and memory-budget requirements.
+ownership, and result cardinality, then invokes the executor's required
+operation-specific option-validation hook before submission. Executor output
+contract violations use `BackendContractViolation`; they are not caller input
+errors. Concrete executors must honor forwarded determinism and memory-budget
+requirements.
 
 Public values derive `Debug` and `Clone`; add other standard traits only when
 semantically valid. Validate unsupported and unavailable paths in tests.

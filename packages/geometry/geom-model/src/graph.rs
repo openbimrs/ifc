@@ -326,4 +326,102 @@ mod tests {
             ))
             .is_ok());
     }
+
+    #[test]
+    fn surface_curve_requires_a_three_dimensional_basis() {
+        let mut builder = GeometryGraphBuilder::new();
+        let curve_2d = builder
+            .push(GeometryNode::Curve2(geom_curve::Curve2::Line(
+                geom_curve::Line2 {
+                    origin: geom_core::Vec2::ZERO,
+                    direction: geom_core::Vec2::X,
+                },
+            )))
+            .unwrap();
+        let error = builder
+            .push(GeometryNode::CurveRelation(
+                crate::CurveRelation::SurfaceCurve {
+                    curve_3d: curve_2d,
+                    associated_geometry: Vec::new(),
+                    master: crate::MasterRepresentation::Curve3d,
+                },
+            ))
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            GraphError::InvalidReferenceType {
+                reference,
+                expected: "curve3",
+                actual: "curve2",
+            } if reference == curve_2d
+        ));
+
+        let curve_3d = builder
+            .push(GeometryNode::Curve3(geom_curve::Curve3::Line(
+                geom_curve::Line3 {
+                    origin: Vec3::ZERO,
+                    direction: Vec3::X,
+                },
+            )))
+            .unwrap();
+        let trimmed_3d = builder
+            .push(GeometryNode::CurveRelation(crate::CurveRelation::Trimmed {
+                basis: curve_3d,
+                start: Vec::new(),
+                end: Vec::new(),
+                sense_agreement: true,
+                preference: crate::TrimmingPreference::Unspecified,
+            }))
+            .unwrap();
+        assert!(builder
+            .push(GeometryNode::CurveRelation(
+                crate::CurveRelation::SurfaceCurve {
+                    curve_3d: trimmed_3d,
+                    associated_geometry: Vec::new(),
+                    master: crate::MasterRepresentation::Curve3d,
+                },
+            ))
+            .is_ok());
+    }
+
+    #[test]
+    fn parameter_curve_requires_a_two_dimensional_reference() {
+        let mut builder = GeometryGraphBuilder::new();
+        let surface = builder
+            .push(GeometryNode::Surface(geom_surface::Surface::Plane(
+                geom_surface::Plane {
+                    frame: geom_core::Frame3 {
+                        origin: Vec3::ZERO,
+                        x: Vec3::X,
+                        y: Vec3::Y,
+                        z: Vec3::Z,
+                    },
+                },
+            )))
+            .unwrap();
+        let curve_3d = builder
+            .push(GeometryNode::Curve3(geom_curve::Curve3::Line(
+                geom_curve::Line3 {
+                    origin: Vec3::ZERO,
+                    direction: Vec3::X,
+                },
+            )))
+            .unwrap();
+        let error = builder
+            .push(GeometryNode::CurveRelation(
+                crate::CurveRelation::ParameterCurve {
+                    basis_surface: surface,
+                    reference_curve: curve_3d,
+                },
+            ))
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            GraphError::InvalidReferenceType {
+                reference,
+                expected: "curve2",
+                actual: "curve3",
+            } if reference == curve_3d
+        ));
+    }
 }

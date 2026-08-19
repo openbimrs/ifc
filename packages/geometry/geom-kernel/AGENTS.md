@@ -12,7 +12,12 @@ together. Add no empty placeholder files.
 
 ## Invariants
 
-No concrete implementation or hardware API dependency. Open traits remain downstream-implementable. A trait implementation is the capability proof; descriptors carry identity only. Registries store executable trait objects, never boolean capability claims.
+No concrete implementation or hardware API dependency. Open traits remain
+downstream-implementable. A trait implementation is the capability proof;
+descriptors carry identity only. Registries store executable trait objects,
+never boolean capability claims. Registry batch methods dispatch to provider
+batch overrides; only `Unsupported` and `Unavailable` permit fallback, while
+all other errors fail fast.
 
 Public values derive `Debug` and `Clone`; add other standard traits only when
 semantically valid. Validate unsupported and unavailable paths in tests.

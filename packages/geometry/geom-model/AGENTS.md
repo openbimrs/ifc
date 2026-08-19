@@ -17,7 +17,8 @@ placeholder files.
 ## Invariants
 
 Every reference points to a prior node in the same graph and satisfies the
-edge's accepted reference family. An instance preserves its source node's
+edge's accepted reference family, including Curve2/Curve3 dimensionality through
+instances and curve-relation chains. An instance preserves its source node's
 reference family; it must not erase dimensional semantics. Keep source IDs
 outside the graph. Preserve instancing and exact operations; never lower to
 meshes here.

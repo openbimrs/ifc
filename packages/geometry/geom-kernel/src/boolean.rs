@@ -84,13 +84,10 @@ impl MeshBooleanRegistry {
         self.providers.iter().map(|entry| entry.provider.as_ref())
     }
 
-    /// Execute according to device policy with narrow fallback semantics.
-    pub fn boolean(
+    fn dispatch(
         &self,
-        subject: &TriMesh,
-        tool: &TriMesh,
-        operation: BooleanOperator,
         options: &ExecutionOptions,
+        execute: impl Fn(&dyn MeshBoolean) -> GeomResult<TriMesh>,
     ) -> GeomResult<TriMesh> {
         let mut last_retryable = None;
         for entry in &self.providers {
@@ -98,7 +95,7 @@ impl MeshBooleanRegistry {
             if !matches_device(options.device(), descriptor.id, descriptor.target) {
                 continue;
             }
-            match entry.provider.boolean(subject, tool, operation, options) {
+            match execute(entry.provider.as_ref()) {
                 Ok(mesh) => return Ok(mesh),
                 Err(error @ (GeomError::Unsupported { .. } | GeomError::Unavailable { .. })) => {
                     last_retryable = Some(error);
@@ -110,6 +107,31 @@ impl MeshBooleanRegistry {
             backend: BackendId::new("mesh-boolean-registry"),
             operation: Operation::MeshBoolean,
         }))
+    }
+
+    /// Execute according to device policy with narrow fallback semantics.
+    pub fn boolean(
+        &self,
+        subject: &TriMesh,
+        tool: &TriMesh,
+        operation: BooleanOperator,
+        options: &ExecutionOptions,
+    ) -> GeomResult<TriMesh> {
+        self.dispatch(options, |provider| {
+            provider.boolean(subject, tool, operation, options)
+        })
+    }
+
+    /// Subtract many tools through one provider dispatch.
+    pub fn subtract_many(
+        &self,
+        subject: &TriMesh,
+        tools: &[TriMesh],
+        options: &ExecutionOptions,
+    ) -> GeomResult<TriMesh> {
+        self.dispatch(options, |provider| {
+            provider.subtract_many(subject, tools, options)
+        })
     }
 }
 
@@ -170,6 +192,7 @@ mod tests {
     enum ProbeResult {
         Success,
         Unsupported,
+        Unavailable,
         Invalid,
     }
 
@@ -202,10 +225,49 @@ mod tests {
                     backend: self.id,
                     operation: Operation::MeshBoolean,
                 }),
+                ProbeResult::Unavailable => Err(GeomError::Unavailable {
+                    backend: self.id,
+                    reason: "probe unavailable".to_owned(),
+                }),
                 ProbeResult::Invalid => {
                     Err(GeomError::InvalidInput("probe rejected input".to_owned()))
                 }
             }
+        }
+    }
+
+    #[derive(Debug)]
+    struct BatchBoolean {
+        calls: Arc<AtomicUsize>,
+    }
+
+    impl Backend for BatchBoolean {
+        fn descriptor(&self) -> BackendDescriptor {
+            BackendDescriptor::new(BackendId::new("batch"), ExecutionTarget::OptimizedCpu)
+        }
+    }
+
+    impl MeshBoolean for BatchBoolean {
+        fn boolean(
+            &self,
+            _subject: &TriMesh,
+            _tool: &TriMesh,
+            _operation: BooleanOperator,
+            _options: &ExecutionOptions,
+        ) -> GeomResult<TriMesh> {
+            Err(GeomError::InvalidInput(
+                "batch provider must use its batch override".to_owned(),
+            ))
+        }
+
+        fn subtract_many(
+            &self,
+            subject: &TriMesh,
+            _tools: &[TriMesh],
+            _options: &ExecutionOptions,
+        ) -> GeomResult<TriMesh> {
+            self.calls.fetch_add(1, Ordering::Relaxed);
+            Ok(subject.clone())
         }
     }
 
@@ -230,8 +292,31 @@ mod tests {
     }
 
     #[test]
+    fn registry_dispatches_batch_subtraction_to_the_provider_override() {
+        let calls = Arc::new(AtomicUsize::new(0));
+        let mut registry = MeshBooleanRegistry::new();
+        registry.register(
+            10,
+            BatchBoolean {
+                calls: calls.clone(),
+            },
+        );
+        let mesh = TriMesh::default();
+        let options = ExecutionOptions::new(Tolerance::METRE);
+
+        assert_eq!(
+            registry
+                .subtract_many(&mesh, &[mesh.clone(), mesh.clone()], &options)
+                .expect("batch provider executes"),
+            mesh
+        );
+        assert_eq!(calls.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
     fn registry_falls_back_only_for_retryable_errors_and_honors_device_policy() {
         let high_calls = Arc::new(AtomicUsize::new(0));
+        let unsupported_calls = Arc::new(AtomicUsize::new(0));
         let low_calls = Arc::new(AtomicUsize::new(0));
         let mut registry = MeshBooleanRegistry::new();
         registry.register(
@@ -239,8 +324,17 @@ mod tests {
             ProbeBoolean {
                 id: BackendId::new("unavailable-gpu"),
                 target: ExecutionTarget::Gpu,
-                result: ProbeResult::Unsupported,
+                result: ProbeResult::Unavailable,
                 calls: high_calls.clone(),
+            },
+        );
+        registry.register(
+            50,
+            ProbeBoolean {
+                id: BackendId::new("unsupported-cpu"),
+                target: ExecutionTarget::OptimizedCpu,
+                result: ProbeResult::Unsupported,
+                calls: unsupported_calls.clone(),
             },
         );
         registry.register(
@@ -258,6 +352,7 @@ mod tests {
             .boolean(&mesh, &mesh, BooleanOperator::Union, &auto)
             .is_ok());
         assert_eq!(high_calls.load(Ordering::Relaxed), 1);
+        assert_eq!(unsupported_calls.load(Ordering::Relaxed), 1);
         assert_eq!(low_calls.load(Ordering::Relaxed), 1);
 
         let cpu = auto.with_device(DevicePreference::Cpu);
@@ -265,6 +360,7 @@ mod tests {
             .boolean(&mesh, &mesh, BooleanOperator::Union, &cpu)
             .is_ok());
         assert_eq!(high_calls.load(Ordering::Relaxed), 1);
+        assert_eq!(unsupported_calls.load(Ordering::Relaxed), 2);
         assert_eq!(low_calls.load(Ordering::Relaxed), 2);
 
         let invalid_calls = Arc::new(AtomicUsize::new(0));
@@ -294,5 +390,26 @@ mod tests {
         ));
         assert_eq!(invalid_calls.load(Ordering::Relaxed), 1);
         assert_eq!(skipped_calls.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn empty_registry_returns_structured_unsupported_error() {
+        let registry = MeshBooleanRegistry::new();
+        let mesh = TriMesh::default();
+        let error = registry
+            .boolean(
+                &mesh,
+                &mesh,
+                BooleanOperator::Union,
+                &ExecutionOptions::new(Tolerance::METRE),
+            )
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            GeomError::Unsupported {
+                backend,
+                operation: Operation::MeshBoolean,
+            } if backend == BackendId::new("mesh-boolean-registry")
+        ));
     }
 }

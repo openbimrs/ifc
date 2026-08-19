@@ -47,7 +47,7 @@ impl CpuExecution {
     pub fn detect() -> Self {
         let features = CpuFeatures::detect();
         #[cfg(feature = "simd")]
-        let instruction_set = features.best();
+        let instruction_set = CpuInstructionSet::Portable;
         #[cfg(not(feature = "simd"))]
         let instruction_set = CpuInstructionSet::Portable;
         Self {
@@ -131,5 +131,43 @@ mod tests {
             .build()
             .expect("portable context");
         assert_eq!(backend.instruction_set(), CpuInstructionSet::Portable);
+    }
+
+    #[cfg(not(feature = "simd"))]
+    #[test]
+    fn auto_selection_stays_portable_without_the_simd_feature() {
+        assert_eq!(
+            CpuExecution::detect().instruction_set(),
+            features.best()
+        );
+    }
+
+    #[cfg(feature = "simd")]
+    #[test]
+    fn auto_selection_uses_the_best_runtime_supported_instruction_set() {
+        let backend = CpuExecution::detect();
+        assert_eq!(backend.instruction_set(), backend.features().best());
+        assert!(backend.features().supports(backend.instruction_set()));
+    }
+
+    #[cfg(feature = "parallel")]
+    #[test]
+    fn configured_worker_bound_controls_the_local_pool() {
+        let backend = CpuExecutionBuilder::new()
+            .threads(NonZeroUsize::new(2).unwrap())
+            .build()
+            .expect("two-worker context");
+        assert_eq!(backend.thread_count().get(), 2);
+        assert_eq!(backend.install(rayon::current_num_threads), 2);
+    }
+
+    #[cfg(not(feature = "parallel"))]
+    #[test]
+    fn multiple_workers_require_the_parallel_feature() {
+        let error = CpuExecutionBuilder::new()
+            .threads(NonZeroUsize::new(2).unwrap())
+            .build()
+            .unwrap_err();
+        assert_eq!(error, CpuConfigError::ParallelFeatureDisabled);
     }
 }

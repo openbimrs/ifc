@@ -1,8 +1,8 @@
 //! Adapter from an API-specific GPU executor to graph compilation.
 
 use geom_kernel::{
-    Backend, BackendDescriptor, DevicePreference, ExecutionOptions, ExecutionTarget, GeomError,
-    GeomResult, GeometryCompiler, Operation, Precision,
+    Backend, BackendDescriptor, BackendId, DevicePreference, ExecutionOptions, ExecutionTarget,
+    GeomError, GeomResult, GeometryCompiler, Operation, Precision,
 };
 use geom_mesh::TriMesh;
 use geom_model::{GeometryGraph, NodeId};
@@ -51,7 +51,7 @@ impl<E> GpuCompiler<E> {
                 operation: Operation::GraphCompilation,
             });
         }
-        Ok(())
+        self.executor.validate_options(options)
     }
 
     fn validate_roots(graph: &GeometryGraph, roots: &[NodeId]) -> GeomResult<()> {
@@ -63,11 +63,16 @@ impl<E> GpuCompiler<E> {
         Ok(())
     }
 
-    fn validate_result_count(root_count: usize, result_count: usize) -> GeomResult<()> {
+    fn validate_result_count(
+        backend: BackendId,
+        root_count: usize,
+        result_count: usize,
+    ) -> GeomResult<()> {
         if result_count != root_count {
-            return Err(GeomError::InvalidInput(format!(
-                "GPU executor returned {result_count} results for {root_count} roots"
-            )));
+            return Err(GeomError::BackendContractViolation {
+                backend,
+                detail: format!("returned {result_count} results for {root_count} roots"),
+            });
         }
         Ok(())
     }
@@ -89,10 +94,14 @@ impl<E: GpuGraphExecutor> GeometryCompiler for GpuCompiler<E> {
         self.validate_options(options)?;
         Self::validate_roots(graph, &[root])?;
         let results = self.executor.compile_batch(graph, &[root], options)?;
-        Self::validate_result_count(1, results.len())?;
-        results.into_iter().next().ok_or_else(|| {
-            GeomError::InvalidInput("GPU executor returned no result for one root".to_owned())
-        })
+        Self::validate_result_count(self.executor.device().id, 1, results.len())?;
+        results
+            .into_iter()
+            .next()
+            .ok_or_else(|| GeomError::BackendContractViolation {
+                backend: self.executor.device().id,
+                detail: "returned no result for one root".to_owned(),
+            })
     }
 
     fn compile_batch(
@@ -104,7 +113,7 @@ impl<E: GpuGraphExecutor> GeometryCompiler for GpuCompiler<E> {
         self.validate_options(options)?;
         Self::validate_roots(graph, roots)?;
         let results = self.executor.compile_batch(graph, roots, options)?;
-        Self::validate_result_count(roots.len(), results.len())?;
+        Self::validate_result_count(self.executor.device().id, roots.len(), results.len())?;
         Ok(results)
     }
 }

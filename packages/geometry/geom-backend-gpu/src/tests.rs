@@ -1,3 +1,8 @@
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
+
 use geom_core::{Tolerance, Vec3};
 use geom_kernel::{
     Backend, BackendId, DevicePreference, ExecutionOptions, GeomError, GeomResult,
@@ -13,9 +18,19 @@ struct FakeExecutor {
     device: GpuDeviceDescriptor,
 }
 
+#[derive(Debug)]
+struct RejectingOptionsExecutor {
+    inner: FakeExecutor,
+    compile_calls: Arc<AtomicUsize>,
+}
+
 impl GpuGraphExecutor for FakeExecutor {
     fn device(&self) -> &GpuDeviceDescriptor {
         &self.device
+    }
+
+    fn validate_options(&self, _options: &ExecutionOptions) -> GeomResult<()> {
+        Ok(())
     }
 
     fn compile_batch(
@@ -36,6 +51,10 @@ impl GpuGraphExecutor for WrongCardinalityExecutor {
         self.0.device()
     }
 
+    fn validate_options(&self, options: &ExecutionOptions) -> GeomResult<()> {
+        self.0.validate_options(options)
+    }
+
     fn compile_batch(
         &self,
         _graph: &GeometryGraph,
@@ -43,6 +62,29 @@ impl GpuGraphExecutor for WrongCardinalityExecutor {
         _options: &ExecutionOptions,
     ) -> GeomResult<Vec<TriMesh>> {
         Ok(vec![TriMesh::default(), TriMesh::default()])
+    }
+}
+
+impl GpuGraphExecutor for RejectingOptionsExecutor {
+    fn device(&self) -> &GpuDeviceDescriptor {
+        self.inner.device()
+    }
+
+    fn validate_options(&self, _options: &ExecutionOptions) -> GeomResult<()> {
+        Err(GeomError::Unsupported {
+            backend: self.inner.device.id,
+            operation: Operation::GraphCompilation,
+        })
+    }
+
+    fn compile_batch(
+        &self,
+        _graph: &GeometryGraph,
+        _roots: &[NodeId],
+        _options: &ExecutionOptions,
+    ) -> GeomResult<Vec<TriMesh>> {
+        self.compile_calls.fetch_add(1, Ordering::Relaxed);
+        Ok(Vec::new())
     }
 }
 
@@ -116,8 +158,26 @@ fn adapter_enforces_one_result_per_requested_root() {
 
     assert!(matches!(
         compiler.compile_batch(&graph, &[root], &ExecutionOptions::new(Tolerance::METRE),),
-        Err(GeomError::InvalidInput { .. })
+        Err(GeomError::BackendContractViolation { backend, .. })
+            if backend == BackendId::new("wrong-cardinality")
     ));
+}
+
+#[test]
+fn adapter_runs_executor_policy_validation_before_dispatch() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let compiler = GpuCompiler::new(RejectingOptionsExecutor {
+        inner: fake_executor("policy-rejection", true),
+        compile_calls: calls.clone(),
+    });
+    let (graph, root) = point_graph(Vec3::ZERO);
+
+    assert!(matches!(
+        compiler.compile(&graph, root, &ExecutionOptions::new(Tolerance::METRE)),
+        Err(GeomError::Unsupported { backend, .. })
+            if backend == BackendId::new("policy-rejection")
+    ));
+    assert_eq!(calls.load(Ordering::Relaxed), 0);
 }
 
 #[test]

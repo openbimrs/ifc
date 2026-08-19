@@ -30,6 +30,14 @@ pub enum GeomError {
         /// Diagnostic reason.
         reason: String,
     },
+    /// Backend returned a result that violates its operation contract.
+    #[error("backend `{backend}` violated its contract: {detail}")]
+    BackendContractViolation {
+        /// Backend that violated the contract.
+        backend: BackendId,
+        /// Actionable contract diagnostic.
+        detail: String,
+    },
     /// Dirty topology violates a manifold precondition.
     #[error("input is not manifold: {0}")]
     NotManifold(String),

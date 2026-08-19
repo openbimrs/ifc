@@ -12,7 +12,12 @@ together. Add no empty placeholder files.
 
 ## Invariants
 
-Portable path is oracle. SIMD requires runtime detection. Optional Rayon uses a local bounded pool. Operation providers compose this context and implement a capability trait only when the algorithm works. Never compile the whole workspace for the build host only.
+Portable path is oracle. SIMD requires runtime detection. Optional Rayon uses a
+local bounded pool. Operation providers compose this context and implement a
+capability trait only when the algorithm works. Feature-gated tests must prove
+default scalar selection, SIMD runtime selection, disabled-parallel rejection,
+and configured local-pool worker counts. Never compile the whole workspace for
+the build host only.
 
 Public values derive `Debug` and `Clone`; add other standard traits only when
 semantically valid. Validate unsupported and unavailable paths in tests.

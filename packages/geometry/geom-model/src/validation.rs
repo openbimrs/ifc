@@ -5,6 +5,8 @@ use crate::{CurveRelation, GeometryNode, GraphError, NodeId, SolidOperation, Sur
 #[derive(Debug, Clone, Copy)]
 enum ExpectedReference {
     Curve,
+    Curve2,
+    Curve3,
     Surface,
     CurveOrSurface,
     Profile,
@@ -12,10 +14,66 @@ enum ExpectedReference {
     HalfSpace,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CurveDimension {
+    Two,
+    Three,
+}
+
+fn curve_has_dimension(
+    node: &GeometryNode,
+    nodes: &[GeometryNode],
+    expected: CurveDimension,
+) -> bool {
+    let mut pending = vec![node];
+    while let Some(mut node) = pending.pop() {
+        while let GeometryNode::Instance(instance) = node {
+            node = &nodes[instance.source.index()];
+        }
+        match node {
+            GeometryNode::Curve2(_) if expected == CurveDimension::Two => {}
+            GeometryNode::Curve3(_) if expected == CurveDimension::Three => {}
+            GeometryNode::Curve2(_) | GeometryNode::Curve3(_) => return false,
+            GeometryNode::CurveRelation(relation) => {
+                if !queue_curve_dependencies(relation, nodes, expected, &mut pending) {
+                    return false;
+                }
+            }
+            _ => return false,
+        }
+    }
+    true
+}
+
+fn queue_curve_dependencies<'a>(
+    relation: &CurveRelation,
+    nodes: &'a [GeometryNode],
+    expected: CurveDimension,
+    pending: &mut Vec<&'a GeometryNode>,
+) -> bool {
+    match relation {
+        CurveRelation::Composite { segments } => {
+            if segments.is_empty() {
+                return false;
+            }
+            pending.extend(segments.iter().map(|segment| &nodes[segment.curve.index()]));
+            true
+        }
+        CurveRelation::Trimmed { basis, .. } | CurveRelation::Offset { basis, .. } => {
+            pending.push(&nodes[basis.index()]);
+            true
+        }
+        CurveRelation::SurfaceCurve { .. } => expected == CurveDimension::Three,
+        CurveRelation::ParameterCurve { .. } => expected == CurveDimension::Two,
+    }
+}
+
 impl ExpectedReference {
     const fn description(self) -> &'static str {
         match self {
             Self::Curve => "curve",
+            Self::Curve2 => "curve2",
+            Self::Curve3 => "curve3",
             Self::Surface => "surface",
             Self::CurveOrSurface => "curve or surface",
             Self::Profile => "profile",
@@ -32,18 +90,23 @@ impl ExpectedReference {
             node = &nodes[instance.source.index()];
         }
 
-        let curve = matches!(
-            node,
-            GeometryNode::Curve2(_) | GeometryNode::Curve3(_) | GeometryNode::CurveRelation(_)
-        );
         let surface = matches!(
             node,
             GeometryNode::Surface(_) | GeometryNode::SurfaceRelation(_)
         );
         match self {
-            Self::Curve => curve,
+            Self::Curve => {
+                curve_has_dimension(node, nodes, CurveDimension::Two)
+                    || curve_has_dimension(node, nodes, CurveDimension::Three)
+            }
+            Self::Curve2 => curve_has_dimension(node, nodes, CurveDimension::Two),
+            Self::Curve3 => curve_has_dimension(node, nodes, CurveDimension::Three),
             Self::Surface => surface,
-            Self::CurveOrSurface => curve || surface,
+            Self::CurveOrSurface => {
+                surface
+                    || curve_has_dimension(node, nodes, CurveDimension::Two)
+                    || curve_has_dimension(node, nodes, CurveDimension::Three)
+            }
             Self::Profile => matches!(node, GeometryNode::Profile(_)),
             Self::Solid => matches!(
                 node,
@@ -177,7 +240,7 @@ fn validate_curve_relation(
             associated_geometry,
             ..
         } => {
-            expect_reference(nodes, *curve_3d, ExpectedReference::Curve)?;
+            expect_reference(nodes, *curve_3d, ExpectedReference::Curve3)?;
             for reference in associated_geometry {
                 expect_reference(nodes, *reference, ExpectedReference::CurveOrSurface)?;
             }
@@ -188,7 +251,7 @@ fn validate_curve_relation(
             reference_curve,
         } => {
             expect_reference(nodes, *basis_surface, ExpectedReference::Surface)?;
-            expect_reference(nodes, *reference_curve, ExpectedReference::Curve)
+            expect_reference(nodes, *reference_curve, ExpectedReference::Curve2)
         }
     }
 }
