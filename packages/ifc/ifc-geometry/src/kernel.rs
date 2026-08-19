@@ -1,4 +1,4 @@
-//! Legacy pre-DAG geometry request vocabular...[truncated]
+//! Legacy pre-DAG geometry request vocabulary.
 //!
 //! This module remains solely for source compatibility with the public API that
 //! preceded the neutral `geom-model` graph. New code must lower IFC directly to

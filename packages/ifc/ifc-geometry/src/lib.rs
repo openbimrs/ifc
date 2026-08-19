@@ -38,7 +38,7 @@
 //! **Neutral DAG output.** Implemented lowerers resolve IFC units, placements,
 //! profiles, and representation relationships into `geom-model` nodes. Active
 //! lowering owns no duplicate geometry types and never selects a CPU/GPU
-//! provider. The legacy [`kernel`] namespace i...[truncated]
+//! provider. The legacy [`kernel`] namespace is retained only as a source-
 //! compatibility shell for the pre-DAG public API.
 
 pub mod constraint;
