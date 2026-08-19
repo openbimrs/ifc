@@ -68,7 +68,6 @@ pub mod tessellated;
 pub(crate) mod testkit;
 
 pub use bbox::BoundingBox;
-#[allow(deprecated)]
 pub use boolean::{
     BooleanClippingResult, BooleanOperator, BooleanResult, IfcBooleanOperator, OperandKind,
     ParseIfcBooleanOperatorError,

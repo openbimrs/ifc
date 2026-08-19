@@ -171,11 +171,10 @@ fn the_neutral_geometry_dag_is_part_of_the_public_api() {
     ));
 }
 
-/// Public names from the pre-DAG adapter remain available as deprecated source
+/// Public names from the pre-DAG adapter remain available as legacy source
 /// compatibility shims. This compile-time test prevents an additive scaffold
 /// change from silently becoming an API break.
 #[test]
-#[allow(deprecated)]
 fn pre_dag_public_names_remain_source_compatible() {
     use ifc_geometry::kernel::Contour;
     use ifc_geometry::{BooleanOp, CsgShape, Primitive, Profile};
@@ -194,7 +193,7 @@ fn pre_dag_public_names_remain_source_compatible() {
 
     let _: BooleanOp = BooleanOp::Difference;
     let legacy_operator = ifc_geometry::solid::BooleanOperator::parse("DIFFERENCE")
-        .expect("deprecated alias keeps inherent methods");
+        .expect("legacy alias keeps inherent methods");
     assert_eq!(
         legacy_operator,
         ifc_geometry::solid::IfcBooleanOperator::Difference

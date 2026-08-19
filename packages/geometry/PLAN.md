@@ -135,8 +135,9 @@ L5 format bridges     ifc-geometry and future adapters (outside this directory)
 The graph direction is executable in `geom-core/tests/layering.rs`.
 `geom-kernel` contains no implementation features. Active `ifc-geometry`
 lowering emits the neutral graph rather than IFC-local profiles, primitives, or
-CSG requests; its deprecated `kernel` namespace only preserves pre-DAG source
-compatibility and is not accepted by execution providers.
+CSG requests; its legacy `kernel` namespace only preserves pre-DAG source
+compatibility and is not accepted by execution providers. The names remain
+warning-clean because additive compatibility includes clients that deny warnings.
 
 ## 6. Facade capabilities
 
@@ -176,7 +177,7 @@ Completed scaffold:
 
 - [x] Authoritative 163-declaration manifest and executable owner coverage.
 - [x] One canonical active neutral vocabulary; pre-DAG IFC-local request names
-      retained only as deprecated source-compatibility values.
+      retained only as legacy source-compatibility values.
 - [x] Growth-shaped modules plus progressive `AGENTS.md`/`PLAN.md` boundaries.
 - [x] Narrow operation traits, executable mesh-boolean registry, CPU context,
       and GPU graph-compiler adapter.

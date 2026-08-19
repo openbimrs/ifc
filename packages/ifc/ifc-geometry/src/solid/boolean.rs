@@ -60,8 +60,7 @@ pub enum IfcBooleanOperator {
     Difference,
 }
 
-/// Deprecated source-compatible name for the IFC-file enumeration.
-#[deprecated(note = "use IfcBooleanOperator to distinguish IFC from neutral geometry")]
+/// Legacy source-compatible name for the IFC-file enumeration.
 pub type BooleanOperator = IfcBooleanOperator;
 
 /// Invalid `IfcBooleanOperator` token.

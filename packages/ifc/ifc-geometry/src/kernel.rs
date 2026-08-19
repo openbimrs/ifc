@@ -1,26 +1,23 @@
-//! Deprecated pre-DAG geometry request vocabulary.
+//! Legacy pre-DAG geometry request vocabular...[truncated]
 //!
 //! This module remains solely for source compatibility with the public API that
 //! preceded the neutral `geom-model` graph. New code must lower IFC directly to
 //! `geom_model::GeometryGraph` through [`crate::lower`]. These values are not
 //! consumed by the new execution contracts and will not receive new geometry
-//! families.
+//! families. They intentionally do not carry Rust's `#[deprecated]` attribute:
+//! existing clients that deny warnings must keep compiling unchanged.
 //!
 //! The compatibility types preserve their original source shape, including
 //! metre/radian units and absolute transforms. They intentionally stay isolated
 //! from active lowering so early polygon approximation and recursive request
 //! trees cannot leak back into the canonical representation.
 
-#![allow(deprecated)]
-
 use crate::transform::Transform;
 
 /// A point in 3D, in metres.
-#[deprecated(note = "use geom_core::Point3")]
 pub type Point3 = [f64; 3];
 
 /// A direction in 3D. Not guaranteed normalized; kernels should normalize.
-#[deprecated(note = "use geom_core::Vec3")]
 pub type Vector3 = [f64; 3];
 
 /// A closed 2D contour in a profile's own coordinate system.
@@ -28,7 +25,6 @@ pub type Vector3 = [f64; 3];
 /// Curved edges are already approximated into line segments by the caller when
 /// a tolerance is supplied, so a kernel receives polygons rather than needing
 /// its own curve evaluator for the common case.
-#[deprecated(note = "use geom_profile::Contour")]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Contour {
     /// Ordered vertices. Not repeated at the end; closure is implicit.
@@ -40,7 +36,6 @@ pub struct Contour {
 /// Holes are a separate field rather than a convention about winding order,
 /// because IFC states them explicitly and inferring them is a common source of
 /// wrong solids.
-#[deprecated(note = "use geom_profile::Profile")]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Profile {
     /// The outer boundary.
@@ -50,7 +45,6 @@ pub struct Profile {
 }
 
 /// Boolean operators, matching `IfcBooleanOperator`.
-#[deprecated(note = "use geom_core::BooleanOperator")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BooleanOp {
     /// Set union.
@@ -69,7 +63,6 @@ pub enum BooleanOp {
 /// boolean, and a kernel cannot tessellate one on its own. When `bounded_by`
 /// is present the region is additionally clipped, which is what makes it
 /// usable in practice.
-#[deprecated(note = "use geom_primitive::HalfSpace")]
 #[derive(Debug, Clone, PartialEq)]
 pub struct HalfSpace {
     /// A point on the dividing plane.
@@ -87,7 +80,6 @@ pub struct HalfSpace {
 }
 
 /// A finite clipping region for an otherwise unbounded half space.
-#[deprecated(note = "use geom_model::SolidOperation::BoundedHalfSpace")]
 #[derive(Debug, Clone, PartialEq)]
 pub struct BoundedRegion {
     /// The boundary polygon in the local XY plane.
@@ -100,7 +92,6 @@ pub struct BoundedRegion {
 ///
 /// This closed enum preserves the old API shape only. It is not the complete IFC
 /// geometry vocabulary and no current geometry provider consumes it.
-#[deprecated(note = "use geom_model::GeometryNode")]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Primitive {
     /// Sweep a profile linearly. `IfcExtrudedAreaSolid`.
@@ -190,7 +181,6 @@ pub enum Primitive {
 }
 
 /// Analytic CSG primitives from `IfcGeometricModelResource`.
-#[deprecated(note = "use geom_primitive::Primitive")]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CsgShape {
     /// `IfcBlock`: axis-aligned box from the placement origin.

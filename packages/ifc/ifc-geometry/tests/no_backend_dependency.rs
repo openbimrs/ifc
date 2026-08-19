@@ -42,7 +42,7 @@ fn ifc_crates_never_depend_on_geometry_execution_crates() {
 }
 
 #[test]
-fn active_lowering_does_not_use_the_deprecated_request_vocabulary() {
+fn active_lowering_does_not_use_legacy_request_vocabulary() {
     fn collect_rs(dir: &std::path::Path, files: &mut Vec<PathBuf>) {
         for entry in std::fs::read_dir(dir).expect("read lower directory") {
             let path = entry.expect("lower entry").path();
@@ -66,6 +66,7 @@ fn active_lowering_does_not_use_the_deprecated_request_vocabulary() {
         "crate::Primitive",
         "crate::Profile",
     ];
+    let legacy_names = ["BooleanOp", "CsgShape", "Primitive", "Profile"];
     for file in files {
         let source = std::fs::read_to_string(&file).expect("lower module readable");
         let code = source
@@ -76,9 +77,27 @@ fn active_lowering_does_not_use_the_deprecated_request_vocabulary() {
         for &name in &forbidden {
             assert!(
                 !code.contains(name),
-                "{} imports deprecated pre-DAG value `{name}`; lower directly to geom-model",
+                "{} imports legacy pre-DAG value `{name}`; lower directly to geom-model",
                 file.display()
             );
+        }
+
+        let compact = code
+            .chars()
+            .filter(|character| !character.is_whitespace())
+            .collect::<String>();
+        for grouped in compact.split("usecrate::{").skip(1) {
+            let imports = grouped.split("};").next().unwrap_or(grouped);
+            for item in imports.split(',') {
+                let name = item.split("as").next().unwrap_or(item);
+                assert!(
+                    name != "kernel"
+                        && !name.starts_with("kernel::")
+                        && !legacy_names.contains(&name),
+                    "{} imports legacy pre-DAG value `{name}` through a grouped crate import; lower directly to geom-model",
+                    file.display()
+                );
+            }
         }
     }
 }
