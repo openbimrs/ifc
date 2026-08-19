@@ -122,16 +122,25 @@ impl<E: GpuGraphExecutor> GeometryCompiler for GpuCompiler<E> {
             })
     }
 
-    fn compile_batch(
+    /// Overriding the `_into` seam keeps *both* batch call shapes on the
+    /// single-dispatch GPU path; overriding only `compile_batch` would leave
+    /// `compile_batch_into` silently falling back to one submission per root.
+    /// Overriding the `_into` seam keeps *both* batch call shapes on the
+    /// single-dispatch GPU path; overriding only `compile_batch` would leave
+    /// `compile_batch_into` silently falling back to one submission per root.
+    fn compile_batch_into(
         &self,
         graph: &GeometryGraph,
         roots: &[NodeId],
         options: &ExecutionOptions,
-    ) -> GeomResult<Vec<TriMesh>> {
+        destination: &mut Vec<TriMesh>,
+    ) -> GeomResult<()> {
         self.validate_options(options)?;
         Self::validate_roots(graph, roots)?;
         let results = self.executor.compile_batch(graph, roots, options)?;
         Self::validate_result_count(self.executor.device().id, roots.len(), results.len())?;
-        Ok(results)
+        destination.reserve(results.len());
+        destination.extend(results);
+        Ok(())
     }
 }

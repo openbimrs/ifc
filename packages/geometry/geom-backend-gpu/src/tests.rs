@@ -253,3 +253,79 @@ fn results_wanted_on_the_executing_device_or_host_are_accepted() {
         );
     }
 }
+
+/// Both batch call shapes must reach the GPU in ONE submission. Overriding only
+/// `compile_batch` would leave `compile_batch_into` silently falling back to a
+/// per-root loop -- a real trap, since the fallback still returns correct
+/// results while destroying the batching the seam exists for.
+#[test]
+fn both_batch_call_shapes_use_a_single_submission() {
+    let submissions = Arc::new(AtomicUsize::new(0));
+    let compiler = GpuCompiler::new(CountingExecutor {
+        inner: fake_executor("counting-gpu", true),
+        submissions: Arc::clone(&submissions),
+    });
+    let mut builder = GeometryGraphBuilder::new();
+    let a = builder.push(GeometryNode::Point3(Vec3::ZERO)).expect("a");
+    let b = builder.push(GeometryNode::Point3(Vec3::ZERO)).expect("b");
+    let c = builder.push(GeometryNode::Point3(Vec3::ZERO)).expect("c");
+    let graph = builder.finish(vec![a, b, c]).expect("graph");
+    let options = ExecutionOptions::new(Tolerance::METRE);
+
+    let owned = compiler
+        .compile_batch(&graph, &[a, b, c], &options)
+        .expect("batch");
+    assert_eq!(owned.len(), 3);
+    assert_eq!(submissions.load(Ordering::SeqCst), 1, "compile_batch");
+
+    submissions.store(0, Ordering::SeqCst);
+    let mut destination = Vec::new();
+    compiler
+        .compile_batch_into(&graph, &[a, b, c], &options, &mut destination)
+        .expect("batch into");
+    assert_eq!(destination.len(), 3);
+    assert_eq!(submissions.load(Ordering::SeqCst), 1, "compile_batch_into");
+}
+
+/// `compile_batch_into` appends; it must not clear the caller's buffer.
+#[test]
+fn compile_batch_into_appends_rather_than_clearing() {
+    let compiler = GpuCompiler::new(fake_executor("append-gpu", true));
+    let (graph, root) = point_graph(Vec3::ZERO);
+    let mut destination = vec![TriMesh::default()];
+    compiler
+        .compile_batch_into(
+            &graph,
+            &[root],
+            &ExecutionOptions::new(Tolerance::METRE),
+            &mut destination,
+        )
+        .expect("append");
+    assert_eq!(destination.len(), 2, "existing entry must survive");
+}
+
+#[derive(Debug)]
+struct CountingExecutor {
+    inner: FakeExecutor,
+    submissions: Arc<AtomicUsize>,
+}
+
+impl GpuGraphExecutor for CountingExecutor {
+    fn device(&self) -> &GpuDeviceDescriptor {
+        self.inner.device()
+    }
+
+    fn validate_options(&self, options: &ExecutionOptions) -> GeomResult<()> {
+        self.inner.validate_options(options)
+    }
+
+    fn compile_batch(
+        &self,
+        graph: &GeometryGraph,
+        roots: &[NodeId],
+        options: &ExecutionOptions,
+    ) -> GeomResult<Vec<TriMesh>> {
+        self.submissions.fetch_add(1, Ordering::SeqCst);
+        self.inner.compile_batch(graph, roots, options)
+    }
+}

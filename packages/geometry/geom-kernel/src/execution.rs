@@ -192,6 +192,75 @@ impl ScratchRequirement {
     }
 }
 
+/// Upper bound on how many outputs an operation produces per input element.
+///
+/// Declared so a caller can size a destination buffer *before* the operation
+/// runs. That is what makes a scan-then-scatter implementation possible: with a
+/// per-element bound, exclusive-prefix-summing the per-element counts gives
+/// every worker a disjoint write offset, so no lock, no atomic counter, and no
+/// dynamically growing vector is needed on the hot path.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum OutputBound {
+    /// Exactly one output per input. The output index equals the input index.
+    OneToOne,
+    /// At most `max` outputs per input element.
+    AtMost {
+        /// Inclusive upper bound per element.
+        max: usize,
+    },
+    /// The output count cannot be bounded before running.
+    ///
+    /// Callers must fall back to a growable collection. Kept representable and
+    /// deliberately unpleasant so an operation that could declare a bound is
+    /// not tempted to shrug.
+    Unbounded,
+}
+
+impl OutputBound {
+    /// Worst-case total outputs for `elements` inputs, or `None` if unbounded
+    /// or the product would overflow.
+    pub const fn upper_bound(self, elements: usize) -> Option<usize> {
+        match self {
+            Self::OneToOne => Some(elements),
+            Self::AtMost { max } => max.checked_mul(elements),
+            Self::Unbounded => None,
+        }
+    }
+
+    /// Whether a caller can preallocate an exact destination for `elements`.
+    pub const fn is_preallocatable(self, elements: usize) -> bool {
+        self.upper_bound(elements).is_some()
+    }
+
+    /// Exclusive prefix sum of `counts`, plus the total.
+    ///
+    /// This is the scan that turns "how many outputs does each element make?"
+    /// into "where does each element write?". Returns `None` if any count
+    /// exceeds this bound (a provider contract violation) or the total
+    /// overflows. Allocation is the caller's single result buffer; the scan
+    /// itself is a running total with no per-element allocation.
+    pub fn write_offsets(self, counts: &[usize]) -> Option<(Vec<usize>, usize)> {
+        let per_element_max = match self {
+            Self::OneToOne => Some(1),
+            Self::AtMost { max } => Some(max),
+            Self::Unbounded => None,
+        };
+        let mut offsets = Vec::with_capacity(counts.len());
+        let mut running = 0usize;
+        for &count in counts {
+            if let Some(max) = per_element_max {
+                if count > max {
+                    return None;
+                }
+            }
+            offsets.push(running);
+            running = running.checked_add(count)?;
+        }
+        Some((offsets, running))
+    }
+}
+
 /// Operation policy with explicit tolerance and precision.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ExecutionOptions {

@@ -3,7 +3,7 @@
 use geom_mesh::TriMesh;
 use geom_model::{GeometryGraph, NodeId};
 
-use crate::{Backend, ExecutionOptions, GeomResult, ScratchRequirement};
+use crate::{Backend, ExecutionOptions, GeomResult, OutputBound, ScratchRequirement};
 
 /// Backend/orchestrator capable of lowering any advertised graph node to mesh.
 ///
@@ -19,6 +19,14 @@ pub trait GeometryCompiler: Backend {
         ScratchRequirement::Unbounded
     }
 
+    /// Outputs produced per requested root.
+    ///
+    /// Compilation is one mesh per root, so the destination size is known
+    /// before the batch runs and workers can write disjoint slots.
+    fn output_bound(&self) -> OutputBound {
+        OutputBound::OneToOne
+    }
+
     /// Compile one root.
     fn compile(
         &self,
@@ -27,17 +35,42 @@ pub trait GeometryCompiler: Backend {
         options: &ExecutionOptions,
     ) -> GeomResult<TriMesh>;
 
-    /// Compile roots as a batch. GPU and parallel implementations should
-    /// override this rather than forcing callers into a serial loop.
+    /// Compile roots into a caller-provided buffer.
+    ///
+    /// This is the seam a batching implementation should override: the caller
+    /// owns the destination, so a provider can reserve once from
+    /// [`Self::output_bound`] and have workers write disjoint slots instead of
+    /// growing a vector under a lock. `destination` is appended to, never
+    /// cleared, so results can be accumulated across calls.
+    ///
+    /// The default is a serial loop over [`Self::compile`], which stays the
+    /// only required primitive.
+    fn compile_batch_into(
+        &self,
+        graph: &GeometryGraph,
+        roots: &[NodeId],
+        options: &ExecutionOptions,
+        destination: &mut Vec<TriMesh>,
+    ) -> GeomResult<()> {
+        destination.reserve(roots.len());
+        for &root in roots {
+            destination.push(self.compile(graph, root, options)?);
+        }
+        Ok(())
+    }
+
+    /// Compile roots as a batch.
+    ///
+    /// Convenience over [`Self::compile_batch_into`]; overriding that instead
+    /// gives both call shapes the batched behaviour.
     fn compile_batch(
         &self,
         graph: &GeometryGraph,
         roots: &[NodeId],
         options: &ExecutionOptions,
     ) -> GeomResult<Vec<TriMesh>> {
-        roots
-            .iter()
-            .map(|&root| self.compile(graph, root, options))
-            .collect()
+        let mut destination = Vec::with_capacity(roots.len());
+        self.compile_batch_into(graph, roots, options, &mut destination)?;
+        Ok(destination)
     }
 }
