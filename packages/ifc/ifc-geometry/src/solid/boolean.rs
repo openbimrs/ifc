@@ -61,7 +61,7 @@ pub enum IfcBooleanOperator {
 }
 
 /// Legacy source-compatible name for the IFC-file enumeration.
-pub type BooleanOperator = IfcBooleanOperator;
+pub use IfcBooleanOperator as BooleanOperator;
 
 /// Invalid `IfcBooleanOperator` token.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]

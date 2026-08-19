@@ -7,6 +7,8 @@ not standing agent instruction.
 
 - Crate boundary and dependency direction are executable in the layering gate.
 - Public data/contracts compile. Behavior remains scaffold unless a test names it.
+- Node handles carry a graph-owner brand. Insertion rejects foreign, forward, and
+  semantically invalid reference families before an immutable graph can exist.
 
 ## Next implementation wave
 

@@ -13,6 +13,7 @@ pub mod id;
 pub mod node;
 pub mod solid_operation;
 pub mod surface_relation;
+mod validation;
 pub mod value;
 
 pub use curve_relation::{

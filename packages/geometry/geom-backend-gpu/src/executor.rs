@@ -16,6 +16,10 @@ pub trait GpuGraphExecutor: core::fmt::Debug + Send + Sync {
     fn device(&self) -> &GpuDeviceDescriptor;
 
     /// Compile graph roots as one batch to amortize upload and synchronization.
+    ///
+    /// Return exactly one mesh per root, in input order. Honor every forwarded
+    /// execution policy or return a typed `GeomError`; never silently reduce
+    /// precision or determinism.
     fn compile_batch(
         &self,
         graph: &GeometryGraph,

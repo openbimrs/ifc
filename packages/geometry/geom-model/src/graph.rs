@@ -2,14 +2,25 @@
 
 use core::fmt;
 
-use crate::{BuiltInNode, GeometryNode, NodeId};
+use crate::{id::GraphId, BuiltInNode, GeometryNode, NodeId};
 
 /// Invalid graph construction.
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GraphError {
+    /// A node handle belongs to a different graph builder.
+    ForeignReference { reference: NodeId },
     /// A node referenced itself or a later/not-yet-inserted node.
     NonPriorReference { node: NodeId, reference: NodeId },
+    /// A reference resolves locally but points to the wrong node family.
+    InvalidReferenceType {
+        /// Existing node whose family is invalid for this edge.
+        reference: NodeId,
+        /// Human-readable family accepted by the edge.
+        expected: &'static str,
+        /// Human-readable family of the referenced node.
+        actual: &'static str,
+    },
     /// A requested root does not exist.
     UnknownRoot { root: NodeId, node_count: usize },
 }
@@ -17,9 +28,17 @@ pub enum GraphError {
 impl fmt::Display for GraphError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::ForeignReference { reference } => {
+                write!(f, "{reference} belongs to another geometry graph")
+            }
             Self::NonPriorReference { node, reference } => {
                 write!(f, "{node} references non-prior {reference}")
             }
+            Self::InvalidReferenceType {
+                reference,
+                expected,
+                actual,
+            } => write!(f, "{reference} has node type {actual}; expected {expected}"),
             Self::UnknownRoot { root, node_count } => {
                 write!(f, "root {root} exceeds graph size {node_count}")
             }
@@ -30,10 +49,21 @@ impl fmt::Display for GraphError {
 impl std::error::Error for GraphError {}
 
 /// Immutable acyclic geometry graph with one or more roots.
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GeometryGraph {
+    owner: GraphId,
     nodes: Vec<GeometryNode>,
     roots: Vec<NodeId>,
+}
+
+impl Default for GeometryGraph {
+    fn default() -> Self {
+        Self {
+            owner: GraphId::fresh(),
+            nodes: Vec::new(),
+            roots: Vec::new(),
+        }
+    }
 }
 
 impl GeometryGraph {
@@ -47,8 +77,11 @@ impl GeometryGraph {
         self.nodes.is_empty()
     }
 
-    /// Read a node by typed handle.
+    /// Read a node by typed handle. A handle owned by another graph returns `None`.
     pub fn get(&self, id: NodeId) -> Option<&GeometryNode> {
+        if !id.belongs_to(self.owner) {
+            return None;
+        }
         self.nodes.get(id.index())
     }
 
@@ -62,28 +95,45 @@ impl GeometryGraph {
         self.nodes
             .iter()
             .enumerate()
-            .map(|(index, node)| (NodeId::from_index(index), node))
+            .map(|(index, node)| (NodeId::from_index(self.owner, index), node))
     }
 }
 
 /// Append-only builder that makes cycles and dangling references unrepresentable.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct GeometryGraphBuilder {
+    owner: Option<GraphId>,
     nodes: Vec<GeometryNode>,
+}
+
+impl Default for GeometryGraphBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl GeometryGraphBuilder {
     /// Create an empty builder.
     pub const fn new() -> Self {
-        Self { nodes: Vec::new() }
+        Self {
+            owner: None,
+            nodes: Vec::new(),
+        }
     }
 
     /// Insert a node. Every reference must be to an earlier node.
     pub fn push(&mut self, node: GeometryNode) -> Result<NodeId, GraphError> {
-        let id = NodeId::from_index(self.nodes.len());
-        if let Some(reference) = node
-            .references()
-            .into_iter()
+        let owner = *self.owner.get_or_insert_with(GraphId::fresh);
+        let id = NodeId::from_index(owner, self.nodes.len());
+        let references = node.references();
+        if let Some(&reference) = references
+            .iter()
+            .find(|reference| !reference.belongs_to(owner))
+        {
+            return Err(GraphError::ForeignReference { reference });
+        }
+        if let Some(&reference) = references
+            .iter()
             .find(|reference| reference.index() >= id.index())
         {
             return Err(GraphError::NonPriorReference {
@@ -91,6 +141,7 @@ impl GeometryGraphBuilder {
                 reference,
             });
         }
+        crate::validation::validate_reference_types(&node, &self.nodes)?;
         self.nodes.push(node);
         Ok(id)
     }
@@ -108,6 +159,10 @@ impl GeometryGraphBuilder {
 
     /// Freeze the graph after validating roots.
     pub fn finish(self, roots: Vec<NodeId>) -> Result<GeometryGraph, GraphError> {
+        let owner = self.owner.unwrap_or_else(GraphId::fresh);
+        if let Some(&reference) = roots.iter().find(|root| !root.belongs_to(owner)) {
+            return Err(GraphError::ForeignReference { reference });
+        }
         if let Some(&root) = roots.iter().find(|root| root.index() >= self.nodes.len()) {
             return Err(GraphError::UnknownRoot {
                 root,
@@ -115,6 +170,7 @@ impl GeometryGraphBuilder {
             });
         }
         Ok(GeometryGraph {
+            owner,
             nodes: self.nodes,
             roots,
         })
@@ -127,6 +183,13 @@ mod tests {
 
     use super::*;
     use crate::Instance;
+
+    const EMPTY_BUILDER: GeometryGraphBuilder = GeometryGraphBuilder::new();
+
+    #[test]
+    fn const_constructor_remains_source_compatible() {
+        assert!(EMPTY_BUILDER.finish(Vec::new()).unwrap().is_empty());
+    }
 
     #[test]
     fn insertion_order_is_topological_order() {
@@ -155,6 +218,58 @@ mod tests {
             Some(GeometryNode::Primitive(geom_primitive::Primitive::Sphere {
                 radius: 1.0
             }))
+        ));
+    }
+
+    #[test]
+    fn handles_from_another_builder_cannot_alias_local_nodes() {
+        let mut foreign_builder = GeometryGraphBuilder::new();
+        let foreign = foreign_builder
+            .push(GeometryNode::Point3(Vec3::ZERO))
+            .unwrap();
+
+        let mut builder = GeometryGraphBuilder::new();
+        let local = builder.push(GeometryNode::Point3(Vec3::ZERO)).unwrap();
+        let error = builder
+            .push(GeometryNode::Instance(Instance {
+                source: foreign,
+                transform: geom_core::Transform3::IDENTITY,
+            }))
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            GraphError::ForeignReference { reference } if reference == foreign
+        ));
+        let error = builder.finish(vec![foreign]).unwrap_err();
+        assert!(matches!(
+            error,
+            GraphError::ForeignReference { reference } if reference == foreign
+        ));
+
+        let graph = foreign_builder.finish(vec![foreign]).unwrap();
+        assert!(graph.get(local).is_none());
+    }
+
+    #[test]
+    fn semantic_reference_types_are_validated_before_insertion() {
+        let mut builder = GeometryGraphBuilder::new();
+        let point = builder.push(GeometryNode::Point3(Vec3::ZERO)).unwrap();
+        let error = builder
+            .push(GeometryNode::SolidOperation(
+                crate::SolidOperation::Extrusion {
+                    profile: point,
+                    direction: Vec3::Z,
+                    depth: 1.0,
+                },
+            ))
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            GraphError::InvalidReferenceType {
+                reference,
+                expected: "profile",
+                actual: "point3",
+            } if reference == point
         ));
     }
 }

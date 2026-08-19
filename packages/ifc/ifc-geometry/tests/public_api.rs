@@ -130,9 +130,12 @@ fn placement_resolution_is_reachable_from_outside_the_crate() {
 /// duplicate IFC-local kernel vocabulary.
 #[test]
 fn the_neutral_geometry_dag_is_part_of_the_public_api() {
-    use geom_model::{BooleanOperator, GeometryGraphBuilder, GeometryNode, SolidOperation};
-    use geom_primitive::Primitive;
-    use geom_profile::{Profile, RectangleProfile};
+    use geom_model::GeometryGraphBuilder;
+    use geom_profile::RectangleProfile;
+    use ifc_geometry::{
+        AnalyticPrimitive as Primitive, ExactProfile as Profile,
+        GeometryBooleanOperator as BooleanOperator, GeometryNode, SolidOperation,
+    };
 
     let mut builder = GeometryGraphBuilder::new();
     let profile = builder
@@ -200,4 +203,28 @@ fn pre_dag_public_names_remain_source_compatible() {
     );
     assert_eq!(profile.outer.points.len(), 3);
     assert_eq!(primitive.kind(), "csg primitive");
+}
+
+#[test]
+fn pre_scaffold_boolean_operator_namespace_remains_source_compatible() {
+    use ifc_geometry::solid::BooleanOperator::{Difference, Intersection, Union};
+
+    assert_eq!(Union.as_token(), "UNION");
+    assert_eq!(Intersection.as_token(), "INTERSECTION");
+    assert_eq!(Difference.as_token(), "DIFFERENCE");
+}
+
+#[test]
+fn pre_scaffold_glob_imports_do_not_make_boolean_operator_ambiguous() {
+    mod downstream {
+        use ifc_geometry::solid::*;
+        use ifc_geometry::*;
+
+        pub fn identity(value: BooleanOperator, _graph: Option<GeometryGraph>) -> BooleanOperator {
+            value
+        }
+    }
+
+    let value = ifc_geometry::solid::BooleanOperator::Union;
+    assert_eq!(downstream::identity(value, None), value);
 }

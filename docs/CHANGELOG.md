@@ -43,11 +43,14 @@ section on release.
 ### Changed
 - Active `ifc-geometry` lowering uses the canonical profile, primitive, CSG, and
   backend-neutral `geom-model` vocabulary. The pre-DAG request values remain
-  deprecated source-compatibility shims and are rejected from active lowering.
+  warning-clean source-compatibility shims and are rejected from active lowering.
 - Local `target-cpu=native` flags are scoped to x86_64 so AArch64 cross-checks do
   not inherit invalid x86 features.
 
 ### Fixed
+- Geometry graph handles are now graph-owned, reference families are validated
+  before insertion, GPU adapters reject incompatible policy/roots/cardinality,
+  and the pre-scaffold IFC boolean enum namespace remains source-compatible.
 - ifcXML wrote numeric-looking strings (`IfcApplication.Version = "0.1"`) as
   plain XML attributes, so re-reading inferred `Real(0.1)` and silently changed
   the value's kind. Such strings now become typed child elements.

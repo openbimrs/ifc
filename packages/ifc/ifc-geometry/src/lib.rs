@@ -39,7 +39,9 @@
 //! profiles, and representation relationships into `geom-model` nodes. Active
 //! lowering owns no duplicate geometry types and never selects a CPU/GPU
 //! provider. The legacy [`kernel`] namespace is retained only as a source-
-//! compatibility shell for the pre-DAG public API.
+//! compatibility shell for the pre-DAG public API. Neutral names that would
+//! otherwise collide are exported explicitly as [`AnalyticPrimitive`],
+//! [`ExactProfile`], and [`GeometryBooleanOperator`].
 
 pub mod constraint;
 pub mod curve;
@@ -56,11 +58,10 @@ pub mod transform;
 pub mod units;
 
 pub use error::{GeometryError, GeometryResult};
-pub use geom_model::{BooleanOperator, GeometryGraph, GeometryNode, NodeId, SolidOperation};
+pub use geom_model::BooleanOperator as GeometryBooleanOperator;
+pub use geom_model::{GeometryGraph, GeometryNode, NodeId, SolidOperation};
 pub use geom_primitive::Primitive as AnalyticPrimitive;
 pub use geom_profile::Profile as ExactProfile;
-#[allow(deprecated)]
-#[deprecated(note = "use geom-model/geom-profile/geom-primitive values")]
 pub use kernel::{BooleanOp, CsgShape, Primitive, Profile};
 pub use slots::Slots;
 pub use transform::Transform;

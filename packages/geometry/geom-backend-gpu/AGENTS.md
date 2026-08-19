@@ -12,7 +12,11 @@ together. Add no empty placeholder files.
 
 ## Invariants
 
-No fake device or claimed operation. Concrete API crates implement `GpuGraphExecutor` or another narrow executor. Batch boundaries amortize transfer. Each operation validates f32/f64 and determinism requirements.
+No fake device or claimed operation. Concrete API crates implement
+`GpuGraphExecutor` or another narrow executor. Batch boundaries amortize
+transfer. The adapter validates device preference, f32/f64 policy, graph-root
+ownership, and result cardinality; concrete executors must honor forwarded
+determinism and memory-budget requirements.
 
 Public values derive `Debug` and `Clone`; add other standard traits only when
 semantically valid. Validate unsupported and unavailable paths in tests.

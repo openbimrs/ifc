@@ -7,6 +7,8 @@ not standing agent instruction.
 
 - Crate boundary and dependency direction are executable in the layering gate.
 - Public data/contracts compile. Behavior remains scaffold unless a test names it.
+- The generic adapter validates device and precision policy, graph-owned roots,
+  and one-result-per-root cardinality before accepting executor output.
 
 ## Next implementation wave
 
