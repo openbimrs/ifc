@@ -16,3 +16,7 @@ geom-kernel = { workspace = true, features = ["model"] }
 
 [dev-dependencies]
 geom-core.workspace = true
+# The out-of-tree executor gate builds a simulated native backend using only
+# published items, proving a real CUDA/HIP bridge needs no privileged access.
+geom-model.workspace = true
+geom-mesh.workspace = true

@@ -21,5 +21,10 @@ contract violations use `BackendContractViolation`; they are not caller input
 errors. Concrete executors must honor forwarded determinism and memory-budget
 requirements.
 
+The seam must stay satisfiable by an out-of-tree crate using published items
+only; `tests/out_of_tree_executor.rs` proves this with a simulated native
+backend. A native (CUDA/HIP) implementor must contain unwinds at its FFI
+boundary and report faults as `BackendContractViolation`. See `docs/adr/0011`.
+
 Public values derive `Debug` and `Clone`; add other standard traits only when
 semantically valid. Validate unsupported and unavailable paths in tests.
