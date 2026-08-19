@@ -12,7 +12,12 @@ together. Add no empty placeholder files.
 
 ## Invariants
 
-Portable path is oracle. SIMD requires runtime detection. Optional Rayon uses a
+This crate is an execution **context** (ISA detection, worker pool, policy). It
+is explicitly **not** the correctness oracle: per `docs/adr/0012` the scalar
+reference implementation is owned by `geom-scalar`, and the scalar
+implementation of an operation lands before any optimized implementation of it.
+
+Portable path is the differential oracle's target, not its owner. SIMD requires runtime detection. Optional Rayon uses a
 local bounded pool. Operation providers compose this context and implement a
 capability trait only when the algorithm works. Feature-gated tests must prove
 default scalar selection, SIMD runtime selection, disabled-parallel rejection,

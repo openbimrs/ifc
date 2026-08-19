@@ -9,6 +9,15 @@
 > reasoning below stands. The backends are no longer separate crates: they are
 > `geom-kernel`'s `backend::{scalar,simd,gpu}` modules behind cargo features,
 > and `geom-dispatch` is now `geom_kernel::backend::Dispatcher`.
+>
+> **Topology and oracle ownership superseded by
+> [0012](0012-scalar-reference-ownership.md).** The crate names in this ADR
+> (`geom-cpu`, `geom-simd`, `geom-gpu`, `geom-dispatch`) and every path in
+> "Relation to existing code" are historical: none of them exist. The real
+> crates are `geom-backend-cpu` (an execution *context*, explicitly **not** the
+> correctness oracle) and `geom-backend-gpu`. The scalar reference is owned by
+> `geom-scalar` per 0012. The reasoning below -- runtime selection, single
+> portable binary, differential validation against a scalar reference -- stands.
 
 
 ## Context

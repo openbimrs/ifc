@@ -11,6 +11,18 @@ section on release.
 ## [Unreleased]
 
 ### Added
+- **Execution policy contracts for determinism, residency, and scratch.**
+  `Determinism` is now three distinct contracts (`Topological`,
+  `NumericallyBounded`, `Bitwise`) compared by strength rather than equality, so
+  two backends can no longer both claim "deterministic" and disagree.
+  `DataResidency`/`Residency` make data location part of the execution plan, and
+  the GPU adapter refuses undeliverable output before dispatch.
+  `ScratchRequirement` lets hot-path providers declare bounded scratch, and
+  `MeshBooleanRegistry` enforces `memory_budget_bytes` *before* invoking a
+  provider instead of carrying an unenforced field.
+- **ADR 0012** assigning the scalar reference to a dedicated `geom-scalar` crate
+  and requiring the scalar implementation of an operation to land before any
+  optimized one; supersedes ADR 0002's stale crate topology and oracle owner.
 - **Versioned PSD/QTO template catalogs (`ifc-template-catalog`)** with a
   committed IFC4 ADD2 TC1 artifact, official/corrected profiles,
   provenance-bearing overlays, bounded XML import, schema-aware applicability,
