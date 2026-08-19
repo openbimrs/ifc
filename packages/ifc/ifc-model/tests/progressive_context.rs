@@ -5,7 +5,12 @@
 //! outside the handoff system.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::{Path, PathBuf};
+use std::ffi::OsStr;
+use std::path::{Component, Path, PathBuf};
+
+// This registry deliberately duplicates the initial capability set. A coordinated
+// source/module/PLAN deletion must still change a separate reviewable baseline.
+const REQUIRED_SCAFFOLD_PATHS: &str = include_str!("required_scaffold_paths.txt");
 
 const REQUIRED_NESTED_CONTEXTS: &[&str] = &[
     "ifc-geometry/src/input",
@@ -280,10 +285,17 @@ fn every_ifc_crate_has_local_context_and_completion_log() {
     assert!(crates >= 18, "expected all IFC crates, found {crates}");
 }
 
+fn normalized_relative(path: &Path) -> bool {
+    !path.as_os_str().is_empty()
+        && path
+            .components()
+            .all(|component| matches!(component, Component::Normal(_)))
+}
+
 #[test]
 fn compiled_scaffold_maps_match_real_owned_source_files() {
     let root = ifc_root();
-    let mut planned_paths = 0;
+    let mut planned_paths = BTreeSet::new();
     for entry in std::fs::read_dir(&root).expect("read packages/ifc") {
         let crate_dir = entry.expect("directory entry").path();
         if !crate_dir.join("Cargo.toml").is_file() {
@@ -295,9 +307,20 @@ fn compiled_scaffold_maps_match_real_owned_source_files() {
         }
         for token in plan.split('`').skip(1).step_by(2) {
             if token.starts_with("src/") && token.ends_with(".rs") {
-                planned_paths += 1;
+                let relative = Path::new(token);
                 assert!(
-                    crate_dir.join(token).is_file(),
+                    normalized_relative(relative),
+                    "{}/PLAN.md contains non-normal scaffold path {token}",
+                    crate_dir.display()
+                );
+                let package_relative = PathBuf::from(crate_dir.file_name().unwrap()).join(relative);
+                assert!(
+                    planned_paths.insert(package_relative),
+                    "{}/PLAN.md repeats compiled scaffold path {token}",
+                    crate_dir.display()
+                );
+                assert!(
+                    crate_dir.join(relative).is_file(),
                     "{}/PLAN.md claims compiled path {token}, but it does not exist",
                     crate_dir.display()
                 );
@@ -324,9 +347,68 @@ fn compiled_scaffold_maps_match_real_owned_source_files() {
         }
     }
     assert!(
-        planned_paths >= 150,
-        "expected the compiled capability scaffold, found {planned_paths} planned paths"
+        planned_paths.len() >= 150,
+        "expected the compiled capability scaffold, found {} planned paths",
+        planned_paths.len()
     );
+}
+
+#[test]
+fn required_scaffold_capability_seams_are_preserved() {
+    let root = ifc_root();
+    let required: Vec<_> = REQUIRED_SCAFFOLD_PATHS
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .collect();
+    assert!(
+        required.len() >= 187,
+        "the explicit capability baseline must not shrink silently"
+    );
+
+    let mut sorted = required.clone();
+    sorted.sort_unstable();
+    assert_eq!(required, sorted, "required scaffold paths must be sorted");
+    let unique: BTreeSet<_> = required.iter().copied().collect();
+    assert_eq!(
+        unique.len(),
+        required.len(),
+        "required scaffold paths must be unique"
+    );
+
+    for token in required {
+        let relative = Path::new(token);
+        assert!(
+            normalized_relative(relative),
+            "required scaffold path is not normalized: {token}"
+        );
+        let parts: Vec<_> = relative.iter().collect();
+        assert!(
+            parts.len() >= 3 && parts[1] == OsStr::new("src"),
+            "required scaffold path must be <crate>/src/<file>.rs: {token}"
+        );
+        assert_eq!(
+            relative.extension(),
+            Some(OsStr::new("rs")),
+            "required scaffold path is not Rust source: {token}"
+        );
+        assert!(
+            root.join(relative).is_file(),
+            "required scaffold capability seam is missing: {token}"
+        );
+
+        let crate_dir = root.join(parts[0]);
+        assert!(
+            crate_dir.join("Cargo.toml").is_file(),
+            "required scaffold path has no IFC crate owner: {token}"
+        );
+        let crate_relative = relative.strip_prefix(Path::new(parts[0])).unwrap();
+        let plan = std::fs::read_to_string(crate_dir.join("PLAN.md")).unwrap();
+        assert!(
+            plan.contains(&format!("`{}`", crate_relative.display())),
+            "required scaffold capability seam is missing from its crate PLAN.md: {token}"
+        );
+    }
 }
 
 #[test]

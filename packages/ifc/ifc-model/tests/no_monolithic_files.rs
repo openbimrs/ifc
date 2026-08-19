@@ -22,7 +22,7 @@ use std::path::{Path, PathBuf};
 const MAX_LINES: usize = 800;
 
 /// Files intentionally allowed to exceed the limit, with the reason.
-/// Empty by design — add an entry only with a written justification.
+/// Empty by design -- add an entry only with a written justification.
 const EXEMPT: &[(&str, &str)] = &[];
 
 fn workspace_root() -> PathBuf {
@@ -61,7 +61,7 @@ fn no_source_file_is_a_monolith() {
     }
     assert!(
         files.len() > 50,
-        "expected to scan the whole workspace, saw {} files — is the root path right?",
+        "expected to scan the whole workspace, saw {} files -- is the root path right?",
         files.len()
     );
 
@@ -90,9 +90,27 @@ fn no_source_file_is_a_monolith() {
     );
 }
 
+/// Return whether a crate root declares at least one Rust module, regardless of
+/// that module's visibility.
+fn has_module_declaration(source: &str) -> bool {
+    syn::parse_file(source)
+        .expect("lib.rs must be valid Rust syntax")
+        .items
+        .iter()
+        .any(|item| matches!(item, syn::Item::Mod(_)))
+}
+
+#[test]
+fn private_modules_activate_the_lib_rs_delegation_budget() {
+    assert!(has_module_declaration("mod internal;"));
+    assert!(has_module_declaration("pub(crate) mod restricted;"));
+    assert!(has_module_declaration("pub mod public;"));
+    assert!(!has_module_declaration("pub fn facade() {}"));
+}
+
 /// A crate whose `lib.rs` carries real code instead of delegating to modules is
 /// the monolith's first stage. `lib.rs` should declare modules, re-export, and
-/// document — not implement.
+/// document -- not implement.
 #[test]
 fn lib_rs_delegates_rather_than_implements() {
     let root = workspace_root();
@@ -108,8 +126,8 @@ fn lib_rs_delegates_rather_than_implements() {
                 continue;
             }
             let text = std::fs::read_to_string(&lib).unwrap();
-            let has_modules = text.contains("pub mod ");
-            // Count non-doc, non-blank, non-`pub mod`/`pub use` lines.
+            let has_modules = has_module_declaration(&text);
+            // Count non-doc, non-blank, non-module/re-export lines.
             let code_lines = text
                 .lines()
                 .map(str::trim)
