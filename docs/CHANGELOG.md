@@ -182,6 +182,10 @@ section on release.
   (`geom-simd`, runtime `is_x86_feature_detected!` for AVX2/AVX-512), and
   optional GPU (`geom-gpu`, off by default) backends behind one contract, with
   `geom-dispatch` selecting the most specialized available backend at runtime.
+  *(Superseded: those crate names never shipped. The crates are
+  `geom-backend-cpu` — an execution context, explicitly not the oracle — and
+  `geom-backend-gpu`; the scalar reference is owned by `geom-scalar`. See
+  `docs/adr/0012`.)*
 - `geom-brep` — reserved crate for exact topology, with the `Tessellate` bridge
   to `geom-mesh`. This is the capability OpenCascade provides to IfcOpenShell;
   scope is deliberately limited to the surfaces IFC actually uses.

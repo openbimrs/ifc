@@ -46,6 +46,31 @@ fn topological_determinism_does_not_promise_bitwise_identity() {
     assert!(!Determinism::NumericallyBounded.satisfies(Determinism::Bitwise));
 }
 
+/// Each of the three named contracts must be independently selectable and
+/// survive a round trip through the builder.
+#[test]
+fn every_determinism_contract_is_distinctly_selectable() {
+    let levels = [
+        Determinism::BestEffort,
+        Determinism::Topological,
+        Determinism::NumericallyBounded,
+        Determinism::Bitwise,
+    ];
+    for level in levels {
+        assert_eq!(
+            options().with_determinism(level).determinism(),
+            level,
+            "{level:?} must round-trip unchanged"
+        );
+    }
+    // Distinct variants, not aliases of one another.
+    for (i, a) in levels.iter().enumerate() {
+        for (j, b) in levels.iter().enumerate() {
+            assert_eq!(i == j, a == b, "{a:?} vs {b:?} must be distinct");
+        }
+    }
+}
+
 #[test]
 fn the_default_policy_is_numerically_bounded_not_best_effort() {
     // A geometry kernel defaulting to BestEffort would silently permit
