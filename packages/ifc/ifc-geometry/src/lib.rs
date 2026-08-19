@@ -43,6 +43,8 @@ pub mod curve;
 pub mod error;
 pub mod kernel;
 pub mod resource;
+pub mod rules;
+pub mod select;
 pub mod slots;
 pub mod solid;
 pub mod surface;

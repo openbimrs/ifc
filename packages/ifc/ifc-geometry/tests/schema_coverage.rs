@@ -238,3 +238,147 @@ fn inventory_contains_the_entities_that_matter_most() {
         );
     }
 }
+
+/// Every TYPE (enum, select, defined) in the three geometry schemas.
+///
+/// Generated from IFC4 ADD2 TC1: 23 types.
+const SCHEMA_TYPES: &[(&str, &str)] = &[
+    ("IfcArcIndex", "DEFINED"),
+    ("IfcAxis2Placement", "SELECT"),
+    ("IfcBSplineCurveForm", "ENUM"),
+    ("IfcBSplineSurfaceForm", "ENUM"),
+    ("IfcBooleanOperand", "SELECT"),
+    ("IfcBooleanOperator", "ENUM"),
+    ("IfcCsgSelect", "SELECT"),
+    ("IfcCurveOnSurface", "SELECT"),
+    ("IfcCurveOrEdgeCurve", "SELECT"),
+    ("IfcDimensionCount", "DEFINED"),
+    ("IfcGeometricSetSelect", "SELECT"),
+    ("IfcGridPlacementDirectionSelect", "SELECT"),
+    ("IfcKnotType", "ENUM"),
+    ("IfcLineIndex", "DEFINED"),
+    ("IfcPointOrVertexPoint", "SELECT"),
+    ("IfcPreferredSurfaceCurveRepresentation", "ENUM"),
+    ("IfcSegmentIndexSelect", "SELECT"),
+    ("IfcSolidOrShell", "SELECT"),
+    ("IfcSurfaceOrFaceSurface", "SELECT"),
+    ("IfcTransitionCode", "ENUM"),
+    ("IfcTrimmingPreference", "ENUM"),
+    ("IfcTrimmingSelect", "SELECT"),
+    ("IfcVectorOrDirection", "SELECT"),
+];
+
+/// The contract requires select/enum/defined types, not only entities.
+///
+/// A select is the part consumers most often skip, because a STEP attribute
+/// declared as `IfcBooleanOperand` looks like an ordinary reference. Skipping
+/// it produces ad-hoc type-name matching that drifts from the schema.
+#[test]
+fn every_schema_type_is_modelled() {
+    let source = crate_source();
+
+    let missing: Vec<&(&str, &str)> = SCHEMA_TYPES
+        .iter()
+        .filter(|(name, _)| {
+            let stem = name.strip_prefix("Ifc").unwrap_or(name);
+            // A Rust type named after it, or the STEP tag matched in code.
+            !(source.contains(&format!("pub enum {stem}"))
+                || source.contains(&format!("pub struct {stem}"))
+                || source.contains(&format!("pub type {stem}"))
+                || source
+                    .to_ascii_uppercase()
+                    .contains(&format!("\"{}\"", name.to_ascii_uppercase())))
+        })
+        .collect();
+
+    assert!(
+        missing.is_empty(),
+        "{} of {} schema types are not modelled:\n{}",
+        missing.len(),
+        SCHEMA_TYPES.len(),
+        missing
+            .iter()
+            .map(|(n, f)| format!("  {f:8} {n}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+}
+
+/// The type inventory must match the published count.
+#[test]
+fn the_type_inventory_matches_the_schema() {
+    assert_eq!(
+        SCHEMA_TYPES.len(),
+        23,
+        "IFC4 ADD2 TC1 declares 23 types across the three geometry schemas \
+         (14 + 4 + 5). Editing this number means the inventory was trimmed \
+         rather than the code fixed."
+    );
+    let selects = SCHEMA_TYPES.iter().filter(|(_, f)| *f == "SELECT").count();
+    let enums = SCHEMA_TYPES.iter().filter(|(_, f)| *f == "ENUM").count();
+    let defined = SCHEMA_TYPES.iter().filter(|(_, f)| *f == "DEFINED").count();
+    assert_eq!(
+        (selects, enums, defined),
+        (13, 7, 3),
+        "flavour split per IFC4.exp"
+    );
+}
+
+/// The compiled-in subtype table must agree with the normative schema.
+///
+/// `select::subtype` hardcodes inheritance chains so a consumer need not ship
+/// a 3 MB `.exp` file. That is only safe while the table matches the source it
+/// was generated from, so the relationships selects depend on are re-asserted
+/// here against known-correct facts from IFC4.exp.
+#[test]
+fn the_compiled_subtype_table_agrees_with_the_schema() {
+    use ifc_geometry::select::is_a;
+
+    // Concrete solids must satisfy the abstract IfcSolidModel select member.
+    for solid in [
+        "IFCEXTRUDEDAREASOLID",
+        "IFCREVOLVEDAREASOLID",
+        "IFCFACETEDBREP",
+        "IFCADVANCEDBREP",
+        "IFCCSGSOLID",
+        "IFCSWEPTDISKSOLID",
+        "IFCSURFACECURVESWEPTAREASOLID",
+        "IFCFIXEDREFERENCESWEPTAREASOLID",
+    ] {
+        assert!(is_a(solid, "IFCSOLIDMODEL"), "{solid} is a solid model");
+    }
+
+    // Half spaces are NOT solid models: they are a separate select branch.
+    for half in [
+        "IFCHALFSPACESOLID",
+        "IFCPOLYGONALBOUNDEDHALFSPACE",
+        "IFCBOXEDHALFSPACE",
+    ] {
+        assert!(
+            !is_a(half, "IFCSOLIDMODEL"),
+            "{half} must not classify as a solid model"
+        );
+    }
+
+    // Curve and surface families.
+    for curve in [
+        "IFCPOLYLINE",
+        "IFCCIRCLE",
+        "IFCTRIMMEDCURVE",
+        "IFCINDEXEDPOLYCURVE",
+    ] {
+        assert!(is_a(curve, "IFCCURVE"), "{curve} is a curve");
+    }
+    for surface in [
+        "IFCPLANE",
+        "IFCCYLINDRICALSURFACE",
+        "IFCRECTANGULARTRIMMEDSURFACE",
+    ] {
+        assert!(is_a(surface, "IFCSURFACE"), "{surface} is a surface");
+    }
+
+    // Cross-family negatives: the table must not over-match.
+    assert!(!is_a("IFCPLANE", "IFCCURVE"));
+    assert!(!is_a("IFCPOLYLINE", "IFCSURFACE"));
+    assert!(!is_a("IFCCARTESIANPOINT", "IFCCURVE"));
+}
