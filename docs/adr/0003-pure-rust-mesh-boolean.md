@@ -75,10 +75,14 @@ where a caller-side loop would serialize and pay dispatch per opening.
 
 **Follow-ups / risks to watch**
 
-- Evaluate `boolmesh` and `manifold-rust` against the fixture corpus before
-  writing our own; adopting beats building if one passes.
-- Licensing: `boolmesh` is MPL-2.0 (file-level copyleft). Check compatibility
-  with the workspace's MIT licence before vendoring rather than depending.
+- **RESOLVED by [0014](0014-adopt-boolmesh-mesh-boolean.md):** `boolmesh`
+  0.1.9 passed both hard fixtures (exact volume conservation, cross-checked
+  against Monte-Carlo; no halfspace flyaway) and is adopted as a dependency.
+  `manifold-rust` is Apache-2.0 (not MPL as implied above) and remains the
+  fallback; it is not yet fixture-tested.
+- Licensing: `boolmesh` is MPL-2.0 (file-level copyleft). **Checked in 0014:**
+  depending imposes no obligation on our MIT code; vendoring-and-patching does.
+  It is therefore an unmodified dependency, never vendored.
 
 ## Relation to existing code
 

@@ -11,6 +11,14 @@ section on release.
 ## [Unreleased]
 
 ### Added
+- **ADR 0014: `boolmesh` adopted as the mesh boolean**, resolving the open
+  evaluation in ADR 0003. Measured against the two hard fixtures: exact volume
+  conservation on a wall minus three mutually overlapping rotated openings
+  (error 0.000e0, cross-checked against a 4M-sample Monte-Carlo oracle), and no
+  flyaway on a millimetre-scale halfspace clip with a 2e-9 off-axis normal.
+  Transitive dependency graph is `glam` alone; zero `unsafe`; f64 by default.
+  Adopted as an unmodified dependency, never vendored, so MPL-2.0 file-level
+  copyleft imposes nothing on the MIT workspace.
 - **`geom-scalar`: the scalar reference implementation begins (ADR 0012).**
   Error-free transformations (`two_sum`, `two_diff`, `two_product`) and a
   certified `orient2d` that filters in f64 and escalates to exact expansion
