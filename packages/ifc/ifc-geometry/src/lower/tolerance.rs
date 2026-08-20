@@ -1,7 +1,7 @@
 //! Legacy chord-tolerance policy retained for source compatibility.
 //!
 //! Active lowering preserves exact profiles and construction intent in
-//! `geom_model::GeometryGraph`; it does not polygonize curves here. Existing
+//! `axiolid_model::GeometryGraph`; it does not polygonize curves here. Existing
 //! callers still pass this value through the pre-DAG lowering signatures, but
 //! supported exact profile paths deliberately ignore it. New tessellation
 //! providers consume explicit execution-time tolerance instead.

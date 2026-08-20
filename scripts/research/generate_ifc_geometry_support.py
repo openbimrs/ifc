@@ -57,13 +57,13 @@ def rust_owner(source_root: Path, name: str) -> str:
 def neutral_owner(name: str, resource: str, kind: str) -> str:
     lower = name.lower()
     if kind == "function":
-        return "geom-core" if name.lower() in NATIVE_FUNCTIONS else "ifc-geometry"
+        return "axiolid-core" if name.lower() in NATIVE_FUNCTIONS else "ifc-geometry"
     if resource.lower() == "ifcgeometricconstraintresource":
-        return "ifc-geometry::constraint + geom-model::NodeId"
+        return "ifc-geometry::constraint + axiolid-model::NodeId"
     if any(word in lower for word in ("tessellated", "triangulated", "polygonalfaceset")):
-        return "geom-mesh"
+        return "axiolid-mesh"
     if any(word in lower for word in ("solid", "boolean", "csg", "halfspace", "extruded", "revolved", "sectioned")):
-        return "geom-model::SolidOperation"
+        return "axiolid-model::SolidOperation"
     topology_prefixes = (
         "ifcvertex",
         "ifcedge",
@@ -78,14 +78,14 @@ def neutral_owner(name: str, resource: str, kind: str) -> str:
     if lower.startswith(topology_prefixes) or any(
         word in lower for word in ("brep", "topological", "connectedfaceset", "facebound")
     ):
-        return "geom-topology"
+        return "axiolid-topology"
     if any(word in lower for word in ("surface", "plane", "cylindrical", "spherical", "toroidal")):
-        return "geom-surface + geom-model::SurfaceRelation"
+        return "axiolid-surface + axiolid-model::SurfaceRelation"
     if any(word in lower for word in ("curve", "line", "polyline", "conic", "circle", "ellipse", "clothoid")):
-        return "geom-curve + geom-model::CurveRelation"
+        return "axiolid-curve + axiolid-model::CurveRelation"
     if any(word in lower for word in ("point", "vector", "direction", "axis", "placement", "transformation", "coordinate")):
-        return "geom-core"
-    return "geom-model"
+        return "axiolid-core"
+    return "axiolid-model"
 
 
 def main() -> None:

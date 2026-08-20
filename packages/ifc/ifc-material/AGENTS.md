@@ -24,7 +24,7 @@ the `ifc` facade/application layer.
 
 - This crate exposes authored cardinal, offset, direction, and extent values but
   never interprets them geometrically; shape math and lowering remain in ifc-geometry.
-- This crate may expose EntityId references to profiles but never constructs geom profiles or transforms.
+- This crate may expose EntityId references to profiles but never constructs axiolid profiles or transforms.
 - Resolve assignments with explicit ambiguity/cycle behavior; do not guess a winning material association.
 
 Keep cross-resource projections attribute-scoped: shared `ifc-model` storage

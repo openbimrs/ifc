@@ -18,7 +18,7 @@
 //!
 //! Recorded here because they must hold *before* the binding is written:
 //!
-//! - **No native backend may be mandatory.** This crate takes `geom-kernel`
+//! - **No native backend may be mandatory.** This crate takes `axiolid-kernel`
 //!   with `default-features = false`; `std::arch` SIMD and any GPU path must
 //!   stay behind features. (wasm has its own `simd128`, a separate future
 //!   backend.)

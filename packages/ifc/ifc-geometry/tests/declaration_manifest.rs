@@ -91,15 +91,15 @@ fn every_declaration_has_bridge_and_neutral_ownership() {
         assert!(
             matches!(
                 fields[6],
-                "geom-core"
-                    | "geom-mesh"
-                    | "geom-model"
-                    | "geom-model::SolidOperation"
-                    | "geom-topology"
-                    | "geom-curve + geom-model::CurveRelation"
-                    | "geom-surface + geom-model::SurfaceRelation"
+                "axiolid-core"
+                    | "axiolid-mesh"
+                    | "axiolid-model"
+                    | "axiolid-model::SolidOperation"
+                    | "axiolid-topology"
+                    | "axiolid-curve + axiolid-model::CurveRelation"
+                    | "axiolid-surface + axiolid-model::SurfaceRelation"
                     | "ifc-geometry"
-                    | "ifc-geometry::constraint + geom-model::NodeId"
+                    | "ifc-geometry::constraint + axiolid-model::NodeId"
             ),
             "unknown neutral capability owner `{}` for {key:?}",
             fields[6]
@@ -141,7 +141,7 @@ fn all_normative_functions_have_exactly_one_owner() {
             "{} has no owner",
             support.name
         );
-        if !support.owner.starts_with("geom_core::") {
+        if !support.owner.starts_with("axiolid_core::") {
             let owner_path = support.owner.replace("::", "/");
             let source_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
             assert!(

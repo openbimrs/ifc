@@ -67,7 +67,7 @@ feature-gated behind the C++ dependency).
 
 The fast, dependency-free path handles the common real case (flat paving on
 terrain); the heavy path is opt-in and behind the same trait. That is
-precisely the structure we want for `geom-kernel`, and it is validated here
+precisely the structure we want for `axiolid-kernel`, and it is validated here
 by three independent implementations rather than one plus an aspiration.
 
 ### 4. Validation by invariant, not by golden output
@@ -92,7 +92,7 @@ around the actual mechanism rather than hoping repetition finds it.
 ### 6. Oracle testing against IfcOpenShell
 
 `scripts/gen_clash_oracle.py` drives ifcopenshell's own collision engine
-(`geom.tree`, `clash_intersection_many`) and emits JSONL keyed by GlobalId,
+(`axiolid.tree`, `clash_intersection_many`) and emits JSONL keyed by GlobalId,
 sorted so the set compares regardless of pair order. Same criterion the Rust
 narrow phase implements, so the two must agree. Similar generators exist for
 AABB, mesh, and placement oracles.
@@ -221,7 +221,7 @@ concepts, not geometry ones. A CAD or GIS consumer would find
 
 The generic core is real -- `Bvh<T>` is genuinely payload-agnostic. But the
 boundary leaks at the query layer, which is exactly where our layering gate
-would fire if these lived in `packages/geometry/`.
+would fire if these lived in `../axiolid/`.
 
 ### 7. No architecture gate
 
@@ -238,7 +238,7 @@ capability claims in the doc.
 
 ## What nehirde should take
 
-1. **Adopt the subtractor pattern for `geom-kernel`.** One trait, a cheap
+1. **Adopt the subtractor pattern for `axiolid-kernel`.** One trait, a cheap
    dependency-free default, heavy backends feature-gated. Validated here by
    three implementations.
 2. **Adopt oracle testing against IfcOpenShell** via Python scripts. No

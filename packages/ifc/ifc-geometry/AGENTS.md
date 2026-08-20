@@ -1,14 +1,14 @@
 # ifc-geometry instructions
 
-Purpose: Interpret all shape-affecting IFC data and lower exact intent into a format-neutral geom-model DAG.
+Purpose: Interpret all shape-affecting IFC data and lower exact intent into a format-neutral axiolid-model DAG.
 
 Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
 roadmap work; keep progress, blockers, and evidence there.
 
 ## Boundary
 
-Allowed production dependencies: `ifc-model`, schema metadata, and neutral geom
-value/representation crates; never `geom-kernel`, an algorithm crate, or a backend.
+Allowed production dependencies: `ifc-model`, schema metadata, and neutral axiolid
+value/representation crates; never `axiolid-kernel`, an algorithm crate, or a backend.
 
 ## Module ownership
 

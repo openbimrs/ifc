@@ -26,33 +26,33 @@ section on release.
   uncentred, losing ~8% on survey coordinates. 28/42 products now agree to
   1e-9 relative; the remainder are documented tessellation-density
   differences on curved B-reps and swept disks.
-- **`subtract_many` batch override.** `geom-boolmesh` groups mutually
+- **`subtract_many` batch override.** `axiolid-boolmesh` groups mutually
   disjoint cutters by AABB and removes each group with a single boolean,
   resting on `(S \ A) \ B == S \ (A union B)`. Measured **9.2x** at n=64 on
   the IFC-dominant layout (66.47 ms -> 7.22 ms) and 0.99x on a complete
   overlap graph, so it is enabled unconditionally. Benchmarked by
-  `geom-boolmesh/benches/subtract_many.rs`, which reproduces the ADR 0014
+  `axiolid-boolmesh/benches/subtract_many.rs`, which reproduces the ADR 0014
   sequential baseline in-process; gated by volume equality against the
   sequential path across hand-picked and randomised layouts.
-- **Certified predicate suite in `geom-scalar`.** `orient3d`, `incircle`, and
+- **Certified predicate suite in `axiolid-scalar`.** `orient3d`, `incircle`, and
   `insphere` join `orient2d` as filtered cascades that escalate to exact
   expansion arithmetic, plus `StaticFilter` for callers that can declare a
   coordinate range. Each is differentially gated against an independent i128
   oracle over 20k inputs, half of them constructed exactly degenerate.
-- **Degeneracy benchmark harness.** `cargo bench -p geom-scalar` reports
+- **Degeneracy benchmark harness.** `cargo bench -p axiolid-scalar` reports
   throughput and escalation rate together at 0%, 0.01%, 1%, and 10% degenerate
   inputs. Measured: `orient2d` is flat (93 M/s clean, 90 M/s at 10%);
   `orient3d` costs 2.3x at 10% (72 -> 32 M/s). Escalation tracks the injected
   rate to four decimals, asserted in `tests/degeneracy.rs`.
-- **`geom-compile::extrude::outward_orientation`.** Decides mesh orientation by
+- **`axiolid-compile::extrude::outward_orientation`.** Decides mesh orientation by
   summing tetrahedron volumes in exact expansion arithmetic, so a thin plate on
   survey coordinates -- where the naive f64 sum loses the sign entirely -- is
   still judged correctly. ADR 0016 records why the predicates are ours even
   though the boolean and triangulator are adopted.
 - **End-to-end IFC geometry: `ifc mesh <file.ifc>`.** The CLI lowers a model's
   representation items through `ifc-geometry`, compiles them with
-  `geom-compile`'s `ScalarCompiler`, and applies `IfcRelVoidsElement` openings
-  with `geom-boolmesh`. `ifc capabilities` now lists real providers instead of
+  `axiolid-compile`'s `ScalarCompiler`, and applies `IfcRelVoidsElement` openings
+  with `axiolid-boolmesh`. `ifc capabilities` now lists real providers instead of
   reporting `none (scaffold only)`. Gated across the committed fixture corpus:
   every lowered item compiles, every produced solid is edge-manifold and
   outward-oriented, and the net wall volume for
@@ -64,26 +64,26 @@ section on release.
   rather than once per reference. Handles `TriMesh`, `Instance`, `Collection`,
   `Extrusion`, and `Boolean`; every other family returns `Unsupported` naming
   the capability it needs. Generic over the boolean provider, so the adopted
-  `geom-boolmesh` is swappable. Wall-minus-opening compiles to exact volume
+  `axiolid-boolmesh` is swappable. Wall-minus-opening compiles to exact volume
   2.16 through Profile -> Extrusion -> Instance -> Boolean.
-- **`geom-compile`: profile triangulation and linear extrusion.** Rectangle
+- **`axiolid-compile`: profile triangulation and linear extrusion.** Rectangle
   (solid and hollow) and circle (disk and annulus) profiles flatten under an
   explicit chord budget; holes are triangulated by the adopted `earcut`
   (ADR 0015) and extruded into closed solids. Output is gated on exact volume,
   **directed-edge manifoldness**, disk convergence from below, a differential
-  comparison against `geom-scalar`'s certified triangulator, and end-to-end
-  acceptance by `geom-boolmesh` — an extruded wall minus an opening yields
+  comparison against `axiolid-scalar`'s certified triangulator, and end-to-end
+  acceptance by `axiolid-boolmesh` — an extruded wall minus an opening yields
   exactly 2.16 and partitions conservatively.
 - **ADR 0015: `earcut` adopted for polygon triangulation.** A hand-rolled ear
   clipper passed simple polygons, reflex vertices, and one hole but stalled on
   two holes; earcut triangulates the same case exactly (area 175). Licence
   MIT OR Apache-2.0, dependency graph `num-traits` + `autocfg`, pure Rust.
-- **`geom-boolmesh`: the `boolmesh`-backed `MeshBoolean` provider.** Owns
+- **`axiolid-boolmesh`: the `boolmesh`-backed `MeshBoolean` provider.** Owns
   `TriMesh` <-> `Manifold` conversion and contract enforcement; the algorithm is
   upstream's. Orientation is gated on input per argument, because an inside-out
   mesh is structurally valid and manifold and would turn `Difference` into
   `Union` silently. Input faults blame the caller, result faults blame the
-  backend. `boolmesh` is not re-exported and reaches neither `geom-kernel` nor
+  backend. `boolmesh` is not re-exported and reaches neither `axiolid-kernel` nor
   `ifc-geometry`, verified by `cargo tree`. First real consumer of
   `ScratchRequirement` and `MeshBooleanRegistry`.
 ### Added
@@ -95,7 +95,7 @@ section on release.
   Transitive dependency graph is `glam` alone; zero `unsafe`; f64 by default.
   Adopted as an unmodified dependency, never vendored, so MPL-2.0 file-level
   copyleft imposes nothing on the MIT workspace.
-- **`geom-scalar`: the scalar reference implementation begins (ADR 0012).**
+- **`axiolid-scalar`: the scalar reference implementation begins (ADR 0012).**
   Error-free transformations (`two_sum`, `two_diff`, `two_product`) and a
   certified `orient2d` that filters in f64 and escalates to exact expansion
   arithmetic when the determinant falls inside its own error bound. This is the
@@ -106,7 +106,7 @@ section on release.
   searched triples where the naive determinant reports collinear and is
   provably wrong.
 - **Certified predicates and the precision escalation ladder.**
-  `geom_kernel::certainty` adds `Sign`, `Certified`, and `EscalationLadder`:
+  `axiolid_kernel::certainty` adds `Sign`, `Certified`, and `EscalationLadder`:
   a filtered predicate reports `Uncertain` when its value lies within its own
   error bound, so an undecided floating-point sign cannot reach a topology
   decision. `Precision` gains an `Exact` tier and the ladder steps
@@ -130,7 +130,7 @@ section on release.
   `ScratchRequirement` lets hot-path providers declare bounded scratch, and
   `MeshBooleanRegistry` enforces `memory_budget_bytes` *before* invoking a
   provider instead of carrying an unenforced field.
-- **ADR 0012** assigning the scalar reference to a dedicated `geom-scalar` crate
+- **ADR 0012** assigning the scalar reference to a dedicated `axiolid-scalar` crate
   and requiring the scalar implementation of an operation to land before any
   optimized one; supersedes ADR 0002's stale crate topology and oracle owner.
 - **Versioned PSD/QTO template catalogs (`ifc-template-catalog`)** with a
@@ -160,7 +160,7 @@ section on release.
 - **Layered geometry package scaffold** with one immutable neutral DAG,
   typed-handle B-rep topology, exact curve/surface/profile values, narrow
   operation-provider traits, separate CPU execution/GPU adapter crates, and a
-  feature-gated `geom` facade. Core-only resolves 3 unique packages; default
+  feature-gated `axiolid` facade. Core-only resolves 3 unique packages; default
   resolves 5, including the facade itself.
 - **Authoritative IFC geometry support ledger** covering all 163 IFC4 ADD2 TC1
   declarations: 112 entities (23 abstract, 89 concrete), 13 selects, seven
@@ -172,7 +172,7 @@ section on release.
 
 ### Changed
 - Active `ifc-geometry` lowering uses the canonical profile, primitive, CSG, and
-  backend-neutral `geom-model` vocabulary. The pre-DAG request values remain
+  backend-neutral `axiolid-model` vocabulary. The pre-DAG request values remain
   warning-clean source-compatibility shims and are rejected from active lowering.
 - Local `target-cpu=native` flags are scoped to x86_64 so AArch64 cross-checks do
   not inherit invalid x86 features.
@@ -224,10 +224,10 @@ section on release.
   `references/AGENTS-ifc-spec.md`, including the browser-User-Agent requirement
   that otherwise 403s every download.
 - **8 geometry crates**, sized from the schema rather than guessed:
-  `geom-profile` (23 `IfcProfileDef` subtypes), `geom-curve` (36 curve
-  entities), `geom-surface` (37 surface entities), `geom-sweep` (11 swept-solid
-  forms), `geom-topology` (~37 topology entities), `geom-tessellate`,
-  `geom-spatial`, `geom-measure`.
+  `axiolid-profile` (23 `IfcProfileDef` subtypes), `axiolid-curve` (36 curve
+  entities), `axiolid-surface` (37 surface entities), `axiolid-sweep` (11 swept-solid
+  forms), `axiolid-topology` (~37 topology entities), `axiolid-tessellate`,
+  `axiolid-spatial`, `axiolid-measure`.
 - **9 IFC crates**, each backed by an entity count: `ifc-style` (48),
   `ifc-structural` (39), `ifc-systems` (23), `ifc-material` (22),
   `ifc-resource` (21), `ifc-classification` (12), `ifc-georef` (8),
@@ -236,8 +236,8 @@ section on release.
 - ADR 0005 recording the spec-driven expansion and the evidence behind it.
 
 ### Changed
-- `geom-brep` renamed to `geom-topology` (the standard's own vocabulary); its
-  `Tessellate` trait and `ChordTolerance` moved to `geom-tessellate`, tests
+- `axiolid-brep` renamed to `axiolid-topology` (the standard's own vocabulary); its
+  `Tessellate` trait and `ChordTolerance` moved to `axiolid-tessellate`, tests
   intact.
 - **The architecture gate is now an allowlist.** "Only `ifc-geometry` may touch
   geometry" was too narrow once `ifc-georef` and `ifc-alignment` existed —
@@ -252,21 +252,21 @@ section on release.
   workspace members and added to `exclude`, so it is not built, tested or
   linted. Kept rather than deleted because its constraints (no threads, no
   `is_x86_feature_detected!`, size budget) are an argument for the runtime
-  backend selection already in `geom-kernel`.
+  backend selection already in `axiolid-kernel`.
 
 ### Changed
-- **Restructured into role-grouped packages.** `geom/` and `ifc/` became
-  `packages/geometry/` and `packages/ifc/`, joined by `packages/openbim/`
+- **Restructured into role-grouped packages.** `axiolid/` and `ifc/` became
+  `../axiolid/` and `packages/ifc/`, joined by `packages/openbim/`
   (`ids`, `bcf`, `clash`, `diff`), `bindings/` (`python`, `wasm`), and `apps/`
   (`ifc-cli`). Dependency direction is one-way:
   `geometry → ifc → openbim → {bindings, apps}`. 17 crates total.
-- **Backends are now cargo features of `geom-kernel`, not separate crates.**
-  `geom-cpu`/`geom-simd`/`geom-gpu`/`geom-dispatch` became
-  `geom_kernel::backend::{scalar,simd,gpu,Dispatcher}` behind features
+- **Backends are now cargo features of `axiolid-kernel`, not separate crates.**
+  `axiolid-cpu`/`axiolid-simd`/`axiolid-gpu`/`axiolid-dispatch` became
+  `axiolid_kernel::backend::{scalar,simd,gpu,Dispatcher}` behind features
   `scalar` + `simd` (default) and `gpu` (off). The swap boundary is now expressed
   as a feature constraint: `packages/ifc/*` take `default-features = false`,
   applications opt in. See ADR 0004.
-- **`TriMesh` moved from `geom-core` to the new `geom-mesh` crate**; `geom-core`
+- **`TriMesh` moved from `axiolid-core` to the new `axiolid-mesh` crate**; `axiolid-core`
   is now data-and-tolerance only.
 - Renamed `ifc-parser` → `ifc-step`, `ifc-shape` → `ifc-geometry`.
 
@@ -278,32 +278,32 @@ section on release.
   architecture test covers this case.
 
 ### Added
-- **`geom/` + `ifc/` package architecture.** Ten crates across two package
-  groups: `geom/{core,kernel,cpu,simd,gpu,dispatch}` and
-  `ifc/{schema,parser,model,shape}`. `geom/` is an IFC-agnostic shared geometry
+- **`axiolid/` + `ifc/` package architecture.** Ten crates across two package
+  groups: `axiolid/{core,kernel,cpu,simd,gpu,dispatch}` and
+  `ifc/{schema,parser,model,shape}`. `axiolid/` is an IFC-agnostic shared geometry
   kernel; `ifc/` is pure IFC logic.
-- **Swappable geometry kernel.** `geom-kernel` holds traits only
+- **Swappable geometry kernel.** `axiolid-kernel` holds traits only
   (`MeshBoolean`, `Capabilities`, `GeomError`); `ifc/` depends on the contract
   and never on a backend, so the geometry implementation can be replaced without
   touching the IFC layer. Enforced by `ifc/shape/tests/no_backend_dependency.rs`,
   which reads the manifests and fails the build on violation — mutation-verified
   to actually fail when a backend dependency is added.
-- **Hardware abstraction.** Scalar (`geom-cpu`, the correctness oracle), SIMD
-  (`geom-simd`, runtime `is_x86_feature_detected!` for AVX2/AVX-512), and
-  optional GPU (`geom-gpu`, off by default) backends behind one contract, with
-  `geom-dispatch` selecting the most specialized available backend at runtime.
+- **Hardware abstraction.** Scalar (`axiolid-cpu`, the correctness oracle), SIMD
+  (`axiolid-simd`, runtime `is_x86_feature_detected!` for AVX2/AVX-512), and
+  optional GPU (`axiolid-gpu`, off by default) backends behind one contract, with
+  `axiolid-dispatch` selecting the most specialized available backend at runtime.
   *(Superseded: those crate names never shipped. The crates are
-  `geom-backend-cpu` — an execution context, explicitly not the oracle — and
-  `geom-backend-gpu`; the scalar reference is owned by `geom-scalar`. See
+  `axiolid-backend-cpu` — an execution context, explicitly not the oracle — and
+  `axiolid-backend-gpu`; the scalar reference is owned by `axiolid-scalar`. See
   `docs/adr/0012`.)*
-- `geom-brep` — reserved crate for exact topology, with the `Tessellate` bridge
-  to `geom-mesh`. This is the capability OpenCascade provides to IfcOpenShell;
+- `axiolid-brep` — reserved crate for exact topology, with the `Tessellate` bridge
+  to `axiolid-mesh`. This is the capability OpenCascade provides to IfcOpenShell;
   scope is deliberately limited to the surfaces IFC actually uses.
 - `apps/ifc-cli` — working binary. `ifc capabilities` reports detected backends
   and the selected boolean implementation (currently: none, honestly).
 - `packages/ifc/{ifc-properties,ifc-cost,ifc-schedule}` and
   `packages/openbim/{ids,bcf,clash,diff}` — reserved, documented crates.
-- ADR 0001 (geom/ifc split + kernel contract), ADR 0002 (hardware abstraction),
+- ADR 0001 (axiolid/ifc split + kernel contract), ADR 0002 (hardware abstraction),
   ADR 0003 (pure-Rust mesh boolean instead of OpenCascade), ADR 0004 (package
   layout + backends as features).
 - Repo scaffold: `docs/` (roadmap, ADRs, this changelog), `references/`

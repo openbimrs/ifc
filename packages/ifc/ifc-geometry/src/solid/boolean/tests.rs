@@ -19,8 +19,8 @@ fn operator_parses_every_express_token_case_insensitively() {
     }
     assert_eq!(IfcBooleanOperator::parse("SUBTRACT"), None);
     assert_eq!(IfcBooleanOperator::Difference.to_string(), ".DIFFERENCE.");
-    let neutral: geom_core::BooleanOperator = IfcBooleanOperator::Difference.into();
-    assert_eq!(neutral, geom_core::BooleanOperator::Difference);
+    let neutral: axiolid_core::BooleanOperator = IfcBooleanOperator::Difference.into();
+    assert_eq!(neutral, axiolid_core::BooleanOperator::Difference);
 }
 
 /// An unknown operator must not degrade into a default; a wrong operator

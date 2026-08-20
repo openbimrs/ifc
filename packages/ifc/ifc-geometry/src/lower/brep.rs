@@ -6,7 +6,7 @@
 //! carries face adjacency, bound nesting (holes), and void shells. Flattening
 //! it to triangles at read time destroys exactly the information a boolean or
 //! a volume query needs, and triangulation is a kernel decision. So this
-//! builds `BRep<NodeId>` and leaves tessellation to `geom-tessellate`.
+//! builds `BRep<NodeId>` and leaves tessellation to `axiolid-tessellate`.
 //!
 //! # Sharing is the whole problem
 //!
@@ -20,9 +20,9 @@
 
 use std::collections::BTreeMap;
 
-use geom_core::Point3;
-use geom_model::{GeometryNode, NodeId};
-use geom_topology::{
+use axiolid_core::Point3;
+use axiolid_model::{GeometryNode, NodeId};
+use axiolid_topology::{
     BRep, Edge, EdgeId, EdgeUse, Face, FaceBound, Loop, Orientation, Shell, ShellId, Solid, Vertex,
     VertexId,
 };
@@ -174,7 +174,7 @@ fn face(
     referrer: EntityId,
     id: EntityId,
     frame: Transform,
-) -> GeometryResult<geom_topology::FaceId> {
+) -> GeometryResult<axiolid_topology::FaceId> {
     let entity = expect_type(
         session.model(),
         referrer,
@@ -233,7 +233,7 @@ fn poly_loop(
     referrer: EntityId,
     id: EntityId,
     frame: Transform,
-) -> GeometryResult<geom_topology::LoopId> {
+) -> GeometryResult<axiolid_topology::LoopId> {
     let entity = expect_type(
         session.model(),
         referrer,

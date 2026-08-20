@@ -28,7 +28,7 @@ Concretely:
 
 - No ifc-profile crate. IFC profile parsing, unit conversion, and placement
   resolution stay in `ifc-geometry::lower::profile`; exact format-neutral
-  profile values live in `geom-profile` and are referenced by the neutral DAG.
+  profile values live in `axiolid-profile` and are referenced by the neutral DAG.
   Profile IDENTITY (name, type enum, external refs) is semantic and may later
   get a thin view in a domain crate if a consumer needs it. The shape math is
   not duplicated there.
@@ -65,7 +65,7 @@ Concretely:
   is already clean.
 - The dependency rule stays enforceable by the existing no_backend_dependency
   test: only the allowlist (ifc-geometry, ifc-alignment, ifc-georef) may see
-  geom-kernel, and domain crates depend only on ifc-model.
+  axiolid-kernel, and domain crates depend only on ifc-model.
 - Entities read by two crates (IfcMaterialProfile) are not owned by either;
   ifc-model owns storage, each reader owns its projection. This is the
   borrowed-view pattern from ADR 0006 applied across resource boundaries.
@@ -81,5 +81,5 @@ Concretely:
 - A shared ifc-profile crate consumed by both sides: creates a dependency
   diamond and an ownerless dumping ground; profile shape math has exactly
   one consumer today (lowering).
-- Putting quantity computation in ifc-properties: would drag geom-kernel
+- Putting quantity computation in ifc-properties: would drag axiolid-kernel
   into a semantic crate and break the allowlist gate.

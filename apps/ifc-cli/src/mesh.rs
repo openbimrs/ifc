@@ -3,11 +3,11 @@
 //! This is the reference consumer: the application chooses the codec and the
 //! geometry providers, which library crates must never do.
 
-use geom_boolmesh::BoolmeshBoolean;
-use geom_compile::ScalarCompiler;
-use geom_core::Tolerance as GeomTolerance;
-use geom_kernel::{ExecutionOptions, GeometryCompiler, MeshBoolean};
-use geom_mesh::TriMesh;
+use axiolid_boolmesh::BoolmeshBoolean;
+use axiolid_compile::ScalarCompiler;
+use axiolid_core::Tolerance as GeomTolerance;
+use axiolid_kernel::{ExecutionOptions, GeometryCompiler, MeshBoolean};
+use axiolid_mesh::TriMesh;
 use ifc_geometry::lower::lower_representation;
 use ifc_geometry::lower::{
     geometric_products, lower_product_items, product_world_transform, LoweringSession, Tolerance,
@@ -264,7 +264,7 @@ fn product_mesh(
         // geometry layer placement-agnostic.
         for position in &mut mesh.positions {
             let p = placement.apply([position.x, position.y, position.z]);
-            *position = geom_core::Point3::new(p[0], p[1], p[2]);
+            *position = axiolid_core::Point3::new(p[0], p[1], p[2]);
         }
         match &mut combined {
             Some(existing) => merge(existing, &mesh),
@@ -298,7 +298,7 @@ pub fn signed_volume(mesh: &TriMesh) -> f64 {
     let centre = mesh
         .positions
         .iter()
-        .fold(geom_core::Point3::ZERO, |acc, p| acc + *p)
+        .fold(axiolid_core::Point3::ZERO, |acc, p| acc + *p)
         / mesh.positions.len() as f64;
     mesh.indices
         .chunks_exact(3)

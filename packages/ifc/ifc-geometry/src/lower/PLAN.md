@@ -12,7 +12,7 @@ and check it off only after the proof runs.
 
 - [ ] `LOW-CONTRACT` - validate/normalize every source direction and axis exactly once
   - Implements: `GEOM-CONTRACT`.
-  - Proof: non-unit/zero-vector contract tests against `geom-model` semantics.
+  - Proof: non-unit/zero-vector contract tests against `axiolid-model` semantics.
 - [x] `LOW-SESSION` - shared builder, EntityId memo, active stack, roots, and provenance
   - Implements: `GEOM-SESSION`.
   - Proof: `cargo test -p ifc-geometry` (413 passing); `tests/lower_session.rs`

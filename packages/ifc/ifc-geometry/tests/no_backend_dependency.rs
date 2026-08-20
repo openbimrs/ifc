@@ -456,8 +456,8 @@ fn ifc_crates_never_depend_on_geometry_execution_crates() {
         }
         let body = uncommented(&std::fs::read_to_string(&manifest).expect("manifest readable"));
         assert!(
-            !body.contains("geom-backend-") && !body.contains("geom-kernel"),
-            "{} binds IFC semantics to a geometry contract/execution crate. Emit neutral geom-model values and select operation providers in an app crate.",
+            !body.contains("axiolid-backend-") && !body.contains("axiolid-kernel"),
+            "{} binds IFC semantics to a geometry contract/execution crate. Emit neutral axiolid-model values and select operation providers in an app crate.",
             manifest.display()
         );
         checked += 1;
@@ -516,7 +516,7 @@ fn geometry_access_is_limited_to_the_allowlist() {
         }
         let body = uncommented(&std::fs::read_to_string(&manifest).expect("manifest readable"));
         assert!(
-            !body.contains("geom-"),
+            !body.contains("axiolid-"),
             "packages/ifc/{name} depends on geometry but is not allowlisted. Property, cost, \
              quantity, and classification consumers must not compile geometry accidentally."
         );
@@ -576,7 +576,7 @@ fn lowering_gate_resolves_raw_idents_block_scoped_aliases_and_macro_arguments() 
 
 #[test]
 fn lowering_gate_allows_neutral_types_and_legacy_words_in_data() {
-    let source = r#"use geom_profile::Profile;
+    let source = r#"use axiolid_profile::Profile;
 const NOTE: &str = "crate::kernel::Primitive";
 // crate::Profile is documentation only.
 "#;

@@ -140,10 +140,10 @@ fn selecting_cost_does_not_pull_in_unrelated_domains() {
 #[test]
 fn thin_build_compiles_no_geometry_kernel() {
     let tree = dependency_tree("step");
-    for geom in ["geom-kernel", "geom-core", "geom-mesh", "glam"] {
+    for axiolid in ["axiolid-kernel", "axiolid-core", "axiolid-mesh", "glam"] {
         assert!(
-            !links(&tree, geom),
-            "thin build links {geom}; a file-mover should compile no geometry"
+            !links(&tree, axiolid),
+            "thin build links {axiolid}; a file-mover should compile no geometry"
         );
     }
 }

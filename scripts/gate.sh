@@ -44,18 +44,7 @@ for f in "--no-default-features" "--features step" "--features ifcxml" "--all-fe
     step "ifc clippy $f" cargo clippy -p ifc $f --all-targets -- -D warnings
 done
 
-# --- Geometry capability and isolation matrices. ----------------------------
-# Concrete backends are separate packages, so Cargo feature unification cannot
-# make them visible through `geom-kernel`. Isolated builds still prove each
-# package declares its own complete dependency set.
-step "geometry feature matrix" scripts/geometry-feature-matrix.sh
-
-geometry_crates="geom-core geom-mesh geom-profile geom-curve geom-surface \
-geom-topology geom-model geom-primitive geom-sweep geom-tessellate geom-spatial \
-geom-measure geom-heal geom-kernel geom-backend-cpu geom-backend-gpu geom"
-for c in ifc-geometry ifc-alignment ifc-georef ifc-model $geometry_crates; do
-    step "isolated build -p $c" cargo build -p "$c"
-done
+# Geometry-kernel feature and layering gates live in the separate Axiolid repository.
 
 echo
 if [ "$fail" -eq 0 ]; then

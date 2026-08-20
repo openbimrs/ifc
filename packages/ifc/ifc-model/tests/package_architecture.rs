@@ -12,14 +12,14 @@ const GENERIC: &[&str] = &["ifc-model", "ifc-schema"];
 const CODECS: &[&str] = &["ifc-step", "ifc-xml"];
 const BRIDGES: &[&str] = &["ifc-geometry", "ifc-georef", "ifc-alignment"];
 const NEUTRAL_GEOMETRY: &[&str] = &[
-    "geom-core",
-    "geom-curve",
-    "geom-mesh",
-    "geom-model",
-    "geom-primitive",
-    "geom-profile",
-    "geom-surface",
-    "geom-topology",
+    "axiolid-core",
+    "axiolid-curve",
+    "axiolid-mesh",
+    "axiolid-model",
+    "axiolid-primitive",
+    "axiolid-profile",
+    "axiolid-surface",
+    "axiolid-topology",
 ];
 
 fn metadata() -> Metadata {
@@ -69,7 +69,7 @@ fn dependencies_follow_the_ifc_layers() {
     for (krate, package) in &packages {
         let dependencies = production_dependencies(package);
         for dependency in dependencies {
-            if dependency.starts_with("geom-") || dependency == "geom" {
+            if dependency.starts_with("axiolid-") || dependency == "axiolid" {
                 if !BRIDGES.contains(&krate.as_str()) {
                     violations.push(format!(
                         "{krate} is semantic/infrastructure code but depends on {dependency}"

@@ -13,7 +13,7 @@ an application must choose one.
 1. **It proves the library is usable.** An API awkward to drive from a binary is
    awkward to drive from an application.
 2. **It is the legitimate site of backend selection** —
-   `geom-kernel = { workspace = true, features = ["scalar", "simd"] }`.
+   `axiolid-kernel = { workspace = true, features = ["scalar", "simd"] }`.
 3. **It is where the `docs/ROADMAP.md` wall-clock numbers come from.** Numbers
    come from running this, never from assertion.
 

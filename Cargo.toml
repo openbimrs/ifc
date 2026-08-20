@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
 members = [
-    "packages/geometry/*",
     "packages/ifc/*",
     "packages/openbim/*",
     "bindings/python",
@@ -21,33 +20,33 @@ license = "MIT"
 authors = ["point-grey"]
 
 [workspace.dependencies]
-# --- packages/geometry: format-agnostic geometry. Knows nothing about IFC. ---
-# `geom` is the opt-in facade. Leaf crates remain independently consumable.
-geom = { path = "packages/geometry/geom", default-features = false }
-geom-core = { path = "packages/geometry/geom-core" }
-geom-mesh = { path = "packages/geometry/geom-mesh" }
-geom-model = { path = "packages/geometry/geom-model" }
-geom-primitive = { path = "packages/geometry/geom-primitive" }
-geom-heal = { path = "packages/geometry/geom-heal" }
-geom-profile = { path = "packages/geometry/geom-profile" }
-geom-curve = { path = "packages/geometry/geom-curve" }
-geom-surface = { path = "packages/geometry/geom-surface" }
-geom-sweep = { path = "packages/geometry/geom-sweep" }
-geom-topology = { path = "packages/geometry/geom-topology" }
-geom-tessellate = { path = "packages/geometry/geom-tessellate" }
-geom-spatial = { path = "packages/geometry/geom-spatial" }
-geom-measure = { path = "packages/geometry/geom-measure" }
+# --- ../axiolid: format-agnostic geometry. Knows nothing about IFC. ---
+# `axiolid` is the opt-in facade. Leaf crates remain independently consumable.
+axiolid = { path = "../axiolid/crates/axiolid", default-features = false }
+axiolid-core = { path = "../axiolid/crates/axiolid-core" }
+axiolid-mesh = { path = "../axiolid/crates/axiolid-mesh" }
+axiolid-model = { path = "../axiolid/crates/axiolid-model" }
+axiolid-primitive = { path = "../axiolid/crates/axiolid-primitive" }
+axiolid-heal = { path = "../axiolid/crates/axiolid-heal" }
+axiolid-profile = { path = "../axiolid/crates/axiolid-profile" }
+axiolid-curve = { path = "../axiolid/crates/axiolid-curve" }
+axiolid-surface = { path = "../axiolid/crates/axiolid-surface" }
+axiolid-sweep = { path = "../axiolid/crates/axiolid-sweep" }
+axiolid-topology = { path = "../axiolid/crates/axiolid-topology" }
+axiolid-tessellate = { path = "../axiolid/crates/axiolid-tessellate" }
+axiolid-spatial = { path = "../axiolid/crates/axiolid-spatial" }
+axiolid-measure = { path = "../axiolid/crates/axiolid-measure" }
 # The scalar reference implementation and correctness oracle (ADR 0012).
-geom-scalar = { path = "packages/geometry/geom-scalar" }
-geom-compile = { path = "packages/geometry/geom-compile" }
+axiolid-scalar = { path = "../axiolid/crates/axiolid-scalar" }
+axiolid-compile = { path = "../axiolid/crates/axiolid-compile" }
 # Contract and implementations are separate crates so feature unification can
 # never pull a concrete backend into a format adapter.
-geom-kernel = { path = "packages/geometry/geom-kernel", default-features = false }
-geom-backend-cpu = { path = "packages/geometry/geom-backend-cpu", default-features = false }
-geom-backend-gpu = { path = "packages/geometry/geom-backend-gpu", default-features = false }
+axiolid-kernel = { path = "../axiolid/crates/axiolid-kernel", default-features = false }
+axiolid-backend-cpu = { path = "../axiolid/crates/axiolid-backend-cpu", default-features = false }
+axiolid-backend-gpu = { path = "../axiolid/crates/axiolid-backend-gpu", default-features = false }
 # boolmesh-backed provider (ADR 0014). Isolated so `boolmesh` never enters
-# geom-kernel's graph; the contract crate stays implementation-free.
-geom-boolmesh = { path = "packages/geometry/geom-boolmesh" }
+# axiolid-kernel's graph; the contract crate stays implementation-free.
+axiolid-boolmesh = { path = "../axiolid/crates/axiolid-boolmesh" }
 
 # --- packages/ifc: pure IFC. Only ifc-geometry may touch the geometry kernel. ---
 ifc-schema = { path = "packages/ifc/ifc-schema" }

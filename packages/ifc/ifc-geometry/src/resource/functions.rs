@@ -60,7 +60,7 @@ pub const FUNCTIONS: &[FunctionSupport] = &[
     },
     FunctionSupport {
         name: "IfcCrossProduct",
-        owner: "geom_core::Vec3::cross",
+        owner: "axiolid_core::Vec3::cross",
         status: NATIVE,
     },
     FunctionSupport {
@@ -75,7 +75,7 @@ pub const FUNCTIONS: &[FunctionSupport] = &[
     },
     FunctionSupport {
         name: "IfcDotProduct",
-        owner: "geom_core::Vec3::dot",
+        owner: "axiolid_core::Vec3::dot",
         status: NATIVE,
     },
     FunctionSupport {
@@ -100,7 +100,7 @@ pub const FUNCTIONS: &[FunctionSupport] = &[
     },
     FunctionSupport {
         name: "IfcNormalise",
-        owner: "geom_core::Vec3::normalize",
+        owner: "axiolid_core::Vec3::normalize",
         status: NATIVE,
     },
     FunctionSupport {
@@ -130,7 +130,7 @@ pub const FUNCTIONS: &[FunctionSupport] = &[
     },
     FunctionSupport {
         name: "IfcScalarTimesVector",
-        owner: "geom_core::Vec3::mul",
+        owner: "axiolid_core::Vec3::mul",
         status: NATIVE,
     },
     FunctionSupport {
@@ -145,12 +145,12 @@ pub const FUNCTIONS: &[FunctionSupport] = &[
     },
     FunctionSupport {
         name: "IfcVectorDifference",
-        owner: "geom_core::Vec3::sub",
+        owner: "axiolid_core::Vec3::sub",
         status: NATIVE,
     },
     FunctionSupport {
         name: "IfcVectorSum",
-        owner: "geom_core::Vec3::add",
+        owner: "axiolid_core::Vec3::add",
         status: NATIVE,
     },
     FunctionSupport {

@@ -10,5 +10,5 @@ description = "IFC4x3 linear positioning: alignments, referents, linear placemen
 [dependencies]
 ifc-schema.workspace = true
 ifc-model.workspace = true
-geom-core.workspace = true
-geom-curve.workspace = true
+axiolid-core.workspace = true
+axiolid-curve.workspace = true

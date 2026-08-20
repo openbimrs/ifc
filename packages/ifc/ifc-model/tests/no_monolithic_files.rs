@@ -121,7 +121,7 @@ fn lib_rs_delegates_rather_than_implements() {
     let root = workspace_root();
     let mut offenders = Vec::new();
 
-    for group in ["packages/geometry", "packages/ifc", "packages/openbim"] {
+    for group in ["../axiolid", "packages/ifc", "packages/openbim"] {
         let Ok(entries) = std::fs::read_dir(root.join(group)) else {
             continue;
         };

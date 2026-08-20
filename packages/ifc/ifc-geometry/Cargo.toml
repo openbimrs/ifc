@@ -10,12 +10,12 @@ description = "IFC semantic views lowered into the format-neutral geometry DAG."
 [dependencies]
 ifc-model.workspace = true
 ifc-schema.workspace = true
-geom-core.workspace = true
-geom-curve.workspace = true
-geom-model.workspace = true
-geom-topology.workspace = true
-geom-primitive.workspace = true
-geom-profile.workspace = true
+axiolid-core.workspace = true
+axiolid-curve.workspace = true
+axiolid-model.workspace = true
+axiolid-topology.workspace = true
+axiolid-primitive.workspace = true
+axiolid-profile.workspace = true
 thiserror.workspace = true
 # Representation crates only. Operation-provider selection belongs to the app.
 

@@ -26,7 +26,7 @@ ADR:
 1. **Geometry is far larger than "meshes and booleans."** IFC4 carries 23
    `IfcProfileDef` subtypes, 36 curve entities, 37 surface entities, 6
    NURBS/B-spline entities, 11 swept-solid forms and ~37 topology entities.
-   A single `geom-brep` crate covering "B-rep" was hiding four distinct
+   A single `axiolid-brep` crate covering "B-rep" was hiding four distinct
    subsystems, each with its own algorithms and failure modes.
 
 2. **Whole IFC concept areas had no home.** Counting IFC4 entities per area
@@ -40,23 +40,23 @@ ADR:
 Expand both package groups so each substantial subsystem is its own crate, and
 rename where the spec's own vocabulary is clearer than our invention.
 
-### `packages/geometry/`
+### `../axiolid/`
 
 | Crate | Role | Why separate |
 | --- | --- | --- |
-| `geom-core` | scalars, tolerance, vectors, transforms, AABB | root of the graph |
-| `geom-profile` | 2D profiles, polygons, triangulation, 2D boolean | 23 `IfcProfileDef` subtypes; purely 2D, testable in isolation |
-| `geom-curve` | lines, arcs, composite curves, NURBS curves, trimming | 36 curve entities; evaluation/parameterisation is its own domain |
-| `geom-surface` | plane/cylinder/cone/sphere/torus, NURBS surfaces | 37 surface entities; needed before B-rep means anything |
-| `geom-mesh` | `TriMesh`, validation, repair, topology queries | the exchange currency between everything |
-| `geom-sweep` | extrude, revolve, sweep along directrix, loft | 11 swept forms; consumes profile+curve, produces mesh/brep |
-| `geom-topology` | vertex/edge/loop/face/shell/solid, half-edge | ~37 topology entities; the exact-representation counterpart to `geom-mesh` |
-| `geom-tessellate` | curve/surface/B-rep → triangles, chord tolerance | one place where "how fine?" is decided |
-| `geom-spatial` | BVH, octree, grid, nearest/ray queries | acceleration, generic over payload; every query crate needs it |
-| `geom-measure` | area, volume, centroid, inertia, bounds | quantity takeoff needs these without booleans |
-| `geom-kernel` | the trait contract + hardware backends | unchanged role: the swap boundary |
+| `axiolid-core` | scalars, tolerance, vectors, transforms, AABB | root of the graph |
+| `axiolid-profile` | 2D profiles, polygons, triangulation, 2D boolean | 23 `IfcProfileDef` subtypes; purely 2D, testable in isolation |
+| `axiolid-curve` | lines, arcs, composite curves, NURBS curves, trimming | 36 curve entities; evaluation/parameterisation is its own domain |
+| `axiolid-surface` | plane/cylinder/cone/sphere/torus, NURBS surfaces | 37 surface entities; needed before B-rep means anything |
+| `axiolid-mesh` | `TriMesh`, validation, repair, topology queries | the exchange currency between everything |
+| `axiolid-sweep` | extrude, revolve, sweep along directrix, loft | 11 swept forms; consumes profile+curve, produces mesh/brep |
+| `axiolid-topology` | vertex/edge/loop/face/shell/solid, half-edge | ~37 topology entities; the exact-representation counterpart to `axiolid-mesh` |
+| `axiolid-tessellate` | curve/surface/B-rep → triangles, chord tolerance | one place where "how fine?" is decided |
+| `axiolid-spatial` | BVH, octree, grid, nearest/ray queries | acceleration, generic over payload; every query crate needs it |
+| `axiolid-measure` | area, volume, centroid, inertia, bounds | quantity takeoff needs these without booleans |
+| `axiolid-kernel` | the trait contract + hardware backends | unchanged role: the swap boundary |
 
-`geom-brep` is renamed `geom-topology` (the spec's word, and it says what the
+`axiolid-brep` is renamed `axiolid-topology` (the spec's word, and it says what the
 crate holds) and its surface/curve concerns move to the crates above.
 
 ### `packages/ifc/`
@@ -102,14 +102,14 @@ have to compile.
 
 **Follow-ups / risks to watch**
 
-- `geom-curve`/`geom-surface` are where a NURBS effort would balloon. Scope is
+- `axiolid-curve`/`axiolid-surface` are where a NURBS effort would balloon. Scope is
   deliberately "what real IFC files contain," not a general CAD kernel.
 - Crate count now exceeds the useful limit for a flat dependency table; the
   per-group `AGENTS.md` files carry the graph instead.
 
 ## Relation to existing code
 
-`packages/geometry/*`, `packages/ifc/*`, workspace `Cargo.toml` members and
+`../axiolid/*`, `packages/ifc/*`, workspace `Cargo.toml` members and
 `[workspace.dependencies]`, and the architecture gate in
 `packages/ifc/ifc-geometry/tests/no_backend_dependency.rs`, which now checks
 every crate in both groups.

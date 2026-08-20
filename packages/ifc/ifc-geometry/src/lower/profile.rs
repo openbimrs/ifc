@@ -4,10 +4,10 @@
 //! exact. Tessellation is a geometry-kernel decision and never occurs in the
 //! format adapter.
 
-use geom_core::{Interval, Transform2, Vec2};
-use geom_curve::{Curve2, Line2};
-use geom_model::{GeometryNode, NodeId};
-use geom_profile::{
+use axiolid_core::{Interval, Transform2, Vec2};
+use axiolid_curve::{Curve2, Line2};
+use axiolid_model::{GeometryNode, NodeId};
+use axiolid_profile::{
     CircleProfile, Contour, ContourProfile, Profile, ProfileSegment, RectangleProfile,
 };
 use ifc_model::{EntityId, Model};

@@ -17,12 +17,12 @@ targets, never the portable compile baseline.
 
 - [x] Downward-only geometry graph: core, representation, algorithm/contract,
       backend, facade, then external format adapters.
-- [x] `geom-model` immutable typed-handle DAG for exact values, mapped instances,
+- [x] `axiolid-model` immutable typed-handle DAG for exact values, mapped instances,
       CSG, sweeps, B-rep, and tessellated geometry; forward references rejected.
-- [x] `geom-kernel` contains opt-in operation contracts only.
-      `geom-backend-cpu` is a runtime execution context and
-      `geom-backend-gpu` holds operation-specific adapters.
-- [x] `geom` facade exposes lean `mesh`/`cpu` defaults plus additive
+- [x] `axiolid-kernel` contains opt-in operation contracts only.
+      `axiolid-backend-cpu` is a runtime execution context and
+      `axiolid-backend-gpu` holds operation-specific adapters.
+- [x] `axiolid` facade exposes lean `mesh`/`cpu` defaults plus additive
       `discrete`, `parametric`, `advanced`, `parallel`, `simd`, `gpu`, and
       `full` bundles; every important combination is built in isolation.
 - [x] Runtime x86/AArch64 feature detection, optional local Rayon pool, no

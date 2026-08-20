@@ -3,7 +3,7 @@
 //! # What this crate is
 //!
 //! It answers *"what does this IFC entity mean geometrically"* and lowers
-//! implemented slices into the format-neutral `geom-model` DAG. It does not
+//! implemented slices into the format-neutral `axiolid-model` DAG. It does not
 //! triangulate, evaluate NURBS, perform booleans, or select execution providers.
 //!
 //! ```text
@@ -36,7 +36,7 @@
 //! approximate geometry.
 //!
 //! **Neutral DAG output.** Implemented lowerers resolve IFC units, placements,
-//! profiles, and representation relationships into `geom-model` nodes. Active
+//! profiles, and representation relationships into `axiolid-model` nodes. Active
 //! lowering owns no duplicate geometry types and never selects a CPU/GPU
 //! provider. The legacy [`kernel`] namespace is retained only as a source-
 //! compatibility shell for the pre-DAG public API. Neutral names that would
@@ -57,11 +57,11 @@ pub mod surface;
 pub mod transform;
 pub mod units;
 
+pub use axiolid_model::BooleanOperator as GeometryBooleanOperator;
+pub use axiolid_model::{GeometryGraph, GeometryNode, NodeId, SolidOperation};
+pub use axiolid_primitive::Primitive as AnalyticPrimitive;
+pub use axiolid_profile::Profile as ExactProfile;
 pub use error::{GeometryError, GeometryResult};
-pub use geom_model::BooleanOperator as GeometryBooleanOperator;
-pub use geom_model::{GeometryGraph, GeometryNode, NodeId, SolidOperation};
-pub use geom_primitive::Primitive as AnalyticPrimitive;
-pub use geom_profile::Profile as ExactProfile;
 pub use kernel::{BooleanOp, CsgShape, Primitive, Profile};
 pub use slots::Slots;
 pub use transform::Transform;

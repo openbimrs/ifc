@@ -7,8 +7,8 @@
 //! naive count. These tests assert on the manifold structure itself, using
 //! numbers read directly out of the fixture records.
 
-use geom_model::GeometryNode;
-use geom_topology::Orientation;
+use axiolid_model::GeometryNode;
+use axiolid_topology::Orientation;
 use ifc_geometry::lower::{lower_faceted_brep_node, LoweringSession, Tolerance};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
@@ -27,9 +27,9 @@ fn model_of(rel: &str) -> Model {
 }
 
 fn brep_of(
-    graph: &geom_model::GeometryGraph,
-    root: geom_model::NodeId,
-) -> &geom_topology::BRep<geom_model::NodeId> {
+    graph: &axiolid_model::GeometryGraph,
+    root: axiolid_model::NodeId,
+) -> &axiolid_topology::BRep<axiolid_model::NodeId> {
     match graph.get(root).expect("root resolves") {
         GeometryNode::BRep(brep) => brep,
         other => panic!("expected a BRep node, got {other:?}"),

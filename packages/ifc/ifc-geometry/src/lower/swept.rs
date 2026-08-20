@@ -6,8 +6,8 @@
 //! is the convenience wrapper that opens a session, lowers one item, and
 //! freezes the graph.
 
-use geom_core::{Point3, Vec3};
-use geom_model::{GeometryNode, Instance, NodeId, SolidOperation};
+use axiolid_core::{Point3, Vec3};
+use axiolid_model::{GeometryNode, Instance, NodeId, SolidOperation};
 use ifc_model::{EntityId, Model};
 
 use crate::error::{GeometryError, GeometryResult};

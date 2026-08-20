@@ -8,8 +8,8 @@
 //! operands append into the caller's session, so the operation node can refer
 //! to them directly.
 
-use geom_core::BooleanOperator;
-use geom_model::{GeometryNode, NodeId, SolidOperation};
+use axiolid_core::BooleanOperator;
+use axiolid_model::{GeometryNode, NodeId, SolidOperation};
 use ifc_model::EntityId;
 
 use crate::error::{GeometryError, GeometryResult};

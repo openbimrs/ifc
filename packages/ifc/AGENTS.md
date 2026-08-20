@@ -38,7 +38,7 @@ L1 codecs            ifc-step, ifc-xml          -> ifc-model
 L2 domain views       ifc-{material,...,cost}    -> ifc-model
 L2 validation         ifc-validate               -> ifc-model + ifc-schema
 L2 geometry bridges   ifc-geometry/alignment/georef
-                                               -> ifc-model + neutral geom crates
+                                               -> ifc-model + neutral axiolid crates
 L3 facade             ifc                       -> selected L1/L2 crates
 L4 orchestration      apps / openbim / bindings (outside this package)
 ```
@@ -58,7 +58,7 @@ domain-agnostic.
 - Source IDs and diagnostics stay in an IFC-side provenance table; they do not
   leak into generic geometry values.
 - Only `ifc-geometry`, `ifc-alignment`, and `ifc-georef` may depend on neutral
-  `geom-*` representation/contract crates. No IFC crate may depend on a
+  `axiolid-*` representation/contract crates. No IFC crate may depend on a
   concrete geometry backend.
 - `ifc-style` may reference the ID of a representation item but never changes
   its shape. `ifc-properties` stores quantities but never computes geometry.

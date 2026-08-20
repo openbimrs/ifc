@@ -1,7 +1,7 @@
 //! M4: the corpus gate. Every fixture must go through the whole pipeline.
 //!
 //! This is the test that would have caught the `Profile::Derived` gap: the
-//! synthetic graphs in `geom-compile` all passed while every real file failed,
+//! synthetic graphs in `axiolid-compile` all passed while every real file failed,
 //! because real lowering wraps profiles in their 2D placement.
 
 use ifc_cli_support::{compile_model, compile_products, fixtures, signed_volume};
@@ -65,7 +65,7 @@ fn every_lowered_item_in_the_corpus_compiles() {
 }
 
 /// Signed volume via the divergence theorem.
-fn volume(mesh: &geom_mesh::TriMesh) -> f64 {
+fn volume(mesh: &axiolid_mesh::TriMesh) -> f64 {
     mesh.indices
         .chunks_exact(3)
         .map(|t| {

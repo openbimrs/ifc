@@ -131,7 +131,7 @@ secrets, transient process IDs, or unverifiable performance claims.
 ## Risks and current critiques
 
 - The parallel geometry refactor has already replaced the IFC-local primitive
-  vocabulary with exact neutral `geom-*` values. Any remaining docs claiming
+  vocabulary with exact neutral `axiolid-*` values. Any remaining docs claiming
   `ifc-geometry` defines or depends on a kernel trait are stale and must be
   corrected rather than preserved for compatibility.
 - The neutral-DAG seam is formalized by ADR 0009. The metadata-backed package

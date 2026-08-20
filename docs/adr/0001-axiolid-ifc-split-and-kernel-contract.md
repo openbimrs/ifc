@@ -1,18 +1,18 @@
-# 0001 — Split the workspace into `geom/` and `ifc/`, with a trait contract between them
+# 0001 — Split IFC semantics from Axiolid, the external geometry kernel
 
-- **Status:** Amended by [0009](0009-layered-geometry-dag.md)
+- **Status:** Superseded for kernel ownership by the Axiolid extraction
 - **Date:** 2026-08-18
 - **Deciders:** GeneralPawz, Hermes
 - **Supersedes:** —
 
 > **Amended by [0004](0004-package-layout-and-backend-features.md).** The
-> reasoning below stands. Paths have moved: `geom/` → `packages/geometry/`,
+> reasoning below stands. Paths have moved: `axiolid/` → `../axiolid/`,
 > `ifc/` → `packages/ifc/`, and `ifc-parser`/`ifc-shape` are now
 > `ifc-step`/`ifc-geometry`.
 >
 > **Current seam:** 0009 supersedes the direct `ifc-geometry` to
-> `geom-kernel` trait dependency below. Format adapters now emit a neutral
-> `geom-model::GeometryGraph`; applications select operation providers. The
+> `axiolid-kernel` trait dependency below. Format adapters now emit a neutral
+> `axiolid-model::GeometryGraph`; applications select operation providers. The
 > package split and backend-isolation rationale remain in force.
 
 
@@ -40,17 +40,17 @@ ordinary dependency edge — so the boundary needs enforcement, not etiquette.
 
 ## Decision
 
-Two top-level package directories, each containing crates:
+A separate Axiolid repository and the IFC package consume it through a narrow bridge:
 
 ```text
-geom/   core, kernel, cpu, simd, gpu, dispatch
-ifc/    schema, parser, model, shape
+../axiolid/crates/axiolid-*  core, kernel, CPU/GPU execution, facade
+packages/ifc/              schema, codecs, model, geometry adapter
 ```
 
-`geom/kernel` holds **traits only** — the contract. `ifc/` depends on
-`geom-kernel` (traits) and `geom-core` (data types) and **never** on a backend
-crate. `ifc/shape` is the sole crate in `ifc/` that touches geometry at all;
-`schema`, `parser`, and `model` have no geometry dependency whatsoever.
+`axiolid-kernel` holds **traits only** — the contract. `ifc-geometry` depends on
+`axiolid-kernel` (traits) and `axiolid-core` (data types) and **never** on a backend
+crate. `ifc-geometry` is the bridge crate that lowers IFC semantics;
+`ifc-schema`, codecs, and `ifc-model` have no Axiolid dependency whatsoever.
 
 The concrete backend is selected by the **application** at the top and injected
 into `ifc-shape`. Neither the IFC layer nor the kernel contract names a backend.
@@ -59,8 +59,8 @@ into `ifc-shape`. Neither the IFC layer nor the kernel contract names a backend.
 
 | Option | Why not |
 | --- | --- |
-| One flat `crates/` dir | Does not express the geom/ifc split the project is organized around, and gives no natural home for per-backend crates. |
-| `ifc` depends on a `geom` facade crate | A facade still binds one implementation; swapping means editing the facade's dependencies, and the facade tends to accrete IFC-shaped helpers. |
+| One flat `crates/` dir | Does not express the axiolid/ifc split the project is organized around, and gives no natural home for per-backend crates. |
+| `ifc` depends on a `axiolid` facade crate | A facade still binds one implementation; swapping means editing the facade's dependencies, and the facade tends to accrete IFC-shaped helpers. |
 | `#[cfg]` feature flags to pick a backend | Bakes one hardware choice in at build time and makes cross-backend differential testing impossible — you cannot compare scalar vs SIMD output if only one is compiled. |
 | Generic parameter on every IFC type | Viral: `Wall<K>` infects every signature in the workspace for a choice that matters only at the geometry seam. |
 
@@ -86,13 +86,13 @@ into `ifc-shape`. Neither the IFC layer nor the kernel contract names a backend.
 
 - If `ifc-shape` starts needing kernel capabilities that are awkward to express
   as traits, revisit the contract rather than reaching for a backend directly.
-- Watch that `geom-core` stays data-only; algorithms leaking into it would make
+- Watch that `axiolid-core` stays data-only; algorithms leaking into it would make
   it a second, unswappable kernel.
 
 ## Relation to existing code
 
-- `geom/kernel/src/lib.rs` — the contract and its rationale.
-- `ifc/shape/src/lib.rs` — the seam; generic over `K: MeshBoolean`.
-- `ifc/shape/tests/no_backend_dependency.rs` — **enforces** this ADR by reading
+- `../axiolid/crates/axiolid-kernel/src/lib.rs` — the contract and its rationale.
+- `packages/ifc/ifc-geometry/src/lib.rs` — the seam; generic over `K: MeshBoolean`.
+- `packages/ifc/ifc-geometry/tests/no_backend_dependency.rs` — **enforces** this ADR by reading
   the `ifc/*` manifests and failing the build if a backend dependency appears.
   Verified to fail when violated, not merely to pass today.

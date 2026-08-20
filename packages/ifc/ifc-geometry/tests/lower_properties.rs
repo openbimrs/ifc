@@ -1,7 +1,7 @@
 //! Lowering properties the IFC corpus alone cannot prove.
 
-use geom_model::{GeometryNode, SolidOperation};
-use geom_profile::Profile;
+use axiolid_model::{GeometryNode, SolidOperation};
+use axiolid_profile::Profile;
 use ifc_geometry::lower::{lower_extruded_area_solid, lower_profile, LoweredGeometry, Tolerance};
 use ifc_geometry::{Transform, UnitScale};
 use ifc_model::{Entity, EntityId, Model, Value};
@@ -157,7 +157,7 @@ fn solid_position_is_composed_into_instance_transform() {
             GeometryNode::Instance(instance) => instance.transform,
             other => panic!("expected instance, got {other:?}"),
         };
-    let moved = transform(&a).transform_point3(geom_core::Point3::ZERO);
+    let moved = transform(&a).transform_point3(axiolid_core::Point3::ZERO);
     assert!((moved.x - 1.0).abs() < 1e-12);
     assert_ne!(transform(&a), transform(&b));
 }
@@ -233,8 +233,8 @@ fn parameterized_profile_position_is_preserved() {
     .expect("lowers");
     match profile {
         Profile::Derived { transform, .. } => {
-            let origin = transform.transform_point2(geom_core::Point2::ZERO);
-            let x = transform.transform_vector2(geom_core::Vec2::X);
+            let origin = transform.transform_point2(axiolid_core::Point2::ZERO);
+            let x = transform.transform_vector2(axiolid_core::Vec2::X);
             assert!((origin.x - 1.0).abs() < 1e-12);
             assert!((origin.y - 2.0).abs() < 1e-12);
             assert!(x.x.abs() < 1e-12);

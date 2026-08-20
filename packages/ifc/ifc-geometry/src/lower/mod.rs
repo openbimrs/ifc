@@ -10,7 +10,7 @@ pub mod session;
 pub mod swept;
 pub mod tolerance;
 
-use geom_model::{GeometryGraph, NodeId};
+use axiolid_model::{GeometryGraph, NodeId};
 
 pub use boolean::lower_boolean_result_node;
 pub use brep::lower_faceted_brep_node;

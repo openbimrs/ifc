@@ -1,10 +1,10 @@
 //! IFC source attribution for format-neutral geometry nodes.
 //!
-//! Provenance is deliberately a side table. `geom-model` stays IFC-agnostic,
+//! Provenance is deliberately a side table. `axiolid-model` stays IFC-agnostic,
 //! while diagnostics and consumers of a lowered result can still trace a node
 //! back to the entity that emitted it.
 
-use geom_model::NodeId;
+use axiolid_model::NodeId;
 use ifc_model::EntityId;
 use std::collections::BTreeMap;
 

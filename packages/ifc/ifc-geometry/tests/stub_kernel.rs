@@ -1,6 +1,6 @@
 //! End-to-end proof that the IFC layer emits a backend-neutral geometry DAG.
 
-use geom_model::{GeometryNode, SolidOperation};
+use axiolid_model::{GeometryNode, SolidOperation};
 use ifc_geometry::lower::{lower_extruded_area_solid, Tolerance};
 use ifc_geometry::resource::mapped::MappingWalker;
 use ifc_geometry::{rules, select, Transform, UnitScale};

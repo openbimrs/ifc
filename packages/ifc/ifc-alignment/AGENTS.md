@@ -7,7 +7,7 @@ roadmap work; keep progress, blockers, and evidence there.
 
 ## Boundary
 
-Allowed production dependencies: ifc-model, schema metadata, and exact neutral geom-core/geom-curve representations; geom-model only if graph output is required.
+Allowed production dependencies: ifc-model, schema metadata, and exact neutral axiolid-core/axiolid-curve representations; axiolid-model only if graph output is required.
 
 ## Module ownership
 

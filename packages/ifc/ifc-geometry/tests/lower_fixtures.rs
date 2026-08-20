@@ -7,8 +7,8 @@
 //! layer can look complete against synthetic input and still misread the
 //! first real record it meets.
 
-use geom_model::{GeometryNode, SolidOperation};
-use geom_profile::Profile;
+use axiolid_model::{GeometryNode, SolidOperation};
+use axiolid_profile::Profile;
 use ifc_geometry::lower::{lower_extruded_area_solid, LoweredGeometry, Tolerance};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
@@ -22,7 +22,7 @@ fn fixture(rel: &str) -> PathBuf {
         .join(rel)
 }
 
-fn extrusion(lowered: &LoweredGeometry) -> (&Profile, geom_core::Vec3, f64) {
+fn extrusion(lowered: &LoweredGeometry) -> (&Profile, axiolid_core::Vec3, f64) {
     let operation_id = match lowered.graph.get(lowered.root).expect("root exists") {
         GeometryNode::Instance(instance) => instance.source,
         other => panic!("expected instance root, got {other:?}"),
@@ -78,7 +78,7 @@ fn the_wall_fixture_lowers_to_an_extrusion_with_the_documented_numbers() {
         .expect("a real extrusion must lower");
 
     let (profile, direction, depth) = extrusion(&lowered);
-    assert_eq!(direction, geom_core::Vec3::Z, "#19 is the +Z direction");
+    assert_eq!(direction, axiolid_core::Vec3::Z, "#19 is the +Z direction");
     assert!(depth > 0.0, "depth must be positive, got {depth}");
     assert!(
         matches!(base_profile(profile), Profile::Rectangle(_)),

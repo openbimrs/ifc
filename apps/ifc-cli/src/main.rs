@@ -59,7 +59,7 @@ fn main() {
 
 /// Report execution contexts and implemented geometry providers in this build.
 fn capabilities() {
-    let cpu = geom_backend_cpu::CpuExecution::detect();
+    let cpu = axiolid_backend_cpu::CpuExecution::detect();
     println!("CPU execution context");
     println!("  instruction set: {:?}", cpu.instruction_set());
     println!("  worker bound: {}", cpu.thread_count());
@@ -67,18 +67,18 @@ fn capabilities() {
     println!("operation providers");
     println!(
         "  {:<24} {:?}",
-        geom_compile::BACKEND_ID.as_str(),
-        geom_kernel::Operation::GraphCompilation
+        axiolid_compile::BACKEND_ID.as_str(),
+        axiolid_kernel::Operation::GraphCompilation
     );
     println!(
         "  {:<24} {:?}",
-        geom_boolmesh::BoolmeshBoolean::ID.as_str(),
-        geom_kernel::Operation::MeshBoolean
+        axiolid_boolmesh::BoolmeshBoolean::ID.as_str(),
+        axiolid_kernel::Operation::MeshBoolean
     );
     println!(
         "  {:<24} {:?}",
-        geom_compile::BACKEND_ID.as_str(),
-        geom_kernel::Operation::ProfileTriangulation
+        axiolid_compile::BACKEND_ID.as_str(),
+        axiolid_kernel::Operation::ProfileTriangulation
     );
 }
 

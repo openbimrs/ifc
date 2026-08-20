@@ -10,7 +10,7 @@ description = "Clash detection over IFC models, on the shared geometry kernel."
 [dependencies]
 ifc-model.workspace = true
 ifc-geometry.workspace = true
-geom-core.workspace = true
-geom-mesh.workspace = true
+axiolid-core.workspace = true
+axiolid-mesh.workspace = true
 # CONTRACT ONLY — clash runs on whatever kernel it is handed.
-geom-kernel = { workspace = true, default-features = false }
+axiolid-kernel = { workspace = true, default-features = false }

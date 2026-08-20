@@ -46,7 +46,7 @@ mod slot {
 /// `IfcBooleanOperator`: the three set operations IFC defines.
 ///
 /// The IFC-file enumeration is distinct from the neutral
-/// [`geom_core::BooleanOperator`], with an explicit lossless conversion at the
+/// [`axiolid_core::BooleanOperator`], with an explicit lossless conversion at the
 /// adapter boundary.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IfcBooleanOperator {
@@ -91,7 +91,7 @@ impl core::fmt::Display for IfcBooleanOperator {
     }
 }
 
-impl From<IfcBooleanOperator> for geom_core::BooleanOperator {
+impl From<IfcBooleanOperator> for axiolid_core::BooleanOperator {
     fn from(value: IfcBooleanOperator) -> Self {
         match value {
             IfcBooleanOperator::Union => Self::Union,

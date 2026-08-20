@@ -4,13 +4,13 @@
 //!
 //! A furniture family placed 400 times is one geometry definition and 400
 //! transforms. Copying the geometry per occurrence turns a 5 MB model into a
-//! 2 GB one. `geom_model::Instance` exists to preserve that sharing, and these
+//! 2 GB one. `axiolid_model::Instance` exists to preserve that sharing, and these
 //! tests assert the sharing survives lowering.
 //!
 //! Expected values are read directly out of the fixture files, quoted at each
 //! test, so a reviewer can check them against the source records.
 
-use geom_model::{GeometryNode, SolidOperation};
+use axiolid_model::{GeometryNode, SolidOperation};
 use ifc_geometry::lower::{
     lower_mapped_item_node, lower_representation_item, LoweringSession, SessionLimits, Tolerance,
 };
@@ -35,7 +35,7 @@ fn reals(values: &[f64]) -> Value {
 }
 
 /// Follow `Instance` links down to the first non-instance node.
-fn resolve(graph: &geom_model::GeometryGraph, mut id: geom_model::NodeId) -> &GeometryNode {
+fn resolve(graph: &axiolid_model::GeometryGraph, mut id: axiolid_model::NodeId) -> &GeometryNode {
     loop {
         match graph.get(id).expect("node resolves") {
             GeometryNode::Instance(instance) => id = instance.source,
@@ -44,7 +44,7 @@ fn resolve(graph: &geom_model::GeometryGraph, mut id: geom_model::NodeId) -> &Ge
     }
 }
 
-fn count_kind(graph: &geom_model::GeometryGraph, pick: fn(&GeometryNode) -> bool) -> usize {
+fn count_kind(graph: &axiolid_model::GeometryGraph, pick: fn(&GeometryNode) -> bool) -> usize {
     graph.iter().filter(|(_, node)| pick(node)).count()
 }
 

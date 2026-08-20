@@ -113,11 +113,11 @@ impl Transform {
     }
 
     /// Convert to the format-neutral geometry transform at the IFC boundary.
-    pub fn to_geom(self) -> geom_core::Transform3 {
-        let columns = self.basis.map(geom_core::Vec3::from_array);
-        geom_core::Transform3::from_mat3_translation(
-            geom_core::Mat3::from_cols(columns[0], columns[1], columns[2]),
-            geom_core::Vec3::from_array(self.origin),
+    pub fn to_geom(self) -> axiolid_core::Transform3 {
+        let columns = self.basis.map(axiolid_core::Vec3::from_array);
+        axiolid_core::Transform3::from_mat3_translation(
+            axiolid_core::Mat3::from_cols(columns[0], columns[1], columns[2]),
+            axiolid_core::Vec3::from_array(self.origin),
         )
     }
 

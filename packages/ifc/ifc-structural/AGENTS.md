@@ -24,7 +24,7 @@ Allowed production dependencies: ifc-model and schema metadata only; no geometry
 
 ## Invariants
 
-- This crate references geometry/profile entities by EntityId; it does not evaluate shape or link geom crates.
+- This crate references geometry/profile entities by EntityId; it does not evaluate shape or link axiolid crates.
 - Authored section properties and computed section properties are distinguished.
 - Solvers, FEM meshes, and numerical analysis are application/adapter capabilities, not IFC views.
 

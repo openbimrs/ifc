@@ -25,10 +25,10 @@ ifc-properties.workspace = true
 # Applications may select execution contexts and concrete operation providers.
 # The current CLI exposes CPU runtime detection only; it claims no geometry
 # operation until a verified provider is wired here.
-geom-backend-cpu = { workspace = true, features = ["simd"] }
-geom-core.workspace = true
-geom-mesh.workspace = true
-geom-compile.workspace = true
-geom-boolmesh.workspace = true
-geom-kernel = { workspace = true, features = ["mesh-boolean", "model"] }
-geom-model.workspace = true
+axiolid-backend-cpu = { workspace = true, features = ["simd"] }
+axiolid-core.workspace = true
+axiolid-mesh.workspace = true
+axiolid-compile.workspace = true
+axiolid-boolmesh.workspace = true
+axiolid-kernel = { workspace = true, features = ["mesh-boolean", "model"] }
+axiolid-model.workspace = true

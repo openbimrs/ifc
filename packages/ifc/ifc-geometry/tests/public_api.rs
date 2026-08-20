@@ -130,8 +130,8 @@ fn placement_resolution_is_reachable_from_outside_the_crate() {
 /// duplicate IFC-local kernel vocabulary.
 #[test]
 fn the_neutral_geometry_dag_is_part_of_the_public_api() {
-    use geom_model::GeometryGraphBuilder;
-    use geom_profile::RectangleProfile;
+    use axiolid_model::GeometryGraphBuilder;
+    use axiolid_profile::RectangleProfile;
     use ifc_geometry::{
         AnalyticPrimitive as Primitive, ExactProfile as Profile,
         GeometryBooleanOperator as BooleanOperator, GeometryNode, SolidOperation,
@@ -152,7 +152,7 @@ fn the_neutral_geometry_dag_is_part_of_the_public_api() {
     let body = builder
         .push(GeometryNode::SolidOperation(SolidOperation::Extrusion {
             profile,
-            direction: geom_core::Vec3::Z,
+            direction: axiolid_core::Vec3::Z,
             depth: 2.0,
         }))
         .expect("body");

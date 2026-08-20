@@ -8,7 +8,7 @@
 //! that decides which IFC representation items are implemented, so coverage is
 //! auditable from one table instead of scattered across families.
 
-use geom_model::NodeId;
+use axiolid_model::NodeId;
 use ifc_model::EntityId;
 
 use crate::error::GeometryResult;

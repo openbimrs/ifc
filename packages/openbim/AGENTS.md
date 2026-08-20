@@ -21,7 +21,7 @@ use it.
 ## `clash` is the boundary's stress test
 
 It is the heaviest geometry consumer in the workspace and still takes
-`geom-kernel` with `default-features = false`, receiving a backend by injection.
+`axiolid-kernel` with `default-features = false`, receiving a backend by injection.
 If clash can stay kernel-agnostic, everything can. Keep it that way.
 
 ## Reporting discipline

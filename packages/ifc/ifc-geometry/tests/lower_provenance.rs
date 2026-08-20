@@ -2,9 +2,9 @@
 //!
 //! The geometry graph stays format-neutral. Attribution travels beside it so
 //! diagnostics and downstream inspection can answer which IFC entity produced
-//! a node without teaching `geom-model` about IFC identifiers.
+//! a node without teaching `axiolid-model` about IFC identifiers.
 
-use geom_model::{GeometryNode, SolidOperation};
+use axiolid_model::{GeometryNode, SolidOperation};
 use ifc_geometry::lower::{lower_extruded_area_solid_node, LoweringSession, Tolerance};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
@@ -97,15 +97,15 @@ fn implicit_nodes_follow_the_innermost_active_entity_not_id_order() {
 
     session.enter(outer, "outer").expect("outer enters");
     let outer_before = session
-        .node(GeometryNode::Point3(geom_core::Point3::ZERO))
+        .node(GeometryNode::Point3(axiolid_core::Point3::ZERO))
         .expect("outer node");
     session.enter(inner, "inner").expect("inner enters");
     let inner_node = session
-        .node(GeometryNode::Point3(geom_core::Point3::ZERO))
+        .node(GeometryNode::Point3(axiolid_core::Point3::ZERO))
         .expect("inner node");
     session.exit(inner);
     let outer_after = session
-        .node(GeometryNode::Point3(geom_core::Point3::ZERO))
+        .node(GeometryNode::Point3(axiolid_core::Point3::ZERO))
         .expect("outer resumes");
     session.exit(outer);
     let root = session
@@ -129,7 +129,7 @@ fn caller_synthesized_unscoped_nodes_have_no_fake_ifc_source() {
     let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
 
     let root = session
-        .node(GeometryNode::Point3(geom_core::Point3::ZERO))
+        .node(GeometryNode::Point3(axiolid_core::Point3::ZERO))
         .expect("unscoped node inserts");
     let lowered = session.finish(root).expect("session finishes");
 

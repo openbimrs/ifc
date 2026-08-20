@@ -15,7 +15,7 @@
 //! composed result. Converting per link would raise the scale to
 //! the power of the chain depth.
 
-use geom_model::NodeId;
+use axiolid_model::NodeId;
 use ifc_model::{EntityId, Model};
 
 use crate::constraint::local::PlacementResolver;
@@ -82,7 +82,7 @@ pub fn lower_product_items(
         1 => Ok(Some(roots[0])),
         _ => Ok(Some(session.node_for(
             product,
-            geom_model::GeometryNode::Collection(roots),
+            axiolid_model::GeometryNode::Collection(roots),
         )?)),
     }
 }

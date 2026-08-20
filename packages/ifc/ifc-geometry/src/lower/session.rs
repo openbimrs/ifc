@@ -30,7 +30,7 @@
 
 use std::collections::BTreeMap;
 
-use geom_model::{GeometryGraphBuilder, GeometryNode, GraphError, NodeId};
+use axiolid_model::{GeometryGraphBuilder, GeometryNode, GraphError, NodeId};
 use ifc_model::{EntityId, Model};
 
 use crate::error::{GeometryError, GeometryResult};

@@ -22,6 +22,117 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
+name = "axiolid-backend-cpu"
+version = "0.1.0"
+
+[[package]]
+name = "axiolid-boolmesh"
+version = "0.1.0"
+dependencies = [
+ "axiolid-core",
+ "axiolid-kernel",
+ "axiolid-mesh",
+ "boolmesh",
+]
+
+[[package]]
+name = "axiolid-compile"
+version = "0.1.0"
+dependencies = [
+ "axiolid-core",
+ "axiolid-curve",
+ "axiolid-kernel",
+ "axiolid-mesh",
+ "axiolid-model",
+ "axiolid-profile",
+ "axiolid-scalar",
+ "axiolid-topology",
+ "earcut",
+]
+
+[[package]]
+name = "axiolid-core"
+version = "0.1.0"
+dependencies = [
+ "glam 0.29.3",
+]
+
+[[package]]
+name = "axiolid-curve"
+version = "0.1.0"
+dependencies = [
+ "axiolid-core",
+]
+
+[[package]]
+name = "axiolid-kernel"
+version = "0.1.0"
+dependencies = [
+ "axiolid-core",
+ "axiolid-mesh",
+ "axiolid-model",
+ "thiserror",
+]
+
+[[package]]
+name = "axiolid-mesh"
+version = "0.1.0"
+dependencies = [
+ "axiolid-core",
+]
+
+[[package]]
+name = "axiolid-model"
+version = "0.1.0"
+dependencies = [
+ "axiolid-core",
+ "axiolid-curve",
+ "axiolid-mesh",
+ "axiolid-primitive",
+ "axiolid-profile",
+ "axiolid-surface",
+ "axiolid-topology",
+]
+
+[[package]]
+name = "axiolid-primitive"
+version = "0.1.0"
+dependencies = [
+ "axiolid-core",
+]
+
+[[package]]
+name = "axiolid-profile"
+version = "0.1.0"
+dependencies = [
+ "axiolid-core",
+ "axiolid-curve",
+]
+
+[[package]]
+name = "axiolid-scalar"
+version = "0.1.0"
+dependencies = [
+ "axiolid-core",
+ "axiolid-kernel",
+]
+
+[[package]]
+name = "axiolid-surface"
+version = "0.1.0"
+dependencies = [
+ "axiolid-core",
+ "axiolid-curve",
+]
+
+[[package]]
+name = "axiolid-topology"
+version = "0.1.0"
+dependencies = [
+ "axiolid-core",
+]
+
+[[package]]
 name = "bcf"
 version = "0.1.0"
 dependencies = [
@@ -108,9 +219,9 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 name = "clash"
 version = "0.1.0"
 dependencies = [
- "geom-core",
- "geom-kernel",
- "geom-mesh",
+ "axiolid-core",
+ "axiolid-kernel",
+ "axiolid-mesh",
  "ifc-geometry",
  "ifc-model",
 ]
@@ -192,193 +303,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e5e8f6c15a24b9a3ee5efec809ccd006d3b30e8b3bb63c39af737c7f87daa1d"
 
 [[package]]
-name = "geom"
-version = "0.1.0"
-dependencies = [
- "geom-backend-cpu",
- "geom-backend-gpu",
- "geom-core",
- "geom-curve",
- "geom-heal",
- "geom-kernel",
- "geom-measure",
- "geom-mesh",
- "geom-model",
- "geom-primitive",
- "geom-profile",
- "geom-spatial",
- "geom-surface",
- "geom-sweep",
- "geom-tessellate",
- "geom-topology",
-]
-
-[[package]]
-name = "geom-backend-cpu"
-version = "0.1.0"
-dependencies = [
- "rayon",
-]
-
-[[package]]
-name = "geom-backend-gpu"
-version = "0.1.0"
-dependencies = [
- "geom-core",
- "geom-kernel",
- "geom-mesh",
- "geom-model",
-]
-
-[[package]]
-name = "geom-boolmesh"
-version = "0.1.0"
-dependencies = [
- "boolmesh",
- "geom-core",
- "geom-kernel",
- "geom-mesh",
-]
-
-[[package]]
-name = "geom-compile"
-version = "0.1.0"
-dependencies = [
- "earcut",
- "geom-boolmesh",
- "geom-core",
- "geom-curve",
- "geom-kernel",
- "geom-mesh",
- "geom-model",
- "geom-profile",
- "geom-topology",
- "geom-scalar",
-]
-
-[[package]]
-name = "geom-core"
-version = "0.1.0"
-dependencies = [
- "glam 0.29.3",
-]
-
-[[package]]
-name = "geom-curve"
-version = "0.1.0"
-dependencies = [
- "geom-core",
-]
-
-[[package]]
-name = "geom-heal"
-version = "0.1.0"
-dependencies = [
- "geom-core",
-]
-
-[[package]]
-name = "geom-kernel"
-version = "0.1.0"
-dependencies = [
- "geom-core",
- "geom-mesh",
- "geom-model",
- "thiserror",
-]
-
-[[package]]
-name = "geom-measure"
-version = "0.1.0"
-dependencies = [
- "geom-core",
-]
-
-[[package]]
-name = "geom-mesh"
-version = "0.1.0"
-dependencies = [
- "geom-core",
-]
-
-[[package]]
-name = "geom-model"
-version = "0.1.0"
-dependencies = [
- "geom-core",
- "geom-curve",
- "geom-mesh",
- "geom-primitive",
- "geom-profile",
- "geom-surface",
- "geom-topology",
- "syn 2.0.119",
-]
-
-[[package]]
-name = "geom-primitive"
-version = "0.1.0"
-dependencies = [
- "geom-core",
-]
-
-[[package]]
-name = "geom-profile"
-version = "0.1.0"
-dependencies = [
- "geom-core",
- "geom-curve",
-]
-
-[[package]]
-name = "geom-scalar"
-version = "0.1.0"
-dependencies = [
- "geom-core",
- "geom-kernel",
-]
-
-[[package]]
-name = "geom-spatial"
-version = "0.1.0"
-dependencies = [
- "geom-core",
-]
-
-[[package]]
-name = "geom-surface"
-version = "0.1.0"
-dependencies = [
- "geom-core",
- "geom-curve",
-]
-
-[[package]]
-name = "geom-sweep"
-version = "0.1.0"
-dependencies = [
- "geom-core",
- "geom-mesh",
- "geom-model",
-]
-
-[[package]]
-name = "geom-tessellate"
-version = "0.1.0"
-dependencies = [
- "geom-core",
- "geom-mesh",
- "geom-model",
-]
-
-[[package]]
-name = "geom-topology"
-version = "0.1.0"
-dependencies = [
- "geom-core",
-]
-
-[[package]]
 name = "getrandom"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -429,9 +353,7 @@ dependencies = [
  "ifc-cost",
  "ifc-geometry",
  "ifc-georef",
- "ifc-infer",
  "ifc-material",
- "ifc-migrate",
  "ifc-model",
  "ifc-properties",
  "ifc-resource",
@@ -450,8 +372,8 @@ dependencies = [
 name = "ifc-alignment"
 version = "0.1.0"
 dependencies = [
- "geom-core",
- "geom-curve",
+ "axiolid-core",
+ "axiolid-curve",
  "ifc-model",
  "ifc-schema",
 ]
@@ -468,13 +390,13 @@ dependencies = [
 name = "ifc-cli"
 version = "0.1.0"
 dependencies = [
- "geom-backend-cpu",
- "geom-boolmesh",
- "geom-compile",
- "geom-core",
- "geom-kernel",
- "geom-mesh",
- "geom-model",
+ "axiolid-backend-cpu",
+ "axiolid-boolmesh",
+ "axiolid-compile",
+ "axiolid-core",
+ "axiolid-kernel",
+ "axiolid-mesh",
+ "axiolid-model",
  "ifc-geometry",
  "ifc-model",
  "ifc-properties",
@@ -494,12 +416,12 @@ dependencies = [
 name = "ifc-geometry"
 version = "0.1.0"
 dependencies = [
- "geom-core",
- "geom-curve",
- "geom-model",
- "geom-primitive",
- "geom-profile",
- "geom-topology",
+ "axiolid-core",
+ "axiolid-curve",
+ "axiolid-model",
+ "axiolid-primitive",
+ "axiolid-profile",
+ "axiolid-topology",
  "ifc-model",
  "ifc-schema",
  "ifc-step",
@@ -512,15 +434,7 @@ dependencies = [
 name = "ifc-georef"
 version = "0.1.0"
 dependencies = [
- "geom-core",
- "ifc-model",
- "ifc-schema",
-]
-
-[[package]]
-name = "ifc-infer"
-version = "0.1.0"
-dependencies = [
+ "axiolid-core",
  "ifc-model",
  "ifc-schema",
 ]
@@ -531,14 +445,6 @@ version = "0.1.0"
 dependencies = [
  "ifc-model",
  "thiserror",
-]
-
-[[package]]
-name = "ifc-migrate"
-version = "0.1.0"
-dependencies = [
- "ifc-model",
- "ifc-schema",
 ]
 
 [[package]]
@@ -676,7 +582,7 @@ dependencies = [
 name = "nehirde-python"
 version = "0.1.0"
 dependencies = [
- "geom-backend-cpu",
+ "axiolid-backend-cpu",
  "ifc-model",
  "ifc-properties",
  "ifc-schema",

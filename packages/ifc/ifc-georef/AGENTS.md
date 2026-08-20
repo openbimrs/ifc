@@ -7,7 +7,7 @@ roadmap work; keep progress, blockers, and evidence there.
 
 ## Boundary
 
-Allowed production dependencies: ifc-model, schema metadata, and neutral geom-core transform/value types only.
+Allowed production dependencies: ifc-model, schema metadata, and neutral axiolid-core transform/value types only.
 
 ## Module ownership
 

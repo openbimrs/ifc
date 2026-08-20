@@ -46,15 +46,15 @@ fn centroid(model: &Model, product: EntityId) -> [f64; 3] {
 /// A product is placed by transforms that sit ABOVE its geometry, so comparing
 /// raw leaf points would miss the placement entirely. Walking from the roots
 /// down and accumulating transforms is what makes the assertion meaningful.
-fn graph_centroid(graph: &geom_model::GeometryGraph, root: geom_model::NodeId) -> [f64; 3] {
+fn graph_centroid(graph: &axiolid_model::GeometryGraph, root: axiolid_model::NodeId) -> [f64; 3] {
     let mut sum = [0.0f64; 3];
     let mut count = 0usize;
-    let mut stack: Vec<(geom_model::NodeId, geom_core::Transform3)> =
-        vec![(root, geom_core::Transform3::IDENTITY)];
+    let mut stack: Vec<(axiolid_model::NodeId, axiolid_core::Transform3)> =
+        vec![(root, axiolid_core::Transform3::IDENTITY)];
     while let Some((id, frame)) = stack.pop() {
         let Some(node) = graph.get(id) else { continue };
         match node {
-            geom_model::GeometryNode::Instance(instance) => {
+            axiolid_model::GeometryNode::Instance(instance) => {
                 // An instance frame IS a position signal: product placement
                 // lands here, above the shared geometry.
                 let composed = frame * instance.transform;
@@ -65,12 +65,12 @@ fn graph_centroid(graph: &geom_model::GeometryGraph, root: geom_model::NodeId) -
                 count += 1;
                 stack.push((instance.source, composed));
             }
-            geom_model::GeometryNode::Collection(members) => {
+            axiolid_model::GeometryNode::Collection(members) => {
                 for m in members {
                     stack.push((*m, frame));
                 }
             }
-            geom_model::GeometryNode::BRep(brep) => {
+            axiolid_model::GeometryNode::BRep(brep) => {
                 for v in brep.vertices() {
                     let p = frame.transform_point3(v.position);
                     sum[0] += p.x;
@@ -79,12 +79,12 @@ fn graph_centroid(graph: &geom_model::GeometryGraph, root: geom_model::NodeId) -
                     count += 1;
                 }
             }
-            geom_model::GeometryNode::SolidOperation(_) => {
+            axiolid_model::GeometryNode::SolidOperation(_) => {
                 for r in node.references() {
                     stack.push((r, frame));
                 }
             }
-            geom_model::GeometryNode::Point3(p) => {
+            axiolid_model::GeometryNode::Point3(p) => {
                 let q = frame.transform_point3(*p);
                 sum[0] += q.x;
                 sum[1] += q.y;

@@ -10,4 +10,4 @@ description = "Georeferencing: map conversion, coordinate reference systems, sit
 [dependencies]
 ifc-schema.workspace = true
 ifc-model.workspace = true
-geom-core.workspace = true
+axiolid-core.workspace = true

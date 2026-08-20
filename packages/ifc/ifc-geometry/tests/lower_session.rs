@@ -13,8 +13,8 @@
 //! -- booleans, mapped items, CSG trees, B-rep faces sharing a surface --
 //! needs two children in ONE graph. These tests pin that property.
 
-use geom_core::Vec3;
-use geom_model::{GeometryNode, SolidOperation};
+use axiolid_core::Vec3;
+use axiolid_model::{GeometryNode, SolidOperation};
 use ifc_geometry::lower::{
     lower_extruded_area_solid_node, LoweringSession, SessionLimits, Tolerance,
 };
@@ -70,7 +70,7 @@ fn two_families_lower_into_one_graph_and_can_be_combined() {
         .node(GeometryNode::SolidOperation(SolidOperation::Boolean {
             left,
             right,
-            operator: geom_core::BooleanOperator::Union,
+            operator: axiolid_core::BooleanOperator::Union,
         }))
         .expect("children share one graph, so a boolean is constructible");
 

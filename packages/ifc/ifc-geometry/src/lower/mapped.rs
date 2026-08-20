@@ -21,7 +21,7 @@
 //! geometry that is plausibly near the right place, which is far worse than an
 //! obvious failure.
 
-use geom_model::{GeometryNode, Instance, NodeId};
+use axiolid_model::{GeometryNode, Instance, NodeId};
 use ifc_model::EntityId;
 
 use crate::error::GeometryResult;

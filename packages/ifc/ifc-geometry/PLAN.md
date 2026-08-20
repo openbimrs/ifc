@@ -8,7 +8,7 @@ record blockers/decisions under it, and check it off only with evidence.
 
 ## Established boundary
 
-Interpret all shape-affecting IFC data and lower exact intent into a format-neutral geom-model DAG.
+Interpret all shape-affecting IFC data and lower exact intent into a format-neutral axiolid-model DAG.
 
 ## Planned file map
 
@@ -48,7 +48,7 @@ parallel placeholders.
 
 ## Work queue
 
-- [ ] `GEOM-CONTRACT` - agree validated direction/axis invariants with `geom-model`
+- [ ] `GEOM-CONTRACT` - agree validated direction/axis invariants with `axiolid-model`
   - Contract: axes, normals, and orientation fields become finite non-zero unit directions; displacement, derivative, scale, and other magnitude-bearing vectors are never normalized implicitly.
   - Evidence: contract docs plus non-unit, zero-vector, and magnitude-preservation tests on both sides.
 - [x] `GEOM-SESSION` - introduce one recursive lowering session and shared graph builder
