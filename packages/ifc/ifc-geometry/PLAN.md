@@ -88,9 +88,11 @@ parallel placeholders.
 - [ ] `GEOM-SOLID` - complete booleans, halfspaces, CSG, and swept-disk families
   - Requires: `GEOM-SESSION`, `GEOM-PROFILE`, `GEOM-SURFACE`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `GEOM-MAP` - preserve mapped-item instancing with cycle/depth limits
-  - Requires: `GEOM-SESSION`, `GEOM-PLACE`.
-  - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+- [x] `GEOM-MAP` - preserve mapped-item instancing with cycle/depth limits
+  - Evidence: 11 mapped-item tests over real fixtures, 6/6 mutation probes,
+    isolated build, and crate clippy.
+  - Decision: `GEOM-PLACE` was not required. Mapped items compose their own
+    frames; product-level placement composition remains open under that task.
 - [ ] `GEOM-CENSUS` - keep declaration and real-corpus lowering coverage executable
   - Contract: record one implementation owner per unique declaration separately from many-to-many IFC resource memberships; do not double-count `IfcSameAxis2Placement`, `IfcSameCartesianPoint`, `IfcSameDirection`, or `IfcSameValue`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.

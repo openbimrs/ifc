@@ -50,10 +50,15 @@ and check it off only after the proof runs.
   - Requires: `LOW-DISPATCH`, `INPUT-TOPO`.
   - Implements: `GEOM-TESS`.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
-- [ ] `LOW-MAP` - Instance nodes with cycle/depth budgets
-  - Requires: `LOW-DISPATCH`, `LOW-CONTEXT`.
+- [x] `LOW-MAP` - Instance nodes with cycle/depth budgets
   - Implements: `GEOM-MAP`.
-  - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
+  - Proof: `cargo test -p ifc-geometry` (11 mapped tests), crate clippy, corpus census.
+  - Decision: `LOW-CONTEXT` was NOT a real prerequisite. A mapped item composes
+    world/target/origin frames itself; representation-context selection is a
+    product-shape concern that sits above item lowering.
+  - Decision: the shared subtree is lowered in the map's own space, so the
+    per-occurrence placement rides on the `Instance` transform. That is what
+    lets many occurrences reuse one subtree.
 - [ ] `LOW-PROV` - separate NodeId-to-IFC provenance map
   - Requires: `LOW-SESSION`.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
@@ -65,6 +70,11 @@ and check it off only after the proof runs.
 ## Completion log
 
 Append `TASK-ID - proof - material decision`; keep long logs out of this file.
+
+- `LOW-MAP` - 11 mapped tests green, 6/6 mutation probes killed, corpus
+  dispatch 25 -> 43 lowered - instancing is preserved as `Instance` over a
+  shared subtree; transform order is `world o target o origin` with units
+  applied once per frame.
 
 - `LOW-SESSION` - 413 tests pass; 4/4 mutation probes caught (cycle, depth,
   dispatch reason, profile memo) - family lowerers now append into one caller

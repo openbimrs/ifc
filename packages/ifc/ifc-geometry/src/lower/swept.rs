@@ -203,10 +203,7 @@ fn compose_placement(
 }
 
 fn to_metres(transform: Transform, units: &UnitScale) -> Transform {
-    Transform {
-        basis: transform.basis,
-        origin: transform.origin.map(|coordinate| units.length(coordinate)),
-    }
+    transform.to_metres(units)
 }
 
 fn direction_ratios(model: &Model, id: EntityId) -> GeometryResult<[f64; 3]> {

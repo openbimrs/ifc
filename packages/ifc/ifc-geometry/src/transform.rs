@@ -162,6 +162,20 @@ impl Transform {
         }
     }
 
+    /// Convert the translation to metres, leaving the basis dimensionless.
+    ///
+    /// IFC coordinates carry the file's length unit; direction ratios and
+    /// scale factors do not. Scaling the basis as well would compound the
+    /// unit into every rotation and silently resize geometry, so only the
+    /// origin is converted. Apply this exactly once, at the boundary where a
+    /// source frame becomes project space.
+    pub fn to_metres(self, units: &crate::units::UnitScale) -> Transform {
+        Transform {
+            basis: self.basis,
+            origin: self.origin.map(|coordinate| units.length(coordinate)),
+        }
+    }
+
     /// Is this within tolerance of the identity?
     pub fn is_identity(&self, tolerance: f64) -> bool {
         let id = Transform::identity();

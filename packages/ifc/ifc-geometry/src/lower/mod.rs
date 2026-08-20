@@ -2,6 +2,7 @@
 
 pub mod boolean;
 pub mod dispatch;
+pub mod mapped;
 pub mod profile;
 pub mod session;
 pub mod swept;
@@ -11,6 +12,7 @@ use geom_model::{GeometryGraph, NodeId};
 
 pub use boolean::lower_boolean_result_node;
 pub use dispatch::lower_representation_item;
+pub use mapped::{lower_mapped_item_node, lower_representation};
 pub use profile::{lower_profile, lower_profile_node};
 pub use session::{LoweringSession, SessionLimits};
 pub use swept::{
@@ -31,7 +33,6 @@ pub struct LoweredGeometry {
 mod brep;
 mod context;
 mod curve;
-mod mapped;
 mod placement;
 mod provenance;
 mod solid;

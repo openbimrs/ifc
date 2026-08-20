@@ -13,6 +13,7 @@ use ifc_model::EntityId;
 
 use crate::error::GeometryResult;
 use crate::lower::boolean::lower_boolean_result_node;
+use crate::lower::mapped::lower_mapped_item_node;
 use crate::lower::session::LoweringSession;
 use crate::lower::swept::{lower_extruded_area_solid_node, lower_revolved_area_solid_node};
 use crate::transform::Transform;
@@ -26,6 +27,7 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCREVOLVEDAREASOLID",
     "IFCBOOLEANRESULT",
     "IFCBOOLEANCLIPPINGRESULT",
+    "IFCMAPPEDITEM",
 ];
 
 /// Recognized representation items that are not lowered yet.
@@ -38,7 +40,6 @@ pub const PLANNED: &[(&str, &str)] = &[
     ("IFCADVANCEDBREP", "advanced B-rep topology lowering"),
     ("IFCTRIANGULATEDFACESET", "tessellated face-set lowering"),
     ("IFCPOLYGONALFACESET", "polygonal face-set lowering"),
-    ("IFCMAPPEDITEM", "mapped-item instancing"),
     ("IFCSWEPTDISKSOLID", "swept-disk solids"),
     ("IFCSURFACECURVESWEPTAREASOLID", "surface-curve sweeps"),
     ("IFCSECTIONEDSPINE", "spine interpolation"),
@@ -62,6 +63,7 @@ pub fn lower_representation_item(
         "IFCBOOLEANRESULT" | "IFCBOOLEANCLIPPINGRESULT" => {
             lower_boolean_result_node(session, id, frame)
         }
+        "IFCMAPPEDITEM" => lower_mapped_item_node(session, id, frame),
         other => Err(session.unsupported(id, other, detail_for(other))),
     }
 }

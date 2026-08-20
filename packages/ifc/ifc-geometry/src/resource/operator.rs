@@ -27,7 +27,7 @@
 //! operator gives X first (`Axis1`), Y second (`Axis2`), Z last (`Axis3`).
 //! Reading them in placement order transposes the frame.
 
-use crate::error::GeometryResult;
+use crate::error::{GeometryError, GeometryResult};
 use crate::resource::axes::{base_axes_2d, base_axes_3d};
 use crate::resource::direction::resolve_unit;
 use crate::resource::point::cartesian_point_3d;
@@ -336,6 +336,39 @@ impl<'m> CartesianTransformationOperator3DnonUniform<'m> {
         let base = self.base();
         let value = base.slots.opt_f64(index).unwrap_or(base.scale()?);
         base.checked_scale(value, attribute)
+    }
+}
+
+/// Resolve any `IfcCartesianTransformationOperator` subtype to a transform.
+///
+/// The attribute is typed as the supertype, so a slot holding one may contain
+/// any of the four concrete forms and every consumer would otherwise have to
+/// dispatch. Doing it once here keeps the 2D and non-uniform cases from being
+/// quietly mishandled at each call site, mirroring
+/// [`crate::resource::placement::axis_placement_transform`].
+pub fn operator_transform(
+    model: &Model,
+    id: EntityId,
+    entity: &Entity,
+) -> GeometryResult<Transform> {
+    match entity.type_name.to_ascii_uppercase().as_str() {
+        "IFCCARTESIANTRANSFORMATIONOPERATOR3D" => {
+            CartesianTransformationOperator3D::new(id, entity).transform(model)
+        }
+        "IFCCARTESIANTRANSFORMATIONOPERATOR3DNONUNIFORM" => {
+            CartesianTransformationOperator3DnonUniform::new(id, entity).transform(model)
+        }
+        "IFCCARTESIANTRANSFORMATIONOPERATOR2D" => {
+            CartesianTransformationOperator2D::new(id, entity).transform(model)
+        }
+        "IFCCARTESIANTRANSFORMATIONOPERATOR2DNONUNIFORM" => {
+            CartesianTransformationOperator2DnonUniform::new(id, entity).transform(model)
+        }
+        other => Err(GeometryError::WrongEntityType {
+            entity: id,
+            actual: other.to_string(),
+            expected: "IfcCartesianTransformationOperator",
+        }),
     }
 }
 
