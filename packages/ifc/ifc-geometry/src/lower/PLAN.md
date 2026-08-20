@@ -21,8 +21,7 @@ and check it off only after the proof runs.
     attribution.
   - Decision: `LOW-CONTRACT` was NOT a real prerequisite; direction validation
     already lives in `resource::direction` and the session is agnostic to it.
-  - Note: provenance remains open under `LOW-PROV`; the session carries the
-    memo and active stack only.
+  - Note: source attribution is implemented separately below.
 - [x] `LOW-DISPATCH` - total entity dispatcher and typed unsupported results
   - Proof: `tests/lower_dispatch_corpus.rs` walks the committed corpus; every
     representation item either lowers or returns a typed `Unsupported` naming a
@@ -77,9 +76,14 @@ and check it off only after the proof runs.
   - Decision: the shared subtree is lowered in the map's own space, so the
     per-occurrence placement rides on the `Instance` transform. That is what
     lets many occurrences reuse one subtree.
-- [ ] `LOW-PROV` - separate NodeId-to-IFC provenance map
+- [x] `LOW-PROV` - separate NodeId-to-IFC provenance map
   - Requires: `LOW-SESSION`.
-  - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
+  - Proof: `tests/lower_provenance.rs` covers real multi-entity subtrees,
+    innermost active scopes, unscoped nodes, and memo reuse; 5/5 mutation
+    probes plus crate clippy and the full gate.
+  - Decision: the side table is partial. Nodes emitted for an IFC entity are
+    attributed; caller-synthesized unscoped nodes stay unattributed rather than
+    receiving a fabricated entity id.
 - [ ] `LOW-CENSUS` - lower every supported corpus item and classify every unsupported item
   - Requires: `LOW-DISPATCH`.
   - Implements: `GEOM-CENSUS`.

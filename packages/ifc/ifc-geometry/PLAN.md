@@ -42,7 +42,6 @@ parallel placeholders.
 - `src/lower/curve.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
 - `src/lower/mapped.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
 - `src/lower/placement.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
-- `src/lower/provenance.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
 - `src/lower/solid.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
 - `src/lower/surface.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
 - `src/lower/tessellated.rs`: compiled private scaffold; implementation owned by `src/lower/PLAN.md`
@@ -71,8 +70,8 @@ parallel placeholders.
   - Requires: `GEOM-SESSION`.
   - Evidence: `tests/lower_product.rs`, the ifc-cli corpus placement gate, and
     4/4 mutation probes including the original all-products-at-origin bug.
-  - Note: provenance mapping remains open under its own task; this lands the
-    units and placement half only.
+  - Note: source attribution is now implemented by the session side table;
+    placement remains responsible only for units and frame composition.
 - [ ] `GEOM-PROFILE` - cover exact profile families, local profile Position, voids, and material cardinal offsets
   - Requires: `GEOM-CONTRACT`, `GEOM-SESSION`, `GEOM-INPUT`, `GEOM-PLACE`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.

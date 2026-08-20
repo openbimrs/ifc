@@ -28,13 +28,13 @@
 //! - **Located failures.** Graph construction faults are translated into
 //!   [`GeometryError`] values that name the offending IFC entity.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use geom_model::{GeometryGraphBuilder, GeometryNode, GraphError, NodeId};
 use ifc_model::{EntityId, Model};
 
 use crate::error::{GeometryError, GeometryResult};
-use crate::lower::{LoweredGeometry, Tolerance};
+use crate::lower::{LoweredGeometry, ProvenanceMap, Tolerance};
 use crate::slots::Slots;
 use crate::transform::Transform;
 use crate::units::UnitScale;
@@ -105,8 +105,8 @@ pub struct LoweringSession<'a> {
     builder: GeometryGraphBuilder,
     nodes: usize,
     memo: BTreeMap<MemoKey, NodeId>,
-    active: BTreeSet<EntityId>,
-    depth: usize,
+    active: Vec<EntityId>,
+    provenance: ProvenanceMap,
 }
 
 impl<'a> LoweringSession<'a> {
@@ -130,8 +130,8 @@ impl<'a> LoweringSession<'a> {
             builder: GeometryGraphBuilder::new(),
             nodes: 0,
             memo: BTreeMap::new(),
-            active: BTreeSet::new(),
-            depth: 0,
+            active: Vec::new(),
+            provenance: ProvenanceMap::default(),
         }
     }
 
@@ -162,7 +162,16 @@ impl<'a> LoweringSession<'a> {
 
     /// Append one node, attributing any graph fault to the current entity.
     pub fn node(&mut self, node: GeometryNode) -> GeometryResult<NodeId> {
-        self.node_for(self.current_entity(), node)
+        let source = self.active.last().copied();
+        let id = self
+            .builder
+            .push(node)
+            .map_err(|error| graph_error(source.unwrap_or(EntityId(0)), error))?;
+        self.nodes += 1;
+        if let Some(source) = source {
+            self.provenance.record(id, source);
+        }
+        Ok(id)
     }
 
     /// Append one node, attributing any graph fault to `entity`.
@@ -172,7 +181,13 @@ impl<'a> LoweringSession<'a> {
             .push(node)
             .map_err(|error| graph_error(entity, error))?;
         self.nodes += 1;
+        self.provenance.record(id, entity);
         Ok(id)
+    }
+
+    /// Source attribution accumulated so far.
+    pub fn provenance(&self) -> &ProvenanceMap {
+        &self.provenance
     }
 
     /// Resolve an entity or report the dangling reference against `referrer`.
@@ -217,15 +232,14 @@ impl<'a> LoweringSession<'a> {
         if self.active.contains(&entity) {
             return Err(GeometryError::CyclicChain { entity, kind });
         }
-        if self.depth >= self.limits.max_depth {
+        if self.active.len() >= self.limits.max_depth {
             return Err(GeometryError::ChainTooDeep {
                 entity,
                 kind,
                 limit: self.limits.max_depth,
             });
         }
-        self.active.insert(entity);
-        self.depth += 1;
+        self.active.push(entity);
         Ok(())
     }
 
@@ -234,8 +248,13 @@ impl<'a> LoweringSession<'a> {
     /// Sharing is not recursion: once a subtree is complete the entity must be
     /// reachable again from a sibling branch.
     pub fn exit(&mut self, entity: EntityId) {
-        if self.active.remove(&entity) {
-            self.depth -= 1;
+        if self.active.last() == Some(&entity) {
+            self.active.pop();
+            return;
+        }
+        debug_assert!(false, "lowering scopes must exit in LIFO order");
+        if let Some(index) = self.active.iter().rposition(|&active| active == entity) {
+            self.active.remove(index);
         }
     }
 
@@ -299,16 +318,16 @@ impl<'a> LoweringSession<'a> {
             .builder
             .finish(vec![root])
             .map_err(|error| graph_error(entity, error))?;
-        Ok(LoweredGeometry { graph, root })
+        Ok(LoweredGeometry {
+            graph,
+            root,
+            provenance: self.provenance,
+        })
     }
 
     /// Best-effort attribution target for graph faults raised outside a family.
     fn current_entity(&self) -> EntityId {
-        self.active
-            .iter()
-            .next_back()
-            .copied()
-            .unwrap_or(EntityId(0))
+        self.active.last().copied().unwrap_or(EntityId(0))
     }
 }
 

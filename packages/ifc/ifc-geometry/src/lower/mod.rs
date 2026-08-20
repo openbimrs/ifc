@@ -20,6 +20,7 @@ pub use context::{
 pub use dispatch::lower_representation_item;
 pub use mapped::{lower_mapped_item_node, lower_representation};
 pub use profile::{lower_profile, lower_profile_node};
+pub use provenance::ProvenanceMap;
 pub use session::{LoweringSession, SessionLimits};
 pub use swept::{
     lower_extruded_area_solid, lower_extruded_area_solid_node, lower_revolved_area_solid,
@@ -34,6 +35,8 @@ pub struct LoweredGeometry {
     pub graph: GeometryGraph,
     /// Root node for this source representation item.
     pub root: NodeId,
+    /// IFC source entity for each attributed graph node.
+    pub provenance: ProvenanceMap,
 }
 
 mod curve;
