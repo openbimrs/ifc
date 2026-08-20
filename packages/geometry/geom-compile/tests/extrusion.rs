@@ -161,3 +161,101 @@ fn a_hollow_section_is_edge_manifold() {
     let mesh = extrude(&pts, &tris, &loops(&rings), Vec3::Z, 2.0).expect("extrude");
     assert_edge_manifold(&mesh, "hollow section");
 }
+
+/// Contour profiles with holes, and mirrored placements.
+///
+/// The committed IFC corpus contains neither, so these paths would otherwise
+/// ship unverified: mutation probes on `contour_points` and the mirror
+/// re-orientation both survived the corpus gate.
+mod contour_and_mirror {
+    use super::{assert_edge_manifold, volume};
+    use geom_compile::extrude::extrude_profile;
+    use geom_compile::profile::profile_rings;
+    use geom_core::{Point2, Scalar, Tolerance, Transform2, Vec2, Vec3};
+    use geom_curve::{Curve2, Polyline2};
+    use geom_profile::{Contour, ContourProfile, Profile, ProfileSegment, RectangleProfile};
+
+    /// One closed polyline segment covering a whole ring.
+    fn ring(points: Vec<Point2>) -> Contour {
+        Contour::new(vec![ProfileSegment {
+            curve: Curve2::Polyline(Polyline2 {
+                points,
+                closed: true,
+            }),
+            domain: geom_core::Interval::new(0.0, 1.0),
+            same_sense: true,
+        }])
+    }
+
+    fn square(cx: Scalar, cy: Scalar, half: Scalar) -> Vec<Point2> {
+        vec![
+            Point2::new(cx - half, cy - half),
+            Point2::new(cx + half, cy - half),
+            Point2::new(cx + half, cy + half),
+            Point2::new(cx - half, cy + half),
+        ]
+    }
+
+    /// A ring whose first point is repeated as its last must still close.
+    ///
+    /// Authoring tools write both conventions; a duplicated closing point is a
+    /// zero-length edge that earcut cannot triangulate.
+    #[test]
+    fn a_ring_that_repeats_its_first_point_is_closed_once() {
+        let mut pts = square(0.0, 0.0, 1.0);
+        pts.push(pts[0]);
+        let profile = Profile::Contour(ContourProfile {
+            outer: ring(pts),
+            holes: Vec::new(),
+        });
+        let rings = profile_rings(&profile, 1e-4, Tolerance::MILLIMETRE).expect("rings");
+        assert_eq!(rings.outer.len(), 4, "the duplicate closing point must go");
+        let mesh = extrude_profile(&rings, Vec3::Z, 2.0, Tolerance::MILLIMETRE).expect("extrude");
+        assert!((volume(&mesh) - 8.0).abs() < 1e-9);
+        assert_edge_manifold(&mesh, "closed ring solid");
+    }
+
+    /// A contour with a hole must lose exactly the hole's volume.
+    #[test]
+    fn a_contour_hole_is_subtracted() {
+        let profile = Profile::Contour(ContourProfile {
+            outer: ring(square(0.0, 0.0, 2.0)),
+            holes: vec![ring(square(0.0, 0.0, 0.5))],
+        });
+        let rings = profile_rings(&profile, 1e-4, Tolerance::MILLIMETRE).expect("rings");
+        assert_eq!(rings.holes.len(), 1, "the hole must survive flattening");
+        let mesh = extrude_profile(&rings, Vec3::Z, 3.0, Tolerance::MILLIMETRE).expect("extrude");
+        // outer 4x4 minus hole 1x1, times depth 3.
+        assert!((volume(&mesh) - (16.0 - 1.0) * 3.0).abs() < 1e-9);
+        assert_edge_manifold(&mesh, "contour solid");
+    }
+
+    /// A mirroring 2D placement must still yield an outward-facing solid.
+    #[test]
+    fn a_mirrored_derived_profile_stays_outward() {
+        let basis = Profile::Rectangle(RectangleProfile {
+            x: 2.0,
+            y: 1.0,
+            thickness: None,
+            outer_radius: None,
+            inner_radius: None,
+        });
+        let mirror = Transform2::from_scale_angle_translation(
+            Vec2::new(-1.0, 1.0),
+            0.0,
+            Vec2::new(5.0, 0.0),
+        );
+        let profile = Profile::Derived {
+            basis: Box::new(basis),
+            transform: mirror,
+        };
+        let rings = profile_rings(&profile, 1e-4, Tolerance::MILLIMETRE).expect("rings");
+        let mesh = extrude_profile(&rings, Vec3::Z, 2.0, Tolerance::MILLIMETRE).expect("extrude");
+        assert!(
+            volume(&mesh) > 0.0,
+            "a mirrored profile produced an inside-out solid"
+        );
+        assert!((volume(&mesh) - 4.0).abs() < 1e-9);
+        assert_edge_manifold(&mesh, "mirrored solid");
+    }
+}

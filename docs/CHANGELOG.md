@@ -11,6 +11,15 @@ section on release.
 ## [Unreleased]
 
 ### Added
+- **End-to-end IFC geometry: `ifc mesh <file.ifc>`.** The CLI lowers a model's
+  representation items through `ifc-geometry`, compiles them with
+  `geom-compile`'s `ScalarCompiler`, and applies `IfcRelVoidsElement` openings
+  with `geom-boolmesh`. `ifc capabilities` now lists real providers instead of
+  reporting `none (scaffold only)`. Gated across the committed fixture corpus:
+  every lowered item compiles, every produced solid is edge-manifold and
+  outward-oriented, and the net wall volume for
+  `issue_2019_wall_two_overlapping_openings.ifc` matches the independent
+  Monte-Carlo oracle from ADR 0014 (2.0807).
 - **`ScalarCompiler`: the first working `GeometryCompiler`.** Walks the
   geometry DAG iteratively (a 50k-deep instance chain compiles without stack
   overflow) with memoisation, so a shared subtree is compiled once per batch

@@ -1,22 +1,20 @@
 # geom-compile plan
 
 ## Done
-- Profile flattening (rectangle/circle/ellipse + hollow variants, contours).
-- `earcut` triangulation with holes; certified oracle differential gate.
-- Linear extrusion: caps + sides, outward winding, edge-manifold gate.
-- `ScalarCompiler`: iterative post-order DAG walk, memoised, generic over
-  the boolean provider. Handles TriMesh, Instance, Collection, Extrusion,
-  Boolean. Every other family returns `Unsupported` with the named capability.
+- Profile flattening: rectangle, circle, ellipse, hollow variants, contours,
+  and `Derived` (2D placement) which every real IFC profile uses.
+- `earcut` triangulation with holes (ADR 0015); `geom-scalar` audits it.
+- Linear extrusion with caps and sides; edge-parity verified.
+- `ScalarCompiler`: iterative post-order walk, memoised, boolean dispatch.
+
+## Invariants
+- Outer rings CCW, holes CW. Mirrored placements are re-oriented, never
+  passed through: a negative-determinant transform silently inverts a solid.
+- Volume alone cannot gate winding. A cap in the z=0 plane contributes
+  nothing to the divergence integral, so a flipped cap is invisible to it.
+  Directed-edge parity is the winding-sensitive gate.
+- Unsupported families return `Unsupported` naming the capability needed.
 
 ## Next
-- Revolution (care on the seam: shared vertices at 0 and 2pi).
-- `BoundedHalfSpace` for `IfcBooleanClippingResult`.
-- Tapered extrusion.
-
-## Invariants proven by mutation
-- Memoisation is load-bearing (removal kills 7 tests).
-- Mirror placements keep outward winding (negative determinant reverses).
-- `append_mesh` rebases indices; the gate uses DIFFERENT-sized solids because
-  two identical cubes sum to the same volume either way.
-- Unsupported nodes name the capability they need, asserted exactly.
-- Foreign graph handles are refused, never silently indexed.
+- Revolution (seam handling), swept disk, B-rep, tessellated face sets.
+- `subtract_many` batch override once a workload justifies it.
