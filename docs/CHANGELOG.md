@@ -11,6 +11,15 @@ section on release.
 ## [Unreleased]
 
 ### Added
+- **Differential harness vs IfcOpenShell** (`tools/differential/`, `ifc differential`).
+  Both sides emit the same JSON schema; `compare.py` joins on `(file, entity id)`
+  and publishes `docs/benchmarks/differential-ifcopenshell.md`. Found and fixed
+  two real defects: products were compiled without their `ObjectPlacement`
+  (every opening landed at the origin, leaving the `issue_098_wall_W` wall at
+  42.107 instead of 32.419), and the divergence-theorem volume formula was
+  uncentred, losing ~8% on survey coordinates. 28/42 products now agree to
+  1e-9 relative; the remainder are documented tessellation-density
+  differences on curved B-reps and swept disks.
 - **`subtract_many` batch override.** `geom-boolmesh` groups mutually
   disjoint cutters by AABB and removes each group with a single boolean,
   resting on `(S \ A) \ B == S \ (A union B)`. Measured **9.2x** at n=64 on

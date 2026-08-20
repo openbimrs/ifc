@@ -4,14 +4,14 @@
 //! synthetic graphs in `geom-compile` all passed while every real file failed,
 //! because real lowering wraps profiles in their 2D placement.
 
-use ifc_cli_support::{compile_model, fixtures};
+use ifc_cli_support::{compile_model, compile_products, fixtures, signed_volume};
 use ifc_model::Codec;
 
 #[path = "../src/mesh.rs"]
 mod mesh_impl;
 
 mod ifc_cli_support {
-    pub use super::mesh_impl::compile_model;
+    pub use super::mesh_impl::{compile_model, compile_products, signed_volume};
     use std::path::PathBuf;
 
     /// Every committed geometry fixture, sorted for stable reporting.
@@ -225,4 +225,34 @@ fn every_produced_solid_is_manifold_and_outward() {
         open_surfaces, 12,
         "expected exactly the synthetic open-shell fixture bodies"
     );
+}
+
+/// The wall fixture must match the IfcOpenShell reference volume.
+///
+/// This number was produced by an independent implementation (IfcOpenShell
+/// 0.8.5) and cross-checked against a Monte-Carlo integration. It is pinned
+/// here so the placement bug that made it 42.107 instead of 32.419 cannot
+/// return silently: without `ObjectPlacement` every opening lands at the
+/// origin and barely intersects the wall it is meant to cut.
+#[test]
+fn the_wall_fixture_matches_the_ifcopenshell_reference() {
+    let path = fixtures()
+        .into_iter()
+        .find(|p| p.ends_with("issue_098_wall_W.ifc"))
+        .expect("the wall fixture is committed");
+    let model = ifc_step::StepCodec.read_path(&path).expect("read");
+    let products = compile_products(&model);
+    let wall = products
+        .iter()
+        .find(|p| p.type_name == "IFCWALLSTANDARDCASE")
+        .expect("the wall is present");
+    let volume = signed_volume(&wall.mesh);
+    // IfcOpenShell 0.8.5, same corpus, independently computed.
+    const REFERENCE: f64 = 32.419_067_748_586_31;
+    let relative = (volume - REFERENCE).abs() / REFERENCE.abs();
+    assert!(
+        relative < 1e-6,
+        "wall volume {volume} disagrees with the IfcOpenShell reference {REFERENCE} (rel {relative:.2e})"
+    );
+    assert_eq!(wall.voids_applied, 7, "all seven openings must be cut");
 }

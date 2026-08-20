@@ -29,6 +29,14 @@ fn main() {
                 std::process::exit(2);
             }
         },
+        Some("differential") => {
+            let paths: Vec<PathBuf> = args[1..].iter().map(PathBuf::from).collect();
+            if paths.is_empty() {
+                eprintln!("usage: ifc differential <file.ifc>...");
+                std::process::exit(2);
+            }
+            differential_command(paths);
+        }
         Some("types") => match args.get(1) {
             Some(path) => types(PathBuf::from(path)),
             None => {
@@ -152,5 +160,45 @@ fn mesh_command(path: PathBuf, verbose: bool) {
         // Nothing produced is a failure for a mesh command: a caller
         // scripting this needs a non-zero status to react to.
         std::process::exit(1);
+    }
+}
+
+/// Emit one JSON record per compiled product, matching the reference schema.
+fn differential_command(paths: Vec<PathBuf>) {
+    for path in paths {
+        let name = path.file_name().map_or_else(
+            || path.display().to_string(),
+            |n| n.to_string_lossy().into_owned(),
+        );
+        let Ok(model) = StepCodec.read_path(&path) else {
+            println!("{{\"file\":\"{name}\",\"error\":\"open\"}}");
+            continue;
+        };
+        let start = std::time::Instant::now();
+        let products = mesh::compile_products(&model);
+        // One timing for the whole file, divided per product: compile_products
+        // shares a lowering session and a boolean provider across products, so
+        // per-product timing would misattribute that shared setup.
+        let ms = start.elapsed().as_secs_f64() * 1000.0;
+        let per = if products.is_empty() {
+            0.0
+        } else {
+            ms / products.len() as f64
+        };
+        for product in products {
+            let volume = mesh::signed_volume(&product.mesh);
+            let manifold = mesh::edge_manifold(&product.mesh);
+            println!(
+                "{{\"file\":\"{}\",\"id\":{},\"type\":\"{}\",\"ms\":{},\"triangles\":{},\"volume\":{},\"manifold\":{},\"voids\":{}}}",
+                name,
+                product.id.0,
+                product.type_name,
+                per,
+                product.mesh.triangle_count(),
+                volume,
+                manifold,
+                product.voids_applied
+            );
+        }
     }
 }

@@ -8,6 +8,7 @@ use geom_compile::ScalarCompiler;
 use geom_core::Tolerance as GeomTolerance;
 use geom_kernel::{ExecutionOptions, GeometryCompiler, MeshBoolean};
 use geom_mesh::TriMesh;
+use ifc_geometry::constraint::local::PlacementResolver;
 use ifc_geometry::lower::lower_representation;
 use ifc_geometry::lower::{lower_representation_item, LoweringSession, Tolerance};
 use ifc_geometry::Slots;
@@ -161,8 +162,28 @@ pub fn compile_products(model: &Model) -> Vec<Product> {
         voids.entry(building).or_default().push(opening);
     }
 
+    // Every entity that OWNS an IfcProductDefinitionShape, i.e. every product
+    // with geometry. Selecting by "has a representation" rather than by type
+    // name keeps this schema-independent: `IFCPRODUCT` is abstract and never
+    // appears as a concrete type in the model index.
+    let mut subjects: Vec<EntityId> = Vec::new();
+    for &shape in model.ids_of_type("IFCPRODUCTDEFINITIONSHAPE") {
+        for (id, entity) in model.iter() {
+            if entity
+                .attributes
+                .iter()
+                .any(|v| matches!(v, ifc_model::Value::Ref(r) if *r == shape))
+                && !subjects.contains(&id)
+            {
+                subjects.push(id);
+            }
+        }
+    }
+    subjects.sort_unstable();
+    let no_openings: Vec<EntityId> = Vec::new();
     let mut out = Vec::new();
-    for (&building, openings) in &voids {
+    for building in subjects {
+        let openings = voids.get(&building).unwrap_or(&no_openings);
         let Some(subject) = product_mesh(model, &scale, tolerance, &compiler, &options, building)
         else {
             continue;
@@ -224,6 +245,18 @@ fn product_mesh(
 ) -> Option<TriMesh> {
     let entity = model.get(id)?;
     let slots = Slots::new(id, entity);
+    // Slot 5 is `ObjectPlacement`: without it every product lands at the
+    // origin, which looks plausible for a single solid and silently ruins
+    // every boolean between two differently placed products.
+    //
+    // `world_transform` returns the chain in FILE units, while lowering has
+    // already converted the representation to metres. Applying the raw
+    // transform would scale the geometry a second time, so convert the
+    // placement to metres before composing the two.
+    let placement = slots
+        .opt_ref(5)
+        .and_then(|p| PlacementResolver::new().world_transform(model, p).ok())
+        .map_or_else(Transform::identity, |t| t.to_metres(scale));
     let shape = slots.opt_ref(6)?;
     let shape_entity = model.get(shape)?;
     let representations = Slots::new(shape, shape_entity).opt_ref_list(2);
@@ -237,9 +270,16 @@ fn product_mesh(
         let Ok(lowered) = session.finish(root) else {
             continue;
         };
-        let Ok(mesh) = compiler.compile(&lowered.graph, lowered.root, options) else {
+        let Ok(mut mesh) = compiler.compile(&lowered.graph, lowered.root, options) else {
             continue;
         };
+        // Lowering produces geometry in the product's local frame; the
+        // placement chain puts it in the world. Applying it here keeps the
+        // geometry layer placement-agnostic.
+        for position in &mut mesh.positions {
+            let p = placement.apply([position.x, position.y, position.z]);
+            *position = geom_core::Point3::new(p[0], p[1], p[2]);
+        }
         match &mut combined {
             Some(existing) => merge(existing, &mesh),
             None => combined = Some(mesh),
@@ -255,4 +295,51 @@ fn merge(target: &mut TriMesh, source: &TriMesh) {
     target
         .indices
         .extend(source.indices.iter().map(|&i| i + offset));
+}
+
+/// Signed volume by the divergence theorem, centred on the mesh centroid.
+///
+/// Centring is not cosmetic. The formula sums `a . (b x c)` over triangles,
+/// whose terms scale with the CUBE of the distance to the origin while the
+/// true volume does not. On survey coordinates (~1.5e6) the terms reach 1e19
+/// and a cubic-metre result is reconstructed from differences sixteen digits
+/// down -- the naive sum returns ~8% low. Translating to the centroid first
+/// makes the terms proportional to the object, not to its map position.
+pub fn signed_volume(mesh: &TriMesh) -> f64 {
+    if mesh.positions.is_empty() {
+        return 0.0;
+    }
+    let centre = mesh
+        .positions
+        .iter()
+        .fold(geom_core::Point3::ZERO, |acc, p| acc + *p)
+        / mesh.positions.len() as f64;
+    mesh.indices
+        .chunks_exact(3)
+        .map(|t| {
+            let a = mesh.positions[t[0] as usize] - centre;
+            let b = mesh.positions[t[1] as usize] - centre;
+            let c = mesh.positions[t[2] as usize] - centre;
+            a.dot(b.cross(c))
+        })
+        .sum::<f64>()
+        / 6.0
+}
+
+/// Every directed edge exactly once, and paired with its opposite.
+///
+// Used by the `differential` subcommand. This module is also `#[path]`-included
+// by the corpus test, which does not call it, so dead-code analysis fires there.
+#[allow(dead_code)]
+pub fn edge_manifold(mesh: &TriMesh) -> bool {
+    use std::collections::HashSet;
+    let mut seen: HashSet<(u32, u32)> = HashSet::new();
+    for t in mesh.indices.chunks_exact(3) {
+        for e in [(t[0], t[1]), (t[1], t[2]), (t[2], t[0])] {
+            if !seen.insert(e) {
+                return false;
+            }
+        }
+    }
+    seen.iter().all(|&(a, b)| seen.contains(&(b, a)))
 }
