@@ -8,28 +8,14 @@ use geom_compile::ScalarCompiler;
 use geom_core::Tolerance as GeomTolerance;
 use geom_kernel::{ExecutionOptions, GeometryCompiler, MeshBoolean};
 use geom_mesh::TriMesh;
-use ifc_geometry::constraint::local::PlacementResolver;
 use ifc_geometry::lower::lower_representation;
-use ifc_geometry::lower::{lower_representation_item, LoweringSession, Tolerance};
+use ifc_geometry::lower::{
+    geometric_products, lower_product_items, product_world_transform, LoweringSession, Tolerance,
+};
 use ifc_geometry::Slots;
 use ifc_geometry::{units, Transform};
 use ifc_model::{EntityId, Model};
 use std::collections::BTreeMap;
-
-/// Representation families worth attempting; anything else is not geometry.
-const ITEM_TYPES: &[&str] = &[
-    "IFCEXTRUDEDAREASOLID",
-    "IFCBOOLEANCLIPPINGRESULT",
-    "IFCBOOLEANRESULT",
-    "IFCMAPPEDITEM",
-    "IFCFACETEDBREP",
-    "IFCREVOLVEDAREASOLID",
-    "IFCSURFACECURVESWEPTAREASOLID",
-    "IFCFIXEDREFERENCESWEPTAREASOLID",
-    "IFCSWEPTDISKSOLID",
-    "IFCTRIANGULATEDFACESET",
-    "IFCPOLYGONALFACESET",
-];
 
 /// Outcome for one representation item.
 pub enum Outcome {
@@ -71,25 +57,23 @@ pub fn compile_model(model: &Model, verbose: bool) -> Summary {
     let options = ExecutionOptions::new(GeomTolerance::MILLIMETRE);
     let mut summary = Summary::default();
 
-    for type_name in ITEM_TYPES {
-        for &id in model.ids_of_type(type_name) {
-            match compile_item(model, &scale, tolerance, &compiler, &options, id) {
-                Outcome::Meshed(mesh) => {
-                    summary.meshed += 1;
-                    summary.triangles += mesh.triangle_count();
-                    summary.meshes.push(mesh);
+    for id in geometric_products(model) {
+        match compile_product(model, &scale, tolerance, &compiler, &options, id) {
+            Outcome::Meshed(mesh) => {
+                summary.meshed += 1;
+                summary.triangles += mesh.triangle_count();
+                summary.meshes.push(mesh);
+            }
+            Outcome::NotLowered(reason) => {
+                summary.not_lowered += 1;
+                if verbose {
+                    println!("  #{id}: not lowered: {reason}");
                 }
-                Outcome::NotLowered(reason) => {
-                    summary.not_lowered += 1;
-                    if verbose {
-                        println!("  #{id} {type_name}: not lowered: {reason}");
-                    }
-                }
-                Outcome::NotCompiled(reason) => {
-                    summary.not_compiled += 1;
-                    if verbose {
-                        println!("  #{id} {type_name}: not compiled: {reason}");
-                    }
+            }
+            Outcome::NotCompiled(reason) => {
+                summary.not_compiled += 1;
+                if verbose {
+                    println!("  #{id}: not compiled: {reason}");
                 }
             }
         }
@@ -97,11 +81,11 @@ pub fn compile_model(model: &Model, verbose: bool) -> Summary {
     summary
 }
 
-/// Lower and compile one item.
+/// Lower and compile one product, placed by its own placement chain.
 ///
 /// Each item gets a fresh session so one malformed record cannot poison the
 /// memoisation caches of unrelated items.
-fn compile_item(
+fn compile_product(
     model: &Model,
     scale: &units::UnitScale,
     tolerance: Tolerance,
@@ -110,8 +94,9 @@ fn compile_item(
     id: EntityId,
 ) -> Outcome {
     let mut session = LoweringSession::new(model, scale, tolerance);
-    let root = match lower_representation_item(&mut session, id, Transform::identity()) {
-        Ok(root) => root,
+    let root = match lower_product_items(&mut session, id) {
+        Ok(Some(root)) => root,
+        Ok(None) => return Outcome::NotLowered("product has no lowerable items".to_string()),
         Err(error) => return Outcome::NotLowered(error.to_string()),
     };
     let lowered = match session.finish(root) {
@@ -253,10 +238,11 @@ fn product_mesh(
     // already converted the representation to metres. Applying the raw
     // transform would scale the geometry a second time, so convert the
     // placement to metres before composing the two.
-    let placement = slots
-        .opt_ref(5)
-        .and_then(|p| PlacementResolver::new().world_transform(model, p).ok())
-        .map_or_else(Transform::identity, |t| t.to_metres(scale));
+    // Placement lives in ifc-geometry so the library and this app cannot drift
+    // on the units question: the chain composes in file units and converts to
+    // metres exactly once.
+    let placement =
+        product_world_transform(model, scale, id).unwrap_or_else(|_| Transform::identity());
     let shape = slots.opt_ref(6)?;
     let shape_entity = model.get(shape)?;
     let representations = Slots::new(shape, shape_entity).opt_ref_list(2);

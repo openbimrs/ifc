@@ -2,6 +2,7 @@
 
 pub mod boolean;
 pub mod brep;
+pub mod context;
 pub mod dispatch;
 pub mod mapped;
 pub mod profile;
@@ -13,6 +14,9 @@ use geom_model::{GeometryGraph, NodeId};
 
 pub use boolean::lower_boolean_result_node;
 pub use brep::lower_faceted_brep_node;
+pub use context::{
+    geometric_products, lower_product_items, product_world_transform, select_shape_representation,
+};
 pub use dispatch::lower_representation_item;
 pub use mapped::{lower_mapped_item_node, lower_representation};
 pub use profile::{lower_profile, lower_profile_node};
@@ -32,7 +36,6 @@ pub struct LoweredGeometry {
     pub root: NodeId,
 }
 
-mod context;
 mod curve;
 mod placement;
 mod provenance;

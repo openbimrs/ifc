@@ -34,10 +34,20 @@ and check it off only after the proof runs.
   - Implemented families: EXTRUDEDAREASOLID, REVOLVEDAREASOLID, BOOLEANRESULT,
     BOOLEANCLIPPINGRESULT. Planned families are declared as data in
     `dispatch::PLANNED`, each with a concrete stated reason.
-- [ ] `LOW-CONTEXT` - units/context/placement composition exactly once
-  - Requires: `LOW-CONTRACT`, `LOW-SESSION`, `INPUT-REP`, `INPUT-PRODUCT`.
-  - Implements: `GEOM-CTX`, `GEOM-PLACE`.
-  - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
+- [x] `LOW-CONTEXT` - units/context/placement composition exactly once
+  - Requires: `LOW-SESSION`, `INPUT-REP`, `INPUT-PRODUCT`.
+  - Implements: `GEOM-PLACE`.
+  - Proof: `tests/lower_product.rs` (4 tests) plus the ifc-cli corpus gate
+    `products_are_distributed_by_their_placements`.
+  - Decision: the placement chain is composed in FILE units and converted to
+    metres exactly once at the end. Converting per link would scale a depth-n
+    chain n times; every family lowerer already converts its own local
+    placement, so the world frame handed to them must arrive in metres.
+  - Decision: representation selection is a preference list (Body, Facetation)
+    and never the first entry. Wall #928204 in issue_098_wall_W.ifc lists its
+    Axis Curve2D before its Body, so first-wins yields a line, not a solid.
+  - Note: the direction-contract prerequisite was dropped; normalisation
+    already lives in `resource::direction` and placement does not depend on it.
 - [ ] `LOW-EXACT` - exact profile/curve/surface node construction
   - Requires: `LOW-CONTRACT`, `LOW-SESSION`, `INPUT-PROFILE`, `INPUT-MAT`.
   - Implements: `GEOM-PROFILE`, `GEOM-CURVE`, `GEOM-SURFACE`.

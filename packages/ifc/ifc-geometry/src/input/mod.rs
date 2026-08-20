@@ -1,7 +1,7 @@
 //! Private `input` input boundary.
 
 mod material_usage;
-mod product;
+pub(crate) mod product;
 mod profile;
-mod representation;
+pub(crate) mod representation;
 mod topology;

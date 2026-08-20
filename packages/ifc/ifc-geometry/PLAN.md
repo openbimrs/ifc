@@ -67,9 +67,12 @@ parallel placeholders.
 - [ ] `GEOM-CTX` - select shape representations and compose geometric contexts/precision
   - Requires: `GEOM-CONTRACT`, `GEOM-INPUT`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `GEOM-PLACE` - compose units, local placements, item frames, and provenance exactly once
-  - Requires: `GEOM-CONTRACT`, `GEOM-SESSION`, `GEOM-INPUT`.
-  - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+- [x] `GEOM-PLACE` - compose units, local placements, item frames, and provenance exactly once
+  - Requires: `GEOM-SESSION`.
+  - Evidence: `tests/lower_product.rs`, the ifc-cli corpus placement gate, and
+    4/4 mutation probes including the original all-products-at-origin bug.
+  - Note: provenance mapping remains open under its own task; this lands the
+    units and placement half only.
 - [ ] `GEOM-PROFILE` - cover exact profile families, local profile Position, voids, and material cardinal offsets
   - Requires: `GEOM-CONTRACT`, `GEOM-SESSION`, `GEOM-INPUT`, `GEOM-PLACE`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.

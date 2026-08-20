@@ -218,7 +218,9 @@ fn every_produced_solid_is_manifold_and_outward() {
             checked += 1;
         }
     }
-    assert!(checked >= 40, "expected the corpus to produce solids");
+    // One mesh per PRODUCT, not per item: a product merges its representation
+    // items, so this counts placed objects rather than raw solids.
+    assert_eq!(checked, 30, "closed solids in the corpus");
     // Pin the split so a future change cannot quietly reclassify closed solids
     // as open surfaces to dodge the manifold assertions above.
     assert_eq!(
@@ -255,4 +257,58 @@ fn the_wall_fixture_matches_the_ifcopenshell_reference() {
         "wall volume {volume} disagrees with the IfcOpenShell reference {REFERENCE} (rel {relative:.2e})"
     );
     assert_eq!(wall.voids_applied, 7, "all seven openings must be cut");
+}
+
+/// Products must be spread across the building, not stacked at the origin.
+///
+/// Before GEOM-PLACE every item lowered at the identity, so a 45-storey
+/// building compiled to 25 meshes whose centroids all sat within ~2 m of
+/// the origin: geometrically valid, structurally meaningless. This pins the
+/// placement chain by measuring spread, which no per-mesh quality check sees.
+#[test]
+fn products_are_distributed_by_their_placements() {
+    let path = fixtures()
+        .into_iter()
+        .find(|p| {
+            p.file_name()
+                .is_some_and(|n| n == "mapped_instances_multi_item.ifc")
+        })
+        .expect("multi-item fixture is committed");
+    let model = ifc_step::StepCodec
+        .read_path(&path)
+        .expect("fixture parses");
+    let summary = compile_model(&model, false);
+
+    let centroids: Vec<[f64; 3]> = summary
+        .meshes
+        .iter()
+        .map(|mesh| {
+            let n = mesh.positions.len().max(1) as f64;
+            let mut c = [0.0; 3];
+            for p in &mesh.positions {
+                c[0] += p.x / n;
+                c[1] += p.y / n;
+                c[2] += p.z / n;
+            }
+            c
+        })
+        .collect();
+
+    assert_eq!(centroids.len(), 4, "four placed proxies");
+
+    // The four proxies share ONE RepresentationMap, so without placement they
+    // coincide exactly and the spread is 0. Placement (x = 0/10/20/30) composes
+    // with each mapped-item target ((5,0,0) (0,5,0) (5,5,0) (0,0,7)), so the
+    // frames land at 5/10/25/30. The shared body centroid is x=1.5 (a 1x1 box
+    // at the origin plus a 2x1 box at x=3), so the mesh centroids are that plus
+    // 1.5: the product frame is applied, and applied OUTSIDE the target rather
+    // than replacing it.
+    let mut xs: Vec<f64> = centroids.iter().map(|c| c[0]).collect();
+    xs.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+    let rounded: Vec<f64> = xs.iter().map(|x| (x * 1e6).round() / 1e6).collect();
+    assert_eq!(
+        rounded,
+        vec![6.5, 11.5, 26.5, 31.5],
+        "product placement must compose with the mapped-item target"
+    );
 }

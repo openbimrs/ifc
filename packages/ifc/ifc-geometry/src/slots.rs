@@ -145,6 +145,17 @@ impl<'m> Slots<'m> {
     }
 
     /// Enumeration token without its dots, e.g. `.CARTESIAN.` -> `CARTESIAN`.
+    /// A text attribute, absent when unset or not a string.
+    ///
+    /// Labels like RepresentationIdentifier are optional in the schema and
+    /// authors do omit them, so a missing value is data rather than an error.
+    pub fn opt_text(&self, index: usize) -> Option<String> {
+        match self.opt(index)?.unwrap_typed() {
+            Value::Text(text) => Some(text.to_string()),
+            _ => None,
+        }
+    }
+
     pub fn opt_enum(&self, index: usize) -> Option<&'m str> {
         match self.opt(index)? {
             Value::Enum(e) => Some(e),

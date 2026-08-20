@@ -10,11 +10,11 @@ and check it off only after the proof runs.
 
 - [ ] `INPUT-PROFILE` - exact profile/resource views with absolute-slot tests
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
-- [ ] `INPUT-REP` - context and representation-selection views
+- [x] `INPUT-REP` - context and representation-selection views
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
 - [ ] `INPUT-MAT` - single-owner views for profile references, cardinal/reference extent, layer usage direction/sense/offset, and taper geometry associations
   - Proof: absolute-slot tests plus a cross-projection fixture proving `ifc-material` does not parse these slots.
-- [ ] `INPUT-PRODUCT` - product shape and placement links
+- [x] `INPUT-PRODUCT` - product shape and placement links
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
 - [ ] `INPUT-TOPO` - topology views required by B-rep
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
