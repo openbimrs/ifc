@@ -126,3 +126,35 @@ fn the_sign_matches_the_exact_value_including_exact_zero() {
         assert_eq!(expansion_sign(&cancelled), Sign::Zero, "seed {seed}");
     }
 }
+
+/// The sign must come from the LARGEST component, not the smallest.
+///
+/// Components are ordered smallest-to-largest and are non-overlapping, so the
+/// last non-zero one dominates the sum. Reading from the front returns the
+/// sign of a tiny correction term, which is frequently opposite. A mutation
+/// reversing the iteration order survived every other test in this file
+/// because those expansions happened to be single-component.
+#[test]
+fn the_sign_comes_from_the_dominant_component() {
+    // A genuine two-component expansion whose parts disagree in sign:
+    // 1.0 - 2^-60 is represented as [-2^-60, 1.0]. The value is positive.
+    let e = grow_expansion(&[1.0], -(2f64.powi(-60)));
+    assert!(
+        e.len() >= 2,
+        "precondition: this must be a multi-component expansion, got {e:?}"
+    );
+    assert!(
+        e[0] < 0.0 && e[e.len() - 1] > 0.0,
+        "precondition: the components must disagree in sign, got {e:?}"
+    );
+    assert_eq!(
+        expansion_sign(&e),
+        Sign::Positive,
+        "the dominant component decides the sign"
+    );
+
+    // And the mirror image, so the test cannot pass by always answering
+    // Positive.
+    let f = negate_expansion(&e);
+    assert_eq!(expansion_sign(&f), Sign::Negative);
+}

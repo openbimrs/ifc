@@ -167,3 +167,57 @@ pub fn orient3_scene(count: usize, rate: DegeneracyRate, seed: u64) -> Vec<Orien
         })
         .collect()
 }
+
+/// Generate 3D orientation queries that are *nearly* coplanar.
+///
+/// Distinct from [`orient3_scene`]'s degenerate cases, which lie exactly on the
+/// plane and are therefore answered zero. These sit one unit-in-the-last-place
+/// off it: the filter must defer, and the exact path must then return a
+/// non-zero sign. A suite containing only exact degeneracies cannot tell a
+/// correct exact path from one that always answers zero.
+#[must_use]
+pub fn near_coplanar_scene(count: usize, seed: u64) -> Vec<Orient3Case> {
+    let mut rng = SceneRng::new(seed);
+    (0..count)
+        .map(|_| {
+            let p = |r: &mut SceneRng| {
+                Point3::new(
+                    r.coordinate(1_000),
+                    r.coordinate(1_000),
+                    r.coordinate(1_000),
+                )
+            };
+            let (a, b, c) = (p(&mut rng), p(&mut rng), p(&mut rng));
+            let i = (((rng.next_u64() >> 40) as i64 % 5) - 2) as f64;
+            let j = (((rng.next_u64() >> 40) as i64 % 5) - 2) as f64;
+            let z = a.z + i * (b.z - a.z) + j * (c.z - a.z);
+            [
+                a,
+                b,
+                c,
+                Point3::new(
+                    a.x + i * (b.x - a.x) + j * (c.x - a.x),
+                    a.y + i * (b.y - a.y) + j * (c.y - a.y),
+                    // One ULP off the plane: far too small for the filter to
+                    // resolve, but a definite side that exact arithmetic must
+                    // recover.
+                    next_ulp(z),
+                ),
+            ]
+        })
+        .collect()
+}
+
+/// The next representable f64 above `value`.
+///
+/// Bit increment rather than `next_after`, which core does not expose. The
+/// step is exactly one ULP, the smallest perturbation that still moves the
+/// point off the plane.
+#[must_use]
+fn next_ulp(value: f64) -> f64 {
+    if value.is_nan() || value == f64::INFINITY {
+        return value;
+    }
+    let bits = value.to_bits();
+    f64::from_bits(if value >= 0.0 { bits + 1 } else { bits - 1 })
+}

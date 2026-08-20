@@ -30,6 +30,15 @@ const EPSILON: f64 = f64::EPSILON / 2.0;
 /// The determinant is a sum of three 2x2 cofactor products. Propagating the
 /// `(1 + eps)` model over that expression gives `7*eps`; the second-order term
 /// absorbs the remainder so this is a true upper bound.
+///
+/// The constant is deliberately conservative. A mutation probe lowering it to
+/// `3*eps` does not fail the suite -- the filter stays sound at that value for
+/// the inputs generated -- while `0.05*eps` is caught immediately by
+/// `near_degenerate_cases_recover_a_definite_sign`. The margin between 3 and 7
+/// buys nothing measurable in throughput (the escalation-rate gates show the
+/// filter settles clean data either way) and costs nothing, so the derivation's
+/// value is kept rather than the empirically minimal one: correctness here is
+/// argued from the error model, not tuned against a test suite.
 const ORIENT3D_ERROR_FACTOR: f64 = (7.0 + 56.0 * EPSILON) * EPSILON;
 
 /// Orientation of `d` relative to the plane through `a`, `b`, `c`.

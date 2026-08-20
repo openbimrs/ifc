@@ -108,3 +108,111 @@ fn the_three_dimensional_static_answer_is_also_safe() {
         "coplanar inputs must be declined, not certified: {declined_on_degenerate}"
     );
 }
+
+/// A determinant landing exactly ON the bound must be declined.
+///
+/// This is the `>` versus `>=` distinction, and it needs a constructed input:
+/// random data essentially never produces `|det| == bound` exactly. The value
+/// is reached by choosing coordinates whose determinant is representable and
+/// then asking the filter about a bound equal to it.
+#[test]
+fn a_determinant_landing_exactly_on_the_bound_is_declined() {
+    // Pick a filter whose 2D bound is a specific value, then build a triple
+    // whose determinant equals it exactly. `det = (a.x-c.x)*(b.y-c.y)` with
+    // the other product zero, so the determinant is one exact multiplication.
+    let filter = StaticFilter::new(1_000.0).expect("valid");
+    let bound = {
+        // Recompute the documented bound so the test does not depend on a
+        // private accessor: same expression as `StaticFilter::new`.
+        let eps = f64::EPSILON / 2.0;
+        let span = 2.0 * filter.bound();
+        (3.0 + 16.0 * eps) * eps * (2.0 * span * span)
+    };
+
+    // a.x - c.x = bound, b.y - c.y = 1, a.y - c.y = 0 => det = bound exactly.
+    let c = Point2::new(0.0, 0.0);
+    let a = Point2::new(bound, 0.0);
+    let b = Point2::new(0.0, 1.0);
+    let det = (a.x - c.x) * (b.y - c.y) - (a.y - c.y) * (b.x - c.x);
+    assert_eq!(
+        det, bound,
+        "precondition: the determinant must sit on the bound"
+    );
+
+    assert!(
+        filter.orient2d(a, b, c).is_none(),
+        "a determinant equal to its own error bound is not a proven sign"
+    );
+}
+
+/// A determinant exactly equal to the error bound must NOT be certified.
+///
+/// At `|det| == bound` the true value could be zero, so the sign is unproven.
+/// A `>=` comparison would certify it and return a sign that may be wrong,
+/// which is precisely the failure a static filter must never have.
+#[test]
+fn a_determinant_exactly_at_the_bound_is_declined() {
+    // Collinear points: the true determinant is exactly zero, so no bound may
+    // ever certify a sign for them, at any magnitude.
+    let filter = StaticFilter::new(1_000.0).expect("valid");
+    for k in 1..500i64 {
+        let s = k as f64;
+        let a = Point2::new(0.0, 0.0);
+        let b = Point2::new(s, s);
+        let c = Point2::new(2.0 * s, 2.0 * s);
+        assert!(
+            filter.orient2d(a, b, c).is_none(),
+            "an exactly collinear triple was certified at scale {s}"
+        );
+    }
+}
+
+/// The range check is load-bearing: coordinates beyond the declared bound
+/// invalidate the precomputed error, so they must be declined rather than
+/// judged against a bound that no longer applies.
+#[test]
+fn coordinates_beyond_the_range_are_never_certified() {
+    let filter = StaticFilter::new(1.0).expect("valid");
+    // Far outside the declared range, and nearly collinear: the precomputed
+    // bound is far too small here, so a missing range check would certify a
+    // sign from noise.
+    let a = Point2::new(0.0, 0.0);
+    let b = Point2::new(1e150, 1e150);
+    let c = Point2::new(2e150, 2e150);
+    assert!(
+        filter.orient2d(a, b, c).is_none(),
+        "out-of-range coordinates must be declined"
+    );
+
+    // The load-bearing case: out of range AND the naive comparison against the
+    // small precomputed bound would certify a WRONG sign. At 1e8 the true
+    // determinant of this near-collinear triple is pure rounding noise, but it
+    // dwarfs a bound computed for range 1.0.
+    let big_a = Point2::new(1e8, 1e8);
+    let big_b = Point2::new(3e8, 3.0000000000000004e8);
+    let big_c = Point2::new(5e8, 5e8);
+    let naive =
+        (big_a.x - big_c.x) * (big_b.y - big_c.y) - (big_a.y - big_c.y) * (big_b.x - big_c.x);
+    let small_bound = {
+        let eps = f64::EPSILON / 2.0;
+        let span = 2.0 * 1.0;
+        (3.0 + 16.0 * eps) * eps * (2.0 * span * span)
+    };
+    assert!(
+        naive.abs() > small_bound,
+        "precondition: without the range check this input would be certified"
+    );
+    assert!(
+        filter.orient2d(big_a, big_b, big_c).is_none(),
+        "out-of-range input must be declined even when its determinant is large"
+    );
+
+    let p = Point3::new(0.0, 0.0, 0.0);
+    let q = Point3::new(1e150, 0.0, 0.0);
+    let r = Point3::new(0.0, 1e150, 0.0);
+    let s = Point3::new(0.0, 0.0, 1e150);
+    assert!(
+        filter.orient3d(p, q, r, s).is_none(),
+        "out-of-range 3D coordinates must be declined"
+    );
+}

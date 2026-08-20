@@ -145,3 +145,90 @@ fn degenerate_cases_are_answered_exactly_at_every_tier() {
         }
     }
 }
+
+/// The exact path must recover the correct NON-zero sign near the boundary.
+///
+/// This gate exists because of a mutation that survived: replacing the entire
+/// exact path with `Sign::Zero` passed every other test. Those tests only
+/// contain exactly-degenerate cases, whose correct answer is also zero, so
+/// they could not distinguish a working exact path from a constant. Points one
+/// ULP off the plane force the filter to defer AND require a definite sign.
+#[test]
+fn near_degenerate_cases_recover_a_definite_sign() {
+    use geom_kernel::Sign;
+    use geom_scalar::scene::near_coplanar_scene;
+
+    let scene = near_coplanar_scene(20_000, 0xBEEF_0001);
+    let mut deferred = 0usize;
+    let mut definite = 0usize;
+
+    for case in &scene {
+        let [a, b, c, d] = *case;
+        if !orient3d_filter(a, b, c, d).is_certain() {
+            deferred += 1;
+        }
+        let sign = orient3d(a, b, c, d).sign().expect("certified");
+        if sign != Sign::Zero {
+            definite += 1;
+        }
+    }
+
+    // The filter must genuinely be unable to settle these, or the test is
+    // measuring the fast path instead of the exact one.
+    assert!(
+        deferred > scene.len() / 2,
+        "only {deferred}/{} deferred; these are not near-degenerate",
+        scene.len()
+    );
+    // And the exact path must then resolve them to a real side of the plane.
+    assert!(
+        definite > scene.len() / 2,
+        "only {definite}/{} got a definite sign; the exact path is returning zero",
+        scene.len()
+    );
+}
+
+/// Whenever a filter certifies a sign, that sign must be the exact one.
+///
+/// This is the filter's soundness property, and it is what a too-tight error
+/// bound violates. A bound that is too *loose* only costs performance and is
+/// caught by the escalation-rate gates above; a bound that is too *tight*
+/// certifies signs the arithmetic cannot actually prove, which is silent
+/// corruption. Near-degenerate inputs are where the two differ.
+#[test]
+fn a_certified_filter_answer_always_matches_the_exact_answer() {
+    use geom_scalar::scene::near_coplanar_scene;
+
+    let mut certified = 0usize;
+    for case in &near_coplanar_scene(50_000, 0x5EED_0F11) {
+        let [a, b, c, d] = *case;
+        if let Some(fast) = orient3d_filter(a, b, c, d).sign() {
+            let exact = orient3d(a, b, c, d).sign().expect("certified");
+            assert_eq!(
+                fast, exact,
+                "the filter certified {fast:?} but the exact sign is {exact:?}"
+            );
+            certified += 1;
+        }
+    }
+    // The scene is deliberately hostile, so most cases defer. A handful still
+    // clear the bound, and those are the ones this test is about.
+    assert!(
+        certified > 0,
+        "no case was certified; this test proves nothing"
+    );
+
+    // The same property on ordinary data, where almost everything certifies.
+    let mut certified = 0usize;
+    for case in &orient3_scene(50_000, DegeneracyRate::Occasional, 0x5EED_0F12) {
+        let [a, b, c, d] = *case;
+        if let Some(fast) = orient3d_filter(a, b, c, d).sign() {
+            assert_eq!(fast, orient3d(a, b, c, d).sign().expect("certified"));
+            certified += 1;
+        }
+    }
+    assert!(
+        certified > 40_000,
+        "only {certified} certified on clean data"
+    );
+}

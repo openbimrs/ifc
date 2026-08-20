@@ -190,3 +190,57 @@ fn the_filters_defer_on_exactly_degenerate_input() {
         "an exactly cospherical case must not be settled by the filter"
     );
 }
+
+/// The exact paths must recover a definite sign just off the boundary.
+///
+/// Mirrors the `orient3d` gate: replacing `incircle_exact`/`insphere_exact`
+/// with a constant `Sign::Zero` passed every other test in this file, because
+/// all of their degenerate cases are exactly on the ball and answer zero too.
+/// Perturbing by one ULP forces the filter to defer AND demands a real answer.
+#[test]
+fn near_degenerate_delaunay_cases_recover_a_definite_sign() {
+    let ulp = |v: f64| {
+        let bits = v.to_bits();
+        f64::from_bits(if v >= 0.0 { bits + 1 } else { bits - 1 })
+    };
+
+    // Unit square: exactly cocircular. Nudge the fourth point off the circle.
+    let mut deferred = 0usize;
+    let mut definite = 0usize;
+    for k in 1..2_000i64 {
+        let r = k as f64;
+        let (a, b, c) = (Point2::new(-r, -r), Point2::new(r, -r), Point2::new(r, r));
+        let d = Point2::new(-r, ulp(r));
+        if !incircle_filter(a, b, c, d).is_certain() {
+            deferred += 1;
+        }
+        if incircle(a, b, c, d).sign().expect("certified") != Sign::Zero {
+            definite += 1;
+        }
+    }
+    assert!(deferred > 1_000, "incircle: only {deferred} deferred");
+    assert!(definite > 1_000, "incircle: only {definite} definite");
+
+    // Octahedron: exactly cospherical. Nudge the fifth vertex off the sphere.
+    let mut deferred = 0usize;
+    let mut definite = 0usize;
+    for k in 1..2_000i64 {
+        let r = k as f64;
+        let o = |x: f64, y: f64, z: f64| Point3::new(x, y, z);
+        let (a, b, c, d) = (
+            o(r, 0.0, 0.0),
+            o(-r, 0.0, 0.0),
+            o(0.0, r, 0.0),
+            o(0.0, 0.0, r),
+        );
+        let e = o(0.0, -ulp(r), 0.0);
+        if !insphere_filter(a, b, c, d, e).is_certain() {
+            deferred += 1;
+        }
+        if insphere(a, b, c, d, e).sign().expect("certified") != Sign::Zero {
+            definite += 1;
+        }
+    }
+    assert!(deferred > 1_000, "insphere: only {deferred} deferred");
+    assert!(definite > 1_000, "insphere: only {definite} definite");
+}
