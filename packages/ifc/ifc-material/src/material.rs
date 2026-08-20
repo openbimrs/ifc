@@ -10,5 +10,8 @@
 
 mod definition;
 mod properties;
-
 mod relationships;
+
+pub use definition::Material;
+pub use properties::MaterialProperties;
+pub use relationships::{MaterialClassificationRelationship, MaterialList, MaterialRelationship};

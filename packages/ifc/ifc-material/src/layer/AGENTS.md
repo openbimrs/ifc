@@ -8,18 +8,17 @@ there.
 
 - layer identity, material link, name, description, category, and priority
 - authored layer thickness and ordered layer-set membership
-- semantic association from a usage to its layer set
+- authored usage direction, sense, offset, extent, and offset-layer values
 
 ## Does not own
 
-- layer-set usage direction, direction sense, offset, or reference extent
+- geometric interpretation of directions or offsets
 - offset transforms, wall solid generation, or quantity computation
 
-Those geometry-affecting usage slots have one projection owner:
-`ifc-geometry::input::material_usage`.
+`ifc-geometry::input::material_usage` may project the same raw IFC record to
+remain domain-independent, but it owns lowering rather than material semantics.
 
 ## Growth map
 
-`definition.rs`, `set.rs`, `usage.rs`. These source owners already compile as
-private scaffold modules. Replace a module's planned-owner marker with its first
-real contract and tests; do not add parallel placeholders.
+`definition.rs`, `set.rs`, and `usage.rs` are the implementation owners. Extend
+them with focused tests; do not add parallel modules.

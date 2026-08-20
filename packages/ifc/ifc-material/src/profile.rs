@@ -1,7 +1,8 @@
 //! Semantic half of `IfcMaterialProfile*`.
 //!
-//! Profile references, cardinal points, reference extents, offsets, and taper
-//! geometry are owned by `ifc-geometry::input`; this module owns metadata only.
+//! This module projects authored MaterialResource profile references, cardinal
+//! points, extents, offsets, and taper fields. `ifc-geometry::input` owns their
+//! geometric interpretation and lowering.
 //!
 //! Implementation is tracked in `../PLAN.md`.
 
@@ -9,8 +10,12 @@
 //!
 //! - `definition.rs`: material, name, description, priority, and category.
 //! - `set.rs`: ordered semantic membership and composite indicator.
-//! - `usage.rs`: association to a profile set, without geometry slots.
+//! - `usage.rs`: authored cardinal, extent, offset, and taper usage slots.
 
 mod definition;
 mod set;
 mod usage;
+
+pub use definition::{MaterialProfile, MaterialProfileWithOffsets};
+pub use set::MaterialProfileSet;
+pub use usage::{MaterialProfileSetUsage, MaterialProfileSetUsageTapering};

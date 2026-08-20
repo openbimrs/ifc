@@ -1,17 +1,18 @@
 # ifc-material usage plan
 
-Status: planned under `MAT-ASSIGN`. Last updated: 2026-08-19.
+Status: IFC4 resolution implemented under `MAT-ASSIGN`. Last updated: 2026-08-20.
 Follow `AGENTS.md`; claim one task and record blockers/decisions beneath it.
 
 ## Work queue
 
-- [ ] `MATUSG-REL` - association views
-  - Proof: view/invalid/cycle tests plus crate clippy.
-- [ ] `MATUSG-RESOLVE` - occurrence/type precedence contract
-  - Proof: view/invalid/cycle tests plus crate clippy.
-- [ ] `MATUSG-BUDGET` - bounded traversal and ambiguity tests
-  - Proof: view/invalid/cycle tests plus crate clippy.
+- [x] `MATUSG-REL` - association views
+  - Proof: `assignments::occurrence_assignment_overrides_type_and_type_is_fallback` plus crate clippy.
+- [x] `MATUSG-RESOLVE` - occurrence/type precedence contract
+  - Proof: `assignments.rs` pins occurrence precedence and type fallback.
+- [x] `MATUSG-BUDGET` - one-hop type traversal and ambiguity tests
+  - Proof: `errors::duplicate_occurrence_assignments_are_not_guessed` and `strict_decoding::duplicate_type_relations_are_ambiguous_even_for_the_same_type`.
 
 ## Completion log
 
-Append `TASK-ID - proof - material decision`; no long logs.
+`MATUSG-*` - `tests/assignments.rs` and `errors.rs`; IFC type fallback is one
+bounded relation hop and direct occurrence assignment wins.

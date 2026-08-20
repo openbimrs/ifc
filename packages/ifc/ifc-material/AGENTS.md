@@ -2,12 +2,14 @@
 
 Purpose: Borrowed semantic projections for materials, layers, profiles, constituents, and their usage/assignment.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
-roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`. Read `PLAN.md` only for assigned task `MAT-SPEC`,
+implementation, or roadmap work; keep progress, blockers, and evidence there.
 
 ## Boundary
 
-Allowed production dependencies: ifc-model and optional schema metadata; no geometry crate.
+Allowed production dependencies: `ifc-model`, error support, and optional schema
+metadata; no geometry or sibling domain/catalog crate. Template joins belong in
+the `ifc` facade/application layer.
 
 ## Module ownership
 
@@ -20,7 +22,8 @@ Allowed production dependencies: ifc-model and optional schema metadata; no geom
 
 ## Invariants
 
-- Profile shape math, cardinal placement, layer offsets, and taper geometry are read independently by ifc-geometry.
+- This crate exposes authored cardinal, offset, direction, and extent values but
+  never interprets them geometrically; shape math and lowering remain in ifc-geometry.
 - This crate may expose EntityId references to profiles but never constructs geom profiles or transforms.
 - Resolve assignments with explicit ambiguity/cycle behavior; do not guess a winning material association.
 

@@ -16,5 +16,4 @@ assigned task(s) `MAT-BASE` and keep implementation state there.
 
 ## Growth map
 
-`definition.rs`, `properties.rs`, `relationships.rs`. These source owners already compile as private scaffold modules. Replace a module's planned-owner marker with its first real contract and tests; do not add parallel placeholders. Views borrow `ifc-model`; mutation waits
-for an explicit model transaction contract.
+`definition.rs`, `properties.rs`, `relationships.rs` are the implementation owners. Extend them with focused tests; do not add parallel modules. Views borrow `ifc-model`; mutation waits for an explicit model transaction contract.

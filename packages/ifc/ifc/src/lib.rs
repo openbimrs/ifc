@@ -29,6 +29,7 @@
 //! | `step` *(default)* | `ifc-step` | Reading `.ifc` files |
 //! | `ifcxml` | `ifc-xml` | Reading/writing `.ifcxml` |
 //! | `schema` | `ifc-schema` | Subtype queries, conformant XML names |
+//! | `material-templates` | `ifc-material` + template catalog | Material PSD applicability |
 //! | `cost`, `schedule`, ... | one domain crate each | Interpreting that domain |
 //! | `codecs` | both codecs | |
 //! | `domains` | every domain view | |
@@ -91,6 +92,8 @@ pub use ifc_schedule as schedule;
 /// Material layer sets, profile sets, constituents.
 #[cfg(feature = "material")]
 pub use ifc_material as material;
+#[cfg(feature = "material-templates")]
+pub mod material_templates;
 
 /// Classification, documents, libraries.
 #[cfg(feature = "classification")]
@@ -128,104 +131,8 @@ pub use ifc_georef as georef;
 #[cfg(feature = "alignment")]
 pub use ifc_alignment as alignment;
 
-/// Every codec compiled into this build.
-///
-/// Lets an application accept whatever the user hands it without hard-coding a
-/// format, and shrinks to nothing when only one codec is enabled.
-// Each push is `cfg`-gated, so clippy's `vec![]` suggestion is not applicable:
-// the contents depend on which features are enabled at compile time.
-#[allow(clippy::vec_init_then_push)]
-pub fn codecs() -> Vec<Box<dyn Codec>> {
-    #[allow(unused_mut)]
-    let mut out: Vec<Box<dyn Codec>> = Vec::new();
-    #[cfg(feature = "step")]
-    out.push(Box::new(ifc_step::StepCodec));
-    #[cfg(feature = "ifcxml")]
-    out.push(Box::new(ifc_xml::XmlCodec::default()));
-    out
-}
+mod feature_report;
+mod io;
 
-/// Read a file, choosing the codec by content sniffing then extension.
-///
-/// Returns [`ModelError::WrongFormat`] when no compiled-in codec recognizes the
-/// input, which is a more useful failure than a syntax error from the wrong
-/// parser.
-pub fn read_path(path: &std::path::Path) -> Result<Model, ModelError> {
-    let bytes = std::fs::read(path).map_err(|e| ModelError::Io(e.to_string()))?;
-    let extension = path
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or_default()
-        .to_ascii_lowercase();
-
-    let available = codecs();
-    for codec in &available {
-        if codec.detect(&bytes) {
-            return codec.read_bytes(&bytes);
-        }
-    }
-    for codec in &available {
-        if codec.extensions().contains(&extension.as_str()) {
-            return codec.read_bytes(&bytes);
-        }
-    }
-    Err(ModelError::WrongFormat {
-        expected: "IFC",
-        detail: format!(
-            "no compiled-in codec recognized this input (available: {})",
-            available
-                .iter()
-                .map(|c| c.name())
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
-    })
-}
-
-/// The feature set this build was compiled with, for diagnostics.
-///
-/// A support question about a thin build is much easier to answer when the
-/// binary can state what it contains.
-// Same rationale as `codecs`: the pushes are feature-gated, not a literal.
-#[allow(clippy::vec_init_then_push)]
-pub fn compiled_features() -> Vec<&'static str> {
-    // `mut` is unused when no optional feature is enabled; the allow keeps the
-    // no-feature build warning-clean without special-casing the body.
-    #[allow(unused_mut)]
-    let mut features = Vec::new();
-    #[cfg(feature = "step")]
-    features.push("step");
-    #[cfg(feature = "ifcxml")]
-    features.push("ifcxml");
-    #[cfg(feature = "schema")]
-    features.push("schema");
-    #[cfg(feature = "properties")]
-    features.push("properties");
-    #[cfg(feature = "property-catalog")]
-    features.push("property-catalog");
-    #[cfg(feature = "cost")]
-    features.push("cost");
-    #[cfg(feature = "schedule")]
-    features.push("schedule");
-    #[cfg(feature = "material")]
-    features.push("material");
-    #[cfg(feature = "classification")]
-    features.push("classification");
-    #[cfg(feature = "structural")]
-    features.push("structural");
-    #[cfg(feature = "resource")]
-    features.push("resource");
-    #[cfg(feature = "systems")]
-    features.push("systems");
-    #[cfg(feature = "style")]
-    features.push("style");
-    #[cfg(feature = "validate")]
-    features.push("validate");
-    #[cfg(feature = "geometry")]
-    features.push("geometry");
-    #[cfg(feature = "georef")]
-    features.push("georef");
-    #[cfg(feature = "alignment")]
-    features.push("alignment");
-    features
-}
+pub use feature_report::compiled_features;
+pub use io::{codecs, read_path};

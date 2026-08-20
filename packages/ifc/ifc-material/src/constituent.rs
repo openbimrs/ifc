@@ -10,3 +10,6 @@
 
 mod definition;
 mod set;
+
+pub use definition::MaterialConstituent;
+pub use set::MaterialConstituentSet;

@@ -8,5 +8,5 @@ authors.workspace = true
 description = "Material definitions: layer sets, profile sets, constituents, usage."
 
 [dependencies]
-ifc-schema.workspace = true
 ifc-model.workspace = true
+thiserror.workspace = true

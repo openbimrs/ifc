@@ -53,6 +53,7 @@ property-catalog = ["dep:ifc-template-catalog"]
 cost = ["dep:ifc-cost"]
 schedule = ["dep:ifc-schedule"]
 material = ["dep:ifc-material"]
+material-templates = ["material", "property-catalog"]
 classification = ["dep:ifc-classification"]
 structural = ["dep:ifc-structural"]
 resource = ["dep:ifc-resource"]
@@ -77,4 +78,4 @@ domains = [
     "style",
     "validate",
 ]
-full = ["codecs", "schema", "domains", "property-catalog", "geometry", "georef", "alignment"]
+full = ["codecs", "schema", "domains", "property-catalog", "material-templates", "geometry", "georef", "alignment"]

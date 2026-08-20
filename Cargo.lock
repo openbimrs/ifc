@@ -530,7 +530,7 @@ name = "ifc-material"
 version = "0.1.0"
 dependencies = [
  "ifc-model",
- "ifc-schema",
+ "thiserror",
 ]
 
 [[package]]

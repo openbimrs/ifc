@@ -1,6 +1,8 @@
 # ifc instructions
 
-Purpose: Feature-gated convenience facade; it owns no records, semantics, codec, or geometry implementation.
+Purpose: Feature-gated convenience facade; it owns no records, codecs, or
+geometry implementation. Narrow cross-domain query adapters live here when
+leaf-crate dependency boundaries forbid them.
 
 Follow `../AGENTS.md`. Read `PLAN.md` only when assigned implementation or
 roadmap work; record progress and blockers there, not here.
@@ -12,12 +14,16 @@ Allowed production dependencies: only explicitly feature-selected IFC crates; no
 ## Module ownership
 
 - `lib.rs`: feature declarations and deliberate re-exports only
+- `io.rs`: codec discovery and path loading
+- `feature_report.rs`: compile-time feature diagnostics
+- `material_templates.rs`: read-only material-to-PSD catalog adapter
 
 ## Invariants
 
 - No default feature silently enables heavy domain or geometry capability.
 - Every feature builds in isolation and all combinations preserve dependency boundaries.
-- Application workflows do not migrate into the facade.
+- Stateful application workflows do not migrate into the facade; cross-domain
+  adapters remain read-only and narrowly scoped.
 
 Keep `lib.rs` delegating, keep child modules crate-private until they own a real
 public contract, and split view/data, traversal, mutation, and validation before

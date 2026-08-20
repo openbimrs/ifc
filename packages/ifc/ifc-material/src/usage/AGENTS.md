@@ -17,5 +17,4 @@ assigned task(s) `MAT-ASSIGN` and keep implementation state there.
 
 ## Growth map
 
-`assignment.rs`, `resolution.rs`. These source owners already compile as private scaffold modules. Replace a module's planned-owner marker with its first real contract and tests; do not add parallel placeholders. Views borrow `ifc-model`; mutation waits
-for an explicit model transaction contract.
+`assignment.rs` and `resolution.rs` are the implementation owners. Extend them with focused tests; do not add parallel modules. Views borrow `ifc-model`; mutation waits for an explicit model transaction contract.

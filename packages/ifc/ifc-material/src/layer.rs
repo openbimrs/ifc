@@ -1,7 +1,7 @@
 //! `IfcMaterialLayer` and `IfcMaterialLayerSet` semantic projections.
 //!
-//! Geometry-affecting usage direction, sense, offset, and reference extent are
-//! owned by `ifc-geometry::input`; this module owns material composition only.
+//! This module projects the authored MaterialResource composition and usage
+//! slots. `ifc-geometry::input` owns their geometric interpretation and lowering.
 //!
 //! Implementation is tracked in `../PLAN.md`.
 
@@ -9,8 +9,12 @@
 //!
 //! - `definition.rs`: identity, material link, and authored thickness.
 //! - `set.rs`: ordered layer membership.
-//! - `usage.rs`: association to a layer set, without geometry slots.
+//! - `usage.rs`: authored direction, sense, offset, extent, and set association.
 
 mod definition;
 mod set;
 mod usage;
+
+pub use definition::{MaterialLayer, MaterialLayerWithOffsets};
+pub use set::MaterialLayerSet;
+pub use usage::MaterialLayerSetUsage;

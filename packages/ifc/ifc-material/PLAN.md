@@ -1,7 +1,7 @@
 # ifc-material implementation plan
 
-Status: architecture scaffold; all semantic material families remain to implement.
-Last updated: 2026-08-19
+Status: IFC4 MaterialResource read/query support implemented; authoring and geometry cross-proof remain.
+Last updated: 2026-08-20
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
 record blockers/decisions under it, and check it off only with evidence.
@@ -12,8 +12,8 @@ Borrowed semantic projections for materials, layers, profiles, constituents, and
 
 ## Planned file map
 
-These paths are compiled private scaffold modules. Implement inside the named
-owner and expose a public symbol only through an intentional parent re-export.
+These paths own the implemented borrowed views. Extend the named owner and
+expose public symbols only through an intentional parent re-export.
 
 - `src/material/definition.rs`: IfcMaterial identity
 - `src/material/properties.rs`: material property relationships
@@ -28,20 +28,34 @@ owner and expose a public symbol only through an intentional parent re-export.
 - `src/usage/assignment.rs`: RelAssociatesMaterial view
 - `src/usage/resolution.rs`: bounded association resolution
 
-- `src/material/relationships.rs`: compiled private scaffold; implementation owned by `src/material/PLAN.md`
+- `src/material/relationships.rs`: lists, classification links, and resource relationships
+
+## Active implementation: IFC4 MaterialResource
+
+Goal: provide application-facing, borrowed, codec-independent views for every
+IFC4 ADD2 TC1 declaration in MaterialResource, including assignment resolution,
+material property sets, all 18 entities, four declared types, and
+`IfcMlsTotalThickness`.
+
+Decision: material owns authored MaterialResource data; geometry owns geometric
+interpretation and lowering. Unknown or malformed values stay explicit.
 
 ## Work queue
 
-- [ ] `MAT-BASE` - implement material identity and property relationships
+- [x] `MAT-SPEC` - pin the normative declaration and slot inventory in executable tests
+  - Evidence: IFC4 declaration matrix covers 18 entities, four types, and one function.
+- [x] `MAT-BASE` - implement material identity, relationships, lists, and properties
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `MAT-LAYER` - implement layer composition without geometry-usage slots
+- [x] `MAT-LAYER` - implement layer composition and authored usage fields
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `MAT-PROFILE` - implement only the semantic attributes of IfcMaterialProfile*
+- [x] `MAT-PROFILE` - implement profile composition and authored usage fields
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `MAT-CONST` - implement constituents and fractions with validation
+- [x] `MAT-CONST` - implement constituents and fraction validation
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `MAT-ASSIGN` - resolve product/type material associations deterministically
+- [x] `MAT-ASSIGN` - resolve product/type material associations deterministically
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+- [x] `MAT-PSET` - join `IfcMaterialProperties` instances to the 14 official PSD templates
+  - Evidence: exact-name/entity applicability plus explicit category-policy tests through the `ifc` facade.
 - [ ] `MAT-MUT` - add authoring only after MODEL-MUT exists
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [ ] `MAT-CROSS` - prove material and geometry projections join by EntityId without duplicate slot ownership
@@ -52,3 +66,8 @@ owner and expose a public symbol only through an intentional parent re-export.
 
 Append concise entries as `TASK-ID - proof command/result - material decision`.
 Do not paste long logs or move standing invariants out of `AGENTS.md`.
+
+- `MAT-SPEC`..`MAT-ASSIGN` - all-feature crate tests and IFC STEP facade fixture pass.
+- `MAT-PSET` - facade tests pin all 14 material PSDs and exact-name lookup.
+- Review hardening - strict aggregate/required-slot decoding, bounded typed wrappers,
+  finite thickness sums, duplicate type-relation ambiguity, and exact IFC4 type-target validation.

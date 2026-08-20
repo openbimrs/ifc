@@ -1,29 +1,38 @@
-//! `ifc-material` -- Material definitions: layer sets, profile sets, constituents and usage.
+//! Borrowed, codec-independent IFC MaterialResource views.
 //!
-//!
-//! 22 entities in IFC4. Material layer sets are what let a wall know it is
-//! 200 mm concrete plus 60 mm insulation, which is required for quantity
-//! takeoff and thermal analysis alike.
-//!
-//! # Module map
-//!
-//! | Module | Role |
-//! |---|---|
-//! | `material` | `IfcMaterial` and material properties |
-//! | `layer` | `IfcMaterialLayerSet` and `IfcMaterialLayerSetUsage` |
-//! | `profile` | `IfcMaterialProfileSet` for profiled members |
-//! | `constituent` | `IfcMaterialConstituentSet` for non-layered composites |
-//! | `usage` | Resolving which material applies to a given element |
-//! | `error` | Why a material lookup failed |
-//!
-//! # Status
-//!
-//! Scaffold -- modules are reserved with intent, not implemented. See
-//! `../PLAN.md` for the stage that fills them.
+//! The crate projects typed material identity, constituents, layers, profiles,
+//! usage assignments, relationships, and material property sets from
+//! [`ifc_model::Model`]. Accessors distinguish absent optional values from
+//! malformed values and enforce immediate aggregate shape, required slots, and
+//! MaterialResource WHERE constraints. Authored placement and offset values are
+//! exposed here; geometric interpretation remains in `ifc-geometry`.
 
-mod constituent;
-mod error;
-mod layer;
-mod material;
-mod profile;
-mod usage;
+pub mod constituent;
+pub mod error;
+pub mod layer;
+pub mod material;
+pub mod profile;
+pub mod types;
+pub mod usage;
+pub mod view;
+
+pub use constituent::{MaterialConstituent, MaterialConstituentSet};
+pub use error::{MaterialError, MaterialResult};
+pub use layer::{MaterialLayer, MaterialLayerSet, MaterialLayerSetUsage, MaterialLayerWithOffsets};
+pub use material::{
+    Material, MaterialClassificationRelationship, MaterialList, MaterialProperties,
+    MaterialRelationship,
+};
+pub use profile::{
+    MaterialProfile, MaterialProfileSet, MaterialProfileSetUsage, MaterialProfileSetUsageTapering,
+    MaterialProfileWithOffsets,
+};
+pub use types::{
+    CardinalPointReference, DirectionSense, LayerSetDirection, LogicalValue, MaterialSelect,
+    StandardCardinalPoint, IFC4_MATERIAL_RESOURCE_ENTITIES, IFC4_MATERIAL_RESOURCE_TYPES,
+};
+pub use usage::{
+    AssignmentSource, MaterialAssignment, MaterialDefinition, MaterialUsageDefinition,
+    ResolvedAssignment, ResolvedMaterialSelect,
+};
+pub use view::MaterialView;

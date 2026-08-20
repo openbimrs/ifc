@@ -6,7 +6,7 @@ assigned task(s) `MAT-CONST` and keep implementation state there.
 ## Owns
 
 - constituent identity/category/fraction/material link
-- constituent set ordering/membership
+- constituent set membership; source order is preserved only as a deterministic projection of the normative SET, not as semantic order
 
 ## Does not own
 
@@ -16,5 +16,4 @@ assigned task(s) `MAT-CONST` and keep implementation state there.
 
 ## Growth map
 
-`definition.rs`, `set.rs`. These source owners already compile as private scaffold modules. Replace a module's planned-owner marker with its first real contract and tests; do not add parallel placeholders. Views borrow `ifc-model`; mutation waits
-for an explicit model transaction contract.
+`definition.rs` and `set.rs` are the implementation owners. Extend them with focused tests; do not add parallel modules. Views borrow `ifc-model`; mutation waits for an explicit model transaction contract.
