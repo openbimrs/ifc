@@ -6,8 +6,10 @@
 //! mode that has already cost two debugging sessions.
 
 use geom_core::{Point2, Point3, Scalar, Vec3};
-use geom_kernel::{GeomError, GeomResult};
+use geom_kernel::{GeomError, GeomResult, Sign};
 use geom_mesh::TriMesh;
+use geom_scalar::arithmetic::{expansion_sign, expansion_sum, grow_expansion, scale_expansion};
+use geom_scalar::expansion::two_product;
 
 /// Extrude a triangulated 2D profile along `direction` by `depth`.
 ///
@@ -97,4 +99,64 @@ pub fn extrude_profile(
         start += hole.len();
     }
     extrude(&points, &triangles, &loops, direction, depth)
+}
+
+/// Whether a closed mesh is outward-oriented.
+///
+/// A face-counting majority does not work: a hollow section's inner wall
+/// legitimately faces the opposite way from its outer wall, and for a thin
+/// tube the two counts are comparable. Orientation is a property of the
+/// enclosed volume, not of how faces point relative to a centre.
+///
+/// So the volume is summed exactly. Each tetrahedron about the reference point
+/// contributes `a . (b x c)`, and those contributions are accumulated in
+/// expansion arithmetic rather than f64, so the final sign is certified even
+/// when the terms cancel catastrophically -- which is exactly what happens for
+/// a thin plate or a large solid far from the origin.
+///
+/// Returns `None` when the mesh encloses exactly zero volume, which is not an
+/// orientation and must not be reported as one.
+#[must_use]
+pub fn outward_orientation(mesh: &TriMesh) -> Option<bool> {
+    if mesh.indices.len() < 12 {
+        // Fewer than four triangles cannot bound a volume.
+        return None;
+    }
+    let mut total: Vec<f64> = vec![0.0];
+    for corner in mesh.indices.chunks_exact(3) {
+        let a = mesh.positions[corner[0] as usize];
+        let b = mesh.positions[corner[1] as usize];
+        let c = mesh.positions[corner[2] as usize];
+        total = expansion_sum(&total, &triple_product(a, b, c));
+    }
+    match expansion_sign(&total) {
+        Sign::Positive => Some(true),
+        Sign::Negative => Some(false),
+        Sign::Zero => None,
+        // `Sign` is non-exhaustive; an unrecognised variant is not a verdict.
+        _ => None,
+    }
+}
+
+/// Exact `a . (b x c)` as an expansion: six times a tetrahedron's volume.
+#[must_use]
+fn triple_product(a: Point3, b: Point3, c: Point3) -> Vec<f64> {
+    let term = |p: f64, q: f64, r: f64, s: f64, k: f64| {
+        // k * (p*q - r*s), exactly.
+        scale_expansion(&exact_difference_of_products(p, q, r, s), k)
+    };
+    let x = term(b.y, c.z, c.y, b.z, a.x);
+    let y = term(b.z, c.x, c.z, b.x, a.y);
+    let z = term(b.x, c.y, c.x, b.y, a.z);
+    expansion_sum(&expansion_sum(&x, &y), &z)
+}
+
+/// Exact `p*q - r*s` as a four-term expansion.
+#[must_use]
+fn exact_difference_of_products(p: f64, q: f64, r: f64, s: f64) -> Vec<f64> {
+    let (pq, pq_err) = two_product(p, q);
+    let (rs, rs_err) = two_product(r, s);
+    let e = grow_expansion(&[pq_err], -rs_err);
+    let e = grow_expansion(&e, pq);
+    grow_expansion(&e, -rs)
 }

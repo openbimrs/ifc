@@ -11,6 +11,21 @@ section on release.
 ## [Unreleased]
 
 ### Added
+- **Certified predicate suite in `geom-scalar`.** `orient3d`, `incircle`, and
+  `insphere` join `orient2d` as filtered cascades that escalate to exact
+  expansion arithmetic, plus `StaticFilter` for callers that can declare a
+  coordinate range. Each is differentially gated against an independent i128
+  oracle over 20k inputs, half of them constructed exactly degenerate.
+- **Degeneracy benchmark harness.** `cargo bench -p geom-scalar` reports
+  throughput and escalation rate together at 0%, 0.01%, 1%, and 10% degenerate
+  inputs. Measured: `orient2d` is flat (93 M/s clean, 90 M/s at 10%);
+  `orient3d` costs 2.3x at 10% (72 -> 32 M/s). Escalation tracks the injected
+  rate to four decimals, asserted in `tests/degeneracy.rs`.
+- **`geom-compile::extrude::outward_orientation`.** Decides mesh orientation by
+  summing tetrahedron volumes in exact expansion arithmetic, so a thin plate on
+  survey coordinates -- where the naive f64 sum loses the sign entirely -- is
+  still judged correctly. ADR 0016 records why the predicates are ours even
+  though the boolean and triangulator are adopted.
 - **End-to-end IFC geometry: `ifc mesh <file.ifc>`.** The CLI lowers a model's
   representation items through `ifc-geometry`, compiles them with
   `geom-compile`'s `ScalarCompiler`, and applies `IfcRelVoidsElement` openings
