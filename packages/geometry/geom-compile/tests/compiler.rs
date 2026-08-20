@@ -187,10 +187,14 @@ fn an_unimplemented_solid_family_is_refused_not_approximated() {
         .unwrap();
     let graph = b.finish(vec![revolved]).unwrap();
 
-    assert!(matches!(
-        compiler().compile(&graph, revolved, &options()),
-        Err(GeomError::Unsupported { .. })
-    ));
+    // Assert the NAMED capability, not merely that it failed: a caller uses
+    // this to decide which provider to register.
+    match compiler().compile(&graph, revolved, &options()) {
+        Err(GeomError::Unsupported { operation, .. }) => {
+            assert_eq!(operation, Operation::Sweep);
+        }
+        other => panic!("expected Unsupported{{Sweep}}, got {other:?}"),
+    }
 }
 
 /// A handle from a different graph must be refused, not silently indexed.
@@ -378,7 +382,20 @@ fn a_collection_rebases_indices_when_merging() {
             transform: Transform3::from_translation(Vec3::new(100.0, 0.0, 0.0)),
         }))
         .unwrap();
-    let both = b.push(GeometryNode::Collection(vec![solid, far])).unwrap();
+    // A DIFFERENT size, so un-rebased indices duplicate the first solid and
+    // change the total volume. Two identical cubes would sum to the same
+    // number either way, which is why the earlier version of this test could
+    // not detect a missing rebase.
+    let big_profile = b.push(GeometryNode::Profile(rect(3.0, 3.0))).unwrap();
+    let big = b
+        .push(GeometryNode::SolidOperation(SolidOperation::Extrusion {
+            profile: big_profile,
+            direction: Vec3::Z,
+            depth: 1.0,
+        }))
+        .unwrap();
+    let _ = far;
+    let both = b.push(GeometryNode::Collection(vec![solid, big])).unwrap();
     let graph = b.finish(vec![both]).unwrap();
 
     let mesh = compiler()
@@ -386,6 +403,7 @@ fn a_collection_rebases_indices_when_merging() {
         .expect("compile");
     // Two disjoint unit cubes. Un-rebased indices would collapse the second
     // onto the first, halving the volume.
-    assert!((volume(&mesh) - 2.0).abs() < 1e-9, "got {}", volume(&mesh));
+    // 1x1x1 + 3x3x1 = 10. Un-rebased indices would yield 1 + 1 = 2.
+    assert!((volume(&mesh) - 10.0).abs() < 1e-9, "got {}", volume(&mesh));
     assert_eq!(mesh.positions.len(), 16);
 }

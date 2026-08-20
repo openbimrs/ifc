@@ -198,6 +198,10 @@ impl<B: MeshBoolean> ScalarCompiler<B> {
                 let tool = self.cached(cache, *right)?;
                 self.boolean.boolean(subject, tool, *operator, options)
             }
+            // Every remaining family is a sweep of some kind (revolution,
+            // swept disk, fixed-reference, surface-curve, sectioned spine) or
+            // a bounded half-space. Naming the capability lets a caller
+            // register a provider for it rather than guess.
             _ => Err(GeomError::Unsupported {
                 backend: self.descriptor().id,
                 operation: Operation::Sweep,
