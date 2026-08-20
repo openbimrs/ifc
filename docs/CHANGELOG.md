@@ -11,6 +11,12 @@ section on release.
 ## [Unreleased]
 
 ### Added
+- **Geometry-kernel capability audit and implementation recommendation.**
+  `docs/research/geometry-kernel-capability-comparison.md` distinguishes CGAL,
+  Manifold, OCCT, IfcOpenShell passthrough, OpenUSD, and Nehirde by executed
+  capability rather than API vocabulary. It recommends curve evaluation,
+  world-space adaptive sampling, and swept-disk execution as the next vertical
+  slice, with corpus and mutation gates.
 - **Differential harness vs IfcOpenShell** (`tools/differential/`, `ifc differential`).
   Both sides emit the same JSON schema; `compare.py` joins on `(file, entity id)`
   and publishes `docs/benchmarks/differential-ifcopenshell.md`. Found and fixed
