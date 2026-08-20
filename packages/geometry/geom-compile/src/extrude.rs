@@ -75,3 +75,26 @@ pub fn extrude(
 
     Ok(TriMesh::new(positions, indices))
 }
+
+/// Triangulate rings and extrude them in one step.
+///
+/// The loop layout must match `triangulate`'s vertex order exactly, so the
+/// two are derived from the same `Rings` value here rather than by a caller
+/// reconstructing the ranges.
+pub fn extrude_profile(
+    rings: &crate::profile::Rings,
+    direction: Vec3,
+    depth: Scalar,
+    _tolerance: geom_core::Tolerance,
+) -> GeomResult<TriMesh> {
+    let (points, triangles) = crate::profile::triangulate(rings)?;
+    let mut loops = Vec::with_capacity(1 + rings.holes.len());
+    let mut start = 0usize;
+    loops.push(start..rings.outer.len());
+    start += rings.outer.len();
+    for hole in &rings.holes {
+        loops.push(start..start + hole.len());
+        start += hole.len();
+    }
+    extrude(&points, &triangles, &loops, direction, depth)
+}

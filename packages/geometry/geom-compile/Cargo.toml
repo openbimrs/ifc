@@ -13,7 +13,7 @@ geom-mesh.workspace = true
 geom-model.workspace = true
 geom-profile.workspace = true
 geom-curve.workspace = true
-geom-kernel.workspace = true
+geom-kernel = { workspace = true, features = ["mesh-boolean", "model"] }
 geom-scalar.workspace = true
 earcut = "0.4"
 
