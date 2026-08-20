@@ -11,6 +11,14 @@ section on release.
 ## [Unreleased]
 
 ### Added
+- **`subtract_many` batch override.** `geom-boolmesh` groups mutually
+  disjoint cutters by AABB and removes each group with a single boolean,
+  resting on `(S \ A) \ B == S \ (A union B)`. Measured **9.2x** at n=64 on
+  the IFC-dominant layout (66.47 ms -> 7.22 ms) and 0.99x on a complete
+  overlap graph, so it is enabled unconditionally. Benchmarked by
+  `geom-boolmesh/benches/subtract_many.rs`, which reproduces the ADR 0014
+  sequential baseline in-process; gated by volume equality against the
+  sequential path across hand-picked and randomised layouts.
 - **Certified predicate suite in `geom-scalar`.** `orient3d`, `incircle`, and
   `insphere` join `orient2d` as filtered cascades that escalate to exact
   expansion arithmetic, plus `StaticFilter` for callers that can declare a

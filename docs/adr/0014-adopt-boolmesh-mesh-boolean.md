@@ -146,3 +146,37 @@ in-house implementation is a change to one crate, not an API break.
 - `docs/adr/0003-pure-rust-mesh-boolean.md` — the deferred decision this
   resolves.
 - `test/fixtures/ifclite-geometry/` — the fixture corpus used above.
+
+## Batch override: measured, 2026-08-20
+
+The sequential baseline recorded above is now reproduced in-process by
+`benches/subtract_many.rs`, and compared against the grouped override on the
+same machine in the same run.
+
+| layout | n | sequential | grouped | speedup |
+|---|---|---|---|---|
+| disjoint openings | 16 | 5.61 ms | 1.53 ms | **3.67x** |
+| disjoint openings | 64 | 66.47 ms | 7.22 ms | **9.20x** |
+| nested (complete overlap graph) | 16 | 2.11 ms | 2.11 ms | 1.00x |
+| nested (complete overlap graph) | 64 | 8.18 ms | 8.28 ms | 0.99x |
+
+The override groups mutually disjoint cutters by AABB and removes each group
+with a single boolean, resting on `(S \ A) \ B == S \ (A union B)` plus the
+fact that a concatenation of disjoint solids *is* their union.
+
+**The decision this settles:** the batch API earns its complexity. The win
+grows with `n` (the sequential path is superlinear because each step re-cuts a
+subject that keeps growing), and the worst case costs 1% -- so the override is
+safe to enable unconditionally rather than behind a heuristic.
+
+Grouping is greedy first-fit colouring over the overlap graph. Optimal
+colouring is NP-hard; the partition only needs to be good, and any partition is
+*correct* because disjointness is verified before fusing. Bounding boxes
+over-separate (two disjoint solids may have overlapping boxes) which costs a
+group, never correctness; the converse cannot happen, which is what makes the
+fused union sound.
+
+An earlier "adversarial" case in the benchmark was not adversarial: openings
+that each overlap only their neighbour 2-colour into two groups, so grouping
+still won 2.9x. The nested layout above is a genuine worst case -- concentric
+cutters give a complete overlap graph and N groups of one.

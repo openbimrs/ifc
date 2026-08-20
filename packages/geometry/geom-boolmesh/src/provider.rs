@@ -71,6 +71,22 @@ impl MeshBoolean for BoolmeshBoolean {
         ScratchRequirement::Unbounded
     }
 
+    /// Group mutually disjoint cutters and remove each group with one
+    /// boolean, instead of one boolean per cutter.
+    ///
+    /// Rests on `(S \ A) \ B == S \ (A union B)` and on a concatenation of
+    /// disjoint solids being their union. Bounding-box grouping over-separates
+    /// but never wrongly fuses, so the result is identical to the sequential
+    /// default -- gated by volume equality in `tests/batch.rs`.
+    fn subtract_many(
+        &self,
+        subject: &TriMesh,
+        tools: &[TriMesh],
+        options: &ExecutionOptions,
+    ) -> GeomResult<TriMesh> {
+        self.subtract_grouped(subject, tools, options)
+    }
+
     fn boolean(
         &self,
         subject: &TriMesh,
@@ -93,6 +109,54 @@ impl MeshBoolean for BoolmeshBoolean {
         let result = from_manifold(&output);
         check_result(&result, operation)?;
         Ok(result)
+    }
+}
+
+/// Batch difference: fuse mutually disjoint cutters, then subtract per group.
+///
+/// The sequential default runs N booleans, each against a subject that has
+/// already been cut N-1 times. This override runs one boolean per GROUP of
+/// mutually disjoint cutters, which for the dominant layout (a wall with
+/// non-overlapping openings) collapses to a single boolean.
+///
+/// Correctness rests on `(S \ A) \ B == S \ (A union B)`, plus the fact that a
+/// concatenation of disjoint solids IS their union. Grouping uses bounding
+/// boxes, which over-separate but never wrongly fuse, so the result is
+/// identical to the sequential path -- asserted by the volume gates.
+impl BoolmeshBoolean {
+    /// Subtract every tool, grouping disjoint ones into single operations.
+    pub(crate) fn subtract_grouped(
+        &self,
+        subject: &TriMesh,
+        tools: &[TriMesh],
+        options: &ExecutionOptions,
+    ) -> GeomResult<TriMesh> {
+        let bounds: Vec<_> = tools.iter().map(TriMesh::bounds).collect();
+        let groups = crate::grouping::disjoint_groups(&bounds);
+
+        let mut current = subject.clone();
+        for group in &groups {
+            // A single-member group gains nothing from fusing, so skip the
+            // copy and subtract the tool directly.
+            if let [only] = group.as_slice() {
+                current = self.difference(&current, &tools[*only], options)?;
+                continue;
+            }
+            let members: Vec<&TriMesh> = group.iter().map(|&i| &tools[i]).collect();
+            let fused = crate::grouping::fuse(&members);
+            current = self.difference(&current, &fused, options)?;
+        }
+        Ok(current)
+    }
+
+    /// One difference, routed through the same validation as `boolean`.
+    fn difference(
+        &self,
+        subject: &TriMesh,
+        tool: &TriMesh,
+        options: &ExecutionOptions,
+    ) -> GeomResult<TriMesh> {
+        self.boolean(subject, tool, BooleanOperator::Difference, options)
     }
 }
 

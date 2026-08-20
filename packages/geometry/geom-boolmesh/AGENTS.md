@@ -34,3 +34,23 @@ crate's own helper, or the test would confirm the implementation with itself.
 
 `boolmesh` must not be re-exported. It is MPL-2.0 and swappable; leaking its types
 would make the adoption visible to consumers and defeat the seam.
+
+## Batch override
+
+`subtract_many` groups mutually disjoint cutters (AABB overlap graph, greedy
+first-fit colouring) and removes each group with one boolean. Measured 9.2x at
+n=64 on the IFC-dominant layout; 0.99x worst case, so it is unconditional.
+
+Invariants, each mutation-proven in `tests/batch.rs`:
+
+- **Only disjoint cutters may be fused.** Concatenating overlapping solids
+  yields a self-intersecting mesh; subtracting it gives a wrong answer that
+  still looks like a valid result. The disjointness check is load-bearing.
+- **`fuse` must rebase indices.** Forgetting the offset silently duplicates the
+  first mesh's triangles.
+- **Every group must be subtracted**, and the single-member fast path must use
+  that group's tool, not `tools[0]`.
+
+Volume comparisons between the grouped and sequential paths use a RELATIVE
+tolerance: the two sum a differently ordered triangle list, so the last bits
+legitimately differ. Bitwise equality fails spuriously.
