@@ -152,6 +152,7 @@ impl<B: MeshBoolean> ScalarCompiler<B> {
             GeometryNode::SolidOperation(operation) => {
                 self.build_solid(graph, operation, options, cache)
             }
+            GeometryNode::BRep(brep) => crate::brep::tessellate(brep),
             other => Err(GeomError::Unsupported {
                 backend: self.descriptor().id,
                 operation: unsupported_operation(other),

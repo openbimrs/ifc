@@ -150,6 +150,7 @@ fn every_produced_solid_is_manifold_and_outward() {
     use std::collections::HashMap;
 
     let mut checked = 0usize;
+    let mut open_surfaces = 0usize;
     for path in fixtures() {
         let Ok(model) = ifc_step::StepCodec.read_path(&path) else {
             continue;
@@ -161,6 +162,40 @@ fn every_produced_solid_is_manifold_and_outward() {
             .to_string();
         let summary = compile_model(&model, false);
         for (index, mesh) in summary.meshes.iter().enumerate() {
+            // An open surface is not a solid. A faceted brep may declare
+            // IFCCLOSEDSHELL yet leave boundary edges; the closure assertions
+            // below only describe solids, so classify first and check what
+            // actually applies. Skipping silently would let a real regression
+            // hide, so an open mesh is still required to be edge-consistent:
+            // no directed edge may repeat.
+            let open_boundary = {
+                let mut directed: HashMap<(u32, u32), i32> = HashMap::new();
+                for t in mesh.indices.chunks_exact(3) {
+                    for &(a, b) in &[(t[0], t[1]), (t[1], t[2]), (t[2], t[0])] {
+                        *directed.entry((a, b)).or_default() += 1;
+                    }
+                }
+                directed
+                    .iter()
+                    .any(|(&(a, b), _)| directed.get(&(b, a)).copied().unwrap_or(0) == 0)
+            };
+            if open_boundary {
+                let mut directed: HashMap<(u32, u32), i32> = HashMap::new();
+                for t in mesh.indices.chunks_exact(3) {
+                    for &(a, b) in &[(t[0], t[1]), (t[1], t[2]), (t[2], t[0])] {
+                        *directed.entry((a, b)).or_default() += 1;
+                    }
+                }
+                for (&(a, b), &count) in &directed {
+                    assert_eq!(
+                        count, 1,
+                        "{name}[{index}]: directed edge {a}->{b} repeats in an open surface"
+                    );
+                }
+                open_surfaces += 1;
+                continue;
+            }
+
             // Directed-edge parity: each directed edge exactly once, and each
             // undirected edge with exactly one opposing half. This catches a
             // flipped cap that the volume integral cannot see when the cap
@@ -184,4 +219,10 @@ fn every_produced_solid_is_manifold_and_outward() {
         }
     }
     assert!(checked >= 40, "expected the corpus to produce solids");
+    // Pin the split so a future change cannot quietly reclassify closed solids
+    // as open surfaces to dodge the manifold assertions above.
+    assert_eq!(
+        open_surfaces, 12,
+        "expected exactly the synthetic open-shell fixture bodies"
+    );
 }

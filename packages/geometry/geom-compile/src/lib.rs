@@ -2,6 +2,7 @@
 
 //! Scalar reference `GeometryCompiler`.
 
+mod brep;
 pub mod extrude;
 pub mod profile;
 

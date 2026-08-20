@@ -11,6 +11,7 @@ description = "Scalar reference GeometryCompiler: profiles, extrusion, transform
 geom-core.workspace = true
 geom-mesh.workspace = true
 geom-model.workspace = true
+geom-topology.workspace = true
 geom-profile.workspace = true
 geom-curve.workspace = true
 geom-kernel = { workspace = true, features = ["mesh-boolean", "model"] }
