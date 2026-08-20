@@ -468,8 +468,12 @@ name = "ifc-cli"
 version = "0.1.0"
 dependencies = [
  "geom-backend-cpu",
+ "geom-boolmesh",
+ "geom-compile",
  "geom-core",
+ "geom-kernel",
  "geom-mesh",
+ "geom-model",
  "ifc-geometry",
  "ifc-model",
  "ifc-properties",
