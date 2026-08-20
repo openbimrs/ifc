@@ -13,6 +13,7 @@ use ifc_model::EntityId;
 
 use crate::error::GeometryResult;
 use crate::lower::boolean::lower_boolean_result_node;
+use crate::lower::brep::lower_faceted_brep_node;
 use crate::lower::mapped::lower_mapped_item_node;
 use crate::lower::session::LoweringSession;
 use crate::lower::swept::{lower_extruded_area_solid_node, lower_revolved_area_solid_node};
@@ -28,6 +29,8 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCBOOLEANRESULT",
     "IFCBOOLEANCLIPPINGRESULT",
     "IFCMAPPEDITEM",
+    "IFCFACETEDBREP",
+    "IFCFACETEDBREPWITHVOIDS",
 ];
 
 /// Recognized representation items that are not lowered yet.
@@ -36,7 +39,6 @@ pub const IMPLEMENTED: &[&str] = &[
 /// report progress instead of a bare failure. Adding a family here is how a
 /// stub is declared; implementing it means moving the name to [`IMPLEMENTED`].
 pub const PLANNED: &[(&str, &str)] = &[
-    ("IFCFACETEDBREP", "B-rep topology lowering"),
     ("IFCADVANCEDBREP", "advanced B-rep topology lowering"),
     ("IFCTRIANGULATEDFACESET", "tessellated face-set lowering"),
     ("IFCPOLYGONALFACESET", "polygonal face-set lowering"),
@@ -64,6 +66,7 @@ pub fn lower_representation_item(
             lower_boolean_result_node(session, id, frame)
         }
         "IFCMAPPEDITEM" => lower_mapped_item_node(session, id, frame),
+        "IFCFACETEDBREP" | "IFCFACETEDBREPWITHVOIDS" => lower_faceted_brep_node(session, id, frame),
         other => Err(session.unsupported(id, other, detail_for(other))),
     }
 }

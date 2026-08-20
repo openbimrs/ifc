@@ -42,10 +42,18 @@ and check it off only after the proof runs.
   - Requires: `LOW-CONTRACT`, `LOW-SESSION`, `INPUT-PROFILE`, `INPUT-MAT`.
   - Implements: `GEOM-PROFILE`, `GEOM-CURVE`, `GEOM-SURFACE`.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
-- [ ] `LOW-BREP` - topology plus geometry handles
-  - Requires: `LOW-DISPATCH`, `LOW-EXACT`, `INPUT-TOPO`.
+- [x] `LOW-BREP` - topology plus geometry handles
+  - Requires: `LOW-DISPATCH`.
   - Implements: `GEOM-BREP`.
-  - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
+  - Proof: `tests/lower_brep.rs` (10 tests) plus the corpus census.
+  - Decision: planar facets carry `surface: None`. The loop's points define the
+    plane exactly; fitting one risks disagreeing with the vertices.
+  - Decision: vertices intern by source `EntityId`, edges by unordered endpoint
+    pair, both scoped per solid. The corpus builds 12 bodies and 2028 faces from
+    one 196-point pool, so per-slot emission would multiply vertices ~40x and
+    leave every edge unshared, turning closed solids into loose facets.
+  - Note: two exact-geometry prerequisites were dropped. Faceted breps need no
+    exact curve or surface nodes, so the dependency was theoretical.
 - [ ] `LOW-TESS` - preserve authored n-gons/holes/triangles without retessellation
   - Requires: `LOW-DISPATCH`, `INPUT-TOPO`.
   - Implements: `GEOM-TESS`.

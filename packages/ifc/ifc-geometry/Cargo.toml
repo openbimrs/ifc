@@ -13,6 +13,7 @@ ifc-schema.workspace = true
 geom-core.workspace = true
 geom-curve.workspace = true
 geom-model.workspace = true
+geom-topology.workspace = true
 geom-primitive.workspace = true
 geom-profile.workspace = true
 thiserror.workspace = true

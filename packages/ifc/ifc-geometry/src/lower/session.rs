@@ -267,6 +267,23 @@ impl<'a> LoweringSession<'a> {
         }
     }
 
+    /// Build a typed `Degenerate` error naming the offending entity.
+    ///
+    /// Structurally impossible geometry is distinct from an unimplemented
+    /// family: the file is understood and the shape does not exist.
+    pub fn degenerate(
+        &self,
+        entity: EntityId,
+        type_name: &str,
+        detail: impl Into<String>,
+    ) -> GeometryError {
+        GeometryError::Degenerate {
+            entity,
+            type_name: type_name.to_string(),
+            detail: detail.into(),
+        }
+    }
+
     /// Lower a nested operand through the total dispatcher.
     ///
     /// Kept on the session so recursive families do not each re-import the

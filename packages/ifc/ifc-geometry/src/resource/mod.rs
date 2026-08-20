@@ -21,6 +21,7 @@ pub mod mapped;
 pub mod operator;
 pub mod placement;
 pub mod point;
+pub mod topology;
 
 pub use direction::{Direction, Vector};
 pub use mapped::{MappedInstance, MappedItem, MappingWalker, RepresentationMap};

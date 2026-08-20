@@ -498,6 +498,7 @@ dependencies = [
  "geom-model",
  "geom-primitive",
  "geom-profile",
+ "geom-topology",
  "ifc-model",
  "ifc-schema",
  "ifc-step",

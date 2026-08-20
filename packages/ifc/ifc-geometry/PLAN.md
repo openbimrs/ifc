@@ -79,9 +79,12 @@ parallel placeholders.
 - [ ] `GEOM-SURFACE` - lower elementary, swept, bounded, and B-spline surfaces
   - Requires: `GEOM-CONTRACT`, `GEOM-SESSION`, `GEOM-CURVE`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `GEOM-BREP` - lower topology and 20 corpus faceted B-reps
-  - Requires: `GEOM-SESSION`, `GEOM-INPUT`, `GEOM-CURVE`, `GEOM-SURFACE`.
-  - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+- [x] `GEOM-BREP` - lower topology and 20 corpus faceted B-reps
+  - Requires: `GEOM-SESSION`.
+  - Evidence: `tests/lower_brep.rs`; corpus census rose 43 -> 64 lowered items
+    and `IFCFACETEDBREP` left the unsupported set entirely. Cube fixture checks
+    V - E + F = 2; the 12-solid shared-point fixture lowers all 2028 faces.
+    9/9 mutation probes killed.
 - [ ] `GEOM-TESS` - lower tessellated and polygonal face sets without forced triangulation
   - Requires: `GEOM-SESSION`, `GEOM-INPUT`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
