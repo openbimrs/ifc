@@ -2,26 +2,25 @@
 
 ## Done
 - Error-free transformations (`two_sum`, `two_diff`, `two_product`).
-- `orient2d`: f64 filter with magnitude-scaled error bound, escalating to exact
-  expansion arithmetic. Differential-tested against an independent i128 oracle
-  and against known naive-f64 failures.
+- `orient2d`: filtered cascade escalating to exact expansion arithmetic.
 
-## Goal A: GeometryCompiler (in progress)
-Evaluate the three node families `ifc-geometry` actually emits.
-
-- [ ] M1 profile triangulation: Rectangle, Circle, Contour (ear clipping with
-      holes via bridge insertion). Orientation certified by `orient2d`.
-- [ ] M2 linear extrusion: profile -> closed manifold prism, outward-oriented.
-- [ ] M3 transform composition: Instance chains, nested placements.
-- [ ] M4 SolidOperation::Boolean -> dispatch to a MeshBoolean provider.
-- [ ] M5 `ifc-cli mesh <file.ifc>` end to end.
+## In progress: the predicate suite
+- [ ] Arbitrary-length expansion arithmetic (the foundation all of these share).
+- [ ] `orient3d`  — is a point above/on/below a plane.
+- [ ] `incircle`  — is a point inside/on/outside a circumcircle.
+- [ ] `insphere`  — is a point inside/on/outside a circumsphere.
+- [ ] Static filters: precomputed bounds from a coordinate magnitude limit,
+      skipping the per-call permanent computation.
+- [ ] Degeneracy benchmark harness: throughput AND escalation rate at
+      0%, 0.01%, 1%, 10% degenerate inputs.
 
 ## Gates
-- Wall-minus-openings volume vs Monte-Carlo oracle.
-- Manifold in -> manifold out on every fixture that lowers.
-- `ifc capabilities` no longer reports "none".
+- Differential vs an independent exact oracle (i128 rational, integer inputs
+  bounded so the determinant cannot overflow).
+- Measured escalation rate per degeneracy tier, asserted to stay in band.
+- Mutation probes on every filter bound and every exact path.
 
-## Deferred
-- Revolution (seam handling), SweptDisk, SectionedSpine, BRep, surfaces.
-- Reason: `ifc-geometry` does not emit them yet; adding them before there is a
-  producer would be untested speculation.
+## Relationship to adopted predicates
+`boolmesh` carries its own predicates and is MPL-2.0, so replacing them means
+forking. See ADR 0016: ours serve our own algorithms and act as an independent
+audit oracle for adopted ones, rather than trying to displace them.
