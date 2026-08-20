@@ -297,3 +297,14 @@ impl<B: MeshBoolean> GeometryCompiler for ScalarCompiler<B> {
         Ok(())
     }
 }
+
+impl<B: MeshBoolean> ScalarCompiler<B> {
+    /// The boolean provider this compiler dispatches to.
+    ///
+    /// Exposed so an application can apply product-level set operations (IFC
+    /// voids, for instance) with the same provider the compiler uses, rather
+    /// than constructing a second one that might differ.
+    pub const fn boolean_provider(&self) -> &B {
+        &self.boolean
+    }
+}

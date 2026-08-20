@@ -3,6 +3,8 @@
 //! An application, so this is the right place to bind concrete
 //! implementations: a codec and a geometry backend. Library crates must not.
 
+mod mesh;
+
 use ifc_model::Codec;
 use ifc_step::StepCodec;
 use std::path::PathBuf;
@@ -20,6 +22,13 @@ fn main() {
                 std::process::exit(2);
             }
         },
+        Some("mesh") => match args.get(1) {
+            Some(path) => mesh_command(PathBuf::from(path), args.iter().any(|a| a == "-v")),
+            None => {
+                eprintln!("usage: ifc mesh <file.ifc> [-v]");
+                std::process::exit(2);
+            }
+        },
         Some("types") => match args.get(1) {
             Some(path) => types(PathBuf::from(path)),
             None => {
@@ -33,6 +42,7 @@ fn main() {
             println!();
             println!("  info <file>      header, entity count, dangling references");
             println!("  types <file>     entity type histogram");
+            println!("  mesh <file> [-v] compile geometry to triangle meshes");
             println!("  capabilities     geometry backends compiled into this build");
             println!("  --version");
         }
@@ -46,7 +56,22 @@ fn capabilities() {
     println!("  instruction set: {:?}", cpu.instruction_set());
     println!("  worker bound: {}", cpu.thread_count());
     println!("  detected features: {:?}", cpu.features());
-    println!("operation providers: none (scaffold only)");
+    println!("operation providers");
+    println!(
+        "  {:<24} {:?}",
+        geom_compile::BACKEND_ID.as_str(),
+        geom_kernel::Operation::GraphCompilation
+    );
+    println!(
+        "  {:<24} {:?}",
+        geom_boolmesh::BoolmeshBoolean::ID.as_str(),
+        geom_kernel::Operation::MeshBoolean
+    );
+    println!(
+        "  {:<24} {:?}",
+        geom_compile::BACKEND_ID.as_str(),
+        geom_kernel::Operation::ProfileTriangulation
+    );
 }
 
 /// Summarize one file.
@@ -91,5 +116,41 @@ fn types(path: PathBuf) {
     };
     for (type_name, count) in model.type_histogram().into_iter().take(30) {
         println!("{count:>7}  {type_name}");
+    }
+}
+
+/// Compile a file's geometry and report what was produced.
+fn mesh_command(path: PathBuf, verbose: bool) {
+    let model = match StepCodec.read_path(&path) {
+        Ok(model) => model,
+        Err(error) => {
+            eprintln!("error: {error}");
+            std::process::exit(1);
+        }
+    };
+    println!("file:        {}", path.display());
+    let summary = mesh::compile_model(&model, verbose);
+    println!("meshed:      {} items", summary.meshed);
+    println!("triangles:   {}", summary.triangles);
+    println!("not lowered: {} items", summary.not_lowered);
+    println!("not compiled:{} items", summary.not_compiled);
+
+    let products = mesh::compile_products(&model);
+    if !products.is_empty() {
+        println!("products with openings:");
+        for product in &products {
+            println!(
+                "  {} {:<22} {:>6} tris  {} void(s) applied",
+                product.id,
+                product.type_name,
+                product.mesh.triangle_count(),
+                product.voids_applied
+            );
+        }
+    }
+    if summary.meshed == 0 {
+        // Nothing produced is a failure for a mesh command: a caller
+        // scripting this needs a non-zero status to react to.
+        std::process::exit(1);
     }
 }

@@ -11,7 +11,7 @@
 //! the hole-free case, so the adopted implementation is audited, not trusted.
 
 use geom_core::{Point2, Scalar, Tolerance};
-use geom_kernel::{GeomError, GeomResult};
+use geom_kernel::{GeomError, GeomResult, Operation};
 use geom_profile::{CircleProfile, Profile, RectangleProfile};
 
 /// Outer ring plus holes, all CCW/CW normalised by the caller's contract:
@@ -65,6 +65,31 @@ pub fn profile_rings(
     match profile {
         Profile::Rectangle(r) => rectangle_rings(r, chord_error, tolerance),
         Profile::Circle(c) => circle_rings(c, chord_error),
+        Profile::Contour(c) => {
+            let outer = contour_points(&c.outer, chord_error, tolerance)?;
+            let mut holes = Vec::with_capacity(c.holes.len());
+            for hole in &c.holes {
+                holes.push(contour_points(hole, chord_error, tolerance)?);
+            }
+            Ok(orient_rings(outer, holes))
+        }
+        Profile::Derived { basis, transform } => {
+            let mut rings = profile_rings(basis, chord_error, tolerance)?;
+            apply2(&mut rings.outer, transform);
+            for hole in &mut rings.holes {
+                apply2(hole, transform);
+            }
+            // A mirroring placement reverses ring orientation; earcut and the
+            // extruder both rely on outer CCW / holes CW, so restore it here
+            // rather than letting a silently inside-out solid reach them.
+            if transform.matrix2.determinant() < 0.0 {
+                rings.outer.reverse();
+                for hole in &mut rings.holes {
+                    hole.reverse();
+                }
+            }
+            Ok(rings)
+        }
         other => Err(GeomError::Unsupported {
             backend: crate::BACKEND_ID,
             operation: geom_kernel::Operation::ProfileTriangulation,
@@ -183,4 +208,119 @@ pub fn triangulate(rings: &Rings) -> GeomResult<(Vec<Point2>, Vec<[u32; 3]>)> {
         .collect();
     let points = verts.into_iter().map(|v| Point2::new(v[0], v[1])).collect();
     Ok((points, tris))
+}
+
+/// Apply a 2D affine transform to a ring in place.
+fn apply2(ring: &mut [Point2], t: &geom_core::Transform2) {
+    for p in ring.iter_mut() {
+        *p = t.transform_point2(*p);
+    }
+}
+
+/// Flatten one closed contour into a point ring.
+///
+/// Consecutive duplicate points are dropped: adjoining segments share an
+/// endpoint by construction, and earcut treats a repeated vertex as a
+/// zero-length edge.
+fn contour_points(
+    contour: &geom_profile::Contour,
+    chord_error: Scalar,
+    tolerance: Tolerance,
+) -> GeomResult<Vec<Point2>> {
+    let mut out: Vec<Point2> = Vec::new();
+    for segment in &contour.segments {
+        let mut pts = segment_points(segment, chord_error)?;
+        if !segment.same_sense {
+            pts.reverse();
+        }
+        for p in pts {
+            if out
+                .last()
+                .is_none_or(|last| !near2(*last, p, tolerance.linear()))
+            {
+                out.push(p);
+            }
+        }
+    }
+    // A closed ring must not repeat its first point as its last.
+    while out.len() > 1 && near2(out[0], *out.last().expect("non-empty"), tolerance.linear()) {
+        out.pop();
+    }
+    if out.len() < 3 {
+        return Err(GeomError::Degenerate(format!(
+            "contour flattened to {} points, need at least 3",
+            out.len()
+        )));
+    }
+    Ok(out)
+}
+
+/// Whether two points coincide within a linear tolerance.
+fn near2(a: Point2, b: Point2, linear: Scalar) -> bool {
+    (a.x - b.x).abs() <= linear && (a.y - b.y).abs() <= linear
+}
+
+/// Sample one bounded segment, flattening curves under the chord budget.
+fn segment_points(
+    segment: &geom_profile::ProfileSegment,
+    chord_error: Scalar,
+) -> GeomResult<Vec<Point2>> {
+    use geom_curve::Curve2;
+    let (t0, t1) = (segment.domain.start, segment.domain.end);
+    match &segment.curve {
+        Curve2::Line(l) => Ok(vec![
+            Point2::new(
+                l.origin.x + l.direction.x * t0,
+                l.origin.y + l.direction.y * t0,
+            ),
+            Point2::new(
+                l.origin.x + l.direction.x * t1,
+                l.origin.y + l.direction.y * t1,
+            ),
+        ]),
+        Curve2::Polyline(p) => Ok(p.points.clone()),
+        Curve2::Circle(c) => {
+            let sweep = (t1 - t0).abs();
+            let full = circle_segments(c.radius, chord_error);
+            // Scale the full-circle budget to the swept fraction, never below
+            // one segment: a short arc must not inherit a whole circle's cost.
+            let n = ((full as Scalar) * sweep / core::f64::consts::TAU)
+                .ceil()
+                .max(1.0) as usize;
+            let mut out = Vec::with_capacity(n + 1);
+            for i in 0..=n {
+                let t = t0 + (t1 - t0) * (i as Scalar) / (n as Scalar);
+                let (s, co) = t.sin_cos();
+                out.push(Point2::new(
+                    c.frame.origin.x + c.radius * (co * c.frame.x.x + s * c.frame.y.x),
+                    c.frame.origin.y + c.radius * (co * c.frame.x.y + s * c.frame.y.y),
+                ));
+            }
+            Ok(out)
+        }
+        other => Err(GeomError::Unsupported {
+            backend: crate::BACKEND_ID,
+            operation: Operation::CurveEvaluation,
+        })
+        .inspect_err(|_| debug_assert!(matches!(other, Curve2::Ellipse(_) | Curve2::BSpline(_)))),
+    }
+}
+
+/// Force the ring-orientation convention earcut and the extruder expect:
+/// outer counter-clockwise, holes clockwise.
+///
+/// Source contours carry whatever orientation the authoring tool wrote, so
+/// normalising here is cheaper than rejecting otherwise-valid geometry.
+use geom_scalar::signed_area2;
+
+fn orient_rings(mut outer: Vec<Point2>, mut holes: Vec<Vec<Point2>>) -> Rings {
+    if signed_area2(&outer) < 0.0 {
+        outer.reverse();
+    }
+    for hole in &mut holes {
+        if signed_area2(hole) > 0.0 {
+            hole.reverse();
+        }
+    }
+    Rings { outer, holes }
 }

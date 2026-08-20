@@ -28,3 +28,7 @@ ifc-properties.workspace = true
 geom-backend-cpu = { workspace = true, features = ["simd"] }
 geom-core.workspace = true
 geom-mesh.workspace = true
+geom-compile.workspace = true
+geom-boolmesh.workspace = true
+geom-kernel = { workspace = true, features = ["mesh-boolean", "model"] }
+geom-model.workspace = true
