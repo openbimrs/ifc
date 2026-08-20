@@ -11,6 +11,14 @@ section on release.
 ## [Unreleased]
 
 ### Added
+- **`ScalarCompiler`: the first working `GeometryCompiler`.** Walks the
+  geometry DAG iteratively (a 50k-deep instance chain compiles without stack
+  overflow) with memoisation, so a shared subtree is compiled once per batch
+  rather than once per reference. Handles `TriMesh`, `Instance`, `Collection`,
+  `Extrusion`, and `Boolean`; every other family returns `Unsupported` naming
+  the capability it needs. Generic over the boolean provider, so the adopted
+  `geom-boolmesh` is swappable. Wall-minus-opening compiles to exact volume
+  2.16 through Profile -> Extrusion -> Instance -> Boolean.
 - **`geom-compile`: profile triangulation and linear extrusion.** Rectangle
   (solid and hollow) and circle (disk and annulus) profiles flatten under an
   explicit chord budget; holes are triangulated by the adopted `earcut`

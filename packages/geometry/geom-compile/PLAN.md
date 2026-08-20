@@ -1,24 +1,22 @@
 # geom-compile plan
 
 ## Done
-- Profile flattening: rectangle (solid + hollow), circle (disk + annulus),
-  with an explicit chord budget and a segment count derived from the sagitta.
-- Triangulation with holes via `earcut` (ADR 0015).
-- Linear extrusion: caps from the triangulation, sides per boundary loop.
-- Gates: exact volume, directed-edge manifoldness, disk convergence from below,
-  differential oracle vs `geom-scalar`, and end-to-end acceptance by
-  `geom-boolmesh`.
+- Profile flattening (rectangle/circle/ellipse + hollow variants, contours).
+- `earcut` triangulation with holes; certified oracle differential gate.
+- Linear extrusion: caps + sides, outward winding, edge-manifold gate.
+- `ScalarCompiler`: iterative post-order DAG walk, memoised, generic over
+  the boolean provider. Handles TriMesh, Instance, Collection, Extrusion,
+  Boolean. Every other family returns `Unsupported` with the named capability.
 
 ## Next
-- `GeometryCompiler` impl: walk `GeometryGraph`, handle `Profile`,
-  `SolidOperation::Extrusion`, `Instance` transforms, and
-  `SolidOperation::Boolean` dispatch.
-- Wire `ifc-cli mesh <file.ifc>`.
-- Validate the fixture corpus: manifold-in/manifold-out on all 11 fixtures.
+- Revolution (care on the seam: shared vertices at 0 and 2pi).
+- `BoundedHalfSpace` for `IfcBooleanClippingResult`.
+- Tapered extrusion.
 
-## Deferred
-- Rectangle corner radii (`outer_radius`, `inner_radius`) currently ignored;
-  profiles render with sharp corners.
-- Revolution, swept disk, sectioned spine: seam handling needs care, see the
-  Goal A risk note.
-- Ellipse and structural section profiles.
+## Invariants proven by mutation
+- Memoisation is load-bearing (removal kills 7 tests).
+- Mirror placements keep outward winding (negative determinant reverses).
+- `append_mesh` rebases indices; the gate uses DIFFERENT-sized solids because
+  two identical cubes sum to the same volume either way.
+- Unsupported nodes name the capability they need, asserted exactly.
+- Foreign graph handles are refused, never silently indexed.
