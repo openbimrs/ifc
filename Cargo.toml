@@ -22,31 +22,31 @@ authors = ["point-grey"]
 [workspace.dependencies]
 # --- ../axiolid: format-agnostic geometry. Knows nothing about IFC. ---
 # `axiolid` is the opt-in facade. Leaf crates remain independently consumable.
-axiolid = { path = "../axiolid/crates/axiolid", default-features = false }
-axiolid-core = { path = "../axiolid/crates/axiolid-core" }
-axiolid-mesh = { path = "../axiolid/crates/axiolid-mesh" }
-axiolid-model = { path = "../axiolid/crates/axiolid-model" }
-axiolid-primitive = { path = "../axiolid/crates/axiolid-primitive" }
-axiolid-heal = { path = "../axiolid/crates/axiolid-heal" }
-axiolid-profile = { path = "../axiolid/crates/axiolid-profile" }
-axiolid-curve = { path = "../axiolid/crates/axiolid-curve" }
-axiolid-surface = { path = "../axiolid/crates/axiolid-surface" }
-axiolid-sweep = { path = "../axiolid/crates/axiolid-sweep" }
-axiolid-topology = { path = "../axiolid/crates/axiolid-topology" }
-axiolid-tessellate = { path = "../axiolid/crates/axiolid-tessellate" }
-axiolid-spatial = { path = "../axiolid/crates/axiolid-spatial" }
-axiolid-measure = { path = "../axiolid/crates/axiolid-measure" }
+axiolid = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079", default-features = false }
+axiolid-core = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+axiolid-mesh = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+axiolid-model = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+axiolid-primitive = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+axiolid-heal = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+axiolid-profile = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+axiolid-curve = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+axiolid-surface = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+axiolid-sweep = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+axiolid-topology = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+axiolid-tessellate = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+axiolid-spatial = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+axiolid-measure = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
 # The scalar reference implementation and correctness oracle (ADR 0012).
-axiolid-scalar = { path = "../axiolid/crates/axiolid-scalar" }
-axiolid-compile = { path = "../axiolid/crates/axiolid-compile" }
+axiolid-scalar = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+axiolid-compile = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
 # Contract and implementations are separate crates so feature unification can
 # never pull a concrete backend into a format adapter.
-axiolid-kernel = { path = "../axiolid/crates/axiolid-kernel", default-features = false }
-axiolid-backend-cpu = { path = "../axiolid/crates/axiolid-backend-cpu", default-features = false }
-axiolid-backend-gpu = { path = "../axiolid/crates/axiolid-backend-gpu", default-features = false }
+axiolid-kernel = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079", default-features = false }
+axiolid-backend-cpu = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079", default-features = false }
+axiolid-backend-gpu = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079", default-features = false }
 # boolmesh-backed provider (ADR 0014). Isolated so `boolmesh` never enters
 # axiolid-kernel's graph; the contract crate stays implementation-free.
-axiolid-boolmesh = { path = "../axiolid/crates/axiolid-boolmesh" }
+axiolid-boolmesh = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
 
 # --- packages/ifc: pure IFC. Only ifc-geometry may touch the geometry kernel. ---
 ifc-schema = { path = "packages/ifc/ifc-schema" }
