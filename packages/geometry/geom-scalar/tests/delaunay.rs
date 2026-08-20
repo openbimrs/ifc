@@ -65,7 +65,7 @@ fn incircle_agrees_with_an_independent_exact_oracle() {
     let mut zeros = 0usize;
     for i in 0..20_000 {
         let bound = 60;
-        let mut pt = |s: &mut u64| [rng(s) % (2 * bound) - bound, rng(s) % (2 * bound) - bound];
+        let pt = |s: &mut u64| [rng(s) % (2 * bound) - bound, rng(s) % (2 * bound) - bound];
         let (a, b, c) = (pt(&mut state), pt(&mut state), pt(&mut state));
         // Half the cases are placed exactly on a lattice circle so genuine
         // zeros occur; random points are essentially never cocircular.
@@ -103,7 +103,7 @@ fn insphere_agrees_with_an_independent_exact_oracle() {
     let mut zeros = 0usize;
     let bound = 40i64;
     for i in 0..20_000 {
-        let mut pt = |s: &mut u64| {
+        let pt = |s: &mut u64| {
             [
                 rng(s) % (2 * bound) - bound,
                 rng(s) % (2 * bound) - bound,
