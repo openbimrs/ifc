@@ -279,6 +279,11 @@ properties.[UsdGeom][UsdGeom basis curves][UsdGeom NURBS curves]
 normals, primvars, creases/corners, and subdivision scheme metadata; it does not
 perform solid boolean or B-rep construction.[UsdGeom mesh]
 
+`UsdPhysics` adds schemas and descriptors for rigid bodies, collision shapes,
+joints, articulations, and simulation ownership. Those records are intended for
+downstream physics implementations; they do not turn OpenUSD into a collision or
+solid-modeling algorithm provider.[USD physics]
+
 **Strengths**
 
 - Best composition and instancing model in the comparison.
@@ -301,7 +306,7 @@ it should not be described simply as Apache-2.0.[USD license]
 ### Nehirde: what is implemented now
 
 The following classification was checked against production source and tests at
-`804fac8f9ec6`.
+`be3ddce7f465`.
 
 #### Implemented and exercised
 
@@ -593,6 +598,7 @@ locally audited revision rather than a moving branch.
 - [UsdGeom NURBS patch]: <https://openusd.org/release/api/class_usd_geom_nurbs_patch.html>
 - [USD instancing]: <https://openusd.org/release/api/_usd__page__scenegraph_instancing.html>
 - [USD bounds]: <https://openusd.org/release/api/class_usd_geom_b_box_cache.html>
+- [USD physics]: <https://openusd.org/release/api/usd_physics_page_front.html>
 - [USD license]: <https://github.com/PixarAnimationStudios/OpenUSD/blob/release/LICENSE.txt>
 
 ### Nehirde evidence
