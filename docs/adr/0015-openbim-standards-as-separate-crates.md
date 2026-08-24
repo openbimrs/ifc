@@ -3,11 +3,12 @@
 - **Status:** Accepted
 - **Date:** 2026-08-24
 - **Deciders:** Friedrich, nehirde
+- **Amended:** 2026-08-24 — flat `packages/`, `openbim-*` publish names, `openbim-codec-*` substrate
 - **Supersedes:** —
 
 ## Context
 
-`packages/openbim/` held four doc-only crates: `ids`, `bcf`, `clash`, `diff`.
+`packages/` held four doc-only crates: `ids`, `bcf`, `clash`, `diff`.
 Two problems.
 
 **1. Two of them are not openBIM standards.** Clash detection and semantic diff
@@ -17,8 +18,8 @@ anything IFC-adjacent.
 
 **2. The remaining standards share a substrate that cannot live in `openbim/`.**
 BCF, IDS, IDM, LOIN and ICDD are all XML; BCF, ICDD and IFCZIP are all ZIP. But
-`packages/openbim/AGENTS.md` states the one-way rule: `packages/ifc/` must never
-depend on `packages/openbim/`. Since `ifc-xml` needs XML handling and a future
+`packages/AGENTS.md` states the one-way rule: `packages/` must never
+depend on `packages/`. Since `ifc-xml` needs XML handling and a future
 IFCZIP needs ZIP handling, a shared substrate inside `openbim/` would force
 exactly the dependency the rule forbids.
 
@@ -39,15 +40,15 @@ We will structure openBIM support as **one crate per standard**, plus a thin
 facade, over a substrate layer that sits below both `ifc/` and `openbim/`.
 
 ```
-packages/wire/          encoding substrate, no domain knowledge
-  wire-xml/             XML recognition (BOM, sniffing)
-  wire-zip/             ZIP framing recognition
-packages/openbim/
+packages/          encoding substrate, no domain knowledge
+  openbim-codec-xml/             XML recognition (BOM, sniffing)
+  openbim-codec-zip/             ZIP framing recognition
+packages/
   openbim/              facade; features are pure re-exports
   openbim-core/         shared DOMAIN vocabulary (not XML, not ZIP)
   openbim-{dt,ids,bcf,icdd,idm,loin}/
-packages/analysis/      clash, diff — capabilities, not standards
-packages/alias/         icdd, idmxml, loin — `pub use` aliases
+packages/      clash, diff — capabilities, not standards
+packages/         icdd, idmxml, loin — `pub use` aliases
 ```
 
 Key points:
@@ -73,8 +74,8 @@ Key points:
 | Option | Why not |
 | --- | --- |
 | One `openbim` crate, one feature per standard | Feature unification is graph-wide: an `icdd` feature enabled by any dependency imposes RDF on every consumer. This is the decisive argument. |
-| Shared XML/ZIP inside `packages/openbim/` | Would force `packages/ifc/` to depend on `openbim/`, violating the one-way rule that keeps the IFC core from accreting every standard. |
-| Put RDF in `wire-rdf` alongside `wire-xml`/`wire-zip` | ICDD is the only RDF consumer. A `wire-rdf` crate created now would be a one-consumer abstraction; defer it until ICDD is implemented. |
+| Shared XML/ZIP inside `packages/` | Would force `packages/` to depend on `openbim/`, violating the one-way rule that keeps the IFC core from accreting every standard. |
+| Put RDF in `wire-rdf` alongside `openbim-codec-xml`/`openbim-codec-zip` | ICDD is the only RDF consumer. A `wire-rdf` crate created now would be a one-consumer abstraction; defer it until ICDD is implemented. |
 | Keep `clash`/`diff` under `openbim/` | They are not openBIM standards. Misfiling them is how the directory loses its meaning. |
 | Delete `clash`/`diff` | Both are on the roadmap, and `clash` is the stress test for kernel-agnosticism. Moved, not deleted. |
 | Short crate names (`ids`, `bcf`, `dt`) | All taken on crates.io by unrelated projects. Verified 2026-08-24. |
@@ -85,7 +86,7 @@ Key points:
 
 - A consumer needing only IDS compiles only IDS. Provable with `cargo tree`,
   and gated in `scripts/gate.sh` rather than asserted in prose.
-- `packages/ifc/` can use `wire-xml` without any path to `openbim/`.
+- `packages/` can use `openbim-codec-xml` without any path to `openbim/`.
 - The version-detection trap is encoded once, in `openbim_core::Detected`,
   with an explicit `Conflict` variant instead of a silent guess.
 - Adding a standard is additive: a new leaf crate plus one facade feature.
@@ -108,7 +109,7 @@ Key points:
   and an earlier draft used a different one. Namespace migration must stay a
   first-class concern in `openbim-loin`.
 - `ifc-zip` (an `IFCZIP` decorator generic over `Codec`) is deferred; when it
-  lands it must reuse `wire-zip` rather than reimplementing framing.
+  lands it must reuse `openbim-codec-zip` rather than reimplementing framing.
 - Working ISO 29481-3 and ISO 7817-3 codecs exist in the private `poing`
   repository. Porting them here is Phase 2 and is deliberately not part of the
   first release.
@@ -116,9 +117,35 @@ Key points:
 ## Relation to existing code
 
 - `Cargo.toml` — workspace members gain `packages/{wire,analysis,alias}/*`.
-- `packages/openbim/{ids,bcf}` → `packages/openbim/openbim-{ids,bcf}`.
-- `packages/openbim/{clash,diff}` → `packages/analysis/{clash,diff}`.
+- `packages/{ids,bcf}` → `packages/openbim-{ids,bcf}`.
+- `packages/{clash,diff}` → `packages/{clash,diff}`.
 - `scripts/gate.sh` — adds the openbim feature matrix and per-crate isolated
   builds that make the isolation claim executable.
 - Follows the boundary discipline of `../vendor/solibri/crates/codec`, whose
   `container`/`formats` split addresses the same problem in one crate.
+
+## Amendment, 2026-08-24 — repository split and publish names
+
+The workspace became the `openbim` infrastructure repository
+(`github.com/openbimrs/openbim`), freeing the name `nehirde` for the
+application that consumes these crates. Three consequences:
+
+**`packages/` is flat.** Grouping directories (`ifc/`, `openbim/`, `wire/`,
+`analysis/`, `alias/`) are gone; every crate sits directly under `packages/`.
+The layer a crate belongs to is carried by its NAME, and the architecture tests
+now select on the name. This is the one genuinely load-bearing detail of the
+change: three existing gates filtered crates by parent directory and would have
+silently matched **zero** crates after the move — passing vacuously rather than
+failing. Each was rewritten to select by name, and each was re-verified with a
+mutation probe (introduce a violation, confirm the gate fails, restore).
+A gate that cannot fail is worse than no gate.
+
+**Publish names are `openbim-*`.** `ifc`, `bcf`, `ids`, `idm`, `dt`, `codec`
+and `cde` are all taken on crates.io by unrelated crates. Only `icdd` and
+`loin` were free, and those two are published as alias crates. The IFC facade
+is published as `openbim-ifc` but keeps `ifc` as its **lib target name**, so
+consumer code still reads `use ifc::…` — the ergonomic name survives even
+though the registry name could not.
+
+**`wire-*` became `openbim-codec-*`.** Same crates, same boundary, a name that
+says what they are. They remain below both the IFC layer and the standards.

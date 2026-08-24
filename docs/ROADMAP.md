@@ -51,7 +51,7 @@ targets, never the portable compile baseline.
 - [ ] Handle the cross-version rename problem explicitly: `IfcBuildingElement`
       (2x3/4) vs `IfcBuiltElement` (4x3), and the 16 entities 4x3 drops.
 - [ ] mmap + **record-aligned** partitioning (resync to `#<digits>=`; see the
-      pitfall in `packages/ifc/AGENTS.md`) + rayon parallel scan.
+      pitfall in `packages/AGENTS.md`) + rayon parallel scan.
 - [ ] Value scanner: refs, lists, typed values, enums, strings, reals.
 - [ ] `\X\`, `\X2\`, `\X4\` unicode escape decoding — not latin-1 only.
 - [ ] **Validation:** entity count equals an independent raw `#<id>=` scan;
@@ -120,7 +120,7 @@ Properties come first: most real IFC work is property work, and it needs no
 geometry.
 
 The crate layout is settled (`docs/adr/0015`): one crate per standard under
-`packages/openbim/`, a substrate layer in `packages/wire/`, and the `openbim`
+`packages/`, a substrate layer in `packages/`, and the `openbim`
 facade whose features are pure re-exports. All names are published as
 reservations; what follows is the implementation.
 
@@ -135,7 +135,7 @@ reservations; what follows is the implementation.
 - [ ] `openbim-bcf`: export findings so they leave this toolchain. The reader
       is tolerant by measurement, not by preference — see the corpus numbers in
       the crate docs.
-- [ ] `clash` (now `packages/analysis/`): broad phase (BVH) + narrow phase on
+- [ ] `clash` (now `packages/`): broad phase (BVH) + narrow phase on
       the injected kernel.
 - [ ] **Validation:** for IDS, every `pass-` case passes and every `fail-` case
       fails, with *not applicable* distinguished from *passed* — the distinction
@@ -147,7 +147,7 @@ Working lossless codecs for ISO 29481-3 (idmXML, ~2.4k LOC) and ISO 7817-3
 (LOIN, ~2.1k LOC) already exist in the private `poing` repository, each with a
 CLI and pyo3 bindings.
 
-- [ ] `openbim-idm`: port from `poing`, onto `wire-xml`, edition 2021. Carry
+- [ ] `openbim-idm`: port from `poing`, onto `openbim-codec-xml`, edition 2021. Carry
       over the recorded schema defects (optional root ER versus the normative
       one-ER prose requirement; suspect identity-constraint XPaths) as
       documented decisions rather than silent behaviour.
@@ -162,11 +162,11 @@ CLI and pyo3 bindings.
 
 - [ ] `ifc-schedule` (`IfcTask`/`IfcWorkSchedule`), `ifc-cost`
       (`IfcCostItem`/`IfcCostSchedule`).
-- [ ] `diff` (now `packages/analysis/`): GUID-matched semantic diff
+- [ ] `diff` (now `packages/`): GUID-matched semantic diff
       (added/removed/moved/property-changed), not a text diff.
 - [ ] `openbim-icdd`: ISO 21597 container. RDF stays inside this crate until a
       second consumer justifies a `wire-rdf`.
-- [ ] `ifc-zip`: an IFCZIP decorator generic over `Codec`, reusing `wire-zip`.
+- [ ] `ifc-zip`: an IFCZIP decorator generic over `Codec`, reusing `openbim-codec-zip`.
       One implementation covers STEP, ifcXML and any future IFC-JSON.
 
 ## Stage 7 — Bindings

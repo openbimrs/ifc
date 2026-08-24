@@ -1,11 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "packages/wire/*",
-    "packages/ifc/*",
-    "packages/openbim/*",
-    "packages/analysis/*",
-    "packages/alias/*",
+    "packages/*",
     "bindings/python",
     "apps/*",
 ]
@@ -52,50 +48,50 @@ axiolid-backend-gpu = { git = "https://github.com/axiolid/axiolid-kernel.git", r
 axiolid-boolmesh = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
 
 # --- packages/ifc: pure IFC. Only ifc-geometry may touch the geometry kernel. ---
-ifc-schema = { path = "packages/ifc/ifc-schema" }
-ifc-migrate = { path = "packages/ifc/ifc-migrate" }
-ifc-infer = { path = "packages/ifc/ifc-infer" }
-ifc = { path = "packages/ifc/ifc" }
-ifc-step = { path = "packages/ifc/ifc-step" }
-ifc-xml = { path = "packages/ifc/ifc-xml" }
-ifc-model = { path = "packages/ifc/ifc-model" }
-ifc-geometry = { path = "packages/ifc/ifc-geometry" }
-ifc-properties = { path = "packages/ifc/ifc-properties" }
-ifc-template-catalog = { path = "packages/ifc/ifc-template-catalog" }
-ifc-cost = { path = "packages/ifc/ifc-cost" }
-ifc-schedule = { path = "packages/ifc/ifc-schedule" }
-ifc-material = { path = "packages/ifc/ifc-material" }
-ifc-style = { path = "packages/ifc/ifc-style" }
-ifc-structural = { path = "packages/ifc/ifc-structural" }
-ifc-resource = { path = "packages/ifc/ifc-resource" }
-ifc-classification = { path = "packages/ifc/ifc-classification" }
-ifc-georef = { path = "packages/ifc/ifc-georef" }
-ifc-systems = { path = "packages/ifc/ifc-systems" }
-ifc-alignment = { path = "packages/ifc/ifc-alignment" }
-ifc-validate = { path = "packages/ifc/ifc-validate" }
+ifc-schema = { path = "packages/ifc-schema" }
+ifc-migrate = { path = "packages/ifc-migrate" }
+ifc-infer = { path = "packages/ifc-infer" }
+openbim-ifc = { path = "packages/openbim-ifc" }
+ifc-step = { path = "packages/ifc-step" }
+ifc-xml = { path = "packages/ifc-xml" }
+ifc-model = { path = "packages/ifc-model" }
+ifc-geometry = { path = "packages/ifc-geometry" }
+ifc-properties = { path = "packages/ifc-properties" }
+ifc-template-catalog = { path = "packages/ifc-template-catalog" }
+ifc-cost = { path = "packages/ifc-cost" }
+ifc-schedule = { path = "packages/ifc-schedule" }
+ifc-material = { path = "packages/ifc-material" }
+ifc-style = { path = "packages/ifc-style" }
+ifc-structural = { path = "packages/ifc-structural" }
+ifc-resource = { path = "packages/ifc-resource" }
+ifc-classification = { path = "packages/ifc-classification" }
+ifc-georef = { path = "packages/ifc-georef" }
+ifc-systems = { path = "packages/ifc-systems" }
+ifc-alignment = { path = "packages/ifc-alignment" }
+ifc-validate = { path = "packages/ifc-validate" }
 
 # --- packages/wire: encoding substrate. Below BOTH ifc/ and openbim/, so the
 # one-way rule (ifc must never depend on openbim) survives sharing XML/ZIP. ---
-wire-xml = { path = "packages/wire/wire-xml" }
-wire-zip = { path = "packages/wire/wire-zip" }
+openbim-codec-xml = { path = "packages/openbim-codec-xml" }
+openbim-codec-zip = { path = "packages/openbim-codec-zip" }
 
 # --- packages/openbim: standards built ON the IFC layer, never inside it. ---
 # One crate per standard. Cargo features are additive across the whole graph,
 # so features of a single crate could not keep an RDF stack out of an IDS-only
 # build; separate packages can. See docs/adr/0015.
-openbim = { path = "packages/openbim/openbim", default-features = false }
-openbim-core = { path = "packages/openbim/openbim-core" }
-openbim-dt = { path = "packages/openbim/openbim-dt" }
-openbim-ids = { path = "packages/openbim/openbim-ids" }
-openbim-bcf = { path = "packages/openbim/openbim-bcf" }
-openbim-icdd = { path = "packages/openbim/openbim-icdd" }
-openbim-idm = { path = "packages/openbim/openbim-idm" }
-openbim-loin = { path = "packages/openbim/openbim-loin" }
+openbim = { path = "packages/openbim", default-features = false }
+openbim-core = { path = "packages/openbim-core" }
+openbim-dt = { path = "packages/openbim-dt" }
+openbim-ids = { path = "packages/openbim-ids" }
+openbim-bcf = { path = "packages/openbim-bcf" }
+openbim-icdd = { path = "packages/openbim-icdd" }
+openbim-idm = { path = "packages/openbim-idm" }
+openbim-loin = { path = "packages/openbim-loin" }
 
 # --- packages/analysis: capabilities, NOT openBIM standards. They consume the
 # IFC layer and emit findings that openbim-bcf can export. ---
-clash = { path = "packages/analysis/clash" }
-diff = { path = "packages/analysis/diff" }
+clash = { path = "packages/clash" }
+diff = { path = "packages/diff" }
 
 # --- third-party ---
 # glam: SIMD-accelerated vector math, pure Rust, no C++. See docs/adr/0003.

@@ -7,7 +7,7 @@
 # sync with the API it claims to implement. Reviewers read it as real. It is
 # not.
 #
-# This bit us for real: a refactor rewrote packages/ifc/ifc-geometry/src/lib.rs
+# This bit us for real: a refactor rewrote packages/ifc-geometry/src/lib.rs
 # and dropped ten `pub mod` lines. 170 lines of representation scaffold
 # (brep, csg, placement, profile, swept, ...) silently stopped being part of
 # the crate while every gate stayed green, because nothing references them.

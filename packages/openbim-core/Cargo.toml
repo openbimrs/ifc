@@ -1,0 +1,15 @@
+[package]
+name = "openbim-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository = "https://github.com/openbimrs/openbim"
+readme = "README.md"
+description = "Shared vocabulary for openBIM standards: findings, element references, spec versions."
+keywords = ["bim", "openbim", "ifc", "aec"]
+categories = ["parser-implementations", "data-structures"]
+
+[dependencies]
+

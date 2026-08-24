@@ -1,6 +1,6 @@
 # PSD/QTO template catalog architecture
 
-Status: research basis for accepted ADR 0010; implementation lives in `packages/ifc/ifc-template-catalog`.
+Status: research basis for accepted ADR 0010; implementation lives in `packages/ifc-template-catalog`.
 
 ## Executive result
 
@@ -36,7 +36,7 @@ The IFC4 schema's own `IfcPropertySetTemplate` documentation states that it desc
 
 ## Nehirde status
 
-`packages/ifc/ifc-properties` is the nearest crate and has the correct boundaries for authored instances:
+`packages/ifc-properties` is the nearest crate and has the correct boundaries for authored instances:
 
 - `AGENTS.md:3-18` assigns property, quantity, unit, in-file template, standard-library projection, and authoring seams.
 - `src/lib.rs:22-25` explicitly says the crate is a scaffold.
@@ -116,7 +116,7 @@ Thus IfcOpenShell is useful prior art for normalized IFC template libraries and 
 Add an optional sibling package:
 
 ```text
-packages/ifc/
+packages/
   ifc-properties/          # authored Psets/Qtos, units, in-file template views
   ifc-template-catalog/    # external official catalogs and correction overlays
 ```
@@ -195,7 +195,7 @@ This is stronger than IfcOpenShell's ordered first-match files: it makes every d
 
 Do not "fix" `Pset_EnvironmentalImpactIndicators` or `Pset_EnvironmentalImpactValues` by changing their meaning under the same names. In `Official`, reproduce them exactly. In `Corrected`, attach a legacy/underspecified advisory and optionally discourage new authoring while still reading existing files.
 
-Model EPD semantics separately, preferably in an optional `packages/openbim/epd` package because EN/ISO EPD semantics sit above generic IFC property mechanics. Its internal contract should represent at least:
+Model EPD semantics separately, preferably in an optional `packages/epd` package because EN/ISO EPD semantics sit above generic IFC property mechanics. Its internal contract should represent at least:
 
 ```text
 EPD document + declared/functional unit + product/classification reference

@@ -356,30 +356,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ifc"
-version = "0.1.0"
-dependencies = [
- "ifc-alignment",
- "ifc-classification",
- "ifc-cost",
- "ifc-geometry",
- "ifc-georef",
- "ifc-material",
- "ifc-model",
- "ifc-properties",
- "ifc-resource",
- "ifc-schedule",
- "ifc-schema",
- "ifc-step",
- "ifc-structural",
- "ifc-style",
- "ifc-systems",
- "ifc-template-catalog",
- "ifc-validate",
- "ifc-xml",
-]
-
-[[package]]
 name = "ifc-alignment"
 version = "0.1.0"
 dependencies = [
@@ -643,6 +619,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "openbim-codec-xml"
+version = "0.1.0"
+
+[[package]]
+name = "openbim-codec-zip"
+version = "0.1.0"
+
+[[package]]
 name = "openbim-core"
 version = "0.1.0"
 
@@ -672,6 +656,30 @@ name = "openbim-ids"
 version = "0.1.0"
 dependencies = [
  "openbim-core",
+]
+
+[[package]]
+name = "openbim-ifc"
+version = "0.1.0"
+dependencies = [
+ "ifc-alignment",
+ "ifc-classification",
+ "ifc-cost",
+ "ifc-geometry",
+ "ifc-georef",
+ "ifc-material",
+ "ifc-model",
+ "ifc-properties",
+ "ifc-resource",
+ "ifc-schedule",
+ "ifc-schema",
+ "ifc-step",
+ "ifc-structural",
+ "ifc-style",
+ "ifc-systems",
+ "ifc-template-catalog",
+ "ifc-validate",
+ "ifc-xml",
 ]
 
 [[package]]
@@ -878,14 +886,6 @@ checksum = "b67efb37e106e55ce722a510d6b5f9c17f083e5fc79afc2badeb12cc313d9487"
 dependencies = [
  "wit-bindgen",
 ]
-
-[[package]]
-name = "wire-xml"
-version = "0.1.0"
-
-[[package]]
-name = "wire-zip"
-version = "0.1.0"
 
 [[package]]
 name = "wit-bindgen"

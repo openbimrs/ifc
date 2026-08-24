@@ -7,7 +7,7 @@
 
 > **Amended by [0004](0004-package-layout-and-backend-features.md).** The
 > reasoning below stands. Paths have moved: `axiolid/` → `../axiolid/`,
-> `ifc/` → `packages/ifc/`, and `ifc-parser`/`ifc-shape` are now
+> `ifc/` → `packages/`, and `ifc-parser`/`ifc-shape` are now
 > `ifc-step`/`ifc-geometry`.
 >
 > **Current seam:** 0009 supersedes the direct `ifc-geometry` to
@@ -44,7 +44,7 @@ A separate Axiolid repository and the IFC package consume it through a narrow br
 
 ```text
 ../axiolid/crates/axiolid-*  core, kernel, CPU/GPU execution, facade
-packages/ifc/              schema, codecs, model, geometry adapter
+packages/              schema, codecs, model, geometry adapter
 ```
 
 `axiolid-kernel` holds **traits only** — the contract. `ifc-geometry` depends on
@@ -92,7 +92,7 @@ into `ifc-shape`. Neither the IFC layer nor the kernel contract names a backend.
 ## Relation to existing code
 
 - `../axiolid/crates/axiolid-kernel/src/lib.rs` — the contract and its rationale.
-- `packages/ifc/ifc-geometry/src/lib.rs` — the seam; generic over `K: MeshBoolean`.
-- `packages/ifc/ifc-geometry/tests/no_backend_dependency.rs` — **enforces** this ADR by reading
+- `packages/ifc-geometry/src/lib.rs` — the seam; generic over `K: MeshBoolean`.
+- `packages/ifc-geometry/tests/no_backend_dependency.rs` — **enforces** this ADR by reading
   the `ifc/*` manifests and failing the build if a backend dependency appears.
   Verified to fail when violated, not merely to pass today.

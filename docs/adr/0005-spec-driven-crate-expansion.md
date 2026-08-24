@@ -59,7 +59,7 @@ rename where the spec's own vocabulary is clearer than our invention.
 `axiolid-brep` is renamed `axiolid-topology` (the spec's word, and it says what the
 crate holds) and its surface/curve concerns move to the crates above.
 
-### `packages/ifc/`
+### `packages/`
 
 Kept: `ifc-schema`, `ifc-step`, `ifc-model`, `ifc-geometry`, `ifc-properties`,
 `ifc-cost`, `ifc-schedule`.
@@ -109,7 +109,7 @@ have to compile.
 
 ## Relation to existing code
 
-`../axiolid/*`, `packages/ifc/*`, workspace `Cargo.toml` members and
+`../axiolid/*`, `packages/*`, workspace `Cargo.toml` members and
 `[workspace.dependencies]`, and the architecture gate in
-`packages/ifc/ifc-geometry/tests/no_backend_dependency.rs`, which now checks
+`packages/ifc-geometry/tests/no_backend_dependency.rs`, which now checks
 every crate in both groups.

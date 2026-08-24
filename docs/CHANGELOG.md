@@ -256,7 +256,7 @@ section on release.
 
 ### Changed
 - **Restructured into role-grouped packages.** `axiolid/` and `ifc/` became
-  `../axiolid/` and `packages/ifc/`, joined by `packages/openbim/`
+  `../axiolid/` and `packages/`, joined by `packages/`
   (`ids`, `bcf`, `clash`, `diff`), `bindings/` (`python`, `wasm`), and `apps/`
   (`ifc-cli`). Dependency direction is one-way:
   `geometry → ifc → openbim → {bindings, apps}`. 17 crates total.
@@ -264,7 +264,7 @@ section on release.
   `axiolid-cpu`/`axiolid-simd`/`axiolid-gpu`/`axiolid-dispatch` became
   `axiolid_kernel::backend::{scalar,simd,gpu,Dispatcher}` behind features
   `scalar` + `simd` (default) and `gpu` (off). The swap boundary is now expressed
-  as a feature constraint: `packages/ifc/*` take `default-features = false`,
+  as a feature constraint: `packages/*` take `default-features = false`,
   applications opt in. See ADR 0004.
 - **`TriMesh` moved from `axiolid-core` to the new `axiolid-mesh` crate**; `axiolid-core`
   is now data-and-tolerance only.
@@ -301,8 +301,8 @@ section on release.
   scope is deliberately limited to the surfaces IFC actually uses.
 - `apps/ifc-cli` — working binary. `ifc capabilities` reports detected backends
   and the selected boolean implementation (currently: none, honestly).
-- `packages/ifc/{ifc-properties,ifc-cost,ifc-schedule}` and
-  `packages/openbim/{ids,bcf,clash,diff}` — reserved, documented crates.
+- `packages/{ifc-properties,ifc-cost,ifc-schedule}` and
+  `packages/{ids,bcf,clash,diff}` — reserved, documented crates.
 - ADR 0001 (axiolid/ifc split + kernel contract), ADR 0002 (hardware abstraction),
   ADR 0003 (pure-Rust mesh boolean instead of OpenCascade), ADR 0004 (package
   layout + backends as features).

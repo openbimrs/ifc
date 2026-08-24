@@ -36,12 +36,12 @@ step "clippy"                 cargo clippy --workspace --all-targets -- -D warni
 step "clippy --all-features"  cargo clippy --workspace --all-targets --all-features -- -D warnings
 step "doc"                    env RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 
-# The ifc facade must build and lint under each feature combination.
+# The openbim-ifc facade must build and lint under each feature combination.
 for f in "--no-default-features" "--features step" "--features ifcxml" "--all-features"; do
     # shellcheck disable=SC2086
-    step "ifc build $f"  cargo build -p ifc $f
+    step "openbim-ifc build $f"  cargo build -p openbim-ifc $f
     # shellcheck disable=SC2086
-    step "ifc clippy $f" cargo clippy -p ifc $f --all-targets -- -D warnings
+    step "openbim-ifc clippy $f" cargo clippy -p openbim-ifc $f --all-targets -- -D warnings
 done
 
 # The openbim facade must build and lint under each standard in isolation.
@@ -64,7 +64,7 @@ done
 # Isolated builds prove each crate declares its own complete dependency set:
 # feature unification inside a workspace build can otherwise hide a missing
 # dependency that only shows up for an external consumer.
-for c in wire-xml wire-zip openbim-core openbim-dt openbim-ids openbim-bcf \
+for c in openbim-codec-xml openbim-codec-zip openbim-ifc openbim-core openbim-dt openbim-ids openbim-bcf \
          openbim-icdd openbim-idm openbim-loin openbim clash diff \
          icdd idmxml loin; do
     step "isolated build -p $c" cargo build -p "$c"

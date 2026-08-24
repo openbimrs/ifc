@@ -1,4 +1,4 @@
-# HERMES.md — nehirde
+# HERMES.md — openbim
 
 Nehirde is a pure-Rust IFC library. Its format-agnostic geometry kernel is the separate **Axiolid** repository at `../axiolid` (private GitHub publication remains to be configured).
 

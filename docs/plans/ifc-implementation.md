@@ -8,10 +8,10 @@ local place to record task evidence.
 
 Use:
 
-- `packages/ifc/AGENTS.md` for stable package architecture;
-- `packages/ifc/PLAN.md` for cross-crate integration order;
-- `packages/ifc/<crate>/AGENTS.md` for the crate contract;
-- `packages/ifc/<crate>/PLAN.md` for checkable implementation work;
+- `packages/AGENTS.md` for stable package architecture;
+- `packages/PLAN.md` for cross-crate integration order;
+- `packages/<crate>/AGENTS.md` for the crate contract;
+- `packages/<crate>/PLAN.md` for checkable implementation work;
 - a deeper paired `AGENTS.md` / `PLAN.md` under complex modules when present.
 
 Do not add implementation progress here. Update the nearest owning `PLAN.md`.
