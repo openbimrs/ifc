@@ -1,6 +1,0 @@
-# Local x86_64 builds use bbv-dev's CPU. Target-specific scope is essential:
-# a workspace-wide `build.rustflags` leaks x86 features into AArch64 checks.
-# Published crates do not include this repo config. For a portable local x86
-# binary, override with `RUSTFLAGS="-C target-cpu=x86-64"`.
-[target.x86_64-unknown-linux-gnu]
-rustflags = ["-C", "target-cpu=native"]
