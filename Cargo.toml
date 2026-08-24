@@ -1,8 +1,11 @@
 [workspace]
 resolver = "2"
 members = [
+    "packages/wire/*",
     "packages/ifc/*",
     "packages/openbim/*",
+    "packages/analysis/*",
+    "packages/alias/*",
     "bindings/python",
     "apps/*",
 ]
@@ -71,11 +74,28 @@ ifc-systems = { path = "packages/ifc/ifc-systems" }
 ifc-alignment = { path = "packages/ifc/ifc-alignment" }
 ifc-validate = { path = "packages/ifc/ifc-validate" }
 
+# --- packages/wire: encoding substrate. Below BOTH ifc/ and openbim/, so the
+# one-way rule (ifc must never depend on openbim) survives sharing XML/ZIP. ---
+wire-xml = { path = "packages/wire/wire-xml" }
+wire-zip = { path = "packages/wire/wire-zip" }
+
 # --- packages/openbim: standards built ON the IFC layer, never inside it. ---
-ids = { path = "packages/openbim/ids" }
-bcf = { path = "packages/openbim/bcf" }
-clash = { path = "packages/openbim/clash" }
-diff = { path = "packages/openbim/diff" }
+# One crate per standard. Cargo features are additive across the whole graph,
+# so features of a single crate could not keep an RDF stack out of an IDS-only
+# build; separate packages can. See docs/adr/0015.
+openbim = { path = "packages/openbim/openbim", default-features = false }
+openbim-core = { path = "packages/openbim/openbim-core" }
+openbim-dt = { path = "packages/openbim/openbim-dt" }
+openbim-ids = { path = "packages/openbim/openbim-ids" }
+openbim-bcf = { path = "packages/openbim/openbim-bcf" }
+openbim-icdd = { path = "packages/openbim/openbim-icdd" }
+openbim-idm = { path = "packages/openbim/openbim-idm" }
+openbim-loin = { path = "packages/openbim/openbim-loin" }
+
+# --- packages/analysis: capabilities, NOT openBIM standards. They consume the
+# IFC layer and emit findings that openbim-bcf can export. ---
+clash = { path = "packages/analysis/clash" }
+diff = { path = "packages/analysis/diff" }
 
 # --- third-party ---
 # glam: SIMD-accelerated vector math, pure Rust, no C++. See docs/adr/0003.

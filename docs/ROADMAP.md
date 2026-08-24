@@ -119,24 +119,55 @@ This is what determines whether the OpenCascade-free premise holds.
 Properties come first: most real IFC work is property work, and it needs no
 geometry.
 
+The crate layout is settled (`docs/adr/0015`): one crate per standard under
+`packages/openbim/`, a substrate layer in `packages/wire/`, and the `openbim`
+facade whose features are pure re-exports. All names are published as
+reservations; what follows is the implementation.
+
 - [ ] `ifc-properties`: property sets, quantities, and **type→occurrence
       inheritance precedence** (occurrence wins). Unit resolution against
       `IfcUnitAssignment`, including prefixed and derived units.
-- [ ] `ids`: parse buildingSMART IDS and audit a model. Validate against the IDS
-      corpus in `references/ifclite/packages/ids/src/__corpus__/`, which carries
-      `pass-`/`fail-` cases — an oracle we already have on disk.
-- [ ] `clash`: broad phase (BVH) + narrow phase on the injected kernel.
-- [ ] `bcf`: export findings so they leave this toolchain.
+- [ ] `openbim-ids`: parse buildingSMART IDS and audit a model. Validate against
+      the IDS corpus in `references/ifclite/packages/ids/src/__corpus__/`, which
+      carries `pass-`/`fail-` cases — an oracle we already have on disk.
+      Version detection must return `Detected`, never a silent guess: all
+      versions share one namespace.
+- [ ] `openbim-bcf`: export findings so they leave this toolchain. The reader
+      is tolerant by measurement, not by preference — see the corpus numbers in
+      the crate docs.
+- [ ] `clash` (now `packages/analysis/`): broad phase (BVH) + narrow phase on
+      the injected kernel.
 - [ ] **Validation:** for IDS, every `pass-` case passes and every `fail-` case
       fails, with *not applicable* distinguished from *passed* — the distinction
       that makes an audit trustworthy.
+
+### Stage 5b — porting the existing codecs
+
+Working lossless codecs for ISO 29481-3 (idmXML, ~2.4k LOC) and ISO 7817-3
+(LOIN, ~2.1k LOC) already exist in the private `poing` repository, each with a
+CLI and pyo3 bindings.
+
+- [ ] `openbim-idm`: port from `poing`, onto `wire-xml`, edition 2021. Carry
+      over the recorded schema defects (optional root ER versus the normative
+      one-ER prose requirement; suspect identity-constraint XPaths) as
+      documented decisions rather than silent behaviour.
+- [ ] `openbim-loin`: port from `poing`. Namespace migration is first-class —
+      the LOIN namespace is not final.
+- [ ] `openbim-dt`: ISO 23387 data templates, which the LOIN schema imports.
+- [ ] Neither port may vendor an ISO/CEN schema.
+- [ ] Then: `poing` and `../vendor/solibri` consume these crates instead of
+      carrying their own copies.
 
 ## Stage 6 — 4D/5D and diff
 
 - [ ] `ifc-schedule` (`IfcTask`/`IfcWorkSchedule`), `ifc-cost`
       (`IfcCostItem`/`IfcCostSchedule`).
-- [ ] `diff`: GUID-matched semantic diff (added/removed/moved/property-changed),
-      not a text diff.
+- [ ] `diff` (now `packages/analysis/`): GUID-matched semantic diff
+      (added/removed/moved/property-changed), not a text diff.
+- [ ] `openbim-icdd`: ISO 21597 container. RDF stays inside this crate until a
+      second consumer justifies a `wire-rdf`.
+- [ ] `ifc-zip`: an IFCZIP decorator generic over `Codec`, reusing `wire-zip`.
+      One implementation covers STEP, ifcXML and any future IFC-JSON.
 
 ## Stage 7 — Bindings
 

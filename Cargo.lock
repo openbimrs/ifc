@@ -146,13 +146,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bcf"
-version = "0.1.0"
-dependencies = [
- "ifc-model",
-]
-
-[[package]]
 name = "bincode"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -349,12 +342,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "ids"
+name = "icdd"
 version = "0.1.0"
 dependencies = [
- "ifc-model",
- "ifc-properties",
- "ifc-schema",
+ "openbim-icdd",
+]
+
+[[package]]
+name = "idmxml"
+version = "0.1.0"
+dependencies = [
+ "openbim-idm",
 ]
 
 [[package]]
@@ -577,6 +575,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
 
 [[package]]
+name = "loin"
+version = "0.1.0"
+dependencies = [
+ "openbim-loin",
+]
+
+[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -616,6 +621,65 @@ name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
+
+[[package]]
+name = "openbim"
+version = "0.1.0"
+dependencies = [
+ "openbim-bcf",
+ "openbim-core",
+ "openbim-dt",
+ "openbim-icdd",
+ "openbim-idm",
+ "openbim-ids",
+ "openbim-loin",
+]
+
+[[package]]
+name = "openbim-bcf"
+version = "0.1.0"
+dependencies = [
+ "openbim-core",
+]
+
+[[package]]
+name = "openbim-core"
+version = "0.1.0"
+
+[[package]]
+name = "openbim-dt"
+version = "0.1.0"
+dependencies = [
+ "openbim-core",
+]
+
+[[package]]
+name = "openbim-icdd"
+version = "0.1.0"
+dependencies = [
+ "openbim-core",
+]
+
+[[package]]
+name = "openbim-idm"
+version = "0.1.0"
+dependencies = [
+ "openbim-core",
+]
+
+[[package]]
+name = "openbim-ids"
+version = "0.1.0"
+dependencies = [
+ "openbim-core",
+]
+
+[[package]]
+name = "openbim-loin"
+version = "0.1.0"
+dependencies = [
+ "openbim-core",
+]
 
 [[package]]
 name = "proc-macro2"
@@ -814,6 +878,14 @@ checksum = "b67efb37e106e55ce722a510d6b5f9c17f083e5fc79afc2badeb12cc313d9487"
 dependencies = [
  "wit-bindgen",
 ]
+
+[[package]]
+name = "wire-xml"
+version = "0.1.0"
+
+[[package]]
+name = "wire-zip"
+version = "0.1.0"
 
 [[package]]
 name = "wit-bindgen"
