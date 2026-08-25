@@ -33,8 +33,10 @@ the record; neither projection owns or duplicates it.
 
 ```text
 L0 record core       ifc-model
-L1 schema metadata   ifc-schema                 -> ifc-model only when needed
-L1 codecs            ifc-step, ifc-xml          -> ifc-model
+L0 syntax substrate  openbim-step         (external generic dependency)
+L1 schema metadata   ifc-schema                 -> openbim-step::express
+L1 codecs            ifc-step                   -> ifc-model + openbim-step
+                     ifc-xml                    -> ifc-model + quick-xml
 L2 domain views       ifc-{material,...,cost}    -> ifc-model
 L2 validation         ifc-validate               -> ifc-model + ifc-schema
 L2 geometry bridges   ifc-geometry/alignment/georef
@@ -47,6 +49,12 @@ Dependencies point down. Sibling domain crates do not depend on one another.
 Cross-domain workflows belong in L4. Codecs never import domain semantics;
 domain crates never import codecs. `ifc-model` remains schema-, codec-, and
 domain-agnostic.
+
+Generic ISO 10303-11 EXPRESS and ISO 10303-21 syntax never live in this
+repository. `openbim-step` owns tokens, generic records and parameters,
+sections, parsing/writing, partitioning, spans, diagnostics, and event sinks.
+The IFC crates own only conversion between that substrate and IFC model/schema
+APIs.
 
 
 ## Geometry boundary

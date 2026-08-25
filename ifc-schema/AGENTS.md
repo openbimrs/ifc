@@ -7,11 +7,13 @@ roadmap work; record progress and blockers there, not here.
 
 ## Boundary
 
-Allowed production dependencies: no production IFC crate; optional integration happens in consumers.
+Allowed production dependencies: `openbim-step` for its generic EXPRESS
+syntax/model only; no production IFC crate. IFC version/profile integration
+happens here and in consumers.
 
 ## Module ownership
 
-- `parser.rs`: EXPRESS syntax to schema metadata
+- `express.rs`: thin adapter/re-export over `openbim_step::express`
 - `model.rs`: declarations, inheritance, attributes, types
 - `error.rs`: syntax/source diagnostics
 

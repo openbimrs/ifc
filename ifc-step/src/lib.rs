@@ -1,41 +1,16 @@
-//! `ifc-step` — the STEP physical file (ISO 10303-21) codec.
+//! `ifc-step` — IFC adaptation over generic ISO 10303-21 syntax.
 //!
-//! # This crate is a codec, not the model
-//!
-//! It implements [`ifc_model::Codec`] and owns no data model of its own. The
-//! entity graph lives in `ifc-model`; this crate only translates between that
-//! graph and `.ifc` text. An ifcXML or IFC-JSON codec is a sibling crate
-//! implementing the same trait, which is what makes format conversion a matter
-//! of "read with one, write with another".
-//!
-//! # What it deliberately does not know
-//!
-//! The parser understands STEP *syntax* only — it never asks what an entity
-//! means. An entity type introduced in a future schema parses correctly here
-//! with no change, which is what allows unknown data to survive a round-trip.
-//!
-//! # Modules
-//!
-//! | Module | Role |
-//! | --- | --- |
-//! | [`lexer`] | Byte-level tokenizer: comments, escapes, STEP number forms |
-//! | [`parser`] | Tokens to `Model`, including the `HEADER;` section |
-//! | [`writer`] | `Model` back to STEP text |
-//! | [`escape`] | The `\S\`, `\X\`, `\X2\`, `\X4\` string codec |
-//! | [`header`] | File magic detection |
-//! | [`partition`] | Record-aligned splitting for the parallel scan |
-//! | [`error`] | Failure modes |
+//! Generic tokenization, escaping, records, parameters, sections, parsing,
+//! writing, partitioning, spans, diagnostics, and event sinks live in
+//! [`openbim_step`]. This crate owns only conversion between that generic
+//! substrate and [`ifc_model::Model`] plus IFC codec detection and I/O policy.
 
 pub mod error;
-pub mod escape;
-pub mod header;
-pub mod lexer;
-pub mod parser;
-pub mod partition;
-pub mod writer;
+mod parser;
+mod writer;
 
 pub use error::StepError;
-pub use header::is_step_file;
+pub use openbim_step::is_step_file;
 
 use ifc_model::{Codec, Model, ModelError};
 use std::io::Write;

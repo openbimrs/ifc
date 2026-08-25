@@ -11,3 +11,4 @@ description = "IFC schema as data: entity table, supertype chain, attribute name
 # NO geometry dependency. A schema is a lookup table.
 [dependencies]
 ahash.workspace = true
+openbim-step.workspace = true

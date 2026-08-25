@@ -146,3 +146,36 @@ fn facade_is_the_only_production_aggregator() {
         );
     }
 }
+
+#[test]
+fn step_and_express_syntax_live_below_ifc() {
+    let metadata = metadata();
+    let root = ifc_root(&metadata);
+    let packages = ifc_packages();
+
+    for consumer in ["ifc-step", "ifc-schema"] {
+        let dependencies = production_dependencies(packages.get(consumer).unwrap());
+        assert!(
+            dependencies.contains("openbim-step"),
+            "{consumer} must consume the generic openbim-step substrate"
+        );
+    }
+
+    for extracted in ["lexer.rs", "escape.rs", "header.rs", "partition.rs"] {
+        assert!(
+            !root.join("ifc-step/src").join(extracted).exists(),
+            "generic STEP source remains inside IFC: ifc-step/src/{extracted}"
+        );
+    }
+
+    let express_adapter = std::fs::read_to_string(root.join("ifc-schema/src/express.rs"))
+        .expect("ifc-schema EXPRESS adapter");
+    assert!(
+        express_adapter.contains("openbim_step::express"),
+        "ifc-schema must delegate generic EXPRESS parsing to openbim-step"
+    );
+    assert!(
+        !express_adapter.contains("struct Parser"),
+        "generic EXPRESS parser implementation remains inside IFC"
+    );
+}

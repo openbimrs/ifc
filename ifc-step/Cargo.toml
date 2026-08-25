@@ -12,6 +12,6 @@ description = "STEP physical file (ISO 10303-21) codec for the IFC model."
 # Depends on the MODEL, never the reverse: a codec is a client of the data
 # model. See docs/adr/0006.
 ifc-model.workspace = true
+openbim-step.workspace = true
 memmap2.workspace = true
-rayon.workspace = true
 thiserror.workspace = true

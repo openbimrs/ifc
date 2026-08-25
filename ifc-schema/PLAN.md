@@ -1,14 +1,16 @@
 # ifc-schema implementation plan
 
-Status: working EXPRESS parser and inheritance/attribute queries; richer rules metadata incomplete.
-Last updated: 2026-08-19
+Status: moving generic EXPRESS parsing/model types into
+`openbim-step::express`; IFC schema keeps version/profile queries.
+Last updated: 2026-08-25
 
 This is task state, not ambient context. Follow `AGENTS.md`. Claim one task ID,
 record blockers here, and check it off only with the stated evidence.
 
 ## Established boundary
 
-Parse and query EXPRESS schema metadata; it is metadata, not serialization and not the entity graph.
+Query IFC schema/version metadata over a generic EXPRESS syntax substrate; it
+is metadata, not serialization and not the entity graph.
 
 ## Planned file map
 
@@ -33,8 +35,13 @@ marker with its first real contract and tests; do not add parallel placeholders.
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
 - [ ] `SCHEMA-PERF` - benchmark official IFC2x3/4/4x3 parses before optimizing
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
+- [x] `SCHEMA-EXTRACT` - delegate generic EXPRESS parsing/model types without a fork
+  - Evidence: official schema regressions, architecture RED/GREEN, standalone gate.
 
 ## Completion log
 
 Append concise entries as `TASK-ID - proof command/result - material decision`.
 Do not paste long logs or transient process state.
+
+- `SCHEMA-EXTRACT` - parser/AST types now come from `openbim_step::express`;
+  all three official IFC schema tests pass through the delegated implementation.

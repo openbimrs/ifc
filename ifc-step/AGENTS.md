@@ -7,15 +7,19 @@ roadmap work; record progress and blockers there, not here.
 
 ## Boundary
 
-Allowed production dependencies: ifc-model only in production; syntax helpers and performance libraries are private implementation details.
+Allowed production dependencies: `ifc-model` and the generic
+`openbim-step` substrate. This crate must not implement or fork generic
+ISO 10303-21 syntax.
 
 ## Module ownership
 
-- `lexer.rs/escape.rs`: byte syntax and STEP string escapes
-- `parser.rs/header.rs`: syntax records to Model
-- `writer.rs`: deterministic Model serialization
-- `partition.rs`: record-aligned partition discovery only
-- `error.rs`: syntax and I/O failures
+- `parser.rs`: generic STEP records/parameters to `ifc-model`
+- `writer.rs`: `ifc-model` to generic STEP records/parameters
+- `error.rs`: IFC adapter error mapping
+
+Lexer/tokenizer, escapes, headers/sections, generic records/parameters,
+partitioning, source spans, syntax diagnostics, and event sinks belong to
+`openbim-step`, never here.
 
 ## Invariants
 

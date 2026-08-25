@@ -1,14 +1,16 @@
 # ifc-step implementation plan
 
-Status: working STEP reader/writer on fixture corpus; historical orphan scaffold files removed.
-Last updated: 2026-08-19
+Status: extracting generic Part 21 syntax into `openbim-step`; this crate
+retains only the IFC model adapter.
+Last updated: 2026-08-25
 
 This is task state, not ambient context. Follow `AGENTS.md`. Claim one task ID,
 record blockers here, and check it off only with the stated evidence.
 
 ## Established boundary
 
-ISO 10303-21 STEP codec adapter between bytes/files and ifc-model.
+IFC adapter between generic `openbim-step` exchange structures and
+`ifc-model`. Generic ISO 10303-21 syntax belongs below this repository.
 
 ## Planned file map
 
@@ -24,7 +26,7 @@ marker with its first real contract and tests; do not add parallel placeholders.
 
 - [x] `STEP-ORPH` - delete or deliberately integrate stale reader.rs/resolve.rs/scan.rs/value.rs; duplicate models must not survive
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
-- [ ] `STEP-BUDGET` - bound recursive aggregate/typed-value parsing
+- [x] `STEP-BUDGET` - bound recursive aggregate/typed-value parsing
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
 - [ ] `STEP-PAR` - wire partitioned parsing only after differential correctness tests
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
@@ -32,6 +34,8 @@ marker with its first real contract and tests; do not add parallel placeholders.
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
 - [ ] `STEP-PERF` - establish mmap/read/parse/write benchmark baselines
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
+- [x] `STEP-EXTRACT` - consume generic STEP syntax without retaining a fork
+  - Evidence: architecture RED/GREEN, fixture round trips, standalone gate.
 
 ## Completion log
 
@@ -40,3 +44,7 @@ Do not paste long logs or transient process state.
 
 - `STEP-ORPH` - removed four uncompiled files containing a duplicate model and
   `unimplemented!()` reader; workspace module-reachability gate passes.
+- `STEP-BUDGET` - generic parser and writer reject nesting above 128; the
+  limit regression was mutation-probed by changing it to 129 and observing exit 101.
+- `STEP-EXTRACT` - `ifc-step` now contains only IFC graph/header/value conversion;
+  fixture parse and semantic round-trip tests pass against local `openbim-step`.

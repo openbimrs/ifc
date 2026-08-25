@@ -6,7 +6,7 @@
 //! 2. Parse to write to re-parse preserves the model **structurally** —
 //!    including entities whose meaning no crate in this build understands.
 
-use ifc_model::{Codec, Model};
+use ifc_model::{Codec, Entity, EntityId, Model, Value};
 use ifc_step::StepCodec;
 use std::path::{Path, PathBuf};
 
@@ -103,6 +103,48 @@ fn every_fixture_survives_a_roundtrip() {
             .unwrap_or_else(|e| panic!("{name}: output did not re-parse: {e}"));
         assert_structurally_equal(&original, &reparsed, &name);
     }
+}
+
+#[test]
+fn integral_f64_values_are_written_as_step_reals() {
+    let mut model = Model::new();
+    model.insert(EntityId(1), Entity::new("A", vec![Value::Real(1.0)]));
+
+    let bytes = StepCodec.write_bytes(&model).expect("write integral real");
+    let text = String::from_utf8(bytes.clone()).unwrap();
+    assert!(text.contains("#1=A(1.);"), "{text}");
+    let reparsed = StepCodec.read_bytes(&bytes).unwrap();
+    assert_structurally_equal(&model, &reparsed, "integral real");
+}
+
+#[test]
+fn adapter_rejects_generic_values_the_ifc_record_model_cannot_represent() {
+    let codec = StepCodec;
+    let framing = |record: &str| {
+        format!(
+            "ISO-10303-21;HEADER;FILE_DESCRIPTION(('x'),'2;1');FILE_NAME('x','',(),(),'','','');FILE_SCHEMA(('IFC4'));ENDSEC;DATA;{record}ENDSEC;END-ISO-10303-21;"
+        )
+    };
+
+    let complex = codec
+        .read_bytes(framing("#1=(A($)B($));").as_bytes())
+        .unwrap_err();
+    assert!(complex.to_string().contains("complex STEP instances"));
+
+    let huge = codec
+        .read_bytes(framing("#1=A(123456789012345678901234567890);").as_bytes())
+        .unwrap_err();
+    assert!(huge.to_string().contains("IFC record model range"));
+
+    let huge_instance = codec
+        .read_bytes(framing("#184467440737095516160=A($);").as_bytes())
+        .unwrap_err();
+    assert!(huge_instance.to_string().contains("instance id exceeds"));
+
+    let huge_reference = codec
+        .read_bytes(framing("#1=A(#184467440737095516160);").as_bytes())
+        .unwrap_err();
+    assert!(huge_reference.to_string().contains("reference id exceeds"));
 }
 
 /// The claim that makes the feature-gated design safe.

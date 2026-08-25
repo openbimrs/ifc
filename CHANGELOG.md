@@ -9,6 +9,9 @@ and this project follows Semantic Versioning.
 
 ### Changed
 
+- Delegated generic ISO 10303-21 STEP syntax and ISO 10303-11 EXPRESS parsing
+  to `openbim-step`; IFC retains thin model, schema-version, and validation
+  adapters.
 - Extracted the IFC family from `openbimrs/openbim` into its canonical standalone
   repository while preserving relevant source history.
 - Added an independent Cargo workspace, CI workflow, verification gate, project

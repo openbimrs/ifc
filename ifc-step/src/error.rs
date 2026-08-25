@@ -1,9 +1,9 @@
-//! Why a STEP parse failed.
+//! Why a STEP parse failed at the IFC adapter boundary.
 
 use ifc_model::ModelError;
 use thiserror::Error;
 
-/// Failures specific to reading STEP text.
+/// Failures specific to reading or writing IFC STEP text.
 #[derive(Debug, Error)]
 pub enum StepError {
     /// The bytes do not begin with the ISO-10303-21 magic.
@@ -31,9 +31,22 @@ pub enum StepError {
     Io(String),
 }
 
+impl From<openbim_step::StepError> for StepError {
+    fn from(error: openbim_step::StepError) -> Self {
+        if error.is_not_step() {
+            Self::NotStep(error.detail().to_owned())
+        } else {
+            Self::Syntax {
+                offset: error.span().start,
+                detail: error.detail().to_owned(),
+            }
+        }
+    }
+}
+
 impl From<StepError> for ModelError {
-    fn from(e: StepError) -> Self {
-        match e {
+    fn from(error: StepError) -> Self {
+        match error {
             StepError::NotStep(detail) => ModelError::WrongFormat {
                 expected: "STEP",
                 detail,
@@ -43,7 +56,7 @@ impl From<StepError> for ModelError {
                 offset,
                 detail: "entity record without an id".into(),
             },
-            StepError::Io(m) => ModelError::Io(m),
+            StepError::Io(message) => ModelError::Io(message),
         }
     }
 }
