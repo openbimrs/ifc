@@ -13,7 +13,7 @@ use std::{
 use proc_macro2::{TokenStream, TokenTree};
 use syn::visit::{self, Visit};
 
-/// `packages/ifc/` — the group directory holding the whole IFC crate family.
+/// Repository root holding the whole IFC crate family.
 fn ifc_group_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..")
 }

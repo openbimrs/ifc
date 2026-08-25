@@ -6,7 +6,7 @@ use ifc_step::StepCodec;
 use std::path::PathBuf;
 
 fn main() {
-    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../test/fixtures");
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test/fixtures");
     let mut files = Vec::new();
     fn walk(dir: &std::path::Path, out: &mut Vec<PathBuf>) {
         let Ok(entries) = std::fs::read_dir(dir) else {

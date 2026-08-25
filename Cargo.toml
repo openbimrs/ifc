@@ -1,0 +1,58 @@
+[workspace]
+resolver = "2"
+members = ["ifc-*", "openbim-ifc"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+license = "MIT"
+authors = ["point-grey"]
+repository = "https://github.com/openbimrs/ifc"
+
+[workspace.dependencies]
+# IFC family: versioned path dependencies build standalone and normalize to
+# registry dependencies when packages are published.
+ifc-schema = { path = "ifc-schema", version = "0.1.0" }
+openbim-ifc = { path = "openbim-ifc", version = "0.1.0" }
+ifc-step = { path = "ifc-step", version = "0.1.0" }
+ifc-xml = { path = "ifc-xml", version = "0.1.0" }
+ifc-model = { path = "ifc-model", version = "0.1.0" }
+ifc-geometry = { path = "ifc-geometry", version = "0.1.0" }
+ifc-properties = { path = "ifc-properties", version = "0.1.0" }
+ifc-template-catalog = { path = "ifc-template-catalog", version = "0.1.0" }
+ifc-cost = { path = "ifc-cost", version = "0.1.0" }
+ifc-schedule = { path = "ifc-schedule", version = "0.1.0" }
+ifc-material = { path = "ifc-material", version = "0.1.0" }
+ifc-style = { path = "ifc-style", version = "0.1.0" }
+ifc-structural = { path = "ifc-structural", version = "0.1.0" }
+ifc-resource = { path = "ifc-resource", version = "0.1.0" }
+ifc-classification = { path = "ifc-classification", version = "0.1.0" }
+ifc-georef = { path = "ifc-georef", version = "0.1.0" }
+ifc-systems = { path = "ifc-systems", version = "0.1.0" }
+ifc-alignment = { path = "ifc-alignment", version = "0.1.0" }
+ifc-validate = { path = "ifc-validate", version = "0.1.0" }
+
+# Format-neutral geometry contracts. IFC bridges select representations, never
+# concrete CPU/GPU execution providers.
+axiolid-core = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+axiolid-model = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+axiolid-primitive = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+axiolid-profile = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+axiolid-curve = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+axiolid-topology = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a1452907f8c5e81901f94abed31d90393079" }
+
+ahash = "0.8"
+thiserror = "2.0"
+rayon = "1.10"
+memmap2 = "0.9"
+quick-xml = "0.37"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+
+[profile.dev]
+opt-level = 1

@@ -16,7 +16,7 @@ use ifc::{Codec, EntityId, Model, StepCodec, Value};
 use std::path::PathBuf;
 
 fn fixture() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../test/fixtures/costing")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test/fixtures/costing")
 }
 
 fn load() -> Model {

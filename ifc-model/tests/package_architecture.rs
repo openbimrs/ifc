@@ -29,6 +29,15 @@ fn metadata() -> Metadata {
         .expect("cargo metadata must describe the runtime workspace")
 }
 
+fn ifc_root(metadata: &Metadata) -> std::path::PathBuf {
+    let workspace_root = metadata.workspace_root.as_std_path();
+    if workspace_root.join("ifc-model/Cargo.toml").is_file() {
+        workspace_root.to_path_buf()
+    } else {
+        workspace_root.join("packages/ifc")
+    }
+}
+
 /// Name of the IFC facade crate. Published as `openbim-ifc` because the short
 /// `ifc` name belongs to an unrelated crate on crates.io; its lib target is
 /// still `ifc`, so call sites read `use ifc::...`.
@@ -42,7 +51,7 @@ const FACADE: &str = "openbim-ifc";
 /// guards against a filter that silently matches nothing.
 fn ifc_packages() -> BTreeMap<String, Package> {
     let metadata = metadata();
-    let ifc_root = metadata.workspace_root.as_std_path().join("packages/ifc");
+    let ifc_root = ifc_root(&metadata);
     metadata
         .packages
         .into_iter()

@@ -17,11 +17,7 @@ fn reals(values: &[f64]) -> Value {
 }
 
 fn fixture(rel: &str) -> PathBuf {
-    PathBuf::from(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../../test/fixtures/"
-    ))
-    .join(rel)
+    PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../test/fixtures/")).join(rel)
 }
 
 fn load(rel: &str) -> Model {

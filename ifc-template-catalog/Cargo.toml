@@ -1,10 +1,11 @@
 [package]
 name = "ifc-template-catalog"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
 license = "MIT AND CC-BY-ND-4.0"
-authors.workspace = true
+authors = ["point-grey"]
+repository = "https://github.com/openbimrs/ifc"
 description = "Versioned IFC PSD/QTO catalog definitions and correction overlays"
 readme = "README.md"
 

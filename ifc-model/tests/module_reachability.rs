@@ -74,6 +74,15 @@ fn metadata() -> Metadata {
         .expect("cargo metadata must describe the runtime workspace")
 }
 
+fn ifc_root(metadata: &Metadata) -> PathBuf {
+    let workspace_root = metadata.workspace_root.as_std_path();
+    if workspace_root.join("ifc-model/Cargo.toml").is_file() {
+        workspace_root.to_path_buf()
+    } else {
+        workspace_root.join("packages/ifc")
+    }
+}
+
 /// The IFC-layer packages: every `ifc-*` crate plus the `openbim-ifc` facade.
 ///
 /// `packages/` is flat, so membership is decided by crate NAME rather than by
@@ -83,7 +92,7 @@ fn metadata() -> Metadata {
 /// is the guard against exactly that.
 fn ifc_packages() -> Vec<Package> {
     let metadata = metadata();
-    let ifc_root = metadata.workspace_root.as_std_path().join("packages/ifc");
+    let ifc_root = ifc_root(&metadata);
     metadata
         .packages
         .into_iter()

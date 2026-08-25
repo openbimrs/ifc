@@ -18,7 +18,7 @@ use std::path::PathBuf;
 
 fn fixture(rel: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../test/fixtures")
+        .join("../test/fixtures")
         .join(rel)
 }
 

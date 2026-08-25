@@ -22,7 +22,7 @@ use std::path::PathBuf;
 
 fn fixture(rel: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../test/fixtures/ifclite-geometry")
+        .join("../test/fixtures/ifclite-geometry")
         .join(rel)
 }
 

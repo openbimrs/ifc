@@ -1,0 +1,2 @@
+# IFC fixtures preserve upstream bytes, including insignificant trailing spaces.
+test/fixtures/**/*.ifc whitespace=-trailing-space

@@ -1,8 +1,8 @@
-# packages/ifc/ instructions
+# IFC repository instructions
 
-Applies to `packages/ifc/**`. Read the nearest deeper `AGENTS.md` before
-editing a crate or complex module; deeper files add local rules and do not
-repeat this file.
+Applies to this repository. Read `HERMES.md` first and the nearest deeper
+`AGENTS.md` before editing a crate or complex module; deeper files add local
+rules and do not repeat this file.
 
 ## Context protocol
 

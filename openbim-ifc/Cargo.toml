@@ -1,11 +1,11 @@
 [package]
 name = "openbim-ifc"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-license.workspace = true
-authors.workspace = true
-repository = "https://github.com/openbimrs/openbim"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+license = "MIT"
+authors = ["point-grey"]
+repository = "https://github.com/openbimrs/ifc"
 readme = "README.md"
 description = "Facade for the openBIM IFC crates: pick codecs and domains as features."
 keywords = ["bim", "ifc", "openbim", "aec"]

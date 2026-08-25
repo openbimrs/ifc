@@ -24,7 +24,7 @@ mod tests {
 
     /// Fixtures live at the workspace root, outside this crate.
     fn fixture_root() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../test/fixtures")
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test/fixtures")
     }
 
     #[test]

@@ -1,10 +1,11 @@
 [package]
 name = "ifc-schema"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-license.workspace = true
-authors.workspace = true
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+license = "MIT"
+authors = ["point-grey"]
+repository = "https://github.com/openbimrs/ifc"
 description = "IFC schema as data: entity table, supertype chain, attribute names."
 
 # NO geometry dependency. A schema is a lookup table.

@@ -59,18 +59,22 @@ const REQUIRED_NESTED_CONTEXTS: &[&str] = &[
 ];
 
 fn ifc_root() -> PathBuf {
-    cargo_metadata::MetadataCommand::new()
+    let workspace_root = cargo_metadata::MetadataCommand::new()
         .no_deps()
         .exec()
         .expect("cargo metadata must describe the runtime workspace")
         .workspace_root
-        .into_std_path_buf()
-        .join("packages/ifc")
+        .into_std_path_buf();
+    if workspace_root.join("ifc-model/Cargo.toml").is_file() {
+        workspace_root
+    } else {
+        workspace_root.join("packages/ifc")
+    }
 }
 
 /// Is this a crate directory belonging to the IFC layer?
 ///
-/// The IFC crates share `packages/ifc/` with the group's own AGENTS.md and
+/// The IFC crates share their repository root with the group's own AGENTS.md and
 /// PLAN.md, so a directory scan alone would sweep those in. Select by NAME.
 fn is_ifc_layer_dir(path: &Path) -> bool {
     let Some(name) = path.file_name().map(|n| n.to_string_lossy().to_string()) else {

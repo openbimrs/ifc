@@ -11,7 +11,7 @@ use ifc_step::StepCodec;
 use std::path::{Path, PathBuf};
 
 fn fixture_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../test/fixtures")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test/fixtures")
 }
 
 /// Every `.ifc` file committed to the corpus.

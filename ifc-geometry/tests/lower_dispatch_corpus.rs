@@ -18,7 +18,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 fn fixture_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../test/fixtures")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test/fixtures")
 }
 
 fn collect_ifc(dir: &std::path::Path, files: &mut Vec<PathBuf>) {

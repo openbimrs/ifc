@@ -61,8 +61,12 @@ fn is_exempt(path: &Path) -> bool {
 fn no_source_file_is_a_monolith() {
     let root = workspace_root();
     let mut files = Vec::new();
-    for group in ["packages", "apps", "bindings"] {
-        rust_files(&root.join(group), &mut files);
+    if root.join("ifc-model/Cargo.toml").is_file() {
+        rust_files(&root, &mut files);
+    } else {
+        for group in ["packages", "apps", "bindings"] {
+            rust_files(&root.join(group), &mut files);
+        }
     }
     assert!(
         files.len() > 50,
@@ -121,7 +125,12 @@ fn lib_rs_delegates_rather_than_implements() {
     let root = workspace_root();
     let mut offenders = Vec::new();
 
-    for group in ["../axiolid", "packages/ifc", "packages/openbim"] {
+    let groups: &[&str] = if root.join("ifc-model/Cargo.toml").is_file() {
+        &["."]
+    } else {
+        &["../axiolid", "packages/ifc", "packages/openbim"]
+    };
+    for group in groups {
         let Ok(entries) = std::fs::read_dir(root.join(group)) else {
             continue;
         };
