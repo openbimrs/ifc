@@ -9,6 +9,8 @@ and this project follows Semantic Versioning.
 
 ### Changed
 
+- Advanced `openbim-step` to `0.2.0` for strict mandatory-header validation,
+  line-delimiter handling, and lossless string escape behavior.
 - Delegated generic ISO 10303-21 STEP syntax and ISO 10303-11 EXPRESS parsing
   to `openbim-step`; IFC retains thin model, schema-version, and validation
   adapters.
