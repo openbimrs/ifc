@@ -144,6 +144,18 @@ silently substituted approximate shape.
 | `IfcCartesianTransformationOperator*` | <span class="status-implemented">Implemented</span> | `resource/operator.rs` |
 | Unit resolution (SI, conversion-based) | <span class="status-implemented">Implemented</span> | `units.rs` |
 
+::: warning Reading a curve is not lowering a curve
+Every row above means the crate can **read** that entity's attributes into a
+typed view. **No curve is lowered into the neutral geometry graph today**:
+`lower/curve.rs` is a three-line placeholder, and
+`lower_representation_item` dispatches no curve family, so a top-level
+`IfcPolyline` in a representation returns `Unsupported`.
+
+Polyline geometry *is* consumed in one place — as an arbitrary profile outline
+inside a swept solid (`lower/profile.rs`). That is the only path where 2D curve
+data reaches the graph.
+:::
+
 Curve *representation* is not an evaluator claim. Tessellating a B-spline is
 Axiolid's concern, not this crate's — see
 [the Axiolid boundary](/architecture/axiolid-boundary).
@@ -158,6 +170,19 @@ replaces a solid.
 Applications that *want* the 2D representations must select them directly; there
 is currently no supported inverse selector. See the
 [2D approval-plan use case](/use-cases/2d-approval-plans).
+
+### Representation context
+
+| Capability | Status | Evidence |
+| --- | --- | --- |
+| `IfcGeometricRepresentationContext` | <span class="status-absent">Absent</span> | zero occurrences in the workspace |
+| `IfcGeometricRepresentationSubContext` | <span class="status-absent">Absent</span> | zero occurrences |
+| `TargetView` (`PLAN_VIEW`, `MODEL_VIEW`, ...) | <span class="status-absent">Absent</span> | zero occurrences |
+
+This is a hard blocker for drawing production. A plan-view annotation must live
+in a sub-context whose `TargetView` is `PLAN_VIEW`; there is currently no way to
+read, construct, or address one. Anything written without it is not a
+schema-correct drawing, even though it round-trips.
 
 ## Presentation, annotation, and external references
 

@@ -126,6 +126,19 @@ coverage.
 `IfcSectionedSpine`, `IfcHalfSpaceSolid`, `IfcCsgSolid` — each declared in
 `PLANNED` with a stated reason.
 
+### R9b. Curve lowering
+
+**Gap.** Curve *readers* exist for every 2D family, but `lower/curve.rs` is a
+three-line placeholder and `lower_representation_item` dispatches no curve
+family. A top-level `IfcPolyline` in a representation returns `Unsupported`.
+Polyline data reaches the graph only as a swept-solid profile outline.
+
+**Shape.** Implement `lower::curve` and add the curve families to the
+dispatcher's `IMPLEMENTED` table, mirroring how profiles are handled.
+
+**Why it matters.** Any 2D drawing pipeline needs curves as first-class graph
+output, not only as profile inputs. Prerequisite for R3 being useful.
+
 ### R10. Plan derivation from 3D
 
 Sectioning solids at a cut height to derive plan geometry. This is a **kernel**

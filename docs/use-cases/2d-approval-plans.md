@@ -26,7 +26,8 @@ with the exact IFC entities involved.
 | Preserve every entity you do not interpret | <span class="status-implemented">Yes</span> |
 | Find products and their representations | <span class="status-partial">Partly</span> |
 | Walk the spatial tree (storey → elements) | <span class="status-absent">No</span> |
-| Read 2D curves (`IfcPolyline`, `IfcCircle`, …) | <span class="status-implemented">Yes</span> |
+| Read 2D curve *attributes* (`IfcPolyline`, `IfcCircle`, …) | <span class="status-implemented">Yes</span> |
+| Lower a curve into the geometry graph | <span class="status-absent">No</span> |
 | Select the 2D (`Plan`/`Annotation`) representation | <span class="status-absent">No</span> |
 | Cut a section / derive a plan from 3D bodies | <span class="status-absent">No</span> |
 | Author `IfcAnnotation` symbols | <span class="status-absent">No</span> |
@@ -67,7 +68,15 @@ Note `ids_of_type` takes the **upper-case** STEP type name.
 ### 2D curve geometry
 
 `ifc-geometry` implements the curve families a 2D plan needs, as borrowed views
-over the model that resolve units and placements:
+over the model that resolve units and placements. **These are readers, not
+lowerers**: `lower/curve.rs` is a placeholder and the dispatcher handles no
+curve family, so lowering a top-level `IfcPolyline` returns `Unsupported`. The
+one exception is a polyline used as a swept-solid profile outline
+(`lower/profile.rs`).
+
+You can therefore read every coordinate you need and build your own 2D
+pipeline on top — you just cannot ask this crate to produce drawable geometry
+for you.
 
 | Entity | Module |
 | --- | --- |
