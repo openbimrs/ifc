@@ -26,6 +26,7 @@ Implemented foundations include:
 
 - schema-agnostic entity/value graph with unknown-data round-tripping;
 - STEP parsing and writing;
+- schema-checked authoring of new entities by attribute name (`ifc-author`);
 - EXPRESS schema metadata parsing;
 - ifcXML codec foundations;
 - borrowed domain projections and geometry-lowering foundations;

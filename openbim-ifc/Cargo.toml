@@ -40,6 +40,7 @@ ifc-resource = { workspace = true, optional = true }
 ifc-systems = { workspace = true, optional = true }
 ifc-style = { workspace = true, optional = true }
 ifc-validate = { workspace = true, optional = true }
+ifc-author = { workspace = true, optional = true }
 ifc-geometry = { workspace = true, optional = true }
 ifc-georef = { workspace = true, optional = true }
 ifc-alignment = { workspace = true, optional = true }
@@ -70,6 +71,8 @@ resource = ["dep:ifc-resource"]
 systems = ["dep:ifc-systems"]
 style = ["dep:ifc-style"]
 validate = ["dep:ifc-validate"]
+# Authoring resolves slots from the schema tables, so it implies `schema`.
+author = ["dep:ifc-author", "schema"]
 geometry = ["dep:ifc-geometry"]
 georef = ["dep:ifc-georef"]
 alignment = ["dep:ifc-alignment"]
@@ -87,5 +90,6 @@ domains = [
     "systems",
     "style",
     "validate",
+    "author",
 ]
 full = ["codecs", "schema", "domains", "property-catalog", "material-templates", "geometry", "georef", "alignment"]

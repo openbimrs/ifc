@@ -65,29 +65,48 @@ later, but they must never be mistaken for working code.
 | Type index (`ids_of_type`, `of_type`) | <span class="status-implemented">Implemented</span> | `Model::ids_of_type`, backed by `index/type_index.rs` |
 | Reverse-reference index ("who references me") | <span class="status-scaffold">Scaffold</span> | `ifc-model/src/index/reverse.rs` is a placeholder; no public API |
 | Dangling-reference detection | <span class="status-implemented">Implemented</span> | `Model::dangling_references` |
-| **Typed entity construction (authoring)** | <span class="status-absent">Absent</span> | Only `Model::push(Entity)` with raw positional attributes. See below. |
+| **Schema-checked entity construction (authoring)** | <span class="status-implemented">Implemented</span> | `ifc-author::EntityBuilder`; facade feature `author`. See below. |
 
-### The authoring gap
+### Authoring
 
-Reading is well served. **Writing is not.** The model exposes:
+Applications that *generate* IFC name attributes; the schema decides positions.
 
 ```rust
-pub fn push(&mut self, entity: Entity) -> EntityId;
-pub fn insert(&mut self, id: EntityId, entity: Entity);
+use ifc::EntityBuilder;                 // feature = "author"
+
+let id = EntityBuilder::new(&schema, "IfcAnnotation")
+    .text("GlobalId", "3vB2YO$MX4xv5uCqZZG05x")
+    .text("Name", "Brandwand")
+    .insert(&mut model)?;
 ```
 
-An `Entity` is a type name plus positional attribute values. There is no typed
-builder, no schema-checked constructor, and no attribute-name-to-slot resolution
-for authoring. To emit an `IfcWall` an application must know that the
-`OwnerHistory` is attribute index 2 and place `Value` variants by hand.
+Slot order comes from `Schema::attributes`, which returns inherited attributes
+first — the ordering positional STEP records depend on. `IfcAnnotation` gets
+seven slots because IFC4 declares seven, not because the caller counted.
 
-`ifc-geometry` demonstrates the pattern used for *reading* — see its
-`slots.rs` and the per-entity `*_slot` modules, which name absolute attribute
-indices. Nothing equivalent exists for writing, and the slot constants are
-defined only for entities the geometry crate reads.
+Construction is refused, rather than silently accepted, for:
 
-This is the single largest gap for applications that generate IFC rather than
-consume it. It is tracked on the [roadmap](/project/roadmap).
+| Failure | Example |
+| --- | --- |
+| Unknown entity | `IfcAnnotaton` (typo) |
+| Unknown attribute | `IfcAnnotation.RefLatitude` (belongs to `IfcSite`) |
+| Attribute set twice | two `Name` calls, instead of a silent overwrite |
+| Required attribute unset | `IfcAnnotation` with no `GlobalId` |
+| Declared-type mismatch | a string where `IfcLengthMeasure` is declared |
+| Scalar/aggregate confusion | a scalar where `LIST OF` is declared |
+| Malformed GlobalId | not 22 characters in IFC's base-64 alphabet |
+
+A refused build leaves the model untouched.
+
+**What this is not.** WHERE rules, inverse attributes, uniqueness, and
+cross-entity consistency need a whole model rather than one entity;
+`ifc-validate` owns those. Value checking is deliberately permissive where a
+declared type cannot be resolved — see
+[ADR 0007](/adr/0007-authoring-is-a-schema-layer-not-a-model-layer) for why
+authoring is a schema-layer concern and not a model-layer one.
+
+`Model::push` remains public and unchecked, for the case where an application
+must write an entity the schema does not declare.
 
 ## Geometry
 

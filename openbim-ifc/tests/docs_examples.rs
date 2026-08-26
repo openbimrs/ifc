@@ -88,13 +88,54 @@ fn authoring_example_builds_a_serializable_annotation() {
     assert!(String::from_utf8_lossy(&out).contains("IFCANNOTATION"));
 }
 
-/// `docs/capabilities.md` -- the authoring gap.
+/// `docs/capabilities.md` -- the authoring section.
 ///
-/// The matrix states that construction is positional and untyped. If a typed
-/// builder API ever lands, this test should be replaced by one that uses it,
-/// and the capability row updated in the same commit.
+/// The matrix claims schema-checked construction resolves attribute names to
+/// inherited-first slot positions, and refuses a typo. Both are executed here
+/// so the published example cannot drift from the API.
+///
+/// Gated on `author`: the builder does not exist without it.
+#[cfg(feature = "author")]
 #[test]
-fn model_exposes_only_positional_construction() {
+fn documented_authoring_example_resolves_slots_and_refuses_typos() {
+    use ifc::EntityBuilder;
+
+    let schema = ifc::Schema::from_express(
+        "SCHEMA IFC4;\n\
+         TYPE IfcGloballyUniqueId = STRING; END_TYPE;\n\
+         TYPE IfcLabel = STRING; END_TYPE;\n\
+         ENTITY IfcRoot;\n\
+           GlobalId : IfcGloballyUniqueId;\n\
+           Name : OPTIONAL IfcLabel;\n\
+         END_ENTITY;\n\
+         ENTITY IfcAnnotation SUBTYPE OF (IfcRoot);\n\
+           ObjectType : OPTIONAL IfcLabel;\n\
+         END_ENTITY;\n\
+         END_SCHEMA;",
+    );
+
+    let mut model = Model::new();
+    let id = EntityBuilder::new(&schema, "IfcAnnotation")
+        .text("GlobalId", "3vB2YO$MX4xv5uCqZZG05x")
+        .text("Name", "Brandwand")
+        .insert(&mut model)
+        .expect("the documented example builds");
+
+    // Inherited attributes first: GlobalId is slot 0, Name slot 1.
+    let entity = model.get(id).expect("inserted");
+    assert_eq!(entity.text(0), Some("3vB2YO$MX4xv5uCqZZG05x"));
+    assert_eq!(entity.text(1), Some("Brandwand"));
+
+    // The refusal the page advertises.
+    assert!(EntityBuilder::new(&schema, "IfcAnnotaton")
+        .text("GlobalId", "3vB2YO$MX4xv5uCqZZG05x")
+        .build()
+        .is_err());
+}
+
+/// `Model::push` stays public and unchecked, as the authoring section states.
+#[test]
+fn positional_construction_remains_available_unchecked() {
     let mut model = Model::new();
     let id = model.push(Entity::new("IFCWALL", vec![Value::Null; 8]));
     assert_eq!(

@@ -119,6 +119,14 @@ pub use ifc_style as style;
 #[cfg(feature = "validate")]
 pub use ifc_validate as validate;
 
+/// Schema-checked construction of new entities.
+#[cfg(feature = "author")]
+pub use ifc_author as author;
+
+/// Build an entity by naming its attributes rather than positioning them.
+#[cfg(feature = "author")]
+pub use ifc_author::EntityBuilder;
+
 /// Representation lowering to geometry.
 #[cfg(feature = "geometry")]
 pub use ifc_geometry as geometry;

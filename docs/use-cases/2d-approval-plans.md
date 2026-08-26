@@ -11,14 +11,16 @@ before the first line of application code is written.
 
 ## Verdict up front
 
-`openbim-ifc` gives you a **correct, lossless IFC substrate** and **real 2D
-curve geometry**. It does **not** give you the presentation, annotation,
-library, or approval layers, and it does not give you a way to author entities
-without hand-placing positional attributes.
+`openbim-ifc` gives you a **correct, lossless IFC substrate**, **real 2D curve
+geometry**, and **schema-checked authoring**. It does **not** give you the
+presentation, annotation, library, or approval *semantics*.
 
-An application built today would use this crate for parse/serialise/geometry and
-implement roughly four things itself. Those four things are enumerated below
-with the exact IFC entities involved.
+That distinction matters for this use case. You can now construct any entity the
+schema declares — including `IfcAnnotation`, `IfcCurveStyle`,
+`IfcLibraryReference` and `IfcApproval` — by naming its attributes, and the
+builder will refuse a wrong arity or type. What no crate here provides is a
+typed *view* that interprets those entities once written, or the geometry to
+derive a plan in the first place.
 
 | Scenario step | Served by this crate? |
 | --- | --- |
@@ -30,10 +32,11 @@ with the exact IFC entities involved.
 | Lower a curve into the geometry graph | <span class="status-absent">No</span> |
 | Select the 2D (`Plan`/`Annotation`) representation | <span class="status-absent">No</span> |
 | Cut a section / derive a plan from 3D bodies | <span class="status-absent">No</span> |
-| Author `IfcAnnotation` symbols | <span class="status-absent">No</span> |
-| Style them (`IfcCurveStyle`, `IfcFillAreaStyle`) | <span class="status-scaffold">Scaffold only</span> |
-| Reference a symbol library (`IfcLibraryReference`) | <span class="status-absent">No</span> |
-| Record approvals (`IfcApproval`) | <span class="status-absent">No</span> |
+| Author `IfcAnnotation` symbols | <span class="status-implemented">Yes</span> — via `ifc-author` |
+| *Write* style entities (`IfcCurveStyle`, …) | <span class="status-implemented">Yes</span> — via `ifc-author` |
+| *Interpret* style entities as a typed view | <span class="status-scaffold">Scaffold only</span> |
+| *Write* `IfcLibraryReference` / `IfcApproval` | <span class="status-implemented">Yes</span> — via `ifc-author` |
+| *Interpret* them as typed views | <span class="status-absent">No</span> |
 | Write the result back out | <span class="status-implemented">Yes</span> |
 
 ## What works today
@@ -175,72 +178,58 @@ rather than a launch requirement.
 
 ### 4. Authoring: annotations, styles, libraries, approvals
 
-This is the largest gap. Everything you need to *write* is either scaffold or
-absent:
-
-| What you must write | State |
-| --- | --- |
-| `IfcAnnotation` | <span class="status-absent">Absent</span> |
-| `IfcTextLiteralWithExtent` | <span class="status-absent">Absent</span> |
-| `IfcAnnotationFillArea` | <span class="status-absent">Absent</span> |
-| `IfcCurveStyle`, `IfcFillAreaStyle`, `IfcStyledItem` | <span class="status-scaffold">Scaffold</span> (`ifc-style`) |
-| `IfcPresentationLayerAssignment` | <span class="status-scaffold">Scaffold</span> (`ifc-style`) |
-| `IfcShapeRepresentation` | <span class="status-absent">Absent</span> |
-| `IfcGeometricRepresentationSubContext` | <span class="status-absent">Absent</span> |
-| `IfcLibraryReference`, `IfcLibraryInformation` | <span class="status-absent">Absent</span> |
-| `IfcRelAssociatesLibrary` | <span class="status-absent">Absent</span> |
-| `IfcApproval`, `IfcRelAssociatesApproval` | <span class="status-absent">Absent</span> |
-
-And there is no typed authoring API at all. The only construction primitive is:
+**This gap is closed for writing.** `ifc-author` constructs any entity the
+schema declares, by name:
 
 ```rust
-use ifc::{Entity, Model, Value};
-use std::sync::Arc;
+use ifc::EntityBuilder;               // feature = "author"
 
-let mut model = Model::new();
-
-// Every attribute is positional. You are responsible for arity and order.
-let id = model.push(Entity::new(
-    "IFCANNOTATION",
-    vec![
-        Value::Text(Arc::from("3vB2YO$MX4xv5uCqZZG05x")), // GlobalId
-        Value::Null,                                       // OwnerHistory
-        Value::Text(Arc::from("Brandwand")),               // Name
-        Value::Null,                                       // Description
-        Value::Null,                                       // ObjectType
-        Value::Null,                                       // ObjectPlacement
-        Value::Null,                                       // Representation
-    ],
-));
+let annotation = EntityBuilder::new(&schema, "IfcAnnotation")
+    .text("GlobalId", "3vB2YO$MX4xv5uCqZZG05x")
+    .text("Name", "Brandwand")
+    .insert(&mut model)?;
 ```
 
-That is the real API. It works — `Value` covers the full STEP value model
-including `Typed` wrappers such as `IFCLENGTHMEASURE(2.5)` — but there is no
-schema checking, so a wrong attribute count produces a file that other tools
-reject.
+Seven slots are produced because IFC4 declares seven, with `GlobalId` first
+because it is inherited from `IfcRoot`. A typo in the entity or attribute name,
+a duplicate set, a missing required attribute, a wrong value type, or a
+malformed GlobalId are all refused before anything reaches the model.
 
-::: warning Build a thin authoring layer first
-Before writing application logic, build and unit-test a small internal module
-that constructs the ~15 entity types you need, with named parameters and correct
-arity. Validate its output by round-tripping through `StepCodec` and opening the
-result in a reference tool. Getting this wrong is the most likely source of
-silently invalid permit documents.
+That covers every entity in this list — they are all declared by the schema:
 
-`ifc-geometry`'s `slots.rs` and its `*_slot` modules show the house pattern for
-naming absolute attribute indices on the read side; mirror it for writing.
+| What you must write | Can you author it? | Is there a typed view to read it back? |
+| --- | --- | --- |
+| `IfcAnnotation` | <span class="status-implemented">Yes</span> | <span class="status-absent">No</span> |
+| `IfcTextLiteralWithExtent` | <span class="status-implemented">Yes</span> | <span class="status-absent">No</span> |
+| `IfcAnnotationFillArea` | <span class="status-implemented">Yes</span> | <span class="status-absent">No</span> |
+| `IfcCurveStyle`, `IfcFillAreaStyle`, `IfcStyledItem` | <span class="status-implemented">Yes</span> | <span class="status-scaffold">Scaffold</span> (`ifc-style`) |
+| `IfcPresentationLayerAssignment` | <span class="status-implemented">Yes</span> | <span class="status-scaffold">Scaffold</span> |
+| `IfcShapeRepresentation` | <span class="status-implemented">Yes</span> | <span class="status-absent">No</span> |
+| `IfcGeometricRepresentationSubContext` | <span class="status-implemented">Yes</span> | <span class="status-absent">No</span> |
+| `IfcLibraryReference`, `IfcLibraryInformation` | <span class="status-implemented">Yes</span> | <span class="status-absent">No</span> |
+| `IfcRelAssociatesLibrary` | <span class="status-implemented">Yes</span> | <span class="status-absent">No</span> |
+| `IfcApproval`, `IfcRelAssociatesApproval` | <span class="status-implemented">Yes</span> | <span class="status-absent">No</span> |
+
+The remaining column is the honest one: **nothing interprets these entities once
+written.** Your application holds the meaning. For generating permit documents
+that is usually acceptable — you wrote them, so you know what they are — but a
+round-trip through another tool and back will hand you entities this library
+preserves losslessly and does not explain.
+
+::: tip What to still verify yourself
+`ifc-author` checks arity and declared types. It does not check WHERE rules,
+inverse attributes, or whether your `IfcRelAssociatesApproval` actually points
+at a sensible object. Round-trip your output through `StepCodec` and open it in
+a reference tool before trusting it as a permit document.
 :::
-
-`ifc-schema` can help here: it parses EXPRESS schema metadata and answers
-subtype queries, so an authoring layer can validate attribute counts against the
-declared schema rather than against hard-coded constants.
 
 ## Recommended build order
 
 1. **Import + export round-trip.** Prove a file survives your pipeline
    unchanged before adding behaviour. Use `openbim-ifc` with
-   `features = ["step", "ifcxml"]`.
-2. **Thin authoring layer.** The ~15 entity constructors described above, with
-   tests. This is your foundation; do not skip its tests.
+   `features = ["step", "ifcxml", "author"]`.
+2. ~~**Thin authoring layer.**~~ No longer yours to build: enable
+   `features = ["step", "author"]` and use `EntityBuilder`.
 3. **Spatial grouping.** Storey → elements, written against
    `IFCRELCONTAINEDINSPATIALSTRUCTURE`.
 4. **2D representation selection.** The inverse selector.

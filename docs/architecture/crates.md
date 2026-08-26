@@ -82,6 +82,16 @@ analysis members, actions and connections.
 Scaffold. Reserved for where-rule evaluation, type checking, structural checks,
 and report shaping.
 
+### `ifc-author`
+Implemented. Schema-checked construction: build an entity by naming its
+attributes and let `ifc-schema` resolve the STEP slot positions. Refuses unknown
+entities and attributes, duplicate sets, missing required attributes,
+declared-type and aggregate mismatches, and malformed GlobalIds.
+
+It is the write-side counterpart to the domain views, and the reason authoring
+is not in `ifc-model`: the record core is L0 and must not depend on the schema
+tables. See [ADR 0007](/adr/0007-authoring-is-a-schema-layer-not-a-model-layer).
+
 ## L3 — facade
 
 ### `openbim-ifc`

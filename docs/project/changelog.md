@@ -17,6 +17,13 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `ifc-author`: schema-checked entity construction. Build an entity by naming
+  its attributes and let `ifc-schema` resolve STEP slot positions, instead of
+  hand-placing positional values. Refuses unknown entities and attributes,
+  duplicate sets, missing required attributes, declared-type and aggregate
+  mismatches, and malformed GlobalIds. Reached through the facade's new
+  `author` feature. See ADR 0007.
+
 - A documentation site (VitePress) published to GitHub Pages, covering
   architecture, a conservative capability matrix, ADRs, a roadmap, and
   end-to-end use-case guides.
@@ -29,6 +36,14 @@ This page is synchronised from it at build time.
   from this file; `scripts/gate.sh` fails on drift.
 - `scripts/check-leakage.py`, rejecting standards material (XSD, PDF,
   `references/`) from the published site.
+
+### Fixed
+
+- `Model::insert` no longer corrupts the type index when it replaces an
+  existing entity: the id was appended unconditionally, so re-inserting listed
+  it twice under the same type, and replacing an entity with one of a different
+  type left it listed under both. `ids_of_type` and `type_histogram` reported
+  those duplicates.
 
 ### Changed
 

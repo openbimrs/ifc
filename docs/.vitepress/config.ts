@@ -7,6 +7,7 @@ const adrs = [
   ['0004-geometry-bridge-not-kernel', 4, 'Geometry bridge, not kernel'],
   ['0005-scaffold-modules-declare-ownership', 5, 'Scaffold module honesty'],
   ['0006-facade-features-default-to-thin', 6, 'Thin default features'],
+  ['0007-authoring-is-a-schema-layer-not-a-model-layer', 7, 'Authoring is a schema layer'],
 ]
 
 function adrItems() {

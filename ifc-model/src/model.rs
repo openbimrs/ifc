@@ -60,8 +60,25 @@ impl Model {
     /// Codecs use this to preserve file ids exactly.
     pub fn insert(&mut self, id: EntityId, entity: Entity) {
         let key = entity.type_name.to_ascii_uppercase();
-        if self.entities.insert(id, entity).is_none() {
-            self.order.push(id);
+        match self.entities.insert(id, entity) {
+            None => self.order.push(id),
+            // Replacing an occupant: drop its old type-index entry, otherwise
+            // `ids_of_type` reports the id twice for the same type, or keeps
+            // reporting it under a type the entity no longer has. Both make an
+            // edit layer silently wrong.
+            Some(previous) => {
+                let previous_key = previous.type_name.to_ascii_uppercase();
+                if previous_key != key {
+                    if let Some(ids) = self.by_type.get_mut(&previous_key) {
+                        ids.retain(|existing| *existing != id);
+                    }
+                } else {
+                    // Same type: the entry is still correct, so re-adding it
+                    // below would duplicate it.
+                    self.max_id = self.max_id.max(id.0);
+                    return;
+                }
+            }
         }
         self.by_type.entry(key).or_default().push(id);
         self.max_id = self.max_id.max(id.0);

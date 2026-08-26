@@ -1,0 +1,19 @@
+[package]
+name = "ifc-author"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+license = "MIT"
+authors = ["point-grey"]
+repository = "https://github.com/openbimrs/ifc"
+description = "Schema-checked IFC authoring: construct entities by attribute name with arity and type validation."
+
+[dependencies]
+# Authoring is the write-side mirror of the read-side views: it needs the record
+# store and the schema tables, and nothing else. NO codec dependency -- an
+# authored model is serialized by whichever codec the caller chose.
+ifc-model.workspace = true
+ifc-schema.workspace = true
+
+[dev-dependencies]
+ifc-step.workspace = true

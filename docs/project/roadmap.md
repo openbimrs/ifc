@@ -8,21 +8,16 @@ Status vocabulary matches the [capability matrix](/capabilities).
 
 ## Now — foundations that unblock applications
 
-### R1. Typed authoring layer
+### R1. Typed authoring layer — done
 
-**Gap.** The only construction primitive is `Model::push(Entity)` with
-positional attribute values. `ifc-model/src/mutation/` — `edit.rs`,
-`transaction.rs`, `conflict.rs` — is entirely scaffold. Applications that
-*generate* IFC must hand-place attributes with no arity or type checking, which
-silently produces files other tools reject.
+Delivered as `ifc-author` (facade feature `author`). Entities are built by
+attribute name; slot positions come from `Schema::attributes`. Construction is
+refused for unknown entities and attributes, duplicate sets, missing required
+attributes, declared-type and aggregate mismatches, and malformed GlobalIds.
 
-**Shape.** Schema-checked construction: build an entity by named attribute, with
-arity and declared-type validation on insert, driven by `ifc-schema` metadata
-rather than hard-coded constants. `ifc-geometry`'s `slots.rs` and `*_slot`
-modules are the house pattern for the read side; the write side should mirror it.
-
-**Why first.** Every authoring use case is blocked on this, and each application
-that works around it builds a private, untested version of the same thing.
+Remaining under `AUTHOR` in the crate's **PLAN.md**: editing an entity already in a
+model (blocked on `MODEL-MUT` transactional apply) and a decision on whether
+`IfcOwnerHistory` is authored here or injected by an application service.
 
 ### R2. Relationship and spatial traversal
 
