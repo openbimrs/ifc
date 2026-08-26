@@ -59,11 +59,12 @@ later, but they must never be mistaken for working code.
 | IFC-JSON | <span class="status-absent">Absent</span> | Would be a third `Codec` impl; no crate exists |
 | EXPRESS schema metadata, subtype queries | <span class="status-implemented">Implemented</span> | `ifc-schema` |
 | GlobalId base-64 encode/decode | <span class="status-implemented">Implemented</span> | `ifc-model::guid` |
-| Spatial containment tree traversal | <span class="status-scaffold">Scaffold</span> | `ifc-model/src/spatial.rs` is a 10-line placeholder |
-| Objectified relationship (`IfcRel*`) traversal | <span class="status-scaffold">Scaffold</span> | `ifc-model/src/relation.rs`: "Not yet implemented" |
+| Spatial containment tree traversal | <span class="status-implemented">Implemented</span> | `ifc-spatial::SpatialTree`; facade feature `spatial`. See below. |
+| Objectified relationship traversal | <span class="status-partial">Partial</span> | `ifc-spatial::relation` reads `IfcRelAggregates`, `IfcRelContainedInSpatialStructure`, `IfcRelNests`. Other `IfcRel*` families are not interpreted. |
 | Cycle-protected graph walks | <span class="status-scaffold">Scaffold</span> | `ifc-model/src/traverse.rs` |
 | Type index (`ids_of_type`, `of_type`) | <span class="status-implemented">Implemented</span> | `Model::ids_of_type`, backed by `index/type_index.rs` |
-| Reverse-reference index ("who references me") | <span class="status-scaffold">Scaffold</span> | `ifc-model/src/index/reverse.rs` is a placeholder; no public API |
+| Reverse-reference index ("who references me") | <span class="status-implemented">Implemented</span> | `ifc-model::ReverseIndex`, built on demand; records the attribute slot |
+| Bounded graph traversal with cycle reports | <span class="status-implemented">Implemented</span> | `ifc-model::{depth_first, breadth_first, find_cycle}` with `Budget`/`Stop` |
 | Dangling-reference detection | <span class="status-implemented">Implemented</span> | `Model::dangling_references` |
 | **Schema-checked entity construction (authoring)** | <span class="status-implemented">Implemented</span> | `ifc-author::EntityBuilder`; facade feature `author`. See below. |
 
@@ -107,6 +108,45 @@ authoring is a schema-layer concern and not a model-layer one.
 
 `Model::push` remains public and unchecked, for the case where an application
 must write an entity the schema does not declare.
+
+### Spatial traversal
+
+IFC stores no parent pointers: a wall does not name its storey, a relationship
+entity names both ends. `ifc-spatial` reads those relationships into a tree.
+
+```rust
+use ifc::{SpatialKind, SpatialTree};   // feature = "spatial"
+
+let tree = SpatialTree::build(&model);
+
+for storey in tree.of_kind(SpatialKind::Storey) {
+    for element in tree.elements_of(storey.id) {
+        // every element placed directly on this storey
+    }
+}
+
+tree.container_of(wall);        // which storey is this wall on?
+tree.ancestors(storey.id);      // storey -> building -> site -> project
+tree.elements_recursive(root);  // everything beneath a container
+```
+
+**The trap this closes.** The two relationships that build the tree disagree
+about slot order — `IfcRelAggregates` puts the parent in slot 4,
+`IfcRelContainedInSpatialStructure` puts it in slot 5. Reading one like the
+other inverts containment silently. The constants are asserted against IFC2x3,
+IFC4 and IFC4x3 in `ifc-spatial/tests/slot_layout.rs`; see
+[ADR 0008](/adr/0008-fixed-slot-constants-for-stable-relationships).
+
+**Real files, not the ideal shape.** Omitted sites, elements hung directly off
+a building, duplicate storeys, relationships naming absent entities, and
+containment cycles are all handled and, where they are defects, reported through
+`orphans()` and `dangling()` rather than dropped. One corpus fixture turned out
+to use `IfcRelAggregates` exclusively with **no** containment relationship at
+all; that case is pinned in `tests/real_files.rs`.
+
+**What this is not.** It reports what the file says and never rejects it —
+cardinality and WHERE rules belong to `ifc-validate`. It groups elements; it
+does not interpret their geometry or properties.
 
 ## Geometry
 

@@ -143,3 +143,64 @@ fn positional_construction_remains_available_unchecked() {
         Some(Some(&Value::Null))
     );
 }
+
+/// `docs/capabilities.md` -- the spatial traversal section.
+///
+/// The page shows `of_kind` / `elements_of` / `container_of` / `ancestors` and
+/// claims containment is not inverted. All four run here against the same
+/// storey-and-wall shape the page describes.
+#[cfg(feature = "spatial")]
+#[test]
+fn documented_spatial_example_groups_elements_by_storey() {
+    use ifc::{SpatialKind, SpatialTree};
+
+    let mut model = Model::new();
+    let building = ifc::EntityId(1);
+    let storey = ifc::EntityId(2);
+    let wall = ifc::EntityId(3);
+    model.insert(building, Entity::new("IFCBUILDING", vec![]));
+    model.insert(storey, Entity::new("IFCBUILDINGSTOREY", vec![]));
+    model.insert(wall, Entity::new("IFCWALL", vec![]));
+
+    // IfcRelAggregates: relating in slot 4.
+    model.insert(
+        ifc::EntityId(10),
+        Entity::new(
+            "IFCRELAGGREGATES",
+            vec![
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Ref(building),
+                Value::List(vec![Value::Ref(storey)]),
+            ],
+        ),
+    );
+    // IfcRelContainedInSpatialStructure: relating in slot 5, related in slot 4.
+    model.insert(
+        ifc::EntityId(11),
+        Entity::new(
+            "IFCRELCONTAINEDINSPATIALSTRUCTURE",
+            vec![
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::List(vec![Value::Ref(wall)]),
+                Value::Ref(storey),
+            ],
+        ),
+    );
+
+    let tree = SpatialTree::build(&model);
+
+    let storeys: Vec<_> = tree.of_kind(SpatialKind::Storey).map(|n| n.id).collect();
+    assert_eq!(storeys, [storey]);
+    assert_eq!(tree.elements_of(storey), [wall]);
+    assert_eq!(tree.container_of(wall), Some(storey));
+    assert_eq!(tree.ancestors(storey), [building]);
+
+    // The inversion the page warns about must not happen.
+    assert!(tree.node(wall).is_none(), "a wall is not a container");
+}

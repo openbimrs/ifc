@@ -330,6 +330,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ifc-spatial"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+ "ifc-schema",
+ "ifc-step",
+]
+
+[[package]]
 name = "ifc-step"
 version = "0.1.0"
 dependencies = [
@@ -442,6 +451,7 @@ dependencies = [
  "ifc-resource",
  "ifc-schedule",
  "ifc-schema",
+ "ifc-spatial",
  "ifc-step",
  "ifc-structural",
  "ifc-style",

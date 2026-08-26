@@ -82,6 +82,16 @@ analysis members, actions and connections.
 Scaffold. Reserved for where-rule evaluation, type checking, structural checks,
 and report shaping.
 
+### `ifc-spatial`
+Implemented. Containment and objectified relationship traversal: reads
+`IfcRelAggregates`, `IfcRelContainedInSpatialStructure` and `IfcRelNests` into
+a project/site/building/storey/element tree, reporting orphaned containers and
+dangling references rather than asserting the canonical hierarchy.
+
+Depends on `ifc-model` only. The slot layouts it needs are stable across
+IFC2x3/IFC4/IFC4x3 and are asserted against all three, so it does not pay for a
+schema parse. See [ADR 0008](/adr/0008-fixed-slot-constants-for-stable-relationships).
+
 ### `ifc-author`
 Implemented. Schema-checked construction: build an entity by naming its
 attributes and let `ifc-schema` resolve the STEP slot positions. Refuses unknown

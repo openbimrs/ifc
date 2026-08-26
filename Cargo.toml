@@ -33,6 +33,7 @@ ifc-systems = { path = "ifc-systems", version = "0.1.0" }
 ifc-alignment = { path = "ifc-alignment", version = "0.1.0" }
 ifc-validate = { path = "ifc-validate", version = "0.1.0" }
 ifc-author = { path = "ifc-author", version = "0.1.0" }
+ifc-spatial = { path = "ifc-spatial", version = "0.1.0" }
 openbim-step = "=0.2.1"
 
 # Format-neutral geometry contracts. IFC bridges select representations, never

@@ -1,10 +1,9 @@
 //! Type buckets and reverse-reference indices.
 //!
-//! `all_of_type("IfcWall")` and 'who references me' must both be O(1)-ish; a
-//! linear scan over millions of entities per query is the naive trap.
+//! `ids_of_type` is served by an index built during insertion, because "every
+//! entity of this type" is the most common query any consumer makes. The
+//! reverse index is built on demand instead -- see `reverse.rs` for why.
 //!
-//! Implementation is tracked in `../PLAN.md`.
-
 //! ## Internal split
 //!
 //! - `type_index.rs`: existing type-name lookup ownership.
@@ -14,3 +13,5 @@
 mod builder;
 mod reverse;
 mod type_index;
+
+pub use reverse::{Referrer, ReverseIndex};

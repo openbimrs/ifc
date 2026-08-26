@@ -127,6 +127,14 @@ pub use ifc_author as author;
 #[cfg(feature = "author")]
 pub use ifc_author::EntityBuilder;
 
+/// Containment and objectified relationship traversal.
+#[cfg(feature = "spatial")]
+pub use ifc_spatial as spatial;
+
+/// The project/site/building/storey/element tree of a model.
+#[cfg(feature = "spatial")]
+pub use ifc_spatial::{SpatialKind, SpatialTree};
+
 /// Representation lowering to geometry.
 #[cfg(feature = "geometry")]
 pub use ifc_geometry as geometry;

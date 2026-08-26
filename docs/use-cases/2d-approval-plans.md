@@ -12,7 +12,7 @@ before the first line of application code is written.
 ## Verdict up front
 
 `openbim-ifc` gives you a **correct, lossless IFC substrate**, **real 2D curve
-geometry**, and **schema-checked authoring**. It does **not** give you the
+geometry**, **schema-checked authoring**, and **spatial traversal**. It does **not** give you the
 presentation, annotation, library, or approval *semantics*.
 
 That distinction matters for this use case. You can now construct any entity the
@@ -27,7 +27,7 @@ derive a plan in the first place.
 | Read `.ifc` / `.ifcxml` losslessly | <span class="status-implemented">Yes</span> |
 | Preserve every entity you do not interpret | <span class="status-implemented">Yes</span> |
 | Find products and their representations | <span class="status-partial">Partly</span> |
-| Walk the spatial tree (storey → elements) | <span class="status-absent">No</span> |
+| Walk the spatial tree (storey → elements) | <span class="status-implemented">Yes</span> — via `ifc-spatial` |
 | Read 2D curve *attributes* (`IfcPolyline`, `IfcCircle`, …) | <span class="status-implemented">Yes</span> |
 | Lower a curve into the geometry graph | <span class="status-absent">No</span> |
 | Select the 2D (`Plan`/`Annotation`) representation | <span class="status-absent">No</span> |
@@ -132,26 +132,31 @@ const PLAN_IDENTIFIERS: &[&str] = &["FootPrint", "Annotation", "Plan", "Axis"];
 Walk `ProductShape::representations()`, wrap each in `Representation::new`, and
 match `identifier()` against that list in order.
 
-### 2. Spatial tree traversal
+### 2. ~~Spatial tree traversal~~ — provided
 
-To produce a plan *per storey* you must group elements by `IfcBuildingStorey`.
-That means following `IfcRelContainedInSpatialStructure` and `IfcRelAggregates`.
+`ifc-spatial` builds the tree. Grouping elements by storey, the query a floor
+plan is organised around, is:
 
-`ifc-model/src/spatial.rs` and `relation.rs` are placeholders — the latter says
-"Not yet implemented" in its own doc comment. There is also no reverse-reference
-index, so "which relationship entities point at this storey" is currently a
-linear scan you write yourself.
+```rust
+use ifc::{SpatialKind, SpatialTree};   // feature = "spatial"
 
-Concretely, you must:
+let tree = SpatialTree::build(&model);
+for storey in tree.of_kind(SpatialKind::Storey) {
+    let on_this_level = tree.elements_of(storey.id);
+}
+```
 
-- iterate `model.ids_of_type("IFCRELCONTAINEDINSPATIALSTRUCTURE")`;
-- read attribute 4 (`RelatedElements`, a list of refs) and attribute 5
-  (`RelatingStructure`, a ref);
-- build your own storey → elements map.
+`container_of(element)` answers the inverse — which storey a given wall is on —
+and `elements_recursive` descends through spaces. Anomalies a permit drawing
+would care about are reported rather than hidden: `orphans()` lists containers
+nothing aggregates, `dangling()` lists relationships naming absent entities.
 
-The same pattern applies to `IFCRELAGGREGATES` for project → site → building →
-storey. Budget this as real work, and be aware real files omit levels or attach
-elements directly to the building.
+One caution specific to this use case: a real corpus file was found that
+declares its whole hierarchy with `IfcRelAggregates` and contains **no**
+containment relationship at all. `elements_of` is correctly empty there. If your
+input comes from such an exporter, elements are associated by other means and
+you must handle that case explicitly rather than assuming an empty storey is a
+bug in the library.
 
 ### 3. Plan derivation from 3D geometry
 

@@ -19,20 +19,26 @@ Remaining under `AUTHOR` in the crate's **PLAN.md**: editing an entity already i
 model (blocked on `MODEL-MUT` transactional apply) and a decision on whether
 `IfcOwnerHistory` is authored here or injected by an application service.
 
-### R2. Relationship and spatial traversal
+### R2. Relationship and spatial traversal — done
 
-**Gap.** `ifc-model/src/spatial.rs`, `relation.rs`, and `traverse.rs` are
-placeholders; `relation.rs` says "Not yet implemented" in its own doc comment.
-There is no reverse-reference index (`index/reverse.rs` is a placeholder), so
-"which entities reference this one" is a linear scan.
+Delivered as `ifc-spatial` (facade feature `spatial`), on top of two new
+`ifc-model` primitives: `ReverseIndex` (built on demand, records the attribute
+slot) and bounded `depth_first`/`breadth_first`/`find_cycle` walks with explicit
+budgets and cycle reports.
 
-**Shape.** A reverse index built alongside the type index, then
-`IfcRelAggregates` / `IfcRelContainedInSpatialStructure` traversal producing the
-project → site → building → storey → element tree. Must tolerate real files:
-omitted levels, duplicate storeys, elements attached directly to the building.
+`SpatialTree` assembles project → site → building → storey → element and
+tolerates real files: omitted levels, elements on the building, duplicate
+storeys, dangling references, containment cycles. Defects are reported through
+`orphans()` and `dangling()` instead of being dropped.
 
-**Why.** Grouping elements by storey is table stakes for viewers, take-off,
-drawing production, and validation alike.
+Slot layouts are constants rather than schema lookups, because the two
+relationships that build the tree disagree about slot order and the failure mode
+is silent inversion. See
+[ADR 0008](/adr/0008-fixed-slot-constants-for-stable-relationships).
+
+Remaining under `SPATIAL`: reusing the reverse index for inverse queries
+(`relation::naming` currently rescans), and grouping properties by container
+(blocked — `ifc-properties` is scaffold).
 
 ## Next — presentation and external references
 

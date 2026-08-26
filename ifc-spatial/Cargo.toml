@@ -1,0 +1,20 @@
+[package]
+name = "ifc-spatial"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+license = "MIT"
+authors = ["point-grey"]
+repository = "https://github.com/openbimrs/ifc"
+description = "IFC spatial containment and objectified relationship traversal: project, site, building, storey, element."
+
+[dependencies]
+# Borrowed views over the record graph, per ADR 0003. The schema tables are not
+# needed: containment is expressed by entity type and slot position, both of
+# which are fixed by the IFC schema across the versions this crate supports.
+ifc-model.workspace = true
+
+[dev-dependencies]
+ifc-step.workspace = true
+# Only to assert the hard-coded slot positions against the normative schema.
+ifc-schema.workspace = true

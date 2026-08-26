@@ -29,6 +29,7 @@ make every downstream build fat.
 | `ifcxml` | `ifc-xml` | Reading and writing `.ifcxml` |
 | `schema` | `ifc-schema` | Subtype queries, conformant XML names |
 | `author` | `ifc-author` (+ `schema`) | Schema-checked construction of new entities |
+| `spatial` | `ifc-spatial` | Containment tree and relationship traversal |
 | `geometry` | `ifc-geometry` | Lowering representations to neutral geometry |
 | `material`, `cost`, `properties`, … | one domain crate each | Interpreting that domain |
 | `material-templates` | `ifc-material` + template catalog | Material PSD applicability |

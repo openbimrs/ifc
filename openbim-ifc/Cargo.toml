@@ -41,6 +41,7 @@ ifc-systems = { workspace = true, optional = true }
 ifc-style = { workspace = true, optional = true }
 ifc-validate = { workspace = true, optional = true }
 ifc-author = { workspace = true, optional = true }
+ifc-spatial = { workspace = true, optional = true }
 ifc-geometry = { workspace = true, optional = true }
 ifc-georef = { workspace = true, optional = true }
 ifc-alignment = { workspace = true, optional = true }
@@ -73,6 +74,8 @@ style = ["dep:ifc-style"]
 validate = ["dep:ifc-validate"]
 # Authoring resolves slots from the schema tables, so it implies `schema`.
 author = ["dep:ifc-author", "schema"]
+# Containment traversal needs only the record graph, so it stays thin.
+spatial = ["dep:ifc-spatial"]
 geometry = ["dep:ifc-geometry"]
 georef = ["dep:ifc-georef"]
 alignment = ["dep:ifc-alignment"]
@@ -91,5 +94,6 @@ domains = [
     "style",
     "validate",
     "author",
+    "spatial",
 ]
 full = ["codecs", "schema", "domains", "property-catalog", "material-templates", "geometry", "georef", "alignment"]

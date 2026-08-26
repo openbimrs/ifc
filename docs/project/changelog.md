@@ -17,6 +17,21 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `ifc-spatial`: containment and objectified relationship traversal. Builds the
+  project/site/building/storey/element tree from `IfcRelAggregates`,
+  `IfcRelContainedInSpatialStructure` and `IfcRelNests`, answering "which
+  elements are on this storey" and its inverse. Tolerates real exports --
+  omitted levels, elements on the building, duplicate storeys, dangling
+  references and containment cycles -- reporting defects through `orphans()`
+  and `dangling()`. Reached through the facade's new `spatial` feature.
+  See ADR 0008.
+- `ifc-model::ReverseIndex`: on-demand target-to-referrer index recording the
+  attribute slot each reference sits in, which is what distinguishes the two
+  ends of an objectified relationship.
+- `ifc-model` bounded traversal: `depth_first`, `breadth_first` and
+  `find_cycle` with explicit `Budget`/`Stop` reporting, so a malformed file
+  truncates with a diagnosis instead of hanging the caller.
+
 - `ifc-author`: schema-checked entity construction. Build an entity by naming
   its attributes and let `ifc-schema` resolve STEP slot positions, instead of
   hand-placing positional values. Refuses unknown entities and attributes,
