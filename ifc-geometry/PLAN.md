@@ -104,6 +104,12 @@ parallel placeholders.
 
 ## Completion log
 
+`GEOM-CTX` - `cargo test -p ifc-geometry` (23 context tests); 14/14 mutation
+probes caught - representation contexts and the 2D selector. Slot constants
+asserted against IFC2x3/IFC4/IFC4x3. DERIVED (`*`) attributes resolve through
+`ParentContext`; the depth bound is the single termination mechanism and is
+tested at both edges (ADR 0009).
+
 Append concise entries as `TASK-ID - proof command/result - material decision`.
 
 - `GEOM-SESSION` - `cargo test -p ifc-geometry` 413 passing, 4/4 mutation

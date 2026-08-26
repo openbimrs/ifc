@@ -104,33 +104,34 @@ read each one's `RepresentationIdentifier` (`Body`, `Axis`, `FootPrint`, …).
 
 ## The four things you must build
 
-### 1. A 2D representation selector
+### 1. ~~A 2D representation selector~~ — provided
 
-The crate ships `select_shape_representation`, which is written for a **3D
-viewer** and does the opposite of what you need:
-
-```rust
-// From ifc-geometry/src/input/representation.rs
-pub const SOLID_IDENTIFIERS: &[&str] = &["Body", "Facetation"];
-
-// Axis and FootPrint are deliberately absent: they are 2D
-// annotations, and selecting one silently replaces a solid with a line.
-```
-
-That policy is correct for its stated purpose and wrong for yours. You need the
-inverse: prefer `FootPrint`, `Axis`, `Annotation`, `Plan`. There is no supported
-API for this, but the building blocks (`ProductShape`, `Representation`,
-`identifier()`) are public, so the selector is perhaps 40 lines you own:
+`select_shape_representation` is written for a **3D viewer** and deliberately
+refuses `Axis`/`FootPrint`. `select_plan_representation` is its inverse and now
+ships:
 
 ```rust
-use ifc_geometry::input::representation::{ProductShape, Representation};
+use ifc::{select_plan_representation, plan_contexts};   // feature = "geometry"
 
-/// Representation identifiers that carry 2D plan geometry, best first.
-const PLAN_IDENTIFIERS: &[&str] = &["FootPrint", "Annotation", "Plan", "Axis"];
+let drawable = select_plan_representation(&model, wall)?;
 ```
 
-Walk `ProductShape::representations()`, wrap each in `Representation::new`, and
-match `identifier()` against that list in order.
+It prefers an explicit `PLAN_VIEW` sub-context over any identifier heuristic —
+if the author stated the target view, that outranks guessing — then falls back
+to `Plan`, `Annotation`, `FootPrint`, `Axis` in that order.
+
+`None` means the product carries only solid geometry. That is a real answer:
+turning a solid into a plan needs sectioning, which is still §3 below.
+
+Plan contexts are readable too, including the `*` inheritance real exporters
+write:
+
+```rust
+for context in plan_contexts(&model) {
+    context.target_scale();       // Some(0.01) for 1:100
+    context.precision(&model);    // resolved from the parent context
+}
+```
 
 ### 2. ~~Spatial tree traversal~~ — provided
 
@@ -237,7 +238,7 @@ a reference tool before trusting it as a permit document.
    `features = ["step", "author"]` and use `EntityBuilder`.
 3. **Spatial grouping.** Storey → elements, written against
    `IFCRELCONTAINEDINSPATIALSTRUCTURE`.
-4. **2D representation selection.** The inverse selector.
+4. ~~**2D representation selection.**~~ Provided: `select_plan_representation`.
 5. **Annotation authoring.** `IfcAnnotation` + `IfcTextLiteralWithExtent` +
    `IfcCurveStyle`, assigned into an annotation sub-context.
 6. **Library references.** `IfcLibraryReference` per symbol, associated via

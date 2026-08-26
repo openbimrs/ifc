@@ -17,6 +17,21 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `ifc-geometry` representation contexts: `RepresentationContext` reads
+  `IfcGeometricRepresentationContext` and `IfcGeometricRepresentationSubContext`
+  -- identifier, type, parent, target scale, and a typed `TargetView` that
+  preserves unknown enumeration constants instead of flattening them.
+  `plan_contexts` finds the sub-contexts a drawing is authored into.
+- DERIVED attribute inheritance: a sub-context redeclares six inherited
+  attributes, which real files write as `*` meaning "read this from my parent".
+  `precision`, `world_coordinate_system`, `coordinate_space_dimension` and
+  `true_north` resolve the parent chain; reading the slot directly yields the
+  marker and silently loses the project's precision and placement. See ADR 0009.
+- `select_plan_representation`: the inverse of `select_shape_representation`.
+  Prefers an explicit `PLAN_VIEW` context, then `Plan`/`Annotation`/`FootPrint`/
+  `Axis`, and returns `None` for a solid-only product rather than offering a
+  body to draw flat.
+
 - `ifc-spatial`: containment and objectified relationship traversal. Builds the
   project/site/building/storey/element tree from `IfcRelAggregates`,
   `IfcRelContainedInSpatialStructure` and `IfcRelNests`, answering "which

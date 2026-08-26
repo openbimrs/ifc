@@ -22,3 +22,4 @@ for new records.
 | [0006](/adr/0006-facade-features-default-to-thin) | Facade features default to thin | Accepted |
 | [0007](/adr/0007-authoring-is-a-schema-layer-not-a-model-layer) | Authoring is a schema-layer concern, not a model-layer one | Accepted |
 | [0008](/adr/0008-fixed-slot-constants-for-stable-relationships) | Fixed slot constants for stable relationships | Accepted |
+| [0009](/adr/0009-derived-attributes-resolve-through-the-parent-context) | DERIVED attributes resolve through the parent context | Accepted |

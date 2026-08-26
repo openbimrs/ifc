@@ -67,3 +67,14 @@ pub use slots::Slots;
 pub use transform::Transform;
 pub use units::UnitScale;
 mod input;
+
+// Representation contexts and selection policy. Public because drawing
+// production is a first-class consumer: choosing the geometry a plan is drawn
+// from is a question about contexts, not about lowering.
+pub use input::context::{
+    all_contexts, context_of, plan_contexts, RepresentationContext, TargetView,
+};
+pub use input::representation::{
+    select_plan_representation, select_shape_representation, ProductShape, Representation,
+    PLAN_IDENTIFIERS, SOLID_IDENTIFIERS,
+};

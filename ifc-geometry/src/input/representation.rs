@@ -21,8 +21,12 @@ pub mod product_shape_slot {
 
 /// Absolute slots on IfcRepresentation.
 pub mod representation_slot {
+    /// The IfcRepresentationContext this representation is authored into.
+    pub const CONTEXT_OF_ITEMS: usize = 0;
     /// Body, Axis, FootPrint; OPTIONAL in the schema.
     pub const REPRESENTATION_IDENTIFIER: usize = 1;
+    /// Plan, Curve2D, SweptSolid, Brep; OPTIONAL in the schema.
+    pub const REPRESENTATION_TYPE: usize = 2;
     /// The representation items themselves.
     pub const ITEMS: usize = 3;
 }
@@ -45,6 +49,20 @@ impl<'m> Representation<'m> {
     pub fn identifier(&self) -> Option<String> {
         self.slots
             .opt_text(representation_slot::REPRESENTATION_IDENTIFIER)
+    }
+
+    /// Plan, Curve2D, SweptSolid, Brep; absent when the author omitted it.
+    pub fn representation_type(&self) -> Option<String> {
+        self.slots
+            .opt_text(representation_slot::REPRESENTATION_TYPE)
+    }
+
+    /// The `IfcRepresentationContext` this representation is authored into.
+    pub fn context(&self) -> Option<EntityId> {
+        match self.slots.opt(representation_slot::CONTEXT_OF_ITEMS)? {
+            ifc_model::Value::Ref(id) => Some(*id),
+            _ => None,
+        }
     }
 
     /// The representation items to lower.
@@ -128,6 +146,76 @@ pub fn select_shape_representation(
             .is_none()
         {
             return Ok(Some(candidate));
+        }
+    }
+    Ok(None)
+}
+
+/// Representation identifiers that carry 2D drawing geometry, best first.
+///
+/// The inverse of [`SOLID_IDENTIFIERS`]. `Plan` and `Annotation` are authored
+/// for drawings directly; `FootPrint` is the product outline a plan is usually
+/// built from; `Axis` is the centreline, useful but least specific.
+///
+/// `Body` is deliberately absent: a solid in a plan selector would have to be
+/// sectioned before it means anything in 2D, and returning one would let a
+/// caller draw a projected solid where a plan curve was expected.
+pub const PLAN_IDENTIFIERS: &[&str] = &["Plan", "Annotation", "FootPrint", "Axis"];
+
+/// Pick the representation a 2D drawing should use for this product.
+///
+/// Preference is, in order:
+///
+/// 1. a representation in a `PLAN_VIEW` sub-context, since an author who set
+///    the target view has stated their intent explicitly;
+/// 2. otherwise the best [`PLAN_IDENTIFIERS`] match.
+///
+/// Returns `None` when the product has only solid geometry. That is a real
+/// answer, not a failure: deriving a plan from a solid needs sectioning, which
+/// this crate does not do.
+pub fn select_plan_representation(
+    model: &Model,
+    product: EntityId,
+) -> GeometryResult<Option<EntityId>> {
+    let entity = model.get(product).ok_or(GeometryError::MissingEntity {
+        referrer: product,
+        missing: product,
+    })?;
+    let Some(shape_id) = super::product::Product::new(product, entity).representation() else {
+        return Ok(None);
+    };
+    let shape_entity = model.get(shape_id).ok_or(GeometryError::MissingEntity {
+        referrer: product,
+        missing: shape_id,
+    })?;
+    let candidates = ProductShape::new(shape_id, shape_entity).representations()?;
+
+    // Explicit authorial intent wins over any identifier heuristic.
+    for &candidate in &candidates {
+        let Some(entity) = model.get(candidate) else {
+            continue;
+        };
+        let Some(context) = super::context::context_of(model, candidate) else {
+            continue;
+        };
+        if context.is_plan_view() {
+            let _ = entity;
+            return Ok(Some(candidate));
+        }
+    }
+
+    for wanted in PLAN_IDENTIFIERS {
+        for &candidate in &candidates {
+            let Some(entity) = model.get(candidate) else {
+                continue;
+            };
+            if Representation::new(candidate, entity)
+                .identifier()
+                .as_deref()
+                == Some(*wanted)
+            {
+                return Ok(Some(candidate));
+            }
         }
     }
     Ok(None)

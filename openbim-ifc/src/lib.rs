@@ -139,6 +139,17 @@ pub use ifc_spatial::{SpatialKind, SpatialTree};
 #[cfg(feature = "geometry")]
 pub use ifc_geometry as geometry;
 
+/// Representation contexts and the selectors that choose 3D or 2D geometry.
+///
+/// Re-exported at the root because choosing what a drawing draws is a
+/// first-class question, not an implementation detail of lowering.
+#[cfg(feature = "geometry")]
+pub use ifc_geometry::{
+    all_contexts, context_of, plan_contexts, select_plan_representation,
+    select_shape_representation, RepresentationContext, TargetView, PLAN_IDENTIFIERS,
+    SOLID_IDENTIFIERS,
+};
+
 /// Map conversion and coordinate reference systems.
 #[cfg(feature = "georef")]
 pub use ifc_georef as georef;

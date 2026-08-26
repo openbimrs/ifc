@@ -221,27 +221,64 @@ Axiolid's concern, not this crate's — see
 
 ### Representation selection
 
-`select_shape_representation` picks the representation a **viewer** should draw.
-It prefers `Body`, then `Facetation`, then an unnamed representation, and
-deliberately **refuses** `Axis` and `FootPrint` so a 2D curve never silently
-replaces a solid.
+Two selectors, deliberately disagreeing:
 
-Applications that *want* the 2D representations must select them directly; there
-is currently no supported inverse selector. See the
-[2D approval-plan use case](/use-cases/2d-approval-plans).
+```rust
+use ifc::{select_shape_representation, select_plan_representation};
+
+select_shape_representation(&model, wall)?;  // -> the Body   (3D viewer)
+select_plan_representation(&model, wall)?;   // -> the FootPrint (drawing)
+```
+
+`select_shape_representation` prefers `Body`, then `Facetation`, then an
+unnamed representation, and **refuses** `Axis`/`FootPrint` so a 2D curve never
+silently replaces a solid.
+
+`select_plan_representation` is its inverse. It prefers, in order:
+
+1. any representation authored into a `PLAN_VIEW` sub-context — an author who
+   set the target view has stated intent, and that outranks any heuristic;
+2. otherwise `PLAN_IDENTIFIERS`: `Plan`, `Annotation`, `FootPrint`, `Axis`.
+
+It returns `None` for a solid-only product. That is the honest answer, not a
+failure: deriving a plan from a solid requires sectioning, which this library
+does not do — see [R9b/R10 on the roadmap](/project/roadmap).
 
 ### Representation context
 
 | Capability | Status | Evidence |
 | --- | --- | --- |
-| `IfcGeometricRepresentationContext` | <span class="status-absent">Absent</span> | zero occurrences in the workspace |
-| `IfcGeometricRepresentationSubContext` | <span class="status-absent">Absent</span> | zero occurrences |
-| `TargetView` (`PLAN_VIEW`, `MODEL_VIEW`, ...) | <span class="status-absent">Absent</span> | zero occurrences |
+| `IfcGeometricRepresentationContext` | <span class="status-implemented">Implemented</span> | `RepresentationContext`; identifier, type, precision, placement |
+| `IfcGeometricRepresentationSubContext` | <span class="status-implemented">Implemented</span> | parent, target scale, target view |
+| `TargetView` (`PLAN_VIEW`, `MODEL_VIEW`, ...) | <span class="status-implemented">Implemented</span> | typed enum; unknown constants preserved, not flattened |
+| Authoring a plan sub-context | <span class="status-partial">Partial</span> | constructible via `EntityBuilder`; no dedicated helper |
 
-This is a hard blocker for drawing production. A plan-view annotation must live
-in a sub-context whose `TargetView` is `PLAN_VIEW`; there is currently no way to
-read, construct, or address one. Anything written without it is not a
-schema-correct drawing, even though it round-trips.
+```rust
+use ifc::plan_contexts;
+
+for context in plan_contexts(&model) {
+    context.target_scale();          // Some(0.01) for 1:100
+    context.precision(&model);       // inherited from the parent context
+}
+```
+
+**The `*` trap this closes.** A sub-context redeclares six inherited attributes
+as DERIVED, and real files write them as `*`:
+
+```text
+IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#1,$,.MODEL_VIEW.,$)
+```
+
+`*` is not `$` — it means "read this from my parent". Accessors that take
+`&model` (`precision`, `world_coordinate_system`, `coordinate_space_dimension`,
+`true_north`) walk `ParentContext` to resolve it. A consumer reading the slot
+directly gets the marker and loses the project's precision and placement. See
+[ADR 0009](/adr/0009-derived-attributes-resolve-through-the-parent-context).
+
+Slot positions are asserted against IFC2x3, IFC4 and IFC4x3 in
+`ifc-geometry/tests/context_slots.rs`, including that the sub-context still
+inherits exactly six attributes — the off-by-six that would read `TargetScale`
+as the target view.
 
 ## Presentation, annotation, and external references
 

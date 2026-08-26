@@ -204,3 +204,122 @@ fn documented_spatial_example_groups_elements_by_storey() {
     // The inversion the page warns about must not happen.
     assert!(tree.node(wall).is_none(), "a wall is not a container");
 }
+
+/// `docs/capabilities.md` -- the representation-context section.
+///
+/// The page claims a sub-context inherits precision through `*`, that
+/// `plan_contexts` finds only plan views, and that the two selectors disagree.
+/// All three run here.
+#[cfg(feature = "geometry")]
+#[test]
+fn documented_context_example_inherits_and_selects() {
+    use ifc::{plan_contexts, select_plan_representation, select_shape_representation};
+
+    let mut model = Model::new();
+    let placement = ifc::EntityId(1);
+    let root = ifc::EntityId(2);
+    let plan = ifc::EntityId(3);
+    model.insert(placement, Entity::new("IFCAXIS2PLACEMENT3D", vec![]));
+    model.insert(
+        root,
+        Entity::new(
+            "IFCGEOMETRICREPRESENTATIONCONTEXT",
+            vec![
+                Value::Null,
+                Value::Text("Model".into()),
+                Value::Integer(3),
+                Value::Real(1.0e-5),
+                Value::Ref(placement),
+                Value::Null,
+            ],
+        ),
+    );
+    // The six inherited attributes written as `*`, exactly as exporters do.
+    model.insert(
+        plan,
+        Entity::new(
+            "IFCGEOMETRICREPRESENTATIONSUBCONTEXT",
+            vec![
+                Value::Text("Plan".into()),
+                Value::Text("Plan".into()),
+                Value::Derived,
+                Value::Derived,
+                Value::Derived,
+                Value::Derived,
+                Value::Ref(root),
+                Value::Real(0.01),
+                Value::Enum("PLAN_VIEW".into()),
+                Value::Null,
+            ],
+        ),
+    );
+
+    let plans = plan_contexts(&model);
+    assert_eq!(plans.len(), 1, "only the PLAN_VIEW sub-context");
+    assert_eq!(plans[0].target_scale(), Some(0.01));
+    assert_eq!(
+        plans[0].precision(&model),
+        Some(1.0e-5),
+        "written as `*`, inherited from the parent"
+    );
+
+    // A wall with a FootPrint and a Body.
+    let footprint = ifc::EntityId(10);
+    let body = ifc::EntityId(11);
+    for (id, identifier, kind) in [
+        (footprint, "FootPrint", "Curve2D"),
+        (body, "Body", "SweptSolid"),
+    ] {
+        model.insert(
+            id,
+            Entity::new(
+                "IFCSHAPEREPRESENTATION",
+                vec![
+                    Value::Ref(root),
+                    Value::Text(identifier.into()),
+                    Value::Text(kind.into()),
+                    Value::List(vec![]),
+                ],
+            ),
+        );
+    }
+    let shape = ifc::EntityId(12);
+    model.insert(
+        shape,
+        Entity::new(
+            "IFCPRODUCTDEFINITIONSHAPE",
+            vec![
+                Value::Null,
+                Value::Null,
+                Value::List(vec![Value::Ref(footprint), Value::Ref(body)]),
+            ],
+        ),
+    );
+    let wall = ifc::EntityId(13);
+    model.insert(
+        wall,
+        Entity::new(
+            "IFCWALL",
+            vec![
+                Value::Text("3vB2YO$MX4xv5uCqZZG05x".into()),
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Ref(shape),
+            ],
+        ),
+    );
+
+    assert_eq!(
+        select_shape_representation(&model, wall).unwrap(),
+        Some(body),
+        "the 3D selector draws the solid"
+    );
+    assert_eq!(
+        select_plan_representation(&model, wall).unwrap(),
+        Some(footprint),
+        "the 2D selector draws the outline"
+    );
+}

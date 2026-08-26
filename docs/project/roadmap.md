@@ -42,19 +42,27 @@ Remaining under `SPATIAL`: reusing the reverse index for inverse queries
 
 ## Next — presentation and external references
 
-### R3. Representation contexts and `IfcShapeRepresentation`
+### R3. Representation contexts and `IfcShapeRepresentation` — done
 
-**Gap.** `IfcGeometricRepresentationContext`, its sub-context, and
-`IfcShapeRepresentation` are absent. `ContextIdentifier`, `ContextType`, and
-`TargetView` (`PLAN_VIEW`, `MODEL_VIEW`) have no representation in code. A
-generic `Representation` view exists, but the subtype and the context do not.
+`RepresentationContext` reads `IfcGeometricRepresentationContext` and its
+sub-context: identifier, type, parent, target scale and a typed `TargetView`
+(`PLAN_VIEW`, `MODEL_VIEW`, ... ; unknown constants preserved rather than
+flattened). `plan_contexts` finds the sub-contexts a drawing is authored into.
 
-**Consequence.** There is no way to author geometry into an annotation or plan
-sub-context, which every drawing-production workflow requires.
+`select_plan_representation` is the inverse of `select_shape_representation`:
+it prefers an explicit `PLAN_VIEW` context, then `Plan`/`Annotation`/
+`FootPrint`/`Axis`, and returns `None` for a solid-only product rather than
+handing back a body to draw flat.
 
-**Also needed.** An inverse of `select_shape_representation` that *prefers* the
-2D identifiers (`FootPrint`, `Annotation`, `Plan`, `Axis`) instead of rejecting
-them. The current selector is correct for 3D viewers and unusable for 2D.
+The trap this closes is DERIVED inheritance. A sub-context redeclares six
+inherited attributes and real files write them as `*`, meaning "read this from
+my parent". Accessors taking `&model` resolve the chain; reading the slot
+directly yields the marker and loses the project's precision and placement. See
+[ADR 0009](/adr/0009-derived-attributes-resolve-through-the-parent-context).
+
+Not included: authoring helpers for plan sub-contexts (constructible today via
+`EntityBuilder`, just without a dedicated builder), and deriving plan geometry
+from solids — that needs sectioning, tracked as R9b/R10.
 
 ### R4. `ifc-style` — presentation appearance
 

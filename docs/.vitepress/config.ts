@@ -9,6 +9,7 @@ const adrs = [
   ['0006-facade-features-default-to-thin', 6, 'Thin default features'],
   ['0007-authoring-is-a-schema-layer-not-a-model-layer', 7, 'Authoring is a schema layer'],
   ['0008-fixed-slot-constants-for-stable-relationships', 8, 'Fixed slot constants'],
+  ['0009-derived-attributes-resolve-through-the-parent-context', 9, 'DERIVED attribute inheritance'],
 ]
 
 function adrItems() {
