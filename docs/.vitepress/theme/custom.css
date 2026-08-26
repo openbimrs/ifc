@@ -1,0 +1,68 @@
+:root {
+  --vp-c-brand-1: #1d4ed8;
+  --vp-c-brand-2: #2563eb;
+  --vp-c-brand-3: #3b82f6;
+  --vp-c-brand-soft: rgba(37, 99, 235, 0.14);
+}
+
+.dark {
+  --vp-c-brand-1: #7ba7f8;
+  --vp-c-brand-2: #5b8def;
+  --vp-c-brand-3: #3b82f6;
+}
+
+/* Status vocabulary used throughout the capability tables. The colour is a
+   reading aid; the word remains the normative signal. */
+.status-implemented,
+.status-partial,
+.status-scaffold,
+.status-absent {
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  font-size: 0.78em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-implemented {
+  background: rgba(22, 163, 74, 0.16);
+  color: #15803d;
+}
+
+.status-partial {
+  background: rgba(217, 119, 6, 0.16);
+  color: #b45309;
+}
+
+.status-scaffold {
+  background: rgba(100, 116, 139, 0.18);
+  color: #475569;
+}
+
+.status-absent {
+  background: rgba(220, 38, 38, 0.14);
+  color: #b91c1c;
+}
+
+.dark .status-implemented {
+  color: #4ade80;
+}
+.dark .status-partial {
+  color: #fbbf24;
+}
+.dark .status-scaffold {
+  color: #cbd5e1;
+}
+.dark .status-absent {
+  color: #f87171;
+}
+
+/* Capability tables are wide and comparison-heavy; let them breathe. */
+.vp-doc table {
+  display: table;
+  width: 100%;
+}
+
+.vp-doc td:first-child {
+  white-space: nowrap;
+}

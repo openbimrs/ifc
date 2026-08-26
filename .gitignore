@@ -1,2 +1,7 @@
 /target/
 *.profraw
+
+# Documentation site build artifacts.
+node_modules/
+docs/.vitepress/dist/
+docs/.vitepress/cache/

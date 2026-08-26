@@ -1,0 +1,205 @@
+# Capabilities and status
+
+This page is deliberately conservative. It exists so that an engineer — or a
+coding agent — can scope work against what the code *does*, not against what the
+IFC schema contains or a crate name suggests.
+
+## Status vocabulary
+
+| Term | Meaning |
+| --- | --- |
+| **Implemented** | Executable behaviour with tests. Safe to build on. |
+| **Partial** | A real vertical slice exists; named gaps return typed errors. |
+| **Scaffold** | Module and crate ownership exist. **No behaviour.** Files are doc-comment placeholders that reserve a name so the architecture is reviewable. |
+| **Absent** | Not present in the workspace at all. Not even a reserved name. |
+
+A scaffold crate compiles, publishes, and appears in the feature list. It does
+**not** read, write, or interpret the entities its module names refer to.
+
+## Workspace census
+
+Measured from the source tree, not estimated. "Stub files" counts source files
+of twelve lines or fewer — the placeholder shape described above.
+
+| Crate | Source LOC | Files | Stub files | Test files | Status |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `ifc-geometry` | 19,162 | 77 | 9 | 15 | <span class="status-partial">Partial</span> |
+| `ifc-template-catalog` | 2,403 | 28 | 3 | 9 | <span class="status-implemented">Implemented</span> |
+| `ifc-material` | 2,114 | 23 | 0 | 7 | <span class="status-implemented">Implemented</span> |
+| `ifc-model` | 841 | 24 | 14 | 5 | <span class="status-implemented">Implemented</span> |
+| `ifc-xml` | 658 | 4 | 0 | 1 | <span class="status-implemented">Implemented</span> |
+| `ifc-cost` | 482 | 8 | 0 | 0 | <span class="status-partial">Partial</span> |
+| `ifc-schema` | 373 | 8 | 4 | 1 | <span class="status-implemented">Implemented</span> |
+| `ifc-step` | 341 | 4 | 0 | 1 | <span class="status-implemented">Implemented</span> |
+| `openbim-ifc` | 304 | 4 | 0 | 6 | <span class="status-implemented">Implemented</span> |
+| `ifc-properties` | 210 | 29 | 24 | 0 | <span class="status-scaffold">Scaffold</span> |
+| `ifc-structural` | 194 | 27 | 22 | 0 | <span class="status-scaffold">Scaffold</span> |
+| `ifc-alignment` | 186 | 26 | 21 | 0 | <span class="status-scaffold">Scaffold</span> |
+| `ifc-resource` | 177 | 25 | 23 | 0 | <span class="status-scaffold">Scaffold</span> |
+| `ifc-style` | 174 | 24 | 20 | 0 | <span class="status-scaffold">Scaffold</span> |
+| `ifc-validate` | 172 | 23 | 18 | 0 | <span class="status-scaffold">Scaffold</span> |
+| `ifc-schedule` | 170 | 23 | 21 | 0 | <span class="status-scaffold">Scaffold</span> |
+| `ifc-systems` | 149 | 20 | 18 | 0 | <span class="status-scaffold">Scaffold</span> |
+| `ifc-georef` | 133 | 17 | 14 | 0 | <span class="status-scaffold">Scaffold</span> |
+| `ifc-classification` | 131 | 17 | 14 | 0 | <span class="status-scaffold">Scaffold</span> |
+
+Nine of nineteen crates are scaffolds. They exist because the layering decision
+(see [ADR 0005](/adr/0005-scaffold-modules-declare-ownership))
+prefers declaring the intended home of a domain up front over discovering it
+later, but they must never be mistaken for working code.
+
+## Core: model, codecs, schema
+
+| Capability | Status | Evidence |
+| --- | --- | --- |
+| Entity graph with positional attributes | <span class="status-implemented">Implemented</span> | `ifc-model::Model` |
+| Round-trip of entities the build does not understand | <span class="status-implemented">Implemented</span> | `openbim-ifc/tests/costing_roundtrip.rs` (runs with no domain crate compiled) |
+| STEP (`.ifc`) read and write | <span class="status-implemented">Implemented</span> | `ifc-step`, delegating ISO 10303-21 syntax to `openbim-step` |
+| ifcXML read and write | <span class="status-implemented">Implemented</span> | `ifc-xml` |
+| IFC-JSON | <span class="status-absent">Absent</span> | Would be a third `Codec` impl; no crate exists |
+| EXPRESS schema metadata, subtype queries | <span class="status-implemented">Implemented</span> | `ifc-schema` |
+| GlobalId base-64 encode/decode | <span class="status-implemented">Implemented</span> | `ifc-model::guid` |
+| Spatial containment tree traversal | <span class="status-scaffold">Scaffold</span> | `ifc-model/src/spatial.rs` is a 10-line placeholder |
+| Objectified relationship (`IfcRel*`) traversal | <span class="status-scaffold">Scaffold</span> | `ifc-model/src/relation.rs`: "Not yet implemented" |
+| Cycle-protected graph walks | <span class="status-scaffold">Scaffold</span> | `ifc-model/src/traverse.rs` |
+| Type index (`ids_of_type`, `of_type`) | <span class="status-implemented">Implemented</span> | `Model::ids_of_type`, backed by `index/type_index.rs` |
+| Reverse-reference index ("who references me") | <span class="status-scaffold">Scaffold</span> | `ifc-model/src/index/reverse.rs` is a placeholder; no public API |
+| Dangling-reference detection | <span class="status-implemented">Implemented</span> | `Model::dangling_references` |
+| **Typed entity construction (authoring)** | <span class="status-absent">Absent</span> | Only `Model::push(Entity)` with raw positional attributes. See below. |
+
+### The authoring gap
+
+Reading is well served. **Writing is not.** The model exposes:
+
+```rust
+pub fn push(&mut self, entity: Entity) -> EntityId;
+pub fn insert(&mut self, id: EntityId, entity: Entity);
+```
+
+An `Entity` is a type name plus positional attribute values. There is no typed
+builder, no schema-checked constructor, and no attribute-name-to-slot resolution
+for authoring. To emit an `IfcWall` an application must know that the
+`OwnerHistory` is attribute index 2 and place `Value` variants by hand.
+
+`ifc-geometry` demonstrates the pattern used for *reading* — see its
+`slots.rs` and the per-entity `*_slot` modules, which name absolute attribute
+indices. Nothing equivalent exists for writing, and the slot constants are
+defined only for entities the geometry crate reads.
+
+This is the single largest gap for applications that generate IFC rather than
+consume it. It is tracked on the [roadmap](/project/roadmap).
+
+## Geometry
+
+`ifc-geometry` is the one substantial domain crate. It resolves IFC units,
+placements, profiles, and representation relationships, then lowers implemented
+families into the neutral `axiolid-model` DAG.
+
+### Representation-item lowering
+
+The dispatcher keeps coverage as data so it is auditable from one table
+(`ifc-geometry/src/lower/dispatch.rs`):
+
+| Family | Status |
+| --- | --- |
+| `IfcExtrudedAreaSolid` | <span class="status-implemented">Implemented</span> |
+| `IfcRevolvedAreaSolid` | <span class="status-implemented">Implemented</span> |
+| `IfcBooleanResult` | <span class="status-implemented">Implemented</span> |
+| `IfcBooleanClippingResult` | <span class="status-implemented">Implemented</span> |
+| `IfcMappedItem` | <span class="status-implemented">Implemented</span> |
+| `IfcFacetedBrep` | <span class="status-implemented">Implemented</span> |
+| `IfcFacetedBrepWithVoids` | <span class="status-implemented">Implemented</span> |
+| `IfcAdvancedBrep` | <span class="status-partial">Planned</span> — advanced B-rep topology lowering |
+| `IfcTriangulatedFaceSet` | <span class="status-partial">Planned</span> — tessellated face-set lowering |
+| `IfcPolygonalFaceSet` | <span class="status-partial">Planned</span> — polygonal face-set lowering |
+| `IfcSweptDiskSolid` | <span class="status-partial">Planned</span> |
+| `IfcSurfaceCurveSweptAreaSolid` | <span class="status-partial">Planned</span> |
+| `IfcSectionedSpine` | <span class="status-partial">Planned</span> |
+| `IfcHalfSpaceSolid` | <span class="status-partial">Planned</span> |
+| `IfcCsgSolid` | <span class="status-partial">Planned</span> |
+
+::: warning Tessellated geometry is not lowered yet
+`IfcTriangulatedFaceSet` and `IfcPolygonalFaceSet` are the dominant body
+representation in IFC4 exports from several major authoring tools. Until they
+are lowered, those bodies return a typed `GeometryError::Unsupported`. Plan for
+this when estimating coverage against real project files.
+:::
+
+Unimplemented families return a typed `GeometryError::Unsupported` naming the
+source entity and the specific missing capability — never a panic, and never a
+silently substituted approximate shape.
+
+### Curves and placement
+
+| Capability | Status | Module |
+| --- | --- | --- |
+| `IfcPolyline` | <span class="status-implemented">Implemented</span> | `curve/polyline.rs` |
+| `IfcCircle`, `IfcEllipse` | <span class="status-implemented">Implemented</span> | `curve/conic.rs` |
+| `IfcLine` | <span class="status-implemented">Implemented</span> | `curve/line.rs` |
+| `IfcTrimmedCurve` | <span class="status-implemented">Implemented</span> | `curve/trimmed.rs` |
+| `IfcCompositeCurve` | <span class="status-implemented">Implemented</span> | `curve/composite.rs` |
+| `IfcBSplineCurve` | <span class="status-implemented">Implemented</span> | `curve/bspline.rs` (representation) |
+| `IfcOffsetCurve2D/3D` | <span class="status-implemented">Implemented</span> | `curve/offset.rs` |
+| `IfcAxis2Placement2D/3D` | <span class="status-implemented">Implemented</span> | `resource/placement.rs` |
+| `IfcCartesianTransformationOperator*` | <span class="status-implemented">Implemented</span> | `resource/operator.rs` |
+| Unit resolution (SI, conversion-based) | <span class="status-implemented">Implemented</span> | `units.rs` |
+
+Curve *representation* is not an evaluator claim. Tessellating a B-spline is
+Axiolid's concern, not this crate's — see
+[the Axiolid boundary](/architecture/axiolid-boundary).
+
+### Representation selection
+
+`select_shape_representation` picks the representation a **viewer** should draw.
+It prefers `Body`, then `Facetation`, then an unnamed representation, and
+deliberately **refuses** `Axis` and `FootPrint` so a 2D curve never silently
+replaces a solid.
+
+Applications that *want* the 2D representations must select them directly; there
+is currently no supported inverse selector. See the
+[2D approval-plan use case](/use-cases/2d-approval-plans).
+
+## Presentation, annotation, and external references
+
+These are the areas most relevant to drawing production and document/approval
+workflows. They are currently the least built.
+
+| Entity / concept | Status | Note |
+| --- | --- | --- |
+| `IfcAnnotation` | <span class="status-absent">Absent</span> | No reader, writer, or view |
+| `IfcTextLiteral`, `IfcTextLiteralWithExtent` | <span class="status-absent">Absent</span> | |
+| `IfcAnnotationFillArea` | <span class="status-absent">Absent</span> | |
+| `IfcCurveStyle`, `IfcFillAreaStyle` | <span class="status-scaffold">Scaffold</span> | `ifc-style` reserves the module names only |
+| `IfcSurfaceStyle` and children | <span class="status-scaffold">Scaffold</span> | `ifc-style/src/surface_style/` |
+| `IfcPresentationLayerAssignment` | <span class="status-scaffold">Scaffold</span> | `ifc-style/src/layer/` |
+| `IfcStyledItem` | <span class="status-scaffold">Scaffold</span> | `ifc-style/src/assignment/styled_item.rs` |
+| `IfcShapeRepresentation` | <span class="status-absent">Absent</span> | Generic `Representation` view exists; the subtype does not |
+| `IfcGeometricRepresentationSubContext` | <span class="status-absent">Absent</span> | Required to author a `Plan`/`Annotation` context |
+| `IfcLibraryReference` | <span class="status-absent">Absent</span> | `ifc-classification/src/library/reference.rs` is a placeholder |
+| `IfcLibraryInformation` | <span class="status-absent">Absent</span> | Placeholder file only |
+| `IfcRelAssociatesLibrary` | <span class="status-absent">Absent</span> | |
+| `IfcExternalReference` and `IfcLibrarySelect` | <span class="status-absent">Absent</span> | |
+| `IfcApproval` and the whole `IfcApprovalResource` schema | <span class="status-absent">Absent</span> | No crate owns it; not even a scaffold |
+| `IfcClassificationReference` | <span class="status-scaffold">Scaffold</span> | `ifc-classification` |
+
+Because `ifc-model` round-trips entities structurally, a file containing any of
+the above **reads and re-exports without loss today**. What is missing is typed
+interpretation and typed authoring, not data preservation.
+
+## Explicit non-goals
+
+- A CAD modelling kernel. Booleans, tessellation, and NURBS evaluation live in
+  Axiolid or its providers.
+- Rendering, drawing layout, or paper-space composition.
+- Vendored ISO or buildingSMART schema payloads
+  (the [contributing guide](/guide/contributing#standards-material)).
+- Any C++ in the dependency graph.
+
+## How to verify a claim on this page
+
+1. Read the crate's public API and its `tests/` directory.
+2. Read the crate's **PLAN.md** — it records implementation state, unlike
+   **AGENTS.md** which records stable contracts.
+3. Run the gate: `scripts/gate.sh`.
+4. For geometry coverage, read `ifc-geometry/src/lower/dispatch.rs`; the
+   `IMPLEMENTED` and `PLANNED` constants are asserted by tests.

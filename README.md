@@ -9,7 +9,18 @@ This is the canonical IFC-family repository for
 [OpenBIM.rs](https://github.com/openbimrs/openbim). The integration repository
 pins a verified commit here as `packages/ifc`.
 
+**📖 [Documentation](https://openbimrs.github.io/ifc/)** —
+[capabilities and status](https://openbimrs.github.io/ifc/capabilities) ·
+[architecture](https://openbimrs.github.io/ifc/architecture/) ·
+[roadmap](https://openbimrs.github.io/ifc/project/roadmap) ·
+[API on docs.rs](https://docs.rs/openbim-ifc)
+
 ## Status
+
+Read the [capability matrix](https://openbimrs.github.io/ifc/capabilities)
+before planning work against this repository. It states, per capability,
+whether behaviour is implemented, partial, scaffold, or absent, with the file
+that proves it.
 
 Implemented foundations include:
 
@@ -20,9 +31,11 @@ Implemented foundations include:
 - borrowed domain projections and geometry-lowering foundations;
 - versioned PSD/QTO template catalog data.
 
-Several domain crates intentionally remain architecture scaffolds. Their README,
+Several domain crates intentionally remain architecture scaffolds: their module
+trees declare ownership of a schema area without implementing it. Their README,
 `AGENTS.md`, and `PLAN.md` files distinguish compiled behavior from reserved
-module ownership. No capability should be inferred from a module name alone.
+module ownership, and the capability matrix counts the stubs per crate. **No
+capability should be inferred from a module or crate name alone.**
 
 ## Use
 

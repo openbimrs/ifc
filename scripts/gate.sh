@@ -30,3 +30,8 @@ for features in "--no-default-features" "--features step" "--features ifcxml" "-
     # shellcheck disable=SC2086
     cargo clippy -p openbim-ifc $features --all-targets -- -D warnings
 done
+
+# Documentation gates. The changelog page is generated from the canonical root
+# CHANGELOG.md, so drift between them is a build failure rather than a silent
+# inconsistency the reader has to notice.
+python3 scripts/sync-changelog.py --check
