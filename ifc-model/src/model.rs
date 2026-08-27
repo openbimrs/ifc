@@ -19,6 +19,7 @@
 //!
 //! The rule to preserve: **no `if type_name == "IFCWALL"` in this crate.**
 
+use crate::diagnostic::Diagnostic;
 use crate::entity::Entity;
 use crate::header::Header;
 use crate::value::EntityId;
@@ -37,6 +38,9 @@ pub struct Model {
     /// IfcWall" is the most common query in any consumer.
     by_type: AHashMap<String, Vec<EntityId>>,
     max_id: u64,
+    /// Non-fatal findings from the read that produced this model. Empty
+    /// unless a codec recovered from damaged input.
+    diagnostics: Vec<Diagnostic>,
 }
 
 impl Model {
@@ -53,6 +57,26 @@ impl Model {
     /// Mutable access to the header, for writers and editors.
     pub fn header_mut(&mut self) -> &mut Header {
         &mut self.header
+    }
+
+    /// Non-fatal problems reported by the codec that read this model.
+    ///
+    /// Empty for a clean file. A non-empty slice means the model is
+    /// incomplete relative to its source: the codec recovered from damage and
+    /// each entry says exactly what was dropped, so a consumer can surface
+    /// "loaded, 1 record skipped" instead of pretending the read was lossless.
+    pub fn diagnostics(&self) -> &[Diagnostic] {
+        &self.diagnostics
+    }
+
+    /// Whether the read that produced this model dropped anything.
+    pub fn is_complete(&self) -> bool {
+        self.diagnostics.is_empty()
+    }
+
+    /// Attaches a codec diagnostic. Called by codecs during a recovered read.
+    pub fn push_diagnostic(&mut self, diagnostic: Diagnostic) {
+        self.diagnostics.push(diagnostic);
     }
 
     /// Insert an entity under a specific id, replacing any previous occupant.

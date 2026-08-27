@@ -1,36 +1,59 @@
 //! Conversion from generic STEP syntax into the IFC record model.
 
 use crate::StepError;
-use ifc_model::{Entity, EntityId, Model, Value};
-use openbim_step::{Parameter, StandardHeader};
+use ifc_model::{Diagnostic, Entity, EntityId, Model, Value};
+use openbim_step::{OnMalformed, Parameter, ParseOptions, StandardHeader};
 
-pub(crate) fn parse(input: &[u8]) -> Result<Model, StepError> {
-    let exchange = openbim_step::parse(input)?;
+pub(crate) fn parse(input: &[u8], options: ParseOptions) -> Result<Model, StepError> {
+    let outcome = openbim_step::parse_with(input, options)?;
     let mut model = Model::new();
-    apply_header(model.header_mut(), exchange.header.standard());
+    apply_header(model.header_mut(), outcome.exchange.header.standard());
 
-    for instance in exchange.data.records {
-        let id = instance
-            .id
-            .as_str()
-            .parse()
-            .map_err(|_| StepError::Syntax {
-                offset: 0,
-                detail: "instance id exceeds the IFC record model range".into(),
-            })?;
-        let record = instance.as_simple().ok_or_else(|| StepError::Syntax {
-            offset: 0,
-            detail: "complex STEP instances are not representable in the IFC record model".into(),
-        })?;
-        let attributes = record
-            .parameters
-            .clone()
-            .into_iter()
-            .map(parameter_to_value)
-            .collect::<Result<Vec<_>, _>>()?;
-        model.insert(EntityId(id), Entity::new(record.name.clone(), attributes));
+    for diagnostic in &outcome.diagnostics {
+        model.push_diagnostic(Diagnostic::warning(
+            diagnostic.span().start..diagnostic.span().end,
+            diagnostic.detail(),
+        ));
+    }
+
+    let recovering = options.on_malformed_record == OnMalformed::Skip;
+    for instance in outcome.exchange.data.records {
+        // A record can be syntactically valid STEP yet unrepresentable in the
+        // IFC record model (an out-of-range id, a complex instance). Under the
+        // recovery policy that is the same class of problem as a damaged
+        // record and is reported rather than fatal.
+        let id_text = instance.id.as_str().to_string();
+        match convert(instance) {
+            Ok((id, entity)) => model.insert(id, entity),
+            Err(error) if recovering => model.push_diagnostic(Diagnostic::unlocated(format!(
+                "skipped unrepresentable record #{id_text}: {error}"
+            ))),
+            Err(error) => return Err(error),
+        }
     }
     Ok(model)
+}
+
+fn convert(instance: openbim_step::DataRecord) -> Result<(EntityId, Entity), StepError> {
+    let id = instance
+        .id
+        .as_str()
+        .parse()
+        .map_err(|_| StepError::Syntax {
+            offset: 0,
+            detail: "instance id exceeds the IFC record model range".into(),
+        })?;
+    let record = instance.as_simple().ok_or_else(|| StepError::Syntax {
+        offset: 0,
+        detail: "complex STEP instances are not representable in the IFC record model".into(),
+    })?;
+    let attributes = record
+        .parameters
+        .clone()
+        .into_iter()
+        .map(parameter_to_value)
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok((EntityId(id), Entity::new(record.name.clone(), attributes)))
 }
 
 fn apply_header(header: &mut ifc_model::header::Header, source: StandardHeader) {

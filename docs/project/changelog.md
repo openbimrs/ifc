@@ -17,6 +17,19 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- Opt-in recovery from damaged exports. `StepCodec::lenient()` returns a
+  `StepReader` that skips unreadable data records instead of failing the file,
+  and `Model::diagnostics()` reports each dropped range, so a viewer can show
+  "loaded, 1 record skipped" rather than silently losing data or refusing a
+  2.5 MB model over one truncated record. `StepCodec` stays strict: an
+  authoring tool that drops entities corrupts the file it edits. Header
+  structure and the physical-file marker remain fatal under both policies.
+- `ifc_model::Diagnostic`: codec-neutral non-fatal findings carried on the
+  model, with an optional source byte range.
+- Advanced `openbim-step` to `0.3.1` for the recovery API.
+
+### Changed
+
 - `ifc-geometry` representation contexts: `RepresentationContext` reads
   `IfcGeometricRepresentationContext` and `IfcGeometricRepresentationSubContext`
   -- identifier, type, parent, target scale, and a typed `TargetView` that
