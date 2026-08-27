@@ -26,7 +26,7 @@ This page is synchronised from it at build time.
   structure and the physical-file marker remain fatal under both policies.
 - `ifc_model::Diagnostic`: codec-neutral non-fatal findings carried on the
   model, with an optional source byte range.
-- Advanced `openbim-step` to `0.3.1` for the recovery API.
+- Advanced `openbim-step` to `0.3.2` for the recovery API.
 
 ### Changed
 
