@@ -23,3 +23,4 @@ for new records.
 | [0007](/adr/0007-authoring-is-a-schema-layer-not-a-model-layer) | Authoring is a schema-layer concern, not a model-layer one | Accepted |
 | [0008](/adr/0008-fixed-slot-constants-for-stable-relationships) | Fixed slot constants for stable relationships | Accepted |
 | [0009](/adr/0009-derived-attributes-resolve-through-the-parent-context) | DERIVED attributes resolve through the parent context | Accepted |
+| [0010](/adr/0010-checked-mutation-is-a-model-level-primitive) | Checked mutation is a model-level primitive, not a bare accessor | Accepted |

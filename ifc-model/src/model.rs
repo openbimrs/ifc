@@ -193,4 +193,24 @@ impl Model {
         }
         out
     }
+
+    // --- crate-internal seams for `mutation::edit` -----------------------
+    //
+    // Kept private-to-crate rather than `pub`: an edit that changes
+    // `type_name` must also fix up `by_type`, or `ids_of_type` silently goes
+    // stale. `mutation::edit` is the only module trusted to touch these
+    // fields directly, and it exists precisely to keep that invariant in one
+    // place instead of copied into every editor.
+
+    pub(crate) fn entities_mut(&mut self) -> &mut AHashMap<EntityId, Entity> {
+        &mut self.entities
+    }
+
+    pub(crate) fn by_type_mut(&mut self) -> &mut AHashMap<String, Vec<EntityId>> {
+        &mut self.by_type
+    }
+
+    pub(crate) fn order_mut(&mut self) -> &mut Vec<EntityId> {
+        &mut self.order
+    }
 }
