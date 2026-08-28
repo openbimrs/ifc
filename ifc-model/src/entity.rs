@@ -15,6 +15,17 @@ use crate::value::{EntityId, Value};
 use std::sync::Arc;
 
 /// One IFC entity instance.
+///
+/// # Reading the type name
+///
+/// `type_name` is a public field, not a method — there is no
+/// `entity.type_name()`. Access it directly:
+///
+/// ```
+/// # use ifc_model::Entity;
+/// let entity = Entity::new("IFCWALL", vec![]);
+/// assert_eq!(&*entity.type_name, "IFCWALL");
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct Entity {
     /// Upper-cased type name exactly as it appeared (`IFCWALL`).

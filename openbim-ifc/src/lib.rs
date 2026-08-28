@@ -167,3 +167,6 @@ mod io;
 
 pub use feature_report::compiled_features;
 pub use io::{codecs, read_path};
+
+#[cfg(feature = "step")]
+pub use io::from_step_bytes;

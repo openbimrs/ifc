@@ -81,6 +81,26 @@ impl Transform {
         })
     }
 
+    /// [`Self::from_axes`], falling back to the identity transform when the
+    /// axes are absent or degenerate.
+    ///
+    /// IFC's `Axis`/`RefDirection` are both optional and, per spec, default to
+    /// the standard basis when omitted — the common case, so most call sites
+    /// that use `from_axes` immediately follow it with
+    /// `.unwrap_or_else(Transform::identity)`. This collapses that
+    /// boilerplate. Reach for `from_axes` directly when a degenerate axis
+    /// pair should be a reportable error instead of a silent identity.
+    pub fn from_axes_or_identity(
+        origin: [f64; 3],
+        axis: Option<[f64; 3]>,
+        ref_direction: Option<[f64; 3]>,
+    ) -> Self {
+        Self::from_axes(origin, axis, ref_direction).unwrap_or(Self {
+            basis: Self::identity().basis,
+            origin,
+        })
+    }
+
     /// Apply this transform to a point.
     pub fn apply(&self, p: [f64; 3]) -> [f64; 3] {
         [

@@ -1,5 +1,17 @@
 use crate::{Codec, Model, ModelError};
 
+/// Parse a `.ifc` (STEP physical file) buffer without importing [`Codec`] or
+/// naming [`ifc_step::StepCodec`] directly.
+///
+/// Delegates to `StepCodec::read_bytes`; exists because "just parse these
+/// bytes" is the overwhelmingly common entry point and forcing every
+/// consumer to `use ifc::Codec` first for a single call is friction the
+/// facade can absorb.
+#[cfg(feature = "step")]
+pub fn from_step_bytes(bytes: &[u8]) -> Result<Model, ModelError> {
+    ifc_step::StepCodec.read_bytes(bytes)
+}
+
 /// Every codec compiled into this build.
 ///
 /// Lets an application accept whatever the user hands it without hard-coding a
