@@ -96,3 +96,31 @@ fn the_default_build_still_links_the_neutral_vocabulary() {
         );
     }
 }
+
+/// Placement resolution must be reachable WITHOUT the geometry kernel.
+///
+/// This is the capability the split exists to protect. `product_world_transform`
+/// used to live in `lower`, so a kernel-free consumer could not reach it at all
+/// and had to hand-roll the `IfcLocalPlacement` walk -- which is how apps end
+/// up with inverted composition order or a squared unit scale.
+///
+/// A compile-time reference is the proof: if the item stops existing in this
+/// column, this test stops compiling.
+#[test]
+#[cfg(not(feature = "lowering"))]
+fn placement_resolution_survives_without_the_kernel() {
+    let resolve: fn(
+        &ifc_model::Model,
+        &ifc_geometry::units::UnitScale,
+        ifc_model::EntityId,
+    ) -> ifc_geometry::GeometryResult<ifc_geometry::Transform> =
+        ifc_geometry::product_world_transform;
+
+    // Exercise it, so the reference cannot be optimized into a no-op claim.
+    let model = ifc_model::Model::new();
+    let units = ifc_geometry::units::UnitScale::default();
+    assert!(
+        resolve(&model, &units, ifc_model::EntityId(1)).is_err(),
+        "an absent product must report rather than silently resolve to origin"
+    );
+}

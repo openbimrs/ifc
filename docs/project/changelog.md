@@ -17,6 +17,14 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `product_world_transform` and `products_world_transforms` are re-exported at
+  the `ifc-geometry` crate root and from the facade under `geometry-select`.
+  Resolving an `IfcLocalPlacement` chain is the most-reused operation in any
+  IFC consumer and the one most often reimplemented incorrectly -- composition
+  order and unit scaling are both easy to invert. The batch form shares one
+  placement cache, which matters because products in a storey share their
+  whole ancestor chain.
+
 - `scripts/check-leakage.py` runs in `scripts/gate.sh`. It has existed since the
   documentation work but ran only by hand, which is how a tracked
   `ifc-geometry/references/` directory survived undetected. 3/3 mutation probes
@@ -49,6 +57,13 @@ This page is synchronised from it at build time.
 - Advanced `openbim-step` to `0.3.2` for the recovery API.
 
 ### Changed
+
+- Placement resolution moved from `lower::context` to `constraint::placement`.
+  It was previously reachable only through the deep `lower` path, so it was
+  undiscoverable, and after the `lowering` feature split it did not compile at
+  all for kernel-free consumers -- exactly the 2D consumers that need world
+  coordinates without a solid modeller. `lower::context` re-exports it, so the
+  old path still resolves.
 
 - Committed schema-derived artifacts moved from `ifc-geometry/references/` to
   `ifc-geometry/data/`, matching `ifc-template-catalog/data/`. The name

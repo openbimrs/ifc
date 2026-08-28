@@ -78,6 +78,11 @@ pub use axiolid_model::{GeometryGraph, GeometryNode, NodeId, SolidOperation};
 pub use axiolid_primitive::Primitive as AnalyticPrimitive;
 #[cfg(feature = "lowering")]
 pub use axiolid_profile::Profile as ExactProfile;
+// Placement resolution is the most-reused operation in any IFC consumer
+// and the one most often reimplemented wrongly, so it is reachable from
+// the crate root and does not require the `lowering` feature: a 2D drawing
+// needs world coordinates without compiling a solid kernel.
+pub use constraint::{product_world_transform, products_world_transforms};
 pub use error::{GeometryError, GeometryResult};
 #[cfg(feature = "lowering")]
 pub use kernel::{BooleanOp, CsgShape, Primitive, Profile};

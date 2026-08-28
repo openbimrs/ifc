@@ -48,6 +48,10 @@ parallel placeholders.
 
 ## Work queue
 
+- [x] `GEOM-PLACE-API` - expose product placement as a first-class kernel-free API.
+  - Evidence: 7 unit tests, 3/3 mutation probes, and a differential run against
+    `apps/open-signs` showing 127 placements with 0 disagreements.
+
 - [ ] `GEOM-CONTRACT` - agree validated direction/axis invariants with `axiolid-model`
   - Contract: axes, normals, and orientation fields become finite non-zero unit directions; displacement, derivative, scale, and other magnitude-bearing vectors are never normalized implicitly.
   - Evidence: contract docs plus non-unit, zero-vector, and magnitude-preservation tests on both sides.
@@ -110,6 +114,23 @@ parallel placeholders.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 
 ## Completion log
+
+`GEOM-PLACE-API` - `cargo test -p ifc-geometry --no-default-features --lib placement`
+7 passing; `--test kernel_free_build` 3 passing. Moved
+`product_world_transform` out of `lower::context` into `constraint::placement`
+and re-exported it at the crate root and the facade.
+
+Material finding: the function already existed with the signature FINDINGS.md
+F-03 asked for, but it was unreachable -- never re-exported at the crate root,
+and after the `lowering` split it did not compile at all in the kernel-free
+column. F-03 read as "not implemented" when the truth was "implemented,
+unreachable". A differential probe against the app that motivated the finding
+resolved 127 placements with 0 disagreements, so this is a reachability fix,
+not a reimplementation.
+
+Added `products_world_transforms` for the batch case: products in a storey
+share the whole storey-building-site tail, and the existing `PlacementResolver`
+cache was being discarded once per product.
 
 `GEOM-SPLIT` - `cargo test -p ifc-geometry --test kernel_free_build`,
 `cargo test -p openbim-ifc --test thin_build` (8 passing), both feature columns

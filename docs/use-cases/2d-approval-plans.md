@@ -136,6 +136,33 @@ Measured on this repository's own drawing app, that is 107 crates instead of
 `None` means the product carries only solid or bounding-box geometry. That is a real answer:
 turning a solid into a plan needs sectioning, which is still §3 below.
 
+### Where a product sits in the world
+
+Selecting a representation gives geometry in the product's own local space. To
+draw it you need the world transform, which means resolving the
+`IfcLocalPlacement` chain up through storey, building and site:
+
+```rust
+use ifc::{product_world_transform, products_world_transforms};   // feature = "geometry-select"
+
+let world = product_world_transform(&model, &units, wall)?;
+```
+
+Do not hand-roll this. The two mistakes are invisible until late: composing the
+chain innermost-first mirrors the model about its ancestors, and applying the
+unit scale per link instead of once raises the factor to the power of the chain
+depth, so a millimetre file three levels deep lands a thousand times too far
+out. Cyclic chains in malformed files are reported rather than hung on.
+
+For a whole-model walk use the batch form, which shares one placement cache --
+every product in a storey shares that storey's entire ancestor chain:
+
+```rust
+for (id, world) in products_world_transforms(&model, &units, ids) {
+    // Errors are per-product: one broken chain does not suppress the rest.
+}
+```
+
 Plan contexts are readable too, including the `*` inheritance real exporters
 write:
 

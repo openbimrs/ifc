@@ -18,38 +18,14 @@
 use axiolid_model::NodeId;
 use ifc_model::{EntityId, Model};
 
-use crate::constraint::local::PlacementResolver;
 use crate::error::{GeometryError, GeometryResult};
 use crate::input::product::Product;
 use crate::input::representation::Representation;
 use crate::lower::dispatch::lower_representation_item;
 use crate::lower::session::LoweringSession;
-use crate::transform::Transform;
-use crate::units::UnitScale;
 
+pub use crate::constraint::product_world_transform;
 pub use crate::input::representation::select_shape_representation;
-
-/// The world transform for one product, in metres.
-///
-/// Resolves the IfcLocalPlacement chain and converts the composed result
-/// once. A product with no ObjectPlacement is model-space, which the
-/// schema allows, so it yields the identity rather than an error.
-pub fn product_world_transform(
-    model: &Model,
-    units: &UnitScale,
-    product: EntityId,
-) -> GeometryResult<Transform> {
-    let entity = model.get(product).ok_or(GeometryError::MissingEntity {
-        referrer: product,
-        missing: product,
-    })?;
-    let Some(placement) = Product::new(product, entity).object_placement() else {
-        return Ok(Transform::identity());
-    };
-    let mut resolver = PlacementResolver::new();
-    let file_units = resolver.world_transform(model, placement)?;
-    Ok(file_units.to_metres(units))
-}
 
 /// Lower every item of a product selected representation into one graph.
 ///

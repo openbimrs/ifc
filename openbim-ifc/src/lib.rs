@@ -154,6 +154,16 @@ pub use ifc_geometry::{
     SOLID_IDENTIFIERS,
 };
 
+/// Where a product sits in the world.
+///
+/// Re-exported at the root, and available without the geometry kernel,
+/// because every consumer needs world coordinates and a hand-rolled
+/// `IfcLocalPlacement` walk is the most commonly botched code in an IFC
+/// viewer: the composition order and the unit scaling are both easy to
+/// invert.
+#[cfg(feature = "geometry-select")]
+pub use ifc_geometry::{product_world_transform, products_world_transforms};
+
 /// Map conversion and coordinate reference systems.
 #[cfg(feature = "georef")]
 pub use ifc_georef as georef;

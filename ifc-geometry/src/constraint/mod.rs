@@ -17,7 +17,9 @@
 pub mod connection;
 pub mod grid;
 pub mod local;
+pub mod placement;
 
 pub use connection::ConnectionGeometry;
 pub use grid::{GridAxis, GridPlacement, VirtualGridIntersection};
 pub use local::LocalPlacement;
+pub use placement::{product_world_transform, products_world_transforms};

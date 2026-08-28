@@ -205,6 +205,56 @@ fn documented_spatial_example_groups_elements_by_storey() {
     assert!(tree.node(wall).is_none(), "a wall is not a container");
 }
 
+/// `docs/use-cases/2d-approval-plans.md` -- the placement section.
+///
+/// The page tells readers not to hand-roll the `IfcLocalPlacement` walk and
+/// shows both the single and batch forms under `geometry-select`. Both run
+/// here, so the advice cannot drift from the API.
+#[cfg(feature = "geometry-select")]
+#[test]
+fn documented_placement_example_resolves_world_coordinates() {
+    use ifc::{product_world_transform, products_world_transforms};
+
+    let mut model = Model::new();
+    // A storey at +3 with a wall at +2 inside it.
+    model.insert(
+        ifc::EntityId(1),
+        Entity::new(
+            "IFCCARTESIANPOINT",
+            vec![Value::List(vec![
+                Value::Real(0.0),
+                Value::Real(0.0),
+                Value::Real(3.0),
+            ])],
+        ),
+    );
+    model.insert(
+        ifc::EntityId(2),
+        Entity::new(
+            "IFCAXIS2PLACEMENT3D",
+            vec![Value::Ref(ifc::EntityId(1)), Value::Null, Value::Null],
+        ),
+    );
+    model.insert(
+        ifc::EntityId(3),
+        Entity::new(
+            "IFCLOCALPLACEMENT",
+            vec![Value::Null, Value::Ref(ifc::EntityId(2))],
+        ),
+    );
+    let mut wall = vec![Value::Null; 7];
+    wall[5] = Value::Ref(ifc::EntityId(3));
+    model.insert(ifc::EntityId(4), Entity::new("IFCWALL", wall));
+
+    let units = ifc::geometry::units::resolve(&model);
+    let world = product_world_transform(&model, &units, ifc::EntityId(4)).unwrap();
+    assert_eq!(world.origin, [0.0, 0.0, 3.0]);
+
+    let batch = products_world_transforms(&model, &units, [ifc::EntityId(4)]);
+    assert_eq!(batch.len(), 1);
+    assert_eq!(batch[0].1.as_ref().unwrap().origin, world.origin);
+}
+
 /// `docs/capabilities.md` -- the representation-context section.
 ///
 /// The page claims a sub-context inherits precision through `*`, that

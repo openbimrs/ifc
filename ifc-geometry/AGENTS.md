@@ -17,6 +17,10 @@ compile with the feature off. `tests/kernel_free_build.rs` checks the resolved
 dependency graph, so a stray unconditional `use axiolid_*` fails the gate
 rather than silently relinking the kernel for 2D consumers.
 
+Placement resolution lives in `constraint::placement`, not `lower`. World
+coordinates are needed by 2D consumers too, so the function must stay
+reachable with `lowering` off; `tests/kernel_free_build.rs` enforces that.
+
 Committed schema-derived artifacts live in `data/`, never `references/` --
 that name is reserved for the unredistributable local schema checkout and is
 rejected by `scripts/check-leakage.py`. See `data/NOTICE.md`.
