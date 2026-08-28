@@ -5,6 +5,9 @@
 //! read_bytes -- the actual open-signs "move a placed sign" scenario from
 //! issue #3.
 
+#![cfg(feature = "step")]
+//! Requires `step`: the round trip is the point of the test.
+
 use ifc::{Codec, Model, StepCodec};
 use ifc_model::{Entity, Value};
 

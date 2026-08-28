@@ -36,7 +36,7 @@ These operations are schema-agnostic on purpose, matching `Model`'s existing inv
 | --- | --- |
 | Bare `get_mut(&mut self, id) -> Option<&mut Entity>` | Lets a caller mutate `type_name` without touching `by_type`, silently desynchronizing `ids_of_type` -- the exact bug class `Model::insert` already guards against for id reuse |
 | Schema-checked `EntityUpdate` builder now (mirroring `EntityBuilder::insert`) | Real improvement, but a separate, larger `ifc-author` design task; blocking the model-level primitive on it leaves editors with no safe path at all in the meantime |
-| Full transactional preflight/commit (`mutation::transaction`, `mutation::conflict`) | Different problem -- atomic multi-entity edits and conflict diagnostics -- tracked separately in `mutation/PLAN.md` under `MUT-PREFLIGHT`/`MUT-COMMIT`; not needed for a single-entity edit |
+| Full transactional preflight/commit (`mutation::transaction`, `mutation::conflict`) | Different problem -- atomic multi-entity edits and conflict diagnostics -- tracked separately in `../../ifc-model/src/mutation/PLAN.md` under `MUT-PREFLIGHT`/`MUT-COMMIT`; not needed for a single-entity edit |
 
 ## Consequences
 
@@ -48,11 +48,11 @@ These operations are schema-agnostic on purpose, matching `Model`'s existing inv
 
 **Negative / costs**
 
-- No reference-integrity, arity, or declared-type checking on edits -- `remove` can leave dangling references (by design: detectable via `dangling_references`, not auto-repaired), and `set_attribute` will happily write a value of the wrong shape into a slot. A schema-checked `EntityUpdate` is future work, tracked in `ifc-model/src/mutation/PLAN.md`.
+- No reference-integrity, arity, or declared-type checking on edits -- `remove` can leave dangling references (by design: detectable via `dangling_references`, not auto-repaired), and `set_attribute` will happily write a value of the wrong shape into a slot. A schema-checked `EntityUpdate` is future work, tracked in `../../ifc-model/src/mutation/PLAN.md`.
 
 **Follow-ups / risks to watch**
 
-- `MUT-PREFLIGHT` / `MUT-COMMIT` (ID/reference/index conflicts, atomic multi-edit commit) remain open in `mutation/PLAN.md`.
+- `MUT-PREFLIGHT` / `MUT-COMMIT` (ID/reference/index conflicts, atomic multi-edit commit) remain open in `../../ifc-model/src/mutation/PLAN.md`.
 - `ifc-author` could grow a schema-checked `EntityUpdate` on top of these primitives, extending "authored edits are checked" from creation to modification -- not started here.
 
 ## Relation to existing code
