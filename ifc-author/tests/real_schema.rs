@@ -14,9 +14,7 @@ fn ifc4() -> Option<Schema> {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../../references/ifc-spec/ifc4-add2-tc1/IFC4.exp");
     let bytes = std::fs::read(path).ok()?;
-    // Latin-1 with CRLF, not UTF-8.
-    let text: String = bytes.iter().map(|&b| b as char).collect();
-    Some(Schema::from_express(&text))
+    Some(Schema::from_express_bytes(&bytes))
 }
 
 const GUID: &str = "3vB2YO$MX4xv5uCqZZG05x";

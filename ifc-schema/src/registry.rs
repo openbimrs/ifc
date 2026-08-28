@@ -56,6 +56,23 @@ impl Schema {
         Self::from_parsed(express::parse(source))
     }
 
+    /// Parse an EXPRESS schema document from raw bytes, tolerating Latin-1.
+    ///
+    /// The official buildingSMART `.exp` publications are Latin-1, not UTF-8
+    /// — the schema's own comments use `°` (degree sign) and similar
+    /// characters that are valid Latin-1 but invalid UTF-8. `String::from_utf8`
+    /// on such a file fails at runtime with no compile-time signal; the naive
+    /// `std::fs::read_to_string` panics on a perfectly normal schema file.
+    ///
+    /// EXPRESS syntax itself is pure ASCII, so a byte-for-byte Latin-1 decode
+    /// (every byte maps 1:1 to the codepoint of the same value) always
+    /// round-trips the identifiers and keywords the parser cares about,
+    /// whatever encoding non-ASCII comment text happens to be in.
+    pub fn from_express_bytes(bytes: &[u8]) -> Self {
+        let text: String = bytes.iter().map(|&b| b as char).collect();
+        Self::from_express(&text)
+    }
+
     /// The schema name as declared, e.g. `IFC4`.
     pub fn name(&self) -> &str {
         &self.name
@@ -237,5 +254,16 @@ END_SCHEMA;
             s.supertypes("IfcObject"),
             ["IfcObjectDefinition", "IfcRoot"]
         );
+    }
+
+    /// Regression for the Latin-1 decode trap: a schema comment byte that is
+    /// invalid UTF-8 must not make the parse fail or panic.
+    #[test]
+    fn from_express_bytes_survives_non_utf8_comment_bytes() {
+        let mut source = Vec::new();
+        source.extend_from_slice(b"(* angle in degrees, e.g. 90\xB0 *)\n");
+        source.extend_from_slice(CHAIN.as_bytes());
+        let s = Schema::from_express_bytes(&source);
+        assert!(s.is_a("IfcObject", "IfcRoot"));
     }
 }

@@ -17,9 +17,7 @@ fn spec_dir() -> PathBuf {
 fn load(rel: &str) -> Option<Schema> {
     let path = spec_dir().join(rel);
     let bytes = std::fs::read(&path).ok()?;
-    // The schemas are latin-1 with CRLF line endings, not UTF-8.
-    let text: String = bytes.iter().map(|&b| b as char).collect();
-    Some(Schema::from_express(&text))
+    Some(Schema::from_express_bytes(&bytes))
 }
 
 #[test]
