@@ -32,7 +32,7 @@ fn extruded_area_solid(model: &Model, id: EntityId, entity: &Entity, out: &mut V
     const TYPE: &str = "IFCEXTRUDEDAREASOLID";
 
     // Slot 2 is ExtrudedDirection: SweptArea and Position are inherited and
-    // occupy slots 0 and 1. See references/absolute-slots.txt.
+    // occupy slots 0 and 1. See ifc-geometry/data/absolute-slots.txt.
     let Some(dir_id) = entity.attributes.get(2).and_then(|v| v.as_ref_id()) else {
         return;
     };

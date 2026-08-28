@@ -46,3 +46,9 @@ done
 # CHANGELOG.md, so drift between them is a build failure rather than a silent
 # inconsistency the reader has to notice.
 python3 scripts/sync-changelog.py --check
+
+# Licensing gate. The IFC schemas are CC BY-ND 4.0 and must never reach the
+# published tree; this rejects XSD/PDF payloads and any `references/` or
+# `schemas/` path. It ran only by hand until now, which is how a tracked
+# `ifc-geometry/references/` survived undetected.
+python3 scripts/check-leakage.py

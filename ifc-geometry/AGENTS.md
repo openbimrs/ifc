@@ -17,6 +17,10 @@ compile with the feature off. `tests/kernel_free_build.rs` checks the resolved
 dependency graph, so a stray unconditional `use axiolid_*` fails the gate
 rather than silently relinking the kernel for 2D consumers.
 
+Committed schema-derived artifacts live in `data/`, never `references/` --
+that name is reserved for the unredistributable local schema checkout and is
+rejected by `scripts/check-leakage.py`. See `data/NOTICE.md`.
+
 ## Module ownership
 
 - `resource`, `curve`, `surface`, `solid`, `constraint`: borrowed geometry-resource views

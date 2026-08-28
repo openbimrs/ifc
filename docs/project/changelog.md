@@ -17,6 +17,12 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `scripts/check-leakage.py` runs in `scripts/gate.sh`. It has existed since the
+  documentation work but ran only by hand, which is how a tracked
+  `ifc-geometry/references/` directory survived undetected. 3/3 mutation probes
+  confirm it rejects a `references/` path, XSD bytes under an innocuous
+  filename, and a PDF payload.
+
 - `ifc-geometry` splits into two build sizes. The new default-on `lowering`
   feature carries the six `axiolid-*` dependencies; turning it off leaves
   representation contexts, plan/body selection, profiles, curves, surfaces,
@@ -43,6 +49,17 @@ This page is synchronised from it at build time.
 - Advanced `openbim-step` to `0.3.2` for the recovery API.
 
 ### Changed
+
+- Committed schema-derived artifacts moved from `ifc-geometry/references/` to
+  `ifc-geometry/data/`, matching `ifc-template-catalog/data/`. The name
+  `references/` is reserved for the local, unredistributable schema checkout,
+  so a published crate must never use it. The files themselves are unchanged
+  and were never a licensing problem -- they carry structural facts (slot
+  indices, declaration names) and this repository's own ownership mapping, with
+  no EXPRESS source text -- but the directory name defeated the detector that
+  exists to catch real leaks. `data/NOTICE.md` records the reasoning. The local
+  `references/` tree is now gitignored so the detector sees only the
+  publishable tree.
 
 - **Behavior change.** `select_plan_representation` now requires a drawable
   identifier *and* a plan context, instead of letting the context win outright.

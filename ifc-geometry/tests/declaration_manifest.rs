@@ -4,8 +4,8 @@ use std::collections::BTreeSet;
 
 use ifc_geometry::resource::functions::FUNCTIONS;
 
-const MANIFEST: &str = include_str!("../references/ifc4-add2-tc1-geometry-declarations.tsv");
-const SUPPORT: &str = include_str!("../references/ifc4-add2-tc1-geometry-support.tsv");
+const MANIFEST: &str = include_str!("../data/ifc4-add2-tc1-geometry-declarations.tsv");
+const SUPPORT: &str = include_str!("../data/ifc4-add2-tc1-geometry-support.tsv");
 
 fn rows() -> impl Iterator<Item = [&'static str; 5]> {
     MANIFEST.lines().skip(1).map(|line| {
