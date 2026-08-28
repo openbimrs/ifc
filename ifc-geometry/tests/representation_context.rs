@@ -439,6 +439,131 @@ fn an_explicit_plan_context_wins_over_the_identifier_order() {
     );
 }
 
+/// The ArchiCAD trap: a bounding box authored *inside* a `PLAN_VIEW` context.
+///
+/// Regression for openbimrs/ifc#2. A context-first rule returns the box and
+/// never consults the identifier list; on `AC20-FZK-Haus.ifc` that made 107 of
+/// 253 shape representations resolve to `Box`, so every plan lookup produced a
+/// rectangle instead of an outline. `Box` is not in `PLAN_IDENTIFIERS`, so the
+/// intersected rule must skip it and take the drawable `FootPrint` even though
+/// the box has the stronger context.
+#[test]
+fn a_bounding_box_in_a_plan_context_loses_to_a_drawable_representation() {
+    let (mut model, root, plan) = model_with_contexts();
+
+    // Exactly what ArchiCAD writes: Box/BoundingBox in the PLAN_VIEW sub-context.
+    let box_in_plan = put(
+        &mut model,
+        10,
+        "IFCSHAPEREPRESENTATION",
+        vec![
+            Value::Ref(plan),
+            text("Box"),
+            text("BoundingBox"),
+            Value::List(vec![]),
+        ],
+    );
+    let footprint = put(
+        &mut model,
+        11,
+        "IFCSHAPEREPRESENTATION",
+        vec![
+            Value::Ref(root),
+            text("FootPrint"),
+            text("Curve2D"),
+            Value::List(vec![]),
+        ],
+    );
+    let shape = put(
+        &mut model,
+        12,
+        "IFCPRODUCTDEFINITIONSHAPE",
+        vec![
+            Value::Null,
+            Value::Null,
+            Value::List(vec![Value::Ref(box_in_plan), Value::Ref(footprint)]),
+        ],
+    );
+    let wall = put(
+        &mut model,
+        13,
+        "IFCWALL",
+        vec![
+            text("3vB2YO$MX4xv5uCqZZG05x"),
+            Value::Null,
+            Value::Null,
+            Value::Null,
+            Value::Null,
+            Value::Null,
+            Value::Ref(shape),
+        ],
+    );
+
+    let chosen = select_plan_representation(&model, wall).unwrap();
+    assert_ne!(
+        chosen,
+        Some(box_in_plan),
+        "a bounding box is not drawable geometry, whatever context it sits in"
+    );
+    assert_eq!(
+        chosen,
+        Some(footprint),
+        "the drawable FootPrint is the only real candidate"
+    );
+}
+
+/// A product whose *only* plan-context representation is a box has no plan
+/// geometry at all.
+///
+/// The honest answer is `None`. Returning the box would let a caller draw a
+/// rectangle believing it was an outline -- the failure mode that made 47
+/// products in `AC20-FZK-Haus.ifc` render as boxes.
+#[test]
+fn a_box_only_product_has_no_plan_representation() {
+    let (mut model, _, plan) = model_with_contexts();
+    let box_in_plan = put(
+        &mut model,
+        10,
+        "IFCSHAPEREPRESENTATION",
+        vec![
+            Value::Ref(plan),
+            text("Box"),
+            text("BoundingBox"),
+            Value::List(vec![]),
+        ],
+    );
+    let shape = put(
+        &mut model,
+        11,
+        "IFCPRODUCTDEFINITIONSHAPE",
+        vec![
+            Value::Null,
+            Value::Null,
+            Value::List(vec![Value::Ref(box_in_plan)]),
+        ],
+    );
+    let wall = put(
+        &mut model,
+        12,
+        "IFCWALL",
+        vec![
+            text("3vB2YO$MX4xv5uCqZZG05x"),
+            Value::Null,
+            Value::Null,
+            Value::Null,
+            Value::Null,
+            Value::Null,
+            Value::Ref(shape),
+        ],
+    );
+
+    assert_eq!(
+        select_plan_representation(&model, wall).unwrap(),
+        None,
+        "a box-only product must report no plan geometry, not offer the box"
+    );
+}
+
 /// A product with only a Body has no plan geometry. Deriving one needs
 /// sectioning, which this crate does not do, so None is the honest answer.
 #[test]

@@ -10,6 +10,13 @@ roadmap work; keep progress, blockers, and evidence there.
 Allowed production dependencies: `ifc-model`, schema metadata, and neutral axiolid
 value/representation crates; never `axiolid-kernel`, an algorithm crate, or a backend.
 
+The neutral crates are optional, behind the default-on `lowering` feature. Only
+`lower`, `kernel`, `Transform::to_geom`, and the `IfcBooleanOperator`
+conversion may name them; everything else reads `ifc-model` slots and must
+compile with the feature off. `tests/kernel_free_build.rs` checks the resolved
+dependency graph, so a stray unconditional `use axiolid_*` fails the gate
+rather than silently relinking the kernel for 2D consumers.
+
 ## Module ownership
 
 - `resource`, `curve`, `surface`, `solid`, `constraint`: borrowed geometry-resource views
@@ -37,6 +44,8 @@ resolution, lowering, mutation, and validation before they grow together.
 ## Verification
 
 Run targeted tests/clippy, isolated build, and the package architecture/context
-gates. The active-lowering vocabulary gate parses Rust paths/imports (including
-root aliases, globs, and macro tokens); do not replace it with substring scans.
-Geometry bridges also run declaration/corpus coverage and the full gate.
+gates. Run **both feature columns**: `--no-default-features` must compile,
+pass, and link no `axiolid-*` crate. The active-lowering vocabulary gate parses
+Rust paths/imports (including root aliases, globs, and macro tokens); do not
+replace it with substring scans. Geometry bridges also run declaration/corpus
+coverage and the full gate.

@@ -1,3 +1,5 @@
+#![cfg(feature = "lowering")]
+//! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! Faceted B-rep lowering against the real corpus.
 //!
 //! # Why topology assertions and not a triangle count

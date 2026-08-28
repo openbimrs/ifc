@@ -1,3 +1,5 @@
+#![cfg(feature = "lowering")]
+//! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! Proof that the public API really exposes a view per entity.
 //!
 //! # Why this exists beside `schema_coverage.rs`

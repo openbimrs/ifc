@@ -1,3 +1,5 @@
+#![cfg(feature = "lowering")]
+//! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! Lowering properties the IFC corpus alone cannot prove.
 
 use axiolid_model::{GeometryNode, SolidOperation};

@@ -54,6 +54,17 @@ use ifc::{Model, StepCodec};
 The default facade feature enables STEP only. Add domain and geometry features
 explicitly.
 
+Geometry comes in two sizes, because a drawing consumer should not compile a
+solid modeller:
+
+| Feature | Gets you | Links a kernel |
+| --- | --- | --- |
+| `geometry-select` | representation contexts, plan/body selection, placements, units | no |
+| `geometry` | the above plus lowering into the neutral geometry DAG | yes |
+
+Using `ifc-geometry` directly, `default-features = false` is the same split.
+Both are checked against the resolved dependency graph, not the manifest.
+
 ## Develop
 
 Requires Rust 1.88 or newer.
@@ -77,6 +88,8 @@ self-contained.
 - domain crates expose borrowed projections rather than duplicate object graphs.
 - only `ifc-geometry`, `ifc-georef`, and `ifc-alignment` may depend on neutral
   Axiolid representation crates; no IFC crate selects a CPU/GPU backend.
+- `ifc-geometry` keeps those crates optional: representation selection is slot
+  reading over `ifc-model` and links no geometry code at all.
 - `openbim-ifc` is the optional-feature facade.
 
 See `HERMES.md`, `AGENTS.md`, and the nested context files for executable

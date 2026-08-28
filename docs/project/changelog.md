@@ -17,6 +17,20 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `ifc-geometry` splits into two build sizes. The new default-on `lowering`
+  feature carries the six `axiolid-*` dependencies; turning it off leaves
+  representation contexts, plan/body selection, profiles, curves, surfaces,
+  solids, units and placements, which read `ifc-model` slots and link no
+  geometry code. Measured on the crate's own dependency graph: 26 crates with
+  lowering, 17 without -- all eight `axiolid-*` crates and `glam` drop out.
+  The facade exposes the same split as `geometry-select` (selection only)
+  versus `geometry` (selection plus lowering). `ifc-geometry/tests/
+  kernel_free_build.rs` and two new cases in `openbim-ifc/tests/thin_build.rs`
+  assert it against the resolved dependency graph, so a stray unconditional
+  `use axiolid_*` fails the gate instead of silently relinking the kernel.
+  Existing consumers are unaffected: `lowering` and `geometry` stay on by
+  default. Closes #2.
+
 - Opt-in recovery from damaged exports. `StepCodec::lenient()` returns a
   `StepReader` that skips unreadable data records instead of failing the file,
   and `Model::diagnostics()` reports each dropped range, so a viewer can show
@@ -29,6 +43,22 @@ This page is synchronised from it at build time.
 - Advanced `openbim-step` to `0.3.2` for the recovery API.
 
 ### Changed
+
+- **Behavior change.** `select_plan_representation` now requires a drawable
+  identifier *and* a plan context, instead of letting the context win outright.
+  ArchiCAD authors `Box`/`BoundingBox` shape representations inside a
+  `PLAN_VIEW` sub-context, so the old context-first rule returned a bounding
+  box and never consulted `PLAN_IDENTIFIERS`. On `AC20-FZK-Haus.ifc` that was
+  107 of 253 shape representations, and every plan lookup came back a box.
+  Authorial intent now selects *between* drawable candidates rather than making
+  a box drawable.
+
+  This returns fewer answers, not just better ones: on that file, products
+  resolving a plan representation drop from 121 to 34 (14 `Annotation`, 13
+  `Axis`, 7 `FootPrint`, and no non-drawable picks). The 87 products that lose
+  an answer genuinely have only a bounding box, and `None` is the documented
+  contract for "no drawable plan geometry" -- but a consumer that was drawing
+  those boxes will now draw nothing for them.
 
 - `ifc-geometry` representation contexts: `RepresentationContext` reads
   `IfcGeometricRepresentationContext` and `IfcGeometricRepresentationSubContext`

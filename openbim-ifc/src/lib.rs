@@ -135,15 +135,19 @@ pub use ifc_spatial as spatial;
 #[cfg(feature = "spatial")]
 pub use ifc_spatial::{SpatialKind, SpatialTree};
 
-/// Representation lowering to geometry.
-#[cfg(feature = "geometry")]
+/// Representation selection and, with `geometry`, lowering to the DAG.
+///
+/// Available under `geometry-select` too: the module is the same, but a
+/// select-only build compiles no geometry kernel and therefore exposes no
+/// `lower` submodule.
+#[cfg(feature = "geometry-select")]
 pub use ifc_geometry as geometry;
 
 /// Representation contexts and the selectors that choose 3D or 2D geometry.
 ///
 /// Re-exported at the root because choosing what a drawing draws is a
 /// first-class question, not an implementation detail of lowering.
-#[cfg(feature = "geometry")]
+#[cfg(feature = "geometry-select")]
 pub use ifc_geometry::{
     all_contexts, context_of, plan_contexts, select_plan_representation,
     select_shape_representation, RepresentationContext, TargetView, PLAN_IDENTIFIERS,

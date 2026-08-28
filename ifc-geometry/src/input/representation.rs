@@ -166,13 +166,25 @@ pub const PLAN_IDENTIFIERS: &[&str] = &["Plan", "Annotation", "FootPrint", "Axis
 ///
 /// Preference is, in order:
 ///
-/// 1. a representation in a `PLAN_VIEW` sub-context, since an author who set
-///    the target view has stated their intent explicitly;
-/// 2. otherwise the best [`PLAN_IDENTIFIERS`] match.
+/// 1. a [`PLAN_IDENTIFIERS`] match **inside** a `PLAN_VIEW` sub-context --
+///    drawable geometry the author explicitly targeted at a plan;
+/// 2. otherwise the best [`PLAN_IDENTIFIERS`] match in any context.
 ///
-/// Returns `None` when the product has only solid geometry. That is a real
-/// answer, not a failure: deriving a plan from a solid needs sectioning, which
-/// this crate does not do.
+/// The two rules are intersected, not ordered. Treating the context as
+/// sufficient on its own looks reasonable -- an author who sets
+/// `TargetView = .PLAN_VIEW.` has stated intent -- but ArchiCAD authors
+/// `Box`/`BoundingBox` shape representations *inside* a `PLAN_VIEW`
+/// sub-context. A context-first rule returns those boxes and never reaches
+/// the identifier list: on `AC20-FZK-Haus.ifc` that was 107 of 253 shape
+/// representations, and every plan lookup came back a box. Authorial intent
+/// selects *between* drawable candidates; it does not make a bounding box
+/// drawable.
+///
+/// Returns `None` when the product has only solid or bounding-box geometry.
+/// That is a real answer, not a failure: deriving a plan from a solid needs
+/// sectioning, which this crate does not do. A caller that wants an outline
+/// anyway should say so explicitly rather than be handed a box that claims
+/// to be a plan.
 pub fn select_plan_representation(
     model: &Model,
     product: EntityId,
@@ -190,19 +202,29 @@ pub fn select_plan_representation(
     })?;
     let candidates = ProductShape::new(shape_id, shape_entity).representations()?;
 
-    // Explicit authorial intent wins over any identifier heuristic.
-    for &candidate in &candidates {
-        let Some(entity) = model.get(candidate) else {
-            continue;
-        };
-        let Some(context) = super::context::context_of(model, candidate) else {
-            continue;
-        };
-        if context.is_plan_view() {
-            let _ = entity;
-            return Ok(Some(candidate));
+    // 1. Drawable AND explicitly targeted at a plan.
+    for wanted in PLAN_IDENTIFIERS {
+        for &candidate in &candidates {
+            let Some(entity) = model.get(candidate) else {
+                continue;
+            };
+            if Representation::new(candidate, entity)
+                .identifier()
+                .as_deref()
+                != Some(*wanted)
+            {
+                continue;
+            }
+            let Some(context) = super::context::context_of(model, candidate) else {
+                continue;
+            };
+            if context.is_plan_view() {
+                return Ok(Some(candidate));
+            }
         }
     }
+
+    // 2. Drawable in any context.
 
     for wanted in PLAN_IDENTIFIERS {
         for &candidate in &candidates {

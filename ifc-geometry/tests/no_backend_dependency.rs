@@ -1,3 +1,5 @@
+#![cfg(feature = "lowering")]
+//! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! Fast local smoke gates for the IFC/geometry swap boundary.
 //!
 //! IFC adapters may depend on format-neutral representation crates,

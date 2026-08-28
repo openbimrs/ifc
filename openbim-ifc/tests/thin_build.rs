@@ -148,6 +148,56 @@ fn thin_build_compiles_no_geometry_kernel() {
     }
 }
 
+/// Selecting a 2D representation must not link the geometry kernel.
+///
+/// Regression for openbimrs/ifc#2. A drawing consumer needs contexts, plan
+/// selection, placements and units -- all slot reads over `ifc-model`. Before
+/// this split, asking for any of it linked all eight `axiolid-*` crates plus
+/// `glam`, because `ifc-geometry` was one undivided crate.
+#[test]
+fn selecting_a_plan_representation_links_no_geometry_kernel() {
+    let tree = dependency_tree("step,geometry-select");
+
+    assert!(
+        links(&tree, "ifc-geometry"),
+        "geometry-select must still link the selectors"
+    );
+    for axiolid in [
+        "axiolid-core",
+        "axiolid-curve",
+        "axiolid-mesh",
+        "axiolid-model",
+        "axiolid-primitive",
+        "axiolid-profile",
+        "axiolid-surface",
+        "axiolid-topology",
+        "glam",
+    ] {
+        assert!(
+            !links(&tree, axiolid),
+            "geometry-select links {axiolid}; a 2D consumer should compile no \
+             kernel. Check that `ifc-geometry` is taken with \
+             `default-features = false`.\n{tree}"
+        );
+    }
+}
+
+/// The full `geometry` feature must still deliver lowering.
+///
+/// The inverse of the test above: a feature table that turned the kernel off
+/// everywhere would pass that one while breaking every 3D consumer.
+#[test]
+fn the_geometry_feature_still_links_the_kernel() {
+    let tree = dependency_tree("step,geometry");
+
+    for required in ["axiolid-core", "axiolid-model"] {
+        assert!(
+            links(&tree, required),
+            "the `geometry` feature lost {required}; lowering cannot work.\n{tree}"
+        );
+    }
+}
+
 /// The model must never depend on a codec: that inversion would make ifcXML a
 /// second parallel stack and break cross-format conversion.
 #[test]

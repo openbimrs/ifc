@@ -19,6 +19,16 @@ fn operator_parses_every_express_token_case_insensitively() {
     }
     assert_eq!(IfcBooleanOperator::parse("SUBTRACT"), None);
     assert_eq!(IfcBooleanOperator::Difference.to_string(), ".DIFFERENCE.");
+}
+
+/// The IFC enumeration converts losslessly to the neutral operator.
+///
+/// Separated from token parsing above because parsing is an IFC-side concern
+/// that a kernel-free build still performs; only the conversion needs the
+/// neutral vocabulary.
+#[cfg(feature = "lowering")]
+#[test]
+fn the_ifc_operator_converts_losslessly_to_the_neutral_operator() {
     let neutral: axiolid_core::BooleanOperator = IfcBooleanOperator::Difference.into();
     assert_eq!(neutral, axiolid_core::BooleanOperator::Difference);
 }

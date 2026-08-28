@@ -1,3 +1,5 @@
+#![cfg(feature = "lowering")]
+//! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! Lowering exercised against the real fixture corpus.
 //!
 //! # Why this is the test that matters

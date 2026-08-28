@@ -16,6 +16,7 @@ use crate::slots::Slots;
 pub mod slot {
     /// IfcRoot.GlobalId .. IfcObject.ObjectType occupy slots 0..4.
     /// IfcProduct adds its own two after them.
+    #[cfg_attr(not(feature = "lowering"), allow(dead_code))]
     pub const OBJECT_PLACEMENT: usize = 5;
     /// The IfcProductRepresentation for this product.
     pub const REPRESENTATION: usize = 6;
@@ -36,6 +37,11 @@ impl<'m> Product<'m> {
     }
 
     /// The placement chain root, absent for model-space products.
+    ///
+    /// Only `lower` consumes this today. `input` is private, so a kernel-free
+    /// build sees no caller; that is a visibility artifact, not a boundary --
+    /// reading slot 5 is a plain IfcProduct slot read either way.
+    #[cfg_attr(not(feature = "lowering"), allow(dead_code))]
     pub fn object_placement(&self) -> Option<EntityId> {
         self.slots.opt_ref(slot::OBJECT_PLACEMENT)
     }

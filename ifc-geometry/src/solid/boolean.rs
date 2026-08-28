@@ -91,6 +91,7 @@ impl core::fmt::Display for IfcBooleanOperator {
     }
 }
 
+#[cfg(feature = "lowering")]
 impl From<IfcBooleanOperator> for axiolid_core::BooleanOperator {
     fn from(value: IfcBooleanOperator) -> Self {
         match value {

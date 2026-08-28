@@ -42,7 +42,7 @@ ifc-style = { workspace = true, optional = true }
 ifc-validate = { workspace = true, optional = true }
 ifc-author = { workspace = true, optional = true }
 ifc-spatial = { workspace = true, optional = true }
-ifc-geometry = { workspace = true, optional = true }
+ifc-geometry = { workspace = true, optional = true, default-features = false }
 ifc-georef = { workspace = true, optional = true }
 ifc-alignment = { workspace = true, optional = true }
 
@@ -76,7 +76,13 @@ validate = ["dep:ifc-validate"]
 author = ["dep:ifc-author", "schema"]
 # Containment traversal needs only the record graph, so it stays thin.
 spatial = ["dep:ifc-spatial"]
-geometry = ["dep:ifc-geometry"]
+# Geometry comes in two sizes. `geometry` is the full bridge including
+# lowering into the neutral DAG -- unchanged for existing consumers.
+# `geometry-select` is representation selection only: contexts, plan/body
+# choice, placements and units, linking no geometry kernel. A 2D drawing
+# consumer wants the latter and should not pay for a CSG stack.
+geometry = ["geometry-select", "ifc-geometry?/lowering"]
+geometry-select = ["dep:ifc-geometry"]
 georef = ["dep:ifc-georef"]
 alignment = ["dep:ifc-alignment"]
 

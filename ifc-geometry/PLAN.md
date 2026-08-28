@@ -98,11 +98,42 @@ parallel placeholders.
     isolated build, and crate clippy.
   - Decision: `GEOM-PLACE` was not required. Mapped items compose their own
     frames; product-level placement composition remains open under that task.
+- [x] `GEOM-SPLIT` - make the neutral geometry crates optional for 2D consumers
+  - Evidence: `tests/kernel_free_build.rs` plus `openbim-ifc/tests/thin_build.rs`
+    check the resolved dependency graph in both feature columns; 4/4 mutation
+    probes caught. See the completion log for measured crate counts.
+- [x] `GEOM-PLAN-SELECT` - intersect plan context and drawable identifier
+  - Evidence: `tests/representation_context.rs` (18 passing) including two
+    ArchiCAD bounding-box regressions; measured against a real export.
 - [ ] `GEOM-CENSUS` - keep declaration and real-corpus lowering coverage executable
   - Contract: record one implementation owner per unique declaration separately from many-to-many IFC resource memberships; do not double-count `IfcSameAxis2Placement`, `IfcSameCartesianPoint`, `IfcSameDirection`, or `IfcSameValue`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 
 ## Completion log
+
+`GEOM-SPLIT` - `cargo test -p ifc-geometry --test kernel_free_build`,
+`cargo test -p openbim-ifc --test thin_build` (8 passing), both feature columns
+green; 4/4 mutation probes caught - the neutral crates are optional behind the
+default-on `lowering` feature. Measured 26 crates with lowering, 17 without;
+all eight `axiolid-*` crates and `glam` drop out. Only `lower`, `kernel`,
+`Transform::to_geom` and the `IfcBooleanOperator` conversion may name them.
+Decision: a feature, not a crate split. `lower` is already a leaf module -- no
+other module references it -- so the separation holds structurally and a gate
+costs one test, where a second crate would cost a published name plus a
+manifest edit for every consumer. Revisit if the kernel-free half grows its own
+heavy dependencies or needs a separate release cadence.
+
+`GEOM-PLAN-SELECT` - `cargo test -p ifc-geometry --test representation_context`
+(18 passing), probe on `AC20-FZK-Haus.ifc`; 1/1 mutation probe caught -
+`select_plan_representation` intersects context and identifier instead of
+ordering them. Evidence: 107 of 253 shape representations in that file are
+`Box`/`BoundingBox` authored inside a `PLAN_VIEW` sub-context, so the
+context-first rule returned boxes for every one of 121 resolving products.
+After the fix, 34 products resolve (14 `Annotation`, 13 `Axis`, 7 `FootPrint`)
+and none are non-drawable. Decision: the drop from 121 to 34 is correct, not a
+regression -- those products have only a bounding box, and `None` is the
+documented answer for "no drawable plan geometry".
+
 
 `GEOM-CTX` - `cargo test -p ifc-geometry` (23 context tests); 14/14 mutation
 probes caught - representation contexts and the 2D selector. Slot constants

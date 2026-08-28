@@ -1,3 +1,5 @@
+#![cfg(feature = "lowering")]
+//! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! Mapped-item instancing lowered against real fixtures.
 //!
 //! # Why instancing must not be flattened

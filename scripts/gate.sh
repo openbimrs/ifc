@@ -23,8 +23,16 @@ cargo test -p ifc-model --test module_reachability
 cargo test -p ifc-model --test no_monolithic_files
 cargo test -p ifc-geometry --test declaration_manifest
 cargo test -p ifc-geometry --test no_backend_dependency
+cargo test -p ifc-geometry --test kernel_free_build
 
-for features in "--no-default-features" "--features step" "--features ifcxml" "--all-features"; do
+# The kernel-free column. `--all-features` above cannot see a boundary that
+# only exists when a feature is OFF, so a 2D consumer's build is verified
+# explicitly: it must compile, pass its tests, and link no geometry crate.
+cargo build -p ifc-geometry --no-default-features
+cargo test -p ifc-geometry --no-default-features
+cargo clippy -p ifc-geometry --no-default-features --all-targets -- -D warnings
+
+for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,geometry-select" "--all-features"; do
     # shellcheck disable=SC2086
     cargo build -p openbim-ifc $features
     # shellcheck disable=SC2086

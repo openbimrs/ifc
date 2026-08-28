@@ -46,7 +46,9 @@
 pub mod constraint;
 pub mod curve;
 pub mod error;
+#[cfg(feature = "lowering")]
 pub mod kernel;
+#[cfg(feature = "lowering")]
 pub mod lower;
 pub mod resource;
 pub mod rules;
@@ -57,11 +59,18 @@ pub mod surface;
 pub mod transform;
 pub mod units;
 
+// Neutral geometry vocabulary, re-exported so a lowering consumer needs only
+// this crate in scope. Gated with the lowering it exists to serve.
+#[cfg(feature = "lowering")]
 pub use axiolid_model::BooleanOperator as GeometryBooleanOperator;
+#[cfg(feature = "lowering")]
 pub use axiolid_model::{GeometryGraph, GeometryNode, NodeId, SolidOperation};
+#[cfg(feature = "lowering")]
 pub use axiolid_primitive::Primitive as AnalyticPrimitive;
+#[cfg(feature = "lowering")]
 pub use axiolid_profile::Profile as ExactProfile;
 pub use error::{GeometryError, GeometryResult};
+#[cfg(feature = "lowering")]
 pub use kernel::{BooleanOp, CsgShape, Primitive, Profile};
 pub use slots::Slots;
 pub use transform::Transform;
