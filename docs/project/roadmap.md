@@ -50,9 +50,11 @@ sub-context: identifier, type, parent, target scale and a typed `TargetView`
 flattened). `plan_contexts` finds the sub-contexts a drawing is authored into.
 
 `select_plan_representation` is the inverse of `select_shape_representation`:
-it prefers an explicit `PLAN_VIEW` context, then `Plan`/`Annotation`/
-`FootPrint`/`Axis`, and returns `None` for a solid-only product rather than
-handing back a body to draw flat.
+it prefers a drawable identifier inside an explicit `PLAN_VIEW` context, then
+any `Plan`/`Annotation`/`FootPrint`/`Axis` match, and returns `None` for a
+solid-only or box-only product rather than handing back something to draw flat.
+Context and identifier are intersected: a bounding box in a plan context is
+still not drawable geometry.
 
 The trap this closes is DERIVED inheritance. A sub-context redeclares six
 inherited attributes and real files write them as `*`, meaning "read this from

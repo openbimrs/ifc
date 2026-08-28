@@ -1,5 +1,3 @@
-#![cfg(feature = "lowering")]
-//! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! Executable audit of all IFC4 ADD2 TC1 geometry-resource declarations.
 
 use std::collections::BTreeSet;

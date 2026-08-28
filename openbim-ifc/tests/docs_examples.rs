@@ -210,7 +210,7 @@ fn documented_spatial_example_groups_elements_by_storey() {
 /// The page claims a sub-context inherits precision through `*`, that
 /// `plan_contexts` finds only plan views, and that the two selectors disagree.
 /// All three run here.
-#[cfg(feature = "geometry")]
+#[cfg(feature = "geometry-select")]
 #[test]
 fn documented_context_example_inherits_and_selects() {
     use ifc::{plan_contexts, select_plan_representation, select_shape_representation};

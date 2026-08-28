@@ -111,16 +111,29 @@ refuses `Axis`/`FootPrint`. `select_plan_representation` is its inverse and now
 ships:
 
 ```rust
-use ifc::{select_plan_representation, plan_contexts};   // feature = "geometry"
+use ifc::{select_plan_representation, plan_contexts};   // feature = "geometry-select"
 
 let drawable = select_plan_representation(&model, wall)?;
 ```
 
-It prefers an explicit `PLAN_VIEW` sub-context over any identifier heuristic —
-if the author stated the target view, that outranks guessing — then falls back
-to `Plan`, `Annotation`, `FootPrint`, `Axis` in that order.
+It prefers a drawable identifier authored into an explicit `PLAN_VIEW`
+sub-context, then falls back to `Plan`, `Annotation`, `FootPrint`, `Axis` in
+that order. The two conditions are intersected: exporters write
+`Box`/`BoundingBox` representations into plan contexts, and a bounding box is
+not a drawing whatever context it sits in.
 
-`None` means the product carries only solid geometry. That is a real answer:
+Selection is the light half of the crate. `geometry-select` gives you
+contexts, plan/body choice, placements and units without compiling a solid
+modeller; `geometry` adds lowering into the neutral DAG:
+
+```toml
+ifc = { version = "0.1", features = ["step", "geometry-select"] }
+```
+
+Measured on this repository's own drawing app, that is 107 crates instead of
+116, and zero `axiolid-*` kernel crates instead of nine.
+
+`None` means the product carries only solid or bounding-box geometry. That is a real answer:
 turning a solid into a plan needs sectioning, which is still §3 below.
 
 Plan contexts are readable too, including the `*` inheritance real exporters

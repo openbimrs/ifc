@@ -38,10 +38,19 @@
 //! **Neutral DAG output.** Implemented lowerers resolve IFC units, placements,
 //! profiles, and representation relationships into `axiolid-model` nodes. Active
 //! lowering owns no duplicate geometry types and never selects a CPU/GPU
-//! provider. The legacy [`kernel`] namespace is retained only as a source-
-//! compatibility shell for the pre-DAG public API. Neutral names that would
-//! otherwise collide are exported explicitly as [`AnalyticPrimitive`],
-//! [`ExactProfile`], and [`GeometryBooleanOperator`].
+//! provider.
+#![cfg_attr(
+    feature = "lowering",
+    doc = "The legacy [`kernel`] namespace is retained only as a source-
+compatibility shell for the pre-DAG public API. Neutral names that would
+otherwise collide are exported explicitly as [`AnalyticPrimitive`],
+[`ExactProfile`], and [`GeometryBooleanOperator`]."
+)]
+//!
+//! **Feature `lowering`** (default on) carries the neutral geometry crates.
+//! Without it this crate is representation selection only -- contexts,
+//! plan/body choice, profiles, curves, surfaces, solids, units and
+//! placements -- and links no geometry code at all.
 
 pub mod constraint;
 pub mod curve;

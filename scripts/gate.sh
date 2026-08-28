@@ -31,6 +31,9 @@ cargo test -p ifc-geometry --test kernel_free_build
 cargo build -p ifc-geometry --no-default-features
 cargo test -p ifc-geometry --no-default-features
 cargo clippy -p ifc-geometry --no-default-features --all-targets -- -D warnings
+# Intra-doc links to feature-gated items resolve under `--all-features` and
+# break here, so rustdoc gets its own kernel-free run.
+RUSTDOCFLAGS="-D warnings" cargo doc -p ifc-geometry --no-default-features --no-deps
 
 for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,geometry-select" "--all-features"; do
     # shellcheck disable=SC2086

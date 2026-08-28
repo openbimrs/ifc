@@ -45,9 +45,12 @@ mod slot {
 
 /// `IfcBooleanOperator`: the three set operations IFC defines.
 ///
-/// The IFC-file enumeration is distinct from the neutral
-/// [`axiolid_core::BooleanOperator`], with an explicit lossless conversion at the
-/// adapter boundary.
+/// The IFC-file enumeration is distinct from the neutral operator, with an
+/// explicit lossless conversion at the adapter boundary under `lowering`.
+///
+/// The link is feature-gated because the target crate is optional; naming it
+/// unconditionally breaks `cargo doc --no-default-features`.
+#[cfg_attr(feature = "lowering", doc = "See [`axiolid_core::BooleanOperator`].")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IfcBooleanOperator {
     /// `.UNION.` -- everything in either operand.

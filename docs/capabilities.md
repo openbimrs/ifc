@@ -236,11 +236,17 @@ silently replaces a solid.
 
 `select_plan_representation` is its inverse. It prefers, in order:
 
-1. any representation authored into a `PLAN_VIEW` sub-context — an author who
-   set the target view has stated intent, and that outranks any heuristic;
-2. otherwise `PLAN_IDENTIFIERS`: `Plan`, `Annotation`, `FootPrint`, `Axis`.
+1. a `PLAN_IDENTIFIERS` match **inside** a `PLAN_VIEW` sub-context — drawable
+   geometry the author explicitly targeted at a plan;
+2. otherwise the best `PLAN_IDENTIFIERS` match in any context: `Plan`,
+   `Annotation`, `FootPrint`, `Axis`.
 
-It returns `None` for a solid-only product. That is the honest answer, not a
+The two rules are intersected, not ordered. Authorial intent selects *between*
+drawable candidates; it does not make a bounding box drawable. ArchiCAD writes
+`Box`/`BoundingBox` representations inside `PLAN_VIEW` sub-contexts, so a
+context-first rule returns those boxes and never reaches the identifier list.
+
+It returns `None` for a solid-only or box-only product. That is the honest answer, not a
 failure: deriving a plan from a solid requires sectioning, which this library
 does not do — see [R9b/R10 on the roadmap](/project/roadmap).
 
