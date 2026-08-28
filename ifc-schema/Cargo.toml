@@ -12,3 +12,19 @@ description = "IFC schema as data: entity table, supertype chain, attribute name
 [dependencies]
 ahash.workspace = true
 openbim-step.workspace = true
+bincode = { version = "2.0.1", optional = true }
+thiserror = { workspace = true, optional = true }
+
+[features]
+default = ["ifc4"]
+# Ships a compiled IFC4 ADD2 TC1 schema artifact and Schema::ifc4().
+ifc4 = ["dep:bincode", "dep:thiserror"]
+# Compiles references/ifc-spec/**/*.exp into the committed artifact. Not
+# part of default: pulls in a normative ISO/buildingSMART source file that
+# must never ship inside the published crate.
+generation = ["ifc4"]
+
+[[bin]]
+name = "ifc-schema-generate"
+path = "tools/generate.rs"
+required-features = ["generation"]

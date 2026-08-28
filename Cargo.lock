@@ -326,7 +326,9 @@ name = "ifc-schema"
 version = "0.1.0"
 dependencies = [
  "ahash",
+ "bincode",
  "openbim-step",
+ "thiserror",
 ]
 
 [[package]]

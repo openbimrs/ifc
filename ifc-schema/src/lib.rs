@@ -45,7 +45,11 @@
 //! assert_eq!(schema.attribute_names("IfcWall"), ["GlobalId", "Name"]);
 //! ```
 
+#[cfg(feature = "ifc4")]
+mod artifact;
 pub mod attribute;
+#[cfg(feature = "ifc4")]
+mod bundled;
 pub mod entity;
 pub mod express;
 mod inheritance;
@@ -53,7 +57,13 @@ pub mod registry;
 pub mod types;
 pub mod version;
 
+#[cfg(feature = "ifc4")]
+pub use artifact::decode_schema as artifact_decode_schema;
+#[cfg(feature = "generation")]
+pub use artifact::encode_schema as artifact_encode_schema;
 pub use attribute::Attribute;
+#[cfg(feature = "ifc4")]
+pub use bundled::ifc4;
 pub use entity::EntityDef;
 pub use registry::Schema;
 pub use types::{TypeDef, TypeKind};

@@ -16,12 +16,18 @@ happens here and in consumers.
 - `express.rs`: thin adapter/re-export over `openbim_step::express`
 - `model.rs`: declarations, inheritance, attributes, types
 - `error.rs`: syntax/source diagnostics
+- `artifact.rs` (ifc4 feature): versioned binary codec for a compiled schema
+- `bundled.rs` (ifc4 feature): Schema::ifc4(), cached, decoded from data/
 
 ## Invariants
 
 - Official EXPRESS files are input evidence, never runtime/build dependencies.
 - Preserve source names and version identity; do not guess cross-version equivalence.
 - Schema queries are deterministic and do not interpret instance values.
+- `data/*.bin` holds compiled structural facts only (entity/attribute/type
+  names), never normative EXPRESS source text, comments, or prose. The
+  `generation` feature that produces it requires a user-supplied `.exp` file
+  and never vendors that file into the crate or its published archive.
 
 Keep `lib.rs` delegating, keep child modules crate-private until they own a real
 public contract, and split view/data, traversal, mutation, and validation before

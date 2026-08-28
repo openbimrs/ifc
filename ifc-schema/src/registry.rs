@@ -17,7 +17,7 @@ use crate::SchemaVersion;
 use std::collections::HashMap;
 
 /// A queryable schema for one IFC version.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Schema {
     version: Option<SchemaVersion>,
     name: String,

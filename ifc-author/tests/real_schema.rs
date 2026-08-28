@@ -10,11 +10,24 @@ use ifc_model::{Codec, Model, Value};
 use ifc_schema::Schema;
 use std::path::PathBuf;
 
+/// Prefers the bundled schema (`ifc-schema`'s `ifc4` feature, on by
+/// default) so this test exercises the same path production code uses. If
+/// the workspace has the reference material vendored, cross-check that the
+/// bundled artifact matches the raw EXPRESS parse -- catches artifact drift.
 fn ifc4() -> Option<Schema> {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    let bundled = ifc_schema::ifc4();
+    let raw_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../../references/ifc-spec/ifc4-add2-tc1/IFC4.exp");
-    let bytes = std::fs::read(path).ok()?;
-    Some(Schema::from_express_bytes(&bytes))
+    if let Ok(bytes) = std::fs::read(&raw_path) {
+        let raw = Schema::from_express_bytes(&bytes);
+        assert_eq!(
+            bundled.entity_count(),
+            raw.entity_count(),
+            "bundled ifc-schema artifact is stale relative to references/ifc-spec"
+        );
+        assert_eq!(bundled.type_count(), raw.type_count());
+    }
+    Some(bundled.clone())
 }
 
 const GUID: &str = "3vB2YO$MX4xv5uCqZZG05x";

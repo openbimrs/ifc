@@ -31,8 +31,15 @@ marker with its first real contract and tests; do not add parallel placeholders.
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
 - [ ] `SCHEMA-VERS` - make IFC schema/version profiles explicit
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
-- [ ] `SCHEMA-GEN` - generate committed compact manifests for runtime consumers
-  - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
+- [x] `SCHEMA-GEN` - generate committed compact manifests for runtime consumers
+  - Evidence: `Schema::ifc4()` bundles a compiled 120178-byte artifact
+    (776 entities, 397 types) built via `cargo run -p ifc-schema --features
+    generation --bin ifc-schema-generate -- <path to IFC4.exp>`; 15 crate
+    tests pass under `--features generation` (default `cargo test -p
+    ifc-schema` runs 13, excluding the generation-only round-trip cases);
+    `ifc-author/tests/real_schema.rs` now sources the bundled schema by
+    default and cross-checks it against a raw `references/ifc-spec` parse
+    when present, closing openbimrs/ifc#4.
 - [ ] `SCHEMA-PERF` - benchmark official IFC2x3/4/4x3 parses before optimizing
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
 - [x] `SCHEMA-EXTRACT` - delegate generic EXPRESS parsing/model types without a fork

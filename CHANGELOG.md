@@ -9,6 +9,17 @@ and this project follows Semantic Versioning.
 
 ### Added
 
+- `ifc-schema::ifc4()`: the IFC4 ADD2 TC1 schema (776 entities, 397 types)
+  bundled as a compiled binary artifact and cached in a `OnceLock`, on by
+  default via the new `ifc4` feature. Closes #4: consumers no longer source
+  `IFC4.exp` themselves, hit the Latin-1 decode trap (`Schema::from_express_bytes`
+  already fixed the decode half), or reparse 372 KB of EXPRESS on every process
+  start -- the bundled artifact is a compiled 120 KB structural table with no
+  normative source text or prose in it. `ifc-schema-generate` (the `generation`
+  feature) regenerates the committed artifact from a user-supplied `IFC4.exp`;
+  the normative file itself is never vendored into the crate or its published
+  archive. `Schema::from_express`/`from_express_bytes` remain the path for
+  schemas this crate does not bundle (IFC2x3, IFC4x3, custom).
 - `product_world_transform` and `products_world_transforms` are re-exported at
   the `ifc-geometry` crate root and from the facade under `geometry-select`.
   Resolving an `IfcLocalPlacement` chain is the most-reused operation in any
