@@ -91,9 +91,12 @@ parallel placeholders.
     and `IFCFACETEDBREP` left the unsupported set entirely. Cube fixture checks
     V - E + F = 2; the 12-solid shared-point fixture lowers all 2028 faces.
     9/9 mutation probes killed.
-- [ ] `GEOM-TESS` - lower tessellated and polygonal face sets without forced triangulation
-  - Requires: `GEOM-SESSION`, `GEOM-INPUT`.
-  - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+- [x] `GEOM-TESS` - lower tessellated and polygonal face sets without forced triangulation
+  - Evidence: 7 unit + 3 fixture tests; corpus census rose 64 -> 67 lowered and
+    `IFCTRIANGULATEDFACESET` left the unsupported set; both feature columns
+    build and pass clippy; 6/6 mutation probes caught.
+  - Decision: `GEOM-INPUT` was not required. The tessellated views already
+    existed under `solid::tessellated` and depend only on `error` and `slots`.
 - [ ] `GEOM-SOLID` - complete booleans, halfspaces, CSG, and swept-disk families
   - Requires: `GEOM-SESSION`, `GEOM-PROFILE`, `GEOM-SURFACE`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.

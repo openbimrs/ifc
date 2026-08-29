@@ -259,6 +259,7 @@ version = "0.1.0"
 dependencies = [
  "axiolid-core",
  "axiolid-curve",
+ "axiolid-mesh",
  "axiolid-model",
  "axiolid-primitive",
  "axiolid-profile",

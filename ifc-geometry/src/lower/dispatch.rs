@@ -17,6 +17,7 @@ use crate::lower::brep::lower_faceted_brep_node;
 use crate::lower::mapped::lower_mapped_item_node;
 use crate::lower::session::LoweringSession;
 use crate::lower::swept::{lower_extruded_area_solid_node, lower_revolved_area_solid_node};
+use crate::lower::tessellated::{lower_polygonal_face_set_node, lower_triangulated_face_set_node};
 use crate::transform::Transform;
 
 /// Families this crate lowers today, paired with what is still missing.
@@ -31,6 +32,8 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCMAPPEDITEM",
     "IFCFACETEDBREP",
     "IFCFACETEDBREPWITHVOIDS",
+    "IFCTRIANGULATEDFACESET",
+    "IFCPOLYGONALFACESET",
 ];
 
 /// Recognized representation items that are not lowered yet.
@@ -40,8 +43,6 @@ pub const IMPLEMENTED: &[&str] = &[
 /// stub is declared; implementing it means moving the name to [`IMPLEMENTED`].
 pub const PLANNED: &[(&str, &str)] = &[
     ("IFCADVANCEDBREP", "advanced B-rep topology lowering"),
-    ("IFCTRIANGULATEDFACESET", "tessellated face-set lowering"),
-    ("IFCPOLYGONALFACESET", "polygonal face-set lowering"),
     ("IFCSWEPTDISKSOLID", "swept-disk solids"),
     ("IFCSURFACECURVESWEPTAREASOLID", "surface-curve sweeps"),
     ("IFCSECTIONEDSPINE", "spine interpolation"),
@@ -67,6 +68,8 @@ pub fn lower_representation_item(
         }
         "IFCMAPPEDITEM" => lower_mapped_item_node(session, id, frame),
         "IFCFACETEDBREP" | "IFCFACETEDBREPWITHVOIDS" => lower_faceted_brep_node(session, id, frame),
+        "IFCTRIANGULATEDFACESET" => lower_triangulated_face_set_node(session, id, frame),
+        "IFCPOLYGONALFACESET" => lower_polygonal_face_set_node(session, id, frame),
         other => Err(session.unsupported(id, other, detail_for(other))),
     }
 }

@@ -17,6 +17,22 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `ifc-geometry` lowers `IfcTriangulatedFaceSet` and `IfcPolygonalFaceSet` into
+  `GeometryNode::TriMesh` and `GeometryNode::PolygonMesh`. Corpus census rose
+  64 -> 67 lowered items and `IFCTRIANGULATEDFACESET` left the unsupported set.
+  Authored n-gons and their voids survive verbatim: triangulating at read time
+  would pick a fill rule and a tolerance on the kernel's behalf, and a face
+  with its holes flattened into the outer loop tessellates into a solid slab,
+  so a window silently becomes a wall. Face sets lower to meshes rather than
+  `BRep` because a face set carries no adjacency -- recovering topology means
+  inferring shared edges by comparing floats, which invents information the
+  file never had. Two indexing traps are covered by tests because both produce
+  meshes that still render: `CoordIndex` is 1-based in the file and 0-based in
+  the mesh, and a `PnIndex` -- at set level or on a face -- is an extra hop
+  that permutes vertices when skipped. Normals take the frame's linear part
+  only; sending them through the full affine transform adds the translation
+  and breaks lighting on every product away from the origin.
+
 - `unreachable_products()` on the facade, behind `spatial` + `geometry-select`:
   reports products a viewer will never draw, with the reason. Closes #5. A file
   can pass `IfcOpenShell.validate` with zero errors and still open blank --

@@ -13,8 +13,18 @@ Record progress there.
 - one shared graph builder, memo table, active recursion stack, and provenance map
 - unit/frame/context composition
 - exact curve/surface/profile/solid nodes
+- tessellated face sets as meshes (`tessellated`), never as topology
 - mapped instances and boolean trees
 - source provenance side table
+
+Tessellated face sets are the one family that lowers to `axiolid-mesh`
+rather than exact geometry. A face set is already a discretisation: it carries
+no adjacency and no exactness claim, so building a `BRep` from it means
+inferring shared edges by comparing floats. Authored n-gons and voids are kept
+verbatim -- triangulation needs a fill rule and a tolerance, which are the
+kernel's to choose. `CoordIndex` is 1-based and `PnIndex` (set-level and
+per-face) is an extra addressing hop; both mistakes yield a mesh that renders
+and is wrong, so both are mutation-covered.
 
 Axes, normals, and orientation fields are finite non-zero unit-direction
 candidates and are normalized exactly once at the IFC boundary. Displacements,

@@ -63,10 +63,19 @@ and check it off only after the proof runs.
     leave every edge unshared, turning closed solids into loose facets.
   - Note: two exact-geometry prerequisites were dropped. Faceted breps need no
     exact curve or surface nodes, so the dependency was theoretical.
-- [ ] `LOW-TESS` - preserve authored n-gons/holes/triangles without retessellation
-  - Requires: `LOW-DISPATCH`, `INPUT-TOPO`.
+- [x] `LOW-TESS` - preserve authored n-gons/holes/triangles without retessellation
   - Implements: `GEOM-TESS`.
-  - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
+  - Proof: 7 unit tests in `lower/tessellated/tests.rs`, 3 fixture tests in
+    `tests/lower_tessellated.rs`, and the corpus census (64 -> 67 lowered,
+    `IFCTRIANGULATEDFACESET` out of the unsupported set). 6/6 mutation probes.
+  - Decision: `INPUT-TOPO` was NOT a real prerequisite. A face set carries no
+    adjacency, so the topology views B-rep needs are irrelevant here; the
+    tessellated readers import only `error` and `slots`.
+  - Decision: these lower to `axiolid-mesh` types, not `BRep`. A face set is
+    already a discretisation, so recovering topology would mean inferring
+    shared edges by comparing floats -- inventing information the file never
+    carried. `PolygonMesh` keeps authored n-gons and holes verbatim so the
+    fill rule and tolerance stay with the kernel.
 - [x] `LOW-MAP` - Instance nodes with cycle/depth budgets
   - Implements: `GEOM-MAP`.
   - Proof: `cargo test -p ifc-geometry` (11 mapped tests), crate clippy, corpus census.

@@ -20,6 +20,7 @@ default = ["lowering"]
 lowering = [
     "dep:axiolid-core",
     "dep:axiolid-curve",
+    "dep:axiolid-mesh",
     "dep:axiolid-model",
     "dep:axiolid-topology",
     "dep:axiolid-primitive",
@@ -36,6 +37,7 @@ thiserror.workspace = true
 # geometry kernel; see the `lowering` feature.
 axiolid-core = { workspace = true, optional = true }
 axiolid-curve = { workspace = true, optional = true }
+axiolid-mesh = { workspace = true, optional = true }
 axiolid-model = { workspace = true, optional = true }
 axiolid-topology = { workspace = true, optional = true }
 axiolid-primitive = { workspace = true, optional = true }
