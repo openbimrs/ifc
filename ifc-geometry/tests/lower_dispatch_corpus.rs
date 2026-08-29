@@ -160,36 +160,39 @@ fn planned_families_report_their_documented_reason() {
 /// Ground truth read directly out of the fixture:
 ///
 /// ```text
-/// #113210= IFCPLANE(#113209);
-/// #113211= IFCHALFSPACESOLID(#113210,.T.);
-/// #113212= IFCBOOLEANCLIPPINGRESULT(.DIFFERENCE.,#113155,#113211);
+/// #206= IFCEXTRUDEDAREASOLID(#202,#203,#205,700.0);
+/// #207= IFCBOOLEANRESULT(.DIFFERENCE.,#200,#206);
+/// #208= IFCCSGSOLID(#207);
 /// ```
 ///
-/// `#113212` is an implemented family, but its second operand is not lowered
-/// yet. Reporting the clipping result would send a caller to inspect a record
-/// that is perfectly fine; reporting the half-space points at the actual gap.
+/// The boolean at `#207` and its operands lower fine; `#208` wraps them in a
+/// family that does not. Reporting `#207` would send a caller to inspect a
+/// record that is perfectly fine, so the report must name `#208`.
+///
+/// This previously used the half-space flyaway fixture. That case now lowers
+/// end to end (see `tests/lower_halfspace.rs`), so the assertion moved to a
+/// nesting that is still genuinely unsupported rather than being deleted.
 #[test]
 fn a_nested_failure_names_the_innermost_unlowerable_entity() {
-    let path = fixture_root().join("ifclite-geometry/issue_1155_halfspace_flyaway.ifc");
+    let path = fixture_root().join("ifclite-geometry/bath_csg_solid.ifc");
     let model = StepCodec.read_path(&path).expect("fixture parses");
     let scale = units::resolve(&model);
     let tol = Tolerance::building_scale();
 
-    let clipping = ifc_model::EntityId(113212);
-    let half_space = ifc_model::EntityId(113211);
+    let csg = ifc_model::EntityId(208);
 
     let mut session = LoweringSession::new(&model, &scale, tol);
-    let error = lower_representation_item(&mut session, clipping, Transform::identity())
-        .expect_err("the half-space operand is not lowered yet");
+    let error = lower_representation_item(&mut session, csg, Transform::identity())
+        .expect_err("CSG solids are not lowered yet");
 
     assert_eq!(
         error.entity(),
-        Some(half_space),
-        "the report must point at the half-space, not the clipping result"
+        Some(csg),
+        "the report must name the unsupported CSG solid"
     );
     assert!(error.is_unsupported(), "this is a gap, not corruption");
     assert!(
-        error.to_string().contains("half-space solids"),
+        error.to_string().contains("CSG primitive solids"),
         "the report must state the documented reason, got: {error}"
     );
 }

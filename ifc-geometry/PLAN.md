@@ -98,8 +98,15 @@ parallel placeholders.
   - Decision: `GEOM-INPUT` was not required. The tessellated views already
     existed under `solid::tessellated` and depend only on `error` and `slots`.
 - [ ] `GEOM-SOLID` - complete booleans, halfspaces, CSG, and swept-disk families
-  - Requires: `GEOM-SESSION`, `GEOM-PROFILE`, `GEOM-SURFACE`.
-  - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+  - Requires: `GEOM-SESSION`. `GEOM-PROFILE`/`GEOM-SURFACE` apply only to the
+    families that still need exact profiles or curved surfaces.
+  - Half spaces: DONE. `src/lower/halfspace.rs`, owned by
+    `src/lower/PLAN.md:LOW-HALFSPACE`. Evidence: 9 tests, corpus census
+    67 -> 72, 6/6 mutation probes. `IFCBOOLEANCLIPPINGRESULT` left the
+    unsupported set as a side effect: its cutting tool now lowers.
+  - Remaining: `IFCCSGSOLID` (needs CSG primitive nodes), `IFCSWEPTDISKSOLID`
+    and `IFCSURFACECURVESWEPTAREASOLID` (need exact curve lowering),
+    `IFCSECTIONEDSPINE`.
 - [x] `GEOM-MAP` - preserve mapped-item instancing with cycle/depth limits
   - Evidence: 11 mapped-item tests over real fixtures, 6/6 mutation probes,
     isolated build, and crate clippy.

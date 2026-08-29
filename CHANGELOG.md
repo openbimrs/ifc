@@ -9,6 +9,22 @@ and this project follows Semantic Versioning.
 
 ### Added
 
+- `IfcHalfSpaceSolid`, `IfcBoxedHalfSpace`, and `IfcPolygonalBoundedHalfSpace`
+  lower into `GeometryNode::HalfSpace`. A half space is the infinite cutting
+  tool IFC uses to spell "clip this solid with a plane", so lowering it is what
+  makes the enclosing boolean resolvable: `IFCBOOLEANCLIPPINGRESULT` left the
+  unsupported set as a side effect, and the corpus census rose 67 -> 72 lowered
+  items. **The `AgreementFlag` is inverted on the way through**: IFC `.T.`
+  selects the side the base surface normal points *away from*, while the
+  neutral `HalfSpace.agreement` selects the normal side. Passing the flag
+  straight through keeps exactly the half that should have been removed, and
+  nothing downstream reports it -- the boolean still evaluates and the mesh is
+  still watertight, the wall simply has the wrong end missing. Curved base
+  surfaces are reported as unsupported rather than flattened to a tangent
+  plane, which would cut along the wrong shape. The two bounded subtypes lower
+  to their underlying half space: their bounds are clipping hints, and building
+  a prism from an unlowered 2D boundary curve would invent geometry.
+
 - `ifc-geometry` lowers `IfcTriangulatedFaceSet` and `IfcPolygonalFaceSet` into
   `GeometryNode::TriMesh` and `GeometryNode::PolygonMesh`. Corpus census rose
   64 -> 67 lowered items and `IFCTRIANGULATEDFACESET` left the unsupported set.

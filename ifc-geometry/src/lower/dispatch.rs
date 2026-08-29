@@ -14,6 +14,7 @@ use ifc_model::EntityId;
 use crate::error::GeometryResult;
 use crate::lower::boolean::lower_boolean_result_node;
 use crate::lower::brep::lower_faceted_brep_node;
+use crate::lower::halfspace::lower_half_space_node;
 use crate::lower::mapped::lower_mapped_item_node;
 use crate::lower::session::LoweringSession;
 use crate::lower::swept::{lower_extruded_area_solid_node, lower_revolved_area_solid_node};
@@ -32,6 +33,9 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCMAPPEDITEM",
     "IFCFACETEDBREP",
     "IFCFACETEDBREPWITHVOIDS",
+    "IFCHALFSPACESOLID",
+    "IFCBOXEDHALFSPACE",
+    "IFCPOLYGONALBOUNDEDHALFSPACE",
     "IFCTRIANGULATEDFACESET",
     "IFCPOLYGONALFACESET",
 ];
@@ -46,7 +50,6 @@ pub const PLANNED: &[(&str, &str)] = &[
     ("IFCSWEPTDISKSOLID", "swept-disk solids"),
     ("IFCSURFACECURVESWEPTAREASOLID", "surface-curve sweeps"),
     ("IFCSECTIONEDSPINE", "spine interpolation"),
-    ("IFCHALFSPACESOLID", "half-space solids"),
     ("IFCCSGSOLID", "CSG primitive solids"),
 ];
 
@@ -65,6 +68,9 @@ pub fn lower_representation_item(
         "IFCREVOLVEDAREASOLID" => lower_revolved_area_solid_node(session, id, frame),
         "IFCBOOLEANRESULT" | "IFCBOOLEANCLIPPINGRESULT" => {
             lower_boolean_result_node(session, id, frame)
+        }
+        "IFCHALFSPACESOLID" | "IFCBOXEDHALFSPACE" | "IFCPOLYGONALBOUNDEDHALFSPACE" => {
+            lower_half_space_node(session, id, frame)
         }
         "IFCMAPPEDITEM" => lower_mapped_item_node(session, id, frame),
         "IFCFACETEDBREP" | "IFCFACETEDBREPWITHVOIDS" => lower_faceted_brep_node(session, id, frame),

@@ -4,6 +4,7 @@ pub mod boolean;
 pub mod brep;
 pub mod context;
 pub mod dispatch;
+pub mod halfspace;
 pub mod mapped;
 pub mod profile;
 pub mod session;
@@ -19,6 +20,7 @@ pub use context::{
     geometric_products, lower_product_items, product_world_transform, select_shape_representation,
 };
 pub use dispatch::lower_representation_item;
+pub use halfspace::lower_half_space_node;
 pub use mapped::{lower_mapped_item_node, lower_representation};
 pub use profile::{lower_profile, lower_profile_node};
 pub use provenance::ProvenanceMap;

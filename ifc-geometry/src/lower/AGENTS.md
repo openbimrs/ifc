@@ -15,6 +15,7 @@ Record progress there.
 - exact curve/surface/profile/solid nodes
 - tessellated face sets as meshes (`tessellated`), never as topology
 - mapped instances and boolean trees
+- half spaces as boolean cutting tools (`halfspace.rs`)
 - source provenance side table
 
 Tessellated face sets are the one family that lowers to `axiolid-mesh`
@@ -30,6 +31,12 @@ Axes, normals, and orientation fields are finite non-zero unit-direction
 candidates and are normalized exactly once at the IFC boundary. Displacements,
 derivatives, scales, and other magnitude-bearing vectors preserve magnitude;
 never normalize them merely because both use three scalar components.
+
+A half space is INFINITE and is valid only as a boolean operand. Its
+`AgreementFlag` is inverted relative to the neutral `HalfSpace.agreement`: IFC
+`.T.` means the side the base surface normal points away from, the kernel's
+`true` means the normal side. Getting it backwards cuts the wrong half and
+produces a result that still evaluates and still looks like geometry.
 
 ## Does not own
 
