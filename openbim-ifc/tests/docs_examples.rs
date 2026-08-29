@@ -373,3 +373,76 @@ fn documented_context_example_inherits_and_selects() {
         "the 2D selector draws the outline"
     );
 }
+
+/// `docs/use-cases/2d-approval-plans.md` -- "Before you export: will a viewer
+/// actually draw it?"
+///
+/// Proves the documented call compiles and that the page's central claim holds:
+/// a product whose body lives only in a plan context is reported, and the
+/// message says why.
+#[test]
+#[cfg(all(feature = "spatial", feature = "geometry-select"))]
+fn documented_unreachable_example_reports_plan_only_geometry() {
+    use ifc::{unreachable_products, Unreachable};
+
+    let mut model = Model::new();
+    let mut id = 0u64;
+    let mut add = |model: &mut Model, name: &str, attributes: Vec<Value>| {
+        id += 1;
+        model.insert(ifc::EntityId(id), Entity::new(name, attributes));
+        ifc::EntityId(id)
+    };
+
+    // A sub-context declaring PLAN_VIEW, which a model viewer skips.
+    let mut ctx = vec![Value::Null; 10];
+    ctx[0] = Value::Text(Arc::from("Annotation"));
+    ctx[1] = Value::Text(Arc::from("Plan"));
+    ctx[8] = Value::Enum(Arc::from(".PLAN_VIEW."));
+    let context = add(&mut model, "IFCGEOMETRICREPRESENTATIONSUBCONTEXT", ctx);
+
+    let mut rep = vec![Value::Null; 4];
+    rep[0] = Value::Ref(context);
+    rep[1] = Value::Text(Arc::from("Annotation"));
+    rep[2] = Value::Text(Arc::from("Curve2D"));
+    let representation = add(&mut model, "IFCSHAPEREPRESENTATION", rep);
+
+    let mut shp = vec![Value::Null; 3];
+    shp[2] = Value::List(vec![Value::Ref(representation)]);
+    let shape = add(&mut model, "IFCPRODUCTDEFINITIONSHAPE", shp);
+
+    let mut product = vec![Value::Null; 7];
+    product[0] = Value::Text(Arc::from("3vB2YO$MX4xv5uCqZZG05x"));
+    product[6] = Value::Ref(shape);
+    let sign = add(&mut model, "IFCANNOTATION", product);
+
+    // Contained correctly, so the context is the only remaining defect.
+    let storey = add(
+        &mut model,
+        "IFCBUILDINGSTOREY",
+        vec![
+            Value::Text(Arc::from("1storey0000000000000001")),
+            Value::Null,
+            Value::Null,
+            Value::Null,
+        ],
+    );
+    let mut rel = vec![Value::Null; 6];
+    rel[4] = Value::List(vec![Value::Ref(sign)]);
+    rel[5] = Value::Ref(storey);
+    add(&mut model, "IFCRELCONTAINEDINSPATIALSTRUCTURE", rel);
+
+    // The snippet as published on the page.
+    let findings = unreachable_products(&model);
+
+    assert_eq!(findings.len(), 1, "the sign is the only finding");
+    assert_eq!(findings[0].0, sign);
+    assert!(matches!(
+        findings[0].1,
+        Unreachable::NoRepresentationInModelContext { .. }
+    ));
+    assert!(
+        findings[0].1.message().contains("model viewer"),
+        "the documented message explains the defect: {}",
+        findings[0].1.message()
+    );
+}

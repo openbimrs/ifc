@@ -16,10 +16,12 @@
 //! the power of the chain depth.
 
 use axiolid_model::NodeId;
-use ifc_model::{EntityId, Model};
+use ifc_model::EntityId;
 
 use crate::error::{GeometryError, GeometryResult};
-use crate::input::product::Product;
+// Moved to `input::product`: it never needed the kernel. Re-exported so
+// the pre-existing `lower::context::geometric_products` path still resolves.
+pub use crate::input::product::geometric_products;
 use crate::input::representation::Representation;
 use crate::lower::dispatch::lower_representation_item;
 use crate::lower::session::LoweringSession;
@@ -61,27 +63,4 @@ pub fn lower_product_items(
             axiolid_model::GeometryNode::Collection(roots),
         )?)),
     }
-}
-
-/// Products in the model that carry geometry, in stable id order.
-///
-/// IfcProduct is abstract with hundreds of subtypes, so enumerating names
-/// would rot. A product is recognised structurally instead: it has a
-/// Representation in slot 6 pointing at an IfcProductRepresentation.
-pub fn geometric_products(model: &Model) -> Vec<EntityId> {
-    let mut found: Vec<EntityId> = model
-        .iter()
-        .filter(|(id, entity)| {
-            let product = Product::new(*id, entity);
-            product.representation().is_some_and(|shape| {
-                model.get(shape).is_some_and(|e| {
-                    e.type_name.contains("PRODUCTREPRESENTATION")
-                        || e.type_name.contains("PRODUCTDEFINITIONSHAPE")
-                })
-            })
-        })
-        .map(|(id, _)| id)
-        .collect();
-    found.sort();
-    found
 }

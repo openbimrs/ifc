@@ -269,6 +269,46 @@ at a sensible object. Round-trip your output through `StepCodec` and open it in
 a reference tool before trusting it as a permit document.
 :::
 
+## Before you export: will a viewer actually draw it?
+
+A file can be schema-valid, pass `IfcOpenShell.validate` with zero errors, and
+still open completely blank. Validation asks whether the file is legal IFC.
+Whether the geometry is *reachable* is a different question, and nothing in the
+schema answers it.
+
+```rust
+use ifc::{unreachable_products, Codec, StepCodec};
+
+let model = StepCodec.read_bytes(&bytes)?;
+for (id, why) in unreachable_products(&model) {
+    eprintln!("#{id}: {}", why.message());
+}
+```
+
+Enable with `features = ["step", "spatial", "geometry-select"]`.
+
+Three causes are reported:
+
+| Cause | Why it is invisible |
+| --- | --- |
+| `NotContainedInSpatialStructure` | Viewers reach geometry by walking the spatial tree. A product outside it is never visited, however well-formed. |
+| `NoRepresentationInModelContext` | A body authored only into `PlanView` is skipped by a 3D viewer, which renders `Model`. |
+| `RepresentationWithoutContext` | Geometry a viewer cannot schedule, because the context reference does not resolve. |
+
+The second one is the trap specific to this use case. Annotations *belong* in a
+plan sub-context — that is correct authoring — but if the product's **body**
+also lives only there, the model viewer you check your work in shows nothing,
+and it is easy to conclude the export failed entirely.
+
+::: tip What it will not tell you
+Being outside the spatial tree is normal for openings (`IfcRelVoidsElement`),
+assembly parts (`IfcRelAggregates`), spatial containers themselves, and
+products with no representation. None of these are reported: on
+`AC20-FZK-Haus.ifc`, 20 of 127 products sit outside the containment tree and
+the lint finds nothing, because all 20 are legitimate. A lint that cries wolf
+is one you switch off.
+:::
+
 ## Recommended build order
 
 1. **Import + export round-trip.** Prove a file survives your pipeline

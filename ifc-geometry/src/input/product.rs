@@ -8,7 +8,7 @@
 //! slot here means the caller never enumerates subtypes, and a
 //! schema query decides what counts as a product.
 
-use ifc_model::{Entity, EntityId};
+use ifc_model::{Entity, EntityId, Model};
 
 use crate::slots::Slots;
 
@@ -50,4 +50,31 @@ impl<'m> Product<'m> {
     pub fn representation(&self) -> Option<EntityId> {
         self.slots.opt_ref(slot::REPRESENTATION)
     }
+}
+
+/// Products in the model that carry geometry, in stable id order.
+///
+/// Kernel-free on purpose: asking which entities have a shape is a slot read,
+/// so this answers the same under `--no-default-features` as it does with the
+/// full kernel linked. `tests/kernel_free_build.rs` holds that line.
+///
+/// IfcProduct is abstract with hundreds of subtypes, so enumerating names
+/// would rot. A product is recognised structurally instead: it has a
+/// Representation in slot 6 pointing at an IfcProductRepresentation.
+pub fn geometric_products(model: &Model) -> Vec<EntityId> {
+    let mut found: Vec<EntityId> = model
+        .iter()
+        .filter(|(id, entity)| {
+            let product = Product::new(*id, entity);
+            product.representation().is_some_and(|shape| {
+                model.get(shape).is_some_and(|e| {
+                    e.type_name.contains("PRODUCTREPRESENTATION")
+                        || e.type_name.contains("PRODUCTDEFINITIONSHAPE")
+                })
+            })
+        })
+        .map(|(id, _)| id)
+        .collect();
+    found.sort();
+    found
 }

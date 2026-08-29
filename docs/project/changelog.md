@@ -17,6 +17,20 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `unreachable_products()` on the facade, behind `spatial` + `geometry-select`:
+  reports products a viewer will never draw, with the reason. Closes #5. A file
+  can pass `IfcOpenShell.validate` with zero errors and still open blank --
+  validation asks whether the file is legal IFC, this asks whether the geometry
+  is reachable. Three causes are detected: no
+  `IfcRelContainedInSpatialStructure` (the spatial tree is how viewers reach
+  geometry at all), a body authored only into a non-model context such as
+  `PlanView`, and a representation whose context does not resolve. Openings,
+  aggregated parts, spatial containers and representationless products are
+  deliberately never reported: on `AC20-FZK-Haus.ifc` 20 of 127 products sit
+  outside the containment tree and every one of them is legitimate, so the lint
+  finds nothing there. It lives in the facade because containment and
+  representation contexts are sibling domain crates that ADR 0003 forbids from
+  depending on each other.
 - `ifc-schema::ifc4()`: the IFC4 ADD2 TC1 schema (776 entities, 397 types)
   bundled as a compiled binary artifact and cached in a `OnceLock`, on by
   default via the new `ifc4` feature. Closes #4: consumers no longer source
@@ -69,6 +83,10 @@ This page is synchronised from it at build time.
 
 ### Changed
 
+- `geometric_products` moved from `ifc-geometry`'s `lower` module to `input`
+  and is now re-exported at the crate root. Asking which entities carry a shape
+  is a slot read, so it no longer disappears with `--no-default-features`; the
+  old `lower::context::geometric_products` path still resolves.
 - Placement resolution moved from `lower::context` to `constraint::placement`.
   It was previously reachable only through the deep `lower` path, so it was
   undiscoverable, and after the `lowering` feature split it did not compile at

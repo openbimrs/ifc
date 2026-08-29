@@ -172,6 +172,14 @@ pub use ifc_georef as georef;
 #[cfg(feature = "alignment")]
 pub use ifc_alignment as alignment;
 
+// Answering "will a viewer draw this" needs containment AND representation
+// contexts -- two sibling domain crates that ADR 0003 forbids from depending on
+// each other, so the check lives in this orchestration layer.
+#[cfg(all(feature = "spatial", feature = "geometry-select"))]
+mod unreachable;
+#[cfg(all(feature = "spatial", feature = "geometry-select"))]
+pub use unreachable::{unreachable_products, Unreachable};
+
 mod feature_report;
 mod io;
 

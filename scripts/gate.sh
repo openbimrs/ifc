@@ -35,12 +35,16 @@ cargo clippy -p ifc-geometry --no-default-features --all-targets -- -D warnings
 # break here, so rustdoc gets its own kernel-free run.
 RUSTDOCFLAGS="-D warnings" cargo doc -p ifc-geometry --no-default-features --no-deps
 
-for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,geometry-select" "--all-features"; do
+for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,geometry-select" "--features step,spatial,geometry-select" "--all-features"; do
     # shellcheck disable=SC2086
     cargo build -p openbim-ifc $features
     # shellcheck disable=SC2086
     cargo clippy -p openbim-ifc $features --all-targets -- -D warnings
 done
+
+# The unreachable-product lint spans two sibling domains, so it exists only
+# when both are on. `--all-features` would hide a break in that exact pairing.
+cargo test -p openbim-ifc --features step,spatial,geometry-select --test unreachable_corpus
 
 # Documentation gates. The changelog page is generated from the canonical root
 # CHANGELOG.md, so drift between them is a build failure rather than a silent

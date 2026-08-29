@@ -101,3 +101,7 @@ pub use input::representation::{
     select_plan_representation, select_shape_representation, ProductShape, Representation,
     PLAN_IDENTIFIERS, SOLID_IDENTIFIERS,
 };
+
+// Which entities carry a shape at all. Kernel-free: a slot read, not a lowering
+// question, so a 2D or auditing consumer reaches it without linking a kernel.
+pub use input::product::geometric_products;
