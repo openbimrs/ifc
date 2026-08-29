@@ -80,6 +80,9 @@ parallel placeholders.
   - Requires: `GEOM-CONTRACT`, `GEOM-SESSION`, `GEOM-INPUT`, `GEOM-PLACE`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [ ] `GEOM-CURVE` - lower every concrete curve family without approximation
+  - Progress: `LOW-CURVE` lowers polyline, line, circle, trimmed and composite
+    curves (9/9 mutation probes). B-splines, ellipses, offset curves and
+    indexed poly-curves still report a typed `Unsupported`.
   - Requires: `GEOM-CONTRACT`, `GEOM-SESSION`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [ ] `GEOM-SURFACE` - lower elementary, swept, bounded, and B-spline surfaces
@@ -107,6 +110,10 @@ parallel placeholders.
   - Remaining: `IFCCSGSOLID` (needs CSG primitive nodes), `IFCSWEPTDISKSOLID`
     and `IFCSURFACECURVESWEPTAREASOLID` (need exact curve lowering),
     `IFCSECTIONEDSPINE`.
+  - Progress: booleans, half spaces, CSG solids/primitives and swept disks all
+    lower. Corpus census 80 lowered with an EMPTY unsupported set. Remaining
+    families in `dispatch::PLANNED` (advanced brep, surface-curve sweep,
+    sectioned spine) do not occur in the committed corpus.
 - [x] `GEOM-MAP` - preserve mapped-item instancing with cycle/depth limits
   - Evidence: 11 mapped-item tests over real fixtures, 6/6 mutation probes,
     isolated build, and crate clippy.

@@ -17,6 +17,27 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `ifc-geometry` lowers exact curves: `IfcPolyline`, `IfcLine`, `IfcCircle`,
+  `IfcTrimmedCurve` and `IfcCompositeCurve`. **A trim parameter is not always a
+  length.** `IfcTrimmedCurve` carries values in the basis curve's own
+  parameterisation, which is a length along an `IfcLine` but an *angle* on an
+  `IfcCircle`. Applying the length factor to both silently rescales every arc:
+  in `swept_disk_composite_arc_crankbar.ifc` the 0.082 rad arcs would become
+  8.2e-5 rad on a millimetre file, and the result still renders. An
+  `IfcVector`'s magnitude is likewise preserved rather than normalized away,
+  because it scales the line's parameter rather than describing orientation.
+- `IfcCsgSolid`, `IfcBlock`, `IfcSphere`, `IfcRightCircularCylinder`,
+  `IfcRightCircularCone` and `IfcSweptDiskSolid` lower. A CSG solid is a
+  wrapper and resolves to whatever its `TreeRootExpression` resolves to. CSG
+  primitives are local by kernel contract, so their `Position` rides on an
+  `Instance` node instead of being folded into the extents, which would
+  discard the origin offset and break any rotation. A swept disk keeps its
+  `InnerRadius` -- dropping it turns every pipe into a solid bar -- and refuses
+  a half-open parameter range rather than guessing the missing end.
+- With these families the committed corpus reaches **80 lowered items and an
+  empty unsupported set**: every representation item in every committed
+  fixture now lowers into the neutral DAG.
+
 - `IfcHalfSpaceSolid`, `IfcBoxedHalfSpace`, and `IfcPolygonalBoundedHalfSpace`
   lower into `GeometryNode::HalfSpace`. A half space is the infinite cutting
   tool IFC uses to spell "clip this solid with a plane", so lowering it is what

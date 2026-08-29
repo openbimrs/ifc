@@ -3,6 +3,8 @@
 pub mod boolean;
 pub mod brep;
 pub mod context;
+pub mod csg;
+pub mod curve;
 pub mod dispatch;
 pub mod halfspace;
 pub mod mapped;
@@ -19,6 +21,8 @@ pub use brep::lower_faceted_brep_node;
 pub use context::{
     geometric_products, lower_product_items, product_world_transform, select_shape_representation,
 };
+pub use csg::{lower_csg_primitive_node, lower_csg_solid_node, lower_swept_disk_node};
+pub use curve::lower_curve_node;
 pub use dispatch::lower_representation_item;
 pub use halfspace::lower_half_space_node;
 pub use mapped::{lower_mapped_item_node, lower_representation};
@@ -43,7 +47,6 @@ pub struct LoweredGeometry {
     pub provenance: ProvenanceMap,
 }
 
-mod curve;
 mod placement;
 mod provenance;
 mod solid;

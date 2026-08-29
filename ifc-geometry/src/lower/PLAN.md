@@ -47,10 +47,45 @@ and check it off only after the proof runs.
     Axis Curve2D before its Body, so first-wins yields a line, not a solid.
   - Note: the direction-contract prerequisite was dropped; normalisation
     already lives in `resource::direction` and placement does not depend on it.
-- [ ] `LOW-EXACT` - exact profile/curve/surface node construction
-  - Requires: `LOW-CONTRACT`, `LOW-SESSION`, `INPUT-PROFILE`, `INPUT-MAT`.
-  - Implements: `GEOM-PROFILE`, `GEOM-CURVE`, `GEOM-SURFACE`.
+- [x] `LOW-CURVE` - exact curve nodes for the families used as directrices
+  - Scope: the directrix curve families of the curve parent task; that
+    parent stays open for B-splines, ellipses and offset curves.
+  - Proof: `cargo test -p ifc-geometry` (6 curve unit tests, 3 corpus tests in
+    `tests/lower_csg_swept.rs`); 9/9 mutation probes; crate clippy in both
+    feature columns.
+  - Scope: `IfcPolyline`, `IfcLine`, `IfcCircle`, `IfcTrimmedCurve`,
+    `IfcCompositeCurve`. `IfcBSplineCurve*`, `IfcEllipse`, `IfcOffsetCurve*`
+    and `IfcIndexedPolyCurve` still report a typed `Unsupported`: the corpus
+    does not exercise them and a guessed parameterisation is worse than a
+    stated gap.
+  - Decision: `LOW-CONTRACT` was NOT a prerequisite. Direction normalization
+    already lives in `resource::direction`, and this module deliberately does
+    NOT normalize an `IfcVector` magnitude, which is parameterisation rather
+    than orientation.
+  - Decision: a conic trim parameter is an ANGLE and a line parameter is a
+    LENGTH. The basis curve therefore selects the unit conversion. A single
+    length factor turns the crankbar's 0.082 rad arcs into 8.2e-5 rad in a
+    millimetre file; the arc still renders.
+- [ ] `LOW-EXACT` - exact profile/surface node construction
+  - Requires: `LOW-CONTRACT`, `INPUT-PROFILE`, `INPUT-MAT`.
+  - Implements: `GEOM-PROFILE`, `GEOM-SURFACE`.
+  - Note: the curve third is done, see `LOW-CURVE`. Profiles already lower via
+    `lower::profile`; what remains here is exact SURFACE nodes, which nothing
+    in the corpus needs yet.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
+- [x] `LOW-CSG` - CSG solids, CSG primitives, and swept-disk solids
+  - Requires: `LOW-CURVE`, `LOW-DISPATCH`.
+  - Scope: the CSG and swept-disk families of the solid parent task; that
+    parent stays open for advanced brep and surface-curve sweeps.
+  - Proof: 6 unit tests, `tests/lower_csg_swept.rs` (3 corpus tests), 9/9
+    mutation probes. Corpus census rose 72 -> 80 and the unsupported set is
+    now EMPTY for the committed corpus.
+  - Decision: `IfcCsgSolid` lowers to whatever its `TreeRootExpression` lowers
+    to. The wrapper carries no geometry, so emitting a node for it would add a
+    graph level no consumer can act on.
+  - Decision: a CSG primitive is LOCAL by kernel contract, so its `Position`
+    rides on an `Instance` node rather than being folded into the extents.
+    Folding would discard the origin offset and break any rotation.
 - [x] `LOW-BREP` - topology plus geometry handles
   - Requires: `LOW-DISPATCH`.
   - Implements: `GEOM-BREP`.
@@ -77,7 +112,8 @@ and check it off only after the proof runs.
     carried. `PolygonMesh` keeps authored n-gons and holes verbatim so the
     fill rule and tolerance stay with the kernel.
 - [x] `LOW-HALFSPACE` - half spaces as boolean cutting tools
-  - Implements: `GEOM-SOLID` (partial: half spaces only).
+  - Scope: the half-space families of the solid parent task; that parent
+    stays open for advanced brep and surface-curve sweeps.
   - Proof: `src/lower/halfspace/tests.rs` (6 tests), `tests/lower_halfspace.rs`
     (3 tests over `issue_1155_halfspace_flyaway.ifc`), corpus census 67 -> 72
     lowered, and 6/6 mutation probes.

@@ -12,9 +12,10 @@ Record progress there.
 - dispatch and recursion budgets
 - one shared graph builder, memo table, active recursion stack, and provenance map
 - unit/frame/context composition
-- exact curve/surface/profile/solid nodes
+- exact curve/surface/profile/solid nodes (`curve.rs`, `csg.rs`)
 - tessellated face sets as meshes (`tessellated`), never as topology
 - mapped instances and boolean trees
+- CSG solids, CSG primitives, and swept-disk solids (`csg.rs`)
 - half spaces as boolean cutting tools (`halfspace.rs`)
 - source provenance side table
 
@@ -37,6 +38,15 @@ A half space is INFINITE and is valid only as a boolean operand. Its
 `.T.` means the side the base surface normal points away from, the kernel's
 `true` means the normal side. Getting it backwards cuts the wrong half and
 produces a result that still evaluates and still looks like geometry.
+
+A trim parameter belongs to the BASIS curve's parameterisation: a length on a
+line, a plane angle on a conic. `lower::curve` selects the unit conversion from
+the basis type, and `lower::csg` does the same for a swept disk's
+`StartParam`/`EndParam` using the directrix type. A single length factor for
+both is the defect this split exists to prevent.
+
+A CSG primitive is local by kernel contract. Its `Position` is carried on an
+`Instance` node, never folded into the primitive's extents.
 
 ## Does not own
 

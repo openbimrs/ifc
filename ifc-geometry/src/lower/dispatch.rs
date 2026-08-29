@@ -14,6 +14,7 @@ use ifc_model::EntityId;
 use crate::error::GeometryResult;
 use crate::lower::boolean::lower_boolean_result_node;
 use crate::lower::brep::lower_faceted_brep_node;
+use crate::lower::csg::{lower_csg_primitive_node, lower_csg_solid_node, lower_swept_disk_node};
 use crate::lower::halfspace::lower_half_space_node;
 use crate::lower::mapped::lower_mapped_item_node;
 use crate::lower::session::LoweringSession;
@@ -38,6 +39,12 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCPOLYGONALBOUNDEDHALFSPACE",
     "IFCTRIANGULATEDFACESET",
     "IFCPOLYGONALFACESET",
+    "IFCCSGSOLID",
+    "IFCSWEPTDISKSOLID",
+    "IFCBLOCK",
+    "IFCSPHERE",
+    "IFCRIGHTCIRCULARCYLINDER",
+    "IFCRIGHTCIRCULARCONE",
 ];
 
 /// Recognized representation items that are not lowered yet.
@@ -47,10 +54,8 @@ pub const IMPLEMENTED: &[&str] = &[
 /// stub is declared; implementing it means moving the name to [`IMPLEMENTED`].
 pub const PLANNED: &[(&str, &str)] = &[
     ("IFCADVANCEDBREP", "advanced B-rep topology lowering"),
-    ("IFCSWEPTDISKSOLID", "swept-disk solids"),
     ("IFCSURFACECURVESWEPTAREASOLID", "surface-curve sweeps"),
     ("IFCSECTIONEDSPINE", "spine interpolation"),
-    ("IFCCSGSOLID", "CSG primitive solids"),
 ];
 
 /// Lower any representation item into the caller's session.
@@ -76,6 +81,11 @@ pub fn lower_representation_item(
         "IFCFACETEDBREP" | "IFCFACETEDBREPWITHVOIDS" => lower_faceted_brep_node(session, id, frame),
         "IFCTRIANGULATEDFACESET" => lower_triangulated_face_set_node(session, id, frame),
         "IFCPOLYGONALFACESET" => lower_polygonal_face_set_node(session, id, frame),
+        "IFCCSGSOLID" => lower_csg_solid_node(session, id, frame),
+        "IFCSWEPTDISKSOLID" => lower_swept_disk_node(session, id, frame),
+        "IFCBLOCK" | "IFCSPHERE" | "IFCRIGHTCIRCULARCYLINDER" | "IFCRIGHTCIRCULARCONE" => {
+            lower_csg_primitive_node(session, id, frame)
+        }
         other => Err(session.unsupported(id, other, detail_for(other))),
     }
 }

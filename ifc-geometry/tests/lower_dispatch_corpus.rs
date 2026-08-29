@@ -148,51 +148,67 @@ fn planned_families_report_their_documented_reason() {
         }
     }
 
-    assert!(
-        checked > 0,
-        "the corpus must contain at least one not-yet-lowered family"
-    );
+    // The corpus now lowers every family it contains, so `checked` is
+    // legitimately 0. Requiring a corpus instance here would make the gate
+    // fail purely because coverage improved. What still must hold is the
+    // contract itself: PLANNED and IMPLEMENTED are disjoint, and every
+    // PLANNED entry carries a non-empty reason a caller can act on.
     println!("verified {checked} planned-family reports");
+    for (type_name, detail) in PLANNED {
+        assert!(
+            !IMPLEMENTED.contains(type_name),
+            "{type_name} is listed as both planned and implemented"
+        );
+        assert!(
+            !detail.trim().is_empty(),
+            "{type_name} must state why it is not lowered yet"
+        );
+    }
 }
 
 /// A nested failure names the innermost unlowerable entity.
 ///
-/// Ground truth read directly out of the fixture:
+/// The corpus no longer contains an unlowerable family, so the nesting is
+/// built here: an `IfcBooleanResult` whose second operand is an
+/// `IfcSectionedSpine` -- still declared in `PLANNED`. The boolean itself is
+/// implemented, so a naive implementation would report the boolean and send a
+/// caller to inspect a record that is perfectly fine.
 ///
-/// ```text
-/// #206= IFCEXTRUDEDAREASOLID(#202,#203,#205,700.0);
-/// #207= IFCBOOLEANRESULT(.DIFFERENCE.,#200,#206);
-/// #208= IFCCSGSOLID(#207);
-/// ```
-///
-/// The boolean at `#207` and its operands lower fine; `#208` wraps them in a
-/// family that does not. Reporting `#207` would send a caller to inspect a
-/// record that is perfectly fine, so the report must name `#208`.
-///
-/// This previously used the half-space flyaway fixture. That case now lowers
-/// end to end (see `tests/lower_halfspace.rs`), so the assertion moved to a
-/// nesting that is still genuinely unsupported rather than being deleted.
+/// This assertion has now survived two coverage jumps: it originally used the
+/// half-space flyaway fixture, then `bath_csg_solid.ifc`, and both became
+/// lowerable. Building the model inline keeps the contract under test
+/// independent of how much of the corpus we can lower.
 #[test]
 fn a_nested_failure_names_the_innermost_unlowerable_entity() {
-    let path = fixture_root().join("ifclite-geometry/bath_csg_solid.ifc");
-    let model = StepCodec.read_path(&path).expect("fixture parses");
+    let mut model = ifc_model::Model::new();
+    let inner = ifc_model::EntityId(1);
+    let outer = ifc_model::EntityId(2);
+    model.insert(inner, ifc_model::Entity::new("IFCSECTIONEDSPINE", vec![]));
+    model.insert(
+        outer,
+        ifc_model::Entity::new(
+            "IFCBOOLEANRESULT",
+            vec![
+                ifc_model::Value::Enum("DIFFERENCE".into()),
+                ifc_model::Value::Ref(inner),
+                ifc_model::Value::Ref(inner),
+            ],
+        ),
+    );
+
     let scale = units::resolve(&model);
-    let tol = Tolerance::building_scale();
-
-    let csg = ifc_model::EntityId(208);
-
-    let mut session = LoweringSession::new(&model, &scale, tol);
-    let error = lower_representation_item(&mut session, csg, Transform::identity())
-        .expect_err("CSG solids are not lowered yet");
+    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let error = lower_representation_item(&mut session, outer, Transform::identity())
+        .expect_err("the spine operand is not lowered yet");
 
     assert_eq!(
         error.entity(),
-        Some(csg),
-        "the report must name the unsupported CSG solid"
+        Some(inner),
+        "the report must name the innermost gap, not the boolean that wraps it"
     );
     assert!(error.is_unsupported(), "this is a gap, not corruption");
     assert!(
-        error.to_string().contains("CSG primitive solids"),
+        error.to_string().contains("spine interpolation"),
         "the report must state the documented reason, got: {error}"
     );
 }
