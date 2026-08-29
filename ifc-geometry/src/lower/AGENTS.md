@@ -12,7 +12,7 @@ Record progress there.
 - dispatch and recursion budgets
 - one shared graph builder, memo table, active recursion stack, and provenance map
 - unit/frame/context composition
-- exact curve/surface/profile/solid nodes (`curve.rs`, `csg.rs`)
+- exact curve/surface/profile/solid nodes (`curve.rs`, `surface.rs`, `csg.rs`)
 - tessellated face sets as meshes (`tessellated`), never as topology
 - mapped instances and boolean trees
 - CSG solids, CSG primitives, and swept-disk solids (`csg.rs`)

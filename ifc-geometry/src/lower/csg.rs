@@ -28,11 +28,13 @@ use ifc_model::EntityId;
 
 use crate::error::GeometryResult;
 use crate::lower::curve::lower_curve_node;
+use crate::lower::profile::lower_profile_node;
 use crate::lower::session::LoweringSession;
+use crate::lower::surface::lower_surface_node;
 use crate::resource::placement::axis_placement_transform;
 use crate::slots::Slots;
 use crate::solid::csg::{CsgPrimitive3D, CsgSolid};
-use crate::solid::swept::directrix::SweptDiskSolid;
+use crate::solid::swept::directrix::{SurfaceCurveSweptAreaSolid, SweptDiskSolid};
 use crate::transform::Transform;
 
 const CSG: &str = "csg solid";
@@ -200,3 +202,75 @@ fn build_disk(
 
 #[cfg(test)]
 mod tests;
+
+/// Lower an `IfcSurfaceCurveSweptAreaSolid` into a `SurfaceCurveSweep`.
+///
+/// The directrix of this family is a curve that *lies on* the reference
+/// surface. The surface is not decoration: it fixes the sweep's twist. At any
+/// point of the directrix the profile is oriented by the surface normal
+/// there, so two solids with identical profiles and identical directrices but
+/// different reference surfaces are different solids.
+///
+/// Dropping the surface and treating this as a plain directrix sweep produces
+/// a shape with the right footprint and the wrong cross-section rotation --
+/// a duct elbow whose flanges twist. That is why the reference surface is
+/// lowered and referenced rather than ignored.
+pub fn lower_surface_curve_swept_area_solid_node(
+    session: &mut LoweringSession<'_>,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<NodeId> {
+    if let Some(node) = session.memoized(id, CSG, frame) {
+        return Ok(node);
+    }
+    let entity = session.entity(id, id)?;
+    let view = SurfaceCurveSweptAreaSolid::new(id, entity);
+    let base = view.base();
+
+    // An optional Position places the swept solid.
+    let placed = match base.position() {
+        Some(position_id) => {
+            let position = session.entity(id, position_id)?;
+            let local = axis_placement_transform(session.model(), position_id, position)?
+                .to_metres(session.units());
+            frame.compose(&local)
+        }
+        None => frame,
+    };
+
+    let profile = lower_profile_node(session, base.swept_area()?)?;
+    let directrix_ref = view.directrix()?;
+    let directrix = lower_curve_node(session, directrix_ref, placed)?;
+    let reference_surface = lower_surface_node(session, view.reference_surface()?, placed)?;
+
+    // Same rule as the swept disk: a parameter on a conic directrix is an
+    // angle, on anything else a length.
+    let directrix_kind = session.type_name(directrix_ref)?;
+    let convert = |value: f64| match directrix_kind.as_str() {
+        "IFCCIRCLE" | "IFCELLIPSE" | "IFCTRIMMEDCURVE" => session.units().angle(value),
+        _ => session.units().length(value),
+    };
+    let parameter_range = match (view.start_param(), view.end_param()) {
+        (Some(start), Some(end)) => Some((convert(start), convert(end))),
+        (None, None) => None,
+        _ => {
+            return Err(session.degenerate(
+                id,
+                "IFCSURFACECURVESWEPTAREASOLID",
+                "only one of StartParam/EndParam is present; the sweep extent is ambiguous",
+            ));
+        }
+    };
+
+    let node = session.node_for(
+        id,
+        GeometryNode::SolidOperation(SolidOperation::SurfaceCurveSweep {
+            profile,
+            directrix,
+            reference_surface,
+            parameter_range,
+        }),
+    )?;
+    session.memoize(id, CSG, frame, node);
+    Ok(node)
+}

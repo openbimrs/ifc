@@ -68,11 +68,26 @@ and check it off only after the proof runs.
     millimetre file; the arc still renders.
 - [ ] `LOW-EXACT` - exact profile/surface node construction
   - Requires: `LOW-CONTRACT`, `INPUT-PROFILE`, `INPUT-MAT`.
-  - Implements: `GEOM-PROFILE`, `GEOM-SURFACE`.
-  - Note: the curve third is done, see `LOW-CURVE`. Profiles already lower via
-    `lower::profile`; what remains here is exact SURFACE nodes, which nothing
-    in the corpus needs yet.
-  - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
+  - Scope note: the curve third is done, see `LOW-CURVE`. Profiles already
+    lower via `lower::profile`. What remains here is exact SURFACE nodes.
+  - Done: `IfcPlane` and `IfcSurfaceOfLinearExtrusion` lower via
+    `lower/surface.rs`. `Transform::to_geom_frame` carries the placement's own
+    U/V axes, so a surface keeps the parameterisation trims are taken against.
+    Proof: 7 unit tests, `tests/lower_surface.rs` (3 corpus tests), 6/6
+    mutation probes, crate clippy in both feature columns.
+  - Blocked, with evidence: `IfcCylindricalSurface`, `IfcSphericalSurface`,
+    `IfcToroidalSurface`, `IfcSurfaceOfRevolution` and the B-spline families
+    have complete readers in `crate::surface` and kernel variants waiting, but
+    no licensed fixture exists. Surveyed 909 `.ifc` files across ifc-lite
+    (MPL-2.0), IfcOpenShell (LGPL-3.0), IfcOpenShell/files (NO licence) and
+    buildingSMART (CC-BY-4.0): every file carrying these families is in the
+    unlicensed repo. They stay in `dispatch::PLANNED` rather than shipping
+    lowering code no fixture can exercise.
+  - Decision: `IfcArbitraryOpenProfileDef` is reported unsupported with a
+    stated reason, not approximated. The neutral profile model is built on
+    closed contours; closing the curve would fabricate a face the file never
+    described. This is what blocks `IFCSURFACECURVESWEPTAREASOLID`, whose
+    lowering is implemented and waiting on it.
 - [x] `LOW-CSG` - CSG solids, CSG primitives, and swept-disk solids
   - Requires: `LOW-CURVE`, `LOW-DISPATCH`.
   - Scope: the CSG and swept-disk families of the solid parent task; that

@@ -85,6 +85,18 @@ pub fn lower_profile(
         "IFCCIRCLEHOLLOWPROFILEDEF" => circle_hollow(&slots, units)?,
         "IFCARBITRARYCLOSEDPROFILEDEF" => arbitrary(model, &slots, units, false)?,
         "IFCARBITRARYPROFILEDEFWITHVOIDS" => arbitrary(model, &slots, units, true)?,
+        // An open profile is a curve, not an area. The neutral profile model
+        // is built on closed contours, so there is nothing to map it onto:
+        // closing the curve would fabricate a face the file never described,
+        // and silently sweeping it would produce a solid from a shape that
+        // bounds no area. State that rather than emitting a generic gap.
+        "IFCARBITRARYOPENPROFILEDEF" => {
+            return Err(GeometryError::Unsupported {
+                entity: id,
+                type_name: type_name.to_string(),
+                detail: "open profiles: the neutral profile model represents closed contours only",
+            });
+        }
         other => {
             return Err(GeometryError::Unsupported {
                 entity: id,

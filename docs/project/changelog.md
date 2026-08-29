@@ -17,6 +17,35 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `ifc-geometry` lowers `IfcPlane` and `IfcSurfaceOfLinearExtrusion` into
+  `GeometryNode::Surface` and `SurfaceRelation::LinearExtrusion`, with a new
+  `Transform::to_geom_frame` that carries a placement's own U/V axes into the
+  kernel frame. A surface's `x`/`y` fix its parameterisation: rebuilding them
+  from the normal picks an arbitrary rotation about it, so the surface still
+  renders in the same place while every trim and pcurve taken against it lands
+  somewhere else. `Depth` on a linear extrusion is deliberately dropped -- the
+  surface is unbounded in the extrusion parameter and `Depth` is a drawing
+  hint, so folding it into the direction would silently reparameterise the
+  surface.
+
+### Changed
+
+- `IfcArbitraryOpenProfileDef` now reports a stated reason ("the neutral
+  profile model represents closed contours only") instead of a generic
+  "profile subtype is not lowered yet". An open profile bounds no area;
+  closing it would fabricate a face the file never described. This is the real
+  blocker for `IfcSurfaceCurveSweptAreaSolid`, whose lowering is implemented
+  and waiting on it.
+
+### Fixed
+
+- Removed duplicate direction normalization in surface lowering and
+  `to_geom_frame`. `resource::direction::resolve_unit` already normalizes at
+  the IFC boundary, which is where the crate's contract says it happens
+  exactly once, so the second pass was unreachable code.
+
+### Added
+
 - `ifc-geometry` lowers exact curves: `IfcPolyline`, `IfcLine`, `IfcCircle`,
   `IfcTrimmedCurve` and `IfcCompositeCurve`. **A trim parameter is not always a
   length.** `IfcTrimmedCurve` carries values in the basis curve's own

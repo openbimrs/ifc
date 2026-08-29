@@ -14,7 +14,10 @@ use ifc_model::EntityId;
 use crate::error::GeometryResult;
 use crate::lower::boolean::lower_boolean_result_node;
 use crate::lower::brep::lower_faceted_brep_node;
-use crate::lower::csg::{lower_csg_primitive_node, lower_csg_solid_node, lower_swept_disk_node};
+use crate::lower::csg::{
+    lower_csg_primitive_node, lower_csg_solid_node, lower_surface_curve_swept_area_solid_node,
+    lower_swept_disk_node,
+};
 use crate::lower::halfspace::lower_half_space_node;
 use crate::lower::mapped::lower_mapped_item_node;
 use crate::lower::session::LoweringSession;
@@ -54,8 +57,11 @@ pub const IMPLEMENTED: &[&str] = &[
 /// stub is declared; implementing it means moving the name to [`IMPLEMENTED`].
 pub const PLANNED: &[(&str, &str)] = &[
     ("IFCADVANCEDBREP", "advanced B-rep topology lowering"),
-    ("IFCSURFACECURVESWEPTAREASOLID", "surface-curve sweeps"),
     ("IFCSECTIONEDSPINE", "spine interpolation"),
+    (
+        "IFCARBITRARYOPENPROFILEDEF",
+        "open profiles: the neutral profile model represents closed contours only",
+    ),
 ];
 
 /// Lower any representation item into the caller's session.
@@ -83,6 +89,9 @@ pub fn lower_representation_item(
         "IFCPOLYGONALFACESET" => lower_polygonal_face_set_node(session, id, frame),
         "IFCCSGSOLID" => lower_csg_solid_node(session, id, frame),
         "IFCSWEPTDISKSOLID" => lower_swept_disk_node(session, id, frame),
+        "IFCSURFACECURVESWEPTAREASOLID" => {
+            lower_surface_curve_swept_area_solid_node(session, id, frame)
+        }
         "IFCBLOCK" | "IFCSPHERE" | "IFCRIGHTCIRCULARCYLINDER" | "IFCRIGHTCIRCULARCONE" => {
             lower_csg_primitive_node(session, id, frame)
         }

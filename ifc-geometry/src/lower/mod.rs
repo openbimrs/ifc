@@ -10,6 +10,7 @@ pub mod halfspace;
 pub mod mapped;
 pub mod profile;
 pub mod session;
+pub mod surface;
 pub mod swept;
 pub mod tessellated;
 pub mod tolerance;
@@ -29,6 +30,7 @@ pub use mapped::{lower_mapped_item_node, lower_representation};
 pub use profile::{lower_profile, lower_profile_node};
 pub use provenance::ProvenanceMap;
 pub use session::{LoweringSession, SessionLimits};
+pub use surface::{lower_linear_extrusion, lower_plane, lower_surface_node};
 pub use swept::{
     lower_extruded_area_solid, lower_extruded_area_solid_node, lower_revolved_area_solid,
     lower_revolved_area_solid_node,
@@ -50,4 +52,3 @@ pub struct LoweredGeometry {
 mod placement;
 mod provenance;
 mod solid;
-mod surface;

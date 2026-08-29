@@ -25,6 +25,7 @@ lowering = [
     "dep:axiolid-topology",
     "dep:axiolid-primitive",
     "dep:axiolid-profile",
+    "dep:axiolid-surface",
 ]
 
 [dependencies]
@@ -42,6 +43,7 @@ axiolid-model = { workspace = true, optional = true }
 axiolid-topology = { workspace = true, optional = true }
 axiolid-primitive = { workspace = true, optional = true }
 axiolid-profile = { workspace = true, optional = true }
+axiolid-surface = { workspace = true, optional = true }
 
 [dev-dependencies]
 ifc-step.workspace = true

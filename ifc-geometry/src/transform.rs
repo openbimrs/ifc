@@ -132,6 +132,30 @@ impl Transform {
         ]
     }
 
+    /// Convert to a neutral orthonormal frame at the IFC boundary.
+    ///
+    /// Surfaces are defined by a frame rather than a matrix: the kernel's
+    /// `Plane`, `Cylinder` and friends all carry a `Frame3` whose `z` is the
+    /// axis or normal and whose `x`/`y` fix the parameterisation. Deriving
+    /// `x`/`y` from the normal alone would pick an arbitrary rotation about
+    /// it, silently reparameterising every trim taken against the surface, so
+    /// the placement's own axes are carried through instead.
+    ///
+    /// The basis is carried through as-is. `axis_placement_transform` builds
+    /// it from directions that `resource::direction` already normalized, and
+    /// `to_metres` scales only the origin, so the axes are unit by
+    /// construction. Re-normalizing here would be unreachable code that hides
+    /// a genuinely non-rigid basis instead of surfacing it.
+    #[cfg(feature = "lowering")]
+    pub fn to_geom_frame(self) -> axiolid_core::Frame3 {
+        axiolid_core::Frame3 {
+            origin: axiolid_core::Point3::from_array(self.origin),
+            x: axiolid_core::Vec3::from_array(self.basis[0]),
+            y: axiolid_core::Vec3::from_array(self.basis[1]),
+            z: axiolid_core::Vec3::from_array(self.basis[2]),
+        }
+    }
+
     /// Convert to the format-neutral geometry transform at the IFC boundary.
     #[cfg(feature = "lowering")]
     pub fn to_geom(self) -> axiolid_core::Transform3 {

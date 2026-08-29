@@ -4,18 +4,21 @@ Read [`../../AGENTS.md`](../../AGENTS.md) first. Active fixture work belongs onl
 in sibling `PLAN.md`; load it only when changing this directory.
 
 Small `.ifc` files for use in crate tests, copied from upstream reference repos.
-Total ~384 KiB, 22 files —
+Total ~392 KiB, 23 files —
 kept intentionally small; this is a curated edge-case set, not a bulk corpus.
 
 ## Layout
 
-- `ifclite-geometry/` — 13 files from `ifc-lite`'s
+- `ifclite-geometry/` — 14 files from `ifc-lite`'s
   `rust/geometry/tests/fixtures/` and `rust/processing/tests/fixtures/`
   (MPL-2.0, github.com/LTplus-AG/ifc-lite). Geometry edge cases: mapped-item
   cycles/nesting, swept-disk composite-curve profiles, shared-point faceted
   breps, CSG, halfspace flyaway, scaled units, overlapping wall openings,
   and (`mapped_instances_indexed_colour*.ifc`) IFC4 triangulated face sets with
-  an indexed colour map.
+  an indexed colour map. `issue_1485_duct_elbow_surface_curve_swept.ifc` is a
+  round duct elbow: a profile swept along a trimmed arc that lies on an
+  `IfcSurfaceOfLinearExtrusion`, and the only fixture carrying a non-planar
+  surface construction.
   Filenames match upstream (`issue_NNNN_*`, `mapped_instances_*`,
   `swept_disk_*`) — keep that convention when adding more so provenance stays
   traceable by name alone.

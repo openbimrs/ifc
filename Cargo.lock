@@ -263,6 +263,7 @@ dependencies = [
  "axiolid-model",
  "axiolid-primitive",
  "axiolid-profile",
+ "axiolid-surface",
  "axiolid-topology",
  "ifc-model",
  "ifc-schema",
