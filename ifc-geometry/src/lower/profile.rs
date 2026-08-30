@@ -44,63 +44,11 @@ mod slot {
 ///
 /// A reason starting with `kernel:` needs a change in `axiolid-profile`; the
 /// rest are IFC-side wiring.
-pub const UNLOWERED: &[(&str, &str)] = &[
-    (
-        "IFCISHAPEPROFILEDEF",
-        "kernel: SectionProfile::I has no FilletRadius, FlangeEdgeRadius or FlangeSlope",
-    ),
-    (
-        "IFCTSHAPEPROFILEDEF",
-        "kernel: SectionProfile::T has no fillet, edge radius or slope fields",
-    ),
-    (
-        "IFCUSHAPEPROFILEDEF",
-        "kernel: SectionProfile::U has no fillet, edge radius or slope fields",
-    ),
-    (
-        "IFCZSHAPEPROFILEDEF",
-        "kernel: SectionProfile::Z has no fillet or edge radius fields",
-    ),
-    (
-        "IFCCSHAPEPROFILEDEF",
-        "kernel: SectionProfile::C has no InternalFilletRadius field",
-    ),
-    (
-        "IFCLSHAPEPROFILEDEF",
-        "kernel: SectionProfile::L has no fillet, edge radius or slope fields",
-    ),
-    (
-        "IFCTRAPEZIUMPROFILEDEF",
-        "kernel: SectionProfile::Trapezium maps directly; pending the same slice",
-    ),
-    (
-        "IFCASYMMETRICISHAPEPROFILEDEF",
-        "kernel: SectionProfile::I carries one width, so distinct top and bottom \
-         flange widths would be silently symmetrised",
-    ),
-    (
-        "IFCELLIPSEPROFILEDEF",
-        "EllipseProfile exists in the kernel; not wired yet",
-    ),
-    (
-        "IFCCOMPOSITEPROFILEDEF",
-        "Profile::Composite exists in the kernel; not wired yet",
-    ),
-    (
-        "IFCDERIVEDPROFILEDEF",
-        "Profile::Derived exists in the kernel; needs IfcCartesianTransformationOperator2D",
-    ),
-    (
-        "IFCMIRROREDPROFILEDEF",
-        "its mirror is implied by the subtype, not carried in Operator, so \
-         lowering it as a plain derived profile drops the reflection",
-    ),
-    (
-        "IFCCENTERLINEPROFILEDEF",
-        "subtype of IfcArbitraryOpenProfileDef: an open curve plus Thickness, \
-         which the neutral contour model cannot express as a closed area",
-    ),
-];
+pub const UNLOWERED: &[(&str, &str)] = &[(
+    "IFCCENTERLINEPROFILEDEF",
+    "centre lines: an open curve plus Thickness does sweep a closed area, but \
+offsetting an arbitrary curve is a kernel operation, not an adapter one",
+)];
 
 /// Family label used for profile memoization.
 const PROFILE: &str = "profile";

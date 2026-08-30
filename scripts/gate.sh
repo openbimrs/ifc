@@ -50,6 +50,7 @@ cargo test -p openbim-ifc --features step,spatial,geometry-select --test unreach
 # CHANGELOG.md, so drift between them is a build failure rather than a silent
 # inconsistency the reader has to notice.
 python3 scripts/sync-changelog.py --check
+python3 scripts/sync-capabilities.py --check
 
 # Licensing gate. The IFC schemas are CC BY-ND 4.0 and must never reach the
 # published tree; this rejects XSD/PDF payloads and any `references/` or

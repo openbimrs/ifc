@@ -7,6 +7,19 @@ and this project follows Semantic Versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- The published capability matrix is generated from the lowering source
+  instead of maintained by hand, closing the ADR 0005 follow-up. It had
+  drifted badly: eight shipped families were listed as planned, a warning
+  claimed tessellated geometry was not lowered when both face sets are,
+  `ifc-geometry` was understated by 5,472 lines, and `ifc-author` and
+  `ifc-spatial` were missing from the census entirely.
+- `UNLOWERED` in the profile lowerer listed twelve families that in fact have
+  live dispatch arms, so the crate understated its own profile support. The
+  coverage gate now rejects a family that is both dispatched and declared
+  unlowered, rather than accepting either mention as coverage.
+
 ### Added
 
 - `ifc-geometry` lowers ten profile families: the I, asymmetric I, L, T, U, C

@@ -73,8 +73,11 @@ We will keep the reserved structure, and we will make the distinction between
 **Follow-ups / risks to watch**
 
 - Docs drift is the main risk. Code examples in the documentation are compiled
-  as a test; the capability matrix is not yet machine-derived and should become
-  so.
+  as a test, and the capability matrix is now machine-derived:
+  `scripts/sync-capabilities.py` generates the workspace census, the
+  representation-item table and the profile table from the source that
+  implements them, and `scripts/gate.sh` fails when the page and the code
+  disagree. This follow-up is closed.
 
 ## Relation to existing code
 

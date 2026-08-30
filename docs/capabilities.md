@@ -18,20 +18,26 @@ A scaffold crate compiles, publishes, and appears in the feature list. It does
 
 ## Workspace census
 
-Measured from the source tree, not estimated. "Stub files" counts source files
-of twelve lines or fewer — the placeholder shape described above.
+Generated from the source tree by `scripts/sync-capabilities.py`, not estimated.
+"Stub files" counts source files of twelve lines or fewer — the placeholder
+shape described above. `scripts/gate.sh` fails if these numbers drift from the
+code.
+
+<!-- CAPABILITIES:CENSUS:BEGIN -->
 
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `ifc-geometry` | 19,162 | 77 | 9 | 15 | <span class="status-partial">Partial</span> |
+| `ifc-geometry` | 24,634 | 90 | 6 | 28 | <span class="status-partial">Partial</span> |
 | `ifc-template-catalog` | 2,403 | 28 | 3 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 2,114 | 23 | 0 | 7 | <span class="status-implemented">Implemented</span> |
-| `ifc-model` | 841 | 24 | 14 | 5 | <span class="status-implemented">Implemented</span> |
+| `ifc-model` | 1,483 | 25 | 7 | 9 | <span class="status-implemented">Implemented</span> |
+| `openbim-ifc` | 888 | 6 | 0 | 9 | <span class="status-implemented">Implemented</span> |
+| `ifc-schema` | 768 | 10 | 4 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 658 | 4 | 0 | 1 | <span class="status-implemented">Implemented</span> |
+| `ifc-spatial` | 561 | 7 | 1 | 3 | <span class="status-implemented">Implemented</span> |
+| `ifc-author` | 552 | 6 | 2 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 482 | 8 | 0 | 0 | <span class="status-partial">Partial</span> |
-| `ifc-schema` | 373 | 8 | 4 | 1 | <span class="status-implemented">Implemented</span> |
-| `ifc-step` | 341 | 4 | 0 | 1 | <span class="status-implemented">Implemented</span> |
-| `openbim-ifc` | 304 | 4 | 0 | 6 | <span class="status-implemented">Implemented</span> |
+| `ifc-step` | 480 | 5 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 210 | 29 | 24 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-structural` | 194 | 27 | 22 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-alignment` | 186 | 26 | 21 | 0 | <span class="status-scaffold">Scaffold</span> |
@@ -43,7 +49,9 @@ of twelve lines or fewer — the placeholder shape described above.
 | `ifc-georef` | 133 | 17 | 14 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-classification` | 131 | 17 | 14 | 0 | <span class="status-scaffold">Scaffold</span> |
 
-Nine of nineteen crates are scaffolds. They exist because the layering decision
+<!-- CAPABILITIES:CENSUS:END -->
+
+10 of 21 crates are scaffolds. They exist because the layering decision
 (see [ADR 0005](/adr/0005-scaffold-modules-declare-ownership))
 prefers declaring the intended home of a domain up front over discovering it
 later, but they must never be mistaken for working code.
@@ -159,6 +167,8 @@ families into the neutral `axiolid-model` DAG.
 The dispatcher keeps coverage as data so it is auditable from one table
 (`ifc-geometry/src/lower/dispatch.rs`):
 
+<!-- CAPABILITIES:GEOMETRY:BEGIN -->
+
 | Family | Status |
 | --- | --- |
 | `IfcExtrudedAreaSolid` | <span class="status-implemented">Implemented</span> |
@@ -168,25 +178,79 @@ The dispatcher keeps coverage as data so it is auditable from one table
 | `IfcMappedItem` | <span class="status-implemented">Implemented</span> |
 | `IfcFacetedBrep` | <span class="status-implemented">Implemented</span> |
 | `IfcFacetedBrepWithVoids` | <span class="status-implemented">Implemented</span> |
-| `IfcAdvancedBrep` | <span class="status-partial">Planned</span> — advanced B-rep topology lowering |
-| `IfcTriangulatedFaceSet` | <span class="status-partial">Planned</span> — tessellated face-set lowering |
-| `IfcPolygonalFaceSet` | <span class="status-partial">Planned</span> — polygonal face-set lowering |
-| `IfcSweptDiskSolid` | <span class="status-partial">Planned</span> |
-| `IfcSurfaceCurveSweptAreaSolid` | <span class="status-partial">Planned</span> |
-| `IfcSectionedSpine` | <span class="status-partial">Planned</span> |
-| `IfcHalfSpaceSolid` | <span class="status-partial">Planned</span> |
-| `IfcCsgSolid` | <span class="status-partial">Planned</span> |
+| `IfcAdvancedBrep` | <span class="status-implemented">Implemented</span> |
+| `IfcAdvancedBrepWithVoids` | <span class="status-implemented">Implemented</span> |
+| `IfcHalfSpaceSolid` | <span class="status-implemented">Implemented</span> |
+| `IfcBoxedHalfSpace` | <span class="status-implemented">Implemented</span> |
+| `IfcPolygonalBoundedHalfSpace` | <span class="status-implemented">Implemented</span> |
+| `IfcTriangulatedFaceSet` | <span class="status-implemented">Implemented</span> |
+| `IfcPolygonalFaceSet` | <span class="status-implemented">Implemented</span> |
+| `IfcCsgSolid` | <span class="status-implemented">Implemented</span> |
+| `IfcSweptDiskSolid` | <span class="status-implemented">Implemented</span> |
+| `IfcSweptDiskSolidPolygonal` | <span class="status-implemented">Implemented</span> |
+| `IfcSurfaceCurveSweptAreaSolid` | <span class="status-implemented">Implemented</span> |
+| `IfcBlock` | <span class="status-implemented">Implemented</span> |
+| `IfcSphere` | <span class="status-implemented">Implemented</span> |
+| `IfcRightCircularCylinder` | <span class="status-implemented">Implemented</span> |
+| `IfcRightCircularCone` | <span class="status-implemented">Implemented</span> |
+| `IfcRectangularPyramid` | <span class="status-implemented">Implemented</span> |
+| `IfcBoundingBox` | <span class="status-implemented">Implemented</span> |
+| `IfcExtrudedAreaSolidTapered` | <span class="status-implemented">Implemented</span> |
+| `IfcRevolvedAreaSolidTapered` | <span class="status-implemented">Implemented</span> |
+| `IfcFixedReferenceSweptAreaSolid` | <span class="status-implemented">Implemented</span> |
+| `IfcSectionedSpine` | <span class="status-implemented">Implemented</span> |
+| `IfcShellBasedSurfaceModel` | <span class="status-implemented">Implemented</span> |
+| `IfcFaceBasedSurfaceModel` | <span class="status-implemented">Implemented</span> |
+| `IfcGeometricSet` | <span class="status-implemented">Implemented</span> |
+| `IfcGeometricCurveSet` | <span class="status-implemented">Implemented</span> |
+| `IfcArbitraryOpenProfileDef` | <span class="status-partial">Planned</span> — open profiles: the neutral profile model represents closed contours only |
 
-::: warning Tessellated geometry is not lowered yet
-`IfcTriangulatedFaceSet` and `IfcPolygonalFaceSet` are the dominant body
-representation in IFC4 exports from several major authoring tools. Until they
-are lowered, those bodies return a typed `GeometryError::Unsupported`. Plan for
-this when estimating coverage against real project files.
+<!-- CAPABILITIES:GEOMETRY:END -->
+
+::: tip Coverage below is generated
+The table above is derived from `ifc-geometry/src/lower/dispatch.rs` by
+`scripts/sync-capabilities.py`, and `scripts/gate.sh` fails when this page and
+that source disagree. It cannot drift from the code without breaking the build.
 :::
 
 Unimplemented families return a typed `GeometryError::Unsupported` naming the
 source entity and the specific missing capability — never a panic, and never a
 silently substituted approximate shape.
+
+### Profile lowering
+
+Swept solids reference a profile, so profile coverage bounds how much of a real
+model lowers. Steel sections carry their fillet radii, edge radii and flange
+slopes into the neutral model rather than being reduced to an outline, because
+a section without them has the wrong area and the wrong section modulus.
+
+<!-- CAPABILITIES:PROFILE:BEGIN -->
+
+| Profile family | Status |
+| --- | --- |
+| `IfcRectangleProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcRoundedRectangleProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcRectangleHollowProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcCircleProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcCircleHollowProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcArbitraryClosedProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcArbitraryProfileDefWithVoids` | <span class="status-implemented">Implemented</span> |
+| `IfcIShapeProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcAsymmetricIShapeProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcLShapeProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcTShapeProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcUShapeProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcCShapeProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcZShapeProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcTrapeziumProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcEllipseProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcCompositeProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcDerivedProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcMirroredProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcCenterLineProfileDef` | <span class="status-partial">Planned</span> — centre lines: an open curve plus Thickness does sweep a closed area, but offsetting an arbitrary curve is a kernel operation, not an adapter one |
+| `IfcArbitraryOpenProfileDef` | <span class="status-partial">Planned</span> — open profiles: the neutral profile model represents closed contours only |
+
+<!-- CAPABILITIES:PROFILE:END -->
 
 ### Curves and placement
 
@@ -203,16 +267,16 @@ silently substituted approximate shape.
 | `IfcCartesianTransformationOperator*` | <span class="status-implemented">Implemented</span> | `resource/operator.rs` |
 | Unit resolution (SI, conversion-based) | <span class="status-implemented">Implemented</span> | `units.rs` |
 
-::: warning Reading a curve is not lowering a curve
-Every row above means the crate can **read** that entity's attributes into a
-typed view. **No curve is lowered into the neutral geometry graph today**:
-`lower/curve.rs` is a three-line placeholder, and
-`lower_representation_item` dispatches no curve family, so a top-level
-`IfcPolyline` in a representation returns `Unsupported`.
+::: info Curves lower as geometry inside a parent item
+`lower/curve.rs` lowers polylines, conics, lines, trimmed and composite curves
+and B-splines into the neutral graph. Curves reach it through the item that
+owns them: a sweep directrix, a surface boundary, a B-rep edge, and
+`IfcGeometricCurveSet` members.
 
-Polyline geometry *is* consumed in one place — as an arbitrary profile outline
-inside a swept solid (`lower/profile.rs`). That is the only path where 2D curve
-data reaches the graph.
+A curve is deliberately **not** a top-level body dispatch target. Exact-type
+dispatch in `lower_representation_item` covers solids and collections, so a
+bare `IfcPolyline` offered as a body representation returns `Unsupported`
+rather than a shape a viewer would draw as a solid.
 :::
 
 Curve *representation* is not an evaluator claim. Tessellating a B-spline is

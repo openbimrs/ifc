@@ -438,7 +438,38 @@ fn every_concrete_profile_is_lowered_or_declared_unlowered() {
         std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/lower/profile.rs"),
     )
     .expect("profile lowerer");
-    let upper = source.to_ascii_uppercase();
+
+    // Distinguish the two ways a family can be named, rather than asking
+    // whether the name appears at all. A substring check cannot tell a live
+    // dispatch arm from a stale "not supported" entry, so a family that was
+    // implemented but left in UNLOWERED reads as covered by both and the
+    // contradiction stays invisible. That is exactly what happened when the
+    // steel sections shipped: twelve families sat in both sets at once.
+    let dispatched: BTreeSet<String> = source
+        .lines()
+        .filter_map(|line| {
+            let line = line.trim();
+            let name = line.strip_prefix('"')?;
+            let (name, rest) = name.split_once('"')?;
+            rest.trim_start()
+                .starts_with("=>")
+                .then(|| name.to_string())
+        })
+        .collect();
+
+    let declared: BTreeSet<String> = unlowered_table(&source);
+
+    let both: Vec<&String> = dispatched.intersection(&declared).collect();
+    assert!(
+        both.is_empty(),
+        "{} profile families are BOTH dispatched and declared unlowered; \
+         a stale UNLOWERED entry makes the crate understate itself:\n{}",
+        both.len(),
+        both.iter()
+            .map(|m| format!("  {m}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
 
     let profiles: Vec<&str> = CONCRETE_ENTITIES
         .iter()
@@ -448,29 +479,61 @@ fn every_concrete_profile_is_lowered_or_declared_unlowered() {
         .collect();
     assert_eq!(profiles.len(), 22, "IfcProfileResource concrete entities");
 
-    let mut unlowered = Vec::new();
+    let mut missing = Vec::new();
     for entity in &profiles {
         // IfcProfileDef itself is the supertype: never instantiated directly.
         if *entity == "IfcProfileDef" {
             continue;
         }
-        let tag = format!("\"{}\"", entity.to_ascii_uppercase());
-        if !upper.contains(&tag) {
-            unlowered.push(*entity);
+        let upper = entity.to_ascii_uppercase();
+        if !dispatched.contains(&upper) && !declared.contains(&upper) {
+            missing.push(*entity);
         }
     }
 
     assert!(
-        unlowered.is_empty(),
+        missing.is_empty(),
         "{} concrete profile families are neither lowered nor declared \
          unlowered in src/lower/profile.rs:\n{}",
-        unlowered.len(),
-        unlowered
+        missing.len(),
+        missing
             .iter()
             .map(|m| format!("  {m}"))
             .collect::<Vec<_>>()
             .join("\n")
     );
+}
+
+/// Entity names listed in the `UNLOWERED` table of the profile lowerer.
+fn unlowered_table(source: &str) -> BTreeSet<String> {
+    let start = source
+        .find("pub const UNLOWERED:")
+        .expect("profile lowerer declares an UNLOWERED table");
+    let rest = &source[start..];
+    // The table ends at the first line that closes it, which is `];` for a
+    // multi-entry table and `)];` for a single-entry one.
+    let end = rest
+        .lines()
+        .scan(0usize, |acc, line| {
+            let at = *acc;
+            *acc += line.len() + 1;
+            Some((at, line))
+        })
+        .find(|(_, line)| {
+            let t = line.trim();
+            t == "];" || t == ")];"
+        })
+        .map(|(at, line)| at + line.len())
+        .expect("UNLOWERED table is closed");
+    source[start..start + end]
+        .lines()
+        .filter_map(|line| {
+            let t = line.trim();
+            let name = t.strip_prefix('"')?;
+            let (name, _) = name.split_once('"')?;
+            name.starts_with("IFC").then(|| name.to_string())
+        })
+        .collect()
 }
 
 /// The subtype table must know every concrete profile family.
