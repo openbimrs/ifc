@@ -15,3 +15,4 @@ mod relation;
 mod traversal;
 
 pub use relation::{Connection, ConnectionGraph, NetworkGraph};
+pub use traversal::{Direction, FlowNetwork, FlowQuery};

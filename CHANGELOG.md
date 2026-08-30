@@ -9,6 +9,13 @@ and this project follows Semantic Versioning.
 
 ### Added
 
+- `ifc-systems` completes its plan: flow roles and direction semantics, zones
+  with their `WR1` membership rule, spatial containment vs referencing, and
+  deterministic `upstream`/`downstream` queries oriented by port flow
+  direction rather than by authoring order. Queries report when they crossed a
+  port whose direction the file never stated, so an under-specified file
+  cannot look authoritative.
+
 - `ifc-systems` reads distribution ports and the connection network. Ports
   resolve through both `IfcRelNests` and the legacy
   `IfcRelConnectsPortToElement`, carrying flow direction and owning element.

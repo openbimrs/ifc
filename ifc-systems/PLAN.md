@@ -1,6 +1,6 @@
 # ifc-systems implementation plan
 
-Status: partial; SYS-ROOT implemented, connectivity projections remain.
+Status: complete; all six tasks implemented.
 Last updated: 2026-08-30
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
@@ -36,12 +36,12 @@ owner and expose a public symbol only through an intentional parent re-export.
   - Evidence: focused view/query tests, invalid/cycle cases, and crate clippy.
 - [x] `SYS-CONN` - implement semantic connection graph with cycle budgets
   - Evidence: focused view/query tests, invalid/cycle cases, and crate clippy.
-- [ ] `SYS-FLOW` - implement direction/role consistency checks
-  - Evidence: focused view/query tests, invalid/cycle cases, and crate clippy.
-- [ ] `SYS-ZONE` - implement zones and spatial groups
-  - Evidence: focused view/query tests, invalid/cycle cases, and crate clippy.
-- [ ] `SYS-QUERY` - deterministic upstream/downstream queries without geometry
-  - Evidence: focused view/query tests, invalid/cycle cases, and crate clippy.
+- [x] `SYS-FLOW` - implement direction/role consistency checks
+  - Evidence: `cargo test -p ifc-systems` (24 tests), role/direction probes caught.
+- [x] `SYS-ZONE` - implement zones and spatial groups
+  - Evidence: `cargo test -p ifc-systems` (24 tests), WR1 and slot probes caught.
+- [x] `SYS-QUERY` - deterministic upstream/downstream queries without geometry
+  - Evidence: `cargo test -p ifc-systems` (24 tests), orientation and cycle probes caught.
 
 ## Completion log
 
@@ -67,3 +67,21 @@ Connections alone leave a physical chain as isolated pairs, since no
 relationship joins an element's own inlet to its outlet; NetworkGraph adds
 those through-element edges. Both traversals are cycle-safe because ring mains
 are normal, not corrupt.
+SYS-FLOW - cargo test -p ifc-systems (24 passing) - FlowDirection moved out of
+port into flow, which owns its meaning: the enum decides whether an edge may be
+walked, and that is a flow concern, not a port attribute. Roles come from
+schema ancestry because files state IfcPipeSegment, never IfcFlowSegment.
+Role/direction disagreement is REPORTED, not raised: the schema states element
+type and port direction independently, so a segment with two SOURCE ports is a
+contradiction no validator catches.
+SYS-ZONE - cargo test -p ifc-systems (24 passing) - IfcZone WR1 restricts
+members to IfcZone/IfcSpace/IfcSpatialZone. IfcOpenShell's validator does NOT
+enforce WHERE rules, so the fixture with a flow terminal in a zone passes
+validation while being invalid; the check earns its place. Containment
+(SET [0:1]) and referencing (SET [0:?]) are kept apart because a duct passing
+through five rooms is referenced by all and contained by none.
+SYS-QUERY - cargo test -p ifc-systems (24 passing) - orientation comes from
+port FlowDirection, never from RelatingPort/RelatedPort order. An unstated
+direction is traversed in BOTH directions and the answer carries
+used_undirected, because treating silence as "no flow" would make queries on
+under-specified files return empty and look authoritative.

@@ -28,10 +28,14 @@ mod flow;
 mod port;
 mod system;
 
-pub use connectivity::{Connection, ConnectionGraph, NetworkGraph};
+pub use connectivity::{
+    Connection, ConnectionGraph, Direction, FlowNetwork, FlowQuery, NetworkGraph,
+};
 pub use error::SystemAnomaly;
-pub use port::{ports, Attachment, FlowDirection, Port};
+pub use flow::{role_inconsistencies, ElementRole, FlowDirection, RoleInconsistency};
+pub use port::{ports, Attachment, Port};
 pub use system::{systems, System};
+pub use zone::{spatial_placements, zones, SpatialPlacement, Zone};
 
 mod assignment;
 mod zone;

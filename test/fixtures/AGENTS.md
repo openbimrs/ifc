@@ -75,12 +75,21 @@ kept intentionally small; this is a curated edge-case set, not a bulk corpus.
 
   `synthetic_systems.ifc` carries two `IfcDistributionSystem`s, an `IfcZone`
   (a system subtype in IFC4) and an `IfcInventory` (a group that is NOT a
-  system), 11 `IfcDistributionPort`s attached by BOTH `IfcRelNests` and the
-  legacy `IfcRelConnectsPortToElement`, one unattached port, and 5
+  system), 16 `IfcDistributionPort`s attached by BOTH `IfcRelNests` and the
+  legacy `IfcRelConnectsPortToElement`, one unattached port, and 7
   `IfcRelConnectsPorts` forming a heating run that closes a RING plus a
   separate ventilation pair. The ring is deliberate: it makes a traversal
-  without a visited set hang rather than pass. Passes
-  `ifcopenshell.validate` with zero issues.
+  without a visited set hang rather than pass.
+
+  It also states the cases the flow, zone and query readers must handle: two
+  `IfcSpace`s with `IfcRelContainedInSpatialStructure` (`SET [0:1]`) and
+  `IfcRelReferencedInSpatialStructure` (`SET [0:?]`) used side by side, a
+  zone whose members include an `IfcFlowSegment` that WR1 forbids, and a
+  segment authored with two SOURCE ports so nothing can flow through it.
+
+  The WR1 breach is the point of the file: `ifcopenshell.validate` does NOT
+  flag it, so a fixture that only satisfied the validator would not prove the
+  rule is checked. Every other constraint passes with zero issues.
 
   Regenerate with:
 

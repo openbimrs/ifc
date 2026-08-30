@@ -55,7 +55,7 @@ PUBLISHED_STATUS = {
     "ifc-spatial": '<span class="status-implemented">Implemented</span>',
     # SYS-ROOT implements system discovery and membership; the connectivity,
     # port, flow and zone stages are still reserved names.
-    "ifc-systems": '<span class="status-partial">Partial</span>',
+    "ifc-systems": '<span class="status-implemented">Implemented</span>',
 }
 
 

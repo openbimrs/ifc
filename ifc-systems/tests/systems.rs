@@ -1,59 +1,12 @@
-//! `ifc-systems` SYS-ROOT: systems and membership.
+//! `ifc-systems`: systems, membership, ports and stated connectivity.
 
+mod common;
+
+use common::{fixture, model_with_system};
 use ifc_model::{Codec, Entity, EntityId, Model, Value};
 use ifc_systems::{
     ports, systems, Attachment, ConnectionGraph, FlowDirection, NetworkGraph, SystemAnomaly,
 };
-
-/// Build a model stating one distribution system with two members.
-/// The committed fixture: a real STEP file, not a synthetic model.
-fn fixture() -> Model {
-    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../test/fixtures/synthetic-systems/synthetic_systems.ifc");
-    ifc_step::StepCodec
-        .read_path(&path)
-        .expect("fixture parses")
-}
-
-fn model_with_system() -> Model {
-    let mut model = Model::new();
-    let seg = EntityId(1);
-    model.insert(seg, Entity::new("IfcFlowSegment", vec![]));
-    let fitting = EntityId(2);
-    model.insert(fitting, Entity::new("IfcFlowFitting", vec![]));
-    let system = EntityId(3);
-    model.insert(
-        system,
-        Entity::new(
-            "IfcDistributionSystem",
-            vec![
-                Value::Text("guid".into()),
-                Value::Null,
-                Value::Text("Heating".into()),
-                Value::Null,
-                Value::Null,
-                Value::Null,
-                Value::Enum("HEATING".into()),
-            ],
-        ),
-    );
-    model.insert(
-        EntityId(4),
-        Entity::new(
-            "IfcRelAssignsToGroup",
-            vec![
-                Value::Text("relguid".into()),
-                Value::Null,
-                Value::Null,
-                Value::Null,
-                Value::List(vec![Value::Ref(seg), Value::Ref(fitting)]),
-                Value::Null,
-                Value::Ref(system),
-            ],
-        ),
-    );
-    model
-}
 
 /// A subtype system is found, not just an exact `IfcSystem`.
 ///
@@ -237,8 +190,8 @@ fn the_committed_fixture_reads_its_systems() {
         .expect("heating system");
     assert_eq!(
         heating.members.len(),
-        4,
-        "two pipes, a fitting and a terminal"
+        5,
+        "two pipes, a fitting, a terminal and the pump"
     );
 
     // The IfcInventory assignment must be reported as a non-system, not
@@ -318,7 +271,7 @@ fn ports_are_found_by_ancestry_not_by_exact_type() {
         "IfcPort is abstract; nothing is literally an IFCPORT"
     );
     let (ports, _) = ports(&model);
-    assert_eq!(ports.len(), 11, "every distribution port is found");
+    assert_eq!(ports.len(), 18, "every distribution port is found");
 }
 
 /// An unattached port is reported with no element, not dropped.
@@ -424,8 +377,8 @@ fn stated_connections_alone_leave_a_chain_in_pieces() {
     );
     assert_eq!(
         graph.components().len(),
-        5,
-        "five stated connections, five disconnected pairs"
+        7,
+        "seven stated connections, seven disconnected pairs"
     );
 }
 
@@ -448,10 +401,11 @@ fn the_network_graph_connects_the_chain_and_terminates_on_a_ring() {
         .expect("fixture port")
         .id;
 
-    // seg0(2) + seg1(2) + fitting(3) + terminal(1) = 8 ports in the loop.
+    // seg0(2) + seg1(2) + fitting(4) + terminal(1) + pump(2) = 11 ports,
+    // all joined once the pump branch hangs off the tee's fourth port.
     assert_eq!(
         network.reachable_from(start).len(),
-        8,
+        11,
         "the whole heating run is reachable, each port exactly once"
     );
 }
@@ -468,7 +422,8 @@ fn a_disconnected_system_is_its_own_component() {
     sizes.sort_unstable();
     assert_eq!(
         sizes,
-        vec![2, 8],
-        "ventilation's two ports stay separate from the heating run"
+        vec![2, 2, 2, 11],
+        "ventilation, the backwards segment and the dead-end pair each stay \
+         separate from the heating run"
     );
 }

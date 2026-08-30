@@ -10,4 +10,4 @@
 mod assignment;
 mod definition;
 
-pub use definition::{ports, Attachment, FlowDirection, Port};
+pub use definition::{ports, Attachment, Port};

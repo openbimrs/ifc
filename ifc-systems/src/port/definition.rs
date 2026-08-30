@@ -23,6 +23,7 @@ use ifc_model::{EntityId, Model, Value};
 use ifc_schema::ifc4;
 
 use crate::error::SystemAnomaly;
+use crate::flow::FlowDirection;
 
 mod slot {
     /// `IfcRelNests.RelatingObject` -- the nesting element.
@@ -35,38 +36,6 @@ mod slot {
     pub const PORT_TO_ELEMENT_ELEMENT: usize = 5;
     /// `IfcDistributionPort.FlowDirection`.
     pub const FLOW_DIRECTION: usize = 7;
-}
-
-/// Which way material or energy moves through a port.
-///
-/// `IfcFlowDirectionEnum`. A missing direction is [`FlowDirection::NotDefined`]
-/// rather than an assumed default: guessing SOURCE would invent a direction
-/// the file never stated, and downstream tracing would follow edges that do
-/// not exist.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FlowDirection {
-    /// Material leaves the element through this port.
-    Source,
-    /// Material enters the element through this port.
-    Sink,
-    /// Bidirectional.
-    SourceAndSink,
-    /// Stated as NOTDEFINED, or not stated at all.
-    NotDefined,
-}
-
-impl FlowDirection {
-    fn parse(value: Option<&Value>) -> Self {
-        match value {
-            Some(Value::Enum(name)) => match name.to_ascii_uppercase().as_str() {
-                "SOURCE" => Self::Source,
-                "SINK" => Self::Sink,
-                "SOURCEANDSINK" => Self::SourceAndSink,
-                _ => Self::NotDefined,
-            },
-            _ => Self::NotDefined,
-        }
-    }
 }
 
 /// How a port was attached to its element.

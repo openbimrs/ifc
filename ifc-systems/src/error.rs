@@ -20,6 +20,34 @@ pub enum SystemAnomaly {
         /// The id it named.
         missing: EntityId,
     },
+    /// An `IfcZone` member that WR1 does not permit.
+    ///
+    /// WR1 restricts zone members to `IfcZone`, `IfcSpace` and
+    /// `IfcSpatialZone`. Anything else makes the file invalid, so it is
+    /// reported and excluded rather than silently listed as zone content.
+    ZoneMemberNotSpatial {
+        /// The `IfcRelAssignsToGroup` stating it.
+        relation: EntityId,
+        /// The zone.
+        zone: EntityId,
+        /// The member WR1 rejects.
+        member: EntityId,
+        /// Its type, for diagnosis.
+        type_name: String,
+    },
+    /// An element contained by two different spatial structures.
+    ///
+    /// `ContainedInStructure` is `SET [0:1]`: an element has one home. Two
+    /// cannot both be true, so the first by id wins and the conflict is
+    /// stated rather than silently resolved.
+    ContainedTwice {
+        /// The element with two homes.
+        element: EntityId,
+        /// The structure kept.
+        first: EntityId,
+        /// The structure rejected.
+        second: EntityId,
+    },
     /// A port is attached to two different elements.
     ///
     /// `IfcPort.ContainedIn` is `SET [0:1]` in the schema, so this cannot be

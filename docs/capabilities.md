@@ -30,8 +30,8 @@ code.
 | `ifc-geometry` | 24,714 | 90 | 6 | 28 | <span class="status-partial">Partial</span> |
 | `ifc-template-catalog` | 2,403 | 28 | 3 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 2,114 | 23 | 0 | 7 | <span class="status-implemented">Implemented</span> |
+| `ifc-systems` | 1,586 | 20 | 5 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 1,483 | 25 | 7 | 9 | <span class="status-implemented">Implemented</span> |
-| `ifc-systems` | 890 | 20 | 12 | 1 | <span class="status-partial">Partial</span> |
 | `openbim-ifc` | 888 | 6 | 0 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-schema` | 768 | 10 | 4 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 658 | 4 | 0 | 1 | <span class="status-implemented">Implemented</span> |
@@ -74,7 +74,7 @@ later, but they must never be mistaken for working code.
 | GlobalId base-64 encode/decode | <span class="status-implemented">Implemented</span> | `ifc-model::guid` |
 | Spatial containment tree traversal | <span class="status-implemented">Implemented</span> | `ifc-spatial::SpatialTree`; facade feature `spatial`. See below. |
 | Objectified relationship traversal | <span class="status-partial">Partial</span> | `ifc-spatial::relation` reads `IfcRelAggregates`, `IfcRelContainedInSpatialStructure`, `IfcRelNests`. Other `IfcRel*` families are not interpreted. |
-| Distribution systems, ports and connectivity | <span class="status-partial">Partial</span> | `ifc-systems::systems` reads `IfcSystem` and subtypes by schema ancestry with `IfcRelAssignsToGroup` membership. `ports` resolves ports through both `IfcRelNests` and the legacy `IfcRelConnectsPortToElement`, with flow direction. `ConnectionGraph` is the stated undirected connection graph; `NetworkGraph` adds through-element edges so a run is traversable. Both are cycle-safe. Flow roles, zone-spatial links and service assignment are still scaffolds. |
+| Distribution systems, ports and connectivity | <span class="status-implemented">Implemented</span> | `ifc-systems` reads systems and membership, ports through both `IfcRelNests` and the legacy `IfcRelConnectsPortToElement`, the connection network, flow roles and direction, zones with their `WR1` membership rule, spatial containment vs referencing, and direction-aware `upstream`/`downstream` queries. Relationship-only: no geometry is read, so a geometry-free file still yields a full network. |
 | Cycle-protected graph walks | <span class="status-scaffold">Scaffold</span> | `ifc-model/src/traverse.rs` |
 | Type index (`ids_of_type`, `of_type`) | <span class="status-implemented">Implemented</span> | `Model::ids_of_type`, backed by `index/type_index.rs` |
 | Reverse-reference index ("who references me") | <span class="status-implemented">Implemented</span> | `ifc-model::ReverseIndex`, built on demand; records the attribute slot |

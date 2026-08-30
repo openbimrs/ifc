@@ -1,7 +1,6 @@
 //! Flow direction and segment/fitting/terminal roles.
 //!
 //!
-//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!
@@ -10,3 +9,6 @@
 
 mod direction;
 mod role;
+
+pub use direction::FlowDirection;
+pub use role::{role_inconsistencies, ElementRole, RoleInconsistency};

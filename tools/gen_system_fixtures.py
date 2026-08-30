@@ -130,9 +130,13 @@ def build():
     fit_a = port("fit-a", "SINK")
     fit_b = port("fit-b", "SOURCE")
     fit_c = port("fit-c", "SOURCEANDSINK")
+    # A fourth port for the pump branch. IfcPort.ConnectedTo is SET [0:1], so
+    # a port serves exactly one connection: branching needs another port, not
+    # a second relationship on the same one.
+    fit_d = port("fit-d", "SOURCE")
     f.create_entity(
         "IfcRelNests", GlobalId=guid(), OwnerHistory=owner,
-        RelatingObject=fitting, RelatedObjects=[fit_a, fit_b, fit_c])
+        RelatingObject=fitting, RelatedObjects=[fit_a, fit_b, fit_c, fit_d])
 
     # terminal: nested, single port.
     term_in = port("term-in", "SINK")
@@ -171,6 +175,120 @@ def build():
         RelatingPort=seg2_out, RelatedPort=seg2_in)
 
     _ = orphan
+
+    # ---- Zones and spatial structure -------------------------------------
+    #
+    # WR1 restricts IfcZone members to IfcZone/IfcSpace/IfcSpatialZone. The
+    # fixture states BOTH a valid membership and a violation, because a reader
+    # that cannot tell them apart passes a valid-only file by luck.
+    storey = f.create_entity(
+        "IfcBuildingStorey", GlobalId=guid(), OwnerHistory=owner, Name="Level 0")
+    f.create_entity(
+        "IfcRelAggregates", GlobalId=guid(), OwnerHistory=owner,
+        RelatingObject=building, RelatedObjects=[storey])
+
+    plant_room = f.create_entity(
+        "IfcSpace", GlobalId=guid(), OwnerHistory=owner, Name="Plant room")
+    office = f.create_entity(
+        "IfcSpace", GlobalId=guid(), OwnerHistory=owner, Name="Office")
+    f.create_entity(
+        "IfcRelAggregates", GlobalId=guid(), OwnerHistory=owner,
+        RelatingObject=storey, RelatedObjects=[plant_room, office])
+
+    # Valid zone membership: two spaces.
+    f.create_entity(
+        "IfcRelAssignsToGroup", GlobalId=guid(), OwnerHistory=owner,
+        RelatedObjects=[plant_room, office], RelatingGroup=zone)
+
+    # WR1 VIOLATION: a flow terminal is not a spatial element. Written
+    # deliberately so the reader must exclude it from members AND report it.
+    f.create_entity(
+        "IfcRelAssignsToGroup", GlobalId=guid(), OwnerHistory=owner,
+        RelatedObjects=[terminal], RelatingGroup=zone)
+
+    # Containment: SET [0:1], one home per element.
+    f.create_entity(
+        "IfcRelContainedInSpatialStructure", GlobalId=guid(), OwnerHistory=owner,
+        RelatedElements=[segments[0], segments[1], fitting], RelatingStructure=plant_room)
+    f.create_entity(
+        "IfcRelContainedInSpatialStructure", GlobalId=guid(), OwnerHistory=owner,
+        RelatedElements=[terminal], RelatingStructure=office)
+
+    # Referencing: SET [0:?]. seg2 passes through both spaces without being
+    # contained by either -- the case that collapses if the two relationships
+    # are merged.
+    f.create_entity(
+        "IfcRelReferencedInSpatialStructure", GlobalId=guid(), OwnerHistory=owner,
+        RelatedElements=[segments[2]], RelatingStructure=plant_room)
+    f.create_entity(
+        "IfcRelReferencedInSpatialStructure", GlobalId=guid(), OwnerHistory=owner,
+        RelatedElements=[segments[2]], RelatingStructure=office)
+
+    # ---- An UNDIRECTED pair ----------------------------------------------
+    #
+    # Both ports state NOTDEFINED, so a flow query crossing this edge is
+    # relying on an assumption the file never made. The query must still
+    # return the element, and must flag that it did.
+    pump = f.create_entity(
+        "IfcFlowMovingDevice", GlobalId=guid(), OwnerHistory=owner, Name="Pump")
+    pump_a = port("pump-a", "NOTDEFINED")
+    pump_b = port("pump-b", "NOTDEFINED")
+    f.create_entity(
+        "IfcRelNests", GlobalId=guid(), OwnerHistory=owner,
+        RelatingObject=pump, RelatedObjects=[pump_a, pump_b])
+    f.create_entity(
+        "IfcRelAssignsToGroup", GlobalId=guid(), OwnerHistory=owner,
+        RelatedObjects=[pump], RelatingGroup=heating)
+    # Join the pump onto the heating chain at the fitting's dedicated branch outlet.
+    #
+    # Deliberately NOT onto term_in: that port is a SINK, so material cannot
+    # leave the terminal through it and the pump would be correctly
+    # unreachable downstream. fit_d is a SOURCE, so flow can genuinely arrive
+    # at the pump -- and because both pump ports are NOTDEFINED, doing so
+    # relies on an assumption the file never stated. That is the case worth
+    # testing.
+    f.create_entity(
+        "IfcRelConnectsPorts", GlobalId=guid(), OwnerHistory=owner,
+        RelatingPort=fit_d, RelatedPort=pump_a)
+
+    # A segment whose ports BOTH emit: nothing can flow through it as stated.
+    # The schema permits this -- element type and port direction are
+    # independent -- so only a role/direction cross-check finds it.
+    bad_seg = f.create_entity(
+        "IfcFlowSegment", GlobalId=guid(), OwnerHistory=owner, Name="Backwards pipe")
+    bad_a = port("bad-a", "SOURCE")
+    bad_b = port("bad-b", "SOURCE")
+    f.create_entity(
+        "IfcRelNests", GlobalId=guid(), OwnerHistory=owner,
+        RelatingObject=bad_seg, RelatedObjects=[bad_a, bad_b])
+
+    # NOTE: a doubly-contained element is deliberately NOT in this fixture.
+    # ContainedInStructure is SET [0:1] and IfcOpenShell REJECTS the breach, so
+    # committing it would mean committing a file that fails validation. The
+    # crate still has to survive one, because real exporters emit it; that case
+    # is built in memory in the test suite instead.
+    # A SINK <-> SINK connection: malformed, and exporters do emit it.
+    #
+    # Every well-formed connection pairs a SOURCE with a SINK, which makes the
+    # may_exit and may_enter rules redundant: either alone blocks a reverse
+    # walk. They disagree ONLY here. Without this pair the exit rule is
+    # unreachable code that no test can distinguish, so the fixture states the
+    # malformed case deliberately.
+    dead_a = port("dead-a", "SINK")
+    dead_b = port("dead-b", "SINK")
+    dead_elem = f.create_entity(
+        "IfcFlowSegment", GlobalId=guid(), OwnerHistory=owner, Name="Dead end")
+    other_elem = f.create_entity(
+        "IfcFlowSegment", GlobalId=guid(), OwnerHistory=owner, Name="Dead end 2")
+    f.create_entity(
+        "IfcRelNests", GlobalId=guid(), OwnerHistory=owner,
+        RelatingObject=dead_elem, RelatedObjects=[dead_a])
+    f.create_entity(
+        "IfcRelNests", GlobalId=guid(), OwnerHistory=owner,
+        RelatingObject=other_elem, RelatedObjects=[dead_b])
+    f.create_entity(
+        "IfcRelConnectsPorts", GlobalId=guid(), OwnerHistory=owner,
+        RelatingPort=dead_a, RelatedPort=dead_b)
 
     return f, zone
 
