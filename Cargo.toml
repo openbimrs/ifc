@@ -38,15 +38,15 @@ openbim-step = "=0.4.0"
 
 # Format-neutral geometry contracts. IFC bridges select representations, never
 # concrete CPU/GPU execution providers.
-axiolid-core = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "c136b61" }
-axiolid-mesh = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "c136b61" }
-axiolid-model = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "c136b61" }
-axiolid-primitive = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "c136b61" }
-axiolid-profile = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "c136b61" }
-axiolid-surface = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "c136b61" }
-axiolid-scalar = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "c136b61" }
-axiolid-curve = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "c136b61" }
-axiolid-topology = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "c136b61" }
+axiolid-core = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "f917395497095460fbba881f384fea6d676590c2" }
+axiolid-mesh = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "f917395497095460fbba881f384fea6d676590c2" }
+axiolid-model = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "f917395497095460fbba881f384fea6d676590c2" }
+axiolid-primitive = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "f917395497095460fbba881f384fea6d676590c2" }
+axiolid-profile = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "f917395497095460fbba881f384fea6d676590c2" }
+axiolid-surface = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "f917395497095460fbba881f384fea6d676590c2" }
+axiolid-scalar = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "f917395497095460fbba881f384fea6d676590c2" }
+axiolid-curve = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "f917395497095460fbba881f384fea6d676590c2" }
+axiolid-topology = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "f917395497095460fbba881f384fea6d676590c2" }
 
 ahash = "0.8"
 thiserror = "2.0"

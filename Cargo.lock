@@ -18,7 +18,7 @@ dependencies = [
 [[package]]
 name = "axiolid-core"
 version = "0.1.0"
-source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=c136b61#c136b612d168d831063e7601053bbcd421f00407"
+source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=f917395497095460fbba881f384fea6d676590c2#f917395497095460fbba881f384fea6d676590c2"
 dependencies = [
  "glam",
 ]
@@ -26,7 +26,7 @@ dependencies = [
 [[package]]
 name = "axiolid-curve"
 version = "0.1.0"
-source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=c136b61#c136b612d168d831063e7601053bbcd421f00407"
+source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=f917395497095460fbba881f384fea6d676590c2#f917395497095460fbba881f384fea6d676590c2"
 dependencies = [
  "axiolid-core",
 ]
@@ -34,7 +34,7 @@ dependencies = [
 [[package]]
 name = "axiolid-kernel"
 version = "0.1.0"
-source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=c136b61#c136b612d168d831063e7601053bbcd421f00407"
+source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=f917395497095460fbba881f384fea6d676590c2#f917395497095460fbba881f384fea6d676590c2"
 dependencies = [
  "axiolid-core",
  "axiolid-mesh",
@@ -44,7 +44,7 @@ dependencies = [
 [[package]]
 name = "axiolid-measure"
 version = "0.1.0"
-source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=c136b61#c136b612d168d831063e7601053bbcd421f00407"
+source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=f917395497095460fbba881f384fea6d676590c2#f917395497095460fbba881f384fea6d676590c2"
 dependencies = [
  "axiolid-core",
  "axiolid-mesh",
@@ -53,7 +53,7 @@ dependencies = [
 [[package]]
 name = "axiolid-mesh"
 version = "0.1.0"
-source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=c136b61#c136b612d168d831063e7601053bbcd421f00407"
+source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=f917395497095460fbba881f384fea6d676590c2#f917395497095460fbba881f384fea6d676590c2"
 dependencies = [
  "axiolid-core",
 ]
@@ -61,7 +61,7 @@ dependencies = [
 [[package]]
 name = "axiolid-model"
 version = "0.1.0"
-source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=c136b61#c136b612d168d831063e7601053bbcd421f00407"
+source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=f917395497095460fbba881f384fea6d676590c2#f917395497095460fbba881f384fea6d676590c2"
 dependencies = [
  "axiolid-core",
  "axiolid-curve",
@@ -75,7 +75,7 @@ dependencies = [
 [[package]]
 name = "axiolid-primitive"
 version = "0.1.0"
-source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=c136b61#c136b612d168d831063e7601053bbcd421f00407"
+source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=f917395497095460fbba881f384fea6d676590c2#f917395497095460fbba881f384fea6d676590c2"
 dependencies = [
  "axiolid-core",
 ]
@@ -83,7 +83,7 @@ dependencies = [
 [[package]]
 name = "axiolid-profile"
 version = "0.1.0"
-source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=c136b61#c136b612d168d831063e7601053bbcd421f00407"
+source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=f917395497095460fbba881f384fea6d676590c2#f917395497095460fbba881f384fea6d676590c2"
 dependencies = [
  "axiolid-core",
  "axiolid-curve",
@@ -92,7 +92,7 @@ dependencies = [
 [[package]]
 name = "axiolid-scalar"
 version = "0.1.0"
-source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=c136b61#c136b612d168d831063e7601053bbcd421f00407"
+source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=f917395497095460fbba881f384fea6d676590c2#f917395497095460fbba881f384fea6d676590c2"
 dependencies = [
  "axiolid-core",
  "axiolid-curve",
@@ -107,7 +107,7 @@ dependencies = [
 [[package]]
 name = "axiolid-spatial"
 version = "0.1.0"
-source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=c136b61#c136b612d168d831063e7601053bbcd421f00407"
+source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=f917395497095460fbba881f384fea6d676590c2#f917395497095460fbba881f384fea6d676590c2"
 dependencies = [
  "axiolid-core",
 ]
@@ -115,7 +115,7 @@ dependencies = [
 [[package]]
 name = "axiolid-surface"
 version = "0.1.0"
-source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=c136b61#c136b612d168d831063e7601053bbcd421f00407"
+source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=f917395497095460fbba881f384fea6d676590c2#f917395497095460fbba881f384fea6d676590c2"
 dependencies = [
  "axiolid-core",
  "axiolid-curve",
@@ -124,7 +124,7 @@ dependencies = [
 [[package]]
 name = "axiolid-topology"
 version = "0.1.0"
-source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=c136b61#c136b612d168d831063e7601053bbcd421f00407"
+source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=f917395497095460fbba881f384fea6d676590c2#f917395497095460fbba881f384fea6d676590c2"
 dependencies = [
  "axiolid-core",
 ]
