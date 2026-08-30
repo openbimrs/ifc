@@ -34,6 +34,15 @@ kernel's to choose. `CoordIndex` is 1-based and `PnIndex` (set-level and
 per-face) is an extra addressing hop; both mistakes yield a mesh that renders
 and is wrong, so both are mutation-covered.
 
+An advanced B-rep carries TWO independent sense flags per edge use, and both
+must compose. `IfcEdgeCurve.SameSense` says whether the edge runs with its
+support curve; it sets the stored edge's intrinsic sense. Each
+`IfcOrientedEdge.Orientation` then says whether that use reverses the edge it
+references. Apply only one and the solid still builds, still renders, and has
+face normals disagreeing with edge directions. Edges are interned by entity
+id, not by endpoint pair: two edge-curves can share endpoints and follow
+different curves, so pair-keying would merge them and silently drop a face.
+
 Axes, normals, and orientation fields are finite non-zero unit-direction
 candidates and are normalized exactly once at the IFC boundary. Displacements,
 derivatives, scales, and other magnitude-bearing vectors preserve magnitude;

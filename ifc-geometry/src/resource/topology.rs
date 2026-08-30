@@ -31,6 +31,27 @@ pub mod slot {
     pub const OUTER: usize = 0;
     /// `IfcFacetedBrepWithVoids.Voids`
     pub const VOIDS: usize = 1;
+    /// `IfcVertexPoint.VertexGeometry`
+    pub const VERTEX_GEOMETRY: usize = 0;
+    /// `IfcEdge.EdgeStart`
+    pub const EDGE_START: usize = 0;
+    /// `IfcEdge.EdgeEnd`
+    pub const EDGE_END: usize = 1;
+    /// `IfcEdgeCurve.EdgeGeometry`
+    pub const EDGE_GEOMETRY: usize = 2;
+    /// `IfcEdgeCurve.SameSense`
+    pub const EDGE_SAME_SENSE: usize = 3;
+    /// `IfcOrientedEdge.EdgeElement`; slots 0-1 are the inherited, unset
+    /// `IfcEdge` vertices, written `*` in a STEP file.
+    pub const EDGE_ELEMENT: usize = 2;
+    /// `IfcOrientedEdge.Orientation`
+    pub const EDGE_ORIENTATION: usize = 3;
+    /// `IfcEdgeLoop.EdgeList`
+    pub const EDGE_LIST: usize = 0;
+    /// `IfcFaceSurface.FaceSurface`
+    pub const FACE_SURFACE: usize = 1;
+    /// `IfcFaceSurface.SameSense`
+    pub const FACE_SAME_SENSE: usize = 2;
 }
 
 /// `IfcPolyLoop`: a closed wire given as an ordered point list.
@@ -247,4 +268,170 @@ pub fn expect_type<'m>(
         actual: entity.type_name.to_string(),
         expected,
     })
+}
+
+/// `IfcVertexPoint`: a topological vertex carrying its geometric point.
+#[derive(Debug, Clone, Copy)]
+pub struct VertexPoint<'m> {
+    slots: Slots<'m>,
+}
+
+impl<'m> VertexPoint<'m> {
+    /// Wrap an entity assumed to be an `IfcVertexPoint`.
+    pub fn new(id: EntityId, entity: &'m Entity) -> Self {
+        Self {
+            slots: Slots::new(id, entity),
+        }
+    }
+
+    /// The entity id.
+    pub fn id(&self) -> EntityId {
+        self.slots.id()
+    }
+
+    /// The `IfcCartesianPoint` this vertex sits on.
+    pub fn vertex_geometry(&self) -> GeometryResult<EntityId> {
+        self.slots.req_ref(slot::VERTEX_GEOMETRY, "VertexGeometry")
+    }
+}
+
+/// `IfcEdge` and its `IfcEdgeCurve` subtype: a bounded piece of a curve.
+///
+/// `EdgeStart`/`EdgeEnd` are `IfcVertex` references, not points. An
+/// `IfcEdgeCurve` adds the supporting curve and a sense flag saying whether
+/// the edge runs along the curve or against it.
+#[derive(Debug, Clone, Copy)]
+pub struct EdgeCurve<'m> {
+    slots: Slots<'m>,
+}
+
+impl<'m> EdgeCurve<'m> {
+    /// Wrap an entity assumed to be an `IfcEdge` or `IfcEdgeCurve`.
+    pub fn new(id: EntityId, entity: &'m Entity) -> Self {
+        Self {
+            slots: Slots::new(id, entity),
+        }
+    }
+
+    /// The entity id.
+    pub fn id(&self) -> EntityId {
+        self.slots.id()
+    }
+
+    /// The start vertex reference.
+    pub fn start(&self) -> GeometryResult<EntityId> {
+        self.slots.req_ref(slot::EDGE_START, "EdgeStart")
+    }
+
+    /// The end vertex reference.
+    pub fn end(&self) -> GeometryResult<EntityId> {
+        self.slots.req_ref(slot::EDGE_END, "EdgeEnd")
+    }
+
+    /// The supporting curve, absent on a plain `IfcEdge`.
+    ///
+    /// A plain edge is straight between its vertices, so `None` is a complete
+    /// description rather than a missing value.
+    pub fn edge_geometry(&self) -> Option<EntityId> {
+        self.slots.opt_ref(slot::EDGE_GEOMETRY)
+    }
+
+    /// Does the edge run along the curve's own direction?
+    ///
+    /// Defaults to true when absent. A false flag reverses the edge relative
+    /// to its curve, which matters for any parameterised traversal.
+    pub fn same_sense(&self) -> bool {
+        self.slots.opt_bool(slot::EDGE_SAME_SENSE).unwrap_or(true)
+    }
+}
+
+/// `IfcOrientedEdge`: a reuse of an edge, possibly reversed.
+///
+/// This is the entity that makes edge sharing explicit. Two faces meeting at
+/// one edge each hold an oriented edge pointing at the SAME `IfcEdgeCurve`,
+/// with opposite `Orientation`. Resolving through to the underlying edge is
+/// what preserves the manifold; treating each use as its own edge silently
+/// disconnects the solid.
+#[derive(Debug, Clone, Copy)]
+pub struct OrientedEdge<'m> {
+    slots: Slots<'m>,
+}
+
+impl<'m> OrientedEdge<'m> {
+    /// Wrap an entity assumed to be an `IfcOrientedEdge`.
+    pub fn new(id: EntityId, entity: &'m Entity) -> Self {
+        Self {
+            slots: Slots::new(id, entity),
+        }
+    }
+
+    /// The underlying edge this use points at.
+    pub fn edge_element(&self) -> GeometryResult<EntityId> {
+        self.slots.req_ref(slot::EDGE_ELEMENT, "EdgeElement")
+    }
+
+    /// Does this use run along the underlying edge, or against it?
+    pub fn orientation(&self) -> bool {
+        self.slots.opt_bool(slot::EDGE_ORIENTATION).unwrap_or(true)
+    }
+}
+
+/// `IfcEdgeLoop`: a closed wire given as a list of oriented edges.
+///
+/// The curved counterpart of `IfcPolyLoop`. Unlike a poly loop the closure
+/// is explicit: the last edge's end vertex is the first edge's start, and no
+/// implied closing segment is added.
+#[derive(Debug, Clone, Copy)]
+pub struct EdgeLoop<'m> {
+    slots: Slots<'m>,
+}
+
+impl<'m> EdgeLoop<'m> {
+    /// Wrap an entity assumed to be an `IfcEdgeLoop`.
+    pub fn new(id: EntityId, entity: &'m Entity) -> Self {
+        Self {
+            slots: Slots::new(id, entity),
+        }
+    }
+
+    /// The oriented edges in traversal order.
+    ///
+    /// A loop needs at least one edge; an empty list bounds nothing and is
+    /// rejected rather than producing a face with no boundary.
+    pub fn edge_list(&self) -> GeometryResult<Vec<EntityId>> {
+        let edges = self.slots.req_ref_list(slot::EDGE_LIST, "EdgeList")?;
+        if edges.is_empty() {
+            return Err(self.slots.degenerate("edge loop has no edges"));
+        }
+        Ok(edges)
+    }
+}
+
+/// `IfcFaceSurface` and its `IfcAdvancedFace` subtype.
+///
+/// Adds a support surface and a sense flag to `IfcFace`. `SameSense` says
+/// whether the face normal agrees with the surface normal; ignoring it yields
+/// an inside-out face that still passes every structural check.
+#[derive(Debug, Clone, Copy)]
+pub struct FaceSurface<'m> {
+    slots: Slots<'m>,
+}
+
+impl<'m> FaceSurface<'m> {
+    /// Wrap an entity assumed to be an `IfcFaceSurface` or `IfcAdvancedFace`.
+    pub fn new(id: EntityId, entity: &'m Entity) -> Self {
+        Self {
+            slots: Slots::new(id, entity),
+        }
+    }
+
+    /// The supporting surface reference.
+    pub fn face_surface(&self) -> GeometryResult<EntityId> {
+        self.slots.req_ref(slot::FACE_SURFACE, "FaceSurface")
+    }
+
+    /// Does the face normal agree with the surface normal?
+    pub fn same_sense(&self) -> bool {
+        self.slots.opt_bool(slot::FACE_SAME_SENSE).unwrap_or(true)
+    }
 }

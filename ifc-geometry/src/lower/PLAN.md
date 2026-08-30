@@ -116,6 +116,13 @@ and check it off only after the proof runs.
   - Proof: `tests/lower_brep.rs` (10 tests) plus the corpus census.
   - Decision: planar facets carry `surface: None`. The loop's points define the
     plane exactly; fitting one risks disagreeing with the vertices.
+  - Extended: `IfcAdvancedBrep` and `IfcAdvancedBrepWithVoids` reuse the same
+    walk. `IfcAdvancedFace` fills `Face::surface`, `IfcEdgeCurve` fills
+    `Edge::curve`, and `IfcEdgeLoop`/`IfcOrientedEdge` make edge sharing
+    explicit. Both sense flags compose: an edge's own `SameSense` sets the
+    stored sense, and each oriented-edge use flips it. Proof:
+    `tests/lower_advanced_brep.rs` (7 tests) on a generated fixture, 7/7
+    mutation probes.
   - Decision: vertices intern by source `EntityId`, edges by unordered endpoint
     pair, both scoped per solid. The corpus builds 12 bodies and 2028 faces from
     one 196-point pool, so per-slot emission would multiply vertices ~40x and

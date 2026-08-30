@@ -37,6 +37,8 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCMAPPEDITEM",
     "IFCFACETEDBREP",
     "IFCFACETEDBREPWITHVOIDS",
+    "IFCADVANCEDBREP",
+    "IFCADVANCEDBREPWITHVOIDS",
     "IFCHALFSPACESOLID",
     "IFCBOXEDHALFSPACE",
     "IFCPOLYGONALBOUNDEDHALFSPACE",
@@ -57,7 +59,6 @@ pub const IMPLEMENTED: &[&str] = &[
 /// report progress instead of a bare failure. Adding a family here is how a
 /// stub is declared; implementing it means moving the name to [`IMPLEMENTED`].
 pub const PLANNED: &[(&str, &str)] = &[
-    ("IFCADVANCEDBREP", "advanced B-rep topology lowering"),
     ("IFCSECTIONEDSPINE", "spine interpolation"),
     (
         "IFCARBITRARYOPENPROFILEDEF",
@@ -85,7 +86,10 @@ pub fn lower_representation_item(
             lower_half_space_node(session, id, frame)
         }
         "IFCMAPPEDITEM" => lower_mapped_item_node(session, id, frame),
-        "IFCFACETEDBREP" | "IFCFACETEDBREPWITHVOIDS" => lower_faceted_brep_node(session, id, frame),
+        "IFCFACETEDBREP"
+        | "IFCFACETEDBREPWITHVOIDS"
+        | "IFCADVANCEDBREP"
+        | "IFCADVANCEDBREPWITHVOIDS" => lower_faceted_brep_node(session, id, frame),
         "IFCTRIANGULATEDFACESET" => lower_triangulated_face_set_node(session, id, frame),
         "IFCPOLYGONALFACESET" => lower_polygonal_face_set_node(session, id, frame),
         "IFCCSGSOLID" => lower_csg_solid_node(session, id, frame),

@@ -29,11 +29,14 @@ use axiolid_topology::{
 use ifc_model::EntityId;
 
 use crate::error::GeometryResult;
+use crate::lower::curve::lower_curve_node;
 use crate::lower::session::LoweringSession;
+use crate::lower::surface::lower_surface_node;
 use crate::resource::point::CartesianPoint;
 use crate::resource::topology::{
-    expect_type, ConnectedFaceSet, Face as FaceView, FaceBound as FaceBoundView, ManifoldSolidBrep,
-    PolyLoop,
+    expect_type, ConnectedFaceSet, EdgeCurve as EdgeCurveView, EdgeLoop as EdgeLoopView,
+    Face as FaceView, FaceBound as FaceBoundView, FaceSurface as FaceSurfaceView,
+    ManifoldSolidBrep, OrientedEdge as OrientedEdgeView, PolyLoop, VertexPoint as VertexPointView,
 };
 use crate::transform::Transform;
 
@@ -48,6 +51,9 @@ struct TopologyBuilder {
     brep: BRep<NodeId>,
     vertices: BTreeMap<EntityId, VertexId>,
     edges: BTreeMap<(usize, usize), EdgeId>,
+    /// Advanced-brep edges, interned by source entity rather than by endpoint
+    /// pair: two edges may share endpoints yet follow different curves.
+    curved_edges: BTreeMap<EntityId, EdgeUse>,
 }
 
 impl TopologyBuilder {
@@ -56,6 +62,7 @@ impl TopologyBuilder {
             brep: BRep::default(),
             vertices: BTreeMap::new(),
             edges: BTreeMap::new(),
+            curved_edges: BTreeMap::new(),
         }
     }
 
@@ -187,10 +194,26 @@ fn face(
     for bound_ref in view.bounds()? {
         bounds.push(bound(session, builder, id, bound_ref, frame)?);
     }
+    // An IfcFaceSurface names the surface its boundary lies on, and SameSense
+    // says whether the face agrees with that surface's normal. A plain
+    // IfcFace has neither: its loop points define the plane exactly, so the
+    // handle stays None rather than fitting a plane that could disagree.
+    let (surface, orientation) = if session.type_name(id)?.eq_ignore_ascii_case("IFCFACE") {
+        (None, Orientation::Forward)
+    } else {
+        let surface_view = FaceSurfaceView::new(id, entity);
+        let node = lower_surface_node(session, surface_view.face_surface()?, frame)?;
+        let sense = if surface_view.same_sense() {
+            Orientation::Forward
+        } else {
+            Orientation::Reversed
+        };
+        (Some(node), sense)
+    };
     Ok(builder.brep.add_face(Face {
-        surface: None,
+        surface,
         bounds,
-        orientation: Orientation::Forward,
+        orientation,
     }))
 }
 
@@ -210,7 +233,17 @@ fn bound(
         "IfcFaceBound",
     )?;
     let view = FaceBoundView::new(id, entity);
-    let loop_id = poly_loop(session, builder, id, view.bound()?, frame)?;
+    let bound_ref = view.bound()?;
+    // A face bound is a Loop, which is either a point list or an edge list.
+    // Advanced breps use the latter, so dispatch rather than assuming.
+    let loop_id = if session
+        .type_name(bound_ref)?
+        .eq_ignore_ascii_case("IFCEDGELOOP")
+    {
+        edge_loop(session, builder, id, bound_ref, frame)?
+    } else {
+        poly_loop(session, builder, id, bound_ref, frame)?
+    };
     Ok(FaceBound {
         loop_id,
         orientation: if view.orientation()? {
@@ -269,4 +302,137 @@ fn poly_loop(
         ));
     }
     Ok(builder.brep.add_loop(Loop { edges }))
+}
+
+/// Lower one `IfcEdgeLoop` into interned vertices and shared edges.
+///
+/// Unlike a poly loop this is already a list of edges, and the sharing is
+/// explicit: several oriented edges point at one `IfcEdgeCurve`. Interning by
+/// the underlying edge entity is what keeps the two faces meeting at a seam
+/// attached to the SAME topological edge.
+fn edge_loop(
+    session: &mut LoweringSession<'_>,
+    builder: &mut TopologyBuilder,
+    referrer: EntityId,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<axiolid_topology::LoopId> {
+    let entity = expect_type(
+        session.model(),
+        referrer,
+        id,
+        &["IFCEDGELOOP"],
+        "IfcEdgeLoop",
+    )?;
+    let view = EdgeLoopView::new(id, entity);
+    let mut edges = Vec::new();
+    for oriented_ref in view.edge_list()? {
+        edges.push(oriented_edge(session, builder, id, oriented_ref, frame)?);
+    }
+    Ok(builder.brep.add_loop(Loop { edges }))
+}
+
+/// Resolve one `IfcOrientedEdge` to a use of a shared, interned edge.
+///
+/// The oriented edge's own flag composes with the sense the interned edge was
+/// first created in: an edge stored reversed and then used reversed runs
+/// forward. Dropping either flag half-flips seams and the shell stops closing.
+fn oriented_edge(
+    session: &mut LoweringSession<'_>,
+    builder: &mut TopologyBuilder,
+    referrer: EntityId,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<EdgeUse> {
+    let entity = expect_type(
+        session.model(),
+        referrer,
+        id,
+        &["IFCORIENTEDEDGE"],
+        "IfcOrientedEdge",
+    )?;
+    let view = OrientedEdgeView::new(id, entity);
+    let base = edge_curve(session, builder, id, view.edge_element()?, frame)?;
+    if view.orientation() {
+        Ok(base)
+    } else {
+        Ok(EdgeUse {
+            edge: base.edge,
+            orientation: flip(base.orientation),
+        })
+    }
+}
+
+/// Intern one `IfcEdgeCurve` (or plain `IfcEdge`) and lower its support curve.
+///
+/// Keyed by entity id, not by endpoint pair: two edges can share endpoints and
+/// still be different curves (the two halves of a full circle, for instance),
+/// so the geometric key used for poly loops would wrongly merge them.
+fn edge_curve(
+    session: &mut LoweringSession<'_>,
+    builder: &mut TopologyBuilder,
+    referrer: EntityId,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<EdgeUse> {
+    if let Some(existing) = builder.curved_edges.get(&id) {
+        return Ok(*existing);
+    }
+    let entity = expect_type(
+        session.model(),
+        referrer,
+        id,
+        &["IFCEDGE", "IFCEDGECURVE"],
+        "IfcEdge",
+    )?;
+    let view = EdgeCurveView::new(id, entity);
+    let start = topological_vertex(session, builder, id, view.start()?, frame)?;
+    let end = topological_vertex(session, builder, id, view.end()?, frame)?;
+    let curve = match view.edge_geometry() {
+        Some(curve_ref) => Some(lower_curve_node(session, curve_ref, frame)?),
+        None => None,
+    };
+    // SameSense false means the edge runs against its curve. Record that as
+    // the stored edge's orientation rather than swapping the vertices, so the
+    // curve handle and the vertex order stay consistent with the file.
+    let orientation = if view.same_sense() {
+        Orientation::Forward
+    } else {
+        Orientation::Reversed
+    };
+    let edge = builder.brep.add_edge(Edge { start, end, curve });
+    let use_ = EdgeUse { edge, orientation };
+    builder.curved_edges.insert(id, use_);
+    Ok(use_)
+}
+
+/// Intern an `IfcVertexPoint`, reusing the vertex when several edges meet.
+fn topological_vertex(
+    session: &mut LoweringSession<'_>,
+    builder: &mut TopologyBuilder,
+    referrer: EntityId,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<VertexId> {
+    let entity = expect_type(
+        session.model(),
+        referrer,
+        id,
+        &["IFCVERTEXPOINT"],
+        "IfcVertexPoint",
+    )?;
+    let point_ref = VertexPointView::new(id, entity).vertex_geometry()?;
+    let point_entity = session.entity(id, point_ref)?;
+    let raw = CartesianPoint::new(point_ref, point_entity).coordinates_3d()?;
+    let scaled = raw.map(|value| session.units().length(value));
+    let placed = frame.apply(scaled);
+    Ok(builder.vertex(id, Point3::from_array(placed)))
+}
+
+/// Reverse a traversal sense.
+fn flip(orientation: Orientation) -> Orientation {
+    match orientation {
+        Orientation::Forward => Orientation::Reversed,
+        Orientation::Reversed => Orientation::Forward,
+    }
 }

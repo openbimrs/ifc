@@ -98,7 +98,9 @@ parallel placeholders.
   - Evidence: `tests/lower_brep.rs`; corpus census rose 43 -> 64 lowered items
     and `IFCFACETEDBREP` left the unsupported set entirely. Cube fixture checks
     V - E + F = 2; the 12-solid shared-point fixture lowers all 2028 faces.
-    9/9 mutation probes killed.
+    9/9 mutation probes killed. Advanced B-reps now lower through the same
+    path, with support curves and surfaces attached and edge sharing preserved
+    across oriented-edge reuse; 7/7 further mutation probes.
 - [x] `GEOM-TESS` - lower tessellated and polygonal face sets without forced triangulation
   - Evidence: 7 unit + 3 fixture tests; corpus census rose 64 -> 67 lowered and
     `IFCTRIANGULATEDFACESET` left the unsupported set; both feature columns

@@ -228,10 +228,73 @@ def curve_bounded_plane(f):
                             InnerBoundaries=[hole])], "SurfaceModel"
 
 
+
+def vp(f, xyz):
+    return f.create_entity("IfcVertexPoint", VertexGeometry=pt(f, xyz))
+
+
+def ec(f, a, b, curve, same=True):
+    return f.create_entity("IfcEdgeCurve", EdgeStart=a, EdgeEnd=b,
+                            EdgeGeometry=curve, SameSense=same)
+
+
+def oe(f, edge, orient=True):
+    return f.create_entity("IfcOrientedEdge", EdgeElement=edge, Orientation=orient)
+
+
+def advanced_brep(f):
+    # A half-cylinder plug: two planar ends, one curved lateral face.
+    # Curved faces are the whole point: Face.surface must be filled.
+    r, h = 120.0, 200.0
+    axis = placement(f, (0.0, 0.0, 0.0), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0))
+    cyl = f.create_entity("IfcCylindricalSurface", Position=axis, Radius=r)
+    # Four vertices: two on the bottom rim, two on the top rim.
+    v_b0, v_b1 = vp(f, (r, 0.0, 0.0)), vp(f, (-r, 0.0, 0.0))
+    v_t0, v_t1 = vp(f, (r, 0.0, h)), vp(f, (-r, 0.0, h))
+    # Rim arcs are real circles, so the edge carries an exact curve.
+    bot_c = f.create_entity("IfcCircle", Position=axis, Radius=r)
+    top_axis = placement(f, (0.0, 0.0, h), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0))
+    top_c = f.create_entity("IfcCircle", Position=top_axis, Radius=r)
+    # Vertical seams are straight: IfcLine with a unit-magnitude vector.
+    def vline(x):
+        d = f.create_entity("IfcVector", Orientation=dr(f, (0.0, 0.0, 1.0)), Magnitude=1.0)
+        return f.create_entity("IfcLine", Pnt=pt(f, (x, 0.0, 0.0)), Dir=d)
+    e_bot = ec(f, v_b0, v_b1, bot_c)
+    e_top = ec(f, v_t0, v_t1, top_c)
+    e_s0 = ec(f, v_b0, v_t0, vline(r))
+    # Authored against its curve so the flag is observable.
+    e_s1 = ec(f, v_b1, v_t1, vline(-r), same=False)
+    # The curved lateral face. Its edge loop mixes forward and reversed
+    # uses of SHARED edges -- that sharing is what makes it a solid.
+    lat_loop = f.create_entity("IfcEdgeLoop", EdgeList=[
+        oe(f, e_bot, True), oe(f, e_s1, True),
+        oe(f, e_top, False), oe(f, e_s0, False)])
+    lat_bound = f.create_entity("IfcFaceOuterBound", Bound=lat_loop, Orientation=True)
+    lat = f.create_entity("IfcAdvancedFace", Bounds=[lat_bound],
+                          FaceSurface=cyl, SameSense=True)
+    # Planar caps. The bottom uses SameSense=False so a lowerer that
+    # ignores the flag produces an inside-out face and nothing complains.
+    bot_pl = f.create_entity("IfcPlane", Position=axis)
+    top_pl = f.create_entity("IfcPlane", Position=top_axis)
+    bot_loop = f.create_entity("IfcEdgeLoop", EdgeList=[
+        oe(f, e_bot, True), oe(f, e_bot, False)])
+    top_loop = f.create_entity("IfcEdgeLoop", EdgeList=[
+        oe(f, e_top, True), oe(f, e_top, False)])
+    bot_b = f.create_entity("IfcFaceOuterBound", Bound=bot_loop, Orientation=True)
+    top_b = f.create_entity("IfcFaceOuterBound", Bound=top_loop, Orientation=True)
+    bot_f = f.create_entity("IfcAdvancedFace", Bounds=[bot_b],
+                            FaceSurface=bot_pl, SameSense=False)
+    top_f = f.create_entity("IfcAdvancedFace", Bounds=[top_b],
+                            FaceSurface=top_pl, SameSense=True)
+    shell = f.create_entity("IfcClosedShell", CfsFaces=[lat, bot_f, top_f])
+    solid = f.create_entity("IfcAdvancedBrep", Outer=shell)
+    return [solid], "AdvancedBrep"
+
 FIXTURES = [
     ("synthetic_elementary_surfaces.ifc", elementary_surfaces),
     ("synthetic_surface_of_revolution.ifc", surface_of_revolution),
     ("synthetic_bspline_surface.ifc", bspline_surface),
+    ("synthetic_advanced_brep.ifc", advanced_brep),
     ("synthetic_curve_bounded_plane.ifc", curve_bounded_plane),
 ]
 
