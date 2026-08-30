@@ -4,18 +4,21 @@
 //! exact. Tessellation is a geometry-kernel decision and never occurs in the
 //! format adapter.
 
-use axiolid_core::{Interval, Transform2, Vec2};
+use axiolid_core::{Interval, Scalar, Transform2, Vec2};
 use axiolid_curve::{Curve2, Line2};
 use axiolid_model::{GeometryNode, NodeId};
 use axiolid_profile::{
-    CircleProfile, Contour, ContourProfile, Profile, ProfileSegment, RectangleProfile,
+    CircleProfile, Contour, ContourProfile, EllipseProfile, Profile, ProfileSegment,
+    RectangleProfile, SectionProfile,
 };
 use ifc_model::{EntityId, Model};
 
 use crate::error::{GeometryError, GeometryResult};
 use crate::lower::session::LoweringSession;
 use crate::lower::Tolerance;
+use crate::resource::operator::operator_transform;
 use crate::slots::Slots;
+use crate::transform::Transform;
 use crate::units::UnitScale;
 
 mod slot {
@@ -132,8 +135,33 @@ pub fn lower_profile(
     model: &Model,
     id: EntityId,
     units: &UnitScale,
-    _tol: &Tolerance,
+    tol: &Tolerance,
 ) -> GeometryResult<Profile> {
+    lower_profile_depth(model, id, units, tol, 0)
+}
+
+/// Maximum profile nesting depth.
+///
+/// `IfcCompositeProfileDef` and `IfcDerivedProfileDef` both reference other
+/// profiles, so a malicious or broken file can nest them without end. A
+/// composite of derived sections is realistic; sixteen levels is not.
+const MAX_PROFILE_DEPTH: usize = 16;
+
+/// Lower a profile, tracking nesting depth for the recursive families.
+fn lower_profile_depth(
+    model: &Model,
+    id: EntityId,
+    units: &UnitScale,
+    tol: &Tolerance,
+    depth: usize,
+) -> GeometryResult<Profile> {
+    if depth > MAX_PROFILE_DEPTH {
+        return Err(GeometryError::Unsupported {
+            entity: id,
+            type_name: "IFCPROFILEDEF".to_string(),
+            detail: "profile nesting exceeded the depth budget",
+        });
+    }
     let entity = model.get(id).ok_or(GeometryError::MissingEntity {
         referrer: id,
         missing: id,
@@ -152,6 +180,18 @@ pub fn lower_profile(
         "IFCCIRCLEHOLLOWPROFILEDEF" => circle_hollow(&slots, units)?,
         "IFCARBITRARYCLOSEDPROFILEDEF" => arbitrary(model, &slots, units, false)?,
         "IFCARBITRARYPROFILEDEFWITHVOIDS" => arbitrary(model, &slots, units, true)?,
+        "IFCISHAPEPROFILEDEF" => i_shape(&slots, units)?,
+        "IFCASYMMETRICISHAPEPROFILEDEF" => asymmetric_i(&slots, units)?,
+        "IFCLSHAPEPROFILEDEF" => l_shape(&slots, units)?,
+        "IFCTSHAPEPROFILEDEF" => t_shape(&slots, units)?,
+        "IFCUSHAPEPROFILEDEF" => u_shape(&slots, units)?,
+        "IFCCSHAPEPROFILEDEF" => c_shape(&slots, units)?,
+        "IFCZSHAPEPROFILEDEF" => z_shape(&slots, units)?,
+        "IFCTRAPEZIUMPROFILEDEF" => trapezium(&slots, units)?,
+        "IFCELLIPSEPROFILEDEF" => ellipse(&slots, units)?,
+        "IFCCOMPOSITEPROFILEDEF" => composite(model, &slots, units, tol, depth)?,
+        "IFCDERIVEDPROFILEDEF" => derived(model, id, &slots, units, tol, depth, false)?,
+        "IFCMIRROREDPROFILEDEF" => derived(model, id, &slots, units, tol, depth, true)?,
         // An open profile is a curve, not an area. The neutral profile model
         // is built on closed contours, so there is nothing to map it onto:
         // closing the curve would fabricate a face the file never described,
@@ -367,4 +407,316 @@ fn apply_parameterized_position(
         basis: Box::new(profile),
         transform: Transform2::from_cols(x, y, origin),
     })
+}
+
+/// Absolute attribute slots for the parameterized profile families.
+///
+/// Every index below was read from the IFC4 ADD2 TC1 schema, not inferred:
+/// `IfcParameterizedProfileDef` contributes ProfileType, ProfileName and
+/// Position, so subtype attributes start at slot 3.
+mod section_slot {
+    // IfcIShapeProfileDef
+    pub const I_WIDTH: usize = 3;
+    pub const I_DEPTH: usize = 4;
+    pub const I_WEB: usize = 5;
+    pub const I_FLANGE: usize = 6;
+    pub const I_FILLET: usize = 7;
+    pub const I_EDGE: usize = 8;
+    pub const I_SLOPE: usize = 9;
+
+    // IfcAsymmetricIShapeProfileDef
+    pub const AI_BOTTOM_WIDTH: usize = 3;
+    pub const AI_DEPTH: usize = 4;
+    pub const AI_WEB: usize = 5;
+    pub const AI_BOTTOM_FLANGE: usize = 6;
+    pub const AI_BOTTOM_FILLET: usize = 7;
+    pub const AI_TOP_WIDTH: usize = 8;
+    pub const AI_TOP_FLANGE: usize = 9;
+    pub const AI_TOP_FILLET: usize = 10;
+    pub const AI_BOTTOM_EDGE: usize = 11;
+    pub const AI_BOTTOM_SLOPE: usize = 12;
+    pub const AI_TOP_EDGE: usize = 13;
+    pub const AI_TOP_SLOPE: usize = 14;
+
+    // IfcLShapeProfileDef
+    pub const L_DEPTH: usize = 3;
+    pub const L_WIDTH: usize = 4;
+    pub const L_THICKNESS: usize = 5;
+    pub const L_FILLET: usize = 6;
+    pub const L_EDGE: usize = 7;
+    pub const L_SLOPE: usize = 8;
+
+    // IfcTShapeProfileDef
+    pub const T_DEPTH: usize = 3;
+    pub const T_WIDTH: usize = 4;
+    pub const T_WEB: usize = 5;
+    pub const T_FLANGE: usize = 6;
+    pub const T_FILLET: usize = 7;
+    pub const T_FLANGE_EDGE: usize = 8;
+    pub const T_WEB_EDGE: usize = 9;
+    pub const T_WEB_SLOPE: usize = 10;
+    pub const T_FLANGE_SLOPE: usize = 11;
+
+    // IfcUShapeProfileDef
+    pub const U_DEPTH: usize = 3;
+    pub const U_WIDTH: usize = 4;
+    pub const U_WEB: usize = 5;
+    pub const U_FLANGE: usize = 6;
+    pub const U_FILLET: usize = 7;
+    pub const U_EDGE: usize = 8;
+    pub const U_SLOPE: usize = 9;
+
+    // IfcCShapeProfileDef
+    pub const C_DEPTH: usize = 3;
+    pub const C_WIDTH: usize = 4;
+    pub const C_WALL: usize = 5;
+    pub const C_GIRTH: usize = 6;
+    pub const C_FILLET: usize = 7;
+
+    // IfcZShapeProfileDef
+    pub const Z_DEPTH: usize = 3;
+    pub const Z_FLANGE_WIDTH: usize = 4;
+    pub const Z_WEB: usize = 5;
+    pub const Z_FLANGE: usize = 6;
+    pub const Z_FILLET: usize = 7;
+    pub const Z_EDGE: usize = 8;
+
+    // IfcEllipseProfileDef
+    pub const E_SEMI1: usize = 3;
+    pub const E_SEMI2: usize = 4;
+
+    // IfcTrapeziumProfileDef
+    pub const TZ_BOTTOM: usize = 3;
+    pub const TZ_TOP: usize = 4;
+    pub const TZ_Y: usize = 5;
+    pub const TZ_OFFSET: usize = 6;
+
+    // IfcCompositeProfileDef / IfcDerivedProfileDef
+    pub const COMPOSITE_PROFILES: usize = 2;
+    pub const DERIVED_PARENT: usize = 2;
+    pub const DERIVED_OPERATOR: usize = 3;
+}
+
+/// Read an optional non-negative length, converting to kernel units.
+fn opt_len(slots: &Slots<'_>, slot: usize, units: &UnitScale) -> Option<Scalar> {
+    slots.opt_f64(slot).map(|v| units.length(v))
+}
+
+/// Read an optional plane angle, converting to kernel units.
+///
+/// Slopes are angles, not lengths: scaling one by the length factor turns a
+/// 2 degree flange taper into radians-times-millimetres and silently deforms
+/// the section.
+fn opt_angle(slots: &Slots<'_>, slot: usize, units: &UnitScale) -> Option<Scalar> {
+    slots.opt_f64(slot).map(|v| units.angle(v))
+}
+
+/// Lower a symmetric `IfcIShapeProfileDef`.
+fn i_shape(slots: &Slots<'_>, units: &UnitScale) -> GeometryResult<Profile> {
+    Ok(Profile::Section(SectionProfile::I {
+        depth: units.length(slots.req_f64(section_slot::I_DEPTH, "OverallDepth")?),
+        width: units.length(slots.req_f64(section_slot::I_WIDTH, "OverallWidth")?),
+        web_thickness: units.length(slots.req_f64(section_slot::I_WEB, "WebThickness")?),
+        flange_thickness: units.length(slots.req_f64(section_slot::I_FLANGE, "FlangeThickness")?),
+        fillet_radius: opt_len(slots, section_slot::I_FILLET, units),
+        flange_edge_radius: opt_len(slots, section_slot::I_EDGE, units),
+        flange_slope: opt_angle(slots, section_slot::I_SLOPE, units),
+    }))
+}
+
+/// Lower an `IfcAsymmetricIShapeProfileDef`.
+///
+/// Kept distinct from the symmetric variant on purpose: the top and bottom
+/// flanges differ in width, thickness, fillet, edge radius and slope. Folding
+/// this into `SectionProfile::I` would force a choice of one flange, and the
+/// resulting section has the wrong area and the wrong second moment.
+fn asymmetric_i(slots: &Slots<'_>, units: &UnitScale) -> GeometryResult<Profile> {
+    let bottom_thickness =
+        units.length(slots.req_f64(section_slot::AI_BOTTOM_FLANGE, "BottomFlangeThickness")?);
+    Ok(Profile::Section(SectionProfile::AsymmetricI {
+        depth: units.length(slots.req_f64(section_slot::AI_DEPTH, "OverallDepth")?),
+        web_thickness: units.length(slots.req_f64(section_slot::AI_WEB, "WebThickness")?),
+        bottom_flange_width: units
+            .length(slots.req_f64(section_slot::AI_BOTTOM_WIDTH, "BottomFlangeWidth")?),
+        bottom_flange_thickness: bottom_thickness,
+        bottom_fillet_radius: opt_len(slots, section_slot::AI_BOTTOM_FILLET, units),
+        bottom_flange_edge_radius: opt_len(slots, section_slot::AI_BOTTOM_EDGE, units),
+        bottom_flange_slope: opt_angle(slots, section_slot::AI_BOTTOM_SLOPE, units),
+        top_flange_width: units
+            .length(slots.req_f64(section_slot::AI_TOP_WIDTH, "TopFlangeWidth")?),
+        // TopFlangeThickness is optional and defaults to the bottom flange:
+        // reading it as zero would produce a section with no top flange.
+        top_flange_thickness: opt_len(slots, section_slot::AI_TOP_FLANGE, units),
+        top_fillet_radius: opt_len(slots, section_slot::AI_TOP_FILLET, units),
+        top_flange_edge_radius: opt_len(slots, section_slot::AI_TOP_EDGE, units),
+        top_flange_slope: opt_angle(slots, section_slot::AI_TOP_SLOPE, units),
+    }))
+}
+
+/// Lower an `IfcLShapeProfileDef`.
+fn l_shape(slots: &Slots<'_>, units: &UnitScale) -> GeometryResult<Profile> {
+    let depth = units.length(slots.req_f64(section_slot::L_DEPTH, "Depth")?);
+    Ok(Profile::Section(SectionProfile::L {
+        depth,
+        // Width is optional and defaults to Depth, giving an equal-leg angle.
+        width: opt_len(slots, section_slot::L_WIDTH, units),
+        thickness: units.length(slots.req_f64(section_slot::L_THICKNESS, "Thickness")?),
+        fillet_radius: opt_len(slots, section_slot::L_FILLET, units),
+        edge_radius: opt_len(slots, section_slot::L_EDGE, units),
+        leg_slope: opt_angle(slots, section_slot::L_SLOPE, units),
+    }))
+}
+
+/// Lower an `IfcTShapeProfileDef`.
+fn t_shape(slots: &Slots<'_>, units: &UnitScale) -> GeometryResult<Profile> {
+    Ok(Profile::Section(SectionProfile::T {
+        depth: units.length(slots.req_f64(section_slot::T_DEPTH, "Depth")?),
+        flange_width: units.length(slots.req_f64(section_slot::T_WIDTH, "FlangeWidth")?),
+        web_thickness: units.length(slots.req_f64(section_slot::T_WEB, "WebThickness")?),
+        flange_thickness: units.length(slots.req_f64(section_slot::T_FLANGE, "FlangeThickness")?),
+        fillet_radius: opt_len(slots, section_slot::T_FILLET, units),
+        flange_edge_radius: opt_len(slots, section_slot::T_FLANGE_EDGE, units),
+        web_edge_radius: opt_len(slots, section_slot::T_WEB_EDGE, units),
+        web_slope: opt_angle(slots, section_slot::T_WEB_SLOPE, units),
+        flange_slope: opt_angle(slots, section_slot::T_FLANGE_SLOPE, units),
+    }))
+}
+
+/// Lower an `IfcUShapeProfileDef`.
+fn u_shape(slots: &Slots<'_>, units: &UnitScale) -> GeometryResult<Profile> {
+    Ok(Profile::Section(SectionProfile::U {
+        depth: units.length(slots.req_f64(section_slot::U_DEPTH, "Depth")?),
+        flange_width: units.length(slots.req_f64(section_slot::U_WIDTH, "FlangeWidth")?),
+        web_thickness: units.length(slots.req_f64(section_slot::U_WEB, "WebThickness")?),
+        flange_thickness: units.length(slots.req_f64(section_slot::U_FLANGE, "FlangeThickness")?),
+        fillet_radius: opt_len(slots, section_slot::U_FILLET, units),
+        edge_radius: opt_len(slots, section_slot::U_EDGE, units),
+        flange_slope: opt_angle(slots, section_slot::U_SLOPE, units),
+    }))
+}
+
+/// Lower an `IfcCShapeProfileDef`.
+fn c_shape(slots: &Slots<'_>, units: &UnitScale) -> GeometryResult<Profile> {
+    Ok(Profile::Section(SectionProfile::C {
+        depth: units.length(slots.req_f64(section_slot::C_DEPTH, "Depth")?),
+        width: units.length(slots.req_f64(section_slot::C_WIDTH, "Width")?),
+        wall_thickness: units.length(slots.req_f64(section_slot::C_WALL, "WallThickness")?),
+        // The returned lip. Dropping it turns a lipped channel into a plain
+        // one, which is a different section with different buckling behaviour.
+        girth: units.length(slots.req_f64(section_slot::C_GIRTH, "Girth")?),
+        internal_fillet_radius: opt_len(slots, section_slot::C_FILLET, units),
+    }))
+}
+
+/// Lower an `IfcZShapeProfileDef`.
+fn z_shape(slots: &Slots<'_>, units: &UnitScale) -> GeometryResult<Profile> {
+    Ok(Profile::Section(SectionProfile::Z {
+        depth: units.length(slots.req_f64(section_slot::Z_DEPTH, "Depth")?),
+        flange_width: units.length(slots.req_f64(section_slot::Z_FLANGE_WIDTH, "FlangeWidth")?),
+        web_thickness: units.length(slots.req_f64(section_slot::Z_WEB, "WebThickness")?),
+        flange_thickness: units.length(slots.req_f64(section_slot::Z_FLANGE, "FlangeThickness")?),
+        fillet_radius: opt_len(slots, section_slot::Z_FILLET, units),
+        edge_radius: opt_len(slots, section_slot::Z_EDGE, units),
+    }))
+}
+
+/// Lower an `IfcTrapeziumProfileDef`.
+fn trapezium(slots: &Slots<'_>, units: &UnitScale) -> GeometryResult<Profile> {
+    Ok(Profile::Section(SectionProfile::Trapezium {
+        bottom_x: units.length(slots.req_f64(section_slot::TZ_BOTTOM, "BottomXDim")?),
+        top_x: units.length(slots.req_f64(section_slot::TZ_TOP, "TopXDim")?),
+        y: units.length(slots.req_f64(section_slot::TZ_Y, "YDim")?),
+        // TopXOffset is a plain IfcLengthMeasure and may be negative, so it
+        // must not be read through a positive-length helper.
+        top_offset: units.length(slots.req_f64(section_slot::TZ_OFFSET, "TopXOffset")?),
+    }))
+}
+
+/// Lower an `IfcEllipseProfileDef`.
+fn ellipse(slots: &Slots<'_>, units: &UnitScale) -> GeometryResult<Profile> {
+    Ok(Profile::Ellipse(EllipseProfile {
+        semi_axis_x: units.length(slots.req_f64(section_slot::E_SEMI1, "SemiAxis1")?),
+        semi_axis_y: units.length(slots.req_f64(section_slot::E_SEMI2, "SemiAxis2")?),
+    }))
+}
+
+/// Lower an `IfcCompositeProfileDef` into an ordered profile collection.
+///
+/// Order is preserved because it is the only identity a composite member has:
+/// nothing else distinguishes two same-shaped members.
+fn composite(
+    model: &Model,
+    slots: &Slots<'_>,
+    units: &UnitScale,
+    tol: &Tolerance,
+    depth: usize,
+) -> GeometryResult<Profile> {
+    let refs = slots.req_ref_list(section_slot::COMPOSITE_PROFILES, "Profiles")?;
+    let mut members = Vec::with_capacity(refs.len());
+    for member in refs {
+        members.push(lower_profile_depth(model, member, units, tol, depth + 1)?);
+    }
+    Ok(Profile::Composite(members))
+}
+
+/// Lower an `IfcDerivedProfileDef` as a parent profile plus a 2D transform.
+fn derived(
+    model: &Model,
+    id: EntityId,
+    slots: &Slots<'_>,
+    units: &UnitScale,
+    tol: &Tolerance,
+    depth: usize,
+    mirrored: bool,
+) -> GeometryResult<Profile> {
+    let parent = slots.req_ref(section_slot::DERIVED_PARENT, "ParentProfile")?;
+    let basis = lower_profile_depth(model, parent, units, tol, depth + 1)?;
+
+    let transform = (if mirrored {
+        // IfcMirroredProfileDef derives its Operator in the schema, so no file
+        // carries one: the mirror about the local y axis is implied by the
+        // TYPE alone. Reading Operator here would find nothing and silently
+        // yield an unmirrored profile, which is why this subtype cannot share
+        // the parent's slot-reading path.
+        Ok(Transform2::from_scale(Vec2::new(-1.0, 1.0)))
+    } else {
+        let operator = slots.req_ref(section_slot::DERIVED_OPERATOR, "Operator")?;
+        let op_entity = model.get(operator).ok_or(GeometryError::MissingEntity {
+            referrer: id,
+            missing: operator,
+        })?;
+        // Reuse the shared operator reader rather than a second 2D-only
+        // parser: it already handles the uniform and non-uniform forms.
+        let full = operator_transform(model, operator, op_entity)?;
+        flatten_to_2d(&full)
+    })?;
+
+    Ok(Profile::Derived {
+        basis: Box::new(basis),
+        transform,
+    })
+}
+
+/// Reduce a 3D operator transform to the 2D transform a profile lives in.
+///
+/// A profile is defined in its own xy plane, and
+/// `IfcCartesianTransformationOperator2D` is read through the shared 3D
+/// reader. Any z component means the file used a 3D operator where the schema
+/// requires a 2D one; refusing beats silently projecting geometry away.
+fn flatten_to_2d(full: &Transform) -> GeometryResult<Transform2> {
+    let m = full.to_geom().matrix3;
+    let translation = full.to_geom().translation;
+    let z_leak = m.z_axis.x.abs() + m.z_axis.y.abs() + m.x_axis.z.abs() + m.y_axis.z.abs();
+    if z_leak > 1e-9 || translation.z.abs() > 1e-9 {
+        return Err(GeometryError::Unsupported {
+            entity: EntityId(0),
+            type_name: "IFCCARTESIANTRANSFORMATIONOPERATOR2D".to_string(),
+            detail: "profile operator has out-of-plane components",
+        });
+    }
+    Ok(Transform2::from_cols(
+        m.x_axis.truncate(),
+        m.y_axis.truncate(),
+        translation.truncate(),
+    ))
 }

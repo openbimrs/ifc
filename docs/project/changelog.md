@@ -15,6 +15,17 @@ This page is synchronised from it at build time.
 
 ## [Unreleased]
 
+### Added
+
+- `ifc-geometry` lowers ten profile families: the I, asymmetric I, L, T, U, C
+  and Z steel sections, plus ellipse, trapezium, composite and derived
+  profiles. `IfcMirroredProfileDef` lowers to a mirroring transform even
+  though its `Operator` is a DERIVED attribute no file can carry. Corpus
+  census 93 -> 105.
+- Profile nesting is bounded: `IfcCompositeProfileDef` and
+  `IfcDerivedProfileDef` reference other profiles, so a reference cycle is
+  refused with a typed error instead of exhausting the stack.
+
 ### Fixed
 
 - The schema coverage gate now enumerates `IfcProfileResource`, the fourth

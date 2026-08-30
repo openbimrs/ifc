@@ -410,7 +410,154 @@ def sectioned_spine(f):
     return [item], "AdvancedSweptSolid"
 
 
+
+
+def steel_profiles(f):
+    """Every profile family this slice lowers, with observable dimensions.
+
+    No committed fixture carried a steel section before this, which is exactly
+    how 13 profile families stayed unimplemented while the census reported
+    full coverage. Dimensions are realistic (an HEA300-like I, an L100x100x8)
+    so a wrong lowering looks wrong to anyone who knows sections.
+    """
+    prof = []
+
+    # Symmetric I with fillet AND flange edge radius: dropping either was the
+    # old lossy behaviour, and both are separately observable.
+    prof.append(f.create_entity(
+        "IfcIShapeProfileDef", ProfileType="AREA", ProfileName="HEA300-like",
+        OverallWidth=300.0, OverallDepth=290.0, WebThickness=8.5,
+        FlangeThickness=14.0, FilletRadius=27.0, FlangeEdgeRadius=3.0,
+        # An explicit flange slope in DEGREES, as the file's unit assignment
+        # declares. A lowerer that scales this by the LENGTH factor turns a
+        # 2 degree taper into millimetres-times-radians, which no assertion
+        # on lengths alone would notice.
+        FlangeSlope=2.0))
+
+    # Asymmetric I: top flange DELIBERATELY narrower than the bottom. A
+    # lowerer collapsing this onto the symmetric variant must pick one width,
+    # and the fixture makes that choice visible either way.
+    prof.append(f.create_entity(
+        "IfcAsymmetricIShapeProfileDef", ProfileType="AREA", ProfileName="asym-I",
+        BottomFlangeWidth=300.0, OverallDepth=290.0, WebThickness=8.5,
+        BottomFlangeThickness=14.0, BottomFlangeFilletRadius=27.0,
+        TopFlangeWidth=200.0, TopFlangeThickness=12.0, TopFlangeFilletRadius=21.0))
+
+    # L with UNEQUAL legs: Width is optional and defaults to Depth, so an
+    # equal-leg fixture could not catch a lowerer that ignores Width.
+    prof.append(f.create_entity(
+        "IfcLShapeProfileDef", ProfileType="AREA", ProfileName="L150x100x10",
+        Depth=150.0, Width=100.0, Thickness=10.0,
+        FilletRadius=12.0, EdgeRadius=6.0))
+
+    prof.append(f.create_entity(
+        "IfcTShapeProfileDef", ProfileType="AREA", ProfileName="T200x200x12",
+        Depth=200.0, FlangeWidth=200.0, WebThickness=12.0,
+        FlangeThickness=15.0, FilletRadius=18.0, FlangeEdgeRadius=4.0,
+        WebEdgeRadius=3.0))
+
+    prof.append(f.create_entity(
+        "IfcUShapeProfileDef", ProfileType="AREA", ProfileName="UPN200",
+        Depth=200.0, FlangeWidth=75.0, WebThickness=8.5,
+        FlangeThickness=11.5, FilletRadius=11.5, EdgeRadius=6.0))
+
+    # C section: girth is the returned lip, the dimension that distinguishes
+    # a lipped channel from a plain one.
+    prof.append(f.create_entity(
+        "IfcCShapeProfileDef", ProfileType="AREA", ProfileName="C200x75x20",
+        Depth=200.0, Width=75.0, WallThickness=2.5, Girth=20.0,
+        InternalFilletRadius=5.0))
+
+    prof.append(f.create_entity(
+        "IfcZShapeProfileDef", ProfileType="AREA", ProfileName="Z200x75",
+        Depth=200.0, FlangeWidth=75.0, WebThickness=2.5,
+        FlangeThickness=2.5, FilletRadius=5.0, EdgeRadius=3.0))
+
+    # Ellipse: distinct semi-axes so a swapped or averaged pair is visible.
+    prof.append(f.create_entity(
+        "IfcEllipseProfileDef", ProfileType="AREA", ProfileName="ellipse",
+        SemiAxis1=200.0, SemiAxis2=120.0))
+
+    # Trapezium with a NEGATIVE top offset: the one profile dimension that is
+    # a plain IfcLengthMeasure and may legitimately be below zero.
+    prof.append(f.create_entity(
+        "IfcTrapeziumProfileDef", ProfileType="AREA", ProfileName="trapezium",
+        BottomXDim=300.0, TopXDim=180.0, YDim=150.0, TopXOffset=-40.0))
+
+    return prof
+
+
+def derived_profiles(f, base_i):
+    """Composite, derived and mirrored profiles, which nest other profiles."""
+    # Derived: a NON-TRIVIAL operator. Scale 2.0 plus a translation, so a
+    # lowerer that drops the operator or applies identity is caught.
+    op = f.create_entity(
+        "IfcCartesianTransformationOperator2D",
+        LocalOrigin=f.create_entity("IfcCartesianPoint", Coordinates=[50.0, 25.0]),
+        Scale=2.0)
+    derived = f.create_entity(
+        "IfcDerivedProfileDef", ProfileType="AREA", ProfileName="derived-2x",
+        ParentProfile=base_i, Operator=op, Label="scaled")
+
+    # Mirrored: Operator is DERIVED in the schema, so a file cannot carry one.
+    # The mirror about the local y axis is implied by the TYPE alone, which is
+    # exactly why lowering this through the IfcDerivedProfileDef path would
+    # read a null operator and silently produce an unmirrored profile.
+    mirrored = f.create_entity(
+        "IfcMirroredProfileDef", ProfileType="AREA", ProfileName="mirrored-L",
+        ParentProfile=base_i, Label="mirrored")
+
+    # Composite of two DIFFERENT profiles, so dropping a member is visible.
+    c1 = f.create_entity(
+        "IfcRectangleProfileDef", ProfileType="AREA", ProfileName="comp-rect",
+        XDim=200.0, YDim=100.0)
+    c2 = f.create_entity(
+        "IfcCircleProfileDef", ProfileType="AREA", ProfileName="comp-circle",
+        Radius=60.0)
+    composite = f.create_entity(
+        "IfcCompositeProfileDef", ProfileType="AREA", ProfileName="composite",
+        Profiles=[c1, c2], Label="two-part")
+
+    # Centre-line: an OPEN curve plus a thickness. Its parent
+    # IfcArbitraryOpenProfileDef is not an area at all, but adding a wall
+    # thickness to a centre line DOES sweep a closed region.
+    line = f.create_entity("IfcPolyline", Points=[
+        f.create_entity("IfcCartesianPoint", Coordinates=[0.0, 0.0]),
+        f.create_entity("IfcCartesianPoint", Coordinates=[300.0, 0.0]),
+        f.create_entity("IfcCartesianPoint", Coordinates=[300.0, 200.0])])
+    # NOT returned for extrusion: this family is declared unlowered, and a
+    # solid built on it would fail the corpus dispatch gate on
+    # IfcExtrudedAreaSolid, masking real regressions in that family. It stays
+    # in the file as a free-standing record so the refusal path has real data.
+    f.create_entity(
+        "IfcCenterLineProfileDef", ProfileType="AREA", ProfileName="centerline",
+        Curve=line, Thickness=8.0)
+
+    return [derived, mirrored, composite]
+
+
+def profile_families(f):
+    """Extrude every profile family this slice lowers.
+
+    A profile only reaches the lowerer through a solid that references it, so
+    each one backs a short extrusion.
+    """
+    prof = steel_profiles(f)
+    prof += derived_profiles(f, prof[0])
+
+    solids = []
+    for i, p in enumerate(prof):
+        place = f.create_entity(
+            "IfcAxis2Placement3D",
+            Location=pt(f, (float(i) * 500.0, 0.0, 0.0)))
+        solids.append(f.create_entity(
+            "IfcExtrudedAreaSolid", SweptArea=p, Position=place,
+            ExtrudedDirection=dr(f, (0.0, 0.0, 1.0)), Depth=1000.0))
+    return solids, "SweptSolid"
+
+
 FIXTURES = [
+    ("synthetic_profile_families.ifc", profile_families),
     ("synthetic_elementary_surfaces.ifc", elementary_surfaces),
     ("synthetic_surface_of_revolution.ifc", surface_of_revolution),
     ("synthetic_bspline_surface.ifc", bspline_surface),

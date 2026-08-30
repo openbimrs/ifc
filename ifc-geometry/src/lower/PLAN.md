@@ -66,6 +66,28 @@ and check it off only after the proof runs.
     LENGTH. The basis curve therefore selects the unit conversion. A single
     length factor turns the crankbar's 0.082 rad arcs into 8.2e-5 rad in a
     millimetre file; the arc still renders.
+- [x] `LOW-PROFILE` - steel sections and nesting profile families
+  - Requires: `LOW-DISPATCH`, `LOW-CONTEXT`.
+
+  - Implements: `IfcIShapeProfileDef`, `IfcAsymmetricIShapeProfileDef`,
+    `IfcLShapeProfileDef`, `IfcTShapeProfileDef`, `IfcUShapeProfileDef`,
+    `IfcCShapeProfileDef`, `IfcZShapeProfileDef`, `IfcEllipseProfileDef`,
+    `IfcTrapeziumProfileDef`, `IfcCompositeProfileDef`,
+    `IfcDerivedProfileDef` and `IfcMirroredProfileDef`.
+  - Proof: `tests/lower_profile_families.rs` (10 tests), 8/8 mutation probes,
+    corpus census 93 -> 105.
+  - Decision: `IfcMirroredProfileDef` cannot read its `Operator`, which the
+    schema marks DERIVED. The mirror about the local y axis is implied by the
+    TYPE, so lowering it through the `IfcDerivedProfileDef` path would yield
+    an unmirrored copy that looks right in isolation.
+  - Decision: `IfcCenterLineProfileDef` stays declared unlowered. It is an
+    `IfcArbitraryOpenProfileDef` subtype whose `Thickness` does sweep a closed
+    area, but the neutral contour model has no centre-line-with-width form and
+    offsetting an arbitrary curve is a kernel operation, not an adapter one.
+  - Decision: profile nesting carries an explicit depth budget. Nothing in IFC
+    forbids a derived profile whose parent is itself, and a stack overflow is
+    a crash a consumer cannot catch.
+
 - [ ] `LOW-EXACT` - exact profile/surface node construction
   - Requires: `LOW-CONTRACT`, `INPUT-PROFILE`, `INPUT-MAT`.
   - Scope note: the curve third is done, see `LOW-CURVE`. Profiles already
