@@ -27,7 +27,7 @@ code.
 
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `ifc-geometry` | 24,846 | 90 | 6 | 30 | <span class="status-partial">Partial</span> |
+| `ifc-geometry` | 25,067 | 90 | 6 | 30 | <span class="status-partial">Partial</span> |
 | `ifc-template-catalog` | 2,403 | 28 | 3 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 2,114 | 23 | 0 | 7 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 2,102 | 29 | 15 | 1 | <span class="status-partial">Partial</span> |
@@ -270,17 +270,19 @@ a section without them has the wrong area and the wrong section modulus.
 | `IfcLine` | <span class="status-implemented">Implemented</span> | `curve/line.rs` |
 | `IfcTrimmedCurve` | <span class="status-implemented">Implemented</span> | `curve/trimmed.rs` |
 | `IfcCompositeCurve` | <span class="status-implemented">Implemented</span> | `curve/composite.rs` |
-| `IfcBSplineCurve` | <span class="status-implemented">Implemented</span> | `curve/bspline.rs` (representation) |
+| Convention-only `IfcBSplineCurve` | <span class="status-partial">Partial</span> | typed view only; lowering does not invent absent knots |
+| `IfcBSplineCurveWithKnots`, `IfcRationalBSplineCurveWithKnots` | <span class="status-implemented">Implemented</span> | `curve/bspline.rs` representation + exact neutral lowering |
 | `IfcOffsetCurve2D/3D` | <span class="status-implemented">Implemented</span> | `curve/offset.rs` |
 | `IfcAxis2Placement2D/3D` | <span class="status-implemented">Implemented</span> | `resource/placement.rs` |
 | `IfcCartesianTransformationOperator*` | <span class="status-implemented">Implemented</span> | `resource/operator.rs` |
 | Unit resolution (SI, conversion-based) | <span class="status-implemented">Implemented</span> | `units.rs` |
 
 ::: info Curves lower as geometry inside a parent item
-`lower/curve.rs` lowers polylines, conics, lines, trimmed and composite curves
-and B-splines into the neutral graph. Curves reach it through the item that
-owns them: a sweep directrix, a surface boundary, a B-rep edge, and
-`IfcGeometricCurveSet` members.
+`lower/curve.rs` lowers polylines, conics, lines, trimmed and composite curves,
+and only the explicit-knot polynomial/rational B-spline subtypes into the
+neutral graph. Convention-only base splines remain unsupported. Curves reach
+this lowerer through the item that owns them: a sweep directrix, a surface
+boundary, a B-rep edge, or an `IfcGeometricCurveSet` member.
 
 A curve is deliberately **not** a top-level body dispatch target. Exact-type
 dispatch in `lower_representation_item` covers solids and collections, so a
@@ -288,9 +290,11 @@ bare `IfcPolyline` offered as a body representation returns `Unsupported`
 rather than a shape a viewer would draw as a solid.
 :::
 
-Curve *representation* is not an evaluator claim. Tessellating a B-spline is
-Axiolid's concern, not this crate's — see
-[the Axiolid boundary](/architecture/axiolid-boundary).
+### Explicit-knot surfaces
+
+| Capability | Status | Module |
+| --- | --- | --- |
+| Convention-only `IfcBSplineSurface` | <span class="status-partial">Partial</span> | typed view only; lowering ...[truncated]
 
 ### Representation selection
 

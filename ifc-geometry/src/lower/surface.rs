@@ -2,14 +2,12 @@
 //!
 //! # Scope
 //!
-//! Covers the surface families the corpus exercises: `IfcPlane` (already
-//! needed by half spaces, now reachable as a surface in its own right) and
-//! `IfcSurfaceOfLinearExtrusion`. The curved elementary families
-//! (`IfcCylindricalSurface`, `IfcSphericalSurface`, `IfcToroidalSurface`,
-//! `IfcSurfaceOfRevolution`) and the B-spline families have complete readers
-//! in `crate::surface` but no licensed fixture to prove a lowering against,
-//! so they stay in `dispatch::PLANNED` with a stated reason rather than
-//! shipping untested code paths.
+//! Covers the surface families implemented by this adapter: elementary,
+//! swept, bounded, and the explicit-knot `IfcBSplineSurfaceWithKnots` /
+//! `IfcRationalBSplineSurfaceWithKnots` subtypes. Convention-only
+//! `IfcBSplineSurface` remains unsupported because lowering it would require
+//! inventing a knot convention absent from the record. B-splines are lowered
+//! as neutral values only; evaluation remains an Axiolid provider concern.
 //!
 //! # `Depth` is a hint, not a bound
 //!

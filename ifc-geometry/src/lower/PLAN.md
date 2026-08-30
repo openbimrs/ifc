@@ -54,10 +54,10 @@ and check it off only after the proof runs.
     `tests/lower_csg_swept.rs`); 9/9 mutation probes; crate clippy in both
     feature columns.
   - Scope: `IfcPolyline`, `IfcLine`, `IfcCircle`, `IfcTrimmedCurve`,
-    `IfcCompositeCurve`. `IfcBSplineCurve*`, `IfcEllipse`, `IfcOffsetCurve*`
-    and `IfcIndexedPolyCurve` still report a typed `Unsupported`: the corpus
-    does not exercise them and a guessed parameterisation is worse than a
-    stated gap.
+    `IfcCompositeCurve`, `IfcBSplineCurveWithKnots`, and
+    `IfcRationalBSplineCurveWithKnots`. Convention-only `IfcBSplineCurve`,
+    `IfcEllipse`, `IfcOffsetCurve*`, and `IfcIndexedPolyCurve` still report a
+    typed `Unsupported`; no knot sequence is invented for a base spline.
   - Decision: `LOW-CONTRACT` was NOT a prerequisite. Direction normalization
     already lives in `resource::direction`, and this module deliberately does
     NOT normalize an `IfcVector` magnitude, which is parameterisation rather
@@ -97,8 +97,10 @@ and check it off only after the proof runs.
     `INPUT-PROFILE` and `INPUT-MAT` are themselves still pending.
   - Done (surface third): planes, linear extrusions, the curved elementary families
     (cylinder, sphere, torus), `IfcSurfaceOfRevolution`,
-    `IfcRectangularTrimmedSurface`, `IfcBSplineSurfaceWithKnots` and
-    `IfcCurveBoundedPlane` all lower via `lower/surface.rs`.
+    `IfcRectangularTrimmedSurface`, `IfcBSplineSurfaceWithKnots`,
+    `IfcRationalBSplineSurfaceWithKnots`, and `IfcCurveBoundedPlane` all lower
+    via `lower/surface.rs`; convention-only `IfcBSplineSurface` remains
+    unsupported because it carries no authored knot sequence.
     `Transform::to_geom_frame` carries the placement's own U/V axes, so a
     surface keeps the parameterisation trims are taken against.
     Proof: 12 unit tests, `tests/lower_surface.rs` (3 tests) plus

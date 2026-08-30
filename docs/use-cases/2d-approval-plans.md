@@ -19,8 +19,8 @@ That distinction matters for this use case. You can now construct any entity the
 schema declares — including `IfcAnnotation`, `IfcCurveStyle`,
 `IfcLibraryReference` and `IfcApproval` — by naming its attributes, and the
 builder will refuse a wrong arity or type. What no crate here provides is a
-typed *view* that interprets those entities once written, or the geometry to
-derive a plan in the first place.
+typed *view* that interprets those entities once written, or the sectioning
+geometry needed to derive a plan from a 3D body in the first place.
 
 | Scenario step | Served by this crate? |
 | --- | --- |
@@ -29,8 +29,8 @@ derive a plan in the first place.
 | Find products and their representations | <span class="status-partial">Partly</span> |
 | Walk the spatial tree (storey → elements) | <span class="status-implemented">Yes</span> — via `ifc-spatial` |
 | Read 2D curve *attributes* (`IfcPolyline`, `IfcCircle`, …) | <span class="status-implemented">Yes</span> |
-| Lower a curve into the geometry graph | <span class="status-absent">No</span> |
-| Select the 2D (`Plan`/`Annotation`) representation | <span class="status-absent">No</span> |
+| Lower supported nested curves into the neutral geometry graph | <span class="status-partial">Partly</span> — bare curves are not top-level body targets |
+| Select the 2D (`Plan`/`Annotation`) representation | <span class="status-implemented">Yes</span> — via `select_plan_representation` |
 | Cut a section / derive a plan from 3D bodies | <span class="status-absent">No</span> |
 | Author `IfcAnnotation` symbols | <span class="status-implemented">Yes</span> — via `ifc-author` |
 | *Write* style entities (`IfcCurveStyle`, …) | <span class="status-implemented">Yes</span> — via `ifc-author` |
@@ -70,27 +70,37 @@ Note `ids_of_type` takes the **upper-case** STEP type name.
 
 ### 2D curve geometry
 
-`ifc-geometry` implements the curve families a 2D plan needs, as borrowed views
-over the model that resolve units and placements. **These are readers, not
-lowerers**: `lower/curve.rs` is a placeholder and the dispatcher handles no
-curve family, so lowering a top-level `IfcPolyline` returns `Unsupported`. The
-one exception is a polyline used as a swept-solid profile outline
-(`lower/profile.rs`).
+`ifc-geometry` provides borrowed typed views for the curve families used by 2D
+plans and exact neutral-graph lowerers for a bounded subset. `lower/curve.rs`
+lowers `IfcPolyline`, `IfcLine`, `IfcCircle`, `IfcTrimmedCurve`,
+`IfcCompositeCurve`, `IfcBSplineCurveWithKnots`, and
+`IfcRationalBSplineCurveWithKnots`. The explicit-knot B-spline paths preserve
+degree, compact knots and multiplicities, control points, optional rational
+weights, and representable closure.
 
-You can therefore read every coordinate you need and build your own 2D
-pipeline on top — you just cannot ask this crate to produce drawable geometry
-for you.
+Curves reach that lowerer through the item that owns them: for example a sweep
+directrix, surface boundary, B-rep edge, or `IfcGeometricCurveSet` member. A
+bare curve is deliberately not a top-level *body* dispatch target, so offering
+a standalone `IfcPolyline` as a body still returns typed `Unsupported` rather
+than pretending a line is a solid.
 
-| Entity | Module |
-| --- | --- |
-| `IfcPolyline` | `curve/polyline.rs` |
-| `IfcCircle`, `IfcEllipse` | `curve/conic.rs` |
-| `IfcLine` | `curve/line.rs` |
-| `IfcTrimmedCurve` | `curve/trimmed.rs` |
-| `IfcCompositeCurve` | `curve/composite.rs` |
-| `IfcOffsetCurve2D` | `curve/offset.rs` |
-| `IfcAxis2Placement2D` | `resource/placement.rs` |
-| `IfcCartesianTransformationOperator2D` | `resource/operator.rs` |
+This is neutral geometry, not a complete permit-drawing pipeline. The crate does
+not section 3D bodies, interpret curve styles, place annotations, or render the
+result; an application must still provide those layers.
+
+| Entity | Typed view | Neutral lowering |
+| --- | --- | --- |
+| `IfcPolyline` | Yes | Yes, through an owning item |
+| `IfcCircle` | Yes | Yes, through an owning item |
+| `IfcEllipse` | Yes | Not yet |
+| `IfcLine` | Yes | Yes, through an owning item |
+| `IfcTrimmedCurve` | Yes | Yes, through an owning item |
+| `IfcCompositeCurve` | Yes | Yes, through an owning item |
+| Convention-only `IfcBSplineCurve` | Yes | No — absent knots are not invented |
+| `IfcBSplineCurveWithKnots`, `IfcRationalBSplineCurveWithKnots` | Yes | Yes, exact neutral values |
+| `IfcOffsetCurve2D` | Yes | Not yet |
+| `IfcAxis2Placement2D` | Yes | Placement support |
+| `IfcCartesianTransformationOperator2D` | Yes | Transform support |
 
 Unit resolution (`units.rs`) handles SI and conversion-based units, which
 matters because plan dimensions in millimetres versus metres is a classic
@@ -208,10 +218,11 @@ Nothing in this repository does that. `ifc-geometry` lowers bodies into the
 neutral [Axiolid](/architecture/axiolid-boundary) DAG and stops; sectioning is a
 kernel operation. Two further constraints:
 
-- Only seven representation-item families lower today. Notably
+- Representation-item lowering remains partial overall, but
   `IfcTriangulatedFaceSet` and `IfcPolygonalFaceSet` — heavily used by IFC4
-  exporters — return `GeometryError::Unsupported`. See the
-  [dispatch table](/capabilities#representation-item-lowering).
+  exporters — both lower today. Consult the generated
+  [dispatch table](/capabilities#representation-item-lowering) for the exact
+  supported families.
 - A plane/solid section operation is an Axiolid capability question, not an IFC
   one. Check Axiolid's own capability page before assuming it exists.
 
@@ -325,8 +336,8 @@ is one you switch off.
    `IfcRelAssociatesLibrary`. This is what makes your symbol set portable rather
    than proprietary.
 7. **Approvals.** `IfcApproval` + `IfcRelAssociatesApproval` for sign-off state.
-8. *(Later)* **Plan derivation from 3D**, once the tessellated face-set families
-   lower and a sectioning path exists.
+8. *(Later)* **Plan derivation from 3D.** Tessellated face-set lowering is
+   available; a sectioning path is still required.
 
 ## What would change this verdict
 

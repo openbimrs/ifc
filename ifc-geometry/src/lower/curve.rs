@@ -2,10 +2,12 @@
 //!
 //! # Scope
 //!
-//! Covers the curve families the corpus actually uses as swept-disk
-//! directrices: `IfcPolyline`, `IfcLine`, `IfcCircle`, `IfcTrimmedCurve` and
-//! `IfcCompositeCurve`. Anything else reports a typed `Unsupported` naming the
-//! entity, so a gap is a diagnostic rather than a wrong shape.
+//! Covers `IfcPolyline`, `IfcLine`, `IfcCircle`, `IfcTrimmedCurve`,
+//! `IfcCompositeCurve`, and the explicit-knot
+//! `IfcBSplineCurveWithKnots` / `IfcRationalBSplineCurveWithKnots`
+//! subtypes. Convention-only `IfcBSplineCurve` and other families report a
+//! typed `Unsupported` naming the entity, so a gap is a diagnostic rather
+//! than a wrong shape.
 //!
 //! # Trim parameters are not all lengths
 //!

@@ -5,18 +5,24 @@ FILE_NAME('ifc4_rational_bspline_curve_surface.ifc','2026-08-30T00:00:00',('Open
 FILE_SCHEMA(('IFC4'));
 ENDSEC;
 DATA;
-/* Rational quadratic quarter circle in the XY plane. */
+/* Open rational quadratic quarter circle in the XY plane. */
 #1=IFCCARTESIANPOINT((1.,0.,0.));
 #2=IFCCARTESIANPOINT((1.,1.,0.));
 #3=IFCCARTESIANPOINT((0.,1.,0.));
-#10=IFCRATIONALBSPLINECURVEWITHKNOTS(2,(#1,#2,#3),.CIRCULAR_ARC.,.F.,.F.,(3,3),(0.,1.),.UNSPECIFIED.,(1.,0.7071067811865476,1.));
-#11=IFCBSPLINECURVEWITHKNOTS(2,(#1,#2,#3),.UNSPECIFIED.,.F.,.F.,(3,3),(0.,1.),.UNSPECIFIED.);
-/* Rational bilinear tensor-product patch; outer control list is the u axis. */
+#10=IFCRATIONALBSPLINECURVEWITHKNOTS(2,(#1,#2,#3),.CIRCULAR_ARC.,.F.,.F.,(3,3),(0.,1.),.PIECEWISE_BEZIER_KNOTS.,(1.,0.7071067811865476,1.));
+/* Closed polynomial linear loop; the final control repeats the first. */
+#11=IFCBSPLINECURVEWITHKNOTS(1,(#1,#2,#3,#1),.POLYLINE_FORM.,.T.,.F.,(2,1,1,2),(0.,1.,2.,3.),.QUASI_UNIFORM_KNOTS.);
+/* Convention-only base curve: valid typed data but no explicit knots to lower. */
+#12=IFCBSPLINECURVE(2,(#1,#2,#3),.UNSPECIFIED.,.F.,.F.);
+/* Rational U-closed/V-open patch; the first and final U rows repeat. */
 #4=IFCCARTESIANPOINT((0.,0.,0.));
 #5=IFCCARTESIANPOINT((0.,2.,0.));
 #6=IFCCARTESIANPOINT((2.,0.,0.));
 #7=IFCCARTESIANPOINT((2.,2.,2.));
-#20=IFCRATIONALBSPLINESURFACEWITHKNOTS(1,1,((#4,#5),(#6,#7)),.UNSPECIFIED.,.F.,.F.,.F.,(2,2),(2,2),(0.,1.),(0.,1.),.UNSPECIFIED.,((1.,2.),(1.,1.)));
-#21=IFCBSPLINESURFACEWITHKNOTS(1,1,((#4,#5),(#6,#7)),.UNSPECIFIED.,.F.,.F.,.F.,(2,2),(2,2),(0.,1.),(0.,1.),.UNSPECIFIED.);
+#20=IFCRATIONALBSPLINESURFACEWITHKNOTS(2,1,((#4,#5),(#6,#7),(#4,#5)),.UNSPECIFIED.,.T.,.F.,.F.,(3,3),(2,2),(0.,1.),(0.,2.),.PIECEWISE_BEZIER_KNOTS.,((1.,2.),(1.,1.),(1.,2.)));
+/* Polynomial U-open/V-closed patch; the first and final V columns repeat. */
+#21=IFCBSPLINESURFACEWITHKNOTS(1,2,((#4,#5,#4),(#6,#7,#6)),.UNSPECIFIED.,.F.,.T.,.F.,(2,2),(3,3),(0.,3.),(0.,1.),.PIECEWISE_BEZIER_KNOTS.);
+/* Convention-only base surface: valid typed data but no explicit knots to lower. */
+#22=IFCBSPLINESURFACE(1,1,((#4,#5),(#6,#7)),.UNSPECIFIED.,.F.,.F.,.F.);
 ENDSEC;
 END-ISO-10303-21;

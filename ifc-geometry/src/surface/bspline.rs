@@ -166,14 +166,14 @@ impl<'m> BSplineSurface<'m> {
         self.slots.id()
     }
 
-    /// The u polynomial degree, guaranteed at least 1.
+    /// The u polynomial degree, guaranteed to fit the u control count.
     pub fn u_degree(&self) -> GeometryResult<usize> {
-        self.degree(slot::U_DEGREE, "UDegree")
+        self.degree(slot::U_DEGREE, "UDegree", self.control_points()?.u_count())
     }
 
-    /// The v polynomial degree, guaranteed at least 1.
+    /// The v polynomial degree, guaranteed to fit the v control count.
     pub fn v_degree(&self) -> GeometryResult<usize> {
-        self.degree(slot::V_DEGREE, "VDegree")
+        self.degree(slot::V_DEGREE, "VDegree", self.control_points()?.v_count())
     }
 
     /// The control point grid, checked to be rectangular.
@@ -267,9 +267,11 @@ impl<'m> BSplineSurface<'m> {
         self.slots.opt(slot::U_KNOTS).is_some()
     }
 
-    /// Is this the rational subtype?
+    /// Whether the entity declares the rational subtype.
     pub fn is_rational(&self) -> bool {
-        self.slots.opt(slot::WEIGHTS_DATA).is_some()
+        self.slots
+            .type_name()
+            .eq_ignore_ascii_case("IFCRATIONALBSPLINESURFACEWITHKNOTS")
     }
 
     /// The u knot vector, checked against the u control point count.
@@ -279,7 +281,12 @@ impl<'m> BSplineSurface<'m> {
         if !self.has_knots() {
             return Ok(None);
         }
-        let expected = self.control_points()?.u_count() + self.u_degree()? + 1;
+        let expected = self
+            .control_points()?
+            .u_count()
+            .checked_add(self.u_degree()?)
+            .and_then(|value| value.checked_add(1))
+            .ok_or_else(|| self.slots.degenerate("u knot count overflows usize"))?;
         self.knot_vector(
             slot::U_KNOTS,
             "UKnots",
@@ -297,7 +304,12 @@ impl<'m> BSplineSurface<'m> {
         if !self.has_knots() {
             return Ok(None);
         }
-        let expected = self.control_points()?.v_count() + self.v_degree()? + 1;
+        let expected = self
+            .control_points()?
+            .v_count()
+            .checked_add(self.v_degree()?)
+            .and_then(|value| value.checked_add(1))
+            .ok_or_else(|| self.slots.degenerate("v knot count overflows usize"))?;
         self.knot_vector(
             slot::V_KNOTS,
             "VKnots",
@@ -310,12 +322,24 @@ impl<'m> BSplineSurface<'m> {
 
     /// The weight grid, matching the control point grid exactly.
     ///
-    /// `Ok(None)` for a non-rational surface. Every weight must be positive:
+    /// `Ok(None)` for a non-rational surface. Every weight must be finite and positive:
     /// a zero divides by zero at that control point and a negative one flips
     /// the patch through infinity.
     pub fn weights(&self) -> GeometryResult<Option<Vec<Vec<f64>>>> {
-        if !self.is_rational() {
-            return Ok(None);
+        let supplied = self.slots.opt(slot::WEIGHTS_DATA).is_some();
+        match (self.is_rational(), supplied) {
+            (false, false) => return Ok(None),
+            (true, false) => {
+                return Err(self
+                    .slots
+                    .degenerate("rational B-spline surface is missing WeightsData"));
+            }
+            (false, true) => {
+                return Err(self
+                    .slots
+                    .degenerate("polynomial B-spline surface must not carry WeightsData"));
+            }
+            (true, true) => {}
         }
         let grid = self.control_points()?;
         let value = self.slots.req(slot::WEIGHTS_DATA, "WeightsData")?;
@@ -350,9 +374,12 @@ impl<'m> BSplineSurface<'m> {
                     self.slots
                         .degenerate(format!("WeightsData[{u_index}][{v_index}] is not a number"))
                 })?;
-                // NaN must be rejected too, hence the explicit `is_nan`
-                // rather than relying on `<= 0.0`, false for NaN.
-                if weight.is_nan() || weight <= 0.0 {
+                if !weight.is_finite() {
+                    return Err(self.slots.degenerate(format!(
+                        "weight {weight} at control point [{u_index}][{v_index}] must be finite"
+                    )));
+                }
+                if weight <= 0.0 {
                     return Err(self.slots.degenerate(format!(
                         "weight {weight} at control point [{u_index}][{v_index}] must be positive"
                     )));
@@ -364,14 +391,28 @@ impl<'m> BSplineSurface<'m> {
         Ok(Some(weights))
     }
 
-    fn degree(&self, index: usize, name: &'static str) -> GeometryResult<usize> {
-        let degree = self.slots.req_i64(index, name)?;
-        if degree < 1 {
+    fn degree(
+        &self,
+        index: usize,
+        name: &'static str,
+        control_count: usize,
+    ) -> GeometryResult<usize> {
+        let raw = self.slots.req_i64(index, name)?;
+        if raw < 1 {
             return Err(self
                 .slots
-                .degenerate(format!("{name} must be at least 1, found {degree}")));
+                .degenerate(format!("{name} must be at least 1, found {raw}")));
         }
-        Ok(degree as usize)
+        let degree = usize::try_from(raw).map_err(|_| {
+            self.slots
+                .degenerate(format!("{name} exceeds platform limits"))
+        })?;
+        if degree >= control_count {
+            return Err(self.slots.degenerate(format!(
+                "{name} {degree} must be smaller than the {control_count} control points"
+            )));
+        }
+        Ok(degree)
     }
 
     /// Read one knot vector and check it against `expected` total multiplicity.
@@ -392,7 +433,12 @@ impl<'m> BSplineSurface<'m> {
         let mut multiplicities = Vec::with_capacity(items.len());
         for item in items {
             match item.unwrap_typed() {
-                Value::Integer(i) if *i >= 1 => multiplicities.push(*i as usize),
+                Value::Integer(i) if *i >= 1 => {
+                    multiplicities.push(usize::try_from(*i).map_err(|_| {
+                        self.slots
+                            .degenerate(format!("{mult_name} exceeds platform limits"))
+                    })?);
+                }
                 other => {
                     return Err(self.slots.degenerate(format!(
                         "{mult_name} entry must be a positive integer, found {other:?}"
@@ -408,6 +454,13 @@ impl<'m> BSplineSurface<'m> {
                 multiplicities.len()
             )));
         }
+        for (index, value) in values.iter().enumerate() {
+            if !value.is_finite() {
+                return Err(self.slots.degenerate(format!(
+                    "{knots_name}[{index}] must be finite, found {value}"
+                )));
+            }
+        }
         for pair in values.windows(2) {
             if pair[1] <= pair[0] {
                 return Err(self.slots.degenerate(format!(
@@ -416,7 +469,12 @@ impl<'m> BSplineSurface<'m> {
                 )));
             }
         }
-        let total: usize = multiplicities.iter().sum();
+        let total = multiplicities.iter().try_fold(0usize, |total, &value| {
+            total.checked_add(value).ok_or_else(|| {
+                self.slots
+                    .degenerate(format!("{mult_name} total overflows usize"))
+            })
+        })?;
         if total != expected {
             return Err(self.slots.degenerate(format!(
                 "{mult_name} sums to {total} but must equal control points + degree + 1 = {expected}"
@@ -629,6 +687,54 @@ mod tests {
             assert!(err.to_string().contains("positive"), "weight {bad}: {err}");
             assert!(err.to_string().contains("[1][1]"), "weight {bad}: {err}");
         }
+    }
+
+    #[test]
+    fn multiplicity_overflow_is_a_typed_error_not_a_panic() {
+        let mut e = bilinear();
+        e.attributes[slot::U_MULTIPLICITIES] = integers(&[i64::MAX, i64::MAX, i64::MAX]);
+        e.attributes[slot::U_KNOTS] = reals(&[0.0, 0.5, 1.0]);
+        let err = BSplineSurface::new(EntityId(8), &e).u_knots().unwrap_err();
+        assert!(err.to_string().contains("overflow"), "got: {err}");
+    }
+
+    #[test]
+    fn each_degree_must_not_exceed_its_control_point_upper_index() {
+        let mut e = bilinear();
+        e.attributes[slot::U_DEGREE] = Value::Integer(2);
+        assert!(BSplineSurface::new(EntityId(9), &e)
+            .u_degree()
+            .unwrap_err()
+            .to_string()
+            .contains("control points"));
+
+        let mut e = bilinear();
+        e.attributes[slot::V_DEGREE] = Value::Integer(2);
+        assert!(BSplineSurface::new(EntityId(10), &e)
+            .v_degree()
+            .unwrap_err()
+            .to_string()
+            .contains("control points"));
+    }
+
+    #[test]
+    fn rational_subtype_requires_weights_and_polynomial_rejects_them() {
+        let attributes = bilinear().attributes;
+        let rational = Entity::new("IFCRATIONALBSPLINESURFACEWITHKNOTS", attributes.clone());
+        assert!(BSplineSurface::new(EntityId(11), &rational)
+            .weights()
+            .unwrap_err()
+            .to_string()
+            .contains("missing WeightsData"));
+
+        let mut polynomial_attributes = attributes;
+        polynomial_attributes.push(Value::List(vec![reals(&[1.0, 1.0]), reals(&[1.0, 1.0])]));
+        let polynomial = Entity::new("IFCBSPLINESURFACEWITHKNOTS", polynomial_attributes);
+        assert!(BSplineSurface::new(EntityId(12), &polynomial)
+            .weights()
+            .unwrap_err()
+            .to_string()
+            .contains("must not carry WeightsData"));
     }
 
     #[test]

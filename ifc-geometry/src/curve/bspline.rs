@@ -149,17 +149,27 @@ impl<'m> BSplineCurve<'m> {
         self.slots.id()
     }
 
-    /// The polynomial degree, guaranteed at least 1.
+    /// The polynomial degree, guaranteed to be at least 1 and smaller than
+    /// the number of control points.
     ///
-    /// Degree 0 would make every "curve" a disconnected set of points.
+    /// IFC requires `Degree <= UpperIndexOnControlPoints`; because the upper
+    /// index is `control_points.len() - 1`, `degree >= len` is invalid.
     pub fn degree(&self) -> GeometryResult<usize> {
-        let degree = self.slots.req_i64(slot::DEGREE, "Degree")?;
-        if degree < 1 {
+        let raw = self.slots.req_i64(slot::DEGREE, "Degree")?;
+        if raw < 1 {
             return Err(self
                 .slots
-                .degenerate(format!("Degree must be at least 1, found {degree}")));
+                .degenerate(format!("Degree must be at least 1, found {raw}")));
         }
-        Ok(degree as usize)
+        let degree = usize::try_from(raw)
+            .map_err(|_| self.slots.degenerate("Degree exceeds platform limits"))?;
+        let control_count = self.control_point_refs()?.len();
+        if degree >= control_count {
+            return Err(self.slots.degenerate(format!(
+                "Degree {degree} must be smaller than the {control_count} control points"
+            )));
+        }
+        Ok(degree)
     }
 
     /// The `IfcCartesianPoint` control point references, in order.
@@ -213,9 +223,15 @@ impl<'m> BSplineCurve<'m> {
         self.slots.opt(slot::KNOTS).is_some()
     }
 
-    /// Is this the rational subtype, i.e. does it carry weights?
+    /// Whether the entity declares the rational subtype.
+    ///
+    /// Subtype identity, not accidental trailing-slot presence, owns this
+    /// semantic. A malformed rational entity with missing weights must fail;
+    /// it must never be silently downgraded to a polynomial curve.
     pub fn is_rational(&self) -> bool {
-        self.slots.opt(slot::WEIGHTS_DATA).is_some()
+        self.slots
+            .type_name()
+            .eq_ignore_ascii_case("IFCRATIONALBSPLINECURVEWITHKNOTS")
     }
 
     /// The compressed knot vector: distinct values with their multiplicities.
@@ -249,6 +265,13 @@ impl<'m> BSplineCurve<'m> {
                 )));
             }
         }
+        for (index, value) in values.iter().enumerate() {
+            if !value.is_finite() {
+                return Err(self
+                    .slots
+                    .degenerate(format!("Knots[{index}] must be finite, found {value}")));
+            }
+        }
         // Knots must be strictly increasing: IFC stores each distinct value
         // once, so a repeat means the multiplicity was written twice instead
         // of being folded, which shifts the whole vector.
@@ -261,8 +284,27 @@ impl<'m> BSplineCurve<'m> {
             }
         }
 
-        let total: usize = multiplicities.iter().map(|m| *m as usize).sum();
-        let expected = self.control_point_refs()?.len() + self.degree()? + 1;
+        let multiplicities = multiplicities
+            .into_iter()
+            .map(|value| {
+                usize::try_from(value).map_err(|_| {
+                    self.slots
+                        .degenerate("knot multiplicity exceeds platform limits")
+                })
+            })
+            .collect::<GeometryResult<Vec<_>>>()?;
+        let total = multiplicities.iter().try_fold(0usize, |total, &value| {
+            total.checked_add(value).ok_or_else(|| {
+                self.slots
+                    .degenerate("knot multiplicity total overflows usize")
+            })
+        })?;
+        let expected = self
+            .control_point_refs()?
+            .len()
+            .checked_add(self.degree()?)
+            .and_then(|value| value.checked_add(1))
+            .ok_or_else(|| self.slots.degenerate("expected knot count overflows usize"))?;
         if total != expected {
             return Err(self.slots.degenerate(format!(
                 "knot multiplicities sum to {total} but must equal \
@@ -272,18 +314,30 @@ impl<'m> BSplineCurve<'m> {
 
         Ok(Some(KnotVector {
             values,
-            multiplicities: multiplicities.iter().map(|m| *m as usize).collect(),
+            multiplicities,
         }))
     }
 
-    /// The rational weights, one per control point, all positive.
+    /// The rational weights, one per control point, all finite and positive.
     ///
     /// Returns `Ok(None)` for a non-rational curve. A zero weight is a
     /// division by zero at evaluation time and a negative one flips the curve
     /// through infinity; both are rejected here rather than in the kernel.
     pub fn weights(&self) -> GeometryResult<Option<Vec<f64>>> {
-        if !self.is_rational() {
-            return Ok(None);
+        let supplied = self.slots.opt(slot::WEIGHTS_DATA).is_some();
+        match (self.is_rational(), supplied) {
+            (false, false) => return Ok(None),
+            (true, false) => {
+                return Err(self
+                    .slots
+                    .degenerate("rational B-spline curve is missing WeightsData"));
+            }
+            (false, true) => {
+                return Err(self
+                    .slots
+                    .degenerate("polynomial B-spline curve must not carry WeightsData"));
+            }
+            (true, true) => {}
         }
         let weights = self.slots.req_f64_list(slot::WEIGHTS_DATA, "WeightsData")?;
         let control_points = self.control_point_refs()?.len();
@@ -294,9 +348,12 @@ impl<'m> BSplineCurve<'m> {
             )));
         }
         for (i, w) in weights.iter().enumerate() {
-            // NaN must be rejected too, hence the explicit `is_nan` rather
-            // than relying on `<= 0.0`, which is false for NaN.
-            if w.is_nan() || *w <= 0.0 {
+            if !w.is_finite() {
+                return Err(self
+                    .slots
+                    .degenerate(format!("weight {w} at control point {i} must be finite")));
+            }
+            if *w <= 0.0 {
                 return Err(self
                     .slots
                     .degenerate(format!("weight {w} at control point {i} must be positive")));
@@ -333,7 +390,7 @@ impl<'m> BSplineCurve<'m> {
 /// re-implements the expansion.
 #[derive(Debug, Clone, PartialEq)]
 pub struct KnotVector {
-    /// The distinct knot values, strictly increasing.
+    /// The distinct knot values, finite and strictly increasing.
     pub values: Vec<f64>,
     /// How many times each value repeats; parallel to `values`.
     pub multiplicities: Vec<usize>,
@@ -456,6 +513,20 @@ mod tests {
     }
 
     #[test]
+    fn non_finite_knot_values_are_rejected_by_the_typed_view() {
+        for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            let values = if bad.is_sign_negative() {
+                [bad, 1.0]
+            } else {
+                [0.0, bad]
+            };
+            let e = with_knots(4, &[4, 4], &values);
+            let err = BSplineCurve::new(EntityId(13), &e).knots().unwrap_err();
+            assert!(err.to_string().contains("finite"), "knot {bad}: {err}");
+        }
+    }
+
+    #[test]
     fn an_unclamped_knot_vector_is_recognised_as_such() {
         // Degree 3, 6 control points, all multiplicities 1: 10 knots.
         let e = Entity::new(
@@ -518,10 +589,54 @@ mod tests {
     }
 
     #[test]
+    fn non_finite_weights_are_rejected_by_the_typed_view() {
+        for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            let e = rational(4, &[1.0, bad, 1.0, 1.0]);
+            let err = BSplineCurve::new(EntityId(14), &e).weights().unwrap_err();
+            assert!(err.to_string().contains("finite"), "weight {bad}: {err}");
+        }
+    }
+
+    #[test]
     fn a_weight_count_that_differs_from_the_control_point_count_is_rejected() {
         let e = rational(4, &[1.0, 1.0, 1.0]);
         let err = BSplineCurve::new(EntityId(1), &e).weights().unwrap_err();
         assert!(err.to_string().contains("control points"), "got: {err}");
+    }
+
+    #[test]
+    fn multiplicity_overflow_is_a_typed_error_not_a_panic() {
+        let e = with_knots(4, &[i64::MAX, i64::MAX, i64::MAX], &[0.0, 0.5, 1.0]);
+        let err = BSplineCurve::new(EntityId(8), &e).knots().unwrap_err();
+        assert!(err.to_string().contains("overflow"), "got: {err}");
+    }
+
+    #[test]
+    fn degree_must_not_exceed_the_control_point_upper_index() {
+        let mut e = with_knots(4, &[4, 4], &[0.0, 1.0]);
+        e.attributes[slot::DEGREE] = Value::Integer(4);
+        let err = BSplineCurve::new(EntityId(9), &e).degree().unwrap_err();
+        assert!(err.to_string().contains("control points"), "got: {err}");
+    }
+
+    #[test]
+    fn rational_subtype_requires_weights_and_polynomial_rejects_them() {
+        let attributes = with_knots(4, &[4, 4], &[0.0, 1.0]).attributes;
+        let rational = Entity::new("IFCRATIONALBSPLINECURVEWITHKNOTS", attributes.clone());
+        assert!(BSplineCurve::new(EntityId(10), &rational)
+            .weights()
+            .unwrap_err()
+            .to_string()
+            .contains("missing WeightsData"));
+
+        let mut polynomial_attributes = attributes;
+        polynomial_attributes.push(reals(&[1.0; 4]));
+        let polynomial = Entity::new("IFCBSPLINECURVEWITHKNOTS", polynomial_attributes);
+        assert!(BSplineCurve::new(EntityId(11), &polynomial)
+            .weights()
+            .unwrap_err()
+            .to_string()
+            .contains("must not carry WeightsData"));
     }
 
     #[test]
