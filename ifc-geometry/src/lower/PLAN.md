@@ -120,17 +120,23 @@ and check it off only after the proof runs.
 
   - Implements: `IfcExtrudedAreaSolidTapered`, `IfcRevolvedAreaSolidTapered`,
     `IfcFixedReferenceSweptAreaSolid`, `IfcSectionedSpine`, and
-    `IfcSweptDiskSolidPolygonal` without a fillet.
+    `IfcSweptDiskSolidPolygonal` including its `FilletRadius`.
   - Proof: `tests/lower_tapered_sweeps.rs` (7 corpus tests), 8/8 mutation
-    probes, corpus census 86 -> 92.
-  - Decision: `IfcSweptDiskSolidPolygonal` is listed PLANNED with a
-    `conditional:` prefix, not IMPLEMENTED. It lowers with sharp corners and is
-    REFUSED when `FilletRadius` is present, because the neutral `SweptDisk`
-    has no fillet field and lowering anyway would silently sharpen every bend
-    in a pipe run. The conditional prefix is what lets the dispatch contract
-    test accept a family that both lowers and refuses.
+    probes, corpus census 86 -> 93.
+  - Decision: `IfcSweptDiskSolidPolygonal` shipped in two steps. It first
+    lowered only without a fillet, refusing the filleted case because the
+    neutral `SweptDisk` had no fillet field and lowering anyway would silently
+    sharpen every bend in a pipe run. The kernel then gained
+    `SweptDisk.fillet_radius`, so the family is now fully IMPLEMENTED and the
+    `conditional:` dispatch machinery that supported the split was removed
+    rather than left as dead scaffolding.
   - Decision: a spine section's placement composes with the world frame rather
     than replacing it, so the stations stay distinct.
+  - Decision: a polyline or composite-curve trim parameter is a segment index
+    and is NOT unit-scaled. This corrected an existing defect in
+    `IfcSweptDiskSolid` and `IfcTrimmedCurve`, whose test had asserted the
+    wrong behaviour; ISO 10303-42 and `IfcParameterValue` settle it.
+
 
 - [x] `LOW-COLLECT` - bounding boxes and loose geometry collections
   - Requires: `LOW-DISPATCH`, `LOW-CURVE`.

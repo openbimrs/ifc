@@ -18,16 +18,17 @@ This page is synchronised from it at build time.
 ### Added
 
 - `ifc-geometry` lowers `IfcExtrudedAreaSolidTapered`,
-  `IfcRevolvedAreaSolidTapered`, `IfcFixedReferenceSweptAreaSolid` and
-  `IfcSectionedSpine`. `IfcSweptDiskSolidPolygonal` lowers when it has no
-  `FilletRadius`.
+  `IfcRevolvedAreaSolidTapered`, `IfcFixedReferenceSweptAreaSolid`,
+  `IfcSectionedSpine` and `IfcSweptDiskSolidPolygonal`. The polygonal disk
+  carries its `FilletRadius`, which the kernel's `SweptDisk` now models.
 
 ### Fixed
 
 - Trim parameters on an `IfcPolyline` or `IfcCompositeCurve` directrix are
   segment indices, not lengths, and are no longer scaled by the length unit.
   In a millimetre file a parameter of `2.0` became `0.002`, collapsing the
-  trim onto the curve's start.
+  trim onto the curve's start. This affected `IfcSweptDiskSolid` and
+  `IfcTrimmedCurve`.
 
 ### Added
 

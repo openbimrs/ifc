@@ -49,8 +49,7 @@ kept intentionally small; this is a curated edge-case set, not a bulk corpus.
   end profiles so reusing `SweptArea` for both ends is observable, the
   revolution angle is authored in degrees, the fixed reference is `+Z` rather
   than the `+X` a lowerer would default to, and the polygonal disk appears
-  BOTH with and without `FilletRadius` because only the unfilleted case
-  lowers), and `IfcSectionedSpine` (`synthetic_sectioned_spine.ifc`: three
+  BOTH with and without `FilletRadius`, so a dropped fillet is observable), and `IfcSectionedSpine` (`synthetic_sectioned_spine.ifc`: three
   different profiles at three distinct stations along a composite curve).
   All are authored in
   **millimetres with degree angles** — the combination that catches a unit

@@ -53,7 +53,7 @@ struct TopologyBuilder {
     edges: BTreeMap<(usize, usize), EdgeId>,
     /// Advanced-brep edges, interned by source entity rather than by endpoint
     /// pair: two edges may share endpoints yet follow different curves.
-    curved_edges: BTreeMap<EntityId, EdgeUse>,
+    curved_edges: BTreeMap<EntityId, EdgeUse<NodeId>>,
 }
 
 impl TopologyBuilder {
@@ -81,7 +81,7 @@ impl TopologyBuilder {
     /// A closed manifold shares each edge between two faces that walk it in
     /// opposite directions. Keying on the sorted pair makes both walks find the
     /// same edge; the returned orientation records which way this use goes.
-    fn edge(&mut self, start: VertexId, end: VertexId) -> EdgeUse {
+    fn edge(&mut self, start: VertexId, end: VertexId) -> EdgeUse<NodeId> {
         let (low, high) = (start.index(), end.index());
         let forward = low <= high;
         let key = if forward { (low, high) } else { (high, low) };
@@ -100,6 +100,9 @@ impl TopologyBuilder {
             } else {
                 Orientation::Reversed
             },
+            // A faceted loop has no parametric curve: IfcPolyLoop gives
+            // vertices only. A pcurve would have to be invented.
+            pcurve: None,
         }
     }
 }
@@ -368,7 +371,7 @@ fn oriented_edge(
     referrer: EntityId,
     id: EntityId,
     frame: Transform,
-) -> GeometryResult<EdgeUse> {
+) -> GeometryResult<EdgeUse<NodeId>> {
     let entity = expect_type(
         session.model(),
         referrer,
@@ -384,6 +387,7 @@ fn oriented_edge(
         Ok(EdgeUse {
             edge: base.edge,
             orientation: flip(base.orientation),
+            pcurve: base.pcurve,
         })
     }
 }
@@ -399,7 +403,7 @@ fn edge_curve(
     referrer: EntityId,
     id: EntityId,
     frame: Transform,
-) -> GeometryResult<EdgeUse> {
+) -> GeometryResult<EdgeUse<NodeId>> {
     if let Some(existing) = builder.curved_edges.get(&id) {
         return Ok(*existing);
     }
@@ -426,7 +430,14 @@ fn edge_curve(
         Orientation::Reversed
     };
     let edge = builder.brep.add_edge(Edge { start, end, curve });
-    let use_ = EdgeUse { edge, orientation };
+    // pcurve stays None: IfcEdgeCurve carries no parametric curve of its own.
+    // IfcPCurve exists in IFC but is not read yet, and inventing one here
+    // would fabricate surface-parameter geometry the file never stated.
+    let use_ = EdgeUse {
+        edge,
+        orientation,
+        pcurve: None,
+    };
     builder.curved_edges.insert(id, use_);
     Ok(use_)
 }

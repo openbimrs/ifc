@@ -138,32 +138,39 @@ fn a_fixed_reference_sweep_preserves_its_reference_direction() {
     }
 }
 
-/// A polygonal disk WITHOUT a fillet is an ordinary swept disk.
+/// Both polygonal disks lower, and the fillet radius survives in metres.
 ///
-/// Sharp corners are exactly what the neutral `SweptDisk` models, so this case
-/// lowers rather than being refused wholesale for its subtype.
+/// The fixture holds a sharp disk and one with `FilletRadius=90` mm. Sharp
+/// corners are `None`; the filleted one must arrive as 0.09 m. A lowerer that
+/// dropped the radius would still produce a valid solid, just one whose bends
+/// are wrong, so this asserts the value rather than mere success.
 #[test]
-fn an_unfilleted_polygonal_disk_lowers_as_a_swept_disk() {
+fn a_polygonal_disk_carries_its_fillet_radius() {
     let model = model("synthetic_tapered_sweeps.ifc");
     let ids = model.ids_of_type("IFCSWEPTDISKSOLIDPOLYGONAL");
     assert_eq!(ids.len(), 2, "the fixture has a sharp and a filleted disk");
 
     let scale = units::resolve(&model);
-    let mut lowered_count = 0usize;
-    let mut refused = Vec::new();
+    let mut fillets = Vec::new();
     for &id in ids {
         let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
-        match lower_representation_item(&mut session, id, Transform::identity()) {
-            Ok(_) => lowered_count += 1,
-            Err(error) => refused.push(error.to_string()),
+        let node = lower_representation_item(&mut session, id, Transform::identity())
+            .expect("both polygonal disks lower now that the kernel has a fillet");
+        let lowered = session.finish(node).expect("finishes");
+        match lowered.graph.get(lowered.root).expect("root") {
+            GeometryNode::SolidOperation(SolidOperation::SweptDisk { fillet_radius, .. }) => {
+                fillets.push(*fillet_radius)
+            }
+            other => panic!("expected a SweptDisk, got {other:?}"),
         }
     }
-    assert_eq!(lowered_count, 1, "the unfilleted disk must lower");
-    assert_eq!(refused.len(), 1, "the filleted disk must be refused");
+    fillets.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+    assert_eq!(fillets[0], None, "the sharp disk has no fillet");
+    let radius = fillets[1].expect("the filleted disk keeps its radius");
     assert!(
-        refused[0].contains("FilletRadius has no neutral representation"),
-        "the refusal must name the reason, got: {}",
-        refused[0]
+        (radius - 0.09).abs() < 1e-9,
+        "90 mm -> 0.09 m, got {radius}"
     );
 }
 

@@ -135,26 +135,13 @@ fn planned_families_report_their_documented_reason() {
         let scale = units::resolve(&model);
 
         for (type_name, detail) in PLANNED {
-            // A reason starting with "conditional:" means the family lowers for
-            // some inputs and is refused for others -- IfcSweptDiskSolidPolygonal
-            // lowers with sharp corners but is refused when FilletRadius is
-            // present. Such a family MUST still report the documented reason
-            // when it does refuse, but must not be required to always fail.
-            let conditional = detail.starts_with("conditional:");
-            // The prefix classifies the entry; the text after it is the reason
-            // the lowerer actually reports.
-            let expected = detail.strip_prefix("conditional: ").unwrap_or(detail);
             for id in model.ids_of_type(type_name) {
                 let mut session = LoweringSession::new(&model, &scale, tol);
-                let outcome = lower_representation_item(&mut session, *id, Transform::identity());
-                let error = match outcome {
-                    Ok(_) if conditional => continue,
-                    Ok(_) => panic!("{type_name}: a planned family must not silently succeed"),
-                    Err(error) => error,
-                };
+                let error = lower_representation_item(&mut session, *id, Transform::identity())
+                    .expect_err("a planned family must not silently succeed");
                 assert!(
-                    error.to_string().contains(expected),
-                    "{type_name} must report {expected:?}, got: {error}"
+                    error.to_string().contains(detail),
+                    "{type_name} must report {detail:?}, got: {error}"
                 );
                 checked += 1;
             }

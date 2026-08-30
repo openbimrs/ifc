@@ -169,25 +169,20 @@ fn build_disk(
     let entity = session.entity(id, id)?;
     let view = SweptDiskSolid::new(id, entity);
 
-    // IfcSweptDiskSolidPolygonal adds FilletRadius, which the neutral
-    // SweptDisk cannot express. When it is present the corners are rounded and
-    // lowering anyway would silently sharpen every bend in a pipe run --
-    // geometry that builds, renders, and is wrong. Absent, the polygonal
-    // subtype IS an ordinary swept disk with sharp corners, so it lowers here.
-    if session
+    // IfcSweptDiskSolidPolygonal adds FilletRadius, which rounds the corners
+    // where consecutive directrix segments meet. The neutral SweptDisk carries
+    // it directly, so the subtype lowers as an ordinary swept disk that
+    // happens to know its corner radius.
+    let fillet_radius = if session
         .type_name(id)?
         .eq_ignore_ascii_case("IFCSWEPTDISKSOLIDPOLYGONAL")
-        && SweptDiskSolidPolygonal::new(id, entity)
-            .fillet_radius()
-            .is_some()
     {
-        return Err(session.unsupported(
-            id,
-            "IFCSWEPTDISKSOLIDPOLYGONAL",
-            "FilletRadius has no neutral representation; rounded corners would \
-             be silently sharpened",
-        ));
-    }
+        SweptDiskSolidPolygonal::new(id, entity)
+            .fillet_radius()
+            .map(|value| session.units().length(value))
+    } else {
+        None
+    };
 
     // `checked_radii` enforces the schema's inner < outer rule. A pipe whose
     // inner radius meets or exceeds the outer has no material at all, and the
@@ -222,6 +217,7 @@ fn build_disk(
             radius,
             inner_radius,
             parameter_range,
+            fillet_radius,
         }),
     )
 }

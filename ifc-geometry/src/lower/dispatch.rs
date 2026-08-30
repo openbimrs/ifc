@@ -52,6 +52,7 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCPOLYGONALFACESET",
     "IFCCSGSOLID",
     "IFCSWEPTDISKSOLID",
+    "IFCSWEPTDISKSOLIDPOLYGONAL",
     "IFCSURFACECURVESWEPTAREASOLID",
     "IFCBLOCK",
     "IFCSPHERE",
@@ -74,16 +75,10 @@ pub const IMPLEMENTED: &[&str] = &[
 /// Each entry names the concrete reason so a caller building a viewer can
 /// report progress instead of a bare failure. Adding a family here is how a
 /// stub is declared; implementing it means moving the name to [`IMPLEMENTED`].
-pub const PLANNED: &[(&str, &str)] = &[
-    (
-        "IFCARBITRARYOPENPROFILEDEF",
-        "open profiles: the neutral profile model represents closed contours only",
-    ),
-    (
-        "IFCSWEPTDISKSOLIDPOLYGONAL",
-        "conditional: FilletRadius has no neutral representation; rounded corners would be silently sharpened",
-    ),
-];
+pub const PLANNED: &[(&str, &str)] = &[(
+    "IFCARBITRARYOPENPROFILEDEF",
+    "open profiles: the neutral profile model represents closed contours only",
+)];
 
 /// Lower any representation item into the caller's session.
 ///
