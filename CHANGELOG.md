@@ -8,6 +8,25 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `ifc-validate` implements structural, type, and rule validation over a
+  `Model`: dangling and wrong-kind references, required slots, scalar-vs-
+  aggregate shape, unknown entity types, abstract instantiation, scalar form
+  against declared types, and three natively checkable IFC4 rules. Rules that
+  need an EXPRESS expression evaluator are registered as unsupported with a
+  reason and reported, so a conformant verdict never implies full coverage.
+- `ifc-schema` delegates supertype chains and Part 21 positional attribute
+  order to `openbim-step 0.4.0`; neither is IFC-specific. Version identity,
+  the bundled IFC4 artifact, and the process cache stay here.
+
+### Fixed
+- The bundled IFC4 schema artifact was missing attributes on 124 entities.
+  `LIST [1:?] OF UNIQUE X` contains the token `UNIQUE`, which the EXPRESS
+  parser read as the start of a `UNIQUE` block, truncating the attribute list
+  at that point. `IfcTypeProduct` lost `RepresentationMaps` and `Tag`, so every
+  product type reported `ElementType` and `PredefinedType` two slots early.
+  Also affected `IfcGrid`, `IfcPolyLoop`, `IfcEdgeLoop`, `IfcPropertyEnumeration`
+  and `IfcPropertyTableValue`. Fixed in `openbim-step 0.4.0`; the artifact is
+  regenerated and pinned by a test against known-correct layouts.
 - `ifc-schedule` implements every plan task: work plans and schedules, tasks
   with task times, sequencing with signed lag, work calendars with recurrence,
   events, and deterministic timeline queries.

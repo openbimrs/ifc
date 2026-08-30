@@ -1,7 +1,8 @@
 # ifc-validate implementation plan
 
-Status: architecture scaffold; validation now depends only on `ifc-model` and `ifc-schema`.
-Last updated: 2026-08-19
+Status: implemented; structure, types, and natively checkable rules are evaluated,
+and rules requiring an EXPRESS evaluator are reported as unsupported.
+Last updated: 2026-08-30
 
 This is task state, not ambient context. Follow `AGENTS.md`. Claim one task ID,
 record blockers here, and check it off only with the stated evidence.
@@ -36,13 +37,13 @@ owner and expose a public symbol only through an intentional parent re-export.
 
 - [x] `VAL-DEPS` - remove production dependency on ifc-step
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
-- [ ] `VAL-STRUCT` - implement reference/cardinality checks from schema metadata
+- [x] `VAL-STRUCT` - implement reference/cardinality checks from schema metadata
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
-- [ ] `VAL-TYPE` - implement entity/select/defined-type compatibility
+- [x] `VAL-TYPE` - implement entity/select/defined-type compatibility
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
-- [ ] `VAL-WHERE` - register supported rules and report unsupported ones honestly
+- [x] `VAL-WHERE` - register supported rules and report unsupported ones honestly
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
-- [ ] `VAL-REPORT` - deterministic reports with source paths and limits
+- [x] `VAL-REPORT` - deterministic reports with source paths and limits
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
 
 ## Completion log
@@ -52,3 +53,26 @@ Do not paste long logs or transient process state.
 
 - `VAL-DEPS` - removed `ifc-step`; focused crate check and package architecture
   gate pass, and a deliberate reintroduction is caught.
+- `VAL-STRUCT` - 27 crate tests plus clippy - dangling/wrong-kind references,
+  required slots, and scalar-vs-aggregate shape. Aggregate *defined types*
+  (`IfcComplexNumber = ARRAY [1:2] OF REAL`) and typed wrappers over SELECT
+  slots both had to be resolved before judging shape; a naive check produced a
+  false positive on the corpus `pass-complex-number-ifc4.ifc`.
+- `VAL-TYPE` - unknown entity types, abstract instantiation, and scalar form
+  against the declared type. Catches `IFCPOSITIVELENGTHMEASURE('1')`.
+- `VAL-WHERE` - three natively checkable rules implemented; the rest are
+  registered as unsupported with a reason. A test pins the registry's
+  `Implemented` claims to the engine's dispatch list, which immediately caught
+  a duplicate `IfcRoot.WR1` entry for a check already covered file-wide.
+- `VAL-REPORT` - severity/path/summary with a findings budget. `Unsupported`
+  does not affect conformance; a truncated report says so.
+
+## Deliberate gaps
+
+- Aggregate *bounds* (`LIST [3:?]`) are not checked: the EXPRESS parser records
+  that an attribute is an aggregate, not its bounds. Registered as unsupported
+  rather than silently skipped.
+- Arbitrary `WHERE` expressions need an EXPRESS evaluator, which this crate
+  does not have.
+- Header arity/type defects are not re-derived: `Model`'s header is normalized,
+  so that evidence belongs to the codec's diagnostic channel.

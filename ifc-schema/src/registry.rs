@@ -1,181 +1,151 @@
-//! The assembled, queryable schema.
+//! The assembled, queryable IFC schema.
 //!
-//! Owns the entity and type tables for one [`crate::SchemaVersion`] and answers
-//! the two questions consumers actually ask:
+//! # What this owns, and what it delegates
 //!
-//! 1. Is this entity a kind of that one? (`is_a`)
-//! 2. What is the name of attribute slot `i`? (`attribute_names`)
+//! Supertype chains, Part 21 positional attribute order, case-insensitive
+//! lookup and defined-type alias resolution are not IFC concepts: every
+//! EXPRESS schema serialized as Part 21 shares them. They live in
+//! [`openbim_step::SchemaGraph`], and this type delegates to it.
 //!
-//! The second is what makes a conformant ifcXML writer possible: STEP records
-//! are positional, XML is named, so crossing between them requires the schema.
+//! What stays here is genuinely IFC: which schema *version* a file declares
+//! (the `IFC2X3`/`IFC4`/`IFC4X3` tokens), and the bundled IFC4 tables.
+//!
+//! ```
+//! use ifc_schema::Schema;
+//!
+//! let schema = Schema::from_express(
+//!     "SCHEMA IFC4;\n\
+//!      ENTITY IfcRoot; GlobalId : IfcGloballyUniqueId; END_ENTITY;\n\
+//!      ENTITY IfcWall SUBTYPE OF (IfcRoot); Name : IfcLabel; END_ENTITY;\n\
+//!      END_SCHEMA;",
+//! );
+//!
+//! assert!(schema.is_a("IFCWALL", "IfcRoot"));
+//! assert_eq!(schema.attribute_names("IfcWall"), ["GlobalId", "Name"]);
+//! ```
 
-use crate::attribute::Attribute;
-use crate::entity::EntityDef;
-use crate::express::{self, ParsedSchema};
-use crate::types::TypeDef;
-use crate::SchemaVersion;
-use std::collections::HashMap;
+use openbim_step::express::{Attribute, EntityDef, ParsedSchema, TypeDef};
+use openbim_step::SchemaGraph;
 
-/// A queryable schema for one IFC version.
+use crate::version::SchemaVersion;
+
+/// An IFC schema: the entity and type tables, queryable.
 #[derive(Debug, Clone)]
 pub struct Schema {
-    version: Option<SchemaVersion>,
-    name: String,
-    entities: HashMap<String, EntityDef>,
-    types: HashMap<String, TypeDef>,
+    graph: SchemaGraph,
 }
 
 impl Schema {
-    /// Build from a parsed EXPRESS document.
-    ///
-    /// Lookup keys are upper-cased because STEP writes `IFCWALL` while EXPRESS
-    /// declares `IfcWall`; normalizing once here avoids every call site
-    /// remembering to.
+    /// Wraps an already-parsed schema.
+    #[must_use]
     pub fn from_parsed(parsed: ParsedSchema) -> Self {
-        let version = SchemaVersion::from_header_token(&parsed.name);
-        let entities = parsed
-            .entities
-            .into_iter()
-            .map(|e| (e.name.to_ascii_uppercase(), e))
-            .collect();
-        let types = parsed
-            .types
-            .into_iter()
-            .map(|t| (t.name.to_ascii_uppercase(), t))
-            .collect();
         Self {
-            version,
-            name: parsed.name,
-            entities,
-            types,
+            graph: SchemaGraph::new(parsed),
         }
     }
 
-    /// Parse an EXPRESS schema document directly.
+    /// Parses EXPRESS source into a schema.
+    #[must_use]
     pub fn from_express(source: &str) -> Self {
-        Self::from_parsed(express::parse(source))
+        Self {
+            graph: SchemaGraph::from_express(source),
+        }
     }
 
-    /// Parse an EXPRESS schema document from raw bytes, tolerating Latin-1.
+    /// Parses EXPRESS source that is not valid UTF-8.
     ///
-    /// The official buildingSMART `.exp` publications are Latin-1, not UTF-8
-    /// — the schema's own comments use `°` (degree sign) and similar
-    /// characters that are valid Latin-1 but invalid UTF-8. `String::from_utf8`
-    /// on such a file fails at runtime with no compile-time signal; the naive
-    /// `std::fs::read_to_string` panics on a perfectly normal schema file.
-    ///
-    /// EXPRESS syntax itself is pure ASCII, so a byte-for-byte Latin-1 decode
-    /// (every byte maps 1:1 to the codepoint of the same value) always
-    /// round-trips the identifiers and keywords the parser cares about,
-    /// whatever encoding non-ASCII comment text happens to be in.
+    /// The normative `IFC4.exp` is Latin-1: it contains `°` and similar in
+    /// comments. Decoding byte-per-char is correct for the ASCII structure
+    /// this parser reads and cannot fail.
+    #[must_use]
     pub fn from_express_bytes(bytes: &[u8]) -> Self {
-        let text: String = bytes.iter().map(|&b| b as char).collect();
+        let text: String = bytes.iter().map(|&byte| byte as char).collect();
         Self::from_express(&text)
     }
 
-    /// The schema name as declared, e.g. `IFC4`.
+    /// The declared schema name, e.g. `IFC4`.
+    #[must_use]
     pub fn name(&self) -> &str {
-        &self.name
+        self.graph.name()
     }
 
-    /// The recognized version, if the name maps to one we know.
+    /// The IFC schema version this table describes, when recognized.
+    ///
+    /// This is the one genuinely IFC-specific query on this type: it maps a
+    /// declared schema name onto the versions this crate knows about.
+    #[must_use]
     pub fn version(&self) -> Option<SchemaVersion> {
-        self.version
+        SchemaVersion::from_header_token(self.graph.name())
     }
 
-    /// How many entity types are declared.
+    /// How many entity declarations the schema holds.
+    #[must_use]
     pub fn entity_count(&self) -> usize {
-        self.entities.len()
+        self.graph.entity_count()
     }
 
-    /// How many types are declared.
+    /// How many type declarations the schema holds.
+    #[must_use]
     pub fn type_count(&self) -> usize {
-        self.types.len()
+        self.graph.type_count()
     }
 
-    /// Look up an entity declaration, case-insensitively.
+    /// The entity declaration for `name`, if the schema declares one.
+    #[must_use]
     pub fn entity(&self, name: &str) -> Option<&EntityDef> {
-        self.entities.get(&name.to_ascii_uppercase())
+        self.graph.entity(name)
     }
 
-    /// Look up a type declaration, case-insensitively.
+    /// The type declaration for `name`, if the schema declares one.
+    #[must_use]
     pub fn type_def(&self, name: &str) -> Option<&TypeDef> {
-        self.types.get(&name.to_ascii_uppercase())
+        self.graph.type_def(name)
     }
 
-    /// Is `name` the same as, or a subtype of, `ancestor`?
-    ///
-    /// The most-called query in any IFC tool: every filter and rule is
-    /// ultimately "give me the walls, including subtypes". Returns `false` for
-    /// unknown entities rather than erroring, so a file containing a
-    /// future-schema entity still answers queries about the entities it does
-    /// know.
+    /// Every entity name the schema declares, in unspecified order.
+    pub fn entity_names(&self) -> impl Iterator<Item = &str> {
+        self.graph.entity_names()
+    }
+
+    /// Whether `name` is `ancestor`, or inherits from it.
+    #[must_use]
     pub fn is_a(&self, name: &str, ancestor: &str) -> bool {
-        let target = ancestor.to_ascii_uppercase();
-        let mut current = self.entities.get(&name.to_ascii_uppercase());
-        // Bounded to guard against a malformed schema with a cyclic chain.
-        for _ in 0..64 {
-            let Some(def) = current else { return false };
-            if def.name.to_ascii_uppercase() == target {
-                return true;
-            }
-            let Some(sup) = def.supertype.as_ref() else {
-                return false;
-            };
-            current = self.entities.get(&sup.to_ascii_uppercase());
-        }
-        false
+        self.graph.is_a(name, ancestor)
     }
 
-    /// The supertype chain from `name` upward, excluding `name` itself.
+    /// The supertype chain above `name`, nearest parent first.
+    #[must_use]
     pub fn supertypes(&self, name: &str) -> Vec<&str> {
-        let mut out = Vec::new();
-        let mut current = self.entities.get(&name.to_ascii_uppercase());
-        for _ in 0..64 {
-            let Some(def) = current else { break };
-            let Some(sup) = def.supertype.as_ref() else {
-                break;
-            };
-            match self.entities.get(&sup.to_ascii_uppercase()) {
-                Some(parent) => {
-                    out.push(parent.name.as_str());
-                    current = Some(parent);
-                }
-                None => break,
-            }
-        }
-        out
+        self.graph.supertypes(name)
     }
 
-    /// Every attribute slot in **STEP positional order**, inherited first.
-    ///
-    /// This is the ordering rule that makes positional records work: a record
-    /// lists the supertype's attributes before the subtype's own, most-general
-    /// first. Getting this backwards misreads every attribute of every
-    /// inheriting entity, which is why it is tested against a real chain.
+    /// Every attribute slot in Part 21 positional order, inherited first.
+    #[must_use]
     pub fn attributes(&self, name: &str) -> Vec<&Attribute> {
-        let mut chain: Vec<&EntityDef> = Vec::new();
-        let mut current = self.entities.get(&name.to_ascii_uppercase());
-        for _ in 0..64 {
-            let Some(def) = current else { break };
-            chain.push(def);
-            let Some(sup) = def.supertype.as_ref() else {
-                break;
-            };
-            current = self.entities.get(&sup.to_ascii_uppercase());
-        }
-        chain.reverse();
-        chain.iter().flat_map(|d| d.attributes.iter()).collect()
+        self.graph.attributes(name)
     }
 
     /// Attribute names in positional order.
-    ///
-    /// The bridge STEP-to-XML needs: slot `i` is called `names[i]`.
+    #[must_use]
     pub fn attribute_names(&self, name: &str) -> Vec<&str> {
-        self.attributes(name)
-            .into_iter()
-            .map(|a| a.name.as_str())
-            .collect()
+        self.graph.attribute_names(name)
+    }
+
+    /// Resolves a defined type to the base it ultimately aliases.
+    ///
+    /// `IfcPositiveLengthMeasure` -> `IfcLengthMeasure` -> `REAL`.
+    #[must_use]
+    pub fn resolve_defined(&self, name: &str) -> String {
+        self.graph.resolve_defined(name)
+    }
+
+    /// The underlying schema graph.
+    ///
+    /// Exposed so schema-neutral consumers can work against the generic type
+    /// rather than this IFC-flavoured wrapper.
+    #[must_use]
+    pub fn graph(&self) -> &SchemaGraph {
+        &self.graph
     }
 }
 
@@ -200,42 +170,31 @@ ENTITY IfcObject
  SUBTYPE OF (IfcObjectDefinition);
   ObjectType : OPTIONAL IfcLabel;
 END_ENTITY;
-END_SCHEMA;
-";
+TYPE IfcLengthMeasure = REAL; END_TYPE;
+TYPE IfcPositiveLengthMeasure = IfcLengthMeasure; END_TYPE;
+END_SCHEMA;";
 
-    fn schema() -> Schema {
-        Schema::from_express(CHAIN)
+    #[test]
+    fn the_declared_schema_name_maps_onto_a_known_ifc_version() {
+        let schema = Schema::from_express(CHAIN);
+        assert_eq!(schema.name(), "IFC4");
+        assert_eq!(schema.version(), Some(SchemaVersion::Ifc4));
+    }
+
+    /// A schema this crate does not recognize still parses and queries.
+    #[test]
+    fn an_unrecognized_schema_name_has_no_version_but_still_works() {
+        let schema = Schema::from_express(
+            "SCHEMA AP242; ENTITY Product; Id : Identifier; END_ENTITY; END_SCHEMA;",
+        );
+        assert_eq!(schema.version(), None, "not an IFC schema");
+        assert_eq!(schema.attribute_names("Product"), ["Id"]);
     }
 
     #[test]
-    fn is_a_walks_the_whole_chain() {
-        let s = schema();
-        assert!(s.is_a("IfcObject", "IfcRoot"), "grandparent");
-        assert!(s.is_a("IfcObject", "IfcObject"), "reflexive");
-        assert!(!s.is_a("IfcRoot", "IfcObject"), "not upward");
-    }
-
-    /// STEP writes IFCWALL, EXPRESS declares IfcWall.
-    #[test]
-    fn lookups_are_case_insensitive() {
-        let s = schema();
-        assert!(s.is_a("IFCOBJECT", "ifcroot"));
-        assert!(s.entity("IFCROOT").is_some());
-    }
-
-    #[test]
-    fn unknown_entities_answer_false_rather_than_panicking() {
-        let s = schema();
-        assert!(!s.is_a("IfcFutureThing", "IfcRoot"));
-        assert!(s.attributes("IfcFutureThing").is_empty());
-    }
-
-    /// The ordering rule positional records depend on.
-    #[test]
-    fn inherited_attributes_come_first_and_in_order() {
-        let s = schema();
+    fn inherited_attributes_come_first_in_positional_order() {
         assert_eq!(
-            s.attribute_names("IfcObject"),
+            Schema::from_express(CHAIN).attribute_names("IFCOBJECT"),
             [
                 "GlobalId",
                 "OwnerHistory",
@@ -243,27 +202,14 @@ END_SCHEMA;
                 "Description",
                 "ObjectType"
             ],
-            "supertype slots must precede the subtype's own"
         );
     }
 
     #[test]
-    fn supertype_chain_is_reported_upward() {
-        let s = schema();
+    fn defined_types_resolve_through_the_alias_chain() {
         assert_eq!(
-            s.supertypes("IfcObject"),
-            ["IfcObjectDefinition", "IfcRoot"]
+            Schema::from_express(CHAIN).resolve_defined("IfcPositiveLengthMeasure"),
+            "REAL"
         );
-    }
-
-    /// Regression for the Latin-1 decode trap: a schema comment byte that is
-    /// invalid UTF-8 must not make the parse fail or panic.
-    #[test]
-    fn from_express_bytes_survives_non_utf8_comment_bytes() {
-        let mut source = Vec::new();
-        source.extend_from_slice(b"(* angle in degrees, e.g. 90\xB0 *)\n");
-        source.extend_from_slice(CHAIN.as_bytes());
-        let s = Schema::from_express_bytes(&source);
-        assert!(s.is_a("IfcObject", "IfcRoot"));
     }
 }

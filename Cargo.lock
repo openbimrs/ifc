@@ -440,6 +440,7 @@ version = "0.1.0"
 dependencies = [
  "ifc-model",
  "ifc-schema",
+ "ifc-step",
 ]
 
 [[package]]
@@ -514,9 +515,9 @@ dependencies = [
 
 [[package]]
 name = "openbim-step"
-version = "0.3.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb6da6a3a49876d234bc4334ae5b1cdd3048fe60c86195cefece466d8b8c627c"
+checksum = "62f96d8a21220abbae75f995a5f8ff14117233ff46f4c1a1c6f5bb3824883079"
 dependencies = [
  "encoding_rs",
 ]

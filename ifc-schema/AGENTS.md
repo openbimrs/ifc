@@ -14,7 +14,11 @@ happens here and in consumers.
 ## Module ownership
 
 - `express.rs`: thin adapter/re-export over `openbim_step::express`
-- `model.rs`: declarations, inheritance, attributes, types
+- `registry.rs`: IFC-facing wrapper over `openbim_step::schema::SchemaGraph`.
+  Supertype chains and Part 21 positional attribute order live in
+  `openbim-step` -- none of that is IFC-specific. What stays here is IFC
+  version identity, the bundled artifact, and the process-wide cache.
+- `version.rs`: which IFC schema a file's `FILE_SCHEMA` token names
 - `error.rs`: syntax/source diagnostics
 - `artifact.rs` (ifc4 feature): versioned binary codec for a compiled schema
 - `bundled.rs` (ifc4 feature): Schema::ifc4(), cached, decoded from data/

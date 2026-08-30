@@ -67,4 +67,66 @@ mod tests {
         let second = ifc4() as *const _;
         assert_eq!(first, second, "ifc4() must not reparse on every call");
     }
+
+    /// An inline `UNIQUE` in an aggregate must not truncate the slot list.
+    ///
+    /// `IfcTypeProduct.RepresentationMaps` is declared
+    /// `OPTIONAL LIST [1:?] OF UNIQUE IfcRepresentationMap`. A parser that
+    /// treats that `UNIQUE` as the start of a UNIQUE block drops it and `Tag`,
+    /// which shifts every following slot of all 124 entities inheriting from
+    /// `IfcTypeProduct` -- silently, since the values still look plausible.
+    ///
+    /// Expected layouts are IfcOpenShell's, which is an independent
+    /// implementation of the same normative schema.
+    #[test]
+    fn type_product_subtypes_keep_their_full_slot_layout() {
+        let schema = ifc4();
+        assert_eq!(
+            schema.attribute_names("IFCTYPEPRODUCT"),
+            [
+                "GlobalId",
+                "OwnerHistory",
+                "Name",
+                "Description",
+                "ApplicableOccurrence",
+                "HasPropertySets",
+                "RepresentationMaps",
+                "Tag"
+            ],
+        );
+        assert_eq!(
+            schema.attribute_names("IFCWALLTYPE"),
+            [
+                "GlobalId",
+                "OwnerHistory",
+                "Name",
+                "Description",
+                "ApplicableOccurrence",
+                "HasPropertySets",
+                "RepresentationMaps",
+                "Tag",
+                "ElementType",
+                "PredefinedType"
+            ],
+            "ElementType sits at 8, not 6"
+        );
+    }
+
+    /// The other IFC4 declarations carrying an inline `UNIQUE`.
+    #[test]
+    fn every_inline_unique_aggregate_survives_parsing() {
+        let schema = ifc4();
+        assert!(
+            schema
+                .attribute_names("IFCGRID")
+                .contains(&"PredefinedType"),
+            "IfcGrid declares UAxes/VAxes/WAxes with inline UNIQUE"
+        );
+        assert_eq!(schema.attribute_names("IFCPOLYLOOP"), ["Polygon"]);
+        assert_eq!(
+            schema.attribute_names("IFCPROPERTYTABLEVALUE")[7],
+            "CurveInterpolation",
+            "slot 7 after two inherited IfcProperty slots"
+        );
+    }
 }

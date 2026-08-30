@@ -1,18 +1,22 @@
-//! EXPRESS `WHERE` rules and the 2 global rules in IFC4.
+//! EXPRESS `WHERE` rules, and honesty about the ones not evaluated.
 //!
-//! IFC4 declares 47 functions and 2 global rules. These are the expensive
-//! checks, so they are opt-in rather than part of a default validation pass.
+//! IFC4 declares hundreds of rules as EXPRESS expressions plus 2 global
+//! rules. This crate has no expression evaluator, so it implements the rules
+//! that are checkable from structure and *reports* the rest as unsupported
+//! rather than skipping them silently.
 //!
-//! Implementation is tracked in `../PLAN.md`.
-
 //! ## Internal split
 //!
 //! - `registry.rs`: explicit support-state registry.
 //! - `engine.rs`: bounded rule invocation.
 //! - `budget.rs`: rule execution limits.
-//! - `builtin.rs`: implemented generic rules.
+//! - `builtin.rs`: implemented native rules.
 
 mod budget;
 mod builtin;
 mod engine;
 mod registry;
+
+pub use budget::Budget;
+pub use engine::evaluate;
+pub use registry::{implemented, lookup, unsupported, RuleEntry, Support, RULES};

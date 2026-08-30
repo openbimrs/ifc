@@ -58,6 +58,10 @@ PUBLISHED_STATUS = {
     "ifc-systems": '<span class="status-implemented">Implemented</span>',
     # Every PLAN task implemented, including PROP-EDIT on top of MODEL-MUT.
     "ifc-properties": '<span class="status-implemented">Implemented</span>',
+    # VAL-STRUCT/TYPE/WHERE/REPORT implemented. Rules needing an EXPRESS
+    # expression evaluator are registered as unsupported and reported, not
+    # skipped, so a clean report never implies complete coverage.
+    "ifc-validate": '<span class="status-implemented">Implemented</span>',
     # COST-RATE/REL/UNIT/CORPUS implemented over a validated fixture. COST-MUT
     # is deliberately open: authoring goes through ifc-model transactions, and
     # whether cost needs its own staging helpers is not yet decided.
