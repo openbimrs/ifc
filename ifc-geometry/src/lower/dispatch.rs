@@ -12,8 +12,10 @@ use axiolid_model::NodeId;
 use ifc_model::EntityId;
 
 use crate::error::GeometryResult;
+use crate::lower::bbox::lower_bounding_box_node;
 use crate::lower::boolean::lower_boolean_result_node;
 use crate::lower::brep::lower_faceted_brep_node;
+use crate::lower::collection::lower_collection_node;
 use crate::lower::csg::{
     lower_csg_primitive_node, lower_csg_solid_node, lower_surface_curve_swept_area_solid_node,
     lower_swept_disk_node,
@@ -51,6 +53,12 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCSPHERE",
     "IFCRIGHTCIRCULARCYLINDER",
     "IFCRIGHTCIRCULARCONE",
+    "IFCRECTANGULARPYRAMID",
+    "IFCBOUNDINGBOX",
+    "IFCSHELLBASEDSURFACEMODEL",
+    "IFCFACEBASEDSURFACEMODEL",
+    "IFCGEOMETRICSET",
+    "IFCGEOMETRICCURVESET",
 ];
 
 /// Recognized representation items that are not lowered yet.
@@ -97,9 +105,16 @@ pub fn lower_representation_item(
         "IFCSURFACECURVESWEPTAREASOLID" => {
             lower_surface_curve_swept_area_solid_node(session, id, frame)
         }
-        "IFCBLOCK" | "IFCSPHERE" | "IFCRIGHTCIRCULARCYLINDER" | "IFCRIGHTCIRCULARCONE" => {
-            lower_csg_primitive_node(session, id, frame)
-        }
+        "IFCBOUNDINGBOX" => lower_bounding_box_node(session, id, frame),
+        "IFCSHELLBASEDSURFACEMODEL"
+        | "IFCFACEBASEDSURFACEMODEL"
+        | "IFCGEOMETRICSET"
+        | "IFCGEOMETRICCURVESET" => lower_collection_node(session, id, frame),
+        "IFCBLOCK"
+        | "IFCSPHERE"
+        | "IFCRIGHTCIRCULARCYLINDER"
+        | "IFCRIGHTCIRCULARCONE"
+        | "IFCRECTANGULARPYRAMID" => lower_csg_primitive_node(session, id, frame),
         other => Err(session.unsupported(id, other, detail_for(other))),
     }
 }

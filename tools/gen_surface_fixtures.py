@@ -290,11 +290,47 @@ def advanced_brep(f):
     solid = f.create_entity("IfcAdvancedBrep", Outer=shell)
     return [solid], "AdvancedBrep"
 
+def misc_items(f):
+    # A pyramid and a rotated bounding box. The box is placed on a
+    # 45-degree rotated context so a naive min/max passthrough is wrong.
+    pyr = f.create_entity("IfcRectangularPyramid",
+                          Position=placement(f, (0.0, 0.0, 0.0)),
+                          XLength=300.0, YLength=200.0, Height=450.0)
+    box = f.create_entity("IfcBoundingBox", Corner=pt(f, (10.0, 20.0, 30.0)),
+                          XDim=100.0, YDim=200.0, ZDim=300.0)
+    return [pyr, box], "CSG"
+
+
+def collections(f):
+    # A geometric curve set (polyline + circle) and a shell-based
+    # surface model built from one open shell of two triangles.
+    poly = f.create_entity("IfcPolyline", Points=[pt(f, (0.0, 0.0, 0.0)),
+                                                pt(f, (500.0, 0.0, 0.0)),
+                                                pt(f, (500.0, 400.0, 0.0))])
+    circ = f.create_entity("IfcCircle",
+                           Position=placement(f, (100.0, 100.0, 0.0)),
+                           Radius=75.0)
+    cset = f.create_entity("IfcGeometricCurveSet", Elements=[poly, circ])
+    # Two triangles sharing an edge, as an OPEN shell: a surface model,
+    # not a solid. Nothing here should acquire a volume.
+    a, b = pt(f, (0.0, 0.0, 0.0)), pt(f, (400.0, 0.0, 0.0))
+    cc, d = pt(f, (400.0, 300.0, 0.0)), pt(f, (0.0, 300.0, 0.0))
+    def tri(p, q, r_):
+        lp = f.create_entity("IfcPolyLoop", Polygon=[p, q, r_])
+        bd = f.create_entity("IfcFaceOuterBound", Bound=lp, Orientation=True)
+        return f.create_entity("IfcFace", Bounds=[bd])
+    sh = f.create_entity("IfcOpenShell", CfsFaces=[tri(a, b, cc), tri(a, cc, d)])
+    sbsm = f.create_entity("IfcShellBasedSurfaceModel", SbsmBoundary=[sh])
+    return [cset, sbsm], "GeometricCurveSet"
+
+
 FIXTURES = [
     ("synthetic_elementary_surfaces.ifc", elementary_surfaces),
     ("synthetic_surface_of_revolution.ifc", surface_of_revolution),
     ("synthetic_bspline_surface.ifc", bspline_surface),
     ("synthetic_advanced_brep.ifc", advanced_brep),
+    ("synthetic_primitives_and_bbox.ifc", misc_items),
+    ("synthetic_collections.ifc", collections),
     ("synthetic_curve_bounded_plane.ifc", curve_bounded_plane),
 ]
 

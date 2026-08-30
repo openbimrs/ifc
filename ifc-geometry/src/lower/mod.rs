@@ -1,7 +1,9 @@
 //! IFC-to-neutral-geometry lowering entry points.
 
+pub mod bbox;
 pub mod boolean;
 pub mod brep;
+pub mod collection;
 pub mod context;
 pub mod csg;
 pub mod curve;
@@ -17,8 +19,10 @@ pub mod tolerance;
 
 use axiolid_model::{GeometryGraph, NodeId};
 
+pub use bbox::lower_bounding_box_node;
 pub use boolean::lower_boolean_result_node;
-pub use brep::lower_faceted_brep_node;
+pub use brep::{lower_faceted_brep_node, lower_shell_node};
+pub use collection::lower_collection_node;
 pub use context::{
     geometric_products, lower_product_items, product_world_transform, select_shape_representation,
 };

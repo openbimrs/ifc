@@ -17,6 +17,29 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `ifc-geometry` lowers `IfcRectangularPyramid`, `IfcBoundingBox`,
+  `IfcGeometricSet`, `IfcGeometricCurveSet`, `IfcShellBasedSurfaceModel` and
+  `IfcFaceBasedSurfaceModel`. Corpus census 82 -> 86.
+- `lower/bbox.rs` recomputes the world AABB from all eight transformed
+  corners. `IfcBoundingBox` is aligned to its own representation's axes, which
+  are routinely rotated; passing corner and extents straight into a
+  world-aligned `Aabb` claims a box the file never described.
+- `lower/collection.rs` routes collection members per family. Curves and
+  surfaces stay non-dispatchable as top-level items -- a bare curve must not
+  stand in for a body -- but are the payload inside an `IfcGeometricSet`, so
+  they route there and only there, via the generated `is_a` supertype table.
+- Two corpus inventory tests: one asserts every `IMPLEMENTED` family really
+  lowers, the other walks the corpus by entity type and asserts anything that
+  lowers is claimed. Previously the census only visited families already named
+  in the lists, so deleting a name hid its instances instead of failing.
+
+### Fixed
+
+- `IfcRectangularPyramid` reads `XLength, YLength, Height`. It follows
+  `IfcBlock`, not `IfcRightCircularCone`, which puts `Height` first; the cone
+  ordering yields a pyramid with height and width swapped that still builds.
+
+
 - `ifc-geometry` lowers `IfcAdvancedBrep` and `IfcAdvancedBrepWithVoids`.
   `IfcAdvancedFace` attaches its support surface to `Face::surface`,
   `IfcEdgeCurve` attaches its support curve to `Edge::curve`, and

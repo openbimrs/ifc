@@ -114,6 +114,14 @@ fn build_primitive(
             height: length(slots.req_f64(1, "Height")?),
             radius: length(slots.req_f64(2, "BottomRadius")?),
         },
+        // Slots follow IfcBlock (XLength, YLength, then the third length),
+        // NOT IfcRightCircularCone, which puts Height first. Copying the cone
+        // arm here would swap height with x and still build a valid pyramid.
+        "IFCRECTANGULARPYRAMID" => Primitive::Pyramid {
+            x: length(slots.req_f64(1, "XLength")?),
+            y: length(slots.req_f64(2, "YLength")?),
+            height: length(slots.req_f64(3, "Height")?),
+        },
         other => return Err(session.unsupported(id, other, "CSG primitive family")),
     };
 

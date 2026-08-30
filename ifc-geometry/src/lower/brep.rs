@@ -145,6 +145,31 @@ fn build(
     session.node_for(id, GeometryNode::BRep(builder.brep))
 }
 
+/// Lower one shell or connected face set as a standalone `BRep` node.
+///
+/// A surface model's members are shells, which are not representation items
+/// and so cannot go through the item dispatcher. Each becomes its own BRep
+/// carrying exactly one shell and NO solid: a surface model asserts no
+/// volume, and adding a `Solid` here would manufacture one.
+pub fn lower_shell_node(
+    session: &mut LoweringSession<'_>,
+    referrer: EntityId,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<NodeId> {
+    if let Some(node) = session.memoized(id, KIND, frame) {
+        return Ok(node);
+    }
+    session.enter(id, KIND)?;
+    let mut builder = TopologyBuilder::new();
+    let result = shell(session, &mut builder, referrer, id, frame);
+    session.exit(id);
+    result?;
+    let node = session.node_for(id, GeometryNode::BRep(builder.brep))?;
+    session.memoize(id, KIND, frame, node);
+    Ok(node)
+}
+
 /// Lower one shell and every face it holds.
 fn shell(
     session: &mut LoweringSession<'_>,

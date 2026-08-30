@@ -212,3 +212,91 @@ fn a_nested_failure_names_the_innermost_unlowerable_entity() {
         "the report must state the documented reason, got: {error}"
     );
 }
+
+/// Every family named IMPLEMENTED must actually lower when the corpus has one.
+///
+/// `IMPLEMENTED` is a hand-maintained claim, and nothing else checks it
+/// against behaviour: the census above only visits families already named in
+/// these lists, so silently deleting a name makes its instances invisible
+/// rather than failing. This closes that hole from the other side -- it walks
+/// the corpus by ENTITY TYPE and asserts that anything claimed implemented
+/// really lowers, and that nothing lowering is left unclaimed.
+#[test]
+fn implemented_families_lower_and_lowering_families_are_claimed() {
+    let mut files = Vec::new();
+    collect_ifc(&fixture_root(), &mut files);
+    let tol = Tolerance::building_scale();
+
+    for path in &files {
+        // Malformed-input fixtures exist to prove the lowerer REJECTS them;
+        // a family being implemented does not mean every file using it is
+        // valid. Only well-formed fixtures can carry this assertion.
+        let name = path.file_name().unwrap_or_default().to_string_lossy();
+        if name.contains("cycle") || name.contains("invalid") || name.contains("malformed") {
+            continue;
+        }
+        let Ok(model) = StepCodec.read_path(path) else {
+            continue;
+        };
+        let scale = units::resolve(&model);
+        for family in IMPLEMENTED {
+            for id in model.ids_of_type(family) {
+                let mut session = LoweringSession::new(&model, &scale, tol);
+                let result = lower_representation_item(&mut session, *id, Transform::identity());
+                assert!(
+                    result.is_ok(),
+                    "{family} is listed IMPLEMENTED but {id:?} in {} failed: {}",
+                    path.display(),
+                    result.unwrap_err()
+                );
+            }
+        }
+    }
+}
+
+/// Anything in the corpus that lowers must be CLAIMED in IMPLEMENTED.
+///
+/// The companion test above iterates `IMPLEMENTED`, so removing a name simply
+/// skips it -- the claim list cannot police its own omissions. This walks the
+/// corpus by entity type instead: if a representation item lowers
+/// successfully but no list names it, the inventory is understating what the
+/// crate supports and the census figure is wrong.
+#[test]
+fn every_family_that_lowers_is_named_in_the_inventory() {
+    let mut files = Vec::new();
+    collect_ifc(&fixture_root(), &mut files);
+    let tol = Tolerance::building_scale();
+    let mut unclaimed: BTreeMap<String, usize> = BTreeMap::new();
+
+    for path in &files {
+        let name = path.file_name().unwrap_or_default().to_string_lossy();
+        if name.contains("cycle") || name.contains("invalid") || name.contains("malformed") {
+            continue;
+        }
+        let Ok(model) = StepCodec.read_path(path) else {
+            continue;
+        };
+        let scale = units::resolve(&model);
+        for (id, entity) in model.iter() {
+            let type_name = entity.type_name.to_ascii_uppercase();
+            let claimed = IMPLEMENTED
+                .iter()
+                .any(|n| n.eq_ignore_ascii_case(&type_name))
+                || PLANNED
+                    .iter()
+                    .any(|(n, _)| n.eq_ignore_ascii_case(&type_name));
+            if claimed {
+                continue;
+            }
+            let mut session = LoweringSession::new(&model, &scale, tol);
+            if lower_representation_item(&mut session, id, Transform::identity()).is_ok() {
+                *unclaimed.entry(type_name).or_default() += 1;
+            }
+        }
+    }
+
+    assert!(
+        unclaimed.is_empty(),
+        "these families lower but are named in neither IMPLEMENTED nor PLANNED: {unclaimed:?}"
+    );
+}

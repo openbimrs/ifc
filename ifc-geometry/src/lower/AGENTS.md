@@ -34,6 +34,24 @@ kernel's to choose. `CoordIndex` is 1-based and `PnIndex` (set-level and
 per-face) is an extra addressing hop; both mistakes yield a mesh that renders
 and is wrong, so both are mutation-covered.
 
+An `IfcBoundingBox` is axis-aligned to ITS OWN representation, not the world.
+The neutral `BoundingBox` node is an `Aabb`, world-aligned by definition, so
+the eight local corners are transformed and the world box recomputed from
+them. For a rotated element that is LARGER than the local extents, which is
+the honest answer: the tightest world box that still contains the element.
+Transforming only min and max gives a box that is too small.
+
+A surface model is NOT a solid. `IfcShellBasedSurfaceModel` and
+`IfcFaceBasedSurfaceModel` lower to a `Collection` of shells, each a BRep with
+no solid, even when every shell is closed. Emitting a solid would let a
+quantity takeoff report a volume the file never claimed.
+
+Curves and surfaces are deliberately absent from the top-level item
+dispatcher: everywhere else they are reached through the solid that sweeps or
+bounds them, and dispatching them globally would let a bare curve stand in for
+a body representation. Inside an `IfcGeometricSet` they ARE the payload, so
+`collection.rs` routes them itself using the `is_a` supertype table.
+
 An advanced B-rep carries TWO independent sense flags per edge use, and both
 must compose. `IfcEdgeCurve.SameSense` says whether the edge runs with its
 support curve; it sets the stored edge's intrinsic sense. Each

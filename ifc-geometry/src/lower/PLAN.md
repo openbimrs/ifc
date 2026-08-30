@@ -110,6 +110,28 @@ and check it off only after the proof runs.
   - Decision: a CSG primitive is LOCAL by kernel contract, so its `Position`
     rides on an `Instance` node rather than being folded into the extents.
     Folding would discard the origin offset and break any rotation.
+  - `IfcRectangularPyramid` completes the CSG primitive set (2026-08-30).
+    Its slots are `XLength, YLength, Height`, following `IfcBlock`; the
+    `IfcRightCircularCone` ordering puts `Height` first and would silently
+    swap height with width.
+
+- [x] `LOW-COLLECT` - bounding boxes and loose geometry collections
+  - Requires: `LOW-DISPATCH`, `LOW-CURVE`.
+
+  - Scope: only the collection/bbox families. Set members reuse curve and
+    surface lowering that already shipped; no part of this task waits on the
+    open profile work, so that task is not a prerequisite here.
+  - Implements: the `IfcGeometricSet` / surface-model / bounding-box families.
+  - Proof: `tests/lower_collections_and_primitives.rs` (5 corpus tests),
+    7/7 mutation probes, corpus census 82 -> 86.
+  - Decision: an `IfcBoundingBox` world AABB is recomputed from all eight
+    transformed corners. The box is aligned to its own representation, so
+    under rotation the local minimum corner is not the world minimum corner.
+  - Decision: surface models lower to a `Collection` of shells, never a solid,
+    even when every shell is closed. `IfcShellBasedSurfaceModel` is not a
+    legal boolean operand and must not report a volume.
+  - Decision: curves and surfaces remain non-dispatchable as top-level items.
+    `collection.rs` routes them for set members only, through `is_a`.
 - [x] `LOW-BREP` - topology plus geometry handles
   - Requires: `LOW-DISPATCH`.
   - Implements: `GEOM-BREP`.
