@@ -115,6 +115,23 @@ and check it off only after the proof runs.
     `IfcRightCircularCone` ordering puts `Height` first and would silently
     swap height with width.
 
+- [x] `LOW-SWEEP` - tapered, variable-section and spine sweeps
+  - Requires: `LOW-CURVE`, `LOW-DISPATCH`.
+
+  - Implements: `IfcExtrudedAreaSolidTapered`, `IfcRevolvedAreaSolidTapered`,
+    `IfcFixedReferenceSweptAreaSolid`, `IfcSectionedSpine`, and
+    `IfcSweptDiskSolidPolygonal` without a fillet.
+  - Proof: `tests/lower_tapered_sweeps.rs` (7 corpus tests), 8/8 mutation
+    probes, corpus census 86 -> 92.
+  - Decision: `IfcSweptDiskSolidPolygonal` is listed PLANNED with a
+    `conditional:` prefix, not IMPLEMENTED. It lowers with sharp corners and is
+    REFUSED when `FilletRadius` is present, because the neutral `SweptDisk`
+    has no fillet field and lowering anyway would silently sharpen every bend
+    in a pipe run. The conditional prefix is what lets the dispatch contract
+    test accept a family that both lowers and refuses.
+  - Decision: a spine section's placement composes with the world frame rather
+    than replacing it, so the stations stay distinct.
+
 - [x] `LOW-COLLECT` - bounding boxes and loose geometry collections
   - Requires: `LOW-DISPATCH`, `LOW-CURVE`.
 

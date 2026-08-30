@@ -135,13 +135,26 @@ fn planned_families_report_their_documented_reason() {
         let scale = units::resolve(&model);
 
         for (type_name, detail) in PLANNED {
+            // A reason starting with "conditional:" means the family lowers for
+            // some inputs and is refused for others -- IfcSweptDiskSolidPolygonal
+            // lowers with sharp corners but is refused when FilletRadius is
+            // present. Such a family MUST still report the documented reason
+            // when it does refuse, but must not be required to always fail.
+            let conditional = detail.starts_with("conditional:");
+            // The prefix classifies the entry; the text after it is the reason
+            // the lowerer actually reports.
+            let expected = detail.strip_prefix("conditional: ").unwrap_or(detail);
             for id in model.ids_of_type(type_name) {
                 let mut session = LoweringSession::new(&model, &scale, tol);
-                let error = lower_representation_item(&mut session, *id, Transform::identity())
-                    .expect_err("a planned family must not silently succeed");
+                let outcome = lower_representation_item(&mut session, *id, Transform::identity());
+                let error = match outcome {
+                    Ok(_) if conditional => continue,
+                    Ok(_) => panic!("{type_name}: a planned family must not silently succeed"),
+                    Err(error) => error,
+                };
                 assert!(
-                    error.to_string().contains(detail),
-                    "{type_name} must report {detail:?}, got: {error}"
+                    error.to_string().contains(expected),
+                    "{type_name} must report {expected:?}, got: {error}"
                 );
                 checked += 1;
             }
@@ -183,7 +196,14 @@ fn a_nested_failure_names_the_innermost_unlowerable_entity() {
     let mut model = ifc_model::Model::new();
     let inner = ifc_model::EntityId(1);
     let outer = ifc_model::EntityId(2);
-    model.insert(inner, ifc_model::Entity::new("IFCSECTIONEDSPINE", vec![]));
+    // Any family the dispatcher does not classify works as the inner gap. This
+    // deliberately uses a name from a LATER schema rather than a real planned
+    // family, so implementing another family cannot silently defuse this test
+    // the way IFCSECTIONEDSPINE did once it started lowering.
+    model.insert(
+        inner,
+        ifc_model::Entity::new("IFCSEGMENTEDREFERENCECURVE", vec![]),
+    );
     model.insert(
         outer,
         ifc_model::Entity::new(
@@ -208,7 +228,9 @@ fn a_nested_failure_names_the_innermost_unlowerable_entity() {
     );
     assert!(error.is_unsupported(), "this is a gap, not corruption");
     assert!(
-        error.to_string().contains("spine interpolation"),
+        error
+            .to_string()
+            .contains("representation item family is not lowered yet"),
         "the report must state the documented reason, got: {error}"
     );
 }

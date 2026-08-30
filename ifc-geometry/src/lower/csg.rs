@@ -27,14 +27,16 @@ use axiolid_primitive::Primitive;
 use ifc_model::EntityId;
 
 use crate::error::GeometryResult;
-use crate::lower::curve::lower_curve_node;
+use crate::lower::curve::{lower_curve_node, scale_parameter};
 use crate::lower::profile::lower_profile_node;
 use crate::lower::session::LoweringSession;
 use crate::lower::surface::lower_surface_node;
 use crate::resource::placement::axis_placement_transform;
 use crate::slots::Slots;
 use crate::solid::csg::{CsgPrimitive3D, CsgSolid};
-use crate::solid::swept::directrix::{SurfaceCurveSweptAreaSolid, SweptDiskSolid};
+use crate::solid::swept::directrix::{
+    SurfaceCurveSweptAreaSolid, SweptDiskSolid, SweptDiskSolidPolygonal,
+};
 use crate::transform::Transform;
 
 const CSG: &str = "csg solid";
@@ -167,6 +169,26 @@ fn build_disk(
     let entity = session.entity(id, id)?;
     let view = SweptDiskSolid::new(id, entity);
 
+    // IfcSweptDiskSolidPolygonal adds FilletRadius, which the neutral
+    // SweptDisk cannot express. When it is present the corners are rounded and
+    // lowering anyway would silently sharpen every bend in a pipe run --
+    // geometry that builds, renders, and is wrong. Absent, the polygonal
+    // subtype IS an ordinary swept disk with sharp corners, so it lowers here.
+    if session
+        .type_name(id)?
+        .eq_ignore_ascii_case("IFCSWEPTDISKSOLIDPOLYGONAL")
+        && SweptDiskSolidPolygonal::new(id, entity)
+            .fillet_radius()
+            .is_some()
+    {
+        return Err(session.unsupported(
+            id,
+            "IFCSWEPTDISKSOLIDPOLYGONAL",
+            "FilletRadius has no neutral representation; rounded corners would \
+             be silently sharpened",
+        ));
+    }
+
     // `checked_radii` enforces the schema's inner < outer rule. A pipe whose
     // inner radius meets or exceeds the outer has no material at all, and the
     // failure downstream is an empty mesh rather than an error.
@@ -177,14 +199,10 @@ fn build_disk(
     let directrix_ref = view.directrix()?;
     let directrix = lower_curve_node(session, directrix_ref, frame)?;
 
-    // Trim parameters are in the DIRECTRIX's parameterisation, so they follow
-    // the same length/angle split as IfcTrimmedCurve. A composite or polyline
-    // directrix parameterises by length.
+    // Trim parameters are in the DIRECTRIX's parameterisation, which is not
+    // always a length: see scale_parameter for the index-based cases.
     let directrix_kind = session.type_name(directrix_ref)?;
-    let convert = |value: f64| match directrix_kind.as_str() {
-        "IFCCIRCLE" | "IFCELLIPSE" => session.units().angle(value),
-        _ => session.units().length(value),
-    };
+    let convert = |value: f64| scale_parameter(session, directrix_kind.as_str(), value);
     let parameter_range = match (view.start_param(), view.end_param()) {
         (Some(start), Some(end)) => Some((convert(start), convert(end))),
         (None, None) => None,

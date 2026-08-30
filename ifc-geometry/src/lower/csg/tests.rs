@@ -141,10 +141,19 @@ fn a_half_open_parameter_range_is_refused() {
     assert_eq!(error.entity(), Some(EntityId(4)));
 }
 
-/// A polyline directrix parameterises by LENGTH, so trims convert.
+/// A polyline directrix parameterises by SEGMENT INDEX, so trims do NOT scale.
+///
+/// `StartParam`/`EndParam` are `IfcParameterValue`, which is dimensionless, and
+/// ISO 10303-42 parameterises a polyline over `[0, n]` with integer values at
+/// its vertices. Converting them as lengths turns a millimetre file's `2.0`
+/// into `0.002` and collapses the trim onto the curve's start.
+///
+/// This test previously asserted the opposite. The old expectation was wrong:
+/// it required `3000` to become `3.0 m`, but `3000` as a polyline parameter is
+/// segment 3000, which a two-point polyline does not have.
 #[test]
 fn swept_disk_trim_parameters_follow_the_directrix_parameterisation() {
-    let model = swept_disk(None, Some(0.0), Some(3000.0));
+    let model = swept_disk(None, Some(0.0), Some(2.0));
     let scale = millimetres();
     let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
     let node =
@@ -157,7 +166,10 @@ fn swept_disk_trim_parameters_follow_the_directrix_parameterisation() {
         }) => {
             let (start, end) = parameter_range.expect("both ends present");
             assert!((start - 0.0).abs() < 1e-12);
-            assert!((end - 3.0).abs() < 1e-12, "3000 mm -> 3 m, got {end}");
+            assert!(
+                (end - 2.0).abs() < 1e-12,
+                "a polyline parameter is an index and stays 2, got {end}"
+            );
         }
         other => panic!("expected a SweptDisk, got {other:?}"),
     }

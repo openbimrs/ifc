@@ -324,6 +324,92 @@ def collections(f):
     return [cset, sbsm], "GeometricCurveSet"
 
 
+def tapered_sweeps(f):
+    """The tapered and variable-section sweep families.
+
+    Every profile pair here is DISTINCT in size. A lowerer that reuses
+    SweptArea for both ends of a taper produces a prism: geometry that builds,
+    renders and is wrong. Distinct sizes make that observable.
+    """
+    # Tapered linear extrusion: 400x300 mm down to 200x150 mm.
+    start = f.create_entity("IfcRectangleProfileDef", ProfileType="AREA",
+                            XDim=400.0, YDim=300.0)
+    end = f.create_entity("IfcRectangleProfileDef", ProfileType="AREA",
+                          XDim=200.0, YDim=150.0)
+    tap_ext = f.create_entity("IfcExtrudedAreaSolidTapered",
+                              SweptArea=start, Position=placement(f, (0.0, 0.0, 0.0)),
+                              ExtrudedDirection=dr(f, (0.0, 0.0, 1.0)),
+                              Depth=2500.0, EndSweptArea=end)
+
+    # Tapered revolution. Angle is authored in DEGREES, as this file declares,
+    # so a missing unit conversion turns 90 into fourteen full turns.
+    rstart = f.create_entity("IfcCircleProfileDef", ProfileType="AREA", Radius=120.0)
+    rend = f.create_entity("IfcCircleProfileDef", ProfileType="AREA", Radius=60.0)
+    axis = f.create_entity("IfcAxis1Placement", Location=pt(f, (900.0, 0.0, 0.0)),
+                           Axis=dr(f, (0.0, 1.0, 0.0)))
+    tap_rev = f.create_entity("IfcRevolvedAreaSolidTapered",
+                              SweptArea=rstart, Position=placement(f, (0.0, 0.0, 0.0)),
+                              Axis=axis, Angle=90.0, EndSweptArea=rend)
+
+    # Fixed-reference sweep. The reference is +Z, not the +X a lowerer would
+    # reach for by default, so dropping or hardcoding it is observable.
+    fr_prof = f.create_entity("IfcRectangleProfileDef", ProfileType="AREA",
+                              XDim=150.0, YDim=80.0)
+    path = f.create_entity("IfcPolyline", Points=[pt(f, (0.0, 0.0, 0.0)),
+                                                 pt(f, (1000.0, 0.0, 0.0)),
+                                                 pt(f, (1000.0, 800.0, 0.0))])
+    fixed = f.create_entity("IfcFixedReferenceSweptAreaSolid",
+                            SweptArea=fr_prof, Position=placement(f, (0.0, 0.0, 0.0)),
+                            Directrix=path, StartParam=0.0, EndParam=2.0,
+                            FixedReference=dr(f, (0.0, 0.0, 1.0)))
+
+    # Polygonal disk WITHOUT a fillet: sharp corners, which the neutral
+    # SweptDisk models exactly. This one must lower.
+    poly_path = f.create_entity("IfcPolyline", Points=[pt(f, (0.0, 0.0, 0.0)),
+                                                      pt(f, (600.0, 0.0, 0.0)),
+                                                      pt(f, (600.0, 500.0, 0.0))])
+    sharp = f.create_entity("IfcSweptDiskSolidPolygonal",
+                            Directrix=poly_path, Radius=45.0, InnerRadius=38.0,
+                            StartParam=0.0, EndParam=2.0)
+
+    # WITH a fillet: rounded corners the neutral SweptDisk cannot express.
+    # Lowering this anyway would silently sharpen every bend in a pipe run.
+    filleted = f.create_entity("IfcSweptDiskSolidPolygonal",
+                               Directrix=poly_path, Radius=45.0,
+                               StartParam=0.0, EndParam=2.0, FilletRadius=90.0)
+
+    return [tap_ext, tap_rev, fixed, sharp, filleted], "SweptSolid"
+
+
+def sectioned_spine(f):
+    """Cross sections positioned along a composite curve.
+
+    The three sections are DIFFERENT sizes and the three positions are
+    DISTINCT, so a lowerer that keeps only the first section, or collapses the
+    placements, is observable.
+    """
+    secs = [f.create_entity("IfcRectangleProfileDef", ProfileType="AREA",
+                            XDim=x, YDim=y)
+            for x, y in ((300.0, 200.0), (240.0, 160.0), (180.0, 120.0))]
+
+    # The schema requires an IfcCompositeCurve, not a bare polyline.
+    seg1 = f.create_entity("IfcPolyline", Points=[pt(f, (0.0, 0.0, 0.0)),
+                                                 pt(f, (1200.0, 0.0, 0.0))])
+    seg2 = f.create_entity("IfcPolyline", Points=[pt(f, (1200.0, 0.0, 0.0)),
+                                                  pt(f, (1200.0, 900.0, 0.0))])
+    segments = [f.create_entity("IfcCompositeCurveSegment", Transition="CONTINUOUS",
+                                SameSense=True, ParentCurve=s)
+                for s in (seg1, seg2)]
+    spine = f.create_entity("IfcCompositeCurve", Segments=segments, SelfIntersect=False)
+
+    positions = [placement(f, p) for p in ((0.0, 0.0, 0.0),
+                                           (1200.0, 0.0, 0.0),
+                                           (1200.0, 900.0, 0.0))]
+    item = f.create_entity("IfcSectionedSpine", SpineCurve=spine,
+                           CrossSections=secs, CrossSectionPositions=positions)
+    return [item], "AdvancedSweptSolid"
+
+
 FIXTURES = [
     ("synthetic_elementary_surfaces.ifc", elementary_surfaces),
     ("synthetic_surface_of_revolution.ifc", surface_of_revolution),
@@ -332,6 +418,8 @@ FIXTURES = [
     ("synthetic_primitives_and_bbox.ifc", misc_items),
     ("synthetic_collections.ifc", collections),
     ("synthetic_curve_bounded_plane.ifc", curve_bounded_plane),
+    ("synthetic_tapered_sweeps.ifc", tapered_sweeps),
+    ("synthetic_sectioned_spine.ifc", sectioned_spine),
 ]
 
 

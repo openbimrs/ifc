@@ -23,7 +23,11 @@ use crate::lower::csg::{
 use crate::lower::halfspace::lower_half_space_node;
 use crate::lower::mapped::lower_mapped_item_node;
 use crate::lower::session::LoweringSession;
-use crate::lower::swept::{lower_extruded_area_solid_node, lower_revolved_area_solid_node};
+use crate::lower::swept::{
+    lower_extruded_area_solid_node, lower_fixed_reference_sweep_node,
+    lower_revolved_area_solid_node, lower_sectioned_spine_node, lower_tapered_extrusion_node,
+    lower_tapered_revolution_node,
+};
 use crate::lower::tessellated::{lower_polygonal_face_set_node, lower_triangulated_face_set_node};
 use crate::transform::Transform;
 
@@ -55,6 +59,10 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCRIGHTCIRCULARCONE",
     "IFCRECTANGULARPYRAMID",
     "IFCBOUNDINGBOX",
+    "IFCEXTRUDEDAREASOLIDTAPERED",
+    "IFCREVOLVEDAREASOLIDTAPERED",
+    "IFCFIXEDREFERENCESWEPTAREASOLID",
+    "IFCSECTIONEDSPINE",
     "IFCSHELLBASEDSURFACEMODEL",
     "IFCFACEBASEDSURFACEMODEL",
     "IFCGEOMETRICSET",
@@ -67,10 +75,13 @@ pub const IMPLEMENTED: &[&str] = &[
 /// report progress instead of a bare failure. Adding a family here is how a
 /// stub is declared; implementing it means moving the name to [`IMPLEMENTED`].
 pub const PLANNED: &[(&str, &str)] = &[
-    ("IFCSECTIONEDSPINE", "spine interpolation"),
     (
         "IFCARBITRARYOPENPROFILEDEF",
         "open profiles: the neutral profile model represents closed contours only",
+    ),
+    (
+        "IFCSWEPTDISKSOLIDPOLYGONAL",
+        "conditional: FilletRadius has no neutral representation; rounded corners would be silently sharpened",
     ),
 ];
 
@@ -101,11 +112,17 @@ pub fn lower_representation_item(
         "IFCTRIANGULATEDFACESET" => lower_triangulated_face_set_node(session, id, frame),
         "IFCPOLYGONALFACESET" => lower_polygonal_face_set_node(session, id, frame),
         "IFCCSGSOLID" => lower_csg_solid_node(session, id, frame),
-        "IFCSWEPTDISKSOLID" => lower_swept_disk_node(session, id, frame),
+        "IFCSWEPTDISKSOLID" | "IFCSWEPTDISKSOLIDPOLYGONAL" => {
+            lower_swept_disk_node(session, id, frame)
+        }
         "IFCSURFACECURVESWEPTAREASOLID" => {
             lower_surface_curve_swept_area_solid_node(session, id, frame)
         }
         "IFCBOUNDINGBOX" => lower_bounding_box_node(session, id, frame),
+        "IFCEXTRUDEDAREASOLIDTAPERED" => lower_tapered_extrusion_node(session, id, frame),
+        "IFCREVOLVEDAREASOLIDTAPERED" => lower_tapered_revolution_node(session, id, frame),
+        "IFCFIXEDREFERENCESWEPTAREASOLID" => lower_fixed_reference_sweep_node(session, id, frame),
+        "IFCSECTIONEDSPINE" => lower_sectioned_spine_node(session, id, frame),
         "IFCSHELLBASEDSURFACEMODEL"
         | "IFCFACEBASEDSURFACEMODEL"
         | "IFCGEOMETRICSET"
