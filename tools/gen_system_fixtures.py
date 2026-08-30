@@ -95,6 +95,83 @@ def build():
         "IfcRelServicesBuildings", GlobalId=guid(), OwnerHistory=owner,
         RelatingSystem=heating, RelatedBuildings=[building])
 
+    # ---- Ports and connections -------------------------------------------
+    #
+    # Topology, chosen so a naive reader fails visibly:
+    #
+    #   seg0 -- seg1 -- fitting -- terminal        (heating, a chain)
+    #   seg2 (ventilation, its own component)
+    #   ring: seg0/fitting close a LOOP so traversal must not run forever
+    #
+    # Ports are attached by BOTH mechanisms: IfcRelNests for the IFC4 form and
+    # IfcRelConnectsPortToElement for the legacy form still emitted by real
+    # exporters. A reader that knows only one silently loses half the ports.
+    def port(name, flow):
+        return f.create_entity(
+            "IfcDistributionPort", GlobalId=guid(), OwnerHistory=owner,
+            Name=name, FlowDirection=flow, PredefinedType="PIPE")
+
+    # seg0: nested (IFC4 form).
+    seg0_in = port("seg0-in", "SINK")
+    seg0_out = port("seg0-out", "SOURCE")
+    f.create_entity(
+        "IfcRelNests", GlobalId=guid(), OwnerHistory=owner,
+        RelatingObject=segments[0], RelatedObjects=[seg0_in, seg0_out])
+
+    # seg1: legacy form, one relationship per port.
+    seg1_in = port("seg1-in", "SINK")
+    seg1_out = port("seg1-out", "SOURCE")
+    for p_ in (seg1_in, seg1_out):
+        f.create_entity(
+            "IfcRelConnectsPortToElement", GlobalId=guid(), OwnerHistory=owner,
+            RelatingPort=p_, RelatedElement=segments[1])
+
+    # fitting: nested, three ports (a tee).
+    fit_a = port("fit-a", "SINK")
+    fit_b = port("fit-b", "SOURCE")
+    fit_c = port("fit-c", "SOURCEANDSINK")
+    f.create_entity(
+        "IfcRelNests", GlobalId=guid(), OwnerHistory=owner,
+        RelatingObject=fitting, RelatedObjects=[fit_a, fit_b, fit_c])
+
+    # terminal: nested, single port.
+    term_in = port("term-in", "SINK")
+    f.create_entity(
+        "IfcRelNests", GlobalId=guid(), OwnerHistory=owner,
+        RelatingObject=terminal, RelatedObjects=[term_in])
+
+    # seg2 on the OTHER system: its own disconnected component.
+    seg2_in = port("seg2-in", "SINK")
+    seg2_out = port("seg2-out", "SOURCE")
+    f.create_entity(
+        "IfcRelNests", GlobalId=guid(), OwnerHistory=owner,
+        RelatingObject=segments[2], RelatedObjects=[seg2_in, seg2_out])
+
+    # An UNATTACHED port: legal, and its element must read as None rather
+    # than being dropped from the port list.
+    orphan = port("orphan", "NOTDEFINED")
+
+    # Connections. RealizingElement is set on one to prove slot 6 is read.
+    f.create_entity(
+        "IfcRelConnectsPorts", GlobalId=guid(), OwnerHistory=owner,
+        RelatingPort=seg0_out, RelatedPort=seg1_in, RealizingElement=segments[0])
+    f.create_entity(
+        "IfcRelConnectsPorts", GlobalId=guid(), OwnerHistory=owner,
+        RelatingPort=seg1_out, RelatedPort=fit_a)
+    f.create_entity(
+        "IfcRelConnectsPorts", GlobalId=guid(), OwnerHistory=owner,
+        RelatingPort=fit_b, RelatedPort=term_in)
+    # Closes a ring: fit_c back to seg0_in. Traversal must terminate.
+    f.create_entity(
+        "IfcRelConnectsPorts", GlobalId=guid(), OwnerHistory=owner,
+        RelatingPort=fit_c, RelatedPort=seg0_in)
+    # seg2's own two ports connect to each other only.
+    f.create_entity(
+        "IfcRelConnectsPorts", GlobalId=guid(), OwnerHistory=owner,
+        RelatingPort=seg2_out, RelatedPort=seg2_in)
+
+    _ = orphan
+
     return f, zone
 
 

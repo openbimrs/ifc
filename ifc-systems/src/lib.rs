@@ -16,9 +16,11 @@
 //!
 //! # Status
 //!
-//! Partial. `system` implements SYS-ROOT: systems, subtype-aware discovery
-//! and membership. The remaining modules are reserved with intent, not
-//! implemented -- see `../PLAN.md` for the stages that fill them.
+//! Partial. Implemented: SYS-ROOT (systems, subtype-aware discovery and
+//! membership), SYS-PORT (ports and both element-attachment forms) and
+//! SYS-CONN (the undirected connection graph with cycle-safe traversal).
+//! `flow`, `zone` and `assignment` are reserved with intent, not implemented
+//! -- see `../PLAN.md` for the stages that fill them.
 
 mod connectivity;
 mod error;
@@ -26,7 +28,9 @@ mod flow;
 mod port;
 mod system;
 
+pub use connectivity::{Connection, ConnectionGraph, NetworkGraph};
 pub use error::SystemAnomaly;
+pub use port::{ports, Attachment, FlowDirection, Port};
 pub use system::{systems, System};
 
 mod assignment;

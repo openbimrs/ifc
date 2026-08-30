@@ -9,6 +9,14 @@ and this project follows Semantic Versioning.
 
 ### Added
 
+- `ifc-systems` reads distribution ports and the connection network. Ports
+  resolve through both `IfcRelNests` and the legacy
+  `IfcRelConnectsPortToElement`, carrying flow direction and owning element.
+  `ConnectionGraph` states what the file says; `NetworkGraph` adds
+  through-element edges so a physical run is actually traversable. Both are
+  cycle-safe, because ring mains are normal distribution topology.
+
+
 - `ifc-systems` implements `SYS-ROOT`: `systems()` returns every `IfcSystem`
   and subtype with its members resolved from `IfcRelAssignsToGroup`. Systems
   are found by schema ancestry rather than `Model::ids_of_type`, which is an

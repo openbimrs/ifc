@@ -20,6 +20,33 @@ pub enum SystemAnomaly {
         /// The id it named.
         missing: EntityId,
     },
+    /// A port is attached to two different elements.
+    ///
+    /// `IfcPort.ContainedIn` is `SET [0:1]` in the schema, so this cannot be
+    /// expressed by a valid file. It happens when an exporter writes both an
+    /// `IfcRelNests` and a legacy `IfcRelConnectsPortToElement` that disagree.
+    /// The first attachment in file order is kept so the result stays
+    /// deterministic, and the conflict is reported rather than hidden.
+    PortAttachedTwice {
+        /// The port with two owners.
+        port: EntityId,
+        /// The element that was kept.
+        kept: EntityId,
+        /// The element that was rejected.
+        rejected: EntityId,
+    },
+    /// A connection names a port that is not an `IfcPort` subtype.
+    ///
+    /// `IfcRelConnectsPorts` is typed to `IfcPort` in the schema, so this is a
+    /// malformed file rather than a modelling choice.
+    NotAPort {
+        /// The relationship entity.
+        relation: EntityId,
+        /// The entity it named as a port.
+        entity: EntityId,
+        /// That entity's declared type, upper-cased.
+        type_name: String,
+    },
     /// `IfcRelAssignsToGroup` whose `RelatingGroup` is not a system.
     ///
     /// The relationship is shared with every other kind of group, so a

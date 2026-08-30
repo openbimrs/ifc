@@ -1,7 +1,6 @@
 //! `IfcDistributionPort` and port assignment to elements.
 //!
 //!
-//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!
@@ -10,3 +9,5 @@
 
 mod assignment;
 mod definition;
+
+pub use definition::{ports, Attachment, FlowDirection, Port};

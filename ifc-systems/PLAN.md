@@ -32,9 +32,9 @@ owner and expose a public symbol only through an intentional parent re-export.
 
 - [x] `SYS-ROOT` - implement systems/distribution systems
   - Evidence: `cargo test -p ifc-systems` (8 tests), 5/5 mutation probes, crate clippy clean.
-- [ ] `SYS-PORT` - implement port definitions and attachment
+- [x] `SYS-PORT` - implement port definitions and attachment
   - Evidence: focused view/query tests, invalid/cycle cases, and crate clippy.
-- [ ] `SYS-CONN` - implement semantic connection graph with cycle budgets
+- [x] `SYS-CONN` - implement semantic connection graph with cycle budgets
   - Evidence: focused view/query tests, invalid/cycle cases, and crate clippy.
 - [ ] `SYS-FLOW` - implement direction/role consistency checks
   - Evidence: focused view/query tests, invalid/cycle cases, and crate clippy.
@@ -56,3 +56,14 @@ Do not paste long logs or duplicate standing rules from `AGENTS.md`.
   of the model. `IfcRelAssignsToGroup.RelatingGroup` is slot 6, not 5, because
   `RelatedObjectsType` sits at 5. Anomalies are reported, not raised: a file
   with one broken relationship still has a usable system graph.
+SYS-PORT - cargo test -p ifc-systems (17 passing) - ports resolve through BOTH
+IfcRelNests (IFC4) and IfcRelConnectsPortToElement (IFC2x3, still exported).
+IfcPort is abstract so selection is by schema ancestry, never exact type. A
+port claimed by both forms keeps the IFC4 one and reports PortAttachedTwice,
+because IfcPort.ContainedIn is SET [0:1] and cannot hold two.
+SYS-CONN - cargo test -p ifc-systems (17 passing) - ConnectionGraph is
+UNDIRECTED: RelatingPort/RelatedPort record authoring order, not flow.
+Connections alone leave a physical chain as isolated pairs, since no
+relationship joins an element's own inlet to its outlet; NetworkGraph adds
+those through-element edges. Both traversals are cycle-safe because ring mains
+are normal, not corrupt.
