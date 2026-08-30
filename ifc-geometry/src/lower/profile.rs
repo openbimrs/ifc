@@ -32,6 +32,73 @@ mod slot {
     pub const ROUNDED_RECT_RADIUS: usize = 5;
 }
 
+/// Concrete profile families this lowerer does not yet build, with reasons.
+///
+/// Paired with `tests/schema_coverage.rs`, which fails if a concrete profile
+/// appears in neither this table nor a match arm above. That is what makes the
+/// gap visible: the committed corpus contains no steel sections, so a
+/// corpus-shaped census reported full coverage while 13 families were absent.
+///
+/// A reason starting with `kernel:` needs a change in `axiolid-profile`; the
+/// rest are IFC-side wiring.
+pub const UNLOWERED: &[(&str, &str)] = &[
+    (
+        "IFCISHAPEPROFILEDEF",
+        "kernel: SectionProfile::I has no FilletRadius, FlangeEdgeRadius or FlangeSlope",
+    ),
+    (
+        "IFCTSHAPEPROFILEDEF",
+        "kernel: SectionProfile::T has no fillet, edge radius or slope fields",
+    ),
+    (
+        "IFCUSHAPEPROFILEDEF",
+        "kernel: SectionProfile::U has no fillet, edge radius or slope fields",
+    ),
+    (
+        "IFCZSHAPEPROFILEDEF",
+        "kernel: SectionProfile::Z has no fillet or edge radius fields",
+    ),
+    (
+        "IFCCSHAPEPROFILEDEF",
+        "kernel: SectionProfile::C has no InternalFilletRadius field",
+    ),
+    (
+        "IFCLSHAPEPROFILEDEF",
+        "kernel: SectionProfile::L has no fillet, edge radius or slope fields",
+    ),
+    (
+        "IFCTRAPEZIUMPROFILEDEF",
+        "kernel: SectionProfile::Trapezium maps directly; pending the same slice",
+    ),
+    (
+        "IFCASYMMETRICISHAPEPROFILEDEF",
+        "kernel: SectionProfile::I carries one width, so distinct top and bottom \
+         flange widths would be silently symmetrised",
+    ),
+    (
+        "IFCELLIPSEPROFILEDEF",
+        "EllipseProfile exists in the kernel; not wired yet",
+    ),
+    (
+        "IFCCOMPOSITEPROFILEDEF",
+        "Profile::Composite exists in the kernel; not wired yet",
+    ),
+    (
+        "IFCDERIVEDPROFILEDEF",
+        "Profile::Derived exists in the kernel; needs IfcCartesianTransformationOperator2D",
+    ),
+    (
+        "IFCMIRROREDPROFILEDEF",
+        "its mirror is implied by the subtype, not carried in Operator, so \
+         lowering it as a plain derived profile drops the reflection",
+    ),
+    (
+        "IFCCENTERLINEPROFILEDEF",
+        "subtype of IfcArbitraryOpenProfileDef: an open curve plus Thickness, \
+         which the neutral contour model cannot express as a closed area",
+    ),
+];
+
 /// Family label used for profile memoization.
 const PROFILE: &str = "profile";
 
@@ -98,10 +165,17 @@ pub fn lower_profile(
             });
         }
         other => {
+            // A declared family reports its specific reason; anything else is
+            // a family the crate does not know at all.
+            let detail = UNLOWERED
+                .iter()
+                .find(|(name, _)| *name == other)
+                .map(|(_, reason)| *reason)
+                .unwrap_or("profile subtype is not lowered yet");
             return Err(GeometryError::Unsupported {
                 entity: id,
                 type_name: other.to_string(),
-                detail: "profile subtype is not lowered yet",
+                detail,
             });
         }
     };

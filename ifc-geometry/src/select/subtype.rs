@@ -69,44 +69,6 @@ static SUPERTYPES: &[(&str, &[&str])] = &[
         ],
     ),
     (
-        "IFCBSPLINECURVE",
-        &[
-            "IFCBOUNDEDCURVE",
-            "IFCCURVE",
-            "IFCGEOMETRICREPRESENTATIONITEM",
-            "IFCREPRESENTATIONITEM",
-        ],
-    ),
-    (
-        "IFCBSPLINECURVEWITHKNOTS",
-        &[
-            "IFCBSPLINECURVE",
-            "IFCBOUNDEDCURVE",
-            "IFCCURVE",
-            "IFCGEOMETRICREPRESENTATIONITEM",
-            "IFCREPRESENTATIONITEM",
-        ],
-    ),
-    (
-        "IFCBSPLINESURFACE",
-        &[
-            "IFCBOUNDEDSURFACE",
-            "IFCSURFACE",
-            "IFCGEOMETRICREPRESENTATIONITEM",
-            "IFCREPRESENTATIONITEM",
-        ],
-    ),
-    (
-        "IFCBSPLINESURFACEWITHKNOTS",
-        &[
-            "IFCBSPLINESURFACE",
-            "IFCBOUNDEDSURFACE",
-            "IFCSURFACE",
-            "IFCGEOMETRICREPRESENTATIONITEM",
-            "IFCREPRESENTATIONITEM",
-        ],
-    ),
-    (
         "IFCBLOCK",
         &[
             "IFCCSGPRIMITIVE3D",
@@ -157,6 +119,44 @@ static SUPERTYPES: &[(&str, &[&str])] = &[
         "IFCBOXEDHALFSPACE",
         &[
             "IFCHALFSPACESOLID",
+            "IFCGEOMETRICREPRESENTATIONITEM",
+            "IFCREPRESENTATIONITEM",
+        ],
+    ),
+    (
+        "IFCBSPLINECURVE",
+        &[
+            "IFCBOUNDEDCURVE",
+            "IFCCURVE",
+            "IFCGEOMETRICREPRESENTATIONITEM",
+            "IFCREPRESENTATIONITEM",
+        ],
+    ),
+    (
+        "IFCBSPLINECURVEWITHKNOTS",
+        &[
+            "IFCBSPLINECURVE",
+            "IFCBOUNDEDCURVE",
+            "IFCCURVE",
+            "IFCGEOMETRICREPRESENTATIONITEM",
+            "IFCREPRESENTATIONITEM",
+        ],
+    ),
+    (
+        "IFCBSPLINESURFACE",
+        &[
+            "IFCBOUNDEDSURFACE",
+            "IFCSURFACE",
+            "IFCGEOMETRICREPRESENTATIONITEM",
+            "IFCREPRESENTATIONITEM",
+        ],
+    ),
+    (
+        "IFCBSPLINESURFACEWITHKNOTS",
+        &[
+            "IFCBSPLINESURFACE",
+            "IFCBOUNDEDSURFACE",
+            "IFCSURFACE",
             "IFCGEOMETRICREPRESENTATIONITEM",
             "IFCREPRESENTATIONITEM",
         ],
@@ -726,6 +726,7 @@ pub fn is_a(entity: &str, ancestor: &str) -> bool {
 pub fn supertypes_of(entity: &str) -> &'static [&'static str] {
     SUPERTYPES
         .iter()
+        .chain(super::subtype_profile::PROFILE_SUPERTYPES.iter())
         .find(|(name, _)| name.eq_ignore_ascii_case(entity))
         .map(|(_, chain)| *chain)
         .unwrap_or(&[])
@@ -733,7 +734,10 @@ pub fn supertypes_of(entity: &str) -> &'static [&'static str] {
 
 /// Every entity this table knows, for cross-checking against the schema.
 pub fn known_entities() -> impl Iterator<Item = &'static str> {
-    SUPERTYPES.iter().map(|(name, _)| *name)
+    SUPERTYPES
+        .iter()
+        .chain(super::subtype_profile::PROFILE_SUPERTYPES.iter())
+        .map(|(name, _)| *name)
 }
 
 #[cfg(test)]

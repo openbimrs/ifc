@@ -23,23 +23,33 @@ use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 /// Every concrete (non-ABSTRACT) entity in IfcGeometryResource,
-/// IfcGeometricModelResource and IfcGeometricConstraintResource.
+/// IfcGeometricModelResource, IfcGeometricConstraintResource and
+/// IfcProfileResource.
 ///
-/// Generated from IFC4 ADD2 TC1. 89 entities.
+/// IfcProfileResource was missing until profiles were audited: the crate
+/// lowered seven profile families and the gate enumerated none of them, so a
+/// corpus without steel sections reported full coverage. A schema this list
+/// does not name cannot fail the gate.
+///
+/// Generated from IFC4 ADD2 TC1. 111 entities.
 const CONCRETE_ENTITIES: &[&str] = &[
     "IfcAdvancedBrep",
     "IfcAdvancedBrepWithVoids",
+    "IfcArbitraryClosedProfileDef",
+    "IfcArbitraryOpenProfileDef",
+    "IfcArbitraryProfileDefWithVoids",
+    "IfcAsymmetricIShapeProfileDef",
     "IfcAxis1Placement",
     "IfcAxis2Placement2D",
     "IfcAxis2Placement3D",
-    "IfcBSplineCurveWithKnots",
-    "IfcBSplineSurfaceWithKnots",
     "IfcBlock",
     "IfcBooleanClippingResult",
     "IfcBooleanResult",
     "IfcBoundaryCurve",
     "IfcBoundingBox",
     "IfcBoxedHalfSpace",
+    "IfcBSplineCurveWithKnots",
+    "IfcBSplineSurfaceWithKnots",
     "IfcCartesianPoint",
     "IfcCartesianPointList2D",
     "IfcCartesianPointList3D",
@@ -47,21 +57,28 @@ const CONCRETE_ENTITIES: &[&str] = &[
     "IfcCartesianTransformationOperator2DnonUniform",
     "IfcCartesianTransformationOperator3D",
     "IfcCartesianTransformationOperator3DnonUniform",
+    "IfcCenterLineProfileDef",
     "IfcCircle",
+    "IfcCircleHollowProfileDef",
+    "IfcCircleProfileDef",
     "IfcCompositeCurve",
     "IfcCompositeCurveOnSurface",
     "IfcCompositeCurveSegment",
+    "IfcCompositeProfileDef",
     "IfcConnectionCurveGeometry",
     "IfcConnectionPointEccentricity",
     "IfcConnectionPointGeometry",
     "IfcConnectionSurfaceGeometry",
     "IfcConnectionVolumeGeometry",
     "IfcCsgSolid",
+    "IfcCShapeProfileDef",
     "IfcCurveBoundedPlane",
     "IfcCurveBoundedSurface",
     "IfcCylindricalSurface",
+    "IfcDerivedProfileDef",
     "IfcDirection",
     "IfcEllipse",
+    "IfcEllipseProfileDef",
     "IfcExtrudedAreaSolid",
     "IfcExtrudedAreaSolidTapered",
     "IfcFaceBasedSurfaceModel",
@@ -77,9 +94,12 @@ const CONCRETE_ENTITIES: &[&str] = &[
     "IfcIndexedPolygonalFace",
     "IfcIndexedPolygonalFaceWithVoids",
     "IfcIntersectionCurve",
+    "IfcIShapeProfileDef",
     "IfcLine",
     "IfcLocalPlacement",
+    "IfcLShapeProfileDef",
     "IfcMappedItem",
+    "IfcMirroredProfileDef",
     "IfcOffsetCurve2D",
     "IfcOffsetCurve3D",
     "IfcOuterBoundaryCurve",
@@ -90,8 +110,11 @@ const CONCRETE_ENTITIES: &[&str] = &[
     "IfcPolygonalBoundedHalfSpace",
     "IfcPolygonalFaceSet",
     "IfcPolyline",
+    "IfcProfileDef",
     "IfcRationalBSplineCurveWithKnots",
     "IfcRationalBSplineSurfaceWithKnots",
+    "IfcRectangleHollowProfileDef",
+    "IfcRectangleProfileDef",
     "IfcRectangularPyramid",
     "IfcRectangularTrimmedSurface",
     "IfcReparametrisedCompositeCurveSegment",
@@ -100,6 +123,7 @@ const CONCRETE_ENTITIES: &[&str] = &[
     "IfcRevolvedAreaSolidTapered",
     "IfcRightCircularCone",
     "IfcRightCircularCylinder",
+    "IfcRoundedRectangleProfileDef",
     "IfcSeamCurve",
     "IfcSectionedSpine",
     "IfcShellBasedSurfaceModel",
@@ -112,10 +136,14 @@ const CONCRETE_ENTITIES: &[&str] = &[
     "IfcSweptDiskSolid",
     "IfcSweptDiskSolidPolygonal",
     "IfcToroidalSurface",
+    "IfcTrapeziumProfileDef",
     "IfcTriangulatedFaceSet",
     "IfcTrimmedCurve",
+    "IfcTShapeProfileDef",
+    "IfcUShapeProfileDef",
     "IfcVector",
     "IfcVirtualGridIntersection",
+    "IfcZShapeProfileDef",
 ];
 
 /// Read every Rust source file in the crate, **excluding test modules**.
@@ -210,10 +238,13 @@ fn is_covered(entity: &str, source: &str, upper_source: &str) -> bool {
 fn the_inventory_matches_the_published_schema_counts() {
     assert_eq!(
         CONCRETE_ENTITIES.len(),
-        89,
-        "IFC4 ADD2 TC1 declares 89 concrete entities across the three geometry \
-         schemas (112 total, 23 abstract). Changing this number means the \
-         inventory was edited rather than the code fixed."
+        111,
+        "IFC4 ADD2 TC1 declares 111 concrete entities across the four geometry \
+         schemas (135 total, 24 abstract): 89 concrete across IfcGeometryResource, \
+         IfcGeometricModelResource and IfcGeometricConstraintResource, plus 22 \
+         concrete in IfcProfileResource (23 declared, IfcParameterizedProfileDef \
+         abstract). Changing this number means the inventory was edited rather \
+         than the code fixed."
     );
 
     let unique: BTreeSet<&&str> = CONCRETE_ENTITIES.iter().collect();
@@ -384,4 +415,91 @@ fn the_compiled_subtype_table_agrees_with_the_schema() {
     assert!(!is_a("IFCPLANE", "IFCCURVE"));
     assert!(!is_a("IFCPOLYLINE", "IFCSURFACE"));
     assert!(!is_a("IFCCARTESIANPOINT", "IFCCURVE"));
+}
+
+/// Naming an entity is not lowering it: profiles get a stricter gate.
+///
+/// `every_concrete_geometry_entity_is_covered` proves the crate NAMES an
+/// entity, which is the right bar for a resource type read through a view.
+/// For profiles it is too weak: adding a row to the subtype table would make
+/// that gate pass while `lower_profile` still refuses the family.
+///
+/// This test asserts the stronger property for the one family where the
+/// distinction bit us. Every concrete profile is either lowered by
+/// `lower/profile.rs`, or listed here with the reason it is not. A family in
+/// neither set fails, so a new profile cannot be quietly ignored.
+///
+/// The previous census reported "93 lowered, 1 unsupported" while 14 profile
+/// families were unimplemented, because the committed corpus contains no
+/// steel sections and a corpus-shaped census cannot see what it never meets.
+#[test]
+fn every_concrete_profile_is_lowered_or_declared_unlowered() {
+    let source = std::fs::read_to_string(
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/lower/profile.rs"),
+    )
+    .expect("profile lowerer");
+    let upper = source.to_ascii_uppercase();
+
+    let profiles: Vec<&str> = CONCRETE_ENTITIES
+        .iter()
+        .copied()
+        // Not ends_with: IfcArbitraryProfileDefWithVoids has a suffix.
+        .filter(|e| e.contains("ProfileDef"))
+        .collect();
+    assert_eq!(profiles.len(), 22, "IfcProfileResource concrete entities");
+
+    let mut unlowered = Vec::new();
+    for entity in &profiles {
+        // IfcProfileDef itself is the supertype: never instantiated directly.
+        if *entity == "IfcProfileDef" {
+            continue;
+        }
+        let tag = format!("\"{}\"", entity.to_ascii_uppercase());
+        if !upper.contains(&tag) {
+            unlowered.push(*entity);
+        }
+    }
+
+    assert!(
+        unlowered.is_empty(),
+        "{} concrete profile families are neither lowered nor declared \
+         unlowered in src/lower/profile.rs:\n{}",
+        unlowered.len(),
+        unlowered
+            .iter()
+            .map(|m| format!("  {m}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+}
+
+/// The subtype table must know every concrete profile family.
+///
+/// `is_a(.., "IFCPROFILEDEF")` is how collection members and select
+/// resolution find profiles. A family missing from the table answers
+/// "false" to every membership question and is silently invisible --
+/// which is exactly how profiles came to be absent from the census in
+/// the first place.
+#[test]
+fn the_subtype_table_knows_every_concrete_profile() {
+    use ifc_geometry::select::is_a;
+
+    let missing: Vec<&str> = CONCRETE_ENTITIES
+        .iter()
+        .copied()
+        .filter(|e| e.contains("ProfileDef"))
+        .filter(|e| !is_a(&e.to_ascii_uppercase(), "IFCPROFILEDEF"))
+        .collect();
+
+    assert!(
+        missing.is_empty(),
+        "{} concrete profile families are not resolvable through the subtype \
+         table, so is_a() cannot recognise them:\n{}",
+        missing.len(),
+        missing
+            .iter()
+            .map(|m| format!("  {m}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
 }

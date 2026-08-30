@@ -15,6 +15,22 @@ This page is synchronised from it at build time.
 
 ## [Unreleased]
 
+### Fixed
+
+- The schema coverage gate now enumerates `IfcProfileResource`, the fourth
+  geometry schema. It previously covered three, so the 22 concrete profile
+  families were never checked and coverage claims counted only what the
+  fixture corpus happened to contain.
+- `select::subtype` gained the 22 profile rows it was missing, so
+  `is_a(.., "IFCPROFILEDEF")` resolves profile families instead of
+  answering false for all of them.
+
+### Added
+
+- `lower/profile.rs` declares each unlowered profile family with its reason,
+  and `tests/schema_coverage.rs` fails if a concrete family is neither
+  lowered nor declared. 13 families are currently declared unlowered.
+
 ### Added
 
 - `ifc-geometry` lowers `IfcExtrudedAreaSolidTapered`,

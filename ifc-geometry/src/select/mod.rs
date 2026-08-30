@@ -23,6 +23,7 @@
 pub mod aggregate_selects;
 pub mod entity_selects;
 pub mod subtype;
+mod subtype_profile;
 
 pub use aggregate_selects::{
     ArcIndex, CurveOnSurface, CurveOrEdgeCurve, DimensionCount, GeometricSetSelect,
