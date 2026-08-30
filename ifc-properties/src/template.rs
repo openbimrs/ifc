@@ -1,7 +1,5 @@
 //! `IfcPropertySetTemplate` and property templates.
 //!
-//!
-//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!
@@ -12,3 +10,8 @@ mod property;
 mod property_set;
 
 mod relationship;
+
+pub use property_set::{
+    property_set_template, property_set_templates, property_template, template_of_set,
+    PropertySetTemplate, PropertyTemplate,
+};

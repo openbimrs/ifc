@@ -2,8 +2,6 @@
 //!
 //! Quantities authored in the file, as distinct from quantities derived from
 //! geometry -- the two disagree often enough that mixing them silently is a bug.
-//!
-//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!
@@ -18,3 +16,6 @@ mod edit;
 mod set;
 mod simple;
 mod validation;
+
+pub use set::{quantity_set, quantity_sets, stated_unit, Quantity, QuantityKind, QuantitySet};
+pub use validation::{compare, Comparison, ComputedQuantity, Tolerance};

@@ -53,9 +53,12 @@ PUBLISHED_STATUS = {
     # census, with tests, yet neither had a census row.
     "ifc-author": '<span class="status-implemented">Implemented</span>',
     "ifc-spatial": '<span class="status-implemented">Implemented</span>',
-    # SYS-ROOT implements system discovery and membership; the connectivity,
-    # port, flow and zone stages are still reserved names.
+    # All six PLAN tasks implemented: systems, ports, connectivity, flow,
+    # zones and directed queries.
     "ifc-systems": '<span class="status-implemented">Implemented</span>',
+    # PROP-PSET/QTY/UNIT/TEMPLATE/QUERY/CHECK implemented; PROP-EDIT is
+    # blocked on ifc-model MODEL-MUT, so the crate is not yet complete.
+    "ifc-properties": '<span class="status-partial">Partial</span>',
 }
 
 

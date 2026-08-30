@@ -1,7 +1,5 @@
 //! `IfcPropertySet` and single/enumerated/list/table properties.
 //!
-//!
-//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!
@@ -13,8 +11,11 @@
 
 mod complex;
 mod reference;
-mod scalar;
+pub(crate) mod scalar;
 mod set;
 mod table;
 
 mod aggregate;
+
+pub use scalar::{property, Property, PropertyValue};
+pub use set::{property_set, property_sets_by_object, AttachedSets, Attachment, PropertySet};

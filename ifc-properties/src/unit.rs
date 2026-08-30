@@ -3,8 +3,6 @@
 //! `IfcUnitAssignment` sets the model's units; derived and conversion-based
 //! units (imperial, US survey feet) must be resolved before a value means
 //! anything.
-//!
-//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!
@@ -19,3 +17,5 @@ mod derived;
 mod si;
 
 mod monetary;
+
+pub use assignment::{prefix_exponent, project_unit_for, project_units, unit, unit_type, UnitKind};

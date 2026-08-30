@@ -17,6 +17,14 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `ifc-properties` implements six of its seven plan tasks: property sets with
+  every value family, quantities, units, templates, occurrence/type precedence,
+  and comparison against externally computed measurements. Property values keep
+  their declared measure type, so a length stays distinguishable from a count.
+  SI prefixes are carried as exact decimal exponents rather than rounded
+  factors. `WR21`/`WR22` quantity breaches are reported -- neither is checked by
+  `ifcopenshell.validate`. `PROP-EDIT` remains blocked on `MODEL-MUT`.
+
 - `ifc-systems` completes its plan: flow roles and direction semantics, zones
   with their `WR1` membership rule, spatial containment vs referencing, and
   deterministic `upstream`/`downstream` queries oriented by port flow
