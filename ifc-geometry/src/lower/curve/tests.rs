@@ -211,11 +211,11 @@ fn composite_segments_keep_their_order_and_sense() {
     }
 }
 
-/// An unknown curve family is a typed report, never a substituted shape.
+/// A still-unlowered curve family is a typed report, never a substituted shape.
 #[test]
 fn an_unsupported_curve_family_is_reported_by_name() {
     let mut model = Model::new();
-    model.insert(EntityId(1), entity("IFCBSPLINECURVEWITHKNOTS", vec![]));
+    model.insert(EntityId(1), entity("IFCELLIPSE", vec![]));
 
     let scale = millimetres();
     let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());

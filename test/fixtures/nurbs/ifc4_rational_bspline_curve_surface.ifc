@@ -1,0 +1,22 @@
+ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('Synthetic IFC4 rational B-spline regression fixture'),'2;1');
+FILE_NAME('ifc4_rational_bspline_curve_surface.ifc','2026-08-30T00:00:00',('OpenBIM.rs'),('openbimrs'),'OpenBIM.rs','OpenBIM.rs','');
+FILE_SCHEMA(('IFC4'));
+ENDSEC;
+DATA;
+/* Rational quadratic quarter circle in the XY plane. */
+#1=IFCCARTESIANPOINT((1.,0.,0.));
+#2=IFCCARTESIANPOINT((1.,1.,0.));
+#3=IFCCARTESIANPOINT((0.,1.,0.));
+#10=IFCRATIONALBSPLINECURVEWITHKNOTS(2,(#1,#2,#3),.CIRCULAR_ARC.,.F.,.F.,(3,3),(0.,1.),.UNSPECIFIED.,(1.,0.7071067811865476,1.));
+#11=IFCBSPLINECURVEWITHKNOTS(2,(#1,#2,#3),.UNSPECIFIED.,.F.,.F.,(3,3),(0.,1.),.UNSPECIFIED.);
+/* Rational bilinear tensor-product patch; outer control list is the u axis. */
+#4=IFCCARTESIANPOINT((0.,0.,0.));
+#5=IFCCARTESIANPOINT((0.,2.,0.));
+#6=IFCCARTESIANPOINT((2.,0.,0.));
+#7=IFCCARTESIANPOINT((2.,2.,2.));
+#20=IFCRATIONALBSPLINESURFACEWITHKNOTS(1,1,((#4,#5),(#6,#7)),.UNSPECIFIED.,.F.,.F.,.F.,(2,2),(2,2),(0.,1.),(0.,1.),.UNSPECIFIED.,((1.,2.),(1.,1.)));
+#21=IFCBSPLINESURFACEWITHKNOTS(1,1,((#4,#5),(#6,#7)),.UNSPECIFIED.,.F.,.F.,.F.,(2,2),(2,2),(0.,1.),(0.,1.),.UNSPECIFIED.);
+ENDSEC;
+END-ISO-10303-21;

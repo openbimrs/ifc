@@ -31,7 +31,10 @@ This page is synchronised from it at build time.
   direction rather than by authoring order. Queries report when they crossed a
   port whose direction the file never stated, so an under-specified file
   cannot look authoritative.
-
+- Explicit-knot polynomial/rational IFC B-spline curves and surfaces now lower
+  into exact neutral Axiolid data. A synthetic IFC4 fixture proves parsed
+  degrees, controls, compact knots, multiplicities, weights, and scalar-oracle
+  evaluation.
 - `ifc-systems` reads distribution ports and the connection network. Ports
   resolve through both `IfcRelNests` and the legacy
   `IfcRelConnectsPortToElement`, carrying flow direction and owning element.

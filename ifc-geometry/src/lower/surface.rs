@@ -36,7 +36,7 @@ use ifc_model::EntityId;
 
 use crate::curve::bspline::KnotType;
 use crate::error::GeometryResult;
-use crate::lower::curve::lower_curve_node;
+use crate::lower::curve::{finite_values, lower_curve_node};
 use crate::lower::session::LoweringSession;
 use crate::resource::direction::resolve_unit;
 use crate::resource::placement::axis_placement_transform;
@@ -329,6 +329,10 @@ pub fn lower_bspline(
     let entity = session.entity(id, id)?;
     let view = BSplineSurface::new(id, entity);
     let type_name = session.type_name(id)?;
+    let u_degree = u16::try_from(view.u_degree()?)
+        .map_err(|_| session.degenerate(id, &type_name, "UDegree exceeds u16"))?;
+    let v_degree = u16::try_from(view.v_degree()?)
+        .map_err(|_| session.degenerate(id, &type_name, "VDegree exceeds u16"))?;
 
     let grid = view.control_points()?;
     let mut control_points = Vec::with_capacity(grid.u_count());
@@ -336,11 +340,14 @@ pub fn lower_bspline(
         let mut out_row = Vec::with_capacity(row.len());
         for point_id in row {
             let raw = cartesian_point_3d(session, id, *point_id)?;
-            let placed = frame.apply([
-                to_metres(session, raw[0]),
-                to_metres(session, raw[1]),
-                to_metres(session, raw[2]),
-            ]);
+            let placed = frame.apply(raw.map(|value| to_metres(session, value)));
+            finite_values(
+                session,
+                id,
+                &type_name,
+                "transformed control point",
+                &placed,
+            )?;
             out_row.push(axiolid_core::Point3::from_array(placed));
         }
         control_points.push(out_row);
@@ -352,22 +359,53 @@ pub fn lower_bspline(
     let v = view.v_knots()?.ok_or_else(|| {
         session.unsupported(id, &type_name, "B-spline surface without explicit v knots")
     })?;
+    finite_values(session, id, &type_name, "UKnots", &u.values)?;
+    finite_values(session, id, &type_name, "VKnots", &v.values)?;
+    let u_multiplicities = multiplicities(session, id, &type_name, u.multiplicities)?;
+    let v_multiplicities = multiplicities(session, id, &type_name, v.multiplicities)?;
+    let weights = view.weights()?;
+    if let Some(rows) = weights.as_ref() {
+        for row in rows {
+            finite_values(session, id, &type_name, "WeightsData", row)?;
+        }
+    }
+    let u_closed = view.u_closed().ok_or_else(|| {
+        session.unsupported(id, &type_name, "unknown UClosed is not lossless in bool")
+    })?;
+    let v_closed = view.v_closed().ok_or_else(|| {
+        session.unsupported(id, &type_name, "unknown VClosed is not lossless in bool")
+    })?;
 
     let surface = KernelBSpline {
-        u_degree: u16::try_from(view.u_degree()?).unwrap_or(u16::MAX),
-        v_degree: u16::try_from(view.v_degree()?).unwrap_or(u16::MAX),
+        u_degree,
+        v_degree,
         control_points,
         u_knots: u.values,
-        u_multiplicities: u.multiplicities.iter().map(|m| *m as u32).collect(),
+        u_multiplicities,
         v_knots: v.values,
-        v_multiplicities: v.multiplicities.iter().map(|m| *m as u32).collect(),
-        weights: view.weights()?,
-        u_closed: view.u_closed().unwrap_or(false),
-        v_closed: view.v_closed().unwrap_or(false),
+        v_multiplicities,
+        weights,
+        u_closed,
+        v_closed,
         self_intersect: view.self_intersect(),
         knot_spec: knot_spec(view.knot_spec()),
     };
     session.node_for(id, GeometryNode::Surface(Surface::BSpline(surface)))
+}
+
+fn multiplicities(
+    session: &LoweringSession<'_>,
+    id: EntityId,
+    type_name: &str,
+    values: Vec<usize>,
+) -> GeometryResult<Vec<u32>> {
+    values
+        .into_iter()
+        .map(|value| {
+            u32::try_from(value)
+                .map_err(|_| session.degenerate(id, type_name, "multiplicity exceeds u32"))
+        })
+        .collect()
 }
 
 /// Resolve a swept surface's `SweptCurve` to the curve it actually names.

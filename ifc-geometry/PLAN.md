@@ -85,6 +85,9 @@ parallel placeholders.
     indexed poly-curves still report a typed `Unsupported`.
   - Requires: `GEOM-CONTRACT`, `GEOM-SESSION`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+  - Completed slice: explicit-knot polynomial/rational B-splines preserve
+    compact knots, multiplicities, controls, and weights through lowering and
+    match scalar-oracle evaluation; other curve families remain open.
 - [ ] `GEOM-SURFACE` - lower elementary, swept, bounded, and B-spline surfaces
   - Requires: `GEOM-CONTRACT`, `GEOM-SESSION`, `GEOM-CURVE`.
   - Progress: all four groups now lower (`LOW-EXACT`) - elementary (plane,
@@ -93,6 +96,9 @@ parallel placeholders.
     B-spline families were fixture-blocked rather than effort-blocked; they
     are now covered by generated fixtures, see `src/lower/PLAN.md`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+  - Completed slice: explicit-knot polynomial/rational tensor-product B-splines
+    preserve both axes and control/weight nets and match scalar-oracle
+    evaluation; broader surface conformance and test depth remain open.
 - [x] `GEOM-BREP` - lower topology and 20 corpus faceted B-reps
   - Requires: `GEOM-SESSION`.
   - Evidence: `tests/lower_brep.rs`; corpus census rose 43 -> 64 lowered items
@@ -191,4 +197,10 @@ Append concise entries as `TASK-ID - proof command/result - material decision`.
 - `GEOM-SESSION` - `cargo test -p ifc-geometry` 413 passing, 4/4 mutation
   probes caught - recursive lowering shares one builder; `LoweredGeometry` is
   produced only by `LoweringSession::finish`.
+- `GEOM-CURVE` NURBS slice - `nurbs_import` and `nurbs_lowering` parse a synthetic
+  IFC4 rational curve/surface fixture through `openbim-step`/`ifc-step`, assert
+  degrees, compact knots, multiplicities, controls, and weights, then match
+  scalar-oracle evaluations. Explicit-knot polynomial/rational subtypes are
+  implemented; base convention-only splines and complete curve/surface work
+  remain open.
 Do not paste long logs or move standing invariants out of `AGENTS.md`.

@@ -25,13 +25,14 @@
 //! Deferring would require every consumer to carry a parallel transform stack.
 
 use axiolid_core::{Frame3, Point3, Vec3};
-use axiolid_curve::{Circle3, Curve3, Line3, Polyline3};
+use axiolid_curve::{BSplineCurve3, Circle3, Curve3, KnotSpec, Line3, Polyline3};
 use axiolid_model::{
     CurveRelation, CurveSegment, GeometryNode, NodeId, Transition, TrimSelector,
     TrimmingPreference as KernelPreference,
 };
 use ifc_model::EntityId;
 
+use crate::curve::bspline::{BSplineCurve, KnotType};
 use crate::curve::composite::{CompositeCurve, CompositeCurveSegment, TransitionCode};
 use crate::curve::conic::Circle;
 use crate::curve::line::Line;
@@ -76,6 +77,9 @@ fn build(
         "IFCCIRCLE" => circle(session, id, frame),
         "IFCTRIMMEDCURVE" => trimmed(session, id, frame),
         "IFCCOMPOSITECURVE" => composite(session, id, frame),
+        "IFCBSPLINECURVEWITHKNOTS" | "IFCRATIONALBSPLINECURVEWITHKNOTS" => {
+            bspline(session, id, frame)
+        }
         other => Err(session.unsupported(id, other, "curve family")),
     }
 }
@@ -269,6 +273,96 @@ fn composite(
         id,
         GeometryNode::CurveRelation(CurveRelation::Composite { segments }),
     )
+}
+
+/// Exact explicit-knot polynomial/rational B-spline curve.
+fn bspline(
+    session: &mut LoweringSession<'_>,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<NodeId> {
+    let type_name = session.type_name(id)?;
+    let entity = session.entity(id, id)?;
+    let view = BSplineCurve::new(id, entity);
+    let degree = u16::try_from(view.degree()?)
+        .map_err(|_| session.degenerate(id, &type_name, "Degree exceeds u16"))?;
+    let knots = view.knots()?.ok_or_else(|| {
+        session.unsupported(
+            id,
+            &type_name,
+            "explicit knots required for lossless lowering",
+        )
+    })?;
+    finite_values(session, id, &type_name, "Knots", &knots.values)?;
+    let multiplicities = knots
+        .multiplicities
+        .into_iter()
+        .map(|value| {
+            u32::try_from(value)
+                .map_err(|_| session.degenerate(id, &type_name, "multiplicity exceeds u32"))
+        })
+        .collect::<GeometryResult<Vec<_>>>()?;
+
+    let refs = view.control_point_refs()?;
+    let mut control_points = Vec::with_capacity(refs.len());
+    for point_ref in refs {
+        let placed = world_point(session, id, point_ref, frame)?;
+        finite_values(
+            session,
+            id,
+            &type_name,
+            "transformed control point",
+            &placed,
+        )?;
+        control_points.push(Point3::from_array(placed));
+    }
+    let weights = view.weights()?;
+    if let Some(values) = weights.as_deref() {
+        finite_values(session, id, &type_name, "WeightsData", values)?;
+    }
+    let closed = view.closed_curve().ok_or_else(|| {
+        session.unsupported(
+            id,
+            &type_name,
+            "unknown ClosedCurve is not lossless in bool",
+        )
+    })?;
+    session.node_for(
+        id,
+        GeometryNode::Curve3(Curve3::BSpline(BSplineCurve3 {
+            degree,
+            control_points,
+            knots: knots.values,
+            multiplicities,
+            weights,
+            closed,
+            self_intersect: view.self_intersect(),
+            knot_spec: bspline_knot_spec(view.knot_spec()),
+        })),
+    )
+}
+
+fn bspline_knot_spec(source: KnotType) -> KnotSpec {
+    match source {
+        KnotType::Uniform => KnotSpec::Uniform,
+        KnotType::QuasiUniform => KnotSpec::QuasiUniform,
+        KnotType::PiecewiseBezier => KnotSpec::PiecewiseBezier,
+        KnotType::Unspecified => KnotSpec::Unspecified,
+    }
+}
+
+pub(super) fn finite_values(
+    session: &LoweringSession<'_>,
+    id: EntityId,
+    type_name: &str,
+    field: &'static str,
+    values: &[f64],
+) -> GeometryResult<()> {
+    if values.iter().all(|value| value.is_finite()) {
+        Ok(())
+    } else {
+        Err(session.degenerate(id, type_name, field))
+    }
 }
 
 fn transition(code: TransitionCode) -> Transition {

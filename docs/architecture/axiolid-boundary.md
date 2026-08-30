@@ -63,6 +63,8 @@ Verified at the revision pinned by this workspace:
 - Ear-clipping triangulation for hole-free rings, and an Earcut-backed
   triangulation provider.
 - Neutral values for primitives, profiles, curves, surfaces, and B-rep topology.
+- Scalar reference evaluation for polynomial and rational B-spline curves and
+  surfaces, including analytic first surface partials.
 - An immutable shared geometry DAG with typed IDs.
 - A mesh Boolean provider, bounded by its own mesh contract.
 - CPU context and a GPU seam — a seam, not a bundled kernel suite.
@@ -73,9 +75,10 @@ The workspace pins Axiolid crates to an exact git revision rather than a
 version range, so geometry behaviour is reproducible across builds:
 
 ```toml
-axiolid-core = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "9e76a14…" }
+axiolid-core = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "c136b61…" }
 ```
 
-Only representation-level crates are pinned — `core`, `model`, `primitive`,
-`profile`, `curve`, `topology`. Execution providers are deliberately absent from
-this workspace's dependency graph.
+Production lowering pins only representation-level crates — `core`, `mesh`,
+`model`, `primitive`, `profile`, `curve`, `surface`, and `topology`.
+`axiolid-scalar` is a dev-only oracle used by import regressions; it does not
+enter the published adapter's production dependency graph.

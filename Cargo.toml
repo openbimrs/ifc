@@ -44,6 +44,7 @@ axiolid-model = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "
 axiolid-primitive = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "c136b61" }
 axiolid-profile = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "c136b61" }
 axiolid-surface = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "c136b61" }
+axiolid-scalar = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "c136b61" }
 axiolid-curve = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "c136b61" }
 axiolid-topology = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "c136b61" }
 

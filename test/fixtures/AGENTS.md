@@ -123,6 +123,9 @@ kept intentionally small; this is a curated edge-case set, not a bulk corpus.
   `pass-*` / `fail-*` pairs for duplicated GUIDs, selected simple types,
   complex numbers, malformed headers. These are IFC-spec-conformance cases,
   not geometry.
+- `nurbs/` — minimal synthetic IFC4 rational B-spline curve/surface fixture,
+  derived from the checked-out IFC4 ADD2 TC1 declarations; see its `README.md`
+  for analytical oracles and provenance.
 
 ## Agent rules
 

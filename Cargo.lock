@@ -32,6 +32,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "axiolid-kernel"
+version = "0.1.0"
+source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=c136b61#c136b612d168d831063e7601053bbcd421f00407"
+dependencies = [
+ "axiolid-core",
+ "axiolid-mesh",
+ "thiserror",
+]
+
+[[package]]
+name = "axiolid-measure"
+version = "0.1.0"
+source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=c136b61#c136b612d168d831063e7601053bbcd421f00407"
+dependencies = [
+ "axiolid-core",
+ "axiolid-mesh",
+]
+
+[[package]]
 name = "axiolid-mesh"
 version = "0.1.0"
 source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=c136b61#c136b612d168d831063e7601053bbcd421f00407"
@@ -68,6 +87,29 @@ source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=c136b61#c136b612
 dependencies = [
  "axiolid-core",
  "axiolid-curve",
+]
+
+[[package]]
+name = "axiolid-scalar"
+version = "0.1.0"
+source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=c136b61#c136b612d168d831063e7601053bbcd421f00407"
+dependencies = [
+ "axiolid-core",
+ "axiolid-curve",
+ "axiolid-kernel",
+ "axiolid-measure",
+ "axiolid-mesh",
+ "axiolid-primitive",
+ "axiolid-spatial",
+ "axiolid-surface",
+]
+
+[[package]]
+name = "axiolid-spatial"
+version = "0.1.0"
+source = "git+https://github.com/axiolid/axiolid-kernel.git?rev=c136b61#c136b612d168d831063e7601053bbcd421f00407"
+dependencies = [
+ "axiolid-core",
 ]
 
 [[package]]
@@ -263,6 +305,7 @@ dependencies = [
  "axiolid-model",
  "axiolid-primitive",
  "axiolid-profile",
+ "axiolid-scalar",
  "axiolid-surface",
  "axiolid-topology",
  "ifc-model",
