@@ -38,6 +38,14 @@ pub struct Model {
     /// IfcWall" is the most common query in any consumer.
     by_type: AHashMap<String, Vec<EntityId>>,
     max_id: u64,
+    /// Bumped by every structural change. A transaction opened against one
+    /// revision refuses to commit against another, so an editor working from
+    /// a stale view is told rather than silently overwriting.
+    ///
+    /// Not a content hash: two different edit sequences can reach the same
+    /// bytes and still get different revisions. It answers "did anything
+    /// change", which is the question optimistic concurrency asks.
+    revision: u64,
     /// Non-fatal findings from the read that produced this model. Empty
     /// unless a codec recovered from damaged input.
     diagnostics: Vec<Diagnostic>,
@@ -100,12 +108,14 @@ impl Model {
                     // Same type: the entry is still correct, so re-adding it
                     // below would duplicate it.
                     self.max_id = self.max_id.max(id.0);
+                    self.revision += 1;
                     return;
                 }
             }
         }
         self.by_type.entry(key).or_default().push(id);
         self.max_id = self.max_id.max(id.0);
+        self.revision += 1;
     }
 
     /// Append an entity, allocating the next free id.
@@ -113,6 +123,27 @@ impl Model {
         let id = EntityId(self.max_id + 1);
         self.insert(id, entity);
         id
+    }
+
+    /// How many structural changes this model has seen.
+    ///
+    /// Starts at zero and increases; the absolute value carries no meaning
+    /// beyond comparison. See [`Transaction`](crate::Transaction).
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+
+    /// Record a structural change made through a sibling mutation module.
+    pub(crate) fn bump_revision(&mut self) {
+        self.revision += 1;
+    }
+
+    /// The id [`Model::push`] would allocate next.
+    ///
+    /// A transaction reserves ids from here so several creates in one batch
+    /// cannot collide with each other or with existing entities.
+    pub fn next_id(&self) -> EntityId {
+        EntityId(self.max_id + 1)
     }
 
     /// Look up one entity.

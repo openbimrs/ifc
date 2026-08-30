@@ -1,6 +1,6 @@
 # ifc-properties implementation plan
 
-Status: partial; PROP-EDIT remains, blocked on ifc-model MODEL-MUT.
+Status: implemented; every task in the work queue is complete.
 Last updated: 2026-08-19
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
@@ -49,7 +49,7 @@ owner and expose a public symbol only through an intentional parent re-export.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [x] `PROP-QUERY` - resolve occurrence/type property assignment with precedence made explicit
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `PROP-EDIT` - write/update quantities transactionally after MODEL-MUT
+- [x] `PROP-EDIT` - write/update quantities transactionally after MODEL-MUT
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [x] `PROP-CHECK` - accept externally computed measurements and compare without depending on geometry
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
@@ -86,3 +86,9 @@ PROP-CHECK - cargo test -p ifc-properties (19 passing) - comparison takes a
   caller-computed value and never opens geometry; unit differences are
   REPORTED rather than converted, because a silent mm/m conversion is how a
   1000x error passes a check.
+
+PROP-EDIT - cargo test -p ifc-properties (25 passing) - helpers STAGE onto a
+caller-owned `Transaction` and never commit, so a takeoff spanning many
+elements lands atomically or not at all. Writes preserve the declared measure
+type and refuse a non-quantity target before staging, so a rejected edit never
+reaches the batch. `IfcCountMeasure` is written as an INTEGER per the schema.

@@ -61,3 +61,48 @@ pub enum PropertyAnomaly {
         value: f64,
     },
 }
+
+/// A refused authoring request.
+///
+/// Distinct from [`PropertyAnomaly`], which reports what a FILE got wrong.
+/// These say the CALLER asked for something the schema does not allow, and
+/// are returned before anything is staged so a rejected edit never reaches
+/// a transaction.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PropertyError {
+    /// The entity is not in the model.
+    MissingEntity {
+        /// The id named by the caller.
+        id: EntityId,
+    },
+    /// The entity is not a simple quantity type.
+    NotAQuantity {
+        /// The entity.
+        id: EntityId,
+        /// What it actually is.
+        type_name: String,
+    },
+    /// The entity is not an `IfcElementQuantity`.
+    NotAQuantitySet {
+        /// The entity.
+        id: EntityId,
+        /// What it actually is.
+        type_name: String,
+    },
+}
+
+impl std::fmt::Display for PropertyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::MissingEntity { id } => write!(f, "#{} is not in the model", id.0),
+            Self::NotAQuantity { id, type_name } => {
+                write!(f, "#{} is a {type_name}, not a simple quantity", id.0)
+            }
+            Self::NotAQuantitySet { id, type_name } => {
+                write!(f, "#{} is a {type_name}, not an IfcElementQuantity", id.0)
+            }
+        }
+    }
+}
+
+impl std::error::Error for PropertyError {}

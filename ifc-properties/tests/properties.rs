@@ -1,34 +1,14 @@
-//! `ifc-properties`: property sets, quantities, units and resolution.
+//! `ifc-properties` reading: sets, values, units, templates, checks.
 
-use ifc_model::{Codec, EntityId, Model};
+mod common;
+
+use common::{fixture, wall_named};
+use ifc_model::{EntityId, Model};
 use ifc_properties::{
     compare, prefix_exponent, project_unit_for, property_set_templates, property_sets_by_object,
     quantity_sets, resolved_properties, template_of_set, Attachment, Comparison, ComputedQuantity,
     PropertyAnomaly, PropertyValue, Quantity, QuantityKind, Source, Tolerance, UnitKind,
 };
-
-fn fixture() -> Model {
-    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../test/fixtures/synthetic-properties/synthetic_properties.ifc");
-    ifc_step::StepCodec
-        .read_path(&path)
-        .expect("fixture parses")
-}
-
-fn wall_named(model: &Model, name: &str) -> EntityId {
-    *model
-        .ids_of_type("IFCWALL")
-        .iter()
-        .find(|id| {
-            model
-                .get(**id)
-                .and_then(|e| e.attributes.get(2))
-                .and_then(|v| v.unwrap_typed().as_text())
-                .map(|n| n == name)
-                .unwrap_or(false)
-        })
-        .expect("wall in fixture")
-}
 
 // ---- PROP-PSET -----------------------------------------------------------
 

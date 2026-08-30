@@ -1,6 +1,7 @@
 # ifc-model implementation plan
 
-Status: working core; reverse indexes, mutation transactions, and bounded traversal are incomplete.
+Status: working core; MODEL-MUT lands transactional authoring. Reverse-index
+benchmarks, bounded traversal reuse, provenance and perf baselines remain.
 Last updated: 2026-08-19
 
 This is task state, not ambient context. Follow `AGENTS.md`. Claim one task ID,
@@ -19,8 +20,8 @@ owner and expose a public symbol only through an intentional parent re-export.
 - `src/index/reverse.rs`: target ID to referring entity/slot index
 - `src/index/builder.rs`: coherent initial index construction
 - `src/mutation/edit.rs`: explicit edit operations
-- `src/mutation/transaction.rs`: validate then commit atomically
-- `src/mutation/conflict.rs`: conflict and stale-revision diagnostics
+- `src/mutation/transaction.rs`: validate then commit atomically (implemented)
+- `src/mutation/conflict.rs`: conflict and stale-revision diagnostics (implemented)
 - `src/traverse/budget.rs`: depth/node/cycle budgets
 - `src/traverse/dfs.rs`: bounded depth-first traversal
 - `src/traverse/bfs.rs`: bounded breadth-first traversal
@@ -31,7 +32,7 @@ owner and expose a public symbol only through an intentional parent re-export.
 
 - [ ] `MODEL-INV` - implement and benchmark a coherent reverse-reference index; prove insert/update/remove behavior
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
-- [ ] `MODEL-MUT` - add transactional authoring operations without domain setters
+- [x] `MODEL-MUT` - add transactional authoring operations without domain setters
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
 - [ ] `MODEL-TRV` - make traversal budgets and cycle reports reusable by projections
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
@@ -44,3 +45,11 @@ owner and expose a public symbol only through an intentional parent re-export.
 
 Append concise entries as `TASK-ID - proof command/result - material decision`.
 Do not paste long logs or transient process state.
+
+MODEL-MUT - cargo test -p ifc-model (17 passing in tests/mutation.rs) - preflight
+validates against a PROJECTED model, so a batch may create an entity and
+reference it, or remove a target and re-point its referrers, in one unit. Every
+failure is decided before the first write, which is why commit needs no undo
+log. `Model::revision` bumps on every structural change so a stale transaction
+is refused rather than applied to state its author never saw. Removal refuses
+to orphan a surviving reference, closing the gap `Model::remove` documents.

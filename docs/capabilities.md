@@ -28,11 +28,11 @@ code.
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
 | `ifc-geometry` | 25,067 | 90 | 6 | 30 | <span class="status-partial">Partial</span> |
+| `ifc-properties` | 2,417 | 29 | 14 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-template-catalog` | 2,403 | 28 | 3 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 2,114 | 23 | 0 | 7 | <span class="status-implemented">Implemented</span> |
-| `ifc-properties` | 2,102 | 29 | 15 | 1 | <span class="status-partial">Partial</span> |
+| `ifc-model` | 2,060 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 1,586 | 20 | 5 | 2 | <span class="status-implemented">Implemented</span> |
-| `ifc-model` | 1,483 | 25 | 7 | 9 | <span class="status-implemented">Implemented</span> |
 | `openbim-ifc` | 888 | 6 | 0 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-schema` | 768 | 10 | 4 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 658 | 4 | 0 | 1 | <span class="status-implemented">Implemented</span> |
@@ -75,6 +75,8 @@ later, but they must never be mistaken for working code.
 | Spatial containment tree traversal | <span class="status-implemented">Implemented</span> | `ifc-spatial::SpatialTree`; facade feature `spatial`. See below. |
 | Objectified relationship traversal | <span class="status-partial">Partial</span> | `ifc-spatial::relation` reads `IfcRelAggregates`, `IfcRelContainedInSpatialStructure`, `IfcRelNests`. Other `IfcRel*` families are not interpreted. |
 | Distribution systems, ports and connectivity | <span class="status-implemented">Implemented</span> | `ifc-systems` reads systems and membership, ports through both `IfcRelNests` and the legacy `IfcRelConnectsPortToElement`, the connection network, flow roles and direction, zones with their `WR1` membership rule, spatial containment vs referencing, and direction-aware `upstream`/`downstream` queries. Relationship-only: no geometry is read, so a geometry-free file still yields a full network. |
+| Transactional authoring | <span class="status-implemented">Implemented</span> | `ifc-model::Transaction` stages structural edits, validates them against the projected end state, and applies them as a unit. A removal that would orphan a surviving reference is refused, as is a commit against a model whose revision moved since the transaction opened. Schema-agnostic: no domain setters. |
+| Quantity authoring | <span class="status-implemented">Implemented</span> | `ifc-properties` stages quantity writes onto a caller-owned transaction, so a takeoff spanning many elements lands atomically. The declared measure type is preserved on every write. |
 | Property sets and every property value family | <span class="status-implemented">Implemented</span> | `ifc-properties` reads single, enumerated, bounded, list, table, reference and complex properties. The declared measure type (`IfcLengthMeasure` and friends) is retained, because it is the only statement of what a bare number means. |
 | Occurrence/type property precedence | <span class="status-implemented">Implemented</span> | An occurrence property set overrides a same-named set inherited from the object's type. The shadowed type set is kept, so a checker can explain why an effective value differs from the type default. |
 | Quantities and unit resolution | <span class="status-implemented">Implemented</span> | Simple and complex quantities, SI prefixes carried as exact decimal exponents, conversion-based and derived units. `WR21` (unit matches quantity kind) and `WR22` (non-negative value) breaches are reported; `ifcopenshell.validate` checks neither. Quantities are read as authored assertions and never computed from geometry. |

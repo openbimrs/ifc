@@ -38,6 +38,7 @@
 //! | [`guid`] | IFC's base-64 GlobalId encoding |
 //! | [`diagnostic`] | Non-fatal findings a codec attaches after a recovered read |
 //! | `index` | Derived indices: inverse references |
+//! | [`mutation`] | Transactional authoring: staged edits, preflight, commit |
 //! | `relation` | Structural relationship traversal (no domain meaning) |
 //! | `spatial` | The spatial containment tree |
 //! | `traverse` | Graph walks over references |
@@ -51,7 +52,7 @@ pub mod guid;
 pub mod header;
 pub mod index;
 pub mod model;
-mod mutation;
+pub mod mutation;
 mod provenance;
 mod relation;
 mod spatial;
@@ -65,5 +66,6 @@ pub use error::{ModelError, ModelResult};
 pub use header::Header;
 pub use index::{Referrer, ReverseIndex};
 pub use model::Model;
+pub use mutation::{Applied, Conflict, Edit, Transaction};
 pub use traverse::{breadth_first, depth_first, find_cycle, Budget, Stop, Walk};
 pub use value::{EntityId, Value};

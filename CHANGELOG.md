@@ -8,6 +8,12 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `ifc-model` gains transactional authoring: `Transaction` stages structural
+  edits, validates them against a projected end state, and commits atomically.
+  Removing an entity that a surviving entity still references is refused, and
+  a transaction opened against a stale model revision will not commit.
+- `ifc-properties` completes `PROP-EDIT`: quantity authoring helpers stage onto
+  a caller-owned transaction, preserving each quantity's declared measure type.
 
 - `ifc-properties` implements six of its seven plan tasks: property sets with
   every value family, quantities, units, templates, occurrence/type precedence,

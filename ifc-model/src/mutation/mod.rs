@@ -4,14 +4,15 @@
 //!
 //! - `edit.rs`: schema-agnostic edit operations (`set_attribute`, `retype`,
 //!   `remove`) — the mutable counterpart to `insert`/`push`.
-//! - `transaction.rs`: preflight and atomic commit. Planned; not yet owned.
-//! - `conflict.rs`: ID/reference/index conflict diagnostics. Planned; not yet
-//!   owned.
+//! - `transaction.rs`: preflight and atomic commit.
+//! - `conflict.rs`: ID/reference/index conflict diagnostics.
 //!
-//! This module is private; its only public surface is the inherent `Model`
-//! methods `edit.rs` adds, re-exported at the crate root alongside every
-//! other `Model` capability.
+//! `edit.rs` adds inherent `Model` methods; `transaction.rs` owns the batched
+//! authoring contract. Both are re-exported at the crate root.
 
 mod conflict;
 mod edit;
 mod transaction;
+
+pub use conflict::Conflict;
+pub use transaction::{Applied, Edit, Transaction};

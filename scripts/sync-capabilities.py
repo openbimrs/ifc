@@ -58,7 +58,7 @@ PUBLISHED_STATUS = {
     "ifc-systems": '<span class="status-implemented">Implemented</span>',
     # PROP-PSET/QTY/UNIT/TEMPLATE/QUERY/CHECK implemented; PROP-EDIT is
     # blocked on ifc-model MODEL-MUT, so the crate is not yet complete.
-    "ifc-properties": '<span class="status-partial">Partial</span>',
+    "ifc-properties": '<span class="status-implemented">Implemented</span>',
 }
 
 

@@ -42,12 +42,15 @@ mod template;
 mod unit;
 mod value;
 
-pub use error::PropertyAnomaly;
+pub use error::{PropertyAnomaly, PropertyError};
 pub use pset::{
     property, property_set, property_sets_by_object, AttachedSets, Attachment, Property,
     PropertySet, PropertyValue,
 };
-pub use quantity::{compare, Comparison, ComputedQuantity, Tolerance};
+pub use quantity::{
+    add_quantity_to_set, compare, create_quantity, set_description, set_name, set_quantity_value,
+    Comparison, ComputedQuantity, Tolerance,
+};
 pub use quantity::{quantity_set, quantity_sets, stated_unit, Quantity, QuantityKind, QuantitySet};
 pub use query::{
     properties_of, property_value, resolved_properties, ResolvedProperties, ResolvedSet, Source,

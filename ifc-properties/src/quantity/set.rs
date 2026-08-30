@@ -64,6 +64,43 @@ pub enum QuantityKind {
 }
 
 impl QuantityKind {
+    /// The kind named by an entity type, or `None` if it is not a simple
+    /// quantity. Case-insensitive, because a type name reaching here may
+    /// come from a caller rather than the upper-cased parser.
+    #[must_use]
+    pub fn from_type_name(name: &str) -> Option<Self> {
+        Self::from_type(&name.to_ascii_uppercase())
+    }
+
+    /// The entity type name for this kind, in schema casing.
+    #[must_use]
+    pub fn type_name(self) -> &'static str {
+        match self {
+            Self::Length => "IfcQuantityLength",
+            Self::Area => "IfcQuantityArea",
+            Self::Volume => "IfcQuantityVolume",
+            Self::Count => "IfcQuantityCount",
+            Self::Weight => "IfcQuantityWeight",
+            Self::Time => "IfcQuantityTime",
+        }
+    }
+
+    /// The measure type this kind's value slot carries.
+    ///
+    /// Fixed by the schema per subtype: an `IfcQuantityArea` holds an
+    /// `IfcAreaMeasure` and nothing else.
+    #[must_use]
+    pub fn measure_type(self) -> &'static str {
+        match self {
+            Self::Length => "IfcLengthMeasure",
+            Self::Area => "IfcAreaMeasure",
+            Self::Volume => "IfcVolumeMeasure",
+            Self::Count => "IfcCountMeasure",
+            Self::Weight => "IfcMassMeasure",
+            Self::Time => "IfcTimeMeasure",
+        }
+    }
+
     fn from_type(name: &str) -> Option<Self> {
         Some(match name {
             "IFCQUANTITYLENGTH" => Self::Length,

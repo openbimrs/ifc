@@ -54,7 +54,9 @@ impl Model {
         if index >= entity.attributes.len() {
             entity.attributes.resize(index + 1, Value::Null);
         }
-        Some(std::mem::replace(&mut entity.attributes[index], value))
+        let previous = std::mem::replace(&mut entity.attributes[index], value);
+        self.bump_revision();
+        Some(previous)
     }
 
     /// Apply several attribute edits to one entity as a single unit.
@@ -81,6 +83,7 @@ impl Model {
             }
             previous.push(std::mem::replace(&mut entity.attributes[index], value));
         }
+        self.bump_revision();
         Some(previous)
     }
 
@@ -103,6 +106,7 @@ impl Model {
         let new_name = type_name.into();
         if previous.eq_ignore_ascii_case(&new_name) {
             entity.type_name = new_name;
+            self.bump_revision();
             return Some(previous);
         }
         entity.type_name = new_name.clone();
@@ -113,6 +117,7 @@ impl Model {
             ids.retain(|existing| *existing != id);
         }
         self.by_type_mut().entry(new_key).or_default().push(id);
+        self.bump_revision();
 
         Some(previous)
     }
@@ -130,6 +135,7 @@ impl Model {
             ids.retain(|existing| *existing != id);
         }
         self.order_mut().retain(|existing| *existing != id);
+        self.bump_revision();
         Some(entity)
     }
 

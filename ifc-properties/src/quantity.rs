@@ -17,5 +17,8 @@ mod set;
 mod simple;
 mod validation;
 
+pub use edit::{
+    add_quantity_to_set, create_quantity, set_description, set_name, set_quantity_value,
+};
 pub use set::{quantity_set, quantity_sets, stated_unit, Quantity, QuantityKind, QuantitySet};
 pub use validation::{compare, Comparison, ComputedQuantity, Tolerance};
