@@ -69,25 +69,34 @@ and check it off only after the proof runs.
 - [ ] `LOW-EXACT` - exact profile/surface node construction
   - Requires: `LOW-CONTRACT`, `INPUT-PROFILE`, `INPUT-MAT`.
   - Scope note: the curve third is done, see `LOW-CURVE`. Profiles already
-    lower via `lower::profile`. What remains here is exact SURFACE nodes.
-  - Done: `IfcPlane` and `IfcSurfaceOfLinearExtrusion` lower via
-    `lower/surface.rs`. `Transform::to_geom_frame` carries the placement's own
-    U/V axes, so a surface keeps the parameterisation trims are taken against.
-    Proof: 7 unit tests, `tests/lower_surface.rs` (3 corpus tests), 6/6
-    mutation probes, crate clippy in both feature columns.
-  - Blocked, with evidence: `IfcCylindricalSurface`, `IfcSphericalSurface`,
-    `IfcToroidalSurface`, `IfcSurfaceOfRevolution` and the B-spline families
-    have complete readers in `crate::surface` and kernel variants waiting, but
-    no licensed fixture exists. Surveyed 909 `.ifc` files across ifc-lite
-    (MPL-2.0), IfcOpenShell (LGPL-3.0), IfcOpenShell/files (NO licence) and
-    buildingSMART (CC-BY-4.0): every file carrying these families is in the
-    unlicensed repo. They stay in `dispatch::PLANNED` rather than shipping
-    lowering code no fixture can exercise.
-  - Decision: `IfcArbitraryOpenProfileDef` is reported unsupported with a
-    stated reason, not approximated. The neutral profile model is built on
-    closed contours; closing the curve would fabricate a face the file never
-    described. This is what blocks `IFCSURFACECURVESWEPTAREASOLID`, whose
-    lowering is implemented and waiting on it.
+    lower via `lower::profile`. The SURFACE third is now done too (below);
+    this task stays open because its declared prerequisites `LOW-CONTRACT`,
+    `INPUT-PROFILE` and `INPUT-MAT` are themselves still pending.
+  - Done (surface third): planes, linear extrusions, the curved elementary families
+    (cylinder, sphere, torus), `IfcSurfaceOfRevolution`,
+    `IfcRectangularTrimmedSurface`, `IfcBSplineSurfaceWithKnots` and
+    `IfcCurveBoundedPlane` all lower via `lower/surface.rs`.
+    `Transform::to_geom_frame` carries the placement's own U/V axes, so a
+    surface keeps the parameterisation trims are taken against.
+    Proof: 12 unit tests, `tests/lower_surface.rs` (3 tests) plus
+    `tests/lower_synthetic_surfaces.rs` (7 tests), 8/8 mutation probes,
+    crate clippy in both feature columns.
+  - Fixture note: the curved and B-spline families had NO licensed source.
+    A survey of 909 `.ifc` files across ifc-lite (MPL-2.0), IfcOpenShell
+    (LGPL-3.0), IfcOpenShell/files (no licence) and buildingSMART
+    (CC-BY-4.0) found every instance of them sitting in the unlicensed repo.
+    They are now exercised by `test/fixtures/synthetic-surfaces/`, generated
+    by `tools/gen_surface_fixtures.py`. Generated output is our own work, so
+    the licence question does not arise; the generator is committed alongside
+    it so the fixtures stay reproducible rather than opaque blobs.
+  - Decision: `IfcArbitraryOpenProfileDef` is still reported unsupported when
+    used as a PROFILE - the neutral profile model is built on closed contours,
+    and closing the curve would fabricate a face the file never described.
+    When the same entity appears as a swept surface's `SweptCurve` it is a
+    generatrix rather than an area, so it is unwrapped to the curve it names.
+    That distinction is what unblocked `IFCSURFACECURVESWEPTAREASOLID`, which
+    now lowers end to end on the duct-elbow fixture.
+
 - [x] `LOW-CSG` - CSG solids, CSG primitives, and swept-disk solids
   - Requires: `LOW-CURVE`, `LOW-DISPATCH`.
   - Scope: the CSG and swept-disk families of the solid parent task; that

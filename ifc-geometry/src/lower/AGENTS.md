@@ -13,6 +13,12 @@ Record progress there.
 - one shared graph builder, memo table, active recursion stack, and provenance map
 - unit/frame/context composition
 - exact curve/surface/profile/solid nodes (`curve.rs`, `surface.rs`, `csg.rs`)
+
+`surface.rs` scales a trim parameter by the BASIS surface's quantity kind:
+angle on a revolved or conic direction, length on a planar one. Applying one
+factor to both silently rescales patches on files authored in degrees.
+An `IfcArbitraryOpenProfileDef` is refused as a profile but unwrapped when it
+appears as a swept surface's generatrix - there it names a curve, not an area.
 - tessellated face sets as meshes (`tessellated`), never as topology
 - mapped instances and boolean trees
 - CSG solids, CSG primitives, and swept-disk solids (`csg.rs`)

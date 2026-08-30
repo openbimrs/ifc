@@ -87,9 +87,11 @@ parallel placeholders.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [ ] `GEOM-SURFACE` - lower elementary, swept, bounded, and B-spline surfaces
   - Requires: `GEOM-CONTRACT`, `GEOM-SESSION`, `GEOM-CURVE`.
-  - Progress: planes and linear-extrusion surfaces lower (`LOW-EXACT`). The
-    curved and B-spline families are fixture-blocked, not effort-blocked: no
-    licensed corpus file contains one. See `src/lower/PLAN.md` for the survey.
+  - Progress: all four groups now lower (`LOW-EXACT`) - elementary (plane,
+    cylinder, sphere, torus), swept (linear extrusion, revolution), bounded
+    (rectangular-trimmed, curve-bounded plane) and B-spline. The curved and
+    B-spline families were fixture-blocked rather than effort-blocked; they
+    are now covered by generated fixtures, see `src/lower/PLAN.md`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [x] `GEOM-BREP` - lower topology and 20 corpus faceted B-reps
   - Requires: `GEOM-SESSION`.

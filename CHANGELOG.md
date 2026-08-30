@@ -9,6 +9,39 @@ and this project follows Semantic Versioning.
 
 ### Added
 
+- `ifc-geometry` lowers the remaining exact surface families:
+  `IfcCylindricalSurface`, `IfcSphericalSurface`, `IfcToroidalSurface`,
+  `IfcSurfaceOfRevolution`, `IfcRectangularTrimmedSurface`,
+  `IfcBSplineSurfaceWithKnots` and `IfcCurveBoundedPlane`. Radii and axis
+  origins convert to metres while frame axes stay unit length, so a placement
+  keeps the U/V parameterisation that trims are taken against.
+
+- A trim parameter is scaled by the **basis surface's** quantity kind: angle on
+  a revolved or conic direction, length on a planar one. A file in degrees with
+  a length factor applied turns a 90-degree patch into roughly 0.0016 of one,
+  and nothing downstream reports it because the surface is still valid.
+
+- `test/fixtures/synthetic-surfaces/` — 4 generated IFC4 fixtures, plus the
+  `tools/gen_surface_fixtures.py` script that produces them. No licensed public
+  corpus carries curved or B-spline surfaces: `ifc-lite` (MPL-2.0) has none,
+  the buildingSMART sets (CC-BY-4.0) hold only faceted breps and extrusions,
+  and the one repo that does have them publishes no licence at all. Generating
+  our own is the only licence-clean route, and committing the generator keeps
+  the fixtures reproducible instead of opaque. All four pass
+  `ifcopenshell.validate` with zero issues.
+
+### Fixed
+
+- `IfcSurfaceCurveSweptAreaSolid` now lowers end to end. Its `SweptCurve`
+  arrives wrapped in an `IfcArbitraryOpenProfileDef`; treating that wrapper as
+  a profile demanded a closed contour it cannot supply. As a swept surface's
+  generatrix it is a curve, not an area, so it is unwrapped to the curve it
+  names. Used as an actual profile the entity is still refused with a stated
+  reason -- closing it would fabricate a face the file never described.
+  Corpus census rose 80 -> 81.
+
+### Added
+
 - `ifc-geometry` lowers `IfcPlane` and `IfcSurfaceOfLinearExtrusion` into
   `GeometryNode::Surface` and `SurfaceRelation::LinearExtrusion`, with a new
   `Transform::to_geom_frame` that carries a placement's own U/V axes into the

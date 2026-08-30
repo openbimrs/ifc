@@ -18,6 +18,11 @@ use crate::transform::Transform;
 use crate::units::UnitScale;
 
 /// A plane at `origin` whose placement carries explicit Z and X axes.
+/// A STEP list of reals, the shape coordinates and ratios take.
+fn reals(values: &[f64]) -> Value {
+    Value::List(values.iter().map(|v| n(*v)).collect())
+}
+
 fn plane_model(origin: [f64; 3], axis: [f64; 3], ref_dir: [f64; 3]) -> Model {
     let mut model = Model::default();
     model.insert(
@@ -145,19 +150,18 @@ fn a_non_unit_authored_axis_is_normalized_into_the_frame() {
 /// keeps the gap auditable instead of silently flattening a cylinder to its
 /// tangent plane.
 #[test]
-fn a_curved_surface_is_reported_as_unsupported_by_name() {
+fn an_unlowered_surface_family_is_reported_by_name() {
     let mut model = plane_model([0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]);
-    model.insert(
-        EntityId(6),
-        entity("IFCCYLINDRICALSURFACE", vec![r(4), n(2.5)]),
-    );
+    // IfcSurfaceOfLinearExtrusion and the curved elementary families now
+    // lower; IfcPcurve does not, and it is a surface by the schema.
+    model.insert(EntityId(6), entity("IFCPCURVE", vec![r(5), Value::Null]));
     let scale = UnitScale::default();
     let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
     let error = lower_surface_node(&mut session, EntityId(6), Transform::identity())
-        .expect_err("cylindrical surfaces are not lowered yet");
+        .expect_err("pcurves are not lowered yet");
     assert!(error.is_unsupported(), "this is a gap, not corruption");
     assert!(
-        error.to_string().contains("IFCCYLINDRICALSURFACE"),
+        error.to_string().contains("IFCPCURVE"),
         "the report must name the family, got: {error}"
     );
 }
@@ -348,5 +352,323 @@ fn a_placed_extrusion_rotates_its_direction_but_never_translates_it() {
         direction.to_array(),
         [0.0, 0.0, 1.0],
         "a pure translation must leave the direction untouched"
+    );
+}
+
+/// A plane with a square outer boundary and one square hole.
+fn curve_bounded_model() -> Model {
+    let mut model = Model::default();
+    model.insert(
+        EntityId(1),
+        entity("IFCCARTESIANPOINT", vec![reals(&[0.0, 0.0, 0.0])]),
+    );
+    model.insert(
+        EntityId(2),
+        entity("IFCAXIS2PLACEMENT3D", vec![r(1), Value::Null, Value::Null]),
+    );
+    model.insert(EntityId(3), entity("IFCPLANE", vec![r(2)]));
+
+    let mut pid = 4u64;
+    let mut poly = |model: &mut Model, pts: &[[f64; 3]]| {
+        let mut refs = Vec::new();
+        for p in pts {
+            let id = EntityId(pid);
+            pid += 1;
+            model.insert(id, entity("IFCCARTESIANPOINT", vec![reals(p)]));
+            refs.push(Value::Ref(id));
+        }
+        let line = EntityId(pid);
+        pid += 1;
+        model.insert(line, entity("IFCPOLYLINE", vec![Value::List(refs)]));
+        line
+    };
+    let outer = poly(
+        &mut model,
+        &[
+            [0.0, 0.0, 0.0],
+            [5.0, 0.0, 0.0],
+            [5.0, 3.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ],
+    );
+    let inner = poly(
+        &mut model,
+        &[
+            [1.0, 1.0, 0.0],
+            [2.0, 1.0, 0.0],
+            [2.0, 2.0, 0.0],
+            [1.0, 1.0, 0.0],
+        ],
+    );
+    model.insert(
+        EntityId(20),
+        entity(
+            "IFCCURVEBOUNDEDPLANE",
+            vec![
+                r(3),
+                Value::Ref(outer),
+                Value::List(vec![Value::Ref(inner)]),
+            ],
+        ),
+    );
+    model
+}
+
+/// A cylinder keeps its radius in metres and its placement axes unit length.
+#[test]
+fn a_cylinder_converts_its_radius_but_not_its_axes() {
+    let mut model = Model::default();
+    model.insert(
+        EntityId(1),
+        entity("IFCCARTESIANPOINT", vec![reals(&[1000.0, 0.0, 0.0])]),
+    );
+    model.insert(
+        EntityId(2),
+        entity("IFCDIRECTION", vec![reals(&[0.0, 0.0, 1.0])]),
+    );
+    model.insert(
+        EntityId(3),
+        entity("IFCDIRECTION", vec![reals(&[1.0, 0.0, 0.0])]),
+    );
+    model.insert(
+        EntityId(4),
+        entity("IFCAXIS2PLACEMENT3D", vec![r(1), r(2), r(3)]),
+    );
+    model.insert(
+        EntityId(5),
+        entity("IFCCYLINDRICALSURFACE", vec![r(4), Value::Real(250.0)]),
+    );
+
+    let scale = UnitScale {
+        length_to_metres: 0.001,
+        angle_to_radians: 1.0,
+    };
+    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let node =
+        lower_surface_node(&mut session, EntityId(5), Transform::identity()).expect("lowers");
+    let lowered = session.finish(node).expect("finishes");
+    let Some(GeometryNode::Surface(Surface::Cylinder(cyl))) = lowered.graph.get(lowered.root)
+    else {
+        panic!("expected a cylinder");
+    };
+    assert!(
+        (cyl.radius - 0.25).abs() < 1e-12,
+        "radius must be metres, got {}",
+        cyl.radius
+    );
+    assert!(
+        (cyl.frame.origin.to_array()[0] - 1.0).abs() < 1e-12,
+        "origin must be metres"
+    );
+    let z = cyl.frame.z.to_array();
+    let len = (z[0] * z[0] + z[1] * z[1] + z[2] * z[2]).sqrt();
+    assert!(
+        (len - 1.0).abs() < 1e-12,
+        "axis must stay unit length, got {len}"
+    );
+}
+
+/// A torus keeps both radii and does not silently reject a spindle.
+#[test]
+fn a_torus_preserves_a_self_intersecting_spindle() {
+    let mut model = Model::default();
+    model.insert(
+        EntityId(1),
+        entity("IFCCARTESIANPOINT", vec![reals(&[0.0, 0.0, 0.0])]),
+    );
+    model.insert(
+        EntityId(2),
+        entity("IFCAXIS2PLACEMENT3D", vec![r(1), Value::Null, Value::Null]),
+    );
+    // minor > major: a legal but self-intersecting torus.
+    model.insert(
+        EntityId(3),
+        entity(
+            "IFCTOROIDALSURFACE",
+            vec![r(2), Value::Real(100.0), Value::Real(300.0)],
+        ),
+    );
+
+    let scale = UnitScale {
+        length_to_metres: 0.001,
+        angle_to_radians: 1.0,
+    };
+    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let node =
+        lower_surface_node(&mut session, EntityId(3), Transform::identity()).expect("lowers");
+    let lowered = session.finish(node).expect("finishes");
+    let Some(GeometryNode::Surface(Surface::Torus(tor))) = lowered.graph.get(lowered.root) else {
+        panic!("expected a torus");
+    };
+    assert!((tor.major_radius - 0.1).abs() < 1e-12);
+    assert!(
+        (tor.minor_radius - 0.3).abs() < 1e-12,
+        "the spindle must survive lowering, got {}",
+        tor.minor_radius
+    );
+}
+
+/// A trim parameter on a revolved basis is an ANGLE, not a length.
+///
+/// This is the assertion that pays for the whole family. With degrees in the
+/// file and a length factor applied, a 90-degree patch becomes 0.09 -- still a
+/// valid surface, just the wrong one.
+#[test]
+fn a_trim_parameter_on_a_curved_basis_uses_the_angle_unit() {
+    let mut model = Model::default();
+    model.insert(
+        EntityId(1),
+        entity("IFCCARTESIANPOINT", vec![reals(&[0.0, 0.0, 0.0])]),
+    );
+    model.insert(
+        EntityId(2),
+        entity("IFCAXIS2PLACEMENT3D", vec![r(1), Value::Null, Value::Null]),
+    );
+    model.insert(
+        EntityId(3),
+        entity("IFCCYLINDRICALSURFACE", vec![r(2), Value::Real(200.0)]),
+    );
+    model.insert(
+        EntityId(4),
+        entity(
+            "IFCRECTANGULARTRIMMEDSURFACE",
+            vec![
+                r(3),
+                Value::Real(0.0),
+                Value::Real(0.0),
+                Value::Real(90.0),
+                Value::Real(500.0),
+                Value::Bool(true),
+                Value::Bool(true),
+            ],
+        ),
+    );
+
+    // Degrees for angle, millimetres for length: the two factors differ by
+    // orders of magnitude, so a swapped factor cannot pass by luck.
+    let scale = UnitScale {
+        length_to_metres: 0.001,
+        angle_to_radians: 0.017453292519943295,
+    };
+    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let node =
+        lower_surface_node(&mut session, EntityId(4), Transform::identity()).expect("lowers");
+    let lowered = session.finish(node).expect("finishes");
+    let Some(GeometryNode::SurfaceRelation(SurfaceRelation::RectangularTrimmed { u, .. })) =
+        lowered.graph.get(lowered.root)
+    else {
+        panic!("expected a rectangular trim");
+    };
+    let expected = 90.0 * 0.017453292519943295;
+    assert!(
+        (u.1 - expected).abs() < 1e-12,
+        "u2 must be radians ({expected}), got {} -- a length factor gives 0.09",
+        u.1
+    );
+}
+
+/// The curve-bounded plane keeps its outer boundary first and its hole after.
+#[test]
+fn a_curve_bounded_plane_orders_outer_then_inner() {
+    let model = curve_bounded_model();
+    let scale = UnitScale::default();
+    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let node =
+        lower_surface_node(&mut session, EntityId(20), Transform::identity()).expect("lowers");
+    let lowered = session.finish(node).expect("finishes");
+    let Some(GeometryNode::SurfaceRelation(SurfaceRelation::CurveBounded {
+        boundaries,
+        implicit_outer,
+        ..
+    })) = lowered.graph.get(lowered.root)
+    else {
+        panic!("expected a curve-bounded surface");
+    };
+    assert_eq!(boundaries.len(), 2, "outer plus one hole");
+    assert!(
+        !implicit_outer,
+        "IfcCurveBoundedPlane always states its outer boundary"
+    );
+}
+
+/// The B-spline keeps u and v distinct: degrees, knots and net orientation.
+///
+/// The fixture patch is cubic in u and linear in v over a saddle-shaped net,
+/// so a transposed control net or swapped degrees is geometrically wrong, not
+/// merely relabelled.
+#[test]
+fn a_bspline_patch_keeps_its_directions_distinct() {
+    let mut model = Model::default();
+    let mut next = 1u64;
+    let mut point = |model: &mut Model, x: f64, y: f64, z: f64| {
+        let id = EntityId(next);
+        next += 1;
+        model.insert(id, entity("IFCCARTESIANPOINT", vec![reals(&[x, y, z])]));
+        id
+    };
+    let mut rows = Vec::new();
+    for (i, x) in [0.0f64, 1000.0, 2000.0, 3000.0].into_iter().enumerate() {
+        let mut row = Vec::new();
+        for (j, y) in [0.0f64, 4000.0].into_iter().enumerate() {
+            let z = if (i == 1 || i == 2) != (j == 1) {
+                600.0
+            } else {
+                0.0
+            };
+            row.push(Value::Ref(point(&mut model, x, y, z)));
+        }
+        rows.push(Value::List(row));
+    }
+    let surface_id = EntityId(100);
+    model.insert(
+        surface_id,
+        entity(
+            "IFCBSPLINESURFACEWITHKNOTS",
+            vec![
+                Value::Integer(3),
+                Value::Integer(1),
+                Value::List(rows),
+                Value::Enum("UNSPECIFIED".into()),
+                Value::Bool(false),
+                Value::Bool(false),
+                Value::Bool(false),
+                Value::List(vec![Value::Integer(4), Value::Integer(4)]),
+                Value::List(vec![Value::Integer(2), Value::Integer(2)]),
+                Value::List(vec![Value::Real(0.0), Value::Real(1.0)]),
+                Value::List(vec![Value::Real(0.0), Value::Real(1.0)]),
+                Value::Enum("UNSPECIFIED".into()),
+            ],
+        ),
+    );
+
+    let scale = UnitScale {
+        length_to_metres: 0.001,
+        angle_to_radians: 1.0,
+    };
+    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let node = lower_surface_node(&mut session, surface_id, Transform::identity()).expect("lowers");
+    let lowered = session.finish(node).expect("finishes");
+    let Some(GeometryNode::Surface(Surface::BSpline(patch))) = lowered.graph.get(lowered.root)
+    else {
+        panic!("expected a B-spline surface");
+    };
+    assert_eq!(patch.u_degree, 3, "u is the cubic direction");
+    assert_eq!(patch.v_degree, 1, "v is the linear direction");
+    assert_eq!(patch.control_points.len(), 4, "four rows along u");
+    assert_eq!(patch.control_points[0].len(), 2, "two columns along v");
+    assert_eq!(patch.u_multiplicities, vec![4, 4], "clamped cubic ends");
+    assert_eq!(patch.v_multiplicities, vec![2, 2], "clamped linear ends");
+    assert!(
+        patch.weights.is_none(),
+        "a polynomial patch must not gain weights"
+    );
+    let corner = patch.control_points[1][0].to_array();
+    assert!(
+        (corner[0] - 1.0).abs() < 1e-12,
+        "control points convert to metres"
+    );
+    assert!(
+        (corner[2] - 0.6).abs() < 1e-12,
+        "the saddle height must survive"
     );
 }
