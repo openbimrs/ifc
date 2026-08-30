@@ -80,10 +80,11 @@ and check it off only after the proof runs.
     schema marks DERIVED. The mirror about the local y axis is implied by the
     TYPE, so lowering it through the `IfcDerivedProfileDef` path would yield
     an unmirrored copy that looks right in isolation.
-  - Decision: `IfcCenterLineProfileDef` stays declared unlowered. It is an
-    `IfcArbitraryOpenProfileDef` subtype whose `Thickness` does sweep a closed
-    area, but the neutral contour model has no centre-line-with-width form and
-    offsetting an arbitrary curve is a kernel operation, not an adapter one.
+  - Decision: `IfcCenterLineProfileDef` now lowers. The kernel gained
+    `Profile::CenterLine` and miter offsetting, so the adapter reads the open
+    path and the full width and leaves the offset to the tier that owns it.
+    Its arm sits BEFORE the `IfcArbitraryOpenProfileDef` refusal: it is a
+    subtype, so the parent's arm would otherwise swallow it.
   - Decision: profile nesting carries an explicit depth budget. Nothing in IFC
     forbids a derived profile whose parent is itself, and a stack overflow is
     a crash a consumer cannot catch.

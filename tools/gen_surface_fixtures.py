@@ -525,15 +525,14 @@ def derived_profiles(f, base_i):
         f.create_entity("IfcCartesianPoint", Coordinates=[0.0, 0.0]),
         f.create_entity("IfcCartesianPoint", Coordinates=[300.0, 0.0]),
         f.create_entity("IfcCartesianPoint", Coordinates=[300.0, 200.0])])
-    # NOT returned for extrusion: this family is declared unlowered, and a
-    # solid built on it would fail the corpus dispatch gate on
-    # IfcExtrudedAreaSolid, masking real regressions in that family. It stays
-    # in the file as a free-standing record so the refusal path has real data.
-    f.create_entity(
+    # An L-shaped centre line with a real corner: a straight path would not
+    # exercise the miter join, which is where a constant-width offset is
+    # easiest to get wrong.
+    centerline = f.create_entity(
         "IfcCenterLineProfileDef", ProfileType="AREA", ProfileName="centerline",
         Curve=line, Thickness=8.0)
 
-    return [derived, mirrored, composite]
+    return [derived, mirrored, composite, centerline]
 
 
 def profile_families(f):

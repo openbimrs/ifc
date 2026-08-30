@@ -5,8 +5,10 @@
 //! format adapter.
 
 use axiolid_core::{Interval, Scalar, Transform2, Vec2};
+use axiolid_curve::linear::Polyline2;
 use axiolid_curve::{Curve2, Line2};
 use axiolid_model::{GeometryNode, NodeId};
+use axiolid_profile::CenterLineProfile;
 use axiolid_profile::{
     CircleProfile, Contour, ContourProfile, EllipseProfile, Profile, ProfileSegment,
     RectangleProfile, SectionProfile,
@@ -44,11 +46,7 @@ mod slot {
 ///
 /// A reason starting with `kernel:` needs a change in `axiolid-profile`; the
 /// rest are IFC-side wiring.
-pub const UNLOWERED: &[(&str, &str)] = &[(
-    "IFCCENTERLINEPROFILEDEF",
-    "centre lines: an open curve plus Thickness does sweep a closed area, but \
-offsetting an arbitrary curve is a kernel operation, not an adapter one",
-)];
+pub const UNLOWERED: &[(&str, &str)] = &[];
 
 /// Family label used for profile memoization.
 const PROFILE: &str = "profile";
@@ -140,6 +138,7 @@ fn lower_profile_depth(
         "IFCCOMPOSITEPROFILEDEF" => composite(model, &slots, units, tol, depth)?,
         "IFCDERIVEDPROFILEDEF" => derived(model, id, &slots, units, tol, depth, false)?,
         "IFCMIRROREDPROFILEDEF" => derived(model, id, &slots, units, tol, depth, true)?,
+        "IFCCENTERLINEPROFILEDEF" => center_line(model, &slots, units)?,
         // An open profile is a curve, not an area. The neutral profile model
         // is built on closed contours, so there is nothing to map it onto:
         // closing the curve would fabricate a face the file never described,
@@ -437,6 +436,12 @@ mod section_slot {
     pub const TZ_BOTTOM: usize = 3;
     pub const TZ_TOP: usize = 4;
     pub const TZ_Y: usize = 5;
+    /// `IfcCenterLineProfileDef`: Curve at 2, Thickness at 3.
+    /// Thickness is the FULL width across the path, not a half-width.
+    pub const CL_CURVE: usize = 2;
+    /// Full width across the centre line.
+    pub const CL_THICKNESS: usize = 3;
+
     pub const TZ_OFFSET: usize = 6;
 
     // IfcCompositeProfileDef / IfcDerivedProfileDef
@@ -667,4 +672,79 @@ fn flatten_to_2d(full: &Transform) -> GeometryResult<Transform2> {
         m.y_axis.truncate(),
         translation.truncate(),
     ))
+}
+
+/// Read an OPEN polyline path for a centre-line profile.
+///
+/// Deliberately not `curve_to_contour`: that reader closes the ring by
+/// wrapping the last point back to the first and demands three distinct
+/// points. A centre line is open, so closing it would add a segment the
+/// source never stated and turn a two-point straight bar into a degenerate
+/// zero-area triangle.
+fn open_polyline_path(model: &Model, id: EntityId, units: &UnitScale) -> GeometryResult<Contour> {
+    let entity = model.get(id).ok_or(GeometryError::MissingEntity {
+        referrer: id,
+        missing: id,
+    })?;
+    let type_name = entity.type_name.to_ascii_uppercase();
+    if type_name != "IFCPOLYLINE" {
+        return Err(GeometryError::Unsupported {
+            entity: id,
+            type_name,
+            detail: "only polyline centre lines are lowered so far",
+        });
+    }
+
+    let slots = Slots::new(id, entity);
+    let mut points = Vec::new();
+    for point_id in slots.req_ref_list(0, "Points")? {
+        let point = model.get(point_id).ok_or(GeometryError::MissingEntity {
+            referrer: id,
+            missing: point_id,
+        })?;
+        let coordinates = Slots::new(point_id, point).req_f64_list(0, "Coordinates")?;
+        if coordinates.len() < 2 {
+            return Err(GeometryError::Degenerate {
+                entity: point_id,
+                type_name: point.type_name.to_string(),
+                detail: "centre line point is not at least 2D".to_string(),
+            });
+        }
+        points.push(Vec2::new(
+            units.length(coordinates[0]),
+            units.length(coordinates[1]),
+        ));
+    }
+    if points.len() < 2 {
+        return Err(slots.degenerate("centre line has fewer than 2 points"));
+    }
+
+    // One polyline segment carrying the whole open path: the kernel offsets
+    // the flattened points, so splitting it into per-edge lines here would
+    // only add joins it would immediately have to re-derive.
+    let last = (points.len() - 1) as f64;
+    Ok(Contour::new(vec![ProfileSegment {
+        curve: Curve2::Polyline(Polyline2 {
+            points,
+            closed: false,
+        }),
+        domain: Interval::new(0.0, last),
+        same_sense: true,
+    }]))
+}
+
+/// Lower an `IfcCenterLineProfileDef`.
+///
+/// `Thickness` is the FULL width across the path, which the kernel stores
+/// halved so both offset sides are symmetric by construction.
+fn center_line(model: &Model, slots: &Slots<'_>, units: &UnitScale) -> GeometryResult<Profile> {
+    let path = open_polyline_path(
+        model,
+        slots.req_ref(section_slot::CL_CURVE, "Curve")?,
+        units,
+    )?;
+    let thickness = units.length(slots.req_f64(section_slot::CL_THICKNESS, "Thickness")?);
+    Ok(Profile::CenterLine(CenterLineProfile::from_width(
+        path, thickness,
+    )))
 }

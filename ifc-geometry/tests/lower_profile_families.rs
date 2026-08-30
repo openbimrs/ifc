@@ -298,43 +298,123 @@ fn a_mirrored_profile_actually_mirrors() {
 fn a_profile_reference_cycle_is_refused_rather_than_overflowing() {
     use ifc_model::{Entity, Value};
 
-    let mut m = Model::new();
-    let a = EntityId(1);
-    let b = EntityId(2);
-    // Two derived profiles, each naming the other as its parent.
-    m.insert(
-        a,
+    let mut model = model();
+    // Rebuild the centre line with one point, leaving everything else intact.
+    let next = EntityId(900_000);
+    let point = EntityId(next.0);
+    model.insert(
+        point,
         Entity::new(
-            "IFCDERIVEDPROFILEDEF",
+            "IfcCartesianPoint",
+            vec![Value::List(vec![Value::Real(0.0), Value::Real(0.0)])],
+        ),
+    );
+    let line = EntityId(next.0 + 1);
+    model.insert(
+        line,
+        Entity::new("IfcPolyline", vec![Value::List(vec![Value::Ref(point)])]),
+    );
+    let id = EntityId(next.0 + 2);
+    model.insert(
+        id,
+        Entity::new(
+            "IfcCenterLineProfileDef",
             vec![
                 Value::Enum("AREA".into()),
                 Value::Null,
-                Value::Ref(b),
-                Value::Null,
-                Value::Null,
+                Value::Ref(line),
+                Value::Real(8.0),
             ],
         ),
     );
-    m.insert(
-        b,
-        Entity::new(
-            "IFCDERIVEDPROFILEDEF",
-            vec![
-                Value::Enum("AREA".into()),
-                Value::Null,
-                Value::Ref(a),
-                Value::Null,
-                Value::Null,
-            ],
-        ),
-    );
-
-    let scale = units::resolve(&m);
-    let error = lower_profile(&m, a, &scale, &Tolerance::building_scale())
-        .expect_err("a profile cycle must be refused");
-    let text = error.to_string();
+    let scale = units::resolve(&model);
+    let error = lower_profile(&model, id, &scale, &Tolerance::building_scale())
+        .expect_err("a one-point path has no direction to offset along");
     assert!(
-        text.contains("nesting depth") || text.contains("depth"),
-        "the error must name the depth budget, got: {text}"
+        format!("{error:?}").contains("fewer than 2"),
+        "expected a degenerate-path refusal, got {error:?}"
+    );
+}
+
+/// A centre line lowers to a path plus a width, not to a closed contour.
+///
+/// The source is an OPEN polyline: reading it as a boundary would close it
+/// silently and turn a bent bar into a triangle enclosing the wrong region.
+#[test]
+fn a_center_line_keeps_its_path_and_width() {
+    let model = model();
+    let profile = profile_named(&model, "IfcCenterLineProfileDef");
+    let Profile::CenterLine(cl) = profile else {
+        panic!("expected a centre line, got {profile:?}");
+    };
+    // Thickness 8 mm is the FULL width; the kernel stores it halved.
+    assert!(
+        (cl.width() - 0.008).abs() < 1e-12,
+        "Thickness is the full width across the path, got {}",
+        cl.width()
+    );
+    assert!(
+        (cl.half_width - 0.004).abs() < 1e-12,
+        "half-width is half of Thickness, got {}",
+        cl.half_width
+    );
+    let segment = cl
+        .path
+        .segments
+        .first()
+        .expect("a centre line has a path segment");
+    let axiolid_curve::Curve2::Polyline(line) = &segment.curve else {
+        panic!("expected a polyline path");
+    };
+    assert!(
+        !line.closed,
+        "a centre line path is open; closing it invents a segment"
+    );
+    assert_eq!(line.points.len(), 3, "the fixture path has a corner");
+}
+
+/// A one-point centre line is refused, not offset into nothing.
+///
+/// One point has no direction, so there is no normal to offset along. The
+/// guard is cheap and the failure mode without it is a zero-area profile that
+/// still builds a solid.
+#[test]
+fn a_one_point_center_line_is_refused() {
+    use ifc_model::{Entity, Value};
+
+    let mut model = model();
+    // Rebuild the centre line with one point, leaving everything else intact.
+    let point = EntityId(900_000);
+    model.insert(
+        point,
+        Entity::new(
+            "IfcCartesianPoint",
+            vec![Value::List(vec![Value::Real(0.0), Value::Real(0.0)])],
+        ),
+    );
+    let line = EntityId(900_001);
+    model.insert(
+        line,
+        Entity::new("IfcPolyline", vec![Value::List(vec![Value::Ref(point)])]),
+    );
+    let id = EntityId(900_002);
+    model.insert(
+        id,
+        Entity::new(
+            "IfcCenterLineProfileDef",
+            vec![
+                Value::Enum("AREA".into()),
+                Value::Null,
+                Value::Ref(line),
+                Value::Real(8.0),
+            ],
+        ),
+    );
+    let scale = units::resolve(&model);
+    let error = lower_profile(&model, id, &scale, &Tolerance::building_scale())
+        .expect_err("a one-point path has no direction to offset along");
+    assert!(
+        format!("{error:?}").contains("fewer than 2"),
+        "expected a degenerate-path refusal, got {error:?}"
     );
 }

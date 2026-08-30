@@ -15,6 +15,16 @@ This page is synchronised from it at build time.
 
 ## [Unreleased]
 
+### Added
+
+- `IfcCenterLineProfileDef` lowers to a centre-line profile: an open path plus
+  the full `Thickness` across it, resolved into a constant-width boundary by
+  the kernel's miter offsetting. It is read with an open-path reader rather
+  than the closed-contour one, which would have invented a closing segment and
+  turned a bent bar into a triangle. Corpus census 105 -> 106, and every
+  concrete profile family in `IfcProfileResource` now lowers except
+  `IfcArbitraryOpenProfileDef`, which encloses no area by definition.
+
 ### Fixed
 
 - The published capability matrix is generated from the lowering source

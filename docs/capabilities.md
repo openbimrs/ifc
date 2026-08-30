@@ -27,7 +27,7 @@ code.
 
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `ifc-geometry` | 24,634 | 90 | 6 | 28 | <span class="status-partial">Partial</span> |
+| `ifc-geometry` | 24,714 | 90 | 6 | 28 | <span class="status-partial">Partial</span> |
 | `ifc-template-catalog` | 2,403 | 28 | 3 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 2,114 | 23 | 0 | 7 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 1,483 | 25 | 7 | 9 | <span class="status-implemented">Implemented</span> |
@@ -247,7 +247,7 @@ a section without them has the wrong area and the wrong section modulus.
 | `IfcCompositeProfileDef` | <span class="status-implemented">Implemented</span> |
 | `IfcDerivedProfileDef` | <span class="status-implemented">Implemented</span> |
 | `IfcMirroredProfileDef` | <span class="status-implemented">Implemented</span> |
-| `IfcCenterLineProfileDef` | <span class="status-partial">Planned</span> — centre lines: an open curve plus Thickness does sweep a closed area, but offsetting an arbitrary curve is a kernel operation, not an adapter one |
+| `IfcCenterLineProfileDef` | <span class="status-implemented">Implemented</span> |
 | `IfcArbitraryOpenProfileDef` | <span class="status-partial">Planned</span> — open profiles: the neutral profile model represents closed contours only |
 
 <!-- CAPABILITIES:PROFILE:END -->

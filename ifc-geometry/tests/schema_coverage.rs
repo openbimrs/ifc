@@ -512,6 +512,9 @@ fn unlowered_table(source: &str) -> BTreeSet<String> {
     let rest = &source[start..];
     // The table ends at the first line that closes it, which is `];` for a
     // multi-entry table and `)];` for a single-entry one.
+    // The table closes with `];`, `)];`, or `&[];` when it is empty. Matching
+    // only the multi-line forms made an empty table unparseable, which is the
+    // state the crate reaches once every family is lowered.
     let end = rest
         .lines()
         .scan(0usize, |acc, line| {
@@ -521,7 +524,7 @@ fn unlowered_table(source: &str) -> BTreeSet<String> {
         })
         .find(|(_, line)| {
             let t = line.trim();
-            t == "];" || t == ")];"
+            t == "];" || t == ")];" || t.ends_with("= &[];")
         })
         .map(|(at, line)| at + line.len())
         .expect("UNLOWERED table is closed");
