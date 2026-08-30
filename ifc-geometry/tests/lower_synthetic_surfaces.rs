@@ -16,6 +16,8 @@
 //! rather than opaque blobs.
 
 use axiolid_model::{GeometryNode, SurfaceRelation};
+use axiolid_scalar::surface::Patch;
+use axiolid_scalar::tessellate::{tessellate_patch, TessellationBudget};
 use axiolid_surface::Surface;
 use ifc_geometry::lower::{lower_surface_node, LoweringSession, Tolerance};
 use ifc_geometry::transform::Transform;
@@ -199,6 +201,53 @@ fn the_bspline_patch_keeps_its_two_directions_apart() {
         }
         other => panic!("expected a B-spline surface, got {other:?}"),
     }
+}
+
+/// A reader-lowered spline surface is directly consumable by the scalar
+/// kernel's tessellator. This is the adapter-to-kernel integration boundary:
+/// IFC owns schema decoding and units; Axiolid owns evaluation and meshing.
+#[test]
+fn the_reader_lowered_bspline_patch_tessellates_through_the_kernel() {
+    let model = fixture("synthetic_bspline_surface.ifc");
+    let node = lower_one(&model, only(&model, "IFCBSPLINESURFACEWITHKNOTS"));
+    let GeometryNode::Surface(surface) = node else {
+        panic!("expected a surface node, got {node:?}");
+    };
+    let Surface::BSpline(spline) = &surface else {
+        panic!("expected a B-spline surface, got {surface:?}");
+    };
+
+    let patch = Patch::new(
+        *spline.u_knots.first().expect("u knot domain starts"),
+        *spline.u_knots.last().expect("u knot domain ends"),
+        *spline.v_knots.first().expect("v knot domain starts"),
+        *spline.v_knots.last().expect("v knot domain ends"),
+    )
+    .expect("lowered knot domain is a valid patch");
+    let budget = TessellationBudget::new(1e-4, 256).expect("finite tessellation budget");
+    let outcome = tessellate_patch(&surface, patch, budget)
+        .expect("the general scalar kernel evaluates the reader-lowered spline");
+
+    assert!(
+        !outcome.budget_exhausted,
+        "fixture must converge within budget"
+    );
+    assert!(
+        outcome.mesh.positions.len() >= 4,
+        "surface must emit vertices"
+    );
+    assert!(
+        outcome.mesh.indices.len() >= 6,
+        "surface must emit triangles"
+    );
+    assert!(outcome.mesh.indices.len().is_multiple_of(3));
+    assert!(
+        outcome.mesh.positions.iter().all(|point| {
+            let [x, y, z] = point.to_array();
+            x.is_finite() && y.is_finite() && z.is_finite()
+        }),
+        "reader-to-kernel tessellation must stay finite"
+    );
 }
 
 /// The curve-bounded plane keeps its outer boundary and its hole, in order.
