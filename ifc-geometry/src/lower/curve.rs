@@ -232,15 +232,14 @@ fn selectors(
 /// Three parameterisations, not two:
 ///
 /// - A conic (`IfcCircle`, `IfcEllipse`) parameterises by ANGLE.
-/// - A polyline parameterises by POINT INDEX, and a composite curve by
-///   SEGMENT INDEX. Both are dimensionless ordinals, so scaling them by the
-///   length unit turns a millimetre file's `2.0` into `0.002` and collapses
-///   the trim onto the curve's start.
-/// - Everything else parameterises by LENGTH and converts.
+/// - A line parameter multiplies its already-scaled `IfcVector`, so it is
+///   dimensionless. A polyline parameter is a point/segment ordinal.
+/// - A composite curve parameter is cumulative path LENGTH and converts.
+/// - Other non-conic families parameterise by length and convert.
 pub(crate) fn scale_parameter(session: &LoweringSession<'_>, basis_kind: &str, raw: f64) -> f64 {
     match basis_kind {
         "IFCCIRCLE" | "IFCELLIPSE" => session.units().angle(raw),
-        "IFCPOLYLINE" | "IFCCOMPOSITECURVE" => raw,
+        "IFCLINE" | "IFCPOLYLINE" => raw,
         _ => session.units().length(raw),
     }
 }

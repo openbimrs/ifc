@@ -9,7 +9,7 @@ use axiolid_curve::Curve3;
 use axiolid_model::{CurveRelation, GeometryNode, Transition, TrimSelector};
 use ifc_model::{EntityId, Model, Value};
 
-use super::lower_curve_node;
+use super::{lower_curve_node, scale_parameter};
 use crate::lower::session::LoweringSession;
 use crate::lower::Tolerance;
 use crate::solid::testkit::{entity, n, r};
@@ -262,4 +262,16 @@ fn a_line_direction_keeps_the_vector_magnitude() {
         }
         other => panic!("expected a Line, got {other:?}"),
     }
+}
+
+#[test]
+fn parameter_units_follow_curve_parameterisation() {
+    let model = Model::new();
+    let scale = millimetres();
+    let session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+
+    assert_eq!(scale_parameter(&session, "IFCLINE", 2_000.0), 2_000.0);
+    assert_eq!(scale_parameter(&session, "IFCPOLYLINE", 2.0), 2.0);
+    assert_eq!(scale_parameter(&session, "IFCCOMPOSITECURVE", 2_000.0), 2.0);
+    assert_eq!(scale_parameter(&session, "IFCCIRCLE", 0.5), 0.5);
 }
