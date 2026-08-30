@@ -1,16 +1,16 @@
-//! `IfcRelSequence`: predecessors, successors and lag.
+//! Task sequencing: predecessor/successor links, lag, and cycles.
 //!
-//! Finish-to-start and friends, with `IfcLagTime`. Cycle detection matters --
-//! a cyclic schedule must be reported, not looped over.
-//!
-//! Implementation is tracked in `../PLAN.md`.
-
 //! ## Internal split
 //!
-//! - `relation.rs`: IfcRelSequence.
-//! - `lag.rs`: lag values.
-//! - `graph.rs`: bounded DAG/cycle reporting.
+//! - `relation.rs`: `IfcRelSequence`, `IfcLagTime`, and the bounded graph walk.
+//! - `lag.rs`, `graph.rs`: planned owners, kept for when lag arithmetic and
+//!   graph algorithms outgrow the relation reader.
 
 mod graph;
 mod lag;
 mod relation;
+
+pub use relation::{
+    downstream_of, find_cycle, predecessors_of, sequences, successors_of, Lag, Sequence,
+    SequenceCycle, SequenceType, MAX_SEQUENCE_DEPTH,
+};

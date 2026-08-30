@@ -1,12 +1,14 @@
-//! Working times, exceptions and recurrence.
+//! Work calendars, working periods, and recurrence.
 //!
-//!
-//! Implementation is tracked in `../PLAN.md`.
-
 //! ## Internal split
 //!
-//! - `definition.rs`: work calendars.
-//! - `working_time.rs`: working periods.
+//! - `definition.rs`: `IfcWorkCalendar`, `IfcWorkTime` and
+//!   `IfcRecurrencePattern`.
+//! - `working_time.rs`: planned owner for expanded working periods.
 
 mod definition;
 mod working_time;
+
+pub use definition::{
+    work_calendars, Recurrence, RecurrenceType, WorkCalendar, WorkTime, WorkTimeRole,
+};

@@ -31,21 +31,21 @@ code.
 | `ifc-properties` | 2,417 | 29 | 14 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-template-catalog` | 2,403 | 28 | 3 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 2,114 | 23 | 0 | 7 | <span class="status-implemented">Implemented</span> |
-| `ifc-model` | 2,060 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
+| `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
+| `ifc-schedule` | 1,691 | 24 | 14 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 1,586 | 20 | 5 | 2 | <span class="status-implemented">Implemented</span> |
+| `ifc-cost` | 1,248 | 10 | 0 | 1 | <span class="status-partial">Partial</span> |
 | `openbim-ifc` | 888 | 6 | 0 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-schema` | 768 | 10 | 4 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 658 | 4 | 0 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-spatial` | 561 | 7 | 1 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-author` | 552 | 6 | 2 | 2 | <span class="status-implemented">Implemented</span> |
-| `ifc-cost` | 482 | 8 | 0 | 0 | <span class="status-partial">Partial</span> |
 | `ifc-step` | 480 | 5 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-structural` | 194 | 27 | 22 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-alignment` | 186 | 26 | 21 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-resource` | 177 | 25 | 23 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-style` | 174 | 24 | 20 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-validate` | 172 | 23 | 18 | 0 | <span class="status-scaffold">Scaffold</span> |
-| `ifc-schedule` | 170 | 23 | 21 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-georef` | 133 | 17 | 14 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-classification` | 131 | 17 | 14 | 0 | <span class="status-scaffold">Scaffold</span> |
 
@@ -53,7 +53,7 @@ code.
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:BEGIN -->
 
-8 of 21 crates are scaffolds.
+7 of 21 crates are scaffolds.
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:END -->
 They exist because the layering decision
@@ -75,6 +75,8 @@ later, but they must never be mistaken for working code.
 | Spatial containment tree traversal | <span class="status-implemented">Implemented</span> | `ifc-spatial::SpatialTree`; facade feature `spatial`. See below. |
 | Objectified relationship traversal | <span class="status-partial">Partial</span> | `ifc-spatial::relation` reads `IfcRelAggregates`, `IfcRelContainedInSpatialStructure`, `IfcRelNests`. Other `IfcRel*` families are not interpreted. |
 | Distribution systems, ports and connectivity | <span class="status-implemented">Implemented</span> | `ifc-systems` reads systems and membership, ports through both `IfcRelNests` and the legacy `IfcRelConnectsPortToElement`, the connection network, flow roles and direction, zones with their `WR1` membership rule, spatial containment vs referencing, and direction-aware `upstream`/`downstream` queries. Relationship-only: no geometry is read, so a geometry-free file still yields a full network. |
+| Cost items, rates and rollups | <span class="status-implemented">Implemented</span> | `ifc-cost` reads `IfcCostItem` nesting, `IfcCostValue` component trees with arithmetic operators, and totals a cost tree. Currencies are compared, never converted: a rollup mixing EUR and USD is refused. |
+| Work schedules, tasks and sequencing | <span class="status-implemented">Implemented</span> | `ifc-schedule` reads `IfcWorkPlan`/`IfcWorkSchedule`, `IfcTask` with `IfcTaskTime`, `IfcRelSequence` with signed lag, work calendars and events, and produces a deterministic execution order. Cycles report the offending path. |
 | Transactional authoring | <span class="status-implemented">Implemented</span> | `ifc-model::Transaction` stages structural edits, validates them against the projected end state, and applies them as a unit. A removal that would orphan a surviving reference is refused, as is a commit against a model whose revision moved since the transaction opened. Schema-agnostic: no domain setters. |
 | Quantity authoring | <span class="status-implemented">Implemented</span> | `ifc-properties` stages quantity writes onto a caller-owned transaction, so a takeoff spanning many elements lands atomically. The declared measure type is preserved on every write. |
 | Property sets and every property value family | <span class="status-implemented">Implemented</span> | `ifc-properties` reads single, enumerated, bounded, list, table, reference and complex properties. The declared measure type (`IfcLengthMeasure` and friends) is retained, because it is the only statement of what a bare number means. |

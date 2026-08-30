@@ -56,9 +56,15 @@ PUBLISHED_STATUS = {
     # All six PLAN tasks implemented: systems, ports, connectivity, flow,
     # zones and directed queries.
     "ifc-systems": '<span class="status-implemented">Implemented</span>',
-    # PROP-PSET/QTY/UNIT/TEMPLATE/QUERY/CHECK implemented; PROP-EDIT is
-    # blocked on ifc-model MODEL-MUT, so the crate is not yet complete.
+    # Every PLAN task implemented, including PROP-EDIT on top of MODEL-MUT.
     "ifc-properties": '<span class="status-implemented">Implemented</span>',
+    # COST-RATE/REL/UNIT/CORPUS implemented over a validated fixture. COST-MUT
+    # is deliberately open: authoring goes through ifc-model transactions, and
+    # whether cost needs its own staging helpers is not yet decided.
+    "ifc-cost": '<span class="status-partial">Partial</span>',
+    # All six PLAN tasks implemented: plans, tasks, sequences, calendars,
+    # events and timeline queries.
+    "ifc-schedule": '<span class="status-implemented">Implemented</span>',
 }
 
 

@@ -84,12 +84,14 @@ mod tests {
             Entity::new(
                 "IFCCOSTITEM",
                 vec![
-                    Value::Text("3vB2Y0dTv1LhX9ZzQqFbcd".into()),
-                    Value::Null,
-                    Value::Text("Excavation".into()),
-                    Value::Null,
-                    Value::Null,
-                    Value::List(vec![Value::Ref(EntityId(1))]),
+                    Value::Text("3vB2Y0dTv1LhX9ZzQqFbcd".into()), // 0 GlobalId
+                    Value::Null,                                  // 1 OwnerHistory
+                    Value::Text("Excavation".into()),             // 2 Name
+                    Value::Null,                                  // 3 Description
+                    Value::Null,                                  // 4 ObjectType
+                    Value::Text("A.1".into()),                    // 5 Identification
+                    Value::Enum("MATERIAL".into()),               // 6 PredefinedType
+                    Value::List(vec![Value::Ref(EntityId(1))]),   // 7 CostValues
                 ],
             ),
         );
@@ -127,6 +129,35 @@ mod tests {
         assert_eq!(model.len(), before);
     }
 
+    /// Slots follow the real IfcControl inheritance chain.
+    ///
+    /// This is a regression test for a shipped defect: the slot constants
+    /// omitted `ObjectType` (IfcObject) and `PredefinedType`, so every
+    /// attribute from `Identification` onward was read one or more positions
+    /// early. It passed only because the hand-built test fixtures encoded the
+    /// same wrong layout, which is exactly how a slot bug survives review.
+    #[test]
+    fn cost_item_slots_match_the_inheritance_chain() {
+        let model = model_with_cost();
+        let view = CostView::new(&model);
+        let item = view
+            .items()
+            .find(|i| i.name() == Some("Excavation"))
+            .expect("item present");
+
+        assert_eq!(
+            item.identification(),
+            Some("A.1"),
+            "Identification is slot 5"
+        );
+        assert_eq!(
+            item.predefined_type(),
+            Some("MATERIAL"),
+            "PredefinedType is slot 6"
+        );
+        assert_eq!(item.value_refs(), vec![EntityId(1)], "CostValues is slot 7");
+    }
+
     /// A dangling cost value is skipped, not fatal.
     #[test]
     fn unresolvable_value_references_are_skipped() {
@@ -141,7 +172,9 @@ mod tests {
                     Value::Text("Dangling".into()),
                     Value::Null,
                     Value::Null,
-                    Value::List(vec![Value::Ref(EntityId(999))]),
+                    Value::Null,
+                    Value::Null,
+                    Value::List(vec![Value::Ref(EntityId(999))]), // 7 CostValues
                 ],
             ),
         );

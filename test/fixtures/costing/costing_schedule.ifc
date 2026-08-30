@@ -21,23 +21,24 @@ DATA;
 /* The costing data. Nothing in the core model or the STEP codec knows what
    any of these entities mean. */
 #20= IFCCOSTSCHEDULE('1JBcVUKr0kugbFTf53O9Ax',#5,'Budget 2026','Preliminary',
-     .BUDGET.,'BQ-2026-01','2026-01-15T00:00:00','2026-12-31T00:00:00');
+     $,'BQ-2026-01',.BUDGET.,'Draft','2026-01-15T00:00:00',
+     '2026-12-31T00:00:00');
 #21= IFCCOSTITEM('2KCdWVLs1lvhcGUg64P0By',#5,'Excavation','Bulk earthworks',
-     .NOTDEFINED.,(#22),(#25));
-#22= IFCCOSTVALUE('3LDeXWMt2mwidHVh75Q1Cz',$,IFCMONETARYMEASURE(12345.67),$,
-     'Unit rate',$,$);
-#23= IFCCOSTVALUE('4MEfYXNu3nxjeIWi86R2Da',$,IFCMONETARYMEASURE(0.155),$,
-     'Overhead factor',$,$);
-#24= IFCCOSTITEM('5NFgZYOv4oykfJXj97S3Eb',#5,'Concrete','C30/37 in situ',
-     .NOTDEFINED.,(#23),(#26));
+     $,'A.1',.NOTDEFINED.,(#22),(#25));
+#22= IFCCOSTVALUE('Unit rate',$,IFCMONETARYMEASURE(12345.67),$,$,$,
+     'Labour',$,$,$);
+#23= IFCCOSTVALUE('Overhead factor',$,IFCMONETARYMEASURE(0.155),$,$,$,
+     'Overhead',$,$,$);
+#24= IFCCOSTITEM('1NFgZYOv4oykfJXj97S3Eb',#5,'Concrete','C30/37 in situ',
+     $,'A.2',.NOTDEFINED.,(#23),(#26));
 #25= IFCQUANTITYVOLUME('NetVolume','Excavated volume',$,1250.5,$);
 #26= IFCQUANTITYAREA('NetArea','Formwork area',$,842.25,$);
-#27= IFCRELASSIGNSTOCONTROL('6OGhAZPw5pzlgKYk08T4Fc',#5,$,$,(#21,#24),$,#20);
+#27= IFCRELASSIGNSTOCONTROL('2OGhAZPw5pzlgKYk08T4Fc',#5,$,$,(#21,#24),$,#20);
 
 /* Property sets: another domain the core model must not interpret. */
 #30= IFCPROPERTYSINGLEVALUE('CostCode',$,IFCIDENTIFIER('E-100'),$);
 #31= IFCPROPERTYSINGLEVALUE('Rate',$,IFCREAL(9.8765),$);
-#32= IFCPROPERTYSET('7PHiBAQx6qamhLZl19U5Gd',#5,'Pset_CostSummary',$,(#30,#31));
+#32= IFCPROPERTYSET('3PHiBAQx6qamhLZl19U5Gd',#5,'Pset_CostSummary',$,(#30,#31));
 
 /* An entity from no schema this build has ever seen. It must survive too. */
 #40= IFCFUTURESUSTAINABILITYMETRIC('carbon',*,.T.,.U.,(1,2.5,#21),

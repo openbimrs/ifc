@@ -15,17 +15,40 @@ pub struct CostItem<'m> {
 }
 
 /// `IfcCostItem` attribute slots, from `IfcRoot` down.
+///
+/// The inheritance chain is `IfcRoot` -> `IfcObjectDefinition` -> `IfcObject`
+/// -> `IfcControl` -> `IfcCostItem`, which contributes, in order:
+///
+/// ```text
+/// 0 GlobalId        IfcRoot
+/// 1 OwnerHistory    IfcRoot
+/// 2 Name            IfcRoot
+/// 3 Description     IfcRoot
+/// 4 ObjectType      IfcObject      <- contributes a slot
+/// 5 Identification  IfcControl
+/// 6 PredefinedType  IfcCostItem
+/// 7 CostValues      IfcCostItem
+/// 8 CostQuantities  IfcCostItem
+/// ```
+///
+/// `IfcObjectDefinition` adds only INVERSE attributes, which are not stored
+/// positionally. Verified against IFC4 EXPRESS and cross-checked by writing
+/// the entity with IfcOpenShell and reading back its attribute order.
 mod slot {
     /// `GlobalId` (from `IfcRoot`).
     pub const GLOBAL_ID: usize = 0;
     /// `Name` (from `IfcRoot`).
     pub const NAME: usize = 2;
-    /// `Identification`.
-    pub const IDENTIFICATION: usize = 4;
+    /// `Description` (from `IfcRoot`).
+    pub const DESCRIPTION: usize = 3;
+    /// `Identification` (from `IfcControl`).
+    pub const IDENTIFICATION: usize = 5;
+    /// `PredefinedType`.
+    pub const PREDEFINED_TYPE: usize = 6;
     /// `CostValues`.
-    pub const COST_VALUES: usize = 5;
+    pub const COST_VALUES: usize = 7;
     /// `CostQuantities`.
-    pub const COST_QUANTITIES: usize = 6;
+    pub const COST_QUANTITIES: usize = 8;
 }
 
 impl<'m> CostItem<'m> {
@@ -52,6 +75,19 @@ impl<'m> CostItem<'m> {
     /// The user-facing identification code.
     pub fn identification(&self) -> Option<&'m str> {
         self.entity.text(slot::IDENTIFICATION)
+    }
+
+    /// The description.
+    pub fn description(&self) -> Option<&'m str> {
+        self.entity.text(slot::DESCRIPTION)
+    }
+
+    /// The predefined type token, e.g. `MATERIAL`, without its dots.
+    pub fn predefined_type(&self) -> Option<&'m str> {
+        match self.entity.attribute(slot::PREDEFINED_TYPE)? {
+            Value::Enum(e) => Some(e),
+            _ => None,
+        }
     }
 
     /// Ids of the `IfcCostValue`s attached to this item.

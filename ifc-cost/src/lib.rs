@@ -26,6 +26,8 @@
 //! | [`schedule`] | `IfcCostSchedule`: the containing document |
 //! | [`value`] | `IfcCostValue` and applied monetary values |
 //! | [`quantity`] | Quantities a cost is computed against |
+//! | [`relation`] | Nesting and control assignment |
+//! | [`currency`] | Monetary unit agreement |
 //! | [`rollup`] | Summing a cost tree |
 //! | [`error`] | Why a cost lookup failed |
 //!
@@ -45,17 +47,25 @@
 //! assert_eq!(view.items().next().unwrap().name(), Some("Excavation"));
 //! ```
 
+pub mod currency;
 pub mod error;
 pub mod item;
 pub mod quantity;
+pub mod relation;
 pub mod rollup;
 pub mod schedule;
 pub mod value;
 pub mod view;
 
+pub use currency::{monetary_units, project_currency, CurrencyError};
 pub use error::CostError;
 pub use item::CostItem;
 pub use quantity::CostQuantity;
+pub use relation::{
+    children_of, controlled_by, controls_of, descendants_of, parent_of, parents_of,
+    CostRelationError, MAX_NESTING_DEPTH,
+};
+pub use rollup::{consistency, direct_total, grand_total, rolled_up_total, roots, Consistency};
 pub use schedule::CostSchedule;
-pub use value::CostValue;
+pub use value::{ArithmeticOperator, CostValue, UnitBasis};
 pub use view::CostView;

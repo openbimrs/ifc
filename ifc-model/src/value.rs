@@ -74,6 +74,29 @@ impl Value {
         }
     }
 
+    /// The boolean, if this value is `.T.` or `.F.`.
+    ///
+    /// `.U.` (logical unknown) returns `None`: it is a third state, not a
+    /// missing boolean, and collapsing it to either would lose that.
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Value::Bool(b) => Some(*b),
+            _ => None,
+        }
+    }
+
+    /// The integer, if this value is an integer literal.
+    ///
+    /// Does not accept a real: IFC distinguishes `IfcInteger` from `IfcReal`,
+    /// and silently truncating 2.7 to 2 would invent precision the file did
+    /// not state.
+    pub fn as_i64(&self) -> Option<i64> {
+        match self {
+            Value::Integer(i) => Some(*i),
+            _ => None,
+        }
+    }
+
     /// The text content, if this is a string.
     pub fn as_text(&self) -> Option<&str> {
         match self {

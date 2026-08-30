@@ -10,3 +10,8 @@ description = "IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage."
 
 [dependencies]
 ifc-model.workspace = true
+
+[dev-dependencies]
+# Test-only: fixtures are STEP files, and parsing them is not a production
+# concern of this crate.
+ifc-step.workspace = true

@@ -13,3 +13,8 @@ description = "Cost semantics as a borrowed view over the IFC model."
 # at compile time without any data loss. See docs/adr/0006.
 ifc-model.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+# Test-only: fixtures are STEP files, and parsing them is not a production
+# concern of this crate.
+ifc-step.workspace = true

@@ -16,6 +16,11 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-schedule` implements every plan task: work plans and schedules, tasks
+  with task times, sequencing with signed lag, work calendars with recurrence,
+  events, and deterministic timeline queries.
+- `ifc-cost` completes rate/component trees, nesting and control assignment,
+  currency agreement, and tree rollups over a validated fixture.
 - `ifc-model` gains transactional authoring: `Transaction` stages structural
   edits, validates them against a projected end state, and commits atomically.
   Removing an entity that a surviving entity still references is refused, and
@@ -23,13 +28,13 @@ This page is synchronised from it at build time.
 - `ifc-properties` completes `PROP-EDIT`: quantity authoring helpers stage onto
   a caller-owned transaction, preserving each quantity's declared measure type.
 
-- `ifc-properties` implements six of its seven plan tasks: property sets with
+- `ifc-properties` implements property sets: property sets with
   every value family, quantities, units, templates, occurrence/type precedence,
   and comparison against externally computed measurements. Property values keep
   their declared measure type, so a length stays distinguishable from a count.
   SI prefixes are carried as exact decimal exponents rather than rounded
   factors. `WR21`/`WR22` quantity breaches are reported -- neither is checked by
-  `ifcopenshell.validate`. `PROP-EDIT` remains blocked on `MODEL-MUT`.
+  `ifcopenshell.validate`.
 
 - `ifc-systems` completes its plan: flow roles and direction semantics, zones
   with their `WR1` membership rule, spatial containment vs referencing, and
@@ -70,6 +75,11 @@ This page is synchronised from it at build time.
   `IfcArbitraryOpenProfileDef`, which encloses no area by definition.
 
 ### Fixed
+- `ifc-cost` read the wrong attribute slots for `IfcCostItem` and
+  `IfcCostSchedule`, skipping `ObjectType` and `PredefinedType`. Identification,
+  cost values and quantities were read one or more slots early, so real files
+  produced empty or wrong results. The crate's own fixtures encoded the same
+  mistake, which is why its tests passed.
 
 - The published capability matrix is generated from the lowering source
   instead of maintained by hand, closing the ADR 0005 follow-up. It had

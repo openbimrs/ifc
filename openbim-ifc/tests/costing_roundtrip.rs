@@ -75,7 +75,10 @@ fn costing_entities_survive_a_write_with_no_domain_feature() {
         .next()
         .expect("cost schedule survived");
     assert_eq!(schedule.text(2), Some("Budget 2026"));
-    assert_eq!(schedule.attributes[4], Value::Enum("BUDGET".into()));
+    // IfcCostSchedule is an IfcControl: ObjectType 4, Identification 5,
+    // PredefinedType 6. Reading the enum from 4 was the shape of the slot bug
+    // this fixture used to encode.
+    assert_eq!(schedule.attributes[6], Value::Enum("BUDGET".into()));
     assert_eq!(schedule.text(5), Some("BQ-2026-01"));
 
     let items: Vec<_> = reread.of_type("IFCCOSTITEM").collect();
