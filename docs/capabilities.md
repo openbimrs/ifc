@@ -38,6 +38,7 @@ code.
 | `ifc-author` | 552 | 6 | 2 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 482 | 8 | 0 | 0 | <span class="status-partial">Partial</span> |
 | `ifc-step` | 480 | 5 | 0 | 2 | <span class="status-implemented">Implemented</span> |
+| `ifc-systems` | 340 | 20 | 15 | 1 | <span class="status-partial">Partial</span> |
 | `ifc-properties` | 210 | 29 | 24 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-structural` | 194 | 27 | 22 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-alignment` | 186 | 26 | 21 | 0 | <span class="status-scaffold">Scaffold</span> |
@@ -45,13 +46,17 @@ code.
 | `ifc-style` | 174 | 24 | 20 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-validate` | 172 | 23 | 18 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-schedule` | 170 | 23 | 21 | 0 | <span class="status-scaffold">Scaffold</span> |
-| `ifc-systems` | 149 | 20 | 18 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-georef` | 133 | 17 | 14 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-classification` | 131 | 17 | 14 | 0 | <span class="status-scaffold">Scaffold</span> |
 
 <!-- CAPABILITIES:CENSUS:END -->
 
-10 of 21 crates are scaffolds. They exist because the layering decision
+<!-- CAPABILITIES:SCAFFOLDCOUNT:BEGIN -->
+
+9 of 21 crates are scaffolds.
+
+<!-- CAPABILITIES:SCAFFOLDCOUNT:END -->
+They exist because the layering decision
 (see [ADR 0005](/adr/0005-scaffold-modules-declare-ownership))
 prefers declaring the intended home of a domain up front over discovering it
 later, but they must never be mistaken for working code.
@@ -69,6 +74,7 @@ later, but they must never be mistaken for working code.
 | GlobalId base-64 encode/decode | <span class="status-implemented">Implemented</span> | `ifc-model::guid` |
 | Spatial containment tree traversal | <span class="status-implemented">Implemented</span> | `ifc-spatial::SpatialTree`; facade feature `spatial`. See below. |
 | Objectified relationship traversal | <span class="status-partial">Partial</span> | `ifc-spatial::relation` reads `IfcRelAggregates`, `IfcRelContainedInSpatialStructure`, `IfcRelNests`. Other `IfcRel*` families are not interpreted. |
+| Distribution system discovery and membership | <span class="status-partial">Partial</span> | `ifc-systems::systems` reads `IfcSystem` and subtypes by schema ancestry and resolves `IfcRelAssignsToGroup` membership. Ports, connectivity, flow and zone-spatial links are still scaffolds. |
 | Cycle-protected graph walks | <span class="status-scaffold">Scaffold</span> | `ifc-model/src/traverse.rs` |
 | Type index (`ids_of_type`, `of_type`) | <span class="status-implemented">Implemented</span> | `Model::ids_of_type`, backed by `index/type_index.rs` |
 | Reverse-reference index ("who references me") | <span class="status-implemented">Implemented</span> | `ifc-model::ReverseIndex`, built on demand; records the attribute slot |

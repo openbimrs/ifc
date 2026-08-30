@@ -17,6 +17,18 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `ifc-systems` implements `SYS-ROOT`: `systems()` returns every `IfcSystem`
+  and subtype with its members resolved from `IfcRelAssignsToGroup`. Systems
+  are found by schema ancestry rather than `Model::ids_of_type`, which is an
+  exact-type index and reports no systems at all for a file whose systems are
+  all `IfcDistributionSystem`. `IfcZone` is included because IFC4 makes it an
+  `IfcSystem` subtype. Memberships naming absent entities, and assignments to
+  groups that are not systems, are reported as anomalies rather than dropped.
+- `test/fixtures/synthetic-systems/synthetic_systems.ifc`, the first committed
+  fixture stating systems at all, with its generator.
+
+### Added
+
 - `IfcCenterLineProfileDef` lowers to a centre-line profile: an open path plus
   the full `Thickness` across it, resolved into a constant-width boundary by
   the kernel's miter offsetting. It is read with an open-path reader rather

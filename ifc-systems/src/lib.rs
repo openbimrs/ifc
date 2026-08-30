@@ -16,14 +16,18 @@
 //!
 //! # Status
 //!
-//! Scaffold -- modules are reserved with intent, not implemented. See
-//! `../PLAN.md` for the stage that fills them.
+//! Partial. `system` implements SYS-ROOT: systems, subtype-aware discovery
+//! and membership. The remaining modules are reserved with intent, not
+//! implemented -- see `../PLAN.md` for the stages that fill them.
 
 mod connectivity;
 mod error;
 mod flow;
 mod port;
 mod system;
+
+pub use error::SystemAnomaly;
+pub use system::{systems, System};
 
 mod assignment;
 mod zone;

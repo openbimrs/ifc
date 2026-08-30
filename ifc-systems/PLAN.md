@@ -1,7 +1,7 @@
 # ifc-systems implementation plan
 
-Status: architecture scaffold; systems and connectivity projections remain to implement.
-Last updated: 2026-08-19
+Status: partial; SYS-ROOT implemented, connectivity projections remain.
+Last updated: 2026-08-30
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
 record blockers/decisions under it, and check it off only with evidence.
@@ -30,8 +30,8 @@ owner and expose a public symbol only through an intentional parent re-export.
 
 ## Work queue
 
-- [ ] `SYS-ROOT` - implement systems/distribution systems
-  - Evidence: focused view/query tests, invalid/cycle cases, and crate clippy.
+- [x] `SYS-ROOT` - implement systems/distribution systems
+  - Evidence: `cargo test -p ifc-systems` (8 tests), 5/5 mutation probes, crate clippy clean.
 - [ ] `SYS-PORT` - implement port definitions and attachment
   - Evidence: focused view/query tests, invalid/cycle cases, and crate clippy.
 - [ ] `SYS-CONN` - implement semantic connection graph with cycle budgets
@@ -47,3 +47,12 @@ owner and expose a public symbol only through an intentional parent re-export.
 
 Append concise entries as `TASK-ID - proof command/result - material decision`.
 Do not paste long logs or duplicate standing rules from `AGENTS.md`.
+
+- `SYS-ROOT` - `cargo test -p ifc-systems` 8 passed; 5/5 mutation probes -
+  Systems are discovered by SCHEMA ANCESTRY, not `Model::ids_of_type`, which
+  is an exact-type index and would find no system in a file whose systems are
+  all `IfcDistributionSystem`. `IfcZone` is deliberately included: in IFC4 its
+  chain is IfcZone -> IfcSystem -> IfcGroup, so excluding it would drop part
+  of the model. `IfcRelAssignsToGroup.RelatingGroup` is slot 6, not 5, because
+  `RelatedObjectsType` sits at 5. Anomalies are reported, not raised: a file
+  with one broken relationship still has a usable system graph.

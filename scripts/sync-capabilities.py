@@ -35,6 +35,8 @@ BEGIN_GEOMETRY = "<!-- CAPABILITIES:GEOMETRY:BEGIN -->"
 END_GEOMETRY = "<!-- CAPABILITIES:GEOMETRY:END -->"
 BEGIN_PROFILE = "<!-- CAPABILITIES:PROFILE:BEGIN -->"
 END_PROFILE = "<!-- CAPABILITIES:PROFILE:END -->"
+BEGIN_COUNT = "<!-- CAPABILITIES:SCAFFOLDCOUNT:BEGIN -->"
+END_COUNT = "<!-- CAPABILITIES:SCAFFOLDCOUNT:END -->"
 BEGIN_CENSUS = "<!-- CAPABILITIES:CENSUS:BEGIN -->"
 END_CENSUS = "<!-- CAPABILITIES:CENSUS:END -->"
 
@@ -51,6 +53,9 @@ PUBLISHED_STATUS = {
     # census, with tests, yet neither had a census row.
     "ifc-author": '<span class="status-implemented">Implemented</span>',
     "ifc-spatial": '<span class="status-implemented">Implemented</span>',
+    # SYS-ROOT implements system discovery and membership; the connectivity,
+    # port, flow and zone stages are still reserved names.
+    "ifc-systems": '<span class="status-partial">Partial</span>',
 }
 
 
@@ -164,8 +169,10 @@ def profile_table() -> str:
 def census_table(current: str) -> str:
     """Measure every crate in the workspace from its own sources.
 
-    Status is not derived: it is a judgement the page already publishes, so it
-    is read back from the existing row rather than invented from line counts.
+    Status is not derived: it is a judgement, not a line count. `PUBLISHED_STATUS`
+    is the source of truth and the page is the fallback, so promoting a crate
+    means editing that map -- not editing generated output that will be
+    overwritten on the next run.
     """
     previous = {
         name: status
@@ -205,7 +212,11 @@ def census_table(current: str) -> str:
             if len(lines) <= STUB_MAX_LINES:
                 stubs += 1
         tests = len(list((crate / "tests").glob("*.rs"))) if (crate / "tests").is_dir() else 0
-        status = previous.get(crate.name) or PUBLISHED_STATUS.get(crate.name)
+        # PUBLISHED_STATUS wins over the page: it is how a deliberate status
+        # change is made. Reading the page first would make a crate's status
+        # unchangeable, because the generator would keep restoring the old
+        # value it just read back.
+        status = PUBLISHED_STATUS.get(crate.name) or previous.get(crate.name)
         if status is None:
             raise SystemExit(
                 f"{crate.name} has no published status; add it to PUBLISHED_STATUS "
@@ -221,6 +232,18 @@ def census_table(current: str) -> str:
     for name, loc, files, stubs, tests, status in rows:
         out.append(f"| `{name}` | {loc:,} | {files} | {stubs} | {tests} | {status} |")
     return "\n".join(out)
+
+
+def scaffold_count(census: str) -> str:
+    """Sentence stating how many crates are scaffolds, counted from the table.
+
+    Prose next to a generated table is exactly where drift reappears: the
+    census was regenerated for months while the sentence beside it kept
+    claiming a stale number.
+    """
+    scaffolds = census.count('status-scaffold')
+    total = len(re.findall(r"^\| `[a-z0-9-]+` \|", census, re.M))
+    return f"{scaffolds} of {total} crates are scaffolds."
 
 
 def splice(text: str, begin: str, end: str, body: str) -> str:
@@ -246,6 +269,8 @@ def main() -> int:
     updated = splice(current, BEGIN_CENSUS, END_CENSUS, census_table(current))
     updated = splice(updated, BEGIN_GEOMETRY, END_GEOMETRY, geometry_table())
     updated = splice(updated, BEGIN_PROFILE, END_PROFILE, profile_table())
+    census = updated.split(BEGIN_CENSUS)[1].split(END_CENSUS)[0]
+    updated = splice(updated, BEGIN_COUNT, END_COUNT, scaffold_count(census))
 
     if args.check:
         if current != updated:
