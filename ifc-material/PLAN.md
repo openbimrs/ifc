@@ -56,8 +56,8 @@ interpretation and lowering. Unknown or malformed values stay explicit.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [x] `MAT-PSET` - join `IfcMaterialProperties` instances to the 14 official PSD templates
   - Evidence: exact-name/entity applicability plus explicit category-policy tests through the `ifc` facade.
-- [ ] `MAT-MUT` - add authoring only after MODEL-MUT exists
-  - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+- [x] `MAT-MUT` - transactional authoring for material identity, layer composition, and product assignment
+  - Evidence: 4 authoring tests, 3/3 guard mutations killed, crate clippy, and full IFC gate.
 - [ ] `MAT-CROSS` - prove material and geometry projections join by EntityId without duplicate slot ownership
   - Requires: `MAT-LAYER`, `MAT-PROFILE`, `INPUT-MAT`.
   - Evidence: cross-projection fixtures, isolated build, and crate clippy.
@@ -71,3 +71,4 @@ Do not paste long logs or move standing invariants out of `AGENTS.md`.
 - `MAT-PSET` - facade tests pin all 14 material PSDs and exact-name lookup.
 - Review hardening - strict aggregate/required-slot decoding, bounded typed wrappers,
   finite thickness sums, duplicate type-relation ambiguity, and exact IFC4 type-target validation.
+- `MAT-MUT` - `cargo test -p ifc-material`, 3/3 authoring guard mutations, and `scripts/gate.sh` - staged IFC4 material/layer/set/product assignment records remain atomically committed by `ifc-model::Transaction`.

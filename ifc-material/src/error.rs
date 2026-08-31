@@ -25,6 +25,18 @@ pub enum MaterialError {
         attribute: &'static str,
         value: String,
     },
+    #[error("cannot author {entity}.{attribute}: {value}")]
+    AuthoringInvalid {
+        entity: &'static str,
+        attribute: &'static str,
+        value: String,
+    },
+    #[error("authoring reference {target} has type {actual}, expected {expected}")]
+    AuthoringReferenceType {
+        target: EntityId,
+        expected: &'static str,
+        actual: String,
+    },
     #[error("entity {id} does not exist")]
     UnknownEntity { id: EntityId },
     #[error("reference {target} from {source_id} does not resolve")]

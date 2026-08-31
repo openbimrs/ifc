@@ -18,7 +18,8 @@ the `ifc` facade/application layer.
 - `profile.rs`: material-profile identity, set membership, priority/category
 - `constituent.rs`: constituent sets and fractions
 - `usage.rs`: product associations and semantic resolution
-- `error.rs`: malformed/ambiguous material projections
+- `authoring.rs`: transactional material/layer/set/assignment staging
+- `error.rs`: malformed/ambiguous material projections and authoring refusal
 
 ## Invariants
 
@@ -26,6 +27,7 @@ the `ifc` facade/application layer.
   never interprets them geometrically; shape math and lowering remain in ifc-geometry.
 - This crate may expose EntityId references to profiles but never constructs axiolid profiles or transforms.
 - Resolve assignments with explicit ambiguity/cycle behavior; do not guess a winning material association.
+- Authoring stages domain-shaped records only through `ifc_model::Transaction`; validate material-local values and references before staging, and let the model commit atomically.
 
 Keep cross-resource projections attribute-scoped: shared `ifc-model` storage
 does not make one feature crate the owner of an IFC entity. Split typed views,

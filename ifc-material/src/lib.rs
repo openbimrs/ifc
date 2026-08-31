@@ -7,6 +7,7 @@
 //! MaterialResource WHERE constraints. Authored placement and offset values are
 //! exposed here; geometric interpretation remains in `ifc-geometry`.
 
+pub mod authoring;
 pub mod constituent;
 pub mod error;
 pub mod layer;
@@ -16,6 +17,10 @@ pub mod types;
 pub mod usage;
 pub mod view;
 
+pub use authoring::{
+    associate_material, create_layer, create_layer_set, create_material, LayerDraft, LayerSetDraft,
+    MaterialAssignmentDraft, MaterialDraft,
+};
 pub use constituent::{MaterialConstituent, MaterialConstituentSet};
 pub use error::{MaterialError, MaterialResult};
 pub use layer::{MaterialLayer, MaterialLayerSet, MaterialLayerSetUsage, MaterialLayerWithOffsets};
