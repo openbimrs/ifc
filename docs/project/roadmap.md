@@ -82,30 +82,30 @@ from solids — that needs sectioning, tracked as R9b/R10.
 
 ### R4. `ifc-style` — presentation appearance
 
-**Gap.** The whole crate is scaffold: `IfcCurveStyle`, `IfcFillAreaStyle` and
-its hatching/tiles children, `IfcSurfaceStyle` and its shading/lighting/
-rendering/refraction children, `IfcColourRgb`, `IfcStyledItem`,
-`IfcPresentationLayerAssignment` and `IfcPresentationLayerWithStyle`, and the
-texture family.
+**Implemented.** Schema-resolved borrowed views cover `IfcCurveStyle`,
+`IfcFillAreaStyle` and its hatch/tile children, `IfcSurfaceStyle` and its
+shading/lighting/rendering/refraction children, `IfcColourRgb`, `IfcStyledItem`,
+presentation layers, and the texture family. Selected core style graphs have
+transaction-staged writers, and style resolution preserves deterministic
+direct-over-layer precedence.
 
-**Why.** Without it, geometry can be produced but not given line weights, line
-types, colours, hatches, or layers — i.e. it cannot be made into a drawing.
+**Remaining boundary.** These APIs interpret and author IFC presentation data;
+they do not render it or compose a drawing.
 
 ### R5. Annotation entities
 
-**Gap.** `IfcAnnotation`, `IfcTextLiteral`, `IfcTextLiteralWithExtent`,
-`IfcAnnotationFillArea`, and `IfcGeometricCurveSet` handling for annotation
-purposes are absent. No text means no room labels, no dimension text, no
-legends, no title-block content.
+**Implemented.** `ifc-style` provides strict borrowed views and bounded
+transaction-staged writers for `IfcAnnotation`, `IfcTextLiteral`,
+`IfcTextLiteralWithExtent`, and `IfcAnnotationFillArea`. Annotation type,
+text path, and box alignment use bounded schema vocabularies.
 
 **Note.** IFC2x3's `IfcDimensionCurve` family is correctly absent — it was
 removed in IFC4. The IFC4 replacement is `IfcAnnotation` plus `ObjectType`,
 property sets, and an `Annotation` representation context, which makes R3 a
 prerequisite.
 
-**Home.** Needs a decision: extend `ifc-style`, or add a dedicated
-presentation/annotation crate. Annotation is arguably product-level rather than
-style-level, so a separate crate is likely cleaner.
+**Remaining boundary.** Placement, composition, rendering, and general
+annotation geometry lowering remain application/geometry concerns.
 
 ### R6. External references and libraries
 
@@ -178,10 +178,11 @@ for it; the work itself belongs upstream.
 
 ## Domain crates awaiting implementation
 
-The current architecture scaffolds are `ifc-classification`, `ifc-resource`,
-`ifc-structural`, `ifc-style`, `ifc-georef`, and `ifc-alignment`. `ifc-properties`,
-`ifc-validate`, `ifc-schedule`, and `ifc-systems` are implemented; `ifc-cost` and
-`ifc-geometry` are partial. Each crate's **PLAN.md** records the remaining scope.
+The current architecture scaffolds are `ifc-resource`, `ifc-structural`,
+`ifc-georef`, and `ifc-alignment`. `ifc-classification`, `ifc-properties`,
+`ifc-style`, `ifc-validate`, `ifc-schedule`, and `ifc-systems` are implemented;
+`ifc-cost` and `ifc-geometry` are partial. Each crate's **PLAN.md** records the
+remaining scope.
 Priority among unfinished slices is demand-driven; open an issue describing the
 use case.
 

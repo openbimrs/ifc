@@ -74,7 +74,7 @@ Alignment and georeferencing keep task state in their own crate plans.
 - [ ] `IFC-MATERIAL` - read/query/authoring implemented; geometry cross-proof remains; see `ifc-material/PLAN.md`.
 - [x] `IFC-PROPERTIES` - authored properties, quantities, units, and mutation ports;
       see `ifc-properties/PLAN.md`.
-- [ ] `IFC-STYLE` - presentation projections with representation-item references only;
+- [x] `IFC-STYLE` - bounded typed presentation/annotation views and selected transactional writers;
       see `ifc-style/PLAN.md`.
 - [ ] `IFC-GEOREF` - project-to-map coordinate operation; see `ifc-georef/PLAN.md`.
 - [ ] `IFC-ALIGNMENT` - alignment parameters and exact neutral curve output;

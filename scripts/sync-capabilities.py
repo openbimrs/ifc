@@ -73,6 +73,11 @@ PUBLISHED_STATUS = {
     # All six PLAN tasks implemented: plans, tasks, sequences, calendars,
     # events and timeline queries.
     "ifc-schedule": '<span class="status-implemented">Implemented</span>',
+    # Schema-resolved strict views cover style assignment, colour, curve/fill,
+    # surface, texture, text, layers, and the requested annotation entities;
+    # core style/annotation authoring is transaction-staged. Rendering remains
+    # an adapter/application responsibility.
+    "ifc-style": '<span class="status-implemented">Implemented</span>',
 }
 
 

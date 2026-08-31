@@ -12,12 +12,17 @@ Allowed production dependencies: ifc-model and schema metadata; no geometry crat
 ## Module ownership
 
 - `assignment.rs`: styled-item and presentation-layer associations
+- `annotation.rs`: annotation, text-literal, extent, and fill-area views
+- `authoring.rs`: transaction-staged style and annotation construction
 - `colour.rs`: RGB/factor/select values
+- `coverage.rs`: canonical 70-declaration support census
 - `curve_style.rs`: curve fonts, widths, colours
+- `fill_style.rs`: fill, hatch, and tile presentation views
 - `surface_style.rs`: shading/rendering/lighting/refraction data
+- `text_style.rs`: text presentation style views
 - `texture.rs`: surface textures and coordinate mappings
 - `layer.rs`: presentation layer assignment/style
-- `query.rs`: style cascade/lookup
+- `view.rs`: schema-resolved borrowed projection entry point
 - `error.rs`: invalid/ambiguous presentation data
 
 ## Invariants

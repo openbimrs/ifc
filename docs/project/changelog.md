@@ -16,6 +16,14 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-style` now provides schema-resolved IFC2x3/IFC4/IFC4X3 views for
+  colour/factor, curve/fill/text/surface styles, textures, presentation layers,
+  styled items, and the requested `IfcAnnotation`, `IfcTextLiteral`,
+  `IfcTextLiteralWithExtent`, and `IfcAnnotationFillArea` contracts. Core style
+  and annotation graphs have transaction-staged authoring; direct styles resolve
+  deterministically ahead of layer styles, and IFC2x3 wrappers remain explicit.
+  A public 70-declaration appearance census distinguishes strict views from
+  schema-only and structural-only support; no rendering capability is claimed.
 - `ifc-classification` implements strict borrowed IFC4 views for classification,
   document, and library information/references plus their three object
   association families. Queries provide bounded hierarchy traversal and keep

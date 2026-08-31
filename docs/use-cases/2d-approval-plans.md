@@ -12,15 +12,17 @@ before the first line of application code is written.
 ## Verdict up front
 
 `openbim-ifc` gives you a **correct, lossless IFC substrate**, **real 2D curve
-geometry**, **schema-checked authoring**, and **spatial traversal**. It does **not** give you the
-presentation, annotation, library, or approval *semantics*.
+geometry**, **schema-checked authoring**, **spatial traversal**, and bounded
+typed **presentation, annotation, and library semantics**. It does **not** give
+you plan sectioning, annotation placement, rendering, or approval semantics.
 
 That distinction matters for this use case. You can now construct any entity the
 schema declares — including `IfcAnnotation`, `IfcCurveStyle`,
 `IfcLibraryReference` and `IfcApproval` — by naming its attributes, and the
-builder will refuse a wrong arity or type. What no crate here provides is a
-typed *view* that interprets those entities once written, or the sectioning
-geometry needed to derive a plan from a 3D body in the first place.
+builder will refuse a wrong arity or type. `ifc-style` adds strict borrowed views
+and selected transaction-staged writers for annotations and presentation data;
+`ifc-classification` does the same for library references. The repository still
+lacks the sectioning geometry needed to derive a plan from a 3D body.
 
 | Scenario step | Served by this crate? |
 | --- | --- |
@@ -32,11 +34,12 @@ geometry needed to derive a plan from a 3D body in the first place.
 | Lower supported nested curves into the neutral geometry graph | <span class="status-partial">Partly</span> — bare curves are not top-level body targets |
 | Select the 2D (`Plan`/`Annotation`) representation | <span class="status-implemented">Yes</span> — via `select_plan_representation` |
 | Cut a section / derive a plan from 3D bodies | <span class="status-absent">No</span> |
-| Author `IfcAnnotation` symbols | <span class="status-implemented">Yes</span> — via `ifc-author` |
-| *Write* style entities (`IfcCurveStyle`, …) | <span class="status-implemented">Yes</span> — via `ifc-author` |
-| *Interpret* style entities as a typed view | <span class="status-scaffold">Scaffold only</span> |
-| *Write* `IfcLibraryReference` / `IfcApproval` | <span class="status-implemented">Yes</span> — via `ifc-author` |
-| *Interpret* them as typed views | <span class="status-absent">No</span> |
+| Author `IfcAnnotation` symbols | <span class="status-implemented">Yes</span> — bounded helpers in `ifc-style`; generic fallback in `ifc-author` |
+| *Write* style entities (`IfcCurveStyle`, …) | <span class="status-implemented">Yes</span> — selected bounded helpers in `ifc-style`; generic fallback in `ifc-author` |
+| *Interpret* style entities as a typed view | <span class="status-implemented">Yes</span> — bounded presentation domain in `ifc-style` |
+| *Write* `IfcLibraryReference` | <span class="status-implemented">Yes</span> — via `ifc-classification` or generic `ifc-author` |
+| *Write* `IfcApproval` | <span class="status-implemented">Yes</span> — generic `ifc-author` only |
+| *Interpret* library / approval entities as typed views | <span class="status-partial">Partly</span> — library views exist; approval views do not |
 | Write the result back out | <span class="status-implemented">Yes</span> |
 
 ## What works today
@@ -235,8 +238,9 @@ rather than a launch requirement.
 
 ### 4. Authoring: annotations, styles, libraries, approvals
 
-**This gap is closed for writing.** `ifc-author` constructs any entity the
-schema declares, by name:
+**This gap is closed for writing.** `ifc-style` provides bounded transactional
+helpers for the named annotation and core style graphs. For entities outside
+that surface, `ifc-author` constructs any schema-declared entity by name:
 
 ```rust
 use ifc::EntityBuilder;               // feature = "author"
@@ -256,22 +260,20 @@ That covers every entity in this list — they are all declared by the schema:
 
 | What you must write | Can you author it? | Is there a typed view to read it back? |
 | --- | --- | --- |
-| `IfcAnnotation` | <span class="status-implemented">Yes</span> | <span class="status-absent">No</span> |
-| `IfcTextLiteralWithExtent` | <span class="status-implemented">Yes</span> | <span class="status-absent">No</span> |
-| `IfcAnnotationFillArea` | <span class="status-implemented">Yes</span> | <span class="status-absent">No</span> |
-| `IfcCurveStyle`, `IfcFillAreaStyle`, `IfcStyledItem` | <span class="status-implemented">Yes</span> | <span class="status-scaffold">Scaffold</span> (`ifc-style`) |
-| `IfcPresentationLayerAssignment` | <span class="status-implemented">Yes</span> | <span class="status-scaffold">Scaffold</span> |
+| `IfcAnnotation` | <span class="status-implemented">Yes</span> | <span class="status-implemented">Yes</span> (`ifc-style`) |
+| `IfcTextLiteralWithExtent` | <span class="status-implemented">Yes</span> | <span class="status-implemented">Yes</span> (`ifc-style`) |
+| `IfcAnnotationFillArea` | <span class="status-implemented">Yes</span> | <span class="status-implemented">Yes</span> (`ifc-style`) |
+| `IfcCurveStyle`, `IfcFillAreaStyle`, `IfcStyledItem` | <span class="status-implemented">Yes</span> | <span class="status-implemented">Yes</span> (`ifc-style`) |
+| `IfcPresentationLayerAssignment` | <span class="status-implemented">Yes</span> | <span class="status-implemented">Yes</span> (`ifc-style`) |
 | `IfcShapeRepresentation` | <span class="status-implemented">Yes</span> | <span class="status-absent">No</span> |
-| `IfcGeometricRepresentationSubContext` | <span class="status-implemented">Yes</span> | <span class="status-absent">No</span> |
-| `IfcLibraryReference`, `IfcLibraryInformation` | <span class="status-implemented">Yes</span> | <span class="status-absent">No</span> |
-| `IfcRelAssociatesLibrary` | <span class="status-implemented">Yes</span> | <span class="status-absent">No</span> |
+| `IfcGeometricRepresentationSubContext` | <span class="status-implemented">Yes</span> | <span class="status-implemented">Yes</span> (`ifc-geometry`) |
+| `IfcLibraryReference`, `IfcLibraryInformation` | <span class="status-implemented">Yes</span> | <span class="status-implemented">Yes</span> (`ifc-classification`) |
+| `IfcRelAssociatesLibrary` | <span class="status-implemented">Yes</span> | <span class="status-implemented">Yes</span> (`ifc-classification`) |
 | `IfcApproval`, `IfcRelAssociatesApproval` | <span class="status-implemented">Yes</span> | <span class="status-absent">No</span> |
 
-The remaining column is the honest one: **nothing interprets these entities once
-written.** Your application holds the meaning. For generating permit documents
-that is usually acceptable — you wrote them, so you know what they are — but a
-round-trip through another tool and back will hand you entities this library
-preserves losslessly and does not explain.
+Rows with a typed view expose domain meaning and strict reference/value errors.
+The remaining absent rows still round-trip structurally through `ifc-model`, but
+your application owns their interpretation.
 
 ::: tip What to still verify yourself
 `ifc-author` checks arity and declared types. It does not check WHERE rules,
@@ -341,10 +343,12 @@ is one you switch off.
 
 ## What would change this verdict
 
-Items 1, 4, 5, 6, and 7 above are all things this repository *should* own rather
-than each application reinventing. They are tracked on the
-[roadmap](/project/roadmap) as the authoring layer, the presentation/annotation
-domain, and the external-reference domain.
+The repository now owns the lossless substrate, plan-representation selection,
+bounded annotation/presentation semantics, and library-reference domain. The
+remaining project-level gaps for this scenario are 3D-to-plan sectioning and a
+typed approval domain; placement, composition, and rendering remain
+application/provider responsibilities.
 
-If you are building this application, those roadmap items are the ones worth
-watching — or contributing to. See [contributing](/guide/contributing).
+If you are building this application, those remaining [roadmap](/project/roadmap)
+items are the ones worth watching — or contributing to. See
+[contributing](/guide/contributing).

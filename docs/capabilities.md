@@ -28,6 +28,7 @@ code.
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
 | `ifc-geometry` | 25,078 | 90 | 6 | 30 | <span class="status-partial">Partial</span> |
+| `ifc-style` | 3,322 | 31 | 0 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 2,417 | 29 | 14 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-template-catalog` | 2,403 | 28 | 3 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 2,398 | 24 | 0 | 8 | <span class="status-implemented">Implemented</span> |
@@ -46,14 +47,13 @@ code.
 | `ifc-structural` | 194 | 27 | 22 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-alignment` | 186 | 26 | 21 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-resource` | 177 | 25 | 23 | 0 | <span class="status-scaffold">Scaffold</span> |
-| `ifc-style` | 174 | 24 | 20 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-georef` | 133 | 17 | 14 | 0 | <span class="status-scaffold">Scaffold</span> |
 
 <!-- CAPABILITIES:CENSUS:END -->
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:BEGIN -->
 
-5 of 21 crates are scaffolds.
+4 of 21 crates are scaffolds.
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:END -->
 They exist because the layering decision
@@ -371,21 +371,23 @@ as the target view.
 ## Presentation, annotation, and external references
 
 These are the areas most relevant to drawing production and document/approval
-workflows. Presentation and annotation remain the least built; external
-classification/document/library references now have typed read/query/authoring
+workflows. Presentation and annotation now have schema-resolved typed views and
+bounded transaction-staged authoring; rendering, drawing layout, and the
+approval resource remain outside the current domain contracts. External
+classification/document/library references have typed read/query/authoring
 coverage.
 
 | Entity / concept | Status | Note |
 | --- | --- | --- |
-| `IfcAnnotation` | <span class="status-absent">Absent</span> | No reader, writer, or view |
-| `IfcTextLiteral`, `IfcTextLiteralWithExtent` | <span class="status-absent">Absent</span> | |
-| `IfcAnnotationFillArea` | <span class="status-absent">Absent</span> | |
-| `IfcCurveStyle`, `IfcFillAreaStyle` | <span class="status-scaffold">Scaffold</span> | `ifc-style` reserves the module names only |
-| `IfcSurfaceStyle` and children | <span class="status-scaffold">Scaffold</span> | `ifc-style/src/surface_style/` |
-| `IfcPresentationLayerAssignment` | <span class="status-scaffold">Scaffold</span> | `ifc-style/src/layer/` |
-| `IfcStyledItem` | <span class="status-scaffold">Scaffold</span> | `ifc-style/src/assignment/styled_item.rs` |
+| `IfcAnnotation` | <span class="status-implemented">Implemented</span> | Strict borrowed view and transaction-staged authoring; IFC4X3 `PredefinedType` remains version-conditional |
+| `IfcTextLiteral`, `IfcTextLiteralWithExtent` | <span class="status-implemented">Implemented</span> | Strict literal/placement/path/extent views and transaction-staged authoring |
+| `IfcAnnotationFillArea` | <span class="status-implemented">Implemented</span> | Type-checked outer/inner boundary views and transaction-staged authoring |
+| `IfcCurveStyle`, `IfcFillAreaStyle` | <span class="status-implemented">Implemented</span> | Schema-resolved curve/font/fill/hatch/tile views; no rendering claim |
+| `IfcSurfaceStyle` and children | <span class="status-implemented">Implemented</span> | RGB/factor, shading, rendering, lighting, refraction, and texture views; core surface graph authoring |
+| `IfcPresentationLayerAssignment` | <span class="status-implemented">Implemented</span> | Layer membership/style/visibility view and styled-layer authoring |
+| `IfcStyledItem` | <span class="status-implemented">Implemented</span> | Strict direct assignment view/writer and deterministic direct-over-layer resolution; IFC2x3 wrappers are explicit |
 | `IfcShapeRepresentation` | <span class="status-absent">Absent</span> | Generic `Representation` view exists; the subtype does not |
-| `IfcGeometricRepresentationSubContext` | <span class="status-absent">Absent</span> | Required to author a `Plan`/`Annotation` context |
+| `IfcGeometricRepresentationSubContext` | <span class="status-partial">Partial</span> | Strict inherited view and plan-context query exist; authoring uses generic `EntityBuilder`, not a dedicated helper |
 | `IfcLibraryReference` | <span class="status-implemented">Implemented</span> | Strict borrowed view and transaction-staged authoring |
 | `IfcLibraryInformation` | <span class="status-implemented">Implemented</span> | Strict borrowed view and transaction-staged authoring |
 | `IfcRelAssociatesLibrary` | <span class="status-implemented">Implemented</span> | Deterministic object lookup and transaction-staged authoring |

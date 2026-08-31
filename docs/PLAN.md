@@ -34,10 +34,13 @@ from the code it describes.
 
 - [ ] `DOC-006` - per-use-case page for model checking / IDS auditing once the
       relevant crates leave scaffold status.
-- [ ] `DOC-007` - publish a worked annotation round-trip fixture alongside the
-      2D approval-plan guide when authoring helpers exist.
-- [ ] `DOC-008` - link the site from the GitHub About metadata and add the
-      repository homepage URL once Pages is enabled.
+- [ ] `DOC-007` - publish a downloadable worked annotation round-trip fixture
+      alongside the 2D approval-plan guide; authoring and tested round-trip support
+      exist, but the fixture is not yet a published docs artifact.
+- [x] `DOC-008` - link the site from GitHub About metadata and publish with
+      GitHub Pages.
+      Proof: `gh repo view openbimrs/ifc --json homepageUrl` returns
+      `https://openbimrs.github.io/ifc/`; the Pages API reports workflow deployment.
 
 ## Constraints
 

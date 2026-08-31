@@ -1,31 +1,55 @@
-//! `ifc-style` -- Presentation: colours, styles, textures and layer assignment.
+//! Strict, codec-independent IFC presentation and annotation views.
 //!
-//!
-//! 48 entities in IFC4. Deliberately **separate from geometry**: the kernel
-//! must never carry a colour (see `docs/adr/0001` invariants), so appearance
-//! lives here and is joined to shapes only at the consumer.
-//!
-//! # Module map
-//!
-//! | Module | Role |
-//! |---|---|
-//! | `colour` | `IfcColourRgb`, colour specification and normalisation |
-//! | `surface_style` | `IfcSurfaceStyle` shading, rendering, lighting, refraction |
-//! | `curve_style` | `IfcCurveStyle` fonts, widths and patterns |
-//! | `texture` | `IfcSurfaceTexture` and UV coordinate mapping |
-//! | `assignment` | `IfcStyledItem`: binding a style to a representation item |
-//! | `layer` | `IfcPresentationLayerAssignment` and visibility |
-//! | `error` | Why a style resolution failed |
-//!
-//! # Status
-//!
-//! Scaffold -- modules are reserved with intent, not implemented. See
-//! `../PLAN.md` for the stage that fills them.
+//! Appearance stays separate from geometry: this crate exposes colour, style,
+//! texture, layer, styled-item, and annotation semantics over `ifc_model::Model`
+//! without placing presentation state in the geometry kernel. Reads and writes
+//! resolve attribute slots through the selected `ifc_schema::Schema`, so IFC2x3,
+//! IFC4, and IFC4X3 layout drift is explicit rather than guessed.
 
+mod annotation;
 mod assignment;
+mod authoring;
 mod colour;
+mod coverage;
 mod curve_style;
 mod error;
+mod fill_style;
 mod layer;
 mod surface_style;
+mod text_style;
 mod texture;
+mod view;
+
+pub use annotation::{
+    Annotation, AnnotationFillArea, AnnotationType, BoxAlignment, TextLiteral,
+    TextLiteralWithExtent, TextPath,
+};
+pub use assignment::{
+    PresentationStyleAssignment, PresentationStyleMember, ResolvedStyle, StyleSource, StyledItem,
+};
+pub use authoring::{
+    create_annotation, create_annotation_fill_area, create_colour_rgb,
+    create_presentation_layer_with_style, create_styled_item, create_surface_style,
+    create_surface_style_shading, create_text_literal, create_text_literal_with_extent,
+    AnnotationDraft, AnnotationFillAreaDraft, ColourRgbDraft, PresentationLayerDraft,
+    StyledItemDraft, SurfaceStyleDraft, SurfaceStyleShadingDraft, TextLiteralDraft,
+    TextLiteralWithExtentDraft,
+};
+pub use colour::{ColourOrFactor, ColourRgb};
+pub use coverage::{
+    AppearanceDeclaration, AppearanceKind, AppearanceSupport, APPEARANCE_DECLARATIONS,
+};
+pub use curve_style::{CurveStyle, CurveStyleFont, CurveStyleFontPattern};
+pub use error::{StyleError, StyleResult};
+pub use fill_style::{FillAreaStyle, FillAreaStyleHatching, FillAreaStyleTiles};
+pub use layer::PresentationLayer;
+pub use surface_style::{
+    SurfaceSide, SurfaceStyle, SurfaceStyleLighting, SurfaceStyleRefraction, SurfaceStyleRendering,
+    SurfaceStyleShading, SurfaceStyleWithTextures,
+};
+pub use text_style::{TextStyle, TextStyleFontModel};
+pub use texture::{
+    BlobTexture, ImageTexture, IndexedTextureMap, PixelTexture, SurfaceTexture, TextureCoordinate,
+    TextureVertex, TextureVertexList,
+};
+pub use view::StyleView;

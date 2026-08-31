@@ -1,19 +1,21 @@
 # ifc-style surface_style plan
 
-Status: planned under `STYLE-SURFACE`. Last updated: 2026-08-19.
-Follow `AGENTS.md`; claim one task and record material decisions beneath it.
+Status: implemented under `STYLE-SURFACE`. Last updated: 2026-08-31.
+Follow `AGENTS.md`; record remaining scope without reopening completed tasks.
 
 ## Work queue
 
-- [ ] `SSURF-SHADE` - shading views
-  - Proof: focused valid/invalid/edge fixture tests plus crate clippy.
-- [ ] `SSURF-RENDER` - rendering/reflection views
-  - Proof: focused valid/invalid/edge fixture tests plus crate clippy.
-- [ ] `SSURF-LIGHT` - lighting views
-  - Proof: focused valid/invalid/edge fixture tests plus crate clippy.
-- [ ] `SSURF-REFRACT` - refraction views
-  - Proof: focused valid/invalid/edge fixture tests plus crate clippy.
+- [x] `SSURF-SHADE` - shading views
+  - Proof: focused projection and authoring tests plus strict clippy.
+- [x] `SSURF-RENDER` - rendering/reflection views
+  - Proof: colour-or-factor and wrong-reference tests.
+- [x] `SSURF-LIGHT` - lighting views
+  - Proof: strict select and aggregate tests.
+- [x] `SSURF-REFRACT` - refraction views
+  - Proof: strict select and aggregate tests.
 
 ## Completion log
 
-Append `TASK-ID - proof - material decision`; no long logs.
+- `SSURF-SHADE`/`SSURF-RENDER` - selected transactional authoring and borrowed views pass.
+- `SSURF-LIGHT`/`SSURF-REFRACT` - typed descriptors pass strict reference validation.
+- Surface elements enforce `SET [1:5]` and one member per implemented semantic category.

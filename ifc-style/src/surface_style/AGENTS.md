@@ -1,13 +1,15 @@
 # ifc-style surface_style instructions
 
-Scope: surface shading, rendering, lighting, and refraction semantics. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
-assigned task(s) `STYLE-SURFACE`; keep progress and blockers there.
+Scope: surface shading, rendering, lighting, and refraction semantics. Follow
+crate `../../AGENTS.md`; read `PLAN.md` only for assigned or remaining
+surface-style work.
 
 ## Owns
 
-- surface style element selects
-- shading/rendering scalar/colour values
+- strict surface-style element selects and cardinality
+- shading/rendering scalar and colour values
 - lighting/refraction descriptors
+- bounded per-category uniqueness validation
 
 ## Does not own
 
@@ -15,7 +17,11 @@ assigned task(s) `STYLE-SURFACE`; keep progress and blockers there.
 - GPU material types
 - surface geometry
 
-## Growth map
+## Implementation map
 
-`shading.rs`, `rendering.rs`, `lighting.rs`, `refraction.rs`. These source owners already compile as private scaffold modules. Replace a module's planned-owner marker with its first real contract and tests; do not add parallel placeholders. Keep views, resolution, validation, and neutral output in
-separate files.
+- `shading.rs`: shading projections
+- `rendering.rs`: rendering and colour-or-factor projections
+- `lighting.rs`: lighting projections
+- `refraction.rs`: refraction projections
+
+Keep schema-specific validation explicit; do not claim general `WHERE` evaluation.

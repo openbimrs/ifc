@@ -1,21 +1,25 @@
 # ifc-style texture instructions
 
-Scope: texture descriptors and coordinate associations. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
-assigned task(s) `STYLE-TEXTURE`; keep progress and blockers there.
+Scope: texture descriptors and coordinate associations. Follow crate
+`../../AGENTS.md`; read `PLAN.md` only for assigned or remaining texture work.
 
 ## Owns
 
-- texture metadata/repeat/mode
-- image/blob references as data
-- texture coordinate/map associations
+- texture metadata, repeat flags, and schema-specific mode
+- image/blob references as inert data
+- strict texture-transform and coordinate/map associations
 
 ## Does not own
 
-- image decoding or I/O
+- image decoding, loading, or other I/O
 - UV generation from geometry
 - renderer handles
 
-## Growth map
+## Implementation map
 
-`surface.rs`, `image.rs`, `coordinate.rs`, `map.rs`. These source owners already compile as private scaffold modules. Replace a module's planned-owner marker with its first real contract and tests; do not add parallel placeholders. Keep views, resolution, validation, and neutral output in
-separate files.
+- `surface.rs`: shared texture descriptors and typed transforms
+- `image.rs`: image texture metadata
+- `coordinate.rs`: texture-coordinate associations
+- `map.rs`: strict indexed texture-map relationships
+
+URLs and blobs remain model data and are never fetched by this crate.

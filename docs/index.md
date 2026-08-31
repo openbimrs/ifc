@@ -58,8 +58,8 @@ println!("{} entities", model.len());
 ## Before you build on this
 
 This project publishes a [capability matrix](/capabilities) that separates
-**implemented behaviour** from **reserved module ownership**. Roughly a third of
-the workspace by crate count is currently scaffold: files that own a name and a
+**implemented behaviour** from **reserved module ownership**. Four domain crates
+are currently scaffolds: files that own a name and a
 doc comment so the architecture is reviewable, without implementing the entity.
 
 Read the matrix before scoping work. No capability should be inferred from a

@@ -11,3 +11,7 @@ description = "Presentation: styles, colours, textures, layers, annotation."
 [dependencies]
 ifc-schema.workspace = true
 ifc-model.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+ifc-step.workspace = true

@@ -1,6 +1,6 @@
 # Crate map
 
-Nineteen crates in one workspace. Status uses the vocabulary defined on the
+Twenty-one crates in one workspace. Status uses the vocabulary defined on the
 [capabilities page](/capabilities): **Implemented** means executable behaviour
 with tests; **Scaffold** means reserved module names with no behaviour.
 
@@ -11,10 +11,10 @@ The entity graph. Owns `Model`, `Entity`, `Value`, `Header`, `EntityId`, the
 `Codec` trait, and IFC's base-64 `GlobalId` encoding. Schema-, codec-, and
 domain-agnostic by construction.
 
-Implemented: storage and ordering, the type index, dangling-reference detection,
-GUID encode/decode, header handling.
-Scaffold: `spatial`, `relation`, `traverse`, the reverse-reference index,
-`provenance`.
+Implemented: storage and ordering, the type and reverse-reference indices,
+dangling-reference detection, bounded graph traversal with cycle reports, GUID
+encode/decode, and header handling. Remaining module-level ownership seams are
+tracked in the capability matrix.
 
 ## L1 — schema and codecs
 
@@ -61,26 +61,34 @@ IFC4 ADD2 TC1 definitions.
 Partial. Real modules for cost items, quantities, rollup, and schedule views.
 
 ### `ifc-properties`
-Scaffold. Reserved for property sets, quantities, units, and templates. Note
-that `ifc-template-catalog` already carries the catalog data.
+Implemented. Borrowed property-set, quantity, unit, template, and standard
+library projections, including typed quantity authoring staged on a caller-owned
+transaction. `ifc-template-catalog` carries the published catalog data.
 
 ### `ifc-style`
-Scaffold. Reserved for presentation appearance: curve styles, fill-area styles,
-surface styles, textures, styled items, and layer assignment. This is the crate
-an annotation or drawing-production workflow needs, and it has no behaviour yet.
+Implemented bounded presentation domain. It provides schema-resolved borrowed
+views for curve, fill, text, surface, texture, styled-item, layer, and named
+annotation entities; selected core graphs have transaction-staged authoring and
+deterministic direct-over-layer resolution. It is not a renderer or drawing
+layout engine.
 
 ### `ifc-classification`
-Scaffold. Reserved for classification systems and references, and — importantly
-— for `IfcLibraryReference` / `IfcLibraryInformation` under `src/library/`.
+Implemented bounded IFC4 classification, document, and library views, hierarchy
+queries, association lookup, and transaction-staged authoring for nine concrete
+records. Abstract external-reference resources are not claimed generally.
 
-### `ifc-schedule`, `ifc-resource`, `ifc-systems`, `ifc-structural`
-Scaffold. Reserved for work schedules and sequencing; construction resources,
-actors and inventory; distribution systems and connectivity; and structural
-analysis members, actions and connections.
+### `ifc-schedule`, `ifc-systems`
+Implemented bounded schedule/task sequencing and relationship-only distribution
+system/port/connectivity views.
+
+### `ifc-resource`, `ifc-structural`
+Scaffold. Reserved for construction resources, actors and inventory, and
+structural analysis members, actions and connections.
 
 ### `ifc-validate`
-Scaffold. Reserved for where-rule evaluation, type checking, structural checks,
-and report shaping.
+Implemented schema-structural validation against the exact supported schema,
+plus nine bounded native rule IDs. It does not claim arbitrary EXPRESS `WHERE`
+evaluation or general `INVERSE` semantics.
 
 ### `ifc-spatial`
 Implemented. Containment and objectified relationship traversal: reads

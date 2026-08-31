@@ -1,13 +1,15 @@
 # ifc-style assignment instructions
 
-Scope: style and presentation-layer associations to representation EntityIds. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
-assigned task(s) `STYLE-ASSIGN`; keep progress and blockers there.
+Scope: style and presentation-layer associations to representation `EntityId`s.
+Follow crate `../../AGENTS.md`; read `PLAN.md` only for assigned or remaining
+assignment work.
 
 ## Owns
 
-- IfcStyledItem and style select links
-- layer assignment links
-- deterministic association lookup
+- `IfcStyledItem` and strict presentation-style select links
+- presentation-layer assignment links
+- deterministic association lookup and precedence
+- explicit IFC2X3 presentation-style-assignment wrappers
 
 ## Does not own
 
@@ -15,7 +17,10 @@ assigned task(s) `STYLE-ASSIGN`; keep progress and blockers there.
 - renderer material creation
 - texture loading
 
-## Growth map
+## Implementation map
 
-`styled_item.rs`, `layer.rs`, `resolution.rs`. These source owners already compile as private scaffold modules. Replace a module's planned-owner marker with its first real contract and tests; do not add parallel placeholders. Keep views, resolution, validation, and neutral output in
-separate files.
+- `styled_item.rs`: strict styled-item projections
+- `layer.rs`: layer projections
+- `resolution.rs`: deterministic direct-over-layer resolution
+
+Keep views, resolution, validation, and neutral output in separate files.

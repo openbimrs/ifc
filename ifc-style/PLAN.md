@@ -1,7 +1,7 @@
 # ifc-style implementation plan
 
-Status: architecture scaffold; IfcPresentationAppearanceResource projections remain to implement.
-Last updated: 2026-08-19
+Status: implemented typed presentation/annotation domain; rendering remains out of scope.
+Last updated: 2026-08-31
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
 record blockers/decisions under it, and check it off only with evidence.
@@ -12,8 +12,9 @@ Borrowed presentation, layer, colour, material-appearance, and texture projectio
 
 ## Planned file map
 
-These paths are compiled private scaffold modules. Implement inside the named
-owner and expose a public symbol only through an intentional parent re-export.
+These paths originated as compiled private scaffold modules and now own the
+implemented domain slices. Public symbols remain exposed only through
+intentional parent re-exports.
 
 - `src/assignment/styled_item.rs`: IfcStyledItem and style selects
 - `src/assignment/layer.rs`: layer assignment links
@@ -28,29 +29,40 @@ owner and expose a public symbol only through an intentional parent re-export.
 - `src/layer/assignment.rs`: layer membership
 - `src/layer/style.rs`: layer presentation
 
-- `src/assignment/resolution.rs`: compiled private scaffold; implementation owned by `src/assignment/PLAN.md`
-- `src/surface_style/refraction.rs`: compiled private scaffold; implementation owned by `src/surface_style/PLAN.md`
-- `src/texture/image.rs`: compiled private scaffold; implementation owned by `src/texture/PLAN.md`
-- `src/texture/map.rs`: compiled private scaffold; implementation owned by `src/texture/PLAN.md`
+- `src/assignment/resolution.rs`: deterministic direct-over-layer resolution
+- `src/surface_style/refraction.rs`: refraction values
+- `src/texture/image.rs`: image texture descriptors
+- `src/texture/map.rs`: texture mappings
 
 ## Work queue
 
-- [ ] `STYLE-ASSIGN` - implement styled-item and layer associations
+- [x] `STYLE-ASSIGN` - implement styled-item and layer associations
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `STYLE-COLOUR` - implement colour/select semantics
+- [x] `STYLE-COLOUR` - implement colour/select semantics
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `STYLE-CURVE` - implement curve style/font/width views
+- [x] `STYLE-CURVE` - implement curve style/font/width views
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `STYLE-SURFACE` - implement shading/rendering/lighting/refraction views
+- [x] `STYLE-SURFACE` - implement shading/rendering/lighting/refraction views
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `STYLE-TEXTURE` - implement texture descriptors and coordinate associations
+- [x] `STYLE-TEXTURE` - implement texture descriptors and coordinate associations
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `STYLE-CASCADE` - define deterministic occurrence/layer/style precedence
+- [x] `STYLE-CASCADE` - define deterministic occurrence/layer/style precedence
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `STYLE-CENSUS` - inventory all 70 appearance declarations and track support honestly
+- [x] `STYLE-CENSUS` - inventory all 70 appearance declarations and track support honestly
+  - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+- [x] `STYLE-ANNOTATION` - implement annotation, text literal/extent, and fill-area views and writers
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 
 ## Completion log
 
 Append concise entries as `TASK-ID - proof command/result - material decision`.
 Do not paste long logs or move standing invariants out of `AGENTS.md`.
+
+- `STYLE-ASSIGN` - `style_resolution` and `style_authoring` pass - direct styles win over layers; IFC2x3 wrappers stay explicit.
+- `STYLE-COLOUR` - normalized RGB and colour-or-factor tests pass - malformed factors are typed errors.
+- `STYLE-CURVE` - three-schema named-slot suite passes - inherited slots are never hardcoded.
+- `STYLE-SURFACE` - shading/rendering/lighting/refraction views plus core transactional authoring pass.
+- `STYLE-TEXTURE` - IFC2x3/IFC4/IFC4X3 texture-mode drift tests pass - URLs and transforms remain data, not loaded resources.
+- `STYLE-CASCADE` - direct/layer/ambiguity tests pass - lower-priority candidates remain observable.
+- `STYLE-CENSUS` - canonical IFC4 resource census asserts 70 unique declarations with explicit support tiers.
+- `STYLE-ANNOTATION` - annotation, text literal/extent, and fill-area views/writers pass real STEP round-trip and dangling-reference tests.

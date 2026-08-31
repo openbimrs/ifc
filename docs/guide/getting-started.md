@@ -48,10 +48,10 @@ entity in the file. That property is enforced by
 `openbim-ifc/tests/thin_build.rs`, not left to convention.
 
 ::: warning Enabling a domain feature is not the same as capability
-Several domain crates are architecture scaffolds with no behaviour. Turning on
-`features = ["style"]` compiles `ifc-style`, which currently reserves module
-names without implementing them. Check the
-[capability matrix](/capabilities) first.
+Domain support remains uneven. Turning on `features = ["style"]` compiles
+`ifc-style`, whose implemented surface is bounded typed presentation/annotation
+views and selected transactional writers—not rendering or drawing composition.
+Check the [capability matrix](/capabilities) for the exact supported surface.
 :::
 
 ## Reading a file
