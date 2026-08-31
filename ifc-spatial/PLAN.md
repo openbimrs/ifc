@@ -30,7 +30,8 @@ and is re-exported deliberately by its parent.
     single query, wasteful in a loop. Needs a borrowed index type so callers
     opt into building it once.
 - [ ] `SPATIAL-PSET` - group properties by container
-  - Blocked: `ifc-properties` is scaffold, so there is nothing to group yet.
+  - `ifc-properties` is implemented; compose its borrowed views at an L4 seam
+    without adding a sibling-crate dependency here.
 
 ## Completion log
 

@@ -1,7 +1,7 @@
 # ifc-material implementation plan
 
-Status: IFC4 MaterialResource read/query support implemented; authoring and geometry cross-proof remain.
-Last updated: 2026-08-20
+Status: IFC4 MaterialResource read/query/authoring implemented; geometry cross-proof remains.
+Last updated: 2026-08-31
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
 record blockers/decisions under it, and check it off only with evidence.

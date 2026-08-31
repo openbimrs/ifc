@@ -56,6 +56,10 @@ sections, parsing/writing, partitioning, spans, diagnostics, and event sinks.
 The IFC crates own only conversion between that substrate and IFC model/schema
 APIs.
 
+IFC2x3 TC1 and IFC4 ADD2 TC1 structural metadata are bundled for declared-schema
+validation. IFC4 ADD2 TC1 remains the domain-projection baseline unless a crate
+proves another layout explicitly. IFC4x3 is recognised but currently unbundled;
+never approximate it with IFC4 tables.
 
 ## Geometry boundary
 
@@ -103,8 +107,8 @@ APIs.
 Use the checked-out official EXPRESS and HTML docs under
 `references/ifc-spec/`; never make schema claims from memory. Generated
 manifests may be committed, but references are read-only and never a build
-dependency. IFC4 ADD2 TC1 is the current geometry baseline; version-specific
-behavior must be explicit rather than folded into guessed common behavior.
+dependency. Version-specific behavior must be explicit rather than folded into
+guessed common behavior.
 
 ## Gates
 

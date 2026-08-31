@@ -15,9 +15,10 @@ attribute name; slot positions come from `Schema::attributes`. Construction is
 refused for unknown entities and attributes, duplicate sets, missing required
 attributes, declared-type and aggregate mismatches, and malformed GlobalIds.
 
-Remaining under `AUTHOR` in the crate's **PLAN.md**: editing an entity already in a
-model (blocked on `MODEL-MUT` transactional apply) and a decision on whether
-`IfcOwnerHistory` is authored here or injected by an application service.
+Remaining under `AUTHOR` in the crate's **PLAN.md**: editing an entity already
+in a model (now unblocked by the implemented `ifc-model::Transaction`) and a
+decision on whether `IfcOwnerHistory` is authored here or injected by an
+application service.
 
 ### R2. Relationship and spatial traversal — done
 
@@ -37,8 +38,8 @@ is silent inversion. See
 [ADR 0008](/adr/0008-fixed-slot-constants-for-stable-relationships).
 
 Remaining under `SPATIAL`: reusing the reverse index for inverse queries
-(`relation::naming` currently rescans), and grouping properties by container
-(blocked — `ifc-properties` is scaffold).
+(`relation::naming` currently rescans), and grouping implemented
+`ifc-properties` views by container at an orchestration seam.
 
 ## Next — presentation and external references
 
@@ -159,12 +160,14 @@ for it; the work itself belongs upstream.
 
 ## Domain crates awaiting implementation
 
-`ifc-properties`, `ifc-validate`, `ifc-schedule`, `ifc-resource`,
-`ifc-systems`, `ifc-structural`, `ifc-georef`, `ifc-alignment` are all
-scaffolds. Each has a **PLAN.md** recording its intended scope. Priority among
-them is demand-driven; open an issue describing the use case.
+The current architecture scaffolds are `ifc-classification`, `ifc-resource`,
+`ifc-structural`, `ifc-style`, `ifc-georef`, and `ifc-alignment`. `ifc-properties`,
+`ifc-validate`, `ifc-schedule`, and `ifc-systems` are implemented; `ifc-cost` and
+`ifc-geometry` are partial. Each crate's **PLAN.md** records the remaining scope.
+Priority among unfinished slices is demand-driven; open an issue describing the
+use case.
 
 ## Contributing
 
-Items R1 and R2 are the highest-leverage and the most self-contained. See
+Choose from the explicit remaining gaps above and follow the owning crate plan. See
 [contributing](/guide/contributing).

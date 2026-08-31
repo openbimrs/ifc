@@ -1,7 +1,7 @@
 # IFC package implementation plan
 
-Status: active architecture scaffold
-Last updated: 2026-08-19
+Status: active implementation; foundations and several domain slices are shipped
+Last updated: 2026-08-31
 
 This file is implementation state, not ambient instructions. Read
 `AGENTS.md` first. Read this plan only for roadmap work or to locate a blocked
@@ -11,7 +11,7 @@ cross-crate dependency. Detailed work lives in each crate's `PLAN.md`.
 
 Build an IFC stack whose generic record model, codecs, domain projections,
 geometry adapters, and application workflows remain independently evolvable.
-The scaffold exists so focused agents can implement one bounded slice without
+The progressive crate structure lets focused agents implement one bounded slice without
 re-deriving package architecture or creating monoliths.
 
 ## Architecture baseline
@@ -68,8 +68,8 @@ Alignment and georeferencing keep task state in their own crate plans.
 
 ### Wave 3 - domain projections that touch geometry workflows
 
-- [ ] `IFC-MATERIAL` - material identity/profile/layer semantics; see `ifc-material/PLAN.md`.
-- [ ] `IFC-PROPERTIES` - authored properties, quantities, units, and mutation ports;
+- [ ] `IFC-MATERIAL` - read/query/authoring implemented; geometry cross-proof remains; see `ifc-material/PLAN.md`.
+- [x] `IFC-PROPERTIES` - authored properties, quantities, units, and mutation ports;
       see `ifc-properties/PLAN.md`.
 - [ ] `IFC-STYLE` - presentation projections with representation-item references only;
       see `ifc-style/PLAN.md`.
@@ -94,7 +94,7 @@ They are intentional domains, not candidates for automatic consolidation.
 
 ### Wave 5 - validation and codecs
 
-- [ ] `IFC-VALIDATE` - schema-aware validator with bounded rule execution;
+- [x] `IFC-VALIDATE` - schema-aware validator with bounded rule execution;
       see `ifc-validate/PLAN.md`.
 - [ ] `IFC-JSON` - codec after the shared scalar/typed-value contract is explicit;
       see `ifc/PLAN.md` for the future crate decision.

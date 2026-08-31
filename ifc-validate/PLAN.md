@@ -79,9 +79,11 @@ Do not paste long logs or transient process state.
 
 ## Corpus audit, 2026-08-31
 
-Ran the validator over all 37 committed fixtures. Results: 25 clean, 7 skipped
-(IFC2X3/IFC4X3_ADD2 -- no tables in this build), 3 deliberate `fail-*`
-fixtures correctly rejected, 2 real defects found.
+Ran the validator over all 38 committed fixtures. Results: 29 clean, 7
+expected/known-invalid fixtures reported errors, and 2 IFC4X3_ADD2 fixtures were
+skipped because that schema is recognised but not bundled. IFC2X3 fixtures are
+validated against bundled IFC2X3 TC1 tables rather than skipped or forced
+through IFC4.
 
 The run exposed two validator bugs before it exposed any fixture bug:
 

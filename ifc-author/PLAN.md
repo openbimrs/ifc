@@ -23,8 +23,8 @@ and is re-exported deliberately by its parent.
   - Proof: `cargo test -p ifc-author --test real_schema`; authored assembly
     round-trips through `ifc-step`.
 - [ ] `AUTHOR-EDIT` - update an entity already in a model, checked the same way
-  - Blocked on `MODEL-MUT` in `../ifc-model/src/mutation/PLAN.md`: editing needs
-    transactional apply, which this crate must not reimplement.
+  - `MODEL-MUT` is implemented; reuse its transaction and projected-state
+    preflight rather than adding another apply path.
 - [ ] `AUTHOR-OWNERHISTORY` - derive `IfcOwnerHistory` for authored roots
   - Needs a decision on whether owner history is authored or injected by an
     application service; recorded in the roadmap, not settled here.

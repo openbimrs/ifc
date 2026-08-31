@@ -1,7 +1,7 @@
 # OpenBIM.rs IFC
 
 Pure-Rust IFC infrastructure: schema metadata, entity graph storage, STEP and
-ifcXML codecs, typed domain projections, validation scaffolding, and explicit
+ifcXML codecs, typed domain projections, schema-aware validation, and explicit
 bridges to the format-neutral [Axiolid](https://github.com/axiolid/axiolid-kernel)
 geometry contracts.
 
@@ -24,15 +24,17 @@ that proves it.
 
 Implemented foundations include:
 
-- schema-agnostic entity/value graph with unknown-data round-tripping;
-- STEP parsing and writing;
+- schema-agnostic entity/value graph with unknown-data round-tripping and
+  transactional structural edits;
+- STEP and ifcXML parsing/writing;
 - schema-checked authoring of new entities by attribute name (`ifc-author`);
-- EXPRESS schema metadata parsing;
-- ifcXML codec foundations;
-- borrowed domain projections and geometry-lowering foundations;
-- versioned PSD/QTO template catalog data.
+- bundled IFC2x3 TC1 and IFC4 ADD2 TC1 structural schema metadata;
+- declared-schema validation with explicit unsupported-rule reporting;
+- borrowed property, quantity, material, schedule, systems, and spatial views;
+- material and quantity authoring staged through caller-owned transactions;
+- geometry selection/lowering foundations and versioned PSD/QTO catalogs.
 
-Several domain crates intentionally remain architecture scaffolds: their module
+Some domain crates intentionally remain architecture scaffolds: their module
 trees declare ownership of a schema area without implementing it. Their README,
 `AGENTS.md`, and `PLAN.md` files distinguish compiled behavior from reserved
 module ownership, and the capability matrix counts the stubs per crate. **No
