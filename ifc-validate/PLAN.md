@@ -76,3 +76,24 @@ Do not paste long logs or transient process state.
   does not have.
 - Header arity/type defects are not re-derived: `Model`'s header is normalized,
   so that evidence belongs to the codec's diagnostic channel.
+
+## Corpus audit, 2026-08-31
+
+Ran the validator over all 37 committed fixtures. Results: 25 clean, 7 skipped
+(IFC2X3/IFC4X3_ADD2 -- no tables in this build), 3 deliberate `fail-*`
+fixtures correctly rejected, 2 real defects found.
+
+The run exposed two validator bugs before it exposed any fixture bug:
+
+- SELECT membership was bounded by loop iterations, not visited types, so wide
+  IFC4 value selects returned false negatives. 8 false findings.
+- The first audit harness forced IFC4 tables on every file, inventing 20
+  slot-count errors in IFC2X3 fixtures. `validate_declared` exists precisely to
+  refuse that; the harness now uses it.
+
+Genuine fixture defects, both independently confirmed by `ifcopenshell.validate`:
+
+- `nurbs/ifc4_rational_bspline_curve_surface.ifc` instantiated two abstract
+  entities. Split into a separate invalid fixture.
+- `ifclite-geometry/nested_mapped_item_cycle.ifc` omits a mandatory
+  `MappingTarget`. Already deliberate and documented in `ifc-geometry`.

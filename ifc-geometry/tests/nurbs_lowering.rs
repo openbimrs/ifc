@@ -32,6 +32,17 @@ fn model() -> ifc_model::Model {
         .expect("fixture parses")
 }
 
+/// The deliberately invalid companion fixture: abstract base spline instances.
+fn invalid_base_spline_model() -> ifc_model::Model {
+    let path = PathBuf::from(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../test/fixtures/nurbs/invalid_abstract_base_splines.ifc"
+    ));
+    ifc_step::StepCodec
+        .read_path(&path)
+        .expect("fixture parses")
+}
+
 fn lower_curve(model: &ifc_model::Model, id: u64) -> ifc_geometry::lower::LoweredGeometry {
     let mut session = LoweringSession::new(model, &UNITS, Tolerance::building_scale());
     let root = lower_curve_node(&mut session, EntityId(id), frame())
@@ -149,9 +160,19 @@ fn explicit_knot_polynomial_subtypes_lower_without_inventing_weights() {
     assert_eq!(surface.knot_spec, KnotSpec::PiecewiseBezier);
 }
 
+/// An abstract base spline is refused, not silently completed.
+///
+/// `IfcBSplineCurve` and `IfcBSplineSurface` are ABSTRACT SUPERTYPE in IFC4,
+/// so a conforming file never contains one -- but real exporters emit them,
+/// and the lowering path must produce a typed report naming the entity rather
+/// than inventing the knots the concrete `*WithKnots` subtypes carry.
+///
+/// The instances live in their own fixture because they are illegal IFC:
+/// keeping them in the valid fixture made it fail schema validation, and a
+/// corpus that cannot be validated is a corpus that hides real defects.
 #[test]
 fn convention_only_base_splines_are_typed_unsupported() {
-    let model = model();
+    let model = invalid_base_spline_model();
 
     let mut curve_session = LoweringSession::new(&model, &UNITS, Tolerance::building_scale());
     let curve_error = lower_curve_node(&mut curve_session, EntityId(12), frame())

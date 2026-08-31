@@ -426,3 +426,155 @@ fn every_implemented_rule_is_actually_dispatched() {
         "dispatch list and registry disagree: {claimed:?}"
     );
 }
+
+/// Every committed IFC4 fixture that is meant to be well-formed validates clean.
+///
+/// This is the regression that would have caught the SELECT walk bug: a
+/// membership query bounded by loop iterations rather than visited types gave
+/// up part-way through IFC4's wide value selects and reported legal monetary
+/// and flow-rate measures as non-members. Eight findings across three
+/// fixtures, all false.
+///
+/// Fixtures under `ifcopenshell-validate/fail-*` are excluded: they are
+/// deliberately broken. So is `nested_mapped_item_cycle.ifc`, which
+/// `ifc-geometry` documents as malformed in two ways on purpose.
+/// Fixtures that violate the schema on purpose, each with its reason.
+///
+/// An explicit list, not a name pattern: a new malformed fixture must fail
+/// the corpus test and be justified here, rather than slipping through
+/// because its filename happened to match.
+const DELIBERATELY_INVALID: &[&str] = &[
+    // ifc-geometry asserts a typed cyclic report and a missing MappingTarget.
+    "nested_mapped_item_cycle.ifc",
+    // Abstract IfcBSplineCurve/Surface instances; lowering must refuse them.
+    "invalid_abstract_base_splines.ifc",
+];
+
+#[test]
+fn every_well_formed_ifc4_fixture_validates_clean() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test/fixtures");
+    let mut checked = 0usize;
+    let mut dirty = Vec::new();
+
+    for path in ifc_fixtures(&root) {
+        let name = path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+        if DELIBERATELY_INVALID.contains(&name.as_str()) || name.starts_with("fail-") {
+            continue;
+        }
+        let Ok(model) = StepCodec.read_path(&path) else {
+            continue;
+        };
+        // Only IFC4: this build has no tables for IFC2X3 or IFC4X3, and
+        // validating against the wrong ones invents slot-count errors.
+        let Ok(report) = ifc_validate::validate_declared(&model) else {
+            continue;
+        };
+        checked += 1;
+        let errors: Vec<String> = report
+            .sorted()
+            .iter()
+            .filter(|finding| finding.severity == Severity::Error)
+            .map(|finding| format!("{name}: {finding}"))
+            .collect();
+        if !errors.is_empty() {
+            dirty.extend(errors);
+        }
+    }
+
+    assert!(checked >= 12, "expected the IFC4 corpus, checked {checked}");
+    assert!(
+        dirty.is_empty(),
+        "well-formed fixtures produced {} errors:\n{}",
+        dirty.len(),
+        dirty.join("\n")
+    );
+}
+
+/// Every `fail-*` corpus fixture this build can read is actually rejected.
+///
+/// Guards the other direction: a validator that reports nothing would pass
+/// the test above trivially.
+#[test]
+fn every_ifc4_fail_fixture_is_rejected() {
+    let root =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test/fixtures/ifcopenshell-validate");
+    let mut judged = 0usize;
+    for path in ifc_fixtures(&root) {
+        let name = path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+        // Header-syntax fixtures are excluded: the codec normalizes the
+        // header, so that evidence never reaches validation. Documented in
+        // `ifc_validate::header`.
+        if !name.starts_with("fail-") || name.contains("header") {
+            continue;
+        }
+        let Ok(model) = StepCodec.read_path(&path) else {
+            continue;
+        };
+        let Ok(report) = ifc_validate::validate_declared(&model) else {
+            continue;
+        };
+        judged += 1;
+        assert!(
+            !report.is_conformant(),
+            "{name} is a known-bad fixture but validated clean"
+        );
+    }
+    assert!(judged >= 3, "expected fail fixtures, judged {judged}");
+}
+
+/// Collect `.ifc` files recursively, in a stable order.
+fn ifc_fixtures(dir: &std::path::Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(current) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&current) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+            } else if path.extension().is_some_and(|ext| ext == "ifc") {
+                out.push(path);
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+/// Every deliberately-invalid fixture must actually be invalid.
+///
+/// The exclusion list is a claim, and an unexamined exclusion list is how a
+/// real defect hides: adding a filename silences the corpus test forever.
+/// This proves each entry still fails validation, so a fixture that gets
+/// repaired must be removed from the list rather than left as a permanent
+/// blind spot.
+#[test]
+fn every_excluded_fixture_is_genuinely_invalid() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test/fixtures");
+    for excluded in DELIBERATELY_INVALID {
+        let path = ifc_fixtures(&root)
+            .into_iter()
+            .find(|path| path.file_name().is_some_and(|name| name == *excluded))
+            .unwrap_or_else(|| panic!("{excluded} is excluded but does not exist"));
+        let model = StepCodec
+            .read_path(&path)
+            .unwrap_or_else(|error| panic!("{excluded}: {error}"));
+        let report = ifc_validate::validate_declared(&model)
+            .unwrap_or_else(|error| panic!("{excluded}: {error}"));
+        assert!(
+            !report.is_conformant(),
+            "{excluded} is on the deliberately-invalid list but validates \
+             clean; remove it from the list instead of hiding the fixture"
+        );
+    }
+}

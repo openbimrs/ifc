@@ -14,7 +14,12 @@ flag geometrically consistent, while V remains open. The polynomial siblings
 exercise an actually closed curve and a V-closed/U-open surface.
 The rational records carry explicit compact knots, multiplicities, control points, and weights.
 Polynomial sibling records prove the same dispatch does not invent weights.
-Convention-only base curve and surface records prove lowering rejects absent
-explicit knots instead of synthesizing them.
+`invalid_abstract_base_splines.ifc` is a separate, deliberately invalid file.
+`IfcBSplineCurve` and `IfcBSplineSurface` are ABSTRACT SUPERTYPE in IFC4, so a
+conforming file never instantiates them; `ifcopenshell.validate` reports both
+as abstract. They are kept because real exporters emit them and lowering must
+reject them with a typed report instead of synthesizing the knots the concrete
+`*WithKnots` subtypes carry. They live apart so the valid fixture above stays
+schema-clean and usable as validation ground truth.
 
 Origin: generated in this repository. License: MIT.

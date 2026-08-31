@@ -1,0 +1,25 @@
+ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('Deliberately invalid IFC4: abstract base spline instances'),'2;1');
+FILE_NAME('invalid_abstract_base_splines.ifc','2026-08-31T00:00:00',('OpenBIM.rs'),('openbimrs'),'OpenBIM.rs','OpenBIM.rs','');
+FILE_SCHEMA(('IFC4'));
+ENDSEC;
+DATA;
+/* IfcBSplineCurve and IfcBSplineSurface are ABSTRACT SUPERTYPE in IFC4 and
+   must never appear in a conforming file. They are instantiated here on
+   purpose: a reader that meets one in the wild has to refuse it with a typed
+   report rather than invent the knots the concrete *WithKnots subtypes carry.
+   Confirmed invalid by ifcopenshell.validate ("Entity ... is abstract"). */
+#1=IFCCARTESIANPOINT((1.,0.,0.));
+#2=IFCCARTESIANPOINT((1.,1.,0.));
+#3=IFCCARTESIANPOINT((0.,1.,0.));
+#4=IFCCARTESIANPOINT((0.,0.,0.));
+#5=IFCCARTESIANPOINT((0.,2.,0.));
+#6=IFCCARTESIANPOINT((2.,0.,0.));
+#7=IFCCARTESIANPOINT((2.,2.,2.));
+/* Convention-only base curve: no explicit knots to lower. */
+#12=IFCBSPLINECURVE(2,(#1,#2,#3),.UNSPECIFIED.,.F.,.F.);
+/* Convention-only base surface: no explicit knots to lower. */
+#22=IFCBSPLINESURFACE(1,1,((#4,#5),(#6,#7)),.UNSPECIFIED.,.F.,.F.,.F.);
+ENDSEC;
+END-ISO-10303-21;

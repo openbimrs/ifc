@@ -8,6 +8,10 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `ifc-validate` corpus tests validate every committed IFC4 fixture, assert the
+  known-bad ones are rejected, and pin the deliberately-invalid exclusion list
+  to fixtures that genuinely fail. `cargo run -p ifc-validate --example
+  audit_corpus` prints the same audit as a triage table.
 - `ifc-validate` implements structural, type, and rule validation over a
   `Model`: dangling and wrong-kind references, required slots, scalar-vs-
   aggregate shape, unknown entity types, abstract instantiation, scalar form
@@ -19,6 +23,19 @@ and this project follows Semantic Versioning.
   the bundled IFC4 artifact, and the process cache stay here.
 
 ### Fixed
+- `ifc-validate` SELECT membership bounded the walk by loop iterations rather
+  than distinct types visited. IFC4's value selects are wide -- reaching
+  `IfcMonetaryMeasure` needs `IfcAppliedValueSelect -> IfcValue ->
+  IfcDerivedMeasureValue`, whose 60 members exhausted the 32-iteration budget --
+  so legal typed values were reported as non-members. Eight false findings
+  across three committed fixtures. The bound is now on visited types, and an
+  exhausted walk returns "cannot answer" instead of "not a member".
+- `test/fixtures/nurbs/ifc4_rational_bspline_curve_surface.ifc` instantiated
+  `IfcBSplineCurve` and `IfcBSplineSurface`, both `ABSTRACT SUPERTYPE` in IFC4
+  and confirmed invalid by `ifcopenshell.validate`. Moved to
+  `invalid_abstract_base_splines.ifc` so the valid fixture is schema-clean and
+  usable as validation ground truth; the lowering test that needs them now
+  reads the invalid file.
 - The bundled IFC4 schema artifact was missing attributes on 124 entities.
   `LIST [1:?] OF UNIQUE X` contains the token `UNIQUE`, which the EXPRESS
   parser read as the start of a `UNIQUE` block, truncating the attribute list
