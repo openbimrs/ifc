@@ -266,6 +266,7 @@ and this project follows Semantic Versioning.
 
 ### Changed
 
+- Relicensed repository-authored work from MIT to `AGPL-3.0-or-later`; historical releases remain under their published MIT terms, and third-party material retains its own terms.
 - `IfcArbitraryOpenProfileDef` now reports a stated reason ("the neutral
   profile model represents closed contours only") instead of a generic
   "profile subtype is not lowered yet". An open profile bounds no area;

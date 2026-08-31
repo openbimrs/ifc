@@ -22,4 +22,4 @@ reject them with a typed report instead of synthesizing the knots the concrete
 `*WithKnots` subtypes carry. They live apart so the valid fixture above stays
 schema-clean and usable as validation ground truth.
 
-Origin: generated in this repository. License: MIT.
+Origin: generated in this repository. License: AGPL-3.0-or-later.

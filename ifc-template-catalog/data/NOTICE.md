@@ -12,4 +12,4 @@
 
 Upstream names, descriptions, aliases, GUIDs, applicability, units, and type declarations are copyright buildingSMART International Limited and published under CC BY-ND 4.0: https://technical.buildingsmart.org/standards/ifc/ifc-schema-specifications/
 
-The binary is a deterministic format shift of that official catalog without semantic edits. Crate code and Nehirde correction overlays are MIT-licensed and remain separate; overlays never rewrite the official artifact. Redistribution must preserve this attribution and the upstream license.
+The binary is a deterministic format shift of that official catalog without semantic edits. Crate code and Nehirde correction overlays are licensed under AGPL-3.0-or-later and remain separate; overlays never rewrite the official artifact. Redistribution must preserve this attribution and the upstream license.

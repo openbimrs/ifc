@@ -97,5 +97,5 @@ boundaries and verification commands.
 
 ## License
 
-Code is MIT licensed. Embedded catalog data carries the license declared by its
+Code is AGPL-3.0-or-later licensed. Embedded catalog data carries the license declared by its
 own package and data notices.

@@ -15,7 +15,7 @@ success from command exit codes.
 
 ## Project conventions
 
-- Rust 2021, MSRV 1.88, MIT except where package/data notices say otherwise.
+- Rust 2021, MSRV 1.88, AGPL-3.0-or-later except where package/data notices say otherwise.
 - Pure Rust; IFC bridges depend only on format-neutral Axiolid representation
   crates and never on concrete execution providers.
 - `ifc-model` stays schema-, codec-, and domain-agnostic.
