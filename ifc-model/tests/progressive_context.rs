@@ -87,7 +87,11 @@ fn walk(dir: &Path, files: &mut Vec<PathBuf>) {
     for entry in std::fs::read_dir(dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display())) {
         let path = entry.expect("directory entry").path();
         if path.is_dir() {
-            walk(&path, files);
+            let name = path.file_name().unwrap_or_default();
+            if name != "target" && name != "references" && !name.to_string_lossy().starts_with('.')
+            {
+                walk(&path, files);
+            }
         } else {
             files.push(path);
         }

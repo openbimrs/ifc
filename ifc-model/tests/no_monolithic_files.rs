@@ -34,7 +34,7 @@ fn workspace_root() -> PathBuf {
         .into_std_path_buf()
 }
 
-/// Every `.rs` file under a directory, recursively, skipping `target`.
+/// Every owned `.rs` file under a directory, recursively.
 fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
@@ -43,7 +43,8 @@ fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
         let path = entry.path();
         let name = path.file_name().unwrap_or_default().to_string_lossy();
         if path.is_dir() {
-            if name != "target" && !name.starts_with('.') {
+            // `references/` is a read-only third-party corpus, not workspace source.
+            if name != "target" && name != "references" && !name.starts_with('.') {
                 rust_files(&path, out);
             }
         } else if path.extension().is_some_and(|e| e == "rs") {
