@@ -119,18 +119,54 @@ fn an_ifc4x3_file_is_validated_against_ifc4x3_tables() {
     );
 }
 
-/// The existing malformed IFC4X3 mapped item is validated, not skipped.
+/// A malformed IFC4X3 document is routed through the IFC4X3 bundle.
 #[test]
-fn an_invalid_ifc4x3_file_reports_its_missing_mapping_target() {
-    let model = load("../ifclite-geometry/nested_mapped_item_cycle.ifc");
-    let report =
-        ifc_validate::validate_declared(&model).expect("known IFC4X3 files must reach validation");
-    assert!(
-        report.findings().iter().any(|finding| {
-            finding.severity == Severity::Error
-                && finding.path.to_string().contains("MappingTarget")
-        }),
-        "invalid IFC4X3 fixture was not rejected: {:#?}",
+fn an_invalid_ifc4x3_document_reports_its_missing_mapping_target() {
+    let model = StepCodec
+        .read_bytes(
+            br#"ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('IFC4X3 validation regression'),'2;1');
+FILE_NAME('invalid-ifc4x3.ifc','2026-08-31T00:00:00',(),(),'openbim-ifc','openbim-ifc','');
+FILE_SCHEMA(('IFC4X3_ADD2'));
+ENDSEC;
+DATA;
+#1=IFCMAPPEDITEM(#2,$);
+ENDSEC;
+END-ISO-10303-21;
+"#,
+        )
+        .expect("the synthetic IFC4X3 document must parse");
+
+    let token = model
+        .header()
+        .schema_token()
+        .expect("the parsed header must retain FILE_SCHEMA");
+    assert_eq!(token, "IFC4X3_ADD2");
+    let version = ifc_schema::SchemaVersion::from_header_token(token)
+        .expect("IFC4X3_ADD2 must be recognised");
+    assert_eq!(version, ifc_schema::SchemaVersion::Ifc4x3);
+    assert_eq!(
+        ifc_schema::for_version(version)
+            .expect("IFC4X3 must be independently bundled")
+            .name(),
+        "IFC4X3_ADD2"
+    );
+
+    let report = ifc_validate::validate_declared(&model)
+        .expect("a recognised IFC4X3 document must reach validation");
+    let missing: Vec<_> = report
+        .findings()
+        .iter()
+        .filter(|finding| {
+            finding.rule == "structure.required.missing"
+                && finding.path.to_string() == "#1.MappingTarget"
+        })
+        .collect();
+    assert_eq!(
+        missing.len(),
+        1,
+        "the IFC4X3 MappingTarget defect needs one typed finding: {:#?}",
         report.findings()
     );
 }

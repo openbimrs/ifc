@@ -37,6 +37,10 @@ and this project follows Semantic Versioning.
   independent bundled artifacts, and process caches stay here.
 
 ### Fixed
+- The invalid IFC4X3 declared-schema regression now parses a synthetic
+  `IFC4X3_ADD2` document, asserts exact IFC4X3 bundle routing, and checks the
+  typed `structure.required.missing` finding. It previously loaded an IFC4
+  fixture while claiming IFC4X3 coverage.
 - `Budget.max_findings` now hard-caps report storage in `Report::push` and
   `Report::extend`; previously validation marked a report truncated only after a
   phase had already recorded an unbounded number of findings.
