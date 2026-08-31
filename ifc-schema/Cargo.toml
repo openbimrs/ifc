@@ -17,10 +17,12 @@ thiserror = { workspace = true, optional = true }
 
 [features]
 default = ["ifc4"]
-# Ships a compiled IFC4 ADD2 TC1 schema artifact and Schema::ifc4().
+# Ships the compiled schema artifacts and their accessors: ifc2x3(), ifc4(),
+# and for_version(). Named `ifc4` for compatibility with existing consumers;
+# it has covered both bundled tables since IFC2x3 was added.
 ifc4 = ["dep:bincode", "dep:thiserror"]
-# Compiles references/ifc-spec/**/*.exp into the committed artifact. Not
-# part of default: pulls in a normative ISO/buildingSMART source file that
+# Compiles a user-supplied .exp into a committed artifact. Not part of
+# default: the generator reads a normative ISO/buildingSMART source file that
 # must never ship inside the published crate.
 generation = ["ifc4"]
 

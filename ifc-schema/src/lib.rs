@@ -63,7 +63,7 @@ pub use artifact::decode_schema as artifact_decode_schema;
 pub use artifact::encode_schema as artifact_encode_schema;
 pub use attribute::Attribute;
 #[cfg(feature = "ifc4")]
-pub use bundled::ifc4;
+pub use bundled::{for_version, ifc2x3, ifc4};
 pub use entity::EntityDef;
 pub use registry::Schema;
 pub use types::{TypeDef, TypeKind};

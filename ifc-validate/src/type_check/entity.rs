@@ -86,6 +86,14 @@ pub fn attribute_types(model: &Model, schema: &Schema, report: &mut Report) {
                         attribute.type_name
                     ),
                 ),
+                Mismatch::FixedWidth { expected, actual } => Finding::error(
+                    "type.scalar.fixed_width",
+                    path,
+                    format!(
+                        "{} is STRING({expected}) FIXED, the file wrote {actual} characters",
+                        attribute.type_name
+                    ),
+                ),
                 Mismatch::EnumMember { member, declared } => Finding::error(
                     "type.enumeration.member",
                     path,

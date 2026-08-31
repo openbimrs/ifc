@@ -21,7 +21,10 @@ happens here and in consumers.
 - `version.rs`: which IFC schema a file's `FILE_SCHEMA` token names
 - `error.rs`: syntax/source diagnostics
 - `artifact.rs` (ifc4 feature): versioned binary codec for a compiled schema
-- `bundled.rs` (ifc4 feature): Schema::ifc4(), cached, decoded from data/
+- `bundled.rs` (ifc4 feature): Schema::ifc2x3() and Schema::ifc4(), cached,
+  decoded from data/. `for_version` maps a parsed FILE_SCHEMA token to a table
+  and returns None for IFC4x3, which is recognised but not bundled -- a
+  consumer must refuse rather than fall back to another schema's tables.
 
 ## Invariants
 
@@ -36,6 +39,20 @@ happens here and in consumers.
 Keep `lib.rs` delegating, keep child modules crate-private until they own a real
 public contract, and split view/data, traversal, mutation, and validation before
 they grow together.
+
+## Regenerating an artifact
+
+Requires a normative `.exp`, which is never committed:
+
+```
+cargo run -p ifc-schema --features generation --bin ifc-schema-generate -- \
+  ifc2x3 references/specs/ifc2x3-tc1/IFC2X3_TC1.exp
+cargo run -p ifc-schema --features generation --bin ifc-schema-generate -- \
+  ifc4 references/specs/ifc4-add2-tc1/IFC4.exp
+```
+
+The tool refuses a source whose entity/type counts do not match the selected
+schema, and a test pins those counts to the committed artifacts.
 
 ## Verification
 

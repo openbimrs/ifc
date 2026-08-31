@@ -87,18 +87,42 @@ fn a_complex_number_is_accepted() {
     assert!(errors.is_empty(), "false positive: {errors:#?}");
 }
 
-/// A file declaring IFC2X3 is refused rather than checked against IFC4.
+/// A file declaring a schema this build has no tables for is refused.
 ///
 /// Validating one schema's file against another's tables produces confident
 /// nonsense: entities that exist in both may have different slot layouts.
+/// IFC4x3 is recognised but not bundled, so it must refuse with the variant
+/// that says exactly that.
 #[test]
-fn a_file_from_another_schema_is_refused_not_guessed() {
-    let model = load("pass-selected-simple-type.ifc");
+fn a_file_from_an_unbundled_schema_is_refused_not_guessed() {
+    let model = load("../ifclite-geometry/bath_csg_solid.ifc");
     let error = ifc_validate::validate_declared(&model)
-        .expect_err("an IFC2X3 file must not be validated against IFC4 tables");
+        .expect_err("an IFC4X3 file must not be validated against IFC4 tables");
     assert_eq!(
         error,
-        ifc_validate::ValidateError::UnknownSchema("IFC2X3".into())
+        ifc_validate::ValidateError::UnbundledSchema("IFC4X3_ADD2".into())
+    );
+}
+
+/// An IFC2x3 file is now validated against IFC2x3 tables, not refused.
+///
+/// The schema differences are load-bearing: `IfcWallStandardCase` has 8
+/// attributes in IFC2x3 and 9 in IFC4, and `IfcRoot.OwnerHistory` is
+/// mandatory in IFC2x3 but OPTIONAL in IFC4. Checking one against the other
+/// invents errors in both directions.
+#[test]
+fn an_ifc2x3_file_is_validated_against_ifc2x3_tables() {
+    let model = load("pass-selected-simple-type.ifc");
+    let report = ifc_validate::validate_declared(&model)
+        .expect("IFC2x3 tables are bundled, so this must validate");
+    let slot_errors: Vec<_> = report
+        .findings()
+        .iter()
+        .filter(|finding| finding.rule.starts_with("structure.required.slot_count"))
+        .collect();
+    assert!(
+        slot_errors.is_empty(),
+        "IFC4 tables would invent slot-count errors here: {slot_errors:#?}"
     );
 }
 
@@ -448,6 +472,15 @@ const DELIBERATELY_INVALID: &[&str] = &[
     "nested_mapped_item_cycle.ifc",
     // Abstract IfcBSplineCurve/Surface instances; lowering must refuse them.
     "invalid_abstract_base_splines.ifc",
+    // Upstream ifc-lite fixtures (MPL-2.0) that omit IfcRoot.OwnerHistory.
+    // It is mandatory in IFC2x3 and only became OPTIONAL in IFC4, so these
+    // were invalid all along and simply unverifiable until this build gained
+    // IFC2x3 tables. `ifcopenshell.validate` reports the same 7 and 2
+    // instances. They are kept byte-identical to upstream because the fixture
+    // AGENTS.md makes filename and content provenance a hard rule -- editing
+    // them would silently fork a file we claim is upstream's.
+    "issue_2019_wall_two_overlapping_openings.ifc",
+    "swept_disk_composite_arc_crankbar.ifc",
 ];
 
 #[test]
@@ -577,4 +610,87 @@ fn every_excluded_fixture_is_genuinely_invalid() {
              clean; remove it from the list instead of hiding the fixture"
         );
     }
+}
+
+/// A GUID shorter than 22 characters is reported.
+///
+/// `IfcGloballyUniqueId` is `STRING(22) FIXED` in both bundled schemas, so a
+/// 21-character GUID is malformed regardless of uniqueness. IfcOpenShell
+/// reports the same defect in `issue_2019_wall_two_overlapping_openings.ifc`;
+/// this validator could not see it until IFC2x3 tables existed.
+#[test]
+fn a_guid_of_the_wrong_width_is_reported() {
+    let mut model = Model::new();
+    model.push(ifc_model::Entity::new(
+        "IFCWALL",
+        vec![ifc_model::Value::Text("0000000000000000000C1".into())],
+    ));
+    let report = validate(&model, ifc_schema::ifc4());
+    let found: Vec<_> = report
+        .findings()
+        .iter()
+        .filter(|f| f.rule == "type.scalar.fixed_width")
+        .collect();
+    assert_eq!(found.len(), 1, "{:#?}", report.findings());
+    assert!(
+        found[0].message.contains("22") && found[0].message.contains("21"),
+        "the message must state both widths: {}",
+        found[0].message
+    );
+}
+
+/// A correctly sized GUID is not reported.
+///
+/// Guards against a width check that fires on every file.
+#[test]
+fn a_guid_of_the_right_width_is_accepted() {
+    let mut model = Model::new();
+    model.push(ifc_model::Entity::new(
+        "IFCWALL",
+        vec![ifc_model::Value::Text("0hMOPMBpTAoOL$IPqA1$xY".into())],
+    ));
+    let report = validate(&model, ifc_schema::ifc4());
+    assert!(!report
+        .findings()
+        .iter()
+        .any(|f| f.rule == "type.scalar.fixed_width"));
+}
+
+/// `OwnerHistory` is mandatory in IFC2x3 and optional in IFC4.
+///
+/// The single clearest proof that the two bundled tables are actually
+/// consulted independently: the same record is conformant under one schema
+/// and not the other.
+#[test]
+fn owner_history_is_mandatory_only_in_ifc2x3() {
+    // IFC2x3 IfcWall has 8 slots, IFC4 has 9 (PredefinedType). Build each
+    // record at its own width: a short record trips the slot-count guard and
+    // never reaches the optionality check.
+    let record = |slots: usize| {
+        let mut attributes = vec![ifc_model::Value::Null; slots];
+        attributes[0] = ifc_model::Value::Text("0hMOPMBpTAoOL$IPqA1$xY".into());
+        let mut model = Model::new();
+        model.push(ifc_model::Entity::new("IFCWALL", attributes));
+        model
+    };
+    let missing = |model: &Model, schema| {
+        validate(model, schema)
+            .findings()
+            .iter()
+            .filter(|f| {
+                f.rule == "structure.required.missing"
+                    && f.path.to_string().contains("OwnerHistory")
+            })
+            .count()
+    };
+    assert_eq!(
+        missing(&record(8), ifc_schema::ifc2x3()),
+        1,
+        "IFC2x3 requires OwnerHistory"
+    );
+    assert_eq!(
+        missing(&record(9), ifc_schema::ifc4()),
+        0,
+        "IFC4 makes OwnerHistory OPTIONAL"
+    );
 }

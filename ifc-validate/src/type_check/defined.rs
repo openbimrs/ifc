@@ -4,7 +4,7 @@ use ifc_model::Value;
 use ifc_schema::Schema;
 
 use super::enumeration;
-use super::scalar::{describe_value, primitive_of};
+use super::scalar::{describe_value, primitive_of, FixedWidth};
 use super::select;
 
 /// Why a value does not fit its declared type.
@@ -30,6 +30,13 @@ pub enum Mismatch {
         written: String,
         /// The SELECT it had to belong to.
         select: String,
+    },
+    /// A `STRING(n) FIXED` value written at the wrong width.
+    FixedWidth {
+        /// The width the schema fixes.
+        expected: usize,
+        /// The width actually written.
+        actual: usize,
     },
 }
 
@@ -72,6 +79,28 @@ pub fn check(schema: &Schema, declared: &str, value: &Value) -> Option<Mismatch>
         // Aggregate shape is `structure::cardinality`'s concern; element
         // types are not declared by the parser's flat type token.
         Value::List(_) => None,
+        Value::Text(text) => {
+            // A fixed-width string is wrong at any other length, even when
+            // it is a perfectly good string. `IfcGloballyUniqueId` is
+            // `STRING(22) FIXED`; a 21-character GUID is malformed.
+            if let Some(width) = FixedWidth::from_resolved(&schema.resolve_defined(declared)) {
+                if !width.accepts(text) {
+                    return Some(Mismatch::FixedWidth {
+                        expected: width.0,
+                        actual: text.chars().count(),
+                    });
+                }
+            }
+            let primitive = primitive_of(schema, declared)?;
+            if primitive.accepts(value) {
+                None
+            } else {
+                Some(Mismatch::Primitive {
+                    expected: primitive.describe(),
+                    actual: describe_value(value),
+                })
+            }
+        }
         other => {
             let primitive = primitive_of(schema, declared)?;
             if primitive.accepts(other) {

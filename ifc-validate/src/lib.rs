@@ -100,8 +100,12 @@ pub fn validate_declared(model: &Model) -> Result<Report, ValidateError> {
         .header()
         .schema_token()
         .ok_or(ValidateError::NoSchemaDeclared)?;
-    match SchemaVersion::from_header_token(token) {
-        Some(SchemaVersion::Ifc4) => Ok(validate(model, ifc_schema::ifc4())),
-        _ => Err(ValidateError::UnknownSchema(token.to_string())),
-    }
+    let version = SchemaVersion::from_header_token(token)
+        .ok_or_else(|| ValidateError::UnknownSchema(token.to_string()))?;
+    // `for_version` returns None for a recognised schema this build does not
+    // bundle. Both cases are refusals, but they are different facts: one is
+    // "no idea what that token is", the other is "known schema, no tables".
+    let schema = ifc_schema::for_version(version)
+        .ok_or_else(|| ValidateError::UnbundledSchema(token.to_string()))?;
+    Ok(validate(model, schema))
 }

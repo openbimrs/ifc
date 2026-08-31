@@ -8,6 +8,13 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `ifc-schema` bundles the IFC2x3 TC1 schema (653 entities, 327 types)
+  alongside IFC4, with `ifc2x3()` and a `for_version()` lookup. `ifc-validate`
+  routes `validate_declared` through it, so IFC2x3 files are validated rather
+  than refused. IFC4x3 is recognised but deliberately not bundled and reports
+  the distinct `UnbundledSchema` refusal.
+- `ifc-validate` checks `STRING(n) FIXED` widths from the schema, catching
+  malformed `IfcGloballyUniqueId` values (`STRING(22) FIXED`) at any length.
 - `ifc-validate` corpus tests validate every committed IFC4 fixture, assert the
   known-bad ones are rejected, and pin the deliberately-invalid exclusion list
   to fixtures that genuinely fail. `cargo run -p ifc-validate --example
@@ -23,6 +30,10 @@ and this project follows Semantic Versioning.
   the bundled IFC4 artifact, and the process cache stay here.
 
 ### Fixed
+- The `ifc-schema-generate` tool hardcoded IFC4's entity/type counts, so it
+  could not produce another schema's artifact and its guard could not detect
+  the wrong source file for one. It now takes a schema selector with per-schema
+  expected counts, pinned to the committed artifacts by a test.
 - `ifc-validate` SELECT membership bounded the walk by loop iterations rather
   than distinct types visited. IFC4's value selects are wide -- reaching
   `IfcMonetaryMeasure` needs `IfcAppliedValueSelect -> IfcValue ->

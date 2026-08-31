@@ -15,6 +15,44 @@
 use ifc_model::Value;
 use ifc_schema::Schema;
 
+/// A `STRING(n) FIXED` width declared by a type.
+///
+/// EXPRESS lets a string type fix its own width: `IfcGloballyUniqueId` is
+/// `STRING(22) FIXED`, and a 21-character GUID is malformed regardless of
+/// whether it is unique. The width is part of the type expression the parser
+/// keeps as text, so it is read back out here rather than special-cased per
+/// type -- any `FIXED` width in any schema is checked the same way.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FixedWidth(pub usize);
+
+impl FixedWidth {
+    /// Reads a `STRING(n) FIXED` width from a resolved type expression.
+    ///
+    /// Returns `None` for a plain `STRING`, a bounded-but-not-fixed
+    /// `STRING(n)`, or anything that is not a string: only `FIXED` makes the
+    /// width a conformance requirement rather than a maximum.
+    #[must_use]
+    pub fn from_resolved(resolved: &str) -> Option<Self> {
+        let upper = resolved.to_ascii_uppercase();
+        if !upper.contains("FIXED") {
+            return None;
+        }
+        let start = upper.find("STRING")?;
+        let open = upper[start..].find('(')? + start;
+        let close = upper[open..].find(')')? + open;
+        upper[open + 1..close].trim().parse().ok().map(Self)
+    }
+
+    /// Whether `text` has exactly the declared width.
+    ///
+    /// Counted in characters, not bytes: a Latin-1 accented character is one
+    /// character in EXPRESS terms.
+    #[must_use]
+    pub fn accepts(self, text: &str) -> bool {
+        text.chars().count() == self.0
+    }
+}
+
 /// The EXPRESS primitive a defined type bottoms out in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Primitive {

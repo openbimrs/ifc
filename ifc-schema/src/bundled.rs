@@ -1,23 +1,51 @@
 //! Compiled schema artifacts bundled inside this crate.
 //!
-//! [`ifc4`] answers the request in issue #4: a consumer that needs the IFC4
-//! ADD2 TC1 schema should not have to source `IFC4.exp` itself, decode it as
-//! Latin-1, or reparse 372 KB of EXPRESS on every process start.
+//! A consumer that needs a schema should not have to source the `.exp` file
+//! itself, decode it as Latin-1, or reparse hundreds of kilobytes of EXPRESS
+//! on every process start.
 //!
-//! The artifact under `data/ifc4-add2-tc1.bin` is the *parsed* schema
-//! (entities, attributes, types), not the EXPRESS source text — it never
-//! contains normative buildingSMART/ISO 16739 prose, only the structural
-//! facts `openbim_step::express::parse` would extract from it. The build-time
-//! `generation` feature that produces this artifact requires a user-supplied
-//! copy of `IFC4.exp`; the file itself is never vendored into this crate or
-//! its published archive (see `tools/generate.rs`).
+//! The artifacts under `data/` are the *parsed* schema (entities, attributes,
+//! types), not the EXPRESS source text — they never contain normative
+//! buildingSMART/ISO 16739 prose, only the structural facts
+//! `openbim_step::express::parse` would extract. The build-time `generation`
+//! feature that produces them requires a user-supplied copy of the `.exp`
+//! file; that file is never vendored into this crate or its published archive
+//! (see `tools/generate.rs`).
+//!
+//! # Why two schemas and not three
+//!
+//! IFC2x3 TC1 and IFC4 ADD2 TC1 are bundled. IFC4x3 is not: it is a much
+//! larger schema whose civil/alignment entities this repository does not yet
+//! read, and shipping a table nothing consumes would be dead weight in every
+//! downstream binary. [`Schema::from_express`](crate::Schema::from_express)
+//! remains available for it.
 
 use std::sync::OnceLock;
 
 use crate::artifact::decode_schema;
 use crate::registry::Schema;
+use crate::version::SchemaVersion;
 
+static IFC2X3: OnceLock<Schema> = OnceLock::new();
 static IFC4: OnceLock<Schema> = OnceLock::new();
+
+/// The bundled IFC2x3 TC1 schema (653 entities, 327 types).
+///
+/// Still the most common schema in the wild. Its layouts differ from IFC4 in
+/// ways that silently corrupt a reader that assumes the newer tables:
+/// `IfcWallStandardCase` has 8 attributes here and 9 in IFC4, because IFC4
+/// inserts `PredefinedType`.
+///
+/// Parsed once on first use and cached for the life of the process.
+#[must_use]
+pub fn ifc2x3() -> &'static Schema {
+    IFC2X3.get_or_init(|| {
+        let parsed = decode_schema(include_bytes!("../data/ifc2x3-tc1.bin")).expect(
+            "the bundled IFC2x3 artifact is produced and verified by this crate's own build",
+        );
+        Schema::from_parsed(parsed)
+    })
+}
 
 /// The bundled IFC4 ADD2 TC1 schema (776 entities, 397 types).
 ///
@@ -26,9 +54,8 @@ static IFC4: OnceLock<Schema> = OnceLock::new();
 /// artifact: the 372 KB `IFC4.exp` EXPRESS source is never read at runtime
 /// and is not present in the published crate.
 ///
-/// For schemas this crate does not bundle (IFC2x3, IFC4x3, or a custom
-/// schema file), use [`Schema::from_express`] or
-/// [`Schema::from_express_bytes`] directly.
+/// For schemas this crate does not bundle (IFC4x3 or a custom schema file),
+/// use [`Schema::from_express`] or [`Schema::from_express_bytes`] directly.
 #[must_use]
 pub fn ifc4() -> &'static Schema {
     IFC4.get_or_init(|| {
@@ -38,15 +65,37 @@ pub fn ifc4() -> &'static Schema {
     })
 }
 
+/// The bundled schema for `version`, or `None` when none is bundled.
+///
+/// This is the lookup a reader should use after parsing `FILE_SCHEMA`, so an
+/// unbundled schema becomes an explicit "cannot check this" rather than a
+/// silent fallback to the wrong tables.
+#[must_use]
+pub fn for_version(version: SchemaVersion) -> Option<&'static Schema> {
+    match version {
+        SchemaVersion::Ifc2x3 => Some(ifc2x3()),
+        SchemaVersion::Ifc4 => Some(ifc4()),
+        // Deliberately absent: see the module note.
+        SchemaVersion::Ifc4x3 => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::ifc4;
+    use super::*;
 
     #[test]
     fn bundled_ifc4_matches_the_normative_entity_and_type_counts() {
         let schema = ifc4();
         assert_eq!(schema.entity_count(), 776, "IFC4 ADD2 TC1 entity count");
         assert_eq!(schema.type_count(), 397, "IFC4 ADD2 TC1 type count");
+    }
+
+    #[test]
+    fn bundled_ifc2x3_matches_the_normative_entity_and_type_counts() {
+        let schema = ifc2x3();
+        assert_eq!(schema.entity_count(), 653, "IFC2x3 TC1 entity count");
+        assert_eq!(schema.type_count(), 327, "IFC2x3 TC1 type count");
     }
 
     #[test]
@@ -61,11 +110,81 @@ mod tests {
         );
     }
 
+    /// The version→schema lookup, including the schema that is absent.
+    #[test]
+    fn version_lookup_returns_the_matching_table() {
+        assert_eq!(
+            for_version(SchemaVersion::Ifc4).map(|s| s.entity_count()),
+            Some(776)
+        );
+        assert_eq!(
+            for_version(SchemaVersion::Ifc2x3).map(|s| s.entity_count()),
+            Some(653)
+        );
+        assert!(
+            for_version(SchemaVersion::Ifc4x3).is_none(),
+            "IFC4x3 is not bundled and must not silently resolve to another schema"
+        );
+    }
+
+    /// The two bundled schemas must be distinct tables.
+    ///
+    /// Wiring both constructors to the same artifact would pass every count
+    /// test above if the counts happened to be read from the same file, so
+    /// pin a layout that genuinely differs between the versions.
+    #[test]
+    fn the_two_bundled_schemas_are_not_the_same_table() {
+        // IFC4 inserts PredefinedType; IFC2x3 stops at Tag.
+        assert_eq!(
+            ifc2x3().attribute_names("IFCWALLSTANDARDCASE"),
+            [
+                "GlobalId",
+                "OwnerHistory",
+                "Name",
+                "Description",
+                "ObjectType",
+                "ObjectPlacement",
+                "Representation",
+                "Tag"
+            ],
+        );
+        assert_eq!(
+            ifc4().attribute_names("IFCWALLSTANDARDCASE"),
+            [
+                "GlobalId",
+                "OwnerHistory",
+                "Name",
+                "Description",
+                "ObjectType",
+                "ObjectPlacement",
+                "Representation",
+                "Tag",
+                "PredefinedType"
+            ],
+        );
+    }
+
+    /// IFC2x3 entities that IFC4 removed must resolve only in IFC2x3.
+    #[test]
+    fn version_specific_entities_resolve_in_their_own_schema() {
+        assert!(
+            !ifc2x3().attributes("IFC2DCOMPOSITECURVE").is_empty(),
+            "Ifc2DCompositeCurve exists in IFC2x3"
+        );
+        assert!(
+            ifc4().type_def("IfcHeatFluxDensityMeasure").is_some(),
+            "IFC4 keeps the derived measure types"
+        );
+    }
+
     #[test]
     fn repeated_calls_return_the_same_cached_schema() {
         let first = ifc4() as *const _;
         let second = ifc4() as *const _;
         assert_eq!(first, second, "ifc4() must not reparse on every call");
+        let first = ifc2x3() as *const _;
+        let second = ifc2x3() as *const _;
+        assert_eq!(first, second, "ifc2x3() must not reparse on every call");
     }
 
     /// An inline `UNIQUE` in an aggregate must not truncate the slot list.
@@ -112,6 +231,24 @@ mod tests {
         );
     }
 
+    /// The same inline-`UNIQUE` hazard exists in IFC2x3.
+    #[test]
+    fn ifc2x3_type_product_keeps_its_full_slot_layout() {
+        assert_eq!(
+            ifc2x3().attribute_names("IFCTYPEPRODUCT"),
+            [
+                "GlobalId",
+                "OwnerHistory",
+                "Name",
+                "Description",
+                "ApplicableOccurrence",
+                "HasPropertySets",
+                "RepresentationMaps",
+                "Tag"
+            ],
+        );
+    }
+
     /// The other IFC4 declarations carrying an inline `UNIQUE`.
     #[test]
     fn every_inline_unique_aggregate_survives_parsing() {
@@ -127,6 +264,44 @@ mod tests {
             schema.attribute_names("IFCPROPERTYTABLEVALUE")[7],
             "CurveInterpolation",
             "slot 7 after two inherited IfcProperty slots"
+        );
+    }
+
+    /// The generator's expected counts must match the committed artifacts.
+    ///
+    /// The counts in `tools/generate.rs` are the only guard against pointing
+    /// the generator at the wrong `.exp` -- a mistake that yields a
+    /// plausible-looking artifact describing the wrong schema. Nothing else
+    /// checks them, because the generator needs a normative source file that
+    /// CI does not have. Pinning them against the artifacts that shipped
+    /// keeps the guard honest without needing the source.
+    #[test]
+    fn the_generator_guards_match_the_bundled_artifacts() {
+        // Parsed out of the generator's TARGETS table so the two cannot drift.
+        let source = include_str!("../tools/generate.rs");
+        let expected: Vec<(usize, usize)> = source
+            .split("Target {")
+            .skip(1)
+            .filter_map(|block| {
+                let number = |key: &str| -> Option<usize> {
+                    let start = block.find(key)? + key.len();
+                    let rest = &block[start..];
+                    let end = rest.find(',')?;
+                    rest[..end].trim().parse().ok()
+                };
+                Some((number("entities:")?, number("types:")?))
+            })
+            .collect();
+        assert_eq!(expected.len(), 2, "two schemas are generated");
+        assert_eq!(
+            expected[0],
+            (ifc2x3().entity_count(), ifc2x3().type_count()),
+            "ifc2x3 generator guard vs the committed artifact"
+        );
+        assert_eq!(
+            expected[1],
+            (ifc4().entity_count(), ifc4().type_count()),
+            "ifc4 generator guard vs the committed artifact"
         );
     }
 }
