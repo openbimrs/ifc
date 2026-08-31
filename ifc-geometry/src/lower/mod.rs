@@ -19,12 +19,14 @@ pub mod tolerance;
 
 use axiolid_model::{GeometryGraph, NodeId};
 
+pub use crate::input::representation::RepresentationPurpose;
 pub use bbox::lower_bounding_box_node;
 pub use boolean::lower_boolean_result_node;
 pub use brep::{lower_faceted_brep_node, lower_shell_node};
 pub use collection::lower_collection_node;
 pub use context::{
-    geometric_products, lower_product_items, product_world_transform, select_shape_representation,
+    geometric_products, lower_product_items, lower_product_representation, product_world_transform,
+    select_shape_representation,
 };
 pub use csg::{lower_csg_primitive_node, lower_csg_solid_node, lower_swept_disk_node};
 pub use curve::lower_curve_node;

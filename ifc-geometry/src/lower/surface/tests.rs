@@ -6,7 +6,7 @@
 //! folded into the direction changes the surface parameterisation without
 //! moving a single pixel.
 
-use axiolid_model::{GeometryNode, SurfaceRelation};
+use axiolid_model::{CurveRelation, GeometryNode, SurfaceRelation};
 use axiolid_surface::Surface;
 use ifc_model::{EntityId, Model, Value};
 
@@ -369,7 +369,7 @@ fn curve_bounded_model() -> Model {
     model.insert(EntityId(3), entity("IFCPLANE", vec![r(2)]));
 
     let mut pid = 4u64;
-    let mut poly = |model: &mut Model, pts: &[[f64; 3]]| {
+    let mut poly = |model: &mut Model, pts: &[[f64; 2]]| {
         let mut refs = Vec::new();
         for p in pts {
             let id = EntityId(pid);
@@ -384,21 +384,11 @@ fn curve_bounded_model() -> Model {
     };
     let outer = poly(
         &mut model,
-        &[
-            [0.0, 0.0, 0.0],
-            [5.0, 0.0, 0.0],
-            [5.0, 3.0, 0.0],
-            [0.0, 0.0, 0.0],
-        ],
+        &[[0.0, 0.0], [5.0, 0.0], [5.0, 3.0], [0.0, 0.0]],
     );
     let inner = poly(
         &mut model,
-        &[
-            [1.0, 1.0, 0.0],
-            [2.0, 1.0, 0.0],
-            [2.0, 2.0, 0.0],
-            [1.0, 1.0, 0.0],
-        ],
+        &[[1.0, 1.0], [2.0, 1.0], [2.0, 2.0], [1.0, 1.0]],
     );
     model.insert(
         EntityId(20),
@@ -409,6 +399,49 @@ fn curve_bounded_model() -> Model {
                 Value::Ref(outer),
                 Value::List(vec![Value::Ref(inner)]),
             ],
+        ),
+    );
+    model.insert(
+        EntityId(26),
+        entity("IFCPCURVE", vec![r(3), Value::Ref(outer)]),
+    );
+    model.insert(
+        EntityId(27),
+        entity("IFCPCURVE", vec![r(3), Value::Ref(inner)]),
+    );
+    model.insert(
+        EntityId(22),
+        entity(
+            "IFCCOMPOSITECURVESEGMENT",
+            vec![Value::Enum("CONTINUOUS".into()), Value::Bool(true), r(26)],
+        ),
+    );
+    model.insert(
+        EntityId(23),
+        entity(
+            "IFCOUTERBOUNDARYCURVE",
+            vec![Value::List(vec![r(22)]), Value::Bool(false)],
+        ),
+    );
+    model.insert(
+        EntityId(24),
+        entity(
+            "IFCCOMPOSITECURVESEGMENT",
+            vec![Value::Enum("CONTINUOUS".into()), Value::Bool(true), r(27)],
+        ),
+    );
+    model.insert(
+        EntityId(25),
+        entity(
+            "IFCBOUNDARYCURVE",
+            vec![Value::List(vec![r(24)]), Value::Bool(false)],
+        ),
+    );
+    model.insert(
+        EntityId(21),
+        entity(
+            "IFCCURVEBOUNDEDSURFACE",
+            vec![r(3), Value::List(vec![r(23), r(25)]), Value::Bool(true)],
         ),
     );
     model
@@ -591,6 +624,47 @@ fn a_curve_bounded_plane_orders_outer_then_inner() {
     );
 }
 
+#[test]
+fn a_curve_bounded_surface_preserves_boundary_order_and_implicit_outer() {
+    let model = curve_bounded_model();
+    let scale = UnitScale::default();
+    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let root = lower_surface_node(&mut session, EntityId(21), Transform::identity())
+        .expect("curve-bounded surface lowers");
+    let lowered = session.finish(root).expect("graph finishes");
+
+    match lowered.graph.get(root).expect("root") {
+        GeometryNode::SurfaceRelation(SurfaceRelation::CurveBounded {
+            basis,
+            boundaries,
+            implicit_outer,
+        }) => {
+            assert!(matches!(
+                lowered.graph.get(*basis),
+                Some(GeometryNode::Surface(Surface::Plane(_)))
+            ));
+            assert_eq!(boundaries.len(), 2);
+            for boundary in boundaries {
+                let Some(GeometryNode::CurveRelation(CurveRelation::Composite { segments })) =
+                    lowered.graph.get(*boundary)
+                else {
+                    panic!("expected an IFC boundary composite");
+                };
+                assert_eq!(segments.len(), 1);
+                assert!(matches!(
+                    lowered.graph.get(segments[0].curve),
+                    Some(GeometryNode::CurveRelation(CurveRelation::ParameterCurve {
+                        basis_surface,
+                        ..
+                    })) if basis_surface == basis
+                ));
+            }
+            assert!(*implicit_outer);
+        }
+        other => panic!("expected curve-bounded surface, got {other:?}"),
+    }
+}
+
 /// The B-spline keeps u and v distinct: degrees, knots and net orientation.
 ///
 /// The fixture patch is cubic in u and linear in v over a saddle-shaped net,
@@ -671,4 +745,30 @@ fn a_bspline_patch_keeps_its_directions_distinct() {
         (corner[2] - 0.6).abs() < 1e-12,
         "the saddle height must survive"
     );
+}
+
+#[test]
+fn self_referential_surface_is_a_typed_cycle_error() {
+    let mut model = Model::default();
+    model.insert(
+        EntityId(1),
+        entity(
+            "IFCCURVEBOUNDEDSURFACE",
+            vec![r(1), Value::List(vec![r(2)]), Value::Bool(false)],
+        ),
+    );
+    model.insert(
+        EntityId(2),
+        entity("IFCBOUNDARYCURVE", vec![Value::List(vec![])]),
+    );
+
+    let scale = UnitScale::default();
+    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let error = lower_surface_node(&mut session, EntityId(1), Transform::identity())
+        .expect_err("surface cycle must be bounded");
+    assert!(matches!(
+        error,
+        crate::GeometryError::CyclicChain { entity, kind }
+            if entity == EntityId(1) && kind == "surface"
+    ));
 }

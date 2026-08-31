@@ -1,7 +1,7 @@
 # ifc-georef implementation plan
 
-Status: architecture scaffold; map conversion and CRS projections remain to implement.
-Last updated: 2026-08-19
+Status: IFC4 project-to-map conversion and projected-CRS/map-unit resolution implemented; north, profile-version and broader CRS operations remain.
+Last updated: 2026-08-31
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
 record blockers/decisions under it, and check it off only with evidence.
@@ -29,9 +29,9 @@ owner and expose a public symbol only through an intentional parent re-export.
 
 ## Work queue
 
-- [ ] `GEOREF-CRS` - implement CRS and map-unit views
+- [x] `GEOREF-CRS` - implement CRS and map-unit views
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `GEOREF-MAP` - implement map-conversion transform with degenerate-axis checks
+- [x] `GEOREF-MAP` - implement map-conversion transform with degenerate-axis checks
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [ ] `GEOREF-CHAIN` - define/test composition with a separately supplied project frame
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
@@ -39,10 +39,15 @@ owner and expose a public symbol only through an intentional parent re-export.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [ ] `GEOREF-VERS` - specify IFC4 versus IFC4x3 coordinate-operation profiles
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `GEOREF-CORPUS` - validate against independently known coordinate examples
+- [x] `GEOREF-CORPUS` - validate against independently known coordinate examples
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 
 ## Completion log
 
 Append concise entries as `TASK-ID - proof command/result - material decision`.
+
+- `GEOREF-CRS/MAP/CORPUS` - `cargo +1.88.0 test -p ifc-georef` plus the
+  workspace gate pass; source and map units normalize to metres, axes normalize
+  or fail closed, and a committed IFC fixture proves the neutral transform.
+
 Do not paste long logs or move standing invariants out of `AGENTS.md`.

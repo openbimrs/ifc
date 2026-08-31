@@ -5,8 +5,8 @@
 //! length factor applied to both silently rescales every arc in a
 //! millimetre file.
 
-use axiolid_curve::Curve3;
-use axiolid_model::{CurveRelation, GeometryNode, Transition, TrimSelector};
+use axiolid_curve::{Curve2, Curve3};
+use axiolid_model::{CurveRelation, GeometryNode, MasterRepresentation, Transition, TrimSelector};
 use ifc_model::{EntityId, Model, Value};
 
 use super::{lower_curve_node, scale_parameter};
@@ -211,11 +211,71 @@ fn composite_segments_keep_their_order_and_sense() {
     }
 }
 
+#[test]
+fn ellipse_axes_are_lowered_exactly_in_source_orientation() {
+    let mut model = trimmed_circle();
+    model.insert(
+        EntityId(7),
+        entity("IFCELLIPSE", vec![r(4), n(250.0), n(125.0)]),
+    );
+
+    let scale = millimetres();
+    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let node = lower_curve_node(&mut session, EntityId(7), Transform::identity()).expect("lowers");
+    let lowered = session.finish(node).expect("finishes");
+
+    match lowered.graph.get(lowered.root).expect("root") {
+        GeometryNode::Curve3(Curve3::Ellipse(ellipse)) => {
+            assert_eq!(ellipse.semi_axis_x, 0.25);
+            assert_eq!(ellipse.semi_axis_y, 0.125);
+            assert_eq!(ellipse.frame.x.to_array(), [1.0, 0.0, 0.0]);
+            assert_eq!(ellipse.frame.z.to_array(), [0.0, 0.0, 1.0]);
+        }
+        other => panic!("expected an Ellipse, got {other:?}"),
+    }
+}
+
+#[test]
+fn offset_curve_preserves_basis_distance_and_reference_direction() {
+    let mut model = trimmed_circle();
+    model.insert(
+        EntityId(7),
+        entity(
+            "IFCOFFSETCURVE3D",
+            vec![r(5), n(50.0), Value::Bool(false), r(3)],
+        ),
+    );
+
+    let scale = millimetres();
+    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let node = lower_curve_node(&mut session, EntityId(7), Transform::identity()).expect("lowers");
+    let lowered = session.finish(node).expect("finishes");
+
+    match lowered.graph.get(lowered.root).expect("root") {
+        GeometryNode::CurveRelation(CurveRelation::Offset {
+            basis,
+            distance,
+            reference_direction,
+        }) => {
+            assert_eq!(*distance, 0.05);
+            assert_eq!(
+                reference_direction.expect("3D offset direction").to_array(),
+                [1.0, 0.0, 0.0]
+            );
+            assert!(matches!(
+                lowered.graph.get(*basis),
+                Some(GeometryNode::Curve3(Curve3::Circle(_)))
+            ));
+        }
+        other => panic!("expected an Offset relation, got {other:?}"),
+    }
+}
+
 /// A still-unlowered curve family is a typed report, never a substituted shape.
 #[test]
 fn an_unsupported_curve_family_is_reported_by_name() {
     let mut model = Model::new();
-    model.insert(EntityId(1), entity("IFCELLIPSE", vec![]));
+    model.insert(EntityId(1), entity("IFCPOLYNOMIALCURVE", vec![]));
 
     let scale = millimetres();
     let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
@@ -274,4 +334,203 @@ fn parameter_units_follow_curve_parameterisation() {
     assert_eq!(scale_parameter(&session, "IFCPOLYLINE", 2.0), 2.0);
     assert_eq!(scale_parameter(&session, "IFCCOMPOSITECURVE", 2_000.0), 2.0);
     assert_eq!(scale_parameter(&session, "IFCCIRCLE", 0.5), 0.5);
+}
+
+#[test]
+fn surface_curve_keeps_master_and_raw_parameter_coordinates() {
+    let mut model = Model::new();
+    model.insert(EntityId(1), point(0.0, 0.0, 0.0));
+    model.insert(
+        EntityId(2),
+        entity("IFCAXIS2PLACEMENT3D", vec![r(1), Value::Null, Value::Null]),
+    );
+    model.insert(EntityId(3), entity("IFCPLANE", vec![r(2)]));
+    model.insert(
+        EntityId(4),
+        entity("IFCCARTESIANPOINT", vec![Value::List(vec![n(0.0), n(0.0)])]),
+    );
+    model.insert(
+        EntityId(5),
+        entity("IFCCARTESIANPOINT", vec![Value::List(vec![n(1.5), n(2.0)])]),
+    );
+    model.insert(
+        EntityId(6),
+        entity("IFCPOLYLINE", vec![Value::List(vec![r(4), r(5)])]),
+    );
+    model.insert(EntityId(7), entity("IFCPCURVE", vec![r(3), r(6)]));
+    model.insert(
+        EntityId(8),
+        entity(
+            "IFCDIRECTION",
+            vec![Value::List(vec![n(1.0), n(0.0), n(0.0)])],
+        ),
+    );
+    model.insert(EntityId(9), entity("IFCVECTOR", vec![r(8), n(1000.0)]));
+    model.insert(EntityId(10), entity("IFCLINE", vec![r(1), r(9)]));
+    model.insert(
+        EntityId(11),
+        entity(
+            "IFCSURFACECURVE",
+            vec![
+                r(10),
+                Value::List(vec![r(7)]),
+                Value::Enum("CURVE3D".into()),
+            ],
+        ),
+    );
+
+    let scale = millimetres();
+    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let root = lower_curve_node(&mut session, EntityId(11), Transform::identity()).expect("lowers");
+    let lowered = session.finish(root).expect("finishes");
+    let GeometryNode::CurveRelation(CurveRelation::SurfaceCurve {
+        curve_3d,
+        associated_geometry,
+        master,
+    }) = lowered.graph.get(root).expect("root")
+    else {
+        panic!("expected surface curve relation");
+    };
+    assert_eq!(*master, MasterRepresentation::Curve3d);
+    assert!(matches!(
+        lowered.graph.get(*curve_3d),
+        Some(GeometryNode::Curve3(Curve3::Line(_)))
+    ));
+    let GeometryNode::CurveRelation(CurveRelation::ParameterCurve {
+        basis_surface: _,
+        reference_curve,
+    }) = lowered.graph.get(associated_geometry[0]).expect("pcurve")
+    else {
+        panic!("expected parameter curve relation");
+    };
+    let Some(GeometryNode::Curve2(Curve2::Polyline(polyline))) =
+        lowered.graph.get(*reference_curve)
+    else {
+        panic!("expected parameter-space polyline");
+    };
+    assert_eq!(
+        polyline.points[1].to_array(),
+        [1.5, 2.0],
+        "surface parameters must not use project length units"
+    );
+}
+
+#[test]
+fn indexed_polycurve_lowers_line_and_three_point_arc_segments() {
+    let mut model = Model::new();
+    let coords = [
+        [0.0, 0.0, 0.0],
+        [1000.0, 0.0, 0.0],
+        [1000.0, 1000.0, 0.0],
+        [0.0, 1000.0, 0.0],
+    ];
+    model.insert(
+        EntityId(1),
+        entity(
+            "IFCCARTESIANPOINTLIST3D",
+            vec![Value::List(
+                coords
+                    .into_iter()
+                    .map(|p| Value::List(p.into_iter().map(n).collect()))
+                    .collect(),
+            )],
+        ),
+    );
+    let index = |name: &str, values: &[i64]| Value::Typed {
+        type_name: name.into(),
+        value: Box::new(Value::List(
+            values.iter().copied().map(Value::Integer).collect(),
+        )),
+    };
+    model.insert(
+        EntityId(2),
+        entity(
+            "IFCINDEXEDPOLYCURVE",
+            vec![
+                r(1),
+                Value::List(vec![
+                    index("IFCLINEINDEX", &[1, 2]),
+                    index("IFCARCINDEX", &[2, 3, 4]),
+                ]),
+                Value::Bool(false),
+            ],
+        ),
+    );
+    let scale = millimetres();
+    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let root = lower_curve_node(&mut session, EntityId(2), Transform::identity()).expect("lowers");
+    let lowered = session.finish(root).expect("finishes");
+    let GeometryNode::CurveRelation(CurveRelation::Composite { segments }) =
+        lowered.graph.get(root).expect("root")
+    else {
+        panic!("expected composite indexed curve");
+    };
+    assert_eq!(segments.len(), 2);
+    assert!(matches!(
+        lowered.graph.get(segments[0].curve),
+        Some(GeometryNode::Curve3(Curve3::Polyline(_)))
+    ));
+    let GeometryNode::CurveRelation(CurveRelation::Trimmed {
+        basis,
+        start,
+        end,
+        sense_agreement,
+        ..
+    }) = lowered.graph.get(segments[1].curve).expect("arc")
+    else {
+        panic!("expected trimmed circular arc");
+    };
+    let Some(GeometryNode::Curve3(Curve3::Circle(circle))) = lowered.graph.get(*basis) else {
+        panic!("expected circle basis");
+    };
+    assert!((circle.radius - std::f64::consts::FRAC_1_SQRT_2).abs() < 1e-12);
+    assert!(matches!(start.as_slice(), [TrimSelector::Point3(_)]));
+    assert!(matches!(end.as_slice(), [TrimSelector::Point3(_)]));
+    assert!(
+        *sense_agreement,
+        "the chosen middle point lies on the positive sweep"
+    );
+}
+
+#[test]
+fn indexed_arc_rejects_finite_points_when_derived_circle_values_overflow() {
+    let mut model = Model::new();
+    let coords = [[0.0, 0.0, 0.0], [1.0e200, 0.0, 0.0], [0.0, 1.0e-200, 0.0]];
+    model.insert(
+        EntityId(1),
+        entity(
+            "IFCCARTESIANPOINTLIST3D",
+            vec![Value::List(
+                coords
+                    .into_iter()
+                    .map(|point| Value::List(point.into_iter().map(n).collect()))
+                    .collect(),
+            )],
+        ),
+    );
+    let arc_index = Value::Typed {
+        type_name: "IFCARCINDEX".into(),
+        value: Box::new(Value::List(vec![
+            Value::Integer(1),
+            Value::Integer(2),
+            Value::Integer(3),
+        ])),
+    };
+    model.insert(
+        EntityId(2),
+        entity(
+            "IFCINDEXEDPOLYCURVE",
+            vec![r(1), Value::List(vec![arc_index]), Value::Bool(false)],
+        ),
+    );
+    let scale = UnitScale {
+        length_to_metres: 1.0,
+        angle_to_radians: 1.0,
+    };
+    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+
+    assert!(matches!(
+        lower_curve_node(&mut session, EntityId(2), Transform::identity()),
+        Err(crate::error::GeometryError::Degenerate { .. })
+    ));
 }

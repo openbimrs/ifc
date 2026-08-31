@@ -22,7 +22,9 @@ use crate::error::{GeometryError, GeometryResult};
 // Moved to `input::product`: it never needed the kernel. Re-exported so
 // the pre-existing `lower::context::geometric_products` path still resolves.
 pub use crate::input::product::geometric_products;
-use crate::input::representation::Representation;
+use crate::input::representation::{
+    select_product_representation, Representation, RepresentationPurpose,
+};
 use crate::lower::dispatch::lower_representation_item;
 use crate::lower::session::LoweringSession;
 
@@ -38,8 +40,18 @@ pub fn lower_product_items(
     session: &mut LoweringSession<'_>,
     product: EntityId,
 ) -> GeometryResult<Option<NodeId>> {
+    lower_product_representation(session, product, RepresentationPurpose::Body)
+}
+
+/// Select and lower a product representation for an explicit consumer path.
+pub fn lower_product_representation(
+    session: &mut LoweringSession<'_>,
+    product: EntityId,
+    purpose: RepresentationPurpose,
+) -> GeometryResult<Option<NodeId>> {
     let world = product_world_transform(session.model(), session.units(), product)?;
-    let Some(representation) = select_shape_representation(session.model(), product)? else {
+    let Some(representation) = select_product_representation(session.model(), product, purpose)?
+    else {
         return Ok(None);
     };
 

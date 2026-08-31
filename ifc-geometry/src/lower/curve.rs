@@ -26,25 +26,31 @@
 //! caller's frame is applied to points and to conic frames as they are built.
 //! Deferring would require every consumer to carry a parallel transform stack.
 
-use axiolid_core::{Frame3, Point3, Vec3};
-use axiolid_curve::{BSplineCurve3, Circle3, Curve3, KnotSpec, Line3, Polyline3};
+use axiolid_core::{Frame3, Point2, Point3, Vec3};
+use axiolid_curve::{
+    BSplineCurve3, Circle3, Curve2, Curve3, Ellipse3, KnotSpec, Line3, Polyline2, Polyline3,
+};
 use axiolid_model::{
-    CurveRelation, CurveSegment, GeometryNode, NodeId, Transition, TrimSelector,
-    TrimmingPreference as KernelPreference,
+    CurveRelation, CurveSegment, GeometryNode, MasterRepresentation, NodeId, Transition,
+    TrimSelector, TrimmingPreference as KernelPreference,
 };
 use ifc_model::EntityId;
 
 use crate::curve::bspline::{BSplineCurve, KnotType};
 use crate::curve::composite::{CompositeCurve, CompositeCurveSegment, TransitionCode};
-use crate::curve::conic::Circle;
+use crate::curve::conic::{Circle, Ellipse};
 use crate::curve::line::Line;
-use crate::curve::polyline::Polyline;
+use crate::curve::offset::{
+    OffsetCurve2D, OffsetCurve3D, PCurve, PreferredSurfaceCurveRepresentation, SurfaceCurve,
+};
+use crate::curve::polyline::{IndexedPolyCurve, PolySegment, Polyline};
 use crate::curve::trimmed::{TrimmedCurve, TrimmingPreference};
 use crate::error::GeometryResult;
 use crate::lower::session::LoweringSession;
+use crate::lower::surface::lower_surface_node;
 use crate::resource::direction::resolve_unit;
 use crate::resource::placement::axis_placement_transform;
-use crate::resource::point::CartesianPoint;
+use crate::resource::point::{CartesianPoint, CartesianPointList2D, CartesianPointList3D};
 use crate::transform::Transform;
 
 /// Family label used for curve memoization.
@@ -75,10 +81,19 @@ fn build(
     let type_name = session.type_name(id)?;
     match type_name.as_str() {
         "IFCPOLYLINE" => polyline(session, id, frame),
+        "IFCINDEXEDPOLYCURVE" => indexed_polycurve(session, id, frame),
         "IFCLINE" => line(session, id, frame),
         "IFCCIRCLE" => circle(session, id, frame),
+        "IFCELLIPSE" => ellipse(session, id, frame),
+        "IFCOFFSETCURVE2D" | "IFCOFFSETCURVE3D" => offset(session, id, frame),
+        "IFCPCURVE" => parameter_curve(session, id, frame),
+        "IFCSURFACECURVE" | "IFCINTERSECTIONCURVE" | "IFCSEAMCURVE" => {
+            surface_curve(session, id, frame)
+        }
         "IFCTRIMMEDCURVE" => trimmed(session, id, frame),
-        "IFCCOMPOSITECURVE" => composite(session, id, frame),
+        "IFCCOMPOSITECURVE" | "IFCBOUNDARYCURVE" | "IFCOUTERBOUNDARYCURVE" => {
+            composite(session, id, frame)
+        }
         "IFCBSPLINECURVEWITHKNOTS" | "IFCRATIONALBSPLINECURVEWITHKNOTS" => {
             bspline(session, id, frame)
         }
@@ -113,6 +128,110 @@ fn polyline(
         GeometryNode::Curve3(Curve3::Polyline(Polyline3 { points, closed })),
     )
 }
+
+/// Lower indexed line and arc segments against one shared point list.
+fn indexed_polycurve(
+    session: &mut LoweringSession<'_>,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<NodeId> {
+    let entity = session.entity(id, id)?;
+    let view = IndexedPolyCurve::new(id, entity);
+    let point_list_ref = view.points_ref()?;
+    let points = indexed_points(session, id, point_list_ref, frame)?;
+    let explicit = view.has_explicit_segments();
+    let segments = view.segments(points.len())?;
+
+    if !explicit {
+        return session.node_for(
+            id,
+            GeometryNode::Curve3(Curve3::Polyline(Polyline3 {
+                points,
+                closed: false,
+            })),
+        );
+    }
+
+    let mut children = Vec::with_capacity(segments.len());
+    for segment in segments {
+        let curve = match segment {
+            PolySegment::Line(indices) => {
+                let closed = indices.first() == indices.last();
+                let mut selected: Vec<_> = indices.into_iter().map(|i| points[i]).collect();
+                if closed && selected.len() > 1 {
+                    selected.pop();
+                }
+                session.node_for(
+                    id,
+                    GeometryNode::Curve3(Curve3::Polyline(Polyline3 {
+                        points: selected,
+                        closed,
+                    })),
+                )?
+            }
+            PolySegment::Arc { start, mid, end } => {
+                indexed_arc(session, id, points[start], points[mid], points[end])?
+            }
+        };
+        children.push(CurveSegment {
+            curve,
+            same_sense: true,
+            transition: Transition::Continuous,
+        });
+    }
+    session.node_for(
+        id,
+        GeometryNode::CurveRelation(CurveRelation::Composite { segments: children }),
+    )
+}
+
+fn indexed_points(
+    session: &LoweringSession<'_>,
+    owner: EntityId,
+    list_id: EntityId,
+    frame: Transform,
+) -> GeometryResult<Vec<Point3>> {
+    let entity = session.entity(owner, list_id)?;
+    let raw: Vec<[f64; 3]> = match entity.type_name.to_ascii_uppercase().as_str() {
+        "IFCCARTESIANPOINTLIST2D" => CartesianPointList2D::new(list_id, entity)
+            .coordinates()?
+            .into_iter()
+            .map(|p| [p[0], p[1], 0.0])
+            .collect(),
+        "IFCCARTESIANPOINTLIST3D" => CartesianPointList3D::new(list_id, entity).coordinates()?,
+        other => {
+            return Err(session.unsupported(
+                list_id,
+                other,
+                "indexed curve requires IfcCartesianPointList2D or IfcCartesianPointList3D",
+            ));
+        }
+    };
+    if raw.len() < 2 {
+        return Err(session.degenerate(
+            list_id,
+            &entity.type_name,
+            "point list needs at least two points",
+        ));
+    }
+    raw.into_iter()
+        .map(|p| {
+            let metres = p.map(|value| session.units().length(value));
+            if !metres.iter().all(|value| value.is_finite()) {
+                return Err(session.degenerate(
+                    list_id,
+                    &entity.type_name,
+                    "coordinates must be finite",
+                ));
+            }
+            Ok(Point3::from_array(frame.apply(metres)))
+        })
+        .collect()
+}
+
+mod indexed;
+
+use indexed::indexed_arc;
 
 /// `IfcLine`: origin point plus an `IfcVector` direction.
 ///
@@ -157,6 +276,180 @@ fn circle(
             frame: frame3(&placed),
             radius,
         })),
+    )
+}
+
+/// `IfcEllipse`: exact semi-axes in the placed conic frame.
+fn ellipse(
+    session: &mut LoweringSession<'_>,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<NodeId> {
+    let entity = session.entity(id, id)?;
+    let view = Ellipse::new(id, entity);
+    let semi_axis_x = session.units().length(view.semi_axis_1()?);
+    let semi_axis_y = session.units().length(view.semi_axis_2()?);
+    if !semi_axis_x.is_finite()
+        || !semi_axis_y.is_finite()
+        || semi_axis_x <= 0.0
+        || semi_axis_y <= 0.0
+    {
+        return Err(session.degenerate(id, "IFCELLIPSE", "semi-axes must be finite and positive"));
+    }
+    let position_ref = view.position_ref()?;
+    let position = session.entity(id, position_ref)?;
+    let local = axis_placement_transform(session.model(), position_ref, position)?
+        .to_metres(session.units());
+    let placed = frame.compose(&local);
+    session.node_for(
+        id,
+        GeometryNode::Curve3(Curve3::Ellipse(Ellipse3 {
+            frame: frame3(&placed),
+            semi_axis_x,
+            semi_axis_y,
+        })),
+    )
+}
+
+/// IFC offset curves remain graph relations over the exact basis curve.
+fn offset(
+    session: &mut LoweringSession<'_>,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<NodeId> {
+    let entity = session.entity(id, id)?;
+    let type_name = session.type_name(id)?;
+    let (basis_ref, raw_distance, reference_direction) = match type_name.as_str() {
+        "IFCOFFSETCURVE2D" => {
+            let view = OffsetCurve2D::new(id, entity);
+            (view.basis_curve_ref()?, view.distance()?, None)
+        }
+        "IFCOFFSETCURVE3D" => {
+            let view = OffsetCurve3D::new(id, entity);
+            let direction_ref = view.ref_direction_ref()?;
+            let direction = resolve_unit(session.model(), id, direction_ref)?;
+            (
+                view.basis_curve_ref()?,
+                view.distance()?,
+                Some(Vec3::from_array(frame.apply_direction(direction))),
+            )
+        }
+        _ => unreachable!("offset called only for offset curve families"),
+    };
+    let distance = session.units().length(raw_distance);
+    if !distance.is_finite() {
+        return Err(session.degenerate(id, &type_name, "Distance must be finite"));
+    }
+    let basis = lower_curve_node(session, basis_ref, frame)?;
+    session.node_for(
+        id,
+        GeometryNode::CurveRelation(CurveRelation::Offset {
+            basis,
+            distance,
+            reference_direction,
+        }),
+    )
+}
+
+/// Lower an IFC p-curve without applying project length units to `(u, v)`.
+fn parameter_curve(
+    session: &mut LoweringSession<'_>,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<NodeId> {
+    let entity = session.entity(id, id)?;
+    let view = PCurve::new(id, entity);
+    let basis_ref = view.basis_surface_ref()?;
+    let reference_ref = view.reference_curve_ref()?;
+    let basis_surface = lower_surface_node(session, basis_ref, frame)?;
+    let reference_curve = parameter_reference_curve(session, id, reference_ref)?;
+    session.node_for(
+        id,
+        GeometryNode::CurveRelation(CurveRelation::ParameterCurve {
+            basis_surface,
+            reference_curve,
+        }),
+    )
+}
+
+/// Parameter coordinates are dimensionless/mixed-domain values, not model
+/// lengths. Support the common exact polyline form explicitly; other forms
+/// stay typed unsupported rather than receiving a wrong uniform unit scale.
+fn parameter_reference_curve(
+    session: &mut LoweringSession<'_>,
+    owner: EntityId,
+    id: EntityId,
+) -> GeometryResult<NodeId> {
+    let type_name = session.type_name(id)?;
+    if type_name != "IFCPOLYLINE" {
+        return Err(session.unsupported(
+            id,
+            &type_name,
+            "parameter-space curve family (only exact IfcPolyline is currently supported)",
+        ));
+    }
+    let entity = session.entity(owner, id)?;
+    let view = Polyline::new(id, entity);
+    let point_refs = view.point_refs()?;
+    let closed = point_refs.first() == point_refs.last();
+    let mut points = Vec::with_capacity(point_refs.len());
+    for point_ref in point_refs {
+        let point_entity = session.entity(owner, point_ref)?;
+        let coordinates = CartesianPoint::new(point_ref, point_entity).coordinates()?;
+        if coordinates.len() != 2 || !coordinates.iter().all(|value| value.is_finite()) {
+            return Err(session.degenerate(
+                point_ref,
+                "IFCCARTESIANPOINT",
+                "parameter-space point must contain two finite coordinates",
+            ));
+        }
+        points.push(Point2::from_array([coordinates[0], coordinates[1]]));
+    }
+    session.node_for(
+        id,
+        GeometryNode::Curve2(Curve2::Polyline(Polyline2 { points, closed })),
+    )
+}
+
+/// Preserve redundant 3D/p-curve geometry and its authoritative selection.
+fn surface_curve(
+    session: &mut LoweringSession<'_>,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<NodeId> {
+    let entity = session.entity(id, id)?;
+    let view = SurfaceCurve::new(id, entity);
+    let curve_3d_ref = view.curve_3d_ref()?;
+    let pcurve_refs = view.associated_pcurve_refs()?;
+    let preferred = view.master_representation();
+
+    let master = match preferred {
+        PreferredSurfaceCurveRepresentation::Curve3D => MasterRepresentation::Curve3d,
+        PreferredSurfaceCurveRepresentation::PCurveS1 if pcurve_refs.len() == 1 => {
+            MasterRepresentation::ParameterCurve
+        }
+        PreferredSurfaceCurveRepresentation::PCurveS1
+        | PreferredSurfaceCurveRepresentation::PCurveS2 => {
+            return Err(session.unsupported(
+                id,
+                &session.type_name(id)?,
+                "neutral surface-curve master cannot distinguish p-curve S1 from S2",
+            ));
+        }
+    };
+
+    let curve_3d = lower_curve_node(session, curve_3d_ref, frame)?;
+    let mut associated_geometry = Vec::with_capacity(pcurve_refs.len());
+    for pcurve_ref in pcurve_refs {
+        associated_geometry.push(parameter_curve(session, pcurve_ref, frame)?);
+    }
+    session.node_for(
+        id,
+        GeometryNode::CurveRelation(CurveRelation::SurfaceCurve {
+            curve_3d,
+            associated_geometry,
+            master,
+        }),
     )
 }
 

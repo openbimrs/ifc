@@ -266,8 +266,10 @@ version = "0.1.0"
 dependencies = [
  "axiolid-core",
  "axiolid-curve",
+ "axiolid-model",
  "ifc-model",
  "ifc-schema",
+ "ifc-step",
 ]
 
 [[package]]
@@ -325,6 +327,7 @@ dependencies = [
  "axiolid-core",
  "ifc-model",
  "ifc-schema",
+ "ifc-step",
 ]
 
 [[package]]

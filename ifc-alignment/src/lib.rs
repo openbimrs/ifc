@@ -17,10 +17,9 @@
 //! | `placement` | `IfcLinearPlacement` and distance expressions |
 //! | `error` | Why an alignment operation failed |
 //!
-//! # Status
-//!
-//! Scaffold -- modules are reserved with intent, not implemented. See
-//! `../PLAN.md` for the stage that fills them.
+//! Horizontal line and circular-arc parameter resolution lowers to exact
+//! neutral curve graphs. Transition curves remain typed unsupported until the
+//! neutral curve vocabulary can preserve them without approximation.
 
 mod alignment;
 mod cant;
@@ -30,3 +29,11 @@ mod horizontal;
 mod placement;
 mod referent;
 mod vertical;
+
+pub use cant::{read_cant_segment, CantSegment, CantSegmentType};
+pub use curve::{lower_horizontal_segment, lower_vertical_segment, LoweredAlignmentCurve};
+pub use error::{AlignmentError, AlignmentResult};
+pub use horizontal::{
+    read_horizontal_segment, AlignmentUnits, HorizontalSegment, HorizontalSegmentType,
+};
+pub use vertical::{read_vertical_segment, VerticalSegment, VerticalSegmentType};

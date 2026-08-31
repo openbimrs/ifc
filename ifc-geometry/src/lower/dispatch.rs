@@ -20,15 +20,18 @@ use crate::lower::csg::{
     lower_csg_primitive_node, lower_csg_solid_node, lower_surface_curve_swept_area_solid_node,
     lower_swept_disk_node,
 };
+use crate::lower::curve::lower_curve_node;
 use crate::lower::halfspace::lower_half_space_node;
 use crate::lower::mapped::lower_mapped_item_node;
 use crate::lower::session::LoweringSession;
+use crate::lower::surface::lower_surface_node;
 use crate::lower::swept::{
     lower_extruded_area_solid_node, lower_fixed_reference_sweep_node,
     lower_revolved_area_solid_node, lower_sectioned_spine_node, lower_tapered_extrusion_node,
     lower_tapered_revolution_node,
 };
 use crate::lower::tessellated::{lower_polygonal_face_set_node, lower_triangulated_face_set_node};
+use crate::select::is_a;
 use crate::transform::Transform;
 
 /// Families this crate lowers today, paired with what is still missing.
@@ -68,6 +71,36 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCFACEBASEDSURFACEMODEL",
     "IFCGEOMETRICSET",
     "IFCGEOMETRICCURVESET",
+    // Bare curves/surfaces are valid representation items in Curve2D,
+    // Curve3D, SurfaceModel, and plan representations.
+    "IFCLINE",
+    "IFCCIRCLE",
+    "IFCELLIPSE",
+    "IFCPOLYLINE",
+    "IFCINDEXEDPOLYCURVE",
+    "IFCCOMPOSITECURVE",
+    "IFCBOUNDARYCURVE",
+    "IFCOUTERBOUNDARYCURVE",
+    "IFCTRIMMEDCURVE",
+    "IFCOFFSETCURVE2D",
+    "IFCOFFSETCURVE3D",
+    "IFCPCURVE",
+    "IFCSURFACECURVE",
+    "IFCINTERSECTIONCURVE",
+    "IFCSEAMCURVE",
+    "IFCBSPLINECURVEWITHKNOTS",
+    "IFCRATIONALBSPLINECURVEWITHKNOTS",
+    "IFCPLANE",
+    "IFCCYLINDRICALSURFACE",
+    "IFCSPHERICALSURFACE",
+    "IFCTOROIDALSURFACE",
+    "IFCSURFACEOFLINEAREXTRUSION",
+    "IFCSURFACEOFREVOLUTION",
+    "IFCRECTANGULARTRIMMEDSURFACE",
+    "IFCCURVEBOUNDEDPLANE",
+    "IFCCURVEBOUNDEDSURFACE",
+    "IFCBSPLINESURFACEWITHKNOTS",
+    "IFCRATIONALBSPLINESURFACEWITHKNOTS",
 ];
 
 /// Recognized representation items that are not lowered yet.
@@ -90,6 +123,16 @@ pub fn lower_representation_item(
     frame: Transform,
 ) -> GeometryResult<NodeId> {
     let type_name = session.type_name(id)?;
+    // Shape representations may legitimately contain bare curve and surface
+    // items (Curve2D/Curve3D/SurfaceModel). Route by generated IFC inheritance
+    // before the concrete solid table so plan and surface selections lower
+    // through the same total entry point as body geometry.
+    if is_a(&type_name, "IFCCURVE") {
+        return lower_curve_node(session, id, frame);
+    }
+    if is_a(&type_name, "IFCSURFACE") {
+        return lower_surface_node(session, id, frame);
+    }
     match type_name.as_str() {
         "IFCEXTRUDEDAREASOLID" => lower_extruded_area_solid_node(session, id, frame),
         "IFCREVOLVEDAREASOLID" => lower_revolved_area_solid_node(session, id, frame),

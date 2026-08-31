@@ -1,7 +1,7 @@
 # ifc-geometry implementation plan
 
-Status: active implementation on a shared lowering session; views are broad and dispatch is total, but only swept-solid and boolean families are lowered today.
-Last updated: 2026-08-19
+Status: active implementation on a shared lowering session; BRep/shell, tessellated, swept/boolean, elementary and bounded surfaces, and major curve/representation-selection paths lower to neutral Axiolid graphs.
+Last updated: 2026-08-31
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
 record blockers/decisions under it, and check it off only with evidence.
@@ -68,6 +68,8 @@ parallel placeholders.
 - [ ] `GEOM-INPUT` - add cross-resource input views without importing semantic domain crates
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [ ] `GEOM-CTX` - select shape representations and compose geometric contexts/precision
+  - Progress: explicit body/plan selection and geometric-context inheritance are
+    implemented; the broader GEOM-CONTRACT/INPUT plan items remain open.
   - Requires: `GEOM-CONTRACT`, `GEOM-INPUT`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [x] `GEOM-PLACE` - compose units, local placements, item frames, and provenance exactly once
@@ -80,9 +82,10 @@ parallel placeholders.
   - Requires: `GEOM-CONTRACT`, `GEOM-SESSION`, `GEOM-INPUT`, `GEOM-PLACE`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [ ] `GEOM-CURVE` - lower every concrete curve family without approximation
-  - Progress: `LOW-CURVE` lowers polyline, line, circle, trimmed and composite
-    curves (9/9 mutation probes). B-splines, ellipses, offset curves and
-    indexed poly-curves still report a typed `Unsupported`.
+  - Progress: `LOW-CURVE` lowers polyline/indexed poly-curve (including exact
+    three-point arcs), line, circle, ellipse, trimmed/composite, explicit-knot
+    B-spline, offset, p-curve and surface-curve graphs. Remaining schema
+    families without exact neutral primitives report typed `Unsupported`.
   - Requires: `GEOM-CONTRACT`, `GEOM-SESSION`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
   - Completed slice: explicit-knot polynomial/rational B-splines preserve
@@ -92,7 +95,7 @@ parallel placeholders.
   - Requires: `GEOM-CONTRACT`, `GEOM-SESSION`, `GEOM-CURVE`.
   - Progress: all four groups now lower (`LOW-EXACT`) - elementary (plane,
     cylinder, sphere, torus), swept (linear extrusion, revolution), bounded
-    (rectangular-trimmed, curve-bounded plane) and B-spline. The curved and
+    (rectangular-trimmed, curve-bounded plane/surface) and B-spline. The curved and
     B-spline families were fixture-blocked rather than effort-blocked; they
     are now covered by generated fixtures, see `src/lower/PLAN.md`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
@@ -203,4 +206,8 @@ Append concise entries as `TASK-ID - proof command/result - material decision`.
   scalar-oracle evaluations. Explicit-knot polynomial/rational subtypes are
   implemented; base convention-only splines and complete curve/surface work
   remain open.
+- `GEOM-CTX/CURVE/SURFACE` - `cargo +1.88.0 test -p ifc-geometry` and
+  `lower_dispatch_corpus` pass with a committed IFC fixture covering ellipse,
+  offset, indexed line/arc, p-/surface-curve, curve-bounded surface and explicit
+  Body/Plan selection; unsupported exact forms remain typed refusals.
 Do not paste long logs or move standing invariants out of `AGENTS.md`.

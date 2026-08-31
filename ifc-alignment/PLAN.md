@@ -1,7 +1,7 @@
 # ifc-alignment implementation plan
 
-Status: architecture scaffold; schema-version profile and segment lowering remain to implement.
-Last updated: 2026-08-19
+Status: horizontal/vertical/cant segment parameters implemented; exact neutral line/circular-horizontal and constant-gradient-vertical output implemented with typed refusal for unsupported exact transitions.
+Last updated: 2026-08-31
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
 record blockers/decisions under it, and check it off only with evidence.
@@ -39,10 +39,16 @@ owner and expose a public symbol only through an intentional parent re-export.
 - [ ] `ALIGN-VERS` - pin the authoritative IFC4x3 profile and declaration inventory
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [ ] `ALIGN-H` - implement exact horizontal segment views/lowering
+  - Progress: parameters resolve with units; line and circular arc lower exactly;
+    transition families fail typed rather than being approximated.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [ ] `ALIGN-V` - implement exact vertical profile views/lowering
+  - Progress: parameters resolve with units; constant gradient lowers exactly;
+    curved/transition profile assembly remains open.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [ ] `ALIGN-CANT` - implement exact cant views/lowering
+  - Progress: all segment fields, including optional signed rail offsets, resolve;
+    parent/layout curve assembly remains open.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [ ] `ALIGN-CURVE` - assemble continuity-aware neutral curves
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
@@ -54,4 +60,9 @@ owner and expose a public symbol only through an intentional parent re-export.
 ## Completion log
 
 Append concise entries as `TASK-ID - proof command/result - material decision`.
+
+- `ALIGN-H/V/C` parameter/exact slice - `cargo +1.88.0 test -p ifc-alignment`
+  and the workspace gate pass against unit and committed IFC fixture tests;
+  unsupported transitions are not approximated.
+
 Do not paste long logs or move standing invariants out of `AGENTS.md`.

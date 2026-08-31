@@ -12,3 +12,5 @@ mod layout;
 mod segment;
 
 mod transition;
+
+pub use segment::{read_vertical_segment, VerticalSegment, VerticalSegmentType};

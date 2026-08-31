@@ -162,6 +162,28 @@ pub fn select_shape_representation(
 /// caller draw a projected solid where a plan curve was expected.
 pub const PLAN_IDENTIFIERS: &[&str] = &["Plan", "Annotation", "FootPrint", "Axis"];
 
+/// Caller intent for representation selection.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RepresentationPurpose {
+    /// Product shape suitable for model/body consumers.
+    Body,
+    /// Plan/annotation/axis geometry suitable for 2D drawing consumers.
+    Plan,
+}
+
+/// Select a product representation using an explicit consumer purpose.
+pub fn select_product_representation(
+    model: &Model,
+    product: EntityId,
+    purpose: RepresentationPurpose,
+) -> GeometryResult<Option<EntityId>> {
+    match purpose {
+        RepresentationPurpose::Body => select_shape_representation(model, product),
+        RepresentationPurpose::Plan => select_plan_representation(model, product),
+    }
+}
+
 /// Pick the representation a 2D drawing should use for this product.
 ///
 /// Preference is, in order:

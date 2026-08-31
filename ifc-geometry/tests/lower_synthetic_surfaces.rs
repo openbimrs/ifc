@@ -15,7 +15,7 @@
 //! entirely, and the generator is committed so the files are reproducible
 //! rather than opaque blobs.
 
-use axiolid_model::{GeometryNode, SurfaceRelation};
+use axiolid_model::{CurveRelation, GeometryNode, SurfaceRelation};
 use axiolid_scalar::surface::Patch;
 use axiolid_scalar::tessellate::{tessellate_patch, TessellationBudget};
 use axiolid_surface::Surface;
@@ -267,6 +267,42 @@ fn the_curve_bounded_plane_keeps_outer_then_hole() {
             );
         }
         other => panic!("expected a curve-bounded surface, got {other:?}"),
+    }
+}
+
+/// The committed IFC4X3 boundary fixture uses p-curves on its common plane.
+#[test]
+fn the_curve_bounded_surface_corpus_keeps_parameter_curves() {
+    let model = fixture("synthetic_conic_offset_bounded.ifc");
+    let scale = units::resolve(&model);
+    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let root = lower_surface_node(&mut session, EntityId(25), Transform::identity())
+        .expect("corpus surface lowers");
+    let lowered = session.finish(root).expect("session finishes");
+
+    let Some(GeometryNode::SurfaceRelation(SurfaceRelation::CurveBounded {
+        basis,
+        boundaries,
+        ..
+    })) = lowered.graph.get(root)
+    else {
+        panic!("expected a curve-bounded surface");
+    };
+    assert_eq!(boundaries.len(), 2, "outer boundary plus one hole");
+    for boundary in boundaries {
+        let Some(GeometryNode::CurveRelation(CurveRelation::Composite { segments })) =
+            lowered.graph.get(*boundary)
+        else {
+            panic!("expected an IFC boundary composite");
+        };
+        assert_eq!(segments.len(), 1);
+        assert!(matches!(
+            lowered.graph.get(segments[0].curve),
+            Some(GeometryNode::CurveRelation(CurveRelation::ParameterCurve {
+                basis_surface,
+                ..
+            })) if basis_surface == basis
+        ));
     }
 }
 

@@ -417,9 +417,12 @@ fn edge_curve(
     let view = EdgeCurveView::new(id, entity);
     let start = topological_vertex(session, builder, id, view.start()?, frame)?;
     let end = topological_vertex(session, builder, id, view.end()?, frame)?;
-    let curve = match view.edge_geometry() {
-        Some(curve_ref) => Some(lower_curve_node(session, curve_ref, frame)?),
-        None => None,
+    let (curve, pcurve) = match view.edge_geometry() {
+        Some(curve_ref) if session.type_name(curve_ref)? == "IFCPCURVE" => {
+            (None, Some(lower_curve_node(session, curve_ref, frame)?))
+        }
+        Some(curve_ref) => (Some(lower_curve_node(session, curve_ref, frame)?), None),
+        None => (None, None),
     };
     // SameSense false means the edge runs against its curve. Record that as
     // the stored edge's orientation rather than swapping the vertices, so the
@@ -430,13 +433,13 @@ fn edge_curve(
         Orientation::Reversed
     };
     let edge = builder.brep.add_edge(Edge { start, end, curve });
-    // pcurve stays None: IfcEdgeCurve carries no parametric curve of its own.
-    // IfcPCurve exists in IFC but is not read yet, and inventing one here
-    // would fabricate surface-parameter geometry the file never stated.
+    // IFC permits EdgeGeometry itself to be an IfcPCurve. Keep that
+    // parameter-space relation on the use; placing it in Edge.curve would
+    // mislabel it as the edge's 3D carrier geometry.
     let use_ = EdgeUse {
         edge,
         orientation,
-        pcurve: None,
+        pcurve,
     };
     builder.curved_edges.insert(id, use_);
     Ok(use_)

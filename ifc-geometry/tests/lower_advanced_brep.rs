@@ -8,8 +8,8 @@
 //! a half-cylinder plug: two planar caps and one cylindrical lateral face,
 //! which is the smallest shape that forces every advanced-specific decision --
 //! shared edges via `IfcOrientedEdge`, a curved support surface on a face, a
-//! `SameSense` flag that is actually false, and edge curves that are a mix of
-//! circles and lines.
+//! `SameSense` flag that is actually false, and edge geometry that mixes
+//! circles, a 3D line, and a parameter-space p-curve.
 
 use axiolid_model::GeometryNode;
 use axiolid_topology::Orientation;
@@ -106,24 +106,40 @@ fn a_false_same_sense_flag_reverses_exactly_that_face() {
     );
 }
 
-/// Curved edges keep their support curve; straight seams keep theirs too.
+/// `IfcEdgeCurve.EdgeGeometry` keeps its declared neutral geometry role.
 ///
-/// Every edge in this fixture is an `IfcEdgeCurve`, so all four must carry a
-/// handle. An edge whose curve is dropped degenerates to a straight segment
-/// between its endpoints -- which for the two semicircular rims silently
-/// replaces an arc with a chord.
+/// The two rims and one vertical seam carry 3D support curves. The other
+/// cylindrical seam is authored as an `IfcPCurve`, so its parameter-space
+/// relation belongs on the edge use and must not masquerade as `Edge.curve`.
 #[test]
-fn every_edge_curve_keeps_its_support_curve() {
+fn edge_geometry_uses_the_neutral_curve_role_declared_by_ifc() {
     let model = model();
-    assert_eq!(
-        model.ids_of_type("IFCEDGECURVE").len(),
-        4,
-        "all four edges are curve-backed in this fixture"
-    );
+    assert_eq!(model.ids_of_type("IFCEDGECURVE").len(), 4);
+    assert_eq!(model.ids_of_type("IFCPCURVE").len(), 1);
     let brep = brep(&model);
+    assert_eq!(
+        brep.edges()
+            .iter()
+            .filter(|edge| edge.curve.is_some())
+            .count(),
+        3,
+        "only actual 3D edge geometry belongs in Edge.curve"
+    );
+
+    let pcurve_uses: Vec<_> = brep
+        .loops()
+        .iter()
+        .flat_map(|loop_| loop_.edges.iter())
+        .filter(|edge_use| edge_use.pcurve.is_some())
+        .collect();
+    assert_eq!(
+        pcurve_uses.len(),
+        1,
+        "the IfcPCurve edge geometry must populate EdgeUse.pcurve"
+    );
     assert!(
-        brep.edges().iter().all(|e| e.curve.is_some()),
-        "an edge that loses its curve becomes a chord"
+        brep.edges()[pcurve_uses[0].edge.index()].curve.is_none(),
+        "a parameter curve must not be duplicated into the 3D carrier slot"
     );
 }
 
@@ -199,8 +215,8 @@ fn both_sense_flags_compose_across_shared_edges() {
 
     assert_eq!(
         brep.edges().iter().filter(|e| e.curve.is_some()).count(),
-        4,
-        "every edge in this fixture carries a support curve"
+        3,
+        "three edges in this fixture carry 3D support curves"
     );
 
     let reversed_uses = brep

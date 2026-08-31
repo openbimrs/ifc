@@ -98,8 +98,8 @@ pub use input::context::{
     all_contexts, context_of, plan_contexts, RepresentationContext, TargetView,
 };
 pub use input::representation::{
-    select_plan_representation, select_shape_representation, ProductShape, Representation,
-    PLAN_IDENTIFIERS, SOLID_IDENTIFIERS,
+    select_plan_representation, select_product_representation, select_shape_representation,
+    ProductShape, Representation, RepresentationPurpose, PLAN_IDENTIFIERS, SOLID_IDENTIFIERS,
 };
 
 // Which entities carry a shape at all. Kernel-free: a slot read, not a lowering

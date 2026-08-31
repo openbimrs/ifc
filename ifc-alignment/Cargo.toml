@@ -13,3 +13,7 @@ ifc-schema.workspace = true
 ifc-model.workspace = true
 axiolid-core.workspace = true
 axiolid-curve.workspace = true
+axiolid-model.workspace = true
+
+[dev-dependencies]
+ifc-step = { path = "../ifc-step" }

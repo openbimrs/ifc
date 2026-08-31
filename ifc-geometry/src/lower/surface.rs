@@ -40,7 +40,7 @@ use crate::resource::direction::resolve_unit;
 use crate::resource::placement::axis_placement_transform;
 use crate::resource::placement::Axis1Placement;
 use crate::resource::point::CartesianPoint;
-use crate::surface::bounded::{CurveBoundedPlane, RectangularTrimmedSurface};
+use crate::surface::bounded::{CurveBoundedPlane, CurveBoundedSurface, RectangularTrimmedSurface};
 use crate::surface::bspline::BSplineSurface;
 use crate::surface::elementary::{CylindricalSurface, Plane, SphericalSurface, ToroidalSurface};
 use crate::surface::swept::SurfaceOfLinearExtrusion;
@@ -63,23 +63,27 @@ pub fn lower_surface_node(
     if let Some(existing) = session.memoized(id, SURFACE, frame) {
         return Ok(existing);
     }
-    let type_name = session.type_name(id)?.to_ascii_uppercase();
-    let node = match type_name.as_str() {
-        "IFCPLANE" => lower_plane(session, id, frame)?,
-        "IFCSURFACEOFLINEAREXTRUSION" => lower_linear_extrusion(session, id, frame)?,
-        "IFCCYLINDRICALSURFACE" => lower_cylinder(session, id, frame)?,
-        "IFCSPHERICALSURFACE" => lower_sphere(session, id, frame)?,
-        "IFCTOROIDALSURFACE" => lower_torus(session, id, frame)?,
-        "IFCBSPLINESURFACEWITHKNOTS" | "IFCRATIONALBSPLINESURFACEWITHKNOTS" => {
-            lower_bspline(session, id, frame)?
+    session.enter(id, SURFACE)?;
+    let result = (|| -> GeometryResult<NodeId> {
+        let type_name = session.type_name(id)?.to_ascii_uppercase();
+        match type_name.as_str() {
+            "IFCPLANE" => lower_plane(session, id, frame),
+            "IFCSURFACEOFLINEAREXTRUSION" => lower_linear_extrusion(session, id, frame),
+            "IFCCYLINDRICALSURFACE" => lower_cylinder(session, id, frame),
+            "IFCSPHERICALSURFACE" => lower_sphere(session, id, frame),
+            "IFCTOROIDALSURFACE" => lower_torus(session, id, frame),
+            "IFCBSPLINESURFACEWITHKNOTS" | "IFCRATIONALBSPLINESURFACEWITHKNOTS" => {
+                lower_bspline(session, id, frame)
+            }
+            "IFCSURFACEOFREVOLUTION" => lower_revolution(session, id, frame),
+            "IFCRECTANGULARTRIMMEDSURFACE" => lower_rectangular_trimmed(session, id, frame),
+            "IFCCURVEBOUNDEDPLANE" => lower_curve_bounded(session, id, frame),
+            "IFCCURVEBOUNDEDSURFACE" => lower_curve_bounded_surface(session, id, frame),
+            other => Err(session.unsupported(id, other, "curved and B-spline surfaces")),
         }
-        "IFCSURFACEOFREVOLUTION" => lower_revolution(session, id, frame)?,
-        "IFCRECTANGULARTRIMMEDSURFACE" => lower_rectangular_trimmed(session, id, frame)?,
-        "IFCCURVEBOUNDEDPLANE" => lower_curve_bounded(session, id, frame)?,
-        other => {
-            return Err(session.unsupported(id, other, "curved and B-spline surfaces"));
-        }
-    };
+    })();
+    session.exit(id);
+    let node = result?;
     session.memoize(id, SURFACE, frame, node);
     Ok(node)
 }
@@ -530,6 +534,32 @@ pub fn lower_curve_bounded(
             basis,
             boundaries,
             implicit_outer: false,
+        }),
+    )
+}
+
+/// Lower a generic `IfcCurveBoundedSurface`, preserving boundary order and
+/// whether the source omitted an explicit outer boundary.
+pub fn lower_curve_bounded_surface(
+    session: &mut LoweringSession<'_>,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<NodeId> {
+    let entity = session.entity(id, id)?;
+    let view = CurveBoundedSurface::new(id, entity);
+    let basis = lower_surface_node(session, view.basis_surface_ref()?, frame)?;
+    let refs = view.boundary_refs()?;
+    let mut boundaries = Vec::with_capacity(refs.len());
+    for boundary in refs {
+        boundaries.push(lower_curve_node(session, boundary, frame)?);
+    }
+
+    session.node_for(
+        id,
+        GeometryNode::SurfaceRelation(SurfaceRelation::CurveBounded {
+            basis,
+            boundaries,
+            implicit_outer: view.implicit_outer(),
         }),
     )
 }

@@ -16,6 +16,17 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-geometry` lowers additional exact curve/surface families into neutral
+  Axiolid graphs: ellipses, offset and indexed poly-curves, p-/surface curves,
+  and curve-bounded surfaces; explicit Body/Plan selection prevents silent
+  representation substitution and a committed IFC corpus exercises dispatch.
+- `ifc-georef` resolves IFC4 projected CRS metadata and `IfcMapConversion` into
+  a project-metre to map-metre neutral transform with strict unit, scale, and
+  axis validation.
+- `ifc-alignment` resolves IFC4X3 horizontal, vertical, and cant segment
+  parameters and emits exact neutral line, circular-arc, and constant-gradient
+  curve graphs with schema-valid IFC4X3 corpus evidence, refusing unsupported
+  transitions rather than approximating.
 - `ifc-template-catalog` can export the official IFC4 ADD2 TC1 PSD/QTO
   snapshot as a deterministic 3,525-row TSV applicability index with exact
   set/member types, entity selectors, provenance paths, and source digests.
@@ -73,6 +84,20 @@ This page is synchronised from it at build time.
   independent bundled artifacts, and process caches stay here.
 
 ### Fixed
+- `ifc-geometry` now lowers schema-valid `IfcBoundaryCurve` and
+  `IfcOuterBoundaryCurve` members of `IfcCurveBoundedSurface`, preserves their
+  parameter-space p-curves in committed corpus evidence, keeps `IfcEdgeCurve`
+  p-curves on neutral edge uses instead of 3D carrier slots, and bounds
+  malformed self-referential surface graphs with a typed cycle error, and
+  rejects indexed-arc arithmetic that would emit non-finite circles.
+- `ifc-georef` defaults `IfcMapConversion` axis components independently as
+  specified, rejects non-finite unit-normalized transforms, and explicitly
+  refuses `IfcMapConversionScaled` until its unequal axis factors can be
+  represented without loss.
+- `ifc-alignment` now rejects finite source arc parameters when derived circle
+  frames or trim parameters overflow, and derives radial frame axes directly
+  from source tangent and curvature sign so large global coordinates do not
+  collapse them.
 - Contributor links now use the repository Discussions surface, omit
   unpublished docs.rs and crates.io references, provide a verified immutable
   Git dependency for current consumers, and document an actionable confidential

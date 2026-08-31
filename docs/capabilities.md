@@ -27,7 +27,7 @@ code.
 
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `ifc-geometry` | 25,078 | 90 | 6 | 30 | <span class="status-partial">Partial</span> |
+| `ifc-geometry` | 25,951 | 91 | 6 | 31 | <span class="status-partial">Partial</span> |
 | `ifc-style` | 3,322 | 31 | 0 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-template-catalog` | 2,705 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 2,417 | 29 | 14 | 2 | <span class="status-implemented">Implemented</span> |
@@ -39,15 +39,15 @@ code.
 | `ifc-schedule` | 1,691 | 24 | 14 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 1,586 | 20 | 5 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 1,248 | 10 | 0 | 1 | <span class="status-partial">Partial</span> |
+| `ifc-alignment` | 1,095 | 26 | 16 | 2 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-schema` | 980 | 10 | 4 | 1 | <span class="status-implemented">Implemented</span> |
 | `openbim-ifc` | 888 | 6 | 0 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 658 | 4 | 0 | 1 | <span class="status-implemented">Implemented</span> |
+| `ifc-georef` | 582 | 17 | 12 | 1 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-spatial` | 561 | 7 | 1 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-author` | 552 | 6 | 2 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-step` | 480 | 5 | 0 | 2 | <span class="status-implemented">Implemented</span> |
-| `ifc-alignment` | 186 | 26 | 21 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-resource` | 177 | 25 | 23 | 0 | <span class="status-scaffold">Scaffold</span> |
-| `ifc-georef` | 133 | 17 | 14 | 0 | <span class="status-scaffold">Scaffold</span> |
 
 <!-- CAPABILITIES:CENSUS:END -->
 
@@ -217,6 +217,34 @@ The dispatcher keeps coverage as data so it is auditable from one table
 | `IfcFaceBasedSurfaceModel` | <span class="status-implemented">Implemented</span> |
 | `IfcGeometricSet` | <span class="status-implemented">Implemented</span> |
 | `IfcGeometricCurveSet` | <span class="status-implemented">Implemented</span> |
+| `IfcLine` | <span class="status-implemented">Implemented</span> |
+| `IfcCircle` | <span class="status-implemented">Implemented</span> |
+| `IfcEllipse` | <span class="status-implemented">Implemented</span> |
+| `IfcPolyline` | <span class="status-implemented">Implemented</span> |
+| `IfcIndexedPolyCurve` | <span class="status-implemented">Implemented</span> |
+| `IfcCompositeCurve` | <span class="status-implemented">Implemented</span> |
+| `IfcBoundaryCurve` | <span class="status-implemented">Implemented</span> |
+| `IfcOuterBoundaryCurve` | <span class="status-implemented">Implemented</span> |
+| `IfcTrimmedCurve` | <span class="status-implemented">Implemented</span> |
+| `IfcOffsetCurve2D` | <span class="status-implemented">Implemented</span> |
+| `IfcOffsetCurve3D` | <span class="status-implemented">Implemented</span> |
+| `IfcPcurve` | <span class="status-implemented">Implemented</span> |
+| `IfcSurfaceCurve` | <span class="status-implemented">Implemented</span> |
+| `IfcIntersectionCurve` | <span class="status-implemented">Implemented</span> |
+| `IfcSeamCurve` | <span class="status-implemented">Implemented</span> |
+| `IfcBSplineCurveWithKnots` | <span class="status-implemented">Implemented</span> |
+| `IfcRationalBSplineCurveWithKnots` | <span class="status-implemented">Implemented</span> |
+| `IfcPlane` | <span class="status-implemented">Implemented</span> |
+| `IfcCylindricalSurface` | <span class="status-implemented">Implemented</span> |
+| `IfcSphericalSurface` | <span class="status-implemented">Implemented</span> |
+| `IfcToroidalSurface` | <span class="status-implemented">Implemented</span> |
+| `IfcSurfaceOfLinearExtrusion` | <span class="status-implemented">Implemented</span> |
+| `IfcSurfaceOfRevolution` | <span class="status-implemented">Implemented</span> |
+| `IfcRectangularTrimmedSurface` | <span class="status-implemented">Implemented</span> |
+| `IfcCurveBoundedPlane` | <span class="status-implemented">Implemented</span> |
+| `IfcCurveBoundedSurface` | <span class="status-implemented">Implemented</span> |
+| `IfcBSplineSurfaceWithKnots` | <span class="status-implemented">Implemented</span> |
+| `IfcRationalBSplineSurfaceWithKnots` | <span class="status-implemented">Implemented</span> |
 | `IfcArbitraryOpenProfileDef` | <span class="status-partial">Planned</span> — open profiles: the neutral profile model represents closed contours only |
 
 <!-- CAPABILITIES:GEOMETRY:END -->
@@ -270,7 +298,7 @@ a section without them has the wrong area and the wrong section modulus.
 
 | Capability | Status | Module |
 | --- | --- | --- |
-| `IfcPolyline` | <span class="status-implemented">Implemented</span> | `curve/polyline.rs` |
+| `IfcPolyline`, `IfcIndexedPolyCurve` | <span class="status-implemented">Implemented</span> | exact line and three-point arc segments |
 | `IfcCircle`, `IfcEllipse` | <span class="status-implemented">Implemented</span> | `curve/conic.rs` |
 | `IfcLine` | <span class="status-implemented">Implemented</span> | `curve/line.rs` |
 | `IfcTrimmedCurve` | <span class="status-implemented">Implemented</span> | `curve/trimmed.rs` |
@@ -278,21 +306,21 @@ a section without them has the wrong area and the wrong section modulus.
 | Convention-only `IfcBSplineCurve` | <span class="status-partial">Partial</span> | typed view only; lowering does not invent absent knots |
 | `IfcBSplineCurveWithKnots`, `IfcRationalBSplineCurveWithKnots` | <span class="status-implemented">Implemented</span> | `curve/bspline.rs` representation + exact neutral lowering |
 | `IfcOffsetCurve2D/3D` | <span class="status-implemented">Implemented</span> | `curve/offset.rs` |
+| `IfcPcurve`, `IfcSurfaceCurve`, `IfcIntersectionCurve` | <span class="status-partial">Partial</span> | exact supported forms; typed refusal otherwise |
 | `IfcAxis2Placement2D/3D` | <span class="status-implemented">Implemented</span> | `resource/placement.rs` |
 | `IfcCartesianTransformationOperator*` | <span class="status-implemented">Implemented</span> | `resource/operator.rs` |
 | Unit resolution (SI, conversion-based) | <span class="status-implemented">Implemented</span> | `units.rs` |
 
-::: info Curves lower as geometry inside a parent item
-`lower/curve.rs` lowers polylines, conics, lines, trimmed and composite curves,
-and only the explicit-knot polynomial/rational B-spline subtypes into the
-neutral graph. Convention-only base splines remain unsupported. Curves reach
-this lowerer through the item that owns them: a sweep directrix, a surface
-boundary, a B-rep edge, or an `IfcGeometricCurveSet` member.
+::: info Curves lower in nested and curve-representation paths
+`lower/curve.rs` lowers polylines/indexed poly-curves, conics, lines, trims,
+composites, offsets and surface-associated curves, plus explicit-knot
+polynomial/rational B-splines into the neutral graph. Convention-only base
+splines remain unsupported. Curves reach this lowerer through a sweep directrix,
+a surface boundary, a B-rep edge, or an `IfcGeometricCurveSet` member.
 
-A curve is deliberately **not** a top-level body dispatch target. Exact-type
-dispatch in `lower_representation_item` covers solids and collections, so a
-bare `IfcPolyline` offered as a body representation returns `Unsupported`
-rather than a shape a viewer would draw as a solid.
+Bare curves are dispatch targets for `Curve2D`, `Curve3D`, and plan
+representations. Selection remains explicit: callers choose Body or Plan; a plan
+curve never silently replaces a body.
 :::
 
 ### Explicit-knot surfaces
