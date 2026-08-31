@@ -42,8 +42,11 @@ features:
 
 ```toml
 [dependencies]
-openbim-ifc = "0.1"
+openbim-ifc = { git = "https://github.com/openbimrs/ifc.git", rev = "494d8c7f5aa47cab7993fbff453eee71ab5849a8" }
 ```
+
+The workspace crates are not published on crates.io yet. Cargo locks this
+immutable Git source in `Cargo.lock`.
 
 The library target is named `ifc`, so call sites read as a facade:
 

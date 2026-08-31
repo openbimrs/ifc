@@ -14,7 +14,7 @@
 //! These operations are schema-agnostic: they trust the caller with slot
 //! indices and don't know an entity's declared attribute count. Reference
 //! integrity, arity, and declared-type checks are `ifc-author`'s job on
-//! construction ([`EntityBuilder`](https://docs.rs/ifc-author)) and
+//! construction (`EntityBuilder`) and
 //! `ifc-validate`'s job on audit. This is the primitive both build on.
 
 use crate::entity::Entity;

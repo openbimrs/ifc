@@ -7,9 +7,10 @@ standing rules below.
 
 ## What this directory is
 
-A VitePress site published to GitHub Pages at `https://openbimrs.github.io/ifc/`
-by `.github/workflows/pages.yml`. It is the human-facing counterpart to the
-generated API reference on docs.rs; it never restates rustdoc.
+A VitePress site published to GitHub Pages at `https://openbimrs.github.io/ifc/`.
+It complements locally generated rustdoc without restating it; the workspace
+crates are not published on docs.rs yet. Deployment is handled by
+`.github/workflows/pages.yml`.
 
 ## The rule that matters
 

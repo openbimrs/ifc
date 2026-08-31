@@ -4,8 +4,11 @@ Feature-gated facade for the pure-Rust OpenBIM.rs IFC crates.
 
 ```toml
 [dependencies]
-openbim-ifc = { version = "0.1", features = ["schema", "properties"] }
+openbim-ifc = { git = "https://github.com/openbimrs/ifc.git", rev = "494d8c7f5aa47cab7993fbff453eee71ab5849a8", features = ["schema", "properties"] }
 ```
+
+The workspace crates are not published on crates.io yet; Cargo records this
+immutable Git revision in `Cargo.lock`.
 
 The Rust library target is named `ifc`, so consumers import it with `use ifc::...`.
 The default feature enables only the STEP codec; domain and geometry capabilities

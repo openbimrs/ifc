@@ -46,12 +46,20 @@ project. It also applies when someone officially represents OpenBIM.rs.
 
 ## Enforcement
 
-Report conduct concerns to the repository maintainer, currently
-[@GeneralPawz](https://github.com/GeneralPawz), using a private contact channel
-listed on their GitHub profile when available. Do not put sensitive details in a
-public issue. If the concern involves a maintainer, or a safe private project
-channel is unavailable, use [GitHub's Report Abuse](https://support.github.com/contact/report-abuse)
-process.
+Do not put sensitive conduct details in a public issue. Use one of these private
+paths:
+
+- for a concern tied to a GitHub comment, issue, pull request, or Discussion,
+  choose **Report content** from that content's menu and select the option to
+  report it to repository administrators;
+- for a concern that is not tied to one GitHub item, open the repository's
+  [private report form](https://github.com/openbimrs/ifc/security/advisories/new)
+  and prefix the title with `[Conduct]`. This project deliberately accepts
+  confidential conduct reports through that form as well as security reports.
+
+If the concern involves a repository administrator, or reporting it to project
+maintainers would be unsafe, use [GitHub's Report Abuse](https://support.github.com/contact/report-abuse)
+process instead.
 
 Maintainers will respect the privacy and safety of reporters. They may edit or
 remove contributions and may temporarily or permanently restrict participation

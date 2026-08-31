@@ -26,7 +26,7 @@
 //!
 //! # Relationship to the model
 //!
-//! [`ifc_model`](https://docs.rs/ifc-model) does **not** depend on this crate.
+//! `ifc-model` does **not** depend on this crate.
 //! The model stores whatever a file contains, valid or not. The schema is what
 //! you consult to *interpret* what was stored, and it is optional: a file whose
 //! schema is unknown still parses, and its entities still round-trip.

@@ -10,7 +10,7 @@ change. Every promoted issue names one stable plan task ID and the proof needed
 to complete it.
 
 Do not create an issue for every unchecked plan item. Use
-[Discussions](https://github.com/orgs/openbimrs/discussions) for design questions
+[Discussions](https://github.com/openbimrs/ifc/discussions) for design questions
 and the issue forms for reproducible bugs or concrete proposals. See the root
 [contribution policy](https://github.com/openbimrs/ifc/blob/main/CONTRIBUTING.md)
 for the complete claim-to-merge workflow.

@@ -208,6 +208,6 @@ stable **PLAN.md** task ID, its current blockers, scope, and required proof. Thi
 keeps the detailed backlog in Git while GitHub owns assignment and discussion.
 
 Ideas and unresolved ownership questions, such as the home for approvals, start
-in [OpenBIM.rs Discussions](https://github.com/orgs/openbimrs/discussions).
+in [repository Discussions](https://github.com/openbimrs/ifc/discussions).
 Concrete bugs and feature requests use the issue forms. See the full
 [contributing guide](/guide/contributing).

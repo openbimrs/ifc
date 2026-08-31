@@ -48,6 +48,10 @@ and this project follows Semantic Versioning.
   independent bundled artifacts, and process caches stay here.
 
 ### Fixed
+- Contributor links now use the repository Discussions surface, omit
+  unpublished docs.rs and crates.io references, provide a verified immutable
+  Git dependency for current consumers, and document an actionable confidential
+  conduct-reporting path.
 - The roadmap now reflects shipped tessellated, advanced B-rep, swept, half-
   space, CSG, and exact-curve lowering instead of presenting those families as
   unimplemented.

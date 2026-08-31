@@ -4,11 +4,13 @@
 
 ```toml
 [dependencies]
-openbim-ifc = "0.1"
+openbim-ifc = { git = "https://github.com/openbimrs/ifc.git", rev = "494d8c7f5aa47cab7993fbff453eee71ab5849a8" }
 ```
 
-The published crate is `openbim-ifc`; its **library target is named `ifc`**, so
-imports read as a facade:
+The workspace crates are not published on crates.io yet. Consume the facade
+from this immutable Git revision; Cargo records it in `Cargo.lock`. The package
+is `openbim-ifc`, while its **library target is named `ifc`**, so imports read as
+a facade:
 
 ```rust
 use ifc::{Codec, Model, StepCodec};
@@ -40,7 +42,7 @@ make every downstream build fat.
 A thin viewer:
 
 ```toml
-openbim-ifc = { version = "0.1", default-features = false, features = ["step"] }
+openbim-ifc = { git = "https://github.com/openbimrs/ifc.git", rev = "494d8c7f5aa47cab7993fbff453eee71ab5849a8", default-features = false, features = ["step"] }
 ```
 
 compiles no domain code and no geometry stack, while still round-tripping every
@@ -92,8 +94,9 @@ for id in model.ids_of_type("IFCWALL") {
 }
 ```
 
-There is no attribute-name lookup and no reverse-reference index; see
-[capabilities](/capabilities) for what that costs you.
+Attribute-name lookup is available through schema-aware authoring. Incoming
+references use the optional, on-demand `ReverseIndex`; see the
+[Rust API guide](/api/rust#querying-the-model) for its snapshot semantics.
 
 ## Writing a file
 

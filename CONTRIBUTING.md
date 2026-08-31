@@ -15,7 +15,7 @@ Before starting:
 1. Search existing issues and pull requests.
 2. Comment on the issue you want to take. For large work, wait for assignment so
    two contributors do not solve the same task.
-3. Use [Discussions](https://github.com/orgs/openbimrs/discussions) for an idea or
+3. Use [Discussions](https://github.com/openbimrs/ifc/discussions) for an idea or
    architecture question that is not implementation-ready.
 4. Use the issue forms for a reproducible bug, feature request, or papercut.
 

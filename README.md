@@ -12,13 +12,12 @@ pins a verified commit here as `packages/ifc`.
 **📖 [Documentation](https://openbimrs.github.io/ifc/)** —
 [capabilities and status](https://openbimrs.github.io/ifc/capabilities) ·
 [architecture](https://openbimrs.github.io/ifc/architecture/) ·
-[roadmap](https://openbimrs.github.io/ifc/project/roadmap) ·
-[API on docs.rs](https://docs.rs/openbim-ifc)
+[roadmap](https://openbimrs.github.io/ifc/project/roadmap)
 
 **🤝 [Contribute](CONTRIBUTING.md)** —
 [ready tasks](https://github.com/orgs/openbimrs/projects/1/views/3) ·
 [work board](https://github.com/orgs/openbimrs/projects/1/views/1) ·
-[discussions](https://github.com/orgs/openbimrs/discussions) ·
+[discussions](https://github.com/openbimrs/ifc/discussions) ·
 [support](SUPPORT.md)
 
 ## Status
@@ -53,8 +52,12 @@ capability should be inferred from a module or crate name alone.**
 
 ```toml
 [dependencies]
-openbim-ifc = "0.1"
+openbim-ifc = { git = "https://github.com/openbimrs/ifc.git", rev = "494d8c7f5aa47cab7993fbff453eee71ab5849a8" }
 ```
+
+The workspace crates are not published on crates.io yet. This immutable Git
+revision is the supported installation source for now; Cargo records Git
+revisions in `Cargo.lock`.
 
 The library target is named `ifc`:
 

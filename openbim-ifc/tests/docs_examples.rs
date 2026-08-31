@@ -144,6 +144,41 @@ fn positional_construction_remains_available_unchecked() {
     );
 }
 
+/// `docs/api/rust.md` -- on-demand reverse-reference lookup.
+///
+/// The page shows this helper verbatim. Keep the imports and field access in
+/// sync so the published snippet is compiled by the facade's integration test.
+#[test]
+fn documented_reverse_index_example_reports_referrer_and_slot() {
+    use ifc_model::{EntityId, Model, ReverseIndex};
+
+    fn print_referrers(model: &Model, target: EntityId) {
+        let reverse = ReverseIndex::build(model);
+        for hit in reverse.referrers(target) {
+            println!(
+                "referenced by {:?} in attribute slot {}",
+                hit.from, hit.slot
+            );
+        }
+    }
+
+    let target = EntityId(1);
+    let from = EntityId(2);
+    let mut model = Model::new();
+    model.insert(target, Entity::new("IFCWALL", vec![]));
+    model.insert(
+        from,
+        Entity::new("IFCRELAGGREGATES", vec![Value::Ref(target)]),
+    );
+
+    print_referrers(&model, target);
+
+    let reverse = ReverseIndex::build(&model);
+    assert_eq!(reverse.referrers(target).len(), 1);
+    assert_eq!(reverse.referrers(target)[0].from, from);
+    assert_eq!(reverse.referrers(target)[0].slot, 0);
+}
+
 /// `docs/capabilities.md` -- the spatial traversal section.
 ///
 /// The page shows `of_kind` / `elements_of` / `container_of` / `ancestors` and

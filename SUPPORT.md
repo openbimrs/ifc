@@ -5,7 +5,7 @@
 Start with the [documentation](https://openbimrs.github.io/ifc/) and the
 [evidence-backed capability matrix](https://openbimrs.github.io/ifc/capabilities).
 For usage questions, design discussion, and ideas that are not yet concrete bug
-reports, use [OpenBIM.rs Discussions](https://github.com/orgs/openbimrs/discussions).
+reports, use [repository Discussions](https://github.com/openbimrs/ifc/discussions).
 
 ## Bugs and feature requests
 

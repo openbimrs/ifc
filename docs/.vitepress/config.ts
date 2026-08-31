@@ -84,10 +84,7 @@ export default defineConfig({
       '/api/': [
         {
           text: 'API reference',
-          items: [
-            { text: 'Rust', link: '/api/rust' },
-            { text: 'Generated docs (docs.rs)', link: 'https://docs.rs/openbim-ifc' },
-          ],
+          items: [{ text: 'Rust', link: '/api/rust' }],
         },
       ],
       '/project/': [

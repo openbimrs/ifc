@@ -27,3 +27,7 @@ not have the right to share. A reduced synthetic fixture is preferred.
 The maintainers will keep the report private while it is assessed and will
 coordinate disclosure after a fix or mitigation is available. No response-time
 SLA is currently promised.
+
+The same private form is also the project's confidential conduct-reporting
+channel. Prefix non-security reports with `[Conduct]` and follow the
+[Code of Conduct](CODE_OF_CONDUCT.md).

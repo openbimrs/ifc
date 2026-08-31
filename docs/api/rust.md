@@ -1,25 +1,14 @@
 # Rust API
 
-Full generated API documentation lives on **docs.rs**, built automatically from
-the doc comments in the source on every publish:
-
-- [`openbim-ifc`](https://docs.rs/openbim-ifc) — the facade (imports as `ifc`)
-- [`ifc-model`](https://docs.rs/ifc-model) — the entity graph
-- [`ifc-step`](https://docs.rs/ifc-step) · [`ifc-xml`](https://docs.rs/ifc-xml) — codecs
-- [`ifc-schema`](https://docs.rs/ifc-schema) — EXPRESS metadata
-- [`ifc-geometry`](https://docs.rs/ifc-geometry) — geometry bridge
-- [`ifc-cost`](https://docs.rs/ifc-cost) · [`ifc-material`](https://docs.rs/ifc-material) — domain views
-
-::: tip Building it locally
-Generated docs for unpublished work:
+The workspace crates are not published on docs.rs yet. Build the generated API
+reference from the current source and its doc comments:
 
 ```bash
 cargo doc --workspace --all-features --no-deps --open
 ```
 
-The verification gate builds documentation with `RUSTDOCFLAGS="-D warnings"`, so
-a broken intra-doc link fails CI.
-:::
+The verification gate runs the same documentation build with
+`RUSTDOCFLAGS="-D warnings"`, so a broken intra-doc link fails CI.
 
 ## Orientation
 
@@ -85,11 +74,26 @@ model.type_histogram()           // Vec<(&str, usize)> — great for triage
 model.dangling_references()      // Vec<(EntityId, EntityId)>
 ```
 
-::: warning No reverse index yet
-`ids_of_type` is indexed and fast. The inverse — "which entities reference
-*this* one" — is [not implemented](/project/roadmap#r2-relationship-and-spatial-traversal);
-`index/reverse.rs` is a scaffold. Applications needing it currently build their
-own by iterating once and inverting `entity.references()`.
+Build the optional reverse index only when an operation needs incoming
+references:
+
+```rust
+use ifc_model::{EntityId, Model, ReverseIndex};
+
+fn print_referrers(model: &Model, target: EntityId) {
+    let reverse = ReverseIndex::build(model);
+    for hit in reverse.referrers(target) {
+        println!("referenced by {:?} in attribute slot {}", hit.from, hit.slot);
+    }
+}
+```
+
+The index is a deterministic snapshot and records the top-level attribute slot
+for every referrer. Rebuild it after mutating the model.
+
+::: tip Reverse indexes are deliberately on demand
+Codecs that only read and rewrite a model do not pay the memory or load-time
+cost. Traversal-heavy applications build the index once and reuse it.
 :::
 
 ### Codecs
