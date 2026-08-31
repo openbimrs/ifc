@@ -32,8 +32,8 @@ code.
 | `ifc-template-catalog` | 2,403 | 28 | 3 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 2,398 | 24 | 0 | 8 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
+| `ifc-classification` | 1,990 | 19 | 4 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-validate` | 1,983 | 23 | 0 | 1 | <span class="status-implemented">Implemented</span> |
-| `ifc-classification` | 1,976 | 19 | 4 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-schedule` | 1,691 | 24 | 14 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 1,586 | 20 | 5 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 1,248 | 10 | 0 | 1 | <span class="status-partial">Partial</span> |

@@ -35,6 +35,10 @@ and this project follows Semantic Versioning.
   the bundled IFC4 artifact, and the process cache stay here.
 
 ### Fixed
+- `ifc-classification` hierarchy budgets now count every followed
+  `ReferencedSource` edge and every distinct resolved entity, including the
+  terminal classification system; revisiting an already-counted reference
+  reports a cycle before node exhaustion.
 - The `ifc-schema-generate` tool hardcoded IFC4's entity/type counts, so it
   could not produce another schema's artifact and its guard could not detect
   the wrong source file for one. It now takes a schema selector with per-schema

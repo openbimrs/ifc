@@ -47,5 +47,6 @@ capability:
 
 - `CLASS-SYS` / `CLASS-DOC` / `CLASS-LIB` - bundled IFC4 layout assertions pin every interpreted inherited-first slot; strict borrowed accessors and WHERE-rule validation pass focused tests.
 - `CLASS-ASSIGN` / `CLASS-QUERY` - deterministic relationship queries, bounded hierarchy traversal, cycle/dangling/wrong-type failures, and explicit occurrence/type separation pass focused tests.
+- `CLASS-QUERY` budget correction - every followed `ReferencedSource` edge and every distinct resolved entity, including the terminal classification system, count against `Budget`; equal-node revisits still report cycles. 3/3 corrective mutation probes killed.
 - `CLASS-MUT` - all nine owned concrete records stage through `Transaction`; invalid GUID, external identity, document XOR, actor/select targets, duplicate SET members, `IfcDefinitionSelect`, and failed-commit rollback behavior pass focused tests.
 - Gate proof: `cargo +1.88.0 test -p ifc-classification`; strict all-target clippy; 13/13 classification mutation probes killed.

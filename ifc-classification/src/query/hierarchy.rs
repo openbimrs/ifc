@@ -23,21 +23,6 @@ pub struct EffectiveClassifications<'m> {
     pub inherited: Vec<ClassificationAssignment<'m>>,
 }
 
-fn resolve<'m>(
-    view: ClassificationView<'m>,
-    source: EntityId,
-    target: EntityId,
-) -> ClassificationResult<&'m ifc_model::Entity> {
-    view.model()
-        .get(target)
-        .ok_or(ClassificationError::DanglingReference {
-            entity: "IFCCLASSIFICATIONREFERENCE",
-            id: source,
-            attribute: "ReferencedSource",
-            target,
-        })
-}
-
 fn require_select(
     view: ClassificationView<'_>,
     source: EntityId,
@@ -73,24 +58,61 @@ impl<'m> ClassificationView<'m> {
         budget: Budget,
     ) -> ClassificationResult<ClassificationHierarchy<'m>> {
         let mut current = leaf;
+        let mut from_reference = None;
         let mut references: Vec<ClassificationReference<'m>> = Vec::new();
         let mut positions = HashMap::new();
+        let mut visited_nodes = 0usize;
+        let mut edges_followed = 0usize;
+
         loop {
-            if references.len() >= budget.max_nodes {
+            if let Some(&start) = positions.get(&current) {
+                let mut path: Vec<_> = references[start..].iter().map(|r| r.id()).collect();
+                path.push(current);
+                return Err(ClassificationError::Cycle { path });
+            }
+            if visited_nodes >= budget.max_nodes {
                 return Err(ClassificationError::BudgetExceeded {
                     max_depth: budget.max_depth,
                     max_nodes: budget.max_nodes,
                 });
             }
-            if let Some(start) = positions.insert(current, references.len()) {
-                let mut path: Vec<_> = references[start..].iter().map(|r| r.id()).collect();
-                path.push(current);
-                return Err(ClassificationError::Cycle { path });
+            let entity = self.model().get(current).ok_or_else(|| {
+                from_reference.map_or(
+                    ClassificationError::UnknownEntity { id: current },
+                    |source| ClassificationError::DanglingReference {
+                        entity: "IFCCLASSIFICATIONREFERENCE",
+                        id: source,
+                        attribute: "ReferencedSource",
+                        target: current,
+                    },
+                )
+            })?;
+            visited_nodes += 1;
+
+            if entity.is_type("IFCCLASSIFICATION") && from_reference.is_some() {
+                return Ok(ClassificationHierarchy {
+                    references,
+                    system: Some(ClassificationSystem::try_new(current, entity)?),
+                });
             }
-            let entity = self
-                .model()
-                .get(current)
-                .ok_or(ClassificationError::UnknownEntity { id: current })?;
+            if !entity.is_type("IFCCLASSIFICATIONREFERENCE") {
+                if let Some(source) = from_reference {
+                    return Err(ClassificationError::ReferenceType {
+                        entity: "IFCCLASSIFICATIONREFERENCE",
+                        id: source,
+                        attribute: "ReferencedSource",
+                        target: current,
+                        expected: "IfcClassificationReferenceSelect",
+                        actual: entity.type_name.to_string(),
+                    });
+                }
+                return Err(ClassificationError::WrongEntityType {
+                    expected: "IFCCLASSIFICATIONREFERENCE",
+                    actual: entity.type_name.to_string(),
+                });
+            }
+
+            positions.insert(current, references.len());
             let reference = ClassificationReference::try_new(current, entity)?;
             let source = reference.referenced_source_id()?;
             references.push(reference);
@@ -100,29 +122,14 @@ impl<'m> ClassificationView<'m> {
                     system: None,
                 });
             };
-            let source_entity = resolve(self, current, source)?;
-            if source_entity.is_type("IFCCLASSIFICATION") {
-                return Ok(ClassificationHierarchy {
-                    references,
-                    system: Some(ClassificationSystem::try_new(source, source_entity)?),
-                });
-            }
-            if !source_entity.is_type("IFCCLASSIFICATIONREFERENCE") {
-                return Err(ClassificationError::ReferenceType {
-                    entity: "IFCCLASSIFICATIONREFERENCE",
-                    id: current,
-                    attribute: "ReferencedSource",
-                    target: source,
-                    expected: "IfcClassificationReferenceSelect",
-                    actual: source_entity.type_name.to_string(),
-                });
-            }
-            if references.len() > budget.max_depth {
+            if edges_followed >= budget.max_depth {
                 return Err(ClassificationError::BudgetExceeded {
                     max_depth: budget.max_depth,
                     max_nodes: budget.max_nodes,
                 });
             }
+            edges_followed += 1;
+            from_reference = Some(current);
             current = source;
         }
     }
@@ -191,7 +198,14 @@ impl<'m> ClassificationView<'m> {
                     5,
                     "RelatingType",
                 )?;
-                resolve(self, relationship_id, type_id)?;
+                self.model()
+                    .get(type_id)
+                    .ok_or(ClassificationError::DanglingReference {
+                        entity: "IFCRELDEFINESBYTYPE",
+                        id: relationship_id,
+                        attribute: "RelatingType",
+                        target: type_id,
+                    })?;
                 types.push(type_id);
             }
         }
