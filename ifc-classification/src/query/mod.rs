@@ -1,7 +1,3 @@
-//! Query capability scaffold.
-
-//! ## Internal split
-//!
-//! - `hierarchy.rs`: bounded parent/child traversal.
-
+//! Bounded hierarchy and explicit assignment resolution.
 mod hierarchy;
+pub use hierarchy::{ClassificationHierarchy, EffectiveClassifications};

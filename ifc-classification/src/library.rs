@@ -1,12 +1,5 @@
-//! `IfcLibraryInformation` external library links.
-//!
-//!
-//! Implementation is tracked in `../PLAN.md`.
-
-//! ## Internal split
-//!
-//! - `information.rs`: library metadata.
-//! - `reference.rs`: library entries.
-
+//! Library information and external references.
 mod information;
 mod reference;
+pub use information::LibraryInformation;
+pub use reference::LibraryReference;

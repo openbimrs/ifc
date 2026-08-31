@@ -1,12 +1,5 @@
-//! `IfcDocumentInformation` and document references.
-//!
-//!
-//! Implementation is tracked in `../PLAN.md`.
-
-//! ## Internal split
-//!
-//! - `information.rs`: document metadata.
-//! - `reference.rs`: document locations/identifiers.
-
+//! Document information and external references.
 mod information;
 mod reference;
+pub use information::DocumentInformation;
+pub use reference::DocumentReference;

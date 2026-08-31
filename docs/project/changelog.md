@@ -16,6 +16,11 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-classification` implements strict borrowed IFC4 views for classification,
+  document, and library information/references plus their three object
+  association families. Queries provide bounded hierarchy traversal and keep
+  occurrence/type classifications separate; matching helpers transactionally
+  author all nine concrete records with pre-staging validation.
 - `ifc-schema` bundles the IFC2x3 TC1 schema (653 entities, 327 types)
   alongside IFC4, with `ifc2x3()` and a `for_version()` lookup. `ifc-validate`
   routes `validate_declared` through it, so IFC2x3 files are validated rather

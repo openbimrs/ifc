@@ -96,18 +96,23 @@ style-level, so a separate crate is likely cleaner.
 
 ### R6. External references and libraries
 
-**Gap.** `IfcExternalReference` (the abstract base), `IfcLibraryReference`,
-`IfcLibraryInformation`, `IfcLibrarySelect`, and `IfcRelAssociatesLibrary` are
-absent. `ifc-classification/src/library/reference.rs` and `information.rs` exist
-as empty placeholders — the intended home is already reserved.
+**Implemented.** `ifc-classification` now exposes borrowed IFC4 views for
+classification systems/references, document information/references, library
+information/references, and all three `IfcRelAssociates*` families. Bounded
+hierarchy lookup reports cycles, dangling/wrong-kind references, and budget
+exhaustion. Effective classification lookup returns occurrence and type
+associations separately. Matching transactional helpers author all nine concrete
+records after validating the complete draft.
 
 **Why it matters.** Library references are how a symbol set, a component
 catalogue, or a classification source stays portable and vendor-neutral rather
 than proprietary to one application.
 
-**Scope note.** `IfcExternalReference` is the shared base for library,
-classification, and document references, so implementing it once unblocks three
-families at the same time.
+**Remaining boundary.** The shared inherited `IfcExternalReference` fields are
+covered by each concrete reference view. Generic external-resource
+relationships (`IfcExternalReferenceRelationship`, approval and constraint
+resource relationships) remain outside this crate's implemented contract and
+must not be inferred from this milestone.
 
 ### R7. Approvals
 

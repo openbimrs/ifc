@@ -9,5 +9,6 @@ repository = "https://github.com/openbimrs/ifc"
 description = "Classification systems, document references, libraries, external references."
 
 [dependencies]
-ifc-schema.workspace = true
 ifc-model.workspace = true
+ifc-schema.workspace = true
+thiserror.workspace = true

@@ -30,8 +30,10 @@ Implemented foundations include:
 - schema-checked authoring of new entities by attribute name (`ifc-author`);
 - bundled IFC2x3 TC1 and IFC4 ADD2 TC1 structural schema metadata;
 - declared-schema validation with explicit unsupported-rule reporting;
-- borrowed property, quantity, material, schedule, systems, and spatial views;
-- material and quantity authoring staged through caller-owned transactions;
+- borrowed classification, document, library, property, quantity, material,
+  schedule, systems, and spatial views;
+- classification, document, library, material, and quantity authoring staged
+  through caller-owned transactions;
 - geometry selection/lowering foundations and versioned PSD/QTO catalogs.
 
 Some domain crates intentionally remain architecture scaffolds: their module

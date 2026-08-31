@@ -53,6 +53,9 @@ PUBLISHED_STATUS = {
     # census, with tests, yet neither had a census row.
     "ifc-author": '<span class="status-implemented">Implemented</span>',
     "ifc-spatial": '<span class="status-implemented">Implemented</span>',
+    # All six PLAN tasks implemented: strict borrowed records, associations,
+    # bounded hierarchy/effective queries, and transaction-staged authoring.
+    "ifc-classification": '<span class="status-implemented">Implemented</span>',
     # All six PLAN tasks implemented: systems, ports, connectivity, flow,
     # zones and directed queries.
     "ifc-systems": '<span class="status-implemented">Implemented</span>',

@@ -33,6 +33,7 @@ code.
 | `ifc-material` | 2,398 | 24 | 0 | 8 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-validate` | 1,983 | 23 | 0 | 1 | <span class="status-implemented">Implemented</span> |
+| `ifc-classification` | 1,976 | 19 | 4 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-schedule` | 1,691 | 24 | 14 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 1,586 | 20 | 5 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 1,248 | 10 | 0 | 1 | <span class="status-partial">Partial</span> |
@@ -47,13 +48,12 @@ code.
 | `ifc-resource` | 177 | 25 | 23 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-style` | 174 | 24 | 20 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-georef` | 133 | 17 | 14 | 0 | <span class="status-scaffold">Scaffold</span> |
-| `ifc-classification` | 131 | 17 | 14 | 0 | <span class="status-scaffold">Scaffold</span> |
 
 <!-- CAPABILITIES:CENSUS:END -->
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:BEGIN -->
 
-6 of 21 crates are scaffolds.
+5 of 21 crates are scaffolds.
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:END -->
 They exist because the layering decision
@@ -371,7 +371,9 @@ as the target view.
 ## Presentation, annotation, and external references
 
 These are the areas most relevant to drawing production and document/approval
-workflows. They are currently the least built.
+workflows. Presentation and annotation remain the least built; external
+classification/document/library references now have typed read/query/authoring
+coverage.
 
 | Entity / concept | Status | Note |
 | --- | --- | --- |
@@ -384,16 +386,17 @@ workflows. They are currently the least built.
 | `IfcStyledItem` | <span class="status-scaffold">Scaffold</span> | `ifc-style/src/assignment/styled_item.rs` |
 | `IfcShapeRepresentation` | <span class="status-absent">Absent</span> | Generic `Representation` view exists; the subtype does not |
 | `IfcGeometricRepresentationSubContext` | <span class="status-absent">Absent</span> | Required to author a `Plan`/`Annotation` context |
-| `IfcLibraryReference` | <span class="status-absent">Absent</span> | `ifc-classification/src/library/reference.rs` is a placeholder |
-| `IfcLibraryInformation` | <span class="status-absent">Absent</span> | Placeholder file only |
-| `IfcRelAssociatesLibrary` | <span class="status-absent">Absent</span> | |
-| `IfcExternalReference` and `IfcLibrarySelect` | <span class="status-absent">Absent</span> | |
+| `IfcLibraryReference` | <span class="status-implemented">Implemented</span> | Strict borrowed view and transaction-staged authoring |
+| `IfcLibraryInformation` | <span class="status-implemented">Implemented</span> | Strict borrowed view and transaction-staged authoring |
+| `IfcRelAssociatesLibrary` | <span class="status-implemented">Implemented</span> | Deterministic object lookup and transaction-staged authoring |
+| `IfcExternalReference` and `IfcLibrarySelect` | <span class="status-implemented">Implemented</span> | Inherited fields are exposed by concrete views; select targets are type-checked |
 | `IfcApproval` and the whole `IfcApprovalResource` schema | <span class="status-absent">Absent</span> | No crate owns it; not even a scaffold |
-| `IfcClassificationReference` | <span class="status-scaffold">Scaffold</span> | `ifc-classification` |
+| `IfcClassificationReference` | <span class="status-implemented">Implemented</span> | Bounded hierarchy, explicit occurrence/type sources, and authoring |
 
-Because `ifc-model` round-trips entities structurally, a file containing any of
-the above **reads and re-exports without loss today**. What is missing is typed
-interpretation and typed authoring, not data preservation.
+Because `ifc-model` round-trips entities structurally, every row above reads and
+re-exports without loss. The status distinguishes that baseline from typed
+interpretation and authoring; only rows marked implemented expose those domain
+contracts.
 
 ## Explicit non-goals
 
