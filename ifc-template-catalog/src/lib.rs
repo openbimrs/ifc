@@ -11,6 +11,7 @@ pub mod definition;
 pub mod diagnostic;
 #[cfg(feature = "embedded")]
 pub mod embedded;
+pub mod export;
 pub mod overlay;
 pub mod query;
 

@@ -1,7 +1,7 @@
 # ifc-template-catalog implementation plan
 
 Status: implemented and verified.
-Last updated: 2026-08-19
+Last updated: 2026-08-31
 
 This is opt-in task state. Follow `AGENTS.md`; claim one task ID and update proof here. Keep stable boundaries in `AGENTS.md`.
 
@@ -40,6 +40,7 @@ Accepted by ADR 0010. This crate is external schema metadata, separate from auth
 - [x] `CAT-GEN` - deterministic normalized IFC4 artifact and drift gate.
 - [x] `CAT-INTEGRATE` - workspace/facade feature and dependency-boundary gates.
 - [x] `CAT-VERIFY` - focused/full gates, mutation checks, size/timing measurements, review.
+- [x] `CAT-TSV` - export a deterministic, typed property/quantity applicability index.
 
 - [x] `CAT-REVIEW-FIX` - reconcile late review findings, fix confirmed invariants, regenerate, and gate.
 
@@ -65,3 +66,4 @@ Append entries as `TASK-ID - command/result - material decision`. Do not paste f
 - `CAT-GEN` - generator imported 513/513 XML files and reproduced byte-identical 1,537,256-byte format-v2 artifacts; source digest `57227d...36e3`, artifact digest `fe5567...8363`.
 - `CAT-VERIFY` - all-feature tests/clippy and IFC architecture/context/reachability/monolith gates passed; architecture, context, and artifact corruption mutations each failed as expected. Full `scripts/gate.sh` passed after removing an unnecessary `quick-xml/encoding` feature that broke sibling `ifc-xml` through Cargo feature unification. Release measurements across three processes: official first load 3.27-3.77 ms, 100k exact-name lookups 5.35-5.69 ms, corrected first load 2.05-2.67 ms.
 - `CAT-REVIEW-FIX` - late reviews reconciled; QTO/profile/cross-call findings fixed, stale findings pinned by regressions, format-v2 artifact reproduced, corruption mutation exited 101, and exact scoped gates passed. Independent follow-up review passed; its three non-blocking coverage suggestions were added and mutation-verified. The full gate is currently blocked by the pre-existing `ifc-geometry::no_backend_dependency` macro fixture on HEAD.
+- `CAT-TSV` - exported 420 PSD and 93 QTO sets as 3,525 deterministic rows; quantity `value_type` preserves `Q_*` XML tokens. Regeneration reproduced SHA-256 `659958e84edab2c932214a64dcc62d725cbbecafeb092bef77d76bd82f8ad724`; exact corpus counts, relevant opening/door paths, and byte drift are regression-tested.

@@ -6,9 +6,12 @@
 - Inventory: 420 PSD, 93 QTO, 2,550 properties, 257 quantities
 - Ordered source digest: `57227d4c82f9903bc59cb5bade18a49f2c5f2c9363d0293ccb68fed8765d36e3`
 
-- Artifact: 1,537,256 bytes
-- Artifact SHA-256: `fe5567f0d30f8a4eb87a31bd34b8f43df95e2d28d72e7b56ffd082206bd48363`
-- Generator: `cargo run -p ifc-template-catalog --features generation --bin ifc-template-catalog-generate -- <HTML-root>`
+- Binary artifact: 1,537,256 bytes
+- Binary SHA-256: `fe5567f0d30f8a4eb87a31bd34b8f43df95e2d28d72e7b56ffd082206bd48363`
+- TSV applicability index: 3,525 rows, 1,064,231 bytes
+- TSV SHA-256: `659958e84edab2c932214a64dcc62d725cbbecafeb092bef77d76bd82f8ad724`
+- Binary generator: `cargo run -p ifc-template-catalog --features generation --bin ifc-template-catalog-generate -- <HTML-root>`
+- TSV generator: `cargo run -p ifc-template-catalog --example export_ifc4_tsv -- ifc-template-catalog/data/ifc4-add2-tc1.tsv`
 
 Upstream names, descriptions, aliases, GUIDs, applicability, units, and type declarations are copyright buildingSMART International Limited and published under CC BY-ND 4.0: https://technical.buildingsmart.org/standards/ifc/ifc-schema-specifications/
 

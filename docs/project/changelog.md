@@ -16,6 +16,9 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-template-catalog` can export the official IFC4 ADD2 TC1 PSD/QTO
+  snapshot as a deterministic 3,525-row TSV applicability index with exact
+  set/member types, entity selectors, provenance paths, and source digests.
 - Public contributor workflow with a curated organization Project, contributor-
   ready plan-task promotion, issue forms, a pull-request template, and support,
   security, and conduct policies.
