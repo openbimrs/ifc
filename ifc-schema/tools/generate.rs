@@ -3,6 +3,7 @@
 //! ```text
 //! ifc-schema-generate ifc2x3 references/specs/ifc2x3-tc1/IFC2X3_TC1.exp
 //! ifc-schema-generate ifc4   references/specs/ifc4-add2-tc1/IFC4.exp
+//! ifc-schema-generate ifc4x3 references/specs/ifc4x3-add2/IFC4X3_ADD2.exp
 //! ```
 //!
 //! The expected entity/type counts are asserted per schema. They are the
@@ -28,7 +29,8 @@ struct Target {
 }
 
 /// Counts are from the normative EXPRESS files, recomputed with
-/// `grep -cE '^ENTITY'` and `grep -cE '^TYPE'`.
+/// `grep -cE '^ENTITY ' ` and `grep -cE '^TYPE ' `. The trailing spaces
+/// avoid counting expressions such as IFC4X3's line-leading `TYPEOF(...)`.
 const TARGETS: &[Target] = &[
     Target {
         selector: "ifc2x3",
@@ -43,6 +45,13 @@ const TARGETS: &[Target] = &[
         entities: 776,
         types: 397,
         label: "IFC4 ADD2 TC1",
+    },
+    Target {
+        selector: "ifc4x3",
+        output: "data/ifc4x3-add2.bin",
+        entities: 876,
+        types: 436,
+        label: "IFC4X3 ADD2",
     },
 ];
 

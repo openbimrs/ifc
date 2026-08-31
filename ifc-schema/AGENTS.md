@@ -21,10 +21,10 @@ happens here and in consumers.
 - `version.rs`: which IFC schema a file's `FILE_SCHEMA` token names
 - `error.rs`: syntax/source diagnostics
 - `artifact.rs` (ifc4 feature): versioned binary codec for a compiled schema
-- `bundled.rs` (ifc4 feature): Schema::ifc2x3() and Schema::ifc4(), cached,
-  decoded from data/. `for_version` maps a parsed FILE_SCHEMA token to a table
-  and returns None for IFC4x3, which is recognised but not bundled -- a
-  consumer must refuse rather than fall back to another schema's tables.
+- `bundled.rs` (ifc4 feature): `ifc2x3()`, `ifc4()`, and `ifc4x3()` are cached,
+  decoded from independent artifacts in `data/`. `for_version` maps a parsed
+  `FILE_SCHEMA` token only to its exact table; consumers must refuse any future
+  recognised-but-unbundled version rather than fall back.
 
 ## Invariants
 
@@ -49,6 +49,8 @@ cargo run -p ifc-schema --features generation --bin ifc-schema-generate -- \
   ifc2x3 references/specs/ifc2x3-tc1/IFC2X3_TC1.exp
 cargo run -p ifc-schema --features generation --bin ifc-schema-generate -- \
   ifc4 references/specs/ifc4-add2-tc1/IFC4.exp
+cargo run -p ifc-schema --features generation --bin ifc-schema-generate -- \
+  ifc4x3 references/specs/ifc4x3-add2/IFC4X3_ADD2.exp
 ```
 
 The tool refuses a source whose entity/type counts do not match the selected

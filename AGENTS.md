@@ -56,10 +56,10 @@ sections, parsing/writing, partitioning, spans, diagnostics, and event sinks.
 The IFC crates own only conversion between that substrate and IFC model/schema
 APIs.
 
-IFC2x3 TC1 and IFC4 ADD2 TC1 structural metadata are bundled for declared-schema
-validation. IFC4 ADD2 TC1 remains the domain-projection baseline unless a crate
-proves another layout explicitly. IFC4x3 is recognised but currently unbundled;
-never approximate it with IFC4 tables.
+IFC2x3 TC1, IFC4 ADD2 TC1, and IFC4X3 ADD2 structural metadata are bundled
+for declared-schema validation. IFC4 ADD2 TC1 remains the domain-projection
+baseline unless a crate proves another layout explicitly; validation always
+uses the declared version's own tables and never approximates across versions.
 
 ## Geometry boundary
 

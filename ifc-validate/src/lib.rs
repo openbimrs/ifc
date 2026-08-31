@@ -35,6 +35,10 @@
 //! parser retains whether an attribute is an aggregate but not its bounds.
 //! Claiming otherwise would be worse than the gap.
 //!
+//! It also does not derive `INVERSE` relationship semantics. A selected rule
+//! whose IFC2X3 form depends on an inverse is therefore reported unsupported,
+//! even when a later schema revision exposes equivalent direct attributes.
+//!
 //! # Module map
 //!
 //! | Module | Role |
@@ -76,7 +80,7 @@ pub fn validate(model: &Model, schema: &Schema) -> Report {
 /// report truncated: `12 errors` from a truncated report means "at least 12".
 #[must_use]
 pub fn validate_with(model: &Model, schema: &Schema, budget: Budget) -> Report {
-    let mut report = Report::new();
+    let mut report = Report::with_max_findings(budget.max_findings);
     header::check(model, &mut report);
     structure::check(model, schema, budget, &mut report);
     type_check::check(model, schema, budget, &mut report);

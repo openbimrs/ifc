@@ -17,6 +17,10 @@ pub fn evaluate(model: &Model, schema: &Schema, budget: Budget, report: &mut Rep
     builtin::single_project_instance(model, report);
     builtin::unique_global_id(model, schema, report);
     builtin::no_related_type_object(model, schema, report);
+    builtin::external_reference_identity(model, schema, report);
+    builtin::sequence_endpoints_differ(model, schema, report);
+    builtin::decomposition_has_no_self_reference(model, schema, report);
+    builtin::normalized_material_priority(model, schema, report);
 
     for entry in registry::unsupported() {
         if report.findings().len() >= budget.max_findings {

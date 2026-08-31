@@ -49,9 +49,9 @@ mod tests {
     #[test]
     fn the_two_schema_refusals_are_distinguishable() {
         let unknown = ValidateError::UnknownSchema("STEP".into()).to_string();
-        let unbundled = ValidateError::UnbundledSchema("IFC4X3_ADD2".into()).to_string();
+        let unbundled = ValidateError::UnbundledSchema("IFC_FUTURE_PROFILE".into()).to_string();
         assert_ne!(unknown, unbundled);
-        assert!(unbundled.contains("IFC4X3_ADD2"));
+        assert!(unbundled.contains("IFC_FUTURE_PROFILE"));
         assert!(unknown.contains("STEP"));
     }
 }

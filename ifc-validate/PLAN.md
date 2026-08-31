@@ -1,8 +1,9 @@
 # ifc-validate implementation plan
 
-Status: implemented; structure, types, and natively checkable rules are evaluated,
-and rules requiring an EXPRESS evaluator are reported as unsupported.
-Last updated: 2026-08-30
+Status: implemented for structural/type validation and selected native rules across
+bundled IFC2X3 TC1, IFC4 ADD2 TC1, and IFC4X3 ADD2 tables. General EXPRESS
+expressions, aggregate bounds, and inverse semantics remain explicitly unsupported.
+Last updated: 2026-08-31
 
 This is task state, not ambient context. Follow `AGENTS.md`. Claim one task ID,
 record blockers here, and check it off only with the stated evidence.
@@ -43,8 +44,13 @@ owner and expose a public symbol only through an intentional parent re-export.
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
 - [x] `VAL-WHERE` - register supported rules and report unsupported ones honestly
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
+- [x] `VAL-4X3` - validate declared IFC4X3 ADD2 models against their bundled tables
+  - Evidence: valid/invalid committed fixtures, exact schema selection, no IFC4 fallback, corpus audit, mutation probes, and full gate.
+- [x] `VAL-RULES-2` - implement selected direct-value/reference rules without claiming general EXPRESS support
+  - Evidence: positive/negative tests across applicable schema versions; aggregate-bound, arbitrary-WHERE, and INVERSE gaps remain explicit.
 - [x] `VAL-REPORT` - deterministic reports with source paths and limits
-  - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
+  - Evidence: sorting/path/summary tests; `max_findings` hard-caps every
+    `Report::push`/`extend` (regression: budget 5 previously stored 100 findings).
 
 ## Completion log
 
@@ -60,12 +66,18 @@ Do not paste long logs or transient process state.
   false positive on the corpus `pass-complex-number-ifc4.ifc`.
 - `VAL-TYPE` - unknown entity types, abstract instantiation, and scalar form
   against the declared type. Catches `IFCPOSITIVELENGTHMEASURE('1')`.
-- `VAL-WHERE` - three natively checkable rules implemented; the rest are
-  registered as unsupported with a reason. A test pins the registry's
-  `Implemented` claims to the engine's dispatch list, which immediately caught
-  a duplicate `IfcRoot.WR1` entry for a check already covered file-wide.
-- `VAL-REPORT` - severity/path/summary with a findings budget. `Unsupported`
-  does not affect conformance; a truncated report says so.
+- `VAL-WHERE` - nine registered implemented rule IDs cover eight native checks;
+  version-labelled sequence rules share one implementation. The registry keeps
+  aggregate-bound, general-expression, geometry, and inverse-dependent rules
+  explicit as unsupported and is pinned to dispatch by test.
+- `VAL-4X3` - IFC4X3 ADD2 declared files use their independent 876-entity,
+  436-type bundle. Existing valid and malformed committed fixtures now validate
+  or fail rather than being skipped; IFC4 tables are never substituted.
+- `VAL-RULES-2` - added external-reference identity, sequence endpoint,
+  decomposition/nesting self-reference, and material-layer priority checks with
+  schema-derived attribute positions and version guards.
+- `VAL-REPORT` - severity/path/summary with a hard findings-storage cap.
+  `Unsupported` does not affect conformance; a truncated report says so.
 
 ## Deliberate gaps
 
@@ -74,16 +86,20 @@ Do not paste long logs or transient process state.
   rather than silently skipped.
 - Arbitrary `WHERE` expressions need an EXPRESS evaluator, which this crate
   does not have.
+- INVERSE relationship semantics are not derived. `IfcDocumentReference.WR1`
+  remains registered as unsupported because its IFC2X3 form depends on an
+  inverse even though later schemas expose a direct reference.
 - Header arity/type defects are not re-derived: `Model`'s header is normalized,
   so that evidence belongs to the codec's diagnostic channel.
 
 ## Corpus audit, 2026-08-31
 
-Ran the validator over all 38 committed fixtures. Results: 29 clean, 7
-expected/known-invalid fixtures reported errors, and 2 IFC4X3_ADD2 fixtures were
-skipped because that schema is recognised but not bundled. IFC2X3 fixtures are
-validated against bundled IFC2X3 TC1 tables rather than skipped or forced
-through IFC4.
+Ran the validator over all 38 committed fixtures. Results: 31 clean and 7
+expected/known-invalid fixtures reported errors; none were skipped for schema
+coverage. IFC2X3 TC1, IFC4 ADD2 TC1, and IFC4X3 ADD2 fixtures are each validated
+against their independent bundled tables rather than skipped or forced through
+another version. Two of the 31 model-level-clean fixtures are raw-header-only
+failures whose evidence the codec normalizes before validation.
 
 The run exposed two validator bugs before it exposed any fixture bug:
 

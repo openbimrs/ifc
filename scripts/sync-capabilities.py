@@ -61,9 +61,10 @@ PUBLISHED_STATUS = {
     "ifc-systems": '<span class="status-implemented">Implemented</span>',
     # Every PLAN task implemented, including PROP-EDIT on top of MODEL-MUT.
     "ifc-properties": '<span class="status-implemented">Implemented</span>',
-    # VAL-STRUCT/TYPE/WHERE/REPORT implemented. Rules needing an EXPRESS
-    # expression evaluator are registered as unsupported and reported, not
-    # skipped, so a clean report never implies complete coverage.
+    # Structural/type validation plus selected direct-value/reference rules run
+    # against exact bundled IFC2X3/IFC4/IFC4X3 tables. Aggregate bounds,
+    # arbitrary EXPRESS evaluation, and INVERSE derivation remain explicit
+    # unsupported categories, so clean never means full EXPRESS conformance.
     "ifc-validate": '<span class="status-implemented">Implemented</span>',
     # COST-RATE/REL/UNIT/CORPUS implemented over a validated fixture. COST-MUT
     # is deliberately open: authoring goes through ifc-model transactions, and

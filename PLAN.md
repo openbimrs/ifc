@@ -18,6 +18,9 @@ re-deriving package architecture or creating monoliths.
 
 - `ifc-model` owns the schema-agnostic entity graph and `Codec` port.
 - STEP and XML are working codec adapters; JSON is not implemented.
+- IFC2X3 TC1, IFC4 ADD2 TC1, and IFC4X3 ADD2 have independent bundled
+  structural tables for exact declared-schema validation; this does not imply
+  full EXPRESS rule conformance.
 - Domain crates are borrowed projections over `ifc-model`; implementation depth
   varies and is recorded in crate plans.
 - Geometry-facing adapters emit exact, neutral geometry values/DAGs and cannot

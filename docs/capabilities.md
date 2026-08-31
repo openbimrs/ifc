@@ -31,13 +31,13 @@ code.
 | `ifc-properties` | 2,417 | 29 | 14 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-template-catalog` | 2,403 | 28 | 3 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 2,398 | 24 | 0 | 8 | <span class="status-implemented">Implemented</span> |
+| `ifc-validate` | 2,249 | 23 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-classification` | 1,990 | 19 | 4 | 2 | <span class="status-implemented">Implemented</span> |
-| `ifc-validate` | 1,983 | 23 | 0 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-schedule` | 1,691 | 24 | 14 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 1,586 | 20 | 5 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 1,248 | 10 | 0 | 1 | <span class="status-partial">Partial</span> |
-| `ifc-schema` | 951 | 10 | 4 | 1 | <span class="status-implemented">Implemented</span> |
+| `ifc-schema` | 980 | 10 | 4 | 1 | <span class="status-implemented">Implemented</span> |
 | `openbim-ifc` | 888 | 6 | 0 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 658 | 4 | 0 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-spatial` | 561 | 7 | 1 | 3 | <span class="status-implemented">Implemented</span> |
@@ -79,7 +79,7 @@ later, but they must never be mistaken for working code.
 | Work schedules, tasks and sequencing | <span class="status-implemented">Implemented</span> | `ifc-schedule` reads `IfcWorkPlan`/`IfcWorkSchedule`, `IfcTask` with `IfcTaskTime`, `IfcRelSequence` with signed lag, work calendars and events, and produces a deterministic execution order. Cycles report the offending path. |
 | Transactional authoring | <span class="status-implemented">Implemented</span> | `ifc-model::Transaction` stages structural edits, validates them against the projected end state, and applies them as a unit. A removal that would orphan a surviving reference is refused, as is a commit against a model whose revision moved since the transaction opened. Schema-agnostic: no domain setters. |
 | Quantity authoring | <span class="status-implemented">Implemented</span> | `ifc-properties` stages quantity writes onto a caller-owned transaction, so a takeoff spanning many elements lands atomically. The declared measure type is preserved on every write. |
-| Schema validation | <span class="status-implemented">Implemented</span> | `ifc-validate` checks references, required slots, aggregate shape, entity types, abstract instantiation, scalar forms and `STRING(n) FIXED` widths against the schema the file declares (IFC2x3 TC1 or IFC4 ADD2 TC1), plus three natively checkable rules. IFC4x3 is recognised but not bundled and is refused rather than approximated. Rules needing an EXPRESS expression evaluator are registered as unsupported and reported, so a clean report never implies complete coverage. |
+| Schema validation | <span class="status-implemented">Implemented</span> | `ifc-validate` checks references, required slots, aggregate shape, entity types, abstract instantiation, scalar forms and `STRING(n) FIXED` widths against the exact schema the file declares (IFC2x3 TC1, IFC4 ADD2 TC1, or IFC4X3 ADD2). Nine registered rule IDs cover eight native checks under a hard findings-storage cap, including external-reference identity, sequence endpoints, decomposition self-reference and material priority. Aggregate bounds, arbitrary EXPRESS `WHERE` expressions, INVERSE semantics and other known gaps remain explicitly unsupported and reported; a clean report never implies full EXPRESS conformance. |
 | Property sets and every property value family | <span class="status-implemented">Implemented</span> | `ifc-properties` reads single, enumerated, bounded, list, table, reference and complex properties. The declared measure type (`IfcLengthMeasure` and friends) is retained, because it is the only statement of what a bare number means. |
 | Occurrence/type property precedence | <span class="status-implemented">Implemented</span> | An occurrence property set overrides a same-named set inherited from the object's type. The shadowed type set is kept, so a checker can explain why an effective value differs from the type default. |
 | Quantities and unit resolution | <span class="status-implemented">Implemented</span> | Simple and complex quantities, SI prefixes carried as exact decimal exponents, conversion-based and derived units. `WR21` (unit matches quantity kind) and `WR22` (non-negative value) breaches are reported; `ifcopenshell.validate` checks neither. Quantities are read as authored assertions and never computed from geometry. |

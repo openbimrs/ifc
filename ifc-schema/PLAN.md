@@ -40,6 +40,8 @@ marker with its first real contract and tests; do not add parallel placeholders.
     `ifc-author/tests/real_schema.rs` now sources the bundled schema by
     default and cross-checks it against a raw `references/ifc-spec` parse
     when present, closing openbimrs/ifc#4.
+- [x] `SCHEMA-4X3-BUNDLE` - generate, bundle, and route canonical IFC4X3 ADD2 tables
+  - Evidence: committed 137179-byte artifact; 876 entities and 436 `TYPE ` declarations; constructor/cache/version dispatch and real-source layout tests; archive leakage, mutation, and full gates.
 - [ ] `SCHEMA-PERF` - benchmark official IFC2x3/4/4x3 parses before optimizing
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
 - [x] `SCHEMA-EXTRACT` - delegate generic EXPRESS parsing/model types without a fork

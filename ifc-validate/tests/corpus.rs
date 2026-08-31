@@ -48,6 +48,15 @@ fn duplicate_global_ids_are_reported() {
         .filter(|finding| finding.rule == "global.UniqueGlobalId")
         .collect();
     assert_eq!(found.len(), 1, "one repeat, one finding: {found:#?}");
+    assert_eq!(
+        report
+            .findings()
+            .iter()
+            .filter(|finding| finding.severity == Severity::Error)
+            .count(),
+        1,
+        "one duplicated GUID must not be reported by two validation phases"
+    );
     assert!(!report.is_conformant());
     // The finding must name the *second* occurrence: the first is innocent.
     assert_eq!(found[0].path.to_string(), "#2.GlobalId");
@@ -87,20 +96,42 @@ fn a_complex_number_is_accepted() {
     assert!(errors.is_empty(), "false positive: {errors:#?}");
 }
 
-/// A file declaring a schema this build has no tables for is refused.
-///
-/// Validating one schema's file against another's tables produces confident
-/// nonsense: entities that exist in both may have different slot layouts.
-/// IFC4x3 is recognised but not bundled, so it must refuse with the variant
-/// that says exactly that.
+/// A valid IFC4X3 file is checked against the bundled IFC4X3 tables.
 #[test]
-fn a_file_from_an_unbundled_schema_is_refused_not_guessed() {
+fn an_ifc4x3_file_is_validated_against_ifc4x3_tables() {
     let model = load("../ifclite-geometry/bath_csg_solid.ifc");
-    let error = ifc_validate::validate_declared(&model)
-        .expect_err("an IFC4X3 file must not be validated against IFC4 tables");
+    let report = ifc_validate::validate_declared(&model)
+        .expect("IFC4X3 ADD2 tables are bundled, so this must validate");
+    let errors: Vec<_> = report
+        .findings()
+        .iter()
+        .filter(|finding| finding.severity == Severity::Error)
+        .collect();
+    assert!(
+        errors.is_empty(),
+        "valid IFC4X3 fixture produced errors: {errors:#?}"
+    );
     assert_eq!(
-        error,
-        ifc_validate::ValidateError::UnbundledSchema("IFC4X3_ADD2".into())
+        ifc_schema::for_version(ifc_schema::SchemaVersion::Ifc4x3)
+            .expect("IFC4X3 must be bundled")
+            .name(),
+        "IFC4X3_ADD2"
+    );
+}
+
+/// The existing malformed IFC4X3 mapped item is validated, not skipped.
+#[test]
+fn an_invalid_ifc4x3_file_reports_its_missing_mapping_target() {
+    let model = load("../ifclite-geometry/nested_mapped_item_cycle.ifc");
+    let report =
+        ifc_validate::validate_declared(&model).expect("known IFC4X3 files must reach validation");
+    assert!(
+        report.findings().iter().any(|finding| {
+            finding.severity == Severity::Error
+                && finding.path.to_string().contains("MappingTarget")
+        }),
+        "invalid IFC4X3 fixture was not rejected: {:#?}",
+        report.findings()
     );
 }
 
@@ -211,6 +242,11 @@ fn a_truncated_report_admits_truncation() {
     assert!(
         report.is_truncated(),
         "a bounded report must say it is bounded"
+    );
+    assert_eq!(
+        report.findings().len(),
+        budget.max_findings,
+        "the budget must cap storage, not merely set a flag"
     );
 }
 
@@ -434,6 +470,12 @@ fn every_implemented_rule_is_actually_dispatched() {
         "global.IfcSingleProjectInstance",
         "global.UniqueGlobalId",
         "IfcRelDefinesByProperties.NoRelatedTypeObject",
+        "IfcExternalReference.WR1",
+        "IfcRelSequence.WR1",
+        "IfcRelSequence.AvoidInconsistentSequence",
+        "IfcRelAggregates.NoSelfReference",
+        "IfcRelNests.NoSelfReference",
+        "IfcMaterialLayer.NormalizedPriority",
     ];
     let claimed: Vec<&str> = ifc_validate::where_rule::implemented()
         .map(|entry| entry.id)
@@ -484,7 +526,7 @@ const DELIBERATELY_INVALID: &[&str] = &[
 ];
 
 #[test]
-fn every_well_formed_ifc4_fixture_validates_clean() {
+fn every_well_formed_bundled_schema_fixture_validates_clean() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test/fixtures");
     let mut checked = 0usize;
     let mut dirty = Vec::new();
@@ -501,8 +543,8 @@ fn every_well_formed_ifc4_fixture_validates_clean() {
         let Ok(model) = StepCodec.read_path(&path) else {
             continue;
         };
-        // Only IFC4: this build has no tables for IFC2X3 or IFC4X3, and
-        // validating against the wrong ones invents slot-count errors.
+        // Validate every recognised bundled version against its own tables;
+        // cross-version substitution invents slot-count/type errors.
         let Ok(report) = ifc_validate::validate_declared(&model) else {
             continue;
         };
@@ -518,7 +560,10 @@ fn every_well_formed_ifc4_fixture_validates_clean() {
         }
     }
 
-    assert!(checked >= 12, "expected the IFC4 corpus, checked {checked}");
+    assert_eq!(
+        checked, 29,
+        "all intended-clean fixtures must run; raw-header fail fixtures stay excluded"
+    );
     assert!(
         dirty.is_empty(),
         "well-formed fixtures produced {} errors:\n{}",

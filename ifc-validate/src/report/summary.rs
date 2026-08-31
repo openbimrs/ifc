@@ -40,11 +40,30 @@ impl fmt::Display for Summary {
 }
 
 /// Everything a validation run produced.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Report {
     findings: Vec<Finding>,
     truncated: bool,
+    max_findings: usize,
 }
+
+impl Default for Report {
+    fn default() -> Self {
+        Self {
+            findings: Vec::new(),
+            truncated: false,
+            max_findings: usize::MAX,
+        }
+    }
+}
+
+impl PartialEq for Report {
+    fn eq(&self, other: &Self) -> bool {
+        self.findings == other.findings && self.truncated == other.truncated
+    }
+}
+
+impl Eq for Report {}
 
 impl Report {
     /// An empty report.
@@ -53,8 +72,20 @@ impl Report {
         Self::default()
     }
 
-    /// Records a finding.
+    /// An empty report that stores at most `max_findings` entries.
+    pub(crate) fn with_max_findings(max_findings: usize) -> Self {
+        Self {
+            max_findings,
+            ..Self::default()
+        }
+    }
+
+    /// Records a finding, or marks the report truncated when its cap is full.
     pub fn push(&mut self, finding: Finding) {
+        if self.findings.len() >= self.max_findings {
+            self.truncated = true;
+            return;
+        }
         self.findings.push(finding);
     }
 
@@ -116,8 +147,11 @@ impl Report {
 
     /// Merges another report into this one, preserving the truncation flag.
     pub fn extend(&mut self, other: Self) {
-        self.findings.extend(other.findings);
-        self.truncated |= other.truncated;
+        let other_truncated = other.truncated;
+        for finding in other.findings {
+            self.push(finding);
+        }
+        self.truncated |= other_truncated;
     }
 
     /// Whether anything this validator checked was violated.
@@ -160,6 +194,20 @@ mod tests {
             .map(|finding| finding.path.to_string())
             .collect();
         assert_eq!(order, ["#1", "#2", "#9"], "errors first, then by entity");
+    }
+
+    /// A capped report cannot be overfilled through a merge.
+    #[test]
+    fn extend_honors_the_storage_cap() {
+        let mut target = Report::with_max_findings(1);
+        let mut source = Report::new();
+        source.push(Finding::error("a", Path::File, "first"));
+        source.push(Finding::error("b", Path::File, "second"));
+
+        target.extend(source);
+
+        assert_eq!(target.findings().len(), 1);
+        assert!(target.is_truncated());
     }
 
     /// A truncated report says so, rather than implying the file is clean.

@@ -28,8 +28,9 @@ Implemented foundations include:
   transactional structural edits;
 - STEP and ifcXML parsing/writing;
 - schema-checked authoring of new entities by attribute name (`ifc-author`);
-- bundled IFC2x3 TC1 and IFC4 ADD2 TC1 structural schema metadata;
-- declared-schema validation with explicit unsupported-rule reporting;
+- bundled IFC2x3 TC1, IFC4 ADD2 TC1, and IFC4X3 ADD2 structural schema metadata;
+- declared-schema validation against exact version tables, with selected native
+  semantic rules and explicit unsupported reporting for unevaluated semantics;
 - borrowed classification, document, library, property, quantity, material,
   schedule, systems, and spatial views;
 - classification, document, library, material, and quantity authoring staged

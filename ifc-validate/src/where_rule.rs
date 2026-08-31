@@ -1,9 +1,9 @@
 //! EXPRESS `WHERE` rules, and honesty about the ones not evaluated.
 //!
-//! IFC4 declares hundreds of rules as EXPRESS expressions plus 2 global
-//! rules. This crate has no expression evaluator, so it implements the rules
-//! that are checkable from structure and *reports* the rest as unsupported
-//! rather than skipping them silently.
+//! The bundled IFC schemas declare hundreds of rules. This crate has no
+//! general expression evaluator, so it implements selected predicates that
+//! are provable from direct structure/scalars and *reports* known unsupported
+//! rules rather than skipping them silently.
 //!
 //! ## Internal split
 //!

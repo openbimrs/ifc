@@ -13,28 +13,39 @@ and this project follows Semantic Versioning.
   association families. Queries provide bounded hierarchy traversal and keep
   occurrence/type classifications separate; matching helpers transactionally
   author all nine concrete records with pre-staging validation.
-- `ifc-schema` bundles the IFC2x3 TC1 schema (653 entities, 327 types)
-  alongside IFC4, with `ifc2x3()` and a `for_version()` lookup. `ifc-validate`
-  routes `validate_declared` through it, so IFC2x3 files are validated rather
-  than refused. IFC4x3 is recognised but deliberately not bundled and reports
-  the distinct `UnbundledSchema` refusal.
+- `ifc-schema` bundles IFC2x3 TC1 (653 entities, 327 types), IFC4 ADD2 TC1
+  (776 entities, 397 types), and IFC4X3 ADD2 (876 entities, 436 types) as
+  independent generated artifacts. `ifc2x3()`, `ifc4()`, `ifc4x3()`, and
+  `for_version()` route declared schemas without cross-version fallback.
 - `ifc-validate` checks `STRING(n) FIXED` widths from the schema, catching
   malformed `IfcGloballyUniqueId` values (`STRING(22) FIXED`) at any length.
-- `ifc-validate` corpus tests validate every committed IFC4 fixture, assert the
-  known-bad ones are rejected, and pin the deliberately-invalid exclusion list
-  to fixtures that genuinely fail. `cargo run -p ifc-validate --example
-  audit_corpus` prints the same audit as a triage table.
-- `ifc-validate` implements structural, type, and rule validation over a
-  `Model`: dangling and wrong-kind references, required slots, scalar-vs-
-  aggregate shape, unknown entity types, abstract instantiation, scalar form
-  against declared types, and three natively checkable IFC4 rules. Rules that
-  need an EXPRESS expression evaluator are registered as unsupported with a
-  reason and reported, so a conformant verdict never implies full coverage.
+- `ifc-validate` corpus tests validate all 38 committed fixtures against their
+  declared IFC2X3, IFC4, or IFC4X3 tables: 31 are model-level clean (including
+  two raw-header-only defects normalized before validation) and all 7 observable
+  known-bad fixtures are rejected. `cargo run -p ifc-validate --example audit_corpus`
+  prints the same audit as a triage table.
+- `ifc-validate` implements structural and type validation plus eight selected
+  native checks exposed as nine version-labelled rule IDs: single project,
+  unique GlobalId, property/type assignment, external-reference identity,
+  sequence endpoint inequality, aggregate/nesting self-reference, and material
+  priority bounds. Aggregate bounds, arbitrary EXPRESS `WHERE` expressions,
+  INVERSE derivation, geometry-dependent rules, and other known gaps remain
+  explicitly unsupported, so a conformant verdict never claims full EXPRESS
+  conformance.
 - `ifc-schema` delegates supertype chains and Part 21 positional attribute
   order to `openbim-step 0.4.0`; neither is IFC-specific. Version identity,
-  the bundled IFC4 artifact, and the process cache stay here.
+  independent bundled artifacts, and process caches stay here.
 
 ### Fixed
+- `Budget.max_findings` now hard-caps report storage in `Report::push` and
+  `Report::extend`; previously validation marked a report truncated only after a
+  phase had already recorded an unbounded number of findings.
+- Duplicate GlobalIds are now reported once by the canonical
+  `global.UniqueGlobalId` rule instead of once during structural validation and
+  again during native-rule evaluation.
+- The IFC4X3 inventory guard now counts only `TYPE ` declarations; a
+  line-leading `TYPEOF(...)` expression had inflated the preliminary count from
+  436 to 437.
 - `ifc-classification` hierarchy budgets now count every followed
   `ReferencedSource` edge and every distinct resolved entity, including the
   terminal classification system; revisiting an already-counted reference

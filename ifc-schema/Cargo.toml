@@ -18,8 +18,8 @@ thiserror = { workspace = true, optional = true }
 [features]
 default = ["ifc4"]
 # Ships the compiled schema artifacts and their accessors: ifc2x3(), ifc4(),
-# and for_version(). Named `ifc4` for compatibility with existing consumers;
-# it has covered both bundled tables since IFC2x3 was added.
+# ifc4x3(), and for_version(). Named `ifc4` for compatibility with existing
+# consumers; it now covers all three bundled validation targets.
 ifc4 = ["dep:bincode", "dep:thiserror"]
 # Compiles a user-supplied .exp into a committed artifact. Not part of
 # default: the generator reads a normative ISO/buildingSMART source file that

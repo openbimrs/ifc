@@ -8,7 +8,8 @@
 //! [`openbim_step::SchemaGraph`], and this type delegates to it.
 //!
 //! What stays here is genuinely IFC: which schema *version* a file declares
-//! (the `IFC2X3`/`IFC4`/`IFC4X3` tokens), and the bundled IFC4 tables.
+//! (the `IFC2X3`/`IFC4`/`IFC4X3` tokens), and each version's independently
+//! bundled tables.
 //!
 //! ```
 //! use ifc_schema::Schema;

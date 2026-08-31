@@ -33,7 +33,6 @@ pub fn check(model: &Model, schema: &Schema, budget: Budget, report: &mut Report
     wrong_kind_references(model, schema, report);
     required_attributes(model, schema, report);
     aggregate_shape(model, schema, report);
-    duplicate_global_ids(model, schema, report);
     if report.findings().len() >= budget.max_findings {
         report.mark_truncated();
     }

@@ -8,6 +8,19 @@ Status vocabulary matches the [capability matrix](/capabilities).
 
 ## Now — foundations that unblock applications
 
+### R0. Declared-schema validation coverage — done, bounded
+
+IFC2X3 TC1, IFC4 ADD2 TC1, and IFC4X3 ADD2 each have independently generated
+bundled structural tables. `validate_declared` selects only the file's declared
+version; all 38 committed fixtures are now audited (31 model-level clean, 7
+expected-invalid with observable errors, 0 schema skips). Two raw-header-only
+defects are normalized by the codec before model validation.
+
+Validation covers structural/reference/type facts plus eight selected native
+checks represented by nine version-labelled rule IDs. This is not full EXPRESS
+conformance: aggregate bounds, arbitrary `WHERE` expressions, INVERSE derivation,
+and geometry-dependent semantics remain explicitly unsupported and reported.
+
 ### R1. Typed authoring layer — done
 
 Delivered as `ifc-author` (facade feature `author`). Entities are built by

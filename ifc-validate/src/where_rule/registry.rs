@@ -45,13 +45,15 @@ pub struct RuleEntry {
 /// Reason strings, shared so the same gap reads identically everywhere.
 const NEEDS_EXPRESSIONS: &str = "requires an EXPRESS expression evaluator";
 const NEEDS_BOUNDS: &str = "requires aggregate bounds, which the schema parser does not retain";
+const NEEDS_INVERSES: &str =
+    "not implemented uniformly: IFC2X3 requires INVERSE relationship semantics, which validation does not derive";
 const NEEDS_GEOMETRY: &str = "requires geometric evaluation, which validation does not perform";
 
 /// Every rule this validator knows about, implemented or not.
 ///
-/// Deliberately not exhaustive over IFC4: claiming to enumerate all of them
-/// would be its own dishonesty. It covers the rules that matter most for the
-/// defects seen in real files, plus the two IFC4 global rules.
+/// Deliberately not exhaustive over every bundled IFC release: claiming to
+/// enumerate all rules would be its own dishonesty. It covers selected
+/// high-value predicates plus representative unsupported categories.
 pub const RULES: &[RuleEntry] = &[
     RuleEntry {
         id: "global.IfcSingleProjectInstance",
@@ -70,6 +72,41 @@ pub const RULES: &[RuleEntry] = &[
         id: "IfcRelDefinesByProperties.NoRelatedTypeObject",
         entity: Some("IfcRelDefinesByProperties"),
         support: Support::Implemented,
+    },
+    RuleEntry {
+        id: "IfcExternalReference.WR1",
+        entity: Some("IfcExternalReference"),
+        support: Support::Implemented,
+    },
+    RuleEntry {
+        id: "IfcRelSequence.WR1",
+        entity: Some("IfcRelSequence"),
+        support: Support::Implemented,
+    },
+    RuleEntry {
+        id: "IfcRelSequence.AvoidInconsistentSequence",
+        entity: Some("IfcRelSequence"),
+        support: Support::Implemented,
+    },
+    RuleEntry {
+        id: "IfcRelAggregates.NoSelfReference",
+        entity: Some("IfcRelAggregates"),
+        support: Support::Implemented,
+    },
+    RuleEntry {
+        id: "IfcRelNests.NoSelfReference",
+        entity: Some("IfcRelNests"),
+        support: Support::Implemented,
+    },
+    RuleEntry {
+        id: "IfcMaterialLayer.NormalizedPriority",
+        entity: Some("IfcMaterialLayer"),
+        support: Support::Implemented,
+    },
+    RuleEntry {
+        id: "IfcDocumentReference.WR1",
+        entity: Some("IfcDocumentReference"),
+        support: Support::Unsupported(NEEDS_INVERSES),
     },
     RuleEntry {
         id: "IfcRepresentationContextSameWCS",
@@ -139,5 +176,21 @@ mod tests {
             unsupported().count() > 0,
             "a validator claiming full WHERE-rule coverage is lying"
         );
+    }
+
+    #[test]
+    fn unsupported_boundaries_remain_explicit() {
+        let reasons: Vec<_> = unsupported()
+            .filter_map(|entry| match entry.support {
+                Support::Unsupported(reason) => Some(reason),
+                Support::Implemented => None,
+            })
+            .collect();
+        for required in ["aggregate bounds", "EXPRESS expression", "INVERSE"] {
+            assert!(
+                reasons.iter().any(|reason| reason.contains(required)),
+                "missing explicit unsupported boundary for {required}: {reasons:?}"
+            );
+        }
     }
 }

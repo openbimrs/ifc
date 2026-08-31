@@ -49,6 +49,7 @@ fn parses_ifc4x3_add2() {
     };
     assert_eq!(schema.version(), Some(SchemaVersion::Ifc4x3));
     assert_eq!(schema.entity_count(), 876, "IFC4x3 ADD2 entity count");
+    assert_eq!(schema.type_count(), 436, "IFC4x3 ADD2 type count");
 }
 
 /// Real inheritance chains, read from the real schema.

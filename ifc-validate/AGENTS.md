@@ -21,6 +21,11 @@ Allowed production dependencies: ifc-model and ifc-schema only.
 - Validation consumes a Model; codec adapters stay outside.
 - Findings cite entity, attribute/rule, severity, and evidence path.
 - Unsupported rules are reported separately from passing rules.
+- Declared IFC2X3, IFC4, and IFC4X3 models use independent bundled tables;
+  validation never falls back across versions.
+- Native checks use only mechanically available structure/scalars. Aggregate
+  bounds, arbitrary EXPRESS expressions, and INVERSE derivation remain explicit
+  unsupported categories.
 
 Keep `lib.rs` delegating, keep child modules crate-private until they own a real
 public contract, and split view/data, traversal, mutation, and validation before
