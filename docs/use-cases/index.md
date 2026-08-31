@@ -28,3 +28,6 @@ into a domain crate.
   importing an IFC model, deriving 2D plan geometry, annotating it with German
   construction symbols, and attaching library references and approvals so the
   result stays IFC-native.
+- **[Structural-analysis inspection](/use-cases/structural-analysis)** — reading
+  analysis models, analytical members/connections, actions and authored loads,
+  with strict cross-version references and no solver claim.

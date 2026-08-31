@@ -1,34 +1,34 @@
-//! `ifc-structural` -- Structural analysis model: members, connections, actions and reactions.
+//! `ifc-structural` -- bounded structural-analysis semantics.
 //!
+//! This crate exposes schema-resolved borrowed projections for analysis models,
+//! load/result groups, idealized members and connections, applied actions, core
+//! static load values, and their relationship graph across IFC2X3, IFC4 and
+//! IFC4X3. Selected analysis models and loads can be staged through
+//! `ifc_model::Transaction`.
 //!
-//! 39 entities in IFC4. This is an analysis view that parallels the physical
-//! model rather than describing it -- a structural curve member is the idealised
-//! line of a beam, not the beam's shape.
-//!
-//! # Module map
-//!
-//! | Module | Role |
-//! |---|---|
-//! | `model` | `IfcStructuralAnalysisModel` and its contents |
-//! | `member` | Curve and surface members, and their varying forms |
-//! | `connection` | Point, curve and surface connections; support conditions |
-//! | `action` | Applied actions and load cases |
-//! | `reaction` | Computed reactions |
-//! | `load` | Load definitions, groups and combinations |
-//! | `error` | Why a structural query failed |
-//!
-//! # Status
-//!
-//! Scaffold -- modules are reserved with intent, not implemented. See
-//! `../PLAN.md` for the stage that fills them.
+//! It does not solve structures, generate FEM meshes, evaluate geometry, or
+//! claim computed reaction/result authoring.
 
 mod action;
+mod authoring;
 mod connection;
 mod error;
 mod load;
 mod member;
 mod model;
+mod query;
 mod reaction;
+mod view;
 
 mod condition;
 mod result;
+
+pub use action::{ActionKind, CoordinateSystem, StructuralAction};
+pub use authoring::{stage_analysis_model, stage_load, AnalysisModelDraft, LoadDraft};
+pub use connection::{ConnectionKind, StructuralConnection};
+pub use error::{StructuralError, StructuralResult};
+pub use load::{LoadKind, StaticLoad};
+pub use member::{Member, MemberKind};
+pub use model::{AnalysisModel, AnalysisModelType, LoadGroup, ResultGroup};
+pub use query::{ActivityAssignment, MemberConnection};
+pub use view::StructuralView;

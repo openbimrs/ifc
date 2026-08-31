@@ -1,6 +1,6 @@
 # ifc-structural instructions
 
-Purpose: Borrowed structural analysis model, members, connections, conditions, loads, actions, and result projections.
+Purpose: Bounded borrowed structural-analysis views, relationship traversal, and selected transaction-staged authoring.
 
 Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
 roadmap work; keep progress, blockers, and evidence there.
@@ -20,6 +20,7 @@ Allowed production dependencies: ifc-model and schema metadata only; no geometry
 - `result.rs`: reactions/results
 - `boundary.rs`: references to structural geometry/topology IDs
 - `query.rs`: bounded model graph traversal
+- `authoring.rs`: selected schema-resolved transaction staging
 - `error.rs`: inconsistent structural semantics
 
 ## Invariants
@@ -27,6 +28,7 @@ Allowed production dependencies: ifc-model and schema metadata only; no geometry
 - This crate references geometry/profile entities by EntityId; it does not evaluate shape or link axiolid crates.
 - Authored section properties and computed section properties are distinguished.
 - Solvers, FEM meshes, and numerical analysis are application/adapter capabilities, not IFC views.
+- Construction-resource planning belongs to `ifc-resource`; structural-analysis entities are not construction resources.
 
 Keep entity views, relationship traversal, mutation, and domain algorithms in
 separate files. New child modules remain crate-private until a real public

@@ -35,6 +35,7 @@ code.
 | `ifc-validate` | 2,249 | 23 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-classification` | 1,990 | 19 | 4 | 2 | <span class="status-implemented">Implemented</span> |
+| `ifc-structural` | 1,889 | 30 | 18 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-schedule` | 1,691 | 24 | 14 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 1,586 | 20 | 5 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 1,248 | 10 | 0 | 1 | <span class="status-partial">Partial</span> |
@@ -44,7 +45,6 @@ code.
 | `ifc-spatial` | 561 | 7 | 1 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-author` | 552 | 6 | 2 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-step` | 480 | 5 | 0 | 2 | <span class="status-implemented">Implemented</span> |
-| `ifc-structural` | 194 | 27 | 22 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-alignment` | 186 | 26 | 21 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-resource` | 177 | 25 | 23 | 0 | <span class="status-scaffold">Scaffold</span> |
 | `ifc-georef` | 133 | 17 | 14 | 0 | <span class="status-scaffold">Scaffold</span> |
@@ -53,7 +53,7 @@ code.
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:BEGIN -->
 
-4 of 21 crates are scaffolds.
+3 of 21 crates are scaffolds.
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:END -->
 They exist because the layering decision

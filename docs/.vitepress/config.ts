@@ -61,6 +61,7 @@ export default defineConfig({
           items: [
             { text: 'Overview', link: '/use-cases/' },
             { text: '2D approval plans', link: '/use-cases/2d-approval-plans' },
+            { text: 'Structural analysis', link: '/use-cases/structural-analysis' },
           ],
         },
       ],

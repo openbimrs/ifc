@@ -81,9 +81,18 @@ records. Abstract external-reference resources are not claimed generally.
 Implemented bounded schedule/task sequencing and relationship-only distribution
 system/port/connectivity views.
 
-### `ifc-resource`, `ifc-structural`
-Scaffold. Reserved for construction resources, actors and inventory, and
-structural analysis members, actions and connections.
+### `ifc-resource`
+Scaffold. Reserved for construction resources: labour, equipment, consumed or
+capacity-bearing materials/products, usage, time, cost and process allocation.
+
+### `ifc-structural`
+Implemented bounded structural-analysis domain. Schema-resolved borrowed views
+cover analysis/load/result groups, analytical members and connections, actions,
+core static-load values and selected relationships across IFC2X3, IFC4 and
+IFC4X3. Canonical enum membership and exposed entity-specific `WHERE`/measure
+constraints are enforced; selected analysis-model and load authoring is
+transaction-staged. It is not a solver, FEM layer, geometry evaluator or
+computed-results engine.
 
 ### `ifc-validate`
 Implemented schema-structural validation against the exact supported schema,

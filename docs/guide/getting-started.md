@@ -53,6 +53,8 @@ entity in the file. That property is enforced by
 Domain support remains uneven. Turning on `features = ["style"]` compiles
 `ifc-style`, whose implemented surface is bounded typed presentation/annotation
 views and selected transactional writers—not rendering or drawing composition.
+Likewise, `features = ["structural"]` provides bounded analysis-model, member,
+connection, action, static-load and relationship views—not a solver or FEM layer.
 Check the [capability matrix](/capabilities) for the exact supported surface.
 :::
 

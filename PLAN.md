@@ -94,6 +94,10 @@ Neither leaf crate depends on the other.
 `ifc-classification`, `ifc-resource`, `ifc-schedule`, `ifc-structural`,
 `ifc-systems`, and `ifc-cost` retain independent plans and crate boundaries.
 They are intentional domains, not candidates for automatic consolidation.
+The bounded `ifc-structural` analysis/model/member/action/load slice is complete;
+its crate plan tracks reaction values, boundary-condition details, varying
+members and broader authoring separately. `ifc-resource` remains construction-
+resource planning and does not absorb structural-analysis semantics.
 
 ### Wave 5 - validation and codecs
 
@@ -115,6 +119,8 @@ They are intentional domains, not candidates for automatic consolidation.
 | geometric representation context | local project frame/precision in `ifc-geometry` | none | app composes map transform |
 | map conversion/projected CRS | none | geodetic metadata + transform in `ifc-georef` | app applies at export/query boundary |
 | presentation appearance | none | all style semantics in `ifc-style` | renderer joins by entity ID |
+| structural analysis | geometry/profile IDs only | models, analytical members/connections, actions and loads in `ifc-structural` | solver/application computes results |
+| construction resources | none | labour/equipment/material capacity and allocation in `ifc-resource` | application links resources to processes/products |
 
 ## Plan update protocol
 

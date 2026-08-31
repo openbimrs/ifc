@@ -192,9 +192,9 @@ for it; the work itself belongs upstream.
 
 ## Domain crates awaiting implementation
 
-The current architecture scaffolds are `ifc-resource`, `ifc-structural`,
-`ifc-georef`, and `ifc-alignment`. `ifc-classification`, `ifc-properties`,
-`ifc-style`, `ifc-validate`, `ifc-schedule`, and `ifc-systems` are implemented;
+The current architecture scaffolds are `ifc-resource`, `ifc-georef`, and
+`ifc-alignment`. `ifc-classification`, `ifc-properties`, `ifc-style`,
+`ifc-structural`, `ifc-validate`, `ifc-schedule`, and `ifc-systems` are implemented;
 `ifc-cost` and `ifc-geometry` are partial. Each crate's **PLAN.md** records the
 remaining scope.
 Priority among unfinished slices is demand-driven; open an issue describing the

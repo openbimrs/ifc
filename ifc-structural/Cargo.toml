@@ -11,3 +11,6 @@ description = "Structural analysis model: members, connections, actions, reactio
 [dependencies]
 ifc-schema.workspace = true
 ifc-model.workspace = true
+
+[dev-dependencies]
+ifc-step.workspace = true

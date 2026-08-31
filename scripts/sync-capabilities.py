@@ -78,6 +78,11 @@ PUBLISHED_STATUS = {
     # core style/annotation authoring is transaction-staged. Rendering remains
     # an adapter/application responsibility.
     "ifc-style": '<span class="status-implemented">Implemented</span>',
+    # Schema-resolved borrowed views cover analysis/load/result groups, core
+    # members, connections, actions, static loads and bounded relationships;
+    # selected analysis/load authoring is transaction-staged. Solving, FEM,
+    # geometry evaluation and computed results remain outside this crate.
+    "ifc-structural": '<span class="status-implemented">Implemented</span>',
 }
 
 

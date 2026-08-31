@@ -22,6 +22,20 @@ This page is synchronised from it at build time.
 - Public contributor workflow with a curated organization Project, contributor-
   ready plan-task promotion, issue forms, a pull-request template, and support,
   security, and conduct policies.
+- `ifc-structural` now provides schema-resolved IFC2X3/IFC4/IFC4X3 borrowed
+  projections for analysis/load/result groups, analytical curve/surface members,
+  point/curve/surface connections and actions, and four core static-load value
+  families. Bounded assignment/connection queries validate aggregate bounds,
+  canonical `SET` uniqueness, selects, dangling references, target ancestry,
+  group self-reference, single-attachment activity semantics, relation-record
+  file order, and IFC2X3 `ProjectedOrTrue` requiredness. Reads enforce
+  canonical enum membership plus exposed `USERDEFINED`/`ObjectType`, action-load
+  compatibility, concrete linear/planar `CONST`, projected-action, required-axis,
+  positive-thickness, and finite-measure contracts. Selected analysis-model and
+  load authoring is transaction-staged and rejects non-finite STEP-real values
+  before staging. No solver, FEM, geometry
+  evaluation, reaction-value interpretation or computed-results capability is
+  claimed.
 - `ifc-style` now provides schema-resolved IFC2x3/IFC4/IFC4X3 views for
   colour/factor, curve/fill/text/surface styles, textures, presentation layers,
   styled items, and the requested `IfcAnnotation`, `IfcTextLiteral`,
