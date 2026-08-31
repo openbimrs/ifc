@@ -1,36 +1,73 @@
-name: Feature / enhancement
-description: Propose new capability, an API change, or an ergonomics improvement.
+name: Feature or enhancement
+description: Propose a capability, API change, or material ergonomics improvement.
+title: "[Feature]: "
 labels: ["enhancement"]
+projects: ["openbimrs/1"]
+assignees: []
 body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Choose the closest area; maintainers will correct it during triage.
+      options:
+        - Model
+        - Codecs (STEP or ifcXML)
+        - Validation and schema
+        - Geometry
+        - Domain projections
+        - Documentation or integration
+        - Unsure
+    validations:
+      required: true
+  - type: input
+    id: plan_task
+    attributes:
+      label: Existing plan task
+      description: Optional stable task ID if this already appears in a PLAN.md file.
+      placeholder: "For example: AUTHOR-EDIT"
   - type: textarea
     id: motivation
     attributes:
-      label: Motivation
-      description: What real use case or downstream consumer needs this? Link the consuming code/repo if you have it.
+      label: Motivation and use case
+      description: What real user or downstream consumer needs this? Link consuming code when possible.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe observable behaviour and acceptance criteria, not only an internal implementation.
     validations:
       required: true
   - type: textarea
     id: proposal
     attributes:
-      label: Proposed change
-      description: Sketch the API, behavior, or design. Doesn't need to be final — enough to review.
-    validations:
-      required: true
+      label: Proposed approach
+      description: Sketch the API, behaviour, boundary, or design. It need not be final.
   - type: textarea
     id: alternatives
     attributes:
       label: Alternatives considered
-      description: Why not solve this downstream / with an existing crate / a workaround?
+      description: Could this be solved downstream, in an existing crate, or with a current workaround?
   - type: dropdown
     id: size
     attributes:
-      label: Size
-      description: >
-        Best guess at scope. `small` = a self-contained addition, no public
-        API break. `big` = touches the public API, spans multiple
-        crates/files, needs a design decision, or is a breaking change.
+      label: Estimated scope
+      description: A best guess for triage; maintainers set authoritative Project metadata.
       options:
-        - small
-        - big
+        - S — narrow and self-contained
+        - M — one component with meaningful tests
+        - L — public API or multiple modules
+        - XL — cross-crate or needs design/decomposition
     validations:
       required: true
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Boundary checks
+      options:
+        - label: I checked the capability matrix, roadmap, and existing issues for this request.
+          required: true
+        - label: I have not attached restricted standards material or confidential model data.
+          required: true

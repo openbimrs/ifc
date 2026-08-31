@@ -1,12 +1,15 @@
 # Roadmap
 
-Ordered by what unblocks the most downstream work. Each item states the gap, the
-entities involved, and where the code would live, so it can be picked up without
-re-deriving the analysis.
+Ordered by what unblocks the most downstream work. The roadmap is the curated
+product narrative; the repository's nested **PLAN.md** files remain the complete
+engineering backlog and evidence log. Only tasks promoted to the public
+[Ready for contributors](https://github.com/orgs/openbimrs/projects/1/views/3)
+view should be treated as implementation-ready.
 
-Status vocabulary matches the [capability matrix](/capabilities).
+Status vocabulary matches the [capability matrix](/capabilities). Capability
+claims below name the implementation or executable evidence that proves them.
 
-## Now — foundations that unblock applications
+## Delivered foundations
 
 ### R0. Declared-schema validation coverage — done, bounded
 
@@ -54,7 +57,7 @@ Remaining under `SPATIAL`: reusing the reverse index for inverse queries
 (`relation::naming` currently rescans), and grouping implemented
 `ifc-properties` views by container at an orchestration seam.
 
-## Next — presentation and external references
+## Presentation and external references
 
 ### R3. Representation contexts and `IfcShapeRepresentation` — done
 
@@ -141,33 +144,44 @@ needs different identity handling from the `IfcRel*` entities. Do not assume the
 external references (R6), since approval, document, and library references share
 the association pattern.
 
-## Later — geometry coverage
+## Geometry coverage
 
-### R8. Tessellated face sets
+### R8. Tessellated face sets — done
 
-`IfcTriangulatedFaceSet` and `IfcPolygonalFaceSet` are declared `PLANNED` in the
-dispatcher. They are the dominant body representation in IFC4 exports from
-several major authoring tools, so this gap disproportionately affects real-file
-coverage.
+`IfcTriangulatedFaceSet` and `IfcPolygonalFaceSet` lower through
+`ifc-geometry/src/lower/tessellated.rs` into neutral mesh values. Authored
+triangles, n-gons, and polygonal holes are preserved without inferred topology
+or forced triangulation. Unit and fixture tests plus the corpus census pin the
+behaviour; both families are in the dispatcher's `IMPLEMENTED` table.
 
-### R9. Remaining representation-item families
+### R9. Tracked representation-item families — done for the listed set
 
-`IfcAdvancedBrep`, `IfcSweptDiskSolid`, `IfcSurfaceCurveSweptAreaSolid`,
-`IfcSectionedSpine`, `IfcHalfSpaceSolid`, `IfcCsgSolid` — each declared in
-`PLANNED` with a stated reason.
+The formerly planned `IfcAdvancedBrep`, `IfcSweptDiskSolid`,
+`IfcSurfaceCurveSweptAreaSolid`, `IfcSectionedSpine`, half-space, and CSG
+families now appear in `ifc-geometry/src/lower/dispatch.rs::IMPLEMENTED` and
+have focused lowering tests. Advanced B-reps preserve shared topology and exact
+curve/surface handles; half spaces retain their cutting-side semantics; swept
+and CSG families remain exact neutral operations rather than eager meshes.
 
-### R9b. Curve lowering
+**Remaining boundary.** The dispatcher still declares
+`IfcArbitraryOpenProfileDef` unsupported because the neutral profile model
+represents closed contours only. Broader exact profile and surface coverage is
+tracked by `GEOM-PROFILE`, `GEOM-SURFACE`, and `LOW-EXACT`, not by the completed
+families above.
 
-**Gap.** Curve *readers* exist for every 2D family, but `lower/curve.rs` is a
-three-line placeholder and `lower_representation_item` dispatches no curve
-family. A top-level `IfcPolyline` in a representation returns `Unsupported`.
-Polyline data reaches the graph only as a swept-solid profile outline.
+### R9b. Curve lowering — partial
 
-**Shape.** Implement `lower::curve` and add the curve families to the
-dispatcher's `IMPLEMENTED` table, mirroring how profiles are handled.
+`ifc-geometry/src/lower/curve.rs` now emits exact neutral nodes for lines,
+polylines, circles, trimmed curves, composite curves, and explicit-knot
+B-splines, including rational weights. The implementation preserves curve
+parameter units, segment sense, transition codes, closure, and trim selectors;
+it is exercised directly and through swept-solid fixtures.
 
-**Why it matters.** Any 2D drawing pipeline needs curves as first-class graph
-output, not only as profile inputs. Prerequisite for R3 being useful.
+**Remaining gap.** Curves are lowered when used as directrices or members of a
+geometric collection, but `lower_representation_item` does not yet dispatch a
+standalone curve as a top-level representation item. Other concrete curve
+families remain typed `Unsupported` results. `GEOM-CURVE` owns completing the
+family census and top-level seam without approximation.
 
 ### R10. Plan derivation from 3D
 
@@ -188,5 +202,12 @@ use case.
 
 ## Contributing
 
-Choose from the explicit remaining gaps above and follow the owning crate plan. See
-[contributing](/guide/contributing).
+Use the public [Ready for contributors](https://github.com/orgs/openbimrs/projects/1/views/3)
+view rather than choosing an arbitrary unchecked task. Promoted issues name one
+stable **PLAN.md** task ID, its current blockers, scope, and required proof. This
+keeps the detailed backlog in Git while GitHub owns assignment and discussion.
+
+Ideas and unresolved ownership questions, such as the home for approvals, start
+in [OpenBIM.rs Discussions](https://github.com/orgs/openbimrs/discussions).
+Concrete bugs and feature requests use the issue forms. See the full
+[contributing guide](/guide/contributing).

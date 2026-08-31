@@ -15,6 +15,12 @@ pins a verified commit here as `packages/ifc`.
 [roadmap](https://openbimrs.github.io/ifc/project/roadmap) ·
 [API on docs.rs](https://docs.rs/openbim-ifc)
 
+**🤝 [Contribute](CONTRIBUTING.md)** —
+[ready tasks](https://github.com/orgs/openbimrs/projects/1/views/3) ·
+[work board](https://github.com/orgs/openbimrs/projects/1/views/1) ·
+[discussions](https://github.com/orgs/openbimrs/discussions) ·
+[support](SUPPORT.md)
+
 ## Status
 
 Read the [capability matrix](https://openbimrs.github.io/ifc/capabilities)

@@ -1,5 +1,20 @@
 # Contributing
 
+## Choose work before coding
+
+The detailed engineering backlog lives in the nearest **PLAN.md**; GitHub owns
+public discussion and assignment. Start from the
+[Ready for contributors](https://github.com/orgs/openbimrs/projects/1/views/3)
+view, choose an unassigned issue, and comment before beginning a substantial
+change. Every promoted issue names one stable plan task ID and the proof needed
+to complete it.
+
+Do not create an issue for every unchecked plan item. Use
+[Discussions](https://github.com/orgs/openbimrs/discussions) for design questions
+and the issue forms for reproducible bugs or concrete proposals. See the root
+[contribution policy](https://github.com/openbimrs/ifc/blob/main/CONTRIBUTING.md)
+for the complete claim-to-merge workflow.
+
 ## Verification gate
 
 One command decides whether a change is acceptable:
@@ -94,9 +109,18 @@ npm run docs:build    # production build
 
 The site deploys to GitHub Pages from `main` via `.github/workflows/pages.yml`.
 
-## Where help is most useful
+## Where help is useful
 
-[R1 (typed authoring)](/project/roadmap#r1-typed-authoring-layer) and
-[R2 (relationship traversal)](/project/roadmap#r2-relationship-and-spatial-traversal)
-are the highest-leverage items and the most self-contained. Both unblock large
-categories of downstream application.
+The [roadmap](/project/roadmap) explains product direction and shipped evidence.
+The public Project's
+[Ready for contributors](https://github.com/orgs/openbimrs/projects/1/views/3)
+view is the authoritative shortlist of independently assignable work. Tasks not
+shown there may be blocked, stale, too broad, or awaiting an ownership decision
+even when their **PLAN.md** checkbox remains open.
+
+Good contributions often include one of:
+
+- a narrow model, codec, or authoring hardening task with mutation-sensitive tests;
+- a redistributable IFC fixture and the test or guide that consumes it;
+- an evidence-backed schema/version inventory that unblocks a domain slice;
+- documentation that distinguishes shipped behavior from planned architecture.

@@ -16,6 +16,9 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- Public contributor workflow with a curated organization Project, contributor-
+  ready plan-task promotion, issue forms, a pull-request template, and support,
+  security, and conduct policies.
 - `ifc-style` now provides schema-resolved IFC2x3/IFC4/IFC4X3 views for
   colour/factor, curve/fill/text/surface styles, textures, presentation layers,
   styled items, and the requested `IfcAnnotation`, `IfcTextLiteral`,
@@ -53,6 +56,9 @@ This page is synchronised from it at build time.
   independent bundled artifacts, and process caches stay here.
 
 ### Fixed
+- The roadmap now reflects shipped tessellated, advanced B-rep, swept, half-
+  space, CSG, and exact-curve lowering instead of presenting those families as
+  unimplemented.
 - The invalid IFC4X3 declared-schema regression now parses a synthetic
   `IFC4X3_ADD2` document, asserts exact IFC4X3 bundle routing, and checks the
   typed `structure.required.missing` finding. It previously loaded an IFC4
