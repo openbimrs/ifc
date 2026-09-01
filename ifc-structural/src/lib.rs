@@ -31,8 +31,9 @@ pub use condition::{
 };
 pub use connection::{ConnectionKind, StructuralConnection};
 pub use error::{StructuralError, StructuralResult};
-pub use load::{LoadKind, StaticLoad};
+pub use load::{LoadConfiguration, LoadKind, StaticLoad};
 pub use member::{Member, MemberKind};
 pub use model::{AnalysisModel, AnalysisModelType, LoadGroup, ResultGroup};
 pub use query::{ActivityAssignment, MemberConnection};
+pub use result::{Reaction, ReactionKind};
 pub use view::StructuralView;

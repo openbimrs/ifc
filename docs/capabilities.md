@@ -30,9 +30,9 @@ code.
 | `ifc-geometry` | 26,118 | 89 | 5 | 31 | <span class="status-partial">Partial</span> |
 | `ifc-style` | 3,322 | 31 | 0 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-template-catalog` | 2,705 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
+| `ifc-structural` | 2,680 | 30 | 14 | 11 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 2,417 | 29 | 14 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 2,398 | 24 | 0 | 8 | <span class="status-implemented">Implemented</span> |
-| `ifc-structural` | 2,333 | 30 | 16 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-validate` | 2,249 | 23 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-classification` | 2,203 | 20 | 4 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |

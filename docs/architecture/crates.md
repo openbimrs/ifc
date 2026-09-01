@@ -109,7 +109,8 @@ construction-resource-type, IFC2X3, or IFC4X3 support.
 Implemented bounded structural-analysis domain. Schema-resolved borrowed views
 cover analysis/load/result groups, analytical members and connections, typed
 boundary and failure/slippage connection conditions, varying-member identities,
-actions, core static-load values and selected relationships across IFC2X3, IFC4
+actions, core static-load values, IFC4+ load configurations, borrowed reactions,
+and selected relationships across IFC2X3, IFC4
 and IFC4X3. Canonical enum membership and exposed entity-specific `WHERE`/measure
 constraints are enforced; selected analysis-model and load authoring is
 transaction-staged. It is not a solver, FEM layer, geometry evaluator or

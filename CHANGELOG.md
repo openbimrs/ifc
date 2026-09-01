@@ -8,6 +8,10 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `ifc-structural` now projects IFC4+ ordered load configurations, point
+  reactions across all supported versions, IFC4+ curve/surface reactions, and
+  strict result-group reaction assignments; focused tests kill 10/10 semantic
+  mutants without interpreting or computing result values.
 - `ifc-structural` now projects typed cross-version boundary stiffness selectors,
   failure/slippage connection conditions, distinct varying-member identities,
   and IFC2X3 varying-surface thickness/location payloads without interpreting

@@ -8,6 +8,8 @@ use crate::view::Record;
 mod dynamic;
 mod r#static;
 
+pub use dynamic::LoadConfiguration;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LoadKind {
     SingleForce,

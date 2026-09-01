@@ -37,11 +37,11 @@ preserved capability seam for deferred specialization.
 - `src/condition/translation.rs`: translation-condition specialization seam; typed behavior implemented in parent
 - `src/condition/rotation.rs`: rotation-condition specialization seam; typed behavior implemented in parent
 - `src/load/static.rs`: static-load specialization seam; bounded behavior implemented in parent
-- `src/load/dynamic.rs`: deferred dynamic-load specialization
+- `src/load/dynamic.rs`: implemented IFC4+ load-configuration projection
 - `src/action/point.rs`: point-action specialization seam; bounded behavior implemented in parent
 - `src/action/linear.rs`: curve/linear-action specialization seam; bounded behavior implemented in parent
 - `src/action/planar.rs`: surface/planar-action specialization seam; bounded behavior implemented in parent
-- `src/result/reaction.rs`: deferred reactions/results
+- `src/result/reaction.rs`: implemented point/curve/surface reaction projection
 
 ## Implemented surface
 
@@ -54,6 +54,9 @@ preserved capability seam for deferred specialization.
 - failure/slippage structural connection-condition families;
 - distinct curve/surface varying-member identities, including IFC2X3
   subsequent-thickness and varying-location payloads;
+- IFC4/IFC4X3 ordered load configurations with finite unique locations;
+- point reactions across all supported schemas and IFC4+ curve/surface reactions;
+- deterministic result-group reaction assignment traversal;
 - deterministic group, member-connection, and activity-assignment queries;
 - transaction-staged analysis-model and four static-load authoring paths;
 - STEP write/read round-trip coverage.
@@ -67,8 +70,8 @@ preserved capability seam for deferred specialization.
 - [x] `STRUCT-ACT` - point/curve/surface actions and activity-assignment traversal.
 - [x] `STRUCT-COND` - typed boundary and connection-condition values.
 - [x] `STRUCT-VARYING` - varying member/connection-condition families.
-- [ ] `STRUCT-DYNAMIC` - dynamic loads and configurations.
-- [ ] `STRUCT-RESULT` - reactions/results beyond result-group metadata.
+- [x] `STRUCT-DYNAMIC` - IFC4+ structural load configurations.
+- [x] `STRUCT-RESULT` - borrowed reaction projections and result-group traversal.
 - [ ] `STRUCT-AUTHOR` - member, connection, action, and relationship authoring.
 - [ ] `STRUCT-CROSS` - external physical-product/geometry composition proof.
 
@@ -85,6 +88,9 @@ EXPRESS `WHERE` evaluation, or general `INVERSE` engine is implemented.
 - `STRUCT-COND` and `STRUCT-VARYING` - 7 focused tests pass across IFC2X3,
   IFC4, and IFC4X3; strict package clippy passes; 8/8 semantic mutants killed
   with a clean baseline and restored GREEN.
+- `STRUCT-DYNAMIC` and `STRUCT-RESULT` - 8 focused tests pass; strict package
+  clippy passes; 10/10 semantic mutants killed with a clean baseline and restored
+  GREEN.
 - Full repository and documentation gate evidence belongs to the immutable
   release-candidate review, not to this standing plan.
 

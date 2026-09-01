@@ -42,14 +42,18 @@ The bounded view currently covers:
 - typed boundary stiffness selectors plus failure/slippage connection conditions;
 - versioned point and curve/linear/surface/planar actions with compatible
   structural-load references;
-- single, linear, planar, and temperature static-load values;
+- single, linear, planar, and temperature static-load values plus IFC4+
+  ordered load configurations with optional locations;
+- point reactions across all versions, IFC4+ curve/surface reactions, and
+  result-group assignment traversal;
 - model assignments, member-to-connection relationships, and activity assignments;
 - selected analysis-model and static-load authoring through a caller-owned transaction.
 
 References are checked before being returned. Missing records, dangling IDs,
-wrong target types, incompatible action-load families, invalid assignment-select
-members, self-referencing groups, duplicate `SET` members, multiply attached
-structural activities, malformed aggregates, and required-value omissions
+wrong target types, incompatible action/reaction-load families, invalid
+assignment-select members, self-referencing groups, duplicate `SET` or load-
+configuration location members, multiply attached structural activities,
+malformed aggregates, and required-value omissions
 produce typed `StructuralError` values. Relationship traversal preserves
 relation-record file order and each aggregate's declared member order. Duplicate
 `SET` links and non-finite load drafts are rejected before transaction staging.

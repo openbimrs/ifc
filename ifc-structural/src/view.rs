@@ -7,8 +7,8 @@ use ifc_schema::{ifc2x3, ifc4, ifc4x3, Schema, SchemaVersion, TypeKind};
 
 use crate::error::{StructuralError, StructuralResult};
 use crate::{
-    AnalysisModel, BoundaryCondition, ConnectionCondition, LoadGroup, Member, ResultGroup,
-    StaticLoad, StructuralAction, StructuralConnection,
+    AnalysisModel, BoundaryCondition, ConnectionCondition, LoadConfiguration, LoadGroup, Member,
+    Reaction, ResultGroup, StaticLoad, StructuralAction, StructuralConnection,
 };
 
 /// Entry point for strict structural-analysis projections.
@@ -74,6 +74,18 @@ impl<'m, 's> StructuralView<'m, 's> {
 
     pub fn load(&self, id: EntityId) -> StructuralResult<StaticLoad<'m, 's>> {
         StaticLoad::from_record(self.record(id, "IfcStructuralLoad")?)
+    }
+
+    /// Project an IFC4+ structural load configuration.
+    pub fn load_configuration(&self, id: EntityId) -> StructuralResult<LoadConfiguration<'m, 's>> {
+        Ok(LoadConfiguration::from_record(
+            self.record(id, "IfcStructuralLoadConfiguration")?,
+        ))
+    }
+
+    /// Project a concrete structural reaction.
+    pub fn reaction(&self, id: EntityId) -> StructuralResult<Reaction<'m, 's>> {
+        Reaction::from_record(self.record(id, "IfcStructuralReaction")?)
     }
 
     pub fn static_load(&self, id: EntityId) -> StructuralResult<StaticLoad<'m, 's>> {

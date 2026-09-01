@@ -90,9 +90,10 @@ PUBLISHED_STATUS = {
     "ifc-style": '<span class="status-implemented">Implemented</span>',
     # Schema-resolved borrowed views cover analysis/load/result groups, typed
     # boundary and connection conditions, varying members, core connections,
-    # actions, static loads and bounded relationships; selected analysis/load
-    # authoring is transaction-staged. Solving, FEM, geometry evaluation and
-    # computed results remain outside this crate.
+    # actions, static loads, IFC4+ load configurations, borrowed reactions and
+    # bounded relationships; selected analysis/load authoring is transaction-
+    # staged. Solving, FEM, geometry evaluation and computed results remain
+    # outside this crate.
     "ifc-structural": '<span class="status-implemented">Implemented</span>',
     # IFC4 projected-CRS/map-unit and project-to-map conversion are tested;
     # frame composition, north semantics, and IFC4X3 profiles remain open.

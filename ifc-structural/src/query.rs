@@ -70,6 +70,28 @@ impl<'m, 's> StructuralView<'m, 's> {
         Ok(items)
     }
 
+    /// Reactions assigned to one structural result group in relation/file order.
+    pub fn reactions_for_result_group(
+        &self,
+        result_group: EntityId,
+    ) -> StructuralResult<Vec<EntityId>> {
+        self.result_group(result_group)?;
+        let mut reactions = Vec::new();
+        for relation in self.ids_of_ancestor("IfcRelAssignsToGroup") {
+            let record = Record::new(self.model, self.schema, relation, "IfcRelAssignsToGroup")?;
+            if record.required_ref("RelatingGroup", "IfcGroup")? != result_group {
+                continue;
+            }
+            reactions.extend(record.required_set_refs_select(
+                "RelatedObjects",
+                "IfcStructuralReaction",
+                &["IfcStructuralReaction"],
+                1,
+            )?);
+        }
+        Ok(reactions)
+    }
+
     pub fn member_connections(&self, member: EntityId) -> StructuralResult<Vec<MemberConnection>> {
         self.member(member)?;
         let mut connections = Vec::new();
