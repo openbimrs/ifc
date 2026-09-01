@@ -50,7 +50,6 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCADVANCEDBREPWITHVOIDS",
     "IFCHALFSPACESOLID",
     "IFCBOXEDHALFSPACE",
-    "IFCPOLYGONALBOUNDEDHALFSPACE",
     "IFCTRIANGULATEDFACESET",
     "IFCPOLYGONALFACESET",
     "IFCCSGSOLID",
@@ -79,6 +78,7 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCPOLYLINE",
     "IFCINDEXEDPOLYCURVE",
     "IFCCOMPOSITECURVE",
+    "IFCCOMPOSITECURVEONSURFACE",
     "IFCBOUNDARYCURVE",
     "IFCOUTERBOUNDARYCURVE",
     "IFCTRIMMEDCURVE",
@@ -108,10 +108,20 @@ pub const IMPLEMENTED: &[&str] = &[
 /// Each entry names the concrete reason so a caller building a viewer can
 /// report progress instead of a bare failure. Adding a family here is how a
 /// stub is declared; implementing it means moving the name to [`IMPLEMENTED`].
-pub const PLANNED: &[(&str, &str)] = &[(
-    "IFCARBITRARYOPENPROFILEDEF",
-    "open profiles: the neutral profile model represents closed contours only",
-)];
+pub const PLANNED: &[(&str, &str)] = &[
+    (
+        "IFCPOLYGONALBOUNDEDHALFSPACE",
+        "polygonal boundary cannot be discarded; exact bounded-half-space support is required",
+    ),
+    (
+        "IFCPOINTONCURVE",
+        "exact point evaluation reference is not yet represented",
+    ),
+    (
+        "IFCPOINTONSURFACE",
+        "exact surface-parameter point is not yet represented",
+    ),
+];
 
 /// Lower any representation item into the caller's session.
 ///

@@ -181,21 +181,13 @@ def geometry_table() -> str:
 def profile_table() -> str:
     source = PROFILE.read_text(encoding="utf-8")
     casing = schema_casing()
-    dispatched, refused = dispatched_profiles(source)
-    unlowered = planned_details(source, "UNLOWERED")
-    unlowered.update(refused)
+    implemented = const_list(source, "IMPLEMENTED_PROFILES")
+    planned = planned_details(source, "PLANNED_PROFILES")
 
     rows = ["| Profile family | Status |", "| --- | --- |"]
-    for entity in dispatched:
-        if entity in unlowered:
-            # The hardened coverage gate rejects this, but a generator that
-            # silently picked one side would hide it from anyone reading docs.
-            raise SystemExit(
-                f"{entity} is both dispatched and declared unlowered"
-            )
+    for entity in implemented:
         rows.append(f"| `{casing.get(entity, entity)}` | {IMPLEMENTED} |")
-    for entity, reason in unlowered.items():
-        rows.append(f"| `{casing.get(entity, entity)}` | {PLANNED} \u2014 {reason} |")
+    rows += [f"| `{casing.get(e, e)}` | {PLANNED} — {r} |" for e, r in planned.items()]
     return "\n".join(rows)
 
 

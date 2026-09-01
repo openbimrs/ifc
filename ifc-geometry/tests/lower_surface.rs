@@ -13,9 +13,7 @@
 
 use axiolid_model::{GeometryNode, SurfaceRelation};
 use axiolid_surface::Surface;
-use ifc_geometry::lower::{
-    lower_representation_item, lower_surface_node, LoweringSession, Tolerance,
-};
+use ifc_geometry::lower::{lower_representation_item, lower_surface_node, LoweringSession};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
 use ifc_model::{Codec, Model};
@@ -47,7 +45,7 @@ fn the_duct_elbow_reference_surface_lowers_through_its_open_generatrix() {
     let ids = model.ids_of_type("IFCSURFACEOFLINEAREXTRUSION");
     assert_eq!(ids.len(), 1, "the fixture carries one extruded surface");
 
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_surface_node(&mut session, ids[0], Transform::identity())
         .expect("the reference surface must lower");
     let lowered = session.finish(node).expect("session finishes");
@@ -70,7 +68,7 @@ fn the_duct_elbow_swept_solid_lowers_end_to_end() {
     let ids = model.ids_of_type("IFCSURFACECURVESWEPTAREASOLID");
     assert_eq!(ids.len(), 1, "the fixture carries one surface-curve sweep");
 
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     lower_representation_item(&mut session, ids[0], Transform::identity())
         .expect("the sweep must lower now that its generatrix resolves");
 }
@@ -89,7 +87,7 @@ fn every_corpus_plane_lowers_to_an_orthonormal_frame() {
         let model = fixture(name);
         let scale = units::resolve(&model);
         for id in model.ids_of_type("IFCPLANE") {
-            let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+            let mut session = LoweringSession::new(&model, &scale);
             let node = lower_surface_node(&mut session, *id, Transform::identity())
                 .expect("a plane must lower");
             let lowered = session.finish(node).expect("session finishes");

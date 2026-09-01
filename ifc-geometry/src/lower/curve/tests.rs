@@ -11,7 +11,6 @@ use ifc_model::{EntityId, Model, Value};
 
 use super::{lower_curve_node, scale_parameter};
 use crate::lower::session::LoweringSession;
-use crate::lower::Tolerance;
 use crate::solid::testkit::{entity, n, r};
 use crate::transform::Transform;
 use crate::units::UnitScale;
@@ -78,7 +77,7 @@ fn trimmed_circle() -> Model {
 fn a_conic_trim_parameter_is_an_angle_not_a_length() {
     let model = trimmed_circle();
     let scale = millimetres();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_curve_node(&mut session, EntityId(6), Transform::identity())
         .expect("the trimmed circle must lower");
     let lowered = session.finish(node).expect("finishes");
@@ -101,7 +100,7 @@ fn a_conic_trim_parameter_is_an_angle_not_a_length() {
 fn a_circle_radius_is_converted_to_metres() {
     let model = trimmed_circle();
     let scale = millimetres();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_curve_node(&mut session, EntityId(5), Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
 
@@ -136,7 +135,7 @@ fn a_closed_polyline_records_the_flag_instead_of_repeating_the_vertex() {
     );
 
     let scale = millimetres();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_curve_node(&mut session, EntityId(4), Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
 
@@ -195,7 +194,7 @@ fn composite_segments_keep_their_order_and_sense() {
     );
 
     let scale = millimetres();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_curve_node(&mut session, EntityId(8), Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
 
@@ -220,7 +219,7 @@ fn ellipse_axes_are_lowered_exactly_in_source_orientation() {
     );
 
     let scale = millimetres();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_curve_node(&mut session, EntityId(7), Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
 
@@ -247,7 +246,7 @@ fn offset_curve_preserves_basis_distance_and_reference_direction() {
     );
 
     let scale = millimetres();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_curve_node(&mut session, EntityId(7), Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
 
@@ -278,7 +277,7 @@ fn an_unsupported_curve_family_is_reported_by_name() {
     model.insert(EntityId(1), entity("IFCPOLYNOMIALCURVE", vec![]));
 
     let scale = millimetres();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let error = lower_curve_node(&mut session, EntityId(1), Transform::identity())
         .expect_err("an unlowered family must not silently succeed");
     assert!(error.is_unsupported(), "this is a gap, not corruption");
@@ -308,7 +307,7 @@ fn a_line_direction_keeps_the_vector_magnitude() {
     model.insert(EntityId(4), entity("IFCLINE", vec![r(1), r(3)]));
 
     let scale = millimetres();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_curve_node(&mut session, EntityId(4), Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
 
@@ -328,7 +327,7 @@ fn a_line_direction_keeps_the_vector_magnitude() {
 fn parameter_units_follow_curve_parameterisation() {
     let model = Model::new();
     let scale = millimetres();
-    let session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let session = LoweringSession::new(&model, &scale);
 
     assert_eq!(scale_parameter(&session, "IFCLINE", 2_000.0), 2_000.0);
     assert_eq!(scale_parameter(&session, "IFCPOLYLINE", 2.0), 2.0);
@@ -380,7 +379,7 @@ fn surface_curve_keeps_master_and_raw_parameter_coordinates() {
     );
 
     let scale = millimetres();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let root = lower_curve_node(&mut session, EntityId(11), Transform::identity()).expect("lowers");
     let lowered = session.finish(root).expect("finishes");
     let GeometryNode::CurveRelation(CurveRelation::SurfaceCurve {
@@ -457,7 +456,7 @@ fn indexed_polycurve_lowers_line_and_three_point_arc_segments() {
         ),
     );
     let scale = millimetres();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let root = lower_curve_node(&mut session, EntityId(2), Transform::identity()).expect("lowers");
     let lowered = session.finish(root).expect("finishes");
     let GeometryNode::CurveRelation(CurveRelation::Composite { segments }) =
@@ -527,7 +526,7 @@ fn indexed_arc_rejects_finite_points_when_derived_circle_values_overflow() {
         length_to_metres: 1.0,
         angle_to_radians: 1.0,
     };
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
 
     assert!(matches!(
         lower_curve_node(&mut session, EntityId(2), Transform::identity()),

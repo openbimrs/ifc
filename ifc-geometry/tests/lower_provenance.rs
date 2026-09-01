@@ -7,7 +7,7 @@
 //! a node without teaching `axiolid-model` about IFC identifiers.
 
 use axiolid_model::{GeometryNode, SolidOperation};
-use ifc_geometry::lower::{lower_extruded_area_solid_node, LoweringSession, Tolerance};
+use ifc_geometry::lower::{lower_extruded_area_solid_node, LoweringSession};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
 use ifc_model::{Codec, EntityId, Model, Value};
@@ -51,7 +51,7 @@ fn a_real_lowered_subtree_names_the_ifc_entity_for_each_node() {
     let scale = units::resolve(&model);
     let extrusion = first_extrusion(&model);
     let profile_entity = swept_area(&model, extrusion);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
 
     let root = lower_extruded_area_solid_node(&mut session, extrusion, Transform::identity())
         .expect("extrusion lowers");
@@ -93,7 +93,7 @@ fn a_real_lowered_subtree_names_the_ifc_entity_for_each_node() {
 fn implicit_nodes_follow_the_innermost_active_entity_not_id_order() {
     let model = Model::new();
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let outer = EntityId(99);
     let inner = EntityId(1);
 
@@ -128,7 +128,7 @@ fn implicit_nodes_follow_the_innermost_active_entity_not_id_order() {
 fn caller_synthesized_unscoped_nodes_have_no_fake_ifc_source() {
     let model = Model::new();
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
 
     let root = session
         .node(GeometryNode::Point3(axiolid_core::Point3::ZERO))
@@ -144,7 +144,7 @@ fn memoized_lowering_reuses_the_original_provenance_entry() {
     let model = wall_model();
     let scale = units::resolve(&model);
     let extrusion = first_extrusion(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
 
     let first = lower_extruded_area_solid_node(&mut session, extrusion, Transform::identity())
         .expect("first lowering");

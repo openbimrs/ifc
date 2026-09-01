@@ -11,8 +11,8 @@ Allowed production dependencies: `ifc-model`, schema metadata, and neutral axiol
 value/representation crates; never `axiolid-kernel`, an algorithm crate, or a backend.
 
 The neutral crates are optional, behind the default-on `lowering` feature. Only
-`lower`, `kernel`, `Transform::to_geom`, and the `IfcBooleanOperator`
-conversion may name them; everything else reads `ifc-model` slots and must
+`lower`, `Transform::to_geom`, and the `IfcBooleanOperator` conversion may
+name them; everything else reads `ifc-model` slots and must
 compile with the feature off. `tests/kernel_free_build.rs` checks the resolved
 dependency graph, so a stray unconditional `use axiolid_*` fails the gate
 rather than silently relinking the kernel for 2D consumers.

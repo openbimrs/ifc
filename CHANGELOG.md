@@ -24,6 +24,12 @@ and this project follows Semantic Versioning.
   Axiolid graphs: ellipses, offset and indexed poly-curves, p-/surface curves,
   and curve-bounded surfaces; explicit Body/Plan selection prevents silent
   representation substitution and a committed IFC corpus exercises dispatch.
+- `ifc-geometry` now mechanically reconciles every concrete IFC4 representation
+  item/profile family with an owner, exact route or typed refusal, and committed
+  corpus behavior. It preserves composite-on-surface relations, refuses bounded
+  half spaces whose polygonal cutter cannot yet be represented exactly, validates
+  finite orthonormal right-handed neutral frames, and exposes geometry-only
+  material profile/layer usage inputs.
 - `ifc-georef` resolves IFC4 projected CRS metadata and `IfcMapConversion` into
   a project-metre to map-metre neutral transform with strict unit, scale, and
   axis validation.
@@ -87,11 +93,21 @@ and this project follows Semantic Versioning.
   order to `openbim-step 0.4.0`; neither is IFC-specific. Version identity,
   independent bundled artifacts, and process caches stay here.
 
+### Removed
+- Removed the obsolete `ifc_geometry::kernel` compatibility facade and adapter
+  `Tolerance` plumbing. Exact lowerers no longer advertise kernel execution or
+  approximation policy; those remain neutral-provider concerns.
+
 ### Fixed
 - `ifc-xml` now binds the XSI namespace used by null values, independently
   resolves qualified attributes during tests, and rejects unmarked or
   namespace-spoofed self-closing typed values instead of silently decoding
   them as null.
+- Non-uniform mapped transforms now carry half-space plane normals through the
+  inverse transpose, preserving the authored cutting plane under affine scale.
+- `IfcPolygonalBoundedHalfSpace` no longer drops its positioned polygonal bound
+  and masquerades as an unbounded half space. It now returns a typed unsupported
+  result until the neutral geometry contract can preserve the effective cutter.
 - `ifc-geometry` now lowers schema-valid `IfcBoundaryCurve` and
   `IfcOuterBoundaryCurve` members of `IfcCurveBoundedSurface`, preserves their
   parameter-space p-curves in committed corpus evidence, keeps `IfcEdgeCurve`

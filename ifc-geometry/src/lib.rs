@@ -39,13 +39,6 @@
 //! profiles, and representation relationships into `axiolid-model` nodes. Active
 //! lowering owns no duplicate geometry types and never selects a CPU/GPU
 //! provider.
-#![cfg_attr(
-    feature = "lowering",
-    doc = "The legacy [`kernel`] namespace is retained only as a source-
-compatibility shell for the pre-DAG public API. Neutral names that would
-otherwise collide are exported explicitly as [`AnalyticPrimitive`],
-[`ExactProfile`], and [`GeometryBooleanOperator`]."
-)]
 //!
 //! **Feature `lowering`** (default on) carries the neutral geometry crates.
 //! Without it this crate is representation selection only -- contexts,
@@ -55,8 +48,6 @@ otherwise collide are exported explicitly as [`AnalyticPrimitive`],
 pub mod constraint;
 pub mod curve;
 pub mod error;
-#[cfg(feature = "lowering")]
-pub mod kernel;
 #[cfg(feature = "lowering")]
 pub mod lower;
 pub mod resource;
@@ -84,8 +75,6 @@ pub use axiolid_profile::Profile as ExactProfile;
 // needs world coordinates without compiling a solid kernel.
 pub use constraint::{product_world_transform, products_world_transforms};
 pub use error::{GeometryError, GeometryResult};
-#[cfg(feature = "lowering")]
-pub use kernel::{BooleanOp, CsgShape, Primitive, Profile};
 pub use slots::Slots;
 pub use transform::Transform;
 pub use units::UnitScale;
@@ -96,6 +85,13 @@ mod input;
 // from is a question about contexts, not about lowering.
 pub use input::context::{
     all_contexts, context_of, plan_contexts, RepresentationContext, TargetView,
+};
+// Geometry-shaping material inputs only. Material identity, quantities, and
+// association policy remain owned by `ifc-material`.
+pub use input::material_usage::{
+    CardinalPoint, DirectionSense, LayerSetDirection, MaterialLayerSetUsageGeometry,
+    MaterialProfileGeometry, MaterialProfileSetUsageGeometry,
+    MaterialProfileSetUsageTaperingGeometry,
 };
 pub use input::representation::{
     select_plan_representation, select_product_representation, select_shape_representation,

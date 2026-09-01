@@ -176,35 +176,26 @@ fn the_neutral_geometry_dag_is_part_of_the_public_api() {
     ));
 }
 
-/// Public names from the pre-DAG adapter remain available as legacy source
-/// compatibility shims. This compile-time test prevents an additive scaffold
-/// change from silently becoming an API break.
 #[test]
-fn pre_dag_public_names_remain_source_compatible() {
-    use ifc_geometry::kernel::Contour;
-    use ifc_geometry::{BooleanOp, CsgShape, Primitive, Profile};
-
-    let profile = Profile {
-        outer: Contour {
-            points: vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
-        },
-        inner: Vec::new(),
-    };
-    let shape = CsgShape::Sphere { radius: 1.0 };
-    let primitive = Primitive::Csg {
-        shape,
-        placement: ifc_geometry::Transform::identity(),
-    };
-
-    let _: BooleanOp = BooleanOp::Difference;
-    let legacy_operator = ifc_geometry::solid::BooleanOperator::parse("DIFFERENCE")
-        .expect("legacy alias keeps inherent methods");
-    assert_eq!(
-        legacy_operator,
-        ifc_geometry::solid::IfcBooleanOperator::Difference
+fn obsolete_adapter_kernel_and_tolerance_api_are_absent() {
+    let manifest = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    assert!(
+        !manifest.join("src/kernel.rs").exists(),
+        "the pre-DAG adapter kernel must not return"
     );
-    assert_eq!(profile.outer.points.len(), 3);
-    assert_eq!(primitive.kind(), "csg primitive");
+    for relative in [
+        "src/lib.rs",
+        "src/lower/mod.rs",
+        "src/lower/session.rs",
+        "src/lower/profile.rs",
+        "src/lower/swept.rs",
+    ] {
+        let source = std::fs::read_to_string(manifest.join(relative)).expect("source is readable");
+        assert!(
+            !source.contains("Tolerance"),
+            "{relative} reintroduced adapter-owned approximation policy"
+        );
+    }
 }
 
 #[test]

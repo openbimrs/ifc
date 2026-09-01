@@ -15,7 +15,6 @@ pub mod session;
 pub mod surface;
 pub mod swept;
 pub mod tessellated;
-pub mod tolerance;
 
 use axiolid_model::{GeometryGraph, NodeId};
 
@@ -42,7 +41,6 @@ pub use swept::{
     lower_revolved_area_solid_node,
 };
 pub use tessellated::{lower_polygonal_face_set_node, lower_triangulated_face_set_node};
-pub use tolerance::Tolerance;
 
 /// One lowered root and the immutable DAG that owns all of its dependencies.
 #[derive(Debug, Clone, PartialEq)]

@@ -9,7 +9,7 @@
 //! the committed fixture and asserts the mesh matches what the file declares.
 
 use axiolid_model::GeometryNode;
-use ifc_geometry::lower::{lower_representation_item, LoweringSession, Tolerance};
+use ifc_geometry::lower::{lower_representation_item, LoweringSession};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
 use ifc_model::{Codec, Model};
@@ -43,7 +43,7 @@ fn the_triangulated_fixture_lowers_to_four_points_and_four_triangles() {
         .first()
         .expect("the fixture contains a triangulated face set");
 
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_representation_item(&mut session, id, Transform::identity())
         .expect("the face set must lower");
     let lowered = session.finish(node).expect("session finishes");
@@ -70,6 +70,25 @@ fn the_triangulated_fixture_lowers_to_four_points_and_four_triangles() {
     assert_eq!(mesh.positions[3].to_array(), [0.0, 0.0, 1.0]);
 }
 
+/// The polygonal sibling uses referenced face records and the same shared list.
+#[test]
+fn the_polygonal_fixture_lowers_its_indexed_face_without_unsharing_points() {
+    let model = model_of("ifclite-geometry/mapped_instances_indexed_colour.ifc");
+    let scale = units::resolve(&model);
+    let id = model.ids_of_type("IFCPOLYGONALFACESET")[0];
+    let mut session = LoweringSession::new(&model, &scale);
+    let root = lower_representation_item(&mut session, id, Transform::identity())
+        .expect("polygonal set lowers");
+    let lowered = session.finish(root).expect("session finishes");
+    let GeometryNode::PolygonMesh(mesh) = lowered.graph.get(lowered.root).expect("root") else {
+        panic!("polygonal set must preserve authored polygon faces");
+    };
+    assert_eq!(mesh.positions.len(), 4, "the point list remains shared");
+    assert_eq!(mesh.faces.len(), 1);
+    assert_eq!(mesh.faces[0].outer, vec![0, 1, 2]);
+    assert!(mesh.faces[0].holes.is_empty());
+}
+
 /// Every index a lowered mesh emits addresses a vertex that exists.
 ///
 /// An out-of-range index is not a crash — it is a renderer reading whatever
@@ -85,7 +104,7 @@ fn no_lowered_mesh_index_escapes_its_own_position_list() {
         let model = model_of(relative);
         let scale = units::resolve(&model);
         for id in model.ids_of_type("IFCTRIANGULATEDFACESET") {
-            let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+            let mut session = LoweringSession::new(&model, &scale);
             let node = lower_representation_item(&mut session, *id, Transform::identity())
                 .expect("face sets in the corpus must lower");
             let lowered = session.finish(node).expect("finishes");
@@ -120,7 +139,7 @@ fn placing_a_face_set_moves_it_without_unsharing_points() {
         .first()
         .expect("set");
 
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node =
         lower_representation_item(&mut session, id, Transform::translation([10.0, 20.0, 30.0]))
             .expect("lowers");

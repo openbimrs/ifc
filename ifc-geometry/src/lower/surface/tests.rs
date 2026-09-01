@@ -12,7 +12,6 @@ use ifc_model::{EntityId, Model, Value};
 
 use super::{lower_linear_extrusion, lower_plane, lower_surface_node};
 use crate::lower::session::LoweringSession;
-use crate::lower::tolerance::Tolerance;
 use crate::solid::testkit::{entity, n, r};
 use crate::transform::Transform;
 use crate::units::UnitScale;
@@ -55,7 +54,7 @@ fn plane_model(origin: [f64; 3], axis: [f64; 3], ref_dir: [f64; 3]) -> Model {
 }
 
 fn lower_plane_surface(model: &Model, scale: &UnitScale, frame: Transform) -> Surface {
-    let mut session = LoweringSession::new(model, scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(model, scale);
     let node = lower_plane(&mut session, EntityId(5), frame).expect("the plane must lower");
     let lowered = session.finish(node).expect("session finishes");
     match lowered.graph.get(lowered.root).expect("root node") {
@@ -156,7 +155,7 @@ fn an_unlowered_surface_family_is_reported_by_name() {
     // lower; IfcPcurve does not, and it is a surface by the schema.
     model.insert(EntityId(6), entity("IFCPCURVE", vec![r(5), Value::Null]));
     let scale = UnitScale::default();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let error = lower_surface_node(&mut session, EntityId(6), Transform::identity())
         .expect_err("pcurves are not lowered yet");
     assert!(error.is_unsupported(), "this is a gap, not corruption");
@@ -205,7 +204,7 @@ fn a_linear_extrusion_references_its_swept_curve_and_direction() {
     );
 
     let scale = UnitScale::default();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_linear_extrusion(&mut session, EntityId(5), Transform::identity())
         .expect("the extrusion must lower");
     let lowered = session.finish(node).expect("finishes");
@@ -278,7 +277,7 @@ fn the_depth_hint_never_scales_the_extrusion_direction() {
     );
 
     let scale = UnitScale::default();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node =
         lower_linear_extrusion(&mut session, EntityId(5), Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
@@ -339,7 +338,7 @@ fn a_placed_extrusion_rotates_its_direction_but_never_translates_it() {
     );
 
     let scale = UnitScale::default();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let frame = Transform::translation([100.0, -50.0, 25.0]);
     let node = lower_linear_extrusion(&mut session, EntityId(5), frame).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
@@ -476,7 +475,7 @@ fn a_cylinder_converts_its_radius_but_not_its_axes() {
         length_to_metres: 0.001,
         angle_to_radians: 1.0,
     };
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node =
         lower_surface_node(&mut session, EntityId(5), Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
@@ -526,7 +525,7 @@ fn a_torus_preserves_a_self_intersecting_spindle() {
         length_to_metres: 0.001,
         angle_to_radians: 1.0,
     };
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node =
         lower_surface_node(&mut session, EntityId(3), Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
@@ -583,7 +582,7 @@ fn a_trim_parameter_on_a_curved_basis_uses_the_angle_unit() {
         length_to_metres: 0.001,
         angle_to_radians: 0.017453292519943295,
     };
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node =
         lower_surface_node(&mut session, EntityId(4), Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
@@ -605,7 +604,7 @@ fn a_trim_parameter_on_a_curved_basis_uses_the_angle_unit() {
 fn a_curve_bounded_plane_orders_outer_then_inner() {
     let model = curve_bounded_model();
     let scale = UnitScale::default();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node =
         lower_surface_node(&mut session, EntityId(20), Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
@@ -628,7 +627,7 @@ fn a_curve_bounded_plane_orders_outer_then_inner() {
 fn a_curve_bounded_surface_preserves_boundary_order_and_implicit_outer() {
     let model = curve_bounded_model();
     let scale = UnitScale::default();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let root = lower_surface_node(&mut session, EntityId(21), Transform::identity())
         .expect("curve-bounded surface lowers");
     let lowered = session.finish(root).expect("graph finishes");
@@ -719,7 +718,7 @@ fn a_bspline_patch_keeps_its_directions_distinct() {
         length_to_metres: 0.001,
         angle_to_radians: 1.0,
     };
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_surface_node(&mut session, surface_id, Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
     let Some(GeometryNode::Surface(Surface::BSpline(patch))) = lowered.graph.get(lowered.root)
@@ -763,7 +762,7 @@ fn self_referential_surface_is_a_typed_cycle_error() {
     );
 
     let scale = UnitScale::default();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let error = lower_surface_node(&mut session, EntityId(1), Transform::identity())
         .expect_err("surface cycle must be bounded");
     assert!(matches!(

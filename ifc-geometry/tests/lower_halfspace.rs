@@ -12,7 +12,7 @@
 //! here.
 
 use axiolid_model::GeometryNode;
-use ifc_geometry::lower::{lower_representation_item, LoweringSession, Tolerance};
+use ifc_geometry::lower::{lower_representation_item, LoweringSession};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
 use ifc_model::{Codec, Model};
@@ -38,7 +38,7 @@ fn the_flyaway_half_space_lowers_to_a_plane() {
         .first()
         .expect("the fixture contains a half space");
 
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_representation_item(&mut session, id, Transform::identity())
         .expect("the half space must lower through the dispatcher");
     let lowered = session.finish(node).expect("session finishes");
@@ -78,7 +78,7 @@ fn the_enclosing_clipping_result_resolves_now_that_its_operand_lowers() {
         .first()
         .expect("the fixture contains a clipping result");
 
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_representation_item(&mut session, id, Transform::identity())
         .expect("the clipping result must lower");
     let lowered = session.finish(node).expect("session finishes");
@@ -110,7 +110,7 @@ fn every_corpus_half_space_lowers() {
         let model = model_of(name);
         let scale = units::resolve(&model);
         for id in model.ids_of_type("IFCHALFSPACESOLID") {
-            let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+            let mut session = LoweringSession::new(&model, &scale);
             let node = lower_representation_item(&mut session, *id, Transform::identity())
                 .expect("corpus half spaces must lower");
             let lowered = session.finish(node).expect("finishes");

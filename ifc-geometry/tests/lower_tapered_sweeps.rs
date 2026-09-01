@@ -3,7 +3,7 @@
 //! Tapered and variable-section sweeps, plus the sectioned spine.
 
 use axiolid_model::{GeometryNode, SolidOperation};
-use ifc_geometry::lower::{lower_representation_item, LoweringSession, Tolerance};
+use ifc_geometry::lower::{lower_representation_item, LoweringSession};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
 use ifc_model::{Codec, EntityId, Model};
@@ -27,7 +27,7 @@ fn only(model: &Model, kind: &str) -> EntityId {
 
 fn lower(model: &Model, id: EntityId) -> ifc_geometry::lower::LoweredGeometry {
     let scale = units::resolve(model);
-    let mut session = LoweringSession::new(model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(model, &scale);
     let node = lower_representation_item(&mut session, id, Transform::identity())
         .unwrap_or_else(|e| panic!("{id:?} must lower: {e}"));
     session.finish(node).expect("session finishes")
@@ -107,6 +107,27 @@ fn a_tapered_revolution_converts_its_angle_from_degrees() {
     }
 }
 
+/// The non-tapered revolution uses the same declared angle and axis contracts.
+#[test]
+fn a_regular_revolution_converts_angle_and_axis_units() {
+    let model = model("synthetic_tapered_sweeps.ifc");
+    let lowered = lower(&model, only(&model, "IFCREVOLVEDAREASOLID"));
+    match operation(&lowered) {
+        SolidOperation::Revolution {
+            angle,
+            axis_origin,
+            axis_direction,
+            ..
+        } => {
+            let expected = std::f64::consts::FRAC_PI_4;
+            assert!((angle - expected).abs() < 1e-9, "45 degrees -> pi/4");
+            assert!((axis_origin.to_array()[0] - 0.9).abs() < 1e-9);
+            assert_eq!(axis_direction.to_array(), [0.0, 1.0, 0.0]);
+        }
+        other => panic!("expected a Revolution, got {other:?}"),
+    }
+}
+
 /// The fixed reference direction survives lowering.
 ///
 /// This is what separates a fixed-reference sweep from an ordinary directrix
@@ -153,7 +174,7 @@ fn a_polygonal_disk_carries_its_fillet_radius() {
     let scale = units::resolve(&model);
     let mut fillets = Vec::new();
     for &id in ids {
-        let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+        let mut session = LoweringSession::new(&model, &scale);
         let node = lower_representation_item(&mut session, id, Transform::identity())
             .expect("both polygonal disks lower now that the kernel has a fillet");
         let lowered = session.finish(node).expect("finishes");

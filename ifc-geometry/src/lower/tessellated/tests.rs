@@ -10,7 +10,6 @@ use axiolid_model::GeometryNode;
 use super::{lower_polygonal_face_set_node, lower_triangulated_face_set_node};
 use crate::lower::dispatch::lower_representation_item;
 use crate::lower::session::LoweringSession;
-use crate::lower::tolerance::Tolerance;
 use crate::solid::testkit::{entity, int_grid as grid, ints, list, model, n, r, refs};
 use crate::transform::Transform;
 use crate::units::UnitScale;
@@ -44,7 +43,7 @@ fn tetrahedron(pn: Option<&[i64]>) -> ifc_model::Model {
 
 fn lower_tri(model: &ifc_model::Model, frame: Transform) -> axiolid_mesh::TriMesh {
     let scale = UnitScale::default();
-    let mut session = LoweringSession::new(model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(model, &scale);
     let node = lower_triangulated_face_set_node(&mut session, ifc_model::EntityId(2), frame)
         .expect("the face set must lower");
     let lowered = session.finish(node).expect("session finishes");
@@ -176,7 +175,7 @@ fn an_index_past_the_end_of_coordinates_is_rejected() {
     );
     let model = model(vec![(1, coords), (2, face_set)]);
     let scale = UnitScale::default();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
 
     let error = lower_triangulated_face_set_node(
         &mut session,
@@ -216,7 +215,7 @@ fn polygonal_faces_keep_their_authored_n_gons() {
     let model = model(vec![(1, coords), (3, face), (2, face_set)]);
 
     let scale = UnitScale::default();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node =
         lower_polygonal_face_set_node(&mut session, ifc_model::EntityId(2), Transform::identity())
             .expect("the quad must lower");
@@ -271,7 +270,7 @@ fn a_face_with_voids_keeps_its_inner_loops() {
     let model = model(vec![(1, coords), (3, face), (2, face_set)]);
 
     let scale = UnitScale::default();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node =
         lower_polygonal_face_set_node(&mut session, ifc_model::EntityId(2), Transform::identity())
             .expect("the holed face must lower");
@@ -322,7 +321,7 @@ fn a_set_level_pn_index_remaps_polygonal_face_indices() {
         );
         let model = model(vec![(1, coords), (3, face), (2, face_set)]);
         let scale = UnitScale::default();
-        let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+        let mut session = LoweringSession::new(&model, &scale);
         let node = lower_polygonal_face_set_node(
             &mut session,
             ifc_model::EntityId(2),
@@ -361,7 +360,7 @@ fn both_face_set_families_route_through_the_dispatcher() {
     let scale = UnitScale::default();
 
     let tri = tetrahedron(None);
-    let mut session = LoweringSession::new(&tri, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&tri, &scale);
     let node =
         lower_representation_item(&mut session, ifc_model::EntityId(2), Transform::identity())
             .expect("IFCTRIANGULATEDFACESET must dispatch, not report Unsupported");
@@ -393,7 +392,7 @@ fn both_face_set_families_route_through_the_dispatcher() {
         ],
     );
     let poly = model(vec![(1, coords), (3, face), (2, face_set)]);
-    let mut session = LoweringSession::new(&poly, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&poly, &scale);
     let node =
         lower_representation_item(&mut session, ifc_model::EntityId(2), Transform::identity())
             .expect("IFCPOLYGONALFACESET must dispatch, not report Unsupported");

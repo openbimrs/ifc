@@ -14,7 +14,7 @@
 
 use axiolid_model::{GeometryNode, SolidOperation};
 use ifc_geometry::lower::{
-    lower_mapped_item_node, lower_representation_item, LoweringSession, SessionLimits, Tolerance,
+    lower_mapped_item_node, lower_representation_item, LoweringSession, SessionLimits,
 };
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
@@ -68,7 +68,7 @@ fn count_kind(graph: &axiolid_model::GeometryGraph, pick: fn(&GeometryNode) -> b
 fn occurrences_of_one_map_share_a_single_lowered_subtree() {
     let model = model("mapped_instances_multi_item.ifc");
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
 
     let items = [EntityId(34), EntityId(41), EntityId(48), EntityId(55)];
     let roots: Vec<_> = items
@@ -107,7 +107,7 @@ fn occurrences_of_one_map_share_a_single_lowered_subtree() {
 fn a_mapped_item_lowers_to_an_instance_node() {
     let model = model("mapped_instances_multi_item.ifc");
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
 
     let root = lower_mapped_item_node(&mut session, EntityId(34), Transform::identity())
         .expect("the occurrence lowers");
@@ -142,7 +142,7 @@ fn a_mapped_item_lowers_to_an_instance_node() {
 fn the_instance_transform_composes_frame_then_target_then_origin() {
     let model = model("mapped_instances_multi_item.ifc");
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
 
     let frame = Transform::translation([0.0, 2.0, 0.0]);
     let root = lower_mapped_item_node(&mut session, EntityId(34), frame).expect("lowers");
@@ -181,7 +181,7 @@ fn the_instance_transform_composes_frame_then_target_then_origin() {
 fn nested_maps_compose_through_every_level() {
     let model = model("nested_mapped_item.ifc");
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
 
     let root = lower_mapped_item_node(&mut session, EntityId(31), Transform::identity())
         .expect("the nested occurrence lowers");
@@ -256,7 +256,7 @@ fn nested_maps_compose_through_every_level() {
 fn a_cyclic_mapping_graph_is_reported() {
     let model = model("nested_mapped_item_cycle.ifc");
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
 
     let error = lower_mapped_item_node(&mut session, EntityId(18), Transform::identity())
         .expect_err("a cyclic mapping graph must not lower");
@@ -276,12 +276,7 @@ fn a_cyclic_mapping_graph_is_reported() {
 fn a_mapping_chain_stops_at_the_depth_limit() {
     let model = model("nested_mapped_item.ifc");
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::with_limits(
-        &model,
-        &scale,
-        Tolerance::building_scale(),
-        SessionLimits { max_depth: 1 },
-    );
+    let mut session = LoweringSession::with_limits(&model, &scale, SessionLimits { max_depth: 1 });
 
     let error = lower_mapped_item_node(&mut session, EntityId(31), Transform::identity())
         .expect_err("depth 1 cannot reach the nested map");
@@ -296,7 +291,7 @@ fn a_mapping_chain_stops_at_the_depth_limit() {
 fn the_dispatcher_routes_mapped_items() {
     let model = model("mapped_instances_multi_item.ifc");
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
 
     let node = lower_representation_item(&mut session, EntityId(34), Transform::identity())
         .expect("the dispatcher must lower a mapped item");
@@ -316,7 +311,7 @@ fn the_dispatcher_routes_mapped_items() {
 fn an_empty_representation_lowers_to_an_empty_collection() {
     let model = model("nested_mapped_item.ifc");
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
 
     let node = ifc_geometry::lower::lower_representation(&mut session, EntityId(40))
         .expect("an empty representation is valid");
@@ -460,7 +455,7 @@ fn composition_applies_the_target_outside_the_origin() {
     );
 
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let root = lower_mapped_item_node(&mut session, EntityId(14), Transform::identity())
         .expect("the mapped item lowers");
     let lowered = session.finish(root).expect("session finishes");
@@ -485,7 +480,7 @@ fn composition_applies_the_target_outside_the_origin() {
 fn one_representation_reached_twice_is_lowered_once() {
     let model = model("mapped_instances_multi_item.ifc");
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
 
     // #34 and #41 are different IfcMappedItems over the same map #18.
     let first = lower_mapped_item_node(&mut session, EntityId(34), Transform::identity())
@@ -581,7 +576,7 @@ fn a_self_referencing_mapped_item_is_caught_at_the_item_level() {
     );
 
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let error = lower_mapped_item_node(&mut session, EntityId(6), Transform::identity())
         .expect_err("a self-referencing mapped item must not lower");
     assert!(

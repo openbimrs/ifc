@@ -13,7 +13,7 @@ use ifc_model::{EntityId, Model};
 use crate::error::{GeometryError, GeometryResult};
 use crate::lower::curve::{lower_curve_node, scale_parameter};
 use crate::lower::session::LoweringSession;
-use crate::lower::{lower_profile_node, LoweredGeometry, Tolerance};
+use crate::lower::{lower_profile_node, LoweredGeometry};
 use crate::resource::placement::axis_placement_transform;
 use crate::slots::Slots;
 use crate::solid::swept::area::{ExtrudedAreaSolidTapered, RevolvedAreaSolidTapered};
@@ -49,9 +49,8 @@ pub fn lower_extruded_area_solid(
     id: EntityId,
     world: Transform,
     units: &UnitScale,
-    tol: &Tolerance,
 ) -> GeometryResult<LoweredGeometry> {
-    let mut session = LoweringSession::new(model, units, *tol);
+    let mut session = LoweringSession::new(model, units);
     let root = lower_extruded_area_solid_node(&mut session, id, world)?;
     session.finish(root)
 }
@@ -62,9 +61,8 @@ pub fn lower_revolved_area_solid(
     id: EntityId,
     world: Transform,
     units: &UnitScale,
-    tol: &Tolerance,
 ) -> GeometryResult<LoweredGeometry> {
-    let mut session = LoweringSession::new(model, units, *tol);
+    let mut session = LoweringSession::new(model, units);
     let root = lower_revolved_area_solid_node(&mut session, id, world)?;
     session.finish(root)
 }

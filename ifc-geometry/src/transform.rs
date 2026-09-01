@@ -121,9 +121,8 @@ impl Transform {
 
     /// Apply the linear part only, without translating.
     ///
-    /// Correct for directions and normals under rigid transforms. Under
-    /// non-uniform scale, normals need the inverse transpose; that is the
-    /// kernel's concern, not ours.
+    /// Correct for vectors and tangents. Surface normals under non-uniform scale
+    /// must use `apply_unit_normal` instead.
     pub fn apply_direction(&self, v: [f64; 3]) -> [f64; 3] {
         [
             self.basis[0][0] * v[0] + self.basis[1][0] * v[1] + self.basis[2][0] * v[2],
@@ -132,28 +131,84 @@ impl Transform {
         ]
     }
 
+    /// Transform a surface normal as a covector and return unit length.
+    ///
+    /// The cofactor form is equivalent to inverse-transpose multiplication but
+    /// avoids explicitly inverting the affine basis. Scaling the basis first
+    /// prevents finite IFC operators from overflowing the cross products.
+    #[cfg(feature = "lowering")]
+    pub(crate) fn apply_unit_normal(&self, normal: [f64; 3]) -> Option<[f64; 3]> {
+        let scale = self
+            .basis
+            .iter()
+            .flatten()
+            .map(|value| value.abs())
+            .fold(0.0_f64, f64::max);
+        if !scale.is_finite() || scale == 0.0 || normal.iter().any(|value| !value.is_finite()) {
+            return None;
+        }
+        let [a, b, c] = self.basis.map(|axis| axis.map(|value| value / scale));
+        let [bc, ca, ab] = [cross(b, c), cross(c, a), cross(a, b)];
+        let determinant = dot(a, bc);
+        if !determinant.is_finite() || determinant == 0.0 {
+            return None;
+        }
+        let sign = determinant.signum();
+        normalize([
+            sign * (bc[0] * normal[0] + ca[0] * normal[1] + ab[0] * normal[2]),
+            sign * (bc[1] * normal[0] + ca[1] * normal[1] + ab[1] * normal[2]),
+            sign * (bc[2] * normal[0] + ca[2] * normal[1] + ab[2] * normal[2]),
+        ])
+    }
+
     /// Convert to a neutral orthonormal frame at the IFC boundary.
     ///
-    /// Surfaces are defined by a frame rather than a matrix: the kernel's
-    /// `Plane`, `Cylinder` and friends all carry a `Frame3` whose `z` is the
-    /// axis or normal and whose `x`/`y` fix the parameterisation. Deriving
-    /// `x`/`y` from the normal alone would pick an arbitrary rotation about
-    /// it, silently reparameterising every trim taken against the surface, so
-    /// the placement's own axes are carried through instead.
-    ///
-    /// The basis is carried through as-is. `axis_placement_transform` builds
-    /// it from directions that `resource::direction` already normalized, and
-    /// `to_metres` scales only the origin, so the axes are unit by
-    /// construction. Re-normalizing here would be unreachable code that hides
-    /// a genuinely non-rigid basis instead of surfacing it.
+    /// `axiolid_core::Frame3` is structurally public and cannot enforce unit,
+    /// orthogonal, right-handed axes itself. This method is therefore the one
+    /// executable IFC-to-Axiolid frame contract. It rejects non-finite origins,
+    /// scaled or sheared axes, and mirrored frames before neutral construction.
+    /// IFC placements reach this method after `Axis`/`RefDirection` have been
+    /// normalized and Gram-Schmidt orthogonalized; mapped-item scale stays on
+    /// an `Instance` transform and must never leak into a surface frame.
     #[cfg(feature = "lowering")]
-    pub fn to_geom_frame(self) -> axiolid_core::Frame3 {
-        axiolid_core::Frame3 {
-            origin: axiolid_core::Point3::from_array(self.origin),
-            x: axiolid_core::Vec3::from_array(self.basis[0]),
-            y: axiolid_core::Vec3::from_array(self.basis[1]),
-            z: axiolid_core::Vec3::from_array(self.basis[2]),
+    pub fn to_geom_frame(
+        self,
+        entity: ifc_model::EntityId,
+    ) -> crate::GeometryResult<axiolid_core::Frame3> {
+        const INVARIANT_EPSILON: f64 = 1e-9;
+
+        let finite_origin = self.origin.iter().all(|value| value.is_finite());
+        let finite_basis = self.basis.iter().flatten().all(|value| value.is_finite());
+        if !finite_origin || !finite_basis {
+            return Err(crate::GeometryError::Degenerate {
+                entity,
+                type_name: "IfcAxis2Placement".to_string(),
+                detail: "neutral frame origin and axes must be finite".to_string(),
+            });
         }
+
+        let [x, y, z] = self.basis;
+        let unit = [dot(x, x), dot(y, y), dot(z, z)]
+            .into_iter()
+            .all(|length_squared| (length_squared - 1.0).abs() <= INVARIANT_EPSILON);
+        let orthogonal = dot(x, y).abs() <= INVARIANT_EPSILON
+            && dot(x, z).abs() <= INVARIANT_EPSILON
+            && dot(y, z).abs() <= INVARIANT_EPSILON;
+        let right_handed = dot(cross(x, y), z) >= 1.0 - INVARIANT_EPSILON;
+        if !unit || !orthogonal || !right_handed {
+            return Err(crate::GeometryError::Degenerate {
+                entity,
+                type_name: "IfcAxis2Placement".to_string(),
+                detail: "neutral frame axes must be unit, orthogonal, and right-handed".to_string(),
+            });
+        }
+
+        Ok(axiolid_core::Frame3 {
+            origin: axiolid_core::Point3::from_array(self.origin),
+            x: axiolid_core::Vec3::from_array(x),
+            y: axiolid_core::Vec3::from_array(y),
+            z: axiolid_core::Vec3::from_array(z),
+        })
     }
 
     /// Convert to the format-neutral geometry transform at the IFC boundary.
@@ -265,13 +320,18 @@ fn scale(v: [f64; 3], f: f64) -> [f64; 3] {
     [v[0] * f, v[1] * f, v[2] * f]
 }
 
-/// Normalize, or `None` if the vector is too short to have a direction.
+/// Normalize, or `None` if the vector is zero or non-finite.
 fn normalize(v: [f64; 3]) -> Option<[f64; 3]> {
-    let len = dot(v, v).sqrt();
-    if len < 1e-12 {
+    let scale = v
+        .iter()
+        .map(|component| component.abs())
+        .fold(0.0, f64::max);
+    if scale == 0.0 || !scale.is_finite() {
         return None;
     }
-    Some([v[0] / len, v[1] / len, v[2] / len])
+    let scaled = [v[0] / scale, v[1] / scale, v[2] / scale];
+    let length = dot(scaled, scaled).sqrt();
+    Some([scaled[0] / length, scaled[1] / length, scaled[2] / length])
 }
 
 #[cfg(test)]
@@ -366,5 +426,40 @@ mod tests {
     fn non_uniform_scale_is_representable() {
         let t = Transform::identity().scaled_nonuniform([2.0, 3.0, 4.0]);
         assert!(close(t.apply([1.0, 1.0, 1.0]), [2.0, 3.0, 4.0]));
+    }
+
+    #[cfg(feature = "lowering")]
+    #[test]
+    fn neutral_frames_enforce_the_ifc_to_axiolid_axis_invariant() {
+        let id = ifc_model::EntityId(7);
+        assert!(Transform::identity().to_geom_frame(id).is_ok());
+
+        let invalid = [
+            Transform {
+                basis: [[2.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                origin: [0.0; 3],
+            },
+            Transform {
+                basis: [[1.0, 0.0, 0.0], [0.5, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                origin: [0.0; 3],
+            },
+            Transform {
+                basis: [[1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, 1.0]],
+                origin: [0.0; 3],
+            },
+            Transform {
+                basis: Transform::identity().basis,
+                origin: [f64::NAN, 0.0, 0.0],
+            },
+        ];
+
+        for transform in invalid {
+            let error = transform
+                .to_geom_frame(id)
+                .expect_err("invalid axes must not reach axiolid_core::Frame3");
+            assert!(
+                matches!(error, crate::GeometryError::Degenerate { entity, .. } if entity == id)
+            );
+        }
     }
 }

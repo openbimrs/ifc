@@ -10,14 +10,30 @@
 //! holds for all of them: either a node comes back, or a typed error naming
 //! the source entity does. Never a panic, never a silent substitute.
 
+use axiolid_model::{CurveRelation, GeometryNode};
 use ifc_geometry::lower::dispatch::{IMPLEMENTED, PLANNED};
-use ifc_geometry::lower::{lower_representation_item, LoweringSession, Tolerance};
+use ifc_geometry::lower::{lower_representation_item, LoweringSession};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
+use ifc_geometry::GeometryError;
 use ifc_model::Codec;
 use ifc_step::StepCodec;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
+
+const DISPOSITIONS: &str = include_str!("../data/ifc4-representation-item-dispositions.tsv");
+
+fn disposition_rows() -> Vec<[&'static str; 4]> {
+    DISPOSITIONS
+        .lines()
+        .skip(1)
+        .map(|line| {
+            let fields: Vec<_> = line.split('\t').collect();
+            assert_eq!(fields.len(), 4, "malformed disposition row: {line}");
+            [fields[0], fields[1], fields[2], fields[3]]
+        })
+        .collect()
+}
 
 fn fixture_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test/fixtures")
@@ -37,6 +53,112 @@ fn collect_ifc(dir: &std::path::Path, files: &mut Vec<PathBuf>) {
     }
 }
 
+/// The schema, not the hand-maintained dispatch arrays, defines the complete
+/// set of concrete representation-item families that need a disposition.
+#[test]
+fn every_concrete_ifc4_representation_item_is_classified() {
+    let schema = ifc_schema::ifc4();
+    let expected: BTreeSet<_> = schema
+        .entity_names()
+        .filter(|name| {
+            schema.is_a(name, "IfcRepresentationItem")
+                && !schema.entity(name).expect("known entity").abstract_
+        })
+        .map(str::to_ascii_uppercase)
+        .collect();
+    let rows = disposition_rows();
+    let classified: BTreeSet<_> = rows.iter().map(|row| row[0].to_owned()).collect();
+    assert_eq!(
+        classified.len(),
+        rows.len(),
+        "duplicate representation-item disposition"
+    );
+    for row in &rows {
+        assert!(
+            matches!(
+                row[1],
+                "nested-exact" | "planned-exact" | "typed-refusal" | "non-shape"
+            ),
+            "unknown disposition for {}: {}",
+            row[0],
+            row[1]
+        );
+        assert!(!row[2].is_empty(), "{} has no owner", row[0]);
+        let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let owner_path = if row[2] == "ifc-style" {
+            manifest.join("../ifc-style/src/lib.rs")
+        } else if let Some(module) = row[2].strip_prefix("lower::") {
+            manifest.join("src/lower").join(format!("{module}.rs"))
+        } else if let Some(module) = row[2].strip_prefix("resource::") {
+            manifest.join("src/resource").join(format!("{module}.rs"))
+        } else {
+            panic!("{} has unknown owner syntax: {}", row[0], row[2]);
+        };
+        assert!(
+            owner_path.is_file(),
+            "{} names missing owner module {}",
+            row[0],
+            owner_path.display()
+        );
+        assert!(!row[3].is_empty(), "{} has no rationale", row[0]);
+    }
+
+    let implemented: BTreeSet<_> = IMPLEMENTED.iter().map(|name| (*name).to_owned()).collect();
+    assert!(
+        implemented.is_disjoint(&classified),
+        "root-exact and non-root classifications overlap"
+    );
+    let actual: BTreeSet<_> = implemented.union(&classified).cloned().collect();
+    let missing: Vec<_> = expected.difference(&actual).cloned().collect();
+    let extra: Vec<_> = actual.difference(&expected).cloned().collect();
+    assert!(
+        missing.is_empty() && extra.is_empty(),
+        "representation-item disposition drift: missing={missing:?}; extra={extra:?}"
+    );
+
+    let planned: BTreeSet<_> = PLANNED.iter().map(|(name, _)| *name).collect();
+    let classified_planned: BTreeSet<_> = rows
+        .iter()
+        .filter(|row| row[1] == "planned-exact")
+        .map(|row| row[0])
+        .collect();
+    assert_eq!(
+        planned, classified_planned,
+        "runtime typed-refusal inventory drift"
+    );
+}
+
+/// `IfcCompositeCurveOnSurface` carries the same ordered segment geometry as
+/// `IfcCompositeCurve`; the subtype constraint says those segments share a
+/// surface and must not make a valid standalone curve silently unsupported.
+#[test]
+fn a_committed_standalone_composite_curve_on_surface_lowers_exactly() {
+    let path = fixture_root().join("synthetic-surfaces/synthetic_conic_offset_bounded.ifc");
+    let model = StepCodec.read_path(&path).expect("fixture parses");
+    let ids = model.ids_of_type("IFCCOMPOSITECURVEONSURFACE");
+    assert_eq!(ids.len(), 1, "fixture has one standalone curve-on-surface");
+    let scale = units::resolve(&model);
+    let mut session = LoweringSession::new(&model, &scale);
+    let root = lower_representation_item(&mut session, ids[0], Transform::identity())
+        .expect("curve-on-surface lowers through the total dispatcher");
+    let lowered = session.finish(root).expect("session finishes");
+    let GeometryNode::CurveRelation(CurveRelation::Composite { segments }) =
+        lowered.graph.get(root).expect("root exists")
+    else {
+        panic!("curve-on-surface must remain an exact composite relation");
+    };
+    assert_eq!(segments.len(), 1, "authored segment order is preserved");
+    assert!(
+        matches!(
+            lowered.graph.get(segments[0].curve),
+            Some(GeometryNode::CurveRelation(
+                CurveRelation::ParameterCurve { .. }
+            ))
+        ),
+        "the segment stays a surface-parameter p-curve"
+    );
+}
+
 /// Every representation item either lowers or reports a typed reason.
 ///
 /// This is the totality contract. A panic here means the dispatcher met a
@@ -48,7 +170,6 @@ fn every_corpus_representation_item_lowers_or_reports_a_typed_reason() {
     collect_ifc(&fixture_root(), &mut files);
     assert!(files.len() >= 19, "expected the committed corpus");
 
-    let tol = Tolerance::building_scale();
     let mut lowered = 0usize;
     let mut unsupported: BTreeMap<String, usize> = BTreeMap::new();
 
@@ -60,7 +181,7 @@ fn every_corpus_representation_item_lowers_or_reports_a_typed_reason() {
 
         for type_name in IMPLEMENTED.iter().chain(PLANNED.iter().map(|(n, _)| n)) {
             for id in model.ids_of_type(type_name) {
-                let mut session = LoweringSession::new(&model, &scale, tol);
+                let mut session = LoweringSession::new(&model, &scale);
                 match lower_representation_item(&mut session, *id, Transform::identity()) {
                     Ok(_) => lowered += 1,
                     Err(error) => {
@@ -125,8 +246,7 @@ fn every_corpus_representation_item_lowers_or_reports_a_typed_reason() {
 fn planned_families_report_their_documented_reason() {
     let mut files = Vec::new();
     collect_ifc(&fixture_root(), &mut files);
-    let tol = Tolerance::building_scale();
-    let mut checked = 0usize;
+    let mut observed = BTreeSet::new();
 
     for path in &files {
         let Ok(model) = StepCodec.read_path(path) else {
@@ -136,24 +256,23 @@ fn planned_families_report_their_documented_reason() {
 
         for (type_name, detail) in PLANNED {
             for id in model.ids_of_type(type_name) {
-                let mut session = LoweringSession::new(&model, &scale, tol);
+                let mut session = LoweringSession::new(&model, &scale);
                 let error = lower_representation_item(&mut session, *id, Transform::identity())
                     .expect_err("a planned family must not silently succeed");
                 assert!(
                     error.to_string().contains(detail),
                     "{type_name} must report {detail:?}, got: {error}"
                 );
-                checked += 1;
+                observed.insert(*type_name);
             }
         }
     }
 
-    // The corpus now lowers every family it contains, so `checked` is
-    // legitimately 0. Requiring a corpus instance here would make the gate
-    // fail purely because coverage improved. What still must hold is the
-    // contract itself: PLANNED and IMPLEMENTED are disjoint, and every
-    // PLANNED entry carries a non-empty reason a caller can act on.
-    println!("verified {checked} planned-family reports");
+    let planned: BTreeSet<_> = PLANNED.iter().map(|(type_name, _)| *type_name).collect();
+    assert_eq!(
+        observed, planned,
+        "every planned typed refusal needs committed corpus discrimination"
+    );
     for (type_name, detail) in PLANNED {
         assert!(
             !IMPLEMENTED.contains(type_name),
@@ -204,7 +323,7 @@ fn a_nested_failure_names_the_innermost_unlowerable_entity() {
     );
 
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let error = lower_representation_item(&mut session, outer, Transform::identity())
         .expect_err("the spine operand is not lowered yet");
 
@@ -231,10 +350,36 @@ fn a_nested_failure_names_the_innermost_unlowerable_entity() {
 /// the corpus by ENTITY TYPE and asserts that anything claimed implemented
 /// really lowers, and that nothing lowering is left unclaimed.
 #[test]
+fn every_implemented_family_has_committed_corpus_evidence() {
+    let mut files = Vec::new();
+    collect_ifc(&fixture_root(), &mut files);
+    let mut counts = BTreeMap::<&str, usize>::new();
+
+    for path in &files {
+        let Ok(model) = StepCodec.read_path(path) else {
+            continue;
+        };
+        for family in IMPLEMENTED {
+            *counts.entry(family).or_default() += model.ids_of_type(family).len();
+        }
+    }
+
+    let missing: Vec<_> = IMPLEMENTED
+        .iter()
+        .copied()
+        .filter(|family| counts.get(family).copied().unwrap_or_default() == 0)
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "IMPLEMENTED families without committed corpus instances: {missing:?}"
+    );
+}
+
+#[test]
 fn implemented_families_lower_and_lowering_families_are_claimed() {
     let mut files = Vec::new();
     collect_ifc(&fixture_root(), &mut files);
-    let tol = Tolerance::building_scale();
+    let mut successes = BTreeMap::<&str, usize>::new();
 
     for path in &files {
         // Malformed-input fixtures exist to prove the lowerer REJECTS them;
@@ -250,17 +395,35 @@ fn implemented_families_lower_and_lowering_families_are_claimed() {
         let scale = units::resolve(&model);
         for family in IMPLEMENTED {
             for id in model.ids_of_type(family) {
-                let mut session = LoweringSession::new(&model, &scale, tol);
-                let result = lower_representation_item(&mut session, *id, Transform::identity());
-                assert!(
-                    result.is_ok(),
-                    "{family} is listed IMPLEMENTED but {id:?} in {} failed: {}",
-                    path.display(),
-                    result.unwrap_err()
-                );
+                let mut session = LoweringSession::new(&model, &scale);
+                match lower_representation_item(&mut session, *id, Transform::identity()) {
+                    Ok(_) => *successes.entry(family).or_default() += 1,
+                    Err(GeometryError::Unsupported { type_name, .. })
+                        if PLANNED
+                            .iter()
+                            .any(|(planned, _)| planned.eq_ignore_ascii_case(&type_name)) =>
+                    {
+                        // The outer family remains implemented; this instance
+                        // depends on an explicitly planned nested semantic.
+                    }
+                    Err(error) => panic!(
+                        "{family} is listed IMPLEMENTED but {id:?} in {} failed: {error}",
+                        path.display()
+                    ),
+                }
             }
         }
     }
+
+    let without_success: Vec<_> = IMPLEMENTED
+        .iter()
+        .copied()
+        .filter(|family| successes.get(family).copied().unwrap_or_default() == 0)
+        .collect();
+    assert!(
+        without_success.is_empty(),
+        "IMPLEMENTED families without a successful committed lowering: {without_success:?}"
+    );
 }
 
 /// Anything in the corpus that lowers must be CLAIMED in IMPLEMENTED.
@@ -274,7 +437,6 @@ fn implemented_families_lower_and_lowering_families_are_claimed() {
 fn every_family_that_lowers_is_named_in_the_inventory() {
     let mut files = Vec::new();
     collect_ifc(&fixture_root(), &mut files);
-    let tol = Tolerance::building_scale();
     let mut unclaimed: BTreeMap<String, usize> = BTreeMap::new();
 
     for path in &files {
@@ -297,7 +459,7 @@ fn every_family_that_lowers_is_named_in_the_inventory() {
             if claimed {
                 continue;
             }
-            let mut session = LoweringSession::new(&model, &scale, tol);
+            let mut session = LoweringSession::new(&model, &scale);
             if lower_representation_item(&mut session, id, Transform::identity()).is_ok() {
                 *unclaimed.entry(type_name).or_default() += 1;
             }

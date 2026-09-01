@@ -4,7 +4,7 @@
 
 use axiolid_model::{GeometryNode, SolidOperation};
 use axiolid_profile::Profile;
-use ifc_geometry::lower::{lower_extruded_area_solid, lower_profile, LoweredGeometry, Tolerance};
+use ifc_geometry::lower::{lower_extruded_area_solid, lower_profile, LoweredGeometry};
 use ifc_geometry::{Transform, UnitScale};
 use ifc_model::{Entity, EntityId, Model, Value};
 
@@ -99,14 +99,8 @@ fn operation(lowered: &LoweredGeometry) -> &SolidOperation {
 #[test]
 fn extrusion_depth_is_converted_to_metres() {
     let (model, id) = extrusion_model(2500.0, false);
-    let lowered = lower_extruded_area_solid(
-        &model,
-        id,
-        Transform::identity(),
-        &millimetres(),
-        &Tolerance::building_scale(),
-    )
-    .expect("lowers");
+    let lowered = lower_extruded_area_solid(&model, id, Transform::identity(), &millimetres())
+        .expect("lowers");
     match operation(&lowered) {
         SolidOperation::Extrusion { depth, .. } => assert!((depth - 2.5).abs() < 1e-12),
         other => panic!("expected extrusion, got {other:?}"),
@@ -116,13 +110,7 @@ fn extrusion_depth_is_converted_to_metres() {
 #[test]
 fn profile_dimensions_are_converted_to_metres() {
     let (model, _) = extrusion_model(1.0, false);
-    let profile = lower_profile(
-        &model,
-        EntityId(2),
-        &millimetres(),
-        &Tolerance::building_scale(),
-    )
-    .expect("lowers");
+    let profile = lower_profile(&model, EntityId(2), &millimetres()).expect("lowers");
     match profile {
         Profile::Rectangle(rectangle) => {
             assert!((rectangle.x - 0.1).abs() < 1e-12);
@@ -134,7 +122,6 @@ fn profile_dimensions_are_converted_to_metres() {
 
 #[test]
 fn solid_position_is_composed_into_instance_transform() {
-    let tolerance = Tolerance::building_scale();
     let (with_position, with_id) = extrusion_model(1000.0, true);
     let (without_position, without_id) = extrusion_model(1000.0, false);
     let a = lower_extruded_area_solid(
@@ -142,7 +129,6 @@ fn solid_position_is_composed_into_instance_transform() {
         with_id,
         Transform::identity(),
         &millimetres(),
-        &tolerance,
     )
     .expect("lowers");
     let b = lower_extruded_area_solid(
@@ -150,7 +136,6 @@ fn solid_position_is_composed_into_instance_transform() {
         without_id,
         Transform::identity(),
         &millimetres(),
-        &tolerance,
     )
     .expect("lowers");
 
@@ -165,7 +150,7 @@ fn solid_position_is_composed_into_instance_transform() {
 }
 
 #[test]
-fn circles_remain_exact_and_tolerance_independent() {
+fn circles_remain_exact_without_adapter_approximation_policy() {
     let mut model = Model::new();
     model.insert(
         EntityId(1),
@@ -174,22 +159,8 @@ fn circles_remain_exact_and_tolerance_independent() {
             vec![Value::Enum("AREA".into()), Value::Null, Value::Null, n(5.0)],
         ),
     );
-    let fine = lower_profile(
-        &model,
-        EntityId(1),
-        &UnitScale::default(),
-        &Tolerance::building_scale(),
-    )
-    .expect("lowers");
-    let coarse = lower_profile(
-        &model,
-        EntityId(1),
-        &UnitScale::default(),
-        &Tolerance::from_sagitta(0.05).expect("valid"),
-    )
-    .expect("lowers");
-    assert_eq!(fine, coarse, "IFC lowering must not tessellate a circle");
-    match fine {
+    let exact = lower_profile(&model, EntityId(1), &UnitScale::default()).expect("lowers");
+    match exact {
         Profile::Circle(circle) => assert_eq!(circle.radius, 5.0),
         other => panic!("expected exact circle, got {other:?}"),
     }
@@ -226,13 +197,7 @@ fn parameterized_profile_position_is_preserved() {
             ],
         ),
     );
-    let profile = lower_profile(
-        &model,
-        EntityId(4),
-        &millimetres(),
-        &Tolerance::building_scale(),
-    )
-    .expect("lowers");
+    let profile = lower_profile(&model, EntityId(4), &millimetres()).expect("lowers");
     match profile {
         Profile::Derived { transform, .. } => {
             let origin = transform.transform_point2(axiolid_core::Point2::ZERO);

@@ -2,9 +2,7 @@
 
 use axiolid_curve::Curve3;
 use axiolid_model::GeometryNode;
-use ifc_geometry::lower::{
-    lower_product_representation, LoweringSession, RepresentationPurpose, Tolerance,
-};
+use ifc_geometry::lower::{lower_product_representation, LoweringSession, RepresentationPurpose};
 use ifc_geometry::UnitScale;
 use ifc_model::{Entity, EntityId, Model, Value};
 
@@ -102,7 +100,7 @@ fn plan_selection_lowers_curve_items_instead_of_the_body_path() {
         length_to_metres: 1.0,
         angle_to_radians: 1.0,
     };
-    let mut session = LoweringSession::new(&model, &units, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &units);
     let root =
         lower_product_representation(&mut session, EntityId(13), RepresentationPurpose::Plan)
             .expect("selection resolves")

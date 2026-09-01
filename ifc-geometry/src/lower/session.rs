@@ -14,8 +14,9 @@
 //! - a B-rep face set shares one surface across many faces,
 //! - `IfcCsgSolid` nests operations arbitrarily deep.
 //!
-//! The session also carries the three things every lowerer needed to thread
-//! manually before: the model, the resolved unit scale, and the tolerance.
+//! The session also carries the model and resolved unit scale that every
+//! lowerer needs. Approximation policy is deliberately absent: lowering emits
+//! exact neutral geometry, while execution providers own tessellation tolerance.
 //!
 //! # What it guarantees
 //!
@@ -34,7 +35,7 @@ use axiolid_model::{GeometryGraphBuilder, GeometryNode, GraphError, NodeId};
 use ifc_model::{EntityId, Model};
 
 use crate::error::{GeometryError, GeometryResult};
-use crate::lower::{LoweredGeometry, ProvenanceMap, Tolerance};
+use crate::lower::{LoweredGeometry, ProvenanceMap};
 use crate::slots::Slots;
 use crate::transform::Transform;
 use crate::units::UnitScale;
@@ -100,7 +101,6 @@ impl MemoKey {
 pub struct LoweringSession<'a> {
     model: &'a Model,
     units: &'a UnitScale,
-    tolerance: Tolerance,
     limits: SessionLimits,
     builder: GeometryGraphBuilder,
     nodes: usize,
@@ -111,21 +111,15 @@ pub struct LoweringSession<'a> {
 
 impl<'a> LoweringSession<'a> {
     /// Open a session with the default recursion budget.
-    pub fn new(model: &'a Model, units: &'a UnitScale, tolerance: Tolerance) -> Self {
-        Self::with_limits(model, units, tolerance, SessionLimits::default())
+    pub fn new(model: &'a Model, units: &'a UnitScale) -> Self {
+        Self::with_limits(model, units, SessionLimits::default())
     }
 
     /// Open a session with an explicit recursion budget.
-    pub fn with_limits(
-        model: &'a Model,
-        units: &'a UnitScale,
-        tolerance: Tolerance,
-        limits: SessionLimits,
-    ) -> Self {
+    pub fn with_limits(model: &'a Model, units: &'a UnitScale, limits: SessionLimits) -> Self {
         Self {
             model,
             units,
-            tolerance,
             limits,
             builder: GeometryGraphBuilder::new(),
             nodes: 0,
@@ -143,14 +137,6 @@ impl<'a> LoweringSession<'a> {
     /// The resolved unit scale for this model.
     pub fn units(&self) -> &'a UnitScale {
         self.units
-    }
-
-    /// The tolerance policy for this session.
-    ///
-    /// Returned by value because [`Tolerance`] is `Copy`; handing back a
-    /// borrow would force callers that also need `&mut self` to clone it.
-    pub fn tolerance(&self) -> Tolerance {
-        self.tolerance
     }
 
     /// Number of nodes appended so far.

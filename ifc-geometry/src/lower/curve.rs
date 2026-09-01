@@ -91,9 +91,10 @@ fn build(
             surface_curve(session, id, frame)
         }
         "IFCTRIMMEDCURVE" => trimmed(session, id, frame),
-        "IFCCOMPOSITECURVE" | "IFCBOUNDARYCURVE" | "IFCOUTERBOUNDARYCURVE" => {
-            composite(session, id, frame)
-        }
+        "IFCCOMPOSITECURVE"
+        | "IFCCOMPOSITECURVEONSURFACE"
+        | "IFCBOUNDARYCURVE"
+        | "IFCOUTERBOUNDARYCURVE" => composite(session, id, frame),
         "IFCBSPLINECURVEWITHKNOTS" | "IFCRATIONALBSPLINECURVEWITHKNOTS" => {
             bspline(session, id, frame)
         }

@@ -27,7 +27,7 @@ code.
 
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `ifc-geometry` | 25,951 | 91 | 6 | 31 | <span class="status-partial">Partial</span> |
+| `ifc-geometry` | 26,012 | 89 | 5 | 31 | <span class="status-partial">Partial</span> |
 | `ifc-style` | 3,322 | 31 | 0 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-template-catalog` | 2,705 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 2,417 | 29 | 14 | 2 | <span class="status-implemented">Implemented</span> |
@@ -195,7 +195,6 @@ The dispatcher keeps coverage as data so it is auditable from one table
 | `IfcAdvancedBrepWithVoids` | <span class="status-implemented">Implemented</span> |
 | `IfcHalfSpaceSolid` | <span class="status-implemented">Implemented</span> |
 | `IfcBoxedHalfSpace` | <span class="status-implemented">Implemented</span> |
-| `IfcPolygonalBoundedHalfSpace` | <span class="status-implemented">Implemented</span> |
 | `IfcTriangulatedFaceSet` | <span class="status-implemented">Implemented</span> |
 | `IfcPolygonalFaceSet` | <span class="status-implemented">Implemented</span> |
 | `IfcCsgSolid` | <span class="status-implemented">Implemented</span> |
@@ -222,6 +221,7 @@ The dispatcher keeps coverage as data so it is auditable from one table
 | `IfcPolyline` | <span class="status-implemented">Implemented</span> |
 | `IfcIndexedPolyCurve` | <span class="status-implemented">Implemented</span> |
 | `IfcCompositeCurve` | <span class="status-implemented">Implemented</span> |
+| `IfcCompositeCurveOnSurface` | <span class="status-implemented">Implemented</span> |
 | `IfcBoundaryCurve` | <span class="status-implemented">Implemented</span> |
 | `IfcOuterBoundaryCurve` | <span class="status-implemented">Implemented</span> |
 | `IfcTrimmedCurve` | <span class="status-implemented">Implemented</span> |
@@ -244,7 +244,9 @@ The dispatcher keeps coverage as data so it is auditable from one table
 | `IfcCurveBoundedSurface` | <span class="status-implemented">Implemented</span> |
 | `IfcBSplineSurfaceWithKnots` | <span class="status-implemented">Implemented</span> |
 | `IfcRationalBSplineSurfaceWithKnots` | <span class="status-implemented">Implemented</span> |
-| `IfcArbitraryOpenProfileDef` | <span class="status-partial">Planned</span> — open profiles: the neutral profile model represents closed contours only |
+| `IfcPolygonalBoundedHalfSpace` | <span class="status-partial">Planned</span> — polygonal boundary cannot be discarded; exact bounded-half-space support is required |
+| `IfcPointOnCurve` | <span class="status-partial">Planned</span> — exact point evaluation reference is not yet represented |
+| `IfcPointOnSurface` | <span class="status-partial">Planned</span> — exact surface-parameter point is not yet represented |
 
 <!-- CAPABILITIES:GEOMETRY:END -->
 
@@ -269,27 +271,28 @@ a section without them has the wrong area and the wrong section modulus.
 
 | Profile family | Status |
 | --- | --- |
-| `IfcRectangleProfileDef` | <span class="status-implemented">Implemented</span> |
-| `IfcRoundedRectangleProfileDef` | <span class="status-implemented">Implemented</span> |
-| `IfcRectangleHollowProfileDef` | <span class="status-implemented">Implemented</span> |
-| `IfcCircleProfileDef` | <span class="status-implemented">Implemented</span> |
-| `IfcCircleHollowProfileDef` | <span class="status-implemented">Implemented</span> |
 | `IfcArbitraryClosedProfileDef` | <span class="status-implemented">Implemented</span> |
 | `IfcArbitraryProfileDefWithVoids` | <span class="status-implemented">Implemented</span> |
-| `IfcIShapeProfileDef` | <span class="status-implemented">Implemented</span> |
 | `IfcAsymmetricIShapeProfileDef` | <span class="status-implemented">Implemented</span> |
-| `IfcLShapeProfileDef` | <span class="status-implemented">Implemented</span> |
-| `IfcTShapeProfileDef` | <span class="status-implemented">Implemented</span> |
-| `IfcUShapeProfileDef` | <span class="status-implemented">Implemented</span> |
-| `IfcCShapeProfileDef` | <span class="status-implemented">Implemented</span> |
-| `IfcZShapeProfileDef` | <span class="status-implemented">Implemented</span> |
-| `IfcTrapeziumProfileDef` | <span class="status-implemented">Implemented</span> |
-| `IfcEllipseProfileDef` | <span class="status-implemented">Implemented</span> |
-| `IfcCompositeProfileDef` | <span class="status-implemented">Implemented</span> |
-| `IfcDerivedProfileDef` | <span class="status-implemented">Implemented</span> |
-| `IfcMirroredProfileDef` | <span class="status-implemented">Implemented</span> |
 | `IfcCenterLineProfileDef` | <span class="status-implemented">Implemented</span> |
-| `IfcArbitraryOpenProfileDef` | <span class="status-partial">Planned</span> — open profiles: the neutral profile model represents closed contours only |
+| `IfcCircleHollowProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcCircleProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcCompositeProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcCShapeProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcDerivedProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcEllipseProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcIShapeProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcLShapeProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcMirroredProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcRectangleHollowProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcRectangleProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcRoundedRectangleProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcTShapeProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcTrapeziumProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcUShapeProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcZShapeProfileDef` | <span class="status-implemented">Implemented</span> |
+| `IfcArbitraryOpenProfileDef` | <span class="status-partial">Planned</span> — open profiles require a neutral exact open-path profile without implied area or width |
+| `IfcProfileDef` | <span class="status-partial">Planned</span> — generic profile declaration carries no concrete geometry to lower |
 
 <!-- CAPABILITIES:PROFILE:END -->
 

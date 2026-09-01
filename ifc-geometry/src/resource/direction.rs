@@ -29,14 +29,6 @@ use crate::error::{GeometryError, GeometryResult};
 use crate::slots::Slots;
 use ifc_model::{Entity, EntityId, Model};
 
-/// Below this length a direction carries no orientation information.
-///
-/// Matches the tolerance `crate::transform` normalizes with, so a direction
-/// this module accepts is one `Transform::from_axes` can also use. Two
-/// different thresholds would mean a direction that reads fine here still
-/// fails there, with a less informative error.
-const MIN_LENGTH: f64 = 1e-12;
-
 /// Attribute slots, absolute STEP positions including inherited attributes.
 mod slot {
     /// `IfcDirection` (supertype `IfcGeometricRepresentationItem` declares no
@@ -115,13 +107,32 @@ impl<'m> Direction<'m> {
     /// three subsystems later as missing geometry.
     pub fn unit(&self) -> GeometryResult<[f64; 3]> {
         let v = self.ratios_3d()?;
-        let len = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
-        if len < MIN_LENGTH {
+        let scale = v
+            .iter()
+            .map(|component| component.abs())
+            .fold(0.0, f64::max);
+        if scale == 0.0 {
             return Err(self
                 .slots
                 .degenerate("DirectionRatios are all zero, so there is no direction"));
         }
-        Ok([v[0] / len, v[1] / len, v[2] / len])
+        if !scale.is_finite() {
+            return Err(self
+                .slots
+                .degenerate("DirectionRatios must be finite before normalization"));
+        }
+
+        // Scale before squaring: finite ratios near f64::MAX otherwise overflow
+        // their norm to infinity and collapse to a false zero direction.
+        let scaled = [v[0] / scale, v[1] / scale, v[2] / scale];
+        let length = (scaled[0] * scaled[0] + scaled[1] * scaled[1] + scaled[2] * scaled[2]).sqrt();
+        let unit = [scaled[0] / length, scaled[1] / length, scaled[2] / length];
+        if !unit.iter().all(|component| component.is_finite()) {
+            return Err(self
+                .slots
+                .degenerate("DirectionRatios did not derive a finite unit direction"));
+        }
+        Ok(unit)
     }
 }
 
@@ -257,11 +268,19 @@ mod tests {
         assert!(err.to_string().contains("#3"), "got: {err}");
     }
 
-    /// Not exactly zero, but below any meaningful length: same failure mode.
+    /// Ratios are scale-free: any finite non-zero scale carries orientation.
     #[test]
-    fn near_zero_direction_is_degenerate_too() {
-        let e = direction_entity(&[1e-20, 0.0, 0.0]);
-        assert!(Direction::new(EntityId(1), &e).unit().is_err());
+    fn finite_extreme_ratios_normalize_without_underflow_or_overflow() {
+        let tiny = direction_entity(&[1e-300, 0.0, 0.0]);
+        assert_eq!(
+            Direction::new(EntityId(1), &tiny).unit().unwrap(),
+            [1.0, 0.0, 0.0]
+        );
+
+        let huge = direction_entity(&[f64::MAX, f64::MAX, 0.0]);
+        let unit = Direction::new(EntityId(2), &huge).unit().unwrap();
+        let expected = 1.0 / 2.0_f64.sqrt();
+        assert!(close(unit, [expected, expected, 0.0]));
     }
 
     #[test]

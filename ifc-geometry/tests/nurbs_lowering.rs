@@ -4,7 +4,7 @@ use axiolid_core::Point3;
 use axiolid_curve::{Curve3, KnotSpec};
 use axiolid_model::GeometryNode;
 use axiolid_surface::Surface;
-use ifc_geometry::lower::{lower_curve_node, lower_surface_node, LoweringSession, Tolerance};
+use ifc_geometry::lower::{lower_curve_node, lower_surface_node, LoweringSession};
 use ifc_geometry::{Transform, UnitScale};
 use ifc_model::{Codec, EntityId};
 use std::path::PathBuf;
@@ -44,14 +44,14 @@ fn invalid_base_spline_model() -> ifc_model::Model {
 }
 
 fn lower_curve(model: &ifc_model::Model, id: u64) -> ifc_geometry::lower::LoweredGeometry {
-    let mut session = LoweringSession::new(model, &UNITS, Tolerance::building_scale());
+    let mut session = LoweringSession::new(model, &UNITS);
     let root = lower_curve_node(&mut session, EntityId(id), frame())
         .expect("explicit-knot B-spline curve lowers");
     session.finish(root).expect("geometry graph closes")
 }
 
 fn lower_surface(model: &ifc_model::Model, id: u64) -> ifc_geometry::lower::LoweredGeometry {
-    let mut session = LoweringSession::new(model, &UNITS, Tolerance::building_scale());
+    let mut session = LoweringSession::new(model, &UNITS);
     let root = lower_surface_node(&mut session, EntityId(id), frame())
         .expect("explicit-knot B-spline surface lowers");
     session.finish(root).expect("geometry graph closes")
@@ -174,13 +174,13 @@ fn explicit_knot_polynomial_subtypes_lower_without_inventing_weights() {
 fn convention_only_base_splines_are_typed_unsupported() {
     let model = invalid_base_spline_model();
 
-    let mut curve_session = LoweringSession::new(&model, &UNITS, Tolerance::building_scale());
+    let mut curve_session = LoweringSession::new(&model, &UNITS);
     let curve_error = lower_curve_node(&mut curve_session, EntityId(12), frame())
         .expect_err("convention-only curve must not invent missing knots");
     assert!(curve_error.is_unsupported(), "got: {curve_error}");
     assert_eq!(curve_error.entity(), Some(EntityId(12)));
 
-    let mut surface_session = LoweringSession::new(&model, &UNITS, Tolerance::building_scale());
+    let mut surface_session = LoweringSession::new(&model, &UNITS);
     let surface_error = lower_surface_node(&mut surface_session, EntityId(22), frame())
         .expect_err("convention-only surface must not invent missing knots");
     assert!(surface_error.is_unsupported(), "got: {surface_error}");

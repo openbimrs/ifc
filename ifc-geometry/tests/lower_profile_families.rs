@@ -4,8 +4,7 @@
 //! composite/derived/mirrored forms.
 
 use axiolid_profile::{Profile, SectionProfile};
-use ifc_geometry::lower::profile::lower_profile;
-use ifc_geometry::lower::Tolerance;
+use ifc_geometry::lower::profile::{lower_profile, IMPLEMENTED_PROFILES, PLANNED_PROFILES};
 use ifc_geometry::units;
 use ifc_model::{Codec, EntityId, Model};
 use ifc_step::StepCodec;
@@ -31,8 +30,39 @@ fn profile_named(model: &Model, type_name: &str) -> Profile {
         })
         .unwrap_or_else(|| panic!("fixture has a {type_name}"));
     let scale = units::resolve(model);
-    lower_profile(model, id, &scale, &Tolerance::building_scale())
-        .unwrap_or_else(|e| panic!("{type_name} must lower: {e}"))
+    lower_profile(model, id, &scale).unwrap_or_else(|e| panic!("{type_name} must lower: {e}"))
+}
+
+/// The schema owns the profile-family inventory; adding a concrete subtype
+/// must force either an exact implementation or a named neutral blocker.
+#[test]
+fn every_concrete_ifc4_profile_family_has_an_executable_disposition() {
+    let schema = ifc_schema::ifc4();
+    let expected: std::collections::BTreeSet<_> = schema
+        .entity_names()
+        .filter(|name| {
+            schema.is_a(name, "IfcProfileDef")
+                && !schema.entity(name).expect("known entity").abstract_
+        })
+        .map(str::to_ascii_uppercase)
+        .collect();
+    let implemented: std::collections::BTreeSet<_> = IMPLEMENTED_PROFILES
+        .iter()
+        .map(|name| (*name).to_owned())
+        .collect();
+    let planned: std::collections::BTreeSet<_> = PLANNED_PROFILES
+        .iter()
+        .map(|(name, detail)| {
+            assert!(!detail.is_empty(), "{name} has no neutral blocker");
+            (*name).to_owned()
+        })
+        .collect();
+    assert!(
+        implemented.is_disjoint(&planned),
+        "profile cannot be implemented and planned"
+    );
+    let actual: std::collections::BTreeSet<_> = implemented.union(&planned).cloned().collect();
+    assert_eq!(actual, expected, "profile disposition drift");
 }
 
 /// The I-section keeps its fillet radius and flange edge radius.
@@ -328,7 +358,7 @@ fn a_profile_reference_cycle_is_refused_rather_than_overflowing() {
         ),
     );
     let scale = units::resolve(&model);
-    let error = lower_profile(&model, id, &scale, &Tolerance::building_scale())
+    let error = lower_profile(&model, id, &scale)
         .expect_err("a one-point path has no direction to offset along");
     assert!(
         format!("{error:?}").contains("fewer than 2"),
@@ -411,7 +441,7 @@ fn a_one_point_center_line_is_refused() {
         ),
     );
     let scale = units::resolve(&model);
-    let error = lower_profile(&model, id, &scale, &Tolerance::building_scale())
+    let error = lower_profile(&model, id, &scale)
         .expect_err("a one-point path has no direction to offset along");
     assert!(
         format!("{error:?}").contains("fewer than 2"),

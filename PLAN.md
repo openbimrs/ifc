@@ -1,7 +1,7 @@
 # IFC package implementation plan
 
 Status: active implementation; foundations and several domain slices are shipped
-Last updated: 2026-08-31
+Last updated: 2026-09-01
 
 This file is implementation state, not ambient instructions. Read
 `AGENTS.md` first. Read this plan only for roadmap work or to locate a blocked
@@ -145,12 +145,10 @@ secrets, transient process IDs, or unverifiable performance claims.
   corrected rather than preserved for compatibility.
 - The neutral-DAG seam is formalized by ADR 0009. The metadata-backed package
   architecture gate is authoritative; local manifest scans are smoke tests only.
-- `ifc-geometry::lower::Tolerance` remains in an exact-profile API but is unused.
-  Before public stabilization, remove it or give it a real non-tessellation
-  semantic; do not carry a compatibility parameter in a pre-1.0 API by habit.
-- Cross-resource views can duplicate slot interpretation. Geometry-affecting
-  material/profile/context slots need named IFC-side input modules and tests,
-  while semantic crates keep their own semantic projections.
+- The exact IFC adapter no longer exposes its obsolete `Tolerance` or legacy
+  `kernel` compatibility facade; approximation and execution remain provider concerns.
+- Geometry-only material profile/layer usage views now exist in `ifc-geometry`;
+  semantic material identity and composition remain in `ifc-material`.
 - Empty public modules would create false API promises. Scaffold children stay
   crate-private until implemented.
 - Shared master contains concurrent geometry edits. Never stage or rewrite those

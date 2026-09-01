@@ -212,9 +212,9 @@ and check it off only after the proof runs.
     shared edges by comparing floats -- inventing information the file never
     carried. `PolygonMesh` keeps authored n-gons and holes verbatim so the
     fill rule and tolerance stay with the kernel.
-- [x] `LOW-HALFSPACE` - half spaces as boolean cutting tools
-  - Scope: the half-space families of the solid parent task; that parent
-    stays open for advanced brep and surface-curve sweeps.
+- [ ] `LOW-HALFSPACE` - exact half spaces as boolean cutting tools
+  - Progress: unbounded and boxed half spaces lower exactly; polygonally bounded
+    half space is typed unsupported pending a neutral positioned-bound contract.
   - Proof: `src/lower/halfspace/tests.rs` (6 tests), `tests/lower_halfspace.rs`
     (3 tests over `issue_1155_halfspace_flyaway.ifc`), corpus census 67 -> 72
     lowered, and 6/6 mutation probes.
@@ -228,10 +228,10 @@ and check it off only after the proof runs.
     through cuts away the half that should have been kept, and no geometric
     check catches it -- the boolean still evaluates and the mesh is still
     watertight.
-  - Decision: `IfcBoxedHalfSpace` and `IfcPolygonalBoundedHalfSpace` lower to
-    their underlying half space. Both bounds are clipping HINTS; the neutral
-    node carries none, and building a prism from an unlowered 2D boundary curve
-    would invent geometry. Recorded here rather than approximated.
+  - Decision: `IfcBoxedHalfSpace.Enclosure` is a computational search enclosure
+    and does not change the Boolean result, so the neutral half-space is exact.
+    `IfcPolygonalBoundedHalfSpace.PolygonalBoundary` does change the effective
+    cutter and is typed unsupported until a neutral positioned-bound contract exists.
   - Note: a surviving mutant showed the renormalization after the world
     transform is unreachable with a unit-basis frame, because
     `axis_placement_transform` already normalizes. The test now composes a

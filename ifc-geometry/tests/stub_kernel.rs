@@ -3,7 +3,7 @@
 //! End-to-end proof that the IFC layer emits a backend-neutral geometry DAG.
 
 use axiolid_model::{GeometryNode, SolidOperation};
-use ifc_geometry::lower::{lower_extruded_area_solid, Tolerance};
+use ifc_geometry::lower::lower_extruded_area_solid;
 use ifc_geometry::resource::mapped::MappingWalker;
 use ifc_geometry::{rules, select, Transform, UnitScale};
 use ifc_model::{Entity, EntityId, Model, Value};
@@ -56,7 +56,6 @@ fn full_ifc_pipeline_emits_exact_neutral_nodes() {
         EntityId(3),
         Transform::identity(),
         &UnitScale::default(),
-        &Tolerance::building_scale(),
     )
     .expect("lowering succeeds without a backend");
 
@@ -103,14 +102,8 @@ fn units_are_resolved_before_the_neutral_graph() {
         length_to_metres: 1e-3,
         angle_to_radians: 1.0,
     };
-    let lowered = lower_extruded_area_solid(
-        &model,
-        EntityId(3),
-        Transform::identity(),
-        &scale,
-        &Tolerance::building_scale(),
-    )
-    .expect("lowers");
+    let lowered = lower_extruded_area_solid(&model, EntityId(3), Transform::identity(), &scale)
+        .expect("lowers");
     let op = match lowered.graph.get(lowered.root).expect("root") {
         GeometryNode::Instance(instance) => lowered.graph.get(instance.source).expect("op"),
         other => panic!("expected instance, got {other:?}"),

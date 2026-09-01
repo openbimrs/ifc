@@ -11,7 +11,7 @@
 
 use axiolid_model::{GeometryNode, SolidOperation};
 use axiolid_profile::Profile;
-use ifc_geometry::lower::{lower_extruded_area_solid, LoweredGeometry, Tolerance};
+use ifc_geometry::lower::{lower_extruded_area_solid, LoweredGeometry};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
 use ifc_model::Codec;
@@ -68,7 +68,6 @@ fn the_wall_fixture_lowers_to_an_extrusion_with_the_documented_numbers() {
     let path = fixture("ifclite-geometry/issue_098_wall_W.ifc");
     let model = StepCodec.read_path(&path).expect("fixture parses");
     let scale = units::resolve(&model);
-    let tol = Tolerance::building_scale();
 
     let id = model
         .ids_of_type("IFCEXTRUDEDAREASOLID")
@@ -76,7 +75,7 @@ fn the_wall_fixture_lowers_to_an_extrusion_with_the_documented_numbers() {
         .copied()
         .expect("the wall file contains extrusions");
 
-    let lowered = lower_extruded_area_solid(&model, id, Transform::identity(), &scale, &tol)
+    let lowered = lower_extruded_area_solid(&model, id, Transform::identity(), &scale)
         .expect("a real extrusion must lower");
 
     let (profile, direction, depth) = extrusion(&lowered);
@@ -101,7 +100,6 @@ fn every_extrusion_in_the_corpus_lowers_or_reports_why() {
     collect_ifc(&dir, &mut files);
     assert!(files.len() >= 19, "expected the committed corpus");
 
-    let tol = Tolerance::building_scale();
     let (mut ok, mut failed) = (0usize, 0usize);
     let mut reasons: Vec<String> = Vec::new();
 
@@ -111,7 +109,7 @@ fn every_extrusion_in_the_corpus_lowers_or_reports_why() {
         };
         let scale = units::resolve(&model);
         for id in model.ids_of_type("IFCEXTRUDEDAREASOLID") {
-            match lower_extruded_area_solid(&model, *id, Transform::identity(), &scale, &tol) {
+            match lower_extruded_area_solid(&model, *id, Transform::identity(), &scale) {
                 Ok(lowered) => {
                     let (_profile, _direction, depth) = extrusion(&lowered);
                     assert!(depth > 0.0, "{path:?} {id}: non-positive depth");
@@ -171,7 +169,6 @@ fn a_hollow_rectangle_section_keeps_its_void() {
     let path = fixture("ifclite-geometry/issue_1155_halfspace_flyaway.ifc");
     let model = StepCodec.read_path(&path).expect("fixture parses");
     let scale = units::resolve(&model);
-    let tol = Tolerance::building_scale();
 
     let id = model
         .ids_of_type("IFCRECTANGLEHOLLOWPROFILEDEF")
@@ -179,7 +176,7 @@ fn a_hollow_rectangle_section_keeps_its_void() {
         .copied()
         .expect("fixture has a hollow rectangle");
 
-    let profile = ifc_geometry::lower::lower_profile(&model, id, &scale, &tol)
+    let profile = ifc_geometry::lower::lower_profile(&model, id, &scale)
         .expect("a 250x250x7 box section is valid geometry");
 
     match base_profile(&profile) {

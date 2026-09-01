@@ -1,7 +1,7 @@
 # ifc-geometry implementation plan
 
 Status: active implementation on a shared lowering session; BRep/shell, tessellated, swept/boolean, elementary and bounded surfaces, and major curve/representation-selection paths lower to neutral Axiolid graphs.
-Last updated: 2026-08-31
+Last updated: 2026-09-01
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
 record blockers/decisions under it, and check it off only with evidence.
@@ -52,9 +52,11 @@ parallel placeholders.
   - Evidence: 7 unit tests, 3/3 mutation probes, and a differential run against
     `apps/open-signs` showing 127 placements with 0 disagreements.
 
-- [ ] `GEOM-CONTRACT` - agree validated direction/axis invariants with `axiolid-model`
-  - Contract: axes, normals, and orientation fields become finite non-zero unit directions; displacement, derivative, scale, and other magnitude-bearing vectors are never normalized implicitly.
-  - Evidence: contract docs plus non-unit, zero-vector, and magnitude-preservation tests on both sides.
+- [x] `GEOM-CONTRACT` - enforce validated direction/frame invariants at the IFC-to-Axiolid boundary
+  - Contract: axes and normals become finite non-zero unit directions; surface
+    normals use inverse-transpose affine transformation; magnitude-bearing
+    vectors are not normalized.
+  - Evidence: scale-safe extreme/zero/non-finite direction tests, base-axis tests, checked neutral-frame tests, and both feature columns.
 - [x] `GEOM-SESSION` - introduce one recursive lowering session and shared graph builder
   - Evidence: `cargo test -p ifc-geometry` (413 passing) plus 4/4 mutation
     probes; `tests/lower_session.rs` proves boolean composition across families,
@@ -63,10 +65,10 @@ parallel placeholders.
   - Decision: `GEOM-CONTRACT` was not an actual prerequisite; the session is
     agnostic to direction normalization, which already lives in
     `resource::direction`.
-- [ ] `GEOM-SEAM` - finish neutral-DAG migration; remove stale kernel-trait wording and obsolete adapter tessellation tolerance
-  - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+- [x] `GEOM-SEAM` - remove stale kernel compatibility and adapter-owned approximation policy
+  - Evidence: deleted compatibility/tolerance modules, public API regression, package tests, and clippy in both feature columns.
 - [ ] `GEOM-INPUT` - add cross-resource input views without importing semantic domain crates
-  - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+  - Progress: representation/product and geometry-only material usage projections are implemented; profile/topology slices remain.
 - [ ] `GEOM-CTX` - select shape representations and compose geometric contexts/precision
   - Progress: explicit body/plan selection and geometric-context inheritance are
     implemented; the broader GEOM-CONTRACT/INPUT plan items remain open.
@@ -116,18 +118,9 @@ parallel placeholders.
     build and pass clippy; 6/6 mutation probes caught.
   - Decision: `GEOM-INPUT` was not required. The tessellated views already
     existed under `solid::tessellated` and depend only on `error` and `slots`.
-- [x] `GEOM-SOLID` - complete booleans, halfspaces, CSG, and swept-disk families
-  - Requires: `GEOM-SESSION`.
-  - Decision: exact open-profile and curved-surface coverage remains separately
-    tracked by the pending profile and surface work items.
-  - Half spaces: DONE. `src/lower/halfspace.rs`, owned by
-    `src/lower/PLAN.md:LOW-HALFSPACE`. Evidence: 9 tests, corpus census
-    67 -> 72, 6/6 mutation probes. `IFCBOOLEANCLIPPINGRESULT` left the
-    unsupported set as a side effect: its cutting tool now lowers.
-  - Evidence: booleans, half spaces, CSG solids/primitives, swept disks,
-    surface-curve sweeps, and sectioned spines lower through exact neutral
-    nodes; focused tests and the generated dispatcher table cover every listed
-    family. Open-profile support remains tracked as pending work.
+- [ ] `GEOM-SOLID` - complete exact solid families
+  - Progress: booleans, CSG primitives/solids, swept disks, tapered/fixed-reference sweeps, sectioned spines, surface models, advanced/faceted B-reps with voids, and unbounded/boxed half spaces lower exactly.
+  - Blocker: `IfcPolygonalBoundedHalfSpace` remains typed unsupported until the neutral model preserves its positioned polygonal cutting boundary; lowering it as unbounded would change Boolean semantics.
 - [x] `GEOM-MAP` - preserve mapped-item instancing with cycle/depth limits
   - Evidence: 11 mapped-item tests over real fixtures, 6/6 mutation probes,
     isolated build, and crate clippy.
@@ -140,11 +133,14 @@ parallel placeholders.
 - [x] `GEOM-PLAN-SELECT` - intersect plan context and drawable identifier
   - Evidence: `tests/representation_context.rs` (18 passing) including two
     ArchiCAD bounding-box regressions; measured against a real export.
-- [ ] `GEOM-CENSUS` - keep declaration and real-corpus lowering coverage executable
-  - Contract: record one implementation owner per unique declaration separately from many-to-many IFC resource memberships; do not double-count `IfcSameAxis2Placement`, `IfcSameCartesianPoint`, `IfcSameDirection`, or `IfcSameValue`.
-  - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+- [x] `GEOM-CENSUS` - reconcile concrete IFC4 declarations, ownership, dispatch, corpus, and behavior
+  - Evidence: executable representation-item disposition ledger plus exact/planned corpus gates and profile-family census.
+  - Mutation proof: declaration, corpus-instance, curve-semantic, and polygonal-bound mutations each failed with exit 101.
 
 ## Completion log
+
+`GEOM-CONTRACT` / `GEOM-SEAM` / `GEOM-CENSUS` - scale-safe frame and direction
+contracts and executable IFC4 ledgers. `./scripts/gate.sh` passed on 2026-09-01.
 
 `GEOM-PLACE-API` - `cargo test -p ifc-geometry --no-default-features --lib placement`
 7 passing; `--test kernel_free_build` 3 passing. Moved
@@ -167,7 +163,7 @@ cache was being discarded once per product.
 `cargo test -p openbim-ifc --test thin_build` (8 passing), both feature columns
 green; 4/4 mutation probes caught - the neutral crates are optional behind the
 default-on `lowering` feature. Measured 26 crates with lowering, 17 without;
-all eight `axiolid-*` crates and `glam` drop out. Only `lower`, `kernel`,
+all eight `axiolid-*` crates and `glam` drop out. Only `lower`,
 `Transform::to_geom` and the `IfcBooleanOperator` conversion may name them.
 Decision: a feature, not a crate split. `lower` is already a leaf module -- no
 other module references it -- so the separation holds structurally and a gate

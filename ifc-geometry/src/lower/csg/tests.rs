@@ -6,7 +6,6 @@ use ifc_model::{EntityId, Model, Value};
 
 use super::{lower_csg_primitive_node, lower_swept_disk_node};
 use crate::lower::session::LoweringSession;
-use crate::lower::Tolerance;
 use crate::solid::testkit::{entity, n, r};
 use crate::transform::Transform;
 use crate::units::UnitScale;
@@ -48,7 +47,7 @@ fn placed_block() -> Model {
 fn a_block_keeps_local_extents_and_carries_its_placement_separately() {
     let model = placed_block();
     let scale = millimetres();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_csg_primitive_node(&mut session, EntityId(3), Transform::identity())
         .expect("the block must lower");
     let lowered = session.finish(node).expect("finishes");
@@ -102,7 +101,7 @@ fn swept_disk(inner: Option<f64>, start: Option<f64>, end: Option<f64>) -> Model
 fn swept_disk_radii_convert_and_the_pipe_bore_survives() {
     let model = swept_disk(Some(45.0), None, None);
     let scale = millimetres();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_swept_disk_node(&mut session, EntityId(4), Transform::identity())
         .expect("the swept disk must lower");
     let lowered = session.finish(node).expect("finishes");
@@ -135,7 +134,7 @@ fn swept_disk_radii_convert_and_the_pipe_bore_survives() {
 fn a_half_open_parameter_range_is_refused() {
     let model = swept_disk(None, Some(0.0), None);
     let scale = millimetres();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let error = lower_swept_disk_node(&mut session, EntityId(4), Transform::identity())
         .expect_err("one-sided trims must not be guessed at");
     assert_eq!(error.entity(), Some(EntityId(4)));
@@ -155,7 +154,7 @@ fn a_half_open_parameter_range_is_refused() {
 fn swept_disk_trim_parameters_follow_the_directrix_parameterisation() {
     let model = swept_disk(None, Some(0.0), Some(2.0));
     let scale = millimetres();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node =
         lower_swept_disk_node(&mut session, EntityId(4), Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
@@ -180,7 +179,7 @@ fn swept_disk_trim_parameters_follow_the_directrix_parameterisation() {
 fn an_inner_radius_not_smaller_than_the_outer_is_refused() {
     let model = swept_disk(Some(50.0), None, None);
     let scale = millimetres();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let error = lower_swept_disk_node(&mut session, EntityId(4), Transform::identity())
         .expect_err("inner >= outer has no volume and must be reported");
     assert_eq!(error.entity(), Some(EntityId(4)));
@@ -193,7 +192,7 @@ fn the_directrix_is_present_in_the_graph_as_a_curve() {
 
     let model = swept_disk(None, None, None);
     let scale = millimetres();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node =
         lower_swept_disk_node(&mut session, EntityId(4), Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");

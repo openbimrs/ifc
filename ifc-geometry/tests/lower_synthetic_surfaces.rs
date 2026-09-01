@@ -15,11 +15,11 @@
 //! entirely, and the generator is committed so the files are reproducible
 //! rather than opaque blobs.
 
-use axiolid_model::{CurveRelation, GeometryNode, SurfaceRelation};
+use axiolid_model::{CurveRelation, GeometryNode, MasterRepresentation, SurfaceRelation};
 use axiolid_scalar::surface::Patch;
 use axiolid_scalar::tessellate::{tessellate_patch, TessellationBudget};
 use axiolid_surface::Surface;
-use ifc_geometry::lower::{lower_surface_node, LoweringSession, Tolerance};
+use ifc_geometry::lower::{lower_representation_item, lower_surface_node, LoweringSession};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
 use ifc_model::{Codec, EntityId, Model};
@@ -37,11 +37,19 @@ fn fixture(name: &str) -> Model {
 
 fn lower_one(model: &Model, id: EntityId) -> GeometryNode {
     let scale = units::resolve(model);
-    let mut session = LoweringSession::new(model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(model, &scale);
     let node = lower_surface_node(&mut session, id, Transform::identity())
         .unwrap_or_else(|e| panic!("surface {id:?} must lower: {e}"));
     let lowered = session.finish(node).expect("session finishes");
     lowered.graph.get(lowered.root).expect("root node").clone()
+}
+
+fn lower_item(model: &Model, id: EntityId) -> ifc_geometry::lower::LoweredGeometry {
+    let scale = units::resolve(model);
+    let mut session = LoweringSession::new(model, &scale);
+    let root = lower_representation_item(&mut session, id, Transform::identity())
+        .unwrap_or_else(|e| panic!("item {id:?} must lower: {e}"));
+    session.finish(root).expect("session finishes")
 }
 
 fn only(model: &Model, kind: &str) -> EntityId {
@@ -270,12 +278,54 @@ fn the_curve_bounded_plane_keeps_outer_then_hole() {
     }
 }
 
+/// Exact curve subtypes in the committed surface corpus keep their distinct
+/// neutral semantics rather than merely passing dispatch.
+#[test]
+fn offset_intersection_and_seam_curve_semantics_survive_corpus_lowering() {
+    let model = fixture("synthetic_conic_offset_bounded.ifc");
+
+    let offset = lower_item(&model, only(&model, "IFCOFFSETCURVE2D"));
+    match offset.graph.get(offset.root).expect("offset root") {
+        GeometryNode::CurveRelation(CurveRelation::Offset {
+            distance,
+            reference_direction,
+            ..
+        }) => {
+            assert!((*distance - 0.25).abs() < 1e-9);
+            assert!(
+                reference_direction.is_none(),
+                "2D offsets have no reference direction"
+            );
+        }
+        other => panic!("expected exact offset relation, got {other:?}"),
+    }
+
+    for kind in ["IFCINTERSECTIONCURVE", "IFCSEAMCURVE"] {
+        let lowered = lower_item(&model, only(&model, kind));
+        match lowered.graph.get(lowered.root).expect("surface-curve root") {
+            GeometryNode::CurveRelation(CurveRelation::SurfaceCurve {
+                associated_geometry,
+                master,
+                ..
+            }) => {
+                assert_eq!(
+                    associated_geometry.len(),
+                    2,
+                    "{kind}: both p-curves survive"
+                );
+                assert_eq!(*master, MasterRepresentation::Curve3d);
+            }
+            other => panic!("{kind}: expected surface-curve relation, got {other:?}"),
+        }
+    }
+}
+
 /// The committed IFC4X3 boundary fixture uses p-curves on its common plane.
 #[test]
 fn the_curve_bounded_surface_corpus_keeps_parameter_curves() {
     let model = fixture("synthetic_conic_offset_bounded.ifc");
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let root = lower_surface_node(&mut session, EntityId(25), Transform::identity())
         .expect("corpus surface lowers");
     let lowered = session.finish(root).expect("session finishes");

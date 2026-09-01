@@ -13,7 +13,7 @@
 
 use axiolid_model::GeometryNode;
 use axiolid_topology::Orientation;
-use ifc_geometry::lower::{lower_representation_item, LoweringSession, Tolerance};
+use ifc_geometry::lower::{lower_representation_item, LoweringSession};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
 use ifc_model::{Codec, Model};
@@ -33,7 +33,7 @@ fn brep(model: &Model) -> axiolid_topology::BRep<axiolid_model::NodeId> {
     let scale = units::resolve(model);
     let ids = model.ids_of_type("IFCADVANCEDBREP");
     assert_eq!(ids.len(), 1, "one advanced brep in the fixture");
-    let mut session = LoweringSession::new(model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(model, &scale);
     let node = lower_representation_item(&mut session, ids[0], Transform::identity())
         .unwrap_or_else(|e| panic!("the advanced brep must lower: {e}"));
     let lowered = session.finish(node).expect("session finishes");
@@ -178,7 +178,7 @@ fn the_lateral_face_surface_is_the_cylinder_in_metres() {
     );
     let scale = units::resolve(&model);
     let ids = model.ids_of_type("IFCADVANCEDBREP");
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node =
         lower_representation_item(&mut session, ids[0], Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");

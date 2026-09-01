@@ -31,6 +31,11 @@ pub fn base_axes_3d(
     axis2: Option<[f64; 3]>,
     axis3: Option<[f64; 3]>,
 ) -> Option<Transform> {
+    if !origin.iter().all(|component| component.is_finite())
+        || axis2.is_some_and(|axis| !axis_is_finite_nonzero(axis))
+    {
+        return None;
+    }
     let frame = Transform::from_axes(origin, axis3, axis1)?;
     Some(match axis2 {
         Some(a2) if dot(a2, frame.basis[1]) < 0.0 => Transform {
@@ -55,6 +60,11 @@ pub fn base_axes_2d(
     axis1: Option<[f64; 3]>,
     axis2: Option<[f64; 3]>,
 ) -> Option<Transform> {
+    if !origin.iter().all(|component| component.is_finite())
+        || axis2.is_some_and(|axis| !axis_2d_is_finite_nonzero(axis))
+    {
+        return None;
+    }
     let x = match (axis1, axis2) {
         (Some(a1), _) => [a1[0], a1[1]],
         // Axis2 alone: X is Y turned a quarter turn clockwise.
@@ -76,13 +86,27 @@ pub fn base_axes_2d(
     })
 }
 
-/// Normalize a 2D vector, or `None` when it is too short to have a direction.
+/// Normalize a 2D vector, or `None` when it is zero or non-finite.
 fn normalize_2d(v: [f64; 2]) -> Option<[f64; 2]> {
-    let len = (v[0] * v[0] + v[1] * v[1]).sqrt();
-    if len < 1e-12 {
+    let scale = v[0].abs().max(v[1].abs());
+    if scale == 0.0 || !scale.is_finite() {
         return None;
     }
-    Some([v[0] / len, v[1] / len])
+    let scaled = [v[0] / scale, v[1] / scale];
+    let length = (scaled[0] * scaled[0] + scaled[1] * scaled[1]).sqrt();
+    Some([scaled[0] / length, scaled[1] / length])
+}
+
+fn axis_is_finite_nonzero(axis: [f64; 3]) -> bool {
+    axis.iter().all(|component| component.is_finite())
+        && axis.iter().any(|component| *component != 0.0)
+}
+
+fn axis_2d_is_finite_nonzero(axis: [f64; 3]) -> bool {
+    axis[0].is_finite()
+        && axis[1].is_finite()
+        && axis[2].is_finite()
+        && (axis[0] != 0.0 || axis[1] != 0.0)
 }
 
 fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
@@ -154,15 +178,27 @@ mod tests {
     }
 
     #[test]
-    fn unnormalized_axes_still_yield_a_unit_frame() {
+    fn unnormalized_and_extreme_axes_still_yield_a_unit_frame() {
         let t = base_axes_2d(O, Some([7.0, 0.0, 0.0]), None).unwrap();
         assert!(close(t.basis[0], [1.0, 0.0, 0.0]));
+        let huge = base_axes_3d(
+            O,
+            Some([f64::MAX, 0.0, 0.0]),
+            None,
+            Some([0.0, 0.0, f64::MAX]),
+        )
+        .unwrap();
+        assert!(close(huge.basis[0], [1.0, 0.0, 0.0]));
+        assert!(close(huge.basis[2], [0.0, 0.0, 1.0]));
     }
 
     #[test]
-    fn zero_length_axes_are_rejected_rather_than_producing_nan() {
+    fn zero_length_and_non_finite_axes_are_rejected_before_frame_construction() {
         assert!(base_axes_2d(O, Some([0.0, 0.0, 0.0]), None).is_none());
         assert!(base_axes_3d(O, None, None, Some([0.0, 0.0, 0.0])).is_none());
+        assert!(base_axes_3d(O, None, Some([f64::NAN, 1.0, 0.0]), None).is_none());
+        assert!(base_axes_2d(O, None, Some([0.0, 0.0, 1.0])).is_none());
+        assert!(base_axes_3d([f64::INFINITY, 0.0, 0.0], None, None, None).is_none());
     }
 
     /// Parallel X and Z leave nothing after the projection.

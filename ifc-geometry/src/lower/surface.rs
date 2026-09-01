@@ -117,7 +117,7 @@ pub fn lower_plane(
     }
 
     let plane = KernelPlane {
-        frame: placed.to_geom_frame(),
+        frame: placed.to_geom_frame(id)?,
     };
     session.node_for(id, GeometryNode::Surface(Surface::Plane(plane)))
 }
@@ -193,7 +193,7 @@ fn placed_frame(
     let position = session.entity(owner, position_id)?;
     let local = axis_placement_transform(session.model(), position_id, position)?
         .to_metres(session.units());
-    Ok(frame.compose(&local).to_geom_frame())
+    frame.compose(&local).to_geom_frame(owner)
 }
 
 /// Convert one length-valued scalar into metres.

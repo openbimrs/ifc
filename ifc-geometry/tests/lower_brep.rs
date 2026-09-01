@@ -11,7 +11,7 @@
 
 use axiolid_model::GeometryNode;
 use axiolid_topology::Orientation;
-use ifc_geometry::lower::{lower_faceted_brep_node, LoweringSession, Tolerance};
+use ifc_geometry::lower::{lower_faceted_brep_node, LoweringSession};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
 use ifc_model::{Codec, Entity, EntityId, Model, Value};
@@ -61,7 +61,7 @@ fn the_cube_fixture_lowers_to_eight_vertices_and_twelve_edges() {
         .first()
         .expect("the fixture contains a faceted brep");
 
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_faceted_brep_node(&mut session, id, Transform::identity())
         .expect("the cube must lower");
     let lowered = session.finish(node).expect("session finishes");
@@ -89,7 +89,7 @@ fn every_loop_is_closed_with_as_many_edges_as_points() {
     let scale = units::resolve(&model);
     let id = *model.ids_of_type("IFCFACETEDBREP").first().expect("brep");
 
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_faceted_brep_node(&mut session, id, Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
     let brep = brep_of(&lowered.graph, lowered.root);
@@ -114,7 +114,7 @@ fn each_edge_is_used_by_exactly_two_faces_in_opposite_senses() {
     let scale = units::resolve(&model);
     let id = *model.ids_of_type("IFCFACETEDBREP").first().expect("brep");
 
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_faceted_brep_node(&mut session, id, Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
     let brep = brep_of(&lowered.graph, lowered.root);
@@ -151,7 +151,7 @@ fn vertex_positions_are_converted_to_metres_and_placed() {
     let id = *model.ids_of_type("IFCFACETEDBREP").first().expect("brep");
 
     let offset = Transform::translation([10.0, 0.0, 0.0]);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_faceted_brep_node(&mut session, id, offset).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
     let brep = brep_of(&lowered.graph, lowered.root);
@@ -187,7 +187,7 @@ fn twelve_solids_each_intern_their_own_shared_points() {
     for id in &ids {
         // One session per solid: this test is about per-body interning, and a
         // fresh graph makes the arena boundary explicit.
-        let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+        let mut session = LoweringSession::new(&model, &scale);
         let node = lower_faceted_brep_node(&mut session, *id, Transform::identity())
             .unwrap_or_else(|e| panic!("{id} must lower: {e}"));
         let lowered = session.finish(node).expect("session finishes");
@@ -291,7 +291,7 @@ fn a_brep_with_voids_keeps_its_interior_shells() {
     );
 
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_faceted_brep_node(&mut session, EntityId(900), Transform::identity())
         .expect("a brep with voids must lower");
     let lowered = session.finish(node).expect("finishes");
@@ -335,7 +335,7 @@ fn a_reversed_bound_orientation_survives_lowering() {
     );
 
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_faceted_brep_node(&mut session, EntityId(900), Transform::identity())
         .expect("lowers");
     let lowered = session.finish(node).expect("finishes");
@@ -370,7 +370,7 @@ fn a_collapsed_loop_is_reported_as_degenerate() {
     );
 
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let error = lower_faceted_brep_node(&mut session, EntityId(900), Transform::identity())
         .expect_err("a collapsed loop must not lower");
 
@@ -417,7 +417,7 @@ fn an_inner_bound_is_kept_and_marked_as_not_outer() {
     );
 
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_faceted_brep_node(&mut session, EntityId(900), Transform::identity())
         .expect("lowers");
     let lowered = session.finish(node).expect("finishes");
@@ -464,7 +464,7 @@ fn the_dispatcher_routes_faceted_breps() {
     let scale = units::resolve(&model);
     let id = *model.ids_of_type("IFCFACETEDBREP").first().expect("brep");
 
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_representation_item(&mut session, id, Transform::identity())
         .expect("the dispatcher must route a faceted brep");
     let lowered = session.finish(node).expect("finishes");

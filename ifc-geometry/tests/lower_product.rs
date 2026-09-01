@@ -8,7 +8,6 @@
 
 use ifc_geometry::lower::{
     lower_product_items, product_world_transform, select_shape_representation, LoweringSession,
-    Tolerance,
 };
 use ifc_geometry::units;
 use ifc_model::{Codec, Entity, EntityId, Model, Value};
@@ -31,7 +30,7 @@ fn load(rel: &str) -> Model {
 /// Centroid of a lowered product, in metres.
 fn centroid(model: &Model, product: EntityId) -> [f64; 3] {
     let scale = units::resolve(model);
-    let mut session = LoweringSession::new(model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(model, &scale);
     let root = lower_product_items(&mut session, product)
         .expect("product lowers")
         .expect("product has geometry");

@@ -9,7 +9,6 @@ use ifc_model::{Entity, EntityId, Model, Value};
 
 use super::lower_half_space_node;
 use crate::lower::session::LoweringSession;
-use crate::lower::tolerance::Tolerance;
 use crate::transform::Transform;
 use crate::units::UnitScale;
 
@@ -58,7 +57,7 @@ fn half_space(agreement: bool, z_offset: f64) -> Model {
 
 fn lower(model: &Model, frame: Transform) -> axiolid_primitive::HalfSpace {
     let scale = UnitScale::default();
-    let mut session = LoweringSession::new(model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(model, &scale);
     let node =
         lower_half_space_node(&mut session, EntityId(5), frame).expect("the half space must lower");
     let lowered = session.finish(node).expect("session finishes");
@@ -146,6 +145,27 @@ fn the_boundary_normal_is_normalized_under_a_scaling_frame() {
     );
 }
 
+#[test]
+fn non_uniform_frames_transform_plane_normals_as_covectors() {
+    let mut model = half_space(true, 0.0);
+    model.insert(
+        EntityId(2),
+        entity(
+            "IFCDIRECTION",
+            vec![Value::List(vec![n(1.0), n(1.0), n(0.0)])],
+        ),
+    );
+    let frame = Transform {
+        basis: [[2.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+        origin: [0.0; 3],
+    };
+    let normal = lower(&model, frame).boundary.normal.to_array();
+    let root_five = 5.0_f64.sqrt();
+    assert!((normal[0] - 1.0 / root_five).abs() < 1e-12);
+    assert!((normal[1] - 2.0 / root_five).abs() < 1e-12);
+    assert!(normal[2].abs() < 1e-12);
+}
+
 /// Lengths are converted to metres.
 #[test]
 fn the_plane_origin_is_converted_to_metres() {
@@ -154,7 +174,7 @@ fn the_plane_origin_is_converted_to_metres() {
         length_to_metres: 0.001,
         angle_to_radians: 1.0,
     };
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node =
         lower_half_space_node(&mut session, EntityId(5), Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
@@ -166,6 +186,30 @@ fn the_plane_origin_is_converted_to_metres() {
         solid.boundary.origin.to_array(),
         [0.0, 0.0, 2.5],
         "2500 mm must become 2.5 m"
+    );
+}
+
+/// A polygonal bounded half-space changes the effective cutting volume.
+///
+/// Until the neutral model carries its positioned 2D boundary, lowering it as
+/// the unbounded supertype would remove material outside the authored prism.
+#[test]
+fn a_polygonal_bound_is_never_dropped() {
+    let mut model = half_space(true, 0.0);
+    model.insert(
+        EntityId(5),
+        entity(
+            "IFCPOLYGONALBOUNDEDHALFSPACE",
+            vec![r(4), Value::Bool(true), r(6), r(7)],
+        ),
+    );
+    let scale = UnitScale::default();
+    let mut session = LoweringSession::new(&model, &scale);
+    let error = lower_half_space_node(&mut session, EntityId(5), Transform::identity())
+        .expect_err("the polygonal bound cannot be discarded");
+    assert!(
+        error.to_string().contains("polygonal boundary"),
+        "typed refusal must name the missing semantic: {error}"
     );
 }
 
@@ -182,7 +226,7 @@ fn a_non_planar_base_surface_is_reported_as_unsupported() {
     );
 
     let scale = UnitScale::default();
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let error = lower_half_space_node(&mut session, EntityId(5), Transform::identity())
         .expect_err("a cylindrical base surface must not lower");
     let text = format!("{error:?}");

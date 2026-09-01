@@ -24,12 +24,12 @@
 //!
 //! # Bounded subtypes
 //!
-//! `IfcBoxedHalfSpace` adds an `Enclosure` box and
-//! `IfcPolygonalBoundedHalfSpace` adds a prism. Both are *clipping hints* that
-//! bound an otherwise infinite tool. The neutral `HalfSpace` node carries no
-//! bound, so both currently lower to their underlying half space: the geometry
-//! is correct, and the hint is dropped rather than approximated. See the
-//! module's `PLAN.md` entry for why that is deliberate.
+//! `IfcBoxedHalfSpace.Enclosure` is a search box only; the IFC specification
+//! explicitly says it does not alter the Boolean result, so dropping that
+//! computational hint preserves geometry exactly. `IfcPolygonalBoundedHalfSpace`
+//! is different: its positioned boundary limits the cutting volume. Until the
+//! neutral model carries that exact bound, this module returns typed
+//! `Unsupported` rather than widening it to an infinite half-space.
 
 use axiolid_core::{Plane3, Point3, Vec3};
 use axiolid_model::{GeometryNode, NodeId};
@@ -46,18 +46,26 @@ use crate::transform::Transform;
 /// Family label used for memoization.
 const KIND: &str = "half space";
 
+/// Exact neutral support must carry this subtype's positioned 2D bound.
+pub(crate) const POLYGONAL_BOUND_UNSUPPORTED: &str =
+    "polygonal boundary cannot be discarded; exact bounded-half-space support is required";
+
 /// IFC's `.T.` is the side the normal points AWAY from; the kernel's `true`
 /// is the normal side. Every conversion goes through this.
 fn flip(ifc_agreement_flag: bool) -> bool {
     !ifc_agreement_flag
 }
 
-/// Lower an `IfcHalfSpaceSolid` (or a bounded subtype) into the session.
+/// Lower an `IfcHalfSpaceSolid` (or the geometry-equivalent boxed subtype).
 pub fn lower_half_space_node(
     session: &mut LoweringSession<'_>,
     id: EntityId,
     frame: Transform,
 ) -> GeometryResult<NodeId> {
+    let type_name = session.type_name(id)?;
+    if type_name.eq_ignore_ascii_case("IFCPOLYGONALBOUNDEDHALFSPACE") {
+        return Err(session.unsupported(id, &type_name, POLYGONAL_BOUND_UNSUPPORTED));
+    }
     if let Some(node) = session.memoized(id, KIND, frame) {
         return Ok(node);
     }
@@ -119,24 +127,21 @@ fn plane_of(
         .to_metres(session.units());
     let placed = frame.compose(&local);
 
-    // The placement's origin is a point on the plane; its +Z is the normal.
-    // Origin goes through the full affine, the normal through the linear part
-    // only -- translating a normal tilts every cut.
+    // The placement's origin is a point on the plane. A normal is a covector,
+    // so non-uniform affine scale requires inverse-transpose transformation.
     let origin = placed.apply([0.0, 0.0, 0.0]);
-    let normal = placed.apply_direction([0.0, 0.0, 1.0]);
-
-    let length = (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
-    if !length.is_finite() || length <= f64::EPSILON {
-        return Err(GeometryError::Degenerate {
-            entity: owner,
-            type_name: owner_type.to_string(),
-            detail: "base plane normal is zero-length or non-finite".to_string(),
-        });
-    }
+    let normal =
+        placed
+            .apply_unit_normal([0.0, 0.0, 1.0])
+            .ok_or_else(|| GeometryError::Degenerate {
+                entity: owner,
+                type_name: owner_type.to_string(),
+                detail: "base plane transform is singular or non-finite".to_string(),
+            })?;
 
     Ok(Plane3 {
         origin: Point3::from_array(origin),
-        normal: Vec3::from_array([normal[0] / length, normal[1] / length, normal[2] / length]),
+        normal: Vec3::from_array(normal),
     })
 }
 

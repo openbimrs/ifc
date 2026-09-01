@@ -17,9 +17,7 @@
 
 use axiolid_core::Vec3;
 use axiolid_model::{GeometryNode, SolidOperation};
-use ifc_geometry::lower::{
-    lower_extruded_area_solid_node, LoweringSession, SessionLimits, Tolerance,
-};
+use ifc_geometry::lower::{lower_extruded_area_solid_node, LoweringSession, SessionLimits};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
 use ifc_model::{Codec, EntityId, Model};
@@ -61,7 +59,7 @@ fn two_families_lower_into_one_graph_and_can_be_combined() {
     let scale = units::resolve(&model);
     let ids = extrusion_ids(&model, 2);
 
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let left = lower_extruded_area_solid_node(&mut session, ids[0], Transform::identity())
         .expect("first extrusion lowers");
     let right = lower_extruded_area_solid_node(&mut session, ids[1], Transform::identity())
@@ -98,7 +96,7 @@ fn lowering_the_same_entity_twice_reuses_one_node() {
     let scale = units::resolve(&model);
     let id = extrusion_ids(&model, 1)[0];
 
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let first = lower_extruded_area_solid_node(&mut session, id, Transform::identity())
         .expect("first lowering");
     let after_first = session.node_count();
@@ -126,7 +124,7 @@ fn the_same_entity_under_a_different_frame_is_a_distinct_node() {
     let scale = units::resolve(&model);
     let id = extrusion_ids(&model, 1)[0];
 
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let identity = lower_extruded_area_solid_node(&mut session, id, Transform::identity())
         .expect("identity frame lowers");
 
@@ -149,7 +147,7 @@ fn the_same_entity_under_a_different_frame_is_a_distinct_node() {
 fn a_cyclic_chain_is_reported_rather_than_overflowing() {
     let model = wall_model();
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
 
     let entity = EntityId(1);
     session.enter(entity, "mapped item").expect("first entry");
@@ -174,8 +172,7 @@ fn an_over_deep_chain_stops_at_the_limit() {
     let model = wall_model();
     let scale = units::resolve(&model);
     let limits = SessionLimits { max_depth: 4 };
-    let mut session =
-        LoweringSession::with_limits(&model, &scale, Tolerance::building_scale(), limits);
+    let mut session = LoweringSession::with_limits(&model, &scale, limits);
 
     for index in 0..4 {
         session
@@ -200,7 +197,7 @@ fn an_over_deep_chain_stops_at_the_limit() {
 fn leaving_a_chain_allows_legitimate_reuse() {
     let model = wall_model();
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
 
     let entity = EntityId(7);
     session.enter(entity, "mapped item").expect("first entry");
@@ -219,7 +216,7 @@ fn leaving_a_chain_allows_legitimate_reuse() {
 fn graph_faults_are_reported_against_the_source_entity() {
     let model = wall_model();
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
 
     let point = session
         .node(GeometryNode::Point3(Vec3::ZERO))
@@ -258,7 +255,7 @@ fn a_shared_profile_is_stored_once_for_many_solids() {
         }
     };
 
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let first = lower_extruded_area_solid_node(&mut session, ids[0], Transform::identity())
         .expect("first extrusion lowers");
     let second = lower_extruded_area_solid_node(&mut session, ids[1], Transform::identity())

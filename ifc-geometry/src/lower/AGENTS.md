@@ -46,11 +46,10 @@ A surface model is NOT a solid. `IfcShellBasedSurfaceModel` and
 no solid, even when every shell is closed. Emitting a solid would let a
 quantity takeoff report a volume the file never claimed.
 
-Curves and surfaces are deliberately absent from the top-level item
-dispatcher: everywhere else they are reached through the solid that sweeps or
-bounds them, and dispatching them globally would let a bare curve stand in for
-a body representation. Inside an `IfcGeometricSet` they ARE the payload, so
-`collection.rs` routes them itself using the `is_a` supertype table.
+Curves and surfaces can be top-level representation items and are dispatched
+through their exact family lowerers. Collections also route nested curve and
+surface members through the same schema-aware paths; a bare curve is never
+silently substituted for a body solid.
 
 An advanced B-rep carries TWO independent sense flags per edge use, and both
 must compose. `IfcEdgeCurve.SameSense` says whether the edge runs with its
@@ -66,8 +65,10 @@ candidates and are normalized exactly once at the IFC boundary. Displacements,
 derivatives, scales, and other magnitude-bearing vectors preserve magnitude;
 never normalize them merely because both use three scalar components.
 
-A half space is INFINITE and is valid only as a boolean operand. Its
-`AgreementFlag` is inverted relative to the neutral `HalfSpace.agreement`: IFC
+An IFC half space is INFINITE and valid only as a boolean operand. The boxed
+subtype's enclosure does not alter its result, but a polygonal bounded half
+space has an effective positioned cutter and must be refused until represented
+exactly. `AgreementFlag` is inverted relative to neutral `HalfSpace.agreement`: IFC
 `.T.` means the side the base surface normal points away from, the kernel's
 `true` means the normal side. Getting it backwards cuts the wrong half and
 produces a result that still evaluates and still looks like geometry.

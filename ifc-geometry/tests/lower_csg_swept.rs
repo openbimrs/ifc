@@ -14,7 +14,7 @@
 
 use axiolid_curve::Curve3;
 use axiolid_model::{CurveRelation, GeometryNode, SolidOperation};
-use ifc_geometry::lower::{lower_representation_item, LoweringSession, Tolerance};
+use ifc_geometry::lower::{lower_representation_item, LoweringSession};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
 use ifc_model::{Codec, Model};
@@ -38,7 +38,7 @@ fn the_bath_csg_solid_lowers_to_its_boolean_tree() {
     let ids = model.ids_of_type("IFCCSGSOLID");
     assert_eq!(ids.len(), 1, "the fixture carries exactly one CSG solid");
 
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_representation_item(&mut session, ids[0], Transform::identity())
         .expect("the CSG solid must lower");
     let lowered = session.finish(node).expect("finishes");
@@ -60,7 +60,7 @@ fn every_corpus_swept_disk_lowers_with_resolved_units() {
         let model = fixture(name);
         let scale = units::resolve(&model);
         for id in model.ids_of_type("IFCSWEPTDISKSOLID") {
-            let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+            let mut session = LoweringSession::new(&model, &scale);
             let node = lower_representation_item(&mut session, *id, Transform::identity())
                 .unwrap_or_else(|e| panic!("{name} #{id:?} must lower: {e}"));
             let lowered = session.finish(node).expect("finishes");
@@ -106,7 +106,7 @@ fn the_crankbar_directrix_lowers_as_a_composite_of_trimmed_curves() {
     let ids = model.ids_of_type("IFCSWEPTDISKSOLID");
     assert!(!ids.is_empty(), "the fixture carries a swept disk");
 
-    let mut session = LoweringSession::new(&model, &scale, Tolerance::building_scale());
+    let mut session = LoweringSession::new(&model, &scale);
     let node = lower_representation_item(&mut session, ids[0], Transform::identity())
         .expect("the crankbar must lower");
     let lowered = session.finish(node).expect("finishes");

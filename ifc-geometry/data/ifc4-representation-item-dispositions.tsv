@@ -1,0 +1,52 @@
+entity	disposition	owner	rationale
+IFCADVANCEDFACE	nested-exact	lower::brep	face inside an advanced B-rep shell
+IFCANNOTATIONFILLAREA	non-shape	ifc-style	presentation fill whose boundary curves lower separately
+IFCAXIS1PLACEMENT	nested-exact	resource::placement	placement input to exact geometry
+IFCAXIS2PLACEMENT2D	nested-exact	resource::placement	placement input to exact geometry
+IFCAXIS2PLACEMENT3D	nested-exact	resource::placement	placement input to exact geometry
+IFCCARTESIANPOINT	nested-exact	resource::point	coordinate input to exact geometry
+IFCCARTESIANPOINTLIST2D	nested-exact	resource::point	indexed coordinate input to curves and tessellation
+IFCCARTESIANPOINTLIST3D	nested-exact	resource::point	indexed coordinate input to curves and tessellation
+IFCCARTESIANTRANSFORMATIONOPERATOR2D	nested-exact	resource::operator	mapped-item transform input
+IFCCARTESIANTRANSFORMATIONOPERATOR2DNONUNIFORM	nested-exact	resource::operator	mapped-item transform input
+IFCCARTESIANTRANSFORMATIONOPERATOR3D	nested-exact	resource::operator	mapped-item transform input
+IFCCARTESIANTRANSFORMATIONOPERATOR3DNONUNIFORM	nested-exact	resource::operator	mapped-item transform input
+IFCCLOSEDSHELL	nested-exact	lower::brep	shell input to B-reps and surface models
+IFCCOMPOSITECURVESEGMENT	nested-exact	lower::curve	ordered segment input to a composite curve
+IFCCONNECTEDFACESET	nested-exact	lower::brep	face-set input to surface models
+IFCDIRECTION	nested-exact	resource::direction	dimensionless orientation input validated before use
+IFCEDGE	nested-exact	lower::brep	topological edge without carrier geometry
+IFCEDGECURVE	nested-exact	lower::brep	topological edge with curve or p-curve geometry
+IFCEDGELOOP	nested-exact	lower::brep	ordered edge-use input to a face bound
+IFCFACE	nested-exact	lower::brep	face input to a connected face set
+IFCFACEBOUND	nested-exact	lower::brep	oriented loop input to a face
+IFCFACEOUTERBOUND	nested-exact	lower::brep	explicit outer-loop input to a face
+IFCFACESURFACE	nested-exact	lower::brep	face with an authored carrier surface
+IFCFILLAREASTYLEHATCHING	non-shape	ifc-style	presentation hatching rather than shape geometry
+IFCFILLAREASTYLETILES	non-shape	ifc-style	presentation tiling rather than shape geometry
+IFCINDEXEDPOLYGONALFACE	nested-exact	lower::tessellated	face index input to a polygonal face set
+IFCINDEXEDPOLYGONALFACEWITHVOIDS	nested-exact	lower::tessellated	face-with-holes input to a polygonal face set
+IFCLIGHTSOURCEAMBIENT	non-shape	ifc-style	lighting presentation state
+IFCLIGHTSOURCEDIRECTIONAL	non-shape	ifc-style	lighting presentation state
+IFCLIGHTSOURCEGONIOMETRIC	non-shape	ifc-style	lighting presentation state
+IFCLIGHTSOURCEPOSITIONAL	non-shape	ifc-style	lighting presentation state
+IFCLIGHTSOURCESPOT	non-shape	ifc-style	lighting presentation state
+IFCLOOP	typed-refusal	lower::brep	generic loop has no concrete point or edge representation
+IFCOPENSHELL	nested-exact	lower::brep	shell input to surface models
+IFCORIENTEDEDGE	nested-exact	lower::brep	oriented edge use inside an edge loop
+IFCPATH	typed-refusal	lower::brep	path topology is not a face-bound loop
+IFCPLANARBOX	non-shape	ifc-style	presentation extent and placement
+IFCPLANAREXTENT	non-shape	ifc-style	presentation extent rather than shape geometry
+IFCPOINTONCURVE	planned-exact	lower::curve	exact point evaluation reference is not yet represented
+IFCPOINTONSURFACE	planned-exact	lower::surface	exact surface-parameter point is not yet represented
+IFCPOLYGONALBOUNDEDHALFSPACE	planned-exact	lower::halfspace	positioned polygonal cutting bound needs exact neutral support
+IFCPOLYLOOP	nested-exact	lower::brep	ordered point loop input to a face bound
+IFCREPARAMETRISEDCOMPOSITECURVESEGMENT	nested-exact	lower::curve	composite segment with authored parameter length
+IFCSTYLEDITEM	non-shape	ifc-style	style association without shape modification
+IFCSUBEDGE	typed-refusal	lower::brep	parent-edge relation has no neutral topology contract yet
+IFCTEXTLITERAL	non-shape	ifc-style	annotation text rather than shape geometry
+IFCTEXTLITERALWITHEXTENT	non-shape	ifc-style	annotation text and extent rather than shape geometry
+IFCVECTOR	nested-exact	resource::direction	direction plus magnitude input to exact curves and sweeps
+IFCVERTEX	typed-refusal	lower::brep	generic vertex carries no point geometry
+IFCVERTEXLOOP	typed-refusal	lower::brep	vertex loop has no neutral face-bound representation yet
+IFCVERTEXPOINT	nested-exact	lower::brep	point-backed topological vertex

@@ -17,11 +17,46 @@ use ifc_model::{EntityId, Model};
 
 use crate::error::{GeometryError, GeometryResult};
 use crate::lower::session::LoweringSession;
-use crate::lower::Tolerance;
 use crate::resource::operator::operator_transform;
 use crate::slots::Slots;
 use crate::transform::Transform;
 use crate::units::UnitScale;
+
+/// Concrete `IfcProfileDef` families represented exactly by the neutral profile model.
+pub const IMPLEMENTED_PROFILES: &[&str] = &[
+    "IFCARBITRARYCLOSEDPROFILEDEF",
+    "IFCARBITRARYPROFILEDEFWITHVOIDS",
+    "IFCASYMMETRICISHAPEPROFILEDEF",
+    "IFCCENTERLINEPROFILEDEF",
+    "IFCCIRCLEHOLLOWPROFILEDEF",
+    "IFCCIRCLEPROFILEDEF",
+    "IFCCOMPOSITEPROFILEDEF",
+    "IFCCSHAPEPROFILEDEF",
+    "IFCDERIVEDPROFILEDEF",
+    "IFCELLIPSEPROFILEDEF",
+    "IFCISHAPEPROFILEDEF",
+    "IFCLSHAPEPROFILEDEF",
+    "IFCMIRROREDPROFILEDEF",
+    "IFCRECTANGLEHOLLOWPROFILEDEF",
+    "IFCRECTANGLEPROFILEDEF",
+    "IFCROUNDEDRECTANGLEPROFILEDEF",
+    "IFCTSHAPEPROFILEDEF",
+    "IFCTRAPEZIUMPROFILEDEF",
+    "IFCUSHAPEPROFILEDEF",
+    "IFCZSHAPEPROFILEDEF",
+];
+
+/// Concrete profile families blocked on a named neutral representation contract.
+pub const PLANNED_PROFILES: &[(&str, &str)] = &[
+    (
+        "IFCARBITRARYOPENPROFILEDEF",
+        "open profiles require a neutral exact open-path profile without implied area or width",
+    ),
+    (
+        "IFCPROFILEDEF",
+        "generic profile declaration carries no concrete geometry to lower",
+    ),
+];
 
 mod slot {
     pub const POSITION: usize = 2;
@@ -66,24 +101,15 @@ pub fn lower_profile_node(
     if let Some(node) = session.memoized(id, PROFILE, frame) {
         return Ok(node);
     }
-    let profile = lower_profile(session.model(), id, session.units(), &session.tolerance())?;
+    let profile = lower_profile(session.model(), id, session.units())?;
     let node = session.node_for(id, GeometryNode::Profile(profile))?;
     session.memoize(id, PROFILE, frame, node);
     Ok(node)
 }
 
 /// Lower one `IfcProfileDef` to an exact, format-neutral profile.
-///
-/// `tol` remains in this early API for source compatibility but is deliberately
-/// unused: exact circles and rounded corners must not change with tessellation
-/// tolerance.
-pub fn lower_profile(
-    model: &Model,
-    id: EntityId,
-    units: &UnitScale,
-    tol: &Tolerance,
-) -> GeometryResult<Profile> {
-    lower_profile_depth(model, id, units, tol, 0)
+pub fn lower_profile(model: &Model, id: EntityId, units: &UnitScale) -> GeometryResult<Profile> {
+    lower_profile_depth(model, id, units, 0)
 }
 
 /// Maximum profile nesting depth.
@@ -98,7 +124,6 @@ fn lower_profile_depth(
     model: &Model,
     id: EntityId,
     units: &UnitScale,
-    tol: &Tolerance,
     depth: usize,
 ) -> GeometryResult<Profile> {
     if depth > MAX_PROFILE_DEPTH {
@@ -135,9 +160,9 @@ fn lower_profile_depth(
         "IFCZSHAPEPROFILEDEF" => z_shape(&slots, units)?,
         "IFCTRAPEZIUMPROFILEDEF" => trapezium(&slots, units)?,
         "IFCELLIPSEPROFILEDEF" => ellipse(&slots, units)?,
-        "IFCCOMPOSITEPROFILEDEF" => composite(model, &slots, units, tol, depth)?,
-        "IFCDERIVEDPROFILEDEF" => derived(model, id, &slots, units, tol, depth, false)?,
-        "IFCMIRROREDPROFILEDEF" => derived(model, id, &slots, units, tol, depth, true)?,
+        "IFCCOMPOSITEPROFILEDEF" => composite(model, &slots, units, depth)?,
+        "IFCDERIVEDPROFILEDEF" => derived(model, id, &slots, units, depth, false)?,
+        "IFCMIRROREDPROFILEDEF" => derived(model, id, &slots, units, depth, true)?,
         "IFCCENTERLINEPROFILEDEF" => center_line(model, &slots, units)?,
         // An open profile is a curve, not an area. The neutral profile model
         // is built on closed contours, so there is nothing to map it onto:
@@ -148,7 +173,14 @@ fn lower_profile_depth(
             return Err(GeometryError::Unsupported {
                 entity: id,
                 type_name: type_name.to_string(),
-                detail: "open profiles: the neutral profile model represents closed contours only",
+                detail: PLANNED_PROFILES[0].1,
+            });
+        }
+        "IFCPROFILEDEF" => {
+            return Err(GeometryError::Unsupported {
+                entity: id,
+                type_name: type_name.to_string(),
+                detail: PLANNED_PROFILES[1].1,
             });
         }
         other => {
@@ -601,13 +633,12 @@ fn composite(
     model: &Model,
     slots: &Slots<'_>,
     units: &UnitScale,
-    tol: &Tolerance,
     depth: usize,
 ) -> GeometryResult<Profile> {
     let refs = slots.req_ref_list(section_slot::COMPOSITE_PROFILES, "Profiles")?;
     let mut members = Vec::with_capacity(refs.len());
     for member in refs {
-        members.push(lower_profile_depth(model, member, units, tol, depth + 1)?);
+        members.push(lower_profile_depth(model, member, units, depth + 1)?);
     }
     Ok(Profile::Composite(members))
 }
@@ -618,12 +649,11 @@ fn derived(
     id: EntityId,
     slots: &Slots<'_>,
     units: &UnitScale,
-    tol: &Tolerance,
     depth: usize,
     mirrored: bool,
 ) -> GeometryResult<Profile> {
     let parent = slots.req_ref(section_slot::DERIVED_PARENT, "ParentProfile")?;
-    let basis = lower_profile_depth(model, parent, units, tol, depth + 1)?;
+    let basis = lower_profile_depth(model, parent, units, depth + 1)?;
 
     let transform = (if mirrored {
         // IfcMirroredProfileDef derives its Operator in the schema, so no file
