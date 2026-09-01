@@ -56,6 +56,12 @@ PUBLISHED_STATUS = {
     # All six PLAN tasks implemented: strict borrowed records, associations,
     # bounded hierarchy/effective queries, and transaction-staged authoring.
     "ifc-classification": '<span class="status-implemented">Implemented</span>',
+    # Complete bounded IFC4 approval resource: views, relationships, queries,
+    # staged authoring, STEP facade proof, and mutation-sensitive refusals.
+    "ifc-approval": '<span class="status-implemented">Implemented</span>',
+    # Complete bounded IFC4 metric/objective/resource relationship contract;
+    # values are preserved but intentionally not evaluated.
+    "ifc-constraint": '<span class="status-implemented">Implemented</span>',
     # All six PLAN tasks implemented: systems, ports, connectivity, flow,
     # zones and directed queries.
     "ifc-systems": '<span class="status-implemented">Implemented</span>',

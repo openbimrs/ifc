@@ -35,6 +35,8 @@ ifc-cost = { workspace = true, optional = true }
 ifc-schedule = { workspace = true, optional = true }
 ifc-material = { workspace = true, optional = true }
 ifc-classification = { workspace = true, optional = true }
+ifc-approval = { workspace = true, optional = true }
+ifc-constraint = { workspace = true, optional = true }
 ifc-structural = { workspace = true, optional = true }
 ifc-resource = { workspace = true, optional = true }
 ifc-systems = { workspace = true, optional = true }
@@ -67,6 +69,8 @@ schedule = ["dep:ifc-schedule"]
 material = ["dep:ifc-material"]
 material-templates = ["material", "property-catalog"]
 classification = ["dep:ifc-classification"]
+approval = ["dep:ifc-approval"]
+constraint = ["dep:ifc-constraint"]
 structural = ["dep:ifc-structural"]
 resource = ["dep:ifc-resource"]
 systems = ["dep:ifc-systems"]
@@ -94,6 +98,8 @@ domains = [
     "schedule",
     "material",
     "classification",
+    "approval",
+    "constraint",
     "structural",
     "resource",
     "systems",

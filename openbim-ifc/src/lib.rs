@@ -95,9 +95,17 @@ pub use ifc_material as material;
 #[cfg(feature = "material-templates")]
 pub mod material_templates;
 
-/// Classification, documents, libraries.
+/// Classification, documents, libraries, and external-reference relationships.
 #[cfg(feature = "classification")]
 pub use ifc_classification as classification;
+
+/// Approval resource semantics and approval associations.
+#[cfg(feature = "approval")]
+pub use ifc_approval as approval;
+
+/// Metrics, objectives, and constraint relationships.
+#[cfg(feature = "constraint")]
+pub use ifc_constraint as constraint;
 
 /// Structural analysis model.
 #[cfg(feature = "structural")]

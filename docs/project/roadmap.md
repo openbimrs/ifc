@@ -116,35 +116,32 @@ annotation geometry lowering remain application/geometry concerns.
 
 **Implemented.** `ifc-classification` now exposes borrowed IFC4 views for
 classification systems/references, document information/references, library
-information/references, and all three `IfcRelAssociates*` families. Bounded
-hierarchy lookup reports cycles, dangling/wrong-kind references, and budget
-exhaustion. Effective classification lookup returns occurrence and type
-associations separately. Matching transactional helpers author all nine concrete
-records after validating the complete draft.
+information/references, all three `IfcRelAssociates*` families, and the generic
+`IfcExternalReferenceRelationship`. Bounded hierarchy lookup reports cycles,
+dangling/wrong-kind references, and budget exhaustion. Effective classification
+lookup returns occurrence and type associations separately. Matching
+transactional helpers author all ten concrete records after validating each draft.
 
 **Why it matters.** Library references are how a symbol set, a component
 catalogue, or a classification source stays portable and vendor-neutral rather
 than proprietary to one application.
 
-**Remaining boundary.** The shared inherited `IfcExternalReference` fields are
-covered by each concrete reference view. Generic external-resource
-relationships (`IfcExternalReferenceRelationship`, approval and constraint
-resource relationships) remain outside this crate's implemented contract and
-must not be inferred from this milestone.
+**Boundary.** Approval and constraint resource relationships live in dedicated
+sibling domains rather than the classification namespace.
 
-### R7. Approvals
+### R7. Approvals and constraints
 
-**Gap.** The entire `IfcApprovalResource` schema is absent — `IfcApproval`,
-`IfcApprovalRelationship`, `IfcRelAssociatesApproval`. **No crate owns it**, not
-even as a scaffold.
+**Implemented.** `ifc-approval` owns `IfcApproval`,
+`IfcApprovalRelationship`, `IfcResourceApprovalRelationship`, and
+`IfcRelAssociatesApproval`. `ifc-constraint` owns concrete metrics/objectives,
+`IfcResourceConstraintRelationship`, and `IfcRelAssociatesConstraint`. Both
+provide strict borrowed views, deterministic direct queries, and typed
+transaction-staged authoring. A facade/STEP test proves classification, approval,
+and constraint projections join through stable `EntityId` values.
 
-**Design note.** `IfcApproval` is *not* rooted — it has no `GlobalId` — so it
-needs different identity handling from the `IfcRel*` entities. Do not assume the
-`IfcRoot` attribute layout.
-
-**Home.** Needs a new crate or module; the natural pairing is with documents and
-external references (R6), since approval, document, and library references share
-the association pattern.
+**Boundary.** Approval state is preserved but not treated as authorization,
+signature, workflow, or policy. Constraints are preserved but not evaluated as
+compliance rules, formulas, reference paths, tables, or time series.
 
 ## Geometry coverage
 
@@ -202,9 +199,9 @@ implemented.
 
 `ifc-georef` and `ifc-alignment` also have tested partial vertical slices: IFC4
 project-to-map/CRS resolution in the former, and IFC4X3 segment parameters plus
-selected exact curve output in the latter. `ifc-classification`,
-`ifc-properties`, `ifc-style`, `ifc-structural`, `ifc-validate`, `ifc-schedule`,
-`ifc-systems`, and the bounded `ifc-cost` contract are implemented;
+selected exact curve output in the latter. `ifc-classification`, `ifc-approval`,
+`ifc-constraint`, `ifc-properties`, `ifc-style`, `ifc-structural`, `ifc-validate`,
+`ifc-schedule`, `ifc-systems`, and the bounded `ifc-cost` contract are implemented;
 `ifc-resource`, `ifc-geometry`, `ifc-georef`, and `ifc-alignment` are partial. Each crate's **PLAN.md** records
 the remaining scope. Priority among unfinished slices is demand-driven; open an
 issue describing the use case.

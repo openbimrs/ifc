@@ -12,11 +12,11 @@ Allowed production dependencies: `ifc-model`, `ifc-schema`, and shared error
 support only. Views borrow the model. Authoring stages edits on a caller-owned
 `ifc_model::Transaction`; this crate does not own commit or rollback.
 
-The implemented boundary is nine concrete IFC4 records: classification,
+The implemented boundary is ten concrete IFC4 records: classification,
 classification reference, document information/reference, library
-information/reference, and the three `IfcRelAssociates*` families. Abstract
-external-reference supertypes and generic resource relationships are not
-silently claimed.
+information/reference, the three `IfcRelAssociates*` families, and
+`IfcExternalReferenceRelationship`. Approval and constraint resources remain
+separate sibling domains.
 
 ## Module ownership
 
@@ -25,6 +25,7 @@ silently claimed.
 - `document.rs`: document information/references
 - `library.rs`: library information/references
 - `assignment.rs`: classification/document/library object associations
+- `external_relationship.rs`: generic external-reference resource relationships
 - `query.rs`: bounded hierarchy and explicit occurrence/type lookup
 - `authoring.rs`: transaction-staged creation and pre-staging validation
 - `error.rs`: malformed, unresolved, ambiguous, budget, and authoring failures

@@ -29,6 +29,10 @@ pub fn compiled_features() -> Vec<&'static str> {
     features.push("material");
     #[cfg(feature = "classification")]
     features.push("classification");
+    #[cfg(feature = "approval")]
+    features.push("approval");
+    #[cfg(feature = "constraint")]
+    features.push("constraint");
     #[cfg(feature = "structural")]
     features.push("structural");
     #[cfg(feature = "resource")]

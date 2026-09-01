@@ -25,7 +25,9 @@
 //! assert_eq!(schema.attribute_names("IfcWall"), ["GlobalId", "Name"]);
 //! ```
 
-use openbim_step::express::{Attribute, EntityDef, ParsedSchema, TypeDef};
+use std::collections::HashSet;
+
+use openbim_step::express::{Attribute, EntityDef, ParsedSchema, TypeDef, TypeKind};
 use openbim_step::SchemaGraph;
 
 use crate::version::SchemaVersion;
@@ -106,6 +108,62 @@ impl Schema {
     /// Every entity name the schema declares, in unspecified order.
     pub fn entity_names(&self) -> impl Iterator<Item = &str> {
         self.graph.entity_names()
+    }
+
+    /// Whether a candidate entity or defined type satisfies a declared type.
+    ///
+    /// This walks entity inheritance, defined-type aliases, and nested SELECTs.
+    /// Unknown declarations and cyclic aliases fail closed.
+    #[must_use]
+    pub fn accepts_type(&self, declared: &str, candidate: &str) -> bool {
+        self.accepts_type_inner(declared, candidate, &mut HashSet::new(), 32)
+    }
+
+    fn accepts_type_inner(
+        &self,
+        declared: &str,
+        candidate: &str,
+        seen: &mut HashSet<(String, String)>,
+        depth: usize,
+    ) -> bool {
+        if declared.eq_ignore_ascii_case(candidate) {
+            return self.entity(declared).is_some() || self.type_def(declared).is_some();
+        }
+        if depth == 0
+            || !seen.insert((
+                declared.to_ascii_uppercase(),
+                candidate.to_ascii_uppercase(),
+            ))
+        {
+            return false;
+        }
+        if self.entity(declared).is_some() && self.entity(candidate).is_some() {
+            return self.is_a(candidate, declared);
+        }
+        if let Some(definition) = self.type_def(declared) {
+            match &definition.kind {
+                TypeKind::Defined(alias) => {
+                    if self.accepts_type_inner(alias, candidate, seen, depth - 1) {
+                        return true;
+                    }
+                }
+                TypeKind::Select(members) => {
+                    if members
+                        .iter()
+                        .any(|member| self.accepts_type_inner(member, candidate, seen, depth - 1))
+                    {
+                        return true;
+                    }
+                }
+                TypeKind::Enumeration(_) => {}
+            }
+        }
+        if let Some(definition) = self.type_def(candidate) {
+            if let TypeKind::Defined(alias) = &definition.kind {
+                return self.accepts_type_inner(declared, alias, seen, depth - 1);
+            }
+        }
+        false
     }
 
     /// Whether `name` is `ancestor`, or inherits from it.

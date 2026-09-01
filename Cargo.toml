@@ -28,6 +28,8 @@ ifc-style = { path = "ifc-style", version = "0.1.0" }
 ifc-structural = { path = "ifc-structural", version = "0.1.0" }
 ifc-resource = { path = "ifc-resource", version = "0.1.0" }
 ifc-classification = { path = "ifc-classification", version = "0.1.0" }
+ifc-approval = { path = "ifc-approval", version = "0.1.0" }
+ifc-constraint = { path = "ifc-constraint", version = "0.1.0" }
 ifc-georef = { path = "ifc-georef", version = "0.1.0" }
 ifc-systems = { path = "ifc-systems", version = "0.1.0" }
 ifc-alignment = { path = "ifc-alignment", version = "0.1.0" }

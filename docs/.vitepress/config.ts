@@ -52,6 +52,7 @@ export default defineConfig({
           items: [
             { text: 'Getting started', link: '/guide/getting-started' },
             { text: 'Construction resources', link: '/guide/resources' },
+            { text: 'Approvals and constraints', link: '/guide/approvals-constraints' },
             { text: 'Contributing', link: '/guide/contributing' },
           ],
         },

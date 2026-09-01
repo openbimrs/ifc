@@ -87,7 +87,7 @@ pub struct AssociationDraft<'a> {
     pub related_objects: &'a [EntityId],
 }
 
-fn text(value: &str) -> Value {
+pub(crate) fn text(value: &str) -> Value {
     Value::Text(Arc::from(value))
 }
 fn optional_text(value: Option<&str>) -> Value {
@@ -103,7 +103,11 @@ fn optional_enum(value: Option<&str>) -> Value {
     value.map_or(Value::Null, |v| Value::Enum(Arc::from(v)))
 }
 
-fn final_type<'a>(tx: &'a Transaction, model: &'a Model, id: EntityId) -> Option<&'a str> {
+pub(crate) fn final_type<'a>(
+    tx: &'a Transaction,
+    model: &'a Model,
+    id: EntityId,
+) -> Option<&'a str> {
     for edit in tx.edits().iter().rev() {
         match edit {
             Edit::Create {

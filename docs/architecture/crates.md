@@ -77,8 +77,20 @@ layout engine.
 
 ### `ifc-classification`
 Implemented bounded IFC4 classification, document, and library views, hierarchy
-queries, association lookup, and transaction-staged authoring for nine concrete
-records. Abstract external-reference resources are not claimed generally.
+queries, association lookup, generic external-reference relationships, and
+transaction-staged authoring for ten concrete records.
+
+### `ifc-approval`
+Implemented bounded IFC4 ApprovalResource. Strict borrowed views cover
+`IfcApproval`, approval-to-approval relationships, resource relationships, and
+rooted object associations; matching typed drafts stage the same records. It does
+not implement signatures, authorization, workflow, or policy evaluation.
+
+### `ifc-constraint`
+Implemented bounded IFC4 ConstraintResource. Typed borrowed views and drafts cover
+metrics, objectives, metric-value SELECT preservation, resource relationships,
+and rooted object associations. It preserves authored constraints but does not
+evaluate compliance, formulas, references, tables, or time series.
 
 ### `ifc-schedule`, `ifc-systems`
 Implemented bounded schedule/task sequencing and relationship-only distribution

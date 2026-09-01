@@ -8,6 +8,10 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- Bounded IFC4 approval and constraint domains now provide strict borrowed
+  projections, typed resource/object relationships, deterministic direct queries,
+  and transaction-staged authoring; classification now owns the generic external-
+  reference relationship. A facade/STEP test proves all three join by `EntityId`.
 - Domain completion foundations add transaction-staged IFC4 cost-value, item,
   schedule, ordered nesting, and schedule-assignment authoring with typed
   pre-staging refusal; a reusable reverse-index-backed spatial relationship

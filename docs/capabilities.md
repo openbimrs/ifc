@@ -33,17 +33,19 @@ code.
 | `ifc-properties` | 2,417 | 29 | 14 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 2,398 | 24 | 0 | 8 | <span class="status-implemented">Implemented</span> |
 | `ifc-validate` | 2,249 | 23 | 0 | 2 | <span class="status-implemented">Implemented</span> |
+| `ifc-classification` | 2,203 | 20 | 4 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 2,001 | 16 | 0 | 2 | <span class="status-implemented">Implemented</span> |
-| `ifc-classification` | 1,990 | 19 | 4 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-structural` | 1,889 | 30 | 18 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-resource` | 1,827 | 29 | 18 | 4 | <span class="status-partial">Partial</span> |
 | `ifc-schedule` | 1,691 | 24 | 14 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 1,586 | 20 | 5 | 2 | <span class="status-implemented">Implemented</span> |
+| `ifc-constraint` | 1,230 | 6 | 0 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-alignment` | 1,095 | 26 | 16 | 2 | <span class="status-partial">Partial</span> |
 | `ifc-xml` | 1,045 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
-| `ifc-schema` | 980 | 10 | 4 | 1 | <span class="status-implemented">Implemented</span> |
-| `openbim-ifc` | 888 | 6 | 0 | 10 | <span class="status-implemented">Implemented</span> |
+| `ifc-schema` | 1,038 | 10 | 4 | 2 | <span class="status-implemented">Implemented</span> |
+| `ifc-approval` | 915 | 5 | 0 | 1 | <span class="status-implemented">Implemented</span> |
+| `openbim-ifc` | 900 | 6 | 0 | 11 | <span class="status-implemented">Implemented</span> |
 | `ifc-author` | 729 | 8 | 3 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-spatial` | 615 | 8 | 1 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-georef` | 582 | 17 | 12 | 1 | <span class="status-partial">Partial</span> |
@@ -53,7 +55,7 @@ code.
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:BEGIN -->
 
-0 of 21 crates are scaffolds.
+0 of 23 crates are scaffolds.
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:END -->
 They exist because the layering decision

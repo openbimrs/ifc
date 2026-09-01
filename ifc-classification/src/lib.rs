@@ -8,6 +8,7 @@ mod authoring;
 mod classification;
 mod document;
 mod error;
+mod external_relationship;
 mod library;
 mod query;
 mod view;
@@ -22,6 +23,10 @@ pub use authoring::{
 pub use classification::{ClassificationReference, ClassificationSystem};
 pub use document::{DocumentInformation, DocumentReference};
 pub use error::{ClassificationError, ClassificationResult};
+pub use external_relationship::{
+    create_external_reference_relationship, ExternalReferenceRelationship,
+    ExternalReferenceRelationshipDraft,
+};
 pub use library::{LibraryInformation, LibraryReference};
 pub use query::{ClassificationHierarchy, EffectiveClassifications};
 pub use view::ClassificationView;

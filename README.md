@@ -36,10 +36,10 @@ Implemented foundations include:
 - bundled IFC2x3 TC1, IFC4 ADD2 TC1, and IFC4X3 ADD2 structural schema metadata;
 - declared-schema validation against exact version tables, with selected native
   semantic rules and explicit unsupported reporting for unevaluated semantics;
-- borrowed classification, document, library, property, quantity, material,
-  schedule, construction-resource, systems, and spatial views;
-- classification, document, library, material, quantity, cost, and selected
-  construction-resource authoring staged through transactions;
+- borrowed classification, document, library, approval, constraint, property,
+  quantity, material, cost, schedule, construction-resource, systems, and spatial views;
+- classification, document, library, approval, constraint, material, quantity,
+  cost, and selected construction-resource authoring staged through transactions;
 - geometry selection/lowering foundations and versioned PSD/QTO catalogs.
 
 Some domain crates remain partial and contain private architecture scaffolds: their

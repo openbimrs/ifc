@@ -1,7 +1,7 @@
 # ifc-classification implementation plan
 
-Status: implemented IFC4 classification/document/library views, queries, associations, and transactional authoring.
-Last updated: 2026-08-31
+Status: implemented IFC4 classification/document/library views, queries, associations, generic external-reference relationships, and transactional authoring.
+Last updated: 2026-09-01
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
 record blockers/decisions under it, and check it off only with evidence.
@@ -13,8 +13,9 @@ projections. Bounded classification hierarchy and explicit occurrence/type
 lookup never silently merge sources. Authoring stages records through
 `ifc_model::Transaction` and performs domain validation before staging.
 
-Generic external-reference/resource relationships outside these nine concrete
-records remain separate future capability and are not implied by this plan.
+The generic `IfcExternalReferenceRelationship` is owned here because every
+supported concrete external-reference subtype already lives here. Approval and
+constraint resource relationships belong to their dedicated sibling crates.
 
 ## Planned file map
 
@@ -31,6 +32,7 @@ capability:
 - `src/assignment/document.rs`: document associations
 - `src/assignment/library.rs`: library associations
 - `src/query/hierarchy.rs`: bounded hierarchy and explicit occurrence/type lookup
+- `src/external_relationship.rs`: generic resource relationship projection/query/authoring
 - `src/authoring.rs`: transaction-staged creation for all owned concrete records
 - `tests/classification.rs`: schema layout, view, query, invalid-input, authoring, and rollback proof
 
@@ -42,6 +44,7 @@ capability:
 - [x] `CLASS-ASSIGN` - implement classification/document/library association views
 - [x] `CLASS-QUERY` - define bounded hierarchy and explicit occurrence/type semantics
 - [x] `CLASS-MUT` - add transaction-staged authoring after `MODEL-MUT`
+- [x] `CLASS-EXTREL` - generic external-reference resource relationships
 
 ## Completion log
 
@@ -49,4 +52,5 @@ capability:
 - `CLASS-ASSIGN` / `CLASS-QUERY` - deterministic relationship queries, bounded hierarchy traversal, cycle/dangling/wrong-type failures, and explicit occurrence/type separation pass focused tests.
 - `CLASS-QUERY` budget correction - every followed `ReferencedSource` edge and every distinct resolved entity, including the terminal classification system, count against `Budget`; equal-node revisits still report cycles. 3/3 corrective mutation probes killed.
 - `CLASS-MUT` - all nine owned concrete records stage through `Transaction`; invalid GUID, external identity, document XOR, actor/select targets, duplicate SET members, `IfcDefinitionSelect`, and failed-commit rollback behavior pass focused tests.
+- `CLASS-EXTREL` - exact IFC4 slots, SELECT validation, deterministic inverse lookup, and pre-staging refusal pass 3 focused tests.
 - Gate proof: `cargo +1.88.0 test -p ifc-classification`; strict all-target clippy; 13/13 classification mutation probes killed.

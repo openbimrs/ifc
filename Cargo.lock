@@ -273,6 +273,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ifc-approval"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+ "ifc-schema",
+ "thiserror",
+]
+
+[[package]]
 name = "ifc-author"
 version = "0.1.0"
 dependencies = [
@@ -283,6 +292,15 @@ dependencies = [
 
 [[package]]
 name = "ifc-classification"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+ "ifc-schema",
+ "thiserror",
+]
+
+[[package]]
+name = "ifc-constraint"
 version = "0.1.0"
 dependencies = [
  "ifc-model",
@@ -499,8 +517,10 @@ name = "openbim-ifc"
 version = "0.1.0"
 dependencies = [
  "ifc-alignment",
+ "ifc-approval",
  "ifc-author",
  "ifc-classification",
+ "ifc-constraint",
  "ifc-cost",
  "ifc-geometry",
  "ifc-georef",
