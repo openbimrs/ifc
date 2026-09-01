@@ -30,12 +30,12 @@ preserved capability seam for deferred specialization.
 - `src/model/result_group.rs`: implemented result-group metadata projection
 - `src/member/curve.rs`: curve-member specialization seam; bounded behavior implemented in parent
 - `src/member/surface.rs`: surface-member specialization seam; bounded behavior implemented in parent
-- `src/member/varying.rs`: deferred varying-member specialization
+- `src/member/varying.rs`: implemented cross-version varying-member projection
 - `src/connection/point.rs`: point-connection specialization seam; bounded behavior implemented in parent
 - `src/connection/curve.rs`: curve-connection specialization seam; bounded behavior implemented in parent
 - `src/connection/surface.rs`: surface-connection specialization seam; bounded behavior implemented in parent
-- `src/condition/translation.rs`: deferred translational boundary conditions
-- `src/condition/rotation.rs`: deferred rotational boundary conditions
+- `src/condition/translation.rs`: translation-condition specialization seam; typed behavior implemented in parent
+- `src/condition/rotation.rs`: rotation-condition specialization seam; typed behavior implemented in parent
 - `src/load/static.rs`: static-load specialization seam; bounded behavior implemented in parent
 - `src/load/dynamic.rs`: deferred dynamic-load specialization
 - `src/action/point.rs`: point-action specialization seam; bounded behavior implemented in parent
@@ -49,6 +49,11 @@ preserved capability seam for deferred specialization.
 - borrowed analysis/load/result group, member, connection, action, and core static-load projections;
 - strict missing, dangling, wrong-type, select, and aggregate-cardinality errors;
 - version drift for shared placement, axes, action fields, OwnerHistory, and temperature slots;
+- typed boundary conditions normalize IFC4/IFC4X3 boolean-or-measure stiffness
+  selectors while preserving IFC2X3 numeric stiffness;
+- failure/slippage structural connection-condition families;
+- distinct curve/surface varying-member identities, including IFC2X3
+  subsequent-thickness and varying-location payloads;
 - deterministic group, member-connection, and activity-assignment queries;
 - transaction-staged analysis-model and four static-load authoring paths;
 - STEP write/read round-trip coverage.
@@ -60,8 +65,8 @@ preserved capability seam for deferred specialization.
 - [x] `STRUCT-CONN` - point/curve/surface connection references and traversal.
 - [x] `STRUCT-LOAD` - single, linear, planar, and temperature static loads plus authoring.
 - [x] `STRUCT-ACT` - point/curve/surface actions and activity-assignment traversal.
-- [ ] `STRUCT-COND` - typed boundary and connection-condition values.
-- [ ] `STRUCT-VARYING` - varying member/connection-condition families.
+- [x] `STRUCT-COND` - typed boundary and connection-condition values.
+- [x] `STRUCT-VARYING` - varying member/connection-condition families.
 - [ ] `STRUCT-DYNAMIC` - dynamic loads and configurations.
 - [ ] `STRUCT-RESULT` - reactions/results beyond result-group metadata.
 - [ ] `STRUCT-AUTHOR` - member, connection, action, and relationship authoring.
@@ -77,6 +82,9 @@ EXPRESS `WHERE` evaluation, or general `INVERSE` engine is implemented.
 
 - `STRUCT-MODEL` through `STRUCT-ACT` - 43 package tests pass across IFC2X3,
   IFC4, and IFC4X3; strict clippy and rustdoc pass; 31 semantic mutants killed.
+- `STRUCT-COND` and `STRUCT-VARYING` - 7 focused tests pass across IFC2X3,
+  IFC4, and IFC4X3; strict package clippy passes; 8/8 semantic mutants killed
+  with a clean baseline and restored GREEN.
 - Full repository and documentation gate evidence belongs to the immutable
   release-candidate review, not to this standing plan.
 

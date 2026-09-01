@@ -7,8 +7,8 @@ use ifc_schema::{ifc2x3, ifc4, ifc4x3, Schema, SchemaVersion, TypeKind};
 
 use crate::error::{StructuralError, StructuralResult};
 use crate::{
-    AnalysisModel, LoadGroup, Member, ResultGroup, StaticLoad, StructuralAction,
-    StructuralConnection,
+    AnalysisModel, BoundaryCondition, ConnectionCondition, LoadGroup, Member, ResultGroup,
+    StaticLoad, StructuralAction, StructuralConnection,
 };
 
 /// Entry point for strict structural-analysis projections.
@@ -53,6 +53,19 @@ impl<'m, 's> StructuralView<'m, 's> {
 
     pub fn connection(&self, id: EntityId) -> StructuralResult<StructuralConnection<'m, 's>> {
         StructuralConnection::from_record(self.record(id, "IfcStructuralConnection")?)
+    }
+
+    /// Project a concrete boundary condition.
+    pub fn boundary_condition(&self, id: EntityId) -> StructuralResult<BoundaryCondition<'m, 's>> {
+        BoundaryCondition::from_record(self.record(id, "IfcBoundaryCondition")?)
+    }
+
+    /// Project a concrete structural connection condition.
+    pub fn connection_condition(
+        &self,
+        id: EntityId,
+    ) -> StructuralResult<ConnectionCondition<'m, 's>> {
+        ConnectionCondition::from_record(self.record(id, "IfcStructuralConnectionCondition")?)
     }
 
     pub fn action(&self, id: EntityId) -> StructuralResult<StructuralAction<'m, 's>> {

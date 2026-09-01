@@ -37,7 +37,9 @@ for id in model.ids_of_type("IFCSTRUCTURALANALYSISMODEL") {
 The bounded view currently covers:
 
 - `IfcStructuralAnalysisModel`, load groups, and result-group metadata;
-- curve/surface analytical members and point/curve/surface connections;
+- curve/surface analytical members, distinct varying-member subtypes, and
+  point/curve/surface connections;
+- typed boundary stiffness selectors plus failure/slippage connection conditions;
 - versioned point and curve/linear/surface/planar actions with compatible
   structural-load references;
 - single, linear, planar, and temperature static-load values;
@@ -52,7 +54,11 @@ produce typed `StructuralError` values. Relationship traversal preserves
 relation-record file order and each aggregate's declared member order. Duplicate
 `SET` links and non-finite load drafts are rejected before transaction staging.
 
-Version drift is resolved by attribute name against the selected schema. Examples include IFC4X3 `AxisDirection` versus earlier `Axis`, IFC2X3 temperature names with underscores, IFC2X3 action fields, and IFC4+ `SharedPlacement`.
+Version drift is resolved by attribute name against the selected schema. Examples
+include IFC4X3 `AxisDirection` versus earlier `Axis`, IFC2X3 numeric boundary
+stiffness versus IFC4+ boolean-or-measure selectors, IFC2X3-only varying-surface
+thickness payloads, IFC2X3 temperature names with underscores, IFC2X3 action
+fields, and IFC4+ `SharedPlacement`.
 
 ## What remains application work
 
@@ -72,4 +78,8 @@ IFC construction resources describe labour, equipment, material/product capacity
 
 ## Evidence
 
-The contract is exercised by `ifc-structural/tests/`: cross-version layouts, strict references, action/load groups, relationship traversal, rejected authoring, atomic commit, and STEP write/read round-trip.
+The contract is exercised by `ifc-structural/tests/`: cross-version layouts,
+strict references, typed condition and varying-member projections, action/load
+groups, relationship traversal, rejected authoring, atomic commit, and STEP
+write/read round-trip. Boundary stiffness values are preserved literally; the
+crate does not translate them into solver constraints.

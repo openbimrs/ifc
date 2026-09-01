@@ -13,7 +13,9 @@ mod varying;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MemberKind {
     Curve,
+    CurveVarying,
     Surface,
+    SurfaceVarying,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -25,6 +27,16 @@ pub struct Member<'m, 's> {
 impl<'m, 's> Member<'m, 's> {
     pub(crate) fn from_record(record: Record<'m, 's>) -> StructuralResult<Self> {
         let kind = if record
+            .schema
+            .is_a(&record.entity.type_name, "IfcStructuralCurveMemberVarying")
+        {
+            MemberKind::CurveVarying
+        } else if record.schema.is_a(
+            &record.entity.type_name,
+            "IfcStructuralSurfaceMemberVarying",
+        ) {
+            MemberKind::SurfaceVarying
+        } else if record
             .schema
             .is_a(&record.entity.type_name, "IfcStructuralCurveMember")
         {
@@ -65,14 +77,18 @@ impl<'m, 's> Member<'m, 's> {
     }
 
     pub fn axis(&self) -> StructuralResult<Option<EntityId>> {
-        if self.kind != MemberKind::Curve || !self.record.has_attribute("Axis") {
+        if !matches!(self.kind, MemberKind::Curve | MemberKind::CurveVarying)
+            || !self.record.has_attribute("Axis")
+        {
             return Ok(None);
         }
         self.record.required_ref("Axis", "IfcDirection").map(Some)
     }
 
     pub fn thickness(&self) -> StructuralResult<Option<f64>> {
-        if self.kind != MemberKind::Surface || !self.record.has_attribute("Thickness") {
+        if !matches!(self.kind, MemberKind::Surface | MemberKind::SurfaceVarying)
+            || !self.record.has_attribute("Thickness")
+        {
             return Ok(None);
         }
         let thickness = self.record.optional_number("Thickness")?;

@@ -25,6 +25,10 @@ mod result;
 
 pub use action::{ActionKind, CoordinateSystem, StructuralAction};
 pub use authoring::{stage_analysis_model, stage_load, AnalysisModelDraft, LoadDraft};
+pub use condition::{
+    AxisValues, BoundaryCondition, BoundaryConditionKind, ConnectionCondition,
+    ConnectionConditionKind, FailureLimits, StiffnessValue,
+};
 pub use connection::{ConnectionKind, StructuralConnection};
 pub use error::{StructuralError, StructuralResult};
 pub use load::{LoadKind, StaticLoad};

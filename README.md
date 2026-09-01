@@ -37,7 +37,8 @@ Implemented foundations include:
 - declared-schema validation against exact version tables, with selected native
   semantic rules and explicit unsupported reporting for unevaluated semantics;
 - borrowed classification, document, library, approval, constraint, property,
-  quantity, material, cost, schedule, construction-resource, systems, and spatial views;
+  quantity, material, cost, schedule, construction-resource, systems, spatial,
+  and bounded structural-analysis views;
 - classification, document, library, approval, constraint, material, quantity,
   cost, and selected construction-resource authoring staged through transactions;
 - geometry selection/lowering foundations and versioned PSD/QTO catalogs.

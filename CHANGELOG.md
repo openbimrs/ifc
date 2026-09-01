@@ -8,6 +8,11 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `ifc-structural` now projects typed cross-version boundary stiffness selectors,
+  failure/slippage connection conditions, distinct varying-member identities,
+  and IFC2X3 varying-surface thickness/location payloads without interpreting
+  them as solver constraints; focused cross-version tests kill 8/8 semantic
+  mutants.
 - Bounded IFC4 approval and constraint domains now provide strict borrowed
   projections, typed resource/object relationships, deterministic direct queries,
   and transaction-staged authoring; classification now owns the generic external-
