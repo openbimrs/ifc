@@ -34,6 +34,7 @@
 //! [`compare`], which reports agreement rather than inventing it.
 
 mod error;
+mod exact;
 mod pset;
 mod quantity;
 mod query;
@@ -43,6 +44,10 @@ mod unit;
 mod value;
 
 pub use error::{PropertyAnomaly, PropertyError};
+pub use exact::{
+    exact_property, ExactLogical, ExactProperty, ExactPropertyError, ExactResolution, ExactSource,
+    ExactValue,
+};
 pub use pset::{
     property, property_set, property_sets_by_object, AttachedSets, Attachment, Property,
     PropertySet, PropertyValue,
