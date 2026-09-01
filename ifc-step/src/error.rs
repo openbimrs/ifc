@@ -1,6 +1,6 @@
 //! Why a STEP parse failed at the IFC adapter boundary.
 
-use ifc_model::ModelError;
+use ifc_model::{EntityId, ModelError};
 use thiserror::Error;
 
 /// Failures specific to reading or writing IFC STEP text.
@@ -24,6 +24,15 @@ pub enum StepError {
     MissingEntityId {
         /// Byte offset into the source.
         offset: usize,
+    },
+
+    /// The model contains a REAL value Part 21 cannot represent.
+    #[error("entity #{entity} slot {slot} contains a non-finite REAL")]
+    NonFiniteReal {
+        /// Entity containing the value.
+        entity: EntityId,
+        /// Top-level positional attribute containing the value.
+        slot: usize,
     },
 
     /// Underlying I/O failure.
@@ -56,6 +65,9 @@ impl From<StepError> for ModelError {
                 offset,
                 detail: "entity record without an id".into(),
             },
+            StepError::NonFiniteReal { entity, slot } => ModelError::Write(format!(
+                "entity #{entity} slot {slot} contains a non-finite REAL"
+            )),
             StepError::Io(message) => ModelError::Io(message),
         }
     }

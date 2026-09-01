@@ -30,7 +30,7 @@ make every downstream build fat.
 | `step` *(default)* | `ifc-step` | Reading and writing `.ifc` |
 | `ifcxml` | `ifc-xml` | Reading and writing `.ifcxml` |
 | `schema` | `ifc-schema` | Subtype queries, conformant XML names |
-| `author` | `ifc-author` (+ `schema`) | Schema-checked construction of new entities |
+| `author` | `ifc-author` (+ `schema`) | Schema-checked construction and transactional editing |
 | `spatial` | `ifc-spatial` | Containment tree and relationship traversal |
 | `geometry` | `ifc-geometry` | Lowering representations to neutral geometry |
 | `material`, `cost`, `properties`, … | one domain crate each | Interpreting that domain |

@@ -11,16 +11,22 @@ Allowed production dependencies: ifc-model; ifc-schema is optional naming metada
 
 ## Module ownership
 
-- `reader.rs`: namespace-aware XML to Model
+- `codec.rs`: codec state, profile/schema constructors, and `Codec` adapter
+- `reader.rs`: namespace-aware XML to Model and path context tracking
 - `writer.rs`: deterministic Model to XML
-- `value.rs`: XML scalar/aggregate representation
-- `error.rs`: XML and model conversion failures
+- `profile.rs`: explicit release namespace/schema-token contracts
+- `error.rs`: typed XML failures and inspectable `XmlPath`
+- `tests/namespaces.rs`: strict-profile and namespace-spoofing contracts
+- `tests/diagnostics.rs`: nested entity/attribute/list error paths
 
 ## Invariants
 
 - No domain semantics in the codec.
 - Schema-disabled mode must remain useful and must not fabricate schema names.
 - Unknown data survives semantically even when XML lexical form normalizes.
+- Compatibility mode must not be described as XSD conformance.
+- Strict mode validates every resolved element namespace and the root profile token.
+- Explicit typed-value errors retain entity/attribute paths; they never coerce to null.
 
 Keep `lib.rs` delegating, keep child modules crate-private until they own a real
 public contract, and split view/data, traversal, mutation, and validation before

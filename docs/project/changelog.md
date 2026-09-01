@@ -16,6 +16,18 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-author::EntityEditor` schema-checks the full projected record before
+  staging updates through `ifc-model::Transaction`; invalid names, arity,
+  required values, types, aggregates, references, and stale commits remain
+  typed refusals with atomic non-mutation.
+- `ifc-step` proves deterministic model-order output and bit-exact finite-real
+  round trips, preserves signed zero, and refuses nested non-finite values with
+  entity/slot context before serialization.
+- `ifc-xml` adds an explicit strict IFC4 ADD2 TC1 namespace/profile mode and
+  inspectable `XmlPath` diagnostics through entities, attributes, typed values,
+  and list indexes, and refuses nested non-finite REAL writes before output. Its
+  schema-less compatibility dialect remains available
+  without being described as generic XSD conformance.
 - `ifc-geometry` lowers additional exact curve/surface families into neutral
   Axiolid graphs: ellipses, offset and indexed poly-curves, p-/surface curves,
   and curve-bounded surfaces; explicit Body/Plan selection prevents silent
@@ -84,6 +96,10 @@ This page is synchronised from it at build time.
   independent bundled artifacts, and process caches stay here.
 
 ### Fixed
+- `ifc-xml` now binds the XSI namespace used by null values, independently
+  resolves qualified attributes during tests, and rejects unmarked or
+  namespace-spoofed self-closing typed values instead of silently decoding
+  them as null.
 - `ifc-geometry` now lowers schema-valid `IfcBoundaryCurve` and
   `IfcOuterBoundaryCurve` members of `IfcCurveBoundedSurface`, preserves their
   parameter-space p-curves in committed corpus evidence, keeps `IfcEdgeCurve`

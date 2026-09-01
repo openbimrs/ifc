@@ -26,15 +26,16 @@ and geometry-dependent semantics remain explicitly unsupported and reported.
 
 ### R1. Typed authoring layer — done
 
-Delivered as `ifc-author` (facade feature `author`). Entities are built by
-attribute name; slot positions come from `Schema::attributes`. Construction is
-refused for unknown entities and attributes, duplicate sets, missing required
-attributes, declared-type and aggregate mismatches, and malformed GlobalIds.
+Delivered as `ifc-author` (facade feature `author`). Entities are built and
+edited by attribute name; slot positions come from `Schema::attributes`.
+Construction and projected edits refuse unknown entities and attributes,
+duplicate sets, missing required attributes, declared-type and aggregate
+mismatches, malformed GlobalIds, and malformed existing arity. Edits stage
+through `ifc-model::Transaction`, so dangling references and stale revisions
+leave the model untouched.
 
-Remaining under `AUTHOR` in the crate's **PLAN.md**: editing an entity already
-in a model (now unblocked by the implemented `ifc-model::Transaction`) and a
-decision on whether `IfcOwnerHistory` is authored here or injected by an
-application service.
+Remaining under `AUTHOR` in the crate's **PLAN.md**: a decision on whether
+`IfcOwnerHistory` is authored here or injected by an application service.
 
 ### R2. Relationship and spatial traversal — done
 
@@ -177,11 +178,10 @@ B-splines, including rational weights. The implementation preserves curve
 parameter units, segment sense, transition codes, closure, and trim selectors;
 it is exercised directly and through swept-solid fixtures.
 
-**Remaining gap.** Curves are lowered when used as directrices or members of a
-geometric collection, but `lower_representation_item` does not yet dispatch a
-standalone curve as a top-level representation item. Other concrete curve
-families remain typed `Unsupported` results. `GEOM-CURVE` owns completing the
-family census and top-level seam without approximation.
+**Remaining gap.** The representation-item dispatcher now lowers the supported
+curve families as top-level items as well as directrices and members of a
+geometric collection. Other concrete curve families remain typed `Unsupported`
+results. `GEOM-CURVE` owns completing the family census without approximation.
 
 ### R10. Plan derivation from 3D
 
@@ -192,11 +192,13 @@ for it; the work itself belongs upstream.
 
 ## Domain crates awaiting implementation
 
-The current architecture scaffolds are `ifc-resource`, `ifc-georef`, and
-`ifc-alignment`. `ifc-classification`, `ifc-properties`, `ifc-style`,
+The only current architecture scaffold is `ifc-resource`. `ifc-georef` and
+`ifc-alignment` now have tested partial vertical slices: IFC4 project-to-map/CRS
+resolution in the former, and IFC4X3 segment parameters plus selected exact
+curve output in the latter. `ifc-classification`, `ifc-properties`, `ifc-style`,
 `ifc-structural`, `ifc-validate`, `ifc-schedule`, and `ifc-systems` are implemented;
-`ifc-cost` and `ifc-geometry` are partial. Each crate's **PLAN.md** records the
-remaining scope.
+`ifc-cost`, `ifc-geometry`, `ifc-georef`, and `ifc-alignment` are partial. Each
+crate's **PLAN.md** records the remaining scope.
 Priority among unfinished slices is demand-driven; open an issue describing the
 use case.
 

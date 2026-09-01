@@ -39,21 +39,21 @@ code.
 | `ifc-schedule` | 1,691 | 24 | 14 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 1,586 | 20 | 5 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 1,248 | 10 | 0 | 1 | <span class="status-partial">Partial</span> |
-| `ifc-alignment` | 1,095 | 26 | 16 | 2 | <span class="status-scaffold">Scaffold</span> |
+| `ifc-alignment` | 1,095 | 26 | 16 | 2 | <span class="status-partial">Partial</span> |
+| `ifc-xml` | 1,045 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-schema` | 980 | 10 | 4 | 1 | <span class="status-implemented">Implemented</span> |
 | `openbim-ifc` | 888 | 6 | 0 | 9 | <span class="status-implemented">Implemented</span> |
-| `ifc-xml` | 658 | 4 | 0 | 1 | <span class="status-implemented">Implemented</span> |
-| `ifc-georef` | 582 | 17 | 12 | 1 | <span class="status-scaffold">Scaffold</span> |
+| `ifc-author` | 729 | 8 | 3 | 3 | <span class="status-implemented">Implemented</span> |
+| `ifc-georef` | 582 | 17 | 12 | 1 | <span class="status-partial">Partial</span> |
 | `ifc-spatial` | 561 | 7 | 1 | 3 | <span class="status-implemented">Implemented</span> |
-| `ifc-author` | 552 | 6 | 2 | 2 | <span class="status-implemented">Implemented</span> |
-| `ifc-step` | 480 | 5 | 0 | 2 | <span class="status-implemented">Implemented</span> |
+| `ifc-step` | 516 | 5 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-resource` | 177 | 25 | 23 | 0 | <span class="status-scaffold">Scaffold</span> |
 
 <!-- CAPABILITIES:CENSUS:END -->
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:BEGIN -->
 
-3 of 21 crates are scaffolds.
+1 of 21 crates are scaffolds.
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:END -->
 They exist because the layering decision
@@ -67,8 +67,8 @@ later, but they must never be mistaken for working code.
 | --- | --- | --- |
 | Entity graph with positional attributes | <span class="status-implemented">Implemented</span> | `ifc-model::Model` |
 | Round-trip of entities the build does not understand | <span class="status-implemented">Implemented</span> | `openbim-ifc/tests/costing_roundtrip.rs` (runs with no domain crate compiled) |
-| STEP (`.ifc`) read and write | <span class="status-implemented">Implemented</span> | `ifc-step`, delegating ISO 10303-21 syntax to `openbim-step` |
-| ifcXML read and write | <span class="status-implemented">Implemented</span> | `ifc-xml` |
+| STEP (`.ifc`) read and write | <span class="status-implemented">Implemented</span> | `ifc-step`; deterministic model order, finite scalar safeguards, generic syntax delegated to `openbim-step` |
+| ifcXML read and write | <span class="status-implemented">Implemented</span> | `ifc-xml`; explicit strict IFC4 ADD2 TC1 namespace profile and path-rich typed diagnostics; compatibility dialect is not claimed as generic XSD conformance |
 | IFC-JSON | <span class="status-absent">Absent</span> | Would be a third `Codec` impl; no crate exists |
 | EXPRESS schema metadata, subtype queries | <span class="status-implemented">Implemented</span> | `ifc-schema` |
 | GlobalId base-64 encode/decode | <span class="status-implemented">Implemented</span> | `ifc-model::guid` |
@@ -83,7 +83,6 @@ later, but they must never be mistaken for working code.
 | Property sets and every property value family | <span class="status-implemented">Implemented</span> | `ifc-properties` reads single, enumerated, bounded, list, table, reference and complex properties. The declared measure type (`IfcLengthMeasure` and friends) is retained, because it is the only statement of what a bare number means. |
 | Occurrence/type property precedence | <span class="status-implemented">Implemented</span> | An occurrence property set overrides a same-named set inherited from the object's type. The shadowed type set is kept, so a checker can explain why an effective value differs from the type default. |
 | Quantities and unit resolution | <span class="status-implemented">Implemented</span> | Simple and complex quantities, SI prefixes carried as exact decimal exponents, conversion-based and derived units. `WR21` (unit matches quantity kind) and `WR22` (non-negative value) breaches are reported; `ifcopenshell.validate` checks neither. Quantities are read as authored assertions and never computed from geometry. |
-| Cycle-protected graph walks | <span class="status-scaffold">Scaffold</span> | `ifc-model/src/traverse.rs` |
 | Type index (`ids_of_type`, `of_type`) | <span class="status-implemented">Implemented</span> | `Model::ids_of_type`, backed by `index/type_index.rs` |
 | Reverse-reference index ("who references me") | <span class="status-implemented">Implemented</span> | `ifc-model::ReverseIndex`, built on demand; records the attribute slot |
 | Bounded graph traversal with cycle reports | <span class="status-implemented">Implemented</span> | `ifc-model::{depth_first, breadth_first, find_cycle}` with `Budget`/`Stop` |

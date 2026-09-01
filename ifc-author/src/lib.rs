@@ -1,4 +1,4 @@
-//! `ifc-author` — schema-checked construction of IFC entities.
+//! `ifc-author` — schema-checked construction and editing of IFC entities.
 //!
 //! # Why this is not part of `ifc-model`
 //!
@@ -64,7 +64,9 @@
 
 mod builder;
 mod check;
+mod editor;
 mod error;
 
 pub use builder::EntityBuilder;
+pub use editor::EntityEditor;
 pub use error::{AuthorError, AuthorResult};

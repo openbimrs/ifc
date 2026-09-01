@@ -116,20 +116,18 @@ parallel placeholders.
     build and pass clippy; 6/6 mutation probes caught.
   - Decision: `GEOM-INPUT` was not required. The tessellated views already
     existed under `solid::tessellated` and depend only on `error` and `slots`.
-- [ ] `GEOM-SOLID` - complete booleans, halfspaces, CSG, and swept-disk families
-  - Requires: `GEOM-SESSION`. `GEOM-PROFILE`/`GEOM-SURFACE` apply only to the
-    families that still need exact profiles or curved surfaces.
+- [x] `GEOM-SOLID` - complete booleans, halfspaces, CSG, and swept-disk families
+  - Requires: `GEOM-SESSION`.
+  - Decision: exact open-profile and curved-surface coverage remains separately
+    tracked by the pending profile and surface work items.
   - Half spaces: DONE. `src/lower/halfspace.rs`, owned by
     `src/lower/PLAN.md:LOW-HALFSPACE`. Evidence: 9 tests, corpus census
     67 -> 72, 6/6 mutation probes. `IFCBOOLEANCLIPPINGRESULT` left the
     unsupported set as a side effect: its cutting tool now lowers.
-  - Remaining: `IFCCSGSOLID` (needs CSG primitive nodes), `IFCSWEPTDISKSOLID`
-    and `IFCSURFACECURVESWEPTAREASOLID` (need exact curve lowering),
-    `IFCSECTIONEDSPINE`.
-  - Progress: booleans, half spaces, CSG solids/primitives and swept disks all
-    lower. Corpus census 80 lowered with an EMPTY unsupported set. Remaining
-    families in `dispatch::PLANNED` (advanced brep, surface-curve sweep,
-    sectioned spine) do not occur in the committed corpus.
+  - Evidence: booleans, half spaces, CSG solids/primitives, swept disks,
+    surface-curve sweeps, and sectioned spines lower through exact neutral
+    nodes; focused tests and the generated dispatcher table cover every listed
+    family. Open-profile support remains tracked as pending work.
 - [x] `GEOM-MAP` - preserve mapped-item instancing with cycle/depth limits
   - Evidence: 11 mapped-item tests over real fixtures, 6/6 mutation probes,
     isolated build, and crate clippy.

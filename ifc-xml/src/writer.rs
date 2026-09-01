@@ -17,13 +17,56 @@ use crate::XmlCodec;
 use ifc_model::{Model, Value};
 use std::fmt::Write as _;
 
+const XSI_NAMESPACE: &str = "http://www.w3.org/2001/XMLSchema-instance";
+
+fn reject_non_finite_reals(model: &Model) -> Result<(), XmlError> {
+    for (id, entity) in model.iter() {
+        for (slot, value) in entity.attributes.iter().enumerate() {
+            if let Some(non_finite) = first_non_finite_real(value) {
+                let path = format!("/ifcXML/{}[@id='i{}']/a{}", entity.type_name, id.0, slot);
+                return Err(XmlError::InvalidScalar {
+                    kind: "real".into(),
+                    value: non_finite.to_string(),
+                }
+                .at(path));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn first_non_finite_real(value: &Value) -> Option<f64> {
+    match value {
+        Value::Real(value) if !value.is_finite() => Some(*value),
+        Value::List(values) => values.iter().find_map(first_non_finite_real),
+        Value::Typed { value, .. } => first_non_finite_real(value),
+        _ => None,
+    }
+}
+
 /// Serialize a model as ifcXML.
 pub fn write(codec: &XmlCodec, model: &Model) -> Result<Vec<u8>, XmlError> {
+    reject_non_finite_reals(model)?;
     let mut out = String::with_capacity(model.len() * 96);
+    let schema_token = model.header().schema.first().cloned().unwrap_or_default();
+    let namespace = if let Some(profile) = codec.profile() {
+        if schema_token != profile.schema_token() {
+            return Err(XmlError::Profile {
+                expected: profile.schema_token(),
+                found: (!schema_token.is_empty()).then_some(schema_token),
+            });
+        }
+        profile.namespace()
+    } else {
+        "http://www.buildingsmart-tech.org/ifcXML/IFC4/final"
+    };
 
     out.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-    out.push_str("<ifcXML xmlns=\"http://www.buildingsmart-tech.org/ifcXML/IFC4/final\"");
-    let schema_token = model.header().schema.first().cloned().unwrap_or_default();
+    write!(
+        out,
+        "<ifcXML xmlns=\"{namespace}\" xmlns:xsi=\"{XSI_NAMESPACE}\""
+    )
+    .map_err(fmt_err)?;
     write_attr(&mut out, "schema", &schema_token);
     out.push_str(">\n");
 

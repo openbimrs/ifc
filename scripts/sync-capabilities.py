@@ -83,6 +83,12 @@ PUBLISHED_STATUS = {
     # selected analysis/load authoring is transaction-staged. Solving, FEM,
     # geometry evaluation and computed results remain outside this crate.
     "ifc-structural": '<span class="status-implemented">Implemented</span>',
+    # IFC4 projected-CRS/map-unit and project-to-map conversion are tested;
+    # frame composition, north semantics, and IFC4X3 profiles remain open.
+    "ifc-georef": '<span class="status-partial">Partial</span>',
+    # IFC4X3 segment parameters and exact line/arc/constant-gradient slices are
+    # tested; transitions, cant assembly, placement, and the census remain open.
+    "ifc-alignment": '<span class="status-partial">Partial</span>',
 }
 
 

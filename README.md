@@ -32,7 +32,7 @@ Implemented foundations include:
 - schema-agnostic entity/value graph with unknown-data round-tripping and
   transactional structural edits;
 - STEP and ifcXML parsing/writing;
-- schema-checked authoring of new entities by attribute name (`ifc-author`);
+- schema-checked construction and transactional editing by attribute name (`ifc-author`);
 - bundled IFC2x3 TC1, IFC4 ADD2 TC1, and IFC4X3 ADD2 structural schema metadata;
 - declared-schema validation against exact version tables, with selected native
   semantic rules and explicit unsupported reporting for unevaluated semantics;

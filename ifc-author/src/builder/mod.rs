@@ -6,4 +6,5 @@
 
 mod entity;
 
+pub(crate) use entity::check_value;
 pub use entity::EntityBuilder;

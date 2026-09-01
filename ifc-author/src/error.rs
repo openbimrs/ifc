@@ -6,10 +6,17 @@
 
 use std::fmt;
 
+use ifc_model::EntityId;
+
 /// A refused construction.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum AuthorError {
+    /// The requested entity is not present in the model snapshot.
+    MissingEntity {
+        /// The missing entity id.
+        id: EntityId,
+    },
     /// The schema does not declare this entity type.
     ///
     /// Reported rather than ignored: silently accepting an unknown type is how
@@ -71,11 +78,21 @@ pub enum AuthorError {
         /// The rejected text.
         found: String,
     },
+    /// An existing entity does not have the arity declared by the schema.
+    ArityMismatch {
+        /// The entity being edited.
+        entity: String,
+        /// Number of attributes declared by the schema.
+        expected: usize,
+        /// Number of attributes present in the model.
+        found: usize,
+    },
 }
 
 impl fmt::Display for AuthorError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::MissingEntity { id } => write!(f, "model has no entity `{id}`"),
             Self::UnknownEntity { entity } => {
                 write!(f, "schema does not declare entity `{entity}`")
             }
@@ -119,6 +136,14 @@ impl fmt::Display for AuthorError {
             Self::InvalidGlobalId { entity, found } => write!(
                 f,
                 "`{entity}.GlobalId` must be a 22-character IFC GUID, found `{found}`"
+            ),
+            Self::ArityMismatch {
+                entity,
+                expected,
+                found,
+            } => write!(
+                f,
+                "`{entity}` declares {expected} attributes, but the model contains {found}"
             ),
         }
     }

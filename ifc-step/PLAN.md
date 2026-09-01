@@ -30,8 +30,12 @@ marker with its first real contract and tests; do not add parallel placeholders.
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
 - [ ] `STEP-PAR` - wire partitioned parsing only after differential correctness tests
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
-- [ ] `STEP-WRITE` - prove deterministic ordering and numeric/string edge cases
-  - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
+- [x] `STEP-WRITE` - prove deterministic ordering and numeric/string edge cases
+  - Evidence: 18 crate tests/doc-tests, strict crate clippy, and 3/3 focused
+    semantic mutants killed; repeated writes are byte-identical in model/file
+    order, finite real extremes and signed zero round-trip bit-exactly,
+    text/binary/typed values survive, and nested non-finite reals are refused
+    with entity/slot context.
 - [ ] `STEP-PERF` - establish mmap/read/parse/write benchmark baselines
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
 - [x] `STEP-EXTRACT` - consume generic STEP syntax without retaining a fork
@@ -48,3 +52,6 @@ Do not paste long logs or transient process state.
   limit regression was mutation-probed by changing it to 129 and observing exit 101.
 - `STEP-EXTRACT` - `ifc-step` now contains only IFC graph/header/value conversion;
   fixture parse and semantic round-trip tests pass against local `openbim-step`.
+- `STEP-WRITE` - `cargo +1.88.0 test -p ifc-step` plus strict crate clippy;
+  output is deterministic in model order, finite IEEE-754 edge values preserve
+  their value and signed zero, and non-finite values fail before serialization.

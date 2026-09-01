@@ -153,7 +153,7 @@ impl EntityBuilder<'_> {
 ///
 /// Split out as a free function because it borrows the schema and the entity
 /// name while the builder's `set` list is being consumed.
-fn check_value(
+pub(crate) fn check_value(
     schema: &Schema,
     entity: &str,
     attribute: &ifc_schema::Attribute,

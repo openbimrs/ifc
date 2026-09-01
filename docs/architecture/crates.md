@@ -30,7 +30,10 @@ model, schema-version, and validation adapters.
 
 ### `ifc-xml`
 The ifcXML codec (`.ifcxml`). Implements the same `Codec` trait, which is what
-makes format conversion a two-line operation.
+makes format conversion a two-line operation. An explicit IFC4 ADD2 TC1 profile
+enforces the official namespace and root schema token; compatibility mode keeps
+the lossless internal dialect available without claiming XSD conformance. Typed
+parse failures retain entity, attribute, and nested-list paths.
 
 ## L2 — geometry bridges
 

@@ -67,7 +67,7 @@ pub use ifc_step::StepCodec;
 
 /// The ifcXML codec (`.ifcxml`).
 #[cfg(feature = "ifcxml")]
-pub use ifc_xml::XmlCodec;
+pub use ifc_xml::{XmlCodec, XmlProfile};
 
 /// The IFC schema as queryable data.
 #[cfg(feature = "schema")]
@@ -119,13 +119,13 @@ pub use ifc_style as style;
 #[cfg(feature = "validate")]
 pub use ifc_validate as validate;
 
-/// Schema-checked construction of new entities.
+/// Schema-checked construction and editing of entities.
 #[cfg(feature = "author")]
 pub use ifc_author as author;
 
-/// Build an entity by naming its attributes rather than positioning them.
+/// Build or edit an entity by naming attributes rather than positioning them.
 #[cfg(feature = "author")]
-pub use ifc_author::EntityBuilder;
+pub use ifc_author::{EntityBuilder, EntityEditor};
 
 /// Containment and objectified relationship traversal.
 #[cfg(feature = "spatial")]

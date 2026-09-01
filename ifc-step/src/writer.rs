@@ -8,8 +8,29 @@ use openbim_step::{
 use std::io::Write;
 
 pub(crate) fn write(model: &Model, output: &mut dyn Write) -> Result<(), StepError> {
+    reject_non_finite_reals(model)?;
     let exchange = exchange_from_model(model);
     openbim_step::write(&exchange, output).map_err(|error| StepError::Io(error.to_string()))
+}
+
+fn reject_non_finite_reals(model: &Model) -> Result<(), StepError> {
+    for (id, entity) in model.iter() {
+        for (slot, value) in entity.attributes.iter().enumerate() {
+            if contains_non_finite_real(value) {
+                return Err(StepError::NonFiniteReal { entity: id, slot });
+            }
+        }
+    }
+    Ok(())
+}
+
+fn contains_non_finite_real(value: &Value) -> bool {
+    match value {
+        Value::Real(value) => !value.is_finite(),
+        Value::List(values) => values.iter().any(contains_non_finite_real),
+        Value::Typed { value, .. } => contains_non_finite_real(value),
+        _ => false,
+    }
 }
 
 fn exchange_from_model(model: &Model) -> Exchange {
@@ -94,6 +115,9 @@ fn value_to_parameter(value: &Value) -> Parameter {
 
 #[allow(clippy::float_cmp)]
 fn format_real(value: f64) -> String {
+    if value == 0.0 && value.is_sign_negative() {
+        return "-0.".into();
+    }
     if value == value.trunc() && value.abs() < 1e15 {
         #[allow(clippy::cast_possible_truncation)]
         let integer = value.trunc() as i64;

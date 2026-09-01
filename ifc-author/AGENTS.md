@@ -1,6 +1,6 @@
 # ifc-author instructions
 
-Scope: schema-checked construction of IFC entities. Follow the package
+Scope: schema-checked construction and editing of IFC entities. Follow the package
 `../AGENTS.md`. Read `PLAN.md` only for assigned task(s) `AUTHOR` and keep
 implementation state there.
 
@@ -10,6 +10,8 @@ implementation state there.
 - construction-time refusal: unknown entity/attribute, duplicate set, missing
   required, declared-type and aggregate mismatch, malformed GlobalId
 - insertion of a built entity into a `Model`
+- named-attribute edits validated against the complete projected entity before
+  staging through `ifc-model::Transaction`
 
 ## Does not own
 
@@ -18,7 +20,8 @@ implementation state there.
 - serialization: an authored model is written by whichever codec the caller picked
 - domain semantics: this crate knows no walls, styles, or annotations, only
   what the schema tables declare
-- editing entities already in a model (`ifc-model`'s `mutation` module)
+- schema-agnostic mutation primitives, reference-integrity preflight, optimistic
+  concurrency, and atomic commit (`ifc-model`'s `mutation` module)
 
 ## Boundaries
 

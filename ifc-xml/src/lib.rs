@@ -22,10 +22,12 @@
 //!
 //! Both round-trip losslessly. Only the first is interoperable with other
 //! tools, and the fallback is clearly marked in the output rather than
-//! silently producing wrong names.
+//! silently producing wrong names. Namespace conformance is separately explicit:
+//! [`XmlCodec::strict`] selects one exact [`XmlProfile`], while the default keeps
+//! the historical compatibility dialect without claiming XSD conformance.
 //!
 //! ```
-//! use ifc_model::{Codec, Model, Entity, EntityId, Value};
+//! use ifc_model::{Codec, Entity, EntityId, Model, Value};
 //! use ifc_xml::XmlCodec;
 //!
 //! let mut model = Model::new();
@@ -39,63 +41,12 @@
 //! assert_eq!(&*reparsed.get(EntityId(1)).unwrap().type_name, "IFCCOSTITEM");
 //! ```
 
+mod codec;
 pub mod error;
+mod profile;
 pub mod reader;
 pub mod writer;
 
-pub use error::XmlError;
-
-use ifc_model::{Codec, Model, ModelError};
-
-/// The ifcXML codec.
-///
-/// Construct with [`XmlCodec::default`] for positional fallback naming, or
-/// with [`XmlCodec::with_schema`] to emit conformant attribute names.
-#[derive(Default)]
-pub struct XmlCodec {
-    #[cfg(feature = "schema")]
-    schema: Option<std::sync::Arc<ifc_schema::Schema>>,
-}
-
-impl XmlCodec {
-    /// A codec that emits schema-correct attribute names.
-    #[cfg(feature = "schema")]
-    pub fn with_schema(schema: std::sync::Arc<ifc_schema::Schema>) -> Self {
-        Self {
-            schema: Some(schema),
-        }
-    }
-
-    /// The schema in use, if any.
-    #[cfg(feature = "schema")]
-    pub fn schema(&self) -> Option<&ifc_schema::Schema> {
-        self.schema.as_deref()
-    }
-}
-
-impl Codec for XmlCodec {
-    fn name(&self) -> &'static str {
-        "ifcXML"
-    }
-
-    fn extensions(&self) -> &'static [&'static str] {
-        &["ifcxml", "xml"]
-    }
-
-    fn detect(&self, bytes: &[u8]) -> bool {
-        reader::looks_like_xml(bytes)
-    }
-
-    fn read_bytes(&self, bytes: &[u8]) -> Result<Model, ModelError> {
-        reader::read(self, bytes).map_err(|e| ModelError::Syntax {
-            offset: 0,
-            detail: e.to_string(),
-        })
-    }
-
-    fn write(&self, model: &Model, out: &mut dyn std::io::Write) -> Result<(), ModelError> {
-        let bytes = writer::write(self, model).map_err(|e| ModelError::Write(e.to_string()))?;
-        out.write_all(&bytes)
-            .map_err(|e| ModelError::Io(e.to_string()))
-    }
-}
+pub use codec::XmlCodec;
+pub use error::{XmlError, XmlPath};
+pub use profile::XmlProfile;
