@@ -442,7 +442,9 @@ coverage.
 | `IfcLibraryInformation` | <span class="status-implemented">Implemented</span> | Strict borrowed view and transaction-staged authoring |
 | `IfcRelAssociatesLibrary` | <span class="status-implemented">Implemented</span> | Deterministic object lookup and transaction-staged authoring |
 | `IfcExternalReference` and `IfcLibrarySelect` | <span class="status-implemented">Implemented</span> | Inherited fields are exposed by concrete views; select targets are type-checked |
-| `IfcApproval` and the whole `IfcApprovalResource` schema | <span class="status-absent">Absent</span> | No crate owns it; not even a scaffold |
+| `IfcExternalReferenceRelationship` | <span class="status-implemented">Implemented</span> | `ifc-classification` owns strict selected projections, deterministic lookup, and transaction-staged authoring |
+| `IfcApproval` and selected approval relationships | <span class="status-implemented">Implemented</span> | `ifc-approval` owns bounded IFC4 projections, queries, and transaction-staged authoring; the whole `IfcApprovalResource` schema is not claimed |
+| `IfcMetric`, `IfcObjective`, and selected constraint relationships | <span class="status-implemented">Implemented</span> | `ifc-constraint` preserves typed metric values and stages bounded IFC4 authoring without evaluating constraints |
 | `IfcClassificationReference` | <span class="status-implemented">Implemented</span> | Bounded hierarchy, explicit occurrence/type sources, and authoring |
 
 Because `ifc-model` round-trips entities structurally, every row above reads and
