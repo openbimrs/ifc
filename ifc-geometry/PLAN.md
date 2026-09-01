@@ -56,7 +56,10 @@ parallel placeholders.
   - Contract: axes and normals become finite non-zero unit directions; surface
     normals use inverse-transpose affine transformation; magnitude-bearing
     vectors are not normalized.
-  - Evidence: scale-safe extreme/zero/non-finite direction tests, base-axis tests, checked neutral-frame tests, and both feature columns.
+  - Evidence: scale-safe extreme/zero/non-finite direction tests, ordinary and
+    extreme finite inverse-transpose normal tests including scale-aware sheared
+    determinant orientation, base-axis tests, checked neutral-frame tests, and
+    both feature columns.
 - [x] `GEOM-SESSION` - introduce one recursive lowering session and shared graph builder
   - Evidence: `cargo test -p ifc-geometry` (413 passing) plus 4/4 mutation
     probes; `tests/lower_session.rs` proves boolean composition across families,

@@ -111,8 +111,10 @@ This page is synchronised from it at build time.
   resolves qualified attributes during tests, and rejects unmarked or
   namespace-spoofed self-closing typed values instead of silently decoding
   them as null.
-- Non-uniform mapped transforms now carry half-space plane normals through the
-  inverse transpose, preserving the authored cutting plane under affine scale.
+- Non-uniform mapped transforms now carry half-space plane normals through a
+  scale-safe inverse transpose with scale-aware determinant orientation,
+  preserving the authored cutting plane under ordinary and extreme finite
+  affine scale and shear without overflow or underflow.
 - `IfcPolygonalBoundedHalfSpace` no longer drops its positioned polygonal bound
   and masquerades as an unbounded half space. It now returns a typed unsupported
   result until the neutral geometry contract can preserve the effective cutter.

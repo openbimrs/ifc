@@ -33,7 +33,8 @@ ifc-model.workspace = true
 ifc-schema.workspace = true
 thiserror.workspace = true
 
-# Representation crates only. Operation-provider selection belongs to the app.
+# Format-neutral representation crates only. Operation-provider selection
+# belongs to the app.
 # Optional so a consumer that only selects and reads representations links no
 # geometry kernel; see the `lowering` feature.
 axiolid-core = { workspace = true, optional = true }

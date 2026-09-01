@@ -134,31 +134,102 @@ impl Transform {
     /// Transform a surface normal as a covector and return unit length.
     ///
     /// The cofactor form is equivalent to inverse-transpose multiplication but
-    /// avoids explicitly inverting the affine basis. Scaling the basis first
-    /// prevents finite IFC operators from overflowing the cross products.
+    /// avoids explicitly inverting the affine basis. Each basis column is
+    /// normalized independently; logarithmic cofactor weights preserve finite
+    /// nonsingular operators even when products of two axis scales would
+    /// underflow or overflow in `f64`.
     #[cfg(feature = "lowering")]
     pub(crate) fn apply_unit_normal(&self, normal: [f64; 3]) -> Option<[f64; 3]> {
-        let scale = self
+        if normal.iter().any(|value| !value.is_finite()) {
+            return None;
+        }
+
+        let axis_scales = self
             .basis
+            .map(|axis| axis.into_iter().map(f64::abs).fold(0.0_f64, f64::max));
+        if axis_scales
             .iter()
-            .flatten()
-            .map(|value| value.abs())
-            .fold(0.0_f64, f64::max);
-        if !scale.is_finite() || scale == 0.0 || normal.iter().any(|value| !value.is_finite()) {
+            .any(|scale| !scale.is_finite() || *scale == 0.0)
+        {
             return None;
         }
-        let [a, b, c] = self.basis.map(|axis| axis.map(|value| value / scale));
-        let [bc, ca, ab] = [cross(b, c), cross(c, a), cross(a, b)];
-        let determinant = dot(a, bc);
-        if !determinant.is_finite() || determinant == 0.0 {
+
+        let [a, b, c] =
+            std::array::from_fn(|index| self.basis[index].map(|value| value / axis_scales[index]));
+        let cofactors = [cross(b, c), cross(c, a), cross(a, b)];
+
+        // Column scaling protects the cofactor weights; row scaling separately
+        // equilibrates the determinant without changing its sign. Pivoted
+        // elimination then avoids multiplying the tiny row scales together,
+        // while fused subtraction retains the residual in near-shear cases.
+        let row_scales = std::array::from_fn::<_, 3, _>(|row| {
+            [a[row], b[row], c[row]]
+                .into_iter()
+                .map(f64::abs)
+                .fold(0.0_f64, f64::max)
+        });
+        if row_scales.contains(&0.0) {
             return None;
         }
-        let sign = determinant.signum();
-        normalize([
-            sign * (bc[0] * normal[0] + ca[0] * normal[1] + ab[0] * normal[2]),
-            sign * (bc[1] * normal[0] + ca[1] * normal[1] + ab[1] * normal[2]),
-            sign * (bc[2] * normal[0] + ca[2] * normal[1] + ab[2] * normal[2]),
-        ])
+        let mut rows: [[f64; 3]; 3] = std::array::from_fn(|row| {
+            std::array::from_fn(|column| [a, b, c][column][row] / row_scales[row])
+        });
+        let mut determinant_orientation = 1.0;
+        for column in 0..3 {
+            let pivot_row = (column..3)
+                .max_by(|&left, &right| {
+                    rows[left][column]
+                        .abs()
+                        .total_cmp(&rows[right][column].abs())
+                })
+                .expect("a non-empty fixed-size pivot range");
+            if rows[pivot_row][column] == 0.0 {
+                return None;
+            }
+            if pivot_row != column {
+                rows.swap(pivot_row, column);
+                determinant_orientation = -determinant_orientation;
+            }
+
+            let pivot = rows[column][column];
+            determinant_orientation *= pivot.signum();
+            for row in (column + 1)..3 {
+                let factor = rows[row][column] / pivot;
+                for trailing in (column + 1)..3 {
+                    rows[row][trailing] =
+                        (-factor).mul_add(rows[column][trailing], rows[row][trailing]);
+                }
+            }
+        }
+
+        let pair_scale_logs = [
+            axis_scales[1].ln() + axis_scales[2].ln(),
+            axis_scales[2].ln() + axis_scales[0].ln(),
+            axis_scales[0].ln() + axis_scales[1].ln(),
+        ];
+        let term_logs = std::array::from_fn::<_, 3, _>(|index| {
+            if normal[index] == 0.0 {
+                f64::NEG_INFINITY
+            } else {
+                normal[index].abs().ln() + pair_scale_logs[index]
+            }
+        });
+        let max_term_log = term_logs.into_iter().fold(f64::NEG_INFINITY, f64::max);
+        if !max_term_log.is_finite() {
+            return None;
+        }
+
+        let mut transformed = [0.0; 3];
+        for index in 0..3 {
+            if normal[index] == 0.0 {
+                continue;
+            }
+            let weight = normal[index].signum() * (term_logs[index] - max_term_log).exp();
+            for (component, value) in transformed.iter_mut().enumerate() {
+                *value += cofactors[index][component] * weight;
+            }
+        }
+        normalize(scale(transformed, determinant_orientation))
     }
 
     /// Convert to a neutral orthonormal frame at the IFC boundary.
@@ -426,6 +497,41 @@ mod tests {
     fn non_uniform_scale_is_representable() {
         let t = Transform::identity().scaled_nonuniform([2.0, 3.0, 4.0]);
         assert!(close(t.apply([1.0, 1.0, 1.0]), [2.0, 3.0, 4.0]));
+    }
+
+    #[cfg(feature = "lowering")]
+    #[test]
+    fn finite_extreme_non_uniform_scales_preserve_normal_directions() {
+        let transform = Transform::identity().scaled_nonuniform([1.0, 1e-200, 1e-200]);
+
+        assert!(close(
+            transform
+                .apply_unit_normal([0.0, 0.0, 1.0])
+                .expect("finite nonsingular transforms preserve normals"),
+            [0.0, 0.0, 1.0]
+        ));
+        assert!(close(
+            transform
+                .apply_unit_normal([1.0, 0.0, 0.0])
+                .expect("a tiny cofactor is still a valid direction"),
+            [1.0, 0.0, 0.0]
+        ));
+    }
+
+    #[cfg(feature = "lowering")]
+    #[test]
+    fn finite_extreme_shear_uses_a_scale_aware_determinant_sign() {
+        let transform = Transform {
+            basis: [[1.0, 0.0, 0.0], [1.0, 1e-200, 0.0], [1.0, 0.0, 1e-200]],
+            origin: [0.0; 3],
+        };
+
+        assert!(close(
+            transform
+                .apply_unit_normal([0.0, 0.0, 1.0])
+                .expect("finite nonsingular shear preserves normals"),
+            [0.0, 0.0, 1.0]
+        ));
     }
 
     #[cfg(feature = "lowering")]
