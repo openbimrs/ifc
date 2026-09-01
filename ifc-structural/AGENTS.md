@@ -20,7 +20,8 @@ Allowed production dependencies: ifc-model and schema metadata only; no geometry
 - `result.rs`: reactions/results
 - `boundary.rs`: references to structural geometry/topology IDs
 - `query.rs`: bounded model graph traversal
-- `authoring.rs`: selected schema-resolved transaction staging
+- `authoring.rs` and `authoring/`: schema-resolved transaction staging for
+  selected models, loads, members, connections, actions, and relationships
 - `error.rs`: inconsistent structural semantics
 
 ## Invariants

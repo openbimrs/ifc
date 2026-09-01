@@ -10,6 +10,20 @@ use ifc_schema::Schema;
 use crate::error::{StructuralError, StructuralResult};
 use crate::AnalysisModelType;
 
+mod action;
+mod item;
+mod relation;
+
+pub use action::{stage_action, ActionDraft, ActionDraftKind, ProjectedOrTrue};
+pub use item::{
+    stage_connection, stage_member, ConnectionDraft, ConnectionDraftKind, MemberDraft,
+    MemberDraftKind, MemberPredefinedType, StructuralRootDraft,
+};
+pub use relation::{
+    stage_activity_assignment, stage_member_connection, ActivityAssignmentDraft,
+    MemberConnectionDraft, RelationshipRootDraft,
+};
+
 #[derive(Debug, Clone)]
 pub struct AnalysisModelDraft {
     pub global_id: String,
@@ -236,7 +250,7 @@ pub fn stage_load(
     Ok(tx.create(build_named(schema, entity_type, fields)?))
 }
 
-fn build_named(
+pub(super) fn build_named(
     schema: &Schema,
     entity_type: &str,
     fields: Vec<(&str, Value)>,
@@ -269,11 +283,11 @@ fn build_named(
     Ok(Entity::new(entity_type.to_ascii_uppercase(), values))
 }
 
-fn optional_text(value: Option<String>) -> Value {
+pub(super) fn optional_text(value: Option<String>) -> Value {
     value.map_or(Value::Null, |value| Value::Text(Arc::from(value)))
 }
 
-fn optional_ref(value: Option<EntityId>) -> Value {
+pub(super) fn optional_ref(value: Option<EntityId>) -> Value {
     value.map_or(Value::Null, Value::Ref)
 }
 
@@ -285,7 +299,7 @@ fn optional_refs(values: Vec<EntityId>) -> Value {
     }
 }
 
-fn validate_optional_ref(
+pub(super) fn validate_optional_ref(
     tx: &Transaction,
     model: &Model,
     schema: &Schema,
@@ -327,28 +341,33 @@ fn validate_unique_set_members(
     })
 }
 
-fn validate_ref(
+pub(super) fn validate_ref(
     tx: &Transaction,
     model: &Model,
     schema: &Schema,
     target: EntityId,
     expected: &'static str,
 ) -> StructuralResult<()> {
-    let entity = tx
-        .edits()
+    validate_ref_select(tx, model, schema, target, expected, &[expected])
+}
+
+pub(super) fn validate_ref_select(
+    tx: &Transaction,
+    model: &Model,
+    schema: &Schema,
+    target: EntityId,
+    expected: &'static str,
+    members: &[&str],
+) -> StructuralResult<()> {
+    let entity = projected_entity(tx, model, target).ok_or(StructuralError::DanglingReference {
+        entity: EntityId(0),
+        attribute: "draft reference",
+        target,
+    })?;
+    if !members
         .iter()
-        .rev()
-        .find_map(|edit| match edit {
-            Edit::Create { id, entity } if *id == target => Some(entity),
-            _ => None,
-        })
-        .or_else(|| model.get(target))
-        .ok_or(StructuralError::DanglingReference {
-            entity: EntityId(0),
-            attribute: "draft reference",
-            target,
-        })?;
-    if !schema.is_a(&entity.type_name, expected) {
+        .any(|member| schema.is_a(&entity.type_name, member))
+    {
         return Err(StructuralError::WrongReferenceType {
             entity: EntityId(0),
             attribute: "draft reference",
@@ -358,4 +377,28 @@ fn validate_ref(
         });
     }
     Ok(())
+}
+
+pub(super) fn projected_entity(
+    tx: &Transaction,
+    model: &Model,
+    target: EntityId,
+) -> Option<Entity> {
+    let mut projected = model.get(target).cloned();
+    for edit in tx.edits() {
+        match edit {
+            Edit::Create { id, entity } if *id == target => projected = Some(entity.clone()),
+            Edit::SetAttribute { id, slot, value } if *id == target => {
+                let entity = projected.as_mut()?;
+                let attribute = entity.attributes.get_mut(*slot)?;
+                *attribute = value.clone();
+            }
+            Edit::Retype { id, type_name } if *id == target => {
+                projected.as_mut()?.type_name = type_name.clone();
+            }
+            Edit::Remove { id } if *id == target => projected = None,
+            _ => {}
+        }
+    }
+    projected
 }

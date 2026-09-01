@@ -40,7 +40,8 @@ Implemented foundations include:
   quantity, material, cost, schedule, construction-resource, systems, spatial,
   and bounded structural-analysis views;
 - classification, document, library, approval, constraint, material, quantity,
-  cost, and selected construction-resource authoring staged through transactions;
+  cost, selected construction-resource, and selected structural-analysis authoring
+  staged through transactions;
 - geometry selection/lowering foundations and versioned PSD/QTO catalogs.
 
 Some domain crates remain partial and contain private architecture scaffolds: their

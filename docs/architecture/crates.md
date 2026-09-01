@@ -112,9 +112,11 @@ boundary and failure/slippage connection conditions, varying-member identities,
 actions, core static-load values, IFC4+ load configurations, borrowed reactions,
 and selected relationships across IFC2X3, IFC4
 and IFC4X3. Canonical enum membership and exposed entity-specific `WHERE`/measure
-constraints are enforced; selected analysis-model and load authoring is
-transaction-staged. It is not a solver, FEM layer, geometry evaluator or
-computed-results engine.
+constraints are enforced; selected analysis-model, load, member, connection,
+action, and relationship authoring is transaction-staged. Physical-product and
+geometry composition is proven only at the facade by shared `EntityId`; the
+crate retains no geometry dependency. It is not a solver, FEM layer, geometry
+evaluator or computed-results engine.
 
 ### `ifc-validate`
 Implemented schema-structural validation against the exact supported schema,

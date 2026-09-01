@@ -16,6 +16,11 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-structural` now transaction-stages selected members, connections,
+  point/linear/planar actions, member-connection links, and activity assignments
+  with projected-state validation; a facade test proves one physical-product
+  `EntityId` composes with structural assignment and authored Body geometry while
+  body-only plan selection remains `None`. Nine non-redundant mutants are killed.
 - `ifc-structural` now projects IFC4+ ordered load configurations, point
   reactions across all supported versions, IFC4+ curve/surface reactions, and
   strict result-group reaction assignments; focused tests kill 10/10 semantic

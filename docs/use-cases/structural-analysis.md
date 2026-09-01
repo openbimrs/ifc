@@ -47,7 +47,9 @@ The bounded view currently covers:
 - point reactions across all versions, IFC4+ curve/surface reactions, and
   result-group assignment traversal;
 - model assignments, member-to-connection relationships, and activity assignments;
-- selected analysis-model and static-load authoring through a caller-owned transaction.
+- selected analysis-model, static-load, member, connection, point/linear/planar
+  action, member-connection, and activity-assignment authoring through a caller-
+  owned transaction.
 
 References are checked before being returned. Missing records, dangling IDs,
 wrong target types, incompatible action/reaction-load families, invalid
@@ -56,7 +58,8 @@ configuration location members, multiply attached structural activities,
 malformed aggregates, and required-value omissions
 produce typed `StructuralError` values. Relationship traversal preserves
 relation-record file order and each aggregate's declared member order. Duplicate
-`SET` links and non-finite load drafts are rejected before transaction staging.
+`SET` links, non-finite/invalid authoring measures, removed projected references,
+and duplicate activity attachments are rejected before transaction staging.
 
 Version drift is resolved by attribute name against the selected schema. Examples
 include IFC4X3 `AxisDirection` versus earlier `Axis`, IFC2X3 numeric boundary

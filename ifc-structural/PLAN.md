@@ -58,7 +58,9 @@ preserved capability seam for deferred specialization.
 - point reactions across all supported schemas and IFC4+ curve/surface reactions;
 - deterministic result-group reaction assignment traversal;
 - deterministic group, member-connection, and activity-assignment queries;
-- transaction-staged analysis-model and four static-load authoring paths;
+- transaction-staged analysis-model, static-load, member, connection, action,
+  member-connection, and activity-assignment authoring;
+- facade-only physical-product/geometry composition by shared `EntityId`;
 - STEP write/read round-trip coverage.
 
 ## Work queue
@@ -72,8 +74,8 @@ preserved capability seam for deferred specialization.
 - [x] `STRUCT-VARYING` - varying member/connection-condition families.
 - [x] `STRUCT-DYNAMIC` - IFC4+ structural load configurations.
 - [x] `STRUCT-RESULT` - borrowed reaction projections and result-group traversal.
-- [ ] `STRUCT-AUTHOR` - member, connection, action, and relationship authoring.
-- [ ] `STRUCT-CROSS` - external physical-product/geometry composition proof.
+- [x] `STRUCT-AUTHOR` - member, connection, action, and relationship authoring.
+- [x] `STRUCT-CROSS` - facade physical-product/geometry `EntityId` composition proof.
 
 ## Explicit non-capabilities
 
@@ -91,6 +93,9 @@ EXPRESS `WHERE` evaluation, or general `INVERSE` engine is implemented.
 - `STRUCT-DYNAMIC` and `STRUCT-RESULT` - 8 focused tests pass; strict package
   clippy passes; 10/10 semantic mutants killed with a clean baseline and restored
   GREEN.
+- `STRUCT-AUTHOR` and `STRUCT-CROSS` - 8 focused authoring tests and one
+  facade composition test pass; strict package/facade clippy passes; 9/9
+  non-redundant semantic mutants killed with restored GREEN.
 - Full repository and documentation gate evidence belongs to the immutable
   release-candidate review, not to this standing plan.
 

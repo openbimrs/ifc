@@ -28,9 +28,9 @@ code.
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
 | `ifc-geometry` | 26,118 | 89 | 5 | 31 | <span class="status-partial">Partial</span> |
+| `ifc-structural` | 3,397 | 33 | 14 | 12 | <span class="status-implemented">Implemented</span> |
 | `ifc-style` | 3,322 | 31 | 0 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-template-catalog` | 2,705 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
-| `ifc-structural` | 2,680 | 30 | 14 | 11 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 2,417 | 29 | 14 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 2,398 | 24 | 0 | 8 | <span class="status-implemented">Implemented</span> |
 | `ifc-validate` | 2,249 | 23 | 0 | 2 | <span class="status-implemented">Implemented</span> |
@@ -45,7 +45,7 @@ code.
 | `ifc-xml` | 1,045 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-schema` | 1,038 | 10 | 4 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-approval` | 915 | 5 | 0 | 1 | <span class="status-implemented">Implemented</span> |
-| `openbim-ifc` | 900 | 6 | 0 | 11 | <span class="status-implemented">Implemented</span> |
+| `openbim-ifc` | 900 | 6 | 0 | 12 | <span class="status-implemented">Implemented</span> |
 | `ifc-author` | 729 | 8 | 3 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-spatial` | 615 | 8 | 1 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-georef` | 582 | 17 | 12 | 1 | <span class="status-partial">Partial</span> |
