@@ -73,6 +73,10 @@ PUBLISHED_STATUS = {
     # All six PLAN tasks implemented: plans, tasks, sequences, calendars,
     # events and timeline queries.
     "ifc-schedule": '<span class="status-implemented">Implemented</span>',
+    # IFC4 construction-resource occurrences, authored usage time, allocation,
+    # bounded composition, and selected transaction-staged authoring are tested.
+    # Actor, inventory, resource-type, IFC2X3, and IFC4X3 profiles remain open.
+    "ifc-resource": '<span class="status-partial">Partial</span>',
     # Schema-resolved strict views cover style assignment, colour, curve/fill,
     # surface, texture, text, layers, and the requested annotation entities;
     # core style/annotation authoring is transaction-staged. Rendering remains

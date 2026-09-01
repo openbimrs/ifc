@@ -12,3 +12,5 @@
 mod base;
 mod nesting;
 mod r#type;
+
+pub use base::{ConstructionResource, ResourceKind};

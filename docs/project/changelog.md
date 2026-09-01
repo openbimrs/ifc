@@ -16,6 +16,16 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-resource` now provides a bounded IFC4 ADD2 TC1 construction-resource
+  slice: schema-resolved projections for six occurrence kinds and authored
+  resource time, deterministic allocation lookup, budgeted authored-order
+  composition, and transaction-staged creation of selected records and
+  relationships. SELECT membership, enum values, inherited
+  `RelatedObjectsType` category matching, finite positive ratios, aggregate
+  bounds/uniqueness, references, model-wide `GlobalId` uniqueness, cycles,
+  multiple parents, and traversal budgets are typed refusals; scheduling,
+  levelling, calculations, actor/inventory, resource-type, IFC2X3, and IFC4X3
+  semantics remain outside the claim.
 - `ifc-author::EntityEditor` schema-checks the full projected record before
   staging updates through `ifc-model::Transaction`; invalid names, arity,
   required values, types, aggregates, references, and stale commits remain

@@ -37,16 +37,16 @@ Implemented foundations include:
 - declared-schema validation against exact version tables, with selected native
   semantic rules and explicit unsupported reporting for unevaluated semantics;
 - borrowed classification, document, library, property, quantity, material,
-  schedule, systems, and spatial views;
-- classification, document, library, material, and quantity authoring staged
-  through caller-owned transactions;
+  schedule, construction-resource, systems, and spatial views;
+- classification, document, library, material, quantity, and selected
+  construction-resource authoring staged through transactions;
 - geometry selection/lowering foundations and versioned PSD/QTO catalogs.
 
-Some domain crates intentionally remain architecture scaffolds: their module
-trees declare ownership of a schema area without implementing it. Their README,
-`AGENTS.md`, and `PLAN.md` files distinguish compiled behavior from reserved
-module ownership, and the capability matrix counts the stubs per crate. **No
-capability should be inferred from a module or crate name alone.**
+Some domain crates remain partial and contain private architecture scaffolds: their
+module trees reserve ownership without exposing unimplemented behavior. Their
+README, `AGENTS.md`, and `PLAN.md` files distinguish compiled behavior from
+reserved module ownership, and the capability matrix reports crate status.
+**No capability should be inferred from a module or crate name alone.**
 
 ## Use
 

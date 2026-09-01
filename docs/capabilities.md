@@ -36,6 +36,7 @@ code.
 | `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-classification` | 1,990 | 19 | 4 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-structural` | 1,889 | 30 | 18 | 9 | <span class="status-implemented">Implemented</span> |
+| `ifc-resource` | 1,827 | 29 | 18 | 4 | <span class="status-partial">Partial</span> |
 | `ifc-schedule` | 1,691 | 24 | 14 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 1,586 | 20 | 5 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 1,248 | 10 | 0 | 1 | <span class="status-partial">Partial</span> |
@@ -47,13 +48,12 @@ code.
 | `ifc-georef` | 582 | 17 | 12 | 1 | <span class="status-partial">Partial</span> |
 | `ifc-spatial` | 561 | 7 | 1 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-step` | 516 | 5 | 0 | 3 | <span class="status-implemented">Implemented</span> |
-| `ifc-resource` | 177 | 25 | 23 | 0 | <span class="status-scaffold">Scaffold</span> |
 
 <!-- CAPABILITIES:CENSUS:END -->
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:BEGIN -->
 
-1 of 21 crates are scaffolds.
+0 of 21 crates are scaffolds.
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:END -->
 They exist because the layering decision
@@ -168,6 +168,24 @@ all; that case is pinned in `tests/real_files.rs`.
 **What this is not.** It reports what the file says and never rejects it —
 cardinality and WHERE rules belong to `ifc-validate`. It groups elements; it
 does not interpret their geometry or properties.
+
+### Construction resources
+
+With facade feature `resource`, `ifc-resource` selects IFC4 from the model header
+and exposes borrowed views for labor, equipment, crew, construction material,
+construction product, and subcontract occurrences. It resolves authored
+`IfcResourceTime`, validates and queries `IfcRelAssignsToResource` including
+its authored `RelatedObjectsType` category constraint, and walks resource
+composition through `IfcRelNests` with authored order plus explicit
+cycle, multiple-parent, depth, and node failures. Selected records and
+relationships can be created through schema-checked transaction-staged drafts;
+they reject duplicate `GlobalId` values and cycle/second-parent creation before
+staging. See the
+[construction-resource guide](/guide/resources).
+
+This is a partial, deliberately bounded profile. It does not level or schedule
+resources, calculate costs/durations/quantities, interpret calendars, or claim
+actor, inventory, construction-resource-type, IFC2X3, or IFC4X3 support.
 
 ## Geometry
 

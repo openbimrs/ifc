@@ -5,3 +5,5 @@
 //! - `allocation.rs`: assignment queries.
 
 mod allocation;
+
+pub use allocation::ResourceAllocation;

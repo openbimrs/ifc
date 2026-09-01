@@ -1,33 +1,30 @@
-//! `ifc-resource` -- Construction resources: labour, equipment, material and crew.
+//! `ifc-resource` -- bounded IFC4 construction-resource semantics.
 //!
+//! The crate exposes schema-resolved borrowed projections for construction
+//! resource occurrences, authored `IfcResourceTime` metadata, allocation
+//! relationships, and budgeted resource composition. Selected authoring APIs
+//! stage records through `ifc_model::Transaction`.
 //!
-//! 21 entities in IFC4. Resources link the schedule to cost -- a task consumes
-//! a resource, and the resource carries a rate.
-//!
-//! # Module map
-//!
-//! | Module | Role |
-//! |---|---|
-//! | `resource` | The resource hierarchy and common attributes |
-//! | `labour` | `IfcLaborResource` and crew composition |
-//! | `equipment` | `IfcConstructionEquipmentResource` |
-//! | `material` | `IfcConstructionMaterialResource` |
-//! | `usage` | Resource time, quantity and levelling |
-//! | `error` | Why a resource query failed |
-//!
-//! # Status
-//!
-//! Scaffold -- modules are reserved with intent, not implemented. See
-//! `../PLAN.md` for the stage that fills them.
+//! It does not schedule work, level resources, calculate costs or quantities,
+//! interpret calendars, or claim actor/inventory support.
 
-mod equipment;
+mod author;
 mod error;
-mod labour;
-mod material;
+mod query;
 mod resource;
 mod usage;
+mod view;
 
 mod actor;
 mod crew;
+mod equipment;
 mod inventory;
-mod query;
+mod labour;
+mod material;
+
+pub use author::{AllocationDraft, NestingDraft, ResourceDraft, ResourceEditor, ResourceTimeDraft};
+pub use error::{ResourceError, ResourceResult};
+pub use query::ResourceAllocation;
+pub use resource::{ConstructionResource, ResourceKind};
+pub use usage::ResourceTime;
+pub use view::ResourceView;

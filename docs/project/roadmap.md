@@ -190,17 +190,23 @@ capability, not an IFC one, and no plane-section operation exists in Axiolid at
 the pinned revision. Tracking it here because applications ask this repository
 for it; the work itself belongs upstream.
 
-## Domain crates awaiting implementation
+## Partial domain slices
 
-The only current architecture scaffold is `ifc-resource`. `ifc-georef` and
-`ifc-alignment` now have tested partial vertical slices: IFC4 project-to-map/CRS
-resolution in the former, and IFC4X3 segment parameters plus selected exact
-curve output in the latter. `ifc-classification`, `ifc-properties`, `ifc-style`,
-`ifc-structural`, `ifc-validate`, `ifc-schedule`, and `ifc-systems` are implemented;
-`ifc-cost`, `ifc-geometry`, `ifc-georef`, and `ifc-alignment` are partial. Each
-crate's **PLAN.md** records the remaining scope.
-Priority among unfinished slices is demand-driven; open an issue describing the
-use case.
+`ifc-resource` now has a tested IFC4 construction-resource vertical slice:
+six concrete occurrence kinds, authored resource-time values, allocation lookup,
+budgeted authored-order composition, and transaction-staged creation of selected
+records and relationships. Actor/inventory/resource-type semantics and IFC2X3 or
+IFC4X3 profiles remain open; it is therefore partial rather than generally
+implemented.
+
+`ifc-georef` and `ifc-alignment` also have tested partial vertical slices: IFC4
+project-to-map/CRS resolution in the former, and IFC4X3 segment parameters plus
+selected exact curve output in the latter. `ifc-classification`,
+`ifc-properties`, `ifc-style`, `ifc-structural`, `ifc-validate`, `ifc-schedule`,
+and `ifc-systems` are implemented; `ifc-cost`, `ifc-resource`, `ifc-geometry`,
+`ifc-georef`, and `ifc-alignment` are partial. Each crate's **PLAN.md** records
+the remaining scope. Priority among unfinished slices is demand-driven; open an
+issue describing the use case.
 
 ## Contributing
 

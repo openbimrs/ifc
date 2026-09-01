@@ -481,3 +481,116 @@ fn documented_unreachable_example_reports_plan_only_geometry() {
         findings[0].1.message()
     );
 }
+
+/// `docs/guide/resources.md` -- bounded IFC4 resource authoring and reads.
+#[cfg(feature = "resource")]
+#[test]
+fn documented_resource_example_round_trips_authored_composition() {
+    use ifc::resource::{
+        AllocationDraft, NestingDraft, ResourceDraft, ResourceEditor, ResourceKind,
+        ResourceTimeDraft, ResourceView,
+    };
+    let mut model = Model::new();
+    model.header_mut().schema.push("IFC4".into());
+
+    let (crew, carpenter, usage, allocation) = {
+        let mut editor = ResourceEditor::for_model(&mut model).expect("IFC4 editor");
+        let usage = editor
+            .create_time(
+                ResourceTimeDraft::new()
+                    .name("Day shift")
+                    .schedule_work("PT8H")
+                    .schedule_usage(1.0),
+            )
+            .expect("usage");
+        let crew = editor
+            .create_resource(
+                ResourceDraft::new(ResourceKind::Crew, "2O2Fr$t4X7Zf8NOew3FLOH")
+                    .name("Envelope crew")
+                    .predefined_type("OFFICE")
+                    .usage(usage),
+            )
+            .expect("crew");
+        let carpenter = editor
+            .create_resource(
+                ResourceDraft::new(ResourceKind::Labor, "1O2Fr$t4X7Zf8NOew3FLOH")
+                    .name("Carpenter")
+                    .predefined_type("CARPENTRY"),
+            )
+            .expect("labor");
+        let allocation = editor
+            .create_allocation(
+                AllocationDraft::new("3O2Fr$t4X7Zf8NOew3FLOH", carpenter, vec![crew])
+                    .related_objects_type("RESOURCE"),
+            )
+            .expect("allocation");
+        editor
+            .create_nesting(NestingDraft::new(
+                "0O2Fr$t4X7Zf8NOew3FLOH",
+                crew,
+                vec![carpenter],
+            ))
+            .expect("nesting");
+        (crew, carpenter, usage, allocation)
+    };
+
+    let resources = ResourceView::for_model(&model).expect("view");
+    assert_eq!(
+        resources
+            .allocation(allocation)
+            .expect("allocation")
+            .related_objects_type(),
+        Some("RESOURCE")
+    );
+    assert_eq!(
+        resources
+            .resource(carpenter)
+            .expect("resource")
+            .name()
+            .expect("name"),
+        Some("Carpenter")
+    );
+    assert_eq!(
+        resources
+            .resource_time(usage)
+            .expect("time")
+            .schedule_work()
+            .expect("work"),
+        Some("PT8H")
+    );
+    assert_eq!(
+        resources
+            .descendants(crew, Default::default())
+            .expect("composition"),
+        vec![carpenter]
+    );
+
+    let bytes = StepCodec
+        .write_bytes(&model)
+        .expect("write authored resources");
+    let reparsed = StepCodec
+        .read_bytes(&bytes)
+        .expect("read authored resources");
+    let resources = ResourceView::for_model(&reparsed).expect("reparsed view");
+    assert_eq!(
+        resources
+            .allocation(allocation)
+            .expect("reparsed allocation")
+            .related_objects_type(),
+        Some("RESOURCE")
+    );
+    assert_eq!(
+        resources
+            .resource(carpenter)
+            .expect("reparsed resource")
+            .name()
+            .expect("reparsed name"),
+        Some("Carpenter")
+    );
+    assert_eq!(
+        resources
+            .descendants(crew, Default::default())
+            .expect("reparsed composition"),
+        vec![carpenter]
+    );
+}

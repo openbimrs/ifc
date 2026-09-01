@@ -10,3 +10,5 @@
 
 mod quantity;
 mod time;
+
+pub use time::ResourceTime;
