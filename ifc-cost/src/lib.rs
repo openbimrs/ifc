@@ -27,6 +27,7 @@
 //! | [`value`] | `IfcCostValue` and applied monetary values |
 //! | [`quantity`] | Quantities a cost is computed against |
 //! | [`relation`] | Nesting and control assignment |
+//! | [`mutation`] | Transaction-staged bounded IFC4 authoring |
 //! | [`currency`] | Monetary unit agreement |
 //! | [`rollup`] | Summing a cost tree |
 //! | [`error`] | Why a cost lookup failed |
@@ -50,6 +51,7 @@
 pub mod currency;
 pub mod error;
 pub mod item;
+pub mod mutation;
 pub mod quantity;
 pub mod relation;
 pub mod rollup;
@@ -60,6 +62,12 @@ pub mod view;
 pub use currency::{monetary_units, project_currency, CurrencyError};
 pub use error::CostError;
 pub use item::CostItem;
+pub use mutation::{
+    assign_schedule_items, create_cost_item, create_cost_schedule, create_cost_value,
+    nest_cost_items, CostAuthoringError, CostAuthoringResult, CostItemDraft, CostItemType,
+    CostScheduleDraft, CostScheduleType, CostValueDraft, CostValueKind, NestingDraft,
+    ScheduleAssignmentDraft,
+};
 pub use quantity::CostQuantity;
 pub use relation::{
     children_of, controlled_by, controls_of, descendants_of, parent_of, parents_of,

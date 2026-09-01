@@ -38,7 +38,7 @@ Implemented foundations include:
   semantic rules and explicit unsupported reporting for unevaluated semantics;
 - borrowed classification, document, library, property, quantity, material,
   schedule, construction-resource, systems, and spatial views;
-- classification, document, library, material, quantity, and selected
+- classification, document, library, material, quantity, cost, and selected
   construction-resource authoring staged through transactions;
 - geometry selection/lowering foundations and versioned PSD/QTO catalogs.
 

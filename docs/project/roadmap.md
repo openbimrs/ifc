@@ -54,9 +54,10 @@ relationships that build the tree disagree about slot order and the failure mode
 is silent inversion. See
 [ADR 0008](/adr/0008-fixed-slot-constants-for-stable-relationships).
 
-Remaining under `SPATIAL`: reusing the reverse index for inverse queries
-(`relation::naming` currently rescans), and grouping implemented
-`ifc-properties` views by container at an orchestration seam.
+`SPATIAL-INV` is implemented: callers with repeated inverse lookups build one
+borrowed `RelationshipIndex`, which reuses `ifc-model::ReverseIndex` while
+preserving tolerant relationship decoding. Grouping implemented `ifc-properties`
+views by container remains an L4 orchestration seam.
 
 ## Presentation and external references
 
@@ -203,8 +204,8 @@ implemented.
 project-to-map/CRS resolution in the former, and IFC4X3 segment parameters plus
 selected exact curve output in the latter. `ifc-classification`,
 `ifc-properties`, `ifc-style`, `ifc-structural`, `ifc-validate`, `ifc-schedule`,
-and `ifc-systems` are implemented; `ifc-cost`, `ifc-resource`, `ifc-geometry`,
-`ifc-georef`, and `ifc-alignment` are partial. Each crate's **PLAN.md** records
+`ifc-systems`, and the bounded `ifc-cost` contract are implemented;
+`ifc-resource`, `ifc-geometry`, `ifc-georef`, and `ifc-alignment` are partial. Each crate's **PLAN.md** records
 the remaining scope. Priority among unfinished slices is demand-driven; open an
 issue describing the use case.
 

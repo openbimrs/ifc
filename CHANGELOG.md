@@ -8,6 +8,11 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- Domain completion foundations add transaction-staged IFC4 cost-value, item,
+  schedule, ordered nesting, and schedule-assignment authoring with typed
+  pre-staging refusal; a reusable reverse-index-backed spatial relationship
+  index; and a facade proof that material semantics and geometry inputs join on
+  the same `EntityId` without sibling dependencies or duplicated slot ownership.
 - `ifc-resource` now provides a bounded IFC4 ADD2 TC1 construction-resource
   slice: schema-resolved projections for six occurrence kinds and authored
   resource time, deterministic allocation lookup, budgeted authored-order

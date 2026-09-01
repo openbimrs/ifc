@@ -10,6 +10,7 @@ and is re-exported deliberately by its parent.
 
 - `src/relation/slots.rs`: schema-fixed attribute positions
 - `src/relation/link.rs`: reading a relationship's two ends
+- `src/relation/index.rs`: reusable reverse-index-backed inverse queries
 - `src/tree/kind.rs`: spatial role classification
 - `src/tree/build.rs`: tree assembly and queries
 
@@ -25,10 +26,13 @@ and is re-exported deliberately by its parent.
   - Proof: `tests/real_files.rs`. Found a corpus file that uses `IfcRelAggregates`
     exclusively with **no** containment relationship; the tree handles it and
     the case is now pinned.
-- [ ] `SPATIAL-INV` - use `ifc-model`'s reverse index to answer inverse queries
-  - Currently `relation::naming` rescans relationships per call. Fine for a
-    single query, wasteful in a loop. Needs a borrowed index type so callers
-    opt into building it once.
+- [x] `SPATIAL-INV` - use `ifc-model`'s reverse index to answer inverse queries
+  - `RelationshipIndex` borrows the model snapshot and builds one reusable
+    `ReverseIndex`; repeated `naming` queries preserve tolerant decoding,
+    endpoint semantics, and deterministic ordering without relationship rescans.
+  - Proof: `cargo +1.88.0 test -p ifc-spatial --all-targets` (23 tests),
+    strict all-target Clippy, and strict rustdoc pass. The public parity test
+    kills a relationship-slot selection mutant.
 - [ ] `SPATIAL-PSET` - group properties by container
   - `ifc-properties` is implemented; compose its borrowed views at an L4 seam
     without adding a sibling-crate dependency here.

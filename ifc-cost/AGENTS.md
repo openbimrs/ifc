@@ -15,6 +15,7 @@ Allowed production dependencies: ifc-model only.
 - `item.rs`: cost item relationships
 - `amount.rs`: monetary/quantity calculations over supplied values
 - `query.rs`: bounded model lookups
+- `mutation/`: typed IFC4 drafts, projected-state validation, and transaction staging
 - `error.rs`: semantic projection failures
 
 ## Invariants
@@ -22,6 +23,7 @@ Allowed production dependencies: ifc-model only.
 - The model owns storage; views borrow.
 - Money/unit arithmetic must not silently mix currencies or dimensions.
 - Geometry-derived quantities are supplied by orchestration, never computed here.
+- Domain helpers validate complete drafts against projected transaction state before staging.
 
 Keep `lib.rs` delegating, keep child modules crate-private until they own a real
 public contract, and split view/data, traversal, mutation, and validation before

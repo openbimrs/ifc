@@ -10,9 +10,11 @@
 //! - `slots.rs`: schema-fixed attribute positions for the `IfcRel*` types used here.
 //! - `link.rs`: reading a relationship's relating/related ends.
 
+mod index;
 mod link;
 mod slots;
 
+pub use index::RelationshipIndex;
 pub use link::{Relationship, RelationshipKind};
 
 use ifc_model::{EntityId, Model};

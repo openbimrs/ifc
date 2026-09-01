@@ -1,7 +1,7 @@
 # ifc-material implementation plan
 
-Status: IFC4 MaterialResource read/query/authoring implemented; geometry cross-proof remains.
-Last updated: 2026-08-31
+Status: IFC4 MaterialResource read/query/authoring and geometry cross-proof implemented.
+Last updated: 2026-09-01
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
 record blockers/decisions under it, and check it off only with evidence.
@@ -58,9 +58,8 @@ interpretation and lowering. Unknown or malformed values stay explicit.
   - Evidence: exact-name/entity applicability plus explicit category-policy tests through the `ifc` facade.
 - [x] `MAT-MUT` - transactional authoring for material identity, layer composition, and product assignment
   - Evidence: 4 authoring tests, 3/3 guard mutations killed, crate clippy, and full IFC gate.
-- [ ] `MAT-CROSS` - prove material and geometry projections join by EntityId without duplicate slot ownership
-  - Requires: `MAT-LAYER`, `MAT-PROFILE`, `INPUT-MAT`.
-  - Evidence: cross-projection fixtures, isolated build, and crate clippy.
+- [x] `MAT-CROSS` - prove material and geometry projections join by EntityId without duplicate slot ownership
+  - Evidence: `openbim-ifc/tests/material_geometry_join.rs` projects one `IfcMaterialProfileWithOffsets` through both public facades, preserving the same record ID, profile ID, offsets, and model cardinality under `material,geometry-select`.
 
 ## Completion log
 
@@ -72,3 +71,4 @@ Do not paste long logs or move standing invariants out of `AGENTS.md`.
 - Review hardening - strict aggregate/required-slot decoding, bounded typed wrappers,
   finite thickness sums, duplicate type-relation ambiguity, and exact IFC4 type-target validation.
 - `MAT-MUT` - `cargo test -p ifc-material`, 3/3 authoring guard mutations, and `scripts/gate.sh` - staged IFC4 material/layer/set/product assignment records remain atomically committed by `ifc-model::Transaction`.
+- `MAT-CROSS` - `cargo +1.88.0 test -p openbim-ifc --no-default-features --features material,geometry-select --test material_geometry_join` and matching strict Clippy pass - semantic and geometry-input views borrow one `IfcMaterialProfileWithOffsets` record and join by `EntityId`.

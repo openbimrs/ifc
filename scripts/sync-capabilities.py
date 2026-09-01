@@ -66,10 +66,10 @@ PUBLISHED_STATUS = {
     # arbitrary EXPRESS evaluation, and INVERSE derivation remain explicit
     # unsupported categories, so clean never means full EXPRESS conformance.
     "ifc-validate": '<span class="status-implemented">Implemented</span>',
-    # COST-RATE/REL/UNIT/CORPUS implemented over a validated fixture. COST-MUT
-    # is deliberately open: authoring goes through ifc-model transactions, and
-    # whether cost needs its own staging helpers is not yet decided.
-    "ifc-cost": '<span class="status-partial">Partial</span>',
+    # Every declared PLAN task is implemented: cost values/items/schedules,
+    # bounded relationship queries and rollups, currency refusal, corpus proof,
+    # and transaction-staged authoring with atomic typed refusal.
+    "ifc-cost": '<span class="status-implemented">Implemented</span>',
     # All six PLAN tasks implemented: plans, tasks, sequences, calendars,
     # events and timeline queries.
     "ifc-schedule": '<span class="status-implemented">Implemented</span>',
