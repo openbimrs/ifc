@@ -115,6 +115,21 @@ fn rejects_unknown_typed_content() {
 }
 
 #[test]
+fn parses_ifc2x3_legacy_simple_property_form() {
+    let xml = "<PropertySetDef><Name>Pset_Legacy</Name><PropertyDefs><PropertyDef><Name>Legacy</Name><PropertyType><TypeSimpleProperty><DataType type=\"IfcLabel\"/><UnitType type=\"USERDEFINED\"/></TypeSimpleProperty></PropertyType></PropertyDef></PropertyDefs></PropertySetDef>";
+    let set = parse_template(xml).unwrap();
+    let SetTemplateKind::Property { properties, .. } = set.kind else {
+        panic!("expected property set")
+    };
+    assert!(matches!(
+        &properties[0].kind,
+        PropertyKind::SingleValue { data_type }
+            if data_type.type_name.as_deref() == Some("IfcLabel")
+                && data_type.unit_type.as_deref() == Some("USERDEFINED")
+    ));
+}
+
+#[test]
 fn preserves_cdata_text() {
     let xml = "<QtoSetDef><Name>Qto_Test</Name><Definition><![CDATA[Area < gross]]></Definition></QtoSetDef>";
     let set = parse_template(xml).unwrap();

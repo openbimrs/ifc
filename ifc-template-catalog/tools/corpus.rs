@@ -2,8 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use ifc_template_catalog::definition::{
-    CatalogEdition, PropertySetType, QuantitySetType, SetTemplate, SetTemplateKind, SourceManifest,
-    TemplateSource,
+    CatalogEdition, SetTemplate, SetTemplateKind, SourceManifest, TemplateSource,
 };
 use ifc_template_catalog::xml::parse_template;
 use sha2::{Digest, Sha256};
@@ -13,24 +12,34 @@ pub struct ImportedCatalog {
     pub templates: Vec<SetTemplate>,
 }
 
-pub fn import(source: &Path) -> Result<ImportedCatalog, String> {
+struct EditionSpec {
+    label: &'static str,
+    url: &'static str,
+    property_sets: usize,
+    quantity_sets: usize,
+    properties: usize,
+    quantities: usize,
+}
+
+pub fn parse_edition(value: &str) -> Result<CatalogEdition, String> {
+    match value {
+        "ifc2x3-tc1" => Ok(CatalogEdition::Ifc2x3Tc1),
+        "ifc4-add2-tc1" => Ok(CatalogEdition::Ifc4Add2Tc1),
+        "ifc4x3-add2" => Ok(CatalogEdition::Ifc4x3Add2),
+        _ => Err(format!("unsupported catalog edition `{value}`")),
+    }
+}
+
+pub fn import(edition: CatalogEdition, source: &Path) -> Result<ImportedCatalog, String> {
+    let spec = edition_spec(edition)?;
     let mut inputs = Vec::new();
-    for kind in ["psd", "qto"] {
-        let directory = source.join(kind);
-        let entries = fs::read_dir(&directory)
-            .map_err(|error| format!("read {}: {error}", directory.display()))?;
-        for entry in entries {
-            let path = entry.map_err(|error| error.to_string())?.path();
-            if path.extension().and_then(|value| value.to_str()) == Some("xml") {
-                let name = path
-                    .file_name()
-                    .and_then(|value| value.to_str())
-                    .ok_or_else(|| format!("non-UTF8 path: {}", path.display()))?;
-                inputs.push((format!("{kind}/{name}"), path));
-            }
-        }
+    for directory in input_directories(source, edition)? {
+        inputs.extend(walk_xml(&directory, source, edition)?);
     }
     inputs.sort_by(|left, right| left.0.cmp(&right.0));
+    if inputs.is_empty() {
+        return Err(format!("no XML files below {}", source.display()));
+    }
 
     let mut hasher = Sha256::new();
     let mut templates = Vec::with_capacity(inputs.len());
@@ -55,19 +64,17 @@ pub fn import(source: &Path) -> Result<ImportedCatalog, String> {
         templates.push(template);
     }
 
-    let (property_sets, quantity_sets, properties, quantities) = counts(&templates);
-    let actual = (property_sets, quantity_sets, properties, quantities);
-    let expected = (420, 93, 2_550, 257);
+    let actual = counts(&templates)?;
+    let expected = (
+        spec.property_sets,
+        spec.quantity_sets,
+        spec.properties,
+        spec.quantities,
+    );
     if actual != expected {
         return Err(format!(
-            "IFC4 catalog counts {actual:?}, expected {expected:?}"
-        ));
-    }
-    let actual_classifications = classification_counts(&templates)?;
-    let expected_classifications = ([353, 0, 16, 42, 9], [0, 0, 0, 93]);
-    if actual_classifications != expected_classifications {
-        return Err(format!(
-            "IFC4 set classifications {actual_classifications:?}, expected {expected_classifications:?}"
+            "{} catalog counts {actual:?}, expected {expected:?}",
+            spec.label
         ));
     }
     let sha256 = hasher
@@ -77,51 +84,99 @@ pub fn import(source: &Path) -> Result<ImportedCatalog, String> {
         .collect();
     Ok(ImportedCatalog {
         manifest: SourceManifest {
-            edition: CatalogEdition::Ifc4Add2Tc1,
-            source_label: "IFC4 ADD2 TC1 PSD/QTO XML".into(),
-            source_url: "https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/HTML/"
-                .into(),
+            edition,
+            source_label: spec.label.into(),
+            source_url: spec.url.into(),
             sha256,
-            property_set_count: property_sets,
-            quantity_set_count: quantity_sets,
+            property_set_count: actual.0,
+            quantity_set_count: actual.1,
         },
         templates,
     })
 }
 
-fn classification_counts(templates: &[SetTemplate]) -> Result<([usize; 5], [usize; 4]), String> {
-    let mut property = [0; 5];
-    let mut quantity = [0; 4];
-    for template in templates {
-        match &template.kind {
-            SetTemplateKind::Property { set_type, .. } => {
-                let index = match set_type {
-                    PropertySetType::TypeDrivenOverride => 0,
-                    PropertySetType::TypeDrivenOnly => 1,
-                    PropertySetType::OccurrenceDriven => 2,
-                    PropertySetType::PerformanceDriven => 3,
-                    PropertySetType::Unspecified => 4,
-                    _ => return Err("generator does not classify a property-set type".into()),
-                };
-                property[index] += 1;
-            }
-            SetTemplateKind::Quantity { set_type, .. } => {
-                let index = match set_type {
-                    QuantitySetType::TypeDrivenOverride => 0,
-                    QuantitySetType::TypeDrivenOnly => 1,
-                    QuantitySetType::OccurrenceDriven => 2,
-                    QuantitySetType::Unspecified => 3,
-                    _ => return Err("generator does not classify a quantity-set type".into()),
-                };
-                quantity[index] += 1;
-            }
-            _ => return Err("generator and catalog model versions differ".into()),
+fn input_directories(source: &Path, edition: CatalogEdition) -> Result<Vec<PathBuf>, String> {
+    let directories = match edition {
+        CatalogEdition::Ifc2x3Tc1 => vec![source.to_owned()],
+        CatalogEdition::Ifc4Add2Tc1 => vec![source.join("psd"), source.join("qto")],
+        CatalogEdition::Ifc4x3Add2 => vec![source.join("psd")],
+        _ => return Err(format!("unsupported catalog edition {edition:?}")),
+    };
+    for directory in &directories {
+        if !directory.is_dir() {
+            return Err(format!(
+                "missing XML input directory {}",
+                directory.display()
+            ));
         }
     }
-    Ok((property, quantity))
+    Ok(directories)
 }
 
-fn counts(templates: &[SetTemplate]) -> (usize, usize, usize, usize) {
+fn walk_xml(
+    path: &Path,
+    source_root: &Path,
+    edition: CatalogEdition,
+) -> Result<Vec<(String, PathBuf)>, String> {
+    if path.is_file() {
+        if path.extension().and_then(|value| value.to_str()) != Some("xml") {
+            return Ok(Vec::new());
+        }
+        let relative = path
+            .strip_prefix(source_root)
+            .map_err(|error| format!("relative path for {}: {error}", path.display()))?
+            .to_str()
+            .ok_or_else(|| format!("non-UTF8 path: {}", path.display()))?
+            .to_owned();
+        let relative = match edition {
+            CatalogEdition::Ifc2x3Tc1 => format!("psd/{relative}"),
+            CatalogEdition::Ifc4Add2Tc1 | CatalogEdition::Ifc4x3Add2 => relative,
+            _ => return Err(format!("unsupported catalog edition {edition:?}")),
+        };
+        return Ok(vec![(relative, path.to_owned())]);
+    }
+    let mut result = Vec::new();
+    for entry in fs::read_dir(path).map_err(|error| format!("read {}: {error}", path.display()))? {
+        result.extend(walk_xml(
+            &entry.map_err(|error| error.to_string())?.path(),
+            source_root,
+            edition,
+        )?);
+    }
+    Ok(result)
+}
+
+fn edition_spec(edition: CatalogEdition) -> Result<EditionSpec, String> {
+    Ok(match edition {
+        CatalogEdition::Ifc2x3Tc1 => EditionSpec {
+            label: "IFC2X3 TC1 PSD XML",
+            url: "https://standards.buildingsmart.org/IFC/RELEASE/IFC2x3/TC1/HTML/psd/",
+            property_sets: 317,
+            quantity_sets: 0,
+            properties: 1_856,
+            quantities: 0,
+        },
+        CatalogEdition::Ifc4Add2Tc1 => EditionSpec {
+            label: "IFC4 ADD2 TC1 PSD/QTO XML",
+            url: "https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/HTML/",
+            property_sets: 420,
+            quantity_sets: 93,
+            properties: 2_550,
+            quantities: 257,
+        },
+        CatalogEdition::Ifc4x3Add2 => EditionSpec {
+            label: "IFC4X3 ADD2 PSD/QTO XML",
+            url: "https://github.com/buildingSMART/IFC4.x-development/tree/524daac53ca682e0649d240ace87f4cd7baff6e7/reference_schemas",
+            property_sets: 502,
+            quantity_sets: 110,
+            properties: 2_918,
+            quantities: 324,
+        },
+        _ => return Err(format!("unsupported catalog edition {edition:?}")),
+    })
+}
+
+fn counts(templates: &[SetTemplate]) -> Result<(usize, usize, usize, usize), String> {
     let mut counts = (0, 0, 0, 0);
     for template in templates {
         match &template.kind {
@@ -133,10 +188,10 @@ fn counts(templates: &[SetTemplate]) -> (usize, usize, usize, usize) {
                 counts.1 += 1;
                 counts.3 += quantities.len();
             }
-            _ => unreachable!("generator and catalog model versions differ"),
+            _ => return Err("unsupported set template kind".into()),
         }
     }
-    counts
+    Ok(counts)
 }
 
 fn property_count(properties: &[ifc_template_catalog::definition::PropertyTemplate]) -> usize {
@@ -153,6 +208,12 @@ fn property_count(properties: &[ifc_template_catalog::definition::PropertyTempla
         .sum()
 }
 
-pub fn default_output(manifest_dir: &Path) -> PathBuf {
-    manifest_dir.join("data/ifc4-add2-tc1.bin")
+pub fn default_output(manifest_dir: &Path, edition: CatalogEdition) -> Result<PathBuf, String> {
+    let filename = match edition {
+        CatalogEdition::Ifc2x3Tc1 => "ifc2x3-tc1.bin",
+        CatalogEdition::Ifc4Add2Tc1 => "ifc4-add2-tc1.bin",
+        CatalogEdition::Ifc4x3Add2 => "ifc4x3-add2.bin",
+        _ => return Err(format!("unsupported catalog edition {edition:?}")),
+    };
+    Ok(manifest_dir.join("data").join(filename))
 }

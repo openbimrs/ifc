@@ -16,23 +16,31 @@ fn main() {
 
 fn run() -> Result<(), String> {
     let mut arguments = env::args_os().skip(1);
+    let edition = arguments
+        .next()
+        .and_then(|value| value.into_string().ok())
+        .ok_or_else(usage)
+        .and_then(|value| corpus::parse_edition(&value))?;
     let source = arguments.next().map(PathBuf::from).ok_or_else(usage)?;
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let output = arguments
-        .next()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| corpus::default_output(&manifest_dir));
+    let output = match arguments.next() {
+        Some(output) => PathBuf::from(output),
+        None => corpus::default_output(&manifest_dir, edition)?,
+    };
     if arguments.next().is_some() {
         return Err(usage());
     }
 
-    let imported = corpus::import(&source)?;
+    let imported = corpus::import(edition, &source)?;
     let digest = imported.manifest.sha256.clone();
     let bytes = encode_catalog(imported.manifest, imported.templates)
         .map_err(|error| format!("encode artifact: {error}"))?;
     let decoded = decode_catalog(&bytes).map_err(|error| format!("verify artifact: {error}"))?;
-    if decoded.len() != 513 {
-        return Err(format!("decoded artifact has {} templates", decoded.len()));
+    if decoded.manifest().edition != edition {
+        return Err(format!(
+            "decoded artifact has wrong edition: {:?}",
+            decoded.manifest().edition
+        ));
     }
 
     let temporary = output.with_extension("bin.tmp");
@@ -51,5 +59,5 @@ fn run() -> Result<(), String> {
 }
 
 fn usage() -> String {
-    "usage: ifc-template-catalog-generate <IFC4 HTML directory> [output.bin]".into()
+    "usage: ifc-template-catalog-generate <ifc2x3-tc1|ifc4-add2-tc1|ifc4x3-add2> <source directory> [output.bin]".into()
 }

@@ -3,6 +3,38 @@ use ifc_template_catalog::embedded::official_catalog;
 use ifc_template_catalog::export::{write_applicability_tsv, TSV_HEADER};
 
 #[test]
+fn committed_cross_edition_applicability_exports_are_current() {
+    for (edition, committed, set_count, property_set_count, quantity_set_count, row_count) in [
+        (
+            CatalogEdition::Ifc2x3Tc1,
+            include_bytes!("../data/ifc2x3-tc1.tsv").as_slice(),
+            317,
+            317,
+            0,
+            3_019,
+        ),
+        (
+            CatalogEdition::Ifc4x3Add2,
+            include_bytes!("../data/ifc4x3-add2.tsv").as_slice(),
+            612,
+            502,
+            110,
+            4_361,
+        ),
+    ] {
+        let catalog = official_catalog(edition).unwrap();
+        let mut generated = Vec::new();
+        let summary = write_applicability_tsv(&catalog, &mut generated).unwrap();
+        assert_eq!(generated, committed, "regenerate export for {edition:?}");
+        assert_eq!(summary.set_count, set_count);
+        assert_eq!(summary.property_set_count, property_set_count);
+        assert_eq!(summary.quantity_set_count, quantity_set_count);
+        assert_eq!(summary.row_count, row_count);
+        assert!(generated.starts_with(TSV_HEADER.as_bytes()));
+    }
+}
+
+#[test]
 fn committed_ifc4_applicability_export_is_current() {
     let catalog = official_catalog(CatalogEdition::Ifc4Add2Tc1).unwrap();
     let mut generated = Vec::new();
@@ -27,5 +59,7 @@ fn export_contains_relevant_ifc4_property_and_quantity_paths() {
     assert!(text.contains("Qto_OpeningElementBaseQuantities\t"));
     assert!(text.contains("\tIfcDoor\t"));
     assert!(text.contains("\tProtectedOpening\t"));
-    assert!(text.contains("\tWidth\tlength\tQ_LENGTH\t"));
+    assert!(text.contains("\tWidth\t\tlength\tQ_LENGTH\t"));
+    assert!(text.contains("\tPset_Risk\tff20d400d20011e1800000215ad4efdf\t"));
+    assert!(text.contains("\tRiskType\t0516b500d20111e1800000215ad4efdf\t"));
 }

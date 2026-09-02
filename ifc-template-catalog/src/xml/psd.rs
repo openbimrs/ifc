@@ -10,8 +10,9 @@ pub(super) fn parse(root: &Node) -> Result<SetTemplate, XmlImportError> {
     let name = required_text(root, "Name", "PropertySetDef")?.to_owned();
     let set_type = match root.attribute("templatetype").unwrap_or_default() {
         "" => PropertySetType::Unspecified,
-        "PSET_TYPEDRIVENOVERRIDE" => PropertySetType::TypeDrivenOverride,
-        "PSET_OCCURRENCEDRIVEN" => PropertySetType::OccurrenceDriven,
+        "PSET_TYPEDRIVENOVERRIDE" | "QTO_TYPEDRIVENOVERRIDE" => PropertySetType::TypeDrivenOverride,
+        "PSET_TYPEDRIVENONLY" | "QTO_TYPEDRIVENONLY" => PropertySetType::TypeDrivenOnly,
+        "PSET_OCCURRENCEDRIVEN" | "QTO_OCCURRENCEDRIVEN" => PropertySetType::OccurrenceDriven,
         "PSET_PERFORMANCEDRIVEN" => PropertySetType::PerformanceDriven,
         value => {
             return Err(XmlImportError::UnsupportedSetType {

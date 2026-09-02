@@ -9,7 +9,9 @@ use crate::catalog::{Catalog, CatalogProfile};
 use crate::definition::CatalogEdition;
 use crate::overlay::{corrected_patches, PatchError};
 
+static IFC2X3_TC1: OnceLock<Result<Catalog, ArchiveError>> = OnceLock::new();
 static IFC4_ADD2_TC1: OnceLock<Result<Catalog, ArchiveError>> = OnceLock::new();
+static IFC4X3_ADD2: OnceLock<Result<Catalog, ArchiveError>> = OnceLock::new();
 static IFC4_ADD2_TC1_CORRECTED: OnceLock<Result<Catalog, EmbeddedCatalogError>> = OnceLock::new();
 
 /// Load a catalog snapshot from committed generated data.
@@ -27,11 +29,18 @@ pub fn load_catalog(
 /// Load an unmodified official catalog.
 pub fn official_catalog(edition: CatalogEdition) -> Result<Catalog, EmbeddedCatalogError> {
     match edition {
+        CatalogEdition::Ifc2x3Tc1 => IFC2X3_TC1
+            .get_or_init(|| decode_catalog(include_bytes!("../data/ifc2x3-tc1.bin")))
+            .clone()
+            .map_err(EmbeddedCatalogError::Archive),
         CatalogEdition::Ifc4Add2Tc1 => IFC4_ADD2_TC1
             .get_or_init(|| decode_catalog(include_bytes!("../data/ifc4-add2-tc1.bin")))
             .clone()
             .map_err(EmbeddedCatalogError::Archive),
-        _ => Err(EmbeddedCatalogError::UnavailableEdition(edition)),
+        CatalogEdition::Ifc4x3Add2 => IFC4X3_ADD2
+            .get_or_init(|| decode_catalog(include_bytes!("../data/ifc4x3-add2.bin")))
+            .clone()
+            .map_err(EmbeddedCatalogError::Archive),
     }
 }
 

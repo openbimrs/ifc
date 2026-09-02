@@ -1,7 +1,89 @@
 use ifc_template_catalog::definition::{
-    CatalogEdition, PropertyKind, QuantitySetType, SetTemplateKind,
+    CatalogEdition, PropertyKind, PropertySetType, QuantitySetType, SetTemplateKind,
 };
 use ifc_template_catalog::embedded::official_catalog;
+
+#[test]
+fn embedded_all_editions_have_pinned_source_counts() {
+    for (edition, property_sets, quantity_sets, properties, quantities, digest) in [
+        (
+            CatalogEdition::Ifc2x3Tc1,
+            317,
+            0,
+            1_856,
+            0,
+            "395dcd1e8c6f8e5feeece08e8b46e211a3c35a7fc13a7a237485ea48b3c93d53",
+        ),
+        (
+            CatalogEdition::Ifc4Add2Tc1,
+            420,
+            93,
+            2_550,
+            257,
+            "57227d4c82f9903bc59cb5bade18a49f2c5f2c9363d0293ccb68fed8765d36e3",
+        ),
+        (
+            CatalogEdition::Ifc4x3Add2,
+            502,
+            110,
+            2_918,
+            324,
+            "b2f327638a844c8666d38dff90c5a48e12fdcec73da9efc4789e2dedd9239298",
+        ),
+    ] {
+        let catalog = official_catalog(edition).unwrap();
+        assert_eq!(catalog.manifest().edition, edition);
+        assert_eq!(catalog.manifest().sha256, digest);
+        assert_eq!(catalog.manifest().property_set_count, property_sets);
+        assert_eq!(catalog.manifest().quantity_set_count, quantity_sets);
+        let (actual_properties, actual_quantities) = catalog.iter().fold(
+            (0, 0),
+            |(properties, quantities), template| match &template.kind {
+                SetTemplateKind::Property {
+                    properties: items, ..
+                } => (properties + property_count(items), quantities),
+                SetTemplateKind::Quantity {
+                    quantities: items, ..
+                } => (properties, quantities + items.len()),
+                _ => unreachable!("catalog model version differs from this corpus gate"),
+            },
+        );
+        assert_eq!(actual_properties, properties);
+        assert_eq!(actual_quantities, quantities);
+    }
+}
+
+#[test]
+fn ifc4x3_provenance_and_published_set_type_anomaly_are_explicit() {
+    let catalog = official_catalog(CatalogEdition::Ifc4x3Add2).unwrap();
+    assert_eq!(
+        catalog.manifest().source_url,
+        "https://github.com/buildingSMART/IFC4.x-development/tree/524daac53ca682e0649d240ace87f4cd7baff6e7/reference_schemas"
+    );
+    let set = catalog.get("Pset_Risk").unwrap();
+    let ifc4 = official_catalog(CatalogEdition::Ifc4Add2Tc1).unwrap();
+    assert_eq!(
+        ifc4.get("Pset_Risk").unwrap().guid.as_deref(),
+        Some("ff20d400d20011e1800000215ad4efdf")
+    );
+    assert_eq!(
+        set.guid.as_deref(),
+        Some("91e0ddf4d6ba45e3b689a10510bef4bc")
+    );
+    assert_ne!(
+        set.guid.as_deref(),
+        ifc4.get("Pset_Risk").unwrap().guid.as_deref()
+    );
+
+    let set = catalog.get("Pset_MarineVehicleCommon").unwrap();
+    assert!(matches!(
+        &set.kind,
+        SetTemplateKind::Property {
+            set_type: PropertySetType::TypeDrivenOverride,
+            ..
+        }
+    ));
+}
 
 #[test]
 fn embedded_ifc4_catalog_matches_source_manifest_and_typed_counts() {

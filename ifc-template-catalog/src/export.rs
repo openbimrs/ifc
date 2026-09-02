@@ -8,7 +8,7 @@ use crate::definition::{
     PropertyTemplate, QuantityKind, QuantitySetType, SetTemplate, SetTemplateKind,
 };
 
-pub const TSV_HEADER: &str = "edition\tsource_digest\tset_kind\tset_name\tset_template_type\tapplicable_entity\tpredefined_type\tincludes_subtypes\tmember_path\tmember_kind\tvalue_type\tunit_type\tsource_path\tsource_file_digest";
+pub const TSV_HEADER: &str = "edition\tsource_digest\tset_kind\tset_name\tset_guid\tset_template_type\tapplicable_entity\tpredefined_type\tincludes_subtypes\tmember_path\tmember_guid\tmember_kind\tvalue_type\tunit_type\tsource_path\tsource_file_digest\n";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExportSummary {
@@ -98,6 +98,7 @@ fn append_set_rows(
                     "qto",
                     quantity_set_type(*set_type),
                     &quantity.name,
+                    "",
                     quantity_kind(quantity.kind),
                     quantity_value_type(quantity.kind),
                     "",
@@ -133,6 +134,7 @@ fn append_property_rows(
         "psd",
         set_type,
         &path,
+        property.guid.as_deref().unwrap_or(""),
         kind,
         &value_type,
         &unit_type,
@@ -163,6 +165,7 @@ fn append_row(
     set_kind: &str,
     set_type: &str,
     member_path: &str,
+    member_guid: &str,
     member_kind: &str,
     value_type: &str,
     unit_type: &str,
@@ -173,6 +176,7 @@ fn append_row(
         source_digest,
         set_kind,
         &set.name,
+        set.guid.as_deref().unwrap_or(""),
         set_type,
         applicability.map_or("", |value| value.entity.as_str()),
         applicability
@@ -180,6 +184,7 @@ fn append_row(
             .unwrap_or(""),
         "true",
         member_path,
+        member_guid,
         member_kind,
         value_type,
         unit_type,

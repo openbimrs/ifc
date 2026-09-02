@@ -34,6 +34,12 @@ pub(super) fn parse_property(
 fn parse_kind(node: &Node, set_name: &str, property: &str) -> Result<PropertyKind, XmlImportError> {
     let path = format!("{set_name}.{property}");
     match node.name.as_str() {
+        // IFC2X3 TC1 predates the more specific PSD value-form vocabulary.
+        // Its `TypeSimpleProperty` declares only the value's IFC data type, so
+        // it maps exactly to the catalog's single-value representation.
+        "TypeSimpleProperty" => Ok(PropertyKind::SingleValue {
+            data_type: data_type(node, &path)?,
+        }),
         "TypePropertySingleValue" => Ok(PropertyKind::SingleValue {
             data_type: data_type(node, &path)?,
         }),

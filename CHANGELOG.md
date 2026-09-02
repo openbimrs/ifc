@@ -79,9 +79,12 @@ and this project follows Semantic Versioning.
   parameters and emits exact neutral line, circular-arc, and constant-gradient
   curve graphs with schema-valid IFC4X3 corpus evidence, refusing unsupported
   transitions rather than approximating.
-- `ifc-template-catalog` can export the official IFC4 ADD2 TC1 PSD/QTO
-  snapshot as a deterministic 3,525-row TSV applicability index with exact
-  set/member types, entity selectors, provenance paths, and source digests.
+- `ifc-template-catalog` embeds authenticated official PSD/QTO snapshots for
+  IFC2X3 TC1, IFC4 ADD2 TC1, and IFC4X3 ADD2, while keeping corrected overlays
+  IFC4-only. It exports deterministic, edition-explicit TSV applicability
+  indexes with exact set/member types, release-scoped source GUIDs, selectors,
+  source paths, and digests; IFC2X3's source snapshot contains no standardized
+  QTO XML.
 - Public contributor workflow with a curated organization Project, contributor-
   ready plan-task promotion, issue forms, a pull-request template, and support,
   security, and conduct policies.

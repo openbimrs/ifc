@@ -2,15 +2,20 @@
 
 Typed import, validation, query, correction overlays, and deterministic embedded snapshots for buildingSMART PSD/QTO template catalogs.
 
-## IFC4 applicability index
+## Embedded editions and profiles
 
-`data/ifc4-add2-tc1.tsv` is a diffable machine-readable index generated from the official embedded IFC4 ADD2 TC1 snapshot. It maps applicable entity and predefined type to each property or quantity set member, including nested property paths, value forms, source XML paths, and digests. For quantities, `member_kind` is the normalized query category and `value_type` preserves the published `Q_LENGTH`, `Q_AREA`, and related XML token; an empty `unit_type` means the source XML declares no explicit unit type.
+Official snapshots are embedded for IFC2X3 TC1, IFC4 ADD2 TC1, and IFC4X3 ADD2. Corrected overlays are deliberately available only for IFC4 ADD2 TC1; official artifacts are never rewritten.
 
-Regenerate atomically:
+## Version-explicit TSV index
+
+Each committed TSV has an `edition` and `source_digest` column, preserves
+set/member GUIDs when the source publishes them, and retains the source XML path
+and digest. GUIDs are release-scoped evidence, not a promise that equal names or
+GUIDs have identical semantics across editions. Generate one deterministically:
 
 ```bash
 cargo run -p ifc-template-catalog --example export_ifc4_tsv -- \
-  ifc-template-catalog/data/ifc4-add2-tc1.tsv
+  ifc4x3-add2 ifc-template-catalog/data/ifc4x3-add2.tsv
 ```
 
-`cargo test -p ifc-template-catalog --all-features` byte-compares fresh output with the committed artifact. Applicability rows retain the published selector and declare subtype applicability; consumers needing an exact concrete entity query should use the schema-aware catalog query API.
+The example accepts `ifc2x3-tc1`, `ifc4-add2-tc1`, or `ifc4x3-add2`. Provenance, exact corpus gates, checksums, and artifact sizes are in `data/NOTICE.md`.
