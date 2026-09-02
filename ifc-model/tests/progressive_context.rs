@@ -83,12 +83,17 @@ fn is_ifc_layer_dir(path: &Path) -> bool {
     (name.starts_with("ifc-") || name == "openbim-ifc") && path.join("Cargo.toml").is_file()
 }
 
+/// Collect repository-owned context candidates only. Dependency and generated
+/// trees can contain foreign agent instructions with unrelated protocols.
 fn walk(dir: &Path, files: &mut Vec<PathBuf>) {
     for entry in std::fs::read_dir(dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display())) {
         let path = entry.expect("directory entry").path();
         if path.is_dir() {
             let name = path.file_name().unwrap_or_default();
-            if name != "target" && name != "references" && !name.to_string_lossy().starts_with('.')
+            if name != "target"
+                && name != "references"
+                && name != "node_modules"
+                && !name.to_string_lossy().starts_with('.')
             {
                 walk(&path, files);
             }

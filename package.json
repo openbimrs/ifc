@@ -4,11 +4,13 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "docs:check": "node docs/scripts/check-diagrams.mjs docs",
     "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
+    "docs:build": "npm run docs:check && vitepress build docs",
     "docs:preview": "vitepress preview docs"
   },
   "devDependencies": {
+    "mermaid": "^11.17.2",
     "vitepress": "2.0.0-alpha.19"
   }
 }

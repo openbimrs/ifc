@@ -1,5 +1,7 @@
 import { defineConfig } from 'vitepress'
 
+import { diagramPlugin } from './diagram-plugin.ts'
+
 const adrs = [
   ['0001-entity-graph-free-of-domain-and-codec', 1, 'Domain- and codec-free graph'],
   ['0002-codec-as-a-model-crate-trait', 2, 'Codec as a model-crate trait'],
@@ -29,6 +31,11 @@ export default defineConfig({
   // pages. Excluding them keeps the dead-link gate meaningful, since their
   // relative pointers target repository files rather than routes.
   srcExclude: ['**/AGENTS.md', '**/PLAN.md', 'adr/_template.md'],
+  markdown: {
+    html: false,
+    math: true,
+    config: diagramPlugin,
+  },
   sitemap: { hostname: 'https://openbimrs.github.io/ifc/' },
   head: [
     ['meta', { name: 'theme-color', content: '#1d4ed8' }],

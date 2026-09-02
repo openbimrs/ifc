@@ -139,6 +139,7 @@ and this project follows Semantic Versioning.
   approximation policy; those remain neutral-provider concerns.
 
 ### Changed
+- Replaced architecture ASCII sketches with accessible, dark/mobile Mermaid diagrams; IFC geometry docs now link to Axiolid's source-backed STL and equation guide. Progressive-context discovery ignores external `node_modules` trees that can contain foreign agent instructions.
 - Updated all user-facing Git dependency examples to the exact reviewed IFC revision that adopts Axiolid's nested package architecture.
 - `ifc-geometry` now follows Axiolid's nested package architecture. Direct test
   or tool consumers must replace `axiolid-scalar` / `axiolid_scalar::ScalarCompiler`

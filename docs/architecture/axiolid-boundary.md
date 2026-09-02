@@ -6,12 +6,13 @@ the most common way to over-estimate what the crate can do.
 
 ## The split
 
-```text
-  ifc-model              ifc-geometry                  Axiolid
-  (untyped graph)  -->   typed views                   (neutral kernel)
-                         + IFC resolution        -->   GeometryGraph
-                         + unit handling               + providers
-                         + placement chains
+```mermaid
+flowchart LR
+  accTitle: Responsibility transfer from IFC records to Axiolid
+  accDescr: The untyped IFC model is interpreted by ifc-geometry, which resolves IFC entities, units, placements, and mapped items into a neutral Axiolid GeometryGraph. Providers remain downstream and are not dependencies of the bridge.
+  Model["ifc-model<br/>untyped record graph"] --> Bridge["ifc-geometry<br/>typed views<br/>IFC resolution<br/>units + placements"]
+  Bridge --> Graph["Axiolid GeometryGraph<br/>neutral authored intent"]
+  Graph -.-> Providers["Explicit downstream providers<br/>not owned by ifc-geometry"]
 ```
 
 **`ifc-geometry` answers:** what does this IFC entity *mean* geometrically?
@@ -51,7 +52,10 @@ lower and compile body geometry before invoking the opt-in Axiolid operation.
 **Axiolid is a contract kernel more than an algorithm library.** Much of it
 defines neutral vocabulary and validated representations; a smaller portion is
 executable algorithms. Check Axiolid's own capability documentation rather than
-assuming an operation exists because a crate named after it does.
+assuming an operation exists because a crate named after it does. Its
+[geometry concepts guide](https://axiolid.github.io/kernel/guide/geometry-concepts)
+uses interactive STL examples and equations to explain profiles, mesh orientation,
+tolerance, and the representation/execution distinction.
 
 ## What Axiolid does provide
 

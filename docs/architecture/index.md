@@ -9,10 +9,17 @@ than by convention, and almost every other design choice follows from them.
 wall, a cost item, or a task. Domain crates are **views** that borrow a `&Model`
 and interpret it.
 
-```text
-  ifc-step ──┐                        ┌── ifc-cost
-  ifc-xml  ──┼── Codec ──> Model <────┼── ifc-schedule      (views)
-  ifc-json ──┘  (ifc-model)           └── ifc-properties
+```mermaid
+flowchart LR
+  accTitle: Structural model between codecs and domain views
+  accDescr: STEP, XML, and future JSON codecs read and write one structural model. Cost, schedule, and property crates borrow that model as replaceable typed views.
+  STEP["ifc-step"] --> Codec["Codec trait<br/>owned by ifc-model"]
+  XML["ifc-xml"] --> Codec
+  JSON["future ifc-json"] -.-> Codec
+  Codec <--> Model["Model<br/>records + unknown data"]
+  Model --> Cost["ifc-cost view"]
+  Model --> Schedule["ifc-schedule view"]
+  Model --> Properties["ifc-properties view"]
 ```
 
 Three consequences, in order of importance:
@@ -41,16 +48,20 @@ Codecs never import domain semantics. Domain crates never import codecs.
 
 ## Dependency tiers
 
-```text
-L0  record core        ifc-model
-L1  schema metadata    ifc-schema        -> ifc-model when needed
-L1  codecs             ifc-step, ifc-xml -> ifc-model
-L2  domain views       ifc-{material,properties,cost,...} -> ifc-model
-L2  validation         ifc-validate      -> ifc-model + ifc-schema
-L2  geometry bridges   ifc-geometry, ifc-alignment, ifc-georef
-                                         -> ifc-model + neutral axiolid crates
-L3  facade             openbim-ifc       -> selected L1/L2 crates
-L4  orchestration      apps, openbim, bindings (outside this repository)
+```mermaid
+flowchart BT
+  accTitle: openbim-ifc dependency tiers
+  accDescr: Dependencies point downward from orchestration through the facade and optional domain or geometry crates to codecs, schema metadata, and the record core.
+  L4["L4 orchestration<br/>apps / bindings outside this repository"] --> L3["L3 facade<br/>openbim-ifc"]
+  L3 --> Domains["L2 domain views + validation"]
+  L3 --> Geometry["L2 geometry bridges<br/>ifc-geometry / alignment / georef"]
+  Domains --> Schema["L1 schema metadata"]
+  Domains --> Model["L0 record core<br/>ifc-model"]
+  Geometry --> Model
+  Geometry --> Axiolid["Neutral Axiolid representation crates"]
+  L3 --> Codecs["L1 codecs<br/>ifc-step / ifc-xml"]
+  Codecs --> Model
+  Schema --> Model
 ```
 
 Dependencies point down. Sibling domain crates do not depend on one another;
