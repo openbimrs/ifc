@@ -51,6 +51,8 @@ pub mod attribute;
 #[cfg(feature = "ifc4")]
 mod bundled;
 pub mod entity;
+#[cfg(feature = "ifc4")]
+pub mod export;
 pub mod express;
 mod inheritance;
 pub mod registry;
@@ -65,6 +67,8 @@ pub use attribute::Attribute;
 #[cfg(feature = "ifc4")]
 pub use bundled::{for_version, ifc2x3, ifc4, ifc4x3};
 pub use entity::EntityDef;
+#[cfg(feature = "ifc4")]
+pub use export::{write_structural_catalog, StructuralCatalogSummary};
 pub use registry::Schema;
 pub use types::{TypeDef, TypeKind};
 pub use version::SchemaVersion;

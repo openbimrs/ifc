@@ -16,6 +16,10 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-schema` can export deterministic, release-identified structural catalogs
+  for IFC2x3 TC1, IFC4 ADD2 TC1, and IFC4X3 ADD2. The export preserves exact
+  entity names, nearest-first ancestry, and inherited Part 21 attribute order
+  without redistributing EXPRESS sources or specification prose.
 - `ifc-geometry` now lowers authored `IfcArbitraryOpenProfileDef` paths to
   Axiolid `OpenProfile` graph nodes without inventing area, width, or a closing
   segment. Area-only swept-solid callers continue to refuse them explicitly.
