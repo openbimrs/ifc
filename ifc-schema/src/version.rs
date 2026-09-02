@@ -16,6 +16,46 @@ pub enum SchemaVersion {
 }
 
 impl SchemaVersion {
+    /// Exact published release identifier for the bundled structural table.
+    #[must_use]
+    pub const fn release_id(self) -> &'static str {
+        match self {
+            Self::Ifc2x3 => "IFC2X3_TC1",
+            Self::Ifc4 => "IFC4_ADD2_TC1",
+            Self::Ifc4x3 => "IFC4X3_ADD2",
+        }
+    }
+
+    /// Entity count asserted when the bundled artifact is generated.
+    #[must_use]
+    pub const fn expected_entity_count(self) -> usize {
+        match self {
+            Self::Ifc2x3 => 653,
+            Self::Ifc4 => 776,
+            Self::Ifc4x3 => 876,
+        }
+    }
+
+    /// Defined-type count asserted when the bundled artifact is generated.
+    #[must_use]
+    pub const fn expected_type_count(self) -> usize {
+        match self {
+            Self::Ifc2x3 => 327,
+            Self::Ifc4 => 397,
+            Self::Ifc4x3 => 436,
+        }
+    }
+
+    /// Header tokens accepted for this release, excluding case-only variants.
+    #[must_use]
+    pub const fn header_tokens(self) -> &'static [&'static str] {
+        match self {
+            Self::Ifc2x3 => &["IFC2X3"],
+            Self::Ifc4 => &["IFC4"],
+            Self::Ifc4x3 => &["IFC4X3", "IFC4X3_ADD2"],
+        }
+    }
+
     /// Parse the token found in a STEP file's `FILE_SCHEMA` header entry.
     pub fn from_header_token(token: &str) -> Option<Self> {
         match token.trim().to_ascii_uppercase().as_str() {
