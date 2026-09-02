@@ -43,6 +43,8 @@ Accepted by ADR 0010. This crate is external schema metadata, separate from auth
 - [x] `CAT-TSV` - export a deterministic, typed property/quantity applicability index.
 - [x] `CAT-EDITION-SNAPSHOTS` - embed authenticated IFC2X3/IFC4/IFC4X3
   official snapshots and version-explicit GUID-bearing TSV exports.
+- [x] `CAT-SOURCE-CONTAINMENT` - reject symlinks and resolved-path escapes while
+  traversing authenticated XML source roots.
 
 - [x] `CAT-REVIEW-FIX` - reconcile late review findings, fix confirmed invariants, regenerate, and gate.
 
@@ -70,3 +72,4 @@ Append entries as `TASK-ID - command/result - material decision`. Do not paste f
 - `CAT-REVIEW-FIX` - late reviews reconciled; QTO/profile/cross-call findings fixed, stale findings pinned by regressions, format-v2 artifact reproduced, corruption mutation exited 101, and exact scoped gates passed. Independent follow-up review passed; its three non-blocking coverage suggestions were added and mutation-verified. The full gate is currently blocked by the pre-existing `ifc-geometry::no_backend_dependency` macro fixture on HEAD.
 - `CAT-TSV` - exported 420 PSD and 93 QTO sets as 3,525 deterministic rows; quantity `value_type` preserves `Q_*` XML tokens and release-scoped source GUIDs remain explicit. Regeneration reproduced SHA-256 `15dca1204b3f7533b2ee85fe353ad1d9b23fdf318fcb46100bef45dd5c2eb42c`; exact corpus counts, relevant opening/door paths, and byte drift are regression-tested.
 - `CAT-EDITION-SNAPSHOTS` - authenticated IFC2X3 TC1 (317 PSD/0 QTO, 1,856 members), IFC4 ADD2 TC1 (420/93, 2,550/257), and pinned IFC4X3 ADD2 (502/110, 2,918/324) generated and byte-reproduced. Official embeddings now exist for all three editions; corrected overlays remain IFC4-only. Release-scoped source GUIDs are exported without inferring cross-release identity. Crate all-feature tests/clippy and the complete workspace `scripts/gate.sh` pass with the build target placed on a volume with adequate capacity.
+- `CAT-SOURCE-CONTAINMENT` - immutable review reproduced a lexical-path symlink escape; a RED generator test accepted it before the fix and now rejects it. Canonical-root containment, symlink/special-entry refusal, package all-feature tests/clippy/docs, and byte-identical regeneration of all three edition artifacts pass.

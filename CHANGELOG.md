@@ -154,6 +154,9 @@ and this project follows Semantic Versioning.
   with `default-features = false, features = ["model"]`.
 
 ### Fixed
+- `ifc-template-catalog` source generation now canonicalizes the declared corpus
+  root, rejects symbolic links and non-file/non-directory entries during XML
+  traversal, and verifies every resolved candidate remains inside that root.
 - `ifc-xml` now binds the XSI namespace used by null values, independently
   resolves qualified attributes during tests, and rejects unmarked or
   namespace-spoofed self-closing typed values instead of silently decoding

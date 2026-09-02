@@ -32,9 +32,17 @@ pub fn parse_edition(value: &str) -> Result<CatalogEdition, String> {
 
 pub fn import(edition: CatalogEdition, source: &Path) -> Result<ImportedCatalog, String> {
     let spec = edition_spec(edition)?;
+    let source_root = fs::canonicalize(source)
+        .map_err(|error| format!("resolve source root {}: {error}", source.display()))?;
+    if !source_root.is_dir() {
+        return Err(format!(
+            "source root is not a directory: {}",
+            source_root.display()
+        ));
+    }
     let mut inputs = Vec::new();
-    for directory in input_directories(source, edition)? {
-        inputs.extend(walk_xml(&directory, source, edition)?);
+    for directory in input_directories(&source_root, edition)? {
+        inputs.extend(walk_xml(&directory, &source_root, edition)?);
     }
     inputs.sort_by(|left, right| left.0.cmp(&right.0));
     if inputs.is_empty() {
@@ -118,25 +126,50 @@ fn walk_xml(
     source_root: &Path,
     edition: CatalogEdition,
 ) -> Result<Vec<(String, PathBuf)>, String> {
-    if path.is_file() {
+    let metadata = fs::symlink_metadata(path)
+        .map_err(|error| format!("inspect {}: {error}", path.display()))?;
+    if metadata.file_type().is_symlink() {
+        return Err(format!(
+            "symbolic link is not allowed in XML source tree: {}",
+            path.display()
+        ));
+    }
+    let resolved =
+        fs::canonicalize(path).map_err(|error| format!("resolve {}: {error}", path.display()))?;
+    if !resolved.starts_with(source_root) {
+        return Err(format!(
+            "XML input escapes source root {}: {}",
+            source_root.display(),
+            resolved.display()
+        ));
+    }
+    if metadata.is_file() {
         if path.extension().and_then(|value| value.to_str()) != Some("xml") {
             return Ok(Vec::new());
         }
-        let relative = path
+        let relative = resolved
             .strip_prefix(source_root)
-            .map_err(|error| format!("relative path for {}: {error}", path.display()))?
+            .map_err(|error| format!("relative path for {}: {error}", resolved.display()))?
             .to_str()
-            .ok_or_else(|| format!("non-UTF8 path: {}", path.display()))?
+            .ok_or_else(|| format!("non-UTF8 path: {}", resolved.display()))?
             .to_owned();
         let relative = match edition {
             CatalogEdition::Ifc2x3Tc1 => format!("psd/{relative}"),
             CatalogEdition::Ifc4Add2Tc1 | CatalogEdition::Ifc4x3Add2 => relative,
             _ => return Err(format!("unsupported catalog edition {edition:?}")),
         };
-        return Ok(vec![(relative, path.to_owned())]);
+        return Ok(vec![(relative, resolved)]);
+    }
+    if !metadata.is_dir() {
+        return Err(format!(
+            "unsupported filesystem entry in XML source tree: {}",
+            path.display()
+        ));
     }
     let mut result = Vec::new();
-    for entry in fs::read_dir(path).map_err(|error| format!("read {}: {error}", path.display()))? {
+    for entry in
+        fs::read_dir(&resolved).map_err(|error| format!("read {}: {error}", resolved.display()))?
+    {
         result.extend(walk_xml(
             &entry.map_err(|error| error.to_string())?.path(),
             source_root,
@@ -216,4 +249,35 @@ pub fn default_output(manifest_dir: &Path, edition: CatalogEdition) -> Result<Pa
         _ => return Err(format!("unsupported catalog edition {edition:?}")),
     };
     Ok(manifest_dir.join("data").join(filename))
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use std::os::unix::fs::symlink;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    use super::*;
+
+    #[test]
+    fn traversal_rejects_symlinked_xml_outside_source_root() {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock before epoch")
+            .as_nanos();
+        let scratch = std::env::temp_dir().join(format!(
+            "ifc-template-catalog-symlink-{}-{nonce}",
+            std::process::id()
+        ));
+        let source = scratch.join("source");
+        let outside = scratch.join("outside.xml");
+        fs::create_dir_all(&source).expect("create source directory");
+        fs::write(&outside, "<outside />").expect("write outside XML");
+        symlink(&outside, source.join("escaped.xml")).expect("create escaping symlink");
+
+        let error = walk_xml(&source, &source, CatalogEdition::Ifc2x3Tc1)
+            .expect_err("symlinked XML must be rejected");
+        assert!(error.contains("symbolic link"), "unexpected error: {error}");
+
+        fs::remove_dir_all(scratch).expect("remove test directory");
+    }
 }
