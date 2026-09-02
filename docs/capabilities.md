@@ -41,9 +41,9 @@ code.
 | `ifc-schedule` | 1,691 | 24 | 14 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 1,586 | 20 | 5 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,230 | 6 | 0 | 1 | <span class="status-implemented">Implemented</span> |
+| `ifc-schema` | 1,165 | 11 | 4 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-alignment` | 1,095 | 26 | 16 | 2 | <span class="status-partial">Partial</span> |
 | `ifc-xml` | 1,045 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
-| `ifc-schema` | 1,038 | 10 | 4 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-approval` | 915 | 5 | 0 | 1 | <span class="status-implemented">Implemented</span> |
 | `openbim-ifc` | 900 | 6 | 0 | 12 | <span class="status-implemented">Implemented</span> |
 | `ifc-author` | 729 | 8 | 3 | 3 | <span class="status-implemented">Implemented</span> |
