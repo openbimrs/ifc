@@ -54,7 +54,7 @@ reserved module ownership, and the capability matrix reports crate status.
 
 ```toml
 [dependencies]
-openbim-ifc = { git = "https://github.com/openbimrs/ifc.git", rev = "494d8c7f5aa47cab7993fbff453eee71ab5849a8" }
+openbim-ifc = { git = "https://github.com/openbimrs/ifc.git", rev = "a7c4949bb941504ce874bdec13bd81d33491b5cb" }
 ```
 
 The workspace crates are not published on crates.io yet. This immutable Git

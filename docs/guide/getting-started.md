@@ -4,7 +4,7 @@
 
 ```toml
 [dependencies]
-openbim-ifc = { git = "https://github.com/openbimrs/ifc.git", rev = "494d8c7f5aa47cab7993fbff453eee71ab5849a8" }
+openbim-ifc = { git = "https://github.com/openbimrs/ifc.git", rev = "a7c4949bb941504ce874bdec13bd81d33491b5cb" }
 ```
 
 The workspace crates are not published on crates.io yet. Consume the facade
@@ -42,7 +42,7 @@ make every downstream build fat.
 A thin viewer:
 
 ```toml
-openbim-ifc = { git = "https://github.com/openbimrs/ifc.git", rev = "494d8c7f5aa47cab7993fbff453eee71ab5849a8", default-features = false, features = ["step"] }
+openbim-ifc = { git = "https://github.com/openbimrs/ifc.git", rev = "a7c4949bb941504ce874bdec13bd81d33491b5cb", default-features = false, features = ["step"] }
 ```
 
 compiles no domain code and no geometry stack, while still round-tripping every

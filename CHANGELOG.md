@@ -135,6 +135,7 @@ and this project follows Semantic Versioning.
   approximation policy; those remain neutral-provider concerns.
 
 ### Changed
+- Updated all user-facing Git dependency examples to the exact reviewed IFC revision that adopts Axiolid's nested package architecture.
 - `ifc-geometry` now follows Axiolid's nested package architecture. Direct test
   or tool consumers must replace `axiolid-scalar` / `axiolid_scalar::ScalarCompiler`
   with `axiolid-reference` / `axiolid_reference::ReferenceMeshCompiler` and use
