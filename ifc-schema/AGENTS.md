@@ -18,6 +18,8 @@ happens here and in consumers.
   Supertype chains and Part 21 positional attribute order live in
   `openbim-step` -- none of that is IFC-specific. What stays here is IFC
   version identity, the bundled artifact, and the process-wide cache.
+- `export.rs`: deterministic expanded and direct-declaration catalogs for exact
+  bundled releases
 - `version.rs`: which IFC schema a file's `FILE_SCHEMA` token names
 - `error.rs`: syntax/source diagnostics
 - `artifact.rs` (ifc4 feature): versioned binary codec for a compiled schema

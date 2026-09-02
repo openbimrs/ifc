@@ -43,9 +43,9 @@ marker with its first real contract and tests; do not add parallel placeholders.
 - [x] `SCHEMA-4X3-BUNDLE` - generate, bundle, and route canonical IFC4X3 ADD2 tables
   - Evidence: committed 137179-byte artifact; 876 entities and 436 `TYPE ` declarations; constructor/cache/version dispatch and real-source layout tests; archive leakage, mutation, and full gates.
 - [x] `SCHEMA-EXPORT` - expose deterministic structural catalogs for specialized consumers
-  - Evidence: targeted export tests prove exact 653/327, 776/397, and 876/436
-    release counts, sorted entity rows, inherited attribute order, and the
-    IFC4/IFC4X3 `IfcBuildingElement`/`IfcBuiltElement` boundary.
+  - Evidence: expanded and direct export tests prove exact 653/327, 776/397,
+    and 876/436 release counts, sorted four-field rows, and byte-equivalent
+    reconstruction of ancestry and inherited attributes for all entities.
 - [ ] `SCHEMA-PERF` - benchmark official IFC2x3/4/4x3 parses before optimizing
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
 - [x] `SCHEMA-EXTRACT` - delegate generic EXPRESS parsing/model types without a fork
@@ -58,6 +58,6 @@ Do not paste long logs or transient process state.
 
 - `SCHEMA-EXTRACT` - parser/AST types now come from `openbim_step::express`;
   all three official IFC schema tests pass through the delegated implementation.
-- `SCHEMA-EXPORT` - `write_structural_catalog` and the
-  `export_structural_catalog` example emit deterministic version-separated TSV;
-  the focused integration suite passes 2/2 tests.
+- `SCHEMA-EXPORT` - expanded and direct-declaration TSV modes reconstruct all
+  three releases exactly; targeted 33-test crate gate, clippy, docs, and a
+  declared-vs-inherited mutation proof pass.

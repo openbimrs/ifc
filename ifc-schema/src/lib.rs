@@ -68,7 +68,9 @@ pub use attribute::Attribute;
 pub use bundled::{for_version, ifc2x3, ifc4, ifc4x3};
 pub use entity::EntityDef;
 #[cfg(feature = "ifc4")]
-pub use export::{write_structural_catalog, StructuralCatalogSummary};
+pub use export::{
+    write_direct_structural_catalog, write_structural_catalog, StructuralCatalogSummary,
+};
 pub use registry::Schema;
 pub use types::{TypeDef, TypeKind};
 pub use version::SchemaVersion;
