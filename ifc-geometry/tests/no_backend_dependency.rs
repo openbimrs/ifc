@@ -476,9 +476,30 @@ fn ifc_crates_never_depend_on_geometry_execution_crates() {
     for path in ifc_layer_crates() {
         let manifest = path.join("Cargo.toml");
         let body = uncommented(&std::fs::read_to_string(&manifest).expect("manifest readable"));
+        // Retain the removed `axiolid-kernel` name only as a negative assertion:
+        // IFC packages must never recreate the former monolithic dependency.
+        let forbidden = [
+            "axiolid-backend-",
+            "axiolid-contracts",
+            "axiolid-dispatch",
+            "axiolid-field-ops",
+            "axiolid-guarantees",
+            "axiolid-kernel",
+            "axiolid-mesh-boolean-boolmesh",
+            "axiolid-mesh-boolean-contract",
+            "axiolid-mesh-contracts",
+            "axiolid-mesh-compile",
+            "axiolid-mesh-section-contract",
+            "axiolid-tessellation-contract",
+        ];
+        let violations: Vec<_> = forbidden
+            .iter()
+            .copied()
+            .filter(|name| body.contains(name))
+            .collect();
         assert!(
-            !body.contains("axiolid-backend-") && !body.contains("axiolid-kernel"),
-            "{} binds IFC semantics to a geometry contract/execution crate. Emit neutral axiolid-model values and select operation providers in an app crate.",
+            violations.is_empty(),
+            "{} binds IFC semantics to geometry contract/execution packages ({violations:?}). Emit neutral axiolid-model values and select operation providers in an app crate.",
             manifest.display()
         );
         checked += 1;

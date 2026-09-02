@@ -8,7 +8,7 @@ roadmap work; keep progress, blockers, and evidence there.
 ## Boundary
 
 Allowed production dependencies: `ifc-model`, schema metadata, and neutral axiolid
-value/representation crates; never `axiolid-kernel`, an algorithm crate, or a backend.
+value/representation crates; never an `axiolid-*-contract`, algorithm, dispatch, or backend crate.
 
 The neutral crates are optional, behind the default-on `lowering` feature. Only
 `lower`, `Transform::to_geom`, and the `IfcBooleanOperator` conversion may

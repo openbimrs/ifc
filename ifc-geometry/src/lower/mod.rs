@@ -32,7 +32,7 @@ pub use curve::lower_curve_node;
 pub use dispatch::lower_representation_item;
 pub use halfspace::lower_half_space_node;
 pub use mapped::{lower_mapped_item_node, lower_representation};
-pub use profile::{lower_profile, lower_profile_node};
+pub use profile::{lower_open_profile_node, lower_profile, lower_profile_node};
 pub use provenance::ProvenanceMap;
 pub use session::{LoweringSession, SessionLimits};
 pub use surface::{lower_linear_extrusion, lower_plane, lower_surface_node};

@@ -2,7 +2,7 @@
 
 Pure-Rust IFC infrastructure: schema metadata, entity graph storage, STEP and
 ifcXML codecs, typed domain projections, schema-aware validation, and explicit
-bridges to the format-neutral [Axiolid](https://github.com/axiolid/axiolid-kernel)
+bridges to the format-neutral [Axiolid](https://github.com/axiolid/kernel)
 geometry contracts.
 
 This is the canonical IFC-family repository for

@@ -73,6 +73,13 @@ fn links(tree: &str, crate_name: &str) -> bool {
         .any(|name| name == crate_name)
 }
 
+fn linked_with_prefix<'a>(tree: &'a str, prefix: &str) -> Vec<&'a str> {
+    tree.lines()
+        .filter_map(|line| line.split_whitespace().next())
+        .filter(|name| name.starts_with(prefix))
+        .collect()
+}
+
 /// The thin build must not drag in a single domain crate.
 #[test]
 fn thin_build_excludes_every_domain_crate() {
@@ -140,12 +147,11 @@ fn selecting_cost_does_not_pull_in_unrelated_domains() {
 #[test]
 fn thin_build_compiles_no_geometry_kernel() {
     let tree = dependency_tree("step");
-    for axiolid in ["axiolid-kernel", "axiolid-core", "axiolid-mesh", "glam"] {
-        assert!(
-            !links(&tree, axiolid),
-            "thin build links {axiolid}; a file-mover should compile no geometry"
-        );
-    }
+    let axiolid = linked_with_prefix(&tree, "axiolid-");
+    assert!(
+        axiolid.is_empty() && !links(&tree, "glam"),
+        "thin build links geometry packages {axiolid:?}; a file-mover should compile no geometry\n{tree}"
+    );
 }
 
 /// Selecting a 2D representation must not link the geometry kernel.
@@ -162,24 +168,13 @@ fn selecting_a_plan_representation_links_no_geometry_kernel() {
         links(&tree, "ifc-geometry"),
         "geometry-select must still link the selectors"
     );
-    for axiolid in [
-        "axiolid-core",
-        "axiolid-curve",
-        "axiolid-mesh",
-        "axiolid-model",
-        "axiolid-primitive",
-        "axiolid-profile",
-        "axiolid-surface",
-        "axiolid-topology",
-        "glam",
-    ] {
-        assert!(
-            !links(&tree, axiolid),
-            "geometry-select links {axiolid}; a 2D consumer should compile no \
-             kernel. Check that `ifc-geometry` is taken with \
-             `default-features = false`.\n{tree}"
-        );
-    }
+    let axiolid = linked_with_prefix(&tree, "axiolid-");
+    assert!(
+        axiolid.is_empty() && !links(&tree, "glam"),
+        "geometry-select links geometry packages {axiolid:?}; a 2D consumer should compile no \
+         kernel. Check that `ifc-geometry` is taken with \
+         `default-features = false`.\n{tree}"
+    );
 }
 
 /// The full `geometry` feature must still deliver lowering.

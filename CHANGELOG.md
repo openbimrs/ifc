@@ -8,6 +8,9 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `ifc-geometry` now lowers authored `IfcArbitraryOpenProfileDef` paths to
+  Axiolid `OpenProfile` graph nodes without inventing area, width, or a closing
+  segment. Area-only swept-solid callers continue to refuse them explicitly.
 - `ifc-structural` now transaction-stages selected members, connections,
   point/linear/planar actions, member-connection links, and activity assignments
   with projected-state validation; a facade test proves one physical-product
@@ -130,6 +133,14 @@ and this project follows Semantic Versioning.
 - Removed the obsolete `ifc_geometry::kernel` compatibility facade and adapter
   `Tolerance` plumbing. Exact lowerers no longer advertise kernel execution or
   approximation policy; those remain neutral-provider concerns.
+
+### Changed
+- `ifc-geometry` now follows Axiolid's nested package architecture. Direct test
+  or tool consumers must replace `axiolid-scalar` / `axiolid_scalar::ScalarCompiler`
+  with `axiolid-reference` / `axiolid_reference::ReferenceMeshCompiler` and use
+  `MeshCompiler::{compile_mesh, compile_mesh_batch, compile_mesh_batch_into}`
+  for graph-to-mesh projection. Model-only facade consumers remain on `axiolid`
+  with `default-features = false, features = ["model"]`.
 
 ### Fixed
 - `ifc-xml` now binds the XSI namespace used by null values, independently

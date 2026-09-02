@@ -162,11 +162,11 @@ have focused lowering tests. Advanced B-reps preserve shared topology and exact
 curve/surface handles; half spaces retain their cutting-side semantics; swept
 and CSG families remain exact neutral operations rather than eager meshes.
 
-**Remaining boundary.** The dispatcher still declares
-`IfcArbitraryOpenProfileDef` unsupported because the neutral profile model
-represents closed contours only. Broader exact profile and surface coverage is
-tracked by `GEOM-PROFILE`, `GEOM-SURFACE`, and `LOW-EXACT`, not by the completed
-families above.
+**Open-profile boundary.** `IfcArbitraryOpenProfileDef` now lowers explicitly
+through `lower_open_profile_node` to an authored neutral open path without area
+or width. Area-profile operations still reject it rather than fabricate a
+closed contour. Broader exact profile and surface coverage is tracked by
+`GEOM-PROFILE`, `GEOM-SURFACE`, and `LOW-EXACT`.
 
 ### R9b. Curve lowering — partial
 

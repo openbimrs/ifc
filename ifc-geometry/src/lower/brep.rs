@@ -6,7 +6,8 @@
 //! carries face adjacency, bound nesting (holes), and void shells. Flattening
 //! it to triangles at read time destroys exactly the information a boolean or
 //! a volume query needs, and triangulation is a kernel decision. So this
-//! builds `BRep<NodeId>` and leaves tessellation to `axiolid-tessellate`.
+//! builds `BRep<NodeId>` and leaves tessellation to the
+//! `axiolid-tessellation-contract` operation boundary.
 //!
 //! # Sharing is the whole problem
 //!

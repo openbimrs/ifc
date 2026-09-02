@@ -114,13 +114,11 @@ and check it off only after the proof runs.
     by `tools/gen_surface_fixtures.py`. Generated output is our own work, so
     the licence question does not arise; the generator is committed alongside
     it so the fixtures stay reproducible rather than opaque blobs.
-  - Decision: `IfcArbitraryOpenProfileDef` is still reported unsupported when
-    used as a PROFILE - the neutral profile model is built on closed contours,
-    and closing the curve would fabricate a face the file never described.
-    When the same entity appears as a swept surface's `SweptCurve` it is a
-    generatrix rather than an area, so it is unwrapped to the curve it names.
-    That distinction is what unblocked `IFCSURFACECURVESWEPTAREASOLID`, which
-    now lowers end to end on the duct-elbow fixture.
+  - Decision: `IfcArbitraryOpenProfileDef` now has an explicit authored-path
+    route through `lower_open_profile_node`, backed by Axiolid `OpenProfile`.
+    It remains refused by the AREA-profile API: an open path has no area and
+    closing it would fabricate a face. When it appears as a swept surface's
+    `SweptCurve`, it is a generatrix and remains unwrapped to its named curve.
 
 - [x] `LOW-CSG` - CSG solids, CSG primitives, and swept-disk solids
   - Requires: `LOW-CURVE`, `LOW-DISPATCH`.

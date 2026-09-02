@@ -87,7 +87,7 @@ fn imported_rational_nurbs_curve_lowers_and_evaluates_without_fidelity_loss() {
         spline.weights.as_deref(),
         Some([1.0, std::f64::consts::FRAC_1_SQRT_2, 1.0].as_slice())
     );
-    let point = axiolid_scalar::evaluate3(curve, 0.5).expect("curve evaluates");
+    let point = axiolid_reference::evaluate3(curve, 0.5).expect("curve evaluates");
     let offset = 0.01 * std::f64::consts::FRAC_1_SQRT_2;
     assert_point(point, [10.0 - offset, 20.0 + offset, 30.0]);
 }
@@ -131,7 +131,7 @@ fn imported_rational_nurbs_surface_lowers_and_evaluates_without_fidelity_loss() 
         spline.weights.as_ref().unwrap(),
         &[vec![1.0, 2.0], vec![1.0, 1.0], vec![1.0, 2.0]]
     );
-    let point = axiolid_scalar::surface::evaluate(surface, 0.5, 1.0).expect("surface evaluates");
+    let point = axiolid_reference::surface::evaluate(surface, 0.5, 1.0).expect("surface evaluates");
     assert_point(point, [9.988, 20.008, 30.004]);
 }
 

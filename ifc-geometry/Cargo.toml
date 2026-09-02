@@ -48,6 +48,6 @@ axiolid-surface = { workspace = true, optional = true }
 
 [dev-dependencies]
 ifc-step.workspace = true
-axiolid-scalar.workspace = true
+axiolid-reference.workspace = true
 proc-macro2 = "1"
 syn = { version = "2", features = ["full", "parsing", "visit"] }

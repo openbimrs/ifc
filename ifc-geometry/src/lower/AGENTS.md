@@ -17,8 +17,10 @@ Record progress there.
 `surface.rs` scales a trim parameter by the BASIS surface's quantity kind:
 angle on a revolved or conic direction, length on a planar one. Applying one
 factor to both silently rescales patches on files authored in degrees.
-An `IfcArbitraryOpenProfileDef` is refused as a profile but unwrapped when it
-appears as a swept surface's generatrix - there it names a curve, not an area.
+An `IfcArbitraryOpenProfileDef` has an explicit authored open-path lowering
+route in `profile/open.rs`. It is still refused by the area-profile API; callers
+must opt into authored-path semantics explicitly, and neither route fabricates
+area.
 - tessellated face sets as meshes (`tessellated`), never as topology
 - mapped instances and boolean trees
 - CSG solids, CSG primitives, and swept-disk solids (`csg.rs`)
@@ -91,8 +93,10 @@ A CSG primitive is local by kernel contract. Its `Position` is carried on an
 ## Growth map
 
 `session.rs`, `dispatch.rs`, `context.rs`, `placement.rs`, `profile.rs`,
-`curve.rs`, `surface.rs`, `solid.rs`, `brep.rs`, `tessellated.rs`, `mapped.rs`,
-`boolean.rs`, `provenance.rs`. These source owners already compile as private scaffold modules. Replace a module's planned-owner marker with its first real contract and tests; do not add parallel placeholders.
+`profile/open.rs`, `curve.rs`, `surface.rs`, `solid.rs`, `brep.rs`,
+`tessellated.rs`, `mapped.rs`, `boolean.rs`, `provenance.rs`. These source owners
+already compile as private modules. Replace a module's planned-owner marker with
+its first real contract and tests; do not add parallel placeholders.
 
 Every source entity error cites EntityId/type/slot or rule. Add invalid, cycle,
 and unsupported cases, not only happy paths.

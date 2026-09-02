@@ -16,8 +16,8 @@
 //! rather than opaque blobs.
 
 use axiolid_model::{CurveRelation, GeometryNode, MasterRepresentation, SurfaceRelation};
-use axiolid_scalar::surface::Patch;
-use axiolid_scalar::tessellate::{tessellate_patch, TessellationBudget};
+use axiolid_reference::surface::Patch;
+use axiolid_reference::tessellate::{tessellate_patch, TessellationBudget};
 use axiolid_surface::Surface;
 use ifc_geometry::lower::{lower_representation_item, lower_surface_node, LoweringSession};
 use ifc_geometry::transform::Transform;

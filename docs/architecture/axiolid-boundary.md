@@ -41,12 +41,12 @@ export, or measurement — that call is downstream of this crate.
 node describing the operation and its operands. Evaluating it requires a mesh
 Boolean provider.
 
-**Sectioning is not available.** Deriving a 2D plan by cutting 3D bodies at a
-height requires a plane/solid section operation. That operation does not exist
-in `ifc-geometry` — correctly, since it is a kernel concern — and, as of the
-pinned revision, **there is no plane-section or slice operation in Axiolid
-either**. Applications needing plan derivation from 3D must currently source
-that capability elsewhere.
+**Sectioning remains downstream.** Axiolid now provides a neutral
+`MeshPlaneSection` contract and a portable reference implementation over an
+explicit `TriMesh`, with bounded evidence and refusal semantics. `ifc-geometry`
+does not call it or manufacture plan representations from body geometry. An
+application may select an authored IFC plan representation, or explicitly
+lower and compile body geometry before invoking the opt-in Axiolid operation.
 
 **Axiolid is a contract kernel more than an algorithm library.** Much of it
 defines neutral vocabulary and validated representations; a smaller portion is
@@ -67,6 +67,8 @@ Verified at the revision pinned by this workspace:
   surfaces, including analytic first surface partials.
 - An immutable shared geometry DAG with typed IDs.
 - A mesh Boolean provider, bounded by its own mesh contract.
+- A neutral mesh-plane-section contract plus portable reference implementation,
+  with bounded evidence/refusal semantics.
 - CPU context and a GPU seam — a seam, not a bundled kernel suite.
 
 ## The pin
@@ -75,10 +77,10 @@ The workspace pins Axiolid crates to an exact git revision rather than a
 version range, so geometry behaviour is reproducible across builds:
 
 ```toml
-axiolid-core = { git = "https://github.com/axiolid/axiolid-kernel.git", rev = "c136b61…" }
+axiolid-core = { git = "https://github.com/axiolid/kernel.git", rev = "f8255d3932128b524ca5f009e58738e075488beb" }
 ```
 
 Production lowering pins only representation-level crates — `core`, `mesh`,
 `model`, `primitive`, `profile`, `curve`, `surface`, and `topology`.
-`axiolid-scalar` is a dev-only oracle used by import regressions; it does not
+`axiolid-reference` is a dev-only oracle used by import regressions; it does not
 enter the published adapter's production dependency graph.
