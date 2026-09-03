@@ -1,14 +1,17 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Ready for contributors
-    url: https://github.com/orgs/openbimrs/projects/1/views/3
-    about: Claim an implementation-ready task with an explicit PLAN.md ID and evidence.
-  - name: Question or design discussion
-    url: https://github.com/openbimrs/ifc/discussions
-    about: Ask usage questions or discuss ideas that are not implementation-ready.
-  - name: Documentation and capability status
-    url: https://openbimrs.github.io/ifc/
-    about: Check supported behaviour, architecture, and current limitations before filing.
-  - name: Report a security vulnerability privately
-    url: https://github.com/openbimrs/ifc/security/advisories/new
-    about: Do not disclose vulnerabilities in a public issue.
+  - name: 🚀 Request new functionality
+    url: https://github.com/openbimrs/ifc/discussions/new?category=ideas
+    about: Start with scope and design; accepted capabilities become typed issues.
+
+  - name: ⚡ Suggest an optimization
+    url: https://github.com/openbimrs/ifc/discussions/new?category=ideas&title=%5Boptimization%5D%20
+    about: Propose making working behavior faster or lighter, backed by a same-harness measurement.
+
+  - name: 💬 Ask a question
+    url: https://github.com/openbimrs/ifc/discussions/new?category=q-a
+    about: Usage and design questions belong in answerable Discussions.
+
+  - name: 🗺️ Roadmap and current state
+    url: https://github.com/orgs/openbimrs/projects/12
+    about: Milestones carry release horizons; the repository board carries workflow state.
