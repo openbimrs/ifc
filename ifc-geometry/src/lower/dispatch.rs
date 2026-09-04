@@ -23,6 +23,7 @@ use crate::lower::csg::{
 use crate::lower::curve::lower_curve_node;
 use crate::lower::halfspace::lower_half_space_node;
 use crate::lower::mapped::lower_mapped_item_node;
+use crate::lower::point::{lower_point_on_curve_node, lower_point_on_surface_node};
 use crate::lower::session::LoweringSession;
 use crate::lower::surface::lower_surface_node;
 use crate::lower::swept::{
@@ -101,6 +102,8 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCCURVEBOUNDEDSURFACE",
     "IFCBSPLINESURFACEWITHKNOTS",
     "IFCRATIONALBSPLINESURFACEWITHKNOTS",
+    "IFCPOINTONCURVE",
+    "IFCPOINTONSURFACE",
 ];
 
 /// Recognized representation items that are not lowered yet.
@@ -108,20 +111,10 @@ pub const IMPLEMENTED: &[&str] = &[
 /// Each entry names the concrete reason so a caller building a viewer can
 /// report progress instead of a bare failure. Adding a family here is how a
 /// stub is declared; implementing it means moving the name to [`IMPLEMENTED`].
-pub const PLANNED: &[(&str, &str)] = &[
-    (
-        "IFCPOLYGONALBOUNDEDHALFSPACE",
-        "polygonal boundary cannot be discarded; exact bounded-half-space support is required",
-    ),
-    (
-        "IFCPOINTONCURVE",
-        "exact point evaluation reference is not yet represented",
-    ),
-    (
-        "IFCPOINTONSURFACE",
-        "exact surface-parameter point is not yet represented",
-    ),
-];
+pub const PLANNED: &[(&str, &str)] = &[(
+    "IFCPOLYGONALBOUNDEDHALFSPACE",
+    "polygonal boundary cannot be discarded; exact bounded-half-space support is required",
+)];
 
 /// Lower any representation item into the caller's session.
 ///
@@ -153,6 +146,8 @@ pub fn lower_representation_item(
             lower_half_space_node(session, id, frame)
         }
         "IFCMAPPEDITEM" => lower_mapped_item_node(session, id, frame),
+        "IFCPOINTONCURVE" => lower_point_on_curve_node(session, id, frame),
+        "IFCPOINTONSURFACE" => lower_point_on_surface_node(session, id, frame),
         "IFCFACETEDBREP"
         | "IFCFACETEDBREPWITHVOIDS"
         | "IFCADVANCEDBREP"

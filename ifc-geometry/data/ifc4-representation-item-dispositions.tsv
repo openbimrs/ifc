@@ -37,8 +37,6 @@ IFCORIENTEDEDGE	nested-exact	lower::brep	oriented edge use inside an edge loop
 IFCPATH	typed-refusal	lower::brep	path topology is not a face-bound loop
 IFCPLANARBOX	non-shape	ifc-style	presentation extent and placement
 IFCPLANAREXTENT	non-shape	ifc-style	presentation extent rather than shape geometry
-IFCPOINTONCURVE	planned-exact	lower::curve	exact point evaluation reference is not yet represented
-IFCPOINTONSURFACE	planned-exact	lower::surface	exact surface-parameter point is not yet represented
 IFCPOLYGONALBOUNDEDHALFSPACE	planned-exact	lower::halfspace	positioned polygonal cutting bound needs exact neutral support
 IFCPOLYLOOP	nested-exact	lower::brep	ordered point loop input to a face bound
 IFCREPARAMETRISEDCOMPOSITECURVESEGMENT	nested-exact	lower::curve	composite segment with authored parameter length

@@ -597,7 +597,7 @@ fn every_well_formed_bundled_schema_fixture_validates_clean() {
     }
 
     assert_eq!(
-        checked, 30,
+        checked, 31,
         "all intended-clean fixtures must run; raw-header fail fixtures stay excluded"
     );
     assert!(

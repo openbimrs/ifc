@@ -374,27 +374,106 @@ fn parameter_curve(
 }
 
 /// Parameter coordinates are dimensionless/mixed-domain values, not model
-/// lengths. Support the common exact polyline form explicitly; other forms
-/// stay typed unsupported rather than receiving a wrong uniform unit scale.
+/// lengths. Supports the exact polyline form and the implicit-order (no
+/// explicit `Segments`, or all-line `IfcLineIndex`) `IfcIndexedPolyCurve`
+/// form, since both read as a plain 2D point sequence with no evaluation.
+/// Other forms (explicit-arc indexed polycurves, conics, B-splines) stay
+/// typed unsupported rather than receiving a wrong uniform unit scale or an
+/// unimplemented parameter-space arc.
 fn parameter_reference_curve(
     session: &mut LoweringSession<'_>,
     owner: EntityId,
     id: EntityId,
 ) -> GeometryResult<NodeId> {
     let type_name = session.type_name(id)?;
-    if type_name != "IFCPOLYLINE" {
-        return Err(session.unsupported(
+    match type_name.as_str() {
+        "IFCPOLYLINE" => parameter_space_polyline(session, owner, id),
+        "IFCINDEXEDPOLYCURVE" => parameter_space_indexed_polycurve(session, owner, id),
+        _ => Err(session.unsupported(
             id,
             &type_name,
-            "parameter-space curve family (only exact IfcPolyline is currently supported)",
-        ));
+            "parameter-space curve family (only exact IfcPolyline and line-only IfcIndexedPolyCurve are currently supported)",
+        )),
     }
+}
+
+fn parameter_space_polyline(
+    session: &mut LoweringSession<'_>,
+    owner: EntityId,
+    id: EntityId,
+) -> GeometryResult<NodeId> {
     let entity = session.entity(owner, id)?;
     let view = Polyline::new(id, entity);
     let point_refs = view.point_refs()?;
     let closed = point_refs.first() == point_refs.last();
+    let points = parameter_space_points(session, owner, &point_refs)?;
+    session.node_for(
+        id,
+        GeometryNode::Curve2(Curve2::Polyline(Polyline2 { points, closed })),
+    )
+}
+
+/// `IfcIndexedPolyCurve` with no explicit `Segments`, or with `Segments`
+/// consisting only of `IfcLineIndex` entries, reads identically to a plain
+/// ordered point sequence: no arc evaluation is needed. An arc segment would
+/// require an exact parameter-space arc contract this crate does not carry,
+/// so that case stays a named typed refusal rather than being flattened to a
+/// straight line.
+fn parameter_space_indexed_polycurve(
+    session: &mut LoweringSession<'_>,
+    owner: EntityId,
+    id: EntityId,
+) -> GeometryResult<NodeId> {
+    let entity = session.entity(owner, id)?;
+    let view = IndexedPolyCurve::new(id, entity);
+    if view.has_explicit_segments() {
+        return Err(session.unsupported(
+            id,
+            "IFCINDEXEDPOLYCURVE",
+            "parameter-space indexed polycurve with explicit (non-line) segments is not yet represented",
+        ));
+    }
+    let point_list_ref = view.points_ref()?;
+    let list_entity = session.entity(owner, point_list_ref)?;
+    if !list_entity
+        .type_name
+        .eq_ignore_ascii_case("IFCCARTESIANPOINTLIST2D")
+    {
+        return Err(session.unsupported(
+            point_list_ref,
+            &list_entity.type_name,
+            "parameter-space indexed polycurve needs a 2D point list",
+        ));
+    }
+    let coordinates = CartesianPointList2D::new(point_list_ref, list_entity).coordinates()?;
+    let mut points = Vec::with_capacity(coordinates.len());
+    for xy in coordinates {
+        if !xy.iter().all(|value| value.is_finite()) {
+            return Err(session.degenerate(
+                point_list_ref,
+                "IFCCARTESIANPOINTLIST2D",
+                "parameter-space point must contain two finite coordinates",
+            ));
+        }
+        points.push(Point2::from_array(xy));
+    }
+    let closed = points.first() == points.last() && points.len() > 1;
+    session.node_for(
+        id,
+        GeometryNode::Curve2(Curve2::Polyline(Polyline2 { points, closed })),
+    )
+}
+
+/// Read an ordered list of `IfcCartesianPoint` references as 2D parameter
+/// coordinates, unscaled: parameter-space values are dimensionless/mixed and
+/// must never receive the project length factor.
+fn parameter_space_points(
+    session: &mut LoweringSession<'_>,
+    owner: EntityId,
+    point_refs: &[EntityId],
+) -> GeometryResult<Vec<Point2>> {
     let mut points = Vec::with_capacity(point_refs.len());
-    for point_ref in point_refs {
+    for &point_ref in point_refs {
         let point_entity = session.entity(owner, point_ref)?;
         let coordinates = CartesianPoint::new(point_ref, point_entity).coordinates()?;
         if coordinates.len() != 2 || !coordinates.iter().all(|value| value.is_finite()) {
@@ -406,10 +485,7 @@ fn parameter_reference_curve(
         }
         points.push(Point2::from_array([coordinates[0], coordinates[1]]));
     }
-    session.node_for(
-        id,
-        GeometryNode::Curve2(Curve2::Polyline(Polyline2 { points, closed })),
-    )
+    Ok(points)
 }
 
 /// Preserve redundant 3D/p-curve geometry and its authoritative selection.

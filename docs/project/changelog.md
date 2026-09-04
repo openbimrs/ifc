@@ -16,6 +16,28 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-geometry` repins Axiolid to a fresh revision (`8401f908`) with no
+  production API changes; both feature columns build and the full test suite
+  passes at the new pin.
+- `IfcPointOnCurve` and `IfcPointOnSurface` lower to
+  `axiolid_model::PointOnCurve`/`PointOnSurface`, preserving the basis
+  reference and parameter(s) exactly. Parameters convert per the basis's own
+  quantity kind (angle on a conic, dimensionless ordinal on a polyline, length
+  otherwise) using the same conversion the trim-parameter path already
+  established, rather than duplicating unit logic.
+- The p-curve reference-curve family (`IfcPcurve`'s parameter-space geometry)
+  now also accepts the implicit-order `IfcIndexedPolyCurve` form -- no
+  explicit `Segments`, which the schema defaults to straight lines between
+  consecutive points -- not only `IfcPolyline`. An indexed polycurve with an
+  explicit arc segment remains a named typed refusal: this crate carries no
+  parameter-space arc contract, and flattening the arc to a straight line
+  would silently change the surface parameterisation.
+
+### Fixed
+- `ifc-geometry` (data/`ifc4-representation-item-dispositions.tsv`) no longer
+  lists `IfcPointOnCurve`/`IfcPointOnSurface` as `planned-exact`; they are
+  implemented and the disposition/`IMPLEMENTED` sets must stay disjoint.
+
 - `ifc-schema` can export deterministic, release-identified structural catalogs
   for IFC2x3 TC1, IFC4 ADD2 TC1, and IFC4X3 ADD2. The export preserves exact
   entity names, nearest-first ancestry, and inherited Part 21 attribute order

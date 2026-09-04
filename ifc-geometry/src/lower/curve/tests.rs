@@ -414,6 +414,112 @@ fn surface_curve_keeps_master_and_raw_parameter_coordinates() {
     );
 }
 
+/// `IfcIndexedPolyCurve` with no explicit `Segments` reads as a plain
+/// dimensionless parameter-space point sequence, exactly like the
+/// `IfcPolyline` case above. Proves the p-curve reference-curve family is
+/// no longer limited to `IfcPolyline`.
+#[test]
+fn p_curve_accepts_an_implicit_indexed_polycurve_reference() {
+    let mut model = Model::new();
+    model.insert(EntityId(1), point(0.0, 0.0, 0.0));
+    model.insert(
+        EntityId(2),
+        entity("IFCAXIS2PLACEMENT3D", vec![r(1), Value::Null, Value::Null]),
+    );
+    model.insert(EntityId(3), entity("IFCPLANE", vec![r(2)]));
+    model.insert(
+        EntityId(4),
+        entity(
+            "IFCCARTESIANPOINTLIST2D",
+            vec![Value::List(vec![
+                Value::List(vec![n(0.0), n(0.0)]),
+                Value::List(vec![n(1.5), n(2.0)]),
+            ])],
+        ),
+    );
+    model.insert(
+        EntityId(5),
+        entity(
+            "IFCINDEXEDPOLYCURVE",
+            vec![r(4), Value::Null, Value::Bool(false)],
+        ),
+    );
+    model.insert(EntityId(6), entity("IFCPCURVE", vec![r(3), r(5)]));
+
+    let scale = millimetres();
+    let mut session = LoweringSession::new(&model, &scale);
+    let root = lower_curve_node(&mut session, EntityId(6), Transform::identity()).expect("lowers");
+    let lowered = session.finish(root).expect("finishes");
+    let GeometryNode::CurveRelation(CurveRelation::ParameterCurve {
+        basis_surface: _,
+        reference_curve,
+    }) = lowered.graph.get(root).expect("root")
+    else {
+        panic!("expected parameter curve relation");
+    };
+    let Some(GeometryNode::Curve2(Curve2::Polyline(polyline))) =
+        lowered.graph.get(*reference_curve)
+    else {
+        panic!("expected parameter-space polyline");
+    };
+    assert_eq!(
+        polyline.points[1].to_array(),
+        [1.5, 2.0],
+        "surface parameters must not use project length units"
+    );
+}
+
+/// An `IfcIndexedPolyCurve` with an explicit arc segment cannot be read as a
+/// plain point sequence, and this crate carries no parameter-space arc
+/// contract yet, so it must stay a named typed refusal rather than silently
+/// flattening the arc to a straight line.
+#[test]
+fn p_curve_refuses_an_indexed_polycurve_with_an_explicit_arc_segment() {
+    let mut model = Model::new();
+    model.insert(EntityId(1), point(0.0, 0.0, 0.0));
+    model.insert(
+        EntityId(2),
+        entity("IFCAXIS2PLACEMENT3D", vec![r(1), Value::Null, Value::Null]),
+    );
+    model.insert(EntityId(3), entity("IFCPLANE", vec![r(2)]));
+    model.insert(
+        EntityId(4),
+        entity(
+            "IFCCARTESIANPOINTLIST2D",
+            vec![Value::List(vec![
+                Value::List(vec![n(0.0), n(0.0)]),
+                Value::List(vec![n(1.0), n(1.0)]),
+                Value::List(vec![n(2.0), n(0.0)]),
+            ])],
+        ),
+    );
+    let index = |name: &str, values: &[i64]| Value::Typed {
+        type_name: name.into(),
+        value: Box::new(Value::List(
+            values.iter().copied().map(Value::Integer).collect(),
+        )),
+    };
+    model.insert(
+        EntityId(5),
+        entity(
+            "IFCINDEXEDPOLYCURVE",
+            vec![
+                r(4),
+                Value::List(vec![index("IFCARCINDEX", &[1, 2, 3])]),
+                Value::Bool(false),
+            ],
+        ),
+    );
+    model.insert(EntityId(6), entity("IFCPCURVE", vec![r(3), r(5)]));
+
+    let scale = millimetres();
+    let mut session = LoweringSession::new(&model, &scale);
+    let error = lower_curve_node(&mut session, EntityId(6), Transform::identity())
+        .expect_err("explicit-segment parameter-space indexed polycurves are not yet represented");
+    assert!(error.is_unsupported());
+    assert_eq!(error.entity(), Some(EntityId(5)));
+}
+
 #[test]
 fn indexed_polycurve_lowers_line_and_three_point_arc_segments() {
     let mut model = Model::new();

@@ -27,7 +27,7 @@ code.
 
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `ifc-geometry` | 26,181 | 90 | 5 | 32 | <span class="status-partial">Partial</span> |
+| `ifc-geometry` | 26,718 | 92 | 5 | 32 | <span class="status-partial">Partial</span> |
 | `ifc-structural` | 3,397 | 33 | 14 | 12 | <span class="status-implemented">Implemented</span> |
 | `ifc-style` | 3,322 | 31 | 0 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 3,119 | 30 | 14 | 3 | <span class="status-implemented">Implemented</span> |
@@ -264,9 +264,9 @@ The dispatcher keeps coverage as data so it is auditable from one table
 | `IfcCurveBoundedSurface` | <span class="status-implemented">Implemented</span> |
 | `IfcBSplineSurfaceWithKnots` | <span class="status-implemented">Implemented</span> |
 | `IfcRationalBSplineSurfaceWithKnots` | <span class="status-implemented">Implemented</span> |
+| `IfcPointOnCurve` | <span class="status-implemented">Implemented</span> |
+| `IfcPointOnSurface` | <span class="status-implemented">Implemented</span> |
 | `IfcPolygonalBoundedHalfSpace` | <span class="status-partial">Planned</span> — polygonal boundary cannot be discarded; exact bounded-half-space support is required |
-| `IfcPointOnCurve` | <span class="status-partial">Planned</span> — exact point evaluation reference is not yet represented |
-| `IfcPointOnSurface` | <span class="status-partial">Planned</span> — exact surface-parameter point is not yet represented |
 
 <!-- CAPABILITIES:GEOMETRY:END -->
 

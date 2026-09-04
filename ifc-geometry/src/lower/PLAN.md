@@ -213,6 +213,19 @@ and check it off only after the proof runs.
 - [ ] `LOW-HALFSPACE` - exact half spaces as boolean cutting tools
   - Progress: unbounded and boxed half spaces lower exactly; polygonally bounded
     half space is typed unsupported pending a neutral positioned-bound contract.
+  - Update (2026-09-05): Axiolid now declares `SolidOperation::BoundedHalfSpace`
+    (landed 2026-08-30, commit `9de5042`) with exactly the contract this task
+    needs -- a half-space node, a 2D boundary curve, and a placement. The
+    structural blocker is gone. **Still blocked** on a correctness defect in
+    Axiolid's `axiolid_construct::half_space::bounded_half_space`: the
+    `agreement=false` branch negates the local y basis vector rather than only
+    reversing the extrusion direction, which mirrors the boundary polygon's
+    in-plane footprint instead of leaving it unchanged. Verified empirically
+    with an asymmetric L-shaped boundary at Axiolid HEAD `8401f9086125480bfe`.
+    Wiring `lower_half_space_node` to this contract now would silently corrupt
+    every `IfcPolygonalBoundedHalfSpace` lowered with `AgreementFlag=.F.` (after
+    this crate's own polarity `flip`). Filed upstream as axiolid/kernel#83; this
+    task stays blocked until the fix lands and is independently verified.
   - Proof: `src/lower/halfspace/tests.rs` (6 tests), `tests/lower_halfspace.rs`
     (3 tests over `issue_1155_halfspace_flyaway.ifc`), corpus census 67 -> 72
     lowered, and 6/6 mutation probes.

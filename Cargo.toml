@@ -40,15 +40,15 @@ openbim-step = "=0.4.0"
 
 # Format-neutral geometry contracts. IFC bridges select representations, never
 # concrete CPU/GPU execution providers.
-axiolid-core = { git = "https://github.com/axiolid/kernel.git", rev = "f8255d3932128b524ca5f009e58738e075488beb" }
-axiolid-mesh = { git = "https://github.com/axiolid/kernel.git", rev = "f8255d3932128b524ca5f009e58738e075488beb" }
-axiolid-model = { git = "https://github.com/axiolid/kernel.git", rev = "f8255d3932128b524ca5f009e58738e075488beb" }
-axiolid-primitive = { git = "https://github.com/axiolid/kernel.git", rev = "f8255d3932128b524ca5f009e58738e075488beb" }
-axiolid-profile = { git = "https://github.com/axiolid/kernel.git", rev = "f8255d3932128b524ca5f009e58738e075488beb" }
-axiolid-surface = { git = "https://github.com/axiolid/kernel.git", rev = "f8255d3932128b524ca5f009e58738e075488beb" }
-axiolid-reference = { git = "https://github.com/axiolid/kernel.git", rev = "f8255d3932128b524ca5f009e58738e075488beb" }
-axiolid-curve = { git = "https://github.com/axiolid/kernel.git", rev = "f8255d3932128b524ca5f009e58738e075488beb" }
-axiolid-topology = { git = "https://github.com/axiolid/kernel.git", rev = "f8255d3932128b524ca5f009e58738e075488beb" }
+axiolid-core = { git = "https://github.com/axiolid/kernel.git", rev = "8401f9086125480bfe997996acded03cb33aba91" }
+axiolid-mesh = { git = "https://github.com/axiolid/kernel.git", rev = "8401f9086125480bfe997996acded03cb33aba91" }
+axiolid-model = { git = "https://github.com/axiolid/kernel.git", rev = "8401f9086125480bfe997996acded03cb33aba91" }
+axiolid-primitive = { git = "https://github.com/axiolid/kernel.git", rev = "8401f9086125480bfe997996acded03cb33aba91" }
+axiolid-profile = { git = "https://github.com/axiolid/kernel.git", rev = "8401f9086125480bfe997996acded03cb33aba91" }
+axiolid-surface = { git = "https://github.com/axiolid/kernel.git", rev = "8401f9086125480bfe997996acded03cb33aba91" }
+axiolid-reference = { git = "https://github.com/axiolid/kernel.git", rev = "8401f9086125480bfe997996acded03cb33aba91" }
+axiolid-curve = { git = "https://github.com/axiolid/kernel.git", rev = "8401f9086125480bfe997996acded03cb33aba91" }
+axiolid-topology = { git = "https://github.com/axiolid/kernel.git", rev = "8401f9086125480bfe997996acded03cb33aba91" }
 
 ahash = "0.8"
 thiserror = "2.0"

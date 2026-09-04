@@ -206,7 +206,10 @@ fn to_metres(session: &LoweringSession<'_>, value: f64) -> f64 {
 /// A revolved or conic direction is parameterised by angle; a plane by length.
 /// Returning a closure keeps the decision at the one place that knows the
 /// basis type, instead of leaking a bool to every caller.
-fn trim_converter(session: &LoweringSession<'_>, basis_kind: &str) -> impl Fn(f64) -> f64 {
+pub(crate) fn trim_converter(
+    session: &LoweringSession<'_>,
+    basis_kind: &str,
+) -> impl Fn(f64) -> f64 {
     let angular = matches!(
         basis_kind,
         "IFCCYLINDRICALSURFACE"

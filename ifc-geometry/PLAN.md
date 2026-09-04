@@ -89,8 +89,16 @@ parallel placeholders.
 - [ ] `GEOM-CURVE` - lower every concrete curve family without approximation
   - Progress: `LOW-CURVE` lowers polyline/indexed poly-curve (including exact
     three-point arcs), line, circle, ellipse, trimmed/composite, explicit-knot
-    B-spline, offset, p-curve and surface-curve graphs. Remaining schema
-    families without exact neutral primitives report typed `Unsupported`.
+    B-spline, offset, p-curve and surface-curve graphs. `IfcPointOnCurve` lowers
+    to `axiolid_model::PointOnCurve`, preserving the basis reference and
+    parameter unconverted-vs-scaled per basis kind (2026-09-05). The p-curve
+    reference-curve family now also accepts the implicit-order (no explicit
+    `Segments`, or all-line-index) `IfcIndexedPolyCurve` form, not only
+    `IfcPolyline` (2026-09-05); explicit-arc indexed polycurves remain a named
+    typed refusal (no parameter-space arc contract yet). `PCurveS1`-vs-`S2`
+    master selection remains blocked on Axiolid's `MasterRepresentation`, which
+    has no variant distinguishing them (see #24). Remaining schema families
+    without exact neutral primitives report typed `Unsupported`.
   - Requires: `GEOM-CONTRACT`, `GEOM-SESSION`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
   - Completed slice: explicit-knot polynomial/rational B-splines preserve
@@ -103,6 +111,9 @@ parallel placeholders.
     (rectangular-trimmed, curve-bounded plane/surface) and B-spline. The curved and
     B-spline families were fixture-blocked rather than effort-blocked; they
     are now covered by generated fixtures, see `src/lower/PLAN.md`.
+    `IfcPointOnSurface` lowers to `axiolid_model::PointOnSurface`, preserving
+    the basis surface reference and both `(u, v)` parameters through the same
+    per-basis-kind unit conversion trims already use (2026-09-05).
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
   - Completed slice: explicit-knot polynomial/rational tensor-product B-splines
     preserve both axes and control/weight nets and match scalar-oracle
@@ -123,7 +134,13 @@ parallel placeholders.
     existed under `solid::tessellated` and depend only on `error` and `slots`.
 - [ ] `GEOM-SOLID` - complete exact solid families
   - Progress: booleans, CSG primitives/solids, swept disks, tapered/fixed-reference sweeps, sectioned spines, surface models, advanced/faceted B-reps with voids, and unbounded/boxed half spaces lower exactly.
-  - Blocker: `IfcPolygonalBoundedHalfSpace` remains typed unsupported until the neutral model preserves its positioned polygonal cutting boundary; lowering it as unbounded would change Boolean semantics.
+  - Blocker: `IfcPolygonalBoundedHalfSpace` remains typed unsupported. Axiolid
+    added the required `SolidOperation::BoundedHalfSpace` contract (2026-08-30,
+    commit `9de5042`), but its `bounded_half_space` construction has a verified
+    correctness defect on `agreement=false` (mirrors the boundary footprint
+    instead of only reversing the extrusion side; see `src/lower/PLAN.md` and
+    axiolid/kernel#83). Wiring this crate to the contract before the fix lands
+    would silently corrupt geometry for a common `AgreementFlag` value.
 - [x] `GEOM-MAP` - preserve mapped-item instancing with cycle/depth limits
   - Evidence: 11 mapped-item tests over real fixtures, 6/6 mutation probes,
     isolated build, and crate clippy.
