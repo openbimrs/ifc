@@ -95,7 +95,11 @@ parallel placeholders.
     reference-curve family now also accepts the implicit-order (no explicit
     `Segments`, or all-line-index) `IfcIndexedPolyCurve` form, not only
     `IfcPolyline` (2026-09-05); explicit-arc indexed polycurves remain a named
-    typed refusal (no parameter-space arc contract yet). `PCurveS1`-vs-`S2`
+    typed refusal (no parameter-space arc contract yet). Parameter-space
+    lowering additionally admits the analytic `IfcLine`, `IfcCircle` and
+    `IfcEllipse` families (2026-09-05), read verbatim in the surface's own
+    (u, v) domain with no unit conversion; parameter-space B-splines, trimmed
+    and composite curves remain named typed refusals. `PCurveS1`-vs-`S2`
     master selection remains blocked on Axiolid's `MasterRepresentation`, which
     has no variant distinguishing them (see #24). Remaining schema families
     without exact neutral primitives report typed `Unsupported`.

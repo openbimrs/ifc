@@ -10,9 +10,20 @@ and check it off only after the proof runs.
 
 ## Work queue
 
-- [ ] `LOW-CONTRACT` - validate/normalize every source direction and axis exactly once
+- [x] `LOW-CONTRACT` - validate/normalize every source direction and axis exactly once
   - Implements: `GEOM-CONTRACT`.
-  - Proof: non-unit/zero-vector contract tests against `axiolid-model` semantics.
+  - Proof: `resource::direction` is the single normalization point
+    (`resolve_unit`, `resolve_ratios_3d`); its contract tests cover the
+    degenerate cases that a scattered implementation gets wrong --
+    `zero_length_direction_is_degenerate_rather_than_nan` and
+    `zero_magnitude_vector_is_legal_and_yields_the_zero_vector`.
+  - Decision: closed as satisfied rather than as new work. Two dependent
+    tasks (`LOW-SESSION`, `LOW-CURVE`) had already recorded that this was
+    "NOT a real prerequisite" because the normalization they needed already
+    lived in `resource::direction`; the box simply never followed. The
+    deliberate *non*-normalization of an `IfcVector` magnitude in
+    `lower::curve` is part of this contract, not a violation of it: that
+    magnitude is a parameterisation, not an orientation.
 - [x] `LOW-SESSION` - shared builder, EntityId memo, active stack, roots, and provenance
   - Implements: `GEOM-SESSION`.
   - Proof: `cargo test -p ifc-geometry` (413 passing); `tests/lower_session.rs`
@@ -53,11 +64,16 @@ and check it off only after the proof runs.
   - Proof: `cargo test -p ifc-geometry` (6 curve unit tests, 3 corpus tests in
     `tests/lower_csg_swept.rs`); 9/9 mutation probes; crate clippy in both
     feature columns.
-  - Scope: `IfcPolyline`, `IfcLine`, `IfcCircle`, `IfcTrimmedCurve`,
-    `IfcCompositeCurve`, `IfcBSplineCurveWithKnots`, and
-    `IfcRationalBSplineCurveWithKnots`. Convention-only `IfcBSplineCurve`,
-    `IfcEllipse`, `IfcOffsetCurve*`, and `IfcIndexedPolyCurve` still report a
-    typed `Unsupported`; no knot sequence is invented for a base spline.
+  - Scope: `IfcPolyline`, `IfcLine`, `IfcCircle`, `IfcEllipse`,
+    `IfcTrimmedCurve`, `IfcCompositeCurve`, `IfcIndexedPolyCurve`,
+    `IfcBSplineCurveWithKnots`, and `IfcRationalBSplineCurveWithKnots`.
+    Convention-only `IfcBSplineCurve` still reports a typed `Unsupported`; no
+    knot sequence is invented for a base spline.
+  - Parameter space (`lower/curve/parameter_space.rs`): `IfcPCurve` reference
+    curves admit `IfcPolyline`, line-only `IfcIndexedPolyCurve`, `IfcLine`,
+    `IfcCircle` and `IfcEllipse`, all read verbatim with no unit conversion.
+    Explicit-arc indexed polycurves, B-splines, trimmed and composite curves
+    stay typed refusals; see `GEOM-CURVE` for the remaining families.
   - Decision: `LOW-CONTRACT` was NOT a prerequisite. Direction normalization
     already lives in `resource::direction`, and this module deliberately does
     NOT normalize an `IfcVector` magnitude, which is parameterisation rather
@@ -273,10 +289,22 @@ and check it off only after the proof runs.
   - Decision: the side table is partial. Nodes emitted for an IFC entity are
     attributed; caller-synthesized unscoped nodes stay unattributed rather than
     receiving a fabricated entity id.
-- [ ] `LOW-CENSUS` - lower every supported corpus item and classify every unsupported item
+- [x] `LOW-CENSUS` - lower every supported corpus item and classify every unsupported item
   - Requires: `LOW-DISPATCH`.
   - Implements: `GEOM-CENSUS`.
-  - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
+  - Proof: `tests/lower_dispatch_corpus.rs` carries both halves.
+    `every_concrete_ifc4_representation_item_is_classified` is schema-driven,
+    not corpus-driven: it walks every concrete IFC4 representation item and
+    requires each to appear exactly once across `IMPLEMENTED`, `PLANNED` or
+    `data/ifc4-representation-item-dispositions.tsv`, so an unclassified new
+    entity fails CI. `every_corpus_representation_item_lowers_or_reports_a_
+    typed_reason` covers the other half, and
+    `every_implemented_family_has_committed_corpus_evidence` stops
+    `IMPLEMENTED` from becoming an unbacked claim.
+  - Scope boundary: this classifies at *family* granularity. Recording which
+    variants within a partially-supported family are admitted or refused
+    (non-polyline p-curves, S1/S2 master selection) is tracked separately as
+    issue #27 and is not a gap in this task.
 
 ## Completion log
 

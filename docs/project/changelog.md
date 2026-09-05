@@ -16,6 +16,18 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `IfcPCurve` reference curves now admit the analytic `IfcLine`, `IfcCircle`
+  and `IfcEllipse` families in addition to polylines. Parameter-space values
+  are read verbatim: a p-curve conic's radius and semi-axes are displacements
+  in the surface's own `(u, v)` domain, which for a cylinder mixes an angle
+  with a length, so no length or angle factor may be applied. An `IfcLine`'s
+  `Dir` magnitude is preserved un-normalized because it sets the parameter
+  scale. Only `IfcAxis2Placement2D` is admitted for a parameter-space conic;
+  a 3D placement is a named typed refusal, since its axis has no meaning in a
+  parameter domain. Parameter-space B-splines, trimmed and composite curves
+  remain named typed refusals. Evidence: 8 unit tests, a hand-authored
+  millimetre corpus fixture (`synthetic_parameter_space_conics.ifc`) whose
+  unit choice is itself the assertion, and 5/5 mutation probes caught.
 - `ifc-geometry` repins Axiolid to `c144808d` (v0.9.1), superseding the
   previous `8401f908` pin; no production API changes, both feature columns
   build and the full test suite passes at the new pin. Confirms the fix for

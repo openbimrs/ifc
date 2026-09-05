@@ -388,3 +388,76 @@ fn every_synthetic_surface_lowers() {
     }
     assert_eq!(seen, 7, "the synthetic corpus must cover seven surfaces");
 }
+
+/// Parameter-space conics survive corpus lowering with their authored values
+/// intact.
+///
+/// This fixture is hand-authored rather than generated: `ifcopenshell` has no
+/// convenient p-curve conic emitter, and the file is small enough to read.
+///
+/// It is deliberately authored in **millimetres**. Every value asserted here
+/// is a surface parameter, not a length, so applying the project length
+/// factor would divide each one by 1000 and every assertion below would fail.
+/// That is the whole point of the fixture: a corpus-level guard that the
+/// parameter domain never receives a unit conversion.
+#[test]
+fn parameter_space_conics_keep_authored_values_through_corpus_lowering() {
+    use axiolid_curve::Curve2;
+
+    let model = fixture("synthetic_parameter_space_conics.ifc");
+
+    let reference_curve_of = |id: EntityId| {
+        let lowered = lower_item(&model, id);
+        let GeometryNode::CurveRelation(CurveRelation::ParameterCurve {
+            reference_curve, ..
+        }) = lowered.graph.get(lowered.root).expect("pcurve root")
+        else {
+            panic!("expected a parameter curve relation");
+        };
+        lowered
+            .graph
+            .get(*reference_curve)
+            .expect("reference curve")
+            .clone()
+    };
+
+    // #14: circle, radius 1.5 in a frame at (2, 3) with default RefDirection.
+    match reference_curve_of(EntityId(14)) {
+        GeometryNode::Curve2(Curve2::Circle(circle)) => {
+            assert_eq!(circle.radius, 1.5, "radius must not be scaled to metres");
+            assert_eq!(circle.frame.origin.to_array(), [2.0, 3.0]);
+            assert_eq!(circle.frame.x.to_array(), [1.0, 0.0]);
+        }
+        other => panic!("expected a parameter-space circle, got {other:?}"),
+    }
+
+    // #19: ellipse with RefDirection (0, 1), so local X is the global +Y axis
+    // and the derived Y is its orthogonal complement (-1, 0).
+    match reference_curve_of(EntityId(19)) {
+        GeometryNode::Curve2(Curve2::Ellipse(ellipse)) => {
+            assert_eq!(ellipse.semi_axis_x, 4.0);
+            assert_eq!(ellipse.semi_axis_y, 2.5);
+            assert_eq!(ellipse.frame.x.to_array(), [0.0, 1.0]);
+            assert_eq!(
+                ellipse.frame.y.to_array(),
+                [-1.0, 0.0],
+                "Y is X rotated a quarter turn counter-clockwise"
+            );
+        }
+        other => panic!("expected a parameter-space ellipse, got {other:?}"),
+    }
+
+    // #24: line whose IfcVector carries magnitude 3, which sets the parameter
+    // scale and must survive un-normalized.
+    match reference_curve_of(EntityId(24)) {
+        GeometryNode::Curve2(Curve2::Line(line)) => {
+            assert_eq!(line.origin.to_array(), [1.0, 1.0]);
+            assert_eq!(
+                line.direction.to_array(),
+                [3.0, 0.0],
+                "the IfcVector magnitude sets the parameter scale and must not be normalized"
+            );
+        }
+        other => panic!("expected a parameter-space line, got {other:?}"),
+    }
+}

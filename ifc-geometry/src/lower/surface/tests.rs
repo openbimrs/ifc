@@ -143,21 +143,25 @@ fn a_non_unit_authored_axis_is_normalized_into_the_frame() {
     }
 }
 
-/// A curved surface reports a typed gap naming the family.
+/// A surface family with no lowering is reported by name.
 ///
-/// The readers for these exist; the lowering does not. Reporting the family
-/// keeps the gap auditable instead of silently flattening a cylinder to its
-/// tangent plane.
+/// `IfcPCurve` is an `IfcSurface` subtype by the schema, but it denotes a
+/// curve *on* a surface, not a surface. It lowers through the curve path
+/// (`lower::curve::parameter_space`) as a `CurveRelation::ParameterCurve`, so
+/// the surface lowerer must refuse it by name rather than inventing a surface
+/// for it. Reporting the family keeps the boundary auditable instead of
+/// silently flattening a cylinder to its tangent plane.
 #[test]
 fn an_unlowered_surface_family_is_reported_by_name() {
     let mut model = plane_model([0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]);
     // IfcSurfaceOfLinearExtrusion and the curved elementary families now
-    // lower; IfcPcurve does not, and it is a surface by the schema.
+    // lower. IfcPcurve is a surface by the schema but denotes a curve, so it
+    // is refused here and handled by the curve lowerer instead.
     model.insert(EntityId(6), entity("IFCPCURVE", vec![r(5), Value::Null]));
     let scale = UnitScale::default();
     let mut session = LoweringSession::new(&model, &scale);
     let error = lower_surface_node(&mut session, EntityId(6), Transform::identity())
-        .expect_err("pcurves are not lowered yet");
+        .expect_err("a p-curve is not a surface; the curve lowerer owns it");
     assert!(error.is_unsupported(), "this is a gap, not corruption");
     assert!(
         error.to_string().contains("IFCPCURVE"),
