@@ -4,7 +4,7 @@ use axiolid_core::Point3;
 use axiolid_curve::{Curve3, KnotSpec};
 use axiolid_model::GeometryNode;
 use axiolid_surface::Surface;
-use ifc_geometry::lower::{lower_curve_node, lower_surface_node, LoweringSession};
+use ifc_geometry::lower::{lower_curve_node, lower_surface_node, LoweringSession, SessionLimits};
 use ifc_geometry::{Transform, UnitScale};
 use ifc_model::{Codec, EntityId};
 use std::path::PathBuf;
@@ -185,4 +185,160 @@ fn convention_only_base_splines_are_typed_unsupported() {
         .expect_err("convention-only surface must not invent missing knots");
     assert!(surface_error.is_unsupported(), "got: {surface_error}");
     assert_eq!(surface_error.entity(), Some(EntityId(22)));
+}
+
+/// A hostile knot multiplicity is refused before anything reserves.
+///
+/// The fixture curve is valid; only the budget changes. A caller that sets a
+/// small budget must get a typed, locatable refusal naming the entity --
+/// never a truncated knot vector and never a panic.
+#[test]
+fn an_over_budget_knot_vector_is_refused_and_locatable() {
+    let model = model();
+    let limits = SessionLimits {
+        max_aggregate_elements: 4,
+        ..SessionLimits::default()
+    };
+    let mut session = LoweringSession::with_limits(&model, &UNITS, limits);
+    let error = lower_curve_node(&mut session, EntityId(11), frame())
+        .expect_err("an 8-element knot vector must not fit a budget of 4");
+    assert_eq!(error.entity(), Some(EntityId(11)), "got: {error}");
+    assert!(
+        error.to_string().contains("knot multiplicities"),
+        "got: {error}"
+    );
+    assert!(
+        !error.is_unsupported(),
+        "a budget refusal is not a capability gap"
+    );
+}
+
+/// Below the limit, the budget is invisible: byte-identical geometry.
+///
+/// The project forbids silent approximation, so a budget that perturbed
+/// in-range output would be worse than no budget at all.
+#[test]
+fn a_generous_budget_changes_nothing_about_the_lowered_geometry() {
+    let model = model();
+    let mut default_session = LoweringSession::new(&model, &UNITS);
+    let a = lower_curve_node(&mut default_session, EntityId(11), frame()).expect("lowers");
+    let a = default_session.finish(a).expect("finishes");
+    let limits = SessionLimits {
+        max_aggregate_elements: 1_000_000,
+        ..SessionLimits::default()
+    };
+    let mut budgeted = LoweringSession::with_limits(&model, &UNITS, limits);
+    let b = lower_curve_node(&mut budgeted, EntityId(11), frame()).expect("lowers");
+    let b = budgeted.finish(b).expect("finishes");
+    assert_eq!(a.graph.get(a.root), b.graph.get(b.root));
+}
+
+/// The v-knot budget also refuses, naming its own aggregate.
+///
+/// #21 declares v multiplicities (3,3)=6 with u=(2,2)=4, so a budget of 5
+/// passes u and is refused by v -- proving both knot directions are checked
+/// independently rather than one standing in for the other.
+#[test]
+fn an_over_budget_v_knot_vector_is_refused_and_locatable() {
+    let model = model();
+    let limits = SessionLimits {
+        max_aggregate_elements: 5,
+        ..SessionLimits::default()
+    };
+    let mut session = LoweringSession::with_limits(&model, &UNITS, limits);
+    let error = lower_surface_node(&mut session, EntityId(21), frame())
+        .expect_err("v multiplicities summing to 6 must not fit a budget of 5");
+    assert_eq!(error.entity(), Some(EntityId(21)), "got: {error}");
+    assert!(
+        error.to_string().contains("v knot multiplicities"),
+        "got: {error}"
+    );
+}
+
+/// The knot budget is checked before the control grid is materialized.
+///
+/// #20 declares u multiplicities (3,3)=6 and a 3x2=6 grid. A budget of 5
+/// must be refused by the u-knot check, naming that aggregate -- proving
+/// the knot check runs and is not shadowed by the grid check.
+#[test]
+fn the_knot_budget_is_checked_before_the_control_grid() {
+    let model = model();
+    let limits = SessionLimits {
+        max_aggregate_elements: 5,
+        ..SessionLimits::default()
+    };
+    let mut session = LoweringSession::with_limits(&model, &UNITS, limits);
+    let error = lower_surface_node(&mut session, EntityId(20), frame())
+        .expect_err("u multiplicities summing to 6 must not fit a budget of 5");
+    assert_eq!(error.entity(), Some(EntityId(20)), "got: {error}");
+    assert!(
+        error.to_string().contains("u knot multiplicities"),
+        "got: {error}"
+    );
+}
+
+/// The control-grid budget refuses independently of the knot budgets.
+///
+/// The committed fixtures all have grid == max(u_total, v_total), so a knot
+/// check always fires first there and the grid check would go unproven.
+/// This synthetic surface has a 3x3=9 grid with u=(2,2)=4 and v=(2,2)=4, so
+/// a budget of 8 passes both knot checks and only the grid can refuse.
+#[test]
+fn an_over_budget_control_grid_is_refused_and_locatable() {
+    use ifc_model::{Entity, Model, Value};
+    let pt = |x: f64| {
+        Entity::new(
+            "IFCCARTESIANPOINT",
+            vec![Value::List(vec![
+                Value::Real(x),
+                Value::Real(0.0),
+                Value::Real(0.0),
+            ])],
+        )
+    };
+    let mut model = Model::new();
+    for i in 1..=3u64 {
+        model.insert(EntityId(i), pt(i as f64));
+    }
+    let row = || {
+        Value::List(vec![
+            Value::Ref(EntityId(1)),
+            Value::Ref(EntityId(2)),
+            Value::Ref(EntityId(3)),
+        ])
+    };
+    let ints = |a: i64, b: i64| Value::List(vec![Value::Integer(a), Value::Integer(b)]);
+    let reals = |a: f64, b: f64| Value::List(vec![Value::Real(a), Value::Real(b)]);
+    model.insert(
+        EntityId(10),
+        Entity::new(
+            "IFCBSPLINESURFACEWITHKNOTS",
+            vec![
+                Value::Integer(1),
+                Value::Integer(1),
+                Value::List(vec![row(), row(), row()]),
+                Value::Enum("UNSPECIFIED".into()),
+                Value::Bool(false),
+                Value::Bool(false),
+                Value::Bool(false),
+                ints(2, 3),
+                ints(3, 2),
+                reals(0.0, 1.0),
+                reals(0.0, 1.0),
+                Value::Enum("UNSPECIFIED".into()),
+            ],
+        ),
+    );
+    let limits = SessionLimits {
+        max_aggregate_elements: 8,
+        ..SessionLimits::default()
+    };
+    let mut session = LoweringSession::with_limits(&model, &UNITS, limits);
+    let error = lower_surface_node(&mut session, EntityId(10), Transform::identity())
+        .expect_err("a 3x3 grid must not fit a budget of 8");
+    assert_eq!(error.entity(), Some(EntityId(10)), "got: {error}");
+    assert!(
+        error.to_string().contains("control grid points"),
+        "got: {error}"
+    );
 }

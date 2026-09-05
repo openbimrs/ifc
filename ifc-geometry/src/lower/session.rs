@@ -49,6 +49,8 @@ use crate::units::UnitScale;
 pub struct SessionLimits {
     /// Maximum simultaneously active entities in one chain.
     pub max_depth: usize,
+    /// Maximum elements one file-declared aggregate may materialize.
+    pub max_aggregate_elements: usize,
 }
 
 impl SessionLimits {
@@ -57,12 +59,27 @@ impl SessionLimits {
     /// Real exporter output nests placements a few levels deep; 64 is far
     /// above observed depth while still terminating quickly on bad input.
     pub const DEFAULT_MAX_DEPTH: usize = 64;
+
+    /// Aggregate-element budget used when a caller states no preference.
+    ///
+    /// Sized against the largest thing a legitimate file plausibly declares:
+    /// a dense triangulated face set of ~5.5M triangles expands to 16M
+    /// indices, and the largest observed knot vectors are four orders of
+    /// magnitude smaller. 16M `f64` is ~128 MiB, which bounds a single
+    /// aggregate to something a workstation survives while still refusing the
+    /// billion-element declarations that motivate this budget.
+    ///
+    /// This is a refusal threshold, never a truncation point: an aggregate
+    /// over the limit produces [`crate::GeometryError::AggregateTooLarge`]
+    /// naming the entity, and no geometry is emitted for it.
+    pub const DEFAULT_MAX_AGGREGATE_ELEMENTS: usize = 16_777_216;
 }
 
 impl Default for SessionLimits {
     fn default() -> Self {
         Self {
             max_depth: Self::DEFAULT_MAX_DEPTH,
+            max_aggregate_elements: Self::DEFAULT_MAX_AGGREGATE_ELEMENTS,
         }
     }
 }
@@ -289,6 +306,35 @@ impl<'a> LoweringSession<'a> {
         }
     }
 
+    /// Check a file-declared aggregate size against the element budget.
+    ///
+    /// Takes `u128` so an overflowing product (`triangles * 3`) can be
+    /// computed in a wider type and reported honestly instead of wrapping to a
+    /// small number that passes the check. Returns the size as `usize` only
+    /// once it is known to fit.
+    ///
+    /// Call this *before* reserving, not after: the point is to refuse the
+    /// declaration, not to survive the allocation.
+    pub fn check_aggregate(
+        &self,
+        entity: EntityId,
+        type_name: &str,
+        what: &'static str,
+        requested: u128,
+    ) -> GeometryResult<usize> {
+        let limit = self.limits.max_aggregate_elements;
+        if requested > limit as u128 {
+            return Err(GeometryError::AggregateTooLarge {
+                entity,
+                type_name: type_name.to_string(),
+                what,
+                requested,
+                limit,
+            });
+        }
+        Ok(requested as usize)
+    }
+
     /// Lower a nested operand through the total dispatcher.
     ///
     /// Kept on the session so recursive families do not each re-import the
@@ -356,6 +402,15 @@ mod tests {
             MemoKey::new(EntityId(1), "solid", Transform::identity()),
             MemoKey::new(EntityId(1), "solid", negative)
         );
+    }
+
+    #[test]
+    fn the_default_aggregate_budget_is_documented() {
+        assert_eq!(
+            SessionLimits::default().max_aggregate_elements,
+            SessionLimits::DEFAULT_MAX_AGGREGATE_ELEMENTS
+        );
+        assert_eq!(SessionLimits::DEFAULT_MAX_AGGREGATE_ELEMENTS, 16_777_216);
     }
 
     #[test]

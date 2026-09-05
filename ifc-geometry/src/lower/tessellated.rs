@@ -115,7 +115,15 @@ fn build_triangulated(
     let normals = view.normals();
     let positions = positions(session, id, coordinates, frame)?;
 
-    let mut indices = Vec::with_capacity(triangles.len() * 3);
+    // `triangles.len() * 3` is the index count. Compute it in u128 so a huge
+    // face set cannot wrap to a small usize that passes the budget check.
+    let index_count = session.check_aggregate(
+        id,
+        "IFCTRIANGULATEDFACESET",
+        "triangle indices",
+        triangles.len() as u128 * 3,
+    )?;
+    let mut indices = Vec::with_capacity(index_count);
     for triangle in &triangles {
         for corner in triangle {
             indices.push(checked_index(

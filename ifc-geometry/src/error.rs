@@ -96,6 +96,26 @@ pub enum GeometryError {
         limit: usize,
     },
 
+    /// An aggregate declared more elements than the caller's budget allows.
+    ///
+    /// IFC aggregate counts are file-controlled, so a small hostile file can
+    /// declare an enormous element count and drive a large allocation before
+    /// any geometric validation runs. This is that budget refusing, and it is
+    /// always a refusal: nothing is truncated to fit.
+    #[error("{entity} ({type_name}) declares {requested} {what}, over the limit of {limit}")]
+    AggregateTooLarge {
+        /// The offending entity.
+        entity: EntityId,
+        /// Its IFC type.
+        type_name: String,
+        /// What was being counted: `knot multiplicities`, `triangle indices`.
+        what: &'static str,
+        /// How many elements the file asked for.
+        requested: u128,
+        /// The budget that refused it.
+        limit: usize,
+    },
+
     /// The geometry is structurally impossible.
     ///
     /// A degenerate direction, a zero-radius circle, a self-referencing
@@ -129,6 +149,7 @@ impl GeometryError {
             | Self::Unsupported { entity, .. }
             | Self::CyclicChain { entity, .. }
             | Self::ChainTooDeep { entity, .. }
+            | Self::AggregateTooLarge { entity, .. }
             | Self::Degenerate { entity, .. } => Some(*entity),
             Self::Units(_) => None,
         }

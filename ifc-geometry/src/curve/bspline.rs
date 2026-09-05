@@ -401,17 +401,28 @@ impl KnotVector {
     ///
     /// Length equals `ControlPoints + Degree + 1` for a valid curve, which
     /// [`BSplineCurve::knots`] has already checked.
-    pub fn expanded(&self) -> Vec<f64> {
-        let mut out = Vec::with_capacity(self.total_multiplicity());
+    ///
+    /// Returns `None` when the multiplicities sum beyond `usize`, which only a
+    /// hostile or corrupt file achieves. Callers must refuse such a curve
+    /// rather than expand it; see [`Self::total_multiplicity`].
+    pub fn expanded(&self) -> Option<Vec<f64>> {
+        let total = self.total_multiplicity()?;
+        let mut out = Vec::with_capacity(total);
         for (value, multiplicity) in self.values.iter().zip(&self.multiplicities) {
             out.extend(std::iter::repeat_n(*value, *multiplicity));
         }
-        out
+        Some(out)
     }
 
     /// The length the expanded vector would have.
-    pub fn total_multiplicity(&self) -> usize {
-        self.multiplicities.iter().sum()
+    ///
+    /// `None` on overflow. Multiplicities come straight from the file, so a
+    /// plain `sum()` here panics in debug and wraps in release on input a
+    /// hostile file fully controls.
+    pub fn total_multiplicity(&self) -> Option<usize> {
+        self.multiplicities
+            .iter()
+            .try_fold(0usize, |acc, m| acc.checked_add(*m))
     }
 
     /// Is the curve clamped, i.e. does it touch its first and last control
@@ -482,9 +493,9 @@ mod tests {
         let knots = BSplineCurve::new(EntityId(1), &e).knots().unwrap().unwrap();
         assert_eq!(
             knots.expanded(),
-            vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0]
+            Some(vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0])
         );
-        assert_eq!(knots.total_multiplicity(), 4 + 3 + 1);
+        assert_eq!(knots.total_multiplicity(), Some(4 + 3 + 1));
         assert!(knots.is_clamped(3));
     }
 
@@ -494,6 +505,18 @@ mod tests {
         let err = BSplineCurve::new(EntityId(6), &e).knots().unwrap_err();
         assert!(err.to_string().contains("must equal"), "got: {err}");
         assert!(err.to_string().contains("#6"), "got: {err}");
+    }
+
+    /// A knot vector whose multiplicities sum past `usize` must report, not
+    /// panic. A plain `sum()` here aborts the process on input a file controls.
+    #[test]
+    fn multiplicities_summing_past_usize_report_rather_than_panic() {
+        let kv = KnotVector {
+            values: vec![0.0, 1.0],
+            multiplicities: vec![usize::MAX, 2],
+        };
+        assert_eq!(kv.total_multiplicity(), None);
+        assert_eq!(kv.expanded(), None);
     }
 
     #[test]

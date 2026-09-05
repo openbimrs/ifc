@@ -552,6 +552,11 @@ fn bspline(
         )
     })?;
     finite_values(session, id, &type_name, "Knots", &knots.values)?;
+    // The expanded knot vector is what a kernel materializes, and its length is
+    // the SUM of file-declared multiplicities: a handful of integers can name
+    // billions of elements. Check the declared total before anything reserves.
+    let declared: u128 = knots.multiplicities.iter().map(|m| *m as u128).sum();
+    session.check_aggregate(id, &type_name, "knot multiplicities", declared)?;
     let multiplicities = knots
         .multiplicities
         .into_iter()

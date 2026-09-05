@@ -276,7 +276,14 @@ fn a_cyclic_mapping_graph_is_reported() {
 fn a_mapping_chain_stops_at_the_depth_limit() {
     let model = model("nested_mapped_item.ifc");
     let scale = units::resolve(&model);
-    let mut session = LoweringSession::with_limits(&model, &scale, SessionLimits { max_depth: 1 });
+    let mut session = LoweringSession::with_limits(
+        &model,
+        &scale,
+        SessionLimits {
+            max_depth: 1,
+            ..SessionLimits::default()
+        },
+    );
 
     let error = lower_mapped_item_node(&mut session, EntityId(31), Transform::identity())
         .expect_err("depth 1 cannot reach the nested map");

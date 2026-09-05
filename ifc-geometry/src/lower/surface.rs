@@ -339,7 +339,30 @@ pub fn lower_bspline(
     let v_degree = u16::try_from(view.v_degree()?)
         .map_err(|_| session.degenerate(id, &type_name, "VDegree exceeds u16"))?;
 
+    // Budget the declared aggregate sizes BEFORE materializing anything. The
+    // knot totals are cheap sums of file integers, so they are checked first;
+    // the grid check then bounds the loop below, which is what actually
+    // allocates. Doing this after the loop would defeat the purpose.
+    let u = view.u_knots()?.ok_or_else(|| {
+        session.unsupported(id, &type_name, "B-spline surface without explicit u knots")
+    })?;
+    let v = view.v_knots()?.ok_or_else(|| {
+        session.unsupported(id, &type_name, "B-spline surface without explicit v knots")
+    })?;
+    let u_declared: u128 = u.multiplicities.iter().map(|m| *m as u128).sum();
+    session.check_aggregate(id, &type_name, "u knot multiplicities", u_declared)?;
+    let v_declared: u128 = v.multiplicities.iter().map(|m| *m as u128).sum();
+    session.check_aggregate(id, &type_name, "v knot multiplicities", v_declared)?;
+
     let grid = view.control_points()?;
+    // The control grid is u_count * v_count points. Both come from the file,
+    // so compute the product in u128: a wrapped usize would pass the budget.
+    session.check_aggregate(
+        id,
+        &type_name,
+        "control grid points",
+        grid.u_count() as u128 * grid.v_count() as u128,
+    )?;
     let mut control_points = Vec::with_capacity(grid.u_count());
     for row in grid.rows() {
         let mut out_row = Vec::with_capacity(row.len());
@@ -358,12 +381,6 @@ pub fn lower_bspline(
         control_points.push(out_row);
     }
 
-    let u = view.u_knots()?.ok_or_else(|| {
-        session.unsupported(id, &type_name, "B-spline surface without explicit u knots")
-    })?;
-    let v = view.v_knots()?.ok_or_else(|| {
-        session.unsupported(id, &type_name, "B-spline surface without explicit v knots")
-    })?;
     finite_values(session, id, &type_name, "UKnots", &u.values)?;
     finite_values(session, id, &type_name, "VKnots", &v.values)?;
     let u_multiplicities = multiplicities(session, id, &type_name, u.multiplicities)?;

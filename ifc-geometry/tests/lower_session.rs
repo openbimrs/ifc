@@ -171,7 +171,10 @@ fn a_cyclic_chain_is_reported_rather_than_overflowing() {
 fn an_over_deep_chain_stops_at_the_limit() {
     let model = wall_model();
     let scale = units::resolve(&model);
-    let limits = SessionLimits { max_depth: 4 };
+    let limits = SessionLimits {
+        max_depth: 4,
+        ..SessionLimits::default()
+    };
     let mut session = LoweringSession::with_limits(&model, &scale, limits);
 
     for index in 0..4 {

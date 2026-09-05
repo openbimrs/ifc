@@ -16,6 +16,19 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- Geometry interpretation now carries an aggregate-element budget.
+  `SessionLimits::max_aggregate_elements` (default 16,777,216) bounds the
+  file-declared aggregates that drive allocation: B-spline knot multiplicity
+  totals, B-spline control grids (u x v), and triangulated face-set index
+  counts. Over-budget input produces the new typed, locatable
+  `GeometryError::AggregateTooLarge` naming the entity and the aggregate;
+  nothing is ever truncated to fit. Products are computed in `u128` so a
+  huge declaration cannot wrap to a small `usize` and pass the check.
+- Fixed a reachable panic: `KnotVector::total_multiplicity` summed
+  file-controlled multiplicities with an unchecked `sum()`, which aborts in
+  debug and wraps in release. It and `KnotVector::expanded` now return
+  `Option` and report overflow instead. Exact output below the limits is
+  unchanged.
 - Lowering capability claims are now variant-accurate. A `PARTIAL` catalog in
   `ifc-geometry/src/lower/dispatch.rs` records, per authored form, whether a
   family admits or refuses it and why, so families that were reported as flatly

@@ -9,7 +9,7 @@
 //! the committed fixture and asserts the mesh matches what the file declares.
 
 use axiolid_model::GeometryNode;
-use ifc_geometry::lower::{lower_representation_item, LoweringSession};
+use ifc_geometry::lower::{lower_representation_item, LoweringSession, SessionLimits};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
 use ifc_model::{Codec, Model};
@@ -154,5 +154,31 @@ fn placing_a_face_set_moves_it_without_unsharing_points() {
         mesh.positions[0].to_array(),
         [10.0, 20.0, 30.0],
         "the origin corner is placed by the frame"
+    );
+}
+
+/// A face set larger than the budget is refused before indices are reserved.
+///
+/// 4 triangles expand to 12 indices, so a budget of 6 must refuse. The point
+/// is that the refusal names the entity and nothing is truncated to fit.
+#[test]
+fn an_over_budget_face_set_is_refused_and_locatable() {
+    let model = model_of("ifclite-geometry/mapped_instances_indexed_colour.ifc");
+    let scale = units::resolve(&model);
+    let id = *model
+        .ids_of_type("IFCTRIANGULATEDFACESET")
+        .first()
+        .expect("fixture");
+    let limits = SessionLimits {
+        max_aggregate_elements: 6,
+        ..SessionLimits::default()
+    };
+    let mut session = LoweringSession::with_limits(&model, &scale, limits);
+    let error = lower_representation_item(&mut session, id, Transform::identity())
+        .expect_err("12 indices must not fit a budget of 6");
+    assert_eq!(error.entity(), Some(id), "got: {error}");
+    assert!(
+        error.to_string().contains("triangle indices"),
+        "got: {error}"
     );
 }

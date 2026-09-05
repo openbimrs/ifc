@@ -602,8 +602,8 @@ mod tests {
         let view = BSplineSurface::new(EntityId(1), &e);
         let u = view.u_knots().unwrap().unwrap();
         let v = view.v_knots().unwrap().unwrap();
-        assert_eq!(u.expanded(), vec![0.0, 0.0, 1.0, 1.0]);
-        assert_eq!(v.expanded(), vec![0.0, 0.0, 1.0, 1.0]);
+        assert_eq!(u.expanded(), Some(vec![0.0, 0.0, 1.0, 1.0]));
+        assert_eq!(v.expanded(), Some(vec![0.0, 0.0, 1.0, 1.0]));
         assert!(u.is_clamped(1));
     }
 
