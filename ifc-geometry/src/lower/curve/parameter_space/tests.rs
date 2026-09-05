@@ -91,7 +91,7 @@ fn p_curve_accepts_an_implicit_indexed_polycurve_reference() {
 /// contract yet, so it must stay a named typed refusal rather than silently
 /// flattening the arc to a straight line.
 #[test]
-fn p_curve_refuses_an_indexed_polycurve_with_an_explicit_arc_segment() {
+fn p_curve_lowers_an_indexed_polycurve_arc_as_a_trimmed_circle() {
     let mut model = Model::new();
     model.insert(EntityId(1), point(0.0, 0.0, 0.0));
     model.insert(
@@ -131,10 +131,43 @@ fn p_curve_refuses_an_indexed_polycurve_with_an_explicit_arc_segment() {
 
     let scale = millimetres();
     let mut session = LoweringSession::new(&model, &scale);
-    let error = lower_curve_node(&mut session, EntityId(6), Transform::identity())
-        .expect_err("explicit-segment parameter-space indexed polycurves are not yet represented");
-    assert!(error.is_unsupported());
-    assert_eq!(error.entity(), Some(EntityId(5)));
+    let root = lower_curve_node(&mut session, EntityId(6), Transform::identity()).expect("lowers");
+    let lowered = session.finish(root).expect("finishes");
+    let GeometryNode::CurveRelation(CurveRelation::ParameterCurve {
+        reference_curve, ..
+    }) = lowered.graph.get(root).expect("root")
+    else {
+        panic!("expected a parameter curve relation");
+    };
+    // One arc segment composes to a single-child composite.
+    let Some(GeometryNode::CurveRelation(CurveRelation::Composite { segments })) =
+        lowered.graph.get(*reference_curve)
+    else {
+        panic!("expected a composite reference curve");
+    };
+    assert_eq!(segments.len(), 1);
+    let Some(GeometryNode::CurveRelation(CurveRelation::Trimmed {
+        basis,
+        sense_agreement,
+        ..
+    })) = lowered.graph.get(segments[0].curve)
+    else {
+        panic!("expected a trimmed arc");
+    };
+    // (0,0) -> (1,1) -> (2,0) turns clockwise, so the sweep runs against the
+    // circle's own counter-clockwise sense. Hard-coding true here would
+    // silently sweep the complementary arc.
+    assert!(
+        !sense_agreement,
+        "a clockwise three-point arc must not claim the circle's sense"
+    );
+    let Some(GeometryNode::Curve2(Curve2::Circle(circle))) = lowered.graph.get(*basis) else {
+        panic!("expected a parameter-space circle");
+    };
+    // (0,0), (1,1), (2,0) circumscribe the unit circle centred at (1, 0).
+    // A millimetre model must not rescale any of it: these are parameters.
+    assert_eq!(circle.frame.origin.to_array(), [1.0, 0.0]);
+    assert_eq!(circle.radius, 1.0, "parameter-space radius is not a length");
 }
 
 /// A parameter-space `IfcCircle` keeps its authored radius verbatim. The

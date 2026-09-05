@@ -183,9 +183,10 @@ pub const PARTIAL: &[Variant] = &[
         family: "IFCPCURVE",
         variant: "reference curve is an IfcIndexedPolyCurve with an explicit \
                   IfcArcIndex segment",
-        support: Support::Refused,
-        rationale: "no exact parameter-space arc contract exists; flattening \
-                    the arc to a chord would silently change the curve",
+        support: Support::Admitted,
+        rationale: "a three-point arc composes exactly from a parameter-space \
+                    circumcentre into Circle2 plus a Cartesian trim, mirroring \
+                    the 3D path with no approximation",
     },
     Variant {
         family: "IFCPCURVE",
@@ -221,19 +222,6 @@ pub const PARTIAL: &[Variant] = &[
         rationale: "the master names a parametric side the curve does not \
                     have; the schema calls this inconsistent, so it is \
                     refused rather than resolved to the remaining p-curve",
-    },
-    Variant {
-        family: "IFCINDEXEDPOLYCURVE",
-        variant: "as a world-space curve, with line or three-point arc segments",
-        support: Support::Admitted,
-        rationale: "arcs lower exactly through the world-space conic path",
-    },
-    Variant {
-        family: "IFCINDEXEDPOLYCURVE",
-        variant: "as a p-curve reference curve, with an explicit arc segment",
-        support: Support::Refused,
-        rationale: "see the IFCPCURVE arc row; parameter space has no arc \
-                    contract",
     },
 ];
 

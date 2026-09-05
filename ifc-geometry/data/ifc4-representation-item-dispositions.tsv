@@ -40,10 +40,10 @@ IFCPLANAREXTENT	non-shape	ifc-style	presentation extent rather than shape geomet
 IFCPOLYLOOP	nested-exact	lower::brep	ordered point loop input to a face bound
 IFCREPARAMETRISEDCOMPOSITECURVESEGMENT	nested-exact	lower::curve	composite segment with authored parameter length
 IFCSTYLEDITEM	non-shape	ifc-style	style association without shape modification
-IFCSUBEDGE	typed-refusal	lower::brep	parent-edge relation has no neutral topology contract yet
+IFCSUBEDGE	typed-refusal	lower::brep	an edge carved from a parent edge needs the parent trim, which IFC leaves to ParentEdge traversal this crate does not perform
 IFCTEXTLITERAL	non-shape	ifc-style	annotation text rather than shape geometry
 IFCTEXTLITERALWITHEXTENT	non-shape	ifc-style	annotation text and extent rather than shape geometry
 IFCVECTOR	nested-exact	resource::direction	direction plus magnitude input to exact curves and sweeps
 IFCVERTEX	typed-refusal	lower::brep	generic vertex carries no point geometry
-IFCVERTEXLOOP	typed-refusal	lower::brep	vertex loop has no neutral face-bound representation yet
+IFCVERTEXLOOP	typed-refusal	lower::brep	a single-vertex loop bounds zero area, so it contributes no face bound
 IFCVERTEXPOINT	nested-exact	lower::brep	point-backed topological vertex

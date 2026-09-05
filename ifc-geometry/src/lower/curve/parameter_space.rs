@@ -19,13 +19,15 @@
 
 use axiolid_core::{Frame2, Point2, Vec2};
 use axiolid_curve::{BSplineCurve2, Circle2, Curve2, Ellipse2, Line2, Polyline2};
-use axiolid_model::{GeometryNode, NodeId};
+use axiolid_model::{
+    CurveRelation, CurveSegment, GeometryNode, NodeId, Transition, TrimSelector, TrimmingPreference,
+};
 use ifc_model::EntityId;
 
 use crate::curve::bspline::BSplineCurve;
 use crate::curve::conic::{Circle, Ellipse};
 use crate::curve::line::Line;
-use crate::curve::polyline::{IndexedPolyCurve, Polyline};
+use crate::curve::polyline::{IndexedPolyCurve, PolySegment, Polyline};
 use crate::error::GeometryResult;
 use crate::lower::curve::{bspline_knot_spec, finite_values};
 use crate::lower::session::LoweringSession;
@@ -34,13 +36,13 @@ use crate::resource::placement::Axis2Placement2D;
 use crate::resource::point::{CartesianPoint, CartesianPointList2D};
 
 /// Parameter coordinates are dimensionless/mixed-domain values, not model
-/// lengths. Supports the exact polyline form, the implicit-order (no explicit
-/// `Segments`, or all-line `IfcLineIndex`) `IfcIndexedPolyCurve` form, and the
-/// analytic `IfcLine`/`IfcCircle`/`IfcEllipse` families, all of which read
-/// their defining values directly with no evaluation and no unit conversion.
-/// Remaining forms (explicit-arc indexed polycurves, B-splines, trimmed and
-/// composite curves) stay typed unsupported rather than receiving a wrong
-/// uniform unit scale or an unimplemented parameter-space contract.
+/// lengths. Supports the exact polyline form, the `IfcIndexedPolyCurve` form
+/// including explicit `IfcArcIndex` segments, and the analytic
+/// `IfcLine`/`IfcCircle`/`IfcEllipse` and explicit-knot B-spline families, all
+/// of which read their defining values directly with no unit conversion.
+/// Remaining forms (convention-only base splines, trimmed and composite
+/// curves) stay typed unsupported rather than receiving a wrong uniform unit
+/// scale or an unimplemented parameter-space contract.
 ///
 /// # No unit conversion in parameter space
 ///
@@ -91,12 +93,10 @@ fn parameter_space_polyline(
     )
 }
 
-/// `IfcIndexedPolyCurve` with no explicit `Segments`, or with `Segments`
-/// consisting only of `IfcLineIndex` entries, reads identically to a plain
-/// ordered point sequence: no arc evaluation is needed. An arc segment would
-/// require an exact parameter-space arc contract this crate does not carry,
-/// so that case stays a named typed refusal rather than being flattened to a
-/// straight line.
+/// `IfcIndexedPolyCurve` in parameter space, with or without explicit
+/// `Segments`. Line runs read as ordered point sequences; an `IfcArcIndex`
+/// composes exactly through [`parameter_space_arc`] rather than being
+/// flattened to a chord.
 fn parameter_space_indexed_polycurve(
     session: &mut LoweringSession<'_>,
     owner: EntityId,
@@ -104,13 +104,7 @@ fn parameter_space_indexed_polycurve(
 ) -> GeometryResult<NodeId> {
     let entity = session.entity(owner, id)?;
     let view = IndexedPolyCurve::new(id, entity);
-    if view.has_explicit_segments() {
-        return Err(session.unsupported(
-            id,
-            "IFCINDEXEDPOLYCURVE",
-            "parameter-space indexed polycurve with explicit (non-line) segments is not yet represented",
-        ));
-    }
+    let explicit = view.has_explicit_segments();
     let point_list_ref = view.points_ref()?;
     let list_entity = session.entity(owner, point_list_ref)?;
     if !list_entity
@@ -135,10 +129,47 @@ fn parameter_space_indexed_polycurve(
         }
         points.push(Point2::from_array(xy));
     }
+    let segments = view.segments(points.len())?;
     let closed = points.first() == points.last() && points.len() > 1;
+    if !explicit {
+        return session.node_for(
+            id,
+            GeometryNode::Curve2(Curve2::Polyline(Polyline2 { points, closed })),
+        );
+    }
+
+    // Explicit segments: mirror the 3D path exactly, composing line runs and
+    // three-point arcs into one composite curve.
+    let mut children = Vec::with_capacity(segments.len());
+    for segment in segments {
+        let curve = match segment {
+            PolySegment::Line(indices) => {
+                let run_closed = indices.first() == indices.last();
+                let mut selected: Vec<_> = indices.into_iter().map(|i| points[i]).collect();
+                if run_closed && selected.len() > 1 {
+                    selected.pop();
+                }
+                session.node_for(
+                    id,
+                    GeometryNode::Curve2(Curve2::Polyline(Polyline2 {
+                        points: selected,
+                        closed: run_closed,
+                    })),
+                )?
+            }
+            PolySegment::Arc { start, mid, end } => {
+                parameter_space_arc(session, id, points[start], points[mid], points[end])?
+            }
+        };
+        children.push(CurveSegment {
+            curve,
+            same_sense: true,
+            transition: Transition::Continuous,
+        });
+    }
     session.node_for(
         id,
-        GeometryNode::Curve2(Curve2::Polyline(Polyline2 { points, closed })),
+        GeometryNode::CurveRelation(CurveRelation::Composite { segments: children }),
     )
 }
 
@@ -374,3 +405,68 @@ fn parameter_space_bspline(
 
 #[cfg(test)]
 mod tests;
+
+/// A three-point arc in parameter space.
+///
+/// Mirrors the 3D indexed-arc path: circumcenter, then a trimmed circle.
+/// 2D is the simpler case -- there is no plane normal to derive, and the
+/// sweep sense is the sign of the 2D cross product. No unit conversion:
+/// these are surface parameters, not lengths.
+fn parameter_space_arc(
+    session: &mut LoweringSession<'_>,
+    owner: EntityId,
+    start: Point2,
+    mid: Point2,
+    end: Point2,
+) -> GeometryResult<NodeId> {
+    let u = mid - start;
+    let v = end - start;
+    // 2D cross product: zero means the three points are collinear, so no
+    // circle exists. Refuse rather than emit a degenerate arc.
+    let cross = u.x * v.y - u.y * v.x;
+    if !cross.is_finite() || cross == 0.0 {
+        return Err(session.degenerate(
+            owner,
+            "IFCINDEXEDPOLYCURVE",
+            "parameter-space arc points are collinear or non-finite",
+        ));
+    }
+    let uu = u.length_squared();
+    let vv = v.length_squared();
+    let center = start
+        + Vec2::new(
+            (uu * v.y - vv * u.y) / (2.0 * cross),
+            (vv * u.x - uu * v.x) / (2.0 * cross),
+        );
+    let radial = start - center;
+    let radius = radial.length();
+    if !radius.is_finite() || radius <= 0.0 {
+        return Err(session.degenerate(
+            owner,
+            "IFCINDEXEDPOLYCURVE",
+            "parameter-space arc circumcenter arithmetic overflowed",
+        ));
+    }
+    let x = radial / radius;
+    // Frame2 Y is X rotated a quarter turn counter-clockwise, matching the
+    // conic helpers in this module. The cross sign then gives the sweep.
+    let frame = Frame2 {
+        origin: center,
+        x,
+        y: Vec2::new(-x.y, x.x),
+    };
+    let basis = session.node_for(
+        owner,
+        GeometryNode::Curve2(Curve2::Circle(Circle2 { frame, radius })),
+    )?;
+    session.node_for(
+        owner,
+        GeometryNode::CurveRelation(CurveRelation::Trimmed {
+            basis,
+            start: vec![TrimSelector::Point2(start)],
+            end: vec![TrimSelector::Point2(end)],
+            sense_agreement: cross > 0.0,
+            preference: TrimmingPreference::Cartesian,
+        }),
+    )
+}

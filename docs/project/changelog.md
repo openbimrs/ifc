@@ -16,6 +16,15 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- Parameter-space `IfcIndexedPolyCurve` now lowers explicit `IfcArcIndex`
+  segments. A three-point arc composes exactly from a 2D circumcentre into
+  `Circle2` plus a Cartesian trim, mirroring the 3D path with no approximation
+  and no unit conversion. The sweep sense follows the 2D cross-product sign, so
+  a clockwise arc is not silently replaced by its complement.
+- Corrected two stale typed-refusal rationales. `IfcSubedge` and `IfcVertexLoop`
+  claimed axiolid had "no neutral topology contract"; it exports `Vertex`,
+  `Edge`, `EdgeUse` and `Loop`. Both stay refused, now for their real IFC-side
+  reasons.
 - `IfcPolygonalBoundedHalfSpace` now lowers exactly, closing the last entry in
   the `PLANNED` family table. It maps to `SolidOperation::BoundedHalfSpace` with
   `Position` carried as the operation's own placement, independent of
