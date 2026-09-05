@@ -51,6 +51,7 @@ cargo test -p openbim-ifc --features step,spatial,geometry-select --test unreach
 # inconsistency the reader has to notice.
 python3 scripts/sync-changelog.py --check
 python3 scripts/sync-capabilities.py --check
+python3 scripts/check-inline-html.py
 
 # Licensing gate. The IFC schemas are CC BY-ND 4.0 and must never reach the
 # published tree; this rejects XSD/PDF payloads and any `references/` or

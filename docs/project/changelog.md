@@ -15,6 +15,18 @@ This page is synchronised from it at build time.
 
 ## [Unreleased]
 
+### Fixed
+- The docs site rendered generated inline HTML as literal text: status badges
+  appeared as `<span class="status-implemented">Implemented</span>` and the
+  `CAPABILITIES:*:BEGIN` region markers were visible on the page. VitePress had
+  `markdown.html: false`, which escapes both. The badge CSS was already present
+  and styled, so rendering was always the intent. `scripts/check-inline-html.py`
+  now fails the gate if the setting regresses.
+- `IfcProfileDef` was labelled `Planned` in the capability table, implying
+  pending work. It is the bare supertype carrying no section geometry, so the
+  refusal is permanent; it now reads `Refused` and its doc comment no longer
+  claims it awaits a neutral contract.
+
 ### Added
 - Parameter-space `IfcIndexedPolyCurve` now lowers explicit `IfcArcIndex`
   segments. A three-point arc composes exactly from a 2D circumcentre into

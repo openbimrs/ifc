@@ -32,7 +32,13 @@ export default defineConfig({
   // relative pointers target repository files rather than routes.
   srcExclude: ['**/AGENTS.md', '**/PLAN.md', 'adr/_template.md'],
   markdown: {
-    html: false,
+    // The generated capability tables emit status badges as inline
+    // `<span class="status-...">` and delimit their regions with HTML
+    // comments. With `html: false` markdown-it escapes both, so the badge
+    // markup and the `CAPABILITIES:*:BEGIN` markers render as visible text.
+    // Content here is generated from crate source by scripts/sync-*.py, not
+    // authored by third parties, so inline HTML is safe to enable.
+    html: true,
     math: true,
     config: diagramPlugin,
   },

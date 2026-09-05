@@ -49,7 +49,13 @@ pub const IMPLEMENTED_PROFILES: &[&str] = &[
     "IFCZSHAPEPROFILEDEF",
 ];
 
-/// Concrete profile families blocked on a named neutral representation contract.
+/// Profile families that are recognized but carry no lowerable geometry.
+///
+/// `IfcProfileDef` is instantiable in IFC4 (it is not declared ABSTRACT), but
+/// it is the bare supertype: it declares only `ProfileType`, `ProfileName` and
+/// the curve slots its subtypes add. A file authoring one has supplied a
+/// profile *label*, not a section, so this is a permanent typed refusal rather
+/// than work awaiting a neutral contract. Every concrete subtype lowers.
 pub const PLANNED_PROFILES: &[(&str, &str)] = &[(
     "IFCPROFILEDEF",
     "generic profile declaration carries no concrete geometry to lower",

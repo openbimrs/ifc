@@ -260,7 +260,7 @@ def profile_table() -> str:
     rows = ["| Profile family | Status |", "| --- | --- |"]
     for entity in implemented:
         rows.append(f"| `{casing.get(entity, entity)}` | {IMPLEMENTED} |")
-    rows += [f"| `{casing.get(e, e)}` | {PLANNED} — {r} |" for e, r in planned.items()]
+    rows += [f"| `{casing.get(e, e)}` | {REFUSED} — {r} |" for e, r in planned.items()]
     return "\n".join(rows)
 
 
