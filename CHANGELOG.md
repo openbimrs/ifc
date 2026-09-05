@@ -8,9 +8,11 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
-- `ifc-geometry` repins Axiolid to a fresh revision (`8401f908`) with no
-  production API changes; both feature columns build and the full test suite
-  passes at the new pin.
+- `ifc-geometry` repins Axiolid to `c144808d` (v0.9.1), superseding the
+  previous `8401f908` pin; no production API changes, both feature columns
+  build and the full test suite passes at the new pin. Confirms the fix for
+  axiolid/kernel#83 (`bounded_half_space` `agreement=false` mirroring
+  defect), independently re-verified with the original reproduction probe.
 - `IfcPointOnCurve` and `IfcPointOnSurface` lower to
   `axiolid_model::PointOnCurve`/`PointOnSurface`, preserving the basis
   reference and parameter(s) exactly. Parameters convert per the basis's own

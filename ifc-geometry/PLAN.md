@@ -136,11 +136,15 @@ parallel placeholders.
   - Progress: booleans, CSG primitives/solids, swept disks, tapered/fixed-reference sweeps, sectioned spines, surface models, advanced/faceted B-reps with voids, and unbounded/boxed half spaces lower exactly.
   - Blocker: `IfcPolygonalBoundedHalfSpace` remains typed unsupported. Axiolid
     added the required `SolidOperation::BoundedHalfSpace` contract (2026-08-30,
-    commit `9de5042`), but its `bounded_half_space` construction has a verified
-    correctness defect on `agreement=false` (mirrors the boundary footprint
-    instead of only reversing the extrusion side; see `src/lower/PLAN.md` and
-    axiolid/kernel#83). Wiring this crate to the contract before the fix lands
-    would silently corrupt geometry for a common `AgreementFlag` value.
+    commit `9de5042`) and fixed the `agreement=false` mirroring defect
+    (axiolid/kernel#83, fixed in `6fe7bf3`/v0.9.0, independently re-verified).
+    A second gap remains: `bounded_half_space` derives the boundary's in-plane
+    basis solely from the clip plane's normal, with no way to supply an
+    independent orientation -- but `IfcPolygonalBoundedHalfSpace.Position` is
+    schema-independent of `BaseSurface` and can differ from Axiolid's guess.
+    Wiring this crate to the contract before that lands would silently rotate
+    the clip for any file whose `Position.RefDirection` disagrees with the
+    guess. See `src/lower/PLAN.md` and axiolid/kernel#93.
 - [x] `GEOM-MAP` - preserve mapped-item instancing with cycle/depth limits
   - Evidence: 11 mapped-item tests over real fixtures, 6/6 mutation probes,
     isolated build, and crate clippy.

@@ -81,7 +81,7 @@ The workspace pins Axiolid crates to an exact git revision rather than a
 version range, so geometry behaviour is reproducible across builds:
 
 ```toml
-axiolid-core = { git = "https://github.com/axiolid/kernel.git", rev = "8401f9086125480bfe997996acded03cb33aba91" }
+axiolid-core = { git = "https://github.com/axiolid/kernel.git", rev = "c144808d76ebf653b2183d6895192514d1838bfd" }
 ```
 
 Production lowering pins only representation-level crates — `core`, `mesh`,
