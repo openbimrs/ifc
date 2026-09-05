@@ -30,9 +30,14 @@ CASING = ROOT / "ifc-geometry" / "tests" / "schema_coverage.rs"
 
 IMPLEMENTED = '<span class="status-implemented">Implemented</span>'
 PLANNED = '<span class="status-partial">Planned</span>'
+PARTIAL_STATUS = '<span class="status-partial">Partial</span>'
+ADMITTED = '<span class="status-implemented">Admitted</span>'
+REFUSED = '<span class="status-partial">Refused</span>'
 
 BEGIN_GEOMETRY = "<!-- CAPABILITIES:GEOMETRY:BEGIN -->"
 END_GEOMETRY = "<!-- CAPABILITIES:GEOMETRY:END -->"
+BEGIN_VARIANT = "<!-- CAPABILITIES:VARIANT:BEGIN -->"
+END_VARIANT = "<!-- CAPABILITIES:VARIANT:END -->"
 BEGIN_PROFILE = "<!-- CAPABILITIES:PROFILE:BEGIN -->"
 END_PROFILE = "<!-- CAPABILITIES:PROFILE:END -->"
 BEGIN_COUNT = "<!-- CAPABILITIES:SCAFFOLDCOUNT:BEGIN -->"
@@ -177,17 +182,72 @@ def dispatched_profiles(source: str) -> tuple[list[str], dict[str, str]]:
     return built, refused
 
 
+def partial_variants(source: str) -> dict[str, list[tuple[str, str, str]]]:
+    """Parse the PARTIAL variant catalog, grouped by family.
+
+    A family in IMPLEMENTED that also appears here is not fully supported: it
+    admits some authored forms and refuses others. Reporting it as a flat
+    "Implemented" is the same overstatement the profile parser guards against,
+    one level further down.
+    """
+    start = source.find("pub const PARTIAL")
+    if start == -1:
+        return {}
+    end = source.find("\n];", start)
+    table = source[start:end]
+    # Rationales and variants may wrap across lines with a trailing backslash.
+    table = re.sub(r"\\\n\s*", "", table)
+
+    out: dict[str, list[tuple[str, str, str]]] = {}
+    for block in table.split("Variant {")[1:]:
+        family = re.search(r'family:\s*"([^"]*)"', block)
+        variant = re.search(r'variant:\s*"((?:[^"\\]|\\.)*)"', block)
+        support = re.search(r"support:\s*Support::(\w+)", block)
+        rationale = re.search(r'rationale:\s*"((?:[^"\\]|\\.)*)"', block)
+        if not (family and variant and support and rationale):
+            continue
+        out.setdefault(family.group(1), []).append(
+            (variant.group(1), support.group(1), rationale.group(1))
+        )
+    return out
+
+
 def geometry_table() -> str:
     source = DISPATCH.read_text(encoding="utf-8")
     casing = schema_casing()
     implemented = const_list(source, "IMPLEMENTED")
     planned = planned_details(source, "PLANNED")
+    partial = partial_variants(source)
 
     rows = ["| Family | Status |", "| --- | --- |"]
     for entity in implemented:
-        rows.append(f"| `{casing.get(entity, entity)}` | {IMPLEMENTED} |")
+        name = casing.get(entity, entity)
+        if entity in partial:
+            refused = sum(1 for _, s, _ in partial[entity] if s == "Refused")
+            rows.append(
+                f"| `{name}` | {PARTIAL_STATUS} \u2014 {refused} authored "
+                f"form(s) refused; see [variants](#partially-supported-variants) |"
+            )
+        else:
+            rows.append(f"| `{name}` | {IMPLEMENTED} |")
     for entity, reason in planned.items():
         rows.append(f"| `{casing.get(entity, entity)}` | {PLANNED} \u2014 {reason} |")
+    return "\n".join(rows)
+
+
+def variant_table() -> str:
+    """Per-variant dispositions for partially supported families."""
+    source = DISPATCH.read_text(encoding="utf-8")
+    casing = schema_casing()
+    partial = partial_variants(source)
+
+    rows = ["| Family | Variant | Status | Rationale |", "| --- | --- | --- | --- |"]
+    for entity in sorted(partial):
+        for variant, support, rationale in partial[entity]:
+            badge = ADMITTED if support == "Admitted" else REFUSED
+            rows.append(
+                f"| `{casing.get(entity, entity)}` | {variant} | {badge} | {rationale} |"
+            )
     return "\n".join(rows)
 
 
@@ -306,6 +366,7 @@ def main() -> int:
     current = TARGET.read_text(encoding="utf-8")
     updated = splice(current, BEGIN_CENSUS, END_CENSUS, census_table(current))
     updated = splice(updated, BEGIN_GEOMETRY, END_GEOMETRY, geometry_table())
+    updated = splice(updated, BEGIN_VARIANT, END_VARIANT, variant_table())
     updated = splice(updated, BEGIN_PROFILE, END_PROFILE, profile_table())
     census = updated.split(BEGIN_CENSUS)[1].split(END_CENSUS)[0]
     updated = splice(updated, BEGIN_COUNT, END_COUNT, scaffold_count(census))

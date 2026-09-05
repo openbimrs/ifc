@@ -471,3 +471,225 @@ fn every_family_that_lowers_is_named_in_the_inventory() {
         "these families lower but are named in neither IMPLEMENTED nor PLANNED: {unclaimed:?}"
     );
 }
+
+/// The variant catalog is well-formed and cannot drift from the family tables.
+///
+/// `IMPLEMENTED` and `PLANNED` classify at family granularity. That is too
+/// coarse for families whose support depends on how the instance is authored:
+/// `IFCPCURVE` is implemented, but only for some reference-curve forms. This
+/// gate holds the finer `PARTIAL` catalog to the same standard the family
+/// tables get, so a partially supported family cannot quietly present itself
+/// as fully implemented.
+#[test]
+fn every_partial_family_declares_both_admitted_and_refused_variants() {
+    use ifc_geometry::lower::dispatch::{Support, PARTIAL};
+
+    let implemented: BTreeSet<_> = IMPLEMENTED.iter().copied().collect();
+    let planned: BTreeSet<_> = PLANNED.iter().map(|(name, _)| *name).collect();
+
+    let mut families: BTreeSet<&str> = BTreeSet::new();
+    for variant in PARTIAL {
+        families.insert(variant.family);
+
+        // A partial family is a refinement of an implemented one. Naming a
+        // family that is wholly unimplemented here would assert that some of
+        // it works when none of it does.
+        assert!(
+            implemented.contains(variant.family),
+            "{} is in PARTIAL but not IMPLEMENTED; a partial family must be \
+             one whose base support exists",
+            variant.family
+        );
+        assert!(
+            !planned.contains(variant.family),
+            "{} is in both PARTIAL and PLANNED; a family cannot be partially \
+             supported and entirely unimplemented at once",
+            variant.family
+        );
+        assert!(
+            !variant.variant.is_empty(),
+            "{}: variant condition must be stated",
+            variant.family
+        );
+        assert!(
+            !variant.rationale.is_empty(),
+            "{} / {}: rationale must be stated",
+            variant.family,
+            variant.variant
+        );
+    }
+
+    // The point of the catalog is to record refusals hidden inside an
+    // "implemented" family. A family with no refusal is not partial, and a
+    // family with no admission is not implemented -- either way the row is
+    // miscategorised and belongs in IMPLEMENTED or PLANNED instead.
+    for family in &families {
+        let admitted = PARTIAL
+            .iter()
+            .filter(|v| v.family == *family)
+            .any(|v| v.support == Support::Admitted);
+        let refused = PARTIAL
+            .iter()
+            .filter(|v| v.family == *family)
+            .any(|v| v.support == Support::Refused);
+        assert!(
+            admitted,
+            "{family} declares no admitted variant; it is not partially \
+             supported and should be in PLANNED"
+        );
+        assert!(
+            refused,
+            "{family} declares no refused variant; it is fully supported and \
+             should be in IMPLEMENTED alone"
+        );
+    }
+
+    // Duplicate (family, variant) pairs would let two rows disagree about the
+    // same case without anything noticing.
+    let mut seen = BTreeSet::new();
+    for variant in PARTIAL {
+        assert!(
+            seen.insert((variant.family, variant.variant)),
+            "duplicate PARTIAL row for {} / {}",
+            variant.family,
+            variant.variant
+        );
+    }
+}
+
+/// Every refusal the catalog claims is actually reachable at runtime, and
+/// every admission actually lowers.
+///
+/// A catalog that merely *asserts* a disposition is documentation. This drives
+/// the real lowering path for one instance of each listed variant and requires
+/// the runtime outcome to match the declared `Support`. Deleting a refusal
+/// branch in the lowerer, or relabelling a refusal as admitted, fails here
+/// rather than silently widening the crate's support claim.
+///
+/// Each case is keyed by its exact `PARTIAL` row, so a row that is renamed or
+/// removed without updating this test fails too -- the catalog cannot drift
+/// away from the probes that check it.
+#[test]
+fn declared_variant_support_matches_runtime_behaviour() {
+    use ifc_geometry::lower::dispatch::{Support, PARTIAL};
+    use ifc_model::{Entity, EntityId, Model, Value};
+
+    fn ent(type_name: &str, values: Vec<Value>) -> Entity {
+        Entity::new(type_name, values)
+    }
+    fn rf(id: u64) -> Value {
+        Value::Ref(EntityId(id))
+    }
+    fn num(v: f64) -> Value {
+        Value::Real(v)
+    }
+    fn pt(coords: Vec<f64>) -> Entity {
+        ent(
+            "IFCCARTESIANPOINT",
+            vec![Value::List(coords.into_iter().map(num).collect())],
+        )
+    }
+
+    /// A plane at the origin, plus whatever the probe adds on top.
+    fn plane_model() -> Model {
+        let mut model = Model::new();
+        model.insert(EntityId(1), pt(vec![0.0, 0.0, 0.0]));
+        model.insert(
+            EntityId(2),
+            ent("IFCAXIS2PLACEMENT3D", vec![rf(1), Value::Null, Value::Null]),
+        );
+        model.insert(EntityId(3), ent("IFCPLANE", vec![rf(2)]));
+        model
+    }
+
+    // (family, variant) -> a model whose EntityId(9) is the item to lower.
+    let probes: Vec<(&str, &str, Model)> = vec![
+        {
+            // Admitted: conic positioned by a 2D placement.
+            let mut m = plane_model();
+            m.insert(EntityId(4), pt(vec![2.0, 3.0]));
+            m.insert(
+                EntityId(5),
+                ent("IFCAXIS2PLACEMENT2D", vec![rf(4), Value::Null]),
+            );
+            m.insert(EntityId(6), ent("IFCCIRCLE", vec![rf(5), num(1.5)]));
+            m.insert(EntityId(9), ent("IFCPCURVE", vec![rf(3), rf(6)]));
+            (
+                "IFCPCURVE",
+                "reference curve is an IfcLine, IfcCircle or IfcEllipse \
+                 positioned by an IfcAxis2Placement2D",
+                m,
+            )
+        },
+        {
+            // Refused: the same conic positioned by a 3D placement.
+            let mut m = plane_model();
+            m.insert(EntityId(6), ent("IFCCIRCLE", vec![rf(2), num(1.5)]));
+            m.insert(EntityId(9), ent("IFCPCURVE", vec![rf(3), rf(6)]));
+            (
+                "IFCPCURVE",
+                "reference conic positioned by an IfcAxis2Placement3D",
+                m,
+            )
+        },
+        {
+            // Refused: a parameter-space B-spline.
+            let mut m = plane_model();
+            m.insert(
+                EntityId(6),
+                ent("IFCBSPLINECURVEWITHKNOTS", vec![Value::Integer(3)]),
+            );
+            m.insert(EntityId(9), ent("IFCPCURVE", vec![rf(3), rf(6)]));
+            (
+                "IFCPCURVE",
+                "reference curve is a B-spline, trimmed or composite curve",
+                m,
+            )
+        },
+        {
+            // Admitted: a plain polyline reference curve.
+            let mut m = plane_model();
+            m.insert(EntityId(4), pt(vec![0.0, 0.0]));
+            m.insert(EntityId(5), pt(vec![1.0, 2.0]));
+            m.insert(
+                EntityId(6),
+                ent("IFCPOLYLINE", vec![Value::List(vec![rf(4), rf(5)])]),
+            );
+            m.insert(EntityId(9), ent("IFCPCURVE", vec![rf(3), rf(6)]));
+            ("IFCPCURVE", "reference curve is an IfcPolyline", m)
+        },
+    ];
+
+    for (family, variant, model) in probes {
+        let declared = PARTIAL
+            .iter()
+            .find(|v| v.family == family && v.variant == variant)
+            .unwrap_or_else(|| {
+                panic!(
+                    "no PARTIAL row for {family} / {variant:?}; the catalog and \
+                     its runtime probes have drifted apart"
+                )
+            });
+
+        let scale = units::resolve(&model);
+        let mut session = LoweringSession::new(&model, &scale);
+        let outcome = lower_representation_item(&mut session, EntityId(9), Transform::identity());
+
+        match declared.support {
+            Support::Admitted => assert!(
+                outcome.is_ok(),
+                "{family} / {variant:?} is declared Admitted but did not lower: {:?}",
+                outcome.err()
+            ),
+            Support::Refused => {
+                let error = outcome.err().unwrap_or_else(|| {
+                    panic!("{family} / {variant:?} is declared Refused but lowered successfully")
+                });
+                assert!(
+                    error.is_unsupported(),
+                    "{family} / {variant:?} must be a typed gap, not corruption: {error}"
+                );
+            }
+        }
+    }
+}

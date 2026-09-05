@@ -116,6 +116,115 @@ pub const PLANNED: &[(&str, &str)] = &[(
     "polygonal boundary cannot be discarded; exact bounded-half-space support is required",
 )];
 
+/// A variant within a family that is admitted or refused independently.
+///
+/// [`IMPLEMENTED`] and [`PLANNED`] classify at *family* granularity, which is
+/// too coarse for families whose support depends on how the instance is
+/// authored. `IFCPCURVE` is implemented, but only for some reference-curve
+/// forms; a flat "implemented" claim hides the refusals inside it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Variant {
+    /// The concrete family this variant belongs to; always in [`IMPLEMENTED`].
+    pub family: &'static str,
+    /// The distinguishing condition, as a caller would recognize it.
+    pub variant: &'static str,
+    /// Whether this specific variant lowers or is a typed refusal.
+    pub support: Support,
+    /// Why it is admitted or refused. Refusals name the missing contract.
+    pub rationale: &'static str,
+}
+
+/// Whether a [`Variant`] lowers exactly or reports a typed refusal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Support {
+    /// Lowers exactly, with no approximation.
+    Admitted,
+    /// Reports a typed [`crate::GeometryError::Unsupported`] naming the entity.
+    Refused,
+}
+
+/// Variant-level dispositions for partially supported families.
+///
+/// Every family named here must appear in [`IMPLEMENTED`] and must declare at
+/// least one `Admitted` and one `Refused` variant -- a family with no refusals
+/// is not partial and belongs in `IMPLEMENTED` alone. Enforced by
+/// `tests/lower_dispatch_corpus.rs`.
+pub const PARTIAL: &[Variant] = &[
+    Variant {
+        family: "IFCPCURVE",
+        variant: "reference curve is an IfcPolyline",
+        support: Support::Admitted,
+        rationale: "an ordered 2D point sequence needs no evaluation",
+    },
+    Variant {
+        family: "IFCPCURVE",
+        variant: "reference curve is an IfcIndexedPolyCurve with no explicit \
+                  Segments, or only IfcLineIndex segments",
+        support: Support::Admitted,
+        rationale: "reads identically to a plain ordered point sequence",
+    },
+    Variant {
+        family: "IFCPCURVE",
+        variant: "reference curve is an IfcLine, IfcCircle or IfcEllipse \
+                  positioned by an IfcAxis2Placement2D",
+        support: Support::Admitted,
+        rationale: "defining values are read verbatim in the surface's own \
+                    (u, v) domain with no unit conversion",
+    },
+    Variant {
+        family: "IFCPCURVE",
+        variant: "reference conic positioned by an IfcAxis2Placement3D",
+        support: Support::Refused,
+        rationale: "a 3D placement's axis has no meaning in a 2D parameter \
+                    domain; admitting it would require inventing a projection",
+    },
+    Variant {
+        family: "IFCPCURVE",
+        variant: "reference curve is an IfcIndexedPolyCurve with an explicit \
+                  IfcArcIndex segment",
+        support: Support::Refused,
+        rationale: "no exact parameter-space arc contract exists; flattening \
+                    the arc to a chord would silently change the curve",
+    },
+    Variant {
+        family: "IFCPCURVE",
+        variant: "reference curve is a B-spline, trimmed or composite curve",
+        support: Support::Refused,
+        rationale: "knot vectors and trim parameters in a mixed-domain \
+                    parameter space have no defined dimensional contract yet",
+    },
+    Variant {
+        family: "IFCSURFACECURVE",
+        variant: "MasterRepresentation is Curve3D, or is PCurveS1 with exactly \
+                  one associated p-curve",
+        support: Support::Admitted,
+        rationale: "the master is unambiguous, so the neutral \
+                    MasterRepresentation can name it exactly",
+    },
+    Variant {
+        family: "IFCSURFACECURVE",
+        variant: "MasterRepresentation is PCurveS1 or PCurveS2 with two \
+                  associated p-curves",
+        support: Support::Refused,
+        rationale: "Axiolid's MasterRepresentation has no variant \
+                    distinguishing S1 from S2; picking either would be a guess \
+                    (see openbimrs/ifc#24)",
+    },
+    Variant {
+        family: "IFCINDEXEDPOLYCURVE",
+        variant: "as a world-space curve, with line or three-point arc segments",
+        support: Support::Admitted,
+        rationale: "arcs lower exactly through the world-space conic path",
+    },
+    Variant {
+        family: "IFCINDEXEDPOLYCURVE",
+        variant: "as a p-curve reference curve, with an explicit arc segment",
+        support: Support::Refused,
+        rationale: "see the IFCPCURVE arc row; parameter space has no arc \
+                    contract",
+    },
+];
+
 /// Lower any representation item into the caller's session.
 ///
 /// Returns the node for implemented families and a typed

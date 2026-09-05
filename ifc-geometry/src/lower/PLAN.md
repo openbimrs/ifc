@@ -301,10 +301,12 @@ and check it off only after the proof runs.
     typed_reason` covers the other half, and
     `every_implemented_family_has_committed_corpus_evidence` stops
     `IMPLEMENTED` from becoming an unbacked claim.
-  - Scope boundary: this classifies at *family* granularity. Recording which
-    variants within a partially-supported family are admitted or refused
-    (non-polyline p-curves, S1/S2 master selection) is tracked separately as
-    issue #27 and is not a gap in this task.
+  - Scope boundary: family-level classification is enforced here. Variant-level
+    dispositions within a partially supported family -- which authored forms
+    are admitted and which are refused -- are carried by the `PARTIAL` catalog
+    in `lower/dispatch.rs` and gated by
+    `every_partial_family_declares_both_admitted_and_refused_variants` and
+    `declared_variant_support_matches_runtime_behaviour` (issue #27).
 
 ## Completion log
 

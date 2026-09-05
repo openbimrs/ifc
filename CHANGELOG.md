@@ -8,6 +8,16 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- Lowering capability claims are now variant-accurate. A `PARTIAL` catalog in
+  `ifc-geometry/src/lower/dispatch.rs` records, per authored form, whether a
+  family admits or refuses it and why, so families that were reported as flatly
+  "Implemented" while still refusing some inputs (`IfcPCurve`,
+  `IfcSurfaceCurve`, `IfcIndexedPolyCurve`) now report as Partial with a
+  per-variant table in `docs/capabilities.md`. The catalog is not
+  documentation: `declared_variant_support_matches_runtime_behaviour` drives
+  the real lowering path for every declared variant, so a wrong disposition --
+  in either direction -- fails CI. 4/4 mutation probes caught, including one
+  that initially escaped and prompted the runtime cross-check.
 - `IfcPCurve` reference curves now admit the analytic `IfcLine`, `IfcCircle`
   and `IfcEllipse` families in addition to polylines. Parameter-space values
   are read verbatim: a p-curve conic's radius and semi-axes are displacements

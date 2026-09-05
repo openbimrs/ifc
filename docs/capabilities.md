@@ -27,7 +27,7 @@ code.
 
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `ifc-geometry` | 27,202 | 94 | 5 | 32 | <span class="status-partial">Partial</span> |
+| `ifc-geometry` | 27,311 | 94 | 5 | 32 | <span class="status-partial">Partial</span> |
 | `ifc-structural` | 3,397 | 33 | 14 | 12 | <span class="status-implemented">Implemented</span> |
 | `ifc-style` | 3,322 | 31 | 0 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 3,119 | 30 | 14 | 3 | <span class="status-implemented">Implemented</span> |
@@ -239,7 +239,7 @@ The dispatcher keeps coverage as data so it is auditable from one table
 | `IfcCircle` | <span class="status-implemented">Implemented</span> |
 | `IfcEllipse` | <span class="status-implemented">Implemented</span> |
 | `IfcPolyline` | <span class="status-implemented">Implemented</span> |
-| `IfcIndexedPolyCurve` | <span class="status-implemented">Implemented</span> |
+| `IfcIndexedPolyCurve` | <span class="status-partial">Partial</span> — 1 authored form(s) refused; see [variants](#partially-supported-variants) |
 | `IfcCompositeCurve` | <span class="status-implemented">Implemented</span> |
 | `IfcCompositeCurveOnSurface` | <span class="status-implemented">Implemented</span> |
 | `IfcBoundaryCurve` | <span class="status-implemented">Implemented</span> |
@@ -247,8 +247,8 @@ The dispatcher keeps coverage as data so it is auditable from one table
 | `IfcTrimmedCurve` | <span class="status-implemented">Implemented</span> |
 | `IfcOffsetCurve2D` | <span class="status-implemented">Implemented</span> |
 | `IfcOffsetCurve3D` | <span class="status-implemented">Implemented</span> |
-| `IfcPcurve` | <span class="status-implemented">Implemented</span> |
-| `IfcSurfaceCurve` | <span class="status-implemented">Implemented</span> |
+| `IfcPcurve` | <span class="status-partial">Partial</span> — 3 authored form(s) refused; see [variants](#partially-supported-variants) |
+| `IfcSurfaceCurve` | <span class="status-partial">Partial</span> — 1 authored form(s) refused; see [variants](#partially-supported-variants) |
 | `IfcIntersectionCurve` | <span class="status-implemented">Implemented</span> |
 | `IfcSeamCurve` | <span class="status-implemented">Implemented</span> |
 | `IfcBSplineCurveWithKnots` | <span class="status-implemented">Implemented</span> |
@@ -269,6 +269,31 @@ The dispatcher keeps coverage as data so it is auditable from one table
 | `IfcPolygonalBoundedHalfSpace` | <span class="status-partial">Planned</span> — polygonal boundary cannot be discarded; exact bounded-half-space support is required |
 
 <!-- CAPABILITIES:GEOMETRY:END -->
+
+### Partially supported variants
+
+Families marked <span class="status-partial">Partial</span> above lower some
+authored forms exactly and refuse others by name. This table is generated from
+the `PARTIAL` catalog in `ifc-geometry/src/lower/dispatch.rs`, and
+`tests/lower_dispatch_corpus.rs` drives the real lowering path for every row --
+so a wrong disposition here fails CI rather than merely misinforming a reader.
+
+<!-- CAPABILITIES:VARIANT:BEGIN -->
+
+| Family | Variant | Status | Rationale |
+| --- | --- | --- | --- |
+| `IfcIndexedPolyCurve` | as a world-space curve, with line or three-point arc segments | <span class="status-implemented">Admitted</span> | arcs lower exactly through the world-space conic path |
+| `IfcIndexedPolyCurve` | as a p-curve reference curve, with an explicit arc segment | <span class="status-partial">Refused</span> | see the IFCPCURVE arc row; parameter space has no arc contract |
+| `IfcPcurve` | reference curve is an IfcPolyline | <span class="status-implemented">Admitted</span> | an ordered 2D point sequence needs no evaluation |
+| `IfcPcurve` | reference curve is an IfcIndexedPolyCurve with no explicit Segments, or only IfcLineIndex segments | <span class="status-implemented">Admitted</span> | reads identically to a plain ordered point sequence |
+| `IfcPcurve` | reference curve is an IfcLine, IfcCircle or IfcEllipse positioned by an IfcAxis2Placement2D | <span class="status-implemented">Admitted</span> | defining values are read verbatim in the surface's own (u, v) domain with no unit conversion |
+| `IfcPcurve` | reference conic positioned by an IfcAxis2Placement3D | <span class="status-partial">Refused</span> | a 3D placement's axis has no meaning in a 2D parameter domain; admitting it would require inventing a projection |
+| `IfcPcurve` | reference curve is an IfcIndexedPolyCurve with an explicit IfcArcIndex segment | <span class="status-partial">Refused</span> | no exact parameter-space arc contract exists; flattening the arc to a chord would silently change the curve |
+| `IfcPcurve` | reference curve is a B-spline, trimmed or composite curve | <span class="status-partial">Refused</span> | knot vectors and trim parameters in a mixed-domain parameter space have no defined dimensional contract yet |
+| `IfcSurfaceCurve` | MasterRepresentation is Curve3D, or is PCurveS1 with exactly one associated p-curve | <span class="status-implemented">Admitted</span> | the master is unambiguous, so the neutral MasterRepresentation can name it exactly |
+| `IfcSurfaceCurve` | MasterRepresentation is PCurveS1 or PCurveS2 with two associated p-curves | <span class="status-partial">Refused</span> | Axiolid's MasterRepresentation has no variant distinguishing S1 from S2; picking either would be a guess (see openbimrs/ifc#24) |
+
+<!-- CAPABILITIES:VARIANT:END -->
 
 ::: tip Coverage below is generated
 The table above is derived from `ifc-geometry/src/lower/dispatch.rs` by
