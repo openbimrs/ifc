@@ -8,6 +8,12 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `IfcPolygonalBoundedHalfSpace` now lowers exactly, closing the last entry in
+  the `PLANNED` family table. It maps to `SolidOperation::BoundedHalfSpace` with
+  `Position` carried as the operation's own placement, independent of
+  `BaseSurface`: the authored clipping prism is neither dropped (which removes
+  material outside it) nor folded into the clip plane (which relocates it). The
+  axiolid pin moves to `v0.11.0`.
 - `IfcSurfaceCurve` now lowers when `MasterRepresentation` names `PCURVE_S2`,
   and each associated p-curve is paired with the surface it lies on rather
   than kept in a flat list. `PCURVE_S1`/`PCURVE_S2` are positional slots, so

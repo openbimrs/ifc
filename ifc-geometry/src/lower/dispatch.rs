@@ -51,6 +51,7 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCADVANCEDBREPWITHVOIDS",
     "IFCHALFSPACESOLID",
     "IFCBOXEDHALFSPACE",
+    "IFCPOLYGONALBOUNDEDHALFSPACE",
     "IFCTRIANGULATEDFACESET",
     "IFCPOLYGONALFACESET",
     "IFCCSGSOLID",
@@ -111,10 +112,10 @@ pub const IMPLEMENTED: &[&str] = &[
 /// Each entry names the concrete reason so a caller building a viewer can
 /// report progress instead of a bare failure. Adding a family here is how a
 /// stub is declared; implementing it means moving the name to [`IMPLEMENTED`].
-pub const PLANNED: &[(&str, &str)] = &[(
-    "IFCPOLYGONALBOUNDEDHALFSPACE",
-    "polygonal boundary cannot be discarded; exact bounded-half-space support is required",
-)];
+///
+/// Currently empty: every recognized representation item is lowered. A new
+/// unimplemented family is declared by adding it here.
+pub const PLANNED: &[(&str, &str)] = &[];
 
 /// A variant within a family that is admitted or refused independently.
 ///

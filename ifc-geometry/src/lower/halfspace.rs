@@ -32,23 +32,20 @@
 //! `Unsupported` rather than widening it to an infinite half-space.
 
 use axiolid_core::{Plane3, Point3, Vec3};
-use axiolid_model::{GeometryNode, NodeId};
+use axiolid_model::{GeometryNode, NodeId, SolidOperation};
 use axiolid_primitive::HalfSpace;
 use ifc_model::EntityId;
 
 use crate::error::{GeometryError, GeometryResult};
+use crate::lower::curve::lower_curve_node;
 use crate::lower::session::LoweringSession;
 use crate::resource::placement::axis_placement_transform;
-use crate::solid::halfspace::HalfSpaceSolid;
+use crate::solid::halfspace::{HalfSpaceSolid, PolygonalBoundedHalfSpace};
 use crate::surface::elementary::Plane;
 use crate::transform::Transform;
 
 /// Family label used for memoization.
 const KIND: &str = "half space";
-
-/// Exact neutral support must carry this subtype's positioned 2D bound.
-pub(crate) const POLYGONAL_BOUND_UNSUPPORTED: &str =
-    "polygonal boundary cannot be discarded; exact bounded-half-space support is required";
 
 /// IFC's `.T.` is the side the normal points AWAY from; the kernel's `true`
 /// is the normal side. Every conversion goes through this.
@@ -63,18 +60,69 @@ pub fn lower_half_space_node(
     frame: Transform,
 ) -> GeometryResult<NodeId> {
     let type_name = session.type_name(id)?;
-    if type_name.eq_ignore_ascii_case("IFCPOLYGONALBOUNDEDHALFSPACE") {
-        return Err(session.unsupported(id, &type_name, POLYGONAL_BOUND_UNSUPPORTED));
-    }
     if let Some(node) = session.memoized(id, KIND, frame) {
         return Ok(node);
     }
     session.enter(id, KIND)?;
-    let result = build(session, id, frame);
+    let result = if type_name.eq_ignore_ascii_case("IFCPOLYGONALBOUNDEDHALFSPACE") {
+        build_polygonal(session, id, frame)
+    } else {
+        build(session, id, frame)
+    };
     session.exit(id);
     let node = result?;
     session.memoize(id, KIND, frame, node);
     Ok(node)
+}
+
+/// `IfcPolygonalBoundedHalfSpace`: half space clipped by an extruded polygon.
+///
+/// `Position` is independent of `BaseSurface`, and the boundary is authored in
+/// that placement's XY plane. Axiolid's `BoundedHalfSpace` carries the boundary
+/// frame separately for exactly this reason, so the placement is preserved
+/// rather than folded into the clip plane, which would move the clip.
+fn build_polygonal(
+    session: &mut LoweringSession<'_>,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<NodeId> {
+    let entity = session.entity(id, id)?;
+    let view = PolygonalBoundedHalfSpace::new(id, entity);
+    let base = view.base();
+    let type_name = base.type_name().to_string();
+
+    // The infinite half space, exactly as the unbounded case builds it.
+    let plane = plane_of(session, id, &type_name, base.base_surface()?, frame)?;
+    let half_space = session.node_for(
+        id,
+        GeometryNode::HalfSpace(HalfSpace {
+            boundary: plane,
+            agreement: flip(base.agreement_flag()?),
+        }),
+    )?;
+
+    // The 2D boundary is a closed bounded curve in Position's XY plane. It
+    // lowers as a curve, not a profile: the kernel extrudes it along +Z itself,
+    // and a profile would assert a filled region this entity does not author.
+    // Coordinates are real lengths (unlike parameter space), so scale applies.
+    let boundary = lower_curve_node(session, view.polygonal_boundary()?, Transform::identity())?;
+
+    // Position is independent of BaseSurface and must survive: it both places
+    // the prism and orients the authored profile within its own plane.
+    let position_ref = view.position()?;
+    let position = session.entity(id, position_ref)?;
+    let local = axis_placement_transform(session.model(), position_ref, position)?
+        .to_metres(session.units());
+    let placed = frame.compose(&local);
+
+    session.node_for(
+        id,
+        GeometryNode::SolidOperation(SolidOperation::BoundedHalfSpace {
+            half_space,
+            boundary,
+            placement: placed.to_geom(),
+        }),
+    )
 }
 
 fn build(

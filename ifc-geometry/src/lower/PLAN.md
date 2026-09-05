@@ -228,9 +228,16 @@ and check it off only after the proof runs.
     shared edges by comparing floats -- inventing information the file never
     carried. `PolygonMesh` keeps authored n-gons and holes verbatim so the
     fill rule and tolerance stay with the kernel.
-- [ ] `LOW-HALFSPACE` - exact half spaces as boolean cutting tools
-  - Progress: unbounded and boxed half spaces lower exactly; polygonally bounded
-    half space is typed unsupported pending a neutral positioned-bound contract.
+- [x] `LOW-HALFSPACE` - exact half spaces as boolean cutting tools
+  - Progress: unbounded, boxed, and polygonally bounded half spaces all lower
+    exactly.
+  - Done (2026-09-05): `IfcPolygonalBoundedHalfSpace` lowers to
+    `SolidOperation::BoundedHalfSpace` on the axiolid v0.11.0 pin. `Position` is
+    passed as the operation's own `placement`, independent of `BaseSurface`, so
+    the authored prism is neither dropped nor relocated; the boundary lowers
+    through the shared curve path rather than a competing reader. Evidence:
+    `a_polygonal_bound_is_never_dropped` plus two mutations (identity placement,
+    aliased boundary node) that each fail it.
   - Update (2026-09-05): Axiolid now declares `SolidOperation::BoundedHalfSpace`
     (landed 2026-08-30, commit `9de5042`) with exactly the contract this task
     needs -- a half-space node, a 2D boundary curve, and a placement. The

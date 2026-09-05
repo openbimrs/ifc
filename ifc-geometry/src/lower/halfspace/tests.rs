@@ -4,7 +4,8 @@
 //! kernel's flag are opposites, and getting it wrong produces a boolean that
 //! still evaluates and still looks like geometry.
 
-use axiolid_model::GeometryNode;
+use axiolid_curve::Curve3;
+use axiolid_model::{GeometryNode, SolidOperation};
 use ifc_model::{Entity, EntityId, Model, Value};
 
 use super::lower_half_space_node;
@@ -22,6 +23,17 @@ fn r(id: u64) -> Value {
 
 fn n(v: f64) -> Value {
     Value::Real(v)
+}
+
+fn point2(x: f64, y: f64) -> Entity {
+    entity("IFCCARTESIANPOINT", vec![Value::List(vec![n(x), n(y)])])
+}
+
+fn point3(x: f64, y: f64, z: f64) -> Entity {
+    entity(
+        "IFCCARTESIANPOINT",
+        vec![Value::List(vec![n(x), n(y), n(z)])],
+    )
 }
 
 /// A half space whose base plane sits at `z_offset` with +Z normal.
@@ -189,27 +201,76 @@ fn the_plane_origin_is_converted_to_metres() {
     );
 }
 
-/// A polygonal bounded half-space changes the effective cutting volume.
+/// A polygonal bounded half-space keeps its positioned 2D boundary.
 ///
-/// Until the neutral model carries its positioned 2D boundary, lowering it as
-/// the unbounded supertype would remove material outside the authored prism.
+/// `Position` is independent of `BaseSurface`, so it must reach the neutral
+/// node intact. Lowering this as the unbounded supertype would remove material
+/// outside the authored prism; folding `Position` into the clip plane would put
+/// the prism in the wrong place.
 #[test]
 fn a_polygonal_bound_is_never_dropped() {
     let mut model = half_space(true, 0.0);
+    // A unit square boundary in Position's XY plane.
+    model.insert(EntityId(10), point2(0.0, 0.0));
+    model.insert(EntityId(11), point2(1.0, 0.0));
+    model.insert(EntityId(12), point2(1.0, 1.0));
+    model.insert(EntityId(13), point2(0.0, 1.0));
+    model.insert(
+        EntityId(6),
+        entity(
+            "IFCPOLYLINE",
+            vec![Value::List(vec![r(10), r(11), r(12), r(13)])],
+        ),
+    );
+    // Position offset from the base surface, which must survive.
+    model.insert(EntityId(8), point3(3.0, 4.0, 5.0));
+    model.insert(
+        EntityId(7),
+        entity("IFCAXIS2PLACEMENT3D", vec![r(8), Value::Null, Value::Null]),
+    );
     model.insert(
         EntityId(5),
         entity(
             "IFCPOLYGONALBOUNDEDHALFSPACE",
-            vec![r(4), Value::Bool(true), r(6), r(7)],
+            vec![r(4), Value::Bool(true), r(7), r(6)],
         ),
     );
+
     let scale = UnitScale::default();
     let mut session = LoweringSession::new(&model, &scale);
-    let error = lower_half_space_node(&mut session, EntityId(5), Transform::identity())
-        .expect_err("the polygonal bound cannot be discarded");
-    assert!(
-        error.to_string().contains("polygonal boundary"),
-        "typed refusal must name the missing semantic: {error}"
+    let node =
+        lower_half_space_node(&mut session, EntityId(5), Transform::identity()).expect("lowers");
+    let lowered = session.finish(node).expect("finishes");
+    let GeometryNode::SolidOperation(SolidOperation::BoundedHalfSpace {
+        half_space,
+        boundary,
+        placement,
+    }) = lowered.graph.get(lowered.root).expect("root")
+    else {
+        panic!("expected a BoundedHalfSpace operation");
+    };
+    assert_eq!(
+        placement.translation.to_array(),
+        [3.0, 4.0, 5.0],
+        "Position is independent of BaseSurface and must not be dropped"
+    );
+    assert!(matches!(
+        lowered.graph.get(*half_space),
+        Some(GeometryNode::HalfSpace(_))
+    ));
+    let Some(GeometryNode::Curve3(Curve3::Polyline(boundary_curve))) = lowered.graph.get(*boundary)
+    else {
+        panic!("expected a 2D polyline boundary");
+    };
+    assert_eq!(
+        boundary_curve.points.len(),
+        4,
+        "the authored square must keep all four corners"
+    );
+    assert_eq!(
+        boundary_curve.points[2].to_array(),
+        [1.0, 1.0, 0.0],
+        "boundary stays in the placement's own XY plane; z is not invented"
     );
 }
 
