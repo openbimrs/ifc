@@ -357,10 +357,13 @@ fn p_curve_conic_refuses_a_three_dimensional_placement() {
     assert_eq!(error.entity(), Some(EntityId(2)));
 }
 
-/// B-splines stay a named typed refusal: their knot vector would need an
-/// explicit parameter-domain contract this crate does not yet carry.
+/// A parameter-space B-spline keeps every authored value verbatim.
+///
+/// Knots are curve parameters, never lengths -- the 3D path already passes
+/// them through unscaled. Control points are `(u, v)` pairs, so the millimetre
+/// model must not rescale them either.
 #[test]
-fn p_curve_still_refuses_a_parameter_space_bspline() {
+fn p_curve_bspline_keeps_its_knots_and_control_points_in_parameter_space() {
     let mut model = Model::new();
     model.insert(EntityId(1), point(0.0, 0.0, 0.0));
     model.insert(
@@ -369,15 +372,58 @@ fn p_curve_still_refuses_a_parameter_space_bspline() {
     );
     model.insert(EntityId(3), entity("IFCPLANE", vec![r(2)]));
     model.insert(
+        EntityId(6),
+        entity("IFCCARTESIANPOINT", vec![Value::List(vec![n(1.5), n(2.5)])]),
+    );
+    model.insert(
+        EntityId(7),
+        entity("IFCCARTESIANPOINT", vec![Value::List(vec![n(3.5), n(4.5)])]),
+    );
+    let ints = |a: i64, b: i64| Value::List(vec![Value::Integer(a), Value::Integer(b)]);
+    model.insert(
         EntityId(4),
-        entity("IFCBSPLINECURVEWITHKNOTS", vec![Value::Integer(3)]),
+        entity(
+            "IFCBSPLINECURVEWITHKNOTS",
+            vec![
+                Value::Integer(1),
+                Value::List(vec![r(6), r(7)]),
+                Value::Enum("UNSPECIFIED".into()),
+                Value::Bool(false),
+                Value::Bool(false),
+                ints(2, 2),
+                Value::List(vec![n(0.0), n(1.0)]),
+                Value::Enum("UNSPECIFIED".into()),
+            ],
+        ),
     );
     model.insert(EntityId(5), entity("IFCPCURVE", vec![r(3), r(4)]));
 
     let scale = millimetres();
     let mut session = LoweringSession::new(&model, &scale);
-    let error = lower_curve_node(&mut session, EntityId(5), Transform::identity())
-        .expect_err("parameter-space B-splines are not yet represented");
-    assert!(error.is_unsupported());
-    assert_eq!(error.entity(), Some(EntityId(4)));
+    let root = lower_curve_node(&mut session, EntityId(5), Transform::identity()).expect("lowers");
+    let lowered = session.finish(root).expect("finishes");
+    let GeometryNode::CurveRelation(CurveRelation::ParameterCurve {
+        basis_surface: _,
+        reference_curve,
+    }) = lowered.graph.get(root).expect("root")
+    else {
+        panic!("expected parameter curve relation");
+    };
+    let Some(GeometryNode::Curve2(Curve2::BSpline(spline))) = lowered.graph.get(*reference_curve)
+    else {
+        panic!("expected parameter-space B-spline");
+    };
+    assert_eq!(spline.degree, 1);
+    assert_eq!(
+        spline.knots,
+        vec![0.0, 1.0],
+        "knots are curve parameters, never lengths"
+    );
+    assert_eq!(spline.multiplicities, vec![2, 2]);
+    assert_eq!(
+        spline.control_points[0].to_array(),
+        [1.5, 2.5],
+        "control points are (u, v), not model lengths"
+    );
+    assert_eq!(spline.control_points[1].to_array(), [3.5, 4.5]);
 }

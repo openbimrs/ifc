@@ -633,16 +633,43 @@ fn declared_variant_support_matches_runtime_behaviour() {
             )
         },
         {
-            // Refused: a parameter-space B-spline.
+            // Refused: a convention-only base spline has no authored knots.
             let mut m = plane_model();
-            m.insert(
-                EntityId(6),
-                ent("IFCBSPLINECURVEWITHKNOTS", vec![Value::Integer(3)]),
-            );
+            m.insert(EntityId(6), ent("IFCBSPLINECURVE", vec![Value::Integer(3)]));
             m.insert(EntityId(9), ent("IFCPCURVE", vec![rf(3), rf(6)]));
             (
                 "IFCPCURVE",
-                "reference curve is a B-spline, trimmed or composite curve",
+                "reference curve is a convention-only IfcBSplineCurve, or a \
+                 trimmed or composite curve",
+                m,
+            )
+        },
+        {
+            // Admitted: an explicit-knot spline in parameter space.
+            let mut m = plane_model();
+            m.insert(EntityId(6), pt(vec![1.5, 2.5]));
+            m.insert(EntityId(7), pt(vec![3.5, 4.5]));
+            m.insert(
+                EntityId(8),
+                ent(
+                    "IFCBSPLINECURVEWITHKNOTS",
+                    vec![
+                        Value::Integer(1),
+                        Value::List(vec![rf(6), rf(7)]),
+                        Value::Enum("UNSPECIFIED".into()),
+                        Value::Bool(false),
+                        Value::Bool(false),
+                        Value::List(vec![Value::Integer(2), Value::Integer(2)]),
+                        Value::List(vec![num(0.0), num(1.0)]),
+                        Value::Enum("UNSPECIFIED".into()),
+                    ],
+                ),
+            );
+            m.insert(EntityId(9), ent("IFCPCURVE", vec![rf(3), rf(8)]));
+            (
+                "IFCPCURVE",
+                "reference curve is an explicit-knot IfcBSplineCurveWithKnots \
+                 or IfcRationalBSplineCurveWithKnots",
                 m,
             )
         },

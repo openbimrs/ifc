@@ -460,4 +460,17 @@ fn parameter_space_conics_keep_authored_values_through_corpus_lowering() {
         }
         other => panic!("expected a parameter-space line, got {other:?}"),
     }
+
+    // #43: explicit-knot B-spline. Knots are curve parameters and control
+    // points are (u, v) pairs, so neither takes the millimetre length factor.
+    match reference_curve_of(EntityId(43)) {
+        GeometryNode::Curve2(Curve2::BSpline(spline)) => {
+            assert_eq!(spline.degree, 1);
+            assert_eq!(spline.knots, vec![0.0, 1.0]);
+            assert_eq!(spline.multiplicities, vec![2, 2]);
+            assert_eq!(spline.control_points[0].to_array(), [1.5, 2.5]);
+            assert_eq!(spline.control_points[1].to_array(), [3.5, 4.5]);
+        }
+        other => panic!("expected a parameter-space B-spline, got {other:?}"),
+    }
 }

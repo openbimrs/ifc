@@ -71,9 +71,11 @@ and check it off only after the proof runs.
     knot sequence is invented for a base spline.
   - Parameter space (`lower/curve/parameter_space.rs`): `IfcPCurve` reference
     curves admit `IfcPolyline`, line-only `IfcIndexedPolyCurve`, `IfcLine`,
-    `IfcCircle` and `IfcEllipse`, all read verbatim with no unit conversion.
-    Explicit-arc indexed polycurves, B-splines, trimmed and composite curves
-    stay typed refusals; see `GEOM-CURVE` for the remaining families.
+    `IfcCircle`, `IfcEllipse` and the explicit-knot `IfcBSplineCurveWithKnots`
+    / `IfcRationalBSplineCurveWithKnots`, all read verbatim with no unit
+    conversion. Convention-only `IfcBSplineCurve`, explicit-arc indexed
+    polycurves, trimmed and composite curves stay typed refusals; see
+    `GEOM-CURVE` for the remaining families.
   - Decision: `LOW-CONTRACT` was NOT a prerequisite. Direction normalization
     already lives in `resource::direction`, and this module deliberately does
     NOT normalize an `IfcVector` magnitude, which is parameterisation rather

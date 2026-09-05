@@ -16,6 +16,17 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `IfcPCurve` reference curves now also admit the explicit-knot
+  `IfcBSplineCurveWithKnots` and `IfcRationalBSplineCurveWithKnots` subtypes.
+  Knots are curve parameters, not lengths -- the 3D path already passes them
+  through unscaled -- and parameter-space control points are read as raw
+  `(u, v)` pairs, so no length factor applies to either. Convention-only
+  `IfcBSplineCurve` stays refused because it carries no authored knot vector,
+  and parameter-space trimmed and composite curves stay refused pending a trim
+  contract. The variant catalog and generated capability page were updated in
+  the same change; the `#27` runtime-checked gate caught the stale claim
+  automatically. Evidence: a unit test, a corpus fixture case, and a mutation
+  probe scaling the knots that the test catches.
 - Geometry interpretation now carries an aggregate-element budget.
   `SessionLimits::max_aggregate_elements` (default 16,777,216) bounds the
   file-declared aggregates that drive allocation: B-spline knot multiplicity

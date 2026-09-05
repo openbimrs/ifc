@@ -188,10 +188,21 @@ pub const PARTIAL: &[Variant] = &[
     },
     Variant {
         family: "IFCPCURVE",
-        variant: "reference curve is a B-spline, trimmed or composite curve",
+        variant: "reference curve is an explicit-knot IfcBSplineCurveWithKnots \
+                  or IfcRationalBSplineCurveWithKnots",
+        support: Support::Admitted,
+        rationale: "every field is dimensionless or a curve parameter; knots \
+                    already pass through the 3D path unscaled, and control \
+                    points are read as raw (u, v) pairs",
+    },
+    Variant {
+        family: "IFCPCURVE",
+        variant: "reference curve is a convention-only IfcBSplineCurve, or a \
+                  trimmed or composite curve",
         support: Support::Refused,
-        rationale: "knot vectors and trim parameters in a mixed-domain \
-                    parameter space have no defined dimensional contract yet",
+        rationale: "a base spline carries no authored knot vector to preserve, \
+                    and trim parameters in a mixed-domain parameter space have \
+                    no defined dimensional contract yet",
     },
     Variant {
         family: "IFCSURFACECURVE",

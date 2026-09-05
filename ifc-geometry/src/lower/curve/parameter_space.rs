@@ -18,14 +18,16 @@
 //! reader noticing which helper was called.
 
 use axiolid_core::{Frame2, Point2, Vec2};
-use axiolid_curve::{Circle2, Curve2, Ellipse2, Line2, Polyline2};
+use axiolid_curve::{BSplineCurve2, Circle2, Curve2, Ellipse2, Line2, Polyline2};
 use axiolid_model::{GeometryNode, NodeId};
 use ifc_model::EntityId;
 
+use crate::curve::bspline::BSplineCurve;
 use crate::curve::conic::{Circle, Ellipse};
 use crate::curve::line::Line;
 use crate::curve::polyline::{IndexedPolyCurve, Polyline};
 use crate::error::GeometryResult;
+use crate::lower::curve::{bspline_knot_spec, finite_values};
 use crate::lower::session::LoweringSession;
 use crate::resource::direction::resolve_unit;
 use crate::resource::placement::Axis2Placement2D;
@@ -60,11 +62,15 @@ pub(super) fn parameter_reference_curve(
         "IFCLINE" => parameter_space_line(session, owner, id),
         "IFCCIRCLE" => parameter_space_circle(session, owner, id),
         "IFCELLIPSE" => parameter_space_ellipse(session, owner, id),
+        "IFCBSPLINECURVEWITHKNOTS" | "IFCRATIONALBSPLINECURVEWITHKNOTS" => {
+            parameter_space_bspline(session, owner, id)
+        }
         _ => Err(session.unsupported(
             id,
             &type_name,
             "parameter-space curve family (only exact IfcPolyline, line-only \
-             IfcIndexedPolyCurve, IfcLine, IfcCircle and IfcEllipse are currently supported)",
+             IfcIndexedPolyCurve, IfcLine, IfcCircle, IfcEllipse and \
+             explicit-knot B-splines are supported)",
         )),
     }
 }
@@ -310,6 +316,60 @@ fn parameter_space_points(
         points.push(parameter_space_point(session, owner, point_ref)?);
     }
     Ok(points)
+}
+
+/// Explicit-knot B-spline in parameter space.
+fn parameter_space_bspline(
+    session: &mut LoweringSession<'_>,
+    owner: EntityId,
+    id: EntityId,
+) -> GeometryResult<NodeId> {
+    let type_name = session.type_name(id)?;
+    let entity = session.entity(owner, id)?;
+    let view = BSplineCurve::new(id, entity);
+    let degree = u16::try_from(view.degree()?)
+        .map_err(|_| session.degenerate(id, &type_name, "Degree exceeds u16"))?;
+    let knots = view.knots()?.ok_or_else(|| {
+        session.unsupported(id, &type_name, "explicit knots required in parameter space")
+    })?;
+    finite_values(session, id, &type_name, "Knots", &knots.values)?;
+    let declared: u128 = knots.multiplicities.iter().map(|m| *m as u128).sum();
+    session.check_aggregate(id, &type_name, "knot multiplicities", declared)?;
+    let multiplicities = knots
+        .multiplicities
+        .into_iter()
+        .map(|value| {
+            u32::try_from(value)
+                .map_err(|_| session.degenerate(id, &type_name, "multiplicity exceeds u32"))
+        })
+        .collect::<GeometryResult<Vec<_>>>()?;
+
+    let refs = view.control_point_refs()?;
+    let control_points = parameter_space_points(session, owner, &refs)?;
+    let weights = view.weights()?;
+    if let Some(values) = weights.as_deref() {
+        finite_values(session, id, &type_name, "WeightsData", values)?;
+    }
+    let closed = view.closed_curve().ok_or_else(|| {
+        session.unsupported(
+            id,
+            &type_name,
+            "unknown ClosedCurve is not lossless in bool",
+        )
+    })?;
+    session.node_for(
+        id,
+        GeometryNode::Curve2(Curve2::BSpline(BSplineCurve2 {
+            degree,
+            control_points,
+            knots: knots.values,
+            multiplicities,
+            weights,
+            closed,
+            self_intersect: view.self_intersect(),
+            knot_spec: bspline_knot_spec(view.knot_spec()),
+        })),
+    )
 }
 
 #[cfg(test)]
