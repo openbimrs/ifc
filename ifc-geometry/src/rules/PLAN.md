@@ -9,14 +9,22 @@ and check it off only after the proof runs.
 ## Work queue
 
 - [ ] `RULE-REG` - inventory all relevant WHERE rules and support state
+  - Audited (2026-09-05): placement and solid rules are implemented and
+    tested, but there is no executable rule inventory - no data file lists the
+    schema's WHERE rules with a support state, so coverage cannot be proven
+    the way `declaration_manifest.rs` proves declaration coverage.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
-- [ ] `RULE-PLACE` - placement/direction dimensional rules
+- [x] `RULE-PLACE` - placement/direction dimensional rules
+  - Audited (2026-09-05): Placement and direction dimensional rules are implemented and tested.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
-- [ ] `RULE-SOLID` - swept/boolean/half-space rules
+- [x] `RULE-SOLID` - swept/boolean/half-space rules
+  - Audited (2026-09-05): Swept, boolean and half-space rules are implemented and tested.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
-- [ ] `RULE-PROP` - pair every violation test with a conforming edge case
+- [x] `RULE-PROP` - pair every violation test with a conforming edge case
+  - Audited (2026-09-05): Each violation test is paired with a conforming edge case.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
-- [ ] `RULE-REPORT` - unsupported vs failed vs passed are distinct
+- [x] `RULE-REPORT` - unsupported vs failed vs passed are distinct
+  - Audited (2026-09-05): Unsupported, failed and passed are distinct variants and asserted as such.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
 
 ## Completion log

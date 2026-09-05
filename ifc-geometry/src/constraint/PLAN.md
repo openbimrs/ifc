@@ -8,13 +8,19 @@ and check it off only after the proof runs.
 
 ## Work queue
 
-- [ ] `CON-LOCAL` - placement links and relative-chain rules
+- [x] `CON-LOCAL` - placement links and relative-chain rules
+  - Audited (2026-09-05): Placement links and relative-chain rules are implemented with cycle-safe resolution.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
 - [ ] `CON-GRID` - axes/intersections and dimensional checks
+  - Audited (2026-09-05): grid axes and intersections are implemented and
+    tested; the dimensional checks named in this task are not. No
+    `DimensionCount`-style validation exists in `constraint/grid.rs`.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
-- [ ] `CON-CONNECT` - connection geometry select coverage
+- [x] `CON-CONNECT` - connection geometry select coverage
+  - Audited (2026-09-05): Connection-geometry select coverage is implemented and tested.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
-- [ ] `CON-CYCLE` - adversarial cycles/depth budgets in resolver tests
+- [x] `CON-CYCLE` - adversarial cycles/depth budgets in resolver tests
+  - Audited (2026-09-05): Adversarial cycle and depth-budget cases are covered in resolver tests.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
 
 ## Completion log

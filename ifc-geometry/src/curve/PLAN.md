@@ -8,15 +8,20 @@ and check it off only after the proof runs.
 
 ## Work queue
 
-- [ ] `CURVE-SLOTS` - verify inherited slots for every curve subtype
+- [x] `CURVE-SLOTS` - verify inherited slots for every curve subtype
+  - Audited (2026-09-05): Inherited slots verified per curve subtype with focused tests.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
-- [ ] `CURVE-TRIM` - cover point/parameter trims, preference, sense, closed curves
+- [x] `CURVE-TRIM` - cover point/parameter trims, preference, sense, closed curves
+  - Audited (2026-09-05): Point/parameter trims, preference, sense and closed curves are covered by trimmed.rs tests.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
-- [ ] `CURVE-COMP` - continuity/transition and same-sense semantics
+- [x] `CURVE-COMP` - continuity/transition and same-sense semantics
+  - Audited (2026-09-05): Continuity/transition and same-sense semantics are read and tested in composite.rs.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
-- [ ] `CURVE-BSPLINE` - knots/weights/multiplicity/degree validation
+- [x] `CURVE-BSPLINE` - knots/weights/multiplicity/degree validation
+  - Audited (2026-09-05): Knots, weights, multiplicity and degree are validated with typed errors in bspline.rs.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
-- [ ] `CURVE-LOWER-SEAM` - expose complete views needed by lower/curve.rs
+- [x] `CURVE-LOWER-SEAM` - expose complete views needed by lower/curve.rs
+  - Audited (2026-09-05): lower/curve.rs consumes the curve views directly; no competing reader remains.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
 
 ## Completion log

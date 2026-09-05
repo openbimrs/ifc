@@ -8,9 +8,15 @@ and check it off only after the proof runs.
 
 ## Work queue
 
-- [ ] `SEL-MANIFEST` - regenerate/check subtype table against authoritative schema
+- [x] `SEL-MANIFEST` - regenerate/check subtype table against authoritative schema
+  - Audited (2026-09-05): tests/schema_coverage.rs checks the subtype table against the generated inventory and fails on drift.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
 - [ ] `SEL-POSNEG` - pair every family with valid and invalid membership tests
+  - Audited (2026-09-05): five select families are paired valid/invalid
+    (`BooleanOperand`, `SolidOrShell`, `Axis2Placement`, `TrimmingSelect`,
+    `VectorOrDirection`). Four declare and resolve but have no focused
+    membership tests: `CsgSelect`, `CurveOrEdgeCurve`, `SurfaceOrFaceSurface`,
+    `PointOrVertexPoint`.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
 - [ ] `SEL-VERS` - make schema-version identity explicit before IFC4x3 support
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.

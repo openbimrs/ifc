@@ -107,7 +107,12 @@ and check it off only after the proof runs.
     forbids a derived profile whose parent is itself, and a stack overflow is
     a crash a consumer cannot catch.
 
-- [ ] `LOW-EXACT` - exact profile/surface node construction
+- [x] `LOW-EXACT` - exact profile/surface node construction
+  - Audited (2026-09-05): all three thirds are done (curve via `LOW-CURVE`,
+    profiles via `lower::profile`, surfaces below), and every declared
+    prerequisite is now complete: `LOW-CONTRACT` [x], `INPUT-PROFILE` [x]
+    (resolved by ownership in #25), `INPUT-MAT` [x]. The box was held open
+    only by stale cross-file prerequisite state.
   - Requires: `LOW-CONTRACT`, `INPUT-PROFILE`, `INPUT-MAT`.
   - Scope note: the curve third is done, see `LOW-CURVE`. Profiles already
     lower via `lower::profile`. The SURFACE third is now done too (below);

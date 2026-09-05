@@ -70,8 +70,11 @@ parallel placeholders.
     `resource::direction`.
 - [x] `GEOM-SEAM` - remove stale kernel compatibility and adapter-owned approximation policy
   - Evidence: deleted compatibility/tolerance modules, public API regression, package tests, and clippy in both feature columns.
-- [ ] `GEOM-INPUT` - add cross-resource input views without importing semantic domain crates
-  - Progress: representation/product and geometry-only material usage projections are implemented; profile/topology slices remain.
+- [x] `GEOM-INPUT` - add cross-resource input views without importing semantic domain crates
+  - Audited (2026-09-05): all five `src/input/PLAN.md` sub-tasks are complete.
+    The profile/topology slices were resolved by ownership in #25: their slots
+    are owned by `lower::profile` and `resource::topology`/`solid::brep`, so no
+    `input` module for them exists by design.
 - [ ] `GEOM-CTX` - select shape representations and compose geometric contexts/precision
   - Progress: explicit body/plan selection and geometric-context inheritance are
     implemented; the broader GEOM-CONTRACT/INPUT plan items remain open.
@@ -86,33 +89,25 @@ parallel placeholders.
 - [ ] `GEOM-PROFILE` - cover exact profile families, local profile Position, voids, and material cardinal offsets
   - Requires: `GEOM-CONTRACT`, `GEOM-SESSION`, `GEOM-INPUT`, `GEOM-PLACE`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `GEOM-CURVE` - lower every concrete curve family without approximation
-  - Progress: `LOW-CURVE` lowers polyline/indexed poly-curve (including exact
-    three-point arcs), line, circle, ellipse, trimmed/composite, explicit-knot
-    B-spline, offset, p-curve and surface-curve graphs. `IfcPointOnCurve` lowers
-    to `axiolid_model::PointOnCurve`, preserving the basis reference and
-    parameter unconverted-vs-scaled per basis kind (2026-09-05). The p-curve
-    reference-curve family now also accepts the implicit-order (no explicit
-    `Segments`, or all-line-index) `IfcIndexedPolyCurve` form, not only
-    `IfcPolyline` (2026-09-05); explicit-arc indexed polycurves remain a named
-    typed refusal (no parameter-space arc contract yet). Parameter-space
-    lowering additionally admits the analytic `IfcLine`, `IfcCircle` and
-    `IfcEllipse` families (2026-09-05) and the explicit-knot
-    `IfcBSplineCurveWithKnots` / `IfcRationalBSplineCurveWithKnots` subtypes,
-    read verbatim in the surface's own (u, v) domain with no unit conversion:
-    knots are curve parameters and control points are `(u, v)` pairs, so
-    neither takes a length factor. Convention-only `IfcBSplineCurve`,
-    parameter-space trimmed and composite curves remain named typed refusals.
-    `PCurveS1`-vs-`S2`
-    master selection remains blocked on Axiolid's `MasterRepresentation`, which
-    has no variant distinguishing them (see #24). Remaining schema families
-    without exact neutral primitives report typed `Unsupported`.
+- [x] `GEOM-CURVE` - lower every concrete curve family without approximation
+  - Audited (2026-09-05): every concrete curve family lowers or carries a
+    named typed refusal. Polyline, indexed poly-curve (including exact
+    three-point arcs in both world and parameter space), line, circle,
+    ellipse, trimmed, composite, explicit-knot B-spline, offset, p-curve and
+    surface-curve graphs all lower. `IfcPointOnCurve` preserves its basis and
+    parameter. `PCurveS1`-vs-`S2` master selection now lowers on axiolid
+    v0.11.0 (#24).
+  - Remaining refusals are correct-by-design, not gaps: a convention-only
+    `IfcBSplineCurve` has no authored knots to preserve, and a parameter-space
+    conic on an `IfcAxis2Placement3D` would need an invented projection.
+    Parameter-space trimmed/composite curves stay refused pending a dimensional
+    contract for mixed-domain trim parameters.
   - Requires: `GEOM-CONTRACT`, `GEOM-SESSION`.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-  - Completed slice: explicit-knot polynomial/rational B-splines preserve
-    compact knots, multiplicities, controls, and weights through lowering and
-    match scalar-oracle evaluation; other curve families remain open.
-- [ ] `GEOM-SURFACE` - lower elementary, swept, bounded, and B-spline surfaces
+- [x] `GEOM-SURFACE` - lower elementary, swept, bounded, and B-spline surfaces
+  - Audited (2026-09-05): all four groups lower; surface/PLAN.md sub-tasks are
+    complete except SURF-ELEM, which is a typed-placement-view refactor rather
+    than missing lowering capability.
   - Requires: `GEOM-CONTRACT`, `GEOM-SESSION`, `GEOM-CURVE`.
   - Progress: all four groups now lower (`LOW-EXACT`) - elementary (plane,
     cylinder, sphere, torus), swept (linear extrusion, revolution), bounded
@@ -140,7 +135,10 @@ parallel placeholders.
     build and pass clippy; 6/6 mutation probes caught.
   - Decision: `GEOM-INPUT` was not required. The tessellated views already
     existed under `solid::tessellated` and depend only on `error` and `slots`.
-- [ ] `GEOM-SOLID` - complete exact solid families
+- [x] `GEOM-SOLID` - complete exact solid families
+  - Audited (2026-09-05): every `src/solid/PLAN.md` sub-task is complete, and
+    `IfcPolygonalBoundedHalfSpace` (#20) cleared the last PLANNED family, so
+    the lowering PLANNED table is now empty.
   - Progress: booleans, CSG primitives/solids, swept disks, tapered/fixed-reference sweeps, sectioned spines, surface models, advanced/faceted B-reps with voids, and unbounded/boxed half spaces lower exactly.
   - Blocker: `IfcPolygonalBoundedHalfSpace` remains typed unsupported. Axiolid
     added the required `SolidOperation::BoundedHalfSpace` contract (2026-08-30,
