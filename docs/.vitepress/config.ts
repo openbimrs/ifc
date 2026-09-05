@@ -119,6 +119,7 @@ export default defineConfig({
             { text: 'Overview', link: '/' },
             { text: 'Getting started', link: '/guide/getting-started' },
             { text: 'Capabilities', link: '/capabilities' },
+            { text: 'Schema looseness', link: '/schema-looseness' },
             { text: 'Use cases', link: '/use-cases/' },
           ],
         },

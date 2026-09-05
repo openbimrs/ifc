@@ -15,6 +15,12 @@ This page is synchronised from it at build time.
 
 ## [Unreleased]
 
+### Added
+- `docs/schema-looseness.md` documents refusals caused by the IFC schema
+  permitting a combination the geometry cannot honour, separating them from
+  unimplemented features. Covers the parameter-space conic on a 3D placement
+  and the surface curve whose master names an absent side.
+
 ### Fixed
 - The docs site rendered generated inline HTML as literal text: status badges
   appeared as `<span class="status-implemented">Implemented</span>` and the

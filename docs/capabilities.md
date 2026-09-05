@@ -278,6 +278,11 @@ the `PARTIAL` catalog in `ifc-geometry/src/lower/dispatch.rs`, and
 `tests/lower_dispatch_corpus.rs` drives the real lowering path for every row --
 so a wrong disposition here fails CI rather than merely misinforming a reader.
 
+Some of these refusals exist because the schema permits a combination the
+geometry cannot honour, rather than because the feature is unimplemented.
+Those are listed with their reasoning in
+[Schema looseness](/schema-looseness).
+
 <!-- CAPABILITIES:VARIANT:BEGIN -->
 
 | Family | Variant | Status | Rationale |
