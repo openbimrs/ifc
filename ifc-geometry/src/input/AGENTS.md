@@ -21,7 +21,9 @@ work under parent task(s) `GEOM-INPUT`. Record progress there.
 
 ## Growth map
 
-`profile.rs`, `representation.rs`, `material_usage.rs`, `product.rs`, `topology.rs`. These source owners already compile as private scaffold modules. Replace a module's planned-owner marker with its first real contract and tests; do not add parallel placeholders.
+`representation.rs`, `material_usage.rs`, `product.rs`. These source owners already compile as private scaffold modules. Replace a module's planned-owner marker with its first real contract and tests; do not add parallel placeholders.
+
+Profile and B-rep topology slot decoding are deliberately **not** owned here: `lower::profile` owns profile families, and `resource::topology` with `solid::brep` own B-rep topology. Adding an `input` module for either would create a competing reader of the same slots.
 
 Every source entity error cites EntityId/type/slot or rule. Add invalid, cycle,
 and unsupported cases, not only happy paths.

@@ -29,9 +29,7 @@ ifc-classification/src/library/reference.rs
 ifc-classification/src/query/hierarchy.rs
 ifc-geometry/src/input/material_usage.rs
 ifc-geometry/src/input/product.rs
-ifc-geometry/src/input/profile.rs
 ifc-geometry/src/input/representation.rs
-ifc-geometry/src/input/topology.rs
 ifc-geometry/src/lower/boolean.rs
 ifc-geometry/src/lower/brep.rs
 ifc-geometry/src/lower/context.rs

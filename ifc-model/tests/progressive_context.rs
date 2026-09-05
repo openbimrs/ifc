@@ -304,8 +304,14 @@ fn required_scaffold_capability_seams_are_preserved() {
         .map(str::trim)
         .filter(|line| !line.is_empty() && !line.starts_with('#'))
         .collect();
+    // Ratchet, not a constant: it may only be lowered when a seam is removed
+    // deliberately and the reason is recorded. Lowered 187 -> 185 on
+    // 2026-09-05 when `input::profile` and `input::topology` were deleted;
+    // both were doc-only placeholders whose slots are owned by
+    // `lower::profile` and `resource::topology`/`solid::brep` respectively, so
+    // keeping them would have mandated a second reader of the same slots.
     assert!(
-        required.len() >= 187,
+        required.len() >= 185,
         "the explicit capability baseline must not shrink silently"
     );
 
