@@ -206,20 +206,20 @@ pub const PARTIAL: &[Variant] = &[
     },
     Variant {
         family: "IFCSURFACECURVE",
-        variant: "MasterRepresentation is Curve3D, or is PCurveS1 with exactly \
-                  one associated p-curve",
+        variant: "MasterRepresentation is Curve3D, PCurveS1, or PCurveS2 with \
+                  the named side present",
         support: Support::Admitted,
-        rationale: "the master is unambiguous, so the neutral \
-                    MasterRepresentation can name it exactly",
+        rationale: "each side pairs a surface with its own p-curve, so the \
+                    neutral MasterRepresentation names S1 and S2 exactly",
     },
     Variant {
         family: "IFCSURFACECURVE",
-        variant: "MasterRepresentation is PCurveS1 or PCurveS2 with two \
-                  associated p-curves",
+        variant: "MasterRepresentation is PCurveS2 with only one associated \
+                  p-curve",
         support: Support::Refused,
-        rationale: "Axiolid's MasterRepresentation has no variant \
-                    distinguishing S1 from S2; picking either would be a guess \
-                    (see openbimrs/ifc#24)",
+        rationale: "the master names a parametric side the curve does not \
+                    have; the schema calls this inconsistent, so it is \
+                    refused rather than resolved to the remaining p-curve",
     },
     Variant {
         family: "IFCINDEXEDPOLYCURVE",

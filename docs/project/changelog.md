@@ -16,6 +16,13 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `IfcSurfaceCurve` now lowers when `MasterRepresentation` names `PCURVE_S2`,
+  and each associated p-curve is paired with the surface it lies on rather
+  than kept in a flat list. `PCURVE_S1`/`PCURVE_S2` are positional slots, so
+  with an unordered list neither could be named without guessing, and the
+  case was refused outright. Axiolid v0.10.0 records the pairing, so the
+  neutral master names S1 and S2 exactly. A file naming `PCURVE_S2` with only
+  one p-curve names a side that does not exist and is refused as degenerate.
 - `IfcPCurve` reference curves now also admit the explicit-knot
   `IfcBSplineCurveWithKnots` and `IfcRationalBSplineCurveWithKnots` subtypes.
   Knots are curve parameters, not lengths -- the 3D path already passes them

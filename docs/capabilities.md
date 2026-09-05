@@ -27,7 +27,7 @@ code.
 
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `ifc-geometry` | 27,557 | 94 | 5 | 32 | <span class="status-partial">Partial</span> |
+| `ifc-geometry` | 27,693 | 94 | 5 | 32 | <span class="status-partial">Partial</span> |
 | `ifc-structural` | 3,397 | 33 | 14 | 12 | <span class="status-implemented">Implemented</span> |
 | `ifc-style` | 3,322 | 31 | 0 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 3,119 | 30 | 14 | 3 | <span class="status-implemented">Implemented</span> |
@@ -291,8 +291,8 @@ so a wrong disposition here fails CI rather than merely misinforming a reader.
 | `IfcPcurve` | reference curve is an IfcIndexedPolyCurve with an explicit IfcArcIndex segment | <span class="status-partial">Refused</span> | no exact parameter-space arc contract exists; flattening the arc to a chord would silently change the curve |
 | `IfcPcurve` | reference curve is an explicit-knot IfcBSplineCurveWithKnots or IfcRationalBSplineCurveWithKnots | <span class="status-implemented">Admitted</span> | every field is dimensionless or a curve parameter; knots already pass through the 3D path unscaled, and control points are read as raw (u, v) pairs |
 | `IfcPcurve` | reference curve is a convention-only IfcBSplineCurve, or a trimmed or composite curve | <span class="status-partial">Refused</span> | a base spline carries no authored knot vector to preserve, and trim parameters in a mixed-domain parameter space have no defined dimensional contract yet |
-| `IfcSurfaceCurve` | MasterRepresentation is Curve3D, or is PCurveS1 with exactly one associated p-curve | <span class="status-implemented">Admitted</span> | the master is unambiguous, so the neutral MasterRepresentation can name it exactly |
-| `IfcSurfaceCurve` | MasterRepresentation is PCurveS1 or PCurveS2 with two associated p-curves | <span class="status-partial">Refused</span> | Axiolid's MasterRepresentation has no variant distinguishing S1 from S2; picking either would be a guess (see openbimrs/ifc#24) |
+| `IfcSurfaceCurve` | MasterRepresentation is Curve3D, PCurveS1, or PCurveS2 with the named side present | <span class="status-implemented">Admitted</span> | each side pairs a surface with its own p-curve, so the neutral MasterRepresentation names S1 and S2 exactly |
+| `IfcSurfaceCurve` | MasterRepresentation is PCurveS2 with only one associated p-curve | <span class="status-partial">Refused</span> | the master names a parametric side the curve does not have; the schema calls this inconsistent, so it is refused rather than resolved to the remaining p-curve |
 
 <!-- CAPABILITIES:VARIANT:END -->
 

@@ -40,15 +40,15 @@ openbim-step = "=0.4.0"
 
 # Format-neutral geometry contracts. IFC bridges select representations, never
 # concrete CPU/GPU execution providers.
-axiolid-core = { git = "https://github.com/axiolid/kernel.git", rev = "c144808d76ebf653b2183d6895192514d1838bfd" }
-axiolid-mesh = { git = "https://github.com/axiolid/kernel.git", rev = "c144808d76ebf653b2183d6895192514d1838bfd" }
-axiolid-model = { git = "https://github.com/axiolid/kernel.git", rev = "c144808d76ebf653b2183d6895192514d1838bfd" }
-axiolid-primitive = { git = "https://github.com/axiolid/kernel.git", rev = "c144808d76ebf653b2183d6895192514d1838bfd" }
-axiolid-profile = { git = "https://github.com/axiolid/kernel.git", rev = "c144808d76ebf653b2183d6895192514d1838bfd" }
-axiolid-surface = { git = "https://github.com/axiolid/kernel.git", rev = "c144808d76ebf653b2183d6895192514d1838bfd" }
-axiolid-reference = { git = "https://github.com/axiolid/kernel.git", rev = "c144808d76ebf653b2183d6895192514d1838bfd" }
-axiolid-curve = { git = "https://github.com/axiolid/kernel.git", rev = "c144808d76ebf653b2183d6895192514d1838bfd" }
-axiolid-topology = { git = "https://github.com/axiolid/kernel.git", rev = "c144808d76ebf653b2183d6895192514d1838bfd" }
+axiolid-core = { git = "https://github.com/axiolid/kernel.git", tag = "v0.10.0" }
+axiolid-mesh = { git = "https://github.com/axiolid/kernel.git", tag = "v0.10.0" }
+axiolid-model = { git = "https://github.com/axiolid/kernel.git", tag = "v0.10.0" }
+axiolid-primitive = { git = "https://github.com/axiolid/kernel.git", tag = "v0.10.0" }
+axiolid-profile = { git = "https://github.com/axiolid/kernel.git", tag = "v0.10.0" }
+axiolid-surface = { git = "https://github.com/axiolid/kernel.git", tag = "v0.10.0" }
+axiolid-reference = { git = "https://github.com/axiolid/kernel.git", tag = "v0.10.0" }
+axiolid-curve = { git = "https://github.com/axiolid/kernel.git", tag = "v0.10.0" }
+axiolid-topology = { git = "https://github.com/axiolid/kernel.git", tag = "v0.10.0" }
 
 ahash = "0.8"
 thiserror = "2.0"

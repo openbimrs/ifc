@@ -29,8 +29,8 @@
 use axiolid_core::{Frame3, Point3, Vec3};
 use axiolid_curve::{BSplineCurve3, Circle3, Curve3, Ellipse3, KnotSpec, Line3, Polyline3};
 use axiolid_model::{
-    CurveRelation, CurveSegment, GeometryNode, MasterRepresentation, NodeId, Transition,
-    TrimSelector, TrimmingPreference as KernelPreference,
+    CurveRelation, CurveSegment, GeometryNode, MasterRepresentation, NodeId, SurfaceSides,
+    Transition, TrimSelector, TrimmingPreference as KernelPreference,
 };
 use ifc_model::EntityId;
 
@@ -387,31 +387,48 @@ fn surface_curve(
     let pcurve_refs = view.associated_pcurve_refs()?;
     let preferred = view.master_representation();
 
+    // The neutral master names a SIDE, and a side is a (surface, p-curve)
+    // pair, so PCURVE_S2 is only meaningful when a second side exists. A file
+    // naming it with one p-curve is inconsistent per the schema rather than
+    // merely unsupported, so it is refused as degenerate.
     let master = match preferred {
         PreferredSurfaceCurveRepresentation::Curve3D => MasterRepresentation::Curve3d,
-        PreferredSurfaceCurveRepresentation::PCurveS1 if pcurve_refs.len() == 1 => {
-            MasterRepresentation::ParameterCurve
+        PreferredSurfaceCurveRepresentation::PCurveS1 => MasterRepresentation::ParameterCurveS1,
+        PreferredSurfaceCurveRepresentation::PCurveS2 if pcurve_refs.len() == 2 => {
+            MasterRepresentation::ParameterCurveS2
         }
-        PreferredSurfaceCurveRepresentation::PCurveS1
-        | PreferredSurfaceCurveRepresentation::PCurveS2 => {
-            return Err(session.unsupported(
+        PreferredSurfaceCurveRepresentation::PCurveS2 => {
+            return Err(session.degenerate(
                 id,
                 &session.type_name(id)?,
-                "neutral surface-curve master cannot distinguish p-curve S1 from S2",
+                "MasterRepresentation names PCURVE_S2 but AssociatedGeometry holds \
+                 one p-curve, so the named side does not exist",
             ));
         }
     };
 
     let curve_3d = lower_curve_node(session, curve_3d_ref, frame)?;
-    let mut associated_geometry = Vec::with_capacity(pcurve_refs.len());
+    // Each side pairs the surface with this curve's image in that surface's
+    // own parameter domain. The pairing comes from the IfcPcurve itself, so
+    // it is read rather than inferred from list order alone.
+    let mut sides = Vec::with_capacity(pcurve_refs.len());
     for pcurve_ref in pcurve_refs {
-        associated_geometry.push(parameter_curve(session, pcurve_ref, frame)?);
+        let basis_ref =
+            PCurve::new(pcurve_ref, session.entity(id, pcurve_ref)?).basis_surface_ref()?;
+        let surface = lower_surface_node(session, basis_ref, frame)?;
+        let pcurve = parameter_curve(session, pcurve_ref, frame)?;
+        sides.push((surface, pcurve));
     }
+    let sides = match sides.as_slice() {
+        [(s1, p1)] => SurfaceSides::one(*s1, *p1),
+        [(s1, p1), (s2, p2)] => SurfaceSides::two(*s1, *p1, *s2, *p2),
+        _ => unreachable!("associated_pcurve_refs already bounds the list to 1 or 2"),
+    };
     session.node_for(
         id,
         GeometryNode::CurveRelation(CurveRelation::SurfaceCurve {
             curve_3d,
-            associated_geometry,
+            sides,
             master,
         }),
     )

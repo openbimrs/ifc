@@ -303,16 +303,25 @@ fn offset_intersection_and_seam_curve_semantics_survive_corpus_lowering() {
     for kind in ["IFCINTERSECTIONCURVE", "IFCSEAMCURVE"] {
         let lowered = lower_item(&model, only(&model, kind));
         match lowered.graph.get(lowered.root).expect("surface-curve root") {
-            GeometryNode::CurveRelation(CurveRelation::SurfaceCurve {
-                associated_geometry,
-                master,
-                ..
-            }) => {
-                assert_eq!(
-                    associated_geometry.len(),
-                    2,
-                    "{kind}: both p-curves survive"
+            GeometryNode::CurveRelation(CurveRelation::SurfaceCurve { sides, master, .. }) => {
+                // Both sides survive AND each names its own surface, which is
+                // what makes S1/S2 resolvable without re-inverting a surface.
+                assert!(
+                    sides.is_two_sided(),
+                    "{kind}: both parametric sides survive"
                 );
+                // Each side records the surface its p-curve lies on. This
+                // fixture's two p-curves happen to share one surface, which
+                // is legal, so the pairing is asserted rather than assuming
+                // the surfaces differ.
+                let (s1, _p1) = sides.first();
+                let (s2, _p2) = sides.second().expect("two-sided");
+                for (side, surface) in [("first", s1), ("second", s2)] {
+                    assert!(
+                        matches!(lowered.graph.get(surface), Some(GeometryNode::Surface(_))),
+                        "{kind}: the {side} side must name a surface node"
+                    );
+                }
                 assert_eq!(*master, MasterRepresentation::Curve3d);
             }
             other => panic!("{kind}: expected surface-curve relation, got {other:?}"),

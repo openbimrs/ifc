@@ -384,7 +384,7 @@ fn surface_curve_keeps_master_and_raw_parameter_coordinates() {
     let lowered = session.finish(root).expect("finishes");
     let GeometryNode::CurveRelation(CurveRelation::SurfaceCurve {
         curve_3d,
-        associated_geometry,
+        sides,
         master,
     }) = lowered.graph.get(root).expect("root")
     else {
@@ -398,7 +398,7 @@ fn surface_curve_keeps_master_and_raw_parameter_coordinates() {
     let GeometryNode::CurveRelation(CurveRelation::ParameterCurve {
         basis_surface: _,
         reference_curve,
-    }) = lowered.graph.get(associated_geometry[0]).expect("pcurve")
+    }) = lowered.graph.get(sides.first().1).expect("pcurve")
     else {
         panic!("expected parameter curve relation");
     };
@@ -532,4 +532,123 @@ fn indexed_arc_rejects_finite_points_when_derived_circle_values_overflow() {
         lower_curve_node(&mut session, EntityId(2), Transform::identity()),
         Err(crate::error::GeometryError::Degenerate { .. })
     ));
+}
+
+/// `PCURVE_S2` names the second parametric side and now lowers.
+///
+/// This was refused outright: the neutral master could not distinguish S1
+/// from S2, so picking either would have been a guess. With each side
+/// pairing a surface to its own p-curve, the master names the second side
+/// exactly.
+#[test]
+fn surface_curve_master_can_name_the_second_pcurve() {
+    let mut model = Model::new();
+    model.insert(EntityId(1), point(0.0, 0.0, 0.0));
+    model.insert(
+        EntityId(2),
+        entity("IFCAXIS2PLACEMENT3D", vec![r(1), Value::Null, Value::Null]),
+    );
+    model.insert(EntityId(3), entity("IFCPLANE", vec![r(2)]));
+    model.insert(
+        EntityId(4),
+        entity("IFCCARTESIANPOINT", vec![Value::List(vec![n(0.0), n(0.0)])]),
+    );
+    model.insert(
+        EntityId(5),
+        entity("IFCCARTESIANPOINT", vec![Value::List(vec![n(1.5), n(2.0)])]),
+    );
+    model.insert(
+        EntityId(6),
+        entity("IFCPOLYLINE", vec![Value::List(vec![r(4), r(5)])]),
+    );
+    model.insert(EntityId(7), entity("IFCPCURVE", vec![r(3), r(6)]));
+    model.insert(EntityId(12), entity("IFCPCURVE", vec![r(3), r(6)]));
+    model.insert(
+        EntityId(8),
+        entity(
+            "IFCDIRECTION",
+            vec![Value::List(vec![n(1.0), n(0.0), n(0.0)])],
+        ),
+    );
+    model.insert(EntityId(9), entity("IFCVECTOR", vec![r(8), n(1000.0)]));
+    model.insert(EntityId(10), entity("IFCLINE", vec![r(1), r(9)]));
+    model.insert(
+        EntityId(11),
+        entity(
+            "IFCSURFACECURVE",
+            vec![
+                r(10),
+                Value::List(vec![r(7), r(12)]),
+                Value::Enum("PCURVE_S2".into()),
+            ],
+        ),
+    );
+
+    let scale = millimetres();
+    let mut session = LoweringSession::new(&model, &scale);
+    let root = lower_curve_node(&mut session, EntityId(11), Transform::identity())
+        .expect("PCURVE_S2 with two p-curves lowers");
+    let lowered = session.finish(root).expect("finishes");
+    let GeometryNode::CurveRelation(CurveRelation::SurfaceCurve { sides, master, .. }) =
+        lowered.graph.get(root).expect("root")
+    else {
+        panic!("expected surface curve relation");
+    };
+    assert_eq!(*master, MasterRepresentation::ParameterCurveS2);
+    assert!(sides.is_two_sided(), "both parametric sides are recorded");
+}
+
+/// `PCURVE_S2` with only one p-curve names a side that does not exist.
+#[test]
+fn surface_curve_master_naming_a_missing_side_is_refused() {
+    let mut model = Model::new();
+    model.insert(EntityId(1), point(0.0, 0.0, 0.0));
+    model.insert(
+        EntityId(2),
+        entity("IFCAXIS2PLACEMENT3D", vec![r(1), Value::Null, Value::Null]),
+    );
+    model.insert(EntityId(3), entity("IFCPLANE", vec![r(2)]));
+    model.insert(
+        EntityId(4),
+        entity("IFCCARTESIANPOINT", vec![Value::List(vec![n(0.0), n(0.0)])]),
+    );
+    model.insert(
+        EntityId(5),
+        entity("IFCCARTESIANPOINT", vec![Value::List(vec![n(1.5), n(2.0)])]),
+    );
+    model.insert(
+        EntityId(6),
+        entity("IFCPOLYLINE", vec![Value::List(vec![r(4), r(5)])]),
+    );
+    model.insert(EntityId(7), entity("IFCPCURVE", vec![r(3), r(6)]));
+    model.insert(
+        EntityId(8),
+        entity(
+            "IFCDIRECTION",
+            vec![Value::List(vec![n(1.0), n(0.0), n(0.0)])],
+        ),
+    );
+    model.insert(EntityId(9), entity("IFCVECTOR", vec![r(8), n(1000.0)]));
+    model.insert(EntityId(10), entity("IFCLINE", vec![r(1), r(9)]));
+    model.insert(
+        EntityId(11),
+        entity(
+            "IFCSURFACECURVE",
+            vec![
+                r(10),
+                Value::List(vec![r(7)]),
+                Value::Enum("PCURVE_S2".into()),
+            ],
+        ),
+    );
+
+    let scale = millimetres();
+    let mut session = LoweringSession::new(&model, &scale);
+    let error = lower_curve_node(&mut session, EntityId(11), Transform::identity())
+        .expect_err("PCURVE_S2 with one p-curve is inconsistent");
+    let text = format!("{error:?}");
+    assert!(
+        text.contains("PCURVE_S2"),
+        "the refusal must name the inconsistency, got: {text}"
+    );
 }
