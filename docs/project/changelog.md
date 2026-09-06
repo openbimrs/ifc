@@ -16,6 +16,20 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-resource`: `IfcPerson`, `IfcOrganization`, `IfcOrganizationRelationship`,
+  `IfcPersonAndOrganization`, and `IfcActorRole` projections, enforcing
+  `IdentifiablePerson`, `ValidSetOfNames`, and `WR1` (`USERDEFINED` roles
+  require `UserDefinedRole`).
+- `ifc-resource`: all six concrete `IfcConstructionResourceType` kinds, with
+  `IfcRelDefinesByType` assignment resolution that refuses a second relation
+  naming a different type for the same occurrence.
+- `ifc-resource`: `IfcInventory` metadata and `IfcActorSelect` jurisdiction
+  projection, with `IfcRelAssignsToGroup` membership resolved in authored
+  order.
+- `ifc-resource`: `IfcPhysicalSimpleQuantity` (all six concrete measure
+  kinds) and `IfcPhysicalComplexQuantity` usage-quantity projections,
+  enforcing the shared non-negative/finite value rule and
+  `NoSelfReference`.
 - `IfcSubedge` now lowers instead of being refused. A subedge states its own
   `EdgeStart`/`EdgeEnd` and inherits the carrier curve from `ParentEdge`,
   which is reached by walking the parent chain: `ParentEdge` is typed

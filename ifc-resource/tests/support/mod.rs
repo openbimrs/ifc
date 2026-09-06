@@ -42,3 +42,7 @@ pub fn enumeration(value: &str) -> Value {
 pub fn refs(ids: &[EntityId]) -> Value {
     Value::List(ids.iter().copied().map(Value::Ref).collect())
 }
+
+pub fn refs_text(values: &[&str]) -> Value {
+    Value::List(values.iter().map(|value| text(value)).collect())
+}

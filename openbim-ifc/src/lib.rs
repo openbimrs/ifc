@@ -111,7 +111,8 @@ pub use ifc_constraint as constraint;
 #[cfg(feature = "structural")]
 pub use ifc_structural as structural;
 
-/// Labour, equipment, crew resources.
+/// Construction resources: actors, labour, equipment, crew, material,
+/// product, subcontract, resource types, inventory, and usage quantities.
 #[cfg(feature = "resource")]
 pub use ifc_resource as resource;
 

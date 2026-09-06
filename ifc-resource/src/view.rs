@@ -187,6 +187,40 @@ impl<'m, 's> Record<'m, 's> {
             })
     }
 
+    pub(crate) fn required_text(&self, attribute: &'static str) -> ResourceResult<&'m str> {
+        match self.value(attribute)?.unwrap_typed() {
+            Value::Text(value) => Ok(value),
+            _ => Err(self.invalid(attribute, "text")),
+        }
+    }
+
+    pub(crate) fn optional_text_list(
+        &self,
+        attribute: &'static str,
+        minimum: usize,
+    ) -> ResourceResult<Vec<&'m str>> {
+        let values = match self.value(attribute)?.unwrap_typed() {
+            Value::Null | Value::Derived => return Ok(Vec::new()),
+            Value::List(values) => values,
+            _ => return Err(self.invalid(attribute, "aggregate of text or null")),
+        };
+        if values.len() < minimum {
+            return Err(ResourceError::InvalidCardinality {
+                entity: self.id,
+                attribute,
+                minimum,
+                actual: values.len(),
+            });
+        }
+        values
+            .iter()
+            .map(|value| match value.unwrap_typed() {
+                Value::Text(value) => Ok(value.as_ref()),
+                _ => Err(self.invalid(attribute, "aggregate of text or null")),
+            })
+            .collect()
+    }
+
     pub(crate) fn optional_text(&self, attribute: &'static str) -> ResourceResult<Option<&'m str>> {
         match self.value(attribute)?.unwrap_typed() {
             Value::Null | Value::Derived => Ok(None),
@@ -217,6 +251,36 @@ impl<'m, 's> Record<'m, 's> {
             return Err(self.invalid(attribute, "finite positive number or null"));
         }
         Ok(Some(value))
+    }
+
+    pub(crate) fn required_non_negative_number(
+        &self,
+        attribute: &'static str,
+    ) -> ResourceResult<f64> {
+        let value = match self.value(attribute)?.unwrap_typed() {
+            Value::Integer(value) => *value as f64,
+            Value::Real(value) => *value,
+            _ => return Err(self.invalid(attribute, "finite non-negative number")),
+        };
+        if !value.is_finite() || value < 0.0 {
+            return Err(self.invalid(attribute, "finite non-negative number"));
+        }
+        Ok(value)
+    }
+
+    pub(crate) fn required_enum(&self, attribute: &'static str) -> ResourceResult<&'m str> {
+        let value = match self.value(attribute)?.unwrap_typed() {
+            Value::Enum(value) => value,
+            _ => return Err(self.invalid(attribute, "declared enumeration")),
+        };
+        if !self.declares_enum_member(attribute, value) {
+            return Err(ResourceError::InvalidEnumeration {
+                entity: Some(self.id),
+                attribute,
+                value: value.to_string(),
+            });
+        }
+        Ok(value)
     }
 
     pub(crate) fn optional_enum(&self, attribute: &'static str) -> ResourceResult<Option<&'m str>> {
@@ -272,6 +336,33 @@ impl<'m, 's> Record<'m, 's> {
             _ => return Err(self.invalid(attribute, "entity reference or null")),
         };
         self.check_reference(attribute, target, &[expected], expected)?;
+        Ok(Some(target))
+    }
+
+    pub(crate) fn required_ref(
+        &self,
+        attribute: &'static str,
+        expected: &'static str,
+    ) -> ResourceResult<EntityId> {
+        let Value::Ref(target) = self.value(attribute)?.unwrap_typed() else {
+            return Err(self.invalid(attribute, "entity reference"));
+        };
+        self.check_reference(attribute, *target, &[expected], expected)?;
+        Ok(*target)
+    }
+
+    pub(crate) fn optional_ref_select(
+        &self,
+        attribute: &'static str,
+        expected: &'static str,
+        members: &[&str],
+    ) -> ResourceResult<Option<EntityId>> {
+        let target = match self.value(attribute)?.unwrap_typed() {
+            Value::Null | Value::Derived => return Ok(None),
+            Value::Ref(target) => *target,
+            _ => return Err(self.invalid(attribute, "entity reference or null")),
+        };
+        self.check_reference(attribute, target, members, expected)?;
         Ok(Some(target))
     }
 
