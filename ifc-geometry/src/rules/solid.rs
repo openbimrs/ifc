@@ -138,10 +138,34 @@ fn boolean_result(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<Ru
                 out.push(RuleViolation::new(
                     id,
                     type_name.clone(),
-                    "FirstOperandType",
+                    "OperatorType",
                     ViolationKind::WrongType,
                     format!("clipping must use DIFFERENCE, found {op}"),
                 ));
+            }
+        }
+        if let Some(a) = first {
+            if let Some(e) = model.get(a) {
+                let n = e.type_name.to_ascii_uppercase();
+                // The schema names three admissible first operands: a swept
+                // area, a swept disc, or another clipping result. Anything
+                // else (a brep, a CSG primitive) makes the clip meaningless.
+                let ok = crate::select::is_a(&n, "IFCSWEPTAREASOLID")
+                    || crate::select::is_a(&n, "IFCSWEPTDISKSOLID")
+                    || n == "IFCBOOLEANCLIPPINGRESULT";
+                if !ok {
+                    out.push(RuleViolation::new(
+                        id,
+                        type_name.clone(),
+                        "FirstOperandType",
+                        ViolationKind::WrongType,
+                        format!(
+                            "clipping requires a swept area, swept disc or nested \
+                             clipping result as FirstOperand, found {}",
+                            e.type_name
+                        ),
+                    ));
+                }
             }
         }
         if let Some(b) = second {

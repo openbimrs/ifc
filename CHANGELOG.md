@@ -8,26 +8,22 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
-- `ifc-resource`: `IfcPerson`, `IfcOrganization`, `IfcOrganizationRelationship`,
-  `IfcPersonAndOrganization`, and `IfcActorRole` projections, enforcing
-  `IdentifiablePerson`, `ValidSetOfNames`, and `WR1` (`USERDEFINED` roles
-  require `UserDefinedRole`).
-- `ifc-resource`: all six concrete `IfcConstructionResourceType` kinds, with
-  `IfcRelDefinesByType` assignment resolution that refuses a second relation
-  naming a different type for the same occurrence.
-- `ifc-resource`: `IfcInventory` metadata and `IfcActorSelect` jurisdiction
-  projection, with `IfcRelAssignsToGroup` membership resolved in authored
-  order.
-- `ifc-resource`: `IfcPhysicalSimpleQuantity` (all six concrete measure
-  kinds) and `IfcPhysicalComplexQuantity` usage-quantity projections,
-  enforcing the shared non-negative/finite value rule and
-  `NoSelfReference`.
-- `ifc-resource`: IFC4X3 ADD2 accepted alongside IFC4 ADD2 TC1 for every
-  resource, actor, inventory, and usage-quantity projection (entity shapes
-  verified identical against `IFC4X3_ADD2.exp`). IFC2X3 remains an explicit
-  `UnsupportedSchema` refusal: it does not declare `IfcConstructionResourceType`,
-  `IfcResourceTime`, or `PredefinedType` on `IfcConstructionEquipmentResource`/
-  `IfcCrewResource`, so there is no normative behavior to project.
+
+- Enforced 47 more IFC4 geometry `WHERE` rules, taking the executable count
+  from 16 to 63 of 95. New rule modules cover dimensionality (via a
+  transcription of the schema's own `IfcCurveDim` derivation), positive
+  scalars, list cardinality, type membership and surface degeneracy. Every
+  newly enforced row carries a conforming and a violating model in
+  `tests/where_rule_inventory.rs`, and the coverage assertion fails if a row
+  claims implementation without one.
+
+### Fixed
+
+- `IfcBooleanClippingResult.OperatorType` was implemented under the label
+  `FirstOperandType`, so the operator check reported the wrong rule and the
+  real `FirstOperandType` -- the first operand must be a swept area, swept
+  disc or nested clipping result -- was never checked at all. Both now exist
+  under their schema names.
 - `IfcSubedge` now lowers instead of being refused. A subedge states its own
   `EdgeStart`/`EdgeEnd` and inherits the carrier curve from `ParentEdge`,
   which is reached by walking the parent chain: `ParentEdge` is typed

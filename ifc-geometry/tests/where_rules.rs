@@ -248,7 +248,7 @@ fn a_clipping_result_with_the_wrong_operator_is_reported() {
     );
     let violations = rules::validate(&m, EntityId(3));
     assert!(
-        violations.iter().any(|v| v.rule == "FirstOperandType"),
+        violations.iter().any(|v| v.rule == "OperatorType"),
         "clipping must be DIFFERENCE, got {violations:?}"
     );
 }
