@@ -8,6 +8,8 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- Parameter-space lowering for `IfcTrimmedCurve` and `IfcCompositeCurve` p-curve reference curves; trim parameters stay unscaled because a (u, v) address is dimensionless.
+- Typed `position()` placement views on all four elementary surfaces.
 - `select::subtype::TABLE_SCHEMA_VERSION` names the IFC schema the compiled
   supertype chains encode, with `tables_are_verified_for` to ask before
   trusting them for another version. The version was previously prose only.

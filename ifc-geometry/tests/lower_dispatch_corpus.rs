@@ -633,14 +633,46 @@ fn declared_variant_support_matches_runtime_behaviour() {
             )
         },
         {
+            // Admitted: a trimmed conic in the surface parameter domain.
+            let mut m = plane_model();
+            m.insert(EntityId(5), pt(vec![0.0, 0.0]));
+            m.insert(
+                EntityId(6),
+                ent("IFCAXIS2PLACEMENT2D", vec![rf(5), Value::Null]),
+            );
+            m.insert(EntityId(7), ent("IFCCIRCLE", vec![rf(6), Value::Real(2.0)]));
+            let param = |v: f64| Value::Typed {
+                type_name: "IFCPARAMETERVALUE".into(),
+                value: Box::new(Value::Real(v)),
+            };
+            m.insert(
+                EntityId(8),
+                ent(
+                    "IFCTRIMMEDCURVE",
+                    vec![
+                        rf(7),
+                        Value::List(vec![param(0.25)]),
+                        Value::List(vec![param(0.75)]),
+                        Value::Bool(true),
+                        Value::Enum("PARAMETER".into()),
+                    ],
+                ),
+            );
+            m.insert(EntityId(9), ent("IFCPCURVE", vec![rf(3), rf(8)]));
+            (
+                "IFCPCURVE",
+                "reference curve is a trimmed or composite curve",
+                m,
+            )
+        },
+        {
             // Refused: a convention-only base spline has no authored knots.
             let mut m = plane_model();
             m.insert(EntityId(6), ent("IFCBSPLINECURVE", vec![Value::Integer(3)]));
             m.insert(EntityId(9), ent("IFCPCURVE", vec![rf(3), rf(6)]));
             (
                 "IFCPCURVE",
-                "reference curve is a convention-only IfcBSplineCurve, or a \
-                 trimmed or composite curve",
+                "reference curve is a convention-only IfcBSplineCurve",
                 m,
             )
         },

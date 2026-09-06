@@ -23,9 +23,10 @@
 //! multiplies an angle by 0.001. [`ParameterKind`] exists so that decision can
 //! be made from data rather than from a comment.
 
-use crate::error::GeometryResult;
+use crate::error::{GeometryError, GeometryResult};
+use crate::resource::placement::Axis2Placement3D;
 use crate::slots::Slots;
-use ifc_model::{Entity, EntityId};
+use ifc_model::{Entity, EntityId, Model};
 
 /// `IfcElementarySurface` family attribute slots.
 ///
@@ -78,9 +79,22 @@ impl<'m> Plane<'m> {
     ///
     /// The normal direction matters beyond orientation: it decides which side
     /// of a half-space solid is solid.
-    // TODO: `resource::placement` will provide the typed placement view.
     pub fn position_ref(&self) -> GeometryResult<EntityId> {
         self.slots.req_ref(slot::POSITION, "Position")
+    }
+
+    /// The placement as a typed view, resolved from the model.
+    ///
+    /// [`Self::position_ref`] returns the raw reference; this resolves it
+    /// so callers read location/axis/RefDirection without re-entering the
+    /// model themselves.
+    pub fn position<'v>(&self, model: &'v Model) -> GeometryResult<Axis2Placement3D<'v>> {
+        let id = self.position_ref()?;
+        let entity = model.get(id).ok_or(GeometryError::MissingEntity {
+            referrer: self.id(),
+            missing: id,
+        })?;
+        Ok(Axis2Placement3D::new(id, entity))
     }
 
     /// Both parameters of a plane are lengths.
@@ -109,9 +123,22 @@ impl<'m> CylindricalSurface<'m> {
     }
 
     /// The placement; local Z is the cylinder axis.
-    // TODO: `resource::placement` will provide the typed placement view.
     pub fn position_ref(&self) -> GeometryResult<EntityId> {
         self.slots.req_ref(slot::POSITION, "Position")
+    }
+
+    /// The placement as a typed view, resolved from the model.
+    ///
+    /// [`Self::position_ref`] returns the raw reference; this resolves it
+    /// so callers read location/axis/RefDirection without re-entering the
+    /// model themselves.
+    pub fn position<'v>(&self, model: &'v Model) -> GeometryResult<Axis2Placement3D<'v>> {
+        let id = self.position_ref()?;
+        let entity = model.get(id).ok_or(GeometryError::MissingEntity {
+            referrer: self.id(),
+            missing: id,
+        })?;
+        Ok(Axis2Placement3D::new(id, entity))
     }
 
     /// The radius, guaranteed positive.
@@ -145,9 +172,22 @@ impl<'m> SphericalSurface<'m> {
     }
 
     /// The placement; local Z runs through the poles.
-    // TODO: `resource::placement` will provide the typed placement view.
     pub fn position_ref(&self) -> GeometryResult<EntityId> {
         self.slots.req_ref(slot::POSITION, "Position")
+    }
+
+    /// The placement as a typed view, resolved from the model.
+    ///
+    /// [`Self::position_ref`] returns the raw reference; this resolves it
+    /// so callers read location/axis/RefDirection without re-entering the
+    /// model themselves.
+    pub fn position<'v>(&self, model: &'v Model) -> GeometryResult<Axis2Placement3D<'v>> {
+        let id = self.position_ref()?;
+        let entity = model.get(id).ok_or(GeometryError::MissingEntity {
+            referrer: self.id(),
+            missing: id,
+        })?;
+        Ok(Axis2Placement3D::new(id, entity))
     }
 
     /// The radius, guaranteed positive.
@@ -181,9 +221,22 @@ impl<'m> ToroidalSurface<'m> {
     }
 
     /// The placement; local Z is the torus axis.
-    // TODO: `resource::placement` will provide the typed placement view.
     pub fn position_ref(&self) -> GeometryResult<EntityId> {
         self.slots.req_ref(slot::POSITION, "Position")
+    }
+
+    /// The placement as a typed view, resolved from the model.
+    ///
+    /// [`Self::position_ref`] returns the raw reference; this resolves it
+    /// so callers read location/axis/RefDirection without re-entering the
+    /// model themselves.
+    pub fn position<'v>(&self, model: &'v Model) -> GeometryResult<Axis2Placement3D<'v>> {
+        let id = self.position_ref()?;
+        let entity = model.get(id).ok_or(GeometryError::MissingEntity {
+            referrer: self.id(),
+            missing: id,
+        })?;
+        Ok(Axis2Placement3D::new(id, entity))
     }
 
     /// Distance from the torus centre to the centre of the tube.
@@ -357,5 +410,63 @@ mod tests {
         let e = Entity::new("IFCPLANE", vec![]);
         let err = Plane::new(EntityId(1), &e).position_ref().unwrap_err();
         assert!(err.to_string().contains("Position"), "got: {err}");
+    }
+
+    /// All four elementary surfaces resolve their placement to a typed view.
+    ///
+    /// The accessor must read the same location the raw reference points at,
+    /// for every surface family -- a wrong slot would silently relocate one.
+    #[test]
+    fn every_elementary_surface_resolves_a_typed_placement_view() {
+        let mut model = Model::new();
+        model.insert(
+            EntityId(60),
+            Entity::new(
+                "IFCCARTESIANPOINT",
+                vec![Value::List(vec![
+                    Value::Real(1.0),
+                    Value::Real(2.0),
+                    Value::Real(3.0),
+                ])],
+            ),
+        );
+        model.insert(
+            EntityId(70),
+            Entity::new("IFCAXIS2PLACEMENT3D", vec![Value::Ref(EntityId(60))]),
+        );
+
+        let plane = surface("IFCPLANE", &[]);
+        let view = Plane::new(EntityId(1), &plane).position(&model).unwrap();
+        assert_eq!(view.id(), EntityId(70));
+        assert_eq!(view.location(&model).unwrap(), [1.0, 2.0, 3.0]);
+
+        let cylinder = surface("IFCCYLINDRICALSURFACE", &[2.0]);
+        let view = CylindricalSurface::new(EntityId(2), &cylinder)
+            .position(&model)
+            .unwrap();
+        assert_eq!(view.location(&model).unwrap(), [1.0, 2.0, 3.0]);
+
+        let sphere = surface("IFCSPHERICALSURFACE", &[3.0]);
+        let view = SphericalSurface::new(EntityId(3), &sphere)
+            .position(&model)
+            .unwrap();
+        assert_eq!(view.location(&model).unwrap(), [1.0, 2.0, 3.0]);
+
+        let torus = surface("IFCTOROIDALSURFACE", &[5.0, 1.0]);
+        let view = ToroidalSurface::new(EntityId(4), &torus)
+            .position(&model)
+            .unwrap();
+        assert_eq!(view.location(&model).unwrap(), [1.0, 2.0, 3.0]);
+    }
+
+    /// A placement reference to an absent entity is reported, not panicked on.
+    #[test]
+    fn a_dangling_placement_reference_is_reported() {
+        let model = Model::new();
+        let plane = surface("IFCPLANE", &[]);
+        let error = Plane::new(EntityId(1), &plane)
+            .position(&model)
+            .expect_err("placement 70 is not in the model");
+        assert_eq!(error.entity(), Some(EntityId(1)));
     }
 }

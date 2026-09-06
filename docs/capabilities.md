@@ -27,7 +27,7 @@ code.
 
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `ifc-geometry` | 28,290 | 94 | 3 | 33 | <span class="status-partial">Partial</span> |
+| `ifc-geometry` | 28,658 | 94 | 3 | 33 | <span class="status-partial">Partial</span> |
 | `ifc-structural` | 3,397 | 33 | 14 | 12 | <span class="status-implemented">Implemented</span> |
 | `ifc-style` | 3,322 | 31 | 0 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 3,119 | 30 | 14 | 3 | <span class="status-implemented">Implemented</span> |
@@ -293,7 +293,8 @@ Those are listed with their reasoning in
 | `IfcPcurve` | reference conic positioned by an IfcAxis2Placement3D | <span class="status-partial">Refused</span> | a 3D placement's axis has no meaning in a 2D parameter domain; admitting it would require inventing a projection |
 | `IfcPcurve` | reference curve is an IfcIndexedPolyCurve with an explicit IfcArcIndex segment | <span class="status-implemented">Admitted</span> | a three-point arc composes exactly from a parameter-space circumcentre into Circle2 plus a Cartesian trim, mirroring the 3D path with no approximation |
 | `IfcPcurve` | reference curve is an explicit-knot IfcBSplineCurveWithKnots or IfcRationalBSplineCurveWithKnots | <span class="status-implemented">Admitted</span> | every field is dimensionless or a curve parameter; knots already pass through the 3D path unscaled, and control points are read as raw (u, v) pairs |
-| `IfcPcurve` | reference curve is a convention-only IfcBSplineCurve, or a trimmed or composite curve | <span class="status-partial">Refused</span> | a base spline carries no authored knot vector to preserve, and trim parameters in a mixed-domain parameter space have no defined dimensional contract yet |
+| `IfcPcurve` | reference curve is a trimmed or composite curve | <span class="status-implemented">Admitted</span> | trim parameters and segments stay in the surface (u, v) \domain, unscaled, so no dimensional contract is needed |
+| `IfcPcurve` | reference curve is a convention-only IfcBSplineCurve | <span class="status-partial">Refused</span> | a base spline carries no authored knot vector to preserve |
 | `IfcSurfaceCurve` | MasterRepresentation is Curve3D, PCurveS1, or PCurveS2 with the named side present | <span class="status-implemented">Admitted</span> | each side pairs a surface with its own p-curve, so the neutral MasterRepresentation names S1 and S2 exactly |
 | `IfcSurfaceCurve` | MasterRepresentation is PCurveS2 with only one associated p-curve | <span class="status-partial">Refused</span> | the master names a parametric side the curve does not have; the schema calls this inconsistent, so it is refused rather than resolved to the remaining p-curve |
 

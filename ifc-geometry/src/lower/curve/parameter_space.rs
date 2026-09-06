@@ -17,6 +17,7 @@
 //! separate modules keeps that distinction visible rather than relying on a
 //! reader noticing which helper was called.
 
+use super::{CompositeCurve, CompositeCurveSegment, KernelPreference, TrimmedCurve};
 use axiolid_core::{Frame2, Point2, Vec2};
 use axiolid_curve::{BSplineCurve2, Circle2, Curve2, Ellipse2, Line2, Polyline2};
 use axiolid_model::{
@@ -67,12 +68,17 @@ pub(super) fn parameter_reference_curve(
         "IFCBSPLINECURVEWITHKNOTS" | "IFCRATIONALBSPLINECURVEWITHKNOTS" => {
             parameter_space_bspline(session, owner, id)
         }
+        "IFCTRIMMEDCURVE" => parameter_space_trimmed(session, owner, id),
+        "IFCCOMPOSITECURVE" | "IFCCOMPOSITECURVEONSURFACE" => {
+            parameter_space_composite(session, owner, id)
+        }
         _ => Err(session.unsupported(
             id,
             &type_name,
             "parameter-space curve family (only exact IfcPolyline, line-only \
-             IfcIndexedPolyCurve, IfcLine, IfcCircle, IfcEllipse and \
-             explicit-knot B-splines are supported)",
+             IfcIndexedPolyCurve, IfcLine, IfcCircle, IfcEllipse, \
+             IfcTrimmedCurve, IfcCompositeCurve and explicit-knot B-splines \
+             are supported)",
         )),
     }
 }
@@ -468,5 +474,102 @@ fn parameter_space_arc(
             sense_agreement: cross > 0.0,
             preference: TrimmingPreference::Cartesian,
         }),
+    )
+}
+/// `IfcTrimmedCurve` in parameter space.
+///
+/// Differs from the world-space form in one decisive way: trim parameters
+/// are NOT unit-scaled. A world-space trim parameter is an angle or a
+/// length and converts to kernel units; a parameter-space one addresses the
+/// surface (u, v) domain, which is dimensionless. Scaling it would silently
+/// move the trim.
+fn parameter_space_trimmed(
+    session: &mut LoweringSession<'_>,
+    owner: EntityId,
+    id: EntityId,
+) -> GeometryResult<NodeId> {
+    let entity = session.entity(owner, id)?;
+    let view = TrimmedCurve::new(id, entity);
+    let basis_ref = view.basis_curve_ref()?;
+    let basis = parameter_reference_curve(session, owner, basis_ref)?;
+    let spec = view.spec()?;
+    let (t1, t2) = spec.endpoints();
+    let start = parameter_space_selectors(session, owner, t1)?;
+    let end = parameter_space_selectors(session, owner, t2)?;
+    if start.is_empty() || end.is_empty() {
+        return Err(session.degenerate(
+            id,
+            "IFCTRIMMEDCURVE",
+            "a trim end carries neither a parameter nor a point",
+        ));
+    }
+    session.node_for(
+        id,
+        GeometryNode::CurveRelation(CurveRelation::Trimmed {
+            basis,
+            start,
+            end,
+            sense_agreement: view.sense_agreement()?,
+            preference: match view.master_representation() {
+                crate::curve::trimmed::TrimmingPreference::Cartesian => KernelPreference::Cartesian,
+                crate::curve::trimmed::TrimmingPreference::Parameter => KernelPreference::Parameter,
+                crate::curve::trimmed::TrimmingPreference::Unspecified => {
+                    KernelPreference::Unspecified
+                }
+            },
+        }),
+    )
+}
+
+/// One trim end, in the surface parameter domain.
+///
+/// Parameters pass through unscaled and Cartesian trims stay 2D: both are
+/// (u, v) addresses, never model lengths.
+fn parameter_space_selectors(
+    session: &mut LoweringSession<'_>,
+    owner: EntityId,
+    trim: crate::curve::trimmed::Trim,
+) -> GeometryResult<Vec<TrimSelector>> {
+    let mut out = Vec::new();
+    if let Some(raw) = trim.parameter {
+        out.push(TrimSelector::Parameter(raw));
+    }
+    if let Some(point_ref) = trim.cartesian {
+        let point = parameter_space_point(session, owner, point_ref)?;
+        out.push(TrimSelector::Point2(point));
+    }
+    Ok(out)
+}
+
+/// `IfcCompositeCurve` in parameter space.
+///
+/// Mirrors the world-space form except that each segment lowers through
+/// [`parameter_reference_curve`], so the whole graph stays in the (u, v)
+/// domain. Segment order is the traversal order and must be preserved.
+fn parameter_space_composite(
+    session: &mut LoweringSession<'_>,
+    owner: EntityId,
+    id: EntityId,
+) -> GeometryResult<NodeId> {
+    let entity = session.entity(owner, id)?;
+    let view = CompositeCurve::new(id, entity);
+    let segment_refs = view.segment_refs()?;
+    if segment_refs.is_empty() {
+        return Err(session.degenerate(id, "IFCCOMPOSITECURVE", "no segments"));
+    }
+    let mut segments = Vec::with_capacity(segment_refs.len());
+    for segment_ref in &segment_refs {
+        let segment_entity = session.entity(id, *segment_ref)?;
+        let segment = CompositeCurveSegment::new(*segment_ref, segment_entity);
+        let parent = segment.parent_curve_ref()?;
+        segments.push(CurveSegment {
+            curve: parameter_reference_curve(session, id, parent)?,
+            same_sense: segment.same_sense()?,
+            transition: super::transition(segment.transition()?),
+        });
+    }
+    session.node_for(
+        id,
+        GeometryNode::CurveRelation(CurveRelation::Composite { segments }),
     )
 }

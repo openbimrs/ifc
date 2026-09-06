@@ -8,12 +8,12 @@ and check it off only after the proof runs.
 
 ## Work queue
 
-- [ ] `RULE-REG` - inventory all relevant WHERE rules and support state
-  - Audited (2026-09-05): placement and solid rules are implemented and
-    tested, but there is no executable rule inventory - no data file lists the
-    schema's WHERE rules with a support state, so coverage cannot be proven
-    the way `declaration_manifest.rs` proves declaration coverage.
-  - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
+- [x] `RULE-REG` - inventory all relevant WHERE rules and support state
+  - Done (2026-09-05): `data/ifc4-where-rules.tsv` lists all 95 geometry-
+    resource rules across 56 entities, each `implemented` or `inventoried`.
+    `tests/where_rule_inventory.rs` regenerates it from the bundled schema
+    and fails on drift in either direction. Needs openbim-step >= 0.5.0,
+    which captures `EntityDef::where_rules`.
 - [x] `RULE-PLACE` - placement/direction dimensional rules
   - Audited (2026-09-05): Placement and direction dimensional rules are implemented and tested.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.

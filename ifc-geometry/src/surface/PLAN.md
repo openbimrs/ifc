@@ -11,13 +11,10 @@ and check it off only after the proof runs.
 - [x] `SURF-SLOTS` - verify every surface accessor
   - Audited (2026-09-05): Every surface accessor is verified against generated absolute slots.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
-- [ ] `SURF-ELEM` - frames/radii and degeneracy rules
-  - Audited (2026-09-05): radii and degeneracy rules are complete and tested.
-    Open remainder is narrow: four sites in `surface/elementary.rs` still
-    return a raw `EntityId` for Position behind a `TODO: resource::placement
-    will provide the typed placement view` marker. Lowering is unaffected -
-    `lower/surface.rs` resolves those placements itself - so this is a typed-
-    view refactor, not a missing capability.
+- [x] `SURF-ELEM` - frames/radii and degeneracy rules
+  - Done (2026-09-05): degeneracy/radii logic was already complete; the four
+    placement TODOs are now real typed accessors. `position(&model)` resolves
+    an `Axis2Placement3D` view for plane, cylinder, sphere and torus.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
 - [x] `SURF-SWEPT` - extrusion/revolution surface inputs
   - Audited (2026-09-05): Extrusion and revolution surface inputs are read and tested.

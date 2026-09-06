@@ -14,6 +14,7 @@ use crate::lower::session::LoweringSession;
 use crate::solid::testkit::{entity, n, r};
 use crate::transform::Transform;
 use crate::units::UnitScale;
+use axiolid_model::TrimSelector;
 
 /// Millimetre model: lengths scale by 1/1000, angles are already radians.
 fn millimetres() -> UnitScale {
@@ -459,4 +460,153 @@ fn p_curve_bspline_keeps_its_knots_and_control_points_in_parameter_space() {
         "control points are (u, v), not model lengths"
     );
     assert_eq!(spline.control_points[1].to_array(), [3.5, 4.5]);
+}
+
+/// A parameter-space `IfcTrimmedCurve` keeps its trim parameters unscaled.
+///
+/// This is the whole reason the parameter-space path exists separately: a
+/// world-space trim parameter on a circle is an ANGLE and converts to kernel
+/// units; a (u, v) trim is dimensionless. Under a millimetre project scale a
+/// converting implementation would move both ends.
+#[test]
+fn p_curve_trimmed_keeps_its_parameters_unscaled() {
+    let mut model = Model::new();
+    model.insert(EntityId(1), point(0.0, 0.0, 0.0));
+    model.insert(
+        EntityId(2),
+        entity("IFCAXIS2PLACEMENT3D", vec![r(1), Value::Null, Value::Null]),
+    );
+    model.insert(EntityId(3), entity("IFCPLANE", vec![r(2)]));
+    model.insert(
+        EntityId(4),
+        entity("IFCCARTESIANPOINT", vec![Value::List(vec![n(0.0), n(0.0)])]),
+    );
+    model.insert(
+        EntityId(5),
+        entity("IFCAXIS2PLACEMENT2D", vec![r(4), Value::Null]),
+    );
+    model.insert(EntityId(6), entity("IFCCIRCLE", vec![r(5), n(2.0)]));
+    let param = |v: f64| Value::Typed {
+        type_name: "IFCPARAMETERVALUE".into(),
+        value: Box::new(Value::Real(v)),
+    };
+    model.insert(
+        EntityId(7),
+        entity(
+            "IFCTRIMMEDCURVE",
+            vec![
+                r(6),
+                Value::List(vec![param(0.25)]),
+                Value::List(vec![param(0.75)]),
+                Value::Bool(true),
+                Value::Enum("PARAMETER".into()),
+            ],
+        ),
+    );
+    model.insert(EntityId(8), entity("IFCPCURVE", vec![r(3), r(7)]));
+
+    let scale = millimetres();
+    let mut session = LoweringSession::new(&model, &scale);
+    let root = lower_curve_node(&mut session, EntityId(8), Transform::identity()).expect("lowers");
+    let lowered = session.finish(root).expect("finishes");
+    let GeometryNode::CurveRelation(CurveRelation::ParameterCurve {
+        basis_surface: _,
+        reference_curve,
+    }) = lowered.graph.get(root).expect("root")
+    else {
+        panic!("expected parameter curve relation");
+    };
+    let Some(GeometryNode::CurveRelation(CurveRelation::Trimmed {
+        start,
+        end,
+        sense_agreement,
+        ..
+    })) = lowered.graph.get(*reference_curve)
+    else {
+        panic!("expected a parameter-space trimmed curve");
+    };
+    assert_eq!(start, &vec![TrimSelector::Parameter(0.25)]);
+    assert_eq!(
+        end,
+        &vec![TrimSelector::Parameter(0.75)],
+        "surface parameters must not use project length units"
+    );
+    assert!(*sense_agreement);
+}
+
+/// A parameter-space `IfcCompositeCurve` lowers each segment in (u, v).
+///
+/// Segment order is the traversal order: reversing or sorting it would
+/// reroute the path. Both segments here stay unscaled under millimetres.
+#[test]
+fn p_curve_composite_lowers_segments_in_parameter_space() {
+    let mut model = Model::new();
+    model.insert(EntityId(1), point(0.0, 0.0, 0.0));
+    model.insert(
+        EntityId(2),
+        entity("IFCAXIS2PLACEMENT3D", vec![r(1), Value::Null, Value::Null]),
+    );
+    model.insert(EntityId(3), entity("IFCPLANE", vec![r(2)]));
+    let pt = |i: u64, x: f64, y: f64| {
+        (
+            EntityId(i),
+            entity("IFCCARTESIANPOINT", vec![Value::List(vec![n(x), n(y)])]),
+        )
+    };
+    for (id, e) in [pt(10, 0.0, 0.0), pt(11, 1.0, 0.0), pt(12, 1.0, 1.0)] {
+        model.insert(id, e);
+    }
+    model.insert(
+        EntityId(20),
+        entity("IFCPOLYLINE", vec![Value::List(vec![r(10), r(11)])]),
+    );
+    model.insert(
+        EntityId(21),
+        entity("IFCPOLYLINE", vec![Value::List(vec![r(11), r(12)])]),
+    );
+    let seg = |parent: u64| {
+        entity(
+            "IFCCOMPOSITECURVESEGMENT",
+            vec![
+                Value::Enum("CONTINUOUS".into()),
+                Value::Bool(true),
+                r(parent),
+            ],
+        )
+    };
+    model.insert(EntityId(30), seg(20));
+    model.insert(EntityId(31), seg(21));
+    model.insert(
+        EntityId(40),
+        entity("IFCCOMPOSITECURVE", vec![Value::List(vec![r(30), r(31)])]),
+    );
+    model.insert(EntityId(41), entity("IFCPCURVE", vec![r(3), r(40)]));
+
+    let scale = millimetres();
+    let mut session = LoweringSession::new(&model, &scale);
+    let root = lower_curve_node(&mut session, EntityId(41), Transform::identity()).expect("lowers");
+    let lowered = session.finish(root).expect("finishes");
+    let GeometryNode::CurveRelation(CurveRelation::ParameterCurve {
+        basis_surface: _,
+        reference_curve,
+    }) = lowered.graph.get(root).expect("root")
+    else {
+        panic!("expected parameter curve relation");
+    };
+    let Some(GeometryNode::CurveRelation(CurveRelation::Composite { segments })) =
+        lowered.graph.get(*reference_curve)
+    else {
+        panic!("expected a parameter-space composite curve");
+    };
+    assert_eq!(segments.len(), 2);
+    let first = lowered.graph.get(segments[0].curve);
+    let Some(GeometryNode::Curve2(Curve2::Polyline(polyline))) = first else {
+        panic!("segments must stay in the parameter domain");
+    };
+    assert_eq!(
+        polyline.points[1].to_array(),
+        [1.0, 0.0],
+        "surface parameters must not use project length units"
+    );
+    assert!(segments[0].same_sense);
 }
