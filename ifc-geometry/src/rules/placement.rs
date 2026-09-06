@@ -129,6 +129,19 @@ fn axis2_placement_2d(model: &Model, id: EntityId, entity: &Entity, out: &mut Ve
 
 /// `IfcAxis1Placement`: `AxisIs3D`.
 fn axis1_placement(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleViolation>) {
+    if let Some(loc) = entity.attributes.first().and_then(|v| v.as_ref_id()) {
+        if let Some(dim) = point_dim(model, loc) {
+            if dim != 3 {
+                out.push(RuleViolation::new(
+                    id,
+                    "IFCAXIS1PLACEMENT",
+                    "LocationIs3D",
+                    ViolationKind::Dimensionality,
+                    format!("Location {loc} is {dim}D, must be 3D"),
+                ));
+            }
+        }
+    }
     if let Some(axis) = entity.attributes.get(1).and_then(|v| v.as_ref_id()) {
         if let Some(dim) = direction_dim(model, axis) {
             if dim != 3 {

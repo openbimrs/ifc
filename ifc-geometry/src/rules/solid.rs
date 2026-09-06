@@ -103,6 +103,11 @@ fn revolved_area_solid(id: EntityId, entity: &Entity, out: &mut Vec<RuleViolatio
 
 /// `IfcBooleanResult.SameDim`.
 ///
+/// NOTE: this check cannot currently fire. `operand_dim` returns `Some(3)`
+/// for every family it recognises and `None` otherwise, so `da != db` is
+/// unreachable. The rule stays `inventoried`, not `implemented`, in
+/// `data/ifc4-where-rules.tsv` until a 2D operand family is modelled.
+///
 /// Both operands must have the same dimensionality. Mixing a 2D and a 3D
 /// operand is meaningless, and a kernel discovers it only as a failed
 /// intersection.

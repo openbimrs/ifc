@@ -14,11 +14,11 @@ ifcbooleanclippingresult	FirstOperandType	implemented	('IFC4.IFCSWEPTAREASOLID' 
 ifcbooleanclippingresult	OperatorType	inventoried	Operator = DIFFERENCE
 ifcbooleanclippingresult	SecondOperandType	implemented	('IFC4.IFCHALFSPACESOLID' IN TYPEOF(SecondOperand))
 ifcbooleanresult	FirstOperandClosed	inventoried	NOT('IFC4.IFCTESSELLATEDFACESET' IN TYPEOF(FirstOperand)) OR (EXISTS(FirstOperand.Closed) AND FirstOperand.Closed)
-ifcbooleanresult	SameDim	implemented	FirstOperand.Dim = SecondOperand.Dim
+ifcbooleanresult	SameDim	inventoried	FirstOperand.Dim = SecondOperand.Dim
 ifcbooleanresult	SecondOperandClosed	inventoried	NOT('IFC4.IFCTESSELLATEDFACESET' IN TYPEOF(SecondOperand)) OR (EXISTS(SecondOperand.Closed) AND SecondOperand.Closed)
 ifcboundarycurve	IsClosed	inventoried	SELF\IfcCompositeCurve.ClosedCurve
 ifcboxedhalfspace	UnboundedSurface	inventoried	NOT ('IFC4.IFCCURVEBOUNDEDPLANE' IN TYPEOF(SELF\IfcHalfSpaceSolid.BaseSurface))
-ifcbsplinecurve	SameDim	implemented	SIZEOF(QUERY(Temp <* ControlPointsList | Temp.Dim <> ControlPointsList[1].Dim)) = 0
+ifcbsplinecurve	SameDim	inventoried	SIZEOF(QUERY(Temp <* ControlPointsList | Temp.Dim <> ControlPointsList[1].Dim)) = 0
 ifcbsplinecurvewithknots	ConsistentBSpline	inventoried	IfcConstraintsParamBSpline(Degree, UpperIndexOnKnots, UpperIndexOnControlPoints, KnotMultiplicities, Knots)
 ifcbsplinecurvewithknots	CorrespondingKnotLists	inventoried	SIZEOF(KnotMultiplicities) = UpperIndexOnKnots
 ifcbsplinesurfacewithknots	CorrespondingULists	inventoried	SIZEOF(UMultiplicities) = KnotUUpper
@@ -38,7 +38,7 @@ ifccartesiantransformationoperator3d	DimIs3D	inventoried	SELF\IfcCartesianTransf
 ifccartesiantransformationoperator3dnonuniform	Scale2GreaterZero	inventoried	Scl2 > 0.0
 ifccartesiantransformationoperator3dnonuniform	Scale3GreaterZero	inventoried	Scl3 > 0.0
 ifccompositecurve	CurveContinuous	inventoried	((NOT ClosedCurve) AND (SIZEOF(QUERY(Temp <* Segments | Temp.Transition = Discontinuous)) = 1)) OR ((ClosedCurve) AND (SIZEOF(QUERY(Temp <* Segments | Temp.Transition = Discontinuous)) = 0))
-ifccompositecurve	SameDim	implemented	SIZEOF( QUERY( Temp <* Segments | Temp.Dim <> Segments[1].Dim)) = 0
+ifccompositecurve	SameDim	inventoried	SIZEOF( QUERY( Temp <* Segments | Temp.Dim <> Segments[1].Dim)) = 0
 ifccompositecurveonsurface	SameSurface	inventoried	SIZEOF(BasisSurface) > 0
 ifccompositecurvesegment	ParentIsBoundedCurve	inventoried	('IFC4.IFCBOUNDEDCURVE' IN TYPEOF(ParentCurve))
 ifcdirection	MagnitudeGreaterZero	implemented	SIZEOF(QUERY(Tmp <* DirectionRatios | Tmp <> 0.0)) > 0
@@ -52,14 +52,14 @@ ifcgridaxis	WR2	implemented	(SIZEOF(PartOfU) = 1) XOR (SIZEOF(PartOfV) = 1) XOR 
 ifcindexedpolycurve	Consecutive	inventoried	(SIZEOF(Segments) = 0) OR IfcConsecutiveSegments(Segments)
 ifcintersectioncurve	DistinctSurfaces	inventoried	IfcAssociatedSurface(SELF\IfcSurfaceCurve.AssociatedGeometry[1]) <> IfcAssociatedSurface(SELF\IfcSurfaceCurve.AssociatedGeometry[2])
 ifcintersectioncurve	TwoPCurves	inventoried	SIZEOF(SELF\IfcSurfaceCurve.AssociatedGeometry) = 2
-ifcline	SameDim	implemented	Dir.Dim = Pnt.Dim
+ifcline	SameDim	inventoried	Dir.Dim = Pnt.Dim
 ifclocalplacement	WR21	inventoried	IfcCorrectLocalPlacement(RelativePlacement, PlacementRelTo)
 ifcoffsetcurve2d	DimIs2D	inventoried	BasisCurve.Dim = 2
 ifcoffsetcurve3d	DimIs2D	inventoried	BasisCurve.Dim = 3
 ifcpcurve	DimIs2D	inventoried	ReferenceCurve.Dim = 2
 ifcpolygonalboundedhalfspace	BoundaryDim	inventoried	PolygonalBoundary.Dim = 2
 ifcpolygonalboundedhalfspace	BoundaryType	implemented	SIZEOF(TYPEOF(PolygonalBoundary) * [ 'IFC4.IFCPOLYLINE', 'IFC4.IFCCOMPOSITECURVE'] ) = 1
-ifcpolyline	SameDim	implemented	SIZEOF(QUERY(Temp <* Points | Temp.Dim <> Points[1].Dim)) = 0
+ifcpolyline	SameDim	inventoried	SIZEOF(QUERY(Temp <* Points | Temp.Dim <> Points[1].Dim)) = 0
 ifcrationalbsplinecurvewithknots	SameNumOfWeightsAndPoints	inventoried	SIZEOF(WeightsData) = SIZEOF(SELF\IfcBSplineCurve.ControlPointsList)
 ifcrationalbsplinecurvewithknots	WeightsGreaterZero	inventoried	IfcCurveWeightsPositive(SELF)
 ifcrationalbsplinesurfacewithknots	CorrespondingWeightsDataLists	inventoried	(SIZEOF(WeightsData) = SIZEOF(SELF\IfcBSplineSurface.ControlPointsList)) AND (SIZEOF(WeightsData[1]) = SIZEOF(SELF\IfcBSplineSurface.ControlPointsList[1]))
