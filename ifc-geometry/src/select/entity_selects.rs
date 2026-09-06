@@ -422,4 +422,27 @@ mod tests {
             SolidOrShell::Solid(EntityId(5))
         );
     }
+    /// A nested boolean and a leaf primitive are different CSG branches.
+    ///
+    /// Both are valid tree nodes, so a caller that collapses them cannot
+    /// tell a recursion step from a terminal.
+    #[test]
+    fn csg_branches_separate_nested_booleans_from_leaf_primitives() {
+        let mut model = Model::new();
+        model.insert(EntityId(1), Entity::new("IFCBOOLEANRESULT", vec![]));
+        model.insert(EntityId(2), Entity::new("IFCBLOCK", vec![]));
+        model.insert(EntityId(3), Entity::new("IFCPOLYLINE", vec![]));
+        assert_eq!(
+            CsgSelect::resolve(&model, EntityId(9), EntityId(1)).unwrap(),
+            CsgSelect::BooleanResult(EntityId(1))
+        );
+        assert_eq!(
+            CsgSelect::resolve(&model, EntityId(9), EntityId(2)).unwrap(),
+            CsgSelect::Primitive(EntityId(2)),
+            "IfcBlock is an IfcCsgPrimitive3D leaf"
+        );
+        let error = CsgSelect::resolve(&model, EntityId(9), EntityId(3))
+            .expect_err("a polyline is not a CSG node");
+        assert_eq!(error.entity(), Some(EntityId(3)));
+    }
 }

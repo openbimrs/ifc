@@ -1,5 +1,8 @@
 //! Subtype resolution without loading the EXPRESS schema at runtime.
 //!
+//! The encoded schema is [`TABLE_SCHEMA_VERSION`]; ask
+//! [`tables_are_verified_for`] before trusting these answers for another.
+//!
 //! # Why this table exists
 //!
 //! EXPRESS `SELECT` types name *abstract* supertypes. `IfcBooleanOperand`
@@ -18,6 +21,24 @@
 //! Generated from `IFC4.exp`. `tests/schema_coverage.rs` cross-checks the
 //! table against the same normative source, so drift fails the build rather
 //! than silently misclassifying a solid.
+
+use ifc_schema::SchemaVersion;
+
+/// The IFC schema version the compiled tables in this module encode.
+///
+/// The supertype chains are generated from one specific schema. Which
+/// one was previously stated only in prose, so nothing failed if a
+/// caller assumed IFC4X3 and got IFC4 answers.
+pub const TABLE_SCHEMA_VERSION: SchemaVersion = SchemaVersion::Ifc4;
+
+/// Does this crate answer subtype questions for `version` verbatim?
+///
+/// False does not mean refusal: IFC4X3 shares most geometry chains with
+/// IFC4, so answers are usually right. It means they are not *verified*
+/// against that schema, and a caller that needs certainty must say so.
+pub fn tables_are_verified_for(version: SchemaVersion) -> bool {
+    version == TABLE_SCHEMA_VERSION
+}
 
 /// `(entity, its supertype chain from immediate parent upward)`.
 ///
@@ -741,51 +762,4 @@ pub fn known_entities() -> impl Iterator<Item = &'static str> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// The case that motivates the whole table.
-    #[test]
-    fn a_concrete_solid_satisfies_the_abstract_select_member() {
-        assert!(is_a("IFCEXTRUDEDAREASOLID", "IFCSOLIDMODEL"));
-        assert!(is_a("IFCFACETEDBREP", "IFCSOLIDMODEL"));
-        assert!(is_a("IFCCSGSOLID", "IFCSOLIDMODEL"));
-        assert!(is_a("IFCSWEPTDISKSOLID", "IFCSOLIDMODEL"));
-    }
-
-    #[test]
-    fn an_entity_is_a_itself() {
-        assert!(is_a("IFCSOLIDMODEL", "IFCSOLIDMODEL"));
-    }
-
-    #[test]
-    fn unrelated_entities_do_not_match() {
-        assert!(!is_a("IFCCARTESIANPOINT", "IFCSOLIDMODEL"));
-        assert!(!is_a("IFCCIRCLE", "IFCSURFACE"));
-    }
-
-    /// STEP type names arrive uppercase, but callers may not.
-    #[test]
-    fn matching_ignores_case() {
-        assert!(is_a("IfcExtrudedAreaSolid", "IfcSolidModel"));
-        assert!(is_a("ifcextrudedareasolid", "IFCSOLIDMODEL"));
-    }
-
-    /// A type from a future schema matches nothing rather than erroring.
-    #[test]
-    fn unknown_entities_match_nothing_instead_of_panicking() {
-        assert!(supertypes_of("IFCFROMTHEFUTURE").is_empty());
-        assert!(!is_a("IFCFROMTHEFUTURE", "IFCSOLIDMODEL"));
-        assert!(
-            is_a("IFCFROMTHEFUTURE", "IFCFROMTHEFUTURE"),
-            "identity still holds"
-        );
-    }
-
-    /// Deep chains must resolve all the way to the root.
-    #[test]
-    fn chains_reach_the_representation_item_root() {
-        assert!(is_a("IFCEXTRUDEDAREASOLID", "IFCREPRESENTATIONITEM"));
-        assert!(is_a("IFCADVANCEDBREPWITHVOIDS", "IFCMANIFOLDSOLIDBREP"));
-    }
-}
+mod tests;

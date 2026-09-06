@@ -1,4 +1,7 @@
-//! EXPRESS `SELECT` and defined types of the three geometry schemas.
+//! EXPRESS `SELECT` and defined types of the IFC geometry schema.
+//!
+//! Subtype answers come from tables generated for one schema version, named
+//! by [`subtype::TABLE_SCHEMA_VERSION`].
 //!
 //! # Why selects need real code
 //!

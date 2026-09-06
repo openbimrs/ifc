@@ -16,6 +16,12 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `select::subtype::TABLE_SCHEMA_VERSION` names the IFC schema the compiled
+  supertype chains encode, with `tables_are_verified_for` to ask before
+  trusting them for another version. The version was previously prose only.
+- Membership tests for the four select families that resolved without them:
+  `CsgSelect`, `CurveOrEdgeCurve`, `SurfaceOrFaceSurface`,
+  `PointOrVertexPoint`.
 
 - `CON-GRID`: `IfcGridAxis` rule checking. `WR1` reports an axis curve that
   is not 2D; `WR2` reports an axis that is not in exactly one of a grid's
