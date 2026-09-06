@@ -116,6 +116,9 @@ pub fn check(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleVio
             out,
         );
     }
+    if name == "IFCEXTRUDEDAREASOLIDTAPERED" || name == "IFCREVOLVEDAREASOLIDTAPERED" {
+        tapered_profiles(model, id, entity, &name, out);
+    }
     if crate::select::is_a(&name, "IFCSWEPTSURFACE") {
         profile_type(
             model,
@@ -164,6 +167,54 @@ fn profile_type(
         ViolationKind::WrongType,
         format!("{label} {target} is a {kind} profile, must be {want}"),
     ));
+}
+
+/// `IfcTaperedSweptAreaProfiles`: start and end profiles must correspond.
+///
+/// The schema admits exactly two shapes: the end profile derives from the
+/// start one (`IfcDerivedProfileDef.ParentProfile` is the start), or both
+/// are the same parameterised type. Anything else -- notably two
+/// unrelated arbitrary profiles -- is refused, because the taper has no
+/// correspondence to interpolate along.
+fn tapered_profiles(
+    model: &Model,
+    id: EntityId,
+    entity: &Entity,
+    type_name: &str,
+    out: &mut Vec<RuleViolation>,
+) {
+    // SweptArea is slot 0; EndSweptArea is slot 4 on both tapered forms
+    // (Position, then the extrusion/revolution pair, come between).
+    let (Some(Value::Ref(start)), Some(Value::Ref(end))) = (
+        entity.attribute(0).map(|v| v.unwrap_typed()),
+        entity.attribute(4).map(|v| v.unwrap_typed()),
+    ) else {
+        return;
+    };
+    let (Some(s), Some(e)) = (model.get(*start), model.get(*end)) else {
+        return;
+    };
+    let (sn, en) = (
+        s.type_name.to_ascii_uppercase(),
+        e.type_name.to_ascii_uppercase(),
+    );
+    let ok = if en == "IFCDERIVEDPROFILEDEF" {
+        // ParentProfile is slot 2: ProfileType, ProfileName, ParentProfile.
+        matches!(e.attribute(2).map(|v| v.unwrap_typed()), Some(Value::Ref(p)) if *p == *start)
+    } else if crate::select::is_a(&sn, "IFCPARAMETERIZEDPROFILEDEF") {
+        sn == en
+    } else {
+        false
+    };
+    if !ok {
+        out.push(RuleViolation::new(
+            id,
+            type_name.to_string(),
+            "CorrectProfileAssignment",
+            ViolationKind::Disagreement,
+            format!("SweptArea {sn} and EndSweptArea {en} do not correspond"),
+        ));
+    }
 }
 
 /// Two parameters that must differ, or the trim has zero extent.

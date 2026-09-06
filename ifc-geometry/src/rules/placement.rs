@@ -6,7 +6,7 @@
 
 use super::{RuleViolation, ViolationKind};
 use crate::resource::{direction::Direction, point::CartesianPoint};
-use ifc_model::{Entity, EntityId, Model};
+use ifc_model::{Entity, EntityId, Model, Value};
 
 /// Run the placement rules that apply to this entity.
 pub fn check(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleViolation>) {
@@ -15,6 +15,7 @@ pub fn check(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleVio
         "IFCAXIS2PLACEMENT2D" => axis2_placement_2d(model, id, entity, out),
         "IFCAXIS1PLACEMENT" => axis1_placement(model, id, entity, out),
         "IFCDIRECTION" => direction(id, entity, out),
+        "IFCLOCALPLACEMENT" => correct_local_placement(model, id, entity, "IFCLOCALPLACEMENT", out),
         _ => {}
     }
 }
@@ -178,6 +179,65 @@ fn direction(id: EntityId, entity: &Entity, out: &mut Vec<RuleViolation>) {
 }
 
 /// Dimensionality of a referenced `IfcCartesianPoint`.
+/// `IfcLocalPlacement.WR21`, via `IfcCorrectLocalPlacement`.
+///
+/// # The function is genuinely three-valued
+///
+/// It returns UNKNOWN (`?`) for a grid placement and for any case it
+/// does not recognise, and EXPRESS treats an UNKNOWN where-rule as
+/// satisfied. Only the one explicit FALSE branch is a violation: a 3D
+/// relative placement hung off a parent whose own placement is 2D.
+/// Reporting the UNKNOWN cases would flag every valid grid placement.
+fn correct_local_placement(
+    model: &Model,
+    id: EntityId,
+    entity: &Entity,
+    type_name: &str,
+    out: &mut Vec<RuleViolation>,
+) {
+    // PlacementRelTo is slot 0, RelativePlacement slot 1.
+    let Some(Value::Ref(rel_to)) = entity.attribute(0).map(|v| v.unwrap_typed()) else {
+        // No parent: the function returns TRUE.
+        return;
+    };
+    let Some(Value::Ref(axis)) = entity.attribute(1).map(|v| v.unwrap_typed()) else {
+        return;
+    };
+    let (Some(parent), Some(axis_entity)) = (model.get(*rel_to), model.get(*axis)) else {
+        return;
+    };
+    // Only IfcLocalPlacement parents reach a decidable branch.
+    if !parent.type_name.eq_ignore_ascii_case("IFCLOCALPLACEMENT") {
+        return;
+    }
+    // A 2D axis placement returns TRUE regardless of the parent.
+    if !axis_entity
+        .type_name
+        .eq_ignore_ascii_case("IFCAXIS2PLACEMENT3D")
+    {
+        return;
+    }
+    // The FALSE branch: parent RelativePlacement.Dim must be 3.
+    let Some(Value::Ref(parent_axis)) = parent.attribute(1).map(|v| v.unwrap_typed()) else {
+        return;
+    };
+    let Some(dim) = super::dimension::dim_of(model, *parent_axis) else {
+        return;
+    };
+    if dim != 3 {
+        out.push(RuleViolation::new(
+            id,
+            type_name.to_string(),
+            "WR21",
+            ViolationKind::Dimensionality,
+            format!(
+                "a 3D RelativePlacement hangs off {rel_to}, whose own \
+                 placement is {dim}D"
+            ),
+        ));
+    }
+}
+
 fn point_dim(model: &Model, id: EntityId) -> Option<usize> {
     let entity = model.get(id)?;
     CartesianPoint::new(id, entity)

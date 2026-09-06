@@ -17,6 +17,19 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- Enforced the schema's normative EXPRESS functions, taking executable
+  `WHERE` rules from 63 to 75 of 95. `src/rules/express.rs` transcribes
+  `IfcConstraintsParamBSpline` and `IfcConsecutiveSegments` and is unit-tested
+  against the specification text itself, so the transcription is checkable
+  line by line rather than only through the rules that call it. Covers
+  B-spline curve and surface parametrisation, weight positivity, knot/
+  multiplicity correspondence, indexed poly-curve continuity, tapered profile
+  correspondence, and `IfcLocalPlacement.WR21`.
+- `IfcLocalPlacement.WR21` honours the function's three-valued result: the
+  schema returns UNKNOWN for grid placements and unrecognised shapes, which
+  EXPRESS treats as satisfied, so only the single explicit FALSE branch -- a
+  3D relative placement on a 2D parent -- is reported.
+
 - `ifc-alignment`: `AlignmentView::for_model` pins the declared schema to
   IFC4X3 (`IFC4X3`/`IFC4X3_ADD2`); IFC2X3 and IFC4 ADD2 TC1 are refused with
   `AlignmentError::UnsupportedSchema` since `IfcAlignment*` entities do not

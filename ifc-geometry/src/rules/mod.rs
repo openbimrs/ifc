@@ -27,9 +27,11 @@
 //! the entity they constrain. [`validate`] runs every rule that applies to an
 //! entity, so a caller checks a whole model without knowing the rule list.
 
+mod bspline;
 mod cardinality;
 mod curve;
 mod dimension;
+mod express;
 mod grid;
 pub mod placement;
 mod scalar;
@@ -60,6 +62,7 @@ pub fn validate(model: &Model, id: EntityId) -> Vec<RuleViolation> {
     cardinality::check(model, id, entity, &mut found);
     typing::check(model, id, entity, &mut found);
     surface::check(model, id, entity, &mut found);
+    bspline::check(model, id, entity, &mut found);
     found
 }
 

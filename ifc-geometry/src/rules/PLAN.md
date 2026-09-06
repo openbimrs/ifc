@@ -54,28 +54,28 @@ and check it off only after the proof runs.
     the reason recorded next to the code.
   - Evidence: `tests/where_rule_inventory.rs` pass/fail cases per row, plus
     mutation probes on each new helper.
-  - Progress (2026-09-06): 63 of 95 rows enforced, up from 16. New modules
+  - Progress (2026-09-06): 75 of 95 rows enforced, up from 16. Modules
     `dimension.rs` (the `IfcCurveDim` derivation), `curve.rs`, `scalar.rs`,
-    `cardinality.rs`, `typing.rs`, `surface.rs`.
-  - Remaining 32 rows and why each is still `inventoried`:
-    - Normative EXPRESS functions (9): `IfcConstraintsParamBSpline`,
-      `IfcTaperedSweptAreaProfiles`, `IfcCorrectLocalPlacement`,
-      `IfcConsecutiveSegments`, `IfcCurveWeightsPositive`,
-      `IfcSurfaceWeightsPositive`. Each is a multi-branch algorithm; they
-      deserve their own transcription task with their own fixtures.
-    - `IfcGetBasisSurface` dependants (4): `SameSurface`, `DistinctSurfaces`,
-      `IsClosed`, `CompositeCurveOnSurface.SameSurface`. Need the derived
-      basis-surface set, which walks p-curve to surface identity.
-    - B-spline SURFACE lists (3): the surface analogue of the curve
-      cardinality rules; needs the 2D control grid reader.
-    - `Closed` on tessellated operands (2), `CurveContinuous` transition
-      counting (1), `DirectrixBounded` (4), advanced-face membership (2),
-      revolved-axis-in-XY (2), `ConsistentProfileTypes` (1),
+    `cardinality.rs`, `typing.rs`, `surface.rs`, `bspline.rs`, and
+    `express.rs` -- the last holding transcriptions of the schema's own
+    normative FUNCTIONs, unit-tested against the specification directly.
+  - Remaining 20 rows and why each is still `inventoried`:
+    - `IfcGetBasisSurface` dependants (4): `SameSurface` on seam and
+      composite-on-surface curves, `DistinctSurfaces`, `IsClosed`. Needs the
+      derived basis-surface set, which resolves p-curve to surface identity.
+    - `Closed` on tessellated boolean operands (2): needs the tessellated
+      face-set reader.
+    - Advanced-face membership (2): `HasAdvancedFaces`,
+      `VoidsHaveAdvancedFaces` -- needs shell/face traversal.
+    - `DirectrixBounded` (4): a three-way condition over StartParam,
+      EndParam and the directrix's own boundedness.
+    - Revolved-axis-in-XY (2), `ConsistentProfileTypes` (1),
       `ApplicableMappedRepr` (1), `UsenseCompatible` (1),
-      `Trim1/2ValuesConsistent` (2): each needs a reader this crate does
-      not yet have, or a select the rules layer cannot see.
-    - `IfcBooleanResult.SameDim` (1): stays `inventoried` because its
-      check cannot fail -- see the dead-branch note in `solid.rs`.
+      `CurveContinuous` (1), `Trim1/2ValuesConsistent` (2): each needs a
+      reader or select this crate does not yet expose.
+    - `IfcBooleanResult.SameDim` (1) is NOT in the counts above: it stays
+      `inventoried` because its check cannot fail -- see the dead-branch
+      note in `solid.rs`.
 
 ## Completion log
 

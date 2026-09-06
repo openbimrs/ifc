@@ -9,6 +9,7 @@
 mod where_rule_inventory {
     pub mod batches;
     pub mod cases;
+    pub mod express;
 }
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -124,6 +125,7 @@ fn implemented_rows_are_named_by_the_rules_module() {
     const CARD: &str = include_str!("../src/rules/cardinality.rs");
     const TYPING: &str = include_str!("../src/rules/typing.rs");
     const SURFACE: &str = include_str!("../src/rules/surface.rs");
+    const BSPLINE: &str = include_str!("../src/rules/bspline.rs");
     for (entity, rule, state, _) in rows() {
         if state != "implemented" {
             continue;
@@ -134,7 +136,7 @@ fn implemented_rows_are_named_by_the_rules_module() {
         let quoted = format!("\"{rule}\"");
         let typed = format!("\"{}\"", entity.to_ascii_uppercase());
         assert!(
-            [PLACEMENT, SOLID, GRID, CURVE, SCALAR, CARD, TYPING, SURFACE]
+            [PLACEMENT, SOLID, GRID, CURVE, SCALAR, CARD, TYPING, SURFACE, BSPLINE]
                 .iter()
                 .any(|src| src.contains(&quoted) && src.contains(&typed)),
             "{entity}.{rule} claims implementation but no module names both it and its entity"
@@ -193,5 +195,6 @@ fn implemented_rules_fire_on_violations_and_stay_silent_otherwise() {
 fn all_cases() -> Vec<(&'static str, &'static str, Model, Model)> {
     let mut v = where_rule_inventory::cases::cases();
     v.extend(where_rule_inventory::batches::cases());
+    v.extend(where_rule_inventory::express::cases());
     v
 }

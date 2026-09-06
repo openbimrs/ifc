@@ -126,6 +126,37 @@ pub fn check(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleVio
             }
         }
     }
+    // IfcIndexedPolyCurve.Consecutive: Segments is slot 1, and each
+    // segment is an IfcLineIndex or IfcArcIndex -- both plain integer
+    // lists -- so the join compares last index against first.
+    if name == "IFCINDEXEDPOLYCURVE" {
+        if let Some(Value::List(items)) = entity.attribute(1).map(|v| v.unwrap_typed()) {
+            let segments: Vec<Vec<i64>> = items
+                .iter()
+                .map(|s| match s.unwrap_typed() {
+                    Value::List(idx) => idx
+                        .iter()
+                        .filter_map(|v| match v.unwrap_typed() {
+                            Value::Integer(n) => Some(*n),
+                            Value::Real(n) => Some(*n as i64),
+                            _ => None,
+                        })
+                        .collect(),
+                    _ => Vec::new(),
+                })
+                .collect();
+            // An empty Segments list satisfies the rule outright.
+            if !segments.is_empty() && !super::express::consecutive_segments(&segments) {
+                out.push(RuleViolation::new(
+                    id,
+                    name.clone(),
+                    "Consecutive",
+                    ViolationKind::Disagreement,
+                    "Segments do not join end-to-start".to_string(),
+                ));
+            }
+        }
+    }
 }
 
 /// A referenced entity must (or must not) be of a given kind.
