@@ -32,6 +32,27 @@ This page is synchronised from it at build time.
   provable from the predecessor's closed-form end point, but continuity *out*
   of one is a Fresnel-type integral, and `Transition` has no "unknown" member
   -- so the run ends instead of claiming a fact the crate cannot verify.
+- `ifc-geometry`: the `IfcSameValue` tolerance family (`IfcSameValue`,
+  `IfcSameCartesianPoint`, `IfcSameDirection`, `IfcSameAxis2Placement`),
+  plus `IfcPointListDim`, `IfcOrthogonalComplement` and `IfcBuild2Axes`,
+  transcribed in `resource::functions`. The schema's comparison band is
+  exclusive -- values exactly `epsilon` apart are not equal -- so a
+  symmetric `abs() <= eps` would have been subtly wrong; a unit test pins
+  the boundary. `IfcSameAxis2Placement` diverges deliberately: the
+  published function compares `ap1.Location` with itself, never testing
+  the location at all, and that defect is not reproduced.
+
+### Changed
+
+- `ifc-geometry`: the EXPRESS function registry now records
+  `Implemented` and `NotApplicable` alongside `Scaffolded`, and no row
+  remains `Scaffolded`: 20 implemented, 6 native primitives, and
+  `IfcListToArray`/`IfcMakeArrayOfArray` marked `NotApplicable` because
+  they only re-index a LIST into an ARRAY, which a `Vec` already is.
+- `ifc-geometry`: five functions were implemented but filed under the
+  wrong owner or left `Scaffolded` -- `IfcCurveDim` (`rules::dimension`),
+  `IfcBaseAxis` (`resource::axes`), and `IfcBuildAxes`,
+  `IfcFirstProjAxis`, `IfcSecondProjAxis` (all `transform`).
 
 ### Fixed
 
@@ -54,6 +75,11 @@ This page is synchronised from it at build time.
   Added `FunctionStatus::Implemented` and a manifest test asserting an
   `Implemented` row is named by its owner module, so the registry can no
   longer understate the crate.
+- `ifc-geometry`: a `Scaffolded` row in the EXPRESS function registry can
+  no longer stay stale after its function is implemented. The manifest
+  checked only that `Implemented` rows were backed by code, so the
+  registry rotted downward instead: eight rows understated the crate for
+  two commits. The inverse check is now enforced.
 
 ### Added
 

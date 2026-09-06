@@ -163,25 +163,78 @@ fn all_normative_functions_have_exactly_one_owner() {
 /// crate, and the row stops being a usable audit signal.
 #[test]
 fn implemented_functions_are_named_by_their_owner_module() {
-    let source_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     for support in FUNCTIONS {
         if support.status != FunctionStatus::Implemented {
             continue;
         }
-        let owner_path = support.owner.replace("::", "/");
-        let file = [
-            source_root.join(format!("{owner_path}.rs")),
-            source_root.join(&owner_path).join("mod.rs"),
-        ]
-        .into_iter()
-        .find(|p| p.is_file())
-        .unwrap_or_else(|| panic!("{} owner missing: {}", support.name, support.owner));
-        let body = std::fs::read_to_string(&file).expect("owner module is readable");
+        let body = owner_source(support.owner)
+            .unwrap_or_else(|| panic!("{} owner missing: {}", support.name, support.owner));
         // The transcription carries the EXPRESS name in its doc comment,
         // so a rename or deletion breaks this immediately.
         assert!(
             body.contains(support.name),
             "{} claims Implemented but {} never names it",
+            support.name,
+            support.owner
+        );
+    }
+}
+
+/// Read an owner module's source, or `None` for a primitive owner that has
+/// no file in this crate (`axiolid_core::...`).
+fn owner_source(owner: &str) -> Option<String> {
+    if owner.starts_with("axiolid_core::") {
+        return None;
+    }
+    let source_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let owner_path = owner.replace("::", "/");
+    [
+        source_root.join(format!("{owner_path}.rs")),
+        source_root.join(&owner_path).join("mod.rs"),
+    ]
+    .into_iter()
+    .find(|p| p.is_file())
+    .map(|p| std::fs::read_to_string(p).expect("owner module is readable"))
+}
+
+/// A `Scaffolded` row must STAY true: if the owner module has grown an
+/// implementation, the registry has to say so.
+///
+/// This is the inverse of the check above, and it is the one that matters.
+/// Eight rows sat at `Scaffolded` for two commits after their functions
+/// were implemented, because nothing forced the claim to be revisited. A
+/// registry that only guards against over-claiming rots downward instead.
+#[test]
+fn scaffolded_functions_are_not_secretly_implemented() {
+    for support in FUNCTIONS {
+        if support.status != FunctionStatus::Scaffolded {
+            continue;
+        }
+        let Some(source) = owner_source(support.owner) else {
+            continue;
+        };
+        assert!(
+            !source.contains(support.name),
+            "{} is marked Scaffolded but {} already names it -- promote it \
+             to Implemented (with a test) or correct the owner",
+            support.name,
+            support.owner
+        );
+    }
+}
+
+/// `NotApplicable` must name the module that consumes the attribute the
+/// function would have produced, so the claim stays auditable rather than
+/// becoming a place to hide unimplemented work.
+#[test]
+fn not_applicable_functions_name_a_real_consumer() {
+    for support in FUNCTIONS {
+        if support.status != FunctionStatus::NotApplicable {
+            continue;
+        }
+        assert!(
+            owner_source(support.owner).is_some(),
+            "{} is NotApplicable but its owner {} has no source",
             support.name,
             support.owner
         );

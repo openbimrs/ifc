@@ -57,6 +57,9 @@ impl Transform {
     /// which is worse than looking obviously wrong.
     ///
     /// Returns `None` if the axes are degenerate (zero-length or parallel).
+    ///
+    /// This is the schema's `IfcBuildAxes`; the two derived axes come from
+    /// `IfcFirstProjAxis` and `IfcSecondProjAxis`, marked inline below.
     pub fn from_axes(
         origin: [f64; 3],
         axis: Option<[f64; 3]>,
@@ -65,7 +68,9 @@ impl Transform {
         let z = normalize(axis.unwrap_or([0.0, 0.0, 1.0]))?;
         let reference = ref_direction.unwrap_or_else(|| default_ref_direction(z));
 
-        // Project the reference direction onto the plane normal to z.
+        // `IfcFirstProjAxis`: project the reference direction onto the plane
+        // normal to z, so a file's non-perpendicular RefDirection still
+        // yields an orthonormal frame rather than a skewed one.
         let dot = dot(reference, z);
         let projected = [
             reference[0] - dot * z[0],
@@ -73,6 +78,8 @@ impl Transform {
             reference[2] - dot * z[2],
         ];
         let x = normalize(projected)?;
+        // `IfcSecondProjAxis`: the schema subtracts the z and x components
+        // from a Y hint, which for an orthonormal z and x is exactly z X x.
         let y = cross(z, x);
 
         Some(Self {
