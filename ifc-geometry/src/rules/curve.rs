@@ -54,6 +54,9 @@ pub fn check(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleVio
     if crate::select::is_a(&name, "IFCCOMPOSITECURVE") {
         same_dim_list(model, subject, 0, "SameDim", "Segments", out);
     }
+    composite_curve_continuity(model, subject, out);
+    consistent_profile_types(model, subject, out);
+
     // The subtype table does not carry the transformation-operator family,
     // so match the name directly rather than through `is_a`: an unknown
     // entity has an empty supertype chain and would silently never dispatch.
@@ -184,5 +187,111 @@ fn transformation_operator(model: &Model, subject: Subject<'_>, out: &mut Vec<Ru
     };
     for (slot, rule) in axes {
         fixed_dim_ref(model, subject, *slot, want, rule, out);
+    }
+}
+
+/// `CurveContinuous`, `IsClosed`, and `ConsistentProfileTypes`.
+///
+/// # The discontinuous-segment count
+///
+/// `IfcCompositeCurve.CurveContinuous` reads as: an open curve carries
+/// exactly one `DISCONTINUOUS` transition (the final segment, which stops
+/// rather than joining), and a closed curve carries none. The count is over
+/// `Segments[i].Transition`, slot 0 of `IfcCompositeCurveSegment`.
+///
+/// The rule is skipped when `ClosedCurve` is not a written boolean: it is
+/// `IfcLogical`, so `UNKNOWN` is legal and decides nothing.
+fn composite_curve_continuity(model: &Model, subject: Subject<'_>, out: &mut Vec<RuleViolation>) {
+    let (id, entity, name) = (subject.id, subject.entity, subject.type_name);
+    if !crate::select::is_a(name, "IFCCOMPOSITECURVE") {
+        return;
+    }
+    // ClosedCurve is DERIVED, never written:
+    //   ClosedCurve := Segments[NSegments].Transition <> Discontinuous
+    // so it depends on the LAST segment alone, not on the total count.
+    let segments = super::dimension::list_refs(entity, 0);
+    if segments.is_empty() {
+        return;
+    }
+    let transition_of = |seg: EntityId| -> Option<String> {
+        match model.get(seg)?.attribute(0).map(|v| v.unwrap_typed()) {
+            Some(Value::Enum(e)) => Some(e.to_ascii_uppercase()),
+            _ => None,
+        }
+    };
+    // Skipped when the last transition is unreadable: the derived value is
+    // then unknown, and IfcLogical UNKNOWN decides nothing.
+    let Some(last) = segments.last().and_then(|s| transition_of(*s)) else {
+        return;
+    };
+    let closed = last != "DISCONTINUOUS";
+    let discontinuous = segments
+        .iter()
+        .filter(|seg| transition_of(**seg).as_deref() == Some("DISCONTINUOUS"))
+        .count();
+
+    let want = if closed { 0 } else { 1 };
+    if discontinuous != want {
+        out.push(RuleViolation::new(
+            id,
+            name.to_string(),
+            "CurveContinuous",
+            ViolationKind::Disagreement,
+            format!(
+                "{discontinuous} segments are DISCONTINUOUS; a closed curve \
+                 admits 0 and an open curve exactly 1"
+            ),
+        ));
+    }
+
+    // IfcBoundaryCurve.IsClosed: the same curve, additionally required to
+    // close. A boundary that does not close bounds nothing.
+    if crate::select::is_a(name, "IFCBOUNDARYCURVE") && !closed {
+        out.push(RuleViolation::new(
+            id,
+            name.to_string(),
+            "IsClosed",
+            ViolationKind::Disagreement,
+            "a boundary curve must be closed, but its segments end in a \
+             discontinuity"
+                .to_string(),
+        ));
+    }
+}
+
+/// `IfcSectionedSpine.ConsistentProfileTypes`.
+///
+/// Every cross-section must share the first one's `ProfileType`; a spine
+/// mixing AREA and CURVE profiles has no coherent swept result.
+fn consistent_profile_types(model: &Model, subject: Subject<'_>, out: &mut Vec<RuleViolation>) {
+    let (id, entity, name) = (subject.id, subject.entity, subject.type_name);
+    if name != "IFCSECTIONEDSPINE" {
+        return;
+    }
+    // CrossSections is slot 1: SpineCurve, CrossSections, CrossSectionPositions.
+    let sections = super::dimension::list_refs(entity, 1);
+    let kind = |id: EntityId| -> Option<String> {
+        match model.get(id)?.attribute(0).map(|v| v.unwrap_typed()) {
+            Some(Value::Enum(e)) => Some(e.to_ascii_uppercase()),
+            _ => None,
+        }
+    };
+    let Some(first) = sections.first().and_then(|s| kind(*s)) else {
+        return;
+    };
+    for section in sections.iter().skip(1) {
+        let Some(other) = kind(*section) else {
+            continue;
+        };
+        if other != first {
+            out.push(RuleViolation::new(
+                id,
+                name.to_string(),
+                "ConsistentProfileTypes",
+                ViolationKind::Disagreement,
+                format!("cross-section {section} is {other}, but the first is {first}"),
+            ));
+            return;
+        }
     }
 }

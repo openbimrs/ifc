@@ -40,6 +40,11 @@ pub fn check(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleVio
         }
     }
 
+    directrix_bounded(model, id, entity, &name, out);
+    trim_values_consistent(id, entity, &name, out);
+    usense_compatible(model, id, entity, &name, out);
+    applicable_mapped_repr(model, id, entity, &name, out);
+
     // A torus whose minor radius reaches its major degenerates: the tube
     // closes through its own axis.
     if name == "IFCTOROIDALSURFACE" {
@@ -256,5 +261,214 @@ fn bool_at(entity: &Entity, slot: usize) -> Option<bool> {
     match entity.attribute(slot).map(|v| v.unwrap_typed()) {
         Some(Value::Bool(v)) => Some(*v),
         _ => None,
+    }
+}
+
+/// `DirectrixBounded` on the three directrix-swept solids.
+///
+/// # Reading the set intersection
+///
+/// The schema writes the alternative as
+/// `SIZEOF(['IFC4.IFCCONIC', 'IFC4.IFCBOUNDEDCURVE'] * TYPEOF(Directrix)) = 1`.
+/// `TYPEOF` yields the full supertype set of the directrix, so the
+/// intersection counts how many of those two names it carries. Exactly one
+/// is required: a bounded curve carries its own extent, and a conic is
+/// parameterised over a known range. A curve that is neither (an unbounded
+/// line, say) has no extent, so the file must supply `StartParam` and
+/// `EndParam` instead.
+///
+/// A curve that is *both* -- an `IfcTrimmedCurve` over a circle is not, but
+/// a hypothetical bounded conic would be -- fails the `= 1` just as a curve
+/// that is neither does. That is the schema's literal text and is preserved
+/// here rather than relaxed to `>= 1`.
+fn directrix_bounded(
+    model: &Model,
+    id: EntityId,
+    entity: &Entity,
+    name: &str,
+    out: &mut Vec<RuleViolation>,
+) {
+    // Directrix is slot 0 on IfcSweptDiskSolid, slot 2 on the two swept-area
+    // forms (SweptArea, Position, Directrix, ...); the param slots follow.
+    let (directrix_slot, start_slot, end_slot) = match name {
+        "IFCSWEPTDISKSOLID" | "IFCSWEPTDISKSOLIDPOLYGONAL" => (0usize, 3usize, 4usize),
+        "IFCSURFACECURVESWEPTAREASOLID" | "IFCFIXEDREFERENCESWEPTAREASOLID" => (2, 3, 4),
+        _ => return,
+    };
+
+    let written = |slot: usize| {
+        entity
+            .attribute(slot)
+            .is_some_and(|v| !matches!(v.unwrap_typed(), Value::Null))
+    };
+    let has_params = written(start_slot) && written(end_slot);
+    if has_params {
+        return;
+    }
+
+    let Some(Value::Ref(directrix)) = entity.attribute(directrix_slot).map(|v| v.unwrap_typed())
+    else {
+        return;
+    };
+    let Some(curve) = model.get(*directrix) else {
+        return;
+    };
+    let curve_name = curve.type_name.to_ascii_uppercase();
+    // The schema counts how many of the two names the directrix carries and
+    // demands exactly one. In IFC4 no entity is both a conic and a bounded
+    // curve -- IfcConic sits under IfcCurve, IfcBoundedCurve is its sibling
+    // -- so the `= 1` and `>= 1` readings can never disagree on a real file.
+    // Only the zero case is reachable, and that is what is reported; a
+    // "both" branch would be untestable code asserting an impossible state.
+    let bounded_or_conic = crate::select::is_a(&curve_name, "IFCCONIC")
+        || crate::select::is_a(&curve_name, "IFCBOUNDEDCURVE");
+
+    if !bounded_or_conic {
+        out.push(RuleViolation::new(
+            id,
+            name.to_string(),
+            "DirectrixBounded",
+            ViolationKind::Disagreement,
+            format!(
+                "the directrix {directrix} is neither a conic nor a bounded \
+                 curve, so StartParam and EndParam are required to bound the \
+                 sweep"
+            ),
+        ));
+    }
+}
+
+/// `Trim1ValuesConsistent` and `Trim2ValuesConsistent`.
+///
+/// A trim may be given as a parameter value, as a cartesian point, or as
+/// both. When both are present they must be of *different* kinds -- giving
+/// two parameters or two points for one end says nothing extra and is
+/// almost always a writer bug.
+fn trim_values_consistent(id: EntityId, entity: &Entity, name: &str, out: &mut Vec<RuleViolation>) {
+    if !crate::select::is_a(name, "IFCTRIMMEDCURVE") {
+        return;
+    }
+    // BasisCurve, Trim1, Trim2, SenseAgreement, MasterRepresentation.
+    for (slot, rule) in [
+        (1usize, "Trim1ValuesConsistent"),
+        (2, "Trim2ValuesConsistent"),
+    ] {
+        let Some(Value::List(items)) = entity.attribute(slot).map(|v| v.unwrap_typed()) else {
+            continue;
+        };
+        if items.len() < 2 {
+            continue;
+        }
+        // IfcTrimmingSelect is (IfcCartesianPoint, IfcParameterValue): a
+        // reference is the point arm, a number the parameter arm.
+        let kind = |v: &Value| match v.unwrap_typed() {
+            Value::Ref(_) => Some("a cartesian point"),
+            Value::Real(_) | Value::Integer(_) => Some("a parameter value"),
+            _ => None,
+        };
+        let (Some(first), Some(second)) = (kind(&items[0]), kind(&items[1])) else {
+            continue;
+        };
+        if first == second {
+            out.push(RuleViolation::new(
+                id,
+                name.to_string(),
+                rule,
+                ViolationKind::Disagreement,
+                format!("both trim values are {first}; the two must differ in kind"),
+            ));
+        }
+    }
+}
+
+/// `IfcRectangularTrimmedSurface.UsenseCompatible`.
+///
+/// `Usense` must agree with the direction of travel from `U1` to `U2`,
+/// except on the surfaces whose u parameter is an angle and therefore wraps:
+/// a cylinder, cone, sphere or torus can legitimately trim "backwards"
+/// across the seam. `IfcPlane` is excluded from that exemption because its
+/// u is a length, and a surface of revolution is exempt for the same
+/// wrapping reason.
+fn usense_compatible(
+    model: &Model,
+    id: EntityId,
+    entity: &Entity,
+    name: &str,
+    out: &mut Vec<RuleViolation>,
+) {
+    if name != "IFCRECTANGULARTRIMMEDSURFACE" {
+        return;
+    }
+    let Some(Value::Ref(basis)) = entity.attribute(0).map(|v| v.unwrap_typed()) else {
+        return;
+    };
+    let Some(surface) = model.get(*basis) else {
+        return;
+    };
+    let surface_name = surface.type_name.to_ascii_uppercase();
+    let wraps_in_u = (crate::select::is_a(&surface_name, "IFCELEMENTARYSURFACE")
+        && !crate::select::is_a(&surface_name, "IFCPLANE"))
+        || crate::select::is_a(&surface_name, "IFCSURFACEOFREVOLUTION");
+    if wraps_in_u {
+        return;
+    }
+
+    // BasisSurface, U1, V1, U2, V2, Usense, Vsense.
+    let (Some(u1), Some(u2)) = (real_at(entity, 1), real_at(entity, 3)) else {
+        return;
+    };
+    let Some(Value::Bool(usense)) = entity.attribute(5).map(|v| v.unwrap_typed()) else {
+        return;
+    };
+    if *usense != (u2 > u1) {
+        out.push(RuleViolation::new(
+            id,
+            name.to_string(),
+            "UsenseCompatible",
+            ViolationKind::Disagreement,
+            format!("Usense is {usense} but U1 = {u1} and U2 = {u2}"),
+        ));
+    }
+}
+
+/// `IfcRepresentationMap.ApplicableMappedRepr`.
+///
+/// Only a shape model can be mapped: mapping a non-shape representation
+/// would place something with no geometry to place.
+fn applicable_mapped_repr(
+    model: &Model,
+    id: EntityId,
+    entity: &Entity,
+    name: &str,
+    out: &mut Vec<RuleViolation>,
+) {
+    if name != "IFCREPRESENTATIONMAP" {
+        return;
+    }
+    // MappingOrigin, MappedRepresentation.
+    let Some(Value::Ref(mapped)) = entity.attribute(1).map(|v| v.unwrap_typed()) else {
+        return;
+    };
+    let Some(target) = model.get(*mapped) else {
+        return;
+    };
+    let target_name = target.type_name.to_ascii_uppercase();
+    // IfcShapeModel and its two subtypes are representation-layer entities,
+    // so this geometry crate's subtype table does not carry them and `is_a`
+    // would answer false for every input. The family is closed in IFC4 --
+    // IfcShapeModel abstracts exactly IfcShapeRepresentation and
+    // IfcTopologyRepresentation -- so name them directly.
+    let is_shape_model = matches!(
+        target_name.as_str(),
+        "IFCSHAPEMODEL" | "IFCSHAPEREPRESENTATION" | "IFCTOPOLOGYREPRESENTATION"
+    );
+    if !is_shape_model {
+        out.push(RuleViolation::new(
+            id,
+            name.to_string(),
+            "ApplicableMappedRepr",
+            ViolationKind::WrongType,
+            format!("the mapped representation {mapped} is {target_name}, not an IfcShapeModel"),
+        ));
     }
 }

@@ -23,7 +23,7 @@
 
 use crate::error::GeometryResult;
 use crate::slots::Slots;
-use ifc_model::{Entity, EntityId};
+use ifc_model::{Entity, EntityId, Model, Value};
 
 /// `IfcManifoldSolidBrep` attribute slots.
 ///
@@ -209,6 +209,36 @@ impl<'m> AdvancedBrepWithVoids<'m> {
     pub fn voids(&self) -> GeometryResult<Vec<EntityId>> {
         self.slots.req_ref_list(slot::VOIDS, "Voids")
     }
+}
+
+/// Faces of a shell that are *not* `IfcAdvancedFace`, in file order.
+///
+/// `IfcConnectedFaceSet.CfsFaces` is slot 0, and `IfcClosedShell` adds no
+/// attributes of its own, so the same read serves both shell kinds.
+///
+/// A missing or unreadable shell yields an empty vector: absence is not a
+/// non-advanced face, and reporting one would invent a violation the file
+/// does not contain.
+pub fn non_advanced_faces(model: &Model, shell: EntityId) -> Vec<EntityId> {
+    let Some(entity) = model.get(shell) else {
+        return Vec::new();
+    };
+    let Some(Value::List(faces)) = entity.attribute(0).map(|v| v.unwrap_typed()) else {
+        return Vec::new();
+    };
+    faces
+        .iter()
+        .filter_map(|v| match v.unwrap_typed() {
+            Value::Ref(id) => Some(*id),
+            _ => None,
+        })
+        .filter(|face| {
+            // An unresolvable face is not evidence of a non-advanced face.
+            model.get(*face).is_some_and(|f| {
+                !crate::select::is_a(&f.type_name.to_ascii_uppercase(), "IFCADVANCEDFACE")
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]

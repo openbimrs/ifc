@@ -26,7 +26,7 @@ and check it off only after the proof runs.
 - [x] `RULE-REPORT` - unsupported vs failed vs passed are distinct
   - Audited (2026-09-05): Unsupported, failed and passed are distinct variants and asserted as such.
   - Proof: focused tests, crate clippy, and relevant declaration/corpus gate.
-- [ ] `RULE-ENFORCE` - enforce the inventoried geometry-resource WHERE rules
+- [x] `RULE-ENFORCE` - enforce the inventoried geometry-resource WHERE rules
   - Goal: move rows from `inventoried` to `implemented` in
     `data/ifc4-where-rules.tsv`, each with a pass/fail case in
     `tests/where_rule_inventory.rs`. The coverage assertion in that test
@@ -54,28 +54,30 @@ and check it off only after the proof runs.
     the reason recorded next to the code.
   - Evidence: `tests/where_rule_inventory.rs` pass/fail cases per row, plus
     mutation probes on each new helper.
-  - Progress (2026-09-06): 75 of 95 rows enforced, up from 16. Modules
-    `dimension.rs` (the `IfcCurveDim` derivation), `curve.rs`, `scalar.rs`,
-    `cardinality.rs`, `typing.rs`, `surface.rs`, `bspline.rs`, and
-    `express.rs` -- the last holding transcriptions of the schema's own
-    normative FUNCTIONs, unit-tested against the specification directly.
-  - Remaining 20 rows and why each is still `inventoried`:
-    - `IfcGetBasisSurface` dependants (4): `SameSurface` on seam and
-      composite-on-surface curves, `DistinctSurfaces`, `IsClosed`. Needs the
-      derived basis-surface set, which resolves p-curve to surface identity.
-    - `Closed` on tessellated boolean operands (2): needs the tessellated
-      face-set reader.
-    - Advanced-face membership (2): `HasAdvancedFaces`,
-      `VoidsHaveAdvancedFaces` -- needs shell/face traversal.
-    - `DirectrixBounded` (4): a three-way condition over StartParam,
-      EndParam and the directrix's own boundedness.
-    - Revolved-axis-in-XY (2), `ConsistentProfileTypes` (1),
-      `ApplicableMappedRepr` (1), `UsenseCompatible` (1),
-      `CurveContinuous` (1), `Trim1/2ValuesConsistent` (2): each needs a
-      reader or select this crate does not yet expose.
-    - `IfcBooleanResult.SameDim` (1) is NOT in the counts above: it stays
-      `inventoried` because its check cannot fail -- see the dead-branch
-      note in `solid.rs`.
+  - Progress (2026-09-06): all 95 rows enforced, up from 16 at the start of
+    the batch. Rule modules: `dimension.rs` (the `IfcCurveDim` derivation),
+    `curve.rs`, `scalar.rs`, `cardinality.rs`, `typing.rs`, `surface.rs`,
+    `bspline.rs`, and `express.rs` -- the last holding transcriptions of the
+    schema's own normative FUNCTIONs, unit-tested against the specification.
+  - Readers live under their declared owners, not inside `rules/`:
+    - `surface::basis` -- `IfcGetBasisSurface` and `IfcAssociatedSurface`,
+      feeding `SameSurface` (composite and seam) and `DistinctSurfaces`.
+    - `solid::brep::non_advanced_faces` -- shell face traversal, feeding
+      `HasAdvancedFaces` and `VoidsHaveAdvancedFaces`.
+  - Two places where the schema text and its stated intent diverge, both
+    recorded at the code that decides them:
+    - `IfcGetBasisSurface` loops `Segments[1]` rather than `Segments[i]`, so
+      read literally the composite intersection is a no-op and `SameSurface`
+      can never fail. The documented intent is implemented instead; the
+      quoted EXPRESS sits in the module header.
+    - `DirectrixBounded` counts a set intersection and demands exactly one
+      match. No IFC4 entity is both a conic and a bounded curve, so only the
+      zero case is reachable, and only that case is reported rather than
+      carrying an untestable branch for an impossible state.
+  - `FunctionStatus::Implemented` distinguishes an executed function from a
+    `Scaffolded` placeholder. `declaration_manifest.rs` fails when a row
+    claims `Implemented` without its owner module naming the function, which
+    is what caught eight rows that were understating the crate.
 
 ## Completion log
 

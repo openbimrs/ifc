@@ -10,6 +10,7 @@ mod where_rule_inventory {
     pub mod batches;
     pub mod cases;
     pub mod express;
+    pub mod readers;
 }
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -136,7 +137,7 @@ fn implemented_rows_are_named_by_the_rules_module() {
         let quoted = format!("\"{rule}\"");
         let typed = format!("\"{}\"", entity.to_ascii_uppercase());
         assert!(
-            [PLACEMENT, SOLID, GRID, CURVE, SCALAR, CARD, TYPING, SURFACE, BSPLINE]
+            [PLACEMENT, SOLID, GRID, CURVE, BSPLINE, SCALAR, CARD, TYPING, SURFACE, BSPLINE]
                 .iter()
                 .any(|src| src.contains(&quoted) && src.contains(&typed)),
             "{entity}.{rule} claims implementation but no module names both it and its entity"
@@ -196,5 +197,8 @@ fn all_cases() -> Vec<(&'static str, &'static str, Model, Model)> {
     let mut v = where_rule_inventory::cases::cases();
     v.extend(where_rule_inventory::batches::cases());
     v.extend(where_rule_inventory::express::cases());
+    v.extend(where_rule_inventory::readers::cases());
+    v.extend(where_rule_inventory::readers::more_cases());
+    v.extend(where_rule_inventory::readers::final_cases());
     v
 }

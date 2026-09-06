@@ -33,6 +33,7 @@
 //! No evaluation, no tessellation, no NURBS basis functions. These views hand
 //! a kernel the parameters; the kernel builds the surface.
 
+pub mod basis;
 pub mod bounded;
 pub mod bspline;
 pub mod elementary;

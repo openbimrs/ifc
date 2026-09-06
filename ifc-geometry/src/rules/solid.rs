@@ -11,13 +11,18 @@ use ifc_model::{Entity, EntityId, Model, Value};
 
 /// Run the solid rules that apply to this entity.
 pub fn check(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleViolation>) {
-    match entity.type_name.to_ascii_uppercase().as_str() {
+    let upper = entity.type_name.to_ascii_uppercase();
+    advanced_brep_faces(model, id, entity, &upper, out);
+    boolean_operands(model, id, entity, &upper, out);
+    match upper.as_str() {
         "IFCEXTRUDEDAREASOLID" | "IFCEXTRUDEDAREASOLIDTAPERED" => {
             extruded_area_solid(model, id, entity, out)
         }
         "IFCBOOLEANRESULT" | "IFCBOOLEANCLIPPINGRESULT" => boolean_result(model, id, entity, out),
         "IFCPOLYGONALBOUNDEDHALFSPACE" => polygonal_bounded_half_space(model, id, entity, out),
-        "IFCREVOLVEDAREASOLID" => revolved_area_solid(id, entity, out),
+        "IFCREVOLVEDAREASOLID" | "IFCREVOLVEDAREASOLIDTAPERED" => {
+            revolved_area_solid(model, id, entity, out)
+        }
         _ => {}
     }
 }
@@ -82,7 +87,9 @@ fn extruded_area_solid(model: &Model, id: EntityId, entity: &Entity, out: &mut V
 }
 
 /// `IfcRevolvedAreaSolid.AxisLine`/`AngleGreaterZero`.
-fn revolved_area_solid(id: EntityId, entity: &Entity, out: &mut Vec<RuleViolation>) {
+fn revolved_area_solid(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleViolation>) {
+    revolution_axis_in_xy(model, id, entity, out);
+
     // Slot 3 is Angle; slots 0-1 inherited, slot 2 is Axis.
     if let Some(angle) = entity
         .attributes
@@ -240,4 +247,200 @@ fn operand_dim(model: &Model, id: EntityId) -> Option<usize> {
             .and_then(|first| operand_dim(model, first));
     }
     None
+}
+
+/// `HasAdvancedFaces` and `VoidsHaveAdvancedFaces`.
+///
+/// Both demand that every face of a shell be an `IfcAdvancedFace`; they
+/// differ only in which shells they walk. The traversal itself lives in
+/// [`crate::solid::brep::non_advanced_faces`].
+fn advanced_brep_faces(
+    model: &Model,
+    id: EntityId,
+    entity: &Entity,
+    name: &str,
+    out: &mut Vec<RuleViolation>,
+) {
+    if !crate::select::is_a(name, "IFCADVANCEDBREP") {
+        return;
+    }
+
+    // Outer is slot 0, inherited from IfcManifoldSolidBrep.
+    if let Some(Value::Ref(outer)) = entity.attribute(0).map(|v| v.unwrap_typed()) {
+        let plain = crate::solid::brep::non_advanced_faces(model, *outer);
+        if let Some(face) = plain.first() {
+            out.push(RuleViolation::new(
+                id,
+                name.to_string(),
+                "HasAdvancedFaces",
+                ViolationKind::WrongType,
+                format!("the outer shell holds {face}, which is not an IfcAdvancedFace"),
+            ));
+        }
+    }
+
+    // Voids is slot 1 and exists only on IfcAdvancedBrepWithVoids.
+    if !crate::select::is_a(name, "IFCADVANCEDBREPWITHVOIDS") {
+        return;
+    }
+    for void in super::dimension::list_refs(entity, 1) {
+        let plain = crate::solid::brep::non_advanced_faces(model, void);
+        if let Some(face) = plain.first() {
+            out.push(RuleViolation::new(
+                id,
+                name.to_string(),
+                "VoidsHaveAdvancedFaces",
+                ViolationKind::WrongType,
+                format!("void shell {void} holds {face}, which is not an IfcAdvancedFace"),
+            ));
+            return;
+        }
+    }
+}
+
+/// The three `IfcBooleanResult` operand rules.
+///
+/// `SameDim` compares the operands' dimensionality. The two `*Closed`
+/// rules apply only when an operand is an `IfcTessellatedFaceSet`: such a
+/// set may bound a solid only if it declares itself closed.
+fn boolean_operands(
+    model: &Model,
+    id: EntityId,
+    entity: &Entity,
+    name: &str,
+    out: &mut Vec<RuleViolation>,
+) {
+    if !crate::select::is_a(name, "IFCBOOLEANRESULT") {
+        return;
+    }
+    // Operator, FirstOperand, SecondOperand.
+    let first = slot_ref(entity, 1);
+    let second = slot_ref(entity, 2);
+
+    if let (Some(a), Some(b)) = (first, second) {
+        if let (Some(da), Some(db)) = (
+            super::dimension::dim_of(model, a),
+            super::dimension::dim_of(model, b),
+        ) {
+            if da != db {
+                out.push(RuleViolation::new(
+                    id,
+                    name.to_string(),
+                    "SameDim",
+                    ViolationKind::Dimensionality,
+                    format!("first operand is {da}D but second operand is {db}D"),
+                ));
+            }
+        }
+    }
+
+    for (operand, rule) in [
+        (first, "FirstOperandClosed"),
+        (second, "SecondOperandClosed"),
+    ] {
+        let Some(operand) = operand else {
+            continue;
+        };
+        let Some(target) = model.get(operand) else {
+            continue;
+        };
+        if !crate::select::is_a(
+            &target.type_name.to_ascii_uppercase(),
+            "IFCTESSELLATEDFACESET",
+        ) {
+            continue;
+        }
+        // Closed sits at a different slot per subtype: after Normals on
+        // IfcTriangulatedFaceSet, immediately after the inherited
+        // Coordinates on IfcPolygonalFaceSet. It is OPTIONAL, and the rule
+        // demands EXISTS(Closed) AND Closed, so an omitted flag violates
+        // exactly as a false one does.
+        let slot = match target.type_name.to_ascii_uppercase().as_str() {
+            "IFCTRIANGULATEDFACESET" => 2,
+            "IFCPOLYGONALFACESET" => 1,
+            // An unknown subtype from a newer schema: no slot to trust.
+            _ => continue,
+        };
+        let closed = match target.attribute(slot).map(|v| v.unwrap_typed()) {
+            Some(Value::Bool(flag)) => Some(*flag),
+            _ => None,
+        };
+        if closed != Some(true) {
+            let detail = match closed {
+                Some(false) => "declares Closed = FALSE",
+                _ => "does not declare Closed",
+            };
+            out.push(RuleViolation::new(
+                id,
+                name.to_string(),
+                rule,
+                ViolationKind::Disagreement,
+                format!("tessellated operand {operand} {detail}, so it cannot bound a solid"),
+            ));
+        }
+    }
+}
+
+/// The entity referenced at `slot`, unwrapping any defined-type wrapper.
+fn slot_ref(entity: &Entity, slot: usize) -> Option<EntityId> {
+    match entity.attribute(slot).map(|v| v.unwrap_typed()) {
+        Some(Value::Ref(id)) => Some(*id),
+        _ => None,
+    }
+}
+
+/// `AxisStartInXY` and `AxisDirectionInXY`.
+///
+/// A revolved area solid sweeps its profile about an axis that must lie in
+/// the profile's own xy plane: the schema states this as the z component of
+/// both the axis location and its direction being zero. An axis leaving
+/// that plane would sweep the profile out of its own frame.
+fn revolution_axis_in_xy(
+    model: &Model,
+    id: EntityId,
+    entity: &Entity,
+    out: &mut Vec<RuleViolation>,
+) {
+    // Axis is slot 2 and is an IfcAxis1Placement: Location, Axis.
+    let Some(Value::Ref(axis)) = entity.attribute(2).map(|v| v.unwrap_typed()) else {
+        return;
+    };
+    let Some(placement) = model.get(*axis) else {
+        return;
+    };
+    let name = entity.type_name.to_ascii_uppercase();
+
+    for (slot, rule, label) in [
+        (0usize, "AxisStartInXY", "Location"),
+        (1, "AxisDirectionInXY", "Z direction"),
+    ] {
+        let Some(Value::Ref(target)) = placement.attribute(slot).map(|v| v.unwrap_typed()) else {
+            continue;
+        };
+        // Coordinates on a point, DirectionRatios on a direction: both are
+        // the entity's only attribute, so one read serves both.
+        let Some(coords) = model
+            .get(*target)
+            .and_then(|e| e.attribute(0).map(|v| v.unwrap_typed()))
+        else {
+            continue;
+        };
+        let Value::List(values) = coords else {
+            continue;
+        };
+        // A 2D location or direction already lies in the plane; the rule
+        // reads index 3, which such a value does not have.
+        let Some(z) = values.get(2).and_then(|v| v.unwrap_typed().as_f64()) else {
+            continue;
+        };
+        if z != 0.0 {
+            out.push(RuleViolation::new(
+                id,
+                name.clone(),
+                rule,
+                ViolationKind::OutOfRange,
+                format!("the revolution axis {label} has z = {z}, which must be 0"),
+            ));
+        }
+    }
 }

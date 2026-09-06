@@ -10,6 +10,10 @@ pub enum FunctionStatus {
     NativePrimitive,
     /// An owner module and test target exist; semantics remain to implement.
     Scaffolded,
+    /// The owner module executes the function's semantics, and a test
+    /// exercises them. Distinct from `Scaffolded` so the registry cannot
+    /// keep understating what the crate does.
+    Implemented,
 }
 
 /// Auditable owner for one EXPRESS function.
@@ -25,13 +29,14 @@ pub struct FunctionSupport {
 
 const NATIVE: FunctionStatus = FunctionStatus::NativePrimitive;
 const SCAFFOLDED: FunctionStatus = FunctionStatus::Scaffolded;
+const IMPLEMENTED: FunctionStatus = FunctionStatus::Implemented;
 
 /// All 28 normative functions in deterministic schema order.
 pub const FUNCTIONS: &[FunctionSupport] = &[
     FunctionSupport {
         name: "IfcAssociatedSurface",
-        owner: "curve::offset",
-        status: SCAFFOLDED,
+        owner: "surface::basis",
+        status: IMPLEMENTED,
     },
     FunctionSupport {
         name: "IfcBaseAxis",
@@ -50,13 +55,13 @@ pub const FUNCTIONS: &[FunctionSupport] = &[
     },
     FunctionSupport {
         name: "IfcConsecutiveSegments",
-        owner: "curve::composite",
-        status: SCAFFOLDED,
+        owner: "rules::express",
+        status: IMPLEMENTED,
     },
     FunctionSupport {
         name: "IfcConstraintsParamBSpline",
-        owner: "curve::bspline",
-        status: SCAFFOLDED,
+        owner: "rules::express",
+        status: IMPLEMENTED,
     },
     FunctionSupport {
         name: "IfcCrossProduct",
@@ -70,8 +75,8 @@ pub const FUNCTIONS: &[FunctionSupport] = &[
     },
     FunctionSupport {
         name: "IfcCurveWeightsPositive",
-        owner: "curve::bspline",
-        status: SCAFFOLDED,
+        owner: "rules::bspline",
+        status: IMPLEMENTED,
     },
     FunctionSupport {
         name: "IfcDotProduct",
@@ -85,8 +90,8 @@ pub const FUNCTIONS: &[FunctionSupport] = &[
     },
     FunctionSupport {
         name: "IfcGetBasisSurface",
-        owner: "surface",
-        status: SCAFFOLDED,
+        owner: "surface::basis",
+        status: IMPLEMENTED,
     },
     FunctionSupport {
         name: "IfcListToArray",
@@ -140,8 +145,8 @@ pub const FUNCTIONS: &[FunctionSupport] = &[
     },
     FunctionSupport {
         name: "IfcSurfaceWeightsPositive",
-        owner: "surface::bspline",
-        status: SCAFFOLDED,
+        owner: "rules::bspline",
+        status: IMPLEMENTED,
     },
     FunctionSupport {
         name: "IfcVectorDifference",
@@ -160,13 +165,13 @@ pub const FUNCTIONS: &[FunctionSupport] = &[
     },
     FunctionSupport {
         name: "IfcTaperedSweptAreaProfiles",
-        owner: "lower::swept",
-        status: SCAFFOLDED,
+        owner: "rules::surface",
+        status: IMPLEMENTED,
     },
     FunctionSupport {
         name: "IfcCorrectLocalPlacement",
-        owner: "constraint::local",
-        status: SCAFFOLDED,
+        owner: "rules::placement",
+        status: IMPLEMENTED,
     },
 ];
 

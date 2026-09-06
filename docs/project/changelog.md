@@ -17,6 +17,20 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `ifc-geometry`: the remaining 20 IFC4 geometry-resource `WHERE` rules are
+  enforced, completing all 95. Two readers were added under their declared
+  owners rather than inside the rules layer: `surface::basis` implements
+  `IfcGetBasisSurface`/`IfcAssociatedSurface`, and
+  `solid::brep::non_advanced_faces` walks shell faces. These feed
+  `SameSurface`, `DistinctSurfaces`, `HasAdvancedFaces` and
+  `VoidsHaveAdvancedFaces`; the rest cover boolean operands, composite-curve
+  continuity, directrix bounding, trim value kinds, the revolution axis, and
+  mapped representations.
+- `ifc-geometry`: `FunctionStatus::Implemented` records that a normative
+  EXPRESS function is actually executed, and a manifest test rejects any row
+  claiming it whose owner module does not name the function. Eight rows that
+  understated the crate were corrected.
+
 - Enforced the schema's normative EXPRESS functions, taking executable
   `WHERE` rules from 63 to 75 of 95. `src/rules/express.rs` transcribes
   `IfcConstraintsParamBSpline` and `IfcConsecutiveSegments` and is unit-tested

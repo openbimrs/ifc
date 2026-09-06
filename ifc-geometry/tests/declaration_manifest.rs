@@ -2,7 +2,7 @@
 
 use std::collections::BTreeSet;
 
-use ifc_geometry::resource::functions::FUNCTIONS;
+use ifc_geometry::resource::functions::{FunctionStatus, FUNCTIONS};
 
 const MANIFEST: &str = include_str!("../data/ifc4-add2-tc1-geometry-declarations.tsv");
 const SUPPORT: &str = include_str!("../data/ifc4-add2-tc1-geometry-support.tsv");
@@ -152,5 +152,38 @@ fn all_normative_functions_have_exactly_one_owner() {
                 support.owner
             );
         }
+    }
+}
+
+/// An `Implemented` row must be backed by code that names the function.
+///
+/// `Scaffolded` is the honest default; the risk this guards is the
+/// opposite of the usual one. A function transcribed into a module
+/// while its registry row still says `Scaffolded` understates the
+/// crate, and the row stops being a usable audit signal.
+#[test]
+fn implemented_functions_are_named_by_their_owner_module() {
+    let source_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    for support in FUNCTIONS {
+        if support.status != FunctionStatus::Implemented {
+            continue;
+        }
+        let owner_path = support.owner.replace("::", "/");
+        let file = [
+            source_root.join(format!("{owner_path}.rs")),
+            source_root.join(&owner_path).join("mod.rs"),
+        ]
+        .into_iter()
+        .find(|p| p.is_file())
+        .unwrap_or_else(|| panic!("{} owner missing: {}", support.name, support.owner));
+        let body = std::fs::read_to_string(&file).expect("owner module is readable");
+        // The transcription carries the EXPRESS name in its doc comment,
+        // so a rename or deletion breaks this immediately.
+        assert!(
+            body.contains(support.name),
+            "{} claims Implemented but {} never names it",
+            support.name,
+            support.owner
+        );
     }
 }
