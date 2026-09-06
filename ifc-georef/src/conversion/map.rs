@@ -1,4 +1,4 @@
-//! IFC4 `IfcMapConversion` lowered to a metre-to-metre neutral transform.
+//! IFC4/IFC4X3 `IfcMapConversion` lowered to a metre-to-metre neutral transform.
 
 use axiolid_core::{Mat3, Transform3, Vec3};
 use ifc_model::value::Value;
@@ -6,6 +6,7 @@ use ifc_model::{Entity, EntityId, Model};
 
 use crate::crs::{projected_crs, LengthUnit, ProjectedCrs};
 use crate::error::{GeorefError, GeorefResult};
+use crate::view::GeorefView;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProjectToMap {
@@ -17,6 +18,12 @@ pub struct ProjectToMap {
     pub map_unit: LengthUnit,
     /// IFC's declared scale before source/target unit normalization.
     pub declared_scale: f64,
+    /// Normalized `(XAxisAbscissa, XAxisOrdinate)`: the project's local X
+    /// axis, as a unit vector, expressed in the map's XY plane. Exposed
+    /// (rather than only folded into `transform`) because grid-north
+    /// resolution needs the rotation alone, without `transform`'s scale
+    /// and translation.
+    pub x_axis_direction: (f64, f64),
 }
 
 /// Resolve an `IfcMapConversion` and normalize both frames to metres.
@@ -24,9 +31,60 @@ pub struct ProjectToMap {
 /// `project_metres_per_unit` is the project's `IfcUnitAssignment` length scale.
 /// It is explicit here because project units are owned by the caller's model
 /// loading boundary, while `MapUnit` is owned by the target CRS.
+///
+/// This entry point does not pin a schema version. `IfcMapConversion` and
+/// `IfcProjectedCRS`'s attribute *layout* is identical in IFC4 and IFC4X3
+/// (see `view.rs`'s module doc), so it works for either without a
+/// `GeorefView`. It cannot, however, name an IFC4X3-only entity
+/// (`IfcMapConversionScaled`, `IfcRigidOperation`, `IfcGeographicCRS`) as
+/// "not declared in this schema" versus "not implemented in this crate" --
+/// both surface as the same [`GeorefError::UnsupportedOperation`]. Use
+/// [`resolve_project_to_map_in`] when that distinction matters.
 pub fn resolve_project_to_map(
     model: &Model,
     id: EntityId,
+    project_metres_per_unit: f64,
+) -> GeorefResult<ProjectToMap> {
+    let entity = model.get(id).ok_or(GeorefError::MissingEntity {
+        referrer: id,
+        missing: id,
+    })?;
+    let actual_type = entity.type_name.to_ascii_uppercase();
+    resolve(model, id, entity, &actual_type, project_metres_per_unit)
+}
+
+/// Resolve an `IfcMapConversion` within a schema-pinned [`GeorefView`].
+///
+/// Distinguishes an entity that is IFC4X3-only (`IfcMapConversionScaled`,
+/// `IfcRigidOperation`, targeting `IfcGeographicCRS`) but was read from an
+/// IFC4 file -- the schema does not declare it there, so this is a
+/// malformed-for-schema file -- from one that is declared in the pinned
+/// schema but genuinely not implemented yet. Both are refused; the error
+/// message names which case it was.
+pub fn resolve_project_to_map_in(
+    view: &GeorefView,
+    id: EntityId,
+    project_metres_per_unit: f64,
+) -> GeorefResult<ProjectToMap> {
+    let actual_type = view.require_known_type(id)?.to_ascii_uppercase();
+    let entity = view.model.get(id).ok_or(GeorefError::MissingEntity {
+        referrer: id,
+        missing: id,
+    })?;
+    resolve(
+        view.model,
+        id,
+        entity,
+        &actual_type,
+        project_metres_per_unit,
+    )
+}
+
+fn resolve(
+    model: &Model,
+    id: EntityId,
+    entity: &Entity,
+    actual_type: &str,
     project_metres_per_unit: f64,
 ) -> GeorefResult<ProjectToMap> {
     if !project_metres_per_unit.is_finite() || project_metres_per_unit <= 0.0 {
@@ -35,18 +93,17 @@ pub fn resolve_project_to_map(
             detail: "project length scale must be finite and positive",
         });
     }
-    let entity = model.get(id).ok_or(GeorefError::MissingEntity {
-        referrer: id,
-        missing: id,
-    })?;
-    let actual_type = entity.type_name.to_ascii_uppercase();
-    if actual_type == "IFCMAPCONVERSIONSCALED" {
-        return Err(GeorefError::UnsupportedOperation {
-            entity: id,
-            actual: actual_type,
-        });
-    }
     if actual_type != "IFCMAPCONVERSION" {
+        // Coordinate-operation siblings this crate does not yet lower
+        // (`IFCMAPCONVERSIONSCALED`, `IFCRIGIDOPERATION`) are a distinct
+        // failure from an entirely unrelated entity id: the former is "not
+        // implemented yet", the latter is "wrong entity entirely".
+        if matches!(actual_type, "IFCMAPCONVERSIONSCALED" | "IFCRIGIDOPERATION") {
+            return Err(GeorefError::UnsupportedOperation {
+                entity: id,
+                actual: actual_type.to_owned(),
+            });
+        }
         return Err(GeorefError::WrongType {
             entity: id,
             expected: "IFCMAPCONVERSION",
@@ -133,6 +190,7 @@ pub fn resolve_project_to_map(
         project_unit,
         map_unit,
         declared_scale,
+        x_axis_direction: (a, b),
     })
 }
 

@@ -7,3 +7,5 @@
 
 mod chain;
 mod source;
+
+pub use chain::compose_project_frame;

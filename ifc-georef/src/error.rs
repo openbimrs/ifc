@@ -43,6 +43,18 @@ pub enum GeorefError {
     UnitCycle {
         entity: EntityId,
     },
+    MissingSchema,
+    AmbiguousSchema {
+        tokens: Vec<String>,
+    },
+    UnsupportedSchema {
+        token: String,
+    },
+    MissingProjectFrame,
+    DegenerateProjectFrame,
+    NonFiniteDirection {
+        entity: EntityId,
+    },
 }
 
 impl std::fmt::Display for GeorefError {
@@ -80,6 +92,36 @@ impl std::fmt::Display for GeorefError {
             }
             Self::UnitCycle { entity } => {
                 write!(f, "unit conversion chain at {entity} is cyclic or too deep")
+            }
+            Self::MissingSchema => {
+                write!(f, "model header declares no FILE_SCHEMA token")
+            }
+            Self::AmbiguousSchema { tokens } => {
+                write!(f, "model header declares multiple schemas: {tokens:?}")
+            }
+            Self::UnsupportedSchema { token } => {
+                write!(
+                    f,
+                    "schema {token} does not declare IFC georeferencing entities \
+                     or its coordinate-operation profile is not projected here"
+                )
+            }
+            Self::MissingProjectFrame => {
+                write!(
+                    f,
+                    "chaining a project-to-map operation onto a project frame \
+                     requires that frame to be supplied explicitly"
+                )
+            }
+            Self::DegenerateProjectFrame => {
+                write!(
+                    f,
+                    "supplied project frame is not an invertible rigid transform \
+                     (zero or non-finite determinant)"
+                )
+            }
+            Self::NonFiniteDirection { entity } => {
+                write!(f, "{entity} has a non-finite or zero-length direction")
             }
         }
     }

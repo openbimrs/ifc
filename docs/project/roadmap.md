@@ -200,8 +200,10 @@ refusal, not a gap: the schema does not declare `IfcConstructionResourceType`,
 partial because scheduling, costing, calendar interpretation, and logistics
 solving are out of scope.
 
-`ifc-georef` and `ifc-alignment` also have tested partial vertical slices: IFC4
-project-to-map/CRS resolution in the former, and IFC4X3-only exact horizontal
+`ifc-georef` and `ifc-alignment` also have tested partial vertical slices:
+IFC4/IFC4X3 project-to-map/CRS resolution, project-frame composition, and
+true/grid/project north in the former (rigid coordinate operations and
+scaled-factor conversion remain refused), and IFC4X3-only exact horizontal
 line/arc, constant-gradient vertical, full cant-transition, composite-curve
 assembly, and linear-placement/station-equation output in the latter.
 `ifc-classification`, `ifc-approval`,

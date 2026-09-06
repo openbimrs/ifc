@@ -13,9 +13,11 @@ Allowed production dependencies: ifc-model, schema metadata, and neutral axiolid
 
 - `crs.rs`: projected CRS identity, datum, map unit
 - `conversion.rs`: IfcMapConversion and coordinate operations
-- `context.rs`: source representation context linkage
+- `context.rs`: source representation context linkage and project-frame
+  composition
 - `elevation.rs`: site/ref elevation metadata
 - `north.rs`: true/project/grid north distinctions
+- `view.rs`: schema pinning (IFC4/IFC4X3) and version-aware entity lookup
 - `error.rs`: incomplete/invalid CRS operations
 
 ## Invariants

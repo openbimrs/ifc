@@ -4,4 +4,4 @@ mod map;
 mod rigid;
 mod validation;
 
-pub use map::{resolve_project_to_map, ProjectToMap};
+pub use map::{resolve_project_to_map, resolve_project_to_map_in, ProjectToMap};

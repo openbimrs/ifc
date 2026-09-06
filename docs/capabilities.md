@@ -41,6 +41,7 @@ code.
 | `ifc-cost` | 2,001 | 16 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-schedule` | 1,691 | 24 | 14 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 1,586 | 20 | 5 | 2 | <span class="status-implemented">Implemented</span> |
+| `ifc-georef` | 1,423 | 18 | 9 | 2 | <span class="status-partial">Partial</span> |
 | `ifc-schema` | 1,306 | 11 | 4 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,230 | 6 | 0 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 1,045 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
@@ -48,7 +49,6 @@ code.
 | `openbim-ifc` | 901 | 6 | 0 | 13 | <span class="status-implemented">Implemented</span> |
 | `ifc-author` | 729 | 8 | 3 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-spatial` | 615 | 8 | 1 | 4 | <span class="status-implemented">Implemented</span> |
-| `ifc-georef` | 582 | 17 | 12 | 1 | <span class="status-partial">Partial</span> |
 | `ifc-step` | 516 | 5 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 
 <!-- CAPABILITIES:CENSUS:END -->

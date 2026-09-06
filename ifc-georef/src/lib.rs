@@ -10,7 +10,13 @@ mod crs;
 mod elevation;
 mod error;
 mod north;
+mod view;
 
-pub use conversion::{resolve_project_to_map, ProjectToMap};
+pub use context::compose_project_frame;
+pub use conversion::{resolve_project_to_map, resolve_project_to_map_in, ProjectToMap};
 pub use crs::{LengthUnit, ProjectedCrs};
 pub use error::{GeorefError, GeorefResult};
+pub use north::{
+    grid_north_direction, project_north_direction, resolve_true_north, NorthReference,
+};
+pub use view::GeorefView;

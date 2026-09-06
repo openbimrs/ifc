@@ -57,7 +57,11 @@ horizontal/vertical position remain a typed refusal: their Cartesian position
 is a Fresnel-type integral with no closed form.
 
 ### `ifc-georef`
-Scaffold. Reserved for georeferencing (CRS, map conversion).
+IFC4/IFC4X3 (attribute layout for `IfcMapConversion`/`IfcProjectedCRS`
+verified identical between both schemas). Project-to-map conversion, CRS/map-unit
+resolution, project-frame composition onto a separately supplied project frame,
+and true/grid/project north are implemented. `IfcMapConversionScaled` and
+`IfcRigidOperation` (both IFC4X3-only) remain a typed refusal.
 
 ## L2 — domain views
 

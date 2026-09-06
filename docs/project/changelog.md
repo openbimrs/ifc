@@ -30,6 +30,25 @@ This page is synchronised from it at build time.
   EXPRESS treats as satisfied, so only the single explicit FALSE branch -- a
   3D relative placement on a 2D parent -- is reported.
 
+- `ifc-georef`: `GeorefView::for_model` pins the declared schema to IFC4 or
+  IFC4X3; IFC2X3 is refused with `GeorefError::UnsupportedSchema` since it
+  declares no georeferencing entities at all (verified against `IFC2X3_TC1.exp`).
+  `resolve_project_to_map_in` resolves an `IfcMapConversion` through a pinned
+  view, distinguishing an IFC4X3-only coordinate-operation entity
+  (`IfcMapConversionScaled`, `IfcRigidOperation`) read under IFC4 -- a schema
+  mismatch -- from a genuinely wrong entity id.
+- `ifc-georef`: `compose_project_frame` chains a resolved project-to-map
+  operation onto a separately supplied project frame (`IfcLocalPlacement` or
+  equivalent, owned by `ifc-geometry`), producing one map-frame transform;
+  refuses a singular (non-invertible) project frame rather than propagating
+  a degenerate composed transform.
+- `ifc-georef`: `NorthReference::{Project,True,Grid}` distinguish IFC's three
+  north references. `resolve_true_north` reads `IfcGeometricRepresentationContext.TrueNorth`
+  when declared and falls back to IFC's documented default (the project Y
+  axis) when absent, rather than silently treating "unspecified" as "equal
+  to grid north". `grid_north_direction` derives grid north from the
+  resolved map conversion's own rotation, so true, grid, and project north
+  can all disagree simultaneously, matching real georeferenced files.
 - `ifc-alignment`: `AlignmentView::for_model` pins the declared schema to
   IFC4X3 (`IFC4X3`/`IFC4X3_ADD2`); IFC2X3 and IFC4 ADD2 TC1 are refused with
   `AlignmentError::UnsupportedSchema` since `IfcAlignment*` entities do not
