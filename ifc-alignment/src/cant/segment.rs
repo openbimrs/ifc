@@ -33,6 +33,24 @@ pub struct CantSegment {
     pub predefined_type: CantSegmentType,
 }
 
+impl CantSegment {
+    /// The `PredefinedType` enumeration token this segment was read from.
+    pub(crate) fn predefined_type_name(&self) -> &str {
+        match &self.predefined_type {
+            CantSegmentType::BlossCurve => "BLOSSCURVE",
+            CantSegmentType::ConstantCant => "CONSTANTCANT",
+            CantSegmentType::CosineCurve => "COSINECURVE",
+            CantSegmentType::HelmertCurve => "HELMERTCURVE",
+            CantSegmentType::LinearTransition => "LINEARTRANSITION",
+            CantSegmentType::SineCurve => "SINECURVE",
+            CantSegmentType::VienneseBend => "VIENNESEBEND",
+            CantSegmentType::UserDefined => "USERDEFINED",
+            CantSegmentType::NotDefined => "NOTDEFINED",
+            CantSegmentType::Other(name) => name,
+        }
+    }
+}
+
 pub fn read_cant_segment(
     model: &Model,
     id: EntityId,

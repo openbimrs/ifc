@@ -12,13 +12,15 @@ Allowed production dependencies: ifc-model, schema metadata, and exact neutral a
 ## Module ownership
 
 - `alignment.rs`: root/nesting/representation association
+- `view.rs`: pins the IFC4X3 schema and exposes bounded `IfcRelNests`
+  traversal shared by every layout module
 - `horizontal.rs`: horizontal layout and segment parameters
 - `vertical.rs`: vertical profile segments
-- `cant.rs`: cant/superelevation segments
+- `cant.rs`: cant/superelevation segments and layout assembly
 - `segment.rs`: shared segment transitions/continuity
-- `curve.rs`: exact neutral curve assembly
+- `curve.rs`: exact neutral curve assembly (single-segment and composite)
 - `placement.rs`: linear placement/point-by-distance
-- `referent.rs`: stationing/referents
+- `referent.rs`: stationing/referents and station equations
 - `query.rs`: bounded alignment traversal
 
 ## Invariants

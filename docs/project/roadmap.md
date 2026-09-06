@@ -201,8 +201,10 @@ partial because scheduling, costing, calendar interpretation, and logistics
 solving are out of scope.
 
 `ifc-georef` and `ifc-alignment` also have tested partial vertical slices: IFC4
-project-to-map/CRS resolution in the former, and IFC4X3 segment parameters plus
-selected exact curve output in the latter. `ifc-classification`, `ifc-approval`,
+project-to-map/CRS resolution in the former, and IFC4X3-only exact horizontal
+line/arc, constant-gradient vertical, full cant-transition, composite-curve
+assembly, and linear-placement/station-equation output in the latter.
+`ifc-classification`, `ifc-approval`,
 `ifc-constraint`, `ifc-properties`, `ifc-style`, `ifc-structural`, `ifc-validate`,
 `ifc-schedule`, `ifc-systems`, and the bounded `ifc-cost` contract are implemented;
 `ifc-resource`, `ifc-geometry`, `ifc-georef`, and `ifc-alignment` are partial. Each crate's **PLAN.md** records

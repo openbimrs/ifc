@@ -38,6 +38,37 @@ pub enum AlignmentError {
     Graph {
         detail: String,
     },
+    /// No `FILE_SCHEMA` token was declared.
+    MissingSchema,
+    /// More than one `FILE_SCHEMA` token was declared.
+    AmbiguousSchema {
+        tokens: Vec<String>,
+    },
+    /// The declared schema is not one this crate can interpret.
+    ///
+    /// Alignment entities (`IfcAlignment*`) were introduced in IFC4X3; IFC2X3
+    /// and IFC4 ADD2 TC1 do not declare them at all, so there is no version
+    /// dispatch here the way `ifc-resource`/`ifc-structural` have one --
+    /// exactly one profile is authoritative and anything else is refused.
+    UnsupportedSchema {
+        token: String,
+    },
+    /// A relationship or nesting structure violates a stated invariant.
+    SemanticViolation {
+        entity: Option<EntityId>,
+        rule: &'static str,
+    },
+    /// A dangling reference: the target id is not present in the model.
+    DanglingReference {
+        entity: EntityId,
+        attribute: &'static str,
+        target: EntityId,
+    },
+    /// Traversal exceeded an explicit bound.
+    BudgetExceeded {
+        max_depth: usize,
+        max_nodes: usize,
+    },
 }
 
 pub type AlignmentResult<T> = Result<T, AlignmentError>;
@@ -71,6 +102,30 @@ impl std::fmt::Display for AlignmentError {
                 detail,
             } => write!(f, "unsupported {type_name} at {entity}: {detail}"),
             Self::Graph { detail } => write!(f, "invalid neutral alignment graph: {detail}"),
+            Self::MissingSchema => write!(f, "no FILE_SCHEMA token was declared"),
+            Self::AmbiguousSchema { tokens } => {
+                write!(f, "ambiguous FILE_SCHEMA tokens: {tokens:?}")
+            }
+            Self::UnsupportedSchema { token } => write!(
+                f,
+                "unsupported schema {token}: alignment entities require IFC4X3 ADD2"
+            ),
+            Self::SemanticViolation { entity, rule } => match entity {
+                Some(entity) => write!(f, "{entity} violates {rule}"),
+                None => write!(f, "violates {rule}"),
+            },
+            Self::DanglingReference {
+                entity,
+                attribute,
+                target,
+            } => write!(f, "{entity}.{attribute} references missing {target}"),
+            Self::BudgetExceeded {
+                max_depth,
+                max_nodes,
+            } => write!(
+                f,
+                "traversal exceeded bounds (max_depth={max_depth}, max_nodes={max_nodes})"
+            ),
         }
     }
 }

@@ -9,4 +9,7 @@ mod assemble;
 mod provenance;
 mod transition;
 
-pub use assemble::{lower_horizontal_segment, lower_vertical_segment, LoweredAlignmentCurve};
+pub use assemble::{
+    lower_horizontal_layout, lower_horizontal_segment, lower_vertical_segment,
+    LoweredAlignmentCurve,
+};

@@ -33,6 +33,7 @@ code.
 | `ifc-properties` | 3,119 | 30 | 14 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-template-catalog` | 2,726 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-resource` | 2,647 | 29 | 9 | 9 | <span class="status-partial">Partial</span> |
+| `ifc-alignment` | 2,485 | 28 | 11 | 3 | <span class="status-partial">Partial</span> |
 | `ifc-material` | 2,398 | 24 | 0 | 8 | <span class="status-implemented">Implemented</span> |
 | `ifc-validate` | 2,249 | 23 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-classification` | 2,203 | 20 | 4 | 3 | <span class="status-implemented">Implemented</span> |
@@ -42,7 +43,6 @@ code.
 | `ifc-systems` | 1,586 | 20 | 5 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-schema` | 1,306 | 11 | 4 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,230 | 6 | 0 | 1 | <span class="status-implemented">Implemented</span> |
-| `ifc-alignment` | 1,095 | 26 | 16 | 2 | <span class="status-partial">Partial</span> |
 | `ifc-xml` | 1,045 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-approval` | 915 | 5 | 0 | 1 | <span class="status-implemented">Implemented</span> |
 | `openbim-ifc` | 901 | 6 | 0 | 13 | <span class="status-implemented">Implemented</span> |

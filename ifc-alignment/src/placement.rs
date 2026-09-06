@@ -12,3 +12,8 @@ mod distance;
 mod linear;
 
 mod station;
+
+pub use linear::{
+    resolve_linear_placement, resolve_point_by_distance, CurveMeasure, LinearPlacement,
+    PointByDistance,
+};

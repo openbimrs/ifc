@@ -46,9 +46,18 @@ Seven representation-item families lower today; eight more are declared
 `PLANNED` with a stated reason. Unimplemented families return a typed
 `Unsupported` error rather than panicking or substituting approximate geometry.
 
-### `ifc-alignment`, `ifc-georef`
-Scaffold. Reserved for alignment (horizontal, vertical, cant) and
-georeferencing (CRS, map conversion).
+### `ifc-alignment`
+IFC4X3-only (alignment entities do not exist in IFC2X3 or IFC4). Line and
+circular-arc horizontal segments, constant-gradient vertical segments, and
+every closed-form `IfcAlignmentCantSegmentTypeEnum` cant transition lower
+exactly; continuity-aware composite curve assembly, linear placement, and
+station equations are implemented. Clothoid-family transition curves
+(CLOTHOID, HELMERTCURVE, BLOSSCURVE, COSINECURVE, SINECURVE, VIENNESEBEND) on
+horizontal/vertical position remain a typed refusal: their Cartesian position
+is a Fresnel-type integral with no closed form.
+
+### `ifc-georef`
+Scaffold. Reserved for georeferencing (CRS, map conversion).
 
 ## L2 — domain views
 

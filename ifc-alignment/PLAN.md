@@ -1,7 +1,7 @@
 # ifc-alignment implementation plan
 
-Status: horizontal/vertical/cant segment parameters implemented; exact neutral line/circular-horizontal and constant-gradient-vertical output implemented with typed refusal for unsupported exact transitions.
-Last updated: 2026-08-31
+Status: horizontal/vertical/cant segment parameters implemented; exact neutral line/circular-horizontal and constant-gradient-vertical output implemented; IFC4X3 schema pinning (ALIGN-VERS), continuity-aware horizontal composite curve assembly (ALIGN-CURVE), full closed-form cant segment/layout evaluation (ALIGN-CANT), and linear placement + station-equation resolution (ALIGN-PLACE) are implemented. Transition-curve families with no closed-form Cartesian position (clothoid, Helmert, Bloss, cosine, sine, Vienna bend on horizontal/vertical position) remain a typed refusal by design -- see AGENTS.md.
+Last updated: 2026-09-06
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
 record blockers/decisions under it, and check it off only with evidence.
@@ -16,16 +16,26 @@ These paths are compiled private scaffold modules. Implement inside the named
 owner and expose a public symbol only through an intentional parent re-export.
 
 - `src/alignment/root.rs`: IfcAlignment hierarchy
+- `src/view.rs`: implemented -- pins the IFC4X3 schema (ALIGN-VERS) and exposes
+  bounded `IfcRelNests` traversal (`nested_children`/`segment_chain`) shared by
+  every layout module
 - `src/horizontal/layout.rs`: segment order and continuity
 - `src/horizontal/segment.rs`: line/arc/transition parameters
 - `src/vertical/layout.rs`: profile order
 - `src/vertical/segment.rs`: gradients/arcs/parabolas
-- `src/cant/layout.rs`: cant segment order
+- `src/cant/layout.rs`: implemented -- `CantLayout` resolves, orders, and
+  continuity-checks a full `IfcAlignmentCant` profile (ALIGN-CANT)
 - `src/cant/segment.rs`: cant transitions
-- `src/curve/assemble.rs`: exact neutral composite curve
-- `src/placement/linear.rs`: linear placement
+- `src/cant/evaluate.rs`: implemented -- closed-form `D(ξ)` for all seven
+  `IfcAlignmentCantSegmentTypeEnum` members (every cant type has an explicit,
+  exact base formula in the spec -- no integration needed)
+- `src/curve/assemble.rs`: implemented -- exact neutral composite curve
+  (`lower_horizontal_layout`, ALIGN-CURVE) plus the single-segment lowerers
+- `src/placement/linear.rs`: implemented -- `IfcLinearPlacement` and
+  `IfcPointByDistanceExpression` resolution (ALIGN-PLACE)
 - `src/placement/distance.rs`: point-by-distance expressions
-- `src/referent/station.rs`: station referents
+- `src/referent/station.rs`: implemented -- `Pset_Stationing` station-equation
+  resolution (ALIGN-PLACE)
 
 - `src/cant/transition.rs`: compiled private scaffold; implementation owned by `src/cant/PLAN.md`
 - `src/curve/provenance.rs`: compiled private scaffold; implementation owned by `src/curve/PLAN.md`
@@ -36,24 +46,63 @@ owner and expose a public symbol only through an intentional parent re-export.
 
 ## Work queue
 
-- [ ] `ALIGN-VERS` - pin the authoritative IFC4x3 profile and declaration inventory
-  - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+- [x] `ALIGN-VERS` - pin the authoritative IFC4x3 profile and declaration inventory
+  - `AlignmentView::for_model` accepts only `IFC4X3`/`IFC4X3_ADD2`; IFC2X3 and
+    IFC4 are refused with `AlignmentError::UnsupportedSchema` since
+    `IfcAlignment*` entities do not exist in either schema at all (unlike
+    `ifc-resource`/`ifc-structural`, there is no cross-version dispatch table
+    here -- exactly one profile is authoritative).
+  - Evidence: `cargo test -p ifc-alignment view::` (6 tests: missing/ambiguous/
+    unrecognized/refused/accepted schema tokens).
 - [ ] `ALIGN-H` - implement exact horizontal segment views/lowering
   - Progress: parameters resolve with units; line and circular arc lower exactly;
-    transition families fail typed rather than being approximated.
+    transition families (CLOTHOID, HELMERTCURVE, BLOSSCURVE, COSINECURVE,
+    SINECURVE, VIENNESEBEND) fail typed rather than being approximated -- their
+    Cartesian position is a Fresnel-type integral with no closed form, so no
+    exact primitive exists for them without a new transcendental curve type
+    upstream in `axiolid-curve` (out of this crate's boundary). CUBIC (an
+    exact literal polynomial in IFC's own definition) remains open.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [ ] `ALIGN-V` - implement exact vertical profile views/lowering
   - Progress: parameters resolve with units; constant gradient lowers exactly;
-    curved/transition profile assembly remains open.
+    CIRCULARARC/PARABOLICARC (also exact) and CLOTHOID (transcendental, same
+    boundary as horizontal) remain open.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `ALIGN-CANT` - implement exact cant views/lowering
-  - Progress: all segment fields, including optional signed rail offsets, resolve;
-    parent/layout curve assembly remains open.
-  - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `ALIGN-CURVE` - assemble continuity-aware neutral curves
-  - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
-- [ ] `ALIGN-PLACE` - implement linear placement and station equations
-  - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+- [x] `ALIGN-CANT` - implement exact cant views/lowering
+  - All seven `IfcAlignmentCantSegmentTypeEnum` members (BLOSSCURVE,
+    CONSTANTCANT, COSINECURVE, HELMERTCURVE, LINEARTRANSITION, SINECURVE,
+    VIENNESEBEND) have an explicit closed-form `D(ξ)` base formula in the
+    IFC4.3 spec itself -- unlike horizontal/vertical transitions, cant is the
+    elevation value directly, not an integrated Cartesian position, so every
+    type is exactly representable with no new geometry primitive.
+    `CantLayout::resolve` orders segments, checks C0 continuity across the
+    profile, and exposes a single station-domain query.
+  - Evidence: `cargo test -p ifc-alignment cant::evaluate::` (13 tests, all
+    seven formulas checked against the published base-formula values at
+    interior points) plus
+    `cant_layout_resolves_the_full_profile_and_queries_by_distance` in
+    `tests/layout_and_placement.rs`.
+- [x] `ALIGN-CURVE` - assemble continuity-aware neutral curves
+  - `lower_horizontal_layout` walks an `IfcAlignmentHorizontal`'s nested
+    segment chain via `AlignmentView::segment_chain`, lowers each exactly
+    representable segment, and assembles a single `CurveRelation::Composite`
+    with an observed (not assumed) `Transition` between consecutive segments --
+    exact-equality endpoint matching, refusing rather than silently patching a
+    gap.
+  - Evidence: `horizontal_layout_assembles_a_continuous_composite_curve` and
+    `a_clothoid_segment_inside_a_layout_is_a_typed_refusal_not_an_approximation`
+    in `tests/layout_and_placement.rs`.
+- [x] `ALIGN-PLACE` - implement linear placement and station equations
+  - `resolve_linear_placement`/`resolve_point_by_distance` resolve
+    `IfcLinearPlacement` -> `IfcAxis2PlacementLinear` -> the mandatory
+    `IfcPointByDistanceExpression` (IFC4X3 WR1 forbids any other `Location`
+    type on a linear axis placement). `station_equations` resolves every
+    `IfcReferent` carrying a `Pset_Stationing` property set into its
+    distance-along/station mapping, keeping `IncomingStation` distinct from
+    `Station` per the spec's own station-equation semantics.
+  - Evidence: `linear_placement_resolves_the_point_by_distance_expression` and
+    `station_equations_resolve_from_pset_stationing_and_the_linear_placement`
+    in `tests/layout_and_placement.rs`.
 - [ ] `ALIGN-CENSUS` - fixture/declaration coverage with explicit unsupported cases
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 
@@ -64,5 +113,19 @@ Append concise entries as `TASK-ID - proof command/result - material decision`.
 - `ALIGN-H/V/C` parameter/exact slice - `cargo +1.88.0 test -p ifc-alignment`
   and the workspace gate pass against unit and committed IFC fixture tests;
   unsupported transitions are not approximated.
+- `ALIGN-VERS/CURVE/CANT/PLACE` - `cargo +1.88.0 test -p ifc-alignment
+  --all-targets` (36 tests, 0 failures), `cargo +1.88.0 clippy -p ifc-alignment
+  --all-targets -- -D warnings` (clean), `cargo +1.88.0 test --workspace
+  --all-targets` (0 regressions, one pre-existing corpus fixture-count
+  assertion updated 32->33 for the new committed fixture), full
+  `scripts/gate.sh` in an isolated `CARGO_TARGET_DIR`. Material decision:
+  clothoid-family transition curves (CLOTHOID, HELMERTCURVE, BLOSSCURVE,
+  COSINECURVE, SINECURVE, VIENNESEBEND) on horizontal/vertical position stay a
+  typed refusal -- their Cartesian position is a genuine Fresnel-type integral
+  with no closed form, so approximating it would violate the "never silently
+  substitute geometry" invariant, and adding a transcendental curve primitive
+  belongs upstream in `axiolid-curve`, not in this IFC bridge. Cant, by
+  contrast, is fully closed for every defined type (the spec states `D(ξ)`
+  directly, no integration), so `ALIGN-CANT` is complete.
 
 Do not paste long logs or move standing invariants out of `AGENTS.md`.

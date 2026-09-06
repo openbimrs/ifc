@@ -9,6 +9,26 @@ and this project follows Semantic Versioning.
 
 ### Added
 
+- `ifc-alignment`: `AlignmentView::for_model` pins the declared schema to
+  IFC4X3 (`IFC4X3`/`IFC4X3_ADD2`); IFC2X3 and IFC4 ADD2 TC1 are refused with
+  `AlignmentError::UnsupportedSchema` since `IfcAlignment*` entities do not
+  exist in either schema at all.
+- `ifc-alignment`: `CantLayout` resolves, orders, and C0-continuity-checks a
+  full `IfcAlignmentCant` profile, with `cant_at`/`cant_at_distance`
+  evaluating all seven `IfcAlignmentCantSegmentTypeEnum` closed-form base
+  formulas (BLOSSCURVE, CONSTANTCANT, COSINECURVE, HELMERTCURVE,
+  LINEARTRANSITION, SINECURVE, VIENNESEBEND) exactly -- cant states its
+  elevation value directly as a function of arc-length, so every type is
+  exactly representable with no integration and no approximation.
+- `ifc-alignment`: `lower_horizontal_layout` assembles an `IfcAlignmentHorizontal`'s
+  nested segment chain into one continuity-aware `CurveRelation::Composite`,
+  observing (not assuming) the `Transition` between consecutive segments from
+  exact endpoint equality.
+- `ifc-alignment`: `resolve_linear_placement`/`resolve_point_by_distance`
+  resolve `IfcLinearPlacement` through `IfcAxis2PlacementLinear` to the
+  mandatory `IfcPointByDistanceExpression`; `station_equations` resolves every
+  `IfcReferent` carrying `Pset_Stationing` into its distance-along/station
+  mapping, including station-equation `IncomingStation` discontinuities.
 - Enforced 47 more IFC4 geometry `WHERE` rules, taking the executable count
   from 16 to 63 of 95. New rule modules cover dimensionality (via a
   transcription of the schema's own `IfcCurveDim` derivation), positive
@@ -16,6 +36,26 @@ and this project follows Semantic Versioning.
   newly enforced row carries a conforming and a violating model in
   `tests/where_rule_inventory.rs`, and the coverage assertion fails if a row
   claims implementation without one.
+- `ifc-resource`: `IfcPerson`, `IfcOrganization`, `IfcOrganizationRelationship`,
+  `IfcPersonAndOrganization`, and `IfcActorRole` projections, enforcing
+  `IdentifiablePerson`, `ValidSetOfNames`, and `WR1` (`USERDEFINED` roles
+  require `UserDefinedRole`).
+- `ifc-resource`: all six concrete `IfcConstructionResourceType` kinds, with
+  `IfcRelDefinesByType` assignment resolution that refuses a second relation
+  naming a different type for the same occurrence.
+- `ifc-resource`: `IfcInventory` metadata and `IfcActorSelect` jurisdiction
+  projection, with `IfcRelAssignsToGroup` membership resolved in authored
+  order.
+- `ifc-resource`: `IfcPhysicalSimpleQuantity` (all six concrete measure
+  kinds) and `IfcPhysicalComplexQuantity` usage-quantity projections,
+  enforcing the shared non-negative/finite value rule and
+  `NoSelfReference`.
+- `ifc-resource`: IFC4X3 ADD2 accepted alongside IFC4 ADD2 TC1 for every
+  resource, actor, inventory, and usage-quantity projection (entity shapes
+  verified identical against `IFC4X3_ADD2.exp`). IFC2X3 remains an explicit
+  `UnsupportedSchema` refusal: it does not declare `IfcConstructionResourceType`,
+  `IfcResourceTime`, or `PredefinedType` on `IfcConstructionEquipmentResource`/
+  `IfcCrewResource`, so there is no normative behavior to project.
 
 ### Fixed
 

@@ -29,11 +29,23 @@ mod horizontal;
 mod placement;
 mod referent;
 mod vertical;
+mod view;
 
-pub use cant::{read_cant_segment, CantSegment, CantSegmentType};
-pub use curve::{lower_horizontal_segment, lower_vertical_segment, LoweredAlignmentCurve};
+pub use cant::{
+    cant_at, read_cant_segment, CantAtStation, CantLayout, CantSegment, CantSegmentType,
+};
+pub use curve::{
+    lower_horizontal_layout, lower_horizontal_segment, lower_vertical_segment,
+    LoweredAlignmentCurve,
+};
 pub use error::{AlignmentError, AlignmentResult};
 pub use horizontal::{
     read_horizontal_segment, AlignmentUnits, HorizontalSegment, HorizontalSegmentType,
 };
+pub use placement::{
+    resolve_linear_placement, resolve_point_by_distance, CurveMeasure, LinearPlacement,
+    PointByDistance,
+};
+pub use referent::{station_equations, StationEquation};
 pub use vertical::{read_vertical_segment, VerticalSegment, VerticalSegmentType};
+pub use view::AlignmentView;
