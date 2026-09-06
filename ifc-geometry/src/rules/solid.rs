@@ -108,34 +108,18 @@ fn revolved_area_solid(model: &Model, id: EntityId, entity: &Entity, out: &mut V
     }
 }
 
-/// `IfcBooleanResult.SameDim`.
+/// The `IfcBooleanClippingResult` restrictions.
 ///
-/// NOTE: this check cannot currently fire. `operand_dim` returns `Some(3)`
-/// for every family it recognises and `None` otherwise, so `da != db` is
-/// unreachable. The rule stays `inventoried`, not `implemented`, in
-/// `data/ifc4-where-rules.tsv` until a 2D operand family is modelled.
-///
-/// Both operands must have the same dimensionality. Mixing a 2D and a 3D
-/// operand is meaningless, and a kernel discovers it only as a failed
-/// intersection.
+/// `SameDim` is NOT checked here: it lives in `boolean_operands`, which
+/// resolves operand dimensionality through `dimension::dim_of` and so reaches
+/// curve operands too. An earlier copy of the rule lived here and used the
+/// local `operand_dim`, which answered `Some(3)` for every family it
+/// recognised and `None` otherwise -- making `da != db` unreachable. It was
+/// dead code that still read as enforcement.
 fn boolean_result(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleViolation>) {
     let type_name = entity.type_name.to_ascii_uppercase();
     let first = entity.attributes.get(1).and_then(|v| v.as_ref_id());
     let second = entity.attributes.get(2).and_then(|v| v.as_ref_id());
-
-    if let (Some(a), Some(b)) = (first, second) {
-        if let (Some(da), Some(db)) = (operand_dim(model, a), operand_dim(model, b)) {
-            if da != db {
-                out.push(RuleViolation::new(
-                    id,
-                    type_name.clone(),
-                    "SameDim",
-                    ViolationKind::Disagreement,
-                    format!("FirstOperand {a} is {da}D but SecondOperand {b} is {db}D"),
-                ));
-            }
-        }
-    }
 
     // IfcBooleanClippingResult additionally requires the operation to be
     // DIFFERENCE and the second operand to be a half space.
@@ -222,31 +206,6 @@ fn polygonal_bounded_half_space(
             format!("PolygonalBoundary must be IfcPolyline or IfcCompositeCurve, found {name}"),
         ));
     }
-}
-
-/// Dimensionality of a boolean operand.
-///
-/// Solids and half spaces are 3D by construction; the interesting case is a
-/// tessellated face set or a nested boolean, which are resolved recursively.
-fn operand_dim(model: &Model, id: EntityId) -> Option<usize> {
-    let entity = model.get(id)?;
-    let name = entity.type_name.to_ascii_uppercase();
-    if crate::select::is_a(&name, "IFCSOLIDMODEL")
-        || crate::select::is_a(&name, "IFCHALFSPACESOLID")
-        || crate::select::is_a(&name, "IFCCSGPRIMITIVE3D")
-        || crate::select::is_a(&name, "IFCTESSELLATEDFACESET")
-    {
-        return Some(3);
-    }
-    if name == "IFCBOOLEANRESULT" || name == "IFCBOOLEANCLIPPINGRESULT" {
-        // A boolean's dimensionality is its operands'.
-        return entity
-            .attributes
-            .get(1)
-            .and_then(|v| v.as_ref_id())
-            .and_then(|first| operand_dim(model, first));
-    }
-    None
 }
 
 /// `HasAdvancedFaces` and `VoidsHaveAdvancedFaces`.

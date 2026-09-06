@@ -15,7 +15,7 @@ mod where_rule_inventory {
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use ifc_geometry::rules::validate_model;
+use ifc_geometry::rules::{validate_model, RuleViolation};
 use ifc_model::Model;
 
 const INVENTORY: &str = include_str!("../data/ifc4-where-rules.tsv");
@@ -179,14 +179,41 @@ fn implemented_rules_fire_on_violations_and_stay_silent_otherwise() {
         }
     }
     for (entity, label, good, bad) in all_cases() {
+        // Match the entity type as well as the label. Matching the bare
+        // label let an IfcPolyline.SameDim violation satisfy the
+        // IfcBooleanResult.SameDim case, hiding the fact that the boolean
+        // rule cannot fire at all. Same defect the naming gate above was
+        // already hardened against.
+        let expected = entity.to_ascii_uppercase();
+        // A row may name an abstract supertype (IfcBSplineCurve) while the
+        // fixture must instantiate a concrete one (IfcBSplineCurveWithKnots),
+        // so accept a subtype of the row's entity -- but nothing wider.
+        let fired = |vs: &[RuleViolation]| {
+            vs.iter().any(|v| {
+                v.rule == label && {
+                    let actual = v.type_name.to_ascii_uppercase();
+                    // Exact, or a subtype per the geometry subtype table.
+                    // That table deliberately omits families outside this
+                    // crate's scope (the transformation operators, the
+                    // representation family), so fall back to the schema's
+                    // own naming convention: a concrete subtype extends its
+                    // supertype's name with a dimensionality suffix.
+                    actual == expected
+                        || ifc_geometry::select::is_a(&actual, &expected)
+                        || actual
+                            .strip_prefix(expected.as_str())
+                            .is_some_and(|rest| rest == "2D" || rest == "3D")
+                }
+            })
+        };
         let clean = validate_model(&good);
         assert!(
-            !clean.iter().any(|v| v.rule == label),
+            !fired(&clean),
             "{entity}.{label} fired on conforming data: {clean:?}"
         );
         let violations = validate_model(&bad);
         assert!(
-            violations.iter().any(|v| v.rule == label),
+            fired(&violations),
             "{entity}.{label} did not fire on violating data: {violations:?}"
         );
     }

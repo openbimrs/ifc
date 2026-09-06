@@ -7,6 +7,28 @@ and this project follows Semantic Versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- `ifc-geometry`: the WHERE-rule coverage gate matched violations by rule
+  label alone, so a violation raised by any entity satisfied any other
+  entity's case for the same label. `IfcBooleanResult.SameDim` passed on a
+  violation raised by `IfcPolyline.SameDim`. The gate now matches the entity
+  type as well, accepting a declared subtype or a dimensionality-suffixed
+  concrete form (`IfcCartesianTransformationOperator3D` for the operator
+  supertype) and nothing wider. The equivalent hole in the *naming* gate had
+  already been closed; the behavioural gate had kept it.
+- `ifc-geometry`: `IfcBooleanResult.SameDim` had two implementations. The
+  older one resolved operands through a local `operand_dim` that answered
+  `Some(3)` for every family it recognised and `None` otherwise, so its
+  comparison was unreachable -- dead code that still read as enforcement.
+  Removed it along with `operand_dim`; `boolean_operands` owns the rule and
+  resolves dimensionality through `dimension::dim_of`.
+- `ifc-geometry`: `resource::functions` recorded eight functions as
+  `Scaffolded` ("semantics remain to implement") that were already executing.
+  Added `FunctionStatus::Implemented` and a manifest test asserting an
+  `Implemented` row is named by its owner module, so the registry can no
+  longer understate the crate.
+
 ### Added
 
 - `ifc-geometry`: the remaining 20 IFC4 geometry-resource `WHERE` rules are
