@@ -1,6 +1,6 @@
 # ifc-alignment implementation plan
 
-Status: horizontal/vertical/cant segment parameters implemented; exact neutral line/circular-horizontal and constant-gradient-vertical output implemented; IFC4X3 schema pinning (ALIGN-VERS), continuity-aware horizontal composite curve assembly (ALIGN-CURVE), full closed-form cant segment/layout evaluation (ALIGN-CANT), and linear placement + station-equation resolution (ALIGN-PLACE) are implemented. Transition-curve families with no closed-form Cartesian position (clothoid, Helmert, Bloss, cosine, sine, Vienna bend on horizontal/vertical position) remain a typed refusal by design -- see AGENTS.md.
+Status: horizontal/vertical/cant segment parameters implemented; exact neutral line/circular-horizontal and constant-gradient-vertical output implemented; IFC4X3 schema pinning (ALIGN-VERS), continuity-aware horizontal composite curve assembly (ALIGN-CURVE), full closed-form cant segment/layout evaluation (ALIGN-CANT), and linear placement + station-equation resolution (ALIGN-PLACE) are implemented. Transition-curve families with no closed-form Cartesian position (clothoid, Helmert, Bloss, cosine, sine, Vienna bend on horizontal/vertical position) remain a typed refusal by design -- see AGENTS.md. The refusal is per segment: `lower_horizontal_layout_partial` lowers the exact runs of a spiral-bearing layout and names the refused segments, so production alignments are usable without any approximation.
 Last updated: 2026-09-06
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
@@ -103,6 +103,20 @@ owner and expose a public symbol only through an intentional parent re-export.
   - Evidence: `linear_placement_resolves_the_point_by_distance_expression` and
     `station_equations_resolve_from_pset_stationing_and_the_linear_placement`
     in `tests/layout_and_placement.rs`.
+- [x] `ALIGN-PARTIAL` - lower spiral-bearing layouts per segment, not per layout
+  - `lower_horizontal_layout_partial` keeps maximal runs of consecutive
+    exactly-lowered segments and reports each refused segment with its entity
+    id and authored `PredefinedType`. A run ends at every refusal, because
+    continuity across a segment this crate did not lower is not a fact it can
+    assert. The all-or-nothing `lower_horizontal_layout` is unchanged, so
+    existing callers keep their exact contract. This closes the capability
+    cliff where a single CLOTHOID failed an entire production alignment; it
+    adds no approximation, only reporting.
+  - Evidence: `tests/partial_lowering.rs` (4 tests) against the new
+    `synthetic_alignment_spiral.ifc` line->clothoid->arc->clothoid->line
+    fixture; mutation-checked by removing the run-flush and by silently
+    lowering spirals as lines, both of which fail the suite.
+
 - [ ] `ALIGN-CENSUS` - fixture/declaration coverage with explicit unsupported cases
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 
@@ -127,5 +141,20 @@ Append concise entries as `TASK-ID - proof command/result - material decision`.
   belongs upstream in `axiolid-curve`, not in this IFC bridge. Cant, by
   contrast, is fully closed for every defined type (the spec states `D(ξ)`
   directly, no integration), so `ALIGN-CANT` is complete.
+
+- `ALIGN-PARTIAL` - `cargo +1.88.0 test -p ifc-alignment --all-targets`
+  (40 tests, up from 36) plus the full workspace suite (168 test-result
+  lines from `cargo test --workspace`, 231 across the whole `scripts/gate.sh`
+  run, zero failures in both). `lower_horizontal_layout_partial` splits a layout
+  into maximal exactly-lowerable runs and reports refused segments by entity
+  id and authored type; `lower_horizontal_layout` keeps its all-or-nothing
+  contract byte-for-byte, proven by asserting the partial path reproduces its
+  graph structurally on a spiral-free layout. Mutation-checked: removing the
+  run-flush on refusal, and silently lowering spirals as lines, each fail the
+  suite -- so the gate can actually fail. Kernel repinned to axiolid v0.12.0
+  (`Curve2::Intrinsic`) as a no-op verified against the pre-change baseline.
+  New fixture `synthetic_alignment_spiral.ifc` (line->clothoid->arc->
+  clothoid->line, the canonical production shape) validates clean in the
+  ifc-validate corpus.
 
 Do not paste long logs or move standing invariants out of `AGENTS.md`.

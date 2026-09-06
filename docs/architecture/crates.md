@@ -54,7 +54,11 @@ exactly; continuity-aware composite curve assembly, linear placement, and
 station equations are implemented. Clothoid-family transition curves
 (CLOTHOID, HELMERTCURVE, BLOSSCURVE, COSINECURVE, SINECURVE, VIENNESEBEND) on
 horizontal/vertical position remain a typed refusal: their Cartesian position
-is a Fresnel-type integral with no closed form.
+is a Fresnel-type integral with no closed form. The refusal is per segment,
+not per layout -- `lower_horizontal_layout_partial` lowers the exact segments
+of a spiral-bearing layout and reports the refused ones by entity id and
+authored type, so a production alignment yields its lines and arcs instead of
+one opaque failure.
 
 ### `ifc-georef`
 IFC4/IFC4X3 (attribute layout for `IfcMapConversion`/`IfcProjectedCRS`

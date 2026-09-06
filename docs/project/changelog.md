@@ -39,6 +39,24 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `ifc-alignment`: `lower_horizontal_layout_partial` lowers a horizontal
+  layout as far as exactness allows instead of failing the whole layout on
+  the first transition spiral. Real railway and highway alignments interleave
+  spirals between their lines and arcs, so the all-or-nothing entry point
+  refused essentially every production file. The partial result keeps maximal
+  runs of exactly-lowered consecutive segments and reports each refused
+  segment with its entity id and authored `PredefinedType`, so a caller can
+  say "3 of 5 lowered, CLOTHOID #103 and #107 refused" rather than only that
+  something failed. A run ends at every refusal: continuity across a segment
+  this crate did not lower is not a fact it is entitled to assert. Still no
+  approximation anywhere -- `lower_horizontal_layout` keeps its exact
+  all-or-nothing contract unchanged.
+- `ifc-alignment`: repinned the neutral kernel to `axiolid` v0.12.0, whose
+  `Curve2::Intrinsic` carries a curvature-law-plus-start-frame natural
+  equation. This is the representation the transition-spiral families need to
+  be storable exactly; lowering them onto it is the follow-up to this change,
+  not part of it.
+
 - `ifc-geometry`: the remaining 20 IFC4 geometry-resource `WHERE` rules are
   enforced, completing all 95. Two readers were added under their declared
   owners rather than inside the rules layer: `surface::basis` implements

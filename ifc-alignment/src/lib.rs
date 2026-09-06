@@ -35,8 +35,8 @@ pub use cant::{
     cant_at, read_cant_segment, CantAtStation, CantLayout, CantSegment, CantSegmentType,
 };
 pub use curve::{
-    lower_horizontal_layout, lower_horizontal_segment, lower_vertical_segment,
-    LoweredAlignmentCurve,
+    lower_horizontal_layout, lower_horizontal_layout_partial, lower_horizontal_segment,
+    lower_vertical_segment, LoweredAlignmentCurve, PartialHorizontalLayout, RefusedSegment,
 };
 pub use error::{AlignmentError, AlignmentResult};
 pub use horizontal::{

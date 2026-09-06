@@ -40,6 +40,88 @@ fn observed_transition(end: Point2, next_start: Point2, tolerance: f64) -> Optio
     }
 }
 
+/// Exact end point of a segment this crate can lower, in closed form.
+///
+/// `None` for every transition-spiral family: their end point is a
+/// Fresnel-type integral, so there is no closed form to return and this
+/// crate will not quadrature one into existence. That is the same boundary
+/// [`lower_horizontal_segment`] enforces, expressed as data so a caller can
+/// see where a run has to stop rather than only that it failed.
+fn closed_form_end_point(segment: &HorizontalSegment) -> Option<Point2> {
+    match segment.segment_type {
+        HorizontalSegmentType::Line => {
+            let direction = Vec2::new(segment.start_direction.cos(), segment.start_direction.sin());
+            Some(segment.start_point + direction * segment.segment_length)
+        }
+        HorizontalSegmentType::CircularArc if segment.start_radius != 0.0 => {
+            let direction = Vec2::new(segment.start_direction.cos(), segment.start_direction.sin());
+            let left = Vec2::new(-direction.y, direction.x);
+            let centre = segment.start_point + left * segment.start_radius;
+            let sweep = segment.segment_length / segment.start_radius;
+            let radial = segment.start_point - centre;
+            let (sin_s, cos_s) = sweep.sin_cos();
+            Some(
+                centre
+                    + Vec2::new(
+                        radial.x * cos_s - radial.y * sin_s,
+                        radial.x * sin_s + radial.y * cos_s,
+                    ),
+            )
+        }
+        _ => None,
+    }
+}
+
+/// One segment this crate declined to lower, and why.
+///
+/// Carries the authored type name verbatim so a caller can report
+/// `CLOTHOID` rather than "some unsupported segment", and the entity id so
+/// it can point at the offending line of the source file.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RefusedSegment {
+    pub entity: EntityId,
+    /// The segment's authored `PredefinedType`, preserved exactly.
+    pub type_name: String,
+    pub reason: AlignmentError,
+}
+
+/// A horizontal layout lowered as far as exactness allows.
+///
+/// Real railway and highway alignments interleave transition spirals between
+/// their lines and arcs, so an all-or-nothing lowering refuses essentially
+/// every production file. This result keeps what is exactly lowerable and
+/// names what is not, instead of collapsing both into one opaque error.
+///
+/// `runs` holds maximal stretches of consecutive lowerable segments, each
+/// assembled into a single composite exactly as [`lower_horizontal_layout`]
+/// would. A run ends wherever a segment is refused: continuity across a
+/// segment this crate did not lower is not a fact it is entitled to assert.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PartialHorizontalLayout {
+    pub runs: Vec<LoweredAlignmentCurve>,
+    /// Refused segments in authored order.
+    pub refused: Vec<RefusedSegment>,
+    /// Total segments nested by the layout, lowered or not.
+    pub segment_count: usize,
+}
+
+impl PartialHorizontalLayout {
+    /// Whether every segment lowered exactly.
+    ///
+    /// When true the layout is covered by exactly one run, matching what
+    /// [`lower_horizontal_layout`] returns.
+    #[must_use]
+    pub fn is_complete(&self) -> bool {
+        self.refused.is_empty()
+    }
+
+    /// Number of segments lowered exactly.
+    #[must_use]
+    pub fn lowered_count(&self) -> usize {
+        self.segment_count - self.refused.len()
+    }
+}
+
 pub fn lower_horizontal_segment(
     model: &Model,
     id: EntityId,
@@ -276,34 +358,13 @@ pub fn lower_horizontal_layout(
             Transition::Discontinuous
         } else {
             let previous = &segments[index - 1];
-            let previous_end_angle = previous.start_direction
-                + previous.segment_length
-                    / if previous.start_radius != 0.0 {
-                        previous.start_radius
-                    } else {
-                        f64::INFINITY
-                    };
-            let previous_end = if previous.start_radius == 0.0 {
-                previous.start_point
-                    + Vec2::new(previous_end_angle.cos(), previous_end_angle.sin())
-                        * previous.segment_length
-            } else {
-                let direction = Vec2::new(
-                    previous.start_direction.cos(),
-                    previous.start_direction.sin(),
-                );
-                let left = Vec2::new(-direction.y, direction.x);
-                let centre = previous.start_point + left * previous.start_radius;
-                let sweep = previous.segment_length / previous.start_radius;
-                let radial = previous.start_point - centre;
-                let cos_s = sweep.cos();
-                let sin_s = sweep.sin();
-                centre
-                    + Vec2::new(
-                        radial.x * cos_s - radial.y * sin_s,
-                        radial.x * sin_s + radial.y * cos_s,
-                    )
-            };
+            let previous_end = closed_form_end_point(previous)
+                .ok_or(AlignmentError::Unsupported {
+                entity: previous.entity,
+                type_name: previous.segment_type.source_name().to_owned(),
+                detail:
+                    "the pinned neutral curve vocabulary has no exact transition-curve primitive",
+            })?;
             observed_transition(previous_end, segment.start_point, 1e-6).ok_or(
                 AlignmentError::SemanticViolation {
                     entity: Some(segment.entity),
@@ -325,4 +386,156 @@ pub fn lower_horizontal_layout(
         }),
     )?;
     finish(builder, root, ids)
+}
+
+/// Lower a horizontal layout as far as exactness allows, reporting refusals.
+///
+/// Unlike [`lower_horizontal_layout`], a transition spiral does not abort the
+/// whole layout. Lines and circular arcs around it still lower exactly; the
+/// spiral is recorded in [`PartialHorizontalLayout::refused`] with its
+/// authored type name and entity id.
+///
+/// Nothing here is approximated. A refused segment stays refused -- this
+/// reports the boundary per segment instead of collapsing an entire
+/// production alignment into one opaque error.
+///
+/// Errors that are not a lowering refusal (a wrong entity type, a malformed
+/// attribute, an empty layout) still fail the whole call, because they mean
+/// the layout could not be read at all rather than that one segment resisted
+/// exact lowering.
+pub fn lower_horizontal_layout_partial(
+    model: &Model,
+    entity: EntityId,
+    units: AlignmentUnits,
+) -> AlignmentResult<PartialHorizontalLayout> {
+    let view = AlignmentView::for_model(model)?;
+    let horizontal_entity = model
+        .get(entity)
+        .ok_or(AlignmentError::MissingEntity { entity })?;
+    if !view
+        .schema
+        .is_a(&horizontal_entity.type_name, "IfcAlignmentHorizontal")
+    {
+        return Err(AlignmentError::WrongType {
+            entity,
+            expected: "IfcAlignmentHorizontal",
+            actual: horizontal_entity.type_name.to_string(),
+        });
+    }
+    let ids = view.segment_chain(entity, "IfcAlignmentHorizontalSegment")?;
+    if ids.is_empty() {
+        return Err(AlignmentError::SemanticViolation {
+            entity: Some(entity),
+            rule: "IfcAlignmentHorizontal must nest at least one IfcAlignmentSegment",
+        });
+    }
+
+    let mut segments = Vec::with_capacity(ids.len());
+    for id in &ids {
+        segments.push(read_horizontal_segment(model, *id, units)?);
+    }
+
+    let mut runs = Vec::new();
+    let mut refused = Vec::new();
+    // Segments accumulated since the last refusal, as (index, node) pairs in a
+    // builder that is discarded and restarted whenever a run ends.
+    let mut builder = GeometryGraphBuilder::new();
+    let mut pending: Vec<(usize, CurveSegment)> = Vec::new();
+    let mut pending_ids: Vec<EntityId> = Vec::new();
+
+    for (index, segment) in segments.iter().enumerate() {
+        let lowered = match &segment.segment_type {
+            HorizontalSegmentType::Line => push_line(&mut builder, segment),
+            HorizontalSegmentType::CircularArc => push_arc(&mut builder, segment),
+            kind => Err(AlignmentError::Unsupported {
+                entity: segment.entity,
+                type_name: kind.source_name().to_owned(),
+                detail:
+                    "the pinned neutral curve vocabulary has no exact transition-curve primitive",
+            }),
+        };
+        let curve = match lowered {
+            Ok(curve) => curve,
+            Err(reason) => {
+                // The run ends here: continuity across a segment this crate
+                // did not lower is not a fact it can assert.
+                flush_run(&mut runs, &mut builder, &mut pending, &mut pending_ids)?;
+                refused.push(RefusedSegment {
+                    entity: segment.entity,
+                    type_name: segment.segment_type.source_name().to_owned(),
+                    reason,
+                });
+                continue;
+            }
+        };
+        // Continuity is only claimed against the immediately preceding
+        // segment when that segment is in the same run.
+        let transition = match pending.last() {
+            None => Transition::Discontinuous,
+            Some((previous_index, _)) => {
+                let previous = &segments[*previous_index];
+                match closed_form_end_point(previous) {
+                    Some(previous_end) => {
+                        match observed_transition(previous_end, segment.start_point, 1e-6) {
+                            Some(transition) => transition,
+                            None => return Err(AlignmentError::SemanticViolation {
+                                entity: Some(segment.entity),
+                                rule:
+                                    "consecutive horizontal segments must share an endpoint exactly",
+                            }),
+                        }
+                    }
+                    None => Transition::Discontinuous,
+                }
+            }
+        };
+        pending.push((
+            index,
+            CurveSegment {
+                curve,
+                same_sense: true,
+                transition,
+            },
+        ));
+        pending_ids.push(segment.entity);
+    }
+    flush_run(&mut runs, &mut builder, &mut pending, &mut pending_ids)?;
+
+    Ok(PartialHorizontalLayout {
+        runs,
+        refused,
+        segment_count: segments.len(),
+    })
+}
+
+/// Close the current run, if any, into its own composite curve.
+///
+/// Takes the builder by mutable reference and replaces it, so each run owns a
+/// self-contained graph whose node ids are meaningful within that graph.
+fn flush_run(
+    runs: &mut Vec<LoweredAlignmentCurve>,
+    builder: &mut GeometryGraphBuilder,
+    pending: &mut Vec<(usize, CurveSegment)>,
+    pending_ids: &mut Vec<EntityId>,
+) -> AlignmentResult<()> {
+    if pending.is_empty() {
+        // Nothing accumulated; drop whatever partial nodes exist so a refused
+        // segment does not leak orphan nodes into the next run.
+        *builder = GeometryGraphBuilder::new();
+        pending_ids.clear();
+        return Ok(());
+    }
+    let mut finished = GeometryGraphBuilder::new();
+    core::mem::swap(builder, &mut finished);
+    let composite_segments: Vec<CurveSegment> =
+        pending.drain(..).map(|(_, segment)| segment).collect();
+    let root = push(
+        &mut finished,
+        GeometryNode::CurveRelation(CurveRelation::Composite {
+            segments: composite_segments,
+        }),
+    )?;
+    let sources = core::mem::take(pending_ids);
+    runs.push(finish(finished, root, sources)?);
+    Ok(())
 }
