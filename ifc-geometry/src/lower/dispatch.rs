@@ -201,7 +201,7 @@ pub const PARTIAL: &[Variant] = &[
         family: "IFCPCURVE",
         variant: "reference curve is a trimmed or composite curve",
         support: Support::Admitted,
-        rationale: "trim parameters and segments stay in the surface (u, v) \\
+        rationale: "trim parameters and segments stay in the surface (u, v) \
                     domain, unscaled, so no dimensional contract is needed",
     },
     Variant {

@@ -206,6 +206,16 @@ def partial_variants(source: str) -> dict[str, list[tuple[str, str, str]]]:
         rationale = re.search(r'rationale:\s*"((?:[^"\\]|\\.)*)"', block)
         if not (family and variant and support and rationale):
             continue
+        # A doubled continuation (\\\\ before the newline) escapes the
+        # backslash instead of continuing the string, so the unwrap above
+        # leaves a literal one in the prose and it ships to the docs.
+        for field, text in (("variant", variant.group(1)),
+                            ("rationale", rationale.group(1))):
+            if "\\" in text:
+                raise SystemExit(
+                    f"{family.group(1)}: {field} carries a literal backslash; "
+                    "a wrapped string line must end with a single backslash"
+                )
         out.setdefault(family.group(1), []).append(
             (variant.group(1), support.group(1), rationale.group(1))
         )
