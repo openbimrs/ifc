@@ -84,11 +84,14 @@ PUBLISHED_STATUS = {
     # All six PLAN tasks implemented: plans, tasks, sequences, calendars,
     # events and timeline queries.
     "ifc-schedule": '<span class="status-implemented">Implemented</span>',
-    # IFC4 construction-resource occurrences, resource types, actors
-    # (person/organization/role), inventory, authored usage time, usage
-    # quantities, allocation, bounded composition, and selected
-    # transaction-staged authoring are tested. IFC2X3 and IFC4X3 profiles
-    # remain out of scope.
+    # IFC4 and IFC4X3 construction-resource occurrences, resource types,
+    # actors (person/organization/role), inventory, authored usage time,
+    # usage quantities, allocation, bounded composition, and selected
+    # transaction-staged authoring are tested (identical entity shapes
+    # verified against IFC4.exp/IFC4X3_ADD2.exp). IFC2X3 does not declare
+    # IfcConstructionResourceType, IfcResourceTime, or PredefinedType on two
+    # occurrence subtypes, so it is a typed UnsupportedSchema refusal rather
+    # than a gap.
     "ifc-resource": '<span class="status-partial">Partial</span>',
     # Schema-resolved strict views cover style assignment, colour, curve/fill,
     # surface, texture, text, layers, and the requested annotation entities;

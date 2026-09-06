@@ -1,13 +1,13 @@
 # ifc-resource instructions
 
-Purpose: bounded IFC4 construction-resource projections, actor/inventory
-metadata, usage quantities, queries, and authoring.
+Purpose: bounded IFC4/IFC4X3 construction-resource projections,
+actor/inventory metadata, usage quantities, queries, and authoring.
 
 Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or roadmap work; keep progress, blockers, and evidence there.
 
 ## Implemented boundary
 
-Public behavior is restricted to IFC4 ADD2 TC1:
+Public behavior is restricted to IFC4 ADD2 TC1 and IFC4X3 ADD2 (identical entity shapes verified against the normative .exp files):
 
 - schema-resolved borrowed projections for six concrete `IfcConstructionResource` occurrence kinds;
 - schema-resolved borrowed projections for six concrete `IfcConstructionResourceType` kinds, with `IfcRelDefinesByType` assignment resolution;
@@ -20,7 +20,7 @@ Public behavior is restricted to IFC4 ADD2 TC1:
 - transaction-staged creation of selected resources, usage records, allocations, and nesting relationships;
 - pre-staging refusal of duplicate model-wide `GlobalId` values, second resource parents, and cycle creation.
 
-IFC2X3 and IFC4X3 are explicit unsupported-schema results. The crate does not schedule, level, calculate cost/quantity formulas, parse calendars, solve logistics, resolve units against a project unit assignment, or expose generic EXPRESS `WHERE`/`INVERSE` execution.
+IFC2X3 is an explicit unsupported-schema result: it does not declare `IfcConstructionResourceType`, `IfcResourceTime`, or `PredefinedType` on `IfcConstructionEquipmentResource`/`IfcCrewResource`, so there is no normative behavior to project (verified against `IFC2X3_TC1.exp`; do not add a reduced IFC2X3 path without a fresh design decision). The crate does not schedule, level, calculate cost/quantity formulas, parse calendars, solve logistics, resolve units against a project unit assignment, or expose generic EXPRESS `WHERE`/`INVERSE` execution.
 
 ## Boundary
 

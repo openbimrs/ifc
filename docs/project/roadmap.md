@@ -190,12 +190,15 @@ for it; the work itself belongs upstream.
 
 ## Partial domain slices
 
-`ifc-resource` now has a tested IFC4 construction-resource vertical slice:
-six concrete occurrence kinds, authored resource-time values, allocation lookup,
-budgeted authored-order composition, and transaction-staged creation of selected
-records and relationships. Actor/inventory/resource-type semantics and IFC2X3 or
-IFC4X3 profiles remain open; it is therefore partial rather than generally
-implemented.
+`ifc-resource` now has a tested IFC4/IFC4X3 construction-resource vertical
+slice: six concrete occurrence kinds, actors (person/organization/role),
+resource types, inventory, usage quantities, authored resource-time values,
+allocation lookup, budgeted authored-order composition, and transaction-staged
+creation of selected records and relationships. IFC2X3 is an explicit typed
+refusal, not a gap: the schema does not declare `IfcConstructionResourceType`,
+`IfcResourceTime`, or `PredefinedType` on two occurrence subtypes. It remains
+partial because scheduling, costing, calendar interpretation, and logistics
+solving are out of scope.
 
 `ifc-georef` and `ifc-alignment` also have tested partial vertical slices: IFC4
 project-to-map/CRS resolution in the former, and IFC4X3 segment parameters plus

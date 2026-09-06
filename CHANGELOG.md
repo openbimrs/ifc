@@ -22,6 +22,12 @@ and this project follows Semantic Versioning.
   kinds) and `IfcPhysicalComplexQuantity` usage-quantity projections,
   enforcing the shared non-negative/finite value rule and
   `NoSelfReference`.
+- `ifc-resource`: IFC4X3 ADD2 accepted alongside IFC4 ADD2 TC1 for every
+  resource, actor, inventory, and usage-quantity projection (entity shapes
+  verified identical against `IFC4X3_ADD2.exp`). IFC2X3 remains an explicit
+  `UnsupportedSchema` refusal: it does not declare `IfcConstructionResourceType`,
+  `IfcResourceTime`, or `PredefinedType` on `IfcConstructionEquipmentResource`/
+  `IfcCrewResource`, so there is no normative behavior to project.
 - `IfcSubedge` now lowers instead of being refused. A subedge states its own
   `EdgeStart`/`EdgeEnd` and inherits the carrier curve from `ParentEdge`,
   which is reached by walking the parent chain: `ParentEdge` is typed

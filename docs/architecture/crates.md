@@ -97,13 +97,13 @@ Implemented bounded schedule/task sequencing and relationship-only distribution
 system/port/connectivity views.
 
 ### `ifc-resource`
-Bounded IFC4 construction-resource slice. Schema-resolved borrowed projections
+Bounded IFC4/IFC4X3 construction-resource slice. Schema-resolved borrowed projections
 cover six concrete occurrence kinds and authored `IfcResourceTime`; deterministic
 queries resolve `IfcRelAssignsToResource` and budgeted, authored-order
 `IfcRelNests` composition. Selected records and relationships have
-transaction-staged authoring. It does not schedule or level resources, calculate
-costs or quantities, interpret calendars, or claim actor/inventory,
-construction-resource-type, IFC2X3, or IFC4X3 support.
+transaction-staged authoring across IFC4 and IFC4X3. It does not schedule or
+level resources, calculate costs or quantities, interpret calendars, or claim
+IFC2X3 support (the schema does not declare the entities this crate projects).
 
 ### `ifc-structural`
 Implemented bounded structural-analysis domain. Schema-resolved borrowed views

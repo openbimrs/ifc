@@ -92,7 +92,7 @@ impl std::fmt::Display for ResourceError {
             Self::UnsupportedSchema { token } => {
                 write!(
                     f,
-                    "unsupported resource schema `{token}`; expected IFC4 ADD2 TC1"
+                    "unsupported resource schema `{token}`; expected IFC4 ADD2 TC1 or IFC4X3 ADD2"
                 )
             }
             Self::EntityNotFound { id } => write!(f, "entity {id} does not exist"),

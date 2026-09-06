@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 
 use ifc_model::{Entity, EntityId, Model, Value};
-use ifc_schema::{ifc4, Schema, SchemaVersion, TypeKind};
+use ifc_schema::{ifc4, ifc4x3, Schema, SchemaVersion, TypeKind};
 
 use crate::error::{ResourceError, ResourceResult};
 use crate::{ConstructionResource, ResourceTime};
@@ -16,14 +16,19 @@ pub struct ResourceView<'m, 's> {
 
 impl<'m, 's> ResourceView<'m, 's> {
     pub fn new(model: &'m Model, schema: &'s Schema) -> ResourceResult<Self> {
-        if schema.version() != Some(SchemaVersion::Ifc4) {
+        let Some(version) = schema.version() else {
+            return Err(ResourceError::UnsupportedSchema {
+                token: schema.name().to_owned(),
+            });
+        };
+        if !matches!(version, SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3) {
             return Err(ResourceError::UnsupportedSchema {
                 token: schema.name().to_owned(),
             });
         }
         match model.header().schema.as_slice() {
             [] => {}
-            [token] if SchemaVersion::from_header_token(token) == Some(SchemaVersion::Ifc4) => {}
+            [token] if SchemaVersion::from_header_token(token) == Some(version) => {}
             [token] => {
                 return Err(ResourceError::UnsupportedSchema {
                     token: token.clone(),
@@ -80,12 +85,21 @@ impl<'m> ResourceView<'m, 'static> {
                 });
             }
         };
-        if SchemaVersion::from_header_token(token) != Some(SchemaVersion::Ifc4) {
-            return Err(ResourceError::UnsupportedSchema {
+        let version = SchemaVersion::from_header_token(token).ok_or_else(|| {
+            ResourceError::UnsupportedSchema {
                 token: token.clone(),
-            });
-        }
-        Self::new(model, ifc4())
+            }
+        })?;
+        let schema = match version {
+            SchemaVersion::Ifc4 => ifc4(),
+            SchemaVersion::Ifc4x3 => ifc4x3(),
+            SchemaVersion::Ifc2x3 => {
+                return Err(ResourceError::UnsupportedSchema {
+                    token: token.clone(),
+                });
+            }
+        };
+        Self::new(model, schema)
     }
 }
 

@@ -1,15 +1,18 @@
 # Construction resources
 
-Enable the facade's `resource` feature to inspect and author the bounded IFC4
-construction-resource slice:
+Enable the facade's `resource` feature to inspect and author the bounded
+IFC4/IFC4X3 construction-resource slice:
 
 ```toml
 openbim-ifc = { git = "https://github.com/openbimrs/ifc.git", features = ["resource"] }
 ```
 
-The API selects IFC4 from `Model::header().schema`; IFC2X3, IFC4X3, missing,
-and ambiguous declarations return typed errors. Attribute slots come from the
-bundled IFC4 ADD2 TC1 schema rather than fixed indices.
+The API selects IFC4 or IFC4X3 from `Model::header().schema`; IFC2X3, missing,
+and ambiguous declarations return typed errors (IFC2X3 does not declare
+`IfcConstructionResourceType`, `IfcResourceTime`, or `PredefinedType` on two
+occurrence subtypes, so there is no normative behavior to project). Attribute
+slots come from the bundled IFC4 ADD2 TC1 or IFC4X3 ADD2 schema rather than
+fixed indices.
 
 ```rust
 use ifc::resource::{
@@ -70,6 +73,6 @@ Rejected drafts leave model length and revision unchanged.
 
 The crate preserves and validates authored resource data. It does **not** level
 resources, calculate duration/cost/quantity, interpret work calendars, solve
-logistics, or manufacture allocation from schedule/cost data. Actor, inventory,
-construction-resource-type, IFC2X3, and IFC4X3 semantics are not yet public
-capabilities.
+logistics, or manufacture allocation from schedule/cost data. IFC2X3 semantics
+are not a public capability (the schema does not declare the entities this
+crate projects).

@@ -1,7 +1,7 @@
 mod support;
 
 use ifc_resource::{ResourceError, ResourceView};
-use ifc_schema::ifc4;
+use ifc_schema::{ifc4, ifc4x3};
 
 use support::model;
 
@@ -63,7 +63,7 @@ fn view_selects_only_the_proven_ifc4_schema() {
         Err(ResourceError::AmbiguousSchema { .. })
     ));
 
-    for token in ["IFC2X3", "IFC4X3_ADD2", "IFC5"] {
+    for token in ["IFC2X3", "IFC5"] {
         let unsupported = model(token);
         assert!(matches!(
             ResourceView::for_model(&unsupported),
@@ -78,4 +78,22 @@ fn view_selects_only_the_proven_ifc4_schema() {
     ));
 
     ResourceView::for_model(&model("IFC4")).expect("IFC4 ADD2 TC1 is supported");
+    ResourceView::for_model(&model("IFC4X3_ADD2")).expect("IFC4X3 ADD2 is supported");
+}
+
+#[test]
+fn bundled_ifc4x3_slots_match_the_ifc4_resource_contract() {
+    let schema = ifc4x3();
+    assert_eq!(
+        schema.attribute_names("IfcConstructionResource"),
+        ifc4().attribute_names("IfcConstructionResource"),
+    );
+    assert_eq!(
+        schema.attribute_names("IfcActorRole"),
+        ifc4().attribute_names("IfcActorRole"),
+    );
+    assert_eq!(
+        schema.attribute_names("IfcInventory"),
+        ifc4().attribute_names("IfcInventory"),
+    );
 }

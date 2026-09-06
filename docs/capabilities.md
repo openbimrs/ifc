@@ -32,7 +32,7 @@ code.
 | `ifc-style` | 3,322 | 31 | 0 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 3,119 | 30 | 14 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-template-catalog` | 2,726 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
-| `ifc-resource` | 2,633 | 29 | 9 | 8 | <span class="status-partial">Partial</span> |
+| `ifc-resource` | 2,647 | 29 | 9 | 9 | <span class="status-partial">Partial</span> |
 | `ifc-material` | 2,398 | 24 | 0 | 8 | <span class="status-implemented">Implemented</span> |
 | `ifc-validate` | 2,249 | 23 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-classification` | 2,203 | 20 | 4 | 3 | <span class="status-implemented">Implemented</span> |
@@ -45,7 +45,7 @@ code.
 | `ifc-alignment` | 1,095 | 26 | 16 | 2 | <span class="status-partial">Partial</span> |
 | `ifc-xml` | 1,045 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-approval` | 915 | 5 | 0 | 1 | <span class="status-implemented">Implemented</span> |
-| `openbim-ifc` | 901 | 6 | 0 | 12 | <span class="status-implemented">Implemented</span> |
+| `openbim-ifc` | 901 | 6 | 0 | 13 | <span class="status-implemented">Implemented</span> |
 | `ifc-author` | 729 | 8 | 3 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-spatial` | 615 | 8 | 1 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-georef` | 582 | 17 | 12 | 1 | <span class="status-partial">Partial</span> |
@@ -185,9 +185,10 @@ they reject duplicate `GlobalId` values and cycle/second-parent creation before
 staging. See the
 [construction-resource guide](/guide/resources).
 
-This is a partial, deliberately bounded profile. It does not level or schedule
-resources, calculate costs/durations/quantities, interpret calendars, or claim
-actor, inventory, construction-resource-type, IFC2X3, or IFC4X3 support.
+This is a partial, deliberately bounded profile covering IFC4 and IFC4X3. It
+does not level or schedule resources, calculate costs/durations/quantities,
+interpret calendars, or claim IFC2X3 support (the schema does not declare the
+entities this crate projects).
 
 ## Geometry
 

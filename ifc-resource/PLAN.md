@@ -1,21 +1,29 @@
 # ifc-resource implementation plan
 
-Status: bounded IFC4 construction-resource slice complete: occurrences, actors,
-resource types, inventory, and usage quantities are all implemented.
-Cross-version (IFC2X3/IFC4X3), scheduling, costing, and simulation behavior
-remain explicitly out of scope.
-Last updated: 2026-09-01
+Status: bounded IFC4/IFC4X3 construction-resource slice complete: occurrences,
+actors, resource types, inventory, and usage quantities are implemented for
+both schema versions (identical EXPRESS declarations verified against
+IFC4.exp/IFC4X3_ADD2.exp). IFC2X3 does not declare IfcConstructionResourceType,
+IfcResourceTime, or PredefinedType on several occurrence subtypes; ResourceView
+refuses IFC2X3 with a typed UnsupportedSchema error rather than fabricating
+unbacked semantics (design decision recorded 2026-09-06, see RES-VERSION).
+Scheduling, costing, and simulation behavior remain explicitly out of scope.
+Last updated: 2026-09-06
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
 record blockers/decisions under it, and check it off only with evidence.
 
 ## Established boundary
 
-Borrowed IFC4 construction-resource occurrence, actor (person/organization/role),
-resource-type, inventory, authored resource-time, usage-quantity, allocation, and
-bounded nesting semantics are implemented. Cross-version (IFC2X3/IFC4X3),
-scheduling, costing, and simulation behavior remain outside this crate; they
-compose at the facade/application layer against other domain crates.
+Borrowed IFC4/IFC4X3 construction-resource occurrence, actor
+(person/organization/role), resource-type, inventory, authored resource-time,
+usage-quantity, allocation, and bounded nesting semantics are implemented.
+IFC2X3 is a typed UnsupportedSchema refusal: IfcConstructionResourceType,
+IfcResourceTime, and PredefinedType on IfcConstructionEquipmentResource/
+IfcCrewResource do not exist in that schema (verified against IFC2X3_TC1.exp),
+so there is no normative behavior to project. Scheduling, costing, and
+simulation behavior remain outside this crate; they compose at the
+facade/application layer against other domain crates.
 
 ## Planned file map
 
@@ -69,6 +77,14 @@ intentional parent re-export.
   - Evidence: SELECT, SET, self-reference, ordering, and dangling/type tests.
 - [x] `RES-AUTH` - transaction-stage selected resource/time/relation authoring
   - Evidence: round-trip, rejection atomicity, facade consumer, and STEP write/read tests.
+- [x] `RES-VERSION` - add IFC4X3 support; explicitly refuse IFC2X3
+  - Evidence: IFC4X3.exp verified identical to IFC4.exp for every entity this
+    crate uses (IfcConstructionResource(+Type), IfcResourceTime, IfcInventory,
+    IfcPerson/IfcOrganization/IfcActorRole/IfcPersonAndOrganization,
+    IfcPhysicalQuantity, IfcRelDefinesByType, IfcRelAssignsToGroup); IFC2X3
+    lacks IfcConstructionResourceType, IfcResourceTime, and PredefinedType on
+    two occurrence subtypes entirely, so it is refused with a typed
+    UnsupportedSchema error, not approximated.
 
 ## Completion log
 
@@ -83,3 +99,4 @@ Do not paste long logs or duplicate standing rules from `AGENTS.md`.
 - `RES-TYPE` - `cargo test -p ifc-resource --test resource_type` (6/6 passing), strict Clippy/rustdoc, 3/3 killed semantic mutants (USERDEFINED guard, related-object filter, duplicate-type refusal), restored GREEN - all six `IfcConstructionResourceType` subtypes classify by schema type name; `assigned_resource_type` resolves `IfcRelDefinesByType`, accepts repeated relations naming the same type, and refuses a second relation naming a different type for the same occurrence.
 - `RES-INV` - `cargo test -p ifc-resource --test inventory` (5/5 passing), strict Clippy/rustdoc, 1/1 killed semantic mutant (relating-group filter), restored GREEN - `IfcInventory` projects metadata and `IfcActorSelect` jurisdiction; membership resolves via `IfcRelAssignsToGroup` in authored order and ignores relations naming a different group.
 - `RES-USAGE` - `cargo test -p ifc-resource --test usage_quantity` (5/5 passing), strict Clippy/rustdoc, 2/2 killed semantic mutants (non-negativity guard, `NoSelfReference`), restored GREEN - `IfcPhysicalSimpleQuantity` subtypes project a typed value and enforce the shared non-negative/finite rule; `IfcPhysicalComplexQuantity` resolves ordered members and enforces `NoSelfReference`.
+- `RES-VERSION` - `cargo test -p ifc-resource --test ifc4x3 --test schema` (5/5 passing) plus `cargo test -p openbim-ifc --no-default-features --features step,schema,resource --test resource_step` (3/3 passing: IFC4 and IFC4X3 STEP round-trip with resource data intact, IFC2X3 typed refusal), 2/2 killed semantic mutants (IFC4X3 allow-list guard, `for_model` version-to-schema mapping), restored GREEN, strict Clippy/rustdoc - `ResourceView` accepts IFC4 and IFC4X3 header tokens via `SchemaVersion`-dispatched bundled schema selection; IFC2X3 (and any other token) is `ResourceError::UnsupportedSchema`, decided after verifying against `IFC2X3_TC1.exp` that `IfcConstructionResourceType`, `IfcResourceTime`, and `PredefinedType` on `IfcConstructionEquipmentResource`/`IfcCrewResource` have no IFC2X3 declaration to project.
