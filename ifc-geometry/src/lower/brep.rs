@@ -37,7 +37,8 @@ use crate::resource::point::CartesianPoint;
 use crate::resource::topology::{
     expect_type, ConnectedFaceSet, EdgeCurve as EdgeCurveView, EdgeLoop as EdgeLoopView,
     Face as FaceView, FaceBound as FaceBoundView, FaceSurface as FaceSurfaceView,
-    ManifoldSolidBrep, OrientedEdge as OrientedEdgeView, PolyLoop, VertexPoint as VertexPointView,
+    ManifoldSolidBrep, OrientedEdge as OrientedEdgeView, PolyLoop, Subedge as SubedgeView,
+    VertexPoint as VertexPointView,
 };
 use crate::transform::Transform;
 
@@ -381,7 +382,7 @@ fn oriented_edge(
         "IfcOrientedEdge",
     )?;
     let view = OrientedEdgeView::new(id, entity);
-    let base = edge_curve(session, builder, id, view.edge_element()?, frame)?;
+    let base = edge_of_any_kind(session, builder, id, view.edge_element()?, frame)?;
     if view.orientation() {
         Ok(base)
     } else {
@@ -444,6 +445,70 @@ fn edge_curve(
     };
     builder.curved_edges.insert(id, use_);
     Ok(use_)
+}
+
+/// Resolve one `IfcSubedge` to an interned edge carrying the parent's curve.
+///
+/// A subedge states its own `EdgeStart`/`EdgeEnd` and names a `ParentEdge`
+/// that supplies the carrier geometry. The carved piece is therefore the
+/// subedge's own vertices riding the parent's curve -- no trim is computed
+/// here, because IFC states the endpoints outright and the kernel edge
+/// already means "this curve between these two vertices".
+///
+/// `ParentEdge` may itself be an `IfcSubedge`, so the carrier is reached by
+/// walking to the first ancestor that supplies geometry. The walk is bounded
+/// by the session's own chain limit: a cyclic ParentEdge would otherwise
+/// recurse forever.
+fn subedge(
+    session: &mut LoweringSession<'_>,
+    builder: &mut TopologyBuilder,
+    referrer: EntityId,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<EdgeUse<NodeId>> {
+    if let Some(existing) = builder.curved_edges.get(&id) {
+        return Ok(*existing);
+    }
+    let entity = expect_type(session.model(), referrer, id, &["IFCSUBEDGE"], "IfcSubedge")?;
+    let view = SubedgeView::new(id, entity);
+    let start = topological_vertex(session, builder, id, view.start()?, frame)?;
+    let end = topological_vertex(session, builder, id, view.end()?, frame)?;
+
+    // The parent supplies geometry and sense; the subedge supplies extent.
+    let parent = edge_of_any_kind(session, builder, id, view.parent_edge()?, frame)?;
+    let curve = builder
+        .brep
+        .edges()
+        .get(parent.edge.index())
+        .and_then(|parent_edge| parent_edge.curve);
+
+    let edge = builder.brep.add_edge(Edge { start, end, curve });
+    let use_ = EdgeUse {
+        edge,
+        orientation: parent.orientation,
+        pcurve: parent.pcurve,
+    };
+    builder.curved_edges.insert(id, use_);
+    Ok(use_)
+}
+
+/// Route one edge reference to the lowering its concrete type needs.
+///
+/// `IfcOrientedEdge.EdgeElement` and `IfcSubedge.ParentEdge` are both typed
+/// `IfcEdge`, so either may name a subedge. Dispatching on the concrete type
+/// keeps that decision in one place.
+fn edge_of_any_kind(
+    session: &mut LoweringSession<'_>,
+    builder: &mut TopologyBuilder,
+    referrer: EntityId,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<EdgeUse<NodeId>> {
+    if session.type_name(id)? == "IFCSUBEDGE" {
+        subedge(session, builder, referrer, id, frame)
+    } else {
+        edge_curve(session, builder, referrer, id, frame)
+    }
 }
 
 /// Intern an `IfcVertexPoint`, reusing the vertex when several edges meet.

@@ -335,3 +335,293 @@ fn an_unplaced_product_resolves_to_the_identity() {
     let world = product_world_transform(&model, &scale, EntityId(50)).expect("legal");
     assert!(world.is_identity(1e-12), "unplaced product is model-space");
 }
+
+/// The context's `WorldCoordinateSystem` places the representation.
+///
+/// `WorldCoordinateSystem` is a MANDATORY attribute of every
+/// `IfcGeometricRepresentationContext`: it is the frame the representation's
+/// items are authored in. Almost every file writes the identity, which is why
+/// ignoring it looks correct on a corpus -- but a file that surveys its site
+/// into a real coordinate system puts the whole model at the wrong place.
+#[test]
+fn the_context_world_coordinate_system_places_the_representation() {
+    let mut model = Model::new();
+    // Metres, so the assertion reads in file units.
+    model.insert(
+        EntityId(1),
+        Entity::new(
+            "IFCSIUNIT",
+            vec![
+                Value::Derived,
+                Value::Enum("LENGTHUNIT".into()),
+                Value::Null,
+                Value::Enum("METRE".into()),
+            ],
+        ),
+    );
+    model.insert(
+        EntityId(2),
+        Entity::new(
+            "IFCUNITASSIGNMENT",
+            vec![Value::List(vec![Value::Ref(EntityId(1))])],
+        ),
+    );
+
+    // The context surveys the model 100 m east and 50 m north.
+    model.insert(
+        EntityId(3),
+        Entity::new("IFCCARTESIANPOINT", vec![reals(&[100.0, 50.0, 0.0])]),
+    );
+    model.insert(
+        EntityId(4),
+        Entity::new(
+            "IFCAXIS2PLACEMENT3D",
+            vec![Value::Ref(EntityId(3)), Value::Null, Value::Null],
+        ),
+    );
+    model.insert(
+        EntityId(5),
+        Entity::new(
+            "IFCGEOMETRICREPRESENTATIONCONTEXT",
+            vec![
+                Value::Null,
+                Value::Text("Model".into()),
+                Value::Integer(3),
+                Value::Real(1.0e-5),
+                Value::Ref(EntityId(4)),
+                Value::Null,
+            ],
+        ),
+    );
+
+    // A 1 m cube corner at the local origin.
+    model.insert(
+        EntityId(6),
+        Entity::new("IFCCARTESIANPOINT", vec![reals(&[0.0, 0.0, 0.0])]),
+    );
+    model.insert(
+        EntityId(7),
+        Entity::new(
+            "IFCAXIS2PLACEMENT3D",
+            vec![Value::Ref(EntityId(6)), Value::Null, Value::Null],
+        ),
+    );
+    model.insert(
+        EntityId(8),
+        Entity::new(
+            "IFCBLOCK",
+            vec![
+                Value::Ref(EntityId(7)),
+                Value::Real(1.0),
+                Value::Real(1.0),
+                Value::Real(1.0),
+            ],
+        ),
+    );
+    model.insert(
+        EntityId(9),
+        Entity::new(
+            "IFCSHAPEREPRESENTATION",
+            vec![
+                Value::Ref(EntityId(5)),
+                Value::Text("Body".into()),
+                Value::Text("CSG".into()),
+                Value::List(vec![Value::Ref(EntityId(8))]),
+            ],
+        ),
+    );
+    model.insert(
+        EntityId(10),
+        Entity::new(
+            "IFCPRODUCTDEFINITIONSHAPE",
+            vec![
+                Value::Null,
+                Value::Null,
+                Value::List(vec![Value::Ref(EntityId(9))]),
+            ],
+        ),
+    );
+    // The product itself sits at the model origin: any offset in the result
+    // can only have come from the context.
+    model.insert(
+        EntityId(11),
+        Entity::new(
+            "IFCWALL",
+            vec![
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Ref(EntityId(10)),
+            ],
+        ),
+    );
+
+    let c = centroid(&model, EntityId(11));
+    assert!(
+        (c[0] - 100.0).abs() < 1e-9 && (c[1] - 50.0).abs() < 1e-9,
+        "the context's WorldCoordinateSystem must place the geometry, got {c:?}"
+    );
+}
+
+/// The context frame composes ABOVE the product's placement chain.
+///
+/// Order is observable only when both are non-trivial and the context
+/// rotates: model space is the context's frame, so a product placed +10 m
+/// east inside a context rotated 90 degrees must land 10 m NORTH of the
+/// context origin. Composing the other way rotates the site about the
+/// product instead, which lands it somewhere else entirely.
+#[test]
+fn the_context_frame_composes_above_the_placement_chain() {
+    let mut model = Model::new();
+    model.insert(
+        EntityId(1),
+        Entity::new(
+            "IFCSIUNIT",
+            vec![
+                Value::Derived,
+                Value::Enum("LENGTHUNIT".into()),
+                Value::Null,
+                Value::Enum("METRE".into()),
+            ],
+        ),
+    );
+    model.insert(
+        EntityId(2),
+        Entity::new(
+            "IFCUNITASSIGNMENT",
+            vec![Value::List(vec![Value::Ref(EntityId(1))])],
+        ),
+    );
+
+    // Context: origin at (100, 50, 0), rotated a quarter turn (local X = +Y).
+    model.insert(
+        EntityId(3),
+        Entity::new("IFCCARTESIANPOINT", vec![reals(&[100.0, 50.0, 0.0])]),
+    );
+    model.insert(
+        EntityId(20),
+        Entity::new("IFCDIRECTION", vec![reals(&[0.0, 0.0, 1.0])]),
+    );
+    model.insert(
+        EntityId(21),
+        Entity::new("IFCDIRECTION", vec![reals(&[0.0, 1.0, 0.0])]),
+    );
+    model.insert(
+        EntityId(4),
+        Entity::new(
+            "IFCAXIS2PLACEMENT3D",
+            vec![
+                Value::Ref(EntityId(3)),
+                Value::Ref(EntityId(20)),
+                Value::Ref(EntityId(21)),
+            ],
+        ),
+    );
+    model.insert(
+        EntityId(5),
+        Entity::new(
+            "IFCGEOMETRICREPRESENTATIONCONTEXT",
+            vec![
+                Value::Null,
+                Value::Text("Model".into()),
+                Value::Integer(3),
+                Value::Real(1.0e-5),
+                Value::Ref(EntityId(4)),
+                Value::Null,
+            ],
+        ),
+    );
+
+    // Geometry at the product's local origin.
+    model.insert(
+        EntityId(6),
+        Entity::new("IFCCARTESIANPOINT", vec![reals(&[0.0, 0.0, 0.0])]),
+    );
+    model.insert(
+        EntityId(7),
+        Entity::new(
+            "IFCAXIS2PLACEMENT3D",
+            vec![Value::Ref(EntityId(6)), Value::Null, Value::Null],
+        ),
+    );
+    model.insert(
+        EntityId(8),
+        Entity::new(
+            "IFCBLOCK",
+            vec![
+                Value::Ref(EntityId(7)),
+                Value::Real(1.0),
+                Value::Real(1.0),
+                Value::Real(1.0),
+            ],
+        ),
+    );
+    model.insert(
+        EntityId(9),
+        Entity::new(
+            "IFCSHAPEREPRESENTATION",
+            vec![
+                Value::Ref(EntityId(5)),
+                Value::Text("Body".into()),
+                Value::Text("CSG".into()),
+                Value::List(vec![Value::Ref(EntityId(8))]),
+            ],
+        ),
+    );
+    model.insert(
+        EntityId(10),
+        Entity::new(
+            "IFCPRODUCTDEFINITIONSHAPE",
+            vec![
+                Value::Null,
+                Value::Null,
+                Value::List(vec![Value::Ref(EntityId(9))]),
+            ],
+        ),
+    );
+
+    // The product is placed +10 m along its own X inside the context.
+    model.insert(
+        EntityId(11),
+        Entity::new("IFCCARTESIANPOINT", vec![reals(&[10.0, 0.0, 0.0])]),
+    );
+    model.insert(
+        EntityId(12),
+        Entity::new(
+            "IFCAXIS2PLACEMENT3D",
+            vec![Value::Ref(EntityId(11)), Value::Null, Value::Null],
+        ),
+    );
+    model.insert(
+        EntityId(13),
+        Entity::new(
+            "IFCLOCALPLACEMENT",
+            vec![Value::Null, Value::Ref(EntityId(12))],
+        ),
+    );
+    model.insert(
+        EntityId(14),
+        Entity::new(
+            "IFCWALL",
+            vec![
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Ref(EntityId(13)),
+                Value::Ref(EntityId(10)),
+            ],
+        ),
+    );
+
+    let c = centroid(&model, EntityId(14));
+    // Context rotates local X onto world +Y, so +10 X becomes +10 Y.
+    assert!(
+        (c[0] - 100.0).abs() < 1e-9 && (c[1] - 60.0).abs() < 1e-9,
+        "context frame must apply to the placed product, got {c:?}"
+    );
+}

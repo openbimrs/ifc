@@ -8,6 +8,20 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `IfcSubedge` now lowers instead of being refused. A subedge states its own
+  `EdgeStart`/`EdgeEnd` and inherits the carrier curve from `ParentEdge`,
+  which is reached by walking the parent chain: `ParentEdge` is typed
+  `IfcEdge`, so a subedge of a subedge is legal and stopping at the first hop
+  would leave the carved edge with no geometry.
+
+### Fixed
+- `IfcGeometricRepresentationContext.WorldCoordinateSystem` is now applied
+  when lowering a product. It is a mandatory attribute defining model space,
+  but was read and tested without ever reaching the lowered frame, so a file
+  that surveys its site into a real coordinate system placed every product at
+  the wrong location. Nearly all files write the identity, which is why a
+  corpus pass never revealed it. The context frame composes above the
+  placement chain, so a rotated context rotates the sited product.
 - Parameter-space lowering for `IfcTrimmedCurve` and `IfcCompositeCurve` p-curve reference curves; trim parameters stay unscaled because a (u, v) address is dimensionless.
 - Typed `position()` placement views on all four elementary surfaces.
 - `select::subtype::TABLE_SCHEMA_VERSION` names the IFC schema the compiled

@@ -40,7 +40,7 @@ IFCPLANAREXTENT	non-shape	ifc-style	presentation extent rather than shape geomet
 IFCPOLYLOOP	nested-exact	lower::brep	ordered point loop input to a face bound
 IFCREPARAMETRISEDCOMPOSITECURVESEGMENT	nested-exact	lower::curve	composite segment with authored parameter length
 IFCSTYLEDITEM	non-shape	ifc-style	style association without shape modification
-IFCSUBEDGE	typed-refusal	lower::brep	an edge carved from a parent edge needs the parent trim, which IFC leaves to ParentEdge traversal this crate does not perform
+IFCSUBEDGE	nested-exact	lower::brep	an edge carved from a parent edge; the subedge's own vertices ride the parent's curve, reached by walking ParentEdge
 IFCTEXTLITERAL	non-shape	ifc-style	annotation text rather than shape geometry
 IFCTEXTLITERALWITHEXTENT	non-shape	ifc-style	annotation text and extent rather than shape geometry
 IFCVECTOR	nested-exact	resource::direction	direction plus magnitude input to exact curves and sweeps

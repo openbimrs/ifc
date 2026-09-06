@@ -75,20 +75,29 @@ parallel placeholders.
     The profile/topology slices were resolved by ownership in #25: their slots
     are owned by `lower::profile` and `resource::topology`/`solid::brep`, so no
     `input` module for them exists by design.
-- [ ] `GEOM-CTX` - select shape representations and compose geometric contexts/precision
-  - Progress: explicit body/plan selection and geometric-context inheritance are
-    implemented; the broader GEOM-CONTRACT/INPUT plan items remain open.
-  - Requires: `GEOM-CONTRACT`, `GEOM-INPUT`.
-  - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+- [x] `GEOM-CTX` - select shape representations and compose geometric contexts/precision
+  - Done (2026-09-05): representation selection, sub-context inheritance and
+    precision were already implemented. The gap was that
+    `WorldCoordinateSystem` -- a MANDATORY context attribute -- was read and
+    tested but never applied, so a file surveying its site into a real
+    coordinate system lowered every product at the wrong place. The context
+    frame now composes above the placement chain in `lower::context`.
+  - Evidence: `tests/lower_product.rs` (6 passing) plus 2/2 mutation probes:
+    dropping the frame and composing it in the wrong order both fail.
 - [x] `GEOM-PLACE` - compose units, local placements, item frames, and provenance exactly once
   - Requires: `GEOM-SESSION`.
   - Evidence: `tests/lower_product.rs`, the ifc-cli corpus placement gate, and
     4/4 mutation probes including the original all-products-at-origin bug.
   - Note: source attribution is now implemented by the session side table;
     placement remains responsible only for units and frame composition.
-- [ ] `GEOM-PROFILE` - cover exact profile families, local profile Position, voids, and material cardinal offsets
-  - Requires: `GEOM-CONTRACT`, `GEOM-SESSION`, `GEOM-INPUT`, `GEOM-PLACE`.
-  - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+- [x] `GEOM-PROFILE` - cover exact profile families, local profile Position, voids, and material cardinal offsets
+  - Audited (2026-09-05): all four named concerns are implemented. All 21
+    concrete IFC4 `IfcProfileDef` subtypes lower; abstract `IfcProfileDef`
+    itself is correctly refused. Local `Position`, arbitrary profiles with
+    voids, and material cardinal offsets all have code and tests.
+  - Evidence: `tests/lower_profile_families.rs` (13 passing), including a
+    schema-driven gate that fails if the schema gains a concrete family with
+    no disposition. The box was held open only by stale prerequisite state.
 - [x] `GEOM-CURVE` - lower every concrete curve family without approximation
   - Audited (2026-09-05): every concrete curve family lowers or carries a
     named typed refusal. Polyline, indexed poly-curve (including exact

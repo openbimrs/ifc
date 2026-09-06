@@ -21,12 +21,15 @@ use ifc_model::EntityId;
 use crate::error::{GeometryError, GeometryResult};
 // Moved to `input::product`: it never needed the kernel. Re-exported so
 // the pre-existing `lower::context::geometric_products` path still resolves.
+use crate::input::context::context_of;
 pub use crate::input::product::geometric_products;
 use crate::input::representation::{
     select_product_representation, Representation, RepresentationPurpose,
 };
 use crate::lower::dispatch::lower_representation_item;
 use crate::lower::session::LoweringSession;
+use crate::resource::placement::axis_placement_transform;
+use crate::transform::Transform;
 
 pub use crate::constraint::product_world_transform;
 pub use crate::input::representation::select_shape_representation;
@@ -49,11 +52,14 @@ pub fn lower_product_representation(
     product: EntityId,
     purpose: RepresentationPurpose,
 ) -> GeometryResult<Option<NodeId>> {
-    let world = product_world_transform(session.model(), session.units(), product)?;
+    let placement = product_world_transform(session.model(), session.units(), product)?;
     let Some(representation) = select_product_representation(session.model(), product, purpose)?
     else {
         return Ok(None);
     };
+    // Model space is the context's frame; the product's chain is expressed
+    // inside it, so the context frame composes above the placement.
+    let world = context_world_transform(session, representation)?.compose(&placement);
 
     let entity = session
         .model()
@@ -75,4 +81,35 @@ pub fn lower_product_representation(
             axiolid_model::GeometryNode::Collection(roots),
         )?)),
     }
+}
+
+/// The frame a representation's items are authored in.
+///
+/// `IfcGeometricRepresentationContext.WorldCoordinateSystem` is mandatory and
+/// defines model space for every representation that names the context. Most
+/// files write the identity, so ignoring it looks correct on a corpus; a file
+/// that surveys its site into a real coordinate system does not agree.
+///
+/// A sub-context inherits the value through `ParentContext`, which
+/// [`RepresentationContext::world_coordinate_system`] already resolves.
+/// Coordinates are raw file units, so the frame converts once here, matching
+/// how the placement chain is handled.
+fn context_world_transform(
+    session: &LoweringSession<'_>,
+    representation: EntityId,
+) -> GeometryResult<Transform> {
+    let model = session.model();
+    let Some(context) = context_of(model, representation) else {
+        return Ok(Transform::identity());
+    };
+    let Some(placement_id) = context.world_coordinate_system(model) else {
+        return Ok(Transform::identity());
+    };
+    let placement = model
+        .get(placement_id)
+        .ok_or(GeometryError::MissingEntity {
+            referrer: context.id(),
+            missing: placement_id,
+        })?;
+    Ok(axis_placement_transform(model, placement_id, placement)?.to_metres(session.units()))
 }

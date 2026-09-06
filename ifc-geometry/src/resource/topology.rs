@@ -46,6 +46,9 @@ pub mod slot {
     pub const EDGE_ELEMENT: usize = 2;
     /// `IfcOrientedEdge.Orientation`
     pub const EDGE_ORIENTATION: usize = 3;
+    /// `IfcSubedge.ParentEdge`; slots 0-1 are the inherited `IfcEdge`
+    /// vertices, which a subedge does state.
+    pub const PARENT_EDGE: usize = 2;
     /// `IfcEdgeLoop.EdgeList`
     pub const EDGE_LIST: usize = 0;
     /// `IfcFaceSurface.FaceSurface`
@@ -292,6 +295,45 @@ impl<'m> VertexPoint<'m> {
     /// The `IfcCartesianPoint` this vertex sits on.
     pub fn vertex_geometry(&self) -> GeometryResult<EntityId> {
         self.slots.req_ref(slot::VERTEX_GEOMETRY, "VertexGeometry")
+    }
+}
+
+/// `IfcSubedge`: an edge carved from a longer parent edge.
+///
+/// The subedge states its own `EdgeStart`/`EdgeEnd`; `ParentEdge` supplies
+/// the carrier geometry the subedge is a piece of. The parent may itself be
+/// a subedge, so resolving the carrier is a walk, not a single hop.
+#[derive(Debug, Clone, Copy)]
+pub struct Subedge<'m> {
+    slots: Slots<'m>,
+}
+
+impl<'m> Subedge<'m> {
+    /// Wrap an entity assumed to be an `IfcSubedge`.
+    pub fn new(id: EntityId, entity: &'m Entity) -> Self {
+        Self {
+            slots: Slots::new(id, entity),
+        }
+    }
+
+    /// The entity id.
+    pub fn id(&self) -> EntityId {
+        self.slots.id()
+    }
+
+    /// `EdgeStart`, the vertex the carved piece starts at.
+    pub fn start(&self) -> GeometryResult<EntityId> {
+        self.slots.req_ref(slot::EDGE_START, "EdgeStart")
+    }
+
+    /// `EdgeEnd`, the vertex the carved piece ends at.
+    pub fn end(&self) -> GeometryResult<EntityId> {
+        self.slots.req_ref(slot::EDGE_END, "EdgeEnd")
+    }
+
+    /// `ParentEdge`, mandatory: without it a subedge carves nothing.
+    pub fn parent_edge(&self) -> GeometryResult<EntityId> {
+        self.slots.req_ref(slot::PARENT_EDGE, "ParentEdge")
     }
 }
 
