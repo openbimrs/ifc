@@ -110,13 +110,14 @@ fn stored_expressions_match_the_schema_text() {
 fn implemented_rows_are_named_by_the_rules_module() {
     const PLACEMENT: &str = include_str!("../src/rules/placement.rs");
     const SOLID: &str = include_str!("../src/rules/solid.rs");
+    const GRID: &str = include_str!("../src/rules/grid.rs");
     for (entity, rule, state, _) in rows() {
         if state != "implemented" {
             continue;
         }
         let quoted = format!("\"{rule}\"");
         assert!(
-            PLACEMENT.contains(&quoted) || SOLID.contains(&quoted),
+            PLACEMENT.contains(&quoted) || SOLID.contains(&quoted) || GRID.contains(&quoted),
             "{entity}.{rule} claims implementation but no rules module names it"
         );
     }

@@ -47,8 +47,8 @@ ifcextrudedareasolidtapered	CorrectProfileAssignment	inventoried	IfcTaperedSwept
 ifcfixedreferencesweptareasolid	DirectrixBounded	inventoried	(EXISTS(StartParam) AND EXISTS(EndParam)) OR (SIZEOF(['IFC4.IFCCONIC', 'IFC4.IFCBOUNDEDCURVE'] * TYPEOF(Directrix)) = 1)
 ifcgeometriccurveset	NoSurfaces	inventoried	SIZEOF(QUERY(Temp <* SELF\IfcGeometricSet.Elements | 'IFC4.IFCSURFACE' IN TYPEOF(Temp))) = 0
 ifcgeometricset	ConsistentDim	inventoried	SIZEOF(QUERY(Temp <* Elements | Temp.Dim <> Elements[1].Dim)) = 0
-ifcgridaxis	WR1	inventoried	AxisCurve.Dim = 2
-ifcgridaxis	WR2	inventoried	(SIZEOF(PartOfU) = 1) XOR (SIZEOF(PartOfV) = 1) XOR (SIZEOF(PartOfW) = 1)
+ifcgridaxis	WR1	implemented	AxisCurve.Dim = 2
+ifcgridaxis	WR2	implemented	(SIZEOF(PartOfU) = 1) XOR (SIZEOF(PartOfV) = 1) XOR (SIZEOF(PartOfW) = 1)
 ifcindexedpolycurve	Consecutive	inventoried	(SIZEOF(Segments) = 0) OR IfcConsecutiveSegments(Segments)
 ifcintersectioncurve	DistinctSurfaces	inventoried	IfcAssociatedSurface(SELF\IfcSurfaceCurve.AssociatedGeometry[1]) <> IfcAssociatedSurface(SELF\IfcSurfaceCurve.AssociatedGeometry[2])
 ifcintersectioncurve	TwoPCurves	inventoried	SIZEOF(SELF\IfcSurfaceCurve.AssociatedGeometry) = 2

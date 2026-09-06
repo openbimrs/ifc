@@ -9,6 +9,11 @@ and this project follows Semantic Versioning.
 
 ### Added
 
+- `CON-GRID`: `IfcGridAxis` rule checking. `WR1` reports an axis curve that
+  is not 2D; `WR2` reports an axis that is not in exactly one of a grid's
+  U/V/W lists. `WR2` is stated over inverse attributes, which Part 21 files
+  do not carry, so it is counted from the owning grid instead.
+
 - `RULE-REG`: an executable inventory of every geometry-resource `WHERE`
   rule. `data/ifc4-where-rules.tsv` records all 95 rules the IFC4 ADD2 TC1
   schema declares across 56 entities, each marked `implemented` (19) or
