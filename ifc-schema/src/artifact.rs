@@ -9,10 +9,10 @@
 use bincode::{Decode, Encode};
 use thiserror::Error;
 
-use openbim_step::express::{Attribute, EntityDef, ParsedSchema, TypeDef, TypeKind};
+use openbim_step::express::{Attribute, EntityDef, ParsedSchema, TypeDef, TypeKind, WhereRule};
 
 const MAGIC: [u8; 8] = *b"NEHSCHM\0";
-const FORMAT_VERSION: u16 = 1;
+const FORMAT_VERSION: u16 = 2;
 const MIN_HEADER_BYTES: usize = MAGIC.len() + 1;
 const MAX_ARTIFACT_BYTES: usize = 8 * 1024 * 1024;
 
@@ -33,6 +33,39 @@ struct WireEntity {
     abstract_: bool,
     attributes: Vec<WireAttribute>,
     derived: Vec<String>,
+    where_rules: Vec<WireWhereRule>,
+}
+
+/// The v1 entity shape, kept so artifacts generated before `where_rules`
+/// existed still decode. bincode is positional: a v1 payload cannot be read
+/// into the v2 struct, so the old shape has to survive as its own type.
+#[derive(Encode, Decode)]
+struct WireEntityV1 {
+    name: String,
+    supertype: Option<String>,
+    abstract_: bool,
+    attributes: Vec<WireAttribute>,
+    derived: Vec<String>,
+}
+
+impl From<WireEntityV1> for WireEntity {
+    fn from(old: WireEntityV1) -> Self {
+        Self {
+            name: old.name,
+            supertype: old.supertype,
+            abstract_: old.abstract_,
+            attributes: old.attributes,
+            derived: old.derived,
+            where_rules: Vec::new(),
+        }
+    }
+}
+
+/// Wire-format mirror of [`openbim_step::express::WhereRule`].
+#[derive(Encode, Decode)]
+struct WireWhereRule {
+    label: String,
+    expression: String,
 }
 
 /// Wire-format mirror of [`openbim_step::express::TypeKind`].
@@ -57,6 +90,24 @@ struct WireSchema {
     types: Vec<WireType>,
 }
 
+/// The v1 schema shape. See [`WireEntityV1`].
+#[derive(Encode, Decode)]
+struct WireSchemaV1 {
+    name: String,
+    entities: Vec<WireEntityV1>,
+    types: Vec<WireType>,
+}
+
+impl From<WireSchemaV1> for WireSchema {
+    fn from(old: WireSchemaV1) -> Self {
+        Self {
+            name: old.name,
+            entities: old.entities.into_iter().map(WireEntity::from).collect(),
+            types: old.types,
+        }
+    }
+}
+
 impl From<&ParsedSchema> for WireSchema {
     fn from(schema: &ParsedSchema) -> Self {
         Self {
@@ -79,6 +130,14 @@ impl From<&ParsedSchema> for WireSchema {
                         })
                         .collect(),
                     derived: entity.derived.clone(),
+                    where_rules: entity
+                        .where_rules
+                        .iter()
+                        .map(|rule| WireWhereRule {
+                            label: rule.label.clone(),
+                            expression: rule.expression.clone(),
+                        })
+                        .collect(),
                 })
                 .collect(),
             types: schema
@@ -125,6 +184,14 @@ impl From<WireSchema> for ParsedSchema {
                     for derived in entity.derived {
                         def = def.with_derived(derived);
                     }
+                    def.where_rules = entity
+                        .where_rules
+                        .into_iter()
+                        .map(|rule| WhereRule {
+                            label: rule.label,
+                            expression: rule.expression,
+                        })
+                        .collect();
                     def
                 })
                 .collect(),
@@ -171,14 +238,23 @@ pub fn decode_schema(bytes: &[u8]) -> Result<ParsedSchema, BundledSchemaError> {
     let (format_version, version_bytes): (u16, usize) =
         bincode::decode_from_slice(&bytes[MAGIC.len()..], header_config)
             .map_err(|error| BundledSchemaError::Decode(error.to_string()))?;
-    if format_version != FORMAT_VERSION {
-        return Err(BundledSchemaError::UnsupportedVersion(format_version));
-    }
     let payload_bytes = &bytes[MAGIC.len() + version_bytes..];
     let config = bincode::config::standard().with_limit::<MAX_ARTIFACT_BYTES>();
-    let (wire, consumed): (WireSchema, usize) =
-        bincode::decode_from_slice(payload_bytes, config)
-            .map_err(|error| BundledSchemaError::Decode(error.to_string()))?;
+    // v1 predates `where_rules`. bincode is positional, so an old payload
+    // cannot be read into the current struct; it decodes through its own shape
+    // and gains an empty rule list. Reading it is still correct -- the rules
+    // were never recorded, which is exactly what an empty list states.
+    let (wire, consumed): (WireSchema, usize) = match format_version {
+        1 => {
+            let (old, consumed): (WireSchemaV1, usize) =
+                bincode::decode_from_slice(payload_bytes, config)
+                    .map_err(|error| BundledSchemaError::Decode(error.to_string()))?;
+            (WireSchema::from(old), consumed)
+        }
+        FORMAT_VERSION => bincode::decode_from_slice(payload_bytes, config)
+            .map_err(|error| BundledSchemaError::Decode(error.to_string()))?,
+        other => return Err(BundledSchemaError::UnsupportedVersion(other)),
+    };
     if consumed != payload_bytes.len() {
         return Err(BundledSchemaError::TrailingBytes(
             payload_bytes.len() - consumed,

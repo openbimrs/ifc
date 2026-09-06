@@ -505,4 +505,66 @@ mod tests {
             CurveOnSurface::Composite(EntityId(5))
         );
     }
+    /// `IfcFaceSurface` IS-A `IfcSurface`, so branch order is load-bearing.
+    ///
+    /// Testing the general branch first would classify every face surface as
+    /// plain geometry and silently discard its topological face bounds.
+    #[test]
+    fn a_face_surface_is_not_classified_as_a_plain_surface() {
+        let model = model_with(1, "IFCFACESURFACE");
+        let resolved = SurfaceOrFaceSurface::resolve(&model, EntityId(9), EntityId(1))
+            .expect("face surface resolves");
+        assert_eq!(resolved, SurfaceOrFaceSurface::FaceSurface(EntityId(1)));
+
+        let plain = model_with(2, "IFCPLANE");
+        let resolved = SurfaceOrFaceSurface::resolve(&plain, EntityId(9), EntityId(2))
+            .expect("plane resolves");
+        assert_eq!(resolved, SurfaceOrFaceSurface::Surface(EntityId(2)));
+    }
+
+    /// A type outside the select is named, not silently defaulted.
+    #[test]
+    fn a_non_surface_is_rejected_by_the_surface_select() {
+        let model = model_with(1, "IFCPOLYLINE");
+        let error = SurfaceOrFaceSurface::resolve(&model, EntityId(9), EntityId(1))
+            .expect_err("a curve is not a surface");
+        assert_eq!(error.entity(), Some(EntityId(1)));
+    }
+
+    /// `IfcVertexPoint` IS-A `IfcPoint`: the topological branch must win.
+    #[test]
+    fn a_vertex_point_keeps_its_topological_identity() {
+        let model = model_with(1, "IFCVERTEXPOINT");
+        let resolved = PointOrVertexPoint::resolve(&model, EntityId(9), EntityId(1))
+            .expect("vertex point resolves");
+        assert_eq!(resolved, PointOrVertexPoint::VertexPoint(EntityId(1)));
+
+        let plain = model_with(2, "IFCCARTESIANPOINT");
+        let resolved = PointOrVertexPoint::resolve(&plain, EntityId(9), EntityId(2))
+            .expect("cartesian point resolves");
+        assert_eq!(resolved, PointOrVertexPoint::Point(EntityId(2)));
+    }
+
+    /// `IfcEdgeCurve` IS-A neither branch by accident: it is topology.
+    #[test]
+    fn an_edge_curve_is_not_classified_as_a_bounded_curve() {
+        let model = model_with(1, "IFCEDGECURVE");
+        let resolved = CurveOrEdgeCurve::resolve(&model, EntityId(9), EntityId(1))
+            .expect("edge curve resolves");
+        assert_eq!(resolved, CurveOrEdgeCurve::EdgeCurve(EntityId(1)));
+
+        let plain = model_with(2, "IFCPOLYLINE");
+        let resolved =
+            CurveOrEdgeCurve::resolve(&plain, EntityId(9), EntityId(2)).expect("polyline resolves");
+        assert_eq!(resolved, CurveOrEdgeCurve::Bounded(EntityId(2)));
+    }
+
+    /// An unbounded surface is not a bounded curve, and must be named.
+    #[test]
+    fn a_surface_is_rejected_by_the_curve_select() {
+        let model = model_with(1, "IFCPLANE");
+        let error = CurveOrEdgeCurve::resolve(&model, EntityId(9), EntityId(1))
+            .expect_err("a plane is not a curve");
+        assert_eq!(error.entity(), Some(EntityId(1)));
+    }
 }

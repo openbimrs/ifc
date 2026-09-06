@@ -8,6 +8,18 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+
+- `RULE-REG`: an executable inventory of every geometry-resource `WHERE`
+  rule. `data/ifc4-where-rules.tsv` records all 95 rules the IFC4 ADD2 TC1
+  schema declares across 56 entities, each marked `implemented` (19) or
+  `inventoried` (76), with the schema's own expression text. Four tests fail
+  the build if the inventory drifts from the schema, invents a rule, or
+  claims an implementation the `rules` module does not provide.
+- `SEL-POSNEG`: membership tests for `CsgSelect`, `CurveOrEdgeCurve`,
+  `SurfaceOrFaceSurface` and `PointOrVertexPoint`, pinning the branch order
+  that makes an `IfcVertexPoint` a vertex rather than a plain point.
+
+### Added
 - `docs/schema-looseness.md` documents refusals caused by the IFC schema
   permitting a combination the geometry cannot honour, separating them from
   unimplemented features. Covers the parameter-space conic on a 3D placement

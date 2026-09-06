@@ -27,7 +27,7 @@ code.
 
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `ifc-geometry` | 27,918 | 92 | 3 | 32 | <span class="status-partial">Partial</span> |
+| `ifc-geometry` | 27,980 | 92 | 3 | 33 | <span class="status-partial">Partial</span> |
 | `ifc-structural` | 3,397 | 33 | 14 | 12 | <span class="status-implemented">Implemented</span> |
 | `ifc-style` | 3,322 | 31 | 0 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 3,119 | 30 | 14 | 3 | <span class="status-implemented">Implemented</span> |
@@ -40,8 +40,8 @@ code.
 | `ifc-resource` | 1,827 | 29 | 18 | 4 | <span class="status-partial">Partial</span> |
 | `ifc-schedule` | 1,691 | 24 | 14 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 1,586 | 20 | 5 | 2 | <span class="status-implemented">Implemented</span> |
+| `ifc-schema` | 1,306 | 11 | 4 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,230 | 6 | 0 | 1 | <span class="status-implemented">Implemented</span> |
-| `ifc-schema` | 1,230 | 11 | 4 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-alignment` | 1,095 | 26 | 16 | 2 | <span class="status-partial">Partial</span> |
 | `ifc-xml` | 1,045 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-approval` | 915 | 5 | 0 | 1 | <span class="status-implemented">Implemented</span> |
