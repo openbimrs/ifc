@@ -44,6 +44,14 @@ Handling it correctly would require inventing a projection from a 3D frame
 onto `(u, v)`, which IFC does not define, because the combination is not
 meaningful in the first place.
 
+The schema is not silent about p-curve dimensionality in general. It
+declares `DimIs2D : ReferenceCurve.Dim = 2` on `IfcPcurve`, which the
+executable inventory in `ifc-geometry/data/ifc4-where-rules.tsv` records.
+The gap is narrower than it first appears: the reference curve must be 2D,
+but nothing constrains the dimensionality of the *placement* that positions
+a conic reference curve. A 3D placement can therefore sit under a curve
+that is itself correctly 2D.
+
 ### A surface curve whose master names a side it does not have
 
 `IfcSurfaceCurve.MasterRepresentation` may be `PCURVE_S2` while
