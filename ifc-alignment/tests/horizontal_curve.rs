@@ -183,11 +183,50 @@ fn large_global_coordinates_do_not_collapse_the_arc_frame_axes() {
 
 #[test]
 fn transition_intent_is_not_approximated() {
+    // A clothoid now lowers exactly -- as an intrinsic (natural-equation)
+    // curve carrying its curvature law, NOT as a sampled polyline or a
+    // fitted B-spline. Both of those would be approximations; storing k(s)
+    // is lossless.
     let model = segment("CLOTHOID", 0.0, 10_000.0, 5_000.0);
-    assert!(matches!(
-        lower_horizontal_segment(&model, EntityId(2), millimetres()),
-        Err(AlignmentError::Unsupported { type_name, .. }) if type_name == "CLOTHOID"
-    ));
+    let lowered =
+        lower_horizontal_segment(&model, EntityId(2), millimetres()).expect("clothoid lowers");
+
+    let GeometryNode::CurveRelation(CurveRelation::Trimmed { basis, .. }) =
+        lowered.graph.get(lowered.root).expect("root")
+    else {
+        panic!("trimmed root")
+    };
+    let basis_node = lowered.graph.get(*basis).expect("basis");
+    assert!(
+        matches!(basis_node, GeometryNode::Curve2(Curve2::Intrinsic(_))),
+        "a clothoid must lower to an exact intrinsic curve, got {basis_node:?}"
+    );
+    // Explicitly reject the two shapes an approximation would take.
+    assert!(
+        !matches!(basis_node, GeometryNode::Curve2(Curve2::Polyline(_))),
+        "a clothoid must never be discretised to a polyline"
+    );
+    assert!(
+        !matches!(basis_node, GeometryNode::Curve2(Curve2::BSpline(_))),
+        "a clothoid must never be fitted to a B-spline"
+    );
+}
+
+#[test]
+fn a_family_without_a_reconstructible_law_is_still_refused() {
+    // HELMERTCURVE is piecewise-quadratic and VIENNESEBEND is a composite;
+    // neither is reconstructible from endpoint radii alone, so both must
+    // refuse rather than be forced into some nearby law.
+    for name in ["HELMERTCURVE", "SINECURVE", "VIENNESEBEND"] {
+        let model = segment(name, 0.0, 10_000.0, 5_000.0);
+        assert!(
+            matches!(
+                lower_horizontal_segment(&model, EntityId(2), millimetres()),
+                Err(AlignmentError::Unsupported { ref type_name, .. }) if type_name == name
+            ),
+            "{name} must be a typed refusal"
+        );
+    }
 }
 
 #[test]

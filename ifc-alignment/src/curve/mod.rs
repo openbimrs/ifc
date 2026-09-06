@@ -5,6 +5,7 @@
 //! - `assemble.rs`: exact neutral composite curve.
 
 mod assemble;
+mod spiral;
 
 mod provenance;
 mod transition;

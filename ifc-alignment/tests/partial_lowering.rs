@@ -2,6 +2,8 @@
 //! must lower its exact segments and name its refused ones, rather than
 //! failing wholesale.
 
+use axiolid_curve::Curve2;
+use axiolid_model::GeometryNode;
 use ifc_alignment::{
     lower_horizontal_layout, lower_horizontal_layout_partial, AlignmentError, AlignmentUnits,
 };
@@ -50,18 +52,18 @@ fn partial_lowering_keeps_the_exact_segments_and_names_the_refused_ones() {
     assert_eq!(result.segment_count, 5);
     assert_eq!(
         result.lowered_count(),
-        3,
-        "line, arc and line lower exactly"
+        5,
+        "every segment lowers exactly: clothoids are intrinsic curves"
     );
-    assert!(!result.is_complete());
+    assert!(result.is_complete());
 
-    // Both clothoids are named, in authored order, with their entity ids.
-    let refused: Vec<(u64, &str)> = result
-        .refused
-        .iter()
-        .map(|r| (r.entity.0, r.type_name.as_str()))
-        .collect();
-    assert_eq!(refused, vec![(103, "CLOTHOID"), (107, "CLOTHOID")]);
+    // Clothoids now lower exactly, so nothing is refused.
+    assert!(
+        result.refused.is_empty(),
+        "clothoids are no longer refused: {:?}",
+        result.refused
+    );
+    assert!(result.is_complete());
 
     // Every refusal states the capability that is missing, not a generic failure.
     for refusal in &result.refused {
@@ -83,27 +85,51 @@ fn a_refusal_splits_the_layout_into_separate_runs_rather_than_bridging_it() {
         .iter()
         .map(|run| run.sources.iter().map(|id| id.0).collect())
         .collect();
-    assert_eq!(sources, vec![vec![101], vec![105], vec![109]]);
+    // The clothoid joins the run it is provably continuous WITH, then ends
+    // it: continuity OUT of a spiral is not closed form.
+    assert_eq!(sources, vec![vec![101, 103], vec![105, 107], vec![109]]);
 
-    // No run may contain a spiral. Asserting against the fixture's known
-    // CLOTHOID ids rather than against `result.refused` keeps this honest: a
-    // regression that silently lowered spirals would empty `refused` and make
-    // a self-referential check pass vacuously.
+    // Each fixture spiral must appear in a run AND be an exact intrinsic
+    // curve. Asserting against the fixture's known CLOTHOID ids, rather than
+    // against the crate's own output, keeps this honest: a regression that
+    // approximated spirals would still put them in runs, so only checking
+    // membership would pass vacuously.
     const FIXTURE_SPIRALS: [u64; 2] = [103, 107];
-    for run in &result.runs {
-        for source in &run.sources {
-            assert!(
-                !FIXTURE_SPIRALS.contains(&source.0),
-                "run contains spiral segment {source:?}, which has no exact lowering"
-            );
-        }
-    }
     for spiral in FIXTURE_SPIRALS {
         assert!(
-            result.refused.iter().any(|r| r.entity.0 == spiral),
-            "spiral {spiral} must be reported as refused, not silently lowered"
+            result
+                .runs
+                .iter()
+                .any(|run| run.sources.iter().any(|id| id.0 == spiral)),
+            "spiral {spiral} must lower into a run, not be dropped"
         );
     }
+    let intrinsics: usize = result
+        .runs
+        .iter()
+        .flat_map(|run| run.graph.iter())
+        .filter(|(_, node)| matches!(node, GeometryNode::Curve2(Curve2::Intrinsic(_))))
+        .count();
+    assert_eq!(
+        intrinsics,
+        FIXTURE_SPIRALS.len(),
+        "each clothoid must lower to exactly one intrinsic curve"
+    );
+    let approximated = result
+        .runs
+        .iter()
+        .flat_map(|run| run.graph.iter())
+        .any(|(_, node)| {
+            matches!(
+                node,
+                GeometryNode::Curve2(Curve2::Polyline(_))
+                    | GeometryNode::Curve2(Curve2::BSpline(_))
+            )
+        });
+    assert!(
+        !approximated,
+        "a spiral must never be discretised or fitted"
+    );
     let lowered_total: usize = result.runs.iter().map(|run| run.sources.len()).sum();
     assert_eq!(lowered_total, result.lowered_count());
     assert_eq!(lowered_total + result.refused.len(), result.segment_count);

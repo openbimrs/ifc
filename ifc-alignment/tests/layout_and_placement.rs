@@ -1,3 +1,4 @@
+use axiolid_curve::Curve2;
 use axiolid_model::{CurveRelation, GeometryNode, Transition};
 use ifc_alignment::{
     lower_horizontal_layout, resolve_linear_placement, station_equations, AlignmentUnits,
@@ -93,7 +94,6 @@ fn station_equations_resolve_from_pset_stationing_and_the_linear_placement() {
 
 #[test]
 fn a_clothoid_segment_inside_a_layout_is_a_typed_refusal_not_an_approximation() {
-    use ifc_alignment::AlignmentError;
     use ifc_model::{Entity, Model, Value};
     use std::sync::Arc;
 
@@ -176,12 +176,25 @@ fn a_clothoid_segment_inside_a_layout_is_a_typed_refusal_not_an_approximation() 
         ),
     );
 
-    assert!(matches!(
-        lower_horizontal_layout(&model, EntityId(4), units()),
-        Err(AlignmentError::Unsupported { .. })
-    ));
-    assert!(matches!(
-        ifc_alignment::lower_horizontal_segment(&model, EntityId(2), units()),
-        Err(AlignmentError::Unsupported { .. })
-    ));
+    // A clothoid now lowers exactly, as an intrinsic curve carrying its
+    // curvature law. Exactness is the claim under test: the lowering must be
+    // the natural-equation form, never a sampled or fitted stand-in.
+    let lowered = lower_horizontal_layout(&model, EntityId(4), units()).expect("clothoid lowers");
+    let has_intrinsic = lowered
+        .graph
+        .iter()
+        .any(|(_, node)| matches!(node, GeometryNode::Curve2(Curve2::Intrinsic(_))));
+    assert!(has_intrinsic, "clothoid must lower to an intrinsic curve");
+    let approximated = lowered.graph.iter().any(|(_, node)| {
+        matches!(
+            node,
+            GeometryNode::Curve2(Curve2::Polyline(_)) | GeometryNode::Curve2(Curve2::BSpline(_))
+        )
+    });
+    assert!(
+        !approximated,
+        "no polyline or B-spline approximation may appear"
+    );
+
+    assert!(ifc_alignment::lower_horizontal_segment(&model, EntityId(2), units()).is_ok());
 }

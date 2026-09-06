@@ -1,6 +1,6 @@
 # ifc-alignment implementation plan
 
-Status: horizontal/vertical/cant segment parameters implemented; exact neutral line/circular-horizontal and constant-gradient-vertical output implemented; IFC4X3 schema pinning (ALIGN-VERS), continuity-aware horizontal composite curve assembly (ALIGN-CURVE), full closed-form cant segment/layout evaluation (ALIGN-CANT), and linear placement + station-equation resolution (ALIGN-PLACE) are implemented. Transition-curve families with no closed-form Cartesian position (clothoid, Helmert, Bloss, cosine, sine, Vienna bend on horizontal/vertical position) remain a typed refusal by design -- see AGENTS.md. The refusal is per segment: `lower_horizontal_layout_partial` lowers the exact runs of a spiral-bearing layout and names the refused segments, so production alignments are usable without any approximation.
+Status: horizontal/vertical/cant segment parameters implemented; exact neutral line/circular-horizontal and constant-gradient-vertical output implemented; IFC4X3 schema pinning (ALIGN-VERS), continuity-aware horizontal composite curve assembly (ALIGN-CURVE), full closed-form cant segment/layout evaluation (ALIGN-CANT), and linear placement + station-equation resolution (ALIGN-PLACE) are implemented. Transition spirals reconstructible from endpoint radii (CLOTHOID, BLOSSCURVE, COSINECURVE) lower exactly as intrinsic curves carrying `CurvatureLaw` -- lossless, no quadrature or sampling. HELMERTCURVE, SINECURVE, and VIENNESEBEND remain a typed refusal: they need terms the segment does not carry. Runs still split after a spiral because continuity out of one is not closed form.
 Last updated: 2026-09-06
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
@@ -56,12 +56,13 @@ owner and expose a public symbol only through an intentional parent re-export.
     unrecognized/refused/accepted schema tokens).
 - [ ] `ALIGN-H` - implement exact horizontal segment views/lowering
   - Progress: parameters resolve with units; line and circular arc lower exactly;
-    transition families (CLOTHOID, HELMERTCURVE, BLOSSCURVE, COSINECURVE,
-    SINECURVE, VIENNESEBEND) fail typed rather than being approximated -- their
-    Cartesian position is a Fresnel-type integral with no closed form, so no
-    exact primitive exists for them without a new transcendental curve type
-    upstream in `axiolid-curve` (out of this crate's boundary). CUBIC (an
-    exact literal polynomial in IFC's own definition) remains open.
+    CLOTHOID, BLOSSCURVE and COSINECURVE lower exactly as `Curve2::Intrinsic`
+    (kernel v0.12.0's natural-equation curve): their curvature law is
+    elementary in arc length and reconstructible from the endpoint radii, so
+    storing it is lossless. HELMERTCURVE (piecewise-quadratic), SINECURVE and
+    VIENNESEBEND still fail typed -- their laws need terms the alignment
+    segment does not carry. CUBIC (an exact literal polynomial in IFC's own
+    definition) remains open.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [ ] `ALIGN-V` - implement exact vertical profile views/lowering
   - Progress: parameters resolve with units; constant gradient lowers exactly;
@@ -117,6 +118,23 @@ owner and expose a public symbol only through an intentional parent re-export.
     fixture; mutation-checked by removing the run-flush and by silently
     lowering spirals as lines, both of which fail the suite.
 
+- [x] `ALIGN-SPIRAL` - lower transition spirals exactly as intrinsic curves
+  - `Curve2::Intrinsic` (axiolid-curve v0.12.0) stores a curvature law
+    anchored to a start frame. CLOTHOID, BLOSSCURVE and COSINECURVE have
+    elementary curvature laws reconstructible from the segment's endpoint
+    radii, so this is a lossless representation, not an approximation: the
+    crate still performs no integration anywhere. HELMERTCURVE, SINECURVE and
+    VIENNESEBEND stay refused -- their laws need terms the segment does not
+    carry, and forcing them into a nearby law would be a silent lie.
+  - Continuity out of a spiral is still not assertable (Fresnel end point),
+    so `lower_horizontal_layout_partial` ends a run after one and the strict
+    entry point refuses such a layout outright.
+  - Evidence: `tests/spiral_law.rs` pins each family at k(0), k(L/2), k(L)
+    and total turning against the published base formulas; integrating the
+    stored clothoid law reproduces the fixture's independently authored arc
+    start to 1e-9. Mutation-checked with five mutants (clothoid sharpness,
+    Bloss cubic sign, Bloss quadratic coefficient, cosine frequency, cosine
+    phase) -- all caught.
 - [ ] `ALIGN-CENSUS` - fixture/declaration coverage with explicit unsupported cases
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 
@@ -156,5 +174,14 @@ Append concise entries as `TASK-ID - proof command/result - material decision`.
   New fixture `synthetic_alignment_spiral.ifc` (line->clothoid->arc->
   clothoid->line, the canonical production shape) validates clean in the
   ifc-validate corpus.
+
+- `ALIGN-SPIRAL` - `cargo +1.88.0 test -p ifc-alignment --all-targets`
+  (47 tests, up from 40) and the full workspace suite (169 test-result lines,
+  zero failures); clippy `-D warnings`, fmt and rustdoc clean. Writing the
+  family tests found a real bug: the cosine law had been written in cosine
+  form while the kernel's `Sinusoid` is sine form, giving k(0) != 0. Fixed by
+  folding via sin(x - pi/2) = -cos(x). Before those tests existed, mutating
+  the Bloss and cosine coefficients failed nothing -- the fixture only
+  exercises clothoids -- so the gap was real and is now closed.
 
 Do not paste long logs or move standing invariants out of `AGENTS.md`.

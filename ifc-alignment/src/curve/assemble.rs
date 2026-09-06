@@ -8,6 +8,7 @@ use axiolid_model::{
 };
 use ifc_model::{EntityId, Model};
 
+use crate::curve::spiral::{is_exactly_lowerable, spiral_curve};
 use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::{
     read_horizontal_segment, AlignmentUnits, HorizontalSegment, HorizontalSegmentType,
@@ -133,6 +134,9 @@ pub fn lower_horizontal_segment(
         match &segment.segment_type {
             HorizontalSegmentType::Line => push_line(&mut builder, &segment)?,
             HorizontalSegmentType::CircularArc => push_arc(&mut builder, &segment)?,
+            HorizontalSegmentType::Transition(name) if is_exactly_lowerable(name) => {
+                push_spiral(&mut builder, &segment, name)?
+            }
             kind => return Err(AlignmentError::Unsupported {
                 entity: id,
                 type_name: kind.source_name().to_owned(),
@@ -286,6 +290,27 @@ fn push_constant_gradient(
     )
 }
 
+/// Push a transition spiral as an exact intrinsic curve, trimmed to its
+/// authored length.
+fn push_spiral(
+    builder: &mut GeometryGraphBuilder,
+    segment: &HorizontalSegment,
+    name: &str,
+) -> AlignmentResult<NodeId> {
+    let curve = spiral_curve(segment, name)?;
+    let basis = push(builder, GeometryNode::Curve2(curve))?;
+    push(
+        builder,
+        GeometryNode::CurveRelation(CurveRelation::Trimmed {
+            basis,
+            start: vec![TrimSelector::Parameter(0.0)],
+            end: vec![TrimSelector::Parameter(segment.segment_length)],
+            sense_agreement: true,
+            preference: TrimmingPreference::Parameter,
+        }),
+    )
+}
+
 fn push(builder: &mut GeometryGraphBuilder, node: GeometryNode) -> AlignmentResult<NodeId> {
     builder.push(node).map_err(|error| AlignmentError::Graph {
         detail: error.to_string(),
@@ -347,6 +372,9 @@ pub fn lower_horizontal_layout(
         let curve = match &segment.segment_type {
             HorizontalSegmentType::Line => push_line(&mut builder, segment)?,
             HorizontalSegmentType::CircularArc => push_arc(&mut builder, segment)?,
+            HorizontalSegmentType::Transition(name) if is_exactly_lowerable(name) => {
+                push_spiral(&mut builder, segment, name)?
+            }
             kind => return Err(AlignmentError::Unsupported {
                 entity: segment.entity,
                 type_name: kind.source_name().to_owned(),
@@ -358,13 +386,16 @@ pub fn lower_horizontal_layout(
             Transition::Discontinuous
         } else {
             let previous = &segments[index - 1];
-            let previous_end = closed_form_end_point(previous)
-                .ok_or(AlignmentError::Unsupported {
-                entity: previous.entity,
-                type_name: previous.segment_type.source_name().to_owned(),
-                detail:
-                    "the pinned neutral curve vocabulary has no exact transition-curve primitive",
-            })?;
+            // A transition spiral's end point is a Fresnel-type integral, so
+            // continuity across it is not provable in closed form. The strict
+            // entry point promises a fully continuity-checked composite, so it
+            // refuses here rather than asserting a transition it cannot verify.
+            let previous_end =
+                closed_form_end_point(previous).ok_or(AlignmentError::Unsupported {
+                    entity: previous.entity,
+                    type_name: previous.segment_type.source_name().to_owned(),
+                    detail: "continuity across a transition spiral is not provable in closed form",
+                })?;
             observed_transition(previous_end, segment.start_point, 1e-6).ok_or(
                 AlignmentError::SemanticViolation {
                     entity: Some(segment.entity),
@@ -444,9 +475,21 @@ pub fn lower_horizontal_layout_partial(
     let mut pending_ids: Vec<EntityId> = Vec::new();
 
     for (index, segment) in segments.iter().enumerate() {
+        // Decide the run boundary BEFORE lowering: `flush_run` swaps in a new
+        // builder, so a node pushed beforehand would dangle in a finished
+        // graph. A predecessor whose end point is not closed form cannot
+        // support any continuity claim, so the run ends here.
+        if let Some((previous_index, _)) = pending.last() {
+            if closed_form_end_point(&segments[*previous_index]).is_none() {
+                flush_run(&mut runs, &mut builder, &mut pending, &mut pending_ids)?;
+            }
+        }
         let lowered = match &segment.segment_type {
             HorizontalSegmentType::Line => push_line(&mut builder, segment),
             HorizontalSegmentType::CircularArc => push_arc(&mut builder, segment),
+            HorizontalSegmentType::Transition(name) if is_exactly_lowerable(name) => {
+                push_spiral(&mut builder, segment, name)
+            }
             kind => Err(AlignmentError::Unsupported {
                 entity: segment.entity,
                 type_name: kind.source_name().to_owned(),
@@ -474,18 +517,18 @@ pub fn lower_horizontal_layout_partial(
             None => Transition::Discontinuous,
             Some((previous_index, _)) => {
                 let previous = &segments[*previous_index];
-                match closed_form_end_point(previous) {
-                    Some(previous_end) => {
-                        match observed_transition(previous_end, segment.start_point, 1e-6) {
-                            Some(transition) => transition,
-                            None => return Err(AlignmentError::SemanticViolation {
-                                entity: Some(segment.entity),
-                                rule:
-                                    "consecutive horizontal segments must share an endpoint exactly",
-                            }),
-                        }
+                // Within a run the predecessor always has a closed-form end
+                // point: the boundary check above ended the run otherwise.
+                let previous_end = closed_form_end_point(previous)
+                    .expect("run boundary guarantees a closed-form predecessor end point");
+                match observed_transition(previous_end, segment.start_point, 1e-6) {
+                    Some(transition) => transition,
+                    None => {
+                        return Err(AlignmentError::SemanticViolation {
+                            entity: Some(segment.entity),
+                            rule: "consecutive horizontal segments must share an endpoint exactly",
+                        })
                     }
-                    None => Transition::Discontinuous,
                 }
             }
         };

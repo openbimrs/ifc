@@ -7,6 +7,24 @@ and this project follows Semantic Versioning.
 
 ## [Unreleased]
 
+### Added
+
+- `ifc-alignment`: CLOTHOID, BLOSSCURVE and COSINECURVE transition spirals
+  lower exactly as `Curve2::Intrinsic`, the natural-equation curve added in
+  axiolid-curve v0.12.0. A spiral has no elementary parametric form, but its
+  curvature *is* an elementary function of arc length, and a plane curve is
+  fixed up to rigid motion by that law; anchoring it to a start frame fixes it
+  absolutely. Storing the law is therefore lossless -- the crate still
+  performs no quadrature, series expansion, or sampling anywhere.
+  HELMERTCURVE, SINECURVE and VIENNESEBEND remain a typed refusal: their laws
+  need terms an `IfcAlignmentHorizontalSegment` does not carry, and forcing
+  them into a nearby law would be a silent approximation.
+- `ifc-alignment`: composite runs now end after a transition spiral rather
+  than asserting a transition across it. Continuity *into* a spiral is
+  provable from the predecessor's closed-form end point, but continuity *out*
+  of one is a Fresnel-type integral, and `Transition` has no "unknown" member
+  -- so the run ends instead of claiming a fact the crate cannot verify.
+
 ### Fixed
 
 - `ifc-geometry`: the WHERE-rule coverage gate matched violations by rule
