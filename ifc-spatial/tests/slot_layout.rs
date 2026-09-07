@@ -15,6 +15,15 @@ fn load(rel: &str) -> Option<Schema> {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../../references/ifc-spec")
         .join(rel);
+    if !path.exists() {
+        // CI sets IFC_SPEC_REQUIRED so a missing schema fails loudly.
+        // Without it these tests skip, and a schema bug ships green.
+        assert!(
+            std::env::var_os("IFC_SPEC_REQUIRED").is_none(),
+            "IFC_SPEC_REQUIRED is set but {} is missing; run scripts/fetch-ifc-schemas.sh",
+            path.display()
+        );
+    }
     let bytes = std::fs::read(path).ok()?;
     let text: String = bytes.iter().map(|&b| b as char).collect();
     Some(Schema::from_express(&text))

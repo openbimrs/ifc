@@ -37,6 +37,12 @@ macro_rules! schema_or_skip {
         match ifc4() {
             Some(schema) => schema,
             None => {
+                // CI sets IFC_SPEC_REQUIRED so a missing schema fails loudly.
+                assert!(
+                    std::env::var_os("IFC_SPEC_REQUIRED").is_none(),
+                    "IFC_SPEC_REQUIRED is set but references/ifc-spec is missing; \
+                     run scripts/fetch-ifc-schemas.sh"
+                );
                 eprintln!("skipped: references/ifc-spec not present");
                 return;
             }

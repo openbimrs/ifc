@@ -107,6 +107,13 @@ This page is synchronised from it at build time.
 
 ### Fixed
 
+- CI now runs the schema-backed tests. `references/ifc-spec` is not
+  committed (CC BY-ND 4.0), so every test loading it silently skipped --
+  including in CI, which is how an IFC2X3 slot-name bug reached main
+  green. `scripts/fetch-ifc-schemas.sh` fetches the three normative
+  schemas against pinned checksums of line-ending-normalised content,
+  and `IFC_SPEC_REQUIRED=1` turns a skip into a failure.
+
 - `ifc-spatial`: `tests/slot_layout.rs` asserted the IFC4 attribute
   name against every bundled schema. IFC2X3 spells
   `IfcRelCoversSpaces` slot 4 `RelatedSpace`; IFC4 renamed it to

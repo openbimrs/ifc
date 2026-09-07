@@ -18,5 +18,20 @@ jobs:
         uses: dtolnay/rust-toolchain@1.88.0
         with:
           components: clippy, rustfmt
+      # The normative EXPRESS schemas are CC BY-ND 4.0: verbatim redistribution
+      # is allowed, derivatives are not, so they are fetched rather than
+      # vendored. Cached by content hash of the fetch script, which pins the
+      # expected checksums.
+      - name: Cache IFC EXPRESS schemas
+        uses: actions/cache@v4
+        with:
+          path: references/ifc-spec
+          key: ifc-spec-${{ hashFiles('scripts/fetch-ifc-schemas.sh') }}
+      - name: Fetch IFC EXPRESS schemas
+        run: scripts/fetch-ifc-schemas.sh
       - name: Run standalone gate
+        # IFC_SPEC_REQUIRED makes a missing schema fail instead of skip; the
+        # fetch above already ran, so gate.sh does not need to repeat it.
+        env:
+          IFC_SPEC_SKIP_FETCH: "1"
         run: scripts/gate.sh

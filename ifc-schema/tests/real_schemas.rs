@@ -16,6 +16,15 @@ fn spec_dir() -> PathBuf {
 
 fn load(rel: &str) -> Option<Schema> {
     let path = spec_dir().join(rel);
+    if !path.exists() {
+        // CI sets IFC_SPEC_REQUIRED so a missing schema fails loudly.
+        // Without it these tests skip, and a schema bug ships green.
+        assert!(
+            std::env::var_os("IFC_SPEC_REQUIRED").is_none(),
+            "IFC_SPEC_REQUIRED is set but {} is missing; run scripts/fetch-ifc-schemas.sh",
+            path.display()
+        );
+    }
     let bytes = std::fs::read(&path).ok()?;
     Some(Schema::from_express_bytes(&bytes))
 }

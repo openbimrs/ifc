@@ -11,6 +11,15 @@ if [[ -z "${CARGO_TARGET_DIR:-}" && -d /mnt/backup/build-cache ]]; then
     export CARGO_TARGET_DIR=/mnt/backup/build-cache/openbim-ifc-standalone
 fi
 
+# The normative EXPRESS schemas are CC BY-ND 4.0 and therefore not committed.
+# Without them every schema-backed test silently skips -- which is how an
+# IFC2X3 slot-name bug reached main with CI green. Fetch them (cached by
+# checksum), then require them: IFC_SPEC_REQUIRED turns a skip into a failure.
+if [[ -z "${IFC_SPEC_SKIP_FETCH:-}" ]]; then
+    scripts/fetch-ifc-schemas.sh
+fi
+export IFC_SPEC_REQUIRED=1
+
 cargo fmt --all -- --check
 cargo build --workspace --all-targets
 cargo test --workspace --all-features

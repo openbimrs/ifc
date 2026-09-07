@@ -126,3 +126,17 @@ scripts/gate.sh
 
 Architecture and context gates must be mutation-verified before being trusted.
 On shared master, stage only owned paths and re-check HEAD before committing.
+
+## Schema-backed tests
+
+Tests that load `references/ifc-spec/*.exp` skip when it is absent, so a
+fresh clone stays green. That silence is dangerous: an IFC2X3 slot-name
+bug once reached main with CI green because every such test skipped.
+
+- `scripts/fetch-ifc-schemas.sh` downloads the three normative schemas
+  (~1 MB) and verifies them against pinned checksums of LINE-ENDING-
+  NORMALISED content, because upstream has served both CRLF and LF.
+- `IFC_SPEC_REQUIRED=1` turns every skip into a hard failure. `gate.sh`
+  sets it, so local and CI verification are identical.
+- The schemas are CC BY-ND 4.0: verbatim redistribution is permitted,
+  derivatives are not. Fetch them; never vendor a trimmed subset.
