@@ -69,21 +69,61 @@ fn transition_law(name: &str, start: f64, end: f64, length: f64) -> Option<Curva
             phase: -core::f64::consts::FRAC_PI_2,
         }),
 
+        // Helmert (a.k.a. Schramm): two quadratic halves meeting at the
+        // midpoint, each exactly quadratic in arc length.
+        //   first  half, u <= 1/2: k = k0 + 2 u^2 delta
+        //   second half, u >  1/2: k = k0 + (1 - 2(1-u)^2) delta
+        // Expanded in s (u = s/L), the first half is [k0, 0, 2 delta / L^2].
+        // Pieces are rebased: a piece's law is evaluated in its OWN arc length
+        // measured from its start, so the second half is written in
+        // t = s - L/2 and becomes [k0 + delta/2, 2 delta / L, -2 delta / L^2].
+        // The seam is C1 -- both halves have slope 2 delta / L there -- so the
+        // break is a change of formula, not of the curve.
+        //
+        // A piecewise law must stay inside ONE curve: a separate curve per
+        // half would need an absolute start frame at the seam, whose origin
+        // is the position there -- a non-elementary integral this crate
+        // refuses to compute. Anchoring the interior by arc length alone
+        // keeps the lowering exact.
+        "HELMERTCURVE" => Some(CurvatureLaw::piecewise(
+            vec![length / 2.0],
+            vec![
+                CurvatureLaw::Polynomial {
+                    coefficients: vec![start, 0.0, 2.0 * delta / (length * length)],
+                },
+                CurvatureLaw::Polynomial {
+                    coefficients: vec![
+                        start + delta / 2.0,
+                        2.0 * delta / length,
+                        -2.0 * delta / (length * length),
+                    ],
+                },
+            ],
+        )),
+
+        // Sine: k(s) = k0 + delta*(u - sin(2 pi u)/(2 pi)), a linear ramp with
+        // one full sine correction. Needs a polynomial AND a harmonic term at
+        // once, which the kernel models directly.
+        "SINECURVE" => Some(CurvatureLaw::sine_corrected_transition(start, end, length)),
+
         _ => None,
     }
 }
 
 /// Whether this crate can lower the named transition family exactly.
 pub fn is_exactly_lowerable(name: &str) -> bool {
-    matches!(name, "CLOTHOID" | "BLOSSCURVE" | "COSINECURVE")
+    matches!(
+        name,
+        "CLOTHOID" | "BLOSSCURVE" | "COSINECURVE" | "HELMERTCURVE" | "SINECURVE"
+    )
 }
 
 /// Lower a transition-spiral segment to an exact intrinsic curve.
 ///
-/// Refuses rather than approximates when the family has no single closed-form
-/// curvature law in this vocabulary (`HELMERTCURVE` is piecewise, `SINECURVE`
-/// and `VIENNESEBEND` need terms this crate does not reconstruct from
-/// endpoint radii alone).
+/// Refuses rather than approximates when the family's law cannot be
+/// reconstructed from the segment's endpoint radii alone. `VIENNESEBEND` is
+/// the remaining refusal: its law needs the cant swing, which lives in the
+/// separate `IfcAlignmentCant` layout rather than on this segment.
 pub fn spiral_curve(segment: &HorizontalSegment, name: &str) -> AlignmentResult<Curve2> {
     if !(segment.segment_length.is_finite() && segment.segment_length > 0.0) {
         return Err(AlignmentError::InvalidSegment {

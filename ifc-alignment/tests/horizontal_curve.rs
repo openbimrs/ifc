@@ -214,19 +214,19 @@ fn transition_intent_is_not_approximated() {
 
 #[test]
 fn a_family_without_a_reconstructible_law_is_still_refused() {
-    // HELMERTCURVE is piecewise-quadratic and VIENNESEBEND is a composite;
-    // neither is reconstructible from endpoint radii alone, so both must
-    // refuse rather than be forced into some nearby law.
-    for name in ["HELMERTCURVE", "SINECURVE", "VIENNESEBEND"] {
-        let model = segment(name, 0.0, 10_000.0, 5_000.0);
-        assert!(
-            matches!(
-                lower_horizontal_segment(&model, EntityId(2), millimetres()),
-                Err(AlignmentError::Unsupported { ref type_name, .. }) if type_name == name
-            ),
-            "{name} must be a typed refusal"
-        );
-    }
+    // VIENNESEBEND's law needs the cant swing, which lives in the separate
+    // IfcAlignmentCant layout rather than on this segment, so it must refuse
+    // rather than be forced into some nearby law or default the term to zero
+    // (which would silently yield a different curve).
+    let name = "VIENNESEBEND";
+    let model = segment(name, 0.0, 10_000.0, 5_000.0);
+    assert!(
+        matches!(
+            lower_horizontal_segment(&model, EntityId(2), millimetres()),
+            Err(AlignmentError::Unsupported { ref type_name, .. }) if type_name == name
+        ),
+        "{name} must be a typed refusal"
+    );
 }
 
 #[test]

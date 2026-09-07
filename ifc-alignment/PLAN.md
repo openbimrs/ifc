@@ -1,6 +1,6 @@
 # ifc-alignment implementation plan
 
-Status: horizontal/vertical/cant segment parameters implemented; exact neutral line/circular-horizontal and constant-gradient-vertical output implemented; IFC4X3 schema pinning (ALIGN-VERS), continuity-aware horizontal composite curve assembly (ALIGN-CURVE), full closed-form cant segment/layout evaluation (ALIGN-CANT), and linear placement + station-equation resolution (ALIGN-PLACE) are implemented. Transition spirals reconstructible from endpoint radii (CLOTHOID, BLOSSCURVE, COSINECURVE) lower exactly as intrinsic curves carrying `CurvatureLaw` -- lossless, no quadrature or sampling. HELMERTCURVE, SINECURVE, and VIENNESEBEND remain a typed refusal: they need terms the segment does not carry. Runs still split after a spiral because continuity out of one is not closed form.
+Status: horizontal/vertical/cant segment parameters implemented; exact neutral line/circular-horizontal and constant-gradient-vertical output implemented; IFC4X3 schema pinning (ALIGN-VERS), continuity-aware horizontal composite curve assembly (ALIGN-CURVE), full closed-form cant segment/layout evaluation (ALIGN-CANT), and linear placement + station-equation resolution (ALIGN-PLACE) are implemented. Five of the six transition families (CLOTHOID, BLOSSCURVE, COSINECURVE, HELMERTCURVE, SINECURVE) lower exactly as intrinsic curves; VIENNESEBEND alone is refused, needing the cant swing from the separate IfcAlignmentCant layout. Runs still split after a spiral because continuity out of one is not closed form.
 Last updated: 2026-09-06
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
@@ -56,12 +56,15 @@ owner and expose a public symbol only through an intentional parent re-export.
     unrecognized/refused/accepted schema tokens).
 - [ ] `ALIGN-H` - implement exact horizontal segment views/lowering
   - Progress: parameters resolve with units; line and circular arc lower exactly;
-    CLOTHOID, BLOSSCURVE and COSINECURVE lower exactly as `Curve2::Intrinsic`
+    CLOTHOID, BLOSSCURVE, COSINECURVE, HELMERTCURVE and SINECURVE lower
+    exactly as `Curve2::Intrinsic`
     (kernel v0.12.0's natural-equation curve): their curvature law is
     elementary in arc length and reconstructible from the endpoint radii, so
-    storing it is lossless. HELMERTCURVE (piecewise-quadratic), SINECURVE and
-    VIENNESEBEND still fail typed -- their laws need terms the alignment
-    segment does not carry. CUBIC (an exact literal polynomial in IFC's own
+    storing it is lossless. HELMERTCURVE is piecewise-quadratic and is held
+    as ONE curve with two rebased pieces; a curve per half would need the seam
+    position, a non-elementary integral. VIENNESEBEND still fails typed -- its
+    law needs the cant swing, which lives in the separate IfcAlignmentCant
+    layout rather than on the segment. CUBIC (an exact literal polynomial in IFC's own
     definition) remains open.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [ ] `ALIGN-V` - implement exact vertical profile views/lowering
@@ -120,11 +123,11 @@ owner and expose a public symbol only through an intentional parent re-export.
 
 - [x] `ALIGN-SPIRAL` - lower transition spirals exactly as intrinsic curves
   - `Curve2::Intrinsic` (axiolid-curve v0.12.0) stores a curvature law
-    anchored to a start frame. CLOTHOID, BLOSSCURVE and COSINECURVE have
+    anchored to a start frame. These five families have
     elementary curvature laws reconstructible from the segment's endpoint
     radii, so this is a lossless representation, not an approximation: the
-    crate still performs no integration anywhere. HELMERTCURVE, SINECURVE and
-    VIENNESEBEND stay refused -- their laws need terms the segment does not
+    crate still performs no integration anywhere. VIENNESEBEND stays refused
+    -- its law needs the cant swing, which lives in a layout the segment does not
     carry, and forcing them into a nearby law would be a silent lie.
   - Continuity out of a spiral is still not assertable (Fresnel end point),
     so `lower_horizontal_layout_partial` ends a run after one and the strict
@@ -135,10 +138,40 @@ owner and expose a public symbol only through an intentional parent re-export.
     start to 1e-9. Mutation-checked with five mutants (clothoid sharpness,
     Bloss cubic sign, Bloss quadratic coefficient, cosine frequency, cosine
     phase) -- all caught.
+- [x] `ALIGN-HELMERT` - lower the piecewise and sine-corrected spirals
+  - `HELMERTCURVE` lowers as a single `Curve2::Intrinsic` whose law is
+    `CurvatureLaw::Piecewise` with one interior seam at L/2 and two quadratic
+    pieces. Pieces are REBASED: each piece's law is written in its own arc
+    length from that piece's start, matching `turning_over`'s convention.
+    Holding both halves in one curve is required, not stylistic -- a separate
+    curve per half would need an absolute start frame at the seam, whose
+    origin is the position there, and that is a non-elementary integral this
+    crate refuses to compute.
+  - `SINECURVE` lowers via `CurvatureLaw::sine_corrected_transition`, which is
+    exactly IFC's published law k = k1 + (xi - sin(2 pi xi)/(2 pi)) dk.
+  - Seam verified C0 and C1 symbolically before implementation; both halves
+    have slope 2 delta / L at the midpoint.
+  - Evidence: `cargo test -p ifc-alignment --all-targets` (47 tests). The
+    per-family curvature test now pins the QUARTER point as well as the
+    endpoints and midpoint, because all five families agree at 0, L/2 and L
+    and differ only in between -- without it, substituting a clothoid for a
+    sine spiral passes unnoticed. Mutation-checked: moving the Helmert seam,
+    perturbing either half's coefficients, and degrading SINECURVE to a plain
+    clothoid each fail the suite.
 - [ ] `ALIGN-CENSUS` - fixture/declaration coverage with explicit unsupported cases
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 
 ## Completion log
+
+- `ALIGN-HELMERT` - `cargo +1.88.0 test -p ifc-alignment --all-targets`
+  (47 tests) plus workspace clippy `-D warnings` and fmt. HELMERTCURVE and
+  SINECURVE now lower exactly, leaving VIENNESEBEND as the only refused
+  horizontal transition family. Kernel repinned v0.12.0 -> v0.14.0 for
+  `CurvatureLaw::{Piecewise, Composite}` and the
+  `sine_corrected_transition` constructor. Helmert's seam was verified C0/C1
+  symbolically before coding, and the piece-rebasing convention was read off
+  `turning_over` rather than assumed -- an earlier global-arc-length version
+  returned a total turning of 0 and was caught by the turning test.
 
 Append concise entries as `TASK-ID - proof command/result - material decision`.
 

@@ -16,6 +16,17 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+
+- `ifc-alignment`: HELMERTCURVE and SINECURVE horizontal transition segments
+  lower exactly as `Curve2::Intrinsic`. Helmert is one curve carrying a
+  `CurvatureLaw::Piecewise` with a seam at half length and two quadratic
+  pieces, each written in its own rebased arc length; splitting it into two
+  curves is impossible without the seam position, a non-elementary integral.
+  Sine uses the kernel's `sine_corrected_transition`, matching IFC's published
+  law exactly. VIENNESEBEND is now the only refused horizontal family: its law
+  needs the cant swing from the separate `IfcAlignmentCant` layout. Still no
+  quadrature, series, or sampling in the crate.
+
 - `ifc-validate`: WHERE rules for the relationship families `ifc-spatial`
   reads. `IfcRelSpaceBoundary.CorrectPhysOrVirt` ties declared physicality
   to the bounding element across all three concrete subtypes,
@@ -93,7 +104,11 @@ This page is synchronised from it at build time.
   related list first, and inverting either direction is silent. With
   these, all 42 concrete `IfcRel*` families in IFC4 are read.
 
+
 ### Changed
+
+- `ifc-alignment`: kernel pin moved from axiolid v0.12.0 to v0.14.0, for
+  `CurvatureLaw::Piecewise` and `CurvatureLaw::Composite`.
 
 - `ifc-geometry`: the EXPRESS function registry now records
   `Implemented` and `NotApplicable` alongside `Scaffolded`, and no row

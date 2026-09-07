@@ -175,6 +175,30 @@ fn evaluate(law: &CurvatureLaw, s: f64) -> f64 {
             angular_frequency,
             phase,
         } => mean + amplitude * (angular_frequency * s + phase).sin(),
+        CurvatureLaw::Composite {
+            polynomial,
+            harmonics,
+        } => {
+            let poly: f64 = polynomial
+                .iter()
+                .enumerate()
+                .map(|(power, c)| c * s.powi(power as i32))
+                .sum();
+            let waves: f64 = harmonics
+                .iter()
+                .map(|h| h.amplitude * (h.angular_frequency * s + h.phase).sin())
+                .sum();
+            poly + waves
+        }
+        // A piece's law is written in its OWN arc length, measured from that
+        // piece's start, so `s` is rebased before descending. Evaluating a
+        // piece with the global arc length would silently read the wrong part
+        // of its polynomial.
+        CurvatureLaw::Piecewise { breaks, laws } => {
+            let index = breaks.iter().take_while(|b| s > **b).count();
+            let piece_start = if index == 0 { 0.0 } else { breaks[index - 1] };
+            evaluate(&laws[index], s - piece_start)
+        }
         _ => panic!("unhandled law"),
     }
 }
@@ -208,7 +232,13 @@ fn law_for(name: &str) -> (CurvatureLaw, f64) {
 #[test]
 fn every_supported_family_matches_its_published_curvature_values() {
     let k1 = 1.0 / 300.0;
-    for name in ["CLOTHOID", "BLOSSCURVE", "COSINECURVE"] {
+    for name in [
+        "CLOTHOID",
+        "BLOSSCURVE",
+        "COSINECURVE",
+        "HELMERTCURVE",
+        "SINECURVE",
+    ] {
         let (law, length) = law_for(name);
         assert_eq!(length, 60.0, "{name} length");
         assert!(evaluate(&law, 0.0).abs() < 1e-15, "{name} k(0) must be 0");
@@ -222,6 +252,25 @@ fn every_supported_family_matches_its_published_curvature_values() {
             "{name} k(L/2) must be half, got {}",
             evaluate(&law, 30.0)
         );
+
+        // The quarter point is where the families genuinely differ. Endpoints
+        // and midpoint are shared by all five (each is symmetric about its
+        // middle), so pinning only those would let one family's law stand in
+        // for another's. These values come from the published base formulas,
+        // evaluated independently of this crate.
+        let quarter = match name {
+            "CLOTHOID" => 0.0008333333333333334,
+            "BLOSSCURVE" => 0.0005208333333333333,
+            "COSINECURVE" => 0.0004881553646890874,
+            "HELMERTCURVE" => 0.0004166666666666667,
+            "SINECURVE" => 0.00030281685636034887,
+            other => panic!("no published quarter-point value for {other}"),
+        };
+        let got = evaluate(&law, 15.0);
+        assert!(
+            (got - quarter).abs() < 1e-15,
+            "{name} k(L/4) must be {quarter}, got {got}"
+        );
     }
 }
 
@@ -229,7 +278,13 @@ fn every_supported_family_matches_its_published_curvature_values() {
 /// each is symmetric about its midpoint, so each integrates to (k0+k1)/2 * L.
 #[test]
 fn every_supported_family_turns_the_same_total_angle() {
-    for name in ["CLOTHOID", "BLOSSCURVE", "COSINECURVE"] {
+    for name in [
+        "CLOTHOID",
+        "BLOSSCURVE",
+        "COSINECURVE",
+        "HELMERTCURVE",
+        "SINECURVE",
+    ] {
         let (law, length) = law_for(name);
         let curve = Intrinsic2::new(
             axiolid_core::Frame2 {

@@ -51,12 +51,14 @@ IFC4X3-only (alignment entities do not exist in IFC2X3 or IFC4). Line and
 circular-arc horizontal segments, constant-gradient vertical segments, and
 every closed-form `IfcAlignmentCantSegmentTypeEnum` cant transition lower
 exactly; continuity-aware composite curve assembly, linear placement, and
-station equations are implemented. Transition spirals whose curvature law is
-reconstructible from the segment's endpoint radii (CLOTHOID, BLOSSCURVE,
-COSINECURVE) lower exactly, as intrinsic (natural-equation) curves carrying
-`CurvatureLaw` -- lossless, with no quadrature, series, or sampling anywhere.
-HELMERTCURVE (piecewise), SINECURVE, and VIENNESEBEND remain a typed refusal:
-they need terms the alignment segment does not carry.
+station equations are implemented. Five of the six transition-spiral families
+(CLOTHOID, BLOSSCURVE, COSINECURVE, HELMERTCURVE, SINECURVE) lower exactly, as
+intrinsic (natural-equation) curves carrying `CurvatureLaw` -- lossless, with
+no quadrature, series, or sampling anywhere. HELMERTCURVE is piecewise-
+quadratic and is held as one curve with two rebased pieces, since a separate
+curve per half would need the seam position: a non-elementary integral.
+VIENNESEBEND alone remains a typed refusal -- its law needs the cant swing,
+which lives in the separate IfcAlignmentCant layout, not on the segment.
 
 Runs still split after a spiral. Continuity *into* one is provable, but its
 end point is a Fresnel-type integral, so continuity *out* of one is not, and

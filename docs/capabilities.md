@@ -31,7 +31,7 @@ code.
 | `ifc-structural` | 3,397 | 33 | 14 | 12 | <span class="status-implemented">Implemented</span> |
 | `ifc-style` | 3,322 | 31 | 0 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 3,119 | 30 | 14 | 3 | <span class="status-implemented">Implemented</span> |
-| `ifc-alignment` | 2,869 | 29 | 11 | 5 | <span class="status-partial">Partial</span> |
+| `ifc-alignment` | 2,909 | 29 | 11 | 5 | <span class="status-partial">Partial</span> |
 | `ifc-template-catalog` | 2,726 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-resource` | 2,647 | 29 | 9 | 9 | <span class="status-partial">Partial</span> |
 | `ifc-validate` | 2,493 | 23 | 0 | 2 | <span class="status-implemented">Implemented</span> |
