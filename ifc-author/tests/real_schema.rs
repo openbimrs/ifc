@@ -17,7 +17,15 @@ use std::path::PathBuf;
 fn ifc4() -> Option<Schema> {
     let bundled = ifc_schema::ifc4();
     let raw_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../references/ifc-spec/ifc4-add2-tc1/IFC4.exp");
+        .join("../references/ifc-spec/ifc4-add2-tc1/IFC4.exp");
+    // Submodule layout puts references three levels up; standalone (CI)
+    // puts it one. Try the deeper path when the shallow one is absent.
+    let raw_path = if raw_path.exists() {
+        raw_path
+    } else {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../references/ifc-spec/ifc4-add2-tc1/IFC4.exp")
+    };
     if let Ok(bytes) = std::fs::read(&raw_path) {
         let raw = Schema::from_express_bytes(&bytes);
         assert_eq!(

@@ -10,21 +10,34 @@
 use ifc_schema::{Schema, SchemaVersion};
 use std::path::PathBuf;
 
-fn spec_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../references/ifc-spec")
+/// Locate `references/ifc-spec`, which sits at a different depth
+/// depending on how this repository is checked out.
+///
+/// As a submodule of the openbim superproject the crate is at
+/// `packages/ifc/<crate>`, so references is three levels up. Checked out
+/// standalone -- which is what CI does -- the repository root IS
+/// `packages/ifc`, so it is one level up. Trying only one of those makes
+/// the schema tests silently skip in the other layout.
+fn spec_root() -> Option<PathBuf> {
+    let crate_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    ["../../../references/ifc-spec", "../references/ifc-spec"]
+        .into_iter()
+        .map(|rel| crate_dir.join(rel))
+        .find(|path| path.is_dir())
 }
 
 fn load(rel: &str) -> Option<Schema> {
-    let path = spec_dir().join(rel);
-    if !path.exists() {
-        // CI sets IFC_SPEC_REQUIRED so a missing schema fails loudly.
-        // Without it these tests skip, and a schema bug ships green.
+    let Some(root) = spec_root() else {
+        // No schemas anywhere. CI sets IFC_SPEC_REQUIRED so this is a
+        // failure there; locally it stays a skip so a fresh clone passes.
         assert!(
             std::env::var_os("IFC_SPEC_REQUIRED").is_none(),
-            "IFC_SPEC_REQUIRED is set but {} is missing; run scripts/fetch-ifc-schemas.sh",
-            path.display()
+            "IFC_SPEC_REQUIRED is set but references/ifc-spec was not found; \
+             run scripts/fetch-ifc-schemas.sh"
         );
-    }
+        return None;
+    };
+    let path = root.join(rel);
     let bytes = std::fs::read(&path).ok()?;
     Some(Schema::from_express_bytes(&bytes))
 }
