@@ -49,5 +49,8 @@
 pub mod relation;
 mod tree;
 
-pub use relation::{Relationship, RelationshipIndex, RelationshipKind};
+pub use relation::{
+    BoundaryExposure, BoundaryPhysicality, Relationship, RelationshipIndex, RelationshipKind,
+    SpaceBoundary,
+};
 pub use tree::{SpatialKind, SpatialNode, SpatialTree};

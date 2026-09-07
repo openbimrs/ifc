@@ -101,9 +101,9 @@ fn capabilities_states_the_real_relationship_count() {
         .expect("the relationship row exists");
 
     // The row opens "| Objectified relationship traversal | <span...> | N of
-    // the schema's 40 concrete ...", so the first bare integer after the
+    // the schema's 42 concrete ...", so the first bare integer after the
     // status cell is the claim.
-    // The row states "N of the schema.s 40 concrete IfcRel* families",
+    // The row states "N of the schema.s 42 concrete IfcRel* families",
     // so the first bare integer in the rationale cell is the claim.
     let claimed: usize = row
         .split_whitespace()

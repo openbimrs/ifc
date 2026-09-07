@@ -32,6 +32,27 @@ const EXPECTED: &[(&str, usize, &str, usize, &str)] = &[
         "RelatedElements",
     ),
     ("IfcRelNests", 4, "RelatingObject", 5, "RelatedObjects"),
+    (
+        "IfcRelSpaceBoundary",
+        4,
+        "RelatingSpace",
+        5,
+        "RelatedBuildingElement",
+    ),
+    (
+        "IfcRelSpaceBoundary1stLevel",
+        4,
+        "RelatingSpace",
+        5,
+        "RelatedBuildingElement",
+    ),
+    (
+        "IfcRelSpaceBoundary2ndLevel",
+        4,
+        "RelatingSpace",
+        5,
+        "RelatedBuildingElement",
+    ),
 ];
 
 fn check(schema: &Schema, version: &str) {
@@ -98,4 +119,52 @@ fn the_two_relationships_really_do_disagree() {
         contained[4].starts_with("Related"),
         "if this ever matches IfcRelAggregates, slots.rs must be revisited: {contained:?}"
     );
+}
+
+/// Slots the boundary reader uses beyond the two ends.
+///
+/// `boundary.rs` reads the enumerations at 7/8 and the subtype links at
+/// 9/10. Those are as load-bearing as the ends: reading 8 instead of 7 would
+/// classify every boundary's exposure as its physicality and silently
+/// mislabel the lot.
+const BOUNDARY_DEEP: &[(&str, usize, &str)] = &[
+    ("IfcRelSpaceBoundary", 6, "ConnectionGeometry"),
+    ("IfcRelSpaceBoundary", 7, "PhysicalOrVirtualBoundary"),
+    ("IfcRelSpaceBoundary", 8, "InternalOrExternalBoundary"),
+    ("IfcRelSpaceBoundary1stLevel", 9, "ParentBoundary"),
+    ("IfcRelSpaceBoundary2ndLevel", 9, "ParentBoundary"),
+    ("IfcRelSpaceBoundary2ndLevel", 10, "CorrespondingBoundary"),
+];
+
+fn check_deep(schema: &Schema, version: &str) {
+    for (entity, slot, name) in BOUNDARY_DEEP {
+        let names = schema.attribute_names(entity);
+        if names.is_empty() {
+            // IFC2x3 has no 1st/2nd-level subtypes; skip rather than fail.
+            continue;
+        }
+        assert_eq!(
+            names.get(*slot),
+            Some(name),
+            "{version}: {entity} slot {slot} must be {name}, got {names:?}"
+        );
+    }
+}
+
+#[test]
+fn boundary_deep_slots_match_ifc4() {
+    let Some(schema) = load("ifc4-add2-tc1/IFC4.exp") else {
+        eprintln!("skipped: references/ifc-spec not present");
+        return;
+    };
+    check_deep(&schema, "IFC4");
+}
+
+#[test]
+fn boundary_deep_slots_match_ifc4x3() {
+    let Some(schema) = load("ifc4x3-add2/IFC4X3_ADD2.exp") else {
+        eprintln!("skipped: references/ifc-spec not present");
+        return;
+    };
+    check_deep(&schema, "IFC4X3");
 }

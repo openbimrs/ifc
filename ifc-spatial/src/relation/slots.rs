@@ -55,3 +55,42 @@ pub(crate) const NESTS: RelSlots = RelSlots {
     relating: 4,
     related: 5,
 };
+
+/// `IfcRelSpaceBoundary`: which element bounds a space, and how.
+///
+/// Slot 4 is `RelatingSpace`, slot 5 `RelatedBuildingElement`, so this
+/// follows the same "relating first" order as `AGGREGATES`.
+pub(crate) const SPACE_BOUNDARY: RelSlots = RelSlots {
+    type_name: "IFCRELSPACEBOUNDARY",
+    relating: 4,
+    related: 5,
+};
+
+/// `IfcRelSpaceBoundary1stLevel`: adds `ParentBoundary` at slot 9.
+pub(crate) const SPACE_BOUNDARY_1ST: RelSlots = RelSlots {
+    type_name: "IFCRELSPACEBOUNDARY1STLEVEL",
+    relating: 4,
+    related: 5,
+};
+
+/// `IfcRelSpaceBoundary2ndLevel`: adds `CorrespondingBoundary` at slot 10.
+pub(crate) const SPACE_BOUNDARY_2ND: RelSlots = RelSlots {
+    type_name: "IFCRELSPACEBOUNDARY2NDLEVEL",
+    relating: 4,
+    related: 5,
+};
+
+/// Every concrete type in the `IfcRelSpaceBoundary` hierarchy.
+///
+/// `Model::ids_of_type` matches an EXACT type name: it does not resolve
+/// subtypes. A file storing `IfcRelSpaceBoundary2ndLevel` -- which is what
+/// every real second-level BEM export writes -- would be invisible to a
+/// lookup of the supertype alone, and the crate would report a building
+/// with no boundaries at all rather than failing.
+///
+/// The hierarchy is closed at these three in IFC4, so it is enumerated here
+/// and asserted against the shipped schemas in `tests/slot_layout.rs`. This
+/// crate deliberately does not depend on `ifc-schema` (see AGENTS.md), so
+/// there is no runtime `is_a` available to do it instead.
+pub(crate) const SPACE_BOUNDARY_TYPES: [RelSlots; 3] =
+    [SPACE_BOUNDARY, SPACE_BOUNDARY_1ST, SPACE_BOUNDARY_2ND];

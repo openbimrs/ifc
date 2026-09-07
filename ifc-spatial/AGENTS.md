@@ -8,6 +8,8 @@ keep implementation state there.
 
 - classifying an entity's spatial role by type name
 - reading `IfcRelAggregates`, `IfcRelContainedInSpatialStructure`, `IfcRelNests`
+- reading `IfcRelSpaceBoundary` and its `1stLevel`/`2ndLevel` subtypes: which
+  element bounds a space, with parent/corresponding links
 - assembling the project/site/building/storey/element tree
 - reporting containment anomalies: orphaned containers, dangling references
 
@@ -28,6 +30,11 @@ only safe because `tests/slot_layout.rs` asserts the constants against all
 three shipped schemas — do not add a slot constant without extending it.
 
 ## Pitfall
+
+`Model::ids_of_type` matches an EXACT type name. `IfcRelSpaceBoundary` has two
+concrete subtypes and real BEM exports write the deepest one, so all three are
+queried explicitly in `src/relation/slots.rs`; querying the supertype alone
+returns an empty list rather than an error.
 
 `IfcRelAggregates` and `IfcRelContainedInSpatialStructure` use **opposite**
 slot orders for their relating/related ends. Assuming a uniform layout inverts

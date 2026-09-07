@@ -9,11 +9,15 @@
 //!
 //! - `slots.rs`: schema-fixed attribute positions for the `IfcRel*` types used here.
 //! - `link.rs`: reading a relationship's relating/related ends.
+//! - `boundary.rs`: space boundaries, which carry their own attributes
+//!   beyond the two ends and so do not fit the generic `Relationship` shape.
 
+pub mod boundary;
 mod index;
 mod link;
 mod slots;
 
+pub use boundary::{BoundaryExposure, BoundaryPhysicality, SpaceBoundary};
 pub use index::RelationshipIndex;
 pub use link::{Relationship, RelationshipKind};
 

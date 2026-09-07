@@ -41,6 +41,19 @@ This page is synchronised from it at build time.
   the boundary. `IfcSameAxis2Placement` diverges deliberately: the
   published function compares `ap1.Location` with itself, never testing
   the location at all, and that defect is not reproduced.
+- `ifc-spatial`: space boundaries. `relation::boundary` reads
+  `IfcRelSpaceBoundary` and both concrete subtypes, resolving the bounded
+  space, the bounding element, `PhysicalOrVirtualBoundary`,
+  `InternalOrExternalBoundary`, and the `ParentBoundary` /
+  `CorrespondingBoundary` links that make second-level boundaries usable
+  for heat transfer. `Model::ids_of_type` matches exact type names, so all
+  three concrete types are queried: a lookup of the supertype alone misses
+  every real BEM export and reports a building with no boundaries at all.
+  The four `EXTERNAL_*` exposure members are kept apart from plain
+  `EXTERNAL` rather than merged, since ground and water contact are
+  different heat-transfer paths. `CorrectPhysOrVirt` agreement is reported
+  through `physical_matches_element`, not enforced: this crate states what
+  the file says and leaves rejection to `ifc-validate`.
 
 ### Changed
 
