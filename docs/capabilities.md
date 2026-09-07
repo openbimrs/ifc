@@ -46,7 +46,7 @@ code.
 | `ifc-constraint` | 1,230 | 6 | 0 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 1,045 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-approval` | 915 | 5 | 0 | 1 | <span class="status-implemented">Implemented</span> |
-| `openbim-ifc` | 901 | 6 | 0 | 13 | <span class="status-implemented">Implemented</span> |
+| `openbim-ifc` | 901 | 6 | 0 | 14 | <span class="status-implemented">Implemented</span> |
 | `ifc-author` | 729 | 8 | 3 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-spatial` | 615 | 8 | 1 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-step` | 516 | 5 | 0 | 3 | <span class="status-implemented">Implemented</span> |
@@ -75,7 +75,7 @@ later, but they must never be mistaken for working code.
 | EXPRESS schema metadata, subtype queries | <span class="status-implemented">Implemented</span> | `ifc-schema` |
 | GlobalId base-64 encode/decode | <span class="status-implemented">Implemented</span> | `ifc-model::guid` |
 | Spatial containment tree traversal | <span class="status-implemented">Implemented</span> | `ifc-spatial::SpatialTree`; facade feature `spatial`. See below. |
-| Objectified relationship traversal | <span class="status-partial">Partial</span> | `ifc-spatial::relation` reads `IfcRelAggregates`, `IfcRelContainedInSpatialStructure`, `IfcRelNests`. Other `IfcRel*` families are not interpreted. |
+| Objectified relationship traversal | <span class="status-partial">Partial</span> | 21 of the schema's 40 concrete `IfcRel*` families are read across 13 crates: `ifc-spatial` (`IfcRelAggregates`, `Ifc...[truncated]
 | Distribution systems, ports and connectivity | <span class="status-implemented">Implemented</span> | `ifc-systems` reads systems and membership, ports through both `IfcRelNests` and the legacy `IfcRelConnectsPortToElement`, the connection network, flow roles and direction, zones with their `WR1` membership rule, spatial containment vs referencing, and direction-aware `upstream`/`downstream` queries. Relationship-only: no geometry is read, so a geometry-free file still yields a full network. |
 | Cost items, rates and rollups | <span class="status-implemented">Implemented</span> | `ifc-cost` reads `IfcCostItem` nesting, `IfcCostValue` component trees with arithmetic operators, and totals a cost tree. Currencies are compared, never converted: a rollup mixing EUR and USD is refused. Typed drafts stage selected IFC4 values, items, schedules, nesting, and schedule assignments atomically. |
 | Work schedules, tasks and sequencing | <span class="status-implemented">Implemented</span> | `ifc-schedule` reads `IfcWorkPlan`/`IfcWorkSchedule`, `IfcTask` with `IfcTaskTime`, `IfcRelSequence` with signed lag, work calendars and events, and produces a deterministic execution order. Cycles report the offending path. |

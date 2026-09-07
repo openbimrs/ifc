@@ -72,6 +72,15 @@ and this project follows Semantic Versioning.
   checked only that `Implemented` rows were backed by code, so the
   registry rotted downward instead: eight rows understated the crate for
   two commits. The inverse check is now enforced.
+- `docs`: the "Objectified relationship traversal" capability row said
+  `ifc-spatial::relation` reads three `IfcRel*` families and that other
+  families "are not interpreted". Thirteen crates read 21 of the schema.s
+  40 concrete families: assignments, definitions, connections, port
+  connectivity, voiding and filling, sequencing, and associations. The row
+  now lists them by crate. It sits outside the generated sentinel blocks,
+  so nothing had checked it against the source; a new
+  `openbim-ifc/tests/relationship_census.rs` re-counts the families and
+  fails when the stated number drifts from what the crates actually read.
 
 ### Added
 
