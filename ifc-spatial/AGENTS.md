@@ -20,6 +20,10 @@ keep implementation state there.
 - reading the `IfcRelAssigns*` families this crate owns: to actor, process,
   product and group-by-factor. Their ends BRACKET `RelatedObjectsType`:
   related at **4**, the enum at 5, relating at **6**
+- reading `IfcRelDeclares`, `IfcRelDefinesByObject`,
+  `IfcRelFlowControlElements`, `IfcRelServicesBuildings` and
+  `IfcRelConnectsWithEccentricity`. These five disagree on layout: three are
+  relating-first, two are related-first
 - assembling the project/site/building/storey/element tree
 - reporting containment anomalies: orphaned containers, dangling references
 

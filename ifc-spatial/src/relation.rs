@@ -53,6 +53,20 @@ pub fn all(model: &Model) -> Vec<Relationship> {
             slots::ASSIGNS_TO_GROUP_BY_FACTOR,
             RelationshipKind::AssignsToGroupByFactor,
         ),
+        (slots::DECLARES, RelationshipKind::Declares),
+        (slots::DEFINES_BY_OBJECT, RelationshipKind::DefinesByObject),
+        (
+            slots::FLOW_CONTROL_ELEMENTS,
+            RelationshipKind::FlowControlElements,
+        ),
+        (
+            slots::SERVICES_BUILDINGS,
+            RelationshipKind::ServicesBuildings,
+        ),
+        (
+            slots::CONNECTS_WITH_ECCENTRICITY,
+            RelationshipKind::ConnectsWithEccentricity,
+        ),
     ] {
         for id in model.ids_of_type(slots.type_name) {
             if let Some(relationship) = link::read(model, *id, slots, kind) {

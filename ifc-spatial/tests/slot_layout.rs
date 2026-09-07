@@ -127,6 +127,42 @@ const EXPECTED: &[(&str, usize, &str, usize, &str)] = &[
         4,
         "RelatedObjects",
     ),
+    // These five disagree with each other: three relating-first, two not.
+    (
+        "IfcRelDeclares",
+        4,
+        "RelatingContext",
+        5,
+        "RelatedDefinitions",
+    ),
+    (
+        "IfcRelDefinesByObject",
+        5,
+        "RelatingObject",
+        4,
+        "RelatedObjects",
+    ),
+    (
+        "IfcRelFlowControlElements",
+        5,
+        "RelatingFlowElement",
+        4,
+        "RelatedControlElements",
+    ),
+    (
+        "IfcRelServicesBuildings",
+        4,
+        "RelatingSystem",
+        5,
+        "RelatedBuildings",
+    ),
+    (
+        "IfcRelConnectsWithEccentricity",
+        4,
+        "RelatingStructuralMember",
+        5,
+        "RelatedStructuralConnection",
+    ),
 ];
 
 fn check(schema: &Schema, version: &str) {

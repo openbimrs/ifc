@@ -211,3 +211,56 @@ pub(crate) const ASSIGNS_TO_GROUP_BY_FACTOR: RelSlots = RelSlots {
     relating: 6,
     related: 4,
 };
+
+/// `IfcRelDeclares`: what a project or library context declares.
+///
+/// The root of a file's object graph: an `IfcProject` declares its top-level
+/// definitions here. Relating-first, 4/5.
+pub(crate) const DECLARES: RelSlots = RelSlots {
+    type_name: "IFCRELDECLARES",
+    relating: 4,
+    related: 5,
+};
+
+/// `IfcRelDefinesByObject`: an occurrence defined by another occurrence.
+///
+/// Related-FIRST: `RelatedObjects` is at 4 and `RelatingObject` at 5, the
+/// inverse of `DECLARES` immediately above. This is how a mapped occurrence
+/// points at the occurrence it was copied from.
+pub(crate) const DEFINES_BY_OBJECT: RelSlots = RelSlots {
+    type_name: "IFCRELDEFINESBYOBJECT",
+    relating: 5,
+    related: 4,
+};
+
+/// `IfcRelFlowControlElements`: controls governing a flow element.
+///
+/// Related-first as well: the controls are at 4, the governed element at 5.
+/// A thermostat controlling a boiler is stated this way round.
+pub(crate) const FLOW_CONTROL_ELEMENTS: RelSlots = RelSlots {
+    type_name: "IFCRELFLOWCONTROLELEMENTS",
+    relating: 5,
+    related: 4,
+};
+
+/// `IfcRelServicesBuildings`: which spatial structures a system serves.
+///
+/// Relating-first, 4/5. `ifc-systems` documents this layout to contrast it
+/// against `IfcRelAssignsToGroup` but does not read it; the traversal lives
+/// here with the other spatial relationships.
+pub(crate) const SERVICES_BUILDINGS: RelSlots = RelSlots {
+    type_name: "IFCRELSERVICESBUILDINGS",
+    relating: 4,
+    related: 5,
+};
+
+/// `IfcRelConnectsWithEccentricity`: a structural connection with an offset.
+///
+/// A concrete subtype of `IfcRelConnectsStructuralMember`, which
+/// `ifc-structural` reads by exact name and therefore misses. Shares the
+/// parent's 4/5 layout; the eccentricity itself is at slot 10.
+pub(crate) const CONNECTS_WITH_ECCENTRICITY: RelSlots = RelSlots {
+    type_name: "IFCRELCONNECTSWITHECCENTRICITY",
+    relating: 4,
+    related: 5,
+};

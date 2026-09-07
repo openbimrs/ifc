@@ -69,6 +69,14 @@ and this project follows Semantic Versioning.
   relating end is at 6. A reader assuming the usual "relating at 5" finds
   an enumeration rather than a reference and the assignment disappears
   with no error, so the positions are asserted against the schemas.
+- `ifc-spatial`: the last five relationship families. `IfcRelDeclares`
+  (what a project context declares), `IfcRelDefinesByObject` (an
+  occurrence defined by another), `IfcRelFlowControlElements` (controls
+  governing a flow element), `IfcRelServicesBuildings` (which structures
+  a system serves) and `IfcRelConnectsWithEccentricity`. These five do
+  not share a layout: three put the relating end first, two put the
+  related list first, and inverting either direction is silent. With
+  these, all 42 concrete `IfcRel*` families in IFC4 are read.
 
 ### Changed
 

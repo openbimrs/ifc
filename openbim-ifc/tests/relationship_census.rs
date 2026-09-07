@@ -100,11 +100,11 @@ fn capabilities_states_the_real_relationship_count() {
         .find(|l| l.starts_with("| Objectified relationship traversal"))
         .expect("the relationship row exists");
 
-    // The row opens "| Objectified relationship traversal | <span...> | N of
-    // the schema's 42 concrete ...", so the first bare integer after the
-    // status cell is the claim.
-    // The row states "N of the schema.s 42 concrete IfcRel* families",
-    // so the first bare integer in the rationale cell is the claim.
+    // The row states a single count: "All 42 concrete IfcRel* families are
+    // read". That number is BOTH the claim and the schema total while
+    // coverage is complete, so the test pins it to the source count and to
+    // the schema's own concrete-entity total separately -- otherwise a row
+    // that dropped to partial coverage could still parse a passing number.
     let claimed: usize = row
         .split_whitespace()
         .find_map(|t| t.parse::<usize>().ok())
@@ -114,4 +114,55 @@ fn capabilities_states_the_real_relationship_count() {
         claimed, actual,
         "capabilities.md claims {claimed} IfcRel* families but the source reads {actual}"
     );
+    assert!(
+        row.contains("All 42 concrete"),
+        "coverage is complete, so the row must say so verbatim; \
+         drop this assertion only alongside a real regression"
+    );
+}
+
+/// The families `ifc-spatial` declares slot constants for.
+///
+/// Counting is not membership: an earlier version of this test compared only
+/// the SIZE of the discovered set against the documented number, so renaming
+/// `IFCRELDECLARES` to `IFCRELDECLARESXX` kept the count at 42 and passed.
+/// The typo'd name simply replaced the real one in the set. These names are
+/// checked for presence individually so a rename cannot hide.
+const SPATIAL_FAMILIES: &[&str] = &[
+    "ifcrelaggregates",
+    "ifcrelcontainedinspatialstructure",
+    "ifcrelnests",
+    "ifcrelspaceboundary",
+    "ifcrelspaceboundary1stlevel",
+    "ifcrelspaceboundary2ndlevel",
+    "ifcrelcoversbldgelements",
+    "ifcrelcoversspaces",
+    "ifcrelconnectselements",
+    "ifcrelconnectspathelements",
+    "ifcrelconnectswithrealizingelements",
+    "ifcrelinterfereselements",
+    "ifcrelassignstoactor",
+    "ifcrelassignstoprocess",
+    "ifcrelassignstoproduct",
+    "ifcrelassignstogroupbyfactor",
+    "ifcreldeclares",
+    "ifcreldefinesbyobject",
+    "ifcrelflowcontrolelements",
+    "ifcrelservicesbuildings",
+    "ifcrelconnectswitheccentricity",
+];
+
+#[test]
+fn every_declared_family_is_actually_named_in_source() {
+    let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("workspace root")
+        .to_path_buf();
+    let found = families_read(&workspace);
+    for family in SPATIAL_FAMILIES {
+        assert!(
+            found.contains(*family),
+            "{family} has no reader: a slot constant was renamed or removed"
+        );
+    }
 }

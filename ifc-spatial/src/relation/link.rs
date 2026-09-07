@@ -29,6 +29,16 @@ pub enum RelationshipKind {
     AssignsToProduct,
     /// `IfcRelAssignsToGroupByFactor` -- group membership with a ratio.
     AssignsToGroupByFactor,
+    /// `IfcRelDeclares` -- what a context declares.
+    Declares,
+    /// `IfcRelDefinesByObject` -- occurrence defined by an occurrence.
+    DefinesByObject,
+    /// `IfcRelFlowControlElements` -- controls governing a flow element.
+    FlowControlElements,
+    /// `IfcRelServicesBuildings` -- structures a system serves.
+    ServicesBuildings,
+    /// `IfcRelConnectsWithEccentricity` -- offset structural connection.
+    ConnectsWithEccentricity,
 }
 
 /// One relationship instance, resolved to its ends.
