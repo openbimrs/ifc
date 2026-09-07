@@ -10,6 +10,9 @@ keep implementation state there.
 - reading `IfcRelAggregates`, `IfcRelContainedInSpatialStructure`, `IfcRelNests`
 - reading `IfcRelSpaceBoundary` and its `1stLevel`/`2ndLevel` subtypes: which
   element bounds a space, with parent/corresponding links
+- reading `IfcRelCoversBldgElements` and `IfcRelCoversSpaces`: finishes on an
+  element and finishes bounding a space, kept apart because the same covering
+  can do both and the two answer different questions
 - assembling the project/site/building/storey/element tree
 - reporting containment anomalies: orphaned containers, dangling references
 

@@ -53,6 +53,20 @@ const EXPECTED: &[(&str, usize, &str, usize, &str)] = &[
         5,
         "RelatedBuildingElement",
     ),
+    (
+        "IfcRelCoversBldgElements",
+        4,
+        "RelatingBuildingElement",
+        5,
+        "RelatedCoverings",
+    ),
+    (
+        "IfcRelCoversSpaces",
+        4,
+        "RelatingSpace",
+        5,
+        "RelatedCoverings",
+    ),
 ];
 
 fn check(schema: &Schema, version: &str) {

@@ -13,6 +13,10 @@ pub enum RelationshipKind {
     ContainedIn,
     /// `IfcRelNests` -- ordered decomposition.
     Nests,
+    /// `IfcRelCoversBldgElements` -- finishes applied to an element.
+    CoversElements,
+    /// `IfcRelCoversSpaces` -- finishes bounding a space.
+    CoversSpaces,
 }
 
 /// One relationship instance, resolved to its ends.

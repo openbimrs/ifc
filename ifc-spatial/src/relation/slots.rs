@@ -94,3 +94,24 @@ pub(crate) const SPACE_BOUNDARY_2ND: RelSlots = RelSlots {
 /// there is no runtime `is_a` available to do it instead.
 pub(crate) const SPACE_BOUNDARY_TYPES: [RelSlots; 3] =
     [SPACE_BOUNDARY, SPACE_BOUNDARY_1ST, SPACE_BOUNDARY_2ND];
+
+/// `IfcRelCoversBldgElements`: finishes applied to an element.
+///
+/// A covering is a distinct element from the wall it clads, so a take-off
+/// that ignores this double-counts nothing but misses every finish.
+pub(crate) const COVERS_ELEMENTS: RelSlots = RelSlots {
+    type_name: "IFCRELCOVERSBLDGELEMENTS",
+    relating: 4,
+    related: 5,
+};
+
+/// `IfcRelCoversSpaces`: finishes bounding a space.
+///
+/// Distinct from `COVERS_ELEMENTS`: the same suspended ceiling can cover a
+/// slab (element) and a room (space), and the two answer different
+/// questions. Merging them loses which.
+pub(crate) const COVERS_SPACES: RelSlots = RelSlots {
+    type_name: "IFCRELCOVERSSPACES",
+    relating: 4,
+    related: 5,
+};

@@ -54,6 +54,12 @@ This page is synchronised from it at build time.
   different heat-transfer paths. `CorrectPhysOrVirt` agreement is reported
   through `physical_matches_element`, not enforced: this crate states what
   the file says and leaves rejection to `ifc-validate`.
+- `ifc-spatial`: coverings. `IfcRelCoversBldgElements` and
+  `IfcRelCoversSpaces` join the generic relationship reader, so a finish
+  is reachable from the element it clads and from the space it bounds.
+  The two stay distinct: one suspended ceiling can cover a slab and bound
+  a room, and collapsing them loses which question was asked. Layer order
+  is preserved, since a build-up is ordered.
 
 ### Changed
 

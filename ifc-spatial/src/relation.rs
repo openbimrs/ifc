@@ -23,7 +23,7 @@ pub use link::{Relationship, RelationshipKind};
 
 use ifc_model::{EntityId, Model};
 
-/// Every aggregation, containment and nesting relationship in the model.
+/// Every aggregation, containment, nesting and covering relationship.
 ///
 /// Found through the type index, so cost is proportional to the number of
 /// relationships rather than to model size.
@@ -34,6 +34,8 @@ pub fn all(model: &Model) -> Vec<Relationship> {
         (slots::AGGREGATES, RelationshipKind::Aggregates),
         (slots::CONTAINED_IN, RelationshipKind::ContainedIn),
         (slots::NESTS, RelationshipKind::Nests),
+        (slots::COVERS_ELEMENTS, RelationshipKind::CoversElements),
+        (slots::COVERS_SPACES, RelationshipKind::CoversSpaces),
     ] {
         for id in model.ids_of_type(slots.type_name) {
             if let Some(relationship) = link::read(model, *id, slots, kind) {
