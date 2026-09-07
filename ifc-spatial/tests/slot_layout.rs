@@ -97,6 +97,36 @@ const EXPECTED: &[(&str, usize, &str, usize, &str)] = &[
         5,
         "RelatedElement",
     ),
+    // The assigns family brackets RelatedObjectsType (slot 5) between its
+    // two ends: related FIRST at 4, relating at 6.
+    (
+        "IfcRelAssignsToActor",
+        6,
+        "RelatingActor",
+        4,
+        "RelatedObjects",
+    ),
+    (
+        "IfcRelAssignsToProcess",
+        6,
+        "RelatingProcess",
+        4,
+        "RelatedObjects",
+    ),
+    (
+        "IfcRelAssignsToProduct",
+        6,
+        "RelatingProduct",
+        4,
+        "RelatedObjects",
+    ),
+    (
+        "IfcRelAssignsToGroupByFactor",
+        6,
+        "RelatingGroup",
+        4,
+        "RelatedObjects",
+    ),
 ];
 
 fn check(schema: &Schema, version: &str) {

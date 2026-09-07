@@ -40,6 +40,19 @@ pub fn all(model: &Model) -> Vec<Relationship> {
             slots::INTERFERES_ELEMENTS,
             RelationshipKind::InterferesElements,
         ),
+        (slots::ASSIGNS_TO_ACTOR, RelationshipKind::AssignsToActor),
+        (
+            slots::ASSIGNS_TO_PROCESS,
+            RelationshipKind::AssignsToProcess,
+        ),
+        (
+            slots::ASSIGNS_TO_PRODUCT,
+            RelationshipKind::AssignsToProduct,
+        ),
+        (
+            slots::ASSIGNS_TO_GROUP_BY_FACTOR,
+            RelationshipKind::AssignsToGroupByFactor,
+        ),
     ] {
         for id in model.ids_of_type(slots.type_name) {
             if let Some(relationship) = link::read(model, *id, slots, kind) {

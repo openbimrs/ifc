@@ -21,6 +21,14 @@ pub enum RelationshipKind {
     ConnectsElements,
     /// `IfcRelInterferesElements` -- elements sharing space (a clash).
     InterferesElements,
+    /// `IfcRelAssignsToActor` -- responsibility for an object.
+    AssignsToActor,
+    /// `IfcRelAssignsToProcess` -- a task consuming or producing it.
+    AssignsToProcess,
+    /// `IfcRelAssignsToProduct` -- assignment to a product.
+    AssignsToProduct,
+    /// `IfcRelAssignsToGroupByFactor` -- group membership with a ratio.
+    AssignsToGroupByFactor,
 }
 
 /// One relationship instance, resolved to its ends.

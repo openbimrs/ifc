@@ -17,6 +17,9 @@ keep implementation state there.
   `IfcRelInterferesElements`. The connects family puts `ConnectionGeometry` at
   slot 4 so its ends are at **5/6**; interference is not a subtype of it and
   keeps **4/5**
+- reading the `IfcRelAssigns*` families this crate owns: to actor, process,
+  product and group-by-factor. Their ends BRACKET `RelatedObjectsType`:
+  related at **4**, the enum at 5, relating at **6**
 - assembling the project/site/building/storey/element tree
 - reporting containment anomalies: orphaned containers, dangling references
 

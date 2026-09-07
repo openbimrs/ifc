@@ -69,6 +69,14 @@ This page is synchronised from it at build time.
   subtype of it and keeps the 4/5 layout. Both positions are asserted
   against the shipped schemas. Connection and interference stay separate
   kinds: a clash is not an adjacency.
+- `ifc-spatial`: assignment relationships. `IfcRelAssignsToActor`,
+  `ToProcess`, `ToProduct` and `ToGroupByFactor` join the generic reader,
+  answering who is responsible for an object, which task consumes it, and
+  what it belongs to. Their two ends bracket `RelatedObjectsType`: the
+  related list comes first at slot 4, the enumeration sits at 5, and the
+  relating end is at 6. A reader assuming the usual "relating at 5" finds
+  an enumeration rather than a reference and the assignment disappears
+  with no error, so the positions are asserted against the schemas.
 
 ### Changed
 

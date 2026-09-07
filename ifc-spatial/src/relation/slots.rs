@@ -165,3 +165,49 @@ pub(crate) const INTERFERES_ELEMENTS: RelSlots = RelSlots {
     relating: 4,
     related: 5,
 };
+
+/// `IfcRelAssignsToActor`: who is responsible for an object.
+///
+/// # The slot-5 trap
+///
+/// Every `IfcRelAssigns` subtype interposes `RelatedObjectsType` between the
+/// two ends:
+///
+/// ```text
+/// 4 = RelatedObjects   5 = RelatedObjectsType   6 = Relating<something>
+/// ```
+///
+/// So the relating end is at **6**, and the related list comes FIRST at 4 --
+/// the inverse of the aggregates layout. Slot 5 holds an enumeration, not a
+/// reference, so a reader that assumes "relating at 5" silently finds
+/// nothing and the assignment disappears without an error.
+pub(crate) const ASSIGNS_TO_ACTOR: RelSlots = RelSlots {
+    type_name: "IFCRELASSIGNSTOACTOR",
+    relating: 6,
+    related: 4,
+};
+
+/// `IfcRelAssignsToProcess`: which task consumes or produces an object.
+pub(crate) const ASSIGNS_TO_PROCESS: RelSlots = RelSlots {
+    type_name: "IFCRELASSIGNSTOPROCESS",
+    relating: 6,
+    related: 4,
+};
+
+/// `IfcRelAssignsToProduct`: which product an object is assigned to.
+pub(crate) const ASSIGNS_TO_PRODUCT: RelSlots = RelSlots {
+    type_name: "IFCRELASSIGNSTOPRODUCT",
+    relating: 6,
+    related: 4,
+};
+
+/// `IfcRelAssignsToGroupByFactor`: group membership carrying a ratio.
+///
+/// A concrete subtype of `IfcRelAssignsToGroup`, which other crates already
+/// read. It is listed here so the type is reachable at all: an exact-name
+/// lookup of the supertype does not find it.
+pub(crate) const ASSIGNS_TO_GROUP_BY_FACTOR: RelSlots = RelSlots {
+    type_name: "IFCRELASSIGNSTOGROUPBYFACTOR",
+    relating: 6,
+    related: 4,
+};
