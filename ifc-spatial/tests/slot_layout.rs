@@ -165,6 +165,28 @@ const EXPECTED: &[(&str, usize, &str, usize, &str)] = &[
     ),
 ];
 
+/// Attributes IFC4 renamed, with the name the older schema uses.
+///
+/// IFC2X3 spells IfcRelCoversSpaces slot 4 `RelatedSpace`; IFC4 renamed it
+/// to `RelatingSpace`. The slot POSITION is 4 in both, so the reader is
+/// correct in either -- only the name differs, and asserting the IFC4 name
+/// against IFC2X3 fails on a schema the crate genuinely supports.
+const RENAMED_BEFORE_IFC4: &[(&str, &str, &str)] =
+    &[("IfcRelCoversSpaces", "RelatingSpace", "RelatedSpace")];
+
+/// The name `entity.attribute` carries in this schema version.
+fn expected_name<'a>(version: &str, entity: &str, ifc4_name: &'a str) -> &'a str {
+    if version != "IFC2X3" {
+        return ifc4_name;
+    }
+    for (e, new, old) in RENAMED_BEFORE_IFC4 {
+        if e == &entity && new == &ifc4_name {
+            return old;
+        }
+    }
+    ifc4_name
+}
+
 fn check(schema: &Schema, version: &str) {
     for (entity, relating_slot, relating_name, related_slot, related_name) in EXPECTED {
         let names = schema.attribute_names(entity);
@@ -173,6 +195,8 @@ fn check(schema: &Schema, version: &str) {
             // schema that lacks an entity should skip rather than fail.
             continue;
         }
+        let relating_name = &expected_name(version, entity, relating_name);
+        let related_name = &expected_name(version, entity, related_name);
         assert_eq!(
             names.get(*relating_slot),
             Some(relating_name),

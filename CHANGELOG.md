@@ -99,6 +99,14 @@ and this project follows Semantic Versioning.
 
 ### Fixed
 
+- `ifc-spatial`: `tests/slot_layout.rs` asserted the IFC4 attribute
+  name against every bundled schema. IFC2X3 spells
+  `IfcRelCoversSpaces` slot 4 `RelatedSpace`; IFC4 renamed it to
+  `RelatingSpace`. The slot position is 4 in both, so the reader was
+  always correct -- only the test was wrong, and it failed on a
+  schema the crate supports. The expected name now resolves per
+  version, leaving the IFC4/IFC4X3 assertions intact.
+
 - `ifc-geometry`: the WHERE-rule coverage gate matched violations by rule
   label alone, so a violation raised by any entity satisfied any other
   entity's case for the same label. `IfcBooleanResult.SameDim` passed on a
