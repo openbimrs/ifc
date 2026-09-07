@@ -75,7 +75,7 @@ later, but they must never be mistaken for working code.
 | EXPRESS schema metadata, subtype queries | <span class="status-implemented">Implemented</span> | `ifc-schema` |
 | GlobalId base-64 encode/decode | <span class="status-implemented">Implemented</span> | `ifc-model::guid` |
 | Spatial containment tree traversal | <span class="status-implemented">Implemented</span> | `ifc-spatial::SpatialTree`; facade feature `spatial`. See below. |
-| Objectified relationship traversal | <span class="status-partial">Partial</span> | 26 of the schema's 40 concrete `IfcRel*` families are read across 16 crates: `ifc-spatial` (`IfcRelAggregates`, `Ifc...[truncated]
+| Objectified relationship traversal | <span class="status-partial">Partial</span> | 24 of the schema's 40 concrete `IfcRel*` families are read, across 14 crates. Spatial composition and containment in `ifc-spatial`; assignment, association and definition in `ifc-classification`, `ifc-material`, `ifc-properties`, `ifc-resource`, `ifc-approval` and `ifc-constraint`; connectivity in `ifc-systems` and `ifc-structural`; sequencing in `ifc-schedule` and `ifc-cost`; feature attachment in the `openbim-ifc` reachability check. The 16 unread families are listed in `openbim-ifc/tests/relationship_census.rs`, which fails when this count drifts from the source. |
 | Distribution systems, ports and connectivity | <span class="status-implemented">Implemented</span> | `ifc-systems` reads systems and membership, ports through both `IfcRelNests` and the legacy `IfcRelConnectsPortToElement`, the connection network, flow roles and direction, zones with their `WR1` membership rule, spatial containment vs referencing, and direction-aware `upstream`/`downstream` queries. Relationship-only: no geometry is read, so a geometry-free file still yields a full network. |
 | Cost items, rates and rollups | <span class="status-implemented">Implemented</span> | `ifc-cost` reads `IfcCostItem` nesting, `IfcCostValue` component trees with arithmetic operators, and totals a cost tree. Currencies are compared, never converted: a rollup mixing EUR and USD is refused. Typed drafts stage selected IFC4 values, items, schedules, nesting, and schedule assignments atomically. |
 | Work schedules, tasks and sequencing | <span class="status-implemented">Implemented</span> | `ifc-schedule` reads `IfcWorkPlan`/`IfcWorkSchedule`, `IfcTask` with `IfcTaskTime`, `IfcRelSequence` with signed lag, work calendars and events, and produces a deterministic execution order. Cycles report the offending path. |
@@ -385,7 +385,7 @@ curve never silently replaces a body.
 
 | Capability | Status | Module |
 | --- | --- | --- |
-| Convention-only `IfcBSplineSurface` | <span class="status-partial">Partial</span> | typed view only; lowering ...[truncated]
+| Convention-only `IfcBSplineSurface` | <span class="status-partial">Partial</span> | typed view only. Lowering requires an explicit knot vector, so `IfcBSplineSurfaceWithKnots` lowers and the convention-only parent form does not: deriving the implied knots would be inventing geometry the file did not state. |
 
 ### Representation selection
 

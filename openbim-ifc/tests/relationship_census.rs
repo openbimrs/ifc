@@ -58,7 +58,20 @@ fn collect(body: &str, found: &mut BTreeSet<String>) {
     // Case-insensitive: crates name these both as EXPRESS-cased type names
     // in docs and as UPPERCASE STEP type names in code. Matching only the
     // former undercounted by five families.
-    let lower = body.to_ascii_lowercase();
+    //
+    // Comment lines are skipped. A module doc that *describes* a
+    // relationship -- often to contrast its slot layout with one the crate
+    // does read -- is not a reader, and counting it overstated the census
+    // by two families (IfcRelServicesBuildings, IfcRelSpaceBoundary).
+    let lower: String = body
+        .lines()
+        .filter(|line| {
+            let t = line.trim_start();
+            !(t.starts_with("//") || t.starts_with("*") || t.starts_with("#!["))
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+        .to_ascii_lowercase();
     let mut rest = lower.as_str();
     while let Some(at) = rest.find("ifcrel") {
         let tail = &rest[at..];

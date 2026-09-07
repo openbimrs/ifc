@@ -81,6 +81,14 @@ and this project follows Semantic Versioning.
   so nothing had checked it against the source; a new
   `openbim-ifc/tests/relationship_census.rs` re-counts the families and
   fails when the stated number drifts from what the crates actually read.
+- `docs`: the relationship census counted doc-comment mentions as readers,
+  overstating it as 26 across 16 crates. A module doc that names a family to
+  contrast its slot layout with one the crate does read is not a reader:
+  `IfcRelServicesBuildings` and `IfcRelSpaceBoundary` were counted this way
+  while no crate reads either. The real figure is 24 across 14 crates, with
+  16 families unread. `relationship_census.rs` now skips comment lines.
+- `docs`: two capability rows carried a literal `...[truncated]` marker on
+  the published site, one since 3e349cf. Both restored to full prose.
 
 ### Added
 
