@@ -16,7 +16,10 @@ set -euo pipefail
 
 DEST="${1:-references/ifc-spec}"
 UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
-BASE="https://standards.buildingsmart.org/IFC/RELEASE"
+BASE="${IFC_SPEC_BASE:-https://standards.buildingsmart.org/IFC/RELEASE}"
+# The archive indexes the canonical origin, independent of BASE.
+ORIGIN="https://standards.buildingsmart.org/IFC/RELEASE"
+ARCHIVE="https://web.archive.org/web"
 
 # rel-path | sha256 of LF-normalised bytes | url
 SCHEMAS="
@@ -36,15 +39,26 @@ echo "$SCHEMAS" | while read -r rel want url; do
       continue
     fi
   fi
-  # The server 403s without a browser User-Agent.
-  curl -fsS -A "$UA" --retry 3 --retry-delay 2 --max-time 120 \
-    -o "$out.tmp" "$BASE/$url"
-  got=$(tr -d "\\r" < "$out.tmp" | sha256sum | cut -d" " -f1)
+  # Two sources, both verified against the SAME pinned checksum, so a
+  # mirror can never substitute different content:
+  #   1. buildingSMART, the normative origin. It 403s without a browser
+  #      User-Agent AND 403s from datacenter IPs, so GitHub-hosted
+  #      runners cannot reach it at all.
+  #   2. the Wayback Machine at a pinned year, whose id_ form returns the
+  #      original unmodified bytes and is reachable from CI.
+  got=""
+  for src in "$BASE/$url" "$ARCHIVE/2023id_/$ORIGIN/$url"; do
+    # Quiet on failure: an unreachable primary is expected on CI runners,
+    # and only the final all-sources-failed case is worth reporting.
+    curl -fsSL -A "$UA" --retry 2 --retry-delay 2 --max-time 120 \
+      -o "$out.tmp" "$src" 2>/dev/null || continue
+    got=$(tr -d "\\r" < "$out.tmp" | sha256sum | cut -d" " -f1)
+    [ "$got" = "$want" ] && break
+    got=""
+  done
   if [ "$got" != "$want" ]; then
     rm -f "$out.tmp"
-    echo "FATAL: $rel checksum mismatch" >&2
-    echo "  expected $want" >&2
-    echo "  actual   $got" >&2
+    echo "FATAL: could not obtain $rel with checksum $want" >&2
     exit 1
   fi
   mv "$out.tmp" "$out"

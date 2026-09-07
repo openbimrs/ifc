@@ -133,6 +133,10 @@ Tests that load `references/ifc-spec/*.exp` skip when it is absent, so a
 fresh clone stays green. That silence is dangerous: an IFC2X3 slot-name
 bug once reached main with CI green because every such test skipped.
 
+- buildingSMART 403s both non-browser User-Agents AND datacenter IPs, so
+  GitHub-hosted runners cannot reach the origin at all. The fetch script
+  falls back to a pinned Wayback snapshot, verified against the same
+  checksum, so an untrusted mirror cannot substitute content.
 - `scripts/fetch-ifc-schemas.sh` downloads the three normative schemas
   (~1 MB) and verifies them against pinned checksums of LINE-ENDING-
   NORMALISED content, because upstream has served both CRLF and LF.
