@@ -21,6 +21,9 @@ pub fn evaluate(model: &Model, schema: &Schema, budget: Budget, report: &mut Rep
     builtin::sequence_endpoints_differ(model, schema, report);
     builtin::decomposition_has_no_self_reference(model, schema, report);
     builtin::normalized_material_priority(model, schema, report);
+    builtin::assignment_has_no_self_reference(model, schema, report);
+    builtin::normalized_connection_priorities(model, schema, report);
+    builtin::space_boundary_physicality(model, schema, report);
 
     for entry in registry::unsupported() {
         if report.findings().len() >= budget.max_findings {

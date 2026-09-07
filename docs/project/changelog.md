@@ -16,6 +16,13 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-validate`: WHERE rules for the relationship families `ifc-spatial`
+  reads. `IfcRelSpaceBoundary.CorrectPhysOrVirt` ties declared physicality
+  to the bounding element across all three concrete subtypes,
+  `NoSelfReference` covers the four `IfcRelAssigns` subtypes, each naming
+  its own relating attribute, and `IfcRelConnectsPathElements` priorities
+  are bounded to 0..=100 with an empty list treated as conformant per the
+  rule's own OR clause.
 
 - `ifc-alignment`: CLOTHOID, BLOSSCURVE and COSINECURVE transition spirals
   lower exactly as `Curve2::Intrinsic`, the natural-equation curve added in

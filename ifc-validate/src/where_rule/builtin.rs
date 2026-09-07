@@ -16,7 +16,7 @@
 //!   occurrence relation puts the same properties on every occurrence of that
 //!   type, silently and unintentionally.
 
-use ifc_model::{EntityId, Model, Value};
+use ifc_model::{Entity, EntityId, Model, Value};
 use ifc_schema::{Schema, SchemaVersion};
 
 use crate::report::{Finding, Path, Report};
@@ -265,5 +265,211 @@ pub fn normalized_material_priority(model: &Model, schema: &Schema, report: &mut
                 format!("priority {value} is outside the inclusive 0..=100 range"),
             ));
         }
+    }
+}
+
+/// The four `IfcRelAssigns` subtypes and the attribute naming their
+/// single relating end.
+///
+/// `IfcRelAssignsToGroupByFactor` is listed separately from
+/// `IfcRelAssignsToGroup`: `of_type` matches exact type names, so the
+/// subtype is invisible to a query for its parent and would otherwise
+/// go unchecked.
+const ASSIGNMENT_RELATING: [(&str, &str); 4] = [
+    ("IFCRELASSIGNSTOACTOR", "RelatingActor"),
+    ("IFCRELASSIGNSTOPROCESS", "RelatingProcess"),
+    ("IFCRELASSIGNSTOPRODUCT", "RelatingProduct"),
+    ("IFCRELASSIGNSTOGROUPBYFACTOR", "RelatingGroup"),
+];
+
+/// IFC4/IFC4X3: an assignment relationship cannot assign an object to
+/// itself.
+///
+/// The schema states this per subtype as `NoSelfReference`, each naming
+/// its own relating attribute, so the check is driven by the table above
+/// rather than assuming a shared slot.
+pub fn assignment_has_no_self_reference(model: &Model, schema: &Schema, report: &mut Report) {
+    if !matches!(
+        schema.version(),
+        Some(SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3)
+    ) {
+        return;
+    }
+    for (relation, relating_attribute) in ASSIGNMENT_RELATING {
+        let rule = match relation {
+            "IFCRELASSIGNSTOACTOR" => "IfcRelAssignsToActor.NoSelfReference",
+            "IFCRELASSIGNSTOPROCESS" => "IfcRelAssignsToProcess.NoSelfReference",
+            "IFCRELASSIGNSTOPRODUCT" => "IfcRelAssignsToProduct.NoSelfReference",
+            _ => "IfcRelAssignsToGroupByFactor.NoSelfReference",
+        };
+        no_self_reference_named(model, schema, relation, relating_attribute, rule, report);
+    }
+}
+
+/// `NoSelfReference` where the relating attribute is named per subtype.
+///
+/// The existing helper hard-codes `RelatingObject`; the assignment family
+/// uses four different names for the same role.
+fn no_self_reference_named(
+    model: &Model,
+    schema: &Schema,
+    relation: &str,
+    relating_attribute: &str,
+    rule: &'static str,
+    report: &mut Report,
+) {
+    for (id, entity) in model.of_type(relation) {
+        let Some(relating_index) = attribute_index(schema, &entity.type_name, relating_attribute)
+        else {
+            continue;
+        };
+        let Some(related_index) = attribute_index(schema, &entity.type_name, "RelatedObjects")
+        else {
+            continue;
+        };
+        let Some(relating) = entity.attribute(relating_index).and_then(Value::as_ref_id) else {
+            continue;
+        };
+        let mut includes_self = false;
+        if let Some(related) = entity.attribute(related_index) {
+            related.for_each_ref(&mut |object| includes_self |= object == relating);
+        }
+        if includes_self {
+            report.push(Finding::error(
+                rule,
+                attribute_path(id, related_index, "RelatedObjects"),
+                format!("related objects contain the relating entity {relating}"),
+            ));
+        }
+    }
+}
+
+/// IFC4/IFC4X3 `IfcRelConnectsPathElements` priorities are each in 0..=100.
+///
+/// The schema states the rule as "the list is empty, OR every member is in
+/// range". An empty list is therefore conformant and is not reported; a
+/// non-empty list is checked per element so the finding names the offender.
+pub fn normalized_connection_priorities(model: &Model, schema: &Schema, report: &mut Report) {
+    if !matches!(
+        schema.version(),
+        Some(SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3)
+    ) {
+        return;
+    }
+    let checks = [
+        (
+            "RelatingPriorities",
+            "IfcRelConnectsPathElements.NormalizedRelatingPriorities",
+        ),
+        (
+            "RelatedPriorities",
+            "IfcRelConnectsPathElements.NormalizedRelatedPriorities",
+        ),
+    ];
+    for (id, entity) in model.of_type("IFCRELCONNECTSPATHELEMENTS") {
+        for (attribute, rule) in checks {
+            let Some(index) = attribute_index(schema, &entity.type_name, attribute) else {
+                continue;
+            };
+            let Some(value) = entity.attribute(index) else {
+                continue;
+            };
+            let Value::List(items) = value.unwrap_typed() else {
+                continue;
+            };
+            for item in items {
+                let Some(priority) = item.unwrap_typed().as_i64() else {
+                    continue;
+                };
+                if !(0..=100).contains(&priority) {
+                    report.push(Finding::error(
+                        rule,
+                        attribute_path(id, index, attribute),
+                        format!("priority {priority} is outside the inclusive 0..=100 range"),
+                    ));
+                }
+            }
+        }
+    }
+}
+
+/// IFC4/IFC4X3 `IfcRelSpaceBoundary.CorrectPhysOrVirt`.
+///
+/// The rule ties the declared physicality to the bounding element's type:
+/// PHYSICAL must not be an `IfcVirtualElement`, VIRTUAL must be an
+/// `IfcVirtualElement` or an `IfcOpeningElement`, and NOTDEFINED is
+/// unconstrained.
+///
+/// All three concrete subtypes are checked. `of_type` matches exact names,
+/// so querying only the supertype would silently skip every 2nd-level
+/// boundary -- which is what real BEM exports actually write.
+pub fn space_boundary_physicality(model: &Model, schema: &Schema, report: &mut Report) {
+    if !matches!(
+        schema.version(),
+        Some(SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3)
+    ) {
+        return;
+    }
+    let types = [
+        "IFCRELSPACEBOUNDARY",
+        "IFCRELSPACEBOUNDARY1STLEVEL",
+        "IFCRELSPACEBOUNDARY2NDLEVEL",
+    ];
+    for boundary_type in types {
+        for (id, entity) in model.of_type(boundary_type) {
+            check_phys_or_virt(model, schema, id, entity, report);
+        }
+    }
+}
+
+/// One boundary's physicality against its bounding element.
+fn check_phys_or_virt(
+    model: &Model,
+    schema: &Schema,
+    id: EntityId,
+    entity: &Entity,
+    report: &mut Report,
+) {
+    let Some(physicality_index) =
+        attribute_index(schema, &entity.type_name, "PhysicalOrVirtualBoundary")
+    else {
+        return;
+    };
+    let Some(element_index) = attribute_index(schema, &entity.type_name, "RelatedBuildingElement")
+    else {
+        return;
+    };
+    let Some(declared) = entity
+        .attribute(physicality_index)
+        .map(Value::unwrap_typed)
+        .and_then(|value| match value {
+            Value::Enum(member) => Some(member.as_ref()),
+            _ => None,
+        })
+    else {
+        return;
+    };
+    let Some(element) = entity.attribute(element_index).and_then(Value::as_ref_id) else {
+        return;
+    };
+    let Some(target) = model.get(element) else {
+        return;
+    };
+    let is_virtual = schema.is_a(&target.type_name, "IFCVIRTUALELEMENT");
+    let is_opening = schema.is_a(&target.type_name, "IFCOPENINGELEMENT");
+    let consistent = match declared.to_ascii_uppercase().as_str() {
+        "PHYSICAL" => !is_virtual,
+        "VIRTUAL" => is_virtual || is_opening,
+        _ => true,
+    };
+    if !consistent {
+        report.push(Finding::error(
+            "IfcRelSpaceBoundary.CorrectPhysOrVirt",
+            attribute_path(id, physicality_index, "PhysicalOrVirtualBoundary"),
+            format!(
+                "boundary declares {declared} but the related element {element} is {}",
+                target.type_name
+            ),
+        ));
     }
 }

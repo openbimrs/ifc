@@ -104,6 +104,41 @@ pub const RULES: &[RuleEntry] = &[
         support: Support::Implemented,
     },
     RuleEntry {
+        id: "IfcRelAssignsToActor.NoSelfReference",
+        entity: Some("IfcRelAssignsToActor"),
+        support: Support::Implemented,
+    },
+    RuleEntry {
+        id: "IfcRelAssignsToProcess.NoSelfReference",
+        entity: Some("IfcRelAssignsToProcess"),
+        support: Support::Implemented,
+    },
+    RuleEntry {
+        id: "IfcRelAssignsToProduct.NoSelfReference",
+        entity: Some("IfcRelAssignsToProduct"),
+        support: Support::Implemented,
+    },
+    RuleEntry {
+        id: "IfcRelAssignsToGroupByFactor.NoSelfReference",
+        entity: Some("IfcRelAssignsToGroupByFactor"),
+        support: Support::Implemented,
+    },
+    RuleEntry {
+        id: "IfcRelConnectsPathElements.NormalizedRelatingPriorities",
+        entity: Some("IfcRelConnectsPathElements"),
+        support: Support::Implemented,
+    },
+    RuleEntry {
+        id: "IfcRelConnectsPathElements.NormalizedRelatedPriorities",
+        entity: Some("IfcRelConnectsPathElements"),
+        support: Support::Implemented,
+    },
+    RuleEntry {
+        id: "IfcRelSpaceBoundary.CorrectPhysOrVirt",
+        entity: Some("IfcRelSpaceBoundary"),
+        support: Support::Implemented,
+    },
+    RuleEntry {
         id: "IfcDocumentReference.WR1",
         entity: Some("IfcDocumentReference"),
         support: Support::Unsupported(NEEDS_INVERSES),

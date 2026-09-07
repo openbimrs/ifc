@@ -512,6 +512,13 @@ fn every_implemented_rule_is_actually_dispatched() {
         "IfcRelAggregates.NoSelfReference",
         "IfcRelNests.NoSelfReference",
         "IfcMaterialLayer.NormalizedPriority",
+        "IfcRelAssignsToActor.NoSelfReference",
+        "IfcRelAssignsToProcess.NoSelfReference",
+        "IfcRelAssignsToProduct.NoSelfReference",
+        "IfcRelAssignsToGroupByFactor.NoSelfReference",
+        "IfcRelConnectsPathElements.NormalizedRelatingPriorities",
+        "IfcRelConnectsPathElements.NormalizedRelatedPriorities",
+        "IfcRelSpaceBoundary.CorrectPhysOrVirt",
     ];
     let claimed: Vec<&str> = ifc_validate::where_rule::implemented()
         .map(|entry| entry.id)
