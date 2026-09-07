@@ -13,6 +13,10 @@ keep implementation state there.
 - reading `IfcRelCoversBldgElements` and `IfcRelCoversSpaces`: finishes on an
   element and finishes bounding a space, kept apart because the same covering
   can do both and the two answer different questions
+- reading `IfcRelConnectsElements` with its two subtypes, and
+  `IfcRelInterferesElements`. The connects family puts `ConnectionGeometry` at
+  slot 4 so its ends are at **5/6**; interference is not a subtype of it and
+  keeps **4/5**
 - assembling the project/site/building/storey/element tree
 - reporting containment anomalies: orphaned containers, dangling references
 

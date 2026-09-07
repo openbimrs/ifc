@@ -17,6 +17,10 @@ pub enum RelationshipKind {
     CoversElements,
     /// `IfcRelCoversSpaces` -- finishes bounding a space.
     CoversSpaces,
+    /// `IfcRelConnectsElements` and its subtypes -- element adjacency.
+    ConnectsElements,
+    /// `IfcRelInterferesElements` -- elements sharing space (a clash).
+    InterferesElements,
 }
 
 /// One relationship instance, resolved to its ends.

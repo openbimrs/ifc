@@ -36,9 +36,25 @@ pub fn all(model: &Model) -> Vec<Relationship> {
         (slots::NESTS, RelationshipKind::Nests),
         (slots::COVERS_ELEMENTS, RelationshipKind::CoversElements),
         (slots::COVERS_SPACES, RelationshipKind::CoversSpaces),
+        (
+            slots::INTERFERES_ELEMENTS,
+            RelationshipKind::InterferesElements,
+        ),
     ] {
         for id in model.ids_of_type(slots.type_name) {
             if let Some(relationship) = link::read(model, *id, slots, kind) {
+                out.push(relationship);
+            }
+        }
+    }
+    // The IfcRelConnectsElements hierarchy shares one kind across three
+    // concrete types, and its ends sit at 5/6 rather than 4/5 because
+    // ConnectionGeometry occupies slot 4.
+    for slots in slots::CONNECTS_ELEMENT_TYPES {
+        for id in model.ids_of_type(slots.type_name) {
+            if let Some(relationship) =
+                link::read(model, *id, slots, RelationshipKind::ConnectsElements)
+            {
                 out.push(relationship);
             }
         }

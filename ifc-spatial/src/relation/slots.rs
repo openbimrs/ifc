@@ -115,3 +115,53 @@ pub(crate) const COVERS_SPACES: RelSlots = RelSlots {
     relating: 4,
     related: 5,
 };
+
+/// `IfcRelConnectsElements`: one element connected to another.
+///
+/// # The slot shift
+///
+/// This family puts `ConnectionGeometry` FIRST, at slot 4, so its two ends
+/// sit at 5 and 6 -- not 4 and 5 like every other relationship in this
+/// module. Reading 4/5 here yields the geometry as the relating end and the
+/// relating element as the related end: a connection between a shape and a
+/// wall, which is silently wrong rather than an error.
+pub(crate) const CONNECTS_ELEMENTS: RelSlots = RelSlots {
+    type_name: "IFCRELCONNECTSELEMENTS",
+    relating: 5,
+    related: 6,
+};
+
+/// `IfcRelConnectsPathElements`: a connection carrying path priorities.
+pub(crate) const CONNECTS_PATH_ELEMENTS: RelSlots = RelSlots {
+    type_name: "IFCRELCONNECTSPATHELEMENTS",
+    relating: 5,
+    related: 6,
+};
+
+/// `IfcRelConnectsWithRealizingElements`: a connection realized by others.
+pub(crate) const CONNECTS_WITH_REALIZING: RelSlots = RelSlots {
+    type_name: "IFCRELCONNECTSWITHREALIZINGELEMENTS",
+    relating: 5,
+    related: 6,
+};
+
+/// Every concrete type in the `IfcRelConnectsElements` hierarchy.
+///
+/// Same exact-match problem as the space boundaries: a file storing the
+/// path-elements form is invisible to a lookup of the supertype.
+pub(crate) const CONNECTS_ELEMENT_TYPES: [RelSlots; 3] = [
+    CONNECTS_ELEMENTS,
+    CONNECTS_PATH_ELEMENTS,
+    CONNECTS_WITH_REALIZING,
+];
+
+/// `IfcRelInterferesElements`: two elements occupying the same space.
+///
+/// Note this is NOT a subtype of `IfcRelConnectsElements` and does NOT
+/// share its layout: its ends are back at 4 and 5, with the geometry after
+/// them. Clash detection reads this.
+pub(crate) const INTERFERES_ELEMENTS: RelSlots = RelSlots {
+    type_name: "IFCRELINTERFERESELEMENTS",
+    relating: 4,
+    related: 5,
+};

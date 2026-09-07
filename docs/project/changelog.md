@@ -60,6 +60,15 @@ This page is synchronised from it at build time.
   The two stay distinct: one suspended ceiling can cover a slab and bound
   a room, and collapsing them loses which question was asked. Layer order
   is preserved, since a build-up is ordered.
+- `ifc-spatial`: element connection and interference.
+  `IfcRelConnectsElements` with its `PathElements` and
+  `WithRealizingElements` subtypes, plus `IfcRelInterferesElements`. The
+  connects family places `ConnectionGeometry` at slot 4, so its two ends
+  sit at 5 and 6 rather than 4 and 5; reading the usual pair would name
+  the connection geometry as the relating element. Interference is not a
+  subtype of it and keeps the 4/5 layout. Both positions are asserted
+  against the shipped schemas. Connection and interference stay separate
+  kinds: a clash is not an adjacency.
 
 ### Changed
 

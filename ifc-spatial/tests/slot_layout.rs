@@ -67,6 +67,36 @@ const EXPECTED: &[(&str, usize, &str, usize, &str)] = &[
         5,
         "RelatedCoverings",
     ),
+    // The connects family shifts its ends to 5/6: ConnectionGeometry is 4.
+    (
+        "IfcRelConnectsElements",
+        5,
+        "RelatingElement",
+        6,
+        "RelatedElement",
+    ),
+    (
+        "IfcRelConnectsPathElements",
+        5,
+        "RelatingElement",
+        6,
+        "RelatedElement",
+    ),
+    (
+        "IfcRelConnectsWithRealizingElements",
+        5,
+        "RelatingElement",
+        6,
+        "RelatedElement",
+    ),
+    // Interference is NOT a connects subtype and keeps 4/5.
+    (
+        "IfcRelInterferesElements",
+        4,
+        "RelatingElement",
+        5,
+        "RelatedElement",
+    ),
 ];
 
 fn check(schema: &Schema, version: &str) {
