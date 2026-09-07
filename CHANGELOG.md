@@ -74,7 +74,7 @@ and this project follows Semantic Versioning.
   two commits. The inverse check is now enforced.
 - `docs`: the "Objectified relationship traversal" capability row said
   `ifc-spatial::relation` reads three `IfcRel*` families and that other
-  families "are not interpreted". Thirteen crates read 21 of the schema.s
+  families "are not interpreted". Sixteen crates read 26 of the schema.s
   40 concrete families: assignments, definitions, connections, port
   connectivity, voiding and filling, sequencing, and associations. The row
   now lists them by crate. It sits outside the generated sentinel blocks,
