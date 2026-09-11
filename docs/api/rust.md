@@ -108,6 +108,42 @@ let out   = StepCodec.write_bytes(&model)?;
 `XmlCodec` behaves identically behind the `ifcxml` feature. Conversion is a read
 with one and a write with the other.
 
+## Scale and memory
+
+The model is built eagerly: `read_path` reads the whole file and keeps every
+entity in memory. There is no streaming or lazy-loading API. That is a
+deliberate trade -- random access by id, reverse indices and checked mutation
+all assume the full graph is present -- but it sets a hard ceiling on file
+size, so the cost is stated here rather than left to be discovered.
+
+Measured on one machine (x86-64, glibc malloc, release build) with a
+synthetic export of 2,000,008 entities in 115 MB, the shape a real building
+model has -- placement chains, shape representations, property sets:
+
+| | openbim/ifc | ifcopenshell 0.8.5 |
+|---|---|---|
+| parse | 3.6 s | 8.2 s |
+| peak RSS | 1518 MB | 2087 MB |
+| RSS / file size | 13.2x | 18.1x |
+
+Both figures are for the same file on the same machine. The comparison is
+included because "13x" alone reads as bad; against the reference C++
+implementation it is 2.3x faster using 27% less memory. It is still 13x.
+
+**Plan for roughly 13-15x the file size in RAM.** A 500 MB export needs
+~6.5 GB and a 1 GB export will not open on a 16 GB machine. If you are
+bounded by this, the options today are to split the model upstream or to
+run on a larger machine; a streaming reader is not implemented.
+
+Where the memory goes, for anyone considering a change: at 2M entities the
+model holds ~7.2M live heap allocations -- one `Vec` per entity, one per
+nested aggregate, one `Arc<str>` per type name. Attribute vectors account
+for ~231 MB, entity structs ~76 MB, type names ~124 MB (across only 15
+distinct names, so they are not interned), and text payload ~19 MB. The
+remainder is per-allocation overhead. Interning type names is the cheapest
+available win at roughly 94 MB; the larger costs are structural.
+
+`ifc-step/tests/scale.rs` pins the ratio so a regression fails the gate.
 ## Python and CLI
 
 Neither exists for this repository today. Sibling repositories

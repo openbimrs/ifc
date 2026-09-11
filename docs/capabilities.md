@@ -49,7 +49,7 @@ code.
 | `ifc-approval` | 915 | 5 | 0 | 1 | <span class="status-implemented">Implemented</span> |
 | `openbim-ifc` | 901 | 6 | 0 | 14 | <span class="status-implemented">Implemented</span> |
 | `ifc-author` | 729 | 8 | 3 | 3 | <span class="status-implemented">Implemented</span> |
-| `ifc-step` | 516 | 5 | 0 | 3 | <span class="status-implemented">Implemented</span> |
+| `ifc-step` | 516 | 5 | 0 | 4 | <span class="status-implemented">Implemented</span> |
 
 <!-- CAPABILITIES:CENSUS:END -->
 

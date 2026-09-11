@@ -1,0 +1,9 @@
+# Pin the toolchain so the local gate and CI check the same thing.
+#
+# Without this, `scripts/gate.sh` uses whatever default toolchain is
+# installed while CI pins 1.88. A newer clippy then fails locally on lints
+# CI never runs -- or, worse, passes locally while CI fails. This channel
+# matches `rust-version` in Cargo.toml and the version CI installs.
+[toolchain]
+channel = "1.88.0"
+components = ["clippy", "rustfmt"]
