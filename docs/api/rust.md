@@ -140,8 +140,17 @@ model holds ~7.2M live heap allocations -- one `Vec` per entity, one per
 nested aggregate, one `Arc<str>` per type name. Attribute vectors account
 for ~231 MB, entity structs ~76 MB, type names ~124 MB (across only 15
 distinct names, so they are not interned), and text payload ~19 MB. The
-remainder is per-allocation overhead. Interning type names is the cheapest
-available win at roughly 94 MB; the larger costs are structural.
+remainder is per-allocation overhead.
+
+Interning the type names looks like the obvious win and is not: it was
+implemented and measured at 1236 MB resident against a 1232 MB baseline
+on the same 2M-entity file, with parse time unchanged at 3.1 s. The
+`Arc<str>` per entity is genuinely deduplicated -- but `openbim-step`
+has already allocated a `String` per record name upstream, and every
+record is materialised into a `Vec` before conversion begins, so both
+representations are live at peak. That double-materialisation, not the
+type names, is what sets the ratio. A streaming conversion that consumes
+records as they parse is the change that would matter.
 
 `ifc-step/tests/scale.rs` pins the ratio so a regression fails the gate.
 ## Python and CLI
