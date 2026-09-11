@@ -202,6 +202,11 @@ impl Transform {
             determinant_orientation *= pivot.signum();
             for row in (column + 1)..3 {
                 let factor = rows[row][column] / pivot;
+                // Indexed, not iterated: the row being written (`row`) and the
+                // row being read (`column`) are different rows of the same
+                // array, which `iter_mut` cannot express. Clippy suggests a
+                // rewrite here that does not compile.
+                #[allow(clippy::needless_range_loop)]
                 for trailing in (column + 1)..3 {
                     rows[row][trailing] =
                         (-factor).mul_add(rows[column][trailing], rows[row][trailing]);

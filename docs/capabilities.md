@@ -27,7 +27,7 @@ code.
 
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `ifc-geometry` | 31,395 | 103 | 3 | 34 | <span class="status-partial">Partial</span> |
+| `ifc-geometry` | 31,400 | 103 | 3 | 34 | <span class="status-partial">Partial</span> |
 | `ifc-structural` | 3,397 | 33 | 14 | 12 | <span class="status-implemented">Implemented</span> |
 | `ifc-style` | 3,322 | 31 | 0 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 3,119 | 30 | 14 | 3 | <span class="status-implemented">Implemented</span> |
@@ -52,6 +52,25 @@ code.
 | `ifc-step` | 516 | 5 | 0 | 4 | <span class="status-implemented">Implemented</span> |
 
 <!-- CAPABILITIES:CENSUS:END -->
+
+## Geometry items this repository does not address
+
+<!-- CAPABILITIES:UNHANDLED:BEGIN -->
+
+8 concrete `IfcRepresentationItem` subtypes in IFC4 ADD2 TC1 appear nowhere in this repository -- not implemented, not refused, not mentioned. They are listed here because the tables above are derived from the code and therefore cannot report an entity the code has never heard of.
+
+| Entity | Status |
+|---|---|
+| `IfcLightSourceAmbient` | <span class="status-partial">Not addressed</span> |
+| `IfcLightSourceDirectional` | <span class="status-partial">Not addressed</span> |
+| `IfcLightSourceGoniometric` | <span class="status-partial">Not addressed</span> |
+| `IfcLightSourcePositional` | <span class="status-partial">Not addressed</span> |
+| `IfcLightSourceSpot` | <span class="status-partial">Not addressed</span> |
+| `IfcPath` | <span class="status-partial">Not addressed</span> |
+| `IfcPlanarBox` | <span class="status-partial">Not addressed</span> |
+| `IfcVertexLoop` | <span class="status-partial">Not addressed</span> |
+
+<!-- CAPABILITIES:UNHANDLED:END -->
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:BEGIN -->
 

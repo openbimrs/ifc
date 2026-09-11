@@ -17,6 +17,14 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `docs/capabilities.md`: a generated section listing concrete
+  `IfcRepresentationItem` subtypes that appear nowhere in the
+  repository. The existing tables are derived from the dispatch code, so
+  every row in them is Implemented or Refused by construction and the
+  matrix could never report a gap. Walking down from the IFC4 schema
+  instead finds 8 of 111 concrete geometry items unaddressed (the five
+  light sources, `IfcPath`, `IfcPlanarBox`, `IfcVertexLoop`).
+
 - `ifc-alignment`: HELMERTCURVE and SINECURVE horizontal transition segments
   lower exactly as `Curve2::Intrinsic`. Helmert is one curve carrying a
   `CurvatureLaw::Piecewise` with a seam at half length and two quadratic

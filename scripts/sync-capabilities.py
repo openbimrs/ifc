@@ -42,6 +42,8 @@ BEGIN_PROFILE = "<!-- CAPABILITIES:PROFILE:BEGIN -->"
 END_PROFILE = "<!-- CAPABILITIES:PROFILE:END -->"
 BEGIN_COUNT = "<!-- CAPABILITIES:SCAFFOLDCOUNT:BEGIN -->"
 END_COUNT = "<!-- CAPABILITIES:SCAFFOLDCOUNT:END -->"
+BEGIN_UNHANDLED = "<!-- CAPABILITIES:UNHANDLED:BEGIN -->"
+END_UNHANDLED = "<!-- CAPABILITIES:UNHANDLED:END -->"
 BEGIN_CENSUS = "<!-- CAPABILITIES:CENSUS:BEGIN -->"
 END_CENSUS = "<!-- CAPABILITIES:CENSUS:END -->"
 
@@ -279,6 +281,89 @@ def profile_table() -> str:
     return "\n".join(rows)
 
 
+
+def unhandled_geometry_items() -> list[str]:
+    """Concrete IfcRepresentationItem subtypes with no mention in any crate.
+
+    The tables above enumerate what the code dispatches, so every row in them
+    is Implemented or Refused by construction -- a matrix that can never say
+    "Missing" is a promise, not a measurement. This walks the other way:
+    from the schema down, listing concrete geometry items that appear nowhere
+    in the source. Returns an empty list when the schema is unavailable, so a
+    fresh clone still regenerates the rest of the page.
+    """
+    spec = _spec_path()
+    if spec is None:
+        return []
+    text = spec.read_text(encoding="utf-8", errors="replace")
+    bodies = {}
+    declared = {}
+    for m in re.finditer(r"ENTITY\s+(\w+)(.*?)END_ENTITY", text, re.S | re.I):
+        bodies[m.group(1).lower()] = m.group(2)
+        declared[m.group(1).lower()] = m.group(1)
+    parent = {}
+    for name, body in bodies.items():
+        sm = re.search(r"SUBTYPE\s+OF\s*\(\s*(\w+)", body, re.I)
+        if sm:
+            parent[name] = sm.group(1).lower()
+    family = {"ifcrepresentationitem"}
+    changed = True
+    while changed:
+        changed = False
+        for child, par in parent.items():
+            if par in family and child not in family:
+                family.add(child)
+                changed = True
+    concrete = sorted(
+        e for e in family
+        if not re.search(r"ABSTRACT\s+SUPERTYPE", bodies[e], re.I)
+    )
+    seen = set()
+    for rs in ROOT.rglob("*.rs"):
+        if "target" in rs.parts:
+            continue
+        seen.update(m.lower() for m in re.findall(r"Ifc[A-Za-z0-9]+", rs.read_text(encoding="utf-8", errors="replace")))
+    return [declared[e] for e in concrete if e not in seen]
+
+def _spec_path():
+    """Locate IFC4.exp in either checkout layout, or None when absent."""
+    for rel in ("references/ifc-spec", "../../../references/ifc-spec"):
+        cand = ROOT / rel / "ifc4-add2-tc1" / "IFC4.exp"
+        if cand.exists():
+            return cand
+    return None
+
+
+def unhandled_table() -> str:
+    spec = _spec_path()
+    if spec is None:
+        # Fail loudly rather than freezing the previous list: a silently
+        # stale gap section is exactly the false assurance this adds.
+        raise SystemExit(
+            "references/ifc-spec is missing; run scripts/fetch-ifc-schemas.sh "
+            "before regenerating docs/capabilities.md"
+        )
+    items = unhandled_geometry_items()
+    if not items:
+        return (
+            "The IFC4 schema was not available when this page was generated, "
+            "so this section is empty rather than claiming full coverage."
+        )
+    lines = [
+        f"{len(items)} concrete `IfcRepresentationItem` subtypes in IFC4 ADD2 TC1 "
+        "appear nowhere in this repository -- not implemented, not refused, "
+        "not mentioned. They are listed here because the tables above are "
+        "derived from the code and therefore cannot report an entity the code "
+        "has never heard of.",
+        "",
+        "| Entity | Status |",
+        "|---|---|",
+    ]
+    for item in items:
+        lines.append(f"| `{item}` | <span class=\"status-partial\">Not addressed</span> |")
+    return chr(10).join(lines)
+
+
 def census_table(current: str) -> str:
     """Measure every crate in the workspace from its own sources.
 
@@ -380,6 +465,7 @@ def main() -> int:
 
     current = TARGET.read_text(encoding="utf-8")
     updated = splice(current, BEGIN_CENSUS, END_CENSUS, census_table(current))
+    updated = splice(updated, BEGIN_UNHANDLED, END_UNHANDLED, unhandled_table())
     updated = splice(updated, BEGIN_GEOMETRY, END_GEOMETRY, geometry_table())
     updated = splice(updated, BEGIN_VARIANT, END_VARIANT, variant_table())
     updated = splice(updated, BEGIN_PROFILE, END_PROFILE, profile_table())
