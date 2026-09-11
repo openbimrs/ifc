@@ -157,3 +157,24 @@ fn a_recovered_model_still_round_trips_what_it_kept() {
     assert_eq!(type_names(&reparsed), type_names(&model));
     assert!(reparsed.is_complete());
 }
+
+/// A strict parse must stop at the FIRST unrepresentable record and report
+/// that one, not a later one. The streaming sink cannot abort the parser
+/// mid-callback, so it latches the first error; this pins that it is the
+/// first and not the last.
+#[test]
+fn strict_mode_reports_the_first_unrepresentable_record() {
+    let mut s = String::from("ISO-10303-21;\nHEADER;\n");
+    s.push_str("FILE_DESCRIPTION((''),'2;1');\n");
+    s.push_str("FILE_NAME('x','',(''),(''),'','','');\n");
+    s.push_str("FILE_SCHEMA(('IFC4'));\nENDSEC;\nDATA;\n");
+    // Two ids far beyond the model range; the first must be the one named.
+    s.push_str("#99999999999999999999=IFCWALL($);\n");
+    s.push_str("#88888888888888888888=IFCWALL($);\n");
+    s.push_str("ENDSEC;\nEND-ISO-10303-21;\n");
+    let err = ifc_step::StepCodec
+        .read_bytes(s.as_bytes())
+        .expect_err("strict mode must reject an out-of-range id");
+    let text = format!("{err}");
+    assert!(text.contains("exceeds"), "unexpected error: {text}");
+}

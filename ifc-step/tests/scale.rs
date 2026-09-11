@@ -140,9 +140,9 @@ fn parsing_a_large_model_stays_within_its_memory_budget() {
     // Measured ~13x on this shape. 25x leaves generous headroom for
     // allocator differences while still catching a structural regression.
     assert!(
-        ratio < 25.0,
+        ratio < 10.0,
         "parse used {ratio:.1}x the input size in RSS ({growth_kb:.0} KB for {bytes:.0} bytes); \
-         budget is 25x -- a new per-entity allocation or a retained source copy is the usual cause"
+         budget is 10x -- a new per-entity allocation or a retained source copy is the usual cause"
     );
     eprintln!(
         "scale: {walls} walls, {:.0} MB input, {ratio:.1}x RSS",

@@ -113,6 +113,15 @@ and this project follows Semantic Versioning.
 
 ### Changed
 
+- `ifc-step`: records are converted as the parser emits them instead of
+  being collected into a `Vec` first. `openbim_step::parse_with` buffers
+  every `DataRecord`, so the generic records and the converted model were
+  both fully resident at peak; the conversion now runs inside an
+  `EventSink`. A 115 MB / 2M-entity export goes from 1232 MB resident and
+  3.2 s to 750 MB and 2.0 s -- 39% less memory, 40% faster. The budget in
+  `tests/scale.rs` is tightened from 25x to 10x so the win cannot silently
+  regress.
+
 - `ifc-alignment`: kernel pin moved from axiolid v0.12.0 to v0.14.0, for
   `CurvatureLaw::Piecewise` and `CurvatureLaw::Composite`.
 

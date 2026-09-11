@@ -5,33 +5,79 @@ use ifc_model::{Diagnostic, Entity, EntityId, Model, Value};
 use openbim_step::{OnMalformed, Parameter, ParseOptions, StandardHeader};
 
 pub(crate) fn parse(input: &[u8], options: ParseOptions) -> Result<Model, StepError> {
-    let outcome = openbim_step::parse_with(input, options)?;
-    let mut model = Model::new();
-    apply_header(model.header_mut(), outcome.exchange.header.standard());
-
-    for diagnostic in &outcome.diagnostics {
+    // Records are converted as they arrive rather than collected first.
+    // openbim_step::parse_with builds a Vec of every DataRecord, so the
+    // generic records and the converted model are both fully resident at
+    // peak. Converting inside the sink drops each record as soon as its
+    // Entity exists, which removes that second copy.
+    let mut sink = ModelSink {
+        model: Model::new(),
+        header: openbim_step::HeaderSection::default(),
+        recovering: options.on_malformed_record == OnMalformed::Skip,
+        error: None,
+    };
+    let diagnostics = openbim_step::parse_events_with(input, &mut sink, options)?;
+    if let Some(error) = sink.error {
+        return Err(error);
+    }
+    let mut model = sink.model;
+    apply_header(model.header_mut(), sink.header.standard());
+    // Diagnostics are only available once the parse finishes, so they are
+    // appended after the records rather than interleaved with them.
+    for diagnostic in &diagnostics {
         model.push_diagnostic(Diagnostic::warning(
             diagnostic.span().start..diagnostic.span().end,
             diagnostic.detail(),
         ));
     }
+    Ok(model)
+}
 
-    let recovering = options.on_malformed_record == OnMalformed::Skip;
-    for instance in outcome.exchange.data.records {
-        // A record can be syntactically valid STEP yet unrepresentable in the
-        // IFC record model (an out-of-range id, a complex instance). Under the
-        // recovery policy that is the same class of problem as a damaged
-        // record and is reported rather than fatal.
-        let id_text = instance.id.as_str().to_string();
-        match convert(instance) {
-            Ok((id, entity)) => model.insert(id, entity),
-            Err(error) if recovering => model.push_diagnostic(Diagnostic::unlocated(format!(
-                "skipped unrepresentable record #{id_text}: {error}"
-            ))),
-            Err(error) => return Err(error),
+/// Converts records into the model as the parser emits them.
+///
+/// The sink owns the model under construction. A conversion failure cannot
+/// abort the parse from inside the callback, so the first one is stored and
+/// re-raised by the caller once the parse returns.
+struct ModelSink {
+    model: Model,
+    header: openbim_step::HeaderSection,
+    recovering: bool,
+    error: Option<StepError>,
+}
+
+impl openbim_step::EventSink for ModelSink {
+    fn event(&mut self, event: openbim_step::Event) {
+        if self.error.is_some() {
+            return;
+        }
+        match event {
+            openbim_step::Event::HeaderRecord(record) => self.header.records.push(record),
+            openbim_step::Event::DataRecord(instance) => self.record(instance),
+            openbim_step::Event::StartHeader
+            | openbim_step::Event::EndHeader
+            | openbim_step::Event::StartData
+            | openbim_step::Event::EndData => {}
         }
     }
-    Ok(model)
+}
+
+impl ModelSink {
+    fn record(&mut self, instance: openbim_step::DataRecord) {
+        // A record can be syntactically valid STEP yet unrepresentable in
+        // the IFC record model (an out-of-range id, a complex instance).
+        // Under the recovery policy that is the same class of problem as a
+        // damaged record and is reported rather than fatal.
+        let id_text = instance.id.as_str().to_string();
+        match convert(instance) {
+            Ok((id, entity)) => self.model.insert(id, entity),
+            Err(error) if self.recovering => {
+                self.model.push_diagnostic(Diagnostic::unlocated(format!(
+                    "skipped unrepresentable record #{id_text}: {error}"
+                )));
+            }
+            Err(error) => self.error = Some(error),
+        }
+    }
 }
 
 fn convert(instance: openbim_step::DataRecord) -> Result<(EntityId, Entity), StepError> {

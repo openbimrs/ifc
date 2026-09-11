@@ -122,22 +122,26 @@ model has -- placement chains, shape representations, property sets:
 
 | | openbim/ifc | ifcopenshell 0.8.5 |
 |---|---|---|
-| parse | 3.6 s | 8.2 s |
-| peak RSS | 1518 MB | 2087 MB |
-| RSS / file size | 13.2x | 18.1x |
+| parse | 2.0 s | 8.2 s |
+| resident after parse | 750 MB | 2087 MB |
+| RSS / file size | 6.5x | 18.1x |
 
-Both figures are for the same file on the same machine. The comparison is
-included because "13x" alone reads as bad; against the reference C++
-implementation it is 2.3x faster using 27% less memory. It is still 13x.
+Both figures are for the same file on the same machine. Records are converted
+as the parser emits them, so the generic STEP records never accumulate: an
+earlier buffering implementation measured 10.7x and 3.2 s on this file.
 
-**Plan for roughly 13-15x the file size in RAM.** A 500 MB export needs
-~6.5 GB and a 1 GB export will not open on a 16 GB machine. If you are
+**Plan for roughly 6-7x the file size in RAM.** A 500 MB export needs
+~3.3 GB and a 2 GB export will not open on a 16 GB machine. If you are
 bounded by this, the options today are to split the model upstream or to
-run on a larger machine; a streaming reader is not implemented.
+run on a larger machine. Parsing already streams; what remains resident is
+the model itself, which every consumer API assumes is fully present.
 
 Where the memory goes, for anyone considering a change: at 2M entities the
 model holds ~7.2M live heap allocations -- one `Vec` per entity, one per
-nested aggregate, one `Arc<str>` per type name. Attribute vectors account
+nested aggregate, one `Arc<str>` per type name. Interning the type names was
+implemented and measured: it removes 2M redundant allocations but does not
+move resident memory, because the string data is a small share of the total.
+The allocation count itself is the cost, and it is structural. Attribute vectors account
 for ~231 MB, entity structs ~76 MB, type names ~124 MB (across only 15
 distinct names, so they are not interned), and text payload ~19 MB. The
 remainder is per-allocation overhead.
