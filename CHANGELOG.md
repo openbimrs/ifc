@@ -8,6 +8,12 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `benchmarks/`: parse cost measured against ifc-lite and ifcopenshell
+  on identical 1 MB to 513 MB files, all three agreeing on entity count.
+  At 513 MB / 9M entities: 18.16 s and 2366 MB here, 17.14 s and 2750 MB
+  for ifc-lite decode, 54.34 s and 6444 MB for ifcopenshell. ifc-lite
+  index-only scan answers the same file in 2.05 s holding nothing, which
+  is the shape this parser has no answer for.
 
 - `docs/capabilities.md`: a generated section listing concrete
   `IfcRepresentationItem` subtypes that appear nowhere in the
