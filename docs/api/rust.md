@@ -108,6 +108,31 @@ let out   = StepCodec.write_bytes(&model)?;
 `XmlCodec` behaves identically behind the `ifcxml` feature. Conversion is a read
 with one and a write with the other.
 
+## Reading a file without decoding it
+
+`Index::scan` walks the DATA section for record boundaries and keeps
+four columns plus a table of distinct type names. It never decodes an
+attribute, so it answers what is in a file for a fraction of the cost of
+building a `Model`:
+
+| 529 MB export, 9,000,008 records | time | resident |
+|---|---|---|
+| `Index::scan` | 0.66 s | 206 MB |
+| `StepCodec::read_bytes` | 18.2 s | 2366 MB |
+
+
+That is 27x faster holding 11x less, because it does not build what the
+caller is going to throw away. Use it for a type census, for picking a
+subset out of a large file, or to decide whether a full parse is worth it.
+
+`Index::entity` decodes one record on request. `materialize_closure`
+builds a real `Model` from a chosen subset plus everything it references,
+so the result has no dangling `Ref`. `materialize` gives the raw subset
+and will leave references pointing at records it did not include.
+
+The index is not a second parser: `Index::entity` wraps the record bytes
+and hands them to the same decoder, and `tests/index_agreement.rs` asserts
+on every fixture that scan and parse agree on both ids and content.
 ## Scale and memory
 
 The model is built eagerly: `read_path` reads the whole file and keeps every

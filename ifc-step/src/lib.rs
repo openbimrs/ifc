@@ -14,11 +14,13 @@
 
 pub mod codec;
 pub mod error;
+mod index;
 mod parser;
 mod writer;
 
 pub use codec::{StepCodec, StepReader};
 pub use error::StepError;
+pub use index::Index;
 pub use openbim_step::is_step_file;
 /// Malformed-record policy, re-exported so consumers need not depend on
 /// `openbim-step` directly to configure a reader.

@@ -16,6 +16,11 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-step`: `Index` reads a file without decoding it. `Index::scan` keeps
+  only record boundaries and type names, so a 529 MB export with 9,000,008
+  records is indexed in 0.66 s holding 206 MB against 18.2 s and 2366 MB for
+  a full parse. `Index::entity` decodes one record on request and
+  `materialize_closure` builds a self-contained `Model` from a subset.
 - `benchmarks/`: parse cost measured against ifc-lite and ifcopenshell
   on identical 1 MB to 513 MB files, all three agreeing on entity count.
   At 513 MB / 9M entities: 18.16 s and 2366 MB here, 17.14 s and 2750 MB

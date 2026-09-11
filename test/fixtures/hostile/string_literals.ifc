@@ -1,0 +1,16 @@
+ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION((''),'2;1');
+FILE_NAME('hostile.ifc','2026-01-01T00:00:00',(''),(''),'','','');
+FILE_SCHEMA(('IFC4'));
+ENDSEC;
+DATA;
+#1=IFCPERSON($,'Semi;colon',$,$,$,$,$,$);
+#2=IFCORGANIZATION($,'Hash#27#sign',$,$,$);
+#3=IFCPERSONANDORGANIZATION(#1,#2,$);
+#4=IFCAPPLICATION(#2,'1','app','app');
+#5=IFCOWNERHISTORY(#3,#4,$,.ADDED.,$,$,$,0);
+#6=IFCPROJECT('0000000000000000000000',#5,'It''s a (test);',$,$,$,$,$,$);
+#7=IFCSITE('1111111111111111111111',#5,'#99=IFCFAKE(',$,$,$,$,$,.ELEMENT.,$,$,$,$,$);
+ENDSEC;
+END-ISO-10303-21;
