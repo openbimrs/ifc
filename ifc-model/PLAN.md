@@ -32,10 +32,12 @@ owner and expose a public symbol only through an intentional parent re-export.
 
 - [ ] `MODEL-INV` - implement and benchmark a coherent reverse-reference index; prove insert/update/remove behavior
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
+  - Audited 2026-09-12: INDEX-TYPE, INDEX-REV and INDEX-MUT are implemented and tested (see src/index/PLAN.md). Still open because INDEX-PERF has no committed memory/build/query baseline for this module.
 - [x] `MODEL-MUT` - add transactional authoring operations without domain setters
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
 - [ ] `MODEL-TRV` - make traversal budgets and cycle reports reusable by projections
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
+  - Audited 2026-09-12: budgets and cycle reports exist and pass tests/traversal_budget.rs (9 tests). Still open on reusable-by-projections: no projection crate (spatial, systems, structural, geometry, classification) consumes traverse:: yet.
 - [ ] `MODEL-PRV` - design optional source/provenance side tables without changing Entity
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
 - [ ] `MODEL-PERF` - record memory/lookup baselines before changing storage layout
