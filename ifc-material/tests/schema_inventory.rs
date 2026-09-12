@@ -5,7 +5,7 @@ use ifc_material::{
 
 #[test]
 fn pins_complete_ifc4_material_resource_declaration_inventory() {
-    assert_eq!(IFC4_MATERIAL_RESOURCE_ENTITIES.len(), 18);
+    assert_eq!(IFC4_MATERIAL_RESOURCE_ENTITIES.len(), 19);
     assert_eq!(IFC4_MATERIAL_RESOURCE_TYPES.len(), 4);
     for required in [
         "IFCMATERIAL",

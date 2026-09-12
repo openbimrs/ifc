@@ -50,6 +50,7 @@ mod artifact;
 pub mod attribute;
 #[cfg(feature = "ifc4")]
 mod bundled;
+pub mod completeness;
 pub mod entity;
 #[cfg(feature = "ifc4")]
 pub mod export;

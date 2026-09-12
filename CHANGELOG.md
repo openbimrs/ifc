@@ -147,6 +147,10 @@ and this project follows Semantic Versioning.
   `IfcFirstProjAxis`, `IfcSecondProjAxis` (all `transform`).
 
 ### Fixed
+- `ifc-material`: the published MaterialResource inventory was missing
+  `IfcMaterialDefinitionRepresentation`. A new completeness check derives
+  the expected set from the normative EXPRESS schema, so a short list now
+  fails instead of asserting its own length.
 
 - CI now runs the schema-backed tests. `references/ifc-spec` is not
   committed (CC BY-ND 4.0), so every test loading it silently skipped --

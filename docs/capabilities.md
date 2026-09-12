@@ -35,14 +35,14 @@ code.
 | `ifc-template-catalog` | 2,726 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-resource` | 2,647 | 29 | 9 | 9 | <span class="status-partial">Partial</span> |
 | `ifc-validate` | 2,493 | 23 | 0 | 2 | <span class="status-implemented">Implemented</span> |
-| `ifc-material` | 2,398 | 24 | 0 | 8 | <span class="status-implemented">Implemented</span> |
+| `ifc-material` | 2,399 | 24 | 0 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-classification` | 2,203 | 20 | 4 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 2,001 | 16 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-schedule` | 1,691 | 24 | 14 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 1,586 | 20 | 5 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-georef` | 1,423 | 18 | 9 | 2 | <span class="status-partial">Partial</span> |
-| `ifc-schema` | 1,306 | 11 | 4 | 4 | <span class="status-implemented">Implemented</span> |
+| `ifc-schema` | 1,404 | 12 | 4 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,230 | 6 | 0 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-spatial` | 1,122 | 9 | 1 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 1,045 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |

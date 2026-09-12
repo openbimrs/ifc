@@ -11,3 +11,6 @@ description = "Material definitions: layer sets, profile sets, constituents, usa
 [dependencies]
 ifc-model.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+ifc-schema.workspace = true
