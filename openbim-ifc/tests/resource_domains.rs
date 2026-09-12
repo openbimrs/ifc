@@ -1,3 +1,5 @@
+//! Facade wiring: construction resource domain re-exports.
+
 #![cfg(all(
     feature = "step",
     feature = "classification",

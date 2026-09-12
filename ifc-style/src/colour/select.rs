@@ -5,12 +5,19 @@ use ifc_model::{EntityId, Value};
 use crate::error::{StyleError, StyleResult};
 use crate::view::Record;
 
+/// One resolved member of the `IfcColourOrFactor` select.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ColourOrFactor {
+    /// A reference to an `IfcColourSpecification` or `IfcPreDefinedColour`.
     Colour(EntityId),
+    /// A bare normalized scalar in `[0, 1]`, used directly as a factor
+    /// rather than looked up as a colour entity.
     Factor(f64),
 }
 
+/// Reads an optional `IfcColourOrFactor` attribute, distinguishing a colour
+/// reference from a scalar factor. Returns `Ok(None)` when the attribute is
+/// absent (this select is always optional in its IFC usages).
 pub(crate) fn optional_colour_or_factor(
     record: &Record<'_, '_>,
     attribute: &'static str,

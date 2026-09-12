@@ -1,3 +1,5 @@
+//! Authoring API round-trips: draft in, projected view out.
+
 use ifc_material::{
     associate_material, create_layer, create_layer_set, create_material, LayerDraft, LayerSetDraft,
     LogicalValue, MaterialAssignmentDraft, MaterialDraft, MaterialView,

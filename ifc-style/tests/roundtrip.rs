@@ -1,3 +1,5 @@
+//! STEP round-trip integration tests for presentation styling.
+
 use ifc_model::Codec;
 use ifc_schema::ifc4;
 use ifc_step::StepCodec;

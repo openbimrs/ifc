@@ -109,3 +109,6 @@ domains = [
     "spatial",
 ]
 full = ["codecs", "schema", "domains", "property-catalog", "material-templates", "geometry", "georef", "alignment"]
+
+[lints]
+workspace = true

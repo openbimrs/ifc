@@ -1,3 +1,5 @@
+//! Cross-schema (IFC2x3/IFC4/IFC4X3) integration tests for style projections.
+
 use ifc_model::{Entity, Model, Value};
 use ifc_schema::{ifc2x3, ifc4, ifc4x3, Schema};
 use ifc_style::{AnnotationType, ColourOrFactor, StyleView};

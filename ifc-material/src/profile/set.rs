@@ -8,10 +8,12 @@ use crate::MaterialResult;
 borrowed_entity!(MaterialProfileSet, "IFCMATERIALPROFILESET");
 
 impl<'m> MaterialProfileSet<'m> {
+    /// `IfcMaterialProfileSet.Name`, if given.
     pub fn name(self) -> MaterialResult<Option<&'m str>> {
         optional_text("IFCMATERIALPROFILESET", self.id(), self.entity(), 0, "Name")
     }
 
+    /// `IfcMaterialProfileSet.Description`, if given.
     pub fn description(self) -> MaterialResult<Option<&'m str>> {
         optional_text(
             "IFCMATERIALPROFILESET",
@@ -22,6 +24,8 @@ impl<'m> MaterialProfileSet<'m> {
         )
     }
 
+    /// `IfcMaterialProfileSet.MaterialProfiles`, in set order. Required
+    /// and must be non-empty.
     pub fn profile_ids(self) -> MaterialResult<Vec<EntityId>> {
         required_refs(
             "IFCMATERIALPROFILESET",
@@ -33,6 +37,7 @@ impl<'m> MaterialProfileSet<'m> {
         )
     }
 
+    /// `IfcMaterialProfileSet.CompositeProfile`, if given.
     pub fn composite_profile_id(self) -> MaterialResult<Option<EntityId>> {
         optional_ref(
             "IFCMATERIALPROFILESET",
@@ -45,6 +50,7 @@ impl<'m> MaterialProfileSet<'m> {
 }
 
 impl<'m> MaterialView<'m> {
+    /// Iterates every `IfcMaterialProfileSet` instance in the model.
     pub fn profile_sets(self) -> impl Iterator<Item = MaterialProfileSet<'m>> + 'm {
         self.model()
             .of_type("IFCMATERIALPROFILESET")

@@ -8,6 +8,8 @@ use crate::{MaterialError, MaterialResult};
 borrowed_entity!(MaterialLayerSet, "IFCMATERIALLAYERSET");
 
 impl<'m> MaterialLayerSet<'m> {
+    /// `IfcMaterialLayerSet.MaterialLayers`, in set order. Required and
+    /// must be non-empty.
     pub fn layer_ids(self) -> MaterialResult<Vec<EntityId>> {
         required_refs(
             "IFCMATERIALLAYERSET",
@@ -19,6 +21,7 @@ impl<'m> MaterialLayerSet<'m> {
         )
     }
 
+    /// `IfcMaterialLayerSet.LayerSetName`, if given.
     pub fn name(self) -> MaterialResult<Option<&'m str>> {
         optional_text(
             "IFCMATERIALLAYERSET",
@@ -29,6 +32,7 @@ impl<'m> MaterialLayerSet<'m> {
         )
     }
 
+    /// `IfcMaterialLayerSet.Description`, if given.
     pub fn description(self) -> MaterialResult<Option<&'m str>> {
         optional_text(
             "IFCMATERIALLAYERSET",
@@ -41,6 +45,7 @@ impl<'m> MaterialLayerSet<'m> {
 }
 
 impl<'m> MaterialView<'m> {
+    /// Iterates every `IfcMaterialLayerSet` instance in the model.
     pub fn layer_sets(self) -> impl Iterator<Item = MaterialLayerSet<'m>> + 'm {
         self.model()
             .of_type("IFCMATERIALLAYERSET")

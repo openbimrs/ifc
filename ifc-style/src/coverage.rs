@@ -4,28 +4,48 @@
 //! declarations and structural-only entities remain available through lower layers,
 //! but are deliberately not advertised as typed style contracts.
 
+/// The syntactic kind of an IFC4 ADD2 presentation-appearance schema
+/// declaration: an entity, a defined/select type, or a global rule function.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppearanceKind {
+    /// An `ENTITY` declaration.
     Entity,
+    /// A `TYPE` declaration (defined type or select).
     Type,
+    /// A global `FUNCTION` rule (e.g. `IfcCorrectFillAreaStyle`).
     Function,
 }
 
+/// How thoroughly this crate exposes a given IFC4 ADD2 presentation-appearance
+/// schema declaration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppearanceSupport {
+    /// Exposed as a dedicated typed `*View`/projection struct in this crate.
     StrictView,
+    /// Read as a raw schema-level value (e.g. an enum token) without a
+    /// dedicated view type.
     SchemaValue,
+    /// A schema-defined global rule; not something this crate evaluates.
     SchemaRule,
+    /// Present in the schema but consumed only structurally (e.g. as an
+    /// intermediate select member), with no standalone typed contract.
     StructuralOnly,
 }
 
+/// One census entry: an IFC4 ADD2 presentation-appearance schema declaration
+/// paired with how this crate supports it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AppearanceDeclaration {
+    /// The schema declaration's name, e.g. `"IfcSurfaceStyle"`.
     pub name: &'static str,
+    /// Whether the declaration is an entity, type, or function.
     pub kind: AppearanceKind,
+    /// How thoroughly this crate supports the declaration.
     pub support: AppearanceSupport,
 }
 
+/// The full, test-verified census of IFC4 ADD2 presentation-appearance
+/// schema declarations and how this crate supports each one.
 pub const APPEARANCE_DECLARATIONS: &[AppearanceDeclaration] = &[
     AppearanceDeclaration {
         name: "IfcBlobTexture",

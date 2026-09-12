@@ -1,3 +1,5 @@
+//! Malformed enum, cardinal, and select attributes surface as typed errors.
+
 use ifc_material::{MaterialError, MaterialView};
 use ifc_model::{Entity, EntityId, Model, Value};
 

@@ -1,3 +1,5 @@
+//! Facade wiring: material plus geometry-select features together.
+
 #![cfg(all(feature = "material", feature = "geometry-select"))]
 
 use ifc::geometry::MaterialProfileGeometry;

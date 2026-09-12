@@ -1,3 +1,5 @@
+//! Material assignment resolution: direct vs. type-inherited, and ambiguity.
+
 use ifc_material::{AssignmentSource, MaterialDefinition, MaterialView, ResolvedMaterialSelect};
 use ifc_model::{Entity, EntityId, Model, Value};
 

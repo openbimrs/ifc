@@ -1,3 +1,5 @@
+//! Strict decoding: missing/wrong-typed attributes fail rather than default.
+
 use ifc_material::{MaterialError, MaterialView};
 use ifc_model::{Entity, EntityId, Model, Value};
 

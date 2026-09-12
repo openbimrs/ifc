@@ -1,3 +1,5 @@
+//! Facade wiring: material template catalog access.
+
 #![cfg(feature = "material-templates")]
 
 use ifc::material::MaterialView;

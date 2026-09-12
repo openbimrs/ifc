@@ -1,3 +1,5 @@
+//! Facade wiring: material domain read through the STEP codec.
+
 #![cfg(all(feature = "step", feature = "material"))]
 
 use ifc::material::{LayerSetDirection, MaterialView};

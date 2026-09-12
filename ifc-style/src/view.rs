@@ -22,19 +22,24 @@ pub struct StyleView<'m, 's> {
 }
 
 impl<'m, 's> StyleView<'m, 's> {
+    /// Bind a schema-resolved view over `model` using `schema`'s attribute
+    /// layout and type hierarchy.
     #[must_use]
     pub fn new(model: &'m Model, schema: &'s Schema) -> Self {
         Self { model, schema }
     }
 
+    /// Project entity `id` as an `IfcAnnotation`.
     pub fn annotation(&self, id: EntityId) -> StyleResult<Annotation<'m, 's>> {
         Annotation::from_record(self.record(id, "IfcAnnotation")?)
     }
 
+    /// Project entity `id` as an `IfcTextLiteral`.
     pub fn text_literal(&self, id: EntityId) -> StyleResult<TextLiteral<'m, 's>> {
         TextLiteral::from_record(self.record(id, "IfcTextLiteral")?)
     }
 
+    /// Project entity `id` as an `IfcTextLiteralWithExtent`.
     pub fn text_literal_with_extent(
         &self,
         id: EntityId,
@@ -42,36 +47,43 @@ impl<'m, 's> StyleView<'m, 's> {
         TextLiteralWithExtent::from_record(self.record(id, "IfcTextLiteralWithExtent")?)
     }
 
+    /// Project entity `id` as an `IfcAnnotationFillArea`.
     pub fn annotation_fill_area(&self, id: EntityId) -> StyleResult<AnnotationFillArea<'m, 's>> {
         AnnotationFillArea::from_record(self.record(id, "IfcAnnotationFillArea")?)
     }
 
+    /// Project entity `id` as an `IfcColourRgb`.
     pub fn colour_rgb(&self, id: EntityId) -> StyleResult<ColourRgb<'m, 's>> {
         Ok(ColourRgb::from_record(self.record(id, "IfcColourRgb")?))
     }
 
+    /// Project entity `id` as an `IfcSurfaceStyleShading`.
     pub fn surface_style_shading(&self, id: EntityId) -> StyleResult<SurfaceStyleShading<'m, 's>> {
         Ok(SurfaceStyleShading::from_record(
             self.record(id, "IfcSurfaceStyleShading")?,
         ))
     }
 
+    /// Project entity `id` as an `IfcSurfaceStyle`.
     pub fn surface_style(&self, id: EntityId) -> StyleResult<SurfaceStyle<'m, 's>> {
         Ok(SurfaceStyle::from_record(
             self.record(id, "IfcSurfaceStyle")?,
         ))
     }
 
+    /// Project entity `id` as an `IfcStyledItem`.
     pub fn styled_item(&self, id: EntityId) -> StyleResult<StyledItem<'m, 's>> {
         Ok(StyledItem::from_record(self.record(id, "IfcStyledItem")?))
     }
 
+    /// Project entity `id` as an `IfcPresentationLayerAssignment`.
     pub fn presentation_layer(&self, id: EntityId) -> StyleResult<PresentationLayer<'m, 's>> {
         Ok(PresentationLayer::from_record(
             self.record(id, "IfcPresentationLayerAssignment")?,
         ))
     }
 
+    /// Project entity `id` as an `IfcSurfaceStyleRendering`.
     pub fn surface_style_rendering(
         &self,
         id: EntityId,
@@ -81,16 +93,19 @@ impl<'m, 's> StyleView<'m, 's> {
         ))
     }
 
+    /// Project entity `id` as an `IfcCurveStyle`.
     pub fn curve_style(&self, id: EntityId) -> StyleResult<CurveStyle<'m, 's>> {
         Ok(CurveStyle::from_record(self.record(id, "IfcCurveStyle")?))
     }
 
+    /// Project entity `id` as an `IfcFillAreaStyle`.
     pub fn fill_area_style(&self, id: EntityId) -> StyleResult<FillAreaStyle<'m, 's>> {
         Ok(FillAreaStyle::from_record(
             self.record(id, "IfcFillAreaStyle")?,
         ))
     }
 
+    /// Project entity `id` as an `IfcFillAreaStyleHatching`.
     pub fn fill_area_style_hatching(
         &self,
         id: EntityId,
@@ -100,46 +115,54 @@ impl<'m, 's> StyleView<'m, 's> {
         ))
     }
 
+    /// Project entity `id` as an `IfcFillAreaStyleTiles`.
     pub fn fill_area_style_tiles(&self, id: EntityId) -> StyleResult<FillAreaStyleTiles<'m, 's>> {
         Ok(FillAreaStyleTiles::from_record(
             self.record(id, "IfcFillAreaStyleTiles")?,
         ))
     }
 
+    /// Project entity `id` as an `IfcSurfaceTexture`.
     pub fn surface_texture(&self, id: EntityId) -> StyleResult<SurfaceTexture<'m, 's>> {
         Ok(SurfaceTexture::from_record(
             self.record(id, "IfcSurfaceTexture")?,
         ))
     }
 
+    /// Project entity `id` as an `IfcImageTexture`.
     pub fn image_texture(&self, id: EntityId) -> StyleResult<ImageTexture<'m, 's>> {
         Ok(ImageTexture::from_record(
             self.record(id, "IfcImageTexture")?,
         ))
     }
 
+    /// Project entity `id` as an `IfcTextureCoordinate`.
     pub fn texture_coordinate(&self, id: EntityId) -> StyleResult<TextureCoordinate<'m, 's>> {
         Ok(TextureCoordinate::from_record(
             self.record(id, "IfcTextureCoordinate")?,
         ))
     }
 
+    /// Project entity `id` as an `IfcIndexedTextureMap`.
     pub fn indexed_texture_map(&self, id: EntityId) -> StyleResult<IndexedTextureMap<'m, 's>> {
         Ok(IndexedTextureMap::from_record(
             self.record(id, "IfcIndexedTextureMap")?,
         ))
     }
 
+    /// Project entity `id` as an `IfcTextStyle`.
     pub fn text_style(&self, id: EntityId) -> StyleResult<TextStyle<'m, 's>> {
         Ok(TextStyle::from_record(self.record(id, "IfcTextStyle")?))
     }
 
+    /// Project entity `id` as an `IfcTextStyleFontModel`.
     pub fn text_style_font_model(&self, id: EntityId) -> StyleResult<TextStyleFontModel<'m, 's>> {
         Ok(TextStyleFontModel::from_record(
             self.record(id, "IfcTextStyleFontModel")?,
         ))
     }
 
+    /// Project entity `id` as an IFC2x3 `IfcPresentationStyleAssignment`.
     pub fn presentation_style_assignment(
         &self,
         id: EntityId,
@@ -149,6 +172,7 @@ impl<'m, 's> StyleView<'m, 's> {
         ))
     }
 
+    /// Project entity `id` as an `IfcSurfaceStyleLighting`.
     pub fn surface_style_lighting(
         &self,
         id: EntityId,
@@ -158,6 +182,7 @@ impl<'m, 's> StyleView<'m, 's> {
         ))
     }
 
+    /// Project entity `id` as an `IfcSurfaceStyleRefraction`.
     pub fn surface_style_refraction(
         &self,
         id: EntityId,
@@ -167,6 +192,7 @@ impl<'m, 's> StyleView<'m, 's> {
         ))
     }
 
+    /// Project entity `id` as an `IfcSurfaceStyleWithTextures`.
     pub fn surface_style_with_textures(
         &self,
         id: EntityId,
@@ -176,12 +202,14 @@ impl<'m, 's> StyleView<'m, 's> {
         ))
     }
 
+    /// Project entity `id` as an `IfcCurveStyleFont`.
     pub fn curve_style_font(&self, id: EntityId) -> StyleResult<CurveStyleFont<'m, 's>> {
         Ok(CurveStyleFont::from_record(
             self.record(id, "IfcCurveStyleFont")?,
         ))
     }
 
+    /// Project entity `id` as an `IfcCurveStyleFontPattern`.
     pub fn curve_style_font_pattern(
         &self,
         id: EntityId,
@@ -191,22 +219,26 @@ impl<'m, 's> StyleView<'m, 's> {
         ))
     }
 
+    /// Project entity `id` as an `IfcBlobTexture`.
     pub fn blob_texture(&self, id: EntityId) -> StyleResult<BlobTexture<'m, 's>> {
         Ok(BlobTexture::from_record(self.record(id, "IfcBlobTexture")?))
     }
 
+    /// Project entity `id` as an `IfcPixelTexture`.
     pub fn pixel_texture(&self, id: EntityId) -> StyleResult<PixelTexture<'m, 's>> {
         Ok(PixelTexture::from_record(
             self.record(id, "IfcPixelTexture")?,
         ))
     }
 
+    /// Project entity `id` as an `IfcTextureVertex`.
     pub fn texture_vertex(&self, id: EntityId) -> StyleResult<TextureVertex<'m, 's>> {
         Ok(TextureVertex::from_record(
             self.record(id, "IfcTextureVertex")?,
         ))
     }
 
+    /// Project entity `id` as an `IfcTextureVertexList`.
     pub fn texture_vertex_list(&self, id: EntityId) -> StyleResult<TextureVertexList<'m, 's>> {
         Ok(TextureVertexList::from_record(
             self.record(id, "IfcTextureVertexList")?,

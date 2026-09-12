@@ -10,6 +10,7 @@ use crate::{DirectionSense, LayerSetDirection, MaterialError, MaterialResult};
 borrowed_entity!(MaterialLayerSetUsage, "IFCMATERIALLAYERSETUSAGE");
 
 impl MaterialLayerSetUsage<'_> {
+    /// `IfcMaterialLayerSetUsage.ForLayerSet`. Required.
     pub fn layer_set_id(self) -> MaterialResult<EntityId> {
         required_ref(
             "IFCMATERIALLAYERSETUSAGE",
@@ -20,6 +21,7 @@ impl MaterialLayerSetUsage<'_> {
         )
     }
 
+    /// `IfcMaterialLayerSetUsage.LayerSetDirection`. Required.
     pub fn layer_set_direction(self) -> MaterialResult<LayerSetDirection> {
         let token = required_enum(
             "IFCMATERIALLAYERSETUSAGE",
@@ -36,6 +38,7 @@ impl MaterialLayerSetUsage<'_> {
         })
     }
 
+    /// `IfcMaterialLayerSetUsage.DirectionSense`. Required.
     pub fn direction_sense(self) -> MaterialResult<DirectionSense> {
         let token = required_enum(
             "IFCMATERIALLAYERSETUSAGE",
@@ -52,6 +55,7 @@ impl MaterialLayerSetUsage<'_> {
         })
     }
 
+    /// `IfcMaterialLayerSetUsage.OffsetFromReferenceLine`. Required.
     pub fn offset_from_reference_line(self) -> MaterialResult<f64> {
         required_number(
             "IFCMATERIALLAYERSETUSAGE",
@@ -62,6 +66,8 @@ impl MaterialLayerSetUsage<'_> {
         )
     }
 
+    /// `IfcMaterialLayerSetUsage.ReferenceExtent`, if given. Must be
+    /// strictly positive when present.
     pub fn reference_extent(self) -> MaterialResult<Option<f64>> {
         let value = optional_number(
             "IFCMATERIALLAYERSETUSAGE",
@@ -83,6 +89,7 @@ impl MaterialLayerSetUsage<'_> {
 }
 
 impl<'m> MaterialView<'m> {
+    /// Iterates every `IfcMaterialLayerSetUsage` instance in the model.
     pub fn layer_set_usages(self) -> impl Iterator<Item = MaterialLayerSetUsage<'m>> + 'm {
         self.model()
             .of_type("IFCMATERIALLAYERSETUSAGE")

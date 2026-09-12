@@ -1,3 +1,5 @@
+//! Integration tests for the style authoring (transaction-staging) API.
+
 use ifc_model::{Entity, Model, Transaction};
 use ifc_schema::{ifc2x3, ifc4, ifc4x3};
 use ifc_style::{

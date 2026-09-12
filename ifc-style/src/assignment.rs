@@ -23,7 +23,9 @@ pub use styled_item::StyledItem;
 /// One member of IFC2x3/IFC4's legacy presentation-style select.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PresentationStyleMember {
+    /// A reference to an `IfcPresentationStyle`.
     Style(EntityId),
+    /// The `IfcNullStyle.NULL` sentinel: this slot deliberately carries no style.
     Null,
 }
 

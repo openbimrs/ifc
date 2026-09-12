@@ -5,6 +5,9 @@ use ifc_model::EntityId;
 use crate::error::StyleResult;
 use crate::view::Record;
 
+/// Borrowed projection of `IfcSurfaceStyleShading` (and its
+/// `IfcSurfaceStyleRendering` subtype, whose extra attributes live in
+/// [`crate::SurfaceStyleRendering`]).
 #[derive(Debug, Clone, Copy)]
 pub struct SurfaceStyleShading<'m, 's> {
     record: Record<'m, 's>,
@@ -15,6 +18,7 @@ impl<'m, 's> SurfaceStyleShading<'m, 's> {
         Self { record }
     }
 
+    /// The `SurfaceColour` attribute. Mandatory.
     pub fn surface_colour(&self) -> StyleResult<EntityId> {
         self.record.required_ref("SurfaceColour", "IfcColourRgb")
     }

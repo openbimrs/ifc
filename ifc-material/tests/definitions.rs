@@ -1,3 +1,5 @@
+//! `IfcMaterial`/constituent/list identity and resolution tests.
+
 use ifc_material::{MaterialDefinition, MaterialView, ResolvedMaterialSelect};
 use ifc_model::{Entity, EntityId, Model, Value};
 

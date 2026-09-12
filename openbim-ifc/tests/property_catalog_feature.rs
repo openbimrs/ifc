@@ -1,3 +1,5 @@
+//! Facade wiring: property catalog feature surface.
+
 #![cfg(feature = "property-catalog")]
 
 #[test]

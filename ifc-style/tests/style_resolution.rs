@@ -1,3 +1,5 @@
+//! Integration tests for direct-item and presentation-layer style resolution.
+
 use ifc_model::{Entity, Model, Value};
 use ifc_schema::{ifc2x3, ifc4};
 use ifc_style::{PresentationStyleMember, StyleError, StyleSource, StyleView, SurfaceSide};

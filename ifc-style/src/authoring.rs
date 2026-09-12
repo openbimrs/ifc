@@ -9,40 +9,71 @@ use crate::annotation::{AnnotationType, BoxAlignment, TextPath};
 use crate::error::{StyleError, StyleResult};
 use crate::surface_style::{duplicate_surface_element_category, SURFACE_STYLE_ELEMENT_MEMBERS};
 
+/// Draft input for [`create_annotation`]: the writable attributes of a new
+/// `IfcAnnotation`.
 #[derive(Debug, Clone, Default)]
 pub struct AnnotationDraft<'a> {
+    /// The `GlobalId` (IFC GUID); must parse as a valid base64-like GUID.
     pub global_id: &'a str,
+    /// The `OwnerHistory` reference, when supplied.
     pub owner_history: Option<EntityId>,
+    /// The `Name` attribute, when supplied.
     pub name: Option<&'a str>,
+    /// The `Description` attribute, when supplied.
     pub description: Option<&'a str>,
+    /// The `ObjectType` attribute. Required (non-empty) when `predefined_type`
+    /// is `AnnotationType::UserDefined`.
     pub object_type: Option<&'a str>,
+    /// The `ObjectPlacement` reference, when supplied.
     pub object_placement: Option<EntityId>,
+    /// The `Representation` reference, when supplied.
     pub representation: Option<EntityId>,
+    /// The IFC4X3 `PredefinedType`, when supplied.
     pub predefined_type: Option<AnnotationType>,
 }
 
+/// Draft input for [`create_text_literal`]: the writable attributes of a new
+/// `IfcTextLiteral`.
 #[derive(Debug, Clone, Copy)]
 pub struct TextLiteralDraft<'a> {
+    /// The `Literal` attribute; must be non-empty.
     pub literal: &'a str,
+    /// The `Placement` reference to an `IfcPlacement`.
     pub placement: EntityId,
+    /// The `Path` attribute.
     pub path: TextPath,
 }
 
+/// Draft input for [`create_text_literal_with_extent`]: the writable
+/// attributes of a new `IfcTextLiteralWithExtent`.
 #[derive(Debug, Clone, Copy)]
 pub struct TextLiteralWithExtentDraft<'a> {
+    /// The `Literal` attribute; must be non-empty.
     pub literal: &'a str,
+    /// The `Placement` reference to an `IfcPlacement`.
     pub placement: EntityId,
+    /// The `Path` attribute.
     pub path: TextPath,
+    /// The `Extent` reference to an `IfcPlanarExtent`.
     pub extent: EntityId,
+    /// The `BoxAlignment` attribute.
     pub box_alignment: BoxAlignment,
 }
 
+/// Draft input for [`create_annotation_fill_area`]: the writable attributes
+/// of a new `IfcAnnotationFillArea`.
 #[derive(Debug, Clone)]
 pub struct AnnotationFillAreaDraft {
+    /// The `OuterBoundary` reference to an `IfcCurve`.
     pub outer_boundary: EntityId,
+    /// The `InnerBoundaries` references, if any; an empty list is written
+    /// as the IFC null value.
     pub inner_boundaries: Vec<EntityId>,
 }
 
+/// Stage a new `IfcAnnotation` in `tx`. Fails if `GlobalId` does not parse as
+/// a GUID, if `PredefinedType` is `USERDEFINED` with an empty `ObjectType`,
+/// or if any referenced entity does not resolve to its expected IFC type.
 pub fn create_annotation(
     tx: &mut Transaction,
     model: &Model,
@@ -96,6 +127,8 @@ pub fn create_annotation(
     Ok(tx.create(build_named(schema, "IfcAnnotation", values)?))
 }
 
+/// Stage a new `IfcTextLiteral` in `tx`. Fails if `literal` is empty or
+/// `placement` does not resolve to an `IfcPlacement`.
 pub fn create_text_literal(
     tx: &mut Transaction,
     model: &Model,
@@ -117,6 +150,8 @@ pub fn create_text_literal(
     )?))
 }
 
+/// Stage a new `IfcTextLiteralWithExtent` in `tx`. Fails if `literal` is
+/// empty, or if `placement`/`extent` do not resolve to their expected types.
 pub fn create_text_literal_with_extent(
     tx: &mut Transaction,
     model: &Model,
@@ -146,6 +181,8 @@ pub fn create_text_literal_with_extent(
     )?))
 }
 
+/// Stage a new `IfcAnnotationFillArea` in `tx`. Fails if `outer_boundary` or
+/// any of `inner_boundaries` does not resolve to an `IfcCurve`.
 pub fn create_annotation_fill_area(
     tx: &mut Transaction,
     model: &Model,
@@ -290,46 +327,83 @@ fn invalid_authoring(
     }
 }
 
+/// Draft input for [`create_colour_rgb`]: the writable attributes of a new
+/// `IfcColourRgb`.
 #[derive(Debug, Clone, Copy)]
 pub struct ColourRgbDraft<'a> {
+    /// The `Name` attribute, when supplied.
     pub name: Option<&'a str>,
+    /// The `Red` channel; must be a finite value in `[0, 1]`.
     pub red: f64,
+    /// The `Green` channel; must be a finite value in `[0, 1]`.
     pub green: f64,
+    /// The `Blue` channel; must be a finite value in `[0, 1]`.
     pub blue: f64,
 }
 
+/// Draft input for [`create_surface_style_shading`]: the writable attributes
+/// of a new `IfcSurfaceStyleShading`.
 #[derive(Debug, Clone, Copy)]
 pub struct SurfaceStyleShadingDraft {
+    /// The `SurfaceColour` reference to an `IfcColourRgb`.
     pub surface_colour: EntityId,
+    /// The `Transparency` factor, when supplied; must be a finite value in
+    /// `[0, 1]`.
     pub transparency: Option<f64>,
 }
 
+/// Draft input for [`create_surface_style`]: the writable attributes of a
+/// new `IfcSurfaceStyle`.
 #[derive(Debug, Clone)]
 pub struct SurfaceStyleDraft<'a> {
+    /// The `Name` attribute, when supplied.
     pub name: Option<&'a str>,
+    /// The `Side` attribute.
     pub side: crate::SurfaceSide,
+    /// The `Styles` elements: one to five references, no two from the same
+    /// surface-style element category (shading, lighting, refraction,
+    /// textures, externally defined).
     pub elements: Vec<EntityId>,
 }
 
+/// Draft input for [`create_styled_item`]: the writable attributes of a new
+/// `IfcStyledItem`.
 #[derive(Debug, Clone)]
 pub struct StyledItemDraft<'a> {
+    /// The `Item` reference to an `IfcRepresentationItem`, when supplied.
     pub item: Option<EntityId>,
+    /// The `Styles` references; at least one is required. On IFC2x3 these
+    /// are wrapped in a staged `IfcPresentationStyleAssignment`.
     pub styles: Vec<EntityId>,
+    /// The `Name` attribute, when supplied.
     pub name: Option<&'a str>,
 }
 
+/// Draft input for [`create_presentation_layer_with_style`]: the writable
+/// attributes of a new `IfcPresentationLayerWithStyle`.
 #[derive(Debug, Clone)]
 pub struct PresentationLayerDraft<'a> {
+    /// The `Name` attribute; must be non-empty.
     pub name: &'a str,
+    /// The `Description` attribute, when supplied.
     pub description: Option<&'a str>,
+    /// The `AssignedItems` references; at least one is required, and each
+    /// must resolve to an `IfcRepresentation` or `IfcRepresentationItem`.
     pub assigned_items: Vec<EntityId>,
+    /// The `Identifier` attribute, when supplied.
     pub identifier: Option<&'a str>,
+    /// The `LayerOn` attribute, when supplied.
     pub layer_on: Option<bool>,
+    /// The `LayerFrozen` attribute, when supplied.
     pub layer_frozen: Option<bool>,
+    /// The `LayerBlocked` attribute, when supplied.
     pub layer_blocked: Option<bool>,
+    /// The `LayerStyles` references.
     pub layer_styles: Vec<EntityId>,
 }
 
+/// Stage a new `IfcColourRgb` in `tx`. Fails if any channel is not a finite
+/// value in `[0, 1]`.
 pub fn create_colour_rgb(
     tx: &mut Transaction,
     schema: &Schema,
@@ -348,6 +422,9 @@ pub fn create_colour_rgb(
     Ok(tx.create(build_named(schema, "IfcColourRgb", values)?))
 }
 
+/// Stage a new `IfcSurfaceStyleShading` in `tx`. Fails if `surface_colour`
+/// does not resolve to an `IfcColourRgb`, or `transparency` is not a finite
+/// value in `[0, 1]`.
 pub fn create_surface_style_shading(
     tx: &mut Transaction,
     model: &Model,
@@ -365,6 +442,9 @@ pub fn create_surface_style_shading(
     Ok(tx.create(build_named(schema, "IfcSurfaceStyleShading", values)?))
 }
 
+/// Stage a new `IfcSurfaceStyle` in `tx`. Fails if `elements` is empty,
+/// exceeds five members, contains two members from the same surface-style
+/// element category, or any member does not resolve to its expected type.
 pub fn create_surface_style(
     tx: &mut Transaction,
     model: &Model,
@@ -401,6 +481,9 @@ pub fn create_surface_style(
     Ok(tx.create(build_named(schema, "IfcSurfaceStyle", values)?))
 }
 
+/// Stage a new `IfcStyledItem` in `tx`. Fails if `styles` is empty, `item`
+/// does not resolve to an `IfcRepresentationItem`, or a style does not
+/// resolve to its expected type for the target schema version.
 pub fn create_styled_item(
     tx: &mut Transaction,
     model: &Model,
@@ -441,6 +524,9 @@ pub fn create_styled_item(
     Ok(id)
 }
 
+/// Stage a new `IfcPresentationLayerWithStyle` in `tx`. Fails if `name` is
+/// empty, `assigned_items` is empty, or any assigned item or layer style
+/// does not resolve to its expected type.
 pub fn create_presentation_layer_with_style(
     tx: &mut Transaction,
     model: &Model,

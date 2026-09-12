@@ -51,14 +51,19 @@ fn positive_extent(
 macro_rules! usage_accessors {
     ($type:ident, $ifc_name:literal) => {
         impl $type<'_> {
+            /// `ForProfileSet`. Required.
             pub fn profile_set_id(self) -> MaterialResult<EntityId> {
                 required_ref($ifc_name, self.id(), self.entity(), 0, "ForProfileSet")
             }
 
+            /// `CardinalPoint`, if given. Must decode to a positive
+            /// `IfcCardinalPointReference`.
             pub fn cardinal_point(self) -> MaterialResult<Option<CardinalPointReference>> {
                 cardinal($ifc_name, self.id(), self.entity(), 1, "CardinalPoint")
             }
 
+            /// `ReferenceExtent`, if given. Must be strictly positive when
+            /// present.
             pub fn reference_extent(self) -> MaterialResult<Option<f64>> {
                 positive_extent($ifc_name, self.id(), self.entity())
             }
@@ -72,6 +77,7 @@ usage_accessors!(
 );
 
 impl MaterialProfileSetUsageTapering<'_> {
+    /// `IfcMaterialProfileSetUsageTapering.ForProfileEndSet`. Required.
     pub fn end_profile_set_id(self) -> MaterialResult<EntityId> {
         required_ref(
             "IFCMATERIALPROFILESETUSAGETAPERING",
@@ -82,6 +88,8 @@ impl MaterialProfileSetUsageTapering<'_> {
         )
     }
 
+    /// `IfcMaterialProfileSetUsageTapering.CardinalEndPoint`, if given.
+    /// Must decode to a positive `IfcCardinalPointReference`.
     pub fn cardinal_end_point(self) -> MaterialResult<Option<CardinalPointReference>> {
         cardinal(
             "IFCMATERIALPROFILESETUSAGETAPERING",
@@ -94,12 +102,15 @@ impl MaterialProfileSetUsageTapering<'_> {
 }
 
 impl<'m> MaterialView<'m> {
+    /// Iterates every `IfcMaterialProfileSetUsage` instance in the model.
     pub fn profile_set_usages(self) -> impl Iterator<Item = MaterialProfileSetUsage<'m>> + 'm {
         self.model()
             .of_type("IFCMATERIALPROFILESETUSAGE")
             .map(|(id, entity)| MaterialProfileSetUsage::from_known(id, entity))
     }
 
+    /// Iterates every `IfcMaterialProfileSetUsageTapering` instance in the
+    /// model.
     pub fn tapering_profile_set_usages(
         self,
     ) -> impl Iterator<Item = MaterialProfileSetUsageTapering<'m>> + 'm {

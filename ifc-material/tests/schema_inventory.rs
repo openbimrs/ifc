@@ -1,3 +1,5 @@
+//! Pins the size and parseability of the MaterialResource type inventories.
+
 use ifc_material::{
     CardinalPointReference, DirectionSense, LayerSetDirection, IFC4_MATERIAL_RESOURCE_ENTITIES,
     IFC4_MATERIAL_RESOURCE_TYPES,

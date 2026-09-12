@@ -1,3 +1,5 @@
+//! Facade wiring: structural plus geometry features together.
+
 #![cfg(all(
     feature = "structural",
     feature = "geometry-select",

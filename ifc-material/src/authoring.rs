@@ -12,38 +12,59 @@ use crate::{LogicalValue, MaterialError, MaterialResult};
 /// Authored identity fields for `IfcMaterial`.
 #[derive(Debug, Clone, Copy)]
 pub struct MaterialDraft<'a> {
+    /// `IfcMaterial.Name`.
     pub name: &'a str,
+    /// `IfcMaterial.Description`, if given.
     pub description: Option<&'a str>,
+    /// `IfcMaterial.Category`, if given.
     pub category: Option<&'a str>,
 }
 
 /// Authored fields for `IfcMaterialLayer`.
 #[derive(Debug, Clone, Copy)]
 pub struct LayerDraft<'a> {
+    /// `IfcMaterialLayer.Material`, an `IfcMaterial` reference, if given.
     pub material: Option<EntityId>,
+    /// `IfcMaterialLayer.LayerThickness`. Must be finite and non-negative.
     pub thickness: f64,
+    /// `IfcMaterialLayer.IsVentilated`, if given.
     pub is_ventilated: Option<LogicalValue>,
+    /// `IfcMaterialLayer.Name`, if given.
     pub name: Option<&'a str>,
+    /// `IfcMaterialLayer.Description`, if given.
     pub description: Option<&'a str>,
+    /// `IfcMaterialLayer.Category`, if given.
     pub category: Option<&'a str>,
+    /// `IfcMaterialLayer.Priority`, if given. Must be in `0..=100`.
     pub priority: Option<i64>,
 }
 
 /// Ordered composition fields for `IfcMaterialLayerSet`.
 #[derive(Debug, Clone, Copy)]
 pub struct LayerSetDraft<'a> {
+    /// `IfcMaterialLayerSet.MaterialLayers`, in set order. Must be non-empty.
     pub layers: &'a [EntityId],
+    /// `IfcMaterialLayerSet.Name`, if given.
     pub name: Option<&'a str>,
+    /// `IfcMaterialLayerSet.Description`, if given.
     pub description: Option<&'a str>,
 }
 
 /// Authored fields for `IfcRelAssociatesMaterial`.
 #[derive(Debug, Clone, Copy)]
 pub struct MaterialAssignmentDraft<'a> {
+    /// `IfcRelAssociatesMaterial.GlobalId`. Must be a valid IFC compressed
+    /// GUID.
     pub global_id: &'a str,
+    /// `IfcRelAssociatesMaterial.Name`, if given.
     pub name: Option<&'a str>,
+    /// `IfcRelAssociatesMaterial.Description`, if given.
     pub description: Option<&'a str>,
+    /// `IfcRelAssociatesMaterial.RelatedObjects`. Must be non-empty and
+    /// contain no duplicate references.
     pub related_objects: &'a [EntityId],
+    /// `IfcRelAssociatesMaterial.RelatingMaterial`, an `IfcMaterialSelect`
+    /// branch reference.
     pub relating_material: EntityId,
 }
 

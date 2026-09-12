@@ -8,6 +8,7 @@ use crate::{MaterialError, MaterialResult};
 borrowed_entity!(MaterialConstituent, "IFCMATERIALCONSTITUENT");
 
 impl<'m> MaterialConstituent<'m> {
+    /// `IfcMaterialConstituent.Name`, if given.
     pub fn name(self) -> MaterialResult<Option<&'m str>> {
         optional_text(
             "IFCMATERIALCONSTITUENT",
@@ -18,6 +19,7 @@ impl<'m> MaterialConstituent<'m> {
         )
     }
 
+    /// `IfcMaterialConstituent.Description`, if given.
     pub fn description(self) -> MaterialResult<Option<&'m str>> {
         optional_text(
             "IFCMATERIALCONSTITUENT",
@@ -28,6 +30,7 @@ impl<'m> MaterialConstituent<'m> {
         )
     }
 
+    /// `IfcMaterialConstituent.Material`. Required.
     pub fn material_id(self) -> MaterialResult<EntityId> {
         required_ref(
             "IFCMATERIALCONSTITUENT",
@@ -38,6 +41,8 @@ impl<'m> MaterialConstituent<'m> {
         )
     }
 
+    /// `IfcMaterialConstituent.Fraction`, if given. Must be in `0.0..=1.0`
+    /// when present.
     pub fn fraction(self) -> MaterialResult<Option<f64>> {
         let value = optional_number(
             "IFCMATERIALCONSTITUENT",
@@ -57,6 +62,7 @@ impl<'m> MaterialConstituent<'m> {
         Ok(value)
     }
 
+    /// `IfcMaterialConstituent.Category`, if given.
     pub fn category(self) -> MaterialResult<Option<&'m str>> {
         optional_text(
             "IFCMATERIALCONSTITUENT",
@@ -69,6 +75,7 @@ impl<'m> MaterialConstituent<'m> {
 }
 
 impl<'m> MaterialView<'m> {
+    /// Iterates every `IfcMaterialConstituent` instance in the model.
     pub fn constituents(self) -> impl Iterator<Item = MaterialConstituent<'m>> + 'm {
         self.model()
             .of_type("IFCMATERIALCONSTITUENT")

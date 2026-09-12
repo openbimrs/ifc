@@ -13,6 +13,8 @@ borrowed_entity!(MaterialList, "IFCMATERIALLIST");
 borrowed_entity!(MaterialRelationship, "IFCMATERIALRELATIONSHIP");
 
 impl MaterialClassificationRelationship<'_> {
+    /// `IfcMaterialClassificationRelationship.MaterialClassifications`.
+    /// Required and must be non-empty.
     pub fn classification_ids(self) -> MaterialResult<Vec<EntityId>> {
         required_refs(
             "IFCMATERIALCLASSIFICATIONRELATIONSHIP",
@@ -24,6 +26,7 @@ impl MaterialClassificationRelationship<'_> {
         )
     }
 
+    /// `IfcMaterialClassificationRelationship.ClassifiedMaterial`. Required.
     pub fn material_id(self) -> MaterialResult<EntityId> {
         required_ref(
             "IFCMATERIALCLASSIFICATIONRELATIONSHIP",
@@ -36,6 +39,8 @@ impl MaterialClassificationRelationship<'_> {
 }
 
 impl MaterialList<'_> {
+    /// `IfcMaterialList.Materials`, the ids of the constituent
+    /// `IfcMaterial` entities. Required and must be non-empty.
     pub fn material_ids(self) -> MaterialResult<Vec<EntityId>> {
         required_refs(
             "IFCMATERIALLIST",
@@ -49,6 +54,7 @@ impl MaterialList<'_> {
 }
 
 impl<'m> MaterialRelationship<'m> {
+    /// `IfcMaterialRelationship.Name`, if given.
     pub fn name(self) -> MaterialResult<Option<&'m str>> {
         optional_text(
             "IFCMATERIALRELATIONSHIP",
@@ -59,6 +65,7 @@ impl<'m> MaterialRelationship<'m> {
         )
     }
 
+    /// `IfcMaterialRelationship.Description`, if given.
     pub fn description(self) -> MaterialResult<Option<&'m str>> {
         optional_text(
             "IFCMATERIALRELATIONSHIP",
@@ -69,6 +76,7 @@ impl<'m> MaterialRelationship<'m> {
         )
     }
 
+    /// `IfcMaterialRelationship.RelatingMaterial`. Required.
     pub fn relating_material_id(self) -> MaterialResult<EntityId> {
         required_ref(
             "IFCMATERIALRELATIONSHIP",
@@ -79,6 +87,8 @@ impl<'m> MaterialRelationship<'m> {
         )
     }
 
+    /// `IfcMaterialRelationship.RelatedMaterials`. Required and must be
+    /// non-empty.
     pub fn related_material_ids(self) -> MaterialResult<Vec<EntityId>> {
         required_refs(
             "IFCMATERIALRELATIONSHIP",
@@ -90,6 +100,7 @@ impl<'m> MaterialRelationship<'m> {
         )
     }
 
+    /// `IfcMaterialRelationship.Expression`, if given.
     pub fn expression(self) -> MaterialResult<Option<&'m str>> {
         optional_text(
             "IFCMATERIALRELATIONSHIP",
@@ -102,6 +113,7 @@ impl<'m> MaterialRelationship<'m> {
 }
 
 impl<'m> MaterialView<'m> {
+    /// Iterates every `IfcMaterialClassificationRelationship` in the model.
     pub fn classification_relationships(
         self,
     ) -> impl Iterator<Item = MaterialClassificationRelationship<'m>> + 'm {
@@ -110,12 +122,14 @@ impl<'m> MaterialView<'m> {
             .map(|(id, entity)| MaterialClassificationRelationship::from_known(id, entity))
     }
 
+    /// Iterates every `IfcMaterialList` instance in the model.
     pub fn material_lists(self) -> impl Iterator<Item = MaterialList<'m>> + 'm {
         self.model()
             .of_type("IFCMATERIALLIST")
             .map(|(id, entity)| MaterialList::from_known(id, entity))
     }
 
+    /// Iterates every `IfcMaterialRelationship` instance in the model.
     pub fn material_relationships(self) -> impl Iterator<Item = MaterialRelationship<'m>> + 'm {
         self.model()
             .of_type("IFCMATERIALRELATIONSHIP")

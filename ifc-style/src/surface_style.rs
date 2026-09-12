@@ -41,10 +41,14 @@ pub(crate) fn duplicate_surface_element_category<'a>(
     None
 }
 
+/// The `IfcSurfaceSide` enumeration: which face(s) of a surface a style applies to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SurfaceSide {
+    /// `POSITIVE`: the surface's positive normal side only.
     Positive,
+    /// `NEGATIVE`: the surface's negative normal side only.
     Negative,
+    /// `BOTH`: both sides of the surface.
     Both,
 }
 
@@ -58,6 +62,7 @@ impl SurfaceSide {
     }
 }
 
+/// Borrowed projection of `IfcSurfaceStyle`.
 #[derive(Debug, Clone, Copy)]
 pub struct SurfaceStyle<'m, 's> {
     record: Record<'m, 's>,
@@ -68,10 +73,12 @@ impl<'m, 's> SurfaceStyle<'m, 's> {
         Self { record }
     }
 
+    /// The `Name` attribute, when authored.
     pub fn name(&self) -> StyleResult<Option<&'m str>> {
         self.record.optional_text("Name")
     }
 
+    /// The `Side` attribute: which face(s) the contained styles apply to. Mandatory.
     pub fn side(&self) -> StyleResult<SurfaceSide> {
         match self.record.required_enum("Side")? {
             value if value.eq_ignore_ascii_case("POSITIVE") => Ok(SurfaceSide::Positive),
@@ -86,6 +93,10 @@ impl<'m, 's> SurfaceStyle<'m, 's> {
         }
     }
 
+    /// The `Styles` select: the surface-style elements attached to this
+    /// style (shading, lighting, refraction, textures, or an externally
+    /// defined style), one to five members. Rejects a duplicate element
+    /// category (e.g. two `IfcSurfaceStyleShading` members).
     pub fn elements(&self) -> StyleResult<Vec<EntityId>> {
         let elements = self.record.required_refs_select(
             "Styles",
@@ -113,6 +124,7 @@ impl<'m, 's> SurfaceStyle<'m, 's> {
     }
 }
 
+/// Borrowed projection of `IfcSurfaceStyleWithTextures`.
 #[derive(Debug, Clone, Copy)]
 pub struct SurfaceStyleWithTextures<'m, 's> {
     record: Record<'m, 's>,
@@ -123,6 +135,7 @@ impl<'m, 's> SurfaceStyleWithTextures<'m, 's> {
         Self { record }
     }
 
+    /// The `Textures` list: one or more `IfcSurfaceTexture` references.
     pub fn textures(&self) -> StyleResult<Vec<EntityId>> {
         self.record
             .required_refs("Textures", "IfcSurfaceTexture", 1, None)

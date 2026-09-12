@@ -8,6 +8,11 @@
 //! - `definition.rs`: IfcMaterial identity.
 //! - `properties.rs`: material property relationships.
 
+//! ## Internal split
+//!
+//! - `relationships.rs`: material lists, classifications, and
+//!   resource-level relationships.
+
 mod definition;
 mod properties;
 mod relationships;

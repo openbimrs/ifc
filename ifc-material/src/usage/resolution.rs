@@ -9,43 +9,70 @@ use crate::{
     MaterialProfileWithOffsets, MaterialResult, MaterialView,
 };
 
+/// A resolved branch of the abstract `IfcMaterialDefinition` select.
 #[derive(Debug, Clone, Copy)]
 pub enum MaterialDefinition<'m> {
+    /// Resolves to an `IfcMaterial`.
     Material(Material<'m>),
+    /// Resolves to an `IfcMaterialConstituent`.
     Constituent(MaterialConstituent<'m>),
+    /// Resolves to an `IfcMaterialConstituentSet`.
     ConstituentSet(MaterialConstituentSet<'m>),
+    /// Resolves to an `IfcMaterialLayer`.
     Layer(MaterialLayer<'m>),
+    /// Resolves to an `IfcMaterialLayerWithOffsets`.
     LayerWithOffsets(MaterialLayerWithOffsets<'m>),
+    /// Resolves to an `IfcMaterialLayerSet`.
     LayerSet(MaterialLayerSet<'m>),
+    /// Resolves to an `IfcMaterialProfile`.
     Profile(MaterialProfile<'m>),
+    /// Resolves to an `IfcMaterialProfileWithOffsets`.
     ProfileWithOffsets(MaterialProfileWithOffsets<'m>),
+    /// Resolves to an `IfcMaterialProfileSet`.
     ProfileSet(MaterialProfileSet<'m>),
 }
 
+/// A resolved branch of the abstract `IfcMaterialUsageDefinition` select.
 #[derive(Debug, Clone, Copy)]
 pub enum MaterialUsageDefinition<'m> {
+    /// Resolves to an `IfcMaterialLayerSetUsage`.
     LayerSet(MaterialLayerSetUsage<'m>),
+    /// Resolves to an `IfcMaterialProfileSetUsage`.
     ProfileSet(MaterialProfileSetUsage<'m>),
+    /// Resolves to an `IfcMaterialProfileSetUsageTapering`.
     ProfileSetTapering(MaterialProfileSetUsageTapering<'m>),
 }
 
+/// A resolved branch of the abstract `IfcMaterialSelect`.
 #[derive(Debug, Clone, Copy)]
 pub enum ResolvedMaterialSelect<'m> {
+    /// Resolves to an `IfcMaterialDefinition` subtype.
     Definition(MaterialDefinition<'m>),
+    /// Resolves to an `IfcMaterialList`.
     List(MaterialList<'m>),
+    /// Resolves to an `IfcMaterialUsageDefinition` subtype.
     Usage(MaterialUsageDefinition<'m>),
 }
 
+/// Whether a resolved material assignment came from the object directly or
+/// was inherited from its `IfcTypeObject`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AssignmentSource {
+    /// The `IfcRelAssociatesMaterial` directly relates the queried object.
     Occurrence,
+    /// The `IfcRelAssociatesMaterial` relates the object's `IfcTypeObject`,
+    /// identified by this entity id, and was inherited from it.
     Type(EntityId),
 }
 
+/// A fully resolved material for one object, with provenance.
 #[derive(Debug, Clone, Copy)]
 pub struct ResolvedAssignment<'m> {
+    /// The `IfcRelAssociatesMaterial` that produced this resolution.
     pub assignment: MaterialAssignment<'m>,
+    /// The resolved `IfcMaterialSelect` branch.
     pub material: ResolvedMaterialSelect<'m>,
+    /// Whether the assignment applied directly or via the object's type.
     pub source: AssignmentSource,
 }
 
@@ -72,6 +99,10 @@ impl<'m> MaterialView<'m> {
         })
     }
 
+    /// Resolves `id` as an `IfcMaterialSelect` branch by dispatching on its
+    /// concrete IFC entity type. Fails with
+    /// [`crate::MaterialError::WrongEntityType`] if `id` names an entity
+    /// that is not a `MaterialResource` select member.
     pub fn resolve_material_select(
         self,
         id: EntityId,
@@ -138,6 +169,15 @@ impl<'m> MaterialView<'m> {
         Ok(ResolvedMaterialSelect::Definition(definition))
     }
 
+    /// Resolves the single material that applies to `object`, preferring a
+    /// direct `IfcRelAssociatesMaterial` on the object itself and falling
+    /// back to the material assigned to its `IfcTypeObject` via
+    /// `IfcRelDefinesByType`. Returns `Ok(None)` if neither exists. Fails
+    /// with [`crate::MaterialError::AmbiguousAssignment`] or
+    /// [`crate::MaterialError::AmbiguousType`] if more than one candidate is
+    /// found at either level, and with
+    /// `crate::MaterialError::UnknownEntity` if `object` is not in the
+    /// model.
     pub fn assigned_material(
         self,
         object: EntityId,

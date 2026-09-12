@@ -1,3 +1,5 @@
+//! `IfcMaterialProfile`/`ProfileSet`/`ProfileSetUsage` projection tests.
+
 use ifc_material::{
     MaterialUsageDefinition, MaterialView, ResolvedMaterialSelect, StandardCardinalPoint,
 };

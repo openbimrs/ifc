@@ -13,10 +13,12 @@ pub struct MaterialView<'m> {
 }
 
 impl<'m> MaterialView<'m> {
+    /// Wraps a model reference for MaterialResource projection.
     pub fn new(model: &'m Model) -> Self {
         Self { model }
     }
 
+    /// Returns the underlying model this view borrows from.
     pub fn model(self) -> &'m Model {
         self.model
     }
@@ -33,6 +35,9 @@ impl<'m> MaterialView<'m> {
 
 macro_rules! borrowed_entity {
     ($name:ident, $ifc_name:literal) => {
+        /// Borrowed projection of `
+        #[doc = $ifc_name]
+        /// `.
         #[derive(Debug, Clone, Copy)]
         pub struct $name<'m> {
             id: ifc_model::EntityId,
@@ -40,6 +45,9 @@ macro_rules! borrowed_entity {
         }
 
         impl<'m> $name<'m> {
+            /// Wraps `entity` as this view after checking it is an instance
+            /// of the expected IFC entity type; fails with
+            /// [`crate::MaterialError::WrongEntityType`] otherwise.
             pub fn try_new(
                 id: ifc_model::EntityId,
                 entity: &'m ifc_model::Entity,
@@ -60,10 +68,12 @@ macro_rules! borrowed_entity {
                 Self { id, entity }
             }
 
+            /// The entity id of the wrapped record.
             pub fn id(self) -> ifc_model::EntityId {
                 self.id
             }
 
+            /// The raw, untyped entity record backing this view.
             pub fn entity(self) -> &'m ifc_model::Entity {
                 self.entity
             }

@@ -1,3 +1,5 @@
+//! Facade wiring: bundled material template inventory.
+
 #![cfg(feature = "material-templates")]
 
 use ifc::material::MaterialView;

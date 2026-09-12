@@ -1,3 +1,5 @@
+//! Integration tests for `IfcAnnotation` and related text/fill-area views.
+
 use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 use ifc_schema::ifc4x3;
 use ifc_style::{

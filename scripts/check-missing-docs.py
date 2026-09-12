@@ -27,9 +27,16 @@ ROOT = Path(__file__).resolve().parent.parent
 # point of the exercise. Reaching zero means the crate can move onto
 # [workspace.lints] and leave this table for good.
 BUDGET = {
-    "ifc-material": 283,
-    "ifc-style": 338,
 }
+
+
+def enforced_crates() -> list[str]:
+    """Workspace crates that opt into [workspace.lints]."""
+    found = []
+    for manifest in sorted(ROOT.glob("*/Cargo.toml")):
+        if "[lints]" in manifest.read_text():
+            found.append(manifest.parent.name)
+    return found
 
 
 def measure(crate: str) -> int:
@@ -74,6 +81,13 @@ def main() -> int:
     failures: list[str] = []
     wins: list[str] = []
 
+    for crate in enforced_crates():
+        if measure(crate):
+            failures.append(
+                f"  {crate}: enforces missing_docs but reports undocumented "
+                f"items; the lint and this check disagree"
+            )
+
     for crate in sorted(BUDGET):
         count = measure(crate)
         measured[crate] = count
@@ -94,6 +108,7 @@ def main() -> int:
     for crate, count in sorted(measured.items()):
         print(f"  {crate:<24} {count:>4} / {BUDGET[crate]}")
     print(f"total: {sum(measured.values())} undocumented public items")
+    print(f"enforced: {len(enforced_crates())} crates deny missing_docs")
 
     if failures:
         print("\ndocumentation debt grew:", file=sys.stderr)

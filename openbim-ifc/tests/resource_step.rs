@@ -1,3 +1,5 @@
+//! Facade wiring: resource domain read through the STEP codec.
+
 #![cfg(all(feature = "step", feature = "resource"))]
 
 use ifc::resource::{ResourceError, ResourceTypeKind, ResourceView};

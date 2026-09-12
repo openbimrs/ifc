@@ -7,13 +7,23 @@ use crate::error::{StyleError, StyleResult};
 use crate::layer::PresentationLayer;
 use crate::StyleView;
 
+/// Which mechanism, if any, supplied a resolved item's effective styles.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StyleSource {
+    /// Neither a direct `IfcStyledItem` nor a presentation layer contributed
+    /// any style to this item.
     None,
+    /// The styles came from the unique direct `IfcStyledItem` bound to this
+    /// item; carries that `IfcStyledItem`'s entity id.
     DirectStyledItem(EntityId),
+    /// The styles came from an `IfcPresentationLayerAssignment` covering
+    /// this item, in the absence of any direct assignment; carries that
+    /// layer assignment's entity id.
     PresentationLayer(EntityId),
 }
 
+/// The outcome of resolving an item's effective presentation style through
+/// the direct-assignment-over-layer-style cascade.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedStyle {
     source: StyleSource,
@@ -23,24 +33,39 @@ pub struct ResolvedStyle {
 }
 
 impl ResolvedStyle {
+    /// Which mechanism produced `effective_styles`.
     pub fn source(&self) -> StyleSource {
         self.source
     }
 
+    /// The styles that actually apply after the cascade: the direct
+    /// assignment's styles if one exists, otherwise the union of all
+    /// covering layer styles.
     pub fn effective_styles(&self) -> &[EntityId] {
         &self.effective_styles
     }
 
+    /// The styles from the unique direct `IfcStyledItem`, if any; empty
+    /// when resolution fell back to layer styles.
     pub fn direct_styles(&self) -> &[EntityId] {
         &self.direct_styles
     }
 
+    /// Every presentation layer assignment covering the item, paired with
+    /// its (deduplicated) flattened styles, regardless of whether a direct
+    /// assignment took precedence.
     pub fn layer_styles(&self) -> &[(EntityId, Vec<EntityId>)] {
         &self.layer_styles
     }
 }
 
 impl<'m, 's> StyleView<'m, 's> {
+    /// Resolves the effective style for `item` by scanning every
+    /// `IfcStyledItem` and `IfcPresentationLayerAssignment` in the model.
+    ///
+    /// A unique direct `IfcStyledItem` binding wins over any layer style.
+    /// Returns `Err(StyleError::AmbiguousStyleAssignment)` if more than one
+    /// direct `IfcStyledItem` targets the same item.
     pub fn resolve_item_style(&self, item: EntityId) -> StyleResult<ResolvedStyle> {
         let mut direct = Vec::new();
         for (id, entity) in self.model.iter() {
@@ -105,6 +130,9 @@ impl<'m, 's> StyleView<'m, 's> {
         })
     }
 
+    /// Replaces each IFC2x3 `IfcPresentationStyleAssignment` wrapper id in
+    /// `ids` with its member styles; direct `IfcPresentationStyle` ids pass
+    /// through unchanged.
     fn flatten_assignments(&self, ids: Vec<EntityId>) -> StyleResult<Vec<EntityId>> {
         let mut out = Vec::new();
         for id in ids {

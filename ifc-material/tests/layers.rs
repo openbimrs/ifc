@@ -1,3 +1,5 @@
+//! `IfcMaterialLayer`/`LayerSet`/`LayerSetUsage` projection tests.
+
 use ifc_material::{DirectionSense, LayerSetDirection, LogicalValue, MaterialView};
 use ifc_model::{Entity, EntityId, Model, Value};
 
