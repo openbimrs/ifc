@@ -9,7 +9,9 @@ use crate::error::{AlignmentError, AlignmentResult};
 /// Project unit conversion applied exactly once while reading a segment.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AlignmentUnits {
+    /// Factor converting a length attribute's stored value to metres.
     pub length_to_metres: f64,
+    /// Factor converting an angle attribute's stored value to radians.
     pub angle_to_radians: f64,
 }
 
@@ -33,14 +35,23 @@ impl AlignmentUnits {
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HorizontalSegmentType {
+    /// `LINE`: a straight tangent segment (zero curvature throughout).
     Line,
+    /// `CIRCULARARC`: constant-radius arc; `StartRadiusOfCurvature` and
+    /// `EndRadiusOfCurvature` are equal.
     CircularArc,
+    /// A transition-spiral `PredefinedType` token (e.g. `CLOTHOID`,
+    /// `CUBIC`, `BLOSS`), preserved verbatim -- which spiral laws this crate
+    /// can lower exactly is decided downstream, not by this type.
     Transition(String),
+    /// `USERDEFINED`: an author-supplied law outside the enumerated set.
     UserDefined,
+    /// `NOTDEFINED`: no horizontal segment kind was declared.
     NotDefined,
 }
 
 impl HorizontalSegmentType {
+    /// The `PredefinedType` enumeration token this variant was read from.
     pub fn source_name(&self) -> &str {
         match self {
             Self::Line => "LINE",
@@ -55,13 +66,23 @@ impl HorizontalSegmentType {
 /// Resolved IFC4x3 `IfcAlignmentHorizontalSegment` parameters in SI units.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HorizontalSegment {
+    /// The `IfcAlignmentHorizontalSegment` entity this was read from.
     pub entity: EntityId,
+    /// `StartPoint`: the segment's start, resolved from the referenced
+    /// `IfcCartesianPoint`.
     pub start_point: Point2,
+    /// `StartDirection`: bearing at the segment start, in radians.
     pub start_direction: f64,
+    /// `StartRadiusOfCurvature`.
     pub start_radius: f64,
+    /// `EndRadiusOfCurvature`.
     pub end_radius: f64,
+    /// `SegmentLength`: arc length along the segment. Must be positive.
     pub segment_length: f64,
+    /// `GravityCenterLineHeight`, when authored (rail/cant-related, not
+    /// used by exact lowering).
     pub gravity_center_line_height: Option<f64>,
+    /// `PredefinedType`: which horizontal segment kind this is.
     pub segment_type: HorizontalSegmentType,
 }
 
@@ -75,6 +96,13 @@ const SEGMENT_LENGTH: usize = 6;
 const GRAVITY_CENTER_LINE_HEIGHT: usize = 7;
 const PREDEFINED_TYPE: usize = 8;
 
+/// Read one `IfcAlignmentHorizontalSegment` referenced by `id`.
+///
+/// Fails if `units` is non-finite or non-positive, `id` is missing or not an
+/// `IfcAlignmentHorizontalSegment`, `StartPoint` does not resolve to an
+/// `IfcCartesianPoint` with at least two coordinates, an attribute is
+/// missing or the wrong kind, any value is non-finite, or `SegmentLength`
+/// is not positive.
 pub fn read_horizontal_segment(
     model: &Model,
     id: EntityId,

@@ -20,19 +20,23 @@ impl<'m, 's> Inventory<'m, 's> {
         Ok(Self { record })
     }
 
+    /// The entity id of the projected `IfcInventory`.
     #[must_use]
     pub fn id(&self) -> EntityId {
         self.record.id
     }
 
+    /// The `Name` attribute, when authored.
     pub fn name(&self) -> ResourceResult<Option<&'m str>> {
         self.record.optional_text("Name")
     }
 
+    /// The `Description` attribute, when authored.
     pub fn description(&self) -> ResourceResult<Option<&'m str>> {
         self.record.optional_text("Description")
     }
 
+    /// The `PredefinedType` enumeration, when authored.
     pub fn predefined_type(&self) -> ResourceResult<Option<&'m str>> {
         self.record.optional_enum("PredefinedType")
     }
@@ -47,19 +51,23 @@ impl<'m, 's> Inventory<'m, 's> {
         )
     }
 
+    /// The `ResponsiblePersons` attribute, when authored.
     pub fn responsible_person_ids(&self) -> ResourceResult<Vec<EntityId>> {
         self.record
             .refs("ResponsiblePersons", "IfcPerson", 1, true, true)
     }
 
+    /// The `LastUpdateDate` attribute, when authored.
     pub fn last_update_date(&self) -> ResourceResult<Option<&'m str>> {
         self.record.optional_text("LastUpdateDate")
     }
 
+    /// The `CurrentValue` attribute, when authored.
     pub fn current_value(&self) -> ResourceResult<Option<EntityId>> {
         self.record.optional_ref("CurrentValue", "IfcCostValue")
     }
 
+    /// The `OriginalValue` attribute, when authored.
     pub fn original_value(&self) -> ResourceResult<Option<EntityId>> {
         self.record.optional_ref("OriginalValue", "IfcCostValue")
     }

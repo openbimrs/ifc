@@ -11,3 +11,6 @@ description = "Construction resources: labour, equipment, material, crew, subcon
 [dependencies]
 ifc-schema.workspace = true
 ifc-model.workspace = true
+
+[lints]
+workspace = true

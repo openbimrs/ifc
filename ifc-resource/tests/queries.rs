@@ -1,3 +1,5 @@
+//! `IfcRelAssignsToResource`/`IfcRelNests` query checks.
+
 mod support;
 
 use ifc_model::{Budget, Value};

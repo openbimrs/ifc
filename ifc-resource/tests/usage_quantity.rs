@@ -1,3 +1,5 @@
+//! `IfcPhysicalSimpleQuantity`/`IfcPhysicalComplexQuantity` projection checks.
+
 mod support;
 
 use ifc_resource::{ResourceError, ResourceView, SimpleQuantityValue};

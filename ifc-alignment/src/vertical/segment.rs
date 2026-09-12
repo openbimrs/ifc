@@ -6,15 +6,28 @@ use ifc_model::{EntityId, Model};
 use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::AlignmentUnits;
 
+/// `IfcAlignmentVerticalSegmentTypeEnum` member: the vertical curve law
+/// applied over one segment's distance-along span.
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VerticalSegmentType {
+    /// `CONSTANTGRADIENT`: a straight grade line (`start_gradient` ==
+    /// `end_gradient`, no `radius_of_curvature`). The only kind exact
+    /// neutral lowering currently supports.
     ConstantGradient,
+    /// `CIRCULARARC`: constant-radius vertical curve; requires
+    /// `radius_of_curvature`.
     CircularArc,
+    /// `PARABOLICARC`: parabolic vertical curve; requires
+    /// `radius_of_curvature`.
     ParabolicArc,
+    /// `CLOTHOID`: a clothoid-law vertical transition.
     Clothoid,
+    /// `USERDEFINED`: an author-supplied law outside the enumerated set.
     UserDefined,
+    /// `NOTDEFINED`: no vertical segment kind was declared.
     NotDefined,
+    /// An enumeration token this crate does not recognise, preserved verbatim.
     Other(String),
 }
 
@@ -32,18 +45,36 @@ impl VerticalSegmentType {
     }
 }
 
+/// Resolved IFC4x3 `IfcAlignmentVerticalSegment` parameters in SI units.
 #[derive(Debug, Clone, PartialEq)]
 pub struct VerticalSegment {
+    /// The `IfcAlignmentVerticalSegment` entity this was read from.
     pub entity: EntityId,
+    /// `StartDistAlong`: distance along the parent alignment where this
+    /// segment begins.
     pub start_dist_along: f64,
+    /// `HorizontalLength`: the segment's span along the alignment.
     pub horizontal_length: f64,
+    /// `StartHeight`: elevation at the segment start.
     pub start_height: f64,
+    /// `StartGradient`.
     pub start_gradient: f64,
+    /// `EndGradient`.
     pub end_gradient: f64,
+    /// `RadiusOfCurvature`, required exactly for `CircularArc` and
+    /// `ParabolicArc` segments, absent otherwise.
     pub radius_of_curvature: Option<f64>,
+    /// `PredefinedType`: which vertical curve law governs this segment.
     pub predefined_type: VerticalSegmentType,
 }
 
+/// Read one `IfcAlignmentVerticalSegment` referenced by `id`.
+///
+/// Fails if `units` is non-finite or non-positive, `id` is missing or not an
+/// `IfcAlignmentVerticalSegment`, an attribute is missing or the wrong kind,
+/// `HorizontalLength` is negative, any value is non-finite, or
+/// `RadiusOfCurvature` is present/absent inconsistently with `PredefinedType`
+/// (required for `CircularArc`/`ParabolicArc`, forbidden otherwise).
 pub fn read_vertical_segment(
     model: &Model,
     id: EntityId,

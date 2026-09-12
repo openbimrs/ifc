@@ -6,6 +6,8 @@ use crate::error::{ResourceError, ResourceResult};
 use crate::view::{validate_object_assignment, Record, ResourceView};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Decoded `IfcRelAssignsToResource` assignment: a resource and the objects
+/// assigned to it.
 pub struct ResourceAllocation {
     relation: EntityId,
     resource: EntityId,
@@ -14,21 +16,26 @@ pub struct ResourceAllocation {
 }
 
 impl ResourceAllocation {
+    /// The entity id of the `IfcRelAssignsToResource` relation itself.
     #[must_use]
     pub fn relation_id(&self) -> EntityId {
         self.relation
     }
 
+    /// The `RelatingResource` attribute: the assigned resource or resource
+    /// type.
     #[must_use]
     pub fn resource_id(&self) -> EntityId {
         self.resource
     }
 
+    /// The `RelatedObjects` attribute: objects the resource is assigned to.
     #[must_use]
     pub fn related_objects(&self) -> &[EntityId] {
         &self.related_objects
     }
 
+    /// The `RelatedObjectsType` enumeration, when authored.
     #[must_use]
     pub fn related_objects_type(&self) -> Option<&str> {
         self.related_objects_type.as_deref()
@@ -36,11 +43,14 @@ impl ResourceAllocation {
 }
 
 impl<'m, 's> ResourceView<'m, 's> {
+    /// Projects an `IfcRelAssignsToResource` relation by entity id.
     pub fn allocation(&self, id: EntityId) -> ResourceResult<ResourceAllocation> {
         let record = self.record(id, "IfcRelAssignsToResource")?;
         decode_allocation(record)
     }
 
+    /// Every `IfcRelAssignsToResource` relation naming this resource as
+    /// `RelatingResource`, in ancestor order.
     pub fn allocations_for(&self, resource: EntityId) -> ResourceResult<Vec<ResourceAllocation>> {
         self.resource(resource)?;
         let mut result = Vec::new();

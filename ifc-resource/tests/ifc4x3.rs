@@ -1,3 +1,5 @@
+//! IFC4X3 resource-schema parity checks.
+
 mod support;
 
 use ifc_resource::{Person, ResourceError, ResourceTypeKind, ResourceView};

@@ -1,3 +1,5 @@
+//! Shared test-model builders for `ifc-resource` integration tests.
+
 #![allow(dead_code)]
 
 use ifc_model::{Entity, EntityId, Model, Value};

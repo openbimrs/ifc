@@ -16,11 +16,17 @@ use crate::view::Record;
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
 pub enum SimpleQuantityValue {
+    /// `IfcQuantityArea.AreaValue`.
     Area(f64),
+    /// `IfcQuantityCount.CountValue`.
     Count(f64),
+    /// `IfcQuantityLength.LengthValue`.
     Length(f64),
+    /// `IfcQuantityTime.TimeValue`.
     Time(f64),
+    /// `IfcQuantityVolume.VolumeValue`.
     Volume(f64),
+    /// `IfcQuantityWeight.WeightValue`.
     Weight(f64),
 }
 
@@ -80,23 +86,29 @@ impl<'m, 's> SimpleQuantity<'m, 's> {
         Ok(Self { record, attribute })
     }
 
+    /// The entity id of the projected quantity.
     #[must_use]
     pub fn id(&self) -> EntityId {
         self.record.id
     }
 
+    /// The `Name` attribute.
     pub fn name(&self) -> ResourceResult<&'m str> {
         self.record.required_text("Name")
     }
 
+    /// The `Description` attribute, when authored.
     pub fn description(&self) -> ResourceResult<Option<&'m str>> {
         self.record.optional_text("Description")
     }
 
+    /// The `Unit` attribute, when authored; falls back to the project unit
+    /// assignment otherwise.
     pub fn unit(&self) -> ResourceResult<Option<EntityId>> {
         self.record.optional_ref("Unit", "IfcNamedUnit")
     }
 
+    /// The `Formula` attribute, when authored.
     pub fn formula(&self) -> ResourceResult<Option<&'m str>> {
         self.record.optional_text("Formula")
     }
@@ -133,31 +145,38 @@ impl<'m, 's> ComplexQuantity<'m, 's> {
         Ok(quantity)
     }
 
+    /// The entity id of the projected quantity.
     #[must_use]
     pub fn id(&self) -> EntityId {
         self.record.id
     }
 
+    /// The `Name` attribute.
     pub fn name(&self) -> ResourceResult<&'m str> {
         self.record.required_text("Name")
     }
 
+    /// The `Description` attribute, when authored.
     pub fn description(&self) -> ResourceResult<Option<&'m str>> {
         self.record.optional_text("Description")
     }
 
+    /// The `Discrimination` attribute: the basis this composite groups by.
     pub fn discrimination(&self) -> ResourceResult<&'m str> {
         self.record.required_text("Discrimination")
     }
 
+    /// The `Quality` attribute, when authored.
     pub fn quality(&self) -> ResourceResult<Option<&'m str>> {
         self.record.optional_text("Quality")
     }
 
+    /// The `Usage` attribute, when authored.
     pub fn usage(&self) -> ResourceResult<Option<&'m str>> {
         self.record.optional_text("Usage")
     }
 
+    /// The `HasQuantities` attribute: authored-order member references.
     pub fn member_ids(&self) -> ResourceResult<Vec<EntityId>> {
         self.record
             .refs("HasQuantities", "IfcPhysicalQuantity", 1, false, true)

@@ -1,3 +1,5 @@
+//! `IfcAlignmentHorizontal`/`IfcLinearPlacement` layout resolution and placement.
+
 use axiolid_curve::Curve2;
 use axiolid_model::{CurveRelation, GeometryNode, Transition};
 use ifc_alignment::{

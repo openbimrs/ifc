@@ -31,38 +31,46 @@ impl<'m, 's> PersonAndOrganization<'m, 's> {
         Ok(Self { record })
     }
 
+    /// The entity id of the projected `IfcPersonAndOrganization`.
     #[must_use]
     pub fn id(&self) -> EntityId {
         self.record.id
     }
 
+    /// The `ThePerson` attribute.
     pub fn person(&self) -> ResourceResult<EntityId> {
         self.record.required_ref("ThePerson", "IfcPerson")
     }
 
+    /// The `TheOrganization` attribute.
     pub fn organization(&self) -> ResourceResult<EntityId> {
         self.record
             .required_ref("TheOrganization", "IfcOrganization")
     }
 
+    /// The `Roles` attribute, when authored.
     pub fn role_ids(&self) -> ResourceResult<Vec<EntityId>> {
         self.record.refs("Roles", "IfcActorRole", 1, true, false)
     }
 }
 
 impl<'m, 's> ResourceView<'m, 's> {
+    /// Projects an `IfcPerson` by entity id.
     pub fn person(&self, id: EntityId) -> ResourceResult<Person<'m, 's>> {
         Person::from_record(self.record(id, "IfcPerson")?)
     }
 
+    /// Projects an `IfcOrganization` by entity id.
     pub fn organization(&self, id: EntityId) -> ResourceResult<Organization<'m, 's>> {
         Organization::from_record(self.record(id, "IfcOrganization")?)
     }
 
+    /// Projects an `IfcActorRole` by entity id.
     pub fn actor_role(&self, id: EntityId) -> ResourceResult<ActorRole<'m, 's>> {
         ActorRole::from_record(self.record(id, "IfcActorRole")?)
     }
 
+    /// Projects an `IfcPersonAndOrganization` by entity id.
     pub fn person_and_organization(
         &self,
         id: EntityId,

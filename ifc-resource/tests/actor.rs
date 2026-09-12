@@ -1,3 +1,5 @@
+//! `IfcActorRole`/`IfcPerson`/`IfcOrganization` projection checks.
+
 mod support;
 
 use ifc_resource::{ResourceError, ResourceView};

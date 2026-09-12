@@ -2,82 +2,147 @@
 
 use ifc_model::EntityId;
 
+/// Result of a resource projection, query, or authoring call, carrying
+/// [`ResourceError`] on failure.
 pub type ResourceResult<T> = Result<T, ResourceError>;
 
+/// Why a resource projection, query, or authoring call could not be
+/// completed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ResourceError {
+    /// The model header declares no `FILE_SCHEMA` token.
     MissingSchema,
+    /// The header declares more than one schema, so the profile is ambiguous.
     AmbiguousSchema {
+        /// Every schema token found in the header.
         tokens: Vec<String>,
     },
+    /// The declared schema is not IFC4 ADD2 TC1 or IFC4X3 ADD2.
     UnsupportedSchema {
+        /// The rejected schema token.
         token: String,
     },
+    /// A requested entity id does not exist in the model.
     EntityNotFound {
+        /// The missing entity id.
         id: EntityId,
     },
+    /// An entity was not the IFC type the caller requested.
     WrongType {
+        /// The entity that was read.
         id: EntityId,
+        /// The IFC type the caller expected.
         expected: &'static str,
+        /// The IFC type actually declared.
         actual: String,
     },
+    /// The schema declares no attribute of this name on the entity type.
     MissingAttribute {
+        /// The entity that was read.
         entity: EntityId,
+        /// Schema name of the absent attribute.
         attribute: &'static str,
     },
+    /// An attribute was present but held the wrong kind of value.
     InvalidValue {
+        /// The entity that was read.
         entity: EntityId,
+        /// Schema name of the offending attribute.
         attribute: &'static str,
+        /// What kind of value was expected.
         expected: &'static str,
     },
+    /// An enumeration attribute held a value the schema does not declare.
     InvalidEnumeration {
+        /// The entity that was read, when the value came from an entity
+        /// rather than an authoring draft.
         entity: Option<EntityId>,
+        /// Schema name of the offending attribute.
         attribute: &'static str,
+        /// The undeclared value.
         value: String,
     },
+    /// An entity reference attribute pointed at an id the model does not
+    /// contain.
     DanglingReference {
+        /// The entity holding the dangling reference.
         entity: EntityId,
+        /// Schema name of the offending attribute.
         attribute: &'static str,
+        /// The id that resolved to nothing.
         target: EntityId,
     },
+    /// An entity reference resolved, but the target is not the IFC type the
+    /// slot requires.
     WrongReferenceType {
+        /// The entity holding the reference.
         entity: EntityId,
+        /// Schema name of the offending attribute.
         attribute: &'static str,
+        /// The referenced entity.
         target: EntityId,
+        /// The IFC type the slot requires.
         expected: &'static str,
+        /// The IFC type actually declared.
         actual: String,
     },
+    /// An aggregate attribute held fewer items than the schema's minimum
+    /// cardinality.
     InvalidCardinality {
+        /// The entity that was read.
         entity: EntityId,
+        /// Schema name of the offending attribute.
         attribute: &'static str,
+        /// The schema's minimum cardinality.
         minimum: usize,
+        /// The actual number of items found.
         actual: usize,
     },
+    /// A `SET` attribute repeated the same reference more than once.
     DuplicateReference {
+        /// The entity that was read.
         entity: EntityId,
+        /// Schema name of the offending attribute.
         attribute: &'static str,
+        /// The repeated reference.
         target: EntityId,
     },
+    /// A WHERE rule or other cross-attribute IFC semantic constraint failed.
     SemanticViolation {
+        /// The entity that violated the rule, when applicable.
         entity: Option<EntityId>,
+        /// Name of the violated rule.
         rule: &'static str,
     },
+    /// A resource composition or nesting traversal revisited an entity.
     Cycle {
+        /// The entity where the cycle was detected.
         at: EntityId,
     },
+    /// A bounded traversal exceeded its depth or node budget.
     BudgetExceeded {
+        /// The maximum depth allowed.
         max_depth: usize,
+        /// The maximum number of nodes allowed.
         max_nodes: usize,
     },
+    /// A staged authoring draft could not be committed as written.
     InvalidDraft {
+        /// The IFC entity type being authored.
         entity_type: &'static str,
+        /// Schema name of the offending attribute.
         attribute: &'static str,
+        /// What kind of value was expected.
         expected: &'static str,
     },
+    /// A supplied `GlobalId` is not a valid 22-character compressed IFC GUID.
     InvalidGlobalId,
+    /// A transaction commit conflicted with a concurrent revision.
     TransactionConflict {
+        /// The revision the transaction expected.
         expected: u64,
+        /// The revision actually current.
         actual: u64,
     },
 }

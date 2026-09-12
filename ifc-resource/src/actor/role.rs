@@ -21,11 +21,13 @@ impl<'m, 's> ActorRole<'m, 's> {
         Ok(role)
     }
 
+    /// The entity id of the projected `IfcActorRole`.
     #[must_use]
     pub fn id(&self) -> EntityId {
         self.record.id
     }
 
+    /// The `Role` enumeration.
     pub fn role(&self) -> ResourceResult<&'m str> {
         let value = self.record.required_enum("Role")?;
         if value.eq_ignore_ascii_case("USERDEFINED")
@@ -42,10 +44,12 @@ impl<'m, 's> ActorRole<'m, 's> {
         Ok(value)
     }
 
+    /// The `UserDefinedRole` attribute, when authored.
     pub fn user_defined_role(&self) -> ResourceResult<Option<&'m str>> {
         self.record.optional_text("UserDefinedRole")
     }
 
+    /// The `Description` attribute, when authored.
     pub fn description(&self) -> ResourceResult<Option<&'m str>> {
         self.record.optional_text("Description")
     }

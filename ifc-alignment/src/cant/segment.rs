@@ -6,30 +6,62 @@ use ifc_model::{EntityId, Model};
 use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::AlignmentUnits;
 
+/// `IfcAlignmentCantSegmentTypeEnum` member: the cant transition law applied
+/// over one segment's distance-along span.
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CantSegmentType {
+    /// `BLOSSCURVE`: a bloss (cubic) transition between cant values.
     BlossCurve,
+    /// `CONSTANTCANT`: cant held level across the segment.
     ConstantCant,
+    /// `COSINECURVE`: a cosine-shaped transition between cant values.
     CosineCurve,
+    /// `HELMERTCURVE`: a Helmert (parabolic) transition between cant values.
     HelmertCurve,
+    /// `LINEARTRANSITION`: a straight-line ramp between cant values.
     LinearTransition,
+    /// `SINECURVE`: a sine-shaped transition between cant values.
     SineCurve,
+    /// `VIENNESEBEND`: a cant swing whose bank angle follows a
+    /// closed-form quartic.
+    ///
+    /// Cant evaluation resolves this exactly. It is the one type that also
+    /// needs the parent `IfcAlignmentCant.RailHeadDistance`, because the
+    /// spec defines the swing through a bank angle rather than a cant
+    /// value directly.
     VienneseBend,
+    /// `USERDEFINED`: an author-supplied law outside the enumerated set.
     UserDefined,
+    /// `NOTDEFINED`: no cant transition law was declared.
     NotDefined,
+    /// An enumeration token this crate does not recognise, preserved verbatim.
     Other(String),
 }
 
+/// Borrowed projection of one nested segment of an `IfcAlignmentCant` layout
+/// (`IfcAlignmentCantSegment`), with lengths already reduced to metres.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CantSegment {
+    /// The `IfcAlignmentCantSegment` entity this was read from.
     pub entity: EntityId,
+    /// `StartDistAlong`: distance along the parent alignment where this
+    /// segment begins.
     pub start_dist_along: f64,
+    /// `HorizontalLength`: the segment's span along the alignment.
     pub horizontal_length: f64,
+    /// `StartCantLeft`: cant applied to the left rail at the segment start.
     pub start_cant_left: f64,
+    /// `EndCantLeft`: cant applied to the left rail at the segment end, when
+    /// authored. Absence is legal only when `end_cant_right` is also absent.
     pub end_cant_left: Option<f64>,
+    /// `StartCantRight`: cant applied to the right rail at the segment start.
     pub start_cant_right: f64,
+    /// `EndCantRight`: cant applied to the right rail at the segment end,
+    /// when authored. Absence is legal only when `end_cant_left` is also
+    /// absent.
     pub end_cant_right: Option<f64>,
+    /// `PredefinedType`: which transition law governs this segment.
     pub predefined_type: CantSegmentType,
 }
 
@@ -51,6 +83,12 @@ impl CantSegment {
     }
 }
 
+/// Read one `IfcAlignmentCantSegment` referenced by `id`.
+///
+/// Fails if `id` is missing, is not an `IfcAlignmentCantSegment`, an
+/// attribute is missing or the wrong kind, `HorizontalLength` is negative,
+/// any value is non-finite, or exactly one of `EndCantLeft`/`EndCantRight`
+/// is supplied without the other.
 pub fn read_cant_segment(
     model: &Model,
     id: EntityId,

@@ -19,7 +19,10 @@ use crate::view::AlignmentView;
 /// Exact neutral curve graph for one or more IFC alignment segments.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LoweredAlignmentCurve {
+    /// The neutral geometry graph holding the lowered curve and its
+    /// supporting nodes (trims, composites).
     pub graph: GeometryGraph,
+    /// The graph node the lowered curve is rooted at.
     pub root: NodeId,
     /// The segment(s) this graph was lowered from, in authored order.
     pub sources: Vec<EntityId>,
@@ -80,9 +83,11 @@ fn closed_form_end_point(segment: &HorizontalSegment) -> Option<Point2> {
 /// it can point at the offending line of the source file.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RefusedSegment {
+    /// The `IfcAlignmentHorizontalSegment` entity that was refused.
     pub entity: EntityId,
     /// The segment's authored `PredefinedType`, preserved exactly.
     pub type_name: String,
+    /// Why this segment could not be lowered exactly.
     pub reason: AlignmentError,
 }
 
@@ -99,6 +104,8 @@ pub struct RefusedSegment {
 /// segment this crate did not lower is not a fact it is entitled to assert.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PartialHorizontalLayout {
+    /// Maximal runs of consecutive exactly-lowered segments, in authored
+    /// order.
     pub runs: Vec<LoweredAlignmentCurve>,
     /// Refused segments in authored order.
     pub refused: Vec<RefusedSegment>,
@@ -123,6 +130,13 @@ impl PartialHorizontalLayout {
     }
 }
 
+/// Lower one `IfcAlignmentHorizontalSegment` to an exact neutral curve.
+///
+/// Fails if `id` is missing or malformed, or the segment is a transition
+/// spiral family not in `[is_exactly_lowerable]`'s set, or `CIRCULARARC`
+/// with unequal/zero/non-finite start and end radii, or `LINE` with a
+/// non-zero radius -- the pinned neutral curve vocabulary has no exact
+/// primitive for those cases.
 pub fn lower_horizontal_segment(
     model: &Model,
     id: EntityId,
@@ -147,6 +161,12 @@ pub fn lower_horizontal_segment(
     finish(builder, root, vec![id])
 }
 
+/// Lower one `IfcAlignmentVerticalSegment` to an exact neutral curve.
+///
+/// Fails if `id` is missing or malformed, or the segment is not
+/// `CONSTANTGRADIENT`, or has a curvature radius, or unequal start/end
+/// gradients -- exact neutral vertical lowering does not yet cover arcs or
+/// parabolas.
 pub fn lower_vertical_segment(
     model: &Model,
     id: EntityId,
@@ -334,6 +354,9 @@ fn finish(
     })
 }
 
+/// Lower an `IfcAlignmentHorizontal`'s nested segment chain to one exact
+/// neutral curve, refusing (rather than approximating) any segment that
+/// `lower_horizontal_segment` cannot lower exactly.
 pub fn lower_horizontal_layout(
     model: &Model,
     entity: EntityId,

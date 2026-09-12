@@ -17,10 +17,12 @@ pub use quantity::{ComplexQuantity, SimpleQuantity, SimpleQuantityValue};
 pub use time::ResourceTime;
 
 impl<'m, 's> ResourceView<'m, 's> {
+    /// Projects an `IfcPhysicalSimpleQuantity` by entity id.
     pub fn simple_quantity(&self, id: EntityId) -> ResourceResult<SimpleQuantity<'m, 's>> {
         SimpleQuantity::from_record(self.record(id, "IfcPhysicalSimpleQuantity")?)
     }
 
+    /// Projects an `IfcPhysicalComplexQuantity` by entity id.
     pub fn complex_quantity(&self, id: EntityId) -> ResourceResult<ComplexQuantity<'m, 's>> {
         ComplexQuantity::from_record(self.record(id, "IfcPhysicalComplexQuantity")?)
     }

@@ -11,11 +11,17 @@ use crate::view::Record;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ResourceTypeKind {
+    /// `IfcLaborResourceType`.
     Labor,
+    /// `IfcConstructionEquipmentResourceType`.
     Equipment,
+    /// `IfcCrewResourceType`.
     Crew,
+    /// `IfcConstructionMaterialResourceType`.
     Material,
+    /// `IfcConstructionProductResourceType`.
     Product,
+    /// `IfcSubContractResourceType`.
     Subcontract,
 }
 
@@ -40,6 +46,8 @@ impl ResourceTypeKind {
 }
 
 #[derive(Debug, Clone, Copy)]
+/// Borrowed projection of a concrete `IfcConstructionResourceType` catalog
+/// entity.
 pub struct ConstructionResourceType<'m, 's> {
     record: Record<'m, 's>,
     kind: ResourceTypeKind,
@@ -57,28 +65,34 @@ impl<'m, 's> ConstructionResourceType<'m, 's> {
         Ok(Self { record, kind })
     }
 
+    /// The entity id of the projected type.
     #[must_use]
     pub fn id(&self) -> EntityId {
         self.record.id
     }
 
+    /// Which concrete `IfcConstructionResourceType` subtype this is.
     #[must_use]
     pub fn kind(&self) -> ResourceTypeKind {
         self.kind
     }
 
+    /// The `Name` attribute.
     pub fn name(&self) -> ResourceResult<&'m str> {
         self.record.required_text("Name")
     }
 
+    /// The `Identification` attribute, when authored.
     pub fn identification(&self) -> ResourceResult<Option<&'m str>> {
         self.record.optional_text("Identification")
     }
 
+    /// The `LongDescription` attribute, when authored.
     pub fn long_description(&self) -> ResourceResult<Option<&'m str>> {
         self.record.optional_text("LongDescription")
     }
 
+    /// The inherited `IfcTypeResource.ResourceType` label, when authored.
     pub fn resource_type(&self) -> ResourceResult<Option<&'m str>> {
         self.record.optional_text("ResourceType")
     }
@@ -102,11 +116,14 @@ impl<'m, 's> ConstructionResourceType<'m, 's> {
         Ok(value)
     }
 
+    /// The `BaseCosts` attribute: applied-value references, when authored.
     pub fn base_costs(&self) -> ResourceResult<Vec<EntityId>> {
         self.record
             .refs("BaseCosts", "IfcAppliedValue", 1, true, false)
     }
 
+    /// The `BaseQuantity` attribute: the physical-quantity reference, when
+    /// authored.
     pub fn base_quantity(&self) -> ResourceResult<Option<EntityId>> {
         self.record
             .optional_ref("BaseQuantity", "IfcPhysicalQuantity")
@@ -114,6 +131,7 @@ impl<'m, 's> ConstructionResourceType<'m, 's> {
 }
 
 impl<'m, 's> crate::view::ResourceView<'m, 's> {
+    /// Projects a resource-type catalog entry by entity id.
     pub fn resource_type(&self, id: EntityId) -> ResourceResult<ConstructionResourceType<'m, 's>> {
         ConstructionResourceType::from_record(self.record(id, "IfcConstructionResourceType")?)
     }

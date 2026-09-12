@@ -15,6 +15,7 @@ use ifc_model::EntityId;
 pub use definition::Inventory;
 
 impl<'m, 's> ResourceView<'m, 's> {
+    /// Projects an `IfcInventory` by entity id.
     pub fn inventory(&self, id: EntityId) -> ResourceResult<Inventory<'m, 's>> {
         Inventory::from_record(self.record(id, "IfcInventory")?)
     }

@@ -10,12 +10,19 @@ use crate::error::{ResourceError, ResourceResult};
 use crate::view::validate_object_assignment;
 use crate::{ResourceKind, ResourceView};
 
+/// Transaction-staged writer for the bounded IFC4 resource slice.
+///
+/// Every `create_*` method validates the draft against the bundled schema
+/// and cross-attribute IFC rules before staging it, then commits through a
+/// single-entity `ifc_model::Transaction`.
 pub struct ResourceEditor<'m> {
     model: &'m mut Model,
     schema: &'static Schema,
 }
 
 impl<'m> ResourceEditor<'m> {
+    /// Opens an editor for `model`, verifying it declares a supported
+    /// resource schema (IFC4 ADD2 TC1 or IFC4X3 ADD2).
     pub fn for_model(model: &'m mut Model) -> ResourceResult<Self> {
         ResourceView::for_model(model)?;
         Ok(Self {
@@ -49,6 +56,10 @@ impl<'m> ResourceEditor<'m> {
         Ok(())
     }
 
+    /// Commits a `ResourceDraft` as a new concrete `IfcConstructionResource`
+    /// occurrence, failing if `USERDEFINED` is authored without
+    /// `ObjectType`, or if `Usage`/`BaseCosts`/`BaseQuantity` reference
+    /// entities of the wrong type.
     pub fn create_resource(&mut self, draft: ResourceDraft<'_>) -> ResourceResult<EntityId> {
         self.validate_new_global_id(draft.global_id)?;
         let entity_type = resource_entity_type(draft.kind);
@@ -97,6 +108,8 @@ impl<'m> ResourceEditor<'m> {
         self.commit_create(entity)
     }
 
+    /// Commits a `ResourceTimeDraft` as a new `IfcResourceTime`, failing if
+    /// any ratio attribute is non-finite or not strictly positive.
     pub fn create_time(&mut self, draft: ResourceTimeDraft<'_>) -> ResourceResult<EntityId> {
         for (attribute, value) in [
             ("ScheduleUsage", draft.schedule_usage),
@@ -135,6 +148,10 @@ impl<'m> ResourceEditor<'m> {
         self.commit_create(entity)
     }
 
+    /// Commits an `AllocationDraft` as a new `IfcRelAssignsToResource`,
+    /// failing if `RelatedObjects` is empty, repeats a target, includes the
+    /// resource itself, or references entities the `RelatedObjectsType`
+    /// does not permit.
     pub fn create_allocation(&mut self, draft: AllocationDraft<'_>) -> ResourceResult<EntityId> {
         self.validate_new_global_id(draft.global_id)?;
         self.check_reference_select(
@@ -194,6 +211,10 @@ impl<'m> ResourceEditor<'m> {
         self.commit_create(entity)
     }
 
+    /// Commits a `NestingDraft` as a new `IfcRelNests`, failing if
+    /// `RelatedObjects` is empty, repeats a target, includes the parent
+    /// itself, names a child that already has a resource parent, or would
+    /// introduce a nesting cycle.
     pub fn create_nesting(&mut self, draft: NestingDraft<'_>) -> ResourceResult<EntityId> {
         self.validate_new_global_id(draft.global_id)?;
         self.check_reference(

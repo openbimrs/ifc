@@ -1,3 +1,5 @@
+//! Exact lowering of horizontal line and circular-arc segments to neutral curves.
+
 use std::sync::Arc;
 
 use axiolid_curve::{Curve2, Line2};

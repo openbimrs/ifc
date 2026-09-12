@@ -9,12 +9,18 @@ use crate::error::{ResourceError, ResourceResult};
 use crate::{ConstructionResource, ResourceTime};
 
 #[derive(Debug, Clone, Copy)]
+/// Borrowed, schema-resolved entry point for the bounded IFC4 resource
+/// slice: pairs a model with the schema selected for it and exposes
+/// per-entity projection and query methods.
 pub struct ResourceView<'m, 's> {
     pub(crate) model: &'m Model,
     pub(crate) schema: &'s Schema,
 }
 
 impl<'m, 's> ResourceView<'m, 's> {
+    /// Builds a view over `model` using an explicit `schema`, failing if
+    /// `schema` is not IFC4 or IFC4X3, or does not match the model's
+    /// declared `FILE_SCHEMA` token.
     pub fn new(model: &'m Model, schema: &'s Schema) -> ResourceResult<Self> {
         let Some(version) = schema.version() else {
             return Err(ResourceError::UnsupportedSchema {
@@ -43,15 +49,19 @@ impl<'m, 's> ResourceView<'m, 's> {
         Ok(Self { model, schema })
     }
 
+    /// The bundled schema this view resolves attributes against.
     #[must_use]
     pub fn schema(&self) -> &'s Schema {
         self.schema
     }
 
+    /// Projects a concrete `IfcConstructionResource` occurrence by entity
+    /// id.
     pub fn resource(&self, id: EntityId) -> ResourceResult<ConstructionResource<'m, 's>> {
         ConstructionResource::from_record(self.record(id, "IfcConstructionResource")?)
     }
 
+    /// Projects an `IfcResourceTime` by entity id.
     pub fn resource_time(&self, id: EntityId) -> ResourceResult<ResourceTime<'m, 's>> {
         Ok(ResourceTime::from_record(
             self.record(id, "IfcResourceTime")?,
@@ -75,6 +85,9 @@ impl<'m, 's> ResourceView<'m, 's> {
 }
 
 impl<'m> ResourceView<'m, 'static> {
+    /// Selects the bundled schema matching the model's declared
+    /// `FILE_SCHEMA` token (IFC4 ADD2 TC1 or IFC4X3 ADD2), failing if the
+    /// header names no schema, more than one, or an unsupported one.
     pub fn for_model(model: &'m Model) -> ResourceResult<Self> {
         let token = match model.header().schema.as_slice() {
             [] => return Err(ResourceError::MissingSchema),

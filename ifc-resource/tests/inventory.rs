@@ -1,3 +1,5 @@
+//! `IfcInventory` projection and group-membership checks.
+
 mod support;
 
 use ifc_resource::{ResourceError, ResourceView};

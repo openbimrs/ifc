@@ -1,3 +1,5 @@
+//! Vertical and cant segment parameter reading and lowering.
+
 use axiolid_model::{CurveRelation, GeometryNode};
 use ifc_alignment::{
     lower_vertical_segment, read_cant_segment, read_vertical_segment, AlignmentUnits,

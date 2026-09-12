@@ -1,3 +1,5 @@
+//! `IfcConstructionResourceType` projection and type-assignment checks.
+
 mod support;
 
 use ifc_resource::{ResourceError, ResourceTypeKind, ResourceView};

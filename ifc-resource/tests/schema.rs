@@ -1,3 +1,5 @@
+//! Bundled-schema `IfcConstructionResource` slot contract checks.
+
 mod support;
 
 use ifc_resource::{ResourceError, ResourceView};

@@ -1,3 +1,5 @@
+//! `IfcConstructionResource` occurrence projection checks.
+
 mod support;
 
 use ifc_model::Value;

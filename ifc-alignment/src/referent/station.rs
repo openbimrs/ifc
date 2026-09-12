@@ -22,10 +22,21 @@ use crate::horizontal::AlignmentUnits;
 /// segment, immediately before it is replaced by `station` at this point.
 #[derive(Debug, Clone, PartialEq)]
 pub struct StationEquation {
+    /// The `IfcReferent` entity carrying `Pset_Stationing`.
     pub referent: EntityId,
+    /// Absolute distance along the alignment's basis curve, from the
+    /// referent's `IfcLinearPlacement`.
     pub distance_along: f64,
+    /// `Pset_Stationing.IncomingStation`, present exactly when this referent
+    /// marks a station equation: the station value that would have
+    /// continued from the previous segment, immediately before `station`
+    /// replaces it here.
     pub incoming_station: Option<f64>,
+    /// `Pset_Stationing.Station`: the station value in effect from this
+    /// point onward.
     pub station: f64,
+    /// `Pset_Stationing.HasIncreasingStation`; absent in the source means
+    /// `true` per the property definition's default.
     pub has_increasing_station: bool,
 }
 

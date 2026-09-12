@@ -18,7 +18,10 @@ use crate::view::AlignmentView;
 /// One resolved, ordered, continuity-checked cant profile.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CantLayout {
+    /// The `IfcAlignmentCant` entity this layout was resolved from.
     pub entity: EntityId,
+    /// `RailHeadDistance`: track gauge used to convert cant to superelevation
+    /// angle, in metres.
     pub rail_head_distance: f64,
     segments: Vec<CantSegment>,
 }

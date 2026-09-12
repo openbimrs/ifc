@@ -25,24 +25,37 @@ pub enum CurveMeasure {
 /// Resolved `IfcPointByDistanceExpression`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PointByDistance {
+    /// The `IfcPointByDistanceExpression` entity this was read from.
     pub entity: EntityId,
+    /// `DistanceAlong`: absolute length or normalized parameter, per
+    /// `CurveMeasure`.
     pub distance_along: CurveMeasure,
+    /// `OffsetLateral`, when authored.
     pub offset_lateral: Option<f64>,
+    /// `OffsetVertical`, when authored.
     pub offset_vertical: Option<f64>,
+    /// `OffsetLongitudinal`, when authored.
     pub offset_longitudinal: Option<f64>,
+    /// `BasisCurve`: the curve `distance_along` is measured against.
     pub basis_curve: EntityId,
 }
 
 /// Resolved `IfcLinearPlacement`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LinearPlacement {
+    /// The `IfcLinearPlacement` entity this was read from.
     pub entity: EntityId,
+    /// `RelativePlacement.Location`: the resolved `IfcPointByDistanceExpression`.
     pub relative_placement: PointByDistance,
     /// `IfcAxis2PlacementLinear.Axis`/`RefDirection`, if the source stated an
     /// explicit orientation rather than deriving one from the basis curve.
     pub has_explicit_axes: bool,
 }
 
+/// Read one `IfcPointByDistanceExpression` referenced by `id`.
+///
+/// Fails if `id` is missing, is not an `IfcPointByDistanceExpression`, or
+/// any attribute is missing or holds a value of the wrong kind.
 pub fn resolve_point_by_distance(
     model: &Model,
     id: EntityId,
@@ -81,6 +94,13 @@ pub fn resolve_point_by_distance(
     })
 }
 
+/// Resolve one `IfcLinearPlacement` referenced by `id` to its distance-along
+/// point on a basis curve.
+///
+/// Fails if `id` is missing or not an `IfcLinearPlacement`, `RelativePlacement`
+/// does not resolve to an `IfcAxis2PlacementLinear` whose `Location` is an
+/// `IfcPointByDistanceExpression` (WR1), or `Axis`/`RefDirection` are supplied
+/// one without the other (WR2).
 pub fn resolve_linear_placement(
     model: &Model,
     id: EntityId,

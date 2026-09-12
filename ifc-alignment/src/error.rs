@@ -2,46 +2,78 @@
 
 use ifc_model::EntityId;
 
+/// Why an IFC alignment entity could not be read or lowered.
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq)]
 pub enum AlignmentError {
+    /// A referenced entity id is not present in the model.
     MissingEntity {
+        /// The id that resolved to nothing.
         entity: EntityId,
     },
+    /// An entity was not the IFC type the referencing slot requires.
     WrongType {
+        /// The entity that was read.
         entity: EntityId,
+        /// The IFC type the slot requires.
         expected: &'static str,
+        /// The IFC type actually declared.
         actual: String,
     },
+    /// A mandatory attribute was absent, so the value cannot be inferred.
     MissingAttribute {
+        /// The entity that was read.
         entity: EntityId,
+        /// Zero-based slot index of the absent attribute.
         index: usize,
+        /// Schema name of the attribute.
         name: &'static str,
     },
+    /// An attribute was present but held the wrong kind of value.
     InvalidAttribute {
+        /// The entity that was read.
         entity: EntityId,
+        /// Zero-based slot index of the offending attribute.
         index: usize,
+        /// Schema name of the attribute.
         name: &'static str,
     },
+    /// The project's unit assignment does not resolve to usable lengths or angles.
     InvalidUnits {
+        /// What expectation failed.
         detail: &'static str,
     },
+    /// A horizontal, vertical, or cant segment carries internally inconsistent data.
     InvalidSegment {
+        /// The segment entity.
         entity: EntityId,
+        /// What expectation failed.
         detail: &'static str,
     },
+    /// A segment type or configuration this crate deliberately does not lower.
+    ///
+    /// Covers segment kinds that are legal IFC but require data this crate does
+    /// not yet combine (e.g. `VIENNESEBEND` needs the cant swing carried by a
+    /// separate `IfcAlignmentCant` layout) or that have no closed-form neutral
+    /// curve here (e.g. `CUBIC`).
     Unsupported {
+        /// The unsupported entity.
         entity: EntityId,
+        /// The IFC type or `PredefinedType` name actually declared.
         type_name: String,
+        /// Why it is refused rather than approximated.
         detail: &'static str,
     },
+    /// The assembled neutral alignment graph violates a structural invariant.
     Graph {
+        /// What expectation failed.
         detail: String,
     },
-    /// No `FILE_SCHEMA` token was declared.
+    /// The model header declares no `FILE_SCHEMA` token.
     MissingSchema,
     /// More than one `FILE_SCHEMA` token was declared.
     AmbiguousSchema {
+        /// Every schema token found in the header.
         tokens: Vec<String>,
     },
     /// The declared schema is not one this crate can interpret.
@@ -51,26 +83,35 @@ pub enum AlignmentError {
     /// dispatch here the way `ifc-resource`/`ifc-structural` have one --
     /// exactly one profile is authoritative and anything else is refused.
     UnsupportedSchema {
+        /// The rejected schema token.
         token: String,
     },
     /// A relationship or nesting structure violates a stated invariant.
     SemanticViolation {
+        /// The offending entity, when one could be identified.
         entity: Option<EntityId>,
+        /// The invariant that was violated.
         rule: &'static str,
     },
     /// A dangling reference: the target id is not present in the model.
     DanglingReference {
+        /// The entity holding the dangling reference.
         entity: EntityId,
+        /// The attribute that names the missing target.
         attribute: &'static str,
+        /// The id that resolved to nothing.
         target: EntityId,
     },
-    /// Traversal exceeded an explicit bound.
+    /// Graph traversal exceeded an explicit depth or node-count bound.
     BudgetExceeded {
+        /// The configured maximum traversal depth.
         max_depth: usize,
+        /// The configured maximum node count.
         max_nodes: usize,
     },
 }
 
+/// Result of an alignment read, carrying [`AlignmentError`] on failure.
 pub type AlignmentResult<T> = Result<T, AlignmentError>;
 
 impl std::fmt::Display for AlignmentError {

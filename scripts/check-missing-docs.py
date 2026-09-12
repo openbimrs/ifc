@@ -27,9 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # point of the exercise. Reaching zero means the crate can move onto
 # [workspace.lints] and leave this table for good.
 BUDGET = {
-    "ifc-alignment": 117,
     "ifc-material": 283,
-    "ifc-resource": 225,
     "ifc-structural": 262,
     "ifc-style": 338,
     "ifc-template-catalog": 251,

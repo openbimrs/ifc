@@ -1,3 +1,5 @@
+//! Transaction-staged authoring end-to-end checks.
+
 mod support;
 
 use ifc_resource::{
