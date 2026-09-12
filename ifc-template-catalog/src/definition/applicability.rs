@@ -55,8 +55,11 @@ impl Applicability {
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[non_exhaustive]
 pub enum ApplicabilityError {
+    /// The selector string was empty or whitespace-only.
     #[error("applicability selector is empty")]
     Empty,
+    /// The selector had a `/` but its entity or predefined-type side was
+    /// empty, or it contained more than one `/`.
     #[error("invalid applicability selector `{0}`")]
     Invalid(String),
 }

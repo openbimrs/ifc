@@ -17,6 +17,12 @@ struct ArchivePayload {
     templates: Vec<SetTemplate>,
 }
 
+/// Decode a versioned binary catalog artifact into an official-profile [`Catalog`].
+///
+/// Fails on oversized input, bad magic, a truncated or unsupported-version
+/// header, undecodable payload bytes, trailing bytes after the payload, or a
+/// payload that fails [`Catalog::try_new`] (duplicate/empty names, manifest
+/// count mismatch).
 pub fn decode_catalog(bytes: &[u8]) -> Result<Catalog, ArchiveError> {
     if bytes.len() > MAX_ARCHIVE_BYTES {
         return Err(ArchiveError::TooLarge {
@@ -56,6 +62,8 @@ pub fn decode_catalog(bytes: &[u8]) -> Result<Catalog, ArchiveError> {
     .map_err(ArchiveError::Catalog)
 }
 
+/// Encode a manifest and template list into the versioned binary artifact
+/// format that [`decode_catalog`] reads back.
 #[cfg(feature = "generation")]
 pub fn encode_catalog(
     manifest: SourceManifest,
@@ -76,19 +84,37 @@ pub fn encode_catalog(
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[non_exhaustive]
+/// Why a serialized catalog artifact could not be decoded.
 pub enum ArchiveError {
+    /// The bincode payload could not be decoded; message carries the underlying error.
     #[error("cannot decode catalog artifact: {0}")]
     Decode(String),
+    /// Input exceeds the 8 MiB resource budget for a catalog artifact.
     #[error("catalog artifact is {actual} bytes; limit is {limit} bytes")]
-    TooLarge { actual: usize, limit: usize },
+    TooLarge {
+        /// Actual input length in bytes.
+        actual: usize,
+        /// Maximum permitted length in bytes.
+        limit: usize,
+    },
+    /// Input is shorter than the magic plus minimum version header.
     #[error("catalog artifact header is {actual} bytes; at least {required} bytes are required")]
-    TruncatedHeader { actual: usize, required: usize },
+    TruncatedHeader {
+        /// Actual input length in bytes.
+        actual: usize,
+        /// Minimum header length required.
+        required: usize,
+    },
+    /// Input does not start with the expected 8-byte magic sequence.
     #[error("catalog artifact magic is invalid")]
     BadMagic,
+    /// The decoded format-version number is not the version this build reads.
     #[error("unsupported catalog artifact format version {0}")]
     UnsupportedVersion(u16),
+    /// Bytes remained after the payload was fully decoded.
     #[error("catalog artifact has {0} trailing bytes")]
     TrailingBytes(usize),
+    /// The decoded payload failed [`Catalog::try_new`] validation.
     #[error(transparent)]
     Catalog(#[from] CatalogError),
 }

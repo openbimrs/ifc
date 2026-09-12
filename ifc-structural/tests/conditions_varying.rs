@@ -1,3 +1,6 @@
+//! Boundary/connection condition and varying-member coverage across
+//! IFC2X3, IFC4 and IFC4X3.
+
 mod support;
 
 use std::sync::Arc;

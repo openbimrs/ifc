@@ -13,6 +13,9 @@ struct Expected {
     values: Vec<String>,
 }
 
+/// Check an [`ObservedSet`] against a [`SetTemplate`]'s expected members and
+/// return every deviation found under `policy`. Never fails; disagreements
+/// are reported as issues, not as a `Result` error.
 pub fn validate(
     template: &SetTemplate,
     observed: &ObservedSet,

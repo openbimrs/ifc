@@ -1,6 +1,7 @@
+//! Integration tests for [`ifc_template_catalog::catalog::Catalog::with_patches`] and corrections.
+
 #[path = "support/mod.rs"]
 mod support;
-
 use ifc_template_catalog::catalog::{Catalog, CatalogProfile};
 use ifc_template_catalog::definition::{Applicability, CatalogEdition};
 use ifc_template_catalog::overlay::{AdvisorySeverity, Patch, PatchError, PatchOperation};

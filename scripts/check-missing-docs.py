@@ -28,9 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # [workspace.lints] and leave this table for good.
 BUDGET = {
     "ifc-material": 283,
-    "ifc-structural": 262,
     "ifc-style": 338,
-    "ifc-template-catalog": 251,
 }
 
 
@@ -39,6 +37,10 @@ def measure(crate: str) -> int:
 
     `--force-warn` overrides the crate's own `allow(missing_docs)`, and the
     source file is touched first because cargo will not re-lint a fresh cache.
+
+    `--all-features` matters: a feature-gated module is invisible to a
+    default-feature measurement, so its undocumented items would go uncounted
+    and the crate could be promoted while still holding real debt.
     """
     lib = ROOT / crate / "src" / "lib.rs"
     if lib.exists():
@@ -50,6 +52,7 @@ def measure(crate: str) -> int:
             "-p",
             crate,
             "--lib",
+            "--all-features",
             "--",
             "--force-warn",
             "missing_docs",

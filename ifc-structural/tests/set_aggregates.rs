@@ -1,3 +1,6 @@
+//! SET/LIST cardinality and duplicate-member rejection coverage for
+//! aggregate reference attributes.
+
 mod support;
 
 use ifc_model::{Transaction, Value};

@@ -1,3 +1,5 @@
+//! Integration tests for [`ifc_template_catalog::catalog::Catalog::diagnostics`].
+
 use ifc_template_catalog::definition::CatalogEdition;
 use ifc_template_catalog::diagnostic::DiagnosticCode;
 use ifc_template_catalog::embedded::official_catalog;

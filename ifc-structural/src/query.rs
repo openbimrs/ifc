@@ -7,44 +7,64 @@ use ifc_model::EntityId;
 use crate::error::StructuralResult;
 use crate::view::{Record, StructuralView};
 
+/// A resolved `IfcRelConnectsStructuralMember` between one member and its connection.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MemberConnection {
+    /// The `IfcRelConnectsStructuralMember` relation entity itself.
     pub relation: EntityId,
+    /// `RelatingStructuralMember`.
     pub member: EntityId,
+    /// `RelatedStructuralConnection`.
     pub connection: EntityId,
+    /// `AppliedCondition`, an `IfcBoundaryCondition` overriding the connection's own condition. Legally absent.
     pub applied_condition: Option<EntityId>,
+    /// `AdditionalConditions`, an `IfcStructuralConnectionCondition`. Legally absent.
     pub additional_conditions: Option<EntityId>,
+    /// `SupportedLength`, the tributary length this connection carries along the member. Legally absent.
     pub supported_length: Option<f64>,
+    /// `ConditionCoordinateSystem`, an `IfcAxis2Placement3D` local to the connection. Legally absent.
     pub coordinate_system: Option<EntityId>,
 }
 
 impl MemberConnection {
     #[must_use]
+    /// The `IfcRelConnectsStructuralMember` entity id backing this connection.
     pub fn relation_id(&self) -> EntityId {
         self.relation
     }
 
+    /// The connected `IfcStructuralMember` (`RelatingStructuralMember`). Always present.
     pub fn member(&self) -> StructuralResult<EntityId> {
         Ok(self.member)
     }
 
+    /// The connected `IfcStructuralConnection` (`RelatedStructuralConnection`). Always present.
     pub fn connection(&self) -> StructuralResult<EntityId> {
         Ok(self.connection)
     }
 
+    /// `SupportedLength`, legally absent when the whole member is supported.
     pub fn supported_length(&self) -> StructuralResult<Option<f64>> {
         Ok(self.supported_length)
     }
 }
 
+/// A resolved `IfcRelConnectsStructuralActivity` attaching one activity (action or reaction) to its target.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActivityAssignment {
+    /// The `IfcRelConnectsStructuralActivity` relation entity itself.
     pub relation: EntityId,
+    /// `RelatingElement`, the `IfcStructuralActivityAssignmentSelect` (an `IfcElement` or `IfcStructuralItem`) the activity is attached to.
     pub target: EntityId,
+    /// `RelatedStructuralActivity`, the attached `IfcStructuralActivity` (action or reaction).
     pub activity: EntityId,
 }
 
 impl<'m, 's> StructuralView<'m, 's> {
+    /// Members of `analysis_model`'s `IsGroupedBy` `IfcRelAssignsToGroup` relations, in file order.
+    ///
+    /// Fails with [`crate::StructuralError::SemanticViolation`] if a relation
+    /// assigns the analysis model to itself.
     pub fn analysis_items(&self, analysis_model: EntityId) -> StructuralResult<Vec<EntityId>> {
         self.analysis_model(analysis_model)?;
         let mut items = Vec::new();
@@ -92,6 +112,7 @@ impl<'m, 's> StructuralView<'m, 's> {
         Ok(reactions)
     }
 
+    /// `IfcRelConnectsStructuralMember` relations attaching connections to `member`, in file order.
     pub fn member_connections(&self, member: EntityId) -> StructuralResult<Vec<MemberConnection>> {
         self.member(member)?;
         let mut connections = Vec::new();
@@ -124,6 +145,12 @@ impl<'m, 's> StructuralView<'m, 's> {
         Ok(connections)
     }
 
+    /// `IfcRelConnectsStructuralActivity` relations attaching activities to `target`, in file order.
+    ///
+    /// Fails with [`crate::StructuralError::WrongType`] if `target` is neither
+    /// an `IfcElement` nor an `IfcStructuralItem`, and with
+    /// [`crate::StructuralError::SemanticViolation`] if an `IfcStructuralActivity`
+    /// is attached by more than one relation.
     pub fn activities_for(&self, target: EntityId) -> StructuralResult<Vec<ActivityAssignment>> {
         let target_entity = self
             .model

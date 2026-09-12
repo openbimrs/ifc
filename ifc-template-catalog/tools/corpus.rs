@@ -1,3 +1,6 @@
+//! Deterministic XML corpus import: walk, hash, and parse a source edition's
+//! PSD/QTO files into a [`SourceManifest`] and template list for `tools/generate.rs`.
+
 use std::fs;
 use std::path::{Path, PathBuf};
 

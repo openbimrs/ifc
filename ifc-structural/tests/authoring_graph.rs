@@ -1,3 +1,6 @@
+//! Staged-transaction coverage: authoring drafts across the member/connection/
+//! action/relationship graph and reading the result back through the view.
+
 mod support;
 
 use ifc_model::Transaction;

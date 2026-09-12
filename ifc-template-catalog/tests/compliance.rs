@@ -1,3 +1,5 @@
+//! Integration tests for [`ifc_template_catalog::compliance::validate`].
+
 #[path = "support/mod.rs"]
 mod support;
 

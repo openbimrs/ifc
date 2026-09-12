@@ -1,3 +1,5 @@
+//! Integration tests for [`ifc_template_catalog::xml::parse_template`].
+
 #![cfg(feature = "xml")]
 
 use ifc_template_catalog::definition::{

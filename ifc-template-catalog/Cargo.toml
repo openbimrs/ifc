@@ -27,3 +27,6 @@ generation = ["embedded", "xml", "dep:sha2"]
 name = "ifc-template-catalog-generate"
 path = "tools/generate.rs"
 required-features = ["generation"]
+
+[lints]
+workspace = true

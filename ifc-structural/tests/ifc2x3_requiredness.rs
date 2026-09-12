@@ -1,3 +1,6 @@
+//! IFC2X3-specific mandatory-attribute coverage where later schema versions
+//! made the same attribute optional.
+
 mod support;
 
 use ifc_model::Value;

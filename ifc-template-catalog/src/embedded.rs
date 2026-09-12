@@ -59,15 +59,20 @@ pub fn corrected_catalog(edition: CatalogEdition) -> Result<Catalog, EmbeddedCat
     }
 }
 
+/// Why loading a committed embedded catalog snapshot failed.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[non_exhaustive]
 pub enum EmbeddedCatalogError {
+    /// No committed generated data exists for this edition/profile pair.
     #[error("no embedded catalog for {0:?}")]
     UnavailableEdition(CatalogEdition),
+    /// [`load_catalog`] was called with a profile other than `Official` or `Corrected`.
     #[error("embedded loading does not construct {0:?} profiles")]
     UnsupportedProfile(CatalogProfile),
+    /// The committed binary artifact failed to decode.
     #[error(transparent)]
     Archive(#[from] ArchiveError),
+    /// Applying the built-in correction ledger to the official catalog failed.
     #[error(transparent)]
     Patch(#[from] PatchError),
 }

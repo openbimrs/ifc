@@ -1,3 +1,5 @@
+//! Integration tests for [`ifc_template_catalog::embedded::corrected_catalog`].
+
 use ifc_template_catalog::catalog::CatalogProfile;
 use ifc_template_catalog::definition::CatalogEdition;
 use ifc_template_catalog::embedded::{corrected_catalog, official_catalog};

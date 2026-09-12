@@ -9,11 +9,16 @@ use super::{
 };
 use crate::error::{StructuralError, StructuralResult};
 
+/// Staged `IfcRoot`-level attributes shared by every staged structural relationship.
 #[derive(Debug, Clone)]
 pub struct RelationshipRootDraft {
+    /// `GlobalId`; must parse as a 22-character IFC GUID.
     pub global_id: String,
+    /// `OwnerHistory`, validated against the model/transaction if present.
     pub owner_history: Option<EntityId>,
+    /// `Name`.
     pub name: Option<String>,
+    /// `Description`.
     pub description: Option<String>,
 }
 
@@ -28,21 +33,33 @@ impl Default for RelationshipRootDraft {
     }
 }
 
+/// Staged fields for creating an `IfcRelConnectsStructuralMember` via [`stage_member_connection`].
 #[derive(Debug, Clone)]
 pub struct MemberConnectionDraft {
+    /// `IfcRoot` attributes shared with other staged structural relationships.
     pub root: RelationshipRootDraft,
+    /// `RelatingStructuralMember`.
     pub member: EntityId,
+    /// `RelatedStructuralConnection`.
     pub connection: EntityId,
+    /// `AppliedCondition`, an `IfcBoundaryCondition` reference.
     pub applied_condition: Option<EntityId>,
+    /// `AdditionalConditions`, an `IfcStructuralConnectionCondition` reference.
     pub additional_conditions: Option<EntityId>,
+    /// `SupportedLength`; must be a positive finite value when set.
     pub supported_length: Option<f64>,
+    /// `ConditionCoordinateSystem`, an `IfcAxis2Placement3D` reference.
     pub condition_coordinate_system: Option<EntityId>,
 }
 
+/// Staged fields for creating an `IfcRelConnectsStructuralActivity` via [`stage_activity_assignment`].
 #[derive(Debug, Clone)]
 pub struct ActivityAssignmentDraft {
+    /// `IfcRoot` attributes shared with other staged structural relationships.
     pub root: RelationshipRootDraft,
+    /// `RelatingElement`, an `IfcStructuralActivityAssignmentSelect` (`IfcElement` or `IfcStructuralItem`).
     pub relating_element: EntityId,
+    /// `RelatedStructuralActivity`, the `IfcStructuralActivity` being attached.
     pub activity: EntityId,
 }
 
@@ -67,6 +84,10 @@ fn root_fields(root: RelationshipRootDraft) -> Vec<(&'static str, Value)> {
     ]
 }
 
+/// Stage an `IfcRelConnectsStructuralMember` create edit on `tx`.
+///
+/// Fails with [`StructuralError::InvalidDraftValue`] if `supported_length` is
+/// set but not positive and finite. Returns the id staged for the new entity.
 pub fn stage_member_connection(
     tx: &mut Transaction,
     model: &Model,
@@ -135,6 +156,14 @@ pub fn stage_member_connection(
     Ok(tx.create(build_named(schema, ENTITY, fields)?))
 }
 
+/// Stage an `IfcRelConnectsStructuralActivity` create edit on `tx`.
+///
+/// Fails with [`StructuralError::DanglingReference`] if `relating_element`
+/// resolves to nothing, [`StructuralError::WrongReferenceType`] if it is not
+/// an `IfcStructuralActivityAssignmentSelect` member, and with
+/// [`StructuralError::SemanticViolation`] if `activity` already has an
+/// attaching `IfcRelConnectsStructuralActivity` relation (staged or existing).
+/// Returns the id staged for the new entity.
 pub fn stage_activity_assignment(
     tx: &mut Transaction,
     model: &Model,

@@ -1,3 +1,5 @@
+//! Shared fixture builders for `ifc-template-catalog` integration tests.
+
 #![allow(dead_code)]
 
 use ifc_template_catalog::definition::{

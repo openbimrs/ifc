@@ -5,7 +5,9 @@ use super::{issue, visit_data_types, CatalogDiagnostic, DiagnosticCode, Diagnost
 
 /// Minimum schema capability needed to validate external catalog names.
 pub trait CatalogSchema {
+    /// True when the schema declares an entity by this exact name.
     fn has_entity(&self, name: &str) -> bool;
+    /// True when the schema declares a defined type by this exact name.
     fn has_type(&self, name: &str) -> bool;
 }
 

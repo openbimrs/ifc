@@ -1,3 +1,6 @@
+//! Draft-validation coverage for `stage_analysis_model`, `stage_member`,
+//! `stage_connection` and `stage_load`.
+
 mod support;
 
 use ifc_model::{Model, Transaction};

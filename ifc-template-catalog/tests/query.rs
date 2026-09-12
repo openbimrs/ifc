@@ -1,3 +1,6 @@
+//! Integration tests for [`ifc_template_catalog::catalog::Catalog::query_applicability`]
+//! and [`ifc_template_catalog::catalog::Catalog::applicable_to`].
+
 #[path = "support/mod.rs"]
 mod support;
 

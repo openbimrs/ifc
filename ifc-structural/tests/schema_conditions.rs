@@ -1,3 +1,6 @@
+//! Assertions of action/load attribute names and semantics against the
+//! bundled IFC2X3/IFC4/IFC4X3 schemas.
+
 mod support;
 
 use ifc_model::Value;

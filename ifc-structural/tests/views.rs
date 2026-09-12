@@ -1,3 +1,6 @@
+//! `StructuralView` projection coverage for members, connections, actions
+//! and loads across IFC2X3, IFC4 and IFC4X3.
+
 mod support;
 
 use ifc_model::{Entity, EntityId, Value};

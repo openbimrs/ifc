@@ -1,3 +1,5 @@
+//! Shared entity-building helpers for `ifc-structural` integration tests.
+
 #![allow(dead_code)]
 
 use ifc_model::{Entity, EntityId, Model, Value};

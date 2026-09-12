@@ -1,3 +1,6 @@
+//! Stage-then-project roundtrip coverage: authored drafts read back
+//! unchanged through `StructuralView`.
+
 use ifc_model::Codec;
 use ifc_step::StepCodec;
 use ifc_structural::{LoadKind, StructuralView};

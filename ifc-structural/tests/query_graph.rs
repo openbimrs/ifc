@@ -1,3 +1,6 @@
+//! Bounded relationship-query coverage: `activities_for` and its
+//! `IfcRelConnectsStructuralActivity` attachment-cardinality rule.
+
 mod support;
 
 use ifc_model::Value;

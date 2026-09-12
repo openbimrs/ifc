@@ -1,3 +1,5 @@
+//! Integration tests for the embedded official catalog snapshots.
+
 use ifc_template_catalog::definition::{
     CatalogEdition, PropertyKind, PropertySetType, QuantitySetType, SetTemplateKind,
 };

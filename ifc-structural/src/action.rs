@@ -10,19 +10,27 @@ mod linear;
 mod planar;
 mod point;
 
+/// Which `IfcStructuralActivity` application geometry an action carries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActionKind {
+    /// Point application: `IfcStructuralPointAction`.
     Point,
+    /// Line application: `IfcStructuralCurveAction` or its `IfcStructuralLinearAction` subtype.
     Curve,
+    /// Surface application: `IfcStructuralSurfaceAction` or its `IfcStructuralPlanarAction` subtype.
     Surface,
 }
 
+/// Value of `IfcGlobalOrLocalEnum` naming the frame an action's magnitude/direction are given in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CoordinateSystem {
+    /// `GLOBAL_COORDS`.
     Global,
+    /// `LOCAL_COORDS`.
     Local,
 }
 
+/// Borrowed projection of an `IfcStructuralAction` (point, curve/linear, or surface/planar).
 #[derive(Debug, Clone, Copy)]
 pub struct StructuralAction<'m, 's> {
     record: Record<'m, 's>,
@@ -30,6 +38,11 @@ pub struct StructuralAction<'m, 's> {
 }
 
 impl<'m, 's> StructuralAction<'m, 's> {
+    /// Classify `record`'s [`ActionKind`] from its declared IFC type.
+    ///
+    /// Fails with [`StructuralError::WrongType`] if the type is none of
+    /// `IfcStructuralPointAction`, `IfcStructuralCurveAction`/`IfcStructuralLinearAction`,
+    /// or `IfcStructuralSurfaceAction`/`IfcStructuralPlanarAction`.
     pub(crate) fn from_record(record: Record<'m, 's>) -> StructuralResult<Self> {
         let kind = if record
             .schema
@@ -63,19 +76,30 @@ impl<'m, 's> StructuralAction<'m, 's> {
     }
 
     #[must_use]
+    /// The `IfcStructuralAction` entity id.
     pub fn id(&self) -> EntityId {
         self.record.id
     }
 
     #[must_use]
+    /// Which application geometry this action carries.
     pub fn kind(&self) -> ActionKind {
         self.kind
     }
 
+    /// `AppliedLoad`, the `IfcStructuralLoad` this action applies.
+    ///
+    /// Fails with [`StructuralError::WrongReferenceType`] if the referenced
+    /// load's type is not one of the subtypes this action's kind permits
+    /// (e.g. a point action must reference `IfcStructuralLoadSingleForce` or
+    /// `IfcStructuralLoadSingleDisplacement`), and with
+    /// [`StructuralError::SemanticViolation`] for the same schema-shape
+    /// checks `validate_semantics` performs.
     pub fn applied_load(&self) -> StructuralResult<EntityId> {
         self.validate_semantics()
     }
 
+    /// `GlobalOrLocal`, always present on `IfcStructuralAction`.
     pub fn coordinate_system(&self) -> StructuralResult<CoordinateSystem> {
         self.validate_semantics()?;
         self.coordinate_system_value()
@@ -98,6 +122,9 @@ impl<'m, 's> StructuralAction<'m, 's> {
         }
     }
 
+    /// `DestabilizingLoad`, mandatory in IFC2X3 (defaults to `Some`) and optional in IFC4/IFC4X3.
+    ///
+    /// `None` when the attribute does not exist for this type in this schema version.
     pub fn destabilizing_load(&self) -> StructuralResult<Option<bool>> {
         self.validate_semantics()?;
         if !self.record.has_attribute("DestabilizingLoad") {
@@ -109,6 +136,7 @@ impl<'m, 's> StructuralAction<'m, 's> {
         self.record.optional_bool("DestabilizingLoad")
     }
 
+    /// `CausedBy`, the `IfcStructuralReaction` that produced this action, when the attribute exists and is set.
     pub fn caused_by(&self) -> StructuralResult<Option<EntityId>> {
         self.validate_semantics()?;
         if !self.record.has_attribute("CausedBy") {
@@ -118,6 +146,10 @@ impl<'m, 's> StructuralAction<'m, 's> {
             .optional_ref("CausedBy", "IfcStructuralReaction")
     }
 
+    /// `PredefinedType`, when the attribute exists for this action's IFC type.
+    ///
+    /// `IfcStructuralPointAction` has no `PredefinedType` attribute, so this
+    /// returns `None` for point actions regardless of schema version.
     pub fn predefined_type(&self) -> StructuralResult<Option<&'m str>> {
         self.validate_semantics()?;
         if !self.record.has_attribute("PredefinedType") {
@@ -126,6 +158,7 @@ impl<'m, 's> StructuralAction<'m, 's> {
         self.record.required_enum("PredefinedType").map(Some)
     }
 
+    /// `ProjectedOrTrue`, mandatory on linear/planar actions in IFC2X3 and optional elsewhere.
     pub fn projected_or_true(&self) -> StructuralResult<Option<&'m str>> {
         self.validate_semantics()?;
         if !self.record.has_attribute("ProjectedOrTrue") {

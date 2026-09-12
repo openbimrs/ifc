@@ -1,3 +1,5 @@
+//! Integration tests for [`ifc_template_catalog::catalog::Catalog::try_new`] and its error paths.
+
 use ifc_template_catalog::catalog::{Catalog, CatalogError, CatalogProfile};
 use ifc_template_catalog::definition::{
     Applicability, CatalogEdition, PropertyDataType, PropertyKind, PropertySetType,

@@ -1,3 +1,5 @@
+//! CLI: export one embedded official catalog edition's applicability rows to a TSV file.
+
 use std::env;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Write};

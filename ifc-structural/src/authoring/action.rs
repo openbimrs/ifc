@@ -6,9 +6,12 @@ use super::{build_named, optional_ref, validate_optional_ref, validate_ref_selec
 use crate::action::CoordinateSystem;
 use crate::error::{StructuralError, StructuralResult};
 
+/// Value of `IfcProjectedOrTrueLengthEnum` naming how a linear/planar action's magnitude is measured.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProjectedOrTrue {
+    /// `PROJECTED_LENGTH`: magnitude given per unit of the projected length/area.
     ProjectedLength,
+    /// `TRUE_LENGTH`: magnitude given per unit of the true (unprojected) length/area.
     TrueLength,
 }
 
@@ -21,27 +24,48 @@ impl ProjectedOrTrue {
     }
 }
 
+/// Staged action subtype for [`ActionDraft::kind`].
 #[derive(Debug, Clone)]
 pub enum ActionDraftKind {
+    /// Stages an `IfcStructuralPointAction`.
     Point,
+    /// Stages an `IfcStructuralLinearAction`.
     Linear {
+        /// `ProjectedOrTrue`; staged only when the target schema declares the attribute.
         projected_or_true: Option<ProjectedOrTrue>,
     },
+    /// Stages an `IfcStructuralPlanarAction`.
     Planar {
+        /// `ProjectedOrTrue`; staged only when the target schema declares the attribute.
         projected_or_true: Option<ProjectedOrTrue>,
     },
 }
 
+/// Staged fields for creating an `IfcStructuralAction` via [`stage_action`].
 #[derive(Debug, Clone)]
 pub struct ActionDraft {
+    /// `IfcRoot` attributes shared with other staged structural entities.
     pub root: StructuralRootDraft,
+    /// `AppliedLoad`; must reference a load type compatible with `kind`.
     pub applied_load: EntityId,
+    /// `GlobalOrLocal`.
     pub coordinate_system: CoordinateSystem,
+    /// `DestabilizingLoad`; required when the target schema (IFC2X3) declares it mandatory.
     pub destabilizing_load: Option<bool>,
+    /// `CausedBy`; only staged when the target schema declares the attribute.
     pub caused_by: Option<EntityId>,
+    /// Which `IfcStructuralAction` subtype to create, and its subtype-specific attributes.
     pub kind: ActionDraftKind,
 }
 
+/// Stage an `IfcStructuralAction` create edit on `tx`.
+///
+/// Fails with [`StructuralError::WrongReferenceType`] if `draft.applied_load`
+/// is not one of the load types `kind` permits, [`StructuralError::SemanticViolation`]
+/// if `ProjectedOrTrue` is `PROJECTED_LENGTH` while `coordinate_system` is not
+/// `Global`, and [`StructuralError::MissingRequired`] if `destabilizing_load`
+/// is unset while the target schema requires it. Returns the id staged for
+/// the new entity.
 pub fn stage_action(
     tx: &mut Transaction,
     model: &Model,

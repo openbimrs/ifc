@@ -9,21 +9,28 @@ use crate::definition::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ApplicabilityContext {
+    /// Values authored directly on an occurrence instance.
     Occurrence,
+    /// Values authored on a type, inherited by its occurrences.
     Type,
+    /// Values recording required/target performance rather than as-built state.
     PerformanceHistory,
 }
 
 /// IFC object/type tested against catalog applicability.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ApplicabilityTarget {
+    /// IFC entity name of the object or type being tested.
     pub entity: String,
+    /// Predefined type of the object or type being tested, if any.
     pub predefined_type: Option<String>,
     /// `None` asks only the entity/predefined-type question.
     pub context: Option<ApplicabilityContext>,
 }
 
 impl ApplicabilityTarget {
+    /// Build a target with no applicability-mode context; only entity and
+    /// predefined type are matched.
     pub fn new(entity: impl Into<String>, predefined_type: Option<impl Into<String>>) -> Self {
         Self {
             entity: entity.into(),
@@ -32,6 +39,8 @@ impl ApplicabilityTarget {
         }
     }
 
+    /// Attach an applicability-mode context, restricting matches to
+    /// templates whose `set_type` supports that context.
     pub fn with_context(mut self, context: ApplicabilityContext) -> Self {
         self.context = Some(context);
         self
@@ -40,6 +49,7 @@ impl ApplicabilityTarget {
 
 /// Minimal hierarchy seam needed by catalog queries.
 pub trait EntityHierarchy {
+    /// True when `candidate` is `expected_supertype` or a subtype of it.
     fn is_same_or_subtype(&self, candidate: &str, expected_supertype: &str) -> bool;
 
     /// Return `Some(false)` when the hierarchy can prove the entity is unknown.
@@ -72,14 +82,19 @@ impl EntityHierarchy for ifc_schema::Schema {
 /// One selector that could not be evaluated because schema data was missing.
 #[derive(Debug, Clone, Copy)]
 pub struct UnresolvedApplicability<'a> {
+    /// The template whose selector could not be resolved.
     pub template: &'a SetTemplate,
+    /// The specific applicability selector that was unresolved.
     pub selector: &'a Applicability,
 }
 
 /// Structured applicability result; unknown schema entities are not conflated with no-match.
 #[derive(Debug, Default)]
 pub struct ApplicabilityQuery<'a> {
+    /// Templates whose applicability was proven to match the target.
     pub matches: Vec<&'a SetTemplate>,
+    /// Selectors that could not be resolved because the hierarchy could not
+    /// confirm whether an involved entity name exists.
     pub unresolved: Vec<UnresolvedApplicability<'a>>,
 }
 

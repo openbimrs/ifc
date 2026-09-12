@@ -20,37 +20,44 @@ pub struct StructuralView<'m, 's> {
 
 impl<'m, 's> StructuralView<'m, 's> {
     #[must_use]
+    /// Build a view over `model` resolved against `schema`.
     pub fn new(model: &'m Model, schema: &'s Schema) -> Self {
         Self { model, schema }
     }
 
     #[must_use]
+    /// The schema this view resolves entity types and attribute slots against.
     pub fn schema(&self) -> &'s Schema {
         self.schema
     }
 
+    /// Project `id` as an `IfcStructuralAnalysisModel`.
     pub fn analysis_model(&self, id: EntityId) -> StructuralResult<AnalysisModel<'m, 's>> {
         Ok(AnalysisModel::from_record(
             self.record(id, "IfcStructuralAnalysisModel")?,
         ))
     }
 
+    /// Project `id` as an `IfcStructuralLoadGroup`.
     pub fn load_group(&self, id: EntityId) -> StructuralResult<LoadGroup<'m, 's>> {
         Ok(LoadGroup::from_record(
             self.record(id, "IfcStructuralLoadGroup")?,
         ))
     }
 
+    /// Project `id` as an `IfcStructuralResultGroup`.
     pub fn result_group(&self, id: EntityId) -> StructuralResult<ResultGroup<'m, 's>> {
         Ok(ResultGroup::from_record(
             self.record(id, "IfcStructuralResultGroup")?,
         ))
     }
 
+    /// Project `id` as an `IfcStructuralMember`, dispatching on its curve/surface subtype.
     pub fn member(&self, id: EntityId) -> StructuralResult<Member<'m, 's>> {
         Member::from_record(self.record(id, "IfcStructuralMember")?)
     }
 
+    /// Project `id` as an `IfcStructuralConnection`, dispatching on its point/curve/surface subtype.
     pub fn connection(&self, id: EntityId) -> StructuralResult<StructuralConnection<'m, 's>> {
         StructuralConnection::from_record(self.record(id, "IfcStructuralConnection")?)
     }
@@ -68,10 +75,12 @@ impl<'m, 's> StructuralView<'m, 's> {
         ConnectionCondition::from_record(self.record(id, "IfcStructuralConnectionCondition")?)
     }
 
+    /// Project `id` as an `IfcStructuralAction`, dispatching on its point/curve/surface subtype.
     pub fn action(&self, id: EntityId) -> StructuralResult<StructuralAction<'m, 's>> {
         StructuralAction::from_record(self.record(id, "IfcStructuralAction")?)
     }
 
+    /// Project `id` as an `IfcStructuralLoadStatic` value.
     pub fn load(&self, id: EntityId) -> StructuralResult<StaticLoad<'m, 's>> {
         StaticLoad::from_record(self.record(id, "IfcStructuralLoad")?)
     }
@@ -88,10 +97,12 @@ impl<'m, 's> StructuralView<'m, 's> {
         Reaction::from_record(self.record(id, "IfcStructuralReaction")?)
     }
 
+    /// Equivalent to [`StructuralView::load`], provided for callers that name the projection explicitly.
     pub fn static_load(&self, id: EntityId) -> StructuralResult<StaticLoad<'m, 's>> {
         self.load(id)
     }
 
+    /// Build a resolved [`Record`] for `id`, failing if it does not exist or is not a subtype of `expected`.
     pub(crate) fn record(
         &self,
         id: EntityId,
@@ -100,6 +111,7 @@ impl<'m, 's> StructuralView<'m, 's> {
         Record::new(self.model, self.schema, id, expected)
     }
 
+    /// Every entity id in the model whose declared type is a subtype of `ancestor`.
     pub(crate) fn ids_of_ancestor(&self, ancestor: &str) -> Vec<EntityId> {
         let matching_types: HashSet<_> = self
             .model
@@ -115,6 +127,10 @@ impl<'m, 's> StructuralView<'m, 's> {
 }
 
 impl<'m> StructuralView<'m, 'static> {
+    /// Build a view by resolving the schema from the model's `FILE_SCHEMA` header token.
+    ///
+    /// Fails if the header declares zero or multiple schema tokens, or a token
+    /// this crate does not recognise (only IFC2X3, IFC4 and IFC4X3 are known).
     pub fn for_model(model: &'m Model) -> StructuralResult<Self> {
         let token = match model.header().schema.as_slice() {
             [] => return Err(StructuralError::MissingSchema),

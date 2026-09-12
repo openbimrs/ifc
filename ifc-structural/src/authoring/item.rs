@@ -5,14 +5,22 @@ use ifc_schema::Schema;
 use super::{build_named, optional_ref, optional_text, validate_optional_ref, validate_ref};
 use crate::error::{StructuralError, StructuralResult};
 
+/// Staged `IfcRoot`-level attributes shared by every staged structural entity.
 #[derive(Debug, Clone)]
 pub struct StructuralRootDraft {
+    /// `GlobalId`; must parse as a 22-character IFC GUID.
     pub global_id: String,
+    /// `OwnerHistory`, validated against the model/transaction if present.
     pub owner_history: Option<EntityId>,
+    /// `Name`.
     pub name: Option<String>,
+    /// `Description`.
     pub description: Option<String>,
+    /// `ObjectType`; required non-blank on entities whose predefined type is `USERDEFINED`.
     pub object_type: Option<String>,
+    /// `ObjectPlacement`, an `IfcObjectPlacement` reference.
     pub object_placement: Option<EntityId>,
+    /// `Representation`, an `IfcProductRepresentation` reference.
     pub representation: Option<EntityId>,
 }
 
@@ -30,17 +38,28 @@ impl Default for StructuralRootDraft {
     }
 }
 
+/// Value of `IfcStructuralCurveMemberTypeEnum`/`IfcStructuralSurfaceMemberTypeEnum` naming a member's structural role.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MemberPredefinedType {
+    /// `RIGID_JOINED_MEMBER` (curve members only).
     RigidJoinedMember,
+    /// `PIN_JOINED_MEMBER` (curve members only).
     PinJoinedMember,
+    /// `CABLE` (curve members only).
     Cable,
+    /// `TENSION_MEMBER` (curve members only).
     TensionMember,
+    /// `COMPRESSION_MEMBER` (curve members only).
     CompressionMember,
+    /// `BENDING_ELEMENT` (surface members only).
     BendingElement,
+    /// `MEMBRANE_ELEMENT` (surface members only).
     MembraneElement,
+    /// `SHELL` (surface members only); requires `Thickness` to be set.
     Shell,
+    /// `USERDEFINED`: a custom role named by `ObjectType`.
     UserDefined,
+    /// `NOTDEFINED`: no structural role classification given.
     NotDefined,
 }
 
@@ -61,42 +80,64 @@ impl MemberPredefinedType {
     }
 }
 
+/// Staged member subtype for [`MemberDraft::kind`].
 #[derive(Debug, Clone)]
 pub enum MemberDraftKind {
+    /// Stages an `IfcStructuralCurveMember`.
     Curve {
+        /// `PredefinedType`; must be a curve-member role (rigid/pin-joined, cable, tension/compression, user/not defined).
         predefined_type: MemberPredefinedType,
+        /// `Axis`; required when the target schema declares the attribute for this type.
         axis: Option<EntityId>,
     },
+    /// Stages an `IfcStructuralSurfaceMember`.
     Surface {
+        /// `PredefinedType`; must be a surface-member role (bending/membrane element, shell, user/not defined).
         predefined_type: MemberPredefinedType,
+        /// `Thickness`; must be a positive finite value, and mandatory when `predefined_type` is `Shell`.
         thickness: Option<f64>,
     },
 }
 
+/// Staged fields for creating an `IfcStructuralMember` via [`stage_member`].
 #[derive(Debug, Clone)]
 pub struct MemberDraft {
+    /// `IfcRoot` attributes shared with other staged structural entities.
     pub root: StructuralRootDraft,
+    /// Which `IfcStructuralMember` subtype to create, and its subtype-specific attributes.
     pub kind: MemberDraftKind,
 }
 
+/// Staged connection subtype for [`ConnectionDraft::kind`].
 #[derive(Debug, Clone)]
 pub enum ConnectionDraftKind {
+    /// Stages an `IfcStructuralPointConnection`.
     Point {
+        /// `AppliedCondition`, an `IfcBoundaryCondition` reference.
         applied_condition: Option<EntityId>,
+        /// `ConditionCoordinateSystem`, an `IfcAxis2Placement3D` reference.
         condition_coordinate_system: Option<EntityId>,
     },
+    /// Stages an `IfcStructuralCurveConnection`.
     Curve {
+        /// `AppliedCondition`, an `IfcBoundaryCondition` reference.
         applied_condition: Option<EntityId>,
+        /// `Axis`; required when the target schema declares the attribute for this type.
         axis: Option<EntityId>,
     },
+    /// Stages an `IfcStructuralSurfaceConnection`.
     Surface {
+        /// `AppliedCondition`, an `IfcBoundaryCondition` reference.
         applied_condition: Option<EntityId>,
     },
 }
 
+/// Staged fields for creating an `IfcStructuralConnection` via [`stage_connection`].
 #[derive(Debug, Clone)]
 pub struct ConnectionDraft {
+    /// `IfcRoot` attributes shared with other staged structural entities.
     pub root: StructuralRootDraft,
+    /// Which `IfcStructuralConnection` subtype to create, and its subtype-specific attributes.
     pub kind: ConnectionDraftKind,
 }
 
@@ -139,6 +180,17 @@ pub(super) fn root_fields(root: StructuralRootDraft) -> Vec<(&'static str, Value
     ]
 }
 
+/// Stage an `IfcStructuralMember` create edit on `tx`.
+///
+/// Fails with [`StructuralError::InvalidDraftValue`] if `predefined_type`
+/// does not belong to the curve/surface role set matching `kind`, or if
+/// `Thickness` is set but not positive and finite;
+/// [`StructuralError::SemanticViolation`] if `predefined_type` is
+/// `UserDefined` without a non-blank `object_type`; [`StructuralError::MissingRequired`]
+/// if `Axis` is required by the schema but unset, or `predefined_type` is
+/// `Shell` without a `Thickness`; and [`StructuralError::UnsupportedAttribute`]
+/// if `axis` is set but the target schema declares no `Axis` attribute for
+/// this type. Returns the id staged for the new entity.
 pub fn stage_member(
     tx: &mut Transaction,
     model: &Model,
@@ -253,6 +305,12 @@ pub fn stage_member(
     Ok(tx.create(build_named(schema, entity_type, fields)?))
 }
 
+/// Stage an `IfcStructuralConnection` create edit on `tx`.
+///
+/// Fails with [`StructuralError::MissingRequired`] if `Axis` is required by
+/// the schema but unset, and with [`StructuralError::UnsupportedAttribute`]
+/// if `axis` is set but the target schema declares no `Axis` attribute for
+/// this type. Returns the id staged for the new entity.
 pub fn stage_connection(
     tx: &mut Transaction,
     model: &Model,

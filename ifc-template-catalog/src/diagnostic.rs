@@ -9,31 +9,48 @@ use std::collections::BTreeSet;
 use crate::catalog::Catalog;
 use crate::definition::{PropertyKind, PropertyTemplate, SetTemplateKind};
 
+/// Category of a structural or schema-aware catalog defect.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum DiagnosticCode {
+    /// A property's official `DataType` element carried no `type` attribute.
     MissingPropertyDataType,
+    /// An `EnumeratedValue` property has neither lexical values nor documented constants.
     EmptyEnumeration,
+    /// A set template declares no applicable IFC entity.
     EmptyApplicability,
+    /// Two members of the same set template (or nested `Complex` scope) share a name.
     DuplicateMember,
+    /// [`Catalog::schema_diagnostics`] found an applicability entity the schema does not declare.
     UnknownApplicableEntity,
+    /// [`Catalog::schema_diagnostics`] found a property value type the schema does not declare.
     UnknownPropertyDataType,
+    /// [`Catalog::schema_diagnostics`] found a `ReferenceValue` entity the schema does not declare.
     UnknownReferenceEntity,
 }
 
+/// How serious a [`CatalogDiagnostic`] is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum DiagnosticSeverity {
+    /// Worth flagging but does not indicate malformed catalog data.
     Warning,
+    /// Indicates malformed or self-inconsistent catalog data.
     Error,
 }
 
+/// One structural or schema-aware defect found in a catalog snapshot.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CatalogDiagnostic {
+    /// Category of the defect.
     pub code: DiagnosticCode,
+    /// How serious the defect is.
     pub severity: DiagnosticSeverity,
+    /// `Name` of the set template the defect was found in.
     pub template: String,
+    /// Dotted member path within the template, absent for template-level defects.
     pub member: Option<String>,
+    /// Human-readable description of the defect.
     pub message: String,
 }
 

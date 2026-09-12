@@ -1,3 +1,6 @@
+//! `IfcRelConnectsStructuralMember`/`IfcRelAssignsToGroup` relationship
+//! authoring and projection coverage.
+
 mod support;
 
 use ifc_model::{EntityId, Value};

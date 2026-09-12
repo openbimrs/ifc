@@ -1,3 +1,6 @@
+//! Ad hoc timing sample for embedded catalog load and lookup, not an
+//! automated benchmark.
+
 use std::hint::black_box;
 use std::time::Instant;
 

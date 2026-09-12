@@ -24,17 +24,28 @@ pub use relation::{
     MemberConnectionDraft, RelationshipRootDraft,
 };
 
+/// Staged fields for creating an `IfcStructuralAnalysisModel` via [`stage_analysis_model`].
 #[derive(Debug, Clone)]
 pub struct AnalysisModelDraft {
+    /// `GlobalId`; must parse as a 22-character IFC GUID.
     pub global_id: String,
+    /// `OwnerHistory`, validated against the model/transaction if present.
     pub owner_history: Option<EntityId>,
+    /// `Name`.
     pub name: Option<String>,
+    /// `Description`.
     pub description: Option<String>,
+    /// `ObjectType`; required non-blank when `predefined_type` is `UserDefined`.
     pub object_type: Option<String>,
+    /// `PredefinedType`.
     pub predefined_type: AnalysisModelType,
+    /// `OrientationOf2DPlane`, an `IfcAxis2Placement3D` reference.
     pub orientation_of_2d_plane: Option<EntityId>,
+    /// `LoadedBy`, `IfcStructuralLoadGroup` references; members must be unique.
     pub loaded_by: Vec<EntityId>,
+    /// `HasResults`, `IfcStructuralResultGroup` references; members must be unique.
     pub result_groups: Vec<EntityId>,
+    /// `SharedPlacement`; only staged when the target schema declares the attribute.
     pub shared_placement: Option<EntityId>,
 }
 
@@ -55,29 +66,54 @@ impl Default for AnalysisModelDraft {
     }
 }
 
+/// Staged fields for creating one core `IfcStructuralLoadStatic` subtype via [`stage_load`].
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum LoadDraft {
+    /// Stages an `IfcStructuralLoadSingleForce`.
     SingleForce {
+        /// `Name`.
         name: Option<String>,
+        /// `ForceX`/`ForceY`/`ForceZ`.
         force: [Option<f64>; 3],
+        /// `MomentX`/`MomentY`/`MomentZ`.
         moment: [Option<f64>; 3],
     },
+    /// Stages an `IfcStructuralLoadLinearForce`.
     LinearForce {
+        /// `Name`.
         name: Option<String>,
+        /// `LinearForceX`/`LinearForceY`/`LinearForceZ`.
         force: [Option<f64>; 3],
+        /// `LinearMomentX`/`LinearMomentY`/`LinearMomentZ`.
         moment: [Option<f64>; 3],
     },
+    /// Stages an `IfcStructuralLoadPlanarForce`.
     PlanarForce {
+        /// `Name`.
         name: Option<String>,
+        /// `PlanarForceX`/`PlanarForceY`/`PlanarForceZ`.
         force: [Option<f64>; 3],
     },
+    /// Stages an `IfcStructuralLoadTemperature`.
     Temperature {
+        /// `Name`.
         name: Option<String>,
+        /// Constant, through-Y and through-Z temperature deltas (`DeltaTConstant`/`DeltaTY`/`DeltaTZ`,
+        /// or the underscored equivalents in schemas that name them that way).
         delta: [Option<f64>; 3],
     },
 }
 
+/// Stage an `IfcStructuralAnalysisModel` create edit on `tx`.
+///
+/// Fails with [`StructuralError::InvalidGlobalId`] if `draft.global_id` is not
+/// a valid GUID, [`StructuralError::SemanticViolation`] if `predefined_type`
+/// is `UserDefined` without a non-blank `object_type`, and with reference
+/// validation errors ([`StructuralError::DanglingReference`],
+/// [`StructuralError::WrongReferenceType`], [`StructuralError::InvalidDraftValue`])
+/// if any referenced entity is missing, of the wrong type, or a SET contains
+/// duplicates. Returns the id staged for the new entity.
 pub fn stage_analysis_model(
     tx: &mut Transaction,
     model: &Model,
@@ -171,6 +207,10 @@ pub fn stage_analysis_model(
     Ok(tx.create(entity))
 }
 
+/// Stage one core `IfcStructuralLoadStatic` subtype create edit on `tx`.
+///
+/// Fails with [`StructuralError::InvalidDraftValue`] if any numeric component
+/// is set to a non-finite value. Returns the id staged for the new entity.
 pub fn stage_load(
     tx: &mut Transaction,
     schema: &Schema,

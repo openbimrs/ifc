@@ -1,3 +1,6 @@
+//! CLI: import a source edition's PSD/QTO XML corpus and encode it into a
+//! committed versioned binary catalog artifact under `data/`.
+
 #[path = "corpus.rs"]
 mod corpus;
 

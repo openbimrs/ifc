@@ -1,3 +1,6 @@
+//! Load-group and action authoring/projection coverage, including
+//! `IfcStructuralLoadGroup` semantics and dangling-reference rejection.
+
 mod support;
 
 use ifc_model::{EntityId, Value};

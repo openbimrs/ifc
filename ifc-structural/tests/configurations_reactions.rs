@@ -1,3 +1,6 @@
+//! Reaction and result-group projection coverage: `IfcStructuralReaction`
+//! kinds, result-group membership, and their relationship graph.
+
 mod support;
 
 use std::sync::Arc;

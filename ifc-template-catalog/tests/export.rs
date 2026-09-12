@@ -1,3 +1,5 @@
+//! Integration tests for [`ifc_template_catalog::export::write_applicability_tsv`].
+
 use ifc_template_catalog::definition::CatalogEdition;
 use ifc_template_catalog::embedded::official_catalog;
 use ifc_template_catalog::export::{write_applicability_tsv, TSV_HEADER};

@@ -8,16 +8,26 @@ use crate::definition::{
     PropertyTemplate, QuantityKind, QuantitySetType, SetTemplate, SetTemplateKind,
 };
 
+/// TSV column header row emitted by [`write_applicability_tsv`], including trailing newline.
 pub const TSV_HEADER: &str = "edition\tsource_digest\tset_kind\tset_name\tset_guid\tset_template_type\tapplicable_entity\tpredefined_type\tincludes_subtypes\tmember_path\tmember_guid\tmember_kind\tvalue_type\tunit_type\tsource_path\tsource_file_digest\n";
 
+/// Counts summarizing one [`write_applicability_tsv`] export.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExportSummary {
+    /// Total set templates (property + quantity) exported.
     pub set_count: usize,
+    /// Property-set templates exported.
     pub property_set_count: usize,
+    /// Quantity-set templates exported.
     pub quantity_set_count: usize,
+    /// Total data rows written, after applicability expansion and sorting.
     pub row_count: usize,
 }
 
+/// Write every catalog template as sorted, tab-separated applicability rows,
+/// one row per (set, applicability selector, member) combination, preceded
+/// by [`TSV_HEADER`]. Sets with no applicability selectors emit one row per
+/// member with empty entity/predefined-type columns.
 pub fn write_applicability_tsv(
     catalog: &Catalog,
     mut output: impl Write,
