@@ -7,6 +7,13 @@
 //! MaterialResource WHERE constraints. Authored placement and offset values are
 //! exposed here; geometric interpretation remains in `ifc-geometry`.
 
+// Documentation debt: this crate does not yet document every public item,
+// so it cannot join [workspace.lints] (missing_docs = deny) yet. The
+// remaining count is budgeted in scripts/check-missing-docs.py, which fails
+// if it grows. Delete this attribute once the count reaches zero and add
+// `[lints] workspace = true` to Cargo.toml instead.
+#![allow(missing_docs)]
+
 pub mod authoring;
 pub mod constituent;
 pub mod error;

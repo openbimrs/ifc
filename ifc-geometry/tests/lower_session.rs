@@ -1,3 +1,5 @@
+//! Lower session.
+
 #![cfg(feature = "lowering")]
 //! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! One session, one graph: recursive lowering must share a builder.

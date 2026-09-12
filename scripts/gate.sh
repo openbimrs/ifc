@@ -62,6 +62,12 @@ python3 scripts/sync-changelog.py --check
 python3 scripts/sync-capabilities.py --check
 python3 scripts/check-inline-html.py
 
+# Documentation debt ratchet. Twelve crates enforce missing_docs permanently
+# through [workspace.lints]; the rest carry a measured, capped debt. This fails
+# if that debt grows -- or if it shrank and the budget was not lowered, so the
+# ceiling tracks reality instead of drifting into slack.
+python3 scripts/check-missing-docs.py
+
 # Licensing gate. The IFC schemas are CC BY-ND 4.0 and must never reach the
 # published tree; this rejects XSD/PDF payloads and any `references/` or
 # `schemas/` path. It ran only by hand until now, which is how a tracked

@@ -23,3 +23,6 @@ ifc-step.workspace = true
 default = ["schema"]
 # Emit/read schema-correct attribute NAMES rather than positional fallbacks.
 schema = ["dep:ifc-schema"]
+
+[lints]
+workspace = true

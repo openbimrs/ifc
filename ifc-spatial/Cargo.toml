@@ -18,3 +18,6 @@ ifc-model.workspace = true
 ifc-step.workspace = true
 # Only to assert the hard-coded slot positions against the normative schema.
 ifc-schema.workspace = true
+
+[lints]
+workspace = true

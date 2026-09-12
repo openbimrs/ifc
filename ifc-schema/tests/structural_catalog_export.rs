@@ -1,3 +1,5 @@
+//! Structural catalog export.
+
 use ifc_schema::{write_structural_catalog, SchemaVersion};
 
 fn export(version: SchemaVersion) -> String {

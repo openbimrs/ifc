@@ -1,3 +1,5 @@
+//! Lower surface.
+
 #![cfg(feature = "lowering")]
 //! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! Surface lowering against the committed corpus.

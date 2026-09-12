@@ -1,3 +1,5 @@
+//! Stub kernel.
+
 #![cfg(feature = "lowering")]
 //! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! End-to-end proof that the IFC layer emits a backend-neutral geometry DAG.

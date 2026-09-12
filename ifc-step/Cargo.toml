@@ -15,3 +15,6 @@ ifc-model.workspace = true
 openbim-step.workspace = true
 memmap2.workspace = true
 thiserror.workspace = true
+
+[lints]
+workspace = true

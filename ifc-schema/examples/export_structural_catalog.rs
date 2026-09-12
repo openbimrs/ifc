@@ -1,3 +1,7 @@
+//! Export the bundled structural catalog for a schema version.
+//!
+//! Writes the catalog to stdout, or to the path given as the first argument.
+
 use std::env;
 use std::io::{self, BufWriter, Write};
 

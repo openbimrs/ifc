@@ -30,3 +30,6 @@ generation = ["ifc4"]
 name = "ifc-schema-generate"
 path = "tools/generate.rs"
 required-features = ["generation"]
+
+[lints]
+workspace = true

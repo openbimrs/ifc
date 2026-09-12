@@ -1,3 +1,5 @@
+//! Native rules.
+
 use ifc_model::{Entity, EntityId, Model, Value};
 use ifc_schema::Schema;
 use ifc_validate::{validate, Report};

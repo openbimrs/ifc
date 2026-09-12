@@ -1,3 +1,5 @@
+//! Nurbs lowering.
+
 #![cfg(feature = "lowering")]
 
 use axiolid_core::Point3;

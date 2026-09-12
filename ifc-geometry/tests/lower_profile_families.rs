@@ -1,3 +1,5 @@
+//! Lower profile families.
+
 #![cfg(feature = "lowering")]
 //! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! Profile families: steel sections, ellipse, trapezium, and the nesting

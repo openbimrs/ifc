@@ -1,3 +1,5 @@
+//! Lower synthetic surfaces.
+
 #![cfg(feature = "lowering")]
 //! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! Curved, B-spline and bounded surfaces on the synthetic corpus.

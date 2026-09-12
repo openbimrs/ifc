@@ -1,3 +1,5 @@
+//! Lower provenance.
+
 #![cfg(feature = "lowering")]
 //! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! Source provenance is a side table from neutral graph nodes to IFC entities.

@@ -1,3 +1,5 @@
+//! Lower collections and primitives.
+
 #![cfg(feature = "lowering")]
 //! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! Pyramid, bounding box and the loose-collection families.

@@ -1,3 +1,5 @@
+//! Constraint authoring, association, and schema-checked validation.
+
 use std::sync::Arc;
 
 use ifc_constraint::{

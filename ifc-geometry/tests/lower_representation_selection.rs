@@ -1,3 +1,5 @@
+//! Lower representation selection.
+
 #![cfg(feature = "lowering")]
 
 use axiolid_curve::Curve3;

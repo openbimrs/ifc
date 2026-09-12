@@ -1,3 +1,5 @@
+//! Lower dispatch corpus.
+
 #![cfg(feature = "lowering")]
 //! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! The dispatcher, exercised against the committed fixture corpus.

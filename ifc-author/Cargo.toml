@@ -17,3 +17,6 @@ ifc-schema.workspace = true
 
 [dev-dependencies]
 ifc-step.workspace = true
+
+[lints]
+workspace = true

@@ -10,6 +10,14 @@ license = "AGPL-3.0-or-later"
 authors = ["point-grey"]
 repository = "https://github.com/openbimrs/ifc"
 
+# Every public item carries a doc comment. Crates that already satisfy this
+# opt in with `[lints] workspace = true`; the rest are listed in
+# scripts/check-missing-docs.py with their current debt, which that script
+# ratchets downward. A crate reaching zero should be moved onto this lint and
+# removed from the script's budget, which is then enforced permanently.
+[workspace.lints.rust]
+missing_docs = "deny"
+
 [workspace.dependencies]
 # IFC family: versioned path dependencies build standalone and normalize to
 # registry dependencies when packages are published.

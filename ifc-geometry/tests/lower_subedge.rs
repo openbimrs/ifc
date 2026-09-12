@@ -1,3 +1,5 @@
+//! Lower subedge.
+
 #![cfg(feature = "lowering")]
 //! `IfcSubedge` lowering: an edge carved from a parent edge.
 //!

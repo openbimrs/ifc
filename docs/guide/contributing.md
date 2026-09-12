@@ -124,3 +124,25 @@ Good contributions often include one of:
 - a redistributable IFC fixture and the test or guide that consumes it;
 - an evidence-backed schema/version inventory that unblocks a domain slice;
 - documentation that distinguishes shipped behavior from planned architecture.
+
+## Documentation debt
+
+Every public item carries a doc comment. Thirteen crates enforce this
+permanently: their `Cargo.toml` opts into `[workspace.lints]`, where
+`missing_docs = "deny"` makes an undocumented public item a build failure.
+
+The remaining crates carry a measured debt and `#![allow(missing_docs)]`.
+`scripts/check-missing-docs.py` pins each crate's count so it can only shrink:
+
+- adding an undocumented public item to a debt crate fails the gate;
+- adding one to an enforced crate fails the build;
+- documenting items and *not* lowering the budget also fails, so the ceiling
+  cannot drift into slack. Run the script with `--update` to record the win.
+
+When a crate reaches zero, delete its `#![allow(missing_docs)]`, add
+`[lints] workspace = true` to its `Cargo.toml`, and remove it from the
+script's budget table. It is then enforced like the rest.
+
+The lint is measured with `--force-warn`, which reports through the crate's own
+`allow`. Measuring without it would report zero for every debt crate and the
+budget would be meaningless.

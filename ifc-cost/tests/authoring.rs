@@ -1,3 +1,5 @@
+//! Authoring.
+
 use ifc_cost::{
     assign_schedule_items, children_of, controlled_by, controls_of, create_cost_item,
     create_cost_schedule, create_cost_value, nest_cost_items, ArithmeticOperator,

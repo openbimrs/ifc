@@ -1,3 +1,5 @@
+//! Lower advanced brep.
+
 #![cfg(feature = "lowering")]
 //! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! Advanced B-rep lowering on the generated fixture.

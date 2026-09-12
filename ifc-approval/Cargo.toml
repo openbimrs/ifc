@@ -12,3 +12,6 @@ description = "Bounded IFC4 approval resource semantics."
 ifc-model.workspace = true
 ifc-schema.workspace = true
 thiserror.workspace = true
+
+[lints]
+workspace = true

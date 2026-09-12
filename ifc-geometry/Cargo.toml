@@ -51,3 +51,6 @@ ifc-step.workspace = true
 axiolid-reference.workspace = true
 proc-macro2 = "1"
 syn = { version = "2", features = ["full", "parsing", "visit"] }
+
+[lints]
+workspace = true

@@ -18,3 +18,6 @@ thiserror.workspace = true
 # Test-only: fixtures are STEP files, and parsing them is not a production
 # concern of this crate.
 ifc-step.workspace = true
+
+[lints]
+workspace = true

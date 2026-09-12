@@ -1,3 +1,5 @@
+//! Approval graph staging, querying, and fail-closed validation.
+
 use ifc_approval::{
     associate_approval, create_approval, relate_approvals, relate_resource_approval,
     ApprovalAssociationDraft, ApprovalDraft, ApprovalError, ApprovalRelationshipDraft,

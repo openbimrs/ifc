@@ -2,7 +2,6 @@
 //!
 //! Values are projected and preserved; this crate does not evaluate compliance,
 //! formulas, references, tables, or time series.
-#![deny(missing_docs)]
 
 mod authoring;
 mod error;

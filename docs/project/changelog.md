@@ -16,6 +16,11 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- Workspace lints: `missing_docs = "deny"`. Thirteen crates enforce it; the
+  nine still carrying debt are capped by `scripts/check-missing-docs.py`, now
+  part of the gate, so the count can only shrink.
+- `ifc-geometry` documents every public item and joined the enforced set
+  (32 items documented, mostly the MaterialResource geometry views).
 - `ifc-step`: `Index` reads a file without decoding it. `Index::scan` keeps
   only record boundaries and type names, so a 529 MB export with 9,000,008
   records is indexed in 0.66 s holding 206 MB against 18.2 s and 2366 MB for

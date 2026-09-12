@@ -1,3 +1,5 @@
+//! Lower open profile.
+
 #![cfg(feature = "lowering")]
 use axiolid_curve::Curve2;
 use axiolid_model::GeometryNode;

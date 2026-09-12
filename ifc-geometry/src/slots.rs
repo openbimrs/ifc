@@ -156,6 +156,11 @@ impl<'m> Slots<'m> {
         }
     }
 
+    /// The enumeration token at `index`, when the slot holds one.
+    ///
+    /// Returns `None` for an omitted slot and for a value that is present but
+    /// not an enumeration, so a caller cannot mistake a type error for an
+    /// authored absence.
     pub fn opt_enum(&self, index: usize) -> Option<&'m str> {
         match self.opt(index)? {
             Value::Enum(e) => Some(e),

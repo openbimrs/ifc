@@ -14,14 +14,20 @@ use crate::slots::Slots;
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LayerSetDirection {
+    /// Layers stack along the product's local x axis.
     Axis1,
+    /// Layers stack along the product's local y axis.
     Axis2,
+    /// Layers stack along the product's local z axis.
     Axis3,
 }
 
+/// Whether layer thickness accumulates along the axis or against it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DirectionSense {
+    /// Thickness accumulates in the axis direction.
     Positive,
+    /// Thickness accumulates opposite the axis direction.
     Negative,
 }
 
@@ -29,9 +35,14 @@ pub enum DirectionSense {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CardinalPoint(u64);
 impl CardinalPoint {
+    /// The raw reference, including values outside the standard range.
     pub fn get(self) -> u64 {
         self.0
     }
+    /// The reference when it names one of the 19 standard cardinal points.
+    ///
+    /// IFC permits any positive integer, so a file may carry a value with no
+    /// standard meaning; that case returns `None` rather than guessing.
     pub fn standard(self) -> Option<u8> {
         u8::try_from(self.0)
             .ok()
@@ -122,58 +133,72 @@ fn required_enum<'a>(
 }
 
 #[derive(Debug, Clone, Copy)]
+/// Geometry-only projection of `IfcMaterialProfileSetUsage`.
 pub struct MaterialProfileSetUsageGeometry<'m> {
     slots: Slots<'m>,
 }
 impl<'m> MaterialProfileSetUsageGeometry<'m> {
+    /// Borrows `entity`, checking it declares the expected IFC type.
     pub fn new(id: EntityId, entity: &'m Entity) -> GeometryResult<Self> {
         Ok(Self {
             slots: checked(id, entity, "IFCMATERIALPROFILESETUSAGE")?,
         })
     }
+    /// The `ForProfileSet` reference.
     pub fn profile_set_id(self) -> GeometryResult<EntityId> {
         self.slots.req_ref(0, "ForProfileSet")
     }
+    /// The `CardinalPoint`, when authored.
     pub fn cardinal_point(self) -> GeometryResult<Option<CardinalPoint>> {
         cardinal(&self.slots, 1, "CardinalPoint")
     }
+    /// The `ReferenceExtent`, when authored. Must be positive.
     pub fn reference_extent(self) -> GeometryResult<Option<f64>> {
         positive_optional(&self.slots, 2, "ReferenceExtent")
     }
 }
 
 #[derive(Debug, Clone, Copy)]
+/// Geometry-only projection of `IfcMaterialProfileSetUsageTapering`.
 pub struct MaterialProfileSetUsageTaperingGeometry<'m> {
     slots: Slots<'m>,
 }
 impl<'m> MaterialProfileSetUsageTaperingGeometry<'m> {
+    /// Borrows `entity`, checking it declares the expected IFC type.
     pub fn new(id: EntityId, entity: &'m Entity) -> GeometryResult<Self> {
         Ok(Self {
             slots: checked(id, entity, "IFCMATERIALPROFILESETUSAGETAPERING")?,
         })
     }
+    /// The `ForProfileSet` reference.
     pub fn profile_set_id(self) -> GeometryResult<EntityId> {
         self.slots.req_ref(0, "ForProfileSet")
     }
+    /// The `CardinalPoint`, when authored.
     pub fn cardinal_point(self) -> GeometryResult<Option<CardinalPoint>> {
         cardinal(&self.slots, 1, "CardinalPoint")
     }
+    /// The `ReferenceExtent`, when authored. Must be positive.
     pub fn reference_extent(self) -> GeometryResult<Option<f64>> {
         positive_optional(&self.slots, 2, "ReferenceExtent")
     }
+    /// The `ForProfileEndSet` reference.
     pub fn end_profile_set_id(self) -> GeometryResult<EntityId> {
         self.slots.req_ref(3, "ForProfileEndSet")
     }
+    /// The `CardinalEndPoint`, when authored.
     pub fn cardinal_end_point(self) -> GeometryResult<Option<CardinalPoint>> {
         cardinal(&self.slots, 4, "CardinalEndPoint")
     }
 }
 
 #[derive(Debug, Clone, Copy)]
+/// Geometry-only projection of `IfcMaterialProfile`.
 pub struct MaterialProfileGeometry<'m> {
     slots: Slots<'m>,
 }
 impl<'m> MaterialProfileGeometry<'m> {
+    /// Borrows `entity`, checking it declares the expected IFC type.
     pub fn new(id: EntityId, entity: &'m Entity) -> GeometryResult<Self> {
         if !entity.is_type("IFCMATERIALPROFILE") && !entity.is_type("IFCMATERIALPROFILEWITHOFFSETS")
         {
@@ -187,9 +212,11 @@ impl<'m> MaterialProfileGeometry<'m> {
             slots: Slots::new(id, entity),
         })
     }
+    /// The `Profile` reference.
     pub fn profile_id(self) -> GeometryResult<EntityId> {
         self.slots.req_ref(3, "Profile")
     }
+    /// The authored offset pair.
     pub fn offset_values(self) -> GeometryResult<Option<[f64; 2]>> {
         if !self
             .slots
@@ -211,18 +238,22 @@ impl<'m> MaterialProfileGeometry<'m> {
 }
 
 #[derive(Debug, Clone, Copy)]
+/// Geometry-only projection of `IfcMaterialLayerSetUsage`.
 pub struct MaterialLayerSetUsageGeometry<'m> {
     slots: Slots<'m>,
 }
 impl<'m> MaterialLayerSetUsageGeometry<'m> {
+    /// Borrows `entity`, checking it declares the expected IFC type.
     pub fn new(id: EntityId, entity: &'m Entity) -> GeometryResult<Self> {
         Ok(Self {
             slots: checked(id, entity, "IFCMATERIALLAYERSETUSAGE")?,
         })
     }
+    /// The `ForLayerSet` reference.
     pub fn layer_set_id(self) -> GeometryResult<EntityId> {
         self.slots.req_ref(0, "ForLayerSet")
     }
+    /// The `LayerSetDirection`.
     pub fn layer_set_direction(self) -> GeometryResult<LayerSetDirection> {
         match required_enum(&self.slots, 1, "LayerSetDirection")? {
             token if token.eq_ignore_ascii_case("AXIS1") => Ok(LayerSetDirection::Axis1),
@@ -233,6 +264,7 @@ impl<'m> MaterialLayerSetUsageGeometry<'m> {
                 .degenerate("LayerSetDirection must be AXIS1, AXIS2, or AXIS3")),
         }
     }
+    /// The `DirectionSense`.
     pub fn direction_sense(self) -> GeometryResult<DirectionSense> {
         match required_enum(&self.slots, 2, "DirectionSense")? {
             token if token.eq_ignore_ascii_case("POSITIVE") => Ok(DirectionSense::Positive),
@@ -242,6 +274,7 @@ impl<'m> MaterialLayerSetUsageGeometry<'m> {
                 .degenerate("DirectionSense must be POSITIVE or NEGATIVE")),
         }
     }
+    /// The `OffsetFromReferenceLine` distance.
     pub fn offset_from_reference_line(self) -> GeometryResult<f64> {
         let value = self.slots.req_f64(3, "OffsetFromReferenceLine")?;
         if !value.is_finite() {
@@ -251,6 +284,7 @@ impl<'m> MaterialLayerSetUsageGeometry<'m> {
         }
         Ok(value)
     }
+    /// The `ReferenceExtent`, when authored. Must be positive.
     pub fn reference_extent(self) -> GeometryResult<Option<f64>> {
         positive_optional(&self.slots, 4, "ReferenceExtent")
     }

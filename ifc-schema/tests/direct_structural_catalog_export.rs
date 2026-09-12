@@ -1,3 +1,5 @@
+//! Direct structural catalog export.
+
 use std::collections::BTreeMap;
 
 use ifc_schema::{write_direct_structural_catalog, write_structural_catalog, SchemaVersion};

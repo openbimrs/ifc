@@ -1,3 +1,5 @@
+//! Select membership.
+
 use ifc_schema::ifc4;
 
 #[test]

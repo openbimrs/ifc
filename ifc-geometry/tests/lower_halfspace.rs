@@ -1,3 +1,5 @@
+//! Lower halfspace.
+
 #![cfg(feature = "lowering")]
 //! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! Half-space lowering against the committed corpus.

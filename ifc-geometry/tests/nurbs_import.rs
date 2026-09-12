@@ -1,3 +1,5 @@
+//! Nurbs import.
+
 #![cfg(feature = "lowering")]
 
 use ifc_geometry::curve::{BSplineCurve, KnotType};

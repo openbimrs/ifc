@@ -1,3 +1,5 @@
+//! Lower csg swept.
+
 #![cfg(feature = "lowering")]
 //! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! CSG solids, swept disks, and their curve directrices on real fixtures.

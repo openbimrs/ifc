@@ -1,3 +1,5 @@
+//! Lower product.
+
 #![cfg(feature = "lowering")]
 //! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! Product placement: geometry must land where the file puts it.

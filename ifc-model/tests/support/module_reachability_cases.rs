@@ -1,3 +1,5 @@
+//! Module reachability cases.
+
 use super::*;
 
 struct TestTree {

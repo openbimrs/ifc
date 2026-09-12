@@ -3,6 +3,13 @@
 //! This crate owns external standard-library metadata. Authored IFC property
 //! and quantity instances remain in `ifc-properties`.
 
+// Documentation debt: this crate does not yet document every public item,
+// so it cannot join [workspace.lints] (missing_docs = deny) yet. The
+// remaining count is budgeted in scripts/check-missing-docs.py, which fails
+// if it grows. Delete this attribute once the count reaches zero and add
+// `[lints] workspace = true` to Cargo.toml instead.
+#![allow(missing_docs)]
+
 mod archive;
 
 pub mod catalog;

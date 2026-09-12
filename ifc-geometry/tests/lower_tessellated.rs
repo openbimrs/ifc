@@ -1,3 +1,5 @@
+//! Lower tessellated.
+
 #![cfg(feature = "lowering")]
 //! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! Tessellated face sets lowered from the committed corpus.

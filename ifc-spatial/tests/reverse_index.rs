@@ -1,3 +1,5 @@
+//! Reverse index.
+
 use ifc_model::{Entity, EntityId, Model, Value};
 use ifc_spatial::{relation, RelationshipIndex, RelationshipKind};
 

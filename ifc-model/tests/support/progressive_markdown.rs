@@ -1,3 +1,5 @@
+//! Progressive markdown.
+
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -15,3 +15,6 @@ ifc-model.workspace = true
 # Tests only: the crate reads a Model, it does not parse files itself.
 [dev-dependencies]
 ifc-step.workspace = true
+
+[lints]
+workspace = true

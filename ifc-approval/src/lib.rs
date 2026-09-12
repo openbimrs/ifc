@@ -3,7 +3,6 @@
 //! This crate owns `IfcApproval`, its resource-level relationships, and
 //! `IfcRelAssociatesApproval`. It validates selected IFC4 WHERE/SELECT rules but
 //! does not implement workflow, authorization, signatures, or policy decisions.
-#![deny(missing_docs)]
 
 mod authoring;
 mod error;

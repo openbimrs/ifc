@@ -21,3 +21,6 @@ default = ["ifc4"]
 # Enables validate_declared(), which resolves the file's own schema token
 # against the bundled IFC4 tables.
 ifc4 = ["ifc-schema/ifc4"]
+
+[lints]
+workspace = true

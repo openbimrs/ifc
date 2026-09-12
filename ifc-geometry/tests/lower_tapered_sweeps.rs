@@ -1,3 +1,5 @@
+//! Lower tapered sweeps.
+
 #![cfg(feature = "lowering")]
 //! Requires the `lowering` feature: this suite exercises the neutral DAG.
 //! Tapered and variable-section sweeps, plus the sectioned spine.
