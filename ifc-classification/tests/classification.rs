@@ -1,3 +1,5 @@
+//! Classification, document, and library authoring/query tests.
+
 use ifc_classification::{
     associate_classification, associate_document, associate_library, create_classification,
     create_classification_reference, create_document, create_document_reference, create_library,

@@ -1,3 +1,6 @@
+//! Exact-mode property resolution: strict slot and reference validation with
+//! no silent fallbacks, covering the full `ExactPropertyError` taxonomy.
+
 use std::sync::Arc;
 
 use ifc_model::{Codec, Diagnostic, Entity, EntityId, Model, Value};

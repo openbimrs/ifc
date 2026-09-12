@@ -1,3 +1,5 @@
+//! Generic external-reference relationship authoring and validation tests.
+
 use ifc_classification::{
     create_external_reference_relationship, ClassificationError, ClassificationView,
     ExternalReferenceRelationshipDraft,

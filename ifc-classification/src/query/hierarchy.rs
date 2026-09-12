@@ -10,16 +10,23 @@ use crate::{
     ClassificationSystem, ClassificationView,
 };
 
+/// Chain of `IfcClassificationReference` nodes from a leaf up to its root, plus the terminating `IfcClassification` system if the chain resolved fully.
 #[derive(Debug, Clone)]
 pub struct ClassificationHierarchy<'m> {
+    /// References from the queried leaf (index 0) up through its ancestors, in traversal order.
     pub references: Vec<ClassificationReference<'m>>,
+    /// The root `IfcClassification` system, when the chain terminated there rather than at an unlinked reference.
     pub system: Option<ClassificationSystem<'m>>,
 }
 
+/// Classification assignments effective on an object: those directly assigned plus, when the object has an `IfcRelDefinesByType` type, those inherited from that type.
 #[derive(Debug, Clone)]
 pub struct EffectiveClassifications<'m> {
+    /// Assignments made directly on the queried occurrence object.
     pub occurrence: Vec<ClassificationAssignment<'m>>,
+    /// Id of the object's `IfcRelDefinesByType` type, when unambiguous.
     pub type_object: Option<EntityId>,
+    /// Assignments made on the type object, inherited by the occurrence.
     pub inherited: Vec<ClassificationAssignment<'m>>,
 }
 
@@ -52,6 +59,7 @@ fn require_select(
 }
 
 impl<'m> ClassificationView<'m> {
+    /// Walk `ReferencedSource` links from `leaf` up to its root, stopping at the enclosing `IfcClassification` if present; fails on a cycle, a dangling or mistyped source, or if the walk exceeds `budget`.
     pub fn hierarchy_from(
         self,
         leaf: EntityId,
@@ -134,6 +142,7 @@ impl<'m> ClassificationView<'m> {
         }
     }
 
+    /// `IfcClassificationReference` instances whose `ReferencedSource` is `source`, sorted by id; fails if `source` is unknown or is not itself a classification or reference.
     pub fn children_of(
         self,
         source: EntityId,
@@ -164,6 +173,7 @@ impl<'m> ClassificationView<'m> {
         Ok(out)
     }
 
+    /// Direct classification assignments on `object`, plus any inherited from its unambiguous `IfcRelDefinesByType` type; fails if `object` is unknown, has an assignment with an invalid relating classification, or is related to more than one type.
     pub fn effective_classifications(
         self,
         object: EntityId,

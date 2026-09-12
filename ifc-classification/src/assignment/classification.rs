@@ -7,6 +7,7 @@ use crate::ClassificationResult;
 use ifc_model::EntityId;
 borrowed_entity!(ClassificationAssignment, "IFCRELASSOCIATESCLASSIFICATION");
 impl<'m> ClassificationAssignment<'m> {
+    /// The `GlobalId` of this `IfcRelAssociatesClassification`.
     pub fn global_id(self) -> ClassificationResult<&'m str> {
         required_text(
             "IFCRELASSOCIATESCLASSIFICATION",
@@ -16,6 +17,7 @@ impl<'m> ClassificationAssignment<'m> {
             "GlobalId",
         )
     }
+    /// Optional `Name` of the association relationship.
     pub fn name(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCRELASSOCIATESCLASSIFICATION",
@@ -25,6 +27,7 @@ impl<'m> ClassificationAssignment<'m> {
             "Name",
         )
     }
+    /// Optional `Description` of the association relationship.
     pub fn description(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCRELASSOCIATESCLASSIFICATION",
@@ -34,6 +37,7 @@ impl<'m> ClassificationAssignment<'m> {
             "Description",
         )
     }
+    /// Ids of the `RelatedObjects` being classified; non-empty per schema.
     pub fn related_object_ids(self) -> ClassificationResult<Vec<EntityId>> {
         required_refs(
             "IFCRELASSOCIATESCLASSIFICATION",
@@ -43,6 +47,7 @@ impl<'m> ClassificationAssignment<'m> {
             "RelatedObjects",
         )
     }
+    /// Id of the `RelatingClassification` (an `IfcClassification` or `IfcClassificationReference`).
     pub fn relating_classification_id(self) -> ClassificationResult<EntityId> {
         required_ref(
             "IFCRELASSOCIATESCLASSIFICATION",
@@ -54,6 +59,7 @@ impl<'m> ClassificationAssignment<'m> {
     }
 }
 impl<'m> ClassificationView<'m> {
+    /// All `IfcRelAssociatesClassification` instances in the model.
     pub fn classification_assignments(
         self,
     ) -> impl Iterator<Item = ClassificationAssignment<'m>> + 'm {
@@ -61,6 +67,7 @@ impl<'m> ClassificationView<'m> {
             .of_type("IFCRELASSOCIATESCLASSIFICATION")
             .map(|(id, e)| ClassificationAssignment::from_known(id, e))
     }
+    /// Classification assignments naming `object` among their `RelatedObjects`, with the relating classification checked against `IfcClassificationSelect`; fails if `object` is unknown or a reference does not resolve.
     pub fn classification_assignments_for(
         self,
         object: EntityId,

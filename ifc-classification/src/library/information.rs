@@ -5,9 +5,11 @@ use crate::view::{
 use crate::ClassificationResult;
 borrowed_entity!(LibraryInformation, "IFCLIBRARYINFORMATION");
 impl<'m> LibraryInformation<'m> {
+    /// The required `Name` of the library.
     pub fn name(self) -> ClassificationResult<&'m str> {
         required_text("IFCLIBRARYINFORMATION", self.id(), self.entity(), 0, "Name")
     }
+    /// The `Version` label of the library, when authored.
     pub fn version(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCLIBRARYINFORMATION",
@@ -17,6 +19,7 @@ impl<'m> LibraryInformation<'m> {
             "Version",
         )
     }
+    /// Id of the `Publisher` (an `IfcActorSelect`), when authored.
     pub fn publisher_id(self) -> ClassificationResult<Option<ifc_model::EntityId>> {
         optional_ref(
             "IFCLIBRARYINFORMATION",
@@ -26,6 +29,7 @@ impl<'m> LibraryInformation<'m> {
             "Publisher",
         )
     }
+    /// The `VersionDate` of the library, when authored.
     pub fn version_date(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCLIBRARYINFORMATION",
@@ -35,6 +39,7 @@ impl<'m> LibraryInformation<'m> {
             "VersionDate",
         )
     }
+    /// The `Location` (e.g. a URI) of the library, when authored.
     pub fn location(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCLIBRARYINFORMATION",
@@ -44,6 +49,7 @@ impl<'m> LibraryInformation<'m> {
             "Location",
         )
     }
+    /// The `Description` of the library, when authored.
     pub fn description(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCLIBRARYINFORMATION",
@@ -55,6 +61,7 @@ impl<'m> LibraryInformation<'m> {
     }
 }
 impl<'m> ClassificationView<'m> {
+    /// All `IfcLibraryInformation` instances in the model.
     pub fn libraries(self) -> impl Iterator<Item = LibraryInformation<'m>> + 'm {
         self.model()
             .of_type("IFCLIBRARYINFORMATION")

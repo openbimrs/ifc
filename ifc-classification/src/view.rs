@@ -5,11 +5,13 @@ use std::collections::HashSet;
 use crate::{ClassificationError, ClassificationResult};
 use ifc_model::{Entity, EntityId, Model, Value};
 
+/// Entry point for classification/document/library queries over a borrowed [`Model`].
 #[derive(Debug, Clone, Copy)]
 pub struct ClassificationView<'m> {
     model: &'m Model,
 }
 impl<'m> ClassificationView<'m> {
+    /// Borrow `model` for classification-schema queries.
     #[must_use]
     pub const fn new(model: &'m Model) -> Self {
         Self { model }
@@ -22,12 +24,18 @@ impl<'m> ClassificationView<'m> {
 
 macro_rules! borrowed_entity {
     ($name:ident, $kind:literal) => {
+        #[doc = concat!("Borrowed projection of an `", $kind, "` entity.")]
         #[derive(Debug, Clone, Copy)]
         pub struct $name<'m> {
             id: ifc_model::EntityId,
             entity: &'m ifc_model::Entity,
         }
         impl<'m> $name<'m> {
+            #[doc = concat!(
+                        "Project `entity` as `",
+                        $kind,
+                        "`, checking its runtime type; fails with `WrongEntityType` if it is not."
+                    )]
             pub fn try_new(
                 id: ifc_model::EntityId,
                 entity: &'m ifc_model::Entity,
@@ -41,16 +49,23 @@ macro_rules! borrowed_entity {
                     })
                 }
             }
+            #[doc = concat!(
+                        "Wrap `entity` as `",
+                        $kind,
+                        "` without re-checking its type; caller must already know it matches."
+                    )]
             pub(crate) const fn from_known(
                 id: ifc_model::EntityId,
                 entity: &'m ifc_model::Entity,
             ) -> Self {
                 Self { id, entity }
             }
+            /// Entity id of the underlying instance.
             #[must_use]
             pub const fn id(self) -> ifc_model::EntityId {
                 self.id
             }
+            /// Borrowed underlying entity record.
             #[must_use]
             pub const fn entity(self) -> &'m ifc_model::Entity {
                 self.entity
@@ -98,6 +113,7 @@ fn unique_refs(
     }
     Ok(out)
 }
+/// Decode a required text attribute at `slot`; fails if unset or not text.
 pub(crate) fn required_text<'m>(
     kind: &'static str,
     id: EntityId,
@@ -117,6 +133,7 @@ pub(crate) fn required_text<'m>(
             .ok_or_else(|| invalid(kind, id, attr, v)),
     }
 }
+/// Decode an optional text attribute at `slot`; `None` when unset, fails if present but not text.
 pub(crate) fn optional_text<'m>(
     kind: &'static str,
     id: EntityId,
@@ -133,6 +150,7 @@ pub(crate) fn optional_text<'m>(
             .ok_or_else(|| invalid(kind, id, attr, v)),
     }
 }
+/// Decode an optional enumeration attribute at `slot`, restricted to `allowed`; fails on any other value.
 pub(crate) fn optional_enum<'m>(
     kind: &'static str,
     id: EntityId,
@@ -147,6 +165,7 @@ pub(crate) fn optional_enum<'m>(
         Some(v) => Err(invalid(kind, id, attr, v)),
     }
 }
+/// Decode an optional single reference attribute at `slot`; `None` when unset, fails if present but not a reference.
 pub(crate) fn optional_ref(
     kind: &'static str,
     id: EntityId,
@@ -160,6 +179,7 @@ pub(crate) fn optional_ref(
         Some(v) => Err(invalid(kind, id, attr, v)),
     }
 }
+/// Decode a required single reference attribute at `slot`; fails if unset or not a reference.
 pub(crate) fn required_ref(
     kind: &'static str,
     id: EntityId,
@@ -173,6 +193,7 @@ pub(crate) fn required_ref(
         attribute: attr,
     })
 }
+/// Decode a required, non-empty list of unique references at `slot`; fails if unset, empty, non-reference, or containing duplicates.
 pub(crate) fn required_refs(
     kind: &'static str,
     id: EntityId,
@@ -195,6 +216,7 @@ pub(crate) fn required_refs(
     }
     unique_refs(kind, id, attr, values)
 }
+/// Decode an optional, non-empty list of unique references at `slot`; `None` when unset, fails on duplicates or non-references.
 pub(crate) fn optional_refs(
     kind: &'static str,
     id: EntityId,
@@ -210,6 +232,7 @@ pub(crate) fn optional_refs(
         Some(v) => Err(invalid(kind, id, attr, v)),
     }
 }
+/// Decode an optional, non-empty list of text values at `slot`; `None` when unset, fails if any element is not text.
 pub(crate) fn optional_texts<'m>(
     kind: &'static str,
     id: EntityId,

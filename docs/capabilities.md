@@ -30,13 +30,13 @@ code.
 | `ifc-geometry` | 31,439 | 103 | 3 | 34 | <span class="status-partial">Partial</span> |
 | `ifc-structural` | 3,404 | 33 | 14 | 12 | <span class="status-implemented">Implemented</span> |
 | `ifc-style` | 3,329 | 31 | 0 | 5 | <span class="status-implemented">Implemented</span> |
-| `ifc-properties` | 3,126 | 30 | 14 | 3 | <span class="status-implemented">Implemented</span> |
+| `ifc-properties` | 3,217 | 30 | 14 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-alignment` | 2,916 | 29 | 11 | 5 | <span class="status-partial">Partial</span> |
 | `ifc-template-catalog` | 2,733 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-resource` | 2,654 | 29 | 9 | 9 | <span class="status-partial">Partial</span> |
 | `ifc-validate` | 2,493 | 23 | 0 | 2 | <span class="status-implemented">Implemented</span> |
+| `ifc-classification` | 2,440 | 20 | 4 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 2,406 | 24 | 0 | 9 | <span class="status-implemented">Implemented</span> |
-| `ifc-classification` | 2,210 | 20 | 4 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 2,001 | 16 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-schedule` | 1,691 | 24 | 14 | 1 | <span class="status-implemented">Implemented</span> |

@@ -28,10 +28,8 @@ ROOT = Path(__file__).resolve().parent.parent
 # [workspace.lints] and leave this table for good.
 BUDGET = {
     "ifc-alignment": 117,
-    "ifc-classification": 240,
     "ifc-georef": 56,
     "ifc-material": 283,
-    "ifc-properties": 79,
     "ifc-resource": 225,
     "ifc-structural": 262,
     "ifc-style": 338,

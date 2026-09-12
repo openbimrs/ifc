@@ -16,15 +16,22 @@ use ifc_schema::{ifc4, Schema, SchemaVersion, TypeKind};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ExactSource {
+    /// Resolved from a property set assigned directly to the occurrence
+    /// via `IfcRelDefinesByProperties`.
     Occurrence,
+    /// Resolved from a property set inherited through the occurrence's
+    /// `IfcTypeObject`, identified by that type's entity id.
     Type(EntityId),
 }
 
 /// Exact IFC logical value without collapsing unknown into a boolean.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExactLogical {
+    /// `IfcLogical` value `.F.`.
     False,
+    /// `IfcLogical` value `.U.` — genuinely undetermined, not absent.
     Unknown,
+    /// `IfcLogical` value `.T.`.
     True,
 }
 
@@ -32,26 +39,38 @@ pub enum ExactLogical {
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum ExactValue {
+    /// The property carried no value (`$`), distinct from an absent property.
     Null,
+    /// An `IFCBOOLEAN` payload.
     Bool(bool),
+    /// An `IFCLOGICAL` payload, keeping the tri-state distinction.
     Logical(ExactLogical),
+    /// An `IFCBINARY` payload, stored as its literal encoded text.
     Binary(Arc<str>),
+    /// An `IFCINTEGER` payload.
     Integer(i64),
+    /// An `IFCREAL` (or compatible measure) payload; always finite.
     Real(f64),
+    /// An `IFCTEXT`/`IFCLABEL`/`IFCIDENTIFIER`-family string payload.
     Text(Arc<str>),
 }
 
 /// A uniquely resolved property with IFC identity and provenance.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExactProperty {
+    /// Whether the value came from the occurrence or was inherited from its type.
     pub source: ExactSource,
+    /// The owning `IfcPropertySet.Name`.
     pub property_set: Arc<str>,
+    /// Entity id of the `IfcPropertySet`.
     pub set_id: EntityId,
+    /// Entity id of the `IfcPropertySingleValue`.
     pub property_id: EntityId,
     /// Declared IFC value type (for example `IFCINTEGER` or `IFCLENGTHMEASURE`).
     pub value_type: Option<Arc<str>>,
     /// Explicit `IfcPropertySingleValue.Unit`, if stated.
     pub unit_id: Option<EntityId>,
+    /// The resolved `NominalValue`.
     pub value: ExactValue,
 }
 
@@ -59,7 +78,10 @@ pub struct ExactProperty {
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum ExactResolution {
+    /// The property was found exactly once across occurrence and inherited sets.
     Present(ExactProperty),
+    /// No occurrence or inherited property set carried a matching property;
+    /// this is a proven absence, not a lookup failure.
     Absent,
 }
 
@@ -67,84 +89,160 @@ pub enum ExactResolution {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ExactPropertyError {
+    /// The model carries STEP-level diagnostics, so exactness cannot be
+    /// guaranteed; count of diagnostics is reported for context.
     IncompleteModel {
+        /// Number of diagnostics recorded against the model.
         diagnostics: usize,
     },
+    /// The model header declares no `FILE_SCHEMA`.
     MissingSchema,
+    /// The model header declares more than one schema.
     MultipleSchemas {
+        /// Number of schemas declared in the header.
         schemas: usize,
     },
+    /// The model header declares a schema other than IFC4.
     UnsupportedSchema {
+        /// The declared schema token.
         schema: String,
     },
+    /// An entity reference points at an id absent from the model.
     MissingReference {
+        /// The entity holding the reference.
         from: EntityId,
+        /// The entity id that could not be resolved.
         to: EntityId,
     },
+    /// An aggregate attribute (list/set) was `$`, empty when required, or
+    /// not encoded as a list at all.
     MalformedAggregate {
+        /// The entity whose attribute was malformed.
         entity: EntityId,
+        /// Name of the offending attribute.
         attribute: &'static str,
     },
+    /// The occurrence is assigned to more than one `IfcTypeObject` via
+    /// `IfcRelDefinesByType`, which IFC4 forbids.
     MultipleTypeAssignments {
+        /// The occurrence with conflicting type assignments.
         object: EntityId,
+        /// The first `IfcTypeObject` found.
         first: EntityId,
+        /// The second, conflicting `IfcTypeObject` found.
         second: EntityId,
     },
+    /// `IfcRelDefinesByProperties.RelatedObjects` names an object that is
+    /// not a non-type `IfcObjectDefinition`.
     InvalidOccurrenceTarget {
+        /// The `IfcRelDefinesByProperties` relationship.
         relationship: EntityId,
+        /// The invalid related object.
         object: EntityId,
     },
+    /// `IfcRelDefinesByType.RelatedObjects` names an object that is not an
+    /// `IfcObject`.
     InvalidTypeTarget {
+        /// The `IfcRelDefinesByType` relationship.
         relationship: EntityId,
+        /// The invalid related object.
         object: EntityId,
     },
+    /// The queried entity is not a non-type `IfcObjectDefinition` and
+    /// therefore cannot carry properties.
     InvalidQueryObject {
+        /// The rejected query object.
         object: EntityId,
+        /// The object's actual IFC type name.
         type_name: Arc<str>,
     },
+    /// The same entity id appears more than once in an aggregate attribute
+    /// that must have unique members.
     DuplicateAggregateMember {
+        /// The entity holding the aggregate.
         entity: EntityId,
+        /// Name of the offending attribute.
         attribute: &'static str,
+        /// The entity id that appeared more than once.
         member: EntityId,
     },
+    /// Two property sets with the same name matched the query for the same
+    /// source (occurrence or type), making the result ambiguous.
     DuplicateMatchingSets {
+        /// Whether the ambiguity arose among occurrence or type sets.
         source: ExactSource,
+        /// The first matching property set.
         first: EntityId,
+        /// The second, conflicting matching property set.
         second: EntityId,
     },
+    /// Two properties with the same name matched within the same set.
     DuplicateMatchingProperties {
+        /// The `IfcPropertySet` containing the ambiguous properties.
         set: EntityId,
+        /// The first matching property.
         first: EntityId,
+        /// The second, conflicting matching property.
         second: EntityId,
     },
+    /// A `Name` attribute expected to be a string was `$`, a reference, or
+    /// otherwise not text.
     MalformedName {
+        /// The entity whose name attribute was malformed.
         entity: EntityId,
+        /// Name of the offending attribute (normally `"Name"`).
         attribute: &'static str,
     },
+    /// A `RelatingPropertyDefinition` reference resolves to an entity that
+    /// is not an `IfcPropertySetDefinition`.
     UnsupportedDefinition {
+        /// The rejected entity.
         entity: EntityId,
+        /// The entity's actual IFC type name.
         type_name: Arc<str>,
     },
+    /// A member of `IfcPropertySet.HasProperties` is not an `IfcProperty`,
+    /// or is a property kind the exact resolver does not yet support.
     UnsupportedProperty {
+        /// The rejected entity.
         entity: EntityId,
+        /// The entity's actual IFC type name.
         type_name: Arc<str>,
     },
+    /// `IfcPropertySingleValue.NominalValue` was `$` where a value was required.
     MissingValueSlot {
+        /// The property with the missing value.
         property: EntityId,
     },
+    /// An entity's attribute count does not match what the IFC4 schema
+    /// declares for its type — a malformed or truncated STEP record.
     MalformedEntitySlots {
+        /// The malformed entity.
         entity: EntityId,
+        /// The entity's IFC type name.
         type_name: Arc<str>,
+        /// Attribute count the schema declares for this type.
         expected: usize,
+        /// Attribute count actually present on the entity.
         actual: usize,
     },
+    /// `IfcPropertySingleValue.Unit` references an entity that is not a
+    /// member of the `IfcUnit` select.
     UnsupportedUnit {
+        /// The property with the invalid unit reference.
         property: EntityId,
     },
+    /// `IfcPropertySingleValue.NominalValue` carries a typed value whose
+    /// declared type is not accepted by `IFCVALUE`, or whose payload does
+    /// not match its declared type.
     UnsupportedValue {
+        /// The property with the invalid value.
         property: EntityId,
     },
+    /// `IfcPropertySingleValue.NominalValue` is an `IFCREAL` that is NaN or
+    /// infinite, which IFC4 does not permit.
     NonFiniteReal {
+        /// The property with the non-finite real value.
         property: EntityId,
     },
 }

@@ -13,13 +13,19 @@ pub use classification::ClassificationAssignment;
 pub use document::DocumentAssignment;
 pub use library::LibraryAssignment;
 
+/// Contract describing which `IfcRelAssociates*` relation and target select is being validated.
 pub(crate) struct AssociationSchema {
+    /// IFC relation entity type (e.g. `IFCRELASSOCIATESCLASSIFICATION`).
     pub relation: &'static str,
+    /// Name of the attribute holding the relating target.
     pub target_attribute: &'static str,
+    /// IFC types accepted as the relating target.
     pub target_types: &'static [&'static str],
+    /// Select name reported in errors when the target has an unexpected type.
     pub target_label: &'static str,
 }
 
+/// Check that `related` are all valid `IfcDefinitionSelect` members and `target` matches `contract`; fails on any dangling or mistyped reference.
 pub(crate) fn validate_assignment(
     view: ClassificationView<'_>,
     relation_id: EntityId,

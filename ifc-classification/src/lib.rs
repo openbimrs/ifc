@@ -3,13 +3,6 @@
 //! Views borrow [`ifc_model::Model`]; authoring helpers stage records on a
 //! caller-owned [`ifc_model::Transaction`]. No query performs external I/O.
 
-// Documentation debt: this crate does not yet document every public item,
-// so it cannot join [workspace.lints] (missing_docs = deny) yet. The
-// remaining count is budgeted in scripts/check-missing-docs.py, which fails
-// if it grows. Delete this attribute once the count reaches zero and add
-// `[lints] workspace = true` to Cargo.toml instead.
-#![allow(missing_docs)]
-
 mod assignment;
 mod authoring;
 mod classification;

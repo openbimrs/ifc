@@ -7,6 +7,7 @@ use crate::ClassificationResult;
 use ifc_model::EntityId;
 borrowed_entity!(DocumentAssignment, "IFCRELASSOCIATESDOCUMENT");
 impl<'m> DocumentAssignment<'m> {
+    /// The `GlobalId` of this `IfcRelAssociatesDocument`.
     pub fn global_id(self) -> ClassificationResult<&'m str> {
         required_text(
             "IFCRELASSOCIATESDOCUMENT",
@@ -16,6 +17,7 @@ impl<'m> DocumentAssignment<'m> {
             "GlobalId",
         )
     }
+    /// Optional `Name` of the association relationship.
     pub fn name(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCRELASSOCIATESDOCUMENT",
@@ -25,6 +27,7 @@ impl<'m> DocumentAssignment<'m> {
             "Name",
         )
     }
+    /// Optional `Description` of the association relationship.
     pub fn description(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCRELASSOCIATESDOCUMENT",
@@ -34,6 +37,7 @@ impl<'m> DocumentAssignment<'m> {
             "Description",
         )
     }
+    /// Ids of the `RelatedObjects` the document applies to; non-empty per schema.
     pub fn related_object_ids(self) -> ClassificationResult<Vec<EntityId>> {
         required_refs(
             "IFCRELASSOCIATESDOCUMENT",
@@ -43,6 +47,7 @@ impl<'m> DocumentAssignment<'m> {
             "RelatedObjects",
         )
     }
+    /// Id of the `RelatingDocument` (an `IfcDocumentInformation` or `IfcDocumentReference`).
     pub fn relating_document_id(self) -> ClassificationResult<EntityId> {
         required_ref(
             "IFCRELASSOCIATESDOCUMENT",
@@ -54,11 +59,13 @@ impl<'m> DocumentAssignment<'m> {
     }
 }
 impl<'m> ClassificationView<'m> {
+    /// All `IfcRelAssociatesDocument` instances in the model.
     pub fn document_assignments(self) -> impl Iterator<Item = DocumentAssignment<'m>> + 'm {
         self.model()
             .of_type("IFCRELASSOCIATESDOCUMENT")
             .map(|(id, e)| DocumentAssignment::from_known(id, e))
     }
+    /// Document assignments naming `object` among their `RelatedObjects`, with the relating document checked against `IfcDocumentSelect`; fails if `object` is unknown or a reference does not resolve.
     pub fn document_assignments_for(
         self,
         object: EntityId,

@@ -6,6 +6,7 @@ use crate::view::{
 use crate::ClassificationResult;
 borrowed_entity!(DocumentInformation, "IFCDOCUMENTINFORMATION");
 impl<'m> DocumentInformation<'m> {
+    /// The required `Identification` code of the document.
     pub fn identification(self) -> ClassificationResult<&'m str> {
         required_text(
             "IFCDOCUMENTINFORMATION",
@@ -15,6 +16,7 @@ impl<'m> DocumentInformation<'m> {
             "Identification",
         )
     }
+    /// The required `Name` of the document.
     pub fn name(self) -> ClassificationResult<&'m str> {
         required_text(
             "IFCDOCUMENTINFORMATION",
@@ -24,6 +26,7 @@ impl<'m> DocumentInformation<'m> {
             "Name",
         )
     }
+    /// The `Description` of the document, when authored.
     pub fn description(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCDOCUMENTINFORMATION",
@@ -33,6 +36,7 @@ impl<'m> DocumentInformation<'m> {
             "Description",
         )
     }
+    /// The `Location` (e.g. a URI) of the document, when authored.
     pub fn location(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCDOCUMENTINFORMATION",
@@ -42,6 +46,7 @@ impl<'m> DocumentInformation<'m> {
             "Location",
         )
     }
+    /// The `Purpose` the document serves, when authored.
     pub fn purpose(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCDOCUMENTINFORMATION",
@@ -51,6 +56,7 @@ impl<'m> DocumentInformation<'m> {
             "Purpose",
         )
     }
+    /// The `IntendedUse` of the document, when authored.
     pub fn intended_use(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCDOCUMENTINFORMATION",
@@ -60,6 +66,7 @@ impl<'m> DocumentInformation<'m> {
             "IntendedUse",
         )
     }
+    /// The `Scope` of the document, when authored.
     pub fn scope(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCDOCUMENTINFORMATION",
@@ -69,6 +76,7 @@ impl<'m> DocumentInformation<'m> {
             "Scope",
         )
     }
+    /// The `Revision` label of the document, when authored.
     pub fn revision(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCDOCUMENTINFORMATION",
@@ -78,6 +86,7 @@ impl<'m> DocumentInformation<'m> {
             "Revision",
         )
     }
+    /// Id of the `DocumentOwner` (an `IfcActorSelect`), when authored.
     pub fn document_owner_id(self) -> ClassificationResult<Option<ifc_model::EntityId>> {
         optional_ref(
             "IFCDOCUMENTINFORMATION",
@@ -87,6 +96,7 @@ impl<'m> DocumentInformation<'m> {
             "DocumentOwner",
         )
     }
+    /// Ids of the `Editors` (`IfcActorSelect` members) who worked on the document, when authored.
     pub fn editors(self) -> ClassificationResult<Option<Vec<ifc_model::EntityId>>> {
         optional_refs(
             "IFCDOCUMENTINFORMATION",
@@ -96,6 +106,7 @@ impl<'m> DocumentInformation<'m> {
             "Editors",
         )
     }
+    /// The `CreationTime` of the document, when authored.
     pub fn creation_time(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCDOCUMENTINFORMATION",
@@ -105,6 +116,7 @@ impl<'m> DocumentInformation<'m> {
             "CreationTime",
         )
     }
+    /// The `LastRevisionTime` of the document, when authored.
     pub fn last_revision_time(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCDOCUMENTINFORMATION",
@@ -114,6 +126,7 @@ impl<'m> DocumentInformation<'m> {
             "LastRevisionTime",
         )
     }
+    /// The `ElectronicFormat` (e.g. a MIME type) of the document, when authored.
     pub fn electronic_format(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCDOCUMENTINFORMATION",
@@ -123,6 +136,7 @@ impl<'m> DocumentInformation<'m> {
             "ElectronicFormat",
         )
     }
+    /// The `ValidFrom` date of the document, when authored.
     pub fn valid_from(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCDOCUMENTINFORMATION",
@@ -132,6 +146,7 @@ impl<'m> DocumentInformation<'m> {
             "ValidFrom",
         )
     }
+    /// The `ValidUntil` date of the document, when authored.
     pub fn valid_until(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCDOCUMENTINFORMATION",
@@ -141,6 +156,7 @@ impl<'m> DocumentInformation<'m> {
             "ValidUntil",
         )
     }
+    /// The `Confidentiality` enumerator of the document, when authored (`PUBLIC`, `RESTRICTED`, `CONFIDENTIAL`, `PERSONAL`, `USERDEFINED`, or `NOTDEFINED`).
     pub fn confidentiality(self) -> ClassificationResult<Option<&'m str>> {
         optional_enum(
             "IFCDOCUMENTINFORMATION",
@@ -158,6 +174,7 @@ impl<'m> DocumentInformation<'m> {
             ],
         )
     }
+    /// The `Status` enumerator of the document, when authored (`DRAFT`, `FINAL`, `REVISION`, or `NOTDEFINED`).
     pub fn status(self) -> ClassificationResult<Option<&'m str>> {
         optional_enum(
             "IFCDOCUMENTINFORMATION",
@@ -170,6 +187,7 @@ impl<'m> DocumentInformation<'m> {
     }
 }
 impl<'m> ClassificationView<'m> {
+    /// All `IfcDocumentInformation` instances in the model.
     pub fn documents(self) -> impl Iterator<Item = DocumentInformation<'m>> + 'm {
         self.model()
             .of_type("IFCDOCUMENTINFORMATION")

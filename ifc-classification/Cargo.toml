@@ -12,3 +12,6 @@ description = "Classification systems, document references, libraries, external 
 ifc-model.workspace = true
 ifc-schema.workspace = true
 thiserror.workspace = true
+
+[lints]
+workspace = true

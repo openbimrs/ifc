@@ -1,3 +1,5 @@
+//! Classification hierarchy traversal budget tests.
+
 use ifc_classification::{ClassificationError, ClassificationView};
 use ifc_model::{Budget, Entity, EntityId, Model, Value};
 

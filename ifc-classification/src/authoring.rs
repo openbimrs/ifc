@@ -8,82 +8,140 @@ use ifc_model::{Edit, Entity, EntityId, Model, Transaction, Value};
 
 use crate::{ClassificationError, ClassificationResult};
 
+/// Draft for one IFC4 `IfcClassification`.
 #[derive(Debug, Clone, Copy)]
 pub struct ClassificationDraft<'a> {
+    /// `Source` publishing organization, when stated.
     pub source: Option<&'a str>,
+    /// `Edition` identifier of the classification, when stated.
     pub edition: Option<&'a str>,
+    /// `EditionDate` (IFC date string), when stated.
     pub edition_date: Option<&'a str>,
+    /// Required `Name` of the classification system.
     pub name: &'a str,
+    /// `Description` of the classification, when stated.
     pub description: Option<&'a str>,
+    /// `Location` (URI) of the classification, when stated.
     pub location: Option<&'a str>,
+    /// `ReferenceTokens` delimiter set; must be non-empty when given.
     pub reference_tokens: Option<&'a [&'a str]>,
 }
 
+/// Draft for one IFC4 `IfcClassificationReference`.
 #[derive(Debug, Clone, Copy)]
 pub struct ClassificationReferenceDraft<'a> {
+    /// `Location` (URI) of the reference; at least one of location/identification/name must be given.
     pub location: Option<&'a str>,
+    /// `Identification` code within the classification, when stated.
     pub identification: Option<&'a str>,
+    /// `Name` of the referenced item, when stated.
     pub name: Option<&'a str>,
+    /// `ReferencedSource`: the parent `IfcClassification` or `IfcClassificationReference`, when stated.
     pub referenced_source: Option<EntityId>,
+    /// `Description` of the reference, when stated.
     pub description: Option<&'a str>,
+    /// `Sort` order token, when stated.
     pub sort: Option<&'a str>,
 }
 
+/// Draft for one IFC4 `IfcDocumentInformation`.
 #[derive(Debug, Clone, Copy)]
 pub struct DocumentDraft<'a> {
+    /// Required `Identification` code of the document.
     pub identification: &'a str,
+    /// Required `Name` of the document.
     pub name: &'a str,
+    /// `Description` of the document, when stated.
     pub description: Option<&'a str>,
+    /// `Location` (URI) of the document, when stated.
     pub location: Option<&'a str>,
+    /// `Purpose` of the document, when stated.
     pub purpose: Option<&'a str>,
+    /// `IntendedUse` of the document, when stated.
     pub intended_use: Option<&'a str>,
+    /// `Scope` of the document, when stated.
     pub scope: Option<&'a str>,
+    /// `Revision` identifier, when stated.
     pub revision: Option<&'a str>,
+    /// `DocumentOwner`: an `IfcActorSelect`, when stated.
     pub document_owner: Option<EntityId>,
+    /// `Editors`: non-empty unique set of `IfcActorSelect` ids, when stated.
     pub editors: Option<&'a [EntityId]>,
+    /// `CreationTime` (IFC date-time string), when stated.
     pub creation_time: Option<&'a str>,
+    /// `LastRevisionTime` (IFC date-time string), when stated.
     pub last_revision_time: Option<&'a str>,
+    /// `ElectronicFormat`, when stated.
     pub electronic_format: Option<&'a str>,
+    /// `ValidFrom` (IFC date string), when stated.
     pub valid_from: Option<&'a str>,
+    /// `ValidUntil` (IFC date string), when stated.
     pub valid_until: Option<&'a str>,
+    /// `Confidentiality` enumerator; must be one of the `IfcDocumentConfidentialityEnum` values.
     pub confidentiality: Option<&'a str>,
+    /// `Status` enumerator; must be one of the `IfcDocumentStatusEnum` values.
     pub status: Option<&'a str>,
 }
 
+/// Draft for one IFC4 `IfcDocumentReference`.
 #[derive(Debug, Clone, Copy)]
 pub struct DocumentReferenceDraft<'a> {
+    /// `Location` (URI) of the reference; at least one of location/identification/name must be given.
     pub location: Option<&'a str>,
+    /// `Identification` code, when stated.
     pub identification: Option<&'a str>,
+    /// `Name`; exactly one of `name` and `referenced_document` must be given.
     pub name: Option<&'a str>,
+    /// `Description` of the reference, when stated.
     pub description: Option<&'a str>,
+    /// `ReferencedDocument`: an `IfcDocumentInformation`; exactly one of `name` and this must be given.
     pub referenced_document: Option<EntityId>,
 }
 
+/// Draft for one IFC4 `IfcLibraryInformation`.
 #[derive(Debug, Clone, Copy)]
 pub struct LibraryDraft<'a> {
+    /// Required `Name` of the library.
     pub name: &'a str,
+    /// `Version` identifier, when stated.
     pub version: Option<&'a str>,
+    /// `Publisher`: an `IfcActorSelect`, when stated.
     pub publisher: Option<EntityId>,
+    /// `VersionDate` (IFC date-time string), when stated.
     pub version_date: Option<&'a str>,
+    /// `Location` (URI) of the library, when stated.
     pub location: Option<&'a str>,
+    /// `Description` of the library, when stated.
     pub description: Option<&'a str>,
 }
 
+/// Draft for one IFC4 `IfcLibraryReference`.
 #[derive(Debug, Clone, Copy)]
 pub struct LibraryReferenceDraft<'a> {
+    /// `Location` (URI) of the reference; at least one of location/identification/name must be given.
     pub location: Option<&'a str>,
+    /// `Identification` code within the library, when stated.
     pub identification: Option<&'a str>,
+    /// `Name` of the referenced item, when stated.
     pub name: Option<&'a str>,
+    /// `Description` of the reference, when stated.
     pub description: Option<&'a str>,
+    /// `Language` of the referenced content, when stated.
     pub language: Option<&'a str>,
+    /// `ReferencedLibrary`: an `IfcLibraryInformation`, when stated.
     pub referenced_library: Option<EntityId>,
 }
 
+/// Draft shared by `IfcRelAssociatesClassification`/`Document`/`Library`.
 #[derive(Debug, Clone, Copy)]
 pub struct AssociationDraft<'a> {
+    /// Required `GlobalId`; must parse as a valid IFC GUID.
     pub global_id: &'a str,
+    /// `Name` of the relationship, when stated.
     pub name: Option<&'a str>,
+    /// `Description` of the relationship, when stated.
     pub description: Option<&'a str>,
+    /// `RelatedObjects`: non-empty unique set of `IfcDefinitionSelect` ids.
     pub related_objects: &'a [EntityId],
 }
 
@@ -208,6 +266,7 @@ fn require_enum(
     Ok(())
 }
 
+/// Validate and stage one `IfcClassification`; fails if `reference_tokens` is `Some` and empty.
 pub fn create_classification(
     tx: &mut Transaction,
     draft: ClassificationDraft<'_>,
@@ -239,6 +298,7 @@ pub fn create_classification(
     )))
 }
 
+/// Validate and stage one `IfcClassificationReference`; fails if location/identification/name are all unstated or `referenced_source` does not resolve to an `IfcClassificationReferenceSelect`.
 pub fn create_classification_reference(
     tx: &mut Transaction,
     model: &Model,
@@ -272,6 +332,7 @@ pub fn create_classification_reference(
     )))
 }
 
+/// Validate and stage one `IfcDocumentInformation`; fails on an invalid `Confidentiality`/`Status` enumerator, a `document_owner`/`editors` entry that is not an `IfcActorSelect`, or a duplicate/empty `editors` set.
 pub fn create_document(
     tx: &mut Transaction,
     model: &Model,
@@ -344,6 +405,7 @@ pub fn create_document(
     )))
 }
 
+/// Validate and stage one `IfcDocumentReference`; fails if location/identification/name are all unstated, if `name` and `referenced_document` are not exactly one, or if `referenced_document` is not an `IfcDocumentInformation`.
 pub fn create_document_reference(
     tx: &mut Transaction,
     model: &Model,
@@ -383,6 +445,7 @@ pub fn create_document_reference(
     )))
 }
 
+/// Validate and stage one `IfcLibraryInformation`; fails if `publisher` does not resolve to an `IfcActorSelect`.
 pub fn create_library(
     tx: &mut Transaction,
     model: &Model,
@@ -404,6 +467,7 @@ pub fn create_library(
     )))
 }
 
+/// Validate and stage one `IfcLibraryReference`; fails if location/identification/name are all unstated or `referenced_library` is not an `IfcLibraryInformation`.
 pub fn create_library_reference(
     tx: &mut Transaction,
     model: &Model,
@@ -485,6 +549,7 @@ fn associate(
     )))
 }
 
+/// Validate and stage an `IfcRelAssociatesClassification` linking `draft.related_objects` to `target`; fails if `target` is not an `IfcClassificationSelect`, or on any shared association precondition.
 pub fn associate_classification(
     tx: &mut Transaction,
     model: &Model,
@@ -501,6 +566,7 @@ pub fn associate_classification(
         "IfcClassificationSelect",
     )
 }
+/// Validate and stage an `IfcRelAssociatesDocument` linking `draft.related_objects` to `target`; fails if `target` is not an `IfcDocumentSelect`, or on any shared association precondition.
 pub fn associate_document(
     tx: &mut Transaction,
     model: &Model,
@@ -517,6 +583,7 @@ pub fn associate_document(
         "IfcDocumentSelect",
     )
 }
+/// Validate and stage an `IfcRelAssociatesLibrary` linking `draft.related_objects` to `target`; fails if `target` is not an `IfcLibrarySelect`, or on any shared association precondition.
 pub fn associate_library(
     tx: &mut Transaction,
     model: &Model,
