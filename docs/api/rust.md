@@ -1,14 +1,20 @@
 # Rust API
 
-The workspace crates are not published on docs.rs yet. Build the generated API
-reference from the current source and its doc comments:
+**[Browse the generated API reference →](/ifc/api/rustdoc/ifc/index.html)**
+
+Every public item across the 23 workspace crates is documented and the lint is
+enforced: `missing_docs` is denied workspace-wide, so an undocumented public
+item is a build failure rather than a review comment.
+
+The reference is rebuilt from source on every push to `main` and published with
+this site. The verification gate builds it with `RUSTDOCFLAGS="-D warnings"`, so
+a broken intra-doc link fails CI.
+
+The crates are not on docs.rs yet. To read the same reference locally:
 
 ```bash
 cargo doc --workspace --all-features --no-deps --open
 ```
-
-The verification gate runs the same documentation build with
-`RUSTDOCFLAGS="-D warnings"`, so a broken intra-doc link fails CI.
 
 ## Orientation
 

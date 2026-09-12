@@ -10,6 +10,11 @@ on:
       - 'package-lock.json'
       - 'scripts/sync-changelog.py'
       - '.github/workflows/pages.yml'
+      # The API reference is generated from doc comments, so a source-only
+      # change still alters the published site.
+      - '**/src/**'
+      - '**/Cargo.toml'
+      - 'Cargo.lock'
   workflow_dispatch:
 
 permissions:
@@ -34,10 +39,32 @@ jobs:
         with:
           python-version: '3.12'
       - uses: actions/configure-pages@v5
+      - uses: dtolnay/rust-toolchain@1.88.0
+      - name: Cache IFC EXPRESS schemas
+        uses: actions/cache@v4
+        with:
+          path: references/ifc-spec
+          key: ifc-spec-${{ hashFiles('scripts/fetch-ifc-schemas.sh') }}
+      - name: Fetch IFC EXPRESS schemas
+        run: scripts/fetch-ifc-schemas.sh
       - run: npm ci
       - name: Changelog page must match the canonical CHANGELOG.md
         run: python3 scripts/sync-changelog.py --check
       - run: npm run docs:build
+      # rustdoc is generated from the same doc comments the gate already
+      # builds with -D warnings, and nested under the VitePress output so it
+      # ships in the one Pages artifact. It lives at /api/rustdoc/ rather than
+      # /api/rust/ because VitePress emits the hand-written landing page as
+      # api/rust.html, and a sibling api/rust/ directory would make the
+      # /api/rust URL ambiguous on a static host.
+      - name: Build the Rust API reference
+        env:
+          RUSTDOCFLAGS: "-D warnings"
+        run: cargo doc --workspace --all-features --no-deps
+      - name: Nest rustdoc under the site at /api/rustdoc/
+        run: |
+          mkdir -p docs/.vitepress/dist/api/rustdoc
+          cp -r target/doc/. docs/.vitepress/dist/api/rustdoc/
       - name: Reject standards material from the published site
         run: python3 scripts/check-leakage.py docs/.vitepress/dist
       - uses: actions/upload-pages-artifact@v3
