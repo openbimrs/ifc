@@ -5,9 +5,13 @@ use ifc_model::{EntityId, Model};
 
 use crate::error::{GeorefError, GeorefResult};
 
+/// A length unit reduced to a metre factor.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LengthUnit {
+    /// Unit name, either an SI token such as `MILLIMETRE` or the authored
+    /// `IfcConversionBasedUnit.Name` such as `FOOT`.
     pub name: String,
+    /// Metres per one unit. Always finite and strictly positive.
     pub metres_per_unit: f64,
 }
 

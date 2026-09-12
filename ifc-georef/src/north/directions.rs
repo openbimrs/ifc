@@ -40,9 +40,15 @@ pub enum NorthReference {
     Project,
     /// Geodetic north, from `IfcGeometricRepresentationContext.TrueNorth`
     /// (or its `(0, 1)` default when the attribute is absent).
-    True { direction: (f64, f64) },
+    True {
+        /// Unit-length direction in the project's XY plane.
+        direction: (f64, f64),
+    },
     /// The target map's northing axis, derived from an `IfcMapConversion`.
-    Grid { direction: (f64, f64) },
+    Grid {
+        /// Unit-length direction in the project's XY plane.
+        direction: (f64, f64),
+    },
 }
 
 impl NorthReference {

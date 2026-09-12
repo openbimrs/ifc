@@ -5,14 +5,23 @@ use ifc_model::{EntityId, Model};
 use crate::crs::unit::{resolve_length_unit, LengthUnit};
 use crate::error::{GeorefError, GeorefResult};
 
+/// A projected coordinate reference system read from `IfcProjectedCRS`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProjectedCrs {
+    /// The `IfcProjectedCRS` entity this was read from.
     pub entity: EntityId,
+    /// Mandatory CRS identifier, conventionally an EPSG code such as
+    /// `EPSG:25832`.
     pub name: String,
+    /// Optional human-readable description.
     pub description: Option<String>,
+    /// Optional horizontal datum, such as `ETRS89`.
     pub geodetic_datum: Option<String>,
+    /// Optional vertical datum, such as `DHHN2016`.
     pub vertical_datum: Option<String>,
+    /// Optional projection name, such as `UTM`.
     pub map_projection: Option<String>,
+    /// Optional projection zone, such as `32N`.
     pub map_zone: Option<String>,
     /// Explicit target unit. `None` means IFC inherits the project length unit.
     pub map_unit: Option<LengthUnit>,

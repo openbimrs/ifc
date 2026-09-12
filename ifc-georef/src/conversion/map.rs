@@ -8,13 +8,18 @@ use crate::crs::{projected_crs, LengthUnit, ProjectedCrs};
 use crate::error::{GeorefError, GeorefResult};
 use crate::view::GeorefView;
 
+/// A resolved project-to-map coordinate operation, normalised to metres.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProjectToMap {
+    /// The source `IfcGeometricRepresentationContext`.
     pub source_crs: EntityId,
+    /// The target projected CRS.
     pub target_crs: ProjectedCrs,
     /// Affine operation from neutral project metres to neutral map metres.
     pub transform: Transform3,
+    /// Length unit the project authored its coordinates in.
     pub project_unit: LengthUnit,
+    /// Length unit the map coordinates are expressed in.
     pub map_unit: LengthUnit,
     /// IFC's declared scale before source/target unit normalization.
     pub declared_scale: f64,

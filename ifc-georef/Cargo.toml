@@ -15,3 +15,6 @@ axiolid-core.workspace = true
 
 [dev-dependencies]
 ifc-step = { path = "../ifc-step" }
+
+[lints]
+workspace = true

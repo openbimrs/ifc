@@ -4,13 +4,6 @@
 //! then emits a format-neutral `axiolid_core::Transform3`. It does not place
 //! products, reproject coordinates, or select a geometry backend.
 
-// Documentation debt: this crate does not yet document every public item,
-// so it cannot join [workspace.lints] (missing_docs = deny) yet. The
-// remaining count is budgeted in scripts/check-missing-docs.py, which fails
-// if it grows. Delete this attribute once the count reaches zero and add
-// `[lints] workspace = true` to Cargo.toml instead.
-#![allow(missing_docs)]
-
 mod context;
 mod conversion;
 mod crs;

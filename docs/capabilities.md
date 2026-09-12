@@ -41,7 +41,7 @@ code.
 | `ifc-cost` | 2,001 | 16 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-schedule` | 1,691 | 24 | 14 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 1,586 | 20 | 5 | 2 | <span class="status-implemented">Implemented</span> |
-| `ifc-georef` | 1,430 | 18 | 9 | 3 | <span class="status-partial">Partial</span> |
+| `ifc-georef` | 1,497 | 18 | 9 | 3 | <span class="status-partial">Partial</span> |
 | `ifc-schema` | 1,404 | 12 | 4 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,229 | 6 | 0 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-spatial` | 1,122 | 9 | 1 | 9 | <span class="status-implemented">Implemented</span> |

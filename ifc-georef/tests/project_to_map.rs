@@ -1,3 +1,5 @@
+//! Resolving `IfcMapConversion` into a neutral project-to-map transform.
+
 use std::sync::Arc;
 
 use axiolid_core::{Point3, Vec3};
