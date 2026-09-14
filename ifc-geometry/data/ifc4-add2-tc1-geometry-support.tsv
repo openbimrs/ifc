@@ -1,11 +1,11 @@
 resource	kind	name	abstract	type_kind	bridge_owner	neutral_owner	status
 ifcgeometryresource	type	ifcarcindex	false	defined	curve::polyline	axiolid-model	modeled-type
-ifcgeometryresource	function	ifcassociatedsurface	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifcassociatedsurface	false	-	resource::functions	ifc-geometry	implemented
 ifcgeometryresource	entity	ifcaxis1placement	false	-	resource::placement	axiolid-core	view-or-family
 ifcgeometryresource	type	ifcaxis2placement	false	select	resource::placement	axiolid-core	modeled-type
 ifcgeometryresource	entity	ifcaxis2placement2d	false	-	resource::placement	axiolid-core	view-or-family
 ifcgeometryresource	entity	ifcaxis2placement3d	false	-	resource::placement	axiolid-core	view-or-family
-ifcgeometryresource	function	ifcbaseaxis	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifcbaseaxis	false	-	resource::functions	ifc-geometry	implemented
 ifcgeometryresource	entity	ifcboundarycurve	false	-	curve::composite	axiolid-curve + axiolid-model::CurveRelation	view-or-family
 ifcgeometryresource	entity	ifcboundedcurve	true	-	select::subtype	axiolid-curve + axiolid-model::CurveRelation	inventory
 ifcgeometryresource	entity	ifcboundedsurface	true	-	surface::bounded	axiolid-surface + axiolid-model::SurfaceRelation	inventory
@@ -15,8 +15,8 @@ ifcgeometryresource	entity	ifcbsplinecurvewithknots	false	-	curve::bspline	axiol
 ifcgeometryresource	entity	ifcbsplinesurface	true	-	surface::bspline	axiolid-surface + axiolid-model::SurfaceRelation	inventory
 ifcgeometryresource	type	ifcbsplinesurfaceform	false	enum	surface::bspline	axiolid-surface + axiolid-model::SurfaceRelation	modeled-type
 ifcgeometryresource	entity	ifcbsplinesurfacewithknots	false	-	surface::bspline	axiolid-surface + axiolid-model::SurfaceRelation	view-or-family
-ifcgeometryresource	function	ifcbuild2axes	false	-	resource::functions	ifc-geometry	scaffolded
-ifcgeometryresource	function	ifcbuildaxes	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifcbuild2axes	false	-	resource::functions	ifc-geometry	implemented
+ifcgeometryresource	function	ifcbuildaxes	false	-	resource::functions	ifc-geometry	implemented
 ifcgeometryresource	entity	ifccartesianpoint	false	-	resource::point	axiolid-core	view-or-family
 ifcgeometryresource	entity	ifccartesiantransformationoperator	true	-	resource::operator	axiolid-core	inventory
 ifcgeometryresource	entity	ifccartesiantransformationoperator2d	false	-	resource::operator	axiolid-core	view-or-family
@@ -28,36 +28,36 @@ ifcgeometryresource	entity	ifccompositecurve	false	-	curve::composite	axiolid-cu
 ifcgeometryresource	entity	ifccompositecurveonsurface	false	-	curve::composite	axiolid-surface + axiolid-model::SurfaceRelation	view-or-family
 ifcgeometryresource	entity	ifccompositecurvesegment	false	-	curve::composite	axiolid-curve + axiolid-model::CurveRelation	view-or-family
 ifcgeometryresource	entity	ifcconic	true	-	curve::conic	axiolid-curve + axiolid-model::CurveRelation	inventory
-ifcgeometryresource	function	ifcconsecutivesegments	false	-	resource::functions	ifc-geometry	scaffolded
-ifcgeometryresource	function	ifcconstraintsparambspline	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifcconsecutivesegments	false	-	resource::functions	ifc-geometry	implemented
+ifcgeometryresource	function	ifcconstraintsparambspline	false	-	resource::functions	ifc-geometry	implemented
 ifcgeometryresource	function	ifccrossproduct	false	-	resource::functions	axiolid-core	native-primitive
 ifcgeometryresource	entity	ifccurve	true	-	select::subtype	axiolid-curve + axiolid-model::CurveRelation	inventory
 ifcgeometryresource	entity	ifccurveboundedplane	false	-	surface::bounded	axiolid-surface + axiolid-model::SurfaceRelation	view-or-family
 ifcgeometryresource	entity	ifccurveboundedsurface	false	-	surface::bounded	axiolid-surface + axiolid-model::SurfaceRelation	view-or-family
-ifcgeometryresource	function	ifccurvedim	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifccurvedim	false	-	resource::functions	ifc-geometry	implemented
 ifcgeometryresource	type	ifccurveonsurface	false	select	select::aggregate_selects	axiolid-surface + axiolid-model::SurfaceRelation	modeled-type
-ifcgeometryresource	function	ifccurveweightspositive	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifccurveweightspositive	false	-	resource::functions	ifc-geometry	implemented
 ifcgeometryresource	entity	ifccylindricalsurface	false	-	surface::elementary	axiolid-surface + axiolid-model::SurfaceRelation	view-or-family
 ifcgeometryresource	type	ifcdimensioncount	false	defined	select::aggregate_selects	axiolid-model	modeled-type
 ifcgeometryresource	entity	ifcdirection	false	-	resource::direction	axiolid-core	view-or-family
 ifcgeometryresource	function	ifcdotproduct	false	-	resource::functions	axiolid-core	native-primitive
 ifcgeometryresource	entity	ifcelementarysurface	true	-	surface::elementary	axiolid-surface + axiolid-model::SurfaceRelation	inventory
 ifcgeometryresource	entity	ifcellipse	false	-	curve	axiolid-curve + axiolid-model::CurveRelation	view-or-family
-ifcgeometryresource	function	ifcfirstprojaxis	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifcfirstprojaxis	false	-	resource::functions	ifc-geometry	implemented
 ifcgeometryresource	entity	ifcgeometricrepresentationitem	true	-	select::subtype	axiolid-model	inventory
-ifcgeometryresource	function	ifcgetbasissurface	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifcgetbasissurface	false	-	resource::functions	ifc-geometry	implemented
 ifcgeometryresource	entity	ifcindexedpolycurve	false	-	curve::polyline	axiolid-curve + axiolid-model::CurveRelation	view-or-family
 ifcgeometryresource	entity	ifcintersectioncurve	false	-	curve::offset	axiolid-curve + axiolid-model::CurveRelation	view-or-family
 ifcgeometryresource	type	ifcknottype	false	enum	curve::bspline	axiolid-model	modeled-type
 ifcgeometryresource	entity	ifcline	false	-	curve::line	axiolid-curve + axiolid-model::CurveRelation	view-or-family
 ifcgeometryresource	type	ifclineindex	false	defined	curve::polyline	axiolid-curve + axiolid-model::CurveRelation	modeled-type
-ifcgeometryresource	function	ifclisttoarray	false	-	resource::functions	ifc-geometry	scaffolded
-ifcgeometryresource	function	ifcmakearrayofarray	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifclisttoarray	false	-	resource::functions	ifc-geometry	not-applicable
+ifcgeometryresource	function	ifcmakearrayofarray	false	-	resource::functions	ifc-geometry	not-applicable
 ifcgeometryresource	entity	ifcmappeditem	false	-	resource::mapped	axiolid-model	view-or-family
 ifcgeometryresource	function	ifcnormalise	false	-	resource::functions	axiolid-core	native-primitive
 ifcgeometryresource	entity	ifcoffsetcurve2d	false	-	curve::offset	axiolid-curve + axiolid-model::CurveRelation	view-or-family
 ifcgeometryresource	entity	ifcoffsetcurve3d	false	-	curve::offset	axiolid-curve + axiolid-model::CurveRelation	view-or-family
-ifcgeometryresource	function	ifcorthogonalcomplement	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifcorthogonalcomplement	false	-	resource::functions	ifc-geometry	implemented
 ifcgeometryresource	entity	ifcouterboundarycurve	false	-	curve::composite	axiolid-curve + axiolid-model::CurveRelation	view-or-family
 ifcgeometryresource	entity	ifcpcurve	false	-	curve::offset	axiolid-curve + axiolid-model::CurveRelation	view-or-family
 ifcgeometryresource	entity	ifcplacement	true	-	resource::placement	axiolid-core	inventory
@@ -73,20 +73,20 @@ ifcgeometryresource	entity	ifcrectangulartrimmedsurface	false	-	surface::bounded
 ifcgeometryresource	entity	ifcreparametrisedcompositecurvesegment	false	-	curve::composite	axiolid-curve + axiolid-model::CurveRelation	view-or-family
 ifcgeometryresource	entity	ifcrepresentationitem	true	-	select::subtype	axiolid-model	inventory
 ifcgeometryresource	entity	ifcrepresentationmap	false	-	resource::mapped	axiolid-model	view-or-family
-ifcgeometryresource	function	ifcsameaxis2placement	false	-	resource::functions	ifc-geometry	scaffolded
-ifcgeometryresource	function	ifcsamecartesianpoint	false	-	resource::functions	ifc-geometry	scaffolded
-ifcgeometryresource	function	ifcsamedirection	false	-	resource::functions	ifc-geometry	scaffolded
-ifcgeometryresource	function	ifcsamevalue	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifcsameaxis2placement	false	-	resource::functions	ifc-geometry	implemented
+ifcgeometryresource	function	ifcsamecartesianpoint	false	-	resource::functions	ifc-geometry	implemented
+ifcgeometryresource	function	ifcsamedirection	false	-	resource::functions	ifc-geometry	implemented
+ifcgeometryresource	function	ifcsamevalue	false	-	resource::functions	ifc-geometry	implemented
 ifcgeometryresource	function	ifcscalartimesvector	false	-	resource::functions	axiolid-core	native-primitive
 ifcgeometryresource	entity	ifcseamcurve	false	-	curve::offset	axiolid-curve + axiolid-model::CurveRelation	view-or-family
-ifcgeometryresource	function	ifcsecondprojaxis	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifcsecondprojaxis	false	-	resource::functions	ifc-geometry	implemented
 ifcgeometryresource	type	ifcsegmentindexselect	false	select	curve::polyline	axiolid-model	modeled-type
 ifcgeometryresource	entity	ifcsphericalsurface	false	-	surface::elementary	axiolid-surface + axiolid-model::SurfaceRelation	view-or-family
 ifcgeometryresource	entity	ifcsurface	true	-	select::subtype	axiolid-surface + axiolid-model::SurfaceRelation	inventory
 ifcgeometryresource	entity	ifcsurfacecurve	false	-	curve::offset	axiolid-surface + axiolid-model::SurfaceRelation	view-or-family
 ifcgeometryresource	entity	ifcsurfaceoflinearextrusion	false	-	surface::swept	axiolid-surface + axiolid-model::SurfaceRelation	view-or-family
 ifcgeometryresource	entity	ifcsurfaceofrevolution	false	-	surface::swept	axiolid-surface + axiolid-model::SurfaceRelation	view-or-family
-ifcgeometryresource	function	ifcsurfaceweightspositive	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometryresource	function	ifcsurfaceweightspositive	false	-	resource::functions	ifc-geometry	implemented
 ifcgeometryresource	entity	ifcsweptsurface	true	-	surface::swept	axiolid-surface + axiolid-model::SurfaceRelation	inventory
 ifcgeometryresource	entity	ifctoroidalsurface	false	-	surface::elementary	axiolid-surface + axiolid-model::SurfaceRelation	view-or-family
 ifcgeometryresource	type	ifctransitioncode	false	enum	curve::composite	axiolid-model	modeled-type
@@ -125,7 +125,7 @@ ifcgeometricmodelresource	entity	ifchalfspacesolid	false	-	solid::halfspace	axio
 ifcgeometricmodelresource	entity	ifcindexedpolygonalface	false	-	solid::tessellated::polygonal	axiolid-model	view-or-family
 ifcgeometricmodelresource	entity	ifcindexedpolygonalfacewithvoids	false	-	solid::tessellated::polygonal	axiolid-model	view-or-family
 ifcgeometricmodelresource	entity	ifcmanifoldsolidbrep	true	-	solid::brep	axiolid-model::SolidOperation	inventory
-ifcgeometricmodelresource	function	ifcpointlistdim	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometricmodelresource	function	ifcpointlistdim	false	-	resource::functions	ifc-geometry	implemented
 ifcgeometricmodelresource	entity	ifcpolygonalboundedhalfspace	false	-	solid::halfspace	axiolid-model::SolidOperation	view-or-family
 ifcgeometricmodelresource	entity	ifcpolygonalfaceset	false	-	solid::tessellated::polygonal	axiolid-mesh	view-or-family
 ifcgeometricmodelresource	entity	ifcrectangularpyramid	false	-	solid::csg	axiolid-model	view-or-family
@@ -141,7 +141,7 @@ ifcgeometricmodelresource	entity	ifcsurfacecurvesweptareasolid	false	-	solid::sw
 ifcgeometricmodelresource	entity	ifcsweptareasolid	true	-	solid::swept::area	axiolid-model::SolidOperation	inventory
 ifcgeometricmodelresource	entity	ifcsweptdisksolid	false	-	solid::swept::directrix	axiolid-model::SolidOperation	view-or-family
 ifcgeometricmodelresource	entity	ifcsweptdisksolidpolygonal	false	-	solid::swept::directrix	axiolid-model::SolidOperation	view-or-family
-ifcgeometricmodelresource	function	ifctaperedsweptareaprofiles	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometricmodelresource	function	ifctaperedsweptareaprofiles	false	-	resource::functions	ifc-geometry	implemented
 ifcgeometricmodelresource	entity	ifctessellatedfaceset	true	-	solid::tessellated	axiolid-mesh	inventory
 ifcgeometricmodelresource	entity	ifctessellateditem	true	-	solid::tessellated	axiolid-mesh	inventory
 ifcgeometricmodelresource	entity	ifctriangulatedfaceset	false	-	solid::tessellated::triangulated	axiolid-mesh	view-or-family
@@ -151,7 +151,7 @@ ifcgeometricconstraintresource	entity	ifcconnectionpointeccentricity	false	-	con
 ifcgeometricconstraintresource	entity	ifcconnectionpointgeometry	false	-	constraint::connection	ifc-geometry::constraint + axiolid-model::NodeId	view-or-family
 ifcgeometricconstraintresource	entity	ifcconnectionsurfacegeometry	false	-	constraint::connection	ifc-geometry::constraint + axiolid-model::NodeId	view-or-family
 ifcgeometricconstraintresource	entity	ifcconnectionvolumegeometry	false	-	constraint::connection	ifc-geometry::constraint + axiolid-model::NodeId	view-or-family
-ifcgeometricconstraintresource	function	ifccorrectlocalplacement	false	-	resource::functions	ifc-geometry	scaffolded
+ifcgeometricconstraintresource	function	ifccorrectlocalplacement	false	-	resource::functions	ifc-geometry	implemented
 ifcgeometricconstraintresource	type	ifccurveoredgecurve	false	select	select::aggregate_selects	ifc-geometry::constraint + axiolid-model::NodeId	modeled-type
 ifcgeometricconstraintresource	entity	ifcgridaxis	false	-	constraint::grid	ifc-geometry::constraint + axiolid-model::NodeId	view-or-family
 ifcgeometricconstraintresource	entity	ifcgridplacement	false	-	constraint::grid	ifc-geometry::constraint + axiolid-model::NodeId	view-or-family

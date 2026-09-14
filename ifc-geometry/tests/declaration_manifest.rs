@@ -107,7 +107,13 @@ fn every_declaration_has_bridge_and_neutral_ownership() {
         assert!(
             matches!(
                 fields[7],
-                "inventory" | "view-or-family" | "modeled-type" | "native-primitive" | "scaffolded"
+                "inventory"
+                    | "view-or-family"
+                    | "modeled-type"
+                    | "native-primitive"
+                    | "scaffolded"
+                    | "implemented"
+                    | "not-applicable"
             ),
             "unknown support status in {key:?}: {}",
             fields[7]
@@ -120,7 +126,13 @@ fn every_declaration_has_bridge_and_neutral_ownership() {
     assert_eq!(statuses.get("view-or-family"), Some(&89));
     assert_eq!(statuses.get("modeled-type"), Some(&23));
     assert_eq!(statuses.get("native-primitive"), Some(&6));
-    assert_eq!(statuses.get("scaffolded"), Some(&22));
+    assert_eq!(statuses.get("implemented"), Some(&20));
+    assert_eq!(statuses.get("not-applicable"), Some(&2));
+    assert_eq!(
+        statuses.get("scaffolded"),
+        None,
+        "no geometry declaration is scaffolded; a new one must be added deliberately"
+    );
 }
 
 #[test]
@@ -176,6 +188,51 @@ fn implemented_functions_are_named_by_their_owner_module() {
             "{} claims Implemented but {} never names it",
             support.name,
             support.owner
+        );
+    }
+}
+
+/// The TSV ledger and the Rust registry must agree on every function.
+///
+/// Both already existed, both were already read by this file, and neither
+/// was ever compared to the other -- so the ledger sat at 22 `scaffolded`
+/// rows while the registry had moved all 22 to `Implemented` or
+/// `NotApplicable`. The per-status count assertions above pinned the stale
+/// number in place rather than catching it, because a count is only a
+/// tripwire for the value someone thought to write down.
+///
+/// Comparing the two sources per function makes that whole class of drift
+/// impossible: a status can only change in both places or in neither.
+#[test]
+fn the_support_ledger_agrees_with_the_function_registry() {
+    let ledger: std::collections::BTreeMap<String, &str> = SUPPORT
+        .lines()
+        .skip(1)
+        .map(|line| line.split('\t').collect::<Vec<_>>())
+        .filter(|fields| fields[1] == "function")
+        .map(|fields| (fields[2].to_ascii_lowercase(), fields[7]))
+        .collect();
+
+    assert_eq!(
+        ledger.len(),
+        FUNCTIONS.len(),
+        "the ledger and the registry disagree on how many functions exist"
+    );
+
+    for support in FUNCTIONS {
+        let expected = match support.status {
+            FunctionStatus::Implemented => "implemented",
+            FunctionStatus::NativePrimitive => "native-primitive",
+            FunctionStatus::NotApplicable => "not-applicable",
+            FunctionStatus::Scaffolded => "scaffolded",
+        };
+        let actual = ledger
+            .get(&support.name.to_ascii_lowercase())
+            .unwrap_or_else(|| panic!("{} is missing from the support ledger", support.name));
+        assert_eq!(
+            *actual, expected,
+            "{} is {:?} in the registry but `{}` in the support ledger",
+            support.name, support.status, actual
         );
     }
 }
