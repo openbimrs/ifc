@@ -66,7 +66,12 @@ mod builder;
 mod check;
 mod editor;
 mod error;
+mod owner;
 
 pub use builder::EntityBuilder;
 pub use editor::EntityEditor;
 pub use error::{AuthorError, AuthorResult};
+pub use owner::{
+    add_application, add_organization, add_owner_history, add_person, add_person_and_organization,
+    ApplicationDraft, OrganizationDraft, OwnerHistoryDraft, PersonDraft,
+};

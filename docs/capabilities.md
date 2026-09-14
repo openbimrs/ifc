@@ -46,10 +46,10 @@ code.
 | `ifc-constraint` | 1,229 | 6 | 0 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-spatial` | 1,122 | 9 | 1 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 1,045 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
+| `ifc-author` | 951 | 9 | 3 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-step` | 949 | 6 | 0 | 6 | <span class="status-implemented">Implemented</span> |
 | `ifc-approval` | 914 | 5 | 0 | 1 | <span class="status-implemented">Implemented</span> |
 | `openbim-ifc` | 901 | 6 | 0 | 14 | <span class="status-implemented">Implemented</span> |
-| `ifc-author` | 729 | 8 | 3 | 3 | <span class="status-implemented">Implemented</span> |
 
 <!-- CAPABILITIES:CENSUS:END -->
 

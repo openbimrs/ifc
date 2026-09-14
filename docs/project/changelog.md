@@ -16,6 +16,14 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-author` can now author ownership: `IfcPerson`, `IfcOrganization`,
+  `IfcPersonAndOrganization`, `IfcApplication` and `IfcOwnerHistory`. Every
+  `IfcRoot` subtype carries `OwnerHistory`, which the domain crates write as
+  null; callers that want provenance can now supply a real record. Ownership
+  is never attached automatically, so an omitted history stays honestly
+  absent rather than being filled with an invented actor. A `ChangeAction`
+  outside `IfcChangeActionEnum`, a `LastModifiedDate` earlier than
+  `CreationDate`, and a person naming nobody are all refused before staging.
 - `ifc-properties` can now author the project unit context, not only read it.
   Eight `Transaction` helpers stage `IfcSIUnit`, `IfcMonetaryUnit`,
   `IfcConversionBasedUnit`, `IfcDerivedUnit`, `IfcDerivedUnitElement`,
