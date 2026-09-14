@@ -13,7 +13,7 @@ and this project follows Semantic Versioning.
   `compile_product_mesh(&model, product, tolerance)` yields `Ok(None)` for a
   product with no body representation, or the new
   `GeometryError::CompilationRefused` carrying the provider's own reason.
-  Amends [ADR 0004](docs/adr/0004-geometry-bridge-not-kernel.md), which
+  Amends [ADR 0004](/adr/0004-geometry-bridge-not-kernel), which
   previously excluded execution providers from the workspace entirely; the
   bridge still implements no geometry. Enforced, not just documented: the
   default and `--no-default-features` columns link zero provider crates, and
