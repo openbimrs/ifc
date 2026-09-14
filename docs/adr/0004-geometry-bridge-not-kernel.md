@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-08-26
+- **Amended:** 2026-09-14 — compilation admitted behind an opt-in feature
 - **Deciders:** openbimrs contributors
 - **Supersedes:** —
 
@@ -29,6 +30,13 @@ NURBS, perform booleans, or select an execution provider.
 Only representation-level Axiolid crates are dependencies. Execution providers
 (CPU, GPU) are excluded from this workspace's dependency graph entirely.
 
+> **Amended 2026-09-14.** The second paragraph no longer holds without
+> qualification: one execution provider is admitted, in `ifc-geometry` only,
+> behind the non-default `compile` feature. The first paragraph stands — the
+> bridge still implements no geometry. See
+> [the amendment](#amendment-2026-09-14-compilation-behind-an-opt-in-feature)
+> for the enforced conditions.
+
 ## Alternatives considered
 
 | Option | Why not |
@@ -36,8 +44,9 @@ Only representation-level Axiolid crates are dependencies. Execution providers
 | Geometry algorithms inside `ifc-geometry` | IFC-shaped algorithms; every semantic consumer pays for a numerical stack; next format re-implements |
 | Depend on OpenCascade / a C++ kernel | Contradicts the pure-Rust dependency-graph guarantee; heavy build and distribution cost |
 | No geometry crate; expose raw entities | Pushes unit resolution and placement chaining onto every application, which each then gets subtly wrong |
+| Sibling crate (`ifc-mesh`) owning the adapter *(weighed 2026-09-14)* | Preserves the original exclusion, but splits lowering from its only consumer across a crate boundary for a rule rather than a reason; ceremony disproportionate to a ~50-line adapter |
 
-## Amendment (2026-09-12): compilation behind an opt-in feature
+## Amendment (2026-09-14): compilation behind an opt-in feature
 
 The original decision excluded execution providers from this workspace's
 dependency graph **entirely**. That proved stricter than the goal required.
@@ -106,5 +115,14 @@ that knows the file's true scale.
 
 - `ifc-geometry/src/lib.rs` states the scope commitment
 - `ifc-geometry/src/lower/dispatch.rs` holds `IMPLEMENTED` and `PLANNED` as data
-- `ifc-geometry/tests/no_backend_dependency.rs` enforces provider exclusion
-- Root `Cargo.toml` pins Axiolid representation crates by revision
+- `ifc-geometry/src/compile.rs` is the opt-in seam; it calls a compiler and
+  translates refusals, and implements no geometry itself
+- `ifc-geometry/tests/no_backend_dependency.rs` keeps every other IFC crate free
+  of provider dependencies
+- `ifc-model/tests/package_architecture.rs` enforces the three amendment
+  conditions, including that `compile` stays unreachable from `default`
+- `ifc-geometry/tests/kernel_free_build.rs` checks the resolved graph per feature
+  column, so the "zero provider crates by default" claim is measured
+- `ifc-geometry/tests/compile_pairing.rs` keeps lowering and compilation paired:
+  each family yields a mesh or a typed refusal that names its entity
+- Root `Cargo.toml` pins Axiolid crates by exact git tag (`v0.1.8`)
