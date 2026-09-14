@@ -264,12 +264,26 @@ fn bound(
     )?;
     let view = FaceBoundView::new(id, entity);
     let bound_ref = view.bound()?;
-    // A face bound is a Loop, which is either a point list or an edge list.
-    // Advanced breps use the latter, so dispatch rather than assuming.
-    let loop_id = if session
-        .type_name(bound_ref)?
-        .eq_ignore_ascii_case("IFCEDGELOOP")
-    {
+    let bound_type = session.type_name(bound_ref)?;
+    // Each loop kind that cannot bound a face is named here. Falling through
+    // to `poly_loop` reported "not a IfcPolyLoop", which a caller reads as a
+    // broken file rather than valid IFC this bridge declines to interpret.
+    for (name, rationale) in [
+        (
+            "IFCVERTEXLOOP",
+            "a single-vertex loop bounds zero area, so it contributes no face bound",
+        ),
+        (
+            "IFCLOOP",
+            "generic loop has no concrete point or edge representation",
+        ),
+        ("IFCPATH", "path topology is not a face-bound loop"),
+    ] {
+        if bound_type.eq_ignore_ascii_case(name) {
+            return Err(session.unsupported(bound_ref, &bound_type, rationale));
+        }
+    }
+    let loop_id = if bound_type.eq_ignore_ascii_case("IFCEDGELOOP") {
         edge_loop(session, builder, id, bound_ref, frame)?
     } else {
         poly_loop(session, builder, id, bound_ref, frame)?
@@ -519,6 +533,17 @@ fn topological_vertex(
     id: EntityId,
     frame: Transform,
 ) -> GeometryResult<VertexId> {
+    // `IfcVertex` is the abstract supertype: it carries no point geometry, so
+    // there is nothing to place. Naming it as unsupported keeps it distinct
+    // from a malformed file that put an unrelated entity here.
+    let type_name = session.type_name(id)?;
+    if type_name.eq_ignore_ascii_case("IFCVERTEX") {
+        return Err(session.unsupported(
+            id,
+            &type_name,
+            "generic vertex carries no point geometry",
+        ));
+    }
     let entity = expect_type(
         session.model(),
         referrer,

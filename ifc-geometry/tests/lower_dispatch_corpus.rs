@@ -103,6 +103,24 @@ fn every_concrete_ifc4_representation_item_is_classified() {
             owner_path.display()
         );
         assert!(!row[3].is_empty(), "{} has no rationale", row[0]);
+
+        // A `typed-refusal` row promises the owner produces a NAMED refusal.
+        // Checking only that the owner FILE exists let four rows
+        // (IfcVertexLoop, IfcLoop, IfcVertex, IfcPath) sit in the ledger while
+        // no source named them: each fell through to a generic
+        // "not a IfcPolyLoop"/"not a IfcVertexPoint" wrong-type error, which
+        // reports `is_unsupported() == false` and reads to a caller as a
+        // corrupt file rather than valid IFC this bridge declines.
+        if row[1] == "typed-refusal" && row[2] != "ifc-style" {
+            let body = std::fs::read_to_string(&owner_path).expect("owner module is readable");
+            assert!(
+                body.contains(row[0]),
+                "{} is a typed-refusal owned by {} but that module never names it, \
+                 so the refusal cannot be the documented one",
+                row[0],
+                row[2]
+            );
+        }
     }
 
     let implemented: BTreeSet<_> = IMPLEMENTED.iter().map(|name| (*name).to_owned()).collect();
@@ -377,6 +395,19 @@ fn every_implemented_family_has_committed_corpus_evidence() {
     );
 }
 
+/// Entities the disposition ledger classifies as a typed refusal.
+///
+/// Read from the TSV rather than hard-coded so the escape hatch below can
+/// never admit a family the ledger does not actually
+/// classify that way.
+fn typed_refusals() -> Vec<String> {
+    disposition_rows()
+        .iter()
+        .filter(|row| row[1] == "typed-refusal")
+        .map(|row| row[0].to_owned())
+        .collect()
+}
+
 #[test]
 fn implemented_families_lower_and_lowering_families_are_claimed() {
     let mut files = Vec::new();
@@ -403,10 +434,16 @@ fn implemented_families_lower_and_lowering_families_are_claimed() {
                     Err(GeometryError::Unsupported { type_name, .. })
                         if PLANNED
                             .iter()
-                            .any(|(planned, _)| planned.eq_ignore_ascii_case(&type_name)) =>
+                            .any(|(planned, _)| planned.eq_ignore_ascii_case(&type_name))
+                            || typed_refusals()
+                                .iter()
+                                .any(|refused| refused.eq_ignore_ascii_case(&type_name)) =>
                     {
                         // The outer family remains implemented; this instance
-                        // depends on an explicitly planned nested semantic.
+                        // depends on a nested entity the ledger already
+                        // classifies as a typed refusal (an abstract loop or
+                        // vertex, or a zero-area vertex loop). Refusing it is
+                        // the documented behaviour, not a coverage gap.
                     }
                     Err(error) => panic!(
                         "{family} is listed IMPLEMENTED but {id:?} in {} failed: {error}",

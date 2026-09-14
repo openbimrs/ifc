@@ -39,3 +39,8 @@ compiles. Union escapes that bound and the reference compiler refuses.
 The file validates clean: the refusal belongs to the mesh provider, not the
 file. It keeps the refusal branch of `ifc-geometry/tests/compile_pairing.rs`
 executable; a mutation run confirmed that branch is dead code without it.
+
+- vertex_loop_zero_area.ifc: derived from shared_point_faceted_brep.ifc by
+  replacing one IfcPolyLoop face bound with an IfcVertexLoop. Proves the
+  degenerate zero-area loop reports a typed refusal naming the entity,
+  not a wrong-type error that reads as a corrupt file.
