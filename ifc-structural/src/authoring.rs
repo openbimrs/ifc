@@ -11,10 +11,12 @@ use crate::error::{StructuralError, StructuralResult};
 use crate::AnalysisModelType;
 
 mod action;
+mod condition;
 mod item;
 mod relation;
 
 pub use action::{stage_action, ActionDraft, ActionDraftKind, ProjectedOrTrue};
+pub use condition::{stage_boundary_condition, BoundaryConditionDraft};
 pub use item::{
     stage_connection, stage_member, ConnectionDraft, ConnectionDraftKind, MemberDraft,
     MemberDraftKind, MemberPredefinedType, StructuralRootDraft,
