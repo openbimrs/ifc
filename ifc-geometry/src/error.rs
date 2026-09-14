@@ -116,6 +116,23 @@ pub enum GeometryError {
         limit: usize,
     },
 
+    /// A lowered product reached the mesh compiler, which refused it.
+    ///
+    /// Distinct from [`Self::Unsupported`]: lowering succeeded and the neutral
+    /// DAG is valid IFC meaning. What failed is *execution* -- a provider that
+    /// cannot evaluate this operation, or a budget that will not fund it. The
+    /// compiler's own reason is preserved verbatim, because it names the
+    /// missing capability precisely enough for a caller to register a provider
+    /// for it. Only reachable with the `compile` feature.
+    #[cfg(feature = "compile")]
+    #[error("{entity} could not be compiled to a mesh: {reason}")]
+    CompilationRefused {
+        /// The product whose body representation was being compiled.
+        entity: EntityId,
+        /// The compiler's refusal, as reported by the provider.
+        reason: String,
+    },
+
     /// The geometry is structurally impossible.
     ///
     /// A degenerate direction, a zero-radius circle, a self-referencing
@@ -151,6 +168,8 @@ impl GeometryError {
             | Self::ChainTooDeep { entity, .. }
             | Self::AggregateTooLarge { entity, .. }
             | Self::Degenerate { entity, .. } => Some(*entity),
+            #[cfg(feature = "compile")]
+            Self::CompilationRefused { entity, .. } => Some(*entity),
             Self::Units(_) => None,
         }
     }

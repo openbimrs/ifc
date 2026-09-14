@@ -8,7 +8,14 @@ roadmap work; keep progress, blockers, and evidence there.
 ## Boundary
 
 Allowed production dependencies: `ifc-model`, schema metadata, and neutral axiolid
-value/representation crates; never an `axiolid-*-contract`, algorithm, dispatch, or backend crate.
+value/representation crates; never an algorithm, dispatch, or backend crate.
+
+One sanctioned exception (ADR 0004 amendment): the mesh-compile provider and its
+contracts, optional and reachable only through the non-default `compile`
+feature. Only `src/compile.rs` may name them. Adding a second execution
+dependency, or letting a default feature reach this one, fails
+`ifc-model/tests/package_architecture.rs` -- it walks the feature graph from
+`default` rather than trusting the feature's name.
 
 The neutral crates are optional, behind the default-on `lowering` feature. Only
 `lower`, `Transform::to_geom`, and the `IfcBooleanOperator` conversion may
@@ -36,7 +43,7 @@ rejected by `scripts/check-leakage.py`. See `data/NOTICE.md`.
 
 ## Invariants
 
-- Preserve exact profiles, curves, surfaces, booleans, mapped instances, and n-gons; never tessellate in this adapter.
+- Preserve exact profiles, curves, surfaces, booleans, mapped instances, and n-gons; never tessellate in this adapter. `compile` calls a provider; it does not implement one.
 - Convert IFC units exactly once at the boundary; basis directions remain dimensionless.
 - Output contains no IFC IDs; provenance is an external side table keyed by NodeId.
 - Unsupported is typed and names the source entity; no panic or silent substitute.
@@ -52,7 +59,9 @@ resolution, lowering, mutation, and validation before they grow together.
 ## Verification
 
 Run targeted tests/clippy, isolated build, and the package architecture/context
-gates. Run **both feature columns**: `--no-default-features` must compile,
+gates. Geometry now has **three** feature columns: `--no-default-features`,
+default, and `--features compile`. The first two must link no execution
+provider. Run **both kernel columns**: `--no-default-features` must compile,
 pass, and link no `axiolid-*` crate. The active-lowering vocabulary gate parses
 Rust paths/imports (including root aliases, globs, and macro tokens); do not
 replace it with substring scans. Geometry bridges also run declaration/corpus

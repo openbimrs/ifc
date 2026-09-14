@@ -44,6 +44,14 @@ cargo clippy -p ifc-geometry --no-default-features --all-targets -- -D warnings
 # break here, so rustdoc gets its own kernel-free run.
 RUSTDOCFLAGS="-D warnings" cargo doc -p ifc-geometry --no-default-features --no-deps
 
+# The compile column. `--all-features` builds it but cannot prove it is OPTIONAL:
+# a default-enabled feature edge would satisfy an --all-features run while
+# shipping an execution provider to every consumer. The dependency-graph
+# assertions live in kernel_free_build.rs; this runs the pairing corpus, which
+# needs the feature explicitly.
+cargo test -p ifc-geometry --features compile
+cargo clippy -p ifc-geometry --features compile --all-targets -- -D warnings
+
 for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,geometry-select" "--features step,spatial,geometry-select" "--all-features"; do
     # shellcheck disable=SC2086
     cargo build -p openbim-ifc $features

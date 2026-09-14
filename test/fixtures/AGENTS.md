@@ -157,3 +157,4 @@ kept intentionally small; this is a curated edge-case set, not a bulk corpus.
 5. Full oracle-scale `.ifc` corpora (e.g. Solibri's example models) belong to
    external local oracle storage, not here — this repo's fixtures stay
    small and hand-picked.
+`synthetic-compile/` is authored here, not upstream; see PLAN.md.

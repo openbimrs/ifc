@@ -97,6 +97,36 @@ fn the_default_build_still_links_the_neutral_vocabulary() {
     }
 }
 
+/// The execution provider appears only when `compile` is asked for.
+///
+/// Three columns, one contract: kernel-free links no geometry at all, the
+/// default links representation crates but no engine, and `compile` is the
+/// only column that pulls a provider. The middle assertion is the one that
+/// matters -- it is what "off by default" means, and a feature edge could
+/// silently break it while both other columns still passed.
+#[test]
+fn the_execution_provider_is_opt_in_only() {
+    const PROVIDER: &[&str] = &["axiolid-mesh-compile", "axiolid-mesh-boolean-boolmesh"];
+
+    for column in [vec!["--no-default-features"], vec![]] {
+        let tree = dependency_tree(&column);
+        for crate_name in PROVIDER {
+            assert!(
+                !links(&tree, crate_name),
+                "{column:?} links execution provider {crate_name}; compilation must stay opt-in"
+            );
+        }
+    }
+
+    let compiled = dependency_tree(&["--features", "compile"]);
+    for crate_name in PROVIDER {
+        assert!(
+            links(&compiled, crate_name),
+            "--features compile lost {crate_name}; the feature cannot work"
+        );
+    }
+}
+
 /// Placement resolution must be reachable WITHOUT the geometry kernel.
 ///
 /// This is the capability the split exists to protect. `product_world_transform`

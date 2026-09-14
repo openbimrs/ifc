@@ -4,7 +4,13 @@
 //!
 //! It answers *"what does this IFC entity mean geometrically"* and lowers
 //! implemented slices into the format-neutral `axiolid-model` DAG. It does not
-//! triangulate, evaluate NURBS, perform booleans, or select execution providers.
+//! triangulate, evaluate NURBS, or perform booleans itself.
+//!
+//! The opt-in `compile` feature is the one narrow exception: it hands the
+//! lowered DAG to an Axiolid provider and returns triangles. It is off by
+//! default because selecting a provider and a memory budget is application
+//! policy, not something the IFC file determines. See the `compile` module
+//! and ADR 0004.
 //!
 //! ```text
 //!   ifc-model            this crate                    geometry package
@@ -45,6 +51,8 @@
 //! plan/body choice, profiles, curves, surfaces, solids, units and
 //! placements -- and links no geometry code at all.
 
+#[cfg(feature = "compile")]
+pub mod compile;
 pub mod constraint;
 pub mod curve;
 pub mod error;

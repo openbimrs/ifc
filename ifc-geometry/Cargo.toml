@@ -28,6 +28,17 @@ lowering = [
     "dep:axiolid-surface",
 ]
 
+# Mesh compilation. OFF by default: it selects an execution provider and a
+# memory budget, which are application policy, not properties of the file.
+# ADR 0004 admits this narrowly -- opt-in only, never in the default build.
+compile = [
+    "lowering",
+    "dep:axiolid-contracts",
+    "dep:axiolid-mesh-compile",
+    "dep:axiolid-mesh-compile-contract",
+    "dep:axiolid-mesh-boolean-boolmesh",
+]
+
 [dependencies]
 ifc-model.workspace = true
 ifc-schema.workspace = true
@@ -45,6 +56,12 @@ axiolid-topology = { workspace = true, optional = true }
 axiolid-primitive = { workspace = true, optional = true }
 axiolid-profile = { workspace = true, optional = true }
 axiolid-surface = { workspace = true, optional = true }
+
+# Execution provider. Reachable only through the opt-in `compile` feature.
+axiolid-contracts = { workspace = true, optional = true }
+axiolid-mesh-compile = { workspace = true, optional = true }
+axiolid-mesh-compile-contract = { workspace = true, optional = true }
+axiolid-mesh-boolean-boolmesh = { workspace = true, optional = true }
 
 [dev-dependencies]
 ifc-step.workspace = true

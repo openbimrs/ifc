@@ -21,12 +21,15 @@ sub-shape does an `IfcMappedItem` reuse?
 
 **Axiolid answers:** what do I compute with that meaning?
 
-`ifc-geometry`'s own crate documentation is explicit:
+`ifc-geometry` implements no geometry itself:
 
-> It does not triangulate, evaluate NURBS, perform booleans, or select
-> execution providers.
+> It does not triangulate, evaluate NURBS, or perform booleans.
 
-That is a design commitment, not a temporary limitation. Geometry algorithms
+That is a design commitment, not a temporary limitation. Since the
+[ADR 0004 amendment](/adr/0004-geometry-bridge-not-kernel), the opt-in
+`compile` feature may *call* a provider that does — see
+[Compilation](#compilation-opt-in) below. The bridge still writes no
+algorithm. Geometry algorithms
 belong to a format-neutral kernel so they are not re-implemented per file
 format, and so the IFC crate never grows a dependency on a CPU or GPU provider.
 `ifc-geometry/tests/no_backend_dependency.rs` enforces the second half.
@@ -38,9 +41,10 @@ format, and so the IFC crate never grows a dependency on a CPU or GPU provider.
 along it is an Axiolid concern. If you need discretised geometry — for drawing,
 export, or measurement — that call is downstream of this crate.
 
-**Booleans are represented, not executed.** `IfcBooleanResult` lowers into a DAG
-node describing the operation and its operands. Evaluating it requires a mesh
-Boolean provider.
+**Booleans are represented, not executed** in the default build.
+`IfcBooleanResult` lowers into a DAG node describing the operation and its
+operands. Evaluating it requires a mesh Boolean provider, which the `compile`
+feature supplies.
 
 **Sectioning remains downstream.** Axiolid now provides a neutral
 `MeshPlaneSection` contract and a portable reference implementation over an
@@ -75,13 +79,46 @@ Verified at the revision pinned by this workspace:
   with bounded evidence/refusal semantics.
 - CPU context and a GPU seam — a seam, not a bundled kernel suite.
 
+## Compilation (opt-in)
+
+`--features compile` connects lowering to evaluation:
+
+```rust
+use axiolid_core::Tolerance;
+use ifc_geometry::compile::compile_product_mesh;
+
+let mesh = compile_product_mesh(&model, product, Tolerance::MILLIMETRE)?;
+```
+
+`Ok(None)` means the product carries no body representation, which is ordinary.
+A product that cannot be evaluated returns `GeometryError::CompilationRefused`
+carrying the provider's own reason — distinct from `Unsupported`, which means
+lowering never produced a DAG in the first place.
+
+**Off by default, and checked.** `tests/kernel_free_build.rs` asserts that the
+`--no-default-features` and default columns link zero provider crates, and that
+`--features compile` links them. `ifc-model/tests/package_architecture.rs`
+walks the feature graph from `default` so a provider cannot arrive through a
+default-enabled feature edge.
+
+**Refusals are real.** `tests/compile_pairing.rs` runs a fixture corpus through
+lowering and compilation and asserts every product reaches a typed answer.
+`union_over_halfspace_unbounded.ifc` exists to be refused: a UNION whose right
+operand is a half-space is unbounded, so no finite mesh exists. Without it the
+refusal branch would never execute and its assertion would be unfalsifiable.
+
+**Tolerance is in model units.** Lowering converts every length to metres, so
+`Tolerance::MILLIMETRE` (1e-3) is a millimetre regardless of what the file
+declared. Deriving a tolerance from the file's unit scale would apply the
+conversion twice.
+
 ## The pin
 
 The workspace pins Axiolid crates to an exact git revision rather than a
 version range, so geometry behaviour is reproducible across builds:
 
 ```toml
-axiolid-core = { git = "https://github.com/axiolid/kernel.git", rev = "c144808d76ebf653b2183d6895192514d1838bfd" }
+axiolid-core = { git = "https://github.com/axiolid/kernel.git", tag = "v0.1.8" }
 ```
 
 Production lowering pins only representation-level crates — `core`, `mesh`,

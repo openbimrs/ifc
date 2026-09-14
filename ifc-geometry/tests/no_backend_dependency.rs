@@ -492,10 +492,27 @@ fn ifc_crates_never_depend_on_geometry_execution_crates() {
             "axiolid-mesh-section-contract",
             "axiolid-tessellation-contract",
         ];
+        // ADR 0004 admits exactly one exception: `ifc-geometry` may name the
+        // mesh-compile provider, and only as an optional dependency behind the
+        // non-default `compile` feature. The feature-table half of that rule is
+        // enforced by `package_architecture.rs`, which can read the resolved
+        // feature graph; this text scan only relaxes WHICH names may appear
+        // and only in that one manifest.
+        let sanctioned: &[&str] = if path.file_name().is_some_and(|n| n == "ifc-geometry") {
+            &[
+                "axiolid-contracts",
+                "axiolid-mesh-boolean-boolmesh",
+                "axiolid-mesh-compile",
+                "axiolid-mesh-compile-contract",
+            ]
+        } else {
+            &[]
+        };
         let violations: Vec<_> = forbidden
             .iter()
             .copied()
             .filter(|name| body.contains(name))
+            .filter(|name| !sanctioned.contains(name))
             .collect();
         assert!(
             violations.is_empty(),

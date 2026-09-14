@@ -37,6 +37,43 @@ Only representation-level Axiolid crates are dependencies. Execution providers
 | Depend on OpenCascade / a C++ kernel | Contradicts the pure-Rust dependency-graph guarantee; heavy build and distribution cost |
 | No geometry crate; expose raw entities | Pushes unit resolution and placement chaining onto every application, which each then gets subtly wrong |
 
+## Amendment (2026-09-12): compilation behind an opt-in feature
+
+The original decision excluded execution providers from this workspace's
+dependency graph **entirely**. That proved stricter than the goal required.
+
+Measured first: `ifc-geometry` already lowers every representation-item family
+it recognises (`PLANNED` is empty), and the Axiolid mesh compiler already
+evaluates the ten solid families that lowering emits. The two sides were
+compatible in practice while remaining unconnected, so "read an IFC and get a
+mesh" was impossible for reasons that no longer had a technical cause.
+
+**What changed.** `ifc-geometry` may depend on the mesh-compile provider, under
+three conditions that are enforced rather than documented:
+
+1. Optional, and reachable only through the non-default `compile` feature. The
+   check walks the feature graph from `default`, so a feature merely *named*
+   `compile` that some default feature enables still fails.
+2. `ifc-geometry` only. No other IFC crate may name an execution provider.
+3. The default and `--no-default-features` columns link zero provider crates.
+
+**What did not change.** The bridge still implements no geometry: no
+triangulation, no NURBS evaluation, no boolean execution. `compile` calls a
+compiler that already exists and translates its refusal into IFC terms.
+
+**Why a feature rather than a sibling crate.** A sibling crate was the
+ADR-preserving option and was considered. It was rejected as ceremony
+disproportionate to a ~50-line adapter, and because the alternative splits
+lowering from its only consumer across a crate boundary for a rule, not a
+reason. The cost accepted: feature unification can enable `compile` for an
+entire dependency graph from one consumer. Bounded by condition 3 — the
+provider is absent unless something explicitly asks.
+
+**Policy that stays in the application.** Provider choice and memory budget are
+arguments, never defaults invented by the bridge. Tolerance is the exception:
+lowering converts every length to metres, so the bridge is the one participant
+that knows the file's true scale.
+
 ## Consequences
 
 **Positive**
@@ -49,12 +86,13 @@ Only representation-level Axiolid crates are dependencies. Execution providers
 
 **Negative / costs**
 
-- An application needing computed geometry must integrate a second library.
-  "Read an IFC and get a mesh" is not a single-crate operation.
+- An application needing computed geometry must opt in explicitly. Since the
+  amendment above, "read an IFC and get a mesh" is a single-crate operation
+  behind `--features compile`, but it is never the default.
 - Capabilities absent from the kernel are absent from the pipeline. Plane
   sectioning is the current example: it is a kernel concern, it does not exist
   upstream yet, so plan derivation from 3D bodies is unavailable.
-- The Axiolid dependency is pinned by exact git revision, so upgrades are
+- The Axiolid dependency is pinned by exact git tag, so upgrades are
   deliberate rather than automatic.
 
 **Follow-ups / risks to watch**

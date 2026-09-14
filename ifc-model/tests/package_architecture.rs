@@ -11,6 +11,21 @@ use cargo_metadata::{DependencyKind, Metadata, MetadataCommand, Package};
 const GENERIC: &[&str] = &["ifc-model", "ifc-schema"];
 const CODECS: &[&str] = &["ifc-step", "ifc-xml"];
 const BRIDGES: &[&str] = &["ifc-geometry", "ifc-georef", "ifc-alignment"];
+/// The one crate allowed to reach an execution provider (ADR 0004).
+const COMPILE_HOST: &str = "ifc-geometry";
+
+/// Execution providers: they compute, rather than represent.
+///
+/// Listed so the boundary check can tell "geometry vocabulary" from "geometry
+/// engine". Adding a crate here widens what `ifc-geometry` may opt into; it
+/// does not widen who may depend on it.
+const EXECUTION_PROVIDER: &[&str] = &[
+    "axiolid-contracts",
+    "axiolid-mesh-boolean-boolmesh",
+    "axiolid-mesh-compile",
+    "axiolid-mesh-compile-contract",
+];
+
 const NEUTRAL_GEOMETRY: &[&str] = &[
     "axiolid-core",
     "axiolid-curve",
@@ -73,6 +88,46 @@ fn production_dependencies(package: &Package) -> BTreeSet<String> {
         .collect()
 }
 
+/// Is `dependency` optional AND reachable only through a non-default feature?
+///
+/// Walks the feature graph from `default` rather than trusting the name: a
+/// feature called `compile` that some default feature happens to enable would
+/// still ship the provider to every consumer, which is the thing ADR 0004
+/// forbids.
+fn optional_behind_compile(package: &Package, dependency: &str) -> bool {
+    let is_optional = package
+        .dependencies
+        .iter()
+        .any(|d| d.name == dependency && d.optional);
+    if !is_optional {
+        return false;
+    }
+
+    let mut reachable = BTreeSet::new();
+    let mut stack = vec!["default".to_string()];
+    while let Some(feature) = stack.pop() {
+        if !reachable.insert(feature.clone()) {
+            continue;
+        }
+        for entry in package.features.get(&feature).into_iter().flatten() {
+            if !entry.starts_with("dep:") {
+                stack.push(entry.clone());
+            }
+        }
+    }
+
+    let enabled_by_default = reachable.iter().any(|feature| {
+        package
+            .features
+            .get(feature)
+            .into_iter()
+            .flatten()
+            .any(|entry| entry == &format!("dep:{dependency}"))
+    });
+
+    !enabled_by_default
+}
+
 fn is_ifc_crate(name: &str, known: &BTreeMap<String, Package>) -> bool {
     known.contains_key(name)
 }
@@ -91,6 +146,22 @@ fn dependencies_follow_the_ifc_layers() {
         let dependencies = production_dependencies(package);
         for dependency in dependencies {
             if dependency.starts_with("axiolid-") || dependency == "axiolid" {
+                if EXECUTION_PROVIDER.contains(&dependency.as_str()) {
+                    // ADR 0004 admits execution behind one opt-in feature in
+                    // one crate. Optional alone is not enough: an optional dep
+                    // enabled by a DEFAULT feature still ships to everyone, so
+                    // the feature table is what gets checked.
+                    if krate != COMPILE_HOST {
+                        violations.push(format!(
+                            "{krate} depends on execution provider {dependency}; only {COMPILE_HOST} may, behind its opt-in `compile` feature"
+                        ));
+                    } else if !optional_behind_compile(package, &dependency) {
+                        violations.push(format!(
+                            "{COMPILE_HOST} must reach {dependency} only as an optional dependency enabled by the non-default `compile` feature"
+                        ));
+                    }
+                    continue;
+                }
                 if !BRIDGES.contains(&krate.as_str()) {
                     violations.push(format!(
                         "{krate} is semantic/infrastructure code but depends on {dependency}"

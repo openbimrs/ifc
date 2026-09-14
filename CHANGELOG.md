@@ -8,6 +8,24 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `ifc-geometry` feature `compile` (**off by default**): hands the lowered
+  neutral DAG to an Axiolid mesh provider and returns triangles.
+  `compile_product_mesh(&model, product, tolerance)` yields `Ok(None)` for a
+  product with no body representation, or the new
+  `GeometryError::CompilationRefused` carrying the provider's own reason.
+  Amends [ADR 0004](docs/adr/0004-geometry-bridge-not-kernel.md), which
+  previously excluded execution providers from the workspace entirely; the
+  bridge still implements no geometry. Enforced, not just documented: the
+  default and `--no-default-features` columns link zero provider crates, and
+  `package_architecture.rs` walks the feature graph from `default` so a
+  provider cannot arrive through a default-enabled feature edge.
+- `ifc-geometry/tests/compile_pairing.rs`: pins lowering and compilation
+  together over a fixture corpus — every product must reach a typed answer,
+  triangles or an attributed refusal. Includes
+  `union_over_halfspace_unbounded.ifc`, authored to be refused, because every
+  other fixture compiles cleanly and the refusal branch would otherwise never
+  execute.
+
 - Workspace lints: `missing_docs = "deny"`. Thirteen crates enforce it; the
   nine still carrying debt are capped by `scripts/check-missing-docs.py`, now
   part of the gate, so the count can only shrink.
