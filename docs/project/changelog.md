@@ -16,6 +16,25 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-style` now reads the IFC presentation entities that carry no shape, so
+  every concrete `IfcRepresentationItem` subtype in IFC4 ADD2 TC1 is finally
+  named somewhere in the workspace:
+  - All five light sources (`IfcLightSourceAmbient`, `…Directional`,
+    `…Goniometric`, `…Positional`, `…Spot`) via `StyleView::light_source*`,
+    plus the photometric `IfcLightIntensityDistribution` and
+    `IfcLightDistributionData`. `LightSource::kind` resolves the concrete
+    subtype most-specific-first, so a spot never reports as merely positional.
+    `LightDistributionData::samples` pairs `SecondaryPlaneAngle` with
+    `LuminousIntensity` and returns a typed error when the two lists are
+    index-misaligned, rather than `zip`-truncating a luminaire's photometry.
+  - `IfcPlanarExtent` and `IfcPlanarBox` via `StyleView::planar_extent` /
+    `planar_box`.
+  These were already classified `non-shape` with `ifc-style` as owner in
+  `ifc-geometry/data/ifc4-representation-item-dispositions.tsv`; the ledger
+  named an owner that had never implemented them. Tests cover IFC2x3, IFC4
+  ADD2 TC1, and IFC4X3 ADD2 plus a real STEP round-trip, so inherited slots are
+  resolved by name rather than by a guessed subtype offset.
+
 - `ifc-geometry` feature `compile` (**off by default**): hands the lowered
   neutral DAG to an Axiolid mesh provider and returns triangles.
   `compile_product_mesh(&model, product, tolerance)` yields `Ok(None)` for a
@@ -155,6 +174,10 @@ This page is synchronised from it at build time.
 
 ### Changed
 
+- `ifc-style/src/view.rs` split: the `Record` attribute reader moved to
+  `view/record.rs`, keeping both halves under the repository's 800-line
+  module gate as the light and extent projections landed.
+
 - `ifc-step`: records are converted as the parser emits them instead of
   being collected into a `Vec` first. `openbim_step::parse_with` buffers
   every `DataRecord`, so the generic records and the converted model were
@@ -178,6 +201,12 @@ This page is synchronised from it at build time.
   `IfcFirstProjAxis`, `IfcSecondProjAxis` (all `transform`).
 
 ### Fixed
+- `scripts/sync-capabilities.py` no longer reports "the IFC4 schema was not
+  available" when the unaddressed-entity walk legitimately finds zero. The
+  missing-schema case already raises above that branch, so an empty list is a
+  measurement rather than a missing one; the page now says so, and still
+  distinguishes *named* from *implemented*.
+
 - `ifc-material`: the published MaterialResource inventory was missing
   `IfcMaterialDefinitionRepresentation`. A new completeness check derives
   the expected set from the normative EXPRESS schema, so a short list now

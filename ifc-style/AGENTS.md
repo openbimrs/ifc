@@ -22,13 +22,15 @@ Allowed production dependencies: ifc-model and schema metadata; no geometry crat
 - `text_style.rs`: text presentation style views
 - `texture.rs`: surface textures and coordinate mappings
 - `layer.rs`: presentation layer assignment/style
+- `light.rs`: light-source and photometric light-distribution views
 - `view.rs`: schema-resolved borrowed projection entry point
 - `error.rs`: invalid/ambiguous presentation data
 
 ## Invariants
 
 - Style changes appearance, never geometry shape.
-- Representation items are referenced by EntityId; do not import geometry node types.
+- Light sources are `IfcGeometricRepresentationItem` subtypes but carry no
+  shape: `ifc-geometry` classifies them `non-shape` and owns t...[truncated]
 - Texture/image loading and renderer material compilation are adapter/application concerns.
 
 Keep cross-resource projections attribute-scoped: shared `ifc-model` storage

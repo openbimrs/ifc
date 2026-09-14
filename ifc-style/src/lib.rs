@@ -13,8 +13,10 @@ mod colour;
 mod coverage;
 mod curve_style;
 mod error;
+mod extent;
 mod fill_style;
 mod layer;
+mod light;
 mod surface_style;
 mod text_style;
 mod texture;
@@ -41,8 +43,14 @@ pub use coverage::{
 };
 pub use curve_style::{CurveStyle, CurveStyleFont, CurveStyleFontPattern};
 pub use error::{StyleError, StyleResult};
+pub use extent::{PlanarBox, PlanarExtent};
 pub use fill_style::{FillAreaStyle, FillAreaStyleHatching, FillAreaStyleTiles};
 pub use layer::PresentationLayer;
+pub use light::{
+    LightDistributionData, LightIntensityDistribution, LightSource, LightSourceAmbient,
+    LightSourceDirectional, LightSourceGoniometric, LightSourceKind, LightSourcePositional,
+    LightSourceSpot,
+};
 pub use surface_style::{
     SurfaceSide, SurfaceStyle, SurfaceStyleLighting, SurfaceStyleRefraction, SurfaceStyleRendering,
     SurfaceStyleShading, SurfaceStyleWithTextures,

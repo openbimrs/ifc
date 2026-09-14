@@ -52,6 +52,8 @@ intentional parent re-exports.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [x] `STYLE-ANNOTATION` - implement annotation, text literal/extent, and fill-area views and writers
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+- [x] `STYLE-LIGHT` - implement light-source and light-distribution views
+  - Evidence: `cargo test -p ifc-style --test light` (10 tests across IFC2x3/IFC4/IFC4X3), crate clippy, isolated build.
 
 ## Completion log
 
@@ -66,3 +68,4 @@ Do not paste long logs or move standing invariants out of `AGENTS.md`.
 - `STYLE-CASCADE` - direct/layer/ambiguity tests pass - lower-priority candidates remain observable.
 - `STYLE-CENSUS` - canonical IFC4 resource census asserts 70 unique declarations with explicit support tiers.
 - `STYLE-ANNOTATION` - annotation, text literal/extent, and fill-area views/writers pass real STEP round-trip and dangling-reference tests.
+- `STYLE-LIGHT` - all 5 `IfcLightSource` subtypes plus `IfcLightIntensityDistribution`/`IfcLightDistributionData` project in three schemas; `samples()` refuses index-misaligned photometric lists rather than zip-truncating. Mutation-verified (list-guard disabled and subtype order reversed both fail). Lights stay `non-shape` in the geometry disposition ledger; this crate reads them as presentation state and does not illuminate anything.
