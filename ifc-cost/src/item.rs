@@ -34,7 +34,7 @@ pub struct CostItem<'m> {
 /// `IfcObjectDefinition` adds only INVERSE attributes, which are not stored
 /// positionally. Verified against IFC4 EXPRESS and cross-checked by writing
 /// the entity with IfcOpenShell and reading back its attribute order.
-mod slot {
+pub(crate) mod slot {
     /// `GlobalId` (from `IfcRoot`).
     pub const GLOBAL_ID: usize = 0;
     /// `Name` (from `IfcRoot`).

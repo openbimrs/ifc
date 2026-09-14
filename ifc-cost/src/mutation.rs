@@ -4,6 +4,7 @@
 mod control;
 mod draft;
 mod error;
+mod quantity;
 mod validate;
 mod value;
 
@@ -13,4 +14,5 @@ pub use draft::{
     CostValueKind, NestingDraft, ScheduleAssignmentDraft,
 };
 pub use error::{CostAuthoringError, CostAuthoringResult};
+pub use quantity::{assign_cost_quantities, create_quantity, QuantityDraft, QuantityKind};
 pub use value::create_cost_value;

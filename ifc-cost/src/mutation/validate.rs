@@ -125,7 +125,7 @@ pub(crate) fn validate_nesting(
     Ok(())
 }
 
-fn projected_type(tx: &Transaction, model: &Model, target: EntityId) -> Option<String> {
+pub(crate) fn projected_type(tx: &Transaction, model: &Model, target: EntityId) -> Option<String> {
     for edit in tx.edits().iter().rev() {
         match edit {
             Edit::Remove { id } if *id == target => return None,

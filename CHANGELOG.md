@@ -8,6 +8,15 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `ifc-cost` can now author the quantities a cost item measures:
+  `create_quantity` for length, area, volume, count, weight and time, and
+  `assign_cost_quantities` to bind them to an `IfcCostItem`. Each kind
+  writes its matching typed measure, and the measured value lands in the
+  slot the existing reader scans for, after the Name/Description/Unit
+  attributes inherited from `IfcPhysicalQuantity` and
+  `IfcPhysicalSimpleQuantity`. Negative measures, fractional counts,
+  empty or duplicated attachments, and entities that are not physical
+  quantities are refused.
 - `ifc-material` can now author the whole `IfcMaterialSelect` family, not
   just layers: `create_constituent`, `create_constituent_set`,
   `create_profile`, `create_profile_set`, `create_material_list`,
