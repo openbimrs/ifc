@@ -12,6 +12,7 @@
 //! - `derived.rs`: derived dimensions/elements.
 
 mod assignment;
+mod authoring;
 mod conversion;
 mod derived;
 mod si;
@@ -19,3 +20,8 @@ mod si;
 mod monetary;
 
 pub use assignment::{prefix_exponent, project_unit_for, project_units, unit, unit_type, UnitKind};
+pub use authoring::{
+    add_conversion_based_unit, add_derived_unit, add_derived_unit_element,
+    add_dimensional_exponents, add_monetary_unit, add_si_unit, assign_units,
+    ConversionBasedUnitDraft, MonetaryUnitDraft, SiUnitDraft,
+};

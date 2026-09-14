@@ -89,6 +89,17 @@ pub enum PropertyError {
         /// What it actually is.
         type_name: String,
     },
+    /// An authored attribute value is not valid for its slot.
+    ///
+    /// Raised before staging, so a rejected draft never reaches the model.
+    AuthoringInvalid {
+        /// The entity type being authored.
+        entity: &'static str,
+        /// The attribute that failed.
+        attribute: &'static str,
+        /// The offending value, rendered for the message.
+        value: String,
+    },
 }
 
 impl std::fmt::Display for PropertyError {
@@ -101,8 +112,19 @@ impl std::fmt::Display for PropertyError {
             Self::NotAQuantitySet { id, type_name } => {
                 write!(f, "#{} is a {type_name}, not an IfcElementQuantity", id.0)
             }
+            Self::AuthoringInvalid {
+                entity,
+                attribute,
+                value,
+            } => write!(
+                f,
+                "{entity}.{attribute} rejected the authored value: {value}"
+            ),
         }
     }
 }
+
+/// Result alias for authoring and reading helpers in this crate.
+pub type PropertyResult<T> = Result<T, PropertyError>;
 
 impl std::error::Error for PropertyError {}

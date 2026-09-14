@@ -30,7 +30,7 @@ code.
 | `ifc-geometry` | 31,550 | 104 | 3 | 35 | <span class="status-partial">Partial</span> |
 | `ifc-style` | 4,532 | 38 | 0 | 7 | <span class="status-implemented">Implemented</span> |
 | `ifc-structural` | 3,784 | 33 | 14 | 12 | <span class="status-implemented">Implemented</span> |
-| `ifc-properties` | 3,217 | 30 | 14 | 3 | <span class="status-implemented">Implemented</span> |
+| `ifc-properties` | 3,472 | 31 | 14 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-alignment` | 3,104 | 29 | 11 | 5 | <span class="status-partial">Partial</span> |
 | `ifc-template-catalog` | 3,104 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-resource` | 2,918 | 29 | 9 | 9 | <span class="status-partial">Partial</span> |

@@ -8,6 +8,14 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `ifc-properties` can now author the project unit context, not only read it.
+  Eight `Transaction` helpers stage `IfcSIUnit`, `IfcMonetaryUnit`,
+  `IfcConversionBasedUnit`, `IfcDerivedUnit`, `IfcDerivedUnitElement`,
+  `IfcDimensionalExponents` and the `IfcUnitAssignment` that binds them to the
+  project. An SI prefix outside `IfcSIPrefix` is refused by reusing the
+  existing `prefix_exponent` table rather than a second list, and an empty
+  `IfcUnitAssignment` is refused outright: both mistakes produce a file that
+  parses and validates while silently mis-scaling every measure in it.
 - `ifc-style` now reads the IFC presentation entities that carry no shape, so
   every concrete `IfcRepresentationItem` subtype in IFC4 ADD2 TC1 is finally
   named somewhere in the workspace:

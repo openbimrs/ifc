@@ -43,7 +43,7 @@ mod template;
 mod unit;
 mod value;
 
-pub use error::{PropertyAnomaly, PropertyError};
+pub use error::{PropertyAnomaly, PropertyError, PropertyResult};
 pub use exact::{
     exact_property, ExactLogical, ExactProperty, ExactPropertyError, ExactResolution, ExactSource,
     ExactValue,
@@ -64,5 +64,10 @@ pub use template::{
     property_set_template, property_set_templates, property_template, template_of_set,
     PropertySetTemplate, PropertyTemplate,
 };
-pub use unit::{prefix_exponent, project_unit_for, project_units, unit, unit_type, UnitKind};
+pub use unit::{
+    add_conversion_based_unit, add_derived_unit, add_derived_unit_element,
+    add_dimensional_exponents, add_monetary_unit, add_si_unit, assign_units, prefix_exponent,
+    project_unit_for, project_units, unit, unit_type, ConversionBasedUnitDraft, MonetaryUnitDraft,
+    SiUnitDraft, UnitKind,
+};
 pub use value::{MeasureValue, Scalar};
