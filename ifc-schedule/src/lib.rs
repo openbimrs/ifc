@@ -35,6 +35,7 @@
 //! | [`query`] | Deterministic membership and ordering queries |
 //! | [`error`] | Contradictions a file can state |
 
+pub mod authoring;
 pub mod calendar;
 pub mod error;
 pub mod event;
@@ -43,6 +44,10 @@ mod recurrence;
 pub mod schedule;
 pub mod sequence;
 
+pub use authoring::{
+    create_sequence, create_task, create_task_time, ScheduleAuthoringResult, TaskDraft,
+    TaskTimeDraft,
+};
 pub use calendar::{
     work_calendars, Recurrence, RecurrenceType, WorkCalendar, WorkTime, WorkTimeRole,
 };

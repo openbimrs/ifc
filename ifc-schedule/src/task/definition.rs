@@ -45,7 +45,7 @@
 use ifc_model::{Entity, EntityId, Model, Value};
 
 /// `IfcTask` slots.
-mod task_slot {
+pub(crate) mod task_slot {
     /// `GlobalId` (from `IfcRoot`).
     pub const GLOBAL_ID: usize = 0;
     /// `Name` (from `IfcRoot`).
@@ -71,7 +71,7 @@ mod task_slot {
 }
 
 /// `IfcTaskTime` slots.
-mod time_slot {
+pub(crate) mod time_slot {
     /// `DurationType`, `.WORKTIME.` or `.ELAPSEDTIME.`.
     pub const DURATION_TYPE: usize = 3;
     /// `ScheduleDuration`.

@@ -32,7 +32,7 @@ use std::collections::HashSet;
 use ifc_model::{EntityId, Model, Value};
 
 /// `IfcRelSequence` slots.
-mod slot {
+pub(crate) mod slot {
     /// `RelatingProcess`, the predecessor.
     pub const RELATING: usize = 4;
     /// `RelatedProcess`, the successor.

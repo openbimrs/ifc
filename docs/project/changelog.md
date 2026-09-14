@@ -16,6 +16,14 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-schedule` can now author programmes, not only read them:
+  `create_task`, `create_task_time` and `create_sequence`. Constructors
+  index the slot constants the existing readers own, so `IfcTask`'s seven
+  inherited slots are reserved rather than hand-counted, and an authored
+  chain drives `execution_order` in the right direction. Self-loops,
+  out-of-range `Priority` and `Completion`, malformed `GlobalId`s and
+  unknown `DurationType` values are refused. ISO 8601 durations and
+  timestamps are stored exactly as authored.
 - `ifc-structural` can now author boundary conditions with
   `stage_boundary_condition`, covering node, node-warping, edge and face
   families. The kind selects the entity, its attribute names and its

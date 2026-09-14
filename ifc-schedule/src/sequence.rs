@@ -8,7 +8,7 @@
 
 mod graph;
 mod lag;
-mod relation;
+pub(crate) mod relation;
 
 pub use relation::{
     downstream_of, find_cycle, predecessors_of, sequences, successors_of, Lag, Sequence,

@@ -6,7 +6,7 @@
 //!   contradiction `IfcTaskTime` `WR1` describes.
 //! - `time.rs`: planned owner for time variants beyond `IfcTaskTime`.
 
-mod definition;
+pub(crate) mod definition;
 mod time;
 
 pub use definition::{tasks, DurationType, Task, TaskTime, TaskTimeAnomaly};
