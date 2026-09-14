@@ -33,8 +33,8 @@ code.
 | `ifc-properties` | 3,472 | 31 | 14 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-alignment` | 3,104 | 29 | 11 | 5 | <span class="status-partial">Partial</span> |
 | `ifc-template-catalog` | 3,104 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
+| `ifc-material` | 2,983 | 24 | 0 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-resource` | 2,918 | 29 | 9 | 9 | <span class="status-partial">Partial</span> |
-| `ifc-material` | 2,672 | 24 | 0 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-validate` | 2,493 | 23 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-classification` | 2,440 | 20 | 4 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |

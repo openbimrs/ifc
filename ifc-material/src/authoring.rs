@@ -7,7 +7,7 @@ use std::collections::HashSet;
 
 use ifc_model::{Edit, Entity, EntityId, Model, Transaction, Value};
 
-use crate::{LogicalValue, MaterialError, MaterialResult};
+use crate::{DirectionSense, LayerSetDirection, LogicalValue, MaterialError, MaterialResult};
 
 /// Authored identity fields for `IfcMaterial`.
 #[derive(Debug, Clone, Copy)]
@@ -185,6 +185,294 @@ pub fn associate_material(
             optional_text(draft.description),
             refs(draft.related_objects),
             Value::Ref(draft.relating_material),
+        ],
+    )))
+}
+
+/// Authored fields for `IfcMaterialConstituent`.
+#[derive(Debug, Clone, Copy)]
+pub struct ConstituentDraft<'a> {
+    /// `IfcMaterialConstituent.Name`, if given.
+    pub name: Option<&'a str>,
+    /// `IfcMaterialConstituent.Description`, if given.
+    pub description: Option<&'a str>,
+    /// `IfcMaterialConstituent.Material`, an `IfcMaterial` reference.
+    pub material: EntityId,
+    /// `IfcMaterialConstituent.Fraction`, if given. A ratio in `0.0..=1.0`.
+    pub fraction: Option<f64>,
+    /// `IfcMaterialConstituent.Category`, if given.
+    pub category: Option<&'a str>,
+}
+
+/// Stage an `IfcMaterialConstituent`.
+///
+/// `Fraction` is an `IfcNormalisedRatioMeasure`: values outside `0..=1` are
+/// refused because a constituent cannot be a negative or >100% share of its
+/// set, and a wrong fraction silently misstates a composition.
+pub fn create_constituent(
+    tx: &mut Transaction,
+    model: &Model,
+    draft: ConstituentDraft<'_>,
+) -> MaterialResult<EntityId> {
+    if let Some(fraction) = draft.fraction {
+        if !fraction.is_finite() || !(0.0..=1.0).contains(&fraction) {
+            return Err(invalid(
+                "IFCMATERIALCONSTITUENT",
+                "Fraction",
+                "expected a normalised ratio in 0..=1",
+            ));
+        }
+    }
+    require_type(tx, model, draft.material, &["IFCMATERIAL"])?;
+    Ok(tx.create(Entity::new(
+        "IFCMATERIALCONSTITUENT",
+        vec![
+            optional_text(draft.name),
+            optional_text(draft.description),
+            Value::Ref(draft.material),
+            draft.fraction.map_or(Value::Null, Value::Real),
+            optional_text(draft.category),
+        ],
+    )))
+}
+
+/// Stage an `IfcMaterialConstituentSet`. Must name at least one
+/// constituent: an empty set describes no composition at all.
+pub fn create_constituent_set(
+    tx: &mut Transaction,
+    model: &Model,
+    constituents: &[EntityId],
+    name: Option<&str>,
+    description: Option<&str>,
+) -> MaterialResult<EntityId> {
+    if constituents.is_empty() {
+        return Err(invalid(
+            "IFCMATERIALCONSTITUENTSET",
+            "MaterialConstituents",
+            "expected at least one constituent",
+        ));
+    }
+    for &constituent in constituents {
+        require_type(tx, model, constituent, &["IFCMATERIALCONSTITUENT"])?;
+    }
+    Ok(tx.create(Entity::new(
+        "IFCMATERIALCONSTITUENTSET",
+        vec![
+            optional_text(name),
+            optional_text(description),
+            refs(constituents),
+        ],
+    )))
+}
+
+/// Authored fields for `IfcMaterialProfile`.
+#[derive(Debug, Clone, Copy)]
+pub struct ProfileDraft<'a> {
+    /// `IfcMaterialProfile.Name`, if given.
+    pub name: Option<&'a str>,
+    /// `IfcMaterialProfile.Description`, if given.
+    pub description: Option<&'a str>,
+    /// `IfcMaterialProfile.Material`, an `IfcMaterial` reference, if given.
+    pub material: Option<EntityId>,
+    /// `IfcMaterialProfile.Profile`, an `IfcProfileDef` reference.
+    pub profile: EntityId,
+    /// `IfcMaterialProfile.Priority`, if given. Must be in `0..=100`.
+    pub priority: Option<i64>,
+    /// `IfcMaterialProfile.Category`, if given.
+    pub category: Option<&'a str>,
+}
+
+/// Stage an `IfcMaterialProfile`.
+///
+/// The profile reference is checked against `IfcProfileDef` subtypes that
+/// this workspace lowers; an arbitrary entity here would produce a material
+/// profile with no cross-section.
+pub fn create_profile(
+    tx: &mut Transaction,
+    model: &Model,
+    draft: ProfileDraft<'_>,
+) -> MaterialResult<EntityId> {
+    if let Some(priority) = draft.priority.filter(|value| !(0..=100).contains(value)) {
+        return Err(invalid(
+            "IFCMATERIALPROFILE",
+            "Priority",
+            priority.to_string(),
+        ));
+    }
+    if let Some(material) = draft.material {
+        require_type(tx, model, material, &["IFCMATERIAL"])?;
+    }
+    require_exists(tx, model, draft.profile)?;
+    Ok(tx.create(Entity::new(
+        "IFCMATERIALPROFILE",
+        vec![
+            optional_text(draft.name),
+            optional_text(draft.description),
+            draft.material.map_or(Value::Null, Value::Ref),
+            Value::Ref(draft.profile),
+            draft.priority.map_or(Value::Null, Value::Integer),
+            optional_text(draft.category),
+        ],
+    )))
+}
+
+/// Stage an `IfcMaterialProfileSet`. Must name at least one profile.
+pub fn create_profile_set(
+    tx: &mut Transaction,
+    model: &Model,
+    profiles: &[EntityId],
+    name: Option<&str>,
+    description: Option<&str>,
+    composite_profile: Option<EntityId>,
+) -> MaterialResult<EntityId> {
+    if profiles.is_empty() {
+        return Err(invalid(
+            "IFCMATERIALPROFILESET",
+            "MaterialProfiles",
+            "expected at least one profile",
+        ));
+    }
+    for &profile in profiles {
+        require_type(tx, model, profile, &["IFCMATERIALPROFILE"])?;
+    }
+    if let Some(composite) = composite_profile {
+        require_exists(tx, model, composite)?;
+    }
+    Ok(tx.create(Entity::new(
+        "IFCMATERIALPROFILESET",
+        vec![
+            optional_text(name),
+            optional_text(description),
+            refs(profiles),
+            composite_profile.map_or(Value::Null, Value::Ref),
+        ],
+    )))
+}
+
+/// Stage an `IfcMaterialList`. Must name at least one material.
+pub fn create_material_list(
+    tx: &mut Transaction,
+    model: &Model,
+    materials: &[EntityId],
+) -> MaterialResult<EntityId> {
+    if materials.is_empty() {
+        return Err(invalid(
+            "IFCMATERIALLIST",
+            "Materials",
+            "expected at least one material",
+        ));
+    }
+    for &material in materials {
+        require_type(tx, model, material, &["IFCMATERIAL"])?;
+    }
+    Ok(tx.create(Entity::new("IFCMATERIALLIST", vec![refs(materials)])))
+}
+
+/// Stage an `IfcMaterialLayerSetUsage`.
+///
+/// Direction and sense are typed enums rather than strings: an invalid
+/// token cannot be constructed, so no runtime check is needed for them.
+pub fn create_layer_set_usage(
+    tx: &mut Transaction,
+    model: &Model,
+    for_layer_set: EntityId,
+    direction: LayerSetDirection,
+    sense: DirectionSense,
+    offset_from_reference_line: f64,
+    reference_extent: Option<f64>,
+) -> MaterialResult<EntityId> {
+    require_type(tx, model, for_layer_set, &["IFCMATERIALLAYERSET"])?;
+    if !offset_from_reference_line.is_finite() {
+        return Err(invalid(
+            "IFCMATERIALLAYERSETUSAGE",
+            "OffsetFromReferenceLine",
+            "expected a finite length",
+        ));
+    }
+    Ok(tx.create(Entity::new(
+        "IFCMATERIALLAYERSETUSAGE",
+        vec![
+            Value::Ref(for_layer_set),
+            Value::Enum(direction.as_token().into()),
+            Value::Enum(sense.as_token().into()),
+            Value::Real(offset_from_reference_line),
+            reference_extent.map_or(Value::Null, Value::Real),
+        ],
+    )))
+}
+
+/// Stage an `IfcMaterialProfileSetUsage`.
+///
+/// `CardinalPoint` selects the cross-section reference point and is an
+/// `IfcCardinalPointReference` in `1..=9`; anything else names no point.
+pub fn create_profile_set_usage(
+    tx: &mut Transaction,
+    model: &Model,
+    for_profile_set: EntityId,
+    cardinal_point: Option<i64>,
+    reference_extent: Option<f64>,
+) -> MaterialResult<EntityId> {
+    require_type(tx, model, for_profile_set, &["IFCMATERIALPROFILESET"])?;
+    if let Some(point) = cardinal_point.filter(|value| !(1..=9).contains(value)) {
+        return Err(invalid(
+            "IFCMATERIALPROFILESETUSAGE",
+            "CardinalPoint",
+            point.to_string(),
+        ));
+    }
+    Ok(tx.create(Entity::new(
+        "IFCMATERIALPROFILESETUSAGE",
+        vec![
+            Value::Ref(for_profile_set),
+            cardinal_point.map_or(Value::Null, Value::Integer),
+            reference_extent.map_or(Value::Null, Value::Real),
+        ],
+    )))
+}
+
+/// Stage an `IfcMaterialLayerWithOffsets`.
+///
+/// The record carries nine slots: the seven it inherits from
+/// `IfcMaterialLayer` followed by its own two. Writing only the subtype
+/// attributes would shift every inherited value into the wrong slot, which
+/// is why this is a separate constructor rather than a flag on
+/// [`create_layer`].
+pub fn create_layer_with_offsets(
+    tx: &mut Transaction,
+    model: &Model,
+    draft: LayerDraft<'_>,
+    offset_direction: LayerSetDirection,
+    offset_values: [f64; 2],
+) -> MaterialResult<EntityId> {
+    finite_non_negative(
+        "IFCMATERIALLAYERWITHOFFSETS",
+        "LayerThickness",
+        draft.thickness,
+    )?;
+    for value in offset_values {
+        if !value.is_finite() {
+            return Err(invalid(
+                "IFCMATERIALLAYERWITHOFFSETS",
+                "OffsetValues",
+                "expected finite lengths",
+            ));
+        }
+    }
+    if let Some(material) = draft.material {
+        require_type(tx, model, material, &["IFCMATERIAL"])?;
+    }
+    Ok(tx.create(Entity::new(
+        "IFCMATERIALLAYERWITHOFFSETS",
+        vec![
+            draft.material.map_or(Value::Null, Value::Ref),
+            Value::Real(draft.thickness),
+            draft.is_ventilated.map_or(Value::Null, logical),
+            optional_text(draft.name),
+            optional_text(draft.description),
+            optional_text(draft.category),
+            draft.priority.map_or(Value::Null, Value::Integer),
+            Value::Enum(offset_direction.as_token().into()),
+            Value::List(offset_values.iter().copied().map(Value::Real).collect()),
         ],
     )))
 }

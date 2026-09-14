@@ -52,6 +52,16 @@ impl DirectionSense {
             _ => None,
         }
     }
+
+    /// The `IfcDirectionSenseEnum` token for this value.
+    ///
+    /// Inverse of [`Self::parse`]; kept adjacent so the two cannot drift.
+    pub fn as_token(self) -> &'static str {
+        match self {
+            Self::Positive => "POSITIVE",
+            Self::Negative => "NEGATIVE",
+        }
+    }
 }
 
 /// Axis used to measure a material layer set.
@@ -74,6 +84,17 @@ impl LayerSetDirection {
             token if token.eq_ignore_ascii_case("AXIS2") => Some(Self::Axis2),
             token if token.eq_ignore_ascii_case("AXIS3") => Some(Self::Axis3),
             _ => None,
+        }
+    }
+
+    /// The `IfcLayerSetDirectionEnum` token for this value.
+    ///
+    /// Inverse of [`Self::parse`]; kept adjacent so the two cannot drift.
+    pub fn as_token(self) -> &'static str {
+        match self {
+            Self::Axis1 => "AXIS1",
+            Self::Axis2 => "AXIS2",
+            Self::Axis3 => "AXIS3",
         }
     }
 }

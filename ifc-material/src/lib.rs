@@ -18,8 +18,10 @@ pub mod usage;
 pub mod view;
 
 pub use authoring::{
-    associate_material, create_layer, create_layer_set, create_material, LayerDraft, LayerSetDraft,
-    MaterialAssignmentDraft, MaterialDraft,
+    associate_material, create_constituent, create_constituent_set, create_layer, create_layer_set,
+    create_layer_set_usage, create_layer_with_offsets, create_material, create_material_list,
+    create_profile, create_profile_set, create_profile_set_usage, ConstituentDraft, LayerDraft,
+    LayerSetDraft, MaterialAssignmentDraft, MaterialDraft, ProfileDraft,
 };
 pub use constituent::{MaterialConstituent, MaterialConstituentSet};
 pub use error::{MaterialError, MaterialResult};

@@ -36,3 +36,28 @@ sibling domain crate. It belongs in the generic layer.
 - Validate BEFORE staging: scalar ranges, GUID format, reference types.
 - `require_type` / `require_exists` resolve against staged edits first, then model.
 - Only stage; `Transaction::commit` owns atomic application.
+
+## Progress
+
+| Phase | Domain | State | Commit |
+| --- | --- | --- | --- |
+| 1 | unit | done: 8 helpers, 6 tests, 2 mutations caught | `0b616d4` |
+| 2 | owner history | done: 5 helpers, 4 tests, 3 mutations caught | `c8912c1` |
+| 3 | material | next: close the 16 -> 25 gap (profile/constituent sets) | |
+| 4 | cost | pending: 6 -> 20 | |
+| 5 | structural | pending: 2 -> 23, 14 stub files to fill | |
+| 6 | sequence | pending: 1 -> 40, ifc-schedule is 58% stubs | |
+| 7 | geometry authoring | pending: 0 -> 30, needs a representation-builder story | |
+| 8 | alignment | pending: 0 -> 60, blocked on alignment->geometry lowering | |
+
+## Conventions established in phases 1-2
+
+- Authoring helpers stage onto `ifc_model::Transaction`; they never commit.
+- A `*Draft` struct carries authored fields; required schema attributes are
+  plain fields, optional ones are `Option`.
+- Slot order is verified against the bundled schema with a throwaway probe
+  before the helper is written, never from memory. Delete the probe after.
+- Refusals target mistakes that PARSE and VALIDATE but corrupt meaning --
+  a wrong SI prefix, a record modified before it existed. Schema-level
+  errors are `ifc-validate`'s job, not the author's.
+- Every guard is mutation-tested before it is trusted.

@@ -16,6 +16,16 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-material` can now author the whole `IfcMaterialSelect` family, not
+  just layers: `create_constituent`, `create_constituent_set`,
+  `create_profile`, `create_profile_set`, `create_material_list`,
+  `create_layer_set_usage`, `create_profile_set_usage`, and
+  `create_layer_with_offsets`. The offsets subtype writes its seven
+  inherited `IfcMaterialLayer` slots before its own two, so it reads back
+  through the existing accessors. Refusals cover a constituent `Fraction`
+  outside `0..=1`, a `CardinalPoint` outside `1..=9`, empty compositions,
+  and a usage bound to the wrong kind of set. `DirectionSense` and
+  `LayerSetDirection` gained `as_token`, the inverse of `parse`.
 - `ifc-author` can now author ownership: `IfcPerson`, `IfcOrganization`,
   `IfcPersonAndOrganization`, `IfcApplication` and `IfcOwnerHistory`. Every
   `IfcRoot` subtype carries `OwnerHistory`, which the domain crates write as
