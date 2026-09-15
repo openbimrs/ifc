@@ -86,15 +86,12 @@ pub struct HorizontalSegment {
     pub segment_type: HorizontalSegmentType,
 }
 
-// IFC4X3_ADD2 EXPRESS order: inherited StartTag/EndTag occupy slots 0..1;
-// IfcAlignmentHorizontalSegment declares the fields below in slots 2..8.
-const START_POINT: usize = 2;
-const START_DIRECTION: usize = 3;
-const START_RADIUS: usize = 4;
-const END_RADIUS: usize = 5;
-const SEGMENT_LENGTH: usize = 6;
-const GRAVITY_CENTER_LINE_HEIGHT: usize = 7;
-const PREDEFINED_TYPE: usize = 8;
+// Slots live in `crate::slot` so the authoring side indexes the same
+// definitions these readers do (ADR 0011).
+use crate::slot::horizontal::{
+    END_RADIUS, GRAVITY_CENTER_LINE_HEIGHT, PREDEFINED_TYPE, SEGMENT_LENGTH, START_DIRECTION,
+    START_POINT, START_RADIUS,
+};
 
 /// Read one `IfcAlignmentHorizontalSegment` referenced by `id`.
 ///

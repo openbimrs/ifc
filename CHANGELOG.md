@@ -8,6 +8,10 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `ifc-alignment` can author alignment records: `IfcAlignment`, the
+  horizontal, vertical and cant layouts, `IfcAlignmentSegment`, and the
+  three parameter-segment kinds. Readers and authoring share one set of
+  slot constants (ADR 0011).
 - `ifc-geometry` can now author geometry as well as read it (ADR 0011):
   points, directions, axis placements, polylines, rectangle/circle/arbitrary
   profiles, extruded and revolved area solids, and unevaluated boolean

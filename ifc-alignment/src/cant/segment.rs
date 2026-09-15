@@ -5,6 +5,7 @@ use ifc_model::{EntityId, Model};
 
 use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::AlignmentUnits;
+use crate::slot;
 
 /// `IfcAlignmentCantSegmentTypeEnum` member: the cant transition law applied
 /// over one segment's distance-along span.
@@ -111,15 +112,37 @@ pub fn read_cant_segment(
     // IFC4X3_ADD2: inherited StartTag/EndTag are slots 0..1; this declaration
     // contributes StartDistAlong through PredefinedType at slots 2..8.
     let values = &entity.attributes;
-    let start_dist_along = length(number(values, id, 2, "StartDistAlong")?, units);
-    let horizontal_length = length(number(values, id, 3, "HorizontalLength")?, units);
-    let start_cant_left = length(number(values, id, 4, "StartCantLeft")?, units);
-    let end_cant_left =
-        optional_number(values, id, 5, "EndCantLeft")?.map(|value| length(value, units));
-    let start_cant_right = length(number(values, id, 6, "StartCantRight")?, units);
-    let end_cant_right =
-        optional_number(values, id, 7, "EndCantRight")?.map(|value| length(value, units));
-    let predefined_type = parse_type(enum_name(values, id, 8, "PredefinedType")?);
+    let start_dist_along = length(
+        number(values, id, slot::cant::START_DIST_ALONG, "StartDistAlong")?,
+        units,
+    );
+    let horizontal_length = length(
+        number(
+            values,
+            id,
+            slot::cant::HORIZONTAL_LENGTH,
+            "HorizontalLength",
+        )?,
+        units,
+    );
+    let start_cant_left = length(
+        number(values, id, slot::cant::START_CANT_LEFT, "StartCantLeft")?,
+        units,
+    );
+    let end_cant_left = optional_number(values, id, slot::cant::END_CANT_LEFT, "EndCantLeft")?
+        .map(|value| length(value, units));
+    let start_cant_right = length(
+        number(values, id, slot::cant::START_CANT_RIGHT, "StartCantRight")?,
+        units,
+    );
+    let end_cant_right = optional_number(values, id, slot::cant::END_CANT_RIGHT, "EndCantRight")?
+        .map(|value| length(value, units));
+    let predefined_type = parse_type(enum_name(
+        values,
+        id,
+        slot::cant::PREDEFINED_TYPE,
+        "PredefinedType",
+    )?);
 
     let finite = [
         start_dist_along,

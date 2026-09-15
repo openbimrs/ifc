@@ -1,6 +1,8 @@
 # ifc-alignment instructions
 
-Purpose: Interpret IFC4x3 alignment intent into exact neutral curves/frames without meshing or backend selection.
+Purpose: Interpret IFC4x3 alignment intent in both directions — read and lower
+into exact neutral curves/frames, and author alignment records from plain
+numbers (ADR 0011) — without meshing or backend selection.
 
 Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
 roadmap work; keep progress, blockers, and evidence there.
@@ -22,6 +24,11 @@ Allowed production dependencies: ifc-model, schema metadata, and exact neutral a
 - `placement.rs`: linear placement/point-by-distance
 - `referent.rs`: stationing/referents and station equations
 - `query.rs`: bounded alignment traversal
+- `slot.rs`: attribute slots read from the IFC4X3 ADD2 schema, indexed by both
+  the readers and `authoring/`. Never restate a slot number elsewhere.
+- `authoring/`: write direction. Plain `f64` in the file's declared units; no
+  unit conversion (the readers apply `AlignmentUnits` on the way out) and no
+  kernel types. Refuses what the readers reject, before staging.
 
 ## Invariants
 

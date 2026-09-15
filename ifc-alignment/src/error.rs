@@ -93,6 +93,19 @@ pub enum AlignmentError {
         /// The invariant that was violated.
         rule: &'static str,
     },
+    /// An authored value was rejected before anything was staged (ADR 0011).
+    ///
+    /// Distinct from [`Self::InvalidSegment`], which describes a segment that
+    /// already exists in a file. Here there is no entity yet and therefore no
+    /// id to report: the caller passed a value that could not be written.
+    InvalidAuthoredValue {
+        /// The IFC type being authored.
+        type_name: &'static str,
+        /// The attribute whose value was rejected.
+        attribute: &'static str,
+        /// Why it cannot be written.
+        detail: String,
+    },
     /// A dangling reference: the target id is not present in the model.
     DanglingReference {
         /// The entity holding the dangling reference.
@@ -155,6 +168,11 @@ impl std::fmt::Display for AlignmentError {
                 Some(entity) => write!(f, "{entity} violates {rule}"),
                 None => write!(f, "violates {rule}"),
             },
+            Self::InvalidAuthoredValue {
+                type_name,
+                attribute,
+                detail,
+            } => write!(f, "cannot author {type_name}.{attribute}: {detail}"),
             Self::DanglingReference {
                 entity,
                 attribute,

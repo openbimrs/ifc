@@ -22,15 +22,22 @@
 //! neutral curve vocabulary can preserve them without approximation.
 
 mod alignment;
+pub mod authoring;
 mod cant;
 mod curve;
 mod error;
 mod horizontal;
 mod placement;
 mod referent;
+pub(crate) mod slot;
 mod vertical;
 mod view;
 
+pub use authoring::{
+    alignment, alignment_segment, cant_layout, cant_segment, horizontal_layout, horizontal_segment,
+    vertical_layout, vertical_segment, CantSegmentDraft, HorizontalSegmentDraft,
+    VerticalSegmentDraft,
+};
 pub use cant::{
     cant_at, read_cant_segment, CantAtStation, CantLayout, CantSegment, CantSegmentType,
 };

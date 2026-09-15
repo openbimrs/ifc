@@ -5,6 +5,7 @@ use ifc_model::{EntityId, Model};
 
 use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::AlignmentUnits;
+use crate::slot;
 
 /// `IfcAlignmentVerticalSegmentTypeEnum` member: the vertical curve law
 /// applied over one segment's distance-along span.
@@ -97,14 +98,43 @@ pub fn read_vertical_segment(
     // IFC4X3_ADD2: inherited StartTag/EndTag are slots 0..1; this declaration
     // contributes StartDistAlong through PredefinedType at slots 2..8.
     let values = &entity.attributes;
-    let start_dist_along = length(number(values, id, 2, "StartDistAlong")?, units);
-    let horizontal_length = length(number(values, id, 3, "HorizontalLength")?, units);
-    let start_height = length(number(values, id, 4, "StartHeight")?, units);
-    let start_gradient = number(values, id, 5, "StartGradient")?;
-    let end_gradient = number(values, id, 6, "EndGradient")?;
-    let radius_of_curvature =
-        optional_number(values, id, 7, "RadiusOfCurvature")?.map(|value| length(value, units));
-    let predefined_type = parse_type(enum_name(values, id, 8, "PredefinedType")?);
+    let start_dist_along = length(
+        number(
+            values,
+            id,
+            slot::vertical::START_DIST_ALONG,
+            "StartDistAlong",
+        )?,
+        units,
+    );
+    let horizontal_length = length(
+        number(
+            values,
+            id,
+            slot::vertical::HORIZONTAL_LENGTH,
+            "HorizontalLength",
+        )?,
+        units,
+    );
+    let start_height = length(
+        number(values, id, slot::vertical::START_HEIGHT, "StartHeight")?,
+        units,
+    );
+    let start_gradient = number(values, id, slot::vertical::START_GRADIENT, "StartGradient")?;
+    let end_gradient = number(values, id, slot::vertical::END_GRADIENT, "EndGradient")?;
+    let radius_of_curvature = optional_number(
+        values,
+        id,
+        slot::vertical::RADIUS_OF_CURVATURE,
+        "RadiusOfCurvature",
+    )?
+    .map(|value| length(value, units));
+    let predefined_type = parse_type(enum_name(
+        values,
+        id,
+        slot::vertical::PREDEFINED_TYPE,
+        "PredefinedType",
+    )?);
 
     let finite = [
         start_dist_along,
