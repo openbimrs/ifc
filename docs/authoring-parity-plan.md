@@ -61,3 +61,17 @@ sibling domain crate. It belongs in the generic layer.
   a wrong SI prefix, a record modified before it existed. Schema-level
   errors are `ifc-validate`'s job, not the author's.
 - Every guard is mutation-tested before it is trusted.
+
+## Phase 7 outcome (geometry authoring)
+
+Decided by spike, recorded in ADR 0011: authoring lives **inside**
+`ifc-geometry`, not in a separate crate. 183 of the 201 slot constants an
+authoring API needs were unreachable externally, and `RepresentationPurpose`
+is invisible without linking the kernel a separate crate exists to avoid.
+
+Vendor neutrality comes from the kernel being **absent** from the API, not
+abstracted over: authoring takes `f64`/`[f64; 3]`/index buffers and runs in
+the `--no-default-features` column, enforced by `kernel_free_build.rs`.
+
+Remaining: alignment (phase 8), still blocked on alignment -> geometry
+lowering, which does not exist. Deriving plans from solids stays upstream.
