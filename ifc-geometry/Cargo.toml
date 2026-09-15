@@ -18,6 +18,7 @@ description = "IFC semantic views lowered into the format-neutral geometry DAG."
 # 2D drawing consumer wants; `tests/kernel_free_build.rs` holds the line.
 default = ["lowering"]
 lowering = [
+    "dep:ifc-alignment",
     "dep:axiolid-core",
     "dep:axiolid-curve",
     "dep:axiolid-mesh",
@@ -42,6 +43,10 @@ compile = [
 [dependencies]
 ifc-model.workspace = true
 ifc-schema.workspace = true
+# ADR 0003 (amended 2026-09-15): a bridge may depend on a bridge. Optional and
+# reached only through `lowering`, because `ifc-alignment` links the kernel
+# unconditionally and the kernel-free column must stay kernel-free.
+ifc-alignment = { workspace = true, optional = true }
 thiserror.workspace = true
 
 # Format-neutral representation crates only. Operation-provider selection

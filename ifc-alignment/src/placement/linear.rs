@@ -83,6 +83,16 @@ pub fn resolve_point_by_distance(
     let offset_longitudinal =
         optional_number(values, id, 3, "OffsetLongitudinal")?.map(|v| length(v, units));
     let basis_curve = reference(values, id, 4, "BasisCurve")?;
+    // A distance along a curve that is not in the file is not a position.
+    // Checked here rather than at each call site, so every consumer of a
+    // `PointByDistance` can rely on the target existing.
+    if model.get(basis_curve).is_none() {
+        return Err(AlignmentError::DanglingReference {
+            entity: id,
+            attribute: "BasisCurve",
+            target: basis_curve,
+        });
+    }
 
     Ok(PointByDistance {
         entity: id,

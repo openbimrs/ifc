@@ -606,6 +606,7 @@ dependencies = [
  "axiolid-reference",
  "axiolid-surface",
  "axiolid-topology",
+ "ifc-alignment",
  "ifc-model",
  "ifc-schema",
  "ifc-step",

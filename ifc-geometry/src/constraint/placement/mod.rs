@@ -20,6 +20,9 @@
 
 use ifc_model::{EntityId, Model};
 
+#[cfg(feature = "lowering")]
+pub(crate) mod linear;
+
 use crate::constraint::local::PlacementResolver;
 use crate::error::{GeometryError, GeometryResult};
 use crate::input::product::Product;
@@ -94,6 +97,13 @@ fn resolve_with(
     let Some(placement) = Product::new(product, entity).object_placement() else {
         return Ok(Transform::identity());
     };
+    // IFC4x3 places linear elements by distance along a curve, which the
+    // IfcLocalPlacement walk cannot resolve. Route by type before it.
+    #[cfg(feature = "lowering")]
+    if linear::is_linear_placement(model, placement) {
+        let file_units = linear::linear_placement_transform(model, units, placement)?;
+        return Ok(file_units.to_metres(units));
+    }
     let file_units = resolver.world_transform(model, placement)?;
     Ok(file_units.to_metres(units))
 }

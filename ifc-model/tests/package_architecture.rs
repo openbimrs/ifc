@@ -178,12 +178,7 @@ fn dependencies_follow_the_ifc_layers() {
                 continue;
             }
 
-            let allowed = match krate.as_str() {
-                "ifc-model" | "ifc-schema" => false,
-                "ifc-step" => dependency == "ifc-model",
-                "ifc-xml" | "ifc-validate" => GENERIC.contains(&dependency.as_str()),
-                _ => GENERIC.contains(&dependency.as_str()),
-            };
+            let allowed = layer_allows(krate, &dependency);
             if !allowed {
                 violations.push(format!(
                     "{krate} -> {dependency} crosses an IFC layer; compose sibling capabilities in the facade/application instead"
@@ -248,5 +243,102 @@ fn step_and_express_syntax_live_below_ifc() {
     assert!(
         !express_adapter.contains("struct Parser"),
         "generic EXPRESS parser implementation remains inside IFC"
+    );
+}
+
+/// May `krate` depend on `dependency`, both being IFC-layer crates?
+///
+/// Extracted from the manifest walk so the rule can be exercised against
+/// synthetic pairs. The walk alone only sees dependencies that actually
+/// exist, so widening this rule would go unnoticed there until someone
+/// wrote the offending dependency -- which is exactly the wrong time to
+/// find out.
+fn layer_allows(krate: &str, dependency: &str) -> bool {
+    match krate {
+        "ifc-model" | "ifc-schema" => false,
+        "ifc-step" => dependency == "ifc-model",
+        "ifc-xml" | "ifc-validate" => GENERIC.contains(&dependency),
+        // ADR 0003, amended 2026-09-15: a bridge may depend on a bridge.
+        // Justified by measurement, not convenience -- every crate a thin
+        // `ifc-geometry` pulls in is already in `ifc-alignment`, so the
+        // dependency adds nothing a consumer has not already paid for. A
+        // semantic crate still may not reach a sibling, and a non-bridge
+        // still may not reach a bridge.
+        _ if BRIDGES.contains(&krate) => {
+            GENERIC.contains(&dependency) || BRIDGES.contains(&dependency)
+        }
+        _ => GENERIC.contains(&dependency),
+    }
+}
+
+/// The layering rule, stated against synthetic pairs.
+///
+/// Pins both halves of the amended rule: what the exception permits, and
+/// what it must keep refusing. Without this, widening the allowance to every
+/// crate would pass the manifest walk unnoticed, because no semantic crate
+/// depends on a bridge today.
+#[test]
+fn the_layer_rule_permits_only_bridge_to_bridge() {
+    // The exception, and the dependency it exists to allow.
+    assert!(layer_allows("ifc-geometry", "ifc-alignment"));
+    assert!(layer_allows("ifc-alignment", "ifc-geometry"));
+    assert!(layer_allows("ifc-georef", "ifc-geometry"));
+
+    // Generic stays available to everyone below the facade.
+    assert!(layer_allows("ifc-cost", "ifc-model"));
+    assert!(layer_allows("ifc-geometry", "ifc-schema"));
+
+    // A semantic crate may not reach a bridge, however convenient.
+    assert!(!layer_allows("ifc-cost", "ifc-geometry"));
+    assert!(!layer_allows("ifc-schedule", "ifc-alignment"));
+    assert!(!layer_allows("ifc-structural", "ifc-geometry"));
+
+    // Semantic siblings remain independent of each other.
+    assert!(!layer_allows("ifc-cost", "ifc-schedule"));
+
+    // The foundations depend on nothing in the IFC layer.
+    assert!(!layer_allows("ifc-model", "ifc-schema"));
+    assert!(!layer_allows("ifc-schema", "ifc-model"));
+}
+
+/// The bridge-to-bridge exception rests on a premise that can expire.
+///
+/// ADR 0003 (amended 2026-09-15) allows `ifc-alignment` to be reached by
+/// another bridge because its dependency set is a strict superset of a thin
+/// `ifc-geometry`: the allowance costs a consumer nothing it has not already
+/// paid for. That argument holds only while alignment links the kernel
+/// unconditionally.
+///
+/// If someone later makes those dependencies optional -- the same move
+/// `ifc-geometry` made, and a reasonable one to want -- there would then be a
+/// thin alignment that does NOT already carry the geometry cost, and the
+/// justification silently evaporates while the allowance stays in the table.
+///
+/// This test fails at that moment and names the decision to revisit, so the
+/// exception cannot outlive its evidence.
+#[test]
+fn the_bridge_exception_still_rests_on_unconditional_kernel_deps() {
+    let packages = ifc_packages();
+    let alignment = packages
+        .get("ifc-alignment")
+        .expect("ifc-alignment is a workspace member");
+
+    let optional_kernel_deps: Vec<&str> = alignment
+        .dependencies
+        .iter()
+        .filter(|dependency| dependency.optional && dependency.name.starts_with("axiolid-"))
+        .map(|dependency| dependency.name.as_str())
+        .collect();
+
+    assert!(
+        optional_kernel_deps.is_empty(),
+        "ifc-alignment now has optional kernel dependencies ({}), so a thin \
+         alignment build is possible and its dependency set is no longer a \
+         superset of a thin ifc-geometry. The bridge-to-bridge allowance in \
+         `dependencies_follow_the_ifc_layers` was justified by that superset \
+         relationship (ADR 0003, amended 2026-09-15) and must be re-argued or \
+         withdrawn -- along with whatever now depends on it, starting with \
+         linear placement resolution.",
+        optional_kernel_deps.join(", ")
     );
 }

@@ -16,6 +16,7 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `product_world_transform` resolves products placed by `IfcLinearPlacement`, using the cached `CartesianPosition`. Deriving a frame from the basis curve is a typed refusal, not an approximation.
 - `ifc-alignment` can author alignment records: `IfcAlignment`, the
   horizontal, vertical and cant layouts, `IfcAlignmentSegment`, and the
   three parameter-segment kinds. Readers and authoring share one set of

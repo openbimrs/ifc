@@ -188,3 +188,19 @@ fn authoring_survives_without_the_kernel() {
         "IFCEXTRUDEDAREASOLID"
     );
 }
+
+/// The bridge-to-bridge exception (ADR 0003, amended 2026-09-15) must not
+/// leak into the kernel-free column.
+///
+/// `ifc-alignment` links the kernel unconditionally, so if it ever became a
+/// non-optional dependency of `ifc-geometry`, or escaped the `lowering`
+/// feature, the 2D drawing consumer would start pulling a geometry kernel.
+/// The dependency tree is the evidence, not the manifest.
+#[test]
+fn the_kernel_free_build_links_no_alignment_bridge() {
+    let tree = dependency_tree(&["--no-default-features"]);
+    assert!(
+        !links(&tree, "ifc-alignment"),
+        "kernel-free ifc-geometry must not link ifc-alignment:\\n{tree}"
+    );
+}
