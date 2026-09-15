@@ -1,7 +1,7 @@
 # Scope: alignment geometry (IFC4x3 linear placement)
 
-Status: scoping only. No implementation authorised yet.
-Date: 2026-09-15
+Status: B (authoring) LANDED in f87aa87. A and C updated below.
+Date: 2026-09-15, revised after axiolid/kernel#105 was fixed.
 
 ## What already works
 
@@ -118,3 +118,43 @@ Explicitly NOT recommended: approximating spirals in 3D to make
 alignment look complete. It would violate the crate invariant and
 silently degrade survey-grade data.
 
+
+## Revision: C is resolved upstream
+
+axiolid/kernel#105 was closed as completed. `Curve3::Elevated(Elevated3)`
+now pairs a boxed `Curve2` plan with an `ElevationLaw`, so an exact spiral
+composes with an exact vertical profile without approximating either.
+
+Two findings in that fix matter to this crate:
+
+- `Intrinsic2` previously had no evaluator at all, so evaluating a point on
+  a clothoid was unavailable in 2D as well. `arc_length.rs` now provides it.
+- Height is a function of PLAN distance, not 3D arc length. The two diverge
+  by sqrt(1 + g^2) wherever grade is non-zero. The convention is named in
+  the type, so this crate must not re-derive it.
+
+A B-spline plan is refused upstream: its parameter is not arc length.
+
+Not yet consumable here: the fix is on main and in no tag. ADR 0004 pins
+axiolid by exact tag, so lowering to `Curve3::Elevated` waits for a release.
+
+## Revision: B is done
+
+Landed in f87aa87. Eight authoring functions, 5 tests, 8/8 mutations
+killed. Readers and authoring now share `src/slot.rs`.
+
+Vertical arcs remain unlowerable (`push_constant_gradient` refuses
+anything but CONSTANTGRADIENT). That is this crate\x27s own limit, not the
+kernel\x27s, and is unrelated to #105.
+
+## Remaining: A (linear placement)
+
+Unchanged and still blocked on a boundary decision, not on the kernel.
+IfcLinearPlacement, IfcAxis2PlacementLinear, IfcPointByDistanceExpression,
+IfcGradientCurve, IfcSegmentedReferenceCurve and IfcOffsetCurveByDistances
+are all absent from ifc-geometry, so a product placed along an alignment
+still has no world transform.
+
+package_architecture.rs refuses ifc-geometry -> ifc-alignment. Either
+invert the dependency or lift the distance-along contract into the generic
+layer. That is an ADR, not a patch.
