@@ -28,7 +28,7 @@ use ifc_model::{Entity, EntityId};
 ///
 /// From IFC4 ADD2 TC1: slot 0 `Position` is inherited from `IfcConic`; slot 1
 /// `Radius` is the subtype's own.
-mod circle_slot {
+pub(crate) mod circle_slot {
     /// `Position`: `IfcAxis2Placement` (2D or 3D), from `IfcConic`.
     pub const POSITION: usize = 0;
     /// `Radius`: `IfcPositiveLengthMeasure`.
@@ -38,7 +38,7 @@ mod circle_slot {
 /// `IfcEllipse` attribute slots.
 ///
 /// From IFC4 ADD2 TC1: slot 0 `Position` is inherited from `IfcConic`.
-mod ellipse_slot {
+pub(crate) mod ellipse_slot {
     /// `Position`: `IfcAxis2Placement` (2D or 3D), from `IfcConic`.
     pub const POSITION: usize = 0;
     /// `SemiAxis1`: extent along the placement's local X direction.

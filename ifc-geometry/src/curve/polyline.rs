@@ -25,7 +25,7 @@ use ifc_model::{Entity, EntityId, Value};
 ///
 /// From IFC4 ADD2 TC1: `IfcBoundedCurve` and its supertypes declare no
 /// explicit attributes, so `Points` is slot 0.
-mod polyline_slot {
+pub(crate) mod polyline_slot {
     /// `Points`: `LIST [2:?] OF IfcCartesianPoint`.
     pub const POINTS: usize = 0;
 }
@@ -33,7 +33,7 @@ mod polyline_slot {
 /// `IfcIndexedPolyCurve` attribute slots.
 ///
 /// From IFC4 ADD2 TC1.
-mod indexed_slot {
+pub(crate) mod indexed_slot {
     /// `Points`: an `IfcCartesianPointList` (2D or 3D).
     pub const POINTS: usize = 0;
     /// `Segments`: `OPTIONAL LIST [1:?] OF IfcSegmentIndexSelect`.

@@ -28,7 +28,7 @@ use ifc_model::{Entity, EntityId};
 ///
 /// EXPRESS (IFC4 ADD2 TC1): subtypes `IfcSolidModel`, which declares no
 /// explicit attributes, so `TreeRootExpression` is absolute slot 0.
-mod csg_solid_slot {
+pub(crate) mod csg_solid_slot {
     /// `TreeRootExpression : IfcCsgSelect`.
     pub const TREE_ROOT_EXPRESSION: usize = 0;
 }
@@ -39,7 +39,7 @@ mod csg_solid_slot {
 /// `IfcCsgPrimitive3D`, whose supertype `IfcGeometricRepresentationItem` has no
 /// explicit attributes -- so it is absolute slot 0 and each primitive's own
 /// dimensions start at slot 1.
-mod primitive_slot {
+pub(crate) mod primitive_slot {
     /// `Position : IfcAxis2Placement3D`, required.
     pub const POSITION: usize = 0;
     /// First dimension attribute of the concrete primitive.

@@ -30,7 +30,7 @@ use ifc_model::{Entity, EntityId, Model, Value};
 /// EXPRESS (IFC4 ADD2 TC1): `IfcManifoldSolidBrep` declares `Outer` and its
 /// supertype `IfcSolidModel` declares no explicit attributes, so `Outer` is
 /// absolute slot 0 for every brep in the family.
-mod slot {
+pub(crate) mod slot {
     /// `Outer : IfcClosedShell`, declared on `IfcManifoldSolidBrep`.
     pub const OUTER: usize = 0;
     /// `Voids : SET [1:?] OF IfcClosedShell`, on the `WithVoids` subtypes.

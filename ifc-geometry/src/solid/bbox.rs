@@ -32,7 +32,7 @@ use ifc_model::{Entity, EntityId};
 ///
 /// EXPRESS (IFC4 ADD2 TC1): subtypes `IfcGeometricRepresentationItem`, which
 /// declares no explicit attributes, so all four are absolute slots 0-3.
-mod slot {
+pub(crate) mod slot {
     /// `Corner : IfcCartesianPoint`, the minimum corner.
     pub const CORNER: usize = 0;
     /// `XDim : IfcPositiveLengthMeasure`.

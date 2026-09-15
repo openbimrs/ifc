@@ -16,7 +16,7 @@ use ifc_model::{Entity, EntityId};
 /// `IfcTriangulatedFaceSet`, which has `Normals` at slot 1 -- so `Closed` is
 /// slot 1 here and slot 2 there. Copying one layout onto the other is a
 /// straightforward way to read a boolean as a list.
-mod set_slot {
+pub(crate) mod set_slot {
     /// `Closed : OPTIONAL IfcBoolean`, absolute slot 1.
     pub const CLOSED: usize = 1;
     /// `Faces : LIST [1:?] OF IfcIndexedPolygonalFace`, absolute slot 2.
@@ -30,7 +30,7 @@ mod set_slot {
 /// EXPRESS: subtypes `IfcTessellatedItem`, which declares no explicit
 /// attributes, so `CoordIndex` is absolute slot 0 and the `WithVoids` subtype's
 /// `InnerCoordIndices` is slot 1.
-mod face_slot {
+pub(crate) mod face_slot {
     /// `CoordIndex : LIST [3:?] OF IfcPositiveInteger`, the outer loop.
     pub const COORD_INDEX: usize = 0;
     /// `InnerCoordIndices` on `IfcIndexedPolygonalFaceWithVoids`, slot 1.

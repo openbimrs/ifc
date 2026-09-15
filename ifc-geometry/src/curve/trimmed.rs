@@ -40,7 +40,7 @@ use ifc_model::{Entity, EntityId, Value};
 ///
 /// From IFC4 ADD2 TC1: `IfcBoundedCurve` and above declare no explicit
 /// attributes, so all five slots belong to `IfcTrimmedCurve` itself.
-mod slot {
+pub(crate) mod slot {
     /// `BasisCurve`: the `IfcCurve` being trimmed.
     pub const BASIS_CURVE: usize = 0;
     /// `Trim1`: `SET [1:2] OF IfcTrimmingSelect`.

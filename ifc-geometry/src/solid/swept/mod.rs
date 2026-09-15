@@ -38,7 +38,7 @@ pub use directrix::{
 /// EXPRESS (IFC4 ADD2 TC1): `IfcSweptAreaSolid` declares `SweptArea` then
 /// `Position`; its supertype `IfcSolidModel` declares no explicit attributes,
 /// so these are absolute slots 0 and 1 for the whole family.
-mod swept_area_slot {
+pub(crate) mod swept_area_slot {
     /// `SweptArea : IfcProfileDef`, declared on `IfcSweptAreaSolid`.
     pub const SWEPT_AREA: usize = 0;
     /// `Position : OPTIONAL IfcAxis2Placement3D`, on `IfcSweptAreaSolid`.
@@ -49,7 +49,7 @@ mod swept_area_slot {
 ///
 /// EXPRESS: `ExtrudedDirection : IfcDirection`, `Depth :
 /// IfcPositiveLengthMeasure`; then `EndSweptArea` on the tapered subtype.
-mod extruded_slot {
+pub(crate) mod extruded_slot {
     /// `ExtrudedDirection`, absolute slot 2.
     pub const EXTRUDED_DIRECTION: usize = 2;
     /// `Depth`, absolute slot 3.
@@ -62,7 +62,7 @@ mod extruded_slot {
 ///
 /// EXPRESS: `Axis : IfcAxis1Placement`, `Angle : IfcPlaneAngleMeasure`; then
 /// `EndSweptArea` on the tapered subtype.
-mod revolved_slot {
+pub(crate) mod revolved_slot {
     /// `Axis`, absolute slot 2.
     pub const AXIS: usize = 2;
     /// `Angle`, absolute slot 3.
@@ -76,7 +76,7 @@ mod revolved_slot {
 /// EXPRESS: `IfcSurfaceCurveSweptAreaSolid` and
 /// `IfcFixedReferenceSweptAreaSolid` both declare `Directrix`, `StartParam`,
 /// `EndParam` in that order after the inherited pair, then differ in slot 5.
-mod directrix_slot {
+pub(crate) mod directrix_slot {
     /// `Directrix : IfcCurve`, absolute slot 2.
     pub const DIRECTRIX: usize = 2;
     /// `StartParam : OPTIONAL IfcParameterValue`, absolute slot 3.
@@ -93,7 +93,7 @@ mod directrix_slot {
 ///
 /// EXPRESS: it subtypes `IfcSolidModel` directly, so `Directrix` is slot 0 --
 /// there is no inherited `SweptArea` here despite the family resemblance.
-mod disk_slot {
+pub(crate) mod disk_slot {
     /// `Directrix : IfcCurve`, absolute slot 0.
     pub const DIRECTRIX: usize = 0;
     /// `Radius : IfcPositiveLengthMeasure`, absolute slot 1.
@@ -112,7 +112,7 @@ mod disk_slot {
 ///
 /// EXPRESS: subtypes `IfcGeometricRepresentationItem`, which declares no
 /// explicit attributes, so all three slots are its own.
-mod spine_slot {
+pub(crate) mod spine_slot {
     /// `SpineCurve : IfcCompositeCurve`, absolute slot 0.
     pub const SPINE_CURVE: usize = 0;
     /// `CrossSections : LIST [2:?] OF IfcProfileDef`, absolute slot 1.

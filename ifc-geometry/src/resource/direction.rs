@@ -30,7 +30,7 @@ use crate::slots::Slots;
 use ifc_model::{Entity, EntityId, Model};
 
 /// Attribute slots, absolute STEP positions including inherited attributes.
-mod slot {
+pub(crate) mod slot {
     /// `IfcDirection` (supertype `IfcGeometricRepresentationItem` declares no
     /// explicit attributes, so this index is its own).
     pub mod direction {

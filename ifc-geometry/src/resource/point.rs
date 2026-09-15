@@ -25,7 +25,7 @@ use crate::slots::Slots;
 use ifc_model::{Entity, EntityId, Model, Value};
 
 /// Attribute slots, absolute STEP positions including inherited attributes.
-mod slot {
+pub(crate) mod slot {
     /// `IfcCartesianPoint` (no inherited explicit attributes).
     pub mod cartesian_point {
         /// `Coordinates : LIST [1:3] OF IfcLengthMeasure`.

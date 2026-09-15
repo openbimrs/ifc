@@ -32,7 +32,7 @@ use ifc_model::{Entity, EntityId, Model};
 ///
 /// From IFC4 ADD2 TC1: slot 0 `Position` is inherited from
 /// `IfcElementarySurface` by all four subtypes; radii follow from slot 1.
-mod slot {
+pub(crate) mod slot {
     /// `Position`: `IfcAxis2Placement3D`, from `IfcElementarySurface`.
     pub const POSITION: usize = 0;
     /// `Radius` on `IfcCylindricalSurface` and `IfcSphericalSurface`.

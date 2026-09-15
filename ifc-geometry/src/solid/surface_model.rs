@@ -32,7 +32,7 @@ use ifc_model::{Entity, EntityId};
 /// `IfcGeometricRepresentationItem`, which declares no explicit attributes, so
 /// each one's single collection attribute is absolute slot 0.
 /// `IfcGeometricCurveSet` adds nothing and inherits `Elements` at slot 0.
-mod slot {
+pub(crate) mod slot {
     /// `SbsmBoundary : SET [1:?] OF IfcShell`, on `IfcShellBasedSurfaceModel`.
     pub const SBSM_BOUNDARY: usize = 0;
     /// `FbsmFaces : SET [1:?] OF IfcConnectedFaceSet`, on the face-based

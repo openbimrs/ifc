@@ -33,7 +33,7 @@ use std::collections::HashMap;
 /// From IFC4 ADD2 TC1: `IfcLocalPlacement` has no inherited explicit
 /// attributes (its supertype `IfcObjectPlacement` declares only the inverse
 /// `PlacesObject`), so these indices are its own.
-mod slot {
+pub(crate) mod slot {
     /// `PlacementRelTo`: the parent placement, optional.
     pub const PLACEMENT_REL_TO: usize = 0;
     /// `RelativePlacement`: offset from the parent.

@@ -28,7 +28,7 @@ use ifc_model::{Entity, EntityId};
 /// From IFC4 ADD2 TC1. `IfcCompositeCurveOnSurface`, `IfcBoundaryCurve` and
 /// `IfcOuterBoundaryCurve` are subtypes that add no explicit attributes, so
 /// these same indices apply to all four.
-mod curve_slot {
+pub(crate) mod curve_slot {
     /// `Segments`: `LIST [1:?] OF IfcCompositeCurveSegment`.
     pub const SEGMENTS: usize = 0;
     /// `SelfIntersect`: `IfcLogical`, informational only.
@@ -39,7 +39,7 @@ mod curve_slot {
 ///
 /// From IFC4 ADD2 TC1. `IfcReparametrisedCompositeCurveSegment` adds
 /// `ParamLength` at slot 3 and inherits these three unchanged.
-mod segment_slot {
+pub(crate) mod segment_slot {
     /// `Transition`: `IfcTransitionCode`.
     pub const TRANSITION: usize = 0;
     /// `SameSense`: `IfcBoolean`.

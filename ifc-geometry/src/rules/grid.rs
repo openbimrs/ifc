@@ -84,7 +84,7 @@ fn grid_axis_membership(model: &Model, id: EntityId, out: &mut Vec<RuleViolation
 ///
 /// Verified against the schema: IfcRoot 4 + IfcObject 1 + IfcProduct 2 = 7
 /// inherited slots, so IfcGrid's own attributes start at 7.
-mod grid_slot {
+pub(crate) mod grid_slot {
     /// `UAxes`.
     pub const U_AXES: usize = 7;
     /// `VAxes`.

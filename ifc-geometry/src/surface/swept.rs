@@ -35,7 +35,7 @@ use ifc_model::{Entity, EntityId};
 ///
 /// From IFC4 ADD2 TC1: slots 0 and 1 are inherited from `IfcSweptSurface` by
 /// both subtypes; each subtype's own attributes follow from slot 2.
-mod slot {
+pub(crate) mod slot {
     /// `SweptCurve`: `IfcProfileDef`, from `IfcSweptSurface`.
     pub const SWEPT_CURVE: usize = 0;
     /// `Position`: `OPTIONAL IfcAxis2Placement3D`, from `IfcSweptSurface`.

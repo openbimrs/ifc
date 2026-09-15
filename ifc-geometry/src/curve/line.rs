@@ -19,7 +19,7 @@ use ifc_model::{Entity, EntityId};
 /// `IfcCurve` / `IfcGeometricRepresentationItem` / `IfcRepresentationItem`
 /// (those declare only inverse and derived attributes), so its own two
 /// attributes occupy slots 0 and 1.
-mod slot {
+pub(crate) mod slot {
     /// `Pnt`: `IfcCartesianPoint`, the point at parameter zero.
     pub const PNT: usize = 0;
     /// `Dir`: `IfcVector`, the direction *and* the parameter scale.

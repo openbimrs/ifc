@@ -48,7 +48,7 @@ use ifc_model::{Entity, EntityId, Model};
 ///
 /// `IfcMappedItem` inherits from `IfcRepresentationItem`, which declares no
 /// explicit attributes, so these indices are its own.
-mod item_slot {
+pub(crate) mod item_slot {
     /// `MappingSource`: the `IfcRepresentationMap` being instanced.
     pub const MAPPING_SOURCE: usize = 0;
     /// `MappingTarget`: an `IfcCartesianTransformationOperator`.
@@ -56,7 +56,7 @@ mod item_slot {
 }
 
 /// `IfcRepresentationMap` attribute slots.
-mod map_slot {
+pub(crate) mod map_slot {
     /// `MappingOrigin`: an `IfcAxis2Placement` for the source geometry.
     pub const MAPPING_ORIGIN: usize = 0;
     /// `MappedRepresentation`: the `IfcRepresentation` being reused.

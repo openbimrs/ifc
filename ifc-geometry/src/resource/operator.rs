@@ -36,7 +36,7 @@ use crate::transform::Transform;
 use ifc_model::{Entity, EntityId, Model};
 
 /// Attribute slots as ABSOLUTE STEP positions, inherited attributes first.
-mod slot {
+pub(crate) mod slot {
     /// `Axis1 : OPTIONAL IfcDirection` (supertype; local X).
     pub const AXIS1: usize = 0;
     /// `Axis2 : OPTIONAL IfcDirection` (supertype; local Y).

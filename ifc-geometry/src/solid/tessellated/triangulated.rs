@@ -14,7 +14,7 @@ use ifc_model::{Entity, EntityId};
 /// `IfcTessellatedFaceSet` at slot 0, then `Normals`, `Closed`, `CoordIndex`,
 /// `PnIndex`. Note `Normals` sits **before** `Closed` and `CoordIndex`, so
 /// `CoordIndex` is slot 3 and not slot 1 as its prominence suggests.
-mod slot {
+pub(crate) mod slot {
     /// `Normals : OPTIONAL LIST OF LIST [3:3] OF IfcParameterValue`, slot 1.
     pub const NORMALS: usize = 1;
     /// `Closed : OPTIONAL IfcBoolean`, absolute slot 2.

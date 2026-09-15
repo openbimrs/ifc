@@ -16,7 +16,7 @@ use crate::error::{GeometryError, GeometryResult};
 use crate::lower::session::LoweringSession;
 use crate::transform::Transform;
 
-mod slot {
+pub(crate) mod slot {
     pub const OPERATOR: usize = 0;
     pub const FIRST_OPERAND: usize = 1;
     pub const SECOND_OPERAND: usize = 2;

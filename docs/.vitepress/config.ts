@@ -12,6 +12,8 @@ const adrs = [
   ['0007-authoring-is-a-schema-layer-not-a-model-layer', 7, 'Authoring is a schema layer'],
   ['0008-fixed-slot-constants-for-stable-relationships', 8, 'Fixed slot constants'],
   ['0009-derived-attributes-resolve-through-the-parent-context', 9, 'DERIVED attribute inheritance'],
+  ['0010-checked-mutation-is-a-model-level-primitive', 10, 'Checked mutation primitive'],
+  ['0011-geometry-authoring-is-bidirectional-in-the-bridge', 11, 'Bidirectional geometry authoring'],
 ]
 
 function adrItems() {

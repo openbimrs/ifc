@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-08-26
+- **Amended:** 2026-09-15 - scope clarified: generic authoring, not domain-specific ([ADR 0011](/adr/0011-geometry-authoring-is-bidirectional-in-the-bridge))
 - **Deciders:** openbimrs contributors
 - **Supersedes:** —
 
@@ -59,3 +60,21 @@ module remains the owner of schema-agnostic edits.
 | Generated struct per entity | 776–876 types per schema version, recompile per release; the problem `ifc-schema` exists to avoid |
 | Builder inside `ifc-validate` | Conflates auditing an existing model with constructing a new one; different failure timing |
 | No checking, document the slots | The status quo; every application reinvents an untested private version |
+
+## Amendment (2026-09-15): scope is generic authoring
+
+This record placed *generic, schema-driven* authoring in `ifc-author`. It has
+since been read as precedent for putting **all** authoring in sibling crates.
+That over-reads it.
+
+The reason for a separate crate here was structural: `ifc-model` is L0 and
+`ifc-schema` is L1, so typed setters inside `ifc-model` would have inverted a
+tier edge. That constraint binds only crates below `ifc-schema`.
+
+Domain crates already sit above both and author in place --  `ifc-material`,
+`ifc-cost`, `ifc-structural`, `ifc-schedule`, and `ifc-properties` each pair
+readers with authoring modules. [ADR 0011](/adr/0011-geometry-authoring-is-bidirectional-in-the-bridge)
+extends that pattern to `ifc-geometry` on measured evidence.
+
+`ifc-author` remains the home for authoring that is *not* domain-specific:
+the schema-driven builder, and cross-cutting records such as ownership.

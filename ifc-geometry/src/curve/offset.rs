@@ -60,7 +60,7 @@ mod offset_3d_slot {
 }
 
 /// `IfcPcurve` attribute slots, from IFC4 ADD2 TC1.
-mod pcurve_slot {
+pub(crate) mod pcurve_slot {
     /// `BasisSurface`: the `IfcSurface` the curve lives on.
     pub const BASIS_SURFACE: usize = 0;
     /// `ReferenceCurve`: a 2D curve in the surface's parameter space.
@@ -71,7 +71,7 @@ mod pcurve_slot {
 ///
 /// `IfcIntersectionCurve` and `IfcSeamCurve` add no explicit attributes, so
 /// these indices serve all three.
-mod surface_curve_slot {
+pub(crate) mod surface_curve_slot {
     /// `Curve3D`: the curve in model space.
     pub const CURVE_3D: usize = 0;
     /// `AssociatedGeometry`: `LIST [1:2] OF IfcPcurve`.

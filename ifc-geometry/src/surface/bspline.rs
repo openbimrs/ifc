@@ -35,7 +35,7 @@ use ifc_model::{Entity, EntityId, Value};
 /// From IFC4 ADD2 TC1. Slots 0-6 come from `IfcBSplineSurface`, 7-11 from
 /// `IfcBSplineSurfaceWithKnots`, and 12 from
 /// `IfcRationalBSplineSurfaceWithKnots`.
-mod slot {
+pub(crate) mod slot {
     /// `UDegree`: `IfcInteger`.
     pub const U_DEGREE: usize = 0;
     /// `VDegree`: `IfcInteger`.

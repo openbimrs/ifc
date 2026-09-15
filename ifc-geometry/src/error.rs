@@ -150,6 +150,21 @@ pub enum GeometryError {
     /// Units could not be resolved, so coordinates have no defined scale.
     #[error("unit resolution failed: {0}")]
     Units(String),
+
+    /// An authored value was rejected before anything was staged (ADR 0011).
+    ///
+    /// Distinct from [`Self::Degenerate`], which describes an entity that
+    /// already exists in a file. Here there is no entity yet and therefore no
+    /// id to report: the caller passed a value that could not be written.
+    #[error("cannot author {type_name}.{attribute}: {detail}")]
+    InvalidAuthoredValue {
+        /// The IFC type being authored.
+        type_name: &'static str,
+        /// The attribute whose value was rejected.
+        attribute: &'static str,
+        /// Why it cannot be written.
+        detail: String,
+    },
 }
 
 impl GeometryError {
@@ -170,7 +185,7 @@ impl GeometryError {
             | Self::Degenerate { entity, .. } => Some(*entity),
             #[cfg(feature = "compile")]
             Self::CompilationRefused { entity, .. } => Some(*entity),
-            Self::Units(_) => None,
+            Self::Units(_) | Self::InvalidAuthoredValue { .. } => None,
         }
     }
 

@@ -34,7 +34,7 @@ use crate::slots::Slots;
 use ifc_model::{Entity, EntityId};
 
 /// `IfcCurveBoundedPlane` attribute slots, from IFC4 ADD2 TC1.
-mod plane_slot {
+pub(crate) mod plane_slot {
     /// `BasisSurface`: an `IfcPlane`, not a general surface.
     pub const BASIS_SURFACE: usize = 0;
     /// `OuterBoundary`: the outline curve.
@@ -44,7 +44,7 @@ mod plane_slot {
 }
 
 /// `IfcCurveBoundedSurface` attribute slots, from IFC4 ADD2 TC1.
-mod surface_slot {
+pub(crate) mod surface_slot {
     /// `BasisSurface`: any `IfcSurface`.
     pub const BASIS_SURFACE: usize = 0;
     /// `Boundaries`: `SET [1:?] OF IfcBoundaryCurve`.
@@ -54,7 +54,7 @@ mod surface_slot {
 }
 
 /// `IfcRectangularTrimmedSurface` attribute slots, from IFC4 ADD2 TC1.
-mod trimmed_slot {
+pub(crate) mod trimmed_slot {
     /// `BasisSurface`: the surface being trimmed.
     pub const BASIS_SURFACE: usize = 0;
     /// `U1`: first u parameter.

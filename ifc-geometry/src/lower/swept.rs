@@ -21,7 +21,7 @@ use crate::solid::swept::directrix::{FixedReferenceSweptAreaSolid, SectionedSpin
 use crate::transform::Transform;
 use crate::units::UnitScale;
 
-mod slot {
+pub(crate) mod slot {
     pub const SWEPT_AREA: usize = 0;
     pub const POSITION: usize = 1;
     pub const EXTRUDED_DIRECTION: usize = 2;

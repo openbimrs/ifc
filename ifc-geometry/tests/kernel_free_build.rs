@@ -154,3 +154,37 @@ fn placement_resolution_survives_without_the_kernel() {
         "an absent product must report rather than silently resolve to origin"
     );
 }
+
+/// Authoring must work in the column that links no kernel (ADR 0011).
+///
+/// This is the claim that makes geometry authoring vendor-neutral: an
+/// application computes vertices with CGAL, OCCT or Axiolid and hands over
+/// plain numbers, so the writer must not itself depend on any of them. If a
+/// future change makes an authoring signature name a kernel type, this
+/// column stops compiling.
+#[test]
+#[cfg(not(feature = "lowering"))]
+fn authoring_survives_without_the_kernel() {
+    use ifc_model::{Model, Transaction};
+
+    let model = Model::new();
+    let mut tx = Transaction::new(&model);
+
+    let origin = ifc_geometry::authoring::cartesian_point(&mut tx, &[0.0, 0.0, 0.0])
+        .expect("a point needs no kernel");
+    let up = ifc_geometry::authoring::direction(&mut tx, &[0.0, 0.0, 1.0])
+        .expect("a direction needs no kernel");
+    let place = ifc_geometry::authoring::axis2_placement_3d(&mut tx, origin, Some(up), None);
+    let profile = ifc_geometry::authoring::rectangle_profile(&mut tx, None, None, 6.0, 0.3)
+        .expect("a profile needs no kernel");
+    let solid =
+        ifc_geometry::authoring::extruded_area_solid(&mut tx, profile, Some(place), up, 2.4)
+            .expect("an extrusion is a description, not an evaluation");
+
+    let mut model = model;
+    tx.commit(&mut model).expect("commit");
+    assert_eq!(
+        model.get(solid).expect("solid present").type_name.as_ref(),
+        "IFCEXTRUDEDAREASOLID"
+    );
+}

@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-08-26
 - **Amended:** 2026-09-14 — compilation admitted behind an opt-in feature
+- **Amended:** 2026-09-15 — the bridge gained a write direction ([ADR 0011](/adr/0011-geometry-authoring-is-bidirectional-in-the-bridge)); it still implements no geometry
 - **Deciders:** openbimrs contributors
 - **Supersedes:** —
 
@@ -126,3 +127,21 @@ that knows the file's true scale.
 - `ifc-geometry/tests/compile_pairing.rs` keeps lowering and compilation paired:
   each family yields a mesh or a typed refusal that names its entity
 - Root `Cargo.toml` pins Axiolid crates by exact git tag (`v0.1.8`)
+
+## Amendment (2026-09-15): a write direction, still without computation
+
+[ADR 0011](/adr/0011-geometry-authoring-is-bidirectional-in-the-bridge) adds
+geometry authoring inside this crate, making the bridge bidirectional.
+
+**What did not change.** Every sentence above about computation still holds.
+Authoring writes IFC geometry entities, which are exact *descriptions* --
+`IfcExtrudedAreaSolid`, `IfcBSplineSurface`, `IfcBooleanResult` -- not
+evaluations. It triangulates nothing, evaluates no NURBS, executes no
+boolean. A cut is stored as an unevaluated `IfcBooleanResult`, preserving
+the invariant that this adapter never tessellates.
+
+**What this buys.** Because authoring links no kernel, any kernel can be its
+source: an application computes vertices with CGAL, OCCT, or Axiolid and
+hands over plain numbers. The three conditions on the `compile` feature are
+untouched -- authoring adds no dependency, so the default and
+`--no-default-features` columns still link zero provider crates.

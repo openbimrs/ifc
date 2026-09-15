@@ -21,7 +21,7 @@ use ifc_model::{Entity, EntityId};
 /// The supertype declares no explicit attributes, so each subtype's own
 /// attributes start at 0. All four subtypes follow the same
 /// `(AtRelatingElement, AtRelatedElement)` shape.
-mod slot {
+pub(crate) mod slot {
     /// Geometry in the relating element's coordinate system.
     pub const AT_RELATING: usize = 0;
     /// Geometry in the related element's coordinate system.
@@ -60,7 +60,7 @@ impl ConnectionKind {
 /// `IfcConnectionPointEccentricity` eccentricity slots.
 ///
 /// These follow the two inherited connection attributes.
-mod eccentricity_slot {
+pub(crate) mod eccentricity_slot {
     /// Offset along the connection X axis.
     pub const IN_X: usize = 2;
     /// Offset along the connection Y axis.

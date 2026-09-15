@@ -51,6 +51,7 @@
 //! plan/body choice, profiles, curves, surfaces, solids, units and
 //! placements -- and links no geometry code at all.
 
+pub mod authoring;
 #[cfg(feature = "compile")]
 pub mod compile;
 pub mod constraint;

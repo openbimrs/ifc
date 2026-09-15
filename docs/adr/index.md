@@ -24,3 +24,4 @@ for new records.
 | [0008](/adr/0008-fixed-slot-constants-for-stable-relationships) | Fixed slot constants for stable relationships | Accepted |
 | [0009](/adr/0009-derived-attributes-resolve-through-the-parent-context) | DERIVED attributes resolve through the parent context | Accepted |
 | [0010](/adr/0010-checked-mutation-is-a-model-level-primitive) | Checked mutation is a model-level primitive, not a bare accessor | Accepted |
+| [0011](/adr/0011-geometry-authoring-is-bidirectional-in-the-bridge) | Geometry authoring is bidirectional inside the bridge | Accepted |

@@ -61,19 +61,7 @@ pub const PLANNED_PROFILES: &[(&str, &str)] = &[(
     "generic profile declaration carries no concrete geometry to lower",
 )];
 
-mod slot {
-    pub const POSITION: usize = 2;
-    pub const X_DIM: usize = 3;
-    pub const Y_DIM: usize = 4;
-    pub const RADIUS: usize = 3;
-    pub const OUTER_CURVE: usize = 2;
-    pub const INNER_CURVES: usize = 3;
-    pub const CIRCLE_WALL_THICKNESS: usize = 4;
-    pub const RECT_WALL_THICKNESS: usize = 5;
-    pub const RECT_INNER_RADIUS: usize = 6;
-    pub const RECT_OUTER_RADIUS: usize = 7;
-    pub const ROUNDED_RECT_RADIUS: usize = 5;
-}
+pub(crate) use crate::slots::profile_slot as slot;
 
 /// Concrete profile families this lowerer does not yet build, with reasons.
 ///
@@ -397,7 +385,7 @@ fn apply_parameterized_position(
 /// Every index below was read from the IFC4 ADD2 TC1 schema, not inferred:
 /// `IfcParameterizedProfileDef` contributes ProfileType, ProfileName and
 /// Position, so subtype attributes start at slot 3.
-mod section_slot {
+pub(crate) mod section_slot {
     // IfcIShapeProfileDef
     pub const I_WIDTH: usize = 3;
     pub const I_DEPTH: usize = 4;

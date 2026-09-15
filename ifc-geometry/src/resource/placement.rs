@@ -39,7 +39,7 @@ use crate::transform::Transform;
 use ifc_model::{Entity, EntityId, Model};
 
 /// Attribute slots as ABSOLUTE STEP positions, inherited attributes first.
-mod slot {
+pub(crate) mod slot {
     /// `Location : IfcCartesianPoint`, declared by `IfcPlacement`.
     ///
     /// Inherited, therefore slot 0 of `IfcAxis1Placement`,

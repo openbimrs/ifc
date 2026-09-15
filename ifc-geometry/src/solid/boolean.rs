@@ -34,7 +34,7 @@ use ifc_model::{Entity, EntityId, Model};
 /// EXPRESS (IFC4 ADD2 TC1): subtypes `IfcGeometricRepresentationItem`, which
 /// declares no explicit attributes, so all three are absolute slots 0-2.
 /// `IfcBooleanClippingResult` adds none, so it shares this exact layout.
-mod slot {
+pub(crate) mod slot {
     /// `Operator : IfcBooleanOperator`.
     pub const OPERATOR: usize = 0;
     /// `FirstOperand : IfcBooleanOperand`.

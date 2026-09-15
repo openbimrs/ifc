@@ -39,7 +39,7 @@ use ifc_model::{Entity, EntityId, Value};
 /// `IfcBSplineCurveWithKnots`, and 8 from
 /// `IfcRationalBSplineCurveWithKnots`. Inherited attributes come first, so a
 /// rational curve reads `Degree` at 0 and `WeightsData` at 8.
-mod slot {
+pub(crate) mod slot {
     /// `Degree`: `IfcInteger`, from `IfcBSplineCurve`.
     pub const DEGREE: usize = 0;
     /// `ControlPointsList`: `LIST [2:?] OF IfcCartesianPoint`.

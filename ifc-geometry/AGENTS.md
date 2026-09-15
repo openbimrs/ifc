@@ -1,6 +1,8 @@
 # ifc-geometry instructions
 
-Purpose: Interpret all shape-affecting IFC data and lower exact intent into a format-neutral axiolid-model DAG.
+Purpose: Interpret all shape-affecting IFC data in both directions — lower exact
+intent into a format-neutral axiolid-model DAG, and author IFC geometry entities
+from plain numbers (ADR 0011).
 
 Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
 roadmap work; keep progress, blockers, and evidence there.
@@ -35,6 +37,10 @@ rejected by `scripts/check-leakage.py`. See `data/NOTICE.md`.
 ## Module ownership
 
 - `resource`, `curve`, `surface`, `solid`, `constraint`: borrowed geometry-resource views
+- `authoring/`: IFC-side writers (ADR 0011). Kernel-free: takes plain `f64`,
+  `[f64; 3]` and index buffers, names no axiolid type, and must compile with
+  `--no-default-features`. Indexes the same `pub(crate) mod slot` constants the
+  readers use; never restates a slot number.
 - `select`, `rules`: EXPRESS membership and actionable semantic rules
 - `units`, `transform`: source-number interpretation and project-space composition
 - `input/` (planned): shape inputs from Profile, Representation, Material,

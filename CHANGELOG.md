@@ -8,6 +8,12 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `ifc-geometry` can now author geometry as well as read it (ADR 0011):
+  points, directions, axis placements, polylines, rectangle/circle/arbitrary
+  profiles, extruded and revolved area solids, and unevaluated boolean
+  results. The authoring API links no geometry kernel -- it takes plain
+  `f64`, `[f64; 3]` and index buffers -- so vertices computed with CGAL,
+  OCCT or Axiolid can all be authored through one path.
 - `ifc-schedule` can now author programmes, not only read them:
   `create_task`, `create_task_time` and `create_sequence`. Constructors
   index the slot constants the existing readers own, so `IfcTask`'s seven

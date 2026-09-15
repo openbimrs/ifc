@@ -331,3 +331,42 @@ mod tests {
         assert!(err.to_string().contains("text"), "got: {err}");
     }
 }
+
+/// Attribute slots for the profile families, shared by both directions.
+///
+/// Lives here rather than in `lower/` because authoring needs the same
+/// numbers and must compile with `--no-default-features`, where `lower/` is
+/// absent (ADR 0011). One definition serves reading and writing, so a
+/// correction cannot land on one side only.
+///
+/// `IfcParameterizedProfileDef` contributes ProfileType, ProfileName and
+/// Position, so subtype attributes start at slot 3. Every index was read
+/// from the IFC4 ADD2 TC1 schema, not inferred.
+pub mod profile_slot {
+    /// `ProfileType`, `.AREA.` or `.CURVE.` -- declared by `IfcProfileDef`.
+    pub const PROFILE_TYPE: usize = 0;
+    /// `ProfileName`.
+    pub const PROFILE_NAME: usize = 1;
+    /// `Position : IfcAxis2Placement2D`.
+    pub const POSITION: usize = 2;
+    /// `IfcRectangleProfileDef.XDim`.
+    pub const X_DIM: usize = 3;
+    /// `IfcRectangleProfileDef.YDim`.
+    pub const Y_DIM: usize = 4;
+    /// `IfcCircleProfileDef.Radius`.
+    pub const RADIUS: usize = 3;
+    /// `IfcArbitraryClosedProfileDef.OuterCurve`.
+    pub const OUTER_CURVE: usize = 2;
+    /// `IfcArbitraryProfileDefWithVoids.InnerCurves`.
+    pub const INNER_CURVES: usize = 3;
+    /// `IfcCircleHollowProfileDef.WallThickness`.
+    pub const CIRCLE_WALL_THICKNESS: usize = 4;
+    /// `IfcRectangleHollowProfileDef.WallThickness`.
+    pub const RECT_WALL_THICKNESS: usize = 5;
+    /// `IfcRectangleHollowProfileDef.InnerFilletRadius`.
+    pub const RECT_INNER_RADIUS: usize = 6;
+    /// `IfcRectangleHollowProfileDef.OuterFilletRadius`.
+    pub const RECT_OUTER_RADIUS: usize = 7;
+    /// `IfcRoundedRectangleProfileDef.RoundingRadius`.
+    pub const ROUNDED_RECT_RADIUS: usize = 5;
+}

@@ -18,7 +18,7 @@ use crate::slots::Slots;
 use ifc_model::{Entity, EntityId};
 
 /// `IfcGridAxis` attribute slots.
-mod axis_slot {
+pub(crate) mod axis_slot {
     /// `AxisTag`: the label, e.g. `C` or `4`.
     pub const AXIS_TAG: usize = 0;
     /// `AxisCurve`: the curve the axis follows.
@@ -28,7 +28,7 @@ mod axis_slot {
 }
 
 /// `IfcVirtualGridIntersection` attribute slots.
-mod intersection_slot {
+pub(crate) mod intersection_slot {
     /// `IntersectingAxes`: exactly two `IfcGridAxis`.
     pub const INTERSECTING_AXES: usize = 0;
     /// `OffsetDistances`: two or three offsets from the intersection.
@@ -36,7 +36,7 @@ mod intersection_slot {
 }
 
 /// `IfcGridPlacement` attribute slots.
-mod placement_slot {
+pub(crate) mod placement_slot {
     /// `PlacementLocation`: the grid intersection.
     pub const PLACEMENT_LOCATION: usize = 0;
     /// `PlacementRefDirection`: optional direction reference.

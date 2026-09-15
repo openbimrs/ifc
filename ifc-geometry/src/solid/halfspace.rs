@@ -51,7 +51,7 @@ use ifc_model::{Entity, EntityId};
 /// `IfcGeometricRepresentationItem`, which declares no explicit attributes, so
 /// `BaseSurface` and `AgreementFlag` are absolute slots 0 and 1 -- and the
 /// subtypes' own attributes therefore start at slot 2.
-mod slot {
+pub(crate) mod slot {
     /// `BaseSurface : IfcSurface`, on `IfcHalfSpaceSolid`.
     pub const BASE_SURFACE: usize = 0;
     /// `AgreementFlag : IfcBoolean`, on `IfcHalfSpaceSolid`.
