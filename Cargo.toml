@@ -56,6 +56,7 @@ axiolid-profile = { version = "0.2.0" }
 axiolid-surface = { version = "0.2.0" }
 axiolid-reference = { version = "0.2.0" }
 axiolid-curve = { version = "0.2.0" }
+axiolid-evaluate = { version = "0.2.0" }
 axiolid-topology = { version = "0.2.0" }
 # Execution provider. Only ifc-geometry's opt-in `compile` feature may use
 # these; the default dependency graph stays representation-only (ADR 0004).

@@ -24,6 +24,12 @@ Allowed production dependencies: ifc-model, schema metadata, and exact neutral a
 - `placement.rs`: linear placement/point-by-distance
 - `referent.rs`: stationing/referents and station equations
 - `query.rs`: bounded alignment traversal
+- `curve/elevation.rs`: vertical segments as exact `ElevationLaw`s. Only
+  CONSTANTGRADIENT and PARABOLICARC are polynomial in plan distance;
+  CIRCULARARC is refused rather than approximated by a parabola.
+- `curve/gradient.rs`: plan and profile composed as `Curve3::Elevated`.
+  Height is a function of PLAN distance, not 3D arc length -- they diverge by
+  sqrt(1 + g^2) wherever grade is non-zero.
 - `slot.rs`: attribute slots read from the IFC4X3 ADD2 schema, indexed by both
   the readers and `authoring/`. Never restate a slot number elsewhere.
 - `authoring/`: write direction. Plain `f64` in the file's declared units; no

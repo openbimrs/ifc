@@ -17,6 +17,9 @@ axiolid-model.workspace = true
 
 [dev-dependencies]
 ifc-step = { path = "../ifc-step" }
+# Tests only: proves the composed centreline evaluates to the right points.
+# The crate itself stores exact geometry and never evaluates it.
+axiolid-evaluate.workspace = true
 
 [lints]
 workspace = true

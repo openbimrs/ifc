@@ -586,6 +586,7 @@ version = "0.1.0"
 dependencies = [
  "axiolid-core",
  "axiolid-curve",
+ "axiolid-evaluate",
  "axiolid-model",
  "ifc-model",
  "ifc-schema",

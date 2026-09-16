@@ -7,6 +7,14 @@ and this project follows Semantic Versioning.
 
 ## [Unreleased]
 
+### Added
+
+- `lower_gradient_curve` composes an alignment horizontal layout with its
+  vertical profile as an exact `Curve3::Elevated`, so a clothoid plan and a
+  parabolic profile both survive unapproximated.
+- `elevation_law` and `profile_law` map IFC vertical segments to exact
+  `ElevationLaw`s, covering CONSTANTGRADIENT and PARABOLICARC.
+
 ### Changed
 
 - Axiolid kernel crates are consumed from crates.io at `0.2.0` instead of an

@@ -337,7 +337,7 @@ fn push(builder: &mut GeometryGraphBuilder, node: GeometryNode) -> AlignmentResu
     })
 }
 
-fn finish(
+pub(super) fn finish(
     builder: GeometryGraphBuilder,
     root: NodeId,
     sources: Vec<EntityId>,
