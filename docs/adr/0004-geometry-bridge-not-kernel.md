@@ -102,7 +102,7 @@ that knows the file's true scale.
 - Capabilities absent from the kernel are absent from the pipeline. Plane
   sectioning is the current example: it is a kernel concern, it does not exist
   upstream yet, so plan derivation from 3D bodies is unavailable.
-- The Axiolid dependency is pinned by exact git tag, so upgrades are
+- The Axiolid dependency is pinned by exact published version, so upgrades are
   deliberate rather than automatic.
 
 **Follow-ups / risks to watch**
@@ -126,7 +126,10 @@ that knows the file's true scale.
   column, so the "zero provider crates by default" claim is measured
 - `ifc-geometry/tests/compile_pairing.rs` keeps lowering and compilation paired:
   each family yields a mesh or a typed refusal that names its entity
-- Root `Cargo.toml` pins Axiolid crates by exact git tag (`v0.1.8`)
+- Root `Cargo.toml` pins Axiolid crates by exact published version (`0.2.0`)
+  from crates.io. Before 0.2.0 the kernel was unpublished and the pin was an
+  exact git tag; the requirement was always an immutable revision, not a
+  particular transport.
 
 ## Amendment (2026-09-15): a write direction, still without computation
 

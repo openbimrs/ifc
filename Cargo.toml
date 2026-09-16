@@ -48,21 +48,21 @@ openbim-step = "=0.5.0"
 
 # Format-neutral geometry contracts. IFC bridges select representations, never
 # concrete CPU/GPU execution providers.
-axiolid-core = { git = "https://github.com/axiolid/kernel.git", tag = "v0.1.8" }
-axiolid-mesh = { git = "https://github.com/axiolid/kernel.git", tag = "v0.1.8" }
-axiolid-model = { git = "https://github.com/axiolid/kernel.git", tag = "v0.1.8" }
-axiolid-primitive = { git = "https://github.com/axiolid/kernel.git", tag = "v0.1.8" }
-axiolid-profile = { git = "https://github.com/axiolid/kernel.git", tag = "v0.1.8" }
-axiolid-surface = { git = "https://github.com/axiolid/kernel.git", tag = "v0.1.8" }
-axiolid-reference = { git = "https://github.com/axiolid/kernel.git", tag = "v0.1.8" }
-axiolid-curve = { git = "https://github.com/axiolid/kernel.git", tag = "v0.1.8" }
-axiolid-topology = { git = "https://github.com/axiolid/kernel.git", tag = "v0.1.8" }
+axiolid-core = { version = "0.2.0" }
+axiolid-mesh = { version = "0.2.0" }
+axiolid-model = { version = "0.2.0" }
+axiolid-primitive = { version = "0.2.0" }
+axiolid-profile = { version = "0.2.0" }
+axiolid-surface = { version = "0.2.0" }
+axiolid-reference = { version = "0.2.0" }
+axiolid-curve = { version = "0.2.0" }
+axiolid-topology = { version = "0.2.0" }
 # Execution provider. Only ifc-geometry's opt-in `compile` feature may use
 # these; the default dependency graph stays representation-only (ADR 0004).
-axiolid-contracts = { git = "https://github.com/axiolid/kernel.git", tag = "v0.1.8" }
-axiolid-mesh-compile = { git = "https://github.com/axiolid/kernel.git", tag = "v0.1.8" }
-axiolid-mesh-compile-contract = { git = "https://github.com/axiolid/kernel.git", tag = "v0.1.8" }
-axiolid-mesh-boolean-boolmesh = { git = "https://github.com/axiolid/kernel.git", tag = "v0.1.8" }
+axiolid-contracts = { version = "0.2.0" }
+axiolid-mesh-compile = { version = "0.2.0" }
+axiolid-mesh-compile-contract = { version = "0.2.0" }
+axiolid-mesh-boolean-boolmesh = { version = "0.2.0" }
 
 ahash = "0.8"
 thiserror = "2.0"

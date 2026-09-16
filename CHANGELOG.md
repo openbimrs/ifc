@@ -7,6 +7,16 @@ and this project follows Semantic Versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- Axiolid kernel crates are consumed from crates.io at `0.2.0` instead of an
+  exact git tag. The tag pin existed only while the kernel was unpublished.
+
+### Removed
+
+- `docs/local-kernel.md`: the local-checkout workaround it described is
+  obsolete now that every kernel crate is published.
+
 ### Added
 - `product_world_transform` resolves products placed by `IfcLinearPlacement`, using the cached `CartesianPosition`. Deriving a frame from the basis curve is a typed refusal, not an approximation.
 - `ifc-alignment` can author alignment records: `IfcAlignment`, the

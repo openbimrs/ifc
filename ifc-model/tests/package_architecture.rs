@@ -342,3 +342,43 @@ fn the_bridge_exception_still_rests_on_unconditional_kernel_deps() {
         optional_kernel_deps.join(", ")
     );
 }
+
+/// The kernel must be consumed as an immutable published release.
+///
+/// ADR 0004 requires a pinned, immutable kernel revision. A path dependency
+/// points at a working tree that can change under the build, and a git
+/// dependency resolves outside the registry; both were legitimate before the
+/// kernel was published, and neither is now. A local path in particular
+/// builds only on the machine that has it, so it breaks CI and every other
+/// clone. Asserted rather than left to review.
+#[test]
+fn the_kernel_is_consumed_as_a_published_release() {
+    let mut offenders = Vec::new();
+    for (name, package) in ifc_packages() {
+        for dependency in &package.dependencies {
+            if !dependency.name.starts_with("axiolid") {
+                continue;
+            }
+            if dependency.path.is_some() {
+                offenders.push(format!(
+                    "{name} -> {} by local path; commit a published version instead",
+                    dependency.name
+                ));
+            } else if dependency
+                .source
+                .as_deref()
+                .is_some_and(|source| source.starts_with("git+"))
+            {
+                offenders.push(format!(
+                    "{name} -> {} by git; the kernel is on crates.io since 0.2.0",
+                    dependency.name
+                ));
+            }
+        }
+    }
+    assert!(
+        offenders.is_empty(),
+        "kernel dependencies must be published releases (ADR 0004):\n{}",
+        offenders.join("\n")
+    );
+}
