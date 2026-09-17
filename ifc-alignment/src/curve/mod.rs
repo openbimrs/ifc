@@ -19,4 +19,4 @@ pub use assemble::{
     lower_vertical_segment, LoweredAlignmentCurve, PartialHorizontalLayout, RefusedSegment,
 };
 pub use elevation::{elevation_law, profile_law};
-pub use gradient::lower_gradient_curve;
+pub use gradient::{gradient_curve3, lower_gradient_curve};

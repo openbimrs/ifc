@@ -38,6 +38,7 @@ compile = [
     "dep:axiolid-mesh-compile",
     "dep:axiolid-mesh-compile-contract",
     "dep:axiolid-mesh-boolean-boolmesh",
+    "dep:axiolid-curve-evaluate-contract",
 ]
 
 [dependencies]
@@ -67,8 +68,14 @@ axiolid-contracts = { workspace = true, optional = true }
 axiolid-mesh-compile = { workspace = true, optional = true }
 axiolid-mesh-compile-contract = { workspace = true, optional = true }
 axiolid-mesh-boolean-boolmesh = { workspace = true, optional = true }
+# The CurveEvaluator capability, not an engine: names evaluation so a caller
+# can inject one. Opt-in with the other providers, never in the default build.
+axiolid-curve-evaluate-contract = { workspace = true, optional = true }
 
 [dev-dependencies]
+# Tests only: a concrete evaluator to inject, proving the seam works.
+# The library names the capability and links no implementation.
+axiolid-evaluate.workspace = true
 ifc-step.workspace = true
 axiolid-reference.workspace = true
 proc-macro2 = "1"

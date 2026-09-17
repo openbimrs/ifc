@@ -9,6 +9,12 @@ and this project follows Semantic Versioning.
 
 ### Added
 
+- `constraint::placement::derive` resolves an `IfcLinearPlacement` that states
+  only an `IfcPointByDistanceExpression`, by evaluating the basis curve through
+  an injected `CurveEvaluator`. Behind the non-default `compile` feature: the
+  bridge names the capability and links no implementation.
+- `ifc_alignment::gradient_curve3` returns the composed centreline as a
+  `Curve3`, so a caller can evaluate it without going through a graph.
 - `lower_gradient_curve` composes an alignment horizontal layout with its
   vertical profile as an exact `Curve3::Elevated`, so a clothoid plan and a
   parabolic profile both survive unapproximated.
@@ -16,6 +22,9 @@ and this project follows Semantic Versioning.
   `ElevationLaw`s, covering CONSTANTGRADIENT and PARABOLICARC.
 
 ### Changed
+
+- Axiolid kernel crates move to `0.2.1`, which publishes
+  `axiolid-curve-evaluate-contract`.
 
 - Axiolid kernel crates are consumed from crates.io at `0.2.0` instead of an
   exact git tag. The tag pin existed only while the kernel was unpublished.

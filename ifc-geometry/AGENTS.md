@@ -72,3 +72,24 @@ pass, and link no `axiolid-*` crate. The active-lowering vocabulary gate parses
 Rust paths/imports (including root aliases, globs, and macro tokens); do not
 replace it with substring scans. Geometry bridges also run declaration/corpus
 coverage and the full gate.
+
+## Deriving a placement frame
+
+`constraint::placement::linear` resolves an `IfcLinearPlacement` through the
+cached `CartesianPosition` an authoring tool usually writes. That path needs
+no computation and is always available.
+
+When the file omits it, `constraint::placement::derive` evaluates the basis
+curve instead. That is computation, so it sits behind the non-default
+`compile` feature and takes an injected `&dyn CurveEvaluator`: this crate
+names the capability and links no implementation, per ADR 0004.
+
+Pitfalls:
+
+- `IfcCurveMeasureSelect` may hold a length **or** a native parameter. Carry
+  the distinction across the boundary; a parameter passed as a distance
+  places a product plausibly wrong rather than visibly wrong.
+- A unit scale rescales the curve as well as the stated distance. Tests that
+  vary units must assert a proportional invariant, not a fixed number.
+- `frame_at` refuses when the tangent is parallel to the up reference,
+  because roll is genuinely undefined there. Do not substitute a default.

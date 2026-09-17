@@ -23,6 +23,9 @@ use ifc_model::{EntityId, Model};
 #[cfg(feature = "lowering")]
 pub(crate) mod linear;
 
+#[cfg(feature = "compile")]
+pub mod derive;
+
 use crate::constraint::local::PlacementResolver;
 use crate::error::{GeometryError, GeometryResult};
 use crate::input::product::Product;

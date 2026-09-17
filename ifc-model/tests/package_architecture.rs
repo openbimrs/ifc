@@ -21,6 +21,8 @@ const COMPILE_HOST: &str = "ifc-geometry";
 /// does not widen who may depend on it.
 const EXECUTION_PROVIDER: &[&str] = &[
     "axiolid-contracts",
+    "axiolid-curve-evaluate-contract",
+    "axiolid-evaluate",
     "axiolid-mesh-boolean-boolmesh",
     "axiolid-mesh-compile",
     "axiolid-mesh-compile-contract",

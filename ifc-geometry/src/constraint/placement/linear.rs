@@ -74,10 +74,15 @@ pub(crate) fn linear_placement_transform(
         .and_then(ifc_model::Value::as_ref_id);
 
     let Some(cartesian) = cached else {
+        // Without the cached shortcut the frame has to be derived by
+        // evaluating the basis curve, which is computation and therefore
+        // opt-in under ADR 0004. Point the caller at the capability rather
+        // than approximating a position here.
         return Err(GeometryError::Unsupported {
             entity: placement,
             type_name: "IFCLINEARPLACEMENT".into(),
-            detail: "placement states only IfcPointByDistanceExpression and no CartesianPosition; deriving a frame from the basis curve is not implemented here",
+            detail: "placement states only IfcPointByDistanceExpression and no CartesianPosition; \
+                     derive the frame with constraint::placement::derive and a CurveEvaluator",
         });
     };
     let cartesian_entity = model.get(cartesian).ok_or(GeometryError::MissingEntity {
