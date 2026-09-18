@@ -34,7 +34,7 @@
 use ifc_model::{Entity, EntityId, Model, Value};
 
 /// `IfcWorkControl` slots, shared by plans and schedules.
-mod slot {
+pub mod slot {
     /// `GlobalId` (from `IfcRoot`).
     pub const GLOBAL_ID: usize = 0;
     /// `Name` (from `IfcRoot`).

@@ -11,4 +11,6 @@ mod plan;
 mod work_control;
 mod work_schedule;
 
-pub use work_control::{work_plans, work_schedules, WorkControl, WorkControlKind};
+pub use work_control::{
+    slot as work_control_slot, work_plans, work_schedules, WorkControl, WorkControlKind,
+};

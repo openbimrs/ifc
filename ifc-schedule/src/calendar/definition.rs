@@ -29,7 +29,9 @@
 use ifc_model::{Entity, EntityId, Model, Value};
 
 /// `IfcWorkCalendar` slots.
-mod slot {
+pub mod slot {
+    /// `GlobalId` (from `IfcRoot`).
+    pub const GLOBAL_ID: usize = 0;
     /// `Name` (from `IfcRoot`).
     pub const NAME: usize = 2;
     /// `Identification` (from `IfcControl`).
@@ -43,7 +45,7 @@ mod slot {
 }
 
 /// `IfcWorkTime` slots.
-mod work_time_slot {
+pub mod work_time_slot {
     /// `Name`.
     pub const NAME: usize = 0;
     /// `RecurrencePattern`.
@@ -55,7 +57,7 @@ mod work_time_slot {
 }
 
 /// `IfcRecurrencePattern` slots.
-mod recurrence_slot {
+pub mod recurrence_slot {
     /// `RecurrenceType`.
     pub const RECURRENCE_TYPE: usize = 0;
     /// `WeekdayComponent`.

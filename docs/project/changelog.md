@@ -16,6 +16,10 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- Schedule authoring for work plans, work schedules, calendars and the
+  relations that bind them: `create_work_control`, `create_work_calendar`,
+  `create_work_time`, `assign_tasks_to_control` and `nest_tasks`. A
+  programme can now be authored, not only read.
 
 - `VIENNESEBEND` transition spirals lower exactly. IFC 4.3 defines the
   family as a 7th order polynomial spiral whose curvature depends on the

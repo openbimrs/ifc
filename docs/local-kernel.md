@@ -59,3 +59,27 @@ Tests passing locally do NOT prove the commit builds in CI: locally the
 kernel is newer than what crates.io has. A commit that depends on an
 unreleased capability must WAIT for the release, even though it is green
 here. Land only what the published kernel can also build.
+
+## Pitfall: a version bump silently disables the patch
+
+A patch entry only applies when its version satisfies the requirement in
+`Cargo.toml`. When the kernel released 0.3.0 while this workspace still
+pinned 0.2.1, every entry became inert and cargo reported it as a warning
+with a zero exit code:
+
+```
+warning: Patch `axiolid-core v0.3.0 (...)` was not used in the crate graph.
+```
+
+The build then silently used the published crates instead. Tests that
+depend on unreleased work fail in a way that looks like the feature broke.
+
+Check the patch is live rather than assuming it:
+
+```sh
+cargo metadata --format-version 1 2>&1 >/dev/null | grep "was not used"
+```
+
+Silence means every entry applied. Any output means the local checkout
+moved to a version the pins no longer accept: bump the pins in
+`Cargo.toml`, or check out a kernel revision matching them.

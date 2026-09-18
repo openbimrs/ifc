@@ -10,5 +10,6 @@ mod definition;
 mod working_time;
 
 pub use definition::{
-    work_calendars, Recurrence, RecurrenceType, WorkCalendar, WorkTime, WorkTimeRole,
+    recurrence_slot, slot as work_calendar_slot, work_calendars, work_time_slot, Recurrence,
+    RecurrenceType, WorkCalendar, WorkTime, WorkTimeRole,
 };

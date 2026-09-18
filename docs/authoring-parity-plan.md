@@ -46,7 +46,7 @@ sibling domain crate. It belongs in the generic layer.
 | 3 | material | done: 12 helpers | `abbd19c` |
 | 4 | cost | done: 7 helpers, in `mutation/` not `authoring.rs` | `96b9d0b` |
 | 5 | structural | done: 8 helpers | `b3d67d2` |
-| 6 | sequence | done: 3 helpers | `16fd64c` |
+| 6 | sequence | done: 9 helpers (3 task/sequence, 6 programme) | `16fd64c` |
 | 7 | geometry authoring | done: 11 helpers, inside `ifc-geometry` (ADR 0011) | `98fe2a9` |
 | 8 | alignment | done: 8 helpers | `f87aa87` |
 
@@ -58,6 +58,14 @@ Breadth is not depth. The baseline comparison (78 vs IfcOpenShell 384) was
 a count of surface, and per-domain depth still varies widely -- sequence has
 3 helpers against IfcOpenShell's ~40. Closing that is volume work, tracked
 separately from this plan.
+
+Depth is measured per domain against what the crate can already read.
+`ifc-schedule` had 71 reader functions against 3 authoring helpers, and
+ten entity types were readable but not authorable, including
+`IfcWorkSchedule` itself. Six helpers closed the ones a programme needs:
+work plans and schedules, calendars, working and exception periods, task
+assignment and task nesting. `IfcEvent`, `IfcEventTime`, `IfcLagTime` and
+`IfcRecurrencePattern` remain readable only.
 
 ## Lowering, which phase 8 depended on
 

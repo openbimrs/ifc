@@ -15,7 +15,11 @@
 use ifc_model::guid::Guid;
 use ifc_model::{Entity, EntityId, Transaction, Value};
 
+use crate::calendar::{work_calendar_slot, work_time_slot};
 use crate::error::ScheduleAuthoringError;
+use crate::query::{assigns_slot, nests_slot};
+use crate::schedule::work_control_slot as control_slot;
+use crate::schedule::WorkControlKind;
 use crate::sequence::relation::slot as sequence_slot;
 use crate::task::definition::{task_slot, time_slot};
 
@@ -196,4 +200,259 @@ pub fn create_sequence(
     attributes[sequence_slot::SEQUENCE_TYPE] =
         sequence_type.map_or(Value::Null, |t| Value::Enum(t.into()));
     Ok(tx.create(Entity::new("IFCRELSEQUENCE", attributes)))
+}
+
+/// Authored fields for `IfcWorkPlan` and `IfcWorkSchedule`.
+///
+/// Both are `IfcWorkControl` subtypes with identical slots, so one draft
+/// serves both and the kind picks the entity type. Timestamps and
+/// durations are ISO 8601 strings written exactly as given, for the same
+/// reason `IfcTaskTime` does not parse them.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct WorkControlDraft<'a> {
+    /// `IfcRoot.GlobalId`. Must be a valid IFC compressed GUID.
+    pub global_id: &'a str,
+    /// `IfcRoot.Name`, if given.
+    pub name: Option<&'a str>,
+    /// `IfcRoot.Description`, if given.
+    pub description: Option<&'a str>,
+    /// `IfcWorkControl.Identification`, if given.
+    pub identification: Option<&'a str>,
+    /// `IfcWorkControl.CreationDate`. Required by the schema.
+    pub creation_date: &'a str,
+    /// `IfcWorkControl.Purpose`, if given.
+    pub purpose: Option<&'a str>,
+    /// `IfcWorkControl.Duration`, an ISO 8601 duration, if given.
+    pub duration: Option<&'a str>,
+    /// `IfcWorkControl.TotalFloat`, an ISO 8601 duration, if given.
+    pub total_float: Option<&'a str>,
+    /// `IfcWorkControl.StartTime`. Required by the schema.
+    pub start_time: &'a str,
+    /// `IfcWorkControl.FinishTime`, if given.
+    pub finish_time: Option<&'a str>,
+    /// `IfcWorkControl.PredefinedType`, if given.
+    pub predefined_type: Option<&'a str>,
+}
+
+/// Stage an `IfcWorkPlan` or `IfcWorkSchedule`.
+///
+/// `CreationDate` and `StartTime` are required by the schema, so they are
+/// plain fields rather than options: a work control without them parses
+/// but does not say when the work happens.
+///
+/// # Errors
+///
+/// Refuses a malformed GUID, and an empty required timestamp -- a blank
+/// `StartTime` writes a schedule that validates and schedules nothing.
+pub fn create_work_control(
+    tx: &mut Transaction,
+    kind: WorkControlKind,
+    draft: WorkControlDraft<'_>,
+) -> ScheduleAuthoringResult<EntityId> {
+    let type_name = match kind {
+        WorkControlKind::Plan => "IFCWORKPLAN",
+        WorkControlKind::Schedule => "IFCWORKSCHEDULE",
+    };
+    if Guid::parse(draft.global_id).is_none() {
+        return Err(ScheduleAuthoringError::InvalidValue {
+            entity: type_name,
+            attribute: "GlobalId",
+            expected: "an IFC compressed GUID",
+        });
+    }
+    for (attribute, value) in [
+        ("CreationDate", draft.creation_date),
+        ("StartTime", draft.start_time),
+    ] {
+        if value.trim().is_empty() {
+            return Err(ScheduleAuthoringError::InvalidValue {
+                entity: type_name,
+                attribute,
+                expected: "a non-empty ISO 8601 timestamp",
+            });
+        }
+    }
+    let mut attributes = vec![Value::Null; control_slot::PREDEFINED_TYPE + 1];
+    attributes[control_slot::GLOBAL_ID] = Value::Text(draft.global_id.into());
+    attributes[control_slot::NAME] = optional_text(draft.name);
+    attributes[control_slot::DESCRIPTION] = optional_text(draft.description);
+    attributes[control_slot::IDENTIFICATION] = optional_text(draft.identification);
+    attributes[control_slot::CREATION_DATE] = Value::Text(draft.creation_date.into());
+    attributes[control_slot::PURPOSE] = optional_text(draft.purpose);
+    attributes[control_slot::DURATION] = optional_text(draft.duration);
+    attributes[control_slot::TOTAL_FLOAT] = optional_text(draft.total_float);
+    attributes[control_slot::START_TIME] = Value::Text(draft.start_time.into());
+    attributes[control_slot::FINISH_TIME] = optional_text(draft.finish_time);
+    attributes[control_slot::PREDEFINED_TYPE] = draft
+        .predefined_type
+        .map_or(Value::Null, |t| Value::Enum(t.into()));
+    Ok(tx.create(Entity::new(type_name, attributes)))
+}
+
+/// Stage an `IfcRelAssignsToControl` binding tasks to a work control.
+///
+/// This is the link `tasks_of_schedule` reads back: a schedule with no
+/// assignment owns nothing, however many tasks the file contains.
+///
+/// # Errors
+///
+/// Refuses a malformed GUID, and an empty task list -- an assignment
+/// relating no objects parses and assigns nothing.
+pub fn assign_tasks_to_control(
+    tx: &mut Transaction,
+    global_id: &str,
+    control: EntityId,
+    tasks: &[EntityId],
+) -> ScheduleAuthoringResult<EntityId> {
+    if Guid::parse(global_id).is_none() {
+        return Err(ScheduleAuthoringError::InvalidValue {
+            entity: "IFCRELASSIGNSTOCONTROL",
+            attribute: "GlobalId",
+            expected: "an IFC compressed GUID",
+        });
+    }
+    if tasks.is_empty() {
+        return Err(ScheduleAuthoringError::InvalidValue {
+            entity: "IFCRELASSIGNSTOCONTROL",
+            attribute: "RelatedObjects",
+            expected: "at least one assigned object",
+        });
+    }
+    let mut attributes = vec![Value::Null; assigns_slot::RELATING + 1];
+    attributes[assigns_slot::GLOBAL_ID] = Value::Text(global_id.into());
+    attributes[assigns_slot::RELATED] =
+        Value::List(tasks.iter().copied().map(Value::Ref).collect());
+    attributes[assigns_slot::RELATING] = Value::Ref(control);
+    Ok(tx.create(Entity::new("IFCRELASSIGNSTOCONTROL", attributes)))
+}
+
+/// Stage an `IfcRelNests` nesting child tasks under a parent.
+///
+/// Task breakdown structure: `IfcRelNests` is the ordered parent-child
+/// link `subtasks_of` reads, not `IfcRelAggregates`, which nests physical
+/// decomposition instead.
+///
+/// # Errors
+///
+/// Refuses a malformed GUID, an empty child list, and a parent that also
+/// appears among its own children -- a self-nesting task is a cycle the
+/// timeline walk cannot terminate on.
+pub fn nest_tasks(
+    tx: &mut Transaction,
+    global_id: &str,
+    parent: EntityId,
+    children: &[EntityId],
+) -> ScheduleAuthoringResult<EntityId> {
+    if Guid::parse(global_id).is_none() {
+        return Err(ScheduleAuthoringError::InvalidValue {
+            entity: "IFCRELNESTS",
+            attribute: "GlobalId",
+            expected: "an IFC compressed GUID",
+        });
+    }
+    if children.is_empty() {
+        return Err(ScheduleAuthoringError::InvalidValue {
+            entity: "IFCRELNESTS",
+            attribute: "RelatedObjects",
+            expected: "at least one nested object",
+        });
+    }
+    if children.contains(&parent) {
+        return Err(ScheduleAuthoringError::InvalidValue {
+            entity: "IFCRELNESTS",
+            attribute: "RelatedObjects",
+            expected: "children that do not include the parent",
+        });
+    }
+    let mut attributes = vec![Value::Null; nests_slot::RELATED + 1];
+    attributes[nests_slot::GLOBAL_ID] = Value::Text(global_id.into());
+    attributes[nests_slot::RELATING] = Value::Ref(parent);
+    attributes[nests_slot::RELATED] =
+        Value::List(children.iter().copied().map(Value::Ref).collect());
+    Ok(tx.create(Entity::new("IFCRELNESTS", attributes)))
+}
+
+/// Stage an `IfcWorkTime`.
+///
+/// One working or exception period inside a calendar. The recurrence
+/// pattern is optional: a period with explicit start and finish dates and
+/// no pattern is a single block, which is what a one-off shutdown is.
+///
+/// # Errors
+///
+/// Refuses an empty name when one is given, since a named period that
+/// carries no name reads back as unnamed rather than as authored.
+pub fn create_work_time(
+    tx: &mut Transaction,
+    name: Option<&str>,
+    recurrence: Option<EntityId>,
+    start: Option<&str>,
+    finish: Option<&str>,
+) -> ScheduleAuthoringResult<EntityId> {
+    if name.is_some_and(|value| value.trim().is_empty()) {
+        return Err(ScheduleAuthoringError::InvalidValue {
+            entity: "IFCWORKTIME",
+            attribute: "Name",
+            expected: "a non-empty name when one is given",
+        });
+    }
+    let mut attributes = vec![Value::Null; work_time_slot::FINISH + 1];
+    attributes[work_time_slot::NAME] = optional_text(name);
+    attributes[work_time_slot::RECURRENCE_PATTERN] = recurrence.map_or(Value::Null, Value::Ref);
+    attributes[work_time_slot::START] = optional_text(start);
+    attributes[work_time_slot::FINISH] = optional_text(finish);
+    Ok(tx.create(Entity::new("IFCWORKTIME", attributes)))
+}
+
+/// Stage an `IfcWorkCalendar`.
+///
+/// Working times say when work happens; exception times carve holidays
+/// out of them. Both are `IfcWorkTime` lists, so the two roles are
+/// separate slots rather than a flag on the period.
+///
+/// # Errors
+///
+/// Refuses a malformed GUID, and a calendar with neither working nor
+/// exception times -- it constrains nothing but reads as a real calendar.
+pub fn create_work_calendar(
+    tx: &mut Transaction,
+    global_id: &str,
+    name: Option<&str>,
+    working_times: &[EntityId],
+    exception_times: &[EntityId],
+    predefined_type: Option<&str>,
+) -> ScheduleAuthoringResult<EntityId> {
+    if Guid::parse(global_id).is_none() {
+        return Err(ScheduleAuthoringError::InvalidValue {
+            entity: "IFCWORKCALENDAR",
+            attribute: "GlobalId",
+            expected: "an IFC compressed GUID",
+        });
+    }
+    if working_times.is_empty() && exception_times.is_empty() {
+        return Err(ScheduleAuthoringError::InvalidValue {
+            entity: "IFCWORKCALENDAR",
+            attribute: "WorkingTimes",
+            expected: "at least one working or exception period",
+        });
+    }
+    let mut attributes = vec![Value::Null; work_calendar_slot::PREDEFINED_TYPE + 1];
+    attributes[work_calendar_slot::GLOBAL_ID] = Value::Text(global_id.into());
+    attributes[work_calendar_slot::NAME] = optional_text(name);
+    attributes[work_calendar_slot::WORKING_TIMES] = reference_list(working_times);
+    attributes[work_calendar_slot::EXCEPTION_TIMES] = reference_list(exception_times);
+    attributes[work_calendar_slot::PREDEFINED_TYPE] =
+        predefined_type.map_or(Value::Null, |t| Value::Enum(t.into()));
+    Ok(tx.create(Entity::new("IFCWORKCALENDAR", attributes)))
+}
+
+/// A reference list, or `Null` when empty.
+///
+/// An empty IFC set is not the same as an absent one: writing `()` where
+/// the file means "not stated" reads back as an authored empty set.
+fn reference_list(ids: &[EntityId]) -> Value {
+    if ids.is_empty() {
+        return Value::Null;
+    }
+    Value::List(ids.iter().copied().map(Value::Ref).collect())
 }

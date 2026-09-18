@@ -21,7 +21,9 @@ use ifc_model::{EntityId, Model, Value};
 use crate::sequence::{sequences, SequenceCycle};
 
 /// `IfcRelAssignsToControl` slots.
-mod assigns {
+pub mod assigns {
+    /// `GlobalId` (from `IfcRoot`).
+    pub const GLOBAL_ID: usize = 0;
     /// `RelatedObjects`.
     pub const RELATED: usize = 4;
     /// `RelatingControl`.
@@ -29,7 +31,9 @@ mod assigns {
 }
 
 /// `IfcRelNests` slots.
-mod nests {
+pub mod nests {
+    /// `GlobalId` (from `IfcRoot`).
+    pub const GLOBAL_ID: usize = 0;
     /// `RelatingObject`.
     pub const RELATING: usize = 4;
     /// `RelatedObjects`.

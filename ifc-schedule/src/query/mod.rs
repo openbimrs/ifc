@@ -6,4 +6,7 @@
 
 mod timeline;
 
-pub use timeline::{end_tasks, execution_order, start_tasks, subtasks_of, tasks_of_schedule};
+pub use timeline::{
+    assigns as assigns_slot, end_tasks, execution_order, nests as nests_slot, start_tasks,
+    subtasks_of, tasks_of_schedule,
+};
