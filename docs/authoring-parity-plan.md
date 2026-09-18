@@ -1,6 +1,6 @@
 # Authoring parity plan
 
-Status: active. Last updated: 2026-09-14.
+Status: active. Last updated: 2026-09-18.
 
 ## Goal
 
@@ -41,14 +41,42 @@ sibling domain crate. It belongs in the generic layer.
 
 | Phase | Domain | State | Commit |
 | --- | --- | --- | --- |
-| 1 | unit | done: 8 helpers, 6 tests, 2 mutations caught | `0b616d4` |
-| 2 | owner history | done: 5 helpers, 4 tests, 3 mutations caught | `c8912c1` |
-| 3 | material | next: close the 16 -> 25 gap (profile/constituent sets) | |
-| 4 | cost | pending: 6 -> 20 | |
-| 5 | structural | pending: 2 -> 23, 14 stub files to fill | |
-| 6 | sequence | pending: 1 -> 40, ifc-schedule is 58% stubs | |
-| 7 | geometry authoring | pending: 0 -> 30, needs a representation-builder story | |
-| 8 | alignment | pending: 0 -> 60, blocked on alignment->geometry lowering | |
+| 1 | unit | done: 7 helpers | `0b616d4` |
+| 2 | owner history | done: 5 helpers, in the generic layer | `c8912c1` |
+| 3 | material | done: 12 helpers | `abbd19c` |
+| 4 | cost | done: 7 helpers, in `mutation/` not `authoring.rs` | `96b9d0b` |
+| 5 | structural | done: 8 helpers | `b3d67d2` |
+| 6 | sequence | done: 3 helpers | `16fd64c` |
+| 7 | geometry authoring | done: 11 helpers, inside `ifc-geometry` (ADR 0011) | `98fe2a9` |
+| 8 | alignment | done: 8 helpers | `f87aa87` |
+
+Breadth goal met: all eight domains author. 87 public authoring functions,
+counted 2026-09-18 across `*authoring*`, `ifc-cost/src/mutation/` and
+`ifc-author/src/`.
+
+Breadth is not depth. The baseline comparison (78 vs IfcOpenShell 384) was
+a count of surface, and per-domain depth still varies widely -- sequence has
+3 helpers against IfcOpenShell's ~40. Closing that is volume work, tracked
+separately from this plan.
+
+## Lowering, which phase 8 depended on
+
+Phase 8 was recorded as "blocked on alignment -> geometry lowering". That
+lowering now exists:
+
+- `lower_gradient_curve` / `gradient_curve3` compose a horizontal layout and
+  a vertical profile into an exact `Curve3::Elevated` (`d8562f3`).
+- `derive_placement_transform` resolves an `IfcLinearPlacement` that states
+  only an `IfcPointByDistanceExpression`, by evaluating the basis curve
+  through an injected `CurveEvaluator` (`bfb8a5e`).
+
+Remaining refusals in this area, both deliberate:
+
+- `VIENNESEBEND` transition spirals. The law needs the cant swing, which
+  lives in `IfcAlignmentCant` rather than on the segment.
+- `Ellipse` / `BSpline` basis curves, refused at the distance API upstream:
+  neither has a closed-form arc length. Polyline support is implemented here
+  and waits on an `axiolid-evaluate` release (see `docs/local-kernel.md`).
 
 ## Conventions established in phases 1-2
 
@@ -73,5 +101,5 @@ Vendor neutrality comes from the kernel being **absent** from the API, not
 abstracted over: authoring takes `f64`/`[f64; 3]`/index buffers and runs in
 the `--no-default-features` column, enforced by `kernel_free_build.rs`.
 
-Remaining: alignment (phase 8), still blocked on alignment -> geometry
-lowering, which does not exist. Deriving plans from solids stays upstream.
+Alignment (phase 8) has since landed too, and the lowering it waited on
+exists -- see the section above. Deriving plans from solids stays upstream.

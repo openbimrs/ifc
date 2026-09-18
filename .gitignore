@@ -10,3 +10,7 @@ docs/.vitepress/cache/
 # Never redistributable, never a build dependency -- see references/AGENTS.md.
 # Ignored so check-leakage.py sees only the publishable tree.
 /references/
+
+# Local-only cargo config: redirects kernel pins to a local checkout
+# during upstream development. Never committed.
+.cargo/

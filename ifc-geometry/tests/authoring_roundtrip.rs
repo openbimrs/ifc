@@ -84,3 +84,49 @@ fn values_that_would_parse_but_mean_nothing_are_refused() {
     // A boolean against itself is never meaningful.
     assert!(boolean_result(&mut tx, IfcBooleanOperator::Difference, p, p).is_err());
 }
+
+/// Authored geometry survives serialisation to STEP text and lowers from
+/// the reparsed bytes.
+///
+/// The round-trips above stay in memory, so a value authored correctly but
+/// written or reparsed wrongly passes them. A consumer receives a file, so
+/// this drives author -> write -> reparse -> lower and asserts on the
+/// geometry that comes out the far end.
+#[test]
+#[cfg(feature = "lowering")]
+fn an_authored_extrusion_survives_step_text_and_lowers() {
+    use ifc_geometry::lower::{lower_representation_item, LoweringSession};
+    use ifc_geometry::transform::Transform;
+    use ifc_model::codec::Codec;
+    use ifc_step::StepCodec;
+
+    let model = Model::default();
+    let mut tx = Transaction::new(&model);
+    let solid = wall(&mut tx);
+    let mut model = model;
+    *model.header_mut() = ifc_model::Header {
+        schema: vec!["IFC4X3_ADD2".to_owned()],
+        ..ifc_model::Header::default()
+    };
+    tx.commit(&mut model).expect("commit");
+
+    let mut bytes = Vec::new();
+    StepCodec
+        .write(&model, &mut bytes)
+        .expect("authored model serialises");
+    let reparsed = StepCodec
+        .read_bytes(&bytes)
+        .expect("serialised text reparses");
+
+    // The depth is the value most likely to be mangled by a writer that
+    // loses precision: it is the one non-integer dimension authored.
+    let entity = reparsed.get(solid).expect("solid survives the round trip");
+    assert_eq!(entity.type_name.as_ref(), "IFCEXTRUDEDAREASOLID");
+    let view = ifc_geometry::solid::swept::ExtrudedAreaSolid::new(solid, entity);
+    assert_eq!(view.depth().expect("depth"), 2.4);
+
+    let units = ifc_geometry::units::UnitScale::default();
+    let mut session = LoweringSession::new(&reparsed, &units);
+    lower_representation_item(&mut session, solid, Transform::identity())
+        .expect("reparsed solid lowers into the neutral graph");
+}

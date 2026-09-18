@@ -29,7 +29,7 @@ code.
 | --- | ---: | ---: | ---: | ---: | --- |
 | `ifc-geometry` | 32,254 | 110 | 3 | 38 | <span class="status-partial">Partial</span> |
 | `ifc-style` | 4,532 | 38 | 0 | 7 | <span class="status-implemented">Implemented</span> |
-| `ifc-alignment` | 4,074 | 35 | 11 | 7 | <span class="status-partial">Partial</span> |
+| `ifc-alignment` | 4,074 | 35 | 11 | 8 | <span class="status-partial">Partial</span> |
 | `ifc-structural` | 3,936 | 34 | 14 | 13 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 3,472 | 31 | 14 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-template-catalog` | 3,104 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
