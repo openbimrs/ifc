@@ -27,9 +27,14 @@
 use ifc_model::{Entity, EntityId, Model, Value};
 
 /// `IfcEvent` slots.
-mod slot {
+pub mod slot {
+    /// `GlobalId` (from `IfcRoot`).
+    pub const GLOBAL_ID: usize = 0;
     /// `Name` (from `IfcRoot`).
     pub const NAME: usize = 2;
+    /// `ObjectType` (from `IfcObject`). Required by the schema when
+    /// `PredefinedType` is `USERDEFINED`.
+    pub const OBJECT_TYPE: usize = 4;
     /// `Identification` (from `IfcProcess`).
     pub const IDENTIFICATION: usize = 5;
     /// `LongDescription` (from `IfcProcess`).
@@ -38,12 +43,17 @@ mod slot {
     pub const PREDEFINED_TYPE: usize = 7;
     /// `EventTriggerType`.
     pub const EVENT_TRIGGER_TYPE: usize = 8;
+    /// `UserDefinedEventTriggerType`. Required by the schema when
+    /// `EventTriggerType` is `USERDEFINED`.
+    pub const USER_DEFINED_EVENT_TRIGGER_TYPE: usize = 9;
     /// `EventOccurenceTime`, spelled as the schema spells it.
     pub const EVENT_OCCURENCE_TIME: usize = 10;
 }
 
 /// `IfcEventTime` slots.
-mod time_slot {
+pub mod time_slot {
+    /// `Name` (from `IfcSchedulingTime`).
+    pub const NAME: usize = 0;
     /// `ActualDate`.
     pub const ACTUAL_DATE: usize = 3;
     /// `EarlyDate`.

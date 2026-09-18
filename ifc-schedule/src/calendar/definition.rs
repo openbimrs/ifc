@@ -58,10 +58,14 @@ pub mod work_time_slot {
 
 /// `IfcRecurrencePattern` slots.
 pub mod recurrence_slot {
-    /// `RecurrenceType`.
+    /// `RecurrenceType`. Required by the schema.
     pub const RECURRENCE_TYPE: usize = 0;
+    /// `DayComponent`.
+    pub const DAY_COMPONENT: usize = 1;
     /// `WeekdayComponent`.
     pub const WEEKDAY_COMPONENT: usize = 2;
+    /// `MonthComponent`.
+    pub const MONTH_COMPONENT: usize = 3;
     /// `Position`, for `MONTHLY_BY_POSITION` and friends.
     pub const POSITION: usize = 4;
     /// `Interval`.

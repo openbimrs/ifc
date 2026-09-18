@@ -8,4 +8,4 @@
 mod definition;
 mod time;
 
-pub use definition::{events, Event, EventTime};
+pub use definition::{events, slot as event_slot, time_slot as event_time_slot, Event, EventTime};

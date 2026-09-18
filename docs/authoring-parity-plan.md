@@ -59,6 +59,16 @@ a count of surface, and per-domain depth still varies widely -- sequence has
 3 helpers against IfcOpenShell's ~40. Closing that is volume work, tracked
 separately from this plan.
 
+Every entity type `ifc-schedule` can read, it can now write: the four
+remaining ones (`IfcEvent`, `IfcEventTime`, `IfcLagTime`,
+`IfcRecurrencePattern`) landed with slot order verified against the
+bundled EXPRESS schema rather than recalled. That probe found three
+facts the readers had not exposed: `IfcLagTime.LagValue` and
+`DurationType` are REQUIRED, `IfcEvent` carries a
+`UserDefinedEventTriggerType` at slot 9, and the recurrence component
+sets are `SET [1:?]`, so an empty aggregate is invalid where omission
+is legal.
+
 Depth is measured per domain against what the crate can already read.
 `ifc-schedule` had 71 reader functions against 3 authoring helpers, and
 ten entity types were readable but not authorable, including

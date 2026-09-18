@@ -16,6 +16,12 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- Event, lag and recurrence authoring in `ifc-schedule`: `create_event`,
+  `create_event_time`, `create_lag_time` and `create_recurrence_pattern`
+  close the last four readable-but-not-authorable entity types. Slot
+  order was verified against the bundled IFC4X3_ADD2 EXPRESS schema, not
+  recalled; the schema's two `USERDEFINED` WHERE rules are enforced at
+  authoring time.
 - Schedule authoring for work plans, work schedules, calendars and the
   relations that bind them: `create_work_control`, `create_work_calendar`,
   `create_work_time`, `assign_tasks_to_control` and `nest_tasks`. A

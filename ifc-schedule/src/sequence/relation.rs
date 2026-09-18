@@ -44,10 +44,10 @@ pub(crate) mod slot {
 }
 
 /// `IfcLagTime` slots.
-mod lag_slot {
-    /// `LagValue`, an `IfcTimeOrRatioSelect`.
+pub mod lag_slot {
+    /// `LagValue`. Required by the schema.
     pub const LAG_VALUE: usize = 3;
-    /// `DurationType`.
+    /// `DurationType`. Required by the schema.
     pub const DURATION_TYPE: usize = 4;
 }
 
