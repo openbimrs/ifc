@@ -50,3 +50,20 @@ resolution, lowering, mutation, and validation before they grow together.
 
 Run targeted tests/clippy, isolated build, and the package architecture/context
 gates. Geometry bridges also run declaration/corpus coverage and the full gate.
+
+## Station for a horizontal segment
+
+An `IfcAlignmentHorizontalSegment` does not state its own distance along:
+position follows from chaining. A Viennese bend needs that station to read
+the cant swing across itself, so both chain walks in `curve/assemble.rs`
+accumulate it.
+
+Two pitfalls, both mutation-tested:
+
+- The partial walk `continue`s on a refused segment. Advance the station
+  BEFORE that branch or every later segment is mis-stationed.
+- There are TWO accumulators, one per walk. A test that only exercises
+  `lower_horizontal_layout` leaves the partial walk unguarded.
+
+A single-segment lowering has no chain context, so it refuses a Viennese
+bend rather than passing a station of zero.

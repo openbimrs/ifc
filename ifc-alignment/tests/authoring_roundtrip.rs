@@ -88,7 +88,7 @@ fn an_authored_horizontal_layout_lowers_to_an_exact_curve() {
     ));
     tx.commit(&mut model).expect("commit");
 
-    let lowered = ifc_alignment::lower_horizontal_layout(&model, layout, metres())
+    let lowered = ifc_alignment::lower_horizontal_layout(&model, layout, metres(), None)
         .expect("authored layout lowers");
     assert_eq!(lowered.sources.len(), 1, "one segment lowered");
 }

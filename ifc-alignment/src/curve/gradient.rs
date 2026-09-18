@@ -20,6 +20,7 @@ use ifc_model::{EntityId, Model};
 
 use super::assemble::{finish, LoweredAlignmentCurve};
 use super::elevation::profile_law;
+use crate::cant::CantLayout;
 use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::AlignmentUnits;
 use crate::vertical::read_vertical_segment;
@@ -57,7 +58,8 @@ pub fn lower_gradient_curve(
     let vertical = sole_layout(&view, entity, "IfcAlignmentVertical")?;
 
     // The plan must be a single curve: `Elevated3.plan` is one `Curve2`.
-    let (curve, ids) = compose(model, &view, horizontal, vertical, units)?;
+    let cant = optional_cant(model, &view, entity, units)?;
+    let (curve, ids) = compose(model, &view, horizontal, vertical, units, cant.as_ref())?;
 
     let mut builder = GeometryGraphBuilder::new();
     let root =
@@ -106,8 +108,9 @@ fn sole_plan_curve(
     model: &Model,
     horizontal: EntityId,
     units: AlignmentUnits,
+    cant: Option<&CantLayout>,
 ) -> AlignmentResult<Curve2> {
-    let lowered = super::assemble::lower_horizontal_layout(model, horizontal, units)?;
+    let lowered = super::assemble::lower_horizontal_layout(model, horizontal, units, cant)?;
     // A layout always lowers to a composite, even with one segment. Resolve
     // through it rather than scanning the graph: picking an arbitrary curve
     // node would silently elevate a fragment of the road.
@@ -152,8 +155,9 @@ fn compose(
     horizontal: EntityId,
     vertical: EntityId,
     units: AlignmentUnits,
+    cant: Option<&CantLayout>,
 ) -> AlignmentResult<(Curve3, Vec<EntityId>)> {
-    let plan = sole_plan_curve(model, horizontal, units)?;
+    let plan = sole_plan_curve(model, horizontal, units, cant)?;
     let ids = view.segment_chain(vertical, "IfcAlignmentVerticalSegment")?;
     let mut segments = Vec::with_capacity(ids.len());
     for id in &ids {
@@ -187,6 +191,28 @@ pub fn gradient_curve3(
     }
     let horizontal = sole_layout(&view, entity, "IfcAlignmentHorizontal")?;
     let vertical = sole_layout(&view, entity, "IfcAlignmentVertical")?;
-    let (curve, _) = compose(model, &view, horizontal, vertical, units)?;
+    let cant = optional_cant(model, &view, entity, units)?;
+    let (curve, _) = compose(model, &view, horizontal, vertical, units, cant.as_ref())?;
     Ok(curve)
+}
+
+/// The alignment cant layout, when it has exactly one.
+///
+/// Cant is optional: a road alignment has none, and its absence is not an
+/// error. Several cant layouts are ambiguous, which is.
+fn optional_cant(
+    model: &Model,
+    view: &AlignmentView,
+    alignment: EntityId,
+    units: AlignmentUnits,
+) -> AlignmentResult<Option<CantLayout>> {
+    let children = view.nested_children(alignment, "IfcAlignmentCant")?;
+    match children.as_slice() {
+        [] => Ok(None),
+        [only] => CantLayout::resolve(model, *only, units).map(Some),
+        _ => Err(AlignmentError::SemanticViolation {
+            entity: Some(alignment),
+            rule: "an alignment with several cant layouts is ambiguous to compose",
+        }),
+    }
 }

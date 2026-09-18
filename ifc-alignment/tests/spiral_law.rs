@@ -39,7 +39,8 @@ fn model() -> ifc_model::Model {
 /// Every intrinsic curve in the lowered layout, in authored order.
 fn intrinsics() -> Vec<Intrinsic2> {
     let model = model();
-    let result = lower_horizontal_layout_partial(&model, HORIZONTAL, units()).expect("layout");
+    let result =
+        lower_horizontal_layout_partial(&model, HORIZONTAL, units(), None).expect("layout");
     let mut found = Vec::new();
     for run in &result.runs {
         for (_, node) in run.graph.iter() {
@@ -138,7 +139,8 @@ fn integrating_the_stored_law_reaches_the_next_segments_authored_start() {
 #[test]
 fn the_spiral_is_trimmed_to_its_authored_length() {
     let model = model();
-    let result = lower_horizontal_layout_partial(&model, HORIZONTAL, units()).expect("layout");
+    let result =
+        lower_horizontal_layout_partial(&model, HORIZONTAL, units(), None).expect("layout");
     let mut trims = Vec::new();
     for run in &result.runs {
         for (id, node) in run.graph.iter() {
@@ -206,8 +208,8 @@ fn evaluate(law: &CurvatureLaw, s: f64) -> f64 {
 fn law_for(name: &str) -> (CurvatureLaw, f64) {
     // Straight (R=0) into R=300 over 60 m, matching the committed fixture.
     let model = single_segment_model(name, 0.0, 300.0, 60.0);
-    let result =
-        lower_horizontal_layout_partial(&model, EntityId(4), units()).expect("layout is readable");
+    let result = lower_horizontal_layout_partial(&model, EntityId(4), units(), None)
+        .expect("layout is readable");
     assert!(
         result.refused.is_empty(),
         "{name} must lower: {:?}",

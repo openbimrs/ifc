@@ -17,6 +17,12 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `VIENNESEBEND` transition spirals lower exactly. IFC 4.3 defines the
+  family as a 7th order polynomial spiral whose curvature depends on the
+  superelevation swing and the gravity centre line height, not on the
+  endpoint radii alone; expanded in arc length that is a degree-7
+  polynomial, which `CurvatureLaw::Polynomial` holds without truncation.
+
 - `constraint::placement::derive` resolves an `IfcLinearPlacement` that states
   only an `IfcPointByDistanceExpression`, by evaluating the basis curve through
   an injected `CurveEvaluator`. Behind the non-default `compile` feature: the
@@ -30,6 +36,14 @@ This page is synchronised from it at build time.
   `ElevationLaw`s, covering CONSTANTGRADIENT and PARABOLICARC.
 
 ### Changed
+
+- `spiral_curve`, `is_exactly_lowerable`, `lower_horizontal_layout` and
+  `lower_horizontal_layout_partial` take the cant layout. A horizontal
+  segment alone does not determine a Viennese bend, so the signature now
+  states that rather than implying otherwise. Callers with no cant pass
+  `None` and behave as before.
+- `lower_horizontal_segment` refuses a Viennese bend by name: a single
+  segment has no chain context, so no true distance along exists for it.
 
 - Axiolid kernel crates move to `0.2.1`, which publishes
   `axiolid-curve-evaluate-contract`.

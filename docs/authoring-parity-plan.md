@@ -72,8 +72,9 @@ lowering now exists:
 
 Remaining refusals in this area, both deliberate:
 
-- `VIENNESEBEND` transition spirals. The law needs the cant swing, which
-  lives in `IfcAlignmentCant` rather than on the segment.
+- `VIENNESEBEND` now lowers exactly when the file states the cant layout
+  and `GravityCenterLineHeight`; both absences are refused by name rather
+  than defaulted, since a missing height is not zero.
 - `Ellipse` / `BSpline` basis curves, refused at the distance API upstream:
   neither has a closed-form arc length. Polyline support is implemented here
   and waits on an `axiolid-evaluate` release (see `docs/local-kernel.md`).

@@ -8,6 +8,7 @@ use axiolid_model::{
 };
 use ifc_model::{EntityId, Model};
 
+use crate::cant::CantLayout;
 use crate::curve::spiral::{is_exactly_lowerable, spiral_curve};
 use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::{
@@ -148,8 +149,8 @@ pub fn lower_horizontal_segment(
         match &segment.segment_type {
             HorizontalSegmentType::Line => push_line(&mut builder, &segment)?,
             HorizontalSegmentType::CircularArc => push_arc(&mut builder, &segment)?,
-            HorizontalSegmentType::Transition(name) if is_exactly_lowerable(name) => {
-                push_spiral(&mut builder, &segment, name)?
+            HorizontalSegmentType::Transition(name) if is_exactly_lowerable(name, false) => {
+                push_spiral(&mut builder, &segment, name, None, 0.0)?
             }
             kind => return Err(AlignmentError::Unsupported {
                 entity: id,
@@ -316,8 +317,10 @@ fn push_spiral(
     builder: &mut GeometryGraphBuilder,
     segment: &HorizontalSegment,
     name: &str,
+    cant: Option<&CantLayout>,
+    start_distance: f64,
 ) -> AlignmentResult<NodeId> {
-    let curve = spiral_curve(segment, name)?;
+    let curve = spiral_curve(segment, name, cant, start_distance)?;
     let basis = push(builder, GeometryNode::Curve2(curve))?;
     push(
         builder,
@@ -361,6 +364,7 @@ pub fn lower_horizontal_layout(
     model: &Model,
     entity: EntityId,
     units: AlignmentUnits,
+    cant: Option<&CantLayout>,
 ) -> AlignmentResult<LoweredAlignmentCurve> {
     let view = AlignmentView::for_model(model)?;
     let horizontal_entity = model
@@ -391,12 +395,15 @@ pub fn lower_horizontal_layout(
 
     let mut builder = GeometryGraphBuilder::new();
     let mut composite_segments = Vec::with_capacity(segments.len());
+    let mut station = 0.0_f64;
     for (index, segment) in segments.iter().enumerate() {
         let curve = match &segment.segment_type {
             HorizontalSegmentType::Line => push_line(&mut builder, segment)?,
             HorizontalSegmentType::CircularArc => push_arc(&mut builder, segment)?,
-            HorizontalSegmentType::Transition(name) if is_exactly_lowerable(name) => {
-                push_spiral(&mut builder, segment, name)?
+            HorizontalSegmentType::Transition(name)
+                if is_exactly_lowerable(name, cant.is_some()) =>
+            {
+                push_spiral(&mut builder, segment, name, cant, station)?
             }
             kind => return Err(AlignmentError::Unsupported {
                 entity: segment.entity,
@@ -431,6 +438,7 @@ pub fn lower_horizontal_layout(
             same_sense: true,
             transition,
         });
+        station += segment.segment_length;
     }
 
     let root = push(
@@ -461,6 +469,7 @@ pub fn lower_horizontal_layout_partial(
     model: &Model,
     entity: EntityId,
     units: AlignmentUnits,
+    cant: Option<&CantLayout>,
 ) -> AlignmentResult<PartialHorizontalLayout> {
     let view = AlignmentView::for_model(model)?;
     let horizontal_entity = model
@@ -496,6 +505,7 @@ pub fn lower_horizontal_layout_partial(
     let mut builder = GeometryGraphBuilder::new();
     let mut pending: Vec<(usize, CurveSegment)> = Vec::new();
     let mut pending_ids: Vec<EntityId> = Vec::new();
+    let mut station = 0.0_f64;
 
     for (index, segment) in segments.iter().enumerate() {
         // Decide the run boundary BEFORE lowering: `flush_run` swaps in a new
@@ -510,8 +520,10 @@ pub fn lower_horizontal_layout_partial(
         let lowered = match &segment.segment_type {
             HorizontalSegmentType::Line => push_line(&mut builder, segment),
             HorizontalSegmentType::CircularArc => push_arc(&mut builder, segment),
-            HorizontalSegmentType::Transition(name) if is_exactly_lowerable(name) => {
-                push_spiral(&mut builder, segment, name)
+            HorizontalSegmentType::Transition(name)
+                if is_exactly_lowerable(name, cant.is_some()) =>
+            {
+                push_spiral(&mut builder, segment, name, cant, station)
             }
             kind => Err(AlignmentError::Unsupported {
                 entity: segment.entity,
@@ -520,6 +532,9 @@ pub fn lower_horizontal_layout_partial(
                     "the pinned neutral curve vocabulary has no exact transition-curve primitive",
             }),
         };
+        // Advance before the refusal branch below: that path `continue`s, and
+        // advancing at the loop tail would mis-station every later segment.
+        station += segment.segment_length;
         let curve = match lowered {
             Ok(curve) => curve,
             Err(reason) => {

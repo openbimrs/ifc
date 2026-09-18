@@ -25,8 +25,8 @@ fn units() -> AlignmentUnits {
 #[test]
 fn horizontal_layout_assembles_a_continuous_composite_curve() {
     let model = fixture();
-    let lowered =
-        lower_horizontal_layout(&model, EntityId(121), units()).expect("horizontal layout lowers");
+    let lowered = lower_horizontal_layout(&model, EntityId(121), units(), None)
+        .expect("horizontal layout lowers");
     assert_eq!(lowered.sources, vec![EntityId(101), EntityId(103)]);
     let Some(GeometryNode::CurveRelation(CurveRelation::Composite { segments })) =
         lowered.graph.get(lowered.root)
@@ -181,7 +181,8 @@ fn a_clothoid_segment_inside_a_layout_is_a_typed_refusal_not_an_approximation() 
     // A clothoid now lowers exactly, as an intrinsic curve carrying its
     // curvature law. Exactness is the claim under test: the lowering must be
     // the natural-equation form, never a sampled or fitted stand-in.
-    let lowered = lower_horizontal_layout(&model, EntityId(4), units()).expect("clothoid lowers");
+    let lowered =
+        lower_horizontal_layout(&model, EntityId(4), units(), None).expect("clothoid lowers");
     let has_intrinsic = lowered
         .graph
         .iter()

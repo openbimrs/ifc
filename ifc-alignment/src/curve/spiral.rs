@@ -23,6 +23,7 @@
 use axiolid_core::{Frame2, Vec2};
 use axiolid_curve::{CurvatureLaw, Curve2, Intrinsic2};
 
+use crate::cant::CantLayout;
 use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::HorizontalSegment;
 
@@ -110,21 +111,76 @@ fn transition_law(name: &str, start: f64, end: f64, length: f64) -> Option<Curva
     }
 }
 
+/// The Viennese bend curvature law, exactly.
+///
+/// IFC 4.3 defines it as a 7th order polynomial spiral. The endpoint
+/// curvature ramp uses the shape function
+///
+/// ```text
+/// f(xi) = xi^4 * (35 - 84 xi + 70 xi^2 - 20 xi^3)
+/// ```
+///
+/// and the cant correction is the second derivative of that same
+/// function, scaled by -h * dpsi, with xi = s / L. Expanded in arc
+/// length the whole law is a degree-7 polynomial, which
+/// `CurvatureLaw::Polynomial` represents exactly: no truncation, no
+/// fitting.
+///
+/// `dpsi` is the superelevation swing across the segment -- the change
+/// in roll angle the cant produces -- and `h` is the gravity centre line
+/// height, which converts that roll angle into a curvature correction.
+fn viennese_law(
+    start: f64,
+    end: f64,
+    length: f64,
+    gravity_height: f64,
+    roll_swing: f64,
+) -> CurvatureLaw {
+    let delta = end - start;
+    let l = length;
+    // Coefficients in ascending powers of arc length, from expanding
+    // the xi-form above. Written out rather than built by a loop so the
+    // degree-7 shape is visible and checkable against the spec.
+    let hp = gravity_height * roll_swing;
+    let c2 = -420.0 * hp / l.powi(4);
+    let c3 = 1680.0 * hp / l.powi(5);
+    let c4 = 35.0 * (l * l * delta - 60.0 * hp) / l.powi(6);
+    let c5 = 84.0 * (-(l * l) * delta + 10.0 * hp) / l.powi(7);
+    let c6 = 70.0 * delta / l.powi(6);
+    let c7 = -20.0 * delta / l.powi(7);
+    CurvatureLaw::Polynomial {
+        coefficients: vec![start, 0.0, c2, c3, c4, c5, c6, c7],
+    }
+}
+
 /// Whether this crate can lower the named transition family exactly.
-pub fn is_exactly_lowerable(name: &str) -> bool {
-    matches!(
-        name,
-        "CLOTHOID" | "BLOSSCURVE" | "COSINECURVE" | "HELMERTCURVE" | "SINECURVE"
-    )
+pub fn is_exactly_lowerable(name: &str, has_cant: bool) -> bool {
+    match name {
+        "CLOTHOID" | "BLOSSCURVE" | "COSINECURVE" | "HELMERTCURVE" | "SINECURVE" => true,
+        // The Viennese bend is exactly representable, but only when the
+        // cant swing and gravity centre line height it depends on are
+        // present. Without them the law is undetermined, not approximate.
+        "VIENNESEBEND" => has_cant,
+        _ => false,
+    }
 }
 
 /// Lower a transition-spiral segment to an exact intrinsic curve.
 ///
 /// Refuses rather than approximates when the family's law cannot be
-/// reconstructed from the segment's endpoint radii alone. `VIENNESEBEND` is
-/// the remaining refusal: its law needs the cant swing, which lives in the
-/// separate `IfcAlignmentCant` layout rather than on this segment.
-pub fn spiral_curve(segment: &HorizontalSegment, name: &str) -> AlignmentResult<Curve2> {
+/// reconstructed from what the file states.
+///
+/// Most families need only the endpoint radii and the length. `VIENNESEBEND`
+/// additionally needs the cant swing and the gravity centre line height, so
+/// `cant` is not optional for it: a horizontal segment alone does not
+/// determine that geometry. Passing `None` for a Viennese bend is a refusal,
+/// not a fallback to an approximate law.
+pub fn spiral_curve(
+    segment: &HorizontalSegment,
+    name: &str,
+    cant: Option<&CantLayout>,
+    start_distance: f64,
+) -> AlignmentResult<Curve2> {
     if !(segment.segment_length.is_finite() && segment.segment_length > 0.0) {
         return Err(AlignmentError::InvalidSegment {
             entity: segment.entity,
@@ -139,14 +195,18 @@ pub fn spiral_curve(segment: &HorizontalSegment, name: &str) -> AlignmentResult<
             detail: "transition spiral endpoint curvatures must be finite",
         });
     }
-    let law = transition_law(name, start, end, segment.segment_length).ok_or_else(|| {
-        AlignmentError::Unsupported {
-            entity: segment.entity,
-            type_name: name.to_owned(),
-            detail: "no single closed-form curvature law reconstructs this family \
-                     from endpoint radii alone",
-        }
-    })?;
+    let law = if name == "VIENNESEBEND" {
+        viennese_curvature(segment, start, end, cant, start_distance)?
+    } else {
+        transition_law(name, start, end, segment.segment_length).ok_or_else(|| {
+            AlignmentError::Unsupported {
+                entity: segment.entity,
+                type_name: name.to_owned(),
+                detail: "no single closed-form curvature law reconstructs this family \
+                         from endpoint radii alone",
+            }
+        })?
+    };
     let direction = Vec2::new(segment.start_direction.cos(), segment.start_direction.sin());
     let frame = Frame2 {
         origin: segment.start_point,
@@ -164,4 +224,96 @@ pub fn spiral_curve(segment: &HorizontalSegment, name: &str) -> AlignmentResult<
         });
     }
     Ok(Curve2::Intrinsic(curve))
+}
+
+/// Resolve the Viennese bend law from the segment and its cant layout.
+///
+/// Both inputs the law needs beyond the endpoint radii are refused by
+/// name when absent, never defaulted. A missing gravity centre line
+/// height is not zero: zero places the centre of mass on the rail plane,
+/// which is a different curve rather than an unknown one.
+fn viennese_curvature(
+    segment: &HorizontalSegment,
+    start: f64,
+    end: f64,
+    cant: Option<&CantLayout>,
+    start_distance: f64,
+) -> AlignmentResult<CurvatureLaw> {
+    let Some(layout) = cant else {
+        return Err(AlignmentError::Unsupported {
+            entity: segment.entity,
+            type_name: "VIENNESEBEND".to_owned(),
+            detail: "a Viennese bend needs the IfcAlignmentCant layout: its \\
+                     curvature law depends on the superelevation swing",
+        });
+    };
+    let Some(height) = segment.gravity_center_line_height else {
+        return Err(AlignmentError::Unsupported {
+            entity: segment.entity,
+            type_name: "VIENNESEBEND".to_owned(),
+            detail: "a Viennese bend needs GravityCenterLineHeight: without \\
+                     it the cant correction is undetermined, not zero",
+        });
+    };
+    if !height.is_finite() {
+        return Err(AlignmentError::InvalidSegment {
+            entity: segment.entity,
+            detail: "GravityCenterLineHeight must be finite",
+        });
+    }
+    let swing = roll_swing(segment, layout, start_distance)?;
+    Ok(viennese_law(
+        start,
+        end,
+        segment.segment_length,
+        height,
+        swing,
+    ))
+}
+
+/// The change in superelevation roll angle across the segment.
+///
+/// Cant is an elevation difference between the rails; the roll angle it
+/// produces is `asin(D / b)` for rail head distance `b`. The swing is
+/// the difference between the angles at the segment end and start, which
+/// is what the curvature correction scales.
+///
+/// Stations come from the caller because an IfcAlignmentHorizontalSegment
+/// does not state its own distance along: position follows from chaining.
+fn roll_swing(
+    segment: &HorizontalSegment,
+    layout: &CantLayout,
+    start_distance: f64,
+) -> AlignmentResult<f64> {
+    if !start_distance.is_finite() || start_distance < 0.0 {
+        return Err(AlignmentError::InvalidSegment {
+            entity: segment.entity,
+            detail: "a Viennese bend needs a finite, non-negative station",
+        });
+    }
+    let end_distance = start_distance + segment.segment_length;
+    let at_start = layout.cant_at_distance(start_distance)?;
+    let at_end = layout.cant_at_distance(end_distance)?;
+    let b = layout.rail_head_distance;
+    if !(b.is_finite() && b > 0.0) {
+        return Err(AlignmentError::InvalidSegment {
+            entity: layout.entity,
+            detail: "RailHeadDistance must be finite and positive to convert \\
+                     cant into a roll angle",
+        });
+    }
+    let angle = |station: &crate::cant::CantAtStation| {
+        // Cant is the elevation difference between the rails, so the roll
+        // is taken from that difference rather than either rail alone.
+        let d = station.left - station.right;
+        (d / b).asin()
+    };
+    let swing = angle(&at_end) - angle(&at_start);
+    if !swing.is_finite() {
+        return Err(AlignmentError::InvalidSegment {
+            entity: layout.entity,
+            detail: "the cant swing across this segment is not finite",
+        });
+    }
+    Ok(swing)
 }

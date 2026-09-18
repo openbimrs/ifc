@@ -35,7 +35,7 @@ fn model() -> ifc_model::Model {
 fn the_all_or_nothing_entry_point_still_refuses_a_spiral_layout() {
     // Backward compatibility: the strict entry point keeps its contract.
     let model = model();
-    let error = lower_horizontal_layout(&model, HORIZONTAL, units())
+    let error = lower_horizontal_layout(&model, HORIZONTAL, units(), None)
         .expect_err("a CLOTHOID has no exact neutral primitive");
     assert!(
         matches!(&error, AlignmentError::Unsupported { type_name, .. } if type_name == "CLOTHOID"),
@@ -46,8 +46,8 @@ fn the_all_or_nothing_entry_point_still_refuses_a_spiral_layout() {
 #[test]
 fn partial_lowering_keeps_the_exact_segments_and_names_the_refused_ones() {
     let model = model();
-    let result =
-        lower_horizontal_layout_partial(&model, HORIZONTAL, units()).expect("layout is readable");
+    let result = lower_horizontal_layout_partial(&model, HORIZONTAL, units(), None)
+        .expect("layout is readable");
 
     assert_eq!(result.segment_count, 5);
     assert_eq!(
@@ -74,8 +74,8 @@ fn partial_lowering_keeps_the_exact_segments_and_names_the_refused_ones() {
 #[test]
 fn a_refusal_splits_the_layout_into_separate_runs_rather_than_bridging_it() {
     let model = model();
-    let result =
-        lower_horizontal_layout_partial(&model, HORIZONTAL, units()).expect("layout is readable");
+    let result = lower_horizontal_layout_partial(&model, HORIZONTAL, units(), None)
+        .expect("layout is readable");
 
     // line | CLOTHOID | arc | CLOTHOID | line  =>  three runs of one segment.
     // Continuity is never asserted across a segment that was not lowered.
@@ -141,7 +141,7 @@ fn a_fully_lowerable_layout_reports_complete_with_one_run() {
     // must agree with the strict entry point.
     let model = load("synthetic_alignment_layout.ifc");
 
-    let result = lower_horizontal_layout_partial(&model, EntityId(121), units())
+    let result = lower_horizontal_layout_partial(&model, EntityId(121), units(), None)
         .expect("layout is readable");
     assert!(result.is_complete());
     assert_eq!(result.refused, vec![]);
@@ -151,7 +151,7 @@ fn a_fully_lowerable_layout_reports_complete_with_one_run() {
     // Same content the strict entry point produces. Graph identity differs by
     // construction (each graph carries its own id), so compare the parts that
     // describe the geometry rather than the container's identity.
-    let strict = lower_horizontal_layout(&model, EntityId(121), units()).expect("lowers");
+    let strict = lower_horizontal_layout(&model, EntityId(121), units(), None).expect("lowers");
     assert_eq!(result.runs[0].sources, strict.sources);
     // `NodeId` embeds the owning graph's id, so two independently built graphs
     // never compare equal by value even when they describe identical geometry.
