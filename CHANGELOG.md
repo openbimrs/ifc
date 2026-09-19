@@ -8,6 +8,14 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- Every property value type is authorable in `ifc-properties`:
+  `add_property_enumerated_value`, `add_property_bounded_value`,
+  `add_property_list_value`, `add_property_table_value`,
+  `add_property_reference_value` and `add_complex_property`, alongside
+  `add_element_quantity` and `add_physical_complex_quantity` for quantity
+  takeoff. The schema WHERE rules are enforced at authoring time: bounded
+  values must share a measure, table columns must pair and stay
+  homogeneous, and a complex property cannot contain itself.
 - Material relationship authoring in `ifc-material`:
   `create_material_relationship`, `create_material_properties`,
   `create_material_classification_relationship`,

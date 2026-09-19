@@ -49,9 +49,13 @@ pub use exact::{
     ExactValue,
 };
 pub use pset::{
-    add_property_set, add_property_single_value, attach_property_set, defines_slot, property,
-    property_set, property_sets_by_object, pset_slot, single_value_slot, AttachedSets, Attachment,
-    Property, PropertySet, PropertyValue,
+    add_complex_property, add_element_quantity, add_physical_complex_quantity,
+    add_property_bounded_value, add_property_enumerated_value, add_property_list_value,
+    add_property_reference_value, add_property_set, add_property_single_value,
+    add_property_table_value, attach_property_set, bounded_slot, complex_quantity_slot,
+    complex_slot, defines_slot, element_quantity_slot, enumerated_slot, list_slot, property,
+    property_set, property_sets_by_object, pset_slot, reference_slot, single_value_slot,
+    table_slot, AttachedSets, Attachment, Property, PropertySet, PropertyValue, TableValueDraft,
 };
 pub use quantity::{
     add_quantity_to_set, compare, create_quantity, set_description, set_name, set_quantity_value,
