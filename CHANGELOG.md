@@ -8,6 +8,13 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- Material relationship authoring in `ifc-material`:
+  `create_material_relationship`, `create_material_properties`,
+  `create_material_classification_relationship`,
+  `create_material_definition_representation` and
+  `create_profile_with_offsets`. Every instantiable material entity the
+  crate can read is now authorable; the remaining four are abstract
+  SELECT or supertype declarations.
 - Property set authoring in `ifc-properties`: `add_property_single_value`,
   `add_property_set` and `attach_property_set`. The crate could resolve
   property sets and author none. Enforces the schema ExistsName,

@@ -3,6 +3,13 @@
 //! These helpers only stage records. [`ifc_model::Transaction::commit`] owns
 //! atomic graph/index application, so a failed batch cannot leave part of a
 //! material graph in the model.
+mod relationships;
+
+pub use relationships::{
+    create_material_classification_relationship, create_material_definition_representation,
+    create_material_properties, create_material_relationship,
+};
+
 use std::collections::HashSet;
 
 use ifc_model::{Edit, Entity, EntityId, Model, Transaction, Value};
@@ -472,6 +479,56 @@ pub fn create_layer_with_offsets(
             optional_text(draft.category),
             draft.priority.map_or(Value::Null, Value::Integer),
             Value::Enum(offset_direction.as_token().into()),
+            Value::List(offset_values.iter().copied().map(Value::Real).collect()),
+        ],
+    )))
+}
+
+/// Stage an `IfcMaterialProfileWithOffsets`.
+///
+/// The offset variant of [`create_profile`]. `OffsetValues` is an
+/// `ARRAY [1:2]`: two finite lengths, so a single value or three is
+/// not an under-specified profile but a malformed one.
+///
+/// # Errors
+///
+/// Refuses non-finite offsets, a priority outside `0..=100`, and a
+/// `Profile` or `Material` reference whose target is the wrong type.
+pub fn create_profile_with_offsets(
+    tx: &mut Transaction,
+    model: &Model,
+    draft: ProfileDraft<'_>,
+    offset_values: [f64; 2],
+) -> MaterialResult<EntityId> {
+    if let Some(priority) = draft.priority.filter(|value| !(0..=100).contains(value)) {
+        return Err(invalid(
+            "IFCMATERIALPROFILEWITHOFFSETS",
+            "Priority",
+            priority.to_string(),
+        ));
+    }
+    for value in offset_values {
+        if !value.is_finite() {
+            return Err(invalid(
+                "IFCMATERIALPROFILEWITHOFFSETS",
+                "OffsetValues",
+                "expected finite lengths",
+            ));
+        }
+    }
+    if let Some(material) = draft.material {
+        require_type(tx, model, material, &["IFCMATERIAL"])?;
+    }
+    require_exists(tx, model, draft.profile)?;
+    Ok(tx.create(Entity::new(
+        "IFCMATERIALPROFILEWITHOFFSETS",
+        vec![
+            optional_text(draft.name),
+            optional_text(draft.description),
+            draft.material.map_or(Value::Null, Value::Ref),
+            Value::Ref(draft.profile),
+            draft.priority.map_or(Value::Null, Value::Integer),
+            optional_text(draft.category),
             Value::List(offset_values.iter().copied().map(Value::Real).collect()),
         ],
     )))

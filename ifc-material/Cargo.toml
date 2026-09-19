@@ -14,6 +14,7 @@ thiserror.workspace = true
 
 [dev-dependencies]
 ifc-schema.workspace = true
+ifc-step.workspace = true
 
 [lints]
 workspace = true
