@@ -49,8 +49,9 @@ pub use exact::{
     ExactValue,
 };
 pub use pset::{
-    property, property_set, property_sets_by_object, AttachedSets, Attachment, Property,
-    PropertySet, PropertyValue,
+    add_property_set, add_property_single_value, attach_property_set, defines_slot, property,
+    property_set, property_sets_by_object, pset_slot, single_value_slot, AttachedSets, Attachment,
+    Property, PropertySet, PropertyValue,
 };
 pub use quantity::{
     add_quantity_to_set, compare, create_quantity, set_description, set_name, set_quantity_value,

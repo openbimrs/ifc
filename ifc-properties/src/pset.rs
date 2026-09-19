@@ -16,6 +16,11 @@ mod set;
 mod table;
 
 mod aggregate;
+mod authoring;
 
+pub use authoring::{
+    add_property_set, add_property_single_value, attach_property_set, defines_slot, pset_slot,
+    single_value_slot,
+};
 pub use scalar::{property, Property, PropertyValue};
 pub use set::{property_set, property_sets_by_object, AttachedSets, Attachment, PropertySet};

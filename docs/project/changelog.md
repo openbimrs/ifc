@@ -16,6 +16,10 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- Property set authoring in `ifc-properties`: `add_property_single_value`,
+  `add_property_set` and `attach_property_set`. The crate could resolve
+  property sets and author none. Enforces the schema ExistsName,
+  UniquePropertyNames and NoRelatedTypeObject rules.
 - Event, lag and recurrence authoring in `ifc-schedule`: `create_event`,
   `create_event_time`, `create_lag_time` and `create_recurrence_pattern`
   close the last four readable-but-not-authorable entity types. Slot
