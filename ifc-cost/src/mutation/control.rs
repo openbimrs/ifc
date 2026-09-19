@@ -122,8 +122,13 @@ pub fn nest_cost_items(
 
 /// Validate and stage a schedule-to-items `IfcRelAssignsToControl`.
 ///
-/// `RelatedObjectsType` is authored as `.CONTROL.` because every related target
-/// is required to be an exact `IfcCostItem`.
+/// `RelatedObjectsType` is left unset. IFC4 redeclares it as
+/// `OPTIONAL IfcStrippedOptional`, a BOOLEAN retained only so older
+/// files still parse; the IFC2x3 reading, where it named the common
+/// type of the related objects, no longer applies. Writing `.CONTROL.`
+/// there put an enumeration token in a boolean slot -- a file that
+/// parses and is wrong. The constraint that every target is an exact
+/// `IfcCostItem` is still enforced, by the reference check below.
 pub fn assign_schedule_items(
     tx: &mut Transaction,
     model: &Model,
@@ -152,7 +157,8 @@ pub fn assign_schedule_items(
     let mut attributes = root_prefix(draft.global_id);
     attributes.extend([
         refs(draft.items),
-        Value::Enum("CONTROL".into()),
+        // RelatedObjectsType: stripped in IFC4, deliberately unset.
+        Value::Null,
         Value::Ref(draft.schedule),
     ]);
     Ok(tx.create(Entity::new("IFCRELASSIGNSTOCONTROL", attributes)))

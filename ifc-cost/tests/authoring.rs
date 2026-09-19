@@ -102,10 +102,17 @@ fn stages_a_queryable_cost_schedule_tree_atomically() {
 
     assert_eq!(model.len(), 0, "staging must not mutate the model");
     tx.commit(&mut model).unwrap();
-    assert!(matches!(
+    // RelatedObjectsType is OPTIONAL IfcStrippedOptional in IFC4: a
+    // BOOLEAN kept only for backward parsing. It is left unset rather
+    // than carrying an enumeration token the slot cannot hold.
+    assert!(
+        matches!(
+            model.get(assignment).unwrap().attribute(5),
+            None | Some(Value::Null)
+        ),
+        "a stripped optional is not authored: {:?}",
         model.get(assignment).unwrap().attribute(5),
-        Some(Value::Enum(token)) if token.as_ref() == "CONTROL"
-    ));
+    );
     assert_eq!(children_of(&model, root), [child]);
     assert_eq!(controlled_by(&model, schedule), [root]);
     assert_eq!(controls_of(&model, root), [schedule]);

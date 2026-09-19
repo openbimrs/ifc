@@ -117,7 +117,15 @@ pub fn create_quantity(
             draft.unit.map_or(Value::Null, Value::Ref),
             Value::Typed {
                 type_name: draft.kind.measure_name().into(),
-                value: Box::new(Value::Real(draft.value)),
+                // IfcCountMeasure is declared INTEGER in EXPRESS; every
+                // other measure here is REAL. The whole-count check above
+                // has already run, so the cast cannot lose a fraction.
+                value: Box::new(if draft.kind == QuantityKind::Count {
+                    #[allow(clippy::cast_possible_truncation)]
+                    Value::Integer(draft.value as i64)
+                } else {
+                    Value::Real(draft.value)
+                }),
             },
             draft.formula.map_or(Value::Null, |f| Value::Text(f.into())),
         ],

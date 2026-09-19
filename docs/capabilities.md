@@ -30,7 +30,7 @@ code.
 | `ifc-geometry` | 32,254 | 110 | 3 | 38 | <span class="status-partial">Partial</span> |
 | `ifc-alignment` | 4,532 | 36 | 11 | 10 | <span class="status-partial">Partial</span> |
 | `ifc-style` | 4,532 | 38 | 0 | 7 | <span class="status-implemented">Implemented</span> |
-| `ifc-properties` | 4,474 | 33 | 14 | 6 | <span class="status-implemented">Implemented</span> |
+| `ifc-properties` | 4,522 | 33 | 14 | 6 | <span class="status-implemented">Implemented</span> |
 | `ifc-structural` | 3,936 | 34 | 14 | 13 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 3,241 | 25 | 0 | 11 | <span class="status-implemented">Implemented</span> |
 | `ifc-template-catalog` | 3,104 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
@@ -38,7 +38,7 @@ code.
 | `ifc-validate` | 2,493 | 23 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-schedule` | 2,479 | 25 | 13 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-classification` | 2,440 | 20 | 4 | 3 | <span class="status-implemented">Implemented</span> |
-| `ifc-cost` | 2,221 | 17 | 0 | 3 | <span class="status-implemented">Implemented</span> |
+| `ifc-cost` | 2,235 | 17 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 1,889 | 21 | 5 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-georef` | 1,729 | 19 | 9 | 4 | <span class="status-partial">Partial</span> |
@@ -49,7 +49,7 @@ code.
 | `ifc-author` | 951 | 9 | 3 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-step` | 949 | 6 | 0 | 6 | <span class="status-implemented">Implemented</span> |
 | `ifc-approval` | 914 | 5 | 0 | 1 | <span class="status-implemented">Implemented</span> |
-| `openbim-ifc` | 901 | 6 | 0 | 14 | <span class="status-implemented">Implemented</span> |
+| `openbim-ifc` | 901 | 6 | 0 | 15 | <span class="status-implemented">Implemented</span> |
 
 <!-- CAPABILITIES:CENSUS:END -->
 

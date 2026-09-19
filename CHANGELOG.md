@@ -8,6 +8,8 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `create_quantity_with` and `QuantityExtras` in `ifc-properties`, reaching
+  the `Description`, `Unit` and `Formula` attributes of a simple quantity.
 - Referent authoring in `ifc-alignment`: `referent`, `linear_placement`,
   `axis2_placement_linear`, `point_by_distance`, `cartesian_point` and
   `stationing`, which writes the `Pset_Stationing` set the station reader
@@ -352,6 +354,14 @@ and this project follows Semantic Versioning.
   `IfcFirstProjAxis`, `IfcSecondProjAxis` (all `transform`).
 
 ### Fixed
+- `ifc-properties::create_quantity` wrote four attributes where every
+  `IfcPhysicalSimpleQuantity` subtype declares five, so `Formula` could
+  never be read back by this crate's own reader.
+- `ifc-cost::create_quantity` encoded `IfcCountMeasure` as a real, emitting
+  `4.` where EXPRESS declares INTEGER.
+- `ifc-cost::assign_schedule_items` wrote `.CONTROL.` into
+  `RelatedObjectsType`, which IFC4 redeclares as `IfcStrippedOptional`, a
+  BOOLEAN. It is now left unset.
 - `add_si_unit` wrote `IfcSIUnit.Dimensions` as `$`, an omitted value. The
   schema declares it DERIVE, which STEP spells `*`; the two are different
   claims and a validator rejects the first.

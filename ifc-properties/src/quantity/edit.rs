@@ -154,6 +154,48 @@ pub fn create_quantity(
     name: &str,
     value: f64,
 ) -> EntityId {
+    create_quantity_with(tx, kind, name, value, QuantityExtras::default())
+}
+
+/// The optional attributes of an `IfcPhysicalSimpleQuantity`.
+///
+/// Separated from [`create_quantity`] so the common call stays a
+/// four-argument one, while `Description`, `Unit` and `Formula` remain
+/// reachable. They are attributes of the entity, not decoration: the
+/// reader in this crate resolves all three.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct QuantityExtras<'a> {
+    /// `IfcPhysicalQuantity.Description`.
+    pub description: Option<&'a str>,
+    /// `IfcPhysicalSimpleQuantity.Unit`, an `IfcNamedUnit` reference.
+    ///
+    /// Left unset the quantity is read in the project's default unit for
+    /// its measure, which is usually what a take-off wants.
+    pub unit: Option<EntityId>,
+    /// `Formula`, how the quantity was derived.
+    pub formula: Option<&'a str>,
+}
+
+/// Stage a simple quantity with its optional attributes.
+///
+/// # Why the arity is five
+///
+/// Every `IfcPhysicalSimpleQuantity` subtype declares exactly five
+/// attributes: `Name`, `Description`, `Unit`, the subtype's own measure,
+/// and `Formula`. Writing four leaves `Formula` off the record entirely,
+/// and this crate's own reader resolves it at slot 4 -- so a formula a
+/// caller set could never be read back.
+#[must_use]
+pub fn create_quantity_with(
+    tx: &mut Transaction,
+    kind: QuantityKind,
+    name: &str,
+    value: f64,
+    extras: QuantityExtras<'_>,
+) -> EntityId {
+    // IfcCountMeasure is declared INTEGER in EXPRESS, every other measure
+    // is REAL. Writing 4. where the schema says 4 is a type error a
+    // validator rejects, so the count case is narrowed deliberately.
     let numeric = if kind == QuantityKind::Count {
         Value::Integer(value as i64)
     } else {
@@ -163,12 +205,17 @@ pub fn create_quantity(
         kind.type_name(),
         vec![
             Value::Text(name.into()),
-            Value::Null,
-            Value::Null,
+            extras
+                .description
+                .map_or(Value::Null, |text| Value::Text(text.into())),
+            extras.unit.map_or(Value::Null, Value::Ref),
             Value::Typed {
                 type_name: kind.measure_type().into(),
                 value: Box::new(numeric),
             },
+            extras
+                .formula
+                .map_or(Value::Null, |text| Value::Text(text.into())),
         ],
     ))
 }
