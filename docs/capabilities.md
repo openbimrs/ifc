@@ -29,8 +29,8 @@ code.
 | --- | ---: | ---: | ---: | ---: | --- |
 | `ifc-geometry` | 32,254 | 110 | 3 | 38 | <span class="status-partial">Partial</span> |
 | `ifc-style` | 4,532 | 38 | 0 | 7 | <span class="status-implemented">Implemented</span> |
+| `ifc-properties` | 4,474 | 33 | 14 | 6 | <span class="status-implemented">Implemented</span> |
 | `ifc-alignment` | 4,267 | 35 | 11 | 9 | <span class="status-partial">Partial</span> |
-| `ifc-properties` | 4,213 | 32 | 14 | 6 | <span class="status-implemented">Implemented</span> |
 | `ifc-structural` | 3,936 | 34 | 14 | 13 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 3,241 | 25 | 0 | 11 | <span class="status-implemented">Implemented</span> |
 | `ifc-template-catalog` | 3,104 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |

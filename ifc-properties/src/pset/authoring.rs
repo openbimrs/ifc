@@ -145,7 +145,7 @@ pub fn add_property_set(
     Ok(tx.create(Entity::new("IFCPROPERTYSET", attributes)))
 }
 
-fn optional_text(value: Option<&str>) -> Value {
+pub(super) fn optional_text(value: Option<&str>) -> Value {
     value.map_or(Value::Null, |text| Value::Text(text.into()))
 }
 
@@ -291,7 +291,7 @@ pub mod complex_slot {
 /// `IfcProperty.Name` is required and is the key every lookup uses. A
 /// whitespace-only name satisfies the schema's EXISTS check and still
 /// names nothing.
-fn require_name(entity: &'static str, name: &str) -> PropertyResult<()> {
+pub(super) fn require_name(entity: &'static str, name: &str) -> PropertyResult<()> {
     if name.trim().is_empty() {
         return Err(PropertyError::AuthoringInvalid {
             entity,

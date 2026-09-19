@@ -44,8 +44,10 @@ pub struct MonetaryUnitDraft<'a> {
 
 /// Stage an `IfcSIUnit`.
 ///
-/// `Dimensions` is left `Null`: it is derived from `UnitType` in IFC4 and a
-/// written value would be redundant at best and contradictory at worst.
+/// `Dimensions` is written as `Value::Derived`, the STEP asterisk. The
+/// schema declares it DERIVE on this subtype, computed from `Name`, and
+/// a derived attribute is not an omitted one: `$` claims the value is
+/// absent, while `*` states it is computed by the schema rule.
 pub fn add_si_unit(tx: &mut Transaction, draft: SiUnitDraft<'_>) -> PropertyResult<EntityId> {
     require_enum("IFCSIUNIT", "UnitType", draft.unit_type)?;
     require_enum("IFCSIUNIT", "Name", draft.name)?;
@@ -57,7 +59,7 @@ pub fn add_si_unit(tx: &mut Transaction, draft: SiUnitDraft<'_>) -> PropertyResu
     Ok(tx.create(Entity::new(
         "IFCSIUNIT",
         vec![
-            Value::Null,
+            Value::Derived,
             enum_value(draft.unit_type),
             draft.prefix.map_or(Value::Null, enum_value),
             enum_value(draft.name),
@@ -195,6 +197,68 @@ pub fn assign_units(tx: &mut Transaction, units: &[EntityId]) -> PropertyResult<
     Ok(tx.create(Entity::new(
         "IFCUNITASSIGNMENT",
         vec![Value::List(units.iter().copied().map(Value::Ref).collect())],
+    )))
+}
+
+/// Stage an `IfcMeasureWithUnit`.
+///
+/// A magnitude paired with the unit it is stated in. Both attributes
+/// are required: this is the entity `IfcConversionBasedUnit` points at
+/// for its conversion factor, and a factor missing either half states
+/// no conversion at all.
+///
+/// # Errors
+///
+/// Refuses a null value component; the schema types it as a required
+/// `IfcValue`.
+pub fn add_measure_with_unit(
+    tx: &mut Transaction,
+    value: Value,
+    unit: EntityId,
+) -> PropertyResult<EntityId> {
+    if matches!(value, Value::Null) {
+        return Err(authoring_invalid(
+            "IFCMEASUREWITHUNIT",
+            "ValueComponent",
+            "expected a value",
+        ));
+    }
+    Ok(tx.create(Entity::new(
+        "IFCMEASUREWITHUNIT",
+        vec![value, Value::Ref(unit)],
+    )))
+}
+
+/// Stage an `IfcContextDependentUnit`.
+///
+/// A unit with no SI conversion, named by the project that defines it.
+/// Unlike `IfcSIUnit`, `Dimensions` is a real attribute here rather
+/// than a derived one, so the caller supplies it.
+///
+/// # Errors
+///
+/// Refuses a blank name or a malformed `UnitType` token.
+pub fn add_context_dependent_unit(
+    tx: &mut Transaction,
+    dimensions: EntityId,
+    unit_type: &str,
+    name: &str,
+) -> PropertyResult<EntityId> {
+    require_enum("IFCCONTEXTDEPENDENTUNIT", "UnitType", unit_type)?;
+    if name.trim().is_empty() {
+        return Err(authoring_invalid(
+            "IFCCONTEXTDEPENDENTUNIT",
+            "Name",
+            "expected a non-empty name",
+        ));
+    }
+    Ok(tx.create(Entity::new(
+        "IFCCONTEXTDEPENDENTUNIT",
+        vec![
+            Value::Ref(dimensions),
+            enum_value(unit_type),
+            Value::Text(name.into()),
+        ],
     )))
 }
 

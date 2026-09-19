@@ -9,9 +9,10 @@ use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 use ifc_properties::{
     add_complex_property, add_element_quantity, add_physical_complex_quantity,
     add_property_bounded_value, add_property_enumerated_value, add_property_list_value,
-    add_property_reference_value, add_property_set, add_property_single_value,
-    add_property_table_value, attach_property_set, create_quantity, properties_of, property_set,
-    quantity_sets, PropertyError, PropertyValue, QuantityKind, TableValueDraft,
+    add_property_reference_value, add_property_set, add_property_set_template,
+    add_property_single_value, add_property_table_value, attach_property_set, attach_template,
+    attach_type, create_quantity, properties_of, property_set, property_set_template,
+    quantity_sets, template_of_set, PropertyError, PropertyValue, QuantityKind, TableValueDraft,
 };
 use ifc_step::StepCodec;
 
@@ -393,4 +394,172 @@ fn the_quantity_entities_refuse_empty_and_blank_input() {
         add_physical_complex_quantity(&mut tx, "  ", None, &[area], "gross").is_err(),
         "a blank complex quantity name is refused"
     );
+}
+
+/// Templates and type attachment read back through their readers.
+///
+/// A template declares what a set should contain; the relationship
+/// binds an authored set to it. Both are what a conformance checker
+/// follows, so both must resolve, not merely parse.
+#[test]
+fn templates_and_type_attachment_read_back() {
+    let mut model = Model::default();
+    let mut tx = Transaction::new(&model);
+    let simple = tx.create(Entity::new("IFCSIMPLEPROPERTYTEMPLATE", {
+        let mut a = vec![Value::Null; 12];
+        a[0] = Value::Text("0aBcDeFgHiJkLmNoPqRsTu".into());
+        a[2] = Value::Text("Height".into());
+        a
+    }));
+    let template = add_property_set_template(
+        &mut tx,
+        "1aBcDeFgHiJkLmNoPqRsTu",
+        "Pset_WallCommon",
+        Some("IfcWall"),
+        &[simple],
+    )
+    .expect("template");
+    let height = add_property_single_value(&mut tx, "Height", None, None, None).expect("property");
+    let pset = add_property_set(
+        &mut tx,
+        "2aBcDeFgHiJkLmNoPqRsTu",
+        "Pset_WallCommon",
+        None,
+        &[("Height", height)],
+    )
+    .expect("pset");
+    attach_template(&mut tx, "3aBcDeFgHiJkLmNoPqRsTu", &[pset], template).expect("bound");
+    tx.commit(&mut model).expect("commit");
+
+    let found = property_set_template(&model, template).expect("template resolves");
+    assert_eq!(found.name.as_deref(), Some("Pset_WallCommon"));
+    assert_eq!(found.applicable_entity.as_deref(), Some("IfcWall"));
+    assert_eq!(template_of_set(&model).get(&pset), Some(&template));
+}
+
+/// Type attachment is the route properties reach occurrences.
+///
+/// IfcRelDefinesByProperties refuses a type object; this is the
+/// relationship that carries a type's properties to its instances.
+#[test]
+fn type_attachment_refuses_the_cases_the_schema_forbids() {
+    let mut model = Model::default();
+    let mut tx = Transaction::new(&model);
+    let wall_type = tx.create(Entity::new("IFCWALLTYPE", vec![Value::Null; 10]));
+    let occurrence = wall(&mut tx, "0aBcDeFgHiJkLmNoPqRsTu");
+    tx.commit(&mut model).expect("commit");
+
+    let mut tx = Transaction::new(&model);
+    let rel = attach_type(
+        &mut tx,
+        &model,
+        "1aBcDeFgHiJkLmNoPqRsTu",
+        &[occurrence],
+        wall_type,
+    )
+    .expect("a type attaches to an occurrence");
+    tx.commit(&mut model).expect("commit");
+    let written = model.get(rel).expect("written");
+    assert_eq!(
+        written.attributes[5],
+        Value::Ref(wall_type),
+        "RelatingType at 5"
+    );
+
+    let mut tx = Transaction::new(&model);
+    assert!(
+        attach_type(&mut tx, &model, "2aBcDeFgHiJkLmNoPqRsTu", &[], wall_type).is_err(),
+        "an empty occurrence list is refused",
+    );
+    assert!(
+        attach_type(
+            &mut tx,
+            &model,
+            "3aBcDeFgHiJkLmNoPqRsTu",
+            &[wall_type],
+            wall_type,
+        )
+        .is_err(),
+        "a type object cannot be its own occurrence",
+    );
+    assert!(
+        attach_type(
+            &mut tx,
+            &model,
+            "4aBcDeFgHiJkLmNoPqRsTu",
+            &[occurrence],
+            occurrence,
+        )
+        .is_err(),
+        "an occurrence is not a type",
+    );
+}
+
+/// Templates refuse the empty aggregates the schema forbids.
+///
+/// HasPropertyTemplates and RelatedPropertySets are both `SET [1:?]`:
+/// a template declaring no properties constrains nothing, and a
+/// binding to no sets binds nothing.
+#[test]
+fn templates_refuse_empty_aggregates() {
+    let model = Model::default();
+    let mut tx = Transaction::new(&model);
+    let simple = tx.create(Entity::new(
+        "IFCSIMPLEPROPERTYTEMPLATE",
+        vec![Value::Null; 12],
+    ));
+    let template =
+        add_property_set_template(&mut tx, "0aBcDeFgHiJkLmNoPqRsTu", "Pset_X", None, &[simple])
+            .expect("template");
+
+    assert!(
+        add_property_set_template(&mut tx, "1aBcDeFgHiJkLmNoPqRsTu", "Pset_X", None, &[],).is_err(),
+        "a template with no property templates is refused",
+    );
+    assert!(
+        attach_template(&mut tx, "2aBcDeFgHiJkLmNoPqRsTu", &[], template).is_err(),
+        "a binding to no property sets is refused",
+    );
+    assert!(
+        add_property_set_template(&mut tx, "bad-guid", "Pset_X", None, &[simple]).is_err(),
+        "a malformed GUID is refused",
+    );
+    assert!(
+        add_property_set_template(&mut tx, "3aBcDeFgHiJkLmNoPqRsTu", "   ", None, &[simple],)
+            .is_err(),
+        "a blank template name is refused",
+    );
+}
+
+/// All six IfcQuantity subtypes are authorable and read back typed.
+///
+/// They are written through one QuantityKind path rather than six
+/// functions, which is easy to mistake for a gap when grepping for
+/// type-name literals. This pins the actual behaviour.
+#[test]
+fn every_quantity_subtype_is_authorable() {
+    let mut model = Model::default();
+    let mut tx = Transaction::new(&model);
+    let kinds = [
+        (QuantityKind::Length, "IFCQUANTITYLENGTH"),
+        (QuantityKind::Area, "IFCQUANTITYAREA"),
+        (QuantityKind::Volume, "IFCQUANTITYVOLUME"),
+        (QuantityKind::Count, "IFCQUANTITYCOUNT"),
+        (QuantityKind::Weight, "IFCQUANTITYWEIGHT"),
+        (QuantityKind::Time, "IFCQUANTITYTIME"),
+    ];
+    let mut ids = Vec::new();
+    for (kind, _) in kinds {
+        ids.push(create_quantity(&mut tx, kind, "Q", 2.0));
+    }
+    tx.commit(&mut model).expect("commit");
+
+    for (id, (_, expected)) in ids.iter().zip(kinds) {
+        let entity = model.get(*id).expect("written");
+        assert!(
+            entity.type_name.eq_ignore_ascii_case(expected),
+            "expected {expected}, got {}",
+            entity.type_name,
+        );
+    }
 }

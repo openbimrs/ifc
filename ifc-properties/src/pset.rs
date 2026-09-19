@@ -17,6 +17,7 @@ mod table;
 
 mod aggregate;
 mod authoring;
+mod template_authoring;
 
 pub use authoring::{
     add_complex_property, add_element_quantity, add_physical_complex_quantity,
@@ -28,3 +29,7 @@ pub use authoring::{
 };
 pub use scalar::{property, Property, PropertyValue};
 pub use set::{property_set, property_sets_by_object, AttachedSets, Attachment, PropertySet};
+pub use template_authoring::{
+    add_property_set_template, attach_template, attach_type, defines_by_template_slot,
+    defines_by_type_slot, pset_template_slot,
+};

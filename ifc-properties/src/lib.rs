@@ -51,11 +51,13 @@ pub use exact::{
 pub use pset::{
     add_complex_property, add_element_quantity, add_physical_complex_quantity,
     add_property_bounded_value, add_property_enumerated_value, add_property_list_value,
-    add_property_reference_value, add_property_set, add_property_single_value,
-    add_property_table_value, attach_property_set, bounded_slot, complex_quantity_slot,
-    complex_slot, defines_slot, element_quantity_slot, enumerated_slot, list_slot, property,
-    property_set, property_sets_by_object, pset_slot, reference_slot, single_value_slot,
-    table_slot, AttachedSets, Attachment, Property, PropertySet, PropertyValue, TableValueDraft,
+    add_property_reference_value, add_property_set, add_property_set_template,
+    add_property_single_value, add_property_table_value, attach_property_set, attach_template,
+    attach_type, bounded_slot, complex_quantity_slot, complex_slot, defines_by_template_slot,
+    defines_by_type_slot, defines_slot, element_quantity_slot, enumerated_slot, list_slot,
+    property, property_set, property_sets_by_object, pset_slot, pset_template_slot, reference_slot,
+    single_value_slot, table_slot, AttachedSets, Attachment, Property, PropertySet, PropertyValue,
+    TableValueDraft,
 };
 pub use quantity::{
     add_quantity_to_set, compare, create_quantity, set_description, set_name, set_quantity_value,
@@ -70,9 +72,9 @@ pub use template::{
     PropertySetTemplate, PropertyTemplate,
 };
 pub use unit::{
-    add_conversion_based_unit, add_derived_unit, add_derived_unit_element,
-    add_dimensional_exponents, add_monetary_unit, add_si_unit, assign_units, prefix_exponent,
-    project_unit_for, project_units, unit, unit_type, ConversionBasedUnitDraft, MonetaryUnitDraft,
-    SiUnitDraft, UnitKind,
+    add_context_dependent_unit, add_conversion_based_unit, add_derived_unit,
+    add_derived_unit_element, add_dimensional_exponents, add_measure_with_unit, add_monetary_unit,
+    add_si_unit, assign_units, prefix_exponent, project_unit_for, project_units, unit, unit_type,
+    ConversionBasedUnitDraft, MonetaryUnitDraft, SiUnitDraft, UnitKind,
 };
 pub use value::{MeasureValue, Scalar};

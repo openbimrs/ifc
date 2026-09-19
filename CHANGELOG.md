@@ -8,6 +8,9 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- Template and type authoring in `ifc-properties`:
+  `add_property_set_template`, `attach_template`, `attach_type`,
+  `add_measure_with_unit` and `add_context_dependent_unit`.
 - Systems authoring in `ifc-systems`: `create_system`, `create_port`,
   `assign_to_group`, `nest_ports`, `connect_port_to_element` and
   `connect_ports`, plus `contain_in_spatial_structure` and
@@ -335,6 +338,9 @@ and this project follows Semantic Versioning.
   `IfcFirstProjAxis`, `IfcSecondProjAxis` (all `transform`).
 
 ### Fixed
+- `add_si_unit` wrote `IfcSIUnit.Dimensions` as `$`, an omitted value. The
+  schema declares it DERIVE, which STEP spells `*`; the two are different
+  claims and a validator rejects the first.
 - `scripts/sync-capabilities.py` no longer reports "the IFC4 schema was not
   available" when the unaddressed-entity walk legitimately finds zero. The
   missing-schema case already raises above that branch, so an empty list is a

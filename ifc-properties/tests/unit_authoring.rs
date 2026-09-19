@@ -4,11 +4,13 @@
 //! prefix parses cleanly, validates cleanly, and silently scales every
 //! measure in the file. These tests pin the refusals that prevent it.
 
+use ifc_model::codec::Codec;
 use ifc_model::{Model, Transaction};
 use ifc_properties::{
     add_derived_unit, add_derived_unit_element, add_dimensional_exponents, add_si_unit,
     assign_units, project_units, SiUnitDraft,
 };
+use ifc_step::StepCodec;
 
 #[test]
 fn a_millimetre_project_context_commits_and_reads_back() {
@@ -113,5 +115,39 @@ fn a_derived_unit_without_elements_is_refused() {
     assert!(
         add_derived_unit(&mut tx, &[], "VOLUMEUNIT", None).is_err(),
         "a derived unit with no elements has no dimension at all"
+    );
+}
+
+/// A derived attribute is written as `*`, not `$`.
+///
+/// The schema declares IfcSIUnit.Dimensions DERIVE, computed from
+/// Name. STEP spells that as an asterisk; a dollar claims the value is
+/// absent, which is a different statement and one a validator rejects.
+/// Both decode to a Rust value, so this asserts the emitted text.
+#[test]
+fn a_derived_attribute_is_written_as_an_asterisk() {
+    let mut model = Model::default();
+    let mut tx = Transaction::new(&model);
+    add_si_unit(
+        &mut tx,
+        SiUnitDraft {
+            unit_type: "LENGTHUNIT",
+            prefix: Some("MILLI"),
+            name: "METRE",
+        },
+    )
+    .expect("unit");
+    tx.commit(&mut model).expect("commit");
+
+    let mut bytes = Vec::new();
+    StepCodec.write(&model, &mut bytes).expect("written");
+    let text = String::from_utf8(bytes).expect("utf8");
+    let line = text
+        .lines()
+        .find(|l| l.contains("IFCSIUNIT"))
+        .expect("the unit is written");
+    assert!(
+        line.contains("IFCSIUNIT(*,"),
+        "Dimensions is derived, not omitted: {line}",
     );
 }
