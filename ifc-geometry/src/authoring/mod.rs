@@ -20,6 +20,7 @@ mod placement;
 mod profile;
 mod solid;
 mod std_profile;
+mod tessellation;
 
 pub use placement::{axis2_placement_2d, axis2_placement_3d, cartesian_point, direction};
 pub use profile::{
@@ -32,6 +33,11 @@ pub use std_profile::{
     AsymmetricIExtras, CShapeDims, FlangedDims, IShapeDims, IShapeExtras, LShapeExtras,
     ProfileHeader, RectangleHollowDims, RectangleHollowFillets, TShapeExtras, TrapeziumDims,
     UShapeExtras, ZShapeExtras,
+};
+pub use tessellation::{
+    cartesian_point_list_2d, cartesian_point_list_3d, indexed_polygonal_face,
+    indexed_polygonal_face_with_voids, polygonal_face_set, triangulated_face_set,
+    TriangulatedExtras,
 };
 
 use ifc_model::{EntityId, Value};

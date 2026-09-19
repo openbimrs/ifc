@@ -16,6 +16,11 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- Tessellated geometry authoring in `ifc-geometry`: `IfcCartesianPointList2D`
+  and `3D`, `IfcTriangulatedFaceSet`, `IfcPolygonalFaceSet`,
+  `IfcIndexedPolygonalFace` and the with-voids variant. Callers pass 0-based
+  indices; the writer converts to the schema's 1-based `IfcPositiveInteger`
+  and refuses indices past the end of the point list.
 - Standard section authoring in `ifc-geometry`: I, L, T, U, Z and C
   shapes, the asymmetric I, ellipse, trapezium, and the rectangular and
   circular hollow profiles. Every EXPRESS WHERE rule on these entities is

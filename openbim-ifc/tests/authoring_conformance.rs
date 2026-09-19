@@ -446,3 +446,47 @@ fn georeferencing_and_alignment_authoring_is_conformant() {
 
     assert_conformant(&model, "georef and alignment authoring");
 }
+/// `ifc-geometry` tessellation: meshes carried as indices, where the
+/// validator checks the record shape the writer produced.
+#[test]
+#[cfg(feature = "geometry")]
+fn tessellation_authoring_is_conformant() {
+    use ifc::geometry::authoring::{
+        cartesian_point_list_3d, indexed_polygonal_face, indexed_polygonal_face_with_voids,
+        polygonal_face_set, triangulated_face_set, TriangulatedExtras,
+    };
+
+    let mut model = model();
+    let mut tx = Transaction::new(&model);
+    let pts = [
+        [0.0, 0.0, 0.0],
+        [4.0, 0.0, 0.0],
+        [4.0, 4.0, 0.0],
+        [0.0, 4.0, 0.0],
+        [1.0, 1.0, 0.0],
+        [2.0, 1.0, 0.0],
+        [2.0, 2.0, 0.0],
+        [1.0, 2.0, 0.0],
+    ];
+    let list = cartesian_point_list_3d(&mut tx, &pts, None).expect("points");
+    let _mesh = triangulated_face_set(
+        &mut tx,
+        list,
+        pts.len(),
+        &[[0, 1, 2], [0, 2, 3]],
+        TriangulatedExtras {
+            closed: Some(true),
+            ..TriangulatedExtras::default()
+        },
+    )
+    .expect("mesh");
+    let plain = indexed_polygonal_face(&mut tx, &[0, 1, 2, 3], pts.len()).expect("face");
+    let holed =
+        indexed_polygonal_face_with_voids(&mut tx, &[0, 1, 2, 3], &[&[4, 5, 6, 7]], pts.len())
+            .expect("holed");
+    polygonal_face_set(&mut tx, list, pts.len(), &[plain, holed], Some(true), None)
+        .expect("face set");
+    tx.commit(&mut model).expect("commit");
+
+    assert_conformant(&model, "ifc-geometry tessellation authoring");
+}
