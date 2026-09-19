@@ -43,8 +43,8 @@ code.
 | `ifc-systems` | 1,586 | 20 | 5 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-georef` | 1,497 | 18 | 9 | 3 | <span class="status-partial">Partial</span> |
 | `ifc-schema` | 1,404 | 12 | 4 | 4 | <span class="status-implemented">Implemented</span> |
+| `ifc-spatial` | 1,344 | 10 | 1 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,229 | 6 | 0 | 1 | <span class="status-implemented">Implemented</span> |
-| `ifc-spatial` | 1,122 | 9 | 1 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 1,045 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-author` | 951 | 9 | 3 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-step` | 949 | 6 | 0 | 6 | <span class="status-implemented">Implemented</span> |

@@ -16,6 +16,12 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- Spatial structure authoring in `ifc-spatial`: `create_project`,
+  `create_spatial_element` for site, building, storey and space, and the
+  `aggregate` and `contain` relationships. The crate could walk a spatial
+  tree it had no way to build. Authoring resolves the same slot constants
+  the reader uses, so the inverted layouts of `IfcRelAggregates` and
+  `IfcRelContainedInSpatialStructure` cannot drift apart.
 - Every property value type is authorable in `ifc-properties`:
   `add_property_enumerated_value`, `add_property_bounded_value`,
   `add_property_list_value`, `add_property_table_value`,

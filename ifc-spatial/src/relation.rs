@@ -15,7 +15,7 @@
 pub mod boundary;
 mod index;
 mod link;
-mod slots;
+pub(crate) mod slots;
 
 pub use boundary::{BoundaryExposure, BoundaryPhysicality, SpaceBoundary};
 pub use index::RelationshipIndex;

@@ -46,6 +46,7 @@
 //! WHERE rules and cardinality — and it does not interpret geometry or
 //! properties of the elements it groups.
 
+pub mod authoring;
 pub mod relation;
 mod tree;
 
@@ -54,3 +55,8 @@ pub use relation::{
     SpaceBoundary,
 };
 pub use tree::{SpatialKind, SpatialNode, SpatialTree};
+
+pub use authoring::{
+    aggregate, contain, create_project, create_spatial_element, SpatialAuthoringError,
+    SpatialAuthoringResult, SpatialDraft,
+};
