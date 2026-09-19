@@ -8,6 +8,10 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- Referent authoring in `ifc-alignment`: `referent`, `linear_placement`,
+  `axis2_placement_linear`, `point_by_distance`, `cartesian_point` and
+  `stationing`, which writes the `Pset_Stationing` set the station reader
+  looks for by name.
 - `ResourceEditor::create_resource_type` in `ifc-resource`, authoring all
   six `IfcTypeResource` subtypes. `PredefinedType` is required on a type
   where it is optional on an occurrence, and `Usage` is refused because it

@@ -14,9 +14,14 @@
 //! way out, so applying a factor here too would double-scale.
 
 mod layout;
+mod referent;
 mod segment;
 
 pub use layout::{alignment, alignment_segment, cant_layout, horizontal_layout, vertical_layout};
+pub use referent::{
+    axis2_placement_linear, cartesian_point, linear_placement, point_by_distance, referent,
+    stationing,
+};
 pub use segment::{
     cant_segment, horizontal_segment, vertical_segment, CantSegmentDraft, HorizontalSegmentDraft,
     VerticalSegmentDraft,

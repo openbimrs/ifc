@@ -76,6 +76,8 @@ pub(crate) mod product {
     pub const GLOBAL_ID: usize = 0;
     /// `Name : OPTIONAL IfcLabel`.
     pub const NAME: usize = 2;
+    /// `ObjectPlacement : OPTIONAL IfcObjectPlacement`.
+    pub const OBJECT_PLACEMENT: usize = 5;
     /// Attribute count shared by `IfcAlignmentHorizontal` and
     /// `IfcAlignmentVertical`, which add nothing of their own.
     pub const ARITY: usize = 7;
@@ -103,4 +105,52 @@ pub(crate) mod segment {
     pub const DESIGN_PARAMETERS: usize = 7;
     /// Total attribute count.
     pub const ARITY: usize = 8;
+}
+
+/// `IfcReferent` slots. An `IfcProduct` with a predefined type.
+pub mod referent {
+    /// Attribute count.
+    pub const ARITY: usize = 8;
+    /// `PredefinedType`.
+    pub const PREDEFINED_TYPE: usize = 7;
+}
+
+/// `IfcLinearPlacement` slots.
+pub mod linear_placement {
+    /// Attribute count.
+    pub const ARITY: usize = 3;
+    /// `PlacementRelTo`.
+    pub const PLACEMENT_REL_TO: usize = 0;
+    /// `RelativePlacement`. Required.
+    pub const RELATIVE_PLACEMENT: usize = 1;
+    /// `CartesianPosition`.
+    pub const CARTESIAN_POSITION: usize = 2;
+}
+
+/// `IfcPointByDistanceExpression` slots.
+pub mod point_by_distance {
+    /// Attribute count.
+    pub const ARITY: usize = 5;
+    /// `DistanceAlong`. Required.
+    pub const DISTANCE_ALONG: usize = 0;
+    /// `OffsetLateral`.
+    pub const OFFSET_LATERAL: usize = 1;
+    /// `OffsetVertical`.
+    pub const OFFSET_VERTICAL: usize = 2;
+    /// `OffsetLongitudinal`.
+    pub const OFFSET_LONGITUDINAL: usize = 3;
+    /// `BasisCurve`. Required.
+    pub const BASIS_CURVE: usize = 4;
+}
+
+/// `IfcAxis2PlacementLinear` slots.
+pub mod axis2_placement_linear {
+    /// Attribute count.
+    pub const ARITY: usize = 3;
+    /// `Location`. Required.
+    pub const LOCATION: usize = 0;
+    /// `Axis`.
+    pub const AXIS: usize = 1;
+    /// `RefDirection`.
+    pub const REF_DIRECTION: usize = 2;
 }
