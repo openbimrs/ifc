@@ -1,5 +1,10 @@
 //! Two crates author `IfcQuantity*`; they must agree byte for byte.
 //!
+//! Companion to `authoring_conformance`, which validates authored
+//! records against the schema. That check is structural and cannot see
+//! a well-shaped value that states the wrong thing; this one compares
+//! the emitted text and does. Neither subsumes the other.
+//!
 //! # Why this test exists here
 //!
 //! `ifc-properties` owns quantities as property-set members, and

@@ -16,6 +16,9 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `authoring_conformance` in `openbim-ifc`: every domain crate authors
+  through its own API and the result is validated against the schema,
+  covering the six entity types written by more than one crate.
 - `create_quantity_with` and `QuantityExtras` in `ifc-properties`, reaching
   the `Description`, `Unit` and `Formula` attributes of a simple quantity.
 - Referent authoring in `ifc-alignment`: `referent`, `linear_placement`,
