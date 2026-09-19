@@ -40,7 +40,7 @@ code.
 | `ifc-classification` | 2,440 | 20 | 4 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 2,197 | 17 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
-| `ifc-systems` | 1,814 | 21 | 5 | 3 | <span class="status-implemented">Implemented</span> |
+| `ifc-systems` | 1,889 | 21 | 5 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-georef` | 1,497 | 18 | 9 | 3 | <span class="status-partial">Partial</span> |
 | `ifc-schema` | 1,404 | 12 | 4 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-spatial` | 1,344 | 10 | 1 | 10 | <span class="status-implemented">Implemented</span> |

@@ -15,6 +15,7 @@ use ifc_model::{Entity, EntityId, Transaction, Value};
 use crate::connectivity::relation::slot as connects_slot;
 use crate::port::definition::slot as port_slot;
 use crate::system::group::slot as group_slot;
+use crate::zone::spatial_group::slot as placement_slot;
 
 /// Why a systems record was refused.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -220,4 +221,77 @@ pub fn connect_ports(
     attributes[connects_slot::RELATED] = Value::Ref(related);
     attributes[connects_slot::REALIZING] = realizing.map_or(Value::Null, Value::Ref);
     Ok(tx.create(Entity::new("IFCRELCONNECTSPORTS", attributes)))
+}
+
+/// Stage an `IfcRelContainedInSpatialStructure`.
+///
+/// Containment is exclusive: an element belongs to exactly one
+/// structure. Use [`reference_in_spatial_structure`] for the
+/// non-exclusive case, such as a duct crossing several storeys.
+///
+/// # Errors
+///
+/// Refuses a malformed GlobalId, an empty element list, and the
+/// structure listed among its own contents.
+pub fn contain_in_spatial_structure(
+    tx: &mut Transaction,
+    global_id: &str,
+    structure: EntityId,
+    elements: &[EntityId],
+) -> SystemAuthoringResult<EntityId> {
+    place(
+        tx,
+        "IFCRELCONTAINEDINSPATIALSTRUCTURE",
+        global_id,
+        structure,
+        elements,
+    )
+}
+
+/// Stage an `IfcRelReferencedInSpatialStructure`.
+///
+/// The non-exclusive counterpart of containment.
+///
+/// # Errors
+///
+/// Refuses a malformed GlobalId, an empty element list, and the
+/// structure listed among its own references.
+pub fn reference_in_spatial_structure(
+    tx: &mut Transaction,
+    global_id: &str,
+    structure: EntityId,
+    elements: &[EntityId],
+) -> SystemAuthoringResult<EntityId> {
+    place(
+        tx,
+        "IFCRELREFERENCEDINSPATIALSTRUCTURE",
+        global_id,
+        structure,
+        elements,
+    )
+}
+
+/// Both placement relationships share a layout: elements at 4,
+/// structure at 5 -- the inverse of IfcRelAggregates.
+fn place(
+    tx: &mut Transaction,
+    entity: &'static str,
+    global_id: &str,
+    structure: EntityId,
+    elements: &[EntityId],
+) -> SystemAuthoringResult<EntityId> {
+    guid(entity, global_id)?;
+    if elements.is_empty() {
+        return Err(invalid(entity, "RelatedElements", "empty"));
+    }
+    if elements.contains(&structure) {
+        return Err(invalid(entity, "RelatedElements", "contains the structure"));
+    }
+    let width = placement_slot::RELATING_STRUCTURE.max(placement_slot::RELATED_ELEMENTS) + 1;
+    let mut attributes = vec![Value::Null; width];
+    attributes[0] = Value::Text(global_id.into());
+    attributes[placement_slot::RELATED_ELEMENTS] =
+        Value::List(elements.iter().copied().map(Value::Ref).collect());
+    attributes[placement_slot::RELATING_STRUCTURE] = Value::Ref(structure);
+    Ok(tx.create(Entity::new(entity, attributes)))
 }

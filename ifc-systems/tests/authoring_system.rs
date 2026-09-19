@@ -5,8 +5,9 @@
 
 use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 use ifc_systems::{
-    assign_to_group, connect_port_to_element, connect_ports, create_port, create_system,
-    nest_ports, ports, systems, ConnectionGraph,
+    assign_to_group, connect_port_to_element, connect_ports, contain_in_spatial_structure,
+    create_port, create_system, nest_ports, ports, reference_in_spatial_structure,
+    spatial_placements, systems, ConnectionGraph,
 };
 
 /// A pipe segment to carry flow.
@@ -123,4 +124,42 @@ fn every_relationship_writes_its_schema_slots() {
         Value::Enum("SINK".into()),
         "port: flow direction at 7"
     );
+}
+
+/// Containment and reference read back as the distinct kinds they are.
+///
+/// Containment is exclusive and reference is not; the placement reader
+/// keeps them in separate fields, so authoring one as the other is a
+/// silent change of meaning rather than a parse error.
+#[test]
+fn placement_distinguishes_containment_from_reference() {
+    let mut model = Model::default();
+    let mut tx = Transaction::new(&model);
+    let storey = segment(&mut tx, "0aBcDeFgHiJkLmNoPqRsTu");
+    let other = segment(&mut tx, "1aBcDeFgHiJkLmNoPqRsTu");
+    let duct = segment(&mut tx, "2aBcDeFgHiJkLmNoPqRsTu");
+    let con = contain_in_spatial_structure(&mut tx, "3aBcDeFgHiJkLmNoPqRsTu", storey, &[duct])
+        .expect("contained");
+    reference_in_spatial_structure(&mut tx, "4aBcDeFgHiJkLmNoPqRsTu", other, &[duct])
+        .expect("referenced");
+    tx.commit(&mut model).expect("commit");
+
+    let (placements, anomalies) = spatial_placements(&model);
+    assert!(
+        anomalies.is_empty(),
+        "authored placement is clean: {anomalies:?}"
+    );
+    let placement = &placements[&duct];
+    assert_eq!(placement.contained_in, Some(storey));
+    assert_eq!(placement.referenced_in, vec![other]);
+
+    // Elements at 4, structure at 5: the inverse of IfcRelAggregates.
+    let slot = |id, n: usize| model.get(id).unwrap().attributes[n].clone();
+    assert_eq!(slot(con, 4), Value::List(vec![Value::Ref(duct)]));
+    assert_eq!(slot(con, 5), Value::Ref(storey));
+
+    let mut tx = Transaction::new(&model);
+    let g = "5aBcDeFgHiJkLmNoPqRsTu";
+    assert!(contain_in_spatial_structure(&mut tx, g, storey, &[]).is_err());
+    assert!(reference_in_spatial_structure(&mut tx, g, storey, &[storey]).is_err());
 }

@@ -10,7 +10,7 @@
 //! - `spatial_group.rs`: containment vs referencing.
 
 mod definition;
-mod spatial_group;
+pub(crate) mod spatial_group;
 
 pub use definition::{zones, Zone};
 pub use spatial_group::{spatial_placements, SpatialPlacement};

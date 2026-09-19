@@ -40,7 +40,7 @@ fn refs(value: Option<&Value>) -> Vec<EntityId> {
     }
 }
 
-mod slot {
+pub(crate) mod slot {
     /// Both spatial relationships put elements at 4 and the structure at 5.
     pub const RELATED_ELEMENTS: usize = 4;
     pub const RELATING_STRUCTURE: usize = 5;
