@@ -19,12 +19,20 @@
 mod placement;
 mod profile;
 mod solid;
+mod std_profile;
 
 pub use placement::{axis2_placement_2d, axis2_placement_3d, cartesian_point, direction};
 pub use profile::{
     arbitrary_closed_profile, circle_profile, polyline, rectangle_profile, ProfileType,
 };
 pub use solid::{boolean_result, extruded_area_solid, revolved_area_solid};
+pub use std_profile::{
+    asymmetric_i_shape, c_shape, circle_hollow_profile, ellipse_profile, i_shape, l_shape,
+    rectangle_hollow_profile, t_shape, trapezium_profile, u_shape, z_shape, AsymmetricIDims,
+    AsymmetricIExtras, CShapeDims, FlangedDims, IShapeDims, IShapeExtras, LShapeExtras,
+    ProfileHeader, RectangleHollowDims, RectangleHollowFillets, TShapeExtras, TrapeziumDims,
+    UShapeExtras, ZShapeExtras,
+};
 
 use ifc_model::{EntityId, Value};
 

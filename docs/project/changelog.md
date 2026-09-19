@@ -16,6 +16,11 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- Standard section authoring in `ifc-geometry`: I, L, T, U, Z and C
+  shapes, the asymmetric I, ellipse, trapezium, and the rectangular and
+  circular hollow profiles. Every EXPRESS WHERE rule on these entities is
+  enforced by the writer, which the workspace validator does not implement
+  for profiles. Kernel-free: no axiolid type appears in any signature.
 - `authoring_conformance` in `openbim-ifc`: every domain crate authors
   through its own API and the result is validated against the schema,
   covering the six entity types written by more than one crate.

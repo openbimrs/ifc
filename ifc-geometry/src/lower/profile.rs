@@ -62,6 +62,7 @@ pub const PLANNED_PROFILES: &[(&str, &str)] = &[(
 )];
 
 pub(crate) use crate::slots::profile_slot as slot;
+use crate::slots::section_slot;
 
 /// Concrete profile families this lowerer does not yet build, with reasons.
 ///
@@ -378,100 +379,6 @@ fn apply_parameterized_position(
         basis: Box::new(profile),
         transform: Transform2::from_cols(x, y, origin),
     })
-}
-
-/// Absolute attribute slots for the parameterized profile families.
-///
-/// Every index below was read from the IFC4 ADD2 TC1 schema, not inferred:
-/// `IfcParameterizedProfileDef` contributes ProfileType, ProfileName and
-/// Position, so subtype attributes start at slot 3.
-pub(crate) mod section_slot {
-    // IfcIShapeProfileDef
-    pub const I_WIDTH: usize = 3;
-    pub const I_DEPTH: usize = 4;
-    pub const I_WEB: usize = 5;
-    pub const I_FLANGE: usize = 6;
-    pub const I_FILLET: usize = 7;
-    pub const I_EDGE: usize = 8;
-    pub const I_SLOPE: usize = 9;
-
-    // IfcAsymmetricIShapeProfileDef
-    pub const AI_BOTTOM_WIDTH: usize = 3;
-    pub const AI_DEPTH: usize = 4;
-    pub const AI_WEB: usize = 5;
-    pub const AI_BOTTOM_FLANGE: usize = 6;
-    pub const AI_BOTTOM_FILLET: usize = 7;
-    pub const AI_TOP_WIDTH: usize = 8;
-    pub const AI_TOP_FLANGE: usize = 9;
-    pub const AI_TOP_FILLET: usize = 10;
-    pub const AI_BOTTOM_EDGE: usize = 11;
-    pub const AI_BOTTOM_SLOPE: usize = 12;
-    pub const AI_TOP_EDGE: usize = 13;
-    pub const AI_TOP_SLOPE: usize = 14;
-
-    // IfcLShapeProfileDef
-    pub const L_DEPTH: usize = 3;
-    pub const L_WIDTH: usize = 4;
-    pub const L_THICKNESS: usize = 5;
-    pub const L_FILLET: usize = 6;
-    pub const L_EDGE: usize = 7;
-    pub const L_SLOPE: usize = 8;
-
-    // IfcTShapeProfileDef
-    pub const T_DEPTH: usize = 3;
-    pub const T_WIDTH: usize = 4;
-    pub const T_WEB: usize = 5;
-    pub const T_FLANGE: usize = 6;
-    pub const T_FILLET: usize = 7;
-    pub const T_FLANGE_EDGE: usize = 8;
-    pub const T_WEB_EDGE: usize = 9;
-    pub const T_WEB_SLOPE: usize = 10;
-    pub const T_FLANGE_SLOPE: usize = 11;
-
-    // IfcUShapeProfileDef
-    pub const U_DEPTH: usize = 3;
-    pub const U_WIDTH: usize = 4;
-    pub const U_WEB: usize = 5;
-    pub const U_FLANGE: usize = 6;
-    pub const U_FILLET: usize = 7;
-    pub const U_EDGE: usize = 8;
-    pub const U_SLOPE: usize = 9;
-
-    // IfcCShapeProfileDef
-    pub const C_DEPTH: usize = 3;
-    pub const C_WIDTH: usize = 4;
-    pub const C_WALL: usize = 5;
-    pub const C_GIRTH: usize = 6;
-    pub const C_FILLET: usize = 7;
-
-    // IfcZShapeProfileDef
-    pub const Z_DEPTH: usize = 3;
-    pub const Z_FLANGE_WIDTH: usize = 4;
-    pub const Z_WEB: usize = 5;
-    pub const Z_FLANGE: usize = 6;
-    pub const Z_FILLET: usize = 7;
-    pub const Z_EDGE: usize = 8;
-
-    // IfcEllipseProfileDef
-    pub const E_SEMI1: usize = 3;
-    pub const E_SEMI2: usize = 4;
-
-    // IfcTrapeziumProfileDef
-    pub const TZ_BOTTOM: usize = 3;
-    pub const TZ_TOP: usize = 4;
-    pub const TZ_Y: usize = 5;
-    /// `IfcCenterLineProfileDef`: Curve at 2, Thickness at 3.
-    /// Thickness is the FULL width across the path, not a half-width.
-    pub const CL_CURVE: usize = 2;
-    /// Full width across the centre line.
-    pub const CL_THICKNESS: usize = 3;
-
-    pub const TZ_OFFSET: usize = 6;
-
-    // IfcCompositeProfileDef / IfcDerivedProfileDef
-    pub const COMPOSITE_PROFILES: usize = 2;
-    pub const DERIVED_PARENT: usize = 2;
-    pub const DERIVED_OPERATOR: usize = 3;
 }
 
 /// Read an optional non-negative length, converting to kernel units.

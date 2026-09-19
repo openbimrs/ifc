@@ -22,7 +22,7 @@ pub enum ProfileType {
 
 impl ProfileType {
     /// The EXPRESS token.
-    fn token(self) -> &'static str {
+    pub(super) fn token(self) -> &'static str {
         match self {
             Self::Area => "AREA",
             Self::Curve => "CURVE",

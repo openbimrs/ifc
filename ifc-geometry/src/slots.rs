@@ -370,3 +370,168 @@ pub mod profile_slot {
     /// `IfcRoundedRectangleProfileDef.RoundingRadius`.
     pub const ROUNDED_RECT_RADIUS: usize = 5;
 }
+
+/// Absolute attribute slots for the parameterized profile families.
+///
+/// Lives here, not beside the lowerer, because `lower` is behind the
+/// `lowering` feature while authoring is kernel-free: a writer that
+/// imported these from `lower` would not compile with the feature off.
+/// One definition, both directions.
+///
+/// Every index below was read from the IFC4 ADD2 TC1 schema, not inferred:
+/// `IfcParameterizedProfileDef` contributes ProfileType, ProfileName and
+/// Position, so subtype attributes start at slot 3.
+///
+/// Public because it is the schema itself, not an implementation detail:
+/// a caller assembling a profile record by hand needs the same indices,
+/// and some entries here serve only the lowering direction, so they are
+/// unreferenced in a kernel-free build without being dead.
+pub mod section_slot {
+    // IfcIShapeProfileDef
+    /// `IfcIShapeProfileDef.OverallWidth`.
+    pub const I_WIDTH: usize = 3;
+    /// `IfcIShapeProfileDef.OverallDepth`.
+    pub const I_DEPTH: usize = 4;
+    /// `IfcIShapeProfileDef.WebThickness`.
+    pub const I_WEB: usize = 5;
+    /// `IfcIShapeProfileDef.FlangeThickness`.
+    pub const I_FLANGE: usize = 6;
+    /// `IfcIShapeProfileDef.FilletRadius`.
+    pub const I_FILLET: usize = 7;
+    /// `IfcIShapeProfileDef.FlangeEdgeRadius`.
+    pub const I_EDGE: usize = 8;
+    /// `IfcIShapeProfileDef.FlangeSlope`.
+    pub const I_SLOPE: usize = 9;
+
+    // IfcAsymmetricIShapeProfileDef
+    /// `IfcAsymmetricIShapeProfileDef.BottomFlangeWidth`.
+    pub const AI_BOTTOM_WIDTH: usize = 3;
+    /// `IfcAsymmetricIShapeProfileDef.OverallDepth`.
+    pub const AI_DEPTH: usize = 4;
+    /// `IfcAsymmetricIShapeProfileDef.WebThickness`.
+    pub const AI_WEB: usize = 5;
+    /// `IfcAsymmetricIShapeProfileDef.BottomFlangeThickness`.
+    pub const AI_BOTTOM_FLANGE: usize = 6;
+    /// `IfcAsymmetricIShapeProfileDef.BottomFlangeFilletRadius`.
+    pub const AI_BOTTOM_FILLET: usize = 7;
+    /// `IfcAsymmetricIShapeProfileDef.TopFlangeWidth`.
+    pub const AI_TOP_WIDTH: usize = 8;
+    /// `IfcAsymmetricIShapeProfileDef.TopFlangeThickness`.
+    pub const AI_TOP_FLANGE: usize = 9;
+    /// `IfcAsymmetricIShapeProfileDef.TopFlangeFilletRadius`.
+    pub const AI_TOP_FILLET: usize = 10;
+    /// `IfcAsymmetricIShapeProfileDef.BottomFlangeEdgeRadius`.
+    pub const AI_BOTTOM_EDGE: usize = 11;
+    /// `IfcAsymmetricIShapeProfileDef.BottomFlangeSlope`.
+    pub const AI_BOTTOM_SLOPE: usize = 12;
+    /// `IfcAsymmetricIShapeProfileDef.TopFlangeEdgeRadius`.
+    pub const AI_TOP_EDGE: usize = 13;
+    /// `IfcAsymmetricIShapeProfileDef.TopFlangeSlope`.
+    pub const AI_TOP_SLOPE: usize = 14;
+
+    // IfcLShapeProfileDef
+    /// `IfcLShapeProfileDef.Depth`.
+    pub const L_DEPTH: usize = 3;
+    /// `IfcLShapeProfileDef.Width`.
+    pub const L_WIDTH: usize = 4;
+    /// `IfcLShapeProfileDef.Thickness`.
+    pub const L_THICKNESS: usize = 5;
+    /// `IfcLShapeProfileDef.FilletRadius`.
+    pub const L_FILLET: usize = 6;
+    /// `IfcLShapeProfileDef.EdgeRadius`.
+    pub const L_EDGE: usize = 7;
+    /// `IfcLShapeProfileDef.LegSlope`.
+    pub const L_SLOPE: usize = 8;
+
+    // IfcTShapeProfileDef
+    /// `IfcTShapeProfileDef.Depth`.
+    pub const T_DEPTH: usize = 3;
+    /// `IfcTShapeProfileDef.FlangeWidth`.
+    pub const T_WIDTH: usize = 4;
+    /// `IfcTShapeProfileDef.WebThickness`.
+    pub const T_WEB: usize = 5;
+    /// `IfcTShapeProfileDef.FlangeThickness`.
+    pub const T_FLANGE: usize = 6;
+    /// `IfcTShapeProfileDef.FilletRadius`.
+    pub const T_FILLET: usize = 7;
+    /// `IfcTShapeProfileDef.FlangeEdgeRadius`.
+    pub const T_FLANGE_EDGE: usize = 8;
+    /// `IfcTShapeProfileDef.WebEdgeRadius`.
+    pub const T_WEB_EDGE: usize = 9;
+    /// `IfcTShapeProfileDef.WebSlope`.
+    pub const T_WEB_SLOPE: usize = 10;
+    /// `IfcTShapeProfileDef.FlangeSlope`.
+    pub const T_FLANGE_SLOPE: usize = 11;
+
+    // IfcUShapeProfileDef
+    /// `IfcUShapeProfileDef.Depth`.
+    pub const U_DEPTH: usize = 3;
+    /// `IfcUShapeProfileDef.FlangeWidth`.
+    pub const U_WIDTH: usize = 4;
+    /// `IfcUShapeProfileDef.WebThickness`.
+    pub const U_WEB: usize = 5;
+    /// `IfcUShapeProfileDef.FlangeThickness`.
+    pub const U_FLANGE: usize = 6;
+    /// `IfcUShapeProfileDef.FilletRadius`.
+    pub const U_FILLET: usize = 7;
+    /// `IfcUShapeProfileDef.EdgeRadius`.
+    pub const U_EDGE: usize = 8;
+    /// `IfcUShapeProfileDef.FlangeSlope`.
+    pub const U_SLOPE: usize = 9;
+
+    // IfcCShapeProfileDef
+    /// `IfcCShapeProfileDef.Depth`.
+    pub const C_DEPTH: usize = 3;
+    /// `IfcCShapeProfileDef.Width`.
+    pub const C_WIDTH: usize = 4;
+    /// `IfcCShapeProfileDef.WallThickness`.
+    pub const C_WALL: usize = 5;
+    /// `IfcCShapeProfileDef.Girth`.
+    pub const C_GIRTH: usize = 6;
+    /// `IfcCShapeProfileDef.InternalFilletRadius`.
+    pub const C_FILLET: usize = 7;
+
+    // IfcZShapeProfileDef
+    /// `IfcZShapeProfileDef.Depth`.
+    pub const Z_DEPTH: usize = 3;
+    /// `IfcZShapeProfileDef.FlangeWidth`.
+    pub const Z_FLANGE_WIDTH: usize = 4;
+    /// `IfcZShapeProfileDef.WebThickness`.
+    pub const Z_WEB: usize = 5;
+    /// `IfcZShapeProfileDef.FlangeThickness`.
+    pub const Z_FLANGE: usize = 6;
+    /// `IfcZShapeProfileDef.FilletRadius`.
+    pub const Z_FILLET: usize = 7;
+    /// `IfcZShapeProfileDef.EdgeRadius`.
+    pub const Z_EDGE: usize = 8;
+
+    // IfcEllipseProfileDef
+    /// `IfcEllipseProfileDef.SemiAxis1`.
+    pub const E_SEMI1: usize = 3;
+    /// `IfcEllipseProfileDef.SemiAxis2`.
+    pub const E_SEMI2: usize = 4;
+
+    // IfcTrapeziumProfileDef
+    /// `IfcTrapeziumProfileDef.BottomXDim`.
+    pub const TZ_BOTTOM: usize = 3;
+    /// `IfcTrapeziumProfileDef.TopXDim`.
+    pub const TZ_TOP: usize = 4;
+    /// `IfcTrapeziumProfileDef.YDim`.
+    pub const TZ_Y: usize = 5;
+    /// `IfcCenterLineProfileDef`: Curve at 2, Thickness at 3.
+    /// Thickness is the FULL width across the path, not a half-width.
+    pub const CL_CURVE: usize = 2;
+    /// Full width across the centre line.
+    pub const CL_THICKNESS: usize = 3;
+
+    /// `IfcTrapeziumProfileDef.TopXOffset`.
+    pub const TZ_OFFSET: usize = 6;
+
+    // IfcCompositeProfileDef / IfcDerivedProfileDef
+    /// `IfcCompositeProfileDef.Profiles`.
+    pub const COMPOSITE_PROFILES: usize = 2;
+    /// `IfcDerivedProfileDef.ParentProfile`.
+    pub const DERIVED_PARENT: usize = 2;
+    /// `IfcDerivedProfileDef.Operator`.
+    pub const DERIVED_OPERATOR: usize = 3;
+}
