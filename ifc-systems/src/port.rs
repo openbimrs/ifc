@@ -8,6 +8,6 @@
 //! - `assignment.rs`: port nesting/attachment.
 
 mod assignment;
-mod definition;
+pub(crate) mod definition;
 
 pub use definition::{ports, Attachment, Port};

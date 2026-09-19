@@ -8,6 +8,10 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- Systems authoring in `ifc-systems`: `create_system`, `create_port`,
+  `assign_to_group`, `nest_ports`, `connect_port_to_element` and
+  `connect_ports`. The crate could trace flow through a network it could
+  not build. Authoring resolves the readers' own slot constants.
 - Spatial structure authoring in `ifc-spatial`: `create_project`,
   `create_spatial_element` for site, building, storey and space, and the
   `aggregate` and `contain` relationships. The crate could walk a spatial

@@ -24,7 +24,7 @@ use ifc_schema::ifc4;
 
 use crate::error::SystemAnomaly;
 
-mod slot {
+pub(crate) mod slot {
     /// `IfcRelConnectsPorts.RelatingPort`.
     pub const RELATING: usize = 4;
     /// `IfcRelConnectsPorts.RelatedPort`.

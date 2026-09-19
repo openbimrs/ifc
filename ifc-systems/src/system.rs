@@ -9,6 +9,6 @@
 //! - `distribution.rs`: distribution systems.
 
 mod distribution;
-mod group;
+pub(crate) mod group;
 
 pub use group::{systems, System};

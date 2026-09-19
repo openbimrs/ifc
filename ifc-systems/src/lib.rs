@@ -22,12 +22,17 @@
 //! `flow`, `zone` and `assignment` are reserved with intent, not implemented
 //! -- see `../PLAN.md` for the stages that fill them.
 
+pub mod authoring;
 mod connectivity;
 mod error;
 mod flow;
 mod port;
 mod system;
 
+pub use authoring::{
+    assign_to_group, connect_port_to_element, connect_ports, create_port, create_system,
+    nest_ports, SystemAuthoringError, SystemAuthoringResult,
+};
 pub use connectivity::{
     Connection, ConnectionGraph, Direction, FlowNetwork, FlowQuery, NetworkGraph,
 };

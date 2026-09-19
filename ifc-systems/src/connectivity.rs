@@ -11,7 +11,7 @@
 //! - `traversal.rs`: bounded traversal.
 
 mod graph;
-mod relation;
+pub(crate) mod relation;
 mod traversal;
 
 pub use relation::{Connection, ConnectionGraph, NetworkGraph};

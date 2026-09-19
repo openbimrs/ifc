@@ -22,7 +22,7 @@ use crate::error::SystemAnomaly;
 
 /// Attribute slots, named so a misread is a compile error rather than a
 /// silently empty result.
-mod slot {
+pub(crate) mod slot {
     /// `IfcRelAssignsToGroup.RelatedObjects`.
     pub const ASSIGNS_RELATED: usize = 4;
     /// `IfcRelAssignsToGroup.RelatingGroup` -- 6, not 5.

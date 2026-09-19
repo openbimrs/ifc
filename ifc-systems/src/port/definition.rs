@@ -25,7 +25,7 @@ use ifc_schema::ifc4;
 use crate::error::SystemAnomaly;
 use crate::flow::FlowDirection;
 
-mod slot {
+pub(crate) mod slot {
     /// `IfcRelNests.RelatingObject` -- the nesting element.
     pub const NESTS_PARENT: usize = 4;
     /// `IfcRelNests.RelatedObjects` -- the nested ports.
