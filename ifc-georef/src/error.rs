@@ -31,6 +31,19 @@ pub enum GeorefError {
         /// Schema name of the attribute.
         name: &'static str,
     },
+    /// A value supplied to an authoring helper was not acceptable.
+    ///
+    /// Distinct from [`GeorefError::InvalidAttribute`], which names an
+    /// entity already in the model: at authoring time there is no id
+    /// yet, so the entity is named by type.
+    AuthoringInvalid {
+        /// The entity being authored.
+        entity: &'static str,
+        /// The attribute at fault.
+        attribute: &'static str,
+        /// What was supplied.
+        value: String,
+    },
     /// An attribute was present but held the wrong kind of value.
     InvalidAttribute {
         /// The entity that was read.
@@ -127,6 +140,11 @@ impl std::fmt::Display for GeorefError {
                 index,
                 name,
             } => write!(f, "{entity} has invalid {name} at slot {index}"),
+            Self::AuthoringInvalid {
+                entity,
+                attribute,
+                value,
+            } => write!(f, "{entity}.{attribute}: {value}"),
             Self::UnsupportedOperation { entity, actual } => {
                 write!(f, "{entity} uses unsupported coordinate operation {actual}")
             }

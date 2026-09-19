@@ -2,9 +2,10 @@
 
 use ifc_cost::{
     assign_schedule_items, children_of, controlled_by, controls_of, create_cost_item,
-    create_cost_schedule, create_cost_value, nest_cost_items, ArithmeticOperator,
-    CostAuthoringError, CostItemDraft, CostItemType, CostScheduleDraft, CostScheduleType,
-    CostValueDraft, CostValueKind, NestingDraft, ScheduleAssignmentDraft,
+    create_cost_schedule, create_cost_value, create_monetary_unit, monetary_units, nest_cost_items,
+    project_currency, ArithmeticOperator, CostAuthoringError, CostItemDraft, CostItemType,
+    CostScheduleDraft, CostScheduleType, CostValueDraft, CostValueKind, NestingDraft,
+    ScheduleAssignmentDraft,
 };
 use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 
@@ -385,4 +386,24 @@ fn staged_global_id_changes_participate_in_duplicate_validation() {
         })
     ));
     assert_eq!(tx.len(), before);
+}
+
+/// An authored currency is what project_currency resolves.
+///
+/// Every cost value in a file is denominated by this one entity, so a
+/// blank currency is refused rather than written: it would leave the
+/// reader unable to state what the numbers mean.
+#[test]
+fn an_authored_currency_reads_back() {
+    let mut model = Model::default();
+    let mut tx = Transaction::new(&model);
+    create_monetary_unit(&mut tx, "EUR").expect("currency");
+    tx.commit(&mut model).expect("commit");
+
+    assert_eq!(project_currency(&model).as_deref(), Ok("EUR"));
+    assert_eq!(monetary_units(&model).len(), 1);
+
+    let mut tx = Transaction::new(&model);
+    assert!(create_monetary_unit(&mut tx, "   ").is_err());
+    assert!(create_monetary_unit(&mut tx, "").is_err());
 }

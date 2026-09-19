@@ -93,3 +93,27 @@ pub(crate) fn optional_enum(value: Option<&str>) -> Value {
 pub(crate) fn refs(ids: &[EntityId]) -> Value {
     Value::List(ids.iter().copied().map(Value::Ref).collect())
 }
+
+/// Stage an `IfcMonetaryUnit`.
+///
+/// `Currency` is an `IfcLabel` in IFC4, not an enum, so any string
+/// parses. The reader resolves a file's currency by matching this
+/// text, which is why a blank one is refused rather than written: it
+/// would leave every cost value denominated in nothing.
+///
+/// # Errors
+///
+/// Refuses a blank currency.
+pub fn create_monetary_unit(tx: &mut Transaction, currency: &str) -> CostAuthoringResult<EntityId> {
+    if currency.trim().is_empty() {
+        return Err(invalid(
+            "IFCMONETARYUNIT",
+            "Currency",
+            "expected a currency label",
+        ));
+    }
+    Ok(tx.create(Entity::new(
+        "IFCMONETARYUNIT",
+        vec![Value::Text(currency.into())],
+    )))
+}

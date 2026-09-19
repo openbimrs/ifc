@@ -16,6 +16,12 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- Georeferencing authoring in `ifc-georef`: `create_projected_crs`,
+  `create_representation_context`, `create_representation_subcontext` and
+  `create_direction`. The subcontext writes its four inherited geometry
+  attributes as `*`, which the schema derives from the parent context.
+- `create_monetary_unit` in `ifc-cost`, the currency every cost value in a
+  file is denominated by.
 - Template and type authoring in `ifc-properties`:
   `add_property_set_template`, `attach_template`, `attach_type`,
   `add_measure_with_unit` and `add_context_dependent_unit`.
