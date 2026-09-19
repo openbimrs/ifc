@@ -108,6 +108,74 @@ impl<'m> ResourceEditor<'m> {
         self.commit_create(entity)
     }
 
+    /// Commits a `ResourceDraft` as an `IfcTypeResource` subtype.
+    ///
+    /// The type counterpart of [`ResourceEditor::create_resource`]:
+    /// the shared definition several occurrences point at. The draft is
+    /// reused because the two differ by one attribute, `Usage`, which
+    /// belongs to the occurrence and is refused here rather than
+    /// silently dropped.
+    ///
+    /// `PredefinedType` is required on every resource type in the
+    /// schema, unlike on the occurrence where it is optional.
+    ///
+    /// # Errors
+    ///
+    /// Refuses a duplicate or malformed `GlobalId`, a missing or
+    /// unknown `PredefinedType`, a `USERDEFINED` type with no
+    /// `ObjectType` to name it, a `Usage` reference, and any
+    /// `BaseCosts` or `BaseQuantity` reference of the wrong type.
+    pub fn create_resource_type(&mut self, draft: ResourceDraft<'_>) -> ResourceResult<EntityId> {
+        self.validate_new_global_id(draft.global_id)?;
+        let entity_type = resource_type_entity_type(draft.kind);
+        let Some(predefined_type) = draft.predefined_type else {
+            return Err(ResourceError::SemanticViolation {
+                entity: None,
+                rule: "RESOURCE_TYPE_REQUIRES_PREDEFINED_TYPE",
+            });
+        };
+        validate_enum(self.schema, entity_type, "PredefinedType", predefined_type)?;
+        if predefined_type == "USERDEFINED"
+            && draft
+                .object_type
+                .is_none_or(|value| value.trim().is_empty())
+        {
+            return Err(ResourceError::SemanticViolation {
+                entity: None,
+                rule: "USERDEFINED_REQUIRES_OBJECT_TYPE",
+            });
+        }
+        if draft.usage.is_some() {
+            return Err(ResourceError::SemanticViolation {
+                entity: None,
+                rule: "RESOURCE_TYPE_HAS_NO_USAGE",
+            });
+        }
+        for cost in &draft.base_costs {
+            self.check_reference(*cost, "BaseCosts", "IfcAppliedValue", *cost)?;
+        }
+        if let Some(quantity) = draft.base_quantity {
+            self.check_reference(quantity, "BaseQuantity", "IfcPhysicalQuantity", quantity)?;
+        }
+
+        let base_costs = (!draft.base_costs.is_empty()).then(|| refs(&draft.base_costs));
+        let entity = build_entity(
+            self.schema,
+            entity_type,
+            &[
+                ("GlobalId", Some(text(draft.global_id))),
+                ("Name", draft.name.map(text)),
+                ("ApplicableOccurrence", draft.object_type.map(text)),
+                ("Identification", draft.identification.map(text)),
+                ("LongDescription", draft.long_description.map(text)),
+                ("BaseCosts", base_costs),
+                ("BaseQuantity", draft.base_quantity.map(Value::Ref)),
+                ("PredefinedType", Some(Value::Enum(predefined_type.into()))),
+            ],
+        )?;
+        self.commit_create(entity)
+    }
+
     /// Commits a `ResourceTimeDraft` as a new `IfcResourceTime`, failing if
     /// any ratio attribute is non-finite or not strictly positive.
     pub fn create_time(&mut self, draft: ResourceTimeDraft<'_>) -> ResourceResult<EntityId> {
@@ -335,6 +403,22 @@ fn resource_entity_type(kind: ResourceKind) -> &'static str {
         ResourceKind::Material => "IfcConstructionMaterialResource",
         ResourceKind::Product => "IfcConstructionProductResource",
         ResourceKind::Subcontract => "IfcSubContractResource",
+    }
+}
+
+/// The `IfcTypeResource` subtype paired with each occurrence kind.
+///
+/// Each occurrence resource has exactly one type counterpart, so the
+/// mapping lives next to [`resource_entity_type`] rather than being
+/// derived by string surgery on the occurrence name.
+fn resource_type_entity_type(kind: ResourceKind) -> &'static str {
+    match kind {
+        ResourceKind::Labor => "IfcLaborResourceType",
+        ResourceKind::Equipment => "IfcConstructionEquipmentResourceType",
+        ResourceKind::Crew => "IfcCrewResourceType",
+        ResourceKind::Material => "IfcConstructionMaterialResourceType",
+        ResourceKind::Product => "IfcConstructionProductResourceType",
+        ResourceKind::Subcontract => "IfcSubContractResourceType",
     }
 }
 

@@ -16,6 +16,10 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ResourceEditor::create_resource_type` in `ifc-resource`, authoring all
+  six `IfcTypeResource` subtypes. `PredefinedType` is required on a type
+  where it is optional on an occurrence, and `Usage` is refused because it
+  belongs to the occurrence.
 - Georeferencing authoring in `ifc-georef`: `create_projected_crs`,
   `create_representation_context`, `create_representation_subcontext` and
   `create_direction`. The subcontext writes its four inherited geometry
