@@ -16,6 +16,12 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- Curves on surfaces in `ifc-geometry`: `IfcPcurve`, `IfcSurfaceCurve`
+  and its intersection and seam forms, `IfcCompositeCurveOnSurface`,
+  both boundary curves, `IfcCurveSegment`,
+  `IfcReparametrisedCompositeCurveSegment` and `IfcGradientCurve`. A
+  boundary curve states `ClosedCurve` true because `IsClosed` requires
+  it, and the seam and intersection forms demand two pcurves.
 - Transformation operators and mapping in `ifc-geometry`: all four
   `IfcCartesianTransformationOperator` forms, `IfcRepresentationMap`,
   `IfcMappedItem` and `IfcTopologyRepresentation`. `Scale2` is written

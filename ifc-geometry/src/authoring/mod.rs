@@ -25,6 +25,7 @@ mod profile2;
 mod solid;
 mod std_profile;
 mod surface;
+mod surface_curve;
 mod swept;
 mod tessellation;
 mod transform;
@@ -63,6 +64,11 @@ pub use surface::{
     bspline_surface_with_knots, curve_bounded_plane, curve_bounded_surface,
     rational_bspline_surface_with_knots, rectangular_trimmed_surface, spherical_surface,
     toroidal_surface, SurfaceBasis, SurfaceKnots,
+};
+pub use surface_curve::{
+    composite_curve_on_surface, curve_segment, gradient_curve, pcurve,
+    reparametrised_composite_curve_segment, surface_curve, CurveMeasure, OnSurfaceKind,
+    SurfaceCurveKind, SurfaceCurveRepresentation,
 };
 pub use swept::{
     axis1_placement, cylindrical_surface, extruded_area_solid_tapered,
