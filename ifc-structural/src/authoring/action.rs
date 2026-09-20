@@ -39,6 +39,23 @@ pub enum ActionDraftKind {
         /// `ProjectedOrTrue`; staged only when the target schema declares the attribute.
         projected_or_true: Option<ProjectedOrTrue>,
     },
+    /// Stages an `IfcStructuralCurveAction`.
+    ///
+    /// IFC4 replaced the linear/planar pair with curve/surface forms that
+    /// additionally carry a mandatory `PredefinedType`.
+    Curve {
+        /// `ProjectedOrTrue`; staged only when the target schema declares it.
+        projected_or_true: Option<ProjectedOrTrue>,
+        /// `PredefinedType`, an `IfcStructuralCurveActivityTypeEnum` token.
+        predefined_type: &'static str,
+    },
+    /// Stages an `IfcStructuralSurfaceAction`.
+    Surface {
+        /// `ProjectedOrTrue`; staged only when the target schema declares it.
+        projected_or_true: Option<ProjectedOrTrue>,
+        /// `PredefinedType`, an `IfcStructuralSurfaceActivityTypeEnum` token.
+        predefined_type: &'static str,
+    },
 }
 
 /// Staged fields for creating an `IfcStructuralAction` via [`stage_action`].
@@ -99,6 +116,26 @@ pub fn stage_action(
                     "IfcStructuralLoadTemperature",
                 ],
             ),
+            ActionDraftKind::Curve {
+                projected_or_true, ..
+            } => (
+                "IfcStructuralCurveAction",
+                projected_or_true,
+                &[
+                    "IfcStructuralLoadLinearForce",
+                    "IfcStructuralLoadTemperature",
+                ],
+            ),
+            ActionDraftKind::Surface {
+                projected_or_true, ..
+            } => (
+                "IfcStructuralSurfaceAction",
+                projected_or_true,
+                &[
+                    "IfcStructuralLoadPlanarForce",
+                    "IfcStructuralLoadTemperature",
+                ],
+            ),
         };
     validate_ref_select(
         tx,
@@ -129,6 +166,7 @@ pub fn stage_action(
             attribute: "DestabilizingLoad".into(),
         });
     }
+    let has_object_type = draft.root.object_type.is_some();
     let mut fields = root_fields(draft.root);
     fields.push(("AppliedLoad", Value::Ref(draft.applied_load)));
     fields.push((
@@ -166,7 +204,25 @@ pub fn stage_action(
         .iter()
         .any(|a| a.name.eq_ignore_ascii_case("PredefinedType"))
     {
-        fields.push(("PredefinedType", Value::Enum("CONST".into())));
+        // IFC4 makes PredefinedType mandatory on the curve and surface
+        // forms. USERDEFINED without an ObjectType names nothing, which
+        // is the same trap the element types carry.
+        let token = match draft.kind {
+            ActionDraftKind::Curve {
+                predefined_type, ..
+            }
+            | ActionDraftKind::Surface {
+                predefined_type, ..
+            } => predefined_type,
+            _ => "NOTDEFINED",
+        };
+        if token.eq_ignore_ascii_case("USERDEFINED") && !has_object_type {
+            return Err(StructuralError::SemanticViolation {
+                entity: None,
+                rule: "USERDEFINED PredefinedType requires an ObjectType",
+            });
+        }
+        fields.push(("PredefinedType", Value::Enum(token.into())));
     }
     Ok(tx.create(build_named(schema, entity_type, fields)?))
 }

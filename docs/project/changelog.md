@@ -16,6 +16,12 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-structural` authors `IfcStructuralCurveAction` and
+  `IfcStructuralSurfaceAction` through the existing `ActionDraftKind`,
+  which previously stopped at the IFC2x3 linear/planar pair. Their
+  mandatory `PredefinedType` is refused as `USERDEFINED` unless an
+  `ObjectType` names what the token defers to, and the per-subtype load
+  select still applies, so a planar force is refused on a curve action.
 - `ifc-style` authors the four `IfcLightSource` forms, plus
   `IfcSurfaceStyleLighting` and `IfcSurfaceStyleRefraction`. Normalised
   ratios are bounded to 0..=1, radii and cone angles must be positive and
