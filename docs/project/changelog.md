@@ -16,6 +16,12 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- Surface authoring in `ifc-geometry`: `IfcSphericalSurface`,
+  `IfcToroidalSurface`, `IfcCurveBoundedPlane`, `IfcCurveBoundedSurface`,
+  `IfcRectangularTrimmedSurface` and both B-spline surface forms. The
+  B-spline writers enforce a knot identity per direction and reject a
+  ragged control grid; the trim derives its senses from its parameters,
+  so `Usense`/`Vsense` cannot contradict them.
 - B-rep topology authoring in `ifc-geometry`: vertices, edges, oriented
   edges, loops, faces, shells and the four `IfcManifoldSolidBrep` forms,
   plus both surface models. `IfcOrientedEdge` writes its derived vertices

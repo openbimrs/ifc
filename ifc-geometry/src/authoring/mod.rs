@@ -23,6 +23,7 @@ mod placement;
 mod profile;
 mod solid;
 mod std_profile;
+mod surface;
 mod swept;
 mod tessellation;
 
@@ -51,6 +52,11 @@ pub use std_profile::{
     AsymmetricIExtras, CShapeDims, FlangedDims, IShapeDims, IShapeExtras, LShapeExtras,
     ProfileHeader, RectangleHollowDims, RectangleHollowFillets, TShapeExtras, TrapeziumDims,
     UShapeExtras, ZShapeExtras,
+};
+pub use surface::{
+    bspline_surface_with_knots, curve_bounded_plane, curve_bounded_surface,
+    rational_bspline_surface_with_knots, rectangular_trimmed_surface, spherical_surface,
+    toroidal_surface, SurfaceBasis, SurfaceKnots,
 };
 pub use swept::{
     axis1_placement, cylindrical_surface, extruded_area_solid_tapered,
