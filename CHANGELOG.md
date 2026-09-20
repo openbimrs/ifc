@@ -8,6 +8,12 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `ifc-style` authors the four `IfcLightSource` forms, plus
+  `IfcSurfaceStyleLighting` and `IfcSurfaceStyleRefraction`. Normalised
+  ratios are bounded to 0..=1, radii and cone angles must be positive and
+  finite, an all-zero attenuation triple is refused because it emits
+  nothing at every distance, and a refraction index below the vacuum
+  index of 1.0 is refused.
 
 - `ifc-systems` authors distribution element occurrences: the nine
   concrete `IfcDistributionElement` classes the flow reader traverses,

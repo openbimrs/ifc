@@ -9,8 +9,14 @@ use crate::annotation::{AnnotationType, BoxAlignment, TextPath};
 use crate::error::{StyleError, StyleResult};
 use crate::surface_style::{duplicate_surface_element_category, SURFACE_STYLE_ELEMENT_MEMBERS};
 
+mod light;
 mod texture;
 
+pub use light::{
+    create_light_source_ambient, create_light_source_directional, create_light_source_positional,
+    create_light_source_spot, create_surface_style_lighting, create_surface_style_refraction,
+    Attenuation, LightSourceDraft, PointLight, SpotCone,
+};
 pub use texture::{
     create_image_texture, create_texture_coordinate_generator, create_texture_map,
     ImageTextureDraft,
@@ -322,7 +328,7 @@ fn optional_reference(
     }
 }
 
-fn invalid_authoring(
+pub(crate) fn invalid_authoring(
     entity: &'static str,
     attribute: &'static str,
     value: impl ToString,
@@ -589,7 +595,11 @@ pub fn create_presentation_layer_with_style(
     )?))
 }
 
-fn validate_ratio(entity: &'static str, attribute: &'static str, value: f64) -> StyleResult<()> {
+pub(crate) fn validate_ratio(
+    entity: &'static str,
+    attribute: &'static str,
+    value: f64,
+) -> StyleResult<()> {
     if value.is_finite() && (0.0..=1.0).contains(&value) {
         Ok(())
     } else {

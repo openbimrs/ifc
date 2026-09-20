@@ -31,12 +31,14 @@ pub use assignment::{
 };
 pub use authoring::{
     create_annotation, create_annotation_fill_area, create_colour_rgb, create_image_texture,
-    create_presentation_layer_with_style, create_styled_item, create_surface_style,
+    create_light_source_ambient, create_light_source_directional, create_light_source_positional,
+    create_light_source_spot, create_presentation_layer_with_style, create_styled_item,
+    create_surface_style, create_surface_style_lighting, create_surface_style_refraction,
     create_surface_style_shading, create_text_literal, create_text_literal_with_extent,
     create_texture_coordinate_generator, create_texture_map, AnnotationDraft,
-    AnnotationFillAreaDraft, ColourRgbDraft, ImageTextureDraft, PresentationLayerDraft,
-    StyledItemDraft, SurfaceStyleDraft, SurfaceStyleShadingDraft, TextLiteralDraft,
-    TextLiteralWithExtentDraft,
+    AnnotationFillAreaDraft, Attenuation, ColourRgbDraft, ImageTextureDraft, LightSourceDraft,
+    PointLight, PresentationLayerDraft, SpotCone, StyledItemDraft, SurfaceStyleDraft,
+    SurfaceStyleShadingDraft, TextLiteralDraft, TextLiteralWithExtentDraft,
 };
 pub use colour::{ColourOrFactor, ColourRgb};
 pub use coverage::{
