@@ -16,6 +16,22 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+
+- `ifc-systems` authors distribution element occurrences: the nine
+  concrete `IfcDistributionElement` classes the flow reader traverses,
+  plus `IfcZone` and `IfcSpatialZone`. A closed enum keeps the class set
+  to what the reader understands, and `USERDEFINED` without a naming
+  `ObjectType` is refused.
+- `ifc-spatial` authors the remaining objectified relationships:
+  coverings, declarations, object definition, system service, flow
+  control, the three actor/product/process assignments, group-by-factor,
+  element connection with and without realizing elements, and
+  interference. Positions resolve through the existing `RelSlots`
+  constants, so `IfcRelDefinesByObject`'s reversed slot order cannot be
+  written as an aggregate. Self-connection and empty member sets are
+  refused; `ImpliedOrder` writes UNKNOWN rather than `$` when no
+  precedence was decided.
+
 - Placement, connection geometry, grids and geometric sets in
   `ifc-geometry`: `IfcLocalPlacement`, `IfcGridPlacement`, `IfcGridAxis`,
   `IfcVirtualGridIntersection`, all five connection geometry forms,

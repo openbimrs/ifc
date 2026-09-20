@@ -11,7 +11,15 @@ use ifc_model::guid::Guid;
 use ifc_model::{Entity, EntityId, Transaction, Value};
 
 use crate::relation::slots::{RelSlots, AGGREGATES, CONTAINED_IN};
+
+mod relationships;
+
 use crate::tree::SpatialKind;
+pub use relationships::{
+    assign_to_actor, assign_to_group_by_factor, assign_to_process, assign_to_product,
+    connect_elements, connect_with_realizing_elements, control_flow_element, cover_elements,
+    cover_spaces, declare, define_by_object, interfere_elements, serve_buildings,
+};
 
 /// Why a spatial record was refused.
 #[derive(Debug, Clone, PartialEq, Eq)]

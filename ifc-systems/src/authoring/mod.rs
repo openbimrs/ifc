@@ -17,6 +17,13 @@ use crate::port::definition::slot as port_slot;
 use crate::system::group::slot as group_slot;
 use crate::zone::spatial_group::slot as placement_slot;
 
+mod distribution;
+
+pub use distribution::{
+    create_distribution_element, create_spatial_zone, create_zone, DistributionElementKind,
+    ElementAttributes,
+};
+
 /// Why a systems record was refused.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SystemAuthoringError {

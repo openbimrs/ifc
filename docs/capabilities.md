@@ -39,11 +39,11 @@ code.
 | `ifc-schedule` | 2,479 | 25 | 13 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-classification` | 2,440 | 20 | 4 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 2,235 | 17 | 0 | 3 | <span class="status-implemented">Implemented</span> |
+| `ifc-systems` | 2,147 | 22 | 5 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
-| `ifc-systems` | 1,889 | 21 | 5 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-georef` | 1,729 | 19 | 9 | 4 | <span class="status-partial">Partial</span> |
+| `ifc-spatial` | 1,684 | 11 | 1 | 11 | <span class="status-implemented">Implemented</span> |
 | `ifc-schema` | 1,404 | 12 | 4 | 4 | <span class="status-implemented">Implemented</span> |
-| `ifc-spatial` | 1,344 | 10 | 1 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,229 | 6 | 0 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 1,045 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-author` | 951 | 9 | 3 | 4 | <span class="status-implemented">Implemented</span> |
