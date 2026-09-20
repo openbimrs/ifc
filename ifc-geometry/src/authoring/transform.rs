@@ -1,0 +1,212 @@
+//! Transformation operators, representation maps and mapped items.
+//!
+//! # `Scale2` is not at the same slot in both branches
+//!
+//! `IfcCartesianTransformationOperator3D` inserts `Axis3` at slot 4,
+//! so the 3D non-uniform subtype carries `Scale2` at 5 and `Scale3` at
+//! 6, while the 2D non-uniform one has `Scale2` at 4. An operator
+//! written with the 2D layout into a 3D entity puts a scale where a
+//! direction belongs, which parses as a type error only if a validator
+//! looks. The slot constants in [`crate::resource::operator`] record
+//! both, and this module uses them rather than counting.
+//!
+//! # A scale of zero collapses everything
+//!
+//! The supertype derives `Scl := NVL(Scale, 1.0)` and requires
+//! `Scl > 0.0`. Absent means one, not zero, so `None` is safe -- but an
+//! explicit zero or negative scale is refused here.
+
+use ifc_model::{Entity, EntityId, Transaction, Value};
+
+use crate::error::GeometryError;
+use crate::resource::operator::slot;
+
+use super::{invalid, refs, require_finite};
+
+/// The axes and scale shared by every transformation operator.
+///
+/// Every field is optional except the origin: the schema defaults the
+/// axes to the identity frame and the scale to one.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Transform {
+    /// `Axis1`: the local X direction.
+    pub axis1: Option<EntityId>,
+    /// `Axis2`: the local Y direction.
+    pub axis2: Option<EntityId>,
+    /// `Scale`. Absent means one, which is why `None` is not zero.
+    pub scale: Option<f64>,
+}
+
+/// Check a scale against `ScaleGreaterZero`.
+fn check_scale(
+    type_name: &'static str,
+    attribute: &'static str,
+    scale: Option<f64>,
+) -> Result<(), GeometryError> {
+    let Some(scale) = scale else {
+        // Absent derives to 1.0, which satisfies the rule.
+        return Ok(());
+    };
+    require_finite(type_name, attribute, &[scale])?;
+    if scale <= 0.0 {
+        return Err(invalid(
+            type_name,
+            attribute,
+            format!("expected a scale above zero, got {scale}"),
+        ));
+    }
+    Ok(())
+}
+
+/// Fill the four slots every operator shares.
+fn base(
+    type_name: &'static str,
+    width: usize,
+    local_origin: EntityId,
+    transform: Transform,
+) -> Result<Vec<Value>, GeometryError> {
+    check_scale(type_name, "Scale", transform.scale)?;
+    let mut attrs = vec![Value::Null; width];
+    attrs[slot::AXIS1] = transform.axis1.map_or(Value::Null, Value::Ref);
+    attrs[slot::AXIS2] = transform.axis2.map_or(Value::Null, Value::Ref);
+    attrs[slot::LOCAL_ORIGIN] = Value::Ref(local_origin);
+    attrs[slot::SCALE] = transform.scale.map_or(Value::Null, Value::Real);
+    Ok(attrs)
+}
+
+/// Stage an `IfcCartesianTransformationOperator2D`.
+///
+/// # Errors
+///
+/// Refuses a scale that is zero, negative or non-finite.
+pub fn transformation_operator_2d(
+    tx: &mut Transaction,
+    local_origin: EntityId,
+    transform: Transform,
+) -> Result<EntityId, GeometryError> {
+    const T: &str = "IFCCARTESIANTRANSFORMATIONOPERATOR2D";
+    let attrs = base(T, 4, local_origin, transform)?;
+    Ok(tx.create(Entity::new(T, attrs)))
+}
+
+/// Stage an `IfcCartesianTransformationOperator2DnonUniform`.
+///
+/// `scale2` scales the local Y axis independently. Its slot is 4 here
+/// and 5 on the 3D variant; see the module note.
+///
+/// # Errors
+///
+/// Refuses either scale being zero, negative or non-finite.
+pub fn transformation_operator_2d_non_uniform(
+    tx: &mut Transaction,
+    local_origin: EntityId,
+    transform: Transform,
+    scale2: Option<f64>,
+) -> Result<EntityId, GeometryError> {
+    const T: &str = "IFCCARTESIANTRANSFORMATIONOPERATOR2DNONUNIFORM";
+    check_scale(T, "Scale2", scale2)?;
+    let mut attrs = base(T, 5, local_origin, transform)?;
+    attrs[slot::SCALE2_2D] = scale2.map_or(Value::Null, Value::Real);
+    Ok(tx.create(Entity::new(T, attrs)))
+}
+
+/// Stage an `IfcCartesianTransformationOperator3D`.
+///
+/// # Errors
+///
+/// Refuses a scale that is zero, negative or non-finite.
+pub fn transformation_operator_3d(
+    tx: &mut Transaction,
+    local_origin: EntityId,
+    transform: Transform,
+    axis3: Option<EntityId>,
+) -> Result<EntityId, GeometryError> {
+    const T: &str = "IFCCARTESIANTRANSFORMATIONOPERATOR3D";
+    let mut attrs = base(T, 5, local_origin, transform)?;
+    attrs[slot::AXIS3] = axis3.map_or(Value::Null, Value::Ref);
+    Ok(tx.create(Entity::new(T, attrs)))
+}
+
+/// Stage an `IfcCartesianTransformationOperator3DnonUniform`.
+///
+/// `Scale2` and `Scale3` sit at slots 5 and 6, *after* `Axis3` -- not
+/// at 4 as on the 2D non-uniform operator.
+///
+/// # Errors
+///
+/// Refuses any of the three scales being zero, negative or non-finite.
+pub fn transformation_operator_3d_non_uniform(
+    tx: &mut Transaction,
+    local_origin: EntityId,
+    transform: Transform,
+    axis3: Option<EntityId>,
+    scale2: Option<f64>,
+    scale3: Option<f64>,
+) -> Result<EntityId, GeometryError> {
+    const T: &str = "IFCCARTESIANTRANSFORMATIONOPERATOR3DNONUNIFORM";
+    check_scale(T, "Scale2", scale2)?;
+    check_scale(T, "Scale3", scale3)?;
+    let mut attrs = base(T, 7, local_origin, transform)?;
+    attrs[slot::AXIS3] = axis3.map_or(Value::Null, Value::Ref);
+    attrs[slot::SCALE2_3D] = scale2.map_or(Value::Null, Value::Real);
+    attrs[slot::SCALE3_3D] = scale3.map_or(Value::Null, Value::Real);
+    Ok(tx.create(Entity::new(T, attrs)))
+}
+
+/// Stage an `IfcRepresentationMap`: a reusable shape and its origin.
+///
+/// The map is what an `IfcMappedItem` points at, so one map serves
+/// many instances -- that is the whole point of mapping rather than
+/// repeating the geometry.
+pub fn representation_map(
+    tx: &mut Transaction,
+    mapping_origin: EntityId,
+    mapped_representation: EntityId,
+) -> EntityId {
+    let attrs = vec![
+        Value::Ref(mapping_origin),
+        Value::Ref(mapped_representation),
+    ];
+    tx.create(Entity::new("IFCREPRESENTATIONMAP", attrs))
+}
+
+/// Stage an `IfcMappedItem`: one placed instance of a mapped shape.
+///
+/// `mapping_target` is a transformation operator, so the same source
+/// map appears at a different place and scale for each item.
+pub fn mapped_item(
+    tx: &mut Transaction,
+    mapping_source: EntityId,
+    mapping_target: EntityId,
+) -> EntityId {
+    let attrs = vec![Value::Ref(mapping_source), Value::Ref(mapping_target)];
+    tx.create(Entity::new("IFCMAPPEDITEM", attrs))
+}
+
+/// Stage an `IfcTopologyRepresentation`.
+///
+/// A shape representation whose items are topological rather than
+/// geometric -- vertices, edges, faces and shells.
+///
+/// # Errors
+///
+/// Refuses an empty item set: `SET [1:?]`.
+pub fn topology_representation(
+    tx: &mut Transaction,
+    context: EntityId,
+    identifier: Option<&str>,
+    representation_type: Option<&str>,
+    items: &[EntityId],
+) -> Result<EntityId, GeometryError> {
+    const T: &str = "IFCTOPOLOGYREPRESENTATION";
+    if items.is_empty() {
+        return Err(invalid(T, "Items", "expected at least one item"));
+    }
+    let attrs = vec![
+        Value::Ref(context),
+        identifier.map_or(Value::Null, |v| Value::Text(v.into())),
+        representation_type.map_or(Value::Null, |v| Value::Text(v.into())),
+        refs(items),
+    ];
+    Ok(tx.create(Entity::new(T, attrs)))
+}

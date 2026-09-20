@@ -8,6 +8,12 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- Transformation operators and mapping in `ifc-geometry`: all four
+  `IfcCartesianTransformationOperator` forms, `IfcRepresentationMap`,
+  `IfcMappedItem` and `IfcTopologyRepresentation`. `Scale2` is written
+  at slot 4 in the 2D branch and slot 5 in the 3D one, where `Axis3`
+  comes between, and every scale is held to `ScaleGreaterZero` while an
+  absent scale still derives to one.
 - The remaining profile forms in `ifc-geometry`:
   `IfcArbitraryOpenProfileDef`, `IfcArbitraryProfileDefWithVoids`,
   `IfcCenterLineProfileDef`, `IfcCompositeProfileDef`,

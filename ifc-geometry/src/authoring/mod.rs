@@ -27,6 +27,7 @@ mod std_profile;
 mod surface;
 mod swept;
 mod tessellation;
+mod transform;
 
 pub use brep::{
     edge, edge_curve, edge_loop, face, face_based_surface_model, face_bound, face_outer_bound,
@@ -73,6 +74,11 @@ pub use tessellation::{
     cartesian_point_list_2d, cartesian_point_list_3d, indexed_polygonal_face,
     indexed_polygonal_face_with_voids, polygonal_face_set, triangulated_face_set,
     TriangulatedExtras,
+};
+pub use transform::{
+    mapped_item, representation_map, topology_representation, transformation_operator_2d,
+    transformation_operator_2d_non_uniform, transformation_operator_3d,
+    transformation_operator_3d_non_uniform, Transform,
 };
 
 use ifc_model::{EntityId, Value};
