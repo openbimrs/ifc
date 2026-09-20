@@ -16,6 +16,7 @@
 //! `pub(crate) mod slot` constants its reader uses, so a layout correction
 //! lands once and serves both directions.
 
+mod brep;
 mod csg;
 mod curve;
 mod placement;
@@ -25,6 +26,11 @@ mod std_profile;
 mod swept;
 mod tessellation;
 
+pub use brep::{
+    edge, edge_curve, edge_loop, face, face_based_surface_model, face_bound, face_outer_bound,
+    face_surface, manifold_solid_brep, oriented_edge, poly_loop, shell, shell_based_surface_model,
+    subedge, vertex_loop, vertex_point, BrepKind, ShellKind,
+};
 pub use csg::{
     block, bounding_box, boxed_half_space, cone, csg_solid, cylinder, half_space,
     polygonal_bounded_half_space, rectangular_pyramid, sphere,

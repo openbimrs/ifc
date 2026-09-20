@@ -8,6 +8,10 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- B-rep topology authoring in `ifc-geometry`: vertices, edges, oriented
+  edges, loops, faces, shells and the four `IfcManifoldSolidBrep` forms,
+  plus both surface models. `IfcOrientedEdge` writes its derived vertices
+  as `*`, and `IfcPolyLoop` enforces the UNIQUE polygon rule.
 - `ifc-geometry` authors the remaining swept solids and surfaces:
   the tapered extrusion and revolution, both directrix-driven
   sweeps, both swept disk solids, `IfcSurfaceOfLinearExtrusion`,

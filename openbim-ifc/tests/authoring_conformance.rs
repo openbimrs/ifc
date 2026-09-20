@@ -490,3 +490,75 @@ fn tessellation_authoring_is_conformant() {
 
     assert_conformant(&model, "ifc-geometry tessellation authoring");
 }
+
+/// The four geometry families added after tessellation: CSG primitives,
+/// curves, the remaining swept solids, and B-rep topology.
+///
+/// The B-rep case is the one this oracle earns its keep on: an
+/// `IfcOrientedEdge` writes its inherited vertices as `*`, and the
+/// validator's derived-slot check is what tells `*` from `$`. A
+/// round-trip cannot: both decode to the same Rust value.
+#[test]
+fn geometry_authoring_is_conformant() {
+    use ifc::geometry::authoring::{
+        axis1_placement, axis2_placement_3d, block, cartesian_point, circle, cylinder, direction,
+        edge_curve, face, face_outer_bound, line, manifold_solid_brep, oriented_edge, poly_loop,
+        shell, sphere, swept_disk_solid, trimmed_curve, vertex_point, BrepKind, ShellKind,
+        SweepTrim,
+    };
+
+    let model = model();
+    let mut tx = Transaction::new(&model);
+
+    let origin = cartesian_point(&mut tx, &[0.0, 0.0, 0.0]).expect("origin");
+    let up = direction(&mut tx, &[0.0, 0.0, 1.0]).expect("up");
+    let placement = axis2_placement_3d(&mut tx, origin, Some(up), None);
+
+    // CSG primitives.
+    block(&mut tx, placement, 1.0, 2.0, 3.0).expect("block");
+    sphere(&mut tx, placement, 1.5).expect("sphere");
+    cylinder(&mut tx, placement, 2.0, 0.5).expect("cylinder");
+
+    // Curves, including a trim that must keep its measure wrapper.
+    let arc = circle(&mut tx, placement, 1.0).expect("circle");
+    trimmed_curve(
+        &mut tx,
+        arc,
+        ifc::geometry::curve::Trim {
+            cartesian: None,
+            parameter: Some(0.0),
+        },
+        ifc::geometry::curve::Trim {
+            cartesian: None,
+            parameter: Some(1.5),
+        },
+        true,
+        ifc::geometry::curve::TrimmingPreference::Parameter,
+    )
+    .expect("trimmed");
+
+    // A swept disk over that curve.
+    swept_disk_solid(&mut tx, arc, 0.2, Some(0.1), SweepTrim::default()).expect("disk");
+
+    // B-rep topology: the oriented edge is the DERIVE case.
+    let p1 = cartesian_point(&mut tx, &[1.0, 0.0, 0.0]).expect("p1");
+    let p2 = cartesian_point(&mut tx, &[0.0, 1.0, 0.0]).expect("p2");
+    let v0 = vertex_point(&mut tx, origin);
+    let v1 = vertex_point(&mut tx, p1);
+    let along = ifc::geometry::authoring::vector(&mut tx, up, 1.0).expect("vector");
+    let geometry = line(&mut tx, origin, along);
+    let straight = edge_curve(&mut tx, v0, v1, geometry, true);
+    oriented_edge(&mut tx, straight, false);
+    let ring = poly_loop(&mut tx, &[origin, p1, p2]).expect("loop");
+    let bound = face_outer_bound(&mut tx, ring, true);
+    let facet = face(&mut tx, &[bound]).expect("face");
+    let hull = shell(&mut tx, ShellKind::Closed, &[facet]).expect("shell");
+    manifold_solid_brep(&mut tx, BrepKind::Faceted, hull, &[]);
+
+    let axis = axis1_placement(&mut tx, origin, Some(up));
+    let _ = axis;
+
+    let mut model = model;
+    tx.commit(&mut model).expect("commit");
+    assert_conformant(&model, "ifc-geometry authoring");
+}
