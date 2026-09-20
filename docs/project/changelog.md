@@ -16,6 +16,12 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-geometry` authors the curve families: `IfcLine` and `IfcVector`,
+  `IfcCircle`, `IfcEllipse`, `IfcTrimmedCurve`, `IfcCompositeCurve`
+  and its segments, `IfcIndexedPolyCurve`, the 2D and 3D offset
+  curves, and both B-spline-with-knots forms. The B-spline writers
+  enforce `sum(KnotMultiplicities) = Degree + |ControlPoints| + 1`,
+  and trim parameters keep their `IfcParameterValue` wrapper.
 - `ifc-geometry` authors the CSG primitives and half spaces:
   `IfcBlock`, `IfcSphere`, `IfcRightCircularCone`,
   `IfcRightCircularCylinder`, `IfcRectangularPyramid`, `IfcCsgSolid`,

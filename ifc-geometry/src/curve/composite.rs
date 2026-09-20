@@ -84,6 +84,16 @@ impl TransitionCode {
         }
     }
 
+    /// The EXPRESS token, the inverse of [`Self::from_token`].
+    pub fn token(self) -> &'static str {
+        match self {
+            Self::Discontinuous => "DISCONTINUOUS",
+            Self::Continuous => "CONTINUOUS",
+            Self::ContSameGradient => "CONTSAMEGRADIENT",
+            Self::ContSameGradientSameCurvature => "CONTSAMEGRADIENTSAMECURVATURE",
+        }
+    }
+
     /// Do the segments at this joint at least touch?
     ///
     /// The question a kernel actually asks before deciding whether the chain

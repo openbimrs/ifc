@@ -81,6 +81,18 @@ impl TrimmingPreference {
             _ => None,
         }
     }
+
+    /// The EXPRESS token, the inverse of [`Self::from_token`].
+    ///
+    /// Kept beside the parser so the two cannot drift: a token added to
+    /// one without the other stops compiling here.
+    pub fn token(self) -> &'static str {
+        match self {
+            Self::Cartesian => "CARTESIAN",
+            Self::Parameter => "PARAMETER",
+            Self::Unspecified => "UNSPECIFIED",
+        }
+    }
 }
 
 /// One member of an `IfcTrimmingSelect` set.

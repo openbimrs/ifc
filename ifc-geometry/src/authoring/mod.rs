@@ -17,6 +17,7 @@
 //! lands once and serves both directions.
 
 mod csg;
+mod curve;
 mod placement;
 mod profile;
 mod solid;
@@ -26,6 +27,11 @@ mod tessellation;
 pub use csg::{
     block, bounding_box, boxed_half_space, cone, csg_solid, cylinder, half_space,
     polygonal_bounded_half_space, rectangular_pyramid, sphere,
+};
+pub use curve::{
+    bspline_curve_with_knots, circle, composite_curve, composite_curve_segment, ellipse,
+    indexed_poly_curve, line, offset_curve_2d, offset_curve_3d, rational_bspline_curve_with_knots,
+    trimmed_curve, vector, KnotVector, PolyCurveSegment,
 };
 pub use placement::{axis2_placement_2d, axis2_placement_3d, cartesian_point, direction};
 pub use profile::{
