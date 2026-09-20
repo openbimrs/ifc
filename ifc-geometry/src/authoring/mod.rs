@@ -16,12 +16,17 @@
 //! `pub(crate) mod slot` constants its reader uses, so a layout correction
 //! lands once and serves both directions.
 
+mod csg;
 mod placement;
 mod profile;
 mod solid;
 mod std_profile;
 mod tessellation;
 
+pub use csg::{
+    block, bounding_box, boxed_half_space, cone, csg_solid, cylinder, half_space,
+    polygonal_bounded_half_space, rectangular_pyramid, sphere,
+};
 pub use placement::{axis2_placement_2d, axis2_placement_3d, cartesian_point, direction};
 pub use profile::{
     arbitrary_closed_profile, circle_profile, polyline, rectangle_profile, ProfileType,

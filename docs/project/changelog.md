@@ -16,6 +16,12 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-geometry` authors the CSG primitives and half spaces:
+  `IfcBlock`, `IfcSphere`, `IfcRightCircularCone`,
+  `IfcRightCircularCylinder`, `IfcRectangularPyramid`, `IfcCsgSolid`,
+  the three `IfcHalfSpaceSolid` forms and `IfcBoundingBox`. Every
+  dimension is `IfcPositiveLengthMeasure`, so zero and non-finite
+  values are refused.
 - Tessellated geometry authoring in `ifc-geometry`: `IfcCartesianPointList2D`
   and `3D`, `IfcTriangulatedFaceSet`, `IfcPolygonalFaceSet`,
   `IfcIndexedPolygonalFace` and the with-voids variant. Callers pass 0-based
