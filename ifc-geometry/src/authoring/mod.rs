@@ -22,6 +22,7 @@ mod placement;
 mod profile;
 mod solid;
 mod std_profile;
+mod swept;
 mod tessellation;
 
 pub use csg::{
@@ -44,6 +45,12 @@ pub use std_profile::{
     AsymmetricIExtras, CShapeDims, FlangedDims, IShapeDims, IShapeExtras, LShapeExtras,
     ProfileHeader, RectangleHollowDims, RectangleHollowFillets, TShapeExtras, TrapeziumDims,
     UShapeExtras, ZShapeExtras,
+};
+pub use swept::{
+    axis1_placement, cylindrical_surface, extruded_area_solid_tapered,
+    fixed_reference_swept_area_solid, plane, revolved_area_solid_tapered,
+    surface_curve_swept_area_solid, surface_of_linear_extrusion, surface_of_revolution,
+    swept_disk_solid, swept_disk_solid_polygonal, SweepTrim,
 };
 pub use tessellation::{
     cartesian_point_list_2d, cartesian_point_list_3d, indexed_polygonal_face,

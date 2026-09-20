@@ -16,6 +16,12 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+- `ifc-geometry` authors the remaining swept solids and surfaces:
+  the tapered extrusion and revolution, both directrix-driven
+  sweeps, both swept disk solids, `IfcSurfaceOfLinearExtrusion`,
+  `IfcSurfaceOfRevolution`, `IfcPlane`, `IfcCylindricalSurface` and
+  `IfcAxis1Placement`. A swept disk solid refuses an inner radius
+  that is not smaller than its outer one.
 - `ifc-geometry` authors the curve families: `IfcLine` and `IfcVector`,
   `IfcCircle`, `IfcEllipse`, `IfcTrimmedCurve`, `IfcCompositeCurve`
   and its segments, `IfcIndexedPolyCurve`, the 2D and 3D offset
