@@ -8,6 +8,13 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- Placement, connection geometry, grids and geometric sets in
+  `ifc-geometry`: `IfcLocalPlacement`, `IfcGridPlacement`, `IfcGridAxis`,
+  `IfcVirtualGridIntersection`, all five connection geometry forms,
+  `IfcPointOnCurve`, `IfcPointOnSurface`, `IfcGeometricSet` and its curve
+  form, `IfcPath`, `IfcBooleanClippingResult` and `IfcSectionedSpine`. A
+  clipping result is always a difference, and a spine needs a position
+  for every cross section.
 - Curves on surfaces in `ifc-geometry`: `IfcPcurve`, `IfcSurfaceCurve`
   and its intersection and seam forms, `IfcCompositeCurveOnSurface`,
   both boundary curves, `IfcCurveSegment`,

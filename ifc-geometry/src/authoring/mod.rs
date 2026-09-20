@@ -17,6 +17,7 @@
 //! lands once and serves both directions.
 
 mod brep;
+mod connection;
 mod csg;
 mod curve;
 mod placement;
@@ -34,6 +35,11 @@ pub use brep::{
     edge, edge_curve, edge_loop, face, face_based_surface_model, face_bound, face_outer_bound,
     face_surface, manifold_solid_brep, oriented_edge, poly_loop, shell, shell_based_surface_model,
     subedge, vertex_loop, vertex_point, BrepKind, ShellKind,
+};
+pub use connection::{
+    boolean_clipping_result, connection_geometry, connection_point_eccentricity, geometric_set,
+    grid_axis, grid_placement, local_placement, path, point_on_curve, point_on_surface,
+    sectioned_spine, virtual_grid_intersection, ConnectionKind,
 };
 pub use csg::{
     block, bounding_box, boxed_half_space, cone, csg_solid, cylinder, half_space,

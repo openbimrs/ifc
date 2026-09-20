@@ -562,3 +562,90 @@ fn geometry_authoring_is_conformant() {
     tx.commit(&mut model).expect("commit");
     assert_conformant(&model, "ifc-geometry authoring");
 }
+
+/// The later geometry families: surfaces, the remaining profiles,
+/// transformation operators, curves on surfaces, and connection
+/// geometry.
+///
+/// `IfcMirroredProfileDef` is the case this oracle is here for: its
+/// `Operator` is DERIVE and must serialize as `*`. A round-trip cannot
+/// tell that from `$`.
+#[test]
+#[cfg(feature = "geometry")]
+fn later_geometry_authoring_is_conformant() {
+    use ifc::geometry::authoring::{
+        arbitrary_profile_with_voids, axis2_placement_3d, cartesian_point, circle,
+        composite_curve_on_surface, composite_curve_segment, connection_geometry, direction,
+        geometric_set, grid_axis, local_placement, mirrored_profile, pcurve, plane, point_on_curve,
+        polyline, rectangle_profile, rounded_rectangle_profile, spherical_surface, surface_curve,
+        toroidal_surface, transformation_operator_3d, virtual_grid_intersection, ConnectionKind,
+        OnSurfaceKind, ProfileType, SurfaceCurveKind, SurfaceCurveRepresentation, Transform,
+    };
+
+    let mut model = model();
+    let mut tx = Transaction::new(&model);
+
+    let o = cartesian_point(&mut tx, &[0.0, 0.0, 0.0]).expect("origin");
+    let up = direction(&mut tx, &[0.0, 0.0, 1.0]).expect("up");
+    let at = axis2_placement_3d(&mut tx, o, Some(up), None);
+
+    // Surfaces.
+    let flat = plane(&mut tx, at);
+    spherical_surface(&mut tx, at, 1.5).expect("sphere");
+    toroidal_surface(&mut tx, at, 4.0, 1.0).expect("torus");
+
+    // Profiles, including the DERIVE case.
+    let parent = rectangle_profile(&mut tx, Some("P"), None, 0.3, 0.2).expect("parent");
+    mirrored_profile(&mut tx, ProfileType::Area, Some("M"), parent, None);
+    rounded_rectangle_profile(&mut tx, Some("R"), None, 4.0, 2.0, 0.5).expect("rounded");
+    let a = cartesian_point(&mut tx, &[0.0, 0.0]).expect("a");
+    let b = cartesian_point(&mut tx, &[1.0, 0.0]).expect("b");
+    let c = cartesian_point(&mut tx, &[1.0, 1.0]).expect("c");
+    let outer = polyline(&mut tx, &[a, b, c, a]).expect("outer");
+    let inner = polyline(&mut tx, &[a, b, c, a]).expect("inner");
+    arbitrary_profile_with_voids(&mut tx, Some("V"), outer, &[inner]).expect("voided");
+
+    // Transformation operator.
+    transformation_operator_3d(
+        &mut tx,
+        o,
+        Transform {
+            scale: Some(2.0),
+            ..Transform::default()
+        },
+        Some(up),
+    )
+    .expect("operator");
+
+    // Curves on surfaces.
+    let arc = circle(&mut tx, at, 1.0).expect("arc");
+    let on_plane = pcurve(&mut tx, flat, arc);
+    surface_curve(
+        &mut tx,
+        SurfaceCurveKind::Plain,
+        arc,
+        &[on_plane],
+        SurfaceCurveRepresentation::Curve3D,
+    )
+    .expect("surface curve");
+    let segment = composite_curve_segment(
+        &mut tx,
+        ifc::geometry::curve::TransitionCode::Continuous,
+        true,
+        arc,
+    );
+    composite_curve_on_surface(&mut tx, OnSurfaceKind::Boundary, &[segment])
+        .expect("boundary curve");
+
+    // Placement, grids, connection geometry, sets.
+    local_placement(&mut tx, None, at);
+    let u = grid_axis(&mut tx, Some("A"), outer, true);
+    let v = grid_axis(&mut tx, Some("1"), outer, false);
+    virtual_grid_intersection(&mut tx, &[u, v], &[0.0, 0.0]).expect("intersection");
+    connection_geometry(&mut tx, ConnectionKind::Curve, arc, None);
+    point_on_curve(&mut tx, arc, 0.5).expect("point on curve");
+    geometric_set(&mut tx, true, &[arc]).expect("curve set");
+
+    tx.commit(&mut model).expect("commit");
+    assert_conformant(&model, "ifc-geometry later authoring");
+}
