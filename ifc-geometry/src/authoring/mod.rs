@@ -21,6 +21,7 @@ mod csg;
 mod curve;
 mod placement;
 mod profile;
+mod profile2;
 mod solid;
 mod std_profile;
 mod surface;
@@ -44,6 +45,10 @@ pub use curve::{
 pub use placement::{axis2_placement_2d, axis2_placement_3d, cartesian_point, direction};
 pub use profile::{
     arbitrary_closed_profile, circle_profile, polyline, rectangle_profile, ProfileType,
+};
+pub use profile2::{
+    arbitrary_open_profile, arbitrary_profile_with_voids, center_line_profile, composite_profile,
+    derived_profile, mirrored_profile, rounded_rectangle_profile,
 };
 pub use solid::{boolean_result, extruded_area_solid, revolved_area_solid};
 pub use std_profile::{

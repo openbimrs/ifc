@@ -8,6 +8,13 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- The remaining profile forms in `ifc-geometry`:
+  `IfcArbitraryOpenProfileDef`, `IfcArbitraryProfileDefWithVoids`,
+  `IfcCenterLineProfileDef`, `IfcCompositeProfileDef`,
+  `IfcDerivedProfileDef`, `IfcMirroredProfileDef` and
+  `IfcRoundedRectangleProfileDef`. The mirrored form writes its derived
+  `Operator` as `*`, and the rounding radius is bounded by half of each
+  rectangle dimension.
 - Surface authoring in `ifc-geometry`: `IfcSphericalSurface`,
   `IfcToroidalSurface`, `IfcCurveBoundedPlane`, `IfcCurveBoundedSurface`,
   `IfcRectangularTrimmedSurface` and both B-spline surface forms. The
