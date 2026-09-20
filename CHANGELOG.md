@@ -14,6 +14,16 @@ and this project follows Semantic Versioning.
   plus `IfcZone` and `IfcSpatialZone`. A closed enum keeps the class set
   to what the reader understands, and `USERDEFINED` without a naming
   `ObjectType` is refused.
+- `ifc-style` authors textures: `IfcImageTexture`, `IfcTextureMap` and
+  `IfcTextureCoordinateGenerator`. Cardinality floors and reference
+  types are enforced; the vertex-to-face-loop correspondence is left to
+  the consumer that owns the geometry, since this crate never inspects
+  a representation item's shape.
+- `ifc-georef` authors coordinate operations: `IfcGeographicCRS`,
+  `IfcMapConversion`, `IfcMapConversionScaled` and `IfcRigidOperation`.
+  `TargetCRSOnlyProjected` is enforced at construction, and a
+  zero-length X axis vector is refused rather than written as a
+  rotation that does not exist.
 - `ifc-spatial` authors the remaining objectified relationships:
   coverings, declarations, object definition, system service, flow
   control, the three actor/product/process assignments, group-by-factor,

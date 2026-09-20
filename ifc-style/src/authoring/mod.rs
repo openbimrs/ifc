@@ -9,6 +9,13 @@ use crate::annotation::{AnnotationType, BoxAlignment, TextPath};
 use crate::error::{StyleError, StyleResult};
 use crate::surface_style::{duplicate_surface_element_category, SURFACE_STYLE_ELEMENT_MEMBERS};
 
+mod texture;
+
+pub use texture::{
+    create_image_texture, create_texture_coordinate_generator, create_texture_map,
+    ImageTextureDraft,
+};
+
 /// Draft input for [`create_annotation`]: the writable attributes of a new
 /// `IfcAnnotation`.
 #[derive(Debug, Clone, Default)]

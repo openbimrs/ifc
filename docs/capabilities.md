@@ -28,8 +28,8 @@ code.
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
 | `ifc-geometry` | 36,700 | 123 | 3 | 49 | <span class="status-partial">Partial</span> |
+| `ifc-style` | 4,739 | 39 | 0 | 8 | <span class="status-implemented">Implemented</span> |
 | `ifc-alignment` | 4,532 | 36 | 11 | 10 | <span class="status-partial">Partial</span> |
-| `ifc-style` | 4,532 | 38 | 0 | 7 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 4,522 | 33 | 14 | 6 | <span class="status-implemented">Implemented</span> |
 | `ifc-structural` | 3,936 | 34 | 14 | 13 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 3,241 | 25 | 0 | 11 | <span class="status-implemented">Implemented</span> |
@@ -41,7 +41,7 @@ code.
 | `ifc-cost` | 2,235 | 17 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 2,147 | 22 | 5 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
-| `ifc-georef` | 1,729 | 19 | 9 | 4 | <span class="status-partial">Partial</span> |
+| `ifc-georef` | 2,029 | 20 | 9 | 5 | <span class="status-partial">Partial</span> |
 | `ifc-spatial` | 1,684 | 11 | 1 | 11 | <span class="status-implemented">Implemented</span> |
 | `ifc-schema` | 1,404 | 12 | 4 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,229 | 6 | 0 | 1 | <span class="status-implemented">Implemented</span> |

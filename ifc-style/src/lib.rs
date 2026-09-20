@@ -30,10 +30,11 @@ pub use assignment::{
     PresentationStyleAssignment, PresentationStyleMember, ResolvedStyle, StyleSource, StyledItem,
 };
 pub use authoring::{
-    create_annotation, create_annotation_fill_area, create_colour_rgb,
+    create_annotation, create_annotation_fill_area, create_colour_rgb, create_image_texture,
     create_presentation_layer_with_style, create_styled_item, create_surface_style,
     create_surface_style_shading, create_text_literal, create_text_literal_with_extent,
-    AnnotationDraft, AnnotationFillAreaDraft, ColourRgbDraft, PresentationLayerDraft,
+    create_texture_coordinate_generator, create_texture_map, AnnotationDraft,
+    AnnotationFillAreaDraft, ColourRgbDraft, ImageTextureDraft, PresentationLayerDraft,
     StyledItemDraft, SurfaceStyleDraft, SurfaceStyleShadingDraft, TextLiteralDraft,
     TextLiteralWithExtentDraft,
 };

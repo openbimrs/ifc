@@ -13,6 +13,13 @@ use ifc_model::{Entity, EntityId, Transaction, Value};
 
 use crate::error::{GeorefError, GeorefResult};
 
+mod operation;
+
+pub use operation::{
+    create_geographic_crs, create_map_conversion, create_map_conversion_scaled,
+    create_rigid_operation, GeographicCrsDraft, MapConversionDraft,
+};
+
 fn invalid(entity: &'static str, attribute: &'static str, value: impl Into<String>) -> GeorefError {
     GeorefError::AuthoringInvalid {
         entity,
