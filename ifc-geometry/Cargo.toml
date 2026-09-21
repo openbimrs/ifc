@@ -32,13 +32,24 @@ lowering = [
 # Mesh compilation. OFF by default: it selects an execution provider and a
 # memory budget, which are application policy, not properties of the file.
 # ADR 0004 admits this narrowly -- opt-in only, never in the default build.
+# The compilation seam: contracts only, no engine. A caller who brings
+# CGAL, OCCT, or their own kernel enables this alone and links none of the
+# reference implementation.
 compile = [
     "lowering",
     "dep:axiolid-contracts",
-    "dep:axiolid-mesh-compile",
     "dep:axiolid-mesh-compile-contract",
-    "dep:axiolid-mesh-boolean-boolmesh",
     "dep:axiolid-curve-evaluate-contract",
+]
+
+# The reference backend, kept separate so it is a choice rather than a
+# tax. Enabling `compile` alone leaves `compile_product_mesh_with` usable
+# with a caller-supplied backend; this adds `default_backend` and the
+# convenience `compile_product_mesh` that wraps it.
+compile-reference-backend = [
+    "compile",
+    "dep:axiolid-mesh-compile",
+    "dep:axiolid-mesh-boolean-boolmesh",
 ]
 
 [dependencies]

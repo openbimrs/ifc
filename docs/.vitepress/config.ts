@@ -14,6 +14,7 @@ const adrs = [
   ['0009-derived-attributes-resolve-through-the-parent-context', 9, 'DERIVED attribute inheritance'],
   ['0010-checked-mutation-is-a-model-level-primitive', 10, 'Checked mutation primitive'],
   ['0011-geometry-authoring-is-bidirectional-in-the-bridge', 11, 'Bidirectional geometry authoring'],
+  ['0012-geometry-backends-are-swappable', 12, 'Swappable geometry backends'],
 ]
 
 function adrItems() {

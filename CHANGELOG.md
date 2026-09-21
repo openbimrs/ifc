@@ -8,6 +8,13 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+
+- Swappable geometry backends (ADR 0012). Compilation entry points are generic
+  over the upstream `MeshCompiler` contract, so CGAL, OCCT, a GPU tessellator or
+  a research prototype can be plugged in without forking. Whole-kernel and
+  per-area swapping are both supported. The new `compile` feature carries the
+  contracts only; `compile-reference-backend` adds the reference engine and the
+  convenience wrappers.
 - `ifc-spatial` authors the seven remaining objectified relationships: `IfcRelVoidsElement`,
   `IfcRelFillsElement`, `IfcRelProjectsElement`, `IfcRelAdheresToElement`, `IfcRelPositions`,
   `IfcRelAssignsToResource` and `IfcRelAssociatesProfileDef`. Fill inverts the void direction,

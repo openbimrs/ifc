@@ -10,7 +10,7 @@
 //! -- so what gets pinned is that every product reaches a TYPED answer:
 //! triangles, or `CompilationRefused` naming the reason. A panic, a hang, or
 //! a silently empty mesh is the failure this catches.
-#![cfg(feature = "compile")]
+#![cfg(feature = "compile-reference-backend")]
 
 use axiolid_core::Tolerance;
 use ifc_geometry::compile::compile_product_mesh;

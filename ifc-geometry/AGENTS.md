@@ -12,12 +12,20 @@ roadmap work; keep progress, blockers, and evidence there.
 Allowed production dependencies: `ifc-model`, schema metadata, and neutral axiolid
 value/representation crates; never an algorithm, dispatch, or backend crate.
 
-One sanctioned exception (ADR 0004 amendment): the mesh-compile provider and its
-contracts, optional and reachable only through the non-default `compile`
-feature. Only `src/compile.rs` may name them. Adding a second execution
-dependency, or letting a default feature reach this one, fails
-`ifc-model/tests/package_architecture.rs` -- it walks the feature graph from
-`default` rather than trusting the feature's name.
+One sanctioned exception (ADR 0004 amendment): the mesh-compile contracts and
+the reference provider, optional and reachable only through the non-default
+`compile` / `compile-reference-backend` features. Only `src/compile.rs` may
+name them. Adding a second execution dependency, or letting a default feature
+reach these, fails `ifc-model/tests/package_architecture.rs` -- it walks the
+feature graph from `default` rather than trusting the feature's name.
+
+Backend selection is a parameter, never a constant (ADR 0012). `compile`
+carries the contracts a caller implements to bring CGAL, OCCT, or their own
+kernel; `compile-reference-backend` adds the reference engine and the
+convenience wrappers. Never construct a concrete backend inside a function
+body -- take `&impl MeshCompiler` and let `default_backend()` name the
+default. `tests/backend_seam_linkage.rs` fails if the engine leaks into the
+contracts-only feature.
 
 The neutral crates are optional, behind the default-on `lowering` feature. Only
 `lower`, `Transform::to_geom`, and the `IfcBooleanOperator` conversion may
