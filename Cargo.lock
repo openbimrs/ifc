@@ -806,6 +806,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ifc-tabular"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+ "ifc-schema",
+ "thiserror",
+]
+
+[[package]]
 name = "ifc-template-catalog"
 version = "0.1.0"
 dependencies = [
@@ -909,6 +918,7 @@ dependencies = [
  "ifc-structural",
  "ifc-style",
  "ifc-systems",
+ "ifc-tabular",
  "ifc-template-catalog",
  "ifc-validate",
  "ifc-xml",

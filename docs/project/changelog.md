@@ -17,6 +17,12 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `ifc-tabular`: a new crate for structured value containers indexed by
+  position or time. Authors `IfcTable`, `IfcTableRow`, `IfcTableColumn`,
+  `IfcRegularTimeSeries`, `IfcIrregularTimeSeries`, `IfcTimeSeriesValue` and
+  `IfcIrregularTimeSeriesValue`, enforcing WR1 (uniform row width) and WR2
+  (at most one heading). Reached through the facade's `tabular` feature.
+
 - `stage_load` covers the four remaining `IfcStructuralLoad` subtypes:
   `IfcStructuralLoadSingleForceWarping`, `IfcStructuralLoadSingleDisplacementDistortion`,
   `IfcSurfaceReinforcementArea` and `IfcStructuralLoadConfiguration`. The last two

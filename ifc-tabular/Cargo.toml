@@ -1,0 +1,17 @@
+[package]
+name = "ifc-tabular"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Structured IFC value containers indexed by position or time."
+
+[dependencies]
+ifc-model.workspace = true
+ifc-schema.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

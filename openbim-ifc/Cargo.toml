@@ -36,6 +36,7 @@ ifc-schedule = { workspace = true, optional = true }
 ifc-material = { workspace = true, optional = true }
 ifc-classification = { workspace = true, optional = true }
 ifc-approval = { workspace = true, optional = true }
+ifc-tabular = { workspace = true, optional = true }
 ifc-constraint = { workspace = true, optional = true }
 ifc-element-type = { workspace = true, optional = true }
 ifc-occurrence = { workspace = true, optional = true }
@@ -72,6 +73,7 @@ material = ["dep:ifc-material"]
 material-templates = ["material", "property-catalog"]
 classification = ["dep:ifc-classification"]
 approval = ["dep:ifc-approval"]
+tabular = ["dep:ifc-tabular"]
 constraint = ["dep:ifc-constraint"]
 element-type = ["dep:ifc-element-type"]
 occurrence = ["dep:ifc-occurrence"]
@@ -105,6 +107,7 @@ domains = [
     "material",
     "classification",
     "approval",
+    "tabular",
     "constraint",
     "structural",
     "resource",

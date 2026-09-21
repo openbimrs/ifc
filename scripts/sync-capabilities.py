@@ -66,6 +66,7 @@ PUBLISHED_STATUS = {
     # Complete bounded IFC4 approval resource: views, relationships, queries,
     # staged authoring, STEP facade proof, and mutation-sensitive refusals.
     "ifc-approval": '<span class="status-implemented">Implemented</span>',
+    "ifc-tabular": '<span class="status-implemented">Implemented</span>',
     # Complete bounded IFC4 metric/objective/resource relationship contract;
     # values are preserved but intentionally not evaluated.
     "ifc-constraint": '<span class="status-implemented">Implemented</span>',

@@ -103,6 +103,10 @@ pub use ifc_classification as classification;
 #[cfg(feature = "approval")]
 pub use ifc_approval as approval;
 
+/// Tables and time series: value containers indexed by position or time.
+#[cfg(feature = "tabular")]
+pub use ifc_tabular as tabular;
+
 /// Metrics, objectives, and constraint relationships.
 #[cfg(feature = "constraint")]
 pub use ifc_constraint as constraint;

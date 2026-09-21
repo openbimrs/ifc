@@ -51,7 +51,8 @@ code.
 | `ifc-author` | 951 | 9 | 3 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-step` | 949 | 6 | 0 | 6 | <span class="status-implemented">Implemented</span> |
 | `ifc-approval` | 914 | 5 | 0 | 1 | <span class="status-implemented">Implemented</span> |
-| `openbim-ifc` | 909 | 6 | 0 | 16 | <span class="status-implemented">Implemented</span> |
+| `openbim-ifc` | 913 | 6 | 0 | 16 | <span class="status-implemented">Implemented</span> |
+| `ifc-tabular` | 393 | 4 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 
 <!-- CAPABILITIES:CENSUS:END -->
 
@@ -65,7 +66,7 @@ Every concrete `IfcRepresentationItem` subtype in IFC4 ADD2 TC1 is named somewhe
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:BEGIN -->
 
-0 of 25 crates are scaffolds.
+0 of 26 crates are scaffolds.
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:END -->
 They exist because the layering decision
