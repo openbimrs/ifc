@@ -9,6 +9,13 @@ and this project follows Semantic Versioning.
 
 ### Added
 
+- `stage_load` covers the four remaining `IfcStructuralLoad` subtypes:
+  `IfcStructuralLoadSingleForceWarping`, `IfcStructuralLoadSingleDisplacementDistortion`,
+  `IfcSurfaceReinforcementArea` and `IfcStructuralLoadConfiguration`. The last two
+  enforce their WHERE rules: non-negative areas with at least one specified
+  (`NonnegativeArea1/2/3`, `SurfaceAndOrShearAreaSpecified`) and one location per
+  value (`ValidListSize`).
+
 - `ifc-spatial::facility` authors the ten facility and facility-part classes
   (`IfcFacility`, `IfcBridge`, `IfcRoad`, `IfcRailway`, `IfcMarineFacility` and
   their `*Part` siblings). Parts carry a mandatory `UsageType` at slot 9 and

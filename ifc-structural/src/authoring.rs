@@ -105,6 +105,62 @@ pub enum LoadDraft {
         /// or the underscored equivalents in schemas that name them that way).
         delta: [Option<f64>; 3],
     },
+    /// Stages an `IfcStructuralLoadSingleForceWarping`.
+    ///
+    /// Extends the single force with the bimoment that restrained
+    /// warping produces in an open thin-walled section.
+    SingleForceWarping {
+        /// `Name`.
+        name: Option<String>,
+        /// `ForceX`/`ForceY`/`ForceZ`.
+        force: [Option<f64>; 3],
+        /// `MomentX`/`MomentY`/`MomentZ`.
+        moment: [Option<f64>; 3],
+        /// `WarpingMoment`.
+        warping_moment: Option<f64>,
+    },
+    /// Stages an `IfcStructuralLoadSingleDisplacementDistortion`.
+    ///
+    /// The displacement counterpart of the warping force: a prescribed
+    /// movement rather than an applied load.
+    SingleDisplacementDistortion {
+        /// `Name`.
+        name: Option<String>,
+        /// `DisplacementX`/`DisplacementY`/`DisplacementZ`.
+        displacement: [Option<f64>; 3],
+        /// `RotationalDisplacementRX`/`RY`/`RZ`.
+        rotation: [Option<f64>; 3],
+        /// `Distortion`.
+        distortion: Option<f64>,
+    },
+    /// Stages an `IfcSurfaceReinforcementArea`.
+    ///
+    /// Areas are measures, not coordinates: the schema requires each
+    /// to be non-negative, and requires at least one of the three to
+    /// be present so the record says something.
+    SurfaceReinforcementArea {
+        /// `Name`.
+        name: Option<String>,
+        /// `SurfaceReinforcement1`, two or three entries.
+        surface_1: Option<Vec<f64>>,
+        /// `SurfaceReinforcement2`, two or three entries.
+        surface_2: Option<Vec<f64>>,
+        /// `ShearReinforcement`.
+        shear: Option<f64>,
+    },
+    /// Stages an `IfcStructuralLoadConfiguration`.
+    ///
+    /// A list of loads with optional sample locations. When locations
+    /// are given the schema requires one per value, so the pairing is
+    /// checked here rather than left to a downstream reader.
+    Configuration {
+        /// `Name`.
+        name: Option<String>,
+        /// `Values`: the loads sampled, at least one.
+        values: Vec<EntityId>,
+        /// `Locations`: one coordinate pair per value, or none.
+        locations: Option<Vec<[f64; 2]>>,
+    },
 }
 
 /// Stage an `IfcStructuralAnalysisModel` create edit on `tx`.
@@ -218,8 +274,22 @@ pub fn stage_load(
     schema: &Schema,
     draft: LoadDraft,
 ) -> StructuralResult<EntityId> {
+    // Two subtypes carry list-valued attributes and WHERE rules of
+    // their own, so they cannot ride the shared scalar path below.
+
     let (entity_type, name, attributes, values): (&str, Option<String>, &[&str], Vec<Option<f64>>) =
         match draft {
+            LoadDraft::SurfaceReinforcementArea {
+                name,
+                surface_1,
+                surface_2,
+                shear,
+            } => return stage_surface_reinforcement(tx, schema, name, surface_1, surface_2, shear),
+            LoadDraft::Configuration {
+                name,
+                values,
+                locations,
+            } => return stage_load_configuration(tx, schema, name, values, locations),
             LoadDraft::SingleForce {
                 name,
                 force,
@@ -272,6 +342,52 @@ pub fn stage_load(
                     delta.to_vec(),
                 )
             }
+            LoadDraft::SingleForceWarping {
+                name,
+                force,
+                moment,
+                warping_moment,
+            } => (
+                "IfcStructuralLoadSingleForceWarping",
+                name,
+                &[
+                    "ForceX",
+                    "ForceY",
+                    "ForceZ",
+                    "MomentX",
+                    "MomentY",
+                    "MomentZ",
+                    "WarpingMoment",
+                ],
+                force
+                    .into_iter()
+                    .chain(moment)
+                    .chain([warping_moment])
+                    .collect(),
+            ),
+            LoadDraft::SingleDisplacementDistortion {
+                name,
+                displacement,
+                rotation,
+                distortion,
+            } => (
+                "IfcStructuralLoadSingleDisplacementDistortion",
+                name,
+                &[
+                    "DisplacementX",
+                    "DisplacementY",
+                    "DisplacementZ",
+                    "RotationalDisplacementRX",
+                    "RotationalDisplacementRY",
+                    "RotationalDisplacementRZ",
+                    "Distortion",
+                ],
+                displacement
+                    .into_iter()
+                    .chain(rotation)
+                    .chain([distortion])
+                    .collect(),
+            ),
         };
     for (attribute, value) in attributes.iter().zip(&values) {
         if value.is_some_and(|number| !number.is_finite()) {
@@ -290,6 +406,133 @@ pub fn stage_load(
             .map(|(name, value)| (*name, value.map_or(Value::Null, Value::Real))),
     );
     Ok(tx.create(build_named(schema, entity_type, fields)?))
+}
+
+/// Stage an `IfcSurfaceReinforcementArea`, enforcing its four WHERE rules.
+///
+/// `NonnegativeArea1..3` reject a negative area; `SurfaceAndOrShearArea`
+/// rejects a record that specifies nothing at all.
+fn stage_surface_reinforcement(
+    tx: &mut Transaction,
+    schema: &Schema,
+    name: Option<String>,
+    surface_1: Option<Vec<f64>>,
+    surface_2: Option<Vec<f64>>,
+    shear: Option<f64>,
+) -> StructuralResult<EntityId> {
+    const ENTITY: &str = "IfcSurfaceReinforcementArea";
+
+    if surface_1.is_none() && surface_2.is_none() && shear.is_none() {
+        return Err(StructuralError::InvalidDraftValue {
+            entity_type: ENTITY,
+            attribute: "SurfaceReinforcement1",
+            expected: "at least one reinforcement area to be specified",
+        });
+    }
+
+    for (attribute, area) in [
+        ("SurfaceReinforcement1", surface_1.as_ref()),
+        ("SurfaceReinforcement2", surface_2.as_ref()),
+    ] {
+        let Some(area) = area else { continue };
+        if !(2..=3).contains(&area.len()) {
+            return Err(StructuralError::InvalidDraftValue {
+                entity_type: ENTITY,
+                attribute,
+                expected: "two or three area values",
+            });
+        }
+        if area.iter().any(|value| !value.is_finite() || *value < 0.0) {
+            return Err(StructuralError::InvalidDraftValue {
+                entity_type: ENTITY,
+                attribute,
+                expected: "finite non-negative area values",
+            });
+        }
+    }
+
+    if shear.is_some_and(|value| !value.is_finite() || value < 0.0) {
+        return Err(StructuralError::InvalidDraftValue {
+            entity_type: ENTITY,
+            attribute: "ShearReinforcement",
+            expected: "a finite non-negative area",
+        });
+    }
+
+    let reals = |values: Option<Vec<f64>>| {
+        values.map_or(Value::Null, |values| {
+            Value::List(values.into_iter().map(Value::Real).collect())
+        })
+    };
+    let fields = vec![
+        ("Name", optional_text(name)),
+        ("SurfaceReinforcement1", reals(surface_1)),
+        ("SurfaceReinforcement2", reals(surface_2)),
+        ("ShearReinforcement", shear.map_or(Value::Null, Value::Real)),
+    ];
+    Ok(tx.create(build_named(schema, ENTITY, fields)?))
+}
+
+/// Stage an `IfcStructuralLoadConfiguration`, enforcing `ValidListSize`.
+///
+/// Locations are optional, but when present the schema requires exactly
+/// one per value: a mismatched pair silently misattributes every sample
+/// after the first gap, so it is refused here.
+fn stage_load_configuration(
+    tx: &mut Transaction,
+    schema: &Schema,
+    name: Option<String>,
+    values: Vec<EntityId>,
+    locations: Option<Vec<[f64; 2]>>,
+) -> StructuralResult<EntityId> {
+    const ENTITY: &str = "IfcStructuralLoadConfiguration";
+
+    if values.is_empty() {
+        return Err(StructuralError::InvalidDraftValue {
+            entity_type: ENTITY,
+            attribute: "Values",
+            expected: "at least one load",
+        });
+    }
+    if let Some(locations) = locations.as_ref() {
+        if locations.len() != values.len() {
+            return Err(StructuralError::InvalidDraftValue {
+                entity_type: ENTITY,
+                attribute: "Locations",
+                expected: "one location per value",
+            });
+        }
+        if locations
+            .iter()
+            .any(|pair| pair.iter().any(|value| !value.is_finite()))
+        {
+            return Err(StructuralError::InvalidDraftValue {
+                entity_type: ENTITY,
+                attribute: "Locations",
+                expected: "finite coordinates",
+            });
+        }
+    }
+
+    let fields = vec![
+        ("Name", optional_text(name)),
+        (
+            "Values",
+            Value::List(values.into_iter().map(Value::Ref).collect()),
+        ),
+        (
+            "Locations",
+            locations.map_or(Value::Null, |locations| {
+                Value::List(
+                    locations
+                        .into_iter()
+                        .map(|pair| Value::List(pair.into_iter().map(Value::Real).collect()))
+                        .collect(),
+                )
+            }),
+        ),
+    ];
+    Ok(tx.create(build_named(schema, ENTITY, fields)?))
 }
 
 pub(super) fn build_named(
