@@ -651,6 +651,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ifc-element-type"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+ "ifc-schema",
+]
+
+[[package]]
 name = "ifc-geometry"
 version = "0.1.0"
 dependencies = [
@@ -879,6 +887,7 @@ dependencies = [
  "ifc-classification",
  "ifc-constraint",
  "ifc-cost",
+ "ifc-element-type",
  "ifc-geometry",
  "ifc-georef",
  "ifc-material",

@@ -33,6 +33,7 @@ ifc-cost = { path = "ifc-cost", version = "0.1.0" }
 ifc-schedule = { path = "ifc-schedule", version = "0.1.0" }
 ifc-material = { path = "ifc-material", version = "0.1.0" }
 ifc-style = { path = "ifc-style", version = "0.1.0" }
+ifc-element-type = { path = "ifc-element-type", version = "0.1.0" }
 ifc-structural = { path = "ifc-structural", version = "0.1.0" }
 ifc-resource = { path = "ifc-resource", version = "0.1.0" }
 ifc-classification = { path = "ifc-classification", version = "0.1.0" }

@@ -16,6 +16,14 @@ This page is synchronised from it at build time.
 ## [Unreleased]
 
 ### Added
+
+- `ifc-element-type`: a new crate authoring the 132 concrete
+  `IfcTypeObject` subtypes, the type definitions product occurrences
+  inherit their shared description from. The catalogue is generated
+  from the schema by `scripts/gen-element-types.py`, and the writer
+  enforces `CorrectPredefinedType` on every one: a token must belong
+  to that entity's own enum, and `USERDEFINED` is refused without the
+  fallback name it promises.
 - `ifc-structural` authors `IfcStructuralCurveAction` and
   `IfcStructuralSurfaceAction` through the existing `ActionDraftKind`,
   which previously stopped at the IFC2x3 linear/planar pair. Their

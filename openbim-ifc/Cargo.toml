@@ -37,6 +37,7 @@ ifc-material = { workspace = true, optional = true }
 ifc-classification = { workspace = true, optional = true }
 ifc-approval = { workspace = true, optional = true }
 ifc-constraint = { workspace = true, optional = true }
+ifc-element-type = { workspace = true, optional = true }
 ifc-structural = { workspace = true, optional = true }
 ifc-resource = { workspace = true, optional = true }
 ifc-systems = { workspace = true, optional = true }
@@ -71,6 +72,7 @@ material-templates = ["material", "property-catalog"]
 classification = ["dep:ifc-classification"]
 approval = ["dep:ifc-approval"]
 constraint = ["dep:ifc-constraint"]
+element-type = ["dep:ifc-element-type"]
 structural = ["dep:ifc-structural"]
 resource = ["dep:ifc-resource"]
 systems = ["dep:ifc-systems"]
@@ -93,6 +95,7 @@ alignment = ["dep:ifc-alignment"]
 # Convenience bundles.
 codecs = ["step", "ifcxml"]
 domains = [
+    "element-type",
     "properties",
     "cost",
     "schedule",

@@ -107,6 +107,10 @@ pub use ifc_approval as approval;
 #[cfg(feature = "constraint")]
 pub use ifc_constraint as constraint;
 
+/// Element, resource, and process type definitions.
+#[cfg(feature = "element-type")]
+pub use ifc_element_type as element_type;
+
 /// Structural analysis model.
 #[cfg(feature = "structural")]
 pub use ifc_structural as structural;

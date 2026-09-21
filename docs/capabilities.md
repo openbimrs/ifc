@@ -33,6 +33,7 @@ code.
 | `ifc-properties` | 4,522 | 33 | 14 | 6 | <span class="status-implemented">Implemented</span> |
 | `ifc-structural` | 3,992 | 34 | 14 | 14 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 3,241 | 25 | 0 | 11 | <span class="status-implemented">Implemented</span> |
+| `ifc-element-type` | 3,186 | 9 | 0 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-template-catalog` | 3,104 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-resource` | 3,002 | 29 | 9 | 9 | <span class="status-partial">Partial</span> |
 | `ifc-validate` | 2,493 | 23 | 0 | 2 | <span class="status-implemented">Implemented</span> |
@@ -49,7 +50,7 @@ code.
 | `ifc-author` | 951 | 9 | 3 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-step` | 949 | 6 | 0 | 6 | <span class="status-implemented">Implemented</span> |
 | `ifc-approval` | 914 | 5 | 0 | 1 | <span class="status-implemented">Implemented</span> |
-| `openbim-ifc` | 901 | 6 | 0 | 16 | <span class="status-implemented">Implemented</span> |
+| `openbim-ifc` | 905 | 6 | 0 | 16 | <span class="status-implemented">Implemented</span> |
 
 <!-- CAPABILITIES:CENSUS:END -->
 
@@ -63,7 +64,7 @@ Every concrete `IfcRepresentationItem` subtype in IFC4 ADD2 TC1 is named somewhe
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:BEGIN -->
 
-0 of 23 crates are scaffolds.
+0 of 24 crates are scaffolds.
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:END -->
 They exist because the layering decision
