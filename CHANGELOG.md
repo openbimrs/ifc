@@ -9,6 +9,15 @@ and this project follows Semantic Versioning.
 
 ### Added
 
+- `ifc-style` authors the presentation entities it previously only read:
+  curve styles and font patterns, fill area styles, text style font models,
+  predefined colours and curve fonts, pixel textures, texture vertices and
+  vertex lists, colour RGB lists, indexed colour maps, and presentation
+  layer assignments. WHERE rules are enforced before staging, including
+  `SizeOfPixelList`, `PixelAsByteAndSameLength`, `NumberOfColours`,
+  `MaxOneColour`, `IdentifiableCurveStyle`, `MeasureOfWidth`,
+  `MeasureOfFontSize`, and the closed predefined-name lists.
+
 - `ifc-tabular`: a new crate for structured value containers indexed by
   position or time. Authors `IfcTable`, `IfcTableRow`, `IfcTableColumn`,
   `IfcRegularTimeSeries`, `IfcIrregularTimeSeries`, `IfcTimeSeriesValue` and

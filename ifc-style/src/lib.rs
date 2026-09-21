@@ -30,15 +30,22 @@ pub use assignment::{
     PresentationStyleAssignment, PresentationStyleMember, ResolvedStyle, StyleSource, StyledItem,
 };
 pub use authoring::{
-    create_annotation, create_annotation_fill_area, create_colour_rgb, create_image_texture,
-    create_light_source_ambient, create_light_source_directional, create_light_source_positional,
-    create_light_source_spot, create_presentation_layer_with_style, create_styled_item,
+    create_annotation, create_annotation_fill_area, create_colour_rgb, create_colour_rgb_list,
+    create_curve_style, create_curve_style_font, create_curve_style_font_and_scaling,
+    create_curve_style_font_pattern, create_draughting_predefined_colour,
+    create_draughting_predefined_curve_font, create_fill_area_style, create_image_texture,
+    create_indexed_colour_map, create_light_source_ambient, create_light_source_directional,
+    create_light_source_positional, create_light_source_spot, create_pixel_texture,
+    create_presentation_layer_assignment, create_presentation_layer_with_style, create_styled_item,
     create_surface_style, create_surface_style_lighting, create_surface_style_refraction,
     create_surface_style_shading, create_text_literal, create_text_literal_with_extent,
-    create_texture_coordinate_generator, create_texture_map, AnnotationDraft,
-    AnnotationFillAreaDraft, Attenuation, ColourRgbDraft, ImageTextureDraft, LightSourceDraft,
-    PointLight, PresentationLayerDraft, SpotCone, StyledItemDraft, SurfaceStyleDraft,
-    SurfaceStyleShadingDraft, TextLiteralDraft, TextLiteralWithExtentDraft,
+    create_text_style_font_model, create_text_style_for_defined_font,
+    create_texture_coordinate_generator, create_texture_map, create_texture_vertex,
+    create_texture_vertex_list, AnnotationDraft, AnnotationFillAreaDraft, Attenuation,
+    ColourRgbDraft, CurveStyleDraft, CurveWidth, FillStyleKind, ImageTextureDraft,
+    LightSourceDraft, PixelTextureDraft, PointLight, PresentationLayerDraft, SpotCone,
+    StyledItemDraft, SurfaceStyleDraft, SurfaceStyleShadingDraft, TextLiteralDraft,
+    TextLiteralWithExtentDraft, PREDEFINED_COLOUR_NAMES, PREDEFINED_CURVE_FONT_NAMES,
 };
 pub use colour::{ColourOrFactor, ColourRgb};
 pub use coverage::{

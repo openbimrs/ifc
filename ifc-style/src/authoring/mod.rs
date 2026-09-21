@@ -10,12 +10,23 @@ use crate::error::{StyleError, StyleResult};
 use crate::surface_style::{duplicate_surface_element_category, SURFACE_STYLE_ELEMENT_MEMBERS};
 
 mod light;
+mod presentation;
 mod texture;
 
 pub use light::{
     create_light_source_ambient, create_light_source_directional, create_light_source_positional,
     create_light_source_spot, create_surface_style_lighting, create_surface_style_refraction,
     Attenuation, LightSourceDraft, PointLight, SpotCone,
+};
+pub use presentation::{
+    create_colour_rgb_list, create_curve_style, create_curve_style_font,
+    create_curve_style_font_and_scaling, create_curve_style_font_pattern,
+    create_draughting_predefined_colour, create_draughting_predefined_curve_font,
+    create_fill_area_style, create_indexed_colour_map, create_pixel_texture,
+    create_presentation_layer_assignment, create_text_style_font_model,
+    create_text_style_for_defined_font, create_texture_vertex, create_texture_vertex_list,
+    CurveStyleDraft, CurveWidth, FillStyleKind, PixelTextureDraft, PREDEFINED_COLOUR_NAMES,
+    PREDEFINED_CURVE_FONT_NAMES,
 };
 pub use texture::{
     create_image_texture, create_texture_coordinate_generator, create_texture_map,
