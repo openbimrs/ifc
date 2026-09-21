@@ -16,9 +16,11 @@ mod relationships;
 
 use crate::tree::SpatialKind;
 pub use relationships::{
-    assign_to_actor, assign_to_group_by_factor, assign_to_process, assign_to_product,
-    connect_elements, connect_with_realizing_elements, control_flow_element, cover_elements,
-    cover_spaces, declare, define_by_object, interfere_elements, serve_buildings,
+    adhere_to_element, assign_to_actor, assign_to_group_by_factor, assign_to_process,
+    assign_to_product, assign_to_resource, associate_profile_def, connect_elements,
+    connect_with_realizing_elements, control_flow_element, cover_elements, cover_spaces, declare,
+    define_by_object, fill_element, interfere_elements, position_products, project_element,
+    serve_buildings, void_element,
 };
 
 /// Why a spatial record was refused.
@@ -186,6 +188,37 @@ fn relate(
     attributes[0] = Value::Text(global_id.into());
     attributes[rel.relating] = Value::Ref(parent);
     attributes[rel.related] = Value::List(children.iter().copied().map(Value::Ref).collect());
+    Ok(tx.create(Entity::new(rel.type_name, attributes)))
+}
+
+/// Stage a relationship whose related end is a single reference.
+///
+/// `relate` writes a `SET` to the related slot. Three of the feature
+/// relationships take exactly one element there, and a one-element list
+/// is not the same value: a reader resolving `RelatedOpeningElement`
+/// expects a reference, not a list holding one.
+fn relate_one(
+    tx: &mut Transaction,
+    rel: RelSlots,
+    global_id: &str,
+    relating: EntityId,
+    related: EntityId,
+) -> SpatialAuthoringResult<EntityId> {
+    if Guid::parse(global_id).is_none() {
+        return Err(invalid(rel.type_name, "GlobalId", global_id));
+    }
+    if relating == related {
+        return Err(invalid(
+            rel.type_name,
+            "RelatedElement",
+            "is the relating element",
+        ));
+    }
+    let width = rel.relating.max(rel.related) + 1;
+    let mut attributes = vec![Value::Null; width];
+    attributes[0] = Value::Text(global_id.into());
+    attributes[rel.relating] = Value::Ref(relating);
+    attributes[rel.related] = Value::Ref(related);
     Ok(tx.create(Entity::new(rel.type_name, attributes)))
 }
 

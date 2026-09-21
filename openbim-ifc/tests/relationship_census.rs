@@ -100,7 +100,7 @@ fn capabilities_states_the_real_relationship_count() {
         .find(|l| l.starts_with("| Objectified relationship traversal"))
         .expect("the relationship row exists");
 
-    // The row states a single count: "All 42 concrete IfcRel* families are
+    // The row states a single count: "All 45 concrete IfcRel* families are
     // read". That number is BOTH the claim and the schema total while
     // coverage is complete, so the test pins it to the source count and to
     // the schema's own concrete-entity total separately -- otherwise a row
@@ -115,7 +115,7 @@ fn capabilities_states_the_real_relationship_count() {
         "capabilities.md claims {claimed} IfcRel* families but the source reads {actual}"
     );
     assert!(
-        row.contains("All 42 concrete"),
+        row.contains("All 45 concrete"),
         "coverage is complete, so the row must say so verbatim; \
          drop this assertion only alongside a real regression"
     );
@@ -150,6 +150,13 @@ const SPATIAL_FAMILIES: &[&str] = &[
     "ifcrelflowcontrolelements",
     "ifcrelservicesbuildings",
     "ifcrelconnectswitheccentricity",
+    "ifcrelvoidselement",
+    "ifcrelfillselement",
+    "ifcrelprojectselement",
+    "ifcreladherestoelement",
+    "ifcrelpositions",
+    "ifcrelassignstoresource",
+    "ifcrelassociatesprofiledef",
 ];
 
 #[test]

@@ -8,6 +8,10 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `ifc-spatial` authors the seven remaining objectified relationships: `IfcRelVoidsElement`,
+  `IfcRelFillsElement`, `IfcRelProjectsElement`, `IfcRelAdheresToElement`, `IfcRelPositions`,
+  `IfcRelAssignsToResource` and `IfcRelAssociatesProfileDef`. Fill inverts the void direction,
+  and the assign/associate families keep `RelatedObjects` at slot 4.
 - `ifc-occurrence`: authoring for the 141 concrete `IfcElement` occurrence
   classes, refusing a `PredefinedType` outside the entity's own enum,
   `USERDEFINED` without a naming `ObjectType`, and a `typed_by` reference

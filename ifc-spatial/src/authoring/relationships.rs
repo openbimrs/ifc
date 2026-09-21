@@ -27,9 +27,11 @@ use ifc_model::{Entity, EntityId, Transaction, Value};
 
 use crate::authoring::{invalid, SpatialAuthoringResult};
 use crate::relation::slots::{
-    RelSlots, ASSIGNS_TO_ACTOR, ASSIGNS_TO_GROUP_BY_FACTOR, ASSIGNS_TO_PROCESS, ASSIGNS_TO_PRODUCT,
-    CONNECTS_ELEMENTS, CONNECTS_WITH_REALIZING, COVERS_ELEMENTS, COVERS_SPACES, DECLARES,
-    DEFINES_BY_OBJECT, FLOW_CONTROL_ELEMENTS, INTERFERES_ELEMENTS, SERVICES_BUILDINGS,
+    RelSlots, ADHERES_TO_ELEMENT, ASSIGNS_TO_ACTOR, ASSIGNS_TO_GROUP_BY_FACTOR, ASSIGNS_TO_PROCESS,
+    ASSIGNS_TO_PRODUCT, ASSIGNS_TO_RESOURCE, ASSOCIATES_PROFILE_DEF, CONNECTS_ELEMENTS,
+    CONNECTS_WITH_REALIZING, COVERS_ELEMENTS, COVERS_SPACES, DECLARES, DEFINES_BY_OBJECT,
+    FILLS_ELEMENT, FLOW_CONTROL_ELEMENTS, INTERFERES_ELEMENTS, POSITIONS, PROJECTS_ELEMENT,
+    SERVICES_BUILDINGS, VOIDS_ELEMENT,
 };
 
 /// Stage an `IfcRelCoversBldgElements`: finishes applied to an element.
@@ -330,3 +332,110 @@ pub fn interfere_elements(
 
 /// `ImpliedOrder` on `IfcRelInterferesElements`.
 const IMPLIED_ORDER_SLOT: usize = 8;
+
+/// Stage an `IfcRelVoidsElement`: an opening cut into an element.
+///
+/// # Errors
+///
+/// Refuses a malformed GlobalId and an element voided by itself.
+pub fn void_element(
+    tx: &mut Transaction,
+    global_id: &str,
+    element: EntityId,
+    opening: EntityId,
+) -> SpatialAuthoringResult<EntityId> {
+    super::relate_one(tx, VOIDS_ELEMENT, global_id, element, opening)
+}
+
+/// Stage an `IfcRelFillsElement`: an element filling an opening.
+///
+/// Note the direction. The *opening* is the relating end here, the
+/// inverse of [`void_element`]: a wall is voided by an opening, and
+/// that opening is filled by a door.
+///
+/// # Errors
+///
+/// Refuses a malformed GlobalId and an opening filled by itself.
+pub fn fill_element(
+    tx: &mut Transaction,
+    global_id: &str,
+    opening: EntityId,
+    filling: EntityId,
+) -> SpatialAuthoringResult<EntityId> {
+    super::relate_one(tx, FILLS_ELEMENT, global_id, opening, filling)
+}
+
+/// Stage an `IfcRelProjectsElement`: a feature added to an element.
+///
+/// # Errors
+///
+/// Refuses a malformed GlobalId and an element projecting from itself.
+pub fn project_element(
+    tx: &mut Transaction,
+    global_id: &str,
+    element: EntityId,
+    feature: EntityId,
+) -> SpatialAuthoringResult<EntityId> {
+    super::relate_one(tx, PROJECTS_ELEMENT, global_id, element, feature)
+}
+
+/// Stage an `IfcRelAdheresToElement`: surface features bound to an element.
+///
+/// # Errors
+///
+/// Refuses a malformed GlobalId, an empty feature set, and an element
+/// listed among its own features.
+pub fn adhere_to_element(
+    tx: &mut Transaction,
+    global_id: &str,
+    element: EntityId,
+    features: &[EntityId],
+) -> SpatialAuthoringResult<EntityId> {
+    super::relate(tx, ADHERES_TO_ELEMENT, global_id, element, features)
+}
+
+/// Stage an `IfcRelPositions`: products placed by a positioning element.
+///
+/// # Errors
+///
+/// Refuses a malformed GlobalId, an empty product set, and the
+/// positioning element listed among its own products, which the
+/// schema's `NoSelfReference` rule forbids.
+pub fn position_products(
+    tx: &mut Transaction,
+    global_id: &str,
+    positioning: EntityId,
+    products: &[EntityId],
+) -> SpatialAuthoringResult<EntityId> {
+    super::relate(tx, POSITIONS, global_id, positioning, products)
+}
+
+/// Stage an `IfcRelAssignsToResource`: objects assigned to a resource.
+///
+/// # Errors
+///
+/// Refuses a malformed GlobalId, an empty object set, and the resource
+/// listed among its own objects, which `NoSelfReference` forbids.
+pub fn assign_to_resource(
+    tx: &mut Transaction,
+    global_id: &str,
+    resource: EntityId,
+    objects: &[EntityId],
+) -> SpatialAuthoringResult<EntityId> {
+    super::relate(tx, ASSIGNS_TO_RESOURCE, global_id, resource, objects)
+}
+
+/// Stage an `IfcRelAssociatesProfileDef`: a profile associated with objects.
+///
+/// # Errors
+///
+/// Refuses a malformed GlobalId, an empty object set, and the profile
+/// listed among its own objects.
+pub fn associate_profile_def(
+    tx: &mut Transaction,
+    global_id: &str,
+    profile: EntityId,
+    objects: &[EntityId],
+) -> SpatialAuthoringResult<EntityId> {
+    super::relate(tx, ASSOCIATES_PROFILE_DEF, global_id, profile, objects)
+}

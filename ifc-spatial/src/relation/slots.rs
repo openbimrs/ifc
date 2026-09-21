@@ -264,3 +264,64 @@ pub(crate) const CONNECTS_WITH_ECCENTRICITY: RelSlots = RelSlots {
     relating: 4,
     related: 5,
 };
+
+/// `IfcRelVoidsElement`: an element voided by an opening.
+///
+/// The opening is the *related* end: the element owns the void.
+pub(crate) const VOIDS_ELEMENT: RelSlots = RelSlots {
+    type_name: "IFCRELVOIDSELEMENT",
+    relating: 4,
+    related: 5,
+};
+
+/// `IfcRelFillsElement`: an opening filled by an element.
+///
+/// The direction is inverted relative to `VOIDS_ELEMENT`: here the
+/// *opening* is the relating end and the filling element is related.
+/// A door fills an opening; the opening does not fill the door.
+pub(crate) const FILLS_ELEMENT: RelSlots = RelSlots {
+    type_name: "IFCRELFILLSELEMENT",
+    relating: 4,
+    related: 5,
+};
+
+/// `IfcRelProjectsElement`: an element with an added feature, e.g. a ledge.
+pub(crate) const PROJECTS_ELEMENT: RelSlots = RelSlots {
+    type_name: "IFCRELPROJECTSELEMENT",
+    relating: 4,
+    related: 5,
+};
+
+/// `IfcRelAdheresToElement`: surface features bound to an element.
+pub(crate) const ADHERES_TO_ELEMENT: RelSlots = RelSlots {
+    type_name: "IFCRELADHERESTOELEMENT",
+    relating: 4,
+    related: 5,
+};
+
+/// `IfcRelPositions`: products positioned by a positioning element.
+pub(crate) const POSITIONS: RelSlots = RelSlots {
+    type_name: "IFCRELPOSITIONS",
+    relating: 4,
+    related: 5,
+};
+
+/// `IfcRelAssignsToResource`: objects assigned to a resource.
+///
+/// `IfcRelAssigns` puts `RelatedObjects` at 4 and `RelatedObjectsType`
+/// at 5, so the resource lands at 6 -- not the 4/5 pair the decompose
+/// and connect families share.
+pub(crate) const ASSIGNS_TO_RESOURCE: RelSlots = RelSlots {
+    type_name: "IFCRELASSIGNSTORESOURCE",
+    relating: 6,
+    related: 4,
+};
+
+/// `IfcRelAssociatesProfileDef`: a profile associated with objects.
+///
+/// `IfcRelAssociates` puts `RelatedObjects` at 4, so the profile is at 5.
+pub(crate) const ASSOCIATES_PROFILE_DEF: RelSlots = RelSlots {
+    type_name: "IFCRELASSOCIATESPROFILEDEF",
+    relating: 5,
+    related: 4,
+};
