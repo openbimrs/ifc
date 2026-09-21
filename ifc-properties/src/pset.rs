@@ -17,6 +17,7 @@ mod table;
 
 mod aggregate;
 mod authoring;
+mod predefined;
 mod template_authoring;
 
 pub use authoring::{
@@ -26,6 +27,12 @@ pub use authoring::{
     add_property_table_value, attach_property_set, bounded_slot, complex_quantity_slot,
     complex_slot, defines_slot, element_quantity_slot, enumerated_slot, list_slot, pset_slot,
     reference_slot, single_value_slot, table_slot, TableValueDraft,
+};
+pub use predefined::{
+    add_complex_property_template, add_door_lining_properties, add_door_panel_properties,
+    add_permeable_covering_properties, add_property_dependency_relationship,
+    add_property_enumeration, add_window_lining_properties, add_window_panel_properties,
+    DoorLiningDraft, WindowLiningDraft,
 };
 pub use scalar::{property, Property, PropertyValue};
 pub use set::{property_set, property_sets_by_object, AttachedSets, Attachment, PropertySet};

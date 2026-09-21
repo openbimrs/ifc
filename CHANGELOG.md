@@ -9,6 +9,14 @@ and this project follows Semantic Versioning.
 
 ### Added
 
+- `ifc-properties` authors the predefined property sets: door and window
+  lining and panel properties, permeable coverings, complex property
+  templates, property dependency relationships, and property enumerations.
+  The lining pairing rules are enforced per entity, since a door states
+  them as XOR pairs (WR33, WR34) while a window states them as ordered
+  prerequisites (WR32, WR33). `IfcPropertyEnumeration` enforces WR01,
+  requiring one measure type across all values.
+
 - `ifc-style` authors the presentation entities it previously only read:
   curve styles and font patterns, fill area styles, text style font models,
   predefined colours and curve fonts, pixel textures, texture vertices and
