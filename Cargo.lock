@@ -717,6 +717,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ifc-occurrence"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+]
+
+[[package]]
 name = "ifc-properties"
 version = "0.1.0"
 dependencies = [
@@ -892,6 +899,7 @@ dependencies = [
  "ifc-georef",
  "ifc-material",
  "ifc-model",
+ "ifc-occurrence",
  "ifc-properties",
  "ifc-resource",
  "ifc-schedule",

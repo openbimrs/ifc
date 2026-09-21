@@ -1,0 +1,15 @@
+[package]
+name = "ifc-occurrence"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+license = "AGPL-3.0-or-later"
+authors = ["point-grey"]
+repository = "https://github.com/openbimrs/ifc"
+description = "Built element and distribution occurrence classes and their type pairing."
+
+[dependencies]
+ifc-model.workspace = true
+
+[lints]
+workspace = true

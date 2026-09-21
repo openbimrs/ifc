@@ -73,6 +73,7 @@ PUBLISHED_STATUS = {
     # zones and directed queries.
     "ifc-systems": '<span class="status-implemented">Implemented</span>',
     "ifc-element-type": '<span class="status-implemented">Implemented</span>',
+    "ifc-occurrence": '<span class="status-implemented">Implemented</span>',
     # Every PLAN task implemented, including PROP-EDIT on top of MODEL-MUT.
     "ifc-properties": '<span class="status-implemented">Implemented</span>',
     # Structural/type validation plus selected direct-value/reference rules run

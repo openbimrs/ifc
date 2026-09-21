@@ -38,6 +38,7 @@ ifc-classification = { workspace = true, optional = true }
 ifc-approval = { workspace = true, optional = true }
 ifc-constraint = { workspace = true, optional = true }
 ifc-element-type = { workspace = true, optional = true }
+ifc-occurrence = { workspace = true, optional = true }
 ifc-structural = { workspace = true, optional = true }
 ifc-resource = { workspace = true, optional = true }
 ifc-systems = { workspace = true, optional = true }
@@ -73,6 +74,7 @@ classification = ["dep:ifc-classification"]
 approval = ["dep:ifc-approval"]
 constraint = ["dep:ifc-constraint"]
 element-type = ["dep:ifc-element-type"]
+occurrence = ["dep:ifc-occurrence"]
 structural = ["dep:ifc-structural"]
 resource = ["dep:ifc-resource"]
 systems = ["dep:ifc-systems"]
@@ -96,6 +98,7 @@ alignment = ["dep:ifc-alignment"]
 codecs = ["step", "ifcxml"]
 domains = [
     "element-type",
+    "occurrence",
     "properties",
     "cost",
     "schedule",

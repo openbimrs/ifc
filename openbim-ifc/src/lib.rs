@@ -111,6 +111,10 @@ pub use ifc_constraint as constraint;
 #[cfg(feature = "element-type")]
 pub use ifc_element_type as element_type;
 
+/// Built element and distribution occurrence classes.
+#[cfg(feature = "occurrence")]
+pub use ifc_occurrence as occurrence;
+
 /// Structural analysis model.
 #[cfg(feature = "structural")]
 pub use ifc_structural as structural;

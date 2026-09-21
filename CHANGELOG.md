@@ -8,6 +8,10 @@ and this project follows Semantic Versioning.
 ## [Unreleased]
 
 ### Added
+- `ifc-occurrence`: authoring for the 141 concrete `IfcElement` occurrence
+  classes, refusing a `PredefinedType` outside the entity's own enum,
+  `USERDEFINED` without a naming `ObjectType`, and a `typed_by` reference
+  whose class `CorrectTypeAssigned` does not permit for that occurrence.
 
 - `ifc-element-type`: a new crate authoring the 132 concrete
   `IfcTypeObject` subtypes, the type definitions product occurrences
