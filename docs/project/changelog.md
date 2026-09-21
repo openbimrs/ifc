@@ -17,6 +17,12 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- `ifc-spatial::facility` authors the ten facility and facility-part classes
+  (`IfcFacility`, `IfcBridge`, `IfcRoad`, `IfcRailway`, `IfcMarineFacility` and
+  their `*Part` siblings). Parts carry a mandatory `UsageType` at slot 9 and
+  push `PredefinedType` to 10; facilities keep `PredefinedType` at 9. Both
+  enums enforce `USERDEFINED` independently.
+
 - Swappable geometry backends (ADR 0012). Compilation entry points are generic
   over the upstream `MeshCompiler` contract, so CGAL, OCCT, a GPU tessellator or
   a research prototype can be plugged in without forking. Whole-kernel and

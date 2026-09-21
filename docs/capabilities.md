@@ -40,11 +40,11 @@ code.
 | `ifc-validate` | 2,493 | 23 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-schedule` | 2,479 | 25 | 13 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-classification` | 2,440 | 20 | 4 | 3 | <span class="status-implemented">Implemented</span> |
+| `ifc-spatial` | 2,372 | 13 | 1 | 13 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 2,235 | 17 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 2,147 | 22 | 5 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-georef` | 2,029 | 20 | 9 | 5 | <span class="status-partial">Partial</span> |
-| `ifc-spatial` | 1,887 | 11 | 1 | 12 | <span class="status-implemented">Implemented</span> |
 | `ifc-schema` | 1,404 | 12 | 4 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,229 | 6 | 0 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 1,045 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |

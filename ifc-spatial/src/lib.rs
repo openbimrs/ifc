@@ -56,6 +56,10 @@ pub use relation::{
 };
 pub use tree::{SpatialKind, SpatialNode, SpatialTree};
 
+pub mod facility;
+
+pub use facility::{create_facility, Facility, FacilityDraft, FacilityError, FacilityResult};
+
 pub use authoring::{
     aggregate, contain, create_project, create_spatial_element, SpatialAuthoringError,
     SpatialAuthoringResult, SpatialDraft,
