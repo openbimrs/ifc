@@ -8,6 +8,7 @@ use std::fmt;
 
 /// Validation could not be performed.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ValidateError {
     /// The `FILE_SCHEMA` token is not a schema version this crate recognises.
     ///

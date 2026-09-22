@@ -69,6 +69,7 @@ pub enum PropertyAnomaly {
 /// are returned before anything is staged so a rejected edit never reaches
 /// a transaction.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PropertyError {
     /// The entity is not in the model.
     MissingEntity {

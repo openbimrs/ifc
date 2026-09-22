@@ -12,6 +12,7 @@ pub use crate::task::TaskTimeAnomaly;
 /// Distinct from the anomalies above: those describe a file already
 /// written, this describes a draft refused so the file never says it.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ScheduleAuthoringError {
     /// An attribute value is not valid for its slot.
     InvalidValue {

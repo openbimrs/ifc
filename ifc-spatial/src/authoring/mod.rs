@@ -35,6 +35,7 @@ pub use relationships::{
 
 /// Why a spatial record was refused.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SpatialAuthoringError {
     /// A value the schema constrains was not acceptable.
     Invalid {

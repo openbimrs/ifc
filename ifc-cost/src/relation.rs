@@ -52,6 +52,7 @@ pub const MAX_NESTING_DEPTH: usize = 64;
 
 /// A refusal to resolve a cost relationship.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum CostRelationError {
     /// A nesting cycle was found: the item is its own ancestor.
     NestingCycle {

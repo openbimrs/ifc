@@ -12,6 +12,7 @@ pub type GeometryResult<T> = Result<T, GeometryError>;
 
 /// Failures when reading or lowering IFC geometry.
 #[derive(Debug, Clone, PartialEq, Error)]
+#[non_exhaustive]
 pub enum GeometryError {
     /// An entity referenced by an attribute is not in the model.
     #[error("{referrer} references missing entity {missing}")]

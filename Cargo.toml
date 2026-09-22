@@ -3,7 +3,7 @@ resolver = "2"
 members = ["ifc-*", "openbim-ifc"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.88"
 license = "AGPL-3.0-or-later"
@@ -21,33 +21,33 @@ missing_docs = "deny"
 [workspace.dependencies]
 # IFC family: versioned path dependencies build standalone and normalize to
 # registry dependencies when packages are published.
-ifc-schema = { path = "ifc-schema", version = "0.1.0" }
-openbim-ifc = { path = "openbim-ifc", version = "0.1.0" }
-ifc-step = { path = "ifc-step", version = "0.1.0" }
-ifc-xml = { path = "ifc-xml", version = "0.1.0" }
-ifc-model = { path = "ifc-model", version = "0.1.0" }
-ifc-geometry = { path = "ifc-geometry", version = "0.1.0", default-features = false }
-ifc-properties = { path = "ifc-properties", version = "0.1.0" }
-ifc-template-catalog = { path = "ifc-template-catalog", version = "0.1.0" }
-ifc-cost = { path = "ifc-cost", version = "0.1.0" }
-ifc-schedule = { path = "ifc-schedule", version = "0.1.0" }
-ifc-material = { path = "ifc-material", version = "0.1.0" }
-ifc-style = { path = "ifc-style", version = "0.1.0" }
-ifc-element-type = { path = "ifc-element-type", version = "0.1.0" }
-ifc-occurrence = { path = "ifc-occurrence", version = "0.1.0" }
-ifc-structural = { path = "ifc-structural", version = "0.1.0" }
-ifc-resource = { path = "ifc-resource", version = "0.1.0" }
-ifc-classification = { path = "ifc-classification", version = "0.1.0" }
-ifc-approval = { path = "ifc-approval", version = "0.1.0" }
-ifc-control = { path = "ifc-control", version = "0.1.0" }
-ifc-tabular = { path = "ifc-tabular", version = "0.1.0" }
-ifc-constraint = { path = "ifc-constraint", version = "0.1.0" }
-ifc-georef = { path = "ifc-georef", version = "0.1.0" }
-ifc-systems = { path = "ifc-systems", version = "0.1.0" }
-ifc-alignment = { path = "ifc-alignment", version = "0.1.0" }
-ifc-validate = { path = "ifc-validate", version = "0.1.0" }
-ifc-author = { path = "ifc-author", version = "0.1.0" }
-ifc-spatial = { path = "ifc-spatial", version = "0.1.0" }
+ifc-schema = { path = "ifc-schema", version = "0.2.0" }
+openbim-ifc = { path = "openbim-ifc", version = "0.2.0" }
+ifc-step = { path = "ifc-step", version = "0.2.0" }
+ifc-xml = { path = "ifc-xml", version = "0.2.0" }
+ifc-model = { path = "ifc-model", version = "0.2.0" }
+ifc-geometry = { path = "ifc-geometry", version = "0.2.0", default-features = false }
+ifc-properties = { path = "ifc-properties", version = "0.2.0" }
+ifc-template-catalog = { path = "ifc-template-catalog", version = "0.2.0" }
+ifc-cost = { path = "ifc-cost", version = "0.2.0" }
+ifc-schedule = { path = "ifc-schedule", version = "0.2.0" }
+ifc-material = { path = "ifc-material", version = "0.2.0" }
+ifc-style = { path = "ifc-style", version = "0.2.0" }
+ifc-element-type = { path = "ifc-element-type", version = "0.2.0" }
+ifc-occurrence = { path = "ifc-occurrence", version = "0.2.0" }
+ifc-structural = { path = "ifc-structural", version = "0.2.0" }
+ifc-resource = { path = "ifc-resource", version = "0.2.0" }
+ifc-classification = { path = "ifc-classification", version = "0.2.0" }
+ifc-approval = { path = "ifc-approval", version = "0.2.0" }
+ifc-control = { path = "ifc-control", version = "0.2.0" }
+ifc-tabular = { path = "ifc-tabular", version = "0.2.0" }
+ifc-constraint = { path = "ifc-constraint", version = "0.2.0" }
+ifc-georef = { path = "ifc-georef", version = "0.2.0" }
+ifc-systems = { path = "ifc-systems", version = "0.2.0" }
+ifc-alignment = { path = "ifc-alignment", version = "0.2.0" }
+ifc-validate = { path = "ifc-validate", version = "0.2.0" }
+ifc-author = { path = "ifc-author", version = "0.2.0" }
+ifc-spatial = { path = "ifc-spatial", version = "0.2.0" }
 openbim-step = "=0.5.0"
 
 # Format-neutral geometry contracts. IFC bridges select representations, never

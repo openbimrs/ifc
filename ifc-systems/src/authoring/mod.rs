@@ -28,6 +28,7 @@ pub use system_kind::{create_classified_system, ClassifiedSystemDraft, SystemKin
 
 /// Why a systems record was refused.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SystemAuthoringError {
     /// A value the schema constrains was not acceptable.
     Invalid {

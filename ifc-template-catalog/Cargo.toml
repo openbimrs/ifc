@@ -1,6 +1,6 @@
 [package]
 name = "ifc-template-catalog"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.88"
 license = "AGPL-3.0-or-later AND CC-BY-ND-4.0"

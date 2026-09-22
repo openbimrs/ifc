@@ -5,6 +5,7 @@ use thiserror::Error;
 
 /// Why a bounded IFC4 cost draft was refused before staging.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum CostAuthoringError {
     /// A scalar, enum-dependent field, aggregate, or identifier was invalid.
     #[error("invalid {entity}.{attribute}: {reason}")]

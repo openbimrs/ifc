@@ -4,6 +4,7 @@ use thiserror::Error;
 
 /// Failures specific to interpreting cost data.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum CostError {
     /// An entity was expected to be a cost entity but is not.
     #[error("entity #{id} is {actual}, not {expected}")]

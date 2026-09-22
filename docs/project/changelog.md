@@ -15,6 +15,20 @@ This page is synchronised from it at build time.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-22
+
+First release with complete IFC4X3 authoring coverage.
+
+### Changed
+
+- **Breaking.** Every public error enum is now `#[non_exhaustive]`.
+  Matches on them need a wildcard arm. This is deliberate: error
+  vocabularies grow as validation gets stricter, and without the
+  attribute each new variant would be another breaking release.
+- **Breaking.** `PropertyError` gained an `AuthoringInvalid` variant,
+  raised before staging so a rejected draft never reaches the model.
+
+
 ### Added
 
 - Authoring for the last twenty entities, all geometry-rooted: the six
@@ -1388,6 +1402,7 @@ thetic
 - Made release-critical package metadata explicit across the nested-workspace
   boundary.
 
-[Unreleased]: https://github.com/openbimrs/ifc/commits/main
+[Unreleased]: https://github.com/openbimrs/ifc/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/openbimrs/ifc/releases/tag/v0.2.0
 
 <!-- CHANGELOG:END -->

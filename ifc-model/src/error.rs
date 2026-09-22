@@ -9,6 +9,7 @@ use thiserror::Error;
 /// type: this crate must not depend on any codec, so it cannot name their
 /// error types.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum ModelError {
     /// Underlying I/O failure.
     #[error("io error: {0}")]

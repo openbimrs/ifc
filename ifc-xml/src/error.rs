@@ -27,6 +27,7 @@ impl fmt::Display for XmlPath {
 
 /// Failures specific to reading or writing ifcXML.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum XmlError {
     /// The document is not well-formed XML.
     #[error("malformed XML: {0}")]

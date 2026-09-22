@@ -25,6 +25,7 @@ use ifc_model::{EntityId, Model, Value};
 
 /// Why a monetary total could not be trusted.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum CurrencyError {
     /// The file states no monetary unit at all.
     ///

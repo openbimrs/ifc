@@ -49,6 +49,7 @@ impl Facility {
 
 /// Why a facility was refused.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FacilityError {
     /// `GlobalId` is absent or not a 22-character IFC GUID.
     MalformedGuid {

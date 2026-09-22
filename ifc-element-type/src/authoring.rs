@@ -27,6 +27,7 @@ use crate::table::{ElementType, Family};
 
 /// Why a type definition was refused.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ElementTypeError {
     /// An attribute value the schema does not permit.
     Invalid {
