@@ -18,6 +18,16 @@ This page is synchronised from it at build time.
 ### Added
 
 
+- `ifc-control` is a new crate owning the `IfcControl` subtypes that govern
+  work rather than describe physical form: `IfcPermit`, `IfcProjectOrder`,
+  `IfcActionRequest`, and `IfcPerformanceHistory`. Arity is resolved from the
+  schema tables rather than hardcoded, and each entity's own predefined-type
+  enum is enforced, so a token borrowed from a sibling control is refused.
+  `IfcPerformanceHistory` diverges after slot 5 with a required
+  `LifeCyclePhase` and no `Status` or `LongDescription`; an attribute the
+  entity does not declare is refused rather than dropped. Available behind
+  the `control` feature on `openbim-ifc`.
+
 - `ifc-style` authors the externally defined styles, texture coordinate
   indices, blob texture, and text style family: the three
   `IfcExternallyDefined*` references, `IfcBlobTexture`,

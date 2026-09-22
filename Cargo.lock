@@ -642,6 +642,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ifc-control"
+version = "0.1.0"
+dependencies = [
+ "ifc-model",
+ "ifc-schema",
+ "thiserror",
+]
+
+[[package]]
 name = "ifc-cost"
 version = "0.1.0"
 dependencies = [
@@ -902,6 +911,7 @@ dependencies = [
  "ifc-author",
  "ifc-classification",
  "ifc-constraint",
+ "ifc-control",
  "ifc-cost",
  "ifc-element-type",
  "ifc-geometry",

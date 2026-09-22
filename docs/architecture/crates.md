@@ -107,6 +107,18 @@ Implemented bounded IFC4 ApprovalResource. Strict borrowed views cover
 rooted object associations; matching typed drafts stage the same records. It does
 not implement signatures, authorization, workflow, or policy evaluation.
 
+### `ifc-control`
+Implemented authoring for the `IfcControl` subtypes that govern work rather
+than describe physical form: `IfcPermit`, `IfcProjectOrder`,
+`IfcActionRequest`, and `IfcPerformanceHistory`. Arity is resolved from the
+schema tables and each entity's own predefined-type enum is enforced. It
+does not implement issuing, approval workflow, or expiry, and it does not
+create the assignment relationships that attach a control to its work.
+
+`IfcCostItem`, `IfcCostSchedule`, `IfcWorkCalendar` and `IfcWorkControl` are
+also `IfcControl` subtypes but belong to `ifc-cost` and `ifc-schedule`: the
+split follows the domain, not the supertype.
+
 ### `ifc-constraint`
 Implemented bounded IFC4 ConstraintResource. Typed borrowed views and drafts cover
 metrics, objectives, metric-value SELECT preservation, resource relationships,

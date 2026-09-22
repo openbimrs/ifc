@@ -103,6 +103,10 @@ pub use ifc_classification as classification;
 #[cfg(feature = "approval")]
 pub use ifc_approval as approval;
 
+/// Permits, project orders, action requests, and performance history.
+#[cfg(feature = "control")]
+pub use ifc_control as control;
+
 /// Tables and time series: value containers indexed by position or time.
 #[cfg(feature = "tabular")]
 pub use ifc_tabular as tabular;
