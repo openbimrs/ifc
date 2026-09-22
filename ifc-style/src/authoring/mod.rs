@@ -9,10 +9,17 @@ use crate::annotation::{AnnotationType, BoxAlignment, TextPath};
 use crate::error::{StyleError, StyleResult};
 use crate::surface_style::{duplicate_surface_element_category, SURFACE_STYLE_ELEMENT_MEMBERS};
 
+mod external;
 mod light;
 mod presentation;
 mod texture;
 
+pub use external::{
+    create_blob_texture, create_externally_defined_style, create_indexed_polygonal_texture_map,
+    create_surface_style_with_textures, create_text_style, create_text_style_text_model,
+    create_texture_coordinate_indices, create_texture_coordinate_indices_with_voids,
+    BlobTextureDraft, ExternalStyleKind, SizeValue, TextModelDraft,
+};
 pub use light::{
     create_light_source_ambient, create_light_source_directional, create_light_source_positional,
     create_light_source_spot, create_surface_style_lighting, create_surface_style_refraction,

@@ -10,6 +10,21 @@ and this project follows Semantic Versioning.
 ### Added
 
 
+- `ifc-style` authors the externally defined styles, texture coordinate
+  indices, blob texture, and text style family: the three
+  `IfcExternallyDefined*` references, `IfcBlobTexture`,
+  `IfcSurfaceStyleWithTextures`, `IfcIndexedPolygonalTextureMap`,
+  `IfcTextureCoordinateIndices` and its voids variant, `IfcTextStyle`,
+  and `IfcTextStyleTextModel`. `IfcBlobTexture` enforces both its WHERE
+  rules: `RasterCodeByteStream` (a whole number of bytes) and
+  `SupportedRasterFormat` (BMP, JPG, GIF, PNG). Texture coordinate
+  indices are one-based with a minimum of three, and the voids variant
+  applies UNIQUE per void rather than across the set. `IfcSizeSelect`
+  is written with its resolved measure type through `SizeValue`.
+  The three coordinate-index entities are IFC4X3 additions and are
+  refused against IFC4 rather than written.
+
+
 - `ifc-properties` authors the reinforcement, section, and profile property
   families: `IfcReinforcementBarProperties`, `IfcSectionProperties`,
   `IfcSectionReinforcementProperties`, `IfcReinforcementDefinitionProperties`,

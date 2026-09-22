@@ -28,7 +28,7 @@ code.
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
 | `ifc-geometry` | 36,780 | 123 | 3 | 51 | <span class="status-partial">Partial</span> |
-| `ifc-style` | 5,772 | 41 | 0 | 10 | <span class="status-implemented">Implemented</span> |
+| `ifc-style` | 6,343 | 42 | 0 | 11 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 5,460 | 35 | 14 | 8 | <span class="status-implemented">Implemented</span> |
 | `ifc-alignment` | 4,532 | 36 | 11 | 10 | <span class="status-partial">Partial</span> |
 | `ifc-structural` | 4,235 | 34 | 14 | 15 | <span class="status-implemented">Implemented</span> |
