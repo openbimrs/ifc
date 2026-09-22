@@ -10,6 +10,10 @@ implementation, or roadmap work; keep progress, blockers, and evidence there.
 Allowed production dependencies: `ifc-model`, error support, and optional schema
 metadata; no geometry or sibling domain/catalog crate. Template joins belong in
 the `ifc` facade/application layer.
+- `create_profile_set_usage_tapering` stages
+  `IfcMaterialProfileSetUsageTapering`: five slots, the three inherited from
+  `IfcMaterialProfileSetUsage` followed by its own two. Both profile sets are
+  required and type-checked; cardinal points are the 1..=9 reference range.
 
 ## Module ownership
 

@@ -10,9 +10,9 @@ mod types;
 mod view;
 
 pub use authoring::{
-    associate_constraint, create_metric, create_objective, relate_resource_constraint,
-    ConstraintAssociationDraft, ConstraintBaseDraft, MetricDraft, ObjectiveDraft,
-    ResourceConstraintDraft,
+    associate_constraint, create_metric, create_objective, create_reference,
+    relate_resource_constraint, ConstraintAssociationDraft, ConstraintBaseDraft, MetricDraft,
+    ObjectiveDraft, ReferenceDraft, ResourceConstraintDraft,
 };
 pub use error::{ConstraintError, ConstraintResult};
 pub use projection::{ConstraintAssignment, Metric, Objective, ResourceConstraintRelationship};

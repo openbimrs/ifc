@@ -239,6 +239,110 @@ pub fn create_annotation_fill_area(
     )?))
 }
 
+/// Pick whichever spelling of an attribute the target schema declares.
+///
+/// A handful of attributes were renamed between IFC4 and IFC4X3 without
+/// moving slot or changing type: `IfcFillAreaStyle.ModelorDraughting`
+/// became `ModelOrDraughting`, and
+/// `IfcCurveStyleFontAndScaling.CurveFont` became `CurveStyleFont`.
+/// Writing a hardcoded spelling makes the writer refuse its own output
+/// under the other schema, so the candidates are resolved against the
+/// schema in use. Falls back to the first candidate so an unknown entity
+/// still produces the usual `build_named` error rather than a silent miss.
+/// Stage an `IfcPlanarExtent`, or its `IfcPlanarBox` subtype.
+///
+/// The extent is a rectangular presentation area: two sizes and, for
+/// the box form, the placement that positions it. Sizes are
+/// `IfcLengthMeasure`, which admits negatives in the type system;
+/// a negative or non-finite extent describes no area, so it is
+/// refused here rather than written for a reader to puzzle over.
+///
+/// Passing a placement selects `IfcPlanarBox`; omitting it stages the
+/// plain extent. The two share slots 0 and 1, so the subtype only ever
+/// adds.
+///
+/// # Errors
+///
+/// Refuses a non-finite or non-positive `SizeInX`/`SizeInY`, and a
+/// `placement` that is not an `IfcAxis2Placement2D`/`3D`.
+pub fn create_planar_extent(
+    tx: &mut Transaction,
+    model: &Model,
+    schema: &Schema,
+    size_in_x: f64,
+    size_in_y: f64,
+    placement: Option<EntityId>,
+) -> StyleResult<EntityId> {
+    let entity = if placement.is_some() {
+        "IfcPlanarBox"
+    } else {
+        "IfcPlanarExtent"
+    };
+    for (attribute, value) in [("SizeInX", size_in_x), ("SizeInY", size_in_y)] {
+        if !value.is_finite() || value <= 0.0 {
+            return Err(invalid_authoring(entity, attribute, format!("{value}")));
+        }
+    }
+    let mut values = vec![
+        ("SizeInX", Value::Real(size_in_x)),
+        ("SizeInY", Value::Real(size_in_y)),
+    ];
+    if let Some(placement) = placement {
+        // `IfcAxis2Placement` is a SELECT over the 2D and 3D forms, not
+        // a supertype, so `validate_ref`'s `is_a` check rejects both
+        // members. Each concrete form is checked instead.
+        let placement_type = schema_placement_type(tx, model, placement)?;
+        if !matches!(
+            placement_type.as_str(),
+            "IFCAXIS2PLACEMENT2D" | "IFCAXIS2PLACEMENT3D"
+        ) {
+            return Err(StyleError::ReferenceType {
+                target: placement,
+                expected: "IfcAxis2Placement",
+                actual: placement_type,
+            });
+        }
+        values.push(("Placement", Value::Ref(placement)));
+    }
+    Ok(tx.create(build_named(schema, entity, values)?))
+}
+
+/// Resolve the type name of a staged or committed entity.
+///
+/// A `Transaction` cannot be read back, so a reference to an
+/// entity created earlier in the same transaction is only visible
+/// in its edit list.
+fn schema_placement_type(tx: &Transaction, model: &Model, target: EntityId) -> StyleResult<String> {
+    tx.edits()
+        .iter()
+        .rev()
+        .find_map(|edit| match edit {
+            Edit::Create { id, entity } if *id == target => Some(entity.type_name.to_string()),
+            _ => None,
+        })
+        .or_else(|| model.get(target).map(|e| e.type_name.to_string()))
+        .ok_or(StyleError::DanglingReference {
+            source_id: EntityId(0),
+            target,
+        })
+}
+
+pub(crate) fn schema_attribute(
+    schema: &Schema,
+    entity: &str,
+    candidates: [&'static str; 2],
+) -> &'static str {
+    candidates
+        .into_iter()
+        .find(|candidate| {
+            schema
+                .attributes(entity)
+                .iter()
+                .any(|attribute| attribute.name.eq_ignore_ascii_case(candidate))
+        })
+        .unwrap_or(candidates[0])
+}
+
 pub(crate) fn build_named(
     schema: &Schema,
     entity: &'static str,

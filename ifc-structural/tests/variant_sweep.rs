@@ -11,9 +11,9 @@
 use ifc_model::{Entity, Model, Transaction, Value};
 use ifc_schema::ifc4x3;
 use ifc_structural::{
-    stage_action, stage_connection, stage_member, ActionDraft, ActionDraftKind, ConnectionDraft,
-    ConnectionDraftKind, CoordinateSystem, MemberDraft, MemberDraftKind, MemberPredefinedType,
-    StructuralRootDraft,
+    stage_action, stage_connection, stage_load, stage_member, ActionDraft, ActionDraftKind,
+    ConnectionDraft, ConnectionDraftKind, CoordinateSystem, LoadDraft, MemberDraft,
+    MemberDraftKind, MemberPredefinedType, StructuralRootDraft,
 };
 
 const GUID: &str = "1hqA$FMcT8$hVvcqsRDBzZ";
@@ -265,4 +265,33 @@ fn the_curve_forms_use_their_own_axis_attribute() {
         model.get(member).expect("staged").attributes[8],
         Value::Ref(axis),
     );
+}
+
+/// The plain single-displacement form stages.
+///
+/// It is the distortion form minus its trailing slot.
+#[test]
+fn the_single_displacement_form_stages() {
+    let mut model = Model::default();
+    let mut tx = Transaction::new(&model);
+
+    let id = stage_load(
+        &mut tx,
+        ifc4x3(),
+        LoadDraft::SingleDisplacement {
+            name: Some("Settlement".to_owned()),
+            displacement: [Some(0.0), Some(0.0), Some(-0.012)],
+            rotation: [None, None, None],
+        },
+    )
+    .expect("single displacement");
+    tx.commit(&mut model).expect("commit");
+
+    let staged = model.get(id).expect("staged");
+    assert_eq!(
+        staged.type_name.as_ref(),
+        "IFCSTRUCTURALLOADSINGLEDISPLACEMENT",
+    );
+    assert_eq!(staged.attributes.len(), 7, "no Distortion slot");
+    assert_eq!(staged.attributes[3], Value::Real(-0.012));
 }

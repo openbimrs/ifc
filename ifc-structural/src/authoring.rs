@@ -121,6 +121,19 @@ pub enum LoadDraft {
         /// `WarpingMoment`.
         warping_moment: Option<f64>,
     },
+    /// Stages an `IfcStructuralLoadSingleDisplacement`.
+    ///
+    /// A prescribed movement of a point: three translations and three
+    /// rotations. The distortion form below extends this with a
+    /// seventh slot; this supertype stops at six.
+    SingleDisplacement {
+        /// `Name`.
+        name: Option<String>,
+        /// `DisplacementX`/`DisplacementY`/`DisplacementZ`.
+        displacement: [Option<f64>; 3],
+        /// `RotationalDisplacementRX`/`RY`/`RZ`.
+        rotation: [Option<f64>; 3],
+    },
     /// Stages an `IfcStructuralLoadSingleDisplacementDistortion`.
     ///
     /// The displacement counterpart of the warping force: a prescribed
@@ -366,6 +379,23 @@ pub fn stage_load(
                     .chain(moment)
                     .chain([warping_moment])
                     .collect(),
+            ),
+            LoadDraft::SingleDisplacement {
+                name,
+                displacement,
+                rotation,
+            } => (
+                "IfcStructuralLoadSingleDisplacement",
+                name,
+                &[
+                    "DisplacementX",
+                    "DisplacementY",
+                    "DisplacementZ",
+                    "RotationalDisplacementRX",
+                    "RotationalDisplacementRY",
+                    "RotationalDisplacementRZ",
+                ],
+                displacement.into_iter().chain(rotation).collect(),
             ),
             LoadDraft::SingleDisplacementDistortion {
                 name,

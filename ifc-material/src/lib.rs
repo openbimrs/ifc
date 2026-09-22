@@ -22,8 +22,9 @@ pub use authoring::{
     create_layer_set_usage, create_layer_with_offsets, create_material,
     create_material_classification_relationship, create_material_definition_representation,
     create_material_list, create_material_properties, create_material_relationship, create_profile,
-    create_profile_set, create_profile_set_usage, create_profile_with_offsets, ConstituentDraft,
-    LayerDraft, LayerSetDraft, MaterialAssignmentDraft, MaterialDraft, ProfileDraft,
+    create_profile_set, create_profile_set_usage, create_profile_set_usage_tapering,
+    create_profile_with_offsets, ConstituentDraft, LayerDraft, LayerSetDraft,
+    MaterialAssignmentDraft, MaterialDraft, ProfileDraft,
 };
 pub use constituent::{MaterialConstituent, MaterialConstituentSet};
 pub use error::{MaterialError, MaterialResult};

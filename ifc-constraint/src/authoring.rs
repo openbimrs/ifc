@@ -304,6 +304,94 @@ fn validate_set(
     Ok(())
 }
 
+/// Draft for one `IfcReference`: a path into another entity's attributes.
+#[derive(Debug, Clone, Copy)]
+pub struct ReferenceDraft<'a> {
+    /// `TypeIdentifier`, the referenced entity's type name.
+    pub type_identifier: Option<&'a str>,
+    /// `AttributeIdentifier`, the attribute being addressed.
+    pub attribute_identifier: Option<&'a str>,
+    /// `InstanceName`, naming the addressed instance.
+    pub instance_name: Option<&'a str>,
+    /// `ListPositions`, 1-based indices into list-valued attributes.
+    pub list_positions: &'a [i64],
+    /// `InnerReference`, the next step along the path.
+    pub inner_reference: Option<EntityId>,
+}
+
+/// Stage an `IfcReference`.
+///
+/// A reference is a path expression: it names a type, an attribute, and
+/// optionally positions within a list, chaining through `InnerReference`
+/// to address something nested. Every slot is OPTIONAL, so the schema
+/// permits a reference that addresses nothing; that is a silently useless
+/// record, so at least one slot must be set here.
+///
+/// `ListPositions` is `LIST [1:?] OF IfcInteger` and the positions are
+/// 1-based: an empty list fails the bound, and a zero or negative index
+/// addresses no element. Both are refused rather than written.
+///
+/// # Errors
+///
+/// Refuses a fully empty draft, an empty or non-positive `ListPositions`,
+/// and an `inner_reference` that is not itself an `IfcReference`.
+pub fn create_reference(
+    tx: &mut Transaction,
+    model: &Model,
+    draft: ReferenceDraft<'_>,
+) -> ConstraintResult<EntityId> {
+    const ENTITY: &str = "IfcReference";
+    let empty = draft.type_identifier.is_none()
+        && draft.attribute_identifier.is_none()
+        && draft.instance_name.is_none()
+        && draft.list_positions.is_empty()
+        && draft.inner_reference.is_none();
+    if empty {
+        return Err(ConstraintError::AuthoringInvalid {
+            entity: ENTITY,
+            attribute: "TypeIdentifier",
+            value: "a reference with every slot unset addresses nothing".to_owned(),
+        });
+    }
+    for position in draft.list_positions {
+        if *position < 1 {
+            return Err(ConstraintError::AuthoringInvalid {
+                entity: ENTITY,
+                attribute: "ListPositions",
+                value: format!("{position} is not a 1-based list index"),
+            });
+        }
+    }
+    if let Some(inner) = draft.inner_reference {
+        validate_target(tx, model, inner, ENTITY)?;
+    }
+
+    let positions = if draft.list_positions.is_empty() {
+        // LIST [1:?]: absent stays null rather than becoming an
+        // empty list, which would satisfy the type and break the bound.
+        Value::Null
+    } else {
+        Value::List(
+            draft
+                .list_positions
+                .iter()
+                .copied()
+                .map(Value::Integer)
+                .collect(),
+        )
+    };
+    Ok(tx.create(Entity::new(
+        "IFCREFERENCE",
+        vec![
+            optional_text(draft.type_identifier),
+            optional_text(draft.attribute_identifier),
+            optional_text(draft.instance_name),
+            positions,
+            draft.inner_reference.map_or(Value::Null, Value::Ref),
+        ],
+    )))
+}
+
 fn validate_target(
     tx: &Transaction,
     model: &Model,

@@ -534,6 +534,48 @@ pub fn create_profile_with_offsets(
     )))
 }
 
+/// Stage an `IfcMaterialProfileSetUsageTapering`.
+///
+/// Five slots: three inherited, then its own two.
+///
+/// # Errors
+///
+/// Refuses a set that is not an `IfcMaterialProfileSet`, and a
+/// cardinal point outside 1..=9 at either end.
+pub fn create_profile_set_usage_tapering(
+    tx: &mut Transaction,
+    model: &Model,
+    for_profile_set: EntityId,
+    for_profile_end_set: EntityId,
+    cardinal_point: Option<i64>,
+    cardinal_end_point: Option<i64>,
+    reference_extent: Option<f64>,
+) -> MaterialResult<EntityId> {
+    const ENTITY: &str = "IFCMATERIALPROFILESETUSAGETAPERING";
+    for set in [for_profile_set, for_profile_end_set] {
+        require_type(tx, model, set, &["IFCMATERIALPROFILESET"])?;
+    }
+    // Both ends carry the same 1..=9 cardinal point range.
+    for (point, attribute) in [
+        (cardinal_point, "CardinalPoint"),
+        (cardinal_end_point, "CardinalEndPoint"),
+    ] {
+        if let Some(value) = point.filter(|value| !(1..=9).contains(value)) {
+            return Err(invalid(ENTITY, attribute, value.to_string()));
+        }
+    }
+    Ok(tx.create(Entity::new(
+        ENTITY,
+        vec![
+            Value::Ref(for_profile_set),
+            cardinal_point.map_or(Value::Null, Value::Integer),
+            reference_extent.map_or(Value::Null, Value::Real),
+            Value::Ref(for_profile_end_set),
+            cardinal_end_point.map_or(Value::Null, Value::Integer),
+        ],
+    )))
+}
+
 const MATERIAL_SELECT_TYPES: &[&str] = &[
     "IFCMATERIAL",
     "IFCMATERIALLIST",

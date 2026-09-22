@@ -8,6 +8,15 @@ roadmap work; keep progress, blockers, and evidence there.
 ## Boundary
 
 Allowed production dependencies: ifc-model and schema metadata; no geometry crate, renderer, image decoder, or GPU API.
+- `create_planar_extent` stages `IfcPlanarExtent`, or `IfcPlanarBox` when a
+  placement is given. `IfcAxis2Placement` is a SELECT, not a supertype, so
+  `validate_ref`'s `is_a` check rejects both members; each concrete form is
+  named instead.
+- `IfcCurveStyleFontAndScaling` slot 1 is `CurveFont` in IFC4 and
+  `CurveStyleFont` in IFC4X3. `schema_attribute` resolves the spelling from
+  the target schema; a hardcoded name makes the writer refuse its own output
+  under the other schema. (`IfcFillAreaStyle.ModelorDraughting` differs only
+  in case, which attribute lookup already ignores.)
 
 ## Module ownership
 

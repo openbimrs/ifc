@@ -18,6 +18,9 @@ formulas, references, tables, time series, or unit conversions.
 Allowed production dependencies are `ifc-model`, `ifc-schema`, and shared error
 support. Views borrow the model. Authoring stages on a caller-owned transaction;
 this crate never commits or calls sibling domains.
+- `create_reference` stages `IfcReference`, which is self-recursive:
+  `InnerReference` points at another `IfcReference`. Every slot is OPTIONAL,
+  so a wholly empty reference addresses nothing and is refused.
 
 ## Module ownership
 

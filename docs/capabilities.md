@@ -27,14 +27,14 @@ code.
 
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `ifc-geometry` | 36,780 | 123 | 3 | 52 | <span class="status-partial">Partial</span> |
-| `ifc-style` | 6,343 | 42 | 0 | 11 | <span class="status-implemented">Implemented</span> |
-| `ifc-properties` | 5,460 | 35 | 14 | 8 | <span class="status-implemented">Implemented</span> |
+| `ifc-geometry` | 36,780 | 123 | 3 | 53 | <span class="status-partial">Partial</span> |
+| `ifc-style` | 6,451 | 42 | 0 | 12 | <span class="status-implemented">Implemented</span> |
+| `ifc-properties` | 5,460 | 35 | 14 | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-alignment` | 4,605 | 37 | 11 | 11 | <span class="status-partial">Partial</span> |
-| `ifc-structural` | 4,558 | 35 | 14 | 17 | <span class="status-implemented">Implemented</span> |
+| `ifc-structural` | 4,588 | 35 | 14 | 17 | <span class="status-implemented">Implemented</span> |
 | `ifc-element-type` | 3,429 | 10 | 0 | 4 | <span class="status-implemented">Implemented</span> |
-| `ifc-material` | 3,241 | 25 | 0 | 11 | <span class="status-implemented">Implemented</span> |
-| `ifc-resource` | 3,215 | 30 | 9 | 11 | <span class="status-partial">Partial</span> |
+| `ifc-resource` | 3,324 | 30 | 9 | 12 | <span class="status-partial">Partial</span> |
+| `ifc-material` | 3,284 | 25 | 0 | 12 | <span class="status-implemented">Implemented</span> |
 | `ifc-template-catalog` | 3,104 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-occurrence` | 2,802 | 8 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-schedule` | 2,590 | 26 | 13 | 6 | <span class="status-implemented">Implemented</span> |
@@ -46,7 +46,7 @@ code.
 | `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-georef` | 2,029 | 20 | 9 | 5 | <span class="status-partial">Partial</span> |
 | `ifc-schema` | 1,404 | 12 | 4 | 4 | <span class="status-implemented">Implemented</span> |
-| `ifc-constraint` | 1,229 | 6 | 0 | 1 | <span class="status-implemented">Implemented</span> |
+| `ifc-constraint` | 1,317 | 6 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 1,045 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-author` | 951 | 9 | 3 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-step` | 949 | 6 | 0 | 6 | <span class="status-implemented">Implemented</span> |

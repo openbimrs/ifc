@@ -29,6 +29,9 @@ IFC2X3 is an explicit unsupported-schema result: it does not declare `IfcConstru
 ## Boundary
 
 Allowed production dependencies: `ifc-schema` and `ifc-model` only. Scheduling and costing compose at the facade/application layer; do not add sibling domain-crate dependencies.
+- `create_applied_value` stages `IfcAppliedValue`. Every slot is OPTIONAL, but
+  `ArithmeticOperator` and `Components` are only meaningful together: an
+  operator over no operands, or operands with no operator, is refused.
 
 ## Module ownership
 

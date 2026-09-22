@@ -521,3 +521,112 @@ pub(crate) fn text(value: &str) -> Value {
 fn refs(values: &[EntityId]) -> Value {
     Value::List(values.iter().copied().map(Value::Ref).collect())
 }
+
+/// Draft for one `IfcAppliedValue`.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct AppliedValueDraft<'a> {
+    /// `Name`.
+    pub name: Option<&'a str>,
+    /// `Description`.
+    pub description: Option<&'a str>,
+    /// `AppliedValue`, an `IfcAppliedValueSelect` reference.
+    pub applied_value: Option<EntityId>,
+    /// `UnitBasis`, the `IfcMeasureWithUnit` the value is quoted per.
+    pub unit_basis: Option<EntityId>,
+    /// `ApplicableDate`, an ISO 8601 date written as given.
+    pub applicable_date: Option<&'a str>,
+    /// `FixedUntilDate`, an ISO 8601 date written as given.
+    pub fixed_until_date: Option<&'a str>,
+    /// `Category`.
+    pub category: Option<&'a str>,
+    /// `Condition`.
+    pub condition: Option<&'a str>,
+    /// `ArithmeticOperator`, an `IfcArithmeticOperatorEnum` token.
+    pub arithmetic_operator: Option<&'a str>,
+}
+
+impl ResourceEditor<'_> {
+    /// Create an `IfcAppliedValue`, optionally composed from components.
+    ///
+    /// An applied value is a cost-like quantity: a value, the unit basis
+    /// it is quoted per, and the dates it applies between. It may instead
+    /// be *composed*, combining `components` with an arithmetic operator.
+    ///
+    /// The schema states no WHERE rule tying the two together, but a
+    /// composition without an operator does not say how to combine its
+    /// parts, and an operator without components has nothing to combine;
+    /// both are refused rather than written for a reader to guess at.
+    ///
+    /// `Components` is `LIST [1:?] OF IfcAppliedValue`, so an empty list
+    /// is left absent rather than written as `()`, which would satisfy
+    /// the type and break the bound.
+    ///
+    /// # Errors
+    ///
+    /// Refuses an `arithmetic_operator` the target schema does not
+    /// declare, an operator/components pair where only one side is
+    /// present, a component that is not an `IfcAppliedValue`, and an
+    /// `applied_value` outside `IfcAppliedValueSelect`.
+    pub fn create_applied_value(
+        &mut self,
+        draft: AppliedValueDraft<'_>,
+        components: &[EntityId],
+    ) -> ResourceResult<EntityId> {
+        const ENTITY: &str = "IfcAppliedValue";
+        if let Some(operator) = draft.arithmetic_operator {
+            validate_enum(self.schema, ENTITY, "ArithmeticOperator", operator)?;
+        }
+        if draft.arithmetic_operator.is_some() == components.is_empty() {
+            return Err(ResourceError::SemanticViolation {
+                entity: None,
+                rule: "ArithmeticOperator and Components are stated together",
+            });
+        }
+        if let Some(value) = draft.applied_value {
+            self.check_reference_select(
+                value,
+                "AppliedValue",
+                "IfcAppliedValueSelect",
+                &[
+                    "IfcMeasureWithUnit",
+                    "IfcMonetaryMeasure",
+                    "IfcRatioMeasure",
+                    "IfcReference",
+                ],
+                value,
+            )?;
+        }
+        if let Some(basis) = draft.unit_basis {
+            self.check_reference(basis, "UnitBasis", "IfcMeasureWithUnit", basis)?;
+        }
+        for component in components {
+            self.check_reference(*component, "Components", ENTITY, *component)?;
+        }
+
+        let entity = build_entity(
+            self.schema,
+            ENTITY,
+            &[
+                ("Name", draft.name.map(text)),
+                ("Description", draft.description.map(text)),
+                ("AppliedValue", draft.applied_value.map(Value::Ref)),
+                ("UnitBasis", draft.unit_basis.map(Value::Ref)),
+                ("ApplicableDate", draft.applicable_date.map(text)),
+                ("FixedUntilDate", draft.fixed_until_date.map(text)),
+                ("Category", draft.category.map(text)),
+                ("Condition", draft.condition.map(text)),
+                ("ArithmeticOperator", draft.arithmetic_operator.map(enum_of)),
+                (
+                    "Components",
+                    (!components.is_empty()).then(|| refs(components)),
+                ),
+            ],
+        )?;
+        self.commit_create(entity)
+    }
+}
+
+/// An enum token as a value.
+fn enum_of(token: &str) -> Value {
+    Value::Enum(std::sync::Arc::from(token.to_ascii_uppercase()))
+}

@@ -37,7 +37,7 @@ pub use authoring::{
     create_externally_defined_style, create_fill_area_style, create_image_texture,
     create_indexed_colour_map, create_indexed_polygonal_texture_map, create_light_source_ambient,
     create_light_source_directional, create_light_source_positional, create_light_source_spot,
-    create_pixel_texture, create_presentation_layer_assignment,
+    create_pixel_texture, create_planar_extent, create_presentation_layer_assignment,
     create_presentation_layer_with_style, create_styled_item, create_surface_style,
     create_surface_style_lighting, create_surface_style_refraction, create_surface_style_shading,
     create_surface_style_with_textures, create_text_literal, create_text_literal_with_extent,

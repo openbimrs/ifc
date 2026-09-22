@@ -5,7 +5,7 @@ use ifc_schema::Schema;
 
 use crate::error::StyleResult;
 
-use super::{build_named, invalid_authoring, optional_text};
+use super::{build_named, invalid_authoring, optional_text, schema_attribute};
 
 /// Stage an `IfcCurveStyleFontPattern`.
 ///
@@ -89,7 +89,9 @@ pub fn create_curve_style_font_and_scaling(
     }
     let mut values = Vec::new();
     optional_text(&mut values, "Name", name);
-    values.push(("CurveStyleFont", Value::Ref(font)));
+    // IFC4 names slot 1 `CurveFont`; IFC4X3 renamed it `CurveStyleFont`.
+    let font_attribute = schema_attribute(schema, ENTITY, ["CurveStyleFont", "CurveFont"]);
+    values.push((font_attribute, Value::Ref(font)));
     values.push(("CurveFontScaling", Value::Real(scaling)));
     Ok(tx.create(build_named(schema, ENTITY, values)?))
 }
@@ -233,7 +235,9 @@ pub fn create_fill_area_style(
         Value::List(styles.iter().map(|(id, _)| Value::Ref(*id)).collect()),
     ));
     if let Some(flag) = model_or_draughting {
-        values.push(("ModelOrDraughting", Value::Bool(flag)));
+        // IFC4 spells this `ModelorDraughting`; IFC4X3 capitalised the O.
+        let flag_attribute = "ModelOrDraughting";
+        values.push((flag_attribute, Value::Bool(flag)));
     }
     Ok(tx.create(build_named(schema, ENTITY, values)?))
 }

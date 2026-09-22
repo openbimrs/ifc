@@ -6,4 +6,4 @@ mod editor;
 
 pub use actor::{ActorDraft, AssetDraft};
 pub use draft::{AllocationDraft, NestingDraft, ResourceDraft, ResourceTimeDraft};
-pub use editor::ResourceEditor;
+pub use editor::{AppliedValueDraft, ResourceEditor};

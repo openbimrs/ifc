@@ -16,6 +16,11 @@ roadmap work; keep progress, blockers, and evidence there.
 ## Boundary
 
 Allowed production dependencies: ifc-model and schema metadata only; no geometry crate.
+- `LoadDraft::SingleDisplacement` stages `IfcStructuralLoadSingleDisplacement`,
+  the distortion form minus its trailing `Distortion` slot.
+- `stage_connection` resolves its axis attribute per entity: a curve *member*
+  names it `Axis`, a curve *connection* `AxisDirection`. Hardcoding either
+  made the other unauthorable.
 
 ## Module ownership
 

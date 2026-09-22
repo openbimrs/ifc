@@ -9,6 +9,15 @@ and this project follows Semantic Versioning.
 
 ### Added
 
+- Five entities that had no writer at all: `IfcAppliedValue`
+  (`ifc-resource`), `IfcPlanarExtent`/`IfcPlanarBox` (`ifc-style`),
+  `IfcReference` (`ifc-constraint`), `IfcMaterialProfileSetUsageTapering`
+  (`ifc-material`), and `IfcStructuralLoadSingleDisplacement`
+  (`ifc-structural`).
+- Sweep tests for twelve writers that existed but had never been called,
+  covering the geometry profile, solid, tessellation, connection and
+  surface-curve families, the style presentation writers, unit conversion,
+  and material lists.
 - Catalogue sweep tests for `ifc-occurrence` (141 rows) and
   `ifc-element-type` (132 rows plus every supertype), and variant sweeps
   for the structural, resource, schedule and brep writers, so every
@@ -24,6 +33,10 @@ and this project follows Semantic Versioning.
 
 ### Fixed
 
+- `ifc-style` could not author `IfcCurveStyleFontAndScaling` under IFC4.
+  Slot 1 is named `CurveFont` there and `CurveStyleFont` in IFC4X3, and the
+  writer hardcoded the IFC4X3 spelling, so the call was refused as an
+  unsupported attribute. The name is now resolved from the target schema.
 - `ifc-structural` could not author `IfcStructuralCurveConnection` at all.
   Its required slot 8 is named `AxisDirection`, but `stage_connection`
   hardcoded the curve *member*'s name `Axis`, so an absent axis failed the
