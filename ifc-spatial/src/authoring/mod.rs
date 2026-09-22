@@ -10,6 +10,13 @@
 use ifc_model::guid::Guid;
 use ifc_model::{Entity, EntityId, Transaction, Value};
 
+mod external;
+
+pub use external::{
+    create_external_spatial_element, create_project_library, ExternalSpatialDraft,
+    ProjectLibraryDraft,
+};
+
 use crate::relation::slots::{RelSlots, AGGREGATES, CONTAINED_IN};
 
 mod relationships;
@@ -53,7 +60,7 @@ impl std::error::Error for SpatialAuthoringError {}
 /// Result of staging a spatial record.
 pub type SpatialAuthoringResult<T> = Result<T, SpatialAuthoringError>;
 
-fn invalid(
+pub(crate) fn invalid(
     entity: &'static str,
     attribute: &'static str,
     value: impl Into<String>,
@@ -130,7 +137,7 @@ pub fn create_spatial_element(
     Ok(tx.create(Entity::new(type_name, attributes)))
 }
 
-fn optional_text(value: Option<&str>) -> Value {
+pub(crate) fn optional_text(value: Option<&str>) -> Value {
     value.map_or(Value::Null, |t| Value::Text(t.into()))
 }
 

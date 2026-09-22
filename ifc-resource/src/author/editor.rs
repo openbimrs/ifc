@@ -17,7 +17,7 @@ use crate::{ResourceKind, ResourceView};
 /// single-entity `ifc_model::Transaction`.
 pub struct ResourceEditor<'m> {
     model: &'m mut Model,
-    schema: &'static Schema,
+    pub(crate) schema: &'static Schema,
 }
 
 impl<'m> ResourceEditor<'m> {
@@ -31,7 +31,7 @@ impl<'m> ResourceEditor<'m> {
         })
     }
 
-    fn validate_new_global_id(&self, value: &str) -> ResourceResult<()> {
+    pub(crate) fn validate_new_global_id(&self, value: &str) -> ResourceResult<()> {
         validate_global_id(value)?;
         for (id, entity) in self.model.iter() {
             let Some(slot) = self
@@ -340,7 +340,7 @@ impl<'m> ResourceEditor<'m> {
         self.commit_create(entity)
     }
 
-    fn check_reference(
+    pub(crate) fn check_reference(
         &self,
         owner: EntityId,
         attribute: &'static str,
@@ -350,7 +350,7 @@ impl<'m> ResourceEditor<'m> {
         self.check_reference_select(owner, attribute, expected, &[expected], target)
     }
 
-    fn check_reference_select(
+    pub(crate) fn check_reference_select(
         &self,
         owner: EntityId,
         attribute: &'static str,
@@ -381,7 +381,7 @@ impl<'m> ResourceEditor<'m> {
         Ok(())
     }
 
-    fn commit_create(&mut self, entity: Entity) -> ResourceResult<EntityId> {
+    pub(crate) fn commit_create(&mut self, entity: Entity) -> ResourceResult<EntityId> {
         let mut transaction = Transaction::new(self.model);
         let expected = transaction.revision();
         let id = transaction.create(entity);
@@ -422,7 +422,7 @@ fn resource_type_entity_type(kind: ResourceKind) -> &'static str {
     }
 }
 
-fn build_entity(
+pub(crate) fn build_entity(
     schema: &Schema,
     entity_type: &'static str,
     values: &[(&'static str, Option<Value>)],
@@ -452,7 +452,7 @@ fn build_entity(
     Ok(Entity::new(entity_type, attributes))
 }
 
-fn validate_enum(
+pub(crate) fn validate_enum(
     schema: &Schema,
     entity_type: &'static str,
     attribute: &'static str,
@@ -514,7 +514,7 @@ fn validate_global_id(value: &str) -> ResourceResult<()> {
     Ok(())
 }
 
-fn text(value: &str) -> Value {
+pub(crate) fn text(value: &str) -> Value {
     Value::Text(value.into())
 }
 

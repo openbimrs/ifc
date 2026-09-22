@@ -61,6 +61,7 @@ pub mod facility;
 pub use facility::{create_facility, Facility, FacilityDraft, FacilityError, FacilityResult};
 
 pub use authoring::{
-    aggregate, contain, create_project, create_spatial_element, SpatialAuthoringError,
+    aggregate, contain, create_external_spatial_element, create_project, create_project_library,
+    create_spatial_element, ExternalSpatialDraft, ProjectLibraryDraft, SpatialAuthoringError,
     SpatialAuthoringResult, SpatialDraft,
 };

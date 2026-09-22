@@ -5,6 +5,14 @@ Purpose: Borrowed building/distribution system, port, flow, zone, and semantic-c
 Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
 roadmap work; keep progress, blockers, and evidence there.
 
+## Owns
+
+- `IfcBuildingSystem`, `IfcBuiltSystem`, and `IfcDistributionCircuit` authoring.
+  The circuit swaps `LongName` and `PredefinedType` relative to the other two,
+  so each carries its own slot pair rather than sharing one path.
+  `IfcBuiltSystem` is IFC4X3 only; `IfcBuildingSystem` is its IFC4 predecessor
+  and stays declared, though deprecated, in IFC4X3.
+
 ## Boundary
 
 Allowed production dependencies: ifc-model and schema metadata only; no geometry/spatial algorithm crate.

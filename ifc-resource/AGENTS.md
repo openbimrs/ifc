@@ -7,6 +7,10 @@ Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or roadma
 
 ## Implemented boundary
 
+- `IfcActor`, `IfcOccupant`, and `IfcAsset` authoring. The occupant is the
+  actor plus a trailing `PredefinedType`, so one path serves both and supplying
+  a predefined type selects it. `TheActor` and the asset's party slots are
+  checked against `IfcActorSelect` before staging.
 Public behavior is restricted to IFC4 ADD2 TC1 and IFC4X3 ADD2 (identical entity shapes verified against the normative .exp files):
 
 - schema-resolved borrowed projections for six concrete `IfcConstructionResource` occurrence kinds;

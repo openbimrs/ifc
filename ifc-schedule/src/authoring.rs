@@ -97,7 +97,7 @@ pub fn create_task(
     Ok(tx.create(Entity::new("IFCTASK", attributes)))
 }
 
-fn optional_text(value: Option<&str>) -> Value {
+pub(crate) fn optional_text(value: Option<&str>) -> Value {
     value.map_or(Value::Null, |text| Value::Text(text.into()))
 }
 /// Authored fields for `IfcTaskTime`.
@@ -721,3 +721,7 @@ fn integer_list(values: &[i64]) -> Value {
     }
     Value::List(values.iter().copied().map(Value::Integer).collect())
 }
+
+mod procedure;
+
+pub use procedure::{create_procedure, ProcedureDraft};

@@ -6,6 +6,10 @@ keep implementation state there.
 
 ## Owns
 
+- `IfcExternalSpatialElement` and `IfcProjectLibrary` authoring. Neither is an
+  `IfcSpatialStructureElement`: the external element is a product with a
+  placement and representation, the library is an `IfcContext` sharing
+  `IfcProject`'s tail. Neither may use the container path.
 - classifying an entity's spatial role by type name
 - reading `IfcRelAggregates`, `IfcRelContainedInSpatialStructure`, `IfcRelNests`
 - reading `IfcRelSpaceBoundary` and its `1stLevel`/`2ndLevel` subtypes: which

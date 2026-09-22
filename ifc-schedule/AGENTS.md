@@ -5,6 +5,12 @@ Purpose: Borrowed work-plan, schedule, task, sequence, event, calendar, and recu
 Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
 roadmap work; keep progress, blockers, and evidence there.
 
+## Owns
+
+- `IfcProcedure` authoring, enforcing `HasName` and `CorrectPredefinedType`.
+  A procedure is a process describing how work is done, distinct from the
+  task/time writers it sits beside.
+
 ## Boundary
 
 Allowed production dependencies: ifc-model only; schema metadata may be added only for generic validation.

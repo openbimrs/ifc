@@ -10,6 +10,18 @@ and this project follows Semantic Versioning.
 ### Added
 
 
+- The remaining `IfcRoot`-derived entities with an existing owner are
+  authored in their own crates: `IfcActor`, `IfcOccupant` and `IfcAsset`
+  in `ifc-resource`; `IfcBuildingSystem`, `IfcBuiltSystem` and
+  `IfcDistributionCircuit` in `ifc-systems`; `IfcExternalSpatialElement`
+  and `IfcProjectLibrary` in `ifc-spatial`; `IfcProcedure` in
+  `ifc-schedule`. `IfcDistributionCircuit` swaps `LongName` and
+  `PredefinedType` relative to the other two systems, so each carries its
+  own slot pair. `IfcOccupant` is `IfcActor` plus a trailing
+  `PredefinedType`, so supplying one selects it. `WR31`, `HasName` and
+  `CorrectPredefinedType` are enforced before staging, and party and value
+  references are resolved against `IfcActorSelect` and `IfcCostValue`.
+
 - `ifc-control` is a new crate owning the `IfcControl` subtypes that govern
   work rather than describe physical form: `IfcPermit`, `IfcProjectOrder`,
   `IfcActionRequest`, and `IfcPerformanceHistory`. Arity is resolved from the

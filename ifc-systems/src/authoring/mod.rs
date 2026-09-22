@@ -18,11 +18,13 @@ use crate::system::group::slot as group_slot;
 use crate::zone::spatial_group::slot as placement_slot;
 
 mod distribution;
+mod system_kind;
 
 pub use distribution::{
     create_distribution_element, create_spatial_zone, create_zone, DistributionElementKind,
     ElementAttributes,
 };
+pub use system_kind::{create_classified_system, ClassifiedSystemDraft, SystemKind};
 
 /// Why a systems record was refused.
 #[derive(Debug, Clone, PartialEq, Eq)]
