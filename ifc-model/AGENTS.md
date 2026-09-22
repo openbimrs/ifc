@@ -17,6 +17,7 @@ Allowed production dependencies: no internal IFC or geometry crate.
 - `index.rs`: derived indexes, never domain semantics
 - `relation.rs/traverse.rs/spatial.rs`: generic graph queries with explicit budgets
 - `guid.rs`: IFC compressed GUID value codec
+- `authored_dump.rs`: coverage-audit hook, `authored-dump` feature only
 
 ## Invariants
 
@@ -28,6 +29,26 @@ Keep `lib.rs` delegating, keep child modules crate-private until they own a real
 public contract, and split view/data, traversal, mutation, and validation before
 they grow together.
 
+## Coverage audit
+
+`authored_dump.rs` answers which entity types a test run actually
+builds. Static scanning of writer call sites cannot: a type name
+reaches `Entity::new` through a const, a catalogue row, or a match
+arm returning it into a tuple.
+
+```
+AUTHORED_DUMP=/tmp/dump \
+  cargo test --workspace --all-features --features ifc-model/authored-dump
+python3 ../scripts/authored-coverage.py /tmp/dump
+```
+
+Only `create` counts as authored. `push` is how fixtures stand up
+input, and counting it reports an entity as covered when no writer
+can produce one.
+
+The feature is off by default and inert without the variable, which
+`tests/authored_dump_inert.rs` holds in place: the gate builds
+`--all-features`, so this ships compiled into every gate run.
 ## Verification
 
 Run targeted crate tests and clippy first, then the package architecture/context

@@ -43,8 +43,8 @@ code.
 | `ifc-classification` | 2,486 | 20 | 4 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 2,482 | 23 | 5 | 6 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 2,296 | 17 | 0 | 5 | <span class="status-implemented">Implemented</span> |
+| `ifc-model` | 2,207 | 26 | 5 | 11 | <span class="status-implemented">Implemented</span> |
 | `ifc-georef` | 2,087 | 20 | 9 | 6 | <span class="status-partial">Partial</span> |
-| `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-schema` | 1,404 | 12 | 4 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,317 | 6 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 1,045 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |

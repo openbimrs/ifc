@@ -44,6 +44,8 @@
 //! | `traverse` | Graph walks over references |
 //! | [`error`] | Failure modes |
 
+#[cfg(feature = "authored-dump")]
+pub mod authored_dump;
 pub mod codec;
 pub mod diagnostic;
 pub mod entity;

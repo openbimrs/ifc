@@ -9,6 +9,12 @@ and this project follows Semantic Versioning.
 
 ### Added
 
+- `ifc-model` gained an optional `authored-dump` feature recording which
+  entity types a test run actually constructs, plus
+  `scripts/authored-coverage.py` to report coverage against the schema.
+  Static scanning of writer call sites cannot answer this: a type name
+  reaches `Entity::new` through consts, catalogue rows, and match arms.
+  Off by default and inert without `AUTHORED_DUMP`.
 - Thirteen more entities that had no writer: `IfcConversionBasedUnitWithOffset`
   and `IfcQuantityNumber` (IFC4X3 only, and the one quantity that may be
   negative), `IfcCurrencyRelationship`, `IfcDocumentInformationRelationship`,

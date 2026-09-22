@@ -155,6 +155,8 @@ impl Transaction {
     /// newly created entity from another edit in the same transaction before
     /// anything is written.
     pub fn create(&mut self, entity: Entity) -> EntityId {
+        #[cfg(feature = "authored-dump")]
+        crate::authored_dump::record(&entity.type_name, "create");
         let id = EntityId(self.next_id);
         self.next_id += 1;
         self.edits.push(Edit::Create { id, entity });

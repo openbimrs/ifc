@@ -120,6 +120,8 @@ impl Model {
 
     /// Append an entity, allocating the next free id.
     pub fn push(&mut self, entity: Entity) -> EntityId {
+        #[cfg(feature = "authored-dump")]
+        crate::authored_dump::record(&entity.type_name, "push");
         let id = EntityId(self.max_id + 1);
         self.insert(id, entity);
         id
