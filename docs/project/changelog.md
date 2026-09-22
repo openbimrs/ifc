@@ -17,6 +17,14 @@ This page is synchronised from it at build time.
 
 ### Added
 
+
+- `ifc-properties` authors the reinforcement, section, and profile property
+  families: `IfcReinforcementBarProperties`, `IfcSectionProperties`,
+  `IfcSectionReinforcementProperties`, `IfcReinforcementDefinitionProperties`,
+  and `IfcProfileProperties`. These carry no WHERE rules, so the enforced
+  constraints are structural: `[1:?]` aggregates refuse an empty collection,
+  closed enumerations are case-sensitive, and `BarCount` is written as an
+  EXPRESS INTEGER rather than a real.
 - `ifc-element-type` authors the seven type definitions that carry no
   `PredefinedType`: `IfcTypeObject`, `IfcTypeProduct`, `IfcBuiltElementType`,
   `IfcCivilElementType`, `IfcDeepFoundationType`, `IfcDistributionElementType`,

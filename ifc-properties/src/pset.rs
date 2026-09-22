@@ -18,6 +18,7 @@ mod table;
 mod aggregate;
 mod authoring;
 mod predefined;
+mod reinforcement;
 mod template_authoring;
 
 pub use authoring::{
@@ -33,6 +34,11 @@ pub use predefined::{
     add_permeable_covering_properties, add_property_dependency_relationship,
     add_property_enumeration, add_window_lining_properties, add_window_panel_properties,
     DoorLiningDraft, WindowLiningDraft,
+};
+pub use reinforcement::{
+    add_profile_properties, add_reinforcement_bar_properties,
+    add_reinforcement_definition_properties, add_section_properties,
+    add_section_reinforcement_properties, ReinforcementBarDraft, SectionReinforcementDraft,
 };
 pub use scalar::{property, Property, PropertyValue};
 pub use set::{property_set, property_sets_by_object, AttachedSets, Attachment, PropertySet};

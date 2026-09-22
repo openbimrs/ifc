@@ -22,7 +22,7 @@ use crate::{PropertyError, PropertyResult};
 
 use super::authoring::optional_text;
 
-fn invalid(
+pub(super) fn invalid(
     entity: &'static str,
     attribute: &'static str,
     value: impl Into<String>,
@@ -34,7 +34,7 @@ fn invalid(
     }
 }
 
-fn root_slots(
+pub(super) fn root_slots(
     entity: &'static str,
     global_id: &str,
     name: Option<&str>,
@@ -57,7 +57,7 @@ fn root_slots(
 /// its reference. Collapsing all three into a non-negative check would
 /// silently refuse legal files.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Measure {
+pub(super) enum Measure {
     /// `IfcPositiveLengthMeasure`: strictly greater than zero.
     Positive,
     /// `IfcNonNegativeLengthMeasure`: zero or greater.
@@ -66,7 +66,7 @@ enum Measure {
     Length,
 }
 
-fn measure(
+pub(super) fn measure(
     entity: &'static str,
     attribute: &'static str,
     value: Option<f64>,
