@@ -304,3 +304,27 @@ fn place(
     attributes[placement_slot::RELATING_STRUCTURE] = Value::Ref(structure);
     Ok(tx.create(Entity::new(entity, attributes)))
 }
+
+/// Stage an `IfcGroup`: an arbitrary named collection.
+///
+/// A group is the supertype a system specialises. Where an
+/// `IfcSystem` claims its members function together, a plain group
+/// claims only that someone gathered them, so this writer is what to
+/// reach for when no stronger statement is true.
+///
+/// # Errors
+///
+/// Refuses a malformed GlobalId.
+pub fn create_group(
+    tx: &mut Transaction,
+    global_id: &str,
+    name: Option<&str>,
+    description: Option<&str>,
+) -> SystemAuthoringResult<EntityId> {
+    guid("IFCGROUP", global_id)?;
+    let mut attributes = vec![Value::Null; 5];
+    attributes[0] = Value::Text(global_id.into());
+    attributes[2] = name.map_or(Value::Null, |t| Value::Text(t.into()));
+    attributes[3] = description.map_or(Value::Null, |t| Value::Text(t.into()));
+    Ok(tx.create(Entity::new("IFCGROUP", attributes)))
+}

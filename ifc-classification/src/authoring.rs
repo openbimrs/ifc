@@ -600,3 +600,48 @@ pub fn associate_library(
         "IfcLibrarySelect",
     )
 }
+
+/// Stage an `IfcDocumentInformationRelationship`.
+///
+/// This is how a document says it supersedes, amends or accompanies
+/// another. `RelationshipType` is a free label rather than an enum:
+/// the schema does not fix the vocabulary, so it is written as given.
+///
+/// # Errors
+///
+/// Refuses a reference that is not an `IfcDocumentInformation`, an
+/// empty related set (`SET [1:?]`), and a document related to itself.
+pub fn relate_documents(
+    tx: &mut Transaction,
+    model: &Model,
+    relating: EntityId,
+    related: &[EntityId],
+    relationship_type: Option<&str>,
+) -> ClassificationResult<EntityId> {
+    const ENTITY: &str = "IFCDOCUMENTINFORMATIONRELATIONSHIP";
+    const DOCUMENT: &[&str] = &["IFCDOCUMENTINFORMATION"];
+    require_type(tx, model, relating, DOCUMENT, "IfcDocumentInformation")?;
+    if related.is_empty() {
+        return Err(ClassificationError::AuthoringInvalid {
+            entity: ENTITY,
+            attribute: "RelatedDocuments",
+            value: "expected at least one document, per SET [1:?]".to_owned(),
+        });
+    }
+    for document in related {
+        require_type(tx, model, *document, DOCUMENT, "IfcDocumentInformation")?;
+        // A document that supersedes itself is a cycle at depth one.
+        if *document == relating {
+            return Err(ClassificationError::AuthoringInvalid {
+                entity: ENTITY,
+                attribute: "RelatedDocuments",
+                value: "expected a document other than the relating one".to_owned(),
+            });
+        }
+    }
+    let mut attributes = vec![Value::Null; 5];
+    attributes[2] = Value::Ref(relating);
+    attributes[3] = Value::List(related.iter().copied().map(Value::Ref).collect());
+    attributes[4] = relationship_type.map_or(Value::Null, |t| Value::Text(t.into()));
+    Ok(tx.create(Entity::new(ENTITY, attributes)))
+}

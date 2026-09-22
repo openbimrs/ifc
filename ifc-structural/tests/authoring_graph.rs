@@ -75,6 +75,7 @@ fn stages_structural_graph_atomically_and_reads_it_back() {
             additional_conditions: None,
             supported_length: Some(2.5),
             condition_coordinate_system: None,
+            eccentricity: None,
         },
     )
     .unwrap();
@@ -269,6 +270,7 @@ fn projected_removals_and_wrong_relationship_values_are_refused() {
             additional_conditions: None,
             supported_length: None,
             condition_coordinate_system: None,
+            eccentricity: None,
         },
     );
     assert!(matches!(
@@ -290,6 +292,7 @@ fn projected_removals_and_wrong_relationship_values_are_refused() {
             additional_conditions: None,
             supported_length: Some(0.0),
             condition_coordinate_system: None,
+            eccentricity: None,
         },
     );
     assert!(matches!(

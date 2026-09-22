@@ -64,9 +64,9 @@ pub use error::CostError;
 pub use item::CostItem;
 pub use mutation::{
     assign_schedule_items, create_cost_item, create_cost_schedule, create_cost_value,
-    create_monetary_unit, nest_cost_items, CostAuthoringError, CostAuthoringResult, CostItemDraft,
-    CostItemType, CostScheduleDraft, CostScheduleType, CostValueDraft, CostValueKind, NestingDraft,
-    ScheduleAssignmentDraft,
+    create_currency_relationship, create_monetary_unit, nest_cost_items, CostAuthoringError,
+    CostAuthoringResult, CostItemDraft, CostItemType, CostScheduleDraft, CostScheduleType,
+    CostValueDraft, CostValueKind, NestingDraft, ScheduleAssignmentDraft,
 };
 pub use quantity::CostQuantity;
 pub use relation::{

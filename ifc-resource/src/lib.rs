@@ -25,8 +25,9 @@ mod material;
 
 pub use actor::{ActorRole, Organization, OrganizationRelationship, Person, PersonAndOrganization};
 pub use author::{
-    ActorDraft, AllocationDraft, AppliedValueDraft, AssetDraft, NestingDraft, ResourceDraft,
-    ResourceEditor, ResourceTimeDraft,
+    ActorDraft, ActorRoleDraft, AllocationDraft, AppliedValueDraft, AssetDraft, InventoryDraft,
+    NestingDraft, PostalAddressDraft, ResourceDraft, ResourceEditor, ResourceTimeDraft,
+    TelecomAddressDraft, TelecomLists,
 };
 pub use error::{ResourceError, ResourceResult};
 pub use inventory::Inventory;

@@ -15,4 +15,4 @@ pub use draft::{
 };
 pub use error::{CostAuthoringError, CostAuthoringResult};
 pub use quantity::{assign_cost_quantities, create_quantity, QuantityDraft, QuantityKind};
-pub use value::{create_cost_value, create_monetary_unit};
+pub use value::{create_cost_value, create_currency_relationship, create_monetary_unit};

@@ -50,6 +50,12 @@ pub struct MemberConnectionDraft {
     pub supported_length: Option<f64>,
     /// `ConditionCoordinateSystem`, an `IfcAxis2Placement3D` reference.
     pub condition_coordinate_system: Option<EntityId>,
+    /// `ConnectionConstraint`, an `IfcConnectionGeometry` reference.
+    ///
+    /// Selects `IfcRelConnectsWithEccentricity`, whose only added slot
+    /// this is. The slot is required there, so a subtype cannot be
+    /// staged without it and the base cannot carry it.
+    pub eccentricity: Option<EntityId>,
 }
 
 /// Staged fields for creating an `IfcRelConnectsStructuralActivity` via [`stage_activity_assignment`].
@@ -94,6 +100,13 @@ pub fn stage_member_connection(
     schema: &Schema,
     draft: MemberConnectionDraft,
 ) -> StructuralResult<EntityId> {
+    // The eccentric form differs only by a required ConnectionConstraint,
+    // so the presence of one selects the subtype.
+    let entity = if draft.eccentricity.is_some() {
+        "IfcRelConnectsWithEccentricity"
+    } else {
+        "IfcRelConnectsStructuralMember"
+    };
     const ENTITY: &str = "IfcRelConnectsStructuralMember";
     validate_root(tx, model, schema, &draft.root)?;
     validate_ref(tx, model, schema, draft.member, "IfcStructuralMember")?;
@@ -125,6 +138,13 @@ pub fn stage_member_connection(
         draft.condition_coordinate_system,
         "IfcAxis2Placement3D",
     )?;
+    validate_optional_ref(
+        tx,
+        model,
+        schema,
+        draft.eccentricity,
+        "IfcConnectionGeometry",
+    )?;
     if draft
         .supported_length
         .is_some_and(|value| !value.is_finite() || value <= 0.0)
@@ -153,7 +173,10 @@ pub fn stage_member_connection(
             optional_ref(draft.condition_coordinate_system),
         ),
     ]);
-    Ok(tx.create(build_named(schema, ENTITY, fields)?))
+    if let Some(constraint) = draft.eccentricity {
+        fields.push(("ConnectionConstraint", Value::Ref(constraint)));
+    }
+    Ok(tx.create(build_named(schema, entity, fields)?))
 }
 
 /// Stage an `IfcRelConnectsStructuralActivity` create edit on `tx`.

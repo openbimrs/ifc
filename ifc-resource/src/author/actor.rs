@@ -16,7 +16,7 @@
 
 use ifc_model::{EntityId, Value};
 
-use crate::author::editor::{build_entity, text, validate_enum, ResourceEditor};
+use crate::author::editor::{build_entity, refs, text, validate_enum, ResourceEditor};
 use crate::error::{ResourceError, ResourceResult};
 
 /// The three `IfcActorSelect` members.
@@ -205,4 +205,106 @@ impl ResourceEditor<'_> {
         )?;
         self.commit_create(entity)
     }
+
+    /// Stage an `IfcInventory`.
+    ///
+    /// # Errors
+    ///
+    /// Refuses a duplicate or malformed GlobalId, a `jurisdiction`
+    /// outside `IfcActorSelect`, a value that is not an `IfcCostValue`,
+    /// a `responsible_persons` entry that is not an `IfcPerson`, an
+    /// empty person set (the schema bounds it `SET [1:?]`), and
+    /// `USERDEFINED` without an `object_type`.
+    pub fn create_inventory(
+        &mut self,
+        draft: InventoryDraft<'_>,
+        responsible_persons: &[EntityId],
+    ) -> ResourceResult<EntityId> {
+        const ENTITY: &str = "IfcInventory";
+        self.validate_new_global_id(draft.global_id)?;
+        if let Some(token) = draft.predefined_type {
+            validate_enum(self.schema, ENTITY, "PredefinedType", token)?;
+            if token.eq_ignore_ascii_case("USERDEFINED")
+                && draft.object_type.is_none_or(|text| text.trim().is_empty())
+            {
+                return Err(ResourceError::SemanticViolation {
+                    entity: None,
+                    rule: "USERDEFINED_REQUIRES_OBJECT_TYPE",
+                });
+            }
+        }
+        if let Some(target) = draft.jurisdiction {
+            self.check_reference_select(
+                target,
+                "Jurisdiction",
+                "IfcActorSelect",
+                ACTOR_SELECT,
+                target,
+            )?;
+        }
+        for (attribute, target) in [
+            ("CurrentValue", draft.current_value),
+            ("OriginalValue", draft.original_value),
+        ] {
+            if let Some(target) = target {
+                self.check_reference(target, attribute, "IfcCostValue", target)?;
+            }
+        }
+        // SET [1:?]: an inventory nobody is responsible for is a
+        // record with no owner, which the schema does not allow to be
+        // stated as an empty set.
+        if responsible_persons.is_empty() {
+            return Err(ResourceError::InvalidDraft {
+                entity_type: ENTITY,
+                attribute: "ResponsiblePersons",
+                expected: "at least one person, per SET [1:?]",
+            });
+        }
+        for person in responsible_persons {
+            self.check_reference(*person, "ResponsiblePersons", "IfcPerson", *person)?;
+        }
+        let entity = build_entity(
+            self.schema,
+            ENTITY,
+            &[
+                ("GlobalId", Some(text(draft.global_id))),
+                ("Name", draft.name.map(text)),
+                ("Description", draft.description.map(text)),
+                ("ObjectType", draft.object_type.map(text)),
+                (
+                    "PredefinedType",
+                    draft.predefined_type.map(|t| Value::Enum(t.into())),
+                ),
+                ("Jurisdiction", draft.jurisdiction.map(Value::Ref)),
+                ("ResponsiblePersons", Some(refs(responsible_persons))),
+                ("LastUpdateDate", draft.last_update_date.map(text)),
+                ("CurrentValue", draft.current_value.map(Value::Ref)),
+                ("OriginalValue", draft.original_value.map(Value::Ref)),
+            ],
+        )?;
+        self.commit_create(entity)
+    }
+}
+
+/// Draft for one `IfcInventory`: a counted collection of things.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct InventoryDraft<'a> {
+    /// `GlobalId`.
+    pub global_id: &'a str,
+    /// `Name`.
+    pub name: Option<&'a str>,
+    /// `Description`.
+    pub description: Option<&'a str>,
+    /// `ObjectType`. Required when `predefined_type` is `USERDEFINED`.
+    pub object_type: Option<&'a str>,
+    /// `PredefinedType`, an `IfcInventoryTypeEnum` token.
+    pub predefined_type: Option<&'a str>,
+    /// `Jurisdiction`, an `IfcActorSelect`.
+    pub jurisdiction: Option<EntityId>,
+    /// `LastUpdateDate`, an ISO 8601 date written as given.
+    pub last_update_date: Option<&'a str>,
+    /// `CurrentValue`, an `IfcCostValue`.
+    pub current_value: Option<EntityId>,
+    /// `OriginalValue`, an `IfcCostValue`.
+    pub original_value: Option<EntityId>,
 }

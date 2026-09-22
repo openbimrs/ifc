@@ -518,7 +518,7 @@ pub(crate) fn text(value: &str) -> Value {
     Value::Text(value.into())
 }
 
-fn refs(values: &[EntityId]) -> Value {
+pub(crate) fn refs(values: &[EntityId]) -> Value {
     Value::List(values.iter().copied().map(Value::Ref).collect())
 }
 

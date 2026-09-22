@@ -250,7 +250,7 @@ pub fn stage_action(
 /// The curve and surface forms carry different activity enums
 /// with overlapping tokens (`CONST`, `DISCRETE`), so a wrong-form
 /// token is not always visibly wrong.
-fn validate_activity_token(
+pub(super) fn validate_activity_token(
     schema: &Schema,
     entity_type: &'static str,
     token: &str,

@@ -31,8 +31,9 @@ mod system;
 
 pub use authoring::{
     assign_to_group, connect_port_to_element, connect_ports, contain_in_spatial_structure,
-    create_port, create_system, nest_ports, reference_in_spatial_structure, SystemAuthoringError,
-    SystemAuthoringResult,
+    create_classified_system, create_group, create_port, create_system, nest_ports,
+    reference_in_spatial_structure, ClassifiedSystemDraft, SystemAuthoringError,
+    SystemAuthoringResult, SystemKind,
 };
 pub use connectivity::{
     Connection, ConnectionGraph, Direction, FlowNetwork, FlowQuery, NetworkGraph,

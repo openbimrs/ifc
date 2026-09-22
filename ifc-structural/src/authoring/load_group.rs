@@ -190,7 +190,7 @@ pub fn stage_load_group(
 ///
 /// Tokens are read from the schema rather than a local list, so a
 /// token added or withdrawn between schemas needs no edit here.
-fn validate_enum_token(
+pub(super) fn validate_enum_token(
     schema: &Schema,
     entity_type: &'static str,
     attribute: &'static str,

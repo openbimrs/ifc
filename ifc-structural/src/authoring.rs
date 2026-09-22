@@ -14,15 +14,22 @@ mod action;
 mod condition;
 mod item;
 mod load_group;
+mod reaction;
 mod relation;
 
 pub use action::{stage_action, ActionDraft, ActionDraftKind, ProjectedOrTrue};
-pub use condition::{stage_boundary_condition, BoundaryConditionDraft};
+pub use condition::{
+    stage_boundary_condition, stage_connection_condition, BoundaryConditionDraft,
+    ConnectionConditionDraft,
+};
 pub use item::{
     stage_connection, stage_member, ConnectionDraft, ConnectionDraftKind, MemberDraft,
     MemberDraftKind, MemberPredefinedType, StructuralRootDraft,
 };
 pub use load_group::{stage_load_group, LoadGroupDraft, LoadGroupKind};
+pub use reaction::{
+    stage_reaction, stage_result_group, ReactionDraft, ReactionDraftKind, ResultGroupDraft,
+};
 pub use relation::{
     stage_activity_assignment, stage_member_connection, ActivityAssignmentDraft,
     MemberConnectionDraft, RelationshipRootDraft,

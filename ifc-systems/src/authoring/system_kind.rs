@@ -181,6 +181,8 @@ pub enum SystemKind {
     Built,
     /// `IfcDistributionCircuit`: a branch of a distribution system.
     DistributionCircuit,
+    /// `IfcDistributionSystem`: the system a circuit branches from.
+    DistributionSystem,
 }
 
 impl SystemKind {
@@ -190,6 +192,7 @@ impl SystemKind {
             Self::Building => "IFCBUILDINGSYSTEM",
             Self::Built => "IFCBUILTSYSTEM",
             Self::DistributionCircuit => "IFCDISTRIBUTIONCIRCUIT",
+            Self::DistributionSystem => "IFCDISTRIBUTIONSYSTEM",
         }
     }
 
@@ -201,7 +204,7 @@ impl SystemKind {
         match self {
             Self::Building => BUILDING,
             Self::Built => BUILT,
-            Self::DistributionCircuit => {
+            Self::DistributionCircuit | Self::DistributionSystem => {
                 if schema.name().eq_ignore_ascii_case("IFC4") {
                     DISTRIBUTION_IFC4
                 } else {
@@ -217,7 +220,7 @@ impl SystemKind {
     const fn predefined_slot(self) -> usize {
         match self {
             Self::Building | Self::Built => 5,
-            Self::DistributionCircuit => 6,
+            Self::DistributionCircuit | Self::DistributionSystem => 6,
         }
     }
 
@@ -225,7 +228,7 @@ impl SystemKind {
     const fn long_name_slot(self) -> usize {
         match self {
             Self::Building | Self::Built => 6,
-            Self::DistributionCircuit => 5,
+            Self::DistributionCircuit | Self::DistributionSystem => 5,
         }
     }
 }

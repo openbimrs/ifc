@@ -17,8 +17,9 @@ pub use assignment::{ClassificationAssignment, DocumentAssignment, LibraryAssign
 pub use authoring::{
     associate_classification, associate_document, associate_library, create_classification,
     create_classification_reference, create_document, create_document_reference, create_library,
-    create_library_reference, AssociationDraft, ClassificationDraft, ClassificationReferenceDraft,
-    DocumentDraft, DocumentReferenceDraft, LibraryDraft, LibraryReferenceDraft,
+    create_library_reference, relate_documents, AssociationDraft, ClassificationDraft,
+    ClassificationReferenceDraft, DocumentDraft, DocumentReferenceDraft, LibraryDraft,
+    LibraryReferenceDraft,
 };
 pub use classification::{ClassificationReference, ClassificationSystem};
 pub use document::{DocumentInformation, DocumentReference};

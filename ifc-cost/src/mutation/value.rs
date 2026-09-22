@@ -117,3 +117,51 @@ pub fn create_monetary_unit(tx: &mut Transaction, currency: &str) -> CostAuthori
         vec![Value::Text(currency.into())],
     )))
 }
+
+/// Stage an `IfcCurrencyRelationship`: an exchange rate between two
+/// monetary units.
+///
+/// The rate is an `IfcPositiveRatioMeasure`, so zero and negative
+/// rates are refused: a rate of zero would value every converted cost
+/// at nothing, which is a conversion nobody meant to state.
+///
+/// # Errors
+///
+/// Refuses a reference that is not an `IfcMonetaryUnit`, a unit
+/// related to itself, and a non-positive or non-finite rate.
+pub fn create_currency_relationship(
+    tx: &mut Transaction,
+    model: &Model,
+    relating: EntityId,
+    related: EntityId,
+    exchange_rate: f64,
+    rate_date_time: Option<&str>,
+) -> CostAuthoringResult<EntityId> {
+    const ENTITY: &str = "IFCCURRENCYRELATIONSHIP";
+    for (target, attribute) in [
+        (relating, "RelatingMonetaryUnit"),
+        (related, "RelatedMonetaryUnit"),
+    ] {
+        reference_type(tx, model, ENTITY, attribute, target, "IFCMONETARYUNIT")?;
+    }
+    if relating == related {
+        return Err(invalid(
+            ENTITY,
+            "RelatedMonetaryUnit",
+            "expected a unit other than the relating one",
+        ));
+    }
+    if !exchange_rate.is_finite() || exchange_rate <= 0.0 {
+        return Err(invalid(
+            ENTITY,
+            "ExchangeRate",
+            "expected a positive finite ratio",
+        ));
+    }
+    let mut attributes = vec![Value::Null; 7];
+    attributes[2] = Value::Ref(relating);
+    attributes[3] = Value::Ref(related);
+    attributes[4] = Value::Real(exchange_rate);
+    attributes[5] = rate_date_time.map_or(Value::Null, |t| Value::Text(t.into()));
+    Ok(tx.create(Entity::new(ENTITY, attributes)))
+}

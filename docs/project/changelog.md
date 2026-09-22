@@ -17,6 +17,16 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- Authoring for the non-geometry gap, part one: structural reactions
+  (`IfcStructuralPointReaction`, `IfcStructuralCurveReaction`,
+  `IfcStructuralSurfaceReaction`), `IfcStructuralResultGroup`, the failure
+  and slippage connection conditions, `IfcRelConnectsWithEccentricity`,
+  the three space-boundary levels, `IfcRelConnectsPathElements`,
+  `IfcGroup`, `IfcDistributionSystem`, `IfcInventory`, `IfcActorRole`,
+  `IfcPostalAddress`, `IfcTelecomAddress`, `IfcOrganizationRelationship`,
+  `IfcCurrencyRelationship` and `IfcDocumentInformationRelationship`.
+- A catalogue sweep proving all ten `ifc-spatial` facility rows stage,
+  covering the seven that no test had reached.
 - Five entities that had no writer at all: `IfcAppliedValue`
   (`ifc-resource`), `IfcPlanarExtent`/`IfcPlanarBox` (`ifc-style`),
   `IfcReference` (`ifc-constraint`), `IfcMaterialProfileSetUsageTapering`

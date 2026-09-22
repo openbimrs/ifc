@@ -15,9 +15,12 @@
 //! values start at slot 1 in every family.
 
 use ifc_model::{Entity, EntityId, Transaction, Value};
+use ifc_schema::Schema;
 
-use crate::condition::{AxisValues, BoundaryConditionKind, StiffnessValue};
-use crate::error::StructuralResult;
+use super::build_named;
+
+use crate::condition::{AxisValues, BoundaryConditionKind, FailureLimits, StiffnessValue};
+use crate::error::{StructuralError, StructuralResult};
 
 /// Authored fields for a boundary condition.
 #[derive(Debug, Clone, Copy, Default)]
@@ -146,4 +149,77 @@ fn axes(
 
 fn optional_text(value: Option<&str>) -> Value {
     value.map_or(Value::Null, |text| Value::Text(text.into()))
+}
+
+/// Authored values for a connection condition.
+///
+/// The two families carry different measures -- failure limits are
+/// forces, slippage is a length -- so the kind selects both the entity
+/// and which of these fields is written.
+#[derive(Debug, Clone, Copy)]
+pub enum ConnectionConditionDraft {
+    /// `IfcFailureConnectionCondition`: the load at which the
+    /// connection gives way, per axis and sign.
+    Failure(FailureLimits),
+    /// `IfcSlippageConnectionCondition`: how far the connection moves
+    /// before it bears, per axis.
+    Slippage(AxisValues<Option<f64>>),
+}
+
+/// Stage an `IfcStructuralConnectionCondition` subtype.
+///
+/// `Name` is slot 0 in both families, so the measures start at slot 1.
+///
+/// # Errors
+///
+/// Refuses a non-finite measure. Every measure is optional: the schema
+/// states no limit rather than a zero one, and zero is a real value
+/// meaning the connection fails or slips under no load at all.
+pub fn stage_connection_condition(
+    tx: &mut Transaction,
+    schema: &Schema,
+    name: Option<&str>,
+    draft: ConnectionConditionDraft,
+) -> StructuralResult<EntityId> {
+    let (entity, values): (&'static str, Vec<(&'static str, Value)>) = match draft {
+        ConnectionConditionDraft::Failure(limits) => (
+            "IfcFailureConnectionCondition",
+            vec![
+                ("TensionFailureX", measure(limits.tension.x)),
+                ("TensionFailureY", measure(limits.tension.y)),
+                ("TensionFailureZ", measure(limits.tension.z)),
+                ("CompressionFailureX", measure(limits.compression.x)),
+                ("CompressionFailureY", measure(limits.compression.y)),
+                ("CompressionFailureZ", measure(limits.compression.z)),
+            ],
+        ),
+        ConnectionConditionDraft::Slippage(slippage) => (
+            "IfcSlippageConnectionCondition",
+            vec![
+                ("SlippageX", measure(slippage.x)),
+                ("SlippageY", measure(slippage.y)),
+                ("SlippageZ", measure(slippage.z)),
+            ],
+        ),
+    };
+    for (attribute, value) in &values {
+        if matches!(value, Value::Real(number) if !number.is_finite()) {
+            return Err(StructuralError::InvalidDraftValue {
+                entity_type: entity,
+                attribute,
+                expected: "finite measure or null",
+            });
+        }
+    }
+    let mut fields = vec![(
+        "Name",
+        name.map_or(Value::Null, |text| Value::Text(text.into())),
+    )];
+    fields.extend(values);
+    Ok(tx.create(build_named(schema, entity, fields)?))
+}
+
+/// An optional measure as a value.
+fn measure(value: Option<f64>) -> Value {
+    value.map_or(Value::Null, Value::Real)
 }

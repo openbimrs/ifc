@@ -19,7 +19,10 @@ pub use external::{
 
 use crate::relation::slots::{RelSlots, AGGREGATES, CONTAINED_IN};
 
+mod boundary;
 mod relationships;
+
+pub use boundary::{connect_path_elements, create_space_boundary, BoundaryDraft, BoundaryLevel};
 
 use crate::tree::SpatialKind;
 pub use relationships::{
