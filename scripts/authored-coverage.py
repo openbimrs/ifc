@@ -10,9 +10,13 @@ Usage:
       cargo test --workspace --all-features --features ifc-model/authored-dump
     python3 scripts/authored-coverage.py /tmp/dump
 
-Each dump line is `origin<TAB>TYPENAME`. Only `create` counts as
-authored: `push` is how test fixtures stand up input, and counting it
-would report an entity as covered when no writer can produce one.
+Each dump line is `origin<TAB>TYPENAME`.
+
+Only `create` counts as authored -- it is the writer path. `insert` is
+the chokepoint every entity lands through, including codec loads and
+test fixtures, so it answers "does this type appear at all" rather than
+"can a writer produce one". `retype` renames an entity in place and can
+name a type no writer ever built.
 """
 
 from __future__ import annotations
@@ -72,13 +76,19 @@ def main() -> int:
 
     concrete = concrete_entities(SCHEMA)
     created = by_origin.get("create", set())
-    pushed = by_origin.get("push", set())
+    inserted = by_origin.get("insert", set())
+    retyped = by_origin.get("retype", set())
     proven = concrete & created
     gap = sorted(concrete - created)
+    # Seen landing in a model, but never through a writer. These are the
+    # types a fixture or a codec produced and no authoring path can.
+    seen_only = sorted(concrete & (inserted | retyped) - created)
 
     print(f"concrete entities  : {len(concrete)}")
     print(f"authored (create)  : {len(proven)}  ({100 * len(proven) / len(concrete):.1f}%)")
-    print(f"fixtures  (push)   : {len(pushed)}")
+    print(f"landed   (insert)  : {len(concrete & inserted)}")
+    print(f"renamed  (retype)  : {len(concrete & retyped)}")
+    print(f"seen but unwritable: {len(seen_only)}")
     print(f"unproven           : {len(gap)}")
     if gap:
         print()

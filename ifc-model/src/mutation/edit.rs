@@ -104,6 +104,8 @@ impl Model {
         let entity = self.entity_mut(id)?;
         let previous = entity.type_name.clone();
         let new_name = type_name.into();
+        #[cfg(feature = "authored-dump")]
+        crate::authored_dump::record(&new_name, "retype");
         if previous.eq_ignore_ascii_case(&new_name) {
             entity.type_name = new_name;
             self.bump_revision();

@@ -91,6 +91,8 @@ impl Model {
     ///
     /// Codecs use this to preserve file ids exactly.
     pub fn insert(&mut self, id: EntityId, entity: Entity) {
+        #[cfg(feature = "authored-dump")]
+        crate::authored_dump::record(&entity.type_name, "insert");
         let key = entity.type_name.to_ascii_uppercase();
         match self.entities.insert(id, entity) {
             None => self.order.push(id),
@@ -120,8 +122,6 @@ impl Model {
 
     /// Append an entity, allocating the next free id.
     pub fn push(&mut self, entity: Entity) -> EntityId {
-        #[cfg(feature = "authored-dump")]
-        crate::authored_dump::record(&entity.type_name, "push");
         let id = EntityId(self.max_id + 1);
         self.insert(id, entity);
         id

@@ -13,13 +13,23 @@
 //! mentioned. Recording what is built during a test run answers it
 //! directly.
 //!
-//! # Origin matters
+//! # Origins
 //!
-//! [`crate::Transaction::create`] is the authoring path a writer goes
-//! through. [`crate::Model::push`] is what test fixtures use to stand
-//! up input. Counting both as authored reports an entity as covered
-//! when only a fixture ever built one, so the origin is recorded and
-//! the caller filters on it.
+//! Three call sites, because "an entity of this type exists" and "a
+//! writer can produce one" are different claims:
+//!
+//! - `create`: [`crate::Transaction::create`], the authoring path. The
+//!   only origin that proves a writer exists.
+//! - `insert`: [`crate::Model::insert`], where every entity actually
+//!   lands -- committed transactions, [`crate::Model::push`], and codec
+//!   loads all funnel through it. The chokepoint, so nothing enters a
+//!   model unseen.
+//! - `retype`: `Model::retype`, which changes a type name in place and
+//!   can therefore produce a type no writer ever constructed.
+//!
+//! An earlier version hooked `create` and `push` only. That missed
+//! `Transaction::stage(Edit::Create { .. })`, which builds an entity
+//! without going through `create`, and missed `retype` entirely.
 //!
 //! # Usage
 //!
@@ -73,11 +83,12 @@ pub fn recording() -> bool {
     }
 }
 
-/// Record one constructed type name against the path that built it.
+/// Record one type name against the path that produced it.
 ///
-/// `origin` is `"create"` for the authoring path and `"push"` for direct
-/// insertion. Names are upper-cased because the crates disagree on the
-/// casing they store and the audit compares against the schema.
+/// `origin` is `"create"`, `"insert"` or `"retype"`; see the module
+/// docs for what each proves. Names are upper-cased because the crates
+/// disagree on the casing they store and the audit compares against the
+/// schema.
 pub fn record(type_name: &str, origin: &'static str) {
     if !recording() {
         return;

@@ -56,6 +56,11 @@ and this project follows Semantic Versioning.
 
 ### Fixed
 
+- The coverage audit hooked `Transaction::create` and `Model::push`,
+  which missed `Transaction::stage(Edit::Create { .. })` and
+  `Model::retype` entirely. It now records at `Model::insert` -- the
+  chokepoint every entity lands through -- plus `retype`, and reports
+  types that appear in models but that no writer can produce.
 - The `lib.rs` monolith check counted continuation lines of a wrapped
   `pub use` block as behaviour, so a long export list read as
   implementation. It now tracks the open brace, matching the intent its

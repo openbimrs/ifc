@@ -42,9 +42,16 @@ AUTHORED_DUMP=/tmp/dump \
 python3 ../scripts/authored-coverage.py /tmp/dump
 ```
 
-Only `create` counts as authored. `push` is how fixtures stand up
-input, and counting it reports an entity as covered when no writer
-can produce one.
+Three origins are recorded. Only `create` proves a writer exists:
+
+- `create`: the authoring path, `Transaction::create`.
+- `insert`: `Model::insert`, the chokepoint every entity lands
+  through -- committed transactions, `push`, and codec loads. An
+  entity seen only here exists in files but no writer can make one.
+- `retype`: renames in place, so it can name a type no writer built.
+
+Hooking `create` and `push` alone missed two paths:
+`Transaction::stage(Edit::Create { .. })` and `retype`.
 
 The feature is off by default and inert without the variable, which
 `tests/authored_dump_inert.rs` holds in place: the gate builds
