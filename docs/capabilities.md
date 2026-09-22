@@ -27,17 +27,17 @@ code.
 
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `ifc-geometry` | 36,780 | 123 | 3 | 51 | <span class="status-partial">Partial</span> |
+| `ifc-geometry` | 36,780 | 123 | 3 | 52 | <span class="status-partial">Partial</span> |
 | `ifc-style` | 6,343 | 42 | 0 | 11 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 5,460 | 35 | 14 | 8 | <span class="status-implemented">Implemented</span> |
 | `ifc-alignment` | 4,605 | 37 | 11 | 11 | <span class="status-partial">Partial</span> |
-| `ifc-structural` | 4,552 | 35 | 14 | 16 | <span class="status-implemented">Implemented</span> |
-| `ifc-element-type` | 3,429 | 10 | 0 | 3 | <span class="status-implemented">Implemented</span> |
+| `ifc-structural` | 4,558 | 35 | 14 | 17 | <span class="status-implemented">Implemented</span> |
+| `ifc-element-type` | 3,429 | 10 | 0 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 3,241 | 25 | 0 | 11 | <span class="status-implemented">Implemented</span> |
-| `ifc-resource` | 3,215 | 30 | 9 | 10 | <span class="status-partial">Partial</span> |
+| `ifc-resource` | 3,215 | 30 | 9 | 11 | <span class="status-partial">Partial</span> |
 | `ifc-template-catalog` | 3,104 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
-| `ifc-occurrence` | 2,802 | 8 | 0 | 1 | <span class="status-implemented">Implemented</span> |
-| `ifc-schedule` | 2,590 | 26 | 13 | 5 | <span class="status-implemented">Implemented</span> |
+| `ifc-occurrence` | 2,802 | 8 | 0 | 2 | <span class="status-implemented">Implemented</span> |
+| `ifc-schedule` | 2,590 | 26 | 13 | 6 | <span class="status-implemented">Implemented</span> |
 | `ifc-spatial` | 2,533 | 14 | 1 | 14 | <span class="status-implemented">Implemented</span> |
 | `ifc-validate` | 2,493 | 23 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 2,454 | 23 | 5 | 5 | <span class="status-implemented">Implemented</span> |

@@ -9,6 +9,10 @@ and this project follows Semantic Versioning.
 
 ### Added
 
+- Catalogue sweep tests for `ifc-occurrence` (141 rows) and
+  `ifc-element-type` (132 rows plus every supertype), and variant sweeps
+  for the structural, resource, schedule and brep writers, so every
+  enum arm and table row is proven to stage rather than assumed to.
 - `ifc-structural` authors `IfcStructuralLoadGroup` and `IfcStructuralLoadCase`,
   enforcing `IsLoadCasePredefinedType` by construction and `HasObjectType`
   across `PredefinedType`, `ActionType` and `ActionSource` jointly, plus the
@@ -17,7 +21,14 @@ and this project follows Semantic Versioning.
   the two IFC4X3-only linear supertypes, with
   `IfcPositioningElement.HasPlacement` enforced as a required argument.
 
+
 ### Fixed
+
+- `ifc-structural` could not author `IfcStructuralCurveConnection` at all.
+  Its required slot 8 is named `AxisDirection`, but `stage_connection`
+  hardcoded the curve *member*'s name `Axis`, so an absent axis failed the
+  required-attribute check and a supplied one failed as unsupported. The
+  attribute name is now resolved from the schema per entity.
 
 - `ifc-structural` refused to enforce `SuitablePredefinedType` on
   `IfcStructuralCurveAction`, which accepted the `EQUIDISTANT` token the rule

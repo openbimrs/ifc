@@ -369,17 +369,23 @@ pub fn stage_connection(
     };
     validate_optional_ref(tx, model, schema, applied_condition, "IfcBoundaryCondition")?;
     validate_optional_ref(tx, model, schema, coordinate_system, "IfcAxis2Placement3D")?;
-    let has_axis = schema
-        .attributes(entity_type)
-        .iter()
-        .any(|attribute| attribute.name.eq_ignore_ascii_case("Axis"));
-    let validated_axis = if has_axis {
-        let target = axis.ok_or(StructuralError::MissingRequired {
+    // The two curve forms name this slot differently: a member carries
+    // `Axis`, a connection `AxisDirection`. Hardcoding either name makes
+    // the other unauthorable -- an absent axis fails the required-attribute
+    // check, and a supplied one fails as unsupported.
+    let axis_attribute = ["Axis", "AxisDirection"].into_iter().find(|candidate| {
+        schema
+            .attributes(entity_type)
+            .iter()
+            .any(|attribute| attribute.name.eq_ignore_ascii_case(candidate))
+    });
+    let validated_axis = if let Some(axis_attribute) = axis_attribute {
+        let target = axis.ok_or_else(|| StructuralError::MissingRequired {
             entity_type: entity_type.into(),
-            attribute: "Axis".into(),
+            attribute: axis_attribute.into(),
         })?;
         validate_ref(tx, model, schema, target, "IfcDirection")?;
-        Some(target)
+        Some((axis_attribute, target))
     } else if axis.is_some() {
         return Err(StructuralError::UnsupportedAttribute {
             entity_type: entity_type.into(),
@@ -390,8 +396,8 @@ pub fn stage_connection(
     };
     let mut fields = root_fields(draft.root);
     fields.push(("AppliedCondition", optional_ref(applied_condition)));
-    if let Some(axis) = validated_axis {
-        fields.push(("Axis", Value::Ref(axis)));
+    if let Some((axis_attribute, axis)) = validated_axis {
+        fields.push((axis_attribute, Value::Ref(axis)));
     }
     if schema
         .attributes(entity_type)
