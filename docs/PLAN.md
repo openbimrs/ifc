@@ -23,7 +23,7 @@ from the code it describes.
       vocabulary. Proof: `capabilities.md` workspace census.
 - [x] `DOC-002` - ADRs 0001-0006 recording decisions already embodied in code.
 - [x] `DOC-003` - changelog generated from the canonical root CHANGELOG.md.
-      Proof: `python3 scripts/sync-changelog.py --check` in `scripts/gate.sh`.
+      Proof: `python3 scripts/assemble-changelog.py --check` in `scripts/gate.sh`.
 - [x] `DOC-004` - documented Rust examples compiled by
       `openbim-ifc/tests/docs_examples.rs`. Proof: 4 tests pass; mutation of a
       documented attribute order fails the suite.

@@ -33,7 +33,8 @@ npm run docs:build    # what CI runs; dead links fail the build
 ## Gates
 
 - Dead internal links fail `docs:build`.
-- `scripts/sync-changelog.py --check` fails if `project/changelog.md` drifts
+- `scripts/assemble-changelog.py --check` fails if `project/changelog.md` drifts
+  from the per-crate `CHANGELOG.md` files, or if a publishable crate has none
   from the canonical root `CHANGELOG.md`. Never hand-edit the page; edit
   `CHANGELOG.md` and re-run the script.
 - `scripts/check-leakage.py` rejects XSD, PDF, and `references/` payloads from

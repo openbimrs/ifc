@@ -1,11 +1,15 @@
-# Changelog
+# Changelog -- archive through 0.2.0
 
-All notable changes to the OpenBIM.rs IFC family are documented here.
+**This file is closed. It records the period when the whole IFC family
+was versioned and released in lockstep, ending with 0.2.0.**
 
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project follows Semantic Versioning.
+Each crate now owns a `CHANGELOG.md` beside its `Cargo.toml` and is
+versioned independently -- a release of one does not imply a release of
+any other. Add new entries there, not here. The assembled view of all
+crates is published at
+[openbimrs.github.io/ifc](https://openbimrs.github.io/ifc/project/changelog).
 
-## [Unreleased]
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [0.2.0] - 2026-09-22
 
@@ -1394,5 +1398,4 @@ thetic
 - Made release-critical package metadata explicit across the nested-workspace
   boundary.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/v0.2.0...HEAD
 [0.2.0]: https://github.com/openbimrs/ifc/releases/tag/v0.2.0

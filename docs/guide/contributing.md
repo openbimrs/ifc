@@ -60,8 +60,8 @@ coding agent will reproduce the drift.
 canonical. The docs page is generated:
 
 ```bash
-python3 scripts/sync-changelog.py          # regenerate
-python3 scripts/sync-changelog.py --check  # CI: fail if out of date
+python3 scripts/assemble-changelog.py          # regenerate
+python3 scripts/assemble-changelog.py --check  # CI: fail if out of date
 ```
 
 **Claims need evidence.** Do not describe a module as supporting something
@@ -108,6 +108,64 @@ npm run docs:build    # production build
 ```
 
 The site deploys to GitHub Pages from `main` via `.github/workflows/pages.yml`.
+
+## Releasing a crate
+
+Every crate is versioned independently. Touching `ifc-geometry` means
+releasing `ifc-geometry` -- not the other twenty-six.
+
+Start by asking what a release would cost:
+
+```bash
+python3 scripts/release-crate.py ifc-geometry --set 0.2.1
+```
+
+This reports the crate's dependents and whether the bump is
+compatible. Cargo's `^` requirement is what decides:
+
+| Bump | Meaning | Cost |
+| --- | --- | --- |
+| `0.2.0` to `0.2.1` | compatible | publish that crate alone |
+| `0.2.0` to `0.3.0` | breaking | every dependent must be edited and released too |
+
+A dependent declaring `ifc-geometry = "0.2.0"` accepts `0.2.1`
+silently, so an additive change reaches consumers on their next
+`cargo update` with no republishing anywhere else. It *rejects*
+`0.3.0`, which is why a breaking bump cascades.
+
+Write the bump once the cost is acceptable:
+
+```bash
+python3 scripts/release-crate.py ifc-geometry --set 0.2.1 --apply
+```
+
+That edits the manifest, opens a dated section in the crate's
+`CHANGELOG.md`, and -- for a breaking bump only -- lifts the
+requirement in each dependent's manifest. Fill in the changelog
+entry, run `bash scripts/gate.sh`, and commit.
+
+Then publish:
+
+```bash
+python3 scripts/release-crate.py ifc-geometry --publish
+```
+
+This tags `ifc-geometry-v0.2.1`, publishes from a detached worktree at
+that tag so the embedded VCS hash is deterministic, and refuses to run
+against a dirty tree. It is idempotent: a crate already live at its
+committed version is a no-op, so a rate-limited run can be repeated
+safely.
+
+### Changelogs
+
+Each crate owns a `CHANGELOG.md` next to its `Cargo.toml`. The
+documentation page is assembled from all of them by
+`scripts/assemble-changelog.py`; never edit `docs/project/changelog.md`
+directly. The root `CHANGELOG.md` is a frozen archive of the
+lockstep era through 0.2.0 and takes no new entries.
+
+The gate fails if a publishable crate has no changelog, which is what
+stops a newly added crate from escaping this process.
 
 ## Where help is useful
 

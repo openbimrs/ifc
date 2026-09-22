@@ -6,9 +6,12 @@ on:
     paths:
       - 'docs/**'
       - 'CHANGELOG.md'
+      # Each crate owns its changelog and the docs page is assembled from all
+      # of them, so any one of them changing must rebuild the site.
+      - '*/CHANGELOG.md'
       - 'package.json'
       - 'package-lock.json'
-      - 'scripts/sync-changelog.py'
+      - 'scripts/assemble-changelog.py'
       - '.github/workflows/pages.yml'
       # The API reference is generated from doc comments, so a source-only
       # change still alters the published site.
@@ -49,7 +52,7 @@ jobs:
         run: scripts/fetch-ifc-schemas.sh
       - run: npm ci
       - name: Changelog page must match the canonical CHANGELOG.md
-        run: python3 scripts/sync-changelog.py --check
+        run: python3 scripts/assemble-changelog.py --check
       - run: npm run docs:build
       # rustdoc is generated from the same doc comments the gate already
       # builds with -D warnings, and nested under the VitePress output so it

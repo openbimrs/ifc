@@ -63,10 +63,12 @@ done
 # when both are on. `--all-features` would hide a break in that exact pairing.
 cargo test -p openbim-ifc --features step,spatial,geometry-select --test unreachable_corpus
 
-# Documentation gates. The changelog page is generated from the canonical root
-# CHANGELOG.md, so drift between them is a build failure rather than a silent
-# inconsistency the reader has to notice.
-python3 scripts/sync-changelog.py --check
+# Documentation gates. Each crate owns its CHANGELOG.md; the docs page is
+# assembled from all of them, so drift between the two is a build failure
+# rather than a silent inconsistency the reader has to notice. The assembler
+# also fails when a publishable crate has no changelog at all, which is what
+# keeps a newly added crate from silently escaping the release process.
+python3 scripts/assemble-changelog.py --check
 python3 scripts/sync-capabilities.py --check
 python3 scripts/check-inline-html.py
 
