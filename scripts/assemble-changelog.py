@@ -24,6 +24,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = ROOT / "docs" / "project" / "changelog.md"
 ARCHIVE = ROOT / "CHANGELOG.md"
+BLOB = "https://github.com/openbimrs/ifc/blob/main"
 BEGIN = "<!-- CHANGELOG:BEGIN -->"
 END = "<!-- CHANGELOG:END -->"
 
@@ -75,6 +76,22 @@ def parse(text: str) -> list[tuple[str, str, str]]:
     return sections
 
 
+def absolutise(body: str) -> str:
+    """Rewrite repo-relative links to absolute GitHub URLs.
+
+    A per-crate changelog is read in two places: in the repository,
+    where `../CHANGELOG.md` resolves, and on the docs site, where it
+    does not. VitePress treats the latter as a dead link and fails the
+    build, so relative targets are absolutised on the way in.
+    """
+    def repl(match: re.Match) -> str:
+        text, target = match.group(1), match.group(2)
+        if "://" in target or target.startswith("#"):
+            return match.group(0)
+        clean = target.lstrip("./")
+        return f"[{text}]({BLOB}/{clean})"
+    return re.sub(r"\[([^\]]+)\]\(([^)]+)\)", repl, body)
+
 def version_key(version: str) -> tuple:
     """Sort key placing Unreleased first, then versions newest-first."""
     if version.lower() == "unreleased":
@@ -97,7 +114,7 @@ def assemble() -> str:
                 # An empty Unreleased section is the normal resting state;
                 # listing the crate with nothing under it is just noise.
                 continue
-            by_version.setdefault(version, []).append((name, date, body))
+            by_version.setdefault(version, []).append((name, date, absolutise(body)))
 
     blocks: list[str] = []
     for version in sorted(by_version, key=version_key, reverse=True):

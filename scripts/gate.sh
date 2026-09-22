@@ -72,6 +72,19 @@ python3 scripts/assemble-changelog.py --check
 python3 scripts/sync-capabilities.py --check
 python3 scripts/check-inline-html.py
 
+# Build the docs site when its toolchain is installed. The checks above
+# validate content; only the real build resolves every link, and a dead
+# link fails Pages *after* a push. Catching it here keeps that failure
+# local. Skipped when node_modules is absent so the gate still runs on a
+# machine without the docs toolchain.
+if [ -d node_modules ]; then
+  npm run docs:build --silent > /tmp/docs-build.log 2>&1 \
+    || { echo "docs build failed:"; tail -20 /tmp/docs-build.log; exit 1; }
+  echo "docs build ok"
+else
+  echo "docs build skipped (no node_modules)"
+fi
+
 # Documentation debt ratchet. Twelve crates enforce missing_docs permanently
 # through [workspace.lints]; the rest carry a measured, capped debt. This fails
 # if that debt grows -- or if it shrank and the budget was not lowered, so the

@@ -23,163 +23,163 @@ lockstep -- is archived in the
 ### ifc-alignment
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-approval
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-author
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-classification
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-constraint
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-control
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-cost
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-element-type
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-geometry
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-georef
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-material
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-model
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-occurrence
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-properties
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-resource
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-schedule
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-schema
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-spatial
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-step
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-structural
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-style
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-systems
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-tabular
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-template-catalog
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-validate
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### ifc-xml
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 ### openbim-ifc
 
 First release under per-crate versioning. See the
-[repository changelog](../CHANGELOG.md) for the family-wide history
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md) for the family-wide history
 that produced this version.
 
 <!-- CHANGELOG:END -->
