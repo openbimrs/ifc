@@ -77,9 +77,9 @@ pub use template::{
     PropertySetTemplate, PropertyTemplate,
 };
 pub use unit::{
-    add_context_dependent_unit, add_conversion_based_unit, add_derived_unit,
-    add_derived_unit_element, add_dimensional_exponents, add_measure_with_unit, add_monetary_unit,
-    add_si_unit, assign_units, prefix_exponent, project_unit_for, project_units, unit, unit_type,
-    ConversionBasedUnitDraft, MonetaryUnitDraft, SiUnitDraft, UnitKind,
+    add_context_dependent_unit, add_conversion_based_unit, add_conversion_based_unit_with_offset,
+    add_derived_unit, add_derived_unit_element, add_dimensional_exponents, add_measure_with_unit,
+    add_monetary_unit, add_si_unit, assign_units, prefix_exponent, project_unit_for, project_units,
+    unit, unit_type, ConversionBasedUnitDraft, MonetaryUnitDraft, SiUnitDraft, UnitKind,
 };
 pub use value::{MeasureValue, Scalar};

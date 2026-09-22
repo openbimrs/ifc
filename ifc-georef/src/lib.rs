@@ -16,7 +16,8 @@ mod view;
 pub use authoring::{
     create_direction, create_geographic_crs, create_map_conversion, create_map_conversion_scaled,
     create_projected_crs, create_representation_context, create_representation_subcontext,
-    create_rigid_operation, GeographicCrsDraft, MapConversionDraft, ProjectedCrsDraft,
+    create_rigid_operation, create_well_known_text, GeographicCrsDraft, MapConversionDraft,
+    ProjectedCrsDraft,
 };
 pub use context::compose_project_frame;
 pub use conversion::{resolve_project_to_map, resolve_project_to_map_in, ProjectToMap};

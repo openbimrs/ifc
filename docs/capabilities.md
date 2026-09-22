@@ -27,9 +27,9 @@ code.
 
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `ifc-geometry` | 36,780 | 123 | 3 | 53 | <span class="status-partial">Partial</span> |
-| `ifc-style` | 6,451 | 42 | 0 | 12 | <span class="status-implemented">Implemented</span> |
-| `ifc-properties` | 5,460 | 35 | 14 | 9 | <span class="status-implemented">Implemented</span> |
+| `ifc-geometry` | 36,877 | 123 | 3 | 54 | <span class="status-partial">Partial</span> |
+| `ifc-style` | 6,723 | 43 | 0 | 13 | <span class="status-implemented">Implemented</span> |
+| `ifc-properties` | 5,506 | 35 | 14 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-structural` | 4,887 | 36 | 14 | 18 | <span class="status-implemented">Implemented</span> |
 | `ifc-alignment` | 4,605 | 37 | 11 | 11 | <span class="status-partial">Partial</span> |
 | `ifc-resource` | 3,728 | 31 | 9 | 14 | <span class="status-partial">Partial</span> |
@@ -38,13 +38,13 @@ code.
 | `ifc-template-catalog` | 3,104 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-occurrence` | 2,802 | 8 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-spatial` | 2,787 | 15 | 1 | 16 | <span class="status-implemented">Implemented</span> |
-| `ifc-schedule` | 2,590 | 26 | 13 | 6 | <span class="status-implemented">Implemented</span> |
+| `ifc-schedule` | 2,699 | 27 | 13 | 7 | <span class="status-implemented">Implemented</span> |
 | `ifc-validate` | 2,493 | 23 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-classification` | 2,486 | 20 | 4 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 2,482 | 23 | 5 | 6 | <span class="status-implemented">Implemented</span> |
-| `ifc-cost` | 2,283 | 17 | 0 | 4 | <span class="status-implemented">Implemented</span> |
+| `ifc-cost` | 2,296 | 17 | 0 | 5 | <span class="status-implemented">Implemented</span> |
+| `ifc-georef` | 2,087 | 20 | 9 | 6 | <span class="status-partial">Partial</span> |
 | `ifc-model` | 2,083 | 25 | 5 | 10 | <span class="status-implemented">Implemented</span> |
-| `ifc-georef` | 2,029 | 20 | 9 | 5 | <span class="status-partial">Partial</span> |
 | `ifc-schema` | 1,404 | 12 | 4 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,317 | 6 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 1,045 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |

@@ -290,3 +290,60 @@ pub fn create_rigid_operation(
         ],
     )))
 }
+
+/// Stage an `IfcWellKnownText`: a CRS definition in OGC WKT.
+///
+/// The literal is written as given. WKT is its own grammar and this
+/// crate does not parse it: reformatting or normalising the text here
+/// would change a definition the authoring tool exported verbatim, and
+/// the receiving system is the one that parses it.
+///
+/// # Errors
+///
+/// Refuses a blank literal and a `coordinate_reference_system` that is
+/// not an `IfcCoordinateReferenceSystem` subtype.
+pub fn create_well_known_text(
+    tx: &mut Transaction,
+    model: &Model,
+    well_known_text: &str,
+    coordinate_reference_system: EntityId,
+) -> GeorefResult<EntityId> {
+    const ENTITY: &str = "IFCWELLKNOWNTEXT";
+    const CRS_TYPES: &[&str] = &[
+        "IFCPROJECTEDCRS",
+        "IFCGEOGRAPHICCRS",
+        "IFCCOORDINATEREFERENCESYSTEM",
+    ];
+    if well_known_text.trim().is_empty() {
+        return Err(invalid(ENTITY, "WellKnownText", well_known_text));
+    }
+    let actual = tx
+        .edits()
+        .iter()
+        .rev()
+        .find_map(|edit| match edit {
+            ifc_model::Edit::Create { id, entity } if *id == coordinate_reference_system => {
+                Some(entity.type_name.as_ref().to_owned())
+            }
+            _ => None,
+        })
+        .or_else(|| {
+            model
+                .get(coordinate_reference_system)
+                .map(|entity| entity.type_name.as_ref().to_owned())
+        })
+        .unwrap_or_default();
+    if !CRS_TYPES
+        .iter()
+        .any(|kind| actual.eq_ignore_ascii_case(kind))
+    {
+        return Err(invalid(ENTITY, "CoordinateReferenceSystem", actual));
+    }
+    Ok(tx.create(Entity::new(
+        ENTITY,
+        vec![
+            Value::Text(well_known_text.into()),
+            Value::Ref(coordinate_reference_system),
+        ],
+    )))
+}

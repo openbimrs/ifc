@@ -47,9 +47,9 @@ pub mod sequence;
 pub use authoring::{
     assign_tasks_to_control, create_event, create_event_time, create_lag_time, create_procedure,
     create_recurrence_pattern, create_sequence, create_task, create_task_time,
-    create_work_calendar, create_work_control, create_work_time, nest_tasks, EventDraft,
-    EventTimeDraft, ProcedureDraft, RecurrenceDraft, ScheduleAuthoringResult, TaskDraft,
-    TaskTimeDraft, WorkControlDraft,
+    create_task_time_recurring, create_time_period, create_work_calendar, create_work_control,
+    create_work_time, nest_tasks, EventDraft, EventTimeDraft, ProcedureDraft, RecurrenceDraft,
+    ScheduleAuthoringResult, TaskDraft, TaskTimeDraft, WorkControlDraft,
 };
 pub use calendar::{
     work_calendars, Recurrence, RecurrenceType, WorkCalendar, WorkTime, WorkTimeRole,

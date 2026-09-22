@@ -284,3 +284,48 @@ fn authoring_invalid(
         value: value.into(),
     }
 }
+
+/// Stage an `IfcConversionBasedUnitWithOffset`.
+///
+/// The offset form exists for scales whose zero is not the SI zero:
+/// degrees Celsius convert to kelvin by a factor of one and an offset
+/// of 273.15. Writing that as a plain conversion unit would place
+/// absolute zero at the freezing point of water, so the offset is a
+/// separate entity rather than an optional slot on the base form.
+///
+/// # Errors
+///
+/// Refuses a `UnitType` outside `IfcUnitEnum`, a blank name, and a
+/// non-finite offset.
+pub fn add_conversion_based_unit_with_offset(
+    tx: &mut Transaction,
+    draft: ConversionBasedUnitDraft<'_>,
+    conversion_offset: f64,
+) -> PropertyResult<EntityId> {
+    const ENTITY: &str = "IFCCONVERSIONBASEDUNITWITHOFFSET";
+    require_enum(ENTITY, "UnitType", draft.unit_type)?;
+    if draft.name.trim().is_empty() {
+        return Err(authoring_invalid(
+            ENTITY,
+            "Name",
+            "expected a non-empty name",
+        ));
+    }
+    if !conversion_offset.is_finite() {
+        return Err(authoring_invalid(
+            ENTITY,
+            "ConversionOffset",
+            "expected a finite offset",
+        ));
+    }
+    Ok(tx.create(Entity::new(
+        ENTITY,
+        vec![
+            Value::Ref(draft.dimensions),
+            enum_value(draft.unit_type),
+            Value::Text(draft.name.into()),
+            Value::Ref(draft.conversion_factor),
+            Value::Real(conversion_offset),
+        ],
+    )))
+}

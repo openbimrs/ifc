@@ -24,7 +24,7 @@ use crate::schedule::work_control_slot as control_slot;
 use crate::schedule::WorkControlKind;
 use crate::sequence::lag_slot;
 use crate::sequence::relation::slot as sequence_slot;
-use crate::task::definition::{task_slot, time_slot};
+use crate::task::definition::task_slot;
 
 /// Result of a schedule authoring call.
 pub type ScheduleAuthoringResult<T> = Result<T, ScheduleAuthoringError>;
@@ -100,74 +100,6 @@ pub fn create_task(
 pub(crate) fn optional_text(value: Option<&str>) -> Value {
     value.map_or(Value::Null, |text| Value::Text(text.into()))
 }
-/// Authored fields for `IfcTaskTime`.
-///
-/// Durations are ISO 8601 duration strings and timestamps ISO 8601
-/// datetimes, written exactly as given. Parsing them here would mean this
-/// crate owning calendar arithmetic it deliberately does not.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct TaskTimeDraft<'a> {
-    /// `IfcPhysicalQuantity`-style Name, slot 0.
-    pub name: Option<&'a str>,
-    /// `IfcTaskTime.DurationType`, `WORKTIME` or `ELAPSEDTIME`.
-    pub duration_type: Option<&'a str>,
-    /// `IfcTaskTime.ScheduleDuration`, an ISO 8601 duration.
-    pub schedule_duration: Option<&'a str>,
-    /// `IfcTaskTime.ScheduleStart`.
-    pub schedule_start: Option<&'a str>,
-    /// `IfcTaskTime.ScheduleFinish`.
-    pub schedule_finish: Option<&'a str>,
-    /// `IfcTaskTime.ActualStart`.
-    pub actual_start: Option<&'a str>,
-    /// `IfcTaskTime.ActualFinish`.
-    pub actual_finish: Option<&'a str>,
-    /// `IfcTaskTime.IsCritical`.
-    pub is_critical: Option<bool>,
-    /// `IfcTaskTime.Completion`, a percentage in `0..=100`.
-    pub completion: Option<f64>,
-}
-
-/// Stage an `IfcTaskTime`.
-pub fn create_task_time(
-    tx: &mut Transaction,
-    draft: TaskTimeDraft<'_>,
-) -> ScheduleAuthoringResult<EntityId> {
-    if let Some(completion) = draft.completion {
-        if !completion.is_finite() || !(0.0..=100.0).contains(&completion) {
-            return Err(ScheduleAuthoringError::InvalidValue {
-                entity: "IFCTASKTIME",
-                attribute: "Completion",
-                expected: "a percentage in 0..=100",
-            });
-        }
-    }
-    if let Some(kind) = draft.duration_type {
-        if !["WORKTIME", "ELAPSEDTIME", "NOTDEFINED"]
-            .iter()
-            .any(|known| known.eq_ignore_ascii_case(kind))
-        {
-            return Err(ScheduleAuthoringError::InvalidValue {
-                entity: "IFCTASKTIME",
-                attribute: "DurationType",
-                expected: "WORKTIME, ELAPSEDTIME or NOTDEFINED",
-            });
-        }
-    }
-    let mut attributes = vec![Value::Null; time_slot::COMPLETION + 1];
-    attributes[0] = optional_text(draft.name);
-    attributes[time_slot::DURATION_TYPE] = draft
-        .duration_type
-        .map_or(Value::Null, |t| Value::Enum(t.into()));
-    attributes[time_slot::SCHEDULE_DURATION] = optional_text(draft.schedule_duration);
-    attributes[time_slot::SCHEDULE_START] = optional_text(draft.schedule_start);
-    attributes[time_slot::SCHEDULE_FINISH] = optional_text(draft.schedule_finish);
-    attributes[time_slot::ACTUAL_START] = optional_text(draft.actual_start);
-    attributes[time_slot::ACTUAL_FINISH] = optional_text(draft.actual_finish);
-    attributes[time_slot::IS_CRITICAL] = draft.is_critical.map_or(Value::Null, Value::Bool);
-    attributes[time_slot::COMPLETION] = draft.completion.map_or(Value::Null, Value::Real);
-    Ok(tx.create(Entity::new("IFCTASKTIME", attributes)))
-}
-
 /// Stage an `IfcRelSequence` linking a predecessor to a successor.
 ///
 /// A task may not precede itself: a self-loop is an unsatisfiable
@@ -723,5 +655,7 @@ fn integer_list(values: &[i64]) -> Value {
 }
 
 mod procedure;
+mod timing;
 
 pub use procedure::{create_procedure, ProcedureDraft};
+pub use timing::{create_task_time, create_task_time_recurring, create_time_period, TaskTimeDraft};

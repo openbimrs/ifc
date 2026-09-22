@@ -9,6 +9,13 @@ and this project follows Semantic Versioning.
 
 ### Added
 
+- Thirteen more entities that had no writer: `IfcConversionBasedUnitWithOffset`
+  and `IfcQuantityNumber` (IFC4X3 only, and the one quantity that may be
+  negative), `IfcCurrencyRelationship`, `IfcDocumentInformationRelationship`,
+  `IfcSurfaceStyleRendering`, `IfcIndexedTriangleTextureMap`,
+  `IfcLightDistributionData`, `IfcLightIntensityDistribution`,
+  `IfcTaskTimeRecurring`, `IfcTimePeriod`, `IfcWellKnownText`,
+  `IfcShapeAspect` and `IfcGrid`.
 - Authoring for the non-geometry gap, part one: structural reactions
   (`IfcStructuralPointReaction`, `IfcStructuralCurveReaction`,
   `IfcStructuralSurfaceReaction`), `IfcStructuralResultGroup`, the failure
@@ -43,6 +50,10 @@ and this project follows Semantic Versioning.
 
 ### Fixed
 
+- The `lib.rs` monolith check counted continuation lines of a wrapped
+  `pub use` block as behaviour, so a long export list read as
+  implementation. It now tracks the open brace, matching the intent its
+  own comment already stated.
 - `ifc-style` could not author `IfcCurveStyleFontAndScaling` under IFC4.
   Slot 1 is named `CurveFont` there and `CurveStyleFont` in IFC4X3, and the
   writer hardcoded the IFC4X3 spelling, so the call was refused as an

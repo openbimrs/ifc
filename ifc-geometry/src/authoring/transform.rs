@@ -16,6 +16,7 @@
 //! `Scl > 0.0`. Absent means one, not zero, so `None` is safe -- but an
 //! explicit zero or negative scale is refused here.
 
+use ifc_model::guid::Guid;
 use ifc_model::{Entity, EntityId, Transaction, Value};
 
 use crate::error::GeometryError;
@@ -209,4 +210,100 @@ pub fn topology_representation(
         refs(items),
     ];
     Ok(tx.create(Entity::new(T, attrs)))
+}
+
+/// Stage an `IfcShapeAspect`: a named part of a product shape.
+///
+/// This is how a subtype points at one component of a larger
+/// representation -- a varying structural member naming the aspect
+/// that carries its thickness, for instance.
+///
+/// `ProductDefinitional` is an `IfcLogical`, not a boolean: it may be
+/// UNKNOWN, meaning nobody has stated whether the aspect defines the
+/// product shape. `None` is written as that third state rather than
+/// being collapsed to false, which would assert something untrue.
+///
+/// # Errors
+///
+/// Refuses an empty `shape_representations` list, which is bounded
+/// `LIST [1:?]`: an aspect representing nothing names nothing.
+pub fn shape_aspect(
+    tx: &mut Transaction,
+    shape_representations: &[EntityId],
+    name: Option<&str>,
+    description: Option<&str>,
+    product_definitional: Option<bool>,
+    part_of_product_definition_shape: Option<EntityId>,
+) -> Result<EntityId, GeometryError> {
+    const ENTITY: &str = "IFCSHAPEASPECT";
+    if shape_representations.is_empty() {
+        return Err(invalid(
+            ENTITY,
+            "ShapeRepresentations",
+            "expected at least one representation, per LIST [1:?]",
+        ));
+    }
+    let attrs = vec![
+        refs(shape_representations),
+        name.map_or(Value::Null, |v| Value::Text(v.into())),
+        description.map_or(Value::Null, |v| Value::Text(v.into())),
+        product_definitional.map_or(Value::LogicalUnknown, Value::Bool),
+        part_of_product_definition_shape.map_or(Value::Null, Value::Ref),
+    ];
+    Ok(tx.create(Entity::new(ENTITY, attrs)))
+}
+
+/// Stage an `IfcGrid`: the U/V/W axis system a plan is dimensioned
+/// against.
+///
+/// `UAxes` and `VAxes` are `LIST [1:?] OF UNIQUE`, so a grid needs at
+/// least one axis in each direction and may not list the same axis
+/// twice. A repeated axis is not a harmless duplicate: it makes the
+/// grid ambiguous about which intersection a gridline names.
+///
+/// # Errors
+///
+/// Refuses a malformed GlobalId, an empty U or V list, and a repeated
+/// axis within any one list.
+pub fn grid(
+    tx: &mut Transaction,
+    global_id: &str,
+    placement: Option<EntityId>,
+    axes: (&[EntityId], &[EntityId], &[EntityId]),
+    predefined_type: Option<&str>,
+) -> Result<EntityId, GeometryError> {
+    const ENTITY: &str = "IFCGRID";
+    if Guid::parse(global_id).is_none() {
+        return Err(invalid(ENTITY, "GlobalId", global_id));
+    }
+    let (u_axes, v_axes, w_axes) = axes;
+    for (values, attribute) in [(u_axes, "UAxes"), (v_axes, "VAxes")] {
+        if values.is_empty() {
+            return Err(invalid(
+                ENTITY,
+                attribute,
+                "expected at least one axis, per LIST [1:?]",
+            ));
+        }
+    }
+    for (values, attribute) in [(u_axes, "UAxes"), (v_axes, "VAxes"), (w_axes, "WAxes")] {
+        let mut seen = std::collections::HashSet::new();
+        if let Some(repeat) = values.iter().find(|axis| !seen.insert(**axis)) {
+            return Err(invalid(
+                ENTITY,
+                attribute,
+                format!("axis {repeat:?} appears twice in a UNIQUE list"),
+            ));
+        }
+    }
+    let mut attrs = vec![Value::Null; 11];
+    attrs[0] = Value::Text(global_id.into());
+    attrs[5] = placement.map_or(Value::Null, Value::Ref);
+    attrs[7] = refs(u_axes);
+    attrs[8] = refs(v_axes);
+    if !w_axes.is_empty() {
+        attrs[9] = refs(w_axes);
+    }
+    attrs[10] = predefined_type.map_or(Value::Null, |t| Value::Enum(t.into()));
+    Ok(tx.create(Entity::new(ENTITY, attrs)))
 }

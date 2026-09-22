@@ -33,6 +33,11 @@ pub enum QuantityKind {
     Weight,
     /// `IfcQuantityTime.TimeValue`, an `IfcTimeMeasure`.
     Time,
+    /// `IfcQuantityNumber.NumberValue`, an `IfcNumericMeasure`.
+    ///
+    /// IFC4X3 only: a dimensionless count that is not a cardinality,
+    /// such as a rating or an index.
+    Number,
 }
 
 impl QuantityKind {
@@ -45,6 +50,7 @@ impl QuantityKind {
             Self::Count => "IFCQUANTITYCOUNT",
             Self::Weight => "IFCQUANTITYWEIGHT",
             Self::Time => "IFCQUANTITYTIME",
+            Self::Number => "IFCQUANTITYNUMBER",
         }
     }
 
@@ -57,6 +63,7 @@ impl QuantityKind {
             Self::Count => "IFCCOUNTMEASURE",
             Self::Weight => "IFCMASSMEASURE",
             Self::Time => "IFCTIMEMEASURE",
+            Self::Number => "IFCNUMERICMEASURE",
         }
     }
 }
@@ -94,7 +101,13 @@ pub fn create_quantity(
     if draft.name.trim().is_empty() {
         return Err(invalid(entity, "Name", "expected a non-empty name"));
     }
-    if !draft.value.is_finite() || draft.value < 0.0 {
+    if !draft.value.is_finite() {
+        return Err(invalid(entity, "Value", "expected a finite measure"));
+    }
+    // Every dimension but Number measures a physical extent, and no
+    // extent is negative. A number is a plain count or index, so it may
+    // be negative -- a temperature delta or a rating, for instance.
+    if draft.kind != QuantityKind::Number && draft.value < 0.0 {
         return Err(invalid(
             entity,
             "Value",

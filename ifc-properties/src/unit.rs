@@ -21,7 +21,8 @@ mod monetary;
 
 pub use assignment::{prefix_exponent, project_unit_for, project_units, unit, unit_type, UnitKind};
 pub use authoring::{
-    add_context_dependent_unit, add_conversion_based_unit, add_derived_unit,
-    add_derived_unit_element, add_dimensional_exponents, add_measure_with_unit, add_monetary_unit,
-    add_si_unit, assign_units, ConversionBasedUnitDraft, MonetaryUnitDraft, SiUnitDraft,
+    add_context_dependent_unit, add_conversion_based_unit, add_conversion_based_unit_with_offset,
+    add_derived_unit, add_derived_unit_element, add_dimensional_exponents, add_measure_with_unit,
+    add_monetary_unit, add_si_unit, assign_units, ConversionBasedUnitDraft, MonetaryUnitDraft,
+    SiUnitDraft,
 };

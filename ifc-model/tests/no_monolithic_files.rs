@@ -143,19 +143,31 @@ fn lib_rs_delegates_rather_than_implements() {
             let text = std::fs::read_to_string(&lib).unwrap();
             let has_modules = has_module_declaration(&text);
             // Count non-doc, non-blank, non-module/re-export lines.
-            let code_lines = text
-                .lines()
-                .map(str::trim)
-                .filter(|l| {
-                    !l.is_empty()
-                        && !l.starts_with("//")
-                        && !l.starts_with("pub mod ")
-                        && !l.starts_with("pub use ")
-                        && !l.starts_with("mod ")
-                        && !l.starts_with("use ")
-                        && !l.starts_with("#!")
-                })
-                .count();
+            // A wrapped `pub use` spans several lines. Counting only
+            // the first one as a re-export makes a long export list
+            // look like behaviour, so track the open brace instead.
+            let mut in_use = false;
+            let mut code_lines = 0;
+            for line in text.lines().map(str::trim) {
+                if in_use {
+                    in_use = !line.ends_with("};") && !line.ends_with(';');
+                    continue;
+                }
+                let is_use = line.starts_with("use ") || line.starts_with("pub use ");
+                if is_use {
+                    in_use = !line.ends_with(';');
+                    continue;
+                }
+                if line.is_empty()
+                    || line.starts_with("//")
+                    || line.starts_with("pub mod ")
+                    || line.starts_with("mod ")
+                    || line.starts_with("#!")
+                {
+                    continue;
+                }
+                code_lines += 1;
+            }
             if has_modules && code_lines > 40 {
                 offenders.push(format!(
                     "  {} has {code_lines} lines of code beside its module declarations",

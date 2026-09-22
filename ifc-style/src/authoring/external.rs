@@ -558,3 +558,152 @@ pub fn create_text_style(
     }
     Ok(tx.create(build_named(schema, ENTITY, values)?))
 }
+
+/// Stage an `IfcIndexedTriangleTextureMap`.
+///
+/// The triangle form differs from the polygonal one in its index
+/// slot: `TexCoordIndex` is a list of triples of *integers* into the
+/// coordinate list, not a list of index entities. Writing entity
+/// references there would produce a map whose every triangle is
+/// unresolvable, which is why the two forms have separate writers.
+///
+/// # Errors
+///
+/// Refuses an empty `maps` list (`LIST [1:?]`) and an index value of
+/// zero: `IfcPositiveInteger` is one-based.
+pub fn create_indexed_triangle_texture_map(
+    tx: &mut Transaction,
+    schema: &Schema,
+    maps: &[EntityId],
+    mapped_to: EntityId,
+    tex_coords: EntityId,
+    tex_coord_index: &[[i64; 3]],
+) -> StyleResult<EntityId> {
+    const ENTITY: &str = "IfcIndexedTriangleTextureMap";
+    if maps.is_empty() {
+        return Err(invalid_authoring(ENTITY, "Maps", "empty"));
+    }
+    for triangle in tex_coord_index {
+        if let Some(index) = triangle.iter().find(|value| **value < 1) {
+            return Err(invalid_authoring(
+                ENTITY,
+                "TexCoordIndex",
+                format!("{index} is not a positive one-based index"),
+            ));
+        }
+    }
+    let mut values = vec![
+        (
+            "Maps",
+            Value::List(maps.iter().copied().map(Value::Ref).collect()),
+        ),
+        ("MappedTo", Value::Ref(mapped_to)),
+        ("TexCoords", Value::Ref(tex_coords)),
+    ];
+    if !tex_coord_index.is_empty() {
+        values.push((
+            "TexCoordIndex",
+            Value::List(
+                tex_coord_index
+                    .iter()
+                    .map(|triangle| {
+                        Value::List(triangle.iter().copied().map(Value::Integer).collect())
+                    })
+                    .collect(),
+            ),
+        ));
+    }
+    Ok(tx.create(build_named(schema, ENTITY, values)?))
+}
+
+/// Stage an `IfcLightDistributionData`: one row of a photometric
+/// table.
+///
+/// A row fixes a main-plane angle and gives the intensity at each
+/// secondary angle. The two lists are read in parallel, so a row whose
+/// lengths disagree silently pairs an angle with the wrong intensity.
+/// That is checked here rather than left to the reader.
+///
+/// # Errors
+///
+/// Refuses empty lists (both are `LIST [1:?]`), lists of differing
+/// length, and non-finite values.
+pub fn create_light_distribution_data(
+    tx: &mut Transaction,
+    schema: &Schema,
+    main_plane_angle: f64,
+    secondary_plane_angles: &[f64],
+    luminous_intensities: &[f64],
+) -> StyleResult<EntityId> {
+    const ENTITY: &str = "IfcLightDistributionData";
+    if secondary_plane_angles.is_empty() || luminous_intensities.is_empty() {
+        return Err(invalid_authoring(ENTITY, "SecondaryPlaneAngle", "empty"));
+    }
+    if secondary_plane_angles.len() != luminous_intensities.len() {
+        return Err(invalid_authoring(
+            ENTITY,
+            "LuminousIntensity",
+            "expected one intensity per secondary angle",
+        ));
+    }
+    if !main_plane_angle.is_finite()
+        || secondary_plane_angles.iter().any(|v| !v.is_finite())
+        || luminous_intensities.iter().any(|v| !v.is_finite())
+    {
+        return Err(invalid_authoring(ENTITY, "MainPlaneAngle", "not finite"));
+    }
+    let reals = |values: &[f64]| Value::List(values.iter().copied().map(Value::Real).collect());
+    let values = vec![
+        ("MainPlaneAngle", Value::Real(main_plane_angle)),
+        ("SecondaryPlaneAngle", reals(secondary_plane_angles)),
+        ("LuminousIntensity", reals(luminous_intensities)),
+    ];
+    Ok(tx.create(build_named(schema, ENTITY, values)?))
+}
+
+/// Stage an `IfcLightIntensityDistribution`: a photometric table.
+///
+/// # Errors
+///
+/// Refuses an empty `distribution_data` list (`LIST [1:?]`) and a
+/// curve token the schema does not declare.
+pub fn create_light_intensity_distribution(
+    tx: &mut Transaction,
+    schema: &Schema,
+    light_distribution_curve: &str,
+    distribution_data: &[EntityId],
+) -> StyleResult<EntityId> {
+    const ENTITY: &str = "IfcLightIntensityDistribution";
+    if distribution_data.is_empty() {
+        return Err(invalid_authoring(ENTITY, "DistributionData", "empty"));
+    }
+    let declared = schema
+        .attributes(ENTITY)
+        .iter()
+        .find(|a| a.name.eq_ignore_ascii_case("LightDistributionCurve"))
+        .and_then(|a| schema.type_def(&a.type_name))
+        .is_some_and(|def| match &def.kind {
+            ifc_schema::TypeKind::Enumeration(values) => values
+                .iter()
+                .any(|v| v.eq_ignore_ascii_case(light_distribution_curve)),
+            _ => false,
+        });
+    if !declared {
+        return Err(invalid_authoring(
+            ENTITY,
+            "LightDistributionCurve",
+            light_distribution_curve,
+        ));
+    }
+    let values = vec![
+        (
+            "LightDistributionCurve",
+            Value::Enum(light_distribution_curve.into()),
+        ),
+        (
+            "DistributionData",
+            Value::List(distribution_data.iter().copied().map(Value::Ref).collect()),
+        ),
+    ];
+    Ok(tx.create(build_named(schema, ENTITY, values)?))
+}

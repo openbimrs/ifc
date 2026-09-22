@@ -88,8 +88,8 @@ pub use tessellation::{
     TriangulatedExtras,
 };
 pub use transform::{
-    mapped_item, representation_map, topology_representation, transformation_operator_2d,
-    transformation_operator_2d_non_uniform, transformation_operator_3d,
+    grid, mapped_item, representation_map, shape_aspect, topology_representation,
+    transformation_operator_2d, transformation_operator_2d_non_uniform, transformation_operator_3d,
     transformation_operator_3d_non_uniform, Transform,
 };
 
