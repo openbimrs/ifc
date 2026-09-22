@@ -26,11 +26,11 @@ mod result;
 pub use action::{ActionKind, CoordinateSystem, StructuralAction};
 pub use authoring::{
     stage_action, stage_activity_assignment, stage_analysis_model, stage_boundary_condition,
-    stage_connection, stage_load, stage_member, stage_member_connection, ActionDraft,
-    ActionDraftKind, ActivityAssignmentDraft, AnalysisModelDraft, BoundaryConditionDraft,
-    ConnectionDraft, ConnectionDraftKind, LoadDraft, MemberConnectionDraft, MemberDraft,
-    MemberDraftKind, MemberPredefinedType, ProjectedOrTrue, RelationshipRootDraft,
-    StructuralRootDraft,
+    stage_connection, stage_load, stage_load_group, stage_member, stage_member_connection,
+    ActionDraft, ActionDraftKind, ActivityAssignmentDraft, AnalysisModelDraft,
+    BoundaryConditionDraft, ConnectionDraft, ConnectionDraftKind, LoadDraft, LoadGroupDraft,
+    LoadGroupKind, MemberConnectionDraft, MemberDraft, MemberDraftKind, MemberPredefinedType,
+    ProjectedOrTrue, RelationshipRootDraft, StructuralRootDraft,
 };
 pub use condition::{
     AxisValues, BoundaryCondition, BoundaryConditionKind, ConnectionCondition,

@@ -35,9 +35,9 @@ mod view;
 
 pub use authoring::{
     alignment, alignment_segment, axis2_placement_linear, cant_layout, cant_segment,
-    cartesian_point, horizontal_layout, horizontal_segment, linear_placement, point_by_distance,
-    referent, stationing, vertical_layout, vertical_segment, CantSegmentDraft,
-    HorizontalSegmentDraft, VerticalSegmentDraft,
+    cartesian_point, horizontal_layout, horizontal_segment, linear_element, linear_placement,
+    linear_positioning_element, point_by_distance, referent, stationing, vertical_layout,
+    vertical_segment, CantSegmentDraft, HorizontalSegmentDraft, VerticalSegmentDraft,
 };
 pub use cant::{
     cant_at, read_cant_segment, CantAtStation, CantLayout, CantSegment, CantSegmentType,

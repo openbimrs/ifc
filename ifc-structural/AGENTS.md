@@ -5,6 +5,14 @@ Purpose: Bounded borrowed structural-analysis views, relationship traversal, and
 Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
 roadmap work; keep progress, blockers, and evidence there.
 
+- `IfcStructuralLoadGroup` and `IfcStructuralLoadCase` authoring, plus the
+  `Varying` forms of the curve and surface members. The case form's inherited
+  `PredefinedType` is pinned to `LOAD_CASE` by `IsLoadCasePredefinedType`, so
+  it is not a caller field; `HasObjectType` spans `PredefinedType`,
+  `ActionType` and `ActionSource` together, not one of them.
+- `SuitablePredefinedType` on `IfcStructuralCurveAction`: `EQUIDISTANT` is a
+  member of the shared activity-type enum but is excluded for the action form.
+
 ## Boundary
 
 Allowed production dependencies: ifc-model and schema metadata only; no geometry crate.

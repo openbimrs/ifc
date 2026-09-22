@@ -7,6 +7,12 @@ numbers (ADR 0011) — without meshing or backend selection.
 Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
 roadmap work; keep progress, blockers, and evidence there.
 
+- `IfcLinearElement` and `IfcLinearPositioningElement` authoring, both IFC4X3
+  additions that IFC4 does not declare. The positioning element inherits
+  `IfcPositioningElement.HasPlacement`, so its placement is a required
+  argument even though the slot is declared OPTIONAL; the linear element has
+  no such rule and takes an optional placement.
+
 ## Boundary
 
 Allowed production dependencies: ifc-model, schema metadata, and exact neutral axiolid-core/axiolid-curve representations; axiolid-model only if graph output is required.

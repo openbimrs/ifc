@@ -30,8 +30,8 @@ code.
 | `ifc-geometry` | 36,780 | 123 | 3 | 51 | <span class="status-partial">Partial</span> |
 | `ifc-style` | 6,343 | 42 | 0 | 11 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 5,460 | 35 | 14 | 8 | <span class="status-implemented">Implemented</span> |
-| `ifc-alignment` | 4,532 | 36 | 11 | 10 | <span class="status-partial">Partial</span> |
-| `ifc-structural` | 4,235 | 34 | 14 | 15 | <span class="status-implemented">Implemented</span> |
+| `ifc-alignment` | 4,605 | 37 | 11 | 11 | <span class="status-partial">Partial</span> |
+| `ifc-structural` | 4,552 | 35 | 14 | 16 | <span class="status-implemented">Implemented</span> |
 | `ifc-element-type` | 3,429 | 10 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 3,241 | 25 | 0 | 11 | <span class="status-implemented">Implemented</span> |
 | `ifc-resource` | 3,215 | 30 | 9 | 10 | <span class="status-partial">Partial</span> |

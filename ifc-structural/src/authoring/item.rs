@@ -89,6 +89,13 @@ pub enum MemberDraftKind {
         predefined_type: MemberPredefinedType,
         /// `Axis`; required when the target schema declares the attribute for this type.
         axis: Option<EntityId>,
+        /// Stage `IfcStructuralCurveMemberVarying` instead.
+        ///
+        /// The varying subtype adds no attribute: it declares that the
+        /// axis properties change along the member, which the analysis
+        /// side reads from the type name alone. Same slots, different
+        /// claim about the member.
+        varying: bool,
     },
     /// Stages an `IfcStructuralSurfaceMember`.
     Surface {
@@ -96,6 +103,12 @@ pub enum MemberDraftKind {
         predefined_type: MemberPredefinedType,
         /// `Thickness`; must be a positive finite value, and mandatory when `predefined_type` is `Shell`.
         thickness: Option<f64>,
+        /// Stage `IfcStructuralSurfaceMemberVarying` instead.
+        ///
+        /// `Thickness` on the varying form is the value at a reference
+        /// point, not a constant; the variation itself is carried by an
+        /// attached property set, so the slot layout is unchanged.
+        varying: bool,
     },
 }
 
@@ -202,8 +215,13 @@ pub fn stage_member(
         MemberDraftKind::Curve {
             predefined_type,
             axis,
+            varying,
         } => (
-            "IfcStructuralCurveMember",
+            if varying {
+                "IfcStructuralCurveMemberVarying"
+            } else {
+                "IfcStructuralCurveMember"
+            },
             predefined_type,
             axis,
             None,
@@ -212,8 +230,13 @@ pub fn stage_member(
         MemberDraftKind::Surface {
             predefined_type,
             thickness,
+            varying,
         } => (
-            "IfcStructuralSurfaceMember",
+            if varying {
+                "IfcStructuralSurfaceMemberVarying"
+            } else {
+                "IfcStructuralSurfaceMember"
+            },
             predefined_type,
             None,
             thickness,

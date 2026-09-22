@@ -13,6 +13,7 @@ use crate::AnalysisModelType;
 mod action;
 mod condition;
 mod item;
+mod load_group;
 mod relation;
 
 pub use action::{stage_action, ActionDraft, ActionDraftKind, ProjectedOrTrue};
@@ -21,6 +22,7 @@ pub use item::{
     stage_connection, stage_member, ConnectionDraft, ConnectionDraftKind, MemberDraft,
     MemberDraftKind, MemberPredefinedType, StructuralRootDraft,
 };
+pub use load_group::{stage_load_group, LoadGroupDraft, LoadGroupKind};
 pub use relation::{
     stage_activity_assignment, stage_member_connection, ActivityAssignmentDraft,
     MemberConnectionDraft, RelationshipRootDraft,

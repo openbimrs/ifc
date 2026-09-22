@@ -1,5 +1,5 @@
 use ifc_model::{EntityId, Model, Transaction, Value};
-use ifc_schema::Schema;
+use ifc_schema::{Schema, TypeKind};
 
 use super::item::{root_fields, validate_root, StructuralRootDraft};
 use super::{build_named, optional_ref, validate_optional_ref, validate_ref_select};
@@ -222,7 +222,54 @@ pub fn stage_action(
                 rule: "USERDEFINED PredefinedType requires an ObjectType",
             });
         }
+        // SuitablePredefinedType: the curve form alone excludes
+        // EQUIDISTANT. The token exists in the enum because the
+        // activity-type enum is shared with curve *reactions*, where
+        // equidistant results are meaningful; an applied action
+        // cannot be equidistant.
+        if matches!(draft.kind, ActionDraftKind::Curve { .. })
+            && token.eq_ignore_ascii_case("EQUIDISTANT")
+        {
+            return Err(StructuralError::SemanticViolation {
+                entity: None,
+                rule: "IfcStructuralCurveAction.SuitablePredefinedType",
+            });
+        }
+        // The token must be one the target schema declares for this
+        // attribute: a surface token on a curve action resolves to a
+        // slot that accepts it structurally and means nothing.
+        validate_activity_token(schema, entity_type, token)?;
         fields.push(("PredefinedType", Value::Enum(token.into())));
     }
     Ok(tx.create(build_named(schema, entity_type, fields)?))
+}
+
+/// Refuse a `PredefinedType` token the schema does not declare
+/// for `entity_type`.
+///
+/// The curve and surface forms carry different activity enums
+/// with overlapping tokens (`CONST`, `DISCRETE`), so a wrong-form
+/// token is not always visibly wrong.
+fn validate_activity_token(
+    schema: &Schema,
+    entity_type: &'static str,
+    token: &str,
+) -> StructuralResult<()> {
+    let declared = schema
+        .attributes(entity_type)
+        .iter()
+        .find(|a| a.name.eq_ignore_ascii_case("PredefinedType"))
+        .and_then(|a| schema.type_def(&a.type_name))
+        .is_some_and(|def| {
+            matches!(&def.kind, TypeKind::Enumeration(values)
+                if values.iter().any(|v| v.eq_ignore_ascii_case(token)))
+        });
+    if declared {
+        return Ok(());
+    }
+    Err(StructuralError::InvalidDraftValue {
+        entity_type,
+        attribute: "PredefinedType",
+        expected: "a token this action's activity enum declares",
+    })
 }

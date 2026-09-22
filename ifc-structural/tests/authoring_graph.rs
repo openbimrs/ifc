@@ -45,6 +45,7 @@ fn stages_structural_graph_atomically_and_reads_it_back() {
             kind: MemberDraftKind::Curve {
                 predefined_type: MemberPredefinedType::RigidJoinedMember,
                 axis: Some(axis),
+                varying: false,
             },
         },
     )
@@ -148,6 +149,7 @@ fn stages_ifc2x3_legacy_structural_types() {
             kind: MemberDraftKind::Curve {
                 predefined_type: MemberPredefinedType::RigidJoinedMember,
                 axis: None,
+                varying: false,
             },
         },
     )
@@ -217,6 +219,7 @@ fn invalid_drafts_do_not_stage_partial_edits() {
             kind: MemberDraftKind::Curve {
                 predefined_type: MemberPredefinedType::RigidJoinedMember,
                 axis: None,
+                varying: false,
             },
         },
     );
@@ -234,6 +237,7 @@ fn invalid_drafts_do_not_stage_partial_edits() {
             kind: MemberDraftKind::Surface {
                 predefined_type: MemberPredefinedType::Shell,
                 thickness: None,
+                varying: false,
             },
         },
     );
@@ -375,6 +379,7 @@ fn entity_specific_authoring_rules_are_independently_enforced() {
             kind: MemberDraftKind::Curve {
                 predefined_type: MemberPredefinedType::UserDefined,
                 axis: Some(axis),
+                varying: false,
             },
         },
     );
@@ -394,6 +399,7 @@ fn entity_specific_authoring_rules_are_independently_enforced() {
             kind: MemberDraftKind::Curve {
                 predefined_type: MemberPredefinedType::Shell,
                 axis: Some(axis),
+                varying: false,
             },
         },
     );

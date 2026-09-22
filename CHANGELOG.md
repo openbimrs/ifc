@@ -9,6 +9,21 @@ and this project follows Semantic Versioning.
 
 ### Added
 
+- `ifc-structural` authors `IfcStructuralLoadGroup` and `IfcStructuralLoadCase`,
+  enforcing `IsLoadCasePredefinedType` by construction and `HasObjectType`
+  across `PredefinedType`, `ActionType` and `ActionSource` jointly, plus the
+  `Varying` forms of the curve and surface structural members.
+- `ifc-alignment` authors `IfcLinearElement` and `IfcLinearPositioningElement`,
+  the two IFC4X3-only linear supertypes, with
+  `IfcPositioningElement.HasPlacement` enforced as a required argument.
+
+### Fixed
+
+- `ifc-structural` refused to enforce `SuitablePredefinedType` on
+  `IfcStructuralCurveAction`, which accepted the `EQUIDISTANT` token the rule
+  excludes, and wrote `PredefinedType` tokens without checking the target
+  schema declares them.
+
 
 - The remaining `IfcRoot`-derived entities with an existing owner are
   authored in their own crates: `IfcActor`, `IfcOccupant` and `IfcAsset`
