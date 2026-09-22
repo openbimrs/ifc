@@ -24,6 +24,7 @@ mod placement;
 mod profile;
 mod profile2;
 mod solid;
+mod spiral;
 mod std_profile;
 mod surface;
 mod surface_curve;
@@ -32,9 +33,10 @@ mod tessellation;
 mod transform;
 
 pub use brep::{
-    edge, edge_curve, edge_loop, face, face_based_surface_model, face_bound, face_outer_bound,
-    face_surface, manifold_solid_brep, oriented_edge, poly_loop, shell, shell_based_surface_model,
-    subedge, vertex_loop, vertex_point, BrepKind, ShellKind,
+    bare_topology, edge, edge_curve, edge_loop, face, face_based_surface_model, face_bound,
+    face_outer_bound, face_surface, manifold_solid_brep, oriented_edge, poly_loop, shell,
+    shell_based_surface_model, subedge, vertex_loop, vertex_point, BareTopology, BrepKind,
+    ShellKind,
 };
 pub use connection::{
     boolean_clipping_result, connection_geometry, connection_point_eccentricity, geometric_set,
@@ -47,8 +49,9 @@ pub use csg::{
 };
 pub use curve::{
     bspline_curve_with_knots, circle, composite_curve, composite_curve_segment, ellipse,
-    indexed_poly_curve, line, offset_curve_2d, offset_curve_3d, rational_bspline_curve_with_knots,
-    trimmed_curve, vector, KnotVector, PolyCurveSegment,
+    indexed_poly_curve, line, offset_curve_2d, offset_curve_3d, offset_curve_by_distances,
+    polynomial_curve, rational_bspline_curve_with_knots, segmented_reference_curve, trimmed_curve,
+    vector, KnotVector, PolyCurveSegment, PolynomialCoefficients,
 };
 pub use placement::{axis2_placement_2d, axis2_placement_3d, cartesian_point, direction};
 pub use profile::{
@@ -56,9 +59,10 @@ pub use profile::{
 };
 pub use profile2::{
     arbitrary_open_profile, arbitrary_profile_with_voids, center_line_profile, composite_profile,
-    derived_profile, mirrored_profile, rounded_rectangle_profile,
+    derived_profile, mirrored_profile, open_cross_profile, profile_def, rounded_rectangle_profile,
 };
 pub use solid::{boolean_result, extruded_area_solid, revolved_area_solid};
+pub use spiral::{spiral, SpiralKind};
 pub use std_profile::{
     asymmetric_i_shape, c_shape, circle_hollow_profile, ellipse_profile, i_shape, l_shape,
     rectangle_hollow_profile, t_shape, trapezium_profile, u_shape, z_shape, AsymmetricIDims,
@@ -77,15 +81,16 @@ pub use surface_curve::{
     SurfaceCurveKind, SurfaceCurveRepresentation,
 };
 pub use swept::{
-    axis1_placement, cylindrical_surface, extruded_area_solid_tapered,
-    fixed_reference_swept_area_solid, plane, revolved_area_solid_tapered,
-    surface_curve_swept_area_solid, surface_of_linear_extrusion, surface_of_revolution,
-    swept_disk_solid, swept_disk_solid_polygonal, SweepTrim,
+    axis1_placement, cylindrical_surface, directrix_derived_reference_swept_area_solid,
+    extruded_area_solid_tapered, fixed_reference_swept_area_solid, plane,
+    revolved_area_solid_tapered, sectioned, surface_curve_swept_area_solid,
+    surface_of_linear_extrusion, surface_of_revolution, swept_disk_solid,
+    swept_disk_solid_polygonal, SectionedKind, SweepTrim,
 };
 pub use tessellation::{
     cartesian_point_list_2d, cartesian_point_list_3d, indexed_polygonal_face,
     indexed_polygonal_face_with_voids, polygonal_face_set, triangulated_face_set,
-    TriangulatedExtras,
+    triangulated_irregular_network, TriangulatedExtras,
 };
 pub use transform::{
     grid, mapped_item, representation_map, shape_aspect, topology_representation,

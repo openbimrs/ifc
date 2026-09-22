@@ -27,7 +27,7 @@ use crate::error::GeometryError;
 use crate::slots::profile_slot as slot;
 
 use super::std_profile::positive;
-use super::{invalid, refs};
+use super::{invalid, reals, refs, require_finite};
 
 /// Write `ProfileType` and the optional `ProfileName`.
 fn header(attrs: &mut [Value], profile_type: ProfileType, name: Option<&str>) {
@@ -214,4 +214,99 @@ pub fn rounded_rectangle_profile(
     attrs[slot::Y_DIM] = Value::Real(y_dim);
     attrs[5] = Value::Real(rounding_radius);
     Ok(tx.create(Entity::new(T, attrs)))
+}
+
+/// Stage a bare `IfcProfileDef`.
+///
+/// The supertype is concrete: it names a section and says whether it
+/// bounds an area, without describing its shape. A file may carry one
+/// where the geometry is supplied elsewhere, so this exists to
+/// round-trip such a model rather than to author new sections --
+/// prefer a subtype that states the shape.
+pub fn profile_def(
+    tx: &mut Transaction,
+    profile_type: ProfileType,
+    name: Option<&str>,
+) -> EntityId {
+    let attrs = vec![
+        Value::Enum(profile_type.token().into()),
+        name.map_or(Value::Null, |n| Value::Text(n.into())),
+    ];
+    tx.create(Entity::new("IFCPROFILEDEF", attrs))
+}
+
+/// Stage an `IfcOpenCrossProfileDef`.
+///
+/// A road or rail cross-section given as a chain of segments: each
+/// width is paired with the slope of that segment, so the two lists
+/// run in parallel and must be the same length
+/// (`CorrespondingSlopeWidths`). `Tags` names the *points* between
+/// segments, so it carries exactly one more entry than there are
+/// segments (`CorrespondingTags`).
+///
+/// `ProfileType` is fixed to CURVE by `CorrectProfileType`: an open
+/// chain bounds no area, so it is not a parameter.
+///
+/// # Errors
+///
+/// Refuses empty or mismatched width and slope lists, a `tags` list
+/// that is not `widths.len() + 1`, a negative width
+/// (`IfcNonNegativeLengthMeasure`), and non-finite values.
+pub fn open_cross_profile(
+    tx: &mut Transaction,
+    name: Option<&str>,
+    horizontal_widths: bool,
+    widths: &[f64],
+    slopes: &[f64],
+    tags: Option<&[&str]>,
+    offset_point: Option<EntityId>,
+) -> Result<EntityId, GeometryError> {
+    const ENTITY: &str = "IFCOPENCROSSPROFILEDEF";
+    if widths.is_empty() {
+        return Err(invalid(ENTITY, "Widths", "expected LIST [1:?]"));
+    }
+    if widths.len() != slopes.len() {
+        return Err(invalid(
+            ENTITY,
+            "Slopes",
+            format!(
+                "expected one slope per width: {} widths, {} slopes",
+                widths.len(),
+                slopes.len()
+            ),
+        ));
+    }
+    require_finite(ENTITY, "Widths", widths)?;
+    require_finite(ENTITY, "Slopes", slopes)?;
+    if let Some(bad) = widths.iter().position(|w| *w < 0.0) {
+        return Err(invalid(
+            ENTITY,
+            "Widths",
+            format!("width at index {bad} is negative"),
+        ));
+    }
+    if let Some(tags) = tags {
+        // Tags name the points between segments, so a chain of n
+        // segments has n+1 of them.
+        if tags.len() != widths.len() + 1 {
+            return Err(invalid(
+                ENTITY,
+                "Tags",
+                format!("expected {} tags, got {}", widths.len() + 1, tags.len()),
+            ));
+        }
+    }
+    let attrs = vec![
+        // CorrectProfileType fixes this to CURVE.
+        Value::Enum(ProfileType::Curve.token().into()),
+        name.map_or(Value::Null, |n| Value::Text(n.into())),
+        Value::Bool(horizontal_widths),
+        reals(widths),
+        reals(slopes),
+        tags.map_or(Value::Null, |t| {
+            Value::List(t.iter().map(|v| Value::Text((*v).into())).collect())
+        }),
+        offset_point.map_or(Value::Null, Value::Ref),
+    ];
+    Ok(tx.create(Entity::new(ENTITY, attrs)))
 }

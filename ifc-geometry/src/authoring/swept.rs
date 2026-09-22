@@ -26,7 +26,7 @@ use crate::solid::swept::{
 };
 
 use super::std_profile::positive;
-use super::{invalid, require_finite};
+use super::{invalid, refs, require_finite};
 
 /// Optional trim parameters shared by the directrix-driven sweeps.
 ///
@@ -363,4 +363,102 @@ pub fn axis1_placement(
 ) -> EntityId {
     let attrs = vec![Value::Ref(location), axis.map_or(Value::Null, Value::Ref)];
     tx.create(Entity::new("IFCAXIS1PLACEMENT", attrs))
+}
+
+/// Stage an `IfcDirectrixDerivedReferenceSweptAreaSolid`.
+///
+/// Shares the fixed-reference layout exactly, but the reference is
+/// *derived from* the directrix rather than held constant: the profile
+/// rotates with the curve as it sweeps. Same six slots, different
+/// meaning, so it is its own entity rather than a flag.
+///
+/// # Errors
+///
+/// Refuses a non-finite trim parameter.
+pub fn directrix_derived_reference_swept_area_solid(
+    tx: &mut Transaction,
+    swept_area: EntityId,
+    position: Option<EntityId>,
+    directrix: EntityId,
+    trim: SweepTrim,
+    fixed_reference: EntityId,
+) -> Result<EntityId, GeometryError> {
+    const T: &str = "IFCDIRECTRIXDERIVEDREFERENCESWEPTAREASOLID";
+    let mut attrs = directrix_attrs(T, swept_area, position, directrix, trim)?;
+    attrs[directrix_slot::FIXED_REFERENCE] = Value::Ref(fixed_reference);
+    Ok(tx.create(Entity::new(T, attrs)))
+}
+
+/// Which sectioned entity to stage.
+///
+/// The two carry the same three attributes but in *different slot
+/// order*: the solid is Directrix, CrossSections, CrossSectionPositions
+/// while the surface is Directrix, CrossSectionPositions, CrossSections.
+/// Writing one layout under the other type name produces a record that
+/// parses and is wrong, so the order is selected here rather than left
+/// to the caller.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SectionedKind {
+    /// `IfcSectionedSolidHorizontal`.
+    SolidHorizontal,
+    /// `IfcSectionedSurface`.
+    Surface,
+}
+
+/// Stage an `IfcSectionedSolidHorizontal` or `IfcSectionedSurface`.
+///
+/// Both sweep a series of cross-sections along a directrix, each
+/// positioned by an `IfcAxis2PlacementLinear`. Both require at least
+/// two sections and one position per section.
+///
+/// # Errors
+///
+/// Refuses fewer than two cross-sections or positions (`LIST [2:?]`)
+/// and a count mismatch between them
+/// (`CorrespondingSectionPositions`).
+pub fn sectioned(
+    tx: &mut Transaction,
+    kind: SectionedKind,
+    directrix: EntityId,
+    cross_sections: &[EntityId],
+    cross_section_positions: &[EntityId],
+) -> Result<EntityId, GeometryError> {
+    let entity = match kind {
+        SectionedKind::SolidHorizontal => "IFCSECTIONEDSOLIDHORIZONTAL",
+        SectionedKind::Surface => "IFCSECTIONEDSURFACE",
+    };
+    if cross_sections.len() < 2 {
+        return Err(invalid(entity, "CrossSections", "expected LIST [2:?]"));
+    }
+    if cross_section_positions.len() < 2 {
+        return Err(invalid(
+            entity,
+            "CrossSectionPositions",
+            "expected LIST [2:?]",
+        ));
+    }
+    if cross_sections.len() != cross_section_positions.len() {
+        return Err(invalid(
+            entity,
+            "CrossSectionPositions",
+            format!(
+                "expected one position per section: {} sections, {} positions",
+                cross_sections.len(),
+                cross_section_positions.len()
+            ),
+        ));
+    }
+    let attrs = match kind {
+        SectionedKind::SolidHorizontal => vec![
+            Value::Ref(directrix),
+            refs(cross_sections),
+            refs(cross_section_positions),
+        ],
+        SectionedKind::Surface => vec![
+            Value::Ref(directrix),
+            refs(cross_section_positions),
+            refs(cross_sections),
+        ],
+    };
+    Ok(tx.create(Entity::new(entity, attrs)))
 }

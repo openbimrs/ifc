@@ -193,20 +193,46 @@ pub fn triangulated_face_set(
     triangles: &[[usize; 3]],
     extras: TriangulatedExtras<'_>,
 ) -> Result<EntityId, GeometryError> {
-    const T: &str = "IFCTRIANGULATEDFACESET";
+    let attrs = triangulated_attrs(
+        "IFCTRIANGULATEDFACESET",
+        5,
+        coordinates,
+        point_count,
+        triangles,
+        extras,
+    )?;
+    Ok(tx.create(Entity::new("IFCTRIANGULATEDFACESET", attrs)))
+}
+
+/// The shared body of the triangulated face sets.
+///
+/// `IfcTriangulatedIrregularNetwork` adds a sixth slot but is otherwise
+/// identical, so the index checking lives here rather than twice.
+fn triangulated_attrs(
+    type_name: &'static str,
+    arity: usize,
+    coordinates: EntityId,
+    point_count: usize,
+    triangles: &[[usize; 3]],
+    extras: TriangulatedExtras<'_>,
+) -> Result<Vec<Value>, GeometryError> {
     if triangles.is_empty() {
-        return Err(invalid(T, "CoordIndex", "expected at least one triangle"));
+        return Err(invalid(
+            type_name,
+            "CoordIndex",
+            "expected at least one triangle",
+        ));
     }
     let mut indexed = Vec::with_capacity(triangles.len());
     for triangle in triangles {
         let mut row = Vec::with_capacity(3);
         for value in triangle {
-            row.push(index_1based(T, "CoordIndex", *value, point_count)?);
+            row.push(index_1based(type_name, "CoordIndex", *value, point_count)?);
         }
         indexed.push(Value::List(row));
     }
 
-    let mut attrs = vec![Value::Null; 5];
+    let mut attrs = vec![Value::Null; arity];
     attrs[slot::COORDINATES] = Value::Ref(coordinates);
     attrs[slot::TRI_COORD_INDEX] = Value::List(indexed);
     if let Some(closed) = extras.closed {
@@ -215,7 +241,7 @@ pub fn triangulated_face_set(
     if let Some(normals) = extras.normals {
         let mut rows = Vec::with_capacity(normals.len());
         for normal in normals {
-            require_finite(T, "Normals", normal)?;
+            require_finite(type_name, "Normals", normal)?;
             rows.push(Value::List(
                 normal.iter().copied().map(Value::Real).collect(),
             ));
@@ -225,11 +251,11 @@ pub fn triangulated_face_set(
     if let Some(pn) = extras.pn_index {
         let mut rows = Vec::with_capacity(pn.len());
         for value in pn {
-            rows.push(index_1based(T, "PnIndex", *value, point_count)?);
+            rows.push(index_1based(type_name, "PnIndex", *value, point_count)?);
         }
         attrs[slot::TRI_PN_INDEX] = Value::List(rows);
     }
-    Ok(tx.create(Entity::new(T, attrs)))
+    Ok(attrs)
 }
 
 /// Stage an `IfcIndexedPolygonalFace`.
@@ -363,5 +389,47 @@ pub fn polygonal_face_set(
         }
         attrs[slot::POLY_PN_INDEX] = Value::List(rows);
     }
+    Ok(tx.create(Entity::new(T, attrs)))
+}
+
+/// Stage an `IfcTriangulatedIrregularNetwork`.
+///
+/// A terrain surface: the same triangulated face set plus `Flags`, one
+/// per triangle, marking break lines and holes.
+///
+/// `Closed` is forced to FALSE by `NotClosed` -- a TIN is a height
+/// field, not a solid, so it cannot enclose a volume. The caller does
+/// not choose it.
+///
+/// # Errors
+///
+/// Refuses an empty triangle list, an index outside the point list, a
+/// non-finite normal, and a `flags` length that does not match the
+/// triangle count.
+pub fn triangulated_irregular_network(
+    tx: &mut Transaction,
+    coordinates: EntityId,
+    point_count: usize,
+    triangles: &[[usize; 3]],
+    extras: TriangulatedExtras<'_>,
+    flags: &[i64],
+) -> Result<EntityId, GeometryError> {
+    const T: &str = "IFCTRIANGULATEDIRREGULARNETWORK";
+    const FLAGS: usize = 5;
+    if flags.len() != triangles.len() {
+        return Err(invalid(
+            T,
+            "Flags",
+            format!(
+                "expected one flag per triangle: {} triangles, {} flags",
+                triangles.len(),
+                flags.len()
+            ),
+        ));
+    }
+    let mut attrs = triangulated_attrs(T, 6, coordinates, point_count, triangles, extras)?;
+    // NotClosed: a terrain surface is a height field, never a solid.
+    attrs[slot::TRI_CLOSED] = Value::Bool(false);
+    attrs[FLAGS] = Value::List(flags.iter().copied().map(Value::Integer).collect());
     Ok(tx.create(Entity::new(T, attrs)))
 }

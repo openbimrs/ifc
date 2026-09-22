@@ -371,3 +371,97 @@ pub fn create_surface_style_refraction(
     }
     Ok(tx.create(build_named(schema, "IfcSurfaceStyleRefraction", values)?))
 }
+
+/// The goniometric-only attributes of an `IfcLightSourceGoniometric`.
+#[derive(Debug, Clone, Copy)]
+pub struct GoniometricLight {
+    /// `Position`, an `IfcAxis2Placement3D`.
+    pub position: EntityId,
+    /// `ColourAppearance`, an `IfcColourRgb`.
+    pub colour_appearance: Option<EntityId>,
+    /// `ColourTemperature`, in kelvin.
+    pub colour_temperature: f64,
+    /// `LuminousFlux`, in lumen.
+    pub luminous_flux: f64,
+    /// `LightEmissionSource`, an `IfcLightEmissionSourceEnum` token.
+    pub emission_source: &'static str,
+    /// `LightDistributionDataSource`: an `IfcLightIntensityDistribution`
+    /// or an `IfcExternalReference`.
+    pub distribution_data_source: EntityId,
+}
+
+/// Stage an `IfcLightSourceGoniometric`.
+///
+/// A photometrically defined luminaire: rather than a radius or a
+/// cone, it carries a measured intensity distribution, which is what a
+/// lighting calculation actually needs.
+///
+/// # Errors
+///
+/// Refuses an out-of-range intensity, a colour reference that is not an
+/// `IfcColourRgb`, a non-positive colour temperature or luminous flux
+/// (both are absolute physical measures), and an emission-source token
+/// the schema does not declare.
+pub fn create_light_source_goniometric(
+    tx: &mut Transaction,
+    model: &Model,
+    schema: &Schema,
+    draft: LightSourceDraft<'_>,
+    light: GoniometricLight,
+) -> StyleResult<EntityId> {
+    const ENTITY: &str = "IfcLightSourceGoniometric";
+    check_light(ENTITY, &draft)?;
+    validate_ref(tx, model, schema, draft.light_colour, "IfcColourRgb")?;
+    if let Some(colour) = light.colour_appearance {
+        validate_ref(tx, model, schema, colour, "IfcColourRgb")?;
+    }
+    for (value, attribute) in [
+        (light.colour_temperature, "ColourTemperature"),
+        (light.luminous_flux, "LuminousFlux"),
+    ] {
+        // Both are absolute measures: zero kelvin or zero lumen is not
+        // a dim light, it is a light that cannot exist.
+        if !value.is_finite() || value <= 0.0 {
+            return Err(invalid_authoring(
+                ENTITY,
+                attribute,
+                format!("expected a positive measure, got {value}"),
+            ));
+        }
+    }
+    let declared = schema
+        .attributes(ENTITY)
+        .iter()
+        .find(|a| a.name.eq_ignore_ascii_case("LightEmissionSource"))
+        .and_then(|a| schema.type_def(&a.type_name))
+        .is_some_and(|def| match &def.kind {
+            ifc_schema::TypeKind::Enumeration(values) => values
+                .iter()
+                .any(|v| v.eq_ignore_ascii_case(light.emission_source)),
+            _ => false,
+        });
+    if !declared {
+        return Err(invalid_authoring(
+            ENTITY,
+            "LightEmissionSource",
+            light.emission_source,
+        ));
+    }
+
+    let mut values = light_values(&draft);
+    values.push(("Position", Value::Ref(light.position)));
+    if let Some(colour) = light.colour_appearance {
+        values.push(("ColourAppearance", Value::Ref(colour)));
+    }
+    values.push(("ColourTemperature", Value::Real(light.colour_temperature)));
+    values.push(("LuminousFlux", Value::Real(light.luminous_flux)));
+    values.push((
+        "LightEmissionSource",
+        Value::Enum(light.emission_source.into()),
+    ));
+    values.push((
+        "LightDistributionDataSource",
+        Value::Ref(light.distribution_data_source),
+    ));
+    Ok(tx.create(build_named(schema, ENTITY, values)?))
+}

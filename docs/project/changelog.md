@@ -17,6 +17,19 @@ This page is synchronised from it at build time.
 
 ### Added
 
+- Authoring for the last twenty entities, all geometry-rooted: the six
+  transition spirals (`IfcClothoid`, `IfcCosineSpiral`, `IfcSineSpiral`
+  and the second-, third- and seventh-order polynomial spirals),
+  `IfcPolynomialCurve`, `IfcOffsetCurveByDistances`,
+  `IfcSegmentedReferenceCurve`, the bare `IfcLoop`, `IfcVertex` and
+  `IfcProfileDef`, `IfcOpenCrossProfileDef`,
+  `IfcDirectrixDerivedReferenceSweptAreaSolid`,
+  `IfcSectionedSolidHorizontal`, `IfcSectionedSurface`,
+  `IfcTriangulatedIrregularNetwork`, `IfcFillAreaStyleHatching`,
+  `IfcFillAreaStyleTiles` and `IfcLightSourceGoniometric`.
+
+  Every concrete entity in IFC4X3 is now authorable and proven so by
+  execution: 743 of 743.
 - `ifc-model` gained an optional `authored-dump` feature recording which
   entity types a test run actually constructs, plus
   `scripts/authored-coverage.py` to report coverage against the schema.

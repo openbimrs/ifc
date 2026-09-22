@@ -9,6 +9,7 @@ use crate::annotation::{AnnotationType, BoxAlignment, TextPath};
 use crate::error::{StyleError, StyleResult};
 
 mod external;
+mod fill;
 mod light;
 mod presentation;
 mod surface;
@@ -29,10 +30,12 @@ pub use external::{
     create_texture_coordinate_indices_with_voids, BlobTextureDraft, ExternalStyleKind, SizeValue,
     TextModelDraft,
 };
+pub use fill::{create_fill_area_style_hatching, create_fill_area_style_tiles, HatchLineDistance};
 pub use light::{
-    create_light_source_ambient, create_light_source_directional, create_light_source_positional,
-    create_light_source_spot, create_surface_style_lighting, create_surface_style_refraction,
-    Attenuation, LightSourceDraft, PointLight, SpotCone,
+    create_light_source_ambient, create_light_source_directional, create_light_source_goniometric,
+    create_light_source_positional, create_light_source_spot, create_surface_style_lighting,
+    create_surface_style_refraction, Attenuation, GoniometricLight, LightSourceDraft, PointLight,
+    SpotCone,
 };
 pub use presentation::{
     create_colour_rgb_list, create_curve_style, create_curve_style_font,

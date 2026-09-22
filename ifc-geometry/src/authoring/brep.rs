@@ -343,3 +343,29 @@ pub fn face_based_surface_model(
     }
     Ok(tx.create(Entity::new(T, vec![refs(face_sets)])))
 }
+
+/// Stage a bare `IfcLoop` or `IfcVertex`.
+///
+/// Both are concrete in the schema despite having no attributes, and
+/// both are ordinarily written as one of their subtypes --
+/// [`poly_loop`], [`edge_loop`], [`vertex_loop`], [`vertex_point`].
+/// The bare forms exist for a topology that names a connection without
+/// yet describing its geometry, which round-tripping a partial model
+/// requires: refusing to write them would make this library unable to
+/// reproduce a file it can read.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BareTopology {
+    /// `IfcLoop`: a closed path with no stated geometry.
+    Loop,
+    /// `IfcVertex`: a point with no stated geometry.
+    Vertex,
+}
+
+/// Stage an attribute-less topological item.
+pub fn bare_topology(tx: &mut Transaction, kind: BareTopology) -> EntityId {
+    let entity = match kind {
+        BareTopology::Loop => "IFCLOOP",
+        BareTopology::Vertex => "IFCVERTEX",
+    };
+    tx.create(Entity::new(entity, Vec::new()))
+}

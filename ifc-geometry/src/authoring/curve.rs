@@ -31,7 +31,7 @@ use crate::curve::{TransitionCode, TrimmingPreference};
 use crate::error::GeometryError;
 
 use super::std_profile::positive;
-use super::{invalid, refs, require_finite};
+use super::{invalid, reals, refs, require_finite};
 
 /// Stage an `IfcVector`: a direction with a magnitude.
 ///
@@ -518,4 +518,141 @@ impl PolyCurveSegment<'_> {
             value: Box::new(Value::List(encoded)),
         })
     }
+}
+
+/// The per-axis coefficient lists of an [`polynomial_curve`].
+///
+/// Each is `LIST [2:?] OF IfcReal`, lowest degree first. At least two
+/// axes must be present; see `ValidCoefficients`.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct PolynomialCoefficients<'a> {
+    /// `CoefficientsX`.
+    pub x: Option<&'a [f64]>,
+    /// `CoefficientsY`.
+    pub y: Option<&'a [f64]>,
+    /// `CoefficientsZ`. Requires a 3D position.
+    pub z: Option<&'a [f64]>,
+}
+
+/// Stage an `IfcPolynomialCurve`.
+///
+/// Each coefficient list is `LIST [2:?] OF IfcReal`, lowest degree
+/// first, and at least two of the three axes must be given
+/// (`ValidCoefficients`): a curve defined along one axis alone is a
+/// line segment expressed as a curve, which the schema declines to
+/// call a polynomial curve.
+///
+/// # Errors
+///
+/// Refuses fewer than two coefficient lists, a list shorter than two
+/// entries, a non-finite coefficient, and `CoefficientsZ` against a 2D
+/// placement (`CorrectPositionDim`) when `position_is_3d` is false.
+pub fn polynomial_curve(
+    tx: &mut Transaction,
+    position: EntityId,
+    coefficients: PolynomialCoefficients<'_>,
+    position_is_3d: bool,
+) -> Result<EntityId, GeometryError> {
+    const ENTITY: &str = "IFCPOLYNOMIALCURVE";
+    let PolynomialCoefficients { x, y, z } = coefficients;
+    if z.is_some() && !position_is_3d {
+        return Err(invalid(
+            ENTITY,
+            "CoefficientsZ",
+            "a 2D position cannot carry Z coefficients",
+        ));
+    }
+    let given = [x, y, z].iter().filter(|c| c.is_some()).count();
+    if given < 2 {
+        return Err(invalid(
+            ENTITY,
+            "Coefficients",
+            "expected at least two of X, Y, Z, per ValidCoefficients",
+        ));
+    }
+    for (values, attribute) in [
+        (x, "CoefficientsX"),
+        (y, "CoefficientsY"),
+        (z, "CoefficientsZ"),
+    ] {
+        let Some(values) = values else { continue };
+        if values.len() < 2 {
+            return Err(invalid(ENTITY, attribute, "expected LIST [2:?]"));
+        }
+        require_finite(ENTITY, attribute, values)?;
+    }
+    let attrs = vec![
+        Value::Ref(position),
+        x.map_or(Value::Null, reals),
+        y.map_or(Value::Null, reals),
+        z.map_or(Value::Null, reals),
+    ];
+    Ok(tx.create(Entity::new(ENTITY, attrs)))
+}
+
+/// Stage an `IfcOffsetCurveByDistances`.
+///
+/// Unlike [`offset_curve_2d`] and [`offset_curve_3d`], which offset by
+/// one constant, this varies the offset along the basis curve: each
+/// `IfcPointByDistanceExpression` fixes a distance at a station, and
+/// the offset interpolates between them. That is what alignment
+/// widenings need -- a lay-by is not a constant offset.
+///
+/// # Errors
+///
+/// Refuses an empty `offset_values` list, which is `LIST [1:?]`.
+pub fn offset_curve_by_distances(
+    tx: &mut Transaction,
+    basis: EntityId,
+    offset_values: &[EntityId],
+    tag: Option<&str>,
+) -> Result<EntityId, GeometryError> {
+    const ENTITY: &str = "IFCOFFSETCURVEBYDISTANCES";
+    if offset_values.is_empty() {
+        return Err(invalid(
+            ENTITY,
+            "OffsetValues",
+            "expected at least one offset, per LIST [1:?]",
+        ));
+    }
+    let attrs = vec![
+        Value::Ref(basis),
+        refs(offset_values),
+        tag.map_or(Value::Null, |t| Value::Text(t.into())),
+    ];
+    Ok(tx.create(Entity::new(ENTITY, attrs)))
+}
+
+/// Stage an `IfcSegmentedReferenceCurve`.
+///
+/// A cant curve: the segments describe how a rail pair tilts along the
+/// base curve. `SelfIntersect` is an `IfcLogical`, so an unstated value
+/// is UNKNOWN rather than false -- claiming a curve does not self
+/// intersect is a different assertion from not having checked.
+///
+/// # Errors
+///
+/// Refuses an empty `segments` list, which is `LIST [1:?]`.
+pub fn segmented_reference_curve(
+    tx: &mut Transaction,
+    segments: &[EntityId],
+    self_intersect: Option<bool>,
+    base_curve: EntityId,
+    end_point: Option<EntityId>,
+) -> Result<EntityId, GeometryError> {
+    const ENTITY: &str = "IFCSEGMENTEDREFERENCECURVE";
+    if segments.is_empty() {
+        return Err(invalid(
+            ENTITY,
+            "Segments",
+            "expected at least one segment, per LIST [1:?]",
+        ));
+    }
+    let attrs = vec![
+        refs(segments),
+        logical(self_intersect),
+        Value::Ref(base_curve),
+        end_point.map_or(Value::Null, Value::Ref),
+    ];
+    Ok(tx.create(Entity::new(ENTITY, attrs)))
 }
