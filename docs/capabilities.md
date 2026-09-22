@@ -32,8 +32,8 @@ code.
 | `ifc-properties` | 5,160 | 34 | 14 | 7 | <span class="status-implemented">Implemented</span> |
 | `ifc-alignment` | 4,532 | 36 | 11 | 10 | <span class="status-partial">Partial</span> |
 | `ifc-structural` | 4,235 | 34 | 14 | 15 | <span class="status-implemented">Implemented</span> |
+| `ifc-element-type` | 3,429 | 10 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-material` | 3,241 | 25 | 0 | 11 | <span class="status-implemented">Implemented</span> |
-| `ifc-element-type` | 3,186 | 9 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-template-catalog` | 3,104 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-resource` | 3,002 | 29 | 9 | 9 | <span class="status-partial">Partial</span> |
 | `ifc-occurrence` | 2,802 | 8 | 0 | 1 | <span class="status-implemented">Implemented</span> |

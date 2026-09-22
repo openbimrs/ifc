@@ -15,7 +15,13 @@
 //! `scripts/gen-element-types.py`; [`create_type`] is the writer.
 
 mod authoring;
+mod supertype;
 pub mod table;
 
 pub use authoring::{create_type, ElementTypeError, ElementTypeResult, Slot6, TypeDraft};
+pub use supertype::{
+    create_supertype, SupertypeDraft, SupertypeKind, ALL_SUPERTYPES, BUILT_ELEMENT_TYPE,
+    CIVIL_ELEMENT_TYPE, DEEP_FOUNDATION_TYPE, DISTRIBUTION_ELEMENT_TYPE, FURNISHING_ELEMENT_TYPE,
+    TYPE_OBJECT, TYPE_PRODUCT,
+};
 pub use table::{ElementType, Family, ALL};

@@ -123,6 +123,13 @@ pub fn create_type(
     if Guid::parse(global_id).is_none() {
         return Err(invalid(entity, "GlobalId", global_id));
     }
+    // `IfcTypeObject.NameRequired` is inherited by all 132 catalogue
+    // types. `Name` is OPTIONAL in the slot table and mandatory by
+    // rule, so a writer trusting the slot table alone files a nameless
+    // type that parses and cannot be referred to.
+    if blank(draft.name) {
+        return Err(invalid(entity, "Name", "NameRequired"));
+    }
 
     match predefined_type {
         None if !kind.predefined_optional => {

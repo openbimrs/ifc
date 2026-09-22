@@ -29,7 +29,10 @@ fn an_element_type_uses_the_element_layout() {
         TypeDraft {
             name: Some("IPE 300"),
             tag_or_long_description: Some("B-01"),
-            ..TypeDraft::default()
+            ..TypeDraft {
+                name: Some("T"),
+                ..TypeDraft::default()
+            }
         },
     )
     .expect("a well formed beam type is accepted");
@@ -60,7 +63,10 @@ fn a_resource_type_uses_the_later_predefined_slot() {
         TypeDraft {
             maps_or_identification: Some(Slot6::Identification("CREW-7")),
             tag_or_long_description: Some("day shift"),
-            ..TypeDraft::default()
+            ..TypeDraft {
+                name: Some("T"),
+                ..TypeDraft::default()
+            }
         },
     )
     .expect("a well formed crew resource type is accepted");
@@ -97,7 +103,10 @@ fn userdefined_without_its_fallback_is_refused() {
             IFCPUMPTYPE,
             GUID,
             Some("USERDEFINED"),
-            TypeDraft::default()
+            TypeDraft {
+                name: Some("T"),
+                ..TypeDraft::default()
+            }
         )
         .is_err(),
         "USERDEFINED with no ElementType"
@@ -110,7 +119,10 @@ fn userdefined_without_its_fallback_is_refused() {
             Some("USERDEFINED"),
             TypeDraft {
                 fallback: Some("   "),
-                ..TypeDraft::default()
+                ..TypeDraft {
+                    name: Some("T"),
+                    ..TypeDraft::default()
+                }
             },
         )
         .is_err(),
@@ -124,7 +136,10 @@ fn userdefined_without_its_fallback_is_refused() {
         Some("USERDEFINED"),
         TypeDraft {
             fallback: Some("borehole pump"),
-            ..TypeDraft::default()
+            ..TypeDraft {
+                name: Some("T"),
+                ..TypeDraft::default()
+            }
         },
     );
     assert!(ok.is_ok(), "named USERDEFINED is accepted");
@@ -143,7 +158,10 @@ fn a_token_from_another_enum_is_refused() {
             IFCPUMPTYPE,
             GUID,
             Some("JOIST"),
-            TypeDraft::default()
+            TypeDraft {
+                name: Some("T"),
+                ..TypeDraft::default()
+            }
         )
         .is_err(),
         "JOIST is a beam token"
@@ -154,17 +172,40 @@ fn a_token_from_another_enum_is_refused() {
             IFCBEAMTYPE,
             GUID,
             Some("SITE"),
-            TypeDraft::default()
+            TypeDraft {
+                name: Some("T"),
+                ..TypeDraft::default()
+            }
         )
         .is_err(),
         "SITE is a crew token"
     );
     assert!(
-        create_type(&mut tx, IFCBEAMTYPE, GUID, None, TypeDraft::default()).is_err(),
+        create_type(
+            &mut tx,
+            IFCBEAMTYPE,
+            GUID,
+            None,
+            TypeDraft {
+                name: Some("T"),
+                ..TypeDraft::default()
+            }
+        )
+        .is_err(),
         "a required predefined type cannot be omitted"
     );
     assert!(
-        create_type(&mut tx, IFCFURNITURETYPE, GUID, None, TypeDraft::default()).is_ok(),
+        create_type(
+            &mut tx,
+            IFCFURNITURETYPE,
+            GUID,
+            None,
+            TypeDraft {
+                name: Some("T"),
+                ..TypeDraft::default()
+            }
+        )
+        .is_ok(),
         "furniture declares it optional"
     );
     assert!(
@@ -173,7 +214,10 @@ fn a_token_from_another_enum_is_refused() {
             IFCBEAMTYPE,
             "not-a-guid",
             Some("JOIST"),
-            TypeDraft::default()
+            TypeDraft {
+                name: Some("T"),
+                ..TypeDraft::default()
+            }
         )
         .is_err(),
         "malformed GlobalId"
@@ -199,7 +243,10 @@ fn slot_six_shape_must_match_the_family() {
             Some("CONSTRUCTION"),
             TypeDraft {
                 maps_or_identification: Some(Slot6::RepresentationMaps(&[map])),
-                ..TypeDraft::default()
+                ..TypeDraft {
+                    name: Some("T"),
+                    ..TypeDraft::default()
+                }
             },
         )
         .is_err(),
@@ -213,7 +260,10 @@ fn slot_six_shape_must_match_the_family() {
             Some("JOIST"),
             TypeDraft {
                 maps_or_identification: Some(Slot6::Identification("X")),
-                ..TypeDraft::default()
+                ..TypeDraft {
+                    name: Some("T"),
+                    ..TypeDraft::default()
+                }
             },
         )
         .is_err(),
@@ -292,7 +342,10 @@ fn the_fallback_name_reaches_slot_eight() {
         Some("USERDEFINED"),
         TypeDraft {
             fallback: Some("borehole pump"),
-            ..TypeDraft::default()
+            ..TypeDraft {
+                name: Some("T"),
+                ..TypeDraft::default()
+            }
         },
     )
     .expect("named USERDEFINED");
@@ -304,7 +357,10 @@ fn the_fallback_name_reaches_slot_eight() {
         Some("USERDEFINED"),
         TypeDraft {
             fallback: Some("night gang"),
-            ..TypeDraft::default()
+            ..TypeDraft {
+                name: Some("T"),
+                ..TypeDraft::default()
+            }
         },
     )
     .expect("named USERDEFINED");

@@ -9,6 +9,13 @@ and this project follows Semantic Versioning.
 
 ### Added
 
+- `ifc-element-type` authors the seven type definitions that carry no
+  `PredefinedType`: `IfcTypeObject`, `IfcTypeProduct`, `IfcBuiltElementType`,
+  `IfcCivilElementType`, `IfcDeepFoundationType`, `IfcDistributionElementType`,
+  and `IfcFurnishingElementType`. The generated catalogue is keyed on a
+  predefined-type enum, so these were absent from it; they are a separate
+  writer over three arity tiers (6, 8, 9), refusing an attribute the
+  entity does not declare rather than dropping it.
 - `ifc-properties` authors the predefined property sets: door and window
   lining and panel properties, permeable coverings, complex property
   templates, property dependency relationships, and property enumerations.
@@ -249,6 +256,14 @@ and this project follows Semantic Versioning.
   parabolic profile both survive unapproximated.
 - `elevation_law` and `profile_law` map IFC vertical segments to exact
   `ElevationLaw`s, covering CONSTANTGRADIENT and PARABOLICARC.
+
+
+### Fixed
+
+- `ifc-element-type` now enforces `IfcTypeObject.NameRequired` on all 132
+  catalogue types. `Name` is OPTIONAL in the slot table and mandatory by
+  WHERE rule, so `create_type` previously staged nameless type definitions
+  that parse and cannot be referred to.
 
 ### Changed
 
