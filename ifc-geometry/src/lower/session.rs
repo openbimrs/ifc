@@ -124,6 +124,11 @@ pub struct LoweringSession<'a> {
     memo: BTreeMap<MemoKey, NodeId>,
     active: Vec<EntityId>,
     provenance: ProvenanceMap,
+    /// `MappedTo` face set -> its `IfcIndexedTriangleTextureMap`s, built on
+    /// first use. Maps point at face sets, not the other way round, so
+    /// finding a face set's map means a scan; doing it once per session
+    /// keeps lowering linear in the file.
+    texture_maps: Option<BTreeMap<EntityId, Vec<EntityId>>>,
 }
 
 impl<'a> LoweringSession<'a> {
@@ -143,7 +148,30 @@ impl<'a> LoweringSession<'a> {
             memo: BTreeMap::new(),
             active: Vec::new(),
             provenance: ProvenanceMap::default(),
+            texture_maps: None,
         }
+    }
+
+    /// The `IfcIndexedTriangleTextureMap`s whose `MappedTo` is `face_set`, in
+    /// file order. Empty for an untextured face set.
+    pub(crate) fn triangle_texture_maps(&mut self, face_set: EntityId) -> &[EntityId] {
+        let model = self.model;
+        let index = self.texture_maps.get_or_insert_with(|| {
+            let mut index: BTreeMap<EntityId, Vec<EntityId>> = BTreeMap::new();
+            // `ids_of_type` yields file order, so each list stays in it.
+            for &map in model.ids_of_type("IFCINDEXEDTRIANGLETEXTUREMAP") {
+                // `MappedTo` is slot 1 in IFC4 and IFC4X3 alike.
+                let target = model
+                    .get(map)
+                    .and_then(|entity| entity.attributes.get(1))
+                    .and_then(ifc_model::Value::as_ref_id);
+                if let Some(target) = target {
+                    index.entry(target).or_default().push(map);
+                }
+            }
+            index
+        });
+        index.get(&face_set).map_or(&[], Vec::as_slice)
     }
 
     /// The model being lowered.

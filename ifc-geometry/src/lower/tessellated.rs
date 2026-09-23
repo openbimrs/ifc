@@ -149,6 +149,9 @@ fn build_triangulated(
             indices: None,
         });
     }
+    // Texture coordinates ride along as corner-indexed channels (#30); see
+    // `texture` for why they cannot be per-vertex.
+    mesh.attributes = texture::channels(session, id, triangles.len())?;
     session.node_for(id, GeometryNode::TriMesh(mesh))
 }
 
@@ -244,3 +247,6 @@ fn resolve_loop(
 
 #[cfg(test)]
 mod tests;
+
+mod texture;
+pub use texture::UV_CHANNEL;

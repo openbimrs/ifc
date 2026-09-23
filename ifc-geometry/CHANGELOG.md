@@ -12,6 +12,29 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- Lowering an `IfcTriangulatedFaceSet` now attaches texture coordinates from
+  its `IfcIndexedTriangleTextureMap` as a corner-indexed attribute channel
+  named `uv` (`lower::tessellated::UV_CHANNEL`), one `(s, t)` per triangle
+  corner (#30). Positions stay shared, so the mesh stays closed. A shorter
+  `TexCoordIndex` leaves trailing triangles `UNMAPPED`; an omitted one adds
+  no channel; a longer one, or an index outside the texture vertices, is an
+  error. A second map on the same face set becomes `uv1`, and so on.
+
+### Known limits
+
+- The channel reaches a compiled mesh only for a single-item body.
+  Axiolid's reference compiler drops channels on `Collection` and
+  `Instance` nodes, i.e. multi-item bodies and `IfcMappedItem`
+  (axiolid/kernel#115).
+- `IfcIndexedPolygonalTextureMap` (IFC4X3) is not lowered.
+
+### Changed
+
+- **Breaking:** requires Axiolid 0.3 (`axiolid-mesh` 0.3 adds
+  `AttributeChannel::corner_indices`).
+
 ## [0.2.0] - 2026-09-22
 
 First release under per-crate versioning. See the
