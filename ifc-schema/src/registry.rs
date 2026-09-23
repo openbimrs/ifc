@@ -178,6 +178,20 @@ impl Schema {
         self.graph.supertypes(name)
     }
 
+    /// Entities declaring `SUBTYPE OF (name)` directly, sorted by name.
+    #[must_use]
+    pub fn direct_subtypes(&self, name: &str) -> Vec<&str> {
+        self.graph.direct_subtypes(name)
+    }
+
+    /// Every entity inheriting from `name` at any depth, excluding `name`.
+    ///
+    /// Sorted depth-first pre-order. The inverse of [`Self::is_a`].
+    #[must_use]
+    pub fn subtypes(&self, name: &str) -> Vec<&str> {
+        self.graph.subtypes(name)
+    }
+
     /// Every attribute slot in Part 21 positional order, inherited first.
     #[must_use]
     pub fn attributes(&self, name: &str) -> Vec<&Attribute> {

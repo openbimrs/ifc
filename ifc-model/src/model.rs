@@ -179,7 +179,8 @@ impl Model {
     ///
     /// This is an exact-type query and does **not** include subtypes: asking
     /// for `IfcElement` will not return walls. Subtype queries need the schema,
-    /// which this crate does not depend on; `ifc-schema` provides that on top.
+    /// which this crate does not depend on. The facade's
+    /// `ifc::ids_of_type_including_subtypes` (feature `schema`) joins the two.
     pub fn ids_of_type(&self, type_name: &str) -> &[EntityId] {
         self.by_type
             .get(&type_name.to_ascii_uppercase())

@@ -18,6 +18,30 @@ lockstep -- is archived in the
 
 <!-- CHANGELOG:BEGIN -->
 
+## [Unreleased]
+
+### ifc-schema
+
+### Added
+
+- `Schema::subtypes` and `Schema::direct_subtypes`: every entity inheriting
+  from a name, the inverse of `is_a`. Checked against `is_a` for every
+  ordered entity pair of all three bundled schemas (#32).
+
+### Changed
+
+- Requires `openbim-step` 0.5.1, which provides the downward walk.
+
+### openbim-ifc
+
+### Added
+
+- `ids_of_type_including_subtypes` (feature `schema`): every entity of a type
+  or any of its subtypes, in file order. `Model::ids_of_type("IfcElement")`
+  returns nothing because no instance is declared as the abstract supertype;
+  this answers the question that call looks like it should. The caller passes
+  the `Schema`, because the tree differs by version (#32).
+
 ## [0.2.0] - 2026-09-22
 
 ### ifc-alignment

@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `ids_of_type_including_subtypes` (feature `schema`): every entity of a type
+  or any of its subtypes, in file order. `Model::ids_of_type("IfcElement")`
+  returns nothing because no instance is declared as the abstract supertype;
+  this answers the question that call looks like it should. The caller passes
+  the `Schema`, because the tree differs by version (#32).
+
 ## [0.2.0] - 2026-09-22
 
 First release under per-crate versioning. See the

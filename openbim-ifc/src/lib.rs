@@ -73,6 +73,13 @@ pub use ifc_xml::{XmlCodec, XmlProfile};
 #[cfg(feature = "schema")]
 pub use ifc_schema::{Schema, SchemaVersion};
 
+// Needs the model's type index and the schema's subtype tree, which ADR 0003
+// keeps in separate crates, so the join lives in this orchestration layer.
+#[cfg(feature = "schema")]
+mod subtype_query;
+#[cfg(feature = "schema")]
+pub use subtype_query::ids_of_type_including_subtypes;
+
 /// Cost semantics as a borrowed view.
 #[cfg(feature = "cost")]
 pub use ifc_cost as cost;

@@ -12,6 +12,16 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `Schema::subtypes` and `Schema::direct_subtypes`: every entity inheriting
+  from a name, the inverse of `is_a`. Checked against `is_a` for every
+  ordered entity pair of all three bundled schemas (#32).
+
+### Changed
+
+- Requires `openbim-step` 0.5.1, which provides the downward walk.
+
 ## [0.2.0] - 2026-09-22
 
 First release under per-crate versioning. See the

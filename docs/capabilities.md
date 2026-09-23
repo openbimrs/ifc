@@ -43,14 +43,14 @@ code.
 | `ifc-classification` | 2,486 | 20 | 4 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 2,483 | 23 | 5 | 6 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 2,300 | 17 | 0 | 5 | <span class="status-implemented">Implemented</span> |
-| `ifc-model` | 2,221 | 26 | 5 | 11 | <span class="status-implemented">Implemented</span> |
+| `ifc-model` | 2,222 | 26 | 5 | 11 | <span class="status-implemented">Implemented</span> |
 | `ifc-georef` | 2,087 | 20 | 9 | 6 | <span class="status-partial">Partial</span> |
-| `ifc-schema` | 1,404 | 12 | 4 | 4 | <span class="status-implemented">Implemented</span> |
+| `ifc-schema` | 1,418 | 12 | 4 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,317 | 6 | 0 | 2 | <span class="status-implemented">Implemented</span> |
+| `openbim-ifc` | 1,071 | 8 | 0 | 16 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 1,046 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-author` | 951 | 9 | 3 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-step` | 950 | 6 | 0 | 6 | <span class="status-implemented">Implemented</span> |
-| `openbim-ifc` | 917 | 6 | 0 | 16 | <span class="status-implemented">Implemented</span> |
 | `ifc-approval` | 914 | 5 | 0 | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-tabular` | 393 | 4 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-control` | 334 | 3 | 0 | 1 | <span class="status-implemented">Implemented</span> |
