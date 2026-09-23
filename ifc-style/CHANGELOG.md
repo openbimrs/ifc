@@ -12,6 +12,23 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `IndexedTextureMap::triangle_coordinates(triangle_count)` resolves an
+  `IfcIndexedTriangleTextureMap` to `(s, t)` coordinates for each triangle
+  corner, in `CoordIndex` order. Corners, not vertices: one position may
+  carry a different coordinate in each triangle that uses it. A shorter
+  `TexCoordIndex` covers only the leading triangles, a longer one is an
+  error, and an omitted one returns `None` because the schema does not
+  define it (#30).
+
+### Fixed
+
+- **Breaking:** `IndexedTextureMap::maps` now returns `Vec<EntityId>`.
+  `Maps` is `LIST [1:?] OF IfcSurfaceTexture`, but it was read as a single
+  reference, so it returned an error on every conforming file, including
+  those this crate writes itself.
+
 ## [0.2.0] - 2026-09-22
 
 First release under per-crate versioning. See the

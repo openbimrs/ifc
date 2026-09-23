@@ -32,6 +32,25 @@ lockstep -- is archived in the
 
 - Requires `openbim-step` 0.5.1, which provides the downward walk.
 
+### ifc-style
+
+### Added
+
+- `IndexedTextureMap::triangle_coordinates(triangle_count)` resolves an
+  `IfcIndexedTriangleTextureMap` to `(s, t)` coordinates for each triangle
+  corner, in `CoordIndex` order. Corners, not vertices: one position may
+  carry a different coordinate in each triangle that uses it. A shorter
+  `TexCoordIndex` covers only the leading triangles, a longer one is an
+  error, and an omitted one returns `None` because the schema does not
+  define it (#30).
+
+### Fixed
+
+- **Breaking:** `IndexedTextureMap::maps` now returns `Vec<EntityId>`.
+  `Maps` is `LIST [1:?] OF IfcSurfaceTexture`, but it was read as a single
+  reference, so it returned an error on every conforming file, including
+  those this crate writes itself.
+
 ### openbim-ifc
 
 ### Added
