@@ -21,8 +21,14 @@ We will expose the IFC layer to other languages through **one binding crate
 per target**, each depending **only on `openbim-ifc`**, never on an `ifc-*`
 crate directly.
 
-- `openbim-ifc-wasm` (browser and Node, via `wasm-bindgen`) is first.
-  `openbim-ifc-capi` (C ABI) and a Python package follow as separate crates.
+- `openbim-ifc-wasm` (browser and Node, via `wasm-bindgen`),
+  `openbim-ifc-capi` (C ABI) and `openbim-ifc-py` (Python, via `pyo3`).
+- *Amended 2026-09-23:* host-independent binding code -- the model
+  operations, the tagged `Value` encoding and `BindingError` -- lives once,
+  in `openbim-ifc-binding-core`, which depends on the facade and on no host
+  toolkit. Each host crate depends on the core, not on the facade, so the
+  three stay behaviourally identical: a value refused in one is refused in
+  all, with the same error `code`.
 - A binding adds calling-convention glue only: no IFC semantics, no
   validation, no domain logic. If a binding needs behaviour the facade lacks,
   the behaviour goes into the facade first.
@@ -33,8 +39,10 @@ crate directly.
   from `*`, `.U.` from `.F.`, integer from real, and typed wrappers such as
   `IFCLENGTHMEASURE(2.5)` from their payload. Folding any of these into a
   host-native value would make a round trip silently lossy.
-- Integers cross as JS `BigInt`, because IFC integers are 64-bit and JS
-  numbers lose precision above 2^53.
+- Each host carries that encoding in its own idiom: JS objects with
+  `BigInt` integers (JS numbers lose precision above 2^53), frozen Python
+  dataclasses, and a flat C node array with a string buffer (no recursive
+  structs, so no Rust allocation crosses the C ABI).
 - Every binding has an executable round-trip smoke test in its host language
   that parses a file, reads an entity, edits one, and writes the file back.
 
@@ -44,6 +52,7 @@ crate directly.
 | --- | --- |
 | One crate exporting all three targets behind features | Each target pulls its own toolchain (`wasm-bindgen`, `pyo3`, `cbindgen`) and its own `crate-type`; mixing them makes every build pay for all three and every change risk all three. |
 | Bind the `ifc-*` crates directly | Duplicates the facade's feature selection per target and lets a binding bypass the layering rules the facade enforces. |
+| Duplicate the model operations per host crate | Three copies of the validation drift apart; a value one host refuses, another would accept. |
 | Python and WASM as thin layers over the C ABI | Adds a second unsafe boundary and a manual memory protocol to hosts that already have safe, idiomatic Rust binding generators. |
 | Map `Value` to plain host values (number, string, null) | Lossy: `$`/`*`, `.U.`, int/real and typed wrappers do not survive. |
 
@@ -63,12 +72,15 @@ crate directly.
 
 **Follow-ups / risks to watch**
 
-- C ABI and Python are tracked as separate issues under #34.
+- The C ABI is the one `unsafe` crate; every dereference sits in its
+  `buffer` module with a `SAFETY` note, as in Axiolid's ADR 0040.
+- Publication (npm, PyPI, a CMake package) is tracked separately under #34.
 - npm publication needs a package name and registry credentials; until then
   the WASM package is built and tested but not published.
 
 ## Relation to existing code
 
-- `openbim-ifc-wasm/`
+- `openbim-ifc-binding-core/` (shared, host-independent)
+- `openbim-ifc-wasm/`, `openbim-ifc-capi/`, `openbim-ifc-py/`
 - `openbim-ifc/` (the only allowed dependency)
 - `ifc-model/tests/package_architecture.rs` (enforces the dependency rule)

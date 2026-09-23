@@ -1,197 +1,181 @@
-//! The exported model handle.
+//! JavaScript surface of the shared [`Core`] model.
 //!
-//! `IfcModel` owns one `ifc::Model`. Its operations are ordinary Rust methods
-//! so they are tested natively; the `js` submodule, compiled for wasm32 only,
-//! exposes them to JavaScript with JS-typed arguments.
+//! Each export converts JS arguments, calls the core method, and converts
+//! the result. No IFC logic lives here.
 
-use ifc::{Codec, Entity, EntityId, Model, StepCodec};
+use js_sys::{Array, BigInt, Uint8Array};
+use openbim_ifc_binding_core::value::Tagged;
+use openbim_ifc_binding_core::{BindingError, IfcModel as Core};
+use wasm_bindgen::prelude::wasm_bindgen;
+use wasm_bindgen::JsValue;
 
-use crate::value::Tagged;
-use crate::BindingError;
+use crate::error::js_error;
+use crate::value::{from_js, to_js};
 
-#[cfg(target_arch = "wasm32")]
-mod js;
-#[cfg(target_arch = "wasm32")]
 mod types;
 
 /// An IFC model: entities keyed by their `#id`, in file order.
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen::prelude::wasm_bindgen)]
+///
+/// A newtype because `wasm_bindgen` can only export a type defined in this
+/// crate; all state and behaviour are the core's.
+#[wasm_bindgen]
 #[derive(Debug, Default)]
-pub struct IfcModel {
-    inner: Model,
+pub struct IfcModel(Core);
+
+fn index(value: u32) -> usize {
+    // wasm32 has a 32-bit usize, so a u32 always fits.
+    value as usize
 }
 
+fn big(id: u64) -> JsValue {
+    BigInt::from(id).into()
+}
+
+fn tagged_array(values: &JsValue) -> Result<Vec<Tagged>, BindingError> {
+    if !Array::is_array(values) {
+        return Err(BindingError::InvalidValue(
+            "attributes must be an array".into(),
+        ));
+    }
+    Array::from(values).iter().map(|v| from_js(&v)).collect()
+}
+
+#[wasm_bindgen]
 impl IfcModel {
     /// An empty model.
-    pub fn empty() -> Self {
-        Self::default()
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> IfcModel {
+        IfcModel(Core::empty())
     }
 
-    /// Parse a STEP (`.ifc`) file.
-    ///
-    /// Non-fatal problems do not fail the parse; they are reported by
-    /// [`Self::diagnostics`], so a caller can tell a complete read from a
-    /// partial one.
-    pub fn parse(bytes: &[u8]) -> Result<Self, BindingError> {
-        StepCodec
-            .read_bytes(bytes)
-            .map(|inner| Self { inner })
-            .map_err(|error| BindingError::Parse(error.to_string()))
+    /// Parse a STEP (`.ifc`) file from its bytes.
+    #[wasm_bindgen(js_name = parse)]
+    pub fn parse_js(bytes: &[u8]) -> Result<IfcModel, JsValue> {
+        Core::parse(bytes).map(IfcModel).map_err(js_error)
     }
 
-    /// Serialize as STEP.
-    pub fn write(&self) -> Result<Vec<u8>, BindingError> {
-        StepCodec
-            .write_bytes(&self.inner)
-            .map_err(|error| BindingError::Write(error.to_string()))
+    /// Serialize as STEP bytes.
+    #[wasm_bindgen(js_name = write)]
+    pub fn write_js(&self) -> Result<Uint8Array, JsValue> {
+        Ok(Uint8Array::from(
+            self.0.write().map_err(js_error)?.as_slice(),
+        ))
     }
 
     /// Number of entities.
-    pub fn len(&self) -> usize {
-        self.inner.len()
+    #[wasm_bindgen(getter, js_name = size)]
+    pub fn size_js(&self) -> u32 {
+        u32::try_from(self.0.len()).unwrap_or(u32::MAX)
     }
 
-    /// Whether the model has no entities.
-    pub fn is_empty(&self) -> bool {
-        self.inner.is_empty()
+    /// The first `FILE_SCHEMA` token, e.g. `"IFC4"`, or `undefined`.
+    #[wasm_bindgen(getter, js_name = schema)]
+    pub fn schema_js(&self) -> Option<String> {
+        self.0.schema().map(str::to_owned)
     }
 
-    /// The first `FILE_SCHEMA` token, e.g. `IFC4`, if any.
-    pub fn schema(&self) -> Option<&str> {
-        self.inner.header().schema_token()
+    /// Non-fatal problems found while reading.
+    #[wasm_bindgen(js_name = diagnostics)]
+    pub fn diagnostics_js(&self) -> Vec<String> {
+        self.0.diagnostics()
     }
 
-    /// Every non-fatal problem found while reading, as display strings.
-    pub fn diagnostics(&self) -> Vec<String> {
-        self.inner
-            .diagnostics()
-            .iter()
-            .map(ToString::to_string)
-            .collect()
+    /// Every entity id (`bigint`), in file order.
+    #[wasm_bindgen(js_name = ids, unchecked_return_type = "bigint[]")]
+    pub fn ids_js(&self) -> Array {
+        self.0.ids().into_iter().map(big).collect()
     }
 
-    /// Every entity id, in file order.
-    pub fn ids(&self) -> Vec<u64> {
-        self.inner.ids().map(|EntityId(id)| id).collect()
+    /// Ids of every entity of exactly `typeName`, case-insensitive.
+    #[wasm_bindgen(js_name = idsOfType, unchecked_return_type = "bigint[]")]
+    pub fn ids_of_type_js(&self, #[wasm_bindgen(js_name = typeName)] type_name: &str) -> Array {
+        self.0.ids_of_type(type_name).into_iter().map(big).collect()
     }
 
-    /// Ids of every entity of exactly `type_name` (case-insensitive), in
-    /// file order. Subtypes are not included.
-    pub fn ids_of_type(&self, type_name: &str) -> Vec<u64> {
-        self.inner
-            .ids_of_type(&type_name.to_ascii_uppercase())
-            .iter()
-            .map(|EntityId(id)| *id)
-            .collect()
-    }
-
-    /// Ids of every entity of `type_name` or any of its subtypes, in file
-    /// order, using the schema the file's header declares.
-    ///
-    /// `IfcWall` then finds `IFCWALLSTANDARDCASE` too, which exact
-    /// [`Self::ids_of_type`] does not. An undeclared name finds nothing.
-    /// Fails when the header names no schema this crate bundles.
-    pub fn ids_of_type_including_subtypes(
+    /// Ids of every entity of `typeName` or any subtype, per the file's
+    /// declared schema: `IfcWall` also finds `IFCWALLSTANDARDCASE`.
+    #[wasm_bindgen(js_name = idsOfTypeIncludingSubtypes, unchecked_return_type = "bigint[]")]
+    pub fn ids_of_type_including_subtypes_js(
         &self,
-        type_name: &str,
-    ) -> Result<Vec<u64>, BindingError> {
-        let token = self.schema().unwrap_or("");
-        let schema = ifc::SchemaVersion::from_header_token(token)
-            .and_then(ifc::schema::for_version)
-            .ok_or_else(|| BindingError::UnsupportedSchema(token.to_owned()))?;
-        Ok(
-            ifc::ids_of_type_including_subtypes(&self.inner, schema, type_name)
-                .into_iter()
-                .map(|EntityId(id)| id)
-                .collect(),
-        )
-    }
-
-    /// The type name of entity `id`, upper-case.
-    pub fn type_of(&self, id: u64) -> Result<&str, BindingError> {
-        Ok(&self.entity(id)?.type_name)
-    }
-
-    /// Every attribute of entity `id`, in declaration order.
-    pub fn attributes(&self, id: u64) -> Result<Vec<Tagged>, BindingError> {
+        #[wasm_bindgen(js_name = typeName)] type_name: &str,
+    ) -> Result<Array, JsValue> {
         Ok(self
-            .entity(id)?
-            .attributes
-            .iter()
-            .map(Tagged::from_value)
+            .0
+            .ids_of_type_including_subtypes(type_name)
+            .map_err(js_error)?
+            .into_iter()
+            .map(big)
             .collect())
     }
 
-    /// Attribute `index` of entity `id`; `null` past the last attribute,
-    /// the same as an unset `$`.
-    pub fn attribute(&self, id: u64, index: usize) -> Result<Tagged, BindingError> {
-        Ok(self
-            .entity(id)?
-            .attribute(index)
-            .map_or(Tagged::Null, Tagged::from_value))
+    /// The upper-case type name of entity `id`.
+    #[wasm_bindgen(js_name = typeOf)]
+    pub fn type_of_js(&self, id: u64) -> Result<String, JsValue> {
+        Ok(self.0.type_of(id).map_err(js_error)?.to_owned())
     }
 
-    /// Set attribute `index` of entity `id`, returning the previous value.
-    ///
-    /// Writing past the end pads the gap with `$`, as the model does.
-    pub fn set_attribute(
+    /// Every attribute of entity `id`, as tagged values.
+    #[wasm_bindgen(js_name = attributes, unchecked_return_type = "IfcValue[]")]
+    pub fn attributes_js(&self, id: u64) -> Result<Array, JsValue> {
+        Ok(self
+            .0
+            .attributes(id)
+            .map_err(js_error)?
+            .iter()
+            .map(to_js)
+            .collect())
+    }
+
+    /// Attribute `index` of entity `id`, as a tagged value.
+    #[wasm_bindgen(js_name = attribute, unchecked_return_type = "IfcValue")]
+    pub fn attribute_js(&self, id: u64, slot: u32) -> Result<JsValue, JsValue> {
+        Ok(to_js(&self.0.attribute(id, index(slot)).map_err(js_error)?))
+    }
+
+    /// Set attribute `index` of entity `id`; returns the previous value.
+    #[wasm_bindgen(js_name = setAttribute, unchecked_return_type = "IfcValue")]
+    pub fn set_attribute_js(
         &mut self,
         id: u64,
-        index: usize,
-        value: Tagged,
-    ) -> Result<Tagged, BindingError> {
-        let value = value.into_value()?;
-        self.inner
-            .set_attribute(EntityId(id), index, value)
-            .map(|previous| Tagged::from_value(&previous))
-            .ok_or(BindingError::MissingEntity(id))
+        slot: u32,
+        #[wasm_bindgen(unchecked_param_type = "IfcValue")] value: &JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let value = from_js(value).map_err(js_error)?;
+        Ok(to_js(
+            &self
+                .0
+                .set_attribute(id, index(slot), value)
+                .map_err(js_error)?,
+        ))
     }
 
-    /// Append a new entity, returning its id.
-    pub fn add(&mut self, type_name: &str, attributes: Vec<Tagged>) -> Result<u64, BindingError> {
-        let entity = entity(type_name, attributes)?;
-        Ok(self.inner.push(entity).0)
+    /// Append an entity; returns its id (`bigint`).
+    #[wasm_bindgen(js_name = add)]
+    pub fn add_js(
+        &mut self,
+        #[wasm_bindgen(js_name = typeName)] type_name: &str,
+        #[wasm_bindgen(unchecked_param_type = "IfcValue[]")] attributes: &JsValue,
+    ) -> Result<u64, JsValue> {
+        let attributes = tagged_array(attributes).map_err(js_error)?;
+        self.0.add(type_name, attributes).map_err(js_error)
     }
 
-    /// Remove entity `id`. References to it are left dangling, as in the
-    /// model; find them with [`Self::dangling_references`].
-    pub fn remove(&mut self, id: u64) -> Result<(), BindingError> {
-        self.inner
-            .remove(EntityId(id))
-            .map(drop)
-            .ok_or(BindingError::MissingEntity(id))
+    /// Remove entity `id`, leaving references to it dangling.
+    #[wasm_bindgen(js_name = remove)]
+    pub fn remove_js(&mut self, id: u64) -> Result<(), JsValue> {
+        self.0.remove(id).map_err(js_error)
     }
 
-    /// Every `(from, to)` pair where `from` references a missing `to`.
-    pub fn dangling_references(&self) -> Vec<(u64, u64)> {
-        self.inner
+    /// Every `[from, to]` pair (`bigint`s) where `to` does not exist.
+    #[wasm_bindgen(
+        js_name = danglingReferences,
+        unchecked_return_type = "[bigint, bigint][]"
+    )]
+    pub fn dangling_references_js(&self) -> Array {
+        self.0
             .dangling_references()
             .into_iter()
-            .map(|(EntityId(from), EntityId(to))| (from, to))
+            .map(|(from, to)| Array::of2(&big(from), &big(to)))
             .collect()
     }
-
-    fn entity(&self, id: u64) -> Result<&Entity, BindingError> {
-        self.inner
-            .get(EntityId(id))
-            .ok_or(BindingError::MissingEntity(id))
-    }
 }
-
-/// Build an entity, validating the type name as a STEP identifier.
-fn entity(type_name: &str, attributes: Vec<Tagged>) -> Result<Entity, BindingError> {
-    let probe = Tagged::Typed {
-        type_name: type_name.to_owned(),
-        value: Box::new(Tagged::Null),
-    };
-    // Reuse the typed-wrapper name check rather than duplicating it.
-    probe.into_value()?;
-    let values = attributes
-        .into_iter()
-        .map(Tagged::into_value)
-        .collect::<Result<_, _>>()?;
-    Ok(Entity::new(type_name.to_ascii_uppercase(), values))
-}
-
-#[cfg(test)]
-mod tests;

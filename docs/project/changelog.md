@@ -20,9 +20,38 @@ lockstep -- is archived in the
 
 ## [Unreleased]
 
+### openbim-ifc-binding-core
+
+### Added
+
+- The host-independent half of the language bindings (ADR 0013): `IfcModel`
+  operations, the lossless `Tagged` value encoding and `BindingError` with
+  stable codes, shared by the WASM, C and Python bindings. Extracted from
+  `openbim-ifc-wasm`.
+- Non-finite reals (NaN, infinity) are refused for every host; STEP has no
+  form for them.
+
+### openbim-ifc-capi
+
+### Added
+
+- Versioned C ABI 0.1 over the IFC facade (#38, ADR 0013), following
+  Axiolid's C ABI conventions: `openbim_ifc_v0_1_*` symbols, opaque integer
+  handles, caller-owned buffers with a size query, no Rust allocation across
+  the boundary, and every panic contained as a status.
+- Nested attribute values cross as a pre-order node tape plus one string
+  buffer, keeping `$`/`*`, `.U.`/`.F.`, integer/real and typed wrappers
+  distinct.
+- A cbindgen-generated C11 header (`include/openbim_ifc.h`), checked for
+  drift, and a C and C++ smoke test in the gate.
+
 ### openbim-ifc-wasm
 
 ### Added
+
+- The model operations, value encoding and error codes now come from
+  `openbim-ifc-binding-core`, shared with the C and Python bindings. The
+  JavaScript API is unchanged.
 
 - WebAssembly bindings for the `openbim-ifc` facade (#34, ADR 0013).
   `IfcModel` parses and writes IFC STEP, lists entities, queries by exact

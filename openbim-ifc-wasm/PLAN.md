@@ -16,10 +16,11 @@ validation, domain views, geometry, ifcXML, or a tested browser bundle.
 ## Planned file map
 
 - `src/lib.rs`: crate contract and re-exports
-- `src/error.rs`: `BindingError` and its JS `IfcError` form
-- `src/value.rs`, `src/value/tagged.rs`, `src/value/js.rs`: value encoding
-- `src/model.rs`, `src/model/js.rs`, `src/model/types.rs`: `IfcModel`
-- `src/model/tests.rs`: native round-trip, edit and refusal tests
+- `src/error.rs`: `BindingError` -> JS `IfcError`
+- `src/value.rs`: `Tagged` <-> JS objects
+- `src/model.rs`, `src/model/types.rs`: `IfcModel` and its TypeScript types
+- native tests live in `../openbim-ifc-binding-core` (moved there with the
+  shared code when the C and Python bindings were added, #38/#39)
 - `tests/js/smoke.mjs`, `tests/js/corpus.mjs`: Node suites
 - `scripts/build-node-pkg.sh`: pinned-CLI build plus Node suites
 - `npm/package.json`: npm manifest

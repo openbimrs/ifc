@@ -385,51 +385,84 @@ fn the_kernel_is_consumed_as_a_published_release() {
     );
 }
 
-/// Language bindings wrap the facade and nothing else (ADR 0013).
+/// Language bindings reach IFC through one path (ADR 0013): each host
+/// binding depends on the shared binding core, and the core on the facade.
 ///
-/// A binding reaching an `ifc-*` crate directly would duplicate the facade's
-/// feature selection and bypass the layering it enforces.
-const BINDINGS: &[&str] = &["openbim-ifc-wasm"];
+/// A binding reaching an `ifc-*` crate -- or even the facade -- directly
+/// would duplicate logic the core shares between hosts and bypass the
+/// layering the facade enforces.
+const BINDING_CORE: &str = "openbim-ifc-binding-core";
+const BINDINGS: &[&str] = &["openbim-ifc-wasm", "openbim-ifc-capi", "openbim-ifc-py"];
 
-/// May a binding crate depend on `dependency`?
-fn binding_allows(dependency: &str) -> bool {
-    dependency == FACADE || !(dependency.starts_with("ifc-") || dependency.starts_with("axiolid"))
+/// Host toolkits: allowed in a host binding, never in the shared core,
+/// where one would make every binding pay for every host.
+const HOST_CRATES: &[&str] = &["wasm-bindgen", "js-sys", "pyo3", "cbindgen", "libc"];
+
+fn is_ifc_layer(dependency: &str) -> bool {
+    dependency.starts_with("ifc-") || dependency.starts_with("axiolid") || dependency == FACADE
 }
 
-#[test]
-fn bindings_depend_only_on_the_facade() {
-    let metadata = metadata();
-    let mut checked = 0;
-    for package in metadata
+/// May a host binding depend on `dependency`?
+fn binding_allows(dependency: &str) -> bool {
+    dependency == BINDING_CORE || !is_ifc_layer(dependency)
+}
+
+/// May the binding core depend on `dependency`?
+fn core_allows(dependency: &str) -> bool {
+    dependency == FACADE || !(is_ifc_layer(dependency) || HOST_CRATES.contains(&dependency))
+}
+
+fn package_dependencies(name: &str) -> Option<BTreeSet<String>> {
+    metadata()
         .packages
         .iter()
-        .filter(|package| BINDINGS.contains(&package.name.as_str()))
-    {
-        checked += 1;
-        let dependencies = production_dependencies(package);
-        assert!(
-            dependencies.contains(FACADE),
-            "{} must depend on {FACADE}",
-            package.name
-        );
-        let bypass: Vec<_> = dependencies
-            .iter()
-            .filter(|dependency| !binding_allows(dependency))
-            .collect();
-        assert!(
-            bypass.is_empty(),
-            "{} bypasses the facade through {bypass:?}; ADR 0013",
-            package.name
-        );
-    }
-    assert_eq!(checked, BINDINGS.len(), "a listed binding crate is missing");
+        .find(|package| package.name.as_str() == name)
+        .map(production_dependencies)
 }
 
 #[test]
-fn the_binding_rule_refuses_ifc_and_kernel_crates() {
-    assert!(binding_allows(FACADE));
+fn bindings_reach_ifc_only_through_the_binding_core() {
+    for binding in BINDINGS {
+        let dependencies =
+            package_dependencies(binding).unwrap_or_else(|| panic!("{binding} is missing"));
+        assert!(
+            dependencies.contains(BINDING_CORE),
+            "{binding} must depend on {BINDING_CORE}"
+        );
+        let bypass: Vec<_> = dependencies.iter().filter(|d| !binding_allows(d)).collect();
+        assert!(
+            bypass.is_empty(),
+            "{binding} bypasses the binding core through {bypass:?}; ADR 0013"
+        );
+    }
+}
+
+#[test]
+fn the_binding_core_depends_on_the_facade_and_no_host() {
+    let dependencies = package_dependencies(BINDING_CORE).expect("binding core is a member");
+    assert!(
+        dependencies.contains(FACADE),
+        "{BINDING_CORE} must depend on {FACADE}"
+    );
+    let wrong: Vec<_> = dependencies.iter().filter(|d| !core_allows(d)).collect();
+    assert!(
+        wrong.is_empty(),
+        "{BINDING_CORE} depends on {wrong:?}; ADR 0013"
+    );
+}
+
+#[test]
+fn the_binding_rules_refuse_what_they_must() {
+    assert!(binding_allows(BINDING_CORE));
     assert!(binding_allows("wasm-bindgen"));
+    assert!(binding_allows("pyo3"));
+    assert!(!binding_allows(FACADE), "hosts go through the core");
     assert!(!binding_allows("ifc-model"));
-    assert!(!binding_allows("ifc-geometry"));
     assert!(!binding_allows("axiolid-core"));
+
+    assert!(core_allows(FACADE));
+    assert!(core_allows("thiserror"));
+    assert!(!core_allows("ifc-model"));
+    assert!(!core_allows("pyo3"));
+    assert!(!core_allows("wasm-bindgen"));
 }

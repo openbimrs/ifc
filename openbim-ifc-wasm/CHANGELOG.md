@@ -10,6 +10,10 @@ a release here does not imply a release of any other crate in the family.
 
 ### Added
 
+- The model operations, value encoding and error codes now come from
+  `openbim-ifc-binding-core`, shared with the C and Python bindings. The
+  JavaScript API is unchanged.
+
 - WebAssembly bindings for the `openbim-ifc` facade (#34, ADR 0013).
   `IfcModel` parses and writes IFC STEP, lists entities, queries by exact
   type or including subtypes (per the file's declared IFC2X3, IFC4 or

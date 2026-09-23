@@ -61,6 +61,13 @@ PUBLISHED_STATUS = {
     # Record-model bindings tested from Node (#37); npm publication, a tested
     # browser build and domain views are still open, so not "Implemented".
     "openbim-ifc-wasm": '<span class="status-partial">Partial</span>',
+    # Shared host-independent core of the three bindings; complete for the
+    # record-model surface they expose.
+    "openbim-ifc-binding-core": '<span class="status-implemented">Implemented</span>',
+    # Record-model surface done and tested from C and Python; packaging
+    # (CMake, PyPI, non-Linux wheels) is not.
+    "openbim-ifc-capi": '<span class="status-partial">Partial</span>',
+    "openbim-ifc-py": '<span class="status-partial">Partial</span>',
     "ifc-author": '<span class="status-implemented">Implemented</span>',
     "ifc-spatial": '<span class="status-implemented">Implemented</span>',
     # All six PLAN tasks implemented: strict borrowed records, associations,

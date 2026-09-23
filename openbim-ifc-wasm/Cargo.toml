@@ -11,13 +11,14 @@ keywords = ["ifc", "bim", "wasm", "step", "openbim"]
 categories = ["wasm", "parser-implementations"]
 
 [lib]
-# `cdylib` is the wasm module; `rlib` lets the native tests exercise the
-# value codec without a JS host.
+# The wasm module. Native builds compile an empty crate: every operation and
+# its tests live in openbim-ifc-binding-core.
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-# ADR 0013: a binding depends on the facade only, never on an ifc-* crate.
-openbim-ifc = { workspace = true, default-features = false, features = ["step", "schema"] }
+# ADR 0013: bindings reach IFC through the facade only; the shared binding
+# core is itself a facade-only crate.
+openbim-ifc-binding-core.workspace = true
 wasm-bindgen = "=0.2.128"
 js-sys = "=0.3.105"
 

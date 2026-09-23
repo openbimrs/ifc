@@ -80,6 +80,19 @@ else
     openbim-ifc-wasm/scripts/build-node-pkg.sh
 fi
 
+# C ABI (#38, ADR 0013): the committed header must match the exports (the
+# `header` test, run above), and a C program compiled as strict C11 and as
+# C++17 must parse, read, edit, write and re-parse through the real library.
+openbim-ifc-capi/scripts/check-c.sh
+
+# Python (#39, ADR 0013): build the abi3 wheel with maturin, install it into
+# a throwaway uv venv, and run the Python smoke and corpus suites against it.
+if [[ -n "${IFC_SKIP_PYTHON:-}" ]]; then
+    echo "warning: IFC_SKIP_PYTHON set; Python binding suites NOT run" >&2
+else
+    openbim-ifc-py/scripts/check-python.sh
+fi
+
 # Documentation gates. Each crate owns its CHANGELOG.md; the docs page is
 # assembled from all of them, so drift between the two is a build failure
 # rather than a silent inconsistency the reader has to notice. The assembler

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["ifc-*", "openbim-ifc", "openbim-ifc-wasm"]
+members = ["ifc-*", "openbim-ifc", "openbim-ifc-binding-core", "openbim-ifc-wasm", "openbim-ifc-capi", "openbim-ifc-py"]
 
 [workspace.package]
 version = "0.2.0"
@@ -23,6 +23,7 @@ missing_docs = "deny"
 # registry dependencies when packages are published.
 ifc-schema = { path = "ifc-schema", version = "0.2.2" }
 openbim-ifc = { path = "openbim-ifc", version = "0.4.0", default-features = false }
+openbim-ifc-binding-core = { path = "openbim-ifc-binding-core", version = "0.1.0" }
 ifc-step = { path = "ifc-step", version = "0.2.1" }
 ifc-xml = { path = "ifc-xml", version = "0.2.0" }
 ifc-model = { path = "ifc-model", version = "0.2.2" }

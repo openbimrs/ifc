@@ -17,3 +17,7 @@ docs/.vitepress/cache/
 
 # wasm-bindgen output of openbim-ifc-wasm/scripts/build-node-pkg.sh
 openbim-ifc-wasm/pkg/
+
+# Python bytecode (openbim-ifc-py)
+__pycache__/
+*.pyc

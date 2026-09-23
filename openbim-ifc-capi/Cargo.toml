@@ -1,0 +1,27 @@
+[package]
+name = "openbim-ifc-capi"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+license = "AGPL-3.0-or-later"
+authors = ["point-grey"]
+repository = "https://github.com/openbimrs/ifc"
+description = "Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP files from C and C++."
+keywords = ["ifc", "bim", "ffi", "c-abi", "openbim"]
+categories = ["api-bindings", "parser-implementations"]
+
+[lib]
+# staticlib/cdylib are the C artifacts; rlib lets the Rust boundary tests
+# call the exports directly.
+crate-type = ["rlib", "staticlib", "cdylib"]
+
+[dependencies]
+# ADR 0013: bindings reach IFC through the facade only, via the shared core.
+openbim-ifc-binding-core.workspace = true
+
+[dev-dependencies]
+# Regenerates the header in-memory to prove the committed one is current.
+cbindgen = { version = "=0.29.4", default-features = false }
+
+[lints]
+workspace = true

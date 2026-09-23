@@ -8,22 +8,19 @@ roadmap work; keep progress, blockers, and evidence there.
 
 ## Boundary
 
-- Production dependencies: `openbim-ifc` (the only IFC crate allowed),
-  `wasm-bindgen`, `js-sys`. Never an `ifc-*` crate directly;
+- Production dependencies: `openbim-ifc-binding-core`, `wasm-bindgen`,
+  `js-sys`. Never the facade or an `ifc-*` crate directly;
   `ifc-model/tests/package_architecture.rs` enforces this.
-- Glue only. No IFC semantics, validation or domain logic here. If the
-  bindings need behaviour the facade lacks, add it to the facade first.
-- Exception, narrowly: checks that stop the STEP writer emitting a malformed
-  file (identifier syntax, finite reals, nesting depth) live in
-  `src/value/`, because they guard the JS input boundary, not IFC meaning.
+- JS glue only. Model operations, the tagged encoding and its validation
+  live in `../openbim-ifc-binding-core`, shared with the C and Python
+  bindings; change them there so all three hosts stay identical.
 
 ## Layout
 
-- `src/value/tagged.rs`: `Tagged`, the host-independent lossless encoding,
-  and its total `Value -> Tagged` / checked `Tagged -> Value` mapping.
-- `src/value/js.rs` (wasm32 only): `Tagged` <-> JS objects.
-- `src/model.rs`: `IfcModel` operations as plain Rust, tested natively.
-- `src/model/js.rs` (wasm32 only): the `#[wasm_bindgen]` surface.
+- `src/value.rs`: `Tagged` <-> JS objects.
+- `src/model.rs`: the `#[wasm_bindgen]` `IfcModel`, a newtype over the
+  core model (wasm-bindgen cannot export a foreign type).
+- `src/error.rs`: `BindingError` -> JS `IfcError` with its `code`.
 - `src/model/types.rs` (wasm32 only): TypeScript `IfcValue` declarations.
 - `npm/package.json`: npm manifest; its version must equal `Cargo.toml`'s.
 - `tests/js/`: Node smoke and corpus round-trip suites.
@@ -34,13 +31,13 @@ roadmap work; keep progress, blockers, and evidence there.
   wrappers and 64-bit integers (`bigint`) stay distinct.
 - A refused JS input is an `IfcError` with a stable `code` and leaves the
   model unchanged; never a panic, never a coerced value.
-- Keep native logic out of `*/js.rs` so `cargo test` covers it without a
-  JS host.
+- Anything testable without a JS host belongs in the core, where
+  `cargo test -p openbim-ifc-binding-core` covers it natively.
 
 ## Verification
 
 ```sh
-cargo test -p openbim-ifc-wasm
+cargo test -p openbim-ifc-binding-core
 openbim-ifc-wasm/scripts/build-node-pkg.sh   # wasm build + Node suites
 ```
 

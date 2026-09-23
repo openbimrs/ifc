@@ -1,0 +1,18 @@
+[package]
+name = "openbim-ifc-binding-core"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+license = "AGPL-3.0-or-later"
+authors = ["point-grey"]
+repository = "https://github.com/openbimrs/ifc"
+description = "Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python)."
+keywords = ["ifc", "bim", "ffi", "bindings", "openbim"]
+categories = ["parser-implementations"]
+
+[dependencies]
+# ADR 0013: bindings depend on the facade only, never on an ifc-* crate.
+openbim-ifc = { workspace = true, default-features = false, features = ["step", "schema"] }
+
+[lints]
+workspace = true

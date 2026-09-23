@@ -156,9 +156,10 @@ impl Tagged {
 
     /// Decode into a model value, validating what the model cannot.
     ///
-    /// Rejects nesting deeper than [`MAX_NESTING`], an empty enum or type
-    /// name, and an enum or type name that is not a STEP identifier -- each
-    /// of which the STEP writer would otherwise emit as a malformed file.
+    /// Rejects nesting deeper than [`MAX_NESTING`], a non-finite real, an
+    /// empty enum or type name, and an enum or type name that is not a STEP
+    /// identifier -- each of which the STEP writer would otherwise refuse or
+    /// emit as a malformed file.
     pub fn into_value(self) -> Result<Value, BindingError> {
         self.into_value_at(0)
     }
@@ -175,6 +176,13 @@ impl Tagged {
             Self::Bool(b) => Value::Bool(b),
             Self::Unknown => Value::LogicalUnknown,
             Self::Integer(i) => Value::Integer(i),
+            // STEP has no NaN or infinity; the writer would refuse the whole
+            // file later, far from the edit that caused it.
+            Self::Real(r) if !r.is_finite() => {
+                return Err(BindingError::InvalidValue(format!(
+                    "real {r} is not finite"
+                )))
+            }
             Self::Real(r) => Value::Real(r),
             Self::Text(s) => Value::Text(s.into()),
             Self::Binary(s) => Value::Binary(s.into()),

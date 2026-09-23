@@ -233,3 +233,26 @@ fn a_subtype_query_needs_a_known_schema() {
         Err(BindingError::UnsupportedSchema("IFC9".into()))
     );
 }
+
+#[test]
+fn a_non_finite_real_is_refused_for_every_host() {
+    for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        assert!(
+            matches!(
+                Tagged::Real(bad).into_value(),
+                Err(BindingError::InvalidValue(_))
+            ),
+            "{bad}"
+        );
+    }
+    let mut model = model();
+    assert!(model.set_attribute(4, 2, Tagged::Real(f64::NAN)).is_err());
+    assert_eq!(
+        model.attribute(4, 2).unwrap(),
+        Tagged::Typed {
+            type_name: "IFCLENGTHMEASURE".into(),
+            value: Box::new(Tagged::Real(2.5)),
+        },
+        "a refused edit changes nothing"
+    );
+}

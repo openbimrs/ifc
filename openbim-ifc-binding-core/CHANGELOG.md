@@ -1,0 +1,18 @@
+# Changelog -- openbim-ifc-binding-core
+
+All notable changes to the `openbim-ifc-binding-core` crate are documented here.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this crate follows Semantic Versioning independently of its siblings:
+a release here does not imply a release of any other crate in the family.
+
+## [Unreleased]
+
+### Added
+
+- The host-independent half of the language bindings (ADR 0013): `IfcModel`
+  operations, the lossless `Tagged` value encoding and `BindingError` with
+  stable codes, shared by the WASM, C and Python bindings. Extracted from
+  `openbim-ifc-wasm`.
+- Non-finite reals (NaN, infinity) are refused for every host; STEP has no
+  form for them.
