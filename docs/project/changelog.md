@@ -20,24 +20,6 @@ lockstep -- is archived in the
 
 ## [Unreleased]
 
-### ifc-model
-
-### Fixed
-
-- Builds for `wasm32-unknown-unknown` (#34). `ahash`'s default
-  `runtime-rng` pulled in getrandom 0.3, which fails on that target, so no
-  crate depending on this one could be compiled to WebAssembly. Native
-  builds keep runtime-seeded hashing; wasm32 builds use a compile-time seed.
-
-### ifc-schema
-
-### Fixed
-
-- Builds for `wasm32-unknown-unknown` (#34). `ahash`'s default
-  `runtime-rng` pulled in getrandom 0.3, which fails on that target, so no
-  crate depending on this one could be compiled to WebAssembly. Native
-  builds keep runtime-seeded hashing; wasm32 builds use a compile-time seed.
-
 ### openbim-ifc-wasm
 
 ### Added
@@ -154,6 +136,26 @@ lockstep -- is archived in the
 
 - **Breaking:** requires `ifc-style` 0.3.0, re-exported as `ifc::style`.
   `IndexedTextureMap::maps` there now returns `Vec<EntityId>`.
+
+## [0.2.2] - 2026-09-23
+
+### ifc-model
+
+### Fixed
+
+- Builds for `wasm32-unknown-unknown` (#34). `ahash`'s default
+  `runtime-rng` pulled in getrandom 0.3, which fails on that target, so no
+  crate depending on this one could be compiled to WebAssembly. Native
+  builds keep runtime-seeded hashing; wasm32 builds use a compile-time seed.
+
+### ifc-schema
+
+### Fixed
+
+- Builds for `wasm32-unknown-unknown` (#34). `ahash`'s default
+  `runtime-rng` pulled in getrandom 0.3, which fails on that target, so no
+  crate depending on this one could be compiled to WebAssembly. Native
+  builds keep runtime-seeded hashing; wasm32 builds use a compile-time seed.
 
 ## [0.2.1] - 2026-09-23
 
