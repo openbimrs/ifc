@@ -24,10 +24,6 @@ everything released before per-crate changelogs began.
 
 ### Known limits
 
-- The channel reaches a compiled mesh only for a single-item body.
-  Axiolid's reference compiler drops channels on `Collection` and
-  `Instance` nodes, i.e. multi-item bodies and `IfcMappedItem`
-  (axiolid/kernel#115).
 - `IfcIndexedPolygonalTextureMap` (IFC4X3) is not lowered.
 
 ### Changed

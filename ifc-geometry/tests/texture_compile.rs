@@ -5,10 +5,9 @@
 //! rebuilds meshes on some paths (placement, collections), so this checks
 //! the whole product path: file -> lowered graph -> compiled mesh.
 //!
-//! Known limit, upstream: a body with two or more items (a `Collection`
-//! root) or an `IfcMappedItem` (`Instance`) loses every channel in
-//! compilation, silently -- axiolid/kernel#115. This test uses a single item
-//! so it pins what works today; extend it when #115 lands.
+//! Multi-item bodies (`Collection` root) and `IfcMappedItem` (`Instance`)
+//! lost every channel in compilation until axiolid/kernel#115; the last two
+//! tests pin both paths.
 #![cfg(feature = "compile-reference-backend")]
 
 use axiolid_core::Tolerance;
@@ -65,4 +64,82 @@ fn a_textured_product_compiles_with_its_uv_channel() {
         channel.at_corner(&mesh.indices, 0),
         Some([0.0, -0.5].as_slice())
     );
+}
+
+/// The #115 cases: textured item plus a second item (a `Collection`), and
+/// the textured face set reached through a mirroring `IfcMappedItem`
+/// (`Instance`). Before #115 both lost `uv` in compilation, silently.
+fn with_body(items: &str, extra: &str) -> String {
+    let body = "#13=IFCSHAPEREPRESENTATION(#2,'Body','Tessellation',(#20));";
+    let new = format!("#13=IFCSHAPEREPRESENTATION(#2,'Body','Tessellation',({items}));");
+    assert_eq!(FILE.matches(body).count(), 1, "fixture anchor");
+    FILE.replace(body, &new)
+        .replace("ENDSEC;\nEND-ISO", &format!("{extra}\nENDSEC;\nEND-ISO"))
+}
+
+fn compile(text: &str) -> axiolid_mesh::TriMesh {
+    let model = StepCodec
+        .read_bytes(text.as_bytes())
+        .expect("fixture parses");
+    compile_product_mesh(&model, EntityId(10), Tolerance::MILLIMETRE)
+        .expect("compiles")
+        .expect("has a body")
+}
+
+fn uv(mesh: &axiolid_mesh::TriMesh) -> &axiolid_mesh::AttributeChannel {
+    mesh.attributes
+        .iter()
+        .find(|c| c.name == UV_CHANNEL)
+        .unwrap_or_else(|| panic!("compiler dropped `{UV_CHANNEL}`: {:?}", mesh.attributes))
+}
+
+/// A second, untextured face set in the same body makes the root a
+/// `Collection`. The textured triangles keep their values; the extra item's
+/// triangles are unmapped, not zero-filled.
+#[test]
+fn a_second_untextured_item_keeps_the_first_items_uv() {
+    let second = "#40=IFCTRIANGULATEDFACESET(#21,$,.T.,((1,3,2),(1,2,4),(2,3,4),(3,1,4)),$);";
+    let mesh = compile(&with_body("#20,#40", second));
+    let channel = uv(&mesh);
+    mesh.validate_structure().expect("valid mesh");
+    assert_eq!(mesh.indices.len(), (12 + 4) * 3, "both items compiled");
+    assert_eq!(
+        channel.at_corner(&mesh.indices, 0),
+        Some([0.0, -0.5].as_slice())
+    );
+    let unmapped = (0..mesh.indices.len())
+        .filter(|&c| channel.at_corner(&mesh.indices, c).is_none())
+        .count();
+    assert_eq!(
+        unmapped,
+        4 * 3,
+        "exactly the second item's corners are unmapped"
+    );
+}
+
+/// The textured face set reached through an `IfcMappedItem` whose target
+/// mirrors (Axis2 opposing Y). Compilation swaps triangle corners 1 and 2
+/// to keep the winding outward; each corner must still read its own
+/// texture coordinate, so the value set per triangle is unchanged.
+#[test]
+fn a_mirrored_mapped_item_keeps_every_corners_uv() {
+    let mapped = "#50=IFCSHAPEREPRESENTATION(#2,'Body','Tessellation',(#20));
+#51=IFCREPRESENTATIONMAP(#4,#50);
+#52=IFCDIRECTION((0.,-1.,0.));
+#53=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,#52,#6,$,$);
+#54=IFCMAPPEDITEM(#51,#53);";
+    let plain = compile(FILE);
+    let mesh = compile(&with_body("#54", mapped));
+    let (a, b) = (uv(&plain), uv(&mesh));
+    mesh.validate_structure().expect("valid mesh");
+    assert_eq!(mesh.indices.len(), plain.indices.len());
+    for t in 0..mesh.indices.len() / 3 {
+        let at = |m: &axiolid_mesh::TriMesh, c: &axiolid_mesh::AttributeChannel, k| {
+            c.at_corner(&m.indices, 3 * t + k).map(<[f64]>::to_vec)
+        };
+        // Swapped corners: 0 stays, 1 and 2 trade places.
+        assert_eq!(at(&mesh, b, 0), at(&plain, a, 0), "triangle {t} corner 0");
+        assert_eq!(at(&mesh, b, 1), at(&plain, a, 2), "triangle {t} corner 1");
+        assert_eq!(at(&mesh, b, 2), at(&plain, a, 1), "triangle {t} corner 2");
+    }
 }
