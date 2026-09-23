@@ -18,7 +18,42 @@ lockstep -- is archived in the
 
 <!-- CHANGELOG:BEGIN -->
 
-## [Unreleased]
+## [0.4.0] - 2026-09-23
+
+### openbim-ifc
+
+### Added
+
+- Textured tessellated geometry: `ifc::geometry` (ifc-geometry 0.3) lowers
+  `IfcIndexedTriangleTextureMap` as a per-corner `uv` channel that survives
+  compilation, including multi-item bodies and mirrored `IfcMappedItem`s
+  (#30, axiolid/kernel#115).
+
+### Changed
+
+- **Breaking:** re-exports ifc-geometry 0.3, ifc-georef 0.3 and
+  ifc-alignment 0.3, which all require Axiolid 0.3.
+
+## [0.3.1] - 2026-09-23
+
+### openbim-ifc
+
+### Added
+
+- `ifc::schema` re-exports `ifc-schema` (feature `schema`), so the bundled
+  schemas `ids_of_type_including_subtypes` needs, such as
+  `ifc::schema::ifc4()`, are reachable without a direct `ifc-schema`
+  dependency. Found by building a crates.io-only consumer of 0.3.0.
+
+## [0.3.0] - 2026-09-23
+
+### ifc-alignment
+
+### Changed
+
+- **Breaking:** requires Axiolid 0.3. Lowered alignment curves are returned as
+  `axiolid_model::GeometryGraph` and `NodeId`, so the major Axiolid version is
+  part of this crate's public API. No code change.
 
 ### ifc-geometry
 
@@ -41,18 +76,13 @@ lockstep -- is archived in the
 - **Breaking:** requires Axiolid 0.3 (`axiolid-mesh` 0.3 adds
   `AttributeChannel::corner_indices`).
 
-## [0.3.1] - 2026-09-23
+### ifc-georef
 
-### openbim-ifc
+### Changed
 
-### Added
-
-- `ifc::schema` re-exports `ifc-schema` (feature `schema`), so the bundled
-  schemas `ids_of_type_including_subtypes` needs, such as
-  `ifc::schema::ifc4()`, are reachable without a direct `ifc-schema`
-  dependency. Found by building a crates.io-only consumer of 0.3.0.
-
-## [0.3.0] - 2026-09-23
+- **Breaking:** requires Axiolid 0.3. `ProjectToMap::transform` is an
+  `axiolid_core::Transform3`, so the major Axiolid version is part of this
+  crate's public API. No code change.
 
 ### ifc-style
 

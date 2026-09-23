@@ -12,11 +12,20 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-23
+
+### Changed
+
+- **Breaking:** requires Axiolid 0.3. Lowered alignment curves are returned as
+  `axiolid_model::GeometryGraph` and `NodeId`, so the major Axiolid version is
+  part of this crate's public API. No code change.
+
 ## [0.2.0] - 2026-09-22
 
 First release under per-crate versioning. See the
 [repository changelog](../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-alignment-v0.2.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-alignment-v0.3.0...HEAD
+[0.3.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.3.0
 [0.2.0]: https://github.com/openbimrs/ifc/releases/tag/v0.2.0
