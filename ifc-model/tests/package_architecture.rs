@@ -384,3 +384,52 @@ fn the_kernel_is_consumed_as_a_published_release() {
         offenders.join("\n")
     );
 }
+
+/// Language bindings wrap the facade and nothing else (ADR 0013).
+///
+/// A binding reaching an `ifc-*` crate directly would duplicate the facade's
+/// feature selection and bypass the layering it enforces.
+const BINDINGS: &[&str] = &["openbim-ifc-wasm"];
+
+/// May a binding crate depend on `dependency`?
+fn binding_allows(dependency: &str) -> bool {
+    dependency == FACADE || !(dependency.starts_with("ifc-") || dependency.starts_with("axiolid"))
+}
+
+#[test]
+fn bindings_depend_only_on_the_facade() {
+    let metadata = metadata();
+    let mut checked = 0;
+    for package in metadata
+        .packages
+        .iter()
+        .filter(|package| BINDINGS.contains(&package.name.as_str()))
+    {
+        checked += 1;
+        let dependencies = production_dependencies(package);
+        assert!(
+            dependencies.contains(FACADE),
+            "{} must depend on {FACADE}",
+            package.name
+        );
+        let bypass: Vec<_> = dependencies
+            .iter()
+            .filter(|dependency| !binding_allows(dependency))
+            .collect();
+        assert!(
+            bypass.is_empty(),
+            "{} bypasses the facade through {bypass:?}; ADR 0013",
+            package.name
+        );
+    }
+    assert_eq!(checked, BINDINGS.len(), "a listed binding crate is missing");
+}
+
+#[test]
+fn the_binding_rule_refuses_ifc_and_kernel_crates() {
+    assert!(binding_allows(FACADE));
+    assert!(binding_allows("wasm-bindgen"));
+    assert!(!binding_allows("ifc-model"));
+    assert!(!binding_allows("ifc-geometry"));
+    assert!(!binding_allows("axiolid-core"));
+}

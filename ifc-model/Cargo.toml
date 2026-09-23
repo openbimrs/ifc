@@ -28,5 +28,17 @@ thiserror.workspace = true
 cargo_metadata = "0.19"
 syn = { version = "2", features = ["full", "parsing"] }
 
+# Hash seeding differs by target (#34). Natively, ahash seeds from OS
+# randomness (getrandom). getrandom 0.3 does not build for browser WASM
+# (wasm32-unknown-unknown) without a global cfg flag every consumer would
+# have to set, so there the seed is fixed at build time instead. These maps
+# are internal lookup tables over data the caller already controls, so a
+# per-build seed on the web costs no meaningful HashDoS resistance.
+[target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
+ahash = { workspace = true, features = ["runtime-rng"] }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+ahash = { workspace = true, features = ["compile-time-rng"] }
+
 [lints]
 workspace = true

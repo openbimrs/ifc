@@ -7,3 +7,5 @@
 [toolchain]
 channel = "1.88.0"
 components = ["clippy", "rustfmt"]
+# The gate builds the facade for browser WASM (#34).
+targets = ["wasm32-unknown-unknown"]

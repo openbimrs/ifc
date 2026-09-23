@@ -1,0 +1,25 @@
+{
+  "name": "@openbimrs/ifc",
+  "description": "Read, edit and write IFC STEP files from JavaScript (WebAssembly build of openbim-ifc).",
+  "version": "0.1.0",
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/openbimrs/ifc.git",
+    "directory": "openbim-ifc-wasm"
+  },
+  "type": "commonjs",
+  "main": "openbim_ifc_wasm.js",
+  "types": "openbim_ifc_wasm.d.ts",
+  "files": [
+    "openbim_ifc_wasm.js",
+    "openbim_ifc_wasm.d.ts",
+    "openbim_ifc_wasm_bg.wasm",
+    "openbim_ifc_wasm_bg.wasm.d.ts",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": ["ifc", "bim", "openbim", "step", "wasm"]
+}

@@ -63,6 +63,23 @@ done
 # when both are on. `--all-features` would hide a break in that exact pairing.
 cargo test -p openbim-ifc --features step,spatial,geometry-select --test unreachable_corpus
 
+# Browser WASM column (#34). The facade must build for wasm32-unknown-unknown
+# with its default and widest pure-Rust feature sets; a native-only dependency
+# (getrandom via ahash was the first) breaks every JS consumer silently.
+for features in "" "--features schema,ifcxml,author,domains,spatial"; do
+    # shellcheck disable=SC2086
+    cargo build -p openbim-ifc --target wasm32-unknown-unknown $features
+done
+
+# JavaScript bindings (#34, ADR 0013): build the wasm module with the pinned
+# wasm-bindgen CLI and run the Node smoke and corpus suites against it, so
+# the binding is proven to work from JS, not just to compile.
+if [[ -n "${IFC_SKIP_JS:-}" ]]; then
+    echo "warning: IFC_SKIP_JS set; JS binding suites NOT run" >&2
+else
+    openbim-ifc-wasm/scripts/build-node-pkg.sh
+fi
+
 # Documentation gates. Each crate owns its CHANGELOG.md; the docs page is
 # assembled from all of them, so drift between the two is a build failure
 # rather than a silent inconsistency the reader has to notice. The assembler

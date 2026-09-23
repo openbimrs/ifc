@@ -18,6 +18,43 @@ lockstep -- is archived in the
 
 <!-- CHANGELOG:BEGIN -->
 
+## [Unreleased]
+
+### ifc-model
+
+### Fixed
+
+- Builds for `wasm32-unknown-unknown` (#34). `ahash`'s default
+  `runtime-rng` pulled in getrandom 0.3, which fails on that target, so no
+  crate depending on this one could be compiled to WebAssembly. Native
+  builds keep runtime-seeded hashing; wasm32 builds use a compile-time seed.
+
+### ifc-schema
+
+### Fixed
+
+- Builds for `wasm32-unknown-unknown` (#34). `ahash`'s default
+  `runtime-rng` pulled in getrandom 0.3, which fails on that target, so no
+  crate depending on this one could be compiled to WebAssembly. Native
+  builds keep runtime-seeded hashing; wasm32 builds use a compile-time seed.
+
+### openbim-ifc-wasm
+
+### Added
+
+- WebAssembly bindings for the `openbim-ifc` facade (#34, ADR 0013).
+  `IfcModel` parses and writes IFC STEP, lists entities, queries by exact
+  type or including subtypes (per the file's declared IFC2X3, IFC4 or
+  IFC4X3 schema), reads and edits attributes, adds and removes entities,
+  and reports dangling references.
+- A lossless tagged value encoding with TypeScript declarations
+  (`IfcValue`): `$` and `*`, `.U.` and `.F.`, integers and reals, typed
+  wrappers, and 64-bit integers as `bigint` all stay distinct.
+- Every failure throws an `IfcError` with a stable `code`; a refused edit
+  leaves the model unchanged.
+- `scripts/build-node-pkg.sh` builds a Node package with the pinned
+  `wasm-bindgen` CLI and runs the Node smoke and corpus suites.
+
 ## [0.4.0] - 2026-09-23
 
 ### openbim-ifc

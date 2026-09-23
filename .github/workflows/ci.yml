@@ -18,6 +18,8 @@ jobs:
         uses: dtolnay/rust-toolchain@1.88.0
         with:
           components: clippy, rustfmt
+          # The gate builds the facade for browser WASM (#34).
+          targets: wasm32-unknown-unknown
       # The normative EXPRESS schemas are CC BY-ND 4.0: verbatim redistribution
       # is allowed, derivatives are not, so they are fetched rather than
       # vendored. Cached by content hash of the fetch script, which pins the
@@ -27,6 +29,16 @@ jobs:
         with:
           path: references/ifc-spec
           key: ifc-spec-${{ hashFiles('scripts/fetch-ifc-schemas.sh') }}
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install wasm-bindgen CLI
+        # Must equal the `wasm-bindgen` pin in openbim-ifc-wasm/Cargo.toml;
+        # build-node-pkg.sh refuses a mismatch.
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen-cli@0.2.128
       - name: Fetch IFC EXPRESS schemas
         run: scripts/fetch-ifc-schemas.sh
       - name: Run standalone gate

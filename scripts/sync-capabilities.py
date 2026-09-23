@@ -58,6 +58,9 @@ STUB_MAX_LINES = 12
 PUBLISHED_STATUS = {
     # Both are documented as implemented in the capability list above the
     # census, with tests, yet neither had a census row.
+    # Record-model bindings tested from Node (#37); npm publication, a tested
+    # browser build and domain views are still open, so not "Implemented".
+    "openbim-ifc-wasm": '<span class="status-partial">Partial</span>',
     "ifc-author": '<span class="status-implemented">Implemented</span>',
     "ifc-spatial": '<span class="status-implemented">Implemented</span>',
     # All six PLAN tasks implemented: strict borrowed records, associations,

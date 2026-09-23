@@ -14,3 +14,6 @@ docs/.vitepress/cache/
 # Local-only cargo config: redirects kernel pins to a local checkout
 # during upstream development. Never committed.
 .cargo/
+
+# wasm-bindgen output of openbim-ifc-wasm/scripts/build-node-pkg.sh
+openbim-ifc-wasm/pkg/

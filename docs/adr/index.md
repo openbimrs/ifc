@@ -26,3 +26,4 @@ for new records.
 | [0010](/adr/0010-checked-mutation-is-a-model-level-primitive) | Checked mutation is a model-level primitive, not a bare accessor | Accepted |
 | [0011](/adr/0011-geometry-authoring-is-bidirectional-in-the-bridge) | Geometry authoring is bidirectional inside the bridge | Accepted |
 | [0012](/adr/0012-geometry-backends-are-swappable) | Geometry backends are swappable, whole or per area | Accepted |
+| [0013](/adr/0013-language-bindings-wrap-the-facade) | Language bindings wrap the facade, one crate per target | Accepted |
