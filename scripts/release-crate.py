@@ -123,7 +123,7 @@ def published_versions(crate: str) -> list[str]:
     except Exception:
         return []
     out = []
-    for line in body.strip().split("\\n"):
+    for line in body.splitlines():
         if line.strip():
             out.append(json.loads(line)["vers"])
     return out
@@ -165,6 +165,23 @@ def today() -> str:
     return datetime.date.today().isoformat()
 
 
+def lift_workspace_requirement(crate: str, new: str) -> None:
+    """Set the root `[workspace.dependencies]` requirement on `crate` to `new`.
+
+    Members inherit with `crate.workspace = true`, so the root entry is the
+    only requirement most dependents carry. Editing only member manifests
+    matches nothing there and leaves the breaking bump unrequired.
+    """
+    root = ROOT / "Cargo.toml"
+    text = root.read_text(encoding="utf-8")
+    updated, count = re.subn(
+        r'(?m)^(%s\s*=\s*\{[^}\n]*version\s*=\s*)"[^"]+"' % re.escape(crate),
+        r'\g<1>"%s"' % new, text, count=1)
+    if count == 1 and updated != text:
+        root.write_text(updated, encoding="utf-8")
+        print(f"  updated workspace requirement on {crate} to {new}")
+
+
 def apply_bump(crate: str, new: str) -> None:
     """Write the new version into the manifest and open a changelog section."""
     manifest = ROOT / crate / "Cargo.toml"
@@ -183,6 +200,7 @@ def apply_bump(crate: str, new: str) -> None:
     # Sibling manifests requiring this crate need their requirement lifted
     # only when the bump is breaking; a compatible one is already accepted.
     if is_breaking(old, new):
+        lift_workspace_requirement(crate, new)
         for dep in dependents(crate):
             dm = ROOT / dep / "Cargo.toml"
             dt = dm.read_text(encoding="utf-8")

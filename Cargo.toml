@@ -21,18 +21,18 @@ missing_docs = "deny"
 [workspace.dependencies]
 # IFC family: versioned path dependencies build standalone and normalize to
 # registry dependencies when packages are published.
-ifc-schema = { path = "ifc-schema", version = "0.2.0" }
-openbim-ifc = { path = "openbim-ifc", version = "0.2.0" }
-ifc-step = { path = "ifc-step", version = "0.2.0" }
+ifc-schema = { path = "ifc-schema", version = "0.2.1" }
+openbim-ifc = { path = "openbim-ifc", version = "0.3.0" }
+ifc-step = { path = "ifc-step", version = "0.2.1" }
 ifc-xml = { path = "ifc-xml", version = "0.2.0" }
-ifc-model = { path = "ifc-model", version = "0.2.0" }
+ifc-model = { path = "ifc-model", version = "0.2.1" }
 ifc-geometry = { path = "ifc-geometry", version = "0.2.0", default-features = false }
 ifc-properties = { path = "ifc-properties", version = "0.2.0" }
 ifc-template-catalog = { path = "ifc-template-catalog", version = "0.2.0" }
 ifc-cost = { path = "ifc-cost", version = "0.2.0" }
 ifc-schedule = { path = "ifc-schedule", version = "0.2.0" }
 ifc-material = { path = "ifc-material", version = "0.2.0" }
-ifc-style = { path = "ifc-style", version = "0.2.0" }
+ifc-style = { path = "ifc-style", version = "0.3.0" }
 ifc-element-type = { path = "ifc-element-type", version = "0.2.0" }
 ifc-occurrence = { path = "ifc-occurrence", version = "0.2.0" }
 ifc-structural = { path = "ifc-structural", version = "0.2.0" }

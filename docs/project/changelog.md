@@ -18,19 +18,7 @@ lockstep -- is archived in the
 
 <!-- CHANGELOG:BEGIN -->
 
-## [Unreleased]
-
-### ifc-schema
-
-### Added
-
-- `Schema::subtypes` and `Schema::direct_subtypes`: every entity inheriting
-  from a name, the inverse of `is_a`. Checked against `is_a` for every
-  ordered entity pair of all three bundled schemas (#32).
-
-### Changed
-
-- Requires `openbim-step` 0.5.1, which provides the downward walk.
+## [0.3.0] - 2026-09-23
 
 ### ifc-style
 
@@ -60,6 +48,40 @@ lockstep -- is archived in the
   returns nothing because no instance is declared as the abstract supertype;
   this answers the question that call looks like it should. The caller passes
   the `Schema`, because the tree differs by version (#32).
+
+### Changed
+
+- **Breaking:** requires `ifc-style` 0.3.0, re-exported as `ifc::style`.
+  `IndexedTextureMap::maps` there now returns `Vec<EntityId>`.
+
+## [0.2.1] - 2026-09-23
+
+### ifc-model
+
+### Changed
+
+- `Model::ids_of_type` docs now point to `ifc::ids_of_type_including_subtypes`
+  for subtype-inclusive queries, instead of wrongly saying `ifc-schema`
+  provides them.
+
+### ifc-schema
+
+### Added
+
+- `Schema::subtypes` and `Schema::direct_subtypes`: every entity inheriting
+  from a name, the inverse of `is_a`. Checked against `is_a` for every
+  ordered entity pair of all three bundled schemas (#32).
+
+### Changed
+
+- Requires `openbim-step` 0.5.1, which provides the downward walk.
+
+### ifc-step
+
+### Changed
+
+- Requires `openbim-step` 0.5.1, matching `ifc-schema` 0.2.1. Both pin the
+  parser exactly, so the pair must move together.
 
 ## [0.2.0] - 2026-09-22
 
