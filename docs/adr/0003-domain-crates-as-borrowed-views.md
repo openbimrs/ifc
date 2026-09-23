@@ -58,7 +58,7 @@ the record and neither projection duplicates it.
   hoist their own caching.
 - Sibling **semantic** crates may not depend on one another, so cross-domain
   workflows must live in an orchestration layer above them. Amended 2026-09-15:
-  this no longer applies bet...[truncated]
+  this no longer applies between two bridges; see the amendment below.
 
 **Follow-ups / risks to watch**
 
@@ -114,6 +114,7 @@ where it was measured to cost without buying.
 **This rests on a premise that could expire.** If `ifc-alignment` ever makes
 its axiolid dependencies optional, as `ifc-geometry` did, the superset
 relationship breaks and the exception loses its justification.
-`dependencies_follow_the_ifc_layers` therefore asserts the premise directly
-and fails with a pointer to this amendment, rather than leaving a stale
-allowance in place.
+`the_bridge_exception_still_rests_on_unconditional_kernel_deps` (in
+`ifc-model/tests/package_architecture.rs`) therefore asserts the premise
+directly and fails with a pointer to this amendment, rather than leaving a
+stale allowance in place.

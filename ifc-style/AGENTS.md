@@ -39,7 +39,8 @@ Allowed production dependencies: ifc-model and schema metadata; no geometry crat
 
 - Style changes appearance, never geometry shape.
 - Light sources are `IfcGeometricRepresentationItem` subtypes but carry no
-  shape: `ifc-geometry` classifies them `non-shape` and owns t...[truncated]
+  shape: `ifc-geometry` classifies them `non-shape` with this crate as owner.
+  This crate reads them as presentation state; it illuminates nothing.
 - Texture/image loading and renderer material compilation are adapter/application concerns.
 
 Keep cross-resource projections attribute-scoped: shared `ifc-model` storage
