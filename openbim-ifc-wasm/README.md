@@ -27,9 +27,13 @@ but has no tested recipe yet.
 
 ## Example (Node)
 
+```sh
+npm install @openbim/ifc
+```
+
 ```js
 const { readFileSync, writeFileSync } = require("node:fs");
-const { IfcModel } = require("./pkg/openbim_ifc_wasm.js");
+const { IfcModel } = require("@openbim/ifc");
 
 const model = IfcModel.parse(readFileSync("house.ifc"));
 console.log(model.schema, model.size);

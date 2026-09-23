@@ -31,7 +31,7 @@ validation, domain views, geometry, ifcXML, or a tested browser bundle.
 - [x] `WASM-VALUE` - lossless tagged value encoding, both directions
 - [x] `WASM-MODEL` - parse, write, read, edit, add, remove, type queries
 - [x] `WASM-SMOKE` - Node smoke and corpus round-trip suites in the gate
-- [ ] `WASM-NPM` - publish `@openbimrs/ifc` to npm (needs an npm org and token)
+- [ ] `WASM-NPM` - publish `@openbim/ifc` to npm (npm org `openbim`; first publish manual, then trusted publishing)
 - [ ] `WASM-WEB` - a tested browser/bundler build (`--target web` or `bundler`)
 - [ ] `WASM-SIZE` - per-schema features: the three bundled schemas are ~594 KB of a 1.06 MB module
 - [ ] `WASM-DOMAIN` - expose domain views (properties, spatial) once the facade API settles
