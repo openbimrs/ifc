@@ -47,7 +47,7 @@ code.
 | `ifc-georef` | 2,087 | 20 | 9 | 6 | <span class="status-partial">Partial</span> |
 | `ifc-schema` | 1,418 | 12 | 4 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,317 | 6 | 0 | 2 | <span class="status-implemented">Implemented</span> |
-| `openbim-ifc` | 1,071 | 8 | 0 | 16 | <span class="status-implemented">Implemented</span> |
+| `openbim-ifc` | 1,084 | 8 | 0 | 16 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 1,046 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-author` | 951 | 9 | 3 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-step` | 950 | 6 | 0 | 6 | <span class="status-implemented">Implemented</span> |

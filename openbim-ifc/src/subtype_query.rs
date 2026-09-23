@@ -13,8 +13,15 @@
 //! module does not guess it from the header. A file whose header is missing
 //! or wrong would otherwise be queried against a silently substituted tree.
 //! Resolve the schema once, for example with
-//! [`crate::SchemaVersion::from_header_token`] and `ifc_schema::for_version`,
-//! and pass it in.
+//! [`crate::SchemaVersion::from_header_token`] and
+//! [`crate::schema::for_version`], and pass it in:
+//!
+//! ```
+//! let model = ifc::Model::new();
+//! let schema = ifc::schema::ifc4();
+//! let elements = ifc::ids_of_type_including_subtypes(&model, schema, "IfcElement");
+//! assert!(elements.is_empty());
+//! ```
 
 use ifc_model::{EntityId, Model};
 use ifc_schema::Schema;

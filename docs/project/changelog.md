@@ -18,6 +18,17 @@ lockstep -- is archived in the
 
 <!-- CHANGELOG:BEGIN -->
 
+## [0.3.1] - 2026-09-23
+
+### openbim-ifc
+
+### Added
+
+- `ifc::schema` re-exports `ifc-schema` (feature `schema`), so the bundled
+  schemas `ids_of_type_including_subtypes` needs, such as
+  `ifc::schema::ifc4()`, are reachable without a direct `ifc-schema`
+  dependency. Found by building a crates.io-only consumer of 0.3.0.
+
 ## [0.3.0] - 2026-09-23
 
 ### ifc-style

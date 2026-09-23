@@ -73,6 +73,12 @@ pub use ifc_xml::{XmlCodec, XmlProfile};
 #[cfg(feature = "schema")]
 pub use ifc_schema::{Schema, SchemaVersion};
 
+/// The whole schema crate, including the bundled schemas
+/// (`schema::ifc4()`, `schema::for_version(..)`) that
+/// [`ids_of_type_including_subtypes`] needs as input.
+#[cfg(feature = "schema")]
+pub use ifc_schema as schema;
+
 // Needs the model's type index and the schema's subtype tree, which ADR 0003
 // keeps in separate crates, so the join lives in this orchestration layer.
 #[cfg(feature = "schema")]
