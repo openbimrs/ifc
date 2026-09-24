@@ -51,9 +51,9 @@ dependencies = [
 
 [[package]]
 name = "axiolid-construct"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f423b2b8dc6056e90767bd2c78b4f7c1cd8f74a5f77bad87f4c02ef729e32e3"
+checksum = "0f28abe976bc307f852faf8e965d7e0d45ed75e93e6c3ba23a5b69466706ac80"
 dependencies = [
  "axiolid-brep",
  "axiolid-brep-audit",
@@ -797,6 +797,7 @@ dependencies = [
 name = "ifc-geometry"
 version = "0.3.0"
 dependencies = [
+ "axiolid-construct",
  "axiolid-contracts",
  "axiolid-core",
  "axiolid-curve",

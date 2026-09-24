@@ -51,6 +51,15 @@ lockstep -- is archived in the
 
 ### Changed
 
+- The workspace requires `axiolid-construct` 0.3.1 (reached through
+  `axiolid-mesh-compile`, pinned only as a floor behind
+  `compile-reference-backend`). With 0.3.0 two compiled results were wrong or
+  refused, though lowering was right: an `IfcPolygonalBoundedHalfSpace` whose
+  `Position` is translated within the clip plane cut the wrong region with no
+  error (axiolid/kernel#164), and an opening body extruded downward, as
+  Solibri and Revit hang windows from the lintel, was wound inside-out, so
+  its subtraction was refused (axiolid/kernel#166; 78 of 423 real hosts
+  refused with 0.3.0, 14 with 0.3.1). Both tests that pinned these now run.
 - A gap between consecutive composite segments, or between the last and the
   first, wider than 1e-5 m is refused as `Degenerate`, naming the segment
   and the gap. It is never bridged with an edge the file did not author.
@@ -64,15 +73,10 @@ lockstep -- is archived in the
   budget equals the linear tolerance, which is coarse for small radii: a real
   gutter profile meshes 1.9 % over its exact area and a slot 0.7 % under
   (axiolid/kernel#165). Lowering is exact; the arcs reach the kernel as arcs.
-- Opening bodies extruded downward (`ExtrudedDirection` with negative z, how
-  Solibri and Revit hang windows from the lintel) are wound inside-out by
-  `axiolid-construct` 0.3.0, so their subtraction is refused as
-  `OpeningNotSubtracted` rather than inverted (axiolid/kernel#166, fixed on
-  kernel `main`, not yet released). On the local real-model corpus (423 hosts
-  with openings whose gross Body compiles, six models) 78 hosts are refused
-  with 0.3.0 and 14 with the kernel fix; no host that already netted changes
-  volume. The remaining 14 are the kernel boolean refusing a non-manifold
-  operand, named per opening.
+- On the local real-model corpus (423 hosts with openings whose gross Body
+  compiles, six models) 14 hosts are still refused: the kernel boolean
+  refuses a non-manifold operand, and each refusal names the opening. No
+  host that already netted changed volume between kernels.
 - Measured against IfcOpenShell 0.8.5 on 138 sampled hosts across four real
   models: 130 agree within 0.1 % (median difference about 1e-10). The other
   8 are not subtraction errors. On 7, IfcOpenShell closes a gap in the host's
@@ -92,16 +96,6 @@ lockstep -- is archived in the
   to metres. A 3D boundary point is accepted only with `z = 0`; any other `z`
   violates `BoundaryDim` and is refused as `Degenerate`, naming the point,
   instead of being projected.
-
-### Known limits
-
-- An `IfcCompositeCurve` or `IfcIndexedPolyCurve` boundary is refused as
-  `Unsupported` rather than lowered (#43).
-- With `axiolid-construct` 0.3.0 the compiled clip ignores the in-plane
-  translation of `Position`: the boundary is placed at the base plane's
-  origin, with no error. Lowering carries the translation correctly; the fix
-  is axiolid/kernel#164. `tests/bounded_halfspace_compile.rs` pins it with
-  an ignored test that passes against the fixed kernel.
 
 ### openbim-ifc-binding-core
 

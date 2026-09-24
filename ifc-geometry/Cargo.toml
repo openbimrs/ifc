@@ -50,6 +50,7 @@ compile-reference-backend = [
     "compile",
     "dep:axiolid-mesh-compile",
     "dep:axiolid-mesh-boolean-boolmesh",
+    "dep:axiolid-construct",
 ]
 
 [dependencies]
@@ -79,6 +80,10 @@ axiolid-contracts = { workspace = true, optional = true }
 axiolid-mesh-compile = { workspace = true, optional = true }
 axiolid-mesh-compile-contract = { workspace = true, optional = true }
 axiolid-mesh-boolean-boolmesh = { workspace = true, optional = true }
+# Version floor only (>= 0.3.1): the reference compiler above depends on it,
+# and 0.3.0 cuts offset half-space clips in the wrong place and winds
+# downward extrusions inside-out. Nothing here imports it.
+axiolid-construct = { workspace = true, optional = true }
 # The CurveEvaluator capability, not an engine: names evaluation so a caller
 # can inject one. Opt-in with the other providers, never in the default build.
 axiolid-curve-evaluate-contract = { workspace = true, optional = true }

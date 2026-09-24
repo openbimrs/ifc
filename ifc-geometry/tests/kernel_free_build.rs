@@ -106,7 +106,11 @@ fn the_default_build_still_links_the_neutral_vocabulary() {
 /// could silently break it while both other columns still passed.
 #[test]
 fn the_execution_provider_is_opt_in_only() {
-    const PROVIDER: &[&str] = &["axiolid-mesh-compile", "axiolid-mesh-boolean-boolmesh"];
+    const PROVIDER: &[&str] = &[
+        "axiolid-mesh-compile",
+        "axiolid-mesh-boolean-boolmesh",
+        "axiolid-construct",
+    ];
 
     for column in [vec!["--no-default-features"], vec![]] {
         let tree = dependency_tree(&column);

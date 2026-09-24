@@ -77,14 +77,15 @@ separate net entry point:
 - Net quality is bounded by the backend's boolean on real exporter data.
   Non-manifold operands are refused by the reference kernel, and those
   refusals surface as `OpeningNotSubtracted`. On the local corpus that is 14
-  of 423 hosts once axiolid/kernel#166 is released.
+  of 423 hosts with `axiolid-construct` 0.3.1.
 
 **Follow-ups / risks to watch**
 
 - `IfcRelProjectsElement` (additions) is the mirror case and is not handled.
-- `axiolid-construct` 0.3.0 winds a downward extrusion inside-out, which is
-  how many exporters author opening bodies. Fixed in the kernel (#166); until
-  a release carries it, those subtractions are refused, never inverted.
+- `axiolid-construct` 0.3.0 wound a downward extrusion inside-out, which is
+  how many exporters author opening bodies, so those subtractions were
+  refused (never inverted). Fixed in 0.3.1 (axiolid/kernel#166), now the
+  workspace floor.
 
 ## Relation to existing code
 

@@ -70,6 +70,10 @@ axiolid-contracts = { version = "0.3.0" }
 axiolid-mesh-compile = { version = "0.3.0" }
 axiolid-mesh-compile-contract = { version = "0.3.0" }
 axiolid-mesh-boolean-boolmesh = { version = "0.3.0" }
+# Not used directly: `axiolid-mesh-compile` reaches it. Pinned here only to
+# raise the floor to 0.3.1, whose fixes the compiled results depend on
+# (axiolid/kernel#164 half-space frame origin, #166 downward extrusion).
+axiolid-construct = { version = "0.3.1" }
 
 # No default features: the default `runtime-rng` pulls getrandom 0.3, which
 # does not build on wasm32-unknown-unknown. Members opt into a seed source

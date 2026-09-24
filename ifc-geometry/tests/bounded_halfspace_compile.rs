@@ -193,12 +193,11 @@ fn a_millimetre_file_clips_the_same_solid() {
 /// x in [1, 2], y in [2.75, 3] (clipped from [2.75, 3.25]) -> area 0.25,
 /// removed 0.125. Ignoring the translation removes 0.25.
 ///
-/// Lowering carries the translation on `BoundedHalfSpace.placement`
-/// correctly; the published reference compiler (axiolid-construct 0.3.0)
-/// anchors the boundary at the clip plane's origin instead, so this compiles
-/// to the wrong volume without an error until axiolid/kernel#164 ships.
+/// Lowering carries the translation on `BoundedHalfSpace.placement`.
+/// `axiolid-construct` 0.3.0 anchored the boundary at the clip plane's origin
+/// instead and compiled the wrong volume with no error (axiolid/kernel#164);
+/// 0.3.1, the floor this workspace pins, places it correctly.
 #[test]
-#[ignore = "needs axiolid-construct with axiolid/kernel#164 (frame origin dropped)"]
 fn the_boundary_follows_the_in_plane_translation_of_position() {
     let translated = Clip {
         origin: [0.0, 2.75],

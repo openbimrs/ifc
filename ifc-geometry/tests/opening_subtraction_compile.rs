@@ -202,11 +202,10 @@ fn a_flush_door_is_subtracted_from_its_wall() {
 /// Solibri and Revit author opening bodies as `ExtrudedDirection = (0,0,-1)`
 /// hung from the top of the opening. That is the same box as an upward
 /// extrusion from the sill, so the net volume must not depend on which way
-/// the file extruded it. `axiolid-construct` 0.3.0 winds a downward
-/// extrusion inside-out, and the boolean refuses the inverted tool
-/// (axiolid/kernel#166), so this needs the fixed kernel.
+/// the file extruded it. `axiolid-construct` 0.3.0 wound a downward
+/// extrusion inside-out, so the boolean refused the inverted tool
+/// (axiolid/kernel#166); 0.3.1, the floor this workspace pins, fixes it.
 #[test]
-#[ignore = "needs axiolid-construct with axiolid/kernel#166 (downward extrusion inside-out)"]
 fn a_downward_extruded_window_is_subtracted() {
     // A 1 x 0.3 x 1 window whose top sits at z = 2.1: the body is placed at
     // the lintel and extruded 1 m down along -Z.

@@ -20,6 +20,7 @@ const COMPILE_HOST: &str = "ifc-geometry";
 /// engine". Adding a crate here widens what `ifc-geometry` may opt into; it
 /// does not widen who may depend on it.
 const EXECUTION_PROVIDER: &[&str] = &[
+    "axiolid-construct",
     "axiolid-contracts",
     "axiolid-curve-evaluate-contract",
     "axiolid-evaluate",
