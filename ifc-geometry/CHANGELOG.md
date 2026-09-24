@@ -14,6 +14,15 @@ everything released before per-crate changelogs began.
 
 ### Added
 
+- `tests/meshing_coverage.rs` and the generated public fixture
+  `test/fixtures/synthetic-coverage/meshing_coverage.ifc` (#47): one product
+  for each product-meshing failure kind #47 measured on real models, compiled
+  through `compile_product_mesh`. The four kinds fixed here (#43 to #46) pin
+  exact volumes, cross-checked with IfcOpenShell 0.8.5. The two still owned by
+  the Axiolid reference compiler, polygonal faces with more than 3 corners
+  (axiolid/kernel#160) and open-shell surface models (axiolid/kernel#161), pin
+  a refusal that names the product, and fail on purpose once the kernel
+  compiles them so their volume gets pinned instead.
 - `DegenerateFacePolicy` (#46), set per session with
   `LoweringSession::with_face_policy`. The default, `Refuse`, is unchanged:
   an `IfcPolyLoop` with fewer than three distinct edges refuses the brep,

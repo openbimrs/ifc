@@ -603,8 +603,10 @@ fn every_well_formed_bundled_schema_fixture_validates_clean() {
         }
     }
 
+    // 38 since synthetic-coverage/meshing_coverage.ifc (#47), which is
+    // schema-valid: its collapsed loop is a geometry refusal, not a schema error.
     assert_eq!(
-        checked, 37,
+        checked, 38,
         "all intended-clean fixtures must run; raw-header fail fixtures stay excluded"
     );
     assert!(

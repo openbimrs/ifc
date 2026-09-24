@@ -23,6 +23,11 @@ use ifc_step::StepCodec;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
+mod lower_dispatch_corpus {
+    pub mod corpus;
+}
+use lower_dispatch_corpus::corpus::{collect_ifc, fixture_root, is_pinned_collapsed_loop};
+
 const DISPOSITIONS: &str = include_str!("../data/ifc4-representation-item-dispositions.tsv");
 
 fn disposition_rows() -> Vec<[&'static str; 4]> {
@@ -35,24 +40,6 @@ fn disposition_rows() -> Vec<[&'static str; 4]> {
             [fields[0], fields[1], fields[2], fields[3]]
         })
         .collect()
-}
-
-fn fixture_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test/fixtures")
-}
-
-fn collect_ifc(dir: &std::path::Path, files: &mut Vec<PathBuf>) {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
-    };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            collect_ifc(&path, files);
-        } else if path.extension().and_then(|e| e.to_str()) == Some("ifc") {
-            files.push(path);
-        }
-    }
 }
 
 /// The schema, not the hand-maintained dispatch arrays, defines the complete
@@ -232,6 +219,9 @@ fn every_corpus_representation_item_lowers_or_reports_a_typed_reason() {
                         // IFCMAPPEDITEM(#17,$)` leaves the schema-mandatory
                         // MappingTarget empty. Both must produce a typed,
                         // entity-naming report rather than a panic.
+                        if is_pinned_collapsed_loop(path, &model, &error) {
+                            continue;
+                        }
                         if cyclic_fixture && !error.is_unsupported() {
                             let text = error.to_string();
                             assert!(
@@ -445,6 +435,7 @@ fn implemented_families_lower_and_lowering_families_are_claimed() {
                         // vertex, or a zero-area vertex loop). Refusing it is
                         // the documented behaviour, not a coverage gap.
                     }
+                    Err(error) if is_pinned_collapsed_loop(path, &model, &error) => {}
                     Err(error) => panic!(
                         "{family} is listed IMPLEMENTED but {id:?} in {} failed: {error}",
                         path.display()
