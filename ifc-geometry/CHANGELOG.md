@@ -22,6 +22,22 @@ everything released before per-crate changelogs began.
   parameter (in the project's plane-angle unit) or a cartesian point.
 - On the two real models that carried them, all 128 products refused for a
   composite profile boundary now compile, and no other product changed.
+- Net geometry (#44, ADR 0014): `compile::compile_product_mesh_net` (and
+  `_with` for your own backend) returns a product's Body with every
+  `IfcRelVoidsElement` opening subtracted, plus the ids of the openings
+  removed. `compile_product_mesh` is unchanged and stays gross: quantity
+  takeoff wants gross, clearance and ratio checks want net. The graph-level
+  entry point is `lower::lower_product_net`; the kernel-free relation reader is
+  `openings_of`.
+- An opening that cannot be removed -- its Body does not lower, it has none,
+  it is not a solid, or the backend refuses it or its cut -- is
+  `GeometryError::OpeningNotSubtracted` naming the host and the opening. The
+  gross body is never returned in its place. A host whose own Body the backend
+  refuses stays `CompilationRefused` on the host.
+- Multi-item hosts and openings (a Body with several items, or a mapped item)
+  are cut item by item: every host part minus every opening part. A mapped
+  opening is flattened through its instance transforms, composed outer after
+  inner.
 
 ### Changed
 
@@ -38,6 +54,22 @@ everything released before per-crate changelogs began.
   budget equals the linear tolerance, which is coarse for small radii: a real
   gutter profile meshes 1.9 % over its exact area and a slot 0.7 % under
   (axiolid/kernel#165). Lowering is exact; the arcs reach the kernel as arcs.
+- Opening bodies extruded downward (`ExtrudedDirection` with negative z, how
+  Solibri and Revit hang windows from the lintel) are wound inside-out by
+  `axiolid-construct` 0.3.0, so their subtraction is refused as
+  `OpeningNotSubtracted` rather than inverted (axiolid/kernel#166, fixed on
+  kernel `main`, not yet released). On the local real-model corpus (423 hosts
+  with openings whose gross Body compiles, six models) 78 hosts are refused
+  with 0.3.0 and 14 with the kernel fix; no host that already netted changes
+  volume. The remaining 14 are the kernel boolean refusing a non-manifold
+  operand, named per opening.
+- Measured against IfcOpenShell 0.8.5 on 138 sampled hosts across four real
+  models: 130 agree within 0.1 % (median difference about 1e-10). The other
+  8 are not subtraction errors. On 7, IfcOpenShell closes a gap in the host's
+  composite-curve profile with a segment the file never authored; our gross
+  matches an independent exact integration of the profile to 1e-4 on the 4
+  checked, IfcOpenShell's is off by up to 7 %. On 1, IfcOpenShell's own
+  boolean fails and it returns the host uncut.
 
 ### Fixed
 

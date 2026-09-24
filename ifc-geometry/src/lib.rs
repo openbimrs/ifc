@@ -110,3 +110,7 @@ pub use input::representation::{
 // Which entities carry a shape at all. Kernel-free: a slot read, not a lowering
 // question, so a 2D or auditing consumer reaches it without linking a kernel.
 pub use input::product::geometric_products;
+
+// Which openings void a host (`IfcRelVoidsElement`). Kernel-free for the same
+// reason; `lower::lower_product_net` turns the answer into subtractions.
+pub use input::openings::openings_of;

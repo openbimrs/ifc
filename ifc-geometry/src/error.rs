@@ -134,6 +134,24 @@ pub enum GeometryError {
         reason: String,
     },
 
+    /// An opening that voids a host could not be subtracted from it (#44).
+    ///
+    /// Raised only when a caller asked for NET geometry. Returning the gross
+    /// body instead would make every net quantity downstream silently wrong,
+    /// so the host is refused and the opening named. `cause` says why: the
+    /// opening's body did not lower, it has no body, or the kernel refused the
+    /// subtraction.
+    #[error("opening {opening} could not be subtracted from {host}: {cause}")]
+    OpeningNotSubtracted {
+        /// The host whose net geometry was requested.
+        host: EntityId,
+        /// The voiding element that could not be removed.
+        opening: EntityId,
+        /// Why it could not be removed.
+        #[source]
+        cause: Box<GeometryError>,
+    },
+
     /// The geometry is structurally impossible.
     ///
     /// A degenerate direction, a zero-radius circle, a self-referencing
@@ -186,6 +204,8 @@ impl GeometryError {
             | Self::Degenerate { entity, .. } => Some(*entity),
             #[cfg(feature = "compile")]
             Self::CompilationRefused { entity, .. } => Some(*entity),
+            // The opening is what failed; `host` stays readable on the variant.
+            Self::OpeningNotSubtracted { opening, .. } => Some(*opening),
             Self::Units(_) | Self::InvalidAuthoredValue { .. } => None,
         }
     }
@@ -195,7 +215,12 @@ impl GeometryError {
     /// Callers building a viewer usually want to skip and count these, while
     /// treating genuine corruption differently.
     pub fn is_unsupported(&self) -> bool {
-        matches!(self, Self::Unsupported { .. })
+        match self {
+            Self::Unsupported { .. } => true,
+            // A net refusal is as supported as the reason behind it.
+            Self::OpeningNotSubtracted { cause, .. } => cause.is_unsupported(),
+            _ => false,
+        }
     }
 }
 

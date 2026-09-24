@@ -72,6 +72,10 @@ const EXPECTED: &[(&str, usize, &str)] = &[
     ("IfcShapeRepresentation", 1, "RepresentationIdentifier"),
     ("IfcShapeRepresentation", 2, "RepresentationType"),
     ("IfcShapeRepresentation", 3, "Items"),
+    // `input/openings.rs` (#44): the voiding relation's two ends. Swapping
+    // them would subtract every host from its own openings.
+    ("IfcRelVoidsElement", 4, "RelatingBuildingElement"),
+    ("IfcRelVoidsElement", 5, "RelatedOpeningElement"),
 ];
 
 fn check(schema: &Schema, version: &str) {

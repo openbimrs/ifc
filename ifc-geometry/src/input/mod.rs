@@ -2,5 +2,6 @@
 
 pub(crate) mod context;
 pub(crate) mod material_usage;
+pub(crate) mod openings;
 pub(crate) mod product;
 pub(crate) mod representation;

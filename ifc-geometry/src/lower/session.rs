@@ -129,6 +129,52 @@ pub struct LoweringSession<'a> {
     /// finding a face set's map means a scan; doing it once per session
     /// keeps lowering linear in the file.
     texture_maps: Option<BTreeMap<EntityId, Vec<EntityId>>>,
+    /// What each appended node is, structurally, for net lowering (#44).
+    ///
+    /// A boolean operand must be a solid, and the graph validator rejects a
+    /// `Collection` (or an `Instance` of one) there. Net lowering therefore
+    /// has to split a multi-item body into its solid parts, which needs to
+    /// see node kinds before the graph is frozen. Recording them at push time
+    /// costs one small entry per node and avoids re-walking the builder.
+    shapes: BTreeMap<NodeId, NodeShape>,
+}
+
+/// The structural kind of a node, as net lowering needs it.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum NodeShape {
+    /// Merges its members; not itself a boolean operand.
+    Collection(Vec<NodeId>),
+    /// Reuses `source` under `transform`.
+    Instance {
+        /// The reused node.
+        source: NodeId,
+        /// Local-to-parent transform.
+        transform: axiolid_core::Transform3,
+    },
+    /// A family the graph validator admits as a boolean operand.
+    Solid,
+    /// Anything else: curves, surfaces, profiles, points.
+    Other,
+}
+
+impl NodeShape {
+    fn of(node: &GeometryNode) -> Self {
+        match node {
+            GeometryNode::Collection(members) => Self::Collection(members.clone()),
+            GeometryNode::Instance(instance) => Self::Instance {
+                source: instance.source,
+                transform: instance.transform,
+            },
+            // Mirrors axiolid-model's `ExpectedReference::Solid`.
+            GeometryNode::Primitive(_)
+            | GeometryNode::HalfSpace(_)
+            | GeometryNode::SolidOperation(_)
+            | GeometryNode::BRep(_)
+            | GeometryNode::PolygonMesh(_)
+            | GeometryNode::TriMesh(_) => Self::Solid,
+            _ => Self::Other,
+        }
+    }
 }
 
 impl<'a> LoweringSession<'a> {
@@ -149,6 +195,7 @@ impl<'a> LoweringSession<'a> {
             active: Vec::new(),
             provenance: ProvenanceMap::default(),
             texture_maps: None,
+            shapes: BTreeMap::new(),
         }
     }
 
@@ -194,11 +241,13 @@ impl<'a> LoweringSession<'a> {
     /// Append one node, attributing any graph fault to the current entity.
     pub fn node(&mut self, node: GeometryNode) -> GeometryResult<NodeId> {
         let source = self.active.last().copied();
+        let shape = NodeShape::of(&node);
         let id = self
             .builder
             .push(node)
             .map_err(|error| graph_error(source.unwrap_or(EntityId(0)), error))?;
         self.nodes += 1;
+        self.shapes.insert(id, shape);
         if let Some(source) = source {
             self.provenance.record(id, source);
         }
@@ -207,13 +256,20 @@ impl<'a> LoweringSession<'a> {
 
     /// Append one node, attributing any graph fault to `entity`.
     pub fn node_for(&mut self, entity: EntityId, node: GeometryNode) -> GeometryResult<NodeId> {
+        let shape = NodeShape::of(&node);
         let id = self
             .builder
             .push(node)
             .map_err(|error| graph_error(entity, error))?;
         self.nodes += 1;
+        self.shapes.insert(id, shape);
         self.provenance.record(id, entity);
         Ok(id)
+    }
+
+    /// The structural kind of an appended node; `None` for a foreign id.
+    pub(crate) fn shape(&self, node: NodeId) -> Option<&NodeShape> {
+        self.shapes.get(&node)
     }
 
     /// Source attribution accumulated so far.

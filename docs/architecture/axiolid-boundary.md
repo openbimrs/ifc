@@ -95,6 +95,13 @@ A product that cannot be evaluated returns `GeometryError::CompilationRefused`
 carrying the provider's own reason — distinct from `Unsupported`, which means
 lowering never produced a DAG in the first place.
 
+**Gross and net.** The Body representation is the gross shape; the file never
+authors the result of subtracting its openings. `compile_product_mesh` stays
+gross. `compile_product_mesh_net` subtracts every `IfcRelVoidsElement` opening
+as an exact boolean and reports which openings it removed; an opening that
+cannot be removed is `GeometryError::OpeningNotSubtracted` naming it, never a
+quietly uncut mesh. See [ADR 0014](/adr/0014-net-geometry-is-an-explicit-request).
+
 **Off by default, and checked.** `tests/kernel_free_build.rs` asserts that the
 `--no-default-features` and default columns link zero provider crates, and that
 `--features compile` links them. `ifc-model/tests/package_architecture.rs`

@@ -15,6 +15,8 @@ const adrs = [
   ['0010-checked-mutation-is-a-model-level-primitive', 10, 'Checked mutation primitive'],
   ['0011-geometry-authoring-is-bidirectional-in-the-bridge', 11, 'Bidirectional geometry authoring'],
   ['0012-geometry-backends-are-swappable', 12, 'Swappable geometry backends'],
+  ['0013-language-bindings-wrap-the-facade', 13, 'Language bindings wrap the facade'],
+  ['0014-net-geometry-is-an-explicit-request', 14, 'Net geometry is an explicit request'],
 ]
 
 function adrItems() {

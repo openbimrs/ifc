@@ -35,7 +35,10 @@ use axiolid_mesh_compile_contract::MeshCompiler;
 use ifc_model::{EntityId, Model};
 
 use crate::error::{GeometryError, GeometryResult};
-use crate::lower::{lower_product_representation, LoweringSession, RepresentationPurpose};
+use crate::lower::{
+    lower_product_net, lower_product_representation, LoweringSession, NetLowering,
+    RepresentationPurpose,
+};
 use crate::units;
 
 #[cfg(feature = "compile-reference-backend")]
@@ -132,8 +135,118 @@ pub fn compile_product_mesh_with<B: MeshCompiler>(
     backend
         .compile_mesh(&lowered.graph, lowered.root, &options)
         .map(Some)
-        .map_err(|error| GeometryError::CompilationRefused {
-            entity: product,
-            reason: format!("{error:?}"),
-        })
+        .map_err(|error| refused(product, error))
+}
+
+/// A product's NET mesh and the openings removed to produce it.
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct NetMesh {
+    /// The Body with every voiding opening subtracted.
+    pub mesh: TriMesh,
+    /// The openings subtracted, in ascending id. Empty when none void it.
+    pub openings: Vec<EntityId>,
+}
+
+/// Compile one product's Body with every voiding opening subtracted (#44).
+///
+/// Uses [`default_backend`]; [`compile_product_mesh_net_with`] takes your own.
+/// [`compile_product_mesh`] stays the gross body: quantity takeoff wants
+/// gross, clearance and ratio checks want net, so neither replaces the other.
+///
+/// # Errors
+///
+/// [`GeometryError::OpeningNotSubtracted`] naming the opening when one cannot
+/// be removed. The gross body is never returned in place of the net one.
+#[cfg(feature = "compile-reference-backend")]
+pub fn compile_product_mesh_net(
+    model: &Model,
+    product: EntityId,
+    tolerance: Tolerance,
+) -> GeometryResult<Option<NetMesh>> {
+    compile_product_mesh_net_with(&default_backend(), model, product, tolerance)
+}
+
+/// Compile one product's net Body with a caller-supplied backend.
+///
+/// # Cost
+///
+/// The success path compiles the net graph once; the backend's own cache
+/// shares the host and opening meshes across the chain. Only a refusal pays
+/// more: the host is compiled alone, then the chain one subtraction at a
+/// time, to name the opening at fault. That is a
+/// diagnostic pass on a path that has already failed, so it trades time for a
+/// precise error rather than slowing every successful call.
+///
+/// # Errors
+///
+/// A refusal the host's gross body alone would raise stays
+/// [`GeometryError::CompilationRefused`] on the host. A refusal that only an
+/// opening explains is [`GeometryError::OpeningNotSubtracted`] naming it.
+pub fn compile_product_mesh_net_with<B: MeshCompiler>(
+    backend: &B,
+    model: &Model,
+    product: EntityId,
+    tolerance: Tolerance,
+) -> GeometryResult<Option<NetMesh>> {
+    let scale = units::resolve(model);
+    let mut session = LoweringSession::new(model, &scale);
+    let Some(net) = lower_product_net(&mut session, product)? else {
+        return Ok(None);
+    };
+    let openings = net.openings();
+    let lowered = session.finish(net.root)?;
+    let options = ExecutionOptions::new(tolerance);
+
+    match backend.compile_mesh(&lowered.graph, lowered.root, &options) {
+        Ok(mesh) => Ok(Some(NetMesh { mesh, openings })),
+        Err(error) => Err(attribute_net_refusal(
+            backend,
+            &lowered.graph,
+            &net,
+            &options,
+            product,
+            error,
+        )),
+    }
+}
+
+/// Find the part of a net graph the backend cannot compile, and name it.
+///
+/// Order matters: a broken host would fail every step, so it is checked
+/// first; then the chain is walked to the first step the kernel refuses. If
+/// every step compiles alone, the refusal is reported on the host,
+/// unattributed, rather than guessed.
+fn attribute_net_refusal<B: MeshCompiler>(
+    backend: &B,
+    graph: &axiolid_model::GeometryGraph,
+    net: &NetLowering,
+    options: &ExecutionOptions,
+    product: EntityId,
+    original: axiolid_contracts::GeomError,
+) -> GeometryError {
+    if let Err(error) = backend.compile_mesh(graph, net.gross, options) {
+        return refused(product, error);
+    }
+    let blame = |opening: EntityId, error| GeometryError::OpeningNotSubtracted {
+        host: product,
+        opening,
+        cause: Box::new(refused(opening, error)),
+    };
+    // Step k's graph holds the host, bodies 1..=k and subtractions 1..=k, so
+    // the first failing step is the first opening whose body OR whose cut the
+    // backend refuses. No separate per-body pass is needed.
+    for step in &net.subtractions {
+        if let Err(error) = backend.compile_mesh(graph, step.result, options) {
+            return blame(step.opening, error);
+        }
+    }
+    refused(product, original)
+}
+
+fn refused(entity: EntityId, error: axiolid_contracts::GeomError) -> GeometryError {
+    GeometryError::CompilationRefused {
+        entity,
+        reason: format!("{error:?}"),
+    }
 }
