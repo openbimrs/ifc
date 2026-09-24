@@ -143,9 +143,20 @@ jobs:
       - name: Build and test the package
         run: openbim-ifc-wasm/scripts/build-node-pkg.sh
       - name: Rehearse publish
+        # npm 11 refuses even a dry run over a live version, so rehearsing
+        # an already-published tag packs the tarball instead.
         if: github.event_name != 'push'
         working-directory: openbim-ifc-wasm/pkg
-        run: npm publish --dry-run --access public
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          name="$(node -p 'require("./package.json").name')"
+          if npm view "$name@$VERSION" version >/dev/null 2>&1; then
+            echo "$name@$VERSION is already on npm; packing instead"
+            npm pack --dry-run
+          else
+            npm publish --dry-run --access public
+          fi
       - name: Publish
         if: github.event_name == 'push'
         working-directory: openbim-ifc-wasm/pkg
