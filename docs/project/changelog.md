@@ -110,6 +110,23 @@ lockstep -- is archived in the
   violates `BoundaryDim` and is refused as `Degenerate`, naming the point,
   instead of being projected.
 
+### ifc-schema
+
+### Changed
+
+- Requires `openbim-step` 0.6.1, matching `ifc-step`. Both pin the parser
+  exactly, so the pair must move together. `openbim-step` 0.6 replaced
+  `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
+  accessor for multiple inheritance; IFC schemas are single-inheritance, so
+  the serialized artifact is unchanged.
+
+### ifc-step
+
+### Changed
+
+- Requires `openbim-step` 0.6.1, matching `ifc-schema`. Both pin the parser
+  exactly, so the pair must move together.
+
 ### openbim-ifc-binding-core
 
 ### Added

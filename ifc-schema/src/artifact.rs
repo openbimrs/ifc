@@ -117,7 +117,7 @@ impl From<&ParsedSchema> for WireSchema {
                 .iter()
                 .map(|entity| WireEntity {
                     name: entity.name.clone(),
-                    supertype: entity.supertype.clone(),
+                    supertype: entity.supertype().map(str::to_owned),
                     abstract_: entity.abstract_,
                     attributes: entity
                         .attributes

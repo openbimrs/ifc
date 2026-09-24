@@ -12,6 +12,11 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- Requires `openbim-step` 0.6.1, matching `ifc-schema`. Both pin the parser
+  exactly, so the pair must move together.
+
 ## [0.2.1] - 2026-09-23
 
 ### Changed
