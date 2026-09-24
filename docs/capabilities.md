@@ -27,7 +27,7 @@ code.
 
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `ifc-geometry` | 38,241 | 127 | 3 | 58 | <span class="status-partial">Partial</span> |
+| `ifc-geometry` | 38,690 | 128 | 3 | 59 | <span class="status-partial">Partial</span> |
 | `ifc-style` | 7,302 | 46 | 0 | 15 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 5,507 | 35 | 14 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-structural` | 4,887 | 36 | 14 | 18 | <span class="status-implemented">Implemented</span> |
@@ -333,6 +333,12 @@ Swept solids reference a profile, so profile coverage bounds how much of a real
 model lowers. Steel sections carry their fillet radii, edge radii and flange
 slopes into the neutral model rather than being reduced to an outline, because
 a section without them has the wrong area and the wrong section modulus.
+
+An arbitrary profile's boundary is either an `IfcPolyline` or an
+`IfcCompositeCurve` of polylines, trimmed circles and lines, and nested
+composites. Arcs stay exact. A composite whose segments do not meet within
+1e-5 m is refused rather than closed with an edge the file never authored,
+and any other boundary curve family is refused by name.
 
 <!-- CAPABILITIES:PROFILE:BEGIN -->
 

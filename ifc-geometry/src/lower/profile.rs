@@ -21,6 +21,7 @@ use crate::slots::Slots;
 use crate::transform::Transform;
 use crate::units::UnitScale;
 
+mod composite;
 mod open;
 pub use open::lower_open_profile_node;
 
@@ -271,40 +272,31 @@ fn arbitrary(
     Ok(Profile::Contour(ContourProfile { outer, holes }))
 }
 
+/// Lower one closed profile boundary curve into an exact contour.
+///
+/// `IfcPolyline` is one ring of straight edges. `IfcCompositeCurve` chains
+/// polylines, trimmed circles and lines, and nested composites (#43); it is
+/// lowered in `composite`, which refuses gaps rather than bridging them.
 fn curve_to_contour(model: &Model, id: EntityId, units: &UnitScale) -> GeometryResult<Contour> {
     let entity = model.get(id).ok_or(GeometryError::MissingEntity {
         referrer: id,
         missing: id,
     })?;
     let type_name = entity.type_name.to_ascii_uppercase();
-    if type_name != "IFCPOLYLINE" {
-        return Err(GeometryError::Unsupported {
-            entity: id,
-            type_name,
-            detail: "only polyline profile boundaries are lowered so far",
-        });
+    match type_name.as_str() {
+        "IFCPOLYLINE" => {}
+        "IFCCOMPOSITECURVE" => return composite::composite_contour(model, id, units),
+        _ => {
+            return Err(GeometryError::Unsupported {
+                entity: id,
+                type_name,
+                detail: "profile boundaries lower IfcPolyline and IfcCompositeCurve only",
+            })
+        }
     }
 
     let slots = Slots::new(id, entity);
-    let mut points = Vec::new();
-    for point_id in slots.req_ref_list(0, "Points")? {
-        let point = model.get(point_id).ok_or(GeometryError::MissingEntity {
-            referrer: id,
-            missing: point_id,
-        })?;
-        let coordinates = Slots::new(point_id, point).req_f64_list(0, "Coordinates")?;
-        if coordinates.len() < 2 {
-            return Err(GeometryError::Degenerate {
-                entity: point_id,
-                type_name: point.type_name.to_string(),
-                detail: "profile boundary point is not at least 2D".to_string(),
-            });
-        }
-        points.push(Vec2::new(
-            units.length(coordinates[0]),
-            units.length(coordinates[1]),
-        ));
-    }
+    let mut points = polyline_points(model, id, units)?;
     drop_closing_duplicate(&mut points);
     if points.len() < 3 {
         return Err(slots.degenerate("profile boundary has fewer than 3 distinct points"));
@@ -325,6 +317,38 @@ fn curve_to_contour(model: &Model, id: EntityId, units: &UnitScale) -> GeometryR
         })
         .collect();
     Ok(Contour::new(segments))
+}
+
+/// An `IfcPolyline`'s points as 2D metres, in authored order.
+///
+/// Shared by the closed-ring and composite-segment readers so both apply the
+/// same unit conversion and the same 2D check.
+fn polyline_points(model: &Model, id: EntityId, units: &UnitScale) -> GeometryResult<Vec<Vec2>> {
+    let entity = model.get(id).ok_or(GeometryError::MissingEntity {
+        referrer: id,
+        missing: id,
+    })?;
+    let slots = Slots::new(id, entity);
+    let mut points = Vec::new();
+    for point_id in slots.req_ref_list(0, "Points")? {
+        let point = model.get(point_id).ok_or(GeometryError::MissingEntity {
+            referrer: id,
+            missing: point_id,
+        })?;
+        let coordinates = Slots::new(point_id, point).req_f64_list(0, "Coordinates")?;
+        if coordinates.len() < 2 {
+            return Err(GeometryError::Degenerate {
+                entity: point_id,
+                type_name: point.type_name.to_string(),
+                detail: "profile boundary point is not at least 2D".to_string(),
+            });
+        }
+        points.push(Vec2::new(
+            units.length(coordinates[0]),
+            units.length(coordinates[1]),
+        ));
+    }
+    Ok(points)
 }
 
 fn drop_closing_duplicate(points: &mut Vec<Vec2>) {

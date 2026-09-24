@@ -12,6 +12,33 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `IfcArbitraryClosedProfileDef` and `IfcArbitraryProfileDefWithVoids` now
+  lower an `IfcCompositeCurve` outer or inner boundary (#43). Segments may be
+  `IfcPolyline`, `IfcTrimmedCurve` over `IfcCircle` or `IfcLine`, or a nested
+  `IfcCompositeCurve`. Arcs stay exact `Circle2` segments. `SameSense`,
+  `SenseAgreement` and `MasterRepresentation` are honoured, and a trim may be a
+  parameter (in the project's plane-angle unit) or a cartesian point.
+- On the two real models that carried them, all 128 products refused for a
+  composite profile boundary now compile, and no other product changed.
+
+### Changed
+
+- A gap between consecutive composite segments, or between the last and the
+  first, wider than 1e-5 m is refused as `Degenerate`, naming the segment
+  and the gap. It is never bridged with an edge the file did not author.
+- Any other segment parent, a reparametrised segment, and a conic placed with
+  a 3D placement stay typed `Unsupported`, naming the entity.
+
+### Known limits
+
+- The compiled mesh of a curved profile is only as close to the exact area as
+  the kernel's chord budget allows. With `axiolid-mesh-compile` 0.3.0 that
+  budget equals the linear tolerance, which is coarse for small radii: a real
+  gutter profile meshes 1.9 % over its exact area and a slot 0.7 % under
+  (axiolid/kernel#165). Lowering is exact; the arcs reach the kernel as arcs.
+
 ### Fixed
 
 - `IfcPolygonalBoundedHalfSpace` clips now compile (#45). `PolygonalBoundary`
