@@ -4,7 +4,7 @@
 //! kernel's flag are opposites, and getting it wrong produces a boolean that
 //! still evaluates and still looks like geometry.
 
-use axiolid_curve::Curve3;
+use axiolid_curve::Curve2;
 use axiolid_model::{GeometryNode, SolidOperation};
 use ifc_model::{Entity, EntityId, Model, Value};
 
@@ -258,7 +258,8 @@ fn a_polygonal_bound_is_never_dropped() {
         lowered.graph.get(*half_space),
         Some(GeometryNode::HalfSpace(_))
     ));
-    let Some(GeometryNode::Curve3(Curve3::Polyline(boundary_curve))) = lowered.graph.get(*boundary)
+    // Curve2, not Curve3: the kernel compiler refuses anything else (#45).
+    let Some(GeometryNode::Curve2(Curve2::Polyline(boundary_curve))) = lowered.graph.get(*boundary)
     else {
         panic!("expected a 2D polyline boundary");
     };
@@ -269,9 +270,134 @@ fn a_polygonal_bound_is_never_dropped() {
     );
     assert_eq!(
         boundary_curve.points[2].to_array(),
-        [1.0, 1.0, 0.0],
-        "boundary stays in the placement's own XY plane; z is not invented"
+        [1.0, 1.0],
+        "boundary stays in the placement's own XY plane"
     );
+}
+
+/// The square from [`a_polygonal_bound_is_never_dropped`] with its boundary
+/// points replaced, so each test varies only the boundary.
+fn bounded_with_boundary(points: [Entity; 4]) -> Model {
+    let mut model = half_space(true, 0.0);
+    for (offset, point) in points.into_iter().enumerate() {
+        model.insert(EntityId(10 + offset as u64), point);
+    }
+    model.insert(
+        EntityId(6),
+        entity(
+            "IFCPOLYLINE",
+            vec![Value::List(vec![r(10), r(11), r(12), r(13), r(10)])],
+        ),
+    );
+    model.insert(EntityId(8), point3(0.0, 0.0, 0.0));
+    model.insert(
+        EntityId(7),
+        entity("IFCAXIS2PLACEMENT3D", vec![r(8), Value::Null, Value::Null]),
+    );
+    model.insert(
+        EntityId(5),
+        entity(
+            "IFCPOLYGONALBOUNDEDHALFSPACE",
+            vec![r(4), Value::Bool(true), r(7), r(6)],
+        ),
+    );
+    model
+}
+
+fn lower_boundary(model: &Model, scale: &UnitScale) -> Result<Vec<[f64; 2]>, String> {
+    let mut session = LoweringSession::new(model, scale);
+    let node = lower_half_space_node(&mut session, EntityId(5), Transform::identity())
+        .map_err(|error| format!("{error:?}"))?;
+    let lowered = session.finish(node).expect("finishes");
+    let Some(GeometryNode::SolidOperation(SolidOperation::BoundedHalfSpace { boundary, .. })) =
+        lowered.graph.get(lowered.root)
+    else {
+        panic!("expected a BoundedHalfSpace operation");
+    };
+    let Some(GeometryNode::Curve2(Curve2::Polyline(curve))) = lowered.graph.get(*boundary) else {
+        panic!("expected a Curve2 polyline boundary");
+    };
+    assert!(curve.closed, "a repeated first point closes the boundary");
+    Ok(curve.points.iter().map(|p| p.to_array()).collect())
+}
+
+/// Boundary coordinates are lengths, so the project factor applies, and the
+/// closing duplicate is carried by `closed` rather than a repeated vertex.
+#[test]
+fn boundary_points_convert_to_metres_and_drop_the_closing_duplicate() {
+    let model = bounded_with_boundary([
+        point2(0.0, 0.0),
+        point2(2000.0, 0.0),
+        point2(2000.0, 1000.0),
+        point2(0.0, 1000.0),
+    ]);
+    let scale = UnitScale {
+        length_to_metres: 0.001,
+        angle_to_radians: 1.0,
+    };
+    let points = lower_boundary(&model, &scale).expect("lowers");
+    assert_eq!(
+        points,
+        vec![[0.0, 0.0], [2.0, 0.0], [2.0, 1.0], [0.0, 1.0]],
+        "2000 mm must become 2 m, and the closing point must not repeat"
+    );
+}
+
+/// Exporters sometimes write 3D points with an explicit zero; that is still
+/// the boundary plane and lowers unchanged.
+#[test]
+fn a_boundary_point_with_zero_z_is_accepted() {
+    let model = bounded_with_boundary([
+        point3(0.0, 0.0, 0.0),
+        point3(1.0, 0.0, 0.0),
+        point3(1.0, 1.0, 0.0),
+        point3(0.0, 1.0, 0.0),
+    ]);
+    let points = lower_boundary(&model, &UnitScale::default()).expect("lowers");
+    assert_eq!(points[2], [1.0, 1.0]);
+}
+
+/// A vertex off Position's XY plane violates `BoundaryDim`. Projecting it
+/// would silently move the clip, so it is refused by entity and by name.
+#[test]
+fn a_boundary_point_off_the_plane_is_refused_by_name() {
+    let model = bounded_with_boundary([
+        point3(0.0, 0.0, 0.0),
+        point3(1.0, 0.0, 0.0),
+        point3(1.0, 1.0, 0.25),
+        point3(0.0, 1.0, 0.0),
+    ]);
+    let text = lower_boundary(&model, &UnitScale::default())
+        .expect_err("an off-plane boundary point must not lower");
+    assert!(text.contains("Degenerate"), "got {text}");
+    assert!(
+        text.contains("EntityId(12)"),
+        "must blame the point: {text}"
+    );
+    assert!(text.contains("BoundaryDim"), "must name the rule: {text}");
+}
+
+/// Composite boundaries are legal IFC but not lowered yet: refused as
+/// unsupported, never routed to a 3D curve the kernel would reject later.
+#[test]
+fn a_composite_boundary_is_unsupported_not_mislowered() {
+    let mut model = bounded_with_boundary([
+        point2(0.0, 0.0),
+        point2(1.0, 0.0),
+        point2(1.0, 1.0),
+        point2(0.0, 1.0),
+    ]);
+    model.insert(
+        EntityId(6),
+        entity(
+            "IFCCOMPOSITECURVE",
+            vec![Value::List(vec![]), Value::Bool(false)],
+        ),
+    );
+    let text = lower_boundary(&model, &UnitScale::default())
+        .expect_err("a composite boundary is not lowered yet");
+    assert!(text.contains("Unsupported"), "got {text}");
+    assert!(text.contains("IFCCOMPOSITECURVE"), "got {text}");
 }
 
 /// A curved base surface is reported, never silently flattened.

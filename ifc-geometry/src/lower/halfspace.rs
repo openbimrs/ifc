@@ -27,9 +27,9 @@
 //! `IfcBoxedHalfSpace.Enclosure` is a search box only; the IFC specification
 //! explicitly says it does not alter the Boolean result, so dropping that
 //! computational hint preserves geometry exactly. `IfcPolygonalBoundedHalfSpace`
-//! is different: its positioned boundary limits the cutting volume. Until the
-//! neutral model carries that exact bound, this module returns typed
-//! `Unsupported` rather than widening it to an infinite half-space.
+//! is different: its positioned boundary limits the cutting volume, so it
+//! lowers to `SolidOperation::BoundedHalfSpace` carrying `Position` and a
+//! `Curve2` boundary (see `boundary`), never widened to an infinite half-space.
 
 use axiolid_core::{Plane3, Point3, Vec3};
 use axiolid_model::{GeometryNode, NodeId, SolidOperation};
@@ -37,7 +37,6 @@ use axiolid_primitive::HalfSpace;
 use ifc_model::EntityId;
 
 use crate::error::{GeometryError, GeometryResult};
-use crate::lower::curve::lower_curve_node;
 use crate::lower::session::LoweringSession;
 use crate::resource::placement::axis_placement_transform;
 use crate::solid::halfspace::{HalfSpaceSolid, PolygonalBoundedHalfSpace};
@@ -104,8 +103,9 @@ fn build_polygonal(
     // The 2D boundary is a closed bounded curve in Position's XY plane. It
     // lowers as a curve, not a profile: the kernel extrudes it along +Z itself,
     // and a profile would assert a filled region this entity does not author.
-    // Coordinates are real lengths (unlike parameter space), so scale applies.
-    let boundary = lower_curve_node(session, view.polygonal_boundary()?, Transform::identity())?;
+    // It must be a `Curve2`: that is the kernel's contract, and the 3D curve
+    // path produced graphs that lowered but never compiled (#45).
+    let boundary = boundary::lower_boundary_curve(session, id, view.polygonal_boundary()?)?;
 
     // Position is independent of BaseSurface and must survive: it both places
     // the prism and orients the authored profile within its own plane.
@@ -192,6 +192,8 @@ fn plane_of(
         normal: Vec3::from_array(normal),
     })
 }
+
+mod boundary;
 
 #[cfg(test)]
 mod tests;

@@ -20,6 +20,30 @@ lockstep -- is archived in the
 
 ## [Unreleased]
 
+### ifc-geometry
+
+### Fixed
+
+- `IfcPolygonalBoundedHalfSpace` clips now compile (#45). `PolygonalBoundary`
+  was lowered through the 3D curve path as a `Curve3`, but Axiolid's
+  `BoundedHalfSpace` contract and reference compiler require a `Curve2`, so
+  every such `IfcBooleanClippingResult` was refused with `half-space boundary
+  .. is not a Curve2 node` although lowering succeeded. The boundary now
+  lowers as a `Curve2` polyline in `Position`'s XY plane, lengths converted
+  to metres. A 3D boundary point is accepted only with `z = 0`; any other `z`
+  violates `BoundaryDim` and is refused as `Degenerate`, naming the point,
+  instead of being projected.
+
+### Known limits
+
+- An `IfcCompositeCurve` or `IfcIndexedPolyCurve` boundary is refused as
+  `Unsupported` rather than lowered (#43).
+- With `axiolid-construct` 0.3.0 the compiled clip ignores the in-plane
+  translation of `Position`: the boundary is placed at the base plane's
+  origin, with no error. Lowering carries the translation correctly; the fix
+  is axiolid/kernel#164. `tests/bounded_halfspace_compile.rs` pins it with
+  an ignored test that passes against the fixed kernel.
+
 ### openbim-ifc-binding-core
 
 ### Added
