@@ -1,7 +1,7 @@
 # openbim-ifc-py implementation plan
 
-Status: bindings implemented; Linux abi3 wheel built and tested; not on PyPI.
-Last updated: 2026-09-23
+Status: bindings implemented; release workflow builds wheels; not yet on PyPI.
+Last updated: 2026-09-24
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
 record blockers/decisions under it, and check it off only with evidence.
@@ -28,8 +28,12 @@ macOS/Windows wheels, domain views, or geometry.
 - [x] `PY-BIND` - NativeModel over the binding core; GIL released while parsing
 - [x] `PY-VALUES` - frozen dataclasses; bare values refused
 - [x] `PY-WHEEL` - maturin abi3-py39 wheel built and tested in the gate
-- [ ] `PY-PLATFORMS` - macOS and Windows wheels in CI
-- [ ] `PY-PUBLISH` - PyPI project name and trusted publishing
+- [ ] `PY-PLATFORMS` - Linux x86_64/aarch64 (manylinux_2_28), macOS universal2 and
+  Windows x64 wheels, each tested, in the Release workflow; checked off at
+  the first release that builds all four
+- [ ] `PY-PUBLISH` - `openbim-ifc` on PyPI via trusted publishing (pending
+  publisher: workflow `release.yml`, environment `release`); checked off
+  when `openbim-ifc-py-v0.1.0` is live
 
 ## Completion log
 

@@ -1,7 +1,7 @@
 # openbim-ifc-wasm implementation plan
 
-Status: record-model bindings implemented for Node; not yet published.
-Last updated: 2026-09-23
+Status: record-model bindings for Node; `@openbim/ifc` 0.1.0 on npm.
+Last updated: 2026-09-24
 
 This is task state, not ambient context. Follow `AGENTS.md`; claim one task ID,
 record blockers/decisions under it, and check it off only with evidence.
@@ -31,7 +31,7 @@ validation, domain views, geometry, ifcXML, or a tested browser bundle.
 - [x] `WASM-VALUE` - lossless tagged value encoding, both directions
 - [x] `WASM-MODEL` - parse, write, read, edit, add, remove, type queries
 - [x] `WASM-SMOKE` - Node smoke and corpus round-trip suites in the gate
-- [ ] `WASM-NPM` - publish `@openbim/ifc` to npm (npm org `openbim`; first publish manual, then trusted publishing)
+- [x] `WASM-NPM` - publish `@openbim/ifc` to npm; later versions via the Release workflow
 - [ ] `WASM-WEB` - a tested browser/bundler build (`--target web` or `bundler`)
 - [ ] `WASM-SIZE` - per-schema features: the three bundled schemas are ~594 KB of a 1.06 MB module
 - [ ] `WASM-DOMAIN` - expose domain views (properties, spatial) once the facade API settles
@@ -50,5 +50,10 @@ validation, domain views, geometry, ifcXML, or a tested browser bundle.
   mutants killed on a green baseline (`.U.` as false, `*` as `$`, integer
   as f64, NaN accepted, identifier check removed, error code dropped, edit
   ignored, unsafe integral number accepted).
+- `WASM-NPM` - 0.1.0 published manually by the maintainer (npm requires
+  the first publish of a scope's package by hand); the registry tarball
+  matches a local build of `dcc0541` file for file. Later versions come
+  from `.github/workflows/release.yml` via npm trusted publishing (OIDC,
+  environment `release`), with provenance.
 - README example run against `issue_098_wall_W.ifc` (IFC2X3, Revit export):
   finds the `IFCWALLSTANDARDCASE` through the subtype query and renames it.

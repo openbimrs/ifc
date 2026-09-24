@@ -144,17 +144,41 @@ That edits the manifest, opens a dated section in the crate's
 requirement in each dependent's manifest. Fill in the changelog
 entry, run `bash scripts/gate.sh`, and commit.
 
-Then publish:
+Then release:
 
 ```bash
 python3 scripts/release-crate.py ifc-geometry --publish
 ```
 
-This tags `ifc-geometry-v0.2.1`, publishes from a detached worktree at
-that tag so the embedded VCS hash is deterministic, and refuses to run
-against a dirty tree. It is idempotent: a crate already live at its
-committed version is a no-op, so a rate-limited run can be repeated
-safely.
+This refuses a dirty tree, then tags `ifc-geometry-v0.2.1` and pushes
+the tag. The tag triggers `.github/workflows/release.yml`, which checks
+the tag is on `main`, runs the full gate on the tagged commit, and
+publishes to every registry the crate targets:
+
+| Crate | Registries |
+| --- | --- |
+| any crate without `publish = false` | crates.io |
+| `openbim-ifc-wasm` | crates.io and npm (`@openbim/ifc`) |
+| `openbim-ifc-py` | PyPI (`openbim-ifc`): Linux, macOS and Windows wheels plus an sdist |
+
+The version in `openbim-ifc-wasm/npm/package.json` or
+`openbim-ifc-py/pyproject.toml` must equal the crate's; the workflow
+refuses a tag that disagrees with any manifest. Every publish step
+skips a version that is already live, so re-running a partly failed
+release finishes it.
+
+Credentials live in the `release` environment, the only place publish
+jobs can read them:
+
+- crates.io: the `CARGO_REGISTRY_TOKEN` secret.
+- npm and PyPI: trusted publishing (OIDC), no token. Both registries
+  trust exactly `release.yml` and `release`; renaming either breaks
+  publishing until the registry settings are changed to match.
+
+If CI cannot publish, `--publish --local` runs `cargo publish` from a
+detached worktree at the tag instead, so the embedded VCS hash stays
+deterministic. A crate already live at its committed version is a
+no-op, so a rate-limited run can be repeated safely.
 
 ### Changelogs
 

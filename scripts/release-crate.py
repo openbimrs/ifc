@@ -18,7 +18,9 @@ until they are dealt with.
 Usage:
     scripts/release-crate.py <crate> --impact          # what would this cost?
     scripts/release-crate.py <crate> --set 0.2.1       # bump manifest+changelog
-    scripts/release-crate.py <crate> --publish         # verify, tag, publish
+    scripts/release-crate.py <crate> --publish         # tag; CI publishes
+    scripts/release-crate.py <crate> --publish --local # publish from here
+    scripts/release-crate.py <tag> --plan              # registries for a tag
 """
 
 from __future__ import annotations
@@ -231,15 +233,91 @@ def apply_bump(crate: str, new: str) -> None:
     print(f"bumped {crate}: {old} -> {new}")
 
 
-def publish(crate: str) -> int:
-    """Verify, tag, and publish one crate.
 
-    Publishing happens from a detached worktree at the tag so the VCS SHA
-    embedded in the .crate is deterministic and the working tree stays
-    free for other work.
+# Registries a crate's tag releases to, beyond crates.io. The version in each
+# manifest must equal the crate's, so one tag names one release everywhere.
+EXTRA_REGISTRIES = {
+    "openbim-ifc-wasm": ("npm", "openbim-ifc-wasm/npm/package.json"),
+    "openbim-ifc-py": ("pypi", "openbim-ifc-py/pyproject.toml"),
+}
+TAG = re.compile(r"^(?P<crate>[a-z0-9][a-z0-9-]*)-v(?P<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)$")
+
+
+def manifest_version(path: Path) -> str:
+    text = path.read_text(encoding="utf-8")
+    if path.suffix == ".json":
+        return json.loads(text)["version"]
+    found = re.search(r'^version = "([^"]+)"', text, re.MULTILINE)
+    if not found:
+        raise SystemExit(f"no version in {path}")
+    return found.group(1)
+
+
+def plan(tag: str) -> int:
+    """Resolve a release tag to its registries, as GitHub Actions outputs.
+
+    Refuses a tag that disagrees with any manifest: publishing a version
+    the tree does not declare is how registries end up out of step.
+    """
+    match = TAG.match(tag)
+    if not match:
+        print(f"not a release tag: {tag}", file=sys.stderr)
+        return 1
+    crate, version = match["crate"], match["version"]
+    package = next((p for p in metadata()["packages"] if p["name"] == crate), None)
+    if package is None:
+        print(f"{tag}: {crate} is not a workspace member", file=sys.stderr)
+        return 1
+    if package["version"] != version:
+        print(f"{tag}: Cargo.toml says {package['version']}", file=sys.stderr)
+        return 1
+    targets = {"crates_io": package.get("publish") != [], "npm": False, "pypi": False}
+    if crate in EXTRA_REGISTRIES:
+        registry, manifest = EXTRA_REGISTRIES[crate]
+        declared = manifest_version(ROOT / manifest)
+        if declared != version:
+            print(f"{tag}: {manifest} says {declared}", file=sys.stderr)
+            return 1
+        targets[registry] = True
+    if not any(targets.values()):
+        print(f"{tag}: {crate} publishes nowhere", file=sys.stderr)
+        return 1
+    print(f"crate={crate}")
+    print(f"version={version}")
+    for key, value in targets.items():
+        print(f"{key}={'true' if value else 'false'}")
+    return 0
+
+
+def publish_here(crate: str) -> int:
+    """Publish the checked-out tree to crates.io, for the Release workflow.
+
+    No tagging and no worktree: CI has already checked out the tag. A version
+    that is already live is skipped, so a re-run after a partial failure
+    finishes the release instead of failing on the part that succeeded.
     """
     version = current_version(crate)
     if version in published_versions(crate):
+        print(f"{crate} {version} is already live; nothing to do")
+        return 0
+    result = subprocess.run(["cargo", "publish", "-p", crate, "--locked"], cwd=ROOT)
+    if result.returncode == 0:
+        print(f"published {crate} {version}")
+    return result.returncode
+
+
+def publish(crate: str, local: bool) -> int:
+    """Verify and tag one crate, then let the release workflow publish it.
+
+    Pushing `<crate>-v<version>` triggers `.github/workflows/release.yml`,
+    which gates the tagged commit and publishes to every registry the crate
+    targets (crates.io, and npm or PyPI for the bindings). `local` is the
+    fallback when CI cannot publish: it runs `cargo publish` here instead,
+    from a detached worktree at the tag so the VCS SHA embedded in the
+    .crate is deterministic and the working tree stays free for other work.
+    """
+    version = current_version(crate)
+    if local and version in published_versions(crate):
         print(f"{crate} {version} is already live; nothing to do")
         return 0
     dirty = subprocess.run(["git", "status", "--porcelain"],
@@ -255,6 +333,10 @@ def publish(crate: str) -> int:
             cwd=ROOT, check=True)
         print(f"tagged {tag}")
     subprocess.run(["git", "push", "origin", tag], cwd=ROOT, check=True)
+    if not local:
+        print(f"pushed {tag}; the Release workflow publishes it:")
+        print("  https://github.com/openbimrs/ifc/actions/workflows/release.yml")
+        return 0
     worktree = Path("/tmp") / f"pub-{crate}-{version}"
     subprocess.run(["git", "worktree", "remove", str(worktree), "--force"],
         cwd=ROOT, capture_output=True)
@@ -281,11 +363,23 @@ def main() -> int:
     parser.add_argument("--apply", action="store_true",
         help="with --set, write the manifest and changelog changes")
     parser.add_argument("--publish", action="store_true",
-        help="tag and publish the crate at its committed version")
+        help="tag the crate at its committed version and push the tag; "
+             "the Release workflow publishes it")
+    parser.add_argument("--local", action="store_true",
+        help="with --publish, run cargo publish here instead of in CI")
+    parser.add_argument("--plan", action="store_true",
+        help="treat CRATE as a release tag and print its registry targets")
+    parser.add_argument("--publish-here", action="store_true",
+        help="publish the checked-out tree to crates.io, skipping a live "
+             "version (used by the Release workflow)")
     args = parser.parse_args()
 
+    if args.plan:
+        return plan(args.crate)
+    if args.publish_here:
+        return publish_here(args.crate)
     if args.publish:
-        return publish(args.crate)
+        return publish(args.crate, args.local)
 
     code = impact(args.crate, args.new_version)
     if code != 0:
