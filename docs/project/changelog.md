@@ -177,7 +177,7 @@ lockstep -- is archived in the
 
 ### Changed
 
-- Requires `openbim-step` 0.6.1, matching `ifc-step`. Both pin the parser
+- Requires `openbim-step` 0.7.0, matching `ifc-step`. Both pin the parser
   exactly, so the pair must move together. `openbim-step` 0.6 replaced
   `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
@@ -187,8 +187,14 @@ lockstep -- is archived in the
 
 ### Changed
 
-- Requires `openbim-step` 0.6.1, matching `ifc-schema`. Both pin the parser
+- Requires `openbim-step` 0.7.0, matching `ifc-schema`. Both pin the parser
   exactly, so the pair must move together.
+- Reading STEP builds the model from `openbim-step`'s borrowed events, so
+  each value is allocated once, directly in its model form, instead of
+  once as a parser `String` and again as the model's `Arc<str>`; records
+  are consumed instead of cloned. The model is identical (checked over
+  2,273 files); reading takes 22-40% fewer instructions and 13-35% fewer
+  cycles on seven real IFC files, with resident memory unchanged.
 
 ### openbim-ifc-binding-core
 

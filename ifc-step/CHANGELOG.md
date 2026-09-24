@@ -14,8 +14,14 @@ everything released before per-crate changelogs began.
 
 ### Changed
 
-- Requires `openbim-step` 0.6.1, matching `ifc-schema`. Both pin the parser
+- Requires `openbim-step` 0.7.0, matching `ifc-schema`. Both pin the parser
   exactly, so the pair must move together.
+- Reading STEP builds the model from `openbim-step`'s borrowed events, so
+  each value is allocated once, directly in its model form, instead of
+  once as a parser `String` and again as the model's `Arc<str>`; records
+  are consumed instead of cloned. The model is identical (checked over
+  2,273 files); reading takes 22-40% fewer instructions and 13-35% fewer
+  cycles on seven real IFC files, with resident memory unchanged.
 
 ## [0.2.1] - 2026-09-23
 

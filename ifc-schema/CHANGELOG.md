@@ -14,7 +14,7 @@ everything released before per-crate changelogs began.
 
 ### Changed
 
-- Requires `openbim-step` 0.6.1, matching `ifc-step`. Both pin the parser
+- Requires `openbim-step` 0.7.0, matching `ifc-step`. Both pin the parser
   exactly, so the pair must move together. `openbim-step` 0.6 replaced
   `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
