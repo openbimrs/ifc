@@ -27,7 +27,7 @@ use axiolid_primitive::Primitive;
 use ifc_model::EntityId;
 
 use crate::error::GeometryResult;
-use crate::lower::curve::{lower_curve_node, scale_parameter};
+use crate::lower::curve::lower_sweep_directrix;
 use crate::lower::profile::lower_profile_node;
 use crate::lower::session::LoweringSession;
 use crate::lower::surface::lower_surface_node;
@@ -191,24 +191,17 @@ fn build_disk(
     let radius = session.units().length(radius_raw);
     let inner_radius = inner_raw.map(|value| session.units().length(value));
 
-    let directrix_ref = view.directrix()?;
-    let directrix = lower_curve_node(session, directrix_ref, frame)?;
-
-    // Trim parameters are in the DIRECTRIX's parameterisation, which is not
-    // always a length: see scale_parameter for the index-based cases.
-    let directrix_kind = session.type_name(directrix_ref)?;
-    let convert = |value: f64| scale_parameter(session, directrix_kind.as_str(), value);
-    let parameter_range = match (view.start_param(), view.end_param()) {
-        (Some(start), Some(end)) => Some((convert(start), convert(end))),
-        (None, None) => None,
-        _ => {
-            return Err(session.degenerate(
-                id,
-                "IFCSWEPTDISKSOLID",
-                "only one of StartParam/EndParam is present; a half-open sweep is undefined",
-            ))
-        }
-    };
+    // StartParam/EndParam are in the DIRECTRIX's parameterisation, which is
+    // not always a length: see lower_sweep_directrix.
+    let (directrix, parameter_range) = lower_sweep_directrix(
+        session,
+        id,
+        "IFCSWEPTDISKSOLID",
+        view.directrix()?,
+        frame,
+        view.start_param(),
+        view.end_param(),
+    )?;
 
     session.node_for(
         id,
@@ -261,28 +254,17 @@ pub fn lower_surface_curve_swept_area_solid_node(
     };
 
     let profile = lower_profile_node(session, base.swept_area()?)?;
-    let directrix_ref = view.directrix()?;
-    let directrix = lower_curve_node(session, directrix_ref, placed)?;
+    // Same rule as the swept disk: see lower_sweep_directrix.
+    let (directrix, parameter_range) = lower_sweep_directrix(
+        session,
+        id,
+        "IFCSURFACECURVESWEPTAREASOLID",
+        view.directrix()?,
+        placed,
+        view.start_param(),
+        view.end_param(),
+    )?;
     let reference_surface = lower_surface_node(session, view.reference_surface()?, placed)?;
-
-    // Same rule as the swept disk: a parameter on a conic directrix is an
-    // angle, on anything else a length.
-    let directrix_kind = session.type_name(directrix_ref)?;
-    let convert = |value: f64| match directrix_kind.as_str() {
-        "IFCCIRCLE" | "IFCELLIPSE" | "IFCTRIMMEDCURVE" => session.units().angle(value),
-        _ => session.units().length(value),
-    };
-    let parameter_range = match (view.start_param(), view.end_param()) {
-        (Some(start), Some(end)) => Some((convert(start), convert(end))),
-        (None, None) => None,
-        _ => {
-            return Err(session.degenerate(
-                id,
-                "IFCSURFACECURVESWEPTAREASOLID",
-                "only one of StartParam/EndParam is present; the sweep extent is ambiguous",
-            ));
-        }
-    };
 
     let node = session.node_for(
         id,

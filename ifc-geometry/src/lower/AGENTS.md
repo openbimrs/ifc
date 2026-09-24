@@ -77,9 +77,13 @@ produces a result that still evaluates and still looks like geometry.
 
 A trim parameter belongs to the BASIS curve's parameterisation: a length on a
 line, a plane angle on a conic. `lower::curve` selects the unit conversion from
-the basis type, and `lower::csg` does the same for a swept disk's
-`StartParam`/`EndParam` using the directrix type. A single length factor for
-both is the defect this split exists to prevent.
+the basis type. A sweep's `StartParam`/`EndParam` belongs to its DIRECTRIX's
+parameterisation, resolved once in `curve::lower_sweep_directrix` for every
+sweep family: a composite counts 1 per polyline edge and each trimmed
+segment's own trim span (an arc's ANGLE), so it is not a length and is never
+handed to the kernel. `curve/composite_range.rs` cuts the composite exactly at
+those parameters instead. A single length factor is the defect this split
+exists to prevent.
 
 A CSG primitive is local by kernel contract. Its `Position` is carried on an
 `Instance` node, never folded into the primitive's extents.

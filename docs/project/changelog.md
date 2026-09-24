@@ -125,6 +125,17 @@ lockstep -- is archived in the
   matches an independent exact integration of the profile to 1e-4 on the 4
   checked, IfcOpenShell's is off by up to 7 %. On 1, IfcOpenShell's own
   boolean fails and it returns the host uncut.
+- With `axiolid-construct` 0.3.1 a swept disk is oriented by one fixed axis
+  seeded from its first segment. A bent bar whose later leg runs along that
+  axis is refused (878 bars in the model above), and a leg nearly along it
+  twists the tube so its volume comes out low with no error (6,644 bars off by
+  more than 0.5 %, up to 64 %). Lowering is exact; the fix is
+  axiolid/kernel#169. With that fix applied locally, 34,003 of 39,215 are
+  within 0.5 % and none more than 1 % off.
+- An arc across its circle's seam, which Revit writes as `(270, 360)` rounded
+  just past 360, is sampled around the wrong side of the circle by the
+  reference compiler and refused as a directrix gap (1,494 bars;
+  axiolid/kernel#168).
 
 ### Fixed
 
@@ -137,6 +148,30 @@ lockstep -- is archived in the
   to metres. A 3D boundary point is accepted only with `z = 0`; any other `z`
   violates `BoundaryDim` and is refused as `Degenerate`, naming the point,
   instead of being projected.
+- `IfcSweptDiskSolid`, `IfcSweptDiskSolidPolygonal`,
+  `IfcFixedReferenceSweptAreaSolid` and `IfcSurfaceCurveSweptAreaSolid` read
+  `StartParam`/`EndParam` in their directrix's own parameterisation. On an
+  `IfcCompositeCurve` that is not a length: ISO 10303-42 accumulates each
+  segment's parametric length, 1 per `IfcPolyline` edge and a trimmed
+  segment's own trim span, so an arc contributes its ANGLE in the file's
+  plane-angle unit (IFC4 `IfcCompositeCurve`, figure 389: a line plus a 90
+  degree arc is 91). It was converted as a length and handed to the kernel,
+  which measures arc length, so a Revit rebar authored `(0, 365)` over five
+  1-unit legs and four 90 degree bends was read as 365 m and refused, and a
+  range that happened to fit silently cut the bar short. A full range now
+  keeps the authored directrix; a partial range is cut exactly at the
+  composite's parameters before the kernel sees it, honouring `SameSense`,
+  `SenseAgreement`, `ParamLength` and arcs across the circle's seam. A range
+  past the composite's parametric length is `Degenerate`, naming the sweep and
+  the length; a range over a segment trimmed only by points is `Unsupported`,
+  since its parametric length is not stated. A trimmed-curve directrix now
+  converts by its basis, like any trim, instead of always as an angle.
+- On the local real-model corpus (eight models) this changes one model: in a
+  41,019-product Revit rebar model, compiled products go from 19,832 to
+  38,618. Checked against the closed-form volume (inscribed disk polygon
+  times exact path length) of all 39,215 swept-disk rebars: before, 25 were
+  within 0.5 % and 18,077 compiled wrong, up to 96 % short; now 30,199 are
+  within 0.5 %. No product in any other model changed volume.
 
 ### ifc-schema
 

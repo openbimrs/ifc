@@ -51,12 +51,73 @@ use crate::resource::placement::axis_placement_transform;
 use crate::resource::point::{CartesianPoint, CartesianPointList2D, CartesianPointList3D};
 use crate::transform::Transform;
 
+mod composite_range;
 mod parameter_space;
 
 use parameter_space::parameter_reference_curve;
 
 /// Family label used for curve memoization.
 const KIND: &str = "curve";
+
+/// Lower a sweep's directrix together with its `StartParam`/`EndParam`.
+///
+/// Returns the directrix node and the `parameter_range` the kernel should
+/// apply to it. The range is in the directrix's own parameterisation, which
+/// is not always a length:
+///
+/// - a conic parameter is an angle, a line or polyline parameter is
+///   dimensionless: converted by [`scale_parameter`] and handed on;
+/// - an `IfcCompositeCurve` accumulates each segment's PARAMETRIC length
+///   (1 per polyline edge, an arc's angle), which no kernel arc length
+///   matches. The range is applied here, structurally, and the returned range
+///   is `None`.
+///
+/// One end without the other is refused: a half-open sweep is undefined.
+pub(crate) fn lower_sweep_directrix(
+    session: &mut LoweringSession<'_>,
+    sweep: EntityId,
+    sweep_type: &str,
+    directrix: EntityId,
+    frame: Transform,
+    start: Option<f64>,
+    end: Option<f64>,
+) -> GeometryResult<(NodeId, Option<(f64, f64)>)> {
+    let range = match (start, end) {
+        (Some(start), Some(end)) => Some((start, end)),
+        (None, None) => None,
+        _ => {
+            return Err(session.degenerate(
+                sweep,
+                sweep_type,
+                "only one of StartParam/EndParam is present; a half-open sweep is undefined",
+            ))
+        }
+    };
+    let kind = session.type_name(directrix)?;
+    if composite_range::is_composite(&kind) {
+        let node = composite_range::lower_composite_directrix(
+            session, sweep, sweep_type, directrix, frame, range,
+        )?;
+        return Ok((node, None));
+    }
+    let node = lower_curve_node(session, directrix, frame)?;
+    // A trimmed curve is parameterised by its BASIS (ISO 10303-42): a trimmed
+    // circle's range is an angle, a trimmed line's a vector multiple.
+    let parameter_kind = if kind == "IFCTRIMMEDCURVE" {
+        let entity = session.entity(sweep, directrix)?;
+        let basis = TrimmedCurve::new(directrix, entity).basis_curve_ref()?;
+        session.type_name(basis)?
+    } else {
+        kind
+    };
+    let converted = range.map(|(start, end)| {
+        (
+            scale_parameter(session, &parameter_kind, start),
+            scale_parameter(session, &parameter_kind, end),
+        )
+    });
+    Ok((node, converted))
+}
 
 /// Lower any supported curve, returning its node.
 pub fn lower_curve_node(

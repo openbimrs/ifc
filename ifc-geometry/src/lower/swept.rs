@@ -11,7 +11,7 @@ use axiolid_model::{GeometryNode, Instance, NodeId, Section, SolidOperation};
 use ifc_model::{EntityId, Model};
 
 use crate::error::{GeometryError, GeometryResult};
-use crate::lower::curve::{lower_curve_node, scale_parameter};
+use crate::lower::curve::{lower_curve_node, lower_sweep_directrix};
 use crate::lower::session::LoweringSession;
 use crate::lower::{lower_profile_node, LoweredGeometry};
 use crate::resource::placement::axis_placement_transform;
@@ -435,25 +435,18 @@ fn fixed_reference_sweep_node(
     let reference_direction = Vec3::from_array(direction_ratios(model, view.fixed_reference()?)?);
     let placement = compose_placement(model, &slots, world, units)?.to_geom();
 
-    let directrix_ref = view.directrix()?;
-    let directrix = lower_curve_node(session, directrix_ref, world)?;
-
-    // Trim parameters live in the DIRECTRIX's parameterisation, so a conic
-    // directrix measures in angle while a polyline or composite measures in
-    // length. Same split as IfcTrimmedCurve and IfcSweptDiskSolid.
-    let directrix_kind = session.type_name(directrix_ref)?;
-    let convert = |value: f64| scale_parameter(session, directrix_kind.as_str(), value);
-    let parameter_range = match (view.start_param(), view.end_param()) {
-        (Some(start), Some(end)) => Some((convert(start), convert(end))),
-        (None, None) => None,
-        _ => {
-            return Err(session.degenerate(
-                id,
-                "IFCFIXEDREFERENCESWEPTAREASOLID",
-                "only one of StartParam/EndParam is present; a half-open sweep is undefined",
-            ))
-        }
-    };
+    // StartParam/EndParam live in the DIRECTRIX's parameterisation: an angle
+    // on a conic, the accumulated parametric length on a composite. Same rule
+    // as IfcSweptDiskSolid; see lower_sweep_directrix.
+    let (directrix, parameter_range) = lower_sweep_directrix(
+        session,
+        id,
+        "IFCFIXEDREFERENCESWEPTAREASOLID",
+        view.directrix()?,
+        world,
+        view.start_param(),
+        view.end_param(),
+    )?;
 
     let profile = lower_profile_node(session, profile_ref)?;
     let operation = session.node_for(
