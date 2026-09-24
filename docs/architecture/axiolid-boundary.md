@@ -95,6 +95,16 @@ A product that cannot be evaluated returns `GeometryError::CompilationRefused`
 carrying the provider's own reason — distinct from `Unsupported`, which means
 lowering never produced a DAG in the first place.
 
+**Solid or surface.** A mesh is not always the boundary of a solid. An
+`IfcShellBasedSurfaceModel` compiles to triangles with an area and no volume,
+even when its shell happens to close. Code that reads a volume should use
+`compile_product_mesh_reported`, whose `CompiledMesh::solid_mesh` returns the
+mesh only when the kernel reported `MeshClosure::Solid` and otherwise refuses
+with `GeometryError::NotASolid`, naming the product. A backend that does not
+report closure gives `Unknown`, which is refused too: a volume needs evidence.
+`NetMesh::closure` carries the same flag. `compile_product_mesh` still returns
+the bare mesh, for viewers that only draw it.
+
 **Gross and net.** The Body representation is the gross shape; the file never
 authors the result of subtracting its openings. `compile_product_mesh` stays
 gross. `compile_product_mesh_net` subtracts every `IfcRelVoidsElement` opening

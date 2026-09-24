@@ -134,6 +134,22 @@ pub enum GeometryError {
         reason: String,
     },
 
+    /// A volume was asked of a product whose compiled body is not a solid.
+    ///
+    /// Raised by `CompiledMesh::solid_mesh` for a surface model
+    /// (`IfcShellBasedSurfaceModel`, `IfcFaceBasedSurfaceModel`) and for a
+    /// backend that does not report closure. A surface has area, not
+    /// volume; reporting the divergence sum of a closed shell the file never
+    /// declared a solid would be a plausible, wrong number.
+    #[cfg(feature = "compile")]
+    #[error("{entity} is not a solid (closure {closure:?}); it has no volume")]
+    NotASolid {
+        /// The product whose body was compiled.
+        entity: EntityId,
+        /// The closure the backend reported: `Surface` or `Unknown`.
+        closure: axiolid_mesh_compile_contract::MeshClosure,
+    },
+
     /// An opening that voids a host could not be subtracted from it (#44).
     ///
     /// Raised only when a caller asked for NET geometry. Returning the gross
@@ -204,6 +220,8 @@ impl GeometryError {
             | Self::Degenerate { entity, .. } => Some(*entity),
             #[cfg(feature = "compile")]
             Self::CompilationRefused { entity, .. } => Some(*entity),
+            #[cfg(feature = "compile")]
+            Self::NotASolid { entity, .. } => Some(*entity),
             // The opening is what failed; `host` stays readable on the variant.
             Self::OpeningNotSubtracted { opening, .. } => Some(*opening),
             Self::Units(_) | Self::InvalidAuthoredValue { .. } => None,

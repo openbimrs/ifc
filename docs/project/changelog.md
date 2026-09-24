@@ -24,15 +24,26 @@ lockstep -- is archived in the
 
 ### Added
 
+- `compile::compile_product_mesh_reported` (and `_with`) return a
+  `CompiledMesh`: the triangles plus the kernel's `MeshClosure`, i.e. whether
+  they bound a solid. `CompiledMesh::solid_mesh(product)` returns the mesh
+  only for `Solid` and otherwise refuses with the new
+  `GeometryError::NotASolid`, naming the product. An
+  `IfcShellBasedSurfaceModel` now compiles (axiolid/kernel#161) but is a
+  `Surface`: without this a caller summing the divergence of its triangles
+  gets a volume the file never claimed, finite and plausible for a closed
+  shell. A backend that does not report closure gives `Unknown`, which is
+  refused as well. `NetMesh::closure` carries the flag for net bodies.
+  `compile_product_mesh` is unchanged and still returns the bare mesh.
 - `tests/meshing_coverage.rs` and the generated public fixture
   `test/fixtures/synthetic-coverage/meshing_coverage.ifc` (#47): one product
   for each product-meshing failure kind #47 measured on real models, compiled
   through `compile_product_mesh`. The four kinds fixed here (#43 to #46) pin
-  exact volumes, cross-checked with IfcOpenShell 0.8.5. The two still owned by
-  the Axiolid reference compiler, polygonal faces with more than 3 corners
-  (axiolid/kernel#160) and open-shell surface models (axiolid/kernel#161), pin
-  a refusal that names the product, and fail on purpose once the kernel
-  compiles them so their volume gets pinned instead.
+  exact volumes, cross-checked with IfcOpenShell 0.8.5. The two fixed in the
+  Axiolid reference compiler (`axiolid-mesh-compile` 0.3.1) pin their answer
+  too: polygonal faces with more than 3 corners (axiolid/kernel#160) mesh the
+  2 m quad cube to 8 m3, and the open-shell surface model
+  (axiolid/kernel#161) meshes its 0.12 m2 and refuses any volume.
 - `DegenerateFacePolicy` (#46), set per session with
   `LoweringSession::with_face_policy`. The default, `Refuse`, is unchanged:
   an `IfcPolyLoop` with fewer than three distinct edges refuses the brep,
@@ -73,6 +84,14 @@ lockstep -- is archived in the
 
 ### Changed
 
+- The workspace requires `axiolid-mesh-compile` and
+  `axiolid-mesh-compile-contract` 0.3.1. With 0.3.0 an `IfcPolygonalFaceSet`
+  with any face of more than 3 corners, or with voids
+  (`IfcIndexedPolygonalFaceWithVoids`), was refused as
+  `Unsupported(Tessellation)`
+  (axiolid/kernel#160), and every `IfcShellBasedSurfaceModel` as "brep has no
+  solid" (axiolid/kernel#161). 0.3.1 triangulates such faces in their own
+  plane and refuses a non-planar one by face index.
 - The workspace requires `axiolid-construct` 0.3.1 (reached through
   `axiolid-mesh-compile`, pinned only as a floor behind
   `compile-reference-backend`). With 0.3.0 two compiled results were wrong or

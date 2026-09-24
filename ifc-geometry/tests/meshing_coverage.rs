@@ -7,10 +7,10 @@
 //! test compiles every product in that file through `compile_product_mesh`
 //! and pins the answer it gets today.
 //!
-//! Four kinds were fixed in this repo, so they pin an exact volume. Two
-//! are owned by the Axiolid reference compiler and are still refused there,
-//! so they pin a TYPED refusal naming the product. When the kernel fixes
-//! them, their rows fail on purpose: flip them to a volume then.
+//! Four kinds were fixed in this repo and two in the Axiolid reference
+//! compiler (axiolid/kernel#160, #161, `axiolid-mesh-compile` 0.3.1). Solids
+//! pin an exact volume. The surface model pins its area and a typed refusal
+//! of any volume: it is a surface, and must never acquire one.
 //!
 //! The volumes were cross-checked against IfcOpenShell 0.8.5 on the same
 //! file: identical for the five solids that are exact in IfcOpenShell too, and
@@ -24,8 +24,12 @@ use std::path::PathBuf;
 use axiolid_contracts::ExecutionOptions;
 use axiolid_core::Tolerance;
 use axiolid_mesh::TriMesh;
+use axiolid_mesh_compile_contract::MeshClosure;
 use axiolid_mesh_compile_contract::MeshCompiler;
-use ifc_geometry::compile::{compile_product_mesh, compile_product_mesh_net, default_backend};
+use ifc_geometry::compile::{
+    compile_product_mesh, compile_product_mesh_net, compile_product_mesh_reported, default_backend,
+    CompiledMesh,
+};
 use ifc_geometry::lower::{
     geometric_products, lower_product_representation, DegenerateFacePolicy, LoweringSession,
 };
@@ -41,13 +45,9 @@ enum Answer {
     GrossAndNet { gross: f64, net: f64 },
     /// Lowering refuses with `Degenerate`, naming the collapsed loop.
     RefusedDegenerate,
-    /// The reference compiler refuses, naming the product. `reason` is a
-    /// fragment of the provider's refusal text; `owner` is the issue that
-    /// will turn this row into a volume.
-    RefusedByKernel {
-        reason: &'static str,
-        owner: &'static str,
-    },
+    /// A surface model: triangles with this area (m2), reported as
+    /// `MeshClosure::Surface`, and no volume.
+    SurfaceArea { m2: f64 },
 }
 
 /// Exact volumes, derived in `tools/gen_coverage_fixtures.py`.
@@ -90,19 +90,18 @@ fn expected() -> Vec<(&'static str, &'static str, Answer)> {
         ),
         (
             "polygonal-face-set-quads",
-            "IfcPolygonalFaceSet faces with more than 3 corners",
-            Answer::RefusedByKernel {
-                reason: "Tessellation",
-                owner: "axiolid/kernel#160",
+            "IfcPolygonalFaceSet faces with more than 3 corners (axiolid/kernel#160)",
+            // A closed 2 m cube of quads.
+            Answer::Volume {
+                m3: 8.0,
+                rel: 1e-12,
             },
         ),
         (
             "shell-based-surface-model",
-            "IfcShellBasedSurfaceModel open shell",
-            Answer::RefusedByKernel {
-                reason: "brep has no solid",
-                owner: "axiolid/kernel#161",
-            },
+            "IfcShellBasedSurfaceModel open shell (axiolid/kernel#161)",
+            // Two triangles covering a 0.4 m x 0.3 m rectangle.
+            Answer::SurfaceArea { m2: 0.12 },
         ),
     ]
 }
@@ -149,6 +148,22 @@ fn signed_volume(mesh: &TriMesh) -> f64 {
         .sum()
 }
 
+fn area(mesh: &TriMesh) -> f64 {
+    mesh.indices
+        .chunks_exact(3)
+        .map(|t| {
+            let [a, b, c] = [t[0], t[1], t[2]].map(|i| mesh.positions[i as usize]);
+            (b - a).cross(c - a).length() / 2.0
+        })
+        .sum()
+}
+
+fn reported(model: &Model, id: EntityId) -> CompiledMesh {
+    compile_product_mesh_reported(model, id, Tolerance::MILLIMETRE)
+        .unwrap_or_else(|e| panic!("{id}: refused: {e}"))
+        .expect("every coverage product has a Body")
+}
+
 fn assert_close(actual: f64, expected: f64, rel: f64, what: &str) {
     assert!(
         (actual - expected).abs() <= rel * expected.abs(),
@@ -172,6 +187,11 @@ fn each_failure_kind_compiles_to_its_pinned_answer() {
             Answer::Volume { m3, rel } => {
                 let mesh = gross(&model, id).unwrap_or_else(|e| panic!("{what}: refused: {e}"));
                 assert_close(signed_volume(&mesh), m3, rel, &what);
+                // The reported path agrees, and says it is a solid.
+                let compiled = reported(&model, id);
+                assert_eq!(compiled.closure, MeshClosure::Solid, "{what}");
+                let solid = compiled.solid_mesh(id).expect("a solid has a volume");
+                assert_close(signed_volume(solid), m3, rel, &what);
             }
             Answer::GrossAndNet { gross: g, net: n } => {
                 let mesh = gross(&model, id).unwrap_or_else(|e| panic!("{what}: refused: {e}"));
@@ -195,24 +215,18 @@ fn each_failure_kind_compiles_to_its_pinned_answer() {
                     "{what}: the refusal names the collapsed loop"
                 );
             }
-            Answer::RefusedByKernel { reason, owner } => match gross(&model, id) {
-                Err(GeometryError::CompilationRefused {
-                    entity,
-                    reason: text,
-                }) => {
-                    assert_eq!(entity, id, "{what}: the refusal names the product");
-                    assert!(
-                        text.contains(reason),
-                        "{what}: refused for a different reason than {owner}: {text}"
-                    );
+            Answer::SurfaceArea { m2 } => {
+                let compiled = reported(&model, id);
+                assert_eq!(compiled.closure, MeshClosure::Surface, "{what}");
+                assert_close(area(&compiled.mesh), m2, 1e-12, &what);
+                match compiled.solid_mesh(id) {
+                    Err(GeometryError::NotASolid { entity, closure }) => {
+                        assert_eq!(entity, id, "{what}: the refusal names the product");
+                        assert_eq!(closure, MeshClosure::Surface, "{what}");
+                    }
+                    other => panic!("{what}: a surface must refuse a volume: {other:?}"),
                 }
-                Ok(mesh) => panic!(
-                    "{what}: now compiles ({} m3). {owner} is fixed: pin its \
-                         volume in this row instead of the refusal.",
-                    signed_volume(&mesh)
-                ),
-                Err(other) => panic!("{what}: refused before the compiler: {other}"),
-            },
+            }
         }
     }
 }

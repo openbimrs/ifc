@@ -31,7 +31,7 @@
 use axiolid_contracts::ExecutionOptions;
 use axiolid_core::Tolerance;
 use axiolid_mesh::TriMesh;
-use axiolid_mesh_compile_contract::MeshCompiler;
+use axiolid_mesh_compile_contract::{MeshClosure, MeshCompiler};
 use ifc_model::{EntityId, Model};
 
 use crate::error::{GeometryError, GeometryResult};
@@ -138,6 +138,102 @@ pub fn compile_product_mesh_with<B: MeshCompiler>(
         .map_err(|error| refused(product, error))
 }
 
+/// A compiled mesh and whether it bounds a solid.
+///
+/// IFC distinguishes solids (`IfcFacetedBrep`, `IfcExtrudedAreaSolid`,
+/// `IfcPolygonalFaceSet` with `Closed`) from surface models
+/// (`IfcShellBasedSurfaceModel`, `IfcFaceBasedSurfaceModel`), and a surface
+/// model has an area but no volume -- even when its shells happen to close.
+/// A bare `TriMesh` cannot say which one it is, so a caller summing a
+/// divergence volume over every compiled product silently reports a volume
+/// for surfaces. `closure` carries the backend's answer instead.
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct CompiledMesh {
+    /// The triangles.
+    pub mesh: TriMesh,
+    /// [`MeshClosure::Solid`] when the mesh bounds a volume the file
+    /// declared, [`MeshClosure::Surface`] for a surface model, and
+    /// [`MeshClosure::Unknown`] when the backend does not report it.
+    pub closure: MeshClosure,
+}
+
+impl CompiledMesh {
+    /// The mesh, only when it bounds a declared solid.
+    ///
+    /// Use this, not `mesh`, before measuring a volume or feeding a boolean.
+    ///
+    /// # Errors
+    ///
+    /// [`GeometryError::NotASolid`] naming `product` for a surface model, and
+    /// for a backend that does not report closure: an unknown closure is not
+    /// evidence of a solid.
+    pub fn solid_mesh(&self, product: EntityId) -> GeometryResult<&TriMesh> {
+        match self.closure {
+            MeshClosure::Solid => Ok(&self.mesh),
+            closure => Err(GeometryError::NotASolid {
+                entity: product,
+                closure,
+            }),
+        }
+    }
+}
+
+/// Compile one product's body and report whether it bounds a solid.
+///
+/// Uses [`default_backend`]; [`compile_product_mesh_reported_with`] takes
+/// your own. Same triangles as [`compile_product_mesh`], plus the closure a
+/// volume reader needs (axiolid/kernel#161).
+///
+/// # Errors
+///
+/// As [`compile_product_mesh`].
+#[cfg(feature = "compile-reference-backend")]
+pub fn compile_product_mesh_reported(
+    model: &Model,
+    product: EntityId,
+    tolerance: Tolerance,
+) -> GeometryResult<Option<CompiledMesh>> {
+    compile_product_mesh_reported_with(&default_backend(), model, product, tolerance)
+}
+
+/// Compile one product's body with a caller-supplied backend and report
+/// whether it bounds a solid.
+///
+/// A backend that does not override `MeshCompiler::compile_mesh_reported`
+/// reports [`MeshClosure::Unknown`], which [`CompiledMesh::solid_mesh`]
+/// refuses. That is deliberate: a volume needs evidence, not a default.
+///
+/// # Errors
+///
+/// As [`compile_product_mesh_with`].
+pub fn compile_product_mesh_reported_with<B: MeshCompiler>(
+    backend: &B,
+    model: &Model,
+    product: EntityId,
+    tolerance: Tolerance,
+) -> GeometryResult<Option<CompiledMesh>> {
+    let scale = units::resolve(model);
+    let mut session = LoweringSession::new(model, &scale);
+    let Some(root) =
+        lower_product_representation(&mut session, product, RepresentationPurpose::Body)?
+    else {
+        return Ok(None);
+    };
+    let lowered = session.finish(root)?;
+
+    let options = ExecutionOptions::new(tolerance);
+    backend
+        .compile_mesh_reported(&lowered.graph, lowered.root, &options)
+        .map(|outcome| {
+            Some(CompiledMesh {
+                closure: outcome.closure,
+                mesh: outcome.mesh,
+            })
+        })
+        .map_err(|error| refused(product, error))
+}
+
 /// A product's NET mesh and the openings removed to produce it.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
@@ -146,6 +242,10 @@ pub struct NetMesh {
     pub mesh: TriMesh,
     /// The openings subtracted, in ascending id. Empty when none void it.
     pub openings: Vec<EntityId>,
+    /// Whether `mesh` bounds a solid. A net body is [`MeshClosure::Solid`]
+    /// whenever a subtraction ran, since a boolean refuses a surface operand;
+    /// a host with no openings keeps whatever its gross body reported.
+    pub closure: MeshClosure,
 }
 
 /// Compile one product's Body with every voiding opening subtracted (#44).
@@ -198,8 +298,12 @@ pub fn compile_product_mesh_net_with<B: MeshCompiler>(
     let lowered = session.finish(net.root)?;
     let options = ExecutionOptions::new(tolerance);
 
-    match backend.compile_mesh(&lowered.graph, lowered.root, &options) {
-        Ok(mesh) => Ok(Some(NetMesh { mesh, openings })),
+    match backend.compile_mesh_reported(&lowered.graph, lowered.root, &options) {
+        Ok(outcome) => Ok(Some(NetMesh {
+            closure: outcome.closure,
+            mesh: outcome.mesh,
+            openings,
+        })),
         Err(error) => Err(attribute_net_refusal(
             backend,
             &lowered.graph,

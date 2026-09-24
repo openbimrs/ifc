@@ -17,11 +17,13 @@ use axiolid_contracts::{
 };
 use axiolid_core::{Point3, Tolerance};
 use axiolid_mesh::TriMesh;
+use axiolid_mesh_compile_contract::MeshClosure;
 use axiolid_mesh_compile_contract::MeshCompiler;
 use axiolid_model::{GeometryGraph, NodeId};
-use ifc_geometry::compile::compile_product_mesh_with;
 #[cfg(feature = "compile-reference-backend")]
 use ifc_geometry::compile::{compile_product_mesh, default_backend};
+use ifc_geometry::compile::{compile_product_mesh_reported_with, compile_product_mesh_with};
+use ifc_geometry::GeometryError;
 use ifc_model::{Codec, EntityId};
 use ifc_step::StepCodec;
 
@@ -159,4 +161,29 @@ fn the_default_path_is_unchanged_by_the_generic_seam() {
         Some(sentinel()),
         "the default path must not pick up a foreign backend"
     );
+}
+
+/// A backend that does not report closure gets `Unknown`, and no volume.
+///
+/// The stub implements only `compile_mesh`, like most third-party kernels
+/// will. Treating its silence as "solid" would hand a volume reader an
+/// unchecked number, so the reported path says `Unknown` and `solid_mesh`
+/// refuses it, naming the product (axiolid/kernel#161).
+#[test]
+fn a_backend_that_does_not_report_closure_gives_no_volume() {
+    let (model, product) = wall_fixture();
+    let stub = StubKernel::default();
+    let compiled =
+        compile_product_mesh_reported_with(&stub, &model, product, Tolerance::MILLIMETRE)
+            .expect("the stub compiles")
+            .expect("the wall has a body");
+    assert_eq!(compiled.mesh.positions, vec![sentinel()], "the stub ran");
+    assert_eq!(compiled.closure, MeshClosure::Unknown);
+    match compiled.solid_mesh(product) {
+        Err(GeometryError::NotASolid { entity, closure }) => {
+            assert_eq!(entity, product);
+            assert_eq!(closure, MeshClosure::Unknown);
+        }
+        other => panic!("an unreported closure must refuse a volume: {other:?}"),
+    }
 }
