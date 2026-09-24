@@ -84,6 +84,37 @@ impl Default for SessionLimits {
     }
 }
 
+/// What lowering does with an `IfcPolyLoop` face bound that collapses (#46).
+///
+/// A poly loop "collapses" when fewer than three of its implied edges join
+/// two different points, e.g. `(A, A, B, B)`: it encloses no area, so it
+/// cannot bound a face. Authoring tools emit such sliver faces routinely.
+///
+/// The test is exactly the one the refusal applies, so
+/// [`DropAndReport`](Self::DropAndReport) drops precisely the faces that
+/// [`Refuse`](Self::Refuse) would have refused over, and nothing else.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum DegenerateFacePolicy {
+    /// Refuse the whole representation item with
+    /// [`GeometryError::Degenerate`] naming
+    /// the loop. The default: a file that says a face exists is not silently
+    /// contradicted.
+    #[default]
+    Refuse,
+    /// Leave the face out and record it in
+    /// [`ProvenanceMap::dropped_faces`](crate::lower::ProvenanceMap::dropped_faces).
+    ///
+    /// Only a face whose OUTER bound (or only bound) collapses is dropped:
+    /// that face covers no area, so omitting it removes no surface. A
+    /// collapsed inner bound of a face that still has a valid outer bound is
+    /// still refused, because dropping the face there would remove real area.
+    ///
+    /// Dropping a face can leave a shell open; the backend's own closure
+    /// check still decides whether the result is a solid.
+    DropAndReport,
+}
+
 /// Identity of one lowering result, used to deduplicate shared entities.
 ///
 /// The frame is part of the key. Two `IfcMappedItem`s reusing one source under
@@ -137,6 +168,8 @@ pub struct LoweringSession<'a> {
     /// see node kinds before the graph is frozen. Recording them at push time
     /// costs one small entry per node and avoids re-walking the builder.
     shapes: BTreeMap<NodeId, NodeShape>,
+    /// What to do with a collapsed poly-loop face (#46).
+    face_policy: DegenerateFacePolicy,
 }
 
 /// The structural kind of a node, as net lowering needs it.
@@ -196,7 +229,28 @@ impl<'a> LoweringSession<'a> {
             provenance: ProvenanceMap::default(),
             texture_maps: None,
             shapes: BTreeMap::new(),
+            face_policy: DegenerateFacePolicy::default(),
         }
+    }
+
+    /// Set what lowering does with a collapsed poly-loop face (#46).
+    ///
+    /// Builder-style so the default constructors stay unchanged:
+    /// `LoweringSession::new(model, units).with_face_policy(policy)`.
+    #[must_use]
+    pub fn with_face_policy(mut self, policy: DegenerateFacePolicy) -> Self {
+        self.face_policy = policy;
+        self
+    }
+
+    /// The degenerate-face policy in force.
+    pub fn face_policy(&self) -> DegenerateFacePolicy {
+        self.face_policy
+    }
+
+    /// Record a face left out under [`DegenerateFacePolicy::DropAndReport`].
+    pub(crate) fn report_dropped_face(&mut self, face: EntityId) {
+        self.provenance.record_dropped_face(face);
     }
 
     /// The `IfcIndexedTriangleTextureMap`s whose `MappedTo` is `face_set`, in

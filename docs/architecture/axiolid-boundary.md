@@ -102,6 +102,25 @@ as an exact boolean and reports which openings it removed; an opening that
 cannot be removed is `GeometryError::OpeningNotSubtracted` naming it, never a
 quietly uncut mesh. See [ADR 0014](/adr/0014-net-geometry-is-an-explicit-request).
 
+**Collapsed faces are refused unless you opt in.** An `IfcPolyLoop` with
+fewer than three distinct edges, e.g. `(A, A, B, B)`, encloses no area, and
+by default it refuses the whole brep, naming the loop. A consumer that would
+rather keep the element opts in per session:
+
+```rust
+use ifc_geometry::lower::{DegenerateFacePolicy, LoweringSession};
+
+let session = LoweringSession::new(&model, &scale)
+    .with_face_policy(DegenerateFacePolicy::DropAndReport);
+// ... lower, then `session.finish(root)?`
+// lowered.provenance.dropped_faces() names every face left out.
+```
+
+A face is dropped only when its outer (or only) bound collapses, so no area is
+removed; a collapsed hole in a face with real area is still refused. The drop
+test is the refusal test, so the policy drops exactly what the default would
+have refused over, and nothing is ever dropped without being reported.
+
 **Off by default, and checked.** `tests/kernel_free_build.rs` asserts that the
 `--no-default-features` and default columns link zero provider crates, and that
 `--features compile` links them. `ifc-model/tests/package_architecture.rs`

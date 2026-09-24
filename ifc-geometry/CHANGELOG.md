@@ -14,6 +14,19 @@ everything released before per-crate changelogs began.
 
 ### Added
 
+- `DegenerateFacePolicy` (#46), set per session with
+  `LoweringSession::with_face_policy`. The default, `Refuse`, is unchanged:
+  an `IfcPolyLoop` with fewer than three distinct edges refuses the brep,
+  naming the loop. `DropAndReport` leaves out a face whose outer (or only)
+  bound collapses, since it covers no area, and lists it in
+  `ProvenanceMap::dropped_faces`. A collapsed hole in a face with real area
+  is still refused, and a shell whose every face collapses is refused as
+  `Degenerate`. The policy drops exactly what the default refuses.
+- On OfficeBuilding.ifc all 16 `IfcWindow`s refused this way (two shared
+  loops of the form `(A, A, B, B)`) compile under `DropAndReport`, each
+  reporting its one dropped face; their volume, 0.1707752 m3, matches
+  IfcOpenShell 0.8.5. No other product in eight real models changes.
+
 - `IfcArbitraryClosedProfileDef` and `IfcArbitraryProfileDefWithVoids` now
   lower an `IfcCompositeCurve` outer or inner boundary (#43). Segments may be
   `IfcPolyline`, `IfcTrimmedCurve` over `IfcCircle` or `IfcLine`, or a nested

@@ -38,7 +38,7 @@ pub use net::{lower_product_net, NetLowering, Subtraction};
 pub use point::{lower_point_on_curve_node, lower_point_on_surface_node};
 pub use profile::{lower_open_profile_node, lower_profile, lower_profile_node};
 pub use provenance::ProvenanceMap;
-pub use session::{LoweringSession, SessionLimits};
+pub use session::{DegenerateFacePolicy, LoweringSession, SessionLimits};
 pub use surface::{lower_linear_extrusion, lower_plane, lower_surface_node};
 pub use swept::{
     lower_extruded_area_solid, lower_extruded_area_solid_node, lower_revolved_area_solid,

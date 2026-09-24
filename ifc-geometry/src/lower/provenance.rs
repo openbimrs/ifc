@@ -6,7 +6,7 @@
 
 use axiolid_model::NodeId;
 use ifc_model::EntityId;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Source IFC entities for nodes in one lowered geometry graph.
 ///
@@ -15,6 +15,8 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProvenanceMap {
     sources: BTreeMap<NodeId, EntityId>,
+    /// Faces left out under `DegenerateFacePolicy::DropAndReport` (#46).
+    dropped_faces: BTreeSet<EntityId>,
 }
 
 impl ProvenanceMap {
@@ -36,6 +38,21 @@ impl ProvenanceMap {
     /// Iterate deterministically over `(node, source entity)` pairs.
     pub fn iter(&self) -> impl Iterator<Item = (NodeId, EntityId)> + '_ {
         self.sources.iter().map(|(&node, &source)| (node, source))
+    }
+
+    /// `IfcFace` entities left out because their outer loop collapsed, in
+    /// ascending id.
+    ///
+    /// Always empty under the default `DegenerateFacePolicy::Refuse`. A face
+    /// shared by several items is listed once. A non-empty list means the
+    /// lowered geometry is NOT exactly what the file authored: a consumer
+    /// using it as evidence decides whether that is acceptable.
+    pub fn dropped_faces(&self) -> impl Iterator<Item = EntityId> + '_ {
+        self.dropped_faces.iter().copied()
+    }
+
+    pub(crate) fn record_dropped_face(&mut self, face: EntityId) {
+        self.dropped_faces.insert(face);
     }
 
     pub(crate) fn record(&mut self, node: NodeId, source: EntityId) {

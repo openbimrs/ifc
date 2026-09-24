@@ -31,7 +31,7 @@ use ifc_model::EntityId;
 
 use crate::error::GeometryResult;
 use crate::lower::curve::lower_curve_node;
-use crate::lower::session::LoweringSession;
+use crate::lower::session::{DegenerateFacePolicy, LoweringSession};
 use crate::lower::surface::lower_surface_node;
 use crate::resource::point::CartesianPoint;
 use crate::resource::topology::{
@@ -194,8 +194,19 @@ fn shell(
     let closed = view.is_closed();
     let mut faces = Vec::new();
     for face_ref in view.faces()? {
-        let face_id = face(session, builder, id, face_ref, frame)?;
-        faces.push((face_id, Orientation::Forward));
+        // `None` is a face dropped under DegenerateFacePolicy::DropAndReport.
+        if let Some(face_id) = face(session, builder, id, face_ref, frame)? {
+            faces.push((face_id, Orientation::Forward));
+        }
+    }
+    if faces.is_empty() {
+        // Only reachable when every face was dropped. An empty shell is not
+        // "the shell minus its slivers"; it is nothing, so say so here.
+        return Err(session.degenerate(
+            id,
+            "IFCCONNECTEDFACESET",
+            "every face of the shell collapsed and was dropped".to_string(),
+        ));
     }
     Ok(builder.brep.add_shell(Shell { faces, closed }))
 }
@@ -205,13 +216,18 @@ fn shell(
 /// A planar facet needs no support surface: the loop's points define the plane
 /// exactly. `Face::surface` stays `None` rather than inventing a fitted plane
 /// that could disagree with the vertices.
+///
+/// Returns `Ok(None)` only under [`DegenerateFacePolicy::DropAndReport`], for
+/// a face whose outer bound (or only bound) collapses. Such a face covers no
+/// area. A collapsed INNER bound of a face that keeps a valid outer bound is
+/// refused under every policy: dropping that face would remove real area.
 fn face(
     session: &mut LoweringSession<'_>,
     builder: &mut TopologyBuilder,
     referrer: EntityId,
     id: EntityId,
     frame: Transform,
-) -> GeometryResult<axiolid_topology::FaceId> {
+) -> GeometryResult<Option<axiolid_topology::FaceId>> {
     let entity = expect_type(
         session.model(),
         referrer,
@@ -220,8 +236,29 @@ fn face(
         "IfcFace",
     )?;
     let view = FaceView::new(id, entity);
+    let bound_refs = view.bounds()?;
+    // Decide before interning anything, so a dropped face leaves no dangling
+    // vertices or edges behind in the shared topology.
+    if session.face_policy() == DegenerateFacePolicy::DropAndReport {
+        let mut collapsed_outer = false;
+        for &bound_ref in &bound_refs {
+            if collapsed_poly_loop(session, bound_ref)?.is_none() {
+                continue;
+            }
+            let bound_entity = session.entity(id, bound_ref)?;
+            // A collapsed inner bound is left to `poly_loop`, which refuses it
+            // with the usual error.
+            if bound_refs.len() == 1 || FaceBoundView::new(bound_ref, bound_entity).is_outer() {
+                collapsed_outer = true;
+            }
+        }
+        if collapsed_outer {
+            session.report_dropped_face(id);
+            return Ok(None);
+        }
+    }
     let mut bounds = Vec::new();
-    for bound_ref in view.bounds()? {
+    for bound_ref in bound_refs {
         bounds.push(bound(session, builder, id, bound_ref, frame)?);
     }
     // An IfcFaceSurface names the surface its boundary lies on, and SameSense
@@ -240,11 +277,49 @@ fn face(
         };
         (Some(node), sense)
     };
-    Ok(builder.brep.add_face(Face {
+    Ok(Some(builder.brep.add_face(Face {
         surface,
         bounds,
         orientation,
-    }))
+    })))
+}
+
+/// The poly loop a face bound names, if that loop collapses.
+///
+/// Uses the same test as [`poly_loop`]'s refusal, on point ids, so the drop
+/// policy can never disagree with what the default would have refused.
+/// Anything that is not a well-formed poly loop returns `None` and is left to
+/// the normal path, which reports it with its usual error.
+fn collapsed_poly_loop(
+    session: &LoweringSession<'_>,
+    bound_ref: EntityId,
+) -> GeometryResult<Option<EntityId>> {
+    let Some(bound_entity) = session.model().get(bound_ref) else {
+        return Ok(None);
+    };
+    let Ok(loop_ref) = FaceBoundView::new(bound_ref, bound_entity).bound() else {
+        return Ok(None);
+    };
+    let Some(loop_entity) = session.model().get(loop_ref) else {
+        return Ok(None);
+    };
+    if !loop_entity.type_name.eq_ignore_ascii_case("IFCPOLYLOOP") {
+        return Ok(None);
+    }
+    let Ok(points) = PolyLoop::new(loop_ref, loop_entity).polygon() else {
+        return Ok(None);
+    };
+    Ok((distinct_edge_count(&points) < 3).then_some(loop_ref))
+}
+
+/// Implied edges of a closed polygon that join two different points.
+///
+/// Vertices are interned by point entity, so two slots naming the same
+/// `IfcCartesianPoint` are one vertex and the edge between them vanishes.
+fn distinct_edge_count(points: &[EntityId]) -> usize {
+    (0..points.len())
+        .filter(|&index| points[index] != points[(index + 1) % points.len()])
+        .count()
 }
 
 /// Lower one face bound into a loop plus its orientation flags.
