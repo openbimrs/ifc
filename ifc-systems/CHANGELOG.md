@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-25
+
 ### Fixed
 
 - IFC2X3 models are read against the IFC2X3 schema (#52). Before, every
@@ -59,5 +61,6 @@ First release under per-crate versioning. See the
 [repository changelog](../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-systems-v0.2.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-systems-v0.2.1...HEAD
+[0.2.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-systems-v0.2.1
 [0.2.0]: https://github.com/openbimrs/ifc/releases/tag/v0.2.0
