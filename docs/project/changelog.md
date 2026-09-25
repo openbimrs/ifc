@@ -92,7 +92,7 @@ lockstep -- is archived in the
   (axiolid/kernel#160), and every `IfcShellBasedSurfaceModel` as "brep has no
   solid" (axiolid/kernel#161). 0.3.1 triangulates such faces in their own
   plane and refuses a non-planar one by face index.
-- The workspace requires `axiolid-construct` 0.3.1 (reached through
+- The workspace requires `axiolid-construct` 0.3.2 (reached through
   `axiolid-mesh-compile`, pinned only as a floor behind
   `compile-reference-backend`). With 0.3.0 two compiled results were wrong or
   refused, though lowering was right: an `IfcPolygonalBoundedHalfSpace` whose
@@ -101,6 +101,13 @@ lockstep -- is archived in the
   Solibri and Revit hang windows from the lintel, was wound inside-out, so
   its subtraction was refused (axiolid/kernel#166; 78 of 423 real hosts
   refused with 0.3.0, 14 with 0.3.1). Both tests that pinned these now run.
+  With 0.3.1 a swept disk was oriented by one fixed axis seeded from its
+  first segment: a bent bar whose later leg ran along that axis was refused,
+  and a leg nearly along it twisted the tube so its volume came out low with
+  no error (axiolid/kernel#169). 0.3.2 carries the frame along the path. On
+  the 41,019-product Revit rebar model below, the 878 refused bars compile
+  and swept-disk bars within 0.5 % of their closed-form volume go from
+  30,199 to 34,003 of 39,215; none is more than 1 % off.
 - A gap between consecutive composite segments, or between the last and the
   first, wider than 1e-5 m is refused as `Degenerate`, naming the segment
   and the gap. It is never bridged with an edge the file did not author.
@@ -125,17 +132,12 @@ lockstep -- is archived in the
   matches an independent exact integration of the profile to 1e-4 on the 4
   checked, IfcOpenShell's is off by up to 7 %. On 1, IfcOpenShell's own
   boolean fails and it returns the host uncut.
-- With `axiolid-construct` 0.3.1 a swept disk is oriented by one fixed axis
-  seeded from its first segment. A bent bar whose later leg runs along that
-  axis is refused (878 bars in the model above), and a leg nearly along it
-  twists the tube so its volume comes out low with no error (6,644 bars off by
-  more than 0.5 %, up to 64 %). Lowering is exact; the fix is
-  axiolid/kernel#169. With that fix applied locally, 34,003 of 39,215 are
-  within 0.5 % and none more than 1 % off.
-- An arc across its circle's seam, which Revit writes as `(270, 360)` rounded
-  just past 360, is sampled around the wrong side of the circle by the
-  reference compiler and refused as a directrix gap (1,494 bars;
-  axiolid/kernel#168).
+- A bend trimmed from a circle across its seam, as Revit writes a bar's
+  bends (`270 -> 45` or `270 -> 15` degrees), is sampled around the wrong
+  side of the circle by the reference compiler, so the bend no longer meets
+  the next leg and the bar is refused as a directrix gap (1,494 bars in the
+  model above). Lowering is exact; the fix is axiolid/kernel#168, landed on
+  kernel `main` and not yet released.
 
 ### Fixed
 

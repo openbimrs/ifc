@@ -51,9 +51,9 @@ dependencies = [
 
 [[package]]
 name = "axiolid-construct"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f28abe976bc307f852faf8e965d7e0d45ed75e93e6c3ba23a5b69466706ac80"
+checksum = "90bbdc67fe070541ff6bf69488e0ff4465d2d1b6a5363518fe3a0da43bca3551"
 dependencies = [
  "axiolid-brep",
  "axiolid-brep-audit",

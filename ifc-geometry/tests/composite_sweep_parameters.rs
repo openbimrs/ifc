@@ -17,10 +17,9 @@
 //! A 0.05 m disk swept along: a 1 m line on +X, a quarter arc of radius 0.5
 //! turning up to +Z (trimmed 270 -> 360 degrees in the XZ plane), and a 1 m
 //! line on +Z. The path is tangent-continuous, so tube volume is proportional
-//! to path length. It turns into Z rather than Y because the reference
-//! swept-disk compiler seeds one fixed reference axis (+Y for an +X start)
-//! for the whole path; a path that turns onto that axis is refused whatever
-//! its parameters (see the kernel issue linked from CHANGELOG).
+//! to path length. `turn_onto_y` authors the same pipe turning onto +Y, the
+//! axis `axiolid-construct` 0.3.1 seeded for a +X start and then refused
+//! (axiolid/kernel#169); 0.3.2 carries the frame along the path.
 //! Full parametric length in degrees: `1 + 90 + 1 = 92`.
 //!
 //! Partial ranges are checked as volume RATIOS against the full sweep: the
@@ -96,6 +95,9 @@ struct Pipe {
     arc: Arc,
     /// `(StartParam, EndParam)` in the composite's parameterisation.
     range: Option<(f64, f64)>,
+    /// Author the path turning onto +Y instead of +Z: Y and Z swapped in
+    /// every point and direction, so the geometry is congruent.
+    turn_onto_y: bool,
 }
 
 const DEGREES: Pipe = Pipe {
@@ -103,6 +105,7 @@ const DEGREES: Pipe = Pipe {
     first: First::Polyline,
     arc: Arc::Forward,
     range: Some((0.0, 92.0)),
+    turn_onto_y: false,
 };
 
 fn step_real(value: f64) -> String {
@@ -201,8 +204,10 @@ fn pipe(p: Pipe) -> Model {
         Some((a, b)) => (step_real(a), step_real(b)),
         None => ("$".to_string(), "$".to_string()),
     };
-    let text = format!(
-        "ISO-10303-21;
+    let text = with_turn(
+        p.turn_onto_y,
+        format!(
+            "ISO-10303-21;
 HEADER;
 FILE_DESCRIPTION((''),'2;1');
 FILE_NAME('','',(''),(''),'','','');
@@ -244,10 +249,60 @@ DATA;
 ENDSEC;
 END-ISO-10303-21;
 "
+        ),
     );
     StepCodec
         .read_bytes(text.as_bytes())
         .unwrap_or_else(|e| panic!("synthetic pipe must parse: {e:?}"))
+}
+
+/// Swap Y and Z in the path's points and directions (entities #46..#60).
+///
+/// A reflection, so the pipe is congruent and its volume unchanged. Only the
+/// path records are rewritten, never the project or product records, and
+/// every rewritten coordinate is a literal the fixture above spells out.
+fn with_turn(turn_onto_y: bool, text: String) -> String {
+    if !turn_onto_y {
+        return text;
+    }
+    let swaps = [
+        (
+            "#52=IFCCARTESIANPOINT((1.,0.,0.5));",
+            "#52=IFCCARTESIANPOINT((1.,0.5,0.));",
+        ),
+        (
+            "#53=IFCCARTESIANPOINT((1.5,0.,0.5));",
+            "#53=IFCCARTESIANPOINT((1.5,0.5,0.));",
+        ),
+        (
+            "#54=IFCCARTESIANPOINT((1.5,0.,1.5));",
+            "#54=IFCCARTESIANPOINT((1.5,1.5,0.));",
+        ),
+        // The circle axis -Y becomes -Z, and a reflection flips its sense:
+        // the arc still runs from 270 to 360 degrees.
+        (
+            "#55=IFCDIRECTION((0.,-1.,0.));",
+            "#55=IFCDIRECTION((0.,0.,1.));",
+        ),
+        (
+            "#56=IFCDIRECTION((0.7071067811865476,0.,-0.7071067811865476));",
+            "#56=IFCDIRECTION((0.7071067811865476,-0.7071067811865476,0.));",
+        ),
+    ];
+    let mut out = text;
+    for (from, to) in swaps {
+        // RefDirection (1,0,0) is unchanged by the swap; only the rotated
+        // one needs rewriting, so its absence is not an error.
+        if from.starts_with("#56=") && !out.contains(from) {
+            continue;
+        }
+        assert!(
+            out.contains(from),
+            "turn_onto_y: fixture record {from} missing"
+        );
+        out = out.replace(from, to);
+    }
+    out
 }
 
 fn signed_volume(mesh: &TriMesh) -> f64 {
@@ -289,6 +344,28 @@ fn assert_ratio(actual: f64, expected: f64, what: &str) {
         (actual / expected - 1.0).abs() < 5e-3,
         "{what}: volume ratio {actual}, expected {expected}"
     );
+}
+
+/// A pipe that turns onto the axis a fixed-reference sweep would seed.
+///
+/// The path starts along +X; `axiolid-construct` 0.3.1 oriented every
+/// section by +Y and refused a leg along it (axiolid/kernel#169). The
+/// same pipe reflected into XY is congruent, so every range sweeps the same
+/// volume as the XZ pipe.
+#[test]
+fn a_pipe_turning_onto_the_seed_axis_sweeps_like_any_other() {
+    for range in [(0.0, 92.0), (0.5, 46.0), (1.0 + 22.5, 1.0 + 67.5)] {
+        let xz = volume(Pipe {
+            range: Some(range),
+            ..DEGREES
+        });
+        let xy = volume(Pipe {
+            range: Some(range),
+            turn_onto_y: true,
+            ..DEGREES
+        });
+        assert_ratio(xy, xz, &format!("turn onto +Y, range {range:?}"));
+    }
 }
 
 /// A full range is the whole path: nothing for the kernel to trim.
