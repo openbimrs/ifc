@@ -20,162 +20,6 @@ lockstep -- is archived in the
 
 ## [Unreleased]
 
-### ifc-geometry
-
-### Added
-
-- `compile::compile_product_mesh_reported` (and `_with`) return a
-  `CompiledMesh`: the triangles plus the kernel's `MeshClosure`, i.e. whether
-  they bound a solid. `CompiledMesh::solid_mesh(product)` returns the mesh
-  only for `Solid` and otherwise refuses with the new
-  `GeometryError::NotASolid`, naming the product. An
-  `IfcShellBasedSurfaceModel` now compiles (axiolid/kernel#161) but is a
-  `Surface`: without this a caller summing the divergence of its triangles
-  gets a volume the file never claimed, finite and plausible for a closed
-  shell. A backend that does not report closure gives `Unknown`, which is
-  refused as well. `NetMesh::closure` carries the flag for net bodies.
-  `compile_product_mesh` is unchanged and still returns the bare mesh.
-- `tests/meshing_coverage.rs` and the generated public fixture
-  `test/fixtures/synthetic-coverage/meshing_coverage.ifc` (#47): one product
-  for each product-meshing failure kind #47 measured on real models, compiled
-  through `compile_product_mesh`. The four kinds fixed here (#43 to #46) pin
-  exact volumes, cross-checked with IfcOpenShell 0.8.5. The two fixed in the
-  Axiolid reference compiler (`axiolid-mesh-compile` 0.3.1) pin their answer
-  too: polygonal faces with more than 3 corners (axiolid/kernel#160) mesh the
-  2 m quad cube to 8 m3, and the open-shell surface model
-  (axiolid/kernel#161) meshes its 0.12 m2 and refuses any volume.
-- `DegenerateFacePolicy` (#46), set per session with
-  `LoweringSession::with_face_policy`. The default, `Refuse`, is unchanged:
-  an `IfcPolyLoop` with fewer than three distinct edges refuses the brep,
-  naming the loop. `DropAndReport` leaves out a face whose outer (or only)
-  bound collapses, since it covers no area, and lists it in
-  `ProvenanceMap::dropped_faces`. A collapsed hole in a face with real area
-  is still refused, and a shell whose every face collapses is refused as
-  `Degenerate`. The policy drops exactly what the default refuses.
-- On OfficeBuilding.ifc all 16 `IfcWindow`s refused this way (two shared
-  loops of the form `(A, A, B, B)`) compile under `DropAndReport`, each
-  reporting its one dropped face; their volume, 0.1707752 m3, matches
-  IfcOpenShell 0.8.5. No other product in eight real models changes.
-
-- `IfcArbitraryClosedProfileDef` and `IfcArbitraryProfileDefWithVoids` now
-  lower an `IfcCompositeCurve` outer or inner boundary (#43). Segments may be
-  `IfcPolyline`, `IfcTrimmedCurve` over `IfcCircle` or `IfcLine`, or a nested
-  `IfcCompositeCurve`. Arcs stay exact `Circle2` segments. `SameSense`,
-  `SenseAgreement` and `MasterRepresentation` are honoured, and a trim may be a
-  parameter (in the project's plane-angle unit) or a cartesian point.
-- On the two real models that carried them, all 128 products refused for a
-  composite profile boundary now compile, and no other product changed.
-- Net geometry (#44, ADR 0014): `compile::compile_product_mesh_net` (and
-  `_with` for your own backend) returns a product's Body with every
-  `IfcRelVoidsElement` opening subtracted, plus the ids of the openings
-  removed. `compile_product_mesh` is unchanged and stays gross: quantity
-  takeoff wants gross, clearance and ratio checks want net. The graph-level
-  entry point is `lower::lower_product_net`; the kernel-free relation reader is
-  `openings_of`.
-- An opening that cannot be removed -- its Body does not lower, it has none,
-  it is not a solid, or the backend refuses it or its cut -- is
-  `GeometryError::OpeningNotSubtracted` naming the host and the opening. The
-  gross body is never returned in its place. A host whose own Body the backend
-  refuses stays `CompilationRefused` on the host.
-- Multi-item hosts and openings (a Body with several items, or a mapped item)
-  are cut item by item: every host part minus every opening part. A mapped
-  opening is flattened through its instance transforms, composed outer after
-  inner.
-
-### Changed
-
-- The workspace requires `axiolid-mesh-compile` 0.3.2 and
-  `axiolid-mesh-compile-contract` 0.3.1. With 0.3.0 an `IfcPolygonalFaceSet`
-  with any face of more than 3 corners, or with voids
-  (`IfcIndexedPolygonalFaceWithVoids`), was refused as
-  `Unsupported(Tessellation)`
-  (axiolid/kernel#160), and every `IfcShellBasedSurfaceModel` as "brep has no
-  solid" (axiolid/kernel#161). 0.3.1 triangulates such faces in their own
-  plane and refuses a non-planar one by face index. With 0.3.1 a bend
-  trimmed from a circle across its seam, as Revit writes a bar's bends
-  (`270 -> 45` or `270 -> 15` degrees), was sampled around the wrong side of
-  the circle, so the bend missed the next leg and the bar was refused as
-  `composite directrix has a N unit gap` (axiolid/kernel#168). 0.3.2 runs the
-  trim from its first end the way its sense says, wrapping past the seam. On
-  the Revit rebar model below that compiles the last 1,494 refused bars: 40,990
-  of 41,019 products compile, and no local model refuses a directrix gap.
-- The workspace requires `axiolid-construct` 0.3.2 (reached through
-  `axiolid-mesh-compile`, pinned only as a floor behind
-  `compile-reference-backend`). With 0.3.0 two compiled results were wrong or
-  refused, though lowering was right: an `IfcPolygonalBoundedHalfSpace` whose
-  `Position` is translated within the clip plane cut the wrong region with no
-  error (axiolid/kernel#164), and an opening body extruded downward, as
-  Solibri and Revit hang windows from the lintel, was wound inside-out, so
-  its subtraction was refused (axiolid/kernel#166; 78 of 423 real hosts
-  refused with 0.3.0, 14 with 0.3.1). Both tests that pinned these now run.
-  With 0.3.1 a swept disk was oriented by one fixed axis seeded from its
-  first segment: a bent bar whose later leg ran along that axis was refused,
-  and a leg nearly along it twisted the tube so its volume came out low with
-  no error (axiolid/kernel#169). 0.3.2 carries the frame along the path. On
-  the 41,019-product Revit rebar model below, the 878 refused bars compile
-  and swept-disk bars within 0.5 % of their closed-form volume go from
-  30,199 to 34,003 of 39,215; none is more than 1 % off.
-- A gap between consecutive composite segments, or between the last and the
-  first, wider than 1e-5 m is refused as `Degenerate`, naming the segment
-  and the gap. It is never bridged with an edge the file did not author.
-- Any other segment parent, a reparametrised segment, and a conic placed with
-  a 3D placement stay typed `Unsupported`, naming the entity.
-
-### Known limits
-
-- The compiled mesh of a curved profile is only as close to the exact area as
-  the kernel's chord budget allows. With `axiolid-mesh-compile` 0.3.0 that
-  budget equals the linear tolerance, which is coarse for small radii: a real
-  gutter profile meshes 1.9 % over its exact area and a slot 0.7 % under
-  (axiolid/kernel#165). Lowering is exact; the arcs reach the kernel as arcs.
-- On the local real-model corpus (423 hosts with openings whose gross Body
-  compiles, six models) 14 hosts are still refused: the kernel boolean
-  refuses a non-manifold operand, and each refusal names the opening. No
-  host that already netted changed volume between kernels.
-- Measured against IfcOpenShell 0.8.5 on 138 sampled hosts across four real
-  models: 130 agree within 0.1 % (median difference about 1e-10). The other
-  8 are not subtraction errors. On 7, IfcOpenShell closes a gap in the host's
-  composite-curve profile with a segment the file never authored; our gross
-  matches an independent exact integration of the profile to 1e-4 on the 4
-  checked, IfcOpenShell's is off by up to 7 %. On 1, IfcOpenShell's own
-  boolean fails and it returns the host uncut.
-
-### Fixed
-
-- `IfcPolygonalBoundedHalfSpace` clips now compile (#45). `PolygonalBoundary`
-  was lowered through the 3D curve path as a `Curve3`, but Axiolid's
-  `BoundedHalfSpace` contract and reference compiler require a `Curve2`, so
-  every such `IfcBooleanClippingResult` was refused with `half-space boundary
-  .. is not a Curve2 node` although lowering succeeded. The boundary now
-  lowers as a `Curve2` polyline in `Position`'s XY plane, lengths converted
-  to metres. A 3D boundary point is accepted only with `z = 0`; any other `z`
-  violates `BoundaryDim` and is refused as `Degenerate`, naming the point,
-  instead of being projected.
-- `IfcSweptDiskSolid`, `IfcSweptDiskSolidPolygonal`,
-  `IfcFixedReferenceSweptAreaSolid` and `IfcSurfaceCurveSweptAreaSolid` read
-  `StartParam`/`EndParam` in their directrix's own parameterisation. On an
-  `IfcCompositeCurve` that is not a length: ISO 10303-42 accumulates each
-  segment's parametric length, 1 per `IfcPolyline` edge and a trimmed
-  segment's own trim span, so an arc contributes its ANGLE in the file's
-  plane-angle unit (IFC4 `IfcCompositeCurve`, figure 389: a line plus a 90
-  degree arc is 91). It was converted as a length and handed to the kernel,
-  which measures arc length, so a Revit rebar authored `(0, 365)` over five
-  1-unit legs and four 90 degree bends was read as 365 m and refused, and a
-  range that happened to fit silently cut the bar short. A full range now
-  keeps the authored directrix; a partial range is cut exactly at the
-  composite's parameters before the kernel sees it, honouring `SameSense`,
-  `SenseAgreement`, `ParamLength` and arcs across the circle's seam. A range
-  past the composite's parametric length is `Degenerate`, naming the sweep and
-  the length; a range over a segment trimmed only by points is `Unsupported`,
-  since its parametric length is not stated. A trimmed-curve directrix now
-  converts by its basis, like any trim, instead of always as an angle.
-- On the local real-model corpus (eight models) this changes one model: in a
-  41,019-product Revit rebar model, compiled products go from 19,832 to
-  38,618. Checked against the closed-form volume (inscribed disk polygon
-  times exact path length) of all 39,215 swept-disk rebars: before, 25 were
-  within 0.5 % and 18,077 compiled wrong, up to 96 % short; now 30,199 are
-  within 0.5 %. No product in any other model changed volume.
-
 ### ifc-schema
 
 ### Changed
@@ -267,7 +111,163 @@ lockstep -- is archived in the
 - **Breaking:** re-exports ifc-geometry 0.3, ifc-georef 0.3 and
   ifc-alignment 0.3, which all require Axiolid 0.3.
 
-## [0.3.1] - 2026-09-23
+## [0.3.1] - 2026-09-25
+
+### ifc-geometry
+
+### Added
+
+- `compile::compile_product_mesh_reported` (and `_with`) return a
+  `CompiledMesh`: the triangles plus the kernel's `MeshClosure`, i.e. whether
+  they bound a solid. `CompiledMesh::solid_mesh(product)` returns the mesh
+  only for `Solid` and otherwise refuses with the new
+  `GeometryError::NotASolid`, naming the product. An
+  `IfcShellBasedSurfaceModel` now compiles (axiolid/kernel#161) but is a
+  `Surface`: without this a caller summing the divergence of its triangles
+  gets a volume the file never claimed, finite and plausible for a closed
+  shell. A backend that does not report closure gives `Unknown`, which is
+  refused as well. `NetMesh::closure` carries the flag for net bodies.
+  `compile_product_mesh` is unchanged and still returns the bare mesh.
+- `tests/meshing_coverage.rs` and the generated public fixture
+  `test/fixtures/synthetic-coverage/meshing_coverage.ifc` (#47): one product
+  for each product-meshing failure kind #47 measured on real models, compiled
+  through `compile_product_mesh`. The four kinds fixed here (#43 to #46) pin
+  exact volumes, cross-checked with IfcOpenShell 0.8.5. The two fixed in the
+  Axiolid reference compiler (`axiolid-mesh-compile` 0.3.1) pin their answer
+  too: polygonal faces with more than 3 corners (axiolid/kernel#160) mesh the
+  2 m quad cube to 8 m3, and the open-shell surface model
+  (axiolid/kernel#161) meshes its 0.12 m2 and refuses any volume.
+- `DegenerateFacePolicy` (#46), set per session with
+  `LoweringSession::with_face_policy`. The default, `Refuse`, is unchanged:
+  an `IfcPolyLoop` with fewer than three distinct edges refuses the brep,
+  naming the loop. `DropAndReport` leaves out a face whose outer (or only)
+  bound collapses, since it covers no area, and lists it in
+  `ProvenanceMap::dropped_faces`. A collapsed hole in a face with real area
+  is still refused, and a shell whose every face collapses is refused as
+  `Degenerate`. The policy drops exactly what the default refuses.
+- On OfficeBuilding.ifc all 16 `IfcWindow`s refused this way (two shared
+  loops of the form `(A, A, B, B)`) compile under `DropAndReport`, each
+  reporting its one dropped face; their volume, 0.1707752 m3, matches
+  IfcOpenShell 0.8.5. No other product in eight real models changes.
+- `IfcArbitraryClosedProfileDef` and `IfcArbitraryProfileDefWithVoids` now
+  lower an `IfcCompositeCurve` outer or inner boundary (#43). Segments may be
+  `IfcPolyline`, `IfcTrimmedCurve` over `IfcCircle` or `IfcLine`, or a nested
+  `IfcCompositeCurve`. Arcs stay exact `Circle2` segments. `SameSense`,
+  `SenseAgreement` and `MasterRepresentation` are honoured, and a trim may be a
+  parameter (in the project's plane-angle unit) or a cartesian point.
+- On the two real models that carried them, all 128 products refused for a
+  composite profile boundary now compile, and no other product changed.
+- Net geometry (#44, ADR 0014): `compile::compile_product_mesh_net` (and
+  `_with` for your own backend) returns a product's Body with every
+  `IfcRelVoidsElement` opening subtracted, plus the ids of the openings
+  removed. `compile_product_mesh` is unchanged and stays gross: quantity
+  takeoff wants gross, clearance and ratio checks want net. The graph-level
+  entry point is `lower::lower_product_net`; the kernel-free relation reader is
+  `openings_of`.
+- An opening that cannot be removed -- its Body does not lower, it has none,
+  it is not a solid, or the backend refuses it or its cut -- is
+  `GeometryError::OpeningNotSubtracted` naming the host and the opening. The
+  gross body is never returned in its place. A host whose own Body the backend
+  refuses stays `CompilationRefused` on the host.
+- Multi-item hosts and openings (a Body with several items, or a mapped item)
+  are cut item by item: every host part minus every opening part. A mapped
+  opening is flattened through its instance transforms, composed outer after
+  inner.
+
+### Changed
+
+- The workspace requires `axiolid-mesh-compile` 0.3.2 and
+  `axiolid-mesh-compile-contract` 0.3.1. With 0.3.0 an `IfcPolygonalFaceSet`
+  with any face of more than 3 corners, or with voids
+  (`IfcIndexedPolygonalFaceWithVoids`), was refused as
+  `Unsupported(Tessellation)`
+  (axiolid/kernel#160), and every `IfcShellBasedSurfaceModel` as "brep has no
+  solid" (axiolid/kernel#161). 0.3.1 triangulates such faces in their own
+  plane and refuses a non-planar one by face index. With 0.3.1 a bend
+  trimmed from a circle across its seam, as Revit writes a bar's bends
+  (`270 -> 45` or `270 -> 15` degrees), was sampled around the wrong side of
+  the circle, so the bend missed the next leg and the bar was refused as
+  `composite directrix has a N unit gap` (axiolid/kernel#168). 0.3.2 runs the
+  trim from its first end the way its sense says, wrapping past the seam. On
+  the Revit rebar model below that compiles the last 1,494 refused bars: 40,990
+  of 41,019 products compile, and no local model refuses a directrix gap.
+- The workspace requires `axiolid-construct` 0.3.2 (reached through
+  `axiolid-mesh-compile`, pinned only as a floor behind
+  `compile-reference-backend`). With 0.3.0 two compiled results were wrong or
+  refused, though lowering was right: an `IfcPolygonalBoundedHalfSpace` whose
+  `Position` is translated within the clip plane cut the wrong region with no
+  error (axiolid/kernel#164), and an opening body extruded downward, as
+  Solibri and Revit hang windows from the lintel, was wound inside-out, so
+  its subtraction was refused (axiolid/kernel#166; 78 of 423 real hosts
+  refused with 0.3.0, 14 with 0.3.1). Both tests that pinned these now run.
+  With 0.3.1 a swept disk was oriented by one fixed axis seeded from its
+  first segment: a bent bar whose later leg ran along that axis was refused,
+  and a leg nearly along it twisted the tube so its volume came out low with
+  no error (axiolid/kernel#169). 0.3.2 carries the frame along the path. On
+  the 41,019-product Revit rebar model below, the 878 refused bars compile
+  and swept-disk bars within 0.5 % of their closed-form volume go from
+  30,199 to 34,003 of 39,215; none is more than 1 % off.
+- A gap between consecutive composite segments, or between the last and the
+  first, wider than 1e-5 m is refused as `Degenerate`, naming the segment
+  and the gap. It is never bridged with an edge the file did not author.
+- Any other segment parent, a reparametrised segment, and a conic placed with
+  a 3D placement stay typed `Unsupported`, naming the entity.
+
+### Known limits
+
+- The compiled mesh of a curved profile is only as close to the exact area as
+  the kernel's chord budget allows. Up to `axiolid-mesh-compile` 0.3.2 that
+  budget equals the linear tolerance, which is coarse for small radii: a real
+  gutter profile meshes 1.9 % over its exact area and a slot 0.7 % under
+  (axiolid/kernel#165). Lowering is exact; the arcs reach the kernel as arcs.
+- On the local real-model corpus (423 hosts with openings whose gross Body
+  compiles, six models) 14 hosts are still refused: the kernel boolean
+  refuses a non-manifold operand, and each refusal names the opening. No
+  host that already netted changed volume between kernels.
+- Measured against IfcOpenShell 0.8.5 on 138 sampled hosts across four real
+  models: 130 agree within 0.1 % (median difference about 1e-10). The other
+  8 are not subtraction errors. On 7, IfcOpenShell closes a gap in the host's
+  composite-curve profile with a segment the file never authored; our gross
+  matches an independent exact integration of the profile to 1e-4 on the 4
+  checked, IfcOpenShell's is off by up to 7 %. On 1, IfcOpenShell's own
+  boolean fails and it returns the host uncut.
+
+### Fixed
+
+- `IfcPolygonalBoundedHalfSpace` clips now compile (#45). `PolygonalBoundary`
+  was lowered through the 3D curve path as a `Curve3`, but Axiolid's
+  `BoundedHalfSpace` contract and reference compiler require a `Curve2`, so
+  every such `IfcBooleanClippingResult` was refused with `half-space boundary
+  .. is not a Curve2 node` although lowering succeeded. The boundary now
+  lowers as a `Curve2` polyline in `Position`'s XY plane, lengths converted
+  to metres. A 3D boundary point is accepted only with `z = 0`; any other `z`
+  violates `BoundaryDim` and is refused as `Degenerate`, naming the point,
+  instead of being projected.
+- `IfcSweptDiskSolid`, `IfcSweptDiskSolidPolygonal`,
+  `IfcFixedReferenceSweptAreaSolid` and `IfcSurfaceCurveSweptAreaSolid` read
+  `StartParam`/`EndParam` in their directrix's own parameterisation. On an
+  `IfcCompositeCurve` that is not a length: ISO 10303-42 accumulates each
+  segment's parametric length, 1 per `IfcPolyline` edge and a trimmed
+  segment's own trim span, so an arc contributes its ANGLE in the file's
+  plane-angle unit (IFC4 `IfcCompositeCurve`, figure 389: a line plus a 90
+  degree arc is 91). It was converted as a length and handed to the kernel,
+  which measures arc length, so a Revit rebar authored `(0, 365)` over five
+  1-unit legs and four 90 degree bends was read as 365 m and refused, and a
+  range that happened to fit silently cut the bar short. A full range now
+  keeps the authored directrix; a partial range is cut exactly at the
+  composite's parameters before the kernel sees it, honouring `SameSense`,
+  `SenseAgreement`, `ParamLength` and arcs across the circle's seam. A range
+  past the composite's parametric length is `Degenerate`, naming the sweep and
+  the length; a range over a segment trimmed only by points is `Unsupported`,
+  since its parametric length is not stated. A trimmed-curve directrix now
+  converts by its basis, like any trim, instead of always as an angle.
+- On the local real-model corpus (eight models) this changes one model: in a
+  41,019-product Revit rebar model, compiled products go from 19,832 to
+  38,618. Checked against the closed-form volume (inscribed disk polygon
+  times exact path length) of all 39,215 swept-disk rebars: before, 25 were
+  within 0.5 % and 18,077 compiled wrong, up to 96 % short; with this fix
+  alone (`axiolid-construct` 0.3.1) 30,199 are within 0.5 %, and 34,003 with
+  the kernel floors above. No product in any other model changed volume.
 
 ### openbim-ifc
 

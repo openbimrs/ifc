@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-09-25
+
 ### Added
 
 - `compile::compile_product_mesh_reported` (and `_with`) return a
@@ -46,7 +48,6 @@ everything released before per-crate changelogs began.
   loops of the form `(A, A, B, B)`) compile under `DropAndReport`, each
   reporting its one dropped face; their volume, 0.1707752 m3, matches
   IfcOpenShell 0.8.5. No other product in eight real models changes.
-
 - `IfcArbitraryClosedProfileDef` and `IfcArbitraryProfileDefWithVoids` now
   lower an `IfcCompositeCurve` outer or inner boundary (#43). Segments may be
   `IfcPolyline`, `IfcTrimmedCurve` over `IfcCircle` or `IfcLine`, or a nested
@@ -114,7 +115,7 @@ everything released before per-crate changelogs began.
 ### Known limits
 
 - The compiled mesh of a curved profile is only as close to the exact area as
-  the kernel's chord budget allows. With `axiolid-mesh-compile` 0.3.0 that
+  the kernel's chord budget allows. Up to `axiolid-mesh-compile` 0.3.2 that
   budget equals the linear tolerance, which is coarse for small radii: a real
   gutter profile meshes 1.9 % over its exact area and a slot 0.7 % under
   (axiolid/kernel#165). Lowering is exact; the arcs reach the kernel as arcs.
@@ -163,8 +164,9 @@ everything released before per-crate changelogs began.
   41,019-product Revit rebar model, compiled products go from 19,832 to
   38,618. Checked against the closed-form volume (inscribed disk polygon
   times exact path length) of all 39,215 swept-disk rebars: before, 25 were
-  within 0.5 % and 18,077 compiled wrong, up to 96 % short; now 30,199 are
-  within 0.5 %. No product in any other model changed volume.
+  within 0.5 % and 18,077 compiled wrong, up to 96 % short; with this fix
+  alone (`axiolid-construct` 0.3.1) 30,199 are within 0.5 %, and 34,003 with
+  the kernel floors above. No product in any other model changed volume.
 
 ## [0.3.0] - 2026-09-23
 
@@ -193,6 +195,7 @@ First release under per-crate versioning. See the
 [repository changelog](../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.3.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.3.1...HEAD
+[0.3.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.3.1
 [0.3.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.3.0
 [0.2.0]: https://github.com/openbimrs/ifc/releases/tag/v0.2.0
