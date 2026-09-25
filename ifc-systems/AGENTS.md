@@ -33,6 +33,9 @@ Allowed production dependencies: ifc-model and schema metadata only; no geometry
 - System connectivity comes from IFC relationships, not geometric proximity.
 - No pressure-flow solver, clash test, routing algorithm, or geometry import enters this crate.
 - Direction conflicts and cycles are reported; traversal always has explicit budgets.
+- Every read path binds to the release `FILE_SCHEMA` declares (`release::resolve`, public as `schema_of`); ancestry and slot presence come from that release's bundled table, never a hard-wired `ifc_schema::ifc4()`. Only authoring is IFC4-targeted by design.
+- The bulk readers (`systems`, `zones`, `ports`, `ElementRole::of`, `ConnectionGraph::build`) keep their 0.2.0 signatures, so a header they cannot bind (none, several, or unsupported such as IFC4X3) reads against IFC4 as before; callers that need a refusal call `schema_of` first. Checked accessors (`long_name_of`) refuse with `SchemaGap` instead.
+- An attribute the declared release lacks (IFC2X3 `IfcZone.LongName`) is reported by the checked accessor as `NotInSchema`, never as an authored-empty `None`.
 
 Keep entity views, relationship traversal, mutation, and domain algorithms in
 separate files. New child modules remain crate-private until a real public

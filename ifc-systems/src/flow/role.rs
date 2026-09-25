@@ -7,9 +7,9 @@
 //! silently repairing it would hide an authoring fault.
 
 use ifc_model::{EntityId, Model};
-use ifc_schema::ifc4;
 
 use crate::port::Port;
+use crate::release;
 
 /// What kind of flow element this is, by schema ancestry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -40,10 +40,14 @@ impl ElementRole {
     /// Ancestry, not exact type: a file states `IfcPipeSegment`, never
     /// `IfcFlowSegment`, because the concrete subtypes are what exporters
     /// write. An exact-type match finds nothing in a real file.
+    ///
+    /// Ancestry is read against the release the model declares. IFC2X3 has
+    /// no `IfcPipeSegment`: its files state `IfcFlowSegment` itself, and a
+    /// record name the declared release does not define has no role.
     pub fn of(model: &Model, element: EntityId) -> Option<Self> {
         let entity = model.get(element)?;
         let name = entity.type_name.to_ascii_uppercase();
-        let schema = ifc4();
+        let schema = release::resolve_or_ifc4(model);
         // Order matters: the first match wins, so the most specific roles are
         // tested before the catch-all distribution element.
         for (ancestor, role) in [

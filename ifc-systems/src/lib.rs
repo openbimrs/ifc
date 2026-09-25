@@ -27,6 +27,7 @@ mod connectivity;
 mod error;
 mod flow;
 mod port;
+mod release;
 mod system;
 
 pub use authoring::{
@@ -38,11 +39,14 @@ pub use authoring::{
 pub use connectivity::{
     Connection, ConnectionGraph, Direction, FlowNetwork, FlowQuery, NetworkGraph,
 };
-pub use error::SystemAnomaly;
+pub use error::{NotInSchema, SchemaGap, SchemaResolutionError, SystemAnomaly};
 pub use flow::{role_inconsistencies, ElementRole, FlowDirection, RoleInconsistency};
+/// The IFC release a read binds to (re-exported from `ifc-schema`).
+pub use ifc_schema::SchemaVersion;
 pub use port::{ports, Attachment, Port};
+pub use release::schema_of;
 pub use system::{systems, System};
-pub use zone::{spatial_placements, zones, SpatialPlacement, Zone};
+pub use zone::{long_name_of, spatial_placements, zones, SpatialPlacement, Zone};
 
 mod assignment;
 pub(crate) mod zone;

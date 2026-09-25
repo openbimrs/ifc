@@ -12,5 +12,5 @@
 mod definition;
 pub(crate) mod spatial_group;
 
-pub use definition::{zones, Zone};
+pub use definition::{long_name_of, zones, Zone};
 pub use spatial_group::{spatial_placements, SpatialPlacement};

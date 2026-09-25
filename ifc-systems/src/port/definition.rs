@@ -19,11 +19,10 @@
 //! Supporting only the IFC4 form would drop every port in a file exported by
 //! an older tool, which is a large share of what exists.
 
-use ifc_model::{EntityId, Model, Value};
-use ifc_schema::ifc4;
-
 use crate::error::SystemAnomaly;
 use crate::flow::FlowDirection;
+use crate::release::{self, Release};
+use ifc_model::{EntityId, Model, Value};
 
 pub(crate) mod slot {
     /// `IfcRelNests.RelatingObject` -- the nesting element.
@@ -77,11 +76,10 @@ pub struct Port {
 /// port in a file is an `IfcDistributionPort`. Selecting by ancestry rather
 /// than by the exact-type index is what makes that work, and it keeps working
 /// if a later schema adds another subtype.
-fn port_ids(model: &Model) -> Vec<EntityId> {
-    let schema = ifc4();
+fn port_ids(model: &Model, release: Release) -> Vec<EntityId> {
     let mut out = Vec::new();
     for (type_name, _) in model.type_histogram() {
-        if schema.is_a(type_name, "IFCPORT") {
+        if release.is_a(type_name, "IFCPORT") {
             out.extend_from_slice(model.ids_of_type(type_name));
         }
     }
@@ -101,8 +99,12 @@ fn text(model: &Model, id: EntityId, slot: usize) -> Option<String> {
 /// Both attachment mechanisms are read. `IfcRelNests` is applied first
 /// because it is the IFC4 form, so when an exporter writes both and they
 /// disagree the modern one wins and the conflict is reported.
+///
+/// Port ancestry is read against the release the model's `FILE_SCHEMA`
+/// declares (IFC2X3 or IFC4); see [`crate::systems`] for how an undeclared
+/// or unsupported header is handled.
 pub fn ports(model: &Model) -> (Vec<Port>, Vec<SystemAnomaly>) {
-    let schema = ifc4();
+    let release = release::resolve_or_ifc4(model);
     let mut anomalies = Vec::new();
     let mut owner: std::collections::BTreeMap<EntityId, (EntityId, Attachment)> =
         std::collections::BTreeMap::new();
@@ -143,7 +145,7 @@ pub fn ports(model: &Model) -> (Vec<Port>, Vec<SystemAnomaly>) {
             // IfcRelNests nests anything, not just ports: a distribution
             // element nests its ports, but an element type nests its
             // components too. Only ports are this module's concern.
-            if !schema.is_a(&child_entity.type_name.to_ascii_uppercase(), "IFCPORT") {
+            if !release.is_a(&child_entity.type_name.to_ascii_uppercase(), "IFCPORT") {
                 continue;
             }
             attach(child, *parent, Attachment::Nests, &mut anomalies);
@@ -186,7 +188,7 @@ pub fn ports(model: &Model) -> (Vec<Port>, Vec<SystemAnomaly>) {
     }
 
     let mut ports = Vec::new();
-    for id in port_ids(model) {
+    for id in port_ids(model, release) {
         let Some(entity) = model.get(id) else {
             continue;
         };

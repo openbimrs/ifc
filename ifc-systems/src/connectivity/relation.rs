@@ -20,9 +20,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ifc_model::{EntityId, Model, Value};
-use ifc_schema::ifc4;
 
 use crate::error::SystemAnomaly;
+use crate::release;
 
 pub(crate) mod slot {
     /// `IfcRelConnectsPorts.RelatingPort`.
@@ -63,8 +63,10 @@ impl ConnectionGraph {
     /// A connection naming a non-port, or an entity not in the file, is
     /// reported and skipped: one malformed relationship must not cost the
     /// caller the rest of the network.
+    ///
+    /// Port ancestry is read against the release the model declares.
     pub fn build(model: &Model) -> (Self, Vec<SystemAnomaly>) {
-        let schema = ifc4();
+        let schema = release::resolve_or_ifc4(model);
         let mut anomalies = Vec::new();
         let mut graph = Self::default();
 

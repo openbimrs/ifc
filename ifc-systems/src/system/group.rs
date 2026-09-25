@@ -16,9 +16,9 @@
 //! and a membership silently vanishes.
 
 use ifc_model::{EntityId, Model, Value};
-use ifc_schema::ifc4;
 
 use crate::error::SystemAnomaly;
+use crate::release::{self, Release};
 
 /// Attribute slots, named so a misread is a compile error rather than a
 /// silently empty result.
@@ -71,8 +71,20 @@ fn refs(value: Option<&Value>) -> Vec<EntityId> {
 /// Systems are found by type, not by walking memberships: a file may declare
 /// a system that nothing is assigned to yet, and dropping it would understate
 /// the model. Subtypes are included, so `IfcDistributionSystem` and
-/// `IfcBuildingSystem` are both found.
+/// `IfcBuildingSystem` are both found in IFC4, and `IfcElectricalCircuit` is
+/// found in IFC2X3 -- but `IfcZone` is NOT, because it subtypes `IfcGroup`
+/// rather than `IfcSystem` in IFC2X3 (issue #52).
+///
+/// Reads against the release the model's `FILE_SCHEMA` header declares
+/// (IFC2X3 or IFC4). A model that declares neither -- including every
+/// hand-built model in this crate's own tests, which set no header at all
+/// -- reads as IFC4, matching this function's pre-#52 behaviour. A model
+/// that explicitly declares an unsupported release (e.g. IFC4X3) also
+/// falls back to IFC4 here, because this function's `(Vec<_>, Vec<_>)`
+/// signature has no slot for a hard refusal; call [`crate::schema_of`]
+/// first if that distinction matters to the caller.
 pub fn systems(model: &Model) -> (Vec<System>, Vec<SystemAnomaly>) {
+    let release = release::resolve_or_ifc4(model);
     let mut anomalies = Vec::new();
 
     // Membership is stated by the relationship, not the system, so index the
@@ -97,7 +109,7 @@ pub fn systems(model: &Model) -> (Vec<System>, Vec<SystemAnomaly>) {
         };
         // The relationship is shared with every group kind; only systems are
         // this crate's concern, and the rest are reported rather than dropped.
-        if !ifc4().is_a(&group_entity.type_name.to_ascii_uppercase(), "IFCSYSTEM") {
+        if !release.is_a(&group_entity.type_name.to_ascii_uppercase(), "IFCSYSTEM") {
             anomalies.push(SystemAnomaly::NotASystem {
                 relation,
                 group,
@@ -124,7 +136,7 @@ pub fn systems(model: &Model) -> (Vec<System>, Vec<SystemAnomaly>) {
     // IfcDistributionSystem in the file, which is the common case. Systems are
     // therefore selected by schema ancestry over the file's own type keys.
     let mut systems = Vec::new();
-    for id in system_ids(model) {
+    for id in system_ids(model, release) {
         let Some(entity) = model.get(id) else {
             continue;
         };
@@ -139,16 +151,16 @@ pub fn systems(model: &Model) -> (Vec<System>, Vec<SystemAnomaly>) {
     (systems, anomalies)
 }
 
-/// Ids of every entity whose declared type is `IfcSystem` or a subtype.
+/// Ids of every entity whose declared type is `IfcSystem` or a subtype,
+/// under `release`.
 ///
 /// Deliberately not `Model::ids_of_type`, which indexes the exact type name
 /// only: a file whose systems are all `IfcDistributionSystem` would return
 /// nothing and the crate would report a model with no systems at all.
-fn system_ids(model: &Model) -> Vec<EntityId> {
-    let schema = ifc4();
+fn system_ids(model: &Model, release: Release) -> Vec<EntityId> {
     let mut out = Vec::new();
     for (type_name, _) in model.type_histogram() {
-        if schema.is_a(type_name, "IFCSYSTEM") {
+        if release.is_a(type_name, "IFCSYSTEM") {
             out.extend_from_slice(model.ids_of_type(type_name));
         }
     }
