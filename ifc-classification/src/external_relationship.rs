@@ -20,36 +20,60 @@ borrowed_entity!(
 impl<'m> ExternalReferenceRelationship<'m> {
     /// Optional relationship name.
     pub fn name(self) -> ClassificationResult<Option<&'m str>> {
-        optional_text(KIND, self.id(), self.entity(), 0, "Name")
+        optional_text(
+            KIND,
+            self.id(),
+            self.entity(),
+            self.text_slot("Name")?,
+            "Name",
+        )
     }
 
     /// Optional relationship description.
     pub fn description(self) -> ClassificationResult<Option<&'m str>> {
-        optional_text(KIND, self.id(), self.entity(), 1, "Description")
+        optional_text(
+            KIND,
+            self.id(),
+            self.entity(),
+            self.text_slot("Description")?,
+            "Description",
+        )
     }
 
     /// External reference that applies to the related resources.
     pub fn relating_reference(self) -> ClassificationResult<EntityId> {
-        required_ref(KIND, self.id(), self.entity(), 2, "RelatingReference")
+        required_ref(
+            KIND,
+            self.id(),
+            self.entity(),
+            self.slot("RelatingReference")?,
+            "RelatingReference",
+        )
     }
 
     /// Resource-level objects carrying this external reference.
     pub fn related_resources(self) -> ClassificationResult<Vec<EntityId>> {
-        required_refs(KIND, self.id(), self.entity(), 3, "RelatedResourceObjects")
+        required_refs(
+            KIND,
+            self.id(),
+            self.entity(),
+            self.slot("RelatedResourceObjects")?,
+            "RelatedResourceObjects",
+        )
     }
 
     fn validate(self, model: &Model) -> ClassificationResult<Self> {
         validate_target(
+            self,
             model,
-            self.id(),
             "RelatingReference",
             self.relating_reference()?,
             "IfcExternalReference",
         )?;
         for target in self.related_resources()? {
             validate_target(
+                self,
                 model,
-                self.id(),
                 "RelatedResourceObjects",
                 target,
                 "IfcResourceObjectSelect",
@@ -59,13 +83,17 @@ impl<'m> ExternalReferenceRelationship<'m> {
     }
 }
 
+/// Check `target` against `expected` in the release this relationship is
+/// read against. IFC2X3 has no `IfcExternalReferenceRelationship`, so any
+/// read there already fails `NotInSchema` before this is reached.
 fn validate_target(
+    relationship: ExternalReferenceRelationship<'_>,
     model: &Model,
-    relation: EntityId,
     attribute: &'static str,
     target: EntityId,
     expected: &'static str,
 ) -> ClassificationResult<()> {
+    let relation = relationship.id();
     let entity = model
         .get(target)
         .ok_or(ClassificationError::DanglingReference {
@@ -74,7 +102,8 @@ fn validate_target(
             attribute,
             target,
         })?;
-    if ifc_schema::ifc4().accepts_type(expected, &entity.type_name) {
+    let (_, schema) = relationship.release().bound()?;
+    if schema.accepts_type(expected, &entity.type_name) {
         Ok(())
     } else {
         Err(ClassificationError::ReferenceType {
@@ -98,16 +127,16 @@ impl<'m> ClassificationView<'m> {
             .model()
             .get(id)
             .ok_or(ClassificationError::UnknownEntity { id })?;
-        ExternalReferenceRelationship::try_new(id, entity)?.validate(self.model())
+        ExternalReferenceRelationship::try_bound(id, entity, self.release())?.validate(self.model())
     }
 
     /// All generic external-reference relationships in deterministic model order.
     pub fn external_reference_relationships(
         self,
     ) -> impl Iterator<Item = ExternalReferenceRelationship<'m>> + 'm {
-        self.model()
-            .of_type(KIND)
-            .map(|(id, entity)| ExternalReferenceRelationship::from_known(id, entity))
+        self.model().of_type(KIND).map(move |(id, entity)| {
+            ExternalReferenceRelationship::from_known(id, entity, self.release())
+        })
     }
 
     /// Valid external-reference relationships naming a particular resource.

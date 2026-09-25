@@ -9,7 +9,7 @@ impl<'m> DocumentReference<'m> {
             "IFCDOCUMENTREFERENCE",
             self.id(),
             self.entity(),
-            0,
+            self.text_slot("Location")?,
             "Location",
         )
     }
@@ -19,13 +19,19 @@ impl<'m> DocumentReference<'m> {
             "IFCDOCUMENTREFERENCE",
             self.id(),
             self.entity(),
-            1,
+            self.text_slot("Identification")?,
             "Identification",
         )
     }
     /// The `Name` of the referenced document; mutually exclusive with `referenced_document_id`.
     pub fn name(self) -> ClassificationResult<Option<&'m str>> {
-        optional_text("IFCDOCUMENTREFERENCE", self.id(), self.entity(), 2, "Name")
+        optional_text(
+            "IFCDOCUMENTREFERENCE",
+            self.id(),
+            self.entity(),
+            self.text_slot("Name")?,
+            "Name",
+        )
     }
     /// The `Description` of the referenced document, when authored.
     pub fn description(self) -> ClassificationResult<Option<&'m str>> {
@@ -33,7 +39,7 @@ impl<'m> DocumentReference<'m> {
             "IFCDOCUMENTREFERENCE",
             self.id(),
             self.entity(),
-            3,
+            self.text_slot("Description")?,
             "Description",
         )
     }
@@ -43,7 +49,7 @@ impl<'m> DocumentReference<'m> {
             "IFCDOCUMENTREFERENCE",
             self.id(),
             self.entity(),
-            4,
+            self.slot("ReferencedDocument")?,
             "ReferencedDocument",
         )
     }
@@ -75,6 +81,6 @@ impl<'m> ClassificationView<'m> {
     pub fn document_references(self) -> impl Iterator<Item = DocumentReference<'m>> + 'm {
         self.model()
             .of_type("IFCDOCUMENTREFERENCE")
-            .map(|(id, e)| DocumentReference::from_known(id, e))
+            .map(move |(id, e)| DocumentReference::from_known(id, e, self.release()))
     }
 }

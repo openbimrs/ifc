@@ -1,6 +1,7 @@
 //! Typed failures while interpreting or authoring IFC external references.
 
 use ifc_model::EntityId;
+use ifc_schema::SchemaVersion;
 use thiserror::Error;
 
 /// Failure decoding, cross-checking, or authoring classification/document/library records.
@@ -112,6 +113,42 @@ pub enum ClassificationError {
         expected: &'static str,
         /// IFC type name the target actually has.
         actual: String,
+    },
+    /// The header declares several schemas, one of them IFC2X3, so no single
+    /// release can be bound to read the model against.
+    #[error("the header declares {schemas} schemas; classification reads bind to exactly one")]
+    MultipleSchemas {
+        /// Number of `FILE_SCHEMA` declarations.
+        schemas: usize,
+    },
+    /// The release the model is read against does not define this attribute
+    /// or record, for example `Description` on an IFC2X3 `IfcClassification`
+    /// or any `IfcExternalReferenceRelationship` in an IFC2X3 model. This is
+    /// never reported as an unset (`None`) value.
+    #[error("{entity} {id}.{attribute} is not defined by {schema:?}")]
+    NotInSchema {
+        /// IFC entity type of the instance.
+        entity: &'static str,
+        /// Id of the instance.
+        id: EntityId,
+        /// Attribute name, as this crate's accessor names it.
+        attribute: &'static str,
+        /// The release the model is read against.
+        schema: SchemaVersion,
+    },
+    /// A text accessor met an attribute the bound release types as an entity
+    /// record, such as an IFC2X3 `IfcCalendarDate` edition date. The value is
+    /// valid; read it structurally through `target`.
+    #[error("{entity} {id}.{attribute} is the record {target}, not text")]
+    StructuredValue {
+        /// IFC entity type of the instance.
+        entity: &'static str,
+        /// Id of the instance.
+        id: EntityId,
+        /// Attribute name.
+        attribute: &'static str,
+        /// The entity record holding the value.
+        target: EntityId,
     },
 }
 

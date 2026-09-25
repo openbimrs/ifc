@@ -13,7 +13,7 @@ impl<'m> ClassificationAssignment<'m> {
             "IFCRELASSOCIATESCLASSIFICATION",
             self.id(),
             self.entity(),
-            0,
+            self.text_slot("GlobalId")?,
             "GlobalId",
         )
     }
@@ -23,7 +23,7 @@ impl<'m> ClassificationAssignment<'m> {
             "IFCRELASSOCIATESCLASSIFICATION",
             self.id(),
             self.entity(),
-            2,
+            self.text_slot("Name")?,
             "Name",
         )
     }
@@ -33,7 +33,7 @@ impl<'m> ClassificationAssignment<'m> {
             "IFCRELASSOCIATESCLASSIFICATION",
             self.id(),
             self.entity(),
-            3,
+            self.text_slot("Description")?,
             "Description",
         )
     }
@@ -43,7 +43,7 @@ impl<'m> ClassificationAssignment<'m> {
             "IFCRELASSOCIATESCLASSIFICATION",
             self.id(),
             self.entity(),
-            4,
+            self.slot("RelatedObjects")?,
             "RelatedObjects",
         )
     }
@@ -53,7 +53,7 @@ impl<'m> ClassificationAssignment<'m> {
             "IFCRELASSOCIATESCLASSIFICATION",
             self.id(),
             self.entity(),
-            5,
+            self.slot("RelatingClassification")?,
             "RelatingClassification",
         )
     }
@@ -65,7 +65,7 @@ impl<'m> ClassificationView<'m> {
     ) -> impl Iterator<Item = ClassificationAssignment<'m>> + 'm {
         self.model()
             .of_type("IFCRELASSOCIATESCLASSIFICATION")
-            .map(|(id, e)| ClassificationAssignment::from_known(id, e))
+            .map(move |(id, e)| ClassificationAssignment::from_known(id, e, self.release()))
     }
     /// Classification assignments naming `object` among their `RelatedObjects`, with the relating classification checked against `IfcClassificationSelect`; fails if `object` is unknown or a reference does not resolve.
     pub fn classification_assignments_for(
@@ -88,8 +88,6 @@ impl<'m> ClassificationView<'m> {
                     AssociationSchema {
                         relation: "IFCRELASSOCIATESCLASSIFICATION",
                         target_attribute: "RelatingClassification",
-                        target_types: &["IFCCLASSIFICATION", "IFCCLASSIFICATIONREFERENCE"],
-                        target_label: "IfcClassificationSelect",
                     },
                 )?;
                 out.push(assignment);

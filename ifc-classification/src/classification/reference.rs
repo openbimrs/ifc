@@ -9,7 +9,7 @@ impl<'m> ClassificationReference<'m> {
             "IFCCLASSIFICATIONREFERENCE",
             self.id(),
             self.entity(),
-            0,
+            self.text_slot("Location")?,
             "Location",
         )
     }
@@ -19,7 +19,7 @@ impl<'m> ClassificationReference<'m> {
             "IFCCLASSIFICATIONREFERENCE",
             self.id(),
             self.entity(),
-            1,
+            self.text_slot("Identification")?,
             "Identification",
         )
     }
@@ -29,7 +29,7 @@ impl<'m> ClassificationReference<'m> {
             "IFCCLASSIFICATIONREFERENCE",
             self.id(),
             self.entity(),
-            2,
+            self.text_slot("Name")?,
             "Name",
         )
     }
@@ -39,7 +39,7 @@ impl<'m> ClassificationReference<'m> {
             "IFCCLASSIFICATIONREFERENCE",
             self.id(),
             self.entity(),
-            3,
+            self.slot("ReferencedSource")?,
             "ReferencedSource",
         )
     }
@@ -49,7 +49,7 @@ impl<'m> ClassificationReference<'m> {
             "IFCCLASSIFICATIONREFERENCE",
             self.id(),
             self.entity(),
-            4,
+            self.text_slot("Description")?,
             "Description",
         )
     }
@@ -59,7 +59,7 @@ impl<'m> ClassificationReference<'m> {
             "IFCCLASSIFICATIONREFERENCE",
             self.id(),
             self.entity(),
-            5,
+            self.text_slot("Sort")?,
             "Sort",
         )
     }
@@ -83,6 +83,6 @@ impl<'m> ClassificationView<'m> {
     pub fn references(self) -> impl Iterator<Item = ClassificationReference<'m>> + 'm {
         self.model()
             .of_type("IFCCLASSIFICATIONREFERENCE")
-            .map(|(id, e)| ClassificationReference::from_known(id, e))
+            .map(move |(id, e)| ClassificationReference::from_known(id, e, self.release()))
     }
 }

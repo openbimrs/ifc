@@ -9,7 +9,7 @@ impl<'m> LibraryReference<'m> {
             "IFCLIBRARYREFERENCE",
             self.id(),
             self.entity(),
-            0,
+            self.text_slot("Location")?,
             "Location",
         )
     }
@@ -19,13 +19,19 @@ impl<'m> LibraryReference<'m> {
             "IFCLIBRARYREFERENCE",
             self.id(),
             self.entity(),
-            1,
+            self.text_slot("Identification")?,
             "Identification",
         )
     }
     /// The `Name` of the referenced library item, when authored.
     pub fn name(self) -> ClassificationResult<Option<&'m str>> {
-        optional_text("IFCLIBRARYREFERENCE", self.id(), self.entity(), 2, "Name")
+        optional_text(
+            "IFCLIBRARYREFERENCE",
+            self.id(),
+            self.entity(),
+            self.text_slot("Name")?,
+            "Name",
+        )
     }
     /// The `Description` of the referenced library item, when authored.
     pub fn description(self) -> ClassificationResult<Option<&'m str>> {
@@ -33,7 +39,7 @@ impl<'m> LibraryReference<'m> {
             "IFCLIBRARYREFERENCE",
             self.id(),
             self.entity(),
-            3,
+            self.text_slot("Description")?,
             "Description",
         )
     }
@@ -43,7 +49,7 @@ impl<'m> LibraryReference<'m> {
             "IFCLIBRARYREFERENCE",
             self.id(),
             self.entity(),
-            4,
+            self.text_slot("Language")?,
             "Language",
         )
     }
@@ -53,7 +59,7 @@ impl<'m> LibraryReference<'m> {
             "IFCLIBRARYREFERENCE",
             self.id(),
             self.entity(),
-            5,
+            self.slot("ReferencedLibrary")?,
             "ReferencedLibrary",
         )
     }
@@ -77,6 +83,6 @@ impl<'m> ClassificationView<'m> {
     pub fn library_references(self) -> impl Iterator<Item = LibraryReference<'m>> + 'm {
         self.model()
             .of_type("IFCLIBRARYREFERENCE")
-            .map(|(id, e)| LibraryReference::from_known(id, e))
+            .map(move |(id, e)| LibraryReference::from_known(id, e, self.release()))
     }
 }

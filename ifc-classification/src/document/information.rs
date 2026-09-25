@@ -12,7 +12,7 @@ impl<'m> DocumentInformation<'m> {
             "IFCDOCUMENTINFORMATION",
             self.id(),
             self.entity(),
-            0,
+            self.text_slot("Identification")?,
             "Identification",
         )
     }
@@ -22,7 +22,7 @@ impl<'m> DocumentInformation<'m> {
             "IFCDOCUMENTINFORMATION",
             self.id(),
             self.entity(),
-            1,
+            self.text_slot("Name")?,
             "Name",
         )
     }
@@ -32,7 +32,7 @@ impl<'m> DocumentInformation<'m> {
             "IFCDOCUMENTINFORMATION",
             self.id(),
             self.entity(),
-            2,
+            self.text_slot("Description")?,
             "Description",
         )
     }
@@ -42,7 +42,7 @@ impl<'m> DocumentInformation<'m> {
             "IFCDOCUMENTINFORMATION",
             self.id(),
             self.entity(),
-            3,
+            self.text_slot("Location")?,
             "Location",
         )
     }
@@ -52,7 +52,7 @@ impl<'m> DocumentInformation<'m> {
             "IFCDOCUMENTINFORMATION",
             self.id(),
             self.entity(),
-            4,
+            self.text_slot("Purpose")?,
             "Purpose",
         )
     }
@@ -62,7 +62,7 @@ impl<'m> DocumentInformation<'m> {
             "IFCDOCUMENTINFORMATION",
             self.id(),
             self.entity(),
-            5,
+            self.text_slot("IntendedUse")?,
             "IntendedUse",
         )
     }
@@ -72,7 +72,7 @@ impl<'m> DocumentInformation<'m> {
             "IFCDOCUMENTINFORMATION",
             self.id(),
             self.entity(),
-            6,
+            self.text_slot("Scope")?,
             "Scope",
         )
     }
@@ -82,7 +82,7 @@ impl<'m> DocumentInformation<'m> {
             "IFCDOCUMENTINFORMATION",
             self.id(),
             self.entity(),
-            7,
+            self.text_slot("Revision")?,
             "Revision",
         )
     }
@@ -92,7 +92,7 @@ impl<'m> DocumentInformation<'m> {
             "IFCDOCUMENTINFORMATION",
             self.id(),
             self.entity(),
-            8,
+            self.slot("DocumentOwner")?,
             "DocumentOwner",
         )
     }
@@ -102,7 +102,7 @@ impl<'m> DocumentInformation<'m> {
             "IFCDOCUMENTINFORMATION",
             self.id(),
             self.entity(),
-            9,
+            self.slot("Editors")?,
             "Editors",
         )
     }
@@ -112,7 +112,7 @@ impl<'m> DocumentInformation<'m> {
             "IFCDOCUMENTINFORMATION",
             self.id(),
             self.entity(),
-            10,
+            self.text_slot("CreationTime")?,
             "CreationTime",
         )
     }
@@ -122,7 +122,7 @@ impl<'m> DocumentInformation<'m> {
             "IFCDOCUMENTINFORMATION",
             self.id(),
             self.entity(),
-            11,
+            self.text_slot("LastRevisionTime")?,
             "LastRevisionTime",
         )
     }
@@ -132,7 +132,7 @@ impl<'m> DocumentInformation<'m> {
             "IFCDOCUMENTINFORMATION",
             self.id(),
             self.entity(),
-            12,
+            self.text_slot("ElectronicFormat")?,
             "ElectronicFormat",
         )
     }
@@ -142,7 +142,7 @@ impl<'m> DocumentInformation<'m> {
             "IFCDOCUMENTINFORMATION",
             self.id(),
             self.entity(),
-            13,
+            self.text_slot("ValidFrom")?,
             "ValidFrom",
         )
     }
@@ -152,7 +152,7 @@ impl<'m> DocumentInformation<'m> {
             "IFCDOCUMENTINFORMATION",
             self.id(),
             self.entity(),
-            14,
+            self.text_slot("ValidUntil")?,
             "ValidUntil",
         )
     }
@@ -162,7 +162,7 @@ impl<'m> DocumentInformation<'m> {
             "IFCDOCUMENTINFORMATION",
             self.id(),
             self.entity(),
-            15,
+            self.slot("Confidentiality")?,
             "Confidentiality",
             &[
                 "PUBLIC",
@@ -180,7 +180,7 @@ impl<'m> DocumentInformation<'m> {
             "IFCDOCUMENTINFORMATION",
             self.id(),
             self.entity(),
-            16,
+            self.slot("Status")?,
             "Status",
             &["DRAFT", "FINAL", "REVISION", "NOTDEFINED"],
         )
@@ -191,6 +191,6 @@ impl<'m> ClassificationView<'m> {
     pub fn documents(self) -> impl Iterator<Item = DocumentInformation<'m>> + 'm {
         self.model()
             .of_type("IFCDOCUMENTINFORMATION")
-            .map(|(id, e)| DocumentInformation::from_known(id, e))
+            .map(move |(id, e)| DocumentInformation::from_known(id, e, self.release()))
     }
 }

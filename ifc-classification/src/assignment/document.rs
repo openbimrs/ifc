@@ -13,7 +13,7 @@ impl<'m> DocumentAssignment<'m> {
             "IFCRELASSOCIATESDOCUMENT",
             self.id(),
             self.entity(),
-            0,
+            self.text_slot("GlobalId")?,
             "GlobalId",
         )
     }
@@ -23,7 +23,7 @@ impl<'m> DocumentAssignment<'m> {
             "IFCRELASSOCIATESDOCUMENT",
             self.id(),
             self.entity(),
-            2,
+            self.text_slot("Name")?,
             "Name",
         )
     }
@@ -33,7 +33,7 @@ impl<'m> DocumentAssignment<'m> {
             "IFCRELASSOCIATESDOCUMENT",
             self.id(),
             self.entity(),
-            3,
+            self.text_slot("Description")?,
             "Description",
         )
     }
@@ -43,7 +43,7 @@ impl<'m> DocumentAssignment<'m> {
             "IFCRELASSOCIATESDOCUMENT",
             self.id(),
             self.entity(),
-            4,
+            self.slot("RelatedObjects")?,
             "RelatedObjects",
         )
     }
@@ -53,7 +53,7 @@ impl<'m> DocumentAssignment<'m> {
             "IFCRELASSOCIATESDOCUMENT",
             self.id(),
             self.entity(),
-            5,
+            self.slot("RelatingDocument")?,
             "RelatingDocument",
         )
     }
@@ -63,7 +63,7 @@ impl<'m> ClassificationView<'m> {
     pub fn document_assignments(self) -> impl Iterator<Item = DocumentAssignment<'m>> + 'm {
         self.model()
             .of_type("IFCRELASSOCIATESDOCUMENT")
-            .map(|(id, e)| DocumentAssignment::from_known(id, e))
+            .map(move |(id, e)| DocumentAssignment::from_known(id, e, self.release()))
     }
     /// Document assignments naming `object` among their `RelatedObjects`, with the relating document checked against `IfcDocumentSelect`; fails if `object` is unknown or a reference does not resolve.
     pub fn document_assignments_for(
@@ -86,8 +86,6 @@ impl<'m> ClassificationView<'m> {
                     AssociationSchema {
                         relation: "IFCRELASSOCIATESDOCUMENT",
                         target_attribute: "RelatingDocument",
-                        target_types: &["IFCDOCUMENTINFORMATION", "IFCDOCUMENTREFERENCE"],
-                        target_label: "IfcDocumentSelect",
                     },
                 )?;
                 out.push(assignment);

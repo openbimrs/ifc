@@ -20,6 +20,57 @@ lockstep -- is archived in the
 
 ## [Unreleased]
 
+### ifc-classification
+
+### Added
+
+- Views read IFC2X3 models against the IFC2X3 schema (#51). A header
+  declaring exactly `IFC2X3` binds the IFC2X3 table; every slot position,
+  select, and domain comes from it. Before, every model was read with IFC4
+  positions, so IFC2X3 files only worked where the two releases happen to
+  share a slot.
+  - `IfcRelAssociatesClassification.RelatingClassification` accepts IFC2X3
+    `IfcClassificationNotationSelect` (notation or reference), and
+    `RelatedObjects` is checked against IFC2X3 `IfcRoot`.
+  - IFC2X3 `ItemReference` and `DocumentId` are read by the IFC4-named
+    `identification()` accessors, since they keep position and meaning.
+  - `IfcClassificationReference.ReferencedSource` follows the declared
+    release: `IfcClassification` only in IFC2X3.
+- `classification_schema(model)` reports the release reads bind to.
+  `SchemaVersion` is re-exported.
+- `ClassificationNotation`, `ClassificationView::notations()`,
+  `notation()`, and `notation_values()`: an IFC2X3 notation's code is its
+  facets' `NotationValue`s, in authored order, with no invented separator.
+- `ClassificationError::NotInSchema`: an accessor for an attribute the
+  release lacks (for example `description()` on an IFC2X3
+  `IfcClassification`, or any `IfcExternalReferenceRelationship` read in an
+  IFC2X3 model) fails with this instead of returning `Ok(None)`, which
+  would read as "authored as empty".
+- `ClassificationError::StructuredValue`: a text accessor that meets an
+  attribute the release types as a record, such as an IFC2X3
+  `IfcCalendarDate` `EditionDate`, returns the record id instead of
+  rejecting a valid value as `InvalidValue`.
+- `ClassificationError::MultipleSchemas`: a header declaring several
+  schemas including IFC2X3 cannot be bound to one release.
+
+### Unchanged
+
+- IFC4 and undeclared (in-memory) models read exactly as in 0.2.0: every
+  existing IFC4 test passes untouched. On two real IFC4 models, all 1,482
+  classified objects resolve.
+- IFC4X3 headers still read against IFC4, as in 0.2.0. Their own table is
+  out of scope here.
+- Authoring stays IFC4-only.
+- Projections built with `try_new` have no model header, so they keep
+  reading against IFC4.
+
+### Verified
+
+- On five real IFC2X3 models (two ArchiCAD, Solibri, a structural model,
+  Revit), all 3,672 classified objects resolve their effective
+  classifications, and every classification system (5) and reference (62)
+  reads, IFC2X3 calendar edition dates included.
+
 ### ifc-geometry
 
 ### Changed

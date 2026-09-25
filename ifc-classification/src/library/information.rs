@@ -7,7 +7,13 @@ borrowed_entity!(LibraryInformation, "IFCLIBRARYINFORMATION");
 impl<'m> LibraryInformation<'m> {
     /// The required `Name` of the library.
     pub fn name(self) -> ClassificationResult<&'m str> {
-        required_text("IFCLIBRARYINFORMATION", self.id(), self.entity(), 0, "Name")
+        required_text(
+            "IFCLIBRARYINFORMATION",
+            self.id(),
+            self.entity(),
+            self.text_slot("Name")?,
+            "Name",
+        )
     }
     /// The `Version` label of the library, when authored.
     pub fn version(self) -> ClassificationResult<Option<&'m str>> {
@@ -15,7 +21,7 @@ impl<'m> LibraryInformation<'m> {
             "IFCLIBRARYINFORMATION",
             self.id(),
             self.entity(),
-            1,
+            self.text_slot("Version")?,
             "Version",
         )
     }
@@ -25,7 +31,7 @@ impl<'m> LibraryInformation<'m> {
             "IFCLIBRARYINFORMATION",
             self.id(),
             self.entity(),
-            2,
+            self.slot("Publisher")?,
             "Publisher",
         )
     }
@@ -35,7 +41,7 @@ impl<'m> LibraryInformation<'m> {
             "IFCLIBRARYINFORMATION",
             self.id(),
             self.entity(),
-            3,
+            self.text_slot("VersionDate")?,
             "VersionDate",
         )
     }
@@ -45,7 +51,7 @@ impl<'m> LibraryInformation<'m> {
             "IFCLIBRARYINFORMATION",
             self.id(),
             self.entity(),
-            4,
+            self.text_slot("Location")?,
             "Location",
         )
     }
@@ -55,7 +61,7 @@ impl<'m> LibraryInformation<'m> {
             "IFCLIBRARYINFORMATION",
             self.id(),
             self.entity(),
-            5,
+            self.text_slot("Description")?,
             "Description",
         )
     }
@@ -65,6 +71,6 @@ impl<'m> ClassificationView<'m> {
     pub fn libraries(self) -> impl Iterator<Item = LibraryInformation<'m>> + 'm {
         self.model()
             .of_type("IFCLIBRARYINFORMATION")
-            .map(|(id, e)| LibraryInformation::from_known(id, e))
+            .map(move |(id, e)| LibraryInformation::from_known(id, e, self.release()))
     }
 }

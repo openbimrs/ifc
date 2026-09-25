@@ -13,19 +13,27 @@ pub use classification::ClassificationAssignment;
 pub use document::DocumentAssignment;
 pub use library::LibraryAssignment;
 
-/// Contract describing which `IfcRelAssociates*` relation and target select is being validated.
+/// Which `IfcRelAssociates*` relation and relating attribute is being validated.
+///
+/// The accepted types are not listed here: they are the types the bound
+/// release declares for `RelatedObjects` and for `target_attribute`, so an
+/// IFC2X3 `IfcClassificationNotation` target and an IFC4 `IfcClassification`
+/// target are each accepted exactly where their release allows them.
 pub(crate) struct AssociationSchema {
     /// IFC relation entity type (e.g. `IFCRELASSOCIATESCLASSIFICATION`).
     pub relation: &'static str,
     /// Name of the attribute holding the relating target.
     pub target_attribute: &'static str,
-    /// IFC types accepted as the relating target.
-    pub target_types: &'static [&'static str],
-    /// Select name reported in errors when the target has an unexpected type.
-    pub target_label: &'static str,
 }
 
-/// Check that `related` are all valid `IfcDefinitionSelect` members and `target` matches `contract`; fails on any dangling or mistyped reference.
+/// Check that every `related` object and the `target` are legal values of
+/// their attributes in the view's bound release; fails on any dangling or
+/// mistyped reference.
+///
+/// `RelatedObjects` is `IfcDefinitionSelect` in IFC4 and `IfcRoot` in
+/// IFC2X3; the relating target is the release's select (for classification,
+/// `IfcClassificationSelect` in IFC4, `IfcClassificationNotationSelect` in
+/// IFC2X3). Error labels are the release's declared type names.
 pub(crate) fn validate_assignment(
     view: ClassificationView<'_>,
     relation_id: EntityId,
@@ -36,10 +44,9 @@ pub(crate) fn validate_assignment(
     let AssociationSchema {
         relation,
         target_attribute,
-        target_types,
-        target_label,
     } = contract;
-    let schema = ifc_schema::ifc4();
+    let release = view.release();
+    let related_type = release.declared_type(relation, relation_id, "RelatedObjects")?;
     for &id in related {
         let entity = view
             .model()
@@ -50,15 +57,13 @@ pub(crate) fn validate_assignment(
                 attribute: "RelatedObjects",
                 target: id,
             })?;
-        if !schema.is_a(&entity.type_name, "IFCOBJECTDEFINITION")
-            && !schema.is_a(&entity.type_name, "IFCPROPERTYDEFINITION")
-        {
+        if !release.accepts(relation, relation_id, "RelatedObjects", &entity.type_name)? {
             return Err(ClassificationError::ReferenceType {
                 entity: relation,
                 id: relation_id,
                 attribute: "RelatedObjects",
                 target: id,
-                expected: "IfcDefinitionSelect",
+                expected: related_type,
                 actual: entity.type_name.to_string(),
             });
         }
@@ -72,7 +77,7 @@ pub(crate) fn validate_assignment(
             attribute: target_attribute,
             target,
         })?;
-    if target_types.iter().any(|expected| entity.is_type(expected)) {
+    if release.accepts(relation, relation_id, target_attribute, &entity.type_name)? {
         Ok(())
     } else {
         Err(ClassificationError::ReferenceType {
@@ -80,7 +85,7 @@ pub(crate) fn validate_assignment(
             id: relation_id,
             attribute: target_attribute,
             target,
-            expected: target_label,
+            expected: release.declared_type(relation, relation_id, target_attribute)?,
             actual: entity.type_name.to_string(),
         })
     }

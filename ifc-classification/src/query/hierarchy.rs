@@ -30,29 +30,39 @@ pub struct EffectiveClassifications<'m> {
     pub inherited: Vec<ClassificationAssignment<'m>>,
 }
 
+/// Check `target` against the bound release's `RelatingClassification`
+/// type: `IfcClassificationSelect` in IFC4, `IfcClassificationNotationSelect`
+/// (notation or reference) in IFC2X3.
 fn require_select(
     view: ClassificationView<'_>,
     source: EntityId,
     target: EntityId,
 ) -> ClassificationResult<()> {
+    const RELATION: &str = "IFCRELASSOCIATESCLASSIFICATION";
     let entity = view
         .model()
         .get(target)
         .ok_or(ClassificationError::DanglingReference {
-            entity: "IFCRELASSOCIATESCLASSIFICATION",
+            entity: RELATION,
             id: source,
             attribute: "RelatingClassification",
             target,
         })?;
-    if entity.is_type("IFCCLASSIFICATION") || entity.is_type("IFCCLASSIFICATIONREFERENCE") {
+    let release = view.release();
+    if release.accepts(
+        RELATION,
+        source,
+        "RelatingClassification",
+        &entity.type_name,
+    )? {
         Ok(())
     } else {
         Err(ClassificationError::ReferenceType {
-            entity: "IFCRELASSOCIATESCLASSIFICATION",
+            entity: RELATION,
             id: source,
             attribute: "RelatingClassification",
             target,
-            expected: "IfcClassificationSelect",
+            expected: release.declared_type(RELATION, source, "RelatingClassification")?,
             actual: entity.type_name.to_string(),
         })
     }
@@ -97,10 +107,40 @@ impl<'m> ClassificationView<'m> {
             })?;
             visited_nodes += 1;
 
+            // A followed `ReferencedSource` must satisfy the bound release's
+            // declared type: `IfcClassificationReferenceSelect` in IFC4,
+            // `IfcClassification` only in IFC2X3 (no reference-to-reference
+            // chains there).
+            if let Some(source) = from_reference {
+                let release = self.release();
+                if !release.accepts(
+                    "IFCCLASSIFICATIONREFERENCE",
+                    source,
+                    "ReferencedSource",
+                    &entity.type_name,
+                )? {
+                    return Err(ClassificationError::ReferenceType {
+                        entity: "IFCCLASSIFICATIONREFERENCE",
+                        id: source,
+                        attribute: "ReferencedSource",
+                        target: current,
+                        expected: release.declared_type(
+                            "IFCCLASSIFICATIONREFERENCE",
+                            source,
+                            "ReferencedSource",
+                        )?,
+                        actual: entity.type_name.to_string(),
+                    });
+                }
+            }
             if entity.is_type("IFCCLASSIFICATION") && from_reference.is_some() {
                 return Ok(ClassificationHierarchy {
                     references,
-                    system: Some(ClassificationSystem::try_new(current, entity)?),
+                    system: Some(ClassificationSystem::try_bound(
+                        current,
+                        entity,
+                        self.release(),
+                    )?),
                 });
             }
             if !entity.is_type("IFCCLASSIFICATIONREFERENCE") {
@@ -121,7 +161,7 @@ impl<'m> ClassificationView<'m> {
             }
 
             positions.insert(current, references.len());
-            let reference = ClassificationReference::try_new(current, entity)?;
+            let reference = ClassificationReference::try_bound(current, entity, self.release())?;
             let source = reference.referenced_source_id()?;
             references.push(reference);
             let Some(source) = source else {
@@ -151,15 +191,23 @@ impl<'m> ClassificationView<'m> {
             .model()
             .get(source)
             .ok_or(ClassificationError::UnknownEntity { id: source })?;
-        if !(source_entity.is_type("IFCCLASSIFICATION")
-            || source_entity.is_type("IFCCLASSIFICATIONREFERENCE"))
-        {
+        let release = self.release();
+        if !release.accepts(
+            "IFCCLASSIFICATIONREFERENCE",
+            source,
+            "ReferencedSource",
+            &source_entity.type_name,
+        )? {
             return Err(ClassificationError::ReferenceType {
                 entity: "IFCCLASSIFICATIONREFERENCE",
                 id: source,
                 attribute: "ReferencedSource",
                 target: source,
-                expected: "IfcClassificationReferenceSelect",
+                expected: release.declared_type(
+                    "IFCCLASSIFICATIONREFERENCE",
+                    source,
+                    "ReferencedSource",
+                )?,
                 actual: source_entity.type_name.to_string(),
             });
         }

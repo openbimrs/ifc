@@ -2,10 +2,14 @@
 
 use std::collections::HashSet;
 
+use crate::release::Release;
 use crate::{ClassificationError, ClassificationResult};
 use ifc_model::{Entity, EntityId, Model, Value};
 
 /// Entry point for classification/document/library queries over a borrowed [`Model`].
+///
+/// Every projection the view hands out reads against the release the model's
+/// header declares (see [`crate::classification_schema`]).
 #[derive(Debug, Clone, Copy)]
 pub struct ClassificationView<'m> {
     model: &'m Model,
@@ -20,15 +24,24 @@ impl<'m> ClassificationView<'m> {
     pub(crate) const fn model(self) -> &'m Model {
         self.model
     }
+    /// The release this view's projections read against.
+    pub(crate) fn release(self) -> Release {
+        Release::of(self.model)
+    }
 }
 
 macro_rules! borrowed_entity {
     ($name:ident, $kind:literal) => {
         #[doc = concat!("Borrowed projection of an `", $kind, "` entity.")]
+        #[doc = ""]
+        #[doc = "Projections handed out by a [`crate::ClassificationView`] read against"]
+        #[doc = "the release the model declares; one built with `try_new` has no model"]
+        #[doc = "and reads against IFC4, as in 0.2.0."]
         #[derive(Debug, Clone, Copy)]
         pub struct $name<'m> {
             id: ifc_model::EntityId,
             entity: &'m ifc_model::Entity,
+            release: crate::release::Release,
         }
         impl<'m> $name<'m> {
             #[doc = concat!(
@@ -36,12 +49,27 @@ macro_rules! borrowed_entity {
                         $kind,
                         "`, checking its runtime type; fails with `WrongEntityType` if it is not."
                     )]
+            #[doc = ""]
+            #[doc = "Without a model there is no header to bind, so the projection reads"]
+            #[doc = "against IFC4. Use the view's lookups to read another release."]
             pub fn try_new(
                 id: ifc_model::EntityId,
                 entity: &'m ifc_model::Entity,
             ) -> crate::ClassificationResult<Self> {
+                Self::try_bound(id, entity, crate::release::Release::LEGACY)
+            }
+            /// [`Self::try_new`] against an explicit release binding.
+            pub(crate) fn try_bound(
+                id: ifc_model::EntityId,
+                entity: &'m ifc_model::Entity,
+                release: crate::release::Release,
+            ) -> crate::ClassificationResult<Self> {
                 if entity.is_type($kind) {
-                    Ok(Self { id, entity })
+                    Ok(Self {
+                        id,
+                        entity,
+                        release,
+                    })
                 } else {
                     Err(crate::ClassificationError::WrongEntityType {
                         expected: $kind,
@@ -57,8 +85,13 @@ macro_rules! borrowed_entity {
             pub(crate) const fn from_known(
                 id: ifc_model::EntityId,
                 entity: &'m ifc_model::Entity,
+                release: crate::release::Release,
             ) -> Self {
-                Self { id, entity }
+                Self {
+                    id,
+                    entity,
+                    release,
+                }
             }
             /// Entity id of the underlying instance.
             #[must_use]
@@ -69,6 +102,28 @@ macro_rules! borrowed_entity {
             #[must_use]
             pub const fn entity(self) -> &'m ifc_model::Entity {
                 self.entity
+            }
+            /// Slot of `attribute` (IFC4 name) in the bound release.
+            #[allow(dead_code)]
+            pub(crate) fn slot(
+                self,
+                attribute: &'static str,
+            ) -> crate::ClassificationResult<usize> {
+                self.release.slot($kind, self.id, attribute)
+            }
+            /// Slot of a text `attribute`; a record-typed value is `StructuredValue`.
+            #[allow(dead_code)]
+            pub(crate) fn text_slot(
+                self,
+                attribute: &'static str,
+            ) -> crate::ClassificationResult<usize> {
+                self.release
+                    .text_slot($kind, self.id, self.entity, attribute)
+            }
+            /// The release binding of this projection.
+            #[allow(dead_code)]
+            pub(crate) const fn release(self) -> crate::release::Release {
+                self.release
             }
         }
     };

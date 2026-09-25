@@ -13,7 +13,7 @@ impl<'m> LibraryAssignment<'m> {
             "IFCRELASSOCIATESLIBRARY",
             self.id(),
             self.entity(),
-            0,
+            self.text_slot("GlobalId")?,
             "GlobalId",
         )
     }
@@ -23,7 +23,7 @@ impl<'m> LibraryAssignment<'m> {
             "IFCRELASSOCIATESLIBRARY",
             self.id(),
             self.entity(),
-            2,
+            self.text_slot("Name")?,
             "Name",
         )
     }
@@ -33,7 +33,7 @@ impl<'m> LibraryAssignment<'m> {
             "IFCRELASSOCIATESLIBRARY",
             self.id(),
             self.entity(),
-            3,
+            self.text_slot("Description")?,
             "Description",
         )
     }
@@ -43,7 +43,7 @@ impl<'m> LibraryAssignment<'m> {
             "IFCRELASSOCIATESLIBRARY",
             self.id(),
             self.entity(),
-            4,
+            self.slot("RelatedObjects")?,
             "RelatedObjects",
         )
     }
@@ -53,7 +53,7 @@ impl<'m> LibraryAssignment<'m> {
             "IFCRELASSOCIATESLIBRARY",
             self.id(),
             self.entity(),
-            5,
+            self.slot("RelatingLibrary")?,
             "RelatingLibrary",
         )
     }
@@ -63,7 +63,7 @@ impl<'m> ClassificationView<'m> {
     pub fn library_assignments(self) -> impl Iterator<Item = LibraryAssignment<'m>> + 'm {
         self.model()
             .of_type("IFCRELASSOCIATESLIBRARY")
-            .map(|(id, e)| LibraryAssignment::from_known(id, e))
+            .map(move |(id, e)| LibraryAssignment::from_known(id, e, self.release()))
     }
     /// Library assignments naming `object` among their `RelatedObjects`, with the relating library checked against `IfcLibrarySelect`; fails if `object` is unknown or a reference does not resolve.
     pub fn library_assignments_for(
@@ -86,8 +86,6 @@ impl<'m> ClassificationView<'m> {
                     AssociationSchema {
                         relation: "IFCRELASSOCIATESLIBRARY",
                         target_attribute: "RelatingLibrary",
-                        target_types: &["IFCLIBRARYINFORMATION", "IFCLIBRARYREFERENCE"],
-                        target_label: "IfcLibrarySelect",
                     },
                 )?;
                 out.push(assignment);
