@@ -45,9 +45,11 @@ mod value;
 
 pub use error::{PropertyAnomaly, PropertyError, PropertyResult};
 pub use exact::{
-    exact_property, ExactLogical, ExactProperty, ExactPropertyError, ExactResolution, ExactSource,
-    ExactValue,
+    exact_property, exact_schema, ExactLogical, ExactProperty, ExactPropertyError, ExactResolution,
+    ExactSource, ExactValue,
 };
+/// The IFC release an exact resolution binds to (re-exported from `ifc-schema`).
+pub use ifc_schema::SchemaVersion;
 pub use pset::{
     add_complex_property, add_complex_property_template, add_door_lining_properties,
     add_door_panel_properties, add_element_quantity, add_permeable_covering_properties,

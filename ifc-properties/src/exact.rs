@@ -1,16 +1,25 @@
-//! Exact, fail-closed IFC4 property resolution.
+//! Exact, fail-closed IFC2X3/IFC4 property resolution.
 //!
 //! Unlike the permissive views, this traversal rejects any incomplete or
-//! malformed assignment data before it can claim an exact absence.
+//! malformed assignment data before it can claim an exact absence. Every
+//! structural fact comes from the table of the one release the header
+//! declares; nothing is aliased across releases.
 
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    fmt,
-    sync::Arc,
+mod refs;
+mod release;
+mod value;
+
+use std::{collections::BTreeMap, fmt, sync::Arc};
+
+use ifc_model::{EntityId, Model};
+use ifc_schema::SchemaVersion;
+
+use refs::{
+    nonempty_refs_at, optional_refs_at, property_definition_refs_at, ref_at, refs_at, require_ref,
+    text_at,
 };
-
-use ifc_model::{Entity, EntityId, Model, Value};
-use ifc_schema::{ifc4, Schema, SchemaVersion, TypeKind};
+use release::{validate_model, Release};
+use value::{exact_property_value, ResolvedValue};
 
 /// Provenance of an exact result.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -102,7 +111,7 @@ pub enum ExactPropertyError {
         /// Number of schemas declared in the header.
         schemas: usize,
     },
-    /// The model header declares a schema other than IFC4.
+    /// The model header declares a schema other than IFC2X3 or IFC4.
     UnsupportedSchema {
         /// The declared schema token.
         schema: String,
@@ -123,7 +132,7 @@ pub enum ExactPropertyError {
         attribute: &'static str,
     },
     /// The occurrence is assigned to more than one `IfcTypeObject` via
-    /// `IfcRelDefinesByType`, which IFC4 forbids.
+    /// `IfcRelDefinesByType`, which IFC forbids.
     MultipleTypeAssignments {
         /// The occurrence with conflicting type assignments.
         object: EntityId,
@@ -214,8 +223,8 @@ pub enum ExactPropertyError {
         /// The property with the missing value.
         property: EntityId,
     },
-    /// An entity's attribute count does not match what the IFC4 schema
-    /// declares for its type — a malformed or truncated STEP record.
+    /// An entity's attribute count does not match what the declared
+    /// release's schema declares for its type (a malformed or truncated STEP record).
     MalformedEntitySlots {
         /// The malformed entity.
         entity: EntityId,
@@ -240,66 +249,129 @@ pub enum ExactPropertyError {
         property: EntityId,
     },
     /// `IfcPropertySingleValue.NominalValue` is an `IFCREAL` that is NaN or
-    /// infinite, which IFC4 does not permit.
+    /// infinite, which IFC does not permit.
     NonFiniteReal {
         /// The property with the non-finite real value.
         property: EntityId,
     },
+    /// A traversed record, typed value, or select member names a construct
+    /// that the release declared in `FILE_SCHEMA` does not define, for
+    /// example an `IfcDoorType` or an `IfcPropertySetDefinitionSet` in an
+    /// IFC2X3 file. The file mixes releases, so nothing it says about the
+    /// property is trusted.
+    NotInSchema {
+        /// The entity holding or being the foreign construct.
+        entity: EntityId,
+        /// The construct's name as written in the file.
+        name: Arc<str>,
+        /// The release the header declares.
+        schema: SchemaVersion,
+    },
+    /// A proper subtype of `IfcRelDefinesByProperties` or
+    /// `IfcRelDefinesByType` relates the queried object, such as IFC2X3
+    /// `IfcRelOverridesProperties`. Its semantics change which value applies,
+    /// and the exact resolver does not interpret them, so it refuses rather
+    /// than answer as if the relationship were absent.
+    UnsupportedRelationship {
+        /// The relationship instance.
+        relationship: EntityId,
+        /// Its IFC type name.
+        type_name: Arc<str>,
+    },
 }
 impl fmt::Display for ExactPropertyError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "exact IFC4 property resolution failed: {self:?}")
+        write!(f, "exact IFC property resolution failed: {self:?}")
     }
 }
+
+/// The IFC release a model's properties are resolved against.
+///
+/// This is the release `exact_property` binds to: the single `FILE_SCHEMA`
+/// token, if it names a release the exact resolver supports (IFC2X3 or
+/// IFC4). A consumer binds its vocabulary per release with this answer
+/// instead of re-parsing the header. It fails exactly as `exact_property`
+/// fails at model level: diagnostics, no schema, several schemas, or an
+/// unsupported one.
+///
+/// # Errors
+///
+/// [`ExactPropertyError::IncompleteModel`], [`ExactPropertyError::MissingSchema`],
+/// [`ExactPropertyError::MultipleSchemas`], or
+/// [`ExactPropertyError::UnsupportedSchema`].
+pub fn exact_schema(model: &Model) -> Result<SchemaVersion, ExactPropertyError> {
+    validate_model(model).map(|release| release.version)
+}
+
 impl std::error::Error for ExactPropertyError {}
 
-/// Resolve an IFC4 `IfcPropertySingleValue` by exact set/property name.
+/// Resolve an `IfcPropertySingleValue` by exact set/property name.
 ///
-/// With `set_name == None`, all assigned sets are searched. Occurrence values
-/// override matching inherited values at property level.
+/// The model is resolved against the single release its `FILE_SCHEMA`
+/// declares, IFC2X3 or IFC4 (see [`exact_schema`]); every domain, select and
+/// slot count is that release's. With `set_name == None`, all assigned sets
+/// are searched. Occurrence values override matching inherited values at
+/// property level.
+///
+/// # Errors
+///
+/// Any [`ExactPropertyError`]: the answer is refused rather than guessed
+/// whenever the evidence is incomplete, ambiguous, or foreign to the
+/// declared release.
 pub fn exact_property(
     model: &Model,
     object: EntityId,
     set_name: Option<&str>,
     property_name: &str,
 ) -> Result<ExactResolution, ExactPropertyError> {
-    validate_model(model)?;
-    let schema = ifc4();
+    let release = validate_model(model)?;
+    let schema = release.schema;
     let query_entity = model
         .get(object)
         .ok_or(ExactPropertyError::MissingReference {
             from: object,
             to: object,
         })?;
-    if !schema.is_a(query_entity.type_name.as_ref(), "IFCOBJECTDEFINITION")
-        || schema.is_a(query_entity.type_name.as_ref(), "IFCTYPEOBJECT")
-    {
+    if schema.entity(query_entity.type_name.as_ref()).is_none() {
+        return Err(release.not_in_schema(object, query_entity.type_name.clone()));
+    }
+    // The occurrence domain is the release's own `RelatedObjects` type:
+    // `IfcObject` in IFC2X3, `IfcObjectDefinition` in IFC4. Type objects are
+    // never occurrences, whatever the release.
+    let occurrence_domain = |type_name: &str| {
+        release.slot_accepts("IFCRELDEFINESBYPROPERTIES", 4, type_name)
+            && !schema.is_a(type_name, "IFCTYPEOBJECT")
+    };
+    if !occurrence_domain(query_entity.type_name.as_ref()) {
         return Err(ExactPropertyError::InvalidQueryObject {
             object,
             type_name: query_entity.type_name.clone(),
         });
     }
-    require_exact_slots(schema, object, query_entity)?;
+    release.require_exact_slots(object, query_entity)?;
+    refuse_unsupported_relationships(model, release, object)?;
     let mut occurrence_sets = Vec::new();
     let mut assigned_type = None;
     for relation_id in model.ids_of_type("IFCRELDEFINESBYPROPERTIES") {
         let r = model.get(*relation_id).expect("type index is current");
-        require_exact_slots(schema, *relation_id, r)?;
+        release.require_exact_slots(*relation_id, r)?;
         let related = nonempty_refs_at(*relation_id, r.attributes.get(4), "RelatedObjects")?;
         for related_id in &related {
             require_ref(model, *relation_id, *related_id)?;
             let related_object = model.get(*related_id).expect("checked reference");
-            if !schema.is_a(related_object.type_name.as_ref(), "IFCOBJECTDEFINITION")
-                || schema.is_a(related_object.type_name.as_ref(), "IFCTYPEOBJECT")
-            {
+            if schema.entity(related_object.type_name.as_ref()).is_none() {
+                return Err(release.not_in_schema(*related_id, related_object.type_name.clone()));
+            }
+            if !occurrence_domain(related_object.type_name.as_ref()) {
                 return Err(ExactPropertyError::InvalidOccurrenceTarget {
                     relationship: *relation_id,
                     object: *related_id,
                 });
             }
-            require_exact_slots(schema, *related_id, related_object)?;
+            release.require_exact_slots(*related_id, related_object)?;
         }
         let definitions = property_definition_refs_at(
+            release,
             *relation_id,
             r.attributes.get(5),
             "RelatingPropertyDefinition",
@@ -307,6 +379,12 @@ pub fn exact_property(
         for definition in definitions {
             require_ref(model, *relation_id, definition)?;
             let definition_entity = model.get(definition).expect("checked reference");
+            if schema
+                .entity(definition_entity.type_name.as_ref())
+                .is_none()
+            {
+                return Err(release.not_in_schema(definition, definition_entity.type_name.clone()));
+            }
             if !schema.is_a(
                 definition_entity.type_name.as_ref(),
                 "IFCPROPERTYSETDEFINITION",
@@ -323,29 +401,35 @@ pub fn exact_property(
     }
     for relation_id in model.ids_of_type("IFCRELDEFINESBYTYPE") {
         let r = model.get(*relation_id).expect("type index is current");
-        require_exact_slots(schema, *relation_id, r)?;
+        release.require_exact_slots(*relation_id, r)?;
         let related = nonempty_refs_at(*relation_id, r.attributes.get(4), "RelatedObjects")?;
         for related_id in &related {
             require_ref(model, *relation_id, *related_id)?;
             let related_object = model.get(*related_id).expect("checked reference");
+            if schema.entity(related_object.type_name.as_ref()).is_none() {
+                return Err(release.not_in_schema(*related_id, related_object.type_name.clone()));
+            }
             if !schema.is_a(related_object.type_name.as_ref(), "IFCOBJECT") {
                 return Err(ExactPropertyError::InvalidTypeTarget {
                     relationship: *relation_id,
                     object: *related_id,
                 });
             }
-            require_exact_slots(schema, *related_id, related_object)?;
+            release.require_exact_slots(*related_id, related_object)?;
         }
         let type_id = ref_at(*relation_id, r.attributes.get(5), "RelatingType")?;
         require_ref(model, *relation_id, type_id)?;
         let type_object = model.get(type_id).expect("checked reference");
+        if schema.entity(type_object.type_name.as_ref()).is_none() {
+            return Err(release.not_in_schema(type_id, type_object.type_name.clone()));
+        }
         if !schema.is_a(type_object.type_name.as_ref(), "IFCTYPEOBJECT") {
             return Err(ExactPropertyError::UnsupportedDefinition {
                 entity: type_id,
                 type_name: type_object.type_name.clone(),
             });
         }
-        require_exact_slots(schema, type_id, type_object)?;
+        release.require_exact_slots(type_id, type_object)?;
         if related.contains(&object) {
             if let Some(first) = assigned_type.replace(type_id) {
                 return Err(ExactPropertyError::MultipleTypeAssignments {
@@ -358,6 +442,7 @@ pub fn exact_property(
     }
     let occurrence = find_property(
         model,
+        release,
         &occurrence_sets,
         ExactSource::Occurrence,
         set_name,
@@ -365,16 +450,13 @@ pub fn exact_property(
     )?;
     let inherited = match assigned_type {
         Some(type_id) => {
+            // Checked above: a known `IfcTypeObject` with the release's arity,
+            // so `HasPropertySets` is slot 5 in both IFC2X3 and IFC4.
             let type_object = model.get(type_id).expect("checked reference");
-            if !ifc4().is_a(&type_object.type_name, "IFCTYPEOBJECT") {
-                return Err(ExactPropertyError::UnsupportedDefinition {
-                    entity: type_id,
-                    type_name: type_object.type_name.clone(),
-                });
-            }
             let sets = optional_refs_at(type_id, type_object.attributes.get(5), "HasPropertySets")?;
             find_property(
                 model,
+                release,
                 &sets,
                 ExactSource::Type(type_id),
                 set_name,
@@ -388,32 +470,44 @@ pub fn exact_property(
         .map_or(ExactResolution::Absent, ExactResolution::Present))
 }
 
-fn validate_model(model: &Model) -> Result<(), ExactPropertyError> {
-    if !model.diagnostics().is_empty() {
-        return Err(ExactPropertyError::IncompleteModel {
-            diagnostics: model.diagnostics().len(),
-        });
+/// Refuse any proper subtype of the two traversed relationships that
+/// relates `object`.
+///
+/// `Model::ids_of_type` is exact-type, so a subtype instance such as IFC2X3
+/// `IfcRelOverridesProperties` would otherwise be skipped silently and its
+/// object answered as if the relationship were absent. Subtypes that relate
+/// other objects do not affect this answer and are left alone.
+fn refuse_unsupported_relationships(
+    model: &Model,
+    release: Release,
+    object: EntityId,
+) -> Result<(), ExactPropertyError> {
+    for parent in ["IFCRELDEFINESBYPROPERTIES", "IFCRELDEFINESBYTYPE"] {
+        for subtype in release.schema.subtypes(parent) {
+            for relation_id in model.ids_of_type(subtype) {
+                let r = model.get(*relation_id).expect("type index is current");
+                let related = refs_at(*relation_id, r.attributes.get(4), "RelatedObjects")?;
+                if related.contains(&object) {
+                    return Err(ExactPropertyError::UnsupportedRelationship {
+                        relationship: *relation_id,
+                        type_name: r.type_name.clone(),
+                    });
+                }
+            }
+        }
     }
-    match model.header().schema.as_slice() {
-        [] => Err(ExactPropertyError::MissingSchema),
-        [schema] if SchemaVersion::from_header_token(schema) == Some(SchemaVersion::Ifc4) => Ok(()),
-        [schema] => Err(ExactPropertyError::UnsupportedSchema {
-            schema: schema.clone(),
-        }),
-        schemas => Err(ExactPropertyError::MultipleSchemas {
-            schemas: schemas.len(),
-        }),
-    }
+    Ok(())
 }
 
 fn find_property(
     model: &Model,
+    release: Release,
     sets: &[EntityId],
     source: ExactSource,
     wanted_set: Option<&str>,
     wanted_property: &str,
 ) -> Result<Option<ExactProperty>, ExactPropertyError> {
-    let schema = ifc4();
+    let schema = release.schema;
     let mut result = None;
     let mut matching_sets = BTreeMap::new();
     for &set_id in sets {
@@ -423,8 +517,8 @@ fn find_property(
                 from: set_id,
                 to: set_id,
             })?;
-        require_exact_slots(schema, set_id, set)?;
-        if !set.is_type("IFCPROPERTYSET") && ifc4().is_a(&set.type_name, "IFCPROPERTYSETDEFINITION")
+        release.require_exact_slots(set_id, set)?;
+        if !set.is_type("IFCPROPERTYSET") && schema.is_a(&set.type_name, "IFCPROPERTYSETDEFINITION")
         {
             continue;
         }
@@ -455,13 +549,16 @@ fn find_property(
                     from: set_id,
                     to: property_id,
                 })?;
+            if schema.entity(property.type_name.as_ref()).is_none() {
+                return Err(release.not_in_schema(property_id, property.type_name.clone()));
+            }
             if !schema.is_a(property.type_name.as_ref(), "IFCPROPERTY") {
                 return Err(ExactPropertyError::UnsupportedProperty {
                     entity: property_id,
                     type_name: property.type_name.clone(),
                 });
             }
-            require_exact_slots(schema, property_id, property)?;
+            release.require_exact_slots(property_id, property)?;
             if text_at(property_id, property.attributes.first(), "Name")? != wanted_property {
                 continue;
             }
@@ -485,7 +582,7 @@ fn find_property(
                 value,
                 value_type,
                 unit_id,
-            } = exact_property_value(model, property_id, property)?;
+            } = exact_property_value(model, release, property_id, property)?;
             let candidate = ExactProperty {
                 source,
                 property_set: Arc::from(set_name),
@@ -505,291 +602,4 @@ fn find_property(
         }
     }
     Ok(result)
-}
-fn select_accepts_type(schema: &Schema, select: &str, candidate: &str) -> bool {
-    select_accepts(schema, select, candidate, false, &mut BTreeSet::new())
-}
-
-fn select_accepts_entity(schema: &Schema, select: &str, candidate: &str) -> bool {
-    select_accepts(schema, select, candidate, true, &mut BTreeSet::new())
-}
-
-fn select_accepts(
-    schema: &Schema,
-    select: &str,
-    candidate: &str,
-    entity: bool,
-    visited: &mut BTreeSet<String>,
-) -> bool {
-    let key = select.to_ascii_uppercase();
-    if !visited.insert(key.clone()) {
-        return false;
-    }
-    let accepted = schema.type_def(select).is_some_and(|definition| {
-        let TypeKind::Select(members) = &definition.kind else {
-            return false;
-        };
-        members.iter().any(|member| {
-            member.eq_ignore_ascii_case(candidate)
-                || (entity && schema.entity(member).is_some() && schema.is_a(candidate, member))
-                || (schema.type_def(member).is_some()
-                    && select_accepts(schema, member, candidate, entity, visited))
-        })
-    });
-    visited.remove(&key);
-    accepted
-}
-
-fn typed_payload_matches(
-    schema: &Schema,
-    type_name: &str,
-    value: &Value,
-    visited: &mut BTreeSet<String>,
-) -> bool {
-    let key = type_name.to_ascii_uppercase();
-    if !visited.insert(key.clone()) {
-        return false;
-    }
-    let matches = schema
-        .type_def(type_name)
-        .is_some_and(|definition| match &definition.kind {
-            TypeKind::Defined(rhs) => {
-                let base = rhs
-                    .split(|character: char| {
-                        !(character.is_ascii_alphanumeric() || character == '_')
-                    })
-                    .find(|part| !part.is_empty())
-                    .unwrap_or("");
-                if schema.type_def(base).is_some() {
-                    typed_payload_matches(schema, base, value, visited)
-                } else {
-                    match base.to_ascii_uppercase().as_str() {
-                        "INTEGER" => matches!(value, Value::Integer(_)),
-                        "REAL" => matches!(value, Value::Real(_)),
-                        "NUMBER" => matches!(value, Value::Integer(_) | Value::Real(_)),
-                        "STRING" => matches!(value, Value::Text(_)),
-                        "BINARY" => matches!(value, Value::Binary(_)),
-                        "BOOLEAN" => matches!(value, Value::Bool(_)),
-                        "LOGICAL" => matches!(value, Value::Bool(_) | Value::LogicalUnknown),
-                        _ => false,
-                    }
-                }
-            }
-            TypeKind::Enumeration(members) => match value {
-                Value::Enum(member) => members
-                    .iter()
-                    .any(|candidate| candidate.eq_ignore_ascii_case(member)),
-                _ => false,
-            },
-            TypeKind::Select(_) => match value {
-                Value::Typed {
-                    type_name: member,
-                    value: payload,
-                } if select_accepts_type(schema, type_name, member) => {
-                    typed_payload_matches(schema, member, payload, visited)
-                }
-                _ => false,
-            },
-        });
-    visited.remove(&key);
-    matches
-}
-
-#[derive(Debug)]
-struct ResolvedValue {
-    value: ExactValue,
-    value_type: Option<Arc<str>>,
-    unit_id: Option<EntityId>,
-}
-
-fn exact_property_value(
-    model: &Model,
-    property: EntityId,
-    entity: &Entity,
-) -> Result<ResolvedValue, ExactPropertyError> {
-    let unit_id = match &entity.attributes[3] {
-        Value::Null => None,
-        Value::Ref(unit_id) => {
-            let unit = model
-                .get(*unit_id)
-                .ok_or(ExactPropertyError::MissingReference {
-                    from: property,
-                    to: *unit_id,
-                })?;
-            if !select_accepts_entity(ifc4(), "IFCUNIT", unit.type_name.as_ref()) {
-                return Err(ExactPropertyError::UnsupportedUnit { property });
-            }
-            require_exact_slots(ifc4(), *unit_id, unit)?;
-            Some(*unit_id)
-        }
-        _ => return Err(ExactPropertyError::UnsupportedUnit { property }),
-    };
-    match &entity.attributes[2] {
-        Value::Null => Ok(ResolvedValue {
-            value: ExactValue::Null,
-            value_type: None,
-            unit_id,
-        }),
-        Value::Typed { type_name, value }
-            if select_accepts_type(ifc4(), "IFCVALUE", type_name.as_ref())
-                && typed_payload_matches(
-                    ifc4(),
-                    type_name.as_ref(),
-                    value.as_ref(),
-                    &mut BTreeSet::new(),
-                ) =>
-        {
-            exact_value(property, entity.attributes.get(2)).map(|value| ResolvedValue {
-                value,
-                value_type: Some(type_name.clone()),
-                unit_id,
-            })
-        }
-        _ => Err(ExactPropertyError::UnsupportedValue { property }),
-    }
-}
-
-fn exact_value(
-    property: EntityId,
-    value: Option<&Value>,
-) -> Result<ExactValue, ExactPropertyError> {
-    let Some(value) = value else {
-        return Err(ExactPropertyError::MissingValueSlot { property });
-    };
-    match value {
-        Value::Typed { type_name, value } if type_name.eq_ignore_ascii_case("IFCLOGICAL") => {
-            match value.as_ref() {
-                Value::Bool(false) => Ok(ExactValue::Logical(ExactLogical::False)),
-                Value::LogicalUnknown => Ok(ExactValue::Logical(ExactLogical::Unknown)),
-                Value::Bool(true) => Ok(ExactValue::Logical(ExactLogical::True)),
-                _ => Err(ExactPropertyError::UnsupportedValue { property }),
-            }
-        }
-        Value::Typed { value, .. } => exact_value(property, Some(value.as_ref())),
-        Value::Null => Ok(ExactValue::Null),
-        Value::Bool(v) => Ok(ExactValue::Bool(*v)),
-        Value::LogicalUnknown => Ok(ExactValue::Logical(ExactLogical::Unknown)),
-        Value::Binary(v) => Ok(ExactValue::Binary(v.clone())),
-        Value::Integer(v) => Ok(ExactValue::Integer(*v)),
-        Value::Real(v) if v.is_finite() => Ok(ExactValue::Real(*v)),
-        Value::Real(_) => Err(ExactPropertyError::NonFiniteReal { property }),
-        Value::Text(v) => Ok(ExactValue::Text(v.clone())),
-        _ => Err(ExactPropertyError::UnsupportedValue { property }),
-    }
-}
-fn require_exact_slots(
-    schema: &Schema,
-    entity_id: EntityId,
-    entity: &Entity,
-) -> Result<(), ExactPropertyError> {
-    let expected = schema.attributes(entity.type_name.as_ref()).len();
-    let actual = entity.attributes.len();
-    if actual != expected {
-        return Err(ExactPropertyError::MalformedEntitySlots {
-            entity: entity_id,
-            type_name: entity.type_name.clone(),
-            expected,
-            actual,
-        });
-    }
-    Ok(())
-}
-
-fn require_ref(model: &Model, from: EntityId, to: EntityId) -> Result<(), ExactPropertyError> {
-    if model.get(to).is_some() {
-        Ok(())
-    } else {
-        Err(ExactPropertyError::MissingReference { from, to })
-    }
-}
-fn property_definition_refs_at(
-    entity: EntityId,
-    value: Option<&Value>,
-    attribute: &'static str,
-) -> Result<Vec<EntityId>, ExactPropertyError> {
-    let Some(value) = value else {
-        return Err(ExactPropertyError::MalformedAggregate { entity, attribute });
-    };
-    match value {
-        Value::Ref(id) => Ok(vec![*id]),
-        Value::Typed { type_name, value }
-            if type_name.eq_ignore_ascii_case("IFCPROPERTYSETDEFINITIONSET") =>
-        {
-            nonempty_refs_at(entity, Some(value.as_ref()), attribute)
-        }
-        Value::List(_) => nonempty_refs_at(entity, Some(value), attribute),
-        _ => Err(ExactPropertyError::MalformedAggregate { entity, attribute }),
-    }
-}
-
-fn nonempty_refs_at(
-    entity: EntityId,
-    value: Option<&Value>,
-    attribute: &'static str,
-) -> Result<Vec<EntityId>, ExactPropertyError> {
-    let refs = refs_at(entity, value, attribute)?;
-    if refs.is_empty() {
-        Err(ExactPropertyError::MalformedAggregate { entity, attribute })
-    } else {
-        Ok(refs)
-    }
-}
-
-fn optional_refs_at(
-    entity: EntityId,
-    value: Option<&Value>,
-    attribute: &'static str,
-) -> Result<Vec<EntityId>, ExactPropertyError> {
-    match value {
-        None => Err(ExactPropertyError::MalformedAggregate { entity, attribute }),
-        Some(Value::Null) => Ok(Vec::new()),
-        value => nonempty_refs_at(entity, value, attribute),
-    }
-}
-fn refs_at(
-    entity: EntityId,
-    value: Option<&Value>,
-    attribute: &'static str,
-) -> Result<Vec<EntityId>, ExactPropertyError> {
-    let Some(value) = value else {
-        return Err(ExactPropertyError::MalformedAggregate { entity, attribute });
-    };
-    let Value::List(values) = value else {
-        return Err(ExactPropertyError::MalformedAggregate { entity, attribute });
-    };
-    let mut seen = BTreeSet::new();
-    values
-        .iter()
-        .map(|v| {
-            let member = v
-                .as_ref_id()
-                .ok_or(ExactPropertyError::MalformedAggregate { entity, attribute })?;
-            if !seen.insert(member) {
-                return Err(ExactPropertyError::DuplicateAggregateMember {
-                    entity,
-                    attribute,
-                    member,
-                });
-            }
-            Ok(member)
-        })
-        .collect()
-}
-fn ref_at(
-    entity: EntityId,
-    value: Option<&Value>,
-    attribute: &'static str,
-) -> Result<EntityId, ExactPropertyError> {
-    value
-        .and_then(Value::as_ref_id)
-        .ok_or(ExactPropertyError::MalformedAggregate { entity, attribute })
-}
-fn text_at<'a>(
-    entity: EntityId,
-    value: Option<&'a Value>,
-    attribute: &'static str,
-) -> Result<&'a str, ExactPropertyError> {
-    value
-        .and_then(|v| v.unwrap_typed().as_text())
-        .ok_or(ExactPropertyError::MalformedName { entity, attribute })
 }
