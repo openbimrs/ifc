@@ -52,6 +52,9 @@ enum Answer {
 
 /// Exact volumes, derived in `tools/gen_coverage_fixtures.py`.
 const D_SHAPE: f64 = 2.0 + PI / 2.0;
+/// The real lining's divergence volume over its authored rings, from the
+/// exact coordinates (export noise included), independent of Axiolid.
+const LINING: f64 = 0.123_074_125_994_061_02;
 
 /// One row per #47 failure kind, keyed by the product's `Name`.
 fn expected() -> Vec<(&'static str, &'static str, Answer)> {
@@ -102,6 +105,25 @@ fn expected() -> Vec<(&'static str, &'static str, Answer)> {
             "IfcShellBasedSurfaceModel open shell (axiolid/kernel#161)",
             // Two triangles covering a 0.4 m x 0.3 m rectangle.
             Answer::SurfaceArea { m2: 0.12 },
+        ),
+        (
+            "face-set-collinear-heads",
+            "closed IfcPolygonalFaceSet with collinear notch and window heads (axiolid/kernel#170)",
+            // A real ArchiCAD wall lining, 10 mm thick, at its exact
+            // coordinates. On axiolid-mesh-compile 0.3.2 the mesh cracked
+            // where the notch and window heads meet (4 open edges) and this
+            // row came back a Surface.
+            Answer::Volume {
+                m3: LINING,
+                rel: 1e-9,
+            },
+        ),
+        (
+            "surface-model-bowtie-cap",
+            "IfcFaceBasedSurfaceModel with a zero-area bowtie end cap (axiolid/kernel#171)",
+            // Four 0.1 x 1 m side walls; the bowtie cap covers nothing.
+            // Before kernel#171 the whole product was refused.
+            Answer::SurfaceArea { m2: 0.4 },
         ),
     ]
 }
@@ -284,5 +306,51 @@ fn the_fixture_covers_every_kind_and_nothing_unpinned() {
         .collect();
     let present: BTreeSet<&str> = present.iter().map(String::as_str).collect();
     assert_eq!(present, pinned, "fixture products and pinned rows differ");
-    assert_eq!(pinned.len(), 6, "one row per #47 failure kind");
+    assert_eq!(
+        pinned.len(),
+        8,
+        "one row per #47 failure kind, plus kernel#170 and #171"
+    );
+}
+
+/// An explicit chord budget tightens the composite-curve row (axiolid/kernel#165).
+///
+/// The D's half disc (radius 1 m) is chorded by the kernel. At
+/// `Tolerance::MILLIMETRE` the default budget is the linear tolerance; a
+/// budget a hundred times finer must bring the volume a hundred times
+/// closer, within float noise of the analytic value. The oracle is the
+/// closed form 2 + pi/2 m3, not a number read back from the compiler.
+#[test]
+fn a_chord_budget_brings_the_composite_curve_row_to_its_exact_volume() {
+    let model = model();
+    let id = product_named(&model, "composite-curve-profile");
+    let scale = units::resolve(&model);
+    let mut session = LoweringSession::new(&model, &scale);
+    let root = lower_product_representation(&mut session, id, RepresentationPurpose::Body)
+        .expect("lowers")
+        .expect("has a Body");
+    let lowered = session.finish(root).expect("finishes");
+    let volume_at = |options: &ExecutionOptions| {
+        let mesh = default_backend()
+            .compile_mesh(&lowered.graph, lowered.root, options)
+            .expect("compiles");
+        signed_volume(&mesh)
+    };
+    let default = ExecutionOptions::new(Tolerance::MILLIMETRE);
+    let fine = ExecutionOptions::new(Tolerance::MILLIMETRE)
+        .with_chord_error(1.0e-5)
+        .expect("a positive finite budget");
+    let coarse_error = (volume_at(&default) - D_SHAPE).abs() / D_SHAPE;
+    let fine_error = (volume_at(&fine) - D_SHAPE).abs() / D_SHAPE;
+    // Chords under-cover a convex arc by about their sagitta times two
+    // thirds of the arc length, so the relative error scales with the
+    // budget: 1e-5 m on a 1 m radius half disc bounds it near 1e-5.
+    assert!(
+        fine_error < 1.0e-5,
+        "a 10 um budget must meet 1e-5 relative: {fine_error:e}"
+    );
+    assert!(
+        fine_error * 50.0 < coarse_error,
+        "the budget must matter: default {coarse_error:e}, 10 um {fine_error:e}"
+    );
 }

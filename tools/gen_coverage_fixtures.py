@@ -18,6 +18,8 @@ One product per kind, each named by its kind so the test finds it by name:
 | collapsed-poly-loop          | degenerate IfcPolyLoop face, #46        |
 | polygonal-face-set-quads     | faces with > 3 corners, kernel#160      |
 | shell-based-surface-model    | open-shell surface model, kernel#161    |
+| face-set-collinear-heads     | earcut crack on a closed face set, kernel#170 |
+| surface-model-bowtie-cap     | zero-area bowtie face, kernel#171       |
 
 Every value is chosen so the expected volume is exact and distinct:
 
@@ -39,6 +41,15 @@ Every value is chosen so the expected volume is exact and distinct:
   IfcPolygonalFaceSet of six QUAD faces.
 - shell-based-surface-model: two triangles in an IfcOpenShell. It asserts no
   volume and must never acquire one.
+- face-set-collinear-heads: a real ArchiCAD wall lining (product #6351 of a
+  real export, coordinates exactly as they lower, export noise kept), a
+  closed IfcPolygonalFaceSet whose notch head is collinear with its window
+  head. It cracked on axiolid-mesh-compile 0.3.2 and must be a solid with
+  its divergence volume.
+- surface-model-bowtie-cap: an IfcFaceBasedSurfaceModel of a square pipe
+  0.1 x 0.1 x 1 m (four side walls) plus one end-cap face written as a
+  bowtie through the pipe axis, signed area exactly 0, the way a real Nova
+  MEP export writes fitting end caps. Area 0.4 m2, and it is a surface.
 
 Authored in millimetres with degree angles, like the surface fixtures, so a
 unit factor applied to the wrong quantity cannot pass. Entity ids, GUIDs and
@@ -253,6 +264,88 @@ def shell_based_surface_model(f):
     return [f.create_entity("IfcShellBasedSurfaceModel", SbsmBoundary=[shell])], "SurfaceModel"
 
 
+def face_set_collinear_heads(f):
+    """kernel#170: a real ArchiCAD wall lining that cracked on the old kernel.
+
+    The 24 corners and 14 faces of product #6351 of a real ArchiCAD export,
+    exactly as it lowers (metres, placement applied, export noise kept: the
+    crack depends on it). Its front ring has a notch whose head runs
+    collinear with the head of the window hole, both at z = 2.2 m. The old
+    triangulation bridged the two heads with one edge that passed over
+    corners the reveal faces still split that line at, so the mesh had open
+    T-junctions and the closed lining came back a Surface.
+    """
+    pts = [
+        (10.10403333333333, 10.940216690615548, 2.2000000000000006),
+        (10.10403333333333, 10.940216690615548, -0.17499999988571016),
+        (6.2354499850988505, 10.940216690615548, -0.17499995568073604),
+        (6.23544998509885, 10.940216690615548, 2.7500000320375286),
+        (13.56276667411723, 10.940216690615548, 2.7500000320375286),
+        (13.56276667411723, 10.940216690615548, -0.17499999926667445),
+        (13.10403333333333, 10.940216690615548, -0.17499999998435126),
+        (13.10403333333333, 10.940216690615548, 2.2000000000000006),
+        (8.984750000000002, 10.940216690615548, 1.1999999999999995),
+        (8.984750000000002, 10.940216690615548, 2.2000000000000006),
+        (6.984750000000002, 10.940216690615548, 2.2000000000000006),
+        (6.984750000000002, 10.940216690615548, 1.1999999999999995),
+        (10.10403333333333, 10.930216681567819, 2.2000000000000006),
+        (10.10403333333333, 10.93021668156782, -0.17499999988571016),
+        (6.2354499850988505, 10.93021668156782, -0.17499995568073604),
+        (6.23544998509885, 10.930216681567819, 2.7500000320375286),
+        (13.56276667411723, 10.93021668156782, 2.7500000320375286),
+        (13.56276667411723, 10.93021668156782, -0.17499999926667445),
+        (13.10403333333333, 10.93021668156782, -0.17499999998435126),
+        (13.10403333333333, 10.930216681567819, 2.2000000000000006),
+        (8.984750000000002, 10.93021668156782, 1.1999999999999995),
+        (8.984750000000002, 10.93021668156782, 2.2000000000000006),
+        (6.984750000000002, 10.93021668156782, 2.2000000000000006),
+        (6.984750000000002, 10.93021668156782, 1.1999999999999995),
+    ]
+    coords = f.create_entity("IfcCartesianPointList3D",
+                             CoordList=[[v * MM for v in p] for p in pts])
+
+    def idx(seq):
+        return [i + 1 for i in seq]
+
+    # Face rings exactly as the export writes them (0-based here): front
+    # with its window, eight side walls, four reveals, back with its window.
+    faces = [f.create_entity("IfcIndexedPolygonalFaceWithVoids",
+                             CoordIndex=idx(range(0, 8)),
+                             InnerCoordIndices=[idx(range(8, 12))])]
+    for q in [(1, 0, 12, 13), (1, 13, 14, 2), (15, 3, 2, 14), (16, 4, 3, 15),
+              (4, 16, 17, 5), (18, 6, 5, 17), (7, 6, 18, 19), (0, 7, 19, 12),
+              (8, 20, 21, 9), (9, 21, 22, 10), (10, 22, 23, 11), (11, 23, 20, 8)]:
+        faces.append(f.create_entity("IfcIndexedPolygonalFace", CoordIndex=idx(q)))
+    faces.append(f.create_entity("IfcIndexedPolygonalFaceWithVoids",
+                                 CoordIndex=idx([19, 18, 17, 16, 15, 14, 13, 12]),
+                                 InnerCoordIndices=[idx([22, 21, 20, 23])]))
+    face_set = f.create_entity("IfcPolygonalFaceSet", Coordinates=coords, Closed=True,
+                               Faces=faces)
+    return [face_set], "Tessellation"
+
+
+def surface_model_bowtie_cap(f):
+    """kernel#171: a square pipe surface with a zero-area bowtie end cap."""
+    s, h = 0.1, 1.0
+    corners = [(0.0, 0.0), (s, 0.0), (s, s), (0.0, s)]
+    bottom = [pt(f, (x, y, 0.0)) for x, y in corners]
+    top = [pt(f, (x, y, h)) for x, y in corners]
+
+    def face(points):
+        loop = f.create_entity("IfcPolyLoop", Polygon=points)
+        bound = f.create_entity("IfcFaceOuterBound", Bound=loop, Orientation=True)
+        return f.create_entity("IfcFace", Bounds=[bound])
+
+    walls = [face([bottom[i], bottom[(i + 1) % 4], top[(i + 1) % 4], top[i]])
+             for i in range(4)]
+    # The end cap as a bowtie through the axis: a diameter traversed out and
+    # back across the square, signed area exactly 0. It shares its corners
+    # with the walls, like the real fittings.
+    cap = face([top[0], top[2], top[1], top[3]])
+    shell = f.create_entity("IfcConnectedFaceSet", CfsFaces=walls + [cap])
+    return [f.create_entity("IfcFaceBasedSurfaceModel", FbsmFaces=[shell])], "SurfaceModel"
+
+
 def wall_with_opening(f, body, storey_place):
     """#44: a wall voided by a flush door whose body is extruded downward."""
     wall = product(f, "IfcWall", "wall-with-opening", body,
@@ -277,6 +370,8 @@ SOLO = [
     ("collapsed-poly-loop", collapsed_poly_loop),
     ("polygonal-face-set-quads", polygonal_face_set_quads),
     ("shell-based-surface-model", shell_based_surface_model),
+    ("face-set-collinear-heads", face_set_collinear_heads),
+    ("surface-model-bowtie-cap", surface_model_bowtie_cap),
 ]
 
 

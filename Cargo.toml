@@ -66,8 +66,8 @@ axiolid-curve-evaluate-contract = { version = "0.3.0" }
 axiolid-topology = { version = "0.3.0" }
 # Execution provider. Only ifc-geometry's opt-in `compile` feature may use
 # these; the default dependency graph stays representation-only (ADR 0004).
-axiolid-contracts = { version = "0.3.0" }
-axiolid-mesh-compile = { version = "0.3.2" }
+axiolid-contracts = { version = "0.3.1" }
+axiolid-mesh-compile = { version = "0.3.3" }
 axiolid-mesh-compile-contract = { version = "0.3.1" }
 axiolid-mesh-boolean-boolmesh = { version = "0.3.0" }
 # Not used directly: `axiolid-mesh-compile` reaches it. Pinned here only to

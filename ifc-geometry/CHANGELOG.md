@@ -12,6 +12,24 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- Requires `axiolid-mesh-compile` 0.3.3 and `axiolid-contracts` 0.3.1.
+  Closed `IfcPolygonalFaceSet` bodies whose face corners lie on a straight
+  run (collinear notch and window heads) now mesh closed and report `Solid`
+  (axiolid/kernel#170); before, the triangulation left T-junction cracks and
+  they came back `Surface`. Surface models with a zero-area bowtie face, as
+  Nova MEP exports write pipe-fitting end caps, now compile instead of being
+  refused (axiolid/kernel#171). On 12 real models (66,659 products) this
+  moves 1,999 products to `Solid` and failures from 2,291 to 755, together
+  with the kernel#168 and #169 fixes already required.
+- `tests/meshing_coverage.rs` pins both: a real ArchiCAD lining at its
+  exact coordinates meshes to its divergence volume as a solid, and a
+  surface model with a bowtie cap keeps its area. A third test checks that
+  an explicit chord budget (`ExecutionOptions::with_chord_error`,
+  axiolid/kernel#165) brings the composite-curve D within 1e-5 of its exact
+  volume.
+
 ## [0.3.1] - 2026-09-25
 
 ### Added
