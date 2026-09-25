@@ -8,8 +8,10 @@ roadmap work; keep progress, blockers, and evidence there.
 
 ## Boundary
 
-- Production dependencies: `openbim-ifc-binding-core` only. All IFC
-  behaviour comes from there; this crate is calling-convention glue.
+- Production dependencies: `openbim-ifc-binding-core` only, plus `mimalloc`
+  behind the opt-in `mimalloc` feature (#49; never default --
+  `package_architecture` enforces that). All IFC behaviour comes from the
+  core; this crate is calling-convention glue.
 - The only crate in the workspace allowed `unsafe`, under
   `#![deny(unsafe_op_in_unsafe_fn)]`. Every raw-pointer read or write lives
   in `src/buffer.rs`, each with a `SAFETY:` comment. Keep it that way: a new

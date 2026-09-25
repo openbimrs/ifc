@@ -45,7 +45,7 @@ code.
 | `ifc-cost` | 2,300 | 17 | 0 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 2,222 | 26 | 5 | 11 | <span class="status-implemented">Implemented</span> |
 | `ifc-georef` | 2,087 | 20 | 9 | 6 | <span class="status-partial">Partial</span> |
-| `openbim-ifc-capi` | 1,849 | 9 | 0 | 1 | <span class="status-partial">Partial</span> |
+| `openbim-ifc-capi` | 1,857 | 9 | 0 | 1 | <span class="status-partial">Partial</span> |
 | `ifc-schema` | 1,418 | 12 | 4 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,317 | 6 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `openbim-ifc` | 1,084 | 8 | 0 | 16 | <span class="status-implemented">Implemented</span> |
@@ -57,7 +57,7 @@ code.
 | `ifc-tabular` | 393 | 4 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `openbim-ifc-wasm` | 393 | 5 | 0 | 0 | <span class="status-partial">Partial</span> |
 | `ifc-control` | 334 | 3 | 0 | 1 | <span class="status-implemented">Implemented</span> |
-| `openbim-ifc-py` | 318 | 4 | 0 | 0 | <span class="status-partial">Partial</span> |
+| `openbim-ifc-py` | 325 | 4 | 0 | 0 | <span class="status-partial">Partial</span> |
 
 <!-- CAPABILITIES:CENSUS:END -->
 

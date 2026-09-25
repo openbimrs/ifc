@@ -54,3 +54,14 @@ uv venv && . .venv/bin/activate
 uv pip install maturin
 maturin develop --release     # or: scripts/check-python.sh to build + test
 ```
+
+### Faster reading (opt-in)
+
+```sh
+maturin build --release --features mimalloc
+```
+
+Uses the mimalloc allocator for the extension's own memory: reading STEP
+takes 23-36% fewer CPU cycles, but 2-28% more memory stays resident. Off
+by default because mimalloc is C code and the project is pure Rust; #49
+tracks a pure-Rust replacement.

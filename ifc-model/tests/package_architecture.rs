@@ -467,3 +467,40 @@ fn the_binding_rules_refuse_what_they_must() {
     assert!(!core_allows("pyo3"));
     assert!(!core_allows("wasm-bindgen"));
 }
+
+/// Native hosts that may opt into the C `mimalloc` allocator (#49).
+const MIMALLOC_HOSTS: &[&str] = &["openbim-ifc-capi", "openbim-ifc-py"];
+
+/// The IFC family is pure Rust. `mimalloc` is C, so it is admitted only as
+/// an opt-in feature of the two native bindings: optional, never reachable
+/// from `default`, and absent from every other package -- including the
+/// WASM binding, where it would not build. Anything else is a regression of
+/// the policy recorded in #49.
+#[test]
+fn the_c_allocator_is_opt_in_and_only_in_native_bindings() {
+    let metadata = metadata();
+    let mut checked = 0;
+    for package in &metadata.packages {
+        let uses_mimalloc = package.dependencies.iter().any(|d| d.name == "mimalloc");
+        if MIMALLOC_HOSTS.contains(&package.name.as_str()) {
+            checked += 1;
+            assert!(
+                uses_mimalloc,
+                "{} lost its opt-in mimalloc feature",
+                package.name
+            );
+            assert!(
+                optional_behind_compile(package, "mimalloc"),
+                "{} must keep mimalloc optional and off by default (#49)",
+                package.name
+            );
+        } else {
+            assert!(
+                !uses_mimalloc,
+                "{} depends on mimalloc; only {MIMALLOC_HOSTS:?} may, opt-in (#49)",
+                package.name
+            );
+        }
+    }
+    assert_eq!(checked, MIMALLOC_HOSTS.len(), "a native binding is missing");
+}

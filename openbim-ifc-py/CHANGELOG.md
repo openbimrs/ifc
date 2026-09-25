@@ -10,6 +10,12 @@ a release here does not imply a release of any other crate in the family.
 
 ### Added
 
+- Opt-in `mimalloc` feature (off by default): the extension's Rust
+  allocations go through mimalloc. Reading STEP takes 23-36% fewer CPU
+  cycles on seven real IFC files, at 2-28% more resident memory. Build with
+  `maturin build --release --features mimalloc`. mimalloc is C code, so it
+  stays opt-in; #49 tracks a pure-Rust replacement.
+
 - Python bindings for the IFC facade (#39, ADR 0013), built with pyo3 and
   maturin as one abi3 wheel for CPython 3.9+. `IfcModel` parses and writes
   IFC STEP, queries by exact type or including subtypes, reads and edits

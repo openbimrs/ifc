@@ -10,6 +10,12 @@ a release here does not imply a release of any other crate in the family.
 
 ### Added
 
+- Opt-in `mimalloc` feature (off by default): the library's Rust
+  allocations go through mimalloc; the host's `malloc` is untouched.
+  Reading STEP takes 23-36% fewer CPU cycles on seven real IFC files, at
+  2-28% more resident memory. mimalloc is C code, so it stays opt-in; #49
+  tracks a pure-Rust replacement.
+
 - Versioned C ABI 0.1 over the IFC facade (#38, ADR 0013), following
   Axiolid's C ABI conventions: `openbim_ifc_v0_1_*` symbols, opaque integer
   handles, caller-owned buffers with a size query, no Rust allocation across

@@ -58,6 +58,18 @@ UPDATE_HEADER=1 cargo test -p openbim-ifc-capi --test header   # regenerate
 
 Static linking on Linux also needs `-lpthread -ldl -lm`.
 
+### Faster reading (opt-in)
+
+```sh
+cargo build -p openbim-ifc-capi --release --features mimalloc
+```
+
+Uses the mimalloc allocator for the library's own memory: reading STEP
+takes 23-36% fewer CPU cycles, but 2-28% more memory stays resident. The
+host's `malloc` is not replaced, and no Rust allocation crosses the ABI.
+Off by default because mimalloc is C code and the project is pure Rust;
+#49 tracks a pure-Rust replacement.
+
 ## Not yet
 
 No CMake package and no prebuilt binaries; a host builds the library with
