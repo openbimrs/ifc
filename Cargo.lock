@@ -203,9 +203,9 @@ dependencies = [
 
 [[package]]
 name = "axiolid-mesh-compile"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "094f1e35b1e3f292c754cd225513d28ece4d58f7ab50519045137f69b9bde359"
+checksum = "da16f90c31f5da9ee4b52379f8c078d82f5c43aef12cdf27e77bec2ed3fdbbf9"
 dependencies = [
  "axiolid-brep",
  "axiolid-construct",

@@ -463,21 +463,9 @@ fn every_authoring_of_the_path_cuts_the_same_geometry() {
             "{}",
             what("full")
         );
-        if matches!(arc, Arc::AcrossSeam | Arc::ReversedAcrossSeam) {
-            // The untrimmed authored arc reaches the kernel as `315 -> 45`,
-            // which its directrix sampler reads as the complementary arc
-            // (axiolid/kernel#168). Lowering is right; pin the kernel
-            // refusal so this row is revisited when #168 ships.
-            let error = compile_product_mesh(
-                &pipe(authored((0.0, whole))),
-                PRODUCT,
-                Tolerance::MILLIMETRE,
-            )
-            .expect_err("axiolid/kernel#168 is fixed: assert the volume here instead");
-            assert!(error.to_string().contains("unit gap"), "{error}");
-        } else {
-            assert_ratio(volume(authored((0.0, whole))), full, &what("full"));
-        }
+        // Every authoring sweeps the whole path, the arcs across the circle's
+        // seam included (axiolid/kernel#168, `axiolid-mesh-compile` 0.3.2).
+        assert_ratio(volume(authored((0.0, whole))), full, &what("full"));
         // Halfway along the first part, to halfway along the arc.
         let cut = (lead / 2.0, lead + sweep / 2.0);
         assert_ratio(

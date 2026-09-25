@@ -84,14 +84,21 @@ lockstep -- is archived in the
 
 ### Changed
 
-- The workspace requires `axiolid-mesh-compile` and
+- The workspace requires `axiolid-mesh-compile` 0.3.2 and
   `axiolid-mesh-compile-contract` 0.3.1. With 0.3.0 an `IfcPolygonalFaceSet`
   with any face of more than 3 corners, or with voids
   (`IfcIndexedPolygonalFaceWithVoids`), was refused as
   `Unsupported(Tessellation)`
   (axiolid/kernel#160), and every `IfcShellBasedSurfaceModel` as "brep has no
   solid" (axiolid/kernel#161). 0.3.1 triangulates such faces in their own
-  plane and refuses a non-planar one by face index.
+  plane and refuses a non-planar one by face index. With 0.3.1 a bend
+  trimmed from a circle across its seam, as Revit writes a bar's bends
+  (`270 -> 45` or `270 -> 15` degrees), was sampled around the wrong side of
+  the circle, so the bend missed the next leg and the bar was refused as
+  `composite directrix has a N unit gap` (axiolid/kernel#168). 0.3.2 runs the
+  trim from its first end the way its sense says, wrapping past the seam. On
+  the Revit rebar model below that compiles the last 1,494 refused bars: 40,990
+  of 41,019 products compile, and no local model refuses a directrix gap.
 - The workspace requires `axiolid-construct` 0.3.2 (reached through
   `axiolid-mesh-compile`, pinned only as a floor behind
   `compile-reference-backend`). With 0.3.0 two compiled results were wrong or
@@ -132,12 +139,6 @@ lockstep -- is archived in the
   matches an independent exact integration of the profile to 1e-4 on the 4
   checked, IfcOpenShell's is off by up to 7 %. On 1, IfcOpenShell's own
   boolean fails and it returns the host uncut.
-- A bend trimmed from a circle across its seam, as Revit writes a bar's
-  bends (`270 -> 45` or `270 -> 15` degrees), is sampled around the wrong
-  side of the circle by the reference compiler, so the bend no longer meets
-  the next leg and the bar is refused as a directrix gap (1,494 bars in the
-  model above). Lowering is exact; the fix is axiolid/kernel#168, landed on
-  kernel `main` and not yet released.
 
 ### Fixed
 
