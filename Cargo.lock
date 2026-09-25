@@ -767,7 +767,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-classification"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ifc-model",
  "ifc-schema",
