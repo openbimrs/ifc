@@ -13,18 +13,16 @@ These three bounded IFC4 domains compose through the shared entity graph:
 
 The facade keeps each domain optional:
 
-```toml
-[dependencies]
-openbim-ifc = {
-  git = "https://github.com/openbimrs/ifc.git",
-  features = ["step", "classification", "approval", "constraint"]
-}
+```bash
+cargo add openbim-ifc --features classification,approval,constraint
 ```
 
 ## One graph, stable IDs
 
 Sibling domain crates do not depend on each other. Each projection borrows the
 same `Model`, and relationship endpoints remain ordinary `EntityId` values:
+
+<!-- SNIPPET:domains-one-graph -->
 
 ```rust
 use ifc::approval::ApprovalView;
@@ -41,10 +39,12 @@ assert_eq!(metric.id(), metric_id);
 assert_eq!(evidence.related_resources()?, vec![approval_id]);
 ```
 
-The executable counterpart in
-[`openbim-ifc/tests/resource_domains.rs`](https://github.com/openbimrs/ifc/blob/main/openbim-ifc/tests/resource_domains.rs)
-authors all three domains in one transaction and repeats these assertions after
-a STEP write/read round trip.
+<!-- /SNIPPET -->
+
+The code above is a test in
+[`openbim-ifc/tests/resource_domains.rs`](https://github.com/openbimrs/ifc/blob/main/openbim-ifc/tests/resource_domains.rs),
+which authors all three domains in one transaction. A second test there
+repeats the joins after a STEP write/read round trip.
 
 ## Strict projections
 

@@ -15,6 +15,10 @@ IFC schema contains or a crate name suggests.
 
 A scaffold crate compiles, publishes, and appears in the feature list. It does
 **not** read, write, or interpret the entities its module names refer to.
+Scaffolds exist because the layering decision
+([ADR 0005](/adr/0005-scaffold-modules-declare-ownership)) prefers declaring
+the intended home of a domain up front over discovering it later; the count
+below keeps one from being mistaken for working code.
 
 ## Workspace census
 
@@ -27,7 +31,7 @@ code.
 
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `ifc-geometry` | 40,346 | 132 | 3 | 66 | <span class="status-partial">Partial</span> |
+| `ifc-geometry` | 40,346 | 132 | 3 | 67 | <span class="status-partial">Partial</span> |
 | `ifc-style` | 7,302 | 46 | 0 | 15 | <span class="status-implemented">Implemented</span> |
 | `ifc-properties` | 7,250 | 42 | 13 | 14 | <span class="status-implemented">Implemented</span> |
 | `ifc-structural` | 4,887 | 36 | 14 | 18 | <span class="status-implemented">Implemented</span> |
@@ -49,7 +53,7 @@ code.
 | `ifc-schema` | 1,418 | 12 | 4 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,317 | 6 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-step` | 1,225 | 7 | 0 | 7 | <span class="status-implemented">Implemented</span> |
-| `openbim-ifc` | 1,111 | 8 | 0 | 16 | <span class="status-implemented">Implemented</span> |
+| `openbim-ifc` | 1,111 | 8 | 0 | 17 | <span class="status-implemented">Implemented</span> |
 | `ifc-author` | 1,082 | 10 | 3 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 1,046 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-approval` | 914 | 5 | 0 | 1 | <span class="status-implemented">Implemented</span> |
@@ -74,10 +78,6 @@ Every concrete `IfcRepresentationItem` subtype in IFC4 ADD2 TC1 is named somewhe
 0 of 31 crates are scaffolds.
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:END -->
-They exist because the layering decision
-(see [ADR 0005](/adr/0005-scaffold-modules-declare-ownership))
-prefers declaring the intended home of a domain up front over discovering it
-later, but they must never be mistaken for working code.
 
 ## Core: model, codecs, schema
 
@@ -97,7 +97,7 @@ later, but they must never be mistaken for working code.
 | Work schedules, tasks and sequencing | <span class="status-implemented">Implemented</span> | `ifc-schedule` reads `IfcWorkPlan`/`IfcWorkSchedule`, `IfcTask` with `IfcTaskTime`, `IfcRelSequence` with signed lag, work calendars and events, and produces a deterministic execution order. Cycles report the offending path. |
 | Transactional authoring | <span class="status-implemented">Implemented</span> | `ifc-model::Transaction` stages structural edits, validates them against the projected end state, and applies them as a unit. A removal that would orphan a surviving reference is refused, as is a commit against a model whose revision moved since the transaction opened. `ifc-model` remains schema-agnostic; typed staging helpers live in domain crates, including classification, documents, libraries, materials, quantities, cost, style, structural, and resources. |
 | Quantity authoring | <span class="status-implemented">Implemented</span> | `ifc-properties` stages quantity writes onto a caller-owned transaction, so a takeoff spanning many elements lands atomically. The declared measure type is preserved on every write. |
-| Schema validation | <span class="status-implemented">Implemented</span> | `ifc-validate` checks references, required slots, aggregate shape, entity types, abstract instantiation, scalar forms and `STRING(n) FIXED` widths against the exact schema the file declares (IFC2x3 TC1, IFC4 ADD2 TC1, or IFC4X3 ADD2). Eighteen registered rule IDs cover ten native checks under a hard findings-storage cap, including external-reference identity, sequence endpoints, decomposition and assignment self-reference, material and path-connection priority bounds, and space-boundary physicality across all three concrete `IfcRelSpaceBoundary` subtypes. Aggregate bounds, arbitrary EXPRESS `WHERE` expressions, INVERSE semantics and other known gaps remain explicitly unsupported and reported; a clean report never implies full EXPRESS conformance. |
+| Schema validation | <span class="status-implemented">Implemented</span> | `ifc-validate` checks references, required slots, aggregate shape, entity types, abstract instantiation, scalar forms and `STRING(n) FIXED` widths against the exact schema the file declares (IFC2x3 TC1, IFC4 ADD2 TC1, or IFC4X3 ADD2). Registered rules run under a hard findings-storage cap; the [coverage page](/coverage#validation) lists each one and whether it is evaluated. They include external-reference identity, sequence endpoints, decomposition and assignment self-reference, material and path-connection priority bounds, and space-boundary physicality across all three concrete `IfcRelSpaceBoundary` subtypes. Aggregate bounds, arbitrary EXPRESS `WHERE` expressions, INVERSE semantics and other known gaps remain explicitly unsupported and reported; a clean report never implies full EXPRESS conformance. |
 | Property sets and every property value family | <span class="status-implemented">Implemented</span> | `ifc-properties` reads single, enumerated, bounded, list, table, reference and complex properties. The declared measure type (`IfcLengthMeasure` and friends) is retained, because it is the only statement of what a bare number means. |
 | Occurrence/type property precedence | <span class="status-implemented">Implemented</span> | An occurrence property set overrides a same-named set inherited from the object's type. The shadowed type set is kept, so a checker can explain why an effective value differs from the type default. |
 | Quantities and unit resolution | <span class="status-implemented">Implemented</span> | Simple and complex quantities, SI prefixes carried as exact decimal exponents, conversion-based and derived units. `WR21` (unit matches quantity kind) and `WR22` (non-negative value) breaches are reported; `ifcopenshell.validate` checks neither. Quantities are read as authored assertions and never computed from geometry. |
@@ -197,8 +197,8 @@ does not interpret their geometry or properties.
 
 ### Construction resources
 
-With facade feature `resource`, `ifc-resource` selects IFC4 from the model header
-and exposes borrowed views for labor, equipment, crew, construction material,
+With facade feature `resource`, `ifc-resource` selects IFC4 ADD2 TC1 or IFC4X3
+ADD2 from the model header and exposes borrowed views for labor, equipment, crew, construction material,
 construction product, and subcontract occurrences. It resolves authored
 `IfcResourceTime`, validates and queries `IfcRelAssignsToResource` including
 its authored `RelatedObjectsType` category constraint, and walks resource
@@ -216,7 +216,7 @@ entities this crate projects).
 
 ## Geometry
 
-`ifc-geometry` is the one substantial domain crate. It resolves IFC units,
+`ifc-geometry` is the largest crate in the workspace. It resolves IFC units,
 placements, profiles, and representation relationships, then lowers implemented
 families into the neutral `axiolid-model` DAG.
 
@@ -496,11 +496,12 @@ as the target view.
 ## Presentation, annotation, and external references
 
 These are the areas most relevant to drawing production and document/approval
-workflows. Presentation and annotation now have schema-resolved typed views and
-bounded transaction-staged authoring; rendering, drawing layout, and the
-approval resource remain outside the current domain contracts. External
-classification/document/library references have typed read/query/authoring
-coverage.
+workflows. Presentation and annotation have schema-resolved typed views and
+bounded transaction-staged authoring; rendering and drawing layout remain
+outside the domain contracts. Approvals and constraints have bounded typed
+views and authoring (the whole approval resource schema is not claimed).
+External classification/document/library references have typed
+read/query/authoring coverage.
 
 | Entity / concept | Status | Note |
 | --- | --- | --- |
@@ -539,8 +540,11 @@ contracts.
 ## How to verify a claim on this page
 
 1. Read the crate's public API and its `tests/` directory.
-2. Read the crate's **PLAN.md** — it records implementation state, unlike
-   **AGENTS.md** which records stable contracts.
-3. Run the gate: `scripts/gate.sh`.
+2. Read the crate's **AGENTS.md** for its stable contracts, and its
+   [reference page](/reference/) for its latest release notes.
+3. Run the gate: `scripts/gate.sh`. It regenerates every table on this page
+   and on the [coverage page](/coverage) and fails if the committed copy
+   differs.
 4. For geometry coverage, read `ifc-geometry/src/lower/dispatch.rs`; the
-   `IMPLEMENTED` and `PLANNED` constants are asserted by tests.
+   tables above are generated from its `IMPLEMENTED`, `PLANNED` and `PARTIAL`
+   constants, which tests assert against the schema.

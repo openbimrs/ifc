@@ -28,25 +28,29 @@ features:
     details: A thin viewer takes default-features = false, features = ["step"] and compiles no domain code and no geometry stack. Domains and codecs are cargo features over one shared vocabulary.
     link: /guide/getting-started
     linkText: Choosing features
-  - title: Honest about what is not built
-    details: Several crates are deliberate architecture scaffolds that own module names without implementing behaviour. The capability matrix distinguishes implemented, partial, scaffold, and absent — per entity.
-    link: /capabilities
-    linkText: Read the matrix
+  - title: Measured, not claimed
+    details: Every capability claim names the file that proves it. The capability matrix, the coverage counts and the crate reference are generated from the code, and the build fails when a page drifts from it.
+    link: /coverage
+    linkText: What is covered
   - title: Geometry without a CAD kernel
-    details: ifc-geometry answers what an IFC entity means geometrically and lowers implemented families into the format-neutral Axiolid DAG. It never triangulates, evaluates NURBS, or picks an execution provider.
+    details: ifc-geometry answers what an IFC entity means geometrically and lowers it into the format-neutral Axiolid DAG. Meshing is an opt-in feature with a swappable backend; the default build compiles no kernel at all.
     link: /architecture/axiolid-boundary
     linkText: The Axiolid boundary
+  - title: Rust, JavaScript, Python and C
+    details: One core, published to crates.io, npm and PyPI, with a versioned C ABI. A file read in one language reads the same in the others, down to the difference between $ and *.
+    link: /guide/install
+    linkText: Install
 ---
 
 ## Install
 
-```toml
-[dependencies]
-openbim-ifc = { git = "https://github.com/openbimrs/ifc.git", rev = "a7c4949bb941504ce874bdec13bd81d33491b5cb" }
+```bash
+cargo add openbim-ifc
 ```
 
-The workspace crates are not published on crates.io yet. Cargo locks this
-immutable Git source in `Cargo.lock`.
+The [Install](/guide/install) page lists the current release of every
+package: the Rust crates on crates.io, `@openbim/ifc` on npm and
+`openbim-ifc` on PyPI.
 
 The library target is named `ifc`, so call sites read as a facade:
 
@@ -63,15 +67,15 @@ println!("{} entities", model.len());
 
 ## Before you build on this
 
-This project publishes a [capability matrix](/capabilities) that separates
-**implemented behaviour** from **reserved module ownership**. Some domain crates
-are currently scaffolds: files that own a name and a
-doc comment so the architecture is reviewable, without implementing the entity.
+Read the [capability matrix](/capabilities) before scoping work. It
+separates what each crate implements from what it deliberately leaves to
+an application, and each claim cites the file that proves it; its tables
+are generated from the code. [Coverage](/coverage) counts the same thing
+across the schema.
 
-Read the matrix before scoping work. No capability should be inferred from a
-crate name, a module path, or an IFC entity appearing in the schema.
+No capability should be inferred from a crate name, a module path, or an
+IFC entity appearing in the schema.
 
-If you are evaluating this crate for a specific application, the
-[use cases](/use-cases/) section works an end-to-end scenario against the real
-current state of the code, including what the application author must still
-build themselves.
+If you are evaluating the stack for a specific application, the
+[use cases](/use-cases/) work an end-to-end scenario against the current
+state of the code, including what the application author must still build.

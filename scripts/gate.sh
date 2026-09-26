@@ -111,12 +111,13 @@ else
     openbim-ifc-py/scripts/check-python.sh
 fi
 
-# Documentation gates. Every generated docs region (the changelog assembled
-# from each crate's CHANGELOG.md, the capability tables derived from the
-# lowering source) must match what `cargo run -p xtask -- docs` would write, so drift is
-# a build failure rather than a silent inconsistency the reader has to notice.
-# It also fails when a publishable crate has no changelog at all, which keeps
-# a newly added crate from silently escaping the release process.
+# Documentation gates. Every generated docs file and region (changelog, crate
+# reference, install table, binding APIs, capability and coverage tables,
+# facts.json) and every test-sourced snippet must match what
+# `cargo run -p xtask -- docs` would write, so drift is a build failure rather
+# than a silent inconsistency the reader has to notice. The same check rejects
+# hand-written code fences, git dependencies, pinned TOML versions, typed crate
+# counts and home paths on any page, and a publishable crate with no changelog.
 cargo run --quiet -p xtask -- docs --check
 python3 scripts/check-inline-html.py
 
@@ -133,10 +134,9 @@ else
   echo "docs build skipped (no node_modules)"
 fi
 
-# Documentation debt ratchet. Twelve crates enforce missing_docs permanently
-# through [workspace.lints]; the rest carry a measured, capped debt. This fails
-# if that debt grows -- or if it shrank and the budget was not lowered, so the
-# ceiling tracks reality instead of drifting into slack.
+# Public API docs. Library crates enforce missing_docs through
+# [workspace.lints]; this fails for one that neither opts in nor carries a
+# measured budget, and for a budget that grew or shrank without being updated.
 python3 scripts/check-missing-docs.py
 
 # Licensing gate. The IFC schemas are CC BY-ND 4.0 and must never reach the

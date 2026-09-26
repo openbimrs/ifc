@@ -299,3 +299,32 @@ END-ISO-10303-21;
         "names the shell: {error}"
     );
 }
+
+/// `docs/architecture/axiolid-boundary.md` -- opting in to dropping
+/// collapsed faces, and seeing which ones were dropped.
+#[test]
+fn documented_face_policy_example_reports_dropped_faces() -> Result<(), GeometryError> {
+    let model = parse(&box_with_sliver());
+    let scale = units::resolve(&model);
+    let product = EntityId(1);
+    // docs:snippet face-policy
+    use ifc_geometry::lower::{DegenerateFacePolicy, LoweringSession};
+
+    let mut session =
+        LoweringSession::new(&model, &scale).with_face_policy(DegenerateFacePolicy::DropAndReport);
+    if let Some(root) =
+        lower_product_representation(&mut session, product, RepresentationPurpose::Body)?
+    {
+        let lowered = session.finish(root)?;
+        for face in lowered.provenance.dropped_faces() {
+            eprintln!("dropped collapsed face {face}");
+        }
+    }
+    // docs:end
+    let lowered = lower(&model, DegenerateFacePolicy::DropAndReport)?;
+    assert_eq!(
+        lowered.provenance.dropped_faces().collect::<Vec<_>>(),
+        [SLIVER_FACE]
+    );
+    Ok(())
+}

@@ -16,12 +16,14 @@
 //! - `bindings.rs`: the install table and the three bindings' API references.
 //! - `facts.rs`: `facts.json`, the numbers prose may quote.
 //! - `snippets.rs`: page code copied from marked test regions, and the fence lint.
+//! - `drift.rs`: the lint for hand-typed facts (pins, crate counts, home paths).
 
 mod adr;
 mod bindings;
 mod capabilities;
 mod changelog;
 mod coverage;
+mod drift;
 mod facts;
 mod reference;
 mod release;

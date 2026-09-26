@@ -52,7 +52,7 @@ Codecs never import domain semantics. Domain crates never import codecs.
 flowchart BT
   accTitle: openbim-ifc dependency tiers
   accDescr: Dependencies point downward from orchestration through the facade and optional domain or geometry crates to codecs, schema metadata, and the record core.
-  L4["L4 orchestration<br/>apps / bindings outside this repository"] --> L3["L3 facade<br/>openbim-ifc"]
+  L4["L4 orchestration<br/>applications, and the JS / Python / C bindings"] --> L3["L3 facade<br/>openbim-ifc"]
   L3 --> Domains["L2 domain views + validation"]
   L3 --> Geometry["L2 geometry bridges<br/>ifc-geometry / alignment / georef"]
   Domains --> Schema["L1 schema metadata"]
@@ -66,7 +66,9 @@ flowchart BT
 
 Dependencies point down. Sibling domain crates do not depend on one another;
 cross-domain workflows belong at L4. `ifc-model` remains schema-, codec-, and
-domain-agnostic.
+domain-agnostic. The language bindings live in this repository at L4: they
+wrap the facade, one crate per target
+([ADR 0013](/adr/0013-language-bindings-wrap-the-facade)).
 
 ## Partitioning by pipeline role, not by IFC schema name
 
@@ -86,8 +88,11 @@ the record; neither projection owns or duplicates it.
 ## Where geometry stops
 
 `ifc-geometry` answers *"what does this IFC entity mean geometrically"* and
-lowers implemented families into the neutral `axiolid-model` DAG. It does not
-triangulate, evaluate NURBS, perform booleans, or select an execution provider.
+lowers it into the neutral `axiolid-model` DAG. The bridge itself does not
+triangulate, evaluate NURBS or perform booleans. Meshing is an opt-in
+feature that calls a swappable backend
+([ADR 0012](/adr/0012-geometry-backends-are-swappable)); the default build
+links no kernel.
 
 See [the Axiolid boundary](/architecture/axiolid-boundary).
 

@@ -2,99 +2,84 @@
 
 ## Install
 
-```toml
-[dependencies]
-openbim-ifc = { git = "https://github.com/openbimrs/ifc.git", rev = "a7c4949bb941504ce874bdec13bd81d33491b5cb" }
+```bash
+cargo add openbim-ifc
 ```
 
-The workspace crates are not published on crates.io yet. Consume the facade
-from this immutable Git revision; Cargo records it in `Cargo.lock`. The package
-is `openbim-ifc`, while its **library target is named `ifc`**, so imports read as
-a facade:
-
-```rust
-use ifc::{Codec, Model, StepCodec};
-```
-
-The short name `ifc` is taken on crates.io by an unrelated crate, which is why
-the package and the library name differ.
+The package is `openbim-ifc`, but its **library target is named `ifc`**, so
+imports read as a facade: `use ifc::{Codec, StepCodec};`. The short name
+`ifc` is taken on crates.io by an unrelated crate, which is why the two
+differ. The [Install](/guide/install) page has the current version of every
+package, including the JavaScript, Python and C bindings.
 
 ## Choosing features
 
-Features are the main design lever in this crate. The default is deliberately
-minimal — reading STEP and nothing else — because a domain in `default` would
-make every downstream build fat.
-
-| Feature | Pulls in | For |
-| --- | --- | --- |
-| `step` *(default)* | `ifc-step` | Reading and writing `.ifc` |
-| `ifcxml` | `ifc-xml` | Reading and writing `.ifcxml` |
-| `schema` | `ifc-schema` | Subtype queries, conformant XML names |
-| `author` | `ifc-author` (+ `schema`) | Schema-checked construction and transactional editing |
-| `spatial` | `ifc-spatial` | Containment tree and relationship traversal |
-| `geometry` | `ifc-geometry` | Lowering representations to neutral geometry |
-| `material`, `cost`, `properties`, … | one domain crate each | Interpreting that domain |
-| `material-templates` | `ifc-material` + template catalog | Material PSD applicability |
-| `codecs` | both codecs | |
-| `domains` | every domain view | |
-| `full` | everything | |
+Features are the main design lever. The default is deliberately minimal:
+reading and writing STEP, and nothing else. A domain in `default` would
+make every downstream build fat. The facade's
+[feature table](/reference/crates/openbim-ifc#features) lists every feature
+and the crate it enables.
 
 A thin viewer:
 
-```toml
-openbim-ifc = { git = "https://github.com/openbimrs/ifc.git", rev = "a7c4949bb941504ce874bdec13bd81d33491b5cb", default-features = false, features = ["step"] }
+```bash
+cargo add openbim-ifc --no-default-features --features step
 ```
 
-compiles no domain code and no geometry stack, while still round-tripping every
-entity in the file. That property is enforced by
-`openbim-ifc/tests/thin_build.rs`, not left to convention.
+compiles no domain code and no geometry stack, while still round-tripping
+every entity in the file. `openbim-ifc/tests/thin_build.rs` enforces that
+property. It reads the facade's optional dependencies from the manifest, so
+a new domain cannot slip into the thin build unnoticed.
 
 ::: warning Enabling a domain feature is not the same as capability
-Domain support remains uneven. Turning on `features = ["style"]` compiles
-`ifc-style`, whose implemented surface is bounded typed presentation/annotation
-views and selected transactional writers—not rendering or drawing composition.
-Likewise, `features = ["structural"]` provides bounded analysis-model, member,
-connection, action, static-load and relationship views—not a solver or FEM layer.
-Check the [capability matrix](/capabilities) for the exact supported surface.
+A feature compiles a crate; what that crate interprets is bounded. For
+example, `style` gives typed presentation and annotation views plus selected
+writers, not rendering. `structural` gives analysis-model views, not a
+solver. Check the [capability matrix](/capabilities) for the exact surface.
 :::
 
 ## Reading a file
 
+<!-- SNIPPET:getting-started-read -->
+
 ```rust
 use ifc::{Codec, StepCodec};
 
-let bytes = std::fs::read("model.ifc")?;
+let bytes = std::fs::read(&path)?;
 let model = StepCodec.read_bytes(&bytes)?;
 
-println!("schema: {:?}", model.header().schema_token());
+println!("schema: {:?}", model.header().schema);
 println!("entities: {}", model.len());
 
 for (name, count) in model.type_histogram().iter().take(10) {
     println!("{count:>7}  {name}");
 }
-# Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-`type_histogram` is a fast way to understand an unfamiliar file before writing
-any interpretation code.
+<!-- /SNIPPET -->
+
+`type_histogram` is a fast way to understand an unfamiliar file before
+writing any interpretation code.
 
 ## Finding entities
 
 The type index is the supported query path:
 
+<!-- SNIPPET:getting-started-find -->
+
 ```rust
-# use ifc::{Codec, Model, StepCodec};
-# let model = Model::new();
 // Type names are the upper-case STEP form.
-for id in model.ids_of_type("IFCWALL") {
-    let entity = model.get(id).expect("indexed id resolves");
-    // Attributes are positional. IfcWall inherits IfcRoot: 0 = GlobalId,
-    // 1 = OwnerHistory, 2 = Name, 3 = Description.
+for &id in model.ids_of_type("IFCANNOTATION") {
+    let entity = model.get(id).expect("an indexed id resolves");
+    // Attributes are positional. IfcAnnotation inherits IfcRoot:
+    // 0 = GlobalId, 1 = OwnerHistory, 2 = Name, 3 = Description.
     if let Some(name) = entity.text(2) {
-        println!("wall {id:?}: {name}");
+        println!("annotation {id}: {name}");
     }
 }
 ```
+
+<!-- /SNIPPET -->
 
 Attribute-name lookup is available through schema-aware authoring. Incoming
 references use the optional, on-demand `ReverseIndex`; see the
@@ -102,23 +87,29 @@ references use the optional, on-demand `ReverseIndex`; see the
 
 ## Writing a file
 
+<!-- SNIPPET:getting-started-write -->
+
 ```rust
-use ifc::{Codec, StepCodec};
-# use ifc::Model;
-# let model = Model::new();
-
 let bytes = StepCodec.write_bytes(&model)?;
-std::fs::write("out.ifc", bytes)?;
-# Ok::<(), Box<dyn std::error::Error>>(())
+std::fs::write(&out_path, bytes)?;
 ```
 
-Converting between encodings is reading with one codec and writing with another,
-because both implement the same `Codec` trait over the same `Model`:
+<!-- /SNIPPET -->
 
-```rust,ignore
-let model = StepCodec.read_bytes(&step_bytes)?;
-let xml = XmlCodec.write_bytes(&model)?;   // requires the `ifcxml` feature
+Converting between encodings means reading with one codec and writing with
+another, because both implement the same `Codec` trait over the same
+`Model`:
+
+<!-- SNIPPET:getting-started-convert -->
+
+```rust
+use ifc::{Codec, StepCodec, XmlCodec}; // XmlCodec needs the `ifcxml` feature
+
+let model = StepCodec.read_bytes(step_bytes)?;
+let xml = XmlCodec::default().write_bytes(&model)?;
 ```
+
+<!-- /SNIPPET -->
 
 ## Verifying a build
 
@@ -128,15 +119,23 @@ The repository ships one gate that decides on exit codes:
 scripts/gate.sh
 ```
 
-It runs formatting, a workspace build, the full test suite, Clippy with
-`-D warnings`, rustdoc with `-D warnings`, the architecture and progressive-context
-tests, and a feature-combination matrix over the facade crate.
+It runs:
+- formatting, a workspace build and the full test suite;
+- Clippy and rustdoc, both with `-D warnings`;
+- the architecture and context tests, and a feature-combination matrix over
+  the facade;
+- the three language bindings' test suites;
+- every docs check: generated pages, snippets, the docs build and the
+  leakage check.
 
-Do not summarise a run by piping `cargo test` through `grep` — the pipe hides the
-exit code.
+Do not summarise a run by piping `cargo test` through `grep`: the pipe hides
+the exit code.
 
 ## Next steps
 
-- [Capabilities and status](/capabilities) — what is actually implemented.
-- [Use cases](/use-cases/) — end-to-end scenarios against the real code.
-- [Architecture](/architecture/) — why the model, codecs, and domains are split.
+- [Capabilities and status](/capabilities): what is actually implemented.
+- [Crate reference](/reference/): every crate, generated from the crate
+  itself.
+- [Use cases](/use-cases/): end-to-end scenarios against the real code.
+- [Architecture](/architecture/): why the model, codecs and domains are
+  split.
