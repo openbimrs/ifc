@@ -41,7 +41,7 @@ let model = StepCodec.read_bytes(bytes)?;
 // A file that declares none, or an unknown token, is refused.
 let report = validate_declared(&model)?;
 
-println!("{}", report.summary()); // "0 errors, 0 warnings, 2 unsupported"
+println!("{}", report.summary()); // "0 errors, 0 evaluation errors, 0 warnings, 2 unsupported"
 for finding in report.sorted() {
     if finding.severity == Severity::Error {
         println!("{} at {}: {}", finding.rule, finding.path, finding.message);
@@ -58,11 +58,12 @@ a one-sentence message. `report.sorted()` orders findings by severity, rule
 and path, so two runs over the same file produce identical output and a report
 can be diffed in CI.
 
-The three severities are not a scale:
+The four severities are not a scale:
 
 | Severity | Meaning | Affects `is_conformant()` |
 | --- | --- | --- |
 | `Error` | The file breaks a schema requirement: a dangling reference, a missing required attribute, a wrong type, a duplicated `GlobalId` | yes |
+| `EvaluationError` | A registered rule applies to an instance but could not be decided for it (an operand it cannot read, a missing target); the verdict is unknown, so it is never a pass | yes |
 | `Warning` | Legal, but very likely a mistake | no |
 | `Unsupported` | A rule *this validator* did not evaluate; a statement about the tool, not the file | no |
 
@@ -88,10 +89,7 @@ use ifc::validate::{validate_with, Budget};
 
 // Budget::DEFAULT caps stored findings; `validate` and
 // `validate_declared` use it. Tighten it for a quick CI verdict.
-let budget = Budget {
-    max_findings: 1,
-    ..Budget::DEFAULT
-};
+let budget = Budget { max_findings: 1 };
 let report = validate_with(&model, ifc4(), budget);
 
 if report.is_truncated() {
@@ -105,8 +103,7 @@ if report.is_truncated() {
 The cap is a reporting limit, not a correctness shortcut. When it is hit the
 report is marked truncated, and every count in `summary()` becomes a lower
 bound. A gate that treats "conformant" as "passed" should also require
-`!report.is_truncated()`, as the first example does. `max_depth` bounds
-supertype and SELECT walks the same way.
+`!report.is_truncated()`, as the first example does.
 
 ## What is reported as unsupported
 
