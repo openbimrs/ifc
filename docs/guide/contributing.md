@@ -65,8 +65,8 @@ coding agent will reproduce the drift.
 canonical. The docs page is generated:
 
 ```bash
-python3 scripts/assemble-changelog.py          # regenerate
-python3 scripts/assemble-changelog.py --check  # CI: fail if out of date
+cargo run -p xtask -- docs          # regenerate every generated docs region
+cargo run -p xtask -- docs --check  # CI: fail if any is out of date
 ```
 
 **Claims need evidence.** Do not describe a module as supporting something
@@ -198,7 +198,7 @@ no-op, so a rate-limited run can be repeated safely.
 
 Each crate owns a `CHANGELOG.md` next to its `Cargo.toml`. The
 documentation page is assembled from all of them by
-`scripts/assemble-changelog.py`; never edit `docs/project/changelog.md`
+`cargo run -p xtask -- docs`; never edit `docs/project/changelog.md`
 directly. The root `CHANGELOG.md` is a frozen archive of the
 lockstep era through 0.2.0 and takes no new entries.
 

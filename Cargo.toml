@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["ifc-*", "openbim-ifc", "openbim-ifc-binding-core", "openbim-ifc-wasm", "openbim-ifc-capi", "openbim-ifc-py"]
+members = ["ifc-*", "openbim-ifc", "openbim-ifc-binding-core", "openbim-ifc-wasm", "openbim-ifc-capi", "openbim-ifc-py", "xtask"]
 
 [workspace.package]
 version = "0.2.0"
