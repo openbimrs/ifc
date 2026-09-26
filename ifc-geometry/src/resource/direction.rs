@@ -25,7 +25,7 @@
 //! `DirectionRatios` is `LIST [2:3]`, so a direction in a 2D context has two
 //! components. As with points, promotion to 3D is explicit.
 
-use crate::error::{GeometryError, GeometryResult};
+use crate::error::GeometryResult;
 use crate::slots::Slots;
 use ifc_model::{Entity, EntityId, Model};
 
@@ -208,23 +208,13 @@ fn direction_view<'m>(
     referrer: EntityId,
     id: EntityId,
 ) -> GeometryResult<Direction<'m>> {
-    let entity = model.get(id).ok_or(GeometryError::MissingEntity {
-        referrer,
-        missing: id,
-    })?;
-    if !entity.is_type("IFCDIRECTION") {
-        return Err(GeometryError::WrongEntityType {
-            entity: id,
-            actual: entity.type_name.to_string(),
-            expected: "IfcDirection",
-        });
-    }
-    Ok(Direction::new(id, entity))
+    crate::resource::resolve::direction(model, referrer, id)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::GeometryError;
     use ifc_model::Value;
 
     fn direction_entity(values: &[f64]) -> Entity {

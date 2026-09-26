@@ -1,10 +1,22 @@
-"""Generate ifc-occurrence/src/table.rs from the IFC4X3 ADD2 schema."""
+"""Generate ifc-occurrence/src/table/ from the IFC4X3 ADD2 schema.
 
-import json
-from pathlib import Path
+    python3 scripts/gen-occurrences.py
 
-T = json.load(open("/tmp/occ.json"))
-OUT = Path("ifc-occurrence/src/table")
+Needs only `references/ifc-spec/ifc4x3-add2/IFC4X3_ADD2.exp` (see
+`scripts/fetch-ifc-schemas.sh`) and `rustfmt`. The rows come from
+`scripts/ifc4x3_catalogue.py`, which also records the nine distribution
+classes `ifc-systems` authors and this catalogue leaves out. The emitted
+files are then formatted with `rustfmt --edition 2021`, so a regenerate on
+a clean checkout reproduces the committed shards byte for byte
+(`git diff --exit-code` proves it).
+"""
+
+import subprocess
+
+from ifc4x3_catalogue import ROOT, Schema, occurrences
+
+T = occurrences(Schema())
+OUT = ROOT / "ifc-occurrence/src/table"
 OUT.mkdir(parents=True, exist_ok=True)
 
 HDR = []
@@ -88,3 +100,9 @@ mod_lines.append("")
 
 (OUT / "mod.rs").write_text("\n".join(mod_lines) + "\n")
 print("wrote table/mod.rs", len(mod_lines), "lines,", len(T), "occurrences")
+
+subprocess.run(
+    ["rustfmt", "--edition", "2021"] + sorted(str(p) for p in OUT.glob("*.rs")),
+    check=True,
+)
+print("formatted with rustfmt")

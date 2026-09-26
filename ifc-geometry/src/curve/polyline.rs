@@ -18,8 +18,10 @@
 //! converted and range-checked against the point count.
 
 use crate::error::GeometryResult;
+use crate::resource::point::{CartesianPoint, CartesianPointList};
+use crate::resource::resolve;
 use crate::slots::Slots;
-use ifc_model::{Entity, EntityId, Value};
+use ifc_model::{Entity, EntityId, Model, Value};
 
 /// `IfcPolyline` attribute slots.
 ///
@@ -66,7 +68,6 @@ impl<'m> Polyline<'m> {
     /// At least two are required by the schema; fewer is
     /// [`crate::GeometryError::Degenerate`] because a one-point polyline has
     /// no edge and would silently contribute nothing to a profile.
-    // TODO(#97): `resource::point` will provide a typed point view to resolve these.
     pub fn point_refs(&self) -> GeometryResult<Vec<EntityId>> {
         let points = self.slots.req_ref_list(polyline_slot::POINTS, "Points")?;
         if points.len() < 2 {
@@ -76,6 +77,14 @@ impl<'m> Polyline<'m> {
             )));
         }
         Ok(points)
+    }
+
+    /// The vertices as typed point views, resolved from the model, in order.
+    ///
+    /// One dangling or mistyped vertex fails the whole call: dropping it would
+    /// change the shape without saying so.
+    pub fn points<'v>(&self, model: &'v Model) -> GeometryResult<Vec<CartesianPoint<'v>>> {
+        resolve::cartesian_points(model, self.id(), &self.point_refs()?)
     }
 
     /// Is the last point the same entity as the first?
@@ -156,9 +165,15 @@ impl<'m> IndexedPolyCurve<'m> {
     }
 
     /// The `IfcCartesianPointList2D` or `IfcCartesianPointList3D` reference.
-    // TODO(#97): `resource::point` will provide a typed point-list view.
     pub fn points_ref(&self) -> GeometryResult<EntityId> {
         self.slots.req_ref(indexed_slot::POINTS, "Points")
+    }
+
+    /// The point list as a typed view, resolved from the model.
+    ///
+    /// The concrete subtype fixes the dimension; see [`CartesianPointList`].
+    pub fn points<'v>(&self, model: &'v Model) -> GeometryResult<CartesianPointList<'v>> {
+        resolve::cartesian_point_list(model, self.id(), self.points_ref()?)
     }
 
     /// The informational `SelfIntersect` flag, `None` when absent or `.U.`.
@@ -303,6 +318,79 @@ mod tests {
             "IFCINDEXEDPOLYCURVE",
             vec![Value::Ref(EntityId(100)), segments, Value::Bool(false)],
         )
+    }
+
+    fn point(values: &[f64]) -> Entity {
+        Entity::new(
+            "IFCCARTESIANPOINT",
+            vec![Value::List(
+                values.iter().copied().map(Value::Real).collect(),
+            )],
+        )
+    }
+
+    #[test]
+    fn polyline_points_resolve_in_file_order() {
+        let mut model = Model::new();
+        model.insert(EntityId(1), point(&[0.0, 0.0]));
+        model.insert(EntityId(2), point(&[1.0, 0.0]));
+        let e = Entity::new("IFCPOLYLINE", vec![refs(&[2, 1])]);
+        let points = Polyline::new(EntityId(9), &e).points(&model).unwrap();
+        let ids: Vec<_> = points.iter().map(|p| p.id()).collect();
+        assert_eq!(ids, vec![EntityId(2), EntityId(1)]);
+        assert_eq!(points[0].coordinates().unwrap(), vec![1.0, 0.0]);
+    }
+
+    #[test]
+    fn a_polyline_vertex_of_the_wrong_type_fails_the_whole_list() {
+        let mut model = Model::new();
+        model.insert(EntityId(1), point(&[0.0, 0.0]));
+        model.insert(EntityId(2), Entity::new("IFCDIRECTION", vec![]));
+        let e = Entity::new("IFCPOLYLINE", vec![refs(&[1, 2])]);
+        let err = Polyline::new(EntityId(9), &e).points(&model).unwrap_err();
+        assert!(matches!(
+            err,
+            crate::GeometryError::WrongEntityType {
+                entity: EntityId(2),
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn indexed_points_resolve_to_the_declared_list_subtype() {
+        let mut model = Model::new();
+        model.insert(
+            EntityId(100),
+            Entity::new(
+                "IFCCARTESIANPOINTLIST3D",
+                vec![Value::List(vec![Value::List(vec![
+                    Value::Real(0.0),
+                    Value::Real(0.0),
+                    Value::Real(1.0),
+                ])])],
+            ),
+        );
+        let e = indexed(Value::Null);
+        let list = IndexedPolyCurve::new(EntityId(9), &e)
+            .points(&model)
+            .unwrap();
+        assert_eq!(list.id(), EntityId(100));
+        assert_eq!(list.dimension(), 3);
+    }
+
+    #[test]
+    fn indexed_points_reject_a_single_point_and_a_dangling_list() {
+        let mut model = Model::new();
+        model.insert(EntityId(100), point(&[0.0, 0.0]));
+        let e = indexed(Value::Null);
+        let view = IndexedPolyCurve::new(EntityId(9), &e);
+        assert!(matches!(
+            view.points(&model).unwrap_err(),
+            crate::GeometryError::WrongEntityType { .. }
+        ));
+        let err = view.points(&Model::new()).unwrap_err();
+        assert_eq!(err.entity(), Some(EntityId(9)));
     }
 
     #[test]

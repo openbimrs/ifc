@@ -25,10 +25,11 @@
 //! reorders vertices whenever `PnIndex` is not the identity permutation, which
 //! is exactly when an exporter bothered to write it.
 //!
-//! # Coordinates are not resolved here
+//! # Coordinates are read by `resource::point`
 //!
-//! `IfcCartesianPointList3D` belongs to `IfcGeometryResource`, owned by another
-//! module. These views return its `EntityId`.
+//! `IfcCartesianPointList3D` belongs to `IfcGeometryResource`, owned by
+//! [`crate::resource::point`]. These views return its `EntityId`, and
+//! [`TessellatedFaceSet::coordinate_list`] resolves it into that module's view.
 
 pub mod polygonal;
 pub mod triangulated;
@@ -37,8 +38,10 @@ pub use polygonal::{IndexedPolygonalFace, IndexedPolygonalFaceWithVoids, Polygon
 pub use triangulated::TriangulatedFaceSet;
 
 use crate::error::{GeometryError, GeometryResult};
+use crate::resource::point::CartesianPointList3D;
+use crate::resource::resolve;
 use crate::slots::Slots;
-use ifc_model::{Entity, EntityId, Value};
+use ifc_model::{Entity, EntityId, Model, Value};
 
 /// Tessellated face set slots shared by both concrete face sets.
 ///
@@ -123,11 +126,24 @@ impl<'m> TessellatedFaceSet<'m> {
 
     /// The `IfcCartesianPointList3D` reference holding the vertices.
     ///
-    /// TODO(#97): resolve through the point-list module once it exists; this crate
-    /// deliberately does not define a competing point-list view.
+    /// [`Self::coordinate_list`] resolves it through `resource::point`, which
+    /// owns the point-list view; this module does not define a competing one.
     pub fn coordinates(&self) -> GeometryResult<EntityId> {
         self.slots
             .req_ref(face_set_slot::COORDINATES, "Coordinates")
+    }
+
+    /// The vertex list as a typed view, resolved from the model.
+    ///
+    /// The schema narrows `Coordinates` to the 3D list, so a 2D list is a
+    /// wrong-type error rather than a mesh padded with `z = 0`. Its
+    /// [`CartesianPointList3D::point`] takes the 1-based indices of this
+    /// module's faces directly.
+    pub fn coordinate_list<'v>(
+        &self,
+        model: &'v Model,
+    ) -> GeometryResult<CartesianPointList3D<'v>> {
+        resolve::cartesian_point_list_3d(model, self.id(), self.coordinates()?)
     }
 }
 
@@ -194,6 +210,45 @@ mod tests {
                 "{name}"
             );
         }
+    }
+
+    #[test]
+    fn the_coordinate_list_resolves_and_serves_one_based_indices() {
+        use crate::solid::testkit::{list, model, n};
+        let row = |x: f64| list(vec![n(x), n(0.0), n(0.0)]);
+        let coords = entity(
+            "IFCCARTESIANPOINTLIST3D",
+            vec![list(vec![row(1.0), row(2.0)])],
+        );
+        let m = model(vec![(50, coords)]);
+        let e = entity("IFCTRIANGULATEDFACESET", vec![r(50)]);
+        let list = TessellatedFaceSet::new(EntityId(1), &e)
+            .coordinate_list(&m)
+            .unwrap();
+        assert_eq!(list.point(2).unwrap(), Some([2.0, 0.0, 0.0]));
+    }
+
+    /// The schema narrows `Coordinates` to the 3D list; a 2D one must not be
+    /// padded into a flat mesh.
+    #[test]
+    fn a_two_dimensional_or_dangling_coordinate_list_is_a_typed_error() {
+        use crate::solid::testkit::{list, model};
+        let m = model(vec![(
+            50,
+            entity("IFCCARTESIANPOINTLIST2D", vec![list(vec![])]),
+        )]);
+        let e = entity("IFCPOLYGONALFACESET", vec![r(50)]);
+        let view = TessellatedFaceSet::new(EntityId(1), &e);
+        assert!(matches!(
+            view.coordinate_list(&m).unwrap_err(),
+            GeometryError::WrongEntityType {
+                entity: EntityId(50),
+                expected: "IfcCartesianPointList3D",
+                ..
+            }
+        ));
+        let err = view.coordinate_list(&Model::new()).unwrap_err();
+        assert_eq!(err.entity(), Some(EntityId(1)));
     }
 
     /// An indexed face is a tessellated item but carries no coordinates, so

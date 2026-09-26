@@ -270,6 +270,45 @@ impl<'m> Axis2Placement3D<'m> {
     }
 }
 
+/// A member of the `IfcAxis2Placement` SELECT, dispatched once.
+///
+/// Slots such as `IfcConic.Position` are typed by the select, so the view is
+/// 2D or 3D depending on the file. Produced by
+/// [`crate::resource::resolve::axis2_placement`].
+#[derive(Debug, Clone, Copy)]
+pub enum Axis2Placement<'m> {
+    /// An `IfcAxis2Placement2D`.
+    TwoD(Axis2Placement2D<'m>),
+    /// An `IfcAxis2Placement3D`.
+    ThreeD(Axis2Placement3D<'m>),
+}
+
+impl<'m> Axis2Placement<'m> {
+    /// The entity id.
+    pub fn id(&self) -> EntityId {
+        match self {
+            Self::TwoD(p) => p.id(),
+            Self::ThreeD(p) => p.id(),
+        }
+    }
+
+    /// The origin, promoted to 3D.
+    pub fn location(&self, model: &'m Model) -> GeometryResult<[f64; 3]> {
+        match self {
+            Self::TwoD(p) => p.location(model),
+            Self::ThreeD(p) => p.location(model),
+        }
+    }
+
+    /// The placement as a transform; a 2D placement lies in the z=0 plane.
+    pub fn transform(&self, model: &'m Model) -> GeometryResult<Transform> {
+        match self {
+            Self::TwoD(p) => p.transform(model),
+            Self::ThreeD(p) => p.transform(model),
+        }
+    }
+}
+
 /// Resolve any `IfcAxis2Placement` reference to a transform.
 ///
 /// `IfcAxis2Placement` is a SELECT over the 2D and 3D forms, so a slot typed
