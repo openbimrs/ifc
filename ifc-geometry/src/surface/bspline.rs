@@ -181,7 +181,7 @@ impl<'m> BSplineSurface<'m> {
     /// A ragged grid is not a tensor-product surface, so it cannot be
     /// evaluated at all; catching it here beats an out-of-bounds read in a
     /// kernel's inner loop.
-    // TODO: `resource::point` will provide a typed point view to resolve these.
+    // TODO(#97): `resource::point` will provide a typed point view to resolve these.
     pub fn control_points(&self) -> GeometryResult<ControlPointGrid> {
         let value = self.slots.req(slot::CONTROL_POINTS, "ControlPointsList")?;
         let outer = value.as_list().ok_or_else(|| {

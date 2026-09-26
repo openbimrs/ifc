@@ -3,8 +3,7 @@
 Purpose: Committed, deterministic artifacts derived from the IFC4 ADD2 TC1
 EXPRESS schema, plus this repository's implementation-ownership mapping.
 
-Follow `../AGENTS.md`. Read `NOTICE.md` for provenance and licensing. Read
-sibling `PLAN.md` only for regeneration, provenance, or licensing-gate work.
+Follow `../AGENTS.md`. Read `NOTICE.md` for provenance and licensing.
 
 ## Boundary
 

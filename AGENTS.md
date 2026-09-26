@@ -7,17 +7,18 @@ rules and do not repeat this file.
 ## Context protocol
 
 `AGENTS.md` is stable ambient context: purpose, boundaries, invariants, and
-gates. `PLAN.md` is implementation state. Read a plan only when assigned
-roadmap work, architecture review, or a blocked dependency. When finishing a
-plan item, check it off, add the proof command/result, and record newly found
-follow-up work there. Do not put progress logs or speculative TODOs in
-`AGENTS.md`.
+gates. Open work is not context: it lives in GitHub issues
+(`https://github.com/openbimrs/ifc/issues`), and a marker in code names its
+issue as `TODO(#N)` (`cargo run -p xtask -- todo --check` enforces this).
+Proof of finished work goes in the pull request, and a decision that should
+outlive it goes into the owning `AGENTS.md`, module docs, or an ADR. Do not
+put progress logs, task lists, or speculative TODOs in `AGENTS.md`.
 
 ## Package role
 
 This package interprets and serializes IFC. IFC resource names are evidence,
 not crate boundaries: the schema mixes storage, geometry input, presentation,
-and domain semantics. Partition code by role in the pipeline (ADR 0008):
+and domain semantics. Partition code by role in the pipeline:
 
 1. Geometry input is lowered by `ifc-geometry`, `ifc-alignment`, or
    `ifc-georef` into format-neutral geometry values.
@@ -27,7 +28,9 @@ and domain semantics. Partition code by role in the pipeline (ADR 0008):
    semantic crate, then written through that crate by an application service.
 
 One IFC entity may therefore have projections in two crates. `ifc-model` owns
-the record; neither projection owns or duplicates it.
+the record; neither projection owns or duplicates it. The split for each
+mixed-role resource, and the domains that stay separate on purpose, are
+tabulated in `docs/architecture/index.md`.
 
 ## Dependency tiers
 
@@ -88,6 +91,9 @@ uses the declared version's own tables and never approximates across versions.
   half-written model. Do not add ad hoc setters to borrowed read views.
 - Unsupported, invalid, missing-reference, and budget-exceeded are distinct
   structured errors. Never silently substitute geometry or semantics.
+- Authoring never stamps `IfcOwnerHistory` on its own. Where a draft accepts
+  one, the caller supplies it (built with `ifc-author/src/owner.rs`), because
+  an invented actor is worse than a null.
 
 ## Module and API rules
 
@@ -98,7 +104,9 @@ uses the declared version's own tables and never approximates across versions.
   Keep child modules crate-private until a real public type is implemented and
   deliberately re-exported by its parent.
 - Every `.rs` file must be in the compiled module tree. Future-only file names
-  belong in `PLAN.md`, not as orphan source files.
+  belong in the tracking issue, not as orphan source files. An ownership
+  scaffold (`//! Planned owner:`) is listed in
+  `ifc-model/tests/required_scaffold_paths.txt`.
 - Public values implement `Debug` and `Clone`; derive stronger traits only when
   semantically honest. Mark extensible public errors/enums non-exhaustive.
 
@@ -125,6 +133,8 @@ scripts/gate.sh
 ```
 
 Architecture and context gates must be mutation-verified before being trusted.
+A performance claim needs a committed benchmark definition, the baseline
+environment and a measured comparison; a green correctness gate is not one.
 On shared master, stage only owned paths and re-check HEAD before committing.
 
 ## Schema-backed tests

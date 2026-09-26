@@ -1,8 +1,7 @@
 # ifc-author instructions
 
 Scope: schema-checked construction and editing of IFC entities. Follow the package
-`../AGENTS.md`. Read `PLAN.md` only for assigned task(s) `AUTHOR` and keep
-implementation state there.
+`../AGENTS.md`.
 
 ## Owns
 
@@ -12,6 +11,10 @@ implementation state there.
 - insertion of a built entity into a `Model`
 - named-attribute edits validated against the complete projected entity before
   staging through `ifc-model::Transaction`
+- explicit owner-history construction (`src/owner.rs`: person, organization,
+  application, `IfcOwnerHistory`). Nothing attaches it automatically: a
+  domain draft that accepts one takes it from the caller, because an invented
+  actor is worse than a null
 
 ## Does not own
 

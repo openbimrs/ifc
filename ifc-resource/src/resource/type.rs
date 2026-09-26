@@ -139,10 +139,12 @@ impl<'m, 's> crate::view::ResourceView<'m, 's> {
     /// Resolves the `IfcConstructionResourceType` assigned to a construction
     /// resource occurrence through `IfcRelDefinesByType`, if any.
     ///
-    /// `IfcTypeObject.Types` is an inverse `SET [0:1]`: an occurrence may be
-    /// typed by at most one relation. A second authored relation naming the
-    /// same occurrence is a modeling defect, reported as a typed refusal
-    /// rather than silently picking the first or last match.
+    /// An occurrence may be typed by at most one type. A second authored
+    /// relation assigning a *different* type is a modeling defect, reported
+    /// as a typed refusal rather than silently picking the first or last
+    /// match. A repeated relation naming the *same* type states the same fact
+    /// twice and is accepted. (`ifc-material` treats even that as ambiguous
+    /// for its material lookup.)
     pub fn assigned_resource_type(&self, occurrence: EntityId) -> ResourceResult<Option<EntityId>> {
         self.resource(occurrence)?;
         let mut found = None;

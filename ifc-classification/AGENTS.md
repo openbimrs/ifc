@@ -3,8 +3,7 @@
 Purpose: Borrowed IFC2X3/IFC4 classification, document, library, association,
 hierarchy, and transaction-staged IFC4 authoring semantics.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
-roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`.
 
 ## Boundary
 

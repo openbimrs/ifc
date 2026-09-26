@@ -3,7 +3,7 @@
 Purpose: bounded IFC4/IFC4X3 construction-resource projections,
 actor/inventory metadata, usage quantities, queries, and authoring.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`.
 
 ## Implemented boundary
 

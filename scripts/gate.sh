@@ -119,6 +119,11 @@ fi
 # hand-written code fences, git dependencies, pinned TOML versions, typed crate
 # counts and home paths on any page, and a publishable crate with no changelog.
 cargo run --quiet -p xtask -- docs --check
+
+# Open work lives in GitHub issues: a code marker names its issue as
+# `TODO(#N)`, and no checked-in PLAN.md may return as a second backlog.
+cargo run --quiet -p xtask -- todo --check
+cargo run --quiet -p xtask -- plans --check
 python3 scripts/check-inline-html.py
 
 # Build the docs site when its toolchain is installed. The checks above

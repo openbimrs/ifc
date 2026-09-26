@@ -7,4 +7,5 @@
 //! Real files omit levels, duplicate storeys, or attach elements directly to the
 //! building. The tree must tolerate that rather than assume the canonical shape.
 //!
-//! Not yet implemented -- see `../PLAN.md`.
+//! Not implemented here: `ifc-spatial` builds this tree. Whether this module
+//! still reserves anything is <https://github.com/openbimrs/ifc/issues/127>.

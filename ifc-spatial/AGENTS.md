@@ -1,8 +1,7 @@
 # ifc-spatial instructions
 
 Scope: IFC containment and objectified relationship traversal. Follow the
-package `../AGENTS.md`. Read `PLAN.md` only for assigned task(s) `SPATIAL` and
-keep implementation state there.
+package `../AGENTS.md`.
 
 ## Owns
 

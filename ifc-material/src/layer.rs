@@ -2,8 +2,6 @@
 //!
 //! This module projects the authored MaterialResource composition and usage
 //! slots. `ifc-geometry::input` owns their geometric interpretation and lowering.
-//!
-//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

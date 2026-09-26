@@ -2,7 +2,7 @@
 
 Purpose: Committed, deterministic runtime artifacts generated from attributed upstream PSD/QTO catalogs.
 
-Follow `../AGENTS.md`. Read sibling `PLAN.md` only for corpus generation, provenance, licensing, or reproducibility work.
+Follow `../AGENTS.md`.
 
 ## Boundary
 

@@ -3,8 +3,7 @@
 Purpose: the versioned C ABI over the IFC facade (#38, ADR 0013), for C,
 C++ and any host with a C FFI. `README.md` documents the protocol for users.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
-roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`.
 
 ## Boundary
 
@@ -18,7 +17,7 @@ roadmap work; keep progress, blockers, and evidence there.
   in `src/buffer.rs`, each with a `SAFETY:` comment. Keep it that way: a new
   export composes those helpers; it does not dereference pointers itself.
 - Mirrors Axiolid's ADR 0040 conventions on purpose; diverge only with a
-  reason recorded in `PLAN.md`.
+  reason recorded in the module docs or an ADR.
 
 ## Layout
 

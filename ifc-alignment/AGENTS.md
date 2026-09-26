@@ -4,8 +4,7 @@ Purpose: Interpret IFC4x3 alignment intent in both directions — read and lower
 into exact neutral curves/frames, and author alignment records from plain
 numbers (ADR 0011) — without meshing or backend selection.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
-roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`.
 
 - `IfcLinearElement` and `IfcLinearPositioningElement` authoring, both IFC4X3
   additions that IFC4 does not declare. The positioning element inherits
@@ -45,6 +44,12 @@ Allowed production dependencies: ifc-model, schema metadata, and exact neutral a
 ## Invariants
 
 - Preserve exact transition intent; tessellation is a downstream explicit operation.
+- No numeric integration anywhere in this crate: a transition is stored
+  losslessly as a `Curve2::Intrinsic` curvature law, and a new transcendental
+  primitive belongs upstream in `axiolid-curve`, never in this bridge.
+- `lower_horizontal_layout` is all-or-nothing. `lower_horizontal_layout_partial`
+  is a separate entry point that ends a run at every refusal and after every
+  spiral, because continuity out of a Fresnel end point cannot be asserted.
 - Station, horizontal length, projected length, and 3D length are distinct quantities.
 - No road/rail product workflow or rendering policy enters this bridge.
 
@@ -55,7 +60,8 @@ resolution, lowering, mutation, and validation before they grow together.
 ## Verification
 
 Run targeted tests/clippy, isolated build, and the package architecture/context
-gates. Geometry bridges also run declaration/corpus coverage and the full gate.
+gates. Spiral-family tests pin the quarter point: all five families agree at
+0, L/2 and L, so a substituted family would pass anywhere else. Geometry bridges also run declaration/corpus coverage and the full gate.
 
 ## Station for a horizontal segment
 

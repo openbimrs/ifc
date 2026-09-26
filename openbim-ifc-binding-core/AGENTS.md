@@ -5,8 +5,7 @@ Purpose: the host-independent half of every language binding (ADR 0013).
 `BindingError` with its stable codes -- written once, shared by
 `openbim-ifc-wasm`, `openbim-ifc-capi` and `openbim-ifc-py`.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
-roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`.
 
 ## Boundary
 

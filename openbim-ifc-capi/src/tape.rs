@@ -8,6 +8,10 @@
 //!
 //! `$`, `*`, `.U.` and `.F.` are distinct kinds or payloads, never folded,
 //! for the same reason as in the JavaScript and Python bindings (ADR 0013).
+//!
+//! A tape rather than recursive structs or a cursor API: one call returns a
+//! whole value, the caller owns both buffers, and no allocation crosses the
+//! ABI.
 
 use openbim_ifc_binding_core::value::{Kind, Tagged, MAX_NESTING};
 use openbim_ifc_binding_core::BindingError;

@@ -3,8 +3,7 @@
 Purpose: WebAssembly bindings for the `openbim-ifc` facade, so JavaScript
 and TypeScript can read, edit and write IFC STEP files (#34, ADR 0013).
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
-roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`.
 
 ## Boundary
 

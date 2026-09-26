@@ -2,7 +2,7 @@
 
 Purpose: Deterministic offline import and generation of committed runtime artifacts.
 
-Follow `../AGENTS.md`. Read sibling `PLAN.md` only for generator work; record corpus/import WIP there.
+Follow `../AGENTS.md`.
 
 ## Boundary
 

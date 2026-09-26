@@ -4,8 +4,7 @@ Purpose: structured IFC value containers indexed by position or time —
 `IfcTable` with its rows and columns, and `IfcTimeSeries` with its value
 records.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
-roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`.
 
 ## Why this crate exists
 

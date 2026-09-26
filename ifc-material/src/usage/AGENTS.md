@@ -1,7 +1,6 @@
 # ifc-material usage instructions
 
-Scope: product/type material associations and deterministic semantic resolution. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
-assigned task(s) `MAT-ASSIGN` and keep implementation state there.
+Scope: product/type material associations and deterministic semantic resolution. Follow the crate `../../AGENTS.md`.
 
 ## Owns
 
@@ -17,4 +16,4 @@ assigned task(s) `MAT-ASSIGN` and keep implementation state there.
 
 ## Growth map
 
-`assignment.rs` and `resolution.rs` are the implementation owners. Extend them with focused tests; do not add parallel modules. Views borrow `ifc-model`; mutation waits for an explicit model transaction contract.
+`assignment.rs` and `resolution.rs` are the implementation owners. Extend them with focused tests; do not add parallel modules. Views borrow `ifc-model`; writes stage through `src/authoring` on a caller-owned `ifc-model::Transaction`.

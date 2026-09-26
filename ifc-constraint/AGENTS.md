@@ -2,7 +2,7 @@
 
 Purpose: bounded IFC4 metric, objective, relationship, query, and authoring semantics.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`.
 
 ## Implemented boundary
 

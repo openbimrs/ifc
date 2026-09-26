@@ -2,8 +2,7 @@
 
 Purpose: Parse and query EXPRESS schema metadata; it is metadata, not serialization and not the entity graph.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only when assigned implementation or
-roadmap work; record progress and blockers there, not here.
+Follow `../AGENTS.md`.
 
 ## Boundary
 
@@ -21,7 +20,6 @@ happens here and in consumers.
 - `export.rs`: deterministic expanded and direct-declaration catalogs for exact
   bundled releases
 - `version.rs`: which IFC schema a file's `FILE_SCHEMA` token names
-- `error.rs`: syntax/source diagnostics
 - `artifact.rs` (ifc4 feature): versioned binary codec for a compiled schema
 - `bundled.rs` (ifc4 feature): `ifc2x3()`, `ifc4()`, and `ifc4x3()` are cached,
   decoded from independent artifacts in `data/`. `for_version` maps a parsed
@@ -61,4 +59,4 @@ schema, and a test pins those counts to the committed artifacts.
 ## Verification
 
 Run targeted crate tests and clippy first, then the package architecture/context
-gates from `../AGENTS.md`. Record exact exit evidence in `PLAN.md`.
+gates from `../AGENTS.md`. Record exact exit evidence in the pull request.

@@ -19,6 +19,11 @@
 //! `USERDEFINED` means "the enum has no token for this, the name is
 //! given elsewhere". Without that elsewhere the value asserts a name
 //! exists and then withholds it, which no reader can resolve.
+//!
+//! This module is stricter than `EXISTS`: a blank fallback string satisfies
+//! EXPRESS but names nothing, so it is refused too. And the writer takes an
+//! [`ElementType`] from the catalogue rather than a type-name string, so an
+//! entity the catalogue does not know cannot be written at all.
 
 use ifc_model::guid::Guid;
 use ifc_model::{Entity, EntityId, Transaction, Value};

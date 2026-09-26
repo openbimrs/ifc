@@ -123,7 +123,7 @@ impl<'m> TessellatedFaceSet<'m> {
 
     /// The `IfcCartesianPointList3D` reference holding the vertices.
     ///
-    /// TODO: resolve through the point-list module once it exists; this crate
+    /// TODO(#97): resolve through the point-list module once it exists; this crate
     /// deliberately does not define a competing point-list view.
     pub fn coordinates(&self) -> GeometryResult<EntityId> {
         self.slots

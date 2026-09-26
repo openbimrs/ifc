@@ -88,5 +88,17 @@
     "slug": "0015-strict-step-reads-load-lazily",
     "status": "Accepted",
     "title": "Strict STEP reads validate eagerly and decode lazily"
+  },
+  {
+    "number": "0016",
+    "slug": "0016-open-work-lives-in-issues",
+    "status": "Accepted",
+    "title": "Open work lives in issues, not in checked-in plans"
+  },
+  {
+    "number": "0017",
+    "slug": "0017-versioned-psd-qto-catalog",
+    "status": "Accepted",
+    "title": "Versioned PSD/QTO template catalogs"
   }
 ]

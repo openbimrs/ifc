@@ -48,7 +48,7 @@ impl<'m> Line<'m> {
     /// The `IfcCartesianPoint` at parameter zero.
     ///
     /// Returned as a raw reference rather than resolved coordinates.
-    // TODO: `resource::point` will provide a typed point view to resolve this.
+    // TODO(#97): `resource::point` will provide a typed point view to resolve this.
     pub fn point_ref(&self) -> GeometryResult<EntityId> {
         self.slots.req_ref(slot::PNT, "Pnt")
     }

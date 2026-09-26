@@ -10,11 +10,17 @@
 //! ```text
 //! cargo run -p xtask -- docs           regenerate every generated docs region
 //! cargo run -p xtask -- docs --check   fail if any generated region is out of date
+//! cargo run -p xtask -- plans          list the open tasks left in PLAN.md files
+//! cargo run -p xtask -- plans --check  fail while any PLAN.md is tracked
+//! cargo run -p xtask -- todo           list every unfinished-work marker with its issue
+//! cargo run -p xtask -- todo --check   fail on a marker that names no issue
 //! ```
 
 mod docs;
+mod plans;
 mod rust_source;
 mod text;
+mod todo;
 mod workspace;
 
 use std::process::ExitCode;
@@ -32,6 +38,8 @@ fn main() -> ExitCode {
     };
     let result = match command {
         "docs" => docs::run(check),
+        "plans" => plans::run(check),
+        "todo" => todo::run(check),
         _ => return usage(),
     };
     match result {
@@ -44,6 +52,6 @@ fn main() -> ExitCode {
 }
 
 fn usage() -> ExitCode {
-    eprintln!("usage: cargo run -p xtask -- docs [--check]");
+    eprintln!("usage: cargo run -p xtask -- <docs|plans|todo> [--check]");
     ExitCode::from(2)
 }

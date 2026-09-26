@@ -2,8 +2,7 @@
 
 Purpose: Interpret project-to-map/CRS operations and geodetic metadata; never place individual products.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
-roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`.
 
 ## Boundary
 

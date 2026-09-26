@@ -37,7 +37,7 @@ fn environmental_advisory(edition: CatalogEdition, id: &str, target: &str) -> Pa
         edition,
         target_template: target.into(),
         rationale: "Flag legacy scalar environmental data without changing official semantics".into(),
-        evidence: "docs/adr/0010-versioned-psd-qto-catalog.md".into(),
+        evidence: "docs/adr/0017-versioned-psd-qto-catalog.md".into(),
         operation: PatchOperation::AddAdvisory {
             severity: AdvisorySeverity::Warning,
             message: "Legacy and underspecified for module-based EPD data; use an explicit EPD domain model"

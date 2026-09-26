@@ -4,8 +4,7 @@ Purpose: Python bindings for the IFC facade (#39, ADR 0013), shipped as one
 abi3 wheel (`openbim-ifc` on the Python side, import name `openbim_ifc`).
 `README.md` is the user documentation and the wheel's long description.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
-roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`.
 
 ## Boundary
 

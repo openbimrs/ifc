@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed
+
+- The built-in environmental advisories cite their decision record at its
+  restored path, `docs/adr/0017-versioned-psd-qto-catalog.md`; the old
+  `0010` path had been reassigned to an unrelated ADR.
+
 ## [0.2.0] - 2026-09-22
 
 First release under per-crate versioning. See the

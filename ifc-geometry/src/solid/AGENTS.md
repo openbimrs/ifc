@@ -2,8 +2,7 @@
 
 Scope: Borrowed views and local semantic validation for IFC solid/model entities.
 
-Follow the crate `../../AGENTS.md`. Read this directory's `PLAN.md` only for assigned
-work under parent task(s) `GEOM-BREP, GEOM-SOLID`. Record progress there.
+Follow the crate `../../AGENTS.md`.
 
 ## Owns
 

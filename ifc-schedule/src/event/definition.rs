@@ -18,6 +18,10 @@
 //! Note the schema's own spelling: `EventOccurenceTime`, with one `r`. It is
 //! reproduced here because that is the attribute's name in the standard.
 //!
+//! `IfcEventTypeEnum` has no `MILESTONE` member; its tokens are `STARTEVENT`,
+//! `ENDEVENT` and `INTERMEDIATEEVENT` (plus `USERDEFINED`/`NOTDEFINED`). A
+//! milestone is an `IfcTask` with `IsMilestone` set.
+//!
 //! # An event is an instant
 //!
 //! Unlike a task, an event has no duration -- `IfcEventTime` states dates

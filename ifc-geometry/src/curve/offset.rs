@@ -196,7 +196,7 @@ impl<'m> OffsetCurve3D<'m> {
     ///
     /// Required by the schema and genuinely required by the geometry: without
     /// it the offset direction is only known up to rotation about the tangent.
-    // TODO: `resource::direction` will provide a typed direction view.
+    // TODO(#97): `resource::direction` will provide a typed direction view.
     pub fn ref_direction_ref(&self) -> GeometryResult<EntityId> {
         self.slots
             .req_ref(offset_3d_slot::REF_DIRECTION, "RefDirection")

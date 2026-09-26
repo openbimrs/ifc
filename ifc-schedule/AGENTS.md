@@ -2,8 +2,7 @@
 
 Purpose: Borrowed work-plan, schedule, task, sequence, event, calendar, and recurrence projections.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
-roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`.
 
 ## Owns
 

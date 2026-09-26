@@ -21,8 +21,8 @@ existing issues before filing a duplicate.
 ## Contributing work
 
 Use the [Ready for contributors](https://github.com/orgs/openbimrs/projects/1/views/3)
-view. Each promoted implementation issue links to its stable `PLAN.md` task and
-required evidence. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow.
+view. Each promoted implementation issue states its scope and required
+evidence. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow.
 
 The project does not currently offer private implementation support or a
 response-time SLA. Security reports follow [SECURITY.md](SECURITY.md), not the
