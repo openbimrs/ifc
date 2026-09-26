@@ -102,6 +102,25 @@ lockstep -- is archived in the
   Before, it was refused as unmapped. The pairing follows the measure's
   definition (m^5) and the IFC4 annex E structural example.
 
+### Fixed
+
+- `exact_property` no longer reports `Absent` for a quantity in a same-named
+  `IfcElementQuantity` (#66). Quantity sets were skipped, so a checker
+  asking for `Qto_WallBaseQuantities.Length` (IDS treats quantities as
+  properties) got a confident "missing".
+  - Simple quantities now resolve exactly. `value_type` is the release's
+    declared measure of the value attribute (`IFCLENGTHMEASURE`), and
+    `unit_id` is the quantity's `IfcNamedUnit`.
+  - Complex, duplicated or malformed quantities are refused, as are a
+    same-named property set and quantity set.
+  - A predefined property set (`IfcDoorLiningProperties`, …) whose own
+    attribute carries the requested name is refused with
+    `UnsupportedDefinition` instead of being skipped into `Absent`.
+  - A quantity set with no `Name` is refused (`MalformedName`), because it
+    could be the set asked for.
+  - Results change from `Absent` to `Present` or an error only where the
+    old answer was unproven.
+
 ### ifc-schema
 
 ### Changed
