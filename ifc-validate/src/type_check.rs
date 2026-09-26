@@ -16,6 +16,7 @@ mod select;
 
 pub use defined::{check as check_value, Mismatch};
 pub use entity::{abstract_instances, attribute_types, unknown_entity_types};
+pub(crate) use scalar::describe_value;
 pub use scalar::Primitive;
 
 use ifc_model::Model;
