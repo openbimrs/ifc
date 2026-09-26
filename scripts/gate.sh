@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 # Complete standalone verification gate for openbimrs/ifc.
+#
+# Usage: scripts/gate.sh [section...]
+#
+# With no argument every section runs, in order: this is the full gate, and
+# the one to run before a merge. CI runs each section as its own parallel job
+# and passes only when all of them pass, so the union is identical:
+#
+#   lint      formatting, clippy, rustdoc, documentation and licensing gates
+#   test      workspace build and tests, architecture and context gates
+#   features  feature-column builds: kernel-free, compile, facade, browser WASM
+#   bindings  JavaScript, C and Python bindings against the real library
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -20,127 +31,158 @@ if [[ -z "${IFC_SPEC_SKIP_FETCH:-}" ]]; then
 fi
 export IFC_SPEC_REQUIRED=1
 
-cargo fmt --all -- --check
-cargo build --workspace --all-targets
-# The workspace test run doubles as the authored-coverage measurement: with
-# `--all-features` the `ifc-model/authored-dump` hook is compiled in, and
-# AUTHORED_DUMP makes every test process record the entity types it created.
-authored_dump="$(mktemp -d)"
-AUTHORED_DUMP="$authored_dump" cargo test --workspace --all-features
-python3 scripts/authored-coverage.py "$authored_dump" --json > "$authored_dump/report.json"
-committed=docs/.vitepress/data/authored-coverage.json
-if ! cmp -s "$authored_dump/report.json" "$committed"; then
-    if [[ -n "${UPDATE_AUTHORED_COVERAGE:-}" ]]; then
-        cp "$authored_dump/report.json" "$committed"
-        echo "updated $committed; regenerate the docs with: cargo run -p xtask -- docs"
+gate_lint() {
+    cargo fmt --all -- --check
+    cargo clippy --workspace --all-targets --all-features -- -D warnings
+    RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps
+
+    # Documentation gates. Every generated docs file and region (changelog,
+    # crate reference, install table, binding APIs, capability and coverage
+    # tables, facts.json) and every test-sourced snippet must match what
+    # `cargo run -p xtask -- docs` would write, so drift is a build failure
+    # rather than a silent inconsistency the reader has to notice. The same
+    # check rejects hand-written code fences, git dependencies, pinned TOML
+    # versions, typed crate counts and home paths on any page, and a
+    # publishable crate with no changelog.
+    cargo run --quiet -p xtask -- docs --check
+    python3 scripts/check-inline-html.py
+
+    # Build the docs site when its toolchain is installed. The checks above
+    # validate content; only the real build resolves every link, and a dead
+    # link fails Pages *after* a push. Catching it here keeps that failure
+    # local. Skipped when node_modules is absent so the gate still runs on a
+    # machine without the docs toolchain.
+    if [ -d node_modules ]; then
+      npm run docs:build --silent > /tmp/docs-build.log 2>&1 \
+        || { echo "docs build failed:"; tail -20 /tmp/docs-build.log; exit 1; }
+      echo "docs build ok"
     else
-        diff "$committed" "$authored_dump/report.json" || true
-        echo "authored coverage changed; rerun with UPDATE_AUTHORED_COVERAGE=1 scripts/gate.sh" >&2
-        rm -rf "$authored_dump"
-        exit 1
+      echo "docs build skipped (no node_modules)"
     fi
+
+    # Public API docs. Library crates enforce missing_docs through
+    # [workspace.lints]; this fails for one that neither opts in nor carries a
+    # measured budget, and for a budget that grew or shrank without being
+    # updated.
+    python3 scripts/check-missing-docs.py
+
+    # Licensing gate. The IFC schemas are CC BY-ND 4.0 and must never reach
+    # the published tree; this rejects XSD/PDF payloads and any `references/`
+    # or `schemas/` path. It ran only by hand until now, which is how a
+    # tracked `ifc-geometry/references/` survived undetected.
+    python3 scripts/check-leakage.py
+}
+
+gate_test() {
+    cargo build --workspace --all-targets
+    # The workspace test run doubles as the authored-coverage measurement:
+    # with `--all-features` the `ifc-model/authored-dump` hook is compiled in,
+    # and AUTHORED_DUMP makes every test process record the entity types it
+    # created.
+    authored_dump="$(mktemp -d)"
+    AUTHORED_DUMP="$authored_dump" cargo test --workspace --all-features
+    python3 scripts/authored-coverage.py "$authored_dump" --json > "$authored_dump/report.json"
+    committed=docs/.vitepress/data/authored-coverage.json
+    if ! cmp -s "$authored_dump/report.json" "$committed"; then
+        if [[ -n "${UPDATE_AUTHORED_COVERAGE:-}" ]]; then
+            cp "$authored_dump/report.json" "$committed"
+            echo "updated $committed; regenerate the docs with: cargo run -p xtask -- docs"
+        else
+            diff "$committed" "$authored_dump/report.json" || true
+            echo "authored coverage changed; rerun with UPDATE_AUTHORED_COVERAGE=1 scripts/gate.sh test" >&2
+            rm -rf "$authored_dump"
+            exit 1
+        fi
+    fi
+    rm -rf "$authored_dump"
+
+    cargo test -p ifc-model --test package_architecture
+    cargo test -p ifc-model --test progressive_context
+    cargo test -p ifc-model --test module_reachability
+    cargo test -p ifc-model --test no_monolithic_files
+    cargo test -p ifc-geometry --test declaration_manifest
+    cargo test -p ifc-geometry --test no_backend_dependency
+    cargo test -p ifc-geometry --test kernel_free_build
+}
+
+gate_features() {
+    # The kernel-free column. `--all-features` cannot see a boundary that
+    # only exists when a feature is OFF, so a 2D consumer's build is verified
+    # explicitly: it must compile, pass its tests, and link no geometry crate.
+    cargo build -p ifc-geometry --no-default-features
+    cargo test -p ifc-geometry --no-default-features
+    cargo clippy -p ifc-geometry --no-default-features --all-targets -- -D warnings
+    # Intra-doc links to feature-gated items resolve under `--all-features` and
+    # break here, so rustdoc gets its own kernel-free run.
+    RUSTDOCFLAGS="-D warnings" cargo doc -p ifc-geometry --no-default-features --no-deps
+
+    # The compile column. `--all-features` builds it but cannot prove it is
+    # OPTIONAL: a default-enabled feature edge would satisfy an --all-features
+    # run while shipping an execution provider to every consumer. The
+    # dependency-graph assertions live in kernel_free_build.rs; this runs the
+    # pairing corpus, which needs the feature explicitly.
+    cargo test -p ifc-geometry --features compile
+    cargo clippy -p ifc-geometry --features compile --all-targets -- -D warnings
+
+    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,geometry-select" "--features step,spatial,geometry-select" "--all-features"; do
+        # shellcheck disable=SC2086
+        cargo build -p openbim-ifc $features
+        # shellcheck disable=SC2086
+        cargo clippy -p openbim-ifc $features --all-targets -- -D warnings
+    done
+
+    # The unreachable-product lint spans two sibling domains, so it exists
+    # only when both are on. `--all-features` would hide a break in that exact
+    # pairing.
+    cargo test -p openbim-ifc --features step,spatial,geometry-select --test unreachable_corpus
+
+    # Browser WASM column (#34). The facade must build for
+    # wasm32-unknown-unknown with its default and widest pure-Rust feature
+    # sets; a native-only dependency (getrandom via ahash was the first)
+    # breaks every JS consumer silently.
+    for features in "" "--features schema,ifcxml,author,domains,spatial"; do
+        # shellcheck disable=SC2086
+        cargo build -p openbim-ifc --target wasm32-unknown-unknown $features
+    done
+}
+
+gate_bindings() {
+    # JavaScript bindings (#34, ADR 0013): build the wasm module with the
+    # pinned wasm-bindgen CLI and run the Node smoke and corpus suites against
+    # it, so the binding is proven to work from JS, not just to compile.
+    if [[ -n "${IFC_SKIP_JS:-}" ]]; then
+        echo "warning: IFC_SKIP_JS set; JS binding suites NOT run" >&2
+    else
+        openbim-ifc-wasm/scripts/build-node-pkg.sh
+    fi
+
+    # C ABI (#38, ADR 0013): the committed header must match the exports (the
+    # `header` test in the `test` section), and a C program compiled as strict
+    # C11 and as C++17 must parse, read, edit, write and re-parse through the
+    # real library.
+    openbim-ifc-capi/scripts/check-c.sh
+
+    # Python (#39, ADR 0013): build the abi3 wheel with maturin, install it
+    # into a throwaway uv venv, and run the Python smoke and corpus suites
+    # against it.
+    if [[ -n "${IFC_SKIP_PYTHON:-}" ]]; then
+        echo "warning: IFC_SKIP_PYTHON set; Python binding suites NOT run" >&2
+    else
+        openbim-ifc-py/scripts/check-python.sh
+    fi
+}
+
+sections=("$@")
+if [[ ${#sections[@]} -eq 0 ]]; then
+    sections=(lint test features bindings)
 fi
-rm -rf "$authored_dump"
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps
-
-cargo test -p ifc-model --test package_architecture
-cargo test -p ifc-model --test progressive_context
-cargo test -p ifc-model --test module_reachability
-cargo test -p ifc-model --test no_monolithic_files
-cargo test -p ifc-geometry --test declaration_manifest
-cargo test -p ifc-geometry --test no_backend_dependency
-cargo test -p ifc-geometry --test kernel_free_build
-
-# The kernel-free column. `--all-features` above cannot see a boundary that
-# only exists when a feature is OFF, so a 2D consumer's build is verified
-# explicitly: it must compile, pass its tests, and link no geometry crate.
-cargo build -p ifc-geometry --no-default-features
-cargo test -p ifc-geometry --no-default-features
-cargo clippy -p ifc-geometry --no-default-features --all-targets -- -D warnings
-# Intra-doc links to feature-gated items resolve under `--all-features` and
-# break here, so rustdoc gets its own kernel-free run.
-RUSTDOCFLAGS="-D warnings" cargo doc -p ifc-geometry --no-default-features --no-deps
-
-# The compile column. `--all-features` builds it but cannot prove it is OPTIONAL:
-# a default-enabled feature edge would satisfy an --all-features run while
-# shipping an execution provider to every consumer. The dependency-graph
-# assertions live in kernel_free_build.rs; this runs the pairing corpus, which
-# needs the feature explicitly.
-cargo test -p ifc-geometry --features compile
-cargo clippy -p ifc-geometry --features compile --all-targets -- -D warnings
-
-for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,geometry-select" "--features step,spatial,geometry-select" "--all-features"; do
-    # shellcheck disable=SC2086
-    cargo build -p openbim-ifc $features
-    # shellcheck disable=SC2086
-    cargo clippy -p openbim-ifc $features --all-targets -- -D warnings
+for section in "${sections[@]}"; do
+    case "$section" in
+        lint | test | features | bindings) ;;
+        *) echo "error: unknown gate section '$section' (lint, test, features, bindings)" >&2; exit 2 ;;
+    esac
 done
-
-# The unreachable-product lint spans two sibling domains, so it exists only
-# when both are on. `--all-features` would hide a break in that exact pairing.
-cargo test -p openbim-ifc --features step,spatial,geometry-select --test unreachable_corpus
-
-# Browser WASM column (#34). The facade must build for wasm32-unknown-unknown
-# with its default and widest pure-Rust feature sets; a native-only dependency
-# (getrandom via ahash was the first) breaks every JS consumer silently.
-for features in "" "--features schema,ifcxml,author,domains,spatial"; do
-    # shellcheck disable=SC2086
-    cargo build -p openbim-ifc --target wasm32-unknown-unknown $features
+for section in "${sections[@]}"; do
+    echo "== gate: $section"
+    "gate_$section"
 done
-
-# JavaScript bindings (#34, ADR 0013): build the wasm module with the pinned
-# wasm-bindgen CLI and run the Node smoke and corpus suites against it, so
-# the binding is proven to work from JS, not just to compile.
-if [[ -n "${IFC_SKIP_JS:-}" ]]; then
-    echo "warning: IFC_SKIP_JS set; JS binding suites NOT run" >&2
-else
-    openbim-ifc-wasm/scripts/build-node-pkg.sh
-fi
-
-# C ABI (#38, ADR 0013): the committed header must match the exports (the
-# `header` test, run above), and a C program compiled as strict C11 and as
-# C++17 must parse, read, edit, write and re-parse through the real library.
-openbim-ifc-capi/scripts/check-c.sh
-
-# Python (#39, ADR 0013): build the abi3 wheel with maturin, install it into
-# a throwaway uv venv, and run the Python smoke and corpus suites against it.
-if [[ -n "${IFC_SKIP_PYTHON:-}" ]]; then
-    echo "warning: IFC_SKIP_PYTHON set; Python binding suites NOT run" >&2
-else
-    openbim-ifc-py/scripts/check-python.sh
-fi
-
-# Documentation gates. Every generated docs file and region (changelog, crate
-# reference, install table, binding APIs, capability and coverage tables,
-# facts.json) and every test-sourced snippet must match what
-# `cargo run -p xtask -- docs` would write, so drift is a build failure rather
-# than a silent inconsistency the reader has to notice. The same check rejects
-# hand-written code fences, git dependencies, pinned TOML versions, typed crate
-# counts and home paths on any page, and a publishable crate with no changelog.
-cargo run --quiet -p xtask -- docs --check
-python3 scripts/check-inline-html.py
-
-# Build the docs site when its toolchain is installed. The checks above
-# validate content; only the real build resolves every link, and a dead
-# link fails Pages *after* a push. Catching it here keeps that failure
-# local. Skipped when node_modules is absent so the gate still runs on a
-# machine without the docs toolchain.
-if [ -d node_modules ]; then
-  npm run docs:build --silent > /tmp/docs-build.log 2>&1 \
-    || { echo "docs build failed:"; tail -20 /tmp/docs-build.log; exit 1; }
-  echo "docs build ok"
-else
-  echo "docs build skipped (no node_modules)"
-fi
-
-# Public API docs. Library crates enforce missing_docs through
-# [workspace.lints]; this fails for one that neither opts in nor carries a
-# measured budget, and for a budget that grew or shrank without being updated.
-python3 scripts/check-missing-docs.py
-
-# Licensing gate. The IFC schemas are CC BY-ND 4.0 and must never reach the
-# published tree; this rejects XSD/PDF payloads and any `references/` or
-# `schemas/` path. It ran only by hand until now, which is how a tracked
-# `ifc-geometry/references/` survived undetected.
-python3 scripts/check-leakage.py

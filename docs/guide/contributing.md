@@ -27,6 +27,11 @@ It runs formatting, a workspace build of all targets, the full test suite with
 all features, clippy with `-D warnings`, and rustdoc with `-D warnings`. It then
 runs the architecture gates and a feature matrix.
 
+The gate has four sections, `lint`, `test`, `features` and `bindings`.
+`scripts/gate.sh test` runs one section; no argument runs them all. CI runs
+each section as its own job, in parallel, and the `Standalone IFC gate` check
+passes only when all four do.
+
 ::: danger Judge by exit code
 The gate decides on **exit codes**. Never summarise a run by piping through
 `grep` or `awk` — a pipe hides the exit status and turns a failing suite into a
@@ -202,8 +207,9 @@ python3 scripts/release-crate.py ifc-geometry --publish
 
 This refuses a dirty tree, then tags `ifc-geometry-v0.2.1` and pushes
 the tag. The tag triggers `.github/workflows/release.yml`, which checks
-the tag is on `main`, runs the full gate on the tagged commit, and
-publishes to every registry the crate targets:
+the tag is on `main`, waits for CI on the tagged commit and requires it to
+have passed, and publishes to every registry the crate targets. The gate
+runs once, in CI; the release does not run it again:
 
 | Crate | Registries |
 | --- | --- |
