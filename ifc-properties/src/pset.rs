@@ -40,8 +40,11 @@ pub use reinforcement::{
     add_reinforcement_definition_properties, add_section_properties,
     add_section_reinforcement_properties, ReinforcementBarDraft, SectionReinforcementDraft,
 };
-pub use scalar::{property, Property, PropertyValue};
-pub use set::{property_set, property_sets_by_object, AttachedSets, Attachment, PropertySet};
+pub use scalar::{property, property_checked, Property, PropertyValue};
+pub use set::{
+    property_set, property_set_checked, property_sets_by_object, AttachedSets, Attachment,
+    PropertySet,
+};
 pub use template_authoring::{
     add_property_set_template, attach_template, attach_type, defines_by_template_slot,
     defines_by_type_slot, pset_template_slot,

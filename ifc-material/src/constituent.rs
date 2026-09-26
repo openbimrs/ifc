@@ -9,4 +9,4 @@ mod definition;
 mod set;
 
 pub use definition::MaterialConstituent;
-pub use set::MaterialConstituentSet;
+pub use set::{ConstituentFractionDiagnostic, MaterialConstituentSet};

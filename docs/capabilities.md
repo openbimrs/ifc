@@ -32,13 +32,13 @@ code.
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
 | `ifc-geometry` | 40,343 | 132 | 3 | 67 | <span class="status-partial">Partial</span> |
+| `ifc-properties` | 7,602 | 43 | 11 | 15 | <span class="status-implemented">Implemented</span> |
 | `ifc-style` | 7,302 | 46 | 0 | 15 | <span class="status-implemented">Implemented</span> |
-| `ifc-properties` | 7,248 | 42 | 13 | 14 | <span class="status-implemented">Implemented</span> |
 | `ifc-structural` | 4,886 | 36 | 14 | 18 | <span class="status-implemented">Implemented</span> |
 | `ifc-alignment` | 4,577 | 37 | 12 | 11 | <span class="status-partial">Partial</span> |
 | `ifc-resource` | 3,720 | 31 | 9 | 14 | <span class="status-partial">Partial</span> |
 | `ifc-element-type` | 3,435 | 10 | 0 | 4 | <span class="status-implemented">Implemented</span> |
-| `ifc-material` | 3,278 | 25 | 1 | 12 | <span class="status-implemented">Implemented</span> |
+| `ifc-material` | 3,387 | 25 | 1 | 13 | <span class="status-implemented">Implemented</span> |
 | `ifc-template-catalog` | 3,104 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-classification` | 2,973 | 22 | 4 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-spatial` | 2,863 | 16 | 0 | 17 | <span class="status-implemented">Implemented</span> |
