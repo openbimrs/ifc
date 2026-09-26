@@ -6,29 +6,32 @@ This scenario reads an IFC structural-analysis exchange, inventories analytical 
 
 Enable the facade feature:
 
-```toml
-openbim-ifc = { version = "0.1", features = ["structural"] }
+```bash
+cargo add openbim-ifc --features structural
 ```
 
 Then build a schema-resolved borrowed view:
 
-```rust
-use ifc::{Codec, StepCodec};
-use ifc::structural::StructuralView;
+<!-- SNIPPET:structural-inventory -->
 
-let model = StepCodec.read_bytes(&std::fs::read("analysis.ifc")?)?;
+```rust
+use ifc::structural::StructuralView; // feature = "structural"
+use ifc::{Codec, StepCodec};
+
+let model = StepCodec.read_bytes(&std::fs::read(&path)?)?;
 let structural = StructuralView::for_model(&model)?;
 
-for id in model.ids_of_type("IFCSTRUCTURALANALYSISMODEL") {
-    let analysis = structural.analysis_model(*id)?;
-    println!("{:?}: {:?}", analysis.id(), analysis.name()?);
+for &id in model.ids_of_type("IFCSTRUCTURALANALYSISMODEL") {
+    let analysis = structural.analysis_model(id)?;
+    println!("{}: {:?}", analysis.id(), analysis.name()?);
 
-    for item in structural.analysis_items(*id)? {
-        println!("assigned analytical object: {:?}", item);
+    for item in structural.analysis_items(id)? {
+        println!("assigned analytical object: {item:?}");
     }
 }
-# Ok::<(), Box<dyn std::error::Error>>(())
 ```
+
+<!-- /SNIPPET -->
 
 `for_model` accepts exactly one canonical IFC2X3, IFC4, or IFC4X3 schema token. Unknown, missing, or ambiguous headers are errors rather than an IFC4 fallback.
 

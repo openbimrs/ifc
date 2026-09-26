@@ -3,8 +3,8 @@
 Enable the facade's `resource` feature to inspect and author the bounded
 IFC4/IFC4X3 construction-resource slice:
 
-```toml
-openbim-ifc = { git = "https://github.com/openbimrs/ifc.git", features = ["resource"] }
+```bash
+cargo add openbim-ifc --features resource
 ```
 
 The API selects IFC4 or IFC4X3 from `Model::header().schema`; IFC2X3, missing,

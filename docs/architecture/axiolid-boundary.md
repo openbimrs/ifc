@@ -81,14 +81,24 @@ Verified at the revision pinned by this workspace:
 
 ## Compilation (opt-in)
 
-`--features compile` connects lowering to evaluation:
+The `compile` feature of `ifc-geometry` connects lowering to evaluation.
+`compile` alone is the seam: it compiles against a backend you pass to
+`compile_product_mesh_with`. `compile-reference-backend` adds Axiolid's
+reference backend and the convenience call below:
+
+<!-- SNIPPET:compile-product-mesh -->
 
 ```rust
 use axiolid_core::Tolerance;
-use ifc_geometry::compile::compile_product_mesh;
+use ifc_geometry::compile::compile_product_mesh; // feature = "compile-reference-backend"
 
 let mesh = compile_product_mesh(&model, product, Tolerance::MILLIMETRE)?;
 ```
+
+<!-- /SNIPPET -->
+
+The facade does not re-export compilation yet: depend on `ifc-geometry`
+directly to use it.
 
 `Ok(None)` means the product carries no body representation, which is ordinary.
 A product that cannot be evaluated returns `GeometryError::CompilationRefused`
@@ -117,14 +127,24 @@ fewer than three distinct edges, e.g. `(A, A, B, B)`, encloses no area, and
 by default it refuses the whole brep, naming the loop. A consumer that would
 rather keep the element opts in per session:
 
+<!-- SNIPPET:face-policy -->
+
 ```rust
 use ifc_geometry::lower::{DegenerateFacePolicy, LoweringSession};
 
-let session = LoweringSession::new(&model, &scale)
-    .with_face_policy(DegenerateFacePolicy::DropAndReport);
-// ... lower, then `session.finish(root)?`
-// lowered.provenance.dropped_faces() names every face left out.
+let mut session =
+    LoweringSession::new(&model, &scale).with_face_policy(DegenerateFacePolicy::DropAndReport);
+if let Some(root) =
+    lower_product_representation(&mut session, product, RepresentationPurpose::Body)?
+{
+    let lowered = session.finish(root)?;
+    for face in lowered.provenance.dropped_faces() {
+        eprintln!("dropped collapsed face {face}");
+    }
+}
 ```
+
+<!-- /SNIPPET -->
 
 A face is dropped only when its outer (or only) bound collapses, so no area is
 removed; a collapsed hole in a face with real area is still refused. The drop
@@ -150,14 +170,17 @@ conversion twice.
 
 ## The pin
 
-The workspace pins Axiolid crates to an exact git revision rather than a
-version range, so geometry behaviour is reproducible across builds:
+Every Axiolid crate is a published crates.io release, named once in the root
+`Cargo.toml` and resolved exactly by the committed `Cargo.lock`, so geometry
+behaviour is reproducible across builds. `ifc-model/tests/package_architecture.rs`
+(`the_kernel_is_consumed_as_a_published_release`) rejects a git or path
+dependency on the kernel; the
+[contributing guide](/guide/contributing#developing-against-an-unreleased-axiolid)
+shows how to develop against an unreleased one without committing either.
 
-```toml
-axiolid-core = { git = "https://github.com/axiolid/kernel.git", tag = "v0.1.8" }
-```
-
-Production lowering pins only representation-level crates — `core`, `mesh`,
-`model`, `primitive`, `profile`, `curve`, `surface`, and `topology`.
+Default lowering links only representation-level crates: `core`, `mesh`,
+`model`, `primitive`, `profile`, `curve`, `surface`, and `topology`. The opt-in
+`compile` feature adds the compilation contracts, and
+`compile-reference-backend` the reference implementation.
 `axiolid-reference` is a dev-only oracle used by import regressions; it does not
 enter the published adapter's production dependency graph.

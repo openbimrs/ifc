@@ -144,3 +144,24 @@ fn resource_domains_join_by_entity_id_before_and_after_step_round_trip() {
     let decoded = StepCodec.read_bytes(&bytes).unwrap();
     assert_joined(&decoded, ids);
 }
+
+/// `docs/guide/approvals-constraints.md` -- three domains, one graph.
+#[test]
+fn documented_domains_join_on_one_graph() -> Result<(), Box<dyn std::error::Error>> {
+    let (model, [_, approval_id, metric_id, evidence_relationship_id, _]) = author_resource_graph();
+    // docs:snippet domains-one-graph
+    use ifc::approval::ApprovalView;
+    use ifc::classification::ClassificationView;
+    use ifc::constraint::ConstraintView;
+
+    let approval = ApprovalView::new(&model).approval(approval_id)?;
+    let metric = ConstraintView::new(&model).metric(metric_id)?;
+    let evidence = ClassificationView::new(&model)
+        .external_reference_relationship(evidence_relationship_id)?;
+
+    assert_eq!(approval.id(), approval_id);
+    assert_eq!(metric.id(), metric_id);
+    assert_eq!(evidence.related_resources()?, vec![approval_id]);
+    // docs:end
+    Ok(())
+}
