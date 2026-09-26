@@ -392,11 +392,33 @@ fn absent_type_sets_and_quantities_preserve_exact_absence() {
             ],
         ),
     );
+    // A well-formed quantity set of another name is searched (#66) and does
+    // not disturb a proven absence.
+    m.insert(
+        EntityId(22),
+        Entity::new(
+            "IFCQUANTITYLENGTH",
+            vec![
+                Value::Text("Length".into()),
+                Value::Null,
+                Value::Null,
+                Value::Real(1.0),
+                Value::Null,
+            ],
+        ),
+    );
     m.insert(
         EntityId(20),
         Entity::new(
             "IFCELEMENTQUANTITY",
-            vec![Value::Null; ifc_schema::ifc4().attributes("IFCELEMENTQUANTITY").len()],
+            vec![
+                Value::Text("0YvctVUKr0kugbFTf53O20".into()),
+                Value::Null,
+                Value::Text("Qto_Test".into()),
+                Value::Null,
+                Value::Null,
+                Value::List(vec![Value::Ref(EntityId(22))]),
+            ],
         ),
     );
     occurrence(&mut m, 21, 20);
@@ -405,6 +427,23 @@ fn absent_type_sets_and_quantities_preserve_exact_absence() {
         exact_property(&m, EntityId(1), Some("Pset_Test"), "Missing").unwrap(),
         ExactResolution::Absent
     );
+
+    // A quantity set with no Name could be the set asked for, so absence is
+    // not proven: it is refused, not skipped.
+    m.insert(
+        EntityId(20),
+        Entity::new(
+            "IFCELEMENTQUANTITY",
+            vec![Value::Null; ifc_schema::ifc4().attributes("IFCELEMENTQUANTITY").len()],
+        ),
+    );
+    assert!(matches!(
+        exact_property(&m, EntityId(1), Some("Pset_Test"), "Missing"),
+        Err(ExactPropertyError::MalformedName {
+            entity: EntityId(20),
+            ..
+        })
+    ));
 }
 
 #[test]

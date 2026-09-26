@@ -49,6 +49,10 @@ owner and expose a public symbol only through an intentional parent re-export.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [x] `PROP-QUERY` - resolve occurrence/type property assignment with precedence made explicit
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+  - #66: `exact_property` resolves simple quantities in `IfcElementQuantity`
+    (`exact/quantity.rs`). It refuses predefined sets that could hold the
+    name instead of claiming `Absent`. Proof: `tests/exact_quantities.rs`
+    (8 tests, IFC4 and IFC2X3). 7/7 mutants killed.
 - [x] `PROP-EDIT` - write/update quantities transactionally after MODEL-MUT
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [x] `PROP-CHECK` - accept externally computed measurements and compare without depending on geometry

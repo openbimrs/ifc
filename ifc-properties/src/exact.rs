@@ -6,6 +6,7 @@
 //! declares; nothing is aliased across releases.
 
 mod measure;
+mod quantity;
 mod refs;
 mod release;
 mod unit;
@@ -16,6 +17,7 @@ use std::{collections::BTreeMap, fmt, sync::Arc};
 use ifc_model::{EntityId, Model};
 use ifc_schema::SchemaVersion;
 
+use quantity::{find_quantity, predefined_may_hold};
 use refs::{
     nonempty_refs_at, optional_refs_at, property_definition_refs_at, ref_at, refs_at, require_ref,
     text_at,
@@ -72,17 +74,23 @@ pub enum ExactValue {
 pub struct ExactProperty {
     /// Whether the value came from the occurrence or was inherited from its type.
     pub source: ExactSource,
-    /// The owning `IfcPropertySet.Name`.
+    /// The owning `IfcPropertySet.Name` or `IfcElementQuantity.Name`.
     pub property_set: Arc<str>,
-    /// Entity id of the `IfcPropertySet`.
+    /// Entity id of the `IfcPropertySet` or `IfcElementQuantity`.
     pub set_id: EntityId,
-    /// Entity id of the `IfcPropertySingleValue`.
+    /// Entity id of the `IfcPropertySingleValue`, or of the simple
+    /// `IfcPhysicalQuantity` (e.g. `IfcQuantityLength`).
     pub property_id: EntityId,
     /// Declared IFC value type (for example `IFCINTEGER` or `IFCLENGTHMEASURE`).
+    ///
+    /// For a quantity it is the declared type of its value attribute in the
+    /// bound release (`LengthValue : IfcLengthMeasure` gives
+    /// `IFCLENGTHMEASURE`), since a quantity stores a bare number.
     pub value_type: Option<Arc<str>>,
-    /// Explicit `IfcPropertySingleValue.Unit`, if stated.
+    /// Explicit `IfcPropertySingleValue.Unit` or
+    /// `IfcPhysicalSimpleQuantity.Unit`, if stated.
     pub unit_id: Option<EntityId>,
-    /// The resolved `NominalValue`.
+    /// The resolved `NominalValue`, or the quantity's value.
     pub value: ExactValue,
 }
 
@@ -92,8 +100,14 @@ pub struct ExactProperty {
 pub enum ExactResolution {
     /// The property was found exactly once across occurrence and inherited sets.
     Present(ExactProperty),
-    /// No occurrence or inherited property set carried a matching property;
-    /// this is a proven absence, not a lookup failure.
+    /// No occurrence or inherited property set or quantity set carried a
+    /// matching property or quantity; this is a proven absence, not a lookup
+    /// failure.
+    ///
+    /// A predefined property set (`IfcDoorLiningProperties` and the like)
+    /// whose own attribute has the requested name is refused with
+    /// [`ExactPropertyError::UnsupportedDefinition`], never skipped into an
+    /// `Absent` (#66).
     Absent,
 }
 
@@ -206,7 +220,10 @@ pub enum ExactPropertyError {
         attribute: &'static str,
     },
     /// A `RelatingPropertyDefinition` reference resolves to an entity that
-    /// is not an `IfcPropertySetDefinition`.
+    /// is not an `IfcPropertySetDefinition`, or to a predefined property set
+    /// whose own attribute carries the requested name: its value lives in an
+    /// entity attribute this resolver does not read, so absence cannot be
+    /// proven.
     UnsupportedDefinition {
         /// The rejected entity.
         entity: EntityId,
@@ -308,13 +325,21 @@ pub fn exact_schema(model: &Model) -> Result<SchemaVersion, ExactPropertyError> 
 
 impl std::error::Error for ExactPropertyError {}
 
-/// Resolve an `IfcPropertySingleValue` by exact set/property name.
+/// Resolve an `IfcPropertySingleValue` or simple quantity by exact set and
+/// property name.
 ///
 /// The model is resolved against the single release its `FILE_SCHEMA`
 /// declares, IFC2X3 or IFC4 (see [`exact_schema`]); every domain, select and
 /// slot count is that release's. With `set_name == None`, all assigned sets
 /// are searched. Occurrence values override matching inherited values at
 /// property level.
+///
+/// Quantity sets are searched like property sets, as buildingSMART IDS
+/// treats a quantity as a property: `Qto_WallBaseQuantities.Length` resolves
+/// to the `IfcQuantityLength` of that name. A property set and a quantity set
+/// of the same matching name on one source are ambiguous and refused.
+/// WHERE rules such as `LengthValue >= 0` are not evaluated; the value is
+/// the file's.
 ///
 /// # Errors
 ///
@@ -521,11 +546,16 @@ fn find_property(
                 to: set_id,
             })?;
         release.require_exact_slots(set_id, set)?;
-        if !set.is_type("IFCPROPERTYSET") && schema.is_a(&set.type_name, "IFCPROPERTYSETDEFINITION")
-        {
-            continue;
-        }
-        if !set.is_type("IFCPROPERTYSET") {
+        let is_quantity_set = schema.is_a(&set.type_name, "IFCELEMENTQUANTITY");
+        if !set.is_type("IFCPROPERTYSET") && !is_quantity_set {
+            // A predefined set keeps its values in attributes, which this
+            // resolver does not read. Skipping it is only honest when none
+            // of those attributes could be the property asked for.
+            if schema.is_a(&set.type_name, "IFCPROPERTYSETDEFINITION")
+                && !predefined_may_hold(release, set, wanted_set, wanted_property)
+            {
+                continue;
+            }
             return Err(ExactPropertyError::UnsupportedDefinition {
                 entity: set_id,
                 type_name: set.type_name.clone(),
@@ -543,6 +573,29 @@ fn find_property(
                 first,
                 second: set_id,
             });
+        }
+        if is_quantity_set {
+            if let Some((quantity_id, resolved)) =
+                find_quantity(model, release, set_id, set, wanted_property)?
+            {
+                let candidate = ExactProperty {
+                    source,
+                    property_set: Arc::from(set_name),
+                    set_id,
+                    property_id: quantity_id,
+                    value_type: resolved.value_type,
+                    unit_id: resolved.unit_id,
+                    value: resolved.value,
+                };
+                if let Some(first) = result.replace(candidate) {
+                    return Err(ExactPropertyError::DuplicateMatchingSets {
+                        source,
+                        first: first.set_id,
+                        second: set_id,
+                    });
+                }
+            }
+            continue;
         }
         let mut matching = None;
         for property_id in nonempty_refs_at(set_id, set.attributes.get(4), "HasProperties")? {
