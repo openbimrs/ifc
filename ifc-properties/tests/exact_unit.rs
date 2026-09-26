@@ -548,3 +548,22 @@ fn the_permissive_view_scales_powers_and_does_not_invent_a_prefix() {
         other => panic!("expected an SI unit, got {other:?}"),
     }
 }
+
+/// Mirrors the IFC4 annex E `structural-curve-member` unit assignment.
+#[test]
+fn a_sectional_area_integral_uses_the_section_area_integral_unit() {
+    for schema in ["IFC4", "IFC2X3"] {
+        let model = parse(
+            schema,
+            "#1=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);
+#2=IFCDERIVEDUNITELEMENT(#1,5);
+#3=IFCDERIVEDUNIT((#2),.SECTIONAREAINTEGRALUNIT.,$);
+#4=IFCUNITASSIGNMENT((#1,#3));
+#5=IFCPROJECT('p',$,'P',$,$,$,$,$,#4);",
+        );
+        let unit = resolved(exact_unit(&model, "IFCSECTIONALAREAINTEGRALMEASURE", None));
+        assert_eq!(unit.unit, Some(id(3)), "{schema}");
+        assert_eq!(unit.dimensions, [5, 0, 0, 0, 0, 0, 0]);
+        assert_scale(&unit, 1e-15);
+    }
+}

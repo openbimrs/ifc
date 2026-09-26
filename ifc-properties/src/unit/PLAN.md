@@ -27,10 +27,24 @@ Follow `AGENTS.md`; claim one task and record blockers/decisions beneath it.
     `Budget::DEFAULT.max_depth`.
 - [ ] `UNIT-OFFSET` - apply `ConversionOffset` once buildingSMART resolves
   the direction contradiction above.
-- [ ] `UNIT-MEASURE` - measures refused as unmapped because their unit enum is
-  spelt differently (`IfcThermalConductivityMeasure`) or they are not a
-  linear scalar (monetary, logarithmic, compound angle). Each needs its own
-  cited correspondence.
+  - Blocked on buildingSMART/IFC4.x-development#1193. That issue asks which
+    reading is normative; IFC4.x-development#7 changed the factor but left the
+    offset question open.
+- [x] `UNIT-MEASURE` - audit the measures refused as unmapped
+  - Mapped: `IfcSectionalAreaIntegralMeasure` → `SECTIONAREAINTEGRALUNIT`. The
+    evidence is its type definition (m^5) and the IFC4 annex E
+    `structural-curve-member` assignment of length^5.
+  - Still refused, each for a stated reason:
+    - `IfcThermalConductivityMeasure`: no release documents a unit enum for
+      it, and `THERMALCONDUCTANCEUNIT` is only described as "Thermal
+      Conductance unit".
+    - `IfcMonetaryMeasure`: a currency, not an SI scale.
+    - `IfcDescriptiveMeasure` and `IfcContextDependentMeasure`: they carry no
+      unit semantics.
+    - `IfcCompoundPlaneAngleMeasure`: a list.
+    - The dB and pH measures: logarithmic.
+  - Proof: `tests/exact_unit.rs::a_sectional_area_integral_uses_the_section_area_integral_unit`
+    under IFC4 and IFC2X3.
 
 ## Completion log
 

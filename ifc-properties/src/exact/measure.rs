@@ -13,9 +13,10 @@
 //!    `IfcPositiveLengthMeasure = IfcLengthMeasure` maps to `LENGTHUNIT` and
 //!    `IfcNormalisedRatioMeasure = IfcRatioMeasure` is dimensionless.
 //!
-//! Anything left over is refused, never guessed. That includes names whose
-//! unit enum is spelt differently (`IfcThermalConductivityMeasure` has no
-//! `THERMALCONDUCTIVITYUNIT`), non-scalar measures such as
+//! A measure whose unit enum is spelt differently is mapped only through
+//! `ALIASES`, which cites its evidence. Anything left over is refused, never
+//! guessed: `IfcThermalConductivityMeasure` (no documented unit enum),
+//! non-scalar measures such as
 //! `IfcCompoundPlaneAngleMeasure`, and the logarithmic ones below, for which
 //! `value * scale` is meaningless.
 
@@ -30,6 +31,19 @@ use super::value::select_accepts_type;
 
 /// Measures that carry no unit by definition.
 const DIMENSIONLESS: [&str; 3] = ["IFCCOUNTMEASURE", "IFCRATIOMEASURE", "IFCNUMERICMEASURE"];
+
+/// Measures whose unit enum is spelt differently from the measure, each with
+/// the evidence for the pairing. The enum must still be declared by the
+/// bound release.
+///
+/// - `IfcSectionalAreaIntegralMeasure` is "usually measured in m^5" (IFC4
+///   type definition), and the IFC4 annex E `structural-curve-member` example
+///   assigns `SECTIONAREAINTEGRALUNIT` as length to the fifth power.
+///
+/// `IfcThermalConductivityMeasure` (W/(m·K)) is deliberately absent: no IFC
+/// release documents `THERMALCONDUCTANCEUNIT` as its unit, and physical
+/// conductance is a different quantity.
+const ALIASES: [(&str, &str); 1] = [("IFCSECTIONALAREAINTEGRALMEASURE", "SECTIONAREAINTEGRALUNIT")];
 
 /// Decibel and pH measures: a derived unit for them has no linear scale.
 const LOGARITHMIC: [&str; 3] = [
@@ -90,6 +104,11 @@ pub(super) fn measure_unit(
     while seen.insert(current.clone()) {
         if DIMENSIONLESS.contains(&current.as_str()) {
             return Ok(MeasureUnit::Dimensionless);
+        }
+        if let Some((_, unit_type)) = ALIASES.iter().find(|(measure, _)| *measure == current) {
+            if derived.contains(*unit_type) {
+                return Ok(MeasureUnit::Derived((*unit_type).into()));
+            }
         }
         if let Some(stem) = current
             .strip_prefix("IFC")
