@@ -86,7 +86,7 @@ pub(crate) fn run(check: bool) -> Result<(), String> {
 /// issue, `Some(Some(n))` for one tracked by issue `n`.
 fn marker(line: &str) -> Option<Option<u32>> {
     let has_word = words().iter().any(|word| contains_word(line, word));
-    let has_macro = macros().iter().any(|m| line.contains(m.as_str()));
+    let has_macro = macros().iter().any(|m| contains_macro(line, m));
     if !has_word && !has_macro {
         return None;
     }
@@ -102,6 +102,16 @@ fn contains_word(line: &str, word: &str) -> bool {
         let after = line[at + word.len()..].chars().next();
         !before.is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '`')
             && !after.is_some_and(|c| c.is_alphanumeric() || c == '_')
+    })
+}
+
+/// Whether the macro call `call` (`name!(`) occurs in `line` on its own. As
+/// for words, one opening a code span quotes the convention, and one ending
+/// a longer name (`my_todo!(`) is a different macro.
+fn contains_macro(line: &str, call: &str) -> bool {
+    line.match_indices(call).any(|(at, _)| {
+        let before = line[..at].chars().next_back();
+        !before.is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '`')
     })
 }
 
@@ -138,5 +148,9 @@ mod tests {
         assert_eq!(marker("IFCTODOLIST"), None);
         // Quoting the convention is not a marker.
         assert_eq!(marker(&format!("write `{todo}(#N)` instead")), None);
+        let unfinished = macros()[0].clone();
+        assert_eq!(marker(&format!("the `{unfinished})` macro")), None);
+        assert_eq!(marker(&format!("my_{unfinished})")), None);
+        assert_eq!(marker(&format!("    {unfinished})")), Some(None));
     }
 }
