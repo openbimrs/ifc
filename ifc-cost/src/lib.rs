@@ -70,8 +70,8 @@ pub use mutation::{
 };
 pub use quantity::CostQuantity;
 pub use relation::{
-    children_of, controlled_by, controls_of, descendants_of, parent_of, parents_of,
-    CostRelationError, MAX_NESTING_DEPTH,
+    children_of, controlled_by, controls_of, descendants_of, nesting_anomalies, parent_of,
+    parents_of, CostAnomaly, CostRelationError, MAX_NESTING_DEPTH,
 };
 pub use rollup::{consistency, direct_total, grand_total, rolled_up_total, roots, Consistency};
 pub use schedule::CostSchedule;
