@@ -60,6 +60,9 @@ axiolid-primitive = { version = "0.3.0" }
 axiolid-profile = { version = "0.3.0" }
 axiolid-surface = { version = "0.3.0" }
 axiolid-reference = { version = "0.3.0" }
+# Dev-only: the worked example indexing product bounds (#36). The index is
+# Axiolid's; this repository only produces the boxes it consumes.
+axiolid-spatial = { version = "0.3.0" }
 axiolid-curve = { version = "0.3.0" }
 axiolid-evaluate = { version = "0.3.0" }
 axiolid-curve-evaluate-contract = { version = "0.3.0" }

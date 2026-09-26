@@ -22,6 +22,25 @@ lockstep -- is archived in the
 
 ### ifc-geometry
 
+### Added
+
+- `compile::product_bounds` / `product_bounds_with` return a product's
+  world-space axis-aligned bounding box (#36). The body is resolved and placed
+  the same way as for `compile_product_mesh`, and the result is `Ok(None)` in
+  the same case (no body).
+  - When every leaf of the lowered graph is a mesh or an authored bounding
+    box, the box is read off the exact graph without tessellating
+    (`BoundsSource::Exact`).
+  - Otherwise it comes from the compiled mesh (`BoundsSource::Tessellated`).
+    That box is exact for planar geometry and can fall short of a curved
+    surface by up to the tolerance.
+  - A body with no finite extent is `GeometryError::Degenerate`, never an
+    empty box.
+- `examples/product_bvh.rs` indexes every product of a file in
+  `axiolid_spatial::Bvh` and prints the broad-phase overlaps.
+  `axiolid-spatial` is a dev-dependency only: the index stays Axiolid's, and
+  this crate only produces the boxes.
+
 ### Changed
 
 - Requires `axiolid-mesh-compile` 0.3.3 and `axiolid-contracts` 0.3.1.

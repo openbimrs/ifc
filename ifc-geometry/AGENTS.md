@@ -15,7 +15,10 @@ value/representation crates; never an algorithm, dispatch, or backend crate.
 One sanctioned exception (ADR 0004 amendment): the mesh-compile contracts and
 the reference provider, optional and reachable only through the non-default
 `compile` / `compile-reference-backend` features. Only `src/compile.rs` may
-name them. Adding a second execution dependency, or letting a default feature
+name them; its child `compile/bounds.rs` reads the lowered graph and names
+no execution crate. Spatial indexing is Axiolid's (`axiolid-spatial`, a
+dev-dependency for the example only): this crate produces product boxes,
+never an index. Adding a second execution dependency, or letting a default feature
 reach these, fails `ifc-model/tests/package_architecture.rs` -- it walks the
 feature graph from `default` rather than trusting the feature's name.
 

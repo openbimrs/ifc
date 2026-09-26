@@ -28,8 +28,10 @@
 //! a question of speed, robustness, or licence -- which is why this module
 //! refuses to pick for you beyond the documented default.
 
+mod bounds;
+
 use axiolid_contracts::ExecutionOptions;
-use axiolid_core::Tolerance;
+use axiolid_core::{Aabb, Tolerance};
 use axiolid_mesh::TriMesh;
 use axiolid_mesh_compile_contract::{MeshClosure, MeshCompiler};
 use ifc_model::{EntityId, Model};
@@ -346,6 +348,101 @@ fn attribute_net_refusal<B: MeshCompiler>(
         }
     }
     refused(product, original)
+}
+
+/// How a product's bounds were obtained.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum BoundsSource {
+    /// Read off the exact lowered geometry without tessellating: every leaf
+    /// was a mesh or an authored bounding box, so the box is the shape's.
+    Exact,
+    /// Taken from the compiled mesh. Exact for planar geometry; for curved
+    /// geometry the mesh's vertices lie on the surface and chords cut
+    /// inside it, so the box can fall short of the true surface by up to
+    /// the compile tolerance.
+    Tessellated,
+}
+
+/// A product's axis-aligned bounds in world coordinates, in metres.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
+pub struct ProductBounds {
+    /// The box, after placement.
+    pub aabb: Aabb,
+    /// Whether it came from the exact graph or a compiled mesh.
+    pub source: BoundsSource,
+}
+
+/// The world-space axis-aligned bounding box of one product's body.
+///
+/// Uses [`default_backend`] for the tessellated fallback; see
+/// [`product_bounds_with`].
+///
+/// # Errors
+///
+/// As [`product_bounds_with`].
+#[cfg(feature = "compile-reference-backend")]
+pub fn product_bounds(
+    model: &Model,
+    product: EntityId,
+    tolerance: Tolerance,
+) -> GeometryResult<Option<ProductBounds>> {
+    product_bounds_with(&default_backend(), model, product, tolerance)
+}
+
+/// The world-space axis-aligned bounding box of one product's body.
+///
+/// The body is resolved and placed exactly as [`compile_product_mesh_with`]
+/// does, and returns `Ok(None)` in the same case: a product with no body
+/// representation. When every exact leaf is a mesh or an authored bounding
+/// box, the box is read off the lowered graph without tessellating
+/// ([`BoundsSource::Exact`]). Otherwise the body is compiled with `backend`
+/// and the mesh's bounds are used ([`BoundsSource::Tessellated`]).
+///
+/// The result feeds a spatial index such as `axiolid_spatial::Bvh` directly;
+/// this crate computes the leaf boxes and leaves the index to Axiolid.
+///
+/// # Errors
+///
+/// Any lowering error, [`GeometryError::CompilationRefused`] when the
+/// fallback cannot compile, and [`GeometryError::Degenerate`] when the body
+/// has no finite extent (an empty or non-finite mesh): an empty box is not
+/// a bound.
+pub fn product_bounds_with<B: MeshCompiler>(
+    backend: &B,
+    model: &Model,
+    product: EntityId,
+    tolerance: Tolerance,
+) -> GeometryResult<Option<ProductBounds>> {
+    let scale = units::resolve(model);
+    let mut session = LoweringSession::new(model, &scale);
+    let Some(root) =
+        lower_product_representation(&mut session, product, RepresentationPurpose::Body)?
+    else {
+        return Ok(None);
+    };
+    let lowered = session.finish(root)?;
+    let (aabb, source) = match bounds::exact(&lowered.graph, lowered.root) {
+        Some(aabb) => (aabb, BoundsSource::Exact),
+        None => {
+            let options = ExecutionOptions::new(tolerance);
+            let mesh = backend
+                .compile_mesh(&lowered.graph, lowered.root, &options)
+                .map_err(|error| refused(product, error))?;
+            (mesh.bounds(), BoundsSource::Tessellated)
+        }
+    };
+    if aabb.is_empty() || !aabb.is_finite() {
+        return Err(GeometryError::Degenerate {
+            entity: product,
+            type_name: model
+                .get(product)
+                .map_or_else(String::new, |entity| entity.type_name.to_string()),
+            detail: "body has no finite extent to bound".into(),
+        });
+    }
+    Ok(Some(ProductBounds { aabb, source }))
 }
 
 fn refused(entity: EntityId, error: axiolid_contracts::GeomError) -> GeometryError {
