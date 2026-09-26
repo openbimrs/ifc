@@ -38,10 +38,10 @@ pub use model::*;
 pub use status::{OpenbimIfcStatus, OpenbimIfcVersion};
 pub use tape::OpenbimIfcValueNode;
 
-/// Opt-in allocator (feature `mimalloc`, off by default). It only covers
+/// Opt-in allocator (feature `rusty_alloc`, off by default). It only covers
 /// this library's Rust allocations; the host's `malloc` is untouched, and
 /// no Rust allocation crosses the ABI, so the host never frees one. See
-/// #49 for the measurements and the pure-Rust follow-up.
-#[cfg(feature = "mimalloc")]
+/// #49 for the measurements.
+#[cfg(feature = "rusty_alloc")]
 #[global_allocator]
-static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
+static ALLOCATOR: rusty_alloc_api::RustyAlloc = rusty_alloc_api::RustyAlloc;

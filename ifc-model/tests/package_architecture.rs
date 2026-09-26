@@ -468,39 +468,66 @@ fn the_binding_rules_refuse_what_they_must() {
     assert!(!core_allows("wasm-bindgen"));
 }
 
-/// Native hosts that may opt into the C `mimalloc` allocator (#49).
-const MIMALLOC_HOSTS: &[&str] = &["openbim-ifc-capi", "openbim-ifc-py"];
+/// Native hosts that may opt into the `rusty_alloc` allocator (#49).
+const ALLOCATOR_HOSTS: &[&str] = &["openbim-ifc-capi", "openbim-ifc-py"];
 
-/// The IFC family is pure Rust. `mimalloc` is C, so it is admitted only as
-/// an opt-in feature of the two native bindings: optional, never reachable
-/// from `default`, and absent from every other package -- including the
-/// WASM binding, where it would not build. Anything else is a regression of
-/// the policy recorded in #49.
+/// The crates of the opt-in allocator. Both are pinned: `rusty_alloc-api`
+/// only asks for `^2.2.1` of its core, so the core is a direct dependency
+/// too, or a `cargo update` could swap the code under every allocation.
+const ALLOCATOR_CRATES: &[&str] = &["rusty_alloc-api", "rusty_alloc"];
+
+/// A global allocator is the final program's decision, so only the two
+/// native bindings -- which ARE final artifacts -- may offer one, and only
+/// as an opt-in feature: optional, never reachable from `default`, pinned
+/// to an exact version, and absent from every library and from the WASM
+/// binding. The C `mimalloc` it replaced is gone from the whole workspace.
+/// Anything else is a regression of the policy recorded in #49.
 #[test]
-fn the_c_allocator_is_opt_in_and_only_in_native_bindings() {
+fn the_allocator_is_opt_in_pinned_and_only_in_native_bindings() {
     let metadata = metadata();
     let mut checked = 0;
     for package in &metadata.packages {
-        let uses_mimalloc = package.dependencies.iter().any(|d| d.name == "mimalloc");
-        if MIMALLOC_HOSTS.contains(&package.name.as_str()) {
-            checked += 1;
+        assert!(
+            !package.dependencies.iter().any(|d| d.name == "mimalloc"),
+            "{} depends on the C mimalloc, replaced by rusty_alloc (#49)",
+            package.name
+        );
+        let allocator_deps: Vec<_> = package
+            .dependencies
+            .iter()
+            .filter(|d| ALLOCATOR_CRATES.contains(&d.name.as_str()))
+            .collect();
+        if !ALLOCATOR_HOSTS.contains(&package.name.as_str()) {
             assert!(
-                uses_mimalloc,
-                "{} lost its opt-in mimalloc feature",
+                allocator_deps.is_empty(),
+                "{} depends on {:?}; only {ALLOCATOR_HOSTS:?} may, opt-in (#49)",
+                package.name,
+                allocator_deps.iter().map(|d| &d.name).collect::<Vec<_>>()
+            );
+            continue;
+        }
+        checked += 1;
+        for krate in ALLOCATOR_CRATES {
+            let dependency = allocator_deps
+                .iter()
+                .find(|d| d.name == *krate)
+                .unwrap_or_else(|| panic!("{} lost its opt-in {krate}", package.name));
+            assert!(
+                optional_behind_compile(package, krate),
+                "{} must keep {krate} optional and off by default (#49)",
                 package.name
             );
+            let requirement = dependency.req.to_string();
             assert!(
-                optional_behind_compile(package, "mimalloc"),
-                "{} must keep mimalloc optional and off by default (#49)",
-                package.name
-            );
-        } else {
-            assert!(
-                !uses_mimalloc,
-                "{} depends on mimalloc; only {MIMALLOC_HOSTS:?} may, opt-in (#49)",
+                requirement.starts_with('=') && !requirement.contains(','),
+                "{} must pin {krate} exactly, found `{requirement}` (#49)",
                 package.name
             );
         }
     }
-    assert_eq!(checked, MIMALLOC_HOSTS.len(), "a native binding is missing");
+    assert_eq!(
+        checked,
+        ALLOCATOR_HOSTS.len(),
+        "a native binding is missing"
+    );
 }

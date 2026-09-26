@@ -10,8 +10,9 @@ roadmap work; keep progress, blockers, and evidence there.
 ## Boundary
 
 - Production dependencies: `openbim-ifc-binding-core` and `pyo3` only, plus
-  `mimalloc` behind the opt-in `mimalloc` feature (#49; never default --
-  `package_architecture` enforces that).
+  `rusty_alloc-api` + `rusty_alloc` (pinned `=`) behind the opt-in
+  `rusty_alloc` feature (#49; never default -- `package_architecture`
+  enforces that).
 - pyo3 directly, not a layer over the C ABI (ADR 0013): no second manual
   memory protocol.
 - Glue only. IFC behaviour belongs in the facade; checks shared by all hosts

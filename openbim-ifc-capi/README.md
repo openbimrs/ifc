@@ -61,14 +61,14 @@ Static linking on Linux also needs `-lpthread -ldl -lm`.
 ### Faster reading (opt-in)
 
 ```sh
-cargo build -p openbim-ifc-capi --release --features mimalloc
+cargo build -p openbim-ifc-capi --release --features rusty_alloc
 ```
 
-Uses the mimalloc allocator for the library's own memory: reading STEP
-takes 23-36% fewer CPU cycles, but 2-28% more memory stays resident. The
-host's `malloc` is not replaced, and no Rust allocation crosses the ABI.
-Off by default because mimalloc is C code and the project is pure Rust;
-#49 tracks a pure-Rust replacement.
+Uses the pure-Rust rusty_alloc allocator for the library's own memory:
+reading STEP into a model takes 18-35% less CPU time on seven real IFC
+files, at 1-7% less peak memory (#49). The host's `malloc` is not
+replaced, and no Rust allocation crosses the ABI. Off by default because a
+global allocator is a build-time choice; the version is pinned exactly.
 
 ## Not yet
 

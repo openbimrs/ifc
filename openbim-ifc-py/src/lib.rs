@@ -14,12 +14,12 @@ mod model;
 
 use pyo3::prelude::*;
 
-/// Opt-in allocator (feature `mimalloc`, off by default). It only covers
+/// Opt-in allocator (feature `rusty_alloc`, off by default). It only covers
 /// this extension's Rust allocations; Python's own allocator is untouched.
-/// See #49 for the measurements and the pure-Rust follow-up.
-#[cfg(feature = "mimalloc")]
+/// See #49 for the measurements.
+#[cfg(feature = "rusty_alloc")]
 #[global_allocator]
-static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
+static ALLOCATOR: rusty_alloc_api::RustyAlloc = rusty_alloc_api::RustyAlloc;
 
 /// The `openbim_ifc._native` extension module.
 #[pymodule]
