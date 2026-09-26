@@ -29,7 +29,7 @@ use std::collections::BTreeMap;
 use ifc_model::{EntityId, Model, Value};
 
 use crate::error::PropertyAnomaly;
-use crate::pset::{property_sets_by_object, Attachment, PropertySet};
+use crate::pset::{property_sets_by_object, AttachedSets, Attachment, PropertySet};
 
 const REL_TYPE_RELATED_OBJECTS: usize = 4;
 const REL_TYPE_RELATING_TYPE: usize = 5;
@@ -75,9 +75,12 @@ pub fn resolved_properties(model: &Model) -> (ResolvedProperties, Vec<PropertyAn
     objects.sort_unstable();
     objects.dedup();
 
+    duplicate_set_names(&direct, &mut anomalies);
+
     let mut out: BTreeMap<EntityId, Vec<ResolvedSet>> = BTreeMap::new();
     for object in objects {
-        // Type sets first, so occurrence sets can overwrite by name.
+        // Type sets first, so occurrence sets can overwrite by name. Within
+        // one source, sets arrive in id order and the first of a name wins.
         let mut by_name: BTreeMap<String, ResolvedSet> = BTreeMap::new();
         if let Some(&type_id) = types.get(&object) {
             for (attachment, set) in direct.get(&type_id).into_iter().flatten() {
@@ -86,6 +89,9 @@ pub fn resolved_properties(model: &Model) -> (ResolvedProperties, Vec<PropertyAn
                 // included: the file states them, and the anomaly already
                 // records that it should not have.
                 let _ = attachment;
+                if by_name.contains_key(&key(set)) {
+                    continue;
+                }
                 by_name.insert(
                     key(set),
                     ResolvedSet {
@@ -98,6 +104,14 @@ pub fn resolved_properties(model: &Model) -> (ResolvedProperties, Vec<PropertyAn
         }
         for (attachment, set) in direct.get(&object).into_iter().flatten() {
             if *attachment != Attachment::Occurrence {
+                continue;
+            }
+            // A same-named occurrence set already resolved is a duplicate,
+            // not something to shadow: shadowing is occurrence over type.
+            if by_name
+                .get(&key(set))
+                .is_some_and(|r| r.source == Source::Occurrence)
+            {
                 continue;
             }
             let shadowed = by_name.remove(&key(set)).map(Box::new);
@@ -115,6 +129,32 @@ pub fn resolved_properties(model: &Model) -> (ResolvedProperties, Vec<PropertyAn
         }
     }
     (out, anomalies)
+}
+
+/// Report every owner holding two same-named sets through one route.
+///
+/// Checked per owner and per attachment route, so a type's duplicates are
+/// reported once even when many occurrences inherit them, and even when none
+/// does. An occurrence set overriding a same-named type set is precedence,
+/// not a duplicate, and is not reported. Sets arrive in id order, so the
+/// kept set is the one resolution keeps.
+fn duplicate_set_names(direct: &AttachedSets, anomalies: &mut Vec<PropertyAnomaly>) {
+    for (&owner, sets) in direct {
+        let mut kept: BTreeMap<(bool, String), EntityId> = BTreeMap::new();
+        for (attachment, set) in sets {
+            let slot = (*attachment == Attachment::Type, key(set));
+            match kept.get(&slot) {
+                Some(&first) => anomalies.push(PropertyAnomaly::DuplicateSetName {
+                    owner,
+                    kept: first,
+                    rejected: set.id,
+                }),
+                None => {
+                    kept.insert(slot, set.id);
+                }
+            }
+        }
+    }
 }
 
 /// Property sets applying to one object.
@@ -146,8 +186,11 @@ fn type_assignments(
     model: &Model,
     anomalies: &mut Vec<PropertyAnomaly>,
 ) -> BTreeMap<EntityId, EntityId> {
-    let mut out = BTreeMap::new();
-    for &id in model.ids_of_type("IFCRELDEFINESBYTYPE") {
+    let mut out: BTreeMap<EntityId, EntityId> = BTreeMap::new();
+    // First relationship by id wins, whatever order the file lists them in.
+    let mut relations = model.ids_of_type("IFCRELDEFINESBYTYPE").to_vec();
+    relations.sort_unstable();
+    for id in relations {
         let Some(rel) = model.get(id) else { continue };
         let Some(type_id) = rel.attributes.get(REL_TYPE_RELATING_TYPE).and_then(one_ref) else {
             continue;
@@ -172,7 +215,18 @@ fn type_assignments(
                 });
                 continue;
             }
-            out.insert(object, type_id);
+            match out.get(&object) {
+                None => {
+                    out.insert(object, type_id);
+                }
+                Some(&kept) if kept != type_id => anomalies.push(PropertyAnomaly::TypedTwice {
+                    object,
+                    kept,
+                    rejected: type_id,
+                    relation: id,
+                }),
+                Some(_) => {}
+            }
         }
     }
     out

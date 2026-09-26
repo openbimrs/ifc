@@ -68,7 +68,10 @@ impl PropertySet {
     ///
     /// The schema requires unique property names within a set
     /// (`UniquePropertyNames`), so the first match is the only match in a
-    /// well-formed file.
+    /// well-formed file. In a malformed one this is the first in
+    /// `HasProperties` order, and
+    /// [`property_sets_by_object`] reports the others as
+    /// [`PropertyAnomaly::DuplicatePropertyName`].
     pub fn property(&self, name: &str) -> Option<&Property> {
         self.properties
             .iter()
@@ -192,7 +195,36 @@ pub fn property_sets_by_object(model: &Model) -> (AttachedSets, Vec<PropertyAnom
     for sets in out.values_mut() {
         sets.sort_by_key(|(_, set)| set.id);
     }
+    // A set shared by many objects is checked once.
+    let mut unique: BTreeMap<EntityId, &PropertySet> = BTreeMap::new();
+    for (_, set) in out.values().flatten() {
+        unique.entry(set.id).or_insert(set);
+    }
+    for set in unique.values() {
+        duplicate_property_names(set, &mut anomalies);
+    }
     (out, anomalies)
+}
+
+/// `UniquePropertyNames` (IFC4) / `WR32` (IFC2X3): report each property whose
+/// name an earlier one in the same set already has.
+fn duplicate_property_names(set: &PropertySet, anomalies: &mut Vec<PropertyAnomaly>) {
+    let mut first: BTreeMap<&str, EntityId> = BTreeMap::new();
+    for property in &set.properties {
+        let Some(name) = property.name.as_deref() else {
+            continue;
+        };
+        match first.get(name) {
+            Some(&kept) => anomalies.push(PropertyAnomaly::DuplicatePropertyName {
+                set: set.id,
+                kept,
+                rejected: property.id,
+            }),
+            None => {
+                first.insert(name, property.id);
+            }
+        }
+    }
 }
 
 fn text(value: &Value) -> Option<Arc<str>> {
