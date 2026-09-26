@@ -13,6 +13,7 @@
 //! - `reference.rs`: one generated page per crate, plus the index.
 //! - `adr.rs`: the ADR index and the sidebar's ADR list.
 //! - `facts.rs`: `facts.json`, the numbers prose may quote.
+//! - `snippets.rs`: page code copied from marked test regions, and the fence lint.
 
 mod adr;
 mod capabilities;
@@ -20,6 +21,7 @@ mod changelog;
 mod facts;
 mod reference;
 mod release;
+mod snippets;
 
 use std::path::{Path, PathBuf};
 
@@ -87,6 +89,8 @@ pub(crate) fn run(check: bool) -> Result<(), String> {
         facts::generate(&workspace)?,
     ];
     outputs.extend(reference::generate(&workspace)?);
+    // Last: it composes with every page the generators above produced.
+    snippets::apply(&workspace, &mut outputs)?;
 
     let relative = |path: &Path| {
         path.strip_prefix(&workspace.root)

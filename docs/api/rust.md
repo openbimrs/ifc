@@ -58,14 +58,18 @@ from "not set".
 
 `Entity` offers positional accessors with typed convenience:
 
+<!-- SNIPPET:api-entity-accessors -->
+
 ```rust
-entity.attribute(0)   // Option<&Value>
-entity.text(2)        // Option<&str>
-entity.number(3)      // Option<f64>
-entity.reference(4)   // Option<EntityId>
-entity.references()   // Vec<EntityId> — all outgoing refs
-entity.is_type("IFCWALL")
+let first: Option<&Value> = entity.attribute(0);
+let name: Option<&str> = entity.text(2);
+let height: Option<f64> = entity.number(3);
+let placement: Option<EntityId> = entity.reference(4);
+let outgoing: Vec<EntityId> = entity.references(); // every outgoing reference
+let is_wall: bool = entity.is_type("IFCWALL");
 ```
+
+<!-- /SNIPPET -->
 
 Index constants belong in named `*_slot` modules, following the pattern in
 `ifc-geometry` — bare numeric literals at call sites are how attribute bugs get
@@ -73,15 +77,21 @@ written.
 
 ### Querying the model
 
+<!-- SNIPPET:api-model-queries -->
+
 ```rust
-model.ids_of_type("IFCWALL")     // &[EntityId] — indexed, not a scan
-model.of_type("IFCWALL")         // Iterator<(EntityId, &Entity)>
-model.type_histogram()           // Vec<(&str, usize)> — great for triage
-model.dangling_references()      // Vec<(EntityId, EntityId)>
+let walls: &[EntityId] = model.ids_of_type("IFCWALL"); // indexed, not a scan
+let pairs: Vec<(EntityId, &Entity)> = model.of_type("IFCWALL").collect();
+let histogram: Vec<(&str, usize)> = model.type_histogram(); // good for triage
+let dangling: Vec<(EntityId, EntityId)> = model.dangling_references(); // (from, missing)
 ```
+
+<!-- /SNIPPET -->
 
 Build the optional reverse index only when an operation needs incoming
 references:
+
+<!-- SNIPPET:api-reverse-index -->
 
 ```rust
 use ifc_model::{EntityId, Model, ReverseIndex};
@@ -89,10 +99,15 @@ use ifc_model::{EntityId, Model, ReverseIndex};
 fn print_referrers(model: &Model, target: EntityId) {
     let reverse = ReverseIndex::build(model);
     for hit in reverse.referrers(target) {
-        println!("referenced by {:?} in attribute slot {}", hit.from, hit.slot);
+        println!(
+            "referenced by {:?} in attribute slot {}",
+            hit.from, hit.slot
+        );
     }
 }
 ```
+
+<!-- /SNIPPET -->
 
 The index is a deterministic snapshot and records the top-level attribute slot
 for every referrer. Rebuild it after mutating the model.
@@ -104,12 +119,16 @@ cost. Traversal-heavy applications build the index once and reuse it.
 
 ### Codecs
 
+<!-- SNIPPET:api-round-trip -->
+
 ```rust
 use ifc::{Codec, StepCodec};
 
 let model = StepCodec.read_bytes(bytes)?;
-let out   = StepCodec.write_bytes(&model)?;
+let out = StepCodec.write_bytes(&model)?;
 ```
+
+<!-- /SNIPPET -->
 
 `XmlCodec` behaves identically behind the `ifcxml` feature. Conversion is a read
 with one and a write with the other.

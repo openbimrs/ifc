@@ -14,6 +14,8 @@ occurrence subtypes, so there is no normative behavior to project). Attribute
 slots come from the bundled IFC4 ADD2 TC1 or IFC4X3 ADD2 schema rather than
 fixed indices.
 
+<!-- SNIPPET:resources-compose -->
+
 ```rust
 use ifc::resource::{
     AllocationDraft, NestingDraft, ResourceDraft, ResourceEditor, ResourceKind,
@@ -56,12 +58,22 @@ let (crew, carpenter, usage, allocation) = {
 };
 
 let resources = ResourceView::for_model(&model)?;
-assert_eq!(resources.allocation(allocation)?.related_objects_type(), Some("RESOURCE"));
+assert_eq!(
+    resources.allocation(allocation)?.related_objects_type(),
+    Some("RESOURCE")
+);
 assert_eq!(resources.resource(carpenter)?.name()?, Some("Carpenter"));
-assert_eq!(resources.resource_time(usage)?.schedule_work()?, Some("PT8H"));
-assert_eq!(resources.descendants(crew, Default::default())?, vec![carpenter]);
-# Ok::<(), ifc::resource::ResourceError>(())
+assert_eq!(
+    resources.resource_time(usage)?.schedule_work()?,
+    Some("PT8H")
+);
+assert_eq!(
+    resources.descendants(crew, Default::default())?,
+    vec![carpenter]
+);
 ```
+
+<!-- /SNIPPET -->
 
 Invalid schema headers, references, enum members, ratios, aggregates, duplicate
 `GlobalId` values, mismatched `IfcRelAssigns.RelatedObjectsType` categories,

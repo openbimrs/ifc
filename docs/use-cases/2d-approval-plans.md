@@ -59,8 +59,10 @@ fire-wall symbol drawn the way this page recommends:
 
 Read it, change the label through a schema-checked edit, and write it back:
 
+<!-- SNIPPET:annotation-fixture-edit -->
+
 ```rust
-use ifc::style::StyleView;                     // features = ["step", "style", "author"]
+use ifc::style::StyleView; // features = ["step", "style", "author"]
 use ifc::{Codec, EntityEditor, StepCodec, Transaction};
 
 let mut model = StepCodec.read_bytes(&bytes)?;
@@ -74,10 +76,13 @@ let mut tx = Transaction::new(&model);
 EntityEditor::new(schema, &model, text)?
     .text("Literal", "Brandwand F90 (geprüft)")
     .stage(&mut tx)?;
-tx.commit(&mut model)?;
+tx.commit(&mut model)
+    .map_err(|conflicts| format!("{conflicts:?}"))?;
 
 let out = StepCodec.write_bytes(&model)?;
 ```
+
+<!-- /SNIPPET -->
 
 Written back, every entity is unchanged apart from that one label, and the
 annotation, text, styles, layer and library reference all read back through
@@ -108,6 +113,8 @@ Practically: your application can read a model containing `IfcAnnotation`,
 modify only what it understands, and write the file back **without destroying
 them**. That property holds today, with no domain crate compiled.
 
+<!-- SNIPPET:approval-passthrough -->
+
 ```rust
 use ifc::{Codec, StepCodec};
 
@@ -118,8 +125,9 @@ let annotations = model.ids_of_type("IFCANNOTATION");
 println!("{} annotations passed through untouched", annotations.len());
 
 let out = StepCodec.write_bytes(&model)?;
-# Ok::<(), ifc::ModelError>(())
 ```
+
+<!-- /SNIPPET -->
 
 Note `ids_of_type` takes the **upper-case** STEP type name.
 
@@ -175,11 +183,15 @@ read each one's `RepresentationIdentifier` (`Body`, `Axis`, `FootPrint`, …).
 refuses `Axis`/`FootPrint`. `select_plan_representation` is its inverse and now
 ships:
 
+<!-- SNIPPET:approval-plan-select -->
+
 ```rust
-use ifc::{select_plan_representation, plan_contexts};   // feature = "geometry-select"
+use ifc::select_plan_representation; // feature = "geometry-select"
 
 let drawable = select_plan_representation(&model, wall)?;
 ```
+
+<!-- /SNIPPET -->
 
 It prefers a drawable identifier authored into an explicit `PLAN_VIEW`
 sub-context, then falls back to `Plan`, `Annotation`, `FootPrint`, `Axis` in
@@ -207,11 +219,15 @@ Selecting a representation gives geometry in the product's own local space. To
 draw it you need the world transform, which means resolving the
 `IfcLocalPlacement` chain up through storey, building and site:
 
+<!-- SNIPPET:world-transform -->
+
 ```rust
-use ifc::{product_world_transform, products_world_transforms};   // feature = "geometry-select"
+use ifc::product_world_transform; // feature = "geometry-select"
 
 let world = product_world_transform(&model, &units, wall)?;
 ```
+
+<!-- /SNIPPET -->
 
 Do not hand-roll this. The two mistakes are invisible until late: composing the
 chain innermost-first mirrors the model about its ancestors, and applying the
@@ -222,35 +238,57 @@ out. Cyclic chains in malformed files are reported rather than hung on.
 For a whole-model walk use the batch form, which shares one placement cache --
 every product in a storey shares that storey's entire ancestor chain:
 
+<!-- SNIPPET:world-transforms -->
+
 ```rust
+use ifc::products_world_transforms;
+
 for (id, world) in products_world_transforms(&model, &units, ids) {
-    // Errors are per-product: one broken chain does not suppress the rest.
+    // Errors are per product: one broken chain does not hide the rest.
+    match world {
+        Ok(world) => println!("{id} sits at {:?}", world.origin),
+        Err(error) => eprintln!("{id}: {error}"),
+    }
 }
 ```
+
+<!-- /SNIPPET -->
 
 Plan contexts are readable too, including the `*` inheritance real exporters
 write:
 
+<!-- SNIPPET:plan-contexts -->
+
 ```rust
+use ifc::plan_contexts; // feature = "geometry-select"
+
 for context in plan_contexts(&model) {
-    context.target_scale();       // Some(0.01) for 1:100
-    context.precision(&model);    // resolved from the parent context
+    let scale = context.target_scale(); // Some(0.01) for 1:100
+    let precision = context.precision(&model); // inherited from the parent context
+    println!("plan view at {scale:?}, precision {precision:?}");
 }
 ```
+
+<!-- /SNIPPET -->
 
 ### 2. ~~Spatial tree traversal~~ — provided
 
 `ifc-spatial` builds the tree. Grouping elements by storey, the query a floor
 plan is organised around, is:
 
+<!-- SNIPPET:approval-storeys -->
+
 ```rust
-use ifc::{SpatialKind, SpatialTree};   // feature = "spatial"
+use ifc::{SpatialKind, SpatialTree}; // feature = "spatial"
 
 let tree = SpatialTree::build(&model);
-for storey in tree.of_kind(SpatialKind::Storey) {
-    let on_this_level = tree.elements_of(storey.id);
+for level in tree.of_kind(SpatialKind::Storey) {
+    let on_this_level = tree.elements_of(level.id);
+    println!("{} elements on {}", on_this_level.len(), level.id);
 }
 ```
+
+<!-- /SNIPPET -->
 
 `container_of(element)` answers the inverse — which storey a given wall is on —
 and `elements_recursive` descends through spaces. Anomalies a permit drawing
@@ -294,14 +332,18 @@ rather than a launch requirement.
 helpers for the named annotation and core style graphs. For entities outside
 that surface, `ifc-author` constructs any schema-declared entity by name:
 
-```rust
-use ifc::EntityBuilder;               // feature = "author"
+<!-- SNIPPET:author-annotation -->
 
-let annotation = EntityBuilder::new(&schema, "IfcAnnotation")
+```rust
+use ifc::EntityBuilder; // feature = "author"
+
+let id = EntityBuilder::new(&schema, "IfcAnnotation")
     .text("GlobalId", "3vB2YO$MX4xv5uCqZZG05x")
     .text("Name", "Brandwand")
     .insert(&mut model)?;
 ```
+
+<!-- /SNIPPET -->
 
 Seven slots are produced because IFC4 declares seven, with `GlobalId` first
 because it is inherited from `IfcRoot`. A typo in the entity or attribute name,
@@ -341,14 +383,18 @@ still open completely blank. Validation asks whether the file is legal IFC.
 Whether the geometry is *reachable* is a different question, and nothing in the
 schema answers it.
 
+<!-- SNIPPET:unreachable-products -->
+
 ```rust
-use ifc::{unreachable_products, Codec, StepCodec};
+use ifc::{unreachable_products, Codec, StepCodec}; // features = ["spatial", "geometry-select"]
 
 let model = StepCodec.read_bytes(&bytes)?;
 for (id, why) in unreachable_products(&model) {
     eprintln!("#{id}: {}", why.message());
 }
 ```
+
+<!-- /SNIPPET -->
 
 Enable with `features = ["step", "spatial", "geometry-select"]`.
 

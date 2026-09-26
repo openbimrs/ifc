@@ -111,14 +111,18 @@ later, but they must never be mistaken for working code.
 
 Applications that *generate* IFC name attributes; the schema decides positions.
 
+<!-- SNIPPET:author-annotation -->
+
 ```rust
-use ifc::EntityBuilder;                 // feature = "author"
+use ifc::EntityBuilder; // feature = "author"
 
 let id = EntityBuilder::new(&schema, "IfcAnnotation")
     .text("GlobalId", "3vB2YO$MX4xv5uCqZZG05x")
     .text("Name", "Brandwand")
     .insert(&mut model)?;
 ```
+
+<!-- /SNIPPET -->
 
 Slot order comes from `Schema::attributes`, which returns inherited attributes
 first — the ordering positional STEP records depend on. `IfcAnnotation` gets
@@ -153,21 +157,25 @@ must write an entity the schema does not declare.
 IFC stores no parent pointers: a wall does not name its storey, a relationship
 entity names both ends. `ifc-spatial` reads those relationships into a tree.
 
+<!-- SNIPPET:spatial-tree -->
+
 ```rust
-use ifc::{SpatialKind, SpatialTree};   // feature = "spatial"
+use ifc::{SpatialKind, SpatialTree}; // feature = "spatial"
 
 let tree = SpatialTree::build(&model);
 
-for storey in tree.of_kind(SpatialKind::Storey) {
-    for element in tree.elements_of(storey.id) {
-        // every element placed directly on this storey
+for level in tree.of_kind(SpatialKind::Storey) {
+    for element in tree.elements_of(level.id) {
+        println!("{element} is placed directly on {}", level.id);
     }
 }
 
-tree.container_of(wall);        // which storey is this wall on?
-tree.ancestors(storey.id);      // storey -> building -> site -> project
-tree.elements_recursive(root);  // everything beneath a container
+let home = tree.container_of(wall); // which storey is this wall on?
+let above = tree.ancestors(storey); // storey -> building -> site -> project
+let beneath = tree.elements_recursive(building); // everything beneath a container
 ```
+
+<!-- /SNIPPET -->
 
 **The trap this closes.** The two relationships that build the tree disagree
 about slot order — `IfcRelAggregates` puts the parent in slot 4,
@@ -413,12 +421,16 @@ curve never silently replaces a body.
 
 Two selectors, deliberately disagreeing:
 
-```rust
-use ifc::{select_shape_representation, select_plan_representation};
+<!-- SNIPPET:select-representations -->
 
-select_shape_representation(&model, wall)?;  // -> the Body   (3D viewer)
-select_plan_representation(&model, wall)?;   // -> the FootPrint (drawing)
+```rust
+use ifc::{select_plan_representation, select_shape_representation};
+
+let body = select_shape_representation(&model, wall)?; // what a 3D viewer draws
+let outline = select_plan_representation(&model, wall)?; // what a drawing draws
 ```
+
+<!-- /SNIPPET -->
 
 `select_shape_representation` prefers `Body`, then `Facetation`, then an
 unnamed representation, and **refuses** `Axis`/`FootPrint` so a 2D curve never
@@ -449,14 +461,19 @@ does not do — see [R9b/R10 on the roadmap](/project/roadmap).
 | `TargetView` (`PLAN_VIEW`, `MODEL_VIEW`, ...) | <span class="status-implemented">Implemented</span> | typed enum; unknown constants preserved, not flattened |
 | Authoring a plan sub-context | <span class="status-partial">Partial</span> | constructible via `EntityBuilder`; no dedicated helper |
 
+<!-- SNIPPET:plan-contexts -->
+
 ```rust
-use ifc::plan_contexts;
+use ifc::plan_contexts; // feature = "geometry-select"
 
 for context in plan_contexts(&model) {
-    context.target_scale();          // Some(0.01) for 1:100
-    context.precision(&model);       // inherited from the parent context
+    let scale = context.target_scale(); // Some(0.01) for 1:100
+    let precision = context.precision(&model); // inherited from the parent context
+    println!("plan view at {scale:?}, precision {precision:?}");
 }
 ```
+
+<!-- /SNIPPET -->
 
 **The `*` trap this closes.** A sub-context redeclares six inherited attributes
 as DERIVED, and real files write them as `*`:
