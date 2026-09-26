@@ -56,6 +56,15 @@ lockstep -- is archived in the
   `ifc-resource` already did. A file that was written with one would have
   failed its own GlobalId check.
 
+### ifc-properties
+
+### Added
+
+- `exact_unit` maps `IFCSECTIONALAREAINTEGRALMEASURE` to
+  `SECTIONAREAINTEGRALUNIT`, whose name differs from the measure's.
+  Before, it was refused as unmapped. The pairing follows the measure's
+  definition (m^5) and the IFC4 annex E structural example.
+
 ### ifc-schema
 
 ### Changed
