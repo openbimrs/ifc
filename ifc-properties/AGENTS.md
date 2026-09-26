@@ -18,6 +18,7 @@ Allowed production dependencies: ifc-model and schema metadata; no geometry crat
 - `query.rs`: permissive assignments and bounded lookup for interactive clients
 - `exact.rs`: fail-closed request-scoped IFC2X3/IFC4 property and unit resolution for rule engines
 - `value.rs`: semantic conversion from generic Value
+- `nesting.rs`: crate-private bounded, cycle-aware traversal of complex members
 
 ## Invariants
 
@@ -38,6 +39,12 @@ Allowed production dependencies: ifc-model and schema metadata; no geometry crat
   skips an `IfcPropertySetDefinition` that could hold the requested name:
   a predefined set whose own attribute carries it is refused.
 - `exact_unit` binds to the same release as `exact_property`. SI and unit-type dimensions come from that release's `IfcDimensionsForSiUnit`/`IfcCorrectDimensions` (IFC2X3 and IFC4 differ for the farad). A measure maps to a unit type only by the release's own enums and defined-type chain. Unknown prefixes, duplicate project units, cycles, dimension contradictions and offset units are errors, never defaults.
+- Nested `IfcComplexProperty`/`IfcPhysicalComplexQuantity` members are read
+  only through `src/nesting.rs`: a tracked path (cycles of any length, not
+  just the direct self-member the schema forbids), a depth bound and a member
+  budget. Shared members are legal and are not cycles. Every cut, and every
+  member the permissive views cannot represent (absent id, valueless or
+  non-numeric quantity), is a `PropertyAnomaly`, never a silent omission.
 - Keep permissive query APIs for interactive inspection; rule engines use the exact API and must not convert its errors to absence.
 
 Keep cross-resource projections attribute-scoped: shared `ifc-model` storage

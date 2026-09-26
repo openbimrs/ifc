@@ -31,6 +31,8 @@ use std::sync::Arc;
 use ifc_model::{EntityId, Model, Value};
 
 use crate::error::PropertyAnomaly;
+use crate::nesting::Nesting;
+use crate::quantity::complex::complex_quantities;
 use crate::unit::{unit_type, UnitKind};
 
 const NAME: usize = 0;
@@ -38,7 +40,6 @@ const DESCRIPTION: usize = 1;
 const SIMPLE_UNIT: usize = 2;
 const SIMPLE_VALUE: usize = 3;
 const SIMPLE_FORMULA: usize = 4;
-const COMPLEX_HAS_QUANTITIES: usize = 2;
 const COMPLEX_DISCRIMINATION: usize = 3;
 const SET_METHOD: usize = 4;
 const SET_QUANTITIES: usize = 5;
@@ -214,24 +215,40 @@ impl QuantitySet {
     }
 }
 
-/// Maximum `IfcPhysicalComplexQuantity` nesting followed.
-const MAX_COMPLEX_DEPTH: usize = 16;
-
 /// Read an `IfcElementQuantity` by id, with schema-rule anomalies.
+///
+/// Returns `None` when `id` is absent or is not an `IfcElementQuantity`.
+/// A member that cannot be represented is left out of `quantities` and
+/// reported, never dropped silently: an absent id
+/// ([`PropertyAnomaly::MissingMember`]), a simple quantity with no value
+/// ([`PropertyAnomaly::QuantityValueMissing`]) or a non-numeric one
+/// ([`PropertyAnomaly::QuantityValueNotNumeric`]). Nested complex
+/// quantities are followed along a tracked path; a cycle, over-deep nesting
+/// or an exhausted member budget is reported as
+/// [`PropertyAnomaly::ComplexCycle`],
+/// [`PropertyAnomaly::ComplexTooDeep`] or
+/// [`PropertyAnomaly::ComplexBudgetExceeded`].
 pub fn quantity_set(model: &Model, id: EntityId) -> Option<(QuantitySet, Vec<PropertyAnomaly>)> {
     let entity = model.get(id)?;
     if !entity.type_name.eq_ignore_ascii_case("IFCELEMENTQUANTITY") {
         return None;
     }
     let mut anomalies = Vec::new();
-    let quantities = entity
+    let mut nesting = Nesting::new(&mut anomalies);
+    let mut quantities = Vec::new();
+    for member in entity
         .attributes
         .get(SET_QUANTITIES)
         .and_then(refs)
         .unwrap_or_default()
-        .into_iter()
-        .filter_map(|q| read_quantity(model, q, 0, &mut anomalies))
-        .collect();
+    {
+        if !nesting.admit(model, id, member) {
+            continue;
+        }
+        if let Some(quantity) = read_quantity(model, member, &mut nesting) {
+            quantities.push(quantity);
+        }
+    }
     Some((
         QuantitySet {
             id,
@@ -243,35 +260,23 @@ pub fn quantity_set(model: &Model, id: EntityId) -> Option<(QuantitySet, Vec<Pro
     ))
 }
 
-fn read_quantity(
+/// Read one physical quantity. `None` means it cannot be represented; the
+/// reason has already been reported through `nesting`.
+pub(super) fn read_quantity(
     model: &Model,
     id: EntityId,
-    depth: usize,
-    anomalies: &mut Vec<PropertyAnomaly>,
+    nesting: &mut Nesting<'_>,
 ) -> Option<Quantity> {
     let entity = model.get(id)?;
     let ty = entity.type_name.to_ascii_uppercase();
     let name = entity.attributes.get(NAME).and_then(text);
 
     if ty == "IFCPHYSICALCOMPLEXQUANTITY" {
-        let quantities = if depth >= MAX_COMPLEX_DEPTH {
-            Vec::new()
-        } else {
-            entity
-                .attributes
-                .get(COMPLEX_HAS_QUANTITIES)
-                .and_then(refs)
-                .unwrap_or_default()
-                .into_iter()
-                .filter(|child| *child != id)
-                .filter_map(|child| read_quantity(model, child, depth + 1, anomalies))
-                .collect()
-        };
         return Some(Quantity::Complex {
             id,
             name,
             discrimination: entity.attributes.get(COMPLEX_DISCRIMINATION).and_then(text),
-            quantities,
+            quantities: complex_quantities(model, id, entity, nesting),
         });
     }
 
@@ -282,15 +287,30 @@ fn read_quantity(
         });
     };
 
-    let value = entity
-        .attributes
-        .get(SIMPLE_VALUE)
-        .and_then(|v| v.unwrap_typed().as_f64())?;
+    // The value attribute is not OPTIONAL on any IfcQuantity*. A quantity
+    // without a number has nothing to report as `Simple`, so it is named
+    // instead of silently vanishing from its set.
+    let value = match entity.attributes.get(SIMPLE_VALUE) {
+        None | Some(Value::Null) => {
+            nesting.report(PropertyAnomaly::QuantityValueMissing { quantity: id });
+            return None;
+        }
+        Some(stated) => match stated.unwrap_typed().as_f64() {
+            Some(value) => value,
+            None => {
+                nesting.report(PropertyAnomaly::QuantityValueNotNumeric {
+                    quantity: id,
+                    found: format!("{stated:?}"),
+                });
+                return None;
+            }
+        },
+    };
     let unit = entity.attributes.get(SIMPLE_UNIT).and_then(one_ref);
 
     // WR22: every simple quantity requires a non-negative value.
     if value < 0.0 {
-        anomalies.push(PropertyAnomaly::NegativeQuantity {
+        nesting.report(PropertyAnomaly::NegativeQuantity {
             quantity: id,
             value,
         });
@@ -299,7 +319,7 @@ fn read_quantity(
     if let (Some(unit_id), Some(expected)) = (unit, kind.required_unit()) {
         if let Some(found) = unit_type(model, unit_id) {
             if &*found != expected {
-                anomalies.push(PropertyAnomaly::QuantityUnitMismatch {
+                nesting.report(PropertyAnomaly::QuantityUnitMismatch {
                     quantity: id,
                     unit: unit_id,
                     expected,
@@ -364,7 +384,7 @@ fn one_ref(value: &Value) -> Option<EntityId> {
     }
 }
 
-fn refs(value: &Value) -> Option<Vec<EntityId>> {
+pub(super) fn refs(value: &Value) -> Option<Vec<EntityId>> {
     match value {
         Value::List(items) => Some(items.iter().filter_map(one_ref).collect()),
         _ => None,

@@ -107,6 +107,69 @@ pub enum PropertyAnomaly {
         /// The value stated.
         value: f64,
     },
+    /// A simple quantity states no value.
+    ///
+    /// The value attribute (`LengthValue`, `AreaValue`, ...) is not
+    /// `OPTIONAL` on any `IfcQuantity*`. With no number to report, the
+    /// quantity is left out of its set's `quantities` and named here.
+    QuantityValueMissing {
+        /// The quantity entity.
+        quantity: EntityId,
+    },
+    /// A simple quantity's value attribute holds something other than a
+    /// number, such as text or a reference.
+    ///
+    /// The quantity is left out of its set's `quantities` and named here.
+    QuantityValueNotNumeric {
+        /// The quantity entity.
+        quantity: EntityId,
+        /// The value found, rendered for the message.
+        found: String,
+    },
+    /// A property set, quantity set, complex property or complex quantity
+    /// lists a member id that is not in the file.
+    ///
+    /// The member cannot be read, so it is absent from the resolved value.
+    MissingMember {
+        /// The set or complex entity listing the member.
+        container: EntityId,
+        /// The id it named.
+        member: EntityId,
+    },
+    /// A complex property or complex quantity reaches itself again through
+    /// its members.
+    ///
+    /// The schema forbids only a DIRECT self-member (`IfcComplexProperty`
+    /// `WR21`, `IfcPhysicalComplexQuantity.NoSelfReference`); a longer
+    /// cycle is just as unresolvable. `member` is already being read higher
+    /// up the same path, so it is left out of `complex`'s resolved members.
+    ComplexCycle {
+        /// The complex entity whose member list closes the cycle.
+        complex: EntityId,
+        /// The member that re-enters the path.
+        member: EntityId,
+    },
+    /// Complex nesting deeper than the reader follows.
+    ///
+    /// `complex` is resolved with its name and usage, but its members are
+    /// not read.
+    ComplexTooDeep {
+        /// The complex entity whose members were not read.
+        complex: EntityId,
+        /// The nesting depth followed.
+        limit: usize,
+    },
+    /// One read followed more nested member references than its budget.
+    ///
+    /// Members may legally be shared between complex properties, so a
+    /// small file can expand into an enormous tree. Once the budget is
+    /// spent, the remaining members of `complex` are not read.
+    ComplexBudgetExceeded {
+        /// The complex entity whose remaining members were not read.
+        complex: EntityId,
+        /// The nested member references followed.
+        limit: usize,
+    },
 }
 
 /// A refused authoring request.

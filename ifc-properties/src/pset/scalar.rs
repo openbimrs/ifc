@@ -26,6 +26,9 @@ use std::sync::Arc;
 
 use ifc_model::{EntityId, Model};
 
+use crate::error::PropertyAnomaly;
+use crate::nesting::Nesting;
+use crate::pset::complex::complex_members;
 use crate::value::MeasureValue;
 
 /// Attribute slots shared by every `IfcProperty`.
@@ -117,20 +120,36 @@ pub struct Property {
 
 /// Read one property by id.
 ///
-/// Recursion depth is bounded: `IfcComplexProperty` may nest, and a file that
-/// makes a complex property reach itself would otherwise recurse forever. The
-/// schema forbids self-reference, but a reader must not trust that.
+/// Returns `None` when `id` is not in the file. `IfcComplexProperty` may
+/// nest, and a malformed file can make one reach itself; such a member, one
+/// nested deeper than the reader follows, and one naming an absent entity are
+/// left out of the resolved [`PropertyValue::Complex`]. This function does
+/// not say which members were cut: use [`property_checked`], which returns
+/// the same value together with the [`PropertyAnomaly`] for each.
 pub fn property(model: &Model, id: EntityId) -> Option<Property> {
-    read_property(model, id, 0)
+    property_checked(model, id).map(|(property, _)| property)
 }
 
-/// Maximum `IfcComplexProperty` nesting followed before giving up.
+/// Read one property by id, reporting every nested member left unread.
 ///
-/// Deep enough for any real authoring tool; shallow enough that a cyclic file
-/// terminates. Exceeding it yields `Unsupported` rather than a panic.
-const MAX_COMPLEX_DEPTH: usize = 16;
+/// Nested complex properties are followed along a tracked path with a depth
+/// bound and a member budget. A member that re-enters the path
+/// ([`PropertyAnomaly::ComplexCycle`]), a complex property nested too deep
+/// ([`PropertyAnomaly::ComplexTooDeep`]), members past the budget
+/// ([`PropertyAnomaly::ComplexBudgetExceeded`]) and member ids absent from
+/// the file ([`PropertyAnomaly::MissingMember`]) are reported, never
+/// silently dropped.
+pub fn property_checked(model: &Model, id: EntityId) -> Option<(Property, Vec<PropertyAnomaly>)> {
+    let mut anomalies = Vec::new();
+    let property = read_property(model, id, &mut Nesting::new(&mut anomalies))?;
+    Some((property, anomalies))
+}
 
-fn read_property(model: &Model, id: EntityId, depth: usize) -> Option<Property> {
+pub(crate) fn read_property(
+    model: &Model,
+    id: EntityId,
+    nesting: &mut Nesting<'_>,
+) -> Option<Property> {
     let entity = model.get(id)?;
     let ty = entity.type_name.to_ascii_uppercase();
     let name = entity.attributes.get(NAME).and_then(text);
@@ -181,25 +200,10 @@ fn read_property(model: &Model, id: EntityId, depth: usize) -> Option<Property> 
             usage: entity.attributes.get(2).and_then(text),
             reference: entity.attributes.get(3).and_then(entity_ref),
         },
-        "IFCCOMPLEXPROPERTY" => {
-            let properties = if depth >= MAX_COMPLEX_DEPTH {
-                Vec::new()
-            } else {
-                entity
-                    .attributes
-                    .get(3)
-                    .and_then(refs)
-                    .unwrap_or_default()
-                    .into_iter()
-                    .filter(|child| *child != id)
-                    .filter_map(|child| read_property(model, child, depth + 1))
-                    .collect()
-            };
-            PropertyValue::Complex {
-                usage: entity.attributes.get(2).and_then(text),
-                properties,
-            }
-        }
+        "IFCCOMPLEXPROPERTY" => PropertyValue::Complex {
+            usage: entity.attributes.get(2).and_then(text),
+            properties: complex_members(model, id, entity.attributes.get(3), nesting),
+        },
         _ => PropertyValue::Unsupported {
             type_name: ty.as_str().into(),
         },
@@ -238,7 +242,7 @@ fn entity_ref(value: &ifc_model::Value) -> Option<EntityId> {
     }
 }
 
-fn refs(value: &ifc_model::Value) -> Option<Vec<EntityId>> {
+pub(super) fn refs(value: &ifc_model::Value) -> Option<Vec<EntityId>> {
     match value {
         ifc_model::Value::List(items) => Some(items.iter().filter_map(entity_ref).collect()),
         _ => None,

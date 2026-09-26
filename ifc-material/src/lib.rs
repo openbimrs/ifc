@@ -26,7 +26,7 @@ pub use authoring::{
     create_profile_with_offsets, ConstituentDraft, LayerDraft, LayerSetDraft,
     MaterialAssignmentDraft, MaterialDraft, ProfileDraft,
 };
-pub use constituent::{MaterialConstituent, MaterialConstituentSet};
+pub use constituent::{ConstituentFractionDiagnostic, MaterialConstituent, MaterialConstituentSet};
 pub use error::{MaterialError, MaterialResult};
 pub use layer::{MaterialLayer, MaterialLayerSet, MaterialLayerSetUsage, MaterialLayerWithOffsets};
 pub use material::{

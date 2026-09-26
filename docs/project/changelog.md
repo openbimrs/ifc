@@ -128,6 +128,59 @@ lockstep -- is archived in the
   axiolid/kernel#165) brings the composite-curve D within 1e-5 of its exact
   volume.
 
+### ifc-material
+
+### Added
+
+- `MaterialView::constituent_fraction_diagnostic`: an opt-in policy check
+  that an `IfcMaterialConstituentSet`'s fractions describe one whole
+  (#103). It returns a `ConstituentFractionDiagnostic` when every
+  constituent states a fraction but the sum is further from 1 than the
+  caller's tolerance (`SumNotOne`), or when stated and missing fractions
+  are mixed (`PartiallyStated`). IFC4 declares no WHERE rule on the sum,
+  so this is never a decode error and never normalises: the accessors
+  keep returning the authored fractions.
+
+### ifc-properties
+
+### Added
+
+- `property_checked` and `property_set_checked`: the values of `property`
+  and `property_set`, together with a `PropertyAnomaly` for every member
+  they could not resolve (#107). `property_sets_by_object` and
+  `resolved_properties` now include these anomalies, once per set.
+- `PropertyAnomaly` variants for what nested and malformed members used
+  to lose silently (#107). `PropertyAnomaly` is `#[non_exhaustive]`, so
+  this is not breaking:
+  - `ComplexCycle`: a complex property or complex quantity reaches itself
+    again through its members, at any cycle length.
+  - `ComplexTooDeep`: complex nesting deeper than 16 levels.
+  - `ComplexBudgetExceeded`: one read followed more than 10,000 nested
+    member references.
+  - `MissingMember`: a set or complex entity lists an id absent from the
+    file.
+  - `QuantityValueMissing` / `QuantityValueNotNumeric`: a simple quantity
+    whose value attribute is `$`, absent, or not a number.
+
+### Fixed
+
+- Complex properties and complex quantities guarded nesting only against a
+  DIRECT self-member and a bare depth of 16 (#107). A longer cycle, or
+  nesting past the depth, was silently truncated to an empty member list,
+  and a densely cyclic file cost exponential work (a clique of 8 complex
+  properties followed 7^16 paths) before the depth stopped it. Members are
+  now followed along a tracked path with a depth bound and a member
+  budget, and every cut is reported. A member shared by two complex
+  properties (legal: `IfcProperty.PartOfComplex` is `SET [0:?]`) is still
+  resolved under both and is not a cycle.
+- `quantity_set` and `quantity_sets` no longer drop, without a word, a
+  simple quantity with a missing or non-numeric value, or a member id
+  absent from the file (#107). Such members are still left out of
+  `quantities` (a `Quantity::Simple` needs a number), but each is now
+  reported.
+- The `property` documentation claimed over-deep nesting yields
+  `PropertyValue::Unsupported`; it never did. It now states what happens.
+
 ### ifc-schema
 
 ### Changed

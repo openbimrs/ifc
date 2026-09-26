@@ -17,6 +17,7 @@
 //! | `unit` | Unit assignment, prefixes and conversion-based units |
 //! | `value` | `IfcValue` measure types and their interpretation |
 //! | `query` | Lookup helpers: property by name, pset by element |
+//! | `nesting` | Bounded, cycle-aware traversal of complex properties and quantities |
 //! | `error` | Why a property lookup failed |
 //!
 //! # Status
@@ -35,6 +36,7 @@
 
 mod error;
 mod exact;
+mod nesting;
 mod pset;
 mod quantity;
 mod query;
@@ -61,10 +63,11 @@ pub use pset::{
     add_section_properties, add_section_reinforcement_properties, add_window_lining_properties,
     add_window_panel_properties, attach_property_set, attach_template, attach_type, bounded_slot,
     complex_quantity_slot, complex_slot, defines_by_template_slot, defines_by_type_slot,
-    defines_slot, element_quantity_slot, enumerated_slot, list_slot, property, property_set,
-    property_sets_by_object, pset_slot, pset_template_slot, reference_slot, single_value_slot,
-    table_slot, AttachedSets, Attachment, DoorLiningDraft, Property, PropertySet, PropertyValue,
-    ReinforcementBarDraft, SectionReinforcementDraft, TableValueDraft, WindowLiningDraft,
+    defines_slot, element_quantity_slot, enumerated_slot, list_slot, property, property_checked,
+    property_set, property_set_checked, property_sets_by_object, pset_slot, pset_template_slot,
+    reference_slot, single_value_slot, table_slot, AttachedSets, Attachment, DoorLiningDraft,
+    Property, PropertySet, PropertyValue, ReinforcementBarDraft, SectionReinforcementDraft,
+    TableValueDraft, WindowLiningDraft,
 };
 pub use quantity::{
     add_quantity_to_set, compare, create_quantity, create_quantity_with, set_description, set_name,
