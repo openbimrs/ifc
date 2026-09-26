@@ -46,8 +46,9 @@ Implemented foundations include:
 
 Some domain crates remain partial and contain private architecture scaffolds: their
 module trees reserve ownership without exposing unimplemented behavior. Their
-README, `AGENTS.md`, and `PLAN.md` files distinguish compiled behavior from
-reserved module ownership, and the capability matrix reports crate status.
+README and `AGENTS.md` files distinguish compiled behavior from reserved
+module ownership, open work is tracked in GitHub issues, and the capability
+matrix reports crate status.
 **No capability should be inferred from a module or crate name alone.**
 
 ## Use

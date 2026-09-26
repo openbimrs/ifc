@@ -2,7 +2,7 @@
 
 Purpose: bounded IFC control authoring for permits, project orders, action requests, and performance history.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`.
 
 ## Implemented boundary
 
@@ -11,8 +11,14 @@ Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or roadma
 
 A control is an authored fact. Issuing, granting, approving, scheduling, or
 enforcing one is the concern of the system that owns the process, not this
-crate. Controls attach to the work they govern through `IfcRelAssigns*`
-relationships owned elsewhere; this crate does not create them.
+crate. Controls attach to the work they govern through `IfcRelAssignsToControl`.
+`ifc-cost` and `ifc-schedule` already write that relationship for their own
+controls; whether this crate does the same for its four is #99, and until
+then it does not create them.
+
+`IfcCostItem`, `IfcCostSchedule`, `IfcWorkCalendar` and `IfcWorkControl` are
+`IfcControl` subtypes too, but they belong to `ifc-cost` and `ifc-schedule`:
+crates split by domain, not by supertype. Do not move them here.
 
 `IfcWorkOrder` does not exist in IFC: a work order is an `IfcProjectOrder`
 whose `PredefinedType` is `WORKORDER`. Do not add an entity for it.

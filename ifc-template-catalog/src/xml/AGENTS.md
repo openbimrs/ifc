@@ -2,7 +2,7 @@
 
 Purpose: Tolerant syntax ingestion with strict typed interpretation of PSD/QTO semantics.
 
-Follow `../../AGENTS.md`. Read sibling `PLAN.md` only for importer/generator work; record WIP and corpus evidence there.
+Follow `../../AGENTS.md`.
 
 ## Boundary
 

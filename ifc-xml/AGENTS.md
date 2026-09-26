@@ -2,8 +2,7 @@
 
 Purpose: ifcXML codec adapter between XML and ifc-model.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only when assigned implementation or
-roadmap work; record progress and blockers there, not here.
+Follow `../AGENTS.md`.
 
 ## Boundary
 
@@ -35,4 +34,4 @@ they grow together.
 ## Verification
 
 Run targeted crate tests and clippy first, then the package architecture/context
-gates from `../AGENTS.md`. Record exact exit evidence in `PLAN.md`.
+gates from `../AGENTS.md`. Record exact exit evidence in the pull request.

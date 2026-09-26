@@ -91,7 +91,7 @@ impl<'m> SurfaceOfLinearExtrusion<'m> {
     ///
     /// A profile, not a curve, despite the attribute name. Only its outer
     /// curve contributes; see the module docs.
-    // TODO: `resource`/`profile` will provide the typed profile view.
+    // TODO(#97): `resource`/`profile` will provide the typed profile view.
     pub fn swept_curve_ref(&self) -> GeometryResult<EntityId> {
         self.base.swept_curve_ref()
     }
@@ -100,7 +100,7 @@ impl<'m> SurfaceOfLinearExtrusion<'m> {
     ///
     /// `None` means the identity in the containing representation's space,
     /// which is a legal and common encoding, not a missing attribute.
-    // TODO: `resource::placement` will provide the typed placement view.
+    // TODO(#97): `resource::placement` will provide the typed placement view.
     pub fn position_ref(&self) -> Option<EntityId> {
         self.base.position_ref()
     }
@@ -109,7 +109,7 @@ impl<'m> SurfaceOfLinearExtrusion<'m> {
     ///
     /// Given in the profile's own coordinate system, so it must be transformed
     /// by `Position` before use in model space.
-    // TODO: `resource::direction` will provide the typed direction view.
+    // TODO(#97): `resource::direction` will provide the typed direction view.
     pub fn extruded_direction_ref(&self) -> GeometryResult<EntityId> {
         self.base
             .slots
@@ -156,13 +156,13 @@ impl<'m> SurfaceOfRevolution<'m> {
     }
 
     /// The `IfcProfileDef` whose outer curve is revolved.
-    // TODO: `resource`/`profile` will provide the typed profile view.
+    // TODO(#97): `resource`/`profile` will provide the typed profile view.
     pub fn swept_curve_ref(&self) -> GeometryResult<EntityId> {
         self.base.swept_curve_ref()
     }
 
     /// The optional placement of the profile's coordinate system.
-    // TODO: `resource::placement` will provide the typed placement view.
+    // TODO(#97): `resource::placement` will provide the typed placement view.
     pub fn position_ref(&self) -> Option<EntityId> {
         self.base.position_ref()
     }
@@ -172,7 +172,7 @@ impl<'m> SurfaceOfRevolution<'m> {
     /// Carries a location *and* a direction. Both are needed: the offset
     /// between the axis and the profile is what makes the surface a torus
     /// rather than a sphere.
-    // TODO: `resource::placement` will provide the typed axis-placement view.
+    // TODO(#97): `resource::placement` will provide the typed axis-placement view.
     pub fn axis_position_ref(&self) -> GeometryResult<EntityId> {
         self.base.slots.req_ref(slot::AXIS_POSITION, "AxisPosition")
     }

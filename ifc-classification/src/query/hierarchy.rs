@@ -70,6 +70,12 @@ fn require_select(
 
 impl<'m> ClassificationView<'m> {
     /// Walk `ReferencedSource` links from `leaf` up to its root, stopping at the enclosing `IfcClassification` if present; fails on a cycle, a dangling or mistyped source, or if the walk exceeds `budget`.
+    ///
+    /// Every distinct entity resolved counts against `budget.max_nodes`,
+    /// including the final `IfcClassification`, and every `ReferencedSource`
+    /// edge followed against `budget.max_depth`. Reaching an entity already on
+    /// the path is reported as [`ClassificationError::Cycle`], never as a
+    /// budget error.
     pub fn hierarchy_from(
         self,
         leaf: EntityId,

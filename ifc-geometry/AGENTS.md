@@ -4,8 +4,7 @@ Purpose: Interpret all shape-affecting IFC data in both directions — lower exa
 intent into a format-neutral axiolid-model DAG, and author IFC geometry entities
 from plain numbers (ADR 0011).
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
-roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`.
 
 ## Boundary
 
@@ -35,7 +34,11 @@ The neutral crates are optional, behind the default-on `lowering` feature. Only
 name them; everything else reads `ifc-model` slots and must
 compile with the feature off. `tests/kernel_free_build.rs` checks the resolved
 dependency graph, so a stray unconditional `use axiolid_*` fails the gate
-rather than silently relinking the kernel for 2D consumers.
+rather than silently relinking the kernel for 2D consumers. It is a feature,
+not a second crate, because `lower` is a leaf module: the split holds
+structurally and costs one test, where a crate would cost a published name and
+a manifest edit for every consumer. Revisit if the kernel-free half grows heavy
+dependencies of its own or needs its own release cadence.
 
 Placement resolution lives in `constraint::placement`, not `lower`. World
 coordinates are needed by 2D consumers too, so the function must stay
@@ -54,8 +57,9 @@ rejected by `scripts/check-leakage.py`. See `data/NOTICE.md`.
   readers use; never restates a slot number.
 - `select`, `rules`: EXPRESS membership and actionable semantic rules
 - `units`, `transform`: source-number interpretation and project-space composition
-- `input/` (planned): shape inputs from Profile, Representation, Material,
-  Product, and Topology resources
+- `input/`: shape inputs from Representation, Material and Product
+  resources, plus openings (profiles are read by `lower::profile`, topology
+  by `resource::topology` and `solid::brep`)
 - `lower/`: total IFC-to-`GeometryGraph` translation; no execution
 
 ## Invariants

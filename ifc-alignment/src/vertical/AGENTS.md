@@ -1,7 +1,6 @@
 # ifc-alignment vertical instructions
 
-Scope: vertical profile and exact gradient segment parameters. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
-assigned task(s) `ALIGN-V`; keep progress and blockers there.
+Scope: vertical profile and exact gradient segment parameters. Follow the crate `../../AGENTS.md`.
 
 ## Owns
 

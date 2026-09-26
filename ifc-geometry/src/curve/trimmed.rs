@@ -99,7 +99,7 @@ impl TrimmingPreference {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TrimPoint {
     /// An `IfcCartesianPoint` reference giving a position on the basis curve.
-    // TODO: `resource::point` will provide a typed point view to resolve this.
+    // TODO(#97): `resource::point` will provide a typed point view to resolve this.
     Cartesian(EntityId),
     /// An `IfcParameterValue` in the basis curve's own parameterisation.
     ///

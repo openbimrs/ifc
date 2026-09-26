@@ -2,7 +2,7 @@
 
 Purpose: Declarative catalog corrections and advisories with stale/conflict detection.
 
-Follow `../../AGENTS.md`. Read sibling `PLAN.md` only for overlay implementation or review; keep WIP there.
+Follow `../../AGENTS.md`.
 
 ## Boundary
 

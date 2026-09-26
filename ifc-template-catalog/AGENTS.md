@@ -2,7 +2,7 @@
 
 Purpose: Versioned external PSD/QTO definitions, applicability lookup, provenance, and explicit correction overlays.
 
-Follow `../AGENTS.md`. Read sibling `PLAN.md` only when assigned implementation, generation, or review; record WIP, blockers, and proof there, not here.
+Follow `../AGENTS.md`.
 
 ## Boundary
 
@@ -25,7 +25,10 @@ This metadata-tier crate owns no IFC model records. It may use `ifc-schema` for 
 - No network or `references/` access during build or runtime.
 - Unknown XML semantics fail explicitly; do not silently discard typed content.
 - Public snapshots are immutable. Create a new snapshot when sources or overlays change.
+- The design is ADR 0017. Do not enable `quick-xml` features here that
+  `ifc-xml` does not want: Cargo unifies features across the workspace, and
+  `quick-xml/encoding` once broke `ifc-xml` that way.
 
 ## Verification
 
-Run crate tests, clippy/docs, generation drift checks, isolated facade feature builds, and IFC architecture/progressive-context gates. Exact WIP commands and results belong in `PLAN.md`.
+Run crate tests, clippy/docs, generation drift checks, isolated facade feature builds, and IFC architecture/progressive-context gates. Exact WIP commands and results belong in the pull request.

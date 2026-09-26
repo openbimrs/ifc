@@ -2,8 +2,7 @@
 
 Purpose: Borrowed property, quantity, unit, template, and standard-library projections plus model authoring ports.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
-roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`.
 
 ## Boundary
 

@@ -24,7 +24,7 @@ IFC4x3 linear positioning: alignments, referents, linear placement, spirals.
 
 IFC4x3 adds 14 alignment entities plus spiral curve types (`IfcClothoid`,
 `IfcCosineSpiral`). Isolated in its own crate because building-only
-consumers should never compile clothoid integration.
+consumers should never compile spiral curve laws.
 
 ## Depends on
 

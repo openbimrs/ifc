@@ -16,11 +16,10 @@
 //!
 //! # Status
 //!
-//! Partial. Implemented: SYS-ROOT (systems, subtype-aware discovery and
-//! membership), SYS-PORT (ports and both element-attachment forms) and
-//! SYS-CONN (the undirected connection graph with cycle-safe traversal).
-//! `flow`, `zone` and `assignment` are reserved with intent, not implemented
-//! -- see `../PLAN.md` for the stages that fill them.
+//! Implemented: systems with subtype-aware discovery and membership, ports
+//! and both element-attachment forms, the undirected connection graph with
+//! cycle-safe traversal, flow roles and direction, and zones. `assignment`
+//! (services-building relationships) is a reserved scaffold.
 
 pub mod authoring;
 mod connectivity;

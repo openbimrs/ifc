@@ -1,7 +1,7 @@
 # ifc-style texture instructions
 
 Scope: texture descriptors and coordinate associations. Follow crate
-`../../AGENTS.md`; read `PLAN.md` only for assigned or remaining texture work.
+`../../AGENTS.md`.
 
 ## Owns
 

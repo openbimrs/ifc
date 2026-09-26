@@ -2,8 +2,7 @@
 
 Scope: Actionable IFC geometry WHERE-rule validation with stable violations.
 
-Follow the crate `../../AGENTS.md`. Read this directory's `PLAN.md` only for assigned
-work under parent task(s) `GEOM-CENSUS`. Record progress there.
+Follow the crate `../../AGENTS.md`.
 
 ## Owns
 
@@ -15,7 +14,8 @@ work under parent task(s) `GEOM-CENSUS`. Record progress there.
 
 - reimplementing parser type constraints
 - kernel numerical validation
-- claiming unsupported rules passed
+- claiming unsupported rules passed: a rule whose check cannot fail stays
+  `inventoried` in `data/ifc4-where-rules.tsv` with its reason recorded
 
 ## Growth map
 

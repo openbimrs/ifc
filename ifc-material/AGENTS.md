@@ -2,8 +2,7 @@
 
 Purpose: Borrowed semantic projections for materials, layers, profiles, constituents, and their usage/assignment.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned task `MAT-SPEC`,
-implementation, or roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`.
 
 ## Boundary
 

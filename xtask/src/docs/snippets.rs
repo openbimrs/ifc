@@ -306,7 +306,7 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
 
 /// Files the site does not publish (`srcExclude` in `docs/.vitepress/config.ts`):
 /// agent context and the ADR template, which may quote the markers themselves.
-const EXCLUDED: &[&str] = &["AGENTS.md", "PLAN.md", "_template.md"];
+const EXCLUDED: &[&str] = &["AGENTS.md", "_template.md"];
 
 /// Every published Markdown page under `docs/`, skipping build output and
 /// dependencies.

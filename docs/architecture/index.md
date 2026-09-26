@@ -83,7 +83,25 @@ documents, so the crate layout follows the role a declaration plays:
    semantic crate, then written through it by an application service.
 
 One IFC entity may therefore have projections in two crates. `ifc-model` owns
-the record; neither projection owns or duplicates it.
+the record; neither projection owns or duplicates it. For the resources that
+mix roles, the split is:
+
+| IFC concept | Geometry projection | Semantic projection | Orchestration |
+| --- | --- | --- | --- |
+| `IfcProfileDef` | exact shape in `ifc-geometry` | name/type only when needed | application chooses the use |
+| `IfcMaterialProfile*` | profile reference, cardinal point, offsets in `ifc-geometry` | material, name, priority, category in `ifc-material` | application associates the product |
+| `IfcMaterialLayerSetUsage` | direction and offset geometry input in `ifc-geometry` | layer identity and composition in `ifc-material` | application chooses the representation |
+| `IfcElementQuantity` | none | authored values, read and write, in `ifc-properties` | application computes and populates |
+| Geometric representation context | local project frame and precision in `ifc-geometry` | none | application composes the map transform |
+| Map conversion, projected CRS | none | geodetic metadata and transform in `ifc-georef` | application applies it at the export/query boundary |
+| Presentation appearance | none | all style semantics in `ifc-style` | renderer joins by entity ID |
+| Structural analysis | geometry and profile IDs only | models, analytical members, connections, actions, loads in `ifc-structural` | solver computes results |
+| Construction resources | none | capacity and allocation in `ifc-resource` | application links resources to processes and products |
+
+Classification, resources, schedules, structural analysis, systems and cost
+are deliberately separate domains, not candidates for consolidation;
+`ifc-resource` is construction-resource planning and never absorbs
+structural-analysis semantics.
 
 ## Where geometry stops
 
@@ -102,13 +120,14 @@ The repository uses progressive context files so that an agent reads only what
 is on the path to its target:
 
 - **AGENTS.md** — stable ambient context: purpose, boundaries, invariants, gates.
-- **PLAN.md** — implementation state: what is done, what is next, with proof
-  commands.
+  A deeper file adds local rules and never repeats its parent.
+- **GitHub issues** — open work. A marker in code names its issue as
+  `TODO(#N)`, so the tracker and the code point at each other.
 
-Read a plan only when assigned roadmap work, doing architecture review, or
-blocked on a dependency. Progress logs and speculative TODOs do not belong in
-**AGENTS.md**. A test (`ifc-model/tests/progressive_context.rs`) enforces that the
-required files exist.
+Progress logs, task lists and speculative TODOs do not belong in
+**AGENTS.md**. `ifc-model/tests/progressive_context.rs` enforces that the
+required context files exist, stay small, and point at files that exist, and
+`cargo run -p xtask -- todo --check` rejects a marker without an issue.
 
 ## Further reading
 

@@ -72,7 +72,7 @@ impl<'m> Circle<'m> {
     /// `IfcAxis2Placement3D`; the select is not narrowed by the schema and
     /// both occur in practice for the same geometry depending on whether the
     /// circle is a profile outline or a swept directrix.
-    // TODO: `resource::placement` will provide the typed placement view.
+    // TODO(#97): `resource::placement` will provide the typed placement view.
     pub fn position_ref(&self) -> GeometryResult<EntityId> {
         self.slots.req_ref(circle_slot::POSITION, "Position")
     }
@@ -113,7 +113,7 @@ impl<'m> Ellipse<'m> {
     }
 
     /// The `IfcAxis2Placement` reference locating the ellipse.
-    // TODO: `resource::placement` will provide the typed placement view.
+    // TODO(#97): `resource::placement` will provide the typed placement view.
     pub fn position_ref(&self) -> GeometryResult<EntityId> {
         self.slots.req_ref(ellipse_slot::POSITION, "Position")
     }

@@ -1,8 +1,7 @@
 # ifc-style assignment instructions
 
 Scope: style and presentation-layer associations to representation `EntityId`s.
-Follow crate `../../AGENTS.md`; read `PLAN.md` only for assigned or remaining
-assignment work.
+Follow crate `../../AGENTS.md`.
 
 ## Owns
 

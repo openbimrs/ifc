@@ -1,7 +1,6 @@
 # ifc-alignment cant instructions
 
-Scope: cant/superelevation layout and transition parameters. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
-assigned task(s) `ALIGN-CANT`; keep progress and blockers there.
+Scope: cant/superelevation layout and transition parameters. Follow the crate `../../AGENTS.md`.
 
 ## Owns
 

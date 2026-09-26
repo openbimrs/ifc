@@ -178,6 +178,12 @@ impl<'m> MaterialView<'m> {
     /// found at either level, and with
     /// `crate::MaterialError::UnknownEntity` if `object` is not in the
     /// model.
+    ///
+    /// The type fallback is exactly one `IfcRelDefinesByType` hop, and two
+    /// such relations are ambiguous even when they name the same type: the
+    /// file states the typing twice, and this lookup does not guess which
+    /// statement was meant. (`ifc-resource` deliberately accepts a repeated
+    /// relation naming the same type.)
     pub fn assigned_material(
         self,
         object: EntityId,

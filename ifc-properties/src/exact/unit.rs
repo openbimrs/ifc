@@ -154,8 +154,10 @@ pub enum ExactUnitError {
     },
     /// An offset unit: `IfcConversionBasedUnitWithOffset`, or a unit with an
     /// offset used where only a scale can apply (inside a derived unit or as
-    /// a conversion factor). IFC4's definition of the offset contradicts its
-    /// own example, so it is not applied.
+    /// a conversion factor). IFC4's prose on where the offset applies
+    /// contradicts its own Fahrenheit example (factor 1.8,
+    /// `f = k * 1.8 - 459.67`), so the offset is not applied until
+    /// buildingSMART settles it (IFC4.x-development#1193; tracked in #110).
     UnsupportedOffset {
         /// The unit carrying the offset.
         unit: EntityId,

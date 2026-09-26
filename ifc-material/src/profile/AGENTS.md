@@ -1,8 +1,7 @@
 # ifc-material profile instructions
 
 Scope: semantic attributes of `IfcMaterialProfile*`. Follow the crate
-`../../AGENTS.md`. Read `PLAN.md` only for assigned task(s) `MAT-PROFILE`; keep
-implementation state there.
+`../../AGENTS.md`.
 
 ## Owns
 

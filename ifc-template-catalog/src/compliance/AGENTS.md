@@ -2,7 +2,7 @@
 
 Purpose: Format-neutral template application walking and authored-set compliance checks.
 
-Follow `../../AGENTS.md`. Read sibling `PLAN.md` only for compliance work; log validation behavior and proof there.
+Follow `../../AGENTS.md`.
 
 Boundaries:
 - No dependency on `ifc-model` or codecs.

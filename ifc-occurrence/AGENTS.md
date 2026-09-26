@@ -4,8 +4,7 @@ Purpose: authoring the 141 concrete `IfcElement` occurrence classes - the
 built elements and distribution equipment that appear in a model, as
 distinct from the type definitions they borrow their description from.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only when assigned implementation or
-roadmap work; record progress, blockers, and evidence there, not here.
+Follow `../AGENTS.md`.
 
 ## Boundary
 
@@ -20,6 +19,12 @@ concerns.
 IFC4X3 ADD2 EXPRESS schema. Do not hand-edit it. Regenerate after a
 schema bump and re-run the crate tests, which assert the catalogue's
 invariants rather than trusting generation.
+
+The target list is every concrete `IfcElement` subtype that no other
+crate's production code authors; test fixtures and doc examples do not
+count, which is why `IfcWall` is included. `PredefinedType` sits at slot 8
+for most classes but at 9, 10, 12 or 17 for a few, so the slot is read per
+catalogue entry, never assumed.
 
 Shards are sized by type count, not letter range: `cargo fmt` expands
 the generated literals to roughly 1.7x their emitted line count, and the

@@ -2,8 +2,7 @@
 
 Purpose: Borrowed presentation, layer, colour, material-appearance, and texture projections over representation items.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
-roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`.
 
 ## Boundary
 

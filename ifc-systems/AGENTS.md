@@ -2,8 +2,7 @@
 
 Purpose: Borrowed building/distribution system, port, flow, zone, and semantic-connectivity projections.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
-roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`.
 
 ## Owns
 

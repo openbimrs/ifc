@@ -2,8 +2,7 @@
 
 Purpose: ISO 10303-21 STEP codec adapter between bytes/files and ifc-model.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only when assigned implementation or
-roadmap work; record progress and blockers there, not here.
+Follow `../AGENTS.md`.
 
 ## Boundary
 
@@ -33,6 +32,12 @@ partitioning, source spans, syntax diagnostics, and event sinks belong to
   read validates records on up to 8 threads (benchmarked in ADR 0015).
 - A lazy model must equal the eager one: `tests/lazy_read.rs` compares them
   on every fixture; check a change against the parse-limits corpus too.
+- Writes follow model order, so repeated writes are byte-identical.
+  Non-finite REALs, nested ones included, are refused with entity and slot
+  context before serialization; finite extremes and signed zero round-trip
+  bit-exactly (`tests/writer_contract.rs`).
+- The nesting limit for aggregates and typed values is enforced by the
+  generic `openbim-step` parser and writer, not re-implemented here.
 
 Keep `lib.rs` delegating, keep child modules crate-private until they own a real
 public contract, and split view/data, traversal, mutation, and validation before
@@ -41,4 +46,4 @@ they grow together.
 ## Verification
 
 Run targeted crate tests and clippy first, then the package architecture/context
-gates from `../AGENTS.md`. Record exact exit evidence in `PLAN.md`.
+gates from `../AGENTS.md`. Record exact exit evidence in the pull request.

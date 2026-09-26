@@ -1,8 +1,7 @@
 # ifc-style surface_style instructions
 
 Scope: surface shading, rendering, lighting, and refraction semantics. Follow
-crate `../../AGENTS.md`; read `PLAN.md` only for assigned or remaining
-surface-style work.
+crate `../../AGENTS.md`.
 
 ## Owns
 

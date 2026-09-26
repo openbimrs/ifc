@@ -2,12 +2,13 @@
 
 Purpose: Borrowed cost-item, quantity, rate, and amount projections over ifc-model.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only when assigned implementation or
-roadmap work; record progress and blockers there, not here.
+Follow `../AGENTS.md`.
 
 ## Boundary
 
-Allowed production dependencies: ifc-model only.
+Allowed production dependencies: ifc-model only. Product assignment stays
+read-only: validating an arbitrary `IfcObjectDefinition` target's ancestry
+would need schema tables, which this model-only boundary excludes.
 
 ## Module ownership
 
@@ -32,4 +33,4 @@ they grow together.
 ## Verification
 
 Run targeted crate tests and clippy first, then the package architecture/context
-gates from `../AGENTS.md`. Record exact exit evidence in `PLAN.md`.
+gates from `../AGENTS.md`. Record exact exit evidence in the pull request.

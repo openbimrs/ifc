@@ -7,8 +7,7 @@
 <!-- Use `Closes #123` for the implementation issue. -->
 
 - Issue:
-- Plan task ID, if applicable:
-- Roadmap item, if applicable:
+- Roadmap theme, if applicable:
 
 ## Scope
 
@@ -29,7 +28,7 @@ result:
 - [ ] I added or updated tests for behavior changes.
 - [ ] I ran the relevant targeted checks.
 - [ ] I ran `./scripts/gate.sh`, or documented why the full gate could not run.
-- [ ] I updated the owning **PLAN.md** task and recorded proof when this completes planned work.
-- [ ] I updated documentation and `CHANGELOG.md` for user-visible behavior.
+- [ ] Any new `TODO` names its tracking issue as `TODO(#N)`.
+- [ ] I updated documentation and the owning crate's `CHANGELOG.md` for user-visible behavior.
 - [ ] I did not add restricted standards material, confidential models, or third-party content without verified redistribution rights.
 - [ ] I have the right to submit this contribution under `AGPL-3.0-or-later` and preserved third-party attribution/provenance.

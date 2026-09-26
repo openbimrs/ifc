@@ -1,8 +1,5 @@
 //! Vertical segments: grades and parabolic curves.
 //!
-//!
-//! Implementation is tracked in `../PLAN.md`.
-
 //! ## Internal split
 //!
 //! - `layout.rs`: profile order.

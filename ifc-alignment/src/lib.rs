@@ -3,7 +3,7 @@
 //!
 //! IFC4x3 adds 14 alignment entities plus spiral curve types (`IfcClothoid`,
 //! `IfcCosineSpiral`). Isolated in its own crate because building-only
-//! consumers should never compile clothoid integration.
+//! consumers should never compile spiral curve laws.
 //!
 //! # Module map
 //!
@@ -17,9 +17,10 @@
 //! | `placement` | `IfcLinearPlacement` and distance expressions |
 //! | `error` | Why an alignment operation failed |
 //!
-//! Horizontal line and circular-arc parameter resolution lowers to exact
-//! neutral curve graphs. Transition curves remain typed unsupported until the
-//! neutral curve vocabulary can preserve them without approximation.
+//! Horizontal lines, circular arcs and transition spirals lower to exact
+//! neutral curve graphs; a spiral is stored as its curvature law
+//! (`Curve2::Intrinsic`), never integrated here. Families without an exact
+//! law are typed refusals, tracked in GitHub issues.
 
 mod alignment;
 pub mod authoring;

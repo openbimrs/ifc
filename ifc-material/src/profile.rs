@@ -3,8 +3,6 @@
 //! This module projects authored MaterialResource profile references, cardinal
 //! points, extents, offsets, and taper fields. `ifc-geometry::input` owns their
 //! geometric interpretation and lowering.
-//!
-//! Implementation is tracked in `../PLAN.md`.
 
 //! ## Internal split
 //!

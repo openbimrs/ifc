@@ -2,8 +2,7 @@
 
 Purpose: Bounded borrowed structural-analysis views, relationship traversal, and selected transaction-staged authoring.
 
-Follow `../AGENTS.md`. Read `PLAN.md` only for assigned implementation or
-roadmap work; keep progress, blockers, and evidence there.
+Follow `../AGENTS.md`.
 
 - `IfcStructuralLoadGroup` and `IfcStructuralLoadCase` authoring, plus the
   `Varying` forms of the curve and surface members. The case form's inherited

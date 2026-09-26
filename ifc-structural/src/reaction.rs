@@ -1,4 +1,3 @@
 //! Computed reactions.
 //!
-//!
-//! Not yet implemented -- see `../PLAN.md`.
+//! Not yet implemented; see <https://github.com/openbimrs/ifc/issues/127>.

@@ -64,7 +64,7 @@ impl<'m> BoundingBox<'m> {
 
     /// The `IfcCartesianPoint` reference at the box's minimum corner.
     ///
-    /// TODO: resolve through the point module once it exists; this crate
+    /// TODO(#97): resolve through the point module once it exists; this crate
     /// deliberately does not define a competing point view.
     pub fn corner(&self) -> GeometryResult<EntityId> {
         self.slots.req_ref(slot::CORNER, "Corner")

@@ -123,6 +123,14 @@ lockstep -- is archived in the
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
 
+### ifc-template-catalog
+
+### Fixed
+
+- The built-in environmental advisories cite their decision record at its
+  restored path, `docs/adr/0017-versioned-psd-qto-catalog.md`; the old
+  `0010` path had been reassigned to an unrelated ADR.
+
 ### openbim-ifc-binding-core
 
 ### Added (lazy loading)

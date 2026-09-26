@@ -175,7 +175,7 @@ impl<'m> BSplineCurve<'m> {
     /// The `IfcCartesianPoint` control point references, in order.
     ///
     /// Order defines the curve; sorting or deduplicating them destroys it.
-    // TODO: `resource::point` will provide a typed point view to resolve these.
+    // TODO(#97): `resource::point` will provide a typed point view to resolve these.
     pub fn control_point_refs(&self) -> GeometryResult<Vec<EntityId>> {
         let points = self
             .slots

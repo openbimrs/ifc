@@ -11,4 +11,6 @@
 //! ancestor bitsets) happens in one file, and the version-drift handling has an
 //! obvious home.
 //!
-//! Not yet implemented -- Stage 1 in `../PLAN.md`.
+//! `is_a` currently lives on the registry (`registry.rs`); this module is its
+//! reserved home once ancestor lookup needs the optimisations above. See
+//! <https://github.com/openbimrs/ifc/issues/127>.

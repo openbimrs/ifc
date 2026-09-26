@@ -66,7 +66,7 @@ impl<'m> Polyline<'m> {
     /// At least two are required by the schema; fewer is
     /// [`crate::GeometryError::Degenerate`] because a one-point polyline has
     /// no edge and would silently contribute nothing to a profile.
-    // TODO: `resource::point` will provide a typed point view to resolve these.
+    // TODO(#97): `resource::point` will provide a typed point view to resolve these.
     pub fn point_refs(&self) -> GeometryResult<Vec<EntityId>> {
         let points = self.slots.req_ref_list(polyline_slot::POINTS, "Points")?;
         if points.len() < 2 {
@@ -156,7 +156,7 @@ impl<'m> IndexedPolyCurve<'m> {
     }
 
     /// The `IfcCartesianPointList2D` or `IfcCartesianPointList3D` reference.
-    // TODO: `resource::point` will provide a typed point-list view.
+    // TODO(#97): `resource::point` will provide a typed point-list view.
     pub fn points_ref(&self) -> GeometryResult<EntityId> {
         self.slots.req_ref(indexed_slot::POINTS, "Points")
     }

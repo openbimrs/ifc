@@ -21,10 +21,10 @@
 //!
 //! # Status
 //!
-//! Partial. `value`, `pset`, `quantity`, `unit`, `template` and `query` are
-//! implemented. `PROP-EDIT` -- transactional authoring of quantities -- is
-//! blocked on `ifc-model`'s `MODEL-MUT`, and `standard` (the shipped Pset
-//! catalogue) is not yet read. See `../PLAN.md`.
+//! Implemented: `value`, `pset`, `quantity` (including transactional quantity
+//! edits), `unit`, `template`, `query` and the release-bound `exact` lookups.
+//! `standard` is a reserved scaffold; the shipped Pset/Qto catalogue is
+//! `ifc-template-catalog`. Open work is tracked in GitHub issues.
 //!
 //! # What this crate will not do
 //!

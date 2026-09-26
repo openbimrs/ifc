@@ -1,8 +1,5 @@
 //! `IfcLinearPlacement` and distance expressions.
 //!
-//!
-//! Implementation is tracked in `../PLAN.md`.
-
 //! ## Internal split
 //!
 //! - `linear.rs`: linear placement.

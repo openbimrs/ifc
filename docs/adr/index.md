@@ -31,5 +31,7 @@ for new records.
 | [0013](/adr/0013-language-bindings-wrap-the-facade) | Language bindings wrap the facade, one crate per target | Accepted |
 | [0014](/adr/0014-net-geometry-is-an-explicit-request) | Net geometry is an explicit request; openings are exact booleans | Accepted |
 | [0015](/adr/0015-strict-step-reads-load-lazily) | Strict STEP reads validate eagerly and decode lazily | Accepted |
+| [0016](/adr/0016-open-work-lives-in-issues) | Open work lives in issues, not in checked-in plans | Accepted |
+| [0017](/adr/0017-versioned-psd-qto-catalog) | Versioned PSD/QTO template catalogs | Accepted |
 
 <!-- ADR:INDEX:END -->

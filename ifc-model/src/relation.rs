@@ -4,4 +4,6 @@
 //! type assignment, property assignment and containment are all `IfcRel*`
 //! instances. Traversal helpers belong here.
 //!
-//! Not yet implemented -- see `../PLAN.md`.
+//! Not implemented here: the relationship readers live in the domain crates
+//! and `ifc-spatial`. Whether this module still reserves anything is
+//! <https://github.com/openbimrs/ifc/issues/127>.

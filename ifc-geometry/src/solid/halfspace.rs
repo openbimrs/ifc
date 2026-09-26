@@ -94,7 +94,7 @@ impl<'m> HalfSpaceSolid<'m> {
 
     /// The `IfcSurface` reference dividing space. Normally an `IfcPlane`.
     ///
-    /// TODO: resolve through the surface module once it exists; this crate
+    /// TODO(#97): resolve through the surface module once it exists; this crate
     /// deliberately does not define a competing surface view.
     pub fn base_surface(&self) -> GeometryResult<EntityId> {
         self.slots.req_ref(slot::BASE_SURFACE, "BaseSurface")
@@ -238,7 +238,7 @@ impl<'m> PolygonalBoundedHalfSpace<'m> {
     /// Its coordinates are in the XY plane of [`Self::position`]; the clipping
     /// body is this curve extruded along that placement's +Z.
     ///
-    /// TODO: resolve through the curve module once it exists; this crate
+    /// TODO(#97): resolve through the curve module once it exists; this crate
     /// deliberately does not define a competing curve view.
     pub fn polygonal_boundary(&self) -> GeometryResult<EntityId> {
         self.slots

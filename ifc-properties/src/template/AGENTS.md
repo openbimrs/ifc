@@ -1,7 +1,6 @@
 # ifc-properties template instructions
 
-Scope: property/quantity templates and applicability relationships. Follow the crate `../../AGENTS.md`. Read `PLAN.md` only for
-assigned task(s) `PROP-TEMPLATE` and keep implementation state there.
+Scope: property/quantity templates and applicability relationships. Follow the crate `../../AGENTS.md`.
 
 ## Owns
 

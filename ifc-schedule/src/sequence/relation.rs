@@ -26,6 +26,11 @@
 //! starts after the predecessor finishes, while `START_START` means they start
 //! together. A tool that treats every link as finish-to-start will compute a
 //! schedule that the file does not state.
+//!
+//! # Lag is signed
+//!
+//! `IfcLagTime.LagValue` may be negative: a negative lag is a lead, meaning
+//! the linked ends overlap. It is a stated fact, not a defect to refuse.
 
 use std::collections::HashSet;
 

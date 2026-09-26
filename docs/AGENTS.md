@@ -1,9 +1,7 @@
 # Documentation instructions
 
 Applies to `docs/`. Read the repository [`../AGENTS.md`](../AGENTS.md) first; this file adds only
-what is specific to the documentation site. The adjacent PLAN.md is opt-in
-implementation state — read it only when picking up site work, not for the
-standing rules below.
+what is specific to the documentation site.
 
 ## What this directory is
 

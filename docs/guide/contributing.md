@@ -2,14 +2,14 @@
 
 ## Choose work before coding
 
-The detailed engineering backlog lives in the nearest **PLAN.md**; GitHub owns
-public discussion and assignment. Start from the
+The engineering backlog is the repository's
+[GitHub issues](https://github.com/openbimrs/ifc/issues). Start from the
 [Ready for contributors](https://github.com/orgs/openbimrs/projects/1/views/3)
 view, choose an unassigned issue, and comment before beginning a substantial
-change. Every promoted issue names one stable plan task ID and the proof needed
-to complete it.
+change. Every promoted issue names its scope and the proof needed to complete
+it.
 
-Do not create an issue for every unchecked plan item. Use
+Use
 [Discussions](https://github.com/openbimrs/ifc/discussions) for design questions
 and the issue forms for reproducible bugs or concrete proposals. See the root
 [contribution policy](https://github.com/openbimrs/ifc/blob/main/CONTRIBUTING.md)
@@ -103,12 +103,16 @@ contract. See [ADR 0005](/adr/0005-scaffold-modules-declare-ownership).
 ## Context files
 
 **AGENTS.md** is stable ambient context — purpose, boundaries, invariants, gates.
-**PLAN.md** is implementation state. They are nested so that an agent reads only
-the files on the path to its target, and a deeper file never repeats its parent.
+The files are nested so that an agent reads only the files on the path to its
+target, and a deeper file never repeats its parent.
 
-When finishing a plan item: check it off, record the proof command and its
-result, and note follow-up work found along the way. Progress logs and
-speculative TODOs do not belong in **AGENTS.md**.
+Open work is a GitHub issue, never a checklist in the repository. A marker left
+in code names its issue, `TODO(#123)`; `cargo run -p xtask -- todo --check`
+fails the gate on one that does not, and `cargo run -p xtask -- todo` lists them
+all so a closed issue's leftovers can be found. The proof of finished work goes
+in the pull request. A decision that should outlive it goes into the owning
+**AGENTS.md**, the module docs, or an ADR. Progress logs do not belong in
+**AGENTS.md**.
 
 ## ADRs
 
@@ -238,6 +242,9 @@ may create, move or delete release tags.
   after its first publish. Until every crate is configured, the workflow
   falls back to the `CARGO_REGISTRY_TOKEN` secret and warns; delete the
   secret once the warning stops appearing.
+- npm: the first version of a new scoped package must be published by hand
+  (npm cannot attach a trusted publisher to a package that does not exist
+  yet); every later version comes from `release.yml`.
 
 If CI cannot publish, `--publish --local` runs `cargo publish` from a
 detached worktree at the tag instead, so the embedded VCS hash stays
@@ -260,9 +267,8 @@ stops a newly added crate from escaping this process.
 The [roadmap](/project/roadmap) explains product direction and shipped evidence.
 The public Project's
 [Ready for contributors](https://github.com/orgs/openbimrs/projects/1/views/3)
-view is the authoritative shortlist of independently assignable work. Tasks not
-shown there may be blocked, stale, too broad, or awaiting an ownership decision
-even when their **PLAN.md** checkbox remains open.
+view is the authoritative shortlist of independently assignable work. Issues
+not shown there may be blocked, too broad, or awaiting an ownership decision.
 
 Good contributions often include one of:
 

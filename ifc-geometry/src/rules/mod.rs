@@ -15,10 +15,11 @@
 //!
 //! # Scope
 //!
-//! IFC4 declares 95 where-rules across 56 geometry entities. Implemented here
-//! are the ones a consumer can actually act on: rules about dimensionality,
-//! degeneracy and operand agreement. Rules that merely restate a type
-//! constraint the parser already enforces are noted as such and skipped.
+//! IFC4 declares 95 where-rules across 56 geometry entities, and all 95 are
+//! implemented (`data/ifc4-where-rules.tsv`, asserted by
+//! `tests/where_rule_inventory.rs`). A rule whose check cannot fail on a
+//! parsed model would be kept as `inventoried`, with the reason beside the
+//! code, rather than implemented as a check that always passes.
 //!
 //! # Design
 //!

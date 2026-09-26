@@ -42,7 +42,7 @@ impl<'m> SweptAreaSolid<'m> {
 
     /// The `IfcProfileDef` reference giving the cross section.
     ///
-    /// TODO: resolve through the profile module once it exists; this crate
+    /// TODO(#97): resolve through the profile module once it exists; this crate
     /// deliberately does not define a second, competing profile view.
     pub fn swept_area(&self) -> GeometryResult<EntityId> {
         self.slots.req_ref(swept_area_slot::SWEPT_AREA, "SweptArea")

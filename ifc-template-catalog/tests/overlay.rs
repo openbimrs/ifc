@@ -178,7 +178,7 @@ fn advisories_are_provenance_bearing_and_do_not_rewrite_templates() {
         edition: CatalogEdition::Ifc4Add2Tc1,
         target_template: "Pset_EnvironmentalImpactValues".into(),
         rationale: "legacy scalar model cannot represent an EPD module matrix".into(),
-        evidence: "ADR 0010".into(),
+        evidence: "ADR 0017".into(),
         operation: PatchOperation::AddAdvisory {
             severity: AdvisorySeverity::Warning,
             message: "Legacy and underspecified for module-based EPD data".into(),

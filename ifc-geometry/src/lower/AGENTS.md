@@ -2,10 +2,7 @@
 
 Scope: Total translation from validated IFC views to an exact format-neutral GeometryGraph.
 
-Follow the crate `../../AGENTS.md`. Read this directory's `PLAN.md` only for assigned
-work under parent task(s) `GEOM-CONTRACT, GEOM-SESSION, GEOM-CTX, GEOM-PLACE,
-GEOM-PROFILE, GEOM-CURVE, GEOM-SURFACE, GEOM-BREP, GEOM-SOLID, GEOM-MAP`.
-Record progress there.
+Follow the crate `../../AGENTS.md`.
 
 ## Owns
 
@@ -69,8 +66,9 @@ never normalize them merely because both use three scalar components.
 
 An IFC half space is INFINITE and valid only as a boolean operand. The boxed
 subtype's enclosure does not alter its result, but a polygonal bounded half
-space has an effective positioned cutter and must be refused until represented
-exactly. `AgreementFlag` is inverted relative to neutral `HalfSpace.agreement`: IFC
+space has an effective positioned cutter: it lowers to a bounded half space
+whose boundary is authored in its own `Position`, independent of
+`BaseSurface` (`halfspace.rs`). `AgreementFlag` is inverted relative to neutral `HalfSpace.agreement`: IFC
 `.T.` means the side the base surface normal points away from, the kernel's
 `true` means the normal side. Getting it backwards cuts the wrong half and
 produces a result that still evaluates and still looks like geometry.
