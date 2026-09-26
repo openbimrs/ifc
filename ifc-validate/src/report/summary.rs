@@ -6,10 +6,16 @@ use super::finding::{Finding, Severity};
 use super::path::path_key;
 
 /// Counts by severity, for a one-line verdict.
+///
+/// Non-exhaustive: it is produced by [`Report::summary`], and a new severity
+/// must be able to add its count without breaking callers.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Summary {
     /// How many schema violations.
     pub errors: usize,
+    /// How many implemented rules could not be decided for an instance.
+    pub evaluation_errors: usize,
     /// How many suspicious-but-legal findings.
     pub warnings: usize,
     /// How many rules went unevaluated.
@@ -17,15 +23,20 @@ pub struct Summary {
 }
 
 impl Summary {
-    /// Whether the file violated anything this validator checked.
+    /// Whether the file violated nothing this validator checked, and every
+    /// implemented rule could be decided.
     ///
     /// Deliberately ignores [`Severity::Unsupported`]: an unchecked rule is a
     /// statement about the validator, not about the file. Callers that want
     /// "clean *and* fully checked" must also test [`Summary::unsupported`],
     /// and the distinction is the point.
+    ///
+    /// Does *not* ignore [`Severity::EvaluationError`]: that is an implemented
+    /// rule this particular instance defeated, and reading it as a pass would
+    /// be exactly the silent skip this crate refuses to make.
     #[must_use]
     pub const fn is_conformant(&self) -> bool {
-        self.errors == 0
+        self.errors == 0 && self.evaluation_errors == 0
     }
 }
 
@@ -33,8 +44,8 @@ impl fmt::Display for Summary {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             formatter,
-            "{} errors, {} warnings, {} unsupported",
-            self.errors, self.warnings, self.unsupported
+            "{} errors, {} evaluation errors, {} warnings, {} unsupported",
+            self.errors, self.evaluation_errors, self.warnings, self.unsupported
         )
     }
 }
@@ -120,6 +131,7 @@ impl Report {
         for finding in &self.findings {
             match finding.severity {
                 Severity::Error => summary.errors += 1,
+                Severity::EvaluationError => summary.evaluation_errors += 1,
                 Severity::Warning => summary.warnings += 1,
                 Severity::Unsupported => summary.unsupported += 1,
             }
@@ -180,6 +192,22 @@ mod tests {
             "an unchecked rule is a fact about the validator"
         );
         assert_eq!(report.summary().unsupported, 1);
+    }
+
+    /// A rule that could not be decided is not a pass.
+    #[test]
+    fn an_evaluation_error_makes_a_file_non_conformant() {
+        let mut report = Report::new();
+        report.push(Finding::evaluation_error(
+            "IfcMaterialLayer.NormalizedPriority",
+            Path::Entity(EntityId(1)),
+            "Priority is a string, not an integer",
+        ));
+        let summary = report.summary();
+        assert_eq!(summary.evaluation_errors, 1);
+        assert_eq!(summary.errors, 0, "counted separately from violations");
+        assert!(!report.is_conformant());
+        assert!(summary.to_string().contains("1 evaluation errors"));
     }
 
     #[test]
