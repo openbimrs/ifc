@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `Transaction`, `Applied` and `Conflict` are re-exported. `EntityEditor` and
+  the domain writers stage into a `Transaction`, which facade users could not
+  name, so an editor could be built but never applied.
+
 ## [0.5.0] - 2026-09-26
 
 ### Added

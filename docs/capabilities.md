@@ -48,7 +48,7 @@ code.
 | `openbim-ifc-capi` | 1,857 | 9 | 0 | 1 | <span class="status-partial">Partial</span> |
 | `ifc-schema` | 1,418 | 12 | 4 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,317 | 6 | 0 | 2 | <span class="status-implemented">Implemented</span> |
-| `openbim-ifc` | 1,084 | 8 | 0 | 16 | <span class="status-implemented">Implemented</span> |
+| `openbim-ifc` | 1,087 | 8 | 0 | 16 | <span class="status-implemented">Implemented</span> |
 | `ifc-author` | 1,082 | 10 | 3 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 1,046 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-step` | 1,026 | 6 | 0 | 6 | <span class="status-implemented">Implemented</span> |

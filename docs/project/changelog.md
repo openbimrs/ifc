@@ -195,6 +195,14 @@ lockstep -- is archived in the
   2,273 files); reading takes 22-40% fewer instructions and 13-35% fewer
   cycles on seven real IFC files, with resident memory unchanged.
 
+### openbim-ifc
+
+### Added
+
+- `Transaction`, `Applied` and `Conflict` are re-exported. `EntityEditor` and
+  the domain writers stage into a `Transaction`, which facade users could not
+  name, so an editor could be built but never applied.
+
 ### openbim-ifc-binding-core
 
 ### Added
