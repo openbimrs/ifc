@@ -171,7 +171,7 @@ fn is_link_reference(line: &str) -> bool {
 /// A per-crate changelog is read in the repository, where `../CHANGELOG.md`
 /// resolves, and on the docs site, where it does not and VitePress fails the
 /// build on the dead link.
-fn absolutise(body: &str) -> String {
+pub(crate) fn absolutise(body: &str) -> String {
     let mut out = String::with_capacity(body.len());
     let mut rest = body;
     while let Some(open) = rest.find('[') {

@@ -1687,6 +1687,7 @@ name = "xtask"
 version = "0.0.0"
 dependencies = [
  "cargo_metadata",
+ "quote",
  "serde_json",
  "syn 2.0.119",
 ]

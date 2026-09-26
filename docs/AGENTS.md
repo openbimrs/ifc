@@ -33,15 +33,24 @@ npm run docs:build    # what CI runs; dead links fail the build
 ## Gates
 
 - Dead internal links fail `docs:build`.
-- `cargo run --quiet -p xtask -- docs --check` fails if `project/changelog.md` drifts
-  from the per-crate `CHANGELOG.md` files, or if a publishable crate has none
-  from the canonical root `CHANGELOG.md`. Never hand-edit the page; edit
-  `CHANGELOG.md` and re-run the script.
+- `cargo run -p xtask -- docs --check` fails when any generated file is stale:
+  `project/changelog.md` (from every crate's `CHANGELOG.md`), the generated
+  regions of `capabilities.md` and `adr/index.md`, every page under
+  `reference/`, and `.vitepress/data/{facts,adrs}.json`. Never hand-edit them;
+  change the source and run `cargo run -p xtask -- docs`.
+- Every crate declares `[package.metadata.openbim]` (`status`, `group`) in its
+  `Cargo.toml`; the facade also describes each bundle feature there. A new
+  crate or feature without them fails the check.
+- Prose quotes counts and versions from `.vitepress/data/facts.json`, never as
+  literals.
 - `scripts/check-leakage.py` rejects XSD, PDF, and `references/` payloads from
   the built site. Normative IFC schema material is never published.
-- Rust examples shown here are compiled by
-  `openbim-ifc/tests/docs_examples.rs`. Add an example there before adding it
-  to a page.
+- Code on a page comes from a test. Mark it in the test with
+  `// docs:snippet <name>` … `// docs:end` (e.g. in
+  `openbim-ifc/tests/docs_examples.rs`) and put
+  `<!-- SNIPPET:<name> -->` `<!-- /SNIPPET -->` on the page; the generator copies
+  it in. A `rust`/`python`/`js`/`ts`/`c` fence outside a snippet region fails
+  the check (ADRs excepted). Use ```` ```text ```` for output or pseudo-code.
 
 ## Conventions
 

@@ -180,3 +180,24 @@ class Opening(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DocumentedExample(unittest.TestCase):
+    """The example published on the docs site's Python page."""
+
+    def test_read_edit_write(self):
+        data = FILE
+        # docs:snippet py-read-edit-write
+        from openbim_ifc import IfcModel, Text
+
+        model = IfcModel.parse(data)  # or IfcModel.open("model.ifc")
+        schema = model.schema  # "IFC4"
+
+        for wall in model.ids_of_type("IfcWall"):
+            name = model.attribute(wall, 2)  # Text(value='Wall')
+            model.set_attribute(wall, 2, Text(f"{name.value} (checked)"))
+
+        data = model.write()  # bytes, ready to save
+        # docs:end
+        self.assertEqual(schema, "IFC4")
+        self.assertEqual(IfcModel.parse(data).attribute(1, 2), Text("Wall (checked)"))

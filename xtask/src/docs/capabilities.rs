@@ -11,7 +11,7 @@
 //! - `census.rs`: the per-crate census and the scaffold count.
 //! - `unhandled.rs`: schema-down walk for geometry items the source never names.
 
-mod census;
+pub(crate) mod census;
 mod tables;
 mod unhandled;
 
@@ -43,7 +43,7 @@ pub(super) fn generate(workspace: &Workspace) -> Result<Output, String> {
     let lowering = tables::Lowering::read(workspace)?;
     let unhandled = unhandled::table(workspace)?;
     Output::derive(workspace, TARGET, |current| {
-        let census = census::table(workspace, current)?;
+        let census = census::table(workspace)?;
         let mut updated = put(current, "CENSUS", &census)?;
         updated = put(&updated, "UNHANDLED", &unhandled)?;
         updated = put(&updated, "GEOMETRY", &lowering.geometry_table())?;

@@ -8,6 +8,13 @@ authors.workspace = true
 repository.workspace = true
 description = "Structured IFC value containers indexed by position or time."
 
+# Published on the docs site by `cargo run -p xtask -- docs`.
+[package.metadata.openbim]
+# implemented | partial | scaffold -- a judgement, never inferred from size.
+status = "implemented"
+# core | domain | geometry | facade | binding
+group = "domain"
+
 [dependencies]
 ifc-model.workspace = true
 ifc-schema.workspace = true

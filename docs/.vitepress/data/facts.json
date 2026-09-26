@@ -1,0 +1,528 @@
+{
+  "crate": {
+    "ifc-alignment": {
+      "description": "IFC4x3 linear positioning: alignments, referents, linear placement, spirals.",
+      "group": "geometry",
+      "registries": [
+        {
+          "package": "ifc-alignment",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-alignment"
+        }
+      ],
+      "released": "0.3.0",
+      "released_date": "2026-09-23",
+      "status": "partial",
+      "version": "0.3.0"
+    },
+    "ifc-approval": {
+      "description": "Bounded IFC4 approval resource semantics.",
+      "group": "domain",
+      "registries": [
+        {
+          "package": "ifc-approval",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-approval"
+        }
+      ],
+      "released": "0.2.0",
+      "released_date": "2026-09-22",
+      "status": "implemented",
+      "version": "0.2.0"
+    },
+    "ifc-author": {
+      "description": "Schema-checked IFC authoring: construct entities by attribute name with arity and type validation.",
+      "group": "core",
+      "registries": [
+        {
+          "package": "ifc-author",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-author"
+        }
+      ],
+      "released": "0.2.0",
+      "released_date": "2026-09-22",
+      "status": "implemented",
+      "version": "0.2.0"
+    },
+    "ifc-classification": {
+      "description": "Classification systems, document references, libraries, external references.",
+      "group": "domain",
+      "registries": [
+        {
+          "package": "ifc-classification",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-classification"
+        }
+      ],
+      "released": "0.2.1",
+      "released_date": "2026-09-25",
+      "status": "implemented",
+      "version": "0.2.1"
+    },
+    "ifc-constraint": {
+      "description": "Bounded IFC4 metric, objective, and constraint relationships.",
+      "group": "domain",
+      "registries": [
+        {
+          "package": "ifc-constraint",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-constraint"
+        }
+      ],
+      "released": "0.2.0",
+      "released_date": "2026-09-22",
+      "status": "implemented",
+      "version": "0.2.0"
+    },
+    "ifc-control": {
+      "description": "Bounded IFC control semantics: permits, project orders, action requests, and performance history.",
+      "group": "domain",
+      "registries": [
+        {
+          "package": "ifc-control",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-control"
+        }
+      ],
+      "released": "0.2.0",
+      "released_date": "2026-09-22",
+      "status": "implemented",
+      "version": "0.2.0"
+    },
+    "ifc-cost": {
+      "description": "Cost semantics as a borrowed view over the IFC model.",
+      "group": "domain",
+      "registries": [
+        {
+          "package": "ifc-cost",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-cost"
+        }
+      ],
+      "released": "0.2.0",
+      "released_date": "2026-09-22",
+      "status": "implemented",
+      "version": "0.2.0"
+    },
+    "ifc-element-type": {
+      "description": "Element, resource, and process type definitions: the IfcTypeObject catalogue.",
+      "group": "domain",
+      "registries": [
+        {
+          "package": "ifc-element-type",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-element-type"
+        }
+      ],
+      "released": "0.2.0",
+      "released_date": "2026-09-22",
+      "status": "implemented",
+      "version": "0.2.0"
+    },
+    "ifc-geometry": {
+      "description": "IFC semantic views lowered into the format-neutral geometry DAG.",
+      "group": "geometry",
+      "registries": [
+        {
+          "package": "ifc-geometry",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-geometry"
+        }
+      ],
+      "released": "0.3.1",
+      "released_date": "2026-09-25",
+      "status": "partial",
+      "version": "0.3.1"
+    },
+    "ifc-georef": {
+      "description": "Georeferencing: map conversion, coordinate reference systems, site placement.",
+      "group": "geometry",
+      "registries": [
+        {
+          "package": "ifc-georef",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-georef"
+        }
+      ],
+      "released": "0.3.0",
+      "released_date": "2026-09-23",
+      "status": "partial",
+      "version": "0.3.0"
+    },
+    "ifc-material": {
+      "description": "Material definitions: layer sets, profile sets, constituents, usage.",
+      "group": "domain",
+      "registries": [
+        {
+          "package": "ifc-material",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-material"
+        }
+      ],
+      "released": "0.2.0",
+      "released_date": "2026-09-22",
+      "status": "implemented",
+      "version": "0.2.0"
+    },
+    "ifc-model": {
+      "description": "The IFC entity graph: storage and structural queries, free of domain semantics and serialization.",
+      "group": "core",
+      "registries": [
+        {
+          "package": "ifc-model",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-model"
+        }
+      ],
+      "released": "0.2.3",
+      "released_date": "2026-09-26",
+      "status": "implemented",
+      "version": "0.2.3"
+    },
+    "ifc-occurrence": {
+      "description": "Built element and distribution occurrence classes and their type pairing.",
+      "group": "domain",
+      "registries": [
+        {
+          "package": "ifc-occurrence",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-occurrence"
+        }
+      ],
+      "released": "0.2.0",
+      "released_date": "2026-09-22",
+      "status": "implemented",
+      "version": "0.2.0"
+    },
+    "ifc-properties": {
+      "description": "Property sets, quantities, and unit resolution. No geometry.",
+      "group": "domain",
+      "registries": [
+        {
+          "package": "ifc-properties",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-properties"
+        }
+      ],
+      "released": "0.4.0",
+      "released_date": "2026-09-26",
+      "status": "implemented",
+      "version": "0.4.0"
+    },
+    "ifc-resource": {
+      "description": "Construction resources: labour, equipment, material, crew, subcontract.",
+      "group": "domain",
+      "registries": [
+        {
+          "package": "ifc-resource",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-resource"
+        }
+      ],
+      "released": "0.2.0",
+      "released_date": "2026-09-22",
+      "status": "partial",
+      "version": "0.2.0"
+    },
+    "ifc-schedule": {
+      "description": "IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage.",
+      "group": "domain",
+      "registries": [
+        {
+          "package": "ifc-schedule",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-schedule"
+        }
+      ],
+      "released": "0.2.0",
+      "released_date": "2026-09-22",
+      "status": "implemented",
+      "version": "0.2.0"
+    },
+    "ifc-schema": {
+      "description": "IFC schema as data: entity table, supertype chain, attribute names.",
+      "group": "core",
+      "registries": [
+        {
+          "package": "ifc-schema",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-schema"
+        }
+      ],
+      "released": "0.2.2",
+      "released_date": "2026-09-23",
+      "status": "implemented",
+      "version": "0.2.2"
+    },
+    "ifc-spatial": {
+      "description": "IFC spatial containment and objectified relationship traversal: project, site, building, storey, element.",
+      "group": "domain",
+      "registries": [
+        {
+          "package": "ifc-spatial",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-spatial"
+        }
+      ],
+      "released": "0.2.1",
+      "released_date": "2026-09-26",
+      "status": "implemented",
+      "version": "0.2.1"
+    },
+    "ifc-step": {
+      "description": "STEP physical file (ISO 10303-21) codec for the IFC model.",
+      "group": "core",
+      "registries": [
+        {
+          "package": "ifc-step",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-step"
+        }
+      ],
+      "released": "0.3.0",
+      "released_date": "2026-09-26",
+      "status": "implemented",
+      "version": "0.3.0"
+    },
+    "ifc-structural": {
+      "description": "Structural analysis model: members, connections, actions, reactions, loads.",
+      "group": "domain",
+      "registries": [
+        {
+          "package": "ifc-structural",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-structural"
+        }
+      ],
+      "released": "0.2.0",
+      "released_date": "2026-09-22",
+      "status": "implemented",
+      "version": "0.2.0"
+    },
+    "ifc-style": {
+      "description": "Presentation: styles, colours, textures, layers, annotation.",
+      "group": "domain",
+      "registries": [
+        {
+          "package": "ifc-style",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-style"
+        }
+      ],
+      "released": "0.3.0",
+      "released_date": "2026-09-23",
+      "status": "implemented",
+      "version": "0.3.0"
+    },
+    "ifc-systems": {
+      "description": "Distribution systems, ports, and connectivity between elements.",
+      "group": "domain",
+      "registries": [
+        {
+          "package": "ifc-systems",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-systems"
+        }
+      ],
+      "released": "0.2.1",
+      "released_date": "2026-09-25",
+      "status": "implemented",
+      "version": "0.2.1"
+    },
+    "ifc-tabular": {
+      "description": "Structured IFC value containers indexed by position or time.",
+      "group": "domain",
+      "registries": [
+        {
+          "package": "ifc-tabular",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-tabular"
+        }
+      ],
+      "released": "0.2.0",
+      "released_date": "2026-09-22",
+      "status": "implemented",
+      "version": "0.2.0"
+    },
+    "ifc-template-catalog": {
+      "description": "Versioned IFC PSD/QTO catalog definitions and correction overlays",
+      "group": "domain",
+      "registries": [
+        {
+          "package": "ifc-template-catalog",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-template-catalog"
+        }
+      ],
+      "released": "0.2.0",
+      "released_date": "2026-09-22",
+      "status": "implemented",
+      "version": "0.2.0"
+    },
+    "ifc-validate": {
+      "description": "Schema conformance: WHERE rules, cardinality, GUID and reference integrity.",
+      "group": "core",
+      "registries": [
+        {
+          "package": "ifc-validate",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-validate"
+        }
+      ],
+      "released": "0.2.0",
+      "released_date": "2026-09-22",
+      "status": "implemented",
+      "version": "0.2.0"
+    },
+    "ifc-xml": {
+      "description": "ifcXML (ISO 10303-28) codec for the IFC model.",
+      "group": "core",
+      "registries": [
+        {
+          "package": "ifc-xml",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/ifc-xml"
+        }
+      ],
+      "released": "0.2.0",
+      "released_date": "2026-09-22",
+      "status": "implemented",
+      "version": "0.2.0"
+    },
+    "openbim-ifc": {
+      "description": "Facade for the openBIM IFC crates: pick codecs and domains as features.",
+      "group": "facade",
+      "registries": [
+        {
+          "package": "openbim-ifc",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/openbim-ifc"
+        }
+      ],
+      "released": "0.6.0",
+      "released_date": "2026-09-26",
+      "status": "implemented",
+      "version": "0.6.0"
+    },
+    "openbim-ifc-binding-core": {
+      "description": "Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python).",
+      "group": "binding",
+      "registries": [],
+      "released": null,
+      "released_date": null,
+      "status": "implemented",
+      "version": "0.1.0"
+    },
+    "openbim-ifc-capi": {
+      "description": "Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP files from C and C++.",
+      "group": "binding",
+      "registries": [],
+      "released": null,
+      "released_date": null,
+      "status": "partial",
+      "version": "0.1.0"
+    },
+    "openbim-ifc-py": {
+      "description": "Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python.",
+      "group": "binding",
+      "registries": [
+        {
+          "package": "openbim-ifc",
+          "registry": "PyPI",
+          "url": "https://pypi.org/project/openbim-ifc/"
+        }
+      ],
+      "released": "0.1.0",
+      "released_date": "2026-09-26",
+      "status": "partial",
+      "version": "0.1.0"
+    },
+    "openbim-ifc-wasm": {
+      "description": "WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript.",
+      "group": "binding",
+      "registries": [
+        {
+          "package": "@openbim/ifc",
+          "registry": "npm",
+          "url": "https://www.npmjs.com/package/@openbim/ifc"
+        }
+      ],
+      "released": "0.1.1",
+      "released_date": "2026-09-26",
+      "status": "partial",
+      "version": "0.1.1"
+    }
+  },
+  "crates": {
+    "by_status": {
+      "implemented": 24,
+      "partial": 7,
+      "scaffold": 0
+    },
+    "groups": [
+      {
+        "crates": [
+          "openbim-ifc"
+        ],
+        "key": "facade",
+        "title": "Facade"
+      },
+      {
+        "crates": [
+          "ifc-author",
+          "ifc-model",
+          "ifc-schema",
+          "ifc-step",
+          "ifc-validate",
+          "ifc-xml"
+        ],
+        "key": "core",
+        "title": "Model, codecs, schema, authoring and validation"
+      },
+      {
+        "crates": [
+          "ifc-approval",
+          "ifc-classification",
+          "ifc-constraint",
+          "ifc-control",
+          "ifc-cost",
+          "ifc-element-type",
+          "ifc-material",
+          "ifc-occurrence",
+          "ifc-properties",
+          "ifc-resource",
+          "ifc-schedule",
+          "ifc-spatial",
+          "ifc-structural",
+          "ifc-style",
+          "ifc-systems",
+          "ifc-tabular",
+          "ifc-template-catalog"
+        ],
+        "key": "domain",
+        "title": "Domain views"
+      },
+      {
+        "crates": [
+          "ifc-alignment",
+          "ifc-geometry",
+          "ifc-georef"
+        ],
+        "key": "geometry",
+        "title": "Geometry, georeferencing and alignment"
+      },
+      {
+        "crates": [
+          "openbim-ifc-binding-core",
+          "openbim-ifc-capi",
+          "openbim-ifc-py",
+          "openbim-ifc-wasm"
+        ],
+        "key": "binding",
+        "title": "Language bindings"
+      }
+    ],
+    "total": 31
+  }
+}

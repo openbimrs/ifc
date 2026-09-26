@@ -8,6 +8,13 @@ authors = ["point-grey"]
 repository = "https://github.com/openbimrs/ifc"
 description = "STEP physical file (ISO 10303-21) codec for the IFC model."
 
+# Published on the docs site by `cargo run -p xtask -- docs`.
+[package.metadata.openbim]
+# implemented | partial | scaffold -- a judgement, never inferred from size.
+status = "implemented"
+# core | domain | geometry | facade | binding
+group = "core"
+
 [dependencies]
 # Depends on the MODEL, never the reverse: a codec is a client of the data
 # model. See docs/adr/0006.

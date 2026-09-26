@@ -8,6 +8,14 @@ authors = ["point-grey"]
 repository = "https://github.com/openbimrs/ifc"
 description = "IFC4x3 linear positioning: alignments, referents, linear placement, spirals."
 
+# Published on the docs site by `cargo run -p xtask -- docs`.
+[package.metadata.openbim]
+# implemented | partial | scaffold -- a judgement, never inferred from size.
+# Transitions, cant assembly, placement and the census remain open.
+status = "partial"
+# core | domain | geometry | facade | binding
+group = "geometry"
+
 [dependencies]
 ifc-schema.workspace = true
 ifc-model.workspace = true

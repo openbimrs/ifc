@@ -12,6 +12,12 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'xtask/**'
+      # Binding surfaces and the tests the binding pages quote.
+      - '*/tests/**'
+      - '*/include/**'
+      - '*/npm/package.json'
+      - '*/pyproject.toml'
+      - 'openbim-ifc-py/python/**'
       - '.github/workflows/pages.yml'
       # The API reference is generated from doc comments, so a source-only
       # change still alters the published site.

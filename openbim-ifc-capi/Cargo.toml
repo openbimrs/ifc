@@ -10,6 +10,15 @@ description = "Versioned, memory-safe C ABI for openbim-ifc: read, edit and writ
 keywords = ["ifc", "bim", "ffi", "c-abi", "openbim"]
 categories = ["api-bindings", "parser-implementations"]
 
+# Published on the docs site by `cargo run -p xtask -- docs`.
+[package.metadata.openbim]
+# implemented | partial | scaffold -- a judgement, never inferred from size.
+# Record-model surface done and tested from C; packaging (CMake, release
+# archives) is still open.
+status = "partial"
+# core | domain | geometry | facade | binding
+group = "binding"
+
 [lib]
 # staticlib/cdylib are the C artifacts; rlib lets the Rust boundary tests
 # call the exports directly.

@@ -8,6 +8,13 @@ authors = ["point-grey"]
 repository = "https://github.com/openbimrs/ifc"
 description = "Material definitions: layer sets, profile sets, constituents, usage."
 
+# Published on the docs site by `cargo run -p xtask -- docs`.
+[package.metadata.openbim]
+# implemented | partial | scaffold -- a judgement, never inferred from size.
+status = "implemented"
+# core | domain | geometry | facade | binding
+group = "domain"
+
 [dependencies]
 ifc-model.workspace = true
 thiserror.workspace = true

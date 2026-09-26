@@ -13,6 +13,15 @@ categories = ["api-bindings", "parser-implementations"]
 # offer a Python extension to Rust users who cannot use it.
 publish = false
 
+# Published on the docs site by `cargo run -p xtask -- docs`.
+[package.metadata.openbim]
+# implemented | partial | scaffold -- a judgement, never inferred from size.
+# Published to PyPI for the record-model surface; domain views are not
+# exposed yet.
+status = "partial"
+# core | domain | geometry | facade | binding
+group = "binding"
+
 [lib]
 # The extension module Python imports as `openbim_ifc._native`; `rlib` lets
 # the Rust tests link the binding code without an interpreter.

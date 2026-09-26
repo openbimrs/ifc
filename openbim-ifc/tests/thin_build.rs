@@ -49,22 +49,68 @@ fn tree_with(extra: &[&str]) -> String {
     String::from_utf8(out.stdout).expect("tree output is utf-8")
 }
 
-/// Every domain crate, for exclusion checks.
-const DOMAIN_CRATES: &[&str] = &[
-    "ifc-cost",
-    "ifc-schedule",
-    "ifc-properties",
-    "ifc-material",
-    "ifc-classification",
-    "ifc-structural",
-    "ifc-resource",
-    "ifc-systems",
-    "ifc-style",
-    "ifc-validate",
-    "ifc-geometry",
-    "ifc-georef",
-    "ifc-alignment",
-];
+/// The facade manifest, for reading its dependency and feature tables.
+fn manifest() -> String {
+    std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"))
+        .expect("facade manifest")
+}
+
+/// Every optional dependency of the facade: exactly the crates a thin build
+/// must not link unless a selected feature asks for them.
+///
+/// Read from the manifest rather than listed here. The hand-kept list this
+/// replaces had fallen nine crates behind the manifest, so a leak of any of
+/// those into the thin build would have passed.
+fn optional_dependencies() -> Vec<String> {
+    let manifest = manifest();
+    let mut in_dependencies = false;
+    let mut out = Vec::new();
+    for line in manifest.lines() {
+        let line = line.trim();
+        if line.starts_with('[') {
+            in_dependencies = line == "[dependencies]";
+            continue;
+        }
+        if in_dependencies && line.contains("optional = true") {
+            if let Some((name, _)) = line.split_once('=') {
+                out.push(name.trim().to_owned());
+            }
+        }
+    }
+    assert!(
+        out.len() >= 20,
+        "expected every facade domain as an optional dependency, found {out:?}"
+    );
+    out
+}
+
+/// The crates a feature enables directly (`dep:name` values).
+fn enabled_by(feature: &str) -> Vec<String> {
+    let manifest = manifest();
+    let prefix = format!("{feature} = [");
+    let line = manifest
+        .lines()
+        .find(|line| line.starts_with(&prefix))
+        .unwrap_or_else(|| panic!("feature `{feature}` is not a one-line table entry"));
+    line.split('"')
+        .filter_map(|value| value.strip_prefix("dep:"))
+        .map(str::to_owned)
+        .collect()
+}
+
+/// Optional dependencies the thin build must not link.
+fn domain_crates() -> Vec<String> {
+    let allowed = enabled_by("step");
+    assert_eq!(
+        allowed,
+        ["ifc-step"],
+        "the thin build is defined as the STEP codec"
+    );
+    optional_dependencies()
+        .into_iter()
+        .filter(|dep| !allowed.contains(dep))
+        .collect()
+}
 
 /// Does the resolved tree contain this crate?
 fn links(tree: &str, crate_name: &str) -> bool {
@@ -85,7 +131,7 @@ fn linked_with_prefix<'a>(tree: &'a str, prefix: &str) -> Vec<&'a str> {
 fn thin_build_excludes_every_domain_crate() {
     let tree = dependency_tree("step");
 
-    for forbidden in DOMAIN_CRATES {
+    for forbidden in &domain_crates() {
         assert!(
             !links(&tree, forbidden),
             "thin build links {forbidden}; feature gating is broken.\n{tree}"
@@ -107,7 +153,7 @@ fn thin_build_excludes_every_domain_crate() {
 fn default_features_pull_in_no_domain_crate() {
     let tree = default_tree();
 
-    for forbidden in DOMAIN_CRATES {
+    for forbidden in &domain_crates() {
         assert!(
             !links(&tree, forbidden),
             "the DEFAULT feature set links {forbidden}. `default` must stay thin \
@@ -222,4 +268,58 @@ fn compiled_features_reflects_the_build() {
     assert!(features.contains(&"step"), "default build should have step");
     #[cfg(not(feature = "cost"))]
     assert!(!features.contains(&"cost"));
+}
+
+/// With every feature on, `compiled_features()` reports every feature that
+/// enables a crate: pure bundles (`codecs`, `domains`, `full`), whose values
+/// are only other features, may be absent. The list is hand-kept `#[cfg]`
+/// pushes, and it had silently lost six features before this test existed.
+#[cfg(feature = "full")]
+#[test]
+fn compiled_features_names_every_feature_that_enables_a_crate() {
+    let manifest = manifest();
+    let features: Vec<(String, String)> = manifest
+        .split("[features]")
+        .nth(1)
+        .and_then(|rest| rest.split("\n[").next())
+        .expect("a [features] table")
+        .split('\n')
+        .fold(Vec::new(), |mut entries: Vec<(String, String)>, line| {
+            match line.split_once(" = [") {
+                Some((name, values)) if !line.starts_with([' ', '#']) => {
+                    entries.push((name.trim().to_owned(), values.to_owned()))
+                }
+                _ => {
+                    if let Some(last) = entries.last_mut() {
+                        last.1.push_str(line);
+                    }
+                }
+            }
+            entries
+        });
+    let compiled = ifc::compiled_features();
+    let mut checked = 0;
+    for (name, values) in &features {
+        if name == "default" {
+            continue;
+        }
+        let enables_crate = values.contains("dep:") || values.contains('/');
+        if enables_crate {
+            checked += 1;
+            assert!(
+                compiled.contains(&name.as_str()),
+                "compiled_features() does not report `{name}`; add it to src/feature_report.rs"
+            );
+        }
+        assert!(
+            compiled
+                .iter()
+                .all(|c| features.iter().any(|(n, _)| n == c)),
+            "compiled_features() reports a feature the manifest does not declare"
+        );
+    }
+    assert!(
+        checked >= 25,
+        "expected every facade feature, checked {checked}"
+    );
 }

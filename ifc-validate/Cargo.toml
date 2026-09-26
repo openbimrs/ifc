@@ -8,6 +8,15 @@ authors = ["point-grey"]
 repository = "https://github.com/openbimrs/ifc"
 description = "Schema conformance: WHERE rules, cardinality, GUID and reference integrity."
 
+# Published on the docs site by `cargo run -p xtask -- docs`.
+[package.metadata.openbim]
+# implemented | partial | scaffold -- a judgement, never inferred from size.
+# Clean never means full EXPRESS conformance: aggregate bounds, arbitrary
+# EXPRESS evaluation and INVERSE derivation remain unsupported categories.
+status = "implemented"
+# core | domain | geometry | facade | binding
+group = "core"
+
 [dependencies]
 ifc-schema.workspace = true
 ifc-model.workspace = true

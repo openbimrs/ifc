@@ -10,6 +10,13 @@ description = "Host-independent core shared by the openbim-ifc language bindings
 keywords = ["ifc", "bim", "ffi", "bindings", "openbim"]
 categories = ["parser-implementations"]
 
+# Published on the docs site by `cargo run -p xtask -- docs`.
+[package.metadata.openbim]
+# implemented | partial | scaffold -- a judgement, never inferred from size.
+status = "implemented"
+# core | domain | geometry | facade | binding
+group = "binding"
+
 [dependencies]
 # ADR 0013: bindings depend on the facade only, never on an ifc-* crate.
 openbim-ifc = { workspace = true, default-features = false, features = ["step", "schema"] }

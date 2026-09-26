@@ -14,6 +14,26 @@ categories = ["parser-implementations", "data-structures"]
 # The lib target keeps the short name `ifc`: a facade should read as
 # `use ifc::...` at the call site even though the published crate is
 # `openbim-ifc` (the short name is taken on crates.io by an unrelated crate).
+
+# Published on the docs site by `cargo run -p xtask -- docs`.
+[package.metadata.openbim]
+# implemented | partial | scaffold -- a judgement, never inferred from size.
+status = "implemented"
+# core | domain | geometry | facade | binding
+group = "facade"
+
+# One line per facade feature for the docs. A feature that enables exactly
+# one crate is described by that crate's `description` and needs no line
+# here; bundles and the two geometry sizes do. `xtask docs --check` fails
+# when a feature has neither.
+[package.metadata.openbim.features]
+codecs = "Both codecs: STEP and ifcXML."
+domains = "Every domain view, plus authoring and spatial traversal."
+full = "Everything: codecs, schema tables, every domain, catalogues, geometry, georeferencing and alignment."
+geometry = "Representation selection plus lowering into the neutral geometry DAG."
+geometry-select = "Representation selection only: contexts, plan/body choice, placements and units, with no geometry kernel."
+material-templates = "Material views together with the property template catalogue."
+
 [lib]
 name = "ifc"
 

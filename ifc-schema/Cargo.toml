@@ -9,6 +9,14 @@ repository = "https://github.com/openbimrs/ifc"
 description = "IFC schema as data: entity table, supertype chain, attribute names."
 
 # NO geometry dependency. A schema is a lookup table.
+
+# Published on the docs site by `cargo run -p xtask -- docs`.
+[package.metadata.openbim]
+# implemented | partial | scaffold -- a judgement, never inferred from size.
+status = "implemented"
+# core | domain | geometry | facade | binding
+group = "core"
+
 [dependencies]
 ahash.workspace = true
 openbim-step.workspace = true

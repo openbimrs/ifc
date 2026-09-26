@@ -50,13 +50,16 @@ immutable Git source in `Cargo.lock`.
 
 The library target is named `ifc`, so call sites read as a facade:
 
+<!-- SNIPPET:index-read -->
+
 ```rust
-use ifc::{Codec, Model, StepCodec};
+use ifc::{Codec, StepCodec};
 
 let model = StepCodec.read_bytes(source)?;
 println!("{} entities", model.len());
-# Ok::<(), ifc::ModelError>(())
 ```
+
+<!-- /SNIPPET -->
 
 ## Before you build on this
 

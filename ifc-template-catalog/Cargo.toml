@@ -9,6 +9,13 @@ repository = "https://github.com/openbimrs/ifc"
 description = "Versioned IFC PSD/QTO catalog definitions and correction overlays"
 readme = "README.md"
 
+# Published on the docs site by `cargo run -p xtask -- docs`.
+[package.metadata.openbim]
+# implemented | partial | scaffold -- a judgement, never inferred from size.
+status = "implemented"
+# core | domain | geometry | facade | binding
+group = "domain"
+
 [dependencies]
 bincode = "2.0.1"
 thiserror.workspace = true
