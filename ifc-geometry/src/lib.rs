@@ -113,4 +113,4 @@ pub use input::product::geometric_products;
 
 // Which openings void a host (`IfcRelVoidsElement`). Kernel-free for the same
 // reason; `lower::lower_product_net` turns the answer into subtractions.
-pub use input::openings::openings_of;
+pub use input::openings::{openings_of, voiding_conflicts, VoidingConflict};
