@@ -18,7 +18,8 @@ until they are dealt with.
 Usage:
     scripts/release-crate.py <crate>                   # current/published versions
     scripts/release-crate.py <crate> --set 0.2.1       # dry run: what would this cost?
-    scripts/release-crate.py <crate> --set 0.2.1 --apply  # bump manifest+changelog
+    scripts/release-crate.py <crate> --set 0.2.1 --apply  # bump manifests+changelog
+                                                       # (incl. the npm/PyPI manifest)
     scripts/release-crate.py <crate> --publish         # tag; CI publishes
     scripts/release-crate.py <crate> --publish --local # publish from here
     scripts/release-crate.py <tag> --plan              # registries for a tag
@@ -198,7 +199,12 @@ def apply_bump(crate: str, new: str) -> None:
         'version = "%s"' % new, text, count=1)
     if count != 1:
         raise SystemExit(f"could not rewrite version in {manifest}")
+    registry_manifest = registry_manifest_bump(crate, old, new)
     manifest.write_text(updated, encoding="utf-8")
+    if registry_manifest is not None:
+        path, text = registry_manifest
+        path.write_text(text, encoding="utf-8")
+        print(f"  updated {path.relative_to(ROOT)} to {new}")
 
     # Sibling manifests requiring this crate need their requirement lifted
     # only when the bump is breaking; a compatible one is already accepted.
@@ -242,6 +248,35 @@ EXTRA_REGISTRIES = {
     "openbim-ifc-py": ("pypi", "openbim-ifc-py/pyproject.toml"),
 }
 TAG = re.compile(r"^(?P<crate>[a-z0-9][a-z0-9-]*)-v(?P<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)$")
+
+
+def registry_manifest_bump(crate: str, old: str, new: str) -> tuple[Path, str] | None:
+    """The npm/PyPI manifest of `crate` rewritten from `old` to `new`.
+
+    `plan` refuses a tag whose registry manifest disagrees with Cargo.toml,
+    so a bump that left it behind produced a release that could not be
+    tagged. Only the version line is rewritten, so formatting survives.
+    Returned rather than written, so a refusal here leaves every file as it
+    was.
+    """
+    if crate not in EXTRA_REGISTRIES:
+        return None
+    _, relative = EXTRA_REGISTRIES[crate]
+    path = ROOT / relative
+    declared = manifest_version(path)
+    if declared != old:
+        raise SystemExit(
+            f"{relative} says {declared} but Cargo.toml says {old}; "
+            "bring them in step before bumping")
+    text = path.read_text(encoding="utf-8")
+    if path.suffix == ".json":
+        pattern = r'("version"\s*:\s*)"%s"' % re.escape(old)
+    else:
+        pattern = r'(?m)^(version = )"%s"' % re.escape(old)
+    updated, count = re.subn(pattern, r'\g<1>"%s"' % new, text, count=1)
+    if count != 1:
+        raise SystemExit(f"could not rewrite version in {relative}")
+    return path, updated
 
 
 def manifest_version(path: Path) -> str:
