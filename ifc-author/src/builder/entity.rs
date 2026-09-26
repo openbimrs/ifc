@@ -12,7 +12,7 @@
 use ifc_model::{Entity, Value};
 use ifc_schema::Schema;
 
-use crate::check::{describe_value, value_matches};
+use crate::check::{aggregate_element, describe_value, is_derived_slot, value_matches};
 use crate::error::{AuthorError, AuthorResult};
 
 /// A partially-specified entity, checked against the schema on [`build`].
@@ -97,8 +97,18 @@ impl EntityBuilder<'_> {
         }
 
         // Positional order comes from the schema: inherited attributes first,
-        // which is what makes a STEP record readable by anything else.
-        let mut slots = vec![Value::Null; declared.len()];
+        // which is what makes a STEP record readable by anything else. A slot
+        // the schema derives for this entity is written `*` unless set.
+        let mut slots: Vec<Value> = declared
+            .iter()
+            .map(|attribute| {
+                if is_derived_slot(self.schema, &self.entity, &attribute.name) {
+                    Value::Derived
+                } else {
+                    Value::Null
+                }
+            })
+            .collect();
         let mut filled = vec![false; declared.len()];
 
         for (name, value) in &self.set {
@@ -124,7 +134,7 @@ impl EntityBuilder<'_> {
         }
 
         for (index, attribute) in declared.iter().enumerate() {
-            if !filled[index] && !attribute.optional {
+            if !filled[index] && !attribute.optional && !matches!(slots[index], Value::Derived) {
                 return Err(AuthorError::MissingRequired {
                     entity: self.entity.clone(),
                     attribute: attribute.name.clone(),
@@ -159,15 +169,43 @@ pub(crate) fn check_value(
     attribute: &ifc_schema::Attribute,
     value: &Value,
 ) -> AuthorResult<()> {
+    // A derived slot admits exactly `*`, and `*` fits nowhere else.
+    let derived = is_derived_slot(schema, entity, &attribute.name);
+    match (derived, value) {
+        (true, Value::Derived) => return Ok(()),
+        (true, other) => {
+            return Err(AuthorError::DerivedAttribute {
+                entity: entity.to_owned(),
+                attribute: attribute.name.clone(),
+                found: describe_value(other),
+            })
+        }
+        (false, Value::Derived) => {
+            return Err(AuthorError::NotDerived {
+                entity: entity.to_owned(),
+                attribute: attribute.name.clone(),
+            })
+        }
+        (false, _) => {}
+    }
+
     // An aggregate declaration wants a list and a scalar declaration does not.
-    // `$` is exempt: an unset optional aggregate is still `$`, not `()`.
-    if !matches!(value, Value::Null | Value::Derived) {
+    // The `LIST` may sit in the attribute declaration or in a defined type the
+    // attribute is declared as (`IfcCompoundPlaneAngleMeasure`). `$` is exempt:
+    // an unset optional aggregate is still `$`, not `()`.
+    let aliased = if attribute.aggregate {
+        None
+    } else {
+        aggregate_element(schema, &attribute.type_name)
+    };
+    let expected_aggregate = attribute.aggregate || aliased.is_some();
+    if !matches!(value, Value::Null) {
         let supplied_aggregate = matches!(value, Value::List(_));
-        if supplied_aggregate != attribute.aggregate {
+        if supplied_aggregate != expected_aggregate {
             return Err(AuthorError::AggregateMismatch {
                 entity: entity.to_owned(),
                 attribute: attribute.name.clone(),
-                expected_aggregate: attribute.aggregate,
+                expected_aggregate,
             });
         }
     }
@@ -187,11 +225,13 @@ pub(crate) fn check_value(
     }
 
     // Aggregate element types are checked per item; the declaration names the
-    // element type, not the container.
+    // element type, not the container. For an aliased aggregate the element
+    // type is the alias's, e.g. `INTEGER` for `IfcCompoundPlaneAngleMeasure`.
+    let element_type = aliased.as_deref().unwrap_or(&attribute.type_name);
     let admissible = match value {
         Value::List(items) => items
             .iter()
-            .all(|item| value_matches(schema, &attribute.type_name, item)),
+            .all(|item| value_matches(schema, element_type, item)),
         scalar => value_matches(schema, &attribute.type_name, scalar),
     };
     if !admissible {
