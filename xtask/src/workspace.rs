@@ -52,6 +52,8 @@ pub(crate) struct Crate {
     pub(crate) internal_deps: Vec<String>,
     /// The library target: its name (rustdoc directory) and root source file.
     pub(crate) lib: Option<(String, PathBuf)>,
+    /// `rust-version`, the minimum supported Rust.
+    pub(crate) rust_version: Option<String>,
 }
 
 impl Workspace {
@@ -167,6 +169,7 @@ impl Workspace {
                     )
                 });
             out.push(Crate {
+                rust_version: package.rust_version.as_ref().map(|v| v.to_string()),
                 lib,
                 version: package.version.to_string(),
                 description: package.description.clone().unwrap_or_default(),

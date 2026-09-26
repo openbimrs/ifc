@@ -53,7 +53,7 @@ pub(super) fn overview(lib: &Path) -> Result<String, String> {
 
 /// Keep `[text](https://…)` links; reduce rustdoc intra-doc links
 /// (`[`Model`]`, `[text](crate::x)`, `[text][ref]`) to their text.
-fn flatten_links(line: &str) -> String {
+pub(crate) fn flatten_links(line: &str) -> String {
     let mut out = String::with_capacity(line.len());
     let mut rest = line;
     while let Some(open) = rest.find('[') {

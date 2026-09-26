@@ -8,7 +8,7 @@
 //!
 //! - `crate_docs.rs`: the crate-level `//!` docs as publishable Markdown.
 
-mod crate_docs;
+pub(crate) mod crate_docs;
 
 use std::collections::BTreeMap;
 
@@ -166,7 +166,7 @@ fn page(krate: &Crate, facts: &Facts, facade_table: Option<&str>) -> Result<Stri
     out.push(format!(
         "| Registries | {} |",
         if registries.is_empty() {
-            "build from source".to_owned()
+            "not published yet; build from source".to_owned()
         } else {
             registries.join(" · ")
         }

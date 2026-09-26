@@ -145,3 +145,22 @@ test("an empty model can be built from scratch and written", () => {
   const text = new TextDecoder().decode(model.write());
   assert.match(text, /#1=IFCCARTESIANPOINT\(\(0\.\)\);/);
 });
+
+test("documented example: read, edit and write a file", () => {
+  // docs:snippet js-read-edit-write
+  const model = IfcModel.parse(bytes); // bytes: the .ifc file as a Uint8Array
+  const schema = model.schema; // "IFC4"
+
+  for (const wall of model.idsOfType("IfcWall")) {
+    const name = model.attribute(wall, 2); // { kind: "text", value: "Wall" }
+    model.setAttribute(wall, 2, { kind: "text", value: `${name.value} (checked)` });
+  }
+
+  const out = model.write(); // a Uint8Array, ready to save
+  // docs:end
+  assert.equal(schema, "IFC4");
+  assert.deepEqual(IfcModel.parse(out).attribute(5n, 2), {
+    kind: "text",
+    value: "Wall (checked)",
+  });
+});

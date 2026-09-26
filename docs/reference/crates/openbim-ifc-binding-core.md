@@ -12,7 +12,7 @@ Host-independent core shared by the openbim-ifc language bindings (WebAssembly, 
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
 | Latest release | not released (`main` is 0.1.0) |
-| Registries | [crates.io `openbim-ifc-binding-core`](https://crates.io/crates/openbim-ifc-binding-core) |
+| Registries | not published yet; build from source |
 | API documentation | [rustdoc](/ifc/api/rustdoc/openbim_ifc_binding_core/index.html) |
 | Source | [`openbim-ifc-binding-core/`](https://github.com/openbimrs/ifc/tree/main/openbim-ifc-binding-core) |
 
