@@ -12,6 +12,20 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- Lazily decoded entities (ADR 0015). A codec builds a model with
+  `Model::with_source(Arc<dyn EntitySource>)` and registers each entity as
+  a byte span plus type name with `Model::insert_lazy`; `Model::get` decodes
+  an entity on first access and keeps it, so references stay stable and
+  every later access is a lookup. Type queries, ids, `len`, `contains` and
+  `next_id` need no decoding. `Model::decode_all(threads)` decodes the rest
+  in parallel for a consumer about to touch everything;
+  `Model::decoded_len` reports progress. Editing, cloning and removal
+  decode first and then behave exactly as before; clones share the source.
+- `Codec::read_owned(Vec<u8>)`: read from a buffer the model may keep.
+  Defaults to `read_bytes`; `read_from` now hands its buffer over.
+
 ### Fixed
 
 - `Guid::parse` rejects a GlobalId whose leading character is not `0`–`3`

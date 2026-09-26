@@ -8,6 +8,15 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (lazy loading)
+
+- `openbim_ifc_v0_1_model_open(path, path_len, ...)`: read a STEP file from
+  disk into a model that owns it, one copy less than reading it in the host
+  and calling `model_parse`.
+- `openbim_ifc_v0_1_model_open_mapped(...)`: the same through a memory
+  mapping; the file must stay unchanged until the model is destroyed.
+- `OPENBIM_IFC_STATUS_IO` (16) for a file that cannot be read.
+
 ### Added
 
 - Opt-in `rusty_alloc` feature (off by default): the library's Rust

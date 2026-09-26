@@ -131,7 +131,7 @@ impl Model {
     /// with [`Model::dangling_references`] after a batch of removals, the
     /// same way a codec would detect them in a hand-edited file.
     pub fn remove(&mut self, id: EntityId) -> Option<Entity> {
-        let entity = self.entities_mut().remove(&id)?;
+        let entity = self.take_entity(id)?;
         let key = entity.type_name.to_ascii_uppercase();
         if let Some(ids) = self.by_type_mut().get_mut(&key) {
             ids.retain(|existing| *existing != id);
@@ -139,9 +139,5 @@ impl Model {
         self.order_mut().retain(|existing| *existing != id);
         self.bump_revision();
         Some(entity)
-    }
-
-    fn entity_mut(&mut self, id: EntityId) -> Option<&mut Entity> {
-        self.entities_mut().get_mut(&id)
     }
 }

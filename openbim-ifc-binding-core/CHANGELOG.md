@@ -8,6 +8,14 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (lazy loading)
+
+- `IfcModel::parse_owned(Vec<u8>)`, `IfcModel::open(path)` and the unsafe
+  `IfcModel::open_mapped(path)`. A parsed model keeps its source and
+  decodes entities on access (ADR 0015); `parse` copies the input once,
+  `parse_owned` and `open` not at all beyond the file read.
+- `BindingError::Io`, stable code `io`, for a file that cannot be read.
+
 ### Added
 
 - The host-independent half of the language bindings (ADR 0013): `IfcModel`

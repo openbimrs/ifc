@@ -9,7 +9,7 @@ create_exception!(
     _native,
     IfcError,
     PyException,
-    "A failed IFC operation. `code` is stable across bindings: parse, write, missing-entity, invalid-value, out-of-range, unsupported-schema."
+    "A failed IFC operation. `code` is stable across bindings: parse, write, missing-entity, invalid-value, out-of-range, unsupported-schema, io."
 );
 
 /// Raise `error` as an `IfcError` with `.code` set.

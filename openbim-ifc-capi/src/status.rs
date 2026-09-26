@@ -6,7 +6,7 @@ use openbim_ifc_binding_core::BindingError;
 
 /// Result of every ABI call. `Ok` is zero; every failure is non-zero.
 ///
-/// The values from `Parse` to `UnsupportedSchema` are the binding errors
+/// The values from `Parse` to `Io` are the binding errors
 /// shared with the JavaScript and Python bindings; the rest describe misuse
 /// of the C boundary itself.
 #[repr(i32)]
@@ -34,6 +34,8 @@ pub enum OpenbimIfcStatus {
     OutOfRange = 14,
     /// The file's schema is not bundled (`unsupported-schema`).
     UnsupportedSchema = 15,
+    /// A file could not be opened or read (`io`).
+    Io = 16,
     /// The requested value does not exist (no schema token, no error, ...).
     NoValue = 20,
     /// A Rust panic was contained at the boundary. Report it as a bug.
@@ -49,6 +51,7 @@ impl From<&BindingError> for OpenbimIfcStatus {
             BindingError::InvalidValue(_) => Self::InvalidValue,
             BindingError::OutOfRange(_) => Self::OutOfRange,
             BindingError::UnsupportedSchema(_) => Self::UnsupportedSchema,
+            BindingError::Io(_) => Self::Io,
         }
     }
 }
@@ -107,6 +110,7 @@ mod tests {
                 BindingError::UnsupportedSchema(String::new()),
                 OpenbimIfcStatus::UnsupportedSchema,
             ),
+            (BindingError::Io(String::new()), OpenbimIfcStatus::Io),
         ];
         for (error, status) in cases {
             assert_eq!(OpenbimIfcStatus::from(&error), status, "{}", error.code());

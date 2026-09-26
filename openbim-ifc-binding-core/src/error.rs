@@ -22,6 +22,8 @@ pub enum BindingError {
     OutOfRange(String),
     /// The file's header names no schema this crate bundles.
     UnsupportedSchema(String),
+    /// A file could not be opened or read.
+    Io(String),
 }
 
 impl BindingError {
@@ -34,6 +36,7 @@ impl BindingError {
             Self::InvalidValue(_) => "invalid-value",
             Self::OutOfRange(_) => "out-of-range",
             Self::UnsupportedSchema(_) => "unsupported-schema",
+            Self::Io(_) => "io",
         }
     }
 }
@@ -52,6 +55,7 @@ impl fmt::Display for BindingError {
                     "no bundled schema for {token:?}; expected IFC2X3, IFC4 or IFC4X3"
                 )
             }
+            Self::Io(detail) => write!(f, "cannot read file: {detail}"),
         }
     }
 }

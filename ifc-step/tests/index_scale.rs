@@ -27,13 +27,17 @@ fn scanning_is_far_cheaper_than_parsing() {
     let bytes = text.as_bytes();
 
     let base = rss_kb();
-    let index = ifc_step::Index::scan(bytes);
+    let index = ifc_step::Index::scan(bytes).expect("synthetic file scans");
     let scan_rss = rss_kb().saturating_sub(base);
     let n = index.len();
     drop(index);
 
     let base = rss_kb();
-    let model = ifc_step::StepCodec.read_bytes(bytes).unwrap();
+    // Against a full decode: a strict read is lazy and would hold far less.
+    let model = ifc_step::StepReader::new(ifc_step::ParseOptions::strict())
+        .eager()
+        .read_bytes(bytes)
+        .unwrap();
     let parse_rss = rss_kb().saturating_sub(base);
     assert_eq!(model.ids().count(), n, "index and parser disagree on count");
 

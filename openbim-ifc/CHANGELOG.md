@@ -12,6 +12,19 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- STEP models load lazily: `from_step_bytes`, `read_path` and every strict
+  read validate the whole file but decode each entity on first access
+  (ADR 0015, see `ifc-step`). `read_path` hands its buffer to the codec
+  instead of letting it copy the file once more.
+
+### Added
+
+- `StepReader`, `ParseOptions` and `OnMalformed` are re-exported, so the
+  eager and memory-mapped reads (`StepReader::eager`,
+  `StepReader::read_path_mapped`) are reachable through the facade.
+
 ### Added
 
 - `Transaction`, `Applied` and `Conflict` are re-exported. `EntityEditor` and

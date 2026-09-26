@@ -94,31 +94,95 @@ impl ModelSink {
     }
 }
 
-fn convert(instance: openbim_step::DataRecord<Text<'_>>) -> Result<(EntityId, Entity), StepError> {
-    let id = instance
-        .id
-        .as_str()
-        .parse()
-        .map_err(|_| StepError::Syntax {
-            offset: 0,
-            detail: "instance id exceeds the IFC record model range".into(),
-        })?;
-    if instance.as_simple().is_none() {
-        return Err(StepError::Syntax {
-            offset: 0,
-            detail: "complex STEP instances are not representable in the IFC record model".into(),
-        });
-    }
+pub(crate) fn convert(
+    instance: openbim_step::DataRecord<Text<'_>>,
+) -> Result<(EntityId, Entity), StepError> {
+    let id = instance_id(&instance.id)?;
+    simple(&instance)?;
     let record = instance
         .records
         .into_iter()
         .next()
-        .expect("as_simple guarantees exactly one record");
+        .expect("`simple` guarantees exactly one record");
     let attributes = values(record.parameters)?;
-    Ok((
-        EntityId(id),
-        Entity::new(upper_arc(record.name), attributes),
-    ))
+    Ok((id, Entity::new(upper_arc(record.name), attributes)))
+}
+
+/// Checks everything [`convert`] could reject, without building a value.
+///
+/// The lazy reader (`crate::lazy`) validates every record with this at load
+/// time and decodes it with [`convert`] later, so the two must reject
+/// exactly the same records. They share every fallible step -- the id, the
+/// simple-instance rule, integers, reals and references go through the same
+/// helpers -- and `tests/lazy_read.rs` checks the agreement on the corpus.
+pub(crate) fn validate(
+    instance: &openbim_step::DataRecord<Text<'_>>,
+) -> Result<EntityId, StepError> {
+    let id = instance_id(&instance.id)?;
+    for parameter in &simple(instance)?.parameters {
+        check(parameter)?;
+    }
+    Ok(id)
+}
+
+fn check(parameter: &Parameter<Text<'_>>) -> Result<(), StepError> {
+    match parameter {
+        Parameter::Integer(value) => integer(value).map(drop),
+        Parameter::Real(value) => real(value).map(drop),
+        Parameter::Ref(id) => reference(id).map(drop),
+        Parameter::List(items) => items.iter().try_for_each(check),
+        Parameter::Typed { value, .. } => check(value),
+        Parameter::Null
+        | Parameter::Derived
+        | Parameter::Bool(_)
+        | Parameter::LogicalUnknown
+        | Parameter::Text(_)
+        | Parameter::Binary(_)
+        | Parameter::Enum(_) => Ok(()),
+    }
+}
+
+fn instance_id(id: &openbim_step::InstanceId) -> Result<EntityId, StepError> {
+    id.as_str()
+        .parse()
+        .map(EntityId)
+        .map_err(|_| StepError::Syntax {
+            offset: 0,
+            detail: "instance id exceeds the IFC record model range".into(),
+        })
+}
+
+fn simple<'r, 'a>(
+    instance: &'r openbim_step::DataRecord<Text<'a>>,
+) -> Result<&'r openbim_step::Record<Text<'a>>, StepError> {
+    instance.as_simple().ok_or_else(|| StepError::Syntax {
+        offset: 0,
+        detail: "complex STEP instances are not representable in the IFC record model".into(),
+    })
+}
+
+fn integer(value: &str) -> Result<i64, StepError> {
+    value.parse().map_err(|_| StepError::Syntax {
+        offset: 0,
+        detail: "integer exceeds the IFC record model range".into(),
+    })
+}
+
+fn real(value: &str) -> Result<f64, StepError> {
+    value.parse().map_err(|_| StepError::Syntax {
+        offset: 0,
+        detail: "real exceeds the IFC record model range".into(),
+    })
+}
+
+fn reference(id: &openbim_step::InstanceId) -> Result<EntityId, StepError> {
+    id.as_str()
+        .parse()
+        .map(EntityId)
+        .map_err(|_| StepError::Syntax {
+            offset: 0,
+            detail: "reference id exceeds the IFC record model range".into(),
+        })
 }
 
 /// Record, type and enumeration names as the owned API delivered them:
@@ -168,7 +232,7 @@ fn owned_parameter(parameter: Parameter<Text<'_>>) -> Parameter {
     }
 }
 
-fn apply_header(header: &mut ifc_model::header::Header, source: StandardHeader) {
+pub(crate) fn apply_header(header: &mut ifc_model::header::Header, source: StandardHeader) {
     if let Some(value) = source.description {
         header.description = value;
     }
@@ -222,25 +286,12 @@ fn parameter_to_value(parameter: Parameter<Text<'_>>) -> Result<Value, StepError
         Parameter::Derived => Value::Derived,
         Parameter::Bool(value) => Value::Bool(value),
         Parameter::LogicalUnknown => Value::LogicalUnknown,
-        Parameter::Integer(value) => {
-            Value::Integer(value.parse().map_err(|_| StepError::Syntax {
-                offset: 0,
-                detail: "integer exceeds the IFC record model range".into(),
-            })?)
-        }
-        Parameter::Real(value) => Value::Real(value.parse().map_err(|_| StepError::Syntax {
-            offset: 0,
-            detail: "real exceeds the IFC record model range".into(),
-        })?),
+        Parameter::Integer(value) => Value::Integer(integer(&value)?),
+        Parameter::Real(value) => Value::Real(real(&value)?),
         Parameter::Text(value) => Value::Text(Arc::from(&*value)),
         Parameter::Binary(value) => Value::Binary(Arc::from(&*value)),
         Parameter::Enum(value) => Value::Enum(upper_arc(value)),
-        Parameter::Ref(id) => Value::Ref(EntityId(id.as_str().parse().map_err(|_| {
-            StepError::Syntax {
-                offset: 0,
-                detail: "reference id exceeds the IFC record model range".into(),
-            }
-        })?)),
+        Parameter::Ref(id) => Value::Ref(reference(&id)?),
         Parameter::List(items) => Value::List(values(items)?),
         Parameter::Typed { type_name, value } => Value::Typed {
             type_name: upper_arc(type_name),

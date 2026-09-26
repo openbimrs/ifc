@@ -29,11 +29,34 @@ impl NativeModel {
     }
 
     /// Parse STEP bytes. Parsing releases the GIL, so other Python threads
-    /// keep running while a large file loads.
+    /// keep running while a large file loads. The one copy made to release
+    /// the GIL becomes the model's source; nothing is copied again.
     #[staticmethod]
     fn parse(py: Python<'_>, data: &[u8]) -> PyResult<Self> {
         let owned = data.to_vec();
-        let inner = py.detach(move || IfcModel::parse(&owned)).map_err(py_err)?;
+        let inner = py
+            .detach(move || IfcModel::parse_owned(owned))
+            .map_err(py_err)?;
+        Ok(Self { inner })
+    }
+
+    /// Read a STEP file from disk, releasing the GIL. `mapped` reads it
+    /// through a memory mapping; see `openbim_ifc.IfcModel.open`.
+    #[staticmethod]
+    #[pyo3(signature = (path, mapped = false))]
+    fn open(py: Python<'_>, path: std::path::PathBuf, mapped: bool) -> PyResult<Self> {
+        let inner = py
+            .detach(move || {
+                if mapped {
+                    // SAFETY: the Python API documents the contract -- the
+                    // file must stay unchanged while the model is alive --
+                    // and only reaches here when the caller asked for it.
+                    unsafe { IfcModel::open_mapped(&path) }
+                } else {
+                    IfcModel::open(&path)
+                }
+            })
+            .map_err(py_err)?;
         Ok(Self { inner })
     }
 

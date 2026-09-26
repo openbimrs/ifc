@@ -118,33 +118,50 @@ pub unsafe extern "C" fn openbim_ifc_v0_1_model_parse(
             Ok(input) => input,
             Err(status) => return status,
         };
-        match IfcModel::parse(input) {
-            Ok(model) => {
-                let handle = registry::insert(model);
-                // SAFETY: checked non-null; caller contract above.
-                unsafe { put(out_model, handle) }
-                    .err()
-                    .unwrap_or(OpenbimIfcStatus::Ok)
-            }
-            Err(error) => {
-                if capacity != 0 {
-                    let message = error.to_string();
-                    let count = message.len().min(capacity - 1);
-                    // Truncate on a char boundary so C sees valid UTF-8.
-                    let count = (0..=count)
-                        .rev()
-                        .find(|i| message.is_char_boundary(*i))
-                        .unwrap_or(0);
-                    // SAFETY: non-null with `capacity` > count bytes (checked above).
-                    unsafe {
-                        std::ptr::copy_nonoverlapping(message.as_ptr(), error_buffer, count);
-                        error_buffer.add(count).write(0);
-                    }
-                }
-                OpenbimIfcStatus::from(&error)
-            }
-        }
+        // SAFETY: caller contract above.
+        unsafe { finish_load(IfcModel::parse(input), out_model, error_buffer, capacity) }
     })
+}
+
+/// Completes a load: registers the model and writes its handle, or writes
+/// the error message to the optional `error_buffer` (NUL-terminated,
+/// truncated on a character boundary to `capacity`) and returns its status.
+///
+/// # Safety
+/// `out_model` must be non-null and valid for one write; `error_buffer`,
+/// if `capacity` is non-zero, non-null and valid for `capacity` writes.
+pub(crate) unsafe fn finish_load(
+    loaded: Result<IfcModel, BindingError>,
+    out_model: *mut OpenbimIfcModel,
+    error_buffer: *mut u8,
+    capacity: usize,
+) -> OpenbimIfcStatus {
+    match loaded {
+        Ok(model) => {
+            let handle = registry::insert(model);
+            // SAFETY: caller contract above.
+            unsafe { put(out_model, handle) }
+                .err()
+                .unwrap_or(OpenbimIfcStatus::Ok)
+        }
+        Err(error) => {
+            if capacity != 0 {
+                let message = error.to_string();
+                let count = message.len().min(capacity - 1);
+                // Truncate on a char boundary so C sees valid UTF-8.
+                let count = (0..=count)
+                    .rev()
+                    .find(|i| message.is_char_boundary(*i))
+                    .unwrap_or(0);
+                // SAFETY: non-null with `capacity` > count bytes (caller contract).
+                unsafe {
+                    std::ptr::copy_nonoverlapping(message.as_ptr(), error_buffer, count);
+                    error_buffer.add(count).write(0);
+                }
+            }
+            OpenbimIfcStatus::from(&error)
+        }
+    }
 }
 
 /// Destroy a model. A stale or repeated handle is `InvalidHandle`.

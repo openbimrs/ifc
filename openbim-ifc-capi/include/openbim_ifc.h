@@ -77,7 +77,7 @@
 /**
  * Result of every ABI call. `Ok` is zero; every failure is non-zero.
  *
- * The values from `Parse` to `UnsupportedSchema` are the binding errors
+ * The values from `Parse` to `Io` are the binding errors
  * shared with the JavaScript and Python bindings; the rest describe misuse
  * of the C boundary itself.
  */
@@ -130,6 +130,10 @@ enum OpenbimIfcStatus
    * The file's schema is not bundled (`unsupported-schema`).
    */
   OPENBIM_IFC_STATUS_UNSUPPORTED_SCHEMA = 15,
+  /**
+   * A file could not be opened or read (`io`).
+   */
+  OPENBIM_IFC_STATUS_IO = 16,
   /**
    * The requested value does not exist (no schema token, no error, ...).
    */
@@ -429,6 +433,41 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_ids_of_type_including_subtypes(OpenbimIf
  * `out_count` must be null or valid for one write.
  */
 OpenbimIfcStatus openbim_ifc_v0_1_model_len(OpenbimIfcModel model, size_t *out_count);
+
+/**
+ * Read the STEP file at `path` (UTF-8, `path_len` bytes, no NUL needed)
+ * into a model that owns its bytes, and write the new model's handle.
+ *
+ * Errors as `openbim_ifc_v0_1_model_parse`, plus `Io` when the file cannot
+ * be opened or read.
+ *
+ * # Safety
+ * `path` must be valid for `path_len` reads; `out_model` for one write;
+ * `error_buffer`, if non-null, for `capacity` writes.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_open(const uint8_t *path,
+                                             size_t path_len,
+                                             OpenbimIfcModel *out_model,
+                                             uint8_t *error_buffer,
+                                             size_t capacity);
+
+/**
+ * Read the STEP file at `path` through a memory mapping, and write the new
+ * model's handle. No copy of the file is made, and its pages belong to the
+ * page cache rather than the process heap.
+ *
+ * # Safety
+ * As `openbim_ifc_v0_1_model_open`, and additionally: the file must not
+ * be modified or truncated until the model is destroyed. The model decodes
+ * entities from the mapping on access; a changed file makes that fail
+ * (reported as `Panic`), end the process (`SIGBUS` on truncation), or read
+ * other content.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_open_mapped(const uint8_t *path,
+                                                    size_t path_len,
+                                                    OpenbimIfcModel *out_model,
+                                                    uint8_t *error_buffer,
+                                                    size_t capacity);
 
 /**
  * Parse `len` bytes of STEP and write the new model's handle.

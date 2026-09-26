@@ -155,5 +155,28 @@ class Behaviour(unittest.TestCase):
         self.assertEqual(model.attribute(1, 2), Text("From a thread"))
 
 
+
+class Opening(unittest.TestCase):
+    def setUp(self):
+        import os
+        import tempfile
+
+        handle, self.path = tempfile.mkstemp(suffix=".ifc")
+        with os.fdopen(handle, "wb") as file:
+            file.write(FILE)
+        self.addCleanup(os.remove, self.path)
+
+    def test_open_reads_the_same_model_as_parse(self):
+        expected = IfcModel.parse(FILE)
+        for model in (IfcModel.open(self.path), IfcModel.open(self.path, mapped=True)):
+            self.assertEqual(model.ids(), expected.ids())
+            self.assertEqual(model.write(), expected.write())
+
+    def test_a_missing_file_is_an_io_error(self):
+        with self.assertRaises(IfcError) as caught:
+            IfcModel.open(self.path + ".missing")
+        self.assertEqual(caught.exception.code, "io")
+
+
 if __name__ == "__main__":
     unittest.main()

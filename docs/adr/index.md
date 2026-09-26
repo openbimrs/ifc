@@ -28,3 +28,4 @@ for new records.
 | [0012](/adr/0012-geometry-backends-are-swappable) | Geometry backends are swappable, whole or per area | Accepted |
 | [0013](/adr/0013-language-bindings-wrap-the-facade) | Language bindings wrap the facade, one crate per target | Accepted |
 | [0014](/adr/0014-net-geometry-is-an-explicit-request) | Net geometry is an explicit request; openings are exact booleans | Accepted |
+| [0015](/adr/0015-strict-step-reads-load-lazily) | Strict STEP reads validate eagerly and decode lazily | Accepted |

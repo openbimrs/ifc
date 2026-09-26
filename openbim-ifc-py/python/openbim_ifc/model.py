@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Iterable, List, Optional, Tuple
+import os
+from typing import Iterable, List, Optional, Tuple, Union
 
 from ._native import NativeModel
 from .values import Value, from_wire, to_wire
@@ -13,7 +14,11 @@ class IfcModel:
 
     Failures raise :class:`openbim_ifc.IfcError`, whose ``code`` is one of
     ``parse``, ``write``, ``missing-entity``, ``invalid-value``,
-    ``out-of-range`` or ``unsupported-schema``.
+    ``out-of-range``, ``unsupported-schema`` or ``io``.
+
+    A parsed model decodes each entity the first time it is read: parsing
+    checks every record but builds nothing, so opening a large file is fast
+    and memory holds the file plus what has been touched.
     """
 
     __slots__ = ("_native",)
@@ -27,6 +32,28 @@ class IfcModel:
         """Parse a STEP (``.ifc``) file from its bytes."""
         model = cls.__new__(cls)
         model._native = NativeModel.parse(bytes(data))
+        return model
+
+    @classmethod
+    def open(cls, path: Union[str, "os.PathLike[str]"], *, mapped: bool = False) -> "IfcModel":
+        """Read a STEP (``.ifc``) file from disk.
+
+        Cheaper than ``IfcModel.parse(Path(path).read_bytes())``: the file is
+        read once, straight into the model, with the GIL released.
+
+        ``mapped=True`` memory-maps the file instead of reading it: nothing
+        is copied, and the pages belong to the OS page cache. The model keeps
+        decoding from the file while it is alive, so **the file must not be
+        modified or truncated until the model is gone** -- a truncated file
+        can terminate the interpreter (``SIGBUS``), and a rewritten one makes
+        reads fail or return other content. Use it only for files that stay
+        put, such as a read-only export.
+
+        Raises :class:`openbim_ifc.IfcError` with ``code == "io"`` when the
+        file cannot be read.
+        """
+        model = cls.__new__(cls)
+        model._native = NativeModel.open(path, mapped)
         return model
 
     def write(self) -> bytes:

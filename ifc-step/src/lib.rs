@@ -15,6 +15,7 @@
 pub mod codec;
 pub mod error;
 mod index;
+mod lazy;
 mod parser;
 mod writer;
 

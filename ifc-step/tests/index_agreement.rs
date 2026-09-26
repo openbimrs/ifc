@@ -45,7 +45,7 @@ fn the_index_finds_exactly_the_entities_the_parser_finds() {
         let Ok(model) = ifc_step::StepCodec.read_bytes(&bytes) else {
             continue;
         };
-        let index = ifc_step::Index::scan(&bytes);
+        let index = ifc_step::Index::scan(&bytes).expect("a readable file scans");
         let mut eager: Vec<u64> = model.ids().map(|i| i.0).collect();
         let mut lazy: Vec<u64> = index.ids().map(|i| i.0).collect();
         eager.sort_unstable();
@@ -61,13 +61,58 @@ fn a_lazily_decoded_entity_equals_its_eager_counterpart() {
         let Ok(model) = ifc_step::StepCodec.read_bytes(&bytes) else {
             continue;
         };
-        let index = ifc_step::Index::scan(&bytes);
+        let index = ifc_step::Index::scan(&bytes).expect("a readable file scans");
         for id in model.ids() {
             let eager = model.get(id).unwrap();
             let lazy = index
                 .entity(id)
+                .expect("a record of a readable file decodes")
                 .unwrap_or_else(|| panic!("{} missing #{}", path.display(), id.0));
             assert_eq!(&lazy, eager, "#{} differs in {}", id.0, path.display());
         }
     }
+}
+
+const HEAD: &str = "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION(('d'),'2;1');\n\
+FILE_NAME('n','t',('a'),('o'),'p','s','z');\nFILE_SCHEMA(('IFC2X3'));\nENDSEC;\nDATA;\n";
+const TAIL: &str = "ENDSEC;\nEND-ISO-10303-21;\n";
+
+fn wrap(data: &str) -> Vec<u8> {
+    format!("{HEAD}{data}{TAIL}").into_bytes()
+}
+
+#[test]
+fn subsets_carry_the_files_header_and_are_in_file_order() {
+    let bytes = wrap("#3=IFCA(#1);\n#1=IFCB('x');\n#2=IFCC(#3);\n");
+    let index = ifc_step::Index::scan(&bytes).unwrap();
+    // Out-of-order ids are still found.
+    assert_eq!(index.type_of(ifc_model::EntityId(1)), Some("IFCB"));
+    let subset = index
+        .materialize_closure(&[ifc_model::EntityId(2)])
+        .unwrap();
+    assert_eq!(subset.header().schema_token(), Some("IFC2X3"));
+    let ids: Vec<u64> = subset.ids().map(|id| id.0).collect();
+    assert_eq!(ids, [3, 1, 2], "file order, not request order");
+}
+
+#[test]
+fn defects_are_errors_not_silence() {
+    // Framing and representability defects fail the scan.
+    for data in [
+        "#1=IFCA(1);\njunk\n#2=IFCB(2);\n",
+        "#1=(IFCA(1)IFCB(2));\n",
+        "#99999999999999999999=IFCA(1);\n",
+    ] {
+        assert!(ifc_step::Index::scan(&wrap(data)).is_err(), "{data:?}");
+    }
+    assert!(ifc_step::Index::scan(&[wrap(""), wrap("")].concat()).is_err());
+    // A defect inside a record fails when that record is decoded.
+    let bytes = wrap("#1=IFCA(1,,2);\n#2=IFCB(99999999999999999999);\n#3=IFCC(#1);\n");
+    let index = ifc_step::Index::scan(&bytes).unwrap();
+    assert!(index.entity(ifc_model::EntityId(1)).is_err());
+    assert!(index.entity(ifc_model::EntityId(2)).is_err());
+    assert!(index
+        .materialize_closure(&[ifc_model::EntityId(3)])
+        .is_err());
+    assert!(index.entity(ifc_model::EntityId(4)).unwrap().is_none());
 }

@@ -50,6 +50,15 @@ pub trait Codec {
     /// parse of an otherwise valid file.
     fn read_bytes(&self, bytes: &[u8]) -> Result<Model, ModelError>;
 
+    /// Parse a model from a buffer the model may keep.
+    ///
+    /// A codec that loads lazily keeps its source for the model's lifetime;
+    /// handing it the buffer avoids copying the whole input once more.
+    /// Defaults to [`Codec::read_bytes`].
+    fn read_owned(&self, bytes: Vec<u8>) -> Result<Model, ModelError> {
+        self.read_bytes(&bytes)
+    }
+
     /// Serialize a model.
     fn write(&self, model: &Model, out: &mut dyn Write) -> Result<(), ModelError>;
 
@@ -59,7 +68,7 @@ pub trait Codec {
         reader
             .read_to_end(&mut buf)
             .map_err(|e| ModelError::Io(e.to_string()))?;
-        self.read_bytes(&buf)
+        self.read_owned(buf)
     }
 
     /// Parse a file from disk.

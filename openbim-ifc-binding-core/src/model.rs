@@ -3,7 +3,9 @@
 //! `IfcModel` owns one `ifc::Model`. Every binding crate wraps this type and
 //! converts host arguments to and from it; none re-implements an operation.
 
-use ifc::{Codec, Entity, EntityId, Model, StepCodec};
+use std::path::Path;
+
+use ifc::{Codec, Entity, EntityId, Model, ModelError, StepCodec};
 
 use crate::value::Tagged;
 use crate::BindingError;
@@ -25,11 +27,48 @@ impl IfcModel {
     /// Non-fatal problems do not fail the parse; they are reported by
     /// [`Self::diagnostics`], so a caller can tell a complete read from a
     /// partial one.
+    ///
+    /// A strict read keeps the file as the model's source and decodes each
+    /// entity on first access, so `bytes` is copied once;
+    /// [`Self::parse_owned`] hands a buffer over instead.
     pub fn parse(bytes: &[u8]) -> Result<Self, BindingError> {
-        StepCodec
-            .read_bytes(bytes)
-            .map(|inner| Self { inner })
-            .map_err(|error| BindingError::Parse(error.to_string()))
+        Self::loaded(StepCodec.read_bytes(bytes))
+    }
+
+    /// [`Self::parse`] from a buffer the model keeps, without copying it.
+    pub fn parse_owned(bytes: Vec<u8>) -> Result<Self, BindingError> {
+        Self::loaded(StepCodec.read_owned(bytes))
+    }
+
+    /// Read a STEP file from disk into a buffer the model owns.
+    ///
+    /// Cheaper than reading the file in the host and passing its bytes: the
+    /// file is read once, straight into the model's source.
+    pub fn open(path: &Path) -> Result<Self, BindingError> {
+        Self::loaded(StepCodec.read_path(path))
+    }
+
+    /// Read a memory-mapped STEP file: no copy, and the pages belong to the
+    /// page cache rather than the process heap.
+    ///
+    /// # Safety
+    ///
+    /// The file must not be modified or truncated while the model is alive:
+    /// the model decodes entities from the mapping on access, and a changed
+    /// file makes that panic, end the process (`SIGBUS` on truncation), or
+    /// read other content. See `ifc_step::StepReader::read_path_mapped`.
+    pub unsafe fn open_mapped(path: &Path) -> Result<Self, BindingError> {
+        let reader = ifc::StepReader::new(ifc::ParseOptions::strict());
+        // SAFETY: forwarded caller contract.
+        Self::loaded(unsafe { reader.read_path_mapped(path) })
+    }
+
+    fn loaded(result: Result<Model, ModelError>) -> Result<Self, BindingError> {
+        match result {
+            Ok(inner) => Ok(Self { inner }),
+            Err(ModelError::Io(detail)) => Err(BindingError::Io(detail)),
+            Err(error) => Err(BindingError::Parse(error.to_string())),
+        }
     }
 
     /// Serialize as STEP.

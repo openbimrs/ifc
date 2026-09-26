@@ -147,6 +147,36 @@ int main(void) {
   CHECK(node_count == 3 && nodes[2].real_value == -2.0, "added point survived");
   OK(openbim_ifc_v0_1_model_destroy(again));
 
+  /* Opening from a path: owned and mapped reads see the same file. */
+  char path[64];
+  {
+    FILE *file = NULL;
+    snprintf(path, sizeof path, "/tmp/openbim_ifc_smoke_%d.ifc", (int)rand());
+    file = fopen(path, "wb");
+    CHECK(file != NULL, "temp file");
+    CHECK(fwrite(FILE_TEXT, 1, sizeof FILE_TEXT - 1, file) == sizeof FILE_TEXT - 1,
+          "temp file written");
+    fclose(file);
+  }
+  OpenbimIfcModel opened = 0;
+  OK(openbim_ifc_v0_1_model_open((const uint8_t *)path, strlen(path), &opened, NULL, 0));
+  OK(openbim_ifc_v0_1_model_len(opened, &count));
+  CHECK(count == 2, "opened file has two entities");
+  OK(openbim_ifc_v0_1_model_destroy(opened));
+  OK(openbim_ifc_v0_1_model_open_mapped((const uint8_t *)path, strlen(path), &opened,
+                                        NULL, 0));
+  OK(openbim_ifc_v0_1_model_len(opened, &count));
+  CHECK(count == 2, "mapped file has two entities");
+  OK(openbim_ifc_v0_1_model_destroy(opened));
+  remove(path);
+  const char missing[] = "/nonexistent/openbim_ifc_smoke.ifc";
+  char message[128];
+  CHECK(openbim_ifc_v0_1_model_open((const uint8_t *)missing, strlen(missing), &opened,
+                                    (uint8_t *)message, sizeof message) ==
+            OPENBIM_IFC_STATUS_IO,
+        "a missing file is an io error");
+  CHECK(strlen(message) > 0, "io error message");
+
   size_t live = 1;
   OK(openbim_ifc_v0_1_live_models(&live));
   CHECK(live == 0, "no leaked models");

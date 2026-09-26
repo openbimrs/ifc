@@ -5,7 +5,17 @@
 //! is needed. [`StepReader`] carries an explicit [`ParseOptions`] for consumers
 //! that opt into malformed-record recovery. Both implement [`Codec`], so either
 //! can be stored in a `Box<dyn Codec>` alongside the other formats.
+//!
+//! # Lazy loading
+//!
+//! A strict read validates every record and then decodes each entity on
+//! first access (see `lazy.rs`): opening a file costs a syntax pass instead of
+//! building every value, and memory holds the source plus what was touched.
+//! The model keeps its source, so [`Codec::read_bytes`] copies the input once;
+//! [`Codec::read_owned`] and [`Codec::read_path`] hand over or read a buffer
+//! without that copy. [`StepReader::eager`] restores decode-everything-now.
 
+use crate::lazy::{self, Bytes};
 use crate::{parser, writer};
 use ifc_model::{Codec, Model, ModelError};
 use openbim_step::{is_step_file, OnMalformed, ParseOptions};
@@ -64,13 +74,67 @@ impl StepCodec {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct StepReader {
     options: ParseOptions,
+    /// Decode every entity during the read instead of on first access.
+    eager: bool,
 }
 
 impl StepReader {
     /// A reader applying `options`.
     #[must_use]
     pub const fn new(options: ParseOptions) -> Self {
-        Self { options }
+        Self {
+            options,
+            eager: false,
+        }
+    }
+
+    /// Decodes every entity during the read, as before lazy loading.
+    ///
+    /// For a consumer that will touch nearly every entity anyway and wants
+    /// the source released after the read. Recovery and reference-check
+    /// options always read eagerly.
+    #[must_use]
+    pub const fn eager(mut self) -> Self {
+        self.eager = true;
+        self
+    }
+
+    /// Reads a memory-mapped file.
+    ///
+    /// Avoids copying the file: pages are loaded from the page cache as
+    /// they are touched and are not part of the process's own heap. A lazily
+    /// loaded model keeps the mapping and decodes from it for as long as it
+    /// lives.
+    ///
+    /// # Safety
+    ///
+    /// The file must not be modified or truncated while the returned model
+    /// -- or any clone of it -- is alive. Truncation can end the process
+    /// with `SIGBUS` when an entity is decoded; a rewrite makes decoding
+    /// panic or, if the new bytes still parse, read other content. Prefer
+    /// [`Codec::read_path`], which owns its copy, unless the file is known
+    /// to stay put.
+    ///
+    /// # Errors
+    ///
+    /// As [`Codec::read_path`].
+    pub unsafe fn read_path_mapped(&self, path: &Path) -> Result<Model, ModelError> {
+        let file = std::fs::File::open(path).map_err(|e| ModelError::Io(e.to_string()))?;
+        // SAFETY: the caller guarantees the file stays unchanged while the
+        // mapping lives, which is the model's lifetime when it keeps it.
+        let map =
+            unsafe { memmap2::Mmap::map(&file) }.map_err(|e| ModelError::Io(e.to_string()))?;
+        if !is_step_file(&map) {
+            return Err(wrong_format());
+        }
+        if self.is_lazy() {
+            return lazy::read(Bytes::Mapped(map)).map_err(Into::into);
+        }
+        parser::parse(&map, self.options).map_err(Into::into)
+    }
+
+    fn is_lazy(&self) -> bool {
+        !self.eager && lazy::is_lazy(self.options)
     }
 
     /// Sets the malformed-record policy.
@@ -104,12 +168,23 @@ impl Codec for StepCodec {
         StepReader::new(ParseOptions::strict()).read_bytes(bytes)
     }
 
+    fn read_owned(&self, bytes: Vec<u8>) -> Result<Model, ModelError> {
+        StepReader::new(ParseOptions::strict()).read_owned(bytes)
+    }
+
     fn write(&self, model: &Model, out: &mut dyn Write) -> Result<(), ModelError> {
         writer::write(model, out).map_err(|e| ModelError::Write(e.to_string()))
     }
 
     fn read_path(&self, path: &Path) -> Result<Model, ModelError> {
         StepReader::new(ParseOptions::strict()).read_path(path)
+    }
+}
+
+fn wrong_format() -> ModelError {
+    ModelError::WrongFormat {
+        expected: "STEP",
+        detail: "missing ISO-10303-21 magic".into(),
     }
 }
 
@@ -128,29 +203,37 @@ impl Codec for StepReader {
 
     fn read_bytes(&self, bytes: &[u8]) -> Result<Model, ModelError> {
         if !is_step_file(bytes) {
-            return Err(ModelError::WrongFormat {
-                expected: "STEP",
-                detail: "missing ISO-10303-21 magic".into(),
-            });
+            return Err(wrong_format());
+        }
+        if self.is_lazy() {
+            // The model keeps its source, so the borrowed input is copied.
+            return lazy::read(Bytes::Owned(bytes.to_vec())).map_err(Into::into);
         }
         parser::parse(bytes, self.options).map_err(Into::into)
+    }
+
+    fn read_owned(&self, bytes: Vec<u8>) -> Result<Model, ModelError> {
+        if !is_step_file(&bytes) {
+            return Err(wrong_format());
+        }
+        if self.is_lazy() {
+            return lazy::read(Bytes::Owned(bytes)).map_err(Into::into);
+        }
+        parser::parse(&bytes, self.options).map_err(Into::into)
     }
 
     fn write(&self, model: &Model, out: &mut dyn Write) -> Result<(), ModelError> {
         writer::write(model, out).map_err(|e| ModelError::Write(e.to_string()))
     }
 
-    /// Memory-maps the file rather than reading it into a heap buffer.
+    /// Reads the file into a buffer the model owns.
     ///
-    /// Large models are hundreds of megabytes; mapping avoids a full copy and
-    /// lets the OS page in only what the parse touches.
+    /// Not memory-mapped: a lazily loaded model decodes from its source for
+    /// as long as it lives, and a mapping of a file that another process
+    /// changes in that time is undefined behaviour. The mapped read is
+    /// [`StepReader::read_path_mapped`], an `unsafe` opt-in.
     fn read_path(&self, path: &Path) -> Result<Model, ModelError> {
-        let file = std::fs::File::open(path).map_err(|e| ModelError::Io(e.to_string()))?;
-        // SAFETY: the file is opened read-only and not mutated for the
-        // lifetime of the mapping; truncation by another process would be
-        // required to invalidate it, which we accept as out of scope.
-        let mmap =
-            unsafe { memmap2::Mmap::map(&file) }.map_err(|e| ModelError::Io(e.to_string()))?;
-        self.read_bytes(&mmap)
+        let bytes = std::fs::read(path).map_err(|e| ModelError::Io(e.to_string()))?;
+        self.read_owned(bytes)
     }
 }

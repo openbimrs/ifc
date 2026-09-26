@@ -8,6 +8,16 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (lazy loading)
+
+- `IfcModel.open(path, *, mapped=False)`: read a file straight into the
+  model with the GIL released; `mapped=True` memory-maps it (the file must
+  not change while the model lives). Failures raise `IfcError` with the
+  new code `io`.
+- Parsed models decode entities on first access (ADR 0015), so opening a
+  large file is several times faster and holds the file plus what was
+  touched. `IfcModel.parse` now copies its input once, not twice.
+
 ## [0.1.0] - 2026-09-26
 
 ### Added

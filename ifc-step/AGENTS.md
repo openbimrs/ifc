@@ -13,7 +13,11 @@ ISO 10303-21 syntax.
 
 ## Module ownership
 
-- `parser.rs`: generic STEP records/parameters to `ifc-model`
+- `parser.rs`: generic STEP records/parameters to `ifc-model`; `validate`
+  and `convert` share every fallible conversion step
+- `lazy.rs`: the lazy strict read (ADR 0015): scan, validate, register
+  spans; the eager reader is the fallback and the source of every error
+- `index.rs`: framing-only index over borrowed bytes, on `openbim_step::scan`
 - `writer.rs`: `ifc-model` to generic STEP records/parameters
 - `error.rs`: IFC adapter error mapping
 
@@ -25,7 +29,10 @@ partitioning, source spans, syntax diagnostics, and event sinks belong to
 
 - Parse syntax, never entity semantics.
 - Trust command exit status; codec round-trip proof compares entity graphs, not normalized bytes.
-- Parallel parsing is not claimed until it is used and benchmarked.
+- Parallel parsing is not claimed until it is used and benchmarked. The lazy
+  read validates records on up to 8 threads (benchmarked in ADR 0015).
+- A lazy model must equal the eager one: `tests/lazy_read.rs` compares them
+  on every fixture; check a change against the parse-limits corpus too.
 
 Keep `lib.rs` delegating, keep child modules crate-private until they own a real
 public contract, and split view/data, traversal, mutation, and validation before

@@ -29,12 +29,14 @@
 mod buffer;
 mod errors;
 mod model;
+mod open;
 mod registry;
 mod status;
 pub mod tape;
 
 pub use errors::*;
 pub use model::*;
+pub use open::*;
 pub use status::{OpenbimIfcStatus, OpenbimIfcVersion};
 pub use tape::OpenbimIfcValueNode;
 

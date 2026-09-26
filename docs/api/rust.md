@@ -116,29 +116,28 @@ with one and a write with the other.
 
 ## Reading a file without decoding it
 
-`Index::scan` walks the DATA section for record boundaries and keeps
-four columns plus a table of distinct type names. It never decodes an
-attribute, so it answers what is in a file for a fraction of the cost of
-building a `Model`:
+A strict read is already lazy (ADR 0015): `StepCodec.read_bytes` validates
+every record but decodes an entity only when it is first accessed, and the
+model keeps the file's bytes. Type queries, ids and counts need no decoding;
+`Model::decode_all(threads)` decodes the rest in parallel when a consumer is
+about to touch everything, and `StepReader::eager()` restores the old
+decode-everything read.
 
-| 529 MB export, 9,000,008 records | time | resident |
+| 109 MB Revit IFC, 1.3 M records | time | peak resident |
 |---|---|---|
-| `Index::scan` | 0.66 s | 206 MB |
-| `StepCodec::read_bytes` | 18.2 s | 2366 MB |
+| eager read | 1.38 s | 616 MB |
+| lazy read | 0.39 s | 341 MB |
+| lazy read + `decode_all(8)` | 0.71 s | 635 MB |
 
+`Index::scan` goes one step further for a census or a subset: it borrows
+the bytes, frames every record with `openbim_step::scan` and keeps its id,
+span and type, without validating the inside of a record. Framing is
+strict -- junk between records or a second appended file is an error.
+`Index::entity` decodes one record, `materialize_closure` builds a real
+`Model` (with the file's header) from a subset plus everything it
+references, and `materialize` gives the raw subset. Decode failures are
+returned as errors.
 
-That is 27x faster holding 11x less, because it does not build what the
-caller is going to throw away. Use it for a type census, for picking a
-subset out of a large file, or to decide whether a full parse is worth it.
-
-`Index::entity` decodes one record on request. `materialize_closure`
-builds a real `Model` from a chosen subset plus everything it references,
-so the result has no dangling `Ref`. `materialize` gives the raw subset
-and will leave references pointing at records it did not include.
-
-The index is not a second parser: `Index::entity` wraps the record bytes
-and hands them to the same decoder, and `tests/index_agreement.rs` asserts
-on every fixture that scan and parse agree on both ids and content.
 ## Scale and memory
 
 The model is built eagerly: `read_path` reads the whole file and keeps every

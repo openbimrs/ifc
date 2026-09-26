@@ -1,6 +1,7 @@
 """Type stubs for the compiled extension. The public API is openbim_ifc."""
 
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+import os
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 class IfcError(Exception):
     code: str
@@ -9,6 +10,8 @@ class NativeModel:
     def __init__(self) -> None: ...
     @staticmethod
     def parse(data: bytes) -> NativeModel: ...
+    @staticmethod
+    def open(path: Union[str, "os.PathLike[str]"], mapped: bool = ...) -> NativeModel: ...
     def write(self) -> bytes: ...
     def __len__(self) -> int: ...
     @property

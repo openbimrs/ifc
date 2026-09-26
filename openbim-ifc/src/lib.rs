@@ -68,6 +68,11 @@ pub use ifc_model::{Applied, Conflict, Transaction};
 #[cfg(feature = "step")]
 pub use ifc_step::StepCodec;
 
+/// A STEP reader with an explicit policy: recovery, eager decoding, or a
+/// memory-mapped read ([`StepReader::read_path_mapped`]).
+#[cfg(feature = "step")]
+pub use ifc_step::{OnMalformed, ParseOptions, StepReader};
+
 /// The ifcXML codec (`.ifcxml`).
 #[cfg(feature = "ifcxml")]
 pub use ifc_xml::{XmlCodec, XmlProfile};

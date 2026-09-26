@@ -31,6 +31,10 @@ pub fn codecs() -> Vec<Box<dyn Codec>> {
 
 /// Read a file, choosing the codec by content sniffing then extension.
 ///
+/// The file is read into a buffer the model owns, not memory-mapped: a
+/// lazily loaded model decodes from it for its whole lifetime. The mapped
+/// read is `ifc_step::StepReader::read_path_mapped`, an `unsafe` opt-in.
+///
 /// Returns [`ModelError::WrongFormat`] when no compiled-in codec recognizes the
 /// input, which is a more useful failure than a syntax error from the wrong
 /// parser.
@@ -42,16 +46,19 @@ pub fn read_path(path: &std::path::Path) -> Result<Model, ModelError> {
         .unwrap_or_default()
         .to_ascii_lowercase();
 
+    // The chosen codec takes the buffer (`read_owned`): a lazily loading
+    // codec keeps it as the model's source instead of copying it again.
     let available = codecs();
-    for codec in &available {
-        if codec.detect(&bytes) {
-            return codec.read_bytes(&bytes);
-        }
-    }
-    for codec in &available {
-        if codec.extensions().contains(&extension.as_str()) {
-            return codec.read_bytes(&bytes);
-        }
+    let chosen = available
+        .iter()
+        .position(|codec| codec.detect(&bytes))
+        .or_else(|| {
+            available
+                .iter()
+                .position(|codec| codec.extensions().contains(&extension.as_str()))
+        });
+    if let Some(index) = chosen {
+        return available[index].read_owned(bytes);
     }
     Err(ModelError::WrongFormat {
         expected: "IFC",

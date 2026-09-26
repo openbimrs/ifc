@@ -14,6 +14,8 @@ Allowed production dependencies: no internal IFC or geometry crate.
 - `codec.rs`: serialization port only
 - `id.rs/value.rs`: lossless generic values and typed handles
 - `model.rs`: record ownership and basic lookup
+- `lazy.rs`: slots decoded on first access and the `EntitySource` port a
+  codec implements (ADR 0015); the model never knows the source format
 - `index.rs`: derived indexes, never domain semantics
 - `relation.rs/traverse.rs/spatial.rs`: generic graph queries with explicit budgets
 - `guid.rs`: IFC compressed GUID value codec

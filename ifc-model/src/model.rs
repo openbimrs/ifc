@@ -19,9 +19,13 @@
 //!
 //! The rule to preserve: **no `if type_name == "IFCWALL"` in this crate.**
 
+use std::ops::Range;
+use std::sync::Arc;
+
 use crate::diagnostic::Diagnostic;
 use crate::entity::Entity;
 use crate::header::Header;
+use crate::lazy::{EntitySource, Slot};
 use crate::value::EntityId;
 use ahash::AHashMap;
 
@@ -30,7 +34,9 @@ use ahash::AHashMap;
 pub struct Model {
     header: Header,
     /// Entities keyed by their in-file id, so `#42` survives a round-trip.
-    entities: AHashMap<EntityId, Entity>,
+    /// A slot holds its entity decoded, or the span `source` decodes it from
+    /// on first access (see [`EntitySource`]).
+    entities: AHashMap<EntityId, Slot>,
     /// Insertion order, so a re-export preserves the original file order
     /// instead of hash order. Diffing two exports is otherwise unreadable.
     order: Vec<EntityId>,
@@ -49,12 +55,24 @@ pub struct Model {
     /// Non-fatal findings from the read that produced this model. Empty
     /// unless a codec recovered from damaged input.
     diagnostics: Vec<Diagnostic>,
+    /// Decodes lazily registered entities; `None` for a model built only
+    /// from decoded entities. Shared by clones.
+    source: Option<Arc<dyn EntitySource>>,
 }
 
 impl Model {
     /// An empty model.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// An empty model whose entities a codec registers with
+    /// [`Model::insert_lazy`] and `source` decodes on first access.
+    pub fn with_source(source: Arc<dyn EntitySource>) -> Self {
+        Self {
+            source: Some(source),
+            ..Self::default()
+        }
     }
 
     /// The file header (schema declaration, description, author).
@@ -93,14 +111,57 @@ impl Model {
     pub fn insert(&mut self, id: EntityId, entity: Entity) {
         #[cfg(feature = "authored-dump")]
         crate::authored_dump::record(&entity.type_name, "insert");
-        let key = entity.type_name.to_ascii_uppercase();
-        match self.entities.insert(id, entity) {
+        let type_name = std::sync::Arc::clone(&entity.type_name);
+        self.place(id, &type_name, Slot::decoded(entity));
+    }
+
+    /// Register the entity stored at `span` of this model's source under
+    /// `id`, without decoding it; it is decoded on first access. Replaces
+    /// any previous occupant exactly as [`Model::insert`] does.
+    ///
+    /// `type_name` must be the type the span decodes to, which lets
+    /// [`Model::ids_of_type`] answer without decoding. Only a codec that
+    /// validated the span may register it (see [`EntitySource`]).
+    ///
+    /// # Panics
+    ///
+    /// When the model has no source ([`Model::with_source`]).
+    pub fn insert_lazy(&mut self, id: EntityId, type_name: &str, span: Range<usize>) {
+        assert!(
+            self.source.is_some(),
+            "insert_lazy needs a model built with Model::with_source"
+        );
+        #[cfg(feature = "authored-dump")]
+        crate::authored_dump::record(type_name, "insert");
+        self.place(id, type_name, Slot::lazy(span));
+    }
+
+    /// Reserve room for `additional` more entities; a codec that knows the
+    /// record count up front avoids regrowing the storage while it loads.
+    pub fn reserve(&mut self, additional: usize) {
+        self.entities.reserve(additional);
+        self.order.reserve(additional);
+    }
+
+    /// The shared tail of [`Model::insert`] and [`Model::insert_lazy`].
+    fn place(&mut self, id: EntityId, type_name: &str, slot: Slot) {
+        // Type names are ASCII upper case in practice, so the key is
+        // usually `type_name` itself and nothing is allocated per entity.
+        let upper;
+        let key = if type_name.bytes().any(|byte| byte.is_ascii_lowercase()) {
+            upper = type_name.to_ascii_uppercase();
+            upper.as_str()
+        } else {
+            type_name
+        };
+        match self.entities.insert(id, slot) {
             None => self.order.push(id),
             // Replacing an occupant: drop its old type-index entry, otherwise
             // `ids_of_type` reports the id twice for the same type, or keeps
             // reporting it under a type the entity no longer has. Both make an
             // edit layer silently wrong.
             Some(previous) => {
+                let previous = previous.into_entity(self.source.as_deref());
                 let previous_key = previous.type_name.to_ascii_uppercase();
                 if previous_key != key {
                     if let Some(ids) = self.by_type.get_mut(&previous_key) {
@@ -115,7 +176,12 @@ impl Model {
                 }
             }
         }
-        self.by_type.entry(key).or_default().push(id);
+        match self.by_type.get_mut(key) {
+            Some(ids) => ids.push(id),
+            None => {
+                self.by_type.insert(key.to_owned(), vec![id]);
+            }
+        }
         self.max_id = self.max_id.max(id.0);
         self.revision += 1;
     }
@@ -148,9 +214,61 @@ impl Model {
         EntityId(self.max_id + 1)
     }
 
-    /// Look up one entity.
+    /// Look up one entity, decoding it first if it was loaded lazily.
     pub fn get(&self, id: EntityId) -> Option<&Entity> {
-        self.entities.get(&id)
+        self.entities
+            .get(&id)
+            .map(|slot| slot.get(self.source.as_deref()))
+    }
+
+    /// Whether `id` names an entity, without decoding it.
+    pub fn contains(&self, id: EntityId) -> bool {
+        self.entities.contains_key(&id)
+    }
+
+    /// How many entities have been decoded. Equals [`Model::len`] for a
+    /// model built from decoded entities; for a lazily loaded one it counts
+    /// the entities accessed so far.
+    pub fn decoded_len(&self) -> usize {
+        self.entities
+            .values()
+            .filter(|slot| slot.is_decoded())
+            .count()
+    }
+
+    /// Decode every entity now, on up to `threads` threads.
+    ///
+    /// A lazily loaded model decodes on first access, one entity at a time.
+    /// A consumer about to touch most of the model -- a writer, a full
+    /// validation, a geometry pass -- can decode everything up front in
+    /// parallel instead. Idempotent, and a no-op on a decoded model.
+    pub fn decode_all(&self, threads: usize) {
+        let pending: Vec<&Slot> = self
+            .entities
+            .values()
+            .filter(|slot| !slot.is_decoded())
+            .collect();
+        if pending.is_empty() {
+            return;
+        }
+        let source = self.source.as_deref();
+        let threads = threads.clamp(1, pending.len());
+        if threads == 1 {
+            for slot in pending {
+                slot.get(source);
+            }
+            return;
+        }
+        let chunk = pending.len().div_ceil(threads);
+        std::thread::scope(|scope| {
+            for part in pending.chunks(chunk) {
+                scope.spawn(move || {
+                    for slot in part {
+                        slot.get(source);
+                    }
+                });
+            }
+        });
     }
 
     /// Number of entities.
@@ -172,7 +290,7 @@ impl Model {
     pub fn iter(&self) -> impl Iterator<Item = (EntityId, &Entity)> + '_ {
         self.order
             .iter()
-            .filter_map(move |id| self.entities.get(id).map(|e| (*id, e)))
+            .filter_map(move |id| self.get(*id).map(|e| (*id, e)))
     }
 
     /// Ids of every entity with this exact type name, case-insensitive.
@@ -192,7 +310,7 @@ impl Model {
     pub fn of_type<'a>(&'a self, type_name: &str) -> impl Iterator<Item = (EntityId, &'a Entity)> {
         self.ids_of_type(type_name)
             .iter()
-            .filter_map(move |id| self.entities.get(id).map(|e| (*id, e)))
+            .filter_map(move |id| self.get(*id).map(|e| (*id, e)))
             .collect::<Vec<_>>()
             .into_iter()
     }
@@ -236,8 +354,17 @@ impl Model {
     // fields directly, and it exists precisely to keep that invariant in one
     // place instead of copied into every editor.
 
-    pub(crate) fn entities_mut(&mut self) -> &mut AHashMap<EntityId, Entity> {
-        &mut self.entities
+    /// The entity under `id` for editing, decoded first when needed.
+    pub(crate) fn entity_mut(&mut self, id: EntityId) -> Option<&mut Entity> {
+        let source = self.source.clone();
+        Some(self.entities.get_mut(&id)?.get_mut(source.as_deref()))
+    }
+
+    /// Takes the entity under `id` out of storage, decoded; the caller
+    /// fixes up `by_type` and `order`.
+    pub(crate) fn take_entity(&mut self, id: EntityId) -> Option<Entity> {
+        let slot = self.entities.remove(&id)?;
+        Some(slot.into_entity(self.source.as_deref()))
     }
 
     pub(crate) fn by_type_mut(&mut self) -> &mut AHashMap<String, Vec<EntityId>> {

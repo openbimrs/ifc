@@ -12,6 +12,41 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (lazy loading)
+
+- A strict read loads lazily (ADR 0015). Every record is framed with
+  `openbim_step::scan`, parsed from its own span and checked against every
+  rule the IFC conversion enforces -- in parallel on inputs of 4 MB and
+  more -- but no value is built; each entity is decoded on first access by
+  the same conversion the eager read uses. The model keeps the source
+  bytes. On seven real IFC files (18-109 MB) opening is 2.1-4.6x faster at
+  35-76% less peak memory; decoding everything afterwards on 8 threads is
+  still 1.3-2.5x faster than the eager read at the same memory. Results are
+  unchanged: lazy and eager models (and errors) are identical on the 2,273
+  files of the parse-limits corpus, and any record that fails validation
+  sends the whole file through the eager reader, so an error is always the
+  eager reader's error. `StepReader::eager` keeps the old behaviour;
+  recovery and reference-check options read eagerly.
+- `read_path` reads the file into a buffer the model owns instead of
+  memory-mapping it: a lazy model decodes from its source for its whole
+  lifetime, and a mapping of a file changed meanwhile is undefined
+  behaviour. The mapped read is the new `unsafe`
+  `StepReader::read_path_mapped`, whose contract says so.
+- `Index` is rebuilt on `openbim_step::scan` (breaking). Framing is strict
+  -- junk between records, a missing `ENDSEC` or a second appended file are
+  errors instead of being skipped -- and ids are found by binary search
+  instead of a linear scan. `Index::scan`, `materialize` and
+  `materialize_closure` return `Result`, and `Index::entity` returns
+  `Result<Option<Entity>>`, where they used to swallow decode failures (a
+  failed `materialize` returned an empty model). Subsets carry the file's
+  header instead of a synthetic IFC4 one, and `Index::header` exposes it.
+- Requires `openbim-step` 0.8.0.
+
+### Added
+
+- `StepReader::eager`, `StepReader::read_path_mapped` (unsafe) and
+  `Codec::read_owned` for both codec types.
+
 ### Changed
 
 - Requires `openbim-step` 0.7.0, matching `ifc-schema`. Both pin the parser
