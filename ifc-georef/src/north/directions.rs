@@ -31,6 +31,7 @@ use ifc_model::{EntityId, Model};
 
 use crate::conversion::ProjectToMap;
 use crate::error::{GeorefError, GeorefResult};
+use crate::slot;
 
 /// A resolved north reference: a unit-length 2D direction in the project's
 /// own XY plane, plus which reference it names.
@@ -77,7 +78,7 @@ pub const fn project_north_direction() -> (f64, f64) {
 /// `TrueNorth` is attribute slot 5 (`IfcRepresentationContext` contributes 0
 /// and 1; `IfcGeometricRepresentationContext` adds `CoordinateSpaceDimension`
 /// at 2, `Precision` at 3, `WorldCoordinateSystem` at 4, `TrueNorth` at 5 --
-/// identical in IFC4 and IFC4X3). Returns the spec default `(0, 1)` when the
+/// identical in IFC4 and IFC4X3, pinned in `crate::slot`). Returns the spec default `(0, 1)` when the
 /// attribute is absent, exactly as `IfcGeometricRepresentationContext`
 /// documents: "If not present, it defaults to \[0.,1.\]".
 pub fn resolve_true_north(model: &Model, context: EntityId) -> GeorefResult<NorthReference> {
@@ -94,15 +95,22 @@ pub fn resolve_true_north(model: &Model, context: EntityId) -> GeorefResult<Nort
             actual: entity.type_name.to_string(),
         });
     }
-    let direction = match entity.attribute(5).map(Value::unwrap_typed) {
+    let direction = match entity
+        .attribute(slot::geometric_context::TRUE_NORTH)
+        .map(Value::unwrap_typed)
+    {
         None | Some(Value::Null) => project_north_direction(),
-        Some(Value::Ref(direction_id)) => {
-            direction_ratios_2d(model, *direction_id, context, 5, "TrueNorth")?
-        }
+        Some(Value::Ref(direction_id)) => direction_ratios_2d(
+            model,
+            *direction_id,
+            context,
+            slot::geometric_context::TRUE_NORTH,
+            "TrueNorth",
+        )?,
         Some(_) => {
             return Err(GeorefError::InvalidAttribute {
                 entity: context,
-                index: 5,
+                index: slot::geometric_context::TRUE_NORTH,
                 name: "TrueNorth",
             })
         }
@@ -153,7 +161,7 @@ fn direction_ratios_2d(
         });
     }
     let ratios = direction
-        .attribute(0)
+        .attribute(slot::direction::DIRECTION_RATIOS)
         .map(Value::unwrap_typed)
         .and_then(Value::as_list)
         .ok_or(GeorefError::InvalidAttribute {
@@ -167,14 +175,14 @@ fn direction_ratios_2d(
                 .as_f64()
                 .ok_or(GeorefError::InvalidAttribute {
                     entity: direction_id,
-                    index: 0,
+                    index: slot::direction::DIRECTION_RATIOS,
                     name: "DirectionRatios",
                 })?,
             y.unwrap_typed()
                 .as_f64()
                 .ok_or(GeorefError::InvalidAttribute {
                     entity: direction_id,
-                    index: 0,
+                    index: slot::direction::DIRECTION_RATIOS,
                     name: "DirectionRatios",
                 })?,
         ),

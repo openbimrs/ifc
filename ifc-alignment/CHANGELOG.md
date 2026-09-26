@@ -12,6 +12,18 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- `profile_law` (and so `lower_gradient_curve`) now refuses a vertical
+  profile whose seams do not join: a segment's `StartHeight` must match the
+  previous segment's end height and its `StartGradient` the previous
+  `EndGradient`, within the same magnitude-scaled tolerance already used for
+  `StartDistAlong` contiguity. A height step or grade kink was previously
+  accepted and silently shifted every downstream height. The refusal is the
+  new `AlignmentError::ProfileDiscontinuity`, naming both segments, the
+  discontinuous quantity (`ProfileSeam::Height` or `ProfileSeam::Gradient`)
+  and both values (#95).
+
 ## [0.3.0] - 2026-09-23
 
 ### Changed

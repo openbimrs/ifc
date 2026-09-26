@@ -12,7 +12,7 @@
 
 use axiolid_curve::ElevationLaw;
 
-use crate::error::{AlignmentError, AlignmentResult};
+use crate::error::{AlignmentError, AlignmentResult, ProfileSeam};
 use crate::vertical::{VerticalSegment, VerticalSegmentType};
 
 /// The exact elevation law for one `IfcAlignmentVerticalSegment`.
@@ -101,10 +101,18 @@ fn parabolic_arc(segment: &VerticalSegment) -> AlignmentResult<ElevationLaw> {
 /// each written in its own distance restarting at zero. That is exactly how
 /// [`elevation_law`] writes a segment, so no rebasing is needed here.
 ///
+/// Every segment restates where it starts: `StartHeight` and
+/// `StartGradient`. Those must agree with where the previous segment ends --
+/// its law's height at its own `HorizontalLength`, and its `EndGradient` --
+/// or the profile has a step or a kink at the seam. Joining it anyway would
+/// silently shift every downstream height (a step) or its slope (a kink),
+/// so both are refused with [`AlignmentError::ProfileDiscontinuity`].
+///
 /// # Errors
 ///
 /// Refuses an empty profile, segments that are not sorted and contiguous,
-/// and any segment without an exact law.
+/// a height or grade discontinuity at any seam, and any segment without an
+/// exact law.
 pub fn profile_law(segments: &[VerticalSegment]) -> AlignmentResult<ElevationLaw> {
     let Some(first) = segments.first() else {
         return Err(AlignmentError::SemanticViolation {
@@ -116,13 +124,14 @@ pub fn profile_law(segments: &[VerticalSegment]) -> AlignmentResult<ElevationLaw
         return elevation_law(first);
     }
 
-    let mut laws = Vec::with_capacity(segments.len());
+    let mut laws: Vec<ElevationLaw> = Vec::with_capacity(segments.len());
     let mut breaks = Vec::with_capacity(segments.len() - 1);
     let start = first.start_dist_along;
     for (index, segment) in segments.iter().enumerate() {
-        laws.push(elevation_law(segment)?);
-        if index > 0 {
-            let previous = &segments[index - 1];
+        let law = elevation_law(segment)?;
+        if let (Some(previous), Some(previous_law)) =
+            (index.checked_sub(1).map(|i| &segments[i]), laws.last())
+        {
             let expected = previous.start_dist_along + previous.horizontal_length;
             // A gap or overlap means the profile does not describe one
             // continuous road. Joining it anyway would silently move every
@@ -133,17 +142,61 @@ pub fn profile_law(segments: &[VerticalSegment]) -> AlignmentResult<ElevationLaw
                     detail: "vertical segments must be contiguous and ascending in StartDistAlong",
                 });
             }
+            check_seam(previous, previous_law, segment)?;
             breaks.push(segment.start_dist_along - start);
         }
+        laws.push(law);
     }
     Ok(ElevationLaw::Piecewise { breaks, laws })
+}
+
+/// Refuse a step in height or a kink in grade where `segment` begins.
+///
+/// The previous end height is evaluated from its exact law rather than
+/// recomputed here, so the seam is compared against the same polynomial the
+/// profile will evaluate. The previous end grade is its authored
+/// `EndGradient`; for a constant gradient that equals `StartGradient`,
+/// which `elevation_law` has already enforced.
+fn check_seam(
+    previous: &VerticalSegment,
+    previous_law: &ElevationLaw,
+    segment: &VerticalSegment,
+) -> AlignmentResult<()> {
+    let end_height = previous_law.height_at(previous.horizontal_length).ok_or(
+        AlignmentError::InvalidSegment {
+            entity: previous.entity,
+            detail: "vertical segment has no finite end height",
+        },
+    )?;
+    let seams = [
+        (ProfileSeam::Height, end_height, segment.start_height),
+        (
+            ProfileSeam::Gradient,
+            previous.end_gradient,
+            segment.start_gradient,
+        ),
+    ];
+    for (seam, expected, actual) in seams {
+        if !approximately(actual, expected) {
+            return Err(AlignmentError::ProfileDiscontinuity {
+                entity: segment.entity,
+                previous: previous.entity,
+                seam,
+                expected,
+                actual,
+            });
+        }
+    }
+    Ok(())
 }
 
 /// Equal within a tolerance scaled to the magnitude involved.
 ///
 /// Station values run to tens of thousands of metres, where an exact
 /// equality test on f64 would reject a profile that is contiguous to any
-/// meaning a surveyor would recognise.
+/// meaning a surveyor would recognise. Seam heights reuse the same rule;
+/// grades are ratios well below one, so the floor of one makes their
+/// tolerance an absolute 1e-9.
 fn approximately(left: f64, right: f64) -> bool {
     let scale = left.abs().max(right.abs()).max(1.0);
     (left - right).abs() <= 1e-9 * scale

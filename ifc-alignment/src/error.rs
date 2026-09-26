@@ -106,6 +106,24 @@ pub enum AlignmentError {
         /// Why it cannot be written.
         detail: String,
     },
+    /// Two consecutive vertical segments disagree where they meet.
+    ///
+    /// The segment at `entity` restates a start height or start gradient
+    /// that differs from where `previous` ends, beyond a magnitude-scaled
+    /// tolerance. A step in height or a kink in grade is refused rather than
+    /// joined, because joining it would shift every downstream height.
+    ProfileDiscontinuity {
+        /// The segment whose start disagrees.
+        entity: EntityId,
+        /// The segment it follows.
+        previous: EntityId,
+        /// Which quantity is discontinuous.
+        seam: ProfileSeam,
+        /// The previous segment's end value, in SI units.
+        expected: f64,
+        /// This segment's authored start value, in SI units.
+        actual: f64,
+    },
     /// A dangling reference: the target id is not present in the model.
     DanglingReference {
         /// The entity holding the dangling reference.
@@ -122,6 +140,25 @@ pub enum AlignmentError {
         /// The configured maximum node count.
         max_nodes: usize,
     },
+}
+
+/// Which quantity of a vertical profile breaks at a seam.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProfileSeam {
+    /// `StartHeight` differs from the previous segment's end height: a step.
+    Height,
+    /// `StartGradient` differs from the previous `EndGradient`: a kink.
+    Gradient,
+}
+
+impl std::fmt::Display for ProfileSeam {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Height => "height",
+            Self::Gradient => "gradient",
+        })
+    }
 }
 
 /// Result of an alignment read, carrying [`AlignmentError`] on failure.
@@ -173,6 +210,17 @@ impl std::fmt::Display for AlignmentError {
                 attribute,
                 detail,
             } => write!(f, "cannot author {type_name}.{attribute}: {detail}"),
+            Self::ProfileDiscontinuity {
+                entity,
+                previous,
+                seam,
+                expected,
+                actual,
+            } => write!(
+                f,
+                "vertical {seam} discontinuity at {entity}: starts at {actual}, \
+                 but {previous} ends at {expected}"
+            ),
             Self::DanglingReference {
                 entity,
                 attribute,
