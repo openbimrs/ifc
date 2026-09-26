@@ -55,19 +55,41 @@ These are tests, so architectural rules fail CI rather than relying on review:
 
 ## Documentation rules
 
-**Code in the docs is compiled.** Every non-trivial Rust snippet on the
-documentation site has a counterpart in `openbim-ifc/tests/docs_examples.rs`.
-Changing a documented example means changing that test, and the gate will catch
-a mismatch. Documentation that ships uncompiled code drifts silently, and a
-coding agent will reproduce the drift.
+**Code in the docs is a test.** Every Rust, JavaScript, Python and C example
+on the site is copied from a test that runs in the gate. The test marks the
+lines to publish:
 
-**The changelog has one source.** `CHANGELOG.md` at the repository root is
-canonical. The docs page is generated:
+```text
+// docs:snippet getting-started-read
+let model = ifc::read(&bytes)?;
+// docs:end
+```
+
+and the page names the region the generator fills:
+
+```text
+<!-- SNIPPET:getting-started-read -->
+<!-- /SNIPPET -->
+```
+
+A code fence in one of those languages outside such a region fails the gate, so
+an example cannot be pasted in by hand. Python tests use `#` instead of `//`.
+
+**Facts are generated, not typed.** Crate counts, versions, install commands,
+the crate reference, the binding API tables, the coverage tables, the
+capability census and the changelog are all produced from the source:
 
 ```bash
-cargo run -p xtask -- docs          # regenerate every generated docs region
-cargo run -p xtask -- docs --check  # CI: fail if any is out of date
+cargo run -p xtask -- docs          # regenerate every generated file and region
+cargo run -p xtask -- docs --check  # the gate: fail if any is out of date
 ```
+
+Generated regions sit between `<!-- NAME:BEGIN -->` and `<!-- NAME:END -->`;
+edit the source, never the region. A number in prose comes from
+`docs/.vitepress/data/facts.json` (`{{ facts.crates.total }}`), not from the
+author's memory. The gate also rejects git dependencies, pinned versions in
+TOML examples, spelled-out crate counts and absolute home paths anywhere on the
+site.
 
 **Claims need evidence.** Do not describe a module as supporting something
 because it is named after it. A capability claim on the
@@ -114,10 +136,38 @@ npm run docs:build    # production build
 
 The site deploys to GitHub Pages from `main` via `.github/workflows/pages.yml`.
 
+## Developing against an unreleased Axiolid
+
+When a capability is on Axiolid's `main` but not yet released, develop against
+a local checkout without changing a tracked file. `Cargo.toml` always names
+published versions: a `path` or `git` dependency builds only on the machine that
+has it, and the architecture gate
+(`the_kernel_is_consumed_as_a_published_release`) rejects it.
+
+Redirect the published crates instead, in the gitignored `.cargo/config.toml`:
+
+```toml
+[patch.crates-io]
+axiolid-core = { path = "../axiolid/kernel/crates/foundation/core" }
+# one line per axiolid crate the workspace pins
+```
+
+CI resolves from crates.io and ignores the patch; returning to the registry is
+deleting `.cargo/`. Two pitfalls:
+
+- Local tests passing does not prove the commit builds in CI, where the kernel
+  is older. A change that needs an unreleased capability waits for the release.
+- A patch applies only when its version satisfies the pin. After a kernel
+  version bump every entry silently goes inert and cargo only warns. Check the
+  patch is live: `cargo metadata --format-version 1 2>&1 >/dev/null | grep "was not used"`
+  prints nothing when every entry applied.
+
+Never commit a `Cargo.lock` that records the local paths.
+
 ## Releasing a crate
 
 Every crate is versioned independently. Touching `ifc-geometry` means
-releasing `ifc-geometry` -- not the other twenty-six.
+releasing `ifc-geometry` -- not every other crate in the workspace.
 
 Start by asking what a release would cost:
 
@@ -221,24 +271,14 @@ Good contributions often include one of:
 - an evidence-backed schema/version inventory that unblocks a domain slice;
 - documentation that distinguishes shipped behavior from planned architecture.
 
-## Documentation debt
+## Public API documentation
 
-Every public item carries a doc comment. Thirteen crates enforce this
-permanently: their `Cargo.toml` opts into `[workspace.lints]`, where
-`missing_docs = "deny"` makes an undocumented public item a build failure.
+Every public item carries a doc comment. Every crate opts into
+`[workspace.lints]`, where `missing_docs = "deny"` makes an undocumented public
+item a build failure, and `scripts/check-missing-docs.py` fails the gate if a
+library crate stops opting in. A new crate adds `[lints] workspace = true` to
+its `Cargo.toml` from the start.
 
-The remaining crates carry a measured debt and `#![allow(missing_docs)]`.
-`scripts/check-missing-docs.py` pins each crate's count so it can only shrink:
-
-- adding an undocumented public item to a debt crate fails the gate;
-- adding one to an enforced crate fails the build;
-- documenting items and *not* lowering the budget also fails, so the ceiling
-  cannot drift into slack. Run the script with `--update` to record the win.
-
-When a crate reaches zero, delete its `#![allow(missing_docs)]`, add
-`[lints] workspace = true` to its `Cargo.toml`, and remove it from the
-script's budget table. It is then enforced like the rest.
-
-The lint is measured with `--force-warn`, which reports through the crate's own
-`allow`. Measuring without it would report zero for every debt crate and the
-budget would be meaningless.
+The crate-level docs (`//!` in `src/lib.rs`) are also the overview on the
+crate's [reference page](/reference/), so write them for a reader choosing
+whether to depend on the crate.

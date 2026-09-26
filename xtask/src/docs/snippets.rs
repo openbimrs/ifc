@@ -27,19 +27,10 @@ use crate::workspace::Workspace;
 /// Directories whose files may define snippets.
 const SOURCES: &[&str] = &[
     "openbim-ifc/tests",
+    "ifc-geometry/tests",
     "openbim-ifc-wasm/tests/js",
     "openbim-ifc-py/tests/python",
     "openbim-ifc-capi/tests/c",
-];
-
-/// Pages still showing hand-written code, pending their rewrite in the docs
-/// rework (PR 6). Each is removed from this list as its page is converted;
-/// the list only ever shrinks.
-const PENDING_REWRITE: &[&str] = &[
-    "docs/guide/getting-started.md",
-    "docs/guide/approvals-constraints.md",
-    "docs/use-cases/structural-analysis.md",
-    "docs/architecture/axiolid-boundary.md",
 ];
 
 const LINTED: &[&str] = &[
@@ -63,7 +54,7 @@ struct Snippet {
 
 /// Fill every page's snippet regions, composing with the generators that
 /// already ran (`capabilities.md` has both generated tables and snippets), and
-/// lint every page for hand-written code.
+/// lint every page for hand-written code and hand-typed facts (`drift.rs`).
 pub(super) fn apply(workspace: &Workspace, outputs: &mut Vec<Output>) -> Result<(), String> {
     let snippets = collect(workspace)?;
     let mut used: BTreeMap<&str, usize> = snippets.keys().map(|k| (k.as_str(), 0)).collect();
@@ -86,13 +77,14 @@ pub(super) fn apply(workspace: &Workspace, outputs: &mut Vec<Output>) -> Result<
                 *count += 1;
             }
         }
-        if !rel.starts_with("docs/adr/") && !PENDING_REWRITE.contains(&rel.as_str()) {
+        if !rel.starts_with("docs/adr/") {
             problems.extend(unmarked_fences(&filled).into_iter().map(|line| {
                 format!(
                     "{rel}:{line}: code fence not sourced from a test; mark the code in a \
                      test with `// docs:snippet <name>` and use `<!-- SNIPPET:<name> -->`"
                 )
             }));
+            problems.extend(super::drift::problems(&rel, &filled));
         }
         match existing {
             Some(index) => outputs[index].updated = filled,
@@ -107,14 +99,6 @@ pub(super) fn apply(workspace: &Workspace, outputs: &mut Vec<Output>) -> Result<
             problems.push(format!(
                 "snippet `{name}` ({}) is shown on no page; delete its markers or use it",
                 snippets[name].origin
-            ));
-        }
-    }
-    for pending in PENDING_REWRITE {
-        let text = std::fs::read_to_string(workspace.root.join(pending)).unwrap_or_default();
-        if unmarked_fences(&text).is_empty() {
-            problems.push(format!(
-                "{pending} has no hand-written code left; remove it from PENDING_REWRITE"
             ));
         }
     }
@@ -188,19 +172,29 @@ fn collect(workspace: &Workspace) -> Result<BTreeMap<String, Snippet>, String> {
 }
 
 /// Replace every `<!-- SNIPPET:name -->` region; return the page and the
-/// names it used.
+/// names it used. Markers sit on their own line; one inside a code fence is an
+/// example of the syntax, not a region.
 fn fill(text: &str, snippets: &BTreeMap<String, Snippet>) -> Result<(String, Vec<String>), String> {
     const OPEN: &str = "<!-- SNIPPET:";
     const CLOSE: &str = "<!-- /SNIPPET -->";
     let mut out = String::with_capacity(text.len());
     let mut names = Vec::new();
-    let mut rest = text;
-    while let Some(start) = rest.find(OPEN) {
-        let after = &rest[start + OPEN.len()..];
-        let head_end = after
-            .find("-->")
-            .ok_or("an unterminated `<!-- SNIPPET:` comment")?;
-        let name = after[..head_end].trim().to_owned();
+    let mut in_fence = false;
+    let mut lines = text.split_inclusive('\n');
+    while let Some(line) = lines.next() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("```") {
+            in_fence = !in_fence;
+        }
+        let Some(head) = trimmed.strip_prefix(OPEN).filter(|_| !in_fence) else {
+            out.push_str(line);
+            continue;
+        };
+        let name = head
+            .strip_suffix("-->")
+            .ok_or("a `<!-- SNIPPET:` marker must be a whole line")?
+            .trim()
+            .to_owned();
         if name.is_empty()
             || !name
                 .bytes()
@@ -210,22 +204,25 @@ fn fill(text: &str, snippets: &BTreeMap<String, Snippet>) -> Result<(String, Vec
                 "snippet names are lower-case words joined by `-`, found `{name}`"
             ));
         }
-        let body = &after[head_end + 3..];
-        let close = body
-            .find(CLOSE)
-            .ok_or_else(|| format!("snippet region `{name}` has no `{CLOSE}`"))?;
+        let close = loop {
+            match lines.next() {
+                Some(body) if body.trim() == CLOSE => break body,
+                Some(_) => {}
+                None => return Err(format!("snippet region `{name}` has no `{CLOSE}`")),
+            }
+        };
         let snippet = snippets
             .get(&name)
             .ok_or_else(|| format!("no test defines snippet `{name}`"))?;
-        out.push_str(&rest[..start]);
+        let indent = &line[..line.len() - line.trim_start().len()];
         out.push_str(&format!(
-            "{OPEN}{name} -->\n\n```{}\n{}\n```\n\n{CLOSE}",
-            snippet.lang, snippet.code
+            "{indent}{OPEN}{name} -->\n\n```{}\n{}\n```\n\n{indent}{CLOSE}{}",
+            snippet.lang,
+            snippet.code,
+            if close.ends_with('\n') { "\n" } else { "" }
         ));
         names.push(name);
-        rest = &body[close + CLOSE.len()..];
     }
-    out.push_str(rest);
     Ok((out, names))
 }
 
@@ -356,6 +353,11 @@ mod tests {
         assert!(filled.contains("```rust\nlet a = 1;\n```"));
         assert_eq!(unmarked_fences(&filled), [9]);
         assert!(fill("<!-- SNIPPET:y -->\n<!-- /SNIPPET -->", &snippets).is_err());
+        let quoted = "```text\n<!-- SNIPPET:y -->\n<!-- /SNIPPET -->\n```\n";
+        assert_eq!(
+            fill(quoted, &snippets).unwrap(),
+            (quoted.to_owned(), vec![])
+        );
     }
 
     #[test]

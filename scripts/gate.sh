@@ -36,13 +36,14 @@ gate_lint() {
     cargo clippy --workspace --all-targets --all-features -- -D warnings
     RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps
 
-    # Documentation gates. Every generated docs region (the changelog
-    # assembled from each crate's CHANGELOG.md, the capability tables derived
-    # from the lowering source) must match what `cargo run -p xtask -- docs`
-    # would write, so drift is a build failure rather than a silent
-    # inconsistency the reader has to notice. It also fails when a publishable
-    # crate has no changelog at all, which keeps a newly added crate from
-    # silently escaping the release process.
+    # Documentation gates. Every generated docs file and region (changelog,
+    # crate reference, install table, binding APIs, capability and coverage
+    # tables, facts.json) and every test-sourced snippet must match what
+    # `cargo run -p xtask -- docs` would write, so drift is a build failure
+    # rather than a silent inconsistency the reader has to notice. The same
+    # check rejects hand-written code fences, git dependencies, pinned TOML
+    # versions, typed crate counts and home paths on any page, and a
+    # publishable crate with no changelog.
     cargo run --quiet -p xtask -- docs --check
     python3 scripts/check-inline-html.py
 
@@ -59,11 +60,10 @@ gate_lint() {
       echo "docs build skipped (no node_modules)"
     fi
 
-    # Documentation debt ratchet. Twelve crates enforce missing_docs
-    # permanently through [workspace.lints]; the rest carry a measured, capped
-    # debt. This fails if that debt grows -- or if it shrank and the budget was
-    # not lowered, so the ceiling tracks reality instead of drifting into
-    # slack.
+    # Public API docs. Library crates enforce missing_docs through
+    # [workspace.lints]; this fails for one that neither opts in nor carries a
+    # measured budget, and for a budget that grew or shrank without being
+    # updated.
     python3 scripts/check-missing-docs.py
 
     # Licensing gate. The IFC schemas are CC BY-ND 4.0 and must never reach
@@ -75,7 +75,26 @@ gate_lint() {
 
 gate_test() {
     cargo build --workspace --all-targets
-    cargo test --workspace --all-features
+    # The workspace test run doubles as the authored-coverage measurement:
+    # with `--all-features` the `ifc-model/authored-dump` hook is compiled in,
+    # and AUTHORED_DUMP makes every test process record the entity types it
+    # created.
+    authored_dump="$(mktemp -d)"
+    AUTHORED_DUMP="$authored_dump" cargo test --workspace --all-features
+    python3 scripts/authored-coverage.py "$authored_dump" --json > "$authored_dump/report.json"
+    committed=docs/.vitepress/data/authored-coverage.json
+    if ! cmp -s "$authored_dump/report.json" "$committed"; then
+        if [[ -n "${UPDATE_AUTHORED_COVERAGE:-}" ]]; then
+            cp "$authored_dump/report.json" "$committed"
+            echo "updated $committed; regenerate the docs with: cargo run -p xtask -- docs"
+        else
+            diff "$committed" "$authored_dump/report.json" || true
+            echo "authored coverage changed; rerun with UPDATE_AUTHORED_COVERAGE=1 scripts/gate.sh test" >&2
+            rm -rf "$authored_dump"
+            exit 1
+        fi
+    fi
+    rm -rf "$authored_dump"
 
     cargo test -p ifc-model --test package_architecture
     cargo test -p ifc-model --test progressive_context

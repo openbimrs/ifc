@@ -1,4 +1,5 @@
-//! One generated reference page per crate, plus the index that groups them.
+//! One generated reference page per crate, the index that groups them, and
+//! the crate map in `docs/architecture/crates.md`.
 //!
 //! Every fact on these pages is read from the crate itself: its manifest and
 //! `[package.metadata.openbim]`, its crate-level docs, its `CHANGELOG.md`, and
@@ -16,11 +17,13 @@ use super::capabilities::census::badge;
 use super::changelog::absolutise;
 use super::release::{self, Registry, Release};
 use super::{generated_banner, Output};
+use crate::text::splice;
 use crate::workspace::{Crate, Workspace, GROUPS};
 
 const TREE: &str = "https://github.com/openbimrs/ifc/tree/main";
 const BLOB: &str = "https://github.com/openbimrs/ifc/blob/main";
 const FACADE: &str = "openbim-ifc";
+const CRATE_MAP: &str = "docs/architecture/crates.md";
 
 /// Everything a crate page shows that is not on the manifest itself.
 struct Facts {
@@ -67,11 +70,18 @@ pub(super) fn generate(workspace: &Workspace) -> Result<Vec<Output>, String> {
         );
     }
 
-    let mut outputs = vec![Output::whole(
-        workspace,
-        "docs/reference/index.md",
-        index(&crates, &facts),
-    )];
+    let map = crate_map(&crates);
+    let mut outputs = vec![
+        Output::whole(workspace, "docs/reference/index.md", index(&crates, &facts)),
+        Output::derive(workspace, CRATE_MAP, |current| {
+            splice(
+                current,
+                "<!-- CRATES:MAP:BEGIN -->",
+                "<!-- CRATES:MAP:END -->",
+                &map,
+            )
+        })?,
+    ];
     for krate in &crates {
         let facts = &facts[&krate.name];
         let features = (krate.name == FACADE).then_some(feature_table.as_str());
@@ -125,6 +135,43 @@ fn index(crates: &[Crate], facts: &BTreeMap<String, Facts>) -> String {
     }
     out.push(String::new());
     out.join("\n")
+}
+
+/// Every crate by group, with the workspace crates it depends on.
+fn crate_map(crates: &[Crate]) -> String {
+    let mut out = Vec::new();
+    for (group, title) in GROUPS {
+        let members: Vec<&Crate> = crates.iter().filter(|c| c.group == *group).collect();
+        if members.is_empty() {
+            continue;
+        }
+        out.push(format!("### {title}"));
+        out.push(String::new());
+        out.push("| Crate | Status | Depends on | Description |".to_owned());
+        out.push("| --- | --- | --- | --- |".to_owned());
+        for krate in members {
+            let deps: Vec<String> = krate
+                .internal_deps
+                .iter()
+                .map(|dep| format!("[`{dep}`](/reference/crates/{dep})"))
+                .collect();
+            out.push(format!(
+                "| [`{name}`](/reference/crates/{name}) | {} | {} | {} |",
+                badge(&krate.status),
+                if krate.name == FACADE {
+                    "the core, domain and geometry crates, each behind a feature".to_owned()
+                } else if deps.is_empty() {
+                    "—".to_owned()
+                } else {
+                    deps.join(", ")
+                },
+                krate.description,
+                name = krate.name
+            ));
+        }
+        out.push(String::new());
+    }
+    out.join("\n").trim_end().to_owned()
 }
 
 fn page(krate: &Crate, facts: &Facts, facade_table: Option<&str>) -> Result<String, String> {

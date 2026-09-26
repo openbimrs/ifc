@@ -8,15 +8,15 @@ standing rules below.
 ## What this directory is
 
 A VitePress site published to GitHub Pages at `https://openbimrs.github.io/ifc/`.
-It complements locally generated rustdoc without restating it; the workspace
-crates are not published on docs.rs yet. Deployment is handled by
+It complements rustdoc on docs.rs without restating it: the generated crate
+reference links each released crate's docs.rs page. Deployment is handled by
 `.github/workflows/pages.yml`.
 
 ## The rule that matters
 
-**A capability claim must name the file that proves it.** This repository
-contains large scaffold module trees that declare ownership of a schema area
-without implementing it, so a reader who trusts a module name will be wrong.
+**A capability claim must name the file that proves it.** Scaffold modules may
+declare ownership of a schema area without implementing it (ADR 0005), so a
+reader who trusts a module name can be wrong.
 Every status in `capabilities.md` uses the vocabulary defined at the top of
 that page, and cites evidence.
 
@@ -35,14 +35,20 @@ npm run docs:build    # what CI runs; dead links fail the build
 - Dead internal links fail `docs:build`.
 - `cargo run -p xtask -- docs --check` fails when any generated file is stale:
   `project/changelog.md` (from every crate's `CHANGELOG.md`), the generated
-  regions of `capabilities.md` and `adr/index.md`, every page under
+  regions of `capabilities.md`, `coverage.md`, `architecture/crates.md`,
+  `guide/install.md`, `bindings/*.md` and `adr/index.md`, every page under
   `reference/`, and `.vitepress/data/{facts,adrs}.json`. Never hand-edit them;
   change the source and run `cargo run -p xtask -- docs`.
 - Every crate declares `[package.metadata.openbim]` (`status`, `group`) in its
   `Cargo.toml`; the facade also describes each bundle feature there. A new
   crate or feature without them fails the check.
 - Prose quotes counts and versions from `.vitepress/data/facts.json`, never as
-  literals.
+  literals. The check rejects git dependencies (`git = "…"`), `version = "…"`
+  in TOML fences, spelled-out crate counts and absolute `/home/` paths; install
+  instructions use `cargo add`, `npm install` or `pip install` without a
+  version.
+- `scripts/gate.sh` refreshes `.vitepress/data/authored-coverage.json` from its
+  own test run and fails if the committed copy differs; commit the refresh.
 - `scripts/check-leakage.py` rejects XSD, PDF, and `references/` payloads from
   the built site. Normative IFC schema material is never published.
 - Code on a page comes from a test. Mark it in the test with
@@ -55,6 +61,6 @@ npm run docs:build    # what CI runs; dead links fail the build
 ## Conventions
 
 - ADRs are immutable once accepted; supersede rather than rewrite. Use
-  `adr/_template.md` and register new files in `.vitepress/config.ts`.
+  `adr/_template.md`; the ADR index and sidebar are generated from the files.
 - Prefer a table with an evidence column over prose for status.
 - British/American spelling is not enforced; internal consistency within a page is.

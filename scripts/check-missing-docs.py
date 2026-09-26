@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Ratchet the documentation debt downward.
+"""Keep every public item documented.
 
-Twelve crates document every public item and enforce it permanently through
-`[workspace.lints] missing_docs = "deny"`. The rest carry a measured debt and
-`#![allow(missing_docs)]`; this script pins that debt so it can only shrink.
+Library crates enforce `missing_docs = "deny"` through `[workspace.lints]`.
+A crate that cannot yet must carry a measured debt in `BUDGET` and
+`#![allow(missing_docs)]`; this script pins that debt so it can only shrink,
+and fails for a library crate that does neither.
 
 The lint is measured with `--force-warn`, which reports through the crate-level
 `allow`. Without that the allow would hide the very thing being counted and the
@@ -86,7 +87,16 @@ def main() -> int:
     failures: list[str] = []
     wins: list[str] = []
 
-    for crate in enforced_crates():
+    enforced = enforced_crates()
+    for manifest in sorted(ROOT.glob("*/Cargo.toml")):
+        crate = manifest.parent.name
+        if (manifest.parent / "src" / "lib.rs").exists() and crate not in enforced + list(BUDGET):
+            failures.append(
+                f"  {crate}: neither opts into [workspace.lints] nor has a budget; "
+                f"add `[lints] workspace = true` to its Cargo.toml"
+            )
+
+    for crate in enforced:
         if measure(crate):
             failures.append(
                 f"  {crate}: enforces missing_docs but reports undocumented "
