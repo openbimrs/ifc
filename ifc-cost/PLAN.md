@@ -25,6 +25,10 @@ marker with its first real contract and tests; do not add parallel placeholders.
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
 - [x] `COST-REL` - resolve cost item nesting and assignments with cycle budgets
   - Evidence: targeted tests plus crate clippy; add a focused fixture/property test.
+  - #57: a doubly nested item keeps its first parent across every view, and
+    `nesting_anomalies` reports the rejected one. Proof:
+    `tests/nested_twice.rs` (4 tests). Totalling over the roots counts the
+    leaf once. Removing the kept-parent filter fails 3 of the 4.
 - [x] `COST-MUT` - transaction-staged bounded IFC4 authoring
   - Creates monetary/component cost values, items, schedules, ordered item nesting,
     and schedule-to-item control assignments through caller-owned `Transaction`.
