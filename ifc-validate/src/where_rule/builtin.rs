@@ -15,10 +15,21 @@
 //! - `NoRelatedTypeObject`: attaching a property set to a *type* through the
 //!   occurrence relation puts the same properties on every occurrence of that
 //!   type, silently and unintentionally.
+//!
+//! # When a rule cannot read its input
+//!
+//! Operands are read through [`Site`], which turns an attribute the tables
+//! do not declare, an operand of the wrong shape, or a target the file does
+//! not contain into an evaluation-error finding. No rule here skips an
+//! instance it applies to without saying so; the one silent case is an
+//! unset operand, whose presence `structure` judges.
+
+use std::collections::HashMap;
 
 use ifc_model::{Entity, EntityId, Model, Value};
 use ifc_schema::{Schema, SchemaVersion};
 
+use super::operand::Site;
 use crate::report::{Finding, Path, Report};
 
 /// `IfcSingleProjectInstance`: `SIZEOF(IfcProject) <= 1`.
@@ -44,28 +55,41 @@ pub fn single_project_instance(model: &Model, report: &mut Report) {
 /// `IfcRoot.UR1`: `GlobalId` is unique across the file.
 ///
 /// Reported against the *later* entity: the first occurrence is not the
-/// error, the repeat is. Deterministic because entity iteration is ordered.
+/// error, the repeat is. Deterministic because entries are sorted by id.
 pub fn unique_global_id(model: &Model, schema: &Schema, report: &mut Report) {
-    let mut seen: std::collections::HashMap<&str, ifc_model::EntityId> =
-        std::collections::HashMap::new();
-    let mut entries: Vec<(ifc_model::EntityId, &str)> = Vec::new();
-    for (id, entity) in model.iter() {
-        if !schema.is_a(&entity.type_name, "IfcRoot") {
-            continue;
-        }
-        let Some(Value::Text(guid)) = entity.attribute(0) else {
+    const RULE: &str = "global.UniqueGlobalId";
+    let mut entries: Vec<(EntityId, usize, &str)> = Vec::new();
+    let mut roots: Vec<(EntityId, &Entity)> = model
+        .iter()
+        .filter(|(_, entity)| schema.is_a(&entity.type_name, "IfcRoot"))
+        .collect();
+    roots.sort_by_key(|(id, _)| *id);
+    for (id, entity) in roots {
+        let site = Site {
+            rule: RULE,
+            id,
+            entity,
+            schema,
+        };
+        let Some(index) = site.slot("GlobalId", report) else {
             continue;
         };
-        entries.push((id, guid.as_ref()));
+        let Some(value) = site.value(index) else {
+            continue;
+        };
+        match value.unwrap_typed() {
+            Value::Text(guid) => entries.push((id, index, guid.as_ref())),
+            _ => site.unreadable(index, "GlobalId", "a string", value, report),
+        }
     }
-    entries.sort_by_key(|(id, _)| id.0);
-    for (id, guid) in entries {
+    let mut seen: HashMap<&str, EntityId> = HashMap::new();
+    for (id, index, guid) in entries {
         if let Some(first) = seen.get(guid) {
             report.push(Finding::error(
-                "global.UniqueGlobalId",
+                RULE,
                 Path::Attribute {
                     entity: id,
-                    index: 0,
+                    index,
                     name: Some("GlobalId".into()),
                 },
                 format!("GlobalId {guid} is already used by {first}"),
@@ -78,30 +102,50 @@ pub fn unique_global_id(model: &Model, schema: &Schema, report: &mut Report) {
 
 /// `IfcRelDefinesByProperties.NoRelatedTypeObject`.
 ///
-/// The relation's `RelatedObjects` (slot 4) must contain no `IfcTypeObject`.
-/// Type-level property sets travel through `IfcRelDefinesByType` instead.
+/// `RelatedObjects` must contain no `IfcTypeObject`. Type-level property sets
+/// travel through `IfcRelDefinesByType` instead.
 pub fn no_related_type_object(model: &Model, schema: &Schema, report: &mut Report) {
     for (id, entity) in model.of_type("IFCRELDEFINESBYPROPERTIES") {
-        let Some(related) = entity.attribute(4) else {
+        let site = Site {
+            rule: "IfcRelDefinesByProperties.NoRelatedTypeObject",
+            id,
+            entity,
+            schema,
+        };
+        let Some(index) = site.slot("RelatedObjects", report) else {
+            continue;
+        };
+        let Some(related) = site.value(index) else {
+            continue;
+        };
+        let Value::List(members) = related.unwrap_typed() else {
+            site.unreadable(index, "RelatedObjects", "an aggregate", related, report);
             continue;
         };
         let mut offenders = Vec::new();
-        related.for_each_ref(&mut |target| {
-            if let Some(object) = model.get(target) {
-                if schema.is_a(&object.type_name, "IfcTypeObject") {
-                    offenders.push(target);
-                }
+        for member in members {
+            let Some(target) = member.unwrap_typed().as_ref_id() else {
+                site.unreadable(
+                    index,
+                    "RelatedObjects",
+                    "an aggregate of entity references",
+                    member,
+                    report,
+                );
+                continue;
+            };
+            let Some(object) = site.target(model, target, index, "RelatedObjects", report) else {
+                continue;
+            };
+            if schema.is_a(&object.type_name, "IfcTypeObject") {
+                offenders.push(target);
             }
-        });
-        offenders.sort_by_key(|target| target.0);
+        }
+        offenders.sort_unstable();
         for offender in offenders {
             report.push(Finding::error(
-                "IfcRelDefinesByProperties.NoRelatedTypeObject",
-                Path::Attribute {
-                    entity: id,
-                    index: 4,
-                    name: Some("RelatedObjects".into()),
-                },
+                site.rule,
+                site.path(index, "RelatedObjects"),
                 format!(
                     "{offender} is an IfcTypeObject; type property sets \
                      attach through IfcRelDefinesByType"
@@ -111,41 +155,52 @@ pub fn no_related_type_object(model: &Model, schema: &Schema, report: &mut Repor
     }
 }
 
-fn attribute_index(schema: &Schema, type_name: &str, attribute: &str) -> Option<usize> {
-    schema
-        .attribute_names(type_name)
-        .iter()
-        .position(|name| name.eq_ignore_ascii_case(attribute))
-}
-
-fn attribute_path(entity: EntityId, index: usize, name: &str) -> Path {
-    Path::Attribute {
-        entity,
-        index,
-        name: Some(name.into()),
-    }
-}
-
-fn is_present(value: Option<&Value>) -> bool {
-    !matches!(value, None | Some(Value::Null | Value::Derived))
-}
-
 /// `IfcExternalReference.WR1`: at least one external identity field exists.
+///
+/// The operands differ by release, per the bundled EXPRESS: IFC2X3 states
+/// `EXISTS(ItemReference) OR EXISTS(Location) OR EXISTS(Name)`, IFC4 and
+/// IFC4X3 replaced `ItemReference` with `Identification`.
 pub fn external_reference_identity(model: &Model, schema: &Schema, report: &mut Report) {
-    for (id, entity) in model.iter() {
-        if !schema.is_a(&entity.type_name, "IfcExternalReference") {
+    let operands = if schema.version() == Some(SchemaVersion::Ifc2x3) {
+        ["ItemReference", "Location", "Name"]
+    } else {
+        ["Identification", "Location", "Name"]
+    };
+    let mut ids: Vec<(EntityId, &Entity)> = model
+        .iter()
+        .filter(|(_, entity)| schema.is_a(&entity.type_name, "IfcExternalReference"))
+        .collect();
+    ids.sort_by_key(|(id, _)| *id);
+    for (id, entity) in ids {
+        let site = Site {
+            rule: "IfcExternalReference.WR1",
+            id,
+            entity,
+            schema,
+        };
+        let mut identified = false;
+        let mut undeclared = Vec::new();
+        for name in operands {
+            match site.lookup(name) {
+                Some(index) => identified |= site.value(index).is_some(),
+                None => undeclared.push(name),
+            }
+        }
+        // One present operand satisfies the disjunction whatever an
+        // unresolvable one would say; only an unsatisfied rule with an
+        // unresolvable operand is undecided.
+        if identified {
             continue;
         }
-        let identified = ["Identification", "ItemReference", "Location", "Name"]
-            .iter()
-            .filter_map(|name| attribute_index(schema, &entity.type_name, name))
-            .any(|index| is_present(entity.attribute(index)));
-        if !identified {
+        if undeclared.is_empty() {
             report.push(Finding::error(
-                "IfcExternalReference.WR1",
+                site.rule,
                 Path::Entity(id),
                 "external reference has no identification, location, or name",
             ));
+        }
+        for name in undeclared {
+            site.undeclared(name, report);
         }
     }
 }
@@ -158,23 +213,27 @@ pub fn sequence_endpoints_differ(model: &Model, schema: &Schema, report: &mut Re
         "IfcRelSequence.AvoidInconsistentSequence"
     };
     for (id, entity) in model.of_type("IFCRELSEQUENCE") {
-        let Some(relating_index) = attribute_index(schema, &entity.type_name, "RelatingProcess")
-        else {
-            continue;
+        let site = Site {
+            rule,
+            id,
+            entity,
+            schema,
         };
-        let Some(related_index) = attribute_index(schema, &entity.type_name, "RelatedProcess")
-        else {
+        let (Some(relating_index), Some(related_index)) = (
+            site.slot("RelatingProcess", report),
+            site.slot("RelatedProcess", report),
+        ) else {
             continue;
         };
         let endpoints = (
-            entity.attribute(relating_index).and_then(Value::as_ref_id),
-            entity.attribute(related_index).and_then(Value::as_ref_id),
+            site.reference(relating_index, "RelatingProcess", report),
+            site.reference(related_index, "RelatedProcess", report),
         );
         if let (Some(relating), Some(related)) = endpoints {
             if relating == related {
                 report.push(Finding::error(
                     rule,
-                    attribute_path(id, related_index, "RelatedProcess"),
+                    site.path(related_index, "RelatedProcess"),
                     format!("sequence endpoints both refer to {related}"),
                 ));
             }
@@ -182,104 +241,131 @@ pub fn sequence_endpoints_differ(model: &Model, schema: &Schema, report: &mut Re
     }
 }
 
+/// `NoSelfReference`: the relating end must not appear among the related
+/// objects.
+///
+/// The relating attribute is named per relation (`RelatingObject`,
+/// `RelatingActor`, ...), so it is a parameter rather than a shared slot.
+/// A related member that is not a reference cannot be identical to the
+/// relating instance, so it does not make the rule undecidable.
 fn no_self_reference(
     model: &Model,
     schema: &Schema,
     relation: &str,
+    relating_attribute: &str,
     rule: &str,
     report: &mut Report,
 ) {
     for (id, entity) in model.of_type(relation) {
-        let Some(parent_index) = attribute_index(schema, &entity.type_name, "RelatingObject")
-        else {
+        let site = Site {
+            rule,
+            id,
+            entity,
+            schema,
+        };
+        let (Some(relating_index), Some(related_index)) = (
+            site.slot(relating_attribute, report),
+            site.slot("RelatedObjects", report),
+        ) else {
             continue;
         };
-        let Some(children_index) = attribute_index(schema, &entity.type_name, "RelatedObjects")
-        else {
+        let Some(relating) = site.reference(relating_index, relating_attribute, report) else {
             continue;
         };
-        let Some(parent) = entity.attribute(parent_index).and_then(Value::as_ref_id) else {
-            continue;
-        };
-        let mut includes_parent = false;
-        if let Some(children) = entity.attribute(children_index) {
-            children.for_each_ref(&mut |child| includes_parent |= child == parent);
+        let mut includes_self = false;
+        if let Some(related) = site.value(related_index) {
+            related.for_each_ref(&mut |object| includes_self |= object == relating);
         }
-        if includes_parent {
+        if includes_self {
             report.push(Finding::error(
                 rule,
-                attribute_path(id, children_index, "RelatedObjects"),
-                format!("related objects contain their own parent {parent}"),
+                site.path(related_index, "RelatedObjects"),
+                format!("related objects contain the relating entity {relating}"),
             ));
         }
     }
+}
+
+/// Whether the rule families gated to IFC4 and IFC4X3 apply to `schema`.
+fn is_ifc4_family(schema: &Schema) -> bool {
+    matches!(
+        schema.version(),
+        Some(SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3)
+    )
 }
 
 /// IFC4/IFC4X3 decomposition and nesting relations cannot contain their parent.
 pub fn decomposition_has_no_self_reference(model: &Model, schema: &Schema, report: &mut Report) {
-    if !matches!(
-        schema.version(),
-        Some(SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3)
-    ) {
+    if !is_ifc4_family(schema) {
         return;
     }
-    no_self_reference(
-        model,
-        schema,
-        "IFCRELAGGREGATES",
-        "IfcRelAggregates.NoSelfReference",
-        report,
-    );
-    no_self_reference(
-        model,
-        schema,
-        "IFCRELNESTS",
-        "IfcRelNests.NoSelfReference",
-        report,
-    );
+    for (relation, rule) in [
+        ("IFCRELAGGREGATES", "IfcRelAggregates.NoSelfReference"),
+        ("IFCRELNESTS", "IfcRelNests.NoSelfReference"),
+    ] {
+        no_self_reference(model, schema, relation, "RelatingObject", rule, report);
+    }
 }
 
 /// IFC4/IFC4X3 material-layer priority, when set, is in the inclusive 0..=100 range.
 pub fn normalized_material_priority(model: &Model, schema: &Schema, report: &mut Report) {
-    if !matches!(
-        schema.version(),
-        Some(SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3)
-    ) {
+    if !is_ifc4_family(schema) {
         return;
     }
     for (id, entity) in model.of_type("IFCMATERIALLAYER") {
-        let Some(index) = attribute_index(schema, &entity.type_name, "Priority") else {
+        let site = Site {
+            rule: "IfcMaterialLayer.NormalizedPriority",
+            id,
+            entity,
+            schema,
+        };
+        let Some(index) = site.slot("Priority", report) else {
             continue;
         };
-        let Some(value) = entity
-            .attribute(index)
-            .filter(|value| is_present(Some(value)))
-            .and_then(|value| value.unwrap_typed().as_i64())
-        else {
+        // `NOT(EXISTS(Priority)) OR ...`: unset satisfies the rule.
+        let Some(value) = site.value(index) else {
             continue;
         };
-        if !(0..=100).contains(&value) {
+        let Some(priority) = value.unwrap_typed().as_i64() else {
+            site.unreadable(index, "Priority", "an integer", value, report);
+            continue;
+        };
+        if !(0..=100).contains(&priority) {
             report.push(Finding::error(
-                "IfcMaterialLayer.NormalizedPriority",
-                attribute_path(id, index, "Priority"),
-                format!("priority {value} is outside the inclusive 0..=100 range"),
+                site.rule,
+                site.path(index, "Priority"),
+                format!("priority {priority} is outside the inclusive 0..=100 range"),
             ));
         }
     }
 }
 
-/// The four `IfcRelAssigns` subtypes and the attribute naming their
-/// single relating end.
+/// The four `IfcRelAssigns` subtypes checked, the attribute naming their
+/// single relating end, and the rule id each reports under.
 ///
-/// `IfcRelAssignsToGroupByFactor` is listed separately from
-/// `IfcRelAssignsToGroup`: `of_type` matches exact type names, so the
-/// subtype is invisible to a query for its parent and would otherwise
-/// go unchecked.
-const ASSIGNMENT_RELATING: [(&str, &str); 4] = [
-    ("IFCRELASSIGNSTOACTOR", "RelatingActor"),
-    ("IFCRELASSIGNSTOPROCESS", "RelatingProcess"),
-    ("IFCRELASSIGNSTOPRODUCT", "RelatingProduct"),
-    ("IFCRELASSIGNSTOGROUPBYFACTOR", "RelatingGroup"),
+/// `IfcRelAssignsToGroupByFactor` is listed separately: `of_type` matches
+/// exact type names, so the subtype is invisible to a query for its parent.
+const ASSIGNMENT_RELATING: [(&str, &str, &str); 4] = [
+    (
+        "IFCRELASSIGNSTOACTOR",
+        "RelatingActor",
+        "IfcRelAssignsToActor.NoSelfReference",
+    ),
+    (
+        "IFCRELASSIGNSTOPROCESS",
+        "RelatingProcess",
+        "IfcRelAssignsToProcess.NoSelfReference",
+    ),
+    (
+        "IFCRELASSIGNSTOPRODUCT",
+        "RelatingProduct",
+        "IfcRelAssignsToProduct.NoSelfReference",
+    ),
+    (
+        "IFCRELASSIGNSTOGROUPBYFACTOR",
+        "RelatingGroup",
+        "IfcRelAssignsToGroupByFactor.NoSelfReference",
+    ),
 ];
 
 /// IFC4/IFC4X3: an assignment relationship cannot assign an object to
@@ -289,58 +375,11 @@ const ASSIGNMENT_RELATING: [(&str, &str); 4] = [
 /// its own relating attribute, so the check is driven by the table above
 /// rather than assuming a shared slot.
 pub fn assignment_has_no_self_reference(model: &Model, schema: &Schema, report: &mut Report) {
-    if !matches!(
-        schema.version(),
-        Some(SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3)
-    ) {
+    if !is_ifc4_family(schema) {
         return;
     }
-    for (relation, relating_attribute) in ASSIGNMENT_RELATING {
-        let rule = match relation {
-            "IFCRELASSIGNSTOACTOR" => "IfcRelAssignsToActor.NoSelfReference",
-            "IFCRELASSIGNSTOPROCESS" => "IfcRelAssignsToProcess.NoSelfReference",
-            "IFCRELASSIGNSTOPRODUCT" => "IfcRelAssignsToProduct.NoSelfReference",
-            _ => "IfcRelAssignsToGroupByFactor.NoSelfReference",
-        };
-        no_self_reference_named(model, schema, relation, relating_attribute, rule, report);
-    }
-}
-
-/// `NoSelfReference` where the relating attribute is named per subtype.
-///
-/// The existing helper hard-codes `RelatingObject`; the assignment family
-/// uses four different names for the same role.
-fn no_self_reference_named(
-    model: &Model,
-    schema: &Schema,
-    relation: &str,
-    relating_attribute: &str,
-    rule: &'static str,
-    report: &mut Report,
-) {
-    for (id, entity) in model.of_type(relation) {
-        let Some(relating_index) = attribute_index(schema, &entity.type_name, relating_attribute)
-        else {
-            continue;
-        };
-        let Some(related_index) = attribute_index(schema, &entity.type_name, "RelatedObjects")
-        else {
-            continue;
-        };
-        let Some(relating) = entity.attribute(relating_index).and_then(Value::as_ref_id) else {
-            continue;
-        };
-        let mut includes_self = false;
-        if let Some(related) = entity.attribute(related_index) {
-            related.for_each_ref(&mut |object| includes_self |= object == relating);
-        }
-        if includes_self {
-            report.push(Finding::error(
-                rule,
-                attribute_path(id, related_index, "RelatedObjects"),
-                format!("related objects contain the relating entity {relating}"),
-            ));
-        }
+    for (relation, relating_attribute, rule) in ASSIGNMENT_RELATING {
+        no_self_reference(model, schema, relation, relating_attribute, rule, report);
     }
 }
 
@@ -350,10 +389,7 @@ fn no_self_reference_named(
 /// range". An empty list is therefore conformant and is not reported; a
 /// non-empty list is checked per element so the finding names the offender.
 pub fn normalized_connection_priorities(model: &Model, schema: &Schema, report: &mut Report) {
-    if !matches!(
-        schema.version(),
-        Some(SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3)
-    ) {
+    if !is_ifc4_family(schema) {
         return;
     }
     let checks = [
@@ -368,23 +404,31 @@ pub fn normalized_connection_priorities(model: &Model, schema: &Schema, report: 
     ];
     for (id, entity) in model.of_type("IFCRELCONNECTSPATHELEMENTS") {
         for (attribute, rule) in checks {
-            let Some(index) = attribute_index(schema, &entity.type_name, attribute) else {
+            let site = Site {
+                rule,
+                id,
+                entity,
+                schema,
+            };
+            let Some(index) = site.slot(attribute, report) else {
                 continue;
             };
-            let Some(value) = entity.attribute(index) else {
+            let Some(value) = site.value(index) else {
                 continue;
             };
             let Value::List(items) = value.unwrap_typed() else {
+                site.unreadable(index, attribute, "an aggregate", value, report);
                 continue;
             };
             for item in items {
                 let Some(priority) = item.unwrap_typed().as_i64() else {
+                    site.unreadable(index, attribute, "an aggregate of integers", item, report);
                     continue;
                 };
                 if !(0..=100).contains(&priority) {
                     report.push(Finding::error(
                         rule,
-                        attribute_path(id, index, attribute),
+                        site.path(index, attribute),
                         format!("priority {priority} is outside the inclusive 0..=100 range"),
                     ));
                 }
@@ -404,10 +448,7 @@ pub fn normalized_connection_priorities(model: &Model, schema: &Schema, report: 
 /// so querying only the supertype would silently skip every 2nd-level
 /// boundary -- which is what real BEM exports actually write.
 pub fn space_boundary_physicality(model: &Model, schema: &Schema, report: &mut Report) {
-    if !matches!(
-        schema.version(),
-        Some(SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3)
-    ) {
+    if !is_ifc4_family(schema) {
         return;
     }
     let types = [
@@ -417,55 +458,88 @@ pub fn space_boundary_physicality(model: &Model, schema: &Schema, report: &mut R
     ];
     for boundary_type in types {
         for (id, entity) in model.of_type(boundary_type) {
-            check_phys_or_virt(model, schema, id, entity, report);
+            let site = Site {
+                rule: "IfcRelSpaceBoundary.CorrectPhysOrVirt",
+                id,
+                entity,
+                schema,
+            };
+            check_phys_or_virt(model, &site, report);
         }
     }
 }
 
+/// What the declared physicality demands of the bounding element.
+enum Physicality {
+    /// Must not be an `IfcVirtualElement`.
+    Physical,
+    /// Must be an `IfcVirtualElement` or an `IfcOpeningElement`.
+    Virtual,
+    /// Unconstrained.
+    NotDefined,
+}
+
 /// One boundary's physicality against its bounding element.
-fn check_phys_or_virt(
-    model: &Model,
-    schema: &Schema,
-    id: EntityId,
-    entity: &Entity,
-    report: &mut Report,
-) {
-    let Some(physicality_index) =
-        attribute_index(schema, &entity.type_name, "PhysicalOrVirtualBoundary")
+fn check_phys_or_virt(model: &Model, site: &Site<'_>, report: &mut Report) {
+    const PHYSICALITY: &str = "PhysicalOrVirtualBoundary";
+    const ELEMENT: &str = "RelatedBuildingElement";
+    let (Some(physicality_index), Some(element_index)) =
+        (site.slot(PHYSICALITY, report), site.slot(ELEMENT, report))
     else {
         return;
     };
-    let Some(element_index) = attribute_index(schema, &entity.type_name, "RelatedBuildingElement")
-    else {
+    let Some(value) = site.value(physicality_index) else {
         return;
     };
-    let Some(declared) = entity
-        .attribute(physicality_index)
-        .map(Value::unwrap_typed)
-        .and_then(|value| match value {
-            Value::Enum(member) => Some(member.as_ref()),
-            _ => None,
-        })
-    else {
+    let declared = match value.unwrap_typed() {
+        Value::Enum(member) => member,
+        _ => {
+            site.unreadable(
+                physicality_index,
+                PHYSICALITY,
+                "an enumeration",
+                value,
+                report,
+            );
+            return;
+        }
+    };
+    let physicality = match declared.to_ascii_uppercase().as_str() {
+        "PHYSICAL" => Physicality::Physical,
+        "VIRTUAL" => Physicality::Virtual,
+        "NOTDEFINED" => Physicality::NotDefined,
+        _ => {
+            report.push(Finding::evaluation_error(
+                site.rule,
+                site.path(physicality_index, PHYSICALITY),
+                format!(
+                    "{declared} is not PHYSICAL, VIRTUAL or NOTDEFINED, so the rule \
+                     cannot be evaluated"
+                ),
+            ));
+            return;
+        }
+    };
+    if matches!(physicality, Physicality::NotDefined) {
+        return;
+    }
+    let Some(element) = site.reference(element_index, ELEMENT, report) else {
         return;
     };
-    let Some(element) = entity.attribute(element_index).and_then(Value::as_ref_id) else {
+    let Some(target) = site.target(model, element, element_index, ELEMENT, report) else {
         return;
     };
-    let Some(target) = model.get(element) else {
-        return;
-    };
-    let is_virtual = schema.is_a(&target.type_name, "IFCVIRTUALELEMENT");
-    let is_opening = schema.is_a(&target.type_name, "IFCOPENINGELEMENT");
-    let consistent = match declared.to_ascii_uppercase().as_str() {
-        "PHYSICAL" => !is_virtual,
-        "VIRTUAL" => is_virtual || is_opening,
-        _ => true,
+    let is_virtual = site.schema.is_a(&target.type_name, "IFCVIRTUALELEMENT");
+    let is_opening = site.schema.is_a(&target.type_name, "IFCOPENINGELEMENT");
+    let consistent = match physicality {
+        Physicality::Physical => !is_virtual,
+        Physicality::Virtual => is_virtual || is_opening,
+        Physicality::NotDefined => true,
     };
     if !consistent {
         report.push(Finding::error(
-            "IfcRelSpaceBoundary.CorrectPhysOrVirt",
-            attribute_path(id, physicality_index, "PhysicalOrVirtualBoundary"),
+            site.rule,
+            site.path(physicality_index, PHYSICALITY),
             format!(
                 "boundary declares {declared} but the related element {element} is {}",
                 target.type_name

@@ -21,6 +21,7 @@ pub mod mapped;
 pub mod operator;
 pub mod placement;
 pub mod point;
+pub mod resolve;
 pub mod topology;
 
 pub use direction::{Direction, Vector};
@@ -31,9 +32,10 @@ pub use operator::{
     CartesianTransformationOperator3DnonUniform,
 };
 pub use placement::{
-    axis_placement_transform, Axis1Placement, Axis2Placement2D, Axis2Placement3D, Placement,
+    axis_placement_transform, Axis1Placement, Axis2Placement, Axis2Placement2D, Axis2Placement3D,
+    Placement,
 };
 pub use point::{
-    cartesian_point_3d, CartesianPoint, CartesianPointList2D, CartesianPointList3D, PointOnCurve,
-    PointOnSurface,
+    cartesian_point_3d, CartesianPoint, CartesianPointList, CartesianPointList2D,
+    CartesianPointList3D, PointOnCurve, PointOnSurface,
 };

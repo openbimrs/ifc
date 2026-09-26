@@ -73,25 +73,28 @@ pub enum Primitive {
 impl Primitive {
     /// Recognizes an EXPRESS primitive from a resolved type expression.
     ///
-    /// The resolved text may carry aggregate syntax (`LIST [1:?] OF REAL`);
-    /// only the trailing primitive token is examined, and anything
-    /// unrecognized yields `None` rather than a guess.
+    /// The resolved text may carry aggregate syntax (`LIST [1:?] OF REAL`)
+    /// and width specifications (`STRING(255)`, `STRING(22) FIXED`); the
+    /// last primitive keyword is the one the value must satisfy, and text
+    /// naming no primitive yields `None` rather than a guess.
+    ///
+    /// Width and `FIXED` are skipped rather than read as the trailing token:
+    /// IFC4 declares `IfcLabel` and `IfcIdentifier` as `STRING(255)`, so a
+    /// trailing-token reading left every `Name` slot unchecked.
     #[must_use]
     pub fn from_resolved(resolved: &str) -> Option<Self> {
-        let token = resolved
-            .rsplit(|c: char| c.is_whitespace() || c == '(')
-            .find(|part| !part.is_empty())?
-            .trim_end_matches([')', ';'])
-            .to_ascii_uppercase();
-        match token.as_str() {
-            "REAL" | "NUMBER" => Some(Self::Real),
-            "INTEGER" => Some(Self::Integer),
-            "STRING" => Some(Self::Text),
-            "BOOLEAN" => Some(Self::Boolean),
-            "LOGICAL" => Some(Self::Logical),
-            "BINARY" => Some(Self::Binary),
-            _ => None,
-        }
+        resolved
+            .split(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+            .filter_map(|token| match token.to_ascii_uppercase().as_str() {
+                "REAL" | "NUMBER" => Some(Self::Real),
+                "INTEGER" => Some(Self::Integer),
+                "STRING" => Some(Self::Text),
+                "BOOLEAN" => Some(Self::Boolean),
+                "LOGICAL" => Some(Self::Logical),
+                "BINARY" => Some(Self::Binary),
+                _ => None,
+            })
+            .next_back()
     }
 
     /// Whether `value` is written in a form this primitive accepts.
@@ -149,4 +152,44 @@ pub fn describe_value(value: &Value) -> &'static str {
 #[must_use]
 pub fn primitive_of(schema: &Schema, type_name: &str) -> Option<Primitive> {
     Primitive::from_resolved(&schema.resolve_defined(type_name))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Width specifications do not hide the primitive.
+    ///
+    /// IFC4 declares `IfcLabel = STRING(255)`. Reading the trailing token
+    /// found `255`, recognised nothing, and left every label slot unchecked.
+    #[test]
+    fn a_bounded_or_fixed_string_is_still_a_string() {
+        assert_eq!(
+            Primitive::from_resolved("STRING(255)"),
+            Some(Primitive::Text)
+        );
+        assert_eq!(
+            Primitive::from_resolved("STRING(22) FIXED"),
+            Some(Primitive::Text)
+        );
+        assert_eq!(
+            Primitive::from_resolved("LIST [1:?] OF REAL"),
+            Some(Primitive::Real)
+        );
+    }
+
+    /// Text naming no primitive stays unjudged.
+    #[test]
+    fn a_non_primitive_is_not_guessed() {
+        assert_eq!(Primitive::from_resolved("IfcLabel"), None);
+        assert_eq!(Primitive::from_resolved("LIST [1:?] OF IfcReal"), None);
+    }
+
+    /// The bundled IFC4 label types resolve to a checked primitive.
+    #[test]
+    fn ifc4_labels_are_checked_as_strings() {
+        let schema = ifc_schema::ifc4();
+        assert_eq!(primitive_of(schema, "IfcLabel"), Some(Primitive::Text));
+        assert_eq!(primitive_of(schema, "IfcIdentifier"), Some(Primitive::Text));
+    }
 }

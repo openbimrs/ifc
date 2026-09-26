@@ -1,4 +1,40 @@
-//! Planned owner: nested complex properties.
+//! `IfcComplexProperty` members: nested properties under a usage name.
 //!
-//! Follow `AGENTS.md` in this directory. Keep this module
-//! crate-private until it owns a deliberate public contract.
+//! ```text
+//! IfcComplexProperty  2 = UsageName  3 = HasProperties (SET [1:?] OF IfcProperty)
+//! ```
+//!
+//! Members are read through [`Nesting`], which tracks the path from the root
+//! property so a cycle of any length is cut and reported, not just the
+//! direct self-member `WR21` forbids.
+
+use ifc_model::{EntityId, Model, Value};
+
+use crate::nesting::Nesting;
+use crate::pset::scalar::{read_property, refs, Property};
+
+/// Resolve the `HasProperties` of complex property `id`, in file order.
+///
+/// Members the traversal refuses (cycle, depth, budget, absent entity) are
+/// left out and reported through `nesting`.
+pub(super) fn complex_members(
+    model: &Model,
+    id: EntityId,
+    has_properties: Option<&Value>,
+    nesting: &mut Nesting<'_>,
+) -> Vec<Property> {
+    if !nesting.enter(id) {
+        return Vec::new();
+    }
+    let mut properties = Vec::new();
+    for member in has_properties.and_then(refs).unwrap_or_default() {
+        if !nesting.admit(model, id, member) {
+            continue;
+        }
+        if let Some(property) = read_property(model, member, nesting) {
+            properties.push(property);
+        }
+    }
+    nesting.leave();
+    properties
+}

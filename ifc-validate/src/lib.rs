@@ -18,11 +18,13 @@
 //! # }
 //! ```
 //!
-//! The three severities are not a mood scale. [`Severity::Error`] means the
-//! file breaks a schema requirement; [`Severity::Warning`] means it is legal
-//! but will behave badly; [`Severity::Unsupported`] is a statement about
-//! *this validator*, not about the file. Only errors affect
-//! [`Report::is_conformant`].
+//! The four severities are not a mood scale. [`Severity::Error`] means the
+//! file breaks a schema requirement; [`Severity::EvaluationError`] means an
+//! implemented rule applied to an instance but could not be decided for it;
+//! [`Severity::Warning`] means it is legal but will behave badly;
+//! [`Severity::Unsupported`] is a statement about *this validator*, not about
+//! the file. Errors and evaluation errors affect [`Report::is_conformant`]:
+//! a rule nobody could decide is not a rule that passed.
 //!
 //! # What this crate deliberately does not do
 //!

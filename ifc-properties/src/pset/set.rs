@@ -28,7 +28,8 @@ use ifc_model::{EntityId, Model, Value};
 use ifc_schema::ifc4;
 
 use crate::error::PropertyAnomaly;
-use crate::pset::scalar::{property, Property};
+use crate::nesting::Nesting;
+use crate::pset::scalar::{read_property, Property};
 
 /// `IfcRelDefinesByProperties`: objects at slot 4, definition at slot 5.
 const REL_RELATED_OBJECTS: usize = 4;
@@ -85,25 +86,73 @@ impl PropertySet {
 /// `IfcPropertySetDefinition` subtypes (quantity sets, predefined sets) are
 /// deliberately excluded: they are not `IfcPropertySet` and have their own
 /// attribute layouts.
+///
+/// Members this reader cannot resolve (absent ids, cyclic or over-deep
+/// complex properties) are left out without saying so; use
+/// [`property_set_checked`] to have each one reported.
 pub fn property_set(model: &Model, id: EntityId) -> Option<PropertySet> {
+    property_set_checked(model, id).map(|(set, _)| set)
+}
+
+/// Read one `IfcPropertySet` by id, reporting every member left unread.
+///
+/// The same value as [`property_set`], with a
+/// [`PropertyAnomaly::MissingMember`] for each `HasProperties` id absent
+/// from the file and the nesting anomalies described on
+/// [`property_checked`](crate::property_checked) for its complex properties.
+pub fn property_set_checked(
+    model: &Model,
+    id: EntityId,
+) -> Option<(PropertySet, Vec<PropertyAnomaly>)> {
     let entity = model.get(id)?;
     if !entity.type_name.eq_ignore_ascii_case("IFCPROPERTYSET") {
         return None;
     }
-    let properties = entity
+    let mut anomalies = Vec::new();
+    let mut nesting = Nesting::new(&mut anomalies);
+    let mut properties = Vec::new();
+    for member in entity
         .attributes
         .get(SET_HAS_PROPERTIES)
         .and_then(refs)
         .unwrap_or_default()
-        .into_iter()
-        .filter_map(|p| property(model, p))
-        .collect();
-    Some(PropertySet {
+    {
+        if !nesting.admit(model, id, member) {
+            continue;
+        }
+        if let Some(property) = read_property(model, member, &mut nesting) {
+            properties.push(property);
+        }
+    }
+    let set = PropertySet {
         id,
         name: entity.attributes.get(ROOT_NAME).and_then(text),
         description: entity.attributes.get(ROOT_DESCRIPTION).and_then(text),
         properties,
-    })
+    };
+    Some((set, anomalies))
+}
+
+/// Read each property set once, however many objects share it, keeping
+/// its anomalies for one report.
+#[derive(Default)]
+struct SetCache {
+    sets: BTreeMap<EntityId, Option<PropertySet>>,
+    anomalies: BTreeMap<EntityId, Vec<PropertyAnomaly>>,
+}
+
+impl SetCache {
+    fn get(&mut self, model: &Model, id: EntityId) -> Option<PropertySet> {
+        if let Some(set) = self.sets.get(&id) {
+            return set.clone();
+        }
+        let read = property_set_checked(model, id).map(|(set, anomalies)| {
+            self.anomalies.insert(id, anomalies);
+            set
+        });
+        self.sets.insert(id, read.clone());
+        read
+    }
 }
 
 /// Property sets found on each object, with how each one was attached.
@@ -115,11 +164,13 @@ pub type AttachedSets = BTreeMap<EntityId, Vec<(Attachment, PropertySet)>>;
 /// with `Attachment` recording how it arrived: precedence is a caller
 /// decision, so the reader must not collapse the distinction here.
 ///
-/// Anomalies report a type object attached by the forbidden relationship, and
-/// relationships whose targets are missing from the file.
+/// Anomalies report a type object attached by the forbidden relationship,
+/// relationships whose targets are missing from the file, and, once per set,
+/// the members [`property_set_checked`] could not resolve.
 pub fn property_sets_by_object(model: &Model) -> (AttachedSets, Vec<PropertyAnomaly>) {
     let mut out: AttachedSets = BTreeMap::new();
     let mut anomalies = Vec::new();
+    let mut cache = SetCache::default();
     let schema = ifc4();
 
     // Route 1: IfcRelDefinesByProperties, for occurrences.
@@ -132,7 +183,7 @@ pub fn property_sets_by_object(model: &Model) -> (AttachedSets, Vec<PropertyAnom
         else {
             continue;
         };
-        let Some(set) = property_set(model, definition) else {
+        let Some(set) = cache.get(model, definition) else {
             // Quantity sets travel this relationship too and are read by the
             // quantity module; only note a definition that is not in the file.
             if model.get(definition).is_none() {
@@ -185,7 +236,7 @@ pub fn property_sets_by_object(model: &Model) -> (AttachedSets, Vec<PropertyAnom
                 .and_then(refs)
                 .unwrap_or_default()
             {
-                if let Some(set) = property_set(model, set_id) {
+                if let Some(set) = cache.get(model, set_id) {
                     out.entry(id).or_default().push((Attachment::Type, set));
                 }
             }
@@ -194,6 +245,10 @@ pub fn property_sets_by_object(model: &Model) -> (AttachedSets, Vec<PropertyAnom
 
     for sets in out.values_mut() {
         sets.sort_by_key(|(_, set)| set.id);
+    }
+    // Member anomalies, once per set and in set-id order.
+    for found in cache.anomalies.into_values() {
+        anomalies.extend(found);
     }
     // A set shared by many objects is checked once.
     let mut unique: BTreeMap<EntityId, &PropertySet> = BTreeMap::new();

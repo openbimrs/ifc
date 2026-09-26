@@ -270,10 +270,7 @@ fn a_truncated_report_admits_truncation() {
             ],
         ));
     }
-    let budget = Budget {
-        max_findings: 5,
-        ..Budget::DEFAULT
-    };
+    let budget = Budget { max_findings: 5 };
     let report = ifc_validate::validate_with(&model, ifc_schema::ifc4(), budget);
     assert!(
         report.is_truncated(),

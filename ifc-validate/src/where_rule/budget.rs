@@ -10,14 +10,27 @@
 //! The budget is a *reporting* limit, not a correctness compromise. When it
 //! is hit the report is marked truncated, so "12 errors" never silently means
 //! "at least 12 errors".
+//!
+//! # Why there is no depth limit
+//!
+//! Every graph walk this crate performs -- supertype chains, SELECT
+//! membership, defined-type alias chains -- runs over the *schema's* type
+//! graph, never over the file's entity graph. The schema is bundled and
+//! finite, so those walks are bounded by its size and guarded against cycles
+//! by a visited set (`type_check::select`); a file cannot lengthen them. The
+//! per-entity checks are single passes over each record's own slots.
+//!
+//! A caller-tunable depth would therefore bound nothing a file controls, and
+//! a small value would only turn "not yet searched" into "not a member" --
+//! the false accusation `type_check::select` documents. The one quantity a
+//! file does control is how many findings it provokes, and that is what this
+//! budget caps.
 
 /// Limits applied to one validation run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Budget {
     /// Stop recording after this many findings.
     pub max_findings: usize,
-    /// Give up on a supertype or SELECT walk after this many steps.
-    pub max_depth: usize,
 }
 
 impl Budget {
@@ -28,14 +41,12 @@ impl Budget {
     /// costs a few hundred KB to hold.
     pub const DEFAULT: Self = Self {
         max_findings: 10_000,
-        max_depth: 64,
     };
 
     /// An explicitly unbounded budget, for tests and for callers that have
     /// already decided the input is trustworthy.
     pub const UNLIMITED: Self = Self {
         max_findings: usize::MAX,
-        max_depth: usize::MAX,
     };
 }
 

@@ -120,6 +120,41 @@ mod tests {
         assert_eq!(accepts(schema, "IfcValue", "IfcWall"), Some(false));
     }
 
+    /// Every SELECT a bundled schema uses in an attribute slot is walked to
+    /// completion under the visit bound, so a legal file cannot exhaust it.
+    ///
+    /// This is what lets the bound be a crate constant rather than a
+    /// caller-supplied budget: it is a property of the bundled schemas, and
+    /// a non-member query walks a select's entire closure.
+    #[test]
+    fn every_bundled_select_closure_completes_within_the_visit_bound() {
+        for schema in [
+            ifc_schema::ifc2x3(),
+            ifc_schema::ifc4(),
+            ifc_schema::ifc4x3(),
+        ] {
+            let mut selects = BTreeSet::new();
+            for entity in schema.entity_names() {
+                for attribute in schema.attributes(entity) {
+                    if let Some(definition) = schema.type_def(&attribute.type_name) {
+                        if matches!(definition.kind, TypeKind::Select(_)) {
+                            selects.insert(attribute.type_name.clone());
+                        }
+                    }
+                }
+            }
+            assert!(selects.len() > 20, "{}: {selects:?}", schema.name());
+            for select in &selects {
+                assert_eq!(
+                    accepts(schema, select, "NOT_A_DECLARED_TYPE"),
+                    Some(false),
+                    "{}: the walk over {select} did not complete",
+                    schema.name()
+                );
+            }
+        }
+    }
+
     /// A type that is not a select is distinguishable from a non-member.
     #[test]
     fn a_non_select_returns_none() {
