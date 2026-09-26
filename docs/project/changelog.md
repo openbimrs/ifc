@@ -22,7 +22,21 @@ lockstep -- is archived in the
 
 ### ifc-geometry
 
+### Fixed
+
+- An opening that a file makes void two hosts is subtracted from the first
+  only (#59). `IfcFeatureElementSubtraction.VoidsElements` is a
+  single-valued inverse in IFC2X3 and IFC4, but every `IfcRelVoidsElement`
+  was applied, so the second host's net body was cut by an opening that
+  belongs to another element. The relation with the lower id now wins in
+  `openings_of` and in net compilation. Output changes only for files that
+  violate the schema.
+
 ### Added
+
+- `voiding_conflicts(model)` and `VoidingConflict { opening, kept_host,
+  rejected_host, relation }` report such openings (#59). It is kernel-free,
+  like `openings_of`. Restating the same host is not a conflict.
 
 - `compile::product_bounds` / `product_bounds_with` return a product's
   world-space axis-aligned bounding box (#36). The body is resolved and placed
