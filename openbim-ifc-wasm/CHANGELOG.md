@@ -8,6 +8,25 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-26
+
+The first npm release built and published by the release workflow, with npm
+provenance. The JavaScript API is unchanged.
+
+### Changed
+
+- Reading STEP is faster: the model is now built straight from
+  `openbim-step` 0.7.0's borrowed events instead of copying every value
+  twice. Real files read with 22-40% fewer instructions, and the parsed
+  model is identical (checked on 2,273 files).
+- Built against `openbim-ifc` 0.5.0.
+- The crate is not published to crates.io (`publish = false`). The package
+  ships on npm as `@openbim/ifc` only.
+
+## [0.1.0] - 2026-09-24
+
+Published to npm by hand, before the release workflow existed.
+
 ### Added
 
 - The model operations, value encoding and error codes now come from
@@ -26,3 +45,7 @@ a release here does not imply a release of any other crate in the family.
   leaves the model unchanged.
 - `scripts/build-node-pkg.sh` builds a Node package with the pinned
   `wasm-bindgen` CLI and runs the Node smoke and corpus suites.
+
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.1.1...HEAD
+[0.1.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.1.1
+[0.1.0]: https://www.npmjs.com/package/@openbim/ifc/v/0.1.0

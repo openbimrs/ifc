@@ -1,7 +1,7 @@
 {
   "name": "@openbim/ifc",
   "description": "Read, edit and write IFC STEP files from JavaScript (WebAssembly build of openbim-ifc).",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "AGPL-3.0-or-later",
   "repository": {
     "type": "git",

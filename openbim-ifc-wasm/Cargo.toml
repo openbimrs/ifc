@@ -1,6 +1,6 @@
 [package]
 name = "openbim-ifc-wasm"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.88"
 license = "AGPL-3.0-or-later"
@@ -9,6 +9,9 @@ repository = "https://github.com/openbimrs/ifc"
 description = "WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript."
 keywords = ["ifc", "bim", "wasm", "step", "openbim"]
 categories = ["wasm", "parser-implementations"]
+# npm-only: distributed as `@openbim/ifc`. On crates.io it would also need
+# openbim-ifc-binding-core published, for a crate nobody depends on in Rust.
+publish = false
 
 [lib]
 # The wasm module. Native builds compile an empty crate: every operation and

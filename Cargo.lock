@@ -1156,7 +1156,7 @@ dependencies = [
 
 [[package]]
 name = "openbim-ifc-wasm"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "js-sys",
  "openbim-ifc-binding-core",
