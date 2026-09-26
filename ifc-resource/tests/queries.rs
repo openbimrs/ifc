@@ -62,7 +62,7 @@ fn allocation_rejects_empty_duplicate_wrong_select_and_self_reference() {
         schema,
         "IfcRelAssignsToResource",
         &[
-            ("GlobalId", text("4O2Fr$t4X7Zf8NOew3FLOH")),
+            ("GlobalId", text("04OFr$t4X7Zf8NOew3FLOH")),
             ("RelatedObjects", refs(&[task, task])),
             ("RelatingResource", Value::Ref(labor)),
         ],
@@ -71,7 +71,7 @@ fn allocation_rejects_empty_duplicate_wrong_select_and_self_reference() {
         schema,
         "IfcRelAssignsToResource",
         &[
-            ("GlobalId", text("5O2Fr$t4X7Zf8NOew3FLOH")),
+            ("GlobalId", text("05OFr$t4X7Zf8NOew3FLOH")),
             ("RelatedObjects", refs(&[task])),
             ("RelatingResource", Value::Ref(wall)),
         ],
@@ -80,7 +80,7 @@ fn allocation_rejects_empty_duplicate_wrong_select_and_self_reference() {
         schema,
         "IfcRelAssignsToResource",
         &[
-            ("GlobalId", text("6O2Fr$t4X7Zf8NOew3FLOH")),
+            ("GlobalId", text("06OFr$t4X7Zf8NOew3FLOH")),
             ("RelatedObjects", refs(&[labor])),
             ("RelatingResource", Value::Ref(labor)),
         ],
@@ -242,7 +242,7 @@ fn resource_composition_is_ordered_budgeted_and_cycle_checked() {
         schema,
         "IfcRelNests",
         &[
-            ("GlobalId", text("4O2Fr$t4X7Zf8NOew3FLOH")),
+            ("GlobalId", text("04OFr$t4X7Zf8NOew3FLOH")),
             ("RelatingObject", Value::Ref(labor_a)),
             ("RelatedObjects", refs(&[crew])),
         ],
@@ -313,7 +313,7 @@ fn nesting_rejects_non_resource_members_and_duplicate_members() {
         schema,
         "IfcRelNests",
         &[
-            ("GlobalId", text("4O2Fr$t4X7Zf8NOew3FLOH")),
+            ("GlobalId", text("04OFr$t4X7Zf8NOew3FLOH")),
             ("RelatingObject", Value::Ref(crew)),
             ("RelatedObjects", refs(&[wall])),
         ],

@@ -98,14 +98,14 @@ fn a_type_object_cannot_take_a_property_set() {
     let mut attributes = vec![Value::Null; 10];
     attributes[0] = Value::Text("3aBcDeFgHiJkLmNoPqRsTu".into());
     let wall_type = tx.create(Entity::new("IFCWALLTYPE", attributes));
-    let occurrence = wall(&mut tx, "4aBcDeFgHiJkLmNoPqRsTu");
+    let occurrence = wall(&mut tx, "04BcDeFgHiJkLmNoPqRsTu");
     tx.commit(&mut model).expect("commit");
 
     let mut tx = Transaction::new(&model);
     let p = add_property_single_value(&mut tx, "A", None, None, None).expect("property");
-    let g = "5aBcDeFgHiJkLmNoPqRsTu";
+    let g = "05BcDeFgHiJkLmNoPqRsTu";
     let pset = add_property_set(&mut tx, g, "Pset_X", None, &[("A", p)]).expect("pset");
-    let h = "6aBcDeFgHiJkLmNoPqRsTu";
+    let h = "06BcDeFgHiJkLmNoPqRsTu";
     let refused = attach_property_set(&mut tx, &model, h, &[wall_type], pset);
     assert!(refused.is_err(), "a type object is refused");
 
@@ -123,9 +123,9 @@ fn an_attachment_to_no_objects_is_refused() {
     let model = Model::default();
     let mut tx = Transaction::new(&model);
     let p = add_property_single_value(&mut tx, "A", None, None, None).expect("property");
-    let g = "7aBcDeFgHiJkLmNoPqRsTu";
+    let g = "07BcDeFgHiJkLmNoPqRsTu";
     let pset = add_property_set(&mut tx, g, "Pset_X", None, &[("A", p)]).expect("pset");
-    let h = "8aBcDeFgHiJkLmNoPqRsTu";
+    let h = "08BcDeFgHiJkLmNoPqRsTu";
     let refused = attach_property_set(&mut tx, &model, h, &[], pset);
     assert!(refused.is_err(), "an empty object list is refused");
 }
@@ -138,15 +138,15 @@ fn an_attachment_to_no_objects_is_refused() {
 fn the_authored_set_survives_step_text() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let target = wall(&mut tx, "9aBcDeFgHiJkLmNoPqRsTu");
+    let target = wall(&mut tx, "09BcDeFgHiJkLmNoPqRsTu");
     tx.commit(&mut model).expect("commit the wall");
 
     let mut tx = Transaction::new(&model);
     let p = add_property_single_value(&mut tx, "Height", None, None, None).expect("property");
-    let g = "AaBcDeFgHiJkLmNoPqRsTu";
+    let g = "0ABcDeFgHiJkLmNoPqRsTu";
     let pset =
         add_property_set(&mut tx, g, "Pset_WallCommon", None, &[("Height", p)]).expect("pset");
-    let h = "BaBcDeFgHiJkLmNoPqRsTu";
+    let h = "0BBcDeFgHiJkLmNoPqRsTu";
     attach_property_set(&mut tx, &model, h, &[target], pset).expect("attached");
     tx.commit(&mut model).expect("commit");
 

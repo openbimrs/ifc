@@ -138,7 +138,7 @@ fn an_authored_alignment_lowers_after_a_text_round_trip() {
     let alignment = tx.create(Entity::new(
         "IFCALIGNMENT",
         vec![
-            Value::Text("4aBcDeFgHiJkLmNoPqRsTu".into()),
+            Value::Text("04BcDeFgHiJkLmNoPqRsTu".into()),
             Value::Null,
             Value::Null,
             Value::Null,

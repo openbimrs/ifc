@@ -101,7 +101,7 @@ fn an_authored_sequence_drives_the_execution_order_traversal() {
     .expect("a before b");
     create_sequence(
         &mut tx,
-        "4aBcDeFgHiJkLmNoPqRsTu",
+        "04BcDeFgHiJkLmNoPqRsTu",
         b,
         c,
         Some("FINISH_START"),

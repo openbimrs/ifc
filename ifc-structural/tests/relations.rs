@@ -82,7 +82,7 @@ fn analysis_items_follow_relation_records_in_file_order() {
     ));
     for (relation_id, global_id, member) in [
         (EntityId(100), "3O2Fr$t4X7Zf8NOew3FLOH", first_member),
-        (EntityId(99), "4O2Fr$t4X7Zf8NOew3FLOH", second_member),
+        (EntityId(99), "04OFr$t4X7Zf8NOew3FLOH", second_member),
     ] {
         model.insert(
             relation_id,

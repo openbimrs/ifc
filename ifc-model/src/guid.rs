@@ -33,13 +33,22 @@ const REVERSE: [i8; 256] = reverse_table();
 pub struct Guid([u8; 22]);
 
 impl Guid {
-    /// Wrap 22 ASCII characters, validating the alphabet.
+    /// Wrap 22 ASCII characters, validating the alphabet and the range.
+    ///
+    /// 22 base-64 digits carry 132 bits and a UUID has 128, so the leading
+    /// digit holds only the top 2 bits and must be `0`–`3`. A higher leading
+    /// digit names no UUID: accepting it would let two distinct texts expand
+    /// to the same UUID in [`to_uuid`](Self::to_uuid). Every accepted `Guid`
+    /// therefore round-trips through `to_uuid`/`from_uuid` unchanged.
     pub fn parse(text: &str) -> Option<Self> {
         let bytes = text.as_bytes();
         if bytes.len() != 22 {
             return None;
         }
         if bytes.iter().any(|&b| REVERSE[b as usize] < 0) {
+            return None;
+        }
+        if REVERSE[bytes[0] as usize] > 3 {
             return None;
         }
         let mut buf = [0u8; 22];
@@ -116,6 +125,56 @@ mod tests {
             0x32, 0x10,
         ];
         assert_eq!(Guid::from_uuid(uuid).to_uuid(), uuid);
+    }
+
+    /// #62: a leading digit above `3` would set bits beyond the 128 a UUID
+    /// holds, so two texts could expand to one UUID.
+    #[test]
+    fn rejects_a_leading_digit_beyond_the_uuid_range() {
+        for leading in ALPHABET.iter().skip(4) {
+            let mut text = [b'0'; 22];
+            text[0] = *leading;
+            let text = std::str::from_utf8(&text).unwrap();
+            assert!(Guid::parse(text).is_none(), "{text} was accepted");
+        }
+        for leading in b"0123" {
+            let mut text = [b'$'; 22];
+            text[0] = *leading;
+            assert!(Guid::parse(std::str::from_utf8(&text).unwrap()).is_some());
+        }
+        assert!(Guid::parse("4000000000000000000000").is_none());
+        assert!(Guid::parse("$$$$$$$$$$$$$$$$$$$$$$").is_none());
+    }
+
+    /// The largest and smallest UUIDs map to the extremes of the range.
+    #[test]
+    fn the_uuid_range_ends_at_the_leading_digit_three() {
+        assert_eq!(Guid::from_uuid([0; 16]).as_str(), "0000000000000000000000");
+        assert_eq!(
+            Guid::from_uuid([0xff; 16]).as_str(),
+            "3$$$$$$$$$$$$$$$$$$$$$"
+        );
+    }
+
+    /// Every accepted text round-trips: for each position and each digit the
+    /// alphabet allows there, `from_uuid(to_uuid(g)) == g`.
+    #[test]
+    fn every_accepted_text_roundtrips_through_the_uuid() {
+        let base = *b"2O2Fr$t4X7Zf8NOew3FLOH";
+        let mut checked = 0;
+        for position in 0..22 {
+            for &digit in ALPHABET {
+                let mut text = base;
+                text[position] = digit;
+                let text = std::str::from_utf8(&text).unwrap();
+                if let Some(guid) = Guid::parse(text) {
+                    assert_eq!(Guid::from_uuid(guid.to_uuid()), guid, "{text}");
+                    checked += 1;
+                }
+            }
+        }
+        // 21 positions accept all 64 digits, the leading one only 4.
+        assert_eq!(checked, 21 * 64 + 4);
     }
 
     #[test]

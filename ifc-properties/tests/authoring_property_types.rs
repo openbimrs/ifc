@@ -158,7 +158,7 @@ fn an_authored_element_quantity_attaches_and_reads_back() {
             .expect("complex quantity");
     let quantity_set = add_element_quantity(
         &mut tx,
-        "4aBcDeFgHiJkLmNoPqRsTu",
+        "04BcDeFgHiJkLmNoPqRsTu",
         "Qto_WallBaseQuantities",
         Some("BaseQuantities"),
         &[grouped],
@@ -167,7 +167,7 @@ fn an_authored_element_quantity_attaches_and_reads_back() {
     attach_property_set(
         &mut tx,
         &model,
-        "5aBcDeFgHiJkLmNoPqRsTu",
+        "05BcDeFgHiJkLmNoPqRsTu",
         &[target],
         quantity_set,
     )
@@ -322,7 +322,7 @@ fn the_value_types_survive_step_text() {
     .expect("table");
     let pset = add_property_set(
         &mut tx,
-        "6aBcDeFgHiJkLmNoPqRsTu",
+        "06BcDeFgHiJkLmNoPqRsTu",
         "Pset_Structural",
         None,
         &[("Deflection", table)],
@@ -368,7 +368,7 @@ fn the_quantity_entities_refuse_empty_and_blank_input() {
     let model = Model::default();
     let mut tx = Transaction::new(&model);
     let area = create_quantity(&mut tx, QuantityKind::Area, "GrossArea", 12.5);
-    let guid = "7aBcDeFgHiJkLmNoPqRsTu";
+    let guid = "07BcDeFgHiJkLmNoPqRsTu";
 
     assert!(
         add_element_quantity(&mut tx, guid, "Qto_Wall", None, &[]).is_err(),
@@ -486,7 +486,7 @@ fn type_attachment_refuses_the_cases_the_schema_forbids() {
         attach_type(
             &mut tx,
             &model,
-            "4aBcDeFgHiJkLmNoPqRsTu",
+            "04BcDeFgHiJkLmNoPqRsTu",
             &[occurrence],
             occurrence,
         )

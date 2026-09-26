@@ -261,7 +261,7 @@ fn cost_and_schedule_authoring_is_conformant() {
         &mut tx,
         &model,
         ScheduleAssignmentDraft {
-            global_id: "4O2Fr$t4X7Zf8NOew3FLOH",
+            global_id: "04OFr$t4X7Zf8NOew3FLOH",
             schedule,
             items: &[root],
         },
@@ -312,21 +312,21 @@ fn nesting_writers_are_conformant() {
         attrs[11] = Value::Text("2026-09-19T00:00:00".into());
         tx.create(Entity::new("IFCWORKSCHEDULE", attrs))
     };
-    assign_tasks_to_control(&mut tx, "4O2Fr$t4X7Zf8NOew3FLOH", control, &[summary])
+    assign_tasks_to_control(&mut tx, "04OFr$t4X7Zf8NOew3FLOH", control, &[summary])
         .expect("task assignment");
 
     // ifc-systems nests ports under a distribution element.
     let system =
-        create_system(&mut tx, "5O2Fr$t4X7Zf8NOew3FLOH", Some("Supply air")).expect("system");
-    let duct = product(&mut tx, "IFCDUCTSEGMENT", "6O2Fr$t4X7Zf8NOew3FLOH");
-    let inlet = create_port(&mut tx, "7O2Fr$t4X7Zf8NOew3FLOH", None, Some("SINK")).expect("inlet");
+        create_system(&mut tx, "05OFr$t4X7Zf8NOew3FLOH", Some("Supply air")).expect("system");
+    let duct = product(&mut tx, "IFCDUCTSEGMENT", "06OFr$t4X7Zf8NOew3FLOH");
+    let inlet = create_port(&mut tx, "07OFr$t4X7Zf8NOew3FLOH", None, Some("SINK")).expect("inlet");
     let outlet =
-        create_port(&mut tx, "8O2Fr$t4X7Zf8NOew3FLOH", None, Some("SOURCE")).expect("outlet");
-    nest_ports(&mut tx, "9O2Fr$t4X7Zf8NOew3FLOH", duct, &[inlet, outlet]).expect("port nesting");
-    assign_to_group(&mut tx, "5P2Fr$t4X7Zf8NOew3FLOH", system, &[duct]).expect("group assignment");
-    connect_port_to_element(&mut tx, "6P2Fr$t4X7Zf8NOew3FLOH", inlet, duct)
+        create_port(&mut tx, "08OFr$t4X7Zf8NOew3FLOH", None, Some("SOURCE")).expect("outlet");
+    nest_ports(&mut tx, "09OFr$t4X7Zf8NOew3FLOH", duct, &[inlet, outlet]).expect("port nesting");
+    assign_to_group(&mut tx, "05PFr$t4X7Zf8NOew3FLOH", system, &[duct]).expect("group assignment");
+    connect_port_to_element(&mut tx, "06PFr$t4X7Zf8NOew3FLOH", inlet, duct)
         .expect("port attachment");
-    connect_ports(&mut tx, "7P2Fr$t4X7Zf8NOew3FLOH", outlet, inlet, None).expect("port connection");
+    connect_ports(&mut tx, "07PFr$t4X7Zf8NOew3FLOH", outlet, inlet, None).expect("port connection");
     tx.commit(&mut model).expect("commit");
 
     // ifc-resource resolves its slots by attribute name, not by index.

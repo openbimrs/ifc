@@ -43,7 +43,7 @@ code.
 | `ifc-schedule` | 2,700 | 27 | 13 | 7 | <span class="status-implemented">Implemented</span> |
 | `ifc-validate` | 2,494 | 23 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 2,300 | 17 | 0 | 5 | <span class="status-implemented">Implemented</span> |
-| `ifc-model` | 2,222 | 26 | 5 | 11 | <span class="status-implemented">Implemented</span> |
+| `ifc-model` | 2,281 | 26 | 5 | 11 | <span class="status-implemented">Implemented</span> |
 | `ifc-georef` | 2,087 | 20 | 9 | 6 | <span class="status-partial">Partial</span> |
 | `openbim-ifc-capi` | 1,857 | 9 | 0 | 1 | <span class="status-partial">Partial</span> |
 | `ifc-schema` | 1,418 | 12 | 4 | 5 | <span class="status-implemented">Implemented</span> |
