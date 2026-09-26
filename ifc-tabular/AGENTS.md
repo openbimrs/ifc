@@ -24,7 +24,8 @@ if it is a container of `IfcValue` indexed by position or time.
 ## Boundary
 
 Allowed production dependencies: `ifc-model`, `ifc-schema`, `thiserror`.
-No sibling domain crate, no codec, no geometry.
+No sibling domain crate, no codec, no geometry. `ifc-step` is a
+dev-dependency only, for the author-then-read round trips.
 
 `MeasureValue` lives in `ifc-properties` and stays there: siblings do not
 depend on one another. Cells are therefore taken as `ifc_model::Value`,
@@ -44,3 +45,16 @@ decides between `4.2` and `IFCLENGTHMEASURE(4.2)`.
 - Row widths are passed in alongside row ids because a staged entity cannot
   be read back out of a `Transaction`, and WR1 is stated over cell counts.
 
+## Reading
+
+- `src/read/` owns the borrowed views (`TabularView`, `Table`, `TimeSeries`).
+  Slots are located by attribute name in the caller's declared schema;
+  IFC2x3 is refused, not approximated (its series times are references and
+  its table has no `Columns`).
+- A read never drops a defect. Malformed slots, arity mismatches, empty
+  `LIST [1:?]`s, dangling or mistyped references and WR1/WR2 violations are
+  `TabularIssue`s on the view, beside whatever did decode.
+- WR1/WR2 follow the schema's three-valued reading: a row without
+  `RowCells` is never ragged, no `Rows[1]` cells means no reference width,
+  and an unset `IsHeading` is not a heading. The authoring side is stricter
+  on purpose; do not tighten the read to match it.

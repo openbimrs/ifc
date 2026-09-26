@@ -948,6 +948,7 @@ version = "0.2.0"
 dependencies = [
  "ifc-model",
  "ifc-schema",
+ "ifc-step",
  "thiserror",
 ]
 
