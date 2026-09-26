@@ -7,7 +7,7 @@
 //! ## Internal split
 //!
 //! - `assignment.rs`: project unit context.
-//! - `si.rs`: SI prefixes/dimensions.
+//! - `si.rs`: SI prefixes, per-release dimension tables, base-unit scales.
 //! - `conversion.rs`: conversion-based units.
 //! - `derived.rs`: derived dimensions/elements.
 
@@ -15,7 +15,7 @@ mod assignment;
 mod authoring;
 mod conversion;
 mod derived;
-mod si;
+pub(crate) mod si;
 
 mod monetary;
 
