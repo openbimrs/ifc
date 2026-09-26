@@ -20,6 +20,28 @@ lockstep -- is archived in the
 
 ## [Unreleased]
 
+### ifc-author
+
+### Fixed
+
+- An attribute declared as a defined type that aliases an aggregate is an
+  aggregate (#17). `IfcSite.RefLatitude`/`RefLongitude`
+  (`IfcCompoundPlaneAngleMeasure = LIST [3:4] OF INTEGER`) were refused with
+  `AggregateMismatch`, which blocked georeferencing. Their elements are now
+  checked against the alias's element type.
+- A slot that the entity or a supertype redeclares as `DERIVE` is written `*`
+  automatically (#18). `IfcSIUnit.Dimensions` and the four derived slots of
+  `IfcGeometricRepresentationSubContext` reported `MissingRequired`, so no unit
+  assignment or Body/Axis subcontext could be authored. Passing
+  `Value::Derived` explicitly is also accepted.
+
+### Added
+
+- `AuthorError::DerivedAttribute` refuses a value or `$` in a derived slot.
+  `AuthorError::NotDerived` refuses `*` in a slot the schema does not derive.
+  Before, `*` was accepted in any slot and the file was invalid. Both apply to
+  `EntityBuilder` and `EntityEditor`.
+
 ### ifc-geometry
 
 ### Added

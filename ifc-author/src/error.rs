@@ -78,6 +78,27 @@ pub enum AuthorError {
         /// The rejected text.
         found: String,
     },
+    /// A slot the schema derives for this entity was given a value.
+    ///
+    /// A subtype can redeclare an inherited attribute as `DERIVE`d, as
+    /// `IfcSIUnit` does with `Dimensions`. Part 21 writes such a slot as `*`:
+    /// neither a value nor `$` is valid there. The builder writes `*` itself
+    /// when the slot is left unset.
+    DerivedAttribute {
+        /// The entity being built or edited.
+        entity: String,
+        /// The derived attribute.
+        attribute: String,
+        /// What was supplied instead of `*`.
+        found: String,
+    },
+    /// `*` was supplied for a slot the schema does not derive for this entity.
+    NotDerived {
+        /// The entity being built or edited.
+        entity: String,
+        /// The attribute that was set.
+        attribute: String,
+    },
     /// An existing entity does not have the arity declared by the schema.
     ArityMismatch {
         /// The entity being edited.
@@ -136,6 +157,18 @@ impl fmt::Display for AuthorError {
             Self::InvalidGlobalId { entity, found } => write!(
                 f,
                 "`{entity}.GlobalId` must be a 22-character IFC GUID, found `{found}`"
+            ),
+            Self::DerivedAttribute {
+                entity,
+                attribute,
+                found,
+            } => write!(
+                f,
+                "`{entity}.{attribute}` is derived by the schema and must be written `*`, found {found}"
+            ),
+            Self::NotDerived { entity, attribute } => write!(
+                f,
+                "`{entity}.{attribute}` is not derived by the schema, so it cannot be written `*`"
             ),
             Self::ArityMismatch {
                 entity,
