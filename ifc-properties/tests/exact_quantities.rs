@@ -139,6 +139,29 @@ fn a_complex_or_duplicated_quantity_is_refused() {
     );
 }
 
+/// A quantity set of another name does not disturb a proven absence; one
+/// with no `Name` could be the set asked for, so it is refused, not skipped.
+#[test]
+fn another_quantity_set_keeps_absence_but_a_nameless_one_is_refused() {
+    let model = ifc4("#10=IFCQUANTITYLENGTH('Length',$,$,1.,$);");
+    assert_eq!(
+        exact_property(&model, WALL, Some("Pset_Test"), "Missing"),
+        Ok(ExactResolution::Absent)
+    );
+
+    let nameless = parse(
+        "IFC4",
+        "#7=IFCWALL('0YvctVUKr0kugbFTf53O9L',$,$,$,$,$,$,$,$);
+#8=IFCELEMENTQUANTITY('0YvctVUKr0kugbFTf53O08',$,$,$,$,(#10));
+#9=IFCRELDEFINESBYPROPERTIES('0YvctVUKr0kugbFTf53O09',$,$,$,(#7),#8);
+#10=IFCQUANTITYLENGTH('Length',$,$,1.,$);",
+    );
+    assert!(matches!(
+        exact_property(&nameless, WALL, Some("Pset_Test"), "Missing"),
+        Err(ExactPropertyError::MalformedName { entity, .. }) if entity == EntityId(8)
+    ));
+}
+
 /// A property set and a quantity set of one name both matching: ambiguous.
 #[test]
 fn a_same_named_property_set_and_quantity_set_are_ambiguous() {
