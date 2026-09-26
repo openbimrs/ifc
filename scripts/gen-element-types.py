@@ -1,10 +1,20 @@
-"""Generate ifc-element-type/src/table.rs from the IFC4X3 ADD2 schema."""
+"""Generate ifc-element-type/src/table/ from the IFC4X3 ADD2 schema.
 
-import json
+    python3 scripts/gen-element-types.py
+
+Needs only `references/ifc-spec/ifc4x3-add2/IFC4X3_ADD2.exp` (see
+`scripts/fetch-ifc-schemas.sh`) and `rustfmt`. The rows come from
+`scripts/ifc4x3_catalogue.py`; the emitted files are then formatted with
+`rustfmt --edition 2021`, so a regenerate on a clean checkout reproduces
+the committed shards byte for byte (`git diff --exit-code` proves it).
+"""
+
+import subprocess
 from pathlib import Path
 
-T = json.loads(Path("/tmp/typefinal.json").read_text())
-OUT = Path("ifc-element-type/src/table.rs")
+from ifc4x3_catalogue import ROOT, Schema, element_types
+
+T = element_types(Schema())
 
 HDR = []
 HDR.append("//! The generated element-type catalogue.")
@@ -85,7 +95,7 @@ def row(t):
 # schema can grow a shard without tripping it.
 SHARDS = [("a_c", "A", "C"), ("d_f", "D", "F"), ("g_k", "G", "K"), ("l_p", "L", "P"), ("q_s", "Q", "S"), ("t_z", "T", "Z")]
 
-DIR = Path("ifc-element-type/src/table")
+DIR = ROOT / "ifc-element-type/src/table"
 DIR.mkdir(parents=True, exist_ok=True)
 
 def shard_of(name):
@@ -126,7 +136,8 @@ mod_lines.append("")
 (DIR / "mod.rs").write_text("\n".join(mod_lines) + "\n")
 print("wrote table/mod.rs %d lines, %d types" % (len(mod_lines), len(T)))
 
-old = Path("ifc-element-type/src/table.rs")
-if old.exists():
-    old.unlink()
-    print("removed flat table.rs")
+subprocess.run(
+    ["rustfmt", "--edition", "2021"] + sorted(str(p) for p in DIR.glob("*.rs")),
+    check=True,
+)
+print("formatted with rustfmt")

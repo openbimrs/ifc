@@ -30,8 +30,10 @@
 //! so a consumer can use them as a hint and never as a precondition.
 
 use crate::error::GeometryResult;
+use crate::resource::point::CartesianPoint;
+use crate::resource::resolve;
 use crate::slots::Slots;
-use ifc_model::{Entity, EntityId, Value};
+use ifc_model::{Entity, EntityId, Model, Value};
 
 /// `IfcBSplineCurve` family attribute slots.
 ///
@@ -175,7 +177,6 @@ impl<'m> BSplineCurve<'m> {
     /// The `IfcCartesianPoint` control point references, in order.
     ///
     /// Order defines the curve; sorting or deduplicating them destroys it.
-    // TODO(#97): `resource::point` will provide a typed point view to resolve these.
     pub fn control_point_refs(&self) -> GeometryResult<Vec<EntityId>> {
         let points = self
             .slots
@@ -187,6 +188,14 @@ impl<'m> BSplineCurve<'m> {
             )));
         }
         Ok(points)
+    }
+
+    /// The control points as typed point views, resolved from the model.
+    ///
+    /// All or nothing: a missing control point changes the curve, so one bad
+    /// reference fails the call.
+    pub fn control_points<'v>(&self, model: &'v Model) -> GeometryResult<Vec<CartesianPoint<'v>>> {
+        resolve::cartesian_points(model, self.id(), &self.control_point_refs()?)
     }
 
     /// The declared original form, defaulting to `Unspecified`.
@@ -475,6 +484,31 @@ mod tests {
         let mut attributes = with_knots(control_points, &[4, 4], &[0.0, 1.0]).attributes;
         attributes.push(reals(weights));
         Entity::new("IFCRATIONALBSPLINECURVEWITHKNOTS", attributes)
+    }
+
+    #[test]
+    fn control_points_resolve_in_order_and_fail_on_a_dangling_one() {
+        let e = with_knots(4, &[4, 4], &[0.0, 1.0]);
+        let view = BSplineCurve::new(EntityId(9), &e);
+        let model_with = |ids: &[u64]| {
+            let mut model = Model::new();
+            for &i in ids {
+                let point = Entity::new("IFCCARTESIANPOINT", vec![reals(&[i as f64, 0.0])]);
+                model.insert(EntityId(i), point);
+            }
+            model
+        };
+        let model = model_with(&[1, 2, 3, 4]);
+        let points = view.control_points(&model).unwrap();
+        assert_eq!(points[3].coordinates().unwrap(), vec![4.0, 0.0]);
+        let err = view.control_points(&model_with(&[1, 2, 4])).unwrap_err();
+        assert!(matches!(
+            err,
+            crate::GeometryError::MissingEntity {
+                referrer: EntityId(9),
+                missing: EntityId(3)
+            }
+        ));
     }
 
     #[test]

@@ -25,8 +25,10 @@
 //! [`crate::solid::halfspace::BoxedHalfSpace`].
 
 use crate::error::GeometryResult;
+use crate::resource::point::CartesianPoint;
+use crate::resource::resolve;
 use crate::slots::Slots;
-use ifc_model::{Entity, EntityId};
+use ifc_model::{Entity, EntityId, Model};
 
 /// `IfcBoundingBox` attribute slots.
 ///
@@ -64,10 +66,18 @@ impl<'m> BoundingBox<'m> {
 
     /// The `IfcCartesianPoint` reference at the box's minimum corner.
     ///
-    /// TODO(#97): resolve through the point module once it exists; this crate
-    /// deliberately does not define a competing point view.
+    /// [`Self::corner_point`] resolves it through `resource::point`, which
+    /// owns the point view; this module does not define a competing one.
     pub fn corner(&self) -> GeometryResult<EntityId> {
         self.slots.req_ref(slot::CORNER, "Corner")
+    }
+
+    /// The minimum corner as a typed point view, resolved from the model.
+    ///
+    /// Its coordinates are local to the containing representation; see the
+    /// module docs before treating them as world coordinates.
+    pub fn corner_point<'v>(&self, model: &'v Model) -> GeometryResult<CartesianPoint<'v>> {
+        resolve::cartesian_point(model, self.id(), self.corner()?)
     }
 
     /// Extent along the local X axis, in file length units.
@@ -136,6 +146,37 @@ mod tests {
         let view = BoundingBox::new(EntityId(1), &e);
         assert_eq!(view.corner().unwrap(), EntityId(10));
         assert_eq!(view.dimensions().unwrap(), [1.0, 2.0, 3.0]);
+    }
+
+    #[test]
+    fn the_corner_resolves_to_its_point_and_feeds_the_max_corner() {
+        use crate::solid::testkit::{list, model};
+        let point = entity(
+            "IFCCARTESIANPOINT",
+            vec![list(vec![n(1.0), n(2.0), n(3.0)])],
+        );
+        let m = model(vec![(10, point)]);
+        let e = bbox(1.0, 1.0, 1.0);
+        let view = BoundingBox::new(EntityId(1), &e);
+        let corner = view.corner_point(&m).unwrap().coordinates_3d().unwrap();
+        assert_eq!(view.max_corner_local(corner).unwrap(), [2.0, 3.0, 4.0]);
+    }
+
+    #[test]
+    fn a_corner_that_is_not_a_point_or_is_dangling_is_a_typed_error() {
+        use crate::solid::testkit::model;
+        let m = model(vec![(10, entity("IFCDIRECTION", vec![]))]);
+        let e = bbox(1.0, 1.0, 1.0);
+        let view = BoundingBox::new(EntityId(1), &e);
+        assert!(matches!(
+            view.corner_point(&m).unwrap_err(),
+            crate::GeometryError::WrongEntityType {
+                entity: EntityId(10),
+                ..
+            }
+        ));
+        let err = view.corner_point(&Model::new()).unwrap_err();
+        assert_eq!(err.entity(), Some(EntityId(1)));
     }
 
     /// Corner is the MINIMUM and the box grows along +X/+Y/+Z; treating it as

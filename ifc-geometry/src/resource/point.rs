@@ -263,6 +263,37 @@ impl<'m> CartesianPointList3D<'m> {
     }
 }
 
+/// An `IfcCartesianPointList` of either concrete dimension.
+///
+/// A slot typed as the abstract list (`IfcIndexedPolyCurve.Points`) may hold
+/// either subtype, and the subtype -- not the first row -- fixes the width.
+/// Produced by [`crate::resource::resolve::cartesian_point_list`].
+#[derive(Debug, Clone, Copy)]
+pub enum CartesianPointList<'m> {
+    /// An `IfcCartesianPointList2D`.
+    TwoD(CartesianPointList2D<'m>),
+    /// An `IfcCartesianPointList3D`.
+    ThreeD(CartesianPointList3D<'m>),
+}
+
+impl CartesianPointList<'_> {
+    /// The entity id.
+    pub fn id(&self) -> EntityId {
+        match self {
+            Self::TwoD(list) => list.id(),
+            Self::ThreeD(list) => list.id(),
+        }
+    }
+
+    /// The row width the subtype declares: 2 or 3.
+    pub fn dimension(&self) -> usize {
+        match self {
+            Self::TwoD(_) => 2,
+            Self::ThreeD(_) => 3,
+        }
+    }
+}
+
 /// Resolve a reference that must be an `IfcCartesianPoint`, promoted to 3D.
 ///
 /// Placements, operators and curves all need exactly this, and each of them
@@ -273,18 +304,7 @@ pub fn cartesian_point_3d(
     referrer: EntityId,
     id: EntityId,
 ) -> GeometryResult<[f64; 3]> {
-    let entity = model.get(id).ok_or(GeometryError::MissingEntity {
-        referrer,
-        missing: id,
-    })?;
-    if !entity.is_type("IFCCARTESIANPOINT") {
-        return Err(GeometryError::WrongEntityType {
-            entity: id,
-            actual: entity.type_name.to_string(),
-            expected: "IfcCartesianPoint",
-        });
-    }
-    CartesianPoint::new(id, entity).coordinates_3d()
+    crate::resource::resolve::cartesian_point(model, referrer, id)?.coordinates_3d()
 }
 
 /// Read a `LIST OF LIST OF REAL` where every row has exactly `N` entries.

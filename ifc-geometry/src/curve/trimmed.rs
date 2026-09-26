@@ -33,8 +33,10 @@
 //! converting requires the unit context and belongs to [`crate::units`].
 
 use crate::error::GeometryResult;
+use crate::resource::point::CartesianPoint;
+use crate::resource::resolve;
 use crate::slots::Slots;
-use ifc_model::{Entity, EntityId, Value};
+use ifc_model::{Entity, EntityId, Model, Value};
 
 /// `IfcTrimmedCurve` attribute slots.
 ///
@@ -99,7 +101,9 @@ impl TrimmingPreference {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TrimPoint {
     /// An `IfcCartesianPoint` reference giving a position on the basis curve.
-    // TODO(#97): `resource::point` will provide a typed point view to resolve this.
+    ///
+    /// Kept as a reference so the enum stays a plain value; resolve it with
+    /// [`Trim::cartesian_point`].
     Cartesian(EntityId),
     /// An `IfcParameterValue` in the basis curve's own parameterisation.
     ///
@@ -154,6 +158,20 @@ impl Trim {
     /// file, not a defaultable value.
     pub fn is_empty(&self) -> bool {
         self.cartesian.is_none() && self.parameter.is_none()
+    }
+
+    /// The Cartesian form as a typed point view, `Ok(None)` when absent.
+    ///
+    /// `referrer` is the `IfcTrimmedCurve` holding this trim, so a dangling
+    /// point is reported against the record that is wrong.
+    pub fn cartesian_point<'v>(
+        &self,
+        model: &'v Model,
+        referrer: EntityId,
+    ) -> GeometryResult<Option<CartesianPoint<'v>>> {
+        self.cartesian
+            .map(|id| resolve::cartesian_point(model, referrer, id))
+            .transpose()
     }
 }
 
@@ -366,6 +384,49 @@ mod tests {
         assert_eq!(spec.trim1.parameter, Some(0.0));
         assert!(spec.trim1.is_over_specified());
         assert!(spec.is_parametrically_complete());
+    }
+
+    #[test]
+    fn a_cartesian_trim_resolves_to_its_point_and_a_parameter_trim_to_none() {
+        let mut model = Model::new();
+        let coords = Value::List(vec![Value::Real(1.0), Value::Real(0.0)]);
+        model.insert(EntityId(1), Entity::new("IFCCARTESIANPOINT", vec![coords]));
+        let e = curve(
+            Value::List(vec![Value::Ref(EntityId(1))]),
+            Value::List(vec![parameter(90.0)]),
+            true,
+            "CARTESIAN",
+        );
+        let spec = TrimmedCurve::new(EntityId(9), &e).spec().unwrap();
+        let point = spec.trim1.cartesian_point(&model, EntityId(9)).unwrap();
+        assert_eq!(point.unwrap().coordinates().unwrap(), vec![1.0, 0.0]);
+        assert!(spec
+            .trim2
+            .cartesian_point(&model, EntityId(9))
+            .unwrap()
+            .is_none());
+    }
+
+    #[test]
+    fn a_cartesian_trim_naming_a_non_point_is_a_typed_error() {
+        let mut model = Model::new();
+        model.insert(EntityId(1), Entity::new("IFCDIRECTION", vec![]));
+        let trim = Trim {
+            cartesian: Some(EntityId(1)),
+            parameter: None,
+        };
+        let err = trim.cartesian_point(&model, EntityId(9)).unwrap_err();
+        assert!(matches!(
+            err,
+            crate::GeometryError::WrongEntityType {
+                entity: EntityId(1),
+                ..
+            }
+        ));
+        let err = trim
+            .cartesian_point(&Model::new(), EntityId(9))
+            .unwrap_err();
+        assert_eq!(err.entity(), Some(EntityId(9)));
     }
 
     /// The whole point of MasterRepresentation: with both forms present it

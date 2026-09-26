@@ -31,3 +31,7 @@ into a domain crate.
 - **[Structural-analysis inspection](/use-cases/structural-analysis)** — reading
   analysis models, analytical members/connections, actions and authored loads,
   with strict cross-version references and no solver claim.
+- **[Model checking](/use-cases/model-checking)** — validating a file against
+  the schema it declares, reading the findings cap and the rules reported as
+  unsupported, and resolving properties and quantities exactly; IDS itself
+  lives in its own repository.
