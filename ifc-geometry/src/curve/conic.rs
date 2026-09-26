@@ -21,8 +21,10 @@
 //! away: the placement's `RefDirection` fixes which axis is which.
 
 use crate::error::GeometryResult;
+use crate::resource::placement::Axis2Placement;
+use crate::resource::resolve;
 use crate::slots::Slots;
-use ifc_model::{Entity, EntityId};
+use ifc_model::{Entity, EntityId, Model};
 
 /// `IfcCircle` attribute slots.
 ///
@@ -72,9 +74,16 @@ impl<'m> Circle<'m> {
     /// `IfcAxis2Placement3D`; the select is not narrowed by the schema and
     /// both occur in practice for the same geometry depending on whether the
     /// circle is a profile outline or a swept directrix.
-    // TODO(#97): `resource::placement` will provide the typed placement view.
     pub fn position_ref(&self) -> GeometryResult<EntityId> {
         self.slots.req_ref(circle_slot::POSITION, "Position")
+    }
+
+    /// The placement as a typed view, resolved from the model.
+    ///
+    /// The select is not narrowed, so the result keeps whichever of the 2D
+    /// or 3D forms the file wrote; [`Axis2Placement::transform`] handles both.
+    pub fn position<'v>(&self, model: &'v Model) -> GeometryResult<Axis2Placement<'v>> {
+        resolve::axis2_placement(model, self.id(), self.position_ref()?)
     }
 
     /// The radius, guaranteed positive.
@@ -113,9 +122,16 @@ impl<'m> Ellipse<'m> {
     }
 
     /// The `IfcAxis2Placement` reference locating the ellipse.
-    // TODO(#97): `resource::placement` will provide the typed placement view.
     pub fn position_ref(&self) -> GeometryResult<EntityId> {
         self.slots.req_ref(ellipse_slot::POSITION, "Position")
+    }
+
+    /// The placement as a typed view, resolved from the model.
+    ///
+    /// Its local X is the `SemiAxis1` direction, so the ellipse's orientation
+    /// is only known once this is resolved.
+    pub fn position<'v>(&self, model: &'v Model) -> GeometryResult<Axis2Placement<'v>> {
+        resolve::axis2_placement(model, self.id(), self.position_ref()?)
     }
 
     /// Semi-axis along the placement's local X direction, guaranteed positive.
@@ -164,6 +180,52 @@ mod tests {
             "IFCELLIPSE",
             vec![Value::Ref(EntityId(5)), Value::Real(a), Value::Real(b)],
         )
+    }
+
+    fn placement_model(type_name: &str) -> Model {
+        let mut model = Model::new();
+        let coords = Value::List(vec![Value::Real(1.0), Value::Real(2.0)]);
+        model.insert(EntityId(4), Entity::new("IFCCARTESIANPOINT", vec![coords]));
+        let placement = Entity::new(type_name, vec![Value::Ref(EntityId(4))]);
+        model.insert(EntityId(5), placement);
+        model
+    }
+
+    /// Both members of the select resolve, each to its own variant.
+    #[test]
+    fn conic_positions_resolve_to_the_select_member_the_file_wrote() {
+        let e = circle(Value::Real(1.0));
+        let model = placement_model("IFCAXIS2PLACEMENT2D");
+        let position = Circle::new(EntityId(1), &e).position(&model).unwrap();
+        assert!(matches!(position, Axis2Placement::TwoD(_)));
+        assert_eq!(position.location(&model).unwrap(), [1.0, 2.0, 0.0]);
+
+        let e = ellipse(2.0, 1.0);
+        let model = placement_model("IFCAXIS2PLACEMENT3D");
+        let position = Ellipse::new(EntityId(1), &e).position(&model).unwrap();
+        assert!(matches!(position, Axis2Placement::ThreeD(_)));
+        let transform = position.transform(&model).unwrap();
+        assert_eq!(transform.apply([0.0; 3]), [1.0, 2.0, 0.0]);
+    }
+
+    /// An `IfcAxis1Placement` is not in the select: it has no local X.
+    #[test]
+    fn a_conic_placed_by_an_axis1_placement_is_a_typed_error() {
+        let model = placement_model("IFCAXIS1PLACEMENT");
+        let e = circle(Value::Real(1.0));
+        let err = Circle::new(EntityId(1), &e).position(&model).unwrap_err();
+        assert!(matches!(
+            err,
+            crate::GeometryError::WrongEntityType {
+                entity: EntityId(5),
+                ..
+            }
+        ));
+        let e = ellipse(2.0, 1.0);
+        let err = Ellipse::new(EntityId(1), &e)
+            .position(&Model::new())
+            .unwrap_err();
+        assert_eq!(err.entity(), Some(EntityId(1)));
     }
 
     #[test]

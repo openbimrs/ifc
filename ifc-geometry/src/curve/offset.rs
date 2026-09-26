@@ -32,8 +32,10 @@
 //! cylinder.
 
 use crate::error::GeometryResult;
+use crate::resource::direction::Direction;
+use crate::resource::resolve;
 use crate::slots::Slots;
-use ifc_model::{Entity, EntityId};
+use ifc_model::{Entity, EntityId, Model};
 
 /// `IfcOffsetCurve2D` attribute slots, from IFC4 ADD2 TC1.
 mod offset_2d_slot {
@@ -196,10 +198,17 @@ impl<'m> OffsetCurve3D<'m> {
     ///
     /// Required by the schema and genuinely required by the geometry: without
     /// it the offset direction is only known up to rotation about the tangent.
-    // TODO(#97): `resource::direction` will provide a typed direction view.
     pub fn ref_direction_ref(&self) -> GeometryResult<EntityId> {
         self.slots
             .req_ref(offset_3d_slot::REF_DIRECTION, "RefDirection")
+    }
+
+    /// The reference direction as a typed view, resolved from the model.
+    ///
+    /// Left unnormalized: call [`Direction::unit`], which rejects a zero
+    /// direction rather than producing `NaN`.
+    pub fn ref_direction<'v>(&self, model: &'v Model) -> GeometryResult<Direction<'v>> {
+        resolve::direction(model, self.id(), self.ref_direction_ref()?)
     }
 }
 
@@ -423,6 +432,37 @@ mod tests {
         assert_eq!(view.basis_curve_ref().unwrap(), EntityId(30));
         assert_eq!(view.ref_direction_ref().unwrap(), EntityId(31));
         assert_eq!(view.self_intersect(), Some(false));
+    }
+
+    #[test]
+    fn the_reference_direction_resolves_unnormalized() {
+        let mut model = Model::new();
+        let ratios = Value::List(vec![Value::Real(0.0), Value::Real(0.0), Value::Real(5.0)]);
+        model.insert(EntityId(31), Entity::new("IFCDIRECTION", vec![ratios]));
+        let e = offset_3d(1.0);
+        let direction = OffsetCurve3D::new(EntityId(1), &e)
+            .ref_direction(&model)
+            .unwrap();
+        assert_eq!(direction.ratios().unwrap(), vec![0.0, 0.0, 5.0]);
+        assert_eq!(direction.unit().unwrap(), [0.0, 0.0, 1.0]);
+    }
+
+    #[test]
+    fn a_reference_direction_that_is_a_point_is_a_typed_error() {
+        let mut model = Model::new();
+        model.insert(EntityId(31), Entity::new("IFCCARTESIANPOINT", vec![]));
+        let e = offset_3d(1.0);
+        let err = OffsetCurve3D::new(EntityId(1), &e)
+            .ref_direction(&model)
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            crate::GeometryError::WrongEntityType {
+                entity: EntityId(31),
+                expected: "IfcDirection",
+                ..
+            }
+        ));
     }
 
     #[test]

@@ -27,6 +27,21 @@ everything released before per-crate changelogs began.
 - `voiding_conflicts(model)` and `VoidingConflict { opening, kept_host,
   rejected_host, relation }` report such openings (#59). It is kernel-free,
   like `openings_of`. Restating the same host is not a conflict.
+- Resolving typed accessors beside the raw `*_ref` getters (#97), following
+  `Plane::position(&model)`: `Line::point`, `Polyline::points`,
+  `IndexedPolyCurve::points`, `BSplineCurve::control_points`,
+  `OffsetCurve3D::ref_direction`, `Circle::position`, `Ellipse::position`,
+  `Trim::cartesian_point`, `BSplineSurface::control_point_views`,
+  `SurfaceOfLinearExtrusion::{position, extruded_direction}`,
+  `SurfaceOfRevolution::{position, axis_position}`,
+  `BoundingBox::corner_point` and `TessellatedFaceSet::coordinate_list`.
+  Each type-checks its target: a dangling reference is `MissingEntity`
+  naming the referrer, a wrong type is `WrongEntityType` naming the target.
+  All are kernel-free.
+- `resource::resolve`, the shared type-checked resolvers behind them, and
+  two select views: `Axis2Placement` (2D or 3D, for `IfcConic.Position`) and
+  `CartesianPointList` (2D or 3D, for `IfcIndexedPolyCurve.Points`).
+  Profiles stay references; `lower::profile` owns `IfcProfileDef` reading.
 
 - `compile::product_bounds` / `product_bounds_with` return a product's
   world-space axis-aligned bounding box (#36). The body is resolved and placed

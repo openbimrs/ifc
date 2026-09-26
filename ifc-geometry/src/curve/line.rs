@@ -10,8 +10,10 @@
 //! units. This view therefore hands back the `IfcVector` reference untouched.
 
 use crate::error::GeometryResult;
+use crate::resource::point::CartesianPoint;
+use crate::resource::resolve;
 use crate::slots::Slots;
-use ifc_model::{Entity, EntityId};
+use ifc_model::{Entity, EntityId, Model};
 
 /// `IfcLine` attribute slots.
 ///
@@ -47,10 +49,17 @@ impl<'m> Line<'m> {
 
     /// The `IfcCartesianPoint` at parameter zero.
     ///
-    /// Returned as a raw reference rather than resolved coordinates.
-    // TODO(#97): `resource::point` will provide a typed point view to resolve this.
+    /// Returned as a raw reference; [`Self::point`] resolves it.
     pub fn point_ref(&self) -> GeometryResult<EntityId> {
         self.slots.req_ref(slot::PNT, "Pnt")
+    }
+
+    /// The point at parameter zero as a typed view, resolved from the model.
+    ///
+    /// Its dimension is the file's own: a 2D line stays 2D until the caller
+    /// asks for [`CartesianPoint::coordinates_3d`].
+    pub fn point<'v>(&self, model: &'v Model) -> GeometryResult<CartesianPoint<'v>> {
+        resolve::cartesian_point(model, self.id(), self.point_ref()?)
     }
 
     /// The `IfcVector` giving direction and parameter scale.
@@ -89,6 +98,39 @@ mod tests {
         let err = view.direction_vector_ref().unwrap_err();
         assert!(err.to_string().contains("Dir"), "got: {err}");
         assert!(err.to_string().contains("#7"), "got: {err}");
+    }
+
+    #[test]
+    fn the_origin_point_resolves_to_its_coordinates() {
+        let mut model = Model::new();
+        model.insert(
+            EntityId(10),
+            Entity::new(
+                "IFCCARTESIANPOINT",
+                vec![Value::List(vec![Value::Real(3.0), Value::Real(4.0)])],
+            ),
+        );
+        let e = line();
+        let point = Line::new(EntityId(1), &e).point(&model).unwrap();
+        assert_eq!(point.id(), EntityId(10));
+        assert_eq!(point.coordinates().unwrap(), vec![3.0, 4.0]);
+    }
+
+    #[test]
+    fn an_origin_that_is_not_a_point_is_a_typed_error() {
+        let mut model = Model::new();
+        model.insert(EntityId(10), Entity::new("IFCDIRECTION", vec![]));
+        let e = line();
+        let err = Line::new(EntityId(1), &e).point(&model).unwrap_err();
+        assert!(matches!(
+            err,
+            crate::GeometryError::WrongEntityType {
+                entity: EntityId(10),
+                ..
+            }
+        ));
+        let err = Line::new(EntityId(1), &e).point(&Model::new()).unwrap_err();
+        assert_eq!(err.entity(), Some(EntityId(1)), "dangling names the line");
     }
 
     #[test]
