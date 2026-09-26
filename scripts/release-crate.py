@@ -16,8 +16,9 @@ republished in turn -- the tool lists exactly which, and refuses to publish
 until they are dealt with.
 
 Usage:
-    scripts/release-crate.py <crate> --impact          # what would this cost?
-    scripts/release-crate.py <crate> --set 0.2.1       # bump manifest+changelog
+    scripts/release-crate.py <crate>                   # current/published versions
+    scripts/release-crate.py <crate> --set 0.2.1       # dry run: what would this cost?
+    scripts/release-crate.py <crate> --set 0.2.1 --apply  # bump manifest+changelog
     scripts/release-crate.py <crate> --publish         # tag; CI publishes
     scripts/release-crate.py <crate> --publish --local # publish from here
     scripts/release-crate.py <tag> --plan              # registries for a tag

@@ -40,6 +40,15 @@ lockstep -- is archived in the
   axiolid/kernel#165) brings the composite-curve D within 1e-5 of its exact
   volume.
 
+### ifc-properties
+
+### Added
+
+- `exact_unit` maps `IFCSECTIONALAREAINTEGRALMEASURE` to
+  `SECTIONAREAINTEGRALUNIT`, whose name differs from the measure's.
+  Before, it was refused as unmapped. The pairing follows the measure's
+  definition (m^5) and the IFC4 annex E structural example.
+
 ### ifc-schema
 
 ### Changed
