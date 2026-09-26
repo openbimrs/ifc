@@ -24,6 +24,7 @@ jobs:
       - name: Install Rust 1.88
         uses: dtolnay/rust-toolchain@688313b0823df1393bcebb1b4add0438a6d36884 # 1.88.0
         with:
+          toolchain: 1.88.0
           components: clippy, rustfmt
           # The gate builds the facade for browser WASM (#34).
           targets: wasm32-unknown-unknown
