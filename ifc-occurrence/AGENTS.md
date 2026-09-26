@@ -15,14 +15,19 @@ concerns.
 
 ## The catalogue is generated
 
-`src/table/` is written by `scripts/gen-occurrences.py` from the
-IFC4X3 ADD2 EXPRESS schema. Do not hand-edit it. Regenerate after a
-schema bump and re-run the crate tests, which assert the catalogue's
-invariants rather than trusting generation.
+`src/table/` is written by `python3 scripts/gen-occurrences.py` from the
+IFC4X3 ADD2 EXPRESS schema (rows from `scripts/ifc4x3_catalogue.py`, then
+`rustfmt`); a clean regenerate is byte-identical to the committed files.
+Do not hand-edit it. Regenerate after a schema bump and re-run the crate
+tests, which assert the catalogue's invariants rather than trusting
+generation.
 
-The target list is every concrete `IfcElement` subtype that no other
-crate's production code authors; test fixtures and doc examples do not
-count, which is why `IfcWall` is included. `PredefinedType` sits at slot 8
+The target list is every concrete `IfcElement` subtype except the nine
+generic distribution classes `ifc-systems` authors
+(`SYSTEMS_OWNED` in `scripts/ifc4x3_catalogue.py`, checked against
+`ifc-systems/src/authoring/distribution.rs`). Test fixtures and doc
+examples elsewhere never counted as authoring, which is why `IfcWall`
+is included. `PredefinedType` sits at slot 8
 for most classes but at 9, 10, 12 or 17 for a few, so the slot is read per
 catalogue entry, never assumed.
 
