@@ -8,7 +8,12 @@ the IFC4X3 schema.
 Usage:
     AUTHORED_DUMP=/tmp/dump \
       cargo test --workspace --all-features --features ifc-model/authored-dump
-    python3 scripts/authored-coverage.py /tmp/dump
+    python3 scripts/authored-coverage.py /tmp/dump          # human report
+    python3 scripts/authored-coverage.py /tmp/dump --json   # for the docs
+
+`scripts/gate.sh` runs this with `--json` after its test run and compares
+the result with `docs/.vitepress/data/authored-coverage.json`, which the
+coverage page is generated from.
 
 Each dump line is `origin<TAB>TYPENAME`.
 
@@ -21,6 +26,7 @@ name a type no writer ever built.
 
 from __future__ import annotations
 
+import json
 import pathlib
 import re
 import sys
@@ -57,10 +63,13 @@ def read_dump(directory: pathlib.Path) -> dict[str, set[str]]:
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
+    args = sys.argv[1:]
+    as_json = "--json" in args
+    args = [arg for arg in args if arg != "--json"]
+    if len(args) != 1:
         print(__doc__, file=sys.stderr)
         return 2
-    directory = pathlib.Path(sys.argv[1])
+    directory = pathlib.Path(args[0])
     if not directory.is_dir():
         print(f"not a directory: {directory}", file=sys.stderr)
         return 2
@@ -83,6 +92,19 @@ def main() -> int:
     # Seen landing in a model, but never through a writer. These are the
     # types a fixture or a codec produced and no authoring path can.
     seen_only = sorted(concrete & (inserted | retyped) - created)
+
+    if as_json:
+        report = {
+            "schema": SCHEMA.name,
+            "concrete": len(concrete),
+            "authored": len(proven),
+            "landed": len(concrete & inserted),
+            "renamed": len(concrete & retyped),
+            "seen_but_unwritable": seen_only,
+            "unproven": gap,
+        }
+        print(json.dumps(report, indent=2))
+        return 0
 
     print(f"concrete entities  : {len(concrete)}")
     print(f"authored (create)  : {len(proven)}  ({100 * len(proven) / len(concrete):.1f}%)")

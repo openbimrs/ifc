@@ -13,6 +13,7 @@
 //! ```
 
 mod docs;
+mod rust_source;
 mod text;
 mod workspace;
 

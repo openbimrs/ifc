@@ -22,7 +22,25 @@ export IFC_SPEC_REQUIRED=1
 
 cargo fmt --all -- --check
 cargo build --workspace --all-targets
-cargo test --workspace --all-features
+# The workspace test run doubles as the authored-coverage measurement: with
+# `--all-features` the `ifc-model/authored-dump` hook is compiled in, and
+# AUTHORED_DUMP makes every test process record the entity types it created.
+authored_dump="$(mktemp -d)"
+AUTHORED_DUMP="$authored_dump" cargo test --workspace --all-features
+python3 scripts/authored-coverage.py "$authored_dump" --json > "$authored_dump/report.json"
+committed=docs/.vitepress/data/authored-coverage.json
+if ! cmp -s "$authored_dump/report.json" "$committed"; then
+    if [[ -n "${UPDATE_AUTHORED_COVERAGE:-}" ]]; then
+        cp "$authored_dump/report.json" "$committed"
+        echo "updated $committed; regenerate the docs with: cargo run -p xtask -- docs"
+    else
+        diff "$committed" "$authored_dump/report.json" || true
+        echo "authored coverage changed; rerun with UPDATE_AUTHORED_COVERAGE=1 scripts/gate.sh" >&2
+        rm -rf "$authored_dump"
+        exit 1
+    fi
+fi
+rm -rf "$authored_dump"
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps
 

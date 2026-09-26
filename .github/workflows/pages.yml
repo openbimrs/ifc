@@ -18,6 +18,8 @@ on:
       - '*/npm/package.json'
       - '*/pyproject.toml'
       - 'openbim-ifc-py/python/**'
+      # Coverage manifests the coverage page counts.
+      - '*/data/**'
       - '.github/workflows/pages.yml'
       # The API reference is generated from doc comments, so a source-only
       # change still alters the published site.

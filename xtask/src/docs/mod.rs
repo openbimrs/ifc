@@ -9,6 +9,7 @@
 //!
 //! - `changelog.rs`: `docs/project/changelog.md` from every crate's `CHANGELOG.md`.
 //! - `capabilities.rs`: the generated tables of `docs/capabilities.md`.
+//! - `coverage.rs`: `docs/coverage.md`, from the crates' own coverage data.
 //! - `release.rs`: released versions and registries, from changelogs and manifests.
 //! - `reference.rs`: one generated page per crate, plus the index.
 //! - `adr.rs`: the ADR index and the sidebar's ADR list.
@@ -20,6 +21,7 @@ mod adr;
 mod bindings;
 mod capabilities;
 mod changelog;
+mod coverage;
 mod facts;
 mod reference;
 mod release;
@@ -86,6 +88,7 @@ pub(crate) fn run(check: bool) -> Result<(), String> {
     let mut outputs = vec![
         changelog::generate(&workspace)?,
         capabilities::generate(&workspace)?,
+        coverage::generate(&workspace)?,
         adr::index(&workspace)?,
         adr::sidebar(&workspace)?,
         facts::generate(&workspace)?,
