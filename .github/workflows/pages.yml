@@ -11,7 +11,7 @@ on:
       - '*/CHANGELOG.md'
       - 'package.json'
       - 'package-lock.json'
-      - 'scripts/assemble-changelog.py'
+      - 'xtask/**'
       - '.github/workflows/pages.yml'
       # The API reference is generated from doc comments, so a source-only
       # change still alters the published site.
@@ -51,8 +51,8 @@ jobs:
       - name: Fetch IFC EXPRESS schemas
         run: scripts/fetch-ifc-schemas.sh
       - run: npm ci
-      - name: Changelog page must match the canonical CHANGELOG.md
-        run: python3 scripts/assemble-changelog.py --check
+      - name: Generated docs must match the source they are derived from
+        run: cargo run --quiet -p xtask -- docs --check
       - run: npm run docs:build
       # rustdoc is generated from the same doc comments the gate already
       # builds with -D warnings, and nested under the VitePress output so it

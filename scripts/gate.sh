@@ -93,13 +93,13 @@ else
     openbim-ifc-py/scripts/check-python.sh
 fi
 
-# Documentation gates. Each crate owns its CHANGELOG.md; the docs page is
-# assembled from all of them, so drift between the two is a build failure
-# rather than a silent inconsistency the reader has to notice. The assembler
-# also fails when a publishable crate has no changelog at all, which is what
-# keeps a newly added crate from silently escaping the release process.
-python3 scripts/assemble-changelog.py --check
-python3 scripts/sync-capabilities.py --check
+# Documentation gates. Every generated docs region (the changelog assembled
+# from each crate's CHANGELOG.md, the capability tables derived from the
+# lowering source) must match what `cargo run -p xtask -- docs` would write, so drift is
+# a build failure rather than a silent inconsistency the reader has to notice.
+# It also fails when a publishable crate has no changelog at all, which keeps
+# a newly added crate from silently escaping the release process.
+cargo run --quiet -p xtask -- docs --check
 python3 scripts/check-inline-html.py
 
 # Build the docs site when its toolchain is installed. The checks above

@@ -31,10 +31,15 @@ BUDGET = {
 
 
 def enforced_crates() -> list[str]:
-    """Workspace crates that opt into [workspace.lints]."""
+    """Library crates that opt into [workspace.lints].
+
+    `missing_docs` measures a library's public API, so a binary-only tool
+    such as `xtask` has nothing to measure and is skipped.
+    """
     found = []
     for manifest in sorted(ROOT.glob("*/Cargo.toml")):
-        if "[lints]" in manifest.read_text():
+        has_lib = (manifest.parent / "src" / "lib.rs").exists()
+        if has_lib and "[lints]" in manifest.read_text():
             found.append(manifest.parent.name)
     return found
 

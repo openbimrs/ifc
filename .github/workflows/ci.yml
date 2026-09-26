@@ -49,6 +49,10 @@ jobs:
         run: python -m pip install "uv==0.11.19" "maturin==1.13.3"
       - name: Fetch IFC EXPRESS schemas
         run: scripts/fetch-ifc-schemas.sh
+      - name: Install docs toolchain
+        # Without node_modules gate.sh skips the docs build, so a dead link or
+        # a broken diagram would only surface after merge, in the Pages job.
+        run: npm ci
       - name: Run standalone gate
         # IFC_SPEC_REQUIRED makes a missing schema fail instead of skip; the
         # fetch above already ran, so gate.sh does not need to repeat it.

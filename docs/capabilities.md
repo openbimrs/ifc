@@ -18,7 +18,7 @@ A scaffold crate compiles, publishes, and appears in the feature list. It does
 
 ## Workspace census
 
-Generated from the source tree by `scripts/sync-capabilities.py`, not estimated.
+Generated from the source tree by `cargo run -p xtask -- docs`, not estimated.
 "Stub files" counts source files of twelve lines or fewer — the placeholder
 shape described above. `scripts/gate.sh` fails if these numbers drift from the
 code.
@@ -319,7 +319,7 @@ Those are listed with their reasoning in
 
 ::: tip Coverage below is generated
 The table above is derived from `ifc-geometry/src/lower/dispatch.rs` by
-`scripts/sync-capabilities.py`, and `scripts/gate.sh` fails when this page and
+`cargo run -p xtask -- docs`, and `scripts/gate.sh` fails when this page and
 that source disagree. It cannot drift from the code without breaking the build.
 :::
 
