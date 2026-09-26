@@ -1,11 +1,12 @@
-"""Derive the element-type and occurrence catalogues from IFC4X3 ADD2.
+"""Derive the element-type, occurrence and facility catalogues from IFC4X3 ADD2.
 
-This is the input step of `scripts/gen-element-types.py` and
-`scripts/gen-occurrences.py`. Both generators import it; neither reads
-an intermediate file. Run from anywhere:
+This is the input step of `scripts/gen-element-types.py`,
+`scripts/gen-occurrences.py` and `scripts/gen-facilities.py`. Each
+generator imports it; none reads an intermediate file. Run from anywhere:
 
     python3 scripts/ifc4x3_catalogue.py types > types.json
     python3 scripts/ifc4x3_catalogue.py occurrences > occurrences.json
+    python3 scripts/ifc4x3_catalogue.py facilities > facilities.json
 
 to inspect the rows a generator will emit.
 
@@ -43,6 +44,12 @@ SYSTEMS_OWNED = (
     "IFCFLOWTREATMENTDEVICE",
 )
 SYSTEMS_OWNER = ROOT / "ifc-systems/src/authoring/distribution.rs"
+
+# Concrete facilities `ifc-spatial` authors through its container path
+# (`SpatialKind`), not through the generated facility table. `facilities`
+# checks every name still appears in that file.
+SPATIAL_OWNED = ("IFCBUILDING",)
+SPATIAL_OWNER = ROOT / "ifc-spatial/src/authoring/mod.rs"
 
 
 class Schema:
@@ -180,9 +187,44 @@ def occurrences(s):
     return rows
 
 
+def facilities(s):
+    """Concrete `IfcFacility`/`IfcFacilityPart` subtypes, minus `SPATIAL_OWNED`.
+
+    Ordered by upper-case name. `pt` and `ut` are the absolute slots of
+    `PredefinedType` and `UsageType`, or -1 when the class declares none.
+    """
+    owner = SPATIAL_OWNER.read_text()
+    for n in SPATIAL_OWNED:
+        if '"%s"' % n not in owner:
+            sys.exit("%s no longer names %s; update SPATIAL_OWNED" % (SPATIAL_OWNER, n))
+    rows = []
+    for n in sorted(s.bodies):
+        if n in SPATIAL_OWNED or s.is_abstract(n):
+            continue
+        ch = s.chain(n)
+        if "IFCFACILITY" not in ch and "IFCFACILITYPART" not in ch:
+            continue
+        ss = s.slots(n)
+        names = [a for a, _ in ss]
+        pt = names.index("PredefinedType") if "PredefinedType" in names else -1
+        ut = names.index("UsageType") if "UsageType" in names else -1
+        enum = re.sub(r"^OPTIONAL\s+", "", ss[pt][1], flags=re.I).strip() if pt >= 0 else None
+        rows.append({
+            "entity": s.cased[n],
+            "upper": n,
+            "arity": len(ss),
+            "pt": pt,
+            "ut": ut,
+            "enum": enum,
+            "tokens": s.enums.get(enum.upper(), []) if enum else [],
+            "part": "IFCFACILITYPART" in ch,
+        })
+    return rows
+
+
 if __name__ == "__main__":
-    kinds = {"types": element_types, "occurrences": occurrences}
+    kinds = {"types": element_types, "occurrences": occurrences, "facilities": facilities}
     if len(sys.argv) != 2 or sys.argv[1] not in kinds:
-        sys.exit("usage: ifc4x3_catalogue.py {types|occurrences}")
+        sys.exit("usage: ifc4x3_catalogue.py {types|occurrences|facilities}")
     json.dump(kinds[sys.argv[1]](Schema()), sys.stdout, indent=1)
     print()

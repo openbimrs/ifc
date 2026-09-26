@@ -1,8 +1,22 @@
-import json
-from pathlib import Path
+"""Generate ifc-spatial/src/facility/table.rs from the IFC4X3 ADD2 schema.
 
-CAT = json.load(open("/tmp/fac_cat.json"))
-OUT = Path("ifc-spatial/src/facility/table.rs")
+    python3 scripts/gen-facilities.py
+
+Needs only `references/ifc-spec/ifc4x3-add2/IFC4X3_ADD2.exp` (see
+`scripts/fetch-ifc-schemas.sh`) and `rustfmt`. The rows come from
+`scripts/ifc4x3_catalogue.py`, which also records the one facility
+(`IfcBuilding`) `ifc-spatial` authors through its container path and this
+table leaves out. The emitted file is then formatted with
+`rustfmt --edition 2021`, so a regenerate on a clean checkout reproduces
+the committed file byte for byte (`git diff --exit-code` proves it).
+"""
+
+import subprocess
+
+from ifc4x3_catalogue import ROOT, Schema, facilities
+
+CAT = facilities(Schema())
+OUT = ROOT / "ifc-spatial/src/facility/table.rs"
 OUT.parent.mkdir(parents=True, exist_ok=True)
 
 o = []
@@ -44,3 +58,6 @@ o.append("];")
 
 OUT.write_text("\n".join(o) + "\n")
 print("wrote", OUT, len(o), "lines,", len(CAT), "facilities")
+
+subprocess.run(["rustfmt", "--edition", "2021", str(OUT)], check=True)
+print("formatted with rustfmt")
