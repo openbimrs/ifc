@@ -50,6 +50,24 @@ lockstep -- is archived in the
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
 
+### ifc-spatial
+
+### Added
+
+- `SpatialTree::anomalies()` and `SpatialAnomaly` (#54). An element placed
+  by two `IfcRelContainedInSpatialStructure`s is reported as
+  `ContainedTwice`, and a container aggregated by two parents as
+  `AggregatedTwice`. Each names the element or child, the kept and rejected
+  parent, and the rejected relationship. The first relationship applied
+  still wins. Restating the same parent is not reported.
+
+### Changed
+
+- For invalid files only: the rejected container no longer lists a doubly
+  contained element in `SpatialNode::elements` / `elements_of`. Before, the
+  element appeared in both containers while `container_of` returned only the
+  first, so the two views disagreed. Valid files are unaffected.
+
 ### ifc-step
 
 ### Changed

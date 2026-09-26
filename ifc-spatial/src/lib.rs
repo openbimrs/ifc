@@ -54,7 +54,7 @@ pub use relation::{
     BoundaryExposure, BoundaryPhysicality, Relationship, RelationshipIndex, RelationshipKind,
     SpaceBoundary,
 };
-pub use tree::{SpatialKind, SpatialNode, SpatialTree};
+pub use tree::{SpatialAnomaly, SpatialKind, SpatialNode, SpatialTree};
 
 pub mod facility;
 
