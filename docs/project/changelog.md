@@ -40,41 +40,6 @@ lockstep -- is archived in the
   axiolid/kernel#165) brings the composite-curve D within 1e-5 of its exact
   volume.
 
-### ifc-properties
-
-### Added
-
-- `exact_unit(model, measure_type, explicit_unit)` resolves a measure's
-  effective unit to an exact SI conversion (#53). It uses the explicit unit,
-  otherwise the project default, and returns
-  `value_si = value * scale + offset` with the SI dimensional exponents.
-  Conversion-based chains, derived units, the gram, and degrees Celsius are
-  resolved. Count and ratio measures get a dimensionless answer.
-- It refuses rather than guesses (`ExactUnitError`):
-  - unknown prefixes, unit names or measure types
-  - duplicate or missing project units
-  - cyclic or over-deep conversion chains
-  - a unit whose name, declared `Dimensions` or factor unit contradicts its
-    type
-  - an explicit unit of the wrong type
-  - offset units
-- It binds to the declared release like `exact_property` and reads that
-  release's `IfcDimensionsForSiUnit`/`IfcCorrectDimensions`. They differ: IFC2X3
-  TC1's farad fails its own capacitance check, and it is reported as such.
-- `UnitKind::Conversion::offset` keeps
-  `IfcConversionBasedUnitWithOffset.ConversionOffset`, which was dropped.
-
-### Changed (breaking)
-
-- `UnitKind::Si::prefix_exponent` is now `Option<i32>`. An unrecognised
-  prefix is `None` instead of `0`, which read `.BOGUS.` as "unprefixed" and
-  scaled by 1.0.
-- `UnitKind::si_scale` raises the prefix to the unit's power:
-  `MILLI SQUARE_METRE` is 1e-6 (was 1e-3), and `MILLI CUBIC_METRE` is 1e-9.
-  It is `None` for an unknown prefix.
-- `UnitKind::Conversion` gains the `offset` field, so exhaustive patterns
-  must name it or use `..`.
-
 ### ifc-schema
 
 ### Changed
@@ -84,24 +49,6 @@ lockstep -- is archived in the
   `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
-
-### ifc-spatial
-
-### Added
-
-- `SpatialTree::anomalies()` and `SpatialAnomaly` (#54). An element placed
-  by two `IfcRelContainedInSpatialStructure`s is reported as
-  `ContainedTwice`, and a container aggregated by two parents as
-  `AggregatedTwice`. Each names the element or child, the kept and rejected
-  parent, and the rejected relationship. The first relationship applied
-  still wins. Restating the same parent is not reported.
-
-### Changed
-
-- For invalid files only: the rejected container no longer lists a doubly
-  contained element in `SpatialNode::elements` / `elements_of`. Before, the
-  element appeared in both containers while `container_of` returned only the
-  first, so the two views disagreed. Valid files are unaffected.
 
 ### ifc-step
 
@@ -167,6 +114,23 @@ lockstep -- is archived in the
   leaves the model unchanged.
 - `scripts/build-node-pkg.sh` builds a Node package with the pinned
   `wasm-bindgen` CLI and runs the Node smoke and corpus suites.
+
+## [0.5.0] - 2026-09-26
+
+### openbim-ifc
+
+### Added
+
+- `ifc::properties::exact_unit` (ifc-properties 0.3): a measure's effective
+  unit resolved exactly to SI, or refused (#53).
+- `ifc::spatial::SpatialTree::anomalies` (ifc-spatial 0.2.1): double
+  containment and double aggregation are reported (#54).
+
+### Changed
+
+- **Breaking:** re-exports ifc-properties 0.3, whose
+  `UnitKind::Si::prefix_exponent` is now `Option<i32>` and whose
+  `UnitKind::Conversion` gains an `offset` field.
 
 ## [0.4.0] - 2026-09-23
 
@@ -351,7 +315,7 @@ lockstep -- is archived in the
   `ifc::schema::ifc4()`, are reachable without a direct `ifc-schema`
   dependency. Found by building a crates.io-only consumer of 0.3.0.
 
-## [0.3.0] - 2026-09-23
+## [0.3.0] - 2026-09-26
 
 ### ifc-alignment
 
@@ -389,6 +353,41 @@ lockstep -- is archived in the
 - **Breaking:** requires Axiolid 0.3. `ProjectToMap::transform` is an
   `axiolid_core::Transform3`, so the major Axiolid version is part of this
   crate's public API. No code change.
+
+### ifc-properties
+
+### Added
+
+- `exact_unit(model, measure_type, explicit_unit)` resolves a measure's
+  effective unit to an exact SI conversion (#53). It uses the explicit unit,
+  otherwise the project default, and returns
+  `value_si = value * scale + offset` with the SI dimensional exponents.
+  Conversion-based chains, derived units, the gram, and degrees Celsius are
+  resolved. Count and ratio measures get a dimensionless answer.
+- It refuses rather than guesses (`ExactUnitError`):
+  - unknown prefixes, unit names or measure types
+  - duplicate or missing project units
+  - cyclic or over-deep conversion chains
+  - a unit whose name, declared `Dimensions` or factor unit contradicts its
+    type
+  - an explicit unit of the wrong type
+  - offset units
+- It binds to the declared release like `exact_property` and reads that
+  release's `IfcDimensionsForSiUnit`/`IfcCorrectDimensions`. They differ: IFC2X3
+  TC1's farad fails its own capacitance check, and it is reported as such.
+- `UnitKind::Conversion::offset` keeps
+  `IfcConversionBasedUnitWithOffset.ConversionOffset`, which was dropped.
+
+### Changed (breaking)
+
+- `UnitKind::Si::prefix_exponent` is now `Option<i32>`. An unrecognised
+  prefix is `None` instead of `0`, which read `.BOGUS.` as "unprefixed" and
+  scaled by 1.0.
+- `UnitKind::si_scale` raises the prefix to the unit's power:
+  `MILLI SQUARE_METRE` is 1e-6 (was 1e-3), and `MILLI CUBIC_METRE` is 1e-9.
+  It is `None` for an unknown prefix.
+- `UnitKind::Conversion` gains the `offset` field, so exhaustive patterns
+  must name it or use `..`.
 
 ### ifc-style
 
@@ -444,7 +443,7 @@ lockstep -- is archived in the
   crate depending on this one could be compiled to WebAssembly. Native
   builds keep runtime-seeded hashing; wasm32 builds use a compile-time seed.
 
-## [0.2.1] - 2026-09-25
+## [0.2.1] - 2026-09-26
 
 ### ifc-classification
 
@@ -551,6 +550,24 @@ lockstep -- is archived in the
 ### Changed
 
 - Requires `openbim-step` 0.5.1, which provides the downward walk.
+
+### ifc-spatial
+
+### Added
+
+- `SpatialTree::anomalies()` and `SpatialAnomaly` (#54). An element placed
+  by two `IfcRelContainedInSpatialStructure`s is reported as
+  `ContainedTwice`, and a container aggregated by two parents as
+  `AggregatedTwice`. Each names the element or child, the kept and rejected
+  parent, and the rejected relationship. The first relationship applied
+  still wins. Restating the same parent is not reported.
+
+### Changed
+
+- For invalid files only: the rejected container no longer lists a doubly
+  contained element in `SpatialNode::elements` / `elements_of`. Before, the
+  element appeared in both containers while `container_of` returned only the
+  first, so the two views disagreed. Valid files are unaffected.
 
 ### ifc-step
 

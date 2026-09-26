@@ -877,7 +877,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-properties"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -912,7 +912,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-spatial"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -1098,7 +1098,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "openbim-ifc"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "ifc-alignment",
  "ifc-approval",
