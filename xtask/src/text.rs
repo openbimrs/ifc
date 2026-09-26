@@ -41,19 +41,6 @@ pub(crate) fn splitlines(text: &str) -> Vec<&str> {
     lines
 }
 
-/// `1234567` as `1,234,567`.
-pub(crate) fn thousands(value: usize) -> String {
-    let digits = value.to_string();
-    let mut out = String::with_capacity(digits.len() + digits.len() / 3);
-    for (index, digit) in digits.chars().enumerate() {
-        if index > 0 && (digits.len() - index) % 3 == 0 {
-            out.push(',');
-        }
-        out.push(digit);
-    }
-    out
-}
-
 /// Replace the text between `begin` and `end` sentinels with `body`.
 ///
 /// Everything outside the sentinels is prose a human owns and is kept
@@ -84,14 +71,6 @@ mod tests {
         assert_eq!(splitlines("a\n\nb"), ["a", "", "b"]);
         assert_eq!(splitlines("a\u{0c}b"), ["a", "b"]);
         assert!(splitlines("").is_empty());
-    }
-
-    #[test]
-    fn thousands_groups_digits() {
-        assert_eq!(thousands(0), "0");
-        assert_eq!(thousands(999), "999");
-        assert_eq!(thousands(1000), "1,000");
-        assert_eq!(thousands(1_234_567), "1,234,567");
     }
 
     #[test]
