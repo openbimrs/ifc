@@ -140,6 +140,11 @@ fn the_tree_only_contains_entities_from_the_model() {
             continue;
         };
         let tree = SpatialTree::build(&model);
+        assert!(
+            tree.anomalies().is_empty(),
+            "{fixture}: a valid export states no second parent: {:?}",
+            tree.anomalies()
+        );
         for node in tree.containers() {
             assert!(
                 model.get(node.id).is_some(),

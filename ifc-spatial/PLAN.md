@@ -33,6 +33,12 @@ and is re-exported deliberately by its parent.
   - Proof: `cargo +1.88.0 test -p ifc-spatial --all-targets` (23 tests),
     strict all-target Clippy, and strict rustdoc pass. The public parity test
     kills a relationship-slot selection mutant.
+- [x] `SPATIAL-ANOMALY` - report second parents instead of resolving them silently (#54)
+  - `SpatialTree::anomalies()` returns `ContainedTwice`/`AggregatedTwice`.
+    Only the kept parent lists the child, so `elements_of` and `container_of`
+    agree.
+  - Proof: `cargo test -p ifc-spatial --all-targets` (`tests/anomalies.rs`
+    runs the issue fixture; the real-file corpus reports no anomalies).
 - [ ] `SPATIAL-PSET` - group properties by container
   - `ifc-properties` is implemented; compose its borrowed views at an L4 seam
     without adding a sibling-crate dependency here.

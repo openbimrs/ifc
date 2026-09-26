@@ -13,6 +13,7 @@ use std::collections::BTreeMap;
 
 use ifc_model::{EntityId, Model};
 
+use super::anomaly::SpatialAnomaly;
 use super::kind::SpatialKind;
 use crate::relation::{Relationship, RelationshipKind};
 
@@ -40,6 +41,7 @@ pub struct SpatialTree {
     roots: Vec<EntityId>,
     orphans: Vec<EntityId>,
     dangling: Vec<(EntityId, EntityId)>,
+    anomalies: Vec<SpatialAnomaly>,
 }
 
 impl SpatialTree {
@@ -129,24 +131,47 @@ impl SpatialTree {
                 if relationship.kind == RelationshipKind::ContainedIn {
                     continue;
                 }
-                if let Some(node) = self.nodes.get_mut(&child) {
-                    // A second parent is a malformed file. Keep the first so
-                    // the tree stays a tree, and record nothing further --
-                    // `orphans` and `dangling` cover the reportable defects.
-                    if node.parent.is_none() {
+                let Some(node) = self.nodes.get_mut(&child) else {
+                    continue;
+                };
+                // A second parent is a malformed file. Keep the first so the
+                // tree stays a tree, and report the one rejected.
+                match node.parent {
+                    None => {
                         node.parent = Some(parent);
                         if let Some(parent_node) = self.nodes.get_mut(&parent) {
                             parent_node.children.push(child);
                         }
                     }
+                    Some(kept) if kept != parent => {
+                        self.anomalies.push(SpatialAnomaly::AggregatedTwice {
+                            child,
+                            kept,
+                            rejected: parent,
+                            relation: relationship.id,
+                        });
+                    }
+                    Some(_) => {}
                 }
-            } else if let Some(parent_node) = self.nodes.get_mut(&parent) {
-                if !parent_node.elements.contains(&child) {
-                    parent_node.elements.push(child);
-                    // First container wins: an element named by two containment
-                    // relationships is malformed, and picking the first keeps
-                    // the answer stable across runs.
-                    self.container_of_element.entry(child).or_insert(parent);
+            } else {
+                // First container wins, and only the winner lists the element,
+                // so `elements_of` and `container_of` cannot disagree.
+                match self.container_of_element.get(&child) {
+                    None => {
+                        self.container_of_element.insert(child, parent);
+                        if let Some(parent_node) = self.nodes.get_mut(&parent) {
+                            parent_node.elements.push(child);
+                        }
+                    }
+                    Some(&kept) if kept != parent => {
+                        self.anomalies.push(SpatialAnomaly::ContainedTwice {
+                            element: child,
+                            kept,
+                            rejected: parent,
+                            relation: relationship.id,
+                        });
+                    }
+                    Some(_) => {}
                 }
             }
         }
@@ -247,6 +272,16 @@ impl SpatialTree {
     #[must_use]
     pub fn dangling(&self) -> &[(EntityId, EntityId)] {
         &self.dangling
+    }
+
+    /// Second parents the file states and the tree rejected, in the order
+    /// relationships were applied.
+    ///
+    /// Empty for a conformant file. Each entry names the relationship whose
+    /// claim was dropped, so a caller can point at the offending record.
+    #[must_use]
+    pub fn anomalies(&self) -> &[SpatialAnomaly] {
+        &self.anomalies
     }
 
     /// Containers that no relationship places under a parent, excluding the

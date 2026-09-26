@@ -1,7 +1,7 @@
 //! Building the containment tree, including from files that break the rules.
 
 use ifc_model::{Entity, EntityId, Model, Value};
-use ifc_spatial::{SpatialKind, SpatialTree};
+use ifc_spatial::{SpatialAnomaly, SpatialKind, SpatialTree};
 
 /// Insert an entity at a chosen id so relationships can name it.
 fn put(model: &mut Model, id: u64, type_name: &str, attributes: Vec<Value>) -> EntityId {
@@ -255,9 +255,16 @@ fn a_duplicated_element_gets_one_stable_container() {
         .containers()
         .filter(|node| node.elements.contains(&wall_a))
         .count();
+    assert_eq!(appearances, 1, "only the kept container lists the wall");
     assert_eq!(
-        appearances, 2,
-        "both relationships are still visible in the tree"
+        tree.anomalies(),
+        [SpatialAnomaly::ContainedTwice {
+            element: wall_a,
+            kept: storey,
+            rejected: second,
+            relation: EntityId(24),
+        }],
+        "the rejected statement is reported, not lost"
     );
 }
 
