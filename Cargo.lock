@@ -845,7 +845,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-model"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "ahash",
  "cargo_metadata",
@@ -906,7 +906,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-step"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "ifc-model",
  "memmap2",
@@ -1065,7 +1065,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "openbim-ifc"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "ifc-alignment",
  "ifc-approval",
