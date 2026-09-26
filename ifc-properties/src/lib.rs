@@ -45,8 +45,8 @@ mod value;
 
 pub use error::{PropertyAnomaly, PropertyError, PropertyResult};
 pub use exact::{
-    exact_property, exact_schema, ExactLogical, ExactProperty, ExactPropertyError, ExactResolution,
-    ExactSource, ExactValue,
+    exact_property, exact_schema, exact_unit, ExactLogical, ExactProperty, ExactPropertyError,
+    ExactResolution, ExactSource, ExactUnit, ExactUnitError, ExactValue,
 };
 /// The IFC release an exact resolution binds to (re-exported from `ifc-schema`).
 pub use ifc_schema::SchemaVersion;

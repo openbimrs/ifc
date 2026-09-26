@@ -7,6 +7,7 @@
 //! IfcNamedUnit             0 = Dimensions   1 = UnitType
 //! IfcSIUnit                2 = Prefix       3 = Name
 //! IfcConversionBasedUnit   2 = Name         3 = ConversionFactor
+//! IfcConversionBasedUnitWithOffset          4 = ConversionOffset (IFC4)
 //! IfcMeasureWithUnit       0 = ValueComponent  1 = UnitComponent
 //! IfcDerivedUnit           0 = Elements     1 = UnitType  2 = UserDefinedType
 //! IfcDerivedUnitElement    0 = Unit         1 = Exponent
@@ -23,6 +24,9 @@
 //! The factor is therefore returned as a power of ten and applied by the
 //! caller, so `mm -> m` is one multiplication rather than a chain of
 //! roundings.
+//!
+//! A prefix applies to the unit before its power: `MILLI SQUARE_METRE` is
+//! (10⁻³ m)², so its scale is 1e-6, not 1e-3 (ISO 80000-1).
 
 use std::sync::Arc;
 
@@ -33,6 +37,7 @@ const SI_PREFIX: usize = 2;
 const SI_NAME: usize = 3;
 const CONVERSION_NAME: usize = 2;
 const CONVERSION_FACTOR: usize = 3;
+const CONVERSION_OFFSET: usize = 4;
 const MEASURE_VALUE: usize = 0;
 const MEASURE_UNIT: usize = 1;
 const DERIVED_ELEMENTS: usize = 0;
@@ -53,11 +58,14 @@ pub enum UnitKind {
         name: Arc<str>,
         /// `IfcSIPrefix`, e.g. `MILLI`. `None` means unprefixed.
         prefix: Option<Arc<str>>,
-        /// Decimal exponent of the prefix: `MILLI` is -3, absent is 0.
+        /// Decimal exponent of the prefix: `MILLI` is `Some(-3)`, absent is
+        /// `Some(0)`, and a prefix that is not an `IfcSIPrefix` is `None`.
         ///
         /// Exposed as an exponent rather than a factor so callers can apply
-        /// it exactly instead of multiplying by a rounded 0.001.
-        prefix_exponent: i32,
+        /// it exactly instead of multiplying by a rounded 0.001. An unknown
+        /// prefix is not read as "unprefixed": that would silently rescale
+        /// every value in the unit.
+        prefix_exponent: Option<i32>,
     },
     /// `IfcConversionBasedUnit`: a named unit defined by a factor.
     Conversion {
@@ -69,6 +77,12 @@ pub enum UnitKind {
         factor: Option<f64>,
         /// The unit the factor is expressed in.
         factor_unit: Option<EntityId>,
+        /// `IfcConversionBasedUnitWithOffset.ConversionOffset`, as stated.
+        ///
+        /// `None` for a plain conversion-based unit. Kept raw: IFC4's own
+        /// documentation contradicts itself on which direction the offset
+        /// applies, so this crate does not apply it.
+        offset: Option<f64>,
     },
     /// `IfcDerivedUnit`: a product of powers of other units.
     Derived {
@@ -105,14 +119,20 @@ impl UnitKind {
 
     /// Multiplier converting a value in this unit to the unprefixed SI unit.
     ///
+    /// The prefix is raised to the unit's power: `MILLI SQUARE_METRE` gives
+    /// 1e-6 and `MILLI CUBIC_METRE` 1e-9. `None` for an unknown prefix.
+    ///
     /// Only defined for `Si`: a conversion-based unit needs its factor unit
     /// resolved too, and a derived unit needs its elements combined, so
-    /// neither can answer honestly on its own.
+    /// neither can answer honestly on its own. [`crate::exact_unit`] resolves
+    /// all three to the SI base unit.
     pub fn si_scale(&self) -> Option<f64> {
         match self {
             Self::Si {
-                prefix_exponent, ..
-            } => Some(10f64.powi(*prefix_exponent)),
+                name,
+                prefix_exponent,
+                ..
+            } => prefix_exponent.map(|exponent| 10f64.powi(exponent * super::si::name_power(name))),
             _ => None,
         }
     }
@@ -162,7 +182,7 @@ pub fn unit(model: &Model, id: EntityId) -> Option<UnitKind> {
                     .get(SI_NAME)
                     .and_then(enum_text)
                     .unwrap_or_else(|| "".into()),
-                prefix_exponent: prefix.as_deref().and_then(prefix_exponent).unwrap_or(0),
+                prefix_exponent: prefix.as_deref().map_or(Some(0), prefix_exponent),
                 prefix,
             })
         }
@@ -187,6 +207,14 @@ pub fn unit(model: &Model, id: EntityId) -> Option<UnitKind> {
                 name: entity.attributes.get(CONVERSION_NAME).and_then(text),
                 factor,
                 factor_unit,
+                offset: if ty == "IFCCONVERSIONBASEDUNITWITHOFFSET" {
+                    entity
+                        .attributes
+                        .get(CONVERSION_OFFSET)
+                        .and_then(|v| v.unwrap_typed().as_f64())
+                } else {
+                    None
+                },
             })
         }
         "IFCDERIVEDUNIT" => {
@@ -280,7 +308,9 @@ pub fn project_units(model: &Model) -> Vec<(EntityId, UnitKind)> {
 /// The project default unit for a given `IfcUnitEnum`.
 ///
 /// `IfcCorrectUnitAssignment` makes at most one named unit per type, so the
-/// first match is the only match in a well-formed file.
+/// first match is the only match in a well-formed file. In a malformed one
+/// this permissive view still returns the first; [`crate::exact_unit`]
+/// refuses the duplicate instead.
 pub fn project_unit_for(model: &Model, unit_type_name: &str) -> Option<(EntityId, UnitKind)> {
     project_units(model)
         .into_iter()

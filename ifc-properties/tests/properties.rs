@@ -286,7 +286,7 @@ fn the_project_length_unit_is_metre() {
         } => {
             assert_eq!(&*name, "METRE");
             assert!(prefix.is_none(), "the project default is unprefixed");
-            assert_eq!(prefix_exponent, 0);
+            assert_eq!(prefix_exponent, Some(0));
         }
         other => panic!("expected SI, got {other:?}"),
     }
@@ -592,7 +592,7 @@ fn a_prefixed_unit_from_the_file_keeps_its_exponent() {
             name,
             ..
         } => {
-            assert_eq!(prefix_exponent, -3, "MILLI is 1e-3");
+            assert_eq!(prefix_exponent, Some(-3), "MILLI is 1e-3");
             assert_eq!(&*name, "METRE");
         }
         other => panic!("expected SI, got {other:?}"),

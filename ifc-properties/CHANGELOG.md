@@ -12,6 +12,39 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `exact_unit(model, measure_type, explicit_unit)` resolves a measure's
+  effective unit to an exact SI conversion (#53). It uses the explicit unit,
+  otherwise the project default, and returns
+  `value_si = value * scale + offset` with the SI dimensional exponents.
+  Conversion-based chains, derived units, the gram, and degrees Celsius are
+  resolved. Count and ratio measures get a dimensionless answer.
+- It refuses rather than guesses (`ExactUnitError`):
+  - unknown prefixes, unit names or measure types
+  - duplicate or missing project units
+  - cyclic or over-deep conversion chains
+  - a unit whose name, declared `Dimensions` or factor unit contradicts its
+    type
+  - an explicit unit of the wrong type
+  - offset units
+- It binds to the declared release like `exact_property` and reads that
+  release's `IfcDimensionsForSiUnit`/`IfcCorrectDimensions`. They differ: IFC2X3
+  TC1's farad fails its own capacitance check, and it is reported as such.
+- `UnitKind::Conversion::offset` keeps
+  `IfcConversionBasedUnitWithOffset.ConversionOffset`, which was dropped.
+
+### Changed (breaking)
+
+- `UnitKind::Si::prefix_exponent` is now `Option<i32>`. An unrecognised
+  prefix is `None` instead of `0`, which read `.BOGUS.` as "unprefixed" and
+  scaled by 1.0.
+- `UnitKind::si_scale` raises the prefix to the unit's power:
+  `MILLI SQUARE_METRE` is 1e-6 (was 1e-3), and `MILLI CUBIC_METRE` is 1e-9.
+  It is `None` for an unknown prefix.
+- `UnitKind::Conversion` gains the `offset` field, so exhaustive patterns
+  must name it or use `..`.
+
 ## [0.2.1] - 2026-09-25
 
 ### Added

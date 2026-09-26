@@ -17,7 +17,7 @@ Allowed production dependencies: ifc-model and schema metadata; no geometry crat
 - `template.rs`: property/quantity templates
 - `standard.rs`: external property-set dictionaries
 - `query.rs`: permissive assignments and bounded lookup for interactive clients
-- `exact.rs`: fail-closed request-scoped IFC2X3/IFC4 property resolution for rule engines
+- `exact.rs`: fail-closed request-scoped IFC2X3/IFC4 property and unit resolution for rule engines
 - `value.rs`: semantic conversion from generic Value
 
 ## Invariants
@@ -34,6 +34,7 @@ Allowed production dependencies: ifc-model and schema metadata; no geometry crat
 - A proper subtype of `IfcRelDefinesByProperties`/`IfcRelDefinesByType` relating the queried object (IFC2X3 `IfcRelOverridesProperties`) is refused, never skipped: `Model::ids_of_type` is exact-type.
 - `IfcPropertySingleValue` requires all four positional slots; present typed values must be recursively accepted by `IfcValue` **and** match their defined-type payload base, and present units must resolve through `IfcUnit` with exact concrete arity.
 - Exact scalar values preserve their declared IFC value type and explicit unit identity. `IfcLogical` remains three-state and `IfcBinary` retains its payload; downstream adapters must reject categories or units they cannot project without loss.
+- `exact_unit` binds to the same release as `exact_property`. SI and unit-type dimensions come from that release's `IfcDimensionsForSiUnit`/`IfcCorrectDimensions` (IFC2X3 and IFC4 differ for the farad). A measure maps to a unit type only by the release's own enums and defined-type chain. Unknown prefixes, duplicate project units, cycles, dimension contradictions and offset units are errors, never defaults.
 - Keep permissive query APIs for interactive inspection; rule engines use the exact API and must not convert its errors to absence.
 
 Keep cross-resource projections attribute-scoped: shared `ifc-model` storage

@@ -5,8 +5,10 @@
 //! structural fact comes from the table of the one release the header
 //! declares; nothing is aliased across releases.
 
+mod measure;
 mod refs;
 mod release;
+mod unit;
 mod value;
 
 use std::{collections::BTreeMap, fmt, sync::Arc};
@@ -19,6 +21,7 @@ use refs::{
     text_at,
 };
 use release::{validate_model, Release};
+pub use unit::{exact_unit, ExactUnit, ExactUnitError};
 use value::{exact_property_value, ResolvedValue};
 
 /// Provenance of an exact result.
