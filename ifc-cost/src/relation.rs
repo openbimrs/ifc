@@ -24,7 +24,7 @@
 //! total does not survive. Depth is therefore bounded and a cycle is reported
 //! as data, not discovered as a stack overflow.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use ifc_model::{EntityId, Model, Value};
 
@@ -70,13 +70,87 @@ pub enum CostRelationError {
     },
 }
 
+/// A nesting the file states but the schema forbids, and how it was resolved.
+///
+/// IFC4 `IfcObjectDefinition.Nests` and IFC2X3 `Decomposes` are both
+/// `SET [0:1]`: a cost item has at most one parent. When a file names two,
+/// the first `IfcRelNests` in file order wins everywhere ([`parent_of`],
+/// [`children_of`], [`descendants_of`], the rollups), so an item is never
+/// counted under two parents. The losing claim is reported here.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum CostAnomaly {
+    /// A cost item nested under two different parents.
+    NestedTwice {
+        /// The item with two parents.
+        item: EntityId,
+        /// The parent kept.
+        kept: EntityId,
+        /// The parent rejected; it does not list the item.
+        rejected: EntityId,
+        /// The `IfcRelNests` that was rejected.
+        relation: EntityId,
+    },
+}
+
+/// Each nested child's kept parent: the first `IfcRelNests` naming it.
+fn kept_parents(model: &Model) -> HashMap<EntityId, EntityId> {
+    let mut kept = HashMap::new();
+    for (_, entity) in model.of_type("IFCRELNESTS") {
+        let Some(Value::Ref(parent)) = entity.attribute(nests::RELATING) else {
+            continue;
+        };
+        if let Some(v) = entity.attribute(nests::RELATED) {
+            v.for_each_ref(&mut |child| {
+                kept.entry(child).or_insert(*parent);
+            });
+        }
+    }
+    kept
+}
+
+/// Second parents the file states for nested items, in file order.
+///
+/// Empty for a conformant file. Restating the same parent in another
+/// relationship is redundant, not contradictory, and is not reported.
+#[must_use]
+pub fn nesting_anomalies(model: &Model) -> Vec<CostAnomaly> {
+    let kept = kept_parents(model);
+    let mut out = Vec::new();
+    for (relation, entity) in model.of_type("IFCRELNESTS") {
+        let Some(Value::Ref(parent)) = entity.attribute(nests::RELATING) else {
+            continue;
+        };
+        if let Some(v) = entity.attribute(nests::RELATED) {
+            v.for_each_ref(&mut |item| {
+                if let Some(&first) = kept.get(&item) {
+                    if first != *parent {
+                        out.push(CostAnomaly::NestedTwice {
+                            item,
+                            kept: first,
+                            rejected: *parent,
+                            relation,
+                        });
+                    }
+                }
+            });
+        }
+    }
+    out
+}
+
 /// Direct children of a cost item, in authored order.
 ///
 /// Order is preserved: `RelatedObjects` is a LIST in `IfcRelNests`, so a file
 /// stating `[Labour, Plant, Material]` means that sequence, and a caller
 /// rendering a breakdown should not reorder it.
+///
+/// Only children whose kept parent is `parent` are listed, each once, so this
+/// agrees with [`parent_of`]. A child a malformed file also nests elsewhere
+/// is listed under its first parent only; see [`nesting_anomalies`].
 #[must_use]
 pub fn children_of(model: &Model, parent: EntityId) -> Vec<EntityId> {
+    let kept = kept_parents(model);
     let mut out = Vec::new();
     for (_, entity) in model.of_type("IFCRELNESTS") {
         let relating = match entity.attribute(nests::RELATING) {
@@ -87,7 +161,11 @@ pub fn children_of(model: &Model, parent: EntityId) -> Vec<EntityId> {
             continue;
         }
         if let Some(v) = entity.attribute(nests::RELATED) {
-            v.for_each_ref(&mut |id| out.push(id));
+            v.for_each_ref(&mut |id| {
+                if kept.get(&id) == Some(&parent) && !out.contains(&id) {
+                    out.push(id);
+                }
+            });
         }
     }
     out
@@ -97,8 +175,8 @@ pub fn children_of(model: &Model, parent: EntityId) -> Vec<EntityId> {
 ///
 /// `IfcObjectDefinition.Nests` is `SET [0:1]`, so an item has at most one
 /// parent. A file stating two is malformed; the first in file order is
-/// returned and the caller can detect the duplicate with
-/// [`parents_of`] when that distinction matters.
+/// returned, every other view agrees with it, and [`nesting_anomalies`]
+/// reports the rejected claim. [`parents_of`] still lists every claimant.
 #[must_use]
 pub fn parent_of(model: &Model, child: EntityId) -> Option<EntityId> {
     parents_of(model, child).into_iter().next()
