@@ -319,8 +319,8 @@ fn staggered_fixture() -> (Model, EntityId, EntityId) {
         },
     )
     .expect("ramp cant");
-    let cw1 = alignment_segment(&mut tx, "4aBcDeFgHiJkLmNoPqRsTu", flat).expect("cw1");
-    let cw2 = alignment_segment(&mut tx, "5aBcDeFgHiJkLmNoPqRsTu", ramp).expect("cw2");
+    let cw1 = alignment_segment(&mut tx, "04BcDeFgHiJkLmNoPqRsTu", flat).expect("cw1");
+    let cw2 = alignment_segment(&mut tx, "05BcDeFgHiJkLmNoPqRsTu", ramp).expect("cw2");
     tx.create(Entity::new(
         "IFCRELNESTS",
         vec![

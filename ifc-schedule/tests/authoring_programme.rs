@@ -53,9 +53,9 @@ fn an_authored_programme_reads_back_through_the_queries() {
     let first = task(&mut tx, "2aBcDeFgHiJkLmNoPqRsTu", "Excavate");
     let second = task(&mut tx, "3aBcDeFgHiJkLmNoPqRsTu", "Pour");
 
-    assign_tasks_to_control(&mut tx, "4aBcDeFgHiJkLmNoPqRsTu", schedule, &[parent])
+    assign_tasks_to_control(&mut tx, "04BcDeFgHiJkLmNoPqRsTu", schedule, &[parent])
         .expect("assigned");
-    nest_tasks(&mut tx, "5aBcDeFgHiJkLmNoPqRsTu", parent, &[first, second]).expect("nested");
+    nest_tasks(&mut tx, "05BcDeFgHiJkLmNoPqRsTu", parent, &[first, second]).expect("nested");
     tx.commit(&mut model).expect("commit");
 
     let found = work_schedules(&model);
@@ -92,7 +92,7 @@ fn an_authored_calendar_separates_working_from_exception_time() {
 
     let calendar = create_work_calendar(
         &mut tx,
-        "6aBcDeFgHiJkLmNoPqRsTu",
+        "06BcDeFgHiJkLmNoPqRsTu",
         Some("Site calendar"),
         &[shift],
         &[holiday],
@@ -145,13 +145,13 @@ fn values_that_would_parse_but_mean_nothing_are_refused() {
     .is_err());
 
     // An assignment relating no objects assigns nothing.
-    assert!(assign_tasks_to_control(&mut tx, "4aBcDeFgHiJkLmNoPqRsTu", anchor, &[]).is_err());
+    assert!(assign_tasks_to_control(&mut tx, "04BcDeFgHiJkLmNoPqRsTu", anchor, &[]).is_err());
 
     // A task nested under itself is a cycle the timeline cannot walk.
-    assert!(nest_tasks(&mut tx, "5aBcDeFgHiJkLmNoPqRsTu", anchor, &[anchor]).is_err());
+    assert!(nest_tasks(&mut tx, "05BcDeFgHiJkLmNoPqRsTu", anchor, &[anchor]).is_err());
 
     // A calendar constraining no period reads as a real calendar.
-    assert!(create_work_calendar(&mut tx, "6aBcDeFgHiJkLmNoPqRsTu", None, &[], &[], None).is_err());
+    assert!(create_work_calendar(&mut tx, "06BcDeFgHiJkLmNoPqRsTu", None, &[], &[], None).is_err());
 
     // A GUID that is not a GUID makes the record unaddressable.
     assert!(create_work_calendar(&mut tx, "not-a-guid", None, &[anchor], &[], None).is_err());
@@ -184,9 +184,9 @@ fn an_authored_programme_survives_step_text() {
     .expect("authored schedule");
     let parent = task(&mut tx, "1aBcDeFgHiJkLmNoPqRsTu", "Substructure");
     let child = task(&mut tx, "2aBcDeFgHiJkLmNoPqRsTu", "Excavate");
-    assign_tasks_to_control(&mut tx, "4aBcDeFgHiJkLmNoPqRsTu", schedule, &[parent])
+    assign_tasks_to_control(&mut tx, "04BcDeFgHiJkLmNoPqRsTu", schedule, &[parent])
         .expect("assigned");
-    nest_tasks(&mut tx, "5aBcDeFgHiJkLmNoPqRsTu", parent, &[child]).expect("nested");
+    nest_tasks(&mut tx, "05BcDeFgHiJkLmNoPqRsTu", parent, &[child]).expect("nested");
     tx.commit(&mut model).expect("commit");
 
     let mut bytes = Vec::new();

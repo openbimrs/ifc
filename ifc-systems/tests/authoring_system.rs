@@ -34,14 +34,14 @@ fn an_authored_system_reads_back() {
     )
     .expect("out port");
     let inp =
-        create_port(&mut tx, "4aBcDeFgHiJkLmNoPqRsTu", Some("In"), Some("SINK")).expect("in port");
+        create_port(&mut tx, "04BcDeFgHiJkLmNoPqRsTu", Some("In"), Some("SINK")).expect("in port");
 
-    nest_ports(&mut tx, "5aBcDeFgHiJkLmNoPqRsTu", a, &[out]).expect("nest a");
-    nest_ports(&mut tx, "6aBcDeFgHiJkLmNoPqRsTu", b, &[inp]).expect("nest b");
-    connect_port_to_element(&mut tx, "7aBcDeFgHiJkLmNoPqRsTu", out, a).expect("attach a");
-    connect_port_to_element(&mut tx, "8aBcDeFgHiJkLmNoPqRsTu", inp, b).expect("attach b");
-    connect_ports(&mut tx, "9aBcDeFgHiJkLmNoPqRsTu", out, inp, None).expect("connect");
-    assign_to_group(&mut tx, "AaBcDeFgHiJkLmNoPqRsTu", system, &[a, b]).expect("assign");
+    nest_ports(&mut tx, "05BcDeFgHiJkLmNoPqRsTu", a, &[out]).expect("nest a");
+    nest_ports(&mut tx, "06BcDeFgHiJkLmNoPqRsTu", b, &[inp]).expect("nest b");
+    connect_port_to_element(&mut tx, "07BcDeFgHiJkLmNoPqRsTu", out, a).expect("attach a");
+    connect_port_to_element(&mut tx, "08BcDeFgHiJkLmNoPqRsTu", inp, b).expect("attach b");
+    connect_ports(&mut tx, "09BcDeFgHiJkLmNoPqRsTu", out, inp, None).expect("connect");
+    assign_to_group(&mut tx, "0ABcDeFgHiJkLmNoPqRsTu", system, &[a, b]).expect("assign");
     tx.commit(&mut model).expect("commit");
 
     let (found, anomalies) = systems(&model);
@@ -106,8 +106,8 @@ fn every_relationship_writes_its_schema_slots() {
     let el = segment(&mut tx, "1aBcDeFgHiJkLmNoPqRsTu");
     let port = create_port(&mut tx, "2aBcDeFgHiJkLmNoPqRsTu", None, Some("SINK")).expect("port");
     let grp = assign_to_group(&mut tx, "3aBcDeFgHiJkLmNoPqRsTu", sys, &[el]).expect("grp");
-    let nst = nest_ports(&mut tx, "4aBcDeFgHiJkLmNoPqRsTu", el, &[port]).expect("nst");
-    let att = connect_port_to_element(&mut tx, "5aBcDeFgHiJkLmNoPqRsTu", port, el).expect("att");
+    let nst = nest_ports(&mut tx, "04BcDeFgHiJkLmNoPqRsTu", el, &[port]).expect("nst");
+    let att = connect_port_to_element(&mut tx, "05BcDeFgHiJkLmNoPqRsTu", port, el).expect("att");
     tx.commit(&mut model).expect("commit");
 
     let slot = |id, n: usize| model.get(id).unwrap().attributes[n].clone();
@@ -140,7 +140,7 @@ fn placement_distinguishes_containment_from_reference() {
     let duct = segment(&mut tx, "2aBcDeFgHiJkLmNoPqRsTu");
     let con = contain_in_spatial_structure(&mut tx, "3aBcDeFgHiJkLmNoPqRsTu", storey, &[duct])
         .expect("contained");
-    reference_in_spatial_structure(&mut tx, "4aBcDeFgHiJkLmNoPqRsTu", other, &[duct])
+    reference_in_spatial_structure(&mut tx, "04BcDeFgHiJkLmNoPqRsTu", other, &[duct])
         .expect("referenced");
     tx.commit(&mut model).expect("commit");
 
@@ -159,7 +159,7 @@ fn placement_distinguishes_containment_from_reference() {
     assert_eq!(slot(con, 5), Value::Ref(storey));
 
     let mut tx = Transaction::new(&model);
-    let g = "5aBcDeFgHiJkLmNoPqRsTu";
+    let g = "05BcDeFgHiJkLmNoPqRsTu";
     assert!(contain_in_spatial_structure(&mut tx, g, storey, &[]).is_err());
     assert!(reference_in_spatial_structure(&mut tx, g, storey, &[storey]).is_err());
 }

@@ -49,11 +49,11 @@ fn an_authored_structure_walks_as_authored() {
         named("Level 1"),
     )
     .expect("storey");
-    let w = wall(&mut tx, "4aBcDeFgHiJkLmNoPqRsTu");
-    aggregate(&mut tx, "5aBcDeFgHiJkLmNoPqRsTu", project, &[site]).expect("project/site");
-    aggregate(&mut tx, "6aBcDeFgHiJkLmNoPqRsTu", site, &[building]).expect("site/building");
-    aggregate(&mut tx, "7aBcDeFgHiJkLmNoPqRsTu", building, &[storey]).expect("building/storey");
-    contain(&mut tx, "8aBcDeFgHiJkLmNoPqRsTu", storey, &[w]).expect("storey contains wall");
+    let w = wall(&mut tx, "04BcDeFgHiJkLmNoPqRsTu");
+    aggregate(&mut tx, "05BcDeFgHiJkLmNoPqRsTu", project, &[site]).expect("project/site");
+    aggregate(&mut tx, "06BcDeFgHiJkLmNoPqRsTu", site, &[building]).expect("site/building");
+    aggregate(&mut tx, "07BcDeFgHiJkLmNoPqRsTu", building, &[storey]).expect("building/storey");
+    contain(&mut tx, "08BcDeFgHiJkLmNoPqRsTu", storey, &[w]).expect("storey contains wall");
     tx.commit(&mut model).expect("commit");
 
     let tree = SpatialTree::build(&model);
@@ -92,7 +92,7 @@ fn the_two_relationships_keep_their_opposite_slots() {
     .expect("storey");
     let w = wall(&mut tx, "2aBcDeFgHiJkLmNoPqRsTu");
     let agg = aggregate(&mut tx, "3aBcDeFgHiJkLmNoPqRsTu", storey, &[w]).expect("agg");
-    let con = contain(&mut tx, "4aBcDeFgHiJkLmNoPqRsTu", storey, &[w]).expect("con");
+    let con = contain(&mut tx, "04BcDeFgHiJkLmNoPqRsTu", storey, &[w]).expect("con");
     tx.commit(&mut model).expect("commit");
 
     let slot = |id, n: usize| model.get(id).unwrap().attributes[n].clone();
@@ -167,10 +167,10 @@ fn each_container_is_written_at_its_own_width() {
     )
     .expect("storey");
     let space =
-        create_spatial_element(&mut tx, SpatialKind::Space, "4aBcDeFgHiJkLmNoPqRsTu", draft)
+        create_spatial_element(&mut tx, SpatialKind::Space, "04BcDeFgHiJkLmNoPqRsTu", draft)
             .expect("space");
     let project =
-        create_project(&mut tx, "5aBcDeFgHiJkLmNoPqRsTu", Some("P"), None).expect("project");
+        create_project(&mut tx, "05BcDeFgHiJkLmNoPqRsTu", Some("P"), None).expect("project");
     tx.commit(&mut model).expect("commit");
 
     let width = |id| model.get(id).unwrap().attributes.len();

@@ -97,11 +97,11 @@ fn an_authored_horizontal_layout_lowers_to_an_exact_curve() {
 fn the_three_layout_kinds_write_their_own_types() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let h = horizontal_layout(&mut tx, "4aBcDeFgHiJkLmNoPqRsTu", None).expect("h");
-    let v = vertical_layout(&mut tx, "5aBcDeFgHiJkLmNoPqRsTu", None).expect("v");
+    let h = horizontal_layout(&mut tx, "04BcDeFgHiJkLmNoPqRsTu", None).expect("h");
+    let v = vertical_layout(&mut tx, "05BcDeFgHiJkLmNoPqRsTu", None).expect("v");
     let a = alignment(
         &mut tx,
-        "6aBcDeFgHiJkLmNoPqRsTu",
+        "06BcDeFgHiJkLmNoPqRsTu",
         Some("A1"),
         Some("USERDEFINED"),
     )

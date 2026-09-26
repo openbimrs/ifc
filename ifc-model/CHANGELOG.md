@@ -12,6 +12,20 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed
+
+- `Guid::parse` rejects a GlobalId whose leading character is not `0`–`3`
+  (#62). 22 base-64 digits carry 132 bits and a UUID has 128, so a higher
+  leading digit names no UUID. Before, it was accepted and `to_uuid` dropped
+  the extra high bits: `0000000000000000000000` and `4000000000000000000000`
+  expanded to the same UUID, and `$$$$…` came back from a round trip as
+  `3$$$…`. Every accepted `Guid` now round-trips through
+  `to_uuid`/`from_uuid` unchanged.
+- Authoring helpers that validate through `Guid::parse` (in `ifc-spatial`,
+  `ifc-systems`, `ifc-structural` and others) now refuse such ids as well.
+  `ifc-resource` already did. A file that was written with one would have
+  failed its own GlobalId check.
+
 ## [0.2.2] - 2026-09-23
 
 ### Fixed
