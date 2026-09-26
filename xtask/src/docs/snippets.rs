@@ -25,7 +25,12 @@ use crate::text::splitlines;
 use crate::workspace::Workspace;
 
 /// Directories whose files may define snippets.
-const SOURCES: &[&str] = &["openbim-ifc/tests"];
+const SOURCES: &[&str] = &[
+    "openbim-ifc/tests",
+    "openbim-ifc-wasm/tests/js",
+    "openbim-ifc-py/tests/python",
+    "openbim-ifc-capi/tests/c",
+];
 
 /// Pages still showing hand-written code, pending their rewrite in the docs
 /// rework (PR 6). Each is removed from this list as its page is converted;
@@ -224,16 +229,24 @@ fn fill(text: &str, snippets: &BTreeMap<String, Snippet>) -> Result<(String, Vec
     Ok((out, names))
 }
 
-/// 1-based lines of linted fences that sit outside snippet regions.
+/// 1-based lines of linted fences outside snippet and generated regions.
+///
+/// A generated region (`<!-- X:BEGIN -->` … `<!-- X:END -->`) is written by a
+/// generator from source, such as the C header's signatures, so its code is
+/// not hand-written either.
 fn unmarked_fences(text: &str) -> Vec<usize> {
     let mut out = Vec::new();
     let mut in_region = false;
     let mut in_fence = false;
     for (index, line) in splitlines(text).into_iter().enumerate() {
         let trimmed = line.trim_start();
-        if trimmed.starts_with("<!-- SNIPPET:") {
+        if trimmed.starts_with("<!-- SNIPPET:")
+            || (trimmed.starts_with("<!-- ") && trimmed.ends_with(":BEGIN -->"))
+        {
             in_region = true;
-        } else if trimmed.starts_with("<!-- /SNIPPET -->") {
+        } else if trimmed.starts_with("<!-- /SNIPPET -->")
+            || (trimmed.starts_with("<!-- ") && trimmed.ends_with(":END -->"))
+        {
             in_region = false;
         } else if let Some(info) = trimmed.strip_prefix("```") {
             if in_fence {

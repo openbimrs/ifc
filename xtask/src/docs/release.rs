@@ -42,8 +42,14 @@ pub(crate) fn latest(workspace: &Workspace, krate: &Crate) -> Result<Option<Rele
 /// Registries the crate is published to: crates.io unless `publish = false`,
 /// plus npm and PyPI when their manifests exist. These are the same files the
 /// release workflow publishes from (`scripts/release-crate.py`).
+///
+/// Empty for a crate that has never been released: a manifest that *could*
+/// publish is not a package anyone can install, and a link to it would 404.
 pub(crate) fn registries(workspace: &Workspace, krate: &Crate) -> Vec<Registry> {
     let mut out = Vec::new();
+    if latest(workspace, krate).ok().flatten().is_none() {
+        return out;
+    }
     if krate.publish {
         out.push(Registry {
             kind: "crates.io",

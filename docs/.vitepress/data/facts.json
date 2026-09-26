@@ -408,13 +408,7 @@
     "openbim-ifc-binding-core": {
       "description": "Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python).",
       "group": "binding",
-      "registries": [
-        {
-          "package": "openbim-ifc-binding-core",
-          "registry": "crates.io",
-          "url": "https://crates.io/crates/openbim-ifc-binding-core"
-        }
-      ],
+      "registries": [],
       "released": null,
       "released_date": null,
       "status": "implemented",
@@ -423,13 +417,7 @@
     "openbim-ifc-capi": {
       "description": "Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP files from C and C++.",
       "group": "binding",
-      "registries": [
-        {
-          "package": "openbim-ifc-capi",
-          "registry": "crates.io",
-          "url": "https://crates.io/crates/openbim-ifc-capi"
-        }
-      ],
+      "registries": [],
       "released": null,
       "released_date": null,
       "status": "partial",

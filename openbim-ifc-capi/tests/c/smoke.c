@@ -39,6 +39,29 @@ static OpenbimIfcStatus read_attribute(OpenbimIfcModel model, uint64_t id,
                                            string_len);
 }
 
+/* The example published on the docs site's C page. */
+static int documented_example(void) {
+  const uint8_t *data = (const uint8_t *)FILE_TEXT;
+  size_t len = strlen(FILE_TEXT);
+  // docs:snippet c-read-type
+  OpenbimIfcModel model = 0;
+  if (openbim_ifc_v0_1_model_parse(data, len, &model, NULL, 0) != OPENBIM_IFC_STATUS_OK) {
+    return 1;
+  }
+
+  /* Every call that returns a buffer: ask for the size, then fetch. */
+  size_t need = 0;
+  openbim_ifc_v0_1_entity_type(model, 1, NULL, 0, &need);
+  uint8_t *type = (uint8_t *)malloc(need);
+  openbim_ifc_v0_1_entity_type(model, 1, type, need, &need);
+  printf("#1 is %s\n", (const char *)type); /* #1 is IFCWALL */
+  free(type);
+
+  openbim_ifc_v0_1_model_destroy(model);
+  // docs:end
+  return 0;
+}
+
 int main(void) {
   OpenbimIfcVersion version;
   OK(openbim_ifc_v0_1_version(&version));
@@ -176,6 +199,8 @@ int main(void) {
             OPENBIM_IFC_STATUS_IO,
         "a missing file is an io error");
   CHECK(strlen(message) > 0, "io error message");
+
+  CHECK(documented_example() == 0, "the documented example runs");
 
   size_t live = 1;
   OK(openbim_ifc_v0_1_live_models(&live));

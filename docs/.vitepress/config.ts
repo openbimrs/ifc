@@ -22,6 +22,20 @@ function adrItems() {
   })
 }
 
+function bindingsSidebar() {
+  return [
+    {
+      text: 'Language bindings',
+      items: [
+        { text: 'Install', link: '/guide/install' },
+        { text: 'JavaScript and TypeScript', link: '/bindings/javascript' },
+        { text: 'Python', link: '/bindings/python' },
+        { text: 'C and C++', link: '/bindings/c' },
+      ],
+    },
+  ]
+}
+
 function referenceSidebar() {
   const groups = facts.crates.groups
     .filter(function (group) {
@@ -76,6 +90,8 @@ export default defineConfig({
     siteTitle: 'openbim-ifc',
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
+      { text: 'Install', link: '/guide/install' },
+      { text: 'Bindings', link: '/bindings/javascript' },
       { text: 'Capabilities', link: '/capabilities' },
       { text: 'Use cases', link: '/use-cases/' },
       { text: 'Architecture', link: '/architecture/' },
@@ -88,13 +104,15 @@ export default defineConfig({
         {
           text: 'Guide',
           items: [
+            { text: 'Install', link: '/guide/install' },
             { text: 'Getting started', link: '/guide/getting-started' },
             { text: 'Construction resources', link: '/guide/resources' },
             { text: 'Approvals and constraints', link: '/guide/approvals-constraints' },
             { text: 'Contributing', link: '/guide/contributing' },
           ],
         },
-      ],
+      ].concat(bindingsSidebar()),
+      '/bindings/': bindingsSidebar(),
       '/use-cases/': [
         {
           text: 'Use cases',

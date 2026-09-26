@@ -12,10 +12,12 @@
 //! - `release.rs`: released versions and registries, from changelogs and manifests.
 //! - `reference.rs`: one generated page per crate, plus the index.
 //! - `adr.rs`: the ADR index and the sidebar's ADR list.
+//! - `bindings.rs`: the install table and the three bindings' API references.
 //! - `facts.rs`: `facts.json`, the numbers prose may quote.
 //! - `snippets.rs`: page code copied from marked test regions, and the fence lint.
 
 mod adr;
+mod bindings;
 mod capabilities;
 mod changelog;
 mod facts;
@@ -89,6 +91,7 @@ pub(crate) fn run(check: bool) -> Result<(), String> {
         facts::generate(&workspace)?,
     ];
     outputs.extend(reference::generate(&workspace)?);
+    outputs.extend(bindings::generate(&workspace)?);
     // Last: it composes with every page the generators above produced.
     snippets::apply(&workspace, &mut outputs)?;
 
