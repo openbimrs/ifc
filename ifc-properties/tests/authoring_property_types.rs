@@ -434,7 +434,7 @@ fn templates_and_type_attachment_read_back() {
     let found = property_set_template(&model, template).expect("template resolves");
     assert_eq!(found.name.as_deref(), Some("Pset_WallCommon"));
     assert_eq!(found.applicable_entity.as_deref(), Some("IfcWall"));
-    assert_eq!(template_of_set(&model).get(&pset), Some(&template));
+    assert_eq!(template_of_set(&model).get(&pset), Some(&vec![template]));
 }
 
 /// Type attachment is the route properties reach occurrences.

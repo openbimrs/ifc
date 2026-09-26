@@ -47,6 +47,10 @@ owner and expose a public symbol only through an intentional parent re-export.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [x] `PROP-TEMPLATE` - implement templates and applicability links
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+  - #60: `template_of_set` keeps every template defining a set
+    (`IsDefinedBy` is `SET [0:?]`), not the last one. Proof:
+    `tests/duplicate_assignments.rs::every_template_defining_a_set_is_kept`.
+    Removing the sort or the dedup each fail.
 - [x] `PROP-QUERY` - resolve occurrence/type property assignment with precedence made explicit
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
   - #58: duplicate type, set-name and property-name statements keep the

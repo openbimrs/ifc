@@ -153,3 +153,25 @@ fn precedence_and_a_valid_model_raise_no_anomaly() {
     assert_eq!(set.source, Source::Occurrence);
     assert_eq!(set.shadowed.as_ref().map(|s| s.set.id), Some(EntityId(20)));
 }
+
+/// A set may be defined by several templates, and all of them are kept (#60).
+///
+/// `IfcPropertySetDefinition.IsDefinedBy` is `SET [0:?] OF
+/// IfcRelDefinesByTemplate`. Before, the map kept only the last template.
+#[test]
+fn every_template_defining_a_set_is_kept() {
+    let model = parse(
+        "#3=IFCPROPERTYSINGLEVALUE('IsExternal',$,IFCBOOLEAN(.T.),$);
+#20=IFCPROPERTYSET('0YvctVUKr0kugbFTf53O20',$,'Pset_Custom',$,(#3));
+#21=IFCPROPERTYSET('0YvctVUKr0kugbFTf53O21',$,'Pset_Other',$,(#3));
+#50=IFCSIMPLEPROPERTYTEMPLATE('0YvctVUKr0kugbFTf53O50',$,'IsExternal',$,.P_SINGLEVALUE.,'IfcBoolean',$,$,$,$,$,.READWRITE.);
+#51=IFCPROPERTYSETTEMPLATE('0YvctVUKr0kugbFTf53O51',$,'Pset_Custom',$,.PSET_OCCURRENCEDRIVEN.,'IfcWall',(#50));
+#52=IFCPROPERTYSETTEMPLATE('0YvctVUKr0kugbFTf53O52',$,'Pset_Custom',$,.PSET_TYPEDRIVENOVERRIDE.,'IfcWall',(#50));
+#61=IFCRELDEFINESBYTEMPLATE('0YvctVUKr0kugbFTf53O61',$,$,$,(#20),#52);
+#60=IFCRELDEFINESBYTEMPLATE('0YvctVUKr0kugbFTf53O60',$,$,$,(#20,#21),#51);
+#62=IFCRELDEFINESBYTEMPLATE('0YvctVUKr0kugbFTf53O62',$,$,$,(#20),#51);",
+    );
+    let links = ifc_properties::template_of_set(&model);
+    assert_eq!(links[&EntityId(20)], [EntityId(51), EntityId(52)]);
+    assert_eq!(links[&EntityId(21)], [EntityId(51)]);
+}

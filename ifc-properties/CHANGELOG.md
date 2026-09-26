@@ -34,6 +34,13 @@ everything released before per-crate changelogs began.
 
 - `PropertyAnomaly` is `#[non_exhaustive]`, so future checks can add
   variants. Exhaustive matches need a wildcard arm.
+- `template_of_set` returns `BTreeMap<EntityId, Vec<EntityId>>`: every
+  template defining a set, ascending by id and without repeats (#60).
+  `IfcPropertySetDefinition.IsDefinedBy` is `SET [0:?] OF
+  IfcRelDefinesByTemplate`, so several templates are legal, but the old
+  `BTreeMap<EntityId, EntityId>` kept only the last and silently dropped the
+  others, on valid files. A caller that wants one template must now choose,
+  and is not handed an arbitrary one.
 
 ### Fixed
 
