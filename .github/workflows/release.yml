@@ -14,6 +14,8 @@
 #
 # Run it by hand (Actions -> Release -> Run workflow) with a tag name to
 # rehearse a release: everything is built and tested, nothing is published.
+# The gate itself is CI's: the plan job requires CI to have passed on the
+# commit rather than running scripts/gate.sh a second time.
 name: Release
 
 on:
@@ -39,6 +41,9 @@ jobs:
   plan:
     name: Plan and gate
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # read CI's verdict on the tagged commit
     outputs:
       crate: ${{ steps.plan.outputs.crate }}
       version: ${{ steps.plan.outputs.version }}
@@ -61,39 +66,37 @@ jobs:
         uses: dtolnay/rust-toolchain@688313b0823df1393bcebb1b4add0438a6d36884 # 1.88.0
         with:
           toolchain: 1.88.0
-          components: clippy, rustfmt
-          targets: wasm32-unknown-unknown
       - name: Resolve registries
         id: plan
         env:
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
         run: python3 scripts/release-crate.py "$TAG" --plan | tee -a "$GITHUB_OUTPUT"
-      - name: Cache IFC EXPRESS schemas
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: references/ifc-spec
-          key: ifc-spec-${{ hashFiles('scripts/fetch-ifc-schemas.sh') }}
-      - name: Set up Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: "22"
-      - name: Install wasm-bindgen CLI
-        uses: taiki-e/install-action@9983c65e42da123ff25d1f78505eb6de315aa172 # v2.87.20
-        with:
-          tool: wasm-bindgen-cli@0.2.128
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.12"
-      - name: Install uv and maturin
-        run: python -m pip install --quiet uv "maturin>=1.13,<2"
-      - name: Fetch IFC EXPRESS schemas
-        run: scripts/fetch-ifc-schemas.sh
-      - name: Run standalone gate
-        # The same gate as CI, on the exact tagged commit.
+      - name: Require CI to have passed on this commit
+        # The full gate (scripts/gate.sh) already runs in CI on every push,
+        # including this tag's, on this exact commit -- running it again here
+        # cost 13 minutes and proved nothing new. Instead, wait for a CI run
+        # of `.github/workflows/ci.yml` on this commit and require its
+        # verdict. Only `push` runs count: they test the commit itself, while
+        # a pull_request run tests a merge with its base. The commit is on
+        # main (checked above), so CI ran main's workflow and gate.sh.
+        # Re-running a failed CI run and then this job picks up the new result.
         env:
-          IFC_SPEC_SKIP_FETCH: "1"
-        run: scripts/gate.sh
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for _ in $(seq 1 120); do
+            runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&event=push" \
+              --jq '.workflow_runs[] | "\(.id) \(.status) \(.conclusion)"')"
+            if grep -q ' completed success$' <<<"$runs"; then
+              echo "CI passed on $GITHUB_SHA:"; echo "$runs"; exit 0
+            fi
+            if [ -n "$runs" ] && ! grep -qv ' completed ' <<<"$runs"; then
+              echo "::error::CI did not pass on $GITHUB_SHA; re-run it, then re-run this workflow"
+              echo "$runs"; exit 1
+            fi
+            echo "waiting for CI on $GITHUB_SHA: ${runs:-no run yet}"
+            sleep 30
+          done
+          echo "::error::no finished CI run on $GITHUB_SHA after 60 minutes"; exit 1
 
   crates-io:
     name: Publish to crates.io
