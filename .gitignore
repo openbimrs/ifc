@@ -2,14 +2,15 @@
 *.profraw
 
 # Documentation site build artifacts.
-node_modules/
+# No trailing slash: a symlinked checkout (as in a worktree) must match too.
+node_modules
 docs/.vitepress/dist/
 docs/.vitepress/cache/
 
 # Local read-only reference checkouts (upstream schemas, competitor sources).
 # Never redistributable, never a build dependency -- see references/AGENTS.md.
 # Ignored so check-leakage.py sees only the publishable tree.
-/references/
+/references
 
 # Local-only cargo config: redirects kernel pins to a local checkout
 # during upstream development. Never committed.

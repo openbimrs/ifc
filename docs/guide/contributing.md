@@ -86,7 +86,7 @@ cargo run -p xtask -- docs --check  # the gate: fail if any is out of date
 
 Generated regions sit between `<!-- NAME:BEGIN -->` and `<!-- NAME:END -->`;
 edit the source, never the region. A number in prose comes from
-`docs/.vitepress/data/facts.json` (`{{ facts.crates.total }}`), not from the
+`docs/.vitepress/data/facts.json` (<code v-pre>{{ facts.crates.total }}</code>), not from the
 author's memory. The gate also rejects git dependencies, pinned versions in
 TOML examples, spelled-out crate counts and absolute home paths anywhere on the
 site.
