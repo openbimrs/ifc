@@ -113,68 +113,6 @@ lockstep -- is archived in the
   axiolid/kernel#165) brings the composite-curve D within 1e-5 of its exact
   volume.
 
-### ifc-properties
-
-### Added
-
-- `exact_unit` maps `IFCSECTIONALAREAINTEGRALMEASURE` to
-  `SECTIONAREAINTEGRALUNIT`, whose name differs from the measure's.
-  Before, it was refused as unmapped. The pairing follows the measure's
-  definition (m^5) and the IFC4 annex E structural example.
-- The permissive views report the duplicates they resolve (#58).
-  `exact_property` already refuses these files; the permissive views now
-  keep a documented winner and say so:
-  - `PropertyAnomaly::TypedTwice`: an object with two `IfcRelDefinesByType`
-    (IFC4 `IsTypedBy` is `SET [0:1]`; IFC2X3 `IfcObject` WR1).
-  - `PropertyAnomaly::DuplicateSetName`: two same-named property sets on one
-    occurrence or one type (IFC4 `UniquePropertySetNames`). It is reported
-    once per owner, including for a type that no occurrence uses.
-  - `PropertyAnomaly::DuplicatePropertyName`: two same-named properties in
-    one set (IFC4 `UniquePropertyNames`, IFC2X3 `WR32`), reported by
-    `property_sets_by_object`.
-
-### Changed (breaking)
-
-- `PropertyAnomaly` is `#[non_exhaustive]`, so future checks can add
-  variants. Exhaustive matches need a wildcard arm.
-- `template_of_set` returns `BTreeMap<EntityId, Vec<EntityId>>`: every
-  template defining a set, ascending by id and without repeats (#60).
-  `IfcPropertySetDefinition.IsDefinedBy` is `SET [0:?] OF
-  IfcRelDefinesByTemplate`, so several templates are legal, but the old
-  `BTreeMap<EntityId, EntityId>` kept only the last and silently dropped the
-  others, on valid files. A caller that wants one template must now choose,
-  and is not handed an arbitrary one.
-
-### Fixed
-
-- An object typed twice kept the **last** `IfcRelDefinesByType` in file
-  order and said nothing. It now keeps the first by relationship id, and
-  inherits only that type's sets.
-- Two same-named property sets on one owner made the later one win. For
-  occurrences, the earlier one was misreported as `shadowed`: shadowing
-  means an occurrence set overriding a type set. The set with the lower id
-  now wins within each route. An occurrence set still overrides a
-  same-named type set, and that is not reported.
-
-### Fixed
-
-- `exact_property` no longer reports `Absent` for a quantity in a same-named
-  `IfcElementQuantity` (#66). Quantity sets were skipped, so a checker
-  asking for `Qto_WallBaseQuantities.Length` (IDS treats quantities as
-  properties) got a confident "missing".
-  - Simple quantities now resolve exactly. `value_type` is the release's
-    declared measure of the value attribute (`IFCLENGTHMEASURE`), and
-    `unit_id` is the quantity's `IfcNamedUnit`.
-  - Complex, duplicated or malformed quantities are refused, as are a
-    same-named property set and quantity set.
-  - A predefined property set (`IfcDoorLiningProperties`, …) whose own
-    attribute carries the requested name is refused with
-    `UnsupportedDefinition` instead of being skipped into `Absent`.
-  - A quantity set with no `Name` is refused (`MalformedName`), because it
-    could be the set asked for.
-  - Results change from `Absent` to `Present` or an error only where the
-    old answer was unproven.
-
 ### ifc-schema
 
 ### Changed
@@ -239,6 +177,13 @@ lockstep -- is archived in the
 
 ### openbim-ifc
 
+### Changed (breaking)
+
+- `properties` re-exports `ifc-properties` 0.4.0, whose breaking changes
+  (`PropertyAnomaly` is `#[non_exhaustive]`; `template_of_set` returns every
+  template of a set) pass through. It also resolves quantity sets in
+  `exact_property` instead of reporting them absent (#66).
+
 ### Changed
 
 - STEP models load lazily: `from_step_bytes`, `read_path` and every strict
@@ -275,7 +220,69 @@ lockstep -- is archived in the
   `UnitKind::Si::prefix_exponent` is now `Option<i32>` and whose
   `UnitKind::Conversion` gains an `offset` field.
 
-## [0.4.0] - 2026-09-23
+## [0.4.0] - 2026-09-26
+
+### ifc-properties
+
+### Added
+
+- `exact_unit` maps `IFCSECTIONALAREAINTEGRALMEASURE` to
+  `SECTIONAREAINTEGRALUNIT`, whose name differs from the measure's.
+  Before, it was refused as unmapped. The pairing follows the measure's
+  definition (m^5) and the IFC4 annex E structural example.
+- The permissive views report the duplicates they resolve (#58).
+  `exact_property` already refuses these files; the permissive views now
+  keep a documented winner and say so:
+  - `PropertyAnomaly::TypedTwice`: an object with two `IfcRelDefinesByType`
+    (IFC4 `IsTypedBy` is `SET [0:1]`; IFC2X3 `IfcObject` WR1).
+  - `PropertyAnomaly::DuplicateSetName`: two same-named property sets on one
+    occurrence or one type (IFC4 `UniquePropertySetNames`). It is reported
+    once per owner, including for a type that no occurrence uses.
+  - `PropertyAnomaly::DuplicatePropertyName`: two same-named properties in
+    one set (IFC4 `UniquePropertyNames`, IFC2X3 `WR32`), reported by
+    `property_sets_by_object`.
+
+### Changed (breaking)
+
+- `PropertyAnomaly` is `#[non_exhaustive]`, so future checks can add
+  variants. Exhaustive matches need a wildcard arm.
+- `template_of_set` returns `BTreeMap<EntityId, Vec<EntityId>>`: every
+  template defining a set, ascending by id and without repeats (#60).
+  `IfcPropertySetDefinition.IsDefinedBy` is `SET [0:?] OF
+  IfcRelDefinesByTemplate`, so several templates are legal, but the old
+  `BTreeMap<EntityId, EntityId>` kept only the last and silently dropped the
+  others, on valid files. A caller that wants one template must now choose,
+  and is not handed an arbitrary one.
+
+### Fixed
+
+- An object typed twice kept the **last** `IfcRelDefinesByType` in file
+  order and said nothing. It now keeps the first by relationship id, and
+  inherits only that type's sets.
+- Two same-named property sets on one owner made the later one win. For
+  occurrences, the earlier one was misreported as `shadowed`: shadowing
+  means an occurrence set overriding a type set. The set with the lower id
+  now wins within each route. An occurrence set still overrides a
+  same-named type set, and that is not reported.
+
+### Fixed
+
+- `exact_property` no longer reports `Absent` for a quantity in a same-named
+  `IfcElementQuantity` (#66). Quantity sets were skipped, so a checker
+  asking for `Qto_WallBaseQuantities.Length` (IDS treats quantities as
+  properties) got a confident "missing".
+  - Simple quantities now resolve exactly. `value_type` is the release's
+    declared measure of the value attribute (`IFCLENGTHMEASURE`), and
+    `unit_id` is the quantity's `IfcNamedUnit`.
+  - Complex, duplicated or malformed quantities are refused, as are a
+    same-named property set and quantity set.
+  - A predefined property set (`IfcDoorLiningProperties`, …) whose own
+    attribute carries the requested name is refused with
+    `UnsupportedDefinition` instead of being skipped into `Absent`.
+  - A quantity set with no `Name` is refused (`MalformedName`), because it
+    could be the set asked for.
+  - Results change from `Absent` to `Present` or an error only where the
+    old answer was unproven.
 
 ### openbim-ifc
 

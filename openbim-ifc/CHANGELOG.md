@@ -14,6 +14,13 @@ everything released before per-crate changelogs began.
 
 ## [0.6.0] - 2026-09-26
 
+### Changed (breaking)
+
+- `properties` re-exports `ifc-properties` 0.4.0, whose breaking changes
+  (`PropertyAnomaly` is `#[non_exhaustive]`; `template_of_set` returns every
+  template of a set) pass through. It also resolves quantity sets in
+  `exact_property` instead of reporting them absent (#66).
+
 ### Changed
 
 - STEP models load lazily: `from_step_bytes`, `read_path` and every strict
