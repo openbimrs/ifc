@@ -34,9 +34,15 @@ from the code it describes.
 
 - [ ] `DOC-006` - per-use-case page for model checking / IDS auditing once the
       relevant crates leave scaffold status.
-- [ ] `DOC-007` - publish a downloadable worked annotation round-trip fixture
-      alongside the 2D approval-plan guide; authoring and tested round-trip support
-      exist, but the fixture is not yet a published docs artifact.
+- [x] `DOC-007` - publish a downloadable worked annotation round-trip fixture
+      alongside the 2D approval-plan guide (#9).
+      Proof: `docs/public/fixtures/annotation-plan.ifc`, generated and
+      `ifcopenshell.validate`-checked by `tools/gen_annotation_fixture.py`,
+      byte-stable. `openbim-ifc/tests/docs_examples.rs::documented_annotation_fixture_round_trips`
+      reads the published file, runs the page's edit, and asserts the
+      annotation, text, curve/text styles, layer and library reference through
+      typed views. The written file differs only in the edited label.
+      `npm run docs:build` serves it at `/ifc/fixtures/annotation-plan.ifc`.
 - [x] `DOC-008` - link the site from GitHub About metadata and publish with
       GitHub Pages.
       Proof: `gh repo view openbimrs/ifc --json homepageUrl` returns

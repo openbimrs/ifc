@@ -60,6 +60,9 @@
 
 // The model is always available: it is the common vocabulary.
 pub use ifc_model::{codec, Codec, Entity, EntityId, Header, Model, ModelError, Value};
+// `EntityEditor::stage` and the domain writers take a transaction; without
+// these a facade user could build an editor but never apply it.
+pub use ifc_model::{Applied, Conflict, Transaction};
 
 /// The STEP physical file codec (`.ifc`).
 #[cfg(feature = "step")]

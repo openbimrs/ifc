@@ -594,3 +594,120 @@ fn documented_resource_example_round_trips_authored_composition() {
         vec![carpenter]
     );
 }
+
+/// `docs/use-cases/2d-approval-plans.md` -- the downloadable round-trip fixture
+/// (DOC-007, #9).
+///
+/// Reads the file the site publishes, not a copy, so the page and the download
+/// cannot drift apart. Every entity the page names is read back through its
+/// typed view, the documented edit is applied, and the written file must
+/// reparse to the same model apart from that edit.
+#[cfg(all(feature = "style", feature = "classification", feature = "author"))]
+#[test]
+fn documented_annotation_fixture_round_trips() {
+    use ifc::classification::ClassificationView;
+    use ifc::style::{BoxAlignment, StyleView};
+    use ifc::{EntityEditor, Transaction};
+
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../docs/public/fixtures/annotation-plan.ifc");
+    let bytes = std::fs::read(&path).expect("the published fixture exists");
+
+    // --- the page's example (`?` there, `expect` here) ---
+    let mut model = StepCodec.read_bytes(&bytes).expect("read");
+    let schema = ifc::schema::ifc4();
+
+    let text = model.ids_of_type("IFCTEXTLITERALWITHEXTENT")[0];
+    let view = StyleView::new(&model, schema);
+    assert_eq!(
+        view.text_literal(text)
+            .expect("text")
+            .literal()
+            .expect("literal"),
+        "Brandwand F90"
+    );
+
+    let mut tx = Transaction::new(&model);
+    EntityEditor::new(schema, &model, text)
+        .expect("text exists")
+        .text("Literal", "Brandwand F90 (geprüft)")
+        .stage(&mut tx)
+        .expect("a schema-valid edit");
+    tx.commit(&mut model)
+        .expect("nothing else changed the model");
+
+    let out = StepCodec.write_bytes(&model).expect("write");
+    // --- end of the page's example ---
+
+    let original = StepCodec.read_bytes(&bytes).expect("read");
+    let reparsed = StepCodec.read_bytes(&out).expect("reparse");
+    assert_eq!(original.len(), reparsed.len(), "no entity gained or lost");
+    for (id, entity) in original.iter() {
+        let after = reparsed.get(id).expect("every entity survives");
+        assert_eq!(entity.type_name, after.type_name);
+        if id == text {
+            assert_eq!(after.text(0), Some("Brandwand F90 (geprüft)"));
+            assert_eq!(entity.attributes[1..], after.attributes[1..]);
+        } else {
+            assert_eq!(entity.attributes, after.attributes, "#{} changed", id.0);
+        }
+    }
+
+    // Every entity the page names reads back through its typed view.
+    let view = StyleView::new(&reparsed, schema);
+    let first = |type_name: &str| reparsed.ids_of_type(type_name)[0];
+
+    let annotation = view.annotation(first("IFCANNOTATION")).expect("annotation");
+    assert_eq!(annotation.name().unwrap(), Some("Brandwand"));
+
+    let extent = view
+        .text_literal_with_extent(text)
+        .expect("text with extent");
+    assert_eq!(extent.box_alignment().unwrap(), BoxAlignment::BottomLeft);
+
+    let line = first("IFCPOLYLINE");
+    let curve_style = first("IFCCURVESTYLE");
+    assert_eq!(
+        view.resolve_item_style(line).unwrap().effective_styles(),
+        [curve_style]
+    );
+    let style = view.curve_style(curve_style).expect("curve style");
+    assert_eq!(style.name().unwrap(), Some("Brandwand"));
+    let red = view
+        .colour_rgb(style.curve_colour().unwrap().expect("a colour"))
+        .unwrap();
+    assert_eq!(red.red().unwrap(), 1.0);
+
+    let text_style = first("IFCTEXTSTYLE");
+    assert_eq!(
+        view.resolve_item_style(text).unwrap().effective_styles(),
+        [text_style]
+    );
+    assert_eq!(
+        view.text_style(text_style).unwrap().name().unwrap(),
+        Some("Beschriftung")
+    );
+
+    let layer = view
+        .presentation_layer(first("IFCPRESENTATIONLAYERASSIGNMENT"))
+        .unwrap();
+    assert_eq!(layer.name().unwrap(), "A-ANNO-FIRE");
+    assert_eq!(
+        layer.assigned_items().unwrap(),
+        [first("IFCSHAPEREPRESENTATION")]
+    );
+
+    let library = ClassificationView::new(&reparsed);
+    let symbol = library
+        .library_references()
+        .next()
+        .expect("a library reference");
+    assert_eq!(symbol.identification().unwrap(), Some("BW-F90"));
+    assert_eq!(
+        library
+            .library_assignments_for(annotation.id())
+            .unwrap()
+            .len(),
+        1
+    );
+}
