@@ -45,9 +45,12 @@ npm run docs:build    # what CI runs; dead links fail the build
   literals.
 - `scripts/check-leakage.py` rejects XSD, PDF, and `references/` payloads from
   the built site. Normative IFC schema material is never published.
-- Rust examples shown here are compiled by
-  `openbim-ifc/tests/docs_examples.rs`. Add an example there before adding it
-  to a page.
+- Code on a page comes from a test. Mark it in the test with
+  `// docs:snippet <name>` … `// docs:end` (e.g. in
+  `openbim-ifc/tests/docs_examples.rs`) and put
+  `<!-- SNIPPET:<name> -->` `<!-- /SNIPPET -->` on the page; the generator copies
+  it in. A `rust`/`python`/`js`/`ts`/`c` fence outside a snippet region fails
+  the check (ADRs excepted). Use ```` ```text ```` for output or pseudo-code.
 
 ## Conventions
 
