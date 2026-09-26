@@ -167,13 +167,20 @@ refuses a tag that disagrees with any manifest. Every publish step
 skips a version that is already live, so re-running a partly failed
 release finishes it.
 
-Credentials live in the `release` environment, the only place publish
-jobs can read them:
+Publishing runs in the `release` environment. Only release tags
+(`*-v*`) and `main` (for rehearsals) may deploy to it, and only admins
+may create, move or delete release tags.
 
-- crates.io: the `CARGO_REGISTRY_TOKEN` secret.
-- npm and PyPI: trusted publishing (OIDC), no token. Both registries
-  trust exactly `release.yml` and `release`; renaming either breaks
-  publishing until the registry settings are changed to match.
+- npm, PyPI and crates.io: trusted publishing (OIDC), no long-lived
+  token. Each registry trusts exactly `release.yml` and `release`;
+  renaming either breaks publishing until the registry settings are
+  changed to match.
+- crates.io is configured per crate: in each crate's crates.io settings,
+  add a trusted publisher with repository `openbimrs/ifc`, workflow
+  `release.yml` and environment `release`. A new crate is configured
+  after its first publish. Until every crate is configured, the workflow
+  falls back to the `CARGO_REGISTRY_TOKEN` secret and warns; delete the
+  secret once the warning stops appearing.
 
 If CI cannot publish, `--publish --local` runs `cargo publish` from a
 detached worktree at the tag instead, so the embedded VCS hash stays
