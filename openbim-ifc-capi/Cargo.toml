@@ -18,19 +18,21 @@ crate-type = ["rlib", "staticlib", "cdylib"]
 [dependencies]
 # ADR 0013: bindings reach IFC through the facade only, via the shared core.
 openbim-ifc-binding-core.workspace = true
-# Opt-in C allocator, see the `mimalloc` feature. Never on by default: it
-# is C code (the IFC family is pure Rust) and holds more memory. #49 looks
-# for a pure-Rust replacement.
-mimalloc = { version = "=0.1.52", optional = true, default-features = false }
+# Opt-in pure-Rust allocator, see the `rusty_alloc` feature (#49). Pinned
+# exactly, core crate included: an allocator is unsafe code under every
+# allocation, and this one is young (its 0.3.x line had use-after-frees), so
+# an upgrade is a reviewed, measured change, never a silent `cargo update`.
+rusty_alloc-api = { version = "=2.2.1", optional = true }
+rusty_alloc = { version = "=2.2.1", optional = true, default-features = false }
 
 [features]
 default = []
-# Route the library's Rust allocations through mimalloc: 23-36% fewer
-# cycles reading STEP, 2-28% more resident memory (measured in #49). The
-# host's own `malloc` is untouched. Do not enable it when this crate is
-# used as an rlib by a Rust program that sets its own global allocator:
-# a program may have only one.
-mimalloc = ["dep:mimalloc"]
+# Route the library's Rust allocations through rusty_alloc: reading STEP
+# into a model takes 18-35% less CPU time on seven real IFC files, at 1-7%
+# less peak memory (measured in #49). The host's own `malloc` is untouched.
+# Do not enable it when this crate is used as an rlib by a Rust program
+# that sets its own global allocator: a program may have only one.
+rusty_alloc = ["dep:rusty_alloc-api", "dep:rusty_alloc"]
 
 [dev-dependencies]
 # Regenerates the header in-memory to prove the committed one is current.

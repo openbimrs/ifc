@@ -26,17 +26,20 @@ openbim-ifc-binding-core.workspace = true
 # deprecated in pyo3 0.29; maturin sets PYO3_BUILD_EXTENSION_MODULE instead,
 # and leaving it off keeps `cargo test --workspace` linkable.
 pyo3 = { version = "=0.29.2", features = ["abi3-py39"] }
-# Opt-in C allocator, see the `mimalloc` feature. Never on by default: it
-# is C code (the IFC family is pure Rust) and holds more memory. #49 looks
-# for a pure-Rust replacement.
-mimalloc = { version = "=0.1.52", optional = true, default-features = false }
+# Opt-in pure-Rust allocator, see the `rusty_alloc` feature (#49). Pinned
+# exactly, core crate included: an allocator is unsafe code under every
+# allocation, and this one is young (its 0.3.x line had use-after-frees), so
+# an upgrade is a reviewed, measured change, never a silent `cargo update`.
+rusty_alloc-api = { version = "=2.2.1", optional = true }
+rusty_alloc = { version = "=2.2.1", optional = true, default-features = false }
 
 [features]
 default = []
-# Route this extension's Rust allocations through mimalloc: 23-36% fewer
-# cycles reading STEP, 2-28% more resident memory (measured in #49). Build
-# the wheel with `maturin build --release --features mimalloc`.
-mimalloc = ["dep:mimalloc"]
+# Route this extension's Rust allocations through rusty_alloc: reading
+# STEP into a model takes 18-35% less CPU time on seven real IFC files, at
+# 1-7% less peak memory (measured in #49). Build the wheel with
+# `maturin build --release --features rusty_alloc`.
+rusty_alloc = ["dep:rusty_alloc-api", "dep:rusty_alloc"]
 
 [lints]
 workspace = true
