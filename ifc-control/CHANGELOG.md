@@ -12,6 +12,18 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `assign_to_control` and `ControlAssignmentDraft` stage an
+  `IfcRelAssignsToControl` whose relating control is a permit, project
+  order, action request or performance history. Empty, duplicated and
+  self-referencing `RelatedObjects`, members that are not
+  `IfcObjectDefinition`s, and missing references are refused;
+  `RelatedObjectsType` is left unset (#99).
+- `ControlError::ForeignControl` refuses a relating control another crate
+  owns (cost schedules, cost items, work controls).
+- `ControlKind::ALL` lists the four owned controls.
+
 ## [0.2.0] - 2026-09-22
 
 First release under per-crate versioning. See the
