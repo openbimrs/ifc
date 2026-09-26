@@ -114,3 +114,46 @@ fn malformed_xml_reports_the_open_entity_and_value_path() {
     );
     assert!(matches!(error.root_cause(), XmlError::Malformed(_)));
 }
+
+/// Regression: any logical text other than `true`/`false` used to read as
+/// `LogicalUnknown`, coercing a typo into a third truth value.
+#[test]
+fn unrecognised_logical_text_is_a_typed_failure() {
+    let error = parse(r#"<a0 kind="logical">maybe</a0>"#);
+    assert_eq!(
+        error.path().map(ToString::to_string).as_deref(),
+        Some("/ifcXML/IFCEXAMPLE[@id='i7']/a0")
+    );
+    assert!(matches!(
+        error.root_cause(),
+        XmlError::InvalidScalar { kind, value } if kind == "logical" && value == "maybe"
+    ));
+}
+
+/// Two values for one slot cannot both be kept without shifting every later
+/// slot, so the entity is refused with its location.
+#[test]
+fn a_second_value_for_one_slot_is_refused() {
+    let error = parse(r#"<a0 kind="integer">1</a0><a0 kind="integer">2</a0>"#);
+    assert_eq!(
+        error.path().map(ToString::to_string).as_deref(),
+        Some("/ifcXML/IFCEXAMPLE[@id='i7']")
+    );
+    assert!(matches!(
+        error.root_cause(),
+        XmlError::DuplicateSlot { name, slot: 0 } if name == "a0"
+    ));
+}
+
+/// Without a schema bounding the slot count, a positional name that skips
+/// ahead is refused rather than silently shifted down (or padded to an
+/// attacker-chosen length).
+#[test]
+fn a_positional_gap_without_a_schema_is_refused() {
+    let xml = br#"<ifcXML><IFCEXAMPLE id="i7" a0="1" a4000000000="2"/></ifcXML>"#;
+    let error = ifc_xml::reader::read(&XmlCodec::default(), xml).unwrap_err();
+    assert!(matches!(
+        error.root_cause(),
+        XmlError::MissingSlot { name, slot: 4_000_000_000, missing: 1 } if name == "a4000000000"
+    ));
+}

@@ -278,3 +278,122 @@ fn schema_produces_conformant_attribute_names() {
         "positional fallback should not appear"
     );
 }
+
+/// A three-slot schema for the slot-order regressions.
+#[cfg(feature = "schema")]
+fn probe_codec() -> XmlCodec {
+    let schema = ifc_schema::Schema::from_express(
+        "SCHEMA IFC4;\n\
+         ENTITY IfcProbe; First : IfcLabel; Second : IfcLabel; Third : IfcLabel; END_ENTITY;\n\
+         END_SCHEMA;",
+    );
+    XmlCodec::with_schema(std::sync::Arc::new(schema))
+}
+
+/// Regression found by the fixture corpus (#118): with schema names, scalars
+/// are XML attributes and structured values child elements, and the reader
+/// kept that document order, so `IfcLocalPlacement($, #2)` read back as
+/// `(#2, $)`. Names now resolve to slots through the same schema.
+#[cfg(feature = "schema")]
+#[test]
+fn schema_named_slots_read_back_in_slot_order() {
+    let mut model = Model::new();
+    let attributes = vec![
+        Value::Null,
+        Value::Ref(EntityId(2)),
+        Value::List(vec![Value::Integer(1)]),
+    ];
+    model.insert(EntityId(1), Entity::new("IFCPROBE", attributes.clone()));
+    let codec = probe_codec();
+    let back = codec
+        .read_bytes(&codec.write_bytes(&model).unwrap())
+        .unwrap();
+    assert_eq!(back.get(EntityId(1)).unwrap().attributes, attributes);
+}
+
+/// ifcXML omits unset optional attributes; with a schema bounding the slot
+/// count, an omitted slot reads as unset instead of shifting later values.
+#[cfg(feature = "schema")]
+#[test]
+fn omitted_schema_slots_read_as_unset() {
+    let xml = br#"<ifcXML><IfcProbe id="i1" Third="c" First="a"/></ifcXML>"#;
+    let model = probe_codec().read_bytes(xml).unwrap();
+    assert_eq!(
+        model.get(EntityId(1)).unwrap().attributes,
+        vec![
+            Value::Text("a".into()),
+            Value::Null,
+            Value::Text("c".into())
+        ]
+    );
+}
+
+/// Write then read with the default codec, returning entity #1's attributes.
+fn default_round_trip(attributes: &[Value]) -> Vec<Value> {
+    let mut model = Model::new();
+    model.insert(EntityId(1), Entity::new("IFCTEST", attributes.to_vec()));
+    let codec = XmlCodec::default();
+    let back = codec
+        .read_bytes(&codec.write_bytes(&model).unwrap())
+        .unwrap();
+    back.get(EntityId(1)).unwrap().attributes.clone()
+}
+
+/// Regression (#116): element text was trimmed, so a padded string, enum or
+/// binary inside a list or typed wrapper lost its whitespace.
+#[test]
+fn whitespace_in_element_text_is_data() {
+    let attributes = vec![
+        Value::List(vec![
+            Value::Text(" padded ".into()),
+            Value::Text("\n".into()),
+        ]),
+        Value::Enum(" A ".into()),
+        Value::Typed {
+            type_name: "IFCLABEL".into(),
+            value: Box::new(Value::Text("\t1".into())),
+        },
+    ];
+    assert_eq!(default_round_trip(&attributes), attributes);
+}
+
+/// Regression (#116): the writer judged `" i7"` unambiguous text while the
+/// reader trimmed it into a reference, so the value changed kind.
+#[test]
+fn padded_reference_lookalike_stays_text() {
+    let attributes = vec![Value::Text(" i7".into()), Value::Text("i7 ".into())];
+    assert_eq!(default_round_trip(&attributes), attributes);
+}
+
+/// Regression (#116): an out-of-range attribute literal such as `1e999` was
+/// inferred as an infinite real, which the explicit `kind="real"` path and
+/// the writer both refuse. It now stays text.
+#[test]
+fn out_of_range_real_lookalike_reads_as_text() {
+    let xml = br#"<ifcXML><IFCTEST id="i1" a0="1e999" a1="1e5"/></ifcXML>"#;
+    let model = XmlCodec::default().read_bytes(xml).unwrap();
+    assert_eq!(
+        model.get(EntityId(1)).unwrap().attributes,
+        vec![Value::Text("1e999".into()), Value::Real(1e5)]
+    );
+}
+
+/// Line breaks and tabs are escaped, because a conforming XML parser
+/// normalizes literal ones inside attribute values to spaces; and a typed
+/// wrapper's type name is escaped like any other attribute value.
+#[test]
+fn whitespace_and_type_names_are_escaped_for_conforming_parsers() {
+    let attributes = vec![
+        Value::Text("line\nbreak\ttab\r".into()),
+        Value::Typed {
+            type_name: "ODD\"TYPE".into(),
+            value: Box::new(Value::Integer(1)),
+        },
+    ];
+    let mut model = Model::new();
+    model.insert(EntityId(1), Entity::new("IFCTEST", attributes.clone()));
+    let xml = String::from_utf8(XmlCodec::default().write_bytes(&model).unwrap()).unwrap();
+    assert!(xml.contains(r#"a0="line&#10;break&#9;tab&#13;""#), "{xml}");
+    assert!(xml.contains(r#"type="ODD&quot;TYPE""#), "{xml}");
+    assert_eq!(default_round_trip(&attributes), attributes);
+}

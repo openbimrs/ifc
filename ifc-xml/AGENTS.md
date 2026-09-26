@@ -13,10 +13,18 @@ Allowed production dependencies: ifc-model; ifc-schema is optional naming metada
 - `codec.rs`: codec state, profile/schema constructors, and `Codec` adapter
 - `reader.rs`: namespace-aware XML to Model and path context tracking
 - `writer.rs`: deterministic Model to XML
+- `scalar.rs`: the one scalar lexical contract, both directions: attribute
+  inference, the writer's attribute/element choice (defined by calling that
+  inference), and explicit `kind` element forms
+- `slots.rs`: attribute name to positional slot, both directions (schema
+  names or `a<i>`)
 - `profile.rs`: explicit release namespace/schema-token contracts
 - `error.rs`: typed XML failures and inspectable `XmlPath`
 - `tests/namespaces.rs`: strict-profile and namespace-spoofing contracts
 - `tests/diagnostics.rs`: nested entity/attribute/list error paths
+- `tests/scalar_contract.rs`: seeded property test of the scalar contract
+- `tests/corpus_roundtrip.rs`: STEP -> XML -> Model -> STEP over every
+  committed fixture, with and without schema names
 
 ## Invariants
 

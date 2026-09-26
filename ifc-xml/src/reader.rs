@@ -8,7 +8,8 @@
 //! schema we do not know must still round-trip.
 
 use crate::error::XmlError;
-use crate::XmlCodec;
+use crate::scalar::{decode_element, format_ref, infer, parse_ref};
+use crate::{slots, XmlCodec};
 use ifc_model::{Entity, EntityId, Model, Value};
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::name::ResolveResult;
@@ -26,8 +27,11 @@ pub fn looks_like_xml(bytes: &[u8]) -> bool {
 
 /// Parse an ifcXML document into a model.
 pub fn read(codec: &XmlCodec, bytes: &[u8]) -> Result<Model, XmlError> {
+    // Text is NOT trimmed: a value element's text is the value, and leading
+    // or trailing whitespace in a string is data. Indentation between
+    // elements lands in `text_buf` too, but every value start clears it and
+    // only a value end consumes it.
     let mut reader = NsReader::from_reader(bytes);
-    reader.config_mut().trim_text(true);
 
     let mut model = Model::new();
     let mut buf = Vec::new();
@@ -94,7 +98,7 @@ pub fn read(codec: &XmlCodec, bytes: &[u8]) -> Result<Model, XmlError> {
                 }
                 if current.is_none() && !in_header {
                     match start_entity(&e, &name) {
-                        Ok(Some(entity)) => finish_entity(&mut model, entity),
+                        Ok(Some(entity)) => finish_entity(codec, &mut model, entity)?,
                         Ok(None) => {}
                         Err(error) => {
                             return Err(error.at(raw_entity_path(&name, attr_value(&e, "id"))));
@@ -148,8 +152,9 @@ pub fn read(codec: &XmlCodec, bytes: &[u8]) -> Result<Model, XmlError> {
                             push_value(&mut stack, &mut current, pending.name.clone(), value);
                             text_buf.clear();
                         } else if let Some(entity) = current.take() {
-                            finish_entity(&mut model, entity);
+                            finish_entity(codec, &mut model, entity)?;
                         }
+                        text_buf.clear();
                     }
                 }
             }
@@ -264,42 +269,19 @@ impl PendingValue {
     }
 
     fn finish(&self, text: &str) -> Result<Value, XmlError> {
-        let value = match self.kind.as_str() {
-            "list" => Value::List(self.items.clone()),
-            "typed" => {
-                let inner = self.items.first().cloned().unwrap_or(Value::Null);
-                Value::Typed {
-                    type_name: self.type_name.clone().unwrap_or_default().into(),
-                    value: Box::new(inner),
-                }
+        if let Some(value) = decode_element(&self.kind, text)? {
+            return Ok(value);
+        }
+        let value = if self.kind == "list" {
+            Value::List(self.items.clone())
+        } else {
+            let inner = self.items.first().cloned().unwrap_or(Value::Null);
+            Value::Typed {
+                type_name: self.type_name.clone().unwrap_or_default().into(),
+                value: Box::new(inner),
             }
-            "enum" => Value::Enum(text.into()),
-            "logical" => match text {
-                "true" => Value::Bool(true),
-                "false" => Value::Bool(false),
-                _ => Value::LogicalUnknown,
-            },
-            "binary" => Value::Binary(text.into()),
-            "string" | "" => Value::Text(text.into()),
-            "integer" => Value::Integer(text.parse().map_err(|_| invalid_scalar("integer", text))?),
-            "real" => {
-                let real: f64 = text.parse().map_err(|_| invalid_scalar("real", text))?;
-                if !real.is_finite() {
-                    return Err(invalid_scalar("real", text));
-                }
-                Value::Real(real)
-            }
-            "ref" => Value::Ref(parse_ref(text).ok_or_else(|| invalid_scalar("ref", text))?),
-            kind => return Err(XmlError::UnknownKind(kind.into())),
         };
         Ok(value)
-    }
-}
-
-fn invalid_scalar(kind: &str, value: &str) -> XmlError {
-    XmlError::InvalidScalar {
-        kind: kind.into(),
-        value: value.into(),
     }
 }
 
@@ -335,7 +317,7 @@ fn start_entity(e: &BytesStart<'_>, name: &str) -> Result<Option<PendingEntity>,
             .unescape_value()
             .map(|value| value.to_string())
             .map_err(|error| XmlError::Malformed(error.to_string()))?;
-        attrs.push((key, infer_scalar(&value)));
+        attrs.push((key, infer(&value)));
     }
     Ok(Some(PendingEntity {
         id,
@@ -344,13 +326,20 @@ fn start_entity(e: &BytesStart<'_>, name: &str) -> Result<Option<PendingEntity>,
     }))
 }
 
-/// Store a completed entity, ordering attributes by their positional name.
-fn finish_entity(model: &mut Model, entity: PendingEntity) {
-    let mut ordered = entity.attrs;
-    // `a0`, `a1`, ... sort positionally; schema names keep document order.
-    ordered.sort_by_key(|(name, _)| positional_index(name).unwrap_or(usize::MAX));
-    let values: Vec<Value> = ordered.into_iter().map(|(_, value)| value).collect();
+/// Store a completed entity, placing each named value in its slot.
+fn finish_entity(
+    codec: &XmlCodec,
+    model: &mut Model,
+    entity: PendingEntity,
+) -> Result<(), XmlError> {
+    let values = slots::order(codec, &entity.type_name, entity.attrs).map_err(|error| {
+        error.at(raw_entity_path(
+            &entity.type_name,
+            Some(format_ref(entity.id)),
+        ))
+    })?;
     model.insert(entity.id, Entity::new(entity.type_name, values));
+    Ok(())
 }
 
 fn raw_entity_path(type_name: &str, id: Option<String>) -> String {
@@ -380,43 +369,6 @@ fn current_path(
         path.push_str(leaf);
     }
     path
-}
-
-/// `a12` -> `Some(12)`.
-fn positional_index(name: &str) -> Option<usize> {
-    name.strip_prefix('a')?.parse().ok()
-}
-
-/// `i42` -> `Some(EntityId(42))`.
-fn parse_ref(text: &str) -> Option<EntityId> {
-    let n: u64 = text.trim().strip_prefix('i')?.parse().ok()?;
-    Some(EntityId(n))
-}
-
-/// Infer the kind of an attribute-encoded scalar.
-///
-/// Only unambiguous forms are promoted: `i<n>` is a reference, a valid integer
-/// or real literal is numeric, everything else stays a string. Ambiguous cases
-/// were written as child elements precisely so they never reach here.
-fn infer_scalar(text: &str) -> Value {
-    if let Some(id) = parse_ref(text) {
-        return Value::Ref(id);
-    }
-    if let Ok(i) = text.parse::<i64>() {
-        return Value::Integer(i);
-    }
-    if looks_real(text) {
-        if let Ok(r) = text.parse::<f64>() {
-            return Value::Real(r);
-        }
-    }
-    Value::Text(text.into())
-}
-
-/// A STEP real always carries `.` or an exponent, which is what distinguishes
-/// `1.` from the integer `1`.
-fn looks_real(text: &str) -> bool {
-    text.contains('.') || text.contains('e') || text.contains('E')
 }
 
 fn local_name(e: &BytesStart<'_>) -> String {

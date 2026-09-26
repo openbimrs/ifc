@@ -46,6 +46,24 @@ pub enum XmlError {
     /// A non-empty explicit `kind` is not part of this lossless dialect.
     #[error("unknown value kind {0:?}")]
     UnknownKind(String),
+    /// Two attributes or child elements of one entity name the same slot.
+    #[error("`{name}` names slot {slot}, which is already set")]
+    DuplicateSlot {
+        /// The second name resolving to the slot.
+        name: String,
+        /// The zero-based positional slot.
+        slot: usize,
+    },
+    /// A positional name skips slots that no schema declares as omittable.
+    #[error("`{name}` names slot {slot}, but slot {missing} is absent")]
+    MissingSlot {
+        /// The name that skipped ahead.
+        name: String,
+        /// The zero-based slot it names.
+        slot: usize,
+        /// The first slot left without a value.
+        missing: usize,
+    },
     /// An element resolved outside the selected release namespace.
     #[error("element `{element}` has namespace {found:?}; expected `{expected}`")]
     Namespace {

@@ -45,6 +45,8 @@ mod codec;
 pub mod error;
 mod profile;
 pub mod reader;
+mod scalar;
+mod slots;
 pub mod writer;
 
 pub use codec::XmlCodec;
