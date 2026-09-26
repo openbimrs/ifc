@@ -371,8 +371,9 @@ fn present_empty_type_property_sets_are_incomplete() {
     ));
 }
 
+/// Quantity-set absence (#66) is covered in `tests/exact_quantities.rs`.
 #[test]
-fn absent_type_sets_and_quantities_preserve_exact_absence() {
+fn absent_type_sets_preserve_exact_absence() {
     let mut m = model();
     m.insert(
         EntityId(10),
@@ -392,15 +393,6 @@ fn absent_type_sets_and_quantities_preserve_exact_absence() {
             ],
         ),
     );
-    m.insert(
-        EntityId(20),
-        Entity::new(
-            "IFCELEMENTQUANTITY",
-            vec![Value::Null; ifc_schema::ifc4().attributes("IFCELEMENTQUANTITY").len()],
-        ),
-    );
-    occurrence(&mut m, 21, 20);
-
     assert_eq!(
         exact_property(&m, EntityId(1), Some("Pset_Test"), "Missing").unwrap(),
         ExactResolution::Absent

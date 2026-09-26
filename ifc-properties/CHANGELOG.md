@@ -53,6 +53,25 @@ everything released before per-crate changelogs began.
   now wins within each route. An occurrence set still overrides a
   same-named type set, and that is not reported.
 
+### Fixed
+
+- `exact_property` no longer reports `Absent` for a quantity in a same-named
+  `IfcElementQuantity` (#66). Quantity sets were skipped, so a checker
+  asking for `Qto_WallBaseQuantities.Length` (IDS treats quantities as
+  properties) got a confident "missing".
+  - Simple quantities now resolve exactly. `value_type` is the release's
+    declared measure of the value attribute (`IFCLENGTHMEASURE`), and
+    `unit_id` is the quantity's `IfcNamedUnit`.
+  - Complex, duplicated or malformed quantities are refused, as are a
+    same-named property set and quantity set.
+  - A predefined property set (`IfcDoorLiningProperties`, …) whose own
+    attribute carries the requested name is refused with
+    `UnsupportedDefinition` instead of being skipped into `Absent`.
+  - A quantity set with no `Name` is refused (`MalformedName`), because it
+    could be the set asked for.
+  - Results change from `Absent` to `Present` or an error only where the
+    old answer was unproven.
+
 ## [0.3.0] - 2026-09-26
 
 ### Added
