@@ -31,8 +31,16 @@ pub fn compiled_features() -> Vec<&'static str> {
     features.push("classification");
     #[cfg(feature = "approval")]
     features.push("approval");
+    #[cfg(feature = "control")]
+    features.push("control");
+    #[cfg(feature = "tabular")]
+    features.push("tabular");
     #[cfg(feature = "constraint")]
     features.push("constraint");
+    #[cfg(feature = "element-type")]
+    features.push("element-type");
+    #[cfg(feature = "occurrence")]
+    features.push("occurrence");
     #[cfg(feature = "structural")]
     features.push("structural");
     #[cfg(feature = "resource")]
@@ -43,6 +51,10 @@ pub fn compiled_features() -> Vec<&'static str> {
     features.push("style");
     #[cfg(feature = "validate")]
     features.push("validate");
+    #[cfg(feature = "author")]
+    features.push("author");
+    #[cfg(feature = "spatial")]
+    features.push("spatial");
     #[cfg(feature = "geometry-select")]
     features.push("geometry-select");
     #[cfg(feature = "geometry")]

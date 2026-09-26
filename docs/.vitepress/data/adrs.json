@@ -1,0 +1,92 @@
+[
+  {
+    "number": "0001",
+    "slug": "0001-entity-graph-free-of-domain-and-codec",
+    "status": "Accepted",
+    "title": "Entity graph free of domain semantics and serialization"
+  },
+  {
+    "number": "0002",
+    "slug": "0002-codec-as-a-model-crate-trait",
+    "status": "Accepted",
+    "title": "Codec as a trait owned by the model crate"
+  },
+  {
+    "number": "0003",
+    "slug": "0003-domain-crates-as-borrowed-views",
+    "status": "Accepted",
+    "title": "Domain crates as borrowed views"
+  },
+  {
+    "number": "0004",
+    "slug": "0004-geometry-bridge-not-kernel",
+    "status": "Accepted",
+    "title": "Geometry bridge, not geometry kernel"
+  },
+  {
+    "number": "0005",
+    "slug": "0005-scaffold-modules-declare-ownership",
+    "status": "Accepted",
+    "title": "Scaffold modules declare ownership without claiming capability"
+  },
+  {
+    "number": "0006",
+    "slug": "0006-facade-features-default-to-thin",
+    "status": "Accepted",
+    "title": "Facade features default to thin"
+  },
+  {
+    "number": "0007",
+    "slug": "0007-authoring-is-a-schema-layer-not-a-model-layer",
+    "status": "Accepted",
+    "title": "Authoring is a schema-layer concern, not a model-layer one"
+  },
+  {
+    "number": "0008",
+    "slug": "0008-fixed-slot-constants-for-stable-relationships",
+    "status": "Accepted",
+    "title": "Fixed slot constants for stable relationships"
+  },
+  {
+    "number": "0009",
+    "slug": "0009-derived-attributes-resolve-through-the-parent-context",
+    "status": "Accepted",
+    "title": "DERIVED attributes resolve through the parent context"
+  },
+  {
+    "number": "0010",
+    "slug": "0010-checked-mutation-is-a-model-level-primitive",
+    "status": "Accepted",
+    "title": "Checked mutation is a model-level primitive, not a bare accessor"
+  },
+  {
+    "number": "0011",
+    "slug": "0011-geometry-authoring-is-bidirectional-in-the-bridge",
+    "status": "Accepted",
+    "title": "Geometry authoring is bidirectional inside the bridge"
+  },
+  {
+    "number": "0012",
+    "slug": "0012-geometry-backends-are-swappable",
+    "status": "Accepted",
+    "title": "Geometry backends are swappable, whole or per area"
+  },
+  {
+    "number": "0013",
+    "slug": "0013-language-bindings-wrap-the-facade",
+    "status": "Accepted",
+    "title": "Language bindings wrap the facade, one crate per target"
+  },
+  {
+    "number": "0014",
+    "slug": "0014-net-geometry-is-an-explicit-request",
+    "status": "Accepted",
+    "title": "Net geometry is an explicit request; openings are exact booleans"
+  },
+  {
+    "number": "0015",
+    "slug": "0015-strict-step-reads-load-lazily",
+    "status": "Accepted",
+    "title": "Strict STEP reads validate eagerly and decode lazily"
+  }
+]

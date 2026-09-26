@@ -13,6 +13,15 @@ categories = ["wasm", "parser-implementations"]
 # openbim-ifc-binding-core published, for a crate nobody depends on in Rust.
 publish = false
 
+# Published on the docs site by `cargo run -p xtask -- docs`.
+[package.metadata.openbim]
+# implemented | partial | scaffold -- a judgement, never inferred from size.
+# Published to npm; a tested browser/bundler build and domain views are
+# still open.
+status = "partial"
+# core | domain | geometry | facade | binding
+group = "binding"
+
 [lib]
 # The wasm module. Native builds compile an empty crate: every operation and
 # its tests live in openbim-ifc-binding-core.

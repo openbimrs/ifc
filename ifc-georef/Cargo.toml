@@ -8,6 +8,14 @@ authors = ["point-grey"]
 repository = "https://github.com/openbimrs/ifc"
 description = "Georeferencing: map conversion, coordinate reference systems, site placement."
 
+# Published on the docs site by `cargo run -p xtask -- docs`.
+[package.metadata.openbim]
+# implemented | partial | scaffold -- a judgement, never inferred from size.
+# Frame composition, north semantics and IFC4X3 profiles remain open.
+status = "partial"
+# core | domain | geometry | facade | binding
+group = "geometry"
+
 [dependencies]
 ifc-schema.workspace = true
 ifc-model.workspace = true

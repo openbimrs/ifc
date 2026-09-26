@@ -49,7 +49,7 @@ code.
 | `ifc-schema` | 1,418 | 12 | 4 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,317 | 6 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-step` | 1,225 | 7 | 0 | 7 | <span class="status-implemented">Implemented</span> |
-| `openbim-ifc` | 1,099 | 8 | 0 | 16 | <span class="status-implemented">Implemented</span> |
+| `openbim-ifc` | 1,111 | 8 | 0 | 16 | <span class="status-implemented">Implemented</span> |
 | `ifc-author` | 1,082 | 10 | 3 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 1,046 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-approval` | 914 | 5 | 0 | 1 | <span class="status-implemented">Implemented</span> |

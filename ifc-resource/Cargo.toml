@@ -8,6 +8,15 @@ authors = ["point-grey"]
 repository = "https://github.com/openbimrs/ifc"
 description = "Construction resources: labour, equipment, material, crew, subcontract."
 
+# Published on the docs site by `cargo run -p xtask -- docs`.
+[package.metadata.openbim]
+# implemented | partial | scaffold -- a judgement, never inferred from size.
+# IFC2X3 lacks IfcConstructionResourceType and IfcResourceTime, so it is a
+# typed UnsupportedSchema refusal rather than a gap.
+status = "partial"
+# core | domain | geometry | facade | binding
+group = "domain"
+
 [dependencies]
 ifc-schema.workspace = true
 ifc-model.workspace = true

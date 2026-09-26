@@ -6,7 +6,14 @@ rust-version = "1.88"
 license = "AGPL-3.0-or-later"
 authors = ["point-grey"]
 repository = "https://github.com/openbimrs/ifc"
-description = "ifcXML (ISO 10303-28) codec for the nehirde IFC model."
+description = "ifcXML (ISO 10303-28) codec for the IFC model."
+
+# Published on the docs site by `cargo run -p xtask -- docs`.
+[package.metadata.openbim]
+# implemented | partial | scaffold -- a judgement, never inferred from size.
+status = "implemented"
+# core | domain | geometry | facade | binding
+group = "core"
 
 [dependencies]
 ifc-model.workspace = true

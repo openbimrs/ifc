@@ -12,6 +12,8 @@ for new records.
 
 ## Index
 
+<!-- ADR:INDEX:BEGIN -->
+
 | # | Title | Status |
 | ---: | --- | --- |
 | [0001](/adr/0001-entity-graph-free-of-domain-and-codec) | Entity graph free of domain semantics and serialization | Accepted |
@@ -29,3 +31,5 @@ for new records.
 | [0013](/adr/0013-language-bindings-wrap-the-facade) | Language bindings wrap the facade, one crate per target | Accepted |
 | [0014](/adr/0014-net-geometry-is-an-explicit-request) | Net geometry is an explicit request; openings are exact booleans | Accepted |
 | [0015](/adr/0015-strict-step-reads-load-lazily) | Strict STEP reads validate eagerly and decode lazily | Accepted |
+
+<!-- ADR:INDEX:END -->

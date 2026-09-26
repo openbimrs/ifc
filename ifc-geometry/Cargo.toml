@@ -8,6 +8,15 @@ authors = ["point-grey"]
 repository = "https://github.com/openbimrs/ifc"
 description = "IFC semantic views lowered into the format-neutral geometry DAG."
 
+# Published on the docs site by `cargo run -p xtask -- docs`.
+[package.metadata.openbim]
+# implemented | partial | scaffold -- a judgement, never inferred from size.
+# Some families admit only part of their authored forms; the variant
+# table on the capabilities page lists every refused form.
+status = "partial"
+# core | domain | geometry | facade | binding
+group = "geometry"
+
 [features]
 # Lowering into the neutral DAG is what most consumers want, so it stays the
 # default: a plain `ifc-geometry = "0.1"` keeps working unchanged.

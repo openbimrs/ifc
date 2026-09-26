@@ -8,6 +8,13 @@ authors = ["point-grey"]
 repository = "https://github.com/openbimrs/ifc"
 description = "The IFC entity graph: storage and structural queries, free of domain semantics and serialization."
 
+# Published on the docs site by `cargo run -p xtask -- docs`.
+[package.metadata.openbim]
+# implemented | partial | scaffold -- a judgement, never inferred from size.
+status = "implemented"
+# core | domain | geometry | facade | binding
+group = "core"
+
 [features]
 # Coverage-audit hook: records which entity types are actually built.
 # Off by default, and inert unless AUTHORED_DUMP is also set, so an
