@@ -237,8 +237,8 @@ fn presentation(workspace: &Workspace) -> Result<String, String> {
 fn validation(workspace: &Workspace) -> Result<String, String> {
     let consts = Consts::read(workspace, VALIDATION)?;
     let mut out = vec![
-        "| Rule | Constrains | Evaluated | Why not |".to_owned(),
-        "| --- | --- | --- | --- |".to_owned(),
+        "| Rule | Constrains | Releases | Evaluated | Why not |".to_owned(),
+        "| --- | --- | --- | --- | --- |".to_owned(),
     ];
     let (mut evaluated, mut total) = (0, 0);
     for record in consts.records("RULES")? {
@@ -250,7 +250,16 @@ fn validation(workspace: &Workspace) -> Result<String, String> {
             .field("entity")
             .and_then(rust_source::option)
             .and_then(|e| consts.text(e))
-            .map_or_else(|| "(global)".to_owned(), |e| format!("`{e}`"));
+            .map_or_else(|| "(global)".to_owned(), |e| format!("`{e}` and subtypes"));
+        let releases = record
+            .field("releases")
+            .and_then(|e| consts.variants(e))
+            .filter(|names| !names.is_empty())
+            .ok_or_else(|| consts.shape("RULES", "a non-empty `releases` per rule"))?
+            .iter()
+            .map(|name| release_label(name))
+            .collect::<Result<Vec<_>, _>>()?
+            .join(", ");
         let (support, reason) = record
             .field("support")
             .and_then(rust_source::variant)
@@ -262,13 +271,25 @@ fn validation(workspace: &Workspace) -> Result<String, String> {
         }
         let reason = reason.and_then(|r| consts.text(r)).unwrap_or_default();
         out.push(format!(
-            "| `{id}` | {entity} | {} | {reason} |",
+            "| `{id}` | {entity} | {releases} | {} | {reason} |",
             if implemented { "yes" } else { "no" }
         ));
     }
     Ok(format!(
         "{evaluated} of {total} registered rules are evaluated; the rest are reported as \
-         unsupported rather than silently passed (`{VALIDATION}`).\n\n{}",
+         unsupported rather than silently passed (`{VALIDATION}`). A rule binds its \
+         declaring entity and every subtype, and runs only under the releases whose \
+         EXPRESS declares it under that id.\n\n{}",
         out.join("\n")
     ))
+}
+
+/// The published name of a `SchemaVersion` variant.
+fn release_label(variant: &str) -> Result<&'static str, String> {
+    match variant {
+        "Ifc2x3" => Ok("IFC2X3"),
+        "Ifc4" => Ok("IFC4"),
+        "Ifc4x3" => Ok("IFC4X3"),
+        other => Err(format!("{VALIDATION}: unknown release `{other}`")),
+    }
 }

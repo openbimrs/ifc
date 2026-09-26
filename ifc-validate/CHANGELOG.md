@@ -13,7 +13,8 @@ everything released before per-crate changelogs began.
 ## [Unreleased]
 
 This release is **breaking** (0.2 -> 0.3): `Severity` gains a variant,
-`Summary` gains a field, and `Budget::max_depth` is removed.
+`Summary` gains a field, `RuleEntry` gains a field, three rule ids are
+renamed, and `Budget::max_depth` is removed.
 
 ### Added
 
@@ -37,6 +38,18 @@ This release is **breaking** (0.2 -> 0.3): `Severity` gains a variant,
   outside the crate must add a wildcard arm.
 - **Breaking:** `Summary` is `#[non_exhaustive]` and has the new
   `evaluation_errors` field; its `Display` now also prints that count.
+- **Breaking:** `RuleEntry` has a new `releases` field, and
+  `RuleEntry::applies_to` says whether a schema's release declares the rule.
+  The engine now takes every rule's scope from its registry entry: it runs
+  only under the releases listed there, on the entry's entity *and its
+  subtypes* (#139).
+- **Breaking:** rule ids now always name the entity that declares the rule,
+  with the label the release uses (#139):
+  `IfcRelAssignsToGroupByFactor.NoSelfReference` is
+  `IfcRelAssignsToGroup.NoSelfReference`;
+  `IfcPhysicalSimpleQuantity.WR21` is `IfcQuantityLength.WR21`; and
+  `IfcPolyLoop.WR21` is reported only under IFC2X3, with IFC4 and IFC4X3
+  reporting the same unsupported predicate as `IfcPolyLoop.AllPointsSameDim`.
 - `IfcExternalReference.WR1` reads `ItemReference` under IFC2X3 and
   `Identification` under IFC4/IFC4X3, as each release's EXPRESS declares,
   instead of whichever of the two resolved.
@@ -51,6 +64,14 @@ This release is **breaking** (0.2 -> 0.3): `Severity` gains a variant,
 
 ### Fixed
 
+- Native WHERE rules run on the entities and releases the schema declares
+  them for (#139). `NoSelfReference` now checks plain `IfcRelAssignsToGroup`,
+  which was never checked; `IfcMaterialLayer.NormalizedPriority` now checks
+  `IfcMaterialLayerWithOffsets`; and
+  `IfcRelDefinesByProperties.NoRelatedTypeObject` no longer runs under
+  IFC2X3, which does not declare it. Unsupported rules are likewise admitted
+  only under releases that declare them. A new schema-backed test checks
+  every registered id, entity and release set against the normative EXPRESS.
 - `type.scalar.mismatch` now checks bounded and fixed-width strings. The
   primitive was read from the trailing token of the resolved type, so
   `STRING(255)` -- IFC4's `IfcLabel` and `IfcIdentifier` -- recognised

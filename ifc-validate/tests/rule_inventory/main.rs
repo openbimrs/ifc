@@ -24,6 +24,7 @@ use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use ifc_model::{Entity, Model};
+use ifc_schema::SchemaVersion;
 use ifc_validate::where_rule::{self, Support};
 use ifc_validate::{validate, Severity};
 
@@ -212,50 +213,59 @@ fn every_case_fires_on_its_failing_fixture_only() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// Every unsupported rule is admitted when the file could trip it, and is
-/// quiet when the file holds nothing it constrains.
+/// Every unsupported rule is admitted when the file could trip it, under
+/// each release that declares it, and is quiet when the file holds nothing
+/// it constrains or its release does not declare it.
 ///
 /// Driven from the registry, so a newly registered gap is covered without a
 /// hand-written case.
 #[test]
 fn every_unsupported_rule_is_reported_exactly_where_it_applies() {
-    let schema = ifc_schema::ifc4();
     let mut checked = 0usize;
     for entry in where_rule::unsupported() {
         let Support::Unsupported(reason) = entry.support else {
             unreachable!("unsupported() yields only unsupported entries");
         };
-        let reported = |model: &Model| {
-            validate(model, schema)
-                .findings()
-                .iter()
-                .filter(|finding| finding.rule == entry.id)
-                .map(|finding| (finding.severity, finding.message.clone()))
-                .collect::<Vec<_>>()
-        };
-        let empty = Model::new();
-        match entry.entity {
-            Some(entity) => {
-                let mut model = Model::new();
+        for version in [
+            SchemaVersion::Ifc2x3,
+            SchemaVersion::Ifc4,
+            SchemaVersion::Ifc4x3,
+        ] {
+            let schema = ifc_schema::for_version(version).expect("bundled tables");
+            let declared = entry.releases.contains(&version);
+            let reported = |model: &Model| {
+                validate(model, schema)
+                    .findings()
+                    .iter()
+                    .filter(|finding| finding.rule == entry.id)
+                    .map(|finding| (finding.severity, finding.message.clone()))
+                    .collect::<Vec<_>>()
+            };
+            let admitted = [(Severity::Unsupported, reason.to_string())];
+            let empty = Model::new();
+            let mut model = Model::new();
+            if let Some(entity) = entry.entity {
                 model.push(Entity::new(entity.to_ascii_uppercase(), Vec::new()));
-                assert_eq!(
-                    reported(&model),
-                    [(Severity::Unsupported, reason.to_string())],
-                    "{} must be admitted when the file holds {entity}",
-                    entry.id
-                );
                 assert!(
                     reported(&empty).is_empty(),
                     "{} is noise in a file without {entity}",
                     entry.id
                 );
             }
-            None => assert_eq!(
-                reported(&empty),
-                [(Severity::Unsupported, reason.to_string())],
-                "global rule {} must be admitted for every file",
-                entry.id
-            ),
+            if declared {
+                assert_eq!(
+                    reported(&model),
+                    admitted,
+                    "{} must be admitted under {version:?}",
+                    entry.id
+                );
+            } else {
+                assert!(
+                    reported(&model).is_empty(),
+                    "{} is not declared by {version:?} and must not be reported",
+                    entry.id
+                );
+            }
         }
         checked += 1;
     }

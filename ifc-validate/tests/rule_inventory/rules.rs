@@ -26,9 +26,9 @@ fn two_walls(first: &str, second: &str) -> Report {
     ifc4(&model)
 }
 
-/// A property-set relation whose related object is `related_type`.
-fn defines_by_properties(related_type: &str) -> Report {
-    let schema = ifc_schema::ifc4();
+/// A property-set relation whose related object is `related_type`, under
+/// `schema`.
+fn defines_by_properties(schema: &Schema, related_type: &str) -> Report {
     let mut model = Model::new();
     model.insert(
         EntityId(1),
@@ -39,7 +39,7 @@ fn defines_by_properties(related_type: &str) -> Report {
         "IFCRELDEFINESBYPROPERTIES",
         &[("RelatedObjects", Value::List(vec![Value::Ref(EntityId(1))]))],
     ));
-    ifc4(&model)
+    validate(&model, schema)
 }
 
 /// A classification reference with the given identity fields set.
@@ -66,13 +66,13 @@ fn sequence(schema: &Schema, related: u64) -> Report {
     validate(&model, schema)
 }
 
-/// A material layer whose `Priority` is `priority`.
-fn material_layer(priority: i64) -> Report {
+/// A material layer of `layer_type` whose `Priority` is `priority`.
+fn material_layer(layer_type: &str, priority: i64) -> Report {
     let schema = ifc_schema::ifc4();
     let mut model = Model::new();
     model.push(entity(
         schema,
-        "IFCMATERIALLAYER",
+        layer_type,
         &[
             ("LayerThickness", Value::Real(1.0)),
             ("Priority", Value::Integer(priority)),
@@ -135,8 +135,14 @@ pub const CASES: &[Case] = &[
     Case {
         rule: "IfcRelDefinesByProperties.NoRelatedTypeObject",
         form: "a type object among the related objects",
-        fails: || defines_by_properties("IFCWALLTYPE"),
-        passes: || defines_by_properties("IFCWALL"),
+        fails: || defines_by_properties(ifc_schema::ifc4(), "IFCWALLTYPE"),
+        passes: || defines_by_properties(ifc_schema::ifc4(), "IFCWALL"),
+    },
+    Case {
+        rule: "IfcRelDefinesByProperties.NoRelatedTypeObject",
+        form: "IFC2X3 declares no such rule",
+        fails: || defines_by_properties(ifc_schema::ifc4x3(), "IFCWALLTYPE"),
+        passes: || defines_by_properties(ifc_schema::ifc2x3(), "IFCWALLTYPE"),
     },
     Case {
         rule: "IfcExternalReference.WR1",
@@ -171,14 +177,20 @@ pub const CASES: &[Case] = &[
     Case {
         rule: "IfcMaterialLayer.NormalizedPriority",
         form: "priority above 100",
-        fails: || material_layer(101),
-        passes: || material_layer(100),
+        fails: || material_layer("IFCMATERIALLAYER", 101),
+        passes: || material_layer("IFCMATERIALLAYER", 100),
     },
     Case {
         rule: "IfcMaterialLayer.NormalizedPriority",
         form: "priority below 0",
-        fails: || material_layer(-1),
-        passes: || material_layer(0),
+        fails: || material_layer("IFCMATERIALLAYER", -1),
+        passes: || material_layer("IFCMATERIALLAYER", 0),
+    },
+    Case {
+        rule: "IfcMaterialLayer.NormalizedPriority",
+        form: "the IfcMaterialLayerWithOffsets subtype inherits the rule",
+        fails: || material_layer("IFCMATERIALLAYERWITHOFFSETS", 101),
+        passes: || material_layer("IFCMATERIALLAYERWITHOFFSETS", 100),
     },
     Case {
         rule: "IfcRelAssignsToActor.NoSelfReference",
@@ -199,8 +211,14 @@ pub const CASES: &[Case] = &[
         passes: || self_reference("IFCRELASSIGNSTOPRODUCT", "RelatingProduct", 2),
     },
     Case {
-        rule: "IfcRelAssignsToGroupByFactor.NoSelfReference",
+        rule: "IfcRelAssignsToGroup.NoSelfReference",
         form: "an object assigned to itself",
+        fails: || self_reference("IFCRELASSIGNSTOGROUP", "RelatingGroup", 1),
+        passes: || self_reference("IFCRELASSIGNSTOGROUP", "RelatingGroup", 2),
+    },
+    Case {
+        rule: "IfcRelAssignsToGroup.NoSelfReference",
+        form: "the IfcRelAssignsToGroupByFactor subtype inherits the rule",
         fails: || self_reference("IFCRELASSIGNSTOGROUPBYFACTOR", "RelatingGroup", 1),
         passes: || self_reference("IFCRELASSIGNSTOGROUPBYFACTOR", "RelatingGroup", 2),
     },
