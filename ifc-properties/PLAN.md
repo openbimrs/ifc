@@ -49,6 +49,11 @@ owner and expose a public symbol only through an intentional parent re-export.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [x] `PROP-QUERY` - resolve occurrence/type property assignment with precedence made explicit
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+  - #58: duplicate type, set-name and property-name statements keep the
+    first by id and are reported (`TypedTwice`, `DuplicateSetName`,
+    `DuplicatePropertyName`). Proof: `tests/duplicate_assignments.rs`
+    (5 tests). 5/5 mutants were killed: the id sort, each anomaly push, and
+    the occurrence-duplicate guard.
 - [x] `PROP-EDIT` - write/update quantities transactionally after MODEL-MUT
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [x] `PROP-CHECK` - accept externally computed measurements and compare without depending on geometry
