@@ -126,3 +126,36 @@ pub(crate) fn value_matches(schema: &Schema, type_name: &str, value: &Value) -> 
         Shape::Enumeration => matches!(value, Value::Enum(_)),
     }
 }
+
+/// The element type of a declared type that aliases an aggregate.
+///
+/// `TYPE IfcCompoundPlaneAngleMeasure = LIST [3:4] OF INTEGER;` makes an
+/// attribute declared `IfcCompoundPlaneAngleMeasure` an aggregate even though
+/// the attribute declaration itself has no `LIST`. Follows defined-type
+/// aliases with the same bounded depth as [`value_matches`]; `None` when the
+/// type is not an aggregate.
+pub(crate) fn aggregate_element(schema: &Schema, type_name: &str) -> Option<String> {
+    let mut current = type_name.to_owned();
+    for _ in 0..16 {
+        let TypeKind::Defined(rhs) = &schema.type_def(&current)?.kind else {
+            return None;
+        };
+        let rhs = rhs.trim();
+        let keyword = rhs
+            .split(|c: char| !c.is_ascii_alphabetic())
+            .next()
+            .unwrap_or("")
+            .to_ascii_uppercase();
+        if matches!(keyword.as_str(), "LIST" | "SET" | "ARRAY" | "BAG") {
+            let (_, element) = rhs.split_once(" OF ")?;
+            let element = element
+                .trim()
+                .trim_start_matches("UNIQUE ")
+                .trim_start_matches("OPTIONAL ")
+                .trim();
+            return Some(element.to_owned());
+        }
+        current = rhs.to_owned();
+    }
+    None
+}

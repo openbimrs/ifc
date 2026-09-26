@@ -354,7 +354,7 @@ fn a_template_governs_its_property_set() {
     let links = template_of_set(&model);
     assert_eq!(links.len(), 1, "one set is templated");
     assert!(
-        links.values().any(|t| *t == template.id),
+        links.values().any(|t| *t == [template.id]),
         "the link points at the template"
     );
 }

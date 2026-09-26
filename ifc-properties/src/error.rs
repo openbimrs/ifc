@@ -7,8 +7,55 @@
 use ifc_model::EntityId;
 
 /// A structural problem found while reading properties.
+///
+/// `#[non_exhaustive]`: new structural checks add variants without breaking
+/// callers that match on this type.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum PropertyAnomaly {
+    /// An object assigned two different types by `IfcRelDefinesByType`.
+    ///
+    /// IFC4 `IfcObject.IsTypedBy` is `SET [0:1]`; IFC2X3 `IfcObject` WR1
+    /// allows at most one. The first relationship by id is kept, and only
+    /// its type's sets are inherited.
+    TypedTwice {
+        /// The object with two types.
+        object: EntityId,
+        /// The type kept.
+        kept: EntityId,
+        /// The type rejected.
+        rejected: EntityId,
+        /// The `IfcRelDefinesByType` that was rejected.
+        relation: EntityId,
+    },
+    /// Two property sets of the same name on one owner.
+    ///
+    /// IFC4 forbids it on both occurrences (`IfcObject.UniquePropertySetNames`)
+    /// and types (`IfcTypeObject.UniquePropertySetNames`); IFC2X3 states no
+    /// such rule. Either way the resolved view is keyed by name, so the set
+    /// with the lower id is kept and the other is reported here rather than
+    /// silently overwriting it.
+    DuplicateSetName {
+        /// The occurrence or type holding both sets.
+        owner: EntityId,
+        /// The set kept.
+        kept: EntityId,
+        /// The set not resolved.
+        rejected: EntityId,
+    },
+    /// Two properties of the same name in one property set.
+    ///
+    /// Forbidden in IFC4 (`IfcPropertySet.UniquePropertyNames`) and IFC2X3
+    /// (`WR32`). [`PropertySet::property`](crate::PropertySet::property)
+    /// answers with the first in `HasProperties` order.
+    DuplicatePropertyName {
+        /// The property set.
+        set: EntityId,
+        /// The property kept.
+        kept: EntityId,
+        /// The property shadowed.
+        rejected: EntityId,
+    },
     /// An `IfcTypeObject` attached by `IfcRelDefinesByProperties`.
     ///
     /// Forbidden by the `NoRelatedTypeObject` WHERE rule: a type carries its

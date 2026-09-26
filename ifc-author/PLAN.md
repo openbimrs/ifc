@@ -28,6 +28,14 @@ and is re-exported deliberately by its parent.
     semantic mutants killed; projected arity, required/type/aggregate/name
     checks stage nothing on refusal, while transaction preflight retains
     dangling-reference and revision atomicity.
+- [x] `AUTHOR-SHAPE` - derived slots and aggregate-aliased types (#17, #18)
+  - A derived slot is resolved on the entity or any supertype, like
+    `ifc-validate`'s `required` check; no IFC release derives on an
+    intermediate supertype, so a synthetic schema covers that path. An
+    aliased aggregate is found by following `TYPE ... = LIST/SET/ARRAY/BAG`
+    aliases.
+  - Proof: `cargo test -p ifc-author` (`tests/derived_and_aliased.rs`, 9 tests,
+    IFC4 and IFC2X3 bundled tables, STEP round trip); 6/6 hand mutants killed.
 - [ ] `AUTHOR-OWNERHISTORY` - derive `IfcOwnerHistory` for authored roots
   - Needs a decision on whether owner history is authored or injected by an
     application service; recorded in the roadmap, not settled here.

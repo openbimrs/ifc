@@ -191,6 +191,14 @@ parallel placeholders.
   - Follow-up, not needed for correctness: exact bounds for polygonal
     extrusions and blocks, which currently go through tessellation. Booleans
     must keep falling back, because a difference only shrinks its operand.
+- [x] `GEOM-VOID-HOST` - an opening voids exactly one host (#59)
+  - `VoidsElements` is single-valued. The lowest-id `IfcRelVoidsElement`
+    decides the host in `openings_of` and net compilation, and
+    `voiding_conflicts` reports the rest.
+  - Evidence: `tests/opening_two_hosts.rs`. It has 3 tests with the kernel
+    off; with the kernel on, a fourth shows the rejected host's net body
+    subtracts nothing.
+  - Mutation proof: 3/3 killed (host filter, id sort, conflict filter).
 
 ## Completion log
 

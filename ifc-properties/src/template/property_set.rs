@@ -137,13 +137,18 @@ pub fn property_set_templates(model: &Model) -> Vec<PropertySetTemplate> {
         .collect()
 }
 
-/// Which template governs each property set, via `IfcRelDefinesByTemplate`.
+/// Which templates define each property set, via `IfcRelDefinesByTemplate`.
 ///
 /// A set with no entry is untemplated, which is normal: templates describe
 /// custom property sets and standard Psets rely on the published catalogue
 /// instead.
-pub fn template_of_set(model: &Model) -> BTreeMap<EntityId, EntityId> {
-    let mut out = BTreeMap::new();
+///
+/// Each set maps to EVERY template defining it, ascending by id and without
+/// repeats. `IfcPropertySetDefinition.IsDefinedBy` is `SET [0:?] OF
+/// IfcRelDefinesByTemplate`, so several templates are legal. Before 0.4 this
+/// returned one template per set, and silently dropped the rest (#60).
+pub fn template_of_set(model: &Model) -> BTreeMap<EntityId, Vec<EntityId>> {
+    let mut out: BTreeMap<EntityId, Vec<EntityId>> = BTreeMap::new();
     for &id in model.ids_of_type("IFCRELDEFINESBYTEMPLATE") {
         let Some(rel) = model.get(id) else { continue };
         let Some(template) = rel.attributes.get(REL_RELATING_TEMPLATE).and_then(one_ref) else {
@@ -155,8 +160,12 @@ pub fn template_of_set(model: &Model) -> BTreeMap<EntityId, EntityId> {
             .and_then(refs)
             .unwrap_or_default()
         {
-            out.insert(set, template);
+            out.entry(set).or_default().push(template);
         }
+    }
+    for templates in out.values_mut() {
+        templates.sort_unstable();
+        templates.dedup();
     }
     out
 }

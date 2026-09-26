@@ -20,6 +20,28 @@ lockstep -- is archived in the
 
 ## [Unreleased]
 
+### ifc-author
+
+### Fixed
+
+- An attribute declared as a defined type that aliases an aggregate is an
+  aggregate (#17). `IfcSite.RefLatitude`/`RefLongitude`
+  (`IfcCompoundPlaneAngleMeasure = LIST [3:4] OF INTEGER`) were refused with
+  `AggregateMismatch`, which blocked georeferencing. Their elements are now
+  checked against the alias's element type.
+- A slot that the entity or a supertype redeclares as `DERIVE` is written `*`
+  automatically (#18). `IfcSIUnit.Dimensions` and the four derived slots of
+  `IfcGeometricRepresentationSubContext` reported `MissingRequired`, so no unit
+  assignment or Body/Axis subcontext could be authored. Passing
+  `Value::Derived` explicitly is also accepted.
+
+### Added
+
+- `AuthorError::DerivedAttribute` refuses a value or `$` in a derived slot.
+  `AuthorError::NotDerived` refuses `*` in a slot the schema does not derive.
+  Before, `*` was accepted in any slot and the file was invalid. Both apply to
+  `EntityBuilder` and `EntityEditor`.
+
 ### ifc-cost
 
 ### Added
@@ -40,7 +62,21 @@ lockstep -- is archived in the
 
 ### ifc-geometry
 
+### Fixed
+
+- An opening that a file makes void two hosts is subtracted from the first
+  only (#59). `IfcFeatureElementSubtraction.VoidsElements` is a
+  single-valued inverse in IFC2X3 and IFC4, but every `IfcRelVoidsElement`
+  was applied, so the second host's net body was cut by an opening that
+  belongs to another element. The relation with the lower id now wins in
+  `openings_of` and in net compilation. Output changes only for files that
+  violate the schema.
+
 ### Added
+
+- `voiding_conflicts(model)` and `VoidingConflict { opening, kept_host,
+  rejected_host, relation }` report such openings (#59). It is kernel-free,
+  like `openings_of`. Restating the same host is not a conflict.
 
 - `compile::product_bounds` / `product_bounds_with` return a product's
   world-space axis-aligned bounding box (#36). The body is resolved and placed
@@ -101,6 +137,40 @@ lockstep -- is archived in the
   `SECTIONAREAINTEGRALUNIT`, whose name differs from the measure's.
   Before, it was refused as unmapped. The pairing follows the measure's
   definition (m^5) and the IFC4 annex E structural example.
+- The permissive views report the duplicates they resolve (#58).
+  `exact_property` already refuses these files; the permissive views now
+  keep a documented winner and say so:
+  - `PropertyAnomaly::TypedTwice`: an object with two `IfcRelDefinesByType`
+    (IFC4 `IsTypedBy` is `SET [0:1]`; IFC2X3 `IfcObject` WR1).
+  - `PropertyAnomaly::DuplicateSetName`: two same-named property sets on one
+    occurrence or one type (IFC4 `UniquePropertySetNames`). It is reported
+    once per owner, including for a type that no occurrence uses.
+  - `PropertyAnomaly::DuplicatePropertyName`: two same-named properties in
+    one set (IFC4 `UniquePropertyNames`, IFC2X3 `WR32`), reported by
+    `property_sets_by_object`.
+
+### Changed (breaking)
+
+- `PropertyAnomaly` is `#[non_exhaustive]`, so future checks can add
+  variants. Exhaustive matches need a wildcard arm.
+- `template_of_set` returns `BTreeMap<EntityId, Vec<EntityId>>`: every
+  template defining a set, ascending by id and without repeats (#60).
+  `IfcPropertySetDefinition.IsDefinedBy` is `SET [0:?] OF
+  IfcRelDefinesByTemplate`, so several templates are legal, but the old
+  `BTreeMap<EntityId, EntityId>` kept only the last and silently dropped the
+  others, on valid files. A caller that wants one template must now choose,
+  and is not handed an arbitrary one.
+
+### Fixed
+
+- An object typed twice kept the **last** `IfcRelDefinesByType` in file
+  order and said nothing. It now keeps the first by relationship id, and
+  inherits only that type's sets.
+- Two same-named property sets on one owner made the later one win. For
+  occurrences, the earlier one was misreported as `shadowed`: shadowing
+  means an occurrence set overriding a type set. The set with the lower id
+  now wins within each route. An occurrence set still overrides a
+  same-named type set, and that is not reported.
 
 ### Fixed
 

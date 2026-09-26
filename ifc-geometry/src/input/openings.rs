@@ -16,6 +16,8 @@
 //! `IfcRoot` attributes. `tests/context_slots.rs` asserts that against the
 //! shipped schemas, following ADR 0008.
 
+use std::collections::BTreeMap;
+
 use ifc_model::{EntityId, Model, Value};
 
 use crate::slots::Slots;
@@ -41,25 +43,89 @@ pub(crate) struct Voiding {
     pub(crate) opening: EntityId,
 }
 
+/// An opening that the file makes void a second host.
+///
+/// `IfcFeatureElementSubtraction.VoidsElements` is a single-valued inverse
+/// (`IfcRelVoidsElement FOR RelatedOpeningElement`) in IFC2X3 and IFC4: an
+/// opening voids exactly one element. When a file names two hosts, the
+/// relation with the lower id wins. The opening is subtracted from that host
+/// only, never cut into an element it does not belong to, and the rejected
+/// claim is reported here.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[non_exhaustive]
+pub struct VoidingConflict {
+    /// The opening with two hosts.
+    pub opening: EntityId,
+    /// The host it voids.
+    pub kept_host: EntityId,
+    /// The host it is not subtracted from.
+    pub rejected_host: EntityId,
+    /// The `IfcRelVoidsElement` that was rejected.
+    pub relation: EntityId,
+}
+
+/// Every well-formed `(relation, host, opening)` triple, ascending by relation.
+fn all_voidings(model: &Model) -> Vec<(EntityId, EntityId, EntityId)> {
+    let mut all: Vec<_> = model
+        .of_type(VOIDS_ELEMENT)
+        .filter_map(|(relation, entity)| {
+            let slots = Slots::new(relation, entity);
+            let host = ref_at(slots.opt(slot::RELATING_BUILDING_ELEMENT))?;
+            let opening = ref_at(slots.opt(slot::RELATED_OPENING_ELEMENT))?;
+            Some((relation, host, opening))
+        })
+        .collect();
+    all.sort_unstable();
+    all
+}
+
+/// Each opening's host: the one its lowest-id relation names.
+fn kept_hosts(all: &[(EntityId, EntityId, EntityId)]) -> BTreeMap<EntityId, EntityId> {
+    let mut kept = BTreeMap::new();
+    for &(_, host, opening) in all {
+        kept.entry(opening).or_insert(host);
+    }
+    kept
+}
+
+/// Openings the file makes void more than one host, in relation order.
+///
+/// Empty for a conformant file. Kernel-free, like [`openings_of`]. A second
+/// relation naming the same host again is redundant, not a conflict.
+#[must_use]
+pub fn voiding_conflicts(model: &Model) -> Vec<VoidingConflict> {
+    let all = all_voidings(model);
+    let kept = kept_hosts(&all);
+    all.iter()
+        .filter(|(_, host, opening)| kept[opening] != *host)
+        .map(|&(relation, host, opening)| VoidingConflict {
+            opening,
+            kept_host: kept[&opening],
+            rejected_host: host,
+            relation,
+        })
+        .collect()
+}
+
 /// Every voiding of `host`, one per opening, in ascending opening id.
 ///
 /// Ordered by the opening rather than by the relation so the result is a
 /// property of the model's content, not of which relation an exporter wrote
-/// first. An opening named by two relations is subtracted once: removing the
-/// same body twice changes nothing but the cost.
+/// first. An opening named by two relations for the same host is subtracted
+/// once: removing the same body twice changes nothing but the cost. An
+/// opening another relation assigns to a different host first is not this
+/// host's (see [`voiding_conflicts`]).
 ///
 /// Scans the relations on each call. That is O(relations), which is a few
 /// hundred on a real building; a caller netting every product of a large model
 /// pays O(products x relations), still well under the boolean cost.
 pub(crate) fn voidings_of(model: &Model, host: EntityId) -> Vec<Voiding> {
-    let mut found: Vec<Voiding> = model
-        .of_type(VOIDS_ELEMENT)
-        .filter_map(|(relation, entity)| {
-            let slots = Slots::new(relation, entity);
-            let relating = ref_at(slots.opt(slot::RELATING_BUILDING_ELEMENT))?;
-            let opening = ref_at(slots.opt(slot::RELATED_OPENING_ELEMENT))?;
-            (relating == host).then_some(Voiding { relation, opening })
-        })
+    let all = all_voidings(model);
+    let kept = kept_hosts(&all);
+    let mut found: Vec<Voiding> = all
+        .into_iter()
+        .filter(|(_, relating, opening)| *relating == host && kept[opening] == host)
+        .map(|(relation, _, opening)| Voiding { relation, opening })
         .collect();
     found.sort_by_key(|voiding| (voiding.opening, voiding.relation));
     found.dedup_by_key(|voiding| voiding.opening);
@@ -71,7 +137,9 @@ pub(crate) fn voidings_of(model: &Model, host: EntityId) -> Vec<Voiding> {
 /// Kernel-free: answering which openings a wall has is a slot read, so this
 /// works under `--no-default-features` exactly as with the kernel linked. A
 /// relation with a missing or non-reference end is skipped rather than
-/// guessed at; it names no opening this function could return.
+/// guessed at; it names no opening this function could return. An opening a
+/// malformed file assigns to two hosts belongs to the first by relation id;
+/// [`voiding_conflicts`] reports the other.
 ///
 /// ```
 /// use ifc_geometry::openings_of;

@@ -125,13 +125,15 @@ impl<'a> EntityEditor<'a> {
 
         for (index, attribute) in declared.iter().enumerate() {
             let value = &projected[index];
+            // Checked first so a derived slot holding `$` reports as derived,
+            // not as a missing required value.
+            check_value(self.schema, &entity_name, attribute, value)?;
             if !attribute.optional && matches!(value, Value::Null) {
                 return Err(AuthorError::MissingRequired {
                     entity: entity_name,
                     attribute: attribute.name.clone(),
                 });
             }
-            check_value(self.schema, &entity_name, attribute, value)?;
         }
 
         for (slot, value) in staged {

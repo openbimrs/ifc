@@ -27,9 +27,9 @@ code.
 
 | Crate | Source LOC | Files | Stub files | Test files | Status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `ifc-geometry` | 40,278 | 132 | 3 | 65 | <span class="status-partial">Partial</span> |
+| `ifc-geometry` | 40,346 | 132 | 3 | 66 | <span class="status-partial">Partial</span> |
 | `ifc-style` | 7,302 | 46 | 0 | 15 | <span class="status-implemented">Implemented</span> |
-| `ifc-properties` | 7,108 | 42 | 13 | 13 | <span class="status-implemented">Implemented</span> |
+| `ifc-properties` | 7,250 | 42 | 13 | 14 | <span class="status-implemented">Implemented</span> |
 | `ifc-structural` | 4,887 | 36 | 14 | 18 | <span class="status-implemented">Implemented</span> |
 | `ifc-alignment` | 4,605 | 37 | 11 | 11 | <span class="status-partial">Partial</span> |
 | `ifc-resource` | 3,728 | 31 | 9 | 14 | <span class="status-partial">Partial</span> |
@@ -49,9 +49,9 @@ code.
 | `ifc-schema` | 1,418 | 12 | 4 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 1,317 | 6 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `openbim-ifc` | 1,084 | 8 | 0 | 16 | <span class="status-implemented">Implemented</span> |
+| `ifc-author` | 1,082 | 10 | 3 | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-xml` | 1,046 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
 | `ifc-step` | 1,026 | 6 | 0 | 6 | <span class="status-implemented">Implemented</span> |
-| `ifc-author` | 951 | 9 | 3 | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-approval` | 914 | 5 | 0 | 1 | <span class="status-implemented">Implemented</span> |
 | `openbim-ifc-binding-core` | 787 | 6 | 0 | 0 | <span class="status-implemented">Implemented</span> |
 | `ifc-tabular` | 393 | 4 | 0 | 2 | <span class="status-implemented">Implemented</span> |

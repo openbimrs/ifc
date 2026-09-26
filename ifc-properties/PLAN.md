@@ -47,12 +47,21 @@ owner and expose a public symbol only through an intentional parent re-export.
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [x] `PROP-TEMPLATE` - implement templates and applicability links
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
+  - #60: `template_of_set` keeps every template defining a set
+    (`IsDefinedBy` is `SET [0:?]`), not the last one. Proof:
+    `tests/duplicate_assignments.rs::every_template_defining_a_set_is_kept`.
+    Removing the sort or the dedup each fail.
 - [x] `PROP-QUERY` - resolve occurrence/type property assignment with precedence made explicit
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
   - #66: `exact_property` resolves simple quantities in `IfcElementQuantity`
     (`exact/quantity.rs`). It refuses predefined sets that could hold the
     name instead of claiming `Absent`. Proof: `tests/exact_quantities.rs`
     (8 tests, IFC4 and IFC2X3). 7/7 mutants killed.
+  - #58: duplicate type, set-name and property-name statements keep the
+    first by id and are reported (`TypedTwice`, `DuplicateSetName`,
+    `DuplicatePropertyName`). Proof: `tests/duplicate_assignments.rs`
+    (5 tests). 5/5 mutants were killed: the id sort, each anomaly push, and
+    the occurrence-duplicate guard.
 - [x] `PROP-EDIT` - write/update quantities transactionally after MODEL-MUT
   - Evidence: focused unit/property/fixture tests, isolated build, and crate clippy.
 - [x] `PROP-CHECK` - accept externally computed measurements and compare without depending on geometry
