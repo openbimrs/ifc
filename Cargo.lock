@@ -827,6 +827,7 @@ dependencies = [
  "axiolid-primitive",
  "axiolid-profile",
  "axiolid-reference",
+ "axiolid-spatial",
  "axiolid-surface",
  "axiolid-topology",
  "ifc-alignment",

@@ -175,6 +175,22 @@ parallel placeholders.
 - [x] `GEOM-CENSUS` - reconcile concrete IFC4 declarations, ownership, dispatch, corpus, and behavior
   - Evidence: executable representation-item disposition ledger plus exact/planned corpus gates and profile-family census.
   - Mutation proof: declaration, corpus-instance, curve-semantic, and polygonal-bound mutations each failed with exit 101.
+- [x] `GEOM-BOUNDS` - world-space product AABB for spatial indexing (#36)
+  - `compile::product_bounds{,_with}`: exact from mesh/bounding-box leaves
+    (`compile/bounds.rs`), otherwise from the compiled mesh. It is
+    `Ok(None)` for a product with no body.
+  - Evidence: `tests/product_bounds.rs` (5 passing):
+    - a 30°-rotated wall matches a hand-computed box in both metres and
+      millimetres;
+    - a triangulated slab is bounded exactly;
+    - a BVH built from the boxes returns the right product for point and ray
+      probes.
+    `examples/product_bvh.rs` runs over the corpus.
+  - Mutation proof: dropping the instance transform, and treating an
+    unsupported leaf as empty, each fail.
+  - Follow-up, not needed for correctness: exact bounds for polygonal
+    extrusions and blocks, which currently go through tessellation. Booleans
+    must keep falling back, because a difference only shrinks its operand.
 
 ## Completion log
 

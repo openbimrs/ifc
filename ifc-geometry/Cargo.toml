@@ -94,8 +94,13 @@ axiolid-curve-evaluate-contract = { workspace = true, optional = true }
 axiolid-evaluate.workspace = true
 ifc-step.workspace = true
 axiolid-reference.workspace = true
+axiolid-spatial.workspace = true
 proc-macro2 = "1"
 syn = { version = "2", features = ["full", "parsing", "visit"] }
+
+[[example]]
+name = "product_bvh"
+required-features = ["compile-reference-backend"]
 
 [lints]
 workspace = true
