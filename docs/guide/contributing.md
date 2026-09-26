@@ -158,12 +158,13 @@ publishes to every registry the crate targets:
 | Crate | Registries |
 | --- | --- |
 | any crate without `publish = false` | crates.io |
-| `openbim-ifc-wasm` | crates.io and npm (`@openbim/ifc`) |
-| `openbim-ifc-py` | PyPI (`openbim-ifc`): Linux, macOS and Windows wheels plus an sdist |
+| `openbim-ifc-wasm` | npm only (`@openbim/ifc`) |
+| `openbim-ifc-py` | PyPI only (`openbim-ifc`): Linux, macOS and Windows wheels plus an sdist |
 
 The version in `openbim-ifc-wasm/npm/package.json` or
-`openbim-ifc-py/pyproject.toml` must equal the crate's; the workflow
-refuses a tag that disagrees with any manifest. Every publish step
+`openbim-ifc-py/pyproject.toml` must equal the crate's. `--set --apply`
+bumps it together with `Cargo.toml`, and refuses if the two were already
+out of step. The workflow refuses a tag that disagrees with any manifest. Every publish step
 skips a version that is already live, so re-running a partly failed
 release finishes it.
 
