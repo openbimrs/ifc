@@ -6,6 +6,7 @@ use ifc_model::{Entity, EntityId, Model};
 
 use crate::crs::{projected_crs, LengthUnit, ProjectedCrs};
 use crate::error::{GeorefError, GeorefResult};
+use crate::slot::map_conversion as slot;
 use crate::view::GeorefView;
 
 /// A resolved project-to-map coordinate operation, normalised to metres.
@@ -115,10 +116,10 @@ fn resolve(
             actual: entity.type_name.to_string(),
         });
     }
-    // IFC4 ADD2 TC1 IfcMapConversion declaration order: SourceCRS,
-    // TargetCRS, Eastings, Northings, OrthogonalHeight, XAxis*, Scale.
-    let source_crs = required_ref(entity, id, 0, "SourceCRS")?;
-    let target_ref = required_ref(entity, id, 1, "TargetCRS")?;
+    // Slots are pinned against the bundled IFC4 and IFC4X3 tables in
+    // `crate::slot`.
+    let source_crs = required_ref(entity, id, slot::SOURCE_CRS, "SourceCRS")?;
+    let target_ref = required_ref(entity, id, slot::TARGET_CRS, "TargetCRS")?;
     let target_crs = projected_crs(model, target_ref)?;
     let project_unit = LengthUnit {
         name: "PROJECT_LENGTH_UNIT".into(),
@@ -129,17 +130,17 @@ fn resolve(
         .clone()
         .unwrap_or_else(|| project_unit.clone());
 
-    let eastings = required_number(entity, id, 2, "Eastings")?;
-    let northings = required_number(entity, id, 3, "Northings")?;
-    let height = required_number(entity, id, 4, "OrthogonalHeight")?;
-    let a = optional_number(entity, id, 5, "XAxisAbscissa")?.unwrap_or(1.0);
-    let b = optional_number(entity, id, 6, "XAxisOrdinate")?.unwrap_or(0.0);
+    let eastings = required_number(entity, id, slot::EASTINGS, "Eastings")?;
+    let northings = required_number(entity, id, slot::NORTHINGS, "Northings")?;
+    let height = required_number(entity, id, slot::ORTHOGONAL_HEIGHT, "OrthogonalHeight")?;
+    let a = optional_number(entity, id, slot::X_AXIS_ABSCISSA, "XAxisAbscissa")?.unwrap_or(1.0);
+    let b = optional_number(entity, id, slot::X_AXIS_ORDINATE, "XAxisOrdinate")?.unwrap_or(0.0);
     let norm = a.hypot(b);
     if !norm.is_finite() || norm <= f64::EPSILON {
         return Err(GeorefError::DegenerateAxis { entity: id });
     }
     let (a, b) = (a / norm, b / norm);
-    let declared_scale = optional_number(entity, id, 7, "Scale")?.unwrap_or(1.0);
+    let declared_scale = optional_number(entity, id, slot::SCALE, "Scale")?.unwrap_or(1.0);
     if !declared_scale.is_finite() || declared_scale <= 0.0 {
         return Err(GeorefError::InvalidScale {
             entity: id,
@@ -147,9 +148,9 @@ fn resolve(
         });
     }
     for (index, name, value) in [
-        (2, "Eastings", eastings),
-        (3, "Northings", northings),
-        (4, "OrthogonalHeight", height),
+        (slot::EASTINGS, "Eastings", eastings),
+        (slot::NORTHINGS, "Northings", northings),
+        (slot::ORTHOGONAL_HEIGHT, "OrthogonalHeight", height),
     ] {
         if !value.is_finite() {
             return Err(GeorefError::InvalidAttribute {
@@ -174,9 +175,9 @@ fn resolve(
     let z = Vec3::new(0.0, 0.0, scale);
     let translation = Vec3::new(eastings, northings, height) * map_unit.metres_per_unit;
     for (index, name, value) in [
-        (2, "Eastings", translation.x),
-        (3, "Northings", translation.y),
-        (4, "OrthogonalHeight", translation.z),
+        (slot::EASTINGS, "Eastings", translation.x),
+        (slot::NORTHINGS, "Northings", translation.y),
+        (slot::ORTHOGONAL_HEIGHT, "OrthogonalHeight", translation.z),
     ] {
         if !value.is_finite() {
             return Err(GeorefError::InvalidAttribute {

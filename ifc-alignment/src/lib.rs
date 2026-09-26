@@ -48,7 +48,7 @@ pub use curve::{
     lower_horizontal_layout_partial, lower_horizontal_segment, lower_vertical_segment, profile_law,
     LoweredAlignmentCurve, PartialHorizontalLayout, RefusedSegment,
 };
-pub use error::{AlignmentError, AlignmentResult};
+pub use error::{AlignmentError, AlignmentResult, ProfileSeam};
 pub use horizontal::{
     read_horizontal_segment, AlignmentUnits, HorizontalSegment, HorizontalSegmentType,
 };

@@ -4,6 +4,7 @@ use ifc_model::{EntityId, Model};
 
 use crate::crs::unit::{resolve_length_unit, LengthUnit};
 use crate::error::{GeorefError, GeorefResult};
+use crate::slot::projected_crs as slot;
 
 /// A projected coordinate reference system read from `IfcProjectedCRS`.
 #[derive(Debug, Clone, PartialEq)]
@@ -39,22 +40,23 @@ pub(crate) fn projected_crs(model: &Model, id: EntityId) -> GeorefResult<Project
             actual: entity.type_name.to_string(),
         });
     }
-    // IFC4 ADD2 TC1 IfcCoordinateReferenceSystem contributes slots 0..3;
-    // IfcProjectedCRS adds MapProjection, MapZone, and MapUnit at 4..6.
+    // Slots are pinned against the bundled IFC4 and IFC4X3 tables in
+    // `crate::slot`; the two versions declare them differently but place
+    // them identically.
     let name = entity
-        .text(0)
+        .text(slot::NAME)
         .ok_or(GeorefError::MissingAttribute {
             entity: id,
-            index: 0,
+            index: slot::NAME,
             name: "Name",
         })?
         .to_owned();
-    let map_unit = match entity.attribute(6) {
+    let map_unit = match entity.attribute(slot::MAP_UNIT) {
         None | Some(ifc_model::value::Value::Null) => None,
         Some(value) => {
             let unit = value.as_ref_id().ok_or(GeorefError::InvalidAttribute {
                 entity: id,
-                index: 6,
+                index: slot::MAP_UNIT,
                 name: "MapUnit",
             })?;
             Some(resolve_length_unit(model, unit)?)
@@ -63,11 +65,11 @@ pub(crate) fn projected_crs(model: &Model, id: EntityId) -> GeorefResult<Project
     Ok(ProjectedCrs {
         entity: id,
         name,
-        description: entity.text(1).map(str::to_owned),
-        geodetic_datum: entity.text(2).map(str::to_owned),
-        vertical_datum: entity.text(3).map(str::to_owned),
-        map_projection: entity.text(4).map(str::to_owned),
-        map_zone: entity.text(5).map(str::to_owned),
+        description: entity.text(slot::DESCRIPTION).map(str::to_owned),
+        geodetic_datum: entity.text(slot::GEODETIC_DATUM).map(str::to_owned),
+        vertical_datum: entity.text(slot::VERTICAL_DATUM).map(str::to_owned),
+        map_projection: entity.text(slot::MAP_PROJECTION).map(str::to_owned),
+        map_zone: entity.text(slot::MAP_ZONE).map(str::to_owned),
         map_unit,
     })
 }

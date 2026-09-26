@@ -4,6 +4,7 @@ use ifc_model::value::Value;
 use ifc_model::{EntityId, Model};
 
 use crate::error::{GeorefError, GeorefResult};
+use crate::slot::{conversion_based_unit, measure_with_unit, si_unit};
 
 /// A length unit reduced to a metre factor.
 #[derive(Debug, Clone, PartialEq)]
@@ -30,9 +31,14 @@ fn resolve(model: &Model, id: EntityId, chain: &mut Vec<EntityId>) -> GeorefResu
     })?;
     let result = match entity.type_name.as_ref() {
         "IFCSIUNIT" => {
-            require_enum(entity.attribute(1), id, "LENGTHUNIT")?;
-            let prefix = optional_enum(entity.attribute(2), id, 2, "Prefix")?;
-            require_enum(entity.attribute(3), id, "METRE")?;
+            require_enum(entity.attribute(si_unit::UNIT_TYPE), id, "LENGTHUNIT")?;
+            let prefix = optional_enum(
+                entity.attribute(si_unit::PREFIX),
+                id,
+                si_unit::PREFIX,
+                "Prefix",
+            )?;
+            require_enum(entity.attribute(si_unit::NAME), id, "METRE")?;
             let factor = match prefix.as_deref() {
                 None => 1.0,
                 Some("EXA") => 1e18,
@@ -64,20 +70,26 @@ fn resolve(model: &Model, id: EntityId, chain: &mut Vec<EntityId>) -> GeorefResu
             }
         }
         "IFCCONVERSIONBASEDUNIT" => {
-            require_enum(entity.attribute(1), id, "LENGTHUNIT")?;
+            require_enum(
+                entity.attribute(conversion_based_unit::UNIT_TYPE),
+                id,
+                "LENGTHUNIT",
+            )?;
             let name = entity
-                .text(2)
+                .text(conversion_based_unit::NAME)
                 .ok_or(GeorefError::MissingAttribute {
                     entity: id,
-                    index: 2,
+                    index: conversion_based_unit::NAME,
                     name: "Name",
                 })?
                 .to_owned();
-            let factor_ref = entity.reference(3).ok_or(GeorefError::InvalidAttribute {
-                entity: id,
-                index: 3,
-                name: "ConversionFactor",
-            })?;
+            let factor_ref = entity
+                .reference(conversion_based_unit::CONVERSION_FACTOR)
+                .ok_or(GeorefError::InvalidAttribute {
+                    entity: id,
+                    index: conversion_based_unit::CONVERSION_FACTOR,
+                    name: "ConversionFactor",
+                })?;
             let factor_entity = model.get(factor_ref).ok_or(GeorefError::MissingEntity {
                 referrer: id,
                 missing: factor_ref,
@@ -90,18 +102,18 @@ fn resolve(model: &Model, id: EntityId, chain: &mut Vec<EntityId>) -> GeorefResu
                 });
             }
             let value = factor_entity
-                .attribute(0)
+                .attribute(measure_with_unit::VALUE_COMPONENT)
                 .and_then(|v| v.unwrap_typed().as_f64())
                 .ok_or(GeorefError::InvalidAttribute {
                     entity: factor_ref,
-                    index: 0,
+                    index: measure_with_unit::VALUE_COMPONENT,
                     name: "ValueComponent",
                 })?;
             let base_ref = factor_entity
-                .reference(1)
+                .reference(measure_with_unit::UNIT_COMPONENT)
                 .ok_or(GeorefError::InvalidAttribute {
                     entity: factor_ref,
-                    index: 1,
+                    index: measure_with_unit::UNIT_COMPONENT,
                     name: "UnitComponent",
                 })?;
             let base = resolve(model, base_ref, chain)?;

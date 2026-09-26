@@ -17,6 +17,8 @@ Allowed production dependencies: ifc-model, schema metadata, and neutral axiolid
 - `elevation.rs`: site/ref elevation metadata
 - `north.rs`: true/project/grid north distinctions
 - `view.rs`: schema pinning (IFC4/IFC4X3) and version-aware entity lookup
+- `slot.rs`: absolute attribute slots the readers index, asserted against the
+  bundled IFC4 and IFC4X3 tables. Never restate a slot number at a call site.
 - `error.rs`: incomplete/invalid CRS operations
 
 ## Invariants

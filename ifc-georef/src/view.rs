@@ -12,7 +12,8 @@
 //! `MapUnit`=6) are identical in both schemas. `IfcMapConversion`'s own six
 //! attributes are unchanged too. So `resolve_project_to_map` and
 //! `projected_crs` need no version branch -- confirmed against
-//! `IFC4.exp`/`IFC4X3_ADD2.exp` directly, not assumed.
+//! `IFC4.exp`/`IFC4X3_ADD2.exp` directly, and asserted against both bundled
+//! schema tables by `crate::slot`'s tests.
 //!
 //! # What actually differs
 //!

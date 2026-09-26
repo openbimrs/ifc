@@ -11,6 +11,7 @@ mod crs;
 mod elevation;
 mod error;
 mod north;
+mod slot;
 mod view;
 
 pub use authoring::{
