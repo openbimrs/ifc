@@ -24,44 +24,46 @@ below keeps one from being mistaken for working code.
 
 Generated from the source tree by `cargo run -p xtask -- docs`, not estimated.
 "Stub files" counts source files of twelve lines or fewer — the placeholder
-shape described above. `scripts/gate.sh` fails if these numbers drift from the
-code.
+shape described above. `scripts/gate.sh` fails if the table drifts from the
+code. Crate size is deliberately not published here: it changes with nearly
+every commit, and a committed figure that moves that often only produces merge
+conflicts. [Coverage](/coverage) measures what each crate does instead.
 
 <!-- CAPABILITIES:CENSUS:BEGIN -->
 
-| Crate | Source LOC | Files | Stub files | Test files | Status |
-| --- | ---: | ---: | ---: | ---: | --- |
-| `ifc-geometry` | 41,281 | 134 | 3 | 67 | <span class="status-partial">Partial</span> |
-| `ifc-properties` | 7,602 | 43 | 11 | 15 | <span class="status-implemented">Implemented</span> |
-| `ifc-style` | 7,302 | 46 | 0 | 15 | <span class="status-implemented">Implemented</span> |
-| `ifc-structural` | 4,886 | 36 | 14 | 18 | <span class="status-implemented">Implemented</span> |
-| `ifc-alignment` | 4,678 | 37 | 12 | 13 | <span class="status-partial">Partial</span> |
-| `ifc-resource` | 3,720 | 31 | 9 | 14 | <span class="status-partial">Partial</span> |
-| `ifc-element-type` | 3,435 | 10 | 0 | 4 | <span class="status-implemented">Implemented</span> |
-| `ifc-material` | 3,387 | 25 | 1 | 13 | <span class="status-implemented">Implemented</span> |
-| `ifc-template-catalog` | 3,104 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
-| `ifc-classification` | 2,973 | 22 | 4 | 5 | <span class="status-implemented">Implemented</span> |
-| `ifc-validate` | 2,911 | 24 | 0 | 3 | <span class="status-implemented">Implemented</span> |
-| `ifc-spatial` | 2,863 | 16 | 0 | 17 | <span class="status-implemented">Implemented</span> |
-| `ifc-occurrence` | 2,803 | 8 | 0 | 2 | <span class="status-implemented">Implemented</span> |
-| `ifc-systems` | 2,795 | 24 | 6 | 7 | <span class="status-implemented">Implemented</span> |
-| `ifc-schedule` | 2,709 | 27 | 13 | 7 | <span class="status-implemented">Implemented</span> |
-| `ifc-model` | 2,516 | 27 | 5 | 11 | <span class="status-implemented">Implemented</span> |
-| `ifc-georef` | 2,386 | 21 | 10 | 6 | <span class="status-partial">Partial</span> |
-| `ifc-cost` | 2,378 | 17 | 0 | 6 | <span class="status-implemented">Implemented</span> |
-| `openbim-ifc-capi` | 1,964 | 10 | 0 | 1 | <span class="status-partial">Partial</span> |
-| `ifc-schema` | 1,420 | 12 | 4 | 5 | <span class="status-implemented">Implemented</span> |
-| `ifc-constraint` | 1,317 | 6 | 0 | 2 | <span class="status-implemented">Implemented</span> |
-| `ifc-step` | 1,225 | 7 | 0 | 7 | <span class="status-implemented">Implemented</span> |
-| `openbim-ifc` | 1,111 | 8 | 0 | 19 | <span class="status-implemented">Implemented</span> |
-| `ifc-author` | 1,082 | 10 | 3 | 5 | <span class="status-implemented">Implemented</span> |
-| `ifc-xml` | 1,046 | 6 | 0 | 3 | <span class="status-implemented">Implemented</span> |
-| `ifc-approval` | 914 | 5 | 0 | 1 | <span class="status-implemented">Implemented</span> |
-| `openbim-ifc-binding-core` | 830 | 6 | 0 | 0 | <span class="status-implemented">Implemented</span> |
-| `ifc-tabular` | 393 | 4 | 0 | 2 | <span class="status-implemented">Implemented</span> |
-| `openbim-ifc-wasm` | 393 | 5 | 0 | 0 | <span class="status-partial">Partial</span> |
-| `openbim-ifc-py` | 348 | 4 | 0 | 0 | <span class="status-partial">Partial</span> |
-| `ifc-control` | 334 | 3 | 0 | 1 | <span class="status-implemented">Implemented</span> |
+| Crate | Stub files | Status |
+| --- | ---: | --- |
+| `ifc-alignment` | 12 | <span class="status-partial">Partial</span> |
+| `ifc-approval` | 0 | <span class="status-implemented">Implemented</span> |
+| `ifc-author` | 3 | <span class="status-implemented">Implemented</span> |
+| `ifc-classification` | 4 | <span class="status-implemented">Implemented</span> |
+| `ifc-constraint` | 0 | <span class="status-implemented">Implemented</span> |
+| `ifc-control` | 0 | <span class="status-implemented">Implemented</span> |
+| `ifc-cost` | 0 | <span class="status-implemented">Implemented</span> |
+| `ifc-element-type` | 0 | <span class="status-implemented">Implemented</span> |
+| `ifc-geometry` | 3 | <span class="status-partial">Partial</span> |
+| `ifc-georef` | 10 | <span class="status-partial">Partial</span> |
+| `ifc-material` | 1 | <span class="status-implemented">Implemented</span> |
+| `ifc-model` | 5 | <span class="status-implemented">Implemented</span> |
+| `ifc-occurrence` | 0 | <span class="status-implemented">Implemented</span> |
+| `ifc-properties` | 11 | <span class="status-implemented">Implemented</span> |
+| `ifc-resource` | 9 | <span class="status-partial">Partial</span> |
+| `ifc-schedule` | 13 | <span class="status-implemented">Implemented</span> |
+| `ifc-schema` | 4 | <span class="status-implemented">Implemented</span> |
+| `ifc-spatial` | 0 | <span class="status-implemented">Implemented</span> |
+| `ifc-step` | 0 | <span class="status-implemented">Implemented</span> |
+| `ifc-structural` | 14 | <span class="status-implemented">Implemented</span> |
+| `ifc-style` | 0 | <span class="status-implemented">Implemented</span> |
+| `ifc-systems` | 6 | <span class="status-implemented">Implemented</span> |
+| `ifc-tabular` | 0 | <span class="status-implemented">Implemented</span> |
+| `ifc-template-catalog` | 3 | <span class="status-implemented">Implemented</span> |
+| `ifc-validate` | 0 | <span class="status-implemented">Implemented</span> |
+| `ifc-xml` | 0 | <span class="status-implemented">Implemented</span> |
+| `openbim-ifc` | 0 | <span class="status-implemented">Implemented</span> |
+| `openbim-ifc-binding-core` | 0 | <span class="status-implemented">Implemented</span> |
+| `openbim-ifc-capi` | 0 | <span class="status-partial">Partial</span> |
+| `openbim-ifc-py` | 0 | <span class="status-partial">Partial</span> |
+| `openbim-ifc-wasm` | 0 | <span class="status-partial">Partial</span> |
 
 <!-- CAPABILITIES:CENSUS:END -->
 
