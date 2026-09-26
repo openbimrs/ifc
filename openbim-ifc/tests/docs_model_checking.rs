@@ -53,7 +53,7 @@ fn declared_schema_validation_reports_a_clean_but_partial_verdict() -> TestResul
     // A file that declares none, or an unknown token, is refused.
     let report = validate_declared(&model)?;
 
-    println!("{}", report.summary()); // "0 errors, 0 warnings, 2 unsupported"
+    println!("{}", report.summary()); // "0 errors, 0 evaluation errors, 0 warnings, 2 unsupported"
     for finding in report.sorted() {
         if finding.severity == Severity::Error {
             println!("{} at {}: {}", finding.rule, finding.path, finding.message);
@@ -65,7 +65,10 @@ fn declared_schema_validation_reports_a_clean_but_partial_verdict() -> TestResul
     assert!(clean, "{:?}", report.findings());
     assert_eq!((summary.errors, summary.warnings), (0, 0));
     // The comment in the snippet quotes this exact line.
-    assert_eq!(summary.to_string(), "0 errors, 0 warnings, 2 unsupported");
+    assert_eq!(
+        summary.to_string(),
+        "0 errors, 0 evaluation errors, 0 warnings, 2 unsupported"
+    );
     Ok(())
 }
 
@@ -109,10 +112,7 @@ fn the_findings_cap_marks_the_report_truncated() -> TestResult {
 
     // Budget::DEFAULT caps stored findings; `validate` and
     // `validate_declared` use it. Tighten it for a quick CI verdict.
-    let budget = Budget {
-        max_findings: 1,
-        ..Budget::DEFAULT
-    };
+    let budget = Budget { max_findings: 1 };
     let report = validate_with(&model, ifc4(), budget);
 
     if report.is_truncated() {
