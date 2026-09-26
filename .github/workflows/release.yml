@@ -6,10 +6,11 @@
 #                            + npm   for openbim-ifc-wasm  (@openbim/ifc)
 #                            + PyPI  for openbim-ifc-py    (openbim-ifc)
 #
-# npm and PyPI use trusted publishing (OIDC): there is no token for them.
-# Both registries trust exactly this file name and the `release` environment,
-# so renaming either breaks publishing until the registry settings follow.
-# crates.io uses the CARGO_REGISTRY_TOKEN secret of the `release` environment.
+# npm, PyPI and crates.io use trusted publishing (OIDC). Each registry trusts
+# exactly this file name and the `release` environment, so renaming either
+# breaks publishing until the registry settings follow. crates.io falls back
+# to the CARGO_REGISTRY_TOKEN secret of the `release` environment for crates
+# not yet configured there; delete the secret once every crate is.
 #
 # Run it by hand (Actions -> Release -> Run workflow) with a tag name to
 # rehearse a release: everything is built and tested, nothing is published.
@@ -99,17 +100,42 @@ jobs:
     if: needs.plan.outputs.crates_io == 'true' && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: release
+    permissions:
+      contents: read
+      id-token: write # crates.io trusted publishing (OIDC)
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install Rust 1.88
         uses: dtolnay/rust-toolchain@688313b0823df1393bcebb1b4add0438a6d36884 # 1.88.0
+      - name: Authenticate with crates.io (trusted publishing)
+        # A short-lived token, revoked when the job ends. crates.io issues
+        # it when ANY crate trusts this workflow and the `release`
+        # environment, but it only works for those crates, so a token can
+        # exist and still be refused for the crate being released.
+        id: auth
+        continue-on-error: true
+        uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1.0.5
       - name: Publish
-        # Skips a version that is already live, so re-running a partly
-        # failed release finishes it instead of failing on what succeeded.
+        # --publish-here skips a version that is already live, so the
+        # fallback retry with the long-lived secret is safe: it can only
+        # publish what the trusted-publishing attempt did not. The fallback
+        # goes away when CARGO_REGISTRY_TOKEN is deleted.
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: python3 scripts/release-crate.py "${{ needs.plan.outputs.crate }}" --publish-here
+          CRATE: ${{ needs.plan.outputs.crate }}
+          OIDC_TOKEN: ${{ steps.auth.outputs.token }}
+          FALLBACK_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          if [ -n "$OIDC_TOKEN" ] && CARGO_REGISTRY_TOKEN="$OIDC_TOKEN" \
+              python3 scripts/release-crate.py "$CRATE" --publish-here; then
+            exit 0
+          fi
+          if [ -z "$FALLBACK_TOKEN" ]; then
+            echo "::error::trusted publishing failed for $CRATE and no CARGO_REGISTRY_TOKEN fallback is set"
+            exit 1
+          fi
+          echo "::warning::$CRATE is not publishable via crates.io trusted publishing; used CARGO_REGISTRY_TOKEN"
+          CARGO_REGISTRY_TOKEN="$FALLBACK_TOKEN" python3 scripts/release-crate.py "$CRATE" --publish-here
 
   npm:
     name: Publish to npm
