@@ -37,9 +37,9 @@ code.
 | `ifc-material` | 3,284 | 25 | 0 | 12 | <span class="status-implemented">Implemented</span> |
 | `ifc-template-catalog` | 3,104 | 29 | 3 | 10 | <span class="status-implemented">Implemented</span> |
 | `ifc-classification` | 2,967 | 22 | 4 | 5 | <span class="status-implemented">Implemented</span> |
+| `ifc-spatial` | 2,863 | 16 | 0 | 17 | <span class="status-implemented">Implemented</span> |
 | `ifc-occurrence` | 2,803 | 8 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-systems` | 2,799 | 24 | 5 | 7 | <span class="status-implemented">Implemented</span> |
-| `ifc-spatial` | 2,789 | 15 | 1 | 16 | <span class="status-implemented">Implemented</span> |
 | `ifc-schedule` | 2,700 | 27 | 13 | 7 | <span class="status-implemented">Implemented</span> |
 | `ifc-validate` | 2,494 | 23 | 0 | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-cost` | 2,300 | 17 | 0 | 5 | <span class="status-implemented">Implemented</span> |
