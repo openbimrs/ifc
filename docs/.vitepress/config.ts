@@ -121,6 +121,7 @@ export default defineConfig({
             { text: 'Overview', link: '/use-cases/' },
             { text: '2D approval plans', link: '/use-cases/2d-approval-plans' },
             { text: 'Structural analysis', link: '/use-cases/structural-analysis' },
+            { text: 'Model checking', link: '/use-cases/model-checking' },
           ],
         },
       ],
