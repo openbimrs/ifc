@@ -46,7 +46,7 @@ conflicts. [Coverage](/coverage) measures what each crate does instead.
 | `ifc-material` | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-occurrence` | 0 | <span class="status-implemented">Implemented</span> |
-| `ifc-properties` | 10 | <span class="status-implemented">Implemented</span> |
+| `ifc-properties` | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-resource` | 9 | <span class="status-partial">Partial</span> |
 | `ifc-schedule` | 13 | <span class="status-implemented">Implemented</span> |
 | `ifc-schema` | 4 | <span class="status-implemented">Implemented</span> |
@@ -93,6 +93,7 @@ Every concrete `IfcRepresentationItem` subtype in IFC4 ADD2 TC1 is named somewhe
 | EXPRESS schema metadata, subtype queries | <span class="status-implemented">Implemented</span> | `ifc-schema` |
 | GlobalId base-64 encode/decode | <span class="status-implemented">Implemented</span> | `ifc-model::guid` |
 | Spatial containment tree traversal | <span class="status-implemented">Implemented</span> | `ifc-spatial::SpatialTree`; facade feature `spatial`. See below. |
+| Element properties by spatial container | <span class="status-implemented">Implemented</span> | `openbim-ifc::spatial_properties` (features `spatial` and `properties`): each container in tree order with its contained, aggregated-part and referenced elements, each with its exact property list or its own `ExactPropertyError`, in IFC2X3, IFC4 and IFC4X3. `crates/openbim-ifc/tests/spatial_properties.rs`. |
 | Objectified relationship traversal | <span class="status-implemented">Implemented</span> | All 45 concrete `IfcRel*` families are read. Spatial composition, containment, coverings, space boundaries, element connection and interference, assignment, declaration and system service in `ifc-spatial`; association and definition in `ifc-classification`, `ifc-material`, `ifc-properties`, `ifc-resource`, `ifc-approval` and `ifc-constraint`; connectivity in `ifc-systems` and `ifc-structural`; sequencing in `ifc-schedule` and `ifc-cost`; feature attachment in the `openbim-ifc` reachability check. Slot positions are asserted against the shipped IFC2x3/IFC4/IFC4x3 schemas in `crates/ifc-spatial/tests/slot_layout.rs`, and `crates/openbim-ifc/tests/relationship_census.rs` fails if a family loses its reader. |
 | Distribution systems, ports and connectivity | <span class="status-implemented">Implemented</span> | `ifc-systems` reads systems and membership, ports through both `IfcRelNests` and the legacy `IfcRelConnectsPortToElement`, the connection network, flow roles and direction, zones with their `WR1` membership rule, spatial containment vs referencing, and direction-aware `upstream`/`downstream` queries. Relationship-only: no geometry is read, so a geometry-free file still yields a full network. |
 | Cost items, rates and rollups | <span class="status-implemented">Implemented</span> | `ifc-cost` reads `IfcCostItem` nesting, `IfcCostValue` component trees with arithmetic operators, and totals a cost tree. Currencies are compared, never converted: a rollup mixing EUR and USD is refused. Typed drafts stage selected IFC4 values, items, schedules, nesting, and schedule assignments atomically. |
@@ -193,9 +194,26 @@ containment cycles are all handled and, where they are defects, reported through
 to use `IfcRelAggregates` exclusively with **no** containment relationship at
 all; that case is pinned in `tests/real_files.rs`.
 
+**Containers come from the declared release.** An entity is a spatial
+container when the release in `FILE_SCHEMA` declares it an
+`IfcSpatialElement` (IFC2X3: `IfcSpatialStructureElement`), so the IFC4X3
+facilities (`IfcRoad`, `IfcBridge`, `IfcRailway`, `IfcMarineFacility`) and
+their parts hold elements like a storey does. Containment or reference into
+something that is not a container is reported through `anomalies()`.
+
+**Contained is not referenced.** `IfcRelReferencedInSpatialStructure` adds an
+element to structures it spans without being contained there (a curtain wall
+contained by the ground floor and referenced by the storeys above).
+`referenced_elements()` and `referencing_structures()` answer it apart from
+`elements_of()` and `container_of()`, so a multi-storey element never looks
+contained twice.
+
 **What this is not.** It reports what the file says and never rejects it —
 cardinality and WHERE rules belong to `ifc-validate`. It groups elements; it
-does not interpret their geometry or properties.
+does not interpret their geometry or properties. The facade's
+`spatial_properties` (features `spatial` and `properties`) joins the two: each
+container's contained, part and referenced elements with their exact
+properties, an error reported on the element it concerns.
 
 ### Construction resources
 

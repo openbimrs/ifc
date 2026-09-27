@@ -129,7 +129,7 @@ gate_features() {
     cargo test -p ifc-geometry --features compile
     cargo clippy -p ifc-geometry --features compile --all-targets -- -D warnings
 
-    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,geometry-select" "--features step,spatial,geometry-select" "--features step,properties,geometry-select" "--all-features"; do
+    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,geometry-select" "--features step,spatial,geometry-select" "--features step,properties,geometry-select" "--features step,spatial,properties" "--all-features"; do
         # shellcheck disable=SC2086
         cargo build -p openbim-ifc $features
         # shellcheck disable=SC2086
@@ -146,6 +146,10 @@ gate_features() {
     cargo test -p openbim-ifc --features step,properties,geometry-select --lib \
         --test door_operation --test door_operation_refusals \
         --test window_operation --test window_operation_refusals
+    # Element properties by spatial container (#121) join the spatial tree and
+    # exact property resolution, so they exist only with both `spatial` and
+    # `properties`.
+    cargo test -p openbim-ifc --features step,spatial,properties --test spatial_properties
 
     # Browser WASM column (#34). The facade must build for
     # wasm32-unknown-unknown with its default and widest pure-Rust feature

@@ -1,17 +1,13 @@
 //! `IfcPropertySetTemplate` and the sets it governs.
 //!
-//! # Slots, verified against the IFC4 EXPRESS schema
-//!
 //! ```text
-//! IfcPropertySetTemplate  4 = TemplateType  5 = ApplicableEntity
-//!                         6 = HasPropertyTemplates
-//! IfcSimplePropertyTemplate
-//!                         4 = TemplateType        5 = PrimaryMeasureType
-//!                         6 = SecondaryMeasureType 7 = Enumerators
-//!                         8 = PrimaryUnit          9 = SecondaryUnit
-//!                        10 = Expression
-//! IfcRelDefinesByTemplate 4 = RelatedPropertySets 5 = RelatingTemplate
+//! IfcPropertySetTemplate   TemplateType ApplicableEntity HasPropertyTemplates
+//! IfcRelDefinesByTemplate  RelatedPropertySets RelatingTemplate
 //! ```
+//!
+//! Every attribute is read by name from the bound release's table
+//! ([`Layout`]); both releases that define templates (IFC4 ADD2 TC1, IFC4X3
+//! ADD2) place them after the four `IfcRoot` attributes.
 //!
 //! A template DESCRIBES what a property set should contain; it does not carry
 //! values. Reading it as a property set yields nothing useful, which is why
@@ -22,39 +18,10 @@ use std::sync::Arc;
 
 use ifc_model::{EntityId, Model, Value};
 
-const ROOT_NAME: usize = 2;
-const ROOT_DESCRIPTION: usize = 3;
-const SET_TEMPLATE_TYPE: usize = 4;
-const SET_APPLICABLE_ENTITY: usize = 5;
-const SET_HAS_TEMPLATES: usize = 6;
-const PROP_TEMPLATE_TYPE: usize = 4;
-const PROP_PRIMARY_MEASURE: usize = 5;
-const PROP_SECONDARY_MEASURE: usize = 6;
-const PROP_PRIMARY_UNIT: usize = 8;
-const REL_RELATED_SETS: usize = 4;
-const REL_RELATING_TEMPLATE: usize = 5;
-
-/// A property template: what one property should look like.
-#[derive(Debug, Clone, PartialEq)]
-pub struct PropertyTemplate {
-    /// The entity.
-    pub id: EntityId,
-    /// `Name`: the property name this template governs.
-    pub name: Option<Arc<str>>,
-    /// `Description`.
-    pub description: Option<Arc<str>>,
-    /// `TemplateType`, e.g. `P_SINGLEVALUE`.
-    ///
-    /// This states which `IfcProperty` subtype an instance should use, so it
-    /// is the link between a template and the property families in `pset`.
-    pub template_type: Option<Arc<str>>,
-    /// `PrimaryMeasureType`, e.g. `IfcLengthMeasure`.
-    pub primary_measure: Option<Arc<str>>,
-    /// `SecondaryMeasureType`, used by bounded and table values.
-    pub secondary_measure: Option<Arc<str>>,
-    /// `PrimaryUnit`.
-    pub primary_unit: Option<EntityId>,
-}
+use super::layout::Layout;
+use super::property::{member_templates, PropertyTemplate};
+use crate::error::{PropertyAnomaly, TemplateError};
+use crate::nesting::Nesting;
 
 /// An `IfcPropertySetTemplate` with its property templates.
 #[derive(Debug, Clone, PartialEq)]
@@ -71,7 +38,8 @@ pub struct PropertySetTemplate {
     ///
     /// A free-text identifier such as `IfcWall`, not a validated reference.
     pub applicable_entity: Option<Arc<str>>,
-    /// Property templates, in file order.
+    /// Property templates, in file order, simple and complex, complex ones
+    /// with their nested templates.
     pub properties: Vec<PropertyTemplate>,
 }
 
@@ -85,47 +53,69 @@ impl PropertySetTemplate {
 }
 
 /// Read one `IfcPropertySetTemplate` by id.
+///
+/// `None` when the entity is absent, is not a set template, or the release
+/// the header declares defines none (IFC2X3). Members the traversal refuses
+/// are left out without saying so; use [`property_set_template_checked`] to
+/// have each one reported.
 pub fn property_set_template(model: &Model, id: EntityId) -> Option<PropertySetTemplate> {
-    let entity = model.get(id)?;
-    if !entity
-        .type_name
-        .eq_ignore_ascii_case("IFCPROPERTYSETTEMPLATE")
-    {
-        return None;
-    }
-    let properties = entity
-        .attributes
-        .get(SET_HAS_TEMPLATES)
-        .and_then(refs)
-        .unwrap_or_default()
-        .into_iter()
-        .filter_map(|t| property_template(model, t))
-        .collect();
-    Some(PropertySetTemplate {
-        id,
-        name: entity.attributes.get(ROOT_NAME).and_then(text),
-        description: entity.attributes.get(ROOT_DESCRIPTION).and_then(text),
-        template_type: entity.attributes.get(SET_TEMPLATE_TYPE).and_then(enum_text),
-        applicable_entity: entity.attributes.get(SET_APPLICABLE_ENTITY).and_then(text),
-        properties,
-    })
+    let mut anomalies = Vec::new();
+    read_set_template(model, Layout::permissive(model), id, &mut anomalies)
 }
 
-/// Read one property template by id.
-pub fn property_template(model: &Model, id: EntityId) -> Option<PropertyTemplate> {
+/// Read one `IfcPropertySetTemplate` bound to the release the model
+/// declares, reporting every malformed fact met on the way.
+///
+/// The anomalies are those described on
+/// [`property_template_checked`](crate::property_template_checked), for the
+/// set template and every template below it. Only nested members cost the
+/// traversal budget, as for property sets.
+///
+/// # Errors
+///
+/// [`TemplateError::Release`] or [`TemplateError::NoTemplates`] when the
+/// model binds to no release that has templates;
+/// [`TemplateError::MissingEntity`] or [`TemplateError::NotATemplate`] for
+/// the entity itself.
+pub fn property_set_template_checked(
+    model: &Model,
+    id: EntityId,
+) -> Result<(PropertySetTemplate, Vec<PropertyAnomaly>), TemplateError> {
+    let layout = Layout::declared(model)?;
+    let entity = model.get(id).ok_or(TemplateError::MissingEntity { id })?;
+    let mut anomalies = Vec::new();
+    let template = read_set_template(model, layout, id, &mut anomalies).ok_or(
+        TemplateError::NotATemplate {
+            id,
+            type_name: entity.type_name.to_string(),
+        },
+    )?;
+    Ok((template, anomalies))
+}
+
+pub(crate) fn read_set_template(
+    model: &Model,
+    layout: Layout,
+    id: EntityId,
+    anomalies: &mut Vec<PropertyAnomaly>,
+) -> Option<PropertySetTemplate> {
     let entity = model.get(id)?;
-    Some(PropertyTemplate {
+    if !layout.is_a(&entity.type_name, "IFCPROPERTYSETTEMPLATE") {
+        return None;
+    }
+    layout.check_arity(id, entity, anomalies);
+    let mut template = PropertySetTemplate {
         id,
-        name: entity.attributes.get(ROOT_NAME).and_then(text),
-        description: entity.attributes.get(ROOT_DESCRIPTION).and_then(text),
-        template_type: entity
-            .attributes
-            .get(PROP_TEMPLATE_TYPE)
-            .and_then(enum_text),
-        primary_measure: entity.attributes.get(PROP_PRIMARY_MEASURE).and_then(text),
-        secondary_measure: entity.attributes.get(PROP_SECONDARY_MEASURE).and_then(text),
-        primary_unit: entity.attributes.get(PROP_PRIMARY_UNIT).and_then(one_ref),
-    })
+        name: layout.text(id, entity, "Name", anomalies),
+        description: layout.text(id, entity, "Description", anomalies),
+        template_type: layout.enumeration(id, entity, "TemplateType", anomalies),
+        applicable_entity: layout.text(id, entity, "ApplicableEntity", anomalies),
+        properties: Vec::new(),
+    };
+    let mut nesting = Nesting::new(anomalies);
+    let members = layout.get(entity, "HasPropertyTemplates");
+    template.properties = member_templates(model, layout, id, members, &mut nesting);
+    Some(template)
 }
 
 /// Every template in the file, ascending by id.
@@ -148,52 +138,45 @@ pub fn property_set_templates(model: &Model) -> Vec<PropertySetTemplate> {
 /// IfcRelDefinesByTemplate`, so several templates are legal. Before 0.4 this
 /// returned one template per set, and silently dropped the rest (#60).
 pub fn template_of_set(model: &Model) -> BTreeMap<EntityId, Vec<EntityId>> {
-    let mut out: BTreeMap<EntityId, Vec<EntityId>> = BTreeMap::new();
-    for &id in model.ids_of_type("IFCRELDEFINESBYTEMPLATE") {
+    template_links(model, Layout::permissive(model))
+        .into_iter()
+        .map(|(set, links)| {
+            let mut templates: Vec<EntityId> = links.into_iter().map(|(_, t)| t).collect();
+            templates.sort_unstable();
+            templates.dedup();
+            (set, templates)
+        })
+        .collect()
+}
+
+/// Every `(relationship, template)` pair naming each set, in relationship
+/// id order.
+pub(crate) fn template_links(
+    model: &Model,
+    layout: Layout,
+) -> BTreeMap<EntityId, Vec<(EntityId, EntityId)>> {
+    let mut out: BTreeMap<EntityId, Vec<(EntityId, EntityId)>> = BTreeMap::new();
+    let mut relationships = model.ids_of_type("IFCRELDEFINESBYTEMPLATE").to_vec();
+    relationships.sort_unstable();
+    for id in relationships {
         let Some(rel) = model.get(id) else { continue };
-        let Some(template) = rel.attributes.get(REL_RELATING_TEMPLATE).and_then(one_ref) else {
+        let Some(template) = layout.get(rel, "RelatingTemplate").and_then(one_ref) else {
             continue;
         };
-        for set in rel
-            .attributes
-            .get(REL_RELATED_SETS)
-            .and_then(refs)
-            .unwrap_or_default()
-        {
-            out.entry(set).or_default().push(template);
+        let sets = match layout.get(rel, "RelatedPropertySets") {
+            Some(Value::List(items)) => items.iter().filter_map(one_ref).collect(),
+            _ => Vec::new(),
+        };
+        for set in sets {
+            out.entry(set).or_default().push((id, template));
         }
     }
-    for templates in out.values_mut() {
-        templates.sort_unstable();
-        templates.dedup();
-    }
     out
-}
-
-fn text(value: &Value) -> Option<Arc<str>> {
-    match value.unwrap_typed() {
-        Value::Text(t) => Some(t.clone()),
-        _ => None,
-    }
-}
-
-fn enum_text(value: &Value) -> Option<Arc<str>> {
-    match value.unwrap_typed() {
-        Value::Enum(t) | Value::Text(t) => Some(t.clone()),
-        _ => None,
-    }
 }
 
 fn one_ref(value: &Value) -> Option<EntityId> {
     match value.unwrap_typed() {
         Value::Ref(id) => Some(*id),
-        _ => None,
-    }
-}
-
-fn refs(value: &Value) -> Option<Vec<EntityId>> {
-    match value {
-        Value::List(items) => Some(items.iter().filter_map(one_ref).collect()),
         _ => None,
     }
 }

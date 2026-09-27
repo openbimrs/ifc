@@ -12,6 +12,40 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `spatial_properties(model)` (features `spatial` and `properties`): every
+  spatial container in tree order, depth first from the roots, with the
+  elements it holds, each with its `exact_properties` list, in IFC2X3, IFC4
+  and IFC4X3 (#121). An element is listed as `Contained`
+  (`IfcRelContainedInSpatialStructure`), `Referenced`
+  (`IfcRelReferencedInSpatialStructure`, so an element spanning several
+  storeys appears under each) or `Part` (an `IfcRelAggregates` part, at any
+  depth, of a contained element, which the Element Composition concept
+  places by its composite's containment), ordered by element id. A nested
+  space is its own container, not folded into its storey. A model-level
+  refusal (diagnostics, missing or unsupported schema) is the function's
+  error; any other `ExactPropertyError` is reported on the element it
+  concerns and the other elements are still returned. Properties resolve
+  lazily as `ContainerElements::elements` (or `elements_where`, with
+  `exact_properties_where` selectors) is iterated. New types:
+  `SpatialProperties`, `ContainerElements`, `SpatialContainer`,
+  `ContainerName`, `ElementMember`, `ElementProperties` and
+  `SpatialMembership`. Needs the next `ifc-spatial` release, which adds
+  `SpatialTree::referenced_elements`.
+
+### Changed
+
+- The `spatial` feature classifies spatial containers from the file's
+  declared release (#121, via the next `ifc-spatial` release, which now
+  links `ifc-schema`): IFC4X3 facilities and facility parts such as
+  `IfcRoad`, `IfcRoadPart`, `IfcBridge` and `IfcBridgePart`, and
+  `IfcExternalSpatialElement`, are containers, so `SpatialTree`,
+  `spatial_properties` and `unreachable_products` see the elements placed
+  in them. Containment or reference into a non-container is reported as a
+  `SpatialAnomaly`. `unreachable_products` skips containers by the tree's
+  classification instead of a name test.
+
 ## [0.7.3] - 2026-09-27
 
 ### Changed

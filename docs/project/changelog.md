@@ -90,6 +90,70 @@ The exact API is unchanged and agrees: `exact_property` refuses a `$` value
 with `MissingValueSlot`, a non-numeric one with `UnsupportedValue` and a
 truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
 
+- `PropertyTemplate` reads every attribute of both template entities by
+  name from the declared release's table (#108) and gains `kind`
+  (`PropertyTemplateKind::Simple` or `Complex`), `enumerators`,
+  `secondary_unit`, `expression`, `access_state`, `usage_name` and
+  `templates` (the nested `HasPropertyTemplates` of a complex template,
+  read through the same bounded, cycle-aware traversal as complex
+  properties, with `template(name)` to look one up). It is now
+  `#[non_exhaustive]`, so code that builds it with a struct literal or
+  destructures it exhaustively must change; later fields will not break
+  callers again.
+
+### Added
+
+- `template_deviations(model)` compares every property set that an
+  `IfcRelDefinesByTemplate` links to an `IfcPropertySetTemplate` with that
+  template (#109), reading the model and its templates only, bound to the
+  declared release (IFC4 or IFC4X3; IFC2X3 has no templates and is refused
+  with `TemplateError::NoTemplates`). It returns a `TemplateReport` of
+  `TemplateFinding`s, each naming the set, the template and the concrete
+  mismatch: `MissingProperty`, `UnexpectedProperty` (matched by `Name`, as
+  the IFC4 `IfcPropertySetTemplate` documentation states), `WrongForm` (the
+  property's entity against the template's `TemplateType`, e.g. a single
+  value where `P_ENUMERATEDVALUE` is prescribed), `WrongMeasureType`
+  (`PrimaryMeasureType`, and `SecondaryMeasureType` for bounded and table
+  values, against the declared type of each value or the referenced
+  entity), `WrongSetKind` (a `QTO_*` template on an `IfcPropertySet`, a
+  `PSET_*` one on an `IfcElementQuantity`), `WrongAttachment` (a
+  `*_TYPEDRIVENONLY` set on an occurrence, an `*_OCCURRENCEDRIVEN` set on a
+  type) and `OutsideApplicableEntity` (`IfcEntity[/PREDEFINEDTYPE]`
+  entries, comma separated). Complex properties are compared with complex
+  templates member by member. Quantity sets are checked the same way with
+  `Q_*` templates. What the documentation leaves open is
+  `TemplateFinding::Undecided` with an `UndecidedReason`, never guessed:
+  an unknown or undocumented template type (IFC4X3 `Q_NUMBER`), an unknown
+  measure type or `ApplicableEntity` entry, an object whose predefined
+  type is unstated, a `[PerformanceHistory]` entry, a predefined property
+  set. Malformed facts met on the way are `PropertyAnomaly`s in the same
+  report. New types: `TemplateReport`, `TemplateFinding`, `MeasureRole`,
+  `UndecidedReason`, `TemplateError`, all `#[non_exhaustive]`.
+- `property_template_checked` and `property_set_template_checked` read a
+  template bound to the declared release and report every malformed fact
+  met (#108), refusing a model without a single supported release, an
+  IFC2X3 model (`TemplateError::NoTemplates`), an absent entity and a
+  non-template with `TemplateError`.
+- `PropertyAnomaly::NotATemplate`, `PropertyAnomaly::SlotCountMismatch` and
+  `PropertyAnomaly::MalformedAttribute` (#108, #109): a template member or
+  `RelatingTemplate` that is no template, a record whose attribute count
+  is not the release's, and an attribute value its declared type does not
+  admit (including an enumeration constant the release does not define).
+  `PropertyAnomaly` is `#[non_exhaustive]`, so this is not breaking.
+
+### Fixed
+
+- `property_template` read every template with the
+  `IfcSimplePropertyTemplate` layout (#108), so an
+  `IfcComplexPropertyTemplate`, including one written by
+  `add_complex_property_template`, reported its `UsageName` as its
+  `TemplateType` and never exposed its nested templates; and any entity at
+  all read as a template. It now returns `None` for an entity that is not a
+  simple or complex template in the declared release (the IFC4 table when
+  the header names none it bundles, and nothing in an IFC2X3 file).
+  `property_set_template`, `property_set_templates` and `template_of_set`
+  read their attributes by name the same way.
+
 ### ifc-schema
 
 ### Changed
@@ -99,6 +163,91 @@ truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
   `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
+
+### ifc-spatial
+
+### Added
+
+- `SpatialTree::referenced_elements(container)` and
+  `SpatialTree::referencing_structures(element)` (#121): the elements an
+  `IfcRelReferencedInSpatialStructure` references in a container, and the
+  containers referencing an element, in file order and each once, in
+  IFC2X3, IFC4 and IFC4X3. They are kept apart from containment:
+  `elements_of` and `container_of` are unchanged, and a referenced element
+  is never a second home or a `ContainedTwice` anomaly. A reference naming
+  an absent entity is reported by `dangling()`.
+- `SpatialAnomaly::ContainedInNonContainer` and
+  `SpatialAnomaly::ReferencedInNonContainer` (#121): an
+  `IfcRelContainedInSpatialStructure` or `IfcRelReferencedInSpatialStructure`
+  whose `RelatingStructure` is not a spatial container of the release is
+  reported with the relationship and the structure, where containment used
+  to drop it silently.
+- `SpatialKind::classify_in(type_name, release)`, `SpatialTree::release()`
+  and a re-export of `ifc_schema::SchemaVersion`.
+
+### Changed
+
+- Spatial containers are classified from the release the file's
+  `FILE_SCHEMA` declares (#121): an entity is a container when that
+  release's bundled table makes it an `IfcSpatialElement` (IFC2X3:
+  `IfcSpatialStructureElement`), or it is the `IfcProject`. `ifc-schema` is
+  therefore a normal dependency. The IFC4X3 facilities and facility parts
+  (`IfcFacility`, `IfcBridge`, `IfcRoad`, `IfcRailway`,
+  `IfcMarineFacility`, `IfcBridgePart`, `IfcRoadPart`, `IfcRailwayPart`,
+  `IfcMarinePart`, `IfcFacilityPartCommon`) and `IfcExternalSpatialElement`
+  were classified as elements by the old name patterns, so containment into
+  them was dropped; they are now `OtherContainer`, as that variant's
+  documentation promised. `SpatialKind` gains no variant, so this stays
+  additive. A file with no single bundled release is classified as any
+  bundled release would, and `release()` returns `None`.
+- `SpatialKind::classify` answers from the bundled tables instead of name
+  patterns: a name no release declares as a spatial element (such as a
+  vendor `IFCSPATIALFOO`) is an `Element`.
+
+### Fixed
+
+- Only `IfcRelAggregates` and `IfcRelContainedInSpatialStructure` build the
+  tree (#121). Another relationship family whose relating end is a
+  container placed its targets as contained elements: an `IfcRelDeclares`
+  put the project's declared types into the project, and an
+  `IfcRelCoversSpaces` put a space's coverings into the space. Their absent
+  targets are still reported by `dangling()`.
+
+### openbim-ifc
+
+### Added
+
+- `spatial_properties(model)` (features `spatial` and `properties`): every
+  spatial container in tree order, depth first from the roots, with the
+  elements it holds, each with its `exact_properties` list, in IFC2X3, IFC4
+  and IFC4X3 (#121). An element is listed as `Contained`
+  (`IfcRelContainedInSpatialStructure`), `Referenced`
+  (`IfcRelReferencedInSpatialStructure`, so an element spanning several
+  storeys appears under each) or `Part` (an `IfcRelAggregates` part, at any
+  depth, of a contained element, which the Element Composition concept
+  places by its composite's containment), ordered by element id. A nested
+  space is its own container, not folded into its storey. A model-level
+  refusal (diagnostics, missing or unsupported schema) is the function's
+  error; any other `ExactPropertyError` is reported on the element it
+  concerns and the other elements are still returned. Properties resolve
+  lazily as `ContainerElements::elements` (or `elements_where`, with
+  `exact_properties_where` selectors) is iterated. New types:
+  `SpatialProperties`, `ContainerElements`, `SpatialContainer`,
+  `ContainerName`, `ElementMember`, `ElementProperties` and
+  `SpatialMembership`. Needs the next `ifc-spatial` release, which adds
+  `SpatialTree::referenced_elements`.
+
+### Changed
+
+- The `spatial` feature classifies spatial containers from the file's
+  declared release (#121, via the next `ifc-spatial` release, which now
+  links `ifc-schema`): IFC4X3 facilities and facility parts such as
+  `IfcRoad`, `IfcRoadPart`, `IfcBridge` and `IfcBridgePart`, and
+  `IfcExternalSpatialElement`, are containers, so `SpatialTree`,
+  `spatial_properties` and `unreachable_products` see the elements placed
+  in them. Containment or reference into a non-container is reported as a
+  `SpatialAnomaly`. `unreachable_products` skips containers by the tree's
+  classification instead of a name test.
 
 ## [0.7.3] - 2026-09-27
 

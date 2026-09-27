@@ -33,7 +33,7 @@ full = "Everything: codecs, schema tables, every domain, catalogues, geometry, g
 geometry = "Representation selection plus lowering into the neutral geometry DAG."
 geometry-select = "Representation selection only: contexts, plan/body choice, placements and units, with no geometry kernel."
 material-templates = "Material views together with the property template catalogue."
-properties = "Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door and window operation geometry."
+properties = "Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door and window operation geometry; together with `spatial`, element properties by spatial container."
 
 [lib]
 name = "ifc"
@@ -111,7 +111,8 @@ style = ["dep:ifc-style"]
 validate = ["dep:ifc-validate"]
 # Authoring resolves slots from the schema tables, so it implies `schema`.
 author = ["dep:ifc-author", "schema"]
-# Containment traversal needs only the record graph, so it stays thin.
+# Containment traversal reads the record graph, classifying spatial containers
+# from the declared release's schema table (ifc-spatial links ifc-schema).
 spatial = ["dep:ifc-spatial"]
 # Geometry comes in two sizes. `geometry` is the full bridge including
 # lowering into the neutral DAG -- unchanged for existing consumers.
