@@ -12,6 +12,16 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- Borrowed read views: `TabularView` reads `IfcTable` (rows and columns)
+  and `IfcRegularTimeSeries`/`IfcIrregularTimeSeries` with their value
+  records under a declared IFC4 or IFC4X3 schema, locating slots by name.
+  WR1 (ragged row), WR2 (more than one heading), malformed slots, arity
+  mismatches, empty lists and dangling or mistyped references are reported
+  as `TabularIssue`s instead of being dropped. IFC2x3 is refused with
+  `TabularReadError::UnsupportedSchema` (#120).
+
 ## [0.2.0] - 2026-09-22
 
 First release under per-crate versioning. See the

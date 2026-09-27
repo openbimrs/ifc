@@ -56,6 +56,20 @@ lockstep -- is archived in the
   Before, `*` was accepted in any slot and the file was invalid. Both apply to
   `EntityBuilder` and `EntityEditor`.
 
+### ifc-control
+
+### Added
+
+- `assign_to_control` and `ControlAssignmentDraft` stage an
+  `IfcRelAssignsToControl` whose relating control is a permit, project
+  order, action request or performance history. Empty, duplicated and
+  self-referencing `RelatedObjects`, members that are not
+  `IfcObjectDefinition`s, and missing references are refused;
+  `RelatedObjectsType` is left unset (#99).
+- `ControlError::ForeignControl` refuses a relating control another crate
+  owns (cost schedules, cost items, work controls).
+- `ControlKind::ALL` lists the four owned controls.
+
 ### ifc-cost
 
 ### Added
@@ -77,6 +91,25 @@ lockstep -- is archived in the
 ### ifc-geometry
 
 ### Fixed
+
+- Compiled `IfcBlock` meshes were offset by half their extents. `IfcBlock`
+  has a corner at its `Position` (IFC4 ADD2 TC1), but the neutral
+  `Primitive::Block` is tessellated centred on its origin by
+  `axiolid-reference`, so every compiled block sat half its size away from
+  where the file placed it, along its own axes. Lowering now puts the
+  half-extent shift on the block's `Instance`. This changes compiled
+  geometry for every `IfcBlock`; the lowered `Instance` translation now
+  names the block's centre. The other CSG primitives already agreed.
+- `Plane`, `CylindricalSurface`, `SphericalSurface` and `ToroidalSurface`
+  `::position(&model)` now type-check their target through
+  `resource::resolve` (#135). A `Position` naming anything other than an
+  `IfcAxis2Placement3D` is `WrongEntityType` naming the target; it used to
+  be wrapped as a 3D placement and misread.
+- A derived linear placement no longer reports an evaluator's degenerate
+  curve as an undefined roll. The refusal now distinguishes an unsupported
+  curve family, a rejected measure (off the curve, or roll undefined
+  because the tangent is parallel to the up reference) and a degenerate
+  curve, matching how `axiolid-evaluate` 0.3 reports them.
 
 - An opening that a file makes void two hosts is subtracted from the first
   only (#59). `IfcFeatureElementSubtraction.VoidsElements` is a
@@ -127,7 +160,21 @@ lockstep -- is archived in the
   derived with its operator, mirrored). A bare `IfcProfileDef` and unknown
   families are refused; a composite or derived chain that references itself
   is `CyclicChain`.
-
+- `derive_placement_transform` derives a linear placement on an
+  `IfcPolyline` or a line-only `IfcIndexedPolyCurve` basis curve (#96), not
+  only on an alignment. The curve lowers to the neutral polyline, whose arc
+  length is an exact finite sum, so a distance converts to a parameter
+  exactly; a native parameter follows the IFC polyline parameterisation
+  (one per segment). Refused by name: a zero-length segment, fewer than two
+  points, non-consecutive `Segments`, an `IfcArcIndex`, a parameter on a
+  multi-point `IfcLineIndex` (IFC does not state its split), and ellipse
+  and B-spline bases as before.
+- `product_bounds` bounds linear extrusions of straight-edged profiles
+  (rectangles, polyline contours, and placed/derived forms of them) and
+  blocks exactly from their vertices, without tessellating (#98). The
+  result reports `BoundsSource::Exact`. Curved profiles, rounded
+  rectangles and booleans still go through the compiled mesh; a
+  difference only shrinks its operand, so its operand's box is never used.
 - `voiding_conflicts(model)` and `VoidingConflict { opening, kept_host,
   rejected_host, relation }` report such openings (#59). It is kernel-free,
   like `openings_of`. Restating the same host is not a conflict.
@@ -293,6 +340,18 @@ lockstep -- is archived in the
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
 
+### ifc-tabular
+
+### Added
+
+- Borrowed read views: `TabularView` reads `IfcTable` (rows and columns)
+  and `IfcRegularTimeSeries`/`IfcIrregularTimeSeries` with their value
+  records under a declared IFC4 or IFC4X3 schema, locating slots by name.
+  WR1 (ragged row), WR2 (more than one heading), malformed slots, arity
+  mismatches, empty lists and dangling or mistyped references are reported
+  as `TabularIssue`s instead of being dropped. IFC2x3 is refused with
+  `TabularReadError::UnsupportedSchema` (#120).
+
 ### ifc-template-catalog
 
 ### Fixed
@@ -304,7 +363,8 @@ lockstep -- is archived in the
 ### ifc-validate
 
 This release is **breaking** (0.2 -> 0.3): `Severity` gains a variant,
-`Summary` gains a field, and `Budget::max_depth` is removed.
+`Summary` gains a field, `RuleEntry` gains a field, `Mismatch` gains a
+variant, three rule ids are renamed, and `Budget::max_depth` is removed.
 
 ### Added
 
@@ -320,6 +380,11 @@ This release is **breaking** (0.2 -> 0.3): `Severity` gains a variant,
 - Every rule id the crate emits is pinned by an adversarial pair of
   fixtures, and an inventory read from the crate's source fails the build
   when a new id ships without one (#114).
+- `type.entity.expected_reference`: a value that is not an entity reference
+  in a slot only a reference can fill -- an entity-typed slot, a member of an
+  aggregate of entities, or a SELECT whose alternatives are all entities --
+  is reported (#113). A string in `IfcRelSequence.RelatingProcess` used to
+  get no structure or type finding at all.
 
 ### Changed
 
@@ -328,6 +393,22 @@ This release is **breaking** (0.2 -> 0.3): `Severity` gains a variant,
   outside the crate must add a wildcard arm.
 - **Breaking:** `Summary` is `#[non_exhaustive]` and has the new
   `evaluation_errors` field; its `Display` now also prints that count.
+- **Breaking:** `RuleEntry` has a new `releases` field, and
+  `RuleEntry::applies_to` says whether a schema's release declares the rule.
+  The engine now takes every rule's scope from its registry entry: it runs
+  only under the releases listed there, on the entry's entity *and its
+  subtypes* (#139).
+- **Breaking:** rule ids now always name the entity that declares the rule,
+  with the label the release uses (#139):
+  `IfcRelAssignsToGroupByFactor.NoSelfReference` is
+  `IfcRelAssignsToGroup.NoSelfReference`;
+  `IfcPhysicalSimpleQuantity.WR21` is `IfcQuantityLength.WR21`; and
+  `IfcPolyLoop.WR21` is reported only under IFC2X3, with IFC4 and IFC4X3
+  reporting the same unsupported predicate as `IfcPolyLoop.AllPointsSameDim`.
+- **Breaking:** `type_check::Mismatch` is `#[non_exhaustive]` and has the
+  new `ExpectedReference` variant (#113). `type_check::check_value` now
+  checks aggregate members against the element type, and reports a
+  reference written where the declared type resolves to a primitive.
 - `IfcExternalReference.WR1` reads `ItemReference` under IFC2X3 and
   `Identification` under IFC4/IFC4X3, as each release's EXPRESS declares,
   instead of whichever of the two resolved.
@@ -342,6 +423,27 @@ This release is **breaking** (0.2 -> 0.3): `Severity` gains a variant,
 
 ### Fixed
 
+- Native WHERE rules run on the entities and releases the schema declares
+  them for (#139). `NoSelfReference` now checks plain `IfcRelAssignsToGroup`,
+  which was never checked; `IfcMaterialLayer.NormalizedPriority` now checks
+  `IfcMaterialLayerWithOffsets`; and
+  `IfcRelDefinesByProperties.NoRelatedTypeObject` no longer runs under
+  IFC2X3, which does not declare it. Unsupported rules are likewise admitted
+  only under releases that declare them. A new schema-backed test checks
+  every registered id, entity and release set against the normative EXPRESS.
+- References and values inside aggregates and SELECT slots are type-checked
+  (#113). `structure.reference.wrong_type` now judges every member of an
+  aggregate of entities (a property set in `SET OF IfcProduct`), including
+  aggregates reached through a type that aliases one; `type.select.member`
+  now judges an entity reference against the SELECT's closure, directly and
+  inside aggregates (an `IfcWall` as `RelatingMaterial`); and
+  `type.scalar.mismatch` now judges aggregate members (a string in
+  `Coordinates`) and a reference in a primitive slot. Nested attribute
+  aggregates (`LIST OF LIST OF ...`) stay unchecked: the schema tables do
+  not retain their element type. A reference to an entity whose type the
+  tables do not declare -- typically a later release's entity -- is no
+  longer reported as `structure.reference.wrong_type`; there is no basis for
+  a subtype verdict, and `type.entity.unknown` already warns about it.
 - `type.scalar.mismatch` now checks bounded and fixed-width strings. The
   primitive was read from the trailing token of the resolved type, so
   `STRING(255)` -- IFC4's `IfcLabel` and `IfcIdentifier` -- recognised

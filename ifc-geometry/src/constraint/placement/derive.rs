@@ -21,6 +21,8 @@ use crate::error::{GeometryError, GeometryResult};
 use crate::transform::Transform;
 use crate::units::UnitScale;
 
+mod polyline;
+
 /// Resolve an `IfcLinearPlacement` by evaluating its basis curve.
 ///
 /// `evaluator` supplies the capability; this function supplies the IFC
@@ -40,7 +42,14 @@ pub fn derive_placement_transform(
     expression: &PointByDistance,
     evaluator: &dyn CurveEvaluator,
 ) -> GeometryResult<Transform> {
-    let curve = basis_curve3(model, units, placement, expression.basis_curve)?;
+    let parameter_requested = matches!(expression.distance_along, CurveMeasure::Parameter(_));
+    let curve = basis_curve3(
+        model,
+        units,
+        placement,
+        expression.basis_curve,
+        parameter_requested,
+    )?;
 
     // `IfcCurveMeasureSelect` says which method of measurement the file
     // means. Carry that across rather than collapsing it to a number: a
@@ -65,14 +74,18 @@ pub fn derive_placement_transform(
 ///
 /// An alignment centreline is the case that matters: `IfcGradientCurve`
 /// pairs a plan with a vertical profile, which `ifc-alignment` already
-/// composes exactly. Other curve families are refused by name here rather
-/// than lowered approximately, because a placement derived from a curve we
-/// guessed at is worse than one we declined to derive.
+/// composes exactly. Straight-segment curves (`IfcPolyline`, a line-only
+/// `IfcIndexedPolyCurve`) lower to the neutral polyline, whose arc length is
+/// an exact finite sum. Other curve families -- an ellipse, a B-spline -- are
+/// refused by name here rather than lowered approximately, because a
+/// placement derived from a curve we guessed at is worse than one we
+/// declined to derive.
 fn basis_curve3(
     model: &Model,
     units: &UnitScale,
     placement: EntityId,
     basis: EntityId,
+    parameter_requested: bool,
 ) -> GeometryResult<Curve3> {
     let entity = model.get(basis).ok_or(GeometryError::MissingEntity {
         referrer: placement,
@@ -95,10 +108,15 @@ fn basis_curve3(
                 }
             })
         }
+        "IFCPOLYLINE" => polyline::polyline(model, units, basis, entity),
+        "IFCINDEXEDPOLYCURVE" => {
+            polyline::indexed_polycurve(model, units, basis, entity, parameter_requested)
+        }
         other => Err(GeometryError::Unsupported {
             entity: placement,
             type_name: other.to_owned(),
-            detail: "deriving a placement frame needs an alignment centreline as basis curve",
+            detail: "deriving a placement frame needs an alignment centreline or a \
+                     straight-segment polyline as basis curve",
         }),
     }
 }
@@ -130,18 +148,23 @@ fn offset_frame(frame: Frame3, expression: &PointByDistance, units: &UnitScale) 
 
 /// Name why the evaluator declined.
 ///
-/// The kernel distinguishes an unsupported operation from a degenerate
-/// input, and that difference is actionable: the first means the file needs
-/// a different curve family, the second means the placement itself is
-/// unusable. Collapsing both to one message would hide that.
+/// The kernel distinguishes an unsupported operation from a rejected
+/// measure and from a degenerate curve, and that difference is actionable:
+/// the first means the file needs a different curve family, the others mean
+/// the placement itself is unusable. Collapsing them to one message would
+/// hide that. The reference evaluator reports an undefined roll (tangent
+/// parallel to the up reference) and a distance past the curve's end as
+/// invalid input, and a degenerate curve piece as degenerate.
 fn refusal_detail(error: &GeomError) -> &'static str {
     match error {
-        GeomError::Unsupported { .. } => {
+        GeomError::Unsupported { .. } | GeomError::UnsupportedInput { .. } => {
             "the evaluator cannot measure distance on this curve family"
         }
-        GeomError::Degenerate { .. } => {
-            "roll is undefined here: the curve tangent is parallel to the up reference"
+        GeomError::InvalidInput(_) => {
+            "the evaluator rejected the measure: it lies off the curve, or roll is \
+             undefined because the curve tangent is parallel to the up reference"
         }
+        GeomError::Degenerate(_) => "the evaluator found the basis curve degenerate there",
         _ => "the evaluator refused this placement",
     }
 }

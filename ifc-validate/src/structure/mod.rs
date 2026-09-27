@@ -13,6 +13,7 @@ mod required;
 mod unique;
 
 pub use cardinality::aggregate_shape;
+pub(crate) use reference::expected_references;
 pub use reference::{dangling_references, wrong_kind_references};
 pub use required::required_attributes;
 pub use unique::duplicate_global_ids;

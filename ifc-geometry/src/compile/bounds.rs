@@ -1,20 +1,24 @@
 //! World-space bounds read straight off a lowered graph, without tessellating.
 //!
 //! Only leaves whose extent is exact as written are bounded here: triangle
-//! and polygon meshes (their vertices are the shape) and authored bounding
-//! boxes. Their positions are already in world coordinates, because lowering
-//! bakes placement into them. An `Instance` above a leaf applies its
-//! transform to the leaf's points, never to an intermediate box, so the
-//! result stays tight.
+//! and polygon meshes (their vertices are the shape), authored bounding
+//! boxes, and the straight-edged solids in [`solid`] -- a linear extrusion
+//! of a polygonal profile and a block, bounded from their vertices. Mesh
+//! positions are already in world coordinates, because lowering bakes
+//! placement into them. An `Instance` above a leaf applies its transform to
+//! the leaf's points, never to an intermediate box, so the result stays
+//! tight.
 //!
-//! Any other leaf — an extrusion, a curved surface, a boolean — returns
+//! Any other leaf — a curved profile or surface, a boolean — returns
 //! `None`, and the caller falls back to the compiled mesh. Refusing is
-//! cheaper than guessing: an extrusion's profile bound is exact, but a
-//! boolean difference can only shrink its operand, so taking the operand's
-//! box would over-state the result.
+//! cheaper than guessing: a boolean difference can only shrink its operand,
+//! so taking the operand's box would over-state the result.
 
 use axiolid_core::{Aabb, Point3, Transform3};
-use axiolid_model::{GeometryGraph, GeometryNode, NodeId};
+use axiolid_model::{GeometryGraph, GeometryNode, NodeId, SolidOperation};
+use axiolid_primitive::Primitive;
+
+mod solid;
 
 /// Nodes visited before giving up. Lowering never builds a cycle, but a
 /// mapped item repeated many times can multiply work; falling back to the
@@ -37,6 +41,17 @@ pub(super) fn exact(graph: &GeometryGraph, root: NodeId) -> Option<Aabb> {
             GeometryNode::PolygonMesh(mesh) => extend(&mut aabb, &mesh.positions, transform),
             GeometryNode::BoundingBox(authored) => {
                 extend(&mut aabb, &corners(authored), transform);
+            }
+            GeometryNode::SolidOperation(SolidOperation::Extrusion {
+                profile,
+                direction,
+                depth,
+            }) => {
+                let vertices = solid::extrusion(graph, *profile, *direction, *depth)?;
+                extend(&mut aabb, &vertices, transform);
+            }
+            GeometryNode::Primitive(Primitive::Block { x, y, z }) => {
+                extend(&mut aabb, &solid::block(*x, *y, *z)?, transform);
             }
             GeometryNode::Instance(instance) => {
                 stack.push((instance.source, transform * instance.transform));
@@ -125,5 +140,45 @@ mod tests {
         assert_eq!(aabb.min, Point3::new(-1.0, 0.0, 0.0));
         assert_eq!(aabb.max, Point3::new(1.0, 3.0, 4.0));
         assert_eq!(exact(&graph, mixed), None);
+    }
+
+    /// An extrusion that builds no solid falls back, so the compiler names
+    /// the defect instead of this returning a flat or empty box.
+    #[test]
+    fn a_degenerate_extrusion_is_not_bounded_here() {
+        use axiolid_core::Vec3;
+        use axiolid_profile::{Profile, RectangleProfile};
+
+        let mut builder = GeometryGraphBuilder::default();
+        let profile = builder
+            .push(GeometryNode::Profile(Profile::Rectangle(
+                RectangleProfile {
+                    x: 2.0,
+                    y: 1.0,
+                    thickness: None,
+                    outer_radius: None,
+                    inner_radius: None,
+                },
+            )))
+            .unwrap();
+        let mut extrusion = |direction: Vec3, depth: f64| {
+            builder
+                .push(GeometryNode::SolidOperation(SolidOperation::Extrusion {
+                    profile,
+                    direction,
+                    depth,
+                }))
+                .unwrap()
+        };
+        let sound = extrusion(Vec3::Z, 3.0);
+        let flat = extrusion(Vec3::Z, 0.0);
+        let aimless = extrusion(Vec3::ZERO, 3.0);
+        let graph = builder.finish(vec![sound, flat, aimless]).unwrap();
+
+        let aabb = exact(&graph, sound).expect("a rectangle extrusion is exact");
+        assert_eq!(aabb.min, Point3::new(-1.0, -0.5, 0.0));
+        assert_eq!(aabb.max, Point3::new(1.0, 0.5, 3.0));
+        assert_eq!(exact(&graph, flat), None);
+        assert_eq!(exact(&graph, aimless), None);
     }
 }

@@ -20,6 +20,8 @@
 //! the absence of code is invisible. The registry makes the gap a data
 //! structure that can be counted, printed, and tested against.
 
+use ifc_schema::{Schema, SchemaVersion};
+
 /// Whether this validator evaluates a given rule.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Support {
@@ -32,14 +34,41 @@ pub enum Support {
 }
 
 /// One registered rule.
+///
+/// The entry is the rule's whole scope: it applies to instances of
+/// [`Self::entity`] *and of its subtypes*, and only under the
+/// [`Self::releases`] whose EXPRESS declares it under this id. The engine
+/// reads both from here, so a rule cannot run on a narrower set of
+/// instances, or under more releases, than its entry states.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RuleEntry {
-    /// Stable rule id, e.g. `IfcRoot.WR1` or `global.IfcSingleProjectInstance`.
+    /// Stable rule id: `<declaring entity>.<label>` exactly as the schema
+    /// writes it (e.g. `IfcExternalReference.WR1`), or `global.<name>` for a
+    /// file-wide rule.
     pub id: &'static str,
-    /// The entity the rule constrains, or `None` for a global rule.
+    /// The entity declaring the rule, or `None` for a global rule.
+    ///
+    /// Instances of its subtypes are constrained too: EXPRESS WHERE rules
+    /// are inherited.
     pub entity: Option<&'static str>,
+    /// The releases whose EXPRESS declares this rule under [`Self::id`].
+    pub releases: &'static [SchemaVersion],
     /// Whether it is evaluated.
     pub support: Support,
+}
+
+impl RuleEntry {
+    /// Whether `schema` is a release that declares this rule.
+    ///
+    /// Tables of no recognised release declare none of the registered
+    /// rules: a rule is never carried across versions, nor onto an unknown
+    /// one.
+    #[must_use]
+    pub fn applies_to(&self, schema: &Schema) -> bool {
+        schema
+            .version()
+            .is_some_and(|version| self.releases.contains(&version))
+    }
 }
 
 /// Reason strings, shared so the same gap reads identically everywhere.
@@ -49,15 +78,30 @@ const NEEDS_INVERSES: &str =
     "not implemented uniformly: IFC2X3 requires INVERSE relationship semantics, which validation does not derive";
 const NEEDS_GEOMETRY: &str = "requires geometric evaluation, which validation does not perform";
 
+/// Every bundled release.
+const ALL: &[SchemaVersion] = &[
+    SchemaVersion::Ifc2x3,
+    SchemaVersion::Ifc4,
+    SchemaVersion::Ifc4x3,
+];
+/// IFC2X3 alone: IFC4 renamed most of its `WRnn` labels.
+const IFC2X3: &[SchemaVersion] = &[SchemaVersion::Ifc2x3];
+/// IFC4 and IFC4X3, which share their rule labels.
+const IFC4_FAMILY: &[SchemaVersion] = &[SchemaVersion::Ifc4, SchemaVersion::Ifc4x3];
+
 /// Every rule this validator knows about, implemented or not.
 ///
 /// Deliberately not exhaustive over every bundled IFC release: claiming to
 /// enumerate all rules would be its own dishonesty. It covers selected
 /// high-value predicates plus representative unsupported categories.
+///
+/// Every entity-scoped entry's id, entity and releases are checked against
+/// the normative EXPRESS by `tests/registry_scope.rs`.
 pub const RULES: &[RuleEntry] = &[
     RuleEntry {
         id: "global.IfcSingleProjectInstance",
         entity: None,
+        releases: ALL,
         support: Support::Implemented,
     },
     // IfcRoot constrains GlobalId with `UNIQUE UR1`, not a WHERE rule. It is
@@ -66,101 +110,135 @@ pub const RULES: &[RuleEntry] = &[
     RuleEntry {
         id: "global.UniqueGlobalId",
         entity: None,
+        releases: ALL,
         support: Support::Implemented,
     },
     RuleEntry {
         id: "IfcRelDefinesByProperties.NoRelatedTypeObject",
         entity: Some("IfcRelDefinesByProperties"),
+        releases: IFC4_FAMILY,
         support: Support::Implemented,
     },
     RuleEntry {
         id: "IfcExternalReference.WR1",
         entity: Some("IfcExternalReference"),
+        releases: ALL,
         support: Support::Implemented,
     },
+    // One predicate under two labels: IFC2X3 `WR1`, IFC4 on
+    // `AvoidInconsistentSequence`.
     RuleEntry {
         id: "IfcRelSequence.WR1",
         entity: Some("IfcRelSequence"),
+        releases: IFC2X3,
         support: Support::Implemented,
     },
     RuleEntry {
         id: "IfcRelSequence.AvoidInconsistentSequence",
         entity: Some("IfcRelSequence"),
+        releases: IFC4_FAMILY,
         support: Support::Implemented,
     },
+    // IFC2X3 states these on the abstract IfcRelDecomposes as `WR31`, and
+    // the assignment ones below as `WR1`; neither label is registered yet.
     RuleEntry {
         id: "IfcRelAggregates.NoSelfReference",
         entity: Some("IfcRelAggregates"),
+        releases: IFC4_FAMILY,
         support: Support::Implemented,
     },
     RuleEntry {
         id: "IfcRelNests.NoSelfReference",
         entity: Some("IfcRelNests"),
+        releases: IFC4_FAMILY,
         support: Support::Implemented,
     },
     RuleEntry {
         id: "IfcMaterialLayer.NormalizedPriority",
         entity: Some("IfcMaterialLayer"),
+        releases: IFC4_FAMILY,
         support: Support::Implemented,
     },
     RuleEntry {
         id: "IfcRelAssignsToActor.NoSelfReference",
         entity: Some("IfcRelAssignsToActor"),
+        releases: IFC4_FAMILY,
         support: Support::Implemented,
     },
     RuleEntry {
         id: "IfcRelAssignsToProcess.NoSelfReference",
         entity: Some("IfcRelAssignsToProcess"),
+        releases: IFC4_FAMILY,
         support: Support::Implemented,
     },
     RuleEntry {
         id: "IfcRelAssignsToProduct.NoSelfReference",
         entity: Some("IfcRelAssignsToProduct"),
+        releases: IFC4_FAMILY,
         support: Support::Implemented,
     },
+    // Declared on IfcRelAssignsToGroup, so IfcRelAssignsToGroupByFactor
+    // inherits it rather than declaring its own.
     RuleEntry {
-        id: "IfcRelAssignsToGroupByFactor.NoSelfReference",
-        entity: Some("IfcRelAssignsToGroupByFactor"),
+        id: "IfcRelAssignsToGroup.NoSelfReference",
+        entity: Some("IfcRelAssignsToGroup"),
+        releases: IFC4_FAMILY,
         support: Support::Implemented,
     },
     RuleEntry {
         id: "IfcRelConnectsPathElements.NormalizedRelatingPriorities",
         entity: Some("IfcRelConnectsPathElements"),
+        releases: IFC4_FAMILY,
         support: Support::Implemented,
     },
     RuleEntry {
         id: "IfcRelConnectsPathElements.NormalizedRelatedPriorities",
         entity: Some("IfcRelConnectsPathElements"),
+        releases: IFC4_FAMILY,
         support: Support::Implemented,
     },
     RuleEntry {
         id: "IfcRelSpaceBoundary.CorrectPhysOrVirt",
         entity: Some("IfcRelSpaceBoundary"),
+        releases: IFC4_FAMILY,
         support: Support::Implemented,
     },
     RuleEntry {
         id: "IfcDocumentReference.WR1",
         entity: Some("IfcDocumentReference"),
+        releases: ALL,
         support: Support::Unsupported(NEEDS_INVERSES),
     },
     RuleEntry {
         id: "IfcRepresentationContextSameWCS",
         entity: None,
+        releases: ALL,
         support: Support::Unsupported(NEEDS_GEOMETRY),
     },
+    // One predicate under two labels: IFC2X3 `WR21`, IFC4 on
+    // `AllPointsSameDim`.
     RuleEntry {
         id: "IfcPolyLoop.WR21",
         entity: Some("IfcPolyLoop"),
+        releases: IFC2X3,
         support: Support::Unsupported(NEEDS_BOUNDS),
     },
     RuleEntry {
-        id: "IfcPhysicalSimpleQuantity.WR21",
+        id: "IfcPolyLoop.AllPointsSameDim",
+        entity: Some("IfcPolyLoop"),
+        releases: IFC4_FAMILY,
+        support: Support::Unsupported(NEEDS_BOUNDS),
+    },
+    RuleEntry {
+        id: "IfcQuantityLength.WR21",
         entity: Some("IfcQuantityLength"),
+        releases: ALL,
         support: Support::Unsupported(NEEDS_EXPRESSIONS),
     },
     RuleEntry {
         id: "IfcZone.WR1",
         entity: Some("IfcZone"),
+        releases: ALL,
         support: Support::Unsupported(NEEDS_EXPRESSIONS),
     },
 ];
@@ -211,6 +289,42 @@ mod tests {
             unsupported().count() > 0,
             "a validator claiming full WHERE-rule coverage is lying"
         );
+    }
+
+    /// An entity-scoped id names its declaring entity, and that entity
+    /// exists in every release the entry claims.
+    ///
+    /// `IfcRelAssignsToGroupByFactor.NoSelfReference` once named a subtype
+    /// that declares nothing; `tests/registry_scope.rs` additionally checks
+    /// each label against the normative EXPRESS.
+    #[test]
+    fn entity_ids_name_their_declaring_entity_in_every_claimed_release() {
+        for entry in RULES {
+            assert!(!entry.releases.is_empty(), "{} applies nowhere", entry.id);
+            let Some(entity) = entry.entity else {
+                continue;
+            };
+            assert!(
+                entry.id.starts_with(&format!("{entity}.")),
+                "{} is not `{entity}.<label>`",
+                entry.id
+            );
+            for version in entry.releases {
+                let schema = ifc_schema::for_version(*version).expect("bundled tables");
+                assert!(
+                    schema.entity(entity).is_some(),
+                    "{} claims {version:?}, which declares no {entity}",
+                    entry.id
+                );
+            }
+        }
+    }
+
+    /// Tables of an unrecognised release run no registered rule.
+    #[test]
+    fn an_unknown_release_declares_no_registered_rule() {
+        let schema = Schema::from_express("SCHEMA IFC9;\nEND_SCHEMA;\n");
+        assert!(RULES.iter().all(|entry| !entry.applies_to(&schema)));
     }
 
     #[test]

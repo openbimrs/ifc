@@ -84,9 +84,134 @@ pub fn accepts(schema: &Schema, type_name: &str, candidate: &str) -> Option<bool
     Some(false)
 }
 
+/// The entity alternatives a SELECT offers, found by walking nested SELECTs.
+struct EntityMembers {
+    /// Entities named anywhere in the closure. An instance of any of them,
+    /// or of a subtype, is a member.
+    entities: Vec<String>,
+    /// Whether the closure also offers a defined type or enumeration, i.e.
+    /// a value that is not an entity reference.
+    values: bool,
+    /// Whether a member names nothing the schema declares.
+    unknown: bool,
+}
+
+/// Walks the closure of SELECT `type_name` for its entity alternatives.
+///
+/// `None` when `type_name` is not a SELECT, or the visit bound was hit.
+fn entity_members(schema: &Schema, type_name: &str) -> Option<EntityMembers> {
+    let TypeKind::Select(_) = &schema.type_def(type_name)?.kind else {
+        return None;
+    };
+    let mut members = EntityMembers {
+        entities: Vec::new(),
+        values: false,
+        unknown: false,
+    };
+    let mut frontier = vec![type_name.to_ascii_uppercase()];
+    let mut seen: BTreeSet<String> = BTreeSet::new();
+    while let Some(current) = frontier.pop() {
+        if !seen.insert(current.clone()) {
+            continue;
+        }
+        if seen.len() > MAX_VISITED {
+            return None;
+        }
+        if schema.entity(&current).is_some() {
+            members.entities.push(current);
+            continue;
+        }
+        match schema.type_def(&current).map(|definition| &definition.kind) {
+            Some(TypeKind::Select(nested)) => {
+                frontier.extend(nested.iter().map(|member| member.to_ascii_uppercase()));
+            }
+            Some(TypeKind::Defined(_) | TypeKind::Enumeration(_)) => members.values = true,
+            None => members.unknown = true,
+        }
+    }
+    Some(members)
+}
+
+/// Whether an instance of `entity_type` may be referenced from a slot of
+/// SELECT `type_name`.
+///
+/// It may when it is, or inherits from, an entity anywhere in the SELECT's
+/// closure. `None` when `type_name` is not a SELECT, or when the answer
+/// would be "no" but some member names nothing the schema declares -- that
+/// member might have admitted it.
+#[must_use]
+pub fn admits_entity(schema: &Schema, type_name: &str, entity_type: &str) -> Option<bool> {
+    let members = entity_members(schema, type_name)?;
+    if members
+        .entities
+        .iter()
+        .any(|entity| schema.is_a(entity_type, entity))
+    {
+        Some(true)
+    } else if members.unknown {
+        None
+    } else {
+        Some(false)
+    }
+}
+
+/// Whether every alternative of SELECT `type_name` is an entity, so that
+/// only an entity reference can fill its slot.
+///
+/// `None` when `type_name` is not a SELECT or its closure cannot be fully
+/// resolved.
+#[must_use]
+pub fn admits_only_entities(schema: &Schema, type_name: &str) -> Option<bool> {
+    let members = entity_members(schema, type_name)?;
+    (!members.unknown).then_some(!members.values)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// An entity alternative admits its subtypes; nested SELECTs are walked.
+    #[test]
+    fn entity_membership_walks_nested_selects_and_subtypes() {
+        let schema = ifc_schema::ifc4();
+        // IfcMaterialSelect lists IfcMaterialDefinition; IfcMaterial is a subtype.
+        assert_eq!(
+            admits_entity(schema, "IfcMaterialSelect", "IfcMaterial"),
+            Some(true)
+        );
+        assert_eq!(
+            admits_entity(schema, "IfcMaterialSelect", "IfcWall"),
+            Some(false)
+        );
+        // IfcDefinitionSelect -> IfcObjectDefinition -> ... -> IfcWall.
+        assert_eq!(
+            admits_entity(schema, "IfcDefinitionSelect", "IfcWall"),
+            Some(true)
+        );
+        // IfcCurveFontOrScaledCurveFontSelect -> IfcCurveStyleFontSelect
+        // -> IfcCurveStyleFont: an entity one SELECT down.
+        assert_eq!(
+            admits_entity(
+                schema,
+                "IfcCurveFontOrScaledCurveFontSelect",
+                "IfcCurveStyleFont"
+            ),
+            Some(true)
+        );
+        assert_eq!(admits_entity(schema, "IfcLabel", "IfcWall"), None);
+    }
+
+    /// Entity-only SELECTs are told apart from ones that also take values.
+    #[test]
+    fn entity_only_selects_are_recognised() {
+        let schema = ifc_schema::ifc4();
+        assert_eq!(admits_only_entities(schema, "IfcActorSelect"), Some(true));
+        assert_eq!(admits_only_entities(schema, "IfcValue"), Some(false));
+        assert_eq!(
+            admits_only_entities(schema, "IfcPropertySetDefinitionSelect"),
+            Some(false)
+        );
+    }
 
     /// A member two hops down a wide select must be found.
     ///

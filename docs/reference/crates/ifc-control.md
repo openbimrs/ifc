@@ -28,8 +28,10 @@ validates what the schema states; it does not implement approval
 workflow, authorization, or policy decisions, which are the
 concern of whatever system issues the permit.
 
-Controls relate to the work they govern through `IfcRelAssigns*`
-relationships owned elsewhere; this crate does not create them.
+Controls relate to the work they govern through
+`IfcRelAssignsToControl`. The crate owning the relating control
+writes that relationship, so this crate stages it for its own four
+controls and refuses any other.
 
 ## Depends on
 

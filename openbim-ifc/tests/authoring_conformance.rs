@@ -642,7 +642,9 @@ fn later_geometry_authoring_is_conformant() {
     let u = grid_axis(&mut tx, Some("A"), outer, true);
     let v = grid_axis(&mut tx, Some("1"), outer, false);
     virtual_grid_intersection(&mut tx, &[u, v], &[0.0, 0.0]).expect("intersection");
-    connection_geometry(&mut tx, ConnectionKind::Curve, arc, None);
+    // `CurveOnRelatingElement : IfcCurveOrEdgeCurve` is a SELECT of
+    // IfcBoundedCurve and IfcEdgeCurve; a circle is a conic, neither.
+    connection_geometry(&mut tx, ConnectionKind::Curve, outer, None);
     point_on_curve(&mut tx, arc, 0.5).expect("point on curve");
     geometric_set(&mut tx, true, &[arc]).expect("curve set");
 
