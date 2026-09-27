@@ -4,7 +4,9 @@
 //! and its support state. Prose cannot answer "does the schema constrain
 //! this?" -- only the schema can. `openbim-step` now parses rule labels and
 //! expressions, so this file checks the committed inventory against what the
-//! schema actually declares, and fails when the two drift apart.
+//! schema actually declares, and fails when the two drift apart. It records
+//! labels only: rule expressions are CC BY-ND schema text and are not
+//! redistributed (see `data/NOTICE.md`).
 
 mod where_rule_inventory {
     pub mod batches;
@@ -13,7 +15,7 @@ mod where_rule_inventory {
     pub mod readers;
 }
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use ifc_geometry::rules::{validate_model, RuleViolation};
 use ifc_model::Model;
@@ -21,20 +23,24 @@ use ifc_model::Model;
 const INVENTORY: &str = include_str!("../data/ifc4-where-rules.tsv");
 const DECLARATIONS: &str = include_str!("../data/ifc4-add2-tc1-geometry-declarations.tsv");
 
-/// Rows as `(entity, rule, state, expression)`.
-fn rows() -> impl Iterator<Item = (&'static str, &'static str, &'static str, &'static str)> {
+/// Rows as `(entity, rule, state)`.
+fn rows() -> impl Iterator<Item = (&'static str, &'static str, &'static str)> {
     INVENTORY
         .lines()
         .skip(1)
         .filter(|line| !line.is_empty())
         .map(|line| {
-            let mut f = line.splitn(4, '\t');
-            (
+            let mut f = line.split('\t');
+            let row = (
                 f.next().expect("entity"),
                 f.next().expect("rule"),
                 f.next().expect("state"),
-                f.next().expect("expression"),
-            )
+            );
+            assert!(
+                f.next().is_none(),
+                "{line}: the inventory has three columns"
+            );
+            row
         })
 }
 
@@ -76,7 +82,7 @@ fn the_inventory_matches_the_schema_exactly() {
     }
 
     let listed: BTreeSet<(String, String)> = rows()
-        .map(|(entity, rule, _, _)| (entity.to_owned(), rule.to_owned()))
+        .map(|(entity, rule, _)| (entity.to_owned(), rule.to_owned()))
         .collect();
 
     let missing: Vec<_> = declared.difference(&listed).collect();
@@ -89,27 +95,6 @@ fn the_inventory_matches_the_schema_exactly() {
         invented.is_empty(),
         "inventory lists rules the schema does not declare: {invented:?}"
     );
-}
-
-/// Every stored expression is the schema's own text, not a paraphrase.
-#[test]
-fn stored_expressions_match_the_schema_text() {
-    let schema = ifc_schema::ifc4();
-    let mut by_key: BTreeMap<(String, String), String> = BTreeMap::new();
-    for name in schema.entity_names() {
-        let entity = schema.entity(name).expect("named entity resolves");
-        for rule in &entity.where_rules {
-            by_key.insert(
-                (name.to_ascii_lowercase(), rule.label.clone()),
-                rule.expression.clone(),
-            );
-        }
-    }
-    for (entity, rule, _, expression) in rows() {
-        let key = (entity.to_owned(), rule.to_owned());
-        let actual = by_key.get(&key).expect("inventoried rule exists");
-        assert_eq!(actual, expression, "{entity}.{rule} text drifted");
-    }
 }
 
 /// `implemented` means the rules module names that rule; nothing else counts.
@@ -127,7 +112,7 @@ fn implemented_rows_are_named_by_the_rules_module() {
     const TYPING: &str = include_str!("../src/rules/typing.rs");
     const SURFACE: &str = include_str!("../src/rules/surface.rs");
     const BSPLINE: &str = include_str!("../src/rules/bspline.rs");
-    for (entity, rule, state, _) in rows() {
+    for (entity, rule, state) in rows() {
         if state != "implemented" {
             continue;
         }
@@ -148,12 +133,11 @@ fn implemented_rows_are_named_by_the_rules_module() {
 /// Support state is a closed vocabulary.
 #[test]
 fn every_row_declares_a_known_state() {
-    for (entity, rule, state, expression) in rows() {
+    for (entity, rule, state) in rows() {
         assert!(
             matches!(state, "implemented" | "inventoried"),
             "{entity}.{rule} has unknown state {state}"
         );
-        assert!(!expression.is_empty(), "{entity}.{rule} has no expression");
     }
 }
 
@@ -170,7 +154,7 @@ fn implemented_rules_fire_on_violations_and_stay_silent_otherwise() {
     // proves whatever the author remembered to write.
     let covered: BTreeSet<(&str, &str)> =
         all_cases().into_iter().map(|(e, l, _, _)| (e, l)).collect();
-    for (entity, rule, state, _) in rows() {
+    for (entity, rule, state) in rows() {
         if state == "implemented" {
             assert!(
                 covered.contains(&(entity, rule)),
