@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- `data/ifc4-where-rules.tsv` lists each geometry WHERE rule by entity,
+  label and support state only. Its `expression` column held the rule bodies
+  verbatim, which are CC BY-ND schema text and are no longer shipped.
+  `data/NOTICE.md` covers all five data files and no longer claims the
+  directory holds no rule bodies while it did.
+
 ## [0.4.1] - 2026-09-27
 
 ### Fixed

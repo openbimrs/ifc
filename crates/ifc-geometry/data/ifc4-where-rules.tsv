@@ -1,96 +1,96 @@
-entity	rule	state	expression
-ifcadvancedbrep	HasAdvancedFaces	implemented	SIZEOF(QUERY(Afs <* SELF\IfcManifoldSolidBrep.Outer.CfsFaces | (NOT ('IFC4.IFCADVANCEDFACE' IN TYPEOF(Afs))) )) = 0
-ifcadvancedbrepwithvoids	VoidsHaveAdvancedFaces	implemented	SIZEOF (QUERY (Vsh <* Voids | SIZEOF (QUERY (Afs <* Vsh.CfsFaces | (NOT ('IFC4.IFCADVANCEDFACE' IN TYPEOF(Afs))) )) = 0 )) = 0
-ifcaxis1placement	AxisIs3D	implemented	(NOT (EXISTS (Axis))) OR (Axis.Dim = 3)
-ifcaxis1placement	LocationIs3D	implemented	SELF\IfcPlacement.Location.Dim = 3
-ifcaxis2placement2d	LocationIs2D	implemented	SELF\IfcPlacement.Location.Dim = 2
-ifcaxis2placement2d	RefDirIs2D	implemented	(NOT (EXISTS (RefDirection))) OR (RefDirection.Dim = 2)
-ifcaxis2placement3d	AxisAndRefDirProvision	implemented	NOT ((EXISTS (Axis)) XOR (EXISTS (RefDirection)))
-ifcaxis2placement3d	AxisIs3D	implemented	(NOT (EXISTS (Axis))) OR (Axis.Dim = 3)
-ifcaxis2placement3d	AxisToRefDirPosition	implemented	(NOT (EXISTS (Axis))) OR (NOT (EXISTS (RefDirection))) OR (IfcCrossProduct(Axis,RefDirection).Magnitude > 0.0)
-ifcaxis2placement3d	LocationIs3D	implemented	SELF\IfcPlacement.Location.Dim = 3
-ifcaxis2placement3d	RefDirIs3D	implemented	(NOT (EXISTS (RefDirection))) OR (RefDirection.Dim = 3)
-ifcbooleanclippingresult	FirstOperandType	implemented	('IFC4.IFCSWEPTAREASOLID' IN TYPEOF(FirstOperand)) OR ('IFC4.IFCSWEPTDISCSOLID' IN TYPEOF(FirstOperand)) OR ('IFC4.IFCBOOLEANCLIPPINGRESULT' IN TYPEOF(FirstOperand))
-ifcbooleanclippingresult	OperatorType	implemented	Operator = DIFFERENCE
-ifcbooleanclippingresult	SecondOperandType	implemented	('IFC4.IFCHALFSPACESOLID' IN TYPEOF(SecondOperand))
-ifcbooleanresult	FirstOperandClosed	implemented	NOT('IFC4.IFCTESSELLATEDFACESET' IN TYPEOF(FirstOperand)) OR (EXISTS(FirstOperand.Closed) AND FirstOperand.Closed)
-ifcbooleanresult	SameDim	implemented	FirstOperand.Dim = SecondOperand.Dim
-ifcbooleanresult	SecondOperandClosed	implemented	NOT('IFC4.IFCTESSELLATEDFACESET' IN TYPEOF(SecondOperand)) OR (EXISTS(SecondOperand.Closed) AND SecondOperand.Closed)
-ifcboundarycurve	IsClosed	implemented	SELF\IfcCompositeCurve.ClosedCurve
-ifcboxedhalfspace	UnboundedSurface	implemented	NOT ('IFC4.IFCCURVEBOUNDEDPLANE' IN TYPEOF(SELF\IfcHalfSpaceSolid.BaseSurface))
-ifcbsplinecurve	SameDim	implemented	SIZEOF(QUERY(Temp <* ControlPointsList | Temp.Dim <> ControlPointsList[1].Dim)) = 0
-ifcbsplinecurvewithknots	ConsistentBSpline	implemented	IfcConstraintsParamBSpline(Degree, UpperIndexOnKnots, UpperIndexOnControlPoints, KnotMultiplicities, Knots)
-ifcbsplinecurvewithknots	CorrespondingKnotLists	implemented	SIZEOF(KnotMultiplicities) = UpperIndexOnKnots
-ifcbsplinesurfacewithknots	CorrespondingULists	implemented	SIZEOF(UMultiplicities) = KnotUUpper
-ifcbsplinesurfacewithknots	CorrespondingVLists	implemented	SIZEOF(VMultiplicities) = KnotVUpper
-ifcbsplinesurfacewithknots	UDirectionConstraints	implemented	IfcConstraintsParamBSpline ( SELF\IfcBSplineSurface.UDegree, KnotUUpper, SELF\IfcBSplineSurface.UUpper, UMultiplicities, UKnots)
-ifcbsplinesurfacewithknots	VDirectionConstraints	implemented	IfcConstraintsParamBSpline ( SELF\IfcBSplineSurface.VDegree, KnotVUpper, SELF\IfcBSplineSurface.VUpper, VMultiplicities, VKnots)
-ifccartesianpoint	CP2Dor3D	implemented	HIINDEX(Coordinates) >= 2
-ifccartesiantransformationoperator	ScaleGreaterZero	implemented	Scl > 0.0
-ifccartesiantransformationoperator2d	Axis1Is2D	implemented	NOT(EXISTS(SELF\IfcCartesianTransformationOperator.Axis1)) OR (SELF\IfcCartesianTransformationOperator.Axis1.Dim = 2)
-ifccartesiantransformationoperator2d	Axis2Is2D	implemented	NOT(EXISTS(SELF\IfcCartesianTransformationOperator.Axis2)) OR (SELF\IfcCartesianTransformationOperator.Axis2.Dim = 2)
-ifccartesiantransformationoperator2d	DimEqual2	implemented	SELF\IfcCartesianTransformationOperator.Dim = 2
-ifccartesiantransformationoperator2dnonuniform	Scale2GreaterZero	implemented	Scl2 > 0.0
-ifccartesiantransformationoperator3d	Axis1Is3D	implemented	NOT(EXISTS(SELF\IfcCartesianTransformationOperator.Axis1)) OR (SELF\IfcCartesianTransformationOperator.Axis1.Dim = 3)
-ifccartesiantransformationoperator3d	Axis2Is3D	implemented	NOT(EXISTS(SELF\IfcCartesianTransformationOperator.Axis2)) OR (SELF\IfcCartesianTransformationOperator.Axis2.Dim = 3)
-ifccartesiantransformationoperator3d	Axis3Is3D	implemented	NOT(EXISTS(Axis3)) OR (Axis3.Dim = 3)
-ifccartesiantransformationoperator3d	DimIs3D	implemented	SELF\IfcCartesianTransformationOperator.Dim = 3
-ifccartesiantransformationoperator3dnonuniform	Scale2GreaterZero	implemented	Scl2 > 0.0
-ifccartesiantransformationoperator3dnonuniform	Scale3GreaterZero	implemented	Scl3 > 0.0
-ifccompositecurve	CurveContinuous	implemented	((NOT ClosedCurve) AND (SIZEOF(QUERY(Temp <* Segments | Temp.Transition = Discontinuous)) = 1)) OR ((ClosedCurve) AND (SIZEOF(QUERY(Temp <* Segments | Temp.Transition = Discontinuous)) = 0))
-ifccompositecurve	SameDim	implemented	SIZEOF( QUERY( Temp <* Segments | Temp.Dim <> Segments[1].Dim)) = 0
-ifccompositecurveonsurface	SameSurface	implemented	SIZEOF(BasisSurface) > 0
-ifccompositecurvesegment	ParentIsBoundedCurve	implemented	('IFC4.IFCBOUNDEDCURVE' IN TYPEOF(ParentCurve))
-ifcdirection	MagnitudeGreaterZero	implemented	SIZEOF(QUERY(Tmp <* DirectionRatios | Tmp <> 0.0)) > 0
-ifcextrudedareasolid	ValidExtrusionDirection	implemented	IfcDotProduct(IfcRepresentationItem() || IfcGeometricRepresentationItem() || IfcDirection([0.0,0.0,1.0]), SELF.ExtrudedDirection) <> 0.0
-ifcextrudedareasolidtapered	CorrectProfileAssignment	implemented	IfcTaperedSweptAreaProfiles(SELF\IfcSweptAreaSolid.SweptArea, SELF.EndSweptArea)
-ifcfixedreferencesweptareasolid	DirectrixBounded	implemented	(EXISTS(StartParam) AND EXISTS(EndParam)) OR (SIZEOF(['IFC4.IFCCONIC', 'IFC4.IFCBOUNDEDCURVE'] * TYPEOF(Directrix)) = 1)
-ifcgeometriccurveset	NoSurfaces	implemented	SIZEOF(QUERY(Temp <* SELF\IfcGeometricSet.Elements | 'IFC4.IFCSURFACE' IN TYPEOF(Temp))) = 0
-ifcgeometricset	ConsistentDim	implemented	SIZEOF(QUERY(Temp <* Elements | Temp.Dim <> Elements[1].Dim)) = 0
-ifcgridaxis	WR1	implemented	AxisCurve.Dim = 2
-ifcgridaxis	WR2	implemented	(SIZEOF(PartOfU) = 1) XOR (SIZEOF(PartOfV) = 1) XOR (SIZEOF(PartOfW) = 1)
-ifcindexedpolycurve	Consecutive	implemented	(SIZEOF(Segments) = 0) OR IfcConsecutiveSegments(Segments)
-ifcintersectioncurve	DistinctSurfaces	implemented	IfcAssociatedSurface(SELF\IfcSurfaceCurve.AssociatedGeometry[1]) <> IfcAssociatedSurface(SELF\IfcSurfaceCurve.AssociatedGeometry[2])
-ifcintersectioncurve	TwoPCurves	implemented	SIZEOF(SELF\IfcSurfaceCurve.AssociatedGeometry) = 2
-ifcline	SameDim	implemented	Dir.Dim = Pnt.Dim
-ifclocalplacement	WR21	implemented	IfcCorrectLocalPlacement(RelativePlacement, PlacementRelTo)
-ifcoffsetcurve2d	DimIs2D	implemented	BasisCurve.Dim = 2
-ifcoffsetcurve3d	DimIs2D	implemented	BasisCurve.Dim = 3
-ifcpcurve	DimIs2D	implemented	ReferenceCurve.Dim = 2
-ifcpolygonalboundedhalfspace	BoundaryDim	implemented	PolygonalBoundary.Dim = 2
-ifcpolygonalboundedhalfspace	BoundaryType	implemented	SIZEOF(TYPEOF(PolygonalBoundary) * [ 'IFC4.IFCPOLYLINE', 'IFC4.IFCCOMPOSITECURVE'] ) = 1
-ifcpolyline	SameDim	implemented	SIZEOF(QUERY(Temp <* Points | Temp.Dim <> Points[1].Dim)) = 0
-ifcrationalbsplinecurvewithknots	SameNumOfWeightsAndPoints	implemented	SIZEOF(WeightsData) = SIZEOF(SELF\IfcBSplineCurve.ControlPointsList)
-ifcrationalbsplinecurvewithknots	WeightsGreaterZero	implemented	IfcCurveWeightsPositive(SELF)
-ifcrationalbsplinesurfacewithknots	CorrespondingWeightsDataLists	implemented	(SIZEOF(WeightsData) = SIZEOF(SELF\IfcBSplineSurface.ControlPointsList)) AND (SIZEOF(WeightsData[1]) = SIZEOF(SELF\IfcBSplineSurface.ControlPointsList[1]))
-ifcrationalbsplinesurfacewithknots	WeightValuesGreaterZero	implemented	IfcSurfaceWeightsPositive(SELF)
-ifcrectangulartrimmedsurface	U1AndU2Different	implemented	U1 <> U2
-ifcrectangulartrimmedsurface	UsenseCompatible	implemented	(('IFC4.IFCELEMENTARYSURFACE' IN TYPEOF(BasisSurface)) AND (NOT ('IFC4.IFCPLANE' IN TYPEOF(BasisSurface)))) OR ('IFC4.IFCSURFACEOFREVOLUTION' IN TYPEOF(BasisSurface)) OR (Usense = (U2 > U1))
-ifcrectangulartrimmedsurface	V1AndV2Different	implemented	V1 <> V2
-ifcrectangulartrimmedsurface	VsenseCompatible	implemented	Vsense = (V2 > V1)
-ifcreparametrisedcompositecurvesegment	PositiveLengthParameter	implemented	ParamLength > 0.0
-ifcrepresentationmap	ApplicableMappedRepr	implemented	'IFC4.IFCSHAPEMODEL' IN TYPEOF(MappedRepresentation)
-ifcrevolvedareasolid	AxisDirectionInXY	implemented	Axis.Z.DirectionRatios[3] = 0.0
-ifcrevolvedareasolid	AxisStartInXY	implemented	Axis.Location.Coordinates[3] = 0.0
-ifcrevolvedareasolidtapered	CorrectProfileAssignment	implemented	IfcTaperedSweptAreaProfiles(SELF\IfcSweptAreaSolid.SweptArea, SELF.EndSweptArea)
-ifcseamcurve	SameSurface	implemented	IfcAssociatedSurface(SELF\IfcSurfaceCurve.AssociatedGeometry[1]) = IfcAssociatedSurface(SELF\IfcSurfaceCurve.AssociatedGeometry[2])
-ifcseamcurve	TwoPCurves	implemented	SIZEOF(SELF\IfcSurfaceCurve.AssociatedGeometry) = 2
-ifcsectionedspine	ConsistentProfileTypes	implemented	SIZEOF(QUERY(temp <* CrossSections | CrossSections[1].ProfileType <> temp.ProfileType)) = 0
-ifcsectionedspine	CorrespondingSectionPositions	implemented	SIZEOF(CrossSections) = SIZEOF(CrossSectionPositions)
-ifcsectionedspine	SpineCurveDim	implemented	SpineCurve.Dim = 3
-ifcsurfacecurve	CurveIs3D	implemented	Curve3D.Dim = 3
-ifcsurfacecurve	CurveIsNotPcurve	implemented	NOT ('IFC4.IFCPCURVE' IN TYPEOF(Curve3D))
-ifcsurfacecurvesweptareasolid	DirectrixBounded	implemented	(EXISTS(StartParam) AND EXISTS(EndParam)) OR (SIZEOF(['IFC4.IFCCONIC', 'IFC4.IFCBOUNDEDCURVE'] * TYPEOF(Directrix)) = 1)
-ifcsurfaceoflinearextrusion	DepthGreaterZero	implemented	Depth > 0.
-ifcsweptareasolid	SweptAreaType	implemented	SweptArea.ProfileType = IfcProfileTypeEnum.Area
-ifcsweptdisksolid	DirectrixBounded	implemented	(EXISTS(StartParam) AND EXISTS(EndParam)) OR (SIZEOF(['IFC4.IFCCONIC', 'IFC4.IFCBOUNDEDCURVE'] * TYPEOF(Directrix)) = 1)
-ifcsweptdisksolid	DirectrixDim	implemented	Directrix.Dim = 3
-ifcsweptdisksolid	InnerRadiusSize	implemented	(NOT EXISTS(InnerRadius)) OR (Radius > InnerRadius)
-ifcsweptdisksolidpolygonal	CorrectRadii	implemented	NOT(EXISTS(FilletRadius)) OR (FilletRadius >= SELF\IfcSweptDiskSolid.Radius)
-ifcsweptdisksolidpolygonal	DirectrixIsPolyline	implemented	('IFC4.IFCPOLYLINE' IN TYPEOF(SELF\IfcSweptDiskSolid.Directrix)) OR (('IFC4.IFCINDEXEDPOLYCURVE' IN TYPEOF(SELF\IfcSweptDiskSolid.Directrix)) AND NOT(EXISTS(SELF\IfcSweptDiskSolid.Directrix.Segments)))
-ifcsweptsurface	SweptCurveType	implemented	SweptCurve.ProfileType = IfcProfileTypeEnum.Curve
-ifctoroidalsurface	MajorLargerMinor	implemented	MinorRadius < MajorRadius
-ifctrimmedcurve	NoTrimOfBoundedCurves	implemented	NOT('IFC4.IFCBOUNDEDCURVE' IN TYPEOF(BasisCurve))
-ifctrimmedcurve	Trim1ValuesConsistent	implemented	(HIINDEX(Trim1) = 1) OR (TYPEOF(Trim1[1]) <> TYPEOF(Trim1[2]))
-ifctrimmedcurve	Trim2ValuesConsistent	implemented	(HIINDEX(Trim2) = 1) OR (TYPEOF(Trim2[1]) <> TYPEOF(Trim2[2]))
-ifcvector	MagGreaterOrEqualZero	implemented	Magnitude >= 0.0
+entity	rule	state
+ifcadvancedbrep	HasAdvancedFaces	implemented
+ifcadvancedbrepwithvoids	VoidsHaveAdvancedFaces	implemented
+ifcaxis1placement	AxisIs3D	implemented
+ifcaxis1placement	LocationIs3D	implemented
+ifcaxis2placement2d	LocationIs2D	implemented
+ifcaxis2placement2d	RefDirIs2D	implemented
+ifcaxis2placement3d	AxisAndRefDirProvision	implemented
+ifcaxis2placement3d	AxisIs3D	implemented
+ifcaxis2placement3d	AxisToRefDirPosition	implemented
+ifcaxis2placement3d	LocationIs3D	implemented
+ifcaxis2placement3d	RefDirIs3D	implemented
+ifcbooleanclippingresult	FirstOperandType	implemented
+ifcbooleanclippingresult	OperatorType	implemented
+ifcbooleanclippingresult	SecondOperandType	implemented
+ifcbooleanresult	FirstOperandClosed	implemented
+ifcbooleanresult	SameDim	implemented
+ifcbooleanresult	SecondOperandClosed	implemented
+ifcboundarycurve	IsClosed	implemented
+ifcboxedhalfspace	UnboundedSurface	implemented
+ifcbsplinecurve	SameDim	implemented
+ifcbsplinecurvewithknots	ConsistentBSpline	implemented
+ifcbsplinecurvewithknots	CorrespondingKnotLists	implemented
+ifcbsplinesurfacewithknots	CorrespondingULists	implemented
+ifcbsplinesurfacewithknots	CorrespondingVLists	implemented
+ifcbsplinesurfacewithknots	UDirectionConstraints	implemented
+ifcbsplinesurfacewithknots	VDirectionConstraints	implemented
+ifccartesianpoint	CP2Dor3D	implemented
+ifccartesiantransformationoperator	ScaleGreaterZero	implemented
+ifccartesiantransformationoperator2d	Axis1Is2D	implemented
+ifccartesiantransformationoperator2d	Axis2Is2D	implemented
+ifccartesiantransformationoperator2d	DimEqual2	implemented
+ifccartesiantransformationoperator2dnonuniform	Scale2GreaterZero	implemented
+ifccartesiantransformationoperator3d	Axis1Is3D	implemented
+ifccartesiantransformationoperator3d	Axis2Is3D	implemented
+ifccartesiantransformationoperator3d	Axis3Is3D	implemented
+ifccartesiantransformationoperator3d	DimIs3D	implemented
+ifccartesiantransformationoperator3dnonuniform	Scale2GreaterZero	implemented
+ifccartesiantransformationoperator3dnonuniform	Scale3GreaterZero	implemented
+ifccompositecurve	CurveContinuous	implemented
+ifccompositecurve	SameDim	implemented
+ifccompositecurveonsurface	SameSurface	implemented
+ifccompositecurvesegment	ParentIsBoundedCurve	implemented
+ifcdirection	MagnitudeGreaterZero	implemented
+ifcextrudedareasolid	ValidExtrusionDirection	implemented
+ifcextrudedareasolidtapered	CorrectProfileAssignment	implemented
+ifcfixedreferencesweptareasolid	DirectrixBounded	implemented
+ifcgeometriccurveset	NoSurfaces	implemented
+ifcgeometricset	ConsistentDim	implemented
+ifcgridaxis	WR1	implemented
+ifcgridaxis	WR2	implemented
+ifcindexedpolycurve	Consecutive	implemented
+ifcintersectioncurve	DistinctSurfaces	implemented
+ifcintersectioncurve	TwoPCurves	implemented
+ifcline	SameDim	implemented
+ifclocalplacement	WR21	implemented
+ifcoffsetcurve2d	DimIs2D	implemented
+ifcoffsetcurve3d	DimIs2D	implemented
+ifcpcurve	DimIs2D	implemented
+ifcpolygonalboundedhalfspace	BoundaryDim	implemented
+ifcpolygonalboundedhalfspace	BoundaryType	implemented
+ifcpolyline	SameDim	implemented
+ifcrationalbsplinecurvewithknots	SameNumOfWeightsAndPoints	implemented
+ifcrationalbsplinecurvewithknots	WeightsGreaterZero	implemented
+ifcrationalbsplinesurfacewithknots	CorrespondingWeightsDataLists	implemented
+ifcrationalbsplinesurfacewithknots	WeightValuesGreaterZero	implemented
+ifcrectangulartrimmedsurface	U1AndU2Different	implemented
+ifcrectangulartrimmedsurface	UsenseCompatible	implemented
+ifcrectangulartrimmedsurface	V1AndV2Different	implemented
+ifcrectangulartrimmedsurface	VsenseCompatible	implemented
+ifcreparametrisedcompositecurvesegment	PositiveLengthParameter	implemented
+ifcrepresentationmap	ApplicableMappedRepr	implemented
+ifcrevolvedareasolid	AxisDirectionInXY	implemented
+ifcrevolvedareasolid	AxisStartInXY	implemented
+ifcrevolvedareasolidtapered	CorrectProfileAssignment	implemented
+ifcseamcurve	SameSurface	implemented
+ifcseamcurve	TwoPCurves	implemented
+ifcsectionedspine	ConsistentProfileTypes	implemented
+ifcsectionedspine	CorrespondingSectionPositions	implemented
+ifcsectionedspine	SpineCurveDim	implemented
+ifcsurfacecurve	CurveIs3D	implemented
+ifcsurfacecurve	CurveIsNotPcurve	implemented
+ifcsurfacecurvesweptareasolid	DirectrixBounded	implemented
+ifcsurfaceoflinearextrusion	DepthGreaterZero	implemented
+ifcsweptareasolid	SweptAreaType	implemented
+ifcsweptdisksolid	DirectrixBounded	implemented
+ifcsweptdisksolid	DirectrixDim	implemented
+ifcsweptdisksolid	InnerRadiusSize	implemented
+ifcsweptdisksolidpolygonal	CorrectRadii	implemented
+ifcsweptdisksolidpolygonal	DirectrixIsPolyline	implemented
+ifcsweptsurface	SweptCurveType	implemented
+ifctoroidalsurface	MajorLargerMinor	implemented
+ifctrimmedcurve	NoTrimOfBoundedCurves	implemented
+ifctrimmedcurve	Trim1ValuesConsistent	implemented
+ifctrimmedcurve	Trim2ValuesConsistent	implemented
+ifcvector	MagGreaterOrEqualZero	implemented

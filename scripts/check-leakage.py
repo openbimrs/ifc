@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 import tarfile
@@ -19,6 +20,14 @@ XSD_MARKERS = (
     b"<schema " + b'xmlns="http://www.w3.org/2001/XMLSchema"',
 )
 PDF_MARKERS = (b"%PDF-",)
+# EXPRESS rule syntax. The IFC schemas are CC BY-ND and their rule bodies are
+# authored text, so no shipped data artifact may carry them; structural facts
+# (names, slots, rule labels) are fine. Source and prose are exempt: a doc
+# comment quoting one rule to explain the code that implements it is a
+# citation, not a copy of the schema.
+EXPRESS_RULE = re.compile(rb"\b(?:SIZEOF|TYPEOF|QUERY|HIINDEX|USEDIN)\s*\(")
+EXPRESS_RULE_LIMIT = 3
+PROSE_OR_SOURCE = {".rs", ".md", ".py", ".mjs", ".js", ".ts", ".sh", ".toml", ".yml", ".yaml", ".c", ".h", ".cpp", ".html", ".vue", ".css"}
 DERIVED_ROOTS = {".git", ".venv", "node_modules", "target"}
 DERIVED_PATHS = {("docs", ".vitepress", "cache"), ("docs", ".vitepress", "dist")}
 
@@ -41,6 +50,13 @@ def check_bytes(name: str, payload: bytes, origin: str) -> None:
         fail(f"XSD schema bytes found in {origin}: {name}")
     if any(marker in payload.lstrip()[:16] for marker in PDF_MARKERS):
         fail(f"PDF bytes found in {origin}: {name}")
+    if PurePosixPath(name).suffix.lower() not in PROSE_OR_SOURCE:
+        hits = len(EXPRESS_RULE.findall(payload))
+        if hits >= EXPRESS_RULE_LIMIT:
+            fail(
+                f"EXPRESS rule text ({hits} expressions) found in {origin}: {name}; "
+                "schema rule bodies are CC BY-ND and must not be shipped"
+            )
 
 
 def check_directory(path: Path) -> None:
