@@ -30,6 +30,28 @@ lockstep -- is archived in the
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
 
+### openbim-ifc
+
+### Added
+
+- `window_operation(model, window)` (features `geometry-select` and
+  `properties`), the window counterpart of `door_operation`: each panel of
+  a window as a world frame, width, height, hinge side, swing `Sector` for
+  a side hinge and tilt `Sector` for a top or bottom hinge, from its
+  placement, `OverallWidth`/`OverallHeight`, partitioning
+  (`IfcWindowType.PartitioningType`, IFC2X3 `IfcWindowStyle.OperationType`,
+  or the occurrence's), `IfcWindowPanelProperties` and the mullion and
+  transom offsets of `IfcWindowLiningProperties`, in IFC2X3, IFC4 and
+  IFC4X3 (#170). Single, double and triple partitionings with side-hung,
+  tilt-and-turn, top- and bottom-hung, sliding, removable and fixed panels
+  are derived; `NOTDEFINED` and `USERDEFINED` partitionings, pivot,
+  `OTHEROPERATION` and `NOTDEFINED` panels, a window without panel
+  properties or overall size, panels that contradict the partitioning, and
+  a split without a valid lining offset are refused as
+  `WindowOperationError`, never defaulted. Panels tile the placement's XZ
+  plane; lining, mullion and transom thicknesses are not applied.
+  `Sector` and `Side` are shared with `door_operation`, unchanged.
+
 ### openbim-ifc-binding-core
 
 ### Added (lazy loading)
