@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.4.1 (2026-09-27) |
+| Latest release | 0.4.2 (2026-09-27) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_geometry/index.html) · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -37,43 +37,14 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.4.1 (2026-09-27):
-
-### Fixed
-
-- An `IfcCurveBoundedPlane` lowered under a non-identity frame no longer
-  moves its boundaries twice (#163). `OuterBoundary` and `InnerBoundaries`
-  are in the basis plane's parameter space, which is also how the neutral
-  curve-bounded relation reads them, but the frame was applied to them as
-  well as to the plane: they landed elsewhere or were refused as off the
-  plane. Only the basis plane takes the frame now, so a framed plane meshes
-  to the identity mesh moved by the frame. Connection surfaces lowered under
-  a space's frame are the case this breaks.
-
-### Added
-
-- `product_representation_frame(model, units, product, purpose)`: the frame
-  a product's representation of that purpose is placed in, the context's
-  `WorldCoordinateSystem` composed above the placement chain (#164). Lowering
-  and `body_description` now take their frame from it, so geometry lowered
-  outside the body, such as a space boundary's connection surface in the
-  relating space's coordinates, is placed exactly as the body is.
-  `Ok(None)` when the product has no such representation; kernel-free.
-- `profile_outline(model, units, profile)` and `ProfileOutline` (#166): an
-  `IfcArbitraryClosedProfileDef`'s or `IfcArbitraryProfileDefWithVoids`'s
-  boundaries as rings of vertices in metres, in profile coordinates, for
-  `IfcPolyline` and line-only `IfcIndexedPolyCurve` boundaries. Each ring
-  is in authored order without its closing vertex, as profile lowering
-  reads it. An `IfcArcIndex` segment or any other curve family is
-  `Unsupported` naming the curve, never chorded; a 3D point, fewer than
-  three distinct vertices and non-consecutive segments are `Degenerate`.
-  Kernel-free.
+Latest release, 0.4.2 (2026-09-27):
 
 ### Changed
 
-- `lower_product_representation` selects the representation before it
-  resolves the placement, as `body_description` already did: a product with
-  no representation of the purpose is `Ok(None)` even when its placement is
-  broken, where it used to be the placement error.
+- `data/ifc4-where-rules.tsv` lists each geometry WHERE rule by entity,
+  label and support state only. Its `expression` column held the rule bodies
+  verbatim, which are CC BY-ND schema text and are no longer shipped.
+  `data/NOTICE.md` covers all five data files and no longer claims the
+  directory holds no rule bodies while it did.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
