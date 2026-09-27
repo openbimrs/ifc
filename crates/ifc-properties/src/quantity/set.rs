@@ -18,7 +18,8 @@
 //! The value slot is 3 for every simple quantity because `Unit` occupies slot
 //! 2 on the shared supertype. The COMPLEX quantity has no `Unit`, so its
 //! contents start at slot 2 instead -- reading it like a simple quantity
-//! finds a list where a unit belongs.
+//! finds a list where a unit belongs. `simple.rs` reads the simple
+//! quantities, including those whose value cannot be read.
 //!
 //! # A quantity is an assertion, not a measurement
 //!
@@ -28,18 +29,15 @@
 
 use std::sync::Arc;
 
-use ifc_model::{EntityId, Model, Value};
+use ifc_model::{EntityId, Model};
 
 use crate::error::PropertyAnomaly;
 use crate::nesting::Nesting;
 use crate::quantity::complex::complex_quantities;
-use crate::unit::{unit_type, UnitKind};
+use crate::quantity::simple::{read_simple, text, value_slots, UnresolvedValue};
+use crate::unit::UnitKind;
 
 const NAME: usize = 0;
-const DESCRIPTION: usize = 1;
-const SIMPLE_UNIT: usize = 2;
-const SIMPLE_VALUE: usize = 3;
-const SIMPLE_FORMULA: usize = 4;
 const COMPLEX_DISCRIMINATION: usize = 3;
 const SET_METHOD: usize = 4;
 const SET_QUANTITIES: usize = 5;
@@ -48,7 +46,11 @@ const SET_QUANTITIES: usize = 5;
 ///
 /// The kind is the entity type, not a guess from the unit: a file may omit
 /// the unit entirely, and `IfcQuantityArea` still measures area.
+///
+/// Non-exhaustive: a later release may add a quantity subtype, as IFC4X3
+/// added `IfcQuantityNumber`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum QuantityKind {
     /// `IfcQuantityLength`.
     Length,
@@ -62,12 +64,20 @@ pub enum QuantityKind {
     Weight,
     /// `IfcQuantityTime`.
     Time,
+    /// `IfcQuantityNumber`: a number that is not a physical measure, such as
+    /// a ratio or a figure a take-off rule defines. Declared only by IFC4X3;
+    /// the permissive readers resolve it only in a model whose declared
+    /// release has it, and read it as [`Quantity::Unsupported`] elsewhere.
+    Number,
 }
 
 impl QuantityKind {
     /// The kind named by an entity type, or `None` if it is not a simple
     /// quantity. Case-insensitive, because a type name reaching here may
     /// come from a caller rather than the upper-cased parser.
+    ///
+    /// This maps names only; it does not check that a release declares the
+    /// entity (`IfcQuantityNumber` is IFC4X3 only).
     #[must_use]
     pub fn from_type_name(name: &str) -> Option<Self> {
         Self::from_type(&name.to_ascii_uppercase())
@@ -83,6 +93,7 @@ impl QuantityKind {
             Self::Count => "IfcQuantityCount",
             Self::Weight => "IfcQuantityWeight",
             Self::Time => "IfcQuantityTime",
+            Self::Number => "IfcQuantityNumber",
         }
     }
 
@@ -99,6 +110,7 @@ impl QuantityKind {
             Self::Count => "IfcCountMeasure",
             Self::Weight => "IfcMassMeasure",
             Self::Time => "IfcTimeMeasure",
+            Self::Number => "IfcNumericMeasure",
         }
     }
 
@@ -110,14 +122,16 @@ impl QuantityKind {
             "IFCQUANTITYCOUNT" => Self::Count,
             "IFCQUANTITYWEIGHT" => Self::Weight,
             "IFCQUANTITYTIME" => Self::Time,
+            "IFCQUANTITYNUMBER" => Self::Number,
             _ => return None,
         })
     }
 
     /// The `IfcUnitEnum` this quantity's unit must carry, per `WR21`.
     ///
-    /// `IfcQuantityCount` has no such rule -- a count is dimensionless -- so
-    /// it constrains nothing.
+    /// `IfcQuantityCount` has no such rule -- a count is dimensionless --
+    /// and neither has IFC4X3 `IfcQuantityNumber`, so they constrain
+    /// nothing.
     pub fn required_unit(self) -> Option<&'static str> {
         Some(match self {
             Self::Length => "LENGTHUNIT",
@@ -125,13 +139,39 @@ impl QuantityKind {
             Self::Volume => "VOLUMEUNIT",
             Self::Weight => "MASSUNIT",
             Self::Time => "TIMEUNIT",
-            Self::Count => return None,
+            Self::Count | Self::Number => return None,
         })
+    }
+
+    /// The name of the value attribute, the same in every release that
+    /// declares the entity (`LengthValue`, ..., IFC4X3 `NumberValue`).
+    pub(crate) fn value_attribute(self) -> &'static str {
+        match self {
+            Self::Length => "LengthValue",
+            Self::Area => "AreaValue",
+            Self::Volume => "VolumeValue",
+            Self::Count => "CountValue",
+            Self::Weight => "WeightValue",
+            Self::Time => "TimeValue",
+            Self::Number => "NumberValue",
+        }
+    }
+
+    /// Whether the value must be `>= 0`: `WR22` on every `IfcQuantity*`
+    /// except `IfcQuantityCount` (its `WR21`) and IFC4X3
+    /// `IfcQuantityNumber`, which declares no rule at all.
+    pub(crate) fn requires_non_negative(self) -> bool {
+        self != Self::Number
     }
 }
 
 /// One physical quantity.
+///
+/// Non-exhaustive: a match needs a wildcard arm, and code that sums or
+/// compares values should match [`Quantity::Simple`] and decide explicitly
+/// what an [`Quantity::Unresolved`] quantity means for it.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum Quantity {
     /// A simple measured value.
     Simple {
@@ -149,6 +189,29 @@ pub enum Quantity {
         unit: Option<EntityId>,
         /// `Formula`: how the author says it was derived. Free text.
         formula: Option<Arc<str>>,
+    },
+    /// A simple quantity whose value attribute holds no number: `$`, missing
+    /// from a truncated record, or not numeric.
+    ///
+    /// Kept in its place so the set still lists it; there is deliberately
+    /// no `value` to read as 0. The same fault is reported as
+    /// [`PropertyAnomaly::QuantityValueMissing`] or
+    /// [`PropertyAnomaly::QuantityValueNotNumeric`].
+    Unresolved {
+        /// The entity.
+        id: EntityId,
+        /// `Name`, required by the schema.
+        name: Option<Arc<str>>,
+        /// `Description`.
+        description: Option<Arc<str>>,
+        /// What it measures.
+        kind: QuantityKind,
+        /// The unit override, when stated.
+        unit: Option<EntityId>,
+        /// `Formula`: how the author says it was derived. Free text.
+        formula: Option<Arc<str>>,
+        /// Why there is no value.
+        reason: UnresolvedValue,
     },
     /// A nested group of quantities.
     Complex {
@@ -174,16 +237,19 @@ impl Quantity {
     /// The entity id, whatever the variant.
     pub fn id(&self) -> EntityId {
         match self {
-            Self::Simple { id, .. } | Self::Complex { id, .. } | Self::Unsupported { id, .. } => {
-                *id
-            }
+            Self::Simple { id, .. }
+            | Self::Unresolved { id, .. }
+            | Self::Complex { id, .. }
+            | Self::Unsupported { id, .. } => *id,
         }
     }
 
     /// The name, whatever the variant.
     pub fn name(&self) -> Option<&str> {
         match self {
-            Self::Simple { name, .. } | Self::Complex { name, .. } => name.as_deref(),
+            Self::Simple { name, .. }
+            | Self::Unresolved { name, .. }
+            | Self::Complex { name, .. } => name.as_deref(),
             Self::Unsupported { .. } => None,
         }
     }
@@ -221,11 +287,12 @@ impl QuantitySet {
 /// A member that cannot be represented is left out of `quantities` and
 /// reported, never dropped silently: an absent id
 /// ([`PropertyAnomaly::MissingMember`]), a list item that is not an entity
-/// reference ([`PropertyAnomaly::MemberNotReference`]), a member listed
-/// again ([`PropertyAnomaly::DuplicateMember`], read once), a simple
-/// quantity with no value
-/// ([`PropertyAnomaly::QuantityValueMissing`]) or a non-numeric one
-/// ([`PropertyAnomaly::QuantityValueNotNumeric`]). Nested complex
+/// reference ([`PropertyAnomaly::MemberNotReference`]) or a member listed
+/// again ([`PropertyAnomaly::DuplicateMember`], read once). A simple
+/// quantity with no value or a non-numeric one stays in `quantities`, in
+/// file order, as [`Quantity::Unresolved`], and is also reported as
+/// [`PropertyAnomaly::QuantityValueMissing`] or
+/// [`PropertyAnomaly::QuantityValueNotNumeric`]. Nested complex
 /// quantities are followed along a tracked path; a cycle, over-deep nesting
 /// or an exhausted member budget is reported as
 /// [`PropertyAnomaly::ComplexCycle`],
@@ -258,8 +325,9 @@ pub fn quantity_set(model: &Model, id: EntityId) -> Option<(QuantitySet, Vec<Pro
     ))
 }
 
-/// Read one physical quantity. `None` means it cannot be represented; the
-/// reason has already been reported through `nesting`.
+/// Read one physical quantity. `None` means the entity is absent; every
+/// present quantity is represented, and its anomalies are reported through
+/// `nesting`.
 pub(super) fn read_quantity(
     model: &Model,
     id: EntityId,
@@ -285,57 +353,15 @@ pub(super) fn read_quantity(
         });
     };
 
-    // The value attribute is not OPTIONAL on any IfcQuantity*. A quantity
-    // without a number has nothing to report as `Simple`, so it is named
-    // instead of silently vanishing from its set.
-    let value = match entity.attributes.get(SIMPLE_VALUE) {
-        None | Some(Value::Null) => {
-            nesting.report(PropertyAnomaly::QuantityValueMissing { quantity: id });
-            return None;
-        }
-        Some(stated) => match stated.unwrap_typed().as_f64() {
-            Some(value) => value,
-            None => {
-                nesting.report(PropertyAnomaly::QuantityValueNotNumeric {
-                    quantity: id,
-                    found: format!("{stated:?}"),
-                });
-                return None;
-            }
-        },
-    };
-    let unit = entity.attributes.get(SIMPLE_UNIT).and_then(one_ref);
-
-    // WR22: every simple quantity requires a non-negative value.
-    if value < 0.0 {
-        nesting.report(PropertyAnomaly::NegativeQuantity {
-            quantity: id,
-            value,
+    // A kind the declared release does not have (IfcQuantityNumber outside
+    // IFC4X3) is foreign to the model; it is not read as if it belonged.
+    let Some(slots) = value_slots(model, kind) else {
+        return Some(Quantity::Unsupported {
+            id,
+            type_name: ty.as_str().into(),
         });
-    }
-    // WR21: a stated unit must match the quantity kind.
-    if let (Some(unit_id), Some(expected)) = (unit, kind.required_unit()) {
-        if let Some(found) = unit_type(model, unit_id) {
-            if &*found != expected {
-                nesting.report(PropertyAnomaly::QuantityUnitMismatch {
-                    quantity: id,
-                    unit: unit_id,
-                    expected,
-                    found: found.to_string(),
-                });
-            }
-        }
-    }
-
-    Some(Quantity::Simple {
-        id,
-        name,
-        description: entity.attributes.get(DESCRIPTION).and_then(text),
-        kind,
-        value,
-        unit,
-        formula: entity.attributes.get(SIMPLE_FORMULA).and_then(text),
-    })
+    };
+    Some(read_simple(model, id, entity, kind, slots, name, nesting))
 }
 
 /// Every `IfcElementQuantity` in the file, with anomalies.
@@ -355,29 +381,20 @@ pub fn quantity_sets(model: &Model) -> (Vec<QuantitySet>, Vec<PropertyAnomaly>) 
 
 /// Resolve the unit kind for a quantity, following its explicit unit only.
 ///
+/// An [`Quantity::Unresolved`] quantity still states its unit, so it has
+/// one here even though it has no value. An IFC4X3 `IfcQuantityNumber`
+/// may state any `IfcNamedUnit` (it has no `WR21`); it is returned as
+/// stated, and a number that states none has none.
+///
 /// Project-default units are NOT applied here: falling back to the project
 /// context would report a unit the quantity never stated. Callers that want
 /// the effective unit combine this with [`crate::unit::project_units`].
 pub fn stated_unit(model: &Model, quantity: &Quantity) -> Option<UnitKind> {
     match quantity {
-        Quantity::Simple { unit, .. } => {
+        Quantity::Simple { unit, .. } | Quantity::Unresolved { unit, .. } => {
             let id = (*unit)?;
             crate::unit::unit(model, id)
         }
-        _ => None,
-    }
-}
-
-fn text(value: &Value) -> Option<Arc<str>> {
-    match value.unwrap_typed() {
-        Value::Text(t) => Some(t.clone()),
-        _ => None,
-    }
-}
-
-fn one_ref(value: &Value) -> Option<EntityId> {
-    match value.unwrap_typed() {
-        Value::Ref(id) => Some(*id),
         _ => None,
     }
 }

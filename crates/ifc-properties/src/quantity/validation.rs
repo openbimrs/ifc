@@ -68,7 +68,9 @@ pub enum Comparison {
         /// What the caller says it computed.
         computed: QuantityKind,
     },
-    /// The quantity carries no comparable scalar (complex or unsupported).
+    /// The quantity carries no comparable scalar: complex, unsupported, or
+    /// [`Quantity::Unresolved`] (a missing or non-numeric value is not
+    /// compared as 0).
     NotComparable,
 }
 
@@ -110,20 +112,26 @@ impl Default for Tolerance {
 }
 
 /// Compare one authored quantity against a computed value.
+///
+/// Only a [`Quantity::Simple`] is compared, and only against a computed value
+/// of the same [`QuantityKind`]. An IFC4X3 `IfcQuantityNumber`
+/// ([`QuantityKind::Number`]) is compared like the others: against a computed
+/// `Number`, with a stated unit matched textually and no unit assumed when
+/// it states none. It has no `>= 0` rule, so a negative number compares as
+/// it is.
 pub fn compare(
     model: &Model,
     quantity: &Quantity,
     computed: &ComputedQuantity,
     tolerance: Tolerance,
 ) -> Comparison {
-    let Quantity::Simple {
-        kind,
-        value,
-        unit: unit_id,
-        ..
-    } = quantity
-    else {
-        return Comparison::NotComparable;
+    let (kind, value, unit_id) = match quantity {
+        Quantity::Simple {
+            kind, value, unit, ..
+        } => (kind, value, unit),
+        // No value: comparing would have to invent one.
+        Quantity::Unresolved { .. } => return Comparison::NotComparable,
+        _ => return Comparison::NotComparable,
     };
 
     if *kind != computed.kind {

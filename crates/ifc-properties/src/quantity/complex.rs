@@ -20,8 +20,9 @@ const HAS_QUANTITIES: usize = 2;
 /// Resolve the `HasQuantities` of complex quantity `id`, in file order.
 ///
 /// Members the traversal refuses (cycle, depth, budget, absent entity,
-/// non-reference item, repeated member) or that cannot be represented are
-/// left out and reported through `nesting`.
+/// non-reference item, repeated member) are left out and reported through
+/// `nesting`; a simple quantity without a readable value is kept as
+/// [`Quantity::Unresolved`].
 pub(super) fn complex_quantities(
     model: &Model,
     id: EntityId,

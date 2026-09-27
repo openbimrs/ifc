@@ -42,10 +42,12 @@ fn a_quantity_update_preserves_its_measure() {
     }
 }
 
-/// A count is written as an integer, because IfcCountMeasure is one.
+/// A whole count is written as an integer: valid for IFC4's `NUMBER`
+/// `IfcCountMeasure` and required by IFC4X3's `INTEGER`.
 #[test]
 fn a_count_is_written_as_an_integer() {
     let mut model = Model::new();
+    // IFC4 arity (a model without FILE_SCHEMA binds IFC4): Formula is last.
     let count = model.push(Entity::new(
         "IFCQUANTITYCOUNT",
         vec![
@@ -56,6 +58,7 @@ fn a_count_is_written_as_an_integer() {
                 type_name: "IfcCountMeasure".into(),
                 value: Box::new(Value::Integer(1)),
             },
+            Value::Null,
         ],
     ));
 
@@ -137,7 +140,8 @@ fn a_new_quantity_attaches_to_its_set_atomically() {
         .len();
 
     let mut tx = Transaction::new(&model);
-    let weight = create_quantity(&mut tx, QuantityKind::Weight, "GrossWeight", 12.0);
+    let weight = create_quantity(&mut tx, &model, QuantityKind::Weight, "GrossWeight", 12.0)
+        .expect("an IFC4 quantity");
     add_quantity_to_set(&mut tx, &model, set.id, &[weight]).expect("a real set");
     tx.commit(&mut model).expect("the new quantity resolves");
 

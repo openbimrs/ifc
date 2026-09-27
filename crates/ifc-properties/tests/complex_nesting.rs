@@ -4,7 +4,7 @@
 use ifc_model::{Entity, EntityId, Model, Value};
 use ifc_properties::{
     property_checked, property_set_checked, property_sets_by_object, quantity_set, Property,
-    PropertyAnomaly, PropertyValue, Quantity,
+    PropertyAnomaly, PropertyValue, Quantity, UnresolvedValue,
 };
 
 fn text(value: &str) -> Value {
@@ -405,11 +405,9 @@ fn a_quantity_without_a_value_is_reported() {
 
     let (set, anomalies) = quantity_set(&model, EntityId(10)).expect("readable");
     let ids: Vec<_> = set.quantities.iter().map(Quantity::id).collect();
-    assert_eq!(
-        ids,
-        [EntityId(3)],
-        "only the valued quantity is represented"
-    );
+    assert_eq!(ids, [EntityId(1), EntityId(2), EntityId(3)], "none dropped");
+    let missing = |q: &Quantity| matches!(q, Quantity::Unresolved { reason, .. } if *reason == UnresolvedValue::Missing);
+    assert!(set.quantities[..2].iter().all(missing), "{set:?}");
     assert_eq!(
         anomalies,
         [
@@ -430,7 +428,13 @@ fn a_non_numeric_quantity_value_is_reported() {
     element_quantity(&mut model, 10, &[1]);
 
     let (set, anomalies) = quantity_set(&model, EntityId(10)).expect("readable");
-    assert!(set.quantities.is_empty());
+    match set.quantities.as_slice() {
+        [Quantity::Unresolved {
+            reason: UnresolvedValue::NotNumeric { found },
+            ..
+        }] => assert!(found.contains("two metres"), "{found}"),
+        other => panic!("expected one unresolved quantity, got {other:?}"),
+    }
     match anomalies.as_slice() {
         [PropertyAnomaly::QuantityValueNotNumeric { quantity, found }] => {
             assert_eq!(*quantity, EntityId(1));
@@ -448,7 +452,14 @@ fn a_nested_malformed_quantity_is_reported() {
     element_quantity(&mut model, 10, &[2]);
 
     let (set, anomalies) = quantity_set(&model, EntityId(10)).expect("readable");
-    assert!(nested(&set.quantities[0]).is_empty());
+    assert!(matches!(
+        nested(&set.quantities[0]),
+        [Quantity::Unresolved {
+            id: EntityId(1),
+            reason: UnresolvedValue::Missing,
+            ..
+        }]
+    ));
     assert_eq!(
         anomalies,
         [PropertyAnomaly::QuantityValueMissing {

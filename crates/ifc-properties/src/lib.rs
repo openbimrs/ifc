@@ -76,7 +76,9 @@ pub use quantity::{
     add_quantity_to_set, compare, create_quantity, create_quantity_with, set_description, set_name,
     set_quantity_value, Comparison, ComputedQuantity, QuantityExtras, Tolerance,
 };
-pub use quantity::{quantity_set, quantity_sets, stated_unit, Quantity, QuantityKind, QuantitySet};
+pub use quantity::{
+    quantity_set, quantity_sets, stated_unit, Quantity, QuantityKind, QuantitySet, UnresolvedValue,
+};
 pub use query::{
     properties_of, property_value, resolved_properties, ResolvedProperties, ResolvedSet, Source,
 };
