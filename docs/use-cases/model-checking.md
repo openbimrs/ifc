@@ -67,9 +67,11 @@ The four severities are not a scale:
 | `Warning` | Legal, but very likely a mistake | no |
 | `Unsupported` | A rule *this validator* did not evaluate; a statement about the tool, not the file | no |
 
-What is checked natively: references, required slots, aggregate shape (a
-scalar where a `LIST` is declared and vice versa), entity, select, defined-type
-and enumeration compatibility, abstract instantiation, scalar forms,
+What is checked natively: references (dangling, and of the wrong kind in
+entity slots, in SELECT slots and inside aggregates), required slots,
+aggregate shape (a scalar where a `LIST` is declared and vice versa), entity,
+select, defined-type and enumeration compatibility of each value and of each
+aggregate member, abstract instantiation, scalar forms,
 `STRING(n) FIXED` widths, unique `GlobalId`s and a single `IfcProject`, plus
 the registered WHERE-rule predicates listed on the
 [coverage page](/coverage#validation).
@@ -109,9 +111,10 @@ bound. A gate that treats "conformant" as "passed" should also require
 
 `ifc-validate` has no EXPRESS expression evaluator. Rather than let a clean
 report mean "the rules we did not implement passed", each WHERE rule it knows
-about is registered with an explicit state, and the unimplemented ones are
-reported with severity `Unsupported` whenever the file contains an instance
-of the entity they constrain (global rules are always reported).
+about is registered with an explicit state and the releases that declare it,
+and the unimplemented ones are reported with severity `Unsupported` whenever
+the file's release declares them and the file contains an instance of the
+entity they constrain or of a subtype (global rules are always reported).
 
 <!-- SNIPPET:model-checking-unsupported -->
 

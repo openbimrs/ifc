@@ -1,9 +1,10 @@
 //! References that point at nothing, or at the wrong kind of thing.
 
-use ifc_model::{Model, Value};
+use ifc_model::{EntityId, Model, Value};
 use ifc_schema::Schema;
 
 use crate::report::{Finding, Path, Report};
+use crate::type_check::element_type;
 
 /// Reports every reference whose target the model does not contain.
 ///
@@ -47,10 +48,14 @@ pub fn dangling_references(model: &Model, report: &mut Report) {
 
 /// Reports references whose target is not of the declared entity type.
 ///
-/// Only checked where the schema declares an entity-typed slot: the parser
-/// records the declared type token, and if that token names an entity, the
-/// target must be that entity or a subtype of it. Slots declared as SELECTs or
-/// defined types are left to [`crate::type_check`], which understands them.
+/// Checked wherever the schema expects an entity: an entity-typed slot, the
+/// members of an aggregate of entities (`SET OF IfcProduct`), and aggregates
+/// reached through a type that aliases one. The target must be that entity or
+/// a subtype of it. References in SELECT slots are left to
+/// [`crate::type_check`], which walks the SELECT's closure; a value that is
+/// not a reference at all is `type.entity.expected_reference`.
+///
+/// One finding per distinct offending target in a slot, in ascending order.
 pub fn wrong_kind_references(model: &Model, schema: &Schema, report: &mut Report) {
     let mut ids: Vec<_> = model.iter().map(|(id, _)| id).collect();
     ids.sort_unstable();
@@ -63,18 +68,23 @@ pub fn wrong_kind_references(model: &Model, schema: &Schema, report: &mut Report
             let Some(attribute) = declared.get(index) else {
                 continue;
             };
-            // Only entity-typed slots are checkable here. A SELECT names a
-            // type declaration, not an entity, and is handled elsewhere.
-            if schema.entity(&attribute.type_name).is_none() {
-                continue;
+            let mut offenders: Vec<(EntityId, String, &str)> = Vec::new();
+            for (expected, target) in expected_references(schema, &attribute.type_name, value) {
+                // Only entity expectations are judged here; a SELECT names a
+                // type declaration, not an entity.
+                if schema.entity(&expected).is_none() {
+                    continue;
+                }
+                let Some(target_entity) = model.get(target) else {
+                    continue; // already reported as dangling
+                };
+                if !schema.is_a(&target_entity.type_name, &expected) {
+                    offenders.push((target, expected, &target_entity.type_name));
+                }
             }
-            let Value::Ref(target) = value.unwrap_typed() else {
-                continue;
-            };
-            let Some(target_entity) = model.get(*target) else {
-                continue; // already reported as dangling
-            };
-            if !schema.is_a(&target_entity.type_name, &attribute.type_name) {
+            offenders.sort_unstable();
+            offenders.dedup();
+            for (target, expected, actual) in offenders {
                 report.push(Finding::error(
                     "structure.reference.wrong_type",
                     Path::Attribute {
@@ -82,12 +92,80 @@ pub fn wrong_kind_references(model: &Model, schema: &Schema, report: &mut Report
                         index,
                         name: Some(attribute.name.clone()),
                     },
-                    format!(
-                        "declared {} but {target} is {}",
-                        attribute.type_name, target_entity.type_name
-                    ),
+                    format!("declared {expected} but {target} is {actual}"),
                 ));
             }
         }
+    }
+}
+
+/// How deeply nested aggregates are searched for references.
+///
+/// Matches the value check's bound: IFC nests aggregates three deep at
+/// most, and the depth of a written value is under the file's control.
+const MAX_NESTING: usize = 8;
+
+/// Every reference in `value`, paired with the type its position expects.
+///
+/// A reference directly in the slot expects the slot's `declared` type; one
+/// inside an aggregate expects the aggregate's element type, and one inside
+/// a typed wrapper expects the wrapper's type. The expected type may be an
+/// entity, a SELECT, or a type that takes no references at all -- telling
+/// those apart is the caller's business.
+pub(crate) fn expected_references(
+    schema: &Schema,
+    declared: &str,
+    value: &Value,
+) -> Vec<(String, EntityId)> {
+    let mut found = Vec::new();
+    collect(schema, declared, value, 0, &mut found);
+    found
+}
+
+fn collect(
+    schema: &Schema,
+    declared: &str,
+    value: &Value,
+    depth: usize,
+    found: &mut Vec<(String, EntityId)>,
+) {
+    match value {
+        Value::Ref(target) => found.push((declared.to_string(), *target)),
+        Value::List(items) if depth < MAX_NESTING => {
+            let element = element_type(schema, declared);
+            for item in items {
+                collect(schema, &element, item, depth + 1, found);
+            }
+        }
+        Value::Typed { type_name, value } => collect(schema, type_name, value, depth, found),
+        _ => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// References in aggregates expect the element type, including one
+    /// reached through a type that aliases an aggregate.
+    #[test]
+    fn references_are_paired_with_the_type_their_position_expects() {
+        let schema = ifc_schema::ifc4();
+        let set = Value::List(vec![Value::Ref(EntityId(1)), Value::Ref(EntityId(2))]);
+        assert_eq!(
+            expected_references(schema, "IfcProduct", &set),
+            [
+                ("IfcProduct".to_string(), EntityId(1)),
+                ("IfcProduct".to_string(), EntityId(2))
+            ]
+        );
+        let typed = Value::Typed {
+            type_name: "IFCPROPERTYSETDEFINITIONSET".into(),
+            value: Box::new(Value::List(vec![Value::Ref(EntityId(3))])),
+        };
+        assert_eq!(
+            expected_references(schema, "IfcPropertySetDefinitionSelect", &typed),
+            [("IfcPropertySetDefinition".to_string(), EntityId(3))]
+        );
     }
 }
