@@ -1,8 +1,8 @@
 # IFC repository instructions
 
-Applies to this repository. Read `HERMES.md` first and the nearest deeper
-`AGENTS.md` before editing a crate or complex module; deeper files add local
-rules and do not repeat this file.
+Applies to this repository. Read the nearest deeper `AGENTS.md` before
+editing a crate or complex module; deeper files add local rules and do not
+repeat this file. The code is pure Rust; `./scripts/gate.sh` is the gate.
 
 ## Context protocol
 
