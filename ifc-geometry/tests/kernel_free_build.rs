@@ -198,6 +198,34 @@ fn authoring_survives_without_the_kernel() {
     );
 }
 
+/// Body description must be reachable WITHOUT the geometry kernel (#147).
+///
+/// A rule check asking "is this beam an extrusion of an HEA300" reads
+/// profile parameters, not a mesh; linking a solid kernel for that answer is
+/// the coupling the split exists to prevent. The typed reference is the
+/// proof: if either function moves behind `lowering`, this stops compiling.
+#[test]
+#[cfg(not(feature = "lowering"))]
+fn body_description_survives_without_the_kernel() {
+    type Describe = fn(
+        &ifc_model::Model,
+        &ifc_geometry::units::UnitScale,
+        ifc_model::EntityId,
+    ) -> ifc_geometry::GeometryResult<Option<ifc_geometry::BodyDescription>>;
+    type Profile = fn(
+        &ifc_model::Model,
+        &ifc_geometry::units::UnitScale,
+        ifc_model::EntityId,
+    ) -> ifc_geometry::GeometryResult<ifc_geometry::ProfileDescription>;
+    let describe: Describe = ifc_geometry::body_description;
+    let profile: Profile = ifc_geometry::describe_profile;
+
+    let model = ifc_model::Model::new();
+    let units = ifc_geometry::units::UnitScale::default();
+    assert!(describe(&model, &units, ifc_model::EntityId(1)).is_err());
+    assert!(profile(&model, &units, ifc_model::EntityId(1)).is_err());
+}
+
 /// The bridge-to-bridge exception (ADR 0003, amended 2026-09-15) must not
 /// leak into the kernel-free column.
 ///

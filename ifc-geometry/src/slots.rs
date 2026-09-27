@@ -383,9 +383,9 @@ pub mod profile_slot {
 /// Position, so subtype attributes start at slot 3.
 ///
 /// Public because it is the schema itself, not an implementation detail:
-/// a caller assembling a profile record by hand needs the same indices,
-/// and some entries here serve only the lowering direction, so they are
-/// unreferenced in a kernel-free build without being dead.
+/// a caller assembling a profile record by hand needs the same indices.
+/// The kernel-free reader (`input::profile`) and the writers both index
+/// through these constants.
 pub mod section_slot {
     // IfcIShapeProfileDef
     /// `IfcIShapeProfileDef.OverallWidth`.
@@ -534,4 +534,9 @@ pub mod section_slot {
     pub const DERIVED_PARENT: usize = 2;
     /// `IfcDerivedProfileDef.Operator`.
     pub const DERIVED_OPERATOR: usize = 3;
+    /// `IfcCompositeProfileDef.Label`, after `Profiles`.
+    pub const COMPOSITE_LABEL: usize = 3;
+    /// `IfcDerivedProfileDef.Label`, after `Operator`; inherited unchanged by
+    /// `IfcMirroredProfileDef`.
+    pub const DERIVED_LABEL: usize = 4;
 }

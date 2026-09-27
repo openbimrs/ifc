@@ -57,9 +57,9 @@ rejected by `scripts/check-leakage.py`. See `data/NOTICE.md`.
   readers use; never restates a slot number.
 - `select`, `rules`: EXPRESS membership and actionable semantic rules
 - `units`, `transform`: source-number interpretation and project-space composition
-- `input/`: shape inputs from Representation, Material and Product
-  resources, plus openings (profiles are read by `lower::profile`, topology
-  by `resource::topology` and `solid::brep`)
+- `input/`: shape inputs from Representation, Material, Product and
+  Profile resources, plus openings and body description (topology is read by
+  `resource::topology` and `solid::brep`)
 - `lower/`: total IFC-to-`GeometryGraph` translation; no execution
 
 ## Invariants

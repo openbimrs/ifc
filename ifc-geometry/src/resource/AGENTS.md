@@ -16,7 +16,7 @@ Follow the crate `../../AGENTS.md`.
   names the target) errors are identical everywhere. An attribute typed by an
   abstract supertype (`IfcSurface`, `IfcBoundedCurve`) stays a reference: the
   dispatch belongs to `lower`. `IfcProfileDef` has no view here either;
-  `lower::profile` owns profile reading.
+  `input::profile` owns profile reading.
 
 ## Does not own
 
