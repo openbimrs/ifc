@@ -17,15 +17,17 @@ status = "implemented"
 group = "domain"
 
 [dependencies]
-# Borrowed views over the record graph, per ADR 0003. The schema tables are not
-# needed: containment is expressed by entity type and slot position, both of
-# which are fixed by the IFC schema across the versions this crate supports.
+# Borrowed views over the record graph, per ADR 0003.
 ifc-model.workspace = true
+# Which entities are spatial containers is the declared release's subtype
+# closure of IfcSpatialElement (IfcSpatialStructureElement in IFC2X3), which
+# no name pattern captures: IFC4X3 adds IfcBridge, IfcRoad, IfcRailway,
+# IfcMarineFacility and their parts. Slot positions stay constants; they are
+# fixed across the releases and asserted in tests/slot_layout.rs.
+ifc-schema.workspace = true
 
 [dev-dependencies]
 ifc-step.workspace = true
-# Only to assert the hard-coded slot positions against the normative schema.
-ifc-schema.workspace = true
 
 [lints]
 workspace = true

@@ -14,8 +14,9 @@ use std::collections::BTreeMap;
 use ifc_model::{EntityId, Model};
 
 use super::anomaly::SpatialAnomaly;
-use super::kind::SpatialKind;
+use super::kind::{Classifier, SpatialKind};
 use crate::relation::{Relationship, RelationshipKind};
+use ifc_schema::SchemaVersion;
 
 /// One entity's place in the containment tree.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -38,21 +39,39 @@ pub struct SpatialTree {
     nodes: BTreeMap<EntityId, SpatialNode>,
     /// Element to its direct container, so `container_of` is a lookup.
     container_of_element: BTreeMap<EntityId, EntityId>,
+    /// Container to the elements `IfcRelReferencedInSpatialStructure`
+    /// references there, and the inverse. Kept apart from containment.
+    pub(super) referenced: BTreeMap<EntityId, Vec<EntityId>>,
+    pub(super) referenced_in: BTreeMap<EntityId, Vec<EntityId>>,
     roots: Vec<EntityId>,
     orphans: Vec<EntityId>,
-    dangling: Vec<(EntityId, EntityId)>,
-    anomalies: Vec<SpatialAnomaly>,
+    pub(super) dangling: Vec<(EntityId, EntityId)>,
+    pub(super) anomalies: Vec<SpatialAnomaly>,
+    /// The release containers were classified against, if one was bound.
+    release: Option<SchemaVersion>,
 }
 
 impl SpatialTree {
     /// Build the containment tree of `model`.
     ///
-    /// One pass over the aggregation and containment relationships. Cost is
-    /// linear in the number of relationship entities, not in model size,
-    /// because relationships are found through the type index.
+    /// One pass over the aggregation, containment and spatial reference
+    /// relationships. Cost is linear in the number of relationship entities,
+    /// not in model size, because relationships are found through the type
+    /// index.
+    ///
+    /// Containers are classified against the release the file's
+    /// `FILE_SCHEMA` declares (see [`release`](Self::release)): an entity is
+    /// a container when that release declares it an `IfcSpatialElement`
+    /// (IFC2X3: `IfcSpatialStructureElement`), or it is the `IfcProject`.
     #[must_use]
     pub fn build(model: &Model) -> Self {
-        let mut tree = Self::default();
+        let classifier = Classifier::for_model(model);
+        let mut tree = Self {
+            release: classifier.bound_release(),
+            ..Self::default()
+        };
+        // One schema walk per distinct type name, not per entity.
+        let mut kinds: BTreeMap<&str, SpatialKind> = BTreeMap::new();
 
         // Ensure every spatial entity has a node, even one no relationship
         // mentions -- a lone IfcBuildingStorey is still part of the file.
@@ -60,7 +79,9 @@ impl SpatialTree {
             let Some(entity) = model.get(id) else {
                 continue;
             };
-            let kind = SpatialKind::classify(&entity.type_name);
+            let kind = *kinds
+                .entry(&entity.type_name)
+                .or_insert_with(|| classifier.classify(&entity.type_name));
             if kind.is_container() {
                 tree.nodes.insert(
                     id,
@@ -78,6 +99,7 @@ impl SpatialTree {
         for relationship in crate::relation::all(model) {
             tree.apply(model, &relationship);
         }
+        tree.apply_references(model);
 
         // A container with no parent is a root. Sorted for determinism, then
         // ordered so the project (if any) leads.
@@ -113,19 +135,38 @@ impl SpatialTree {
             return;
         }
         if !self.nodes.contains_key(&parent) {
-            // The relating end is not a container -- an element aggregating
-            // its parts. Valid IFC, but not spatial containment.
+            // Containment into something the release does not declare a
+            // spatial element is malformed: reported, not dropped. An
+            // aggregation whose whole is not a container is an element
+            // aggregating its parts: valid IFC, but not spatial structure.
+            if relationship.kind == RelationshipKind::ContainedIn {
+                self.anomalies
+                    .push(SpatialAnomaly::ContainedInNonContainer {
+                        relation: relationship.id,
+                        structure: parent,
+                    });
+            }
             return;
         }
+        // Only aggregation and containment build the tree. Other families
+        // with a container at the relating end (IfcRelDeclares from the
+        // project, IfcRelCoversSpaces from a space, ...) place nothing; their
+        // absent targets are still reported below.
+        let places = matches!(
+            relationship.kind,
+            RelationshipKind::Aggregates | RelationshipKind::ContainedIn
+        );
 
         for &child in &relationship.related {
-            let Some(child_entity) = model.get(child) else {
+            if model.get(child).is_none() {
                 self.dangling.push((relationship.id, child));
                 continue;
-            };
-            let child_kind = SpatialKind::classify(&child_entity.type_name);
+            }
+            if !places {
+                continue;
+            }
 
-            if child_kind.is_container() {
+            if self.nodes.contains_key(&child) {
                 // Containment relationships name elements, not containers;
                 // a container arriving here means an aggregation edge.
                 if relationship.kind == RelationshipKind::ContainedIn {
@@ -179,6 +220,18 @@ impl SpatialTree {
 }
 
 impl SpatialTree {
+    /// The release the containers were classified against: the one the
+    /// file's `FILE_SCHEMA` names, when it names exactly one bundled release
+    /// (IFC2X3, IFC4, IFC4X3).
+    ///
+    /// `None` when the header names none, several, or another release: an
+    /// entity is then a container when any bundled release declares it a
+    /// spatial element, as [`SpatialKind::classify`] answers.
+    #[must_use]
+    pub fn release(&self) -> Option<SchemaVersion> {
+        self.release
+    }
+
     /// The node describing `id`, if it is a spatial container.
     #[must_use]
     pub fn node(&self, id: EntityId) -> Option<&SpatialNode> {

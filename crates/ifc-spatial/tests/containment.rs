@@ -306,9 +306,12 @@ fn element_decomposition_does_not_enter_the_spatial_tree() {
 }
 
 #[test]
-fn ifc4x3_spatial_types_are_recognised_without_a_version_list() {
+fn spatial_types_of_any_bundled_release_are_recognised_without_a_header() {
     assert!(SpatialKind::classify("IFCSPATIALZONE").is_container());
     assert!(SpatialKind::classify("IFCFACILITY").is_container());
+    // Facilities share no name pattern; the schema tables decide (#121).
+    assert!(SpatialKind::classify("IFCROAD").is_container());
+    assert!(SpatialKind::classify("IFCBRIDGEPART").is_container());
     assert_eq!(SpatialKind::classify("IFCWALL"), SpatialKind::Element);
     assert_eq!(
         SpatialKind::classify("ifcbuildingstorey"),

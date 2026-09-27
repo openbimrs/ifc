@@ -261,6 +261,16 @@ pub use {
     },
 };
 
+// Each spatial container's elements with their exact properties (#121) joins
+// `ifc-spatial` and `ifc-properties`, siblings under ADR 0003. The module
+// gates itself on `all(spatial, properties)` with an inner `#![cfg]`.
+mod spatial_properties;
+#[cfg(all(feature = "spatial", feature = "properties"))]
+pub use spatial_properties::{
+    spatial_properties, ContainerElements, ContainerName, ElementMember, ElementProperties,
+    SpatialContainer, SpatialMembership, SpatialProperties,
+};
+
 mod feature_report;
 mod io;
 

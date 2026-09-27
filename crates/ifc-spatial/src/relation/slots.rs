@@ -49,6 +49,18 @@ pub(crate) const CONTAINED_IN: RelSlots = RelSlots {
     related: 4,
 };
 
+/// `IfcRelReferencedInSpatialStructure`: elements referenced by a spatial
+/// structure in addition to the one containing them, e.g. a curtain wall
+/// spanning several storeys.
+///
+/// Same inverted order as `CONTAINED_IN` (IFC2X3 TC1, IFC4 ADD2 TC1 and
+/// IFC4X3 ADD2 all declare `RelatedElements` before `RelatingStructure`).
+pub(crate) const REFERENCED_IN: RelSlots = RelSlots {
+    type_name: "IFCRELREFERENCEDINSPATIALSTRUCTURE",
+    relating: 5,
+    related: 4,
+};
+
 /// `IfcRelNests`: ordered decomposition, e.g. a stair into its flights.
 pub(crate) const NESTS: RelSlots = RelSlots {
     type_name: "IFCRELNESTS",

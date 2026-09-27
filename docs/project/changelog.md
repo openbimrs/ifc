@@ -98,6 +98,91 @@ lockstep -- is archived in the
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
 
+### ifc-spatial
+
+### Added
+
+- `SpatialTree::referenced_elements(container)` and
+  `SpatialTree::referencing_structures(element)` (#121): the elements an
+  `IfcRelReferencedInSpatialStructure` references in a container, and the
+  containers referencing an element, in file order and each once, in
+  IFC2X3, IFC4 and IFC4X3. They are kept apart from containment:
+  `elements_of` and `container_of` are unchanged, and a referenced element
+  is never a second home or a `ContainedTwice` anomaly. A reference naming
+  an absent entity is reported by `dangling()`.
+- `SpatialAnomaly::ContainedInNonContainer` and
+  `SpatialAnomaly::ReferencedInNonContainer` (#121): an
+  `IfcRelContainedInSpatialStructure` or `IfcRelReferencedInSpatialStructure`
+  whose `RelatingStructure` is not a spatial container of the release is
+  reported with the relationship and the structure, where containment used
+  to drop it silently.
+- `SpatialKind::classify_in(type_name, release)`, `SpatialTree::release()`
+  and a re-export of `ifc_schema::SchemaVersion`.
+
+### Changed
+
+- Spatial containers are classified from the release the file's
+  `FILE_SCHEMA` declares (#121): an entity is a container when that
+  release's bundled table makes it an `IfcSpatialElement` (IFC2X3:
+  `IfcSpatialStructureElement`), or it is the `IfcProject`. `ifc-schema` is
+  therefore a normal dependency. The IFC4X3 facilities and facility parts
+  (`IfcFacility`, `IfcBridge`, `IfcRoad`, `IfcRailway`,
+  `IfcMarineFacility`, `IfcBridgePart`, `IfcRoadPart`, `IfcRailwayPart`,
+  `IfcMarinePart`, `IfcFacilityPartCommon`) and `IfcExternalSpatialElement`
+  were classified as elements by the old name patterns, so containment into
+  them was dropped; they are now `OtherContainer`, as that variant's
+  documentation promised. `SpatialKind` gains no variant, so this stays
+  additive. A file with no single bundled release is classified as any
+  bundled release would, and `release()` returns `None`.
+- `SpatialKind::classify` answers from the bundled tables instead of name
+  patterns: a name no release declares as a spatial element (such as a
+  vendor `IFCSPATIALFOO`) is an `Element`.
+
+### Fixed
+
+- Only `IfcRelAggregates` and `IfcRelContainedInSpatialStructure` build the
+  tree (#121). Another relationship family whose relating end is a
+  container placed its targets as contained elements: an `IfcRelDeclares`
+  put the project's declared types into the project, and an
+  `IfcRelCoversSpaces` put a space's coverings into the space. Their absent
+  targets are still reported by `dangling()`.
+
+### openbim-ifc
+
+### Added
+
+- `spatial_properties(model)` (features `spatial` and `properties`): every
+  spatial container in tree order, depth first from the roots, with the
+  elements it holds, each with its `exact_properties` list, in IFC2X3, IFC4
+  and IFC4X3 (#121). An element is listed as `Contained`
+  (`IfcRelContainedInSpatialStructure`), `Referenced`
+  (`IfcRelReferencedInSpatialStructure`, so an element spanning several
+  storeys appears under each) or `Part` (an `IfcRelAggregates` part, at any
+  depth, of a contained element, which the Element Composition concept
+  places by its composite's containment), ordered by element id. A nested
+  space is its own container, not folded into its storey. A model-level
+  refusal (diagnostics, missing or unsupported schema) is the function's
+  error; any other `ExactPropertyError` is reported on the element it
+  concerns and the other elements are still returned. Properties resolve
+  lazily as `ContainerElements::elements` (or `elements_where`, with
+  `exact_properties_where` selectors) is iterated. New types:
+  `SpatialProperties`, `ContainerElements`, `SpatialContainer`,
+  `ContainerName`, `ElementMember`, `ElementProperties` and
+  `SpatialMembership`. Needs the next `ifc-spatial` release, which adds
+  `SpatialTree::referenced_elements`.
+
+### Changed
+
+- The `spatial` feature classifies spatial containers from the file's
+  declared release (#121, via the next `ifc-spatial` release, which now
+  links `ifc-schema`): IFC4X3 facilities and facility parts such as
+  `IfcRoad`, `IfcRoadPart`, `IfcBridge` and `IfcBridgePart`, and
+  `IfcExternalSpatialElement`, are containers, so `SpatialTree`,
+  `spatial_properties` and `unreachable_products` see the elements placed
+  in them. Containment or reference into a non-container is reported as a
+  `SpatialAnomaly`. `unreachable_products` skips containers by the tree's
+  classification instead of a name test.
+
 ## [0.7.3] - 2026-09-27
 
 ### openbim-ifc
