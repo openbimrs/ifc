@@ -1,12 +1,13 @@
 [package]
 name = "ifc-schema"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2021"
 rust-version = "1.88"
 license = "AGPL-3.0-or-later"
 authors = ["point-grey"]
 repository = "https://github.com/openbimrs/ifc"
 description = "IFC schema as data: entity table, supertype chain, attribute names."
+readme = "README.md"
 
 # NO geometry dependency. A schema is a lookup table.
 [dependencies]
