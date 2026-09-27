@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.7.2 (2026-09-27) |
+| Latest release | 0.7.3 (2026-09-27) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc/index.html) · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -86,26 +86,12 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.7.2 (2026-09-27):
+Latest release, 0.7.3 (2026-09-27):
 
-### Added
+### Changed
 
-- `window_operation(model, window)` (features `geometry-select` and
-  `properties`), the window counterpart of `door_operation`: each panel of
-  a window as a world frame, width, height, hinge side, swing `Sector` for
-  a side hinge and tilt `Sector` for a top or bottom hinge, from its
-  placement, `OverallWidth`/`OverallHeight`, partitioning
-  (`IfcWindowType.PartitioningType`, IFC2X3 `IfcWindowStyle.OperationType`,
-  or the occurrence's), `IfcWindowPanelProperties` and the mullion and
-  transom offsets of `IfcWindowLiningProperties`, in IFC2X3, IFC4 and
-  IFC4X3 (#170). Single, double and triple partitionings with side-hung,
-  tilt-and-turn, top- and bottom-hung, sliding, removable and fixed panels
-  are derived; `NOTDEFINED` and `USERDEFINED` partitionings, pivot,
-  `OTHEROPERATION` and `NOTDEFINED` panels, a window without panel
-  properties or overall size, panels that contradict the partitioning, and
-  a split without a valid lining offset are refused as
-  `WindowOperationError`, never defaulted. Panels tile the placement's XZ
-  plane; lining, mullion and transom thicknesses are not applied.
-  `Sector` and `Side` are shared with `door_operation`, unchanged.
+- The crate README, which is the crates.io page, is rewritten. The published
+  one told readers to depend on a Git revision and said the crates were not
+  on crates.io. The code is unchanged since 0.7.2.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

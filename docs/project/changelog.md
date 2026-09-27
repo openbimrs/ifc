@@ -68,6 +68,16 @@ lockstep -- is archived in the
   `SpatialMembership`. Needs the next `ifc-spatial` release, which adds
   `SpatialTree::referenced_elements`.
 
+## [0.7.3] - 2026-09-27
+
+### openbim-ifc
+
+### Changed
+
+- The crate README, which is the crates.io page, is rewritten. The published
+  one told readers to depend on a Git revision and said the crates were not
+  on crates.io. The code is unchanged since 0.7.2.
+
 ## [0.7.2] - 2026-09-27
 
 ### openbim-ifc
