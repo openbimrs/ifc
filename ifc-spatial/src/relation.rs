@@ -17,7 +17,9 @@ mod index;
 mod link;
 pub(crate) mod slots;
 
-pub use boundary::{BoundaryExposure, BoundaryPhysicality, SpaceBoundary};
+pub use boundary::{
+    BoundaryExposure, BoundaryPhysicality, ConnectionGeometryAnomaly, SpaceBoundary,
+};
 pub use index::RelationshipIndex;
 pub use link::{Relationship, RelationshipKind};
 
