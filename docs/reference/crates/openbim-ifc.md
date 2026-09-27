@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.7.0 (2026-09-27) |
+| Latest release | 0.7.1 (2026-09-27) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc/index.html) · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/openbim-ifc) |
@@ -86,44 +86,17 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.7.0 (2026-09-27):
-
-### Changed (breaking)
-
-- Re-exports three crates whose breaking releases pass through:
-  `validate` is `ifc-validate` 0.3.0 (`Severity::EvaluationError`, renamed
-  rule ids, `Budget::max_depth` removed), `material` is `ifc-material` 0.3.0
-  (views and authoring bound to the declared release; `create_material`
-  takes the model), and `geometry` is `ifc-geometry` 0.4.0 (typed reference
-  errors, `IfcBlock` meshes no longer offset by half their extents). See
-  each crate's changelog.
-- Requires the releases published with it: `ifc-properties` 0.4.1,
-  `ifc-spatial` 0.2.2, `ifc-xml` 0.2.1, `ifc-alignment` 0.3.1,
-  `ifc-author` 0.2.1, `ifc-control` 0.2.1, `ifc-cost` 0.2.1,
-  `ifc-tabular` 0.2.1 and `ifc-template-catalog` 0.2.1.
+Latest release, 0.7.1 (2026-09-27):
 
 ### Added
 
-- `body_description`, `describe_profile` and their types (`BodyDescription`,
-  `BodyItem`, `BodyKind`, `SweptSolid`, `SweepPath`, `ProfileDescription`,
-  `ProfileParameters`) are re-exported at the root under `geometry-select`
-  (#147), so a rule check reads a body's kind and swept-solid profile
-  parameters without linking the geometry kernel.
-- `door_operation(model, door)` (features `geometry-select` and
-  `properties`): each leaf of a door as a world frame, width, hinge side and
-  swing `Sector`, from its placement, `OperationType` and
-  `IfcDoorPanelProperties`, in IFC2X3, IFC4 and IFC4X3 (#148). Single and
-  double swing, double-acting, sliding, rolling-up and swing-fixed doors are
-  derived; `NOTDEFINED`, `USERDEFINED`, revolving, folding, lifting and the
-  `DOUBLE_DOOR_SINGLE_SWING_OPPOSITE_*` operations, a door without panel
-  properties or `OverallWidth`, and panels that contradict the operation are
-  refused as `DoorOperationError`, never defaulted. The leaves lie on the
-  placement's x axis; lining offsets across the wall depth are not applied.
+- `profile_outline` and `ProfileOutline` are re-exported at the root under
+  `geometry-select` (#166), beside `describe_profile`: the straight-edged
+  outline of an arbitrary closed profile, without the geometry kernel.
 
 ### Changed
 
-- The `properties` feature also names `ifc-schema`, which `ifc-properties`
-  already links, so the door join reads attributes by name from the bound
-  release's table. No crate is added to a build.
+- Requires `ifc-geometry` 0.4.1, which carries `profile_outline`,
+  `product_representation_frame` and the curve-bounded plane fix (#163).
 
 Full history: [`openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/openbim-ifc/CHANGELOG.md)
