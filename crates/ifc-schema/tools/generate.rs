@@ -1,10 +1,18 @@
 //! Compile an EXPRESS schema into the committed binary artifact.
 //!
 //! ```text
-//! ifc-schema-generate ifc2x3 references/specs/ifc2x3-tc1/IFC2X3_TC1.exp
-//! ifc-schema-generate ifc4   references/specs/ifc4-add2-tc1/IFC4.exp
-//! ifc-schema-generate ifc4x3 references/specs/ifc4x3-add2/IFC4X3_ADD2.exp
+//! ifc-schema-generate ifc2x3 references/ifc-spec/ifc2x3-tc1/IFC2X3_TC1.exp
+//! ifc-schema-generate ifc4   references/ifc-spec/ifc4-add2-tc1/IFC4.exp
+//! ifc-schema-generate ifc4x3 references/ifc-spec/ifc4x3-add2/IFC4X3_ADD2.exp
 //! ```
+//!
+//! The artifact records structure only: names, supertypes, attributes and
+//! their types, derived-attribute names, enumerations, selects, and each
+//! WHERE rule's label. It never records a WHERE rule's expression. The
+//! schemas are CC BY-ND 4.0, and the expressions are the one part of them
+//! that is authored text rather than the interface a STEP reader must agree
+//! with; nothing in this repository evaluates them. A test that needs the
+//! text reads the fetched `.exp` under `references/ifc-spec/`.
 //!
 //! The expected entity/type counts are asserted per schema. They are the
 //! cheapest possible guard against pointing this at the wrong `.exp`, which
@@ -86,7 +94,13 @@ fn run() -> Result<(), String> {
     // each byte to its code point and letting the tokenizer treat `\r` as
     // whitespace.
     let text: String = bytes.iter().map(|&b| b as char).collect();
-    let parsed = openbim_step::express::parse(&text);
+    let mut parsed = openbim_step::express::parse(&text);
+    // Labels identify rules; expressions are schema text (see module docs).
+    for entity in &mut parsed.entities {
+        for rule in &mut entity.where_rules {
+            rule.expression.clear();
+        }
+    }
 
     let entity_count = parsed.entities.len();
     let type_count = parsed.types.len();

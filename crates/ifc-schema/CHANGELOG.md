@@ -14,6 +14,12 @@ everything released before per-crate changelogs began.
 
 ### Changed
 
+- The bundled IFC2X3 TC1, IFC4 ADD2 TC1 and IFC4X3 ADD2 schemas no longer
+  carry WHERE-rule expressions: `EntityDef::where_rules` keeps each rule's
+  `label`, and its `expression` is empty. The expressions are CC BY-ND schema
+  text that nothing here evaluates. A schema parsed at run time with
+  `Schema::from_express` keeps them. The artifacts are about 23-38% smaller.
+  `data/NOTICE.md` now states the provenance of the bundled files.
 - Requires `openbim-step` 0.7.0, matching `ifc-step`. Both pin the parser
   exactly, so the pair must move together. `openbim-step` 0.6 replaced
   `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
