@@ -559,8 +559,9 @@ const DELIBERATELY_INVALID: &[&str] = &[
     // were invalid all along and simply unverifiable until this build gained
     // IFC2x3 tables. `ifcopenshell.validate` reports the same 7 and 2
     // instances. They are kept byte-identical to upstream because the fixture
-    // AGENTS.md makes filename and content provenance a hard rule -- editing
-    // them would silently fork a file we claim is upstream's.
+    // policy (`test/fixtures/README.md`) makes filename and content provenance
+    // a hard rule -- editing them would silently fork a file we claim is
+    // upstream's.
     "issue_2019_wall_two_overlapping_openings.ifc",
     "swept_disk_composite_arc_crankbar.ifc",
 ];

@@ -4,6 +4,10 @@
 //! human message. The codes are shared by all hosts (ADR 0013), so a
 //! JavaScript `err.code`, a Python `err.code` and a C status all name the same
 //! failure the same way.
+//!
+//! Every code is therefore part of the public contract of all three
+//! bindings: a code may be added, never renamed or reused for a different
+//! failure. The `tests` module below pins the released set.
 
 use std::fmt;
 
@@ -61,3 +65,69 @@ impl fmt::Display for BindingError {
 }
 
 impl std::error::Error for BindingError {}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeSet;
+
+    use super::BindingError;
+
+    /// Released codes in declaration order. Append a new code; never edit or
+    /// remove one, because hosts match on these strings.
+    const RELEASED_CODES: &[&str] = &[
+        "parse",
+        "write",
+        "missing-entity",
+        "invalid-value",
+        "out-of-range",
+        "unsupported-schema",
+        "io",
+    ];
+
+    /// One value of every variant, in declaration order.
+    fn one_of_each() -> Vec<BindingError> {
+        let all = vec![
+            BindingError::Parse(String::new()),
+            BindingError::Write(String::new()),
+            BindingError::MissingEntity(0),
+            BindingError::InvalidValue(String::new()),
+            BindingError::OutOfRange(String::new()),
+            BindingError::UnsupportedSchema(String::new()),
+            BindingError::Io(String::new()),
+        ];
+        // Exhaustive on purpose: a new variant does not compile until it is
+        // listed above, so its code cannot escape the snapshot.
+        for error in &all {
+            match error {
+                BindingError::Parse(_)
+                | BindingError::Write(_)
+                | BindingError::MissingEntity(_)
+                | BindingError::InvalidValue(_)
+                | BindingError::OutOfRange(_)
+                | BindingError::UnsupportedSchema(_)
+                | BindingError::Io(_) => {}
+            }
+        }
+        all
+    }
+
+    #[test]
+    fn released_codes_are_never_renamed_or_reused() {
+        let codes: Vec<&str> = one_of_each().iter().map(BindingError::code).collect();
+        assert!(
+            codes.len() >= RELEASED_CODES.len(),
+            "a BindingError variant was removed: {codes:?}"
+        );
+        assert_eq!(
+            &codes[..RELEASED_CODES.len()],
+            RELEASED_CODES,
+            "a released BindingError code changed; add a new code instead"
+        );
+        let unique: BTreeSet<&str> = codes.iter().copied().collect();
+        assert_eq!(
+            unique.len(),
+            codes.len(),
+            "two variants share a code: {codes:?}"
+        );
+    }
+}

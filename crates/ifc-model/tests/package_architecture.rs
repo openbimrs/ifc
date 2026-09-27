@@ -262,6 +262,9 @@ fn layer_allows(krate: &str, dependency: &str) -> bool {
     match krate {
         "ifc-model" | "ifc-schema" => false,
         "ifc-step" => dependency == "ifc-model",
+        // A metadata-tier catalog (ADR 0017): it owns no model records, so it
+        // may read the schema tables for applicability but never the model.
+        "ifc-template-catalog" => dependency == "ifc-schema",
         "ifc-xml" | "ifc-validate" => GENERIC.contains(&dependency),
         // ADR 0003, amended 2026-09-15: a bridge may depend on a bridge.
         // Justified by measurement, not convenience -- every crate a thin
@@ -304,6 +307,49 @@ fn the_layer_rule_permits_only_bridge_to_bridge() {
     // The foundations depend on nothing in the IFC layer.
     assert!(!layer_allows("ifc-model", "ifc-schema"));
     assert!(!layer_allows("ifc-schema", "ifc-model"));
+
+    // The template catalog is metadata: schema tables yes, model records no.
+    assert!(layer_allows("ifc-template-catalog", "ifc-schema"));
+    assert!(!layer_allows("ifc-template-catalog", "ifc-model"));
+    assert!(!layer_allows("ifc-template-catalog", "ifc-properties"));
+}
+
+/// May the facade depend on `dependency`?
+///
+/// The other OpenBIM.rs standard families (IDS, BCF, ...) build on IFC, so a
+/// facade dependency on one would be a cycle across repositories. The one
+/// `openbim-*` crate below IFC is the generic STEP/EXPRESS substrate.
+fn facade_allows(dependency: &str) -> bool {
+    !dependency.starts_with("openbim-") || dependency == "openbim-step"
+}
+
+#[test]
+fn the_facade_depends_on_no_openbim_standard_crate() {
+    assert!(facade_allows("ifc-model"));
+    assert!(facade_allows("openbim-step"));
+    assert!(!facade_allows("openbim-ids"));
+    assert!(!facade_allows("openbim-bcf"));
+
+    let packages = ifc_packages();
+    let facade = packages.get(FACADE).expect("ifc facade");
+    // Every kind: a dev-dependency on a standard family is the same cycle.
+    let dependencies: Vec<String> = facade
+        .dependencies
+        .iter()
+        .map(|dependency| dependency.name.to_string())
+        .collect();
+    assert!(
+        dependencies.len() >= 10,
+        "expected the facade's dependency list, found {dependencies:?}"
+    );
+    let forbidden: Vec<_> = dependencies
+        .iter()
+        .filter(|name| !facade_allows(name))
+        .collect();
+    assert!(
+        forbidden.is_empty(),
+        "{FACADE} depends on OpenBIM.rs standard crates {forbidden:?}; those build on IFC, not the reverse"
+    );
 }
 
 /// The bridge-to-bridge exception rests on a premise that can expire.

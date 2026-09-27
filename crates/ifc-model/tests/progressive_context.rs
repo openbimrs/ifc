@@ -1,10 +1,16 @@
-//! Guard the progressive context protocol.
+//! Guard where the repository keeps its context.
 //!
-//! `../AGENTS.md` is standing context: purpose, boundaries, invariants and
-//! gates, nested so an agent reads only the files on the path to its target.
-//! Open work is not context: it lives in GitHub issues and `TODO(#N)` markers,
-//! never in a checked-in plan. Shape and pointers are checked so a new crate
-//! or module cannot silently fall outside the protocol.
+//! The root `AGENTS.md` is the one file every contributor reads first: short,
+//! stable, and the only one of its name. Each crate carries a `README.md`
+//! (its crates.io page) with the crate's purpose and the design notes no test,
+//! ADR or module doc already holds; the reasoning behind a module lives in its
+//! `//!` docs. Open work is not context: it lives in GitHub issues and
+//! `TODO(#N)` markers, never in a checked-in plan.
+//!
+//! These tests keep that shape: a nested `AGENTS.md` or a PLAN.md cannot
+//! regrow, a crate cannot ship without a README, a README cannot grow into a
+//! manual or a checklist, and a pointer to a README or `AGENTS.md` cannot
+//! dangle after a file moves.
 
 use std::collections::BTreeSet;
 use std::ffi::OsStr;
@@ -19,44 +25,16 @@ use progressive_markdown::{context_pointer_tokens, inline_code_tokens};
 // every ownership scaffold (`//! Planned owner:`) must be listed here.
 const REQUIRED_SCAFFOLD_PATHS: &str = include_str!("required_scaffold_paths.txt");
 
-const REQUIRED_NESTED_CONTEXTS: &[&str] = &[
-    "ifc-geometry/src/input",
-    "ifc-geometry/src/lower",
-    "ifc-geometry/src/resource",
-    "ifc-geometry/src/curve",
-    "ifc-geometry/src/surface",
-    "ifc-geometry/src/solid",
-    "ifc-geometry/src/constraint",
-    "ifc-geometry/src/select",
-    "ifc-geometry/src/rules",
-    "ifc-material/src/material",
-    "ifc-material/src/layer",
-    "ifc-material/src/profile",
-    "ifc-material/src/constituent",
-    "ifc-material/src/usage",
-    "ifc-properties/src/pset",
-    "ifc-properties/src/quantity",
-    "ifc-properties/src/unit",
-    "ifc-properties/src/template",
-    "ifc-georef/src/crs",
-    "ifc-georef/src/conversion",
-    "ifc-georef/src/context",
-    "ifc-alignment/src/horizontal",
-    "ifc-alignment/src/vertical",
-    "ifc-alignment/src/cant",
-    "ifc-alignment/src/curve",
-    "ifc-alignment/src/placement",
-    "ifc-style/src/assignment",
-    "ifc-style/src/surface_style",
-    "ifc-style/src/texture",
-    "ifc-validate/src/structure",
-    "ifc-validate/src/type_check",
-    "ifc-validate/src/where_rule",
-    "ifc-validate/src/report",
-    "ifc-model/src/index",
-    "ifc-model/src/mutation",
-    "ifc-model/src/traverse",
-];
+/// The root `AGENTS.md` is read in full before any change, so it stays short.
+const ROOT_AGENTS_MAX_LINES: usize = 120;
+
+/// A crate README is a crates.io page and a place for a few design notes, not
+/// a manual: the API belongs in rustdoc, the site in `docs/`.
+const README_MAX_LINES: usize = 150;
+
+/// The workspace crate count the scans below must at least reach, so a layout
+/// change that makes a filter match nothing fails instead of passing.
+const MIN_CRATES: usize = 18;
 
 fn ifc_root() -> PathBuf {
     let workspace_root = cargo_metadata::MetadataCommand::new()
@@ -73,18 +51,21 @@ fn ifc_root() -> PathBuf {
 }
 
 /// The directory holding every workspace crate except `xtask`. The scaffold
-/// and nested-context registries are relative to it.
+/// registry is relative to it.
 fn crates_dir(root: &Path) -> PathBuf {
     root.join("crates")
 }
 
-/// Crate directories (holding a `Cargo.toml`) directly inside `dir`.
-fn crate_dirs_in(dir: &Path) -> usize {
-    std::fs::read_dir(dir)
-        .unwrap_or_else(|e| panic!("{}: {e}", dir.display()))
+/// Every crate directory (holding a `Cargo.toml`) directly inside `crates/`.
+fn crate_dirs(root: &Path) -> Vec<PathBuf> {
+    let mut dirs: Vec<_> = std::fs::read_dir(crates_dir(root))
+        .expect("read crates/")
         .filter_map(Result::ok)
-        .filter(|entry| entry.path().join("Cargo.toml").is_file())
-        .count()
+        .map(|entry| entry.path())
+        .filter(|path| path.join("Cargo.toml").is_file())
+        .collect();
+    dirs.sort();
+    dirs
 }
 
 /// Is this a crate directory belonging to the IFC layer?
@@ -98,8 +79,8 @@ fn is_ifc_layer_dir(path: &Path) -> bool {
     (name.starts_with("ifc-") || name == "openbim-ifc") && path.join("Cargo.toml").is_file()
 }
 
-/// Collect repository-owned context candidates only. Dependency and generated
-/// trees can contain foreign agent instructions with unrelated protocols.
+/// Collect repository-owned files only. Dependency, generated and local
+/// reference trees can contain foreign agent instructions and READMEs.
 fn walk(dir: &Path, files: &mut Vec<PathBuf>) {
     for entry in std::fs::read_dir(dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display())) {
         let path = entry.expect("directory entry").path();
@@ -108,6 +89,7 @@ fn walk(dir: &Path, files: &mut Vec<PathBuf>) {
             if name != "target"
                 && name != "references"
                 && name != "node_modules"
+                && name != "pkg"
                 && !name.to_string_lossy().starts_with('.')
             {
                 walk(&path, files);
@@ -118,75 +100,138 @@ fn walk(dir: &Path, files: &mut Vec<PathBuf>) {
     }
 }
 
+fn named(files: &[PathBuf], name: &str) -> Vec<PathBuf> {
+    files
+        .iter()
+        .filter(|path| path.file_name() == Some(OsStr::new(name)))
+        .cloned()
+        .collect()
+}
+
+fn has_checkbox(text: &str) -> bool {
+    text.lines().any(|line| {
+        let line = line.trim_start();
+        line.starts_with("- [ ]") || line.starts_with("- [x]") || line.starts_with("- [X]")
+    })
+}
+
 #[test]
-fn every_context_boundary_has_standing_rules_and_no_plan() {
+fn the_root_agents_md_is_the_only_one_and_stays_short() {
     let root = ifc_root();
     let mut files = Vec::new();
     walk(&root, &mut files);
+    // Guards the walk itself: a scan that sees nothing would pass vacuously.
+    assert!(
+        named(&files, "Cargo.toml").len() > MIN_CRATES,
+        "the repository walk found too few manifests; did the layout move?"
+    );
 
-    let plans: Vec<_> = files
-        .iter()
-        .filter(|path| path.file_name().is_some_and(|name| name == "PLAN.md"))
-        .collect();
+    let plans = named(&files, "PLAN.md");
     assert!(
         plans.is_empty(),
         "open work belongs in GitHub issues and `TODO(#N)` markers, not PLAN.md: {plans:#?}"
     );
 
-    let agents: BTreeSet<_> = files
-        .iter()
-        .filter(|path| path.file_name().is_some_and(|name| name == "AGENTS.md"))
-        .map(|path| path.parent().unwrap().to_path_buf())
-        .collect();
-    // Crates live in `crates/`; tooling such as `xtask` stays at the root.
-    let crates = crates_dir(&root);
-    let crate_count = crate_dirs_in(&crates) + crate_dirs_in(&root);
-    assert!(
-        agents.len() >= crate_count + 1 + REQUIRED_NESTED_CONTEXTS.len(),
-        "expected package root + every crate + required nested boundaries; found {} for {crate_count} crates",
-        agents.len()
+    let agents = named(&files, "AGENTS.md");
+    assert_eq!(
+        agents,
+        [root.join("AGENTS.md")],
+        "the root AGENTS.md is the only one; put crate context in the crate's \
+         README.md and module context in its `//!` docs"
     );
-    for relative in REQUIRED_NESTED_CONTEXTS {
-        assert!(
-            agents.contains(&crates.join(relative)),
-            "required progressive boundary is missing: {relative}"
-        );
-    }
 
-    for dir in agents {
-        let agents_text = std::fs::read_to_string(dir.join("AGENTS.md")).unwrap();
-        assert!(
-            !agents_text.contains("- [ ]")
-                && !agents_text.contains("- [x]")
-                && !agents_text.contains("- [X]"),
-            "{} puts progress state in ambient AGENTS.md; open work is a GitHub issue",
-            dir.display()
-        );
-        assert!(
-            agents_text.lines().count() <= 160,
-            "{} is too large for ambient context; move detail into module docs",
-            dir.join("AGENTS.md").display()
-        );
-    }
+    let text = std::fs::read_to_string(root.join("AGENTS.md")).unwrap();
+    assert!(
+        !has_checkbox(&text),
+        "AGENTS.md holds standing rules, not progress; open work is a GitHub issue"
+    );
+    let lines = text.lines().count();
+    assert!(
+        lines <= ROOT_AGENTS_MAX_LINES,
+        "AGENTS.md has {lines} lines (cap {ROOT_AGENTS_MAX_LINES}); move crate detail \
+         into that crate's README.md or module docs"
+    );
 }
 
 #[test]
-fn every_ifc_crate_has_local_context() {
-    let root = crates_dir(&ifc_root());
-    let mut crates = 0;
-    for entry in std::fs::read_dir(&root).expect("read crates/") {
-        let path = entry.expect("directory entry").path();
-        if !is_ifc_layer_dir(&path) {
+fn every_crate_has_a_small_readme() {
+    let root = ifc_root();
+    let crates = crate_dirs(&root);
+    assert!(
+        crates.len() >= MIN_CRATES,
+        "expected every workspace crate under crates/, found {}",
+        crates.len()
+    );
+    let mut problems = Vec::new();
+    for dir in &crates {
+        let readme = dir.join("README.md");
+        let Ok(text) = std::fs::read_to_string(&readme) else {
+            problems.push(format!("{} has no README.md", dir.display()));
+            continue;
+        };
+        let lines = text.lines().count();
+        if lines > README_MAX_LINES {
+            problems.push(format!(
+                "{} has {lines} lines (cap {README_MAX_LINES}); API detail belongs in rustdoc",
+                readme.display()
+            ));
+        }
+        if has_checkbox(&text) {
+            problems.push(format!(
+                "{} holds a checklist; open work is a GitHub issue",
+                readme.display()
+            ));
+        }
+    }
+    assert!(
+        problems.is_empty(),
+        "crate READMEs:\n{}",
+        problems.join("\n")
+    );
+}
+
+#[test]
+fn publishable_crates_ship_their_readme() {
+    let metadata = cargo_metadata::MetadataCommand::new()
+        .no_deps()
+        .exec()
+        .expect("cargo metadata");
+    let crates = crates_dir(&ifc_root());
+    let mut publishable = 0;
+    let mut missing = Vec::new();
+    for package in &metadata.packages {
+        let dir = package.manifest_path.parent().expect("manifest dir");
+        if dir.parent().map(|p| p.as_std_path()) != Some(crates.as_path()) {
             continue;
         }
-        crates += 1;
-        assert!(
-            path.join("AGENTS.md").is_file(),
-            "{} lacks AGENTS.md",
-            path.display()
-        );
+        // `publish = false` is reported as an empty registry list.
+        if package.publish.as_ref().is_some_and(Vec::is_empty) {
+            continue;
+        }
+        publishable += 1;
+        // Read the manifest, not `package.readme`: cargo fills that in from
+        // a README.md it finds on disk, so it cannot tell a declared page
+        // from an accidental one.
+        let manifest = std::fs::read_to_string(&package.manifest_path).expect("manifest");
+        let package_table = manifest
+            .split_once("[package]")
+            .map(|(_, rest)| rest.split("\n[").next().unwrap_or(rest))
+            .unwrap_or_default();
+        if !package_table
+            .lines()
+            .any(|line| line.trim() == r#"readme = "README.md""#)
+        {
+            missing.push(package.name.to_string());
+        }
     }
-    assert!(crates >= 18, "expected all IFC crates, found {crates}");
+    assert!(
+        publishable >= MIN_CRATES,
+        "expected the publishable crates under crates/, found {publishable}"
+    );
+    assert!(
+        missing.is_empty(),
+        "publishable crates must declare `readme = \"README.md\"` as their crates.io page: {missing:?}"
+    );
 }
 
 fn normalized_relative(path: &Path) -> bool {
@@ -299,24 +344,36 @@ fn required_scaffold_capability_seams_are_preserved() {
     }
 }
 
-/// A pointer to a context document. PLAN.md is retired but still
-/// recognised, so a leftover pointer to one is reported as missing.
+/// A pointer to a context document: a README, the root AGENTS.md, or a
+/// retired name (a nested AGENTS.md, a PLAN.md), which is then reported as
+/// missing. A glob such as `crates/*/README.md` names a pattern, not a file.
 fn is_context_pointer(token: &str) -> bool {
     !token.contains("://")
         && !token.starts_with("mailto:")
-        && !token.chars().any(char::is_whitespace)
-        && Path::new(token)
-            .file_name()
-            .is_some_and(|name| name == OsStr::new("AGENTS.md") || name == OsStr::new("PLAN.md"))
+        && !token.chars().any(|c| c.is_whitespace() || c == '*')
+        && Path::new(token).file_name().is_some_and(|name| {
+            name == OsStr::new("AGENTS.md")
+                || name == OsStr::new("README.md")
+                || name == OsStr::new("PLAN.md")
+        })
+}
+
+/// Resolve a pointer as written: relative to the file that names it, or, for
+/// a repository path such as `test/fixtures/README.md`, to the root.
+fn resolve_pointer(file: &Path, root: &Path, token: &str) -> Option<PathBuf> {
+    [file.parent().unwrap().join(token), root.join(token)]
+        .into_iter()
+        .find(|candidate| candidate.is_file())
 }
 
 #[test]
-fn context_document_pointers_resolve_and_chain_to_their_parent() {
+fn context_document_pointers_resolve() {
     let root = ifc_root();
     let canonical_root = root.canonicalize().expect("canonical IFC package root");
     let mut files = Vec::new();
     walk(&root, &mut files);
     let mut broken = Vec::new();
+    let mut resolved = 0;
 
     // ADRs are immutable records of their time, so a pointer in one may name a
     // file that has since been retired (ADR 0016 retired PLAN.md).
@@ -327,54 +384,66 @@ fn context_document_pointers_resolve_and_chain_to_their_parent() {
             && !path.starts_with(&adrs)
     }) {
         let text = std::fs::read_to_string(file).unwrap();
-        let targets: Vec<_> = context_pointer_tokens(&text)
+        for token in context_pointer_tokens(&text)
             .into_iter()
             .filter(|token| is_context_pointer(token))
-            .map(|token| (file.parent().unwrap().join(&token), token))
-            .collect();
-        for (target, token) in &targets {
-            if Path::new(token).is_absolute() {
+        {
+            if Path::new(&token).is_absolute() {
                 broken.push(format!("{} -> absolute {token}", file.display()));
                 continue;
             }
-            if !target.is_file() {
+            let Some(target) = resolve_pointer(file, &root, &token) else {
                 broken.push(format!("{} -> missing {token}", file.display()));
                 continue;
-            }
+            };
             match target.canonicalize() {
-                Ok(resolved) if resolved.starts_with(&canonical_root) => {}
+                Ok(path) if path.starts_with(&canonical_root) => resolved += 1,
                 Ok(_) => broken.push(format!("{} -> outside package {token}", file.display())),
                 Err(_) => broken.push(format!("{} -> unreadable {token}", file.display())),
             }
-        }
-
-        if file.file_name() != Some(OsStr::new("AGENTS.md")) || file == &root.join("AGENTS.md") {
-            continue;
-        }
-        let expected_parent = file
-            .parent()
-            .unwrap()
-            .ancestors()
-            .skip(1)
-            .map(|ancestor| ancestor.join("AGENTS.md"))
-            .find(|candidate| candidate.is_file())
-            .expect("non-root AGENTS.md must have parent context");
-        let points_to_parent = targets
-            .iter()
-            .any(|(target, _)| target.canonicalize().ok() == expected_parent.canonicalize().ok());
-        if !points_to_parent {
-            broken.push(format!(
-                "{} does not point to parent {}",
-                file.display(),
-                expected_parent.display()
-            ));
         }
     }
 
     assert!(
         broken.is_empty(),
-        "broken progressive-context pointers:\n{}",
+        "README/AGENTS.md pointers that do not resolve:\n{}",
         broken.join("\n")
+    );
+    // Guards the extraction: the root AGENTS.md and the contributing docs
+    // name READMEs, so finding none means the token scan broke.
+    assert!(
+        resolved >= 3,
+        "found only {resolved} context pointers; did the extraction break?"
+    );
+}
+
+#[test]
+fn readme_source_paths_exist() {
+    let root = ifc_root();
+    let mut missing = Vec::new();
+    let mut checked = 0;
+    for dir in crate_dirs(&root) {
+        let Ok(text) = std::fs::read_to_string(dir.join("README.md")) else {
+            continue;
+        };
+        for token in inline_code_tokens(&text)
+            .into_iter()
+            .filter(|token| token.ends_with(".rs") && !token.contains(char::is_whitespace))
+        {
+            checked += 1;
+            if !dir.join(&token).is_file() && !root.join(&token).is_file() {
+                missing.push(format!("{}/README.md -> {token}", dir.display()));
+            }
+        }
+    }
+    assert!(
+        missing.is_empty(),
+        "crate READMEs name Rust files that do not exist:\n{}",
+        missing.join("\n")
+    );
+    assert!(
+        checked >= 1,
+        "no README names a Rust file; did the token scan break?"
     );
 }
 
@@ -395,57 +464,5 @@ fn source_docs_do_not_point_at_the_retired_global_roadmap() {
     assert!(
         offenders.is_empty(),
         "source docs point at the retired global roadmap; cite the issue instead: {offenders:#?}"
-    );
-}
-
-#[test]
-fn context_source_pointers_resolve_to_existing_scaffold_owners() {
-    let root = ifc_root();
-    let mut files = Vec::new();
-    walk(&root, &mut files);
-    let mut missing = Vec::new();
-    let stale_phrases = [
-        "Create and declare source",
-        "Add and declare a Rust file",
-        "Create a planned Rust file",
-    ];
-
-    for context in files
-        .into_iter()
-        .filter(|path| path.file_name().is_some_and(|name| name == "AGENTS.md"))
-    {
-        let text = std::fs::read_to_string(&context).unwrap();
-        for phrase in stale_phrases {
-            assert!(
-                !text.contains(phrase),
-                "{} tells agents to recreate compiled scaffold files",
-                context.display()
-            );
-        }
-        let Some(src_index) = context
-            .components()
-            .position(|component| component.as_os_str() == "src")
-        else {
-            continue;
-        };
-        let crate_dir: PathBuf = context.components().take(src_index).collect();
-        for token in inline_code_tokens(&text)
-            .into_iter()
-            .filter(|token| token.ends_with(".rs"))
-        {
-            let target = if token.starts_with("src/") {
-                crate_dir.join(&token)
-            } else {
-                context.parent().unwrap().join(&token)
-            };
-            if !target.is_file() {
-                missing.push(format!("{} -> {token}", context.display()));
-            }
-        }
-    }
-    assert!(
-        missing.is_empty(),
-        "nested contexts point at missing Rust owners:\n{}",
-        missing.join("\n")
     );
 }

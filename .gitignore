@@ -8,7 +8,7 @@ docs/.vitepress/dist/
 docs/.vitepress/cache/
 
 # Local read-only reference checkouts (upstream schemas, competitor sources).
-# Never redistributable, never a build dependency -- see references/AGENTS.md.
+# Never redistributable, never a build dependency -- see AGENTS.md.
 # Ignored so check-leakage.py sees only the publishable tree.
 /references
 

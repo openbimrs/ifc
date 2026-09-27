@@ -402,19 +402,22 @@ pub(super) fn context_pointer_tokens(markdown: &str) -> Vec<String> {
 
 #[test]
 fn indented_rust_docs_remain_visible() {
-    let rust = "fn marker() {\n    /// See `../../AGENTS.md`.\n}\n";
+    let rust = "fn marker() {\n    /// See `../../README.md`.\n}\n";
     let pointers: Vec<_> = context_pointer_tokens(rust)
         .into_iter()
         .filter(|token| super::is_context_pointer(token))
         .collect();
-    assert_eq!(pointers, ["../../AGENTS.md"]);
+    assert_eq!(pointers, ["../../README.md"]);
 }
 
 #[test]
 fn context_pointer_filter_accepts_only_local_documents() {
-    assert!(super::is_context_pointer("../../AGENTS.md"));
-    // A retired PLAN.md is still recognised, so a stale pointer is reported.
+    assert!(super::is_context_pointer("../../README.md"));
+    assert!(super::is_context_pointer("AGENTS.md"));
+    // Retired names are still recognised, so a stale pointer is reported.
     assert!(super::is_context_pointer("../../PLAN.md"));
+    assert!(super::is_context_pointer("src/AGENTS.md"));
+    assert!(!super::is_context_pointer("../../CHANGELOG.md"));
     assert!(!super::is_context_pointer(
         "https://example.invalid/PLAN.md"
     ));
@@ -423,7 +426,7 @@ fn context_pointer_filter_accepts_only_local_documents() {
 
 #[test]
 fn balanced_link_destinations_and_fragments_resolve_to_files() {
-    // NOTES.md deliberately avoids the AGENTS.md/PLAN.md filenames that
+    // NOTES.md deliberately avoids the README/AGENTS/PLAN filenames that
     // `is_context_pointer` recognizes, so this fixture cannot be picked up
     // by the real corpus-pointer gate that also scans this source file's
     // own text for context pointers.
@@ -451,13 +454,13 @@ fn code_spans_and_escaped_links_do_not_emit_destinations() {
     let markdown = r#"
 Show `[literal](missing/PLAN.md)` and \[escaped](other/AGENTS.md).
 Also show `` `[nested](third/PLAN.md)` `` literally.
-Follow [real](../../AGENTS.md).
+Follow [real](../../README.md).
 "#;
     let pointers: Vec<_> = context_pointer_tokens(markdown)
         .into_iter()
         .filter(|token| super::is_context_pointer(token))
         .collect();
-    assert_eq!(pointers, ["../../AGENTS.md"]);
+    assert_eq!(pointers, ["../../README.md"]);
 }
 
 #[test]
@@ -471,20 +474,20 @@ fn container_fences_hide_example_links_and_references() {
     ~~~markdown
     [listed fake](other/PLAN.md)
     ~~~
-[real](../../AGENTS.md)
+[real](../../README.md)
 "#;
     let pointers: Vec<_> = context_pointer_tokens(markdown)
         .into_iter()
         .filter(|token| super::is_context_pointer(token))
         .collect();
-    assert_eq!(pointers, ["../../AGENTS.md"]);
+    assert_eq!(pointers, ["../../README.md"]);
 }
 
 #[test]
 fn context_tokens_include_links_but_ignore_fenced_examples() {
     let markdown = r#"
-Follow `../../AGENTS.md` and [the parent](../../AGENTS.md).
-[reference]: ../../AGENTS.md
+Follow `../../README.md` and [the parent](../../README.md).
+[reference]: ../../README.md
 ~~~markdown
 `missing/AGENTS.md`
 [fake](missing/PLAN.md)
@@ -493,9 +496,9 @@ Follow `../../AGENTS.md` and [the parent](../../AGENTS.md).
     assert_eq!(
         context_pointer_tokens(markdown),
         [
-            "../../AGENTS.md".to_owned(),
-            "../../AGENTS.md".to_owned(),
-            "../../AGENTS.md".to_owned(),
+            "../../README.md".to_owned(),
+            "../../README.md".to_owned(),
+            "../../README.md".to_owned(),
         ]
     );
 }

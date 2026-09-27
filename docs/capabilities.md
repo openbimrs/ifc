@@ -42,7 +42,7 @@ conflicts. [Coverage](/coverage) measures what each crate does instead.
 | `ifc-cost` | 0 | <span class="status-implemented">Implemented</span> |
 | `ifc-element-type` | 0 | <span class="status-implemented">Implemented</span> |
 | `ifc-geometry` | 3 | <span class="status-partial">Partial</span> |
-| `ifc-georef` | 10 | <span class="status-partial">Partial</span> |
+| `ifc-georef` | 9 | <span class="status-partial">Partial</span> |
 | `ifc-material` | 1 | <span class="status-implemented">Implemented</span> |
 | `ifc-model` | 5 | <span class="status-implemented">Implemented</span> |
 | `ifc-occurrence` | 0 | <span class="status-implemented">Implemented</span> |
@@ -544,7 +544,7 @@ contracts.
 ## How to verify a claim on this page
 
 1. Read the crate's public API and its `tests/` directory.
-2. Read the crate's **AGENTS.md** for its stable contracts, and its
+2. Read the crate's `README.md` and module docs for its design notes, and its
    [reference page](/reference/) for its latest release notes.
 3. Run the gate: `scripts/gate.sh`. It regenerates every table on this page
    and on the [coverage page](/coverage) and fails if the committed copy

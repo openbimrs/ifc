@@ -24,7 +24,7 @@ result:
 
 ## Checklist
 
-- [ ] I read the root **AGENTS.md** and the nearest nested **AGENTS.md**.
+- [ ] I read the root **AGENTS.md** and the README of every crate I changed.
 - [ ] I added or updated tests for behavior changes.
 - [ ] I ran the relevant targeted checks.
 - [ ] I ran `./scripts/gate.sh`, or documented why the full gate could not run.
