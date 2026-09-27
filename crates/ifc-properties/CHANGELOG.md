@@ -32,6 +32,22 @@ everything released before per-crate changelogs began.
 - A quantity without a readable value is now checked against `WR21`: a
   stated unit of the wrong kind is reported as
   `PropertyAnomaly::QuantityUnitMismatch`, as it is for a valued quantity.
+- New `QuantityKind::Number` for IFC4X3 `IfcQuantityNumber` (#138), and
+  `QuantityKind` is `#[non_exhaustive]`. Exhaustive matches need an arm
+  for `Number` and a wildcard arm. In a model whose declared release is
+  IFC4X3, the permissive readers now resolve `IfcQuantityNumber` as a
+  `Simple` quantity, where they returned `Quantity::Unsupported`.
+  `NumberValue` and `Formula` are located by name in that release's table.
+  A `$` or non-numeric value is `Quantity::Unresolved`, and the anomalies
+  are reported as for the other kinds. Its measure is `IfcNumericMeasure`.
+  It has no WHERE rule, so there is no unit-kind check (`required_unit` is
+  `None`) and a negative number is not a `NegativeQuantity`. `compare`
+  compares it only against a computed `Number`, and `stated_unit` returns
+  whatever unit it states. IFC2X3 and IFC4 do not declare the entity. In
+  their models, and in a model without one known declared release, it
+  stays `Quantity::Unsupported`. `create_quantity` with `Number` writes
+  `IfcQuantityNumber` without checking the release; author it into IFC4X3
+  models only.
 
 The exact API is unchanged and agrees: `exact_property` refuses a `$` value
 with `MissingValueSlot`, a non-numeric one with `UnsupportedValue` and a

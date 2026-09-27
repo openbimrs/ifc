@@ -34,7 +34,7 @@ use ifc_model::{EntityId, Model};
 use crate::error::PropertyAnomaly;
 use crate::nesting::Nesting;
 use crate::quantity::complex::complex_quantities;
-use crate::quantity::simple::{read_simple, text, UnresolvedValue};
+use crate::quantity::simple::{read_simple, text, value_slots, UnresolvedValue};
 use crate::unit::UnitKind;
 
 const NAME: usize = 0;
@@ -46,7 +46,11 @@ const SET_QUANTITIES: usize = 5;
 ///
 /// The kind is the entity type, not a guess from the unit: a file may omit
 /// the unit entirely, and `IfcQuantityArea` still measures area.
+///
+/// Non-exhaustive: a later release may add a quantity subtype, as IFC4X3
+/// added `IfcQuantityNumber`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum QuantityKind {
     /// `IfcQuantityLength`.
     Length,
@@ -60,12 +64,20 @@ pub enum QuantityKind {
     Weight,
     /// `IfcQuantityTime`.
     Time,
+    /// `IfcQuantityNumber`: a number that is not a physical measure, such as
+    /// a ratio or a figure a take-off rule defines. Declared only by IFC4X3;
+    /// the permissive readers resolve it only in a model whose declared
+    /// release has it, and read it as [`Quantity::Unsupported`] elsewhere.
+    Number,
 }
 
 impl QuantityKind {
     /// The kind named by an entity type, or `None` if it is not a simple
     /// quantity. Case-insensitive, because a type name reaching here may
     /// come from a caller rather than the upper-cased parser.
+    ///
+    /// This maps names only; it does not check that a release declares the
+    /// entity (`IfcQuantityNumber` is IFC4X3 only).
     #[must_use]
     pub fn from_type_name(name: &str) -> Option<Self> {
         Self::from_type(&name.to_ascii_uppercase())
@@ -81,6 +93,7 @@ impl QuantityKind {
             Self::Count => "IfcQuantityCount",
             Self::Weight => "IfcQuantityWeight",
             Self::Time => "IfcQuantityTime",
+            Self::Number => "IfcQuantityNumber",
         }
     }
 
@@ -97,6 +110,7 @@ impl QuantityKind {
             Self::Count => "IfcCountMeasure",
             Self::Weight => "IfcMassMeasure",
             Self::Time => "IfcTimeMeasure",
+            Self::Number => "IfcNumericMeasure",
         }
     }
 
@@ -108,14 +122,16 @@ impl QuantityKind {
             "IFCQUANTITYCOUNT" => Self::Count,
             "IFCQUANTITYWEIGHT" => Self::Weight,
             "IFCQUANTITYTIME" => Self::Time,
+            "IFCQUANTITYNUMBER" => Self::Number,
             _ => return None,
         })
     }
 
     /// The `IfcUnitEnum` this quantity's unit must carry, per `WR21`.
     ///
-    /// `IfcQuantityCount` has no such rule -- a count is dimensionless -- so
-    /// it constrains nothing.
+    /// `IfcQuantityCount` has no such rule -- a count is dimensionless --
+    /// and neither has IFC4X3 `IfcQuantityNumber`, so they constrain
+    /// nothing.
     pub fn required_unit(self) -> Option<&'static str> {
         Some(match self {
             Self::Length => "LENGTHUNIT",
@@ -123,8 +139,15 @@ impl QuantityKind {
             Self::Volume => "VOLUMEUNIT",
             Self::Weight => "MASSUNIT",
             Self::Time => "TIMEUNIT",
-            Self::Count => return None,
+            Self::Count | Self::Number => return None,
         })
+    }
+
+    /// Whether the value must be `>= 0`: `WR22` on every `IfcQuantity*`
+    /// except `IfcQuantityCount` (its `WR21`) and IFC4X3
+    /// `IfcQuantityNumber`, which declares no rule at all.
+    pub(crate) fn requires_non_negative(self) -> bool {
+        self != Self::Number
     }
 }
 
@@ -316,7 +339,15 @@ pub(super) fn read_quantity(
         });
     };
 
-    Some(read_simple(model, id, entity, kind, name, nesting))
+    // A kind the declared release does not have (IfcQuantityNumber outside
+    // IFC4X3) is foreign to the model; it is not read as if it belonged.
+    let Some(slots) = value_slots(model, kind) else {
+        return Some(Quantity::Unsupported {
+            id,
+            type_name: ty.as_str().into(),
+        });
+    };
+    Some(read_simple(model, id, entity, kind, slots, name, nesting))
 }
 
 /// Every `IfcElementQuantity` in the file, with anomalies.
@@ -337,7 +368,9 @@ pub fn quantity_sets(model: &Model) -> (Vec<QuantitySet>, Vec<PropertyAnomaly>) 
 /// Resolve the unit kind for a quantity, following its explicit unit only.
 ///
 /// An [`Quantity::Unresolved`] quantity still states its unit, so it has
-/// one here even though it has no value.
+/// one here even though it has no value. An IFC4X3 `IfcQuantityNumber`
+/// may state any `IfcNamedUnit` (it has no `WR21`); it is returned as
+/// stated, and a number that states none has none.
 ///
 /// Project-default units are NOT applied here: falling back to the project
 /// context would report a unit the quantity never stated. Callers that want

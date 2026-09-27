@@ -12,9 +12,15 @@
 //! `LengthValue`, `AreaValue`, `VolumeValue`, `CountValue`, `WeightValue`
 //! and `TimeValue` are declared without `OPTIONAL` in all three releases.
 //! IFC2X3 has no `Formula`, so its records end at slot 3 and `formula`
-//! reads as `None`. IFC4X3 adds `IfcQuantityNumber` (`NumberValue :
-//! IfcNumericMeasure`); it is not a [`QuantityKind`] and reads as
-//! [`Quantity::Unsupported`].
+//! reads as `None`.
+//!
+//! IFC4X3 adds `IfcQuantityNumber` (`NumberValue : IfcNumericMeasure`,
+//! `Formula : OPTIONAL IfcLabel`, no WHERE rule; `IfcNumericMeasure =
+//! NUMBER`). It is [`QuantityKind::Number`] only in a model whose declared
+//! release declares the entity, and both slots are then looked up by name in
+//! that release's table. IFC2X3 and IFC4 do not declare it, so there, and in
+//! a model with no single known release, it reads as
+//! [`Quantity::Unsupported`], as any entity the crate cannot place does.
 //!
 //! # A quantity without a number still exists
 //!
@@ -28,6 +34,7 @@
 use std::sync::Arc;
 
 use ifc_model::{Entity, EntityId, Model, Value};
+use ifc_schema::{for_version, SchemaVersion};
 
 use crate::error::PropertyAnomaly;
 use crate::nesting::Nesting;
@@ -38,6 +45,38 @@ const DESCRIPTION: usize = 1;
 const UNIT: usize = 2;
 const VALUE: usize = 3;
 const FORMULA: usize = 4;
+
+/// Where a simple quantity keeps its value and its `Formula`.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct ValueSlots {
+    value: usize,
+    formula: usize,
+}
+
+/// The slots of `kind` in `model`, or `None` when the model's declared
+/// release does not declare the entity.
+///
+/// The six kinds every release declares share fixed slots. `IfcQuantityNumber`
+/// is looked up by name in the declared release's table, which must be one
+/// release that has it.
+pub(super) fn value_slots(model: &Model, kind: QuantityKind) -> Option<ValueSlots> {
+    if kind != QuantityKind::Number {
+        return Some(ValueSlots {
+            value: VALUE,
+            formula: FORMULA,
+        });
+    }
+    let [token] = model.header().schema.as_slice() else {
+        return None;
+    };
+    let schema = for_version(SchemaVersion::from_header_token(token)?)?;
+    let names = schema.attribute_names("IFCQUANTITYNUMBER");
+    let slot = |name: &str| names.iter().position(|n| n.eq_ignore_ascii_case(name));
+    Some(ValueSlots {
+        value: slot("NumberValue")?,
+        formula: slot("Formula")?,
+    })
+}
 
 /// Why a simple quantity has no value to report.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,14 +98,15 @@ pub(super) fn read_simple(
     id: EntityId,
     entity: &Entity,
     kind: QuantityKind,
+    slots: ValueSlots,
     name: Option<Arc<str>>,
     nesting: &mut Nesting<'_>,
 ) -> Quantity {
     let description = entity.attributes.get(DESCRIPTION).and_then(text);
-    let formula = entity.attributes.get(FORMULA).and_then(text);
+    let formula = entity.attributes.get(slots.formula).and_then(text);
     let unit = entity.attributes.get(UNIT).and_then(one_ref);
 
-    let value = match entity.attributes.get(VALUE) {
+    let value = match entity.attributes.get(slots.value) {
         None | Some(Value::Null) => Err(UnresolvedValue::Missing),
         Some(stated) => stated
             .unwrap_typed()
@@ -85,11 +125,13 @@ pub(super) fn read_simple(
                 found: found.clone(),
             });
         }
-        // WR22: every simple quantity requires a non-negative value.
-        Ok(value) if *value < 0.0 => nesting.report(PropertyAnomaly::NegativeQuantity {
-            quantity: id,
-            value: *value,
-        }),
+        // WR22 (WR21 for a count); IfcQuantityNumber has no such rule.
+        Ok(value) if *value < 0.0 && kind.requires_non_negative() => {
+            nesting.report(PropertyAnomaly::NegativeQuantity {
+                quantity: id,
+                value: *value,
+            })
+        }
         Ok(_) => {}
     }
     // WR21: a stated unit must match the quantity kind, whether or not the

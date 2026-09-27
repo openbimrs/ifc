@@ -112,6 +112,13 @@ impl Default for Tolerance {
 }
 
 /// Compare one authored quantity against a computed value.
+///
+/// Only a [`Quantity::Simple`] is compared, and only against a computed value
+/// of the same [`QuantityKind`]. An IFC4X3 `IfcQuantityNumber`
+/// ([`QuantityKind::Number`]) is compared like the others: against a computed
+/// `Number`, with a stated unit matched textually and no unit assumed when
+/// it states none. It has no `>= 0` rule, so a negative number compares as
+/// it is.
 pub fn compare(
     model: &Model,
     quantity: &Quantity,

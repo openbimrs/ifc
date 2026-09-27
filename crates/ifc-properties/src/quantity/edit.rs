@@ -148,6 +148,10 @@ pub fn set_description(
 /// The entity is created with the measure type its kind implies and no unit,
 /// meaning "the project default applies" -- which is what most authored
 /// quantities mean. Attach it to a set with [`add_quantity_to_set`].
+///
+/// [`QuantityKind::Number`] writes `IfcQuantityNumber`, which only IFC4X3
+/// declares. A transaction does not know the model's release, so this does
+/// not check it: author that kind into an IFC4X3 model only.
 pub fn create_quantity(
     tx: &mut Transaction,
     kind: QuantityKind,
