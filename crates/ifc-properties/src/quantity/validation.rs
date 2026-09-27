@@ -68,7 +68,9 @@ pub enum Comparison {
         /// What the caller says it computed.
         computed: QuantityKind,
     },
-    /// The quantity carries no comparable scalar (complex or unsupported).
+    /// The quantity carries no comparable scalar: complex, unsupported, or
+    /// [`Quantity::Unresolved`] (a missing or non-numeric value is not
+    /// compared as 0).
     NotComparable,
 }
 
@@ -116,14 +118,13 @@ pub fn compare(
     computed: &ComputedQuantity,
     tolerance: Tolerance,
 ) -> Comparison {
-    let Quantity::Simple {
-        kind,
-        value,
-        unit: unit_id,
-        ..
-    } = quantity
-    else {
-        return Comparison::NotComparable;
+    let (kind, value, unit_id) = match quantity {
+        Quantity::Simple {
+            kind, value, unit, ..
+        } => (kind, value, unit),
+        // No value: comparing would have to invent one.
+        Quantity::Unresolved { .. } => return Comparison::NotComparable,
+        _ => return Comparison::NotComparable,
     };
 
     if *kind != computed.kind {

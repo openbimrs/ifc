@@ -12,6 +12,31 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `quantity_set`, `quantity_sets` and complex quantities list a simple
+  quantity whose value is `$`, cut off by a truncated record, or not a
+  number, as the new `Quantity::Unresolved` (#138). It sits in file order
+  beside the others and carries the quantity's id, `Name`, `Description`,
+  kind, stated unit and `Formula`, and a `reason`: the new
+  `UnresolvedValue::Missing` or `UnresolvedValue::NotNumeric { found }`.
+  It has no value field, so nothing can read it as 0. Since #107 such a
+  quantity was reported but left out of `quantities`, so a caller listing a
+  set could not see that it existed. `PropertyAnomaly::QuantityValueMissing`
+  and `QuantityValueNotNumeric` are still reported, once each.
+- `Quantity` is `#[non_exhaustive]`. Exhaustive matches need an arm for
+  `Unresolved` and a wildcard arm. `UnresolvedValue` is `#[non_exhaustive]`
+  too.
+- `compare` returns `Comparison::NotComparable` for an unresolved quantity,
+  and `stated_unit` returns its stated unit.
+- A quantity without a readable value is now checked against `WR21`: a
+  stated unit of the wrong kind is reported as
+  `PropertyAnomaly::QuantityUnitMismatch`, as it is for a valued quantity.
+
+The exact API is unchanged and agrees: `exact_property` refuses a `$` value
+with `MissingValueSlot`, a non-numeric one with `UnsupportedValue` and a
+truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
+
 ## [0.4.1] - 2026-09-27
 
 ### Added

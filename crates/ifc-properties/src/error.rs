@@ -110,8 +110,9 @@ pub enum PropertyAnomaly {
     /// A simple quantity states no value.
     ///
     /// The value attribute (`LengthValue`, `AreaValue`, ...) is not
-    /// `OPTIONAL` on any `IfcQuantity*`. With no number to report, the
-    /// quantity is left out of its set's `quantities` and named here.
+    /// `OPTIONAL` on any `IfcQuantity*`. The quantity stays in its set's
+    /// `quantities` as `Quantity::Unresolved` with
+    /// `UnresolvedValue::Missing`, and is named here.
     QuantityValueMissing {
         /// The quantity entity.
         quantity: EntityId,
@@ -119,7 +120,9 @@ pub enum PropertyAnomaly {
     /// A simple quantity's value attribute holds something other than a
     /// number, such as text or a reference.
     ///
-    /// The quantity is left out of its set's `quantities` and named here.
+    /// The quantity stays in its set's `quantities` as
+    /// `Quantity::Unresolved` with `UnresolvedValue::NotNumeric`, and is
+    /// named here.
     QuantityValueNotNumeric {
         /// The quantity entity.
         quantity: EntityId,

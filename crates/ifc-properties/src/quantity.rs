@@ -6,7 +6,8 @@
 //! ## Internal split
 //!
 //! - `set.rs`: IfcElementQuantity.
-//! - `simple.rs`: length/area/volume/count/time/weight.
+//! - `simple.rs`: length/area/volume/count/time/weight, with or without a
+//!   readable value.
 //! - `complex.rs`: nested physical complex quantities.
 //! - `edit.rs`: transactional authored quantity updates.
 //! - `validation.rs`: units/dimensions/formula consistency.
@@ -22,4 +23,5 @@ pub use edit::{
     set_quantity_value, QuantityExtras,
 };
 pub use set::{quantity_set, quantity_sets, stated_unit, Quantity, QuantityKind, QuantitySet};
+pub use simple::UnresolvedValue;
 pub use validation::{compare, Comparison, ComputedQuantity, Tolerance};
