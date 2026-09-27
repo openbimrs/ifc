@@ -25,9 +25,11 @@
 //! dimension, a nesting cycle and an unknown family are all typed errors
 //! naming the entity. Nothing is defaulted to make a description succeed.
 
+mod outline;
 mod section;
 mod types;
 
+pub use outline::{profile_outline, ProfileOutline};
 pub use types::{ProfileDescription, ProfileOperator, ProfileParameters, ProfilePosition};
 
 use ifc_model::{EntityId, Model};

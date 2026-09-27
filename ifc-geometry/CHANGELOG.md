@@ -32,6 +32,15 @@ everything released before per-crate changelogs began.
   outside the body, such as a space boundary's connection surface in the
   relating space's coordinates, is placed exactly as the body is.
   `Ok(None)` when the product has no such representation; kernel-free.
+- `profile_outline(model, units, profile)` and `ProfileOutline` (#166): an
+  `IfcArbitraryClosedProfileDef`'s or `IfcArbitraryProfileDefWithVoids`'s
+  boundaries as rings of vertices in metres, in profile coordinates, for
+  `IfcPolyline` and line-only `IfcIndexedPolyCurve` boundaries. Each ring
+  is in authored order without its closing vertex, as profile lowering
+  reads it. An `IfcArcIndex` segment or any other curve family is
+  `Unsupported` naming the curve, never chorded; a 3D point, fewer than
+  three distinct vertices and non-consecutive segments are `Degenerate`.
+  Kernel-free.
 
 ### Changed
 

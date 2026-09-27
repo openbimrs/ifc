@@ -218,8 +218,8 @@ pub use ifc_geometry::{product_world_transform, products_world_transforms};
 /// this beam an extrusion of an HEA300" reads parameters, not a mesh.
 #[cfg(feature = "geometry-select")]
 pub use ifc_geometry::{
-    body_description, describe_profile, BodyDescription, BodyItem, BodyKind, ProfileDescription,
-    ProfileParameters, SweepPath, SweptSolid,
+    body_description, describe_profile, profile_outline, BodyDescription, BodyItem, BodyKind,
+    ProfileDescription, ProfileOutline, ProfileParameters, SweepPath, SweptSolid,
 };
 
 /// Map conversion and coordinate reference systems.

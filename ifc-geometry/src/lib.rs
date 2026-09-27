@@ -125,5 +125,6 @@ pub use input::body::{
 // Profile families read into SI parameters. The same reader feeds
 // `lower::profile`, so a description and a lowering cannot disagree.
 pub use input::profile::{
-    describe_profile, ProfileDescription, ProfileOperator, ProfileParameters, ProfilePosition,
+    describe_profile, profile_outline, ProfileDescription, ProfileOperator, ProfileOutline,
+    ProfileParameters, ProfilePosition,
 };
