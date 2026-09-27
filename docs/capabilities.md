@@ -194,6 +194,13 @@ containment cycles are all handled and, where they are defects, reported through
 to use `IfcRelAggregates` exclusively with **no** containment relationship at
 all; that case is pinned in `tests/real_files.rs`.
 
+**Containers come from the declared release.** An entity is a spatial
+container when the release in `FILE_SCHEMA` declares it an
+`IfcSpatialElement` (IFC2X3: `IfcSpatialStructureElement`), so the IFC4X3
+facilities (`IfcRoad`, `IfcBridge`, `IfcRailway`, `IfcMarineFacility`) and
+their parts hold elements like a storey does. Containment or reference into
+something that is not a container is reported through `anomalies()`.
+
 **Contained is not referenced.** `IfcRelReferencedInSpatialStructure` adds an
 element to structures it spans without being contained there (a curtain wall
 contained by the ground floor and referenced by the storeys above).

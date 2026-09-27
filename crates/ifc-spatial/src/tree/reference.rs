@@ -28,8 +28,8 @@ impl SpatialTree {
     /// Record every `IfcRelReferencedInSpatialStructure`.
     ///
     /// A relationship naming an absent entity is reported through
-    /// `dangling`, as containment does. One whose relating end is not a
-    /// spatial container is ignored, as containment ignores it.
+    /// `dangling`, and one whose structure is not a spatial container
+    /// through `anomalies`, as containment reports both.
     pub(super) fn apply_references(&mut self, model: &Model) {
         let rel = slots::REFERENCED_IN;
         for &relationship in model.ids_of_type(rel.type_name) {
@@ -44,6 +44,11 @@ impl SpatialTree {
                 continue;
             }
             if self.node(structure).is_none() {
+                self.anomalies
+                    .push(super::SpatialAnomaly::ReferencedInNonContainer {
+                        relation: relationship,
+                        structure,
+                    });
                 continue;
             }
             for element in link::refs_in_slot(model, relationship, rel.related) {

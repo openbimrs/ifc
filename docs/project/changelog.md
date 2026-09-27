@@ -41,8 +41,43 @@ lockstep -- is archived in the
   IFC2X3, IFC4 and IFC4X3. They are kept apart from containment:
   `elements_of` and `container_of` are unchanged, and a referenced element
   is never a second home or a `ContainedTwice` anomaly. A reference naming
-  an absent entity is now reported by `dangling()`; one whose structure is
-  not a spatial container is ignored, as containment ignores it.
+  an absent entity is reported by `dangling()`.
+- `SpatialAnomaly::ContainedInNonContainer` and
+  `SpatialAnomaly::ReferencedInNonContainer` (#121): an
+  `IfcRelContainedInSpatialStructure` or `IfcRelReferencedInSpatialStructure`
+  whose `RelatingStructure` is not a spatial container of the release is
+  reported with the relationship and the structure, where containment used
+  to drop it silently.
+- `SpatialKind::classify_in(type_name, release)`, `SpatialTree::release()`
+  and a re-export of `ifc_schema::SchemaVersion`.
+
+### Changed
+
+- Spatial containers are classified from the release the file's
+  `FILE_SCHEMA` declares (#121): an entity is a container when that
+  release's bundled table makes it an `IfcSpatialElement` (IFC2X3:
+  `IfcSpatialStructureElement`), or it is the `IfcProject`. `ifc-schema` is
+  therefore a normal dependency. The IFC4X3 facilities and facility parts
+  (`IfcFacility`, `IfcBridge`, `IfcRoad`, `IfcRailway`,
+  `IfcMarineFacility`, `IfcBridgePart`, `IfcRoadPart`, `IfcRailwayPart`,
+  `IfcMarinePart`, `IfcFacilityPartCommon`) and `IfcExternalSpatialElement`
+  were classified as elements by the old name patterns, so containment into
+  them was dropped; they are now `OtherContainer`, as that variant's
+  documentation promised. `SpatialKind` gains no variant, so this stays
+  additive. A file with no single bundled release is classified as any
+  bundled release would, and `release()` returns `None`.
+- `SpatialKind::classify` answers from the bundled tables instead of name
+  patterns: a name no release declares as a spatial element (such as a
+  vendor `IFCSPATIALFOO`) is an `Element`.
+
+### Fixed
+
+- Only `IfcRelAggregates` and `IfcRelContainedInSpatialStructure` build the
+  tree (#121). Another relationship family whose relating end is a
+  container placed its targets as contained elements: an `IfcRelDeclares`
+  put the project's declared types into the project, and an
+  `IfcRelCoversSpaces` put a space's coverings into the space. Their absent
+  targets are still reported by `dangling()`.
 
 ### openbim-ifc
 
@@ -67,6 +102,18 @@ lockstep -- is archived in the
   `ContainerName`, `ElementMember`, `ElementProperties` and
   `SpatialMembership`. Needs the next `ifc-spatial` release, which adds
   `SpatialTree::referenced_elements`.
+
+### Changed
+
+- The `spatial` feature classifies spatial containers from the file's
+  declared release (#121, via the next `ifc-spatial` release, which now
+  links `ifc-schema`): IFC4X3 facilities and facility parts such as
+  `IfcRoad`, `IfcRoadPart`, `IfcBridge` and `IfcBridgePart`, and
+  `IfcExternalSpatialElement`, are containers, so `SpatialTree`,
+  `spatial_properties` and `unreachable_products` see the elements placed
+  in them. Containment or reference into a non-container is reported as a
+  `SpatialAnomaly`. `unreachable_products` skips containers by the tree's
+  classification instead of a name test.
 
 ## [0.7.3] - 2026-09-27
 

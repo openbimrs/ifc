@@ -2,7 +2,7 @@
 //! structures, kept apart from the one structure containing it.
 
 use ifc_model::{Entity, EntityId, Model, Value};
-use ifc_spatial::SpatialTree;
+use ifc_spatial::{SpatialAnomaly, SpatialTree};
 
 fn put(model: &mut Model, id: u64, type_name: &str, attributes: Vec<Value>) -> EntityId {
     let entity_id = EntityId(id);
@@ -133,7 +133,7 @@ fn a_reference_to_an_absent_entity_is_dangling() {
 }
 
 #[test]
-fn a_reference_whose_structure_is_not_a_container_is_ignored() {
+fn a_reference_whose_structure_is_not_a_container_is_reported() {
     let mut model = two_storeys();
     // The column is not a spatial structure: no tree node to list under.
     put(
@@ -144,5 +144,12 @@ fn a_reference_whose_structure_is_not_a_container_is_ignored() {
     );
     let tree = SpatialTree::build(&model);
     assert!(tree.referenced_elements(EntityId(6)).is_empty());
+    assert_eq!(
+        tree.anomalies(),
+        [SpatialAnomaly::ReferencedInNonContainer {
+            relation: EntityId(18),
+            structure: EntityId(6),
+        }]
+    );
     assert_eq!(tree.referencing_structures(EntityId(5)), [EntityId(4)]);
 }

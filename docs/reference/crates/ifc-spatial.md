@@ -24,6 +24,7 @@ IFC spatial containment and objectified relationship traversal: project, site, b
 ## Depends on
 
 - [`ifc-model`](./ifc-model)
+- [`ifc-schema`](./ifc-schema)
 
 ## Changes
 

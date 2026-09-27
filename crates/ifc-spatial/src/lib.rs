@@ -56,6 +56,9 @@ pub use relation::{
 };
 pub use tree::{SpatialAnomaly, SpatialKind, SpatialNode, SpatialTree};
 
+/// The IFC release a tree classifies against (re-exported from `ifc-schema`).
+pub use ifc_schema::SchemaVersion;
+
 pub mod facility;
 
 pub use facility::{create_facility, Facility, FacilityDraft, FacilityError, FacilityResult};

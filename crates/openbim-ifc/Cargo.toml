@@ -111,7 +111,8 @@ style = ["dep:ifc-style"]
 validate = ["dep:ifc-validate"]
 # Authoring resolves slots from the schema tables, so it implies `schema`.
 author = ["dep:ifc-author", "schema"]
-# Containment traversal needs only the record graph, so it stays thin.
+# Containment traversal reads the record graph, classifying spatial containers
+# from the declared release's schema table (ifc-spatial links ifc-schema).
 spatial = ["dep:ifc-spatial"]
 # Geometry comes in two sizes. `geometry` is the full bridge including
 # lowering into the neutral DAG -- unchanged for existing consumers.

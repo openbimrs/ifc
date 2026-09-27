@@ -343,3 +343,80 @@ fn a_dangling_part_is_reported_not_listed() {
     let ground = view.container(EntityId(3)).expect("a container");
     assert_eq!(ground.members().len(), 3);
 }
+
+/// IFC4X3 infrastructure: a road and a bridge are containers of the
+/// release (`IfcFacility` subtypes), and so are their parts.
+#[test]
+fn ifc4x3_facilities_and_parts_list_their_elements_with_properties() {
+    let v = SchemaVersion::Ifc4x3;
+    let r = |id, entity, set: &[(&str, &str)]| record(v, id, entity, set);
+    let aggregates = |id, whole: &str, parts: &str| {
+        r(
+            id,
+            "IfcRelAggregates",
+            &[("RelatingObject", whole), ("RelatedObjects", parts)],
+        )
+    };
+    let contained = |id, structure: &str, elements: &str| {
+        r(
+            id,
+            "IfcRelContainedInSpatialStructure",
+            &[
+                ("RelatingStructure", structure),
+                ("RelatedElements", elements),
+            ],
+        )
+    };
+    let records = [
+        r(1, "IfcProject", &[]),
+        r(2, "IfcSite", &[]),
+        r(3, "IfcRoad", &[("Name", "'Road'")]),
+        r(4, "IfcRoadPart", &[]),
+        r(5, "IfcBridge", &[]),
+        r(6, "IfcBridgePart", &[]),
+        aggregates(10, "#1", "(#2)"),
+        aggregates(11, "#2", "(#3,#5)"),
+        aggregates(12, "#3", "(#4)"),
+        aggregates(13, "#5", "(#6)"),
+        r(20, "IfcBuildingElementProxy", &[]),
+        r(21, "IfcBuildingElementProxy", &[]),
+        contained(30, "#4", "(#20)"),
+        contained(31, "#6", "(#21)"),
+        "#50=IFCPROPERTYSINGLEVALUE('IsExternal',$,IFCBOOLEAN(.T.),$);".to_owned(),
+        r(
+            51,
+            "IfcPropertySet",
+            &[("Name", "'Pset_Test'"), ("HasProperties", "(#50)")],
+        ),
+        r(
+            52,
+            "IfcRelDefinesByProperties",
+            &[
+                ("RelatedObjects", "(#20,#21)"),
+                ("RelatingPropertyDefinition", "#51"),
+            ],
+        ),
+    ];
+    let model = parse("IFC4X3_ADD2", &records);
+    let view = spatial_properties(&model).expect("IFC4X3");
+    assert!(view.tree().anomalies().is_empty());
+
+    let order: Vec<u64> = view.containers().map(|c| c.container.id.0).collect();
+    assert_eq!(order, [1, 2, 3, 4, 5, 6]);
+
+    let road = view.container(EntityId(3)).expect("a container");
+    assert_eq!(road.container.kind, SpatialKind::OtherContainer);
+    assert_eq!(road.container.type_name, "IFCROAD");
+    assert_eq!(road.container.name, ContainerName::Text("Road"));
+    for (part, element) in [(4, 20), (6, 21)] {
+        let container = view.container(EntityId(part)).expect("a container");
+        assert_eq!(container.container.kind, SpatialKind::OtherContainer);
+        let elements: Vec<_> = container.elements().collect();
+        let [only] = &elements[..] else {
+            panic!("#{part}: one element, got {elements:?}");
+        };
+        assert_eq!(only.element, EntityId(element));
+        assert_eq!(only.membership, SpatialMembership::Contained);
+        assert_eq!(names(only), Ok(vec!["IsExternal".to_owned()]));
+    }
+}

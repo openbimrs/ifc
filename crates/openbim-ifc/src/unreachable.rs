@@ -37,7 +37,7 @@ use std::collections::HashSet;
 
 use ifc_geometry::{context_of, geometric_products, TargetView};
 use ifc_model::{EntityId, Model, Value};
-use ifc_spatial::{SpatialKind, SpatialTree};
+use ifc_spatial::SpatialTree;
 
 /// Why one product will not be drawn.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -123,12 +123,13 @@ pub fn unreachable_products(model: &Model) -> Vec<(EntityId, Unreachable)> {
     // Only products carrying a shape can be "invisible" -- something with no
     // representation was never going to be drawn and is not a defect.
     for id in geometric_products(model) {
-        let Some(entity) = model.get(id) else {
+        if model.get(id).is_none() {
             continue;
-        };
+        }
 
-        // Spatial containers hang off IfcRelAggregates, not containment.
-        if SpatialKind::classify(&entity.type_name).is_container() {
+        // Spatial containers hang off IfcRelAggregates, not containment. The
+        // tree classified them against the file's declared release.
+        if tree.node(id).is_some() {
             continue;
         }
 

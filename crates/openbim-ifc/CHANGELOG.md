@@ -34,6 +34,18 @@ everything released before per-crate changelogs began.
   `SpatialMembership`. Needs the next `ifc-spatial` release, which adds
   `SpatialTree::referenced_elements`.
 
+### Changed
+
+- The `spatial` feature classifies spatial containers from the file's
+  declared release (#121, via the next `ifc-spatial` release, which now
+  links `ifc-schema`): IFC4X3 facilities and facility parts such as
+  `IfcRoad`, `IfcRoadPart`, `IfcBridge` and `IfcBridgePart`, and
+  `IfcExternalSpatialElement`, are containers, so `SpatialTree`,
+  `spatial_properties` and `unreachable_products` see the elements placed
+  in them. Containment or reference into a non-container is reported as a
+  `SpatialAnomaly`. `unreachable_products` skips containers by the tree's
+  classification instead of a name test.
+
 ## [0.7.3] - 2026-09-27
 
 ### Changed
