@@ -10,7 +10,7 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`openbim-ifc`](./crates/openbim-ifc) | <span class="status-implemented">Implemented</span> | 0.7.1 | Facade for the openBIM IFC crates: pick codecs and domains as features. |
+| [`openbim-ifc`](./crates/openbim-ifc) | <span class="status-implemented">Implemented</span> | 0.7.2 | Facade for the openBIM IFC crates: pick codecs and domains as features. |
 
 ## Model, codecs, schema, authoring and validation
 
