@@ -238,15 +238,27 @@ mod unreachable;
 #[cfg(all(feature = "spatial", feature = "geometry-select"))]
 pub use unreachable::{unreachable_products, Unreachable};
 
-// A door's leaves need its placement AND its operation type and panel
-// properties -- `ifc-geometry` and `ifc-properties`, siblings under ADR 0003
-// -- so the join lives in this orchestration layer (#148).
-#[cfg(all(feature = "geometry-select", feature = "properties"))]
+// A door's leaves and a window's panels need the product's placement AND its
+// operation type and panel properties -- `ifc-geometry` and `ifc-properties`,
+// siblings under ADR 0003 -- so the joins live in this orchestration layer
+// (#148, #170). `operation` holds what the two share. Each of the three
+// modules gates itself on `all(geometry-select, properties)` with an inner
+// `#![cfg]`, so the declarations below compile to nothing without both.
 mod door_operation;
+mod operation;
+mod window_operation;
 #[cfg(all(feature = "geometry-select", feature = "properties"))]
-pub use door_operation::{
-    door_operation, DoorOperation, DoorOperationError, DoorOperationType, Leaf, LeafMotion,
-    PanelPosition, RefusedOperation, Sector, Side,
+pub use {
+    door_operation::{
+        door_operation, DoorOperation, DoorOperationError, DoorOperationType, Leaf, LeafMotion,
+        PanelPosition, RefusedOperation,
+    },
+    operation::{Sector, Side},
+    window_operation::{
+        window_operation, RefusedWindowOperation, WindowOperation, WindowOperationError,
+        WindowPanel, WindowPanelMotion, WindowPanelOperation, WindowPanelPosition,
+        WindowPartitioning,
+    },
 };
 
 mod feature_report;

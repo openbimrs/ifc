@@ -51,6 +51,8 @@
 //! panel properties, a missing `OverallWidth`, and panels that contradict the
 //! operation. See [`DoorOperationError`].
 
+#![cfg(all(feature = "geometry-select", feature = "properties"))]
+
 mod geometry;
 mod layout;
 mod read;
@@ -63,6 +65,8 @@ use std::{fmt, sync::Arc};
 use ifc_geometry::{GeometryError, Transform};
 use ifc_model::{EntityId, Model};
 use ifc_properties::{ExactPropertyError, ExactSource, ExactUnitError};
+
+use crate::operation::{ReadError, Sector, Side};
 
 /// How one door operates, leaf by leaf, in world coordinates (metres).
 ///
@@ -120,15 +124,6 @@ pub enum DoorOperationType {
     /// `SWING_FIXED_RIGHT` (IFC4, IFC4X3): a swinging leaf hinged on its
     /// right beside a fixed panel.
     SwingFixedRight,
-}
-
-/// Left or right, as seen looking in a leaf's opening direction from above.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Side {
-    /// The left-hand side.
-    Left,
-    /// The right-hand side.
-    Right,
 }
 
 /// `IfcDoorPanelPositionEnum`: where a panel sits in the door, as written.
@@ -189,41 +184,6 @@ pub struct Leaf {
     /// The floor sector a hinged leaf sweeps; `None` for sliding, rolling
     /// and fixed leaves.
     pub swing: Option<Sector>,
-}
-
-/// A circular sector swept by a leaf about its hinge, in world metres.
-///
-/// Its boundary direction at angle `t ∈ [0, sweep]` is
-/// `cos t · start + sin t · (axis × start)`.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Sector {
-    /// The hinge point, on the door's x axis.
-    pub center: [f64; 3],
-    /// The leaf width.
-    pub radius: f64,
-    /// Unit direction of the first boundary ray: the closed leaf (hinge to
-    /// free edge) for a single swing, the leaf fully open to local -y for a
-    /// double-acting one.
-    pub start: [f64; 3],
-    /// Unit rotation axis, oriented so the sweep is positive about it.
-    pub axis: [f64; 3],
-    /// Swept angle in radians: π/2, or π for a double-acting leaf.
-    pub sweep: f64,
-}
-
-impl Sector {
-    /// Unit direction of the boundary ray at `angle` radians from `start`.
-    #[must_use]
-    pub fn direction_at(&self, angle: f64) -> [f64; 3] {
-        geometry::rotate(self.start, self.axis, angle)
-    }
-
-    /// Unit direction of the last boundary ray: the leaf fully open to
-    /// local +y.
-    #[must_use]
-    pub fn end(&self) -> [f64; 3] {
-        self.direction_at(self.sweep)
-    }
 }
 
 /// Why an operation type is refused rather than derived.
@@ -386,6 +346,19 @@ impl From<ExactPropertyError> for DoorOperationError {
 impl From<ExactUnitError> for DoorOperationError {
     fn from(error: ExactUnitError) -> Self {
         Self::Unit(error)
+    }
+}
+
+impl DoorOperationError {
+    /// The door-level error for a shared read failure.
+    fn read(error: ReadError) -> Self {
+        match error {
+            ReadError::Malformed { entity, attribute } => {
+                Self::MalformedAttribute { entity, attribute }
+            }
+            ReadError::Unit(error) => Self::Unit(error),
+            ReadError::Placement(error) => Self::Placement(error),
+        }
     }
 }
 

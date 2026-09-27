@@ -9,15 +9,16 @@
 
 use std::sync::Arc;
 
-use ifc_geometry::{product_world_transform, units, Transform};
-use ifc_model::{Entity, EntityId, Model, Value};
+use ifc_geometry::Transform;
+use ifc_model::{Entity, EntityId, Model};
 use ifc_properties::{
-    exact_predefined_sets, exact_schema, exact_unit, ExactPredefinedSet, ExactPropertyError,
-    ExactSource, ExactValue, SchemaVersion,
+    exact_predefined_sets, exact_schema, ExactPredefinedSet, ExactPropertyError, ExactSource,
+    ExactValue, SchemaVersion,
 };
-use ifc_schema::{Schema, TypeKind};
+use ifc_schema::Schema;
 
 use super::{layout, DoorOperationError, DoorOperationType, PanelPosition};
+use crate::operation;
 
 /// Everything the derivation needs, read and validated.
 pub(super) struct DoorInputs {
@@ -62,13 +63,12 @@ pub(super) fn read_door(model: &Model, door: EntityId) -> Result<DoorInputs, Doo
     }
     let (written, operation_source) = operation_type(model, schema, version, door, entity)?;
     let operation = layout::classify(&written)?;
-    let overall_width = overall_width(model, schema, door, entity)?;
+    let overall_width = operation::positive_length(model, schema, door, entity, "OverallWidth")
+        .map_err(DoorOperationError::read)?
+        .ok_or(DoorOperationError::MissingOverallWidth { door })?;
     let (panel_source, panels) = governing_panels(door, &sets)?;
     let panels = panels.iter().map(panel).collect::<Result<_, _>>()?;
-    let mut scale = units::resolve(model);
-    scale.length_to_metres = length_scale(model)?;
-    let world =
-        product_world_transform(model, &scale, door).map_err(DoorOperationError::Placement)?;
+    let world = operation::world_transform(model, door).map_err(DoorOperationError::read)?;
     Ok(DoorInputs {
         operation,
         operation_source,
@@ -77,50 +77,6 @@ pub(super) fn read_door(model: &Model, door: EntityId) -> Result<DoorInputs, Doo
         world,
         panels,
     })
-}
-
-/// The value of `entity`'s attribute `name` in the release, with its
-/// declared type, or `None` when the release does not declare it.
-fn attribute<'m>(
-    schema: &'static Schema,
-    entity: &'m Entity,
-    name: &str,
-) -> Option<(&'m Value, &'static str)> {
-    let (slot, declaration) = schema
-        .attributes(&entity.type_name)
-        .into_iter()
-        .enumerate()
-        .find(|(_, attribute)| attribute.name.eq_ignore_ascii_case(name))?;
-    // Arity was validated against the same table by the exact resolver.
-    Some((&entity.attributes[slot], declaration.type_name.as_str()))
-}
-
-/// An enumeration value checked against its declared enumeration, or `None`
-/// for `$`.
-fn enumeration(
-    schema: &'static Schema,
-    id: EntityId,
-    entity: &Entity,
-    name: &'static str,
-) -> Result<Option<Arc<str>>, DoorOperationError> {
-    let malformed = DoorOperationError::MalformedAttribute {
-        entity: id,
-        attribute: name,
-    };
-    let Some((value, declared)) = attribute(schema, entity, name) else {
-        return Ok(None);
-    };
-    let members = match schema.type_def(declared).map(|definition| &definition.kind) {
-        Some(TypeKind::Enumeration(members)) => members,
-        _ => return Err(malformed),
-    };
-    match value {
-        Value::Null => Ok(None),
-        Value::Enum(member) if members.iter().any(|m| m.eq_ignore_ascii_case(member)) => {
-            Ok(Some(member.to_ascii_uppercase().into()))
-        }
-        _ => Err(malformed),
-    }
 }
 
 /// The operation type and where it was stated.
@@ -136,8 +92,13 @@ fn operation_type(
     door: EntityId,
     entity: &Entity,
 ) -> Result<(Arc<str>, ExactSource), DoorOperationError> {
-    let occurrence = enumeration(schema, door, entity, "OperationType")?;
-    let typed = match type_object(model, schema, door)? {
+    let enumeration = |id, entity| {
+        operation::enumeration(schema, id, entity, "OperationType")
+            .map_err(DoorOperationError::read)
+    };
+    let occurrence = enumeration(door, entity)?;
+    let type_id = operation::type_object(model, schema, door).map_err(DoorOperationError::read)?;
+    let typed = match type_id {
         Some(type_id) => {
             let type_entity = model.get(type_id).expect("validated reference");
             // IFC4 `CorrectStyleAssigned` and IFC4X3 `CorrectTypeAssigned`
@@ -152,7 +113,7 @@ fn operation_type(
                     type_name: type_entity.type_name.clone(),
                 });
             }
-            let value = enumeration(schema, type_id, type_entity, "OperationType")?.ok_or(
+            let value = enumeration(type_id, type_entity)?.ok_or(
                 DoorOperationError::MalformedAttribute {
                     entity: type_id,
                     attribute: "OperationType",
@@ -176,71 +137,12 @@ fn operation_type(
     }
 }
 
-/// The door's type object, through `IfcRelDefinesByType`.
-///
-/// Uniqueness, targets and relationship subtypes were validated by the
-/// exact resolver, so the first match is the only one.
-fn type_object(
-    model: &Model,
-    schema: &'static Schema,
-    door: EntityId,
-) -> Result<Option<EntityId>, DoorOperationError> {
-    for id in model.ids_of_type("IFCRELDEFINESBYTYPE") {
-        let relation = model.get(*id).expect("type index is current");
-        let related = attribute(schema, relation, "RelatedObjects");
-        let relating = attribute(schema, relation, "RelatingType");
-        let (Some((Value::List(related), _)), Some((Value::Ref(type_id), _))) = (related, relating)
-        else {
-            return Err(DoorOperationError::MalformedAttribute {
-                entity: *id,
-                attribute: "RelatingType",
-            });
-        };
-        if related.contains(&Value::Ref(door)) {
-            return Ok(Some(*type_id));
-        }
-    }
-    Ok(None)
-}
-
-/// `IfcDoor.OverallWidth` in metres.
-fn overall_width(
-    model: &Model,
-    schema: &'static Schema,
-    door: EntityId,
-    entity: &Entity,
-) -> Result<f64, DoorOperationError> {
-    match attribute(schema, entity, "OverallWidth") {
-        Some((Value::Null, _)) => Err(DoorOperationError::MissingOverallWidth { door }),
-        // `IfcPositiveLengthMeasure`: a finite length greater than zero.
-        Some((Value::Real(width), _)) if width.is_finite() && *width > 0.0 => {
-            Ok(width * length_scale(model)?)
-        }
-        _ => Err(DoorOperationError::MalformedAttribute {
-            entity: door,
-            attribute: "OverallWidth",
-        }),
-    }
-}
-
-/// Metres per project length unit, resolved exactly.
-fn length_scale(model: &Model) -> Result<f64, DoorOperationError> {
-    Ok(exact_unit(model, "IFCPOSITIVELENGTHMEASURE", None)?.scale)
-}
-
 /// The occurrence's panel sets if it has any, else its type's.
 fn governing_panels(
     door: EntityId,
     sets: &[ExactPredefinedSet],
 ) -> Result<(ExactSource, Vec<&ExactPredefinedSet>), DoorOperationError> {
-    let source = sets
-        .iter()
-        .find(|set| set.source == ExactSource::Occurrence)
-        .or_else(|| sets.first())
-        .map(|set| set.source)
-        .ok_or(DoorOperationError::NoPanelProperties { door })?;
-    let governing = sets.iter().filter(|set| set.source == source).collect();
-    Ok((source, governing))
+    operation::governing(sets).ok_or(DoorOperationError::NoPanelProperties { door })
 }
 
 /// One panel set's operation, position and width.

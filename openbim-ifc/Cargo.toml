@@ -33,7 +33,7 @@ full = "Everything: codecs, schema tables, every domain, catalogues, geometry, g
 geometry = "Representation selection plus lowering into the neutral geometry DAG."
 geometry-select = "Representation selection only: contexts, plan/body choice, placements and units, with no geometry kernel."
 material-templates = "Material views together with the property template catalogue."
-properties = "Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door operation geometry."
+properties = "Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door and window operation geometry."
 
 [lib]
 name = "ifc"
@@ -88,8 +88,9 @@ schema = ["dep:ifc-schema", "ifc-template-catalog?/schema"]
 
 # --- domains ---
 # `ifc-properties` already links `ifc-schema`; naming it here lets the
-# door-operation join read `OperationType` by attribute name from the bound
-# release's table instead of restating slot numbers. It adds no crate.
+# door- and window-operation joins read `OperationType` and
+# `PartitioningType` by attribute name from the bound release's table instead
+# of restating slot numbers. It adds no crate.
 properties = ["dep:ifc-properties", "dep:ifc-schema"]
 property-catalog = ["dep:ifc-template-catalog"]
 cost = ["dep:ifc-cost"]

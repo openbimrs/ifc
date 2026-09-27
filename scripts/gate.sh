@@ -140,10 +140,12 @@ gate_features() {
     # only when both are on. `--all-features` would hide a break in that exact
     # pairing.
     cargo test -p openbim-ifc --features step,spatial,geometry-select --test unreachable_corpus
-    # Door operation geometry (#148) joins placement and panel properties,
-    # so it exists only with both `geometry-select` and `properties`.
+    # Door and window operation geometry (#148, #170) join placement and
+    # panel properties, so they exist only with both `geometry-select` and
+    # `properties`.
     cargo test -p openbim-ifc --features step,properties,geometry-select --lib \
-        --test door_operation --test door_operation_refusals
+        --test door_operation --test door_operation_refusals \
+        --test window_operation --test window_operation_refusals
 
     # Browser WASM column (#34). The facade must build for
     # wasm32-unknown-unknown with its default and widest pure-Rust feature
