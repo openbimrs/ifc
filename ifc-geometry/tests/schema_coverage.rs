@@ -425,19 +425,23 @@ fn the_compiled_subtype_table_agrees_with_the_schema() {
 /// that gate pass while `lower_profile` still refuses the family.
 ///
 /// This test asserts the stronger property for the one family where the
-/// distinction bit us. Every concrete profile is either lowered by
-/// `lower/profile.rs`, or listed here with the reason it is not. A family in
-/// neither set fails, so a new profile cannot be quietly ignored.
+/// distinction bit us. Every concrete profile is either read by the one
+/// profile reader, `input/profile/mod.rs`, or listed in `UNLOWERED` in
+/// `lower/profile.rs` with the reason it is not lowered. A family in neither
+/// set fails, so a new profile cannot be quietly ignored. Lowering maps the
+/// reader's `ProfileParameters` with an exhaustive match, so the compiler
+/// carries the claim from "read" to "lowered".
 ///
 /// The previous census reported "93 lowered, 1 unsupported" while 14 profile
 /// families were unimplemented, because the committed corpus contains no
 /// steel sections and a corpus-shaped census cannot see what it never meets.
 #[test]
 fn every_concrete_profile_is_lowered_or_declared_unlowered() {
-    let source = std::fs::read_to_string(
-        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/lower/profile.rs"),
-    )
-    .expect("profile lowerer");
+    let manifest = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let source =
+        std::fs::read_to_string(manifest.join("src/lower/profile.rs")).expect("profile lowerer");
+    let reader =
+        std::fs::read_to_string(manifest.join("src/input/profile/mod.rs")).expect("profile reader");
 
     // Distinguish the two ways a family can be named, rather than asking
     // whether the name appears at all. A substring check cannot tell a live
@@ -445,7 +449,7 @@ fn every_concrete_profile_is_lowered_or_declared_unlowered() {
     // implemented but left in UNLOWERED reads as covered by both and the
     // contradiction stays invisible. That is exactly what happened when the
     // steel sections shipped: twelve families sat in both sets at once.
-    let dispatched: BTreeSet<String> = source
+    let dispatched: BTreeSet<String> = reader
         .lines()
         .filter_map(|line| {
             let line = line.trim();
@@ -493,8 +497,9 @@ fn every_concrete_profile_is_lowered_or_declared_unlowered() {
 
     assert!(
         missing.is_empty(),
-        "{} concrete profile families are neither lowered nor declared \
-         unlowered in src/lower/profile.rs:\n{}",
+        "{} concrete profile families are neither read by \
+         src/input/profile/mod.rs nor declared unlowered in \
+         src/lower/profile.rs:\n{}",
         missing.len(),
         missing
             .iter()

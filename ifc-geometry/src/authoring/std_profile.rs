@@ -5,8 +5,8 @@
 //! dimensions, so authoring one is writing numbers into slots; no
 //! curve construction and no evaluator is involved.
 //!
-//! Slots come from [`crate::lower::profile::section_slot`], the same
-//! constants the lowerer reads. A layout correction lands once and
+//! Slots come from [`crate::slots::section_slot`], the same
+//! constants the profile reader uses. A layout correction lands once and
 //! serves both directions.
 //!
 //! # Refusals are schema rules, not taste

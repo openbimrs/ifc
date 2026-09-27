@@ -1,7 +1,9 @@
 //! Private `input` input boundary.
 
+pub(crate) mod body;
 pub(crate) mod context;
 pub(crate) mod material_usage;
 pub(crate) mod openings;
 pub(crate) mod product;
+pub(crate) mod profile;
 pub(crate) mod representation;

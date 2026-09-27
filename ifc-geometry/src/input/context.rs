@@ -25,7 +25,11 @@
 
 use ifc_model::{Entity, EntityId, Model, Value};
 
+use crate::error::{GeometryError, GeometryResult};
+use crate::resource::placement::axis_placement_transform;
 use crate::slots::Slots;
+use crate::transform::Transform;
+use crate::units::UnitScale;
 
 use super::representation::representation_slot;
 
@@ -324,4 +328,36 @@ pub fn context_of(model: &Model, representation: EntityId) -> Option<Representat
         };
     let context_entity = model.get(context_id)?;
     Some(RepresentationContext::new(context_id, context_entity))
+}
+
+/// The frame a representation's items are authored in, in metres.
+///
+/// `IfcGeometricRepresentationContext.WorldCoordinateSystem` is mandatory and
+/// defines model space for every representation that names the context. Most
+/// files write the identity, so ignoring it looks correct on a corpus; a file
+/// that surveys its site into a real coordinate system does not agree.
+///
+/// A sub-context inherits the value through `ParentContext`, which
+/// [`RepresentationContext::world_coordinate_system`] already resolves.
+/// Coordinates are raw file units, so the frame converts once here, matching
+/// how the placement chain is handled. Kernel-free, so lowering and
+/// [`crate::body_description`] compose the same frame.
+pub(crate) fn representation_frame(
+    model: &Model,
+    units: &UnitScale,
+    representation: EntityId,
+) -> GeometryResult<Transform> {
+    let Some(context) = context_of(model, representation) else {
+        return Ok(Transform::identity());
+    };
+    let Some(placement_id) = context.world_coordinate_system(model) else {
+        return Ok(Transform::identity());
+    };
+    let placement = model
+        .get(placement_id)
+        .ok_or(GeometryError::MissingEntity {
+            referrer: context.id(),
+            missing: placement_id,
+        })?;
+    Ok(axis_placement_transform(model, placement_id, placement)?.to_metres(units))
 }

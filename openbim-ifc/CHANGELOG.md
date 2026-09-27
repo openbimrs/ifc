@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `body_description`, `describe_profile` and their types (`BodyDescription`,
+  `BodyItem`, `BodyKind`, `SweptSolid`, `SweepPath`, `ProfileDescription`,
+  `ProfileParameters`) are re-exported at the root under `geometry-select`
+  (#147), so a rule check reads a body's kind and swept-solid profile
+  parameters without linking the geometry kernel.
+
 ## [0.6.0] - 2026-09-26
 
 ### Changed (breaking)
