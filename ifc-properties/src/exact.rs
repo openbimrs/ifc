@@ -1,30 +1,30 @@
-//! Exact, fail-closed IFC2X3/IFC4 property resolution.
+//! Exact, fail-closed IFC2X3/IFC4/IFC4X3 property resolution.
 //!
 //! Unlike the permissive views, this traversal rejects any incomplete or
 //! malformed assignment data before it can claim an exact absence. Every
 //! structural fact comes from the table of the one release the header
 //! declares; nothing is aliased across releases.
 
+mod assignment;
+mod enumerate;
 mod measure;
 mod quantity;
 mod refs;
 mod release;
+mod set;
 mod unit;
 mod value;
 
-use std::{collections::BTreeMap, fmt, sync::Arc};
+use std::{fmt, sync::Arc};
 
 use ifc_model::{EntityId, Model};
 use ifc_schema::SchemaVersion;
 
-use quantity::{find_quantity, predefined_may_hold};
-use refs::{
-    nonempty_refs_at, optional_refs_at, property_definition_refs_at, ref_at, refs_at, require_ref,
-    text_at,
-};
-use release::{validate_model, Release};
+use assignment::assigned_sets;
+pub use enumerate::{exact_properties, exact_properties_where, ExactPropertyEntry};
+use release::validate_model;
+use set::find_property;
 pub use unit::{exact_unit, ExactUnit, ExactUnitError};
-use value::{exact_property_value, ResolvedValue};
 
 /// Provenance of an exact result.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -128,7 +128,8 @@ pub enum ExactPropertyError {
         /// Number of schemas declared in the header.
         schemas: usize,
     },
-    /// The model header declares a schema other than IFC2X3 or IFC4.
+    /// The model header declares a schema other than IFC2X3, IFC4 or
+    /// IFC4X3 (`IFC4X3_ADD2`).
     UnsupportedSchema {
         /// The declared schema token.
         schema: String,
@@ -308,8 +309,8 @@ impl fmt::Display for ExactPropertyError {
 /// The IFC release a model's properties are resolved against.
 ///
 /// This is the release `exact_property` binds to: the single `FILE_SCHEMA`
-/// token, if it names a release the exact resolver supports (IFC2X3 or
-/// IFC4). A consumer binds its vocabulary per release with this answer
+/// token, if it names a release the exact resolver supports (IFC2X3 TC1,
+/// IFC4 ADD2 TC1 or IFC4X3 ADD2, the bundled tables). A consumer binds its vocabulary per release with this answer
 /// instead of re-parsing the header. It fails exactly as `exact_property`
 /// fails at model level: diagnostics, no schema, several schemas, or an
 /// unsupported one.
@@ -329,10 +330,11 @@ impl std::error::Error for ExactPropertyError {}
 /// property name.
 ///
 /// The model is resolved against the single release its `FILE_SCHEMA`
-/// declares, IFC2X3 or IFC4 (see [`exact_schema`]); every domain, select and
-/// slot count is that release's. With `set_name == None`, all assigned sets
-/// are searched. Occurrence values override matching inherited values at
-/// property level.
+/// declares, IFC2X3, IFC4 or IFC4X3 (see [`exact_schema`]); every domain,
+/// select and slot count is that release's. With `set_name == None`, all
+/// assigned sets are searched. Occurrence values override matching inherited
+/// values at property level. To enumerate every property instead of naming
+/// one, use [`exact_properties`].
 ///
 /// Quantity sets are searched like property sets, as buildingSMART IDS
 /// treats a quantity as a property: `Qto_WallBaseQuantities.Length` resolves
@@ -353,309 +355,27 @@ pub fn exact_property(
     property_name: &str,
 ) -> Result<ExactResolution, ExactPropertyError> {
     let release = validate_model(model)?;
-    let schema = release.schema;
-    let query_entity = model
-        .get(object)
-        .ok_or(ExactPropertyError::MissingReference {
-            from: object,
-            to: object,
-        })?;
-    if schema.entity(query_entity.type_name.as_ref()).is_none() {
-        return Err(release.not_in_schema(object, query_entity.type_name.clone()));
-    }
-    // The occurrence domain is the release's own `RelatedObjects` type:
-    // `IfcObject` in IFC2X3, `IfcObjectDefinition` in IFC4. Type objects are
-    // never occurrences, whatever the release.
-    let occurrence_domain = |type_name: &str| {
-        release.slot_accepts("IFCRELDEFINESBYPROPERTIES", 4, type_name)
-            && !schema.is_a(type_name, "IFCTYPEOBJECT")
-    };
-    if !occurrence_domain(query_entity.type_name.as_ref()) {
-        return Err(ExactPropertyError::InvalidQueryObject {
-            object,
-            type_name: query_entity.type_name.clone(),
-        });
-    }
-    release.require_exact_slots(object, query_entity)?;
-    refuse_unsupported_relationships(model, release, object)?;
-    let mut occurrence_sets = Vec::new();
-    let mut assigned_type = None;
-    for relation_id in model.ids_of_type("IFCRELDEFINESBYPROPERTIES") {
-        let r = model.get(*relation_id).expect("type index is current");
-        release.require_exact_slots(*relation_id, r)?;
-        let related = nonempty_refs_at(*relation_id, r.attributes.get(4), "RelatedObjects")?;
-        for related_id in &related {
-            require_ref(model, *relation_id, *related_id)?;
-            let related_object = model.get(*related_id).expect("checked reference");
-            if schema.entity(related_object.type_name.as_ref()).is_none() {
-                return Err(release.not_in_schema(*related_id, related_object.type_name.clone()));
-            }
-            if !occurrence_domain(related_object.type_name.as_ref()) {
-                return Err(ExactPropertyError::InvalidOccurrenceTarget {
-                    relationship: *relation_id,
-                    object: *related_id,
-                });
-            }
-            release.require_exact_slots(*related_id, related_object)?;
-        }
-        let definitions = property_definition_refs_at(
-            release,
-            *relation_id,
-            r.attributes.get(5),
-            "RelatingPropertyDefinition",
-        )?;
-        for definition in definitions {
-            require_ref(model, *relation_id, definition)?;
-            let definition_entity = model.get(definition).expect("checked reference");
-            if schema
-                .entity(definition_entity.type_name.as_ref())
-                .is_none()
-            {
-                return Err(release.not_in_schema(definition, definition_entity.type_name.clone()));
-            }
-            if !schema.is_a(
-                definition_entity.type_name.as_ref(),
-                "IFCPROPERTYSETDEFINITION",
-            ) {
-                return Err(ExactPropertyError::UnsupportedDefinition {
-                    entity: definition,
-                    type_name: definition_entity.type_name.clone(),
-                });
-            }
-            if related.contains(&object) {
-                occurrence_sets.push(definition);
-            }
-        }
-    }
-    for relation_id in model.ids_of_type("IFCRELDEFINESBYTYPE") {
-        let r = model.get(*relation_id).expect("type index is current");
-        release.require_exact_slots(*relation_id, r)?;
-        let related = nonempty_refs_at(*relation_id, r.attributes.get(4), "RelatedObjects")?;
-        for related_id in &related {
-            require_ref(model, *relation_id, *related_id)?;
-            let related_object = model.get(*related_id).expect("checked reference");
-            if schema.entity(related_object.type_name.as_ref()).is_none() {
-                return Err(release.not_in_schema(*related_id, related_object.type_name.clone()));
-            }
-            if !schema.is_a(related_object.type_name.as_ref(), "IFCOBJECT") {
-                return Err(ExactPropertyError::InvalidTypeTarget {
-                    relationship: *relation_id,
-                    object: *related_id,
-                });
-            }
-            release.require_exact_slots(*related_id, related_object)?;
-        }
-        let type_id = ref_at(*relation_id, r.attributes.get(5), "RelatingType")?;
-        require_ref(model, *relation_id, type_id)?;
-        let type_object = model.get(type_id).expect("checked reference");
-        if schema.entity(type_object.type_name.as_ref()).is_none() {
-            return Err(release.not_in_schema(type_id, type_object.type_name.clone()));
-        }
-        if !schema.is_a(type_object.type_name.as_ref(), "IFCTYPEOBJECT") {
-            return Err(ExactPropertyError::UnsupportedDefinition {
-                entity: type_id,
-                type_name: type_object.type_name.clone(),
-            });
-        }
-        release.require_exact_slots(type_id, type_object)?;
-        if related.contains(&object) {
-            if let Some(first) = assigned_type.replace(type_id) {
-                return Err(ExactPropertyError::MultipleTypeAssignments {
-                    object,
-                    first,
-                    second: type_id,
-                });
-            }
-        }
-    }
+    let assigned = assigned_sets(model, release, object)?;
     let occurrence = find_property(
         model,
         release,
-        &occurrence_sets,
+        &assigned.occurrence_sets,
         ExactSource::Occurrence,
         set_name,
         property_name,
     )?;
-    let inherited = match assigned_type {
-        Some(type_id) => {
-            // Checked above: a known `IfcTypeObject` with the release's arity,
-            // so `HasPropertySets` is slot 5 in both IFC2X3 and IFC4.
-            let type_object = model.get(type_id).expect("checked reference");
-            let sets = optional_refs_at(type_id, type_object.attributes.get(5), "HasPropertySets")?;
-            find_property(
-                model,
-                release,
-                &sets,
-                ExactSource::Type(type_id),
-                set_name,
-                property_name,
-            )?
-        }
+    let inherited = match &assigned.type_sets {
+        Some((type_id, sets)) => find_property(
+            model,
+            release,
+            sets,
+            ExactSource::Type(*type_id),
+            set_name,
+            property_name,
+        )?,
         None => None,
     };
     Ok(occurrence
         .or(inherited)
         .map_or(ExactResolution::Absent, ExactResolution::Present))
-}
-
-/// Refuse any proper subtype of the two traversed relationships that
-/// relates `object`.
-///
-/// `Model::ids_of_type` is exact-type, so a subtype instance such as IFC2X3
-/// `IfcRelOverridesProperties` would otherwise be skipped silently and its
-/// object answered as if the relationship were absent. Subtypes that relate
-/// other objects do not affect this answer and are left alone.
-fn refuse_unsupported_relationships(
-    model: &Model,
-    release: Release,
-    object: EntityId,
-) -> Result<(), ExactPropertyError> {
-    for parent in ["IFCRELDEFINESBYPROPERTIES", "IFCRELDEFINESBYTYPE"] {
-        for subtype in release.schema.subtypes(parent) {
-            for relation_id in model.ids_of_type(subtype) {
-                let r = model.get(*relation_id).expect("type index is current");
-                let related = refs_at(*relation_id, r.attributes.get(4), "RelatedObjects")?;
-                if related.contains(&object) {
-                    return Err(ExactPropertyError::UnsupportedRelationship {
-                        relationship: *relation_id,
-                        type_name: r.type_name.clone(),
-                    });
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-fn find_property(
-    model: &Model,
-    release: Release,
-    sets: &[EntityId],
-    source: ExactSource,
-    wanted_set: Option<&str>,
-    wanted_property: &str,
-) -> Result<Option<ExactProperty>, ExactPropertyError> {
-    let schema = release.schema;
-    let mut result = None;
-    let mut matching_sets = BTreeMap::new();
-    for &set_id in sets {
-        let set = model
-            .get(set_id)
-            .ok_or(ExactPropertyError::MissingReference {
-                from: set_id,
-                to: set_id,
-            })?;
-        release.require_exact_slots(set_id, set)?;
-        let is_quantity_set = schema.is_a(&set.type_name, "IFCELEMENTQUANTITY");
-        if !set.is_type("IFCPROPERTYSET") && !is_quantity_set {
-            // A predefined set keeps its values in attributes, which this
-            // resolver does not read. Skipping it is only honest when none
-            // of those attributes could be the property asked for.
-            if schema.is_a(&set.type_name, "IFCPROPERTYSETDEFINITION")
-                && !predefined_may_hold(release, set, wanted_set, wanted_property)
-            {
-                continue;
-            }
-            return Err(ExactPropertyError::UnsupportedDefinition {
-                entity: set_id,
-                type_name: set.type_name.clone(),
-            });
-        }
-        let set_name = text_at(set_id, set.attributes.get(2), "Name")?;
-        if let Some(name) = wanted_set {
-            if set_name != name {
-                continue;
-            }
-        }
-        if let Some(first) = matching_sets.insert(set_name.to_owned(), set_id) {
-            return Err(ExactPropertyError::DuplicateMatchingSets {
-                source,
-                first,
-                second: set_id,
-            });
-        }
-        if is_quantity_set {
-            if let Some((quantity_id, resolved)) =
-                find_quantity(model, release, set_id, set, wanted_property)?
-            {
-                let candidate = ExactProperty {
-                    source,
-                    property_set: Arc::from(set_name),
-                    set_id,
-                    property_id: quantity_id,
-                    value_type: resolved.value_type,
-                    unit_id: resolved.unit_id,
-                    value: resolved.value,
-                };
-                if let Some(first) = result.replace(candidate) {
-                    return Err(ExactPropertyError::DuplicateMatchingSets {
-                        source,
-                        first: first.set_id,
-                        second: set_id,
-                    });
-                }
-            }
-            continue;
-        }
-        let mut matching = None;
-        for property_id in nonempty_refs_at(set_id, set.attributes.get(4), "HasProperties")? {
-            let property = model
-                .get(property_id)
-                .ok_or(ExactPropertyError::MissingReference {
-                    from: set_id,
-                    to: property_id,
-                })?;
-            if schema.entity(property.type_name.as_ref()).is_none() {
-                return Err(release.not_in_schema(property_id, property.type_name.clone()));
-            }
-            if !schema.is_a(property.type_name.as_ref(), "IFCPROPERTY") {
-                return Err(ExactPropertyError::UnsupportedProperty {
-                    entity: property_id,
-                    type_name: property.type_name.clone(),
-                });
-            }
-            release.require_exact_slots(property_id, property)?;
-            if text_at(property_id, property.attributes.first(), "Name")? != wanted_property {
-                continue;
-            }
-            if let Some(first) = matching.replace(property_id) {
-                return Err(ExactPropertyError::DuplicateMatchingProperties {
-                    set: set_id,
-                    first,
-                    second: property_id,
-                });
-            }
-        }
-        if let Some(property_id) = matching {
-            let property = model.get(property_id).expect("checked reference");
-            if !property.is_type("IFCPROPERTYSINGLEVALUE") {
-                return Err(ExactPropertyError::UnsupportedProperty {
-                    entity: property_id,
-                    type_name: property.type_name.clone(),
-                });
-            }
-            let ResolvedValue {
-                value,
-                value_type,
-                unit_id,
-            } = exact_property_value(model, release, property_id, property)?;
-            let candidate = ExactProperty {
-                source,
-                property_set: Arc::from(set_name),
-                set_id,
-                property_id,
-                value_type,
-                unit_id,
-                value,
-            };
-            if let Some(first) = result.replace(candidate) {
-                return Err(ExactPropertyError::DuplicateMatchingSets {
-                    source,
-                    first: first.set_id,
-                    second: set_id,
-                });
-            }
-        }
-    }
-    Ok(result)
 }

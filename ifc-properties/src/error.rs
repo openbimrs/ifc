@@ -136,6 +136,33 @@ pub enum PropertyAnomaly {
         /// The id it named.
         member: EntityId,
     },
+    /// A member list holds an item that is not an entity reference.
+    ///
+    /// `IfcPropertySet.HasProperties`, `IfcComplexProperty.HasProperties`,
+    /// `IfcElementQuantity.Quantities` and
+    /// `IfcPhysicalComplexQuantity.HasQuantities` are sets of entity
+    /// references. An item such as a string or number names no member, so
+    /// nothing is read for it.
+    MemberNotReference {
+        /// The set or complex entity holding the list.
+        container: EntityId,
+        /// The list attribute, e.g. `"HasProperties"`.
+        attribute: &'static str,
+        /// The item found, rendered for the message.
+        found: String,
+    },
+    /// A member list names the same entity more than once.
+    ///
+    /// Each of those lists is an EXPRESS `SET`, which cannot hold one
+    /// instance twice. The member is read once, at its first position.
+    DuplicateMember {
+        /// The set or complex entity holding the list.
+        container: EntityId,
+        /// The list attribute, e.g. `"Quantities"`.
+        attribute: &'static str,
+        /// The member listed again.
+        member: EntityId,
+    },
     /// A complex property or complex quantity reaches itself again through
     /// its members.
     ///

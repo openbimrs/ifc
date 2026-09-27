@@ -159,6 +159,43 @@ lockstep -- is archived in the
 
 ### Added
 
+- `exact_properties(model, object)` and
+  `exact_properties_where(model, object, select_set, select_property)`:
+  exact enumeration of an object's properties and simple quantities (#78),
+  for checks such as IDS property facets that name sets and properties by
+  pattern. Each `ExactPropertyEntry` carries the member's name and the same
+  `ExactProperty` (provenance, set, value type, unit, value) that
+  `exact_property` reports. The traversal, model and assignment validation
+  and refusals are those of `exact_property`, and for one set name and one
+  property name the result equals its answer (`[x]` for `Present(x)`, empty
+  for `Absent`, the same error otherwise). An inherited property is left
+  out when an occurrence set of the same name selects a property of the
+  same name. An empty result is a proven absence. Only selected members
+  must resolve: an unselected `IfcPropertyEnumeratedValue` or complex
+  quantity does not refuse the answer, but every member of a selected set
+  must be well formed. Additive; nothing existing changes.
+- `exact_property`, `exact_schema` and `exact_unit` resolve IFC4X3 ADD2
+  models (#76), bound to the bundled IFC4X3 ADD2 table. They were refused
+  with `ExactPropertyError::UnsupportedSchema`. The header tokens are those
+  `ifc_schema::SchemaVersion::from_header_token` maps to that release
+  (`IFC4X3_ADD2` and `IFC4X3`). Tests pin the IFC4X3 differences:
+  `IfcRelDefinesByProperties.RelatedObjects` admits any non-type
+  `IfcObjectDefinition` (an `IfcProject` too), `IfcPropertySetDefinitionSet`
+  is traversed under its `SET [1:?]` rules, `IfcTypeObject.HasPropertySets`
+  may be `$` but not empty, `IfcQuantityNumber` resolves as
+  `IFCNUMERICMEASURE` only in IFC4X3, and `IfcDerivedUnit` has IFC4X3's four
+  attributes. `IfcDimensionsForSIUnit`/`IfcCorrectDimensions` for IFC4X3 are
+  checked against the EXPRESS source, so the farad keeps IFC4's
+  dimensions. Callers that relied on IFC4X3 being refused now get answers;
+  the result type is unchanged.
+- `PropertyAnomaly::MemberNotReference` and `PropertyAnomaly::DuplicateMember`
+  (#137). `property_set_checked`, `property_checked`, `quantity_set`,
+  `quantity_sets`, `property_sets_by_object` and `resolved_properties`
+  report an item of `HasProperties`, `Quantities` or `HasQuantities` that is
+  not an entity reference, and a member listed twice, instead of skipping
+  the one and reading the other twice. `PropertyAnomaly` is
+  `#[non_exhaustive]`, so this is not breaking.
+
 - `property_checked` and `property_set_checked`: the values of `property`
   and `property_set`, together with a `PropertyAnomaly` for every member
   they could not resolve (#107). `property_sets_by_object` and
@@ -178,6 +215,11 @@ lockstep -- is archived in the
 
 ### Fixed
 
+- A member listed twice in a property set, quantity set, complex property
+  or complex quantity was resolved twice (#137). It is now resolved once,
+  at its first position, and reported as `DuplicateMember`; a property set
+  therefore no longer reports such a repeat as a `DuplicatePropertyName`
+  of itself.
 - Complex properties and complex quantities guarded nesting only against a
   DIRECT self-member and a bare depth of 16 (#107). A longer cycle, or
   nesting past the depth, was silently truncated to an empty member list,

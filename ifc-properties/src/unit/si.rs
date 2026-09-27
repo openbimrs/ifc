@@ -8,10 +8,12 @@
 //!
 //! The releases disagree. IFC2X3 TC1 gives `FARAD` the current exponent 1
 //! and requires `ELECTRICCAPACITANCEUNIT` to have mass exponent +1; IFC4
-//! corrected both to `(-2, -1, 4, 2, 0, 0, 0)`. So an IFC2X3 farad fails its
-//! own schema's check, and the resolver reports that instead of borrowing
-//! IFC4's answer. The tests below re-parse both functions from
-//! `references/ifc-spec` and assert these tables against them.
+//! corrected both to `(-2, -1, 4, 2, 0, 0, 0)`, and IFC4X3 ADD2 keeps IFC4's
+//! values (it spells the function `IfcDimensionsForSIUnit`). So an IFC2X3
+//! farad fails its own schema's check, and the resolver reports that instead
+//! of borrowing IFC4's answer. The tests below re-parse both functions of
+//! every release from `references/ifc-spec` and assert these tables against
+//! them.
 
 use ifc_schema::SchemaVersion;
 
@@ -57,8 +59,7 @@ pub(crate) fn si_name_dimensions(version: SchemaVersion, name: &str) -> Option<D
         "VOLT" => [2, 1, -3, -1, 0, 0, 0],
         "FARAD" => match version {
             SchemaVersion::Ifc2x3 => IFC2X3_FARAD,
-            SchemaVersion::Ifc4 => IFC4_FARAD,
-            SchemaVersion::Ifc4x3 => return None,
+            SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3 => IFC4_FARAD,
         },
         "OHM" => [2, 1, -3, -2, 0, 0, 0],
         "SIEMENS" => [-2, -1, 3, 2, 0, 0, 0],
@@ -92,8 +93,7 @@ pub(crate) fn unit_enum_dimensions(version: SchemaVersion, unit_type: &str) -> O
         "RADIOACTIVITYUNIT" | "FREQUENCYUNIT" => [0, 0, -1, 0, 0, 0, 0],
         "ELECTRICCAPACITANCEUNIT" => match version {
             SchemaVersion::Ifc2x3 => IFC2X3_CAPACITANCE,
-            SchemaVersion::Ifc4 => IFC4_CAPACITANCE,
-            SchemaVersion::Ifc4x3 => return None,
+            SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3 => IFC4_CAPACITANCE,
         },
         "ELECTRICCHARGEUNIT" => [0, 0, 1, 1, 0, 0, 0],
         "ELECTRICCONDUCTANCEUNIT" => [-2, -1, 3, 2, 0, 0, 0],
@@ -156,9 +156,13 @@ mod tests {
     }
 
     /// `(case label, exponents)` rows of one EXPRESS function's `CASE`.
+    ///
+    /// EXPRESS names are case-insensitive, and IFC4X3 spells the SI function
+    /// `IfcDimensionsForSIUnit`, so the declaration is found ignoring case.
     fn case_rows(source: &str, function: &str) -> Vec<(String, Dimensions)> {
         let start = source
-            .find(&format!("FUNCTION {function}"))
+            .to_ascii_lowercase()
+            .find(&format!("function {}", function.to_ascii_lowercase()))
             .expect("function declared");
         let body = &source[start..];
         let body = &body[..body.find("END_FUNCTION").expect("function ends")];
@@ -221,6 +225,11 @@ mod tests {
     #[test]
     fn ifc2x3_tables_match_the_normative_functions() {
         check(SchemaVersion::Ifc2x3, "ifc2x3-tc1/IFC2X3_TC1.exp");
+    }
+
+    #[test]
+    fn ifc4x3_tables_match_the_normative_functions() {
+        check(SchemaVersion::Ifc4x3, "ifc4x3-add2/IFC4X3_ADD2.exp");
     }
 
     #[test]

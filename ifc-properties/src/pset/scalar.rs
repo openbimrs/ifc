@@ -241,10 +241,3 @@ fn entity_ref(value: &ifc_model::Value) -> Option<EntityId> {
         _ => None,
     }
 }
-
-pub(super) fn refs(value: &ifc_model::Value) -> Option<Vec<EntityId>> {
-    match value {
-        ifc_model::Value::List(items) => Some(items.iter().filter_map(entity_ref).collect()),
-        _ => None,
-    }
-}

@@ -95,11 +95,11 @@ fn exact_schema_reports_the_declared_release() {
         exact_schema(&step("IFC4", &[ifc4_wall])),
         Ok(SchemaVersion::Ifc4)
     );
-    // IFC4X3 is bundled but not yet verified for exact resolution: refused.
-    assert!(matches!(
+    // IFC4X3 ADD2 is verified for exact resolution since #76.
+    assert_eq!(
         exact_schema(&step("IFC4X3_ADD2", &[ifc4_wall])),
-        Err(ExactPropertyError::UnsupportedSchema { .. })
-    ));
+        Ok(SchemaVersion::Ifc4x3)
+    );
     assert!(matches!(
         exact_schema(&step("IFC2X2_FINAL", &[WALL])),
         Err(ExactPropertyError::UnsupportedSchema { .. })

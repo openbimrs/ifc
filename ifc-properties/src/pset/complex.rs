@@ -11,12 +11,13 @@
 use ifc_model::{EntityId, Model, Value};
 
 use crate::nesting::Nesting;
-use crate::pset::scalar::{read_property, refs, Property};
+use crate::pset::scalar::{read_property, Property};
 
 /// Resolve the `HasProperties` of complex property `id`, in file order.
 ///
-/// Members the traversal refuses (cycle, depth, budget, absent entity) are
-/// left out and reported through `nesting`.
+/// Members the traversal refuses (cycle, depth, budget, absent entity,
+/// non-reference item, repeated member) are left out and reported through
+/// `nesting`.
 pub(super) fn complex_members(
     model: &Model,
     id: EntityId,
@@ -27,7 +28,7 @@ pub(super) fn complex_members(
         return Vec::new();
     }
     let mut properties = Vec::new();
-    for member in has_properties.and_then(refs).unwrap_or_default() {
+    for member in nesting.members(id, "HasProperties", has_properties) {
         if !nesting.admit(model, id, member) {
             continue;
         }

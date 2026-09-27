@@ -98,7 +98,10 @@ pub fn property_set(model: &Model, id: EntityId) -> Option<PropertySet> {
 ///
 /// The same value as [`property_set`], with a
 /// [`PropertyAnomaly::MissingMember`] for each `HasProperties` id absent
-/// from the file and the nesting anomalies described on
+/// from the file, a [`PropertyAnomaly::MemberNotReference`] for each item
+/// that is not an entity reference, a [`PropertyAnomaly::DuplicateMember`]
+/// for each member listed again (read once), and the nesting anomalies
+/// described on
 /// [`property_checked`](crate::property_checked) for its complex properties.
 pub fn property_set_checked(
     model: &Model,
@@ -111,12 +114,12 @@ pub fn property_set_checked(
     let mut anomalies = Vec::new();
     let mut nesting = Nesting::new(&mut anomalies);
     let mut properties = Vec::new();
-    for member in entity
-        .attributes
-        .get(SET_HAS_PROPERTIES)
-        .and_then(refs)
-        .unwrap_or_default()
-    {
+    let members = nesting.members(
+        id,
+        "HasProperties",
+        entity.attributes.get(SET_HAS_PROPERTIES),
+    );
+    for member in members {
         if !nesting.admit(model, id, member) {
             continue;
         }
