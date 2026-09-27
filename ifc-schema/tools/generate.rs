@@ -86,7 +86,14 @@ fn run() -> Result<(), String> {
     // each byte to its code point and letting the tokenizer treat `\r` as
     // whitespace.
     let text: String = bytes.iter().map(|&b| b as char).collect();
-    let parsed = openbim_step::express::parse(&text);
+    let mut parsed = openbim_step::express::parse(&text);
+    // WHERE-rule labels identify rules; their expressions are CC BY-ND schema
+    // text that nothing in this crate evaluates, so they are not bundled.
+    for entity in &mut parsed.entities {
+        for rule in &mut entity.where_rules {
+            rule.expression.clear();
+        }
+    }
 
     let entity_count = parsed.entities.len();
     let type_count = parsed.types.len();

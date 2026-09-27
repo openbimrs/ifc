@@ -12,6 +12,21 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-09-27
+
+Maintenance release from `maint/ifc-schema-0.2`: the 0.2.2 code with the
+data fix only, so it still requires `openbim-step` 0.5.1 and every
+dependent's `^0.2.2` picks it up.
+
+### Changed
+
+- The bundled IFC2X3 TC1, IFC4 ADD2 TC1 and IFC4X3 ADD2 schemas no longer
+  carry WHERE-rule expressions: `EntityDef::where_rules` keeps each rule's
+  `label`, and its `expression` is empty. The expressions are CC BY-ND schema
+  text that nothing here evaluates. A schema parsed at run time with
+  `Schema::from_express` keeps them. The artifacts are about 23-38% smaller.
+  `data/NOTICE.md` now states the provenance of the bundled files.
+
 ## [0.2.2] - 2026-09-23
 
 ### Fixed
@@ -39,7 +54,8 @@ First release under per-crate versioning. See the
 [repository changelog](../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-schema-v0.2.2...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-schema-v0.2.3...HEAD
+[0.2.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-schema-v0.2.3
 [0.2.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-schema-v0.2.2
 [0.2.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-schema-v0.2.1
 [0.2.0]: https://github.com/openbimrs/ifc/releases/tag/v0.2.0

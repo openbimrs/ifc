@@ -134,3 +134,30 @@ fn cost_entities_are_ordinary_schema_rows() {
         "IfcCostValue should declare AppliedValue, got {names:?}"
     );
 }
+
+/// The bundled schemas keep every WHERE rule's label and none of its
+/// expression text. The schemas are CC BY-ND 4.0; the expressions are
+/// authored text that nothing here evaluates, so they are not redistributed
+/// (`tools/generate.rs`).
+#[test]
+fn bundled_schemas_carry_rule_labels_but_no_rule_text() {
+    for (release, schema) in [
+        ("IFC2X3", ifc_schema::ifc2x3()),
+        ("IFC4", ifc_schema::ifc4()),
+        ("IFC4X3", ifc_schema::ifc4x3()),
+    ] {
+        let mut labels = 0;
+        for name in schema.entity_names() {
+            for rule in &schema.entity(name).expect("listed entity").where_rules {
+                assert!(!rule.label.is_empty(), "{release} {name}: unlabelled rule");
+                assert!(
+                    rule.expression.is_empty(),
+                    "{release} {name}.{} carries expression text",
+                    rule.label
+                );
+                labels += 1;
+            }
+        }
+        assert!(labels > 100, "{release}: only {labels} rule labels bundled");
+    }
+}

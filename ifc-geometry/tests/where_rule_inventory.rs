@@ -13,7 +13,7 @@ mod where_rule_inventory {
     pub mod readers;
 }
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use ifc_geometry::rules::{validate_model, RuleViolation};
 use ifc_model::Model;
@@ -89,27 +89,6 @@ fn the_inventory_matches_the_schema_exactly() {
         invented.is_empty(),
         "inventory lists rules the schema does not declare: {invented:?}"
     );
-}
-
-/// Every stored expression is the schema's own text, not a paraphrase.
-#[test]
-fn stored_expressions_match_the_schema_text() {
-    let schema = ifc_schema::ifc4();
-    let mut by_key: BTreeMap<(String, String), String> = BTreeMap::new();
-    for name in schema.entity_names() {
-        let entity = schema.entity(name).expect("named entity resolves");
-        for rule in &entity.where_rules {
-            by_key.insert(
-                (name.to_ascii_lowercase(), rule.label.clone()),
-                rule.expression.clone(),
-            );
-        }
-    }
-    for (entity, rule, _, expression) in rows() {
-        let key = (entity.to_owned(), rule.to_owned());
-        let actual = by_key.get(&key).expect("inventoried rule exists");
-        assert_eq!(actual, expression, "{entity}.{rule} text drifted");
-    }
 }
 
 /// `implemented` means the rules module names that rule; nothing else counts.
