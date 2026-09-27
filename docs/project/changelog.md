@@ -98,6 +98,16 @@ lockstep -- is archived in the
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
 
+## [0.7.3] - 2026-09-27
+
+### openbim-ifc
+
+### Changed
+
+- The crate README, which is the crates.io page, is rewritten. The published
+  one told readers to depend on a Git revision and said the crates were not
+  on crates.io. The code is unchanged since 0.7.2.
+
 ## [0.7.2] - 2026-09-27
 
 ### openbim-ifc
