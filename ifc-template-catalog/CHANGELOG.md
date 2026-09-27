@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-27
+
 ### Fixed
 
 - The built-in environmental advisories cite their decision record at its
@@ -24,5 +26,6 @@ First release under per-crate versioning. See the
 [repository changelog](../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-template-catalog-v0.2.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-template-catalog-v0.2.1...HEAD
+[0.2.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-template-catalog-v0.2.1
 [0.2.0]: https://github.com/openbimrs/ifc/releases/tag/v0.2.0

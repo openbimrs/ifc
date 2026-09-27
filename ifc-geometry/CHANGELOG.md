@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-27
+
 ### Fixed
 
 - A face surface whose `FaceSurface` is dangling now reports the face as the
@@ -166,6 +168,14 @@ everything released before per-crate changelogs began.
   exceeds its budget is now `ChainTooDeep` rather than `Unsupported`, and a
   self-referencing chain is `CyclicChain`; a dangling boundary curve of an
   arbitrary profile is reported when the profile is read.
+- Requires `axiolid-mesh-compile` 0.3.4, `axiolid-construct` 0.3.3 and
+  `axiolid-evaluate` 0.3.1. Compiled output changes where the kernel's did:
+  a B-rep's void shells are tessellated facing into the cavity instead of
+  being dropped, so an authored cavity is no longer filled
+  (axiolid/kernel#120); every solid of a multi-solid B-rep is meshed, not
+  only the first (axiolid/kernel#111); and a curve-bounded plane, the usual
+  space-boundary connection surface, compiles to a planar surface mesh
+  instead of being refused (axiolid/kernel#192).
 - Requires `axiolid-mesh-compile` 0.3.3 and `axiolid-contracts` 0.3.1.
   Closed `IfcPolygonalFaceSet` bodies whose face corners lie on a straight
   run (collinear notch and window heads) now mesh closed and report `Solid`
@@ -365,7 +375,8 @@ First release under per-crate versioning. See the
 [repository changelog](../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.3.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.4.0...HEAD
+[0.4.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.4.0
 [0.3.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.3.1
 [0.3.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.3.0
 [0.2.0]: https://github.com/openbimrs/ifc/releases/tag/v0.2.0

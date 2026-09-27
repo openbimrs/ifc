@@ -11,7 +11,7 @@ Bounded IFC control semantics: permits, project orders, action requests, and per
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.2.0 (2026-09-22) |
+| Latest release | 0.2.1 (2026-09-27) |
 | Registries | [crates.io `ifc-control`](https://crates.io/crates/ifc-control) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `control` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_control/index.html) · [docs.rs](https://docs.rs/ifc-control) |
@@ -40,9 +40,18 @@ controls and refuses any other.
 
 ## Changes
 
-Latest release, 0.2.0 (2026-09-22):
+Latest release, 0.2.1 (2026-09-27):
 
-First release under per-crate versioning. See the
-that produced this version.
+### Added
+
+- `assign_to_control` and `ControlAssignmentDraft` stage an
+  `IfcRelAssignsToControl` whose relating control is a permit, project
+  order, action request or performance history. Empty, duplicated and
+  self-referencing `RelatedObjects`, members that are not
+  `IfcObjectDefinition`s, and missing references are refused;
+  `RelatedObjectsType` is left unset (#99).
+- `ControlError::ForeignControl` refuses a relating control another crate
+  owns (cost schedules, cost items, work controls).
+- `ControlKind::ALL` lists the four owned controls.
 
 Full history: [`ifc-control/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-control/CHANGELOG.md)
