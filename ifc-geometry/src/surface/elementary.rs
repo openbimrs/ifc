@@ -23,8 +23,9 @@
 //! multiplies an angle by 0.001. [`ParameterKind`] exists so that decision can
 //! be made from data rather than from a comment.
 
-use crate::error::{GeometryError, GeometryResult};
+use crate::error::GeometryResult;
 use crate::resource::placement::Axis2Placement3D;
+use crate::resource::resolve;
 use crate::slots::Slots;
 use ifc_model::{Entity, EntityId, Model};
 
@@ -87,14 +88,11 @@ impl<'m> Plane<'m> {
     ///
     /// [`Self::position_ref`] returns the raw reference; this resolves it
     /// so callers read location/axis/RefDirection without re-entering the
-    /// model themselves.
+    /// model themselves. A dangling reference is `MissingEntity` naming this
+    /// surface; any target other than an `IfcAxis2Placement3D` is
+    /// `WrongEntityType` naming the target.
     pub fn position<'v>(&self, model: &'v Model) -> GeometryResult<Axis2Placement3D<'v>> {
-        let id = self.position_ref()?;
-        let entity = model.get(id).ok_or(GeometryError::MissingEntity {
-            referrer: self.id(),
-            missing: id,
-        })?;
-        Ok(Axis2Placement3D::new(id, entity))
+        resolve::axis2_placement_3d(model, self.id(), self.position_ref()?)
     }
 
     /// Both parameters of a plane are lengths.
@@ -131,14 +129,11 @@ impl<'m> CylindricalSurface<'m> {
     ///
     /// [`Self::position_ref`] returns the raw reference; this resolves it
     /// so callers read location/axis/RefDirection without re-entering the
-    /// model themselves.
+    /// model themselves. A dangling reference is `MissingEntity` naming this
+    /// surface; any target other than an `IfcAxis2Placement3D` is
+    /// `WrongEntityType` naming the target.
     pub fn position<'v>(&self, model: &'v Model) -> GeometryResult<Axis2Placement3D<'v>> {
-        let id = self.position_ref()?;
-        let entity = model.get(id).ok_or(GeometryError::MissingEntity {
-            referrer: self.id(),
-            missing: id,
-        })?;
-        Ok(Axis2Placement3D::new(id, entity))
+        resolve::axis2_placement_3d(model, self.id(), self.position_ref()?)
     }
 
     /// The radius, guaranteed positive.
@@ -180,14 +175,11 @@ impl<'m> SphericalSurface<'m> {
     ///
     /// [`Self::position_ref`] returns the raw reference; this resolves it
     /// so callers read location/axis/RefDirection without re-entering the
-    /// model themselves.
+    /// model themselves. A dangling reference is `MissingEntity` naming this
+    /// surface; any target other than an `IfcAxis2Placement3D` is
+    /// `WrongEntityType` naming the target.
     pub fn position<'v>(&self, model: &'v Model) -> GeometryResult<Axis2Placement3D<'v>> {
-        let id = self.position_ref()?;
-        let entity = model.get(id).ok_or(GeometryError::MissingEntity {
-            referrer: self.id(),
-            missing: id,
-        })?;
-        Ok(Axis2Placement3D::new(id, entity))
+        resolve::axis2_placement_3d(model, self.id(), self.position_ref()?)
     }
 
     /// The radius, guaranteed positive.
@@ -229,14 +221,11 @@ impl<'m> ToroidalSurface<'m> {
     ///
     /// [`Self::position_ref`] returns the raw reference; this resolves it
     /// so callers read location/axis/RefDirection without re-entering the
-    /// model themselves.
+    /// model themselves. A dangling reference is `MissingEntity` naming this
+    /// surface; any target other than an `IfcAxis2Placement3D` is
+    /// `WrongEntityType` naming the target.
     pub fn position<'v>(&self, model: &'v Model) -> GeometryResult<Axis2Placement3D<'v>> {
-        let id = self.position_ref()?;
-        let entity = model.get(id).ok_or(GeometryError::MissingEntity {
-            referrer: self.id(),
-            missing: id,
-        })?;
-        Ok(Axis2Placement3D::new(id, entity))
+        resolve::axis2_placement_3d(model, self.id(), self.position_ref()?)
     }
 
     /// Distance from the torus centre to the centre of the tube.
@@ -468,5 +457,66 @@ mod tests {
             .position(&model)
             .expect_err("placement 70 is not in the model");
         assert_eq!(error.entity(), Some(EntityId(1)));
+    }
+
+    /// A `Position` naming a 2D placement: the same slot layout starts with a
+    /// point, so an unchecked wrap would read it as a 3D frame.
+    fn model_with_2d_position() -> Model {
+        let mut model = Model::new();
+        model.insert(
+            EntityId(60),
+            Entity::new(
+                "IFCCARTESIANPOINT",
+                vec![Value::List(vec![Value::Real(1.0), Value::Real(2.0)])],
+            ),
+        );
+        model.insert(
+            EntityId(70),
+            Entity::new("IFCAXIS2PLACEMENT2D", vec![Value::Ref(EntityId(60))]),
+        );
+        model
+    }
+
+    fn assert_wrong_placement(result: GeometryResult<Axis2Placement3D<'_>>) {
+        let error = result.expect_err("#70 is not an IfcAxis2Placement3D");
+        assert!(
+            matches!(
+                error,
+                crate::GeometryError::WrongEntityType {
+                    entity: EntityId(70),
+                    expected: "IfcAxis2Placement3D",
+                    ..
+                }
+            ),
+            "got: {error:?}"
+        );
+    }
+
+    #[test]
+    fn a_plane_rejects_a_position_that_is_not_an_axis2_placement_3d() {
+        let model = model_with_2d_position();
+        let plane = surface("IFCPLANE", &[]);
+        assert_wrong_placement(Plane::new(EntityId(1), &plane).position(&model));
+    }
+
+    #[test]
+    fn a_cylinder_rejects_a_position_that_is_not_an_axis2_placement_3d() {
+        let model = model_with_2d_position();
+        let cylinder = surface("IFCCYLINDRICALSURFACE", &[2.0]);
+        assert_wrong_placement(CylindricalSurface::new(EntityId(2), &cylinder).position(&model));
+    }
+
+    #[test]
+    fn a_sphere_rejects_a_position_that_is_not_an_axis2_placement_3d() {
+        let model = model_with_2d_position();
+        let sphere = surface("IFCSPHERICALSURFACE", &[3.0]);
+        assert_wrong_placement(SphericalSurface::new(EntityId(3), &sphere).position(&model));
+    }
+
+    #[test]
+    fn a_torus_rejects_a_position_that_is_not_an_axis2_placement_3d() {
+        let model = model_with_2d_position();
+        let torus = surface("IFCTOROIDALSURFACE", &[5.0, 1.0]);
+        assert_wrong_placement(ToroidalSurface::new(EntityId(4), &torus).position(&model));
     }
 }
