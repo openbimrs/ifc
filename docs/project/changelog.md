@@ -293,7 +293,10 @@ variant, three rule ids are renamed, and `Budget::max_depth` is removed.
   `type.scalar.mismatch` now judges aggregate members (a string in
   `Coordinates`) and a reference in a primitive slot. Nested attribute
   aggregates (`LIST OF LIST OF ...`) stay unchecked: the schema tables do
-  not retain their element type.
+  not retain their element type. A reference to an entity whose type the
+  tables do not declare -- typically a later release's entity -- is no
+  longer reported as `structure.reference.wrong_type`; there is no basis for
+  a subtype verdict, and `type.entity.unknown` already warns about it.
 - `type.scalar.mismatch` now checks bounded and fixed-width strings. The
   primitive was read from the trailing token of the resolved type, so
   `STRING(255)` -- IFC4's `IfcLabel` and `IfcIdentifier` -- recognised

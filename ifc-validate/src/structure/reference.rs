@@ -53,7 +53,9 @@ pub fn dangling_references(model: &Model, report: &mut Report) {
 /// reached through a type that aliases one. The target must be that entity or
 /// a subtype of it. References in SELECT slots are left to
 /// [`crate::type_check`], which walks the SELECT's closure; a value that is
-/// not a reference at all is `type.entity.expected_reference`.
+/// not a reference at all is `type.entity.expected_reference`. A target whose
+/// type the tables do not declare is not judged: it is
+/// `type.entity.unknown`'s finding.
 ///
 /// One finding per distinct offending target in a slot, in ascending order.
 pub fn wrong_kind_references(model: &Model, schema: &Schema, report: &mut Report) {
@@ -78,6 +80,12 @@ pub fn wrong_kind_references(model: &Model, schema: &Schema, report: &mut Report
                 let Some(target_entity) = model.get(target) else {
                     continue; // already reported as dangling
                 };
+                // A target of a type these tables do not declare -- usually a
+                // later release's entity -- gives no basis for a subtype
+                // verdict; `type.entity.unknown` already reports it.
+                if schema.entity(&target_entity.type_name).is_none() {
+                    continue;
+                }
                 if !schema.is_a(&target_entity.type_name, &expected) {
                     offenders.push((target, expected, &target_entity.type_name));
                 }
@@ -145,6 +153,41 @@ fn collect(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A target of a type the tables do not declare is not accused of being
+    /// the wrong kind -- an IFC4X3 `IfcReferent` read against IFC4 tables --
+    /// while a declared wrong-kind target in the same aggregate still is.
+    #[test]
+    fn an_undeclared_target_type_is_not_judged() {
+        let schema = ifc_schema::ifc4();
+        let mut model = Model::new();
+        model.insert(
+            EntityId(1),
+            ifc_model::Entity::new("IFCREFERENT", Vec::new()),
+        );
+        model.insert(
+            EntityId(2),
+            ifc_model::Entity::new("IFCPROPERTYSET", Vec::new()),
+        );
+        let mut attributes =
+            vec![Value::Null; schema.attributes("IFCRELDEFINESBYPROPERTIES").len()];
+        attributes[4] = Value::List(vec![Value::Ref(EntityId(1)), Value::Ref(EntityId(2))]);
+        model.insert(
+            EntityId(3),
+            ifc_model::Entity::new("IFCRELDEFINESBYPROPERTIES", attributes),
+        );
+        let mut report = Report::new();
+        wrong_kind_references(&model, schema, &mut report);
+        let messages: Vec<&str> = report
+            .findings()
+            .iter()
+            .map(|finding| finding.message.as_str())
+            .collect();
+        assert_eq!(
+            messages,
+            ["declared IfcObjectDefinition but #2 is IFCPROPERTYSET"]
+        );
+    }
 
     /// References in aggregates expect the element type, including one
     /// reached through a type that aliases an aggregate.
