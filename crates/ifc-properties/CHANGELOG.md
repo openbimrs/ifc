@@ -12,6 +12,72 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `template_deviations(model)` compares every property set that an
+  `IfcRelDefinesByTemplate` links to an `IfcPropertySetTemplate` with that
+  template (#109), reading the model and its templates only, bound to the
+  declared release (IFC4 or IFC4X3; IFC2X3 has no templates and is refused
+  with `TemplateError::NoTemplates`). It returns a `TemplateReport` of
+  `TemplateFinding`s, each naming the set, the template and the concrete
+  mismatch: `MissingProperty`, `UnexpectedProperty` (matched by `Name`, as
+  the IFC4 `IfcPropertySetTemplate` documentation states), `WrongForm` (the
+  property's entity against the template's `TemplateType`, e.g. a single
+  value where `P_ENUMERATEDVALUE` is prescribed), `WrongMeasureType`
+  (`PrimaryMeasureType`, and `SecondaryMeasureType` for bounded and table
+  values, against the declared type of each value or the referenced
+  entity), `WrongSetKind` (a `QTO_*` template on an `IfcPropertySet`, a
+  `PSET_*` one on an `IfcElementQuantity`), `WrongAttachment` (a
+  `*_TYPEDRIVENONLY` set on an occurrence, an `*_OCCURRENCEDRIVEN` set on a
+  type) and `OutsideApplicableEntity` (`IfcEntity[/PREDEFINEDTYPE]`
+  entries, comma separated). Complex properties are compared with complex
+  templates member by member. Quantity sets are checked the same way with
+  `Q_*` templates. What the documentation leaves open is
+  `TemplateFinding::Undecided` with an `UndecidedReason`, never guessed:
+  an unknown or undocumented template type (IFC4X3 `Q_NUMBER`), an unknown
+  measure type or `ApplicableEntity` entry, an object whose predefined
+  type is unstated, a `[PerformanceHistory]` entry, a predefined property
+  set. Malformed facts met on the way are `PropertyAnomaly`s in the same
+  report. New types: `TemplateReport`, `TemplateFinding`, `MeasureRole`,
+  `UndecidedReason`, `TemplateError`, all `#[non_exhaustive]`.
+- `property_template_checked` and `property_set_template_checked` read a
+  template bound to the declared release and report every malformed fact
+  met (#108), refusing a model without a single supported release, an
+  IFC2X3 model (`TemplateError::NoTemplates`), an absent entity and a
+  non-template with `TemplateError`.
+- `PropertyAnomaly::NotATemplate`, `PropertyAnomaly::SlotCountMismatch` and
+  `PropertyAnomaly::MalformedAttribute` (#108, #109): a template member or
+  `RelatingTemplate` that is no template, a record whose attribute count
+  is not the release's, and an attribute value its declared type does not
+  admit (including an enumeration constant the release does not define).
+  `PropertyAnomaly` is `#[non_exhaustive]`, so this is not breaking.
+
+### Changed (breaking)
+
+- `PropertyTemplate` reads every attribute of both template entities by
+  name from the declared release's table (#108) and gains `kind`
+  (`PropertyTemplateKind::Simple` or `Complex`), `enumerators`,
+  `secondary_unit`, `expression`, `access_state`, `usage_name` and
+  `templates` (the nested `HasPropertyTemplates` of a complex template,
+  read through the same bounded, cycle-aware traversal as complex
+  properties, with `template(name)` to look one up). It is now
+  `#[non_exhaustive]`, so code that builds it with a struct literal or
+  destructures it exhaustively must change; later fields will not break
+  callers again.
+
+### Fixed
+
+- `property_template` read every template with the
+  `IfcSimplePropertyTemplate` layout (#108), so an
+  `IfcComplexPropertyTemplate`, including one written by
+  `add_complex_property_template`, reported its `UsageName` as its
+  `TemplateType` and never exposed its nested templates; and any entity at
+  all read as a template. It now returns `None` for an entity that is not a
+  simple or complex template in the declared release (the IFC4 table when
+  the header names none it bundles, and nothing in an IFC2X3 file).
+  `property_set_template`, `property_set_templates` and `template_of_set`
+  read their attributes by name the same way.
+
 ## [0.4.1] - 2026-09-27
 
 ### Added
