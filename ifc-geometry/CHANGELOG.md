@@ -14,6 +14,11 @@ everything released before per-crate changelogs began.
 
 ### Fixed
 
+- `Plane`, `CylindricalSurface`, `SphericalSurface` and `ToroidalSurface`
+  `::position(&model)` now type-check their target through
+  `resource::resolve` (#135). A `Position` naming anything other than an
+  `IfcAxis2Placement3D` is `WrongEntityType` naming the target; it used to
+  be wrapped as a 3D placement and misread.
 - An opening that a file makes void two hosts is subtracted from the first
   only (#59). `IfcFeatureElementSubtraction.VoidsElements` is a
   single-valued inverse in IFC2X3 and IFC4, but every `IfcRelVoidsElement`
