@@ -22,7 +22,7 @@ missing_docs = "deny"
 # IFC family: versioned path dependencies build standalone and normalize to
 # registry dependencies when packages are published.
 ifc-schema = { path = "ifc-schema", version = "0.2.2" }
-openbim-ifc = { path = "openbim-ifc", version = "0.7.1", default-features = false }
+openbim-ifc = { path = "openbim-ifc", version = "0.7.2", default-features = false }
 openbim-ifc-binding-core = { path = "openbim-ifc-binding-core", version = "0.1.0" }
 ifc-step = { path = "ifc-step", version = "0.3.0" }
 ifc-xml = { path = "ifc-xml", version = "0.2.1" }
