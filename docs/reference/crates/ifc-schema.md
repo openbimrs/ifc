@@ -13,7 +13,7 @@ IFC schema as data: entity table, supertype chain, attribute names.
 | Status | <span class="status-implemented">Implemented</span> |
 | Latest release | 0.2.2 (2026-09-23) |
 | Registries | [crates.io `ifc-schema`](https://crates.io/crates/ifc-schema) |
-| Via the facade | [`openbim-ifc`](./openbim-ifc) feature `schema` |
+| Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties`, `schema` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_schema/index.html) · [docs.rs](https://docs.rs/ifc-schema) |
 | Source | [`ifc-schema/`](https://github.com/openbimrs/ifc/tree/main/ifc-schema) |
 

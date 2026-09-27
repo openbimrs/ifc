@@ -129,7 +129,7 @@ gate_features() {
     cargo test -p ifc-geometry --features compile
     cargo clippy -p ifc-geometry --features compile --all-targets -- -D warnings
 
-    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,geometry-select" "--features step,spatial,geometry-select" "--all-features"; do
+    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,geometry-select" "--features step,spatial,geometry-select" "--features step,properties,geometry-select" "--all-features"; do
         # shellcheck disable=SC2086
         cargo build -p openbim-ifc $features
         # shellcheck disable=SC2086
@@ -140,6 +140,10 @@ gate_features() {
     # only when both are on. `--all-features` would hide a break in that exact
     # pairing.
     cargo test -p openbim-ifc --features step,spatial,geometry-select --test unreachable_corpus
+    # Door operation geometry (#148) joins placement and panel properties,
+    # so it exists only with both `geometry-select` and `properties`.
+    cargo test -p openbim-ifc --features step,properties,geometry-select --lib \
+        --test door_operation --test door_operation_refusals
 
     # Browser WASM column (#34). The facade must build for
     # wasm32-unknown-unknown with its default and widest pure-Rust feature
