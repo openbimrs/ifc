@@ -1,4 +1,7 @@
 //! `IfcMaterialLayerSetUsage` authored fields.
+//!
+//! IFC2X3 declares the first four attributes; `ReferenceExtent` is IFC4
+//! onwards.
 
 use ifc_model::EntityId;
 
@@ -16,7 +19,7 @@ impl MaterialLayerSetUsage<'_> {
             "IFCMATERIALLAYERSETUSAGE",
             self.id(),
             self.entity(),
-            0,
+            self.slot("ForLayerSet")?,
             "ForLayerSet",
         )
     }
@@ -27,7 +30,7 @@ impl MaterialLayerSetUsage<'_> {
             "IFCMATERIALLAYERSETUSAGE",
             self.id(),
             self.entity(),
-            1,
+            self.slot("LayerSetDirection")?,
             "LayerSetDirection",
         )?;
         LayerSetDirection::parse(token).ok_or_else(|| MaterialError::InvalidValue {
@@ -44,7 +47,7 @@ impl MaterialLayerSetUsage<'_> {
             "IFCMATERIALLAYERSETUSAGE",
             self.id(),
             self.entity(),
-            2,
+            self.slot("DirectionSense")?,
             "DirectionSense",
         )?;
         DirectionSense::parse(token).ok_or_else(|| MaterialError::InvalidValue {
@@ -61,19 +64,19 @@ impl MaterialLayerSetUsage<'_> {
             "IFCMATERIALLAYERSETUSAGE",
             self.id(),
             self.entity(),
-            3,
+            self.slot("OffsetFromReferenceLine")?,
             "OffsetFromReferenceLine",
         )
     }
 
     /// `IfcMaterialLayerSetUsage.ReferenceExtent`, if given. Must be
-    /// strictly positive when present.
+    /// strictly positive when present. `NotInSchema` for IFC2X3.
     pub fn reference_extent(self) -> MaterialResult<Option<f64>> {
         let value = optional_number(
             "IFCMATERIALLAYERSETUSAGE",
             self.id(),
             self.entity(),
-            4,
+            self.slot("ReferenceExtent")?,
             "ReferenceExtent",
         )?;
         if value.is_some_and(|value| value <= 0.0) {
@@ -91,8 +94,9 @@ impl MaterialLayerSetUsage<'_> {
 impl<'m> MaterialView<'m> {
     /// Iterates every `IfcMaterialLayerSetUsage` instance in the model.
     pub fn layer_set_usages(self) -> impl Iterator<Item = MaterialLayerSetUsage<'m>> + 'm {
+        let release = self.release();
         self.model()
             .of_type("IFCMATERIALLAYERSETUSAGE")
-            .map(|(id, entity)| MaterialLayerSetUsage::from_known(id, entity))
+            .map(move |(id, entity)| MaterialLayerSetUsage::from_known(id, entity, release))
     }
 }

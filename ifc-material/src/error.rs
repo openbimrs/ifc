@@ -1,6 +1,7 @@
 //! Typed failures while interpreting IFC material-resource entities.
 
 use ifc_model::EntityId;
+use ifc_schema::SchemaVersion;
 use thiserror::Error;
 
 /// A malformed, ambiguous, or unresolved material projection.
@@ -103,6 +104,72 @@ pub enum MaterialError {
         object: EntityId,
         /// The number of `IfcTypeObject` relationships found.
         count: usize,
+    },
+    /// The header declares several schemas, so no single release can be
+    /// bound to read or write the model against.
+    #[error("the header declares {schemas} schemas; material reads bind to exactly one")]
+    MultipleSchemas {
+        /// Number of `FILE_SCHEMA` declarations.
+        schemas: usize,
+    },
+    /// The header declares one schema this crate has no bundled table for,
+    /// so no slot position can be trusted.
+    #[error("the header declares {schema}, which has no bundled schema table")]
+    UnsupportedSchema {
+        /// The `FILE_SCHEMA` token as written.
+        schema: String,
+    },
+    /// The release the model is read against does not declare this
+    /// attribute, for example `Category` on an IFC2X3 `IfcMaterial` or
+    /// `Name` on an IFC2X3 `IfcMaterialLayer`. This is never reported as an
+    /// unset (`None`) value, and no other slot is read in its place.
+    #[error("{entity} {id}.{attribute} is not defined by {schema:?}")]
+    NotInSchema {
+        /// IFC entity type of the instance.
+        entity: &'static str,
+        /// Id of the instance.
+        id: EntityId,
+        /// Attribute name, as this crate's accessor names it (IFC4).
+        attribute: &'static str,
+        /// The release the model is read against.
+        schema: SchemaVersion,
+    },
+    /// The release the model is bound to has no instantiable entity of this
+    /// type, for example an `IfcMaterialConstituentSet` or
+    /// `IfcMaterialProfileSet` in an IFC2X3 model, or the abstract IFC2X3
+    /// `IfcMaterialProperties`. Such a record is refused, not decoded with
+    /// another release's layout.
+    #[error("{entity} is not an instantiable entity of {schema:?}")]
+    EntityNotInSchema {
+        /// The IFC entity type name.
+        entity: &'static str,
+        /// The record, when one is being read; `None` when authoring.
+        id: Option<EntityId>,
+        /// The release the model is bound to.
+        schema: SchemaVersion,
+    },
+    /// An authoring call supplied a value for an attribute the model's
+    /// release does not declare, such as a layer `Name` for an IFC2X3
+    /// model. The value is refused rather than silently dropped.
+    #[error("cannot author {entity}.{attribute}: not defined by {schema:?}")]
+    AuthoringNotInSchema {
+        /// The IFC entity type name being authored.
+        entity: &'static str,
+        /// The attribute, as this crate names it (IFC4).
+        attribute: &'static str,
+        /// The release the model is bound to.
+        schema: SchemaVersion,
+    },
+    /// The model's release requires an attribute the authoring call leaves
+    /// unset, such as the IFC2X3 `IfcRoot.OwnerHistory`.
+    #[error("cannot author {entity}: {schema:?} requires {attribute}")]
+    AuthoringRequired {
+        /// The IFC entity type name being authored.
+        entity: &'static str,
+        /// The required attribute, as the release names it.
+        attribute: &'static str,
+        /// The release the model is bound to.
+        schema: SchemaVersion,
     },
 }
 

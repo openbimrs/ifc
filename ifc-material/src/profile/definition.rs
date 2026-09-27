@@ -16,27 +16,57 @@ macro_rules! profile_accessors {
         impl<'m> $type<'m> {
             /// `Name`, if given.
             pub fn name(self) -> MaterialResult<Option<&'m str>> {
-                optional_text($ifc_name, self.id(), self.entity(), 0, "Name")
+                optional_text(
+                    $ifc_name,
+                    self.id(),
+                    self.entity(),
+                    self.slot("Name")?,
+                    "Name",
+                )
             }
 
             /// `Description`, if given.
             pub fn description(self) -> MaterialResult<Option<&'m str>> {
-                optional_text($ifc_name, self.id(), self.entity(), 1, "Description")
+                optional_text(
+                    $ifc_name,
+                    self.id(),
+                    self.entity(),
+                    self.slot("Description")?,
+                    "Description",
+                )
             }
 
             /// `Material`, the associated `IfcMaterial`, if given.
             pub fn material_id(self) -> MaterialResult<Option<EntityId>> {
-                optional_ref($ifc_name, self.id(), self.entity(), 2, "Material")
+                optional_ref(
+                    $ifc_name,
+                    self.id(),
+                    self.entity(),
+                    self.slot("Material")?,
+                    "Material",
+                )
             }
 
             /// `Profile`, the associated `IfcProfileDef`. Required.
             pub fn profile_id(self) -> MaterialResult<EntityId> {
-                required_ref($ifc_name, self.id(), self.entity(), 3, "Profile")
+                required_ref(
+                    $ifc_name,
+                    self.id(),
+                    self.entity(),
+                    self.slot("Profile")?,
+                    "Profile",
+                )
             }
 
             /// `Priority`, if given. Must be in `0..=100`.
             pub fn priority(self) -> MaterialResult<Option<i64>> {
-                let value = optional_integer($ifc_name, self.id(), self.entity(), 4, "Priority")?;
+                let value = optional_integer(
+                    $ifc_name,
+                    self.id(),
+                    self.entity(),
+                    self.slot("Priority")?,
+                    "Priority",
+                )?;
                 if value.is_some_and(|value| !(0..=100).contains(&value)) {
                     return Err(MaterialError::InvalidValue {
                         entity: $ifc_name,
@@ -50,7 +80,13 @@ macro_rules! profile_accessors {
 
             /// `Category`, if given.
             pub fn category(self) -> MaterialResult<Option<&'m str>> {
-                optional_text($ifc_name, self.id(), self.entity(), 5, "Category")
+                optional_text(
+                    $ifc_name,
+                    self.id(),
+                    self.entity(),
+                    self.slot("Category")?,
+                    "Category",
+                )
             }
         }
     };
@@ -66,7 +102,7 @@ impl MaterialProfileWithOffsets<'_> {
             "IFCMATERIALPROFILEWITHOFFSETS",
             self.id(),
             self.entity(),
-            6,
+            self.slot("OffsetValues")?,
             "OffsetValues",
         )
     }
@@ -75,17 +111,19 @@ impl MaterialProfileWithOffsets<'_> {
 impl<'m> MaterialView<'m> {
     /// Iterates every `IfcMaterialProfile` instance in the model.
     pub fn profiles(self) -> impl Iterator<Item = MaterialProfile<'m>> + 'm {
+        let release = self.release();
         self.model()
             .of_type("IFCMATERIALPROFILE")
-            .map(|(id, entity)| MaterialProfile::from_known(id, entity))
+            .map(move |(id, entity)| MaterialProfile::from_known(id, entity, release))
     }
 
     /// Iterates every `IfcMaterialProfileWithOffsets` instance in the model.
     pub fn profiles_with_offsets(
         self,
     ) -> impl Iterator<Item = MaterialProfileWithOffsets<'m>> + 'm {
+        let release = self.release();
         self.model()
             .of_type("IFCMATERIALPROFILEWITHOFFSETS")
-            .map(|(id, entity)| MaterialProfileWithOffsets::from_known(id, entity))
+            .map(move |(id, entity)| MaterialProfileWithOffsets::from_known(id, entity, release))
     }
 }

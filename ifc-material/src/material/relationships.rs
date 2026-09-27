@@ -1,4 +1,8 @@
 //! Material lists, classifications, and resource-level relationships.
+//!
+//! `IfcMaterialList` and `IfcMaterialClassificationRelationship` keep their
+//! layout in every release. `IfcMaterialRelationship` is IFC4 onwards; IFC4X3
+//! renamed its `Expression` to `MaterialExpression` at the same position.
 
 use ifc_model::EntityId;
 
@@ -20,7 +24,7 @@ impl MaterialClassificationRelationship<'_> {
             "IFCMATERIALCLASSIFICATIONRELATIONSHIP",
             self.id(),
             self.entity(),
-            0,
+            self.slot("MaterialClassifications")?,
             "MaterialClassifications",
             1,
         )
@@ -32,7 +36,7 @@ impl MaterialClassificationRelationship<'_> {
             "IFCMATERIALCLASSIFICATIONRELATIONSHIP",
             self.id(),
             self.entity(),
-            1,
+            self.slot("ClassifiedMaterial")?,
             "ClassifiedMaterial",
         )
     }
@@ -46,7 +50,7 @@ impl MaterialList<'_> {
             "IFCMATERIALLIST",
             self.id(),
             self.entity(),
-            0,
+            self.slot("Materials")?,
             "Materials",
             1,
         )
@@ -60,7 +64,7 @@ impl<'m> MaterialRelationship<'m> {
             "IFCMATERIALRELATIONSHIP",
             self.id(),
             self.entity(),
-            0,
+            self.slot("Name")?,
             "Name",
         )
     }
@@ -71,7 +75,7 @@ impl<'m> MaterialRelationship<'m> {
             "IFCMATERIALRELATIONSHIP",
             self.id(),
             self.entity(),
-            1,
+            self.slot("Description")?,
             "Description",
         )
     }
@@ -82,7 +86,7 @@ impl<'m> MaterialRelationship<'m> {
             "IFCMATERIALRELATIONSHIP",
             self.id(),
             self.entity(),
-            2,
+            self.slot("RelatingMaterial")?,
             "RelatingMaterial",
         )
     }
@@ -94,19 +98,20 @@ impl<'m> MaterialRelationship<'m> {
             "IFCMATERIALRELATIONSHIP",
             self.id(),
             self.entity(),
-            3,
+            self.slot("RelatedMaterials")?,
             "RelatedMaterials",
             1,
         )
     }
 
-    /// `IfcMaterialRelationship.Expression`, if given.
+    /// `IfcMaterialRelationship.Expression` (IFC4X3: `MaterialExpression`),
+    /// if given.
     pub fn expression(self) -> MaterialResult<Option<&'m str>> {
         optional_text(
             "IFCMATERIALRELATIONSHIP",
             self.id(),
             self.entity(),
-            4,
+            self.slot("Expression")?,
             "Expression",
         )
     }
@@ -117,22 +122,27 @@ impl<'m> MaterialView<'m> {
     pub fn classification_relationships(
         self,
     ) -> impl Iterator<Item = MaterialClassificationRelationship<'m>> + 'm {
+        let release = self.release();
         self.model()
             .of_type("IFCMATERIALCLASSIFICATIONRELATIONSHIP")
-            .map(|(id, entity)| MaterialClassificationRelationship::from_known(id, entity))
+            .map(move |(id, entity)| {
+                MaterialClassificationRelationship::from_known(id, entity, release)
+            })
     }
 
     /// Iterates every `IfcMaterialList` instance in the model.
     pub fn material_lists(self) -> impl Iterator<Item = MaterialList<'m>> + 'm {
+        let release = self.release();
         self.model()
             .of_type("IFCMATERIALLIST")
-            .map(|(id, entity)| MaterialList::from_known(id, entity))
+            .map(move |(id, entity)| MaterialList::from_known(id, entity, release))
     }
 
     /// Iterates every `IfcMaterialRelationship` instance in the model.
     pub fn material_relationships(self) -> impl Iterator<Item = MaterialRelationship<'m>> + 'm {
+        let release = self.release();
         self.model()
             .of_type("IFCMATERIALRELATIONSHIP")
-            .map(|(id, entity)| MaterialRelationship::from_known(id, entity))
+            .map(move |(id, entity)| MaterialRelationship::from_known(id, entity, release))
     }
 }

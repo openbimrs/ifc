@@ -17,10 +17,12 @@ group = "domain"
 
 [dependencies]
 ifc-model.workspace = true
+# Slot positions and select membership come from the bundled table of the
+# release the model declares (#77).
+ifc-schema.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
-ifc-schema.workspace = true
 ifc-step.workspace = true
 
 [lints]

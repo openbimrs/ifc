@@ -1,10 +1,25 @@
-//! Transactional IFC4 material authoring.
+//! Transactional material authoring, bound to the model's release.
 //!
 //! These helpers only stage records. [`ifc_model::Transaction::commit`] owns
 //! atomic graph/index application, so a failed batch cannot leave part of a
 //! material graph in the model.
+//!
+//! Every record is laid out from the bundled table of the release the
+//! model's header declares (see [`crate::material_schema`]), never from IFC4
+//! by assumption. A record type the release lacks (a constituent or profile
+//! set for IFC2X3) is refused with [`MaterialError::EntityNotInSchema`]; a
+//! draft value for an attribute it lacks (an IFC2X3 layer `Name`) with
+//! [`MaterialError::AuthoringNotInSchema`]; and an attribute it requires
+//! that the call leaves unset (the IFC2X3 `OwnerHistory`) with
+//! [`MaterialError::AuthoringRequired`]. Nothing is staged on refusal.
+mod composites;
 mod relationships;
 
+pub use composites::{
+    create_constituent, create_constituent_set, create_profile, create_profile_set,
+    create_profile_set_usage, create_profile_set_usage_tapering, create_profile_with_offsets,
+    ConstituentDraft, ProfileDraft,
+};
 pub use relationships::{
     create_material_classification_relationship, create_material_definition_representation,
     create_material_properties, create_material_relationship,
@@ -12,8 +27,9 @@ pub use relationships::{
 
 use std::collections::HashSet;
 
-use ifc_model::{Edit, Entity, EntityId, Model, Transaction, Value};
+use ifc_model::{Edit, EntityId, Model, Transaction, Value};
 
+use crate::release::Release;
 use crate::{DirectionSense, LayerSetDirection, LogicalValue, MaterialError, MaterialResult};
 
 /// Authored identity fields for `IfcMaterial`.
@@ -21,9 +37,9 @@ use crate::{DirectionSense, LayerSetDirection, LogicalValue, MaterialError, Mate
 pub struct MaterialDraft<'a> {
     /// `IfcMaterial.Name`.
     pub name: &'a str,
-    /// `IfcMaterial.Description`, if given.
+    /// `IfcMaterial.Description`, if given. IFC4 onwards.
     pub description: Option<&'a str>,
-    /// `IfcMaterial.Category`, if given.
+    /// `IfcMaterial.Category`, if given. IFC4 onwards.
     pub category: Option<&'a str>,
 }
 
@@ -32,17 +48,19 @@ pub struct MaterialDraft<'a> {
 pub struct LayerDraft<'a> {
     /// `IfcMaterialLayer.Material`, an `IfcMaterial` reference, if given.
     pub material: Option<EntityId>,
-    /// `IfcMaterialLayer.LayerThickness`. Must be finite and non-negative.
+    /// `IfcMaterialLayer.LayerThickness`. Must be finite and non-negative;
+    /// strictly positive for IFC2X3.
     pub thickness: f64,
     /// `IfcMaterialLayer.IsVentilated`, if given.
     pub is_ventilated: Option<LogicalValue>,
-    /// `IfcMaterialLayer.Name`, if given.
+    /// `IfcMaterialLayer.Name`, if given. IFC4 onwards.
     pub name: Option<&'a str>,
-    /// `IfcMaterialLayer.Description`, if given.
+    /// `IfcMaterialLayer.Description`, if given. IFC4 onwards.
     pub description: Option<&'a str>,
-    /// `IfcMaterialLayer.Category`, if given.
+    /// `IfcMaterialLayer.Category`, if given. IFC4 onwards.
     pub category: Option<&'a str>,
-    /// `IfcMaterialLayer.Priority`, if given. Must be in `0..=100`.
+    /// `IfcMaterialLayer.Priority`, if given. Must be in `0..=100`. IFC4
+    /// onwards.
     pub priority: Option<i64>,
 }
 
@@ -51,9 +69,9 @@ pub struct LayerDraft<'a> {
 pub struct LayerSetDraft<'a> {
     /// `IfcMaterialLayerSet.MaterialLayers`, in set order. Must be non-empty.
     pub layers: &'a [EntityId],
-    /// `IfcMaterialLayerSet.Name`, if given.
+    /// `IfcMaterialLayerSet.LayerSetName`, if given.
     pub name: Option<&'a str>,
-    /// `IfcMaterialLayerSet.Description`, if given.
+    /// `IfcMaterialLayerSet.Description`, if given. IFC4 onwards.
     pub description: Option<&'a str>,
 }
 
@@ -75,59 +93,114 @@ pub struct MaterialAssignmentDraft<'a> {
     pub relating_material: EntityId,
 }
 
-/// Stage a material identity record.
-pub fn create_material(tx: &mut Transaction, draft: MaterialDraft<'_>) -> EntityId {
-    tx.create(Entity::new(
+/// Stage a material identity record in the model's release layout.
+///
+/// # Errors
+///
+/// [`MaterialError::AuthoringNotInSchema`] for a `description` or
+/// `category` in an IFC2X3 model, whose `IfcMaterial` declares `Name` only,
+/// and the release-binding errors.
+pub fn create_material(
+    tx: &mut Transaction,
+    model: &Model,
+    draft: MaterialDraft<'_>,
+) -> MaterialResult<EntityId> {
+    let record = Release::of(model).record(
         "IFCMATERIAL",
         vec![
-            text(draft.name),
-            optional_text(draft.description),
-            optional_text(draft.category),
+            ("Name", text(draft.name)),
+            ("Description", optional_text(draft.description)),
+            ("Category", optional_text(draft.category)),
         ],
-    ))
+    )?;
+    Ok(tx.create(record))
+}
+
+/// The layer attributes [`create_layer`] and [`create_layer_with_offsets`]
+/// share, after checking the thickness against the release's measure.
+fn layer_values(
+    release: Release<'_>,
+    entity: &'static str,
+    draft: &LayerDraft<'_>,
+) -> MaterialResult<Vec<(&'static str, Value)>> {
+    let declared = release.declared(entity, "LayerThickness")?;
+    let positive = declared
+        .type_name
+        .eq_ignore_ascii_case("IfcPositiveLengthMeasure");
+    if !draft.thickness.is_finite() || draft.thickness < 0.0 {
+        return Err(invalid(
+            entity,
+            "LayerThickness",
+            "expected a finite non-negative length",
+        ));
+    }
+    if positive && draft.thickness == 0.0 {
+        return Err(invalid(
+            entity,
+            "LayerThickness",
+            "expected a positive length (IfcPositiveLengthMeasure)",
+        ));
+    }
+    if let Some(priority) = draft.priority.filter(|value| !(0..=100).contains(value)) {
+        return Err(invalid(entity, "Priority", priority.to_string()));
+    }
+    Ok(vec![
+        ("Material", draft.material.map_or(Value::Null, Value::Ref)),
+        ("LayerThickness", Value::Real(draft.thickness)),
+        (
+            "IsVentilated",
+            draft.is_ventilated.map_or(Value::Null, logical),
+        ),
+        ("Name", optional_text(draft.name)),
+        ("Description", optional_text(draft.description)),
+        ("Category", optional_text(draft.category)),
+        (
+            "Priority",
+            draft.priority.map_or(Value::Null, Value::Integer),
+        ),
+    ])
 }
 
 /// Stage a layer after checking its scalar and material-reference invariants.
+///
+/// # Errors
+///
+/// Refuses a non-finite or negative thickness (zero too for IFC2X3), a
+/// priority outside `0..=100`, a material that is not an `IfcMaterial`, and
+/// for IFC2X3 any `name`, `description`, `category` or `priority`
+/// ([`MaterialError::AuthoringNotInSchema`]).
 pub fn create_layer(
     tx: &mut Transaction,
     model: &Model,
     draft: LayerDraft<'_>,
 ) -> MaterialResult<EntityId> {
-    finite_non_negative("IFCMATERIALLAYER", "LayerThickness", draft.thickness)?;
-    if let Some(priority) = draft.priority.filter(|value| !(0..=100).contains(value)) {
-        return Err(invalid(
-            "IFCMATERIALLAYER",
-            "Priority",
-            priority.to_string(),
-        ));
-    }
+    const ENTITY: &str = "IFCMATERIALLAYER";
+    let release = Release::of(model);
+    let values = layer_values(release, ENTITY, &draft)?;
     if let Some(material) = draft.material {
-        require_type(tx, model, material, &["IFCMATERIAL"])?;
+        require_type(tx, model, release, material, &["IFCMATERIAL"])?;
     }
-    Ok(tx.create(Entity::new(
-        "IFCMATERIALLAYER",
-        vec![
-            draft.material.map_or(Value::Null, Value::Ref),
-            Value::Real(draft.thickness),
-            draft.is_ventilated.map_or(Value::Null, logical),
-            optional_text(draft.name),
-            optional_text(draft.description),
-            optional_text(draft.category),
-            draft.priority.map_or(Value::Null, Value::Integer),
-        ],
-    )))
+    Ok(tx.create(release.record(ENTITY, values)?))
 }
 
 /// Stage a non-empty ordered layer set. Layers may have been created earlier
 /// in this transaction; their staged type is checked just like stored records.
+///
+/// # Errors
+///
+/// Refuses an empty layer list, a member that is not a layer of the model's
+/// release, and a `description` for IFC2X3.
 pub fn create_layer_set(
     tx: &mut Transaction,
     model: &Model,
     draft: LayerSetDraft<'_>,
 ) -> MaterialResult<EntityId> {
+    const ENTITY: &str = "IFCMATERIALLAYERSET";
+    let release = Release::of(model);
+    release.require_entity(ENTITY, None)?;
     if draft.layers.is_empty() {
         return Err(invalid(
-            "IFCMATERIALLAYERSET",
+            ENTITY,
             "MaterialLayers",
             "expected at least one layer",
         ));
@@ -136,37 +209,74 @@ pub fn create_layer_set(
         require_type(
             tx,
             model,
+            release,
             layer,
             &["IFCMATERIALLAYER", "IFCMATERIALLAYERWITHOFFSETS"],
         )?;
     }
-    Ok(tx.create(Entity::new(
-        "IFCMATERIALLAYERSET",
+    let record = release.record(
+        ENTITY,
         vec![
-            refs(draft.layers),
-            optional_text(draft.name),
-            optional_text(draft.description),
+            ("MaterialLayers", refs(draft.layers)),
+            ("LayerSetName", optional_text(draft.name)),
+            ("Description", optional_text(draft.description)),
         ],
-    )))
+    )?;
+    Ok(tx.create(record))
 }
 
 /// Stage a product/type material association after validating the IFC GlobalId,
 /// non-empty relation end, and `IfcMaterialSelect` branch.
+///
+/// `OwnerHistory` is left unset. IFC2X3 requires it, so an IFC2X3 model is
+/// refused with [`MaterialError::AuthoringRequired`]; use
+/// [`associate_material_with_owner_history`] there.
+///
+/// # Errors
+///
+/// Refuses a malformed GlobalId, an empty or duplicated `RelatedObjects`,
+/// and a `RelatingMaterial` that is no `IfcMaterialSelect` member of the
+/// model's release.
 pub fn associate_material(
     tx: &mut Transaction,
     model: &Model,
     draft: MaterialAssignmentDraft<'_>,
 ) -> MaterialResult<EntityId> {
+    associate(tx, model, draft, None)
+}
+
+/// [`associate_material`] with a caller-supplied `IfcOwnerHistory`, which
+/// IFC2X3 requires. The owner history is never invented here (build one with
+/// `ifc-author`).
+///
+/// # Errors
+///
+/// Those of [`associate_material`], and an `owner_history` that is not an
+/// `IfcOwnerHistory`.
+pub fn associate_material_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    draft: MaterialAssignmentDraft<'_>,
+    owner_history: EntityId,
+) -> MaterialResult<EntityId> {
+    associate(tx, model, draft, Some(owner_history))
+}
+
+fn associate(
+    tx: &mut Transaction,
+    model: &Model,
+    draft: MaterialAssignmentDraft<'_>,
+    owner_history: Option<EntityId>,
+) -> MaterialResult<EntityId> {
+    const ENTITY: &str = "IFCRELASSOCIATESMATERIAL";
+    let release = Release::of(model);
+    release.require_entity(ENTITY, None)?;
     if ifc_model::guid::Guid::parse(draft.global_id).is_none() {
-        return Err(invalid(
-            "IFCRELASSOCIATESMATERIAL",
-            "GlobalId",
-            "expected IFC compressed GUID",
-        ));
+        return Err(invalid(ENTITY, "GlobalId", "expected IFC compressed GUID"));
     }
     if draft.related_objects.is_empty() {
         return Err(invalid(
-            "IFCRELASSOCIATESMATERIAL",
+            ENTITY,
             "RelatedObjects",
             "expected at least one object",
         ));
@@ -175,185 +285,39 @@ pub fn associate_material(
     for &object in draft.related_objects {
         if !unique.insert(object) {
             return Err(invalid(
-                "IFCRELASSOCIATESMATERIAL",
+                ENTITY,
                 "RelatedObjects",
                 "duplicate object reference",
             ));
         }
         require_exists(tx, model, object)?;
     }
-    require_type(tx, model, draft.relating_material, MATERIAL_SELECT_TYPES)?;
-    Ok(tx.create(Entity::new(
-        "IFCRELASSOCIATESMATERIAL",
+    require_accepts(
+        tx,
+        model,
+        release,
+        ENTITY,
+        "RelatingMaterial",
+        draft.relating_material,
+    )?;
+    if let Some(owner_history) = owner_history {
+        require_type(tx, model, release, owner_history, &["IFCOWNERHISTORY"])?;
+    }
+    let record = release.record(
+        ENTITY,
         vec![
-            text(draft.global_id),
-            Value::Null,
-            optional_text(draft.name),
-            optional_text(draft.description),
-            refs(draft.related_objects),
-            Value::Ref(draft.relating_material),
+            ("GlobalId", text(draft.global_id)),
+            (
+                "OwnerHistory",
+                owner_history.map_or(Value::Null, Value::Ref),
+            ),
+            ("Name", optional_text(draft.name)),
+            ("Description", optional_text(draft.description)),
+            ("RelatedObjects", refs(draft.related_objects)),
+            ("RelatingMaterial", Value::Ref(draft.relating_material)),
         ],
-    )))
-}
-
-/// Authored fields for `IfcMaterialConstituent`.
-#[derive(Debug, Clone, Copy)]
-pub struct ConstituentDraft<'a> {
-    /// `IfcMaterialConstituent.Name`, if given.
-    pub name: Option<&'a str>,
-    /// `IfcMaterialConstituent.Description`, if given.
-    pub description: Option<&'a str>,
-    /// `IfcMaterialConstituent.Material`, an `IfcMaterial` reference.
-    pub material: EntityId,
-    /// `IfcMaterialConstituent.Fraction`, if given. A ratio in `0.0..=1.0`.
-    pub fraction: Option<f64>,
-    /// `IfcMaterialConstituent.Category`, if given.
-    pub category: Option<&'a str>,
-}
-
-/// Stage an `IfcMaterialConstituent`.
-///
-/// `Fraction` is an `IfcNormalisedRatioMeasure`: values outside `0..=1` are
-/// refused because a constituent cannot be a negative or >100% share of its
-/// set, and a wrong fraction silently misstates a composition.
-pub fn create_constituent(
-    tx: &mut Transaction,
-    model: &Model,
-    draft: ConstituentDraft<'_>,
-) -> MaterialResult<EntityId> {
-    if let Some(fraction) = draft.fraction {
-        if !fraction.is_finite() || !(0.0..=1.0).contains(&fraction) {
-            return Err(invalid(
-                "IFCMATERIALCONSTITUENT",
-                "Fraction",
-                "expected a normalised ratio in 0..=1",
-            ));
-        }
-    }
-    require_type(tx, model, draft.material, &["IFCMATERIAL"])?;
-    Ok(tx.create(Entity::new(
-        "IFCMATERIALCONSTITUENT",
-        vec![
-            optional_text(draft.name),
-            optional_text(draft.description),
-            Value::Ref(draft.material),
-            draft.fraction.map_or(Value::Null, Value::Real),
-            optional_text(draft.category),
-        ],
-    )))
-}
-
-/// Stage an `IfcMaterialConstituentSet`. Must name at least one
-/// constituent: an empty set describes no composition at all.
-pub fn create_constituent_set(
-    tx: &mut Transaction,
-    model: &Model,
-    constituents: &[EntityId],
-    name: Option<&str>,
-    description: Option<&str>,
-) -> MaterialResult<EntityId> {
-    if constituents.is_empty() {
-        return Err(invalid(
-            "IFCMATERIALCONSTITUENTSET",
-            "MaterialConstituents",
-            "expected at least one constituent",
-        ));
-    }
-    for &constituent in constituents {
-        require_type(tx, model, constituent, &["IFCMATERIALCONSTITUENT"])?;
-    }
-    Ok(tx.create(Entity::new(
-        "IFCMATERIALCONSTITUENTSET",
-        vec![
-            optional_text(name),
-            optional_text(description),
-            refs(constituents),
-        ],
-    )))
-}
-
-/// Authored fields for `IfcMaterialProfile`.
-#[derive(Debug, Clone, Copy)]
-pub struct ProfileDraft<'a> {
-    /// `IfcMaterialProfile.Name`, if given.
-    pub name: Option<&'a str>,
-    /// `IfcMaterialProfile.Description`, if given.
-    pub description: Option<&'a str>,
-    /// `IfcMaterialProfile.Material`, an `IfcMaterial` reference, if given.
-    pub material: Option<EntityId>,
-    /// `IfcMaterialProfile.Profile`, an `IfcProfileDef` reference.
-    pub profile: EntityId,
-    /// `IfcMaterialProfile.Priority`, if given. Must be in `0..=100`.
-    pub priority: Option<i64>,
-    /// `IfcMaterialProfile.Category`, if given.
-    pub category: Option<&'a str>,
-}
-
-/// Stage an `IfcMaterialProfile`.
-///
-/// The profile reference is checked against `IfcProfileDef` subtypes that
-/// this workspace lowers; an arbitrary entity here would produce a material
-/// profile with no cross-section.
-pub fn create_profile(
-    tx: &mut Transaction,
-    model: &Model,
-    draft: ProfileDraft<'_>,
-) -> MaterialResult<EntityId> {
-    if let Some(priority) = draft.priority.filter(|value| !(0..=100).contains(value)) {
-        return Err(invalid(
-            "IFCMATERIALPROFILE",
-            "Priority",
-            priority.to_string(),
-        ));
-    }
-    if let Some(material) = draft.material {
-        require_type(tx, model, material, &["IFCMATERIAL"])?;
-    }
-    require_exists(tx, model, draft.profile)?;
-    Ok(tx.create(Entity::new(
-        "IFCMATERIALPROFILE",
-        vec![
-            optional_text(draft.name),
-            optional_text(draft.description),
-            draft.material.map_or(Value::Null, Value::Ref),
-            Value::Ref(draft.profile),
-            draft.priority.map_or(Value::Null, Value::Integer),
-            optional_text(draft.category),
-        ],
-    )))
-}
-
-/// Stage an `IfcMaterialProfileSet`. Must name at least one profile.
-pub fn create_profile_set(
-    tx: &mut Transaction,
-    model: &Model,
-    profiles: &[EntityId],
-    name: Option<&str>,
-    description: Option<&str>,
-    composite_profile: Option<EntityId>,
-) -> MaterialResult<EntityId> {
-    if profiles.is_empty() {
-        return Err(invalid(
-            "IFCMATERIALPROFILESET",
-            "MaterialProfiles",
-            "expected at least one profile",
-        ));
-    }
-    for &profile in profiles {
-        require_type(tx, model, profile, &["IFCMATERIALPROFILE"])?;
-    }
-    if let Some(composite) = composite_profile {
-        require_exists(tx, model, composite)?;
-    }
-    Ok(tx.create(Entity::new(
-        "IFCMATERIALPROFILESET",
-        vec![
-            optional_text(name),
-            optional_text(description),
-            refs(profiles),
-            composite_profile.map_or(Value::Null, Value::Ref),
-        ],
-    )))
+    )?;
+    Ok(tx.create(record))
 }
 
 /// Stage an `IfcMaterialList`. Must name at least one material.
@@ -362,23 +326,31 @@ pub fn create_material_list(
     model: &Model,
     materials: &[EntityId],
 ) -> MaterialResult<EntityId> {
+    const ENTITY: &str = "IFCMATERIALLIST";
+    let release = Release::of(model);
+    release.require_entity(ENTITY, None)?;
     if materials.is_empty() {
         return Err(invalid(
-            "IFCMATERIALLIST",
+            ENTITY,
             "Materials",
             "expected at least one material",
         ));
     }
     for &material in materials {
-        require_type(tx, model, material, &["IFCMATERIAL"])?;
+        require_type(tx, model, release, material, &["IFCMATERIAL"])?;
     }
-    Ok(tx.create(Entity::new("IFCMATERIALLIST", vec![refs(materials)])))
+    Ok(tx.create(release.record(ENTITY, vec![("Materials", refs(materials))])?))
 }
 
 /// Stage an `IfcMaterialLayerSetUsage`.
 ///
 /// Direction and sense are typed enums rather than strings: an invalid
 /// token cannot be constructed, so no runtime check is needed for them.
+///
+/// # Errors
+///
+/// Refuses a set that is not an `IfcMaterialLayerSet`, a non-finite offset,
+/// and a `reference_extent` for IFC2X3, which has no `ReferenceExtent`.
 pub fn create_layer_set_usage(
     tx: &mut Transaction,
     model: &Model,
@@ -388,62 +360,51 @@ pub fn create_layer_set_usage(
     offset_from_reference_line: f64,
     reference_extent: Option<f64>,
 ) -> MaterialResult<EntityId> {
-    require_type(tx, model, for_layer_set, &["IFCMATERIALLAYERSET"])?;
+    const ENTITY: &str = "IFCMATERIALLAYERSETUSAGE";
+    let release = Release::of(model);
+    release.require_entity(ENTITY, None)?;
+    require_type(tx, model, release, for_layer_set, &["IFCMATERIALLAYERSET"])?;
     if !offset_from_reference_line.is_finite() {
         return Err(invalid(
-            "IFCMATERIALLAYERSETUSAGE",
+            ENTITY,
             "OffsetFromReferenceLine",
             "expected a finite length",
         ));
     }
-    Ok(tx.create(Entity::new(
-        "IFCMATERIALLAYERSETUSAGE",
+    let record = release.record(
+        ENTITY,
         vec![
-            Value::Ref(for_layer_set),
-            Value::Enum(direction.as_token().into()),
-            Value::Enum(sense.as_token().into()),
-            Value::Real(offset_from_reference_line),
-            reference_extent.map_or(Value::Null, Value::Real),
+            ("ForLayerSet", Value::Ref(for_layer_set)),
+            (
+                "LayerSetDirection",
+                Value::Enum(direction.as_token().into()),
+            ),
+            ("DirectionSense", Value::Enum(sense.as_token().into())),
+            (
+                "OffsetFromReferenceLine",
+                Value::Real(offset_from_reference_line),
+            ),
+            (
+                "ReferenceExtent",
+                reference_extent.map_or(Value::Null, Value::Real),
+            ),
         ],
-    )))
+    )?;
+    Ok(tx.create(record))
 }
 
-/// Stage an `IfcMaterialProfileSetUsage`.
-///
-/// `CardinalPoint` selects the cross-section reference point and is an
-/// `IfcCardinalPointReference` in `1..=9`; anything else names no point.
-pub fn create_profile_set_usage(
-    tx: &mut Transaction,
-    model: &Model,
-    for_profile_set: EntityId,
-    cardinal_point: Option<i64>,
-    reference_extent: Option<f64>,
-) -> MaterialResult<EntityId> {
-    require_type(tx, model, for_profile_set, &["IFCMATERIALPROFILESET"])?;
-    if let Some(point) = cardinal_point.filter(|value| !(1..=9).contains(value)) {
-        return Err(invalid(
-            "IFCMATERIALPROFILESETUSAGE",
-            "CardinalPoint",
-            point.to_string(),
-        ));
-    }
-    Ok(tx.create(Entity::new(
-        "IFCMATERIALPROFILESETUSAGE",
-        vec![
-            Value::Ref(for_profile_set),
-            cardinal_point.map_or(Value::Null, Value::Integer),
-            reference_extent.map_or(Value::Null, Value::Real),
-        ],
-    )))
-}
-
-/// Stage an `IfcMaterialLayerWithOffsets`.
+/// Stage an `IfcMaterialLayerWithOffsets`. IFC4 onwards.
 ///
 /// The record carries nine slots: the seven it inherits from
 /// `IfcMaterialLayer` followed by its own two. Writing only the subtype
 /// attributes would shift every inherited value into the wrong slot, which
 /// is why this is a separate constructor rather than a flag on
 /// [`create_layer`].
+///
+/// # Errors
+///
+/// Those of [`create_layer`], non-finite offsets, and
+/// [`MaterialError::EntityNotInSchema`] for IFC2X3.
 pub fn create_layer_with_offsets(
     tx: &mut Transaction,
     model: &Model,
@@ -451,159 +412,45 @@ pub fn create_layer_with_offsets(
     offset_direction: LayerSetDirection,
     offset_values: [f64; 2],
 ) -> MaterialResult<EntityId> {
-    finite_non_negative(
-        "IFCMATERIALLAYERWITHOFFSETS",
-        "LayerThickness",
-        draft.thickness,
-    )?;
-    for value in offset_values {
-        if !value.is_finite() {
-            return Err(invalid(
-                "IFCMATERIALLAYERWITHOFFSETS",
-                "OffsetValues",
-                "expected finite lengths",
-            ));
-        }
+    const ENTITY: &str = "IFCMATERIALLAYERWITHOFFSETS";
+    let release = Release::of(model);
+    let mut values = layer_values(release, ENTITY, &draft)?;
+    if offset_values.iter().any(|value| !value.is_finite()) {
+        return Err(invalid(ENTITY, "OffsetValues", "expected finite lengths"));
     }
     if let Some(material) = draft.material {
-        require_type(tx, model, material, &["IFCMATERIAL"])?;
+        require_type(tx, model, release, material, &["IFCMATERIAL"])?;
     }
-    Ok(tx.create(Entity::new(
-        "IFCMATERIALLAYERWITHOFFSETS",
-        vec![
-            draft.material.map_or(Value::Null, Value::Ref),
-            Value::Real(draft.thickness),
-            draft.is_ventilated.map_or(Value::Null, logical),
-            optional_text(draft.name),
-            optional_text(draft.description),
-            optional_text(draft.category),
-            draft.priority.map_or(Value::Null, Value::Integer),
-            Value::Enum(offset_direction.as_token().into()),
-            Value::List(offset_values.iter().copied().map(Value::Real).collect()),
-        ],
-    )))
+    values.push((
+        "OffsetDirection",
+        Value::Enum(offset_direction.as_token().into()),
+    ));
+    values.push(("OffsetValues", reals(&offset_values)));
+    Ok(tx.create(release.record(ENTITY, values)?))
 }
 
-/// Stage an `IfcMaterialProfileWithOffsets`.
-///
-/// The offset variant of [`create_profile`]. `OffsetValues` is an
-/// `ARRAY [1:2]`: two finite lengths, so a single value or three is
-/// not an under-specified profile but a malformed one.
-///
-/// # Errors
-///
-/// Refuses non-finite offsets, a priority outside `0..=100`, and a
-/// `Profile` or `Material` reference whose target is the wrong type.
-pub fn create_profile_with_offsets(
-    tx: &mut Transaction,
-    model: &Model,
-    draft: ProfileDraft<'_>,
-    offset_values: [f64; 2],
-) -> MaterialResult<EntityId> {
-    if let Some(priority) = draft.priority.filter(|value| !(0..=100).contains(value)) {
-        return Err(invalid(
-            "IFCMATERIALPROFILEWITHOFFSETS",
-            "Priority",
-            priority.to_string(),
-        ));
-    }
-    for value in offset_values {
-        if !value.is_finite() {
-            return Err(invalid(
-                "IFCMATERIALPROFILEWITHOFFSETS",
-                "OffsetValues",
-                "expected finite lengths",
-            ));
-        }
-    }
-    if let Some(material) = draft.material {
-        require_type(tx, model, material, &["IFCMATERIAL"])?;
-    }
-    require_exists(tx, model, draft.profile)?;
-    Ok(tx.create(Entity::new(
-        "IFCMATERIALPROFILEWITHOFFSETS",
-        vec![
-            optional_text(draft.name),
-            optional_text(draft.description),
-            draft.material.map_or(Value::Null, Value::Ref),
-            Value::Ref(draft.profile),
-            draft.priority.map_or(Value::Null, Value::Integer),
-            optional_text(draft.category),
-            Value::List(offset_values.iter().copied().map(Value::Real).collect()),
-        ],
-    )))
-}
-
-/// Stage an `IfcMaterialProfileSetUsageTapering`.
-///
-/// Five slots: three inherited, then its own two.
-///
-/// # Errors
-///
-/// Refuses a set that is not an `IfcMaterialProfileSet`, and a
-/// cardinal point outside 1..=9 at either end.
-pub fn create_profile_set_usage_tapering(
-    tx: &mut Transaction,
-    model: &Model,
-    for_profile_set: EntityId,
-    for_profile_end_set: EntityId,
-    cardinal_point: Option<i64>,
-    cardinal_end_point: Option<i64>,
-    reference_extent: Option<f64>,
-) -> MaterialResult<EntityId> {
-    const ENTITY: &str = "IFCMATERIALPROFILESETUSAGETAPERING";
-    for set in [for_profile_set, for_profile_end_set] {
-        require_type(tx, model, set, &["IFCMATERIALPROFILESET"])?;
-    }
-    // Both ends carry the same 1..=9 cardinal point range.
-    for (point, attribute) in [
-        (cardinal_point, "CardinalPoint"),
-        (cardinal_end_point, "CardinalEndPoint"),
-    ] {
-        if let Some(value) = point.filter(|value| !(1..=9).contains(value)) {
-            return Err(invalid(ENTITY, attribute, value.to_string()));
-        }
-    }
-    Ok(tx.create(Entity::new(
-        ENTITY,
-        vec![
-            Value::Ref(for_profile_set),
-            cardinal_point.map_or(Value::Null, Value::Integer),
-            reference_extent.map_or(Value::Null, Value::Real),
-            Value::Ref(for_profile_end_set),
-            cardinal_end_point.map_or(Value::Null, Value::Integer),
-        ],
-    )))
-}
-
-const MATERIAL_SELECT_TYPES: &[&str] = &[
-    "IFCMATERIAL",
-    "IFCMATERIALLIST",
-    "IFCMATERIALLAYERSET",
-    "IFCMATERIALPROFILESET",
-    "IFCMATERIALCONSTITUENTSET",
-    "IFCMATERIALLAYERSETUSAGE",
-    "IFCMATERIALPROFILESETUSAGE",
-    "IFCMATERIALPROFILESETUSAGETAPERING",
-];
-
-fn require_exists(tx: &Transaction, model: &Model, id: EntityId) -> MaterialResult<()> {
+/// Fail unless `id` exists, staged or committed.
+pub(crate) fn require_exists(tx: &Transaction, model: &Model, id: EntityId) -> MaterialResult<()> {
     if type_name(tx, model, id).is_some() {
         Ok(())
     } else {
         Err(MaterialError::UnknownEntity { id })
     }
 }
-fn require_type(
+
+/// Fail unless `id` has one of `expected`'s types that the model's release
+/// can instantiate: an `IfcMaterialLayerWithOffsets` is no IFC2X3 layer.
+pub(crate) fn require_type(
     tx: &Transaction,
     model: &Model,
+    release: Release<'_>,
     id: EntityId,
     expected: &[&'static str],
 ) -> MaterialResult<()> {
     let actual = type_name(tx, model, id).ok_or(MaterialError::UnknownEntity { id })?;
     if expected
         .iter()
-        .any(|kind| actual.eq_ignore_ascii_case(kind))
+        .any(|kind| actual.eq_ignore_ascii_case(kind) && release.instantiates(kind))
     {
         Ok(())
     } else {
@@ -614,6 +461,31 @@ fn require_type(
         })
     }
 }
+
+/// Fail unless `id`'s type is a legal value of `entity.attribute` in the
+/// model's release, as its bundled table declares it (inheritance and
+/// SELECT membership included).
+pub(crate) fn require_accepts(
+    tx: &Transaction,
+    model: &Model,
+    release: Release<'_>,
+    entity: &'static str,
+    attribute: &'static str,
+    id: EntityId,
+) -> MaterialResult<()> {
+    let actual = type_name(tx, model, id).ok_or(MaterialError::UnknownEntity { id })?;
+    let (accepted, declared) = release.accepts(entity, attribute, actual)?;
+    if accepted {
+        Ok(())
+    } else {
+        Err(MaterialError::AuthoringReferenceType {
+            target: id,
+            expected: declared,
+            actual: actual.to_owned(),
+        })
+    }
+}
+
 fn type_name<'a>(tx: &'a Transaction, model: &'a Model, id: EntityId) -> Option<&'a str> {
     for edit in tx.edits().iter().rev() {
         match edit {
@@ -631,22 +503,8 @@ fn type_name<'a>(tx: &'a Transaction, model: &'a Model, id: EntityId) -> Option<
     }
     model.get(id).map(|entity| entity.type_name.as_ref())
 }
-fn finite_non_negative(
-    entity: &'static str,
-    attribute: &'static str,
-    value: f64,
-) -> MaterialResult<()> {
-    if value.is_finite() && value >= 0.0 {
-        Ok(())
-    } else {
-        Err(invalid(
-            entity,
-            attribute,
-            "expected a finite non-negative length",
-        ))
-    }
-}
-fn invalid(
+
+pub(crate) fn invalid(
     entity: &'static str,
     attribute: &'static str,
     value: impl Into<String>,
@@ -657,15 +515,23 @@ fn invalid(
         value: value.into(),
     }
 }
+
 fn text(value: &str) -> Value {
     Value::Text(value.into())
 }
-fn optional_text(value: Option<&str>) -> Value {
+
+pub(crate) fn optional_text(value: Option<&str>) -> Value {
     value.map_or(Value::Null, text)
 }
-fn refs(ids: &[EntityId]) -> Value {
+
+pub(crate) fn refs(ids: &[EntityId]) -> Value {
     Value::List(ids.iter().copied().map(Value::Ref).collect())
 }
+
+pub(crate) fn reals(values: &[f64]) -> Value {
+    Value::List(values.iter().copied().map(Value::Real).collect())
+}
+
 fn logical(value: LogicalValue) -> Value {
     match value {
         LogicalValue::False => Value::Bool(false),

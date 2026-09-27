@@ -28,9 +28,17 @@ malformed values and enforce immediate aggregate shape, required slots, and
 MaterialResource WHERE constraints. Authored placement and offset values are
 exposed here; geometric interpretation remains in `ifc-geometry`.
 
+Views and authoring bind to the release the model's header declares
+(IFC2X3 TC1, IFC4 ADD2 TC1 or IFC4X3 ADD2; see `material_schema`):
+every slot position comes from that release's bundled schema table. An
+attribute the release lacks is `MaterialError::NotInSchema`, and a record
+type it lacks is `MaterialError::EntityNotInSchema`; neither is read from
+another release's slot.
+
 ## Depends on
 
 - [`ifc-model`](./ifc-model)
+- [`ifc-schema`](./ifc-schema)
 
 ## Changes
 

@@ -2,25 +2,49 @@
 
 use ifc_model::{Entity, EntityId, Model, Value};
 
-use crate::{LogicalValue, MaterialError, MaterialResult};
+use crate::release::Release;
+use crate::{LogicalValue, MaterialError, MaterialResult, SchemaVersion};
 
 const MAX_TYPED_WRAPPERS: usize = 8;
 
 /// Borrowed MaterialResource interpretation of a model.
+///
+/// Every projection the view hands out reads against the release the
+/// model's header declares (see [`crate::material_schema`]): slot positions
+/// come from that release's bundled table, never from IFC4 by assumption.
 #[derive(Debug, Clone, Copy)]
 pub struct MaterialView<'m> {
     model: &'m Model,
+    release: Release<'m>,
 }
 
 impl<'m> MaterialView<'m> {
-    /// Wraps a model reference for MaterialResource projection.
+    /// Wraps a model reference for MaterialResource projection, bound to the
+    /// release its header declares.
     pub fn new(model: &'m Model) -> Self {
-        Self { model }
+        Self {
+            model,
+            release: Release::of(model),
+        }
     }
 
     /// Returns the underlying model this view borrows from.
     pub fn model(self) -> &'m Model {
         self.model
+    }
+
+    /// The release this view's projections read against.
+    ///
+    /// # Errors
+    ///
+    /// [`MaterialError::MultipleSchemas`] or
+    /// [`MaterialError::UnsupportedSchema`] when the header binds none.
+    pub fn schema(self) -> MaterialResult<SchemaVersion> {
+        self.release.bound().map(|(version, _)| version)
+    }
+
+    pub(crate) fn release(self) -> Release<'m> {
+        self.release
     }
 
     pub(crate) fn entity(self, source: EntityId, target: EntityId) -> MaterialResult<&'m Entity> {
@@ -35,22 +59,56 @@ impl<'m> MaterialView<'m> {
 
 macro_rules! borrowed_entity {
     ($name:ident, $ifc_name:literal) => {
-        /// Borrowed projection of `
-        #[doc = $ifc_name]
-        /// `.
+        #[doc = concat!("Borrowed projection of `", $ifc_name, "`.")]
+        #[doc = ""]
+        #[doc = "Projections handed out by a [`crate::MaterialView`] read against the"]
+        #[doc = "release the model declares; one built with `try_new` has no model and"]
+        #[doc = "reads against IFC4, as in 0.2.0."]
         #[derive(Debug, Clone, Copy)]
         pub struct $name<'m> {
             id: ifc_model::EntityId,
             entity: &'m ifc_model::Entity,
+            release: crate::release::Release<'m>,
         }
 
         impl<'m> $name<'m> {
             /// Wraps `entity` as this view after checking it is an instance
             /// of the expected IFC entity type; fails with
             /// [`crate::MaterialError::WrongEntityType`] otherwise.
+            ///
+            /// Without a model there is no header to bind, so the projection
+            /// reads against IFC4. Use [`Self::try_from_view`] to read the
+            /// release a model declares.
             pub fn try_new(
                 id: ifc_model::EntityId,
                 entity: &'m ifc_model::Entity,
+            ) -> crate::MaterialResult<Self> {
+                Self::check(id, entity, crate::release::Release::LEGACY)
+            }
+
+            /// Looks up `id` in the view's model and projects it against the
+            /// release the model declares.
+            ///
+            /// # Errors
+            ///
+            /// [`crate::MaterialError::UnknownEntity`] when `id` is not in
+            /// the model, and [`crate::MaterialError::WrongEntityType`] when
+            /// it is another entity type.
+            pub fn try_from_view(
+                view: crate::MaterialView<'m>,
+                id: ifc_model::EntityId,
+            ) -> crate::MaterialResult<Self> {
+                let entity = view
+                    .model()
+                    .get(id)
+                    .ok_or(crate::MaterialError::UnknownEntity { id })?;
+                Self::check(id, entity, view.release())
+            }
+
+            fn check(
+                id: ifc_model::EntityId,
+                entity: &'m ifc_model::Entity,
+                release: crate::release::Release<'m>,
             ) -> crate::MaterialResult<Self> {
                 if !entity.is_type($ifc_name) {
                     return Err(crate::MaterialError::WrongEntityType {
@@ -58,14 +116,23 @@ macro_rules! borrowed_entity {
                         actual: entity.type_name.to_string(),
                     });
                 }
-                Ok(Self { id, entity })
+                Ok(Self {
+                    id,
+                    entity,
+                    release,
+                })
             }
 
             pub(crate) fn from_known(
                 id: ifc_model::EntityId,
                 entity: &'m ifc_model::Entity,
+                release: crate::release::Release<'m>,
             ) -> Self {
-                Self { id, entity }
+                Self {
+                    id,
+                    entity,
+                    release,
+                }
             }
 
             /// The entity id of the wrapped record.
@@ -76,6 +143,30 @@ macro_rules! borrowed_entity {
             /// The raw, untyped entity record backing this view.
             pub fn entity(self) -> &'m ifc_model::Entity {
                 self.entity
+            }
+
+            /// The release this projection reads against.
+            ///
+            /// # Errors
+            ///
+            /// [`crate::MaterialError::MultipleSchemas`] or
+            /// [`crate::MaterialError::UnsupportedSchema`] when the model's
+            /// header binds none.
+            pub fn schema(self) -> crate::MaterialResult<crate::SchemaVersion> {
+                self.release.bound().map(|(version, _)| version)
+            }
+
+            /// The release binding of this projection.
+            #[allow(dead_code)]
+            pub(crate) fn release(self) -> crate::release::Release<'m> {
+                self.release
+            }
+
+            /// Slot of `attribute` (IFC4 name) on this record in the bound
+            /// release; `NotInSchema` or `EntityNotInSchema` otherwise.
+            #[allow(dead_code)]
+            pub(crate) fn slot(self, attribute: &'static str) -> crate::MaterialResult<usize> {
+                self.release.slot($ifc_name, self.id, attribute)
             }
         }
     };

@@ -10,7 +10,13 @@ borrowed_entity!(MaterialProfileSet, "IFCMATERIALPROFILESET");
 impl<'m> MaterialProfileSet<'m> {
     /// `IfcMaterialProfileSet.Name`, if given.
     pub fn name(self) -> MaterialResult<Option<&'m str>> {
-        optional_text("IFCMATERIALPROFILESET", self.id(), self.entity(), 0, "Name")
+        optional_text(
+            "IFCMATERIALPROFILESET",
+            self.id(),
+            self.entity(),
+            self.slot("Name")?,
+            "Name",
+        )
     }
 
     /// `IfcMaterialProfileSet.Description`, if given.
@@ -19,7 +25,7 @@ impl<'m> MaterialProfileSet<'m> {
             "IFCMATERIALPROFILESET",
             self.id(),
             self.entity(),
-            1,
+            self.slot("Description")?,
             "Description",
         )
     }
@@ -31,7 +37,7 @@ impl<'m> MaterialProfileSet<'m> {
             "IFCMATERIALPROFILESET",
             self.id(),
             self.entity(),
-            2,
+            self.slot("MaterialProfiles")?,
             "MaterialProfiles",
             1,
         )
@@ -43,7 +49,7 @@ impl<'m> MaterialProfileSet<'m> {
             "IFCMATERIALPROFILESET",
             self.id(),
             self.entity(),
-            3,
+            self.slot("CompositeProfile")?,
             "CompositeProfile",
         )
     }
@@ -52,8 +58,9 @@ impl<'m> MaterialProfileSet<'m> {
 impl<'m> MaterialView<'m> {
     /// Iterates every `IfcMaterialProfileSet` instance in the model.
     pub fn profile_sets(self) -> impl Iterator<Item = MaterialProfileSet<'m>> + 'm {
+        let release = self.release();
         self.model()
             .of_type("IFCMATERIALPROFILESET")
-            .map(|(id, entity)| MaterialProfileSet::from_known(id, entity))
+            .map(move |(id, entity)| MaterialProfileSet::from_known(id, entity, release))
     }
 }

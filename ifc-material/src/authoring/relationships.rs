@@ -8,38 +8,35 @@
 //!
 //! Every SET here is `[1:?]` in the schema, so an empty aggregate is a
 //! malformed record rather than an under-specified one, and is refused.
+//!
+//! Release differences: IFC2X3 declares no `IfcMaterialRelationship` and an
+//! ABSTRACT `IfcMaterialProperties`, so both are refused for an IFC2X3 model;
+//! IFC4X3 renamed `IfcMaterialRelationship.Expression` to
+//! `MaterialExpression` at the same position.
 
-use ifc_model::{Entity, EntityId, Model, Transaction, Value};
+use ifc_model::{EntityId, Model, Transaction, Value};
 
-use super::{invalid, optional_text, refs, require_exists, require_type};
+use super::{invalid, optional_text, refs, require_accepts, require_exists, require_type};
 use crate::error::MaterialResult;
+use crate::release::Release;
 
-/// `IfcMaterialDefinition` subtypes, which can carry their own properties.
-const MATERIAL_DEFINITION_TYPES: &[&str] = &[
-    "IFCMATERIAL",
-    "IFCMATERIALLAYER",
-    "IFCMATERIALLAYERSET",
-    "IFCMATERIALPROFILE",
-    "IFCMATERIALPROFILESET",
-    "IFCMATERIALCONSTITUENT",
-    "IFCMATERIALCONSTITUENTSET",
-];
-
-/// Stage an `IfcMaterialProperties`.
+/// Stage an `IfcMaterialProperties`. IFC4 onwards.
 ///
 /// Properties attached to a material definition rather than to an
 /// occurrence: density, conductivity, and the rest of a datasheet.
 /// `Properties` is a `SET [1:?]`, so an empty set is malformed and
 /// refused rather than written as an empty aggregate.
 ///
-/// `Material` accepts any `IfcMaterialDefinition` subtype, not only
-/// `IfcMaterial`: a layer, profile or constituent can carry its own
-/// properties.
+/// `Material` accepts any `IfcMaterialDefinition` subtype the model's
+/// release declares, not only `IfcMaterial`: a layer, profile or
+/// constituent can carry its own properties.
 ///
 /// # Errors
 ///
-/// Refuses an empty property set, and a `Material` reference whose
-/// target is not a material definition.
+/// Refuses an empty property set, a `Material` reference whose target is
+/// not a material definition, and an IFC2X3 model
+/// ([`crate::MaterialError::EntityNotInSchema`]), whose
+/// `IfcMaterialProperties` is abstract.
 pub fn create_material_properties(
     tx: &mut Transaction,
     model: &Model,
@@ -48,9 +45,12 @@ pub fn create_material_properties(
     properties: &[EntityId],
     material: EntityId,
 ) -> MaterialResult<EntityId> {
+    const ENTITY: &str = "IFCMATERIALPROPERTIES";
+    let release = Release::of(model);
+    release.require_entity(ENTITY, None)?;
     if properties.is_empty() {
         return Err(invalid(
-            "IFCMATERIALPROPERTIES",
+            ENTITY,
             "Properties",
             "expected at least one property",
         ));
@@ -58,30 +58,31 @@ pub fn create_material_properties(
     for property in properties {
         require_exists(tx, model, *property)?;
     }
-    require_type(tx, model, material, MATERIAL_DEFINITION_TYPES)?;
-    Ok(tx.create(Entity::new(
-        "IFCMATERIALPROPERTIES",
+    require_accepts(tx, model, release, ENTITY, "Material", material)?;
+    let record = release.record(
+        ENTITY,
         vec![
-            optional_text(name),
-            optional_text(description),
-            refs(properties),
-            Value::Ref(material),
+            ("Name", optional_text(name)),
+            ("Description", optional_text(description)),
+            ("Properties", refs(properties)),
+            ("Material", Value::Ref(material)),
         ],
-    )))
+    )?;
+    Ok(tx.create(record))
 }
 
-/// Stage an `IfcMaterialRelationship`.
+/// Stage an `IfcMaterialRelationship`. IFC4 onwards.
 ///
 /// Relates one material to the materials it is composed of or derived
-/// from: a concrete mix to its cement and aggregate. `MaterialExpression`
-/// records the mix rule as authored prose, not something this crate
-/// evaluates.
+/// from: a concrete mix to its cement and aggregate. `expression` records
+/// the mix rule as authored prose (IFC4 `Expression`, IFC4X3
+/// `MaterialExpression`), not something this crate evaluates.
 ///
 /// # Errors
 ///
 /// Refuses an empty `RelatedMaterials` set (`SET [1:?]`), a relating
-/// material that is also among the related ones, and any reference
-/// that is not an `IfcMaterial`.
+/// material that is also among the related ones, any reference that is
+/// not an `IfcMaterial`, and an IFC2X3 model.
 pub fn create_material_relationship(
     tx: &mut Transaction,
     model: &Model,
@@ -91,42 +92,46 @@ pub fn create_material_relationship(
     related: &[EntityId],
     expression: Option<&str>,
 ) -> MaterialResult<EntityId> {
+    const ENTITY: &str = "IFCMATERIALRELATIONSHIP";
+    let release = Release::of(model);
+    release.require_entity(ENTITY, None)?;
     if related.is_empty() {
         return Err(invalid(
-            "IFCMATERIALRELATIONSHIP",
+            ENTITY,
             "RelatedMaterials",
             "expected at least one related material",
         ));
     }
     if related.contains(&relating) {
         return Err(invalid(
-            "IFCMATERIALRELATIONSHIP",
+            ENTITY,
             "RelatedMaterials",
             "a material cannot be derived from itself",
         ));
     }
-    require_type(tx, model, relating, &["IFCMATERIAL"])?;
+    require_type(tx, model, release, relating, &["IFCMATERIAL"])?;
     for material in related {
-        require_type(tx, model, *material, &["IFCMATERIAL"])?;
+        require_type(tx, model, release, *material, &["IFCMATERIAL"])?;
     }
-    Ok(tx.create(Entity::new(
-        "IFCMATERIALRELATIONSHIP",
+    let record = release.record(
+        ENTITY,
         vec![
-            optional_text(name),
-            optional_text(description),
-            Value::Ref(relating),
-            refs(related),
-            optional_text(expression),
+            ("Name", optional_text(name)),
+            ("Description", optional_text(description)),
+            ("RelatingMaterial", Value::Ref(relating)),
+            ("RelatedMaterials", refs(related)),
+            ("Expression", optional_text(expression)),
         ],
-    )))
+    )?;
+    Ok(tx.create(record))
 }
 
 /// Stage an `IfcMaterialClassificationRelationship`.
 ///
 /// Classifies a material against external systems such as Uniclass or
-/// OmniClass. `MaterialClassifications` is a `SET [1:?]` of
-/// `IfcClassificationSelect`, so an unclassified relationship is
-/// refused rather than written empty.
+/// OmniClass. `MaterialClassifications` is a `SET [1:?]` (of
+/// `IfcClassificationSelect`, IFC2X3 `IfcClassificationNotationSelect`), so
+/// an unclassified relationship is refused rather than written empty.
 ///
 /// # Errors
 ///
@@ -138,9 +143,12 @@ pub fn create_material_classification_relationship(
     classifications: &[EntityId],
     material: EntityId,
 ) -> MaterialResult<EntityId> {
+    const ENTITY: &str = "IFCMATERIALCLASSIFICATIONRELATIONSHIP";
+    let release = Release::of(model);
+    release.require_entity(ENTITY, None)?;
     if classifications.is_empty() {
         return Err(invalid(
-            "IFCMATERIALCLASSIFICATIONRELATIONSHIP",
+            ENTITY,
             "MaterialClassifications",
             "expected at least one classification",
         ));
@@ -148,20 +156,24 @@ pub fn create_material_classification_relationship(
     for classification in classifications {
         require_exists(tx, model, *classification)?;
     }
-    require_type(tx, model, material, &["IFCMATERIAL"])?;
-    Ok(tx.create(Entity::new(
-        "IFCMATERIALCLASSIFICATIONRELATIONSHIP",
-        vec![refs(classifications), Value::Ref(material)],
-    )))
+    require_type(tx, model, release, material, &["IFCMATERIAL"])?;
+    let record = release.record(
+        ENTITY,
+        vec![
+            ("MaterialClassifications", refs(classifications)),
+            ("ClassifiedMaterial", Value::Ref(material)),
+        ],
+    )?;
+    Ok(tx.create(record))
 }
 
 /// Stage an `IfcMaterialDefinitionRepresentation`.
 ///
 /// Gives a material its presentation: the styled representations that
-/// say how it draws. The schema states OnlyStyledRepresentations, so
-/// every entry must be an `IfcStyledRepresentation` -- a surface style
-/// hung on a plain `IfcShapeRepresentation` parses and then renders as
-/// nothing.
+/// say how it draws. The schema states OnlyStyledRepresentations (IFC2X3
+/// WR11), so every entry must be an `IfcStyledRepresentation` -- a surface
+/// style hung on a plain `IfcShapeRepresentation` parses and then renders
+/// as nothing.
 ///
 /// # Errors
 ///
@@ -176,24 +188,34 @@ pub fn create_material_definition_representation(
     representations: &[EntityId],
     material: EntityId,
 ) -> MaterialResult<EntityId> {
+    const ENTITY: &str = "IFCMATERIALDEFINITIONREPRESENTATION";
+    let release = Release::of(model);
+    release.require_entity(ENTITY, None)?;
     if representations.is_empty() {
         return Err(invalid(
-            "IFCMATERIALDEFINITIONREPRESENTATION",
+            ENTITY,
             "Representations",
             "expected at least one styled representation",
         ));
     }
     for representation in representations {
-        require_type(tx, model, *representation, &["IFCSTYLEDREPRESENTATION"])?;
+        require_type(
+            tx,
+            model,
+            release,
+            *representation,
+            &["IFCSTYLEDREPRESENTATION"],
+        )?;
     }
-    require_type(tx, model, material, &["IFCMATERIAL"])?;
-    Ok(tx.create(Entity::new(
-        "IFCMATERIALDEFINITIONREPRESENTATION",
+    require_type(tx, model, release, material, &["IFCMATERIAL"])?;
+    let record = release.record(
+        ENTITY,
         vec![
-            optional_text(name),
-            optional_text(description),
-            refs(representations),
-            Value::Ref(material),
+            ("Name", optional_text(name)),
+            ("Description", optional_text(description)),
+            ("Representations", refs(representations)),
+            ("RepresentedMaterial", Value::Ref(material)),
         ],
-    )))
+    )?;
+    Ok(tx.create(record))
 }

@@ -12,22 +12,24 @@ use ifc_material::{
 };
 use ifc_model::{Entity, Model, Transaction, Value};
 
-fn material(tx: &mut Transaction, name: &str) -> ifc_model::EntityId {
+fn material(tx: &mut Transaction, model: &Model, name: &str) -> ifc_model::EntityId {
     create_material(
         tx,
+        model,
         MaterialDraft {
             name,
             description: None,
             category: None,
         },
     )
+    .expect("an IFC4 material")
 }
 
 #[test]
 fn a_constituent_set_commits_and_reads_back() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let steel = material(&mut tx, "Steel");
+    let steel = material(&mut tx, &model, "Steel");
     let c = create_constituent(
         &mut tx,
         &model,
@@ -52,7 +54,7 @@ fn a_constituent_set_commits_and_reads_back() {
 fn a_fraction_outside_the_normalised_range_is_refused() {
     let model = Model::default();
     let mut tx = Transaction::new(&model);
-    let steel = material(&mut tx, "Steel");
+    let steel = material(&mut tx, &model, "Steel");
     let err = create_constituent(
         &mut tx,
         &model,
@@ -89,7 +91,7 @@ fn a_layer_with_offsets_writes_inherited_slots_before_its_own() {
     // (slots 7 and 8) is what proves the layout.
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let steel = material(&mut tx, "Steel");
+    let steel = material(&mut tx, &model, "Steel");
     let layer = create_layer_with_offsets(
         &mut tx,
         &model,
@@ -124,7 +126,7 @@ fn a_layer_with_offsets_writes_inherited_slots_before_its_own() {
 fn a_usage_must_point_at_the_matching_kind_of_set() {
     let model = Model::default();
     let mut tx = Transaction::new(&model);
-    let steel = material(&mut tx, "Steel");
+    let steel = material(&mut tx, &model, "Steel");
     let layer = create_layer(
         &mut tx,
         &model,
@@ -172,7 +174,7 @@ fn a_usage_must_point_at_the_matching_kind_of_set() {
 fn a_profile_set_commits_and_refuses_a_bad_priority() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let steel = material(&mut tx, "Steel");
+    let steel = material(&mut tx, &model, "Steel");
     // A minimal profile record: the constructor checks existence, not shape,
     // because profile geometry is ifc-geometry's concern, not this crate's.
     let shape = tx.create(Entity::new(

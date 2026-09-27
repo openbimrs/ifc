@@ -35,8 +35,9 @@ fn positive_extent(
     entity_type: &'static str,
     id: EntityId,
     entity: &ifc_model::Entity,
+    slot: usize,
 ) -> MaterialResult<Option<f64>> {
-    let value = optional_number(entity_type, id, entity, 2, "ReferenceExtent")?;
+    let value = optional_number(entity_type, id, entity, slot, "ReferenceExtent")?;
     if value.is_some_and(|value| value <= 0.0) {
         return Err(MaterialError::InvalidValue {
             entity: entity_type,
@@ -53,19 +54,36 @@ macro_rules! usage_accessors {
         impl $type<'_> {
             /// `ForProfileSet`. Required.
             pub fn profile_set_id(self) -> MaterialResult<EntityId> {
-                required_ref($ifc_name, self.id(), self.entity(), 0, "ForProfileSet")
+                required_ref(
+                    $ifc_name,
+                    self.id(),
+                    self.entity(),
+                    self.slot("ForProfileSet")?,
+                    "ForProfileSet",
+                )
             }
 
             /// `CardinalPoint`, if given. Must decode to a positive
             /// `IfcCardinalPointReference`.
             pub fn cardinal_point(self) -> MaterialResult<Option<CardinalPointReference>> {
-                cardinal($ifc_name, self.id(), self.entity(), 1, "CardinalPoint")
+                cardinal(
+                    $ifc_name,
+                    self.id(),
+                    self.entity(),
+                    self.slot("CardinalPoint")?,
+                    "CardinalPoint",
+                )
             }
 
             /// `ReferenceExtent`, if given. Must be strictly positive when
             /// present.
             pub fn reference_extent(self) -> MaterialResult<Option<f64>> {
-                positive_extent($ifc_name, self.id(), self.entity())
+                positive_extent(
+                    $ifc_name,
+                    self.id(),
+                    self.entity(),
+                    self.slot("ReferenceExtent")?,
+                )
             }
         }
     };
@@ -83,7 +101,7 @@ impl MaterialProfileSetUsageTapering<'_> {
             "IFCMATERIALPROFILESETUSAGETAPERING",
             self.id(),
             self.entity(),
-            3,
+            self.slot("ForProfileEndSet")?,
             "ForProfileEndSet",
         )
     }
@@ -95,7 +113,7 @@ impl MaterialProfileSetUsageTapering<'_> {
             "IFCMATERIALPROFILESETUSAGETAPERING",
             self.id(),
             self.entity(),
-            4,
+            self.slot("CardinalEndPoint")?,
             "CardinalEndPoint",
         )
     }
@@ -104,9 +122,10 @@ impl MaterialProfileSetUsageTapering<'_> {
 impl<'m> MaterialView<'m> {
     /// Iterates every `IfcMaterialProfileSetUsage` instance in the model.
     pub fn profile_set_usages(self) -> impl Iterator<Item = MaterialProfileSetUsage<'m>> + 'm {
+        let release = self.release();
         self.model()
             .of_type("IFCMATERIALPROFILESETUSAGE")
-            .map(|(id, entity)| MaterialProfileSetUsage::from_known(id, entity))
+            .map(move |(id, entity)| MaterialProfileSetUsage::from_known(id, entity, release))
     }
 
     /// Iterates every `IfcMaterialProfileSetUsageTapering` instance in the
@@ -114,8 +133,11 @@ impl<'m> MaterialView<'m> {
     pub fn tapering_profile_set_usages(
         self,
     ) -> impl Iterator<Item = MaterialProfileSetUsageTapering<'m>> + 'm {
+        let release = self.release();
         self.model()
             .of_type("IFCMATERIALPROFILESETUSAGETAPERING")
-            .map(|(id, entity)| MaterialProfileSetUsageTapering::from_known(id, entity))
+            .map(move |(id, entity)| {
+                MaterialProfileSetUsageTapering::from_known(id, entity, release)
+            })
     }
 }

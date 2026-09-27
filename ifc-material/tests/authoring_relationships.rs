@@ -16,15 +16,17 @@ use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 use ifc_step::StepCodec;
 
 /// A material to relate.
-fn material(tx: &mut Transaction, name: &str) -> EntityId {
+fn material(tx: &mut Transaction, model: &Model, name: &str) -> EntityId {
     create_material(
         tx,
+        model,
         MaterialDraft {
             name,
             description: None,
             category: None,
         },
     )
+    .expect("an IFC4 material")
 }
 
 /// A concrete mix relates to its constituent materials.
@@ -32,9 +34,9 @@ fn material(tx: &mut Transaction, name: &str) -> EntityId {
 fn an_authored_material_relationship_reads_back() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let concrete = material(&mut tx, "C30/37");
-    let cement = material(&mut tx, "CEM I 42.5N");
-    let aggregate = material(&mut tx, "Gravel 4/32");
+    let concrete = material(&mut tx, &model, "C30/37");
+    let cement = material(&mut tx, &model, "CEM I 42.5N");
+    let aggregate = material(&mut tx, &model, "Gravel 4/32");
     create_material_relationship(
         &mut tx,
         &model,
@@ -66,7 +68,7 @@ fn an_authored_material_relationship_reads_back() {
 fn authored_material_properties_read_back() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let steel = material(&mut tx, "S355");
+    let steel = material(&mut tx, &model, "S355");
     let density = tx.create(Entity::new(
         "IFCPROPERTYSINGLEVALUE",
         vec![
@@ -100,7 +102,7 @@ fn authored_material_properties_read_back() {
 fn an_authored_classification_reads_back() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let brick = material(&mut tx, "Clay brick");
+    let brick = material(&mut tx, &model, "Clay brick");
     let reference = tx.create(Entity::new(
         "IFCCLASSIFICATIONREFERENCE",
         vec![
@@ -132,8 +134,8 @@ fn an_authored_classification_reads_back() {
 fn meaningless_relationships_are_refused() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let a = material(&mut tx, "A");
-    let b = material(&mut tx, "B");
+    let a = material(&mut tx, &model, "A");
+    let b = material(&mut tx, &model, "B");
     tx.commit(&mut model).expect("commit");
     let mut tx = Transaction::new(&model);
 
@@ -164,7 +166,7 @@ fn meaningless_relationships_are_refused() {
 fn only_styled_representations_are_accepted() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let paint = material(&mut tx, "Paint");
+    let paint = material(&mut tx, &model, "Paint");
     let styled = tx.create(Entity::new(
         "IFCSTYLEDREPRESENTATION",
         vec![Value::Null, Value::Null, Value::Null, Value::List(vec![])],
@@ -197,7 +199,7 @@ fn only_styled_representations_are_accepted() {
 fn an_offset_profile_survives_step_text() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let steel = material(&mut tx, "S355");
+    let steel = material(&mut tx, &model, "S355");
     let profile = tx.create(Entity::new(
         "IFCRECTANGLEPROFILEDEF",
         vec![

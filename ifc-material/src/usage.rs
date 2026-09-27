@@ -9,10 +9,11 @@
 //! - `resolution.rs`: bounded association resolution.
 
 mod assignment;
-mod ifc4_type_objects;
 mod resolution;
 
 pub use assignment::MaterialAssignment;
+#[cfg(test)]
+pub(crate) use resolution::SELECT_MEMBERS;
 pub use resolution::{
     AssignmentSource, MaterialDefinition, MaterialUsageDefinition, ResolvedAssignment,
     ResolvedMaterialSelect,

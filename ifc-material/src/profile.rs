@@ -3,6 +3,10 @@
 //! This module projects authored MaterialResource profile references, cardinal
 //! points, extents, offsets, and taper fields. `ifc-geometry::input` owns their
 //! geometric interpretation and lowering.
+//!
+//! IFC4 onwards. IFC2X3 declares no material profile, profile set or profile
+//! set usage, so every accessor on such a record in an IFC2X3 model fails with
+//! [`crate::MaterialError::EntityNotInSchema`].
 
 //! ## Internal split
 //!
