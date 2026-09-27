@@ -43,11 +43,15 @@ pub enum PropertyAnomaly {
         /// The set not resolved.
         rejected: EntityId,
     },
-    /// Two properties of the same name in one property set.
+    /// Two properties of the same name in one property set, or two property
+    /// templates of the same name in one set or complex template.
     ///
     /// Forbidden in IFC4 (`IfcPropertySet.UniquePropertyNames`) and IFC2X3
     /// (`WR32`). [`PropertySet::property`](crate::PropertySet::property)
-    /// answers with the first in `HasProperties` order.
+    /// answers with the first in `HasProperties` order. For templates,
+    /// `IfcPropertySetTemplate` and `IfcComplexPropertyTemplate` both carry
+    /// `UniquePropertyNames`; `set` is then the template, and the first
+    /// template in `HasPropertyTemplates` order is the one a check uses.
     DuplicatePropertyName {
         /// The property set.
         set: EntityId,
@@ -126,8 +130,9 @@ pub enum PropertyAnomaly {
         /// The value found, rendered for the message.
         found: String,
     },
-    /// A property set, quantity set, complex property or complex quantity
-    /// lists a member id that is not in the file.
+    /// A property set, quantity set, complex property or complex quantity,
+    /// or a property set or complex template, lists a member id that is not
+    /// in the file.
     ///
     /// The member cannot be read, so it is absent from the resolved value.
     MissingMember {
@@ -163,12 +168,13 @@ pub enum PropertyAnomaly {
         /// The member listed again.
         member: EntityId,
     },
-    /// A complex property or complex quantity reaches itself again through
-    /// its members.
+    /// A complex property, complex quantity or complex property template
+    /// reaches itself again through its members.
     ///
     /// The schema forbids only a DIRECT self-member (`IfcComplexProperty`
-    /// `WR21`, `IfcPhysicalComplexQuantity.NoSelfReference`); a longer
-    /// cycle is just as unresolvable. `member` is already being read higher
+    /// `WR21`, `IfcPhysicalComplexQuantity.NoSelfReference`,
+    /// `IfcComplexPropertyTemplate.NoSelfReference`); a longer cycle is just
+    /// as unresolvable. `member` is already being read higher
     /// up the same path, so it is left out of `complex`'s resolved members.
     ComplexCycle {
         /// The complex entity whose member list closes the cycle.
@@ -197,7 +203,105 @@ pub enum PropertyAnomaly {
         /// The nested member references followed.
         limit: usize,
     },
+    /// A template's member list, or an `IfcRelDefinesByTemplate`, names an
+    /// entity that is not a template of the required kind.
+    ///
+    /// `HasPropertyTemplates` is a `SET [1:?] OF IfcPropertyTemplate` and
+    /// `RelatingTemplate` an `IfcPropertySetTemplate`. The entity is not
+    /// read as a template.
+    NotATemplate {
+        /// The template or relationship naming it.
+        container: EntityId,
+        /// The entity named.
+        member: EntityId,
+        /// Its IFC type name.
+        type_name: String,
+    },
+    /// A record's attribute count differs from what the bound release
+    /// declares for its entity.
+    ///
+    /// Attributes are read by name from that release's table, so a short
+    /// record would otherwise read its missing trailing attributes as unset.
+    /// The attributes present are still read.
+    SlotCountMismatch {
+        /// The malformed record.
+        entity: EntityId,
+        /// Its IFC type name.
+        type_name: String,
+        /// The attribute count the release declares.
+        expected: usize,
+        /// The attribute count in the file.
+        actual: usize,
+    },
+    /// An attribute holds a value its declared type does not admit: a
+    /// number where a label is declared, an enumeration constant that is not
+    /// a member of the release's enumeration, or a reference to an entity
+    /// outside the declared type.
+    ///
+    /// The value is still reported as written where the view has a place
+    /// for it (an enumeration constant, a reference id), and left unset
+    /// otherwise.
+    MalformedAttribute {
+        /// The entity holding the attribute.
+        entity: EntityId,
+        /// The attribute, as the schema names it.
+        attribute: &'static str,
+        /// The value found, rendered for the message.
+        found: String,
+    },
 }
+
+/// Why property templates could not be read or checked against the
+/// release a model declares.
+///
+/// Distinct from [`PropertyAnomaly`]: an anomaly is a malformed fact inside
+/// a file that can still be read; this refuses the whole request.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum TemplateError {
+    /// The model cannot be bound to one release, for the reason
+    /// [`exact_schema`](crate::exact_schema) gives: STEP diagnostics, no or
+    /// several `FILE_SCHEMA` entries, or an unsupported one.
+    Release(crate::ExactPropertyError),
+    /// The declared release defines no property templates.
+    ///
+    /// `IfcPropertySetTemplate` and its property templates are new in IFC4;
+    /// IFC2X3 TC1 declares none of them, so nothing in such a file can be a
+    /// template.
+    NoTemplates {
+        /// The release the header declares.
+        schema: ifc_schema::SchemaVersion,
+    },
+    /// The entity is not in the model.
+    MissingEntity {
+        /// The id named by the caller.
+        id: EntityId,
+    },
+    /// The entity is not the kind of template asked for.
+    NotATemplate {
+        /// The entity.
+        id: EntityId,
+        /// Its IFC type name.
+        type_name: String,
+    },
+}
+
+impl std::fmt::Display for TemplateError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Release(error) => write!(f, "{error}"),
+            Self::NoTemplates { schema } => {
+                write!(f, "{schema:?} defines no property templates")
+            }
+            Self::MissingEntity { id } => write!(f, "#{} is not in the model", id.0),
+            Self::NotATemplate { id, type_name } => {
+                write!(f, "#{} is a {type_name}, not the template asked for", id.0)
+            }
+        }
+    }
+}
+
+impl std::error::Error for TemplateError {}
 
 /// A refused authoring request.
 ///

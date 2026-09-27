@@ -12,7 +12,7 @@
 //! |---|---|
 //! | `pset` | `IfcPropertySet` and single/enumerated/list/table properties |
 //! | `quantity` | `IfcElementQuantity`: length, area, volume, weight, count |
-//! | `template` | `IfcPropertySetTemplate` and property templates |
+//! | `template` | `IfcPropertySetTemplate`, property templates, and sets checked against them |
 //! | `standard` | The official Pset catalogue from the shipped XML definitions |
 //! | `unit` | Unit assignment, prefixes and conversion-based units |
 //! | `value` | `IfcValue` measure types and their interpretation |
@@ -45,7 +45,7 @@ mod template;
 mod unit;
 mod value;
 
-pub use error::{PropertyAnomaly, PropertyError, PropertyResult};
+pub use error::{PropertyAnomaly, PropertyError, PropertyResult, TemplateError};
 pub use exact::{
     exact_predefined_sets, exact_properties, exact_properties_where, exact_property, exact_schema,
     exact_unit, ExactBoundedValue, ExactEntityRef, ExactEnumeratedValue, ExactEnumeration,
@@ -81,8 +81,10 @@ pub use query::{
     properties_of, property_value, resolved_properties, ResolvedProperties, ResolvedSet, Source,
 };
 pub use template::{
-    property_set_template, property_set_templates, property_template, template_of_set,
-    PropertySetTemplate, PropertyTemplate,
+    property_set_template, property_set_template_checked, property_set_templates,
+    property_template, property_template_checked, template_deviations, template_of_set,
+    MeasureRole, PropertySetTemplate, PropertyTemplate, PropertyTemplateKind, TemplateFinding,
+    TemplateReport, UndecidedReason,
 };
 pub use unit::{
     add_context_dependent_unit, add_conversion_based_unit, add_conversion_based_unit_with_offset,
