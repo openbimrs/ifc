@@ -11,7 +11,8 @@ IFC schema as data: entity table, supertype chain, attribute names.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.2.2 (2026-09-23) |
+| Latest release | 0.2.3 (2026-09-27) |
+| On `main` | 0.2.2 (unreleased) |
 | Registries | [crates.io `ifc-schema`](https://crates.io/crates/ifc-schema) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties`, `schema` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_schema/index.html) · [docs.rs](https://docs.rs/ifc-schema) |
@@ -30,13 +31,19 @@ IFC schema as data: entity table, supertype chain, attribute names.
 
 ## Changes
 
-Latest release, 0.2.2 (2026-09-23):
+Latest release, 0.2.3 (2026-09-27):
 
-### Fixed
+Maintenance release from `maint/ifc-schema-0.2`: the 0.2.2 code with only
+the data change below, so it keeps `openbim-step` 0.5.1 and every
+dependent's `^0.2.2` resolves to it. `main` carries the same change.
 
-- Builds for `wasm32-unknown-unknown` (#34). `ahash`'s default
-  `runtime-rng` pulled in getrandom 0.3, which fails on that target, so no
-  crate depending on this one could be compiled to WebAssembly. Native
-  builds keep runtime-seeded hashing; wasm32 builds use a compile-time seed.
+### Changed
+
+- The bundled IFC2X3 TC1, IFC4 ADD2 TC1 and IFC4X3 ADD2 schemas no longer
+  carry WHERE-rule expressions: `EntityDef::where_rules` keeps each rule's
+  `label`, and its `expression` is empty. The expressions are CC BY-ND schema
+  text that nothing here evaluates. A schema parsed at run time with
+  `Schema::from_express` keeps them. The artifacts are about 23-38% smaller.
+  `data/NOTICE.md` now states the provenance of the bundled files.
 
 Full history: [`crates/ifc-schema/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-schema/CHANGELOG.md)
