@@ -30,56 +30,6 @@ lockstep -- is archived in the
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
 
-### openbim-ifc-binding-core
-
-### Added (lazy loading)
-
-- `IfcModel::parse_owned(Vec<u8>)`, `IfcModel::open(path)` and the unsafe
-  `IfcModel::open_mapped(path)`. A parsed model keeps its source and
-  decodes entities on access (ADR 0015); `parse` copies the input once,
-  `parse_owned` and `open` not at all beyond the file read.
-- `BindingError::Io`, stable code `io`, for a file that cannot be read.
-
-### Added
-
-- The host-independent half of the language bindings (ADR 0013): `IfcModel`
-  operations, the lossless `Tagged` value encoding and `BindingError` with
-  stable codes, shared by the WASM, C and Python bindings. Extracted from
-  `openbim-ifc-wasm`.
-- Non-finite reals (NaN, infinity) are refused for every host; STEP has no
-  form for them.
-
-### openbim-ifc-capi
-
-### Added (lazy loading)
-
-- `openbim_ifc_v0_1_model_open(path, path_len, ...)`: read a STEP file from
-  disk into a model that owns it, one copy less than reading it in the host
-  and calling `model_parse`.
-- `openbim_ifc_v0_1_model_open_mapped(...)`: the same through a memory
-  mapping; the file must stay unchanged until the model is destroyed.
-- `OPENBIM_IFC_STATUS_IO` (16) for a file that cannot be read.
-
-### Added
-
-- Opt-in `rusty_alloc` feature (off by default): the library's Rust
-  allocations go through the pure-Rust rusty_alloc allocator, pinned to
-  exactly 2.2.1; the host's `malloc` is untouched. Reading STEP into a
-  model takes 18-35% less CPU time on seven real IFC files, at 1-7% less
-  peak memory; the models are identical on 2,273 corpus files. It replaces
-  the C `mimalloc` feature, which cost more CPU time than the system
-  allocator on a host with transparent huge pages set to `always` (#49).
-
-- Versioned C ABI 0.1 over the IFC facade (#38, ADR 0013), following
-  Axiolid's C ABI conventions: `openbim_ifc_v0_1_*` symbols, opaque integer
-  handles, caller-owned buffers with a size query, no Rust allocation across
-  the boundary, and every panic contained as a status.
-- Nested attribute values cross as a pre-order node tape plus one string
-  buffer, keeping `$`/`*`, `.U.`/`.F.`, integer/real and typed wrappers
-  distinct.
-- A cbindgen-generated C11 header (`include/openbim_ifc.h`), checked for
-  drift, and a C and C++ smoke test in the gate.
-
 ## [0.7.2] - 2026-09-27
 
 ### openbim-ifc

@@ -9,6 +9,10 @@ repository = "https://github.com/openbimrs/ifc"
 description = "Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python)."
 keywords = ["ifc", "bim", "ffi", "bindings", "openbim"]
 categories = ["parser-implementations"]
+# Internal to the bindings: the npm and PyPI packages and the C library are
+# built from source, so no registry needs it. Publishing it would make this
+# layer a public Rust API to keep stable.
+publish = false
 
 # Published on the docs site by `cargo run -p xtask -- docs`.
 [package.metadata.openbim]
