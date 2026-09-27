@@ -36,3 +36,16 @@ Value checking is deliberately permissive: an unresolvable declared type is
 accepted rather than refused, because a builder that rejects valid input is
 worse than one that misses an exotic mistake. Tighten `check/declared.rs` only
 with a test that proves the newly-refused value is genuinely invalid.
+
+## Pitfalls
+
+- Attribute names match case-insensitively (`eq_ignore_ascii_case`), so an
+  IFC4/IFC4X3 spelling that differs only in case is not a bug. IFC4X3 has
+  exactly three true renames; the authored-coverage record counts them.
+- SELECTs such as `IfcAxis2Placement` are not supertypes: `is_a` rejects their
+  members. Use `accepts_type`, which resolves SELECTs and aliases.
+- A `Transaction` cannot be read back. To assert on a staged entity, commit
+  first or inspect `tx.edits()`.
+- An empty aggregate is invalid for a `LIST [1:?]` / `SET [1:?]` attribute:
+  write `$` when it is optional, refuse when it is required. This crate cannot
+  check it, because the schema tables keep no aggregate bounds (#111).

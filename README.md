@@ -114,8 +114,8 @@ tool), `scripts/` (the gate and release helpers), `docs/`, `test/fixtures/`,
   reading over `ifc-model` and links no geometry code at all.
 - `openbim-ifc` is the optional-feature facade.
 
-See `HERMES.md`, `AGENTS.md`, and the nested context files for executable
-boundaries and verification commands.
+See `AGENTS.md` and the nested context files for executable boundaries and
+verification commands.
 
 ## License
 

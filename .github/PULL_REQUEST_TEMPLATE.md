@@ -24,7 +24,7 @@ result:
 
 ## Checklist
 
-- [ ] I read `HERMES.md`, the root **AGENTS.md**, and the nearest nested **AGENTS.md**.
+- [ ] I read the root **AGENTS.md** and the nearest nested **AGENTS.md**.
 - [ ] I added or updated tests for behavior changes.
 - [ ] I ran the relevant targeted checks.
 - [ ] I ran `./scripts/gate.sh`, or documented why the full gate could not run.
