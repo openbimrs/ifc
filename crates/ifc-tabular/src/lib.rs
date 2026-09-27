@@ -14,9 +14,10 @@
 //!
 //! # Derived attributes are not stored
 //!
-//! `IfcTable` DERIVEs three counts from its rows. STEP writes a derived
-//! attribute as `*`, not as a number, so they are emitted as
-//! [`ifc_model::Value::Derived`] and never computed into the file.
+//! `IfcTable` DERIVEs three counts from its rows. They are derived under new
+//! names rather than redeclaring an inherited attribute, so they occupy no
+//! instance slot: nothing is written for them, not even `*`, and they are
+//! never computed into the file.
 //!
 //! # Reading back
 //!

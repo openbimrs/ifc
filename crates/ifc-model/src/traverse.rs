@@ -5,7 +5,7 @@
 //!
 //! Edges are supplied by the caller. This crate stores references without
 //! interpreting them, so it cannot know whether a given reference means
-//! containment, aggregation or voiding -- see `../AGENTS.md`. A domain crate
+//! containment, aggregation or voiding (ADR 0001). A domain crate
 //! decides which edges to follow and reuses the budgets and cycle reporting
 //! here.
 //!

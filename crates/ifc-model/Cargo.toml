@@ -7,6 +7,7 @@ license = "AGPL-3.0-or-later"
 authors = ["point-grey"]
 repository = "https://github.com/openbimrs/ifc"
 description = "The IFC entity graph: storage and structural queries, free of domain semantics and serialization."
+readme = "README.md"
 
 # Published on the docs site by `cargo run -p xtask -- docs`.
 [package.metadata.openbim]

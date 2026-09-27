@@ -52,11 +52,14 @@ impl Release {
 /// This is the public seam issue #52 asks every read path to go through:
 /// callers who want to know (or assert) which release a model will be read
 /// under -- without pulling in `ifc-schema` themselves -- can call this
-/// directly. The crate's own accessors (`systems`, `zones`, `ports`,
-/// `ElementRole::of`, `ConnectionGraph::build`, ...) call it internally and
-/// surface the same refusal behaviour: a file with no schema, more than
-/// one, or a release this crate has not verified (including IFC4X3) is
-/// refused rather than silently read as IFC4.
+/// directly. It refuses a file with no schema, more than one, or a release
+/// this crate has not verified (including IFC4X3).
+///
+/// The crate's bulk accessors (`systems`, `zones`, `ports`,
+/// `ElementRole::of`, `ConnectionGraph::build`, ...) do NOT surface that
+/// refusal: their signatures have no error slot, so where this function
+/// would refuse they read the model under the IFC4 table instead. A caller
+/// who needs the refusal calls this first and acts on its `Err`.
 ///
 /// # Errors
 ///

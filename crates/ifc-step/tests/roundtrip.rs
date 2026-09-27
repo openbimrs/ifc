@@ -5,6 +5,10 @@
 //! 1. Every committed fixture parses.
 //! 2. Parse to write to re-parse preserves the model **structurally** —
 //!    including entities whose meaning no crate in this build understands.
+//!
+//! A round-trip proof compares entity graphs, never normalized bytes: two
+//! byte-different files can hold the same model, and a byte comparison after
+//! normalization proves only that the normalizer agrees with itself.
 
 use ifc_model::{Codec, Entity, EntityId, Model, Value};
 use ifc_step::StepCodec;

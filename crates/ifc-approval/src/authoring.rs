@@ -1,4 +1,9 @@
 //! Transaction-staged authoring for the bounded approval domain.
+//!
+//! `IfcApproval` and the two approval relationships are resources, not
+//! `IfcRoot` subtypes, so they carry no `GlobalId`; never invent one for
+//! them. Only `IfcRelAssociatesApproval` is rooted, and its caller-supplied
+//! GlobalId is validated before staging.
 
 use std::collections::HashSet;
 use std::sync::Arc;

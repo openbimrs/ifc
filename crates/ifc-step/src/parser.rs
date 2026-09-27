@@ -1,4 +1,8 @@
 //! Conversion from generic STEP syntax into the IFC record model.
+//!
+//! The nesting limit for aggregates and typed values is enforced by the
+//! generic `openbim-step` parser and writer. Do not re-implement it here: a
+//! second limit would disagree with the substrate's on some input.
 
 use std::borrow::Cow;
 use std::sync::Arc;

@@ -30,6 +30,10 @@ Every operation lives in `openbim-ifc-binding-core`, shared with the C and
 Python bindings. This crate converts JS arguments and results only, and is
 empty outside `wasm32`.
 
+A test of anything that does not need a JS host belongs in
+`openbim-ifc-binding-core`, where `cargo test` runs it natively; the Node
+suites here cover only the JS conversion itself.
+
 ## Depends on
 
 - [`openbim-ifc-binding-core`](./openbim-ifc-binding-core)

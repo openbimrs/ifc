@@ -13,6 +13,14 @@
 //! Generated regions and wholly generated pages are exempt from all but the
 //! last rule, since their text comes from a source file; a home path is wrong
 //! wherever it appears.
+//!
+//! The README files (the root one and every `crates/*/README.md`) get the
+//! same rules plus one more: no claim that a package is unpublished. A crate
+//! README is its crates.io page, and the wasm and Python READMEs are the npm
+//! and PyPI pages, so such a claim is copied into a registry and turns false
+//! at the next release without anyone editing it.
+
+use std::path::{Path, PathBuf};
 
 use crate::text::splitlines;
 
@@ -90,6 +98,55 @@ pub(super) fn problems(rel: &str, text: &str) -> Vec<String> {
     out
 }
 
+/// The README files the lint covers: the root one and every crate's, sorted.
+pub(super) fn readmes(root: &Path) -> Vec<PathBuf> {
+    let mut out = vec![root.join("README.md")];
+    if let Ok(entries) = std::fs::read_dir(root.join("crates")) {
+        out.extend(
+            entries
+                .flatten()
+                .map(|entry| entry.path().join("README.md"))
+                .filter(|path| path.is_file()),
+        );
+    }
+    out.sort();
+    out
+}
+
+/// `readme:line: why` for every stale pattern in a README: the page rules
+/// above plus publication claims.
+pub(super) fn readme_problems(rel: &str, text: &str) -> Vec<String> {
+    let mut out = problems(rel, text);
+    for (index, line) in splitlines(text).into_iter().enumerate() {
+        if claims_unpublished(line) {
+            out.push(format!(
+                "{rel}:{}: publication claim; it turns false at the next release. \
+                 Link the install guide or the registry instead",
+                index + 1
+            ));
+        }
+    }
+    out
+}
+
+/// Phrases that assert a package is not (yet) on a registry.
+const UNPUBLISHED: &[&str] = &[
+    "not published",
+    "not yet published",
+    "unpublished",
+    "not been published",
+    "not released yet",
+    "not yet released",
+    "not on crates.io",
+    "not on npm",
+    "not on pypi",
+];
+
+fn claims_unpublished(line: &str) -> bool {
+    let lower = line.to_ascii_lowercase();
+    UNPUBLISHED.iter().any(|phrase| lower.contains(phrase))
+}
+
 /// Whether a line states a count of ten or more crates: `31 crates`,
 /// `twenty-one crates`, `Thirty-one workspace crates`.
 fn counts_crates(line: &str) -> bool {
@@ -145,5 +202,29 @@ see /home/someone/x
             crate::docs::generated_banner()
         );
         assert!(problems("p.md", &generated).is_empty());
+    }
+
+    #[test]
+    fn readmes_also_reject_publication_claims() {
+        let readme = "\
+# some-crate
+
+The workspace crates are not published on crates.io yet.
+```toml
+some-crate = { git = \"https://example.invalid/x.git\", rev = \"abc\" }
+```
+Status: not yet published to npm; it is Not on PyPI either.
+```bash
+cargo add some-crate
+```
+The crate is also unpublished.";
+        let lines: Vec<String> = readme_problems("README.md", readme)
+            .iter()
+            .map(|p| p.split(':').nth(1).unwrap().to_owned())
+            .collect();
+        assert_eq!(lines, ["5", "3", "7", "11"]);
+
+        // A README that states how to install is clean.
+        assert!(readme_problems("README.md", "```bash\ncargo add x\n```\n").is_empty());
     }
 }

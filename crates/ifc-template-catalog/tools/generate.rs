@@ -1,5 +1,9 @@
 //! CLI: import a source edition's PSD/QTO XML corpus and encode it into a
 //! committed versioned binary catalog artifact under `data/`.
+//!
+//! The artifact must be reproducible on any machine: never encode a local
+//! absolute path or a timestamp in it. Source files are identified by their
+//! normalized relative path and content hash only.
 
 #[path = "corpus.rs"]
 mod corpus;

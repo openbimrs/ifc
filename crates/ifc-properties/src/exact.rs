@@ -4,6 +4,18 @@
 //! malformed assignment data before it can claim an exact absence. Every
 //! structural fact comes from the table of the one release the header
 //! declares; nothing is aliased across releases.
+//!
+//! # Exact versus permissive
+//!
+//! The permissive views (`property_set`, `quantity_sets`, `query`) are for
+//! interactive inspection. A rule engine, validator or checker uses this
+//! exact API and must never map one of its errors to "absent": an error
+//! means the file could not prove the answer, which is not the same as the
+//! property being missing.
+//!
+//! Exact values keep their declared IFC value type and explicit unit
+//! identity. A downstream adapter that cannot project a value category or
+//! unit losslessly into its own model must reject it rather than coerce it.
 
 mod assignment;
 mod composite;

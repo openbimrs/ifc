@@ -6,7 +6,7 @@
 //!
 //! # Why this file exists
 //!
-//! `../AGENTS.md` states the invariant directly:
+//! The invariant, documented on `ifc_geometry::lower::session`:
 //!
 //! > Recursive lowering appends to one session-owned graph builder. Family
 //! > lowerers return `NodeId`; they do not freeze isolated child graphs.

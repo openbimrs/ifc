@@ -32,8 +32,8 @@ git clone https://github.com/openbimrs/ifc.git
 cd ifc
 ```
 
-Read the root `AGENTS.md` and the nearest nested `AGENTS.md` for the crate or
-module you will change.
+Read the root `AGENTS.md`, then the `README.md` of the crate you will change
+and the module docs (`//!`) of the files you touch.
 
 ## Make the change
 

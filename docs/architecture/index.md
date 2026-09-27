@@ -116,18 +116,22 @@ See [the Axiolid boundary](/architecture/axiolid-boundary).
 
 ## Context files
 
-The repository uses progressive context files so that an agent reads only what
-is on the path to its target:
+Context lives beside what it describes, so a contributor reads only what is on
+the path to the change:
 
-- **AGENTS.md** — stable ambient context: purpose, boundaries, invariants, gates.
-  A deeper file adds local rules and never repeats its parent.
+- **AGENTS.md** — the one root file: layout, dependency rule, behaviour rules
+  and the gate.
+- **Crate `README.md`** — what the crate is for, how to install it, and the
+  crate-wide design notes no test or ADR already carries.
+- **Module docs (`//!`)** — why a module is shaped the way it is.
 - **GitHub issues** — open work. A marker in code names its issue as
   `TODO(#N)`, so the tracker and the code point at each other.
 
-Progress logs, task lists and speculative TODOs do not belong in
-**AGENTS.md**. `crates/ifc-model/tests/progressive_context.rs` enforces that the
-required context files exist, stay small, and point at files that exist, and
-`cargo run -p xtask -- todo --check` rejects a marker without an issue.
+Progress logs, task lists and speculative TODOs belong in none of them.
+`crates/ifc-model/tests/progressive_context.rs` enforces that the root
+**AGENTS.md** is the only one, that every crate has a small README, and that
+every README or AGENTS.md pointer resolves; `cargo run -p xtask -- todo --check`
+rejects a marker without an issue.
 
 ## Further reading
 

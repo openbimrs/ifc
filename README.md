@@ -46,23 +46,19 @@ Implemented foundations include:
 
 Some domain crates remain partial and contain private architecture scaffolds: their
 module trees reserve ownership without exposing unimplemented behavior. Their
-README and `AGENTS.md` files distinguish compiled behavior from reserved
-module ownership, open work is tracked in GitHub issues, and the capability
-matrix reports crate status.
+module docs distinguish compiled behavior from reserved module ownership, open
+work is tracked in GitHub issues, and the capability matrix reports crate
+status.
 **No capability should be inferred from a module or crate name alone.**
 
 ## Use
 
-```toml
-[dependencies]
-openbim-ifc = { git = "https://github.com/openbimrs/ifc.git", rev = "a7c4949bb941504ce874bdec13bd81d33491b5cb" }
+```bash
+cargo add openbim-ifc
 ```
 
-The workspace crates are not published on crates.io yet. This immutable Git
-revision is the supported installation source for now; Cargo records Git
-revisions in `Cargo.lock`.
-
-The library target is named `ifc`:
+The [install guide](https://openbimrs.github.io/ifc/guide/install) lists the
+JavaScript, Python and C packages too. The library target is named `ifc`:
 
 ```rust
 use ifc::{Model, StepCodec};
@@ -114,8 +110,8 @@ tool), `scripts/` (the gate and release helpers), `docs/`, `test/fixtures/`,
   reading over `ifc-model` and links no geometry code at all.
 - `openbim-ifc` is the optional-feature facade.
 
-See `AGENTS.md` and the nested context files for executable boundaries and
-verification commands.
+See `AGENTS.md` for the dependency and behaviour rules and the gate, and each
+crate's `README.md` for its design notes.
 
 ## License
 

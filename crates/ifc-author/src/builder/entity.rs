@@ -8,6 +8,13 @@
 //! count wrong and the file still writes -- and is rejected downstream.
 //!
 //! Here the caller names attributes and the schema decides the positions.
+//!
+//! # Attribute names match case-insensitively
+//!
+//! Names are compared with `eq_ignore_ascii_case`, so an IFC4 and IFC4X3
+//! spelling that differs only in case resolves to the same slot and is not a
+//! bug. A true rename between releases is a different name and is refused as
+//! unknown in the release that lacks it.
 
 use ifc_model::{Entity, Value};
 use ifc_schema::Schema;
@@ -193,6 +200,11 @@ pub(crate) fn check_value(
     // The `LIST` may sit in the attribute declaration or in a defined type the
     // attribute is declared as (`IfcCompoundPlaneAngleMeasure`). `$` is exempt:
     // an unset optional aggregate is still `$`, not `()`.
+    //
+    // An empty `()` is invalid for a `LIST [1:?]` / `SET [1:?]` attribute: a
+    // caller writes `$` when the attribute is optional and must not build the
+    // entity when it is required. That cannot be refused here, because the
+    // schema tables keep no aggregate bounds. TODO(#111)
     let aliased = if attribute.aggregate {
         None
     } else {

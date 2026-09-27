@@ -2,7 +2,7 @@
 //! map coordinates by `ifc-georef`.
 //!
 //! The two crates split "where is this" at the project frame on purpose
-//! (see `../../ifc-georef/AGENTS.md`): `ifc-geometry` resolves the
+//! (see the `ifc-georef` crate docs): `ifc-geometry` resolves the
 //! `IfcLocalPlacement` chain in metres, and `ifc-georef` resolves
 //! `IfcMapConversion` from project metres to map metres. Neither may call
 //! the other, so the only place the two halves meet is this layer. That

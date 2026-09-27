@@ -45,11 +45,12 @@ These are tests, so architectural rules fail CI rather than relying on review:
 | Gate | Enforces |
 | --- | --- |
 | `ifc-model --test package_architecture` | Dependency tiers; no sibling domain dependencies |
-| `ifc-model --test progressive_context` | Every directory an agent may enter has an **AGENTS.md** |
+| `ifc-model --test progressive_context` | One root **AGENTS.md**, a small README for every crate, and no dangling README/AGENTS pointer |
 | `ifc-model --test module_reachability` | No orphaned modules |
 | `ifc-model --test no_monolithic_files` | File size limits |
 | `ifc-geometry --test declaration_manifest` | Schema declaration inventory matches reality |
 | `ifc-geometry --test no_backend_dependency` | No CPU/GPU execution provider leaks in |
+| `ifc-geometry --test kernel_free_build` | The kernel-free column links no geometry crate |
 | `openbim-ifc --test thin_build` | Default features stay thin |
 | `openbim-ifc --test docs_examples` | Code in `docs/` compiles and behaves as shown |
 
@@ -94,25 +95,50 @@ site.
 **Claims need evidence.** Do not describe a module as supporting something
 because it is named after it. A capability claim on the
 [capability matrix](/capabilities) must point at executable behaviour with a
-test. If it is reserved structure, it is `Scaffold`.
+test. If it is reserved structure, it is `Scaffold`. State status in a table
+with an evidence column rather than in prose.
+
+**Spelling is consistent per page.** British or American spelling is not
+enforced, but one page does not mix them.
 
 **Scaffold modules stay honest.** A placeholder module states `Planned owner:`
 on its first doc line and stays crate-private until it owns a tested public
 contract. See [ADR 0005](/adr/0005-scaffold-modules-declare-ownership).
 
-## Context files
+## Where knowledge lives
 
-**AGENTS.md** is stable ambient context — purpose, boundaries, invariants, gates.
-The files are nested so that an agent reads only the files on the path to its
-target, and a deeper file never repeats its parent.
+Each fact has one home, chosen so it is found by whoever needs it and checked
+where it can be:
+
+| Kind of fact | Home |
+| --- | --- |
+| A rule the code must keep | A test that fails when it breaks |
+| A decision and its reasons | An [ADR](/adr/) |
+| Why a module is shaped the way it is | That module's `//!` docs |
+| What a crate is for, and its crate-wide design notes | The crate's `README.md` (its crates.io page) |
+| What every contributor must know before touching the repository | The root **AGENTS.md**, the only one |
+| Open work | A GitHub issue |
+
+A crate README is written for users first: purpose, `cargo add`, links to
+docs.rs and the reference page, then a short *Design notes* section holding
+only what no test, ADR or module doc already says. `progressive_context`
+keeps the READMEs small and checkbox-free, and rejects a second **AGENTS.md**.
 
 Open work is a GitHub issue, never a checklist in the repository. A marker left
 in code names its issue, `TODO(#123)`; `cargo run -p xtask -- todo --check`
 fails the gate on one that does not, and `cargo run -p xtask -- todo` lists them
 all so a closed issue's leftovers can be found. The proof of finished work goes
-in the pull request. A decision that should outlive it goes into the owning
-**AGENTS.md**, the module docs, or an ADR. Progress logs do not belong in
-**AGENTS.md**.
+in the pull request. A decision that should outlive it goes into a test, the
+module docs, the crate README, or an ADR.
+
+**Architecture and context gates are mutation-verified.** Before trusting a new
+architecture test, break the rule it guards, watch the test fail, and restore.
+A filter that silently matches nothing passes forever, so every such test also
+asserts a minimum match count.
+
+**A performance claim needs a measurement:** a committed benchmark definition,
+the baseline environment, and a measured comparison. A green correctness gate is
+not one.
 
 ## ADRs
 

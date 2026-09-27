@@ -203,6 +203,9 @@ impl<'m> Metric<'m> {
 
 impl<'m> Objective<'m> {
     /// Optional ordered benchmark constraints.
+    ///
+    /// `BenchmarkValues` is a `LIST`, not a `SET`: the authored order is
+    /// significant and returned unchanged, never sorted or deduplicated.
     pub fn benchmark_values(self) -> ConstraintResult<Option<Vec<EntityId>>> {
         match self.entity.attribute(7) {
             None | Some(Value::Null) => Ok(None),

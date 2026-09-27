@@ -8,10 +8,19 @@ cbindgen and checked for drift in the gate.
 The conventions follow Axiolid's C ABI (its ADR 0040), so a host can load
 both the same way.
 
+The library is built from source with cargo (see [Build and test](#build-and-test));
+it is not distributed through a registry.
+
+- C binding guide and API: [openbimrs.github.io/ifc/bindings/c](https://openbimrs.github.io/ifc/bindings/c)
+- Reference page: [openbimrs.github.io/ifc](https://openbimrs.github.io/ifc/reference/crates/openbim-ifc-capi)
+- Source and issues: [github.com/openbimrs/ifc](https://github.com/openbimrs/ifc)
+
 ## Protocol
 
 - **Versioned symbols.** Every export is `openbim_ifc_v0_1_*`;
   `openbim_ifc_v0_1_version` reports the ABI and crate versions separately.
+  Once released, a `v0_1` symbol never changes; a changed signature arrives
+  as a new `openbim_ifc_v0_2_*` export.
 - **Opaque handles.** An `OpenbimIfcModel` is a non-zero integer, never a
   pointer. Zero, stale and destroyed handles return `INVALID_HANDLE`.
   Destroy each model once with `openbim_ifc_v0_1_model_destroy`.

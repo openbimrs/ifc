@@ -94,6 +94,17 @@ pub(super) fn apply(workspace: &Workspace, outputs: &mut Vec<Output>) -> Result<
             None => {}
         }
     }
+    // READMEs are not site pages, so the fence lint does not apply, but they
+    // are the crates.io, npm and PyPI pages, so the drift rules do.
+    for readme in super::drift::readmes(&workspace.root) {
+        let rel = readme
+            .strip_prefix(&workspace.root)
+            .unwrap_or(&readme)
+            .display()
+            .to_string();
+        let text = std::fs::read_to_string(&readme).map_err(|error| format!("{rel}: {error}"))?;
+        problems.extend(super::drift::readme_problems(&rel, &text));
+    }
     for (name, count) in used {
         if count == 0 {
             problems.push(format!(

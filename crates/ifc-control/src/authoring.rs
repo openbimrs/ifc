@@ -24,6 +24,12 @@
 //! where `IfcObject` puts it. Writing `USERDEFINED` without it
 //! produces a record that claims a specific kind and withholds which,
 //! so it is refused here even though the schema does not say so.
+//!
+//! # Work orders
+//!
+//! `IfcWorkOrder` does not exist in any IFC release: a work order is
+//! an `IfcProjectOrder` whose `PredefinedType` is `WORKORDER`. There is
+//! deliberately no separate entity or `ControlKind` for it.
 
 use ifc_model::guid::Guid;
 use ifc_model::{Entity, EntityId, Transaction, Value};

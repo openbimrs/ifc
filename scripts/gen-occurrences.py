@@ -69,6 +69,10 @@ def row(t):
     out.append("")
     return out
 
+# Shard by type count, not by letter range. `rustfmt` expands the emitted
+# literals to roughly 1.7x their line count, and no source file may exceed
+# 800 lines (`crates/ifc-model/tests/no_monolithic_files.rs`), so an even
+# split by count is what keeps every shard under the gate.
 N = 5
 per = (len(T) + N - 1) // N
 chunks = [T[i * per:(i + 1) * per] for i in range(N)]
