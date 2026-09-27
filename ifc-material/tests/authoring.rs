@@ -17,12 +17,14 @@ fn authored_layered_material_roundtrips_and_resolves() {
     let mut tx = Transaction::new(&model);
     let material = create_material(
         &mut tx,
+        &model,
         MaterialDraft {
             name: "Concrete",
             description: None,
             category: Some("Structural"),
         },
-    );
+    )
+    .unwrap();
     let layer = create_layer(
         &mut tx,
         &model,
@@ -117,12 +119,14 @@ fn failed_commit_rolls_back_the_entire_authored_graph() {
     let mut tx = Transaction::new(&model);
     let material = create_material(
         &mut tx,
+        &model,
         MaterialDraft {
             name: "Concrete",
             description: None,
             category: None,
         },
-    );
+    )
+    .unwrap();
     let relationship = associate_material(
         &mut tx,
         &model,
@@ -148,12 +152,14 @@ fn malformed_guid_and_non_material_reference_are_refused_before_staging() {
     let mut tx = Transaction::new(&model);
     let material = create_material(
         &mut tx,
+        &model,
         MaterialDraft {
             name: "Concrete",
             description: None,
             category: None,
         },
-    );
+    )
+    .unwrap();
     let invalid_guid = associate_material(
         &mut tx,
         &model,

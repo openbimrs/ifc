@@ -21,10 +21,24 @@ the `ifc` facade/application layer.
 - `profile.rs`: material-profile identity, set membership, priority/category
 - `constituent.rs`: constituent sets and fractions
 - `usage.rs`: product associations and semantic resolution
-- `authoring.rs`: transactional material/layer/set/assignment staging
+- `authoring.rs`: transactional material/layer/set/assignment staging;
+  `authoring/composites.rs` constituents and profiles,
+  `authoring/relationships.rs` resource-level relationships
+- `release.rs`: header-to-release binding, per-release slot lookup, and
+  release-shaped record building; `release/tests.rs` pins every attribute the
+  crate touches against the three bundled tables
 - `error.rs`: malformed/ambiguous material projections and authoring refusal
 
 ## Invariants
+
+- Every read and write binds to the release `FILE_SCHEMA` declares (#77):
+  slot positions come from `Release::slot`/`Release::record`, never from a
+  numeric IFC4 constant. An attribute the release lacks is `NotInSchema`, a
+  record type it lacks (IFC2X3 constituent/profile sets, abstract IFC2X3
+  `IfcMaterialProperties`) is `EntityNotInSchema`; neither reads another slot.
+  A new accessor adds its attribute to `IFC4_LAYOUT`, which a debug assertion
+  enforces. No header binds IFC4 (in-memory models); several or unknown
+  declarations fail closed.
 
 - This crate exposes authored cardinal, offset, direction, and extent values but
   never interprets them geometrically; shape math and lowering remain in ifc-geometry.

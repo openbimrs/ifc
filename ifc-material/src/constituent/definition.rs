@@ -1,4 +1,7 @@
 //! `IfcMaterialConstituent` semantics.
+//!
+//! IFC4 onwards. IFC2X3 declares no constituent, so every accessor on a
+//! record in an IFC2X3 model fails with `EntityNotInSchema`.
 
 use ifc_model::EntityId;
 
@@ -14,7 +17,7 @@ impl<'m> MaterialConstituent<'m> {
             "IFCMATERIALCONSTITUENT",
             self.id(),
             self.entity(),
-            0,
+            self.slot("Name")?,
             "Name",
         )
     }
@@ -25,7 +28,7 @@ impl<'m> MaterialConstituent<'m> {
             "IFCMATERIALCONSTITUENT",
             self.id(),
             self.entity(),
-            1,
+            self.slot("Description")?,
             "Description",
         )
     }
@@ -36,7 +39,7 @@ impl<'m> MaterialConstituent<'m> {
             "IFCMATERIALCONSTITUENT",
             self.id(),
             self.entity(),
-            2,
+            self.slot("Material")?,
             "Material",
         )
     }
@@ -48,7 +51,7 @@ impl<'m> MaterialConstituent<'m> {
             "IFCMATERIALCONSTITUENT",
             self.id(),
             self.entity(),
-            3,
+            self.slot("Fraction")?,
             "Fraction",
         )?;
         if value.is_some_and(|value| !(0.0..=1.0).contains(&value)) {
@@ -68,7 +71,7 @@ impl<'m> MaterialConstituent<'m> {
             "IFCMATERIALCONSTITUENT",
             self.id(),
             self.entity(),
-            4,
+            self.slot("Category")?,
             "Category",
         )
     }
@@ -77,8 +80,9 @@ impl<'m> MaterialConstituent<'m> {
 impl<'m> MaterialView<'m> {
     /// Iterates every `IfcMaterialConstituent` instance in the model.
     pub fn constituents(self) -> impl Iterator<Item = MaterialConstituent<'m>> + 'm {
+        let release = self.release();
         self.model()
             .of_type("IFCMATERIALCONSTITUENT")
-            .map(|(id, entity)| MaterialConstituent::from_known(id, entity))
+            .map(move |(id, entity)| MaterialConstituent::from_known(id, entity, release))
     }
 }

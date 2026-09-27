@@ -16,7 +16,7 @@ impl<'m> MaterialAssignment<'m> {
             "IFCRELASSOCIATESMATERIAL",
             self.id(),
             self.entity(),
-            0,
+            self.slot("GlobalId")?,
             "GlobalId",
         )
     }
@@ -27,7 +27,7 @@ impl<'m> MaterialAssignment<'m> {
             "IFCRELASSOCIATESMATERIAL",
             self.id(),
             self.entity(),
-            2,
+            self.slot("Name")?,
             "Name",
         )
     }
@@ -38,7 +38,7 @@ impl<'m> MaterialAssignment<'m> {
             "IFCRELASSOCIATESMATERIAL",
             self.id(),
             self.entity(),
-            3,
+            self.slot("Description")?,
             "Description",
         )
     }
@@ -50,7 +50,7 @@ impl<'m> MaterialAssignment<'m> {
             "IFCRELASSOCIATESMATERIAL",
             self.id(),
             self.entity(),
-            4,
+            self.slot("RelatedObjects")?,
             "RelatedObjects",
             1,
         )
@@ -63,7 +63,7 @@ impl<'m> MaterialAssignment<'m> {
             "IFCRELASSOCIATESMATERIAL",
             self.id(),
             self.entity(),
-            5,
+            self.slot("RelatingMaterial")?,
             "RelatingMaterial",
         )
     }
@@ -72,9 +72,10 @@ impl<'m> MaterialAssignment<'m> {
 impl<'m> MaterialView<'m> {
     /// Iterates every `IfcRelAssociatesMaterial` instance in the model.
     pub fn assignments(self) -> impl Iterator<Item = MaterialAssignment<'m>> + 'm {
+        let release = self.release();
         self.model()
             .of_type("IFCRELASSOCIATESMATERIAL")
-            .map(|(id, entity)| MaterialAssignment::from_known(id, entity))
+            .map(move |(id, entity)| MaterialAssignment::from_known(id, entity, release))
     }
 
     /// Collects every `IfcRelAssociatesMaterial` whose `RelatedObjects`

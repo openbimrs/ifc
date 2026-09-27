@@ -16,7 +16,7 @@ impl<'m> MaterialConstituentSet<'m> {
             "IFCMATERIALCONSTITUENTSET",
             self.id(),
             self.entity(),
-            0,
+            self.slot("Name")?,
             "Name",
         )
     }
@@ -27,7 +27,7 @@ impl<'m> MaterialConstituentSet<'m> {
             "IFCMATERIALCONSTITUENTSET",
             self.id(),
             self.entity(),
-            1,
+            self.slot("Description")?,
             "Description",
         )
     }
@@ -40,7 +40,7 @@ impl<'m> MaterialConstituentSet<'m> {
             "IFCMATERIALCONSTITUENTSET",
             self.id(),
             self.entity(),
-            2,
+            self.slot("MaterialConstituents")?,
             "MaterialConstituents",
             1,
         )
@@ -49,10 +49,15 @@ impl<'m> MaterialConstituentSet<'m> {
 
 impl<'m> MaterialView<'m> {
     /// Iterates every `IfcMaterialConstituentSet` instance in the model.
+    ///
+    /// IFC2X3 declares no constituent set: a record of this type in an
+    /// IFC2X3 model is still yielded, and every accessor on it fails with
+    /// [`MaterialError::EntityNotInSchema`] rather than being skipped.
     pub fn constituent_sets(self) -> impl Iterator<Item = MaterialConstituentSet<'m>> + 'm {
+        let release = self.release();
         self.model()
             .of_type("IFCMATERIALCONSTITUENTSET")
-            .map(|(id, entity)| MaterialConstituentSet::from_known(id, entity))
+            .map(move |(id, entity)| MaterialConstituentSet::from_known(id, entity, release))
     }
 }
 
@@ -132,7 +137,7 @@ impl<'m> MaterialView<'m> {
                     actual: entity.type_name.to_string(),
                 });
             }
-            match MaterialConstituent::from_known(id, entity).fraction()? {
+            match MaterialConstituent::from_known(id, entity, set.release()).fraction()? {
                 Some(fraction) => {
                     stated.push(id);
                     sum += fraction;
