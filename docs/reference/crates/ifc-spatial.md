@@ -11,7 +11,7 @@ IFC spatial containment and objectified relationship traversal: project, site, b
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.2.1 (2026-09-26) |
+| Latest release | 0.2.2 (2026-09-27) |
 | Registries | [crates.io `ifc-spatial`](https://crates.io/crates/ifc-spatial) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `spatial` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_spatial/index.html) · [docs.rs](https://docs.rs/ifc-spatial) |
@@ -27,22 +27,21 @@ IFC spatial containment and objectified relationship traversal: project, site, b
 
 ## Changes
 
-Latest release, 0.2.1 (2026-09-26):
+Latest release, 0.2.2 (2026-09-27):
 
 ### Added
 
-- `SpatialTree::anomalies()` and `SpatialAnomaly` (#54). An element placed
-  by two `IfcRelContainedInSpatialStructure`s is reported as
-  `ContainedTwice`, and a container aggregated by two parents as
-  `AggregatedTwice`. Each names the element or child, the kept and rejected
-  parent, and the rejected relationship. The first relationship applied
-  still wins. Restating the same parent is not reported.
-
-### Changed
-
-- For invalid files only: the rejected container no longer lists a doubly
-  contained element in `SpatialNode::elements` / `elements_of`. Before, the
-  element appeared in both containers while `container_of` returned only the
-  first, so the two views disagreed. Valid files are unaffected.
+- `SpaceBoundary::connection_geometry(&Model)` and
+  `ConnectionGeometryAnomaly` (#156). The accessor returns the
+  `ConnectionGeometry` reference (slot 6) of `IfcRelSpaceBoundary`,
+  `IfcRelSpaceBoundary1stLevel` and `IfcRelSpaceBoundary2ndLevel`, in
+  IFC2x3, IFC4 and IFC4X3. Its coordinates are in the relating space's
+  object placement. `$` or a missing slot is `Ok(None)`. A dangling
+  reference, a reference to something that is not a concrete
+  `IfcConnectionGeometry` subtype, a value that is not a reference, and a
+  boundary absent from the model are each an `Err` naming the boundary
+  and, where there is one, the target. The accessor is a method rather
+  than a new field so that `SpaceBoundary`, which has only public fields,
+  keeps its struct-literal construction and this change stays additive.
 
 Full history: [`ifc-spatial/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-spatial/CHANGELOG.md)

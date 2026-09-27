@@ -12,6 +12,22 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-27
+
+### Changed (breaking)
+
+- Re-exports three crates whose breaking releases pass through:
+  `validate` is `ifc-validate` 0.3.0 (`Severity::EvaluationError`, renamed
+  rule ids, `Budget::max_depth` removed), `material` is `ifc-material` 0.3.0
+  (views and authoring bound to the declared release; `create_material`
+  takes the model), and `geometry` is `ifc-geometry` 0.4.0 (typed reference
+  errors, `IfcBlock` meshes no longer offset by half their extents). See
+  each crate's changelog.
+- Requires the releases published with it: `ifc-properties` 0.4.1,
+  `ifc-spatial` 0.2.2, `ifc-xml` 0.2.1, `ifc-alignment` 0.3.1,
+  `ifc-author` 0.2.1, `ifc-control` 0.2.1, `ifc-cost` 0.2.1,
+  `ifc-tabular` 0.2.1 and `ifc-template-catalog` 0.2.1.
+
 ### Added
 
 - `body_description`, `describe_profile` and their types (`BodyDescription`,
@@ -123,7 +139,8 @@ First release under per-crate versioning. See the
 [repository changelog](../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.6.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.7.0...HEAD
+[0.7.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.7.0
 [0.6.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.6.0
 [0.5.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.5.0
 [0.4.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.4.0

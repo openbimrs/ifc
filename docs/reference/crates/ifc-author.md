@@ -11,7 +11,7 @@ Schema-checked IFC authoring: construct entities by attribute name with arity an
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.2.0 (2026-09-22) |
+| Latest release | 0.2.1 (2026-09-27) |
 | Registries | [crates.io `ifc-author`](https://crates.io/crates/ifc-author) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `author` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_author/index.html) · [docs.rs](https://docs.rs/ifc-author) |
@@ -28,9 +28,26 @@ Schema-checked IFC authoring: construct entities by attribute name with arity an
 
 ## Changes
 
-Latest release, 0.2.0 (2026-09-22):
+Latest release, 0.2.1 (2026-09-27):
 
-First release under per-crate versioning. See the
-that produced this version.
+### Fixed
+
+- An attribute declared as a defined type that aliases an aggregate is an
+  aggregate (#17). `IfcSite.RefLatitude`/`RefLongitude`
+  (`IfcCompoundPlaneAngleMeasure = LIST [3:4] OF INTEGER`) were refused with
+  `AggregateMismatch`, which blocked georeferencing. Their elements are now
+  checked against the alias's element type.
+- A slot that the entity or a supertype redeclares as `DERIVE` is written `*`
+  automatically (#18). `IfcSIUnit.Dimensions` and the four derived slots of
+  `IfcGeometricRepresentationSubContext` reported `MissingRequired`, so no unit
+  assignment or Body/Axis subcontext could be authored. Passing
+  `Value::Derived` explicitly is also accepted.
+
+### Added
+
+- `AuthorError::DerivedAttribute` refuses a value or `$` in a derived slot.
+  `AuthorError::NotDerived` refuses `*` in a slot the schema does not derive.
+  Before, `*` was accepted in any slot and the file was invalid. Both apply to
+  `EntityBuilder` and `EntityEditor`.
 
 Full history: [`ifc-author/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-author/CHANGELOG.md)

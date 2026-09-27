@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-27
+
 This release is **breaking** (0.2 -> 0.3): `Severity` gains a variant,
 `Summary` gains a field, `RuleEntry` gains a field, `Mismatch` gains a
 variant, three rule ids are renamed, and `Budget::max_depth` is removed.
@@ -106,5 +108,6 @@ First release under per-crate versioning. See the
 [repository changelog](../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-validate-v0.2.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-validate-v0.3.0...HEAD
+[0.3.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-validate-v0.3.0
 [0.2.0]: https://github.com/openbimrs/ifc/releases/tag/v0.2.0

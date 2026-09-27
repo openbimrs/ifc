@@ -11,7 +11,7 @@ Structured IFC value containers indexed by position or time.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.2.0 (2026-09-22) |
+| Latest release | 0.2.1 (2026-09-27) |
 | Registries | [crates.io `ifc-tabular`](https://crates.io/crates/ifc-tabular) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `tabular` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_tabular/index.html) · [docs.rs](https://docs.rs/ifc-tabular) |
@@ -33,9 +33,16 @@ lists of `IfcValue`, and both appear side by side in the schema's own
 
 ## Changes
 
-Latest release, 0.2.0 (2026-09-22):
+Latest release, 0.2.1 (2026-09-27):
 
-First release under per-crate versioning. See the
-that produced this version.
+### Added
+
+- Borrowed read views: `TabularView` reads `IfcTable` (rows and columns)
+  and `IfcRegularTimeSeries`/`IfcIrregularTimeSeries` with their value
+  records under a declared IFC4 or IFC4X3 schema, locating slots by name.
+  WR1 (ragged row), WR2 (more than one heading), malformed slots, arity
+  mismatches, empty lists and dangling or mistyped references are reported
+  as `TabularIssue`s instead of being dropped. IFC2x3 is refused with
+  `TabularReadError::UnsupportedSchema` (#120).
 
 Full history: [`ifc-tabular/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-tabular/CHANGELOG.md)

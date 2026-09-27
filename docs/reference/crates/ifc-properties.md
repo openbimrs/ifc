@@ -11,7 +11,7 @@ Property sets, quantities, and unit resolution. No geometry.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.0 (2026-09-26) |
+| Latest release | 0.4.1 (2026-09-27) |
 | Registries | [crates.io `ifc-properties`](https://crates.io/crates/ifc-properties) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_properties/index.html) · [docs.rs](https://docs.rs/ifc-properties) |
@@ -34,66 +34,140 @@ standard Psets are data here rather than hand-written tables.
 
 ## Changes
 
-Latest release, 0.4.0 (2026-09-26):
+Latest release, 0.4.1 (2026-09-27):
 
 ### Added
 
-- `exact_unit` maps `IFCSECTIONALAREAINTEGRALMEASURE` to
-  `SECTIONAREAINTEGRALUNIT`, whose name differs from the measure's.
-  Before, it was refused as unmapped. The pairing follows the measure's
-  definition (m^5) and the IFC4 annex E structural example.
-- The permissive views report the duplicates they resolve (#58).
-  `exact_property` already refuses these files; the permissive views now
-  keep a documented winner and say so:
-  - `PropertyAnomaly::TypedTwice`: an object with two `IfcRelDefinesByType`
-    (IFC4 `IsTypedBy` is `SET [0:1]`; IFC2X3 `IfcObject` WR1).
-  - `PropertyAnomaly::DuplicateSetName`: two same-named property sets on one
-    occurrence or one type (IFC4 `UniquePropertySetNames`). It is reported
-    once per owner, including for a type that no occurrence uses.
-  - `PropertyAnomaly::DuplicatePropertyName`: two same-named properties in
-    one set (IFC4 `UniquePropertyNames`, IFC2X3 `WR32`), reported by
-    `property_sets_by_object`.
+- `exact_property`, `exact_properties` and `exact_properties_where` resolve
+  the attributes of predefined property sets (#149): `IfcDoorLiningProperties`,
+  `IfcDoorPanelProperties`, `IfcWindowLiningProperties`,
+  `IfcWindowPanelProperties` and every other `IfcPropertySetDefinition`
+  that is neither a property set nor a quantity set, in IFC2X3, IFC4 and
+  IFC4X3. A set's members are the attributes its entity declares below
+  `IfcPropertySetDefinition`, named and typed as the declared release's
+  table has them (`LiningThickness` is `IFCPOSITIVELENGTHMEASURE` in IFC2X3,
+  `IFCNONNEGATIVELENGTHMEASURE` in IFC4). Values keep the provenance of a
+  single value (`property_id` is the set's id) with no explicit unit, so a
+  length resolves to the project unit through `exact_unit`; ratios are
+  their ratio measure. New `ExactValue::Enum` carries an enumeration
+  constant checked against the release's members, and `ExactValue::Entity`
+  an entity reference (`ShapeAspectStyle`) checked but not followed. An
+  unset optional attribute is `Present` with `ExactValue::Null` and its
+  declared type; an unset required one is `MissingValueSlot`. A set that
+  states no `Name` is found under its entity name
+  (`IfcDoorLiningProperties`); such sets of one entity (a door's panel set
+  per leaf) are ambiguous only for a member they share. New
+  `exact_predefined_sets(model, object, entity)` returns every assigned set
+  of that entity with all its attributes (`ExactPredefinedSet`, with
+  `attribute(name)`), occurrence sets first, no override applied, for door
+  operation geometry (#148); a name that is not a predefined set in the
+  release is the new `ExactPropertyError::NotAPredefinedSet`. What cannot
+  be read exactly is still refused with `UnsupportedDefinition`: a
+  selected aggregate attribute (`ReinforcementSectionDefinitions`), and,
+  as before, a set without `Name` that the set name does not select but
+  that has an attribute of the requested name (#66). A predefined set's
+  `Name` that is neither text nor `$` is now `MalformedName` rather than
+  treated as unnamed.
+- `exact_property`, `exact_properties` and `exact_properties_where` resolve
+  `IfcPropertyEnumeratedValue`, `IfcPropertyListValue`,
+  `IfcPropertyBoundedValue`, `IfcPropertyTableValue` and
+  `IfcPropertyReferenceValue` (#150), which they refused with
+  `UnsupportedProperty`. New `ExactValue` variants `Enumerated`, `List`,
+  `Bounded`, `Table` and `Reference` carry them, with the new types
+  `ExactTypedValue` (one `IfcValue` and its declared type),
+  `ExactEnumeratedValue`/`ExactEnumeration` (selected values and the
+  referenced `IfcPropertyEnumeration`), `ExactBoundedValue` (lower, upper,
+  set point), `ExactTableValue`/`ExactTableRow` (rows, expression, defining
+  and defined unit, interpolation), `ExactReferenceValue` and
+  `ExactEntityRef` (usage name and target). `ExactProperty.value_type` is
+  `None` for these; `unit_id` is the list's, the bounded value's or the
+  enumeration's `Unit`. Every attribute is read by name from the declared
+  release's table: IFC2X3 requires the value lists and the reference target
+  and has no `SetPointValue` or `CurveInterpolation`; IFC4/IFC4X3 make them
+  optional. A malformed kind is refused as a single value is, and the
+  WHERE rules that decide how the values read (one type per list and
+  between bounds, equal table columns, selected values drawn from the
+  referenced enumeration) and `LIST OF UNIQUE` are enforced with the new
+  `ExactPropertyError::InconsistentValues { entity, rule }`, where `rule` is
+  the release's own label (`WR21` in IFC4, `WR1` in IFC2X3). Both enums are
+  `#[non_exhaustive]`; callers that relied on the refusal now get answers.
+  An `IfcComplexProperty` is still refused.
+- `exact_properties(model, object)` and
+  `exact_properties_where(model, object, select_set, select_property)`:
+  exact enumeration of an object's properties and simple quantities (#78),
+  for checks such as IDS property facets that name sets and properties by
+  pattern. Each `ExactPropertyEntry` carries the member's name and the same
+  `ExactProperty` (provenance, set, value type, unit, value) that
+  `exact_property` reports. The traversal, model and assignment validation
+  and refusals are those of `exact_property`, and for one set name and one
+  property name the result equals its answer (`[x]` for `Present(x)`, empty
+  for `Absent`, the same error otherwise). An inherited property is left
+  out when an occurrence set of the same name selects a property of the
+  same name. An empty result is a proven absence. Only selected members
+  must resolve: an unselected `IfcPropertyEnumeratedValue` or complex
+  quantity does not refuse the answer, but every member of a selected set
+  must be well formed. Additive; nothing existing changes.
+- `exact_property`, `exact_schema` and `exact_unit` resolve IFC4X3 ADD2
+  models (#76), bound to the bundled IFC4X3 ADD2 table. They were refused
+  with `ExactPropertyError::UnsupportedSchema`. The header tokens are those
+  `ifc_schema::SchemaVersion::from_header_token` maps to that release
+  (`IFC4X3_ADD2` and `IFC4X3`). Tests pin the IFC4X3 differences:
+  `IfcRelDefinesByProperties.RelatedObjects` admits any non-type
+  `IfcObjectDefinition` (an `IfcProject` too), `IfcPropertySetDefinitionSet`
+  is traversed under its `SET [1:?]` rules, `IfcTypeObject.HasPropertySets`
+  may be `$` but not empty, `IfcQuantityNumber` resolves as
+  `IFCNUMERICMEASURE` only in IFC4X3, and `IfcDerivedUnit` has IFC4X3's four
+  attributes. `IfcDimensionsForSIUnit`/`IfcCorrectDimensions` for IFC4X3 are
+  checked against the EXPRESS source, so the farad keeps IFC4's
+  dimensions. Callers that relied on IFC4X3 being refused now get answers;
+  the result type is unchanged.
+- `PropertyAnomaly::MemberNotReference` and `PropertyAnomaly::DuplicateMember`
+  (#137). `property_set_checked`, `property_checked`, `quantity_set`,
+  `quantity_sets`, `property_sets_by_object` and `resolved_properties`
+  report an item of `HasProperties`, `Quantities` or `HasQuantities` that is
+  not an entity reference, and a member listed twice, instead of skipping
+  the one and reading the other twice. `PropertyAnomaly` is
+  `#[non_exhaustive]`, so this is not breaking.
 
-### Changed (breaking)
-
-- `PropertyAnomaly` is `#[non_exhaustive]`, so future checks can add
-  variants. Exhaustive matches need a wildcard arm.
-- `template_of_set` returns `BTreeMap<EntityId, Vec<EntityId>>`: every
-  template defining a set, ascending by id and without repeats (#60).
-  `IfcPropertySetDefinition.IsDefinedBy` is `SET [0:?] OF
-  IfcRelDefinesByTemplate`, so several templates are legal, but the old
-  `BTreeMap<EntityId, EntityId>` kept only the last and silently dropped the
-  others, on valid files. A caller that wants one template must now choose,
-  and is not handed an arbitrary one.
+- `property_checked` and `property_set_checked`: the values of `property`
+  and `property_set`, together with a `PropertyAnomaly` for every member
+  they could not resolve (#107). `property_sets_by_object` and
+  `resolved_properties` now include these anomalies, once per set.
+- `PropertyAnomaly` variants for what nested and malformed members used
+  to lose silently (#107). `PropertyAnomaly` is `#[non_exhaustive]`, so
+  this is not breaking:
+  - `ComplexCycle`: a complex property or complex quantity reaches itself
+    again through its members, at any cycle length.
+  - `ComplexTooDeep`: complex nesting deeper than 16 levels.
+  - `ComplexBudgetExceeded`: one read followed more than 10,000 nested
+    member references.
+  - `MissingMember`: a set or complex entity lists an id absent from the
+    file.
+  - `QuantityValueMissing` / `QuantityValueNotNumeric`: a simple quantity
+    whose value attribute is `$`, absent, or not a number.
 
 ### Fixed
 
-- An object typed twice kept the **last** `IfcRelDefinesByType` in file
-  order and said nothing. It now keeps the first by relationship id, and
-  inherits only that type's sets.
-- Two same-named property sets on one owner made the later one win. For
-  occurrences, the earlier one was misreported as `shadowed`: shadowing
-  means an occurrence set overriding a type set. The set with the lower id
-  now wins within each route. An occurrence set still overrides a
-  same-named type set, and that is not reported.
-
-### Fixed
-
-- `exact_property` no longer reports `Absent` for a quantity in a same-named
-  `IfcElementQuantity` (#66). Quantity sets were skipped, so a checker
-  asking for `Qto_WallBaseQuantities.Length` (IDS treats quantities as
-  properties) got a confident "missing".
-  - Simple quantities now resolve exactly. `value_type` is the release's
-    declared measure of the value attribute (`IFCLENGTHMEASURE`), and
-    `unit_id` is the quantity's `IfcNamedUnit`.
-  - Complex, duplicated or malformed quantities are refused, as are a
-    same-named property set and quantity set.
-  - A predefined property set (`IfcDoorLiningProperties`, …) whose own
-    attribute carries the requested name is refused with
-    `UnsupportedDefinition` instead of being skipped into `Absent`.
-  - A quantity set with no `Name` is refused (`MalformedName`), because it
-    could be the set asked for.
-  - Results change from `Absent` to `Present` or an error only where the
-    old answer was unproven.
+- A member listed twice in a property set, quantity set, complex property
+  or complex quantity was resolved twice (#137). It is now resolved once,
+  at its first position, and reported as `DuplicateMember`; a property set
+  therefore no longer reports such a repeat as a `DuplicatePropertyName`
+  of itself.
+- Complex properties and complex quantities guarded nesting only against a
+  DIRECT self-member and a bare depth of 16 (#107). A longer cycle, or
+  nesting past the depth, was silently truncated to an empty member list,
+  and a densely cyclic file cost exponential work (a clique of 8 complex
+  properties followed 7^16 paths) before the depth stopped it. Members are
+  now followed along a tracked path with a depth bound and a member
+  budget, and every cut is reported. A member shared by two complex
+  properties (legal: `IfcProperty.PartOfComplex` is `SET [0:?]`) is still
+  resolved under both and is not a cycle.
+- `quantity_set` and `quantity_sets` no longer drop, without a word, a
+  simple quantity with a missing or non-numeric value, or a member id
+  absent from the file (#107). Such members are still left out of
+  `quantities` (a `Quantity::Simple` needs a number), but each is now
+  reported.
+- The `property` documentation claimed over-deep nesting yields
+  `PropertyValue::Unsupported`; it never did. It now states what happens.
 
 Full history: [`ifc-properties/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-properties/CHANGELOG.md)

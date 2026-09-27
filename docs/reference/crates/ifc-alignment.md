@@ -11,7 +11,7 @@ IFC4x3 linear positioning: alignments, referents, linear placement, spirals.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.3.0 (2026-09-23) |
+| Latest release | 0.3.1 (2026-09-27) |
 | Registries | [crates.io `ifc-alignment`](https://crates.io/crates/ifc-alignment) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `alignment` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_alignment/index.html) · [docs.rs](https://docs.rs/ifc-alignment) |
@@ -33,12 +33,18 @@ consumers should never compile spiral curve laws.
 
 ## Changes
 
-Latest release, 0.3.0 (2026-09-23):
+Latest release, 0.3.1 (2026-09-27):
 
 ### Changed
 
-- **Breaking:** requires Axiolid 0.3. Lowered alignment curves are returned as
-  `axiolid_model::GeometryGraph` and `NodeId`, so the major Axiolid version is
-  part of this crate's public API. No code change.
+- `profile_law` (and so `lower_gradient_curve`) now refuses a vertical
+  profile whose seams do not join: a segment's `StartHeight` must match the
+  previous segment's end height and its `StartGradient` the previous
+  `EndGradient`, within the same magnitude-scaled tolerance already used for
+  `StartDistAlong` contiguity. A height step or grade kink was previously
+  accepted and silently shifted every downstream height. The refusal is the
+  new `AlignmentError::ProfileDiscontinuity`, naming both segments, the
+  discontinuous quantity (`ProfileSeam::Height` or `ProfileSeam::Gradient`)
+  and both values (#95).
 
 Full history: [`ifc-alignment/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-alignment/CHANGELOG.md)

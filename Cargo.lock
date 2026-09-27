@@ -24,9 +24,9 @@ checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
 name = "axiolid-brep"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "420648fe0e4da4fe5cc401dca2269c851994b7f33badb684237bce57f57cbcfa"
+checksum = "562b2ff2b795c2fa0041e274bf0898835866f84ad51dc48ea28d783af52e5376"
 dependencies = [
  "axiolid-core",
  "axiolid-curve",
@@ -36,9 +36,9 @@ dependencies = [
 
 [[package]]
 name = "axiolid-brep-audit"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8738eef77f4e8a369343f3d60c13d993a930ee94e43d30385ea71775db475002"
+checksum = "74d03bd1935e2d25d6550ca4d12391e60bc26d3d083af98f9a1bc57a2ebc4459"
 dependencies = [
  "axiolid-brep",
  "axiolid-contracts",
@@ -51,9 +51,9 @@ dependencies = [
 
 [[package]]
 name = "axiolid-construct"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90bbdc67fe070541ff6bf69488e0ff4465d2d1b6a5363518fe3a0da43bca3551"
+checksum = "5fe6bf3314a312bffb598bf996b205d3578827ba98908a8e4cf9703844da643f"
 dependencies = [
  "axiolid-brep",
  "axiolid-brep-audit",
@@ -98,9 +98,9 @@ dependencies = [
 
 [[package]]
 name = "axiolid-curve"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd3201f2d473e40533c31c9f3241ba9d31720730b3c38dca0e07eba142c60229"
+checksum = "3eb43ef434e50872864866caa097aff9f924669ef60967372675f1584400e1d4"
 dependencies = [
  "axiolid-core",
  "axiolid-linear",
@@ -119,15 +119,27 @@ dependencies = [
 
 [[package]]
 name = "axiolid-evaluate"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4da5a9425a3e59426e76ea4adb11f6fe4f5b50c19cc15d5bbf1ddfbfcf933b1"
+checksum = "2a40f86d25e2c99608e99450fd52ec88e8368c9903def9ffa765114faf92e545"
 dependencies = [
  "axiolid-contracts",
  "axiolid-core",
  "axiolid-curve",
  "axiolid-curve-evaluate-contract",
  "axiolid-surface",
+]
+
+[[package]]
+name = "axiolid-exact"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8584a50ff24dfe0f178ff4165fa4dbc5ca525260887d5f6fe4af4b668a41c7a0"
+dependencies = [
+ "axiolid-core",
+ "axiolid-guarantees",
+ "num-bigint",
+ "num-integer",
 ]
 
 [[package]]
@@ -203,9 +215,9 @@ dependencies = [
 
 [[package]]
 name = "axiolid-mesh-compile"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a9e7e84abaac1fd2acb582e4e55fa03c9617df22590a29df97f0ca16e592150"
+checksum = "917c0cc774526b960660fb1150b4ad85bc6ee3c1cb9204749e79c73a589ea604"
 dependencies = [
  "axiolid-brep",
  "axiolid-construct",
@@ -263,9 +275,9 @@ dependencies = [
 
 [[package]]
 name = "axiolid-model"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99068a514c655500a13f392422d1b3616b2c05dd2a686f93f7aa96c440f8fb0f"
+checksum = "4f8a7279dd891c3b01347f4719eb018c6d8f407677f94fa8e133ab864e06492e"
 dependencies = [
  "axiolid-core",
  "axiolid-curve",
@@ -278,14 +290,15 @@ dependencies = [
 
 [[package]]
 name = "axiolid-nurbs"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62b1c4e47189235d0839097b8876fa81d103315a1f5d685a2f6350a5b8547493"
+checksum = "75a5b3845058ceda75f6a9a3c734b9376e9de05281fdc23520966023359723d1"
 dependencies = [
  "axiolid-contracts",
  "axiolid-core",
  "axiolid-curve",
  "axiolid-evaluate",
+ "axiolid-exact",
  "axiolid-guarantees",
  "axiolid-predicates",
  "axiolid-surface",
@@ -293,20 +306,21 @@ dependencies = [
 
 [[package]]
 name = "axiolid-overlay"
-version = "0.3.0"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f1465c6c89c0dbf08a0700c65b1a5f9fcbac4b19a24ff84e58bfefff4d838e8"
+checksum = "d39f99eb95fa0e3e41bef1dff5ea03c417c996bfae175e26aac4a957e3f65c7b"
 dependencies = [
  "axiolid-core",
- "cavalier_contours",
+ "axiolid-exact",
+ "axiolid-guarantees",
  "i_overlay",
 ]
 
 [[package]]
 name = "axiolid-predicates"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50b696b06ec53f2efa706f5874de8acf96d9ff0f580cadddf1908056111af7e1"
+checksum = "d020f1f58bbd8c0a017d18cbe921d9a35bdebf3032e8317ec4dff0171c6e17d9"
 dependencies = [
  "axiolid-core",
  "axiolid-guarantees",
@@ -364,9 +378,9 @@ dependencies = [
 
 [[package]]
 name = "axiolid-surface"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3056dd280b7a841fbca2d75d1a3a864707e85d55a7fc2b358761c89f71af8843"
+checksum = "4ab3556edad355367b7bb990e6e36c70a77634954cc351d3c54b805dcdb2d4f5"
 dependencies = [
  "axiolid-core",
  "axiolid-curve",
@@ -464,18 +478,6 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
-]
-
-[[package]]
-name = "cavalier_contours"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85e06038a969c5e4d93565f12b044814d3b1a48d50c4ef868d588e79956fea51"
-dependencies = [
- "ahash",
- "num-traits",
- "smallvec",
- "static_aabb2d_index",
 ]
 
 [[package]]
@@ -720,7 +722,7 @@ checksum = "4804bdc1dc124eb7e1aa9e144ecc04096bcf787a10a15fa44af682b51f0f6cce"
 
 [[package]]
 name = "ifc-alignment"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "axiolid-core",
  "axiolid-curve",
@@ -742,7 +744,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-author"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -769,7 +771,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-control"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -778,7 +780,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-cost"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ifc-model",
  "ifc-step",
@@ -795,7 +797,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-geometry"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "axiolid-construct",
  "axiolid-contracts",
@@ -835,7 +837,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-material"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -863,7 +865,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-properties"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -898,7 +900,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-spatial"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -945,7 +947,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-tabular"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -955,7 +957,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-template-catalog"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "bincode",
  "ifc-schema",
@@ -966,7 +968,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-validate"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -975,7 +977,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-xml"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -1051,6 +1053,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-bigint"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93e7820bc0a80a0238e650327316f929ba18d5be054b647490a3a6a339f3e7c0"
+dependencies = [
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
+name = "num-integer"
+version = "0.1.47"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ce2d95d4b3734dc35aa2f45e1aa22cd416814592a4f9d9205e11affd5b8e10b"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "num-traits"
 version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1067,7 +1088,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "openbim-ifc"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "ifc-alignment",
  "ifc-approval",
@@ -1362,21 +1383,6 @@ name = "slab"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
-
-[[package]]
-name = "smallvec"
-version = "1.16.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba467056f1b547ed52077911161fc86985becbc60e8e1857c8a144dab0def891"
-
-[[package]]
-name = "static_aabb2d_index"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a753368e4dd146a347d0ea692f0f8a37df18df7eee5659d36dd75eb287c6454"
-dependencies = [
- "num-traits",
-]
 
 [[package]]
 name = "syn"

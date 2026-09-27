@@ -20,73 +20,294 @@ lockstep -- is archived in the
 
 ## [Unreleased]
 
-### ifc-alignment
+### ifc-schema
 
 ### Changed
 
-- `profile_law` (and so `lower_gradient_curve`) now refuses a vertical
-  profile whose seams do not join: a segment's `StartHeight` must match the
-  previous segment's end height and its `StartGradient` the previous
-  `EndGradient`, within the same magnitude-scaled tolerance already used for
-  `StartDistAlong` contiguity. A height step or grade kink was previously
-  accepted and silently shifted every downstream height. The refusal is the
-  new `AlignmentError::ProfileDiscontinuity`, naming both segments, the
-  discontinuous quantity (`ProfileSeam::Height` or `ProfileSeam::Gradient`)
-  and both values (#95).
+- Requires `openbim-step` 0.7.0, matching `ifc-step`. Both pin the parser
+  exactly, so the pair must move together. `openbim-step` 0.6 replaced
+  `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
+  accessor for multiple inheritance; IFC schemas are single-inheritance, so
+  the serialized artifact is unchanged.
 
-### ifc-author
+### openbim-ifc-binding-core
+
+### Added (lazy loading)
+
+- `IfcModel::parse_owned(Vec<u8>)`, `IfcModel::open(path)` and the unsafe
+  `IfcModel::open_mapped(path)`. A parsed model keeps its source and
+  decodes entities on access (ADR 0015); `parse` copies the input once,
+  `parse_owned` and `open` not at all beyond the file read.
+- `BindingError::Io`, stable code `io`, for a file that cannot be read.
+
+### Added
+
+- The host-independent half of the language bindings (ADR 0013): `IfcModel`
+  operations, the lossless `Tagged` value encoding and `BindingError` with
+  stable codes, shared by the WASM, C and Python bindings. Extracted from
+  `openbim-ifc-wasm`.
+- Non-finite reals (NaN, infinity) are refused for every host; STEP has no
+  form for them.
+
+### openbim-ifc-capi
+
+### Added (lazy loading)
+
+- `openbim_ifc_v0_1_model_open(path, path_len, ...)`: read a STEP file from
+  disk into a model that owns it, one copy less than reading it in the host
+  and calling `model_parse`.
+- `openbim_ifc_v0_1_model_open_mapped(...)`: the same through a memory
+  mapping; the file must stay unchanged until the model is destroyed.
+- `OPENBIM_IFC_STATUS_IO` (16) for a file that cannot be read.
+
+### Added
+
+- Opt-in `rusty_alloc` feature (off by default): the library's Rust
+  allocations go through the pure-Rust rusty_alloc allocator, pinned to
+  exactly 2.2.1; the host's `malloc` is untouched. Reading STEP into a
+  model takes 18-35% less CPU time on seven real IFC files, at 1-7% less
+  peak memory; the models are identical on 2,273 corpus files. It replaces
+  the C `mimalloc` feature, which cost more CPU time than the system
+  allocator on a host with transparent huge pages set to `always` (#49).
+
+- Versioned C ABI 0.1 over the IFC facade (#38, ADR 0013), following
+  Axiolid's C ABI conventions: `openbim_ifc_v0_1_*` symbols, opaque integer
+  handles, caller-owned buffers with a size query, no Rust allocation across
+  the boundary, and every panic contained as a status.
+- Nested attribute values cross as a pre-order node tape plus one string
+  buffer, keeping `$`/`*`, `.U.`/`.F.`, integer/real and typed wrappers
+  distinct.
+- A cbindgen-generated C11 header (`include/openbim_ifc.h`), checked for
+  drift, and a C and C++ smoke test in the gate.
+
+## [0.7.0] - 2026-09-27
+
+### openbim-ifc
+
+### Changed (breaking)
+
+- Re-exports three crates whose breaking releases pass through:
+  `validate` is `ifc-validate` 0.3.0 (`Severity::EvaluationError`, renamed
+  rule ids, `Budget::max_depth` removed), `material` is `ifc-material` 0.3.0
+  (views and authoring bound to the declared release; `create_material`
+  takes the model), and `geometry` is `ifc-geometry` 0.4.0 (typed reference
+  errors, `IfcBlock` meshes no longer offset by half their extents). See
+  each crate's changelog.
+- Requires the releases published with it: `ifc-properties` 0.4.1,
+  `ifc-spatial` 0.2.2, `ifc-xml` 0.2.1, `ifc-alignment` 0.3.1,
+  `ifc-author` 0.2.1, `ifc-control` 0.2.1, `ifc-cost` 0.2.1,
+  `ifc-tabular` 0.2.1 and `ifc-template-catalog` 0.2.1.
+
+### Added
+
+- `body_description`, `describe_profile` and their types (`BodyDescription`,
+  `BodyItem`, `BodyKind`, `SweptSolid`, `SweepPath`, `ProfileDescription`,
+  `ProfileParameters`) are re-exported at the root under `geometry-select`
+  (#147), so a rule check reads a body's kind and swept-solid profile
+  parameters without linking the geometry kernel.
+- `door_operation(model, door)` (features `geometry-select` and
+  `properties`): each leaf of a door as a world frame, width, hinge side and
+  swing `Sector`, from its placement, `OperationType` and
+  `IfcDoorPanelProperties`, in IFC2X3, IFC4 and IFC4X3 (#148). Single and
+  double swing, double-acting, sliding, rolling-up and swing-fixed doors are
+  derived; `NOTDEFINED`, `USERDEFINED`, revolving, folding, lifting and the
+  `DOUBLE_DOOR_SINGLE_SWING_OPPOSITE_*` operations, a door without panel
+  properties or `OverallWidth`, and panels that contradict the operation are
+  refused as `DoorOperationError`, never defaulted. The leaves lie on the
+  placement's x axis; lining offsets across the wall depth are not applied.
+
+### Changed
+
+- The `properties` feature also names `ifc-schema`, which `ifc-properties`
+  already links, so the door join reads attributes by name from the bound
+  release's table. No crate is added to a build.
+
+## [0.6.0] - 2026-09-26
+
+### openbim-ifc
+
+### Changed (breaking)
+
+- `properties` re-exports `ifc-properties` 0.4.0, whose breaking changes
+  (`PropertyAnomaly` is `#[non_exhaustive]`; `template_of_set` returns every
+  template of a set) pass through. It also resolves quantity sets in
+  `exact_property` instead of reporting them absent (#66).
+
+### Changed
+
+- STEP models load lazily: `from_step_bytes`, `read_path` and every strict
+  read validate the whole file but decode each entity on first access
+  (ADR 0015, see `ifc-step`). `read_path` hands its buffer to the codec
+  instead of letting it copy the file once more.
+
+### Added
+
+- `StepReader`, `ParseOptions` and `OnMalformed` are re-exported, so the
+  eager and memory-mapped reads (`StepReader::eager`,
+  `StepReader::read_path_mapped`) are reachable through the facade.
+
+### Added
+
+- `Transaction`, `Applied` and `Conflict` are re-exported. `EntityEditor` and
+  the domain writers stage into a `Transaction`, which facade users could not
+  name, so an editor could be built but never applied.
+
+## [0.5.0] - 2026-09-26
+
+### openbim-ifc
+
+### Added
+
+- `ifc::properties::exact_unit` (ifc-properties 0.3): a measure's effective
+  unit resolved exactly to SI, or refused (#53).
+- `ifc::spatial::SpatialTree::anomalies` (ifc-spatial 0.2.1): double
+  containment and double aggregation are reported (#54).
+
+### Changed
+
+- **Breaking:** re-exports ifc-properties 0.3, whose
+  `UnitKind::Si::prefix_exponent` is now `Option<i32>` and whose
+  `UnitKind::Conversion` gains an `offset` field.
+
+## [0.4.1] - 2026-09-27
+
+### ifc-properties
+
+### Added
+
+- `exact_property`, `exact_properties` and `exact_properties_where` resolve
+  the attributes of predefined property sets (#149): `IfcDoorLiningProperties`,
+  `IfcDoorPanelProperties`, `IfcWindowLiningProperties`,
+  `IfcWindowPanelProperties` and every other `IfcPropertySetDefinition`
+  that is neither a property set nor a quantity set, in IFC2X3, IFC4 and
+  IFC4X3. A set's members are the attributes its entity declares below
+  `IfcPropertySetDefinition`, named and typed as the declared release's
+  table has them (`LiningThickness` is `IFCPOSITIVELENGTHMEASURE` in IFC2X3,
+  `IFCNONNEGATIVELENGTHMEASURE` in IFC4). Values keep the provenance of a
+  single value (`property_id` is the set's id) with no explicit unit, so a
+  length resolves to the project unit through `exact_unit`; ratios are
+  their ratio measure. New `ExactValue::Enum` carries an enumeration
+  constant checked against the release's members, and `ExactValue::Entity`
+  an entity reference (`ShapeAspectStyle`) checked but not followed. An
+  unset optional attribute is `Present` with `ExactValue::Null` and its
+  declared type; an unset required one is `MissingValueSlot`. A set that
+  states no `Name` is found under its entity name
+  (`IfcDoorLiningProperties`); such sets of one entity (a door's panel set
+  per leaf) are ambiguous only for a member they share. New
+  `exact_predefined_sets(model, object, entity)` returns every assigned set
+  of that entity with all its attributes (`ExactPredefinedSet`, with
+  `attribute(name)`), occurrence sets first, no override applied, for door
+  operation geometry (#148); a name that is not a predefined set in the
+  release is the new `ExactPropertyError::NotAPredefinedSet`. What cannot
+  be read exactly is still refused with `UnsupportedDefinition`: a
+  selected aggregate attribute (`ReinforcementSectionDefinitions`), and,
+  as before, a set without `Name` that the set name does not select but
+  that has an attribute of the requested name (#66). A predefined set's
+  `Name` that is neither text nor `$` is now `MalformedName` rather than
+  treated as unnamed.
+- `exact_property`, `exact_properties` and `exact_properties_where` resolve
+  `IfcPropertyEnumeratedValue`, `IfcPropertyListValue`,
+  `IfcPropertyBoundedValue`, `IfcPropertyTableValue` and
+  `IfcPropertyReferenceValue` (#150), which they refused with
+  `UnsupportedProperty`. New `ExactValue` variants `Enumerated`, `List`,
+  `Bounded`, `Table` and `Reference` carry them, with the new types
+  `ExactTypedValue` (one `IfcValue` and its declared type),
+  `ExactEnumeratedValue`/`ExactEnumeration` (selected values and the
+  referenced `IfcPropertyEnumeration`), `ExactBoundedValue` (lower, upper,
+  set point), `ExactTableValue`/`ExactTableRow` (rows, expression, defining
+  and defined unit, interpolation), `ExactReferenceValue` and
+  `ExactEntityRef` (usage name and target). `ExactProperty.value_type` is
+  `None` for these; `unit_id` is the list's, the bounded value's or the
+  enumeration's `Unit`. Every attribute is read by name from the declared
+  release's table: IFC2X3 requires the value lists and the reference target
+  and has no `SetPointValue` or `CurveInterpolation`; IFC4/IFC4X3 make them
+  optional. A malformed kind is refused as a single value is, and the
+  WHERE rules that decide how the values read (one type per list and
+  between bounds, equal table columns, selected values drawn from the
+  referenced enumeration) and `LIST OF UNIQUE` are enforced with the new
+  `ExactPropertyError::InconsistentValues { entity, rule }`, where `rule` is
+  the release's own label (`WR21` in IFC4, `WR1` in IFC2X3). Both enums are
+  `#[non_exhaustive]`; callers that relied on the refusal now get answers.
+  An `IfcComplexProperty` is still refused.
+- `exact_properties(model, object)` and
+  `exact_properties_where(model, object, select_set, select_property)`:
+  exact enumeration of an object's properties and simple quantities (#78),
+  for checks such as IDS property facets that name sets and properties by
+  pattern. Each `ExactPropertyEntry` carries the member's name and the same
+  `ExactProperty` (provenance, set, value type, unit, value) that
+  `exact_property` reports. The traversal, model and assignment validation
+  and refusals are those of `exact_property`, and for one set name and one
+  property name the result equals its answer (`[x]` for `Present(x)`, empty
+  for `Absent`, the same error otherwise). An inherited property is left
+  out when an occurrence set of the same name selects a property of the
+  same name. An empty result is a proven absence. Only selected members
+  must resolve: an unselected `IfcPropertyEnumeratedValue` or complex
+  quantity does not refuse the answer, but every member of a selected set
+  must be well formed. Additive; nothing existing changes.
+- `exact_property`, `exact_schema` and `exact_unit` resolve IFC4X3 ADD2
+  models (#76), bound to the bundled IFC4X3 ADD2 table. They were refused
+  with `ExactPropertyError::UnsupportedSchema`. The header tokens are those
+  `ifc_schema::SchemaVersion::from_header_token` maps to that release
+  (`IFC4X3_ADD2` and `IFC4X3`). Tests pin the IFC4X3 differences:
+  `IfcRelDefinesByProperties.RelatedObjects` admits any non-type
+  `IfcObjectDefinition` (an `IfcProject` too), `IfcPropertySetDefinitionSet`
+  is traversed under its `SET [1:?]` rules, `IfcTypeObject.HasPropertySets`
+  may be `$` but not empty, `IfcQuantityNumber` resolves as
+  `IFCNUMERICMEASURE` only in IFC4X3, and `IfcDerivedUnit` has IFC4X3's four
+  attributes. `IfcDimensionsForSIUnit`/`IfcCorrectDimensions` for IFC4X3 are
+  checked against the EXPRESS source, so the farad keeps IFC4's
+  dimensions. Callers that relied on IFC4X3 being refused now get answers;
+  the result type is unchanged.
+- `PropertyAnomaly::MemberNotReference` and `PropertyAnomaly::DuplicateMember`
+  (#137). `property_set_checked`, `property_checked`, `quantity_set`,
+  `quantity_sets`, `property_sets_by_object` and `resolved_properties`
+  report an item of `HasProperties`, `Quantities` or `HasQuantities` that is
+  not an entity reference, and a member listed twice, instead of skipping
+  the one and reading the other twice. `PropertyAnomaly` is
+  `#[non_exhaustive]`, so this is not breaking.
+
+- `property_checked` and `property_set_checked`: the values of `property`
+  and `property_set`, together with a `PropertyAnomaly` for every member
+  they could not resolve (#107). `property_sets_by_object` and
+  `resolved_properties` now include these anomalies, once per set.
+- `PropertyAnomaly` variants for what nested and malformed members used
+  to lose silently (#107). `PropertyAnomaly` is `#[non_exhaustive]`, so
+  this is not breaking:
+  - `ComplexCycle`: a complex property or complex quantity reaches itself
+    again through its members, at any cycle length.
+  - `ComplexTooDeep`: complex nesting deeper than 16 levels.
+  - `ComplexBudgetExceeded`: one read followed more than 10,000 nested
+    member references.
+  - `MissingMember`: a set or complex entity lists an id absent from the
+    file.
+  - `QuantityValueMissing` / `QuantityValueNotNumeric`: a simple quantity
+    whose value attribute is `$`, absent, or not a number.
 
 ### Fixed
 
-- An attribute declared as a defined type that aliases an aggregate is an
-  aggregate (#17). `IfcSite.RefLatitude`/`RefLongitude`
-  (`IfcCompoundPlaneAngleMeasure = LIST [3:4] OF INTEGER`) were refused with
-  `AggregateMismatch`, which blocked georeferencing. Their elements are now
-  checked against the alias's element type.
-- A slot that the entity or a supertype redeclares as `DERIVE` is written `*`
-  automatically (#18). `IfcSIUnit.Dimensions` and the four derived slots of
-  `IfcGeometricRepresentationSubContext` reported `MissingRequired`, so no unit
-  assignment or Body/Axis subcontext could be authored. Passing
-  `Value::Derived` explicitly is also accepted.
+- A member listed twice in a property set, quantity set, complex property
+  or complex quantity was resolved twice (#137). It is now resolved once,
+  at its first position, and reported as `DuplicateMember`; a property set
+  therefore no longer reports such a repeat as a `DuplicatePropertyName`
+  of itself.
+- Complex properties and complex quantities guarded nesting only against a
+  DIRECT self-member and a bare depth of 16 (#107). A longer cycle, or
+  nesting past the depth, was silently truncated to an empty member list,
+  and a densely cyclic file cost exponential work (a clique of 8 complex
+  properties followed 7^16 paths) before the depth stopped it. Members are
+  now followed along a tracked path with a depth bound and a member
+  budget, and every cut is reported. A member shared by two complex
+  properties (legal: `IfcProperty.PartOfComplex` is `SET [0:?]`) is still
+  resolved under both and is not a cycle.
+- `quantity_set` and `quantity_sets` no longer drop, without a word, a
+  simple quantity with a missing or non-numeric value, or a member id
+  absent from the file (#107). Such members are still left out of
+  `quantities` (a `Quantity::Simple` needs a number), but each is now
+  reported.
+- The `property` documentation claimed over-deep nesting yields
+  `PropertyValue::Unsupported`; it never did. It now states what happens.
 
-### Added
-
-- `AuthorError::DerivedAttribute` refuses a value or `$` in a derived slot.
-  `AuthorError::NotDerived` refuses `*` in a slot the schema does not derive.
-  Before, `*` was accepted in any slot and the file was invalid. Both apply to
-  `EntityBuilder` and `EntityEditor`.
-
-### ifc-control
-
-### Added
-
-- `assign_to_control` and `ControlAssignmentDraft` stage an
-  `IfcRelAssignsToControl` whose relating control is a permit, project
-  order, action request or performance history. Empty, duplicated and
-  self-referencing `RelatedObjects`, members that are not
-  `IfcObjectDefinition`s, and missing references are refused;
-  `RelatedObjectsType` is left unset (#99).
-- `ControlError::ForeignControl` refuses a relating control another crate
-  owns (cost schedules, cost items, work controls).
-- `ControlKind::ALL` lists the four owned controls.
-
-### ifc-cost
-
-### Added
-
-- `nesting_anomalies(model)` and `CostAnomaly::NestedTwice { item, kept,
-  rejected, relation }` (#57). A cost item that two `IfcRelNests` place
-  under different parents is reported; `Nests` is `SET [0:1]`.
-
-### Fixed
-
-- A cost item nested under two parents is no longer counted twice (#57).
-  `parent_of` already returned the first parent, but `children_of` listed
-  the item under both. So `descendants_of` and `rolled_up_total` included it
-  under each parent, and summing over `roots()` double-counted its value.
-  Now only the kept parent (first `IfcRelNests` in file order) lists it,
-  and a child listed twice under one parent is listed once. Output changes
-  only for files that violate the schema.
+## [0.4.0] - 2026-09-27
 
 ### ifc-geometry
 
@@ -244,6 +465,14 @@ lockstep -- is archived in the
   exceeds its budget is now `ChainTooDeep` rather than `Unsupported`, and a
   self-referencing chain is `CyclicChain`; a dangling boundary curve of an
   arbitrary profile is reported when the profile is read.
+- Requires `axiolid-mesh-compile` 0.3.4, `axiolid-construct` 0.3.3 and
+  `axiolid-evaluate` 0.3.1. Compiled output changes where the kernel's did:
+  a B-rep's void shells are tessellated facing into the cavity instead of
+  being dropped, so an authored cavity is no longer filled
+  (axiolid/kernel#120); every solid of a multi-solid B-rep is meshed, not
+  only the first (axiolid/kernel#111); and a curve-bounded plane, the usual
+  space-boundary connection surface, compiles to a planar surface mesh
+  instead of being refused (axiolid/kernel#192).
 - Requires `axiolid-mesh-compile` 0.3.3 and `axiolid-contracts` 0.3.1.
   Closed `IfcPolygonalFaceSet` bodies whose face corners lie on a straight
   run (collinear notch and window heads) now mesh closed and report `Solid`
@@ -259,523 +488,6 @@ lockstep -- is archived in the
   an explicit chord budget (`ExecutionOptions::with_chord_error`,
   axiolid/kernel#165) brings the composite-curve D within 1e-5 of its exact
   volume.
-
-### ifc-material
-
-### Changed (breaking)
-
-- Views and authoring bind to the release the model's header declares
-  (#77). Every slot position comes from that release's bundled
-  `ifc-schema` table (IFC2X3 TC1, IFC4 ADD2 TC1 or IFC4X3 ADD2) instead of
-  IFC4 constants, so an IFC2X3 model is no longer read with IFC4 slots.
-  Behaviour for an IFC4 model, and for an in-memory model whose header
-  declares no schema (bound to IFC4 as before), is unchanged, except where
-  listed below. Breaking, because the same call now answers differently for
-  IFC2X3 and IFC4X3 models:
-  - an accessor for an attribute the release does not declare returns
-    `MaterialError::NotInSchema` instead of `Ok(None)`. For IFC2X3:
-    `Material::{description, category}`,
-    `MaterialLayer::{name, description, category, priority}`,
-    `MaterialLayerSet::description` and
-    `MaterialLayerSetUsage::reference_extent`. A typed absence rather than
-    `None`, because `None` claims the file left the value unset;
-  - a record the release cannot instantiate -- an
-    `IfcMaterialConstituent(Set)`, `IfcMaterialProfile*`,
-    `IfcMaterialLayerWithOffsets` or `IfcMaterialRelationship` in an IFC2X3
-    model, or IFC2X3's abstract `IfcMaterialProperties` -- is refused with
-    `MaterialError::EntityNotInSchema` by its accessors,
-    `resolve_material_select` and `assigned_material`;
-  - an IFC2X3 `IfcMaterialLayer.LayerThickness` of zero is invalid
-    (`IfcPositiveLengthMeasure`; IFC4 relaxed it to
-    `IfcNonNegativeLengthMeasure`);
-  - the `IfcRelDefinesByType` fallback admits the concrete `IfcTypeObject`
-    subtypes of the model's release, so IFC4X3 no longer accepts the
-    `IfcDoorStyle`/`IfcWindowStyle` it removed. The generated IFC4 list is
-    gone;
-  - a header declaring several schemas fails every read and write with
-    `MaterialError::MultipleSchemas`, and one declaring an unknown schema
-    with `MaterialError::UnsupportedSchema`.
-- `create_material` takes the `&Model` it writes into and returns
-  `MaterialResult<EntityId>`, like every other authoring function: without
-  the model it cannot know the release, and IFC2X3 `IfcMaterial` has no
-  `Description` or `Category` slot to write.
-- Authoring writes the release's layout: IFC2X3 gets the short
-  `IfcMaterial`, `IfcMaterialLayer`, `IfcMaterialLayerSet` and
-  `IfcMaterialLayerSetUsage` records. A draft value the release cannot hold
-  (an IFC2X3 layer name, category or priority, a layer set description, a
-  usage reference extent, a material description or category) is refused
-  with `MaterialError::AuthoringNotInSchema` rather than dropped; an entity it
-  lacks is refused with `MaterialError::EntityNotInSchema`; and a required
-  attribute left unset -- the IFC2X3 `IfcRelAssociatesMaterial.OwnerHistory`
-  -- with `MaterialError::AuthoringRequired`, so `associate_material` refuses
-  an IFC2X3 model. Nothing is staged on refusal.
-- IFC4X3 is read against its own table. Its material entities keep the IFC4
-  layouts; the one rename, `IfcMaterialRelationship.Expression` to
-  `MaterialExpression` at the same position, is resolved by name.
-- `ifc-schema` is now a production dependency.
-
-### Fixed
-
-- `associate_material`, `create_material_properties` and layer-set members
-  accept exactly what the release's schema accepts: `RelatingMaterial` any
-  instantiable `IfcMaterialSelect` member (an `IfcMaterialLayer` too; IFC2X3
-  has no constituent or profile sets), `Material` any
-  `IfcMaterialDefinition`, and no `IfcMaterialLayerWithOffsets` in an IFC2X3
-  set.
-
-### Added
-
-- `material_schema(model)`, `MaterialView::schema()` and a `schema()`
-  accessor on every projection report the bound release; `SchemaVersion` is
-  re-exported.
-- `try_from_view(view, id)` on every projection looks a record up and binds
-  it to the model's release. `try_new` has no header and keeps reading IFC4.
-- `associate_material_with_owner_history` takes a caller-supplied
-  `IfcOwnerHistory`, which IFC2X3 requires; none is ever invented.
-- `MaterialError::{MultipleSchemas, UnsupportedSchema, NotInSchema,
-  EntityNotInSchema, AuthoringNotInSchema, AuthoringRequired}`.
-
-- `MaterialView::constituent_fraction_diagnostic`: an opt-in policy check
-  that an `IfcMaterialConstituentSet`'s fractions describe one whole
-  (#103). It returns a `ConstituentFractionDiagnostic` when every
-  constituent states a fraction but the sum is further from 1 than the
-  caller's tolerance (`SumNotOne`), or when stated and missing fractions
-  are mixed (`PartiallyStated`). IFC4 declares no WHERE rule on the sum,
-  so this is never a decode error and never normalises: the accessors
-  keep returning the authored fractions.
-
-### ifc-properties
-
-### Added
-
-- `exact_property`, `exact_properties` and `exact_properties_where` resolve
-  the attributes of predefined property sets (#149): `IfcDoorLiningProperties`,
-  `IfcDoorPanelProperties`, `IfcWindowLiningProperties`,
-  `IfcWindowPanelProperties` and every other `IfcPropertySetDefinition`
-  that is neither a property set nor a quantity set, in IFC2X3, IFC4 and
-  IFC4X3. A set's members are the attributes its entity declares below
-  `IfcPropertySetDefinition`, named and typed as the declared release's
-  table has them (`LiningThickness` is `IFCPOSITIVELENGTHMEASURE` in IFC2X3,
-  `IFCNONNEGATIVELENGTHMEASURE` in IFC4). Values keep the provenance of a
-  single value (`property_id` is the set's id) with no explicit unit, so a
-  length resolves to the project unit through `exact_unit`; ratios are
-  their ratio measure. New `ExactValue::Enum` carries an enumeration
-  constant checked against the release's members, and `ExactValue::Entity`
-  an entity reference (`ShapeAspectStyle`) checked but not followed. An
-  unset optional attribute is `Present` with `ExactValue::Null` and its
-  declared type; an unset required one is `MissingValueSlot`. A set that
-  states no `Name` is found under its entity name
-  (`IfcDoorLiningProperties`); such sets of one entity (a door's panel set
-  per leaf) are ambiguous only for a member they share. New
-  `exact_predefined_sets(model, object, entity)` returns every assigned set
-  of that entity with all its attributes (`ExactPredefinedSet`, with
-  `attribute(name)`), occurrence sets first, no override applied, for door
-  operation geometry (#148); a name that is not a predefined set in the
-  release is the new `ExactPropertyError::NotAPredefinedSet`. What cannot
-  be read exactly is still refused with `UnsupportedDefinition`: a
-  selected aggregate attribute (`ReinforcementSectionDefinitions`), and,
-  as before, a set without `Name` that the set name does not select but
-  that has an attribute of the requested name (#66). A predefined set's
-  `Name` that is neither text nor `$` is now `MalformedName` rather than
-  treated as unnamed.
-- `exact_property`, `exact_properties` and `exact_properties_where` resolve
-  `IfcPropertyEnumeratedValue`, `IfcPropertyListValue`,
-  `IfcPropertyBoundedValue`, `IfcPropertyTableValue` and
-  `IfcPropertyReferenceValue` (#150), which they refused with
-  `UnsupportedProperty`. New `ExactValue` variants `Enumerated`, `List`,
-  `Bounded`, `Table` and `Reference` carry them, with the new types
-  `ExactTypedValue` (one `IfcValue` and its declared type),
-  `ExactEnumeratedValue`/`ExactEnumeration` (selected values and the
-  referenced `IfcPropertyEnumeration`), `ExactBoundedValue` (lower, upper,
-  set point), `ExactTableValue`/`ExactTableRow` (rows, expression, defining
-  and defined unit, interpolation), `ExactReferenceValue` and
-  `ExactEntityRef` (usage name and target). `ExactProperty.value_type` is
-  `None` for these; `unit_id` is the list's, the bounded value's or the
-  enumeration's `Unit`. Every attribute is read by name from the declared
-  release's table: IFC2X3 requires the value lists and the reference target
-  and has no `SetPointValue` or `CurveInterpolation`; IFC4/IFC4X3 make them
-  optional. A malformed kind is refused as a single value is, and the
-  WHERE rules that decide how the values read (one type per list and
-  between bounds, equal table columns, selected values drawn from the
-  referenced enumeration) and `LIST OF UNIQUE` are enforced with the new
-  `ExactPropertyError::InconsistentValues { entity, rule }`, where `rule` is
-  the release's own label (`WR21` in IFC4, `WR1` in IFC2X3). Both enums are
-  `#[non_exhaustive]`; callers that relied on the refusal now get answers.
-  An `IfcComplexProperty` is still refused.
-- `exact_properties(model, object)` and
-  `exact_properties_where(model, object, select_set, select_property)`:
-  exact enumeration of an object's properties and simple quantities (#78),
-  for checks such as IDS property facets that name sets and properties by
-  pattern. Each `ExactPropertyEntry` carries the member's name and the same
-  `ExactProperty` (provenance, set, value type, unit, value) that
-  `exact_property` reports. The traversal, model and assignment validation
-  and refusals are those of `exact_property`, and for one set name and one
-  property name the result equals its answer (`[x]` for `Present(x)`, empty
-  for `Absent`, the same error otherwise). An inherited property is left
-  out when an occurrence set of the same name selects a property of the
-  same name. An empty result is a proven absence. Only selected members
-  must resolve: an unselected `IfcPropertyEnumeratedValue` or complex
-  quantity does not refuse the answer, but every member of a selected set
-  must be well formed. Additive; nothing existing changes.
-- `exact_property`, `exact_schema` and `exact_unit` resolve IFC4X3 ADD2
-  models (#76), bound to the bundled IFC4X3 ADD2 table. They were refused
-  with `ExactPropertyError::UnsupportedSchema`. The header tokens are those
-  `ifc_schema::SchemaVersion::from_header_token` maps to that release
-  (`IFC4X3_ADD2` and `IFC4X3`). Tests pin the IFC4X3 differences:
-  `IfcRelDefinesByProperties.RelatedObjects` admits any non-type
-  `IfcObjectDefinition` (an `IfcProject` too), `IfcPropertySetDefinitionSet`
-  is traversed under its `SET [1:?]` rules, `IfcTypeObject.HasPropertySets`
-  may be `$` but not empty, `IfcQuantityNumber` resolves as
-  `IFCNUMERICMEASURE` only in IFC4X3, and `IfcDerivedUnit` has IFC4X3's four
-  attributes. `IfcDimensionsForSIUnit`/`IfcCorrectDimensions` for IFC4X3 are
-  checked against the EXPRESS source, so the farad keeps IFC4's
-  dimensions. Callers that relied on IFC4X3 being refused now get answers;
-  the result type is unchanged.
-- `PropertyAnomaly::MemberNotReference` and `PropertyAnomaly::DuplicateMember`
-  (#137). `property_set_checked`, `property_checked`, `quantity_set`,
-  `quantity_sets`, `property_sets_by_object` and `resolved_properties`
-  report an item of `HasProperties`, `Quantities` or `HasQuantities` that is
-  not an entity reference, and a member listed twice, instead of skipping
-  the one and reading the other twice. `PropertyAnomaly` is
-  `#[non_exhaustive]`, so this is not breaking.
-
-- `property_checked` and `property_set_checked`: the values of `property`
-  and `property_set`, together with a `PropertyAnomaly` for every member
-  they could not resolve (#107). `property_sets_by_object` and
-  `resolved_properties` now include these anomalies, once per set.
-- `PropertyAnomaly` variants for what nested and malformed members used
-  to lose silently (#107). `PropertyAnomaly` is `#[non_exhaustive]`, so
-  this is not breaking:
-  - `ComplexCycle`: a complex property or complex quantity reaches itself
-    again through its members, at any cycle length.
-  - `ComplexTooDeep`: complex nesting deeper than 16 levels.
-  - `ComplexBudgetExceeded`: one read followed more than 10,000 nested
-    member references.
-  - `MissingMember`: a set or complex entity lists an id absent from the
-    file.
-  - `QuantityValueMissing` / `QuantityValueNotNumeric`: a simple quantity
-    whose value attribute is `$`, absent, or not a number.
-
-### Fixed
-
-- A member listed twice in a property set, quantity set, complex property
-  or complex quantity was resolved twice (#137). It is now resolved once,
-  at its first position, and reported as `DuplicateMember`; a property set
-  therefore no longer reports such a repeat as a `DuplicatePropertyName`
-  of itself.
-- Complex properties and complex quantities guarded nesting only against a
-  DIRECT self-member and a bare depth of 16 (#107). A longer cycle, or
-  nesting past the depth, was silently truncated to an empty member list,
-  and a densely cyclic file cost exponential work (a clique of 8 complex
-  properties followed 7^16 paths) before the depth stopped it. Members are
-  now followed along a tracked path with a depth bound and a member
-  budget, and every cut is reported. A member shared by two complex
-  properties (legal: `IfcProperty.PartOfComplex` is `SET [0:?]`) is still
-  resolved under both and is not a cycle.
-- `quantity_set` and `quantity_sets` no longer drop, without a word, a
-  simple quantity with a missing or non-numeric value, or a member id
-  absent from the file (#107). Such members are still left out of
-  `quantities` (a `Quantity::Simple` needs a number), but each is now
-  reported.
-- The `property` documentation claimed over-deep nesting yields
-  `PropertyValue::Unsupported`; it never did. It now states what happens.
-
-### ifc-schema
-
-### Changed
-
-- Requires `openbim-step` 0.7.0, matching `ifc-step`. Both pin the parser
-  exactly, so the pair must move together. `openbim-step` 0.6 replaced
-  `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
-  accessor for multiple inheritance; IFC schemas are single-inheritance, so
-  the serialized artifact is unchanged.
-
-### ifc-spatial
-
-### Added
-
-- `SpaceBoundary::connection_geometry(&Model)` and
-  `ConnectionGeometryAnomaly` (#156). The accessor returns the
-  `ConnectionGeometry` reference (slot 6) of `IfcRelSpaceBoundary`,
-  `IfcRelSpaceBoundary1stLevel` and `IfcRelSpaceBoundary2ndLevel`, in
-  IFC2x3, IFC4 and IFC4X3. Its coordinates are in the relating space's
-  object placement. `$` or a missing slot is `Ok(None)`. A dangling
-  reference, a reference to something that is not a concrete
-  `IfcConnectionGeometry` subtype, a value that is not a reference, and a
-  boundary absent from the model are each an `Err` naming the boundary
-  and, where there is one, the target. The accessor is a method rather
-  than a new field so that `SpaceBoundary`, which has only public fields,
-  keeps its struct-literal construction and this change stays additive.
-
-### ifc-tabular
-
-### Added
-
-- Borrowed read views: `TabularView` reads `IfcTable` (rows and columns)
-  and `IfcRegularTimeSeries`/`IfcIrregularTimeSeries` with their value
-  records under a declared IFC4 or IFC4X3 schema, locating slots by name.
-  WR1 (ragged row), WR2 (more than one heading), malformed slots, arity
-  mismatches, empty lists and dangling or mistyped references are reported
-  as `TabularIssue`s instead of being dropped. IFC2x3 is refused with
-  `TabularReadError::UnsupportedSchema` (#120).
-
-### ifc-template-catalog
-
-### Fixed
-
-- The built-in environmental advisories cite their decision record at its
-  restored path, `docs/adr/0017-versioned-psd-qto-catalog.md`; the old
-  `0010` path had been reassigned to an unrelated ADR.
-
-### ifc-validate
-
-This release is **breaking** (0.2 -> 0.3): `Severity` gains a variant,
-`Summary` gains a field, `RuleEntry` gains a field, `Mismatch` gains a
-variant, three rule ids are renamed, and `Budget::max_depth` is removed.
-
-### Added
-
-- `Severity::EvaluationError` and `Finding::evaluation_error`: an
-  implemented rule that applies to an instance but cannot be decided for it
-  -- the schema tables lack an attribute the rule reads, an operand has a
-  shape the rule cannot reason about, or a target the rule must type-test is
-  absent -- is now reported under the rule's own id instead of being skipped
-  silently (#115). `Summary::evaluation_errors` counts them, and
-  `Report::is_conformant` is `false` while any is present. An unset (`$`)
-  operand is still not an evaluation error: optional operands are guarded
-  by the rules themselves and mandatory ones are `structure.required.missing`.
-- Every rule id the crate emits is pinned by an adversarial pair of
-  fixtures, and an inventory read from the crate's source fails the build
-  when a new id ships without one (#114).
-- `type.entity.expected_reference`: a value that is not an entity reference
-  in a slot only a reference can fill -- an entity-typed slot, a member of an
-  aggregate of entities, or a SELECT whose alternatives are all entities --
-  is reported (#113). A string in `IfcRelSequence.RelatingProcess` used to
-  get no structure or type finding at all.
-
-### Changed
-
-- **Breaking:** `Severity` is `#[non_exhaustive]` and has the new
-  `EvaluationError` variant, ordered after `Error`; exhaustive matches
-  outside the crate must add a wildcard arm.
-- **Breaking:** `Summary` is `#[non_exhaustive]` and has the new
-  `evaluation_errors` field; its `Display` now also prints that count.
-- **Breaking:** `RuleEntry` has a new `releases` field, and
-  `RuleEntry::applies_to` says whether a schema's release declares the rule.
-  The engine now takes every rule's scope from its registry entry: it runs
-  only under the releases listed there, on the entry's entity *and its
-  subtypes* (#139).
-- **Breaking:** rule ids now always name the entity that declares the rule,
-  with the label the release uses (#139):
-  `IfcRelAssignsToGroupByFactor.NoSelfReference` is
-  `IfcRelAssignsToGroup.NoSelfReference`;
-  `IfcPhysicalSimpleQuantity.WR21` is `IfcQuantityLength.WR21`; and
-  `IfcPolyLoop.WR21` is reported only under IFC2X3, with IFC4 and IFC4X3
-  reporting the same unsupported predicate as `IfcPolyLoop.AllPointsSameDim`.
-- **Breaking:** `type_check::Mismatch` is `#[non_exhaustive]` and has the
-  new `ExpectedReference` variant (#113). `type_check::check_value` now
-  checks aggregate members against the element type, and reports a
-  reference written where the declared type resolves to a primitive.
-- `IfcExternalReference.WR1` reads `ItemReference` under IFC2X3 and
-  `Identification` under IFC4/IFC4X3, as each release's EXPRESS declares,
-  instead of whichever of the two resolved.
-
-### Removed
-
-- **Breaking:** `Budget::max_depth`. Nothing read it: every walk the crate
-  performs is over the bundled schema's type graph, which a file cannot
-  lengthen, and the SELECT walk's own bound is now proven sufficient for
-  every SELECT the bundled schemas use. `Budget::max_findings` remains the
-  one file-controlled limit.
-
-### Fixed
-
-- Native WHERE rules run on the entities and releases the schema declares
-  them for (#139). `NoSelfReference` now checks plain `IfcRelAssignsToGroup`,
-  which was never checked; `IfcMaterialLayer.NormalizedPriority` now checks
-  `IfcMaterialLayerWithOffsets`; and
-  `IfcRelDefinesByProperties.NoRelatedTypeObject` no longer runs under
-  IFC2X3, which does not declare it. Unsupported rules are likewise admitted
-  only under releases that declare them. A new schema-backed test checks
-  every registered id, entity and release set against the normative EXPRESS.
-- References and values inside aggregates and SELECT slots are type-checked
-  (#113). `structure.reference.wrong_type` now judges every member of an
-  aggregate of entities (a property set in `SET OF IfcProduct`), including
-  aggregates reached through a type that aliases one; `type.select.member`
-  now judges an entity reference against the SELECT's closure, directly and
-  inside aggregates (an `IfcWall` as `RelatingMaterial`); and
-  `type.scalar.mismatch` now judges aggregate members (a string in
-  `Coordinates`) and a reference in a primitive slot. Nested attribute
-  aggregates (`LIST OF LIST OF ...`) stay unchecked: the schema tables do
-  not retain their element type. A reference to an entity whose type the
-  tables do not declare -- typically a later release's entity -- is no
-  longer reported as `structure.reference.wrong_type`; there is no basis for
-  a subtype verdict, and `type.entity.unknown` already warns about it.
-- `type.scalar.mismatch` now checks bounded and fixed-width strings. The
-  primitive was read from the trailing token of the resolved type, so
-  `STRING(255)` -- IFC4's `IfcLabel` and `IfcIdentifier` -- recognised
-  nothing and every such slot went unchecked; an integer in a `Name` slot
-  was accepted.
-
-### ifc-xml
-
-### Fixed
-
-- A codec built with `XmlCodec::with_schema` now reads its own output back
-  in slot order. Scalars are written as XML attributes and structured values
-  as child elements, and the reader kept that document order, so
-  `IfcLocalPlacement($, #2)` came back as `(#2, $)`. Schema attribute names
-  now resolve to slots through the same schema; found by the corpus round
-  trip (#118).
-- Whitespace in element text is data: a padded string, enum or binary inside
-  a list or typed wrapper no longer loses leading or trailing whitespace
-  (#116).
-- A string such as `" i7"` no longer reads back as a reference. The writer
-  now decides attribute versus element by running the reader's own
-  inference, so the two cannot disagree (#116).
-- An attribute literal that overflows to infinity, such as `1e999`, reads as
-  text instead of an infinite real, matching the explicit `kind="real"` path
-  and the writer, which both refuse non-finite reals (#116).
-- `kind="logical"` text other than `true`, `false` or `unknown` is an
-  `InvalidScalar` error instead of silently becoming unknown (#116).
-- Tab, line feed and carriage return are written as character references,
-  which conforming XML parsers do not normalize away, and a typed wrapper's
-  `type` attribute is escaped (#116).
-
-### Added
-
-- `XmlError::DuplicateSlot` and `XmlError::MissingSlot`: two values for one
-  attribute slot, or a positional `a<i>` name that skips slots without a
-  schema declaring them, are refused with the entity path instead of shifting
-  later attributes. With a schema, an omitted attribute reads as unset.
-- A seeded property test of the scalar contract and a differential
-  STEP -> ifcXML -> Model -> STEP round trip over every committed fixture, in
-  positional, schema-named and strict-profile configurations (#116, #118).
-
-### openbim-ifc
-
-### Added
-
-- `body_description`, `describe_profile` and their types (`BodyDescription`,
-  `BodyItem`, `BodyKind`, `SweptSolid`, `SweepPath`, `ProfileDescription`,
-  `ProfileParameters`) are re-exported at the root under `geometry-select`
-  (#147), so a rule check reads a body's kind and swept-solid profile
-  parameters without linking the geometry kernel.
-- `door_operation(model, door)` (features `geometry-select` and
-  `properties`): each leaf of a door as a world frame, width, hinge side and
-  swing `Sector`, from its placement, `OperationType` and
-  `IfcDoorPanelProperties`, in IFC2X3, IFC4 and IFC4X3 (#148). Single and
-  double swing, double-acting, sliding, rolling-up and swing-fixed doors are
-  derived; `NOTDEFINED`, `USERDEFINED`, revolving, folding, lifting and the
-  `DOUBLE_DOOR_SINGLE_SWING_OPPOSITE_*` operations, a door without panel
-  properties or `OverallWidth`, and panels that contradict the operation are
-  refused as `DoorOperationError`, never defaulted. The leaves lie on the
-  placement's x axis; lining offsets across the wall depth are not applied.
-
-### Changed
-
-- The `properties` feature also names `ifc-schema`, which `ifc-properties`
-  already links, so the door join reads attributes by name from the bound
-  release's table. No crate is added to a build.
-
-### openbim-ifc-binding-core
-
-### Added (lazy loading)
-
-- `IfcModel::parse_owned(Vec<u8>)`, `IfcModel::open(path)` and the unsafe
-  `IfcModel::open_mapped(path)`. A parsed model keeps its source and
-  decodes entities on access (ADR 0015); `parse` copies the input once,
-  `parse_owned` and `open` not at all beyond the file read.
-- `BindingError::Io`, stable code `io`, for a file that cannot be read.
-
-### Added
-
-- The host-independent half of the language bindings (ADR 0013): `IfcModel`
-  operations, the lossless `Tagged` value encoding and `BindingError` with
-  stable codes, shared by the WASM, C and Python bindings. Extracted from
-  `openbim-ifc-wasm`.
-- Non-finite reals (NaN, infinity) are refused for every host; STEP has no
-  form for them.
-
-### openbim-ifc-capi
-
-### Added (lazy loading)
-
-- `openbim_ifc_v0_1_model_open(path, path_len, ...)`: read a STEP file from
-  disk into a model that owns it, one copy less than reading it in the host
-  and calling `model_parse`.
-- `openbim_ifc_v0_1_model_open_mapped(...)`: the same through a memory
-  mapping; the file must stay unchanged until the model is destroyed.
-- `OPENBIM_IFC_STATUS_IO` (16) for a file that cannot be read.
-
-### Added
-
-- Opt-in `rusty_alloc` feature (off by default): the library's Rust
-  allocations go through the pure-Rust rusty_alloc allocator, pinned to
-  exactly 2.2.1; the host's `malloc` is untouched. Reading STEP into a
-  model takes 18-35% less CPU time on seven real IFC files, at 1-7% less
-  peak memory; the models are identical on 2,273 corpus files. It replaces
-  the C `mimalloc` feature, which cost more CPU time than the system
-  allocator on a host with transparent huge pages set to `always` (#49).
-
-- Versioned C ABI 0.1 over the IFC facade (#38, ADR 0013), following
-  Axiolid's C ABI conventions: `openbim_ifc_v0_1_*` symbols, opaque integer
-  handles, caller-owned buffers with a size query, no Rust allocation across
-  the boundary, and every panic contained as a status.
-- Nested attribute values cross as a pre-order node tape plus one string
-  buffer, keeping `$`/`*`, `.U.`/`.F.`, integer/real and typed wrappers
-  distinct.
-- A cbindgen-generated C11 header (`include/openbim_ifc.h`), checked for
-  drift, and a C and C++ smoke test in the gate.
-
-## [0.6.0] - 2026-09-26
-
-### openbim-ifc
-
-### Changed (breaking)
-
-- `properties` re-exports `ifc-properties` 0.4.0, whose breaking changes
-  (`PropertyAnomaly` is `#[non_exhaustive]`; `template_of_set` returns every
-  template of a set) pass through. It also resolves quantity sets in
-  `exact_property` instead of reporting them absent (#66).
-
-### Changed
-
-- STEP models load lazily: `from_step_bytes`, `read_path` and every strict
-  read validate the whole file but decode each entity on first access
-  (ADR 0015, see `ifc-step`). `read_path` hands its buffer to the codec
-  instead of letting it copy the file once more.
-
-### Added
-
-- `StepReader`, `ParseOptions` and `OnMalformed` are re-exported, so the
-  eager and memory-mapped reads (`StepReader::eager`,
-  `StepReader::read_path_mapped`) are reachable through the facade.
-
-### Added
-
-- `Transaction`, `Applied` and `Conflict` are re-exported. `EntityEditor` and
-  the domain writers stage into a `Transaction`, which facade users could not
-  name, so an editor could be built but never applied.
-
-## [0.5.0] - 2026-09-26
-
-### openbim-ifc
-
-### Added
-
-- `ifc::properties::exact_unit` (ifc-properties 0.3): a measure's effective
-  unit resolved exactly to SI, or refused (#53).
-- `ifc::spatial::SpatialTree::anomalies` (ifc-spatial 0.2.1): double
-  containment and double aggregation are reported (#54).
-
-### Changed
-
-- **Breaking:** re-exports ifc-properties 0.3, whose
-  `UnitKind::Si::prefix_exponent` is now `Option<i32>` and whose
-  `UnitKind::Conversion` gains an `offset` field.
-
-## [0.4.0] - 2026-09-26
 
 ### ifc-properties
 
@@ -853,7 +565,21 @@ variant, three rule ids are renamed, and `Budget::max_depth` is removed.
 - **Breaking:** re-exports ifc-geometry 0.3, ifc-georef 0.3 and
   ifc-alignment 0.3, which all require Axiolid 0.3.
 
-## [0.3.1] - 2026-09-25
+## [0.3.1] - 2026-09-27
+
+### ifc-alignment
+
+### Changed
+
+- `profile_law` (and so `lower_gradient_curve`) now refuses a vertical
+  profile whose seams do not join: a segment's `StartHeight` must match the
+  previous segment's end height and its `StartGradient` the previous
+  `EndGradient`, within the same magnitude-scaled tolerance already used for
+  `StartDistAlong` contiguity. A height step or grade kink was previously
+  accepted and silently shifted every downstream height. The refusal is the
+  new `AlignmentError::ProfileDiscontinuity`, naming both segments, the
+  discontinuous quantity (`ProfileSeam::Height` or `ProfileSeam::Gradient`)
+  and both values (#95).
 
 ### ifc-geometry
 
@@ -1020,7 +746,7 @@ variant, three rule ids are renamed, and `Budget::max_depth` is removed.
   `ifc::schema::ifc4()`, are reachable without a direct `ifc-schema`
   dependency. Found by building a crates.io-only consumer of 0.3.0.
 
-## [0.3.0] - 2026-09-26
+## [0.3.0] - 2026-09-27
 
 ### ifc-alignment
 
@@ -1058,6 +784,90 @@ variant, three rule ids are renamed, and `Budget::max_depth` is removed.
 - **Breaking:** requires Axiolid 0.3. `ProjectToMap::transform` is an
   `axiolid_core::Transform3`, so the major Axiolid version is part of this
   crate's public API. No code change.
+
+### ifc-material
+
+### Changed (breaking)
+
+- Views and authoring bind to the release the model's header declares
+  (#77). Every slot position comes from that release's bundled
+  `ifc-schema` table (IFC2X3 TC1, IFC4 ADD2 TC1 or IFC4X3 ADD2) instead of
+  IFC4 constants, so an IFC2X3 model is no longer read with IFC4 slots.
+  Behaviour for an IFC4 model, and for an in-memory model whose header
+  declares no schema (bound to IFC4 as before), is unchanged, except where
+  listed below. Breaking, because the same call now answers differently for
+  IFC2X3 and IFC4X3 models:
+  - an accessor for an attribute the release does not declare returns
+    `MaterialError::NotInSchema` instead of `Ok(None)`. For IFC2X3:
+    `Material::{description, category}`,
+    `MaterialLayer::{name, description, category, priority}`,
+    `MaterialLayerSet::description` and
+    `MaterialLayerSetUsage::reference_extent`. A typed absence rather than
+    `None`, because `None` claims the file left the value unset;
+  - a record the release cannot instantiate -- an
+    `IfcMaterialConstituent(Set)`, `IfcMaterialProfile*`,
+    `IfcMaterialLayerWithOffsets` or `IfcMaterialRelationship` in an IFC2X3
+    model, or IFC2X3's abstract `IfcMaterialProperties` -- is refused with
+    `MaterialError::EntityNotInSchema` by its accessors,
+    `resolve_material_select` and `assigned_material`;
+  - an IFC2X3 `IfcMaterialLayer.LayerThickness` of zero is invalid
+    (`IfcPositiveLengthMeasure`; IFC4 relaxed it to
+    `IfcNonNegativeLengthMeasure`);
+  - the `IfcRelDefinesByType` fallback admits the concrete `IfcTypeObject`
+    subtypes of the model's release, so IFC4X3 no longer accepts the
+    `IfcDoorStyle`/`IfcWindowStyle` it removed. The generated IFC4 list is
+    gone;
+  - a header declaring several schemas fails every read and write with
+    `MaterialError::MultipleSchemas`, and one declaring an unknown schema
+    with `MaterialError::UnsupportedSchema`.
+- `create_material` takes the `&Model` it writes into and returns
+  `MaterialResult<EntityId>`, like every other authoring function: without
+  the model it cannot know the release, and IFC2X3 `IfcMaterial` has no
+  `Description` or `Category` slot to write.
+- Authoring writes the release's layout: IFC2X3 gets the short
+  `IfcMaterial`, `IfcMaterialLayer`, `IfcMaterialLayerSet` and
+  `IfcMaterialLayerSetUsage` records. A draft value the release cannot hold
+  (an IFC2X3 layer name, category or priority, a layer set description, a
+  usage reference extent, a material description or category) is refused
+  with `MaterialError::AuthoringNotInSchema` rather than dropped; an entity it
+  lacks is refused with `MaterialError::EntityNotInSchema`; and a required
+  attribute left unset -- the IFC2X3 `IfcRelAssociatesMaterial.OwnerHistory`
+  -- with `MaterialError::AuthoringRequired`, so `associate_material` refuses
+  an IFC2X3 model. Nothing is staged on refusal.
+- IFC4X3 is read against its own table. Its material entities keep the IFC4
+  layouts; the one rename, `IfcMaterialRelationship.Expression` to
+  `MaterialExpression` at the same position, is resolved by name.
+- `ifc-schema` is now a production dependency.
+
+### Fixed
+
+- `associate_material`, `create_material_properties` and layer-set members
+  accept exactly what the release's schema accepts: `RelatingMaterial` any
+  instantiable `IfcMaterialSelect` member (an `IfcMaterialLayer` too; IFC2X3
+  has no constituent or profile sets), `Material` any
+  `IfcMaterialDefinition`, and no `IfcMaterialLayerWithOffsets` in an IFC2X3
+  set.
+
+### Added
+
+- `material_schema(model)`, `MaterialView::schema()` and a `schema()`
+  accessor on every projection report the bound release; `SchemaVersion` is
+  re-exported.
+- `try_from_view(view, id)` on every projection looks a record up and binds
+  it to the model's release. `try_new` has no header and keeps reading IFC4.
+- `associate_material_with_owner_history` takes a caller-supplied
+  `IfcOwnerHistory`, which IFC2X3 requires; none is ever invented.
+- `MaterialError::{MultipleSchemas, UnsupportedSchema, NotInSchema,
+  EntityNotInSchema, AuthoringNotInSchema, AuthoringRequired}`.
+
+- `MaterialView::constituent_fraction_diagnostic`: an opt-in policy check
+  that an `IfcMaterialConstituentSet`'s fractions describe one whole
+  (#103). It returns a `ConstituentFractionDiagnostic` when every
+  constituent states a fraction but the sum is further from 1 than the
+  caller's tolerance (`SumNotOne`), or when stated and missing fractions
+  are mixed (`PartiallyStated`). IFC4 declares no WHERE rule on the sum,
+  so this is never a decode error and never normalises: the accessors
+  keep returning the authored fractions.
 
 ### ifc-properties
 
@@ -1161,6 +971,96 @@ variant, three rule ids are renamed, and `Budget::max_depth` is removed.
   reference, so it returned an error on every conforming file, including
   those this crate writes itself.
 
+### ifc-validate
+
+This release is **breaking** (0.2 -> 0.3): `Severity` gains a variant,
+`Summary` gains a field, `RuleEntry` gains a field, `Mismatch` gains a
+variant, three rule ids are renamed, and `Budget::max_depth` is removed.
+
+### Added
+
+- `Severity::EvaluationError` and `Finding::evaluation_error`: an
+  implemented rule that applies to an instance but cannot be decided for it
+  -- the schema tables lack an attribute the rule reads, an operand has a
+  shape the rule cannot reason about, or a target the rule must type-test is
+  absent -- is now reported under the rule's own id instead of being skipped
+  silently (#115). `Summary::evaluation_errors` counts them, and
+  `Report::is_conformant` is `false` while any is present. An unset (`$`)
+  operand is still not an evaluation error: optional operands are guarded
+  by the rules themselves and mandatory ones are `structure.required.missing`.
+- Every rule id the crate emits is pinned by an adversarial pair of
+  fixtures, and an inventory read from the crate's source fails the build
+  when a new id ships without one (#114).
+- `type.entity.expected_reference`: a value that is not an entity reference
+  in a slot only a reference can fill -- an entity-typed slot, a member of an
+  aggregate of entities, or a SELECT whose alternatives are all entities --
+  is reported (#113). A string in `IfcRelSequence.RelatingProcess` used to
+  get no structure or type finding at all.
+
+### Changed
+
+- **Breaking:** `Severity` is `#[non_exhaustive]` and has the new
+  `EvaluationError` variant, ordered after `Error`; exhaustive matches
+  outside the crate must add a wildcard arm.
+- **Breaking:** `Summary` is `#[non_exhaustive]` and has the new
+  `evaluation_errors` field; its `Display` now also prints that count.
+- **Breaking:** `RuleEntry` has a new `releases` field, and
+  `RuleEntry::applies_to` says whether a schema's release declares the rule.
+  The engine now takes every rule's scope from its registry entry: it runs
+  only under the releases listed there, on the entry's entity *and its
+  subtypes* (#139).
+- **Breaking:** rule ids now always name the entity that declares the rule,
+  with the label the release uses (#139):
+  `IfcRelAssignsToGroupByFactor.NoSelfReference` is
+  `IfcRelAssignsToGroup.NoSelfReference`;
+  `IfcPhysicalSimpleQuantity.WR21` is `IfcQuantityLength.WR21`; and
+  `IfcPolyLoop.WR21` is reported only under IFC2X3, with IFC4 and IFC4X3
+  reporting the same unsupported predicate as `IfcPolyLoop.AllPointsSameDim`.
+- **Breaking:** `type_check::Mismatch` is `#[non_exhaustive]` and has the
+  new `ExpectedReference` variant (#113). `type_check::check_value` now
+  checks aggregate members against the element type, and reports a
+  reference written where the declared type resolves to a primitive.
+- `IfcExternalReference.WR1` reads `ItemReference` under IFC2X3 and
+  `Identification` under IFC4/IFC4X3, as each release's EXPRESS declares,
+  instead of whichever of the two resolved.
+
+### Removed
+
+- **Breaking:** `Budget::max_depth`. Nothing read it: every walk the crate
+  performs is over the bundled schema's type graph, which a file cannot
+  lengthen, and the SELECT walk's own bound is now proven sufficient for
+  every SELECT the bundled schemas use. `Budget::max_findings` remains the
+  one file-controlled limit.
+
+### Fixed
+
+- Native WHERE rules run on the entities and releases the schema declares
+  them for (#139). `NoSelfReference` now checks plain `IfcRelAssignsToGroup`,
+  which was never checked; `IfcMaterialLayer.NormalizedPriority` now checks
+  `IfcMaterialLayerWithOffsets`; and
+  `IfcRelDefinesByProperties.NoRelatedTypeObject` no longer runs under
+  IFC2X3, which does not declare it. Unsupported rules are likewise admitted
+  only under releases that declare them. A new schema-backed test checks
+  every registered id, entity and release set against the normative EXPRESS.
+- References and values inside aggregates and SELECT slots are type-checked
+  (#113). `structure.reference.wrong_type` now judges every member of an
+  aggregate of entities (a property set in `SET OF IfcProduct`), including
+  aggregates reached through a type that aliases one; `type.select.member`
+  now judges an entity reference against the SELECT's closure, directly and
+  inside aggregates (an `IfcWall` as `RelatingMaterial`); and
+  `type.scalar.mismatch` now judges aggregate members (a string in
+  `Coordinates`) and a reference in a primitive slot. Nested attribute
+  aggregates (`LIST OF LIST OF ...`) stay unchecked: the schema tables do
+  not retain their element type. A reference to an entity whose type the
+  tables do not declare -- typically a later release's entity -- is no
+  longer reported as `structure.reference.wrong_type`; there is no basis for
+  a subtype verdict, and `type.entity.unknown` already warns about it.
+- `type.scalar.mismatch` now checks bounded and fixed-width strings. The
+  primitive was read from the trailing token of the resolved type, so
+  `STRING(255)` -- IFC4's `IfcLabel` and `IfcIdentifier` -- recognised
+  nothing and every such slot went unchecked; an integer in a `Name` slot
+  was accepted.
+
 ### openbim-ifc
 
 ### Added
@@ -1208,7 +1108,7 @@ variant, three rule ids are renamed, and `Budget::max_depth` is removed.
   `ifc-resource` already did. A file that was written with one would have
   failed its own GlobalId check.
 
-## [0.2.2] - 2026-09-23
+## [0.2.2] - 2026-09-27
 
 ### ifc-model
 
@@ -1228,7 +1128,46 @@ variant, three rule ids are renamed, and `Budget::max_depth` is removed.
   crate depending on this one could be compiled to WebAssembly. Native
   builds keep runtime-seeded hashing; wasm32 builds use a compile-time seed.
 
-## [0.2.1] - 2026-09-26
+### ifc-spatial
+
+### Added
+
+- `SpaceBoundary::connection_geometry(&Model)` and
+  `ConnectionGeometryAnomaly` (#156). The accessor returns the
+  `ConnectionGeometry` reference (slot 6) of `IfcRelSpaceBoundary`,
+  `IfcRelSpaceBoundary1stLevel` and `IfcRelSpaceBoundary2ndLevel`, in
+  IFC2x3, IFC4 and IFC4X3. Its coordinates are in the relating space's
+  object placement. `$` or a missing slot is `Ok(None)`. A dangling
+  reference, a reference to something that is not a concrete
+  `IfcConnectionGeometry` subtype, a value that is not a reference, and a
+  boundary absent from the model are each an `Err` naming the boundary
+  and, where there is one, the target. The accessor is a method rather
+  than a new field so that `SpaceBoundary`, which has only public fields,
+  keeps its struct-literal construction and this change stays additive.
+
+## [0.2.1] - 2026-09-27
+
+### ifc-author
+
+### Fixed
+
+- An attribute declared as a defined type that aliases an aggregate is an
+  aggregate (#17). `IfcSite.RefLatitude`/`RefLongitude`
+  (`IfcCompoundPlaneAngleMeasure = LIST [3:4] OF INTEGER`) were refused with
+  `AggregateMismatch`, which blocked georeferencing. Their elements are now
+  checked against the alias's element type.
+- A slot that the entity or a supertype redeclares as `DERIVE` is written `*`
+  automatically (#18). `IfcSIUnit.Dimensions` and the four derived slots of
+  `IfcGeometricRepresentationSubContext` reported `MissingRequired`, so no unit
+  assignment or Body/Axis subcontext could be authored. Passing
+  `Value::Derived` explicitly is also accepted.
+
+### Added
+
+- `AuthorError::DerivedAttribute` refuses a value or `$` in a derived slot.
+  `AuthorError::NotDerived` refuses `*` in a slot the schema does not derive.
+  Before, `*` was accepted in any slot and the file was invalid. Both apply to
+  `EntityBuilder` and `EntityEditor`.
 
 ### ifc-classification
 
@@ -1280,6 +1219,38 @@ variant, three rule ids are renamed, and `Budget::max_depth` is removed.
   Revit), all 3,672 classified objects resolve their effective
   classifications, and every classification system (5) and reference (62)
   reads, IFC2X3 calendar edition dates included.
+
+### ifc-control
+
+### Added
+
+- `assign_to_control` and `ControlAssignmentDraft` stage an
+  `IfcRelAssignsToControl` whose relating control is a permit, project
+  order, action request or performance history. Empty, duplicated and
+  self-referencing `RelatedObjects`, members that are not
+  `IfcObjectDefinition`s, and missing references are refused;
+  `RelatedObjectsType` is left unset (#99).
+- `ControlError::ForeignControl` refuses a relating control another crate
+  owns (cost schedules, cost items, work controls).
+- `ControlKind::ALL` lists the four owned controls.
+
+### ifc-cost
+
+### Added
+
+- `nesting_anomalies(model)` and `CostAnomaly::NestedTwice { item, kept,
+  rejected, relation }` (#57). A cost item that two `IfcRelNests` place
+  under different parents is reported; `Nests` is `SET [0:1]`.
+
+### Fixed
+
+- A cost item nested under two parents is no longer counted twice (#57).
+  `parent_of` already returned the first parent, but `children_of` listed
+  the item under both. So `descendants_of` and `rolled_up_total` included it
+  under each parent, and summing over `roots()` double-counted its value.
+  Now only the kept parent (first `IfcRelNests` in file order) lists it,
+  and a child listed twice under one parent is listed once. Output changes
+  only for files that violate the schema.
 
 ### ifc-model
 
@@ -1403,6 +1374,61 @@ variant, three rule ids are renamed, and `Budget::max_depth` is removed.
   and 5,833 connections, the results are identical before and after. None of
   the local IFC2X3 files contains a zone, electrical circuit, or port, so the
   IFC2X3-specific paths are proven by the fixture tests only.
+
+### ifc-tabular
+
+### Added
+
+- Borrowed read views: `TabularView` reads `IfcTable` (rows and columns)
+  and `IfcRegularTimeSeries`/`IfcIrregularTimeSeries` with their value
+  records under a declared IFC4 or IFC4X3 schema, locating slots by name.
+  WR1 (ragged row), WR2 (more than one heading), malformed slots, arity
+  mismatches, empty lists and dangling or mistyped references are reported
+  as `TabularIssue`s instead of being dropped. IFC2x3 is refused with
+  `TabularReadError::UnsupportedSchema` (#120).
+
+### ifc-template-catalog
+
+### Fixed
+
+- The built-in environmental advisories cite their decision record at its
+  restored path, `docs/adr/0017-versioned-psd-qto-catalog.md`; the old
+  `0010` path had been reassigned to an unrelated ADR.
+
+### ifc-xml
+
+### Fixed
+
+- A codec built with `XmlCodec::with_schema` now reads its own output back
+  in slot order. Scalars are written as XML attributes and structured values
+  as child elements, and the reader kept that document order, so
+  `IfcLocalPlacement($, #2)` came back as `(#2, $)`. Schema attribute names
+  now resolve to slots through the same schema; found by the corpus round
+  trip (#118).
+- Whitespace in element text is data: a padded string, enum or binary inside
+  a list or typed wrapper no longer loses leading or trailing whitespace
+  (#116).
+- A string such as `" i7"` no longer reads back as a reference. The writer
+  now decides attribute versus element by running the reader's own
+  inference, so the two cannot disagree (#116).
+- An attribute literal that overflows to infinity, such as `1e999`, reads as
+  text instead of an infinite real, matching the explicit `kind="real"` path
+  and the writer, which both refuse non-finite reals (#116).
+- `kind="logical"` text other than `true`, `false` or `unknown` is an
+  `InvalidScalar` error instead of silently becoming unknown (#116).
+- Tab, line feed and carriage return are written as character references,
+  which conforming XML parsers do not normalize away, and a typed wrapper's
+  `type` attribute is escaped (#116).
+
+### Added
+
+- `XmlError::DuplicateSlot` and `XmlError::MissingSlot`: two values for one
+  attribute slot, or a positional `a<i>` name that skips slots without a
+  schema declaring them, are refused with the entity path instead of shifting
+  later attributes. With a schema, an omitted attribute reads as unset.
+- A seeded property test of the scalar contract and a differential
+  STEP -> ifcXML -> Model -> STEP round trip over every committed fixture, in
+  positional, schema-named and strict-profile configurations (#116, #118).
 
 ## [0.2.0] - 2026-09-22
 
