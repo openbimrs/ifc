@@ -238,6 +238,17 @@ mod unreachable;
 #[cfg(all(feature = "spatial", feature = "geometry-select"))]
 pub use unreachable::{unreachable_products, Unreachable};
 
+// A door's leaves need its placement AND its operation type and panel
+// properties -- `ifc-geometry` and `ifc-properties`, siblings under ADR 0003
+// -- so the join lives in this orchestration layer (#148).
+#[cfg(all(feature = "geometry-select", feature = "properties"))]
+mod door_operation;
+#[cfg(all(feature = "geometry-select", feature = "properties"))]
+pub use door_operation::{
+    door_operation, DoorOperation, DoorOperationError, DoorOperationType, Leaf, LeafMotion,
+    PanelPosition, RefusedOperation, Sector, Side,
+};
+
 mod feature_report;
 mod io;
 

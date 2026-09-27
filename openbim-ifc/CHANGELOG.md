@@ -19,6 +19,22 @@ everything released before per-crate changelogs began.
   `ProfileParameters`) are re-exported at the root under `geometry-select`
   (#147), so a rule check reads a body's kind and swept-solid profile
   parameters without linking the geometry kernel.
+- `door_operation(model, door)` (features `geometry-select` and
+  `properties`): each leaf of a door as a world frame, width, hinge side and
+  swing `Sector`, from its placement, `OperationType` and
+  `IfcDoorPanelProperties`, in IFC2X3, IFC4 and IFC4X3 (#148). Single and
+  double swing, double-acting, sliding, rolling-up and swing-fixed doors are
+  derived; `NOTDEFINED`, `USERDEFINED`, revolving, folding, lifting and the
+  `DOUBLE_DOOR_SINGLE_SWING_OPPOSITE_*` operations, a door without panel
+  properties or `OverallWidth`, and panels that contradict the operation are
+  refused as `DoorOperationError`, never defaulted. The leaves lie on the
+  placement's x axis; lining offsets across the wall depth are not applied.
+
+### Changed
+
+- The `properties` feature also names `ifc-schema`, which `ifc-properties`
+  already links, so the door join reads attributes by name from the bound
+  release's table. No crate is added to a build.
 
 ## [0.6.0] - 2026-09-26
 
