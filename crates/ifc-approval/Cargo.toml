@@ -7,6 +7,7 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 description = "Bounded IFC4 approval resource semantics."
+readme = "README.md"
 
 # Published on the docs site by `cargo run -p xtask -- docs`.
 [package.metadata.openbim]

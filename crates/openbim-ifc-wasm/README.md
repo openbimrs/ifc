@@ -4,9 +4,12 @@ WebAssembly bindings for [`openbim-ifc`](https://crates.io/crates/openbim-ifc):
 read, edit and write IFC STEP (`.ifc`) files from JavaScript and TypeScript,
 in Node or a browser.
 
-Status: **0.1, Node build tested; not yet published to npm.** Browser
+Published to npm as `@openbim/ifc`, a CommonJS build for Node. Browser
 bundling works in principle (the crate builds for `wasm32-unknown-unknown`)
 but has no tested recipe yet.
+
+Documentation: [JavaScript guide](https://openbimrs.github.io/ifc/bindings/javascript)
+· [source and issues](https://github.com/openbimrs/ifc)
 
 ## What it does
 
@@ -77,7 +80,8 @@ The TypeScript declarations export this union as `IfcValue`.
 
 Every failure throws an `Error` with `name === "IfcError"` and a stable
 `code`: `parse`, `write`, `missing-entity`, `invalid-value`,
-`out-of-range` or `unsupported-schema`. A refused edit leaves the model unchanged.
+`out-of-range` or `unsupported-schema`; a code is never renamed or reused. A
+refused edit leaves the model unchanged.
 
 ## Building
 

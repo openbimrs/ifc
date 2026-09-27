@@ -4,6 +4,13 @@ Read, edit and write IFC STEP files from Python. A thin binding over the
 [`openbim-ifc`](https://github.com/openbimrs/ifc) Rust crates: one abi3
 wheel for CPython 3.9 and later.
 
+```sh
+pip install openbim-ifc
+```
+
+Documentation: [Python guide](https://openbimrs.github.io/ifc/bindings/python)
+· [source and issues](https://github.com/openbimrs/ifc)
+
 ```python
 from openbim_ifc import IfcModel, Text
 
@@ -33,8 +40,9 @@ or a `Real`, `"x"` a `Text` or an `Enum`, and the binding does not guess.
 ## Errors
 
 Every failure raises `IfcError` with a stable `code`: `parse`, `write`,
-`missing-entity`, `invalid-value`, `out-of-range` or `unsupported-schema`.
-The codes are shared with the JavaScript and C bindings.
+`missing-entity`, `invalid-value`, `out-of-range`, `unsupported-schema` or
+`io`. The codes are shared with the JavaScript and C bindings; a code is
+never renamed or reused.
 
 ## Threads
 
@@ -45,9 +53,9 @@ threads; the GIL serialises calls on it.
 
 The record model only: entities, attributes, the STEP codec, exact and
 subtype queries. Domain views (properties, quantities, geometry) are not
-bound yet. The wheel is built and tested in CI; it is not on PyPI yet.
+bound yet.
 
-## Build
+## Build from source
 
 ```sh
 uv venv && . .venv/bin/activate

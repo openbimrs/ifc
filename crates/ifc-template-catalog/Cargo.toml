@@ -19,6 +19,9 @@ group = "domain"
 [dependencies]
 bincode = "2.0.1"
 thiserror.workspace = true
+# Enable no quick-xml feature here that `ifc-xml` does not want: Cargo
+# unifies features across the workspace, and `quick-xml/encoding` once broke
+# `ifc-xml` that way.
 quick-xml = { workspace = true, optional = true }
 ifc-schema = { workspace = true, optional = true }
 sha2 = { version = "0.11", optional = true, default-features = false }

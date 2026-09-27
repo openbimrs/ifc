@@ -7,6 +7,7 @@ license = "AGPL-3.0-or-later"
 authors = ["point-grey"]
 repository = "https://github.com/openbimrs/ifc"
 description = "IFC schema as data: entity table, supertype chain, attribute names."
+readme = "README.md"
 
 # NO geometry dependency. A schema is a lookup table.
 
