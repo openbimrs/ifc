@@ -6,11 +6,13 @@
 #                            + npm   for openbim-ifc-wasm  (@openbim/ifc)
 #                            + PyPI  for openbim-ifc-py    (openbim-ifc)
 #
-# npm, PyPI and crates.io use trusted publishing (OIDC). Each registry trusts
-# exactly this file name and the `release` environment, so renaming either
-# breaks publishing until the registry settings follow. crates.io falls back
-# to the CARGO_REGISTRY_TOKEN secret of the `release` environment for crates
-# not yet configured there; delete the secret once every crate is.
+# npm, PyPI and crates.io use trusted publishing (OIDC). Each publish job runs
+# in the environment named after its registry (`crates.io`, `npmjs.com`,
+# `pypi.org`), and each registry trusts exactly this file name and that
+# environment, so renaming either breaks publishing until the registry
+# settings follow. crates.io falls back to the CARGO_REGISTRY_TOKEN secret of
+# the `crates.io` environment for crates not yet configured there, which
+# includes every crate's first publish.
 #
 # Run it by hand (Actions -> Release -> Run workflow) with a tag name to
 # rehearse a release: everything is built and tested, nothing is published.
@@ -103,7 +105,9 @@ jobs:
     needs: plan
     if: needs.plan.outputs.crates_io == 'true' && github.event_name == 'push'
     runs-on: ubuntu-latest
-    environment: release
+    environment:
+      name: crates.io
+      url: https://crates.io/crates/${{ needs.plan.outputs.crate }}/${{ needs.plan.outputs.version }}
     permissions:
       contents: read
       id-token: write # crates.io trusted publishing (OIDC)
@@ -148,7 +152,9 @@ jobs:
     needs: plan
     if: needs.plan.outputs.npm == 'true'
     runs-on: ubuntu-latest
-    environment: release
+    environment:
+      name: npmjs.com
+      url: https://www.npmjs.com/package/@openbim/ifc/v/${{ needs.plan.outputs.version }}
     permissions:
       contents: read
       id-token: write # npm trusted publishing (OIDC) and provenance
@@ -270,7 +276,9 @@ jobs:
     needs: [plan, wheels, sdist]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    environment: release
+    environment:
+      name: pypi.org
+      url: https://pypi.org/project/openbim-ifc/${{ needs.plan.outputs.version }}/
     permissions:
       contents: read
       id-token: write # PyPI trusted publishing (OIDC)

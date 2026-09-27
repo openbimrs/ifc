@@ -228,20 +228,23 @@ out of step. The workflow refuses a tag that disagrees with any manifest. Every 
 skips a version that is already live, so re-running a partly failed
 release finishes it.
 
-Publishing runs in the `release` environment. Only release tags
-(`*-v*`) and `main` (for rehearsals) may deploy to it, and only admins
-may create, move or delete release tags.
+Each publish job runs in the environment named after its registry:
+`crates.io`, `npmjs.com` or `pypi.org`. Each asks for a reviewer's
+approval, and only release tags (`*-v*`) and `main` (for rehearsals) may
+deploy to them. Only admins may create, move or delete release tags. A
+deployment links to the version it published on that registry.
 
 - npm, PyPI and crates.io: trusted publishing (OIDC), no long-lived
-  token. Each registry trusts exactly `release.yml` and `release`;
-  renaming either breaks publishing until the registry settings are
-  changed to match.
+  token. Each registry trusts exactly `release.yml` and its own
+  environment; renaming either breaks publishing until the registry
+  settings are changed to match.
 - crates.io is configured per crate: in each crate's crates.io settings,
   add a trusted publisher with repository `openbimrs/ifc`, workflow
-  `release.yml` and environment `release`. A new crate is configured
-  after its first publish. Until every crate is configured, the workflow
-  falls back to the `CARGO_REGISTRY_TOKEN` secret and warns; delete the
-  secret once the warning stops appearing.
+  `release.yml` and environment `crates.io`. A new crate can only be
+  configured after its first publish, so the workflow falls back to the
+  `crates.io` environment's `CARGO_REGISTRY_TOKEN` secret and warns
+  whenever trusted publishing is refused. Keep the secret for new crates;
+  a warning for an existing crate means its trusted publisher is missing.
 - npm: the first version of a new scoped package must be published by hand
   (npm cannot attach a trusted publisher to a package that does not exist
   yet); every later version comes from `release.yml`.
