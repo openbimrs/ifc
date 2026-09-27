@@ -42,8 +42,8 @@ manifest is checked and the prose is not.
   [`../../tools/gen_surface_fixtures.py`](../../tools/gen_surface_fixtures.py)
   using ifcopenshell 0.8.5: curved, B-spline and advanced-brep surfaces, which
   no licence-clean public corpus carries. Four of the ten were later
-  hand-edited, and 5 further files (alignments, conics, point references)
-  are hand-authored; the manifest says which. Millimetres with degree angles,
+  hand-edited, and 6 further files (alignments, conics, point references,
+  space-boundary face surfaces) are hand-authored; the manifest says which. Millimetres with degree angles,
   `ifcopenshell.validate` clean. Edit the generator, never the `.ifc` output;
   regenerate with `python3 tools/gen_surface_fixtures.py test/fixtures/synthetic-surfaces`.
   Per-file rationale: [`synthetic-surfaces/README.md`](synthetic-surfaces/README.md).

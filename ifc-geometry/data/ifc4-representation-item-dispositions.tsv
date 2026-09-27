@@ -1,5 +1,4 @@
 entity	disposition	owner	rationale
-IFCADVANCEDFACE	nested-exact	lower::brep	face inside an advanced B-rep shell
 IFCANNOTATIONFILLAREA	non-shape	ifc-style	presentation fill whose boundary curves lower separately
 IFCAXIS1PLACEMENT	nested-exact	resource::placement	placement input to exact geometry
 IFCAXIS2PLACEMENT2D	nested-exact	resource::placement	placement input to exact geometry
@@ -21,7 +20,6 @@ IFCEDGELOOP	nested-exact	lower::brep	ordered edge-use input to a face bound
 IFCFACE	nested-exact	lower::brep	face input to a connected face set
 IFCFACEBOUND	nested-exact	lower::brep	oriented loop input to a face
 IFCFACEOUTERBOUND	nested-exact	lower::brep	explicit outer-loop input to a face
-IFCFACESURFACE	nested-exact	lower::brep	face with an authored carrier surface
 IFCFILLAREASTYLEHATCHING	non-shape	ifc-style	presentation hatching rather than shape geometry
 IFCFILLAREASTYLETILES	non-shape	ifc-style	presentation tiling rather than shape geometry
 IFCINDEXEDPOLYGONALFACE	nested-exact	lower::tessellated	face index input to a polygonal face set

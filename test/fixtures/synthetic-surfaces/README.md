@@ -27,6 +27,11 @@ revolution angle is authored in degrees, the fixed reference is `+Z` rather
 than the `+X` a lowerer would default to, and the polygonal disk appears
 BOTH with and without `FilletRadius`, so a dropped fillet is observable), and `IfcSectionedSpine` (`synthetic_sectioned_spine.ifc`: three
 different profiles at three distinct stations along a composite curve).
+`synthetic_space_boundary_face_surface.ifc` is hand-authored, not generated:
+one `IfcSpace` placed off-origin with two `IfcRelSpaceBoundary`s whose
+`IfcConnectionSurfaceGeometry` is an `IfcFaceSurface` on an `IfcPlane` -- a
+wall face with `SameSense=.T.` and a floor face with `SameSense=.F.` whose
+loop winds with the face normal, as IFC requires.
 All are authored in
 **millimetres with degree angles** — the combination that catches a unit
 factor applied to the wrong quantity kind — and every file passes

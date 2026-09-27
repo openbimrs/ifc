@@ -68,16 +68,15 @@ Each concrete `IfcRepresentationItem` has one disposition:
 
 | Disposition | Count |
 | --- | ---: |
-| `nested-exact` | 31 |
+| `nested-exact` | 29 |
 | `non-shape` | 13 |
 | `typed-refusal` | 4 |
-| **Total** | **48** |
+| **Total** | **46** |
 
-<details><summary>Every representation item (48)</summary>
+<details><summary>Every representation item (46)</summary>
 
 | Entity | Disposition | Owner | Why |
 | --- | --- | --- | --- |
-| `IFCADVANCEDFACE` | `nested-exact` | `lower::brep` | face inside an advanced B-rep shell |
 | `IFCANNOTATIONFILLAREA` | `non-shape` | `ifc-style` | presentation fill whose boundary curves lower separately |
 | `IFCAXIS1PLACEMENT` | `nested-exact` | `resource::placement` | placement input to exact geometry |
 | `IFCAXIS2PLACEMENT2D` | `nested-exact` | `resource::placement` | placement input to exact geometry |
@@ -99,7 +98,6 @@ Each concrete `IfcRepresentationItem` has one disposition:
 | `IFCFACE` | `nested-exact` | `lower::brep` | face input to a connected face set |
 | `IFCFACEBOUND` | `nested-exact` | `lower::brep` | oriented loop input to a face |
 | `IFCFACEOUTERBOUND` | `nested-exact` | `lower::brep` | explicit outer-loop input to a face |
-| `IFCFACESURFACE` | `nested-exact` | `lower::brep` | face with an authored carrier surface |
 | `IFCFILLAREASTYLEHATCHING` | `non-shape` | `ifc-style` | presentation hatching rather than shape geometry |
 | `IFCFILLAREASTYLETILES` | `non-shape` | `ifc-style` | presentation tiling rather than shape geometry |
 | `IFCINDEXEDPOLYGONALFACE` | `nested-exact` | `lower::tessellated` | face index input to a polygonal face set |

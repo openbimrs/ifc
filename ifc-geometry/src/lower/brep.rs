@@ -29,7 +29,7 @@ use axiolid_topology::{
 };
 use ifc_model::EntityId;
 
-use crate::error::GeometryResult;
+use crate::error::{GeometryError, GeometryResult};
 use crate::lower::curve::lower_curve_node;
 use crate::lower::session::{DegenerateFacePolicy, LoweringSession};
 use crate::lower::surface::lower_surface_node;
@@ -40,6 +40,7 @@ use crate::resource::topology::{
     ManifoldSolidBrep, OrientedEdge as OrientedEdgeView, PolyLoop, Subedge as SubedgeView,
     VertexPoint as VertexPointView,
 };
+use crate::select::is_a;
 use crate::transform::Transform;
 
 /// Chain kind reported when a brep nests too deeply or cycles.
@@ -175,6 +176,61 @@ pub fn lower_shell_node(
     Ok(node)
 }
 
+/// Chain kind reported when a standalone face surface nests or cycles.
+const FACE_KIND: &str = "face surface";
+
+/// Lower one `IfcFaceSurface` or `IfcAdvancedFace` as a single-face open `BRep`.
+///
+/// A face surface is a legal representation item and a member of
+/// `IfcSurfaceOrFaceSurface`, so a connection surface or a topology
+/// representation may name one directly rather than through a shell. It is
+/// lowered through the same face path a B-rep uses -- carrier surface,
+/// `SameSense`, and each bound's `Orientation` all compose exactly as they do
+/// inside a solid -- into ONE open shell holding that face and NO solid. A
+/// face bounds no volume; closing the shell or adding a `Solid` would
+/// manufacture one.
+///
+/// Refuses anything other than the two face-surface types with
+/// [`crate::GeometryError::WrongEntityType`] (a plain `IfcFace` has no
+/// carrier surface and is not a member of `IfcSurfaceOrFaceSurface`), and a
+/// face whose only area collapses under
+/// [`DegenerateFacePolicy::DropAndReport`] with
+/// [`crate::GeometryError::Degenerate`]: nothing is left to return.
+pub fn lower_face_surface_node(
+    session: &mut LoweringSession<'_>,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<NodeId> {
+    if let Some(node) = session.memoized(id, FACE_KIND, frame) {
+        return Ok(node);
+    }
+    let entity = expect_type(
+        session.model(),
+        id,
+        id,
+        &["IFCFACESURFACE", "IFCADVANCEDFACE"],
+        "IfcFaceSurface",
+    )?;
+    session.enter(id, FACE_KIND)?;
+    let mut builder = TopologyBuilder::new();
+    let result = face(session, &mut builder, id, id, frame);
+    session.exit(id);
+    let Some(face_id) = result? else {
+        return Err(session.degenerate(
+            id,
+            &entity.type_name.to_ascii_uppercase(),
+            "the face's outer bound collapsed and the face was dropped",
+        ));
+    };
+    builder.brep.add_shell(Shell {
+        faces: vec![(face_id, Orientation::Forward)],
+        closed: false,
+    });
+    let node = session.node_for(id, GeometryNode::BRep(builder.brep))?;
+    session.memoize(id, FACE_KIND, frame, node);
+    Ok(node)
+}
+
 /// Lower one shell and every face it holds.
 fn shell(
     session: &mut LoweringSession<'_>,
@@ -269,7 +325,20 @@ fn face(
         (None, Orientation::Forward)
     } else {
         let surface_view = FaceSurfaceView::new(id, entity);
-        let node = lower_surface_node(session, surface_view.face_surface()?, frame)?;
+        let surface_ref = surface_view.face_surface()?;
+        // Resolve against the face first: the surface lowerer can only report
+        // a dangling id against itself, which hides which face named it, and
+        // reports a non-surface as an unsupported surface family rather than
+        // the broken reference it is.
+        let surface_type = &session.entity(id, surface_ref)?.type_name;
+        if !is_a(&surface_type.to_ascii_uppercase(), "IFCSURFACE") {
+            return Err(GeometryError::WrongEntityType {
+                entity: surface_ref,
+                actual: surface_type.to_string(),
+                expected: "IfcSurface",
+            });
+        }
+        let node = lower_surface_node(session, surface_ref, frame)?;
         let sense = if surface_view.same_sense() {
             Orientation::Forward
         } else {

@@ -92,6 +92,12 @@ lockstep -- is archived in the
 
 ### Fixed
 
+- A face surface whose `FaceSurface` is dangling now reports the face as the
+  referrer, and one naming a non-surface is `WrongEntityType` naming the
+  target (#155). The first reported the missing id against itself; the
+  second was an `Unsupported` "curved and B-spline surfaces", which reads as
+  valid IFC this bridge declines rather than a broken reference. Applies to
+  faces inside advanced B-reps too.
 - Compiled `IfcBlock` meshes were offset by half their extents. `IfcBlock`
   has a corner at its `Position` (IFC4 ADD2 TC1), but the neutral
   `Primitive::Block` is tessellated centred on its origin by
@@ -134,6 +140,25 @@ lockstep -- is archived in the
 
 ### Added
 
+- `IfcFaceSurface` and `IfcAdvancedFace` lower as representation items
+  (#155). Both are members of `IfcSurfaceOrFaceSurface`, the type of a
+  connection surface, but the dispatcher refused them. The new
+  `lower_face_surface_node` builds ONE face through the B-rep face path --
+  exact carrier surface, `SameSense` as the face's orientation relative to
+  that carrier, each bound's `Orientation` -- inside one open shell with no
+  solid, so a single face never acquires a volume. They move from the
+  nested-only disposition ledger to `IMPLEMENTED`, and `BodyKind::Face`
+  describes them. Committed evidence:
+  `test/fixtures/synthetic-surfaces/synthetic_space_boundary_face_surface.ifc`.
+- `lower_connection_surface(session, connection, frame)` and
+  `lower_related_connection_surface` lower an
+  `IfcConnectionSurfaceGeometry`'s `SurfaceOnRelatingElement` and optional
+  `SurfaceOnRelatedElement` (#155), dispatching `IfcSurface`,
+  `IfcFaceSurface`/`IfcAdvancedFace` and `IfcFaceBasedSurfaceModel`. Each
+  end is authored in its own element's coordinate system, so each takes its
+  own frame. Point, eccentric point, curve, volume and (IFC2X3) port
+  connections are typed `Unsupported` refusals naming the connection; any
+  other entity is `WrongEntityType`.
 - `body_description(model, units, product)` reports how a product's Body
   representation is modelled (#147). It returns one `BodyItem` per
   geometric item in authored order, with mapped items resolved (`mapped_by`

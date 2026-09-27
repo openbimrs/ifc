@@ -261,6 +261,8 @@ The dispatcher keeps coverage as data so it is auditable from one table
 | `IfcSectionedSpine` | <span class="status-implemented">Implemented</span> |
 | `IfcShellBasedSurfaceModel` | <span class="status-implemented">Implemented</span> |
 | `IfcFaceBasedSurfaceModel` | <span class="status-implemented">Implemented</span> |
+| `IfcFaceSurface` | <span class="status-implemented">Implemented</span> |
+| `IfcAdvancedFace` | <span class="status-implemented">Implemented</span> |
 | `IfcGeometricSet` | <span class="status-implemented">Implemented</span> |
 | `IfcGeometricCurveSet` | <span class="status-implemented">Implemented</span> |
 | `IfcLine` | <span class="status-implemented">Implemented</span> |

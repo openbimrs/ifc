@@ -51,6 +51,9 @@ pub enum BodyKind {
     /// `IfcShellBasedSurfaceModel` or `IfcFaceBasedSurfaceModel`. Never a
     /// solid, even when every shell is closed.
     SurfaceModel,
+    /// `IfcFaceSurface` or `IfcAdvancedFace`: one bounded face on a carrier
+    /// surface. Never a solid: a single face encloses nothing.
+    Face,
     /// `IfcGeometricSet` or `IfcGeometricCurveSet`.
     GeometricSet,
     /// Any `IfcCurve`.
@@ -93,6 +96,8 @@ const FAMILIES: &[(&str, BodyKind)] = &[
     ("IFCPOLYGONALFACESET", BodyKind::Tessellated),
     ("IFCSHELLBASEDSURFACEMODEL", BodyKind::SurfaceModel),
     ("IFCFACEBASEDSURFACEMODEL", BodyKind::SurfaceModel),
+    ("IFCFACESURFACE", BodyKind::Face),
+    ("IFCADVANCEDFACE", BodyKind::Face),
     ("IFCGEOMETRICSET", BodyKind::GeometricSet),
     ("IFCGEOMETRICCURVESET", BodyKind::GeometricSet),
     ("IFCPOINTONCURVE", BodyKind::Point),
@@ -172,6 +177,9 @@ mod tests {
     fn curves_and_surfaces_classify_by_inheritance() {
         assert_eq!(BodyKind::classify("IfcTrimmedCurve"), Some(BodyKind::Curve));
         assert_eq!(BodyKind::classify("IFCPLANE"), Some(BodyKind::Surface));
+        // IfcFaceSurface is an IfcFace, not an IfcSurface, in every release.
+        assert_eq!(BodyKind::classify("IfcFaceSurface"), Some(BodyKind::Face));
+        assert_eq!(BodyKind::classify("IFCADVANCEDFACE"), Some(BodyKind::Face));
         assert_eq!(BodyKind::classify("IFCMAPPEDITEM"), None);
         assert_eq!(BodyKind::classify("IFCWALL"), None);
     }

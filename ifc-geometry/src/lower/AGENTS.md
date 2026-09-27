@@ -45,6 +45,18 @@ A surface model is NOT a solid. `IfcShellBasedSurfaceModel` and
 no solid, even when every shell is closed. Emitting a solid would let a
 quantity takeoff report a volume the file never claimed.
 
+A standalone `IfcFaceSurface`/`IfcAdvancedFace` is likewise one face in one
+OPEN shell with no solid (`brep::lower_face_surface_node`), built by the same
+face routine a B-rep uses. IFC takes the face normal from its bounds alone;
+`SameSense` relates the carrier's normal to it, which is exactly the neutral
+`Face::orientation` ("relative to the support surface normal"). Never fold
+`SameSense` into the loop order. `IfcFaceSurface` is an `IfcFace`, NOT an
+`IfcSurface`, in every release, so the surface lowerer never sees one.
+
+`connection.rs` lowers `IfcConnectionSurfaceGeometry`. Its two ends are in
+two different element coordinate systems, so each end has its own entry
+point and frame; one frame for both would misplace the related end.
+
 Curves and surfaces can be top-level representation items and are dispatched
 through their exact family lowerers. Collections also route nested curve and
 surface members through the same schema-aware paths; a bare curve is never
@@ -98,7 +110,7 @@ its `Position`, so the `Instance` also carries a half-extent shift.
 
 `session.rs`, `dispatch.rs`, `context.rs`, `placement.rs`, `profile.rs`,
 `profile/open.rs`, `curve.rs`, `surface.rs`, `solid.rs`, `brep.rs`,
-`tessellated.rs`, `mapped.rs`, `boolean.rs`, `provenance.rs`. These source owners
+`tessellated.rs`, `mapped.rs`, `boolean.rs`, `connection.rs`, `provenance.rs`. These source owners
 already compile as private modules. Replace a module's planned-owner marker with
 its first real contract and tests; do not add parallel placeholders.
 
