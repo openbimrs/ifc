@@ -56,6 +56,20 @@ lockstep -- is archived in the
   Before, `*` was accepted in any slot and the file was invalid. Both apply to
   `EntityBuilder` and `EntityEditor`.
 
+### ifc-control
+
+### Added
+
+- `assign_to_control` and `ControlAssignmentDraft` stage an
+  `IfcRelAssignsToControl` whose relating control is a permit, project
+  order, action request or performance history. Empty, duplicated and
+  self-referencing `RelatedObjects`, members that are not
+  `IfcObjectDefinition`s, and missing references are refused;
+  `RelatedObjectsType` is left unset (#99).
+- `ControlError::ForeignControl` refuses a relating control another crate
+  owns (cost schedules, cost items, work controls).
+- `ControlKind::ALL` lists the four owned controls.
+
 ### ifc-cost
 
 ### Added
@@ -204,6 +218,18 @@ lockstep -- is archived in the
   `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
+
+### ifc-tabular
+
+### Added
+
+- Borrowed read views: `TabularView` reads `IfcTable` (rows and columns)
+  and `IfcRegularTimeSeries`/`IfcIrregularTimeSeries` with their value
+  records under a declared IFC4 or IFC4X3 schema, locating slots by name.
+  WR1 (ragged row), WR2 (more than one heading), malformed slots, arity
+  mismatches, empty lists and dangling or mistyped references are reported
+  as `TabularIssue`s instead of being dropped. IFC2x3 is refused with
+  `TabularReadError::UnsupportedSchema` (#120).
 
 ### ifc-template-catalog
 
