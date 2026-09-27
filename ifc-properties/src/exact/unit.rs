@@ -195,8 +195,8 @@ impl std::error::Error for ExactUnitError {}
 /// `measure_type` is the value's declared type, e.g. `IFCAREAMEASURE`;
 /// `explicit_unit` is `IfcPropertySingleValue.Unit` when stated. Without an
 /// explicit unit the project default of the needed type applies. The model
-/// binds to the release its `FILE_SCHEMA` declares, IFC2X3 or IFC4, and every
-/// table is that release's.
+/// binds to the release its `FILE_SCHEMA` declares, IFC2X3, IFC4 or IFC4X3,
+/// and every table is that release's.
 ///
 /// # Errors
 ///
@@ -265,7 +265,7 @@ fn project_unit(
         .attribute_names("IFCPROJECT")
         .iter()
         .position(|name| name.eq_ignore_ascii_case("UnitsInContext"))
-        .expect("IfcProject declares UnitsInContext in IFC2X3 and IFC4");
+        .expect("IfcProject declares UnitsInContext in every bundled release");
     let no_unit = || ExactUnitError::NoProjectUnit {
         unit_type: unit_type.clone(),
     };

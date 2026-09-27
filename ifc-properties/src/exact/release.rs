@@ -54,12 +54,16 @@ pub(super) fn validate_model(model: &Model) -> Result<Release, ExactPropertyErro
     }
     match model.header().schema.as_slice() {
         [] => Err(ExactPropertyError::MissingSchema),
+        // Each release listed here is verified for exact resolution: IFC2X3
+        // TC1 (#48), IFC4 ADD2 TC1, and IFC4X3 ADD2 (#76). Any other token,
+        // including a release the schema crate bundles later, is refused
+        // until it is verified, never approximated.
         [token] => match SchemaVersion::from_header_token(token) {
-            // IFC4X3 is bundled, but its exact semantics are not verified
-            // here yet (#48 scope); it stays unsupported until they are.
-            Some(version @ (SchemaVersion::Ifc2x3 | SchemaVersion::Ifc4)) => Ok(Release {
+            Some(
+                version @ (SchemaVersion::Ifc2x3 | SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3),
+            ) => Ok(Release {
                 version,
-                schema: for_version(version).expect("IFC2X3 and IFC4 are bundled"),
+                schema: for_version(version).expect("verified releases are bundled"),
             }),
             _ => Err(ExactPropertyError::UnsupportedSchema {
                 schema: token.clone(),

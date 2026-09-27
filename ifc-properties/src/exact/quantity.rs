@@ -6,7 +6,7 @@
 //! exactly rather than reported as absent:
 //!
 //! ```text
-//! IfcElementQuantity         2 = Name   5 = Quantities   (IFC2X3 and IFC4)
+//! IfcElementQuantity         2 = Name   5 = Quantities   (IFC2X3, IFC4, IFC4X3)
 //! IfcPhysicalQuantity        0 = Name
 //! IfcPhysicalSimpleQuantity  2 = Unit   3 = <Length|Area|...>Value
 //! ```
@@ -34,7 +34,7 @@ fn slot(release: Release, entity: &str, attribute: &str) -> usize {
         .attribute_names(entity)
         .iter()
         .position(|name| name.eq_ignore_ascii_case(attribute))
-        .unwrap_or_else(|| panic!("{entity}.{attribute} is declared in IFC2X3 and IFC4"))
+        .unwrap_or_else(|| panic!("{entity}.{attribute} is declared in every bundled release"))
 }
 
 /// The quantity named `wanted` in an `IfcElementQuantity`, if any.
@@ -50,10 +50,45 @@ pub(super) fn find_quantity(
     set: &Entity,
     wanted: &str,
 ) -> Result<Option<(EntityId, ResolvedValue)>, ExactPropertyError> {
-    let schema = release.schema;
-    let members = slot(release, "IFCELEMENTQUANTITY", "Quantities");
     let mut matching = None;
-    for quantity_id in nonempty_refs_at(set_id, set.attributes.get(members), "Quantities")? {
+    for (quantity_id, name) in quantity_members(model, release, set_id, set)? {
+        if name != wanted {
+            continue;
+        }
+        if let Some(first) = matching.replace(quantity_id) {
+            return Err(ExactPropertyError::DuplicateMatchingProperties {
+                set: set_id,
+                first,
+                second: quantity_id,
+            });
+        }
+    }
+    let Some(quantity_id) = matching else {
+        return Ok(None);
+    };
+    Ok(Some((
+        quantity_id,
+        quantity_value(model, release, quantity_id)?,
+    )))
+}
+
+/// Every member of an `IfcElementQuantity` with its `Name`, in file order.
+///
+/// # Errors
+///
+/// A malformed or empty `Quantities`, a missing, foreign or
+/// non-`IfcPhysicalQuantity` member, a member with the wrong arity, or one
+/// without a text name.
+pub(super) fn quantity_members<'m>(
+    model: &'m Model,
+    release: Release,
+    set_id: EntityId,
+    set: &Entity,
+) -> Result<Vec<(EntityId, &'m str)>, ExactPropertyError> {
+    let schema = release.schema;
+    let slot = slot(release, "IFCELEMENTQUANTITY", "Quantities");
+    let mut members = Vec::new();
+    for quantity_id in nonempty_refs_at(set_id, set.attributes.get(slot), "Quantities")? {
         let quantity = model
             .get(quantity_id)
             .ok_or(ExactPropertyError::MissingReference {
@@ -70,31 +105,34 @@ pub(super) fn find_quantity(
             });
         }
         release.require_exact_slots(quantity_id, quantity)?;
-        if text_at(quantity_id, quantity.attributes.first(), "Name")? != wanted {
-            continue;
-        }
-        if let Some(first) = matching.replace(quantity_id) {
-            return Err(ExactPropertyError::DuplicateMatchingProperties {
-                set: set_id,
-                first,
-                second: quantity_id,
-            });
-        }
+        let name = text_at(quantity_id, quantity.attributes.first(), "Name")?;
+        members.push((quantity_id, name));
     }
-    let Some(quantity_id) = matching else {
-        return Ok(None);
-    };
+    Ok(members)
+}
+
+/// The value of quantity `quantity_id`, which must be simple.
+///
+/// # Errors
+///
+/// [`ExactPropertyError::UnsupportedProperty`] for a complex quantity, or a
+/// malformed unit or value.
+pub(super) fn quantity_value(
+    model: &Model,
+    release: Release,
+    quantity_id: EntityId,
+) -> Result<ResolvedValue, ExactPropertyError> {
     let quantity = model.get(quantity_id).expect("checked reference");
-    if !schema.is_a(quantity.type_name.as_ref(), "IFCPHYSICALSIMPLEQUANTITY") {
+    if !release
+        .schema
+        .is_a(quantity.type_name.as_ref(), "IFCPHYSICALSIMPLEQUANTITY")
+    {
         return Err(ExactPropertyError::UnsupportedProperty {
             entity: quantity_id,
             type_name: quantity.type_name.clone(),
         });
     }
-    Ok(Some((
-        quantity_id,
-        simple_value(model, release, quantity_id, quantity)?,
-    )))
+    simple_value(model, release, quantity_id, quantity)
 }
 
 /// The value, its declared measure type, and the unit of a simple quantity.
@@ -175,19 +213,32 @@ pub(super) fn predefined_may_hold(
     wanted_set: Option<&str>,
     wanted: &str,
 ) -> bool {
-    let schema = release.schema;
-    let inherited = schema.attribute_names("IFCPROPERTYSETDEFINITION").len();
-    let own = schema.attribute_names(set.type_name.as_ref());
-    if !own.iter().skip(inherited).any(|name| *name == wanted) {
+    if !predefined_attributes(release, set).any(|name| name == wanted) {
         return false;
     }
-    match (
-        wanted_set,
-        set.attributes
-            .get(2)
-            .and_then(|v| v.unwrap_typed().as_text()),
-    ) {
+    match (wanted_set, predefined_name(set)) {
         (Some(asked), Some(name)) => asked == name,
         _ => true,
     }
+}
+
+/// The attributes a predefined set declares itself, excluding those every
+/// `IfcPropertySetDefinition` inherits from `IfcRoot`.
+pub(super) fn predefined_attributes(
+    release: Release,
+    set: &Entity,
+) -> impl Iterator<Item = &'static str> {
+    let schema = release.schema;
+    let inherited = schema.attribute_names("IFCPROPERTYSETDEFINITION").len();
+    schema
+        .attribute_names(set.type_name.as_ref())
+        .into_iter()
+        .skip(inherited)
+}
+
+/// A predefined set's `Name`, if it states one as text.
+pub(super) fn predefined_name(set: &Entity) -> Option<&str> {
+    set.attributes
+        .get(2)
+        .and_then(|v| v.unwrap_typed().as_text())
 }

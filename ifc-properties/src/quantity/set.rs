@@ -220,7 +220,10 @@ impl QuantitySet {
 /// Returns `None` when `id` is absent or is not an `IfcElementQuantity`.
 /// A member that cannot be represented is left out of `quantities` and
 /// reported, never dropped silently: an absent id
-/// ([`PropertyAnomaly::MissingMember`]), a simple quantity with no value
+/// ([`PropertyAnomaly::MissingMember`]), a list item that is not an entity
+/// reference ([`PropertyAnomaly::MemberNotReference`]), a member listed
+/// again ([`PropertyAnomaly::DuplicateMember`], read once), a simple
+/// quantity with no value
 /// ([`PropertyAnomaly::QuantityValueMissing`]) or a non-numeric one
 /// ([`PropertyAnomaly::QuantityValueNotNumeric`]). Nested complex
 /// quantities are followed along a tracked path; a cycle, over-deep nesting
@@ -236,12 +239,7 @@ pub fn quantity_set(model: &Model, id: EntityId) -> Option<(QuantitySet, Vec<Pro
     let mut anomalies = Vec::new();
     let mut nesting = Nesting::new(&mut anomalies);
     let mut quantities = Vec::new();
-    for member in entity
-        .attributes
-        .get(SET_QUANTITIES)
-        .and_then(refs)
-        .unwrap_or_default()
-    {
+    for member in nesting.members(id, "Quantities", entity.attributes.get(SET_QUANTITIES)) {
         if !nesting.admit(model, id, member) {
             continue;
         }
@@ -380,13 +378,6 @@ fn text(value: &Value) -> Option<Arc<str>> {
 fn one_ref(value: &Value) -> Option<EntityId> {
     match value.unwrap_typed() {
         Value::Ref(id) => Some(*id),
-        _ => None,
-    }
-}
-
-pub(super) fn refs(value: &Value) -> Option<Vec<EntityId>> {
-    match value {
-        Value::List(items) => Some(items.iter().filter_map(one_ref).collect()),
         _ => None,
     }
 }

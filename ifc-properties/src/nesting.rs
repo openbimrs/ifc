@@ -12,7 +12,7 @@
 
 use std::collections::BTreeSet;
 
-use ifc_model::{EntityId, Model};
+use ifc_model::{EntityId, Model, Value};
 
 use crate::error::PropertyAnomaly;
 
@@ -116,6 +116,48 @@ impl<'a> Nesting<'a> {
             return false;
         }
         true
+    }
+
+    /// The member ids listed in `container`'s `attribute`, in file order.
+    ///
+    /// `HasProperties`, `Quantities` and `HasQuantities` are all `SET [1:?]`
+    /// of entity references. A list item that is not a reference
+    /// ([`PropertyAnomaly::MemberNotReference`]) cannot name a member, and a
+    /// set cannot hold one member twice
+    /// ([`PropertyAnomaly::DuplicateMember`]); each is reported, and a
+    /// repeated member is returned only at its first position. An attribute
+    /// that is absent or not a list yields no members.
+    pub(crate) fn members(
+        &mut self,
+        container: EntityId,
+        attribute: &'static str,
+        value: Option<&Value>,
+    ) -> Vec<EntityId> {
+        let Some(Value::List(items)) = value else {
+            return Vec::new();
+        };
+        let mut seen = BTreeSet::new();
+        let mut members = Vec::with_capacity(items.len());
+        for item in items {
+            let Value::Ref(member) = item.unwrap_typed() else {
+                self.anomalies.push(PropertyAnomaly::MemberNotReference {
+                    container,
+                    attribute,
+                    found: format!("{item:?}"),
+                });
+                continue;
+            };
+            if seen.insert(*member) {
+                members.push(*member);
+            } else {
+                self.anomalies.push(PropertyAnomaly::DuplicateMember {
+                    container,
+                    attribute,
+                    member: *member,
+                });
+            }
+        }
+        members
     }
 
     /// Report a malformed file fact found while reading.

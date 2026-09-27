@@ -204,8 +204,15 @@ The three outcomes are distinct on purpose:
 - An `ExactPropertyError` means the evidence did not allow an answer: a
   dangling reference, a malformed aggregate, an ambiguous duplicate set, more
   than one type assignment, a predefined property set that could hold the
-  name, STEP diagnostics on the model, or a schema other than IFC2X3 or IFC4.
-  Treat it as "cannot tell", never as "absent".
+  name, STEP diagnostics on the model, or a schema other than IFC2X3, IFC4 or
+  IFC4X3 ADD2. Treat it as "cannot tell", never as "absent".
+
+A check that names its set or property by pattern, as an IDS facet may,
+needs every match rather than one. `exact_properties_where(model, object,
+select_set, select_property)` enumerates them with the same traversal and
+refusals, and `exact_properties` lists everything. For one set name and one
+property name the enumeration answers exactly what `exact_property` answers,
+and an empty list is a proven absence.
 
 The value is the file's. WHERE rules on the value, such as a non-negative
 length, are not evaluated here; that is validation's job, and the rule may be
