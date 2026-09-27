@@ -461,9 +461,11 @@ fn the_context_world_coordinate_system_places_the_representation() {
         ),
     );
 
+    // The block's Instance carries its centre: the unit cube's corner at the
+    // context origin (100, 50, 0) puts it at (100.5, 50.5, 0.5).
     let c = centroid(&model, EntityId(11));
     assert!(
-        (c[0] - 100.0).abs() < 1e-9 && (c[1] - 50.0).abs() < 1e-9,
+        (c[0] - 100.5).abs() < 1e-9 && (c[1] - 50.5).abs() < 1e-9 && (c[2] - 0.5).abs() < 1e-9,
         "the context's WorldCoordinateSystem must place the geometry, got {c:?}"
     );
 }
@@ -621,9 +623,11 @@ fn the_context_frame_composes_above_the_placement_chain() {
     );
 
     let c = centroid(&model, EntityId(14));
-    // Context rotates local X onto world +Y, so +10 X becomes +10 Y.
+    // Context rotates local X onto world +Y, so +10 X becomes +10 Y. The
+    // cube's centre, (0.5, 0.5, 0.5) from its corner, turns to (-0.5, 0.5,
+    // 0.5), so the block's Instance lands at (99.5, 60.5, 0.5).
     assert!(
-        (c[0] - 100.0).abs() < 1e-9 && (c[1] - 60.0).abs() < 1e-9,
+        (c[0] - 99.5).abs() < 1e-9 && (c[1] - 60.5).abs() < 1e-9 && (c[2] - 0.5).abs() < 1e-9,
         "context frame must apply to the placed product, got {c:?}"
     );
 }

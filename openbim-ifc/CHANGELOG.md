@@ -14,6 +14,11 @@ everything released before per-crate changelogs began.
 
 ### Added
 
+- `body_description`, `describe_profile` and their types (`BodyDescription`,
+  `BodyItem`, `BodyKind`, `SweptSolid`, `SweepPath`, `ProfileDescription`,
+  `ProfileParameters`) are re-exported at the root under `geometry-select`
+  (#147), so a rule check reads a body's kind and swept-solid profile
+  parameters without linking the geometry kernel.
 - `door_operation(model, door)` (features `geometry-select` and
   `properties`): each leaf of a door as a world frame, width, hinge side and
   swing `Sector`, from its placement, `OperationType` and

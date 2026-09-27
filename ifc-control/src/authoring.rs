@@ -79,6 +79,14 @@ pub enum ControlKind {
 }
 
 impl ControlKind {
+    /// Every control this crate owns, in declaration order.
+    pub const ALL: [Self; 4] = [
+        Self::Permit,
+        Self::ProjectOrder,
+        Self::ActionRequest,
+        Self::PerformanceHistory,
+    ];
+
     /// STEP type name, upper-case as the catalogue stores it.
     ///
     /// Upper-case because `Entity::new` does not normalise and the

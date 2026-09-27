@@ -193,7 +193,7 @@ fn assignment_relations_reject_assigning_an_object_to_itself() {
         (
             "IFCRELASSIGNSTOGROUPBYFACTOR",
             "RelatingGroup",
-            "IfcRelAssignsToGroupByFactor.NoSelfReference",
+            "IfcRelAssignsToGroup.NoSelfReference",
         ),
     ];
     for (relation, relating, rule) in cases {
@@ -330,5 +330,90 @@ fn space_boundary_physicality_accepts_the_legal_combinations() {
             !has(&validate(&model, schema), rule),
             "{declared} against {element_type} is conformant"
         );
+    }
+}
+
+/// `NoSelfReference` is declared on `IfcRelAssignsToGroup`, so it binds the
+/// plain relation and its `ByFactor` subtype alike, under the declaring
+/// entity's id, in both releases that declare it.
+#[test]
+fn group_assignment_self_reference_is_checked_on_the_declaring_entity_and_its_subtype() {
+    let rule = "IfcRelAssignsToGroup.NoSelfReference";
+    for schema in [ifc_schema::ifc4(), ifc_schema::ifc4x3()] {
+        for relation in ["IFCRELASSIGNSTOGROUP", "IFCRELASSIGNSTOGROUPBYFACTOR"] {
+            let mut model = Model::new();
+            let group = model.push(entity(schema, "IFCGROUP", &[]));
+            model.push(entity(
+                schema,
+                relation,
+                &[
+                    ("RelatingGroup", Value::Ref(group)),
+                    ("RelatedObjects", Value::List(vec![Value::Ref(group)])),
+                ],
+            ));
+            let report = validate(&model, schema);
+            assert!(has(&report, rule), "{relation} in {}", schema.name());
+            assert!(
+                !has(&report, "IfcRelAssignsToGroupByFactor.NoSelfReference"),
+                "the subtype declares no rule of its own"
+            );
+        }
+    }
+}
+
+/// `IfcMaterialLayerWithOffsets` inherits `NormalizedPriority`.
+#[test]
+fn material_layer_with_offsets_priority_is_bounded() {
+    for schema in [ifc_schema::ifc4(), ifc_schema::ifc4x3()] {
+        for (priority, fires) in [(101, true), (-1, true), (50, false)] {
+            let mut model = Model::new();
+            model.push(entity(
+                schema,
+                "IFCMATERIALLAYERWITHOFFSETS",
+                &[
+                    ("LayerThickness", Value::Real(1.0)),
+                    ("Priority", Value::Integer(priority)),
+                ],
+            ));
+            assert_eq!(
+                has(
+                    &validate(&model, schema),
+                    "IfcMaterialLayer.NormalizedPriority"
+                ),
+                fires,
+                "priority {priority} in {}",
+                schema.name()
+            );
+        }
+    }
+}
+
+/// IFC2X3 declares neither rule, so a model that breaks both is silent
+/// under IFC2X3 tables.
+#[test]
+fn ifc4_only_rules_do_not_run_under_ifc2x3() {
+    let schema = ifc_schema::ifc2x3();
+    let mut model = Model::new();
+    let wall_type = model.push(entity(schema, "IFCWALLTYPE", &[]));
+    model.push(entity(
+        schema,
+        "IFCRELDEFINESBYPROPERTIES",
+        &[("RelatedObjects", Value::List(vec![Value::Ref(wall_type)]))],
+    ));
+    let group = model.push(entity(schema, "IFCGROUP", &[]));
+    model.push(entity(
+        schema,
+        "IFCRELASSIGNSTOGROUP",
+        &[
+            ("RelatingGroup", Value::Ref(group)),
+            ("RelatedObjects", Value::List(vec![Value::Ref(group)])),
+        ],
+    ));
+    let report = validate(&model, schema);
+    for rule in [
+        "IfcRelDefinesByProperties.NoRelatedTypeObject",
+        "IfcRelAssignsToGroup.NoSelfReference",
+    ] {
+        assert!(!has(&report, rule), "{rule} is not declared by IFC2X3");
     }
 }

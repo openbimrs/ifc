@@ -43,9 +43,8 @@ impl<'m> SweptAreaSolid<'m> {
     /// The `IfcProfileDef` reference giving the cross section.
     ///
     /// Stays a reference: `IfcProfileDef` families are read by
-    /// `lower::profile` (behind the `lowering` feature), the one owner of
-    /// profile semantics, so this crate does not define a second, competing
-    /// profile view.
+    /// [`crate::describe_profile`], the one owner of profile semantics, so
+    /// this crate does not define a second, competing profile view.
     pub fn swept_area(&self) -> GeometryResult<EntityId> {
         self.slots.req_ref(swept_area_slot::SWEPT_AREA, "SweptArea")
     }

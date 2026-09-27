@@ -56,6 +56,20 @@ lockstep -- is archived in the
   Before, `*` was accepted in any slot and the file was invalid. Both apply to
   `EntityBuilder` and `EntityEditor`.
 
+### ifc-control
+
+### Added
+
+- `assign_to_control` and `ControlAssignmentDraft` stage an
+  `IfcRelAssignsToControl` whose relating control is a permit, project
+  order, action request or performance history. Empty, duplicated and
+  self-referencing `RelatedObjects`, members that are not
+  `IfcObjectDefinition`s, and missing references are refused;
+  `RelatedObjectsType` is left unset (#99).
+- `ControlError::ForeignControl` refuses a relating control another crate
+  owns (cost schedules, cost items, work controls).
+- `ControlKind::ALL` lists the four owned controls.
+
 ### ifc-cost
 
 ### Added
@@ -78,6 +92,25 @@ lockstep -- is archived in the
 
 ### Fixed
 
+- Compiled `IfcBlock` meshes were offset by half their extents. `IfcBlock`
+  has a corner at its `Position` (IFC4 ADD2 TC1), but the neutral
+  `Primitive::Block` is tessellated centred on its origin by
+  `axiolid-reference`, so every compiled block sat half its size away from
+  where the file placed it, along its own axes. Lowering now puts the
+  half-extent shift on the block's `Instance`. This changes compiled
+  geometry for every `IfcBlock`; the lowered `Instance` translation now
+  names the block's centre. The other CSG primitives already agreed.
+- `Plane`, `CylindricalSurface`, `SphericalSurface` and `ToroidalSurface`
+  `::position(&model)` now type-check their target through
+  `resource::resolve` (#135). A `Position` naming anything other than an
+  `IfcAxis2Placement3D` is `WrongEntityType` naming the target; it used to
+  be wrapped as a 3D placement and misread.
+- A derived linear placement no longer reports an evaluator's degenerate
+  curve as an undefined roll. The refusal now distinguishes an unsupported
+  curve family, a rejected measure (off the curve, or roll undefined
+  because the tangent is parallel to the up reference) and a degenerate
+  curve, matching how `axiolid-evaluate` 0.3 reports them.
+
 - An opening that a file makes void two hosts is subtracted from the first
   only (#59). `IfcFeatureElementSubtraction.VoidsElements` is a
   single-valued inverse in IFC2X3 and IFC4, but every `IfcRelVoidsElement`
@@ -85,9 +118,63 @@ lockstep -- is archived in the
   belongs to another element. The relation with the lower id now wins in
   `openings_of` and in net compilation. Output changes only for files that
   violate the schema.
+- `IfcParameterizedProfileDef.Position` now reaches the kernel for every
+  parameterised family (#147). It was applied to rectangles and circles
+  only, so an I, L, T, U, C or Z section, an ellipse or a trapezium with an
+  offset or rotated `Position` lowered at the profile origin. Output changes
+  only for files that author a non-identity `Position` on those families.
+- The translation of an `IfcDerivedProfileDef` operator is converted to
+  metres (#147). It was passed through in file units, so a derived profile
+  offset by 50 mm in a millimetre file lowered 50 m away.
+- An `IfcAsymmetricIShapeProfileDef` in an IFC2X3 file no longer reads
+  `CentreOfGravityInY` (slot 11 in that schema) as `BottomFlangeEdgeRadius`
+  (#147). IFC2X3 declares the entity as an `IfcIShapeProfileDef` subtype
+  with a different tail; the declared schema now selects the layout, and
+  the IFC4-only edge radii and slopes are absent in IFC2X3.
 
 ### Added
 
+- `body_description(model, units, product)` reports how a product's Body
+  representation is modelled (#147). It returns one `BodyItem` per
+  geometric item in authored order, with mapped items resolved (`mapped_by`
+  names the chain), each carrying a `BodyKind` (extrusion, tapered
+  extrusion, revolution, tapered revolution, directrix sweep, swept disk,
+  sectioned spine, B-rep, CSG, CSG primitive, half space, bounding box,
+  tessellated, surface model, geometric set, curve, surface, point) and, for
+  the swept-area families, a `SweptSolid`: the profile description, the
+  end profile of a tapered sweep, the solid's placement in world
+  coordinates and a `SweepPath` (extrusion direction as a world unit vector
+  plus depth in metres, revolution axis and angle in radians, or the
+  directrix curve). Mapped geometry describes identically to the same
+  geometry authored in place. Anything that cannot be stated exactly is a
+  typed error for the whole body, never a partial list: unsupported item or
+  profile families, dangling references, mapping cycles, open profiles
+  swept as areas, and a mapping that scales or mirrors a swept solid. It is
+  kernel-free and reachable with `--no-default-features`.
+- `describe_profile(model, units, profile)` reads any concrete
+  `IfcProfileDef` into a `ProfileDescription`: type, `ProfileName`,
+  `Position`, and `ProfileParameters` for every family in metres and
+  radians (rectangle, rounded and hollow rectangle, circle and hollow
+  circle, ellipse, I, asymmetric I, L, T, U, C, Z, trapezium, arbitrary
+  closed, with voids and open by curve reference, centre line, composite,
+  derived with its operator, mirrored). A bare `IfcProfileDef` and unknown
+  families are refused; a composite or derived chain that references itself
+  is `CyclicChain`.
+- `derive_placement_transform` derives a linear placement on an
+  `IfcPolyline` or a line-only `IfcIndexedPolyCurve` basis curve (#96), not
+  only on an alignment. The curve lowers to the neutral polyline, whose arc
+  length is an exact finite sum, so a distance converts to a parameter
+  exactly; a native parameter follows the IFC polyline parameterisation
+  (one per segment). Refused by name: a zero-length segment, fewer than two
+  points, non-consecutive `Segments`, an `IfcArcIndex`, a parameter on a
+  multi-point `IfcLineIndex` (IFC does not state its split), and ellipse
+  and B-spline bases as before.
+- `product_bounds` bounds linear extrusions of straight-edged profiles
+  (rectangles, polyline contours, and placed/derived forms of them) and
+  blocks exactly from their vertices, without tessellating (#98). The
+  result reports `BoundsSource::Exact`. Curved profiles, rounded
+  rectangles and booleans still go through the compiled mesh; a
+  difference only shrinks its operand, so its operand's box is never used.
 - `voiding_conflicts(model)` and `VoidingConflict { opening, kept_host,
   rejected_host, relation }` report such openings (#59). It is kernel-free,
   like `openings_of`. Restating the same host is not a conflict.
@@ -105,7 +192,7 @@ lockstep -- is archived in the
 - `resource::resolve`, the shared type-checked resolvers behind them, and
   two select views: `Axis2Placement` (2D or 3D, for `IfcConic.Position`) and
   `CartesianPointList` (2D or 3D, for `IfcIndexedPolyCurve.Points`).
-  Profiles stay references; `lower::profile` owns `IfcProfileDef` reading.
+  Profiles stay references; `describe_profile` owns `IfcProfileDef` reading.
 
 - `compile::product_bounds` / `product_bounds_with` return a product's
   world-space axis-aligned bounding box (#36). The body is resolved and placed
@@ -126,6 +213,12 @@ lockstep -- is archived in the
 
 ### Changed
 
+- `lower::profile` builds every profile from `describe_profile` instead of
+  reading slots itself (#147), so lowering and body description cannot
+  disagree about a slot, a unit or a default. A profile nesting chain that
+  exceeds its budget is now `ChainTooDeep` rather than `Unsupported`, and a
+  self-referencing chain is `CyclicChain`; a dangling boundary curve of an
+  arbitrary profile is reported when the profile is read.
 - Requires `axiolid-mesh-compile` 0.3.3 and `axiolid-contracts` 0.3.1.
   Closed `IfcPolygonalFaceSet` bodies whose face corners lie on a straight
   run (collinear notch and window heads) now mesh closed and report `Solid`
@@ -301,6 +394,18 @@ lockstep -- is archived in the
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
 
+### ifc-tabular
+
+### Added
+
+- Borrowed read views: `TabularView` reads `IfcTable` (rows and columns)
+  and `IfcRegularTimeSeries`/`IfcIrregularTimeSeries` with their value
+  records under a declared IFC4 or IFC4X3 schema, locating slots by name.
+  WR1 (ragged row), WR2 (more than one heading), malformed slots, arity
+  mismatches, empty lists and dangling or mistyped references are reported
+  as `TabularIssue`s instead of being dropped. IFC2x3 is refused with
+  `TabularReadError::UnsupportedSchema` (#120).
+
 ### ifc-template-catalog
 
 ### Fixed
@@ -312,7 +417,8 @@ lockstep -- is archived in the
 ### ifc-validate
 
 This release is **breaking** (0.2 -> 0.3): `Severity` gains a variant,
-`Summary` gains a field, and `Budget::max_depth` is removed.
+`Summary` gains a field, `RuleEntry` gains a field, `Mismatch` gains a
+variant, three rule ids are renamed, and `Budget::max_depth` is removed.
 
 ### Added
 
@@ -328,6 +434,11 @@ This release is **breaking** (0.2 -> 0.3): `Severity` gains a variant,
 - Every rule id the crate emits is pinned by an adversarial pair of
   fixtures, and an inventory read from the crate's source fails the build
   when a new id ships without one (#114).
+- `type.entity.expected_reference`: a value that is not an entity reference
+  in a slot only a reference can fill -- an entity-typed slot, a member of an
+  aggregate of entities, or a SELECT whose alternatives are all entities --
+  is reported (#113). A string in `IfcRelSequence.RelatingProcess` used to
+  get no structure or type finding at all.
 
 ### Changed
 
@@ -336,6 +447,22 @@ This release is **breaking** (0.2 -> 0.3): `Severity` gains a variant,
   outside the crate must add a wildcard arm.
 - **Breaking:** `Summary` is `#[non_exhaustive]` and has the new
   `evaluation_errors` field; its `Display` now also prints that count.
+- **Breaking:** `RuleEntry` has a new `releases` field, and
+  `RuleEntry::applies_to` says whether a schema's release declares the rule.
+  The engine now takes every rule's scope from its registry entry: it runs
+  only under the releases listed there, on the entry's entity *and its
+  subtypes* (#139).
+- **Breaking:** rule ids now always name the entity that declares the rule,
+  with the label the release uses (#139):
+  `IfcRelAssignsToGroupByFactor.NoSelfReference` is
+  `IfcRelAssignsToGroup.NoSelfReference`;
+  `IfcPhysicalSimpleQuantity.WR21` is `IfcQuantityLength.WR21`; and
+  `IfcPolyLoop.WR21` is reported only under IFC2X3, with IFC4 and IFC4X3
+  reporting the same unsupported predicate as `IfcPolyLoop.AllPointsSameDim`.
+- **Breaking:** `type_check::Mismatch` is `#[non_exhaustive]` and has the
+  new `ExpectedReference` variant (#113). `type_check::check_value` now
+  checks aggregate members against the element type, and reports a
+  reference written where the declared type resolves to a primitive.
 - `IfcExternalReference.WR1` reads `ItemReference` under IFC2X3 and
   `Identification` under IFC4/IFC4X3, as each release's EXPRESS declares,
   instead of whichever of the two resolved.
@@ -350,6 +477,27 @@ This release is **breaking** (0.2 -> 0.3): `Severity` gains a variant,
 
 ### Fixed
 
+- Native WHERE rules run on the entities and releases the schema declares
+  them for (#139). `NoSelfReference` now checks plain `IfcRelAssignsToGroup`,
+  which was never checked; `IfcMaterialLayer.NormalizedPriority` now checks
+  `IfcMaterialLayerWithOffsets`; and
+  `IfcRelDefinesByProperties.NoRelatedTypeObject` no longer runs under
+  IFC2X3, which does not declare it. Unsupported rules are likewise admitted
+  only under releases that declare them. A new schema-backed test checks
+  every registered id, entity and release set against the normative EXPRESS.
+- References and values inside aggregates and SELECT slots are type-checked
+  (#113). `structure.reference.wrong_type` now judges every member of an
+  aggregate of entities (a property set in `SET OF IfcProduct`), including
+  aggregates reached through a type that aliases one; `type.select.member`
+  now judges an entity reference against the SELECT's closure, directly and
+  inside aggregates (an `IfcWall` as `RelatingMaterial`); and
+  `type.scalar.mismatch` now judges aggregate members (a string in
+  `Coordinates`) and a reference in a primitive slot. Nested attribute
+  aggregates (`LIST OF LIST OF ...`) stay unchecked: the schema tables do
+  not retain their element type. A reference to an entity whose type the
+  tables do not declare -- typically a later release's entity -- is no
+  longer reported as `structure.reference.wrong_type`; there is no basis for
+  a subtype verdict, and `type.entity.unknown` already warns about it.
 - `type.scalar.mismatch` now checks bounded and fixed-width strings. The
   primitive was read from the trailing token of the resolved type, so
   `STRING(255)` -- IFC4's `IfcLabel` and `IfcIdentifier` -- recognised
@@ -395,6 +543,11 @@ This release is **breaking** (0.2 -> 0.3): `Severity` gains a variant,
 
 ### Added
 
+- `body_description`, `describe_profile` and their types (`BodyDescription`,
+  `BodyItem`, `BodyKind`, `SweptSolid`, `SweepPath`, `ProfileDescription`,
+  `ProfileParameters`) are re-exported at the root under `geometry-select`
+  (#147), so a rule check reads a body's kind and swept-solid profile
+  parameters without linking the geometry kernel.
 - `door_operation(model, door)` (features `geometry-select` and
   `properties`): each leaf of a door as a world frame, width, hinge side and
   swing `Sector`, from its placement, `OperationType` and

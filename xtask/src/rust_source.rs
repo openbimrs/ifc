@@ -103,6 +103,24 @@ impl Consts {
         }
     }
 
+    /// The variant names of a slice of unit enum values, written inline
+    /// (`&[Version::A, Version::B]`) or held in a named constant.
+    pub(crate) fn variants(&self, expr: &Expr) -> Option<Vec<String>> {
+        match expr {
+            Expr::Reference(reference) => self.variants(&reference.expr),
+            Expr::Array(array) => array
+                .elems
+                .iter()
+                .map(|element| variant(element).map(|(name, _)| name))
+                .collect(),
+            Expr::Path(path) => {
+                let name = path.path.get_ident()?.to_string();
+                self.variants(self.items.get(&name)?)
+            }
+            _ => None,
+        }
+    }
+
     pub(crate) fn shape(&self, name: &str, expected: &str) -> String {
         format!("{}: {name} must hold {expected}", self.file)
     }
@@ -177,7 +195,8 @@ mod tests {
             ];
             pub const PLANNED: &[(&str, &str)] = &[("IFCC", "wrapped \
                 reason with \"quotes\""), ("IFCD", WHY)];
-            pub const RULES: &[Rule] = &[Rule { id: "r", entity: Some("IfcX"), support: Support::Unsupported(WHY) }];
+            const BOTH: &[V] = &[V::A, V::B];
+            pub const RULES: &[Rule] = &[Rule { id: "r", entity: Some("IfcX"), releases: BOTH, support: Support::Unsupported(WHY) }];
         "#;
         let consts = Consts::parse("test.rs", source).unwrap();
         assert_eq!(consts.strings("IMPLEMENTED").unwrap(), ["IFCA", "IFCB"]);
@@ -197,6 +216,8 @@ mod tests {
             .and_then(option)
             .and_then(|e| consts.text(e));
         assert_eq!(entity.as_deref(), Some("IfcX"));
+        let releases = rules[0].field("releases").and_then(|e| consts.variants(e));
+        assert_eq!(releases, Some(vec!["A".to_owned(), "B".to_owned()]));
         let (name, argument) = variant(rules[0].field("support").unwrap()).unwrap();
         assert_eq!(name, "Unsupported");
         assert_eq!(

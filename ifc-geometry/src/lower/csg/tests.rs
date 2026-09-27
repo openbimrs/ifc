@@ -64,11 +64,16 @@ fn a_block_keeps_local_extents_and_carries_its_placement_separately() {
         }
         other => panic!("expected a Block primitive, got {other:?}"),
     }
+    // The converted origin (1, 2, 0) m plus the half-extent shift that puts
+    // the centred neutral block's corner there: (0.9, 0.3, 0.1) m.
     let translation = instance.transform.translation.to_array();
-    assert!(
-        (translation[0] - 1.0).abs() < 1e-12 && (translation[1] - 2.0).abs() < 1e-12,
-        "the placement must carry the converted origin, got {translation:?}"
-    );
+    let expected = [1.9, 2.3, 0.1];
+    for axis in 0..3 {
+        assert!(
+            (translation[axis] - expected[axis]).abs() < 1e-12,
+            "the placement must carry the converted corner, got {translation:?}"
+        );
+    }
 }
 
 /// A swept disk with a polyline directrix keeps radii in metres.

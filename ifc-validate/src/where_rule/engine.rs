@@ -10,20 +10,17 @@ use crate::report::{Finding, Path, Report};
 
 /// Evaluate every implemented rule, and record every unimplemented one.
 ///
-/// The second half is the point: a report from this function distinguishes
-/// "conformant" from "conformant as far as we can tell", and says which rules
-/// fall in the gap.
+/// Only rules the schema's release declares are considered, in registry
+/// order. The second half is the point: a report from this function
+/// distinguishes "conformant" from "conformant as far as we can tell", and
+/// says which rules fall in the gap.
 pub fn evaluate(model: &Model, schema: &Schema, budget: Budget, report: &mut Report) {
-    builtin::single_project_instance(model, report);
-    builtin::unique_global_id(model, schema, report);
-    builtin::no_related_type_object(model, schema, report);
-    builtin::external_reference_identity(model, schema, report);
-    builtin::sequence_endpoints_differ(model, schema, report);
-    builtin::decomposition_has_no_self_reference(model, schema, report);
-    builtin::normalized_material_priority(model, schema, report);
-    builtin::assignment_has_no_self_reference(model, schema, report);
-    builtin::normalized_connection_priorities(model, schema, report);
-    builtin::space_boundary_physicality(model, schema, report);
+    for entry in registry::implemented() {
+        if entry.applies_to(schema) {
+            let dispatched = builtin::run(entry, model, schema, report);
+            debug_assert!(dispatched, "{} has no native implementation", entry.id);
+        }
+    }
 
     for entry in registry::unsupported() {
         if report.findings().len() >= budget.max_findings {
@@ -33,6 +30,9 @@ pub fn evaluate(model: &Model, schema: &Schema, budget: Budget, report: &mut Rep
         let Support::Unsupported(reason) = entry.support else {
             continue;
         };
+        if !entry.applies_to(schema) {
+            continue;
+        }
         // Only mention a rule the file could actually trip: an unsupported
         // rule for an entity type the file never uses is noise.
         if let Some(entity) = entry.entity {

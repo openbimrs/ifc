@@ -101,8 +101,8 @@ impl<'m> SurfaceOfLinearExtrusion<'m> {
     /// A profile, not a curve, despite the attribute name. Only its outer
     /// curve contributes; see the module docs.
     ///
-    /// Stays a reference: profiles are read by `lower::profile` (behind the
-    /// `lowering` feature), which is the one owner of `IfcProfileDef`
+    /// Stays a reference: profiles are read by
+    /// [`crate::describe_profile`], the one owner of `IfcProfileDef`
     /// families, so this module does not define a competing profile view.
     pub fn swept_curve_ref(&self) -> GeometryResult<EntityId> {
         self.base.swept_curve_ref()
@@ -184,8 +184,8 @@ impl<'m> SurfaceOfRevolution<'m> {
     /// The `IfcProfileDef` whose outer curve is revolved.
     ///
     /// Stays a reference for the same reason as
-    /// [`SurfaceOfLinearExtrusion::swept_curve_ref`]: `lower::profile` owns
-    /// profile reading.
+    /// [`SurfaceOfLinearExtrusion::swept_curve_ref`]:
+    /// [`crate::describe_profile`] owns profile reading.
     pub fn swept_curve_ref(&self) -> GeometryResult<EntityId> {
         self.base.swept_curve_ref()
     }

@@ -16,6 +16,14 @@
 //!   occurrence relation puts the same properties on every occurrence of that
 //!   type, silently and unintentionally.
 //!
+//! # Scope comes from the registry
+//!
+//! A rule function never names the entity it constrains or the releases it
+//! runs under: [`run`] is called only for an entry that
+//! [applies](RuleEntry::applies_to) to the schema, and [`instances`] selects
+//! the entry's entity *with its subtypes*. An exact-type query here once left
+//! `IfcMaterialLayerWithOffsets` and plain `IfcRelAssignsToGroup` unchecked.
+//!
 //! # When a rule cannot read its input
 //!
 //! Operands are read through [`Site`], which turns an attribute the tables
@@ -30,18 +38,113 @@ use ifc_model::{Entity, EntityId, Model, Value};
 use ifc_schema::{Schema, SchemaVersion};
 
 use super::operand::Site;
+use super::registry::RuleEntry;
 use crate::report::{Finding, Path, Report};
+
+/// Evaluates the implemented rule `entry` names.
+///
+/// Returns `false` when no native implementation carries that id, so the
+/// engine and its tests can tell an unwired registry entry from a rule that
+/// found nothing.
+pub fn run(entry: &RuleEntry, model: &Model, schema: &Schema, report: &mut Report) -> bool {
+    let rule = Rule {
+        entry,
+        model,
+        schema,
+    };
+    match entry.id {
+        "global.IfcSingleProjectInstance" => single_project_instance(&rule, report),
+        "global.UniqueGlobalId" => unique_global_id(&rule, report),
+        "IfcRelDefinesByProperties.NoRelatedTypeObject" => no_related_type_object(&rule, report),
+        "IfcExternalReference.WR1" => external_reference_identity(&rule, report),
+        "IfcRelSequence.WR1" | "IfcRelSequence.AvoidInconsistentSequence" => {
+            sequence_endpoints_differ(&rule, report);
+        }
+        "IfcRelAggregates.NoSelfReference" | "IfcRelNests.NoSelfReference" => {
+            no_self_reference(&rule, "RelatingObject", report);
+        }
+        "IfcRelAssignsToActor.NoSelfReference" => {
+            no_self_reference(&rule, "RelatingActor", report);
+        }
+        "IfcRelAssignsToProcess.NoSelfReference" => {
+            no_self_reference(&rule, "RelatingProcess", report);
+        }
+        "IfcRelAssignsToProduct.NoSelfReference" => {
+            no_self_reference(&rule, "RelatingProduct", report);
+        }
+        "IfcRelAssignsToGroup.NoSelfReference" => {
+            no_self_reference(&rule, "RelatingGroup", report);
+        }
+        "IfcMaterialLayer.NormalizedPriority" => normalized_material_priority(&rule, report),
+        "IfcRelConnectsPathElements.NormalizedRelatingPriorities" => {
+            normalized_connection_priorities(&rule, "RelatingPriorities", report);
+        }
+        "IfcRelConnectsPathElements.NormalizedRelatedPriorities" => {
+            normalized_connection_priorities(&rule, "RelatedPriorities", report);
+        }
+        "IfcRelSpaceBoundary.CorrectPhysOrVirt" => space_boundary_physicality(&rule, report),
+        _ => return false,
+    }
+    true
+}
+
+/// One registered rule applied to one model.
+struct Rule<'a> {
+    entry: &'a RuleEntry,
+    model: &'a Model,
+    schema: &'a Schema,
+}
+
+impl<'a> Rule<'a> {
+    /// The operand reader for one instance.
+    fn site(&self, id: EntityId, entity: &'a Entity) -> Site<'a> {
+        Site {
+            rule: self.entry.id,
+            id,
+            entity,
+            schema: self.schema,
+        }
+    }
+
+    /// Every instance the entry's declaring entity constrains.
+    fn instances(&self) -> Vec<(EntityId, &'a Entity)> {
+        self.entry
+            .entity
+            .map(|entity| instances(self.model, self.schema, entity))
+            .unwrap_or_default()
+    }
+}
+
+/// Every instance of `entity` or of a subtype of it, by ascending id.
+///
+/// EXPRESS WHERE rules are inherited, so a rule declared on an entity binds
+/// its subtypes as well. The type names are read from the model's own index
+/// and tested once each, rather than testing every record.
+pub fn instances<'m>(
+    model: &'m Model,
+    schema: &Schema,
+    entity: &str,
+) -> Vec<(EntityId, &'m Entity)> {
+    let mut found: Vec<(EntityId, &Entity)> = model
+        .type_histogram()
+        .into_iter()
+        .filter(|(name, _)| schema.is_a(name, entity))
+        .flat_map(|(name, _)| model.of_type(name))
+        .collect();
+    found.sort_by_key(|(id, _)| *id);
+    found
+}
 
 /// `IfcSingleProjectInstance`: `SIZEOF(IfcProject) <= 1`.
 ///
 /// A global rule, so its path is the file rather than any single entity --
 /// no one `IfcProject` is at fault.
-pub fn single_project_instance(model: &Model, report: &mut Report) {
-    let projects: Vec<_> = model.of_type("IFCPROJECT").map(|(id, _)| id).collect();
+fn single_project_instance(rule: &Rule<'_>, report: &mut Report) {
+    let projects = instances(rule.model, rule.schema, "IfcProject");
     if projects.len() > 1 {
-        let ids: Vec<String> = projects.iter().map(ToString::to_string).collect();
+        let ids: Vec<String> = projects.iter().map(|(id, _)| id.to_string()).collect();
         report.push(Finding::error(
-            "global.IfcSingleProjectInstance",
+            rule.entry.id,
             Path::File,
             format!(
                 "a file declares exactly one IfcProject; found {}: {}",
@@ -56,21 +159,10 @@ pub fn single_project_instance(model: &Model, report: &mut Report) {
 ///
 /// Reported against the *later* entity: the first occurrence is not the
 /// error, the repeat is. Deterministic because entries are sorted by id.
-pub fn unique_global_id(model: &Model, schema: &Schema, report: &mut Report) {
-    const RULE: &str = "global.UniqueGlobalId";
+fn unique_global_id(rule: &Rule<'_>, report: &mut Report) {
     let mut entries: Vec<(EntityId, usize, &str)> = Vec::new();
-    let mut roots: Vec<(EntityId, &Entity)> = model
-        .iter()
-        .filter(|(_, entity)| schema.is_a(&entity.type_name, "IfcRoot"))
-        .collect();
-    roots.sort_by_key(|(id, _)| *id);
-    for (id, entity) in roots {
-        let site = Site {
-            rule: RULE,
-            id,
-            entity,
-            schema,
-        };
+    for (id, entity) in instances(rule.model, rule.schema, "IfcRoot") {
+        let site = rule.site(id, entity);
         let Some(index) = site.slot("GlobalId", report) else {
             continue;
         };
@@ -86,7 +178,7 @@ pub fn unique_global_id(model: &Model, schema: &Schema, report: &mut Report) {
     for (id, index, guid) in entries {
         if let Some(first) = seen.get(guid) {
             report.push(Finding::error(
-                RULE,
+                rule.entry.id,
                 Path::Attribute {
                     entity: id,
                     index,
@@ -104,14 +196,9 @@ pub fn unique_global_id(model: &Model, schema: &Schema, report: &mut Report) {
 ///
 /// `RelatedObjects` must contain no `IfcTypeObject`. Type-level property sets
 /// travel through `IfcRelDefinesByType` instead.
-pub fn no_related_type_object(model: &Model, schema: &Schema, report: &mut Report) {
-    for (id, entity) in model.of_type("IFCRELDEFINESBYPROPERTIES") {
-        let site = Site {
-            rule: "IfcRelDefinesByProperties.NoRelatedTypeObject",
-            id,
-            entity,
-            schema,
-        };
+fn no_related_type_object(rule: &Rule<'_>, report: &mut Report) {
+    for (id, entity) in rule.instances() {
+        let site = rule.site(id, entity);
         let Some(index) = site.slot("RelatedObjects", report) else {
             continue;
         };
@@ -134,10 +221,11 @@ pub fn no_related_type_object(model: &Model, schema: &Schema, report: &mut Repor
                 );
                 continue;
             };
-            let Some(object) = site.target(model, target, index, "RelatedObjects", report) else {
+            let Some(object) = site.target(rule.model, target, index, "RelatedObjects", report)
+            else {
                 continue;
             };
-            if schema.is_a(&object.type_name, "IfcTypeObject") {
+            if rule.schema.is_a(&object.type_name, "IfcTypeObject") {
                 offenders.push(target);
             }
         }
@@ -160,24 +248,14 @@ pub fn no_related_type_object(model: &Model, schema: &Schema, report: &mut Repor
 /// The operands differ by release, per the bundled EXPRESS: IFC2X3 states
 /// `EXISTS(ItemReference) OR EXISTS(Location) OR EXISTS(Name)`, IFC4 and
 /// IFC4X3 replaced `ItemReference` with `Identification`.
-pub fn external_reference_identity(model: &Model, schema: &Schema, report: &mut Report) {
-    let operands = if schema.version() == Some(SchemaVersion::Ifc2x3) {
+fn external_reference_identity(rule: &Rule<'_>, report: &mut Report) {
+    let operands = if rule.schema.version() == Some(SchemaVersion::Ifc2x3) {
         ["ItemReference", "Location", "Name"]
     } else {
         ["Identification", "Location", "Name"]
     };
-    let mut ids: Vec<(EntityId, &Entity)> = model
-        .iter()
-        .filter(|(_, entity)| schema.is_a(&entity.type_name, "IfcExternalReference"))
-        .collect();
-    ids.sort_by_key(|(id, _)| *id);
-    for (id, entity) in ids {
-        let site = Site {
-            rule: "IfcExternalReference.WR1",
-            id,
-            entity,
-            schema,
-        };
+    for (id, entity) in rule.instances() {
+        let site = rule.site(id, entity);
         let mut identified = false;
         let mut undeclared = Vec::new();
         for name in operands {
@@ -206,19 +284,12 @@ pub fn external_reference_identity(model: &Model, schema: &Schema, report: &mut 
 }
 
 /// Sequence endpoints must refer to different processes.
-pub fn sequence_endpoints_differ(model: &Model, schema: &Schema, report: &mut Report) {
-    let rule = if schema.version() == Some(SchemaVersion::Ifc2x3) {
-        "IfcRelSequence.WR1"
-    } else {
-        "IfcRelSequence.AvoidInconsistentSequence"
-    };
-    for (id, entity) in model.of_type("IFCRELSEQUENCE") {
-        let site = Site {
-            rule,
-            id,
-            entity,
-            schema,
-        };
+///
+/// IFC2X3 labels the predicate `WR1`, IFC4 on `AvoidInconsistentSequence`;
+/// the registry runs whichever the schema declares.
+fn sequence_endpoints_differ(rule: &Rule<'_>, report: &mut Report) {
+    for (id, entity) in rule.instances() {
+        let site = rule.site(id, entity);
         let (Some(relating_index), Some(related_index)) = (
             site.slot("RelatingProcess", report),
             site.slot("RelatedProcess", report),
@@ -232,7 +303,7 @@ pub fn sequence_endpoints_differ(model: &Model, schema: &Schema, report: &mut Re
         if let (Some(relating), Some(related)) = endpoints {
             if relating == related {
                 report.push(Finding::error(
-                    rule,
+                    site.rule,
                     site.path(related_index, "RelatedProcess"),
                     format!("sequence endpoints both refer to {related}"),
                 ));
@@ -248,21 +319,9 @@ pub fn sequence_endpoints_differ(model: &Model, schema: &Schema, report: &mut Re
 /// `RelatingActor`, ...), so it is a parameter rather than a shared slot.
 /// A related member that is not a reference cannot be identical to the
 /// relating instance, so it does not make the rule undecidable.
-fn no_self_reference(
-    model: &Model,
-    schema: &Schema,
-    relation: &str,
-    relating_attribute: &str,
-    rule: &str,
-    report: &mut Report,
-) {
-    for (id, entity) in model.of_type(relation) {
-        let site = Site {
-            rule,
-            id,
-            entity,
-            schema,
-        };
+fn no_self_reference(rule: &Rule<'_>, relating_attribute: &str, report: &mut Report) {
+    for (id, entity) in rule.instances() {
+        let site = rule.site(id, entity);
         let (Some(relating_index), Some(related_index)) = (
             site.slot(relating_attribute, report),
             site.slot("RelatedObjects", report),
@@ -278,7 +337,7 @@ fn no_self_reference(
         }
         if includes_self {
             report.push(Finding::error(
-                rule,
+                site.rule,
                 site.path(related_index, "RelatedObjects"),
                 format!("related objects contain the relating entity {relating}"),
             ));
@@ -286,39 +345,10 @@ fn no_self_reference(
     }
 }
 
-/// Whether the rule families gated to IFC4 and IFC4X3 apply to `schema`.
-fn is_ifc4_family(schema: &Schema) -> bool {
-    matches!(
-        schema.version(),
-        Some(SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3)
-    )
-}
-
-/// IFC4/IFC4X3 decomposition and nesting relations cannot contain their parent.
-pub fn decomposition_has_no_self_reference(model: &Model, schema: &Schema, report: &mut Report) {
-    if !is_ifc4_family(schema) {
-        return;
-    }
-    for (relation, rule) in [
-        ("IFCRELAGGREGATES", "IfcRelAggregates.NoSelfReference"),
-        ("IFCRELNESTS", "IfcRelNests.NoSelfReference"),
-    ] {
-        no_self_reference(model, schema, relation, "RelatingObject", rule, report);
-    }
-}
-
-/// IFC4/IFC4X3 material-layer priority, when set, is in the inclusive 0..=100 range.
-pub fn normalized_material_priority(model: &Model, schema: &Schema, report: &mut Report) {
-    if !is_ifc4_family(schema) {
-        return;
-    }
-    for (id, entity) in model.of_type("IFCMATERIALLAYER") {
-        let site = Site {
-            rule: "IfcMaterialLayer.NormalizedPriority",
-            id,
-            entity,
-            schema,
-        };
+/// Material-layer priority, when set, is in the inclusive 0..=100 range.
+fn normalized_material_priority(rule: &Rule<'_>, report: &mut Report) {
+    for (id, entity) in rule.instances() {
+        let site = rule.site(id, entity);
         let Some(index) = site.slot("Priority", report) else {
             continue;
         };
@@ -340,132 +370,51 @@ pub fn normalized_material_priority(model: &Model, schema: &Schema, report: &mut
     }
 }
 
-/// The four `IfcRelAssigns` subtypes checked, the attribute naming their
-/// single relating end, and the rule id each reports under.
-///
-/// `IfcRelAssignsToGroupByFactor` is listed separately: `of_type` matches
-/// exact type names, so the subtype is invisible to a query for its parent.
-const ASSIGNMENT_RELATING: [(&str, &str, &str); 4] = [
-    (
-        "IFCRELASSIGNSTOACTOR",
-        "RelatingActor",
-        "IfcRelAssignsToActor.NoSelfReference",
-    ),
-    (
-        "IFCRELASSIGNSTOPROCESS",
-        "RelatingProcess",
-        "IfcRelAssignsToProcess.NoSelfReference",
-    ),
-    (
-        "IFCRELASSIGNSTOPRODUCT",
-        "RelatingProduct",
-        "IfcRelAssignsToProduct.NoSelfReference",
-    ),
-    (
-        "IFCRELASSIGNSTOGROUPBYFACTOR",
-        "RelatingGroup",
-        "IfcRelAssignsToGroupByFactor.NoSelfReference",
-    ),
-];
-
-/// IFC4/IFC4X3: an assignment relationship cannot assign an object to
-/// itself.
-///
-/// The schema states this per subtype as `NoSelfReference`, each naming
-/// its own relating attribute, so the check is driven by the table above
-/// rather than assuming a shared slot.
-pub fn assignment_has_no_self_reference(model: &Model, schema: &Schema, report: &mut Report) {
-    if !is_ifc4_family(schema) {
-        return;
-    }
-    for (relation, relating_attribute, rule) in ASSIGNMENT_RELATING {
-        no_self_reference(model, schema, relation, relating_attribute, rule, report);
-    }
-}
-
-/// IFC4/IFC4X3 `IfcRelConnectsPathElements` priorities are each in 0..=100.
+/// `IfcRelConnectsPathElements` priorities in `attribute` are each in
+/// 0..=100.
 ///
 /// The schema states the rule as "the list is empty, OR every member is in
 /// range". An empty list is therefore conformant and is not reported; a
 /// non-empty list is checked per element so the finding names the offender.
-pub fn normalized_connection_priorities(model: &Model, schema: &Schema, report: &mut Report) {
-    if !is_ifc4_family(schema) {
-        return;
-    }
-    let checks = [
-        (
-            "RelatingPriorities",
-            "IfcRelConnectsPathElements.NormalizedRelatingPriorities",
-        ),
-        (
-            "RelatedPriorities",
-            "IfcRelConnectsPathElements.NormalizedRelatedPriorities",
-        ),
-    ];
-    for (id, entity) in model.of_type("IFCRELCONNECTSPATHELEMENTS") {
-        for (attribute, rule) in checks {
-            let site = Site {
-                rule,
-                id,
-                entity,
-                schema,
-            };
-            let Some(index) = site.slot(attribute, report) else {
+fn normalized_connection_priorities(rule: &Rule<'_>, attribute: &str, report: &mut Report) {
+    for (id, entity) in rule.instances() {
+        let site = rule.site(id, entity);
+        let Some(index) = site.slot(attribute, report) else {
+            continue;
+        };
+        let Some(value) = site.value(index) else {
+            continue;
+        };
+        let Value::List(items) = value.unwrap_typed() else {
+            site.unreadable(index, attribute, "an aggregate", value, report);
+            continue;
+        };
+        for item in items {
+            let Some(priority) = item.unwrap_typed().as_i64() else {
+                site.unreadable(index, attribute, "an aggregate of integers", item, report);
                 continue;
             };
-            let Some(value) = site.value(index) else {
-                continue;
-            };
-            let Value::List(items) = value.unwrap_typed() else {
-                site.unreadable(index, attribute, "an aggregate", value, report);
-                continue;
-            };
-            for item in items {
-                let Some(priority) = item.unwrap_typed().as_i64() else {
-                    site.unreadable(index, attribute, "an aggregate of integers", item, report);
-                    continue;
-                };
-                if !(0..=100).contains(&priority) {
-                    report.push(Finding::error(
-                        rule,
-                        site.path(index, attribute),
-                        format!("priority {priority} is outside the inclusive 0..=100 range"),
-                    ));
-                }
+            if !(0..=100).contains(&priority) {
+                report.push(Finding::error(
+                    site.rule,
+                    site.path(index, attribute),
+                    format!("priority {priority} is outside the inclusive 0..=100 range"),
+                ));
             }
         }
     }
 }
 
-/// IFC4/IFC4X3 `IfcRelSpaceBoundary.CorrectPhysOrVirt`.
+/// `IfcRelSpaceBoundary.CorrectPhysOrVirt`.
 ///
 /// The rule ties the declared physicality to the bounding element's type:
 /// PHYSICAL must not be an `IfcVirtualElement`, VIRTUAL must be an
 /// `IfcVirtualElement` or an `IfcOpeningElement`, and NOTDEFINED is
-/// unconstrained.
-///
-/// All three concrete subtypes are checked. `of_type` matches exact names,
-/// so querying only the supertype would silently skip every 2nd-level
-/// boundary -- which is what real BEM exports actually write.
-pub fn space_boundary_physicality(model: &Model, schema: &Schema, report: &mut Report) {
-    if !is_ifc4_family(schema) {
-        return;
-    }
-    let types = [
-        "IFCRELSPACEBOUNDARY",
-        "IFCRELSPACEBOUNDARY1STLEVEL",
-        "IFCRELSPACEBOUNDARY2NDLEVEL",
-    ];
-    for boundary_type in types {
-        for (id, entity) in model.of_type(boundary_type) {
-            let site = Site {
-                rule: "IfcRelSpaceBoundary.CorrectPhysOrVirt",
-                id,
-                entity,
-                schema,
-            };
-            check_phys_or_virt(model, &site, report);
-        }
+/// unconstrained. The 1st- and 2nd-level subtypes inherit it, and the
+/// 2nd-level form is what real BEM exports actually write.
+fn space_boundary_physicality(rule: &Rule<'_>, report: &mut Report) {
+    for (id, entity) in rule.instances() {
+        check_phys_or_virt(rule.model, &rule.site(id, entity), report);
     }
 }
 
@@ -545,5 +494,43 @@ fn check_phys_or_virt(model: &Model, site: &Site<'_>, report: &mut Report) {
                 target.type_name
             ),
         ));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::where_rule::registry;
+
+    /// Every entry registered as implemented has a native implementation.
+    ///
+    /// The registry is a claim; an entry the dispatch table does not know
+    /// would run nothing and read as passed.
+    #[test]
+    fn every_implemented_entry_is_dispatched() {
+        let model = Model::new();
+        for entry in registry::implemented() {
+            let mut report = Report::new();
+            assert!(
+                run(entry, &model, ifc_schema::ifc4(), &mut report),
+                "{} is registered as implemented but nothing runs it",
+                entry.id
+            );
+        }
+    }
+
+    /// Instance selection includes subtypes and nothing else.
+    #[test]
+    fn instances_include_subtypes() {
+        let schema = ifc_schema::ifc4();
+        let mut model = Model::new();
+        let layer = model.push(Entity::new("IFCMATERIALLAYER", Vec::new()));
+        let offsets = model.push(Entity::new("IFCMATERIALLAYERWITHOFFSETS", Vec::new()));
+        model.push(Entity::new("IFCMATERIAL", Vec::new()));
+        let ids: Vec<EntityId> = instances(&model, schema, "IfcMaterialLayer")
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect();
+        assert_eq!(ids, [layer, offsets]);
     }
 }

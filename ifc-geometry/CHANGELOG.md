@@ -14,6 +14,25 @@ everything released before per-crate changelogs began.
 
 ### Fixed
 
+- Compiled `IfcBlock` meshes were offset by half their extents. `IfcBlock`
+  has a corner at its `Position` (IFC4 ADD2 TC1), but the neutral
+  `Primitive::Block` is tessellated centred on its origin by
+  `axiolid-reference`, so every compiled block sat half its size away from
+  where the file placed it, along its own axes. Lowering now puts the
+  half-extent shift on the block's `Instance`. This changes compiled
+  geometry for every `IfcBlock`; the lowered `Instance` translation now
+  names the block's centre. The other CSG primitives already agreed.
+- `Plane`, `CylindricalSurface`, `SphericalSurface` and `ToroidalSurface`
+  `::position(&model)` now type-check their target through
+  `resource::resolve` (#135). A `Position` naming anything other than an
+  `IfcAxis2Placement3D` is `WrongEntityType` naming the target; it used to
+  be wrapped as a 3D placement and misread.
+- A derived linear placement no longer reports an evaluator's degenerate
+  curve as an undefined roll. The refusal now distinguishes an unsupported
+  curve family, a rejected measure (off the curve, or roll undefined
+  because the tangent is parallel to the up reference) and a degenerate
+  curve, matching how `axiolid-evaluate` 0.3 reports them.
+
 - An opening that a file makes void two hosts is subtracted from the first
   only (#59). `IfcFeatureElementSubtraction.VoidsElements` is a
   single-valued inverse in IFC2X3 and IFC4, but every `IfcRelVoidsElement`
@@ -21,9 +40,63 @@ everything released before per-crate changelogs began.
   belongs to another element. The relation with the lower id now wins in
   `openings_of` and in net compilation. Output changes only for files that
   violate the schema.
+- `IfcParameterizedProfileDef.Position` now reaches the kernel for every
+  parameterised family (#147). It was applied to rectangles and circles
+  only, so an I, L, T, U, C or Z section, an ellipse or a trapezium with an
+  offset or rotated `Position` lowered at the profile origin. Output changes
+  only for files that author a non-identity `Position` on those families.
+- The translation of an `IfcDerivedProfileDef` operator is converted to
+  metres (#147). It was passed through in file units, so a derived profile
+  offset by 50 mm in a millimetre file lowered 50 m away.
+- An `IfcAsymmetricIShapeProfileDef` in an IFC2X3 file no longer reads
+  `CentreOfGravityInY` (slot 11 in that schema) as `BottomFlangeEdgeRadius`
+  (#147). IFC2X3 declares the entity as an `IfcIShapeProfileDef` subtype
+  with a different tail; the declared schema now selects the layout, and
+  the IFC4-only edge radii and slopes are absent in IFC2X3.
 
 ### Added
 
+- `body_description(model, units, product)` reports how a product's Body
+  representation is modelled (#147). It returns one `BodyItem` per
+  geometric item in authored order, with mapped items resolved (`mapped_by`
+  names the chain), each carrying a `BodyKind` (extrusion, tapered
+  extrusion, revolution, tapered revolution, directrix sweep, swept disk,
+  sectioned spine, B-rep, CSG, CSG primitive, half space, bounding box,
+  tessellated, surface model, geometric set, curve, surface, point) and, for
+  the swept-area families, a `SweptSolid`: the profile description, the
+  end profile of a tapered sweep, the solid's placement in world
+  coordinates and a `SweepPath` (extrusion direction as a world unit vector
+  plus depth in metres, revolution axis and angle in radians, or the
+  directrix curve). Mapped geometry describes identically to the same
+  geometry authored in place. Anything that cannot be stated exactly is a
+  typed error for the whole body, never a partial list: unsupported item or
+  profile families, dangling references, mapping cycles, open profiles
+  swept as areas, and a mapping that scales or mirrors a swept solid. It is
+  kernel-free and reachable with `--no-default-features`.
+- `describe_profile(model, units, profile)` reads any concrete
+  `IfcProfileDef` into a `ProfileDescription`: type, `ProfileName`,
+  `Position`, and `ProfileParameters` for every family in metres and
+  radians (rectangle, rounded and hollow rectangle, circle and hollow
+  circle, ellipse, I, asymmetric I, L, T, U, C, Z, trapezium, arbitrary
+  closed, with voids and open by curve reference, centre line, composite,
+  derived with its operator, mirrored). A bare `IfcProfileDef` and unknown
+  families are refused; a composite or derived chain that references itself
+  is `CyclicChain`.
+- `derive_placement_transform` derives a linear placement on an
+  `IfcPolyline` or a line-only `IfcIndexedPolyCurve` basis curve (#96), not
+  only on an alignment. The curve lowers to the neutral polyline, whose arc
+  length is an exact finite sum, so a distance converts to a parameter
+  exactly; a native parameter follows the IFC polyline parameterisation
+  (one per segment). Refused by name: a zero-length segment, fewer than two
+  points, non-consecutive `Segments`, an `IfcArcIndex`, a parameter on a
+  multi-point `IfcLineIndex` (IFC does not state its split), and ellipse
+  and B-spline bases as before.
+- `product_bounds` bounds linear extrusions of straight-edged profiles
+  (rectangles, polyline contours, and placed/derived forms of them) and
+  blocks exactly from their vertices, without tessellating (#98). The
+  result reports `BoundsSource::Exact`. Curved profiles, rounded
+  rectangles and booleans still go through the compiled mesh; a
+  difference only shrinks its operand, so its operand's box is never used.
 - `voiding_conflicts(model)` and `VoidingConflict { opening, kept_host,
   rejected_host, relation }` report such openings (#59). It is kernel-free,
   like `openings_of`. Restating the same host is not a conflict.
@@ -41,7 +114,7 @@ everything released before per-crate changelogs began.
 - `resource::resolve`, the shared type-checked resolvers behind them, and
   two select views: `Axis2Placement` (2D or 3D, for `IfcConic.Position`) and
   `CartesianPointList` (2D or 3D, for `IfcIndexedPolyCurve.Points`).
-  Profiles stay references; `lower::profile` owns `IfcProfileDef` reading.
+  Profiles stay references; `describe_profile` owns `IfcProfileDef` reading.
 
 - `compile::product_bounds` / `product_bounds_with` return a product's
   world-space axis-aligned bounding box (#36). The body is resolved and placed
@@ -62,6 +135,12 @@ everything released before per-crate changelogs began.
 
 ### Changed
 
+- `lower::profile` builds every profile from `describe_profile` instead of
+  reading slots itself (#147), so lowering and body description cannot
+  disagree about a slot, a unit or a default. A profile nesting chain that
+  exceeds its budget is now `ChainTooDeep` rather than `Unsupported`, and a
+  self-referencing chain is `CyclicChain`; a dangling boundary curve of an
+  arbitrary profile is reported when the profile is read.
 - Requires `axiolid-mesh-compile` 0.3.3 and `axiolid-contracts` 0.3.1.
   Closed `IfcPolygonalFaceSet` bodies whose face corners lie on a straight
   run (collinear notch and window heads) now mesh closed and report `Solid`

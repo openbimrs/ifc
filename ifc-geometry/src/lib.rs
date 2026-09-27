@@ -114,3 +114,15 @@ pub use input::product::geometric_products;
 // Which openings void a host (`IfcRelVoidsElement`). Kernel-free for the same
 // reason; `lower::lower_product_net` turns the answer into subtractions.
 pub use input::openings::{openings_of, voiding_conflicts, VoidingConflict};
+
+// How a body is modelled -- kind, swept-solid profile parameters, direction
+// and depth -- in SI and world coordinates. Kernel-free: a rule check asking
+// "is this beam an HEA300" must not link a solid kernel for the answer.
+pub use input::body::{
+    body_description, BodyDescription, BodyItem, BodyKind, SweepPath, SweptSolid,
+};
+// Profile families read into SI parameters. The same reader feeds
+// `lower::profile`, so a description and a lowering cannot disagree.
+pub use input::profile::{
+    describe_profile, ProfileDescription, ProfileOperator, ProfileParameters, ProfilePosition,
+};

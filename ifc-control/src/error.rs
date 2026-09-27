@@ -45,6 +45,17 @@ pub enum ControlError {
         /// Rejected value.
         value: String,
     },
+    /// The relating control of an assignment is not one this crate owns.
+    ///
+    /// Cost schedules, cost items and work controls are `IfcControl`s
+    /// too; their own crates write assignments to them.
+    #[error("{id} is {actual}, not a control ifc-control owns")]
+    ForeignControl {
+        /// The offered relating control.
+        id: EntityId,
+        /// Its type name.
+        actual: String,
+    },
     /// The schema in use does not declare this entity.
     ///
     /// Authoring an entity the schema omits is a caller error, not a

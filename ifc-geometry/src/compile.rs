@@ -355,7 +355,8 @@ fn attribute_net_refusal<B: MeshCompiler>(
 #[non_exhaustive]
 pub enum BoundsSource {
     /// Read off the exact lowered geometry without tessellating: every leaf
-    /// was a mesh or an authored bounding box, so the box is the shape's.
+    /// was a mesh, an authored bounding box, a polygonal extrusion or a
+    /// block, bounded from its vertices, so the box is the shape's.
     Exact,
     /// Taken from the compiled mesh. Exact for planar geometry; for curved
     /// geometry the mesh's vertices lie on the surface and chords cut
@@ -395,10 +396,12 @@ pub fn product_bounds(
 ///
 /// The body is resolved and placed exactly as [`compile_product_mesh_with`]
 /// does, and returns `Ok(None)` in the same case: a product with no body
-/// representation. When every exact leaf is a mesh or an authored bounding
-/// box, the box is read off the lowered graph without tessellating
-/// ([`BoundsSource::Exact`]). Otherwise the body is compiled with `backend`
-/// and the mesh's bounds are used ([`BoundsSource::Tessellated`]).
+/// representation. When every leaf is a mesh, an authored bounding box, a
+/// linear extrusion of a straight-edged profile or a block, the box is read
+/// off the lowered graph from their vertices without tessellating
+/// ([`BoundsSource::Exact`]). Otherwise -- a curved profile or surface, a
+/// boolean -- the body is compiled with `backend` and the mesh's bounds are
+/// used ([`BoundsSource::Tessellated`]).
 ///
 /// The result feeds a spatial index such as `axiolid_spatial::Bvh` directly;
 /// this crate computes the leaf boxes and leaves the index to Axiolid.

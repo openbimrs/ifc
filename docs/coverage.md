@@ -236,30 +236,31 @@ never means "the rules we did not implement passed".
 
 <!-- COVERAGE:VALIDATION:BEGIN -->
 
-16 of 21 registered rules are evaluated; the rest are reported as unsupported rather than silently passed (`ifc-validate/src/where_rule/registry.rs`).
+16 of 22 registered rules are evaluated; the rest are reported as unsupported rather than silently passed (`ifc-validate/src/where_rule/registry.rs`). A rule binds its declaring entity and every subtype, and runs only under the releases whose EXPRESS declares it under that id.
 
-| Rule | Constrains | Evaluated | Why not |
-| --- | --- | --- | --- |
-| `global.IfcSingleProjectInstance` | (global) | yes |  |
-| `global.UniqueGlobalId` | (global) | yes |  |
-| `IfcRelDefinesByProperties.NoRelatedTypeObject` | `IfcRelDefinesByProperties` | yes |  |
-| `IfcExternalReference.WR1` | `IfcExternalReference` | yes |  |
-| `IfcRelSequence.WR1` | `IfcRelSequence` | yes |  |
-| `IfcRelSequence.AvoidInconsistentSequence` | `IfcRelSequence` | yes |  |
-| `IfcRelAggregates.NoSelfReference` | `IfcRelAggregates` | yes |  |
-| `IfcRelNests.NoSelfReference` | `IfcRelNests` | yes |  |
-| `IfcMaterialLayer.NormalizedPriority` | `IfcMaterialLayer` | yes |  |
-| `IfcRelAssignsToActor.NoSelfReference` | `IfcRelAssignsToActor` | yes |  |
-| `IfcRelAssignsToProcess.NoSelfReference` | `IfcRelAssignsToProcess` | yes |  |
-| `IfcRelAssignsToProduct.NoSelfReference` | `IfcRelAssignsToProduct` | yes |  |
-| `IfcRelAssignsToGroupByFactor.NoSelfReference` | `IfcRelAssignsToGroupByFactor` | yes |  |
-| `IfcRelConnectsPathElements.NormalizedRelatingPriorities` | `IfcRelConnectsPathElements` | yes |  |
-| `IfcRelConnectsPathElements.NormalizedRelatedPriorities` | `IfcRelConnectsPathElements` | yes |  |
-| `IfcRelSpaceBoundary.CorrectPhysOrVirt` | `IfcRelSpaceBoundary` | yes |  |
-| `IfcDocumentReference.WR1` | `IfcDocumentReference` | no | not implemented uniformly: IFC2X3 requires INVERSE relationship semantics, which validation does not derive |
-| `IfcRepresentationContextSameWCS` | (global) | no | requires geometric evaluation, which validation does not perform |
-| `IfcPolyLoop.WR21` | `IfcPolyLoop` | no | requires aggregate bounds, which the schema parser does not retain |
-| `IfcPhysicalSimpleQuantity.WR21` | `IfcQuantityLength` | no | requires an EXPRESS expression evaluator |
-| `IfcZone.WR1` | `IfcZone` | no | requires an EXPRESS expression evaluator |
+| Rule | Constrains | Releases | Evaluated | Why not |
+| --- | --- | --- | --- | --- |
+| `global.IfcSingleProjectInstance` | (global) | IFC2X3, IFC4, IFC4X3 | yes |  |
+| `global.UniqueGlobalId` | (global) | IFC2X3, IFC4, IFC4X3 | yes |  |
+| `IfcRelDefinesByProperties.NoRelatedTypeObject` | `IfcRelDefinesByProperties` and subtypes | IFC4, IFC4X3 | yes |  |
+| `IfcExternalReference.WR1` | `IfcExternalReference` and subtypes | IFC2X3, IFC4, IFC4X3 | yes |  |
+| `IfcRelSequence.WR1` | `IfcRelSequence` and subtypes | IFC2X3 | yes |  |
+| `IfcRelSequence.AvoidInconsistentSequence` | `IfcRelSequence` and subtypes | IFC4, IFC4X3 | yes |  |
+| `IfcRelAggregates.NoSelfReference` | `IfcRelAggregates` and subtypes | IFC4, IFC4X3 | yes |  |
+| `IfcRelNests.NoSelfReference` | `IfcRelNests` and subtypes | IFC4, IFC4X3 | yes |  |
+| `IfcMaterialLayer.NormalizedPriority` | `IfcMaterialLayer` and subtypes | IFC4, IFC4X3 | yes |  |
+| `IfcRelAssignsToActor.NoSelfReference` | `IfcRelAssignsToActor` and subtypes | IFC4, IFC4X3 | yes |  |
+| `IfcRelAssignsToProcess.NoSelfReference` | `IfcRelAssignsToProcess` and subtypes | IFC4, IFC4X3 | yes |  |
+| `IfcRelAssignsToProduct.NoSelfReference` | `IfcRelAssignsToProduct` and subtypes | IFC4, IFC4X3 | yes |  |
+| `IfcRelAssignsToGroup.NoSelfReference` | `IfcRelAssignsToGroup` and subtypes | IFC4, IFC4X3 | yes |  |
+| `IfcRelConnectsPathElements.NormalizedRelatingPriorities` | `IfcRelConnectsPathElements` and subtypes | IFC4, IFC4X3 | yes |  |
+| `IfcRelConnectsPathElements.NormalizedRelatedPriorities` | `IfcRelConnectsPathElements` and subtypes | IFC4, IFC4X3 | yes |  |
+| `IfcRelSpaceBoundary.CorrectPhysOrVirt` | `IfcRelSpaceBoundary` and subtypes | IFC4, IFC4X3 | yes |  |
+| `IfcDocumentReference.WR1` | `IfcDocumentReference` and subtypes | IFC2X3, IFC4, IFC4X3 | no | not implemented uniformly: IFC2X3 requires INVERSE relationship semantics, which validation does not derive |
+| `IfcRepresentationContextSameWCS` | (global) | IFC2X3, IFC4, IFC4X3 | no | requires geometric evaluation, which validation does not perform |
+| `IfcPolyLoop.WR21` | `IfcPolyLoop` and subtypes | IFC2X3 | no | requires aggregate bounds, which the schema parser does not retain |
+| `IfcPolyLoop.AllPointsSameDim` | `IfcPolyLoop` and subtypes | IFC4, IFC4X3 | no | requires aggregate bounds, which the schema parser does not retain |
+| `IfcQuantityLength.WR21` | `IfcQuantityLength` and subtypes | IFC2X3, IFC4, IFC4X3 | no | requires an EXPRESS expression evaluator |
+| `IfcZone.WR1` | `IfcZone` and subtypes | IFC2X3, IFC4, IFC4X3 | no | requires an EXPRESS expression evaluator |
 
 <!-- COVERAGE:VALIDATION:END -->

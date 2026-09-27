@@ -210,6 +210,18 @@ pub use ifc_geometry::{
 #[cfg(feature = "geometry-select")]
 pub use ifc_geometry::{product_world_transform, products_world_transforms};
 
+/// How a product's body is modelled: its representation kind and, for swept
+/// solids, the profile parameters, direction and depth in SI and world
+/// coordinates.
+///
+/// Available without the geometry kernel, because a rule check asking "is
+/// this beam an extrusion of an HEA300" reads parameters, not a mesh.
+#[cfg(feature = "geometry-select")]
+pub use ifc_geometry::{
+    body_description, describe_profile, BodyDescription, BodyItem, BodyKind, ProfileDescription,
+    ProfileParameters, SweepPath, SweptSolid,
+};
+
 /// Map conversion and coordinate reference systems.
 #[cfg(feature = "georef")]
 pub use ifc_georef as georef;
