@@ -4,7 +4,7 @@ use ifc_model::{Entity, EntityId, Model, Value};
 use ifc_validate::Report;
 
 use super::cases::Case;
-use super::fixtures::{entity, ifc4, text, typed, wall, wall_with, GUID_A};
+use super::fixtures::{entity, ifc4, text, typed, wall, wall_with, GUID_A, GUID_B};
 
 /// One record of `type_name`, alone.
 fn lone(type_name: &str, attributes: Vec<Value>) -> Report {
@@ -62,6 +62,95 @@ fn single_value(value: Value) -> Report {
         schema,
         "IFCPROPERTYSINGLEVALUE",
         &[("Name", text("p")), ("NominalValue", value)],
+    ));
+    ifc4(&model)
+}
+
+/// A material association over `#1` (an `IfcMaterial`) and `#2` (an
+/// `IfcWall`): `RelatingMaterial : IfcMaterialSelect` is `#relating`, and
+/// `RelatedObjects : SET OF IfcDefinitionSelect` holds `#related`.
+fn material_association(relating: u64, related: u64) -> Report {
+    let schema = ifc_schema::ifc4();
+    let mut model = Model::new();
+    model.insert(
+        EntityId(1),
+        entity(schema, "IFCMATERIAL", &[("Name", text("steel"))]),
+    );
+    model.insert(EntityId(2), wall(schema, GUID_A, &[]));
+    model.push(entity(
+        schema,
+        "IFCRELASSOCIATESMATERIAL",
+        &[
+            ("GlobalId", text(GUID_B)),
+            (
+                "RelatedObjects",
+                Value::List(vec![Value::Ref(EntityId(related))]),
+            ),
+            ("RelatingMaterial", Value::Ref(EntityId(relating))),
+        ],
+    ));
+    ifc4(&model)
+}
+
+/// An `IfcCartesianPoint` whose `Coordinates` (`LIST [1:3] OF
+/// IfcLengthMeasure`) holds `second` after a valid first member.
+fn point(second: Value) -> Report {
+    let schema = ifc_schema::ifc4();
+    let mut model = Model::new();
+    model.push(entity(
+        schema,
+        "IFCCARTESIANPOINT",
+        &[("Coordinates", Value::List(vec![Value::Real(0.0), second]))],
+    ));
+    ifc4(&model)
+}
+
+/// A sequence whose `RelatingProcess : IfcProcess` holds `relating`, from
+/// task `#1` to task `#2`.
+fn sequence_from(relating: Value) -> Report {
+    let schema = ifc_schema::ifc4();
+    let mut model = Model::new();
+    model.insert(EntityId(1), entity(schema, "IFCTASK", &[]));
+    model.insert(EntityId(2), entity(schema, "IFCTASK", &[]));
+    model.push(entity(
+        schema,
+        "IFCRELSEQUENCE",
+        &[
+            ("RelatingProcess", relating),
+            ("RelatedProcess", Value::Ref(EntityId(2))),
+        ],
+    ));
+    ifc4(&model)
+}
+
+/// An aggregation of `#1` (a wall) whose `RelatedObjects : SET OF
+/// IfcObjectDefinition` holds `related`.
+fn aggregation(related: Value) -> Report {
+    let schema = ifc_schema::ifc4();
+    let mut model = Model::new();
+    model.insert(EntityId(1), wall(schema, GUID_A, &[]));
+    model.insert(EntityId(2), wall(schema, GUID_B, &[]));
+    model.push(entity(
+        schema,
+        "IFCRELAGGREGATES",
+        &[
+            ("RelatingObject", Value::Ref(EntityId(1))),
+            ("RelatedObjects", Value::List(vec![related])),
+        ],
+    ));
+    ifc4(&model)
+}
+
+/// An `IfcActor` whose `TheActor : IfcActorSelect` -- a SELECT of three
+/// entities and nothing else -- holds `actor`; `#1` is an `IfcPerson`.
+fn actor(actor: Value) -> Report {
+    let schema = ifc_schema::ifc4();
+    let mut model = Model::new();
+    model.insert(EntityId(1), entity(schema, "IFCPERSON", &[]));
+    model.push(entity(
+        schema,
+        "IFCACTOR",
+        &[("GlobalId", text(GUID_A)), ("TheActor", actor)],
     ));
     ifc4(&model)
 }
@@ -147,9 +236,57 @@ pub const CASES: &[Case] = &[
         },
     },
     Case {
+        rule: "type.scalar.mismatch",
+        form: "a string inside a LIST OF IfcLengthMeasure",
+        fails: || point(text("1.0")),
+        passes: || point(Value::Real(1.0)),
+    },
+    Case {
+        rule: "type.scalar.mismatch",
+        form: "a reference in a STRING slot",
+        fails: || wall_with("Name", Value::Ref(EntityId(1))),
+        passes: || wall_with("Name", text("#1")),
+    },
+    Case {
         rule: "type.select.member",
         form: "a typed wrapper outside the SELECT",
         fails: || single_value(typed("IFCGLOBALLYUNIQUEID", text(GUID_A))),
         passes: || single_value(typed("IFCPOSITIVELENGTHMEASURE", Value::Real(1.0))),
+    },
+    Case {
+        rule: "type.select.member",
+        form: "a reference to an entity outside the SELECT",
+        fails: || material_association(2, 2),
+        passes: || material_association(1, 2),
+    },
+    Case {
+        rule: "type.select.member",
+        form: "an entity outside the SELECT inside a SET OF a SELECT",
+        fails: || material_association(1, 1),
+        passes: || material_association(1, 2),
+    },
+    Case {
+        rule: "type.entity.expected_reference",
+        form: "a string in IfcRelSequence.RelatingProcess",
+        fails: || sequence_from(text("task")),
+        passes: || sequence_from(Value::Ref(EntityId(1))),
+    },
+    Case {
+        rule: "type.entity.expected_reference",
+        form: "a typed wrapper in an entity-typed slot",
+        fails: || sequence_from(typed("IFCLABEL", text("task"))),
+        passes: || sequence_from(Value::Ref(EntityId(1))),
+    },
+    Case {
+        rule: "type.entity.expected_reference",
+        form: "an integer inside a SET OF IfcObjectDefinition",
+        fails: || aggregation(Value::Integer(2)),
+        passes: || aggregation(Value::Ref(EntityId(2))),
+    },
+    Case {
+        rule: "type.entity.expected_reference",
+        form: "a string in a SELECT of entities",
+        fails: || actor(text("me")),
+        passes: || actor(Value::Ref(EntityId(1))),
     },
 ];

@@ -62,6 +62,33 @@ fn polyline(points: Value) -> Report {
     ifc4(&model)
 }
 
+/// A storey containing `#1`, which is `member`, through
+/// `RelatedElements : SET [1:?] OF IfcProduct`.
+fn containment(member: &str) -> Report {
+    let schema = ifc_schema::ifc4();
+    let mut model = Model::new();
+    model.insert(
+        EntityId(1),
+        entity(schema, member, &[("GlobalId", text(GUID_A))]),
+    );
+    model.insert(
+        EntityId(2),
+        entity(schema, "IFCBUILDINGSTOREY", &[("GlobalId", text(GUID_B))]),
+    );
+    model.push(entity(
+        schema,
+        "IFCRELCONTAINEDINSPATIALSTRUCTURE",
+        &[
+            (
+                "RelatedElements",
+                Value::List(vec![Value::Ref(EntityId(1))]),
+            ),
+            ("RelatingStructure", Value::Ref(EntityId(2))),
+        ],
+    ));
+    ifc4(&model)
+}
+
 /// Two walls with the given GlobalIds, checked by the whole-file index
 /// that `structure` exports but `validate` does not run.
 fn duplicate_ids(first: &str, second: &str) -> Report {
@@ -86,6 +113,12 @@ pub const CASES: &[Case] = &[
         form: "an entity slot pointing at an unrelated entity",
         fails: || placed_wall(Some("IFCWALL")),
         passes: || placed_wall(Some("IFCLOCALPLACEMENT")),
+    },
+    Case {
+        rule: "structure.reference.wrong_type",
+        form: "a non-product inside a SET OF IfcProduct",
+        fails: || containment("IFCPROPERTYSET"),
+        passes: || containment("IFCWALL"),
     },
     Case {
         rule: "structure.required.slot_count",

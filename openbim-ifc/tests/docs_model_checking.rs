@@ -163,10 +163,10 @@ fn unsupported_rules_are_reported_not_passed() -> TestResult {
         .collect();
     // The quantity length carries an expression-only WHERE rule; the global
     // same-WCS rule needs geometry. Both are reported, neither is an error.
-    assert!(unchecked.contains(&"IfcPhysicalSimpleQuantity.WR21"));
+    assert!(unchecked.contains(&"IfcQuantityLength.WR21"));
     assert!(unchecked.contains(&"IfcRepresentationContextSameWCS"));
     // Rules for entity types the file never uses are not reported.
-    assert!(!unchecked.contains(&"IfcPolyLoop.WR21"));
+    assert!(!unchecked.contains(&"IfcPolyLoop.AllPointsSameDim"));
     assert!(report.is_conformant());
 
     // The documented categories are all present in the registry.

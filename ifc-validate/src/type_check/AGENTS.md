@@ -16,4 +16,4 @@ Scope: schema type compatibility for entity attributes and values. Follow the cr
 
 ## Growth map
 
-`entity.rs`, `select.rs`, `defined.rs`, `enumeration.rs`, `scalar.rs`. These source owners already compile as private scaffold modules. Replace a module's planned-owner marker with its first real contract and tests; do not add parallel placeholders. Every graph operation has deterministic order and explicit limits.
+`entity.rs`, `select.rs`, `defined.rs`, `enumeration.rs`, `scalar.rs`, `aggregate.rs`. These source owners already compile as private scaffold modules. Replace a module's planned-owner marker with its first real contract and tests; do not add parallel placeholders. Every graph operation has deterministic order and explicit limits.

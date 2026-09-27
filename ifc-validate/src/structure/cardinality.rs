@@ -17,9 +17,10 @@
 //! [`crate::where_rule`] counts it.
 
 use ifc_model::{Model, Value};
-use ifc_schema::{Schema, TypeKind};
+use ifc_schema::Schema;
 
 use crate::report::{Finding, Path, Report};
+use crate::type_check::aliased_aggregate;
 
 /// Reports scalar/aggregate shape mismatches against the schema.
 pub fn aggregate_shape(model: &Model, schema: &Schema, report: &mut Report) {
@@ -52,7 +53,7 @@ pub fn aggregate_shape(model: &Model, schema: &Schema, report: &mut Report) {
                 _ => attribute.type_name.as_str(),
             };
             let declared_is_aggregate =
-                attribute.aggregate || type_is_aggregate(schema, effective_type);
+                attribute.aggregate || aliased_aggregate(schema, effective_type).is_some();
             let path = || Path::Attribute {
                 entity: id,
                 index,
@@ -73,32 +74,4 @@ pub fn aggregate_shape(model: &Model, schema: &Schema, report: &mut Report) {
             }
         }
     }
-}
-
-/// Whether a named type resolves to an aggregate declaration.
-///
-/// EXPRESS lets a `TYPE` alias an aggregate directly. The parser keeps such a
-/// right-hand side as text, so this is a textual test against the resolved
-/// alias chain rather than a structural one -- which is why it is confined to
-/// this one question and not exposed.
-fn type_is_aggregate(schema: &Schema, type_name: &str) -> bool {
-    let mut current = type_name.to_string();
-    for _ in 0..16 {
-        let Some(definition) = schema.type_def(&current) else {
-            return false;
-        };
-        let TypeKind::Defined(target) = &definition.kind else {
-            return false;
-        };
-        let head = target.trim_start().to_ascii_uppercase();
-        if head.starts_with("LIST")
-            || head.starts_with("ARRAY")
-            || head.starts_with("SET")
-            || head.starts_with("BAG")
-        {
-            return true;
-        }
-        current = target.trim().to_string();
-    }
-    false
 }

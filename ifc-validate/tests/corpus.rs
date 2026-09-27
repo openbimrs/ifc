@@ -512,7 +512,7 @@ fn every_implemented_rule_is_actually_dispatched() {
         "IfcRelAssignsToActor.NoSelfReference",
         "IfcRelAssignsToProcess.NoSelfReference",
         "IfcRelAssignsToProduct.NoSelfReference",
-        "IfcRelAssignsToGroupByFactor.NoSelfReference",
+        "IfcRelAssignsToGroup.NoSelfReference",
         "IfcRelConnectsPathElements.NormalizedRelatingPriorities",
         "IfcRelConnectsPathElements.NormalizedRelatedPriorities",
         "IfcRelSpaceBoundary.CorrectPhysOrVirt",

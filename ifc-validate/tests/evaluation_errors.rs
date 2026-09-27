@@ -189,7 +189,7 @@ fn every_unreadable_operand_is_an_evaluation_error() {
             Value::Ref(EntityId(2)),
         ),
         (
-            "IfcRelAssignsToGroupByFactor.NoSelfReference",
+            "IfcRelAssignsToGroup.NoSelfReference",
             |schema, relating| {
                 let mut model = Model::new();
                 model.insert(EntityId(1), entity(schema, "IFCWALL", &[]));
