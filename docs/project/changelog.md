@@ -465,6 +465,23 @@ lockstep -- is archived in the
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
 
+### ifc-spatial
+
+### Added
+
+- `SpaceBoundary::connection_geometry(&Model)` and
+  `ConnectionGeometryAnomaly` (#156). The accessor returns the
+  `ConnectionGeometry` reference (slot 6) of `IfcRelSpaceBoundary`,
+  `IfcRelSpaceBoundary1stLevel` and `IfcRelSpaceBoundary2ndLevel`, in
+  IFC2x3, IFC4 and IFC4X3. Its coordinates are in the relating space's
+  object placement. `$` or a missing slot is `Ok(None)`. A dangling
+  reference, a reference to something that is not a concrete
+  `IfcConnectionGeometry` subtype, a value that is not a reference, and a
+  boundary absent from the model are each an `Err` naming the boundary
+  and, where there is one, the target. The accessor is a method rather
+  than a new field so that `SpaceBoundary`, which has only public fields,
+  keeps its struct-literal construction and this change stays additive.
+
 ### ifc-tabular
 
 ### Added

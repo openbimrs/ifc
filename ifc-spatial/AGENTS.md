@@ -12,7 +12,8 @@ package `../AGENTS.md`.
 - classifying an entity's spatial role by type name
 - reading `IfcRelAggregates`, `IfcRelContainedInSpatialStructure`, `IfcRelNests`
 - reading `IfcRelSpaceBoundary` and its `1stLevel`/`2ndLevel` subtypes: which
-  element bounds a space, with parent/corresponding links
+  element bounds a space, with parent/corresponding links and the
+  `ConnectionGeometry` reference (not its lowering: that is `ifc-geometry`)
 - reading `IfcRelCoversBldgElements` and `IfcRelCoversSpaces`: finishes on an
   element and finishes bounding a space, kept apart because the same covering
   can do both and the two answer different questions
