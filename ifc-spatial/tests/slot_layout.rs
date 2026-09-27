@@ -326,3 +326,102 @@ fn boundary_deep_slots_match_ifc4x3() {
     };
     check_deep(&schema, "IFC4X3");
 }
+
+#[test]
+fn boundary_deep_slots_match_ifc2x3() {
+    let Some(schema) = load("ifc2x3-tc1/IFC2X3_TC1.exp") else {
+        eprintln!("skipped: references/ifc-spec not present");
+        return;
+    };
+    check_deep(&schema, "IFC2X3");
+}
+
+/// `SpaceBoundary::connection_geometry` reads slot 6 on every concrete
+/// boundary type and treats `$` as "no shape".
+///
+/// Checked against the three BUNDLED schema tables rather than the `.exp`
+/// references, so this never skips: the slot, its name, its declared type
+/// and its optionality must hold in IFC2x3 TC1, IFC4 ADD2 TC1 and IFC4X3
+/// ADD2. IFC2x3 has no 1st/2nd-level subtypes; asserting that explicitly
+/// keeps the skip from hiding a table that lost them.
+#[test]
+fn connection_geometry_slot_matches_every_bundled_schema() {
+    for (version, schema, has_levels) in [
+        ("IFC2X3", ifc_schema::ifc2x3(), false),
+        ("IFC4", ifc_schema::ifc4(), true),
+        ("IFC4X3", ifc_schema::ifc4x3(), true),
+    ] {
+        for entity in [
+            "IfcRelSpaceBoundary",
+            "IfcRelSpaceBoundary1stLevel",
+            "IfcRelSpaceBoundary2ndLevel",
+        ] {
+            let attributes = schema.attributes(entity);
+            if attributes.is_empty() {
+                assert!(
+                    !has_levels && entity != "IfcRelSpaceBoundary",
+                    "{version}: {entity} missing from the bundled table"
+                );
+                continue;
+            }
+            assert!(
+                has_levels || entity == "IfcRelSpaceBoundary",
+                "{version}: unexpected {entity}"
+            );
+            let slot = attributes
+                .get(6)
+                .unwrap_or_else(|| panic!("{version}: {entity} has no slot 6"));
+            assert_eq!(slot.name, "ConnectionGeometry", "{version}: {entity}");
+            assert_eq!(
+                slot.type_name, "IfcConnectionGeometry",
+                "{version}: {entity}"
+            );
+            assert!(
+                slot.optional,
+                "{version}: {entity}.ConnectionGeometry is OPTIONAL"
+            );
+            assert!(
+                !slot.aggregate,
+                "{version}: {entity}.ConnectionGeometry is scalar"
+            );
+        }
+    }
+}
+
+/// `boundary.rs` accepts exactly these as a boundary's connection geometry.
+///
+/// Must equal the union of the concrete `IfcConnectionGeometry` subtypes
+/// over the three bundled schemas: a subtype missing here would be reported
+/// as a wrong-kind anomaly for a valid file, and one added here that no
+/// schema declares would accept garbage as a shape. `tests/boundary_geometry.rs`
+/// proves the reader accepts each of them.
+const CONNECTION_GEOMETRY_TYPES: [&str; 6] = [
+    "IFCCONNECTIONCURVEGEOMETRY",
+    "IFCCONNECTIONPOINTECCENTRICITY",
+    "IFCCONNECTIONPOINTGEOMETRY",
+    "IFCCONNECTIONPORTGEOMETRY",
+    "IFCCONNECTIONSURFACEGEOMETRY",
+    "IFCCONNECTIONVOLUMEGEOMETRY",
+];
+
+#[test]
+fn connection_geometry_subtypes_match_the_bundled_schemas() {
+    let mut union = std::collections::BTreeSet::new();
+    for (version, schema) in [
+        ("IFC2X3", ifc_schema::ifc2x3()),
+        ("IFC4", ifc_schema::ifc4()),
+        ("IFC4X3", ifc_schema::ifc4x3()),
+    ] {
+        let subtypes = schema.subtypes("IfcConnectionGeometry");
+        assert!(
+            !subtypes.is_empty(),
+            "{version}: no IfcConnectionGeometry subtypes"
+        );
+        union.extend(subtypes.into_iter().map(str::to_ascii_uppercase));
+    }
+    let expected: std::collections::BTreeSet<String> = CONNECTION_GEOMETRY_TYPES
+        .iter()
+        .map(|name| (*name).to_owned())
+        .collect();
+    assert_eq!(union, expected);
+}
