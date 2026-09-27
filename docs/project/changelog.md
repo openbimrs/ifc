@@ -20,16 +20,6 @@ lockstep -- is archived in the
 
 ## [Unreleased]
 
-### ifc-geometry
-
-### Changed
-
-- `data/ifc4-where-rules.tsv` lists each geometry WHERE rule by entity,
-  label and support state only. Its `expression` column held the rule bodies
-  verbatim, which are CC BY-ND schema text and are no longer shipped.
-  `data/NOTICE.md` covers all five data files and no longer claims the
-  directory holds no rule bodies while it did.
-
 ### ifc-schema
 
 ### Changed
@@ -173,6 +163,18 @@ lockstep -- is archived in the
 - **Breaking:** re-exports ifc-properties 0.3, whose
   `UnitKind::Si::prefix_exponent` is now `Option<i32>` and whose
   `UnitKind::Conversion` gains an `offset` field.
+
+## [0.4.2] - 2026-09-27
+
+### ifc-geometry
+
+### Changed
+
+- `data/ifc4-where-rules.tsv` lists each geometry WHERE rule by entity,
+  label and support state only. Its `expression` column held the rule bodies
+  verbatim, which are CC BY-ND schema text and are no longer shipped.
+  `data/NOTICE.md` covers all five data files and no longer claims the
+  directory holds no rule bodies while it did.
 
 ## [0.4.1] - 2026-09-27
 
