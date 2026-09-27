@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-09-27
+
 ### Fixed
 
 - An `IfcCurveBoundedPlane` lowered under a non-identity frame no longer
@@ -412,7 +414,8 @@ First release under per-crate versioning. See the
 [repository changelog](../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.4.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.4.1...HEAD
+[0.4.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.4.1
 [0.4.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.4.0
 [0.3.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.3.1
 [0.3.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.3.0

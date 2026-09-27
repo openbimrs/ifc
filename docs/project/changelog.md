@@ -20,45 +20,6 @@ lockstep -- is archived in the
 
 ## [Unreleased]
 
-### ifc-geometry
-
-### Fixed
-
-- An `IfcCurveBoundedPlane` lowered under a non-identity frame no longer
-  moves its boundaries twice (#163). `OuterBoundary` and `InnerBoundaries`
-  are in the basis plane's parameter space, which is also how the neutral
-  curve-bounded relation reads them, but the frame was applied to them as
-  well as to the plane: they landed elsewhere or were refused as off the
-  plane. Only the basis plane takes the frame now, so a framed plane meshes
-  to the identity mesh moved by the frame. Connection surfaces lowered under
-  a space's frame are the case this breaks.
-
-### Added
-
-- `product_representation_frame(model, units, product, purpose)`: the frame
-  a product's representation of that purpose is placed in, the context's
-  `WorldCoordinateSystem` composed above the placement chain (#164). Lowering
-  and `body_description` now take their frame from it, so geometry lowered
-  outside the body, such as a space boundary's connection surface in the
-  relating space's coordinates, is placed exactly as the body is.
-  `Ok(None)` when the product has no such representation; kernel-free.
-- `profile_outline(model, units, profile)` and `ProfileOutline` (#166): an
-  `IfcArbitraryClosedProfileDef`'s or `IfcArbitraryProfileDefWithVoids`'s
-  boundaries as rings of vertices in metres, in profile coordinates, for
-  `IfcPolyline` and line-only `IfcIndexedPolyCurve` boundaries. Each ring
-  is in authored order without its closing vertex, as profile lowering
-  reads it. An `IfcArcIndex` segment or any other curve family is
-  `Unsupported` naming the curve, never chorded; a 3D point, fewer than
-  three distinct vertices and non-consecutive segments are `Degenerate`.
-  Kernel-free.
-
-### Changed
-
-- `lower_product_representation` selects the representation before it
-  resolves the placement, as `body_description` already did: a product with
-  no representation of the purpose is `Ok(None)` even when its placement is
-  broken, where it used to be the placement error.
-
 ### ifc-schema
 
 ### Changed
@@ -68,14 +29,6 @@ lockstep -- is archived in the
   `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
-
-### openbim-ifc
-
-### Added
-
-- `profile_outline` and `ProfileOutline` are re-exported at the root under
-  `geometry-select` (#166), beside `describe_profile`: the straight-edged
-  outline of an arbitrary closed profile, without the geometry kernel.
 
 ### openbim-ifc-binding-core
 
@@ -126,6 +79,21 @@ lockstep -- is archived in the
   distinct.
 - A cbindgen-generated C11 header (`include/openbim_ifc.h`), checked for
   drift, and a C and C++ smoke test in the gate.
+
+## [0.7.1] - 2026-09-27
+
+### openbim-ifc
+
+### Added
+
+- `profile_outline` and `ProfileOutline` are re-exported at the root under
+  `geometry-select` (#166), beside `describe_profile`: the straight-edged
+  outline of an arbitrary closed profile, without the geometry kernel.
+
+### Changed
+
+- Requires `ifc-geometry` 0.4.1, which carries `profile_outline`,
+  `product_representation_frame` and the curve-bounded plane fix (#163).
 
 ## [0.7.0] - 2026-09-27
 
@@ -217,6 +185,45 @@ lockstep -- is archived in the
   `UnitKind::Conversion` gains an `offset` field.
 
 ## [0.4.1] - 2026-09-27
+
+### ifc-geometry
+
+### Fixed
+
+- An `IfcCurveBoundedPlane` lowered under a non-identity frame no longer
+  moves its boundaries twice (#163). `OuterBoundary` and `InnerBoundaries`
+  are in the basis plane's parameter space, which is also how the neutral
+  curve-bounded relation reads them, but the frame was applied to them as
+  well as to the plane: they landed elsewhere or were refused as off the
+  plane. Only the basis plane takes the frame now, so a framed plane meshes
+  to the identity mesh moved by the frame. Connection surfaces lowered under
+  a space's frame are the case this breaks.
+
+### Added
+
+- `product_representation_frame(model, units, product, purpose)`: the frame
+  a product's representation of that purpose is placed in, the context's
+  `WorldCoordinateSystem` composed above the placement chain (#164). Lowering
+  and `body_description` now take their frame from it, so geometry lowered
+  outside the body, such as a space boundary's connection surface in the
+  relating space's coordinates, is placed exactly as the body is.
+  `Ok(None)` when the product has no such representation; kernel-free.
+- `profile_outline(model, units, profile)` and `ProfileOutline` (#166): an
+  `IfcArbitraryClosedProfileDef`'s or `IfcArbitraryProfileDefWithVoids`'s
+  boundaries as rings of vertices in metres, in profile coordinates, for
+  `IfcPolyline` and line-only `IfcIndexedPolyCurve` boundaries. Each ring
+  is in authored order without its closing vertex, as profile lowering
+  reads it. An `IfcArcIndex` segment or any other curve family is
+  `Unsupported` naming the curve, never chorded; a 3D point, fewer than
+  three distinct vertices and non-consecutive segments are `Degenerate`.
+  Kernel-free.
+
+### Changed
+
+- `lower_product_representation` selects the representation before it
+  resolves the placement, as `body_description` already did: a product with
+  no representation of the purpose is `Ok(None)` even when its placement is
+  broken, where it used to be the placement error.
 
 ### ifc-properties
 

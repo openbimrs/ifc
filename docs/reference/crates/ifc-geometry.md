@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.4.0 (2026-09-27) |
+| Latest release | 0.4.1 (2026-09-27) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_geometry/index.html) · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -37,184 +37,43 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.4.0 (2026-09-27):
+Latest release, 0.4.1 (2026-09-27):
 
 ### Fixed
 
-- A face surface whose `FaceSurface` is dangling now reports the face as the
-  referrer, and one naming a non-surface is `WrongEntityType` naming the
-  target (#155). The first reported the missing id against itself; the
-  second was an `Unsupported` "curved and B-spline surfaces", which reads as
-  valid IFC this bridge declines rather than a broken reference. Applies to
-  faces inside advanced B-reps too.
-- Compiled `IfcBlock` meshes were offset by half their extents. `IfcBlock`
-  has a corner at its `Position` (IFC4 ADD2 TC1), but the neutral
-  `Primitive::Block` is tessellated centred on its origin by
-  `axiolid-reference`, so every compiled block sat half its size away from
-  where the file placed it, along its own axes. Lowering now puts the
-  half-extent shift on the block's `Instance`. This changes compiled
-  geometry for every `IfcBlock`; the lowered `Instance` translation now
-  names the block's centre. The other CSG primitives already agreed.
-- `Plane`, `CylindricalSurface`, `SphericalSurface` and `ToroidalSurface`
-  `::position(&model)` now type-check their target through
-  `resource::resolve` (#135). A `Position` naming anything other than an
-  `IfcAxis2Placement3D` is `WrongEntityType` naming the target; it used to
-  be wrapped as a 3D placement and misread.
-- A derived linear placement no longer reports an evaluator's degenerate
-  curve as an undefined roll. The refusal now distinguishes an unsupported
-  curve family, a rejected measure (off the curve, or roll undefined
-  because the tangent is parallel to the up reference) and a degenerate
-  curve, matching how `axiolid-evaluate` 0.3 reports them.
-
-- An opening that a file makes void two hosts is subtracted from the first
-  only (#59). `IfcFeatureElementSubtraction.VoidsElements` is a
-  single-valued inverse in IFC2X3 and IFC4, but every `IfcRelVoidsElement`
-  was applied, so the second host's net body was cut by an opening that
-  belongs to another element. The relation with the lower id now wins in
-  `openings_of` and in net compilation. Output changes only for files that
-  violate the schema.
-- `IfcParameterizedProfileDef.Position` now reaches the kernel for every
-  parameterised family (#147). It was applied to rectangles and circles
-  only, so an I, L, T, U, C or Z section, an ellipse or a trapezium with an
-  offset or rotated `Position` lowered at the profile origin. Output changes
-  only for files that author a non-identity `Position` on those families.
-- The translation of an `IfcDerivedProfileDef` operator is converted to
-  metres (#147). It was passed through in file units, so a derived profile
-  offset by 50 mm in a millimetre file lowered 50 m away.
-- An `IfcAsymmetricIShapeProfileDef` in an IFC2X3 file no longer reads
-  `CentreOfGravityInY` (slot 11 in that schema) as `BottomFlangeEdgeRadius`
-  (#147). IFC2X3 declares the entity as an `IfcIShapeProfileDef` subtype
-  with a different tail; the declared schema now selects the layout, and
-  the IFC4-only edge radii and slopes are absent in IFC2X3.
+- An `IfcCurveBoundedPlane` lowered under a non-identity frame no longer
+  moves its boundaries twice (#163). `OuterBoundary` and `InnerBoundaries`
+  are in the basis plane's parameter space, which is also how the neutral
+  curve-bounded relation reads them, but the frame was applied to them as
+  well as to the plane: they landed elsewhere or were refused as off the
+  plane. Only the basis plane takes the frame now, so a framed plane meshes
+  to the identity mesh moved by the frame. Connection surfaces lowered under
+  a space's frame are the case this breaks.
 
 ### Added
 
-- `IfcFaceSurface` and `IfcAdvancedFace` lower as representation items
-  (#155). Both are members of `IfcSurfaceOrFaceSurface`, the type of a
-  connection surface, but the dispatcher refused them. The new
-  `lower_face_surface_node` builds ONE face through the B-rep face path --
-  exact carrier surface, `SameSense` as the face's orientation relative to
-  that carrier, each bound's `Orientation` -- inside one open shell with no
-  solid, so a single face never acquires a volume. They move from the
-  nested-only disposition ledger to `IMPLEMENTED`, and `BodyKind::Face`
-  describes them. Committed evidence:
-  `test/fixtures/synthetic-surfaces/synthetic_space_boundary_face_surface.ifc`.
-- `lower_connection_surface(session, connection, frame)` and
-  `lower_related_connection_surface` lower an
-  `IfcConnectionSurfaceGeometry`'s `SurfaceOnRelatingElement` and optional
-  `SurfaceOnRelatedElement` (#155), dispatching `IfcSurface`,
-  `IfcFaceSurface`/`IfcAdvancedFace` and `IfcFaceBasedSurfaceModel`. Each
-  end is authored in its own element's coordinate system, so each takes its
-  own frame. Point, eccentric point, curve, volume and (IFC2X3) port
-  connections are typed `Unsupported` refusals naming the connection; any
-  other entity is `WrongEntityType`.
-- `body_description(model, units, product)` reports how a product's Body
-  representation is modelled (#147). It returns one `BodyItem` per
-  geometric item in authored order, with mapped items resolved (`mapped_by`
-  names the chain), each carrying a `BodyKind` (extrusion, tapered
-  extrusion, revolution, tapered revolution, directrix sweep, swept disk,
-  sectioned spine, B-rep, CSG, CSG primitive, half space, bounding box,
-  tessellated, surface model, geometric set, curve, surface, point) and, for
-  the swept-area families, a `SweptSolid`: the profile description, the
-  end profile of a tapered sweep, the solid's placement in world
-  coordinates and a `SweepPath` (extrusion direction as a world unit vector
-  plus depth in metres, revolution axis and angle in radians, or the
-  directrix curve). Mapped geometry describes identically to the same
-  geometry authored in place. Anything that cannot be stated exactly is a
-  typed error for the whole body, never a partial list: unsupported item or
-  profile families, dangling references, mapping cycles, open profiles
-  swept as areas, and a mapping that scales or mirrors a swept solid. It is
-  kernel-free and reachable with `--no-default-features`.
-- `describe_profile(model, units, profile)` reads any concrete
-  `IfcProfileDef` into a `ProfileDescription`: type, `ProfileName`,
-  `Position`, and `ProfileParameters` for every family in metres and
-  radians (rectangle, rounded and hollow rectangle, circle and hollow
-  circle, ellipse, I, asymmetric I, L, T, U, C, Z, trapezium, arbitrary
-  closed, with voids and open by curve reference, centre line, composite,
-  derived with its operator, mirrored). A bare `IfcProfileDef` and unknown
-  families are refused; a composite or derived chain that references itself
-  is `CyclicChain`.
-- `derive_placement_transform` derives a linear placement on an
-  `IfcPolyline` or a line-only `IfcIndexedPolyCurve` basis curve (#96), not
-  only on an alignment. The curve lowers to the neutral polyline, whose arc
-  length is an exact finite sum, so a distance converts to a parameter
-  exactly; a native parameter follows the IFC polyline parameterisation
-  (one per segment). Refused by name: a zero-length segment, fewer than two
-  points, non-consecutive `Segments`, an `IfcArcIndex`, a parameter on a
-  multi-point `IfcLineIndex` (IFC does not state its split), and ellipse
-  and B-spline bases as before.
-- `product_bounds` bounds linear extrusions of straight-edged profiles
-  (rectangles, polyline contours, and placed/derived forms of them) and
-  blocks exactly from their vertices, without tessellating (#98). The
-  result reports `BoundsSource::Exact`. Curved profiles, rounded
-  rectangles and booleans still go through the compiled mesh; a
-  difference only shrinks its operand, so its operand's box is never used.
-- `voiding_conflicts(model)` and `VoidingConflict { opening, kept_host,
-  rejected_host, relation }` report such openings (#59). It is kernel-free,
-  like `openings_of`. Restating the same host is not a conflict.
-- Resolving typed accessors beside the raw `*_ref` getters (#97), following
-  `Plane::position(&model)`: `Line::point`, `Polyline::points`,
-  `IndexedPolyCurve::points`, `BSplineCurve::control_points`,
-  `OffsetCurve3D::ref_direction`, `Circle::position`, `Ellipse::position`,
-  `Trim::cartesian_point`, `BSplineSurface::control_point_views`,
-  `SurfaceOfLinearExtrusion::{position, extruded_direction}`,
-  `SurfaceOfRevolution::{position, axis_position}`,
-  `BoundingBox::corner_point` and `TessellatedFaceSet::coordinate_list`.
-  Each type-checks its target: a dangling reference is `MissingEntity`
-  naming the referrer, a wrong type is `WrongEntityType` naming the target.
-  All are kernel-free.
-- `resource::resolve`, the shared type-checked resolvers behind them, and
-  two select views: `Axis2Placement` (2D or 3D, for `IfcConic.Position`) and
-  `CartesianPointList` (2D or 3D, for `IfcIndexedPolyCurve.Points`).
-  Profiles stay references; `describe_profile` owns `IfcProfileDef` reading.
-
-- `compile::product_bounds` / `product_bounds_with` return a product's
-  world-space axis-aligned bounding box (#36). The body is resolved and placed
-  the same way as for `compile_product_mesh`, and the result is `Ok(None)` in
-  the same case (no body).
-  - When every leaf of the lowered graph is a mesh or an authored bounding
-    box, the box is read off the exact graph without tessellating
-    (`BoundsSource::Exact`).
-  - Otherwise it comes from the compiled mesh (`BoundsSource::Tessellated`).
-    That box is exact for planar geometry and can fall short of a curved
-    surface by up to the tolerance.
-  - A body with no finite extent is `GeometryError::Degenerate`, never an
-    empty box.
-- `examples/product_bvh.rs` indexes every product of a file in
-  `axiolid_spatial::Bvh` and prints the broad-phase overlaps.
-  `axiolid-spatial` is a dev-dependency only: the index stays Axiolid's, and
-  this crate only produces the boxes.
+- `product_representation_frame(model, units, product, purpose)`: the frame
+  a product's representation of that purpose is placed in, the context's
+  `WorldCoordinateSystem` composed above the placement chain (#164). Lowering
+  and `body_description` now take their frame from it, so geometry lowered
+  outside the body, such as a space boundary's connection surface in the
+  relating space's coordinates, is placed exactly as the body is.
+  `Ok(None)` when the product has no such representation; kernel-free.
+- `profile_outline(model, units, profile)` and `ProfileOutline` (#166): an
+  `IfcArbitraryClosedProfileDef`'s or `IfcArbitraryProfileDefWithVoids`'s
+  boundaries as rings of vertices in metres, in profile coordinates, for
+  `IfcPolyline` and line-only `IfcIndexedPolyCurve` boundaries. Each ring
+  is in authored order without its closing vertex, as profile lowering
+  reads it. An `IfcArcIndex` segment or any other curve family is
+  `Unsupported` naming the curve, never chorded; a 3D point, fewer than
+  three distinct vertices and non-consecutive segments are `Degenerate`.
+  Kernel-free.
 
 ### Changed
 
-- `lower::profile` builds every profile from `describe_profile` instead of
-  reading slots itself (#147), so lowering and body description cannot
-  disagree about a slot, a unit or a default. A profile nesting chain that
-  exceeds its budget is now `ChainTooDeep` rather than `Unsupported`, and a
-  self-referencing chain is `CyclicChain`; a dangling boundary curve of an
-  arbitrary profile is reported when the profile is read.
-- Requires `axiolid-mesh-compile` 0.3.4, `axiolid-construct` 0.3.3 and
-  `axiolid-evaluate` 0.3.1. Compiled output changes where the kernel's did:
-  a B-rep's void shells are tessellated facing into the cavity instead of
-  being dropped, so an authored cavity is no longer filled
-  (axiolid/kernel#120); every solid of a multi-solid B-rep is meshed, not
-  only the first (axiolid/kernel#111); and a curve-bounded plane, the usual
-  space-boundary connection surface, compiles to a planar surface mesh
-  instead of being refused (axiolid/kernel#192).
-- Requires `axiolid-mesh-compile` 0.3.3 and `axiolid-contracts` 0.3.1.
-  Closed `IfcPolygonalFaceSet` bodies whose face corners lie on a straight
-  run (collinear notch and window heads) now mesh closed and report `Solid`
-  (axiolid/kernel#170); before, the triangulation left T-junction cracks and
-  they came back `Surface`. Surface models with a zero-area bowtie face, as
-  Nova MEP exports write pipe-fitting end caps, now compile instead of being
-  refused (axiolid/kernel#171). On 12 real models (66,659 products) this
-  moves 1,999 products to `Solid` and failures from 2,291 to 755, together
-  with the kernel#168 and #169 fixes already required.
-- `tests/meshing_coverage.rs` pins both: a real ArchiCAD lining at its
-  exact coordinates meshes to its divergence volume as a solid, and a
-  surface model with a bowtie cap keeps its area. A third test checks that
-  an explicit chord budget (`ExecutionOptions::with_chord_error`,
-  axiolid/kernel#165) brings the composite-curve D within 1e-5 of its exact
-  volume.
+- `lower_product_representation` selects the representation before it
+  resolves the placement, as `body_description` already did: a product with
+  no representation of the purpose is `Ok(None)` even when its placement is
+  broken, where it used to be the placement error.
 
 Full history: [`ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-geometry/CHANGELOG.md)

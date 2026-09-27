@@ -12,11 +12,18 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-09-27
+
 ### Added
 
 - `profile_outline` and `ProfileOutline` are re-exported at the root under
   `geometry-select` (#166), beside `describe_profile`: the straight-edged
   outline of an arbitrary closed profile, without the geometry kernel.
+
+### Changed
+
+- Requires `ifc-geometry` 0.4.1, which carries `profile_outline`,
+  `product_representation_frame` and the curve-bounded plane fix (#163).
 
 ## [0.7.0] - 2026-09-27
 
@@ -145,7 +152,8 @@ First release under per-crate versioning. See the
 [repository changelog](../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.7.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.7.1...HEAD
+[0.7.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.7.1
 [0.7.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.7.0
 [0.6.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.6.0
 [0.5.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.5.0
