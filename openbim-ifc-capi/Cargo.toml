@@ -9,6 +9,10 @@ repository = "https://github.com/openbimrs/ifc"
 description = "Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP files from C and C++."
 keywords = ["ifc", "bim", "ffi", "c-abi", "openbim"]
 categories = ["api-bindings", "parser-implementations"]
+# Distributed as a C library and header, not through Cargo: a CMake package
+# and prebuilt release archives are tracked in #41. On crates.io it would also
+# need openbim-ifc-binding-core published, an internal layer.
+publish = false
 
 # Published on the docs site by `cargo run -p xtask -- docs`.
 [package.metadata.openbim]
