@@ -14,7 +14,7 @@ use ifc_model::EntityId;
 use crate::error::GeometryResult;
 use crate::lower::bbox::lower_bounding_box_node;
 use crate::lower::boolean::lower_boolean_result_node;
-use crate::lower::brep::lower_faceted_brep_node;
+use crate::lower::brep::{lower_face_surface_node, lower_faceted_brep_node};
 use crate::lower::collection::lower_collection_node;
 use crate::lower::csg::{
     lower_csg_primitive_node, lower_csg_solid_node, lower_surface_curve_swept_area_solid_node,
@@ -70,6 +70,10 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCSECTIONEDSPINE",
     "IFCSHELLBASEDSURFACEMODEL",
     "IFCFACEBASEDSURFACEMODEL",
+    // A face surface is a legal item and a member of IfcSurfaceOrFaceSurface
+    // (connection surfaces); it lowers as a single-face open BRep.
+    "IFCFACESURFACE",
+    "IFCADVANCEDFACE",
     "IFCGEOMETRICSET",
     "IFCGEOMETRICCURVESET",
     // Bare curves/surfaces are valid representation items in Curve2D,
@@ -265,6 +269,7 @@ pub fn lower_representation_item(
         | "IFCFACETEDBREPWITHVOIDS"
         | "IFCADVANCEDBREP"
         | "IFCADVANCEDBREPWITHVOIDS" => lower_faceted_brep_node(session, id, frame),
+        "IFCFACESURFACE" | "IFCADVANCEDFACE" => lower_face_surface_node(session, id, frame),
         "IFCTRIANGULATEDFACESET" => lower_triangulated_face_set_node(session, id, frame),
         "IFCPOLYGONALFACESET" => lower_polygonal_face_set_node(session, id, frame),
         "IFCCSGSOLID" => lower_csg_solid_node(session, id, frame),

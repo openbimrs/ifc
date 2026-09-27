@@ -574,3 +574,83 @@ fn the_subtype_table_knows_every_concrete_profile() {
             .join("\n")
     );
 }
+
+/// The connection-surface select, per bundled release (#155).
+///
+/// `lower::connection` routes `IfcSurfaceOrFaceSurface` by its three members
+/// and refuses every other `IfcConnectionGeometry` subtype by name. Both lists
+/// are schema facts that differ by release -- IFC2X3 has a port connection
+/// and no `IfcAdvancedFace`, IFC4 on replace the port with a volume -- so
+/// they are pinned here against each release's own tables rather than
+/// assumed common.
+#[test]
+fn the_connection_surface_select_matches_every_release() {
+    use ifc_schema::TypeKind;
+
+    let upper = |names: &[&str]| -> BTreeSet<String> {
+        names.iter().map(|n| n.to_ascii_uppercase()).collect()
+    };
+    let later = [
+        "IfcConnectionCurveGeometry",
+        "IfcConnectionPointEccentricity",
+        "IfcConnectionPointGeometry",
+        "IfcConnectionSurfaceGeometry",
+        "IfcConnectionVolumeGeometry",
+    ];
+    let ifc2x3 = [
+        "IfcConnectionCurveGeometry",
+        "IfcConnectionPointEccentricity",
+        "IfcConnectionPointGeometry",
+        "IfcConnectionPortGeometry",
+        "IfcConnectionSurfaceGeometry",
+    ];
+    for (release, schema, advanced, kinds) in [
+        ("IFC2X3", ifc_schema::ifc2x3(), false, &ifc2x3[..]),
+        ("IFC4", ifc_schema::ifc4(), true, &later[..]),
+        ("IFC4X3", ifc_schema::ifc4x3(), true, &later[..]),
+    ] {
+        let Some(TypeKind::Select(members)) = schema
+            .type_def("IfcSurfaceOrFaceSurface")
+            .map(|t| t.kind.clone())
+        else {
+            panic!("{release}: IfcSurfaceOrFaceSurface is a SELECT");
+        };
+        let members: BTreeSet<String> = members.iter().map(|m| m.to_ascii_uppercase()).collect();
+        assert_eq!(
+            members,
+            upper(&["IfcFaceBasedSurfaceModel", "IfcFaceSurface", "IfcSurface"]),
+            "{release}"
+        );
+        // A face surface is a face, never a surface: the surface lowerer must
+        // not be its route.
+        assert!(schema.is_a("IfcFaceSurface", "IfcFace"), "{release}");
+        assert!(!schema.is_a("IfcFaceSurface", "IfcSurface"), "{release}");
+        assert_eq!(
+            schema.entity("IfcAdvancedFace").is_some(),
+            advanced,
+            "{release}: IfcAdvancedFace presence"
+        );
+        if advanced {
+            assert!(
+                schema.is_a("IfcAdvancedFace", "IfcFaceSurface"),
+                "{release}"
+            );
+        }
+        assert_eq!(
+            schema.attribute_names("IfcFaceSurface"),
+            ["Bounds", "FaceSurface", "SameSense"],
+            "{release}"
+        );
+        assert_eq!(
+            schema.attribute_names("IfcConnectionSurfaceGeometry"),
+            ["SurfaceOnRelatingElement", "SurfaceOnRelatedElement"],
+            "{release}"
+        );
+        let subtypes: BTreeSet<String> = schema
+            .subtypes("IfcConnectionGeometry")
+            .into_iter()
+            .map(str::to_ascii_uppercase)
+            .collect();
+        assert_eq!(subtypes, upper(kinds), "{release}: connection kinds");
+    }
+}

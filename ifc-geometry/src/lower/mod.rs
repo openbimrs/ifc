@@ -4,6 +4,7 @@ pub mod bbox;
 pub mod boolean;
 pub mod brep;
 pub mod collection;
+pub mod connection;
 pub mod context;
 pub mod csg;
 pub mod curve;
@@ -23,8 +24,9 @@ use axiolid_model::{GeometryGraph, NodeId};
 pub use crate::input::representation::RepresentationPurpose;
 pub use bbox::lower_bounding_box_node;
 pub use boolean::lower_boolean_result_node;
-pub use brep::{lower_faceted_brep_node, lower_shell_node};
+pub use brep::{lower_face_surface_node, lower_faceted_brep_node, lower_shell_node};
 pub use collection::lower_collection_node;
+pub use connection::{lower_connection_surface, lower_related_connection_surface};
 pub use context::{
     geometric_products, lower_product_items, lower_product_representation, product_world_transform,
     select_shape_representation,
