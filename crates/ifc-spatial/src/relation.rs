@@ -14,7 +14,7 @@
 
 pub mod boundary;
 mod index;
-mod link;
+pub(crate) mod link;
 pub(crate) mod slots;
 
 pub use boundary::{

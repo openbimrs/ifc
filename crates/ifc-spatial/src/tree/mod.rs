@@ -5,10 +5,12 @@
 //! - `kind.rs`: classifying an entity's place in the spatial hierarchy.
 //! - `build.rs`: assembling the tree from relationship entities.
 //! - `anomaly.rs`: conflicting parents the file states.
+//! - `reference.rs`: elements referenced, not contained, by a structure.
 
 mod anomaly;
 mod build;
 mod kind;
+mod reference;
 
 pub use anomaly::SpatialAnomaly;
 pub use build::{SpatialNode, SpatialTree};

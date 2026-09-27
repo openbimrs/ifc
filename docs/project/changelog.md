@@ -30,6 +30,44 @@ lockstep -- is archived in the
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
 
+### ifc-spatial
+
+### Added
+
+- `SpatialTree::referenced_elements(container)` and
+  `SpatialTree::referencing_structures(element)` (#121): the elements an
+  `IfcRelReferencedInSpatialStructure` references in a container, and the
+  containers referencing an element, in file order and each once, in
+  IFC2X3, IFC4 and IFC4X3. They are kept apart from containment:
+  `elements_of` and `container_of` are unchanged, and a referenced element
+  is never a second home or a `ContainedTwice` anomaly. A reference naming
+  an absent entity is now reported by `dangling()`; one whose structure is
+  not a spatial container is ignored, as containment ignores it.
+
+### openbim-ifc
+
+### Added
+
+- `spatial_properties(model)` (features `spatial` and `properties`): every
+  spatial container in tree order, depth first from the roots, with the
+  elements it holds, each with its `exact_properties` list, in IFC2X3, IFC4
+  and IFC4X3 (#121). An element is listed as `Contained`
+  (`IfcRelContainedInSpatialStructure`), `Referenced`
+  (`IfcRelReferencedInSpatialStructure`, so an element spanning several
+  storeys appears under each) or `Part` (an `IfcRelAggregates` part, at any
+  depth, of a contained element, which the Element Composition concept
+  places by its composite's containment), ordered by element id. A nested
+  space is its own container, not folded into its storey. A model-level
+  refusal (diagnostics, missing or unsupported schema) is the function's
+  error; any other `ExactPropertyError` is reported on the element it
+  concerns and the other elements are still returned. Properties resolve
+  lazily as `ContainerElements::elements` (or `elements_where`, with
+  `exact_properties_where` selectors) is iterated. New types:
+  `SpatialProperties`, `ContainerElements`, `SpatialContainer`,
+  `ContainerName`, `ElementMember`, `ElementProperties` and
+  `SpatialMembership`. Needs the next `ifc-spatial` release, which adds
+  `SpatialTree::referenced_elements`.
+
 ## [0.7.2] - 2026-09-27
 
 ### openbim-ifc

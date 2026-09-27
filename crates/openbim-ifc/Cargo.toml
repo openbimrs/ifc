@@ -33,7 +33,7 @@ full = "Everything: codecs, schema tables, every domain, catalogues, geometry, g
 geometry = "Representation selection plus lowering into the neutral geometry DAG."
 geometry-select = "Representation selection only: contexts, plan/body choice, placements and units, with no geometry kernel."
 material-templates = "Material views together with the property template catalogue."
-properties = "Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door and window operation geometry."
+properties = "Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door and window operation geometry; together with `spatial`, element properties by spatial container."
 
 [lib]
 name = "ifc"

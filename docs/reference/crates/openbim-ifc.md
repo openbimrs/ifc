@@ -42,7 +42,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | `material` |  | [`ifc-material`](./ifc-material): Material definitions: layer sets, profile sets, constituents, usage. |
 | `material-templates` |  | Material views together with the property template catalogue. |
 | `occurrence` |  | [`ifc-occurrence`](./ifc-occurrence): Built element and distribution occurrence classes and their type pairing. |
-| `properties` |  | Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door and window operation geometry. |
+| `properties` |  | Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door and window operation geometry; together with `spatial`, element properties by spatial container. |
 | `property-catalog` |  | [`ifc-template-catalog`](./ifc-template-catalog): Versioned IFC PSD/QTO catalog definitions and correction overlays |
 | `resource` |  | [`ifc-resource`](./ifc-resource): Construction resources: labour, equipment, material, crew, subcontract. |
 | `schedule` |  | [`ifc-schedule`](./ifc-schedule): IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage. |

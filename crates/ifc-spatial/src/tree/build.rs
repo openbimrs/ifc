@@ -38,18 +38,23 @@ pub struct SpatialTree {
     nodes: BTreeMap<EntityId, SpatialNode>,
     /// Element to its direct container, so `container_of` is a lookup.
     container_of_element: BTreeMap<EntityId, EntityId>,
+    /// Container to the elements `IfcRelReferencedInSpatialStructure`
+    /// references there, and the inverse. Kept apart from containment.
+    pub(super) referenced: BTreeMap<EntityId, Vec<EntityId>>,
+    pub(super) referenced_in: BTreeMap<EntityId, Vec<EntityId>>,
     roots: Vec<EntityId>,
     orphans: Vec<EntityId>,
-    dangling: Vec<(EntityId, EntityId)>,
+    pub(super) dangling: Vec<(EntityId, EntityId)>,
     anomalies: Vec<SpatialAnomaly>,
 }
 
 impl SpatialTree {
     /// Build the containment tree of `model`.
     ///
-    /// One pass over the aggregation and containment relationships. Cost is
-    /// linear in the number of relationship entities, not in model size,
-    /// because relationships are found through the type index.
+    /// One pass over the aggregation, containment and spatial reference
+    /// relationships. Cost is linear in the number of relationship entities,
+    /// not in model size, because relationships are found through the type
+    /// index.
     #[must_use]
     pub fn build(model: &Model) -> Self {
         let mut tree = Self::default();
@@ -78,6 +83,7 @@ impl SpatialTree {
         for relationship in crate::relation::all(model) {
             tree.apply(model, &relationship);
         }
+        tree.apply_references(model);
 
         // A container with no parent is a root. Sorted for determinism, then
         // ordered so the project (if any) leads.

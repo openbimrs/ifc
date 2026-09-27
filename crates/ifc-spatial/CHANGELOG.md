@@ -12,6 +12,18 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `SpatialTree::referenced_elements(container)` and
+  `SpatialTree::referencing_structures(element)` (#121): the elements an
+  `IfcRelReferencedInSpatialStructure` references in a container, and the
+  containers referencing an element, in file order and each once, in
+  IFC2X3, IFC4 and IFC4X3. They are kept apart from containment:
+  `elements_of` and `container_of` are unchanged, and a referenced element
+  is never a second home or a `ContainedTwice` anomaly. A reference naming
+  an absent entity is now reported by `dangling()`; one whose structure is
+  not a spatial container is ignored, as containment ignores it.
+
 ## [0.2.2] - 2026-09-27
 
 ### Added

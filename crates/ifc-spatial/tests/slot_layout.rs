@@ -58,6 +58,13 @@ const EXPECTED: &[(&str, usize, &str, usize, &str)] = &[
         4,
         "RelatedElements",
     ),
+    (
+        "IfcRelReferencedInSpatialStructure",
+        5,
+        "RelatingStructure",
+        4,
+        "RelatedElements",
+    ),
     ("IfcRelNests", 4, "RelatingObject", 5, "RelatedObjects"),
     (
         "IfcRelSpaceBoundary",
