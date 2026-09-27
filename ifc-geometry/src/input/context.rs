@@ -25,13 +25,16 @@
 
 use ifc_model::{Entity, EntityId, Model, Value};
 
+use crate::constraint::product_world_transform;
 use crate::error::{GeometryError, GeometryResult};
 use crate::resource::placement::axis_placement_transform;
 use crate::slots::Slots;
 use crate::transform::Transform;
 use crate::units::UnitScale;
 
-use super::representation::representation_slot;
+use super::representation::{
+    representation_slot, select_product_representation, RepresentationPurpose,
+};
 
 /// Absolute slots on `IfcGeometricRepresentationContext`.
 ///
@@ -360,4 +363,32 @@ pub(crate) fn representation_frame(
             missing: placement_id,
         })?;
     Ok(axis_placement_transform(model, placement_id, placement)?.to_metres(units))
+}
+
+/// The frame a product's representation of `purpose` is placed in, in
+/// metres: the representation context's `WorldCoordinateSystem` composed
+/// above the product's placement chain, exactly as lowering and
+/// [`crate::body_description`] place its items.
+///
+/// Geometry that belongs to the product but is not one of its
+/// representation items -- a space boundary's connection surface, which IFC
+/// authors in the relating space's coordinate system -- is placed with this
+/// frame to land where the product's body does. `Ok(None)` when the product
+/// has no representation for `purpose`. `TrueNorth` is not applied: it
+/// states where north lies in model space and moves no coordinate.
+pub fn product_representation_frame(
+    model: &Model,
+    units: &UnitScale,
+    product: EntityId,
+    purpose: RepresentationPurpose,
+) -> GeometryResult<Option<Transform>> {
+    let Some(representation) = select_product_representation(model, product, purpose)? else {
+        return Ok(None);
+    };
+    let placement = product_world_transform(model, units, product)?;
+    // Model space is the context's frame; the product's chain is expressed
+    // inside it, so the context frame composes above the placement.
+    Ok(Some(
+        representation_frame(model, units, representation)?.compose(&placement),
+    ))
 }

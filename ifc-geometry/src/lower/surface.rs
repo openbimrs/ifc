@@ -530,6 +530,13 @@ pub fn lower_rectangular_trimmed(
 /// The outer boundary is explicit here, unlike `IfcCurveBoundedSurface` where
 /// it may be implicit, so `implicit_outer` is false and the outer curve leads
 /// the boundary list.
+///
+/// Only the basis plane takes `frame`. The boundaries are authored in the
+/// plane's own parameter space, where a point `(u, v)` lies at `u` along the
+/// plane's x axis and `v` along its y axis from its `Location`. The neutral
+/// relation reads them the same way, so the plane's placement already carries
+/// them to the frame. Placing them too moved every boundary a second time
+/// (#163).
 pub fn lower_curve_bounded(
     session: &mut LoweringSession<'_>,
     id: EntityId,
@@ -539,13 +546,14 @@ pub fn lower_curve_bounded(
     let view = CurveBoundedPlane::new(id, entity);
     let basis = lower_surface_node(session, view.basis_surface_ref()?, frame)?;
 
+    let parameter_space = Transform::identity();
     let mut boundaries = vec![lower_curve_node(
         session,
         view.outer_boundary_ref()?,
-        frame,
+        parameter_space,
     )?];
     for inner in view.inner_boundary_refs() {
-        boundaries.push(lower_curve_node(session, inner, frame)?);
+        boundaries.push(lower_curve_node(session, inner, parameter_space)?);
     }
 
     session.node_for(

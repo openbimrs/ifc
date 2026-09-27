@@ -20,6 +20,36 @@ lockstep -- is archived in the
 
 ## [Unreleased]
 
+### ifc-geometry
+
+### Fixed
+
+- An `IfcCurveBoundedPlane` lowered under a non-identity frame no longer
+  moves its boundaries twice (#163). `OuterBoundary` and `InnerBoundaries`
+  are in the basis plane's parameter space, which is also how the neutral
+  curve-bounded relation reads them, but the frame was applied to them as
+  well as to the plane: they landed elsewhere or were refused as off the
+  plane. Only the basis plane takes the frame now, so a framed plane meshes
+  to the identity mesh moved by the frame. Connection surfaces lowered under
+  a space's frame are the case this breaks.
+
+### Added
+
+- `product_representation_frame(model, units, product, purpose)`: the frame
+  a product's representation of that purpose is placed in, the context's
+  `WorldCoordinateSystem` composed above the placement chain (#164). Lowering
+  and `body_description` now take their frame from it, so geometry lowered
+  outside the body, such as a space boundary's connection surface in the
+  relating space's coordinates, is placed exactly as the body is.
+  `Ok(None)` when the product has no such representation; kernel-free.
+
+### Changed
+
+- `lower_product_representation` selects the representation before it
+  resolves the placement, as `body_description` already did: a product with
+  no representation of the purpose is `Ok(None)` even when its placement is
+  broken, where it used to be the placement error.
+
 ### ifc-schema
 
 ### Changed

@@ -19,16 +19,17 @@ use axiolid_model::NodeId;
 use ifc_model::EntityId;
 
 use crate::error::{GeometryError, GeometryResult};
+// The frame is kernel-free, so lowering and body description compose the
+// same model space from one function.
+use crate::input::context::product_representation_frame;
 // Moved to `input::product`: it never needed the kernel. Re-exported so
 // the pre-existing `lower::context::geometric_products` path still resolves.
-use crate::input::context::representation_frame;
 pub use crate::input::product::geometric_products;
 use crate::input::representation::{
     select_product_representation, Representation, RepresentationPurpose,
 };
 use crate::lower::dispatch::lower_representation_item;
 use crate::lower::session::LoweringSession;
-use crate::transform::Transform;
 
 pub use crate::constraint::product_world_transform;
 pub use crate::input::representation::select_shape_representation;
@@ -51,14 +52,15 @@ pub fn lower_product_representation(
     product: EntityId,
     purpose: RepresentationPurpose,
 ) -> GeometryResult<Option<NodeId>> {
-    let placement = product_world_transform(session.model(), session.units(), product)?;
+    let Some(world) =
+        product_representation_frame(session.model(), session.units(), product, purpose)?
+    else {
+        return Ok(None);
+    };
     let Some(representation) = select_product_representation(session.model(), product, purpose)?
     else {
         return Ok(None);
     };
-    // Model space is the context's frame; the product's chain is expressed
-    // inside it, so the context frame composes above the placement.
-    let world = context_world_transform(session, representation)?.compose(&placement);
 
     let entity = session
         .model()
@@ -80,15 +82,4 @@ pub fn lower_product_representation(
             axiolid_model::GeometryNode::Collection(roots),
         )?)),
     }
-}
-
-/// The frame a representation's items are authored in.
-///
-/// Delegates to the kernel-free [`crate::input::context::representation_frame`]
-/// so lowering and body description compose the same model space.
-fn context_world_transform(
-    session: &LoweringSession<'_>,
-    representation: EntityId,
-) -> GeometryResult<Transform> {
-    representation_frame(session.model(), session.units(), representation)
 }
