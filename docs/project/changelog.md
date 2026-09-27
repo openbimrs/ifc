@@ -24,12 +24,6 @@ lockstep -- is archived in the
 
 ### Changed
 
-- The bundled IFC2X3 TC1, IFC4 ADD2 TC1 and IFC4X3 ADD2 schemas no longer
-  carry WHERE-rule expressions: `EntityDef::where_rules` keeps each rule's
-  `label`, and its `expression` is empty. The expressions are CC BY-ND schema
-  text that nothing here evaluates. A schema parsed at run time with
-  `Schema::from_express` keeps them. The artifacts are about 23-38% smaller.
-  `data/NOTICE.md` now states the provenance of the bundled files.
 - Requires `openbim-step` 0.7.0, matching `ifc-step`. Both pin the parser
   exactly, so the pair must move together. `openbim-step` 0.6 replaced
   `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
@@ -1122,7 +1116,7 @@ variant, three rule ids are renamed, and `Budget::max_depth` is removed.
 - **Breaking:** requires `ifc-style` 0.3.0, re-exported as `ifc::style`.
   `IndexedTextureMap::maps` there now returns `Vec<EntityId>`.
 
-## [0.2.3] - 2026-09-26
+## [0.2.3] - 2026-09-27
 
 ### ifc-model
 
@@ -1153,6 +1147,21 @@ variant, three rule ids are renamed, and `Budget::max_depth` is removed.
   `ifc-systems`, `ifc-structural` and others) now refuse such ids as well.
   `ifc-resource` already did. A file that was written with one would have
   failed its own GlobalId check.
+
+### ifc-schema
+
+Maintenance release from `maint/ifc-schema-0.2`: the 0.2.2 code with only
+the data change below, so it keeps `openbim-step` 0.5.1 and every
+dependent's `^0.2.2` resolves to it. `main` carries the same change.
+
+### Changed
+
+- The bundled IFC2X3 TC1, IFC4 ADD2 TC1 and IFC4X3 ADD2 schemas no longer
+  carry WHERE-rule expressions: `EntityDef::where_rules` keeps each rule's
+  `label`, and its `expression` is empty. The expressions are CC BY-ND schema
+  text that nothing here evaluates. A schema parsed at run time with
+  `Schema::from_express` keeps them. The artifacts are about 23-38% smaller.
+  `data/NOTICE.md` now states the provenance of the bundled files.
 
 ## [0.2.2] - 2026-09-27
 

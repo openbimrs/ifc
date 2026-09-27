@@ -14,17 +14,26 @@ everything released before per-crate changelogs began.
 
 ### Changed
 
+- Requires `openbim-step` 0.7.0, matching `ifc-step`. Both pin the parser
+  exactly, so the pair must move together. `openbim-step` 0.6 replaced
+  `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
+  accessor for multiple inheritance; IFC schemas are single-inheritance, so
+  the serialized artifact is unchanged.
+
+## [0.2.3] - 2026-09-27
+
+Maintenance release from `maint/ifc-schema-0.2`: the 0.2.2 code with only
+the data change below, so it keeps `openbim-step` 0.5.1 and every
+dependent's `^0.2.2` resolves to it. `main` carries the same change.
+
+### Changed
+
 - The bundled IFC2X3 TC1, IFC4 ADD2 TC1 and IFC4X3 ADD2 schemas no longer
   carry WHERE-rule expressions: `EntityDef::where_rules` keeps each rule's
   `label`, and its `expression` is empty. The expressions are CC BY-ND schema
   text that nothing here evaluates. A schema parsed at run time with
   `Schema::from_express` keeps them. The artifacts are about 23-38% smaller.
   `data/NOTICE.md` now states the provenance of the bundled files.
-- Requires `openbim-step` 0.7.0, matching `ifc-step`. Both pin the parser
-  exactly, so the pair must move together. `openbim-step` 0.6 replaced
-  `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
-  accessor for multiple inheritance; IFC schemas are single-inheritance, so
-  the serialized artifact is unchanged.
 
 ## [0.2.2] - 2026-09-23
 
@@ -53,7 +62,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-schema-v0.2.2...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-schema-v0.2.3...HEAD
+[0.2.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-schema-v0.2.3
 [0.2.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-schema-v0.2.2
 [0.2.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-schema-v0.2.1
 [0.2.0]: https://github.com/openbimrs/ifc/releases/tag/v0.2.0
