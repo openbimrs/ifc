@@ -16,6 +16,15 @@
 //! node -- folding it into the extents would be wrong for any non-identity
 //! rotation and would silently discard the origin offset.
 //!
+//! The anchors differ, though. The neutral block is CENTRED on its origin
+//! (the `axiolid-reference` 0.3 tessellator; `axiolid-primitive` states no
+//! anchor), while `IfcBlock` has a corner there (IFC4 ADD2 TC1). The
+//! Instance therefore also carries a half-extent shift inside the block's
+//! own frame; without it every compiled block sits half its size away from
+//! where the file put it. The other primitives already agree: sphere
+//! centred, cylinder, cone and rectangular pyramid with the base centred on
+//! the origin and height along +z, in both definitions.
+//!
 //! # Swept disks sweep a DISK, not a profile
 //!
 //! `IfcSweptDiskSolid` has no `IfcProfileDef`: the radii are given directly.
@@ -130,7 +139,7 @@ fn build_primitive(
     // The primitive is local; the placement rides on an Instance so a
     // non-identity rotation is preserved rather than folded into extents.
     let source = session.node(GeometryNode::Primitive(primitive))?;
-    let placed = frame.compose(&local);
+    let placed = frame.compose(&local).compose(&anchor(&primitive));
     session.node_for(
         id,
         GeometryNode::Instance(Instance {
@@ -138,6 +147,18 @@ fn build_primitive(
             transform: placed.to_geom(),
         }),
     )
+}
+
+/// Where the IFC primitive's origin lies in the neutral primitive's frame.
+///
+/// Only the block differs: `IfcBlock` has a corner at its origin, the
+/// neutral block is centred, so the block is shifted by half its extents
+/// along its own axes. See the module docs.
+fn anchor(primitive: &Primitive) -> Transform {
+    match *primitive {
+        Primitive::Block { x, y, z } => Transform::translation([x / 2.0, y / 2.0, z / 2.0]),
+        _ => Transform::identity(),
+    }
 }
 
 /// Lower an `IfcSweptDiskSolid` into a `SweptDisk` operation.

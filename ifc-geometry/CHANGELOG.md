@@ -14,6 +14,14 @@ everything released before per-crate changelogs began.
 
 ### Fixed
 
+- Compiled `IfcBlock` meshes were offset by half their extents. `IfcBlock`
+  has a corner at its `Position` (IFC4 ADD2 TC1), but the neutral
+  `Primitive::Block` is tessellated centred on its origin by
+  `axiolid-reference`, so every compiled block sat half its size away from
+  where the file placed it, along its own axes. Lowering now puts the
+  half-extent shift on the block's `Instance`. This changes compiled
+  geometry for every `IfcBlock`; the lowered `Instance` translation now
+  names the block's centre. The other CSG primitives already agreed.
 - `Plane`, `CylindricalSurface`, `SphericalSurface` and `ToroidalSurface`
   `::position(&model)` now type-check their target through
   `resource::resolve` (#135). A `Position` naming anything other than an

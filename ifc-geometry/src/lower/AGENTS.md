@@ -84,7 +84,9 @@ those parameters instead. A single length factor is the defect this split
 exists to prevent.
 
 A CSG primitive is local by kernel contract. Its `Position` is carried on an
-`Instance` node, never folded into the primitive's extents.
+`Instance` node, never folded into the primitive's extents. Anchors differ
+for the block only: the neutral block is centred, `IfcBlock` has a corner at
+its `Position`, so the `Instance` also carries a half-extent shift.
 
 ## Does not own
 
