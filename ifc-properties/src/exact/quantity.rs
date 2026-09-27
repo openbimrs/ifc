@@ -1,4 +1,4 @@
-//! Quantity sets and predefined property sets in exact resolution (#66).
+//! Quantity sets in exact resolution (#66).
 //!
 //! `IfcRelDefinesByProperties` and `IfcTypeObject.HasPropertySets` carry any
 //! `IfcPropertySetDefinition`, not only `IfcPropertySet`. buildingSMART IDS
@@ -16,9 +16,7 @@
 //! for `LengthValue`), because a quantity stores a bare number.
 //!
 //! A predefined set (`IfcDoorLiningProperties` and the like) holds values in
-//! entity attributes instead of named properties. Those are not resolved;
-//! but when one of its own attributes carries the requested name, the answer
-//! is refused rather than claimed absent.
+//! attributes of its own entity; `predefined.rs` reads those.
 
 use ifc_model::{Entity, EntityId, Model, Value};
 
@@ -35,41 +33,6 @@ fn slot(release: Release, entity: &str, attribute: &str) -> usize {
         .iter()
         .position(|name| name.eq_ignore_ascii_case(attribute))
         .unwrap_or_else(|| panic!("{entity}.{attribute} is declared in every bundled release"))
-}
-
-/// The quantity named `wanted` in an `IfcElementQuantity`, if any.
-///
-/// # Errors
-///
-/// A member that is not an `IfcPhysicalQuantity`, two members with the name,
-/// a matching complex quantity, or a malformed unit or value.
-pub(super) fn find_quantity(
-    model: &Model,
-    release: Release,
-    set_id: EntityId,
-    set: &Entity,
-    wanted: &str,
-) -> Result<Option<(EntityId, ResolvedValue)>, ExactPropertyError> {
-    let mut matching = None;
-    for (quantity_id, name) in quantity_members(model, release, set_id, set)? {
-        if name != wanted {
-            continue;
-        }
-        if let Some(first) = matching.replace(quantity_id) {
-            return Err(ExactPropertyError::DuplicateMatchingProperties {
-                set: set_id,
-                first,
-                second: quantity_id,
-            });
-        }
-    }
-    let Some(quantity_id) = matching else {
-        return Ok(None);
-    };
-    Ok(Some((
-        quantity_id,
-        quantity_value(model, release, quantity_id)?,
-    )))
 }
 
 /// Every member of an `IfcElementQuantity` with its `Name`, in file order.
@@ -202,43 +165,4 @@ fn simple_value(
         value_type: Some(declared.into()),
         unit_id,
     })
-}
-
-/// Whether a predefined set could hold `wanted`: one of its own attributes
-/// (not those every `IfcPropertySetDefinition` inherits) has that name, and
-/// its `Name` is `wanted_set`, absent, or not asked for.
-pub(super) fn predefined_may_hold(
-    release: Release,
-    set: &Entity,
-    wanted_set: Option<&str>,
-    wanted: &str,
-) -> bool {
-    if !predefined_attributes(release, set).any(|name| name == wanted) {
-        return false;
-    }
-    match (wanted_set, predefined_name(set)) {
-        (Some(asked), Some(name)) => asked == name,
-        _ => true,
-    }
-}
-
-/// The attributes a predefined set declares itself, excluding those every
-/// `IfcPropertySetDefinition` inherits from `IfcRoot`.
-pub(super) fn predefined_attributes(
-    release: Release,
-    set: &Entity,
-) -> impl Iterator<Item = &'static str> {
-    let schema = release.schema;
-    let inherited = schema.attribute_names("IFCPROPERTYSETDEFINITION").len();
-    schema
-        .attribute_names(set.type_name.as_ref())
-        .into_iter()
-        .skip(inherited)
-}
-
-/// A predefined set's `Name`, if it states one as text.
-pub(super) fn predefined_name(set: &Entity) -> Option<&str> {
-    set.attributes
-        .get(2)
-        .and_then(|v| v.unwrap_typed().as_text())
 }

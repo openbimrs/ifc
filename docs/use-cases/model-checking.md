@@ -207,7 +207,8 @@ The three outcomes are distinct on purpose:
   dangling reference, a malformed aggregate, an ambiguous duplicate set, more
   than one type assignment, a complex property, values that contradict the
   rules deciding how they read (a list of mixed types, table columns of
-  unequal length), a predefined property set that could hold the name, STEP
+  unequal length), an unnamed predefined property set outside the named set
+  that could hold the name, STEP
   diagnostics on the model, or a schema other than IFC2X3, IFC4 or IFC4X3
   ADD2. Treat it as "cannot tell", never as "absent".
 
@@ -217,6 +218,17 @@ select_set, select_property)` enumerates them with the same traversal and
 refusals, and `exact_properties` lists everything. For one set name and one
 property name the enumeration answers exactly what `exact_property` answers,
 and an empty list is a proven absence.
+
+Predefined property sets such as `IfcDoorLiningProperties` and
+`IfcDoorPanelProperties` keep their values in entity attributes rather than
+named properties. Both lookups read them by the attribute's schema name
+(`LiningDepth`, `PanelOperation`), typed by the declaring release: lengths
+as their measure type in the project unit, ratios as
+`IFCNORMALISEDRATIOMEASURE`, enumerations as `ExactValue::Enum`, and an
+unset optional attribute as `Null`. A set that states no `Name` is found
+under its entity name. A door carries one panel set per leaf, which a
+lookup by name cannot tell apart, so `exact_predefined_sets(model, door,
+"IfcDoorPanelProperties")` lists every such set with its source instead.
 
 The value is the file's. WHERE rules on the value, such as a non-negative
 length, are not evaluated here; that is validation's job, and the rule may be
@@ -255,5 +267,6 @@ the exact property resolution, not IDS parsing or IDS reporting.
 - `ifc-validate/tests/` covers the native rules and a corpus run;
   `ifc-validate/src/where_rule/registry.rs` is the registry the coverage table
   is generated from.
-- `ifc-properties/tests/exact.rs`, `exact_quantities.rs`, `exact_values.rs`
-  and `exact_ifc2x3.rs` cover exact resolution per release.
+- `ifc-properties/tests/exact.rs`, `exact_quantities.rs`, `exact_values.rs`,
+  `exact_predefined.rs`, `exact_predefined_forms.rs` and `exact_ifc2x3.rs`
+  cover exact resolution per release.

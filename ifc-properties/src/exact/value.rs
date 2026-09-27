@@ -181,6 +181,21 @@ pub(super) fn typed_value(
     property: EntityId,
     value: &Value,
 ) -> Result<ExactTypedValue, ExactPropertyError> {
+    select_member(release, property, "IFCVALUE", value)
+}
+
+/// One present typed member of `select` of `property`, checked as
+/// [`typed_value`] checks an `IfcValue`.
+///
+/// # Errors
+///
+/// As for [`typed_value`].
+pub(super) fn select_member(
+    release: Release,
+    property: EntityId,
+    select: &str,
+    value: &Value,
+) -> Result<ExactTypedValue, ExactPropertyError> {
     match value {
         // A name the release declares neither as a type nor as an entity is
         // foreign to it. A known name that `IfcValue` does not accept (an
@@ -194,7 +209,7 @@ pub(super) fn typed_value(
         Value::Typed {
             type_name,
             value: payload,
-        } if select_accepts_type(release.schema, "IFCVALUE", type_name.as_ref())
+        } if select_accepts_type(release.schema, select, type_name.as_ref())
             && typed_payload_matches(
                 release.schema,
                 type_name.as_ref(),

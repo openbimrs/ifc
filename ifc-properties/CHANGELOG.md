@@ -15,6 +15,36 @@ everything released before per-crate changelogs began.
 ### Added
 
 - `exact_property`, `exact_properties` and `exact_properties_where` resolve
+  the attributes of predefined property sets (#149): `IfcDoorLiningProperties`,
+  `IfcDoorPanelProperties`, `IfcWindowLiningProperties`,
+  `IfcWindowPanelProperties` and every other `IfcPropertySetDefinition`
+  that is neither a property set nor a quantity set, in IFC2X3, IFC4 and
+  IFC4X3. A set's members are the attributes its entity declares below
+  `IfcPropertySetDefinition`, named and typed as the declared release's
+  table has them (`LiningThickness` is `IFCPOSITIVELENGTHMEASURE` in IFC2X3,
+  `IFCNONNEGATIVELENGTHMEASURE` in IFC4). Values keep the provenance of a
+  single value (`property_id` is the set's id) with no explicit unit, so a
+  length resolves to the project unit through `exact_unit`; ratios are
+  their ratio measure. New `ExactValue::Enum` carries an enumeration
+  constant checked against the release's members, and `ExactValue::Entity`
+  an entity reference (`ShapeAspectStyle`) checked but not followed. An
+  unset optional attribute is `Present` with `ExactValue::Null` and its
+  declared type; an unset required one is `MissingValueSlot`. A set that
+  states no `Name` is found under its entity name
+  (`IfcDoorLiningProperties`); such sets of one entity (a door's panel set
+  per leaf) are ambiguous only for a member they share. New
+  `exact_predefined_sets(model, object, entity)` returns every assigned set
+  of that entity with all its attributes (`ExactPredefinedSet`, with
+  `attribute(name)`), occurrence sets first, no override applied, for door
+  operation geometry (#148); a name that is not a predefined set in the
+  release is the new `ExactPropertyError::NotAPredefinedSet`. What cannot
+  be read exactly is still refused with `UnsupportedDefinition`: a
+  selected aggregate attribute (`ReinforcementSectionDefinitions`), and,
+  as before, a set without `Name` that the set name does not select but
+  that has an attribute of the requested name (#66). A predefined set's
+  `Name` that is neither text nor `$` is now `MalformedName` rather than
+  treated as unnamed.
+- `exact_property`, `exact_properties` and `exact_properties_where` resolve
   `IfcPropertyEnumeratedValue`, `IfcPropertyListValue`,
   `IfcPropertyBoundedValue`, `IfcPropertyTableValue` and
   `IfcPropertyReferenceValue` (#150), which they refused with

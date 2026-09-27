@@ -291,17 +291,26 @@ fn every_member_of_a_selected_set_is_validated() {
 }
 
 #[test]
-fn a_predefined_set_refuses_when_one_of_its_own_attributes_is_selected() {
+fn a_predefined_set_lists_its_own_attributes_and_refuses_only_when_unnamed() {
     // IfcDoorLiningProperties (IFC4): IfcRoot's four attributes, then
     // LiningDepth, LiningThickness, ... (17 in all), carried by the wall.
     let lining = "#80=IFCDOORLININGPROPERTIES('0000000000000000000080',$,$,$,\
                   0.1,$,$,$,$,$,$,$,$,$,$,$,$);";
     let m = wall_model(&[lining, &defines(81, &[1], 80)]);
-    let refused = Err(ExactPropertyError::UnsupportedDefinition {
-        entity: EntityId(80),
-        type_name: "IFCDOORLININGPROPERTIES".into(),
-    });
-    assert_eq!(exact_properties(&m, EntityId(1)), refused);
+    // Its 13 own attributes are listed under its entity name (#149).
+    let entries = exact_properties(&m, EntityId(1)).expect("resolves");
+    let lining: Vec<_> = entries
+        .iter()
+        .filter(|entry| entry.property.set_id == EntityId(80))
+        .collect();
+    assert_eq!(lining.len(), 13);
+    assert_eq!(lining[0].name.as_ref(), "LiningDepth");
+    assert_eq!(
+        lining[0].property.property_set.as_ref(),
+        "IfcDoorLiningProperties"
+    );
+    assert_eq!(lining[0].property.value, ExactValue::Real(0.1));
+    assert_eq!(lining[1].property.value, ExactValue::Null);
     // Only the set's own attributes are offered, not those of `IfcRoot`.
     let mut offered = Vec::new();
     let result = exact_properties_where(
@@ -318,7 +327,11 @@ fn a_predefined_set_refuses_when_one_of_its_own_attributes_is_selected() {
     assert!(!offered
         .iter()
         .any(|name| name == "Name" || name == "GlobalId"));
-    // The set states no Name, so a set selector cannot rule it out.
+    // The set states no Name, so a set selector cannot rule it out (#66).
+    let refused = Err(ExactPropertyError::UnsupportedDefinition {
+        entity: EntityId(80),
+        type_name: "IFCDOORLININGPROPERTIES".into(),
+    });
     assert_eq!(
         exact_properties_where(
             &m,
@@ -341,10 +354,10 @@ fn a_predefined_set_refuses_when_one_of_its_own_attributes_is_selected() {
         ),
         Ok(Vec::new())
     );
-    assert_eq!(
-        exact_properties_where(&m, EntityId(1), |_| true, |name| name == "LiningDepth"),
-        refused
-    );
+    let depth = exact_properties_where(&m, EntityId(1), |_| true, |name| name == "LiningDepth")
+        .expect("resolves");
+    assert_eq!(depth.len(), 1);
+    assert_eq!(depth[0].property.property_set.as_ref(), "Lining");
 }
 
 #[test]

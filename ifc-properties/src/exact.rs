@@ -9,6 +9,7 @@ mod assignment;
 mod composite;
 mod enumerate;
 mod measure;
+mod predefined;
 mod quantity;
 mod refs;
 mod release;
@@ -24,6 +25,7 @@ use ifc_schema::SchemaVersion;
 
 use assignment::assigned_sets;
 pub use enumerate::{exact_properties, exact_properties_where, ExactPropertyEntry};
+pub use predefined::{exact_predefined_sets, ExactPredefinedSet};
 use release::validate_model;
 use set::find_property;
 pub use unit::{exact_unit, ExactUnit, ExactUnitError};
@@ -92,6 +94,14 @@ pub enum ExactValue {
     Table(ExactTableValue),
     /// An `IfcPropertyReferenceValue`: its usage name and target entity.
     Reference(ExactReferenceValue),
+    /// An enumeration constant held by a predefined set's attribute, as
+    /// written without its dots, e.g. `SWINGING` for
+    /// `IfcDoorPanelProperties.PanelOperation`; always a member of the
+    /// declared enumeration in the bound release.
+    Enum(Arc<str>),
+    /// An entity held by a predefined set's attribute, e.g. the
+    /// `IfcShapeAspect` of `ShapeAspectStyle`; checked, not followed.
+    Entity(ExactEntityRef),
 }
 
 /// A uniquely resolved property with IFC identity and provenance.
@@ -99,13 +109,17 @@ pub enum ExactValue {
 pub struct ExactProperty {
     /// Whether the value came from the occurrence or was inherited from its type.
     pub source: ExactSource,
-    /// The owning `IfcPropertySet.Name` or `IfcElementQuantity.Name`.
+    /// The owning `IfcPropertySet.Name` or `IfcElementQuantity.Name`; for a
+    /// predefined set its `Name`, or its entity name in the release's
+    /// spelling (`IfcDoorLiningProperties`) when it states none.
     pub property_set: Arc<str>,
-    /// Entity id of the `IfcPropertySet` or `IfcElementQuantity`.
+    /// Entity id of the `IfcPropertySet`, `IfcElementQuantity` or
+    /// predefined set.
     pub set_id: EntityId,
     /// Entity id of the `IfcSimpleProperty` (single, enumerated, list,
     /// bounded, table or reference value), or of the simple
-    /// `IfcPhysicalQuantity` (e.g. `IfcQuantityLength`).
+    /// `IfcPhysicalQuantity` (e.g. `IfcQuantityLength`). For an attribute of
+    /// a predefined set, which is no entity of its own, the set's id.
     pub property_id: EntityId,
     /// Declared IFC value type (for example `IFCINTEGER` or `IFCLENGTHMEASURE`).
     ///
@@ -114,7 +128,11 @@ pub struct ExactProperty {
     ///
     /// For a quantity it is the declared type of its value attribute in the
     /// bound release (`LengthValue : IfcLengthMeasure` gives
-    /// `IFCLENGTHMEASURE`), since a quantity stores a bare number.
+    /// `IFCLENGTHMEASURE`), since a quantity stores a bare number. For a
+    /// predefined set's attribute it is the attribute's declared type
+    /// (`LiningDepth : IfcPositiveLengthMeasure` gives
+    /// `IFCPOSITIVELENGTHMEASURE`), also when the value is `$`, except that a
+    /// select-typed attribute reports the member type the file wrote.
     pub value_type: Option<Arc<str>>,
     /// The explicit unit that applies to every value, if stated:
     /// `IfcPropertySingleValue.Unit`, `IfcPropertyListValue.Unit`,
@@ -133,14 +151,12 @@ pub struct ExactProperty {
 pub enum ExactResolution {
     /// The property was found exactly once across occurrence and inherited sets.
     Present(ExactProperty),
-    /// No occurrence or inherited property set or quantity set carried a
-    /// matching property or quantity; this is a proven absence, not a lookup
-    /// failure.
+    /// No occurrence or inherited property set, quantity set or predefined
+    /// set carried a matching property, quantity or attribute; this is a
+    /// proven absence, not a lookup failure.
     ///
-    /// A predefined property set (`IfcDoorLiningProperties` and the like)
-    /// whose own attribute has the requested name is refused with
-    /// [`ExactPropertyError::UnsupportedDefinition`], never skipped into an
-    /// `Absent` (#66).
+    /// A predefined set's attribute that is `$` is not absent: it is
+    /// `Present` with [`ExactValue::Null`].
     Absent,
 }
 
@@ -254,10 +270,12 @@ pub enum ExactPropertyError {
         attribute: &'static str,
     },
     /// A `RelatingPropertyDefinition` reference resolves to an entity that
-    /// is not an `IfcPropertySetDefinition`, or to a predefined property set
-    /// whose own attribute carries the requested name: its value lives in an
-    /// entity attribute this resolver does not read, so absence cannot be
-    /// proven.
+    /// is not an `IfcPropertySetDefinition`; or a predefined property set
+    /// holds the requested name in an attribute this resolver cannot read
+    /// exactly (an aggregate, such as
+    /// `IfcReinforcementDefinitionProperties.ReinforcementSectionDefinitions`);
+    /// or a predefined set that states no `Name`, and so cannot be ruled out
+    /// by a set name, has an attribute of the requested name (#66).
     UnsupportedDefinition {
         /// The rejected entity.
         entity: EntityId,
@@ -337,6 +355,16 @@ pub enum ExactPropertyError {
         /// for a repeated member of a unique list.
         rule: &'static str,
     },
+    /// The entity name given to [`exact_predefined_sets`] is not a
+    /// predefined property set in the declared release: not declared there
+    /// at all, or an `IfcPropertySet`, a quantity set, or one of their
+    /// supertypes.
+    NotAPredefinedSet {
+        /// The entity name as requested.
+        name: Arc<str>,
+        /// The release the header declares.
+        schema: SchemaVersion,
+    },
     /// A proper subtype of `IfcRelDefinesByProperties` or
     /// `IfcRelDefinesByType` relates the queried object, such as IFC2X3
     /// `IfcRelOverridesProperties`. Its semantics change which value applies,
@@ -381,6 +409,13 @@ impl std::error::Error for ExactPropertyError {}
 /// Single, enumerated, list, bounded, table and reference values resolve,
 /// the last five as composite [`ExactValue`]s; an `IfcComplexProperty` is
 /// refused.
+///
+/// A predefined property set (`IfcDoorLiningProperties` and the like) is
+/// searched too: its members are the attributes its entity declares, by
+/// schema name (`LiningDepth`), and its set name is its `Name`, or its
+/// entity name (`IfcDoorLiningProperties`) when it states none. A door with
+/// one `IfcDoorPanelProperties` per leaf is ambiguous here; list such sets
+/// with [`exact_predefined_sets`].
 ///
 /// The model is resolved against the single release its `FILE_SCHEMA`
 /// declares, IFC2X3, IFC4 or IFC4X3 (see [`exact_schema`]); every domain,

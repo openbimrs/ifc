@@ -38,8 +38,19 @@ Allowed production dependencies: ifc-model and schema metadata; no geometry crat
 - Exact scalar values preserve their declared IFC value type and explicit unit identity. `IfcLogical` remains three-state and `IfcBinary` retains its payload; downstream adapters must reject categories or units they cannot project without loss.
 - `exact_property` searches quantity sets like property sets. It resolves
   simple quantities with the release's declared value measure. It never
-  skips an `IfcPropertySetDefinition` that could hold the requested name:
-  a predefined set whose own attribute carries it is refused.
+  skips an `IfcPropertySetDefinition` that could hold the requested name.
+- A predefined set's members are the attributes its entity declares below
+  `IfcPropertySetDefinition`, read by name from the bound release's table
+  (`exact/predefined.rs`) and typed by their declaration: defined and
+  simple types as scalars, enumerations against the release's members,
+  selects as the member written, entities as checked unfollowed references.
+  `$` is `Null` only where `OPTIONAL`; an aggregate attribute is refused
+  when selected. Its set name is `Name`, or its entity name when it states
+  none. An unnamed set outside the set selection still refuses when one of
+  its attributes is selected (it cannot be ruled out by name, #66), and
+  unnamed sets of one entity are ambiguous only for a member they share, so
+  a door with one `IfcDoorPanelProperties` per leaf stays answerable;
+  `exact_predefined_sets` lists them all without applying an override.
 - `exact_unit` binds to the same release as `exact_property`. SI and unit-type dimensions come from that release's `IfcDimensionsForSiUnit`/`IfcCorrectDimensions` (IFC2X3 differs from IFC4/IFC4X3 for the farad). A measure maps to a unit type only by the release's own enums and defined-type chain. Unknown prefixes, duplicate project units, cycles, dimension contradictions and offset units are errors, never defaults.
 - Nested `IfcComplexProperty`/`IfcPhysicalComplexQuantity` members are read
   only through `src/nesting.rs`: a tracked path (cycles of any length, not

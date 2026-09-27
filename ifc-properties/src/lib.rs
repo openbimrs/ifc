@@ -47,11 +47,11 @@ mod value;
 
 pub use error::{PropertyAnomaly, PropertyError, PropertyResult};
 pub use exact::{
-    exact_properties, exact_properties_where, exact_property, exact_schema, exact_unit,
-    ExactBoundedValue, ExactEntityRef, ExactEnumeratedValue, ExactEnumeration, ExactLogical,
-    ExactProperty, ExactPropertyEntry, ExactPropertyError, ExactReferenceValue, ExactResolution,
-    ExactSource, ExactTableRow, ExactTableValue, ExactTypedValue, ExactUnit, ExactUnitError,
-    ExactValue,
+    exact_predefined_sets, exact_properties, exact_properties_where, exact_property, exact_schema,
+    exact_unit, ExactBoundedValue, ExactEntityRef, ExactEnumeratedValue, ExactEnumeration,
+    ExactLogical, ExactPredefinedSet, ExactProperty, ExactPropertyEntry, ExactPropertyError,
+    ExactReferenceValue, ExactResolution, ExactSource, ExactTableRow, ExactTableValue,
+    ExactTypedValue, ExactUnit, ExactUnitError, ExactValue,
 };
 /// The IFC release an exact resolution binds to (re-exported from `ifc-schema`).
 pub use ifc_schema::SchemaVersion;
