@@ -14,7 +14,7 @@ Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP file
 | Latest release | not released (`main` is 0.1.0) |
 | Registries | not published yet; build from source |
 | API documentation | [rustdoc](/ifc/api/rustdoc/openbim_ifc_capi/index.html) |
-| Source | [`openbim-ifc-capi/`](https://github.com/openbimrs/ifc/tree/main/openbim-ifc-capi) |
+| Source | [`crates/openbim-ifc-capi/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-capi) |
 
 ## Overview
 
@@ -56,4 +56,4 @@ with a `SAFETY` comment.
 
 ## Changes
 
-Full history: [`openbim-ifc-capi/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/openbim-ifc-capi/CHANGELOG.md)
+Full history: [`crates/openbim-ifc-capi/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-capi/CHANGELOG.md)

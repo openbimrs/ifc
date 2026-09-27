@@ -1,0 +1,53 @@
+# ifc-structural instructions
+
+Purpose: Bounded borrowed structural-analysis views, relationship traversal, and selected transaction-staged authoring.
+
+Follow `../../AGENTS.md`.
+
+- `IfcStructuralLoadGroup` and `IfcStructuralLoadCase` authoring, plus the
+  `Varying` forms of the curve and surface members. The case form's inherited
+  `PredefinedType` is pinned to `LOAD_CASE` by `IsLoadCasePredefinedType`, so
+  it is not a caller field; `HasObjectType` spans `PredefinedType`,
+  `ActionType` and `ActionSource` together, not one of them.
+- `SuitablePredefinedType` on `IfcStructuralCurveAction`: `EQUIDISTANT` is a
+  member of the shared activity-type enum but is excluded for the action form.
+
+## Boundary
+
+Allowed production dependencies: ifc-model and schema metadata only; no geometry crate.
+- `LoadDraft::SingleDisplacement` stages `IfcStructuralLoadSingleDisplacement`,
+  the distortion form minus its trailing `Distortion` slot.
+- `stage_connection` resolves its axis attribute per entity: a curve *member*
+  names it `Axis`, a curve *connection* `AxisDirection`. Hardcoding either
+  made the other unauthorable.
+
+## Module ownership
+
+- `model.rs`: analysis models/load/result groups
+- `member.rs`: curve/surface/varying members
+- `connection.rs`: point/curve/surface connections
+- `condition.rs`: boundary/connection conditions
+- `load.rs`: load value families
+- `action.rs`: structural activities/actions
+- `result.rs`: reactions/results
+- `boundary.rs`: references to structural geometry/topology IDs
+- `query.rs`: bounded model graph traversal
+- `authoring.rs` and `authoring/`: schema-resolved transaction staging for
+  selected models, loads, members, connections, actions, and relationships
+- `error.rs`: inconsistent structural semantics
+
+## Invariants
+
+- This crate references geometry/profile entities by EntityId; it does not evaluate shape or link axiolid crates.
+- Authored section properties and computed section properties are distinguished.
+- Solvers, FEM meshes, and numerical analysis are application/adapter capabilities, not IFC views.
+- Construction-resource planning belongs to `ifc-resource`; structural-analysis entities are not construction resources.
+
+Keep entity views, relationship traversal, mutation, and domain algorithms in
+separate files. New child modules remain crate-private until a real public
+contract is ready for deliberate re-export.
+
+## Verification
+
+Run targeted tests/clippy, then the package architecture/context gates. Add
+fixtures and cycle/invalid-input cases for every relationship traversal.

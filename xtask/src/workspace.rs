@@ -84,6 +84,19 @@ impl Workspace {
         names
     }
 
+    /// The directory holding member `name`'s `Cargo.toml`, as cargo reports it.
+    ///
+    /// Crates live in `crates/`, tooling at the root; asking cargo keeps every
+    /// caller independent of that layout.
+    pub(crate) fn crate_dir(&self, name: &str) -> Option<PathBuf> {
+        self.metadata
+            .packages
+            .iter()
+            .find(|package| package.name == name)
+            .and_then(|package| package.manifest_path.parent())
+            .map(|dir| dir.as_std_path().to_path_buf())
+    }
+
     /// Every non-tooling member, sorted by name, with validated metadata.
     ///
     /// A crate without `[package.metadata.openbim]`, or with a status or group

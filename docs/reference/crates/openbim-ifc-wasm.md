@@ -14,7 +14,7 @@ WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from J
 | Latest release | 0.1.1 (2026-09-26) |
 | Registries | [npm `@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/openbim_ifc_wasm/index.html) |
-| Source | [`openbim-ifc-wasm/`](https://github.com/openbimrs/ifc/tree/main/openbim-ifc-wasm) |
+| Source | [`crates/openbim-ifc-wasm/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-wasm) |
 
 ## Overview
 
@@ -51,4 +51,4 @@ provenance. The JavaScript API is unchanged.
 - The crate is not published to crates.io (`publish = false`). The package
   ships on npm as `@openbim/ifc` only.
 
-Full history: [`openbim-ifc-wasm/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/openbim-ifc-wasm/CHANGELOG.md)
+Full history: [`crates/openbim-ifc-wasm/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-wasm/CHANGELOG.md)

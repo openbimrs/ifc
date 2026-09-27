@@ -24,6 +24,20 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
+
+def manifests() -> list[Path]:
+    """Every workspace member manifest: the crates in `crates/`, plus root
+    tooling such as `xtask`."""
+    return sorted(ROOT.glob("crates/*/Cargo.toml")) + sorted(ROOT.glob("*/Cargo.toml"))
+
+
+def crate_dir(crate: str) -> Path:
+    """The directory holding `crate`, named after it."""
+    for manifest in manifests():
+        if manifest.parent.name == crate:
+            return manifest.parent
+    raise SystemExit(f"{crate}: no crate directory under {ROOT}")
+
 # Measured ceilings. A crate may never exceed its entry; lowering one is the
 # point of the exercise. Reaching zero means the crate can move onto
 # [workspace.lints] and leave this table for good.
@@ -38,7 +52,7 @@ def enforced_crates() -> list[str]:
     such as `xtask` has nothing to measure and is skipped.
     """
     found = []
-    for manifest in sorted(ROOT.glob("*/Cargo.toml")):
+    for manifest in manifests():
         has_lib = (manifest.parent / "src" / "lib.rs").exists()
         if has_lib and "[lints]" in manifest.read_text():
             found.append(manifest.parent.name)
@@ -55,7 +69,7 @@ def measure(crate: str) -> int:
     default-feature measurement, so its undocumented items would go uncounted
     and the crate could be promoted while still holding real debt.
     """
-    lib = ROOT / crate / "src" / "lib.rs"
+    lib = crate_dir(crate) / "src" / "lib.rs"
     if lib.exists():
         lib.touch()
     result = subprocess.run(
@@ -88,7 +102,11 @@ def main() -> int:
     wins: list[str] = []
 
     enforced = enforced_crates()
-    for manifest in sorted(ROOT.glob("*/Cargo.toml")):
+    # A layout change that hides every crate from the glob must not pass.
+    libraries = [m for m in manifests() if (m.parent / "src" / "lib.rs").exists()]
+    if len(libraries) < 18:
+        failures.append(f"  found only {len(libraries)} library crates; did the layout move?")
+    for manifest in manifests():
         crate = manifest.parent.name
         if (manifest.parent / "src" / "lib.rs").exists() and crate not in enforced + list(BUDGET):
             failures.append(

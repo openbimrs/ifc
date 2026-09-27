@@ -26,11 +26,11 @@ use crate::workspace::Workspace;
 
 /// Directories whose files may define snippets.
 const SOURCES: &[&str] = &[
-    "openbim-ifc/tests",
-    "ifc-geometry/tests",
-    "openbim-ifc-wasm/tests/js",
-    "openbim-ifc-py/tests/python",
-    "openbim-ifc-capi/tests/c",
+    "crates/openbim-ifc/tests",
+    "crates/ifc-geometry/tests",
+    "crates/openbim-ifc-wasm/tests/js",
+    "crates/openbim-ifc-py/tests/python",
+    "crates/openbim-ifc-capi/tests/c",
 ];
 
 const LINTED: &[&str] = &[

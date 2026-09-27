@@ -29,7 +29,11 @@ pub(super) fn generate(workspace: &Workspace) -> Result<Output, String> {
     let members = workspace.publishable();
     let missing: Vec<&String> = members
         .iter()
-        .filter(|name| !workspace.root.join(name).join("CHANGELOG.md").exists())
+        .filter(|name| {
+            !workspace
+                .crate_dir(name)
+                .is_some_and(|dir| dir.join("CHANGELOG.md").exists())
+        })
         .collect();
     if !missing.is_empty() {
         let names: Vec<&str> = missing.iter().map(|name| name.as_str()).collect();
@@ -50,9 +54,12 @@ fn assemble(workspace: &Workspace, members: &[String]) -> Result<String, String>
     let mut order: Vec<String> = Vec::new();
     let mut by_version: BTreeMap<String, Vec<(String, String, String)>> = BTreeMap::new();
     for name in members {
-        let path = workspace.root.join(name).join("CHANGELOG.md");
+        let path = workspace
+            .crate_dir(name)
+            .ok_or_else(|| format!("{name} is not a workspace member"))?
+            .join("CHANGELOG.md");
         let text = std::fs::read_to_string(&path)
-            .map_err(|error| format!("cannot read {name}/CHANGELOG.md: {error}"))?;
+            .map_err(|error| format!("cannot read {}: {error}", path.display()))?;
         for section in parse(&text) {
             // An empty Unreleased section is the normal resting state; listing
             // the crate with nothing under it is just noise.
@@ -168,7 +175,7 @@ fn is_link_reference(line: &str) -> bool {
 
 /// Rewrite repo-relative `[text](target)` links to absolute GitHub URLs.
 ///
-/// A per-crate changelog is read in the repository, where `../CHANGELOG.md`
+/// A per-crate changelog is read in the repository, where `../../CHANGELOG.md`
 /// resolves, and on the docs site, where it does not and VitePress fails the
 /// build on the dead link.
 pub(crate) fn absolutise(body: &str) -> String {

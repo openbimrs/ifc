@@ -46,7 +46,7 @@ meaningful in the first place.
 
 The schema is not silent about p-curve dimensionality in general. It
 declares `DimIs2D : ReferenceCurve.Dim = 2` on `IfcPcurve`, which the
-executable inventory in `ifc-geometry/data/ifc4-where-rules.tsv` records.
+executable inventory in `crates/ifc-geometry/data/ifc4-where-rules.tsv` records.
 The gap is narrower than it first appears: the reference curve must be 2D,
 but nothing constrains the dimensionality of the *placement* that positions
 a conic reference curve. A 3D placement can therefore sit under a curve

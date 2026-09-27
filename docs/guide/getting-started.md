@@ -27,7 +27,7 @@ cargo add openbim-ifc --no-default-features --features step
 ```
 
 compiles no domain code and no geometry stack, while still round-tripping
-every entity in the file. `openbim-ifc/tests/thin_build.rs` enforces that
+every entity in the file. `crates/openbim-ifc/tests/thin_build.rs` enforces that
 property. It reads the facade's optional dependencies from the manifest, so
 a new domain cannot slip into the thin build unnoticed.
 

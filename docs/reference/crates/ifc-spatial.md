@@ -15,7 +15,7 @@ IFC spatial containment and objectified relationship traversal: project, site, b
 | Registries | [crates.io `ifc-spatial`](https://crates.io/crates/ifc-spatial) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `spatial` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_spatial/index.html) · [docs.rs](https://docs.rs/ifc-spatial) |
-| Source | [`ifc-spatial/`](https://github.com/openbimrs/ifc/tree/main/ifc-spatial) |
+| Source | [`crates/ifc-spatial/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-spatial) |
 
 ## Overview
 
@@ -44,4 +44,4 @@ Latest release, 0.2.2 (2026-09-27):
   than a new field so that `SpaceBoundary`, which has only public fields,
   keeps its struct-literal construction and this change stays additive.
 
-Full history: [`ifc-spatial/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-spatial/CHANGELOG.md)
+Full history: [`crates/ifc-spatial/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-spatial/CHANGELOG.md)

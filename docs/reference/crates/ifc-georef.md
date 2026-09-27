@@ -15,7 +15,7 @@ Georeferencing: map conversion, coordinate reference systems, site placement.
 | Registries | [crates.io `ifc-georef`](https://crates.io/crates/ifc-georef) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `georef` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_georef/index.html) · [docs.rs](https://docs.rs/ifc-georef) |
-| Source | [`ifc-georef/`](https://github.com/openbimrs/ifc/tree/main/ifc-georef) |
+| Source | [`crates/ifc-georef/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-georef) |
 
 ## Overview
 
@@ -40,4 +40,4 @@ Latest release, 0.3.0 (2026-09-23):
   `axiolid_core::Transform3`, so the major Axiolid version is part of this
   crate's public API. No code change.
 
-Full history: [`ifc-georef/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-georef/CHANGELOG.md)
+Full history: [`crates/ifc-georef/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-georef/CHANGELOG.md)

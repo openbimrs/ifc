@@ -15,7 +15,7 @@ Bounded IFC4 approval resource semantics.
 | Registries | [crates.io `ifc-approval`](https://crates.io/crates/ifc-approval) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `approval` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_approval/index.html) · [docs.rs](https://docs.rs/ifc-approval) |
-| Source | [`ifc-approval/`](https://github.com/openbimrs/ifc/tree/main/ifc-approval) |
+| Source | [`crates/ifc-approval/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-approval) |
 
 ## Overview
 
@@ -37,4 +37,4 @@ Latest release, 0.2.0 (2026-09-22):
 First release under per-crate versioning. See the
 that produced this version.
 
-Full history: [`ifc-approval/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-approval/CHANGELOG.md)
+Full history: [`crates/ifc-approval/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-approval/CHANGELOG.md)

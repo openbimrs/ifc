@@ -55,7 +55,7 @@ See [Python](/bindings/python).
 ## C and C++
 
 The C ABI is not packaged yet. Build it from a checkout and link the static
-or shared library against `openbim-ifc-capi/include/openbim_ifc.h`:
+or shared library against `crates/openbim-ifc-capi/include/openbim_ifc.h`:
 
 ```bash
 cargo build -p openbim-ifc-capi --release

@@ -15,7 +15,7 @@ Property sets, quantities, and unit resolution. No geometry.
 | Registries | [crates.io `ifc-properties`](https://crates.io/crates/ifc-properties) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_properties/index.html) · [docs.rs](https://docs.rs/ifc-properties) |
-| Source | [`ifc-properties/`](https://github.com/openbimrs/ifc/tree/main/ifc-properties) |
+| Source | [`crates/ifc-properties/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-properties) |
 
 ## Overview
 
@@ -170,4 +170,4 @@ Latest release, 0.4.1 (2026-09-27):
 - The `property` documentation claimed over-deep nesting yields
   `PropertyValue::Unsupported`; it never did. It now states what happens.
 
-Full history: [`ifc-properties/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-properties/CHANGELOG.md)
+Full history: [`crates/ifc-properties/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-properties/CHANGELOG.md)

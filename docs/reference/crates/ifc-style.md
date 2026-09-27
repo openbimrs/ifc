@@ -15,7 +15,7 @@ Presentation: styles, colours, textures, layers, annotation.
 | Registries | [crates.io `ifc-style`](https://crates.io/crates/ifc-style) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `style` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_style/index.html) · [docs.rs](https://docs.rs/ifc-style) |
-| Source | [`ifc-style/`](https://github.com/openbimrs/ifc/tree/main/ifc-style) |
+| Source | [`crates/ifc-style/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-style) |
 
 ## Overview
 
@@ -53,4 +53,4 @@ Latest release, 0.3.0 (2026-09-23):
   reference, so it returned an error on every conforming file, including
   those this crate writes itself.
 
-Full history: [`ifc-style/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-style/CHANGELOG.md)
+Full history: [`crates/ifc-style/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-style/CHANGELOG.md)

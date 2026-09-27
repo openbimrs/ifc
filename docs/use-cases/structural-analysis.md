@@ -88,7 +88,7 @@ IFC construction resources describe labour, equipment, material/product capacity
 
 ## Evidence
 
-The contract is exercised by `ifc-structural/tests/`: cross-version layouts,
+The contract is exercised by `crates/ifc-structural/tests/`: cross-version layouts,
 strict references, typed condition and varying-member projections, action/load
 groups, relationship traversal, rejected authoring, atomic commit, and STEP
 write/read round-trip. Boundary stiffness values are preserved literally; the

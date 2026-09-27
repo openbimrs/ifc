@@ -1,4 +1,4 @@
-"""Generate ifc-element-type/src/table/ from the IFC4X3 ADD2 schema.
+"""Generate crates/ifc-element-type/src/table/ from the IFC4X3 ADD2 schema.
 
     python3 scripts/gen-element-types.py
 
@@ -95,7 +95,7 @@ def row(t):
 # schema can grow a shard without tripping it.
 SHARDS = [("a_c", "A", "C"), ("d_f", "D", "F"), ("g_k", "G", "K"), ("l_p", "L", "P"), ("q_s", "Q", "S"), ("t_z", "T", "Z")]
 
-DIR = ROOT / "ifc-element-type/src/table"
+DIR = ROOT / "crates/ifc-element-type/src/table"
 DIR.mkdir(parents=True, exist_ok=True)
 
 def shard_of(name):

@@ -4,7 +4,7 @@ Canonical repository: <https://github.com/openbimrs/ifc>
 Integration repository: <https://github.com/openbimrs/openbim>
 
 Read `AGENTS.md` before changing the repository and the nearest nested
-`AGENTS.md` before editing a crate. Keep this repository independently buildable;
+`AGENTS.md` before editing a crate; every crate lives in `crates/<name>`. Keep this repository independently buildable;
 the parent OpenBIM.rs workspace pins it as a submodule but is not required for
 standalone development.
 

@@ -5,7 +5,7 @@ The 2D approval-plan guide (docs/use-cases/2d-approval-plans.md) promises that
 annotation, presentation and library data survive a read/edit/write cycle and
 read back through typed views. This file is the example a reader downloads to
 check that claim. It is published from `docs/public/fixtures/`, and
-`openbim-ifc/tests/docs_examples.rs` reads the published file and asserts the
+`crates/openbim-ifc/tests/docs_examples.rs` reads the published file and asserts the
 entities the guide names.
 
 One fire-wall symbol, the kind a German permit plan carries:

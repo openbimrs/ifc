@@ -15,7 +15,7 @@ Classification systems, document references, libraries, external references.
 | Registries | [crates.io `ifc-classification`](https://crates.io/crates/ifc-classification) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `classification` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_classification/index.html) · [docs.rs](https://docs.rs/ifc-classification) |
-| Source | [`ifc-classification/`](https://github.com/openbimrs/ifc/tree/main/ifc-classification) |
+| Source | [`crates/ifc-classification/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-classification) |
 
 ## Overview
 
@@ -85,4 +85,4 @@ Latest release, 0.2.1 (2026-09-25):
   classifications, and every classification system (5) and reference (62)
   reads, IFC2X3 calendar edition dates included.
 
-Full history: [`ifc-classification/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-classification/CHANGELOG.md)
+Full history: [`crates/ifc-classification/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-classification/CHANGELOG.md)

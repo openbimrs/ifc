@@ -264,12 +264,12 @@ the exact property resolution, not IDS parsing or IDS reporting.
 
 ## Evidence
 
-- `openbim-ifc/tests/docs_model_checking.rs` runs every snippet on this page,
+- `crates/openbim-ifc/tests/docs_model_checking.rs` runs every snippet on this page,
   including a truncated report, a refused file without a declared schema, and
   a refused lookup on a dangling property relationship.
-- `ifc-validate/tests/` covers the native rules and a corpus run;
-  `ifc-validate/src/where_rule/registry.rs` is the registry the coverage table
+- `crates/ifc-validate/tests/` covers the native rules and a corpus run;
+  `crates/ifc-validate/src/where_rule/registry.rs` is the registry the coverage table
   is generated from.
-- `ifc-properties/tests/exact.rs`, `exact_quantities.rs`, `exact_values.rs`,
+- `crates/ifc-properties/tests/exact.rs`, `exact_quantities.rs`, `exact_values.rs`,
   `exact_predefined.rs`, `exact_predefined_forms.rs` and `exact_ifc2x3.rs`
   cover exact resolution per release.

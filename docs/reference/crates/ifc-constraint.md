@@ -15,7 +15,7 @@ Bounded IFC4 metric, objective, and constraint relationships.
 | Registries | [crates.io `ifc-constraint`](https://crates.io/crates/ifc-constraint) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `constraint` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_constraint/index.html) · [docs.rs](https://docs.rs/ifc-constraint) |
-| Source | [`ifc-constraint/`](https://github.com/openbimrs/ifc/tree/main/ifc-constraint) |
+| Source | [`crates/ifc-constraint/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-constraint) |
 
 ## Overview
 
@@ -36,4 +36,4 @@ Latest release, 0.2.0 (2026-09-22):
 First release under per-crate versioning. See the
 that produced this version.
 
-Full history: [`ifc-constraint/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-constraint/CHANGELOG.md)
+Full history: [`crates/ifc-constraint/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-constraint/CHANGELOG.md)

@@ -32,7 +32,7 @@ That is a design commitment, not a temporary limitation. Since the
 algorithm. Geometry algorithms
 belong to a format-neutral kernel so they are not re-implemented per file
 format, and so the IFC crate never grows a dependency on a CPU or GPU provider.
-`ifc-geometry/tests/no_backend_dependency.rs` enforces the second half.
+`crates/ifc-geometry/tests/no_backend_dependency.rs` enforces the second half.
 
 ## Consequences you must plan for
 
@@ -153,7 +153,7 @@ have refused over, and nothing is ever dropped without being reported.
 
 **Off by default, and checked.** `tests/kernel_free_build.rs` asserts that the
 `--no-default-features` and default columns link zero provider crates, and that
-`--features compile` links them. `ifc-model/tests/package_architecture.rs`
+`--features compile` links them. `crates/ifc-model/tests/package_architecture.rs`
 walks the feature graph from `default` so a provider cannot arrive through a
 default-enabled feature edge.
 
@@ -172,7 +172,7 @@ conversion twice.
 
 Every Axiolid crate is a published crates.io release, named once in the root
 `Cargo.toml` and resolved exactly by the committed `Cargo.lock`, so geometry
-behaviour is reproducible across builds. `ifc-model/tests/package_architecture.rs`
+behaviour is reproducible across builds. `crates/ifc-model/tests/package_architecture.rs`
 (`the_kernel_is_consumed_as_a_published_release`) rejects a git or path
 dependency on the kernel; the
 [contributing guide](/guide/contributing#developing-against-an-unreleased-axiolid)

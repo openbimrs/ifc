@@ -15,7 +15,7 @@ Construction resources: labour, equipment, material, crew, subcontract.
 | Registries | [crates.io `ifc-resource`](https://crates.io/crates/ifc-resource) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `resource` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_resource/index.html) · [docs.rs](https://docs.rs/ifc-resource) |
-| Source | [`ifc-resource/`](https://github.com/openbimrs/ifc/tree/main/ifc-resource) |
+| Source | [`crates/ifc-resource/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-resource) |
 
 ## Overview
 
@@ -42,4 +42,4 @@ Latest release, 0.2.0 (2026-09-22):
 First release under per-crate versioning. See the
 that produced this version.
 
-Full history: [`ifc-resource/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-resource/CHANGELOG.md)
+Full history: [`crates/ifc-resource/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-resource/CHANGELOG.md)

@@ -107,6 +107,14 @@ def current_version(crate: str) -> str:
     raise SystemExit(f"not a workspace member: {crate}")
 
 
+def crate_dir(crate: str) -> Path:
+    """The directory holding `crate`'s Cargo.toml, as cargo reports it."""
+    for pkg in metadata()["packages"]:
+        if pkg["name"] == crate:
+            return Path(pkg["manifest_path"]).parent
+    raise SystemExit(f"not a workspace member: {crate}")
+
+
 def published_versions(crate: str) -> list[str]:
     """Versions live on crates.io, via the sparse index.
 
@@ -188,7 +196,7 @@ def lift_workspace_requirement(crate: str, new: str) -> None:
 
 def apply_bump(crate: str, new: str) -> None:
     """Write the new version into the manifest and open a changelog section."""
-    manifest = ROOT / crate / "Cargo.toml"
+    manifest = crate_dir(crate) / "Cargo.toml"
     text = manifest.read_text(encoding="utf-8")
     if re.search(r"(?m)^version\.workspace\s*=\s*true", text):
         raise SystemExit(
@@ -211,7 +219,7 @@ def apply_bump(crate: str, new: str) -> None:
     if is_breaking(old, new):
         lift_workspace_requirement(crate, new)
         for dep in dependents(crate):
-            dm = ROOT / dep / "Cargo.toml"
+            dm = crate_dir(dep) / "Cargo.toml"
             dt = dm.read_text(encoding="utf-8")
             nt = re.sub(
                 r"(%s\s*=\s*\{[^}]*version\s*=\s*)\"[^\"]+\"" % re.escape(crate),
@@ -223,7 +231,7 @@ def apply_bump(crate: str, new: str) -> None:
                 dm.write_text(nt, encoding="utf-8")
                 print(f"  updated requirement in {dep}")
 
-    changelog = ROOT / crate / "CHANGELOG.md"
+    changelog = crate_dir(crate) / "CHANGELOG.md"
     ct = changelog.read_text(encoding="utf-8")
     anchor = "## [Unreleased]\n"
     if anchor not in ct:
@@ -244,8 +252,8 @@ def apply_bump(crate: str, new: str) -> None:
 # Registries a crate's tag releases to, beyond crates.io. The version in each
 # manifest must equal the crate's, so one tag names one release everywhere.
 EXTRA_REGISTRIES = {
-    "openbim-ifc-wasm": ("npm", "openbim-ifc-wasm/npm/package.json"),
-    "openbim-ifc-py": ("pypi", "openbim-ifc-py/pyproject.toml"),
+    "openbim-ifc-wasm": ("npm", "crates/openbim-ifc-wasm/npm/package.json"),
+    "openbim-ifc-py": ("pypi", "crates/openbim-ifc-py/pyproject.toml"),
 }
 TAG = re.compile(r"^(?P<crate>[a-z0-9][a-z0-9-]*)-v(?P<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)$")
 

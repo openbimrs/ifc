@@ -12,12 +12,12 @@ use crate::rust_source::{self, Consts};
 use crate::text::is_word;
 use crate::workspace::Workspace;
 
-const DISPATCH: &str = "ifc-geometry/src/lower/dispatch.rs";
-const PROFILE: &str = "ifc-geometry/src/lower/profile.rs";
+const DISPATCH: &str = "crates/ifc-geometry/src/lower/dispatch.rs";
+const PROFILE: &str = "crates/ifc-geometry/src/lower/profile.rs";
 /// Correctly-cased entity names, already asserted against the schema.
 /// Re-deriving casing from upper-case STEP names would need a word-splitting
 /// heuristic that fails silently on the next entity.
-const CASING: &str = "ifc-geometry/tests/schema_coverage.rs";
+const CASING: &str = "crates/ifc-geometry/tests/schema_coverage.rs";
 
 /// One row of the `PARTIAL` variant catalogue.
 struct Variant {

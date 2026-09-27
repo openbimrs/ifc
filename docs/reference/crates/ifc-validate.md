@@ -15,7 +15,7 @@ Schema conformance: WHERE rules, cardinality, GUID and reference integrity.
 | Registries | [crates.io `ifc-validate`](https://crates.io/crates/ifc-validate) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `validate` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_validate/index.html) · [docs.rs](https://docs.rs/ifc-validate) |
-| Source | [`ifc-validate/`](https://github.com/openbimrs/ifc/tree/main/ifc-validate) |
+| Source | [`crates/ifc-validate/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-validate) |
 
 ## Overview
 
@@ -128,4 +128,4 @@ variant, three rule ids are renamed, and `Budget::max_depth` is removed.
   nothing and every such slot went unchecked; an integer in a `Name` slot
   was accepted.
 
-Full history: [`ifc-validate/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-validate/CHANGELOG.md)
+Full history: [`crates/ifc-validate/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-validate/CHANGELOG.md)

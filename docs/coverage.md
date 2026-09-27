@@ -36,7 +36,7 @@ per-family status is on the [capabilities page](/capabilities#representation-ite
 
 <!-- COVERAGE:GEOMETRY:BEGIN -->
 
-Every geometry declaration of IFC4 ADD2 TC1, by how this repository handles it (`ifc-geometry/data/ifc4-add2-tc1-geometry-support.tsv`):
+Every geometry declaration of IFC4 ADD2 TC1, by how this repository handles it (`crates/ifc-geometry/data/ifc4-add2-tc1-geometry-support.tsv`):
 
 | Status | Count |
 | --- | ---: |
@@ -48,7 +48,7 @@ Every geometry declaration of IFC4 ADD2 TC1, by how this repository handles it (
 | `view-or-family` | 89 |
 | **Total** | **163** |
 
-Geometry WHERE rules (`ifc-geometry/data/ifc4-where-rules.tsv`):
+Geometry WHERE rules (`crates/ifc-geometry/data/ifc4-where-rules.tsv`):
 
 | State | Count |
 | --- | ---: |
@@ -234,7 +234,7 @@ never means "the rules we did not implement passed".
 
 <!-- COVERAGE:VALIDATION:BEGIN -->
 
-16 of 22 registered rules are evaluated; the rest are reported as unsupported rather than silently passed (`ifc-validate/src/where_rule/registry.rs`). A rule binds its declaring entity and every subtype, and runs only under the releases whose EXPRESS declares it under that id.
+16 of 22 registered rules are evaluated; the rest are reported as unsupported rather than silently passed (`crates/ifc-validate/src/where_rule/registry.rs`). A rule binds its declaring entity and every subtype, and runs only under the releases whose EXPRESS declares it under that id.
 
 | Rule | Constrains | Releases | Evaluated | Why not |
 | --- | --- | --- | --- | --- |

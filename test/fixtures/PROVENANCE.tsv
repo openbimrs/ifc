@@ -1,6 +1,6 @@
 # Provenance of every .ifc fixture under test/fixtures/.
 #
-# Checked by ifc-model/tests/fixture_provenance.rs: every fixture needs exactly
+# Checked by crates/ifc-model/tests/fixture_provenance.rs: every fixture needs exactly
 # one row, every row must name an existing file, and an upstream row's
 # `identical` flag must agree with the SHA-256 of the local bytes.
 #

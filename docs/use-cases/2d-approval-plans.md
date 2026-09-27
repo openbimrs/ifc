@@ -87,7 +87,7 @@ let out = StepCodec.write_bytes(&model)?;
 
 Written back, every entity is unchanged apart from that one label, and the
 annotation, text, styles, layer and library reference all read back through
-their typed views. `openbim-ifc/tests/docs_examples.rs` runs exactly this
+their typed views. `crates/openbim-ifc/tests/docs_examples.rs` runs exactly this
 against the published file.
 
 What the file does **not** show: there is no `IfcApproval` (see
@@ -195,7 +195,7 @@ cargo add openbim-ifc --features geometry-select
 ```
 
 That build links no `axiolid-*` geometry crate at all;
-`ifc-geometry/tests/kernel_free_build.rs` keeps it that way.
+`crates/ifc-geometry/tests/kernel_free_build.rs` keeps it that way.
 
 `None` means the product carries only solid or bounding-box geometry. That is a real answer:
 turning a solid into a plan needs sectioning, which is still §3 below.

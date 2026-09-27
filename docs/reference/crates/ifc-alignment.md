@@ -15,7 +15,7 @@ IFC4x3 linear positioning: alignments, referents, linear placement, spirals.
 | Registries | [crates.io `ifc-alignment`](https://crates.io/crates/ifc-alignment) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `alignment` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_alignment/index.html) · [docs.rs](https://docs.rs/ifc-alignment) |
-| Source | [`ifc-alignment/`](https://github.com/openbimrs/ifc/tree/main/ifc-alignment) |
+| Source | [`crates/ifc-alignment/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-alignment) |
 
 ## Overview
 
@@ -47,4 +47,4 @@ Latest release, 0.3.1 (2026-09-27):
   discontinuous quantity (`ProfileSeam::Height` or `ProfileSeam::Gradient`)
   and both values (#95).
 
-Full history: [`ifc-alignment/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-alignment/CHANGELOG.md)
+Full history: [`crates/ifc-alignment/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-alignment/CHANGELOG.md)

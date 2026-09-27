@@ -1,4 +1,4 @@
-"""Generate ifc-occurrence/src/table/ from the IFC4X3 ADD2 schema.
+"""Generate crates/ifc-occurrence/src/table/ from the IFC4X3 ADD2 schema.
 
     python3 scripts/gen-occurrences.py
 
@@ -16,7 +16,7 @@ import subprocess
 from ifc4x3_catalogue import ROOT, Schema, occurrences
 
 T = occurrences(Schema())
-OUT = ROOT / "ifc-occurrence/src/table"
+OUT = ROOT / "crates/ifc-occurrence/src/table"
 OUT.mkdir(parents=True, exist_ok=True)
 
 HDR = []

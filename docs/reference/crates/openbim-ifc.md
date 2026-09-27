@@ -14,7 +14,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | Latest release | 0.7.2 (2026-09-27) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc/index.html) · [docs.rs](https://docs.rs/openbim-ifc) |
-| Source | [`openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/openbim-ifc) |
+| Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
 
 ## Overview
 
@@ -108,4 +108,4 @@ Latest release, 0.7.2 (2026-09-27):
   plane; lining, mullion and transom thicknesses are not applied.
   `Sector` and `Side` are shared with `door_operation`, unchanged.
 
-Full history: [`openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/openbim-ifc/CHANGELOG.md)
+Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

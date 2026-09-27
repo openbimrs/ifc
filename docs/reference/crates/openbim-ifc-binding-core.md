@@ -14,7 +14,7 @@ Host-independent core shared by the openbim-ifc language bindings (WebAssembly, 
 | Latest release | not released (`main` is 0.1.0) |
 | Registries | not published yet; build from source |
 | API documentation | [rustdoc](/ifc/api/rustdoc/openbim_ifc_binding_core/index.html) |
-| Source | [`openbim-ifc-binding-core/`](https://github.com/openbimrs/ifc/tree/main/openbim-ifc-binding-core) |
+| Source | [`crates/openbim-ifc-binding-core/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-binding-core) |
 
 ## Overview
 
@@ -35,4 +35,4 @@ view of `openbim-ifc`; if a binding needs more, the facade grows first.
 
 ## Changes
 
-Full history: [`openbim-ifc-binding-core/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/openbim-ifc-binding-core/CHANGELOG.md)
+Full history: [`crates/openbim-ifc-binding-core/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-binding-core/CHANGELOG.md)

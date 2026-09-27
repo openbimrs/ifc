@@ -43,13 +43,13 @@ SYSTEMS_OWNED = (
     "IFCFLOWTERMINAL",
     "IFCFLOWTREATMENTDEVICE",
 )
-SYSTEMS_OWNER = ROOT / "ifc-systems/src/authoring/distribution.rs"
+SYSTEMS_OWNER = ROOT / "crates/ifc-systems/src/authoring/distribution.rs"
 
 # Concrete facilities `ifc-spatial` authors through its container path
 # (`SpatialKind`), not through the generated facility table. `facilities`
 # checks every name still appears in that file.
 SPATIAL_OWNED = ("IFCBUILDING",)
-SPATIAL_OWNER = ROOT / "ifc-spatial/src/authoring/mod.rs"
+SPATIAL_OWNER = ROOT / "crates/ifc-spatial/src/authoring/mod.rs"
 
 
 class Schema:

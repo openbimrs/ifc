@@ -12,8 +12,8 @@ use syn::{Attribute, Expr, ExprLit, FnArg, ImplItem, Item, Lit, Meta, Pat, Retur
 use super::summary;
 use crate::workspace::Workspace;
 
-const MODEL: &str = "openbim-ifc-wasm/src/model.rs";
-const TYPES: &str = "openbim-ifc-wasm/src/model/types.rs";
+const MODEL: &str = "crates/openbim-ifc-wasm/src/model.rs";
+const TYPES: &str = "crates/openbim-ifc-wasm/src/model/types.rs";
 
 pub(super) fn reference(workspace: &Workspace) -> Result<String, String> {
     let model = parse(workspace, MODEL)?;

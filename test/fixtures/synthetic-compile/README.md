@@ -10,7 +10,7 @@ Difference and intersection stay inside the finite left operand, so a prism
 covering its bounds is an exact stand-in -- which is why `issue_1155`
 compiles. Union escapes that bound and the reference compiler refuses.
 The file validates clean: the refusal belongs to the mesh provider, not the
-file. It keeps the refusal branch of `ifc-geometry/tests/compile_pairing.rs`
+file. It keeps the refusal branch of `crates/ifc-geometry/tests/compile_pairing.rs`
 executable; a mutation run confirmed that branch is dead code without it.
 
 - vertex_loop_zero_area.ifc: derived from shared_point_faceted_brep.ifc by

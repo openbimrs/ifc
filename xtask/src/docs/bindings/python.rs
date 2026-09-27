@@ -9,8 +9,8 @@ use std::process::Command;
 use super::summary;
 use crate::workspace::Workspace;
 
-const MODEL: &str = "openbim-ifc-py/python/openbim_ifc/model.py";
-const VALUES: &str = "openbim-ifc-py/python/openbim_ifc/values.py";
+const MODEL: &str = "crates/openbim-ifc-py/python/openbim_ifc/model.py";
+const VALUES: &str = "crates/openbim-ifc-py/python/openbim_ifc/values.py";
 
 /// Prints `{name, kind, params, returns, doc}` per public member of
 /// `IfcModel`, and `{name, fields, doc}` per value dataclass.

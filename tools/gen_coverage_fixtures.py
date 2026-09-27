@@ -4,7 +4,7 @@
 Issue #47 measured six real building models and sorted every product that
 failed to mesh into six failure kinds. The real models cannot be committed
 (no redistribution licence), so this file restates each failure kind as ONE
-small product. `ifc-geometry/tests/meshing_coverage.rs` compiles each through
+small product. `crates/ifc-geometry/tests/meshing_coverage.rs` compiles each through
 `compile_product_mesh` (and `compile_product_mesh_reported`) and pins the
 answer it gets today, so a regression in any kind fails CI.
 

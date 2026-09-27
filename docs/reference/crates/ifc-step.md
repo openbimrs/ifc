@@ -15,7 +15,7 @@ STEP physical file (ISO 10303-21) codec for the IFC model.
 | Registries | [crates.io `ifc-step`](https://crates.io/crates/ifc-step) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `step` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_step/index.html) · [docs.rs](https://docs.rs/ifc-step) |
-| Source | [`ifc-step/`](https://github.com/openbimrs/ifc/tree/main/ifc-step) |
+| Source | [`crates/ifc-step/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-step) |
 
 ## Overview
 
@@ -87,4 +87,4 @@ Latest release, 0.3.0 (2026-09-26):
   2,273 files); reading takes 22-40% fewer instructions and 13-35% fewer
   cycles on seven real IFC files, with resident memory unchanged.
 
-Full history: [`ifc-step/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-step/CHANGELOG.md)
+Full history: [`crates/ifc-step/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-step/CHANGELOG.md)

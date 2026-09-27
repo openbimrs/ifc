@@ -15,7 +15,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_geometry/index.html) · [docs.rs](https://docs.rs/ifc-geometry) |
-| Source | [`ifc-geometry/`](https://github.com/openbimrs/ifc/tree/main/ifc-geometry) |
+| Source | [`crates/ifc-geometry/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-geometry) |
 
 ## Overview
 
@@ -76,4 +76,4 @@ Latest release, 0.4.1 (2026-09-27):
   no representation of the purpose is `Ok(None)` even when its placement is
   broken, where it used to be the placement error.
 
-Full history: [`ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-geometry/CHANGELOG.md)
+Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)

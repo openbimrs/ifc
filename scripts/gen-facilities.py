@@ -1,4 +1,4 @@
-"""Generate ifc-spatial/src/facility/table.rs from the IFC4X3 ADD2 schema.
+"""Generate crates/ifc-spatial/src/facility/table.rs from the IFC4X3 ADD2 schema.
 
     python3 scripts/gen-facilities.py
 
@@ -16,7 +16,7 @@ import subprocess
 from ifc4x3_catalogue import ROOT, Schema, facilities
 
 CAT = facilities(Schema())
-OUT = ROOT / "ifc-spatial/src/facility/table.rs"
+OUT = ROOT / "crates/ifc-spatial/src/facility/table.rs"
 OUT.parent.mkdir(parents=True, exist_ok=True)
 
 o = []

@@ -42,7 +42,7 @@ Every failure throws an `IfcError` whose `code` is one of the
 ## API
 
 Generated from the `#[wasm_bindgen]` exports in
-`openbim-ifc-wasm/src/model.rs`.
+`crates/openbim-ifc-wasm/src/model.rs`.
 
 <!-- API:JS:BEGIN -->
 

@@ -6,7 +6,7 @@
 //!   refreshes from its own test run (every concrete IFC4X3 entity a writer
 //!   produced);
 //! - the geometry declaration, disposition and WHERE-rule manifests in
-//!   `ifc-geometry/data/`, which `ifc-geometry/tests/declaration_manifest.rs`
+//!   `crates/ifc-geometry/data/`, which `crates/ifc-geometry/tests/declaration_manifest.rs`
 //!   asserts against the schema;
 //! - `ifc-style`'s `APPEARANCE_DECLARATIONS` and `ifc-validate`'s `RULES`,
 //!   read as Rust.
@@ -20,11 +20,11 @@ use crate::workspace::Workspace;
 
 const PAGE: &str = "docs/coverage.md";
 const AUTHORED: &str = "docs/.vitepress/data/authored-coverage.json";
-const SUPPORT: &str = "ifc-geometry/data/ifc4-add2-tc1-geometry-support.tsv";
-const DISPOSITIONS: &str = "ifc-geometry/data/ifc4-representation-item-dispositions.tsv";
-const WHERE_RULES: &str = "ifc-geometry/data/ifc4-where-rules.tsv";
-const APPEARANCE: &str = "ifc-style/src/coverage.rs";
-const VALIDATION: &str = "ifc-validate/src/where_rule/registry.rs";
+const SUPPORT: &str = "crates/ifc-geometry/data/ifc4-add2-tc1-geometry-support.tsv";
+const DISPOSITIONS: &str = "crates/ifc-geometry/data/ifc4-representation-item-dispositions.tsv";
+const WHERE_RULES: &str = "crates/ifc-geometry/data/ifc4-where-rules.tsv";
+const APPEARANCE: &str = "crates/ifc-style/src/coverage.rs";
+const VALIDATION: &str = "crates/ifc-validate/src/where_rule/registry.rs";
 
 pub(super) fn generate(workspace: &Workspace) -> Result<Output, String> {
     let regions = [
