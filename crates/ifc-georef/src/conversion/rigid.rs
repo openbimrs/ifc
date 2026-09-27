@@ -1,4 +1,3 @@
 //! Planned owner: rigid coordinate operations where schema permits.
 //!
-//! Follow `AGENTS.md` in this directory. Keep this module
-//! crate-private until it owns a deliberate public contract.
+//! Keep this module crate-private until it owns a deliberate public contract.

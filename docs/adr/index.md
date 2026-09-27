@@ -33,5 +33,6 @@ for new records.
 | [0015](/adr/0015-strict-step-reads-load-lazily) | Strict STEP reads validate eagerly and decode lazily | Accepted |
 | [0016](/adr/0016-open-work-lives-in-issues) | Open work lives in issues, not in checked-in plans | Accepted |
 | [0017](/adr/0017-versioned-psd-qto-catalog) | Versioned PSD/QTO template catalogs | Accepted |
+| [0018](/adr/0018-kernel-free-geometry-is-a-feature-not-a-crate) | Kernel-free geometry is a feature, not a crate | Accepted |
 
 <!-- ADR:INDEX:END -->

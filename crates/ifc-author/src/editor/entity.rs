@@ -1,4 +1,8 @@
 //! Schema-checked updates of existing IFC entities.
+//!
+//! A [`Transaction`] cannot be read back: staged edits are invisible to
+//! `Model::get` until the transaction commits. To assert on a staged entity,
+//! commit first or inspect [`Transaction::edits`].
 
 use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 use ifc_schema::Schema;

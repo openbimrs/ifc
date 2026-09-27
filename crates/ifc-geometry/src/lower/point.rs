@@ -5,8 +5,8 @@
 //! `IfcPointOnCurve` and `IfcPointOnSurface` are legal `IfcPoint` subtypes
 //! whose position is defined by a parameter on a basis curve or surface, not
 //! by stored coordinates. Evaluating them here would require a curve/surface
-//! evaluator, which this crate deliberately does not own -- see the crate
-//! boundary in `AGENTS.md`. Preserving the reference and the parameter(s)
+//! evaluator, which this crate deliberately does not own (ADR 0004).
+//! Preserving the reference and the parameter(s)
 //! exactly, as `axiolid_model::PointOnCurve`/`PointOnSurface`, keeps the
 //! adapter kernel-agnostic: an application chooses when and how to evaluate.
 //!

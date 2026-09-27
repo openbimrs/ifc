@@ -14,6 +14,15 @@
 //! cannot resolve is *accepted*, because a builder that rejects valid input is
 //! worse than one that misses an exotic mistake -- the model is still audited
 //! by `ifc-validate` afterwards.
+//!
+//! # SELECTs are not supertypes
+//!
+//! A reference is checked for shape only here. Code that must decide whether
+//! a referenced entity fits a declared type uses
+//! [`Schema::accepts_type`](ifc_schema::Schema::accepts_type), never
+//! [`Schema::is_a`](ifc_schema::Schema::is_a): a SELECT such as
+//! `IfcAxis2Placement` is not a supertype of its members, so `is_a` rejects
+//! them, while `accepts_type` resolves SELECTs and defined-type aliases.
 
 use ifc_model::Value;
 use ifc_schema::{Schema, TypeKind};

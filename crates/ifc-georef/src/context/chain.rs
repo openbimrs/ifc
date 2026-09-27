@@ -4,7 +4,8 @@
 //! project engineering coordinates to map coordinates. It does not know, and
 //! must not know, where in the project a given product actually sits --
 //! that is `IfcLocalPlacement` chain resolution, which is `ifc-geometry`'s
-//! job (see this crate's `AGENTS.md`: "never place individual products").
+//! job. This crate never places individual products (see the crate-level
+//! docs).
 //!
 //! A caller that *has* resolved a product's placement down to a single
 //! neutral transform (its "project frame": the product's placement relative

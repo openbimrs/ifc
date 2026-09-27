@@ -26,7 +26,7 @@
 //! stated. The schema's `CorrectPhysOrVirt` rule ties the first to whether
 //! the related element is an `IfcVirtualElement`, but enforcing it belongs to
 //! `ifc-validate`: this crate reports what the file says and never rejects it
-//! (see AGENTS.md). A disagreement is surfaced through
+//! as a domain view. A disagreement is surfaced through
 //! [`SpaceBoundary::physical_matches_element`] so a caller can decide.
 //!
 //! The same holds for `ConnectionGeometry`: a reference that names nothing,

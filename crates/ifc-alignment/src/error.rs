@@ -52,10 +52,11 @@ pub enum AlignmentError {
     },
     /// A segment type or configuration this crate deliberately does not lower.
     ///
-    /// Covers segment kinds that are legal IFC but require data this crate does
-    /// not yet combine (e.g. `VIENNESEBEND` needs the cant swing carried by a
-    /// separate `IfcAlignmentCant` layout) or that have no closed-form neutral
-    /// curve here (e.g. `CUBIC`).
+    /// Covers segment kinds that are legal IFC but lack the data they need in
+    /// this call (e.g. a `VIENNESEBEND` lowered without its `IfcAlignmentCant`
+    /// layout, its `GravityCenterLineHeight`, or the station a chained layout
+    /// supplies) or that have no closed-form neutral curve here (e.g.
+    /// `CUBIC`).
     Unsupported {
         /// The unsupported entity.
         entity: EntityId,

@@ -3,7 +3,13 @@
 //! `IfcUnitAssignment` sets the model's units; derived and conversion-based
 //! units (imperial, US survey feet) must be resolved before a value means
 //! anything.
-
+//!
+//! This module serves the permissive views. Exact, release-bound unit
+//! traversal (`exact_unit`) lives in `crate::exact::unit`, because it needs
+//! the record-arity and domain checks there; `conversion.rs` and
+//! `derived.rs` own conversion-based and derived units for the permissive
+//! views only.
+//!
 //! ## Internal split
 //!
 //! - `assignment.rs`: project unit context.

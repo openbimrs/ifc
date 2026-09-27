@@ -527,6 +527,12 @@ fn ifc_crates_never_depend_on_geometry_execution_crates() {
     );
 }
 
+/// The active-lowering vocabulary gate.
+///
+/// It parses each `lower/` module as Rust and walks its paths and imports,
+/// including root aliases, globs and macro tokens. Keep it a parser: a
+/// substring scan over source text misses `use crate as c; c::kernel::...`
+/// and flags the same words in comments, so it is not a replacement.
 #[test]
 fn active_lowering_does_not_use_legacy_request_vocabulary() {
     fn collect_rs(dir: &std::path::Path, files: &mut Vec<PathBuf>) {

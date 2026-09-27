@@ -181,6 +181,11 @@ const FACE_KIND: &str = "face surface";
 
 /// Lower one `IfcFaceSurface` or `IfcAdvancedFace` as a single-face open `BRep`.
 ///
+/// `IfcFaceSurface` is an `IfcFace`, NOT an `IfcSurface`, in every release
+/// (IFC2X3 TC1, IFC4 ADD2 TC1 and IFC4X3 ADD2 all declare it
+/// `SUBTYPE OF (IfcFace)`), so the surface lowerer never sees one and it is
+/// dispatched here instead.
+///
 /// A face surface is a legal representation item and a member of
 /// `IfcSurfaceOrFaceSurface`, so a connection surface or a topology
 /// representation may name one directly rather than through a shell. It is

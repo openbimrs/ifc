@@ -1,4 +1,18 @@
 //! Shared schema-resolved borrowed view primitives.
+//!
+//! # Supported releases
+//!
+//! IFC4 ADD2 TC1 and IFC4X3 ADD2 declare identical attribute layouts for
+//! every entity this crate projects (checked against the normative `.exp`
+//! files); IFC4X3 only adds `IfcQuantityNumber`, which is not one of the six
+//! projected simple-quantity kinds. One code path therefore serves both.
+//!
+//! IFC2X3 is refused with `UnsupportedSchema` on purpose: it declares no
+//! `IfcConstructionResourceType`, no `IfcResourceTime`, and no
+//! `PredefinedType` on `IfcCrewResource` or
+//! `IfcConstructionEquipmentResource`, so there is no normative behavior to
+//! project. A reduced IFC2X3 path needs a design decision first, not a
+//! fallback here.
 
 use std::collections::HashSet;
 

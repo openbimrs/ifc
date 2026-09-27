@@ -11,6 +11,11 @@
 //! `IfcRelAssignsToControl`. The crate owning the relating control
 //! writes that relationship, so this crate stages it for its own four
 //! controls and refuses any other.
+//!
+//! `IfcCostItem`, `IfcCostSchedule`, `IfcWorkCalendar` and
+//! `IfcWorkControl` are `IfcControl` subtypes too, but they belong to
+//! `ifc-cost` and `ifc-schedule`: the crates split by domain, not by
+//! supertype, so those entities do not move here.
 
 mod assignment;
 mod authoring;

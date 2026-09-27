@@ -1,4 +1,15 @@
 //! Exact neutral graph assembly for alignment segments and their layouts.
+//!
+//! # Stations
+//!
+//! An `IfcAlignmentHorizontalSegment` does not state its own distance along;
+//! it follows from chaining, and a Viennese bend needs it to read the cant
+//! swing across itself. Both chain walks, [`lower_horizontal_layout`] and
+//! [`lower_horizontal_layout_partial`], therefore keep their own station
+//! accumulator. They are two accumulators, so a test that exercises only one
+//! walk leaves the other unguarded; test both. A single-segment lowering has
+//! no chain context and refuses a Viennese bend rather than assuming station
+//! zero.
 
 use axiolid_core::{Frame2, Point2, Vec2};
 use axiolid_curve::{Circle2, Curve2, Line2};

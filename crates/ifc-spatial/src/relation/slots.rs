@@ -90,7 +90,7 @@ pub(crate) const SPACE_BOUNDARY_2ND: RelSlots = RelSlots {
 ///
 /// The hierarchy is closed at these three in IFC4, so it is enumerated here
 /// and asserted against the shipped schemas in `tests/slot_layout.rs`. This
-/// crate deliberately does not depend on `ifc-schema` (see AGENTS.md), so
+/// crate deliberately does not depend on `ifc-schema` (see `Cargo.toml`), so
 /// there is no runtime `is_a` available to do it instead.
 pub(crate) const SPACE_BOUNDARY_TYPES: [RelSlots; 3] =
     [SPACE_BOUNDARY, SPACE_BOUNDARY_1ST, SPACE_BOUNDARY_2ND];

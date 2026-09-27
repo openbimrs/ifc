@@ -2,9 +2,9 @@
 //!
 //! # Why a session exists
 //!
-//! `AGENTS.md` requires that recursive lowering appends to a single
-//! session-owned builder and that family lowerers return [`NodeId`] instead of
-//! freezing isolated child graphs. That is not a style preference: a [`NodeId`]
+//! Recursive lowering appends to a single session-owned builder, and family
+//! lowerers return [`NodeId`] instead of freezing isolated child graphs
+//! (`tests/lower_session.rs` pins this). That is not a style preference: a [`NodeId`]
 //! is owned by the graph that minted it, so handles from two independently
 //! finished graphs are mutually foreign. Every composite IFC family needs two
 //! children in one graph:

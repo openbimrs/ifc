@@ -35,11 +35,16 @@
 //! are inheritance/inventory entries, not falsely presented as constructible
 //! views. All 23 schema types are modeled.
 //!
-//! **Honest partial lowering.** Exact profiles and extrusion/revolution are
-//! implemented vertical slices. Every other assigned declaration is tracked in
-//! the support ledger; attempting an unimplemented lowering returns typed
-//! [`crate::GeometryError::Unsupported`] rather than panicking or substituting
-//! approximate geometry.
+//! **Honest lowering.** The dispatcher's `IMPLEMENTED` list (in
+//! `lower::dispatch`) names every representation-item type it lowers: swept,
+//! CSG, boolean and half-space solids, faceted and advanced B-reps,
+//! tessellated face sets, surfaces, curves, surface models, collections and
+//! mapped items. Every other concrete IFC4 representation item has a
+//! recorded disposition in `data/ifc4-representation-item-dispositions.tsv`
+//! (nested input, non-shape, or typed refusal). Input that cannot be lowered
+//! exactly returns a typed [`crate::GeometryError`], such as
+//! [`crate::GeometryError::Unsupported`], rather than panicking or
+//! substituting approximate geometry.
 //!
 //! **Neutral DAG output.** Implemented lowerers resolve IFC units, placements,
 //! profiles, and representation relationships into `axiolid-model` nodes. Active

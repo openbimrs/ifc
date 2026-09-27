@@ -1,4 +1,10 @@
 //! Transaction-staged IFC4 cost authoring.
+//!
+//! Assigning cost items to their schedule is authored here; assigning a cost
+//! item to the products it prices is deliberately read-only
+//! ([`crate::relation::controlled_by`]). Validating that an arbitrary target
+//! is an `IfcObjectDefinition` needs the schema's inheritance tables, and this
+//! crate depends on `ifc-model` alone.
 #![deny(missing_docs)]
 
 mod control;

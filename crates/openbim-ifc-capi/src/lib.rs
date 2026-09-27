@@ -19,10 +19,19 @@
 //! [`tape`] for the encoding, which carries the same kinds as the other
 //! bindings so `$`/`*`, `.U.`/`.F.` and typed wrappers stay distinct.
 //!
-//! This is the one crate in the IFC workspace that uses `unsafe`: reading and
-//! writing caller-provided C buffers cannot be done otherwise. Each
-//! dereference sits in `buffer` or directly beside its null/length check,
-//! with a `SAFETY` comment.
+//! Reading and writing caller-provided C buffers cannot be done without
+//! `unsafe`, so this crate's unsafe surface is its whole export set. It is
+//! not the only unsafe code in the workspace: the opt-in memory-mapped read
+//! (`ifc_step::StepReader::read_path_mapped`, wrapped by
+//! `openbim-ifc-binding-core` and `openbim-ifc-py`) is an `unsafe fn` too,
+//! because another process may change a mapped file. Here, each dereference
+//! sits in `buffer` or directly beside its null/length check, with a
+//! `SAFETY` comment.
+//!
+//! The conventions above mirror Axiolid's ADR 0040 on purpose. A divergence
+//! needs its reason recorded in the module docs or an ADR. ABI 0.1 symbols
+//! are frozen once released: a change adds `openbim_ifc_v0_2_` exports rather
+//! than altering a `v0_1_` one.
 
 #![deny(unsafe_op_in_unsafe_fn)]
 

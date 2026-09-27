@@ -2,7 +2,7 @@
 //!
 //! # This crate never measures anything
 //!
-//! `AGENTS.md` states the invariant: an IFC quantity is an authored
+//! The invariant: an IFC quantity is an authored
 //! assertion, and applications compute shape elsewhere and pass the typed
 //! result in. So this module takes a value the CALLER computed and reports
 //! whether the file agrees. It does not open a geometry crate, and it cannot:

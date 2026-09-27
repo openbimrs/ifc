@@ -100,5 +100,11 @@
     "slug": "0017-versioned-psd-qto-catalog",
     "status": "Accepted",
     "title": "Versioned PSD/QTO template catalogs"
+  },
+  {
+    "number": "0018",
+    "slug": "0018-kernel-free-geometry-is-a-feature-not-a-crate",
+    "status": "Accepted",
+    "title": "Kernel-free geometry is a feature, not a crate"
   }
 ]

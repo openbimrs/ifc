@@ -21,6 +21,11 @@
 //! parsed model would be kept as `inventoried`, with the reason beside the
 //! code, rather than implemented as a check that always passes.
 //!
+//! Rules do not re-check what the parser and typed views already enforce
+//! (declared types, attribute arity, SELECT membership); a rule states only
+//! the schema's own `WHERE` condition. Numerical validation of a built shape
+//! belongs to the kernel, not here.
+//!
 //! # Design
 //!
 //! A rule is a pure function from a resolved view to `Result<(), RuleViolation>`.

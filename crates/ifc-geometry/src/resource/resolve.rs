@@ -13,6 +13,12 @@
 //!
 //! Only entity types are checked here. A view's own slot errors (a 1-element
 //! point, a zero direction) still surface when the caller reads it.
+//!
+//! An attribute typed by an abstract supertype (`IfcSurface`,
+//! `IfcBoundedCurve`) has no resolving accessor: it stays a reference,
+//! because choosing among the concrete subtypes is dispatch, and dispatch
+//! belongs to `lower`. `IfcProfileDef` has no view here either;
+//! `input::profile` owns profile reading.
 
 use crate::error::{GeometryError, GeometryResult};
 use crate::resource::direction::Direction;
