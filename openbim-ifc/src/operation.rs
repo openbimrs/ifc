@@ -6,6 +6,8 @@
 //! predefined panel sets (`ifc-properties`), so this module is compiled
 //! under the same features as they are: `geometry-select` and `properties`.
 
+#![cfg(all(feature = "geometry-select", feature = "properties"))]
+
 mod frame;
 mod read;
 

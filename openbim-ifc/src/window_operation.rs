@@ -81,6 +81,8 @@
 //! contradict the partitioning; and a split whose lining offset is missing
 //! or does not fall inside the window. See [`WindowOperationError`].
 
+#![cfg(all(feature = "geometry-select", feature = "properties"))]
+
 mod error;
 mod geometry;
 mod layout;

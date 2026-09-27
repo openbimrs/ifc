@@ -51,6 +51,8 @@
 //! panel properties, a missing `OverallWidth`, and panels that contradict the
 //! operation. See [`DoorOperationError`].
 
+#![cfg(all(feature = "geometry-select", feature = "properties"))]
+
 mod geometry;
 mod layout;
 mod read;
