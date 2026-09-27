@@ -15,7 +15,7 @@ Bounded IFC control semantics: permits, project orders, action requests, and per
 | Registries | [crates.io `ifc-control`](https://crates.io/crates/ifc-control) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `control` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_control/index.html) · [docs.rs](https://docs.rs/ifc-control) |
-| Source | [`ifc-control/`](https://github.com/openbimrs/ifc/tree/main/ifc-control) |
+| Source | [`crates/ifc-control/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-control) |
 
 ## Overview
 
@@ -54,4 +54,4 @@ Latest release, 0.2.1 (2026-09-27):
   owns (cost schedules, cost items, work controls).
 - `ControlKind::ALL` lists the four owned controls.
 
-Full history: [`ifc-control/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-control/CHANGELOG.md)
+Full history: [`crates/ifc-control/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-control/CHANGELOG.md)

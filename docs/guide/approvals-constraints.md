@@ -2,13 +2,13 @@
 
 These three bounded IFC4 domains compose through the shared entity graph:
 
-- [`ifc-classification`](https://github.com/openbimrs/ifc/tree/main/ifc-classification) owns concrete
+- [`ifc-classification`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-classification) owns concrete
   classification/document/library references and
   `IfcExternalReferenceRelationship`;
-- [`ifc-approval`](https://github.com/openbimrs/ifc/tree/main/ifc-approval) owns `IfcApproval`, direct
+- [`ifc-approval`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-approval) owns `IfcApproval`, direct
   approval relationships, resource relationships, and rooted object
   associations;
-- [`ifc-constraint`](https://github.com/openbimrs/ifc/tree/main/ifc-constraint) owns concrete metrics and
+- [`ifc-constraint`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-constraint) owns concrete metrics and
   objectives plus resource and rooted object associations.
 
 The facade keeps each domain optional:
@@ -42,7 +42,7 @@ assert_eq!(evidence.related_resources()?, vec![approval_id]);
 <!-- /SNIPPET -->
 
 The code above is a test in
-[`openbim-ifc/tests/resource_domains.rs`](https://github.com/openbimrs/ifc/blob/main/openbim-ifc/tests/resource_domains.rs),
+[`crates/openbim-ifc/tests/resource_domains.rs`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/tests/resource_domains.rs),
 which authors all three domains in one transaction. A second test there
 repeats the joins after a STEP write/read round trip.
 

@@ -15,7 +15,7 @@ Schema-checked IFC authoring: construct entities by attribute name with arity an
 | Registries | [crates.io `ifc-author`](https://crates.io/crates/ifc-author) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `author` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_author/index.html) · [docs.rs](https://docs.rs/ifc-author) |
-| Source | [`ifc-author/`](https://github.com/openbimrs/ifc/tree/main/ifc-author) |
+| Source | [`crates/ifc-author/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-author) |
 
 ## Overview
 
@@ -50,4 +50,4 @@ Latest release, 0.2.1 (2026-09-27):
   Before, `*` was accepted in any slot and the file was invalid. Both apply to
   `EntityBuilder` and `EntityEditor`.
 
-Full history: [`ifc-author/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-author/CHANGELOG.md)
+Full history: [`crates/ifc-author/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-author/CHANGELOG.md)

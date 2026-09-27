@@ -16,6 +16,9 @@ put progress logs, task lists, or speculative TODOs in `AGENTS.md`.
 
 ## Package role
 
+Every crate lives in `crates/<name>`; tooling (`xtask/`, `scripts/`, `tools/`),
+`docs/`, `test/fixtures/` and `benchmarks/` stay at the root.
+
 This package interprets and serializes IFC. IFC resource names are evidence,
 not crate boundaries: the schema mixes storage, geometry input, presentation,
 and domain semantics. Partition code by role in the pipeline:
@@ -92,8 +95,8 @@ uses the declared version's own tables and never approximates across versions.
 - Unsupported, invalid, missing-reference, and budget-exceeded are distinct
   structured errors. Never silently substitute geometry or semantics.
 - Authoring never stamps `IfcOwnerHistory` on its own. Where a draft accepts
-  one, the caller supplies it (built with `ifc-author/src/owner.rs`), because
-  an invented actor is worse than a null.
+  one, the caller supplies it (built with `crates/ifc-author/src/owner.rs`),
+  because an invented actor is worse than a null.
 
 ## Module and API rules
 
@@ -106,7 +109,7 @@ uses the declared version's own tables and never approximates across versions.
 - Every `.rs` file must be in the compiled module tree. Future-only file names
   belong in the tracking issue, not as orphan source files. An ownership
   scaffold (`//! Planned owner:`) is listed in
-  `ifc-model/tests/required_scaffold_paths.txt`.
+  `crates/ifc-model/tests/required_scaffold_paths.txt`.
 - Public values implement `Debug` and `Clone`; derive stronger traits only when
   semantically honest. Mark extensible public errors/enums non-exhaustive.
 

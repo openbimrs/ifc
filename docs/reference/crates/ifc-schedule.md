@@ -15,7 +15,7 @@ IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage.
 | Registries | [crates.io `ifc-schedule`](https://crates.io/crates/ifc-schedule) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `schedule` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_schedule/index.html) · [docs.rs](https://docs.rs/ifc-schedule) |
-| Source | [`ifc-schedule/`](https://github.com/openbimrs/ifc/tree/main/ifc-schedule) |
+| Source | [`crates/ifc-schedule/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-schedule) |
 
 ## Overview
 
@@ -32,4 +32,4 @@ Latest release, 0.2.0 (2026-09-22):
 First release under per-crate versioning. See the
 that produced this version.
 
-Full history: [`ifc-schedule/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-schedule/CHANGELOG.md)
+Full history: [`crates/ifc-schedule/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-schedule/CHANGELOG.md)

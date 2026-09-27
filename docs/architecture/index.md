@@ -28,10 +28,10 @@ Three consequences, in order of importance:
 parses and re-exports intact in a build compiled with *no cost crate at all*,
 because storage is structural rather than a domain struct. This is the property
 that makes the project safe to use while large parts of it remain unimplemented.
-Verified by `openbim-ifc/tests/costing_roundtrip.rs`.
+Verified by `crates/openbim-ifc/tests/costing_roundtrip.rs`.
 
 **Thin applications stay thin.** A viewer compiles only the domains it selects.
-Verified by `openbim-ifc/tests/thin_build.rs`.
+Verified by `crates/openbim-ifc/tests/thin_build.rs`.
 
 **Interpretations are replaceable.** A different reading of the same entities is
 another crate, not a fork of the model.
@@ -125,7 +125,7 @@ is on the path to its target:
   `TODO(#N)`, so the tracker and the code point at each other.
 
 Progress logs, task lists and speculative TODOs do not belong in
-**AGENTS.md**. `ifc-model/tests/progressive_context.rs` enforces that the
+**AGENTS.md**. `crates/ifc-model/tests/progressive_context.rs` enforces that the
 required context files exist, stay small, and point at files that exist, and
 `cargo run -p xtask -- todo --check` rejects a marker without an issue.
 

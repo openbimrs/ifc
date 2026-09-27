@@ -15,7 +15,7 @@ Structured IFC value containers indexed by position or time.
 | Registries | [crates.io `ifc-tabular`](https://crates.io/crates/ifc-tabular) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `tabular` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_tabular/index.html) · [docs.rs](https://docs.rs/ifc-tabular) |
-| Source | [`ifc-tabular/`](https://github.com/openbimrs/ifc/tree/main/ifc-tabular) |
+| Source | [`crates/ifc-tabular/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-tabular) |
 
 ## Overview
 
@@ -45,4 +45,4 @@ Latest release, 0.2.1 (2026-09-27):
   as `TabularIssue`s instead of being dropped. IFC2x3 is refused with
   `TabularReadError::UnsupportedSchema` (#120).
 
-Full history: [`ifc-tabular/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-tabular/CHANGELOG.md)
+Full history: [`crates/ifc-tabular/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-tabular/CHANGELOG.md)

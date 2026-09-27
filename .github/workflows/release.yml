@@ -180,12 +180,12 @@ jobs:
         with:
           tool: wasm-bindgen-cli@0.2.128
       - name: Build and test the package
-        run: openbim-ifc-wasm/scripts/build-node-pkg.sh
+        run: crates/openbim-ifc-wasm/scripts/build-node-pkg.sh
       - name: Rehearse publish
         # npm 11 refuses even a dry run over a live version, so rehearsing
         # an already-published tag packs the tarball instead.
         if: github.event_name != 'push'
-        working-directory: openbim-ifc-wasm/pkg
+        working-directory: crates/openbim-ifc-wasm/pkg
         env:
           VERSION: ${{ needs.plan.outputs.version }}
         run: |
@@ -198,7 +198,7 @@ jobs:
           fi
       - name: Publish
         if: github.event_name == 'push'
-        working-directory: openbim-ifc-wasm/pkg
+        working-directory: crates/openbim-ifc-wasm/pkg
         env:
           VERSION: ${{ needs.plan.outputs.version }}
         run: |
@@ -235,14 +235,14 @@ jobs:
           maturin-version: "v1.13.3"
           target: ${{ matrix.target }}
           manylinux: ${{ matrix.manylinux || 'auto' }}
-          args: --release --locked --out dist --manifest-path openbim-ifc-py/Cargo.toml
+          args: --release --locked --out dist --manifest-path crates/openbim-ifc-py/Cargo.toml
       - name: Test the built wheel
         # Installed outside the source tree, so the suites import the wheel.
         shell: bash
         run: |
           python -m pip install --quiet dist/*.whl
           cd "$RUNNER_TEMP"
-          python -m unittest discover -s "$GITHUB_WORKSPACE/openbim-ifc-py/tests/python" -t "$GITHUB_WORKSPACE/openbim-ifc-py/tests/python"
+          python -m unittest discover -s "$GITHUB_WORKSPACE/crates/openbim-ifc-py/tests/python" -t "$GITHUB_WORKSPACE/crates/openbim-ifc-py/tests/python"
       - name: Upload wheel
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -263,7 +263,7 @@ jobs:
         with:
           maturin-version: "v1.13.3"
           command: sdist
-          args: --out dist --manifest-path openbim-ifc-py/Cargo.toml
+          args: --out dist --manifest-path crates/openbim-ifc-py/Cargo.toml
       - name: Upload sdist
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

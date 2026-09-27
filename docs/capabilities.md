@@ -86,14 +86,14 @@ Every concrete `IfcRepresentationItem` subtype in IFC4 ADD2 TC1 is named somewhe
 | Capability | Status | Evidence |
 | --- | --- | --- |
 | Entity graph with positional attributes | <span class="status-implemented">Implemented</span> | `ifc-model::Model` |
-| Round-trip of entities the build does not understand | <span class="status-implemented">Implemented</span> | `openbim-ifc/tests/costing_roundtrip.rs` (runs with no domain crate compiled) |
+| Round-trip of entities the build does not understand | <span class="status-implemented">Implemented</span> | `crates/openbim-ifc/tests/costing_roundtrip.rs` (runs with no domain crate compiled) |
 | STEP (`.ifc`) read and write | <span class="status-implemented">Implemented</span> | `ifc-step`; deterministic model order, finite scalar safeguards, generic syntax delegated to `openbim-step` |
 | ifcXML read and write | <span class="status-implemented">Implemented</span> | `ifc-xml`; explicit strict IFC4 ADD2 TC1 namespace profile and path-rich typed diagnostics; compatibility dialect is not claimed as generic XSD conformance |
 | IFC-JSON | <span class="status-absent">Absent</span> | Would be a third `Codec` impl; no crate exists |
 | EXPRESS schema metadata, subtype queries | <span class="status-implemented">Implemented</span> | `ifc-schema` |
 | GlobalId base-64 encode/decode | <span class="status-implemented">Implemented</span> | `ifc-model::guid` |
 | Spatial containment tree traversal | <span class="status-implemented">Implemented</span> | `ifc-spatial::SpatialTree`; facade feature `spatial`. See below. |
-| Objectified relationship traversal | <span class="status-implemented">Implemented</span> | All 45 concrete `IfcRel*` families are read. Spatial composition, containment, coverings, space boundaries, element connection and interference, assignment, declaration and system service in `ifc-spatial`; association and definition in `ifc-classification`, `ifc-material`, `ifc-properties`, `ifc-resource`, `ifc-approval` and `ifc-constraint`; connectivity in `ifc-systems` and `ifc-structural`; sequencing in `ifc-schedule` and `ifc-cost`; feature attachment in the `openbim-ifc` reachability check. Slot positions are asserted against the shipped IFC2x3/IFC4/IFC4x3 schemas in `ifc-spatial/tests/slot_layout.rs`, and `openbim-ifc/tests/relationship_census.rs` fails if a family loses its reader. |
+| Objectified relationship traversal | <span class="status-implemented">Implemented</span> | All 45 concrete `IfcRel*` families are read. Spatial composition, containment, coverings, space boundaries, element connection and interference, assignment, declaration and system service in `ifc-spatial`; association and definition in `ifc-classification`, `ifc-material`, `ifc-properties`, `ifc-resource`, `ifc-approval` and `ifc-constraint`; connectivity in `ifc-systems` and `ifc-structural`; sequencing in `ifc-schedule` and `ifc-cost`; feature attachment in the `openbim-ifc` reachability check. Slot positions are asserted against the shipped IFC2x3/IFC4/IFC4x3 schemas in `crates/ifc-spatial/tests/slot_layout.rs`, and `crates/openbim-ifc/tests/relationship_census.rs` fails if a family loses its reader. |
 | Distribution systems, ports and connectivity | <span class="status-implemented">Implemented</span> | `ifc-systems` reads systems and membership, ports through both `IfcRelNests` and the legacy `IfcRelConnectsPortToElement`, the connection network, flow roles and direction, zones with their `WR1` membership rule, spatial containment vs referencing, and direction-aware `upstream`/`downstream` queries. Relationship-only: no geometry is read, so a geometry-free file still yields a full network. |
 | Cost items, rates and rollups | <span class="status-implemented">Implemented</span> | `ifc-cost` reads `IfcCostItem` nesting, `IfcCostValue` component trees with arithmetic operators, and totals a cost tree. Currencies are compared, never converted: a rollup mixing EUR and USD is refused. Typed drafts stage selected IFC4 values, items, schedules, nesting, and schedule assignments atomically. |
 | Work schedules, tasks and sequencing | <span class="status-implemented">Implemented</span> | `ifc-schedule` reads `IfcWorkPlan`/`IfcWorkSchedule`, `IfcTask` with `IfcTaskTime`, `IfcRelSequence` with signed lag, work calendars and events, and produces a deterministic execution order. Cycles report the offending path. |
@@ -183,7 +183,7 @@ let beneath = tree.elements_recursive(building); // everything beneath a contain
 about slot order — `IfcRelAggregates` puts the parent in slot 4,
 `IfcRelContainedInSpatialStructure` puts it in slot 5. Reading one like the
 other inverts containment silently. The constants are asserted against IFC2x3,
-IFC4 and IFC4x3 in `ifc-spatial/tests/slot_layout.rs`; see
+IFC4 and IFC4x3 in `crates/ifc-spatial/tests/slot_layout.rs`; see
 [ADR 0008](/adr/0008-fixed-slot-constants-for-stable-relationships).
 
 **Real files, not the ideal shape.** Omitted sites, elements hung directly off
@@ -225,7 +225,7 @@ families into the neutral `axiolid-model` DAG.
 ### Representation-item lowering
 
 The dispatcher keeps coverage as data so it is auditable from one table
-(`ifc-geometry/src/lower/dispatch.rs`):
+(`crates/ifc-geometry/src/lower/dispatch.rs`):
 
 <!-- CAPABILITIES:GEOMETRY:BEGIN -->
 
@@ -303,7 +303,7 @@ The dispatcher keeps coverage as data so it is auditable from one table
 
 Families marked <span class="status-partial">Partial</span> above lower some
 authored forms exactly and refuse others by name. This table is generated from
-the `PARTIAL` catalog in `ifc-geometry/src/lower/dispatch.rs`, and
+the `PARTIAL` catalog in `crates/ifc-geometry/src/lower/dispatch.rs`, and
 `tests/lower_dispatch_corpus.rs` drives the real lowering path for every row --
 so a wrong disposition here fails CI rather than merely misinforming a reader.
 
@@ -330,7 +330,7 @@ Those are listed with their reasoning in
 <!-- CAPABILITIES:VARIANT:END -->
 
 ::: tip Coverage below is generated
-The table above is derived from `ifc-geometry/src/lower/dispatch.rs` by
+The table above is derived from `crates/ifc-geometry/src/lower/dispatch.rs` by
 `cargo run -p xtask -- docs`, and `scripts/gate.sh` fails when this page and
 that source disagree. It cannot drift from the code without breaking the build.
 :::
@@ -493,7 +493,7 @@ directly gets the marker and loses the project's precision and placement. See
 [ADR 0009](/adr/0009-derived-attributes-resolve-through-the-parent-context).
 
 Slot positions are asserted against IFC2x3, IFC4 and IFC4x3 in
-`ifc-geometry/tests/context_slots.rs`, including that the sub-context still
+`crates/ifc-geometry/tests/context_slots.rs`, including that the sub-context still
 inherits exactly six attributes — the off-by-six that would read `TargetScale`
 as the target view.
 
@@ -549,6 +549,6 @@ contracts.
 3. Run the gate: `scripts/gate.sh`. It regenerates every table on this page
    and on the [coverage page](/coverage) and fails if the committed copy
    differs.
-4. For geometry coverage, read `ifc-geometry/src/lower/dispatch.rs`; the
+4. For geometry coverage, read `crates/ifc-geometry/src/lower/dispatch.rs`; the
    tables above are generated from its `IMPLEMENTED`, `PLANNED` and `PARTIAL`
    constants, which tests assert against the schema.

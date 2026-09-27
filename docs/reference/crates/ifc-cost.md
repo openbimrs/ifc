@@ -15,7 +15,7 @@ Cost semantics as a borrowed view over the IFC model.
 | Registries | [crates.io `ifc-cost`](https://crates.io/crates/ifc-cost) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `cost` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_cost/index.html) · [docs.rs](https://docs.rs/ifc-cost) |
-| Source | [`ifc-cost/`](https://github.com/openbimrs/ifc/tree/main/ifc-cost) |
+| Source | [`crates/ifc-cost/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-cost) |
 
 ## Overview
 
@@ -45,4 +45,4 @@ Latest release, 0.2.1 (2026-09-27):
   and a child listed twice under one parent is listed once. Output changes
   only for files that violate the schema.
 
-Full history: [`ifc-cost/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-cost/CHANGELOG.md)
+Full history: [`crates/ifc-cost/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-cost/CHANGELOG.md)

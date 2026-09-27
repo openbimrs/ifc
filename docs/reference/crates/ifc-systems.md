@@ -15,7 +15,7 @@ Distribution systems, ports, and connectivity between elements.
 | Registries | [crates.io `ifc-systems`](https://crates.io/crates/ifc-systems) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `systems` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_systems/index.html) · [docs.rs](https://docs.rs/ifc-systems) |
-| Source | [`ifc-systems/`](https://github.com/openbimrs/ifc/tree/main/ifc-systems) |
+| Source | [`crates/ifc-systems/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-systems) |
 
 ## Overview
 
@@ -75,4 +75,4 @@ Latest release, 0.2.1 (2026-09-25):
   the local IFC2X3 files contains a zone, electrical circuit, or port, so the
   IFC2X3-specific paths are proven by the fixture tests only.
 
-Full history: [`ifc-systems/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-systems/CHANGELOG.md)
+Full history: [`crates/ifc-systems/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-systems/CHANGELOG.md)

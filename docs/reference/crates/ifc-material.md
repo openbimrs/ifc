@@ -15,7 +15,7 @@ Material definitions: layer sets, profile sets, constituents, usage.
 | Registries | [crates.io `ifc-material`](https://crates.io/crates/ifc-material) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `material` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_material/index.html) · [docs.rs](https://docs.rs/ifc-material) |
-| Source | [`ifc-material/`](https://github.com/openbimrs/ifc/tree/main/ifc-material) |
+| Source | [`crates/ifc-material/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-material) |
 
 ## Overview
 
@@ -126,4 +126,4 @@ Latest release, 0.3.0 (2026-09-27):
   so this is never a decode error and never normalises: the accessors
   keep returning the authored fractions.
 
-Full history: [`ifc-material/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-material/CHANGELOG.md)
+Full history: [`crates/ifc-material/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-material/CHANGELOG.md)

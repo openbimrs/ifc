@@ -14,7 +14,7 @@ The IFC entity graph: storage and structural queries, free of domain semantics a
 | Latest release | 0.2.3 (2026-09-26) |
 | Registries | [crates.io `ifc-model`](https://crates.io/crates/ifc-model) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_model/index.html) · [docs.rs](https://docs.rs/ifc-model) |
-| Source | [`ifc-model/`](https://github.com/openbimrs/ifc/tree/main/ifc-model) |
+| Source | [`crates/ifc-model/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-model) |
 
 ## Overview
 
@@ -59,4 +59,4 @@ Latest release, 0.2.3 (2026-09-26):
   `ifc-resource` already did. A file that was written with one would have
   failed its own GlobalId check.
 
-Full history: [`ifc-model/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-model/CHANGELOG.md)
+Full history: [`crates/ifc-model/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-model/CHANGELOG.md)

@@ -51,7 +51,7 @@ npm run docs:build    # what CI runs; dead links fail the build
   the built site. Normative IFC schema material is never published.
 - Code on a page comes from a test. Mark it in the test with
   `// docs:snippet <name>` … `// docs:end` (e.g. in
-  `openbim-ifc/tests/docs_examples.rs`) and put
+  `crates/openbim-ifc/tests/docs_examples.rs`) and put
   `<!-- SNIPPET:<name> -->` `<!-- /SNIPPET -->` on the page; the generator copies
   it in. A `rust`/`python`/`js`/`ts`/`c` fence outside a snippet region fails
   the check (ADRs excepted). Use ```` ```text ```` for output or pseudo-code.

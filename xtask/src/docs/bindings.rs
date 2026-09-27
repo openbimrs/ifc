@@ -3,14 +3,14 @@
 //! Each reference is read from the binding's own declaration of its surface:
 //! the `#[wasm_bindgen]` exports, the public Python module, and the
 //! cbindgen-generated C header (itself staleness-tested by
-//! `openbim-ifc-capi/tests/header.rs`). A new export reaches the docs with no
+//! `crates/openbim-ifc-capi/tests/header.rs`). A new export reaches the docs with no
 //! edit to any page.
 //!
 //! ## Internal split
 //!
 //! - `js.rs`: the JavaScript/TypeScript surface of `openbim-ifc-wasm`.
 //! - `python.rs`: the `openbim_ifc` Python package, read with Python's `ast`.
-//! - `c.rs`: `openbim-ifc-capi/include/openbim_ifc.h`.
+//! - `c.rs`: `crates/openbim-ifc-capi/include/openbim_ifc.h`.
 
 mod c;
 mod js;
@@ -106,10 +106,10 @@ fn requirement(workspace: &Workspace, krate: &crate::workspace::Crate) -> Result
         "openbim-ifc-wasm" => {
             let manifest: serde_json::Value = read("npm/package.json")
                 .and_then(|text| serde_json::from_str(&text).ok())
-                .ok_or("openbim-ifc-wasm/npm/package.json is unreadable")?;
+                .ok_or("crates/openbim-ifc-wasm/npm/package.json is unreadable")?;
             let node = manifest["engines"]["node"]
                 .as_str()
-                .ok_or("openbim-ifc-wasm/npm/package.json declares no `engines.node`")?;
+                .ok_or("crates/openbim-ifc-wasm/npm/package.json declares no `engines.node`")?;
             format!("Node `{node}`")
         }
         "openbim-ifc-py" => {
@@ -127,10 +127,10 @@ fn requirement(workspace: &Workspace, krate: &crate::workspace::Crate) -> Result
                         )
                     })
                 })
-                .ok_or("openbim-ifc-py/pyproject.toml declares no `requires-python`")?;
+                .ok_or("crates/openbim-ifc-py/pyproject.toml declares no `requires-python`")?;
             format!("Python `{floor}`")
         }
-        // Checked by openbim-ifc-capi/scripts/check-c.sh, which builds the
+        // Checked by crates/openbim-ifc-capi/scripts/check-c.sh, which builds the
         // smoke test with `-std=c11` and `-std=c++17`.
         "openbim-ifc-capi" => "a C11 or C++17 compiler, and Rust to build".to_owned(),
         _ => match &krate.rust_version {

@@ -1,6 +1,6 @@
 """Sync the TSV support ledger's function rows to the verified Rust registry.
 
-Truth source is ifc-geometry/src/resource/functions.rs, whose Implemented
+Truth source is crates/ifc-geometry/src/resource/functions.rs, whose Implemented
 rows are independently verified by the declaration_manifest test
 `implemented_functions_are_named_by_their_owner_module`.
 """
@@ -8,7 +8,7 @@ rows are independently verified by the declaration_manifest test
 import re
 from pathlib import Path
 
-reg = Path("ifc-geometry/src/resource/functions.rs").read_text()
+reg = Path("crates/ifc-geometry/src/resource/functions.rs").read_text()
 
 status_word = {
     "IMPLEMENTED": "implemented",
@@ -25,7 +25,7 @@ assert len(entries) == 28, f"expected 28 registry rows, found {len(entries)}"
 
 truth = {name.lower(): status_word[st] for name, _owner, st in entries}
 
-tsv_path = Path("ifc-geometry/data/ifc4-add2-tc1-geometry-support.tsv")
+tsv_path = Path("crates/ifc-geometry/data/ifc4-add2-tc1-geometry-support.tsv")
 lines = tsv_path.read_text().splitlines()
 out = [lines[0]]
 changed = 0

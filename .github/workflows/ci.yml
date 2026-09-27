@@ -52,7 +52,7 @@ jobs:
         with:
           node-version: "20"
       - name: Install wasm-bindgen CLI
-        # Must equal the `wasm-bindgen` pin in openbim-ifc-wasm/Cargo.toml;
+        # Must equal the `wasm-bindgen` pin in crates/openbim-ifc-wasm/Cargo.toml;
         # build-node-pkg.sh refuses a mismatch.
         if: matrix.section == 'bindings'
         uses: taiki-e/install-action@9983c65e42da123ff25d1f78505eb6de315aa172 # v2.87.20
@@ -65,7 +65,7 @@ jobs:
           python-version: "3.12"
       - name: Install uv and maturin
         # The gate builds the Python wheel with maturin and tests it in a uv
-        # venv (openbim-ifc-py/scripts/check-python.sh).
+        # venv (crates/openbim-ifc-py/scripts/check-python.sh).
         if: matrix.section == 'bindings'
         run: python -m pip install "uv==0.11.19" "maturin==1.13.3"
       - name: Fetch IFC EXPRESS schemas

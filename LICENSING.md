@@ -33,7 +33,7 @@ license.
 The `ifc-template-catalog` package contains an official catalog artifact under
 `CC-BY-ND-4.0`. Its Rust code and OpenBIM.rs correction overlays are covered by
 `AGPL-3.0-or-later`; they remain separate from the unmodified official artifact.
-See `ifc-template-catalog/data/NOTICE.md` and the package-local license files.
+See `crates/ifc-template-catalog/data/NOTICE.md` and the package-local license files.
 
 ## Contributions
 

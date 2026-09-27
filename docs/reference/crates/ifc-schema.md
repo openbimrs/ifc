@@ -15,7 +15,7 @@ IFC schema as data: entity table, supertype chain, attribute names.
 | Registries | [crates.io `ifc-schema`](https://crates.io/crates/ifc-schema) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties`, `schema` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_schema/index.html) · [docs.rs](https://docs.rs/ifc-schema) |
-| Source | [`ifc-schema/`](https://github.com/openbimrs/ifc/tree/main/ifc-schema) |
+| Source | [`crates/ifc-schema/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-schema) |
 
 ## Overview
 
@@ -39,4 +39,4 @@ Latest release, 0.2.2 (2026-09-23):
   crate depending on this one could be compiled to WebAssembly. Native
   builds keep runtime-seeded hashing; wasm32 builds use a compile-time seed.
 
-Full history: [`ifc-schema/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-schema/CHANGELOG.md)
+Full history: [`crates/ifc-schema/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-schema/CHANGELOG.md)

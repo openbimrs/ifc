@@ -15,7 +15,7 @@ Versioned IFC PSD/QTO catalog definitions and correction overlays
 | Registries | [crates.io `ifc-template-catalog`](https://crates.io/crates/ifc-template-catalog) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `property-catalog` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_template_catalog/index.html) · [docs.rs](https://docs.rs/ifc-template-catalog) |
-| Source | [`ifc-template-catalog/`](https://github.com/openbimrs/ifc/tree/main/ifc-template-catalog) |
+| Source | [`crates/ifc-template-catalog/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-template-catalog) |
 
 ## Overview
 
@@ -47,4 +47,4 @@ Latest release, 0.2.1 (2026-09-27):
   restored path, `docs/adr/0017-versioned-psd-qto-catalog.md`; the old
   `0010` path had been reassigned to an unrelated ADR.
 
-Full history: [`ifc-template-catalog/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-template-catalog/CHANGELOG.md)
+Full history: [`crates/ifc-template-catalog/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-template-catalog/CHANGELOG.md)

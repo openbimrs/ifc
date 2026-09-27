@@ -99,6 +99,11 @@ self-contained.
 
 ## Architecture
 
+Every crate lives in [`crates/`](crates). The root keeps the workspace
+manifest and the tooling around it: `xtask/` (the `cargo xtask` docs and lint
+tool), `scripts/` (the gate and release helpers), `docs/`, `test/fixtures/`,
+`tools/` and `benchmarks/`.
+
 - `ifc-model` owns the serialization-independent record graph.
 - `ifc-schema` interprets EXPRESS schema metadata.
 - `ifc-step` and `ifc-xml` are codecs over the model.

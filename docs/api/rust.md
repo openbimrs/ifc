@@ -170,7 +170,7 @@ therefore the file's bytes plus whatever has been decoded. A consumer that
 touches every entity pays for a fully decoded model, which is several times
 the file size.
 
-`ifc-step/tests/scale.rs` holds a full parse of a large synthetic model
+`crates/ifc-step/tests/scale.rs` holds a full parse of a large synthetic model
 under 10x the input size in resident memory, so a regression fails the
 gate. `benchmarks/README.md` records comparative measurements against
 IfcOpenShell, with the machine and method they were taken on.

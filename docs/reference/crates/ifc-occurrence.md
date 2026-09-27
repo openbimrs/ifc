@@ -15,7 +15,7 @@ Built element and distribution occurrence classes and their type pairing.
 | Registries | [crates.io `ifc-occurrence`](https://crates.io/crates/ifc-occurrence) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `occurrence` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_occurrence/index.html) · [docs.rs](https://docs.rs/ifc-occurrence) |
-| Source | [`ifc-occurrence/`](https://github.com/openbimrs/ifc/tree/main/ifc-occurrence) |
+| Source | [`crates/ifc-occurrence/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-occurrence) |
 
 ## Overview
 
@@ -42,4 +42,4 @@ Latest release, 0.2.0 (2026-09-22):
 First release under per-crate versioning. See the
 that produced this version.
 
-Full history: [`ifc-occurrence/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-occurrence/CHANGELOG.md)
+Full history: [`crates/ifc-occurrence/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-occurrence/CHANGELOG.md)

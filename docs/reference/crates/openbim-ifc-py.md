@@ -14,7 +14,7 @@ Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python
 | Latest release | 0.1.0 (2026-09-26) |
 | Registries | [PyPI `openbim-ifc`](https://pypi.org/project/openbim-ifc/) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/openbim_ifc_py/index.html) |
-| Source | [`openbim-ifc-py/`](https://github.com/openbimrs/ifc/tree/main/openbim-ifc-py) |
+| Source | [`crates/openbim-ifc-py/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-py) |
 
 ## Overview
 
@@ -62,4 +62,4 @@ Latest release, 0.1.0 (2026-09-26):
 - Every failure raises `IfcError` with the stable `code` shared with the
   C and JavaScript bindings. Parsing releases the GIL.
 
-Full history: [`openbim-ifc-py/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/openbim-ifc-py/CHANGELOG.md)
+Full history: [`crates/openbim-ifc-py/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-py/CHANGELOG.md)

@@ -15,7 +15,7 @@ ifcXML (ISO 10303-28) codec for the IFC model.
 | Registries | [crates.io `ifc-xml`](https://crates.io/crates/ifc-xml) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `ifcxml` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_xml/index.html) · [docs.rs](https://docs.rs/ifc-xml) |
-| Source | [`ifc-xml/`](https://github.com/openbimrs/ifc/tree/main/ifc-xml) |
+| Source | [`crates/ifc-xml/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-xml) |
 
 ## Overview
 
@@ -69,4 +69,4 @@ Latest release, 0.2.1 (2026-09-27):
   STEP -> ifcXML -> Model -> STEP round trip over every committed fixture, in
   positional, schema-named and strict-profile configurations (#116, #118).
 
-Full history: [`ifc-xml/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/ifc-xml/CHANGELOG.md)
+Full history: [`crates/ifc-xml/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-xml/CHANGELOG.md)

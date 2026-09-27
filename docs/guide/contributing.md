@@ -221,8 +221,8 @@ runs once, in CI; the release does not run it again:
 | `openbim-ifc-wasm` | npm only (`@openbim/ifc`) |
 | `openbim-ifc-py` | PyPI only (`openbim-ifc`): Linux, macOS and Windows wheels plus an sdist |
 
-The version in `openbim-ifc-wasm/npm/package.json` or
-`openbim-ifc-py/pyproject.toml` must equal the crate's. `--set --apply`
+The version in `crates/openbim-ifc-wasm/npm/package.json` or
+`crates/openbim-ifc-py/pyproject.toml` must equal the crate's. `--set --apply`
 bumps it together with `Cargo.toml`, and refuses if the two were already
 out of step. The workflow refuses a tag that disagrees with any manifest. Every publish step
 skips a version that is already live, so re-running a partly failed
