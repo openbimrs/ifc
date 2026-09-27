@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `profile_outline` and `ProfileOutline` are re-exported at the root under
+  `geometry-select` (#166), beside `describe_profile`: the straight-edged
+  outline of an arbitrary closed profile, without the geometry kernel.
+
 ## [0.7.0] - 2026-09-27
 
 ### Changed (breaking)

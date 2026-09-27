@@ -42,6 +42,15 @@ lockstep -- is archived in the
   outside the body, such as a space boundary's connection surface in the
   relating space's coordinates, is placed exactly as the body is.
   `Ok(None)` when the product has no such representation; kernel-free.
+- `profile_outline(model, units, profile)` and `ProfileOutline` (#166): an
+  `IfcArbitraryClosedProfileDef`'s or `IfcArbitraryProfileDefWithVoids`'s
+  boundaries as rings of vertices in metres, in profile coordinates, for
+  `IfcPolyline` and line-only `IfcIndexedPolyCurve` boundaries. Each ring
+  is in authored order without its closing vertex, as profile lowering
+  reads it. An `IfcArcIndex` segment or any other curve family is
+  `Unsupported` naming the curve, never chorded; a 3D point, fewer than
+  three distinct vertices and non-consecutive segments are `Degenerate`.
+  Kernel-free.
 
 ### Changed
 
@@ -59,6 +68,14 @@ lockstep -- is archived in the
   `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
+
+### openbim-ifc
+
+### Added
+
+- `profile_outline` and `ProfileOutline` are re-exported at the root under
+  `geometry-select` (#166), beside `describe_profile`: the straight-edged
+  outline of an arbitrary closed profile, without the geometry kernel.
 
 ### openbim-ifc-binding-core
 
