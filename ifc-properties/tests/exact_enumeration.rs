@@ -144,6 +144,16 @@ fn a_single_selected_name_answers_exactly_what_exact_property_answers() {
         &single(52, "Grade", "IFCLABEL('A')"),
         &defines(53, &[1], 51),
     ]));
+    // Every composite kind, resolved and refused, compared too (#150).
+    models.push(wall_model(&[
+        "#50=IFCPROPERTYENUMERATEDVALUE('Status',$,(IFCLABEL('NEW')),$);",
+        "#54=IFCPROPERTYBOUNDEDVALUE('Range',$,IFCREAL(2.),IFCREAL(1.),$,$);",
+        "#55=IFCPROPERTYLISTVALUE('Mixed',$,(IFCREAL(1.),IFCINTEGER(2)),$);",
+        "#56=IFCPROPERTYTABLEVALUE('Curve',$,(IFCREAL(0.)),(IFCREAL(1.)),$,$,$,.LINEAR.);",
+        "#57=IFCPROPERTYREFERENCEVALUE('Link',$,$,$);",
+        &pset(51, "Pset_Status", &[50, 54, 55, 56, 57]),
+        &defines(53, &[1], 51),
+    ]));
     let mut compared = 0;
     for model in &models {
         let (by_object, _) = property_sets_by_object(model);
@@ -214,14 +224,17 @@ fn an_empty_result_is_a_proven_absence() {
 
 #[test]
 fn an_unsupported_member_refuses_only_when_it_is_selected() {
+    // Every `IfcSimpleProperty` kind resolves (#150); a complex property
+    // is still refused.
     let m = wall_model(&[
-        "#50=IFCPROPERTYENUMERATEDVALUE('Status',$,(IFCLABEL('NEW')),$);",
+        "#50=IFCCOMPLEXPROPERTY('Status',$,'Grouping',(#54));",
+        &single(54, "Inner", "IFCLABEL('NEW')"),
         &pset(51, "Pset_Status", &[50]),
         &defines(52, &[1], 51),
     ]);
     let refused = Err(ExactPropertyError::UnsupportedProperty {
         entity: EntityId(50),
-        type_name: "IFCPROPERTYENUMERATEDVALUE".into(),
+        type_name: "IFCCOMPLEXPROPERTY".into(),
     });
     assert_eq!(exact_properties(&m, EntityId(1)), refused);
     let entries = exact_properties_where(&m, EntityId(1), |set| set != "Pset_Status", |_| true)

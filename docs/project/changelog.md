@@ -159,6 +159,30 @@ lockstep -- is archived in the
 
 ### Added
 
+- `exact_property`, `exact_properties` and `exact_properties_where` resolve
+  `IfcPropertyEnumeratedValue`, `IfcPropertyListValue`,
+  `IfcPropertyBoundedValue`, `IfcPropertyTableValue` and
+  `IfcPropertyReferenceValue` (#150), which they refused with
+  `UnsupportedProperty`. New `ExactValue` variants `Enumerated`, `List`,
+  `Bounded`, `Table` and `Reference` carry them, with the new types
+  `ExactTypedValue` (one `IfcValue` and its declared type),
+  `ExactEnumeratedValue`/`ExactEnumeration` (selected values and the
+  referenced `IfcPropertyEnumeration`), `ExactBoundedValue` (lower, upper,
+  set point), `ExactTableValue`/`ExactTableRow` (rows, expression, defining
+  and defined unit, interpolation), `ExactReferenceValue` and
+  `ExactEntityRef` (usage name and target). `ExactProperty.value_type` is
+  `None` for these; `unit_id` is the list's, the bounded value's or the
+  enumeration's `Unit`. Every attribute is read by name from the declared
+  release's table: IFC2X3 requires the value lists and the reference target
+  and has no `SetPointValue` or `CurveInterpolation`; IFC4/IFC4X3 make them
+  optional. A malformed kind is refused as a single value is, and the
+  WHERE rules that decide how the values read (one type per list and
+  between bounds, equal table columns, selected values drawn from the
+  referenced enumeration) and `LIST OF UNIQUE` are enforced with the new
+  `ExactPropertyError::InconsistentValues { entity, rule }`, where `rule` is
+  the release's own label (`WR21` in IFC4, `WR1` in IFC2X3). Both enums are
+  `#[non_exhaustive]`; callers that relied on the refusal now get answers.
+  An `IfcComplexProperty` is still refused.
 - `exact_properties(model, object)` and
   `exact_properties_where(model, object, select_set, select_property)`:
   exact enumeration of an object's properties and simple quantities (#78),

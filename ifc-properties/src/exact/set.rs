@@ -14,6 +14,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use ifc_model::{Entity, EntityId, Model};
 
+use super::composite::composite_value;
 use super::quantity::{find_quantity, predefined_may_hold};
 use super::refs::{nonempty_refs_at, text_at};
 use super::release::Release;
@@ -103,25 +104,28 @@ pub(super) fn property_members<'m>(
 }
 
 /// The value of property `property_id`, which must be an
-/// `IfcPropertySingleValue`.
+/// `IfcSimpleProperty`: a single, enumerated, list, bounded, table or
+/// reference value.
 ///
 /// # Errors
 ///
-/// [`ExactPropertyError::UnsupportedProperty`] for any other property kind,
-/// or any value/unit error of the single value.
-pub(super) fn single_value(
+/// [`ExactPropertyError::UnsupportedProperty`] for an `IfcComplexProperty`,
+/// or any value, unit or rule error of the property.
+pub(super) fn property_value(
     model: &Model,
     release: Release,
     property_id: EntityId,
 ) -> Result<ResolvedValue, ExactPropertyError> {
     let property = model.get(property_id).expect("checked reference");
-    if !property.is_type("IFCPROPERTYSINGLEVALUE") {
-        return Err(ExactPropertyError::UnsupportedProperty {
+    if property.is_type("IFCPROPERTYSINGLEVALUE") {
+        return exact_property_value(model, release, property_id, property);
+    }
+    composite_value(model, release, property_id, property)?.ok_or_else(|| {
+        ExactPropertyError::UnsupportedProperty {
             entity: property_id,
             type_name: property.type_name.clone(),
-        });
-    }
-    exact_property_value(model, release, property_id, property)
+        }
+    })
 }
 
 /// The one property or quantity named `wanted_property` among `sets` of
@@ -181,7 +185,7 @@ pub(super) fn find_property(
             }
             match matching {
                 Some(property_id) => {
-                    Some((property_id, single_value(model, release, property_id)?))
+                    Some((property_id, property_value(model, release, property_id)?))
                 }
                 None => None,
             }

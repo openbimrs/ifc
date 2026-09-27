@@ -6,6 +6,7 @@
 //! declares; nothing is aliased across releases.
 
 mod assignment;
+mod composite;
 mod enumerate;
 mod measure;
 mod quantity;
@@ -14,6 +15,7 @@ mod release;
 mod set;
 mod unit;
 mod value;
+mod values;
 
 use std::{fmt, sync::Arc};
 
@@ -25,6 +27,10 @@ pub use enumerate::{exact_properties, exact_properties_where, ExactPropertyEntry
 use release::validate_model;
 use set::find_property;
 pub use unit::{exact_unit, ExactUnit, ExactUnitError};
+pub use values::{
+    ExactBoundedValue, ExactEntityRef, ExactEnumeratedValue, ExactEnumeration, ExactReferenceValue,
+    ExactTableRow, ExactTableValue, ExactTypedValue,
+};
 
 /// Provenance of an exact result.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -49,7 +55,12 @@ pub enum ExactLogical {
     True,
 }
 
-/// Scalar values accepted by the exact resolver.
+/// Values accepted by the exact resolver.
+///
+/// An `IfcPropertySingleValue` or a simple quantity resolves to one of the
+/// scalar variants. The other `IfcSimpleProperty` kinds resolve to a
+/// composite variant whose scalars carry their own declared types
+/// ([`ExactTypedValue`]); for those, [`ExactProperty::value_type`] is `None`.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum ExactValue {
@@ -67,6 +78,20 @@ pub enum ExactValue {
     Real(f64),
     /// An `IFCTEXT`/`IFCLABEL`/`IFCIDENTIFIER`-family string payload.
     Text(Arc<str>),
+    /// An `IfcPropertyEnumeratedValue`: its selected values and its
+    /// reference enumeration.
+    Enumerated(ExactEnumeratedValue),
+    /// An `IfcPropertyListValue`: its `ListValues` in file order, all of
+    /// one declared type; empty only when the attribute is `$` (IFC4 and
+    /// IFC4X3). The shared `Unit` is [`ExactProperty::unit_id`].
+    List(Vec<ExactTypedValue>),
+    /// An `IfcPropertyBoundedValue`: lower and upper bound and set point.
+    Bounded(Box<ExactBoundedValue>),
+    /// An `IfcPropertyTableValue`: its rows, expression, units and
+    /// interpolation.
+    Table(ExactTableValue),
+    /// An `IfcPropertyReferenceValue`: its usage name and target entity.
+    Reference(ExactReferenceValue),
 }
 
 /// A uniquely resolved property with IFC identity and provenance.
@@ -78,19 +103,27 @@ pub struct ExactProperty {
     pub property_set: Arc<str>,
     /// Entity id of the `IfcPropertySet` or `IfcElementQuantity`.
     pub set_id: EntityId,
-    /// Entity id of the `IfcPropertySingleValue`, or of the simple
+    /// Entity id of the `IfcSimpleProperty` (single, enumerated, list,
+    /// bounded, table or reference value), or of the simple
     /// `IfcPhysicalQuantity` (e.g. `IfcQuantityLength`).
     pub property_id: EntityId,
     /// Declared IFC value type (for example `IFCINTEGER` or `IFCLENGTHMEASURE`).
+    ///
+    /// `None` for a single value whose `NominalValue` is `$`, and for a
+    /// composite value, whose scalars carry their own types.
     ///
     /// For a quantity it is the declared type of its value attribute in the
     /// bound release (`LengthValue : IfcLengthMeasure` gives
     /// `IFCLENGTHMEASURE`), since a quantity stores a bare number.
     pub value_type: Option<Arc<str>>,
-    /// Explicit `IfcPropertySingleValue.Unit` or
-    /// `IfcPhysicalSimpleQuantity.Unit`, if stated.
+    /// The explicit unit that applies to every value, if stated:
+    /// `IfcPropertySingleValue.Unit`, `IfcPropertyListValue.Unit`,
+    /// `IfcPropertyBoundedValue.Unit`, the `Unit` of an enumerated value's
+    /// `IfcPropertyEnumeration`, or `IfcPhysicalSimpleQuantity.Unit`.
+    /// A table's two units are in [`ExactTableValue`]; a reference value has
+    /// none.
     pub unit_id: Option<EntityId>,
-    /// The resolved `NominalValue`, or the quantity's value.
+    /// The resolved `NominalValue`, composite value, or the quantity's value.
     pub value: ExactValue,
 }
 
@@ -232,14 +265,17 @@ pub enum ExactPropertyError {
         type_name: Arc<str>,
     },
     /// A member of `IfcPropertySet.HasProperties` is not an `IfcProperty`,
-    /// or is a property kind the exact resolver does not yet support.
+    /// or is a property kind the exact resolver does not yet support
+    /// (`IfcComplexProperty`).
     UnsupportedProperty {
         /// The rejected entity.
         entity: EntityId,
         /// The entity's actual IFC type name.
         type_name: Arc<str>,
     },
-    /// `IfcPropertySingleValue.NominalValue` was `$` where a value was required.
+    /// A value the release requires was `$`: a quantity's value, or a
+    /// required value of another kind (IFC2X3
+    /// `IfcPropertyReferenceValue.PropertyReference`).
     MissingValueSlot {
         /// The property with the missing value.
         property: EntityId,
@@ -288,6 +324,19 @@ pub enum ExactPropertyError {
         /// The release the header declares.
         schema: SchemaVersion,
     },
+    /// Values that the property's release constrains contradict one of
+    /// those constraints, so no one reading of them is exact: list members
+    /// or bounds of different types, table columns of unequal length, a
+    /// selected value missing from the referenced enumeration, or a repeated
+    /// member of a `LIST OF UNIQUE`.
+    InconsistentValues {
+        /// The property or `IfcPropertyEnumeration` holding the values.
+        entity: EntityId,
+        /// The release's label of the violated WHERE rule (for example
+        /// `WR31`, or `SameUnitUpperLower` in IFC4), or `<Attribute> UNIQUE`
+        /// for a repeated member of a unique list.
+        rule: &'static str,
+    },
     /// A proper subtype of `IfcRelDefinesByProperties` or
     /// `IfcRelDefinesByType` relates the queried object, such as IFC2X3
     /// `IfcRelOverridesProperties`. Its semantics change which value applies,
@@ -326,8 +375,12 @@ pub fn exact_schema(model: &Model) -> Result<SchemaVersion, ExactPropertyError> 
 
 impl std::error::Error for ExactPropertyError {}
 
-/// Resolve an `IfcPropertySingleValue` or simple quantity by exact set and
+/// Resolve an `IfcSimpleProperty` or simple quantity by exact set and
 /// property name.
+///
+/// Single, enumerated, list, bounded, table and reference values resolve,
+/// the last five as composite [`ExactValue`]s; an `IfcComplexProperty` is
+/// refused.
 ///
 /// The model is resolved against the single release its `FILE_SCHEMA`
 /// declares, IFC2X3, IFC4 or IFC4X3 (see [`exact_schema`]); every domain,

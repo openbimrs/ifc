@@ -198,14 +198,18 @@ The three outcomes are distinct on purpose:
 - `Present` carries the value, its declared IFC type (a quantity reports its
   measure, such as `IFCLENGTHMEASURE`), an explicit unit if the file states one,
   the owning set and entity ids, and whether it came from the occurrence or a
-  type.
+  type. Enumerated, list, bounded, table and reference values arrive as
+  composite values (`ExactValue::Enumerated`, `List`, `Bounded`, `Table`,
+  `Reference`) whose members carry their own declared types.
 - `Absent` is a *proven* absence: every assigned set was read completely and
   none held the name.
 - An `ExactPropertyError` means the evidence did not allow an answer: a
   dangling reference, a malformed aggregate, an ambiguous duplicate set, more
-  than one type assignment, a predefined property set that could hold the
-  name, STEP diagnostics on the model, or a schema other than IFC2X3, IFC4 or
-  IFC4X3 ADD2. Treat it as "cannot tell", never as "absent".
+  than one type assignment, a complex property, values that contradict the
+  rules deciding how they read (a list of mixed types, table columns of
+  unequal length), a predefined property set that could hold the name, STEP
+  diagnostics on the model, or a schema other than IFC2X3, IFC4 or IFC4X3
+  ADD2. Treat it as "cannot tell", never as "absent".
 
 A check that names its set or property by pattern, as an IDS facet may,
 needs every match rather than one. `exact_properties_where(model, object,
@@ -216,7 +220,9 @@ and an empty list is a proven absence.
 
 The value is the file's. WHERE rules on the value, such as a non-negative
 length, are not evaluated here; that is validation's job, and the rule may be
-[unsupported](#what-is-reported-as-unsupported). Resolving `unit_id` to a
+[unsupported](#what-is-reported-as-unsupported). Only the rules that decide
+how a composite value reads are enforced, since without them there is no one
+reading. Resolving `unit_id` to a
 project unit is a separate call (`exact_unit`). Quantities are authored
 assertions and are never recomputed from geometry.
 
@@ -249,5 +255,5 @@ the exact property resolution, not IDS parsing or IDS reporting.
 - `ifc-validate/tests/` covers the native rules and a corpus run;
   `ifc-validate/src/where_rule/registry.rs` is the registry the coverage table
   is generated from.
-- `ifc-properties/tests/exact.rs`, `exact_quantities.rs` and
-  `exact_ifc2x3.rs` cover exact resolution per release.
+- `ifc-properties/tests/exact.rs`, `exact_quantities.rs`, `exact_values.rs`
+  and `exact_ifc2x3.rs` cover exact resolution per release.

@@ -12,8 +12,8 @@
 //! - A set whose name the set selector rejects is skipped unread, as
 //!   [`exact_property`] skips a set of another name. Every member of a
 //!   selected set is validated before anything is matched.
-//! - A selected property that is not an `IfcPropertySingleValue`, a
-//!   selected complex quantity, and a predefined set one of whose own
+//! - A selected `IfcComplexProperty`, a selected complex quantity, and a
+//!   predefined set one of whose own
 //!   attributes is selected are refused. An unselected member must be well
 //!   formed but need not have a supported value form.
 //!
@@ -28,7 +28,7 @@ use super::assignment::assigned_sets;
 use super::quantity::{predefined_attributes, predefined_name, quantity_members, quantity_value};
 use super::refs::text_at;
 use super::release::{validate_model, Release};
-use super::set::{exact, load_set, property_members, single_value, SetKind};
+use super::set::{exact, load_set, property_members, property_value, SetKind};
 use super::{ExactProperty, ExactPropertyError, ExactSource};
 
 /// One property of an enumeration, with the name it was selected by.
@@ -46,9 +46,10 @@ pub struct ExactPropertyEntry {
 /// Every property and simple quantity of `object`, resolved exactly.
 ///
 /// Equivalent to [`exact_properties_where`] selecting every set and every
-/// property, so any assigned property that is not an
-/// `IfcPropertySingleValue`, any complex quantity and any predefined
-/// property set with attributes of its own is refused. Callers that need
+/// property, so any assigned `IfcComplexProperty`, any complex quantity and
+/// any predefined property set with attributes of its own is refused. Every
+/// `IfcSimpleProperty` kind resolves, as for
+/// [`exact_property`](super::exact_property). Callers that need
 /// only some properties (an IDS pattern facet) select them with
 /// [`exact_properties_where`], so an unsupported member they do not ask
 /// about cannot refuse their answer.
@@ -204,7 +205,7 @@ fn collect(
         for (member_id, name) in in_order {
             let resolved = match kind {
                 SetKind::Quantities => quantity_value(model, release, member_id)?,
-                _ => single_value(model, release, member_id)?,
+                _ => property_value(model, release, member_id)?,
             };
             entries.push(ExactPropertyEntry {
                 name: Arc::from(name),
