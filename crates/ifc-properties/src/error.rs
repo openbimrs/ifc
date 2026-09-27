@@ -5,6 +5,7 @@
 //! relationship must not hide every valid property in the model.
 
 use ifc_model::EntityId;
+use ifc_schema::SchemaVersion;
 
 /// A structural problem found while reading properties.
 ///
@@ -241,6 +242,49 @@ pub enum PropertyError {
         /// The offending value, rendered for the message.
         value: String,
     },
+    /// The model's header declares several schemas; authoring binds to
+    /// exactly one release.
+    MultipleSchemas {
+        /// Number of `FILE_SCHEMA` declarations.
+        schemas: usize,
+    },
+    /// The model's header declares one schema with no bundled table, so no
+    /// layout can be trusted.
+    UnsupportedSchema {
+        /// The `FILE_SCHEMA` token as written.
+        schema: String,
+    },
+    /// The model's release does not declare this entity, such as
+    /// `IfcQuantityNumber` (IFC4X3 only) in an IFC2X3 or IFC4 model.
+    EntityNotInSchema {
+        /// The entity type, in schema casing.
+        entity: &'static str,
+        /// The release the model declares.
+        schema: SchemaVersion,
+    },
+    /// An authoring call supplied a value for an attribute the model's
+    /// release does not declare, such as a `Formula` for an IFC2X3
+    /// quantity. It is refused rather than dropped.
+    AuthoringNotInSchema {
+        /// The entity type, in schema casing.
+        entity: &'static str,
+        /// The attribute.
+        attribute: &'static str,
+        /// The release the model declares.
+        schema: SchemaVersion,
+    },
+    /// The record to edit does not have the attribute count its release
+    /// declares, so no slot in it can be trusted.
+    MalformedEntitySlots {
+        /// The record.
+        id: EntityId,
+        /// Its type.
+        type_name: String,
+        /// Attribute count the release declares.
+        expected: usize,
+        /// Attribute count the record has.
+        actual: usize,
+    },
 }
 
 impl std::fmt::Display for PropertyError {
@@ -260,6 +304,37 @@ impl std::fmt::Display for PropertyError {
             } => write!(
                 f,
                 "{entity}.{attribute} rejected the authored value: {value}"
+            ),
+            Self::MultipleSchemas { schemas } => write!(
+                f,
+                "the header declares {schemas} schemas; authoring binds to exactly one"
+            ),
+            Self::UnsupportedSchema { schema } => {
+                write!(
+                    f,
+                    "the header declares {schema}, which has no bundled table"
+                )
+            }
+            Self::EntityNotInSchema { entity, schema } => {
+                write!(f, "{entity} is not an entity of {schema:?}")
+            }
+            Self::AuthoringNotInSchema {
+                entity,
+                attribute,
+                schema,
+            } => write!(
+                f,
+                "cannot author {entity}.{attribute}: not defined by {schema:?}"
+            ),
+            Self::MalformedEntitySlots {
+                id,
+                type_name,
+                expected,
+                actual,
+            } => write!(
+                f,
+                "#{} {type_name} has {actual} attributes; its release declares {expected}",
+                id.0
             ),
         }
     }

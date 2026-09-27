@@ -143,6 +143,20 @@ impl QuantityKind {
         })
     }
 
+    /// The name of the value attribute, the same in every release that
+    /// declares the entity (`LengthValue`, ..., IFC4X3 `NumberValue`).
+    pub(crate) fn value_attribute(self) -> &'static str {
+        match self {
+            Self::Length => "LengthValue",
+            Self::Area => "AreaValue",
+            Self::Volume => "VolumeValue",
+            Self::Count => "CountValue",
+            Self::Weight => "WeightValue",
+            Self::Time => "TimeValue",
+            Self::Number => "NumberValue",
+        }
+    }
+
     /// Whether the value must be `>= 0`: `WR22` on every `IfcQuantity*`
     /// except `IfcQuantityCount` (its `WR21`) and IFC4X3
     /// `IfcQuantityNumber`, which declares no rule at all.

@@ -36,27 +36,31 @@
 use ifc_model::{EntityId, Model, Transaction, Value};
 
 use crate::error::PropertyError;
+use crate::quantity::release::bind;
 use crate::quantity::set::QuantityKind;
-
-/// Slot of the value on every `IfcPhysicalSimpleQuantity` subtype.
-///
-/// Verified against IFC4 EXPRESS: `IfcPhysicalQuantity` contributes `Name`
-/// and `Description`, `IfcPhysicalSimpleQuantity` adds `Unit`, and the
-/// concrete subtype's own measure follows.
-const SIMPLE_VALUE_SLOT: usize = 3;
 
 /// Stage a new value for an existing simple quantity.
 ///
-/// The measure type already on the entity is preserved, so an
+/// The value is written into the slot the model's declared release gives
+/// the quantity's value attribute (`release.rs` has the binding). The
+/// measure type already on the entity is preserved, so an
 /// `IfcQuantityArea` keeps writing `IfcAreaMeasure`. A quantity whose value
-/// slot is empty or untyped is written with the measure implied by its own
+/// slot is `$` or untyped is written with the measure implied by its own
 /// entity type, which is the only defensible reading: the schema fixes which
-/// measure each subtype carries.
+/// measure each subtype carries. This repairs a quantity read as
+/// [`Quantity::Unresolved`](crate::Quantity::Unresolved).
 ///
 /// # Errors
 ///
-/// [`PropertyError::NotAQuantity`] if `id` is not a simple quantity, and
-/// [`PropertyError::MissingEntity`] if it is not in the model.
+/// Nothing is staged on an error:
+/// [`PropertyError::MissingEntity`] if `id` is not in the model,
+/// [`PropertyError::NotAQuantity`] if it is not a simple quantity,
+/// [`PropertyError::MultipleSchemas`] or [`PropertyError::UnsupportedSchema`]
+/// if the model binds no single release,
+/// [`PropertyError::EntityNotInSchema`] if that release does not declare the
+/// quantity's entity, [`PropertyError::MalformedEntitySlots`] if the record
+/// does not have the release's attribute count, and
+/// [`PropertyError::AuthoringInvalid`] for a value its measure cannot hold.
 pub fn set_quantity_value(
     tx: &mut Transaction,
     model: &Model,
@@ -70,24 +74,31 @@ pub fn set_quantity_value(
             type_name: entity.type_name.to_string(),
         }
     })?;
+    let layout = bind(model)?;
+    let name = layout.entity(kind)?;
+    let expected = layout.arity(&name);
+    if entity.attributes.len() != expected {
+        return Err(PropertyError::MalformedEntitySlots {
+            id,
+            type_name: entity.type_name.to_string(),
+            expected,
+            actual: entity.attributes.len(),
+        });
+    }
+    let slot = layout
+        .slot(&name, kind.value_attribute())
+        .expect("every release that declares a quantity declares its value");
     // Prefer the measure already written; fall back to the one the entity
     // type implies. Never write a bare number.
     let measure = entity
-        .attribute(SIMPLE_VALUE_SLOT)
+        .attribute(slot)
         .and_then(declared_measure)
         .unwrap_or_else(|| kind.measure_type().to_string());
-
-    let numeric = if kind == QuantityKind::Count {
-        // IfcCountMeasure is an INTEGER in IFC4; writing 3.0 into it produces
-        // a file that is wrong against the schema even though it parses.
-        Value::Integer(value as i64)
-    } else {
-        Value::Real(value)
-    };
+    let numeric = layout.scalar(kind, value)?;
 
     tx.set_attribute(
         id,
-        SIMPLE_VALUE_SLOT,
+        slot,
         Value::Typed {
             type_name: measure.into(),
             value: Box::new(numeric),
@@ -143,30 +154,32 @@ pub fn set_description(
     Ok(())
 }
 
-/// Stage a brand-new simple quantity, returning the id reserved for it.
+/// Stage a brand-new simple quantity in `model`'s release, returning the id
+/// reserved for it.
 ///
 /// The entity is created with the measure type its kind implies and no unit,
 /// meaning "the project default applies" -- which is what most authored
 /// quantities mean. Attach it to a set with [`add_quantity_to_set`].
 ///
-/// [`QuantityKind::Number`] writes `IfcQuantityNumber`, which only IFC4X3
-/// declares. A transaction does not know the model's release, so this does
-/// not check it: author that kind into an IFC4X3 model only.
+/// # Errors
+///
+/// As [`create_quantity_with`].
 pub fn create_quantity(
     tx: &mut Transaction,
+    model: &Model,
     kind: QuantityKind,
     name: &str,
     value: f64,
-) -> EntityId {
-    create_quantity_with(tx, kind, name, value, QuantityExtras::default())
+) -> Result<EntityId, PropertyError> {
+    create_quantity_with(tx, model, kind, name, value, QuantityExtras::default())
 }
 
 /// The optional attributes of an `IfcPhysicalSimpleQuantity`.
 ///
-/// Separated from [`create_quantity`] so the common call stays a
-/// four-argument one, while `Description`, `Unit` and `Formula` remain
-/// reachable. They are attributes of the entity, not decoration: the
-/// reader in this crate resolves all three.
+/// Separated from [`create_quantity`] so the common call stays short,
+/// while `Description`, `Unit` and `Formula` remain reachable. They are
+/// attributes of the entity, not decoration: the reader in this crate
+/// resolves all three.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct QuantityExtras<'a> {
     /// `IfcPhysicalQuantity.Description`.
@@ -176,52 +189,64 @@ pub struct QuantityExtras<'a> {
     /// Left unset the quantity is read in the project's default unit for
     /// its measure, which is usually what a take-off wants.
     pub unit: Option<EntityId>,
-    /// `Formula`, how the quantity was derived.
+    /// `Formula`, how the quantity was derived. IFC4 and IFC4X3 only: an
+    /// IFC2X3 quantity has no `Formula`, and one given for it is refused.
     pub formula: Option<&'a str>,
 }
 
-/// Stage a simple quantity with its optional attributes.
+/// Stage a simple quantity with its optional attributes, in `model`'s
+/// release.
 ///
-/// # Why the arity is five
+/// # The record has the release's layout
 ///
-/// Every `IfcPhysicalSimpleQuantity` subtype declares exactly five
-/// attributes: `Name`, `Description`, `Unit`, the subtype's own measure,
-/// and `Formula`. Writing four leaves `Formula` off the record entirely,
-/// and this crate's own reader resolves it at slot 4 -- so a formula a
-/// caller set could never be read back.
-#[must_use]
+/// Attributes are placed by name in the declared release's table. IFC4 and
+/// IFC4X3 quantities have five attributes (`Name`, `Description`, `Unit`,
+/// the value, `Formula`); IFC2X3 ones have four, with no `Formula`. A
+/// model without `FILE_SCHEMA` binds IFC4.
+///
+/// # Errors
+///
+/// Nothing is staged on an error:
+/// - [`PropertyError::MultipleSchemas`] or
+///   [`PropertyError::UnsupportedSchema`]: the model binds no single release.
+/// - [`PropertyError::EntityNotInSchema`]: the release does not declare the
+///   kind, as `IfcQuantityNumber` outside IFC4X3.
+/// - [`PropertyError::AuthoringNotInSchema`]: a `Formula` for an IFC2X3
+///   model, which has none.
+/// - [`PropertyError::AuthoringInvalid`]: a non-finite value, or a
+///   fractional count where `IfcCountMeasure` is `INTEGER` (IFC4X3). In
+///   IFC2X3 and IFC4 it is `NUMBER`, so a fractional count is written as a
+///   real, and never truncated.
 pub fn create_quantity_with(
     tx: &mut Transaction,
+    model: &Model,
     kind: QuantityKind,
     name: &str,
     value: f64,
     extras: QuantityExtras<'_>,
-) -> EntityId {
-    // IfcCountMeasure is declared INTEGER in EXPRESS, every other measure
-    // is REAL. Writing 4. where the schema says 4 is a type error a
-    // validator rejects, so the count case is narrowed deliberately.
-    let numeric = if kind == QuantityKind::Count {
-        Value::Integer(value as i64)
-    } else {
-        Value::Real(value)
-    };
-    tx.create(ifc_model::Entity::new(
-        kind.type_name(),
+) -> Result<EntityId, PropertyError> {
+    let layout = bind(model)?;
+    let entity = layout.entity(kind)?;
+    let numeric = layout.scalar(kind, value)?;
+    let text = |text: Option<&str>| text.map_or(Value::Null, |text| Value::Text(text.into()));
+    let record = layout.record(
+        kind,
+        &entity,
         vec![
-            Value::Text(name.into()),
-            extras
-                .description
-                .map_or(Value::Null, |text| Value::Text(text.into())),
-            extras.unit.map_or(Value::Null, Value::Ref),
-            Value::Typed {
-                type_name: kind.measure_type().into(),
-                value: Box::new(numeric),
-            },
-            extras
-                .formula
-                .map_or(Value::Null, |text| Value::Text(text.into())),
+            ("Name", Value::Text(name.into())),
+            ("Description", text(extras.description)),
+            ("Unit", extras.unit.map_or(Value::Null, Value::Ref)),
+            (
+                kind.value_attribute(),
+                Value::Typed {
+                    type_name: kind.measure_type().into(),
+                    value: Box::new(numeric),
+                },
+            ),
+            ("Formula", text(extras.formula)),
         ],
-    ))
+    )?;
+    Ok(tx.create(record))
 }
 
 /// Stage adding a quantity to an existing `IfcElementQuantity`.

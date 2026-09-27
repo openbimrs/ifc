@@ -151,9 +151,10 @@ fn properties_authoring_is_conformant() {
         add_property_enumerated_value(&mut tx, "Grade", None, Some(vec![Value::Real(2.0)]), None)
             .expect("enumerated value");
 
-    let count = create_quantity(&mut tx, QuantityKind::Count, "Doors", 4.0);
+    let count = create_quantity(&mut tx, &model, QuantityKind::Count, "Doors", 4.0).expect("count");
     let area = create_quantity_with(
         &mut tx,
+        &model,
         QuantityKind::Area,
         "GrossArea",
         12.5,
@@ -162,7 +163,8 @@ fn properties_authoring_is_conformant() {
             unit: Some(metre),
             formula: Some("l * h"),
         },
-    );
+    )
+    .expect("area");
 
     let pset = add_property_set(
         &mut tx,

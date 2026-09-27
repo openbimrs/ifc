@@ -45,9 +45,36 @@ everything released before per-crate changelogs began.
   compares it only against a computed `Number`, and `stated_unit` returns
   whatever unit it states. IFC2X3 and IFC4 do not declare the entity. In
   their models, and in a model without one known declared release, it
-  stays `Quantity::Unsupported`. `create_quantity` with `Number` writes
-  `IfcQuantityNumber` without checking the release; author it into IFC4X3
-  models only.
+  stays `Quantity::Unsupported`.
+- Quantity authoring binds to the model's declared release (#138).
+  `create_quantity(tx, model, kind, name, value)` and
+  `create_quantity_with(tx, model, kind, name, value, extras)` take the
+  `&Model` they write into and return `Result<EntityId, PropertyError>`.
+  They used to write the IFC4 five-attribute record into every model, so
+  an IFC2X3 quantity got a `Formula` slot IFC2X3 does not declare.
+  Attributes are now placed by name in the release's table: IFC2X3
+  quantities have four attributes, IFC4 and IFC4X3 ones five. The binding
+  is the one `ifc-material` uses. One recognised `FILE_SCHEMA` binds that
+  release, and a model with no `FILE_SCHEMA` binds IFC4. Several
+  declarations are refused with the new `PropertyError::MultipleSchemas`,
+  and an unknown one with `UnsupportedSchema`. Also refused:
+  - `QuantityKind::Number` outside IFC4X3, with `EntityNotInSchema`;
+  - a `Formula` for an IFC2X3 model, with `AuthoringNotInSchema`;
+  - a non-finite value, with `AuthoringInvalid`.
+
+  A count is no longer truncated. A whole count is still written as an
+  integer. A fractional one is written as a real where `IfcCountMeasure`
+  is `NUMBER` (IFC2X3, IFC4), and refused where it is `INTEGER` (IFC4X3).
+  `set_quantity_value` binds the same way. It writes the value slot named
+  in the release, refuses a record whose attribute count is not the
+  release's with `MalformedEntitySlots`, and repairs a `$` value (a
+  `Quantity::Unresolved`) into a simple quantity. Nothing is staged on a
+  refusal. The new `PropertyError` variants are additive, since the enum is
+  `#[non_exhaustive]`; the signatures are the breaking part.
+  `add_quantity_to_set`, `add_element_quantity` and
+  `add_physical_complex_quantity` are unchanged, because `IfcElementQuantity`
+  and `IfcPhysicalComplexQuantity` have the same attributes in all three
+  releases.
 
 The exact API is unchanged and agrees: `exact_property` refuses a `$` value
 with `MissingValueSlot`, a non-numeric one with `UnsupportedValue` and a

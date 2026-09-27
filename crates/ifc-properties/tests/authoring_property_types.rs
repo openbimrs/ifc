@@ -151,8 +151,10 @@ fn an_authored_element_quantity_attaches_and_reads_back() {
     tx.commit(&mut model).expect("commit the wall");
 
     let mut tx = Transaction::new(&model);
-    let area = create_quantity(&mut tx, QuantityKind::Area, "GrossArea", 12.5);
-    let volume = create_quantity(&mut tx, QuantityKind::Volume, "GrossVolume", 3.75);
+    let area = create_quantity(&mut tx, &model, QuantityKind::Area, "GrossArea", 12.5)
+        .expect("an IFC4 quantity");
+    let volume = create_quantity(&mut tx, &model, QuantityKind::Volume, "GrossVolume", 3.75)
+        .expect("an IFC4 quantity");
     let grouped =
         add_physical_complex_quantity(&mut tx, "Gross", None, &[area, volume], "gross measures")
             .expect("complex quantity");
@@ -367,7 +369,8 @@ fn the_value_types_survive_step_text() {
 fn the_quantity_entities_refuse_empty_and_blank_input() {
     let model = Model::default();
     let mut tx = Transaction::new(&model);
-    let area = create_quantity(&mut tx, QuantityKind::Area, "GrossArea", 12.5);
+    let area = create_quantity(&mut tx, &model, QuantityKind::Area, "GrossArea", 12.5)
+        .expect("an IFC4 quantity");
     let guid = "07BcDeFgHiJkLmNoPqRsTu";
 
     assert!(
@@ -550,7 +553,7 @@ fn every_quantity_subtype_is_authorable() {
     ];
     let mut ids = Vec::new();
     for (kind, _) in kinds {
-        ids.push(create_quantity(&mut tx, kind, "Q", 2.0));
+        ids.push(create_quantity(&mut tx, &model, kind, "Q", 2.0).expect("an IFC4 quantity"));
     }
     tx.commit(&mut model).expect("commit");
 

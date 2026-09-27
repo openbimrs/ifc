@@ -14,9 +14,10 @@
 //! is the only place the two can be compared.
 //!
 //! Both wrote the same six entity types and disagreed: one emitted four
-//! attributes where the schema declares five, dropping `Formula`, and
-//! the other encoded `IfcCountMeasure` as a real where EXPRESS declares
-//! it `INTEGER`. Both produced files that parse. Comparing the emitted
+//! attributes where IFC4 declares five, dropping `Formula`, and the
+//! other encoded a whole `IfcCountMeasure` as a real (`NUMBER` in IFC4,
+//! `INTEGER` in IFC4X3). Both produced files that parse. The models
+//! here declare no `FILE_SCHEMA`, which both writers bind to IFC4. Comparing the emitted
 //! STEP text is what makes a divergence fail rather than accumulate.
 
 #![cfg(all(feature = "cost", feature = "properties", feature = "step"))]
@@ -58,7 +59,8 @@ fn both_crates_write_the_same_quantity_record() {
     for (property_kind, cost_kind, value) in pairs {
         let mut from_properties = Model::default();
         let mut tx = Transaction::new(&from_properties);
-        property_quantity(&mut tx, property_kind, "Q", value);
+        property_quantity(&mut tx, &from_properties, property_kind, "Q", value)
+            .expect("property quantity");
         tx.commit(&mut from_properties).expect("commit");
 
         let mut from_cost = Model::default();
@@ -104,6 +106,7 @@ fn the_agreed_record_matches_the_schema() {
     ));
     let area = create_quantity_with(
         &mut tx,
+        &model,
         PropertyKind::Area,
         "GrossArea",
         12.5,
@@ -112,8 +115,10 @@ fn the_agreed_record_matches_the_schema() {
             unit: Some(unit),
             formula: Some("l * h"),
         },
-    );
-    let count = property_quantity(&mut tx, PropertyKind::Count, "Doors", 4.0);
+    )
+    .expect("area");
+    let count =
+        property_quantity(&mut tx, &model, PropertyKind::Count, "Doors", 4.0).expect("count");
     tx.commit(&mut model).expect("commit");
 
     // Five attributes: Name, Description, Unit, the measure, Formula.
@@ -146,7 +151,8 @@ fn the_agreed_record_matches_the_schema() {
         .lines()
         .find(|line| line.contains("IFCQUANTITYCOUNT"))
         .expect("count written");
-    // IfcCountMeasure = INTEGER, so the value is 4 and never 4.
+    // A whole count is written as the integer 4, never 4.: valid for
+    // IFC4 `NUMBER` and required by IFC4X3 `INTEGER`.
     //
     // Asserted on the closing delimiter, not on a bare "(4)": that is a
     // substring of "(4.)" and would hold for the real encoding too.

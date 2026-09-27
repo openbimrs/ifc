@@ -10,10 +10,12 @@
 //!   readable value.
 //! - `complex.rs`: nested physical complex quantities.
 //! - `edit.rs`: transactional authored quantity updates.
+//! - `release.rs`: the declared release's layout those updates write.
 //! - `validation.rs`: units/dimensions/formula consistency.
 
 mod complex;
 mod edit;
+mod release;
 mod set;
 mod simple;
 mod validation;
