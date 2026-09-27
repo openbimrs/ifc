@@ -849,6 +849,7 @@ version = "0.2.3"
 dependencies = [
  "ahash",
  "cargo_metadata",
+ "sha2",
  "syn 2.0.119",
  "thiserror",
 ]
