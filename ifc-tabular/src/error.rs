@@ -1,5 +1,6 @@
-//! Refusals raised while staging tabular records.
+//! Refusals raised while staging tabular records, and read failures.
 
+use ifc_model::EntityId;
 use thiserror::Error;
 
 /// Why a tabular record was refused.
@@ -63,3 +64,37 @@ pub enum TabularError {
 
 /// Result alias for tabular staging.
 pub type TabularResult<T> = Result<T, TabularError>;
+
+/// Why a read could not produce a view at all.
+///
+/// Defects INSIDE a table or series are not errors: they are reported as
+/// [`crate::TabularIssue`]s on the view, beside what did decode.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[non_exhaustive]
+pub enum TabularReadError {
+    /// No record has this id.
+    #[error("entity {id} does not exist")]
+    UnknownEntity {
+        /// The requested id.
+        id: EntityId,
+    },
+    /// The record is not the kind the read asked for.
+    #[error("{id} is {actual}, expected {expected}")]
+    WrongEntityType {
+        /// The requested id.
+        id: EntityId,
+        /// The type or types the read accepts.
+        expected: &'static str,
+        /// The record's type.
+        actual: String,
+    },
+    /// The declared schema is not one this view decodes.
+    #[error("{schema} is not supported; tabular reads decode IFC4 and IFC4X3")]
+    UnsupportedSchema {
+        /// The schema's name.
+        schema: String,
+    },
+}
+
+/// Result alias for tabular reads.
+pub type TabularReadResult<T> = Result<T, TabularReadError>;

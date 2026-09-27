@@ -17,12 +17,22 @@
 //! `IfcTable` DERIVEs three counts from its rows. STEP writes a derived
 //! attribute as `*`, not as a number, so they are emitted as
 //! [`ifc_model::Value::Derived`] and never computed into the file.
+//!
+//! # Reading back
+//!
+//! [`TabularView`] borrows a model and returns [`Table`] and
+//! [`TimeSeries`] views under a declared IFC4 or IFC4X3 schema. A read
+//! reports every malformed slot and WR1/WR2 violation as a
+//! [`TabularIssue`] rather than dropping it.
 
 mod error;
+mod read;
 mod series;
 mod table;
 
-pub use error::{TabularError, TabularResult};
+pub use error::{TabularError, TabularReadError, TabularReadResult, TabularResult};
+pub use read::{SeriesValue, TabularIssue, TabularView, TimeSeries, TimeSeriesKind};
+pub use read::{Table, TableColumn, TableRow};
 pub use series::{add_irregular_time_series, add_regular_time_series, SeriesDraft};
 pub use series::{add_irregular_value, add_time_series_value};
 pub use table::{add_table, add_table_column, add_table_row, ColumnDraft};
