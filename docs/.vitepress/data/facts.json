@@ -400,10 +400,10 @@
           "url": "https://crates.io/crates/openbim-ifc"
         }
       ],
-      "released": "0.7.2",
+      "released": "0.7.3",
       "released_date": "2026-09-27",
       "status": "implemented",
-      "version": "0.7.2"
+      "version": "0.7.3"
     },
     "openbim-ifc-binding-core": {
       "description": "Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python).",
