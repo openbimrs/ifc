@@ -1,7 +1,7 @@
 //! The release an exact resolution binds to, and model-level validation.
 
 use ifc_model::{Entity, EntityId, Model};
-use ifc_schema::{for_version, Schema, SchemaVersion};
+use ifc_schema::{for_version, Attribute, Schema, SchemaVersion};
 
 use super::refs::require_exact_slots;
 use super::ExactPropertyError;
@@ -34,6 +34,16 @@ impl Release {
             name,
             schema: self.version,
         }
+    }
+
+    /// The position and declaration of `entity`'s attribute `name` in this
+    /// release, or `None` when the release does not declare it.
+    pub(super) fn attribute(self, entity: &str, name: &str) -> Option<(usize, &'static Attribute)> {
+        self.schema
+            .attributes(entity)
+            .into_iter()
+            .enumerate()
+            .find(|(_, attribute)| attribute.name.eq_ignore_ascii_case(name))
     }
 
     /// Whether `candidate` is a legal member of attribute `slot` of `entity`,

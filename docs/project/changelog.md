@@ -252,6 +252,60 @@ lockstep -- is archived in the
 
 ### Added
 
+- `exact_property`, `exact_properties` and `exact_properties_where` resolve
+  the attributes of predefined property sets (#149): `IfcDoorLiningProperties`,
+  `IfcDoorPanelProperties`, `IfcWindowLiningProperties`,
+  `IfcWindowPanelProperties` and every other `IfcPropertySetDefinition`
+  that is neither a property set nor a quantity set, in IFC2X3, IFC4 and
+  IFC4X3. A set's members are the attributes its entity declares below
+  `IfcPropertySetDefinition`, named and typed as the declared release's
+  table has them (`LiningThickness` is `IFCPOSITIVELENGTHMEASURE` in IFC2X3,
+  `IFCNONNEGATIVELENGTHMEASURE` in IFC4). Values keep the provenance of a
+  single value (`property_id` is the set's id) with no explicit unit, so a
+  length resolves to the project unit through `exact_unit`; ratios are
+  their ratio measure. New `ExactValue::Enum` carries an enumeration
+  constant checked against the release's members, and `ExactValue::Entity`
+  an entity reference (`ShapeAspectStyle`) checked but not followed. An
+  unset optional attribute is `Present` with `ExactValue::Null` and its
+  declared type; an unset required one is `MissingValueSlot`. A set that
+  states no `Name` is found under its entity name
+  (`IfcDoorLiningProperties`); such sets of one entity (a door's panel set
+  per leaf) are ambiguous only for a member they share. New
+  `exact_predefined_sets(model, object, entity)` returns every assigned set
+  of that entity with all its attributes (`ExactPredefinedSet`, with
+  `attribute(name)`), occurrence sets first, no override applied, for door
+  operation geometry (#148); a name that is not a predefined set in the
+  release is the new `ExactPropertyError::NotAPredefinedSet`. What cannot
+  be read exactly is still refused with `UnsupportedDefinition`: a
+  selected aggregate attribute (`ReinforcementSectionDefinitions`), and,
+  as before, a set without `Name` that the set name does not select but
+  that has an attribute of the requested name (#66). A predefined set's
+  `Name` that is neither text nor `$` is now `MalformedName` rather than
+  treated as unnamed.
+- `exact_property`, `exact_properties` and `exact_properties_where` resolve
+  `IfcPropertyEnumeratedValue`, `IfcPropertyListValue`,
+  `IfcPropertyBoundedValue`, `IfcPropertyTableValue` and
+  `IfcPropertyReferenceValue` (#150), which they refused with
+  `UnsupportedProperty`. New `ExactValue` variants `Enumerated`, `List`,
+  `Bounded`, `Table` and `Reference` carry them, with the new types
+  `ExactTypedValue` (one `IfcValue` and its declared type),
+  `ExactEnumeratedValue`/`ExactEnumeration` (selected values and the
+  referenced `IfcPropertyEnumeration`), `ExactBoundedValue` (lower, upper,
+  set point), `ExactTableValue`/`ExactTableRow` (rows, expression, defining
+  and defined unit, interpolation), `ExactReferenceValue` and
+  `ExactEntityRef` (usage name and target). `ExactProperty.value_type` is
+  `None` for these; `unit_id` is the list's, the bounded value's or the
+  enumeration's `Unit`. Every attribute is read by name from the declared
+  release's table: IFC2X3 requires the value lists and the reference target
+  and has no `SetPointValue` or `CurveInterpolation`; IFC4/IFC4X3 make them
+  optional. A malformed kind is refused as a single value is, and the
+  WHERE rules that decide how the values read (one type per list and
+  between bounds, equal table columns, selected values drawn from the
+  referenced enumeration) and `LIST OF UNIQUE` are enforced with the new
+  `ExactPropertyError::InconsistentValues { entity, rule }`, where `rule` is
+  the release's own label (`WR21` in IFC4, `WR1` in IFC2X3). Both enums are
+  `#[non_exhaustive]`; callers that relied on the refusal now get answers.
+  An `IfcComplexProperty` is still refused.
 - `exact_properties(model, object)` and
   `exact_properties_where(model, object, select_set, select_property)`:
   exact enumeration of an object's properties and simple quantities (#78),

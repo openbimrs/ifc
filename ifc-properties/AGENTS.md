@@ -34,11 +34,23 @@ Allowed production dependencies: ifc-model and schema metadata; no geometry crat
 - Every traversed entity record has exactly the declared release's concrete arity; both missing and surplus Part 21 slots are incomplete evidence.
 - A proper subtype of `IfcRelDefinesByProperties`/`IfcRelDefinesByType` relating the queried object (IFC2X3 `IfcRelOverridesProperties`) is refused, never skipped: `Model::ids_of_type` is exact-type.
 - `IfcPropertySingleValue` requires all four positional slots; present typed values must be recursively accepted by `IfcValue` **and** match their defined-type payload base, and present units must resolve through `IfcUnit` with exact concrete arity.
+- The other `IfcSimpleProperty` kinds (enumerated, list, bounded, table, reference) are read by attribute name from the bound release's table (`exact/composite.rs`): only a slot that release declares `OPTIONAL` may be `$`, a slot it does not declare is never read (IFC2X3 has no `SetPointValue`/`CurveInterpolation`), each list member is an `IfcValue` accepted as a `NominalValue` is, and a reference target must be accepted by the attribute's declared type with exact arity. The WHERE rules that decide how the values read (one type per list and between bounds, equal table columns, selected values drawn from the referenced enumeration) and `LIST OF UNIQUE` are enforced as `InconsistentValues` naming the release's rule label; other WHERE rules on values stay unevaluated.
 - Exact scalar values preserve their declared IFC value type and explicit unit identity. `IfcLogical` remains three-state and `IfcBinary` retains its payload; downstream adapters must reject categories or units they cannot project without loss.
 - `exact_property` searches quantity sets like property sets. It resolves
   simple quantities with the release's declared value measure. It never
-  skips an `IfcPropertySetDefinition` that could hold the requested name:
-  a predefined set whose own attribute carries it is refused.
+  skips an `IfcPropertySetDefinition` that could hold the requested name.
+- A predefined set's members are the attributes its entity declares below
+  `IfcPropertySetDefinition`, read by name from the bound release's table
+  (`exact/predefined.rs`) and typed by their declaration: defined and
+  simple types as scalars, enumerations against the release's members,
+  selects as the member written, entities as checked unfollowed references.
+  `$` is `Null` only where `OPTIONAL`; an aggregate attribute is refused
+  when selected. Its set name is `Name`, or its entity name when it states
+  none. An unnamed set outside the set selection still refuses when one of
+  its attributes is selected (it cannot be ruled out by name, #66), and
+  unnamed sets of one entity are ambiguous only for a member they share, so
+  a door with one `IfcDoorPanelProperties` per leaf stays answerable;
+  `exact_predefined_sets` lists them all without applying an override.
 - `exact_unit` binds to the same release as `exact_property`. SI and unit-type dimensions come from that release's `IfcDimensionsForSiUnit`/`IfcCorrectDimensions` (IFC2X3 differs from IFC4/IFC4X3 for the farad). A measure maps to a unit type only by the release's own enums and defined-type chain. Unknown prefixes, duplicate project units, cycles, dimension contradictions and offset units are errors, never defaults.
 - Nested `IfcComplexProperty`/`IfcPhysicalComplexQuantity` members are read
   only through `src/nesting.rs`: a tracked path (cycles of any length, not

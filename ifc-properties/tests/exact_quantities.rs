@@ -196,9 +196,9 @@ fn an_ifc2x3_quantity_resolves_against_ifc2x3() {
     assert_eq!(found.value, ExactValue::Real(1.25));
 }
 
-/// A predefined set holding the requested attribute cannot prove absence.
+/// A predefined set's own attribute resolves by its schema name (#149).
 #[test]
-fn a_predefined_set_that_may_hold_the_name_is_refused() {
+fn a_predefined_set_resolves_its_own_attribute() {
     let slots = ifc_schema::ifc4()
         .attributes("IFCDOORLININGPROPERTIES")
         .len();
@@ -215,9 +215,17 @@ fn a_predefined_set_that_may_hold_the_name_is_refused() {
     for set in [None, Some("Lining")] {
         assert!(matches!(
             exact_property(&model, WALL, set, "LiningDepth"),
-            Err(ExactPropertyError::UnsupportedDefinition { entity, .. }) if entity == EntityId(8)
+            Ok(ExactResolution::Present(found))
+                if found.set_id == EntityId(8)
+                    && found.property_set.as_ref() == "Lining"
+                    && found.value == ExactValue::Real(0.1)
         ));
     }
+    // A stated Name is its only set name; the entity name does not select it.
+    assert_eq!(
+        exact_property(&model, WALL, Some("IfcDoorLiningProperties"), "LiningDepth"),
+        Ok(ExactResolution::Absent)
+    );
     // A name none of its attributes carries, or another set: proven absent.
     assert_eq!(
         exact_property(&model, WALL, None, "FireRating"),

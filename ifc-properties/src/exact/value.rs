@@ -7,7 +7,7 @@ use ifc_model::{Entity, EntityId, Model, Value};
 use ifc_schema::{Schema, TypeKind};
 
 use super::release::Release;
-use super::{ExactLogical, ExactPropertyError, ExactValue};
+use super::{ExactLogical, ExactPropertyError, ExactTypedValue, ExactValue};
 
 pub(super) fn select_accepts_type(schema: &Schema, select: &str, candidate: &str) -> bool {
     select_accepts(schema, select, candidate, false, &mut BTreeSet::new())
@@ -66,16 +66,7 @@ pub(super) fn typed_payload_matches(
                 if schema.type_def(base).is_some() {
                     typed_payload_matches(schema, base, value, visited)
                 } else {
-                    match base.to_ascii_uppercase().as_str() {
-                        "INTEGER" => matches!(value, Value::Integer(_)),
-                        "REAL" => matches!(value, Value::Real(_)),
-                        "NUMBER" => matches!(value, Value::Integer(_) | Value::Real(_)),
-                        "STRING" => matches!(value, Value::Text(_)),
-                        "BINARY" => matches!(value, Value::Binary(_)),
-                        "BOOLEAN" => matches!(value, Value::Bool(_)),
-                        "LOGICAL" => matches!(value, Value::Bool(_) | Value::LogicalUnknown),
-                        _ => false,
-                    }
+                    simple_payload_matches(base, value)
                 }
             }
             TypeKind::Enumeration(members) => match value {
@@ -98,6 +89,21 @@ pub(super) fn typed_payload_matches(
     matches
 }
 
+/// Whether `value` is a payload of the EXPRESS simple type `base`
+/// (`INTEGER`, `REAL`, ...); `false` for any other name.
+pub(super) fn simple_payload_matches(base: &str, value: &Value) -> bool {
+    match base.to_ascii_uppercase().as_str() {
+        "INTEGER" => matches!(value, Value::Integer(_)),
+        "REAL" => matches!(value, Value::Real(_)),
+        "NUMBER" => matches!(value, Value::Integer(_) | Value::Real(_)),
+        "STRING" => matches!(value, Value::Text(_)),
+        "BINARY" => matches!(value, Value::Binary(_)),
+        "BOOLEAN" => matches!(value, Value::Bool(_)),
+        "LOGICAL" => matches!(value, Value::Bool(_) | Value::LogicalUnknown),
+        _ => false,
+    }
+}
+
 #[derive(Debug)]
 pub(super) struct ResolvedValue {
     pub(super) value: ExactValue,
@@ -111,8 +117,36 @@ pub(super) fn exact_property_value(
     property: EntityId,
     entity: &Entity,
 ) -> Result<ResolvedValue, ExactPropertyError> {
-    let unit_id = match &entity.attributes[3] {
-        Value::Null => None,
+    let unit_id = unit_at(model, release, property, &entity.attributes[3])?;
+    match &entity.attributes[2] {
+        Value::Null => Ok(ResolvedValue {
+            value: ExactValue::Null,
+            value_type: None,
+            unit_id,
+        }),
+        value => typed_value(release, property, value).map(|typed| ResolvedValue {
+            value: typed.value,
+            value_type: Some(typed.value_type),
+            unit_id,
+        }),
+    }
+}
+
+/// An optional `IfcUnit` slot of `property`: `$`, or a reference to an
+/// entity the release's `IfcUnit` select accepts, with its exact arity.
+///
+/// # Errors
+///
+/// A dangling reference, an entity foreign to the release, a non-unit, or a
+/// slot that is neither `$` nor a reference.
+pub(super) fn unit_at(
+    model: &Model,
+    release: Release,
+    property: EntityId,
+    slot: &Value,
+) -> Result<Option<EntityId>, ExactPropertyError> {
+    match slot {
+        Value::Null => Ok(None),
         Value::Ref(unit_id) => {
             let unit = model
                 .get(*unit_id)
@@ -127,16 +161,42 @@ pub(super) fn exact_property_value(
                 return Err(ExactPropertyError::UnsupportedUnit { property });
             }
             release.require_exact_slots(*unit_id, unit)?;
-            Some(*unit_id)
+            Ok(Some(*unit_id))
         }
-        _ => return Err(ExactPropertyError::UnsupportedUnit { property }),
-    };
-    match &entity.attributes[2] {
-        Value::Null => Ok(ResolvedValue {
-            value: ExactValue::Null,
-            value_type: None,
-            unit_id,
-        }),
+        _ => Err(ExactPropertyError::UnsupportedUnit { property }),
+    }
+}
+
+/// One present `IfcValue` of `property`: a typed value whose type the
+/// release's `IfcValue` select accepts and whose payload matches that
+/// type's base.
+///
+/// # Errors
+///
+/// A type the release does not declare ([`ExactPropertyError::NotInSchema`]),
+/// any other untyped, unaccepted or mismatched value
+/// ([`ExactPropertyError::UnsupportedValue`]), or a non-finite real.
+pub(super) fn typed_value(
+    release: Release,
+    property: EntityId,
+    value: &Value,
+) -> Result<ExactTypedValue, ExactPropertyError> {
+    select_member(release, property, "IFCVALUE", value)
+}
+
+/// One present typed member of `select` of `property`, checked as
+/// [`typed_value`] checks an `IfcValue`.
+///
+/// # Errors
+///
+/// As for [`typed_value`].
+pub(super) fn select_member(
+    release: Release,
+    property: EntityId,
+    select: &str,
+    value: &Value,
+) -> Result<ExactTypedValue, ExactPropertyError> {
+    match value {
         // A name the release declares neither as a type nor as an entity is
         // foreign to it. A known name that `IfcValue` does not accept (an
         // entity such as `IfcOwnerHistory`) stays `UnsupportedValue` below.
@@ -146,19 +206,20 @@ pub(super) fn exact_property_value(
         {
             Err(release.not_in_schema(property, type_name.clone()))
         }
-        Value::Typed { type_name, value }
-            if select_accepts_type(release.schema, "IFCVALUE", type_name.as_ref())
-                && typed_payload_matches(
-                    release.schema,
-                    type_name.as_ref(),
-                    value.as_ref(),
-                    &mut BTreeSet::new(),
-                ) =>
+        Value::Typed {
+            type_name,
+            value: payload,
+        } if select_accepts_type(release.schema, select, type_name.as_ref())
+            && typed_payload_matches(
+                release.schema,
+                type_name.as_ref(),
+                payload.as_ref(),
+                &mut BTreeSet::new(),
+            ) =>
         {
-            exact_value(property, entity.attributes.get(2)).map(|value| ResolvedValue {
-                value,
-                value_type: Some(type_name.clone()),
-                unit_id,
+            exact_value(property, Some(value)).map(|exact| ExactTypedValue {
+                value_type: type_name.clone(),
+                value: exact,
             })
         }
         _ => Err(ExactPropertyError::UnsupportedValue { property }),
