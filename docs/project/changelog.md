@@ -78,6 +78,25 @@ lockstep -- is archived in the
 
 ### Fixed
 
+- Compiled `IfcBlock` meshes were offset by half their extents. `IfcBlock`
+  has a corner at its `Position` (IFC4 ADD2 TC1), but the neutral
+  `Primitive::Block` is tessellated centred on its origin by
+  `axiolid-reference`, so every compiled block sat half its size away from
+  where the file placed it, along its own axes. Lowering now puts the
+  half-extent shift on the block's `Instance`. This changes compiled
+  geometry for every `IfcBlock`; the lowered `Instance` translation now
+  names the block's centre. The other CSG primitives already agreed.
+- `Plane`, `CylindricalSurface`, `SphericalSurface` and `ToroidalSurface`
+  `::position(&model)` now type-check their target through
+  `resource::resolve` (#135). A `Position` naming anything other than an
+  `IfcAxis2Placement3D` is `WrongEntityType` naming the target; it used to
+  be wrapped as a 3D placement and misread.
+- A derived linear placement no longer reports an evaluator's degenerate
+  curve as an undefined roll. The refusal now distinguishes an unsupported
+  curve family, a rejected measure (off the curve, or roll undefined
+  because the tangent is parallel to the up reference) and a degenerate
+  curve, matching how `axiolid-evaluate` 0.3 reports them.
+
 - An opening that a file makes void two hosts is subtracted from the first
   only (#59). `IfcFeatureElementSubtraction.VoidsElements` is a
   single-valued inverse in IFC2X3 and IFC4, but every `IfcRelVoidsElement`
@@ -88,6 +107,21 @@ lockstep -- is archived in the
 
 ### Added
 
+- `derive_placement_transform` derives a linear placement on an
+  `IfcPolyline` or a line-only `IfcIndexedPolyCurve` basis curve (#96), not
+  only on an alignment. The curve lowers to the neutral polyline, whose arc
+  length is an exact finite sum, so a distance converts to a parameter
+  exactly; a native parameter follows the IFC polyline parameterisation
+  (one per segment). Refused by name: a zero-length segment, fewer than two
+  points, non-consecutive `Segments`, an `IfcArcIndex`, a parameter on a
+  multi-point `IfcLineIndex` (IFC does not state its split), and ellipse
+  and B-spline bases as before.
+- `product_bounds` bounds linear extrusions of straight-edged profiles
+  (rectangles, polyline contours, and placed/derived forms of them) and
+  blocks exactly from their vertices, without tessellating (#98). The
+  result reports `BoundsSource::Exact`. Curved profiles, rounded
+  rectangles and booleans still go through the compiled mesh; a
+  difference only shrinks its operand, so its operand's box is never used.
 - `voiding_conflicts(model)` and `VoidingConflict { opening, kept_host,
   rejected_host, relation }` report such openings (#59). It is kernel-free,
   like `openings_of`. Restating the same host is not a conflict.

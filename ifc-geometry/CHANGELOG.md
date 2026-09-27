@@ -52,6 +52,12 @@ everything released before per-crate changelogs began.
   points, non-consecutive `Segments`, an `IfcArcIndex`, a parameter on a
   multi-point `IfcLineIndex` (IFC does not state its split), and ellipse
   and B-spline bases as before.
+- `product_bounds` bounds linear extrusions of straight-edged profiles
+  (rectangles, polyline contours, and placed/derived forms of them) and
+  blocks exactly from their vertices, without tessellating (#98). The
+  result reports `BoundsSource::Exact`. Curved profiles, rounded
+  rectangles and booleans still go through the compiled mesh; a
+  difference only shrinks its operand, so its operand's box is never used.
 - `voiding_conflicts(model)` and `VoidingConflict { opening, kept_host,
   rejected_host, relation }` report such openings (#59). It is kernel-free,
   like `openings_of`. Restating the same host is not a conflict.
