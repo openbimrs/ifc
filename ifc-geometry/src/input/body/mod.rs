@@ -39,10 +39,9 @@ pub use kind::BodyKind;
 
 use ifc_model::{EntityId, Model};
 
-use super::context::representation_frame;
+use super::context::product_representation_frame;
 use super::profile::ProfileDescription;
-use super::representation::{select_shape_representation, Representation};
-use crate::constraint::product_world_transform;
+use super::representation::{select_shape_representation, Representation, RepresentationPurpose};
 use crate::error::{GeometryError, GeometryResult};
 use crate::resource::mapped::MappingWalker;
 use crate::resource::operator::operator_transform;
@@ -178,10 +177,12 @@ pub fn body_description(
     let Some(representation) = select_shape_representation(model, product)? else {
         return Ok(None);
     };
-    let placement = product_world_transform(model, units, product)?;
-    // Model space is the context's frame; the product's chain is expressed
-    // inside it, exactly as `lower::context` composes it.
-    let world = representation_frame(model, units, representation)?.compose(&placement);
+    // The same frame lowering places the body's items in.
+    let Some(world) =
+        product_representation_frame(model, units, product, RepresentationPurpose::Body)?
+    else {
+        return Ok(None);
+    };
 
     let mut walk = Walk {
         model,

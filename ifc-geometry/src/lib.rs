@@ -93,7 +93,8 @@ mod input;
 // production is a first-class consumer: choosing the geometry a plan is drawn
 // from is a question about contexts, not about lowering.
 pub use input::context::{
-    all_contexts, context_of, plan_contexts, RepresentationContext, TargetView,
+    all_contexts, context_of, plan_contexts, product_representation_frame, RepresentationContext,
+    TargetView,
 };
 // Geometry-shaping material inputs only. Material identity, quantities, and
 // association policy remain owned by `ifc-material`.
