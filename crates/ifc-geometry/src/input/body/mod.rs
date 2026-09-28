@@ -92,6 +92,29 @@ pub struct BodyItem {
     /// Profile and path, for the swept-area families
     /// ([`BodyKind::is_swept_area`]); `None` for every other kind.
     pub swept: Option<SweptSolid>,
+    /// The frame the item's own coordinates are placed in, in metres: the
+    /// representation context's `WorldCoordinateSystem` and the product
+    /// placement, composed with every `MappingTarget o MappingOrigin` in
+    /// [`Self::mapped_by`] (#185). The identity composition for an item
+    /// authored directly in a body at the origin.
+    ///
+    /// Unlike [`SweptSolid::placement_world`] it is not required to be rigid:
+    /// a mapping may scale or mirror any item kind, and this frame says so.
+    /// A swept solid's `placement_world` is this frame composed with the
+    /// solid's own `Position`.
+    pub item_world: Transform,
+}
+
+impl BodyItem {
+    /// Whether the item is placed mirrored: [`Self::item_world`] reverses
+    /// handedness, so a left-hand part appears as its right-hand twin.
+    ///
+    /// `None` when the frame is degenerate (a zero or non-finite
+    /// determinant), which no valid placement or mapping produces.
+    pub fn is_mirrored(&self) -> Option<bool> {
+        let determinant = self.item_world.determinant();
+        (determinant.is_finite() && determinant != 0.0).then_some(determinant < 0.0)
+    }
 }
 
 /// A swept-area solid: its profile, where it sits, and the path it follows.
@@ -257,6 +280,7 @@ impl Walk<'_> {
             mapped_by: self.mapped_by.clone(),
             kind,
             swept,
+            item_world: frame,
         });
         Ok(())
     }

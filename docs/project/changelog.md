@@ -20,6 +20,19 @@ lockstep -- is archived in the
 
 ## [Unreleased]
 
+### ifc-geometry
+
+### Added
+
+- `BodyItem::item_world`: the frame each described item is placed in, the
+  context and product placement composed with every `MappingTarget o
+  MappingOrigin` it was reached through (#185). It is reported for every item
+  kind, including mapped B-reps and tessellations, and is not required to be
+  rigid, so a mapping that mirrors or scales shows. `BodyItem::is_mirrored()`
+  answers whether that frame reverses handedness, and
+  `Transform::determinant()` gives its signed volume scale. Additive:
+  `BodyItem` is `#[non_exhaustive]`.
+
 ### ifc-properties
 
 ### Changed (breaking)
