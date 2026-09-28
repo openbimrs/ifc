@@ -12,8 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-09-28
+
 ### Changed
 
+- Requires the patch releases published with it: `ifc-properties` 0.5.1
+  (bare quantity values, IFC2X3 `*_with_owner_history` authoring, type
+  objects in the exact API), `ifc-cost` 0.2.2, `ifc-classification` 0.2.2
+  (IFC4X3 binding) and `ifc-systems` 0.2.2.
 - `door_operation` and `window_operation` given a type object (an
   `IfcDoorType`, IFC2X3 `IfcDoorStyle`, ...) refuse it with `NotADoor` or
   `NotAWindow`, where they returned `Property(InvalidQueryObject)`: the
@@ -240,7 +246,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.8.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.8.1...HEAD
+[0.8.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.8.1
 [0.8.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.8.0
 [0.7.3]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.7.3
 [0.7.2]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.7.2

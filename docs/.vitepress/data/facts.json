@@ -55,10 +55,10 @@
           "url": "https://crates.io/crates/ifc-classification"
         }
       ],
-      "released": "0.2.1",
-      "released_date": "2026-09-25",
+      "released": "0.2.2",
+      "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.2.1"
+      "version": "0.2.2"
     },
     "ifc-constraint": {
       "description": "Bounded IFC4 metric, objective, and constraint relationships.",
@@ -100,10 +100,10 @@
           "url": "https://crates.io/crates/ifc-cost"
         }
       ],
-      "released": "0.2.1",
-      "released_date": "2026-09-27",
+      "released": "0.2.2",
+      "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.2.1"
+      "version": "0.2.2"
     },
     "ifc-element-type": {
       "description": "Element, resource, and process type definitions: the IfcTypeObject catalogue.",
@@ -205,10 +205,10 @@
           "url": "https://crates.io/crates/ifc-properties"
         }
       ],
-      "released": "0.5.0",
+      "released": "0.5.1",
       "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.5.0"
+      "version": "0.5.1"
     },
     "ifc-resource": {
       "description": "Construction resources: labour, equipment, material, crew, subcontract.",
@@ -325,10 +325,10 @@
           "url": "https://crates.io/crates/ifc-systems"
         }
       ],
-      "released": "0.2.1",
-      "released_date": "2026-09-25",
+      "released": "0.2.2",
+      "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.2.1"
+      "version": "0.2.2"
     },
     "ifc-tabular": {
       "description": "Structured IFC value containers indexed by position or time.",
@@ -400,10 +400,10 @@
           "url": "https://crates.io/crates/openbim-ifc"
         }
       ],
-      "released": "0.8.0",
+      "released": "0.8.1",
       "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.8.0"
+      "version": "0.8.1"
     },
     "openbim-ifc-binding-core": {
       "description": "Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python).",

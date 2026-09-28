@@ -20,223 +20,6 @@ lockstep -- is archived in the
 
 ## [Unreleased]
 
-### ifc-classification
-
-### Changed (breaking behaviour)
-
-The public API only grows (`cargo semver-checks` against 0.2.1 reports no
-break), but the same call now answers differently in the cases below, so
-the next release is 0.3.0. Each change is required by #194: an IFC4X3
-model must be read against its own table, and a header that binds no
-single known release must be refused rather than read as IFC4.
-
-- Views and authoring bind the release the header declares (#194), as
-  `ifc-material` does since #77. One `IFC2X3`, `IFC4`, or
-  `IFC4X3`/`IFC4X3_ADD2` declaration binds that release's bundled table
-  (IFC2X3 TC1, IFC4 ADD2 TC1, IFC4X3 ADD2). Before, every header other
-  than `IFC2X3` was read against IFC4, so a consumer had to refuse an
-  IFC4X3 model's classifications.
-  - `classification_schema` answers `SchemaVersion::Ifc4x3` for an IFC4X3
-    header, where it answered `Ifc4`.
-  - An element that exists only in IFC4X3 (for example `IfcRoad`) is an
-    `IfcDefinitionSelect` member there, so its classification resolves;
-    read against IFC4 it was a `ReferenceType` error.
-  - `IfcResourceObjectSelect` is the IFC4X3 one, which adds
-    `IfcShapeAspect`, for `external_reference_relationship(s)`,
-    `external_references_for` and `create_external_reference_relationship`.
-  - IFC4X3 renamed `IfcClassification.Location` to `Specification`, same
-    position and type. `ClassificationSystem::location()` and
-    `ClassificationDraft::location` read and write it. No other attribute
-    this crate touches differs between IFC4 and IFC4X3
-    (`IfcClassificationReference`, `IfcRelAssociatesClassification`,
-    `IfcExternalReference.Identification`, documents, libraries and
-    `IfcRoot` are unchanged).
-- A header declaring several schemas fails every read and write with
-  `MultipleSchemas`; before, only a set including IFC2X3 did, and e.g.
-  `IFC4`+`IFC4X3` was read as IFC4. One declaration without a bundled table
-  (such as `IFC4X1`) fails with the new `UnsupportedSchema`; before, it was
-  read as IFC4. A header with no declaration (an in-memory model) still
-  binds IFC4, as in 0.2.0.
-- Authoring lays each record out by attribute name in the declared
-  release's table instead of writing the IFC4 layout into every model.
-  IFC2X3 gets its own records (a four-attribute `IfcClassification`,
-  `ItemReference`/`DocumentId` for `Identification`, a three-attribute
-  `IfcDocumentInformationRelationship`, ...). What IFC2X3 cannot hold is
-  refused with a typed error and nothing is staged:
-  - a draft value for an attribute it lacks (`IfcClassification`
-    `Description`, `Location`, `ReferenceTokens`; a reference's
-    `Description` or `Sort`; a document's `Location`; a document
-    reference's `Description` or `ReferencedDocument`; a library's
-    `Location` or `Description`; a library reference's `Description`,
-    `Language` or `ReferencedLibrary`) with `AuthoringNotInSchema`;
-  - text for an attribute it types as a record (`EditionDate`,
-    `CreationTime`, `LastRevisionTime`, `ElectronicFormat`, `ValidFrom`,
-    `ValidUntil`, `VersionDate`) with `AuthoringValueType`;
-  - a required attribute left unset (`IfcClassification.Source` and
-    `Edition`, and `IfcRoot.OwnerHistory`) with `AuthoringRequired`. So
-    `associate_classification`, `associate_document` and
-    `associate_library` refuse an IFC2X3 model; use their new
-    `*_with_owner_history` variants there;
-  - a reference its selects do not admit (an `IfcClassification` as
-    `RelatingClassification`, which IFC2X3 types as
-    `IfcClassificationNotationSelect`; a reference as `ReferencedSource`;
-    a person as library `Publisher`) with `AuthoringReferenceType`;
-  - `create_external_reference_relationship` with `EntityNotInSchema`.
-  IFC4 output is unchanged, and IFC4X3 output is the IFC4 record at the
-  same positions.
-- Every reference an authoring call checks is checked against the type the
-  release declares, and the error's `expected` label is that type's name
-  (the same strings as before for IFC4).
-
-### Added
-
-- `create_classification_in(tx, model, draft)`: `create_classification`
-  in the model's release. `create_classification` takes no model, so it
-  keeps writing the IFC4 layout (valid for IFC4 and IFC4X3) and is
-  documented as such.
-- `associate_classification_with_owner_history`,
-  `associate_document_with_owner_history` and
-  `associate_library_with_owner_history`: take a caller-supplied
-  `IfcOwnerHistory`, which IFC2X3 requires. It must be in the model or
-  staged, and be an `IfcOwnerHistory`; one is never invented. This follows
-  `ifc-material` (#77) and `ifc-properties` (#191).
-- `ClassificationError::UnsupportedSchema`, `EntityNotInSchema`,
-  `AuthoringNotInSchema`, `AuthoringRequired` and `AuthoringValueType`.
-  `ClassificationError` is `#[non_exhaustive]`, so these are additive.
-
-### Fixed
-
-- `DocumentInformation::status()` and `create_document` accept
-  `FINALDRAFT`. Every release declares it in `IfcDocumentStatusEnum`, but
-  both hard-coded a list without it, so a valid document was
-  `InvalidValue`. Both enumerations now come from the release's table.
-- `effective_classifications` reads `IfcRelDefinesByType` by attribute
-  name instead of fixed positions.
-
-### Verified
-
-- Every attribute, select and enumeration the crate touches is pinned
-  against the three bundled tables, and the tables against the normative
-  EXPRESS under `references/ifc-spec` (`tests/release_layout.rs`).
-- Records authored in IFC2X3, IFC4 and IFC4X3 through every writer are
-  written as STEP, read back, re-read through the views, and validated by
-  `ifc-validate` with no error finding
-  (`openbim-ifc/tests/release_bound_classification_authoring.rs`).
-
-### ifc-cost
-
-### Added
-
-- `CostAuthoringError::MultipleSchemas`, `UnsupportedSchema`,
-  `EntityNotInSchema` and `AuthoringNotInSchema` for release-bound quantity
-  authoring (#190), and a re-export of `SchemaVersion`, which they name.
-  `CostAuthoringError` is `#[non_exhaustive]`, so this is not breaking. The
-  crate now depends on `ifc-schema` for the bundled release tables.
-
-### Fixed
-
-- `mutation::create_quantity` writes the quantity value bare (#190). It
-  wrote `IFCQUANTITYAREA('Q',$,$,IFCAREAMEASURE(12.5),$)`. But
-  `<Kind>Value` is declared with a defined measure type, not a SELECT, in
-  IFC2X3, IFC4 and IFC4X3, and ISO 10303-21 writes a typed parameter only
-  in a SELECT slot. It now writes `12.5`, and a count as the integer `4`.
-  `CostQuantity::value` reads both forms.
-- `mutation::create_quantity` binds the model's declared release, with the
-  same rule and output as `ifc-properties`' `create_quantity` (#190). It
-  wrote the IFC4 five-attribute layout into every model. Now attributes are
-  placed by name from the release's table, so an IFC2X3 quantity has four.
-  The signature is unchanged; the refusals are new:
-  - a `formula` in IFC2X3 (`AuthoringNotInSchema`);
-  - `QuantityKind::Number` outside IFC4X3 (`EntityNotInSchema`);
-  - a header declaring several schemas (`MultipleSchemas`);
-  - a header declaring one without a bundled table (`UnsupportedSchema`).
-
-  A model without `FILE_SCHEMA` binds IFC4 as before. **Behaviour change:**
-  such a model now refuses `QuantityKind::Number`, which IFC4 does not
-  declare; declare IFC4X3 to author one. IFC4 and IFC4X3 records are
-  otherwise unchanged apart from the bare value, and match `ifc-properties`
-  byte for byte in all three releases.
-
-### ifc-properties
-
-### Added
-
-- `add_property_set_with_owner_history`,
-  `add_element_quantity_with_owner_history`,
-  `attach_property_set_with_owner_history` and
-  `attach_type_with_owner_history` (#191). Each takes the model and a
-  caller-supplied `IfcOwnerHistory` id, which IFC2X3 requires on every
-  `IfcRoot`. The id must be in the model or staged on the transaction and
-  must be an `IfcOwnerHistory`; a missing one is refused with
-  `MissingEntity`, another entity with `AuthoringInvalid`. None is ever
-  invented. The record is laid out by attribute name from the declared
-  release's table, and in IFC4 and IFC4X3 the reference is written into
-  the optional slot. This follows `ifc-material`'s
-  `associate_material_with_owner_history` (#77).
-- `PropertyError::AuthoringRequired { entity, attribute, schema }`: the
-  model's release requires an attribute the call leaves unset (#191).
-  `PropertyError` is `#[non_exhaustive]`, so this is not breaking.
-
-### Changed
-
-- Type objects are no longer refused by the exact API (#193).
-  `exact_property`, `exact_properties`, `exact_properties_where`,
-  `exact_property_sets_where` and `exact_predefined_sets` answered an
-  `IfcTypeObject` with `ExactPropertyError::InvalidQueryObject`, so a
-  checker could not test an `IfcWallType` as IDS does. They now resolve
-  the type object's own `HasPropertySets`: property sets, quantity sets
-  and predefined sets, in IFC2X3, IFC4 and IFC4X3. Every subtype of the
-  release's `IfcTypeObject` is accepted, IFC2X3 `IfcDoorStyle` and
-  `IfcWindowStyle` included. The list is read and validated by the code
-  that already reads an occurrence's inherited type sets. A result carries
-  `ExactSource::Type(id)` with the queried object's id, which is what an
-  occurrence of that type reports for the same set. `HasPropertySets = $`
-  is a proven absence; `()` is refused with `MalformedAggregate`, and
-  duplicate names with `DuplicateMatchingSets { source: Type(id), .. }` and
-  `DuplicateMatchingProperties`, as for an inherited type. A type object
-  named in `IfcRelDefinesByProperties.RelatedObjects` is still refused with
-  `InvalidOccurrenceTarget`, also when it is the queried object: IFC2X3
-  admits only `IfcObject` there, and IFC4 and IFC4X3 forbid it by
-  `NoRelatedTypeObject` ("handled through the direct relationship
-  HasPropertySets at IfcTypeObject"). Occurrence results are unchanged. No
-  type or signature changes; callers that relied on the refusal now get
-  answers, and `InvalidQueryObject` remains for what is neither an
-  occurrence nor a type object. In `openbim-ifc`, `door_operation` and
-  `window_operation` given a type object now refuse with `NotADoor` or
-  `NotAWindow` instead of `Property(InvalidQueryObject)`.
-
-### Fixed
-
-- Quantity values are written bare (#190). `create_quantity`,
-  `create_quantity_with` and `set_quantity_value` wrote
-  `IFCQUANTITYAREA('A',$,$,IFCAREAMEASURE(12.5),$)`. But `<Kind>Value` is
-  declared with a defined measure type (`IfcAreaMeasure`, ...), not a
-  SELECT, in IFC2X3, IFC4 and IFC4X3, and ISO 10303-21 writes a typed
-  parameter only in a SELECT slot. They now write `12.5` (a whole count as
-  the integer `4`). `set_quantity_value` replaces a typed value it finds
-  with the bare one. The readers (`quantity_set`, `exact_property`) still
-  accept both forms. Code that inspects the written `Value` sees
-  `Value::Real`/`Value::Integer` where it saw `Value::Typed`.
-- `IfcRoot.OwnerHistory` is no longer written as `$` into an IFC2X3 model
-  by `attach_property_set` and `attach_type` (#191). It is mandatory in
-  IFC2X3 (`OPTIONAL` from IFC4 on), so those records were invalid.
-  **Behaviour change for IFC2X3 callers:** both now refuse an IFC2X3 model
-  with `PropertyError::AuthoringRequired { attribute: "OwnerHistory", .. }`
-  and stage nothing; use the `*_with_owner_history` variants there.
-  Both now bind the model's declared release the way quantity authoring
-  does. So a model whose header declares several schemas, or one without a
-  bundled table, is refused with `MultipleSchemas` or `UnsupportedSchema`
-  where it used to be written in the IFC4 layout. `NoRelatedTypeObject`
-  and the `IfcTypeObject` checks use the declared release's inheritance
-  instead of IFC4's. IFC4 and IFC4X3 output is unchanged.
-  `add_property_set` and `add_element_quantity` take no model, so they
-  cannot see the release. They still write `$` and are documented as
-  IFC4/IFC4X3 only. In IFC2X3, `attach_property_set_with_owner_history`
-  refuses to attach a definition whose `OwnerHistory` is unset. Not
-  changed: the template writers, whose entities IFC2X3 does not declare,
-  and the predefined property-set writers, which write the IFC4 layout
-  without a model.
-
 ### ifc-schema
 
 ### Changed
@@ -247,46 +30,16 @@ single known release must be refused rather than read as IFC4.
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
 
-### ifc-systems
-
-### Fixed
-
-- The zone readers bind an IFC4X3 header to the bundled IFC4X3 ADD2 table
-  (#194). Before, `zones()` read IFC4X3 against IFC4 and `long_name_of`
-  refused it with `UnsupportedSchema`. Now:
-  - `zones()` reads IFC4X3 against its own table, and reads every slot by
-    attribute name (`IfcZone.Name`/`LongName`,
-    `IfcRelAssignsToGroup.RelatedObjects`/`RelatingGroup`) instead of
-    fixed positions. IFC4X3 retypes `IfcRelAssigns.RelatedObjectsType` as
-    `IfcStrippedOptional` at the same position, adds `IfcBuiltSystem` under
-    `IfcSystem` (no WR1 zone member), and leaves `IfcZone` as in IFC4, so
-    IFC4-shaped data gives the same zones as before;
-  - `long_name_of` answers for an IFC4X3 model instead of refusing it.
-
-### Added
-
-- `try_zones(model)`: `zones()` with an error channel. A header declaring
-  several schemas is refused with `SchemaResolutionError::MultipleSchemas`
-  and one without a bundled table with `UnsupportedSchema`, where `zones()`
-  reads both against IFC4. A header with no schema (an in-memory model)
-  reads against IFC4, as `zones()` does.
-
-### Unchanged
-
-- `zones()` keeps its signature and its fallback: a header it cannot bind
-  (none, several, or unknown) reads against IFC4, as in 0.2.0.
-- `schema_of`, `systems`, `ports`, `ElementRole::of` and
-  `ConnectionGraph::build` still treat IFC4X3 as unverified: `schema_of`
-  refuses it and the bulk readers read it against IFC4. Only the zone
-  readers are verified for IFC4X3.
-- The `Display` text of `SchemaResolutionError::UnsupportedSchema` no
-  longer claims only IFC2X3 and IFC4 resolve, since the zone readers
-  resolve IFC4X3.
+## [0.8.1] - 2026-09-28
 
 ### openbim-ifc
 
 ### Changed
 
+- Requires the patch releases published with it: `ifc-properties` 0.5.1
+  (bare quantity values, IFC2X3 `*_with_owner_history` authoring, type
+  objects in the exact API), `ifc-cost` 0.2.2, `ifc-classification` 0.2.2
+  (IFC4X3 binding) and `ifc-systems` 0.2.2.
 - `door_operation` and `window_operation` given a type object (an
   `IfcDoorType`, IFC2X3 `IfcDoorStyle`, ...) refuse it with `NotADoor` or
   `NotAWindow`, where they returned `Property(InvalidQueryObject)`: the
@@ -465,6 +218,88 @@ single known release must be refused rather than read as IFC4.
 - `Transaction`, `Applied` and `Conflict` are re-exported. `EntityEditor` and
   the domain writers stage into a `Transaction`, which facade users could not
   name, so an editor could be built but never applied.
+
+## [0.5.1] - 2026-09-28
+
+### ifc-properties
+
+### Added
+
+- `add_property_set_with_owner_history`,
+  `add_element_quantity_with_owner_history`,
+  `attach_property_set_with_owner_history` and
+  `attach_type_with_owner_history` (#191). Each takes the model and a
+  caller-supplied `IfcOwnerHistory` id, which IFC2X3 requires on every
+  `IfcRoot`. The id must be in the model or staged on the transaction and
+  must be an `IfcOwnerHistory`; a missing one is refused with
+  `MissingEntity`, another entity with `AuthoringInvalid`. None is ever
+  invented. The record is laid out by attribute name from the declared
+  release's table, and in IFC4 and IFC4X3 the reference is written into
+  the optional slot. This follows `ifc-material`'s
+  `associate_material_with_owner_history` (#77).
+- `PropertyError::AuthoringRequired { entity, attribute, schema }`: the
+  model's release requires an attribute the call leaves unset (#191).
+  `PropertyError` is `#[non_exhaustive]`, so this is not breaking.
+
+### Changed
+
+- Type objects are no longer refused by the exact API (#193).
+  `exact_property`, `exact_properties`, `exact_properties_where`,
+  `exact_property_sets_where` and `exact_predefined_sets` answered an
+  `IfcTypeObject` with `ExactPropertyError::InvalidQueryObject`, so a
+  checker could not test an `IfcWallType` as IDS does. They now resolve
+  the type object's own `HasPropertySets`: property sets, quantity sets
+  and predefined sets, in IFC2X3, IFC4 and IFC4X3. Every subtype of the
+  release's `IfcTypeObject` is accepted, IFC2X3 `IfcDoorStyle` and
+  `IfcWindowStyle` included. The list is read and validated by the code
+  that already reads an occurrence's inherited type sets. A result carries
+  `ExactSource::Type(id)` with the queried object's id, which is what an
+  occurrence of that type reports for the same set. `HasPropertySets = $`
+  is a proven absence; `()` is refused with `MalformedAggregate`, and
+  duplicate names with `DuplicateMatchingSets { source: Type(id), .. }` and
+  `DuplicateMatchingProperties`, as for an inherited type. A type object
+  named in `IfcRelDefinesByProperties.RelatedObjects` is still refused with
+  `InvalidOccurrenceTarget`, also when it is the queried object: IFC2X3
+  admits only `IfcObject` there, and IFC4 and IFC4X3 forbid it by
+  `NoRelatedTypeObject` ("handled through the direct relationship
+  HasPropertySets at IfcTypeObject"). Occurrence results are unchanged. No
+  type or signature changes; callers that relied on the refusal now get
+  answers, and `InvalidQueryObject` remains for what is neither an
+  occurrence nor a type object. In `openbim-ifc`, `door_operation` and
+  `window_operation` given a type object now refuse with `NotADoor` or
+  `NotAWindow` instead of `Property(InvalidQueryObject)`.
+
+### Fixed
+
+- Quantity values are written bare (#190). `create_quantity`,
+  `create_quantity_with` and `set_quantity_value` wrote
+  `IFCQUANTITYAREA('A',$,$,IFCAREAMEASURE(12.5),$)`. But `<Kind>Value` is
+  declared with a defined measure type (`IfcAreaMeasure`, ...), not a
+  SELECT, in IFC2X3, IFC4 and IFC4X3, and ISO 10303-21 writes a typed
+  parameter only in a SELECT slot. They now write `12.5` (a whole count as
+  the integer `4`). `set_quantity_value` replaces a typed value it finds
+  with the bare one. The readers (`quantity_set`, `exact_property`) still
+  accept both forms. Code that inspects the written `Value` sees
+  `Value::Real`/`Value::Integer` where it saw `Value::Typed`.
+- `IfcRoot.OwnerHistory` is no longer written as `$` into an IFC2X3 model
+  by `attach_property_set` and `attach_type` (#191). It is mandatory in
+  IFC2X3 (`OPTIONAL` from IFC4 on), so those records were invalid.
+  **Behaviour change for IFC2X3 callers:** both now refuse an IFC2X3 model
+  with `PropertyError::AuthoringRequired { attribute: "OwnerHistory", .. }`
+  and stage nothing; use the `*_with_owner_history` variants there.
+  Both now bind the model's declared release the way quantity authoring
+  does. So a model whose header declares several schemas, or one without a
+  bundled table, is refused with `MultipleSchemas` or `UnsupportedSchema`
+  where it used to be written in the IFC4 layout. `NoRelatedTypeObject`
+  and the `IfcTypeObject` checks use the declared release's inheritance
+  instead of IFC4's. IFC4 and IFC4X3 output is unchanged.
+  `add_property_set` and `add_element_quantity` take no model, so they
+  cannot see the release. They still write `$` and are documented as
+  IFC4/IFC4X3 only. In IFC2X3, `attach_property_set_with_owner_history`
+  refuses to attach a definition whose `OwnerHistory` is unset. Not
+  changed: the template writers, whose entities IFC2X3 does not declare,
+  and the predefined property-set writers, which write the IFC4 layout
+  without a model.
 
 ## [0.5.0] - 2026-09-28
 
@@ -1709,7 +1544,144 @@ dependent's `^0.2.2` resolves to it. `main` carries the same change.
   `IfcRelCoversSpaces` put a space's coverings into the space. Their absent
   targets are still reported by `dangling()`.
 
-## [0.2.2] - 2026-09-27
+## [0.2.2] - 2026-09-28
+
+### ifc-classification
+
+### Changed (breaking behaviour)
+
+The public API only grows (`cargo semver-checks` against 0.2.1 reports no
+break), but the same call now answers differently in the cases below, so
+the next release is 0.3.0. Each change is required by #194: an IFC4X3
+model must be read against its own table, and a header that binds no
+single known release must be refused rather than read as IFC4.
+
+- Views and authoring bind the release the header declares (#194), as
+  `ifc-material` does since #77. One `IFC2X3`, `IFC4`, or
+  `IFC4X3`/`IFC4X3_ADD2` declaration binds that release's bundled table
+  (IFC2X3 TC1, IFC4 ADD2 TC1, IFC4X3 ADD2). Before, every header other
+  than `IFC2X3` was read against IFC4, so a consumer had to refuse an
+  IFC4X3 model's classifications.
+  - `classification_schema` answers `SchemaVersion::Ifc4x3` for an IFC4X3
+    header, where it answered `Ifc4`.
+  - An element that exists only in IFC4X3 (for example `IfcRoad`) is an
+    `IfcDefinitionSelect` member there, so its classification resolves;
+    read against IFC4 it was a `ReferenceType` error.
+  - `IfcResourceObjectSelect` is the IFC4X3 one, which adds
+    `IfcShapeAspect`, for `external_reference_relationship(s)`,
+    `external_references_for` and `create_external_reference_relationship`.
+  - IFC4X3 renamed `IfcClassification.Location` to `Specification`, same
+    position and type. `ClassificationSystem::location()` and
+    `ClassificationDraft::location` read and write it. No other attribute
+    this crate touches differs between IFC4 and IFC4X3
+    (`IfcClassificationReference`, `IfcRelAssociatesClassification`,
+    `IfcExternalReference.Identification`, documents, libraries and
+    `IfcRoot` are unchanged).
+- A header declaring several schemas fails every read and write with
+  `MultipleSchemas`; before, only a set including IFC2X3 did, and e.g.
+  `IFC4`+`IFC4X3` was read as IFC4. One declaration without a bundled table
+  (such as `IFC4X1`) fails with the new `UnsupportedSchema`; before, it was
+  read as IFC4. A header with no declaration (an in-memory model) still
+  binds IFC4, as in 0.2.0.
+- Authoring lays each record out by attribute name in the declared
+  release's table instead of writing the IFC4 layout into every model.
+  IFC2X3 gets its own records (a four-attribute `IfcClassification`,
+  `ItemReference`/`DocumentId` for `Identification`, a three-attribute
+  `IfcDocumentInformationRelationship`, ...). What IFC2X3 cannot hold is
+  refused with a typed error and nothing is staged:
+  - a draft value for an attribute it lacks (`IfcClassification`
+    `Description`, `Location`, `ReferenceTokens`; a reference's
+    `Description` or `Sort`; a document's `Location`; a document
+    reference's `Description` or `ReferencedDocument`; a library's
+    `Location` or `Description`; a library reference's `Description`,
+    `Language` or `ReferencedLibrary`) with `AuthoringNotInSchema`;
+  - text for an attribute it types as a record (`EditionDate`,
+    `CreationTime`, `LastRevisionTime`, `ElectronicFormat`, `ValidFrom`,
+    `ValidUntil`, `VersionDate`) with `AuthoringValueType`;
+  - a required attribute left unset (`IfcClassification.Source` and
+    `Edition`, and `IfcRoot.OwnerHistory`) with `AuthoringRequired`. So
+    `associate_classification`, `associate_document` and
+    `associate_library` refuse an IFC2X3 model; use their new
+    `*_with_owner_history` variants there;
+  - a reference its selects do not admit (an `IfcClassification` as
+    `RelatingClassification`, which IFC2X3 types as
+    `IfcClassificationNotationSelect`; a reference as `ReferencedSource`;
+    a person as library `Publisher`) with `AuthoringReferenceType`;
+  - `create_external_reference_relationship` with `EntityNotInSchema`.
+  IFC4 output is unchanged, and IFC4X3 output is the IFC4 record at the
+  same positions.
+- Every reference an authoring call checks is checked against the type the
+  release declares, and the error's `expected` label is that type's name
+  (the same strings as before for IFC4).
+
+### Added
+
+- `create_classification_in(tx, model, draft)`: `create_classification`
+  in the model's release. `create_classification` takes no model, so it
+  keeps writing the IFC4 layout (valid for IFC4 and IFC4X3) and is
+  documented as such.
+- `associate_classification_with_owner_history`,
+  `associate_document_with_owner_history` and
+  `associate_library_with_owner_history`: take a caller-supplied
+  `IfcOwnerHistory`, which IFC2X3 requires. It must be in the model or
+  staged, and be an `IfcOwnerHistory`; one is never invented. This follows
+  `ifc-material` (#77) and `ifc-properties` (#191).
+- `ClassificationError::UnsupportedSchema`, `EntityNotInSchema`,
+  `AuthoringNotInSchema`, `AuthoringRequired` and `AuthoringValueType`.
+  `ClassificationError` is `#[non_exhaustive]`, so these are additive.
+
+### Fixed
+
+- `DocumentInformation::status()` and `create_document` accept
+  `FINALDRAFT`. Every release declares it in `IfcDocumentStatusEnum`, but
+  both hard-coded a list without it, so a valid document was
+  `InvalidValue`. Both enumerations now come from the release's table.
+- `effective_classifications` reads `IfcRelDefinesByType` by attribute
+  name instead of fixed positions.
+
+### Verified
+
+- Every attribute, select and enumeration the crate touches is pinned
+  against the three bundled tables, and the tables against the normative
+  EXPRESS under `references/ifc-spec` (`tests/release_layout.rs`).
+- Records authored in IFC2X3, IFC4 and IFC4X3 through every writer are
+  written as STEP, read back, re-read through the views, and validated by
+  `ifc-validate` with no error finding
+  (`openbim-ifc/tests/release_bound_classification_authoring.rs`).
+
+### ifc-cost
+
+### Added
+
+- `CostAuthoringError::MultipleSchemas`, `UnsupportedSchema`,
+  `EntityNotInSchema` and `AuthoringNotInSchema` for release-bound quantity
+  authoring (#190), and a re-export of `SchemaVersion`, which they name.
+  `CostAuthoringError` is `#[non_exhaustive]`, so this is not breaking. The
+  crate now depends on `ifc-schema` for the bundled release tables.
+
+### Fixed
+
+- `mutation::create_quantity` writes the quantity value bare (#190). It
+  wrote `IFCQUANTITYAREA('Q',$,$,IFCAREAMEASURE(12.5),$)`. But
+  `<Kind>Value` is declared with a defined measure type, not a SELECT, in
+  IFC2X3, IFC4 and IFC4X3, and ISO 10303-21 writes a typed parameter only
+  in a SELECT slot. It now writes `12.5`, and a count as the integer `4`.
+  `CostQuantity::value` reads both forms.
+- `mutation::create_quantity` binds the model's declared release, with the
+  same rule and output as `ifc-properties`' `create_quantity` (#190). It
+  wrote the IFC4 five-attribute layout into every model. Now attributes are
+  placed by name from the release's table, so an IFC2X3 quantity has four.
+  The signature is unchanged; the refusals are new:
+  - a `formula` in IFC2X3 (`AuthoringNotInSchema`);
+  - `QuantityKind::Number` outside IFC4X3 (`EntityNotInSchema`);
+  - a header declaring several schemas (`MultipleSchemas`);
+  - a header declaring one without a bundled table (`UnsupportedSchema`).
+
+  A model without `FILE_SCHEMA` binds IFC4 as before. **Behaviour change:**
+  such a model now refuses `QuantityKind::Number`, which IFC4 does not
+  declare; declare IFC4X3 to author one. IFC4 and IFC4X3 records are
+  otherwise unchanged apart from the bare value, and match `ifc-properties`
+  byte for byte in all three releases.
 
 ### ifc-model
 
@@ -1745,6 +1717,42 @@ dependent's `^0.2.2` resolves to it. `main` carries the same change.
   and, where there is one, the target. The accessor is a method rather
   than a new field so that `SpaceBoundary`, which has only public fields,
   keeps its struct-literal construction and this change stays additive.
+
+### ifc-systems
+
+### Fixed
+
+- The zone readers bind an IFC4X3 header to the bundled IFC4X3 ADD2 table
+  (#194). Before, `zones()` read IFC4X3 against IFC4 and `long_name_of`
+  refused it with `UnsupportedSchema`. Now:
+  - `zones()` reads IFC4X3 against its own table, and reads every slot by
+    attribute name (`IfcZone.Name`/`LongName`,
+    `IfcRelAssignsToGroup.RelatedObjects`/`RelatingGroup`) instead of
+    fixed positions. IFC4X3 retypes `IfcRelAssigns.RelatedObjectsType` as
+    `IfcStrippedOptional` at the same position, adds `IfcBuiltSystem` under
+    `IfcSystem` (no WR1 zone member), and leaves `IfcZone` as in IFC4, so
+    IFC4-shaped data gives the same zones as before;
+  - `long_name_of` answers for an IFC4X3 model instead of refusing it.
+
+### Added
+
+- `try_zones(model)`: `zones()` with an error channel. A header declaring
+  several schemas is refused with `SchemaResolutionError::MultipleSchemas`
+  and one without a bundled table with `UnsupportedSchema`, where `zones()`
+  reads both against IFC4. A header with no schema (an in-memory model)
+  reads against IFC4, as `zones()` does.
+
+### Unchanged
+
+- `zones()` keeps its signature and its fallback: a header it cannot bind
+  (none, several, or unknown) reads against IFC4, as in 0.2.0.
+- `schema_of`, `systems`, `ports`, `ElementRole::of` and
+  `ConnectionGraph::build` still treat IFC4X3 as unverified: `schema_of`
+  refuses it and the bulk readers read it against IFC4. Only the zone
+  readers are verified for IFC4X3.
+- The `Display` text of `SchemaResolutionError::UnsupportedSchema` no
+  longer claims only IFC2X3 and IFC4 resolve, since the zone readers
+  resolve IFC4X3.
 
 ## [0.2.1] - 2026-09-27
 

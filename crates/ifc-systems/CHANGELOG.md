@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-09-28
+
 ### Fixed
 
 - The zone readers bind an IFC4X3 header to the bundled IFC4X3 ADD2 table
@@ -95,6 +97,7 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-systems-v0.2.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-systems-v0.2.2...HEAD
+[0.2.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-systems-v0.2.2
 [0.2.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-systems-v0.2.1
 [0.2.0]: https://github.com/openbimrs/ifc/releases/tag/v0.2.0

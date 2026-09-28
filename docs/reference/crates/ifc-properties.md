@@ -11,7 +11,7 @@ Property sets, quantities, and unit resolution. No geometry.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.5.0 (2026-09-28) |
+| Latest release | 0.5.1 (2026-09-28) |
 | Registries | [crates.io `ifc-properties`](https://crates.io/crates/ifc-properties) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_properties/index.html) · [docs.rs](https://docs.rs/ifc-properties) |
@@ -34,150 +34,84 @@ standard Psets are data here rather than hand-written tables.
 
 ## Changes
 
-Latest release, 0.5.0 (2026-09-28):
-
-### Changed (breaking)
-
-- `quantity_set`, `quantity_sets` and complex quantities list a simple
-  quantity whose value is `$`, cut off by a truncated record, or not a
-  number, as the new `Quantity::Unresolved` (#138). It sits in file order
-  beside the others and carries the quantity's id, `Name`, `Description`,
-  kind, stated unit and `Formula`, and a `reason`: the new
-  `UnresolvedValue::Missing` or `UnresolvedValue::NotNumeric { found }`.
-  It has no value field, so nothing can read it as 0. Since #107 such a
-  quantity was reported but left out of `quantities`, so a caller listing a
-  set could not see that it existed. `PropertyAnomaly::QuantityValueMissing`
-  and `QuantityValueNotNumeric` are still reported, once each.
-- `Quantity` is `#[non_exhaustive]`. Exhaustive matches need an arm for
-  `Unresolved` and a wildcard arm. `UnresolvedValue` is `#[non_exhaustive]`
-  too.
-- `compare` returns `Comparison::NotComparable` for an unresolved quantity,
-  and `stated_unit` returns its stated unit.
-- A quantity without a readable value is now checked against `WR21`: a
-  stated unit of the wrong kind is reported as
-  `PropertyAnomaly::QuantityUnitMismatch`, as it is for a valued quantity.
-- New `QuantityKind::Number` for IFC4X3 `IfcQuantityNumber` (#138), and
-  `QuantityKind` is `#[non_exhaustive]`. Exhaustive matches need an arm
-  for `Number` and a wildcard arm. In a model whose declared release is
-  IFC4X3, the permissive readers now resolve `IfcQuantityNumber` as a
-  `Simple` quantity, where they returned `Quantity::Unsupported`.
-  `NumberValue` and `Formula` are located by name in that release's table.
-  A `$` or non-numeric value is `Quantity::Unresolved`, and the anomalies
-  are reported as for the other kinds. Its measure is `IfcNumericMeasure`.
-  It has no WHERE rule, so there is no unit-kind check (`required_unit` is
-  `None`) and a negative number is not a `NegativeQuantity`. `compare`
-  compares it only against a computed `Number`, and `stated_unit` returns
-  whatever unit it states. IFC2X3 and IFC4 do not declare the entity. In
-  their models, and in a model without one known declared release, it
-  stays `Quantity::Unsupported`.
-- Quantity authoring binds to the model's declared release (#138).
-  `create_quantity(tx, model, kind, name, value)` and
-  `create_quantity_with(tx, model, kind, name, value, extras)` take the
-  `&Model` they write into and return `Result<EntityId, PropertyError>`.
-  They used to write the IFC4 five-attribute record into every model, so
-  an IFC2X3 quantity got a `Formula` slot IFC2X3 does not declare.
-  Attributes are now placed by name in the release's table: IFC2X3
-  quantities have four attributes, IFC4 and IFC4X3 ones five. The binding
-  is the one `ifc-material` uses. One recognised `FILE_SCHEMA` binds that
-  release, and a model with no `FILE_SCHEMA` binds IFC4. Several
-  declarations are refused with the new `PropertyError::MultipleSchemas`,
-  and an unknown one with `UnsupportedSchema`. Also refused:
-  - `QuantityKind::Number` outside IFC4X3, with `EntityNotInSchema`;
-  - a `Formula` for an IFC2X3 model, with `AuthoringNotInSchema`;
-  - a non-finite value, with `AuthoringInvalid`.
-
-  A count is no longer truncated. A whole count is still written as an
-  integer. A fractional one is written as a real where `IfcCountMeasure`
-  is `NUMBER` (IFC2X3, IFC4), and refused where it is `INTEGER` (IFC4X3).
-  `set_quantity_value` binds the same way. It writes the value slot named
-  in the release, refuses a record whose attribute count is not the
-  release's with `MalformedEntitySlots`, and repairs a `$` value (a
-  `Quantity::Unresolved`) into a simple quantity. Nothing is staged on a
-  refusal. The new `PropertyError` variants are additive, since the enum is
-  `#[non_exhaustive]`; the signatures are the breaking part.
-  `add_quantity_to_set`, `add_element_quantity` and
-  `add_physical_complex_quantity` are unchanged, because `IfcElementQuantity`
-  and `IfcPhysicalComplexQuantity` have the same attributes in all three
-  releases.
-
-The exact API is unchanged and agrees: `exact_property` refuses a `$` value
-with `MissingValueSlot`, a non-numeric one with `UnsupportedValue` and a
-truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
-
-- `PropertyTemplate` reads every attribute of both template entities by
-  name from the declared release's table (#108) and gains `kind`
-  (`PropertyTemplateKind::Simple` or `Complex`), `enumerators`,
-  `secondary_unit`, `expression`, `access_state`, `usage_name` and
-  `templates` (the nested `HasPropertyTemplates` of a complex template,
-  read through the same bounded, cycle-aware traversal as complex
-  properties, with `template(name)` to look one up). It is now
-  `#[non_exhaustive]`, so code that builds it with a struct literal or
-  destructures it exhaustively must change; later fields will not break
-  callers again.
+Latest release, 0.5.1 (2026-09-28):
 
 ### Added
 
-- `exact_property_sets_where(model, object, select_set)` and
-  `ExactPropertySetEntry { name, set_id, source, members }`: the property
-  sets and quantity sets an object carries whose names the selector picks,
-  empty ones included (#186). `exact_properties_where` lists properties, so a
-  matching set without any left no trace; an IDS property facet must fail
-  on exactly that set. The traversal, type-over-occurrence order and
-  refusals are those of `exact_properties_where`, except that a
-  `HasProperties` or `Quantities` of `()` or `$` (invalid, both are
-  `SET [1:?]`) is listed with `members == 0` instead of refused: the question
-  is whether the set exists. A type set with an occurrence set's name is
-  listed as well, since overriding works per property.
+- `add_property_set_with_owner_history`,
+  `add_element_quantity_with_owner_history`,
+  `attach_property_set_with_owner_history` and
+  `attach_type_with_owner_history` (#191). Each takes the model and a
+  caller-supplied `IfcOwnerHistory` id, which IFC2X3 requires on every
+  `IfcRoot`. The id must be in the model or staged on the transaction and
+  must be an `IfcOwnerHistory`; a missing one is refused with
+  `MissingEntity`, another entity with `AuthoringInvalid`. None is ever
+  invented. The record is laid out by attribute name from the declared
+  release's table, and in IFC4 and IFC4X3 the reference is written into
+  the optional slot. This follows `ifc-material`'s
+  `associate_material_with_owner_history` (#77).
+- `PropertyError::AuthoringRequired { entity, attribute, schema }`: the
+  model's release requires an attribute the call leaves unset (#191).
+  `PropertyError` is `#[non_exhaustive]`, so this is not breaking.
 
-- `template_deviations(model)` compares every property set that an
-  `IfcRelDefinesByTemplate` links to an `IfcPropertySetTemplate` with that
-  template (#109), reading the model and its templates only, bound to the
-  declared release (IFC4 or IFC4X3; IFC2X3 has no templates and is refused
-  with `TemplateError::NoTemplates`). It returns a `TemplateReport` of
-  `TemplateFinding`s, each naming the set, the template and the concrete
-  mismatch: `MissingProperty`, `UnexpectedProperty` (matched by `Name`, as
-  the IFC4 `IfcPropertySetTemplate` documentation states), `WrongForm` (the
-  property's entity against the template's `TemplateType`, e.g. a single
-  value where `P_ENUMERATEDVALUE` is prescribed), `WrongMeasureType`
-  (`PrimaryMeasureType`, and `SecondaryMeasureType` for bounded and table
-  values, against the declared type of each value or the referenced
-  entity), `WrongSetKind` (a `QTO_*` template on an `IfcPropertySet`, a
-  `PSET_*` one on an `IfcElementQuantity`), `WrongAttachment` (a
-  `*_TYPEDRIVENONLY` set on an occurrence, an `*_OCCURRENCEDRIVEN` set on a
-  type) and `OutsideApplicableEntity` (`IfcEntity[/PREDEFINEDTYPE]`
-  entries, comma separated). Complex properties are compared with complex
-  templates member by member. Quantity sets are checked the same way with
-  `Q_*` templates. What the documentation leaves open is
-  `TemplateFinding::Undecided` with an `UndecidedReason`, never guessed:
-  an unknown or undocumented template type (IFC4X3 `Q_NUMBER`), an unknown
-  measure type or `ApplicableEntity` entry, an object whose predefined
-  type is unstated, a `[PerformanceHistory]` entry, a predefined property
-  set. Malformed facts met on the way are `PropertyAnomaly`s in the same
-  report. New types: `TemplateReport`, `TemplateFinding`, `MeasureRole`,
-  `UndecidedReason`, `TemplateError`, all `#[non_exhaustive]`.
-- `property_template_checked` and `property_set_template_checked` read a
-  template bound to the declared release and report every malformed fact
-  met (#108), refusing a model without a single supported release, an
-  IFC2X3 model (`TemplateError::NoTemplates`), an absent entity and a
-  non-template with `TemplateError`.
-- `PropertyAnomaly::NotATemplate`, `PropertyAnomaly::SlotCountMismatch` and
-  `PropertyAnomaly::MalformedAttribute` (#108, #109): a template member or
-  `RelatingTemplate` that is no template, a record whose attribute count
-  is not the release's, and an attribute value its declared type does not
-  admit (including an enumeration constant the release does not define).
-  `PropertyAnomaly` is `#[non_exhaustive]`, so this is not breaking.
+### Changed
+
+- Type objects are no longer refused by the exact API (#193).
+  `exact_property`, `exact_properties`, `exact_properties_where`,
+  `exact_property_sets_where` and `exact_predefined_sets` answered an
+  `IfcTypeObject` with `ExactPropertyError::InvalidQueryObject`, so a
+  checker could not test an `IfcWallType` as IDS does. They now resolve
+  the type object's own `HasPropertySets`: property sets, quantity sets
+  and predefined sets, in IFC2X3, IFC4 and IFC4X3. Every subtype of the
+  release's `IfcTypeObject` is accepted, IFC2X3 `IfcDoorStyle` and
+  `IfcWindowStyle` included. The list is read and validated by the code
+  that already reads an occurrence's inherited type sets. A result carries
+  `ExactSource::Type(id)` with the queried object's id, which is what an
+  occurrence of that type reports for the same set. `HasPropertySets = $`
+  is a proven absence; `()` is refused with `MalformedAggregate`, and
+  duplicate names with `DuplicateMatchingSets { source: Type(id), .. }` and
+  `DuplicateMatchingProperties`, as for an inherited type. A type object
+  named in `IfcRelDefinesByProperties.RelatedObjects` is still refused with
+  `InvalidOccurrenceTarget`, also when it is the queried object: IFC2X3
+  admits only `IfcObject` there, and IFC4 and IFC4X3 forbid it by
+  `NoRelatedTypeObject` ("handled through the direct relationship
+  HasPropertySets at IfcTypeObject"). Occurrence results are unchanged. No
+  type or signature changes; callers that relied on the refusal now get
+  answers, and `InvalidQueryObject` remains for what is neither an
+  occurrence nor a type object. In `openbim-ifc`, `door_operation` and
+  `window_operation` given a type object now refuse with `NotADoor` or
+  `NotAWindow` instead of `Property(InvalidQueryObject)`.
 
 ### Fixed
 
-- `property_template` read every template with the
-  `IfcSimplePropertyTemplate` layout (#108), so an
-  `IfcComplexPropertyTemplate`, including one written by
-  `add_complex_property_template`, reported its `UsageName` as its
-  `TemplateType` and never exposed its nested templates; and any entity at
-  all read as a template. It now returns `None` for an entity that is not a
-  simple or complex template in the declared release (the IFC4 table when
-  the header names none it bundles, and nothing in an IFC2X3 file).
-  `property_set_template`, `property_set_templates` and `template_of_set`
-  read their attributes by name the same way.
+- Quantity values are written bare (#190). `create_quantity`,
+  `create_quantity_with` and `set_quantity_value` wrote
+  `IFCQUANTITYAREA('A',$,$,IFCAREAMEASURE(12.5),$)`. But `<Kind>Value` is
+  declared with a defined measure type (`IfcAreaMeasure`, ...), not a
+  SELECT, in IFC2X3, IFC4 and IFC4X3, and ISO 10303-21 writes a typed
+  parameter only in a SELECT slot. They now write `12.5` (a whole count as
+  the integer `4`). `set_quantity_value` replaces a typed value it finds
+  with the bare one. The readers (`quantity_set`, `exact_property`) still
+  accept both forms. Code that inspects the written `Value` sees
+  `Value::Real`/`Value::Integer` where it saw `Value::Typed`.
+- `IfcRoot.OwnerHistory` is no longer written as `$` into an IFC2X3 model
+  by `attach_property_set` and `attach_type` (#191). It is mandatory in
+  IFC2X3 (`OPTIONAL` from IFC4 on), so those records were invalid.
+  **Behaviour change for IFC2X3 callers:** both now refuse an IFC2X3 model
+  with `PropertyError::AuthoringRequired { attribute: "OwnerHistory", .. }`
+  and stage nothing; use the `*_with_owner_history` variants there.
+  Both now bind the model's declared release the way quantity authoring
+  does. So a model whose header declares several schemas, or one without a
+  bundled table, is refused with `MultipleSchemas` or `UnsupportedSchema`
+  where it used to be written in the IFC4 layout. `NoRelatedTypeObject`
+  and the `IfcTypeObject` checks use the declared release's inheritance
+  instead of IFC4's. IFC4 and IFC4X3 output is unchanged.
+  `add_property_set` and `add_element_quantity` take no model, so they
+  cannot see the release. They still write `$` and are documented as
+  IFC4/IFC4X3 only. In IFC2X3, `attach_property_set_with_owner_history`
+  refuses to attach a definition whose `OwnerHistory` is unset. Not
+  changed: the template writers, whose entities IFC2X3 does not declare,
+  and the predefined property-set writers, which write the IFC4 layout
+  without a model.
 
 Full history: [`crates/ifc-properties/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-properties/CHANGELOG.md)

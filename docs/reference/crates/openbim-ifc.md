@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.8.0 (2026-09-28) |
+| Latest release | 0.8.1 (2026-09-28) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc/index.html) · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -86,54 +86,18 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.8.0 (2026-09-28):
-
-### Changed (breaking)
-
-- `properties` re-exports `ifc-properties` 0.5.0, whose breaking changes
-  pass through (see that crate's changelog):
-  - `Quantity` and `QuantityKind` are `#[non_exhaustive]`, and gain
-    `Quantity::Unresolved` for a quantity without a readable value (#138)
-    and `QuantityKind::Number` for IFC4X3 `IfcQuantityNumber`;
-  - `create_quantity` / `create_quantity_with` take the `&Model` they write
-    into and write its release's layout;
-  - `PropertyTemplate` gains fields and is `#[non_exhaustive]` (#108).
-- Requires `ifc-spatial` 0.2.3 (`referenced_elements`, release-bound
-  container classification) and `ifc-geometry` 0.4.3
-  (`BodyItem::item_world`, #185).
-
-### Added
-
-- `spatial_properties(model)` (features `spatial` and `properties`): every
-  spatial container in tree order, depth first from the roots, with the
-  elements it holds, each with its `exact_properties` list, in IFC2X3, IFC4
-  and IFC4X3 (#121). An element is listed as `Contained`
-  (`IfcRelContainedInSpatialStructure`), `Referenced`
-  (`IfcRelReferencedInSpatialStructure`, so an element spanning several
-  storeys appears under each) or `Part` (an `IfcRelAggregates` part, at any
-  depth, of a contained element, which the Element Composition concept
-  places by its composite's containment), ordered by element id. A nested
-  space is its own container, not folded into its storey. A model-level
-  refusal (diagnostics, missing or unsupported schema) is the function's
-  error; any other `ExactPropertyError` is reported on the element it
-  concerns and the other elements are still returned. Properties resolve
-  lazily as `ContainerElements::elements` (or `elements_where`, with
-  `exact_properties_where` selectors) is iterated. New types:
-  `SpatialProperties`, `ContainerElements`, `SpatialContainer`,
-  `ContainerName`, `ElementMember`, `ElementProperties` and
-  `SpatialMembership`. Needs the next `ifc-spatial` release, which adds
-  `SpatialTree::referenced_elements`.
+Latest release, 0.8.1 (2026-09-28):
 
 ### Changed
 
-- The `spatial` feature classifies spatial containers from the file's
-  declared release (#121, via the next `ifc-spatial` release, which now
-  links `ifc-schema`): IFC4X3 facilities and facility parts such as
-  `IfcRoad`, `IfcRoadPart`, `IfcBridge` and `IfcBridgePart`, and
-  `IfcExternalSpatialElement`, are containers, so `SpatialTree`,
-  `spatial_properties` and `unreachable_products` see the elements placed
-  in them. Containment or reference into a non-container is reported as a
-  `SpatialAnomaly`. `unreachable_products` skips containers by the tree's
-  classification instead of a name test.
+- Requires the patch releases published with it: `ifc-properties` 0.5.1
+  (bare quantity values, IFC2X3 `*_with_owner_history` authoring, type
+  objects in the exact API), `ifc-cost` 0.2.2, `ifc-classification` 0.2.2
+  (IFC4X3 binding) and `ifc-systems` 0.2.2.
+- `door_operation` and `window_operation` given a type object (an
+  `IfcDoorType`, IFC2X3 `IfcDoorStyle`, ...) refuse it with `NotADoor` or
+  `NotAWindow`, where they returned `Property(InvalidQueryObject)`: the
+  exact property reader now accepts type objects (ifc-properties #193).
+  Results and refusals for doors and windows are unchanged.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)
