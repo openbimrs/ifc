@@ -22,7 +22,7 @@
 //! not parsed here, because a scheduling tool owns calendar semantics and
 //! silently normalising them would lose the authored intent.
 
-use ifc_model::{Entity, EntityId, Transaction, Value};
+use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 
 use crate::calendar::recurrence_slot;
 use crate::calendar::{work_calendar_slot, work_time_slot};
@@ -500,6 +500,12 @@ pub fn create_event_time(
 /// `IFCDURATION('P5D')`, a number as `IFCRATIOMEASURE(0.5)` (an integer is
 /// written as that REAL). A value already typed as one of those two members
 /// is accepted as is.
+///
+/// Takes no model, so it cannot see the model's release and is for IFC4 and
+/// IFC4X3 only. IFC2X3 declares no `IfcLagTime`: there the lag is
+/// `IfcRelSequence.TimeLag` itself, an `IfcTimeMeasure`
+/// ([`TimeLag::Seconds`]). To have the header's release checked, use
+/// [`create_lag_time_in`].
 pub fn create_lag_time(
     tx: &mut Transaction,
     name: Option<&str>,
@@ -543,6 +549,29 @@ pub fn create_lag_time(
     attributes[lag_slot::LAG_VALUE] = lag_value;
     attributes[lag_slot::DURATION_TYPE] = Value::Enum(duration_type.into());
     Ok(tx.create(Entity::new("IFCLAGTIME", attributes)))
+}
+
+/// [`create_lag_time`] bound to `model`'s declared release (#211).
+///
+/// IFC4 and IFC4X3 are staged exactly as [`create_lag_time`] stages them.
+/// IFC2X3 declares no `IfcLagTime` and is refused with `EntityNotInSchema`;
+/// author its lag as [`TimeLag::Seconds`] on the sequence instead.
+///
+/// # Errors
+///
+/// `EntityNotInSchema` for a release without `IfcLagTime`,
+/// `MultipleSchemas` or `UnsupportedSchema` when the header binds no single
+/// known release, and those of [`create_lag_time`]. Nothing is staged on an
+/// error.
+pub fn create_lag_time_in(
+    tx: &mut Transaction,
+    model: &Model,
+    name: Option<&str>,
+    lag_value: Value,
+    duration_type: &str,
+) -> ScheduleAuthoringResult<EntityId> {
+    crate::release::bind(model)?.require_entity("IFCLAGTIME")?;
+    create_lag_time(tx, name, lag_value, duration_type)
 }
 
 /// Authored fields for `IfcRecurrencePattern`.

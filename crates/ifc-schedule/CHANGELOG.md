@@ -14,6 +14,11 @@ everything released before per-crate changelogs began.
 
 ### Added
 
+- `create_lag_time_in(tx, model, name, lag_value, duration_type)`: the
+  model-bound `create_lag_time`. IFC2X3 declares no `IfcLagTime` and is
+  refused with `EntityNotInSchema`, nothing staged; IFC4 and IFC4X3 stage
+  exactly what `create_lag_time` stages. `create_lag_time` documents that
+  it is for IFC4 and IFC4X3 only (#211).
 - IFC2X3 work plans and work schedules can be authored (#214):
   `DateTimeValue` carries a date either as IFC4/IFC4X3 `IfcDateTime` text
   (`DateTimeValue::Text`, `From<&str>`) or as one of the IFC2X3
