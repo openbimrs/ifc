@@ -19,6 +19,13 @@ everything released before per-crate changelogs began.
   `SeriesDraft::new(name, start_time, end_time, data_type, data_origin)`
   and `ColumnDraft::new()` plus field-named setters. Fields stay public.
 
+### Changed
+
+- Links no bundled schema table itself: every entry point takes the
+  `Schema` from the caller. A consumer that used a table through this
+  crate's dependency (`ifc_schema::ifc4()`) enables it on its own
+  `ifc-schema` dependency (default features bundle every release).
+
 ## [0.2.1] - 2026-09-27
 
 ### Added

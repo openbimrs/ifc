@@ -24,6 +24,18 @@ everything released before per-crate changelogs began.
   (`LayerDraft::new(0.2).material(brick).priority(80)`). Fields stay public.
 - `ResolvedAssignment` is `#[non_exhaustive]`.
 
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- `UnsupportedSchema` reads "a release this crate has no verified layout
+  for" instead of "no bundled schema table".
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ## [0.3.0] - 2026-09-27
 
 ### Changed (breaking)

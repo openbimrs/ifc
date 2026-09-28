@@ -17,7 +17,7 @@
 
 use ifc_model::{EntityId, Model, Value};
 
-use crate::error::SystemAnomaly;
+use crate::error::{SchemaResolutionError, SystemAnomaly};
 use crate::release::{self, Release};
 
 /// Attribute slots, named so a misread is a compile error rather than a
@@ -27,6 +27,8 @@ pub(crate) mod slot {
     pub const ASSIGNS_RELATED: usize = 4;
     /// `IfcRelAssignsToGroup.RelatingGroup` -- 6, not 5.
     pub const ASSIGNS_GROUP: usize = 6;
+    /// `IfcRoot.Name`.
+    pub const NAME: usize = 2;
 }
 
 /// A system as the file states it, with its members resolved.
@@ -76,16 +78,16 @@ fn refs(value: Option<&Value>) -> Vec<EntityId> {
 /// found in IFC2X3 -- but `IfcZone` is NOT, because it subtypes `IfcGroup`
 /// rather than `IfcSystem` in IFC2X3 (issue #52).
 ///
-/// Reads against the release the model's `FILE_SCHEMA` header declares
-/// (IFC2X3 or IFC4). A model that declares neither -- including every
-/// hand-built model in this crate's own tests, which set no header at all
-/// -- reads as IFC4, matching this function's pre-#52 behaviour. A model
-/// that explicitly declares an unsupported release (e.g. IFC4X3) also
-/// falls back to IFC4 here, because this function's `(Vec<_>, Vec<_>)`
-/// signature has no slot for a hard refusal; call [`crate::schema_of`]
-/// first if that distinction matters to the caller.
-pub fn systems(model: &Model) -> (Vec<System>, Vec<SystemAnomaly>) {
-    let release = release::resolve_or_ifc4(model);
+/// Reads against the release the model's `FILE_SCHEMA` header declares:
+/// IFC2X3, IFC4 or IFC4X3.
+///
+/// # Errors
+///
+/// [`SchemaResolutionError`] when the model's `FILE_SCHEMA` binds no release
+/// this crate is verified for (see [`crate::schema_of`]). Nothing is read
+/// against a release the file did not declare.
+pub fn systems(model: &Model) -> Result<(Vec<System>, Vec<SystemAnomaly>), SchemaResolutionError> {
+    let release = release::resolve(model)?;
     let mut anomalies = Vec::new();
 
     // Membership is stated by the relationship, not the system, so index the
@@ -145,11 +147,11 @@ pub fn systems(model: &Model) -> (Vec<System>, Vec<SystemAnomaly>) {
             id,
             // Upper-cased for the same reason as `NotASystem::type_name`.
             type_name: entity.type_name.to_ascii_uppercase(),
-            name: text(model, id, 2),
+            name: text(model, id, slot::NAME),
             members: members.remove(&id).unwrap_or_default(),
         });
     }
-    (systems, anomalies)
+    Ok((systems, anomalies))
 }
 
 /// Ids of every entity whose declared type is `IfcSystem` or a subtype,

@@ -115,16 +115,13 @@ pub enum SchemaResolutionError {
         /// How many schema tokens the header carried.
         schemas: usize,
     },
-    /// `FILE_SCHEMA` names a release this read does not resolve.
+    /// `FILE_SCHEMA` names a release this crate's readers are not verified
+    /// for, or one this build does not bundle.
     ///
-    /// [`crate::schema_of`] and the system, port and flow readers resolve
-    /// IFC2X3 and IFC4. IFC4X3 is bundled in `ifc-schema` but its
-    /// distribution-system semantics have not been verified for them, so it
-    /// is refused there rather than defaulted to IFC4 -- an IFC4X3 file
-    /// assumed to be IFC4 would misread `IfcBuiltSystem` and related
-    /// IFC4X3-only entities. The zone readers ([`crate::try_zones`],
-    /// [`crate::long_name_of`]) resolve IFC4X3 too (#194), so they refuse
-    /// only a token with no bundled table.
+    /// Every reader resolves IFC2X3, IFC4 and IFC4X3 (see
+    /// [`crate::schema_of`]). IFC4X1 and IFC4X2 are bundled in `ifc-schema`
+    /// but unverified here, so they are refused rather than read with another
+    /// release's semantics.
     UnsupportedSchema {
         /// The header token as written, e.g. `"IFC4X3_ADD2"`.
         schema: String,

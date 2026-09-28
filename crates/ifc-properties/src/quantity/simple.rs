@@ -69,7 +69,7 @@ pub(super) fn value_slots(model: &Model, kind: QuantityKind) -> Option<ValueSlot
     let [token] = model.header().schema.as_slice() else {
         return None;
     };
-    let schema = for_version(SchemaVersion::from_header_token(token)?)?;
+    let schema = for_version(SchemaVersion::from_header_token(token)?).ok()?;
     let names = schema.attribute_names("IFCQUANTITYNUMBER");
     let slot = |name: &str| names.iter().position(|n| n.eq_ignore_ascii_case(name));
     Some(ValueSlots {

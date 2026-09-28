@@ -323,3 +323,46 @@ fn compiled_features_names_every_feature_that_enables_a_crate() {
         "expected every facade feature, checked {checked}"
     );
 }
+
+/// The `ifc-schema` release features a facade feature set resolves to.
+fn schema_releases(features: &str) -> Vec<&'static str> {
+    let manifest = concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml");
+    let out = Command::new(env!("CARGO"))
+        .args([
+            "tree",
+            "--manifest-path",
+            manifest,
+            "--edges",
+            "features,no-dev",
+            "--invert",
+            "ifc-schema",
+            "--no-default-features",
+            "--features",
+            features,
+        ])
+        .output()
+        .expect("cargo tree should run");
+    assert!(
+        out.status.success(),
+        "cargo tree failed: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let tree = String::from_utf8(out.stdout).expect("tree output is utf-8");
+    ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
+        .into_iter()
+        .filter(|release| tree.contains(&format!("ifc-schema feature \"{release}\"")))
+        .collect()
+}
+
+/// A single-release facade build links exactly that release's table (#112),
+/// and `schema` still means every release.
+#[test]
+fn a_release_feature_bundles_only_its_own_table() {
+    assert_eq!(schema_releases("step,ifc4"), ["ifc4"]);
+    assert_eq!(schema_releases("step,ifc2x3,ifc4x3"), ["ifc2x3", "ifc4x3"]);
+    assert!(schema_releases("step,schema-api").is_empty());
+    assert_eq!(
+        schema_releases("step,schema"),
+        ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
+    );
+}

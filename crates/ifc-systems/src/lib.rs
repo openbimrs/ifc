@@ -49,7 +49,7 @@ pub use ifc_schema::SchemaVersion;
 pub use port::{ports, Attachment, Port};
 pub use release::schema_of;
 pub use system::{systems, System};
-pub use zone::{long_name_of, spatial_placements, try_zones, zones, SpatialPlacement, Zone};
+pub use zone::{long_name_of, spatial_placements, zones, SpatialPlacement, Zone};
 
 mod assignment;
 pub(crate) mod zone;

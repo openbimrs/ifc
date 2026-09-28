@@ -25,6 +25,16 @@ everything released before per-crate changelogs began.
   - `ConstraintAssociationDraft::new(global_id, related_objects, relating_constraint)`
   - `ReferenceDraft::new()`, which now also derives `Default`
 
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ## [0.2.1] - 2026-09-28
 
 ### Added

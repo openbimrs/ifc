@@ -30,7 +30,8 @@ crate-type = ["rlib", "staticlib", "cdylib"]
 
 [dependencies]
 # ADR 0013: bindings reach IFC through the facade only, via the shared core.
-openbim-ifc-binding-core.workspace = true
+# Every bundled IFC release (#112).
+openbim-ifc-binding-core = { workspace = true, features = ["default"] }
 # Opt-in pure-Rust allocator, see the `rusty_alloc` feature (#49). Pinned
 # exactly, core crate included: an allocator is unsafe code under every
 # allocation, and this one is young (its 0.3.x line had use-after-frees), so

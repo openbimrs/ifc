@@ -1,4 +1,4 @@
-//! #194: `zones()` reads an IFC4X3 model against the IFC4X3 ADD2 table.
+//! #194: `zones().unwrap()` reads an IFC4X3 model against the IFC4X3 ADD2 table.
 //!
 //! Before, every header other than IFC2X3 and IFC4 was read against IFC4.
 //! The zone readers now bind IFC4X3 and read every slot by attribute name.
@@ -13,9 +13,7 @@
 
 use ifc_model::{Codec, EntityId, Model};
 use ifc_schema::for_version;
-use ifc_systems::{
-    long_name_of, try_zones, zones, SchemaResolutionError, SchemaVersion, SystemAnomaly,
-};
+use ifc_systems::{long_name_of, zones, SchemaResolutionError, SchemaVersion, SystemAnomaly};
 
 /// A STEP record for `entity` in IFC4X3: `head` then `$` up to its arity.
 fn record(id: u64, entity: &str, head: &[&str]) -> String {
@@ -72,7 +70,7 @@ fn not_spatial(member: u64, type_name: &str) -> SystemAnomaly {
 #[test]
 fn zones_read_an_ifc4x3_model() {
     let model = step("'IFC4X3_ADD2'");
-    let (found, anomalies) = zones(&model);
+    let (found, anomalies) = zones(&model).unwrap();
     assert_eq!(found.len(), 2);
     let zone = &found[0];
     assert_eq!(zone.id, EntityId(12));
@@ -90,7 +88,7 @@ fn zones_read_an_ifc4x3_model() {
         ]
     );
 
-    assert_eq!(try_zones(&model), Ok((found, anomalies)));
+    assert_eq!(zones(&model), Ok((found, anomalies)));
     assert_eq!(
         long_name_of(&model, EntityId(12)),
         Ok(Some("Long A".to_owned()))
@@ -99,22 +97,25 @@ fn zones_read_an_ifc4x3_model() {
 }
 
 #[test]
-fn try_zones_refuses_multiple_or_unknown_schemas() {
+fn zones_refuses_unbound_or_unverified_schemas() {
     assert_eq!(
-        try_zones(&step("'IFC4','IFC4X3'")),
+        zones(&step("'IFC4','IFC4X3'")),
         Err(SchemaResolutionError::MultipleSchemas { schemas: 2 })
     );
+    for token in ["IFC4X1", "IFC4X2"] {
+        assert_eq!(
+            zones(&step(&format!("'{token}'"))),
+            Err(SchemaResolutionError::UnsupportedSchema {
+                schema: token.to_owned()
+            })
+        );
+    }
+    // A header with no schema (an in-memory model) binds nothing and is
+    // refused, never read as IFC4.
     assert_eq!(
-        try_zones(&step("'IFC4X1'")),
-        Err(SchemaResolutionError::UnsupportedSchema {
-            schema: "IFC4X1".to_owned()
-        })
+        zones(&Model::new()),
+        Err(SchemaResolutionError::MissingSchema)
     );
-    // `zones()` has no error channel and keeps reading such a header
-    // against IFC4, as in 0.2.0; the zone data here reads the same there.
-    assert_eq!(zones(&step("'IFC4X1'")).0.len(), 2);
-    // A header with no schema (an in-memory model) reads against IFC4.
-    assert_eq!(try_zones(&Model::new()), Ok((Vec::new(), Vec::new())));
 }
 
 /// Every slot the zone readers use, by name in each release.

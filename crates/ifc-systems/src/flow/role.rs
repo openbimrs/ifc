@@ -8,8 +8,9 @@
 
 use ifc_model::{EntityId, Model};
 
+use crate::error::SchemaResolutionError;
 use crate::port::Port;
-use crate::release;
+use crate::release::{self, Release};
 
 /// What kind of flow element this is, by schema ancestry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -44,10 +45,20 @@ impl ElementRole {
     /// Ancestry is read against the release the model declares. IFC2X3 has
     /// no `IfcPipeSegment`: its files state `IfcFlowSegment` itself, and a
     /// record name the declared release does not define has no role.
-    pub fn of(model: &Model, element: EntityId) -> Option<Self> {
+    ///
+    /// `Ok(None)` when `element` is absent or not a distribution element.
+    ///
+    /// # Errors
+    ///
+    /// [`SchemaResolutionError`] when the model's `FILE_SCHEMA` binds no
+    /// release this crate is verified for (see [`crate::schema_of`]).
+    pub fn of(model: &Model, element: EntityId) -> Result<Option<Self>, SchemaResolutionError> {
+        Ok(Self::in_release(release::resolve(model)?, model, element))
+    }
+
+    fn in_release(schema: Release, model: &Model, element: EntityId) -> Option<Self> {
         let entity = model.get(element)?;
         let name = entity.type_name.to_ascii_uppercase();
-        let schema = release::resolve_or_ifc4(model);
         // Order matters: the first match wins, so the most specific roles are
         // tested before the catch-all distribution element.
         for (ancestor, role) in [
@@ -114,7 +125,16 @@ pub enum RoleInconsistency {
 ///
 /// Ports are grouped by their owning element, so an element whose ports were
 /// never attached is not reported: absent data is not a contradiction.
-pub fn role_inconsistencies(model: &Model, ports: &[Port]) -> Vec<RoleInconsistency> {
+///
+/// # Errors
+///
+/// [`SchemaResolutionError`] when the model's `FILE_SCHEMA` binds no release
+/// this crate is verified for (see [`crate::schema_of`]).
+pub fn role_inconsistencies(
+    model: &Model,
+    ports: &[Port],
+) -> Result<Vec<RoleInconsistency>, SchemaResolutionError> {
+    let release = release::resolve(model)?;
     let mut by_element: std::collections::BTreeMap<EntityId, Vec<&Port>> =
         std::collections::BTreeMap::new();
     for port in ports {
@@ -125,7 +145,7 @@ pub fn role_inconsistencies(model: &Model, ports: &[Port]) -> Vec<RoleInconsiste
 
     let mut out = Vec::new();
     for (element, owned) in by_element {
-        let Some(role) = ElementRole::of(model, element) else {
+        let Some(role) = ElementRole::in_release(release, model, element) else {
             continue;
         };
 
@@ -157,5 +177,5 @@ pub fn role_inconsistencies(model: &Model, ports: &[Port]) -> Vec<RoleInconsiste
             });
         }
     }
-    out
+    Ok(out)
 }

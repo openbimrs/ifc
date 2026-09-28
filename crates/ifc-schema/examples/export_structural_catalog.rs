@@ -11,12 +11,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let requested = env::args().nth(1).ok_or_else(|| {
         io::Error::new(
             io::ErrorKind::InvalidInput,
-            "usage: cargo run -p ifc-schema --example export_structural_catalog -- <ifc2x3|ifc4|ifc4x3> [--direct]",
+            "usage: cargo run -p ifc-schema --example export_structural_catalog -- <ifc2x3|ifc4|ifc4x1|ifc4x2|ifc4x3> [--direct]",
         )
     })?;
     let version = match requested.to_ascii_lowercase().as_str() {
         "ifc2x3" | "ifc2x3_tc1" => SchemaVersion::Ifc2x3,
         "ifc4" | "ifc4_add2_tc1" => SchemaVersion::Ifc4,
+        "ifc4x1" | "ifc4x1_final" => SchemaVersion::Ifc4x1,
+        "ifc4x2" | "ifc4x2_final" => SchemaVersion::Ifc4x2,
         "ifc4x3" | "ifc4x3_add2" => SchemaVersion::Ifc4x3,
         _ => {
             return Err(io::Error::new(

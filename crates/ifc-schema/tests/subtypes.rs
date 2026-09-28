@@ -1,14 +1,20 @@
-//! Downward subtype queries against the three bundled IFC schemas.
+//! Downward subtype queries against the bundled IFC schemas.
 //!
 //! The synthetic-schema tests in `openbim-step` prove the walk is correct;
 //! these prove it answers the question a consumer actually asks, "every
 //! `IfcElement`", on the real inheritance trees, which are deep (IfcWall is
 //! five levels under IfcRoot) and differ between versions.
 
-use ifc_schema::{ifc2x3, ifc4, ifc4x3, Schema};
+use ifc_schema::{ifc2x3, ifc4, ifc4x1, ifc4x2, ifc4x3, Schema};
 
-fn bundled() -> [(&'static str, &'static Schema); 3] {
-    [("IFC2X3", ifc2x3()), ("IFC4", ifc4()), ("IFC4X3", ifc4x3())]
+fn bundled() -> [(&'static str, &'static Schema); 5] {
+    [
+        ("IFC2X3", ifc2x3()),
+        ("IFC4", ifc4()),
+        ("IFC4X1", ifc4x1()),
+        ("IFC4X2", ifc4x2()),
+        ("IFC4X3", ifc4x3()),
+    ]
 }
 
 /// `subtypes` must be exactly `{ y != x : is_a(y, x) }` on real schemas, for

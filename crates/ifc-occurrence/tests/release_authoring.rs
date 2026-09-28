@@ -192,6 +192,7 @@ fn the_whole_catalogue_is_written_in_every_release() {
                     ]
                 );
             }
+            other => unreachable!("{other:?} is not swept"),
         }
     }
 }

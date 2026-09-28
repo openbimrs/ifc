@@ -105,7 +105,15 @@ fn operation_type(
             // require an `IfcDoorType`; IFC2X3 has only `IfcDoorStyle`.
             let expected = match version {
                 SchemaVersion::Ifc2x3 => "IFCDOORSTYLE",
-                _ => "IFCDOORTYPE",
+                SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3 => "IFCDOORTYPE",
+                // `exact_schema` admits no other release; a later one is
+                // refused here too rather than read as IFC4.
+                other => {
+                    return Err(ExactPropertyError::UnsupportedSchema {
+                        schema: format!("{other:?}"),
+                    }
+                    .into())
+                }
             };
             if !schema.is_a(&type_entity.type_name, expected) {
                 return Err(DoorOperationError::UnsupportedTypeObject {

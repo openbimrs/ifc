@@ -8,6 +8,11 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed
+
+- Links every bundled IFC release explicitly through the binding core's
+  new release features; behaviour is unchanged.
+
 ### Added (lazy loading)
 
 - `openbim_ifc_v0_1_model_open(path, path_len, ...)`: read a STEP file from

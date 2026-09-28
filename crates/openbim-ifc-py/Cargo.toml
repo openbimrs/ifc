@@ -30,7 +30,8 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 # ADR 0013: bindings reach the facade only through the shared binding core.
-openbim-ifc-binding-core.workspace = true
+# Every bundled IFC release (#112).
+openbim-ifc-binding-core = { workspace = true, features = ["default"] }
 # abi3-py39: one wheel for CPython 3.9+. No `extension-module` feature: it is
 # deprecated in pyo3 0.29; maturin sets PYO3_BUILD_EXTENSION_MODULE instead,
 # and leaving it off keeps `cargo test --workspace` linkable.

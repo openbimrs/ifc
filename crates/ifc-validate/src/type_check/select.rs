@@ -73,6 +73,7 @@ pub fn resolve_select(schema: &Schema, type_name: &str) -> Option<String> {
             TypeKind::Select(_) => return Some(current),
             TypeKind::Defined(target) => current = target.trim().to_string(),
             TypeKind::Enumeration(_) => return None,
+            _ => return None,
         }
     }
     None
@@ -155,7 +156,8 @@ fn entity_members(schema: &Schema, type_name: &str) -> Option<EntityMembers> {
                 frontier.extend(nested.iter().map(|member| member.to_ascii_uppercase()));
             }
             Some(TypeKind::Defined(_) | TypeKind::Enumeration(_)) => members.values = true,
-            None => members.unknown = true,
+            // Unknown declaration forms fail closed like undeclared names.
+            Some(_) | None => members.unknown = true,
         }
     }
     Some(members)

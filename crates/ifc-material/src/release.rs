@@ -173,6 +173,18 @@ pub(crate) enum Release<'m> {
     Unsupported(&'m str),
 }
 
+/// Releases this crate's layouts are proven against.
+///
+/// `ifc-schema` also bundles IFC4X1 and IFC4X2, but nothing here is verified
+/// against their tables, so a header declaring either is refused with the
+/// unsupported-schema error rather than read through a neighbour's layout.
+const fn proven(version: SchemaVersion) -> bool {
+    matches!(
+        version,
+        SchemaVersion::Ifc2x3 | SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3
+    )
+}
+
 impl<'m> Release<'m> {
     /// The binding of projections built without a model (`try_new`) and of
     /// a model whose header declares no schema.
@@ -183,6 +195,7 @@ impl<'m> Release<'m> {
         match model.header().schema.as_slice() {
             [] => Release::LEGACY,
             [token] => SchemaVersion::from_header_token(token)
+                .filter(|version| proven(*version))
                 .map_or(Self::Unsupported(token.as_str()), Self::Bound),
             tokens => Self::Multiple(tokens.len()),
         }
@@ -415,10 +428,29 @@ pub(crate) fn is_type_object(release: Release<'_>, entity: &str) -> MaterialResu
 ///
 /// [`MaterialError::MultipleSchemas`] when the header declares several
 /// schemas, and [`MaterialError::UnsupportedSchema`] when it declares one
-/// with no bundled table.
+/// this crate is not verified for (including IFC4X1 and IFC4X2).
 pub fn material_schema(model: &Model) -> MaterialResult<SchemaVersion> {
     Release::of(model).bound().map(|(version, _)| version)
 }
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod intermediate_release_tests {
+    use super::*;
+
+    /// IFC4X1 and IFC4X2 have bundled tables but no verified layout here:
+    /// refused with the unsupported-schema error, never read as IFC4/IFC4X3.
+    #[test]
+    fn ifc4x1_and_ifc4x2_are_refused_not_aliased() {
+        for token in ["IFC4X1", "IFC4X2"] {
+            let mut model = Model::new();
+            model.header_mut().schema = vec![token.to_owned()];
+            assert!(
+                matches!(Release::of(&model).bound(), Err(MaterialError::UnsupportedSchema { schema }) if schema == token),
+                "{token} must be refused"
+            );
+        }
+    }
+}

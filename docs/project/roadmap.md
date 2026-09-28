@@ -47,11 +47,12 @@ Tracked in [#8](https://github.com/openbimrs/ifc/issues/8).
 
 ## More schema versions
 
-IFC2X3 TC1, IFC4 ADD2 TC1 and IFC4X3 ADD2 are bundled for validation; domain
-views state per crate which releases they read. IFC4X1 and IFC4X2
-([#33](https://github.com/openbimrs/ifc/issues/33)) and the scope of
-IFC5/IFCX ([#35](https://github.com/openbimrs/ifc/issues/35)) are open
-questions. Domain crates that read one release only are being bound to the
+IFC2X3 TC1, IFC4 ADD2 TC1, IFC4X1 FINAL, IFC4X2 FINAL and IFC4X3 ADD2 are
+bundled for validation; domain views state per crate which releases they read.
+IFC4X1 and IFC4X2 ([#33](https://github.com/openbimrs/ifc/issues/33)) are
+recognised and validated against their own tables, and every domain crate
+refuses them until it verifies its layouts. The scope of IFC5/IFCX
+([#35](https://github.com/openbimrs/ifc/issues/35)) is an open question. Domain crates that read one release only are being bound to the
 model's declared release one by one.
 
 ## Bindings and packaging

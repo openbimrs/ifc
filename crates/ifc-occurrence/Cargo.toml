@@ -19,7 +19,7 @@ group = "domain"
 [dependencies]
 ifc-model.workspace = true
 # The declared release's table lays out each occurrence (#202).
-ifc-schema.workspace = true
+ifc-schema = { workspace = true, features = ["default"] }
 
 [dev-dependencies]
 # Test-only: release round trips are written and read back as STEP.

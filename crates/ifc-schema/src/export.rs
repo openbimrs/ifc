@@ -6,7 +6,7 @@
 
 use std::io::{self, Write};
 
-use crate::{for_version, SchemaVersion};
+use crate::{for_version, Schema, SchemaVersion};
 
 /// Counts written to one structural catalog.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,6 +19,11 @@ pub struct StructuralCatalogSummary {
 
 /// Write a deterministic tab-separated structural catalog for a bundled IFC release.
 ///
+/// # Errors
+///
+/// An I/O error from `output`, or one of kind `Unsupported` wrapping
+/// [`crate::NotBundled`] when `version`'s release feature is off.
+///
 /// Rows have four fields: `entity`, canonical entity name, nearest-first
 /// comma-separated supertypes, and inherited-first comma-separated Part 21
 /// attribute names. A `-` is the empty-sequence marker; IFC declaration names
@@ -27,7 +32,7 @@ pub fn write_structural_catalog(
     version: SchemaVersion,
     mut output: impl Write,
 ) -> io::Result<StructuralCatalogSummary> {
-    let schema = for_version(version).expect("every SchemaVersion has a bundled schema");
+    let schema = bundled(version)?;
     let entity_count = schema.entity_count();
     let type_count = schema.type_count();
 
@@ -69,6 +74,10 @@ pub fn write_structural_catalog(
 
 /// Write direct IFC entity declarations without repeated inherited structure.
 ///
+/// # Errors
+///
+/// As [`write_structural_catalog`].
+///
 /// Rows have four fields: `entity`, canonical name, immediate supertype, and
 /// directly declared Part 21 attribute names. `-` marks an absent parent or
 /// empty declaration list. Consumers reconstruct release-specific ancestry and
@@ -77,7 +86,7 @@ pub fn write_direct_structural_catalog(
     version: SchemaVersion,
     mut output: impl Write,
 ) -> io::Result<StructuralCatalogSummary> {
-    let schema = for_version(version).expect("every SchemaVersion has a bundled schema");
+    let schema = bundled(version)?;
     let entity_count = schema.entity_count();
     let type_count = schema.type_count();
     assert_eq!(entity_count, version.expected_entity_count());
@@ -128,6 +137,12 @@ pub fn write_direct_structural_catalog(
         entity_rows: names.len(),
         type_count,
     })
+}
+
+/// The bundled table for `version`, or an `Unsupported` I/O error wrapping
+/// [`crate::NotBundled`] when this build does not compile it in.
+fn bundled(version: SchemaVersion) -> io::Result<&'static Schema> {
+    for_version(version).map_err(|refused| io::Error::new(io::ErrorKind::Unsupported, refused))
 }
 
 fn joined_or_dash(values: &[&str]) -> String {

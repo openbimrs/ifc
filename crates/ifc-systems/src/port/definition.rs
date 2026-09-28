@@ -19,7 +19,7 @@
 //! Supporting only the IFC4 form would drop every port in a file exported by
 //! an older tool, which is a large share of what exists.
 
-use crate::error::SystemAnomaly;
+use crate::error::{SchemaResolutionError, SystemAnomaly};
 use crate::flow::FlowDirection;
 use crate::release::{self, Release};
 use ifc_model::{EntityId, Model, Value};
@@ -35,6 +35,8 @@ pub(crate) mod slot {
     pub const PORT_TO_ELEMENT_ELEMENT: usize = 5;
     /// `IfcDistributionPort.FlowDirection`.
     pub const FLOW_DIRECTION: usize = 7;
+    /// `IfcRoot.Name`.
+    pub const NAME: usize = 2;
 }
 
 /// How a port was attached to its element.
@@ -102,10 +104,15 @@ fn text(model: &Model, id: EntityId, slot: usize) -> Option<String> {
 /// disagree the modern one wins and the conflict is reported.
 ///
 /// Port ancestry is read against the release the model's `FILE_SCHEMA`
-/// declares (IFC2X3 or IFC4); see [`crate::systems`] for how an undeclared
-/// or unsupported header is handled.
-pub fn ports(model: &Model) -> (Vec<Port>, Vec<SystemAnomaly>) {
-    let release = release::resolve_or_ifc4(model);
+/// declares: IFC2X3, IFC4 or IFC4X3.
+///
+/// # Errors
+///
+/// [`SchemaResolutionError`] when the model's `FILE_SCHEMA` binds no release
+/// this crate is verified for (see [`crate::schema_of`]). Nothing is read
+/// against a release the file did not declare.
+pub fn ports(model: &Model) -> Result<(Vec<Port>, Vec<SystemAnomaly>), SchemaResolutionError> {
+    let release = release::resolve(model)?;
     let mut anomalies = Vec::new();
     let mut owner: std::collections::BTreeMap<EntityId, (EntityId, Attachment)> =
         std::collections::BTreeMap::new();
@@ -197,13 +204,13 @@ pub fn ports(model: &Model) -> (Vec<Port>, Vec<SystemAnomaly>) {
         ports.push(Port {
             id,
             type_name: entity.type_name.to_ascii_uppercase(),
-            name: text(model, id, 2),
+            name: text(model, id, slot::NAME),
             flow: FlowDirection::parse(entity.attributes.get(slot::FLOW_DIRECTION)),
             element: attached.map(|(e, _)| *e),
             attachment: attached.map(|(_, how)| *how),
         });
     }
-    (ports, anomalies)
+    Ok((ports, anomalies))
 }
 
 fn refs(value: Option<&Value>) -> Vec<EntityId> {

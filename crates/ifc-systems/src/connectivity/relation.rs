@@ -21,7 +21,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use ifc_model::{EntityId, Model, Value};
 
-use crate::error::SystemAnomaly;
+use crate::error::{SchemaResolutionError, SystemAnomaly};
 use crate::release;
 
 pub(crate) mod slot {
@@ -66,8 +66,13 @@ impl ConnectionGraph {
     /// caller the rest of the network.
     ///
     /// Port ancestry is read against the release the model declares.
-    pub fn build(model: &Model) -> (Self, Vec<SystemAnomaly>) {
-        let schema = release::resolve_or_ifc4(model);
+    ///
+    /// # Errors
+    ///
+    /// [`SchemaResolutionError`] when the model's `FILE_SCHEMA` binds no
+    /// release this crate is verified for (see [`crate::schema_of`]).
+    pub fn build(model: &Model) -> Result<(Self, Vec<SystemAnomaly>), SchemaResolutionError> {
+        let schema = release::resolve(model)?;
         let mut anomalies = Vec::new();
         let mut graph = Self::default();
 
@@ -124,7 +129,7 @@ impl ConnectionGraph {
             graph.adjacency.entry(relating).or_default().insert(related);
             graph.adjacency.entry(related).or_default().insert(relating);
         }
-        (graph, anomalies)
+        Ok((graph, anomalies))
     }
 
     /// Every stated connection, in file order.

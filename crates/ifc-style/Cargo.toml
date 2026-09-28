@@ -17,11 +17,14 @@ status = "implemented"
 group = "domain"
 
 [dependencies]
+# The caller passes the schema; production links no bundled table.
 ifc-schema.workspace = true
 ifc-model.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+# Tests read the bundled tables.
+ifc-schema = { workspace = true, features = ["default"] }
 ifc-step.workspace = true
 
 [lints]

@@ -199,6 +199,7 @@ fn invalid_step_is_a_parse_error() {
     ));
 }
 
+#[cfg(feature = "ifc4")]
 #[test]
 fn a_subtype_query_follows_the_declared_schema() {
     let model = model();
@@ -231,6 +232,41 @@ fn a_subtype_query_needs_a_known_schema() {
     assert_eq!(
         model.ids_of_type_including_subtypes("IfcWall"),
         Err(BindingError::UnsupportedSchema("IFC9".into()))
+    );
+}
+
+/// A release this build does not bundle (#112) is refused like an unknown
+/// one, and the message says it is known but not compiled in. The gate runs
+/// this as `cargo test -p openbim-ifc-binding-core --no-default-features
+/// --features ifc4`.
+#[cfg(all(feature = "ifc4", not(feature = "ifc4x3")))]
+#[test]
+fn a_subtype_query_refuses_a_release_left_out_of_the_build() {
+    let text = FILE.replace("FILE_SCHEMA(('IFC4'))", "FILE_SCHEMA(('IFC4X3'))");
+    let model = IfcModel::parse(text.as_bytes()).unwrap();
+    let Err(BindingError::UnsupportedSchema(message)) =
+        model.ids_of_type_including_subtypes("IfcWall")
+    else {
+        panic!("IFC4X3 is not compiled into this build");
+    };
+    assert!(message.starts_with("IFC4X3 ("), "{message}");
+    assert!(
+        message.contains("not compiled into this build"),
+        "{message}"
+    );
+}
+
+/// IFC4X1 files resolve subtypes through their own table (#33).
+#[cfg(feature = "ifc4x1")]
+#[test]
+fn a_subtype_query_reads_an_ifc4x1_file_with_its_own_table() {
+    let text = FILE.replace("FILE_SCHEMA(('IFC4'))", "FILE_SCHEMA(('IFC4X1'))");
+    let model = IfcModel::parse(text.as_bytes()).unwrap();
+    assert_eq!(
+        model
+            .ids_of_type_including_subtypes("IfcBuildingElement")
+            .unwrap(),
+        vec![5]
     );
 }
 

@@ -18,10 +18,13 @@ group = "domain"
 
 [dependencies]
 ifc-model.workspace = true
+# The caller passes the schema; production links no bundled table.
 ifc-schema.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+# Tests read the bundled tables.
+ifc-schema = { workspace = true, features = ["default"] }
 # Test-only: the author-then-read tests round-trip through STEP text, and
 # writing or parsing it is not a production concern of this crate.
 ifc-step.workspace = true

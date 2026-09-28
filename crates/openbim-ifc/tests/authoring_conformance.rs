@@ -396,7 +396,20 @@ fn georeferencing_and_alignment_authoring_is_conformant() {
 
     // ifc-alignment: a referent positioned along a curve, with its
     // stationing property set.
-    let curve = tx.create(Entity::new("IFCPOLYLINE", vec![Value::List(vec![])]));
+    // A two-point polyline: `Points` is LIST [2:?], which the validator
+    // checks since #111.
+    let start = tx.create(Entity::new(
+        "IFCCARTESIANPOINT",
+        vec![Value::List(vec![Value::Real(0.0), Value::Real(0.0)])],
+    ));
+    let end = tx.create(Entity::new(
+        "IFCCARTESIANPOINT",
+        vec![Value::List(vec![Value::Real(500.0), Value::Real(0.0)])],
+    ));
+    let curve = tx.create(Entity::new(
+        "IFCPOLYLINE",
+        vec![Value::List(vec![Value::Ref(start), Value::Ref(end)])],
+    ));
     alignment(&mut tx, "0Q2Fr$t4X7Zf8NOew3FLOH", Some("Main line"), None).expect("alignment");
     let point = point_by_distance(&mut tx, 125.0, (None, None, None), curve).expect("point");
     let axis = axis2_placement_linear(&mut tx, point, None, None).expect("axis");

@@ -17,7 +17,7 @@ status = "implemented"
 group = "domain"
 
 [dependencies]
-ifc-schema.workspace = true
+ifc-schema = { workspace = true, features = ["default"] }
 ifc-model.workspace = true
 
 [dev-dependencies]
