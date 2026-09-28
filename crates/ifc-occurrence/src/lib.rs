@@ -14,9 +14,11 @@
 //! IFC4X3 row.
 
 mod authoring;
+mod draft;
+mod error;
 mod release;
 pub mod table;
 
-pub use authoring::{
-    create, create_with_owner_history, OccurrenceDraft, OccurrenceError, OccurrenceResult,
-};
+pub use authoring::{create, create_with_owner_history};
+pub use draft::{MeshBars, OccurrenceDraft};
+pub use error::{OccurrenceError, OccurrenceResult};

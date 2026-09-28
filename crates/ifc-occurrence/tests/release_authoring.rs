@@ -113,11 +113,7 @@ fn the_whole_catalogue_is_written_in_every_release() {
                 GUID,
                 token.as_deref(),
                 None,
-                OccurrenceDraft {
-                    name: Some("Sweep"),
-                    tag: Some("T-1"),
-                    ..OccurrenceDraft::default()
-                },
+                OccurrenceDraft::new().name("Sweep").tag("T-1"),
                 OWNER,
             );
             match result {
@@ -231,13 +227,11 @@ fn ifc4x3_and_ifc4_output_is_unchanged() {
                 continue;
             }
             let token = token(table, *kind).filter(|token| kind.members.contains(&token.as_str()));
-            let draft = OccurrenceDraft {
-                name: Some("N"),
-                description: Some("D"),
-                object_type: Some("O"),
-                tag: Some("T"),
-                ..OccurrenceDraft::default()
-            };
+            let draft = OccurrenceDraft::new()
+                .name("N")
+                .description("D")
+                .object_type("O")
+                .tag("T");
             let mut tx = Transaction::new(&model);
             create(&mut tx, &model, *kind, GUID, token.as_deref(), None, draft).expect("written");
             let ifc_model::Edit::Create { entity, .. } = &tx.edits()[0] else {
@@ -280,10 +274,7 @@ fn a_sample_round_trips_in_every_release() {
             GUID,
             None,
             Some(WALL_TYPE),
-            OccurrenceDraft {
-                name: Some("W-01"),
-                ..OccurrenceDraft::default()
-            },
+            OccurrenceDraft::new().name("W-01"),
             OWNER,
         )
         .expect(schema);
@@ -437,10 +428,7 @@ fn what_the_release_lacks_is_refused() {
             GUID,
             Some(token),
             None,
-            OccurrenceDraft {
-                object_type: Some("x"),
-                ..OccurrenceDraft::default()
-            },
+            OccurrenceDraft::new().object_type("x"),
         )),
         OccurrenceError::UnknownPredefinedType {
             entity: kind.type_name,

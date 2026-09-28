@@ -36,6 +36,7 @@ pub(crate) mod slot {
 
 /// One stated port-to-port connection.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Connection {
     /// The `IfcRelConnectsPorts` entity.
     pub id: EntityId,

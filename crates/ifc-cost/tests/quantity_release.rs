@@ -26,14 +26,7 @@ fn declaring(schema: &str) -> Model {
 }
 
 fn draft(kind: QuantityKind, value: f64) -> QuantityDraft<'static> {
-    QuantityDraft {
-        kind,
-        name: "Measured",
-        description: None,
-        unit: None,
-        value,
-        formula: None,
-    }
+    QuantityDraft::new(kind, "Measured", value)
 }
 
 fn refused(model: &Model, draft: QuantityDraft<'_>) -> CostAuthoringError {
@@ -84,10 +77,7 @@ fn what_the_release_cannot_hold_is_refused() {
         );
     }
     let ifc2x3 = declaring("IFC2X3");
-    let formula = QuantityDraft {
-        formula: Some("l * h"),
-        ..draft(QuantityKind::Area, 1.0)
-    };
+    let formula = draft(QuantityKind::Area, 1.0).formula("l * h");
     assert_eq!(
         refused(&ifc2x3, formula),
         CostAuthoringError::AuthoringNotInSchema {

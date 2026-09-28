@@ -125,13 +125,11 @@ fn author(model: &mut Model, version: SchemaVersion) -> Vec<EntityId> {
     };
     for kind in OCCURRENCES {
         let token = token(version, kind.type_name);
-        let draft = OccurrenceDraft {
-            name: Some("Sweep"),
-            ..OccurrenceDraft::default()
-        };
+        let draft = OccurrenceDraft::new().name("Sweep");
         let gid = next();
-        // Rows the release lacks, or whose required attributes the draft
-        // cannot carry, are refused; `ifc-occurrence` tests which.
+        // Rows the release lacks, or whose required attributes this draft
+        // leaves unset, are refused; `ifc-occurrence` tests which, and
+        // `release_bound_occurrence_authoring` writes them (#214).
         if let Ok(id) = create_with_owner_history(
             &mut tx,
             model,
@@ -147,10 +145,7 @@ fn author(model: &mut Model, version: SchemaVersion) -> Vec<EntityId> {
     }
     for kind in TYPES {
         let token = token(version, kind.type_name);
-        let draft = TypeDraft {
-            name: Some("Sweep"),
-            ..TypeDraft::default()
-        };
+        let draft = TypeDraft::new().name("Sweep");
         let gid = next();
         if let Ok(id) = create_type_with_owner_history(
             &mut tx,

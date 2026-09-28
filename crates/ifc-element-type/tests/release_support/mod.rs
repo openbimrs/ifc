@@ -84,11 +84,9 @@ pub fn token(schema: &Schema, kind: ElementType) -> Option<String> {
 }
 
 pub fn named() -> TypeDraft<'static> {
-    TypeDraft {
-        name: Some("Sweep"),
-        tag_or_long_description: Some("T-1"),
-        ..TypeDraft::default()
-    }
+    TypeDraft::new()
+        .name("Sweep")
+        .tag_or_long_description("T-1")
 }
 
 /// The one record `tx` staged.

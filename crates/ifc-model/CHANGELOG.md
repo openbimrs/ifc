@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `Conflict` and `Stop` are `#[non_exhaustive]`: a match needs a wildcard
+  arm, so a new commit-conflict or walk-stop reason is not a breaking
+  change.
+- `Applied` is `#[non_exhaustive]`: read its fields; it can no longer be
+  built with a struct literal outside the crate.
+
 ## [0.2.3] - 2026-09-26
 
 ### Added

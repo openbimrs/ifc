@@ -12,8 +12,9 @@
 //!
 //! So [`crate::create`] takes each slot, `PredefinedType`'s enumeration and
 //! the attributes a class requires from the bound release's own table, by
-//! attribute name, and uses the catalogue row only to name the class and
-//! its `CorrectTypeAssigned` pairing. Binding, from `FILE_SCHEMA`, as
+//! attribute name, and uses the catalogue row only to name the class. The
+//! type class an occurrence may be typed by is the bound release's own too
+//! (#214), see `Layout::type_class`. Binding, from `FILE_SCHEMA`, as
 //! `ifc-material` (#77), `ifc-properties` (#191) and `ifc-classification`
 //! (#194) bind their authoring:
 //! - one recognised declaration binds that release's table;
@@ -25,7 +26,8 @@
 use ifc_model::{Edit, Entity, EntityId, Model, Transaction, Value};
 use ifc_schema::{for_version, Schema, SchemaVersion, TypeKind};
 
-use crate::authoring::{OccurrenceError, OccurrenceResult};
+use crate::error::{OccurrenceError, OccurrenceResult};
+use crate::table::Occurrence;
 
 /// The release an occurrence is written in.
 #[derive(Debug, Clone, Copy)]
@@ -71,20 +73,72 @@ impl Layout {
         })
     }
 
-    /// The tokens of `entity`'s `PredefinedType` enumeration in this
-    /// release, or `None` when the release declares no such attribute.
-    pub(crate) fn predefined_members(self, entity: &str) -> Option<Vec<&'static str>> {
+    /// The release this layout binds.
+    pub(crate) const fn version(self) -> SchemaVersion {
+        self.version
+    }
+
+    /// The tokens of `attribute`'s enumeration on `entity` in this release,
+    /// or `None` when the release declares no such attribute, or declares
+    /// it with another type.
+    pub(crate) fn members(self, entity: &str, attribute: &str) -> Option<Vec<&'static str>> {
         let declared = self
             .schema
             .attributes(entity)
             .into_iter()
-            .find(|attribute| attribute.name.eq_ignore_ascii_case("PredefinedType"))?;
+            .find(|found| found.name.eq_ignore_ascii_case(attribute))?;
         match &self.schema.type_def(&declared.type_name)?.kind {
             TypeKind::Enumeration(members) => Some(members.iter().map(String::as_str).collect()),
             _ => None,
         }
     }
 
+    /// Whether `found`, an entity type name, is `expected` or one of its
+    /// subtypes in this release, as `TYPEOF` tests it.
+    pub(crate) fn is_a(self, found: &str, expected: &str) -> bool {
+        self.schema.is_a(found, expected)
+    }
+
+    /// The one type class this release pairs with `kind`, or `None` when it
+    /// pairs none (#214).
+    ///
+    /// The bundled tables carry WHERE rule labels, not their text, so the
+    /// pairing is read from the catalogue's per-release columns, generated
+    /// from each release's EXPRESS source by `scripts/gen-occurrences.py`:
+    /// IFC4X3 and IFC4 state it as a rule, IFC4 ADD2 TC1 for `IfcDoor` as
+    ///
+    /// ```text
+    /// CorrectStyleAssigned : (SIZEOF(IsTypedBy) = 0)
+    ///   OR ('IFC4.IFCDOORTYPE' IN TYPEOF(SELF\IfcObject.IsTypedBy[1].RelatingType));
+    /// ```
+    ///
+    /// IFC2X3 TC1 states no such rule: `IfcRelDefinesByType.RelatingType` is
+    /// any `IfcTypeObject`. Its `IfcTypeProduct` is
+    /// `SUPERTYPE OF (ONEOF (IfcDoorStyle, IfcElementType, IfcWindowStyle))`:
+    /// doors and windows are typed by `IfcDoorStyle` and `IfcWindowStyle`,
+    /// since IFC2X3 declares no `IfcDoorType` or `IfcWindowType`, and every
+    /// other occurrence by the `IfcElementType` subtype the later releases
+    /// pair with it, where IFC2X3 declares that class. Where it does not
+    /// (`IfcStairType`, for one), IFC2X3 pairs nothing.
+    ///
+    /// Rules are recorded as written: IFC4's `IfcTransformer` names
+    /// `IFCTRANFORMERTYPE`, a class IFC4 does not declare, so an IFC4
+    /// transformer cannot be typed. A release without a column is refused
+    /// rather than paired by another release's rule.
+    pub(crate) fn type_class(self, kind: Occurrence) -> OccurrenceResult<Option<&'static str>> {
+        #[allow(unreachable_patterns)]
+        match self.version {
+            SchemaVersion::Ifc2x3 => Ok(kind.ifc2x3_type_class),
+            SchemaVersion::Ifc4 => Ok(kind.ifc4_type_class),
+            SchemaVersion::Ifc4x3 => Ok(kind.type_class),
+            other => Err(OccurrenceError::UnsupportedSchema {
+                schema: format!("{other:?}"),
+            }),
+        }
+    }
+}
+
+impl Layout {
     /// Build a record of `entity` in this release's layout from values named
     /// by attribute; unnamed slots are `$`, and a `$` for an attribute the
     /// release does not declare is dropped.

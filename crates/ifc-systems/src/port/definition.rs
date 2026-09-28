@@ -52,6 +52,7 @@ pub enum Attachment {
 
 /// A port as the file states it.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Port {
     /// The `IfcPort` subtype entity.
     pub id: EntityId,

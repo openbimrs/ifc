@@ -97,6 +97,7 @@ pub struct ExactTableValue {
 
 /// One row of an [`ExactTableValue`].
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct ExactTableRow {
     /// The defining (x) value.
     pub defining: ExactTypedValue,

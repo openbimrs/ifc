@@ -25,6 +25,7 @@ use crate::nesting::Nesting;
 
 /// An `IfcPropertySetTemplate` with its property templates.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct PropertySetTemplate {
     /// The entity.
     pub id: EntityId,

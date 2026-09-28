@@ -70,6 +70,7 @@ pub mod time_slot {
 
 /// When an event's dates are stated.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct EventTime {
     /// The `IfcEventTime` entity.
     pub id: EntityId,

@@ -257,6 +257,7 @@ impl Quantity {
 
 /// An `IfcElementQuantity` with its quantities resolved.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct QuantitySet {
     /// The entity.
     pub id: EntityId,

@@ -59,6 +59,7 @@ mod slot {
 ///
 /// `IfcArithmeticOperatorEnum`, verified against IFC4 EXPRESS.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ArithmeticOperator {
     /// `.ADD.`
     Add,
@@ -101,6 +102,7 @@ impl ArithmeticOperator {
 /// it a cost value is a lump sum; with it, it is a rate and multiplying it by
 /// a quantity is meaningful.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub struct UnitBasis {
     /// The entity holding the basis.
     pub id: EntityId,

@@ -39,6 +39,7 @@ use crate::release::{bind, require_owner_history, Layout};
 /// `ElementType`. Writing all seven at one arity would leave trailing
 /// slots on the shallow ones and truncate the deep ones.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct SupertypeKind {
     /// STEP type name, upper-case as stored.
     ///
@@ -109,7 +110,11 @@ pub const ALL_SUPERTYPES: &[SupertypeKind] = &[
 /// `UniquePropertySetNames` is stated over the sets' names, and a
 /// staged entity cannot be read back out of a `Transaction` to supply
 /// them. Matches the convention `add_property_set` already uses.
+///
+/// The struct is `#[non_exhaustive]`: build it with
+/// [`SupertypeDraft::new`] and the setters.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct SupertypeDraft<'a> {
     /// `Description`.
     pub description: Option<&'a str>,
@@ -123,6 +128,56 @@ pub struct SupertypeDraft<'a> {
     pub tag: Option<&'a str>,
     /// `ElementType`, slot 8. Rejected below arity 9.
     pub element_type: Option<&'a str>,
+}
+
+impl<'a> SupertypeDraft<'a> {
+    /// Starts an empty draft with every attribute unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets `Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets `ApplicableOccurrence`.
+    #[must_use]
+    pub fn applicable_occurrence(mut self, value: &'a str) -> Self {
+        self.applicable_occurrence = Some(value);
+        self
+    }
+
+    /// Sets `HasPropertySets`: `(Name, id)` per set.
+    #[must_use]
+    pub fn property_sets(mut self, value: &'a [(&'a str, EntityId)]) -> Self {
+        self.property_sets = value;
+        self
+    }
+
+    /// Sets `RepresentationMaps`.
+    #[must_use]
+    pub fn representation_maps(mut self, value: &'a [EntityId]) -> Self {
+        self.representation_maps = value;
+        self
+    }
+
+    /// Sets `Tag`.
+    #[must_use]
+    pub fn tag(mut self, value: &'a str) -> Self {
+        self.tag = Some(value);
+        self
+    }
+
+    /// Sets `ElementType`.
+    #[must_use]
+    pub fn element_type(mut self, value: &'a str) -> Self {
+        self.element_type = Some(value);
+        self
+    }
 }
 
 fn text(value: Option<&str>) -> Value {

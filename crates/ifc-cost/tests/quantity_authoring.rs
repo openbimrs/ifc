@@ -14,14 +14,7 @@ use ifc_cost::quantity::CostQuantity;
 use ifc_model::{Model, Transaction};
 
 fn draft(kind: QuantityKind, value: f64) -> QuantityDraft<'static> {
-    QuantityDraft {
-        kind,
-        name: "Measured",
-        description: None,
-        unit: None,
-        value,
-        formula: None,
-    }
+    QuantityDraft::new(kind, "Measured", value)
 }
 
 #[test]
@@ -65,15 +58,11 @@ fn quantities_attach_to_the_cost_item_slot_the_reader_uses() {
     let item = create_cost_item(
         &mut tx,
         &model,
-        CostItemDraft {
-            global_id: "0aBcDeFgHiJkLmNoPqRsTu",
-            name: Some("Screed"),
-            description: None,
-            object_type: Some("Screeding"),
-            identification: None,
-            predefined_type: Some(CostItemType::UserDefined),
-            cost_values: &[],
-        },
+        CostItemDraft::new("0aBcDeFgHiJkLmNoPqRsTu")
+            .name("Screed")
+            .object_type("Screeding")
+            .predefined_type(CostItemType::UserDefined)
+            .cost_values(&[]),
     )
     .expect("cost item");
     let area = create_quantity(&mut tx, &model, draft(QuantityKind::Area, 40.0)).expect("area");
@@ -95,15 +84,7 @@ fn an_empty_or_duplicated_attachment_is_refused() {
     let item = create_cost_item(
         &mut tx,
         &model,
-        CostItemDraft {
-            global_id: "1aBcDeFgHiJkLmNoPqRsTu",
-            name: None,
-            description: None,
-            object_type: None,
-            identification: None,
-            predefined_type: None,
-            cost_values: &[],
-        },
+        CostItemDraft::new("1aBcDeFgHiJkLmNoPqRsTu").cost_values(&[]),
     )
     .expect("cost item");
     let q = create_quantity(&mut tx, &model, draft(QuantityKind::Volume, 2.0)).expect("q");
@@ -126,29 +107,13 @@ fn an_entity_that_is_not_a_quantity_is_refused() {
     let item = create_cost_item(
         &mut tx,
         &model,
-        CostItemDraft {
-            global_id: "2aBcDeFgHiJkLmNoPqRsTu",
-            name: None,
-            description: None,
-            object_type: None,
-            identification: None,
-            predefined_type: None,
-            cost_values: &[],
-        },
+        CostItemDraft::new("2aBcDeFgHiJkLmNoPqRsTu").cost_values(&[]),
     )
     .expect("cost item");
     let not_a_quantity = create_cost_value(
         &mut tx,
         &model,
-        CostValueDraft {
-            name: None,
-            description: None,
-            applicable_date: None,
-            fixed_until_date: None,
-            category: None,
-            condition: None,
-            kind: CostValueKind::Monetary(10.0),
-        },
+        CostValueDraft::default().kind(CostValueKind::Monetary(10.0)),
     )
     .expect("cost value");
     assert!(

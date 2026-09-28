@@ -107,6 +107,7 @@ pub enum PropertyValue {
 
 /// One property: its name, description and value.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct Property {
     /// The `IfcProperty` entity.
     pub id: EntityId,

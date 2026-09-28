@@ -46,8 +46,6 @@ const RELEASES: [(&str, SchemaVersion); 3] = [
 ];
 
 const OWNER: EntityId = EntityId(5);
-/// The IFC2X3 fixture's project; IFC4 and IFC4X3 author theirs.
-const PROJECT: EntityId = EntityId(6);
 const CONTEXT: EntityId = EntityId(7);
 const UNITS: EntityId = EntityId(8);
 const WALL: EntityId = EntityId(10);
@@ -98,9 +96,8 @@ fn guid(n: usize) -> String {
 }
 
 /// Actors, an owner history (`#5`), a representation context, units and
-/// the elements the relationships name, in `schema`. The IFC2X3 model
-/// also holds its project (`#6`): IFC2X3 requires the representation
-/// contexts the project writer does not take.
+/// the elements the relationships name, in `schema`. The project is
+/// authored, with the representation contexts IFC2X3 requires (#214).
 fn base(schema: &str, version: SchemaVersion) -> Model {
     let table = for_version(version).unwrap();
     let mut data = String::from(
@@ -115,12 +112,6 @@ fn base(schema: &str, version: SchemaVersion) -> Model {
          #90=IFCCARTESIANPOINT((0.,0.,0.));\n\
          #91=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);\n",
     );
-    if version == SchemaVersion::Ifc2x3 {
-        data.push_str(&format!(
-            "#6=IFCPROJECT('{}',#5,'Project',$,$,$,$,(#7),#8);\n",
-            guid(900)
-        ));
-    }
     let mut rooted = ROOTED.to_vec();
     if version == SchemaVersion::Ifc4x3 {
         rooted.push((ALIGNMENT, "IFCALIGNMENT"));
@@ -151,6 +142,9 @@ fn base(schema: &str, version: SchemaVersion) -> Model {
 /// What authoring staged, by role.
 struct Authored {
     project: EntityId,
+    /// The authored `IfcSpace`: in IFC2X3 with its required
+    /// `InteriorOrExteriorSpace` and aggregated into the storey (#214).
+    room: EntityId,
     site: EntityId,
     building: EntityId,
     storey: EntityId,
@@ -181,19 +175,14 @@ fn author(model: &mut Model, version: SchemaVersion) -> Authored {
         written.push(id);
         id
     };
-    let project = if ifc4 {
-        keep(
-            create_project_with_owner_history(tx, m, &next(), Some("P"), Some(UNITS), OWNER)
-                .unwrap(),
-        )
-    } else {
-        PROJECT
-    };
-    let element = |name| SpatialDraft {
-        name: Some(name),
-        composition: Some("ELEMENT"),
-        ..SpatialDraft::default()
-    };
+    // IFC2X3 requires `RepresentationContexts`; IFC4 and IFC4X3 records
+    // are kept as they were before #214, without them.
+    let contexts: &[EntityId] = if ifc4 { &[] } else { &[CONTEXT] };
+    let project = keep(
+        create_project_with_owner_history(tx, m, &next(), Some("P"), Some(UNITS), contexts, OWNER)
+            .unwrap(),
+    );
+    let element = |name| SpatialDraft::new().name(name).composition("ELEMENT");
     let spatial = |tx: &mut Transaction, kind, id: &str, name| {
         create_spatial_element_with_owner_history(tx, m, kind, id, element(name), OWNER).unwrap()
     };
@@ -246,17 +235,7 @@ fn author(model: &mut Model, version: SchemaVersion) -> Authored {
         )
         .unwrap(),
     );
-    let boundary = |space, element| BoundaryDraft {
-        name: None,
-        description: None,
-        space,
-        element,
-        connection_geometry: None,
-        physical_or_virtual: "PHYSICAL",
-        internal_or_external: "INTERNAL",
-        parent: None,
-        corresponding: None,
-    };
+    let boundary = |space, element| BoundaryDraft::new(space, element, "PHYSICAL", "INTERNAL");
     let base_boundary = keep(
         create_space_boundary_with_owner_history(
             tx,
@@ -268,12 +247,25 @@ fn author(model: &mut Model, version: SchemaVersion) -> Authored {
         )
         .unwrap(),
     );
-    if ifc4 {
-        let space_draft = SpatialDraft {
-            name: Some("Room"),
-            ..SpatialDraft::default()
-        };
-        keep(
+    let room;
+    if !ifc4 {
+        // IFC2X3 requires `CompositionType` and `InteriorOrExteriorSpace`.
+        let space_draft = element("Room").interior_or_exterior("INTERNAL");
+        room = keep(
+            create_spatial_element_with_owner_history(
+                tx,
+                m,
+                SpatialKind::Space,
+                &next(),
+                space_draft,
+                OWNER,
+            )
+            .unwrap(),
+        );
+        keep(aggregate_with_owner_history(tx, m, &next(), storey, &[room], OWNER).unwrap());
+    } else {
+        let space_draft = SpatialDraft::new().name("Room");
+        room = keep(
             create_spatial_element_with_owner_history(
                 tx,
                 m,
@@ -302,19 +294,14 @@ fn author(model: &mut Model, version: SchemaVersion) -> Authored {
             interfere_elements_with_owner_history(tx, m, &next(), WALL, WALL2, None, OWNER)
                 .unwrap(),
         );
-        let external = ExternalSpatialDraft {
-            name: Some("Outside"),
-            predefined_type: Some("EXTERNAL"),
-            ..ExternalSpatialDraft::default()
-        };
+        let external = ExternalSpatialDraft::new()
+            .name("Outside")
+            .predefined_type("EXTERNAL");
         keep(
             create_external_spatial_element_with_owner_history(tx, m, &next(), external, OWNER)
                 .unwrap(),
         );
-        let library = ProjectLibraryDraft {
-            name: Some("Library"),
-            ..ProjectLibraryDraft::default()
-        };
+        let library = ProjectLibraryDraft::new().name("Library");
         keep(
             create_project_library_with_owner_history(tx, m, &next(), library, &[CONTEXT], OWNER)
                 .unwrap(),
@@ -330,10 +317,7 @@ fn author(model: &mut Model, version: SchemaVersion) -> Authored {
             )
             .unwrap(),
         );
-        let second = BoundaryDraft {
-            parent: Some(first),
-            ..boundary(SPACE, WALL2)
-        };
+        let second = boundary(SPACE, WALL2).parent(first);
         keep(
             create_space_boundary_with_owner_history(
                 tx,
@@ -358,11 +342,7 @@ fn author(model: &mut Model, version: SchemaVersion) -> Authored {
             associate_profile_def_with_owner_history(tx, m, &next(), PROFILE, &[WALL_TYPE], OWNER)
                 .unwrap(),
         );
-        let bridge = FacilityDraft {
-            name: Some("Bridge"),
-            composition: Some("ELEMENT"),
-            ..FacilityDraft::default()
-        };
+        let bridge = FacilityDraft::new().name("Bridge").composition("ELEMENT");
         keep(
             create_facility_with_owner_history(
                 tx,
@@ -379,6 +359,7 @@ fn author(model: &mut Model, version: SchemaVersion) -> Authored {
     staged.commit(model).expect("commit");
     Authored {
         project,
+        room,
         site,
         building,
         storey,
@@ -417,6 +398,55 @@ fn authored_spatial_records_validate_in_their_release() {
         let found = errors(&back, version, &authored.written);
         assert!(found.is_empty(), "{schema}:\n  {}", found.join("\n  "));
     }
+}
+
+/// #214: an IFC2X3 `IfcSpace` with its required `InteriorOrExteriorSpace`
+/// and an IFC2X3 `IfcProject` with its required `RepresentationContexts`
+/// and `UnitsInContext` are authored, survive a STEP round trip, read back
+/// through the spatial tree, and validate without an error finding.
+#[test]
+fn ifc2x3_spaces_and_projects_round_trip_with_their_required_attributes() {
+    let version = SchemaVersion::Ifc2x3;
+    let table = for_version(version).expect("bundled");
+    let mut model = base("IFC2X3", version);
+    let authored = author(&mut model, version);
+    let bytes = ifc::StepCodec.write_bytes(&model).expect("written");
+    let back = ifc::StepCodec.read_bytes(&bytes).expect("read back");
+    assert!(back.diagnostics().is_empty(), "{:?}", back.diagnostics());
+
+    let slot = |entity: &str, attribute: &str| {
+        table
+            .attribute_names(entity)
+            .iter()
+            .position(|name| *name == attribute)
+            .expect("declared")
+    };
+    let room = back.get(authored.room).expect("space");
+    assert_eq!(
+        room.attributes[slot("IFCSPACE", "InteriorOrExteriorSpace")],
+        ifc_model::Value::Enum("INTERNAL".into())
+    );
+    let project = back.get(authored.project).expect("project");
+    assert_eq!(
+        project.attributes[slot("IFCPROJECT", "RepresentationContexts")],
+        ifc_model::Value::List(vec![ifc_model::Value::Ref(CONTEXT)])
+    );
+    assert_eq!(
+        project.attributes[slot("IFCPROJECT", "UnitsInContext")],
+        ifc_model::Value::Ref(UNITS)
+    );
+
+    let tree = ifc::spatial::SpatialTree::build(&back);
+    assert_eq!(tree.release(), Some(version));
+    // The fixture's unrelated `#13` space is a root of its own.
+    assert!(tree.roots().contains(&authored.project));
+    let space = tree.node(authored.room).expect("the space is a node");
+    assert_eq!(space.kind, SpatialKind::Space);
+    assert_eq!(space.parent, Some(authored.storey));
+    assert!(tree.ancestors(authored.room).contains(&authored.project));
+
+    let found = errors(&back, version, &[authored.room, authored.project]);
+    assert!(found.is_empty(), "{}", found.join("\n  "));
 }
 
 /// The oracle is trusted because it fails when it should: an IFC2X3

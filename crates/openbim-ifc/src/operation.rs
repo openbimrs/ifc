@@ -39,6 +39,7 @@ pub enum Side {
 /// perpendicular to it; the panel sweeps it along the whole hinge (see
 /// [`WindowPanel`](crate::WindowPanel)).
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub struct Sector {
     /// The hinge point: on the door's x axis for a door leaf, and one end of
     /// the hinge line for a window panel.

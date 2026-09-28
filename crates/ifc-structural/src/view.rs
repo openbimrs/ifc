@@ -150,6 +150,14 @@ impl<'m> StructuralView<'m, 'static> {
             SchemaVersion::Ifc2x3 => ifc2x3(),
             SchemaVersion::Ifc4 => ifc4(),
             SchemaVersion::Ifc4x3 => ifc4x3(),
+            // A release added to `SchemaVersion` later has no reviewed
+            // structural layout: refused rather than read with another's.
+            #[allow(unreachable_patterns)]
+            _ => {
+                return Err(StructuralError::UnsupportedSchema {
+                    token: token.clone(),
+                })
+            }
         };
         Ok(Self::new(model, schema))
     }

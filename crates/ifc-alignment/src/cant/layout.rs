@@ -17,6 +17,7 @@ use crate::view::AlignmentView;
 
 /// One resolved, ordered, continuity-checked cant profile.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct CantLayout {
     /// The `IfcAlignmentCant` entity this layout was resolved from.
     pub entity: EntityId,

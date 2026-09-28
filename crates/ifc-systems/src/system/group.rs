@@ -31,6 +31,7 @@ pub(crate) mod slot {
 
 /// A system as the file states it, with its members resolved.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct System {
     /// The `IfcSystem` (or subtype) entity.
     pub id: EntityId,

@@ -42,6 +42,7 @@ pub struct PointByDistance {
 
 /// Resolved `IfcLinearPlacement`.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct LinearPlacement {
     /// The `IfcLinearPlacement` entity this was read from.
     pub entity: EntityId,

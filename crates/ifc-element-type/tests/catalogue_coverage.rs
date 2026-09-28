@@ -6,22 +6,23 @@
 //! actually produce, and makes a bad arity or slot index fail here.
 
 use ifc_element_type::{
-    create_supertype, create_type, SupertypeDraft, TypeDraft, ALL, ALL_SUPERTYPES,
+    create_supertype, create_type, ElementType, SupertypeDraft, TypeDraft, ALL, ALL_SUPERTYPES,
 };
 use ifc_model::{Model, Transaction};
 
 const GUID: &str = "1hqA$FMcT8$hVvcqsRDBzZ";
 
-fn named() -> TypeDraft<'static> {
-    TypeDraft {
-        // NameRequired: inherited by every catalogue row, so the sweep
-        // cannot use a default draft.
-        name: Some("Catalogue sweep"),
-        description: None,
-        applicable_occurrence: None,
-        maps_or_identification: None,
-        tag_or_long_description: None,
-        fallback: None,
+fn named(kind: ElementType) -> TypeDraft<'static> {
+    // NameRequired: inherited by every catalogue row, so the sweep
+    // cannot use a default draft; and the four rows with a required
+    // type-specific attribute need it too (#214).
+    let draft = TypeDraft::new().name("Catalogue sweep");
+    match kind.type_name {
+        "IFCDOORTYPE" => draft.operation_type("SINGLE_SWING_LEFT"),
+        "IFCWINDOWTYPE" => draft.partitioning_type("SINGLE_PANEL"),
+        "IFCEVENTTYPE" => draft.event_trigger_type("EVENTTIME"),
+        "IFCFURNITURETYPE" => draft.assembly_place("FACTORY"),
+        _ => draft,
     }
 }
 
@@ -39,7 +40,7 @@ fn every_catalogued_type_stages() {
         } else {
             Some(kind.members[0])
         };
-        let mut draft = named();
+        let mut draft = named(*kind);
         if token == Some("USERDEFINED") {
             draft.fallback = Some("Bespoke");
         }
@@ -68,7 +69,7 @@ fn catalogued_type_tokens_round_trip() {
         let model = Model::default();
         for token in kind.members {
             let mut tx = Transaction::new(&model);
-            let mut draft = named();
+            let mut draft = named(*kind);
             if *token == "USERDEFINED" {
                 draft.fallback = Some("Bespoke");
             }
@@ -82,7 +83,7 @@ fn catalogued_type_tokens_round_trip() {
 
         let mut tx = Transaction::new(&model);
         assert!(
-            create_type(&mut tx, *kind, GUID, Some("__NOT_A_TOKEN__"), named()).is_err(),
+            create_type(&mut tx, *kind, GUID, Some("__NOT_A_TOKEN__"), named(*kind)).is_err(),
             "{} accepted an undeclared token",
             kind.type_name,
         );

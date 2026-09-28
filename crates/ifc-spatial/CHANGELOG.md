@@ -12,6 +12,57 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `SpatialDraft::interior_or_exterior`: the IFC2X3 `IfcSpace.
+  InteriorOrExteriorSpace` (`IfcInternalOrExternalEnum`), which that
+  release requires, so `create_spatial_element_with_owner_history` can
+  author an IFC2X3 space (#214). IFC4 and IFC4X3 do not declare the
+  attribute: a value there, or on a container other than a space, is
+  refused with `AuthoringNotInSchema`, a token outside IFC2X3's enumeration
+  with `AuthoringValueType`, and the plain IFC4/IFC4X3 `create_spatial_element`
+  refuses it with `AuthoringNotInSchema` instead of dropping it.
+- `create_project_with_owner_history` takes the project's representation
+  contexts, so an IFC2X3 `IfcProject`, which requires
+  `RepresentationContexts` (and `UnitsInContext`), can be authored (#214).
+  Each context must resolve in the model or on the transaction
+  (`MissingReference`), be an `IfcRepresentationContext`
+  (`WrongReferenceType`), not be an `IfcGeometricRepresentationSubContext`
+  (IFC2X3 `WR32`, IFC4 and IFC4X3 `CorrectContext`), and not repeat
+  (`Invalid`); an empty slice leaves the attribute `$`, which IFC2X3 refuses
+  with `AuthoringRequired`.
+- A constructor and builder setters on every draft: `SpatialDraft::new()`,
+  `FacilityDraft::new()`, `ExternalSpatialDraft::new()` and
+  `ProjectLibraryDraft::new()` start empty; `BoundaryDraft::new(space,
+  element, physical_or_virtual, internal_or_external)` takes the four
+  attributes the schema requires. Each optional field has a setter of the
+  same name taking the unwrapped value (`SpatialDraft::new().name("L1")
+  .composition("ELEMENT")`), following `ifc-resource`'s drafts.
+
+### Fixed
+
+- A model whose declared release has no bundled table is refused with
+  `UnsupportedSchema` by the release-bound writers instead of panicking.
+
+### Changed (breaking)
+
+- `SpatialDraft`, `FacilityDraft`, `BoundaryDraft`, `ExternalSpatialDraft`
+  and `ProjectLibraryDraft` are `#[non_exhaustive]`: struct literals and
+  `..Default::default()` updates no longer compile outside the crate; build
+  them with `new` and the setters. Fields stay public for reading and
+  assignment.
+- `SpatialDraft` has a new field, `interior_or_exterior`.
+- `create_project_with_owner_history(tx, model, global_id, name, units,
+  representation_contexts, owner_history)`: the new `representation_contexts:
+  &[EntityId]` parameter sits before `owner_history`. Pass `&[]` for the
+  previous IFC4/IFC4X3 record.
+- `#[non_exhaustive]` on the public read-side and catalogue types a later
+  IFC release could extend: `SpaceBoundary`, `BoundaryPhysicality`,
+  `BoundaryExposure`, `Relationship`, `RelationshipKind`, `SpatialKind`,
+  `SpatialNode`, `BoundaryLevel` and `Facility`. Matches on the enums need
+  a wildcard arm outside the crate, and the structs can no longer be built
+  by literal there.
+
 ## [0.2.4] - 2026-09-28
 
 ### Added

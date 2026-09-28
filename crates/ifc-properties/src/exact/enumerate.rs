@@ -33,6 +33,7 @@ use super::{ExactProperty, ExactPropertyError, ExactSource};
 
 /// One property of an enumeration, with the name it was selected by.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct ExactPropertyEntry {
     /// `IfcProperty.Name` or `IfcPhysicalQuantity.Name`.
     pub name: Arc<str>,

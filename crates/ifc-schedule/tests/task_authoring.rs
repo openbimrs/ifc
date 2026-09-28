@@ -13,16 +13,7 @@ use ifc_schedule::{
 };
 
 fn task(tx: &mut Transaction, guid: &str, name: &'static str) -> ifc_model::EntityId {
-    create_task(
-        tx,
-        TaskDraft {
-            global_id: guid,
-            name: Some(name),
-            is_milestone: false,
-            ..TaskDraft::default()
-        },
-    )
-    .expect("task")
+    create_task(tx, TaskDraft::new(guid).name(name)).expect("task")
 }
 
 #[test]
@@ -31,29 +22,23 @@ fn an_authored_task_reads_back_through_the_task_reader() {
     let mut tx = Transaction::new(&model);
     let time = create_task_time(
         &mut tx,
-        TaskTimeDraft {
-            name: Some("Pour"),
-            duration_type: Some("WORKTIME"),
-            schedule_duration: Some("P5D"),
-            schedule_start: Some("2026-01-05T08:00:00"),
-            completion: Some(40.0),
-            ..TaskTimeDraft::default()
-        },
+        TaskTimeDraft::new()
+            .name("Pour")
+            .duration_type("WORKTIME")
+            .schedule_duration("P5D")
+            .schedule_start("2026-01-05T08:00:00")
+            .completion(40.0),
     )
     .expect("task time");
     let id = create_task(
         &mut tx,
-        TaskDraft {
-            global_id: "0aBcDeFgHiJkLmNoPqRsTu",
-            name: Some("Slab"),
-            description: Some("Ground floor"),
-            identification: Some("T-01"),
-            status: Some("NOTSTARTED"),
-            is_milestone: false,
-            priority: Some(20),
-            task_time: Some(time),
-            ..TaskDraft::default()
-        },
+        TaskDraft::new("0aBcDeFgHiJkLmNoPqRsTu")
+            .name("Slab")
+            .description("Ground floor")
+            .identification("T-01")
+            .status("NOTSTARTED")
+            .priority(20)
+            .task_time(time),
     )
     .expect("task");
     tx.commit(&mut model).expect("commit");
@@ -138,46 +123,21 @@ fn out_of_range_authored_values_are_refused() {
     assert!(
         create_task(
             &mut tx,
-            TaskDraft {
-                global_id: "0aBcDeFgHiJkLmNoPqRsTu",
-                priority: Some(150),
-                ..TaskDraft::default()
-            },
+            TaskDraft::new("0aBcDeFgHiJkLmNoPqRsTu").priority(150),
         )
         .is_err(),
         "Priority is a 0..=100 scale"
     );
     assert!(
-        create_task(
-            &mut tx,
-            TaskDraft {
-                global_id: "not-a-guid",
-                ..TaskDraft::default()
-            }
-        )
-        .is_err(),
+        create_task(&mut tx, TaskDraft::new("not-a-guid")).is_err(),
         "GlobalId must be a compressed GUID"
     );
     assert!(
-        create_task_time(
-            &mut tx,
-            TaskTimeDraft {
-                completion: Some(120.0),
-                ..TaskTimeDraft::default()
-            },
-        )
-        .is_err(),
+        create_task_time(&mut tx, TaskTimeDraft::new().completion(120.0),).is_err(),
         "Completion is a percentage"
     );
     assert!(
-        create_task_time(
-            &mut tx,
-            TaskTimeDraft {
-                duration_type: Some("SOMEDAY"),
-                ..TaskTimeDraft::default()
-            },
-        )
-        .is_err(),
+        create_task_time(&mut tx, TaskTimeDraft::new().duration_type("SOMEDAY"),).is_err(),
         "DurationType is a closed enumeration"
     );
 }

@@ -152,6 +152,7 @@ pub struct SpatialProperties<'m> {
 
 /// One container and the elements listed under it.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ContainerElements<'v> {
     /// The container.
     pub container: SpatialContainer<'v>,

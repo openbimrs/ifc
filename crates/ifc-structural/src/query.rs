@@ -9,6 +9,7 @@ use crate::view::{Record, StructuralView};
 
 /// A resolved `IfcRelConnectsStructuralMember` between one member and its connection.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct MemberConnection {
     /// The `IfcRelConnectsStructuralMember` relation entity itself.
     pub relation: EntityId,
@@ -51,6 +52,7 @@ impl MemberConnection {
 
 /// A resolved `IfcRelConnectsStructuralActivity` attaching one activity (action or reaction) to its target.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ActivityAssignment {
     /// The `IfcRelConnectsStructuralActivity` relation entity itself.
     pub relation: EntityId,

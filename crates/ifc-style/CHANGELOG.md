@@ -12,6 +12,11 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `AppearanceSupport` is `#[non_exhaustive]`: a match needs a wildcard arm;
+  `AppearanceDeclaration` is `#[non_exhaustive]`.
+
 ## [0.3.0] - 2026-09-23
 
 ### Added

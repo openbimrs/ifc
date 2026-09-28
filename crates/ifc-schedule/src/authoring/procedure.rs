@@ -26,6 +26,7 @@ const PROCEDURE_KIND: &[&str] = &[
 
 /// Attributes of an `IfcProcedure`.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct ProcedureDraft<'a> {
     /// `GlobalId`, a compressed IFC GUID.
     pub global_id: &'a str,
@@ -41,6 +42,12 @@ pub struct ProcedureDraft<'a> {
     pub long_description: Option<&'a str>,
     /// `PredefinedType`, an `IfcProcedureTypeEnum` token.
     pub predefined_type: Option<&'a str>,
+    /// IFC2X3 `UserDefinedProcedureType`, which `WR4` requires when
+    /// `predefined_type` is `USERDEFINED`. IFC4 and IFC4X3 do not declare
+    /// it (they name the kind in `object_type`), so only
+    /// [`create_procedure_with_owner_history`](super::create_procedure_with_owner_history)
+    /// in an IFC2X3 model writes it.
+    pub user_defined_procedure_type: Option<&'a str>,
 }
 
 /// Stage an `IfcProcedure`.
@@ -52,8 +59,9 @@ pub struct ProcedureDraft<'a> {
 /// # Errors
 ///
 /// Refuses a malformed GlobalId, a blank name (`HasName`), a token
-/// outside `IfcProcedureTypeEnum`, and `USERDEFINED` without
-/// `ObjectType` (`CorrectPredefinedType`).
+/// outside `IfcProcedureTypeEnum`, `USERDEFINED` without
+/// `ObjectType` (`CorrectPredefinedType`), and a
+/// `user_defined_procedure_type`, which IFC4 and IFC4X3 do not declare.
 ///
 /// `OwnerHistory` is written `$`, which IFC4 and IFC4X3 allow, in their
 /// shared layout. This writer takes no model, so it cannot see the declared
@@ -65,6 +73,13 @@ pub fn create_procedure(
     draft: ProcedureDraft<'_>,
 ) -> ScheduleAuthoringResult<EntityId> {
     check(&draft)?;
+    if draft.user_defined_procedure_type.is_some() {
+        return Err(ScheduleAuthoringError::InvalidValue {
+            entity: ENTITY,
+            attribute: "UserDefinedProcedureType",
+            expected: "no value: IFC4 and IFC4X3 declare no UserDefinedProcedureType",
+        });
+    }
     let mut attributes = vec![Value::Null; 8];
     attributes[0] = Value::Text(draft.global_id.into());
     attributes[2] = optional_text(draft.name);

@@ -13,10 +13,16 @@
 //! and that type must be the one class the schema pairs with it:
 //! an `IfcPump` takes an `IfcPumpType` and nothing else. The
 //! pairing is a fact about the schema, so it is recorded here
-//! rather than left to the caller.
+//! rather than left to the caller, once per release (#214):
+//! IFC4 pairs an `IfcDoor` with `IfcDoorType` as IFC4X3 does, while
+//! IFC2X3, which declares no such rule and no `IfcDoorType`, types
+//! it by an `IfcDoorStyle`. The IFC4 and IFC2X3 columns come from
+//! `references/ifc-spec/ifc4-add2-tc1/IFC4.exp` and
+//! `references/ifc-spec/ifc2x3-tc1/IFC2X3_TC1.exp`.
 
 /// One occurrence class: its slots, enum, and permitted type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Occurrence {
     /// STEP type name, upper-case as stored.
     pub type_name: &'static str,
@@ -26,8 +32,17 @@ pub struct Occurrence {
     pub predefined_slot: Option<usize>,
     /// Permitted `PredefinedType` tokens; empty when there is no enum.
     pub members: &'static [&'static str],
-    /// The one type class `CorrectTypeAssigned` permits, if any.
+    /// The one type class IFC4X3 ADD2's `CorrectTypeAssigned` permits,
+    /// if any.
     pub type_class: Option<&'static str>,
+    /// The one type class IFC4 ADD2 TC1's `CorrectTypeAssigned` (or,
+    /// on doors and windows, `CorrectStyleAssigned`) permits, if IFC4
+    /// declares the class and pairs one.
+    pub ifc4_type_class: Option<&'static str>,
+    /// The type class IFC2X3 TC1 pairs with the class: `IfcDoorStyle`
+    /// and `IfcWindowStyle` for doors and windows, otherwise
+    /// [`Self::type_class`] where IFC2X3 declares it, else none.
+    pub ifc2x3_type_class: Option<&'static str>,
 }
 
 mod part1;

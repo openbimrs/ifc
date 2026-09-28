@@ -12,6 +12,53 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `OccurrenceDraft` fields for what IFC2X3 TC1 requires of a few classes
+  (#214): `shape_type` (`IfcRamp`, `IfcRoof`, `IfcStair`), `nominal_diameter`
+  and `cross_section_area` (`IfcReinforcingBar`, `IfcTendon`), `bar_role`
+  (`IfcReinforcingBar`), and `longitudinal_bars` and `transverse_bars`
+  (`IfcReinforcingMesh`), each a new `MeshBars` of nominal diameter,
+  cross-section area and spacing. These IFC2X3 records can now be authored
+  with `create_with_owner_history`; IFC4 and IFC4X3, which declare the
+  measures `OPTIONAL`, write them when given. A value for an attribute the
+  bound release does not declare on the class is refused with
+  `AuthoringNotInSchema`.
+- `OccurrenceError::UnknownToken` (a `ShapeType` or `BarRole` outside the
+  release's enumeration), `InvalidMeasure` (a non-positive or non-finite
+  `IfcPositiveLengthMeasure`, a non-finite `IfcAreaMeasure`) and
+  `TypeClassNotInSchema` (the bound release pairs no type class with the
+  occurrence, such as an IFC2X3 `IfcStair`), appended.
+- `OccurrenceError` implements `Display` and `std::error::Error`.
+- `OccurrenceDraft::new` and one builder setter per field, named after it.
+- `Occurrence::ifc4_type_class` and `Occurrence::ifc2x3_type_class`: the type
+  class IFC4 ADD2 TC1 and IFC2X3 TC1 pair with each class, generated from
+  their EXPRESS sources by `scripts/gen-occurrences.py`.
+
+### Fixed
+
+- The occurrence-to-type pairing follows the declared release (#214). It was
+  IFC4X3's `CorrectTypeAssigned` in every release, so an IFC2X3 `IfcDoor`
+  typed by an `IfcDoorStyle` was refused; IFC2X3 now pairs doors and windows
+  with `IfcDoorStyle` and `IfcWindowStyle` and every other class with the
+  later releases' type class where IFC2X3 declares it, and IFC4 uses its own
+  rules (IFC4's `IfcTransformer` rule names the undeclared
+  `IFCTRANFORMERTYPE`, an erratum recorded as written). The referenced type
+  is compared with `TYPEOF` semantics, subtypes included.
+
+### Changed (breaking)
+
+- `OccurrenceDraft` is `#[non_exhaustive]`: struct literals outside the crate
+  no longer compile. Use `new()` (or `default()`) and the setters; the fields
+  stay public.
+- `Occurrence`, the generated catalogue row, is `#[non_exhaustive]` and has
+  two new fields; it can no longer be built by struct literal outside the
+  crate (use the generated constants).
+- An IFC2X3 or IFC4 `typed_by` is checked against that release's pairing:
+  a class IFC2X3 pairs with nothing (its type class undeclared there) is
+  refused with `TypeClassNotInSchema` where it was checked against the
+  IFC4X3 class, and `WrongTypeClass.expected` names the release's class.
+
 ## [0.2.1] - 2026-09-28
 
 ### Added

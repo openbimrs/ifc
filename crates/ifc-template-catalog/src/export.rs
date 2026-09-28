@@ -13,6 +13,7 @@ pub const TSV_HEADER: &str = "edition\tsource_digest\tset_kind\tset_name\tset_gu
 
 /// Counts summarizing one [`write_applicability_tsv`] export.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ExportSummary {
     /// Total set templates (property + quantity) exported.
     pub set_count: usize,

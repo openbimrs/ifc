@@ -15,17 +15,7 @@ fn element(tx: &mut Transaction, type_name: &str) -> ifc_model::EntityId {
 }
 
 fn draft(space: ifc_model::EntityId, bounded: ifc_model::EntityId) -> BoundaryDraft<'static> {
-    BoundaryDraft {
-        name: None,
-        description: None,
-        space,
-        element: bounded,
-        connection_geometry: None,
-        physical_or_virtual: "PHYSICAL",
-        internal_or_external: "INTERNAL",
-        parent: None,
-        corresponding: None,
-    }
+    BoundaryDraft::new(space, bounded, "PHYSICAL", "INTERNAL")
 }
 
 /// Each level stages its own type with its own arity.

@@ -299,6 +299,8 @@ fn every_slot_resolves_per_release_or_is_absent_by_schema() {
                             attribute,
                             schema: version,
                         }),
+                    #[allow(unreachable_patterns)]
+                    other => panic!("{other:?} has no expected layout in this test"),
                 };
                 assert_eq!(
                     release.slot(entity, id, attribute),

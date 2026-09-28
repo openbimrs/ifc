@@ -14,7 +14,7 @@ use ifc_spatial::{
     BoundaryDraft, BoundaryLevel, ExternalSpatialDraft, FacilityDraft, FacilityError,
     SpatialAuthoringError, SpatialDraft, SpatialKind,
 };
-use release_fixture::{base, guid, FEATURE, OWNER, PROJECT, SPACE, UNITS, WALL, WALL2, WALL_TYPE};
+use release_fixture::{base, guid, CONTEXT, FEATURE, OWNER, SPACE, UNITS, WALL, WALL2, WALL_TYPE};
 
 use SpatialAuthoringError as E;
 
@@ -24,17 +24,7 @@ fn refused<T: std::fmt::Debug, Err>(tx: &Transaction, result: Result<T, Err>) ->
 }
 
 fn boundary(internal: &'static str) -> BoundaryDraft<'static> {
-    BoundaryDraft {
-        name: None,
-        description: None,
-        space: SPACE,
-        element: WALL,
-        connection_geometry: None,
-        physical_or_virtual: "PHYSICAL",
-        internal_or_external: internal,
-        parent: None,
-        corresponding: None,
-    }
+    BoundaryDraft::new(SPACE, WALL, "PHYSICAL", internal)
 }
 
 /// #202: the writer that leaves `OwnerHistory` unset used to write `$`
@@ -72,7 +62,9 @@ fn ifc2x3_refuses_what_it_cannot_hold() {
         attribute,
         schema: v,
     };
-    let result = declare_with_owner_history(t, &model, &guid(1), PROJECT, &[WALL_TYPE], OWNER);
+    // IFC2X3 has no `IfcRelDeclares`; it is refused before any reference
+    // is resolved, so the relating id is immaterial.
+    let result = declare_with_owner_history(t, &model, &guid(1), SPACE, &[WALL_TYPE], OWNER);
     assert_eq!(refused(t, result), absent("IFCRELDECLARES"));
     let result = create_space_boundary_with_owner_history(
         t,
@@ -108,10 +100,7 @@ fn ifc2x3_refuses_what_it_cannot_hold() {
             schema: v,
         }
     );
-    let unset = SpatialDraft {
-        name: Some("Site"),
-        ..SpatialDraft::default()
-    };
+    let unset = SpatialDraft::new().name("Site");
     let result = create_spatial_element_with_owner_history(
         t,
         &model,
@@ -121,10 +110,7 @@ fn ifc2x3_refuses_what_it_cannot_hold() {
         OWNER,
     );
     assert_eq!(refused(t, result), required("IFCSITE", "CompositionType"));
-    let composed = SpatialDraft {
-        composition: Some("ELEMENT"),
-        ..unset
-    };
+    let composed = unset.composition("ELEMENT");
     let result = create_spatial_element_with_owner_history(
         t,
         &model,
@@ -137,7 +123,8 @@ fn ifc2x3_refuses_what_it_cannot_hold() {
         refused(t, result),
         required("IFCSPACE", "InteriorOrExteriorSpace")
     );
-    let result = create_project_with_owner_history(t, &model, &guid(7), None, Some(UNITS), OWNER);
+    let result =
+        create_project_with_owner_history(t, &model, &guid(7), None, Some(UNITS), &[], OWNER);
     assert_eq!(
         refused(t, result),
         required("IFCPROJECT", "RepresentationContexts")
@@ -233,4 +220,191 @@ fn owner_history_and_binding_are_checked() {
         }
     );
     aggregate(&mut tx, &model, OWNER).expect("an owned IFC2X3 aggregation");
+}
+
+/// #214: `InteriorOrExteriorSpace` is IFC2X3's, and only a space's. A value
+/// anywhere else is refused, never dropped.
+#[test]
+fn interior_or_exterior_is_refused_where_the_release_does_not_declare_it() {
+    let internal = SpatialDraft::new()
+        .name("Room")
+        .interior_or_exterior("INTERNAL");
+    // IFC4 and IFC4X3 declare no `InteriorOrExteriorSpace`.
+    for (schema, version) in [
+        ("IFC4", SchemaVersion::Ifc4),
+        ("IFC4X3_ADD2", SchemaVersion::Ifc4x3),
+    ] {
+        let model = base(schema, version);
+        let mut tx = Transaction::new(&model);
+        let result = create_spatial_element_with_owner_history(
+            &mut tx,
+            &model,
+            SpatialKind::Space,
+            &guid(1),
+            internal,
+            OWNER,
+        );
+        assert_eq!(
+            refused(&tx, result),
+            E::AuthoringNotInSchema {
+                entity: "IFCSPACE",
+                attribute: "InteriorOrExteriorSpace",
+                schema: version,
+            },
+            "{schema}"
+        );
+    }
+    let v = SchemaVersion::Ifc2x3;
+    let model = base("IFC2X3", v);
+    let mut tx = Transaction::new(&model);
+    // IFC2X3 declares it on `IfcSpace` alone.
+    let result = create_spatial_element_with_owner_history(
+        &mut tx,
+        &model,
+        SpatialKind::Site,
+        &guid(2),
+        internal.composition("ELEMENT"),
+        OWNER,
+    );
+    assert_eq!(
+        refused(&tx, result),
+        E::AuthoringNotInSchema {
+            entity: "IFCSITE",
+            attribute: "InteriorOrExteriorSpace",
+            schema: v,
+        }
+    );
+    // A token outside IFC2X3's `IfcInternalOrExternalEnum`.
+    let earth = SpatialDraft::new()
+        .name("Room")
+        .composition("ELEMENT")
+        .interior_or_exterior("EXTERNAL_EARTH");
+    let result = create_spatial_element_with_owner_history(
+        &mut tx,
+        &model,
+        SpatialKind::Space,
+        &guid(3),
+        earth,
+        OWNER,
+    );
+    assert_eq!(
+        refused(&tx, result),
+        E::AuthoringValueType {
+            entity: "IFCSPACE",
+            attribute: "InteriorOrExteriorSpace",
+            declared: "IfcInternalOrExternalEnum",
+            schema: v,
+        }
+    );
+    // The plain writer writes IFC4/IFC4X3 only and cannot hold it either.
+    let result =
+        ifc_spatial::create_spatial_element(&mut tx, SpatialKind::Space, &guid(4), internal);
+    assert_eq!(
+        refused(&tx, result),
+        E::AuthoringNotInSchema {
+            entity: "IFCSPACE",
+            attribute: "InteriorOrExteriorSpace",
+            schema: SchemaVersion::Ifc4,
+        }
+    );
+}
+
+/// #214: each representation context must resolve, be an
+/// `IfcRepresentationContext`, not be a sub-context (IFC2X3 `WR32`, IFC4 and
+/// IFC4X3 `CorrectContext`), and appear once in the `SET`; IFC2X3 also
+/// requires `UnitsInContext`.
+#[test]
+fn project_contexts_are_checked() {
+    for (schema, version) in [
+        ("IFC2X3", SchemaVersion::Ifc2x3),
+        ("IFC4", SchemaVersion::Ifc4),
+    ] {
+        let mut model = base(schema, version);
+        let mut setup = Transaction::new(&model);
+        let sub = setup.create(ifc_model::Entity::new(
+            "IFCGEOMETRICREPRESENTATIONSUBCONTEXT",
+            vec![ifc_model::Value::Null; 10],
+        ));
+        setup.commit(&mut model).expect("commit");
+        let mut tx = Transaction::new(&model);
+        let model = &model;
+        let project = |tx: &mut Transaction, contexts: &[EntityId]| {
+            create_project_with_owner_history(
+                tx,
+                model,
+                &guid(1),
+                Some("P"),
+                Some(UNITS),
+                contexts,
+                OWNER,
+            )
+        };
+        let result = project(&mut tx, &[EntityId(999)]);
+        assert_eq!(
+            refused(&tx, result),
+            E::MissingReference {
+                entity: "IFCPROJECT",
+                attribute: "RepresentationContexts",
+                target: EntityId(999),
+            },
+            "{schema}"
+        );
+        let result = project(&mut tx, &[CONTEXT, WALL]);
+        assert_eq!(
+            refused(&tx, result),
+            E::WrongReferenceType {
+                entity: "IFCPROJECT",
+                attribute: "RepresentationContexts",
+                target: WALL,
+                actual: "IFCWALL".into(),
+                expected: "IFCREPRESENTATIONCONTEXT",
+            },
+            "{schema}"
+        );
+        let result = project(&mut tx, &[sub]);
+        assert!(
+            matches!(
+                refused(&tx, result),
+                E::Invalid {
+                    entity: "IFCPROJECT",
+                    attribute: "RepresentationContexts",
+                    ..
+                }
+            ),
+            "{schema}: a sub-context"
+        );
+        let result = project(&mut tx, &[CONTEXT, CONTEXT]);
+        assert!(
+            matches!(
+                refused(&tx, result),
+                E::Invalid {
+                    entity: "IFCPROJECT",
+                    attribute: "RepresentationContexts",
+                    ..
+                }
+            ),
+            "{schema}: a repeated context"
+        );
+        project(&mut tx, &[CONTEXT]).expect("one context");
+    }
+    let v = SchemaVersion::Ifc2x3;
+    let model = base("IFC2X3", v);
+    let mut tx = Transaction::new(&model);
+    let result = create_project_with_owner_history(
+        &mut tx,
+        &model,
+        &guid(2),
+        Some("P"),
+        None,
+        &[CONTEXT],
+        OWNER,
+    );
+    assert_eq!(
+        refused(&tx, result),
+        E::AuthoringRequired {
+            entity: "IFCPROJECT",
+            attribute: "UnitsInContext",
+            schema: v,
+        }
+    );
 }

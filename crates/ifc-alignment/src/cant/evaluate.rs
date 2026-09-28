@@ -18,6 +18,7 @@ use crate::error::{AlignmentError, AlignmentResult};
 
 /// Cant applied to each rail at one normalized position along a segment.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub struct CantAtStation {
     /// Elevation of the left rail above the reference plane.
     pub left: f64,

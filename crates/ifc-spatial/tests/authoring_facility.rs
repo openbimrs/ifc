@@ -27,12 +27,10 @@ fn a_facility_keeps_its_slots() {
         IFCBRIDGE,
         GUID,
         Some("SUSPENSION"),
-        FacilityDraft {
-            name: Some("North crossing"),
-            long_name: Some("North river crossing"),
-            composition: Some("ELEMENT"),
-            ..FacilityDraft::default()
-        },
+        FacilityDraft::new()
+            .name("North crossing")
+            .long_name("North river crossing")
+            .composition("ELEMENT"),
     )
     .expect("a well formed bridge is accepted");
 
@@ -58,10 +56,7 @@ fn a_part_keeps_usage_and_predefined_apart() {
         IFCROADPART,
         GUID,
         Some("ROADSEGMENT"),
-        FacilityDraft {
-            usage: Some("LONGITUDINAL"),
-            ..FacilityDraft::default()
-        },
+        FacilityDraft::new().usage("LONGITUDINAL"),
     )
     .expect("a well formed road part is accepted");
 
@@ -111,10 +106,7 @@ fn a_facility_refuses_a_usage_token() {
         IFCROAD,
         GUID,
         None,
-        FacilityDraft {
-            usage: Some("LONGITUDINAL"),
-            ..FacilityDraft::default()
-        },
+        FacilityDraft::new().usage("LONGITUDINAL"),
     )
     .expect_err("a facility has no usage slot");
     assert!(
@@ -136,10 +128,7 @@ fn both_userdefined_rules_are_enforced() {
         IFCROADPART,
         GUID,
         Some("USERDEFINED"),
-        FacilityDraft {
-            usage: Some("LONGITUDINAL"),
-            ..FacilityDraft::default()
-        },
+        FacilityDraft::new().usage("LONGITUDINAL"),
     )
     .expect_err("USERDEFINED predefined type needs ObjectType");
     assert!(
@@ -153,10 +142,7 @@ fn both_userdefined_rules_are_enforced() {
         IFCROADPART,
         GUID,
         None,
-        FacilityDraft {
-            usage: Some("USERDEFINED"),
-            ..FacilityDraft::default()
-        },
+        FacilityDraft::new().usage("USERDEFINED"),
     )
     .expect_err("USERDEFINED usage needs ObjectType too");
     assert!(
@@ -170,11 +156,9 @@ fn both_userdefined_rules_are_enforced() {
         IFCROADPART,
         GUID,
         Some("USERDEFINED"),
-        FacilityDraft {
-            usage: Some("USERDEFINED"),
-            object_type: Some("Bespoke verge"),
-            ..FacilityDraft::default()
-        },
+        FacilityDraft::new()
+            .usage("USERDEFINED")
+            .object_type("Bespoke verge"),
     )
     .expect("ObjectType satisfies both rules at once");
 }
@@ -265,10 +249,7 @@ fn an_unknown_usage_token_is_refused() {
         IFCROADPART,
         GUID,
         None,
-        FacilityDraft {
-            usage: Some("ROADSEGMENT"),
-            ..FacilityDraft::default()
-        },
+        FacilityDraft::new().usage("ROADSEGMENT"),
     )
     .expect_err("ROADSEGMENT is a part kind, not a usage");
     assert!(matches!(err, FacilityError::UnknownToken { .. }), "{err}");

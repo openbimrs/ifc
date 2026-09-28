@@ -3,20 +3,19 @@
 //!
 //! From the EXPRESS sources: IFC2X3 TC1 requires
 //! `IfcSpatialStructureElement.CompositionType`, `IfcSpace.
-//! InteriorOrExteriorSpace` (which [`SpatialDraft`] cannot carry, so an
-//! IFC2X3 space is refused with `AuthoringRequired`), and
-//! `IfcProject.RepresentationContexts` and `UnitsInContext`; it declares no
-//! `IfcExternalSpatialElement` or `IfcProjectLibrary`.
+//! InteriorOrExteriorSpace` ([`SpatialDraft::interior_or_exterior`], #214),
+//! and `IfcProject.RepresentationContexts` and `UnitsInContext`; it declares
+//! no `IfcExternalSpatialElement` or `IfcProjectLibrary`.
 
 use ifc_model::guid::Guid;
 use ifc_model::{EntityId, Model, Transaction, Value};
 
 use super::external::{check_external, EXTERNAL};
 use super::owned_relationships::{refs, relate_owned};
-use super::release::stage;
+use super::release::{bind, stage};
 use super::{
     container, invalid, optional_text, ExternalSpatialDraft, ProjectLibraryDraft,
-    SpatialAuthoringResult, SpatialDraft,
+    SpatialAuthoringResult, SpatialDraft, INTERIOR_OR_EXTERIOR,
 };
 use crate::relation::slots::{AGGREGATES, CONTAINED_IN};
 use crate::tree::SpatialKind;
@@ -26,8 +25,11 @@ use crate::tree::SpatialKind;
 /// requires.
 ///
 /// IFC2X3 also requires `CompositionType`, and an `IfcSpace`'s
-/// `InteriorOrExteriorSpace`, which the draft cannot carry: an IFC2X3
-/// space is refused.
+/// `InteriorOrExteriorSpace`, which
+/// [`SpatialDraft::interior_or_exterior`] carries (#214). That value is
+/// refused with `AuthoringNotInSchema` on any other container and in IFC4
+/// and IFC4X3, which do not declare it, and with `AuthoringValueType` for a
+/// token outside IFC2X3's `IfcInternalOrExternalEnum`.
 ///
 /// # Errors
 ///
@@ -59,6 +61,12 @@ pub fn create_spatial_element_with_owner_history(
                 .composition
                 .map_or(Value::Null, |t| Value::Enum(t.into())),
         ),
+        (
+            INTERIOR_OR_EXTERIOR,
+            draft
+                .interior_or_exterior
+                .map_or(Value::Null, |t| Value::Enum(t.into())),
+        ),
     ];
     stage(tx, model, type_name, values, Some(owner_history))
 }
@@ -67,29 +75,46 @@ pub fn create_spatial_element_with_owner_history(
 /// release, with a caller-supplied `IfcOwnerHistory`, which IFC2X3
 /// requires.
 ///
-/// IFC2X3 also requires `RepresentationContexts`, which this writer does
-/// not take: an IFC2X3 project is refused with `AuthoringRequired`.
+/// `representation_contexts` fills `RepresentationContexts`, a
+/// `SET [1:?]`: empty leaves it `$`, which IFC4 and IFC4X3 allow and IFC2X3,
+/// which requires it (as it requires `UnitsInContext`), refuses with
+/// `AuthoringRequired` (#214). Each context must be an
+/// `IfcRepresentationContext` in the model or staged on `tx`, and not an
+/// `IfcGeometricRepresentationSubContext`, which every release's
+/// `IfcProject` rule (IFC2X3 `WR32`, IFC4 and IFC4X3 `CorrectContext`)
+/// forbids.
 ///
 /// # Errors
 ///
-/// Those of [`create_project`](super::create_project), and the release and
-/// owner-history refusals of [`aggregate_with_owner_history`]. Nothing is
-/// staged on an error.
+/// Those of [`create_project`](super::create_project), the release and
+/// owner-history refusals of [`aggregate_with_owner_history`], and on
+/// `RepresentationContexts`: a duplicated context (`Invalid`), one that
+/// resolves nowhere (`MissingReference`), one that is not an
+/// `IfcRepresentationContext` (`WrongReferenceType`) and a sub-context
+/// (`Invalid`). Nothing is staged on an error.
 pub fn create_project_with_owner_history(
     tx: &mut Transaction,
     model: &Model,
     global_id: &str,
     name: Option<&str>,
     units: Option<EntityId>,
+    representation_contexts: &[EntityId],
     owner_history: EntityId,
 ) -> SpatialAuthoringResult<EntityId> {
     const ENTITY: &str = "IFCPROJECT";
     if Guid::parse(global_id).is_none() {
         return Err(invalid(ENTITY, "GlobalId", global_id));
     }
+    bind(model)?.require_contexts(tx, model, ENTITY, representation_contexts)?;
+    let contexts = if representation_contexts.is_empty() {
+        Value::Null
+    } else {
+        refs(representation_contexts)
+    };
     let values = vec![
         ("GlobalId", Value::Text(global_id.into())),
         ("Name", optional_text(name)),
+        ("RepresentationContexts", contexts),
         ("UnitsInContext", units.map_or(Value::Null, Value::Ref)),
     ];
     stage(tx, model, ENTITY, values, Some(owner_history))

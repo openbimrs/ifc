@@ -12,6 +12,10 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `MemberConnection` and `ActivityAssignment` are `#[non_exhaustive]`.
+
 ## [0.2.1] - 2026-09-28
 
 ### Added

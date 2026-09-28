@@ -94,13 +94,10 @@ fn both_crates_write_the_same_quantity_record() {
 
                 let mut from_cost = declaring(schema);
                 let mut tx = Transaction::new(&from_cost);
-                let draft = QuantityDraft {
-                    kind: cost_kind,
-                    name: "Q",
-                    description: Some("d"),
-                    unit: None,
-                    value,
-                    formula,
+                let draft = {
+                    let mut draft = QuantityDraft::new(cost_kind, "Q", value).description("d");
+                    draft.formula = formula;
+                    draft
                 };
                 let by_cost = cost_quantity(&mut tx, &from_cost, draft);
                 if by_cost.is_ok() {

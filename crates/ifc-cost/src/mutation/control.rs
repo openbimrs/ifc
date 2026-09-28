@@ -20,13 +20,16 @@
 //! IFC2X3 also declares less: `IfcCostItem` has only the five `IfcControl`
 //! attributes (no `Identification`, `PredefinedType`, `CostValues` or
 //! `CostQuantities`), and `IfcCostSchedule` requires `ID` and
-//! `PredefinedType` and types its dates as `IfcDateTimeSelect` records. A
-//! draft value the release cannot hold is refused, never dropped.
+//! `PredefinedType` and types its dates as `IfcDateTimeSelect` records,
+//! which [`CostScheduleDraft`] carries as [`DateTimeValue`] record forms and
+//! the writer stages (#214). A draft value the release cannot hold is
+//! refused, never dropped.
 //!
 //! [`CostAuthoringError::AuthoringRequired`]: super::CostAuthoringError::AuthoringRequired
 
 use ifc_model::{EntityId, Model, Transaction, Value};
 
+use super::datetime::{patch, DateTimeValue, PLACEHOLDERS};
 use super::draft::{
     CostItemDraft, CostItemType, CostScheduleDraft, CostScheduleType, NestingDraft,
     ScheduleAssignmentDraft,
@@ -122,14 +125,18 @@ fn cost_item(
 /// # Errors
 ///
 /// A malformed or duplicate GlobalId; `USERDEFINED` without `ObjectType`;
-/// a header binding no single known release; a value the release cannot
-/// hold (`AuthoringValueType`: IFC2X3 types `SubmittedOn` and `UpdateDate`
-/// as `IfcDateTimeSelect` records, not strings); a required value left
-/// unset (`AuthoringRequired`: IFC2X3 requires `ID`, written from
-/// `identification`, and `PredefinedType`); and an IFC2X3 model, which
-/// requires `OwnerHistory` (use
+/// a header binding no single known release; a date record form the
+/// schema's rules refuse (`InvalidValue`: a month outside 1..=12, a day the
+/// month does not have, an hour, minute or second out of range, a second
+/// without a minute); a date in the form the release does not declare
+/// (`AuthoringValueType`: IFC2X3 types `SubmittedOn` and `UpdateDate` as
+/// `IfcDateTimeSelect` records, IFC4 and IFC4X3 as `IfcDateTime` text); a
+/// required value left unset (`AuthoringRequired`: IFC2X3 requires `ID`,
+/// written from `identification`, and `PredefinedType`); and an IFC2X3
+/// model, which requires `OwnerHistory` (use
 /// [`create_cost_schedule_with_owner_history`]). Nothing is staged on an
-/// error.
+/// error: IFC2X3 date records are staged only once the schedule itself is
+/// accepted.
 pub fn create_cost_schedule(
     tx: &mut Transaction,
     model: &Model,
@@ -171,7 +178,16 @@ fn cost_schedule(
             "required for USERDEFINED PredefinedType",
         ));
     }
-    let record = release.record(
+    let dates = [draft.submitted_on, draft.update_date];
+    for date in dates.iter().flatten() {
+        date.check()?;
+    }
+    let provisional = |slot: usize| {
+        dates[slot].map_or(Value::Null, |date: DateTimeValue<'_>| {
+            date.provisional(PLACEHOLDERS[slot])
+        })
+    };
+    let mut record = release.record(
         ENTITY,
         vec![
             ("GlobalId", Value::Text(draft.global_id.into())),
@@ -188,11 +204,17 @@ fn cost_schedule(
                 optional_enum(draft.predefined_type.map(CostScheduleType::token)),
             ),
             ("Status", optional_text(draft.status)),
-            ("SubmittedOn", optional_text(draft.submitted_on)),
-            ("UpdateDate", optional_text(draft.update_date)),
+            ("SubmittedOn", provisional(0)),
+            ("UpdateDate", provisional(1)),
         ],
     )?;
-    stage(tx, model, release, ENTITY, record, owner_history)
+    // Every refusal before the first edit: the record with placeholders,
+    // then the owner history; only then the date records.
+    if let Some(owner_history) = owner_history {
+        release.require_owner_history(tx, model, ENTITY, owner_history)?;
+    }
+    patch(tx, &mut record, &dates);
+    Ok(tx.create(record))
 }
 
 /// Validate and stage ordered cost-item nesting, with `OwnerHistory` unset.

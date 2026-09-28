@@ -81,6 +81,7 @@ impl ElementRole {
 
 /// A disagreement between an element's role and how its ports are directed.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RoleInconsistency {
     /// An element that should pass flow has no way in, or no way out.
     ///

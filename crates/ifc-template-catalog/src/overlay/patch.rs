@@ -61,6 +61,7 @@ pub enum AdvisorySeverity {
 
 /// A non-mutating annotation attached to a set template by a [`Patch`].
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Advisory {
     /// Id of the [`Patch`] that added this advisory.
     pub patch_id: String,
@@ -76,6 +77,7 @@ pub struct Advisory {
 
 /// Record of one [`Patch`] that was successfully applied to a catalog snapshot.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct AppliedPatch {
     /// Id of the applied patch.
     pub id: String,

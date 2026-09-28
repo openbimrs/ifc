@@ -89,10 +89,7 @@ fn attributes_beyond_the_arity_are_refused() {
         TYPE_OBJECT,
         GUID,
         "T",
-        SupertypeDraft {
-            tag: Some("A-1"),
-            ..SupertypeDraft::default()
-        },
+        SupertypeDraft::new().tag("A-1"),
     )
     .expect_err("IfcTypeObject has no Tag");
     assert!(invalid(&err), "{err}");
@@ -102,10 +99,7 @@ fn attributes_beyond_the_arity_are_refused() {
         TYPE_OBJECT,
         GUID,
         "T",
-        SupertypeDraft {
-            representation_maps: &[map],
-            ..SupertypeDraft::default()
-        },
+        SupertypeDraft::new().representation_maps(&[map]),
     )
     .expect_err("IfcTypeObject has no RepresentationMaps");
     assert!(invalid(&err), "{err}");
@@ -115,10 +109,7 @@ fn attributes_beyond_the_arity_are_refused() {
         TYPE_PRODUCT,
         GUID,
         "T",
-        SupertypeDraft {
-            element_type: Some("Wall"),
-            ..SupertypeDraft::default()
-        },
+        SupertypeDraft::new().element_type("Wall"),
     )
     .expect_err("IfcTypeProduct has no ElementType");
     assert!(invalid(&err), "{err}");
@@ -128,11 +119,7 @@ fn attributes_beyond_the_arity_are_refused() {
         TYPE_PRODUCT,
         GUID,
         "T",
-        SupertypeDraft {
-            representation_maps: &[map],
-            tag: Some("A-1"),
-            ..SupertypeDraft::default()
-        },
+        SupertypeDraft::new().representation_maps(&[map]).tag("A-1"),
     )
     .expect("IfcTypeProduct does declare both");
 }
@@ -149,14 +136,12 @@ fn each_tier_lands_its_attributes_in_the_declared_slots() {
         BUILT_ELEMENT_TYPE,
         GUID,
         "Generic wall",
-        SupertypeDraft {
-            description: Some("d"),
-            applicable_occurrence: Some("occ"),
-            representation_maps: &[map],
-            tag: Some("A-1"),
-            element_type: Some("WALL"),
-            ..SupertypeDraft::default()
-        },
+        SupertypeDraft::new()
+            .description("d")
+            .applicable_occurrence("occ")
+            .representation_maps(&[map])
+            .tag("A-1")
+            .element_type("WALL"),
     )
     .expect("a fully populated built element type");
     tx.commit(&mut model).expect("commits");
@@ -184,10 +169,7 @@ fn duplicate_property_set_names_are_refused() {
         CIVIL_ELEMENT_TYPE,
         GUID,
         "Civil",
-        SupertypeDraft {
-            property_sets: &[("Pset_Common", a), ("Pset_Common", b)],
-            ..SupertypeDraft::default()
-        },
+        SupertypeDraft::new().property_sets(&[("Pset_Common", a), ("Pset_Common", b)]),
     )
     .expect_err("UniquePropertySetNames");
     assert!(invalid(&err), "{err}");
@@ -197,10 +179,7 @@ fn duplicate_property_set_names_are_refused() {
         CIVIL_ELEMENT_TYPE,
         GUID,
         "Civil",
-        SupertypeDraft {
-            property_sets: &[("Pset_Common", a), ("Pset_Other", b)],
-            ..SupertypeDraft::default()
-        },
+        SupertypeDraft::new().property_sets(&[("Pset_Common", a), ("Pset_Other", b)]),
     )
     .expect("distinct names are legal");
     tx.commit(&mut model).expect("commits");
@@ -267,10 +246,7 @@ fn a_blank_property_set_name_is_refused() {
         TYPE_OBJECT,
         GUID,
         "Named",
-        SupertypeDraft {
-            property_sets: &[("   ", pset)],
-            ..SupertypeDraft::default()
-        },
+        SupertypeDraft::new().property_sets(&[("   ", pset)]),
     )
     .expect_err("a blank set name is refused");
     assert!(format!("{err}").contains("HasPropertySets"), "{err}");

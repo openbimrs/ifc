@@ -285,17 +285,7 @@ fn an_authored_geometry_reads_back() {
         &model,
         BoundaryLevel::Second,
         "1jQ2A$rnvCJhUvFV5RxFtz",
-        BoundaryDraft {
-            name: None,
-            description: None,
-            space,
-            element: wall,
-            connection_geometry: Some(surface),
-            physical_or_virtual: "PHYSICAL",
-            internal_or_external: "EXTERNAL",
-            parent: None,
-            corresponding: None,
-        },
+        BoundaryDraft::new(space, wall, "PHYSICAL", "EXTERNAL").connection_geometry(surface),
     )
     .expect("stage");
     tx.commit(&mut model).expect("commit");

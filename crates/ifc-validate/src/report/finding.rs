@@ -59,6 +59,7 @@ impl fmt::Display for Severity {
 
 /// One thing a validator has to say about a file.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Finding {
     /// How serious it is.
     pub severity: Severity,
