@@ -3,20 +3,28 @@
 //! Mirrors `ifc-template-catalog`'s archive pattern: a versioned, checksummed
 //! binary encoding that `include_bytes!` ships inside the crate, decoded once
 //! behind a `OnceLock`. The wire format stores the already-parsed
-//! `ParsedSchema` (entities, types, attributes) rather than EXPRESS source
+//! declarations (entities, types, attributes) rather than EXPRESS source
 //! text, so a consumer pays a bincode decode, not an EXPRESS parse.
+//!
+//! The wire structs below are private mirrors of this crate's public
+//! declaration types. They decouple the byte layout from the public API: a
+//! field added to [`EntityDef`] does not change the format until this module
+//! chooses to record it, under a new `FORMAT_VERSION`.
 
 use bincode::{Decode, Encode};
 use thiserror::Error;
 
-use openbim_step::express::{Attribute, EntityDef, ParsedSchema, TypeDef, TypeKind, WhereRule};
+use crate::attribute::Attribute;
+use crate::entity::{EntityDef, WhereRule};
+use crate::registry::Schema;
+use crate::types::{TypeDef, TypeKind};
 
 const MAGIC: [u8; 8] = *b"NEHSCHM\0";
 const FORMAT_VERSION: u16 = 2;
 const MIN_HEADER_BYTES: usize = MAGIC.len() + 1;
 const MAX_ARTIFACT_BYTES: usize = 8 * 1024 * 1024;
 
-/// Wire-format mirror of [`openbim_step::express::Attribute`].
+/// Wire-format mirror of [`Attribute`].
 #[derive(Encode, Decode)]
 struct WireAttribute {
     name: String,
@@ -25,7 +33,7 @@ struct WireAttribute {
     aggregate: bool,
 }
 
-/// Wire-format mirror of [`openbim_step::express::EntityDef`].
+/// Wire-format mirror of [`EntityDef`].
 #[derive(Encode, Decode)]
 struct WireEntity {
     name: String,
@@ -61,14 +69,14 @@ impl From<WireEntityV1> for WireEntity {
     }
 }
 
-/// Wire-format mirror of [`openbim_step::express::WhereRule`].
+/// Wire-format mirror of [`WhereRule`].
 #[derive(Encode, Decode)]
 struct WireWhereRule {
     label: String,
     expression: String,
 }
 
-/// Wire-format mirror of [`openbim_step::express::TypeKind`].
+/// Wire-format mirror of [`TypeKind`].
 #[derive(Encode, Decode)]
 enum WireTypeKind {
     Defined(String),
@@ -76,7 +84,7 @@ enum WireTypeKind {
     Select(Vec<String>),
 }
 
-/// Wire-format mirror of [`openbim_step::express::TypeDef`].
+/// Wire-format mirror of [`TypeDef`].
 #[derive(Encode, Decode)]
 struct WireType {
     name: String,
@@ -108,13 +116,12 @@ impl From<WireSchemaV1> for WireSchema {
     }
 }
 
-impl From<&ParsedSchema> for WireSchema {
-    fn from(schema: &ParsedSchema) -> Self {
+impl From<&Schema> for WireSchema {
+    fn from(schema: &Schema) -> Self {
         Self {
-            name: schema.name.clone(),
+            name: schema.name().to_owned(),
             entities: schema
-                .entities
-                .iter()
+                .entities()
                 .map(|entity| WireEntity {
                     name: entity.name.clone(),
                     supertype: entity.supertype().map(str::to_owned),
@@ -141,8 +148,7 @@ impl From<&ParsedSchema> for WireSchema {
                 })
                 .collect(),
             types: schema
-                .types
-                .iter()
+                .types()
                 .map(|type_def| WireType {
                     name: type_def.name.clone(),
                     kind: match &type_def.kind {
@@ -158,56 +164,49 @@ impl From<&ParsedSchema> for WireSchema {
     }
 }
 
-impl From<WireSchema> for ParsedSchema {
+impl From<WireSchema> for Schema {
     fn from(wire: WireSchema) -> Self {
-        Self {
-            name: wire.name,
-            entities: wire
-                .entities
-                .into_iter()
-                .map(|entity| {
-                    let mut def = EntityDef::new(entity.name);
-                    if let Some(supertype) = entity.supertype {
-                        def = def.with_supertype(supertype);
-                    }
-                    def.abstract_ = entity.abstract_;
-                    for attribute in entity.attributes {
+        let entities = wire
+            .entities
+            .into_iter()
+            .map(|entity| {
+                let mut def = EntityDef::new(entity.name);
+                if let Some(supertype) = entity.supertype {
+                    def = def.with_supertype(supertype);
+                }
+                def.abstract_ = entity.abstract_;
+                def.attributes = entity
+                    .attributes
+                    .into_iter()
+                    .map(|attribute| {
                         let mut built = Attribute::new(attribute.name, attribute.type_name);
-                        if attribute.optional {
-                            built = built.optional();
-                        }
-                        if attribute.aggregate {
-                            built = built.aggregate();
-                        }
-                        def = def.with_attribute(built);
-                    }
-                    for derived in entity.derived {
-                        def = def.with_derived(derived);
-                    }
-                    def.where_rules = entity
-                        .where_rules
-                        .into_iter()
-                        .map(|rule| WhereRule {
-                            label: rule.label,
-                            expression: rule.expression,
-                        })
-                        .collect();
-                    def
-                })
-                .collect(),
-            types: wire
-                .types
-                .into_iter()
-                .map(|type_def| TypeDef {
-                    name: type_def.name,
-                    kind: match type_def.kind {
-                        WireTypeKind::Defined(alias) => TypeKind::Defined(alias),
-                        WireTypeKind::Enumeration(members) => TypeKind::Enumeration(members),
-                        WireTypeKind::Select(members) => TypeKind::Select(members),
-                    },
-                })
-                .collect(),
-        }
+                        built.optional = attribute.optional;
+                        built.aggregate = attribute.aggregate;
+                        built
+                    })
+                    .collect();
+                def.derived = entity.derived;
+                def.where_rules = entity
+                    .where_rules
+                    .into_iter()
+                    .map(|rule| WhereRule::new(rule.label, rule.expression))
+                    .collect();
+                def
+            })
+            .collect();
+        let types = wire
+            .types
+            .into_iter()
+            .map(|type_def| {
+                let kind = match type_def.kind {
+                    WireTypeKind::Defined(alias) => TypeKind::Defined(alias),
+                    WireTypeKind::Enumeration(members) => TypeKind::Enumeration(members),
+                    WireTypeKind::Select(members) => TypeKind::Select(members),
+                };
+                TypeDef::new(type_def.name, kind)
+            })
+            .collect();
+        Schema::new(wire.name, entities, types)
     }
 }
 
@@ -218,7 +217,7 @@ impl From<WireSchema> for ParsedSchema {
 ///
 /// Returns `BundledSchemaError` if the artifact is malformed, oversized, or
 /// carries an unsupported format version.
-pub fn decode_schema(bytes: &[u8]) -> Result<ParsedSchema, BundledSchemaError> {
+pub fn decode_schema(bytes: &[u8]) -> Result<Schema, BundledSchemaError> {
     if bytes.len() > MAX_ARTIFACT_BYTES {
         return Err(BundledSchemaError::TooLarge {
             actual: bytes.len(),
@@ -269,7 +268,7 @@ pub fn decode_schema(bytes: &[u8]) -> Result<ParsedSchema, BundledSchemaError> {
 ///
 /// Returns a bincode encode error if `schema` cannot be serialized.
 #[cfg(feature = "generation")]
-pub fn encode_schema(schema: &ParsedSchema) -> Result<Vec<u8>, bincode::error::EncodeError> {
+pub fn encode_schema(schema: &Schema) -> Result<Vec<u8>, bincode::error::EncodeError> {
     let wire = WireSchema::from(schema);
     let payload = bincode::encode_to_vec(wire, bincode::config::standard())?;
     let version = bincode::encode_to_vec(FORMAT_VERSION, bincode::config::standard())?;
@@ -284,16 +283,32 @@ pub fn encode_schema(schema: &ParsedSchema) -> Result<Vec<u8>, bincode::error::E
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[non_exhaustive]
 pub enum BundledSchemaError {
+    /// The payload is not a valid encoding of the declared format version.
     #[error("cannot decode schema artifact: {0}")]
     Decode(String),
+    /// The input exceeds the decoder's resource budget.
     #[error("schema artifact is {actual} bytes; limit is {limit} bytes")]
-    TooLarge { actual: usize, limit: usize },
+    TooLarge {
+        /// Input length in bytes.
+        actual: usize,
+        /// Largest accepted input in bytes.
+        limit: usize,
+    },
+    /// The input ends inside the header.
     #[error("schema artifact header is {actual} bytes; at least {required} bytes are required")]
-    TruncatedHeader { actual: usize, required: usize },
+    TruncatedHeader {
+        /// Input length in bytes.
+        actual: usize,
+        /// Shortest possible header in bytes.
+        required: usize,
+    },
+    /// The input does not start with the artifact magic.
     #[error("schema artifact magic is invalid")]
     BadMagic,
+    /// The header names a format version this build cannot read.
     #[error("unsupported schema artifact format version {0}")]
     UnsupportedVersion(u16),
+    /// Bytes follow the decoded payload.
     #[error("schema artifact has {0} trailing bytes")]
     TrailingBytes(usize),
 }
@@ -302,12 +317,25 @@ pub enum BundledSchemaError {
 mod tests {
     use super::*;
 
-    fn sample() -> ParsedSchema {
-        openbim_step::express::parse(
-            "SCHEMA IFC4;\n\
-             ENTITY IfcRoot; GlobalId : IfcGloballyUniqueId; END_ENTITY;\n\
-             ENTITY IfcWall SUBTYPE OF (IfcRoot); Name : IfcLabel; END_ENTITY;\n\
-             END_SCHEMA;",
+    fn sample() -> Schema {
+        Schema::new(
+            "IFC4",
+            vec![
+                EntityDef::new("IfcRoot")
+                    .abstract_entity()
+                    .with_attribute(Attribute::new("GlobalId", "IfcGloballyUniqueId"))
+                    .with_where_rule(WhereRule::new("WR1", "")),
+                EntityDef::new("IfcWall")
+                    .with_supertype("IfcRoot")
+                    .with_attribute(Attribute::new("Name", "IfcLabel").optional())
+                    .with_attribute(Attribute::new("Tags", "IfcLabel").aggregate())
+                    .with_derived("Dim"),
+            ],
+            vec![
+                TypeDef::new("IfcLabel", TypeKind::Defined("STRING".into())),
+                TypeDef::new("IfcSide", TypeKind::Enumeration(vec!["LEFT".into()])),
+                TypeDef::new("IfcValue", TypeKind::Select(vec!["IfcLabel".into()])),
+            ],
         )
     }
 

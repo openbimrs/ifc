@@ -129,6 +129,8 @@ fn shape_of(schema: &Schema, type_name: &str, depth: u8) -> Shape {
                 Shape::Unresolved
             }
         }
+        // A declaration form the tables record but this check does not know.
+        _ => Shape::Unresolved,
     }
 }
 

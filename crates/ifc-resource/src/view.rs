@@ -361,6 +361,7 @@ impl<'m, 's> Record<'m, 's> {
                 }
                 TypeKind::Defined(alias) => type_name = alias,
                 TypeKind::Select(_) => return false,
+                _ => return false,
             }
         }
         false

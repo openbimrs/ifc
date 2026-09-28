@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- SELECT resolution treats a type declaration form `ifc-schema` adds later
+  like an undeclared member (fails closed); follows `ifc_schema::TypeKind`
+  becoming `#[non_exhaustive]`.
+
 ## [0.3.1] - 2026-09-28
 
 ### Added

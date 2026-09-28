@@ -25,6 +25,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use ifc_schema::artifact_encode_schema as encode_schema;
+use ifc_schema::Schema;
 
 /// A schema this tool can compile: selector, output file, and the counts a
 /// correct source must produce.
@@ -90,20 +91,22 @@ fn run() -> Result<(), String> {
     let output = manifest_dir.join(target.output);
 
     let bytes = fs::read(&source).map_err(|error| format!("read {}: {error}", source.display()))?;
-    // EXPRESS files are Latin-1 and may use CRLF; both are handled by mapping
-    // each byte to its code point and letting the tokenizer treat `\r` as
-    // whitespace.
-    let text: String = bytes.iter().map(|&b| b as char).collect();
-    let mut parsed = openbim_step::express::parse(&text);
+    let parsed = Schema::from_express_bytes(&bytes);
     // Labels identify rules; expressions are schema text (see module docs).
-    for entity in &mut parsed.entities {
-        for rule in &mut entity.where_rules {
-            rule.expression.clear();
-        }
-    }
+    let entities = parsed
+        .entities()
+        .cloned()
+        .map(|mut entity| {
+            for rule in &mut entity.where_rules {
+                rule.expression.clear();
+            }
+            entity
+        })
+        .collect();
+    let parsed = Schema::new(parsed.name(), entities, parsed.types().cloned().collect());
 
-    let entity_count = parsed.entities.len();
-    let type_count = parsed.types.len();
+    let entity_count = parsed.entity_count();
+    let type_count = parsed.type_count();
     if entity_count != target.entities {
         return Err(format!(
             "{} declares {} entities, got {entity_count} -- wrong source file?",

@@ -26,7 +26,8 @@ IFC schema as data: entity table, supertype chain, attribute names.
 
 | Feature | Default | Enables |
 | --- | --- | --- |
-| `generation` |  | `ifc4` |
+| `express` |  | `dep:openbim-step` |
+| `generation` |  | `ifc4`, `express` |
 | `ifc4` | yes | `dep:bincode`, `dep:thiserror` |
 
 ## Changes

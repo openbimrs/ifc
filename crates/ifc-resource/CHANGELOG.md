@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- Enumeration checks treat a type declaration form `ifc-schema` adds later
+  as not matching; follows `ifc_schema::TypeKind` becoming
+  `#[non_exhaustive]`.
+
 ## [0.2.0] - 2026-09-22
 
 First release under per-crate versioning. See the

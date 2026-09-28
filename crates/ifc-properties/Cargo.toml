@@ -21,6 +21,9 @@ ifc-model.workspace = true
 ifc-schema.workspace = true
 
 [dev-dependencies]
+# `Schema::from_express` for tests that parse EXPRESS fixtures or the
+# fetched normative schemas; production builds never link the parser.
+ifc-schema = { workspace = true, features = ["express"] }
 # Test-only: fixtures are STEP files, and parsing them is not a production
 # concern of this crate.
 ifc-step.workspace = true

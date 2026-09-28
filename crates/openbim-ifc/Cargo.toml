@@ -148,5 +148,10 @@ domains = [
 ]
 full = ["codecs", "schema", "domains", "property-catalog", "material-templates", "geometry", "georef", "alignment"]
 
+[dev-dependencies]
+# `Schema::from_express` for the documented authoring example; production
+# builds never link the EXPRESS parser.
+ifc-schema = { workspace = true, features = ["express"] }
+
 [lints]
 workspace = true

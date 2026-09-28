@@ -49,7 +49,7 @@ conflicts. [Coverage](/coverage) measures what each crate does instead.
 | `ifc-properties` | 9 | <span class="status-implemented">Implemented</span> |
 | `ifc-resource` | 9 | <span class="status-partial">Partial</span> |
 | `ifc-schedule` | 13 | <span class="status-implemented">Implemented</span> |
-| `ifc-schema` | 4 | <span class="status-implemented">Implemented</span> |
+| `ifc-schema` | 0 | <span class="status-implemented">Implemented</span> |
 | `ifc-spatial` | 0 | <span class="status-implemented">Implemented</span> |
 | `ifc-step` | 0 | <span class="status-implemented">Implemented</span> |
 | `ifc-structural` | 14 | <span class="status-implemented">Implemented</span> |

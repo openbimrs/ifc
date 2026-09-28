@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- Exact value checks treat a type declaration form `ifc-schema` adds later
+  as not matching; follows `ifc_schema::TypeKind` becoming
+  `#[non_exhaustive]`.
+
 ## [0.5.3] - 2026-09-28
 
 ### Added

@@ -12,6 +12,48 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `ifc-schema` owns its schema types. `Attribute`, `EntityDef`, `TypeDef`,
+  `TypeKind` and the newly exported `WhereRule` are defined here instead of
+  re-exported from `openbim_step::express`, and all five are
+  `#[non_exhaustive]`: construct them with `Attribute::new`,
+  `EntityDef::new`, `TypeDef::new`, `WhereRule::new` and the builder methods
+  (`with_supertype`, `with_attribute`, `with_derived`, `with_where_rule`,
+  `abstract_entity`, `optional`, `aggregate`), and give every `match` on
+  `TypeKind` a wildcard arm. Field names, `supertype()`, `is_derived()` and
+  `is_defined()` are unchanged. Rationale: an `openbim-step` release no
+  longer ripples into this crate's public API, and later facts about a
+  declaration (aggregate bounds, INVERSE, UNIQUE) can be added as fields
+  without another break.
+- `openbim-step` is an optional dependency, linked only by the new `express`
+  feature and by `generation`. The bundled tables decode straight into the
+  owned types; the default build no longer links a parser.
+- `Schema::from_express` and `Schema::from_express_bytes` require the new
+  `express` feature.
+- Removed: `Schema::from_parsed(ParsedSchema)` (use
+  `Schema::new(name, entities, types)`), `Schema::graph()` (the
+  `openbim_step::SchemaGraph` it returned is no longer held; `Schema`
+  answers the same queries itself), and the `express` module with its
+  `parse`/`ParsedSchema` re-exports (use `openbim_step::express` directly).
+- `EntityDef` no longer carries `redeclared`/`is_redeclared()`. No bundled
+  table ever recorded explicit redeclarations (the artifact format drops
+  them), so they were always empty for `ifc2x3()`, `ifc4()` and `ifc4x3()`.
+- `artifact_decode_schema` returns a `Schema` and `artifact_encode_schema`
+  (`generation`) takes one, instead of `openbim_step::express::ParsedSchema`.
+
+### Added
+
+- `Schema::new`, `Schema::entities()` and `Schema::types()` (declarations in
+  source order), `PartialEq`/`Eq` for `Schema`, and the `BundledSchemaError`
+  export.
+
+### Unchanged
+
+- The bundled artifacts are byte-identical: regenerating all three with the
+  ported generator reproduces the committed files, and `FORMAT_VERSION`
+  stays 2.
+
 ### Changed
 
 - Requires `openbim-step` 0.7.0, matching `ifc-step`. Both pin the parser

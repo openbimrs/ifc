@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- A type declaration form `ifc-schema` adds later resolves as unresolved
+  (no refusal on shape, no form claim) instead of failing to compile;
+  follows `ifc_schema::TypeKind` becoming `#[non_exhaustive]`.
+
 ## [0.2.2] - 2026-09-28
 
 ### Added

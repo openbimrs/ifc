@@ -7,7 +7,7 @@
 //! The artifacts under `data/` are the *parsed* schema (entities, attributes,
 //! types), not the EXPRESS source text — they never contain normative
 //! buildingSMART/ISO 16739 prose, only the structural facts
-//! `openbim_step::express::parse` would extract. The build-time `generation`
+//! the EXPRESS extractor would read, decoded into this crate's own types. The build-time `generation`
 //! feature that produces them requires a user-supplied copy of the `.exp`
 //! file; that file is never vendored into this crate or its published archive
 //! (see `tools/generate.rs`).
@@ -39,10 +39,9 @@ static IFC2X3: OnceLock<Schema> = OnceLock::new();
 #[must_use]
 pub fn ifc2x3() -> &'static Schema {
     IFC2X3.get_or_init(|| {
-        let parsed = decode_schema(include_bytes!("../data/ifc2x3-tc1.bin")).expect(
+        decode_schema(include_bytes!("../data/ifc2x3-tc1.bin")).expect(
             "the bundled IFC2x3 artifact is produced and verified by this crate's own build",
-        );
-        Schema::from_parsed(parsed)
+        )
     })
 }
 
@@ -53,14 +52,13 @@ pub fn ifc2x3() -> &'static Schema {
 /// artifact: the 372 KB `IFC4.exp` EXPRESS source is never read at runtime
 /// and is not present in the published crate.
 ///
-/// Custom schema files remain available through [`Schema::from_express`] or
-/// [`Schema::from_express_bytes`] directly.
+/// Custom schema files remain available through `Schema::from_express` (the
+/// `express` feature) or [`Schema::new`].
 #[must_use]
 pub fn ifc4() -> &'static Schema {
     IFC4.get_or_init(|| {
-        let parsed = decode_schema(include_bytes!("../data/ifc4-add2-tc1.bin"))
-            .expect("the bundled IFC4 artifact is produced and verified by this crate's own build");
-        Schema::from_parsed(parsed)
+        decode_schema(include_bytes!("../data/ifc4-add2-tc1.bin"))
+            .expect("the bundled IFC4 artifact is produced and verified by this crate's own build")
     })
 }
 
@@ -71,10 +69,9 @@ pub fn ifc4() -> &'static Schema {
 #[must_use]
 pub fn ifc4x3() -> &'static Schema {
     IFC4X3.get_or_init(|| {
-        let parsed = decode_schema(include_bytes!("../data/ifc4x3-add2.bin")).expect(
+        decode_schema(include_bytes!("../data/ifc4x3-add2.bin")).expect(
             "the bundled IFC4X3 artifact is produced and verified by this crate's own build",
-        );
-        Schema::from_parsed(parsed)
+        )
     })
 }
 

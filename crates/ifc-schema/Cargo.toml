@@ -20,7 +20,10 @@ group = "core"
 
 [dependencies]
 ahash.workspace = true
-openbim-step.workspace = true
+# EXPRESS extraction. Optional: the bundled tables decode into this crate's
+# own types without it; only `express` (runtime .exp parsing) and
+# `generation` (the artifact compiler) link it.
+openbim-step = { workspace = true, optional = true }
 bincode = { version = "2.0.1", optional = true }
 thiserror = { workspace = true, optional = true }
 
@@ -33,7 +36,16 @@ ifc4 = ["dep:bincode", "dep:thiserror"]
 # Compiles a user-supplied .exp into a committed artifact. Not part of
 # default: the generator reads a normative ISO/buildingSMART source file that
 # must never ship inside the published crate.
-generation = ["ifc4"]
+generation = ["ifc4", "express"]
+# `Schema::from_express` / `from_express_bytes`: parse EXPRESS source at run
+# time through `openbim-step`. No `openbim-step` type is part of this crate's
+# API either way.
+express = ["dep:openbim-step"]
+
+# Parses the fetched normative .exp files to compare them with the bundle.
+[[test]]
+name = "real_schemas"
+required-features = ["express", "ifc4"]
 
 [[bin]]
 name = "ifc-schema-generate"
