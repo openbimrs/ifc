@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- `door_operation` and `window_operation` given a type object (an
+  `IfcDoorType`, IFC2X3 `IfcDoorStyle`, ...) refuse it with `NotADoor` or
+  `NotAWindow`, where they returned `Property(InvalidQueryObject)`: the
+  exact property reader now accepts type objects (ifc-properties #193).
+  Results and refusals for doors and windows are unchanged.
+
 ## [0.8.0] - 2026-09-28
 
 ### Changed (breaking)

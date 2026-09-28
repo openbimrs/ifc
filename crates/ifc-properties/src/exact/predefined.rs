@@ -60,7 +60,8 @@ use super::{
 #[non_exhaustive]
 pub struct ExactPredefinedSet {
     /// Whether the set is assigned to the occurrence or inherited from its
-    /// `IfcTypeObject` (an `IfcDoorType`, or an IFC2X3 `IfcDoorStyle`).
+    /// `IfcTypeObject` (an `IfcDoorType`, or an IFC2X3 `IfcDoorStyle`); a
+    /// queried type object's own sets are `Type` of that object.
     pub source: ExactSource,
     /// Entity id of the set.
     pub set_id: EntityId,
@@ -100,7 +101,10 @@ impl ExactPredefinedSet {
 /// its [`ExactSource`], and which one governs is the caller's decision (for
 /// example the occurrence's sets when it has any, else the type's). An
 /// empty result is a proven absence of such sets. The traversal, model and
-/// assignment validation are those of [`exact_property`].
+/// assignment validation are those of [`exact_property`], so `object` may
+/// be a type object (an `IfcDoorType`, an IFC2X3 `IfcDoorStyle`), whose own
+/// `HasPropertySets` are listed with [`ExactSource::Type`] of `object`
+/// (#193).
 ///
 /// # Door and window geometry
 ///

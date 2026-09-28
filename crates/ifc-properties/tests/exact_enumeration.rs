@@ -425,12 +425,14 @@ fn model_level_refusals_are_those_of_exact_property() {
             schema: "IFC2X2_FINAL".into(),
         })
     );
+    // A property set is no object definition; a type object is queried for
+    // its own `HasPropertySets` since #193 (`exact_type_objects.rs`).
     let m = wall_model(&[]);
     assert_eq!(
-        exact_properties(&m, EntityId(2)),
+        exact_properties(&m, EntityId(20)),
         Err(ExactPropertyError::InvalidQueryObject {
-            object: EntityId(2),
-            type_name: Arc::from("IFCWALLTYPE"),
+            object: EntityId(20),
+            type_name: Arc::from("IFCPROPERTYSET"),
         })
     );
 }

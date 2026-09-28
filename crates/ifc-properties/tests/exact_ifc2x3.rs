@@ -470,13 +470,15 @@ fn ifc2x3_domains_fail_closed() {
             object: EntityId(20),
         })
     );
-    assert!(matches!(
+    // Queried itself (#193), the type is still refused for that
+    // relationship, not answered from `HasPropertySets` alone.
+    assert_eq!(
         exact_property(&type_as_occurrence, EntityId(20), None, "FireRating"),
-        Err(ExactPropertyError::InvalidQueryObject {
+        Err(ExactPropertyError::InvalidOccurrenceTarget {
+            relationship: EntityId(12),
             object: EntityId(20),
-            ..
         })
-    ));
+    );
     // IFC2X3's occurrence domain is `IfcObject`, not IFC4's
     // `IfcObjectDefinition`. The one IFC2X3 entity in between is the abstract
     // `IfcObjectDefinition` itself; an instance of it is not an occurrence.

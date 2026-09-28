@@ -163,6 +163,30 @@ fn a_non_door_is_refused() {
 }
 
 #[test]
+fn a_door_type_is_refused_as_no_door() {
+    // The exact property reader accepts a type object since
+    // ifc-properties#193; the type still has no placement or operation of
+    // its own, so it is refused here, in every release.
+    for version in [IFC4, SchemaVersion::Ifc2x3, SchemaVersion::Ifc4x3] {
+        let door = Door::new(
+            version,
+            "SINGLE_SWING_LEFT",
+            vec![(20, panel(version, 20, "SWINGING", "LEFT", Some("1.")))],
+        );
+        assert!(
+            matches!(
+                door_operation(&door.model(), DOOR_TYPE),
+                Err(DoorOperationError::NotADoor {
+                    entity: DOOR_TYPE,
+                    ..
+                })
+            ),
+            "{version:?}"
+        );
+    }
+}
+
+#[test]
 fn panels_must_match_the_operation() {
     // Wrong count.
     let mut door = swinging("DOUBLE_DOOR_SINGLE_SWING");
