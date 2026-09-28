@@ -22,15 +22,15 @@ missing_docs = "deny"
 # IFC family: versioned path dependencies build standalone and normalize to
 # registry dependencies when packages are published.
 ifc-schema = { path = "crates/ifc-schema", version = "0.2.2" }
-openbim-ifc = { path = "crates/openbim-ifc", version = "0.8.0", default-features = false }
+openbim-ifc = { path = "crates/openbim-ifc", version = "0.8.1", default-features = false }
 openbim-ifc-binding-core = { path = "crates/openbim-ifc-binding-core", version = "0.1.0" }
 ifc-step = { path = "crates/ifc-step", version = "0.3.0" }
 ifc-xml = { path = "crates/ifc-xml", version = "0.2.1" }
 ifc-model = { path = "crates/ifc-model", version = "0.2.3" }
 ifc-geometry = { path = "crates/ifc-geometry", version = "0.4.3", default-features = false }
-ifc-properties = { path = "crates/ifc-properties", version = "0.5.0" }
+ifc-properties = { path = "crates/ifc-properties", version = "0.5.1" }
 ifc-template-catalog = { path = "crates/ifc-template-catalog", version = "0.2.1" }
-ifc-cost = { path = "crates/ifc-cost", version = "0.2.1" }
+ifc-cost = { path = "crates/ifc-cost", version = "0.2.2" }
 ifc-schedule = { path = "crates/ifc-schedule", version = "0.2.0" }
 ifc-material = { path = "crates/ifc-material", version = "0.3.0" }
 ifc-style = { path = "crates/ifc-style", version = "0.3.0" }
@@ -38,13 +38,13 @@ ifc-element-type = { path = "crates/ifc-element-type", version = "0.2.0" }
 ifc-occurrence = { path = "crates/ifc-occurrence", version = "0.2.0" }
 ifc-structural = { path = "crates/ifc-structural", version = "0.2.0" }
 ifc-resource = { path = "crates/ifc-resource", version = "0.2.0" }
-ifc-classification = { path = "crates/ifc-classification", version = "0.2.0" }
+ifc-classification = { path = "crates/ifc-classification", version = "0.2.2" }
 ifc-approval = { path = "crates/ifc-approval", version = "0.2.0" }
 ifc-control = { path = "crates/ifc-control", version = "0.2.1" }
 ifc-tabular = { path = "crates/ifc-tabular", version = "0.2.1" }
 ifc-constraint = { path = "crates/ifc-constraint", version = "0.2.0" }
 ifc-georef = { path = "crates/ifc-georef", version = "0.3.0" }
-ifc-systems = { path = "crates/ifc-systems", version = "0.2.0" }
+ifc-systems = { path = "crates/ifc-systems", version = "0.2.2" }
 ifc-alignment = { path = "crates/ifc-alignment", version = "0.3.1" }
 ifc-validate = { path = "crates/ifc-validate", version = "0.3.0" }
 ifc-author = { path = "crates/ifc-author", version = "0.2.1" }
