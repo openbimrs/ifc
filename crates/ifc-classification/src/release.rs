@@ -335,4 +335,6 @@ pub fn classification_schema(model: &Model) -> ClassificationResult<SchemaVersio
 }
 
 #[cfg(test)]
+mod binding_tests;
+#[cfg(test)]
 mod tests;
