@@ -16,6 +16,7 @@
 
 mod cases;
 mod fixtures;
+mod forms;
 mod rules;
 mod structure;
 mod types;

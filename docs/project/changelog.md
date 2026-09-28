@@ -66,6 +66,31 @@ lockstep -- is archived in the
   `MultipleSchemas` or `UnsupportedSchema` where it was written before.
   The other writers of this crate carry no `IfcRoot` and are unchanged.
 
+### ifc-author
+
+### Added
+
+- `AuthorError::ValueForm`: a value of the declared type written in the
+  form ISO 10303-21 does not use for it (#199). A typed parameter
+  (`IFCAREAMEASURE(12.5)`) is refused where the declared type is not a
+  SELECT, and a bare value where it is one, for scalars and for each member
+  of an aggregate, in `EntityBuilder` and `EntityEditor`.
+
+### Changed
+
+- `EntityEditor` re-checks every slot of the projected entity, as before, so
+  editing an entity whose untouched slots already hold a value in the wrong
+  form is now refused with `ValueForm` until that slot is rewritten.
+
+### Fixed
+
+- A typed wrapper was judged against its own type only, so any wrapper
+  passed in a slot whose declared type is not a SELECT (#199). `IFCLABEL('x')`
+  in `IfcQuantityArea.AreaValue`, or in an entity-typed slot, is now a
+  `TypeMismatch`, and so is a wrapper naming a type outside a SELECT's
+  select-list, nested SELECTs included. A declared type the tables cannot
+  resolve still accepts either form.
+
 ### ifc-constraint
 
 ### Added
@@ -98,6 +123,90 @@ lockstep -- is archived in the
   without one is refused with `AuthoringRequired` on `Intent`. A header that declares several schemas, or one without a bundled
   table, is refused with `MultipleSchemas` or `UnsupportedSchema`. The
   other writers carry no `IfcRoot` and are unchanged.
+
+### ifc-control
+
+### Added
+
+- `create_control_with_owner_history` and
+  `assign_to_control_with_owner_history` (#198, #202). Each binds the
+  model's declared release (a header without `FILE_SCHEMA` binds IFC4) and
+  takes a caller-supplied `IfcOwnerHistory` id, which IFC2X3 requires on
+  every `IfcRoot`. It must be in the model or staged on the transaction
+  (`UnknownEntity` otherwise) and be an `IfcOwnerHistory`
+  (`AuthoringInvalid`). None is ever invented. In IFC4 and IFC4X3 the
+  record is the plain writer's with the reference in the optional slot.
+- `ControlError::MultipleSchemas`, `UnsupportedSchema`,
+  `AuthoringNotInSchema`, `AuthoringValueType` and `AuthoringRequired`,
+  appended to the `#[non_exhaustive]` enum, so not breaking.
+
+### Fixed
+
+- `create_control` no longer panics on an IFC2X3 `IfcPermit`,
+  `IfcActionRequest` or `IfcPerformanceHistory` (#198). It indexed IFC4
+  positions into their six-attribute IFC2X3 records. `create_control` and
+  `assign_to_control` now lay records out by attribute name from the table
+  they are given, so a value that table does not declare is refused
+  (`AuthoringNotInSchema`: an IFC2X3 permit has no `PredefinedType`,
+  `Status` or `LongDescription`), one it cannot hold is refused
+  (`AuthoringValueType`), and a required one left unset is refused
+  (`AuthoringRequired`). In IFC2X3, `identification` is written as the
+  entity's own identifier (`PermitID`, `RequestID`, `ID`), which the IFC4
+  documentation records as renamed to `Identification`.
+  **Behaviour change for IFC2X3 callers:** `IfcRoot.OwnerHistory` is
+  mandatory there, so both plain writers refuse an IFC2X3 schema with
+  `AuthoringRequired { attribute: "OwnerHistory", .. }` and stage nothing
+  (an IFC2X3 project order used to be written with `$`); use the
+  `*_with_owner_history` variants. IFC4 and IFC4X3 records are unchanged,
+  record for record.
+
+### ifc-cost
+
+### Added
+
+- `create_cost_item_with_owner_history`,
+  `create_cost_schedule_with_owner_history`,
+  `nest_cost_items_with_owner_history` and
+  `assign_schedule_items_with_owner_history` (#202). Each takes a
+  caller-supplied `IfcOwnerHistory` id, which IFC2X3 requires on every
+  `IfcRoot`. It must be in the model or staged on the transaction
+  (`MissingReference` otherwise) and be an `IfcOwnerHistory`
+  (`WrongReferenceType`). None is ever invented. In IFC4 and IFC4X3 the
+  record is the plain writer's with the reference in the optional slot.
+- `CostAuthoringError::AuthoringValueType` and
+  `CostAuthoringError::AuthoringRequired`, appended to the
+  `#[non_exhaustive]` enum, so not breaking.
+
+### Changed
+
+- `create_cost_item`, `create_cost_schedule`, `nest_cost_items` and
+  `assign_schedule_items` bind the model's declared release and lay their
+  records out by attribute name from its table (#202), as quantity
+  authoring already did. They wrote the IFC4 layout with `OwnerHistory` `$`
+  into every model, which is invalid IFC2X3. **Behaviour change for IFC2X3
+  callers:** they now refuse an IFC2X3 model with
+  `AuthoringRequired { attribute: "OwnerHistory", .. }` and stage nothing;
+  use the `*_with_owner_history` variants there. What IFC2X3 cannot hold
+  is refused, never dropped: an `Identification`, `PredefinedType` or
+  cost values on a cost item (`AuthoringNotInSchema`), a date string where
+  it declares an `IfcDateTimeSelect` (`AuthoringValueType`), and a cost
+  schedule without its required `ID` (written from `identification`) or
+  `PredefinedType` (`AuthoringRequired`). A header declaring several
+  schemas, or one without a bundled table, is refused with
+  `MultipleSchemas` or `UnsupportedSchema`. A model without `FILE_SCHEMA`
+  binds IFC4 as before. IFC4 and IFC4X3 records are unchanged, record for
+  record.
+
+### Fixed
+
+- `assign_cost_quantities` accepts every instantiable subtype of the
+  release's own `CostQuantities` declaration (`IfcPhysicalQuantity`), read
+  from its table instead of a fixed list (#203). An IFC4X3
+  `IfcQuantityNumber` was refused. IFC4 still refuses it, as IFC4 does not
+  declare it. The slot is found by name, and an IFC2X3 cost item, which
+  has no `CostQuantities`, is refused with `AuthoringNotInSchema` instead
+  of written past its five attributes. A header that binds no single
+  known release is refused as above.
 
 ### ifc-element-type
 
@@ -283,6 +392,54 @@ lockstep -- is archived in the
 
 ### ifc-schedule
 
+### Added
+
+- `create_task_with_owner_history`, `create_sequence_with_owner_history`,
+  `create_work_control_with_owner_history`,
+  `assign_tasks_to_control_with_owner_history`,
+  `nest_tasks_with_owner_history`, `create_work_calendar_with_owner_history`,
+  `create_event_with_owner_history` and `create_procedure_with_owner_history`
+  (#202). Each takes the model and a caller-supplied `IfcOwnerHistory` id,
+  which IFC2X3 requires on every `IfcRoot`. The id must be in the model or
+  staged on the transaction and must be an `IfcOwnerHistory`; a missing one
+  is refused with `MissingReference`, another entity with
+  `WrongReferenceType`. None is ever invented. Each binds the model's
+  declared release (a header without `FILE_SCHEMA` binds IFC4; several or
+  an unknown token are refused) and lays the record out by attribute name
+  from that release's table. In IFC4 and IFC4X3 the record is the plain
+  writer's with the reference in the optional slot. This follows
+  `ifc-material` (#77), `ifc-properties` (#191) and `ifc-control` (#198).
+- In IFC2X3 the variants write `Identification` as `IfcTask.TaskId` and
+  `IfcProcedure.ProcedureID`, and `PredefinedType` as
+  `IfcProcedure.ProcedureType` (renames stated in the IFC4 ADD2 TC1
+  documentation). What IFC2X3 cannot hold is refused, never dropped:
+  `IfcEvent` and `IfcWorkCalendar` (`EntityNotInSchema`); a task's
+  `LongDescription`, `TaskTime` or `PredefinedType` (`AuthoringNotInSchema`);
+  a sequence's `IfcLagTime` reference where IFC2X3 declares an
+  `IfcTimeMeasure`, and a work control's ISO 8601 dates where it declares
+  `IfcDateTimeSelect` (`AuthoringValueType`); a missing `TaskId`, `TimeLag`
+  or `ProcedureType` (`AuthoringRequired`); and a `USERDEFINED` procedure,
+  whose IFC2X3 WR4 needs a `UserDefinedProcedureType` the draft cannot
+  carry (`InvalidValue`). Enumeration tokens are checked against the bound
+  release, so an IFC4X3-only `IfcTaskTypeEnum` token is refused in IFC4.
+- `ScheduleAuthoringError::MultipleSchemas`, `UnsupportedSchema`,
+  `EntityNotInSchema`, `AuthoringNotInSchema`, `AuthoringValueType`,
+  `AuthoringRequired`, `MissingReference` and `WrongReferenceType`, appended
+  after `InvalidValue`. The enum is `#[non_exhaustive]`, so this is not
+  breaking. `SchemaVersion` is re-exported, which they name. The crate now
+  depends on `ifc-schema` for the bundled release tables.
+
+### Changed
+
+- The plain `IfcRoot` writers (`create_task`, `create_sequence`,
+  `create_work_control`, `assign_tasks_to_control`, `nest_tasks`,
+  `create_work_calendar`, `create_event`, `create_procedure`) take no model
+  and so cannot see the declared release. Their signatures and output are
+  unchanged: the layout IFC4 and IFC4X3 share, with `OwnerHistory` written
+  `$`. They are now documented as IFC4/IFC4X3 only; in IFC2X3, where that
+  record is invalid, use the `*_with_owner_history` variants (#202).
+  `create_recurrence_pattern` moved to its own module; its path and
+  behaviour are unchanged.
 ### Fixed
 
 - `create_lag_time` writes `IfcLagTime.LagValue` as the member of
@@ -301,6 +458,72 @@ lockstep -- is archived in the
   `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
+
+### ifc-spatial
+
+### Added
+
+- A `*_with_owner_history` variant of every `IfcRoot` writer (#202):
+  `create_spatial_element`, `create_project`, `aggregate`, `contain`,
+  `create_external_spatial_element`, `create_project_library`,
+  `create_space_boundary`, `connect_path_elements`, `create_facility`, and
+  in `authoring` `cover_elements`, `cover_spaces`, `declare`,
+  `define_by_object`, `serve_buildings`, `control_flow_element`,
+  `assign_to_actor`, `assign_to_product`, `assign_to_process`,
+  `assign_to_group_by_factor`, `assign_to_resource`, `connect_elements`,
+  `connect_with_realizing_elements`, `interfere_elements`, `void_element`,
+  `fill_element`, `project_element`, `adhere_to_element`,
+  `position_products` and `associate_profile_def`. Each takes the model
+  and a caller-supplied `IfcOwnerHistory` id, which IFC2X3 requires on
+  every `IfcRoot`; the id must be in the model or staged on the
+  transaction and be an `IfcOwnerHistory`, and none is ever invented. Each
+  binds the model's declared release as `ifc-material` (#77),
+  `ifc-properties` (#191) and `ifc-classification` (#194) do (no
+  `FILE_SCHEMA` binds IFC4) and lays the record out by attribute name
+  from that release's table: IFC2X3 `IfcRelCoversSpaces.RelatingSpace` is
+  written as `RelatedSpace`, IFC4's name for the same attribute. What the
+  release cannot hold is refused: entities it does not declare
+  (`IfcRelDeclares`, `IfcRelDefinesByObject`,
+  `IfcRelAssignsToGroupByFactor`, `IfcRelInterferesElements`,
+  `IfcExternalSpatialElement`, `IfcProjectLibrary` and the 1st- and
+  2nd-level space boundaries in IFC2X3; `IfcRelAdheresToElement`,
+  `IfcRelPositions`, `IfcRelAssociatesProfileDef` and the facilities
+  outside IFC4X3), enumeration tokens outside its table, and attributes it
+  requires but the call cannot supply (IFC2X3 `CompositionType`,
+  `IfcSpace.InteriorOrExteriorSpace`, `IfcProject.RepresentationContexts`).
+  In IFC4 and IFC4X3 each variant writes the plain writer's record with
+  the reference in slot 1.
+- `SpatialAuthoringError::MultipleSchemas`, `UnsupportedSchema`,
+  `EntityNotInSchema`, `AuthoringNotInSchema`, `AuthoringValueType`,
+  `AuthoringRequired`, `MissingReference` and `WrongReferenceType`, and
+  `FacilityError::Authoring` wrapping them (#202). Both enums are
+  `#[non_exhaustive]`, so this is not breaking.
+
+### Changed
+
+- `create_space_boundary` binds the model's declared release and lays its
+  record out by attribute name (#202). It wrote the IFC4 layout with
+  `OwnerHistory` `$` into every model, and IFC2X3 requires the owner
+  history. **Behaviour change for IFC2X3 callers:** it now refuses an
+  IFC2X3 model with `SpatialAuthoringError::AuthoringRequired { attribute:
+  "OwnerHistory", .. }` and stages nothing; use
+  `create_space_boundary_with_owner_history`. It also refuses a header
+  declaring several schemas (`MultipleSchemas`) or one without a bundled
+  table (`UnsupportedSchema`), an IFC2X3 1st- or 2nd-level boundary
+  (`EntityNotInSchema`) and a token the release does not declare, such as
+  IFC2X3 `EXTERNAL_EARTH` (`AuthoringValueType`). IFC4 and IFC4X3 records
+  are unchanged, slot for slot.
+
+### Documented
+
+- The writers that take no model cannot see the release: they write the
+  IFC4/IFC4X3 layout with `OwnerHistory` `$` and are documented as
+  IFC4/IFC4X3 only, pointing to their `*_with_owner_history` variant.
+  Their output is unchanged. Four of them disagree with the release's
+  arity, which the tests pin and the variants do not repeat:
+  `assign_to_actor` and `assign_to_process` write seven of eight
+  attributes, `connect_with_realizing_elements` eight of nine, and
+  `interfere_elements` ten where IFC4 declares nine.
 
 ### ifc-structural
 
@@ -332,6 +555,91 @@ lockstep -- is archived in the
   It is now `stage_boundary_condition_in` with the bundled IFC4 table, so it
   is still not correct in IFC2X3; its docs point IFC2X3 callers to the new
   writer. The readers accept a bare and a typed value, as before.
+
+### ifc-systems
+
+### Added
+
+- A release-bound `*_with_owner_history` variant of every systems writer
+  (#202): `create_system_with_owner_history`,
+  `create_port_with_owner_history`, `assign_to_group_with_owner_history`,
+  `nest_ports_with_owner_history`,
+  `connect_port_to_element_with_owner_history`,
+  `connect_ports_with_owner_history`,
+  `contain_in_spatial_structure_with_owner_history`,
+  `reference_in_spatial_structure_with_owner_history`,
+  `create_group_with_owner_history`,
+  `authoring::create_distribution_element_with_owner_history`,
+  `authoring::create_zone_with_owner_history`,
+  `authoring::create_spatial_zone_with_owner_history` and
+  `create_classified_system_with_owner_history`. Each takes the model and a
+  caller-supplied `IfcOwnerHistory` id, which IFC2X3 requires on every
+  `IfcRoot`. The id must be in the model or staged on the transaction and
+  be an `IfcOwnerHistory`; none is ever invented. Each binds the model's
+  declared release (a header without `FILE_SCHEMA` binds IFC4, as the other
+  crates do), runs the plain writer's checks, and lays the record out by
+  attribute name from that release's table. So an IFC2X3
+  `IfcDistributionPort` has eight attributes and an IFC2X3 `IfcZone` five.
+  Enumeration tokens are checked against the release's own table (IFC4
+  refuses the IFC4X3 `IfcSpatialZoneTypeEnum` tokens). In IFC4 and IFC4X3 a
+  variant writes the plain writer's record with the reference in the
+  optional slot. `create_classified_system_with_owner_history` binds the
+  model's release instead of taking a schema argument.
+- `SystemAuthoringError::MultipleSchemas`, `UnsupportedSchema`,
+  `EntityNotInSchema`, `AuthoringNotInSchema`, `AuthoringValueType`,
+  `AuthoringRequired`, `MissingReference` and `WrongReferenceType`, for the
+  variants' refusals: a header binding no single known release, an entity
+  or attribute the release does not declare (IFC2X3 `IfcSpatialZone`,
+  `IfcZone.LongName`; `IfcBuiltSystem` outside IFC4X3), a value it cannot
+  hold, a required attribute left unset, and a missing or wrong-type owner
+  history. `SystemAuthoringError` is `#[non_exhaustive]` and the variants are
+  appended, so this is not breaking. Nothing is staged on a refusal.
+
+### Documented
+
+- The plain writers take no model, so they cannot see the release: they
+  still write the IFC4/IFC4X3 layout with `OwnerHistory` `$`, unchanged, and
+  are documented as IFC4/IFC4X3 only, pointing to their variant. IFC2X3
+  declares none of the classified-system entities, so
+  `create_classified_system` never wrote an IFC2X3 record.
+
+### ifc-validate
+
+### Added
+
+- The form of every value is checked against ISO 10303-21:2016 (#199): a
+  typed parameter is written exactly where the declared type is a SELECT
+  (§12.1.8), and the bare value everywhere else (§12.1.6, §12.1.7). Three
+  new rule ids, all errors, each pinned by adversarial fixture pairs:
+  - `type.typed.outside_select`: a typed parameter of the declared type,
+    or of a specialisation of it, where the declared type is not a SELECT.
+    `IFCAREAMEASURE(12.5)` in `IfcQuantityArea.AreaValue` is reported; it
+    used to pass because the payload was judged against the wrapper alone.
+  - `type.typed.wrong_type`: a typed parameter of another type there.
+    `IFCLABEL('x')` in `AreaValue` used to pass as well.
+  - `type.select.untyped`: a bare value that is not a reference where the
+    declared type is a SELECT, such as `NominalValue : IfcValue` written
+    `1.` instead of `IFCREAL(1.)`. Part 21 requires the typed form for every
+    SELECT, not only ambiguous ones. A SELECT of entities alone still
+    reports `type.entity.expected_reference`.
+
+  All three apply to aggregate members against the element type, and to
+  the parameter inside a typed wrapper against the wrapper's type. Whether
+  the declared type is a SELECT follows defined-type aliases, as §12.1.8
+  EXAMPLE 2 encodes a type aliasing a SELECT. They are errors, not warnings,
+  although many readers unwrap a well-typed wrapper: the file is not legal,
+  and `ifcopenshell.validate` rejects both forms. The reasoning is in the
+  `type_check` module docs.
+- `type_check::Mismatch` has the variants `TypedOutsideSelect`,
+  `TypedWrongType` and `UntypedSelectValue`.
+
+### Changed
+
+- `type.select.member` walks only nested SELECTs, never the underlying
+  type of a defined type in the select-list: §12.1.8 requires the keyword
+  to name a type the SELECT, or a SELECT nested in it, lists. `IFCRATIOMEASURE(0.5)` in an
+  `IfcColourOrFactor` slot, which lists `IfcNormalisedRatioMeasure`, is now
+  reported.
 
 ## [0.8.1] - 2026-09-28
 

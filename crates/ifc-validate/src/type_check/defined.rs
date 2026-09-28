@@ -1,12 +1,17 @@
 //! Values checked against the defined type declared for their slot.
+//!
+//! Both what a value is and the form it is written in are judged: Part 21
+//! writes a typed parameter exactly where the declared type is a SELECT, and
+//! a bare value everywhere else (see `typed`).
 
 use ifc_model::Value;
-use ifc_schema::{Schema, TypeKind};
+use ifc_schema::Schema;
 
 use super::aggregate::element_type;
 use super::enumeration;
 use super::scalar::{describe_value, primitive_of, FixedWidth};
 use super::select;
+use super::typed::wrapper_fits;
 
 /// How deeply nested aggregates are descended into.
 ///
@@ -55,6 +60,32 @@ pub enum Mismatch {
         /// What the file wrote, in words.
         actual: &'static str,
     },
+    /// A typed parameter of the declared type, or of a specialisation of
+    /// it, where the declared type is not a SELECT. ISO 10303-21:2016
+    /// §12.1.6 writes such a value bare.
+    TypedOutsideSelect {
+        /// The wrapper type as written.
+        written: String,
+        /// The non-SELECT type the slot declares.
+        declared: String,
+    },
+    /// A typed parameter whose type is not the declared non-SELECT type:
+    /// the wrong form and the wrong type.
+    TypedWrongType {
+        /// The wrapper type as written.
+        written: String,
+        /// The non-SELECT type the slot declares.
+        declared: String,
+    },
+    /// A bare value where the declared type is a SELECT. ISO 10303-21:2016
+    /// §12.1.8 writes every value of a SELECT that is not an entity instance
+    /// as a typed parameter naming its type.
+    UntypedSelectValue {
+        /// The SELECT the slot declares.
+        select: String,
+        /// What the file wrote, in words.
+        actual: &'static str,
+    },
 }
 
 /// Checks one value against one declared type name.
@@ -66,7 +97,8 @@ pub enum Mismatch {
 /// counted once, in the where-rule registry.
 ///
 /// The members of an aggregate are checked against its element type, and
-/// the first mismatching member is reported. Which *entity* a reference
+/// the first mismatching member is reported. The form is judged too: a typed
+/// parameter outside a SELECT, and a bare value inside one. Which *entity* a reference
 /// points at needs the model, so it is judged by
 /// [`crate::structure::wrong_kind_references`] for entity-typed slots and by
 /// [`super::attribute_types`] for SELECTs; this function judges only that a
@@ -97,6 +129,17 @@ fn check_nested(schema: &Schema, declared: &str, value: &Value, depth: usize) ->
             declared: declared.to_string(),
             actual: describe_value(other),
         }),
+        other
+            if !matches!(other, Value::Typed { .. })
+                && select::resolve_select(schema, declared).is_some() =>
+        {
+            // Every non-entity value of a SELECT names its type (§12.1.8).
+            // A SELECT of entities alone was answered above.
+            Some(Mismatch::UntypedSelectValue {
+                select: declared.to_string(),
+                actual: describe_value(other),
+            })
+        }
         Value::Enum(member) => match enumeration::is_member(schema, declared, member) {
             Some(true) | None => None,
             Some(false) => Some(Mismatch::EnumMember {
@@ -106,18 +149,7 @@ fn check_nested(schema: &Schema, declared: &str, value: &Value, depth: usize) ->
                     .unwrap_or_default(),
             }),
         },
-        Value::Typed { type_name, value } => {
-            // A typed wrapper in a SELECT slot must name a SELECT member.
-            if let Some(false) = select::accepts(schema, declared, type_name) {
-                return Some(Mismatch::SelectMember {
-                    written: type_name.to_string(),
-                    select: declared.to_string(),
-                });
-            }
-            // Otherwise the wrapper names the real type: check the payload
-            // against it rather than against the slot's declared type.
-            check_nested(schema, type_name, value, depth)
-        }
+        Value::Typed { type_name, value } => typed(schema, declared, type_name, value, depth),
         Value::Text(text) => {
             // A fixed-width string is wrong at any other length, even when
             // it is a perfectly good string. `IfcGloballyUniqueId` is
@@ -133,6 +165,45 @@ fn check_nested(schema: &Schema, declared: &str, value: &Value, depth: usize) ->
             primitive_mismatch(schema, declared, value)
         }
         other => primitive_mismatch(schema, declared, other),
+    }
+}
+
+/// A typed parameter `type_name(inner)` written in a `declared` slot.
+///
+/// In a SELECT slot the wrapper must name a member of the select-list. In
+/// any other slot a wrapper is the wrong form (§12.1.6): of the wrong type
+/// when it does not name the declared type, and otherwise reported only if
+/// its parameter is sound, so a bad parameter's finding is not masked. The
+/// parameter is judged against the wrapper's type, which is what it claims
+/// to be.
+fn typed(
+    schema: &Schema,
+    declared: &str,
+    type_name: &str,
+    inner: &Value,
+    depth: usize,
+) -> Option<Mismatch> {
+    if select::resolve_select(schema, declared).is_some() {
+        if select::accepts(schema, declared, type_name) == Some(false) {
+            return Some(Mismatch::SelectMember {
+                written: type_name.to_string(),
+                select: declared.to_string(),
+            });
+        }
+        return check_nested(schema, type_name, inner, depth);
+    }
+    match wrapper_fits(schema, type_name, declared) {
+        Some(false) => Some(Mismatch::TypedWrongType {
+            written: type_name.to_string(),
+            declared: declared.to_string(),
+        }),
+        Some(true) => check_nested(schema, type_name, inner, depth).or_else(|| {
+            Some(Mismatch::TypedOutsideSelect {
+                written: type_name.to_string(),
+                declared: declared.to_string(),
+            })
+        }),
+        None => check_nested(schema, type_name, inner, depth),
     }
 }
 
@@ -156,9 +227,7 @@ fn requires_reference(schema: &Schema, declared: &str, value: &Value) -> bool {
 /// primitive does not, and a reference there is a type error however valid
 /// its target is.
 fn reference_in_value_slot(schema: &Schema, declared: &str, reference: &Value) -> Option<Mismatch> {
-    let is_select = schema
-        .type_def(declared)
-        .is_some_and(|definition| matches!(definition.kind, TypeKind::Select(_)));
+    let is_select = select::resolve_select(schema, declared).is_some();
     if schema.entity(declared).is_some() || is_select {
         return None;
     }
@@ -227,8 +296,12 @@ mod tests {
             check(schema, "IfcActorSelect", &Value::Text("me".into())),
             Some(Mismatch::ExpectedReference { .. })
         ));
-        // A SELECT that also takes values leaves an untyped value alone.
-        assert_eq!(check(schema, "IfcValue", &Value::Real(1.0)), None);
+        // A SELECT that also takes values needs the typed form instead
+        // (ISO 10303-21:2016 §12.1.8), which is a different finding.
+        assert!(matches!(
+            check(schema, "IfcValue", &Value::Real(1.0)),
+            Some(Mismatch::UntypedSelectValue { .. })
+        ));
     }
 
     #[test]

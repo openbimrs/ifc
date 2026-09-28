@@ -108,6 +108,27 @@ pub enum AuthorError {
         /// Number of attributes present in the model.
         found: usize,
     },
+    /// A value of the declared type, written in the form ISO 10303-21 does
+    /// not use for it.
+    ///
+    /// A typed parameter (`IFCAREAMEASURE(12.5)`) is written exactly where the
+    /// declared type is a SELECT, which needs it to say which member the
+    /// value is (§12.1.8); everywhere else the bare value is written
+    /// (§12.1.6, §12.1.7). A wrapper naming a different type than the one
+    /// declared is a [`TypeMismatch`](Self::TypeMismatch) instead.
+    ValueForm {
+        /// The entity being built or edited.
+        entity: String,
+        /// The attribute that was set.
+        attribute: String,
+        /// The declared type, or the element type of a declared aggregate.
+        declared: String,
+        /// Whether the declared type requires the typed form: `true` for a
+        /// bare value in a SELECT slot, `false` for a wrapper elsewhere.
+        typed_required: bool,
+        /// What the supplied value actually was.
+        found: String,
+    },
 }
 
 impl fmt::Display for AuthorError {
@@ -141,6 +162,28 @@ impl fmt::Display for AuthorError {
             } => write!(
                 f,
                 "`{entity}.{attribute}` expects {expected}, found {found}"
+            ),
+            Self::ValueForm {
+                entity,
+                attribute,
+                declared,
+                typed_required: true,
+                found,
+            } => write!(
+                f,
+                "`{entity}.{attribute}` is declared {declared}, a SELECT, so a value \
+                 must be written as a typed parameter naming its type; found {found}"
+            ),
+            Self::ValueForm {
+                entity,
+                attribute,
+                declared,
+                typed_required: false,
+                found,
+            } => write!(
+                f,
+                "`{entity}.{attribute}` is declared {declared}, which is not a SELECT, \
+                 so its value is written bare; found {found}"
             ),
             Self::AggregateMismatch {
                 entity,

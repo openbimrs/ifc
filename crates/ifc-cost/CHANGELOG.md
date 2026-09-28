@@ -12,6 +12,52 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `create_cost_item_with_owner_history`,
+  `create_cost_schedule_with_owner_history`,
+  `nest_cost_items_with_owner_history` and
+  `assign_schedule_items_with_owner_history` (#202). Each takes a
+  caller-supplied `IfcOwnerHistory` id, which IFC2X3 requires on every
+  `IfcRoot`. It must be in the model or staged on the transaction
+  (`MissingReference` otherwise) and be an `IfcOwnerHistory`
+  (`WrongReferenceType`). None is ever invented. In IFC4 and IFC4X3 the
+  record is the plain writer's with the reference in the optional slot.
+- `CostAuthoringError::AuthoringValueType` and
+  `CostAuthoringError::AuthoringRequired`, appended to the
+  `#[non_exhaustive]` enum, so not breaking.
+
+### Changed
+
+- `create_cost_item`, `create_cost_schedule`, `nest_cost_items` and
+  `assign_schedule_items` bind the model's declared release and lay their
+  records out by attribute name from its table (#202), as quantity
+  authoring already did. They wrote the IFC4 layout with `OwnerHistory` `$`
+  into every model, which is invalid IFC2X3. **Behaviour change for IFC2X3
+  callers:** they now refuse an IFC2X3 model with
+  `AuthoringRequired { attribute: "OwnerHistory", .. }` and stage nothing;
+  use the `*_with_owner_history` variants there. What IFC2X3 cannot hold
+  is refused, never dropped: an `Identification`, `PredefinedType` or
+  cost values on a cost item (`AuthoringNotInSchema`), a date string where
+  it declares an `IfcDateTimeSelect` (`AuthoringValueType`), and a cost
+  schedule without its required `ID` (written from `identification`) or
+  `PredefinedType` (`AuthoringRequired`). A header declaring several
+  schemas, or one without a bundled table, is refused with
+  `MultipleSchemas` or `UnsupportedSchema`. A model without `FILE_SCHEMA`
+  binds IFC4 as before. IFC4 and IFC4X3 records are unchanged, record for
+  record.
+
+### Fixed
+
+- `assign_cost_quantities` accepts every instantiable subtype of the
+  release's own `CostQuantities` declaration (`IfcPhysicalQuantity`), read
+  from its table instead of a fixed list (#203). An IFC4X3
+  `IfcQuantityNumber` was refused. IFC4 still refuses it, as IFC4 does not
+  declare it. The slot is found by name, and an IFC2X3 cost item, which
+  has no `CostQuantities`, is refused with `AuthoringNotInSchema` instead
+  of written past its five attributes. A header that binds no single
+  known release is refused as above.
+
 ## [0.2.2] - 2026-09-28
 
 ### Added

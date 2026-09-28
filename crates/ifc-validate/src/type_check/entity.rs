@@ -127,6 +127,27 @@ pub fn attribute_types(model: &Model, schema: &Schema, report: &mut Report) {
                         attribute.name
                     ),
                 ),
+                Mismatch::TypedOutsideSelect { written, declared } => Finding::error(
+                    "type.typed.outside_select",
+                    path,
+                    format!(
+                        "{declared} is not a SELECT, so its value is written bare, \
+                         not as the typed parameter {written}(...)"
+                    ),
+                ),
+                Mismatch::TypedWrongType { written, declared } => Finding::error(
+                    "type.typed.wrong_type",
+                    path,
+                    format!("{written} is not {declared}, and {declared} is not a SELECT"),
+                ),
+                Mismatch::UntypedSelectValue { select, actual } => Finding::error(
+                    "type.select.untyped",
+                    path,
+                    format!(
+                        "{select} is a SELECT, so a value that is not a reference is \
+                         written as a typed parameter; the file wrote {actual}"
+                    ),
+                ),
             };
             report.push(finding);
         }

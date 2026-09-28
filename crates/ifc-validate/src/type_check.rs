@@ -5,6 +5,7 @@
 //! - `scalar`: EXPRESS primitives and the forms they accept
 //! - `enumeration`: enumeration membership
 //! - `select`: SELECT membership as a graph walk
+//! - `typed`: the form a value must take -- typed parameter or bare
 //! - `aggregate`: the element type an aggregate value is checked against
 //! - `defined`: one value against one declared type
 //! - `entity`: the per-entity sweep that reports findings
@@ -15,6 +16,7 @@ mod entity;
 mod enumeration;
 mod scalar;
 mod select;
+mod typed;
 
 pub(crate) use aggregate::{aliased_aggregate, element_type};
 pub use defined::{check as check_value, Mismatch};

@@ -35,7 +35,8 @@ pub enum ControlError {
         /// Missing identifier.
         id: EntityId,
     },
-    /// Draft value is invalid before staging.
+    /// Draft value is invalid before staging, including an `OwnerHistory`
+    /// that is not an `IfcOwnerHistory`.
     #[error("cannot author {entity}.{attribute}: {value}")]
     AuthoringInvalid {
         /// Entity kind.
@@ -66,6 +67,58 @@ pub enum ControlError {
         schema: String,
         /// Entity that is not declared.
         entity: &'static str,
+    },
+    /// The model's header declares several schemas; release-bound
+    /// authoring binds to exactly one.
+    #[error("the header declares {schemas} schemas; authoring binds to exactly one")]
+    MultipleSchemas {
+        /// Number of `FILE_SCHEMA` declarations.
+        schemas: usize,
+    },
+    /// The model's header declares one schema with no bundled table, so no
+    /// layout can be trusted.
+    #[error("the header declares {schema}, which has no bundled table")]
+    UnsupportedSchema {
+        /// The `FILE_SCHEMA` token as written.
+        schema: String,
+    },
+    /// A draft supplied a value for an attribute the release does not
+    /// declare, such as a `PredefinedType` for an IFC2X3 `IfcPermit`. It is
+    /// refused rather than dropped.
+    #[error("cannot author {entity}.{attribute}: not declared by {schema}")]
+    AuthoringNotInSchema {
+        /// Entity kind.
+        entity: &'static str,
+        /// The attribute, by its IFC4 name.
+        attribute: &'static str,
+        /// Schema name.
+        schema: String,
+    },
+    /// A draft supplied a value the release's declaration of the attribute
+    /// cannot hold.
+    #[error("cannot author {entity}.{attribute}: {schema} declares it {declared}")]
+    AuthoringValueType {
+        /// Entity kind.
+        entity: &'static str,
+        /// The attribute, by its IFC4 name.
+        attribute: &'static str,
+        /// The type the release declares.
+        declared: String,
+        /// Schema name.
+        schema: String,
+    },
+    /// The release requires an attribute the call leaves unset, such as the
+    /// IFC2X3 `IfcRoot.OwnerHistory` (#198, #202) or `IfcPermit.PermitID`.
+    /// It is refused rather than written as `$`; the `*_with_owner_history`
+    /// writers take the `IfcOwnerHistory` IFC2X3 needs.
+    #[error("cannot author {entity}: {schema} requires {attribute}")]
+    AuthoringRequired {
+        /// Entity kind.
+        entity: &'static str,
+        /// The attribute, by the release's own name.
+        attribute: String,
+        /// Schema name.
+        schema: String,
     },
 }
 

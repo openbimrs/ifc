@@ -778,6 +778,7 @@ version = "0.2.1"
 dependencies = [
  "ifc-model",
  "ifc-schema",
+ "ifc-step",
  "thiserror",
 ]
 
@@ -892,6 +893,7 @@ name = "ifc-schedule"
 version = "0.2.0"
 dependencies = [
  "ifc-model",
+ "ifc-schema",
  "ifc-step",
 ]
 

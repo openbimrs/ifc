@@ -17,6 +17,19 @@
 //! slot 7, so a writer that assumes the common tail would file the
 //! phase as a status.
 //!
+//! The positions above are IFC4's. IFC2X3 declares an `IfcControl`
+//! without `Identification`, and each control its own tail (#198):
+//!
+//! ```text
+//! IFC2X3_TC1  IfcPermit              ... ObjectType, PermitID
+//! IFC2X3_TC1  IfcActionRequest       ... ObjectType, RequestID
+//! IFC2X3_TC1  IfcProjectOrder        ... ObjectType, ID, PredefinedType, Status
+//! IFC2X3_TC1  IfcPerformanceHistory  ... ObjectType, LifeCyclePhase
+//! ```
+//!
+//! So records are laid out by attribute name from the release's own table
+//! (`release.rs`), never by these positions.
+//!
 //! # USERDEFINED
 //!
 //! These entities declare no WHERE rules. The `USERDEFINED` token
@@ -32,10 +45,11 @@
 //! deliberately no separate entity or `ControlKind` for it.
 
 use ifc_model::guid::Guid;
-use ifc_model::{Entity, EntityId, Transaction, Value};
+use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 use ifc_schema::Schema;
 
 use crate::error::{ControlError, ControlResult};
+use crate::release::{bind, Release};
 
 /// `IfcPermitTypeEnum`.
 const PERMIT: &[&str] = &["ACCESS", "BUILDING", "WORK", "USERDEFINED", "NOTDEFINED"];
@@ -117,17 +131,6 @@ impl ControlKind {
             Self::PerformanceHistory => PERFORMANCE_HISTORY,
         }
     }
-
-    /// Slot holding `PredefinedType`.
-    ///
-    /// `IfcPerformanceHistory` puts it at 7, after the required
-    /// `LifeCyclePhase`; the others at 6.
-    const fn predefined_slot(self) -> usize {
-        match self {
-            Self::PerformanceHistory => 7,
-            _ => 6,
-        }
-    }
 }
 
 /// Attributes shared by every control.
@@ -172,11 +175,14 @@ fn blank(value: Option<&str>) -> bool {
     value.is_none_or(|v| v.trim().is_empty())
 }
 
-/// Stage one control record.
+/// Stage one control record, laid out by attribute name in `schema`.
 ///
-/// The arity is taken from `schema`, not hardcoded, so a schema that
-/// declares a different tail produces a correctly-sized record
-/// instead of a silently truncated one.
+/// `OwnerHistory` is left unset, which IFC4 and IFC4X3 allow. IFC2X3
+/// requires it, so an IFC2X3 `schema` is refused with
+/// [`ControlError::AuthoringRequired`] instead of written as `$`; use
+/// [`create_control_with_owner_history`] there. Before #198 an IFC2X3
+/// `IfcPermit`, `IfcActionRequest` or `IfcPerformanceHistory` panicked
+/// here, indexing past their six declared attributes.
 ///
 /// # Errors
 ///
@@ -185,7 +191,12 @@ fn blank(value: Option<&str>) -> bool {
 /// `life_cycle_phase` on an entity that does not declare it and a
 /// missing one on `IfcPerformanceHistory`; `status` or
 /// `long_description` on `IfcPerformanceHistory`; and an entity the
-/// schema does not declare.
+/// schema does not declare. Against the release's own table: a value
+/// the entity does not declare there (`AuthoringNotInSchema`, such as an
+/// IFC2X3 `PredefinedType` on a permit), one it cannot hold
+/// (`AuthoringValueType`), and a required one left unset
+/// (`AuthoringRequired`, such as the IFC2X3 `OwnerHistory` or
+/// `PermitID`). Nothing is staged on an error.
 pub fn create_control(
     tx: &mut Transaction,
     schema: &Schema,
@@ -194,11 +205,73 @@ pub fn create_control(
     predefined_type: Option<&str>,
     draft: ControlDraft<'_>,
 ) -> ControlResult<EntityId> {
+    let release = Release::of_schema(schema);
+    let record = control_record(
+        release,
+        kind,
+        global_id,
+        predefined_type,
+        draft,
+        Value::Null,
+    )?;
+    Ok(tx.create(record))
+}
+
+/// [`create_control`] in `model`'s declared release, with a caller-supplied
+/// `IfcOwnerHistory`, which IFC2X3 requires (#198, #202).
+///
+/// The release is bound from `FILE_SCHEMA` (none binds IFC4). In IFC2X3
+/// `Identification` is written as the entity's own identifier
+/// (`PermitID`, `RequestID`, `ID`), which IFC2X3 requires; IFC2X3 declares
+/// no `PredefinedType` for a permit, an action request or a performance
+/// history, no `Status` for a permit or an action request, and no
+/// `LongDescription` at all. In IFC4 and IFC4X3 the record is that of
+/// [`create_control`] with the reference in the optional slot. The
+/// owner history is never invented: build it with `ifc-author`.
+///
+/// # Errors
+///
+/// Those of [`create_control`] except the IFC2X3 refusal, and:
+/// [`ControlError::MultipleSchemas`] or [`ControlError::UnsupportedSchema`]
+/// if the model binds no single known release;
+/// [`ControlError::UnknownEntity`] if `owner_history` is neither in the
+/// model nor staged; [`ControlError::AuthoringInvalid`] if it is not an
+/// `IfcOwnerHistory`. Nothing is staged on an error.
+pub fn create_control_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    kind: ControlKind,
+    global_id: &str,
+    predefined_type: Option<&str>,
+    draft: ControlDraft<'_>,
+    owner_history: EntityId,
+) -> ControlResult<EntityId> {
+    let release = bind(model)?;
+    let record = control_record(
+        release,
+        kind,
+        global_id,
+        predefined_type,
+        draft,
+        Value::Ref(owner_history),
+    )?;
+    release.require_owner_history(tx, model, kind.type_name(), owner_history)?;
+    Ok(tx.create(record))
+}
+
+/// Validate a draft and lay its record out in `release`.
+fn control_record(
+    release: Release<'_>,
+    kind: ControlKind,
+    global_id: &str,
+    predefined_type: Option<&str>,
+    draft: ControlDraft<'_>,
+    owner_history: Value,
+) -> ControlResult<Entity> {
     let entity = kind.type_name();
-    let declared = schema.attributes(entity);
-    if declared.is_empty() {
+    if release.schema().attributes(entity).is_empty() {
         return Err(ControlError::UnsupportedEntity {
-            schema: schema.name().to_owned(),
+            schema: release.schema().name().to_owned(),
             entity,
         });
     }
@@ -239,31 +312,26 @@ pub fn create_control(
         return Err(invalid(entity, "LifeCyclePhase", "not declared"));
     }
 
-    let mut attrs = vec![Value::Null; declared.len()];
-    attrs[0] = Value::Text(global_id.into());
-    attrs[2] = text(draft.name);
-    attrs[3] = text(draft.description);
-    attrs[4] = text(draft.object_type);
-    attrs[5] = text(draft.identification);
+    // Placed by name from the release's own table: IFC2X3 declares six
+    // attributes for a permit, where IFC4 declares nine. Indexing by the
+    // IFC4 positions is what panicked (#198).
+    let mut values = vec![
+        ("GlobalId", Value::Text(global_id.into())),
+        ("OwnerHistory", owner_history),
+        ("Name", text(draft.name)),
+        ("Description", text(draft.description)),
+        ("ObjectType", text(draft.object_type)),
+        ("Identification", text(draft.identification)),
+        (
+            "PredefinedType",
+            predefined_type.map_or(Value::Null, |t| Value::Enum(t.into())),
+        ),
+    ];
     if history {
-        attrs[6] = text(draft.life_cycle_phase);
+        values.push(("LifeCyclePhase", text(draft.life_cycle_phase)));
     } else {
-        // Indexing is bounded by the schema's own count rather than the
-        // 9 slots IFC4 happens to declare: a panic here would turn a
-        // schema difference into a crash instead of a refusal.
-        let tail = [
-            (7, "Status", draft.status),
-            (8, "LongDescription", draft.long_description),
-        ];
-        for (slot, attribute, value) in tail {
-            if let Some(cell) = attrs.get_mut(slot) {
-                *cell = text(value);
-            } else if value.is_some() {
-                return Err(invalid(entity, attribute, "not declared"));
-            }
-        }
+        values.push(("Status", text(draft.status)));
+        values.push(("LongDescription", text(draft.long_description)));
     }
-    attrs[kind.predefined_slot()] = predefined_type.map_or(Value::Null, |t| Value::Enum(t.into()));
-
-    Ok(tx.create(Entity::new(entity, attrs)))
+    release.record(entity, values)
 }

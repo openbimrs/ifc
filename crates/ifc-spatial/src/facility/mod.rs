@@ -16,7 +16,10 @@
 mod table;
 
 use ifc_model::guid::Guid;
-use ifc_model::{Entity, EntityId, Transaction, Value};
+use ifc_model::{Entity, EntityId, Model, Transaction, Value};
+
+use crate::authoring::release::stage;
+use crate::authoring::SpatialAuthoringError;
 
 pub use table::{ALL, IFCBRIDGE, IFCBRIDGEPART, IFCFACILITY, IFCFACILITYPARTCOMMON};
 pub use table::{IFCMARINEFACILITY, IFCMARINEPART, IFCRAILWAY, IFCRAILWAYPART};
@@ -89,6 +92,9 @@ pub enum FacilityError {
         /// Which attribute was `USERDEFINED`.
         attribute: &'static str,
     },
+    /// Refused against the model's declared release or its owner history,
+    /// by [`create_facility_with_owner_history`] (#202).
+    Authoring(SpatialAuthoringError),
 }
 
 impl core::fmt::Display for FacilityError {
@@ -113,6 +119,7 @@ impl core::fmt::Display for FacilityError {
             Self::UnexpectedUsageType { entity } => {
                 write!(f, "{entity} declares no UsageType")
             }
+            Self::Authoring(error) => error.fmt(f),
             Self::UserDefinedWithoutObjectType { entity, attribute } => {
                 write!(
                     f,
@@ -165,6 +172,10 @@ fn names_itself(draft: &FacilityDraft<'_>) -> bool {
 /// `kind` carries its own slot layout and its own enum, so a part and a
 /// facility cannot be confused for one another.
 ///
+/// IFC4X3 only, as are the classes: it writes the IFC4X3 layout with
+/// `OwnerHistory` `$`. [`create_facility_with_owner_history`] binds the
+/// model's declared release and takes an `IfcOwnerHistory`.
+///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId; a `PredefinedType` or `UsageType` token
@@ -179,14 +190,7 @@ pub fn create_facility(
     predefined_type: Option<&str>,
     draft: FacilityDraft<'_>,
 ) -> FacilityResult<EntityId> {
-    let entity = kind.type_name;
-    if Guid::parse(global_id).is_none() {
-        return Err(FacilityError::MalformedGuid {
-            entity,
-            offered: global_id.to_owned(),
-        });
-    }
-
+    check_facility(kind, global_id, predefined_type, &draft)?;
     let mut attributes = vec![Value::Null; kind.arity];
     attributes[0] = Value::Text(global_id.into());
     attributes[2] = text(draft.name);
@@ -194,12 +198,72 @@ pub fn create_facility(
     attributes[4] = text(draft.object_type);
     attributes[5] = draft.placement.map_or(Value::Null, Value::Ref);
     attributes[7] = text(draft.long_name);
-    attributes[8] = draft
-        .composition
-        .map_or(Value::Null, |t| Value::Enum(t.into()));
+    attributes[8] = enumeration(draft.composition);
+    if let Some(slot) = kind.usage_slot {
+        attributes[slot] = enumeration(draft.usage);
+    }
+    if let Some(slot) = kind.predefined_slot {
+        attributes[slot] = enumeration(predefined_type);
+    }
+    Ok(tx.create(Entity::new(kind.type_name, attributes)))
+}
 
+/// [`create_facility`] in the model's declared release, with a
+/// caller-supplied `IfcOwnerHistory` (#202).
+///
+/// The record is laid out by attribute name from the release's table.
+/// Only IFC4X3 declares the facility classes, so an IFC2X3 or IFC4 model
+/// is refused with `EntityNotInSchema`.
+///
+/// # Errors
+///
+/// Those of [`create_facility`], and [`FacilityError::Authoring`] wrapping
+/// the release and owner-history refusals of
+/// [`aggregate_with_owner_history`](crate::aggregate_with_owner_history).
+/// Nothing is staged on an error.
+pub fn create_facility_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    kind: Facility,
+    global_id: &str,
+    predefined_type: Option<&str>,
+    draft: FacilityDraft<'_>,
+    owner_history: EntityId,
+) -> FacilityResult<EntityId> {
+    check_facility(kind, global_id, predefined_type, &draft)?;
+    let values = vec![
+        ("GlobalId", Value::Text(global_id.into())),
+        ("Name", text(draft.name)),
+        ("Description", text(draft.description)),
+        ("ObjectType", text(draft.object_type)),
+        (
+            "ObjectPlacement",
+            draft.placement.map_or(Value::Null, Value::Ref),
+        ),
+        ("LongName", text(draft.long_name)),
+        ("CompositionType", enumeration(draft.composition)),
+        ("UsageType", enumeration(draft.usage)),
+        ("PredefinedType", enumeration(predefined_type)),
+    ];
+    stage(tx, model, kind.type_name, values, Some(owner_history)).map_err(FacilityError::Authoring)
+}
+
+/// The checks of [`create_facility`].
+fn check_facility(
+    kind: Facility,
+    global_id: &str,
+    predefined_type: Option<&str>,
+    draft: &FacilityDraft<'_>,
+) -> FacilityResult<()> {
+    let entity = kind.type_name;
+    if Guid::parse(global_id).is_none() {
+        return Err(FacilityError::MalformedGuid {
+            entity,
+            offered: global_id.to_owned(),
+        });
+    }
     match (kind.usage_slot, draft.usage) {
-        (Some(slot), Some(token)) => {
+        (Some(_), Some(token)) => {
             if !USAGE_TOKENS.contains(&token) {
                 return Err(FacilityError::UnknownToken {
                     entity,
@@ -207,21 +271,19 @@ pub fn create_facility(
                     offered: token.to_owned(),
                 });
             }
-            if token == "USERDEFINED" && !names_itself(&draft) {
+            if token == "USERDEFINED" && !names_itself(draft) {
                 return Err(FacilityError::UserDefinedWithoutObjectType {
                     entity,
                     attribute: "UsageType",
                 });
             }
-            attributes[slot] = Value::Enum(token.into());
         }
         (Some(_), None) => return Err(FacilityError::MissingUsageType { entity }),
         (None, Some(_)) => return Err(FacilityError::UnexpectedUsageType { entity }),
         (None, None) => {}
     }
-
     match (kind.predefined_slot, predefined_type) {
-        (Some(slot), Some(token)) => {
+        (Some(_), Some(token)) => {
             if !kind.members.contains(&token) {
                 return Err(FacilityError::UnknownToken {
                     entity,
@@ -229,21 +291,23 @@ pub fn create_facility(
                     offered: token.to_owned(),
                 });
             }
-            if token == "USERDEFINED" && !names_itself(&draft) {
+            if token == "USERDEFINED" && !names_itself(draft) {
                 return Err(FacilityError::UserDefinedWithoutObjectType {
                     entity,
                     attribute: "PredefinedType",
                 });
             }
-            attributes[slot] = Value::Enum(token.into());
         }
         (None, Some(_)) => return Err(FacilityError::NoPredefinedType { entity }),
         (Some(_), None) | (None, None) => {}
     }
-
-    Ok(tx.create(Entity::new(entity, attributes)))
+    Ok(())
 }
 
 fn text(value: Option<&str>) -> Value {
     value.map_or(Value::Null, |t| Value::Text(t.into()))
+}
+
+fn enumeration(value: Option<&str>) -> Value {
+    value.map_or(Value::Null, |t| Value::Enum(t.into()))
 }

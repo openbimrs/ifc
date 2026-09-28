@@ -12,6 +12,13 @@
 //! writes that relationship, so this crate stages it for its own four
 //! controls and refuses any other.
 //!
+//! Records are laid out by attribute name from one release's table
+//! (#198). `IfcRoot.OwnerHistory` is required in IFC2X3 and optional from
+//! IFC4 on, so the writers that leave it unset refuse IFC2X3 with
+//! [`ControlError::AuthoringRequired`]; the `*_with_owner_history`
+//! variants bind the model's declared release and take a caller-supplied
+//! `IfcOwnerHistory` (#202).
+//!
 //! `IfcCostItem`, `IfcCostSchedule`, `IfcWorkCalendar` and
 //! `IfcWorkControl` are `IfcControl` subtypes too, but they belong to
 //! `ifc-cost` and `ifc-schedule`: the crates split by domain, not by
@@ -20,7 +27,10 @@
 mod assignment;
 mod authoring;
 mod error;
+mod release;
 
-pub use assignment::{assign_to_control, ControlAssignmentDraft};
-pub use authoring::{create_control, ControlDraft, ControlKind};
+pub use assignment::{
+    assign_to_control, assign_to_control_with_owner_history, ControlAssignmentDraft,
+};
+pub use authoring::{create_control, create_control_with_owner_history, ControlDraft, ControlKind};
 pub use error::{ControlError, ControlResult};

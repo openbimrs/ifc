@@ -15,6 +15,17 @@
 //! worse than one that misses an exotic mistake -- the model is still audited
 //! by `ifc-validate` afterwards.
 //!
+//! # The form is checked too
+//!
+//! ISO 10303-21 writes a typed parameter (`IFCAREAMEASURE(12.5)`) exactly
+//! where the declared type is a SELECT, and the bare value everywhere else
+//! (see `form`). A wrapper in a slot that is not a SELECT is refused, as
+//! [`AuthorError::ValueForm`](crate::AuthorError::ValueForm) when it names
+//! the declared type and as a type mismatch when it names another type. A
+//! bare value where a SELECT is declared is refused too, because the reader
+//! cannot tell which member it is. The same permissive rule applies: a
+//! declared type the tables cannot resolve accepts either form.
+//!
 //! # SELECTs are not supertypes
 //!
 //! A reference is checked for shape only here. Code that must decide whether
@@ -26,6 +37,24 @@
 
 use ifc_model::Value;
 use ifc_schema::{Schema, TypeKind};
+
+use super::form::{aliases_to, form_of, select_lists, Form};
+
+/// What [`judge_value`] concludes about one value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Verdict {
+    /// Admissible, or not resolvable enough to refuse.
+    Fits,
+    /// A value of another type than the one declared.
+    WrongType,
+    /// A value of the declared type in the wrong form: bare where the
+    /// declared SELECT needs a typed parameter (`typed_required`), or a
+    /// typed parameter where the declared type is not a SELECT.
+    WrongForm {
+        /// Whether the declared type requires the typed form.
+        typed_required: bool,
+    },
+}
 
 /// A short human description of what a value actually is, for error messages.
 pub(crate) fn describe_value(value: &Value) -> String {
@@ -103,27 +132,67 @@ fn shape_of(schema: &Schema, type_name: &str, depth: u8) -> Shape {
     }
 }
 
-/// Whether `value` is admissible for an attribute declared as `type_name`.
+/// Whether `value` is admissible for an attribute declared as `type_name`,
+/// in both type and form.
 ///
-/// Returns `true` when the declaration cannot be resolved: see the module note
-/// on why this is deliberately permissive.
-pub(crate) fn value_matches(schema: &Schema, type_name: &str, value: &Value) -> bool {
+/// Returns [`Verdict::Fits`] when the declaration cannot be resolved: see the
+/// module note on why this is deliberately permissive.
+pub(crate) fn judge_value(schema: &Schema, type_name: &str, value: &Value) -> Verdict {
     // `$` is how an unset optional is written, and `*` how a derived attribute
     // is. Neither carries a type, so neither can mismatch one.
     if matches!(value, Value::Null | Value::Derived) {
-        return true;
+        return Verdict::Fits;
     }
-    // A typed wrapper states its own type (`IFCLENGTHMEASURE(2.5)`). Trust the
-    // caller's declaration and check the payload against it, so that a wrapper
-    // around a string where a real is wanted is still caught.
-    if let Value::Typed {
-        type_name: wrapper,
-        value: inner,
-    } = value
-    {
-        return value_matches(schema, wrapper, inner);
+    match (form_of(schema, type_name), value) {
+        (Form::Unresolved, _) => Verdict::Fits,
+        // A typed parameter in a SELECT slot names the member it is; its
+        // parameter is then judged against that member's own type.
+        (
+            Form::Typed,
+            Value::Typed {
+                type_name: wrapper,
+                value: inner,
+            },
+        ) => {
+            if select_lists(schema, type_name, wrapper) == Some(false) {
+                Verdict::WrongType
+            } else {
+                judge_value(schema, wrapper, inner)
+            }
+        }
+        (Form::Typed, Value::Ref(_) | Value::List(_)) => shape_verdict(schema, type_name, value),
+        // A bare value in a SELECT of entities is the wrong type; in any
+        // other SELECT it is the right type missing its wrapper.
+        (Form::Typed, _) => {
+            if shape_of(schema, type_name, 16) == Shape::Reference {
+                Verdict::WrongType
+            } else {
+                Verdict::WrongForm {
+                    typed_required: true,
+                }
+            }
+        }
+        (
+            Form::Bare,
+            Value::Typed {
+                type_name: wrapper, ..
+            },
+        ) => {
+            if aliases_to(schema, wrapper, type_name) {
+                Verdict::WrongForm {
+                    typed_required: false,
+                }
+            } else {
+                Verdict::WrongType
+            }
+        }
+        (Form::Bare, _) => shape_verdict(schema, type_name, value),
     }
-    match shape_of(schema, type_name, 16) {
+}
+
+/// The value's shape against the primitive shape the declaration admits.
+fn shape_verdict(schema: &Schema, type_name: &str, value: &Value) -> Verdict {
+    let fits = match shape_of(schema, type_name, 16) {
         Shape::Unresolved => true,
         Shape::Number => matches!(value, Value::Integer(_) | Value::Real(_)),
         // IFC files are inconsistent about quoting, but a number where a label
@@ -133,6 +202,11 @@ pub(crate) fn value_matches(schema: &Schema, type_name: &str, value: &Value) -> 
         Shape::Binary => matches!(value, Value::Binary(_)),
         Shape::Reference => matches!(value, Value::Ref(_)),
         Shape::Enumeration => matches!(value, Value::Enum(_)),
+    };
+    if fits {
+        Verdict::Fits
+    } else {
+        Verdict::WrongType
     }
 }
 
@@ -141,7 +215,7 @@ pub(crate) fn value_matches(schema: &Schema, type_name: &str, value: &Value) -> 
 /// `TYPE IfcCompoundPlaneAngleMeasure = LIST [3:4] OF INTEGER;` makes an
 /// attribute declared `IfcCompoundPlaneAngleMeasure` an aggregate even though
 /// the attribute declaration itself has no `LIST`. Follows defined-type
-/// aliases with the same bounded depth as [`value_matches`]; `None` when the
+/// aliases with the same bounded depth as [`judge_value`]; `None` when the
 /// type is not an aggregate.
 pub(crate) fn aggregate_element(schema: &Schema, type_name: &str) -> Option<String> {
     let mut current = type_name.to_owned();

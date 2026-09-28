@@ -8,6 +8,29 @@
 //! port at 4 and element at 5. The reading side already encodes all of
 //! that; authoring resolves the same constants so one cannot be
 //! corrected without the other.
+//!
+//! # Releases and `OwnerHistory` (#202)
+//!
+//! `IfcRoot.OwnerHistory` is required in IFC2X3 TC1 and `OPTIONAL` from
+//! IFC4 on:
+//!
+//! ```text
+//! IFC2X3_TC1   OwnerHistory : IfcOwnerHistory;
+//! IFC4         OwnerHistory : OPTIONAL IfcOwnerHistory;
+//! IFC4X3_ADD2  OwnerHistory : OPTIONAL IfcOwnerHistory;
+//! ```
+//!
+//! The writers without a model (`create_system`, `connect_ports`, ...)
+//! cannot see the release. They write the IFC4/IFC4X3 layout with
+//! `OwnerHistory` `$`, so their records are IFC4/IFC4X3 only. Each has a
+//! `*_with_owner_history` variant that takes the model, binds its declared
+//! release (`release.rs`), lays the record out by attribute name from that
+//! release's table, and takes a caller-supplied `IfcOwnerHistory`, which
+//! must exist (in the model or staged on the transaction) and be an
+//! `IfcOwnerHistory`; one is never invented here. This follows
+//! `ifc-material` (#77), `ifc-properties` (#191) and `ifc-classification`
+//! (#194). In IFC4 and IFC4X3 a variant writes the plain writer's record
+//! with the reference in the optional slot.
 
 use ifc_model::guid::Guid;
 use ifc_model::{Entity, EntityId, Transaction, Value};
@@ -18,56 +41,30 @@ use crate::system::group::slot as group_slot;
 use crate::zone::spatial_group::slot as placement_slot;
 
 mod distribution;
+mod error;
+mod owned;
+mod release;
 mod system_kind;
 
 pub use distribution::{
-    create_distribution_element, create_spatial_zone, create_zone, DistributionElementKind,
-    ElementAttributes,
+    create_distribution_element, create_distribution_element_with_owner_history,
+    create_spatial_zone, create_spatial_zone_with_owner_history, create_zone,
+    create_zone_with_owner_history, DistributionElementKind, ElementAttributes,
 };
-pub use system_kind::{create_classified_system, ClassifiedSystemDraft, SystemKind};
+pub use error::{SystemAuthoringError, SystemAuthoringResult};
+pub use owned::{
+    assign_to_group_with_owner_history, connect_port_to_element_with_owner_history,
+    connect_ports_with_owner_history, contain_in_spatial_structure_with_owner_history,
+    create_group_with_owner_history, create_port_with_owner_history,
+    create_system_with_owner_history, nest_ports_with_owner_history,
+    reference_in_spatial_structure_with_owner_history,
+};
+pub use system_kind::{
+    create_classified_system, create_classified_system_with_owner_history, ClassifiedSystemDraft,
+    SystemKind,
+};
 
-/// Why a systems record was refused.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum SystemAuthoringError {
-    /// A value the schema constrains was not acceptable.
-    Invalid {
-        /// The entity being authored.
-        entity: &'static str,
-        /// The attribute at fault.
-        attribute: &'static str,
-        /// What was supplied.
-        value: String,
-    },
-}
-
-impl std::fmt::Display for SystemAuthoringError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let Self::Invalid {
-            entity,
-            attribute,
-            value,
-        } = self;
-        write!(f, "{entity}.{attribute}: {value}")
-    }
-}
-
-impl std::error::Error for SystemAuthoringError {}
-
-/// Result of staging a systems record.
-pub type SystemAuthoringResult<T> = Result<T, SystemAuthoringError>;
-
-fn invalid(
-    entity: &'static str,
-    attribute: &'static str,
-    value: impl Into<String>,
-) -> SystemAuthoringError {
-    SystemAuthoringError::Invalid {
-        entity,
-        attribute,
-        value: value.into(),
-    }
-}
+use error::invalid;
 
 fn guid(entity: &'static str, global_id: &str) -> SystemAuthoringResult<()> {
     if Guid::parse(global_id).is_none() {
@@ -76,7 +73,55 @@ fn guid(entity: &'static str, global_id: &str) -> SystemAuthoringResult<()> {
     Ok(())
 }
 
+/// Refuse an empty related set, and the relating end listed in it.
+fn check_related(
+    entity: &'static str,
+    attribute: &'static str,
+    global_id: &str,
+    relating: EntityId,
+    related: &[EntityId],
+    relating_word: &str,
+) -> SystemAuthoringResult<()> {
+    guid(entity, global_id)?;
+    if related.is_empty() {
+        return Err(invalid(entity, attribute, "empty"));
+    }
+    if related.contains(&relating) {
+        return Err(invalid(
+            entity,
+            attribute,
+            format!("contains the {relating_word}"),
+        ));
+    }
+    Ok(())
+}
+
+/// Refuse a port connected to itself.
+fn check_ports(
+    global_id: &str,
+    relating: EntityId,
+    related: EntityId,
+) -> SystemAuthoringResult<()> {
+    guid("IFCRELCONNECTSPORTS", global_id)?;
+    if relating == related {
+        return Err(invalid(
+            "IFCRELCONNECTSPORTS",
+            "RelatedPort",
+            "same as RelatingPort",
+        ));
+    }
+    Ok(())
+}
+
+fn refs(ids: &[EntityId]) -> Value {
+    Value::List(ids.iter().copied().map(Value::Ref).collect())
+}
+
 /// Stage an `IfcSystem`.
+///
+/// Writes the IFC4/IFC4X3 layout with `OwnerHistory` `$`, so the record
+/// is IFC4/IFC4X3 only; use [`create_system_with_owner_history`] for a
+/// release-bound record, which IFC2X3 needs.
 ///
 /// # Errors
 ///
@@ -99,6 +144,10 @@ pub fn create_system(
 /// or SOURCEANDSINK. It is what the flow reader follows, so a port
 /// without one is invisible to downstream/upstream queries.
 ///
+/// Writes the IFC4/IFC4X3 ten-attribute layout with `OwnerHistory` `$`,
+/// so the record is IFC4/IFC4X3 only; use
+/// [`create_port_with_owner_history`] for IFC2X3, which declares eight.
+///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId.
@@ -118,6 +167,9 @@ pub fn create_port(
 
 /// Stage an `IfcRelAssignsToGroup`: elements joined into a system.
 ///
+/// Writes `OwnerHistory` `$`, so the record is IFC4/IFC4X3 only; use
+/// [`assign_to_group_with_owner_history`] for IFC2X3.
+///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId, an empty member list, and the group
@@ -128,27 +180,26 @@ pub fn assign_to_group(
     group: EntityId,
     members: &[EntityId],
 ) -> SystemAuthoringResult<EntityId> {
-    guid("IFCRELASSIGNSTOGROUP", global_id)?;
-    if members.is_empty() {
-        return Err(invalid("IFCRELASSIGNSTOGROUP", "RelatedObjects", "empty"));
-    }
-    if members.contains(&group) {
-        return Err(invalid(
-            "IFCRELASSIGNSTOGROUP",
-            "RelatedObjects",
-            "contains the group",
-        ));
-    }
+    check_related(
+        "IFCRELASSIGNSTOGROUP",
+        "RelatedObjects",
+        global_id,
+        group,
+        members,
+        "group",
+    )?;
     let width = group_slot::ASSIGNS_GROUP.max(group_slot::ASSIGNS_RELATED) + 1;
     let mut attributes = vec![Value::Null; width];
     attributes[0] = Value::Text(global_id.into());
-    attributes[group_slot::ASSIGNS_RELATED] =
-        Value::List(members.iter().copied().map(Value::Ref).collect());
+    attributes[group_slot::ASSIGNS_RELATED] = refs(members);
     attributes[group_slot::ASSIGNS_GROUP] = Value::Ref(group);
     Ok(tx.create(Entity::new("IFCRELASSIGNSTOGROUP", attributes)))
 }
 
 /// Stage an `IfcRelNests`: ports nested under the element owning them.
+///
+/// Writes `OwnerHistory` `$`, so the record is IFC4/IFC4X3 only; use
+/// [`nest_ports_with_owner_history`] for IFC2X3.
 ///
 /// # Errors
 ///
@@ -160,27 +211,26 @@ pub fn nest_ports(
     parent: EntityId,
     children: &[EntityId],
 ) -> SystemAuthoringResult<EntityId> {
-    guid("IFCRELNESTS", global_id)?;
-    if children.is_empty() {
-        return Err(invalid("IFCRELNESTS", "RelatedObjects", "empty"));
-    }
-    if children.contains(&parent) {
-        return Err(invalid(
-            "IFCRELNESTS",
-            "RelatedObjects",
-            "contains the parent",
-        ));
-    }
+    check_related(
+        "IFCRELNESTS",
+        "RelatedObjects",
+        global_id,
+        parent,
+        children,
+        "parent",
+    )?;
     let width = port_slot::NESTS_PARENT.max(port_slot::NESTS_CHILDREN) + 1;
     let mut attributes = vec![Value::Null; width];
     attributes[0] = Value::Text(global_id.into());
     attributes[port_slot::NESTS_PARENT] = Value::Ref(parent);
-    attributes[port_slot::NESTS_CHILDREN] =
-        Value::List(children.iter().copied().map(Value::Ref).collect());
+    attributes[port_slot::NESTS_CHILDREN] = refs(children);
     Ok(tx.create(Entity::new("IFCRELNESTS", attributes)))
 }
 
 /// Stage an `IfcRelConnectsPortToElement`.
+///
+/// Writes `OwnerHistory` `$`, so the record is IFC4/IFC4X3 only; use
+/// [`connect_port_to_element_with_owner_history`] for IFC2X3.
 ///
 /// # Errors
 ///
@@ -205,6 +255,9 @@ pub fn connect_port_to_element(
 /// `realizing` names the element that physically realises the
 /// connection, such as the fitting between two segments.
 ///
+/// Writes `OwnerHistory` `$`, so the record is IFC4/IFC4X3 only; use
+/// [`connect_ports_with_owner_history`] for IFC2X3.
+///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId and a port connected to itself, which
@@ -216,14 +269,7 @@ pub fn connect_ports(
     related: EntityId,
     realizing: Option<EntityId>,
 ) -> SystemAuthoringResult<EntityId> {
-    guid("IFCRELCONNECTSPORTS", global_id)?;
-    if relating == related {
-        return Err(invalid(
-            "IFCRELCONNECTSPORTS",
-            "RelatedPort",
-            "same as RelatingPort",
-        ));
-    }
+    check_ports(global_id, relating, related)?;
     let width = connects_slot::REALIZING + 1;
     let mut attributes = vec![Value::Null; width];
     attributes[0] = Value::Text(global_id.into());
@@ -238,6 +284,9 @@ pub fn connect_ports(
 /// Containment is exclusive: an element belongs to exactly one
 /// structure. Use [`reference_in_spatial_structure`] for the
 /// non-exclusive case, such as a duct crossing several storeys.
+///
+/// Writes `OwnerHistory` `$`, so the record is IFC4/IFC4X3 only; use
+/// [`contain_in_spatial_structure_with_owner_history`] for IFC2X3.
 ///
 /// # Errors
 ///
@@ -261,6 +310,9 @@ pub fn contain_in_spatial_structure(
 /// Stage an `IfcRelReferencedInSpatialStructure`.
 ///
 /// The non-exclusive counterpart of containment.
+///
+/// Writes `OwnerHistory` `$`, so the record is IFC4/IFC4X3 only; use
+/// [`reference_in_spatial_structure_with_owner_history`] for IFC2X3.
 ///
 /// # Errors
 ///
@@ -290,18 +342,18 @@ fn place(
     structure: EntityId,
     elements: &[EntityId],
 ) -> SystemAuthoringResult<EntityId> {
-    guid(entity, global_id)?;
-    if elements.is_empty() {
-        return Err(invalid(entity, "RelatedElements", "empty"));
-    }
-    if elements.contains(&structure) {
-        return Err(invalid(entity, "RelatedElements", "contains the structure"));
-    }
+    check_related(
+        entity,
+        "RelatedElements",
+        global_id,
+        structure,
+        elements,
+        "structure",
+    )?;
     let width = placement_slot::RELATING_STRUCTURE.max(placement_slot::RELATED_ELEMENTS) + 1;
     let mut attributes = vec![Value::Null; width];
     attributes[0] = Value::Text(global_id.into());
-    attributes[placement_slot::RELATED_ELEMENTS] =
-        Value::List(elements.iter().copied().map(Value::Ref).collect());
+    attributes[placement_slot::RELATED_ELEMENTS] = refs(elements);
     attributes[placement_slot::RELATING_STRUCTURE] = Value::Ref(structure);
     Ok(tx.create(Entity::new(entity, attributes)))
 }
@@ -312,6 +364,9 @@ fn place(
 /// `IfcSystem` claims its members function together, a plain group
 /// claims only that someone gathered them, so this writer is what to
 /// reach for when no stronger statement is true.
+///
+/// Writes `OwnerHistory` `$`, so the record is IFC4/IFC4X3 only; use
+/// [`create_group_with_owner_history`] for IFC2X3.
 ///
 /// # Errors
 ///

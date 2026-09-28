@@ -1,18 +1,9 @@
 //! The remaining objectified relationships, and `IfcFacility`.
 //!
-//! # Set-valued and pair-valued relationships are not the same shape
-//!
 //! Most relationships here point one parent at a set of children, so
 //! they go through [`super::relate`], which already refuses an empty
-//! set and a parent listed among its own children.
-//!
-//! A few connect exactly two elements -- `IfcRelConnectsElements` and
-//! its subtypes, `IfcRelInterferesElements`. A set-shaped writer would
-//! accept a one-element or three-element list for those and produce a
-//! record no reader can interpret, so they get their own constructors
-//! taking two `EntityId`s. The refusal that matters there is
-//! self-connection: an element connected to itself is a cycle the
-//! connectivity reader in this crate will follow forever.
+//! set and a parent listed among its own children. The pair-valued
+//! ones live in `connections.rs`.
 //!
 //! # `IfcRelDefinesByObject` reverses the usual order
 //!
@@ -22,16 +13,14 @@
 //! named `parent`/`children` arguments and resolve positions through
 //! `RelSlots` rather than indexing literals.
 
-use ifc_model::guid::Guid;
-use ifc_model::{Entity, EntityId, Transaction, Value};
+use ifc_model::{EntityId, Transaction, Value};
 
 use crate::authoring::{invalid, SpatialAuthoringResult};
 use crate::relation::slots::{
-    RelSlots, ADHERES_TO_ELEMENT, ASSIGNS_TO_ACTOR, ASSIGNS_TO_GROUP_BY_FACTOR, ASSIGNS_TO_PROCESS,
-    ASSIGNS_TO_PRODUCT, ASSIGNS_TO_RESOURCE, ASSOCIATES_PROFILE_DEF, CONNECTS_ELEMENTS,
-    CONNECTS_WITH_REALIZING, COVERS_ELEMENTS, COVERS_SPACES, DECLARES, DEFINES_BY_OBJECT,
-    FILLS_ELEMENT, FLOW_CONTROL_ELEMENTS, INTERFERES_ELEMENTS, POSITIONS, PROJECTS_ELEMENT,
-    SERVICES_BUILDINGS, VOIDS_ELEMENT,
+    ADHERES_TO_ELEMENT, ASSIGNS_TO_ACTOR, ASSIGNS_TO_GROUP_BY_FACTOR, ASSIGNS_TO_PROCESS,
+    ASSIGNS_TO_PRODUCT, ASSIGNS_TO_RESOURCE, ASSOCIATES_PROFILE_DEF, COVERS_ELEMENTS,
+    COVERS_SPACES, DECLARES, DEFINES_BY_OBJECT, FILLS_ELEMENT, FLOW_CONTROL_ELEMENTS, POSITIONS,
+    PROJECTS_ELEMENT, SERVICES_BUILDINGS, VOIDS_ELEMENT,
 };
 
 /// Stage an `IfcRelCoversBldgElements`: finishes applied to an element.
@@ -39,6 +28,11 @@ use crate::relation::slots::{
 /// Kept apart from [`cover_spaces`] because the same covering can do
 /// both, and the two answer different questions: which finishes are on
 /// this wall, versus which finishes bound this space.
+///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`cover_elements_with_owner_history`](super::cover_elements_with_owner_history), which binds the model's declared
+/// release.
 ///
 /// # Errors
 ///
@@ -54,6 +48,11 @@ pub fn cover_elements(
 }
 
 /// Stage an `IfcRelCoversSpaces`: finishes bounding a space.
+///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`cover_spaces_with_owner_history`](super::cover_spaces_with_owner_history), which binds the model's declared
+/// release.
 ///
 /// # Errors
 ///
@@ -74,6 +73,11 @@ pub fn cover_spaces(
 /// type objects and property set templates enter a file without being
 /// attached to any occurrence.
 ///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`declare_with_owner_history`](super::declare_with_owner_history), which binds the model's declared
+/// release.
+///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId, an empty definition set, and the
@@ -88,6 +92,11 @@ pub fn declare(
 }
 
 /// Stage an `IfcRelDefinesByObject`: occurrences defined by another object.
+///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`define_by_object_with_owner_history`](super::define_by_object_with_owner_history), which binds the model's declared
+/// release.
 ///
 /// # Errors
 ///
@@ -104,6 +113,11 @@ pub fn define_by_object(
 
 /// Stage an `IfcRelServicesBuildings`: which spatial elements a system serves.
 ///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`serve_buildings_with_owner_history`](super::serve_buildings_with_owner_history), which binds the model's declared
+/// release.
+///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId, an empty building set, and the
@@ -118,6 +132,11 @@ pub fn serve_buildings(
 }
 
 /// Stage an `IfcRelFlowControlElements`: controls bound to a flow element.
+///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`control_flow_element_with_owner_history`](super::control_flow_element_with_owner_history), which binds the model's declared
+/// release.
 ///
 /// # Errors
 ///
@@ -134,6 +153,11 @@ pub fn control_flow_element(
 
 /// Stage an `IfcRelAssignsToActor`: objects assigned to an actor.
 ///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`assign_to_actor_with_owner_history`](super::assign_to_actor_with_owner_history), which binds the model's declared
+/// release.
+///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId, an empty object set, and the actor
@@ -149,6 +173,11 @@ pub fn assign_to_actor(
 
 /// Stage an `IfcRelAssignsToProduct`: objects assigned to a product.
 ///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`assign_to_product_with_owner_history`](super::assign_to_product_with_owner_history), which binds the model's declared
+/// release.
+///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId, an empty object set, and the product
@@ -163,6 +192,11 @@ pub fn assign_to_product(
 }
 
 /// Stage an `IfcRelAssignsToProcess`: objects assigned to a process.
+///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`assign_to_process_with_owner_history`](super::assign_to_process_with_owner_history), which binds the model's declared
+/// release.
 ///
 /// # Errors
 ///
@@ -182,6 +216,11 @@ pub fn assign_to_process(
 /// The `factor` is an `IfcRatioMeasure` at slot 7, scaling each
 /// member's contribution to the group.
 ///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`assign_to_group_by_factor_with_owner_history`](super::assign_to_group_by_factor_with_owner_history), which binds the model's declared
+/// release.
+///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId, an empty member set, the group
@@ -193,147 +232,34 @@ pub fn assign_to_group_by_factor(
     members: &[EntityId],
     factor: f64,
 ) -> SpatialAuthoringResult<EntityId> {
-    if !factor.is_finite() {
-        return Err(invalid(
-            ASSIGNS_TO_GROUP_BY_FACTOR.type_name,
-            "Factor",
-            format!("expected a finite ratio, got {factor}"),
-        ));
-    }
-
+    check_factor(factor)?;
     let id = super::relate(tx, ASSIGNS_TO_GROUP_BY_FACTOR, global_id, group, members)?;
     tx.set_attribute(id, FACTOR_SLOT, Value::Real(factor));
     Ok(id)
+}
+
+/// Refuse a non-finite `IfcRatioMeasure` factor.
+pub(super) fn check_factor(factor: f64) -> SpatialAuthoringResult<()> {
+    if factor.is_finite() {
+        return Ok(());
+    }
+    Err(invalid(
+        ASSIGNS_TO_GROUP_BY_FACTOR.type_name,
+        "Factor",
+        format!("expected a finite ratio, got {factor}"),
+    ))
 }
 
 /// `Factor` on `IfcRelAssignsToGroupByFactor`, after the six
 /// inherited `IfcRelAssigns` attributes and `RelatingGroup`.
 const FACTOR_SLOT: usize = 7;
 
-/// Refuse a relationship that connects an element to itself.
-///
-/// The connectivity reader walks these as a graph. A self-edge is
-/// not a harmless oddity there: it is a cycle of length one.
-fn distinct(
-    rel: RelSlots,
-    global_id: &str,
-    relating: EntityId,
-    related: EntityId,
-) -> SpatialAuthoringResult<()> {
-    if Guid::parse(global_id).is_none() {
-        return Err(invalid(rel.type_name, "GlobalId", global_id));
-    }
-    if relating == related {
-        return Err(invalid(
-            rel.type_name,
-            "RelatedElement",
-            "an element cannot connect to itself",
-        ));
-    }
-    Ok(())
-}
-
-fn pair(
-    tx: &mut Transaction,
-    rel: RelSlots,
-    global_id: &str,
-    relating: EntityId,
-    related: EntityId,
-    width: usize,
-) -> SpatialAuthoringResult<EntityId> {
-    distinct(rel, global_id, relating, related)?;
-
-    let mut attributes = vec![Value::Null; width];
-    attributes[0] = Value::Text(global_id.into());
-    attributes[rel.relating] = Value::Ref(relating);
-    attributes[rel.related] = Value::Ref(related);
-    Ok(tx.create(Entity::new(rel.type_name, attributes)))
-}
-
-/// Stage an `IfcRelConnectsElements`: two elements physically joined.
-///
-/// # Errors
-///
-/// Refuses a malformed GlobalId and an element connected to itself.
-pub fn connect_elements(
-    tx: &mut Transaction,
-    global_id: &str,
-    relating: EntityId,
-    related: EntityId,
-) -> SpatialAuthoringResult<EntityId> {
-    pair(tx, CONNECTS_ELEMENTS, global_id, relating, related, 7)
-}
-
-/// Stage an `IfcRelConnectsWithRealizingElements`.
-///
-/// The realizing elements are what physically make the connection
-/// -- a weld, a bolt, a bracket.
-///
-/// # Errors
-///
-/// Refuses a malformed GlobalId, an element connected to itself,
-/// and an empty realizing set: the subtype exists precisely to name
-/// those elements, so omitting them makes it an
-/// `IfcRelConnectsElements` wearing the wrong type name.
-pub fn connect_with_realizing_elements(
-    tx: &mut Transaction,
-    global_id: &str,
-    relating: EntityId,
-    related: EntityId,
-    realizing: &[EntityId],
-) -> SpatialAuthoringResult<EntityId> {
-    if realizing.is_empty() {
-        return Err(invalid(
-            CONNECTS_WITH_REALIZING.type_name,
-            "RealizingElements",
-            "empty",
-        ));
-    }
-
-    let id = pair(tx, CONNECTS_WITH_REALIZING, global_id, relating, related, 8)?;
-    tx.set_attribute(
-        id,
-        REALIZING_SLOT,
-        Value::List(realizing.iter().copied().map(Value::Ref).collect()),
-    );
-    Ok(id)
-}
-
-/// `RealizingElements` on `IfcRelConnectsWithRealizingElements`.
-const REALIZING_SLOT: usize = 7;
-
-/// Stage an `IfcRelInterferesElements`: a detected clash.
-///
-/// `implied_order` is `ImpliedOrder`, an `IfcLogical` at slot 8. It
-/// says whether the relating/related order carries meaning (which
-/// element gives way). `None` writes UNKNOWN, which is the honest
-/// value when a clash detector reports an overlap without deciding
-/// precedence.
-///
-/// # Errors
-///
-/// Refuses a malformed GlobalId and an element interfering with
-/// itself.
-pub fn interfere_elements(
-    tx: &mut Transaction,
-    global_id: &str,
-    relating: EntityId,
-    related: EntityId,
-    implied_order: Option<bool>,
-) -> SpatialAuthoringResult<EntityId> {
-    let id = pair(tx, INTERFERES_ELEMENTS, global_id, relating, related, 10)?;
-    tx.set_attribute(
-        id,
-        IMPLIED_ORDER_SLOT,
-        implied_order.map_or(Value::LogicalUnknown, Value::Bool),
-    );
-    Ok(id)
-}
-
-/// `ImpliedOrder` on `IfcRelInterferesElements`.
-const IMPLIED_ORDER_SLOT: usize = 8;
-
 /// Stage an `IfcRelVoidsElement`: an opening cut into an element.
+///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`void_element_with_owner_history`](super::void_element_with_owner_history), which binds the model's declared
+/// release.
 ///
 /// # Errors
 ///
@@ -353,6 +279,11 @@ pub fn void_element(
 /// inverse of [`void_element`]: a wall is voided by an opening, and
 /// that opening is filled by a door.
 ///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`fill_element_with_owner_history`](super::fill_element_with_owner_history), which binds the model's declared
+/// release.
+///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId and an opening filled by itself.
@@ -366,6 +297,11 @@ pub fn fill_element(
 }
 
 /// Stage an `IfcRelProjectsElement`: a feature added to an element.
+///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`project_element_with_owner_history`](super::project_element_with_owner_history), which binds the model's declared
+/// release.
 ///
 /// # Errors
 ///
@@ -381,6 +317,11 @@ pub fn project_element(
 
 /// Stage an `IfcRelAdheresToElement`: surface features bound to an element.
 ///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`adhere_to_element_with_owner_history`](super::adhere_to_element_with_owner_history), which binds the model's declared
+/// release.
+///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId, an empty feature set, and an element
@@ -395,6 +336,11 @@ pub fn adhere_to_element(
 }
 
 /// Stage an `IfcRelPositions`: products placed by a positioning element.
+///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`position_products_with_owner_history`](super::position_products_with_owner_history), which binds the model's declared
+/// release.
 ///
 /// # Errors
 ///
@@ -412,6 +358,11 @@ pub fn position_products(
 
 /// Stage an `IfcRelAssignsToResource`: objects assigned to a resource.
 ///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`assign_to_resource_with_owner_history`](super::assign_to_resource_with_owner_history), which binds the model's declared
+/// release.
+///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId, an empty object set, and the resource
@@ -426,6 +377,11 @@ pub fn assign_to_resource(
 }
 
 /// Stage an `IfcRelAssociatesProfileDef`: a profile associated with objects.
+///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`associate_profile_def_with_owner_history`](super::associate_profile_def_with_owner_history), which binds the model's declared
+/// release.
 ///
 /// # Errors
 ///

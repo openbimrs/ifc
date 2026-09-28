@@ -8,12 +8,17 @@
 //! `CorrectPhysOrVirt` ties the physical/virtual flag to the type
 //! of the bounding element, so the flag cannot be set independently
 //! of what it describes. This module reads the type name from the
-//! transaction or model rather than the schema tables: the crate
-//! deliberately has no `ifc-schema` dependency.
+//! transaction or model.
+//!
+//! Records are laid out by attribute name from the model's declared
+//! release (#202). IFC2X3 TC1 declares only the base
+//! `IfcRelSpaceBoundary`, with a required `IfcRoot.OwnerHistory`, and an
+//! `IfcInternalOrExternalEnum` without the `EXTERNAL_*` refinements.
 
 use ifc_model::guid::Guid;
 use ifc_model::{Edit, Entity, EntityId, Model, Transaction, Value};
 
+use super::release::stage;
 use super::{invalid, SpatialAuthoringResult};
 
 /// Which space-boundary level to stage.
@@ -34,15 +39,6 @@ impl BoundaryLevel {
             Self::Base => "IFCRELSPACEBOUNDARY",
             Self::First => "IFCRELSPACEBOUNDARY1STLEVEL",
             Self::Second => "IFCRELSPACEBOUNDARY2NDLEVEL",
-        }
-    }
-
-    /// Total attribute count, including inherited.
-    fn arity(self) -> usize {
-        match self {
-            Self::Base => 9,
-            Self::First => 10,
-            Self::Second => 11,
         }
     }
 }
@@ -92,14 +88,26 @@ fn type_name<'a>(tx: &'a Transaction, model: &'a Model, id: EntityId) -> Option<
         .or_else(|| model.get(id).map(|entity| entity.type_name.as_ref()))
 }
 
-/// Stage an `IfcRelSpaceBoundary` at the requested level.
+/// Stage an `IfcRelSpaceBoundary` at the requested level, in the model's
+/// declared release, with `OwnerHistory` unset.
+///
+/// The record is laid out by attribute name from the release's table. IFC4
+/// and IFC4X3 allow the unset `OwnerHistory`; IFC2X3 requires it, so an
+/// IFC2X3 model is refused with
+/// [`AuthoringRequired`](super::SpatialAuthoringError::AuthoringRequired):
+/// use [`create_space_boundary_with_owner_history`] there.
 ///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId, an unknown enum token, a `parent`
 /// or `corresponding` reference on a level that does not declare the
 /// slot, and a physical/virtual flag that contradicts the bounding
-/// element (`CorrectPhysOrVirt`).
+/// element (`CorrectPhysOrVirt`). Against the release: a header binding no
+/// single known release (`MultipleSchemas`, `UnsupportedSchema`), a level
+/// it does not declare (`EntityNotInSchema`: IFC2X3 has no 1st or 2nd
+/// level), a token it does not declare (`AuthoringValueType`), and the
+/// IFC2X3 `OwnerHistory` (`AuthoringRequired`). Nothing is staged on an
+/// error.
 pub fn create_space_boundary(
     tx: &mut Transaction,
     model: &Model,
@@ -107,6 +115,39 @@ pub fn create_space_boundary(
     global_id: &str,
     draft: BoundaryDraft<'_>,
 ) -> SpatialAuthoringResult<EntityId> {
+    let values = boundary_values(tx, model, level, global_id, draft)?;
+    stage(tx, model, level.type_name(), values, None)
+}
+
+/// [`create_space_boundary`] with a caller-supplied `IfcOwnerHistory`,
+/// which IFC2X3 requires.
+///
+/// # Errors
+///
+/// Those of [`create_space_boundary`] except the IFC2X3 refusal, and an
+/// `owner_history` that is neither in the model nor staged
+/// (`MissingReference`) or not an `IfcOwnerHistory`
+/// (`WrongReferenceType`). Nothing is staged on an error.
+pub fn create_space_boundary_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    level: BoundaryLevel,
+    global_id: &str,
+    draft: BoundaryDraft<'_>,
+    owner_history: EntityId,
+) -> SpatialAuthoringResult<EntityId> {
+    let values = boundary_values(tx, model, level, global_id, draft)?;
+    stage(tx, model, level.type_name(), values, Some(owner_history))
+}
+
+/// Validate a boundary draft and name its values.
+fn boundary_values(
+    tx: &Transaction,
+    model: &Model,
+    level: BoundaryLevel,
+    global_id: &str,
+    draft: BoundaryDraft<'_>,
+) -> SpatialAuthoringResult<Vec<(&'static str, Value)>> {
     let entity = level.type_name();
     if Guid::parse(global_id).is_none() {
         return Err(invalid(entity, "GlobalId", global_id));
@@ -167,27 +208,24 @@ pub fn create_space_boundary(
         ));
     }
 
-    let mut attributes = vec![Value::Null; level.arity()];
-    attributes[0] = Value::Text(global_id.into());
-    attributes[2] = draft.name.map_or(Value::Null, |t| Value::Text(t.into()));
-    attributes[3] = draft
-        .description
-        .map_or(Value::Null, |t| Value::Text(t.into()));
-    attributes[4] = Value::Ref(draft.space);
-    attributes[5] = Value::Ref(draft.element);
-    attributes[6] = draft.connection_geometry.map_or(Value::Null, Value::Ref);
-    attributes[7] = Value::Enum(physical.into());
-    attributes[8] = Value::Enum(internal.into());
-    if let Some(parent) = draft.parent {
-        attributes[9] = Value::Ref(parent);
-    }
-    if let Some(corresponding) = draft.corresponding {
-        attributes[10] = Value::Ref(corresponding);
-    }
-    Ok(tx.create(Entity::new(entity, attributes)))
+    let text = |value: Option<&str>| value.map_or(Value::Null, |t| Value::Text(t.into()));
+    let reference = |value: Option<EntityId>| value.map_or(Value::Null, Value::Ref);
+    Ok(vec![
+        ("GlobalId", Value::Text(global_id.into())),
+        ("Name", text(draft.name)),
+        ("Description", text(draft.description)),
+        ("RelatingSpace", Value::Ref(draft.space)),
+        ("RelatedBuildingElement", Value::Ref(draft.element)),
+        ("ConnectionGeometry", reference(draft.connection_geometry)),
+        ("PhysicalOrVirtualBoundary", Value::Enum(physical.into())),
+        ("InternalOrExternalBoundary", Value::Enum(internal.into())),
+        ("ParentBoundary", reference(draft.parent)),
+        ("CorrespondingBoundary", reference(draft.corresponding)),
+    ])
 }
 
 const CONNECTION_TYPE: &[&str] = &["ATPATH", "ATSTART", "ATEND", "NOTDEFINED"];
+const PATH: &str = "IFCRELCONNECTSPATHELEMENTS";
 
 /// Stage an `IfcRelConnectsPathElements`.
 ///
@@ -195,6 +233,11 @@ const CONNECTION_TYPE: &[&str] = &["ATPATH", "ATSTART", "ATEND", "NOTDEFINED"];
 /// `NormalizedRelatingPriorities` and its related twin bound every
 /// entry to 0..=100; an out-of-range entry is a ranking the schema
 /// cannot express, so it is refused rather than clamped.
+///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`connect_path_elements_with_owner_history`], which binds the model's
+/// declared release.
 ///
 /// # Errors
 ///
@@ -208,12 +251,73 @@ pub fn connect_path_elements(
     priorities: (&[i64], &[i64]),
     connection_types: (&str, &str),
 ) -> SpatialAuthoringResult<EntityId> {
-    const ENTITY: &str = "IFCRELCONNECTSPATHELEMENTS";
+    let (relating_token, related_token) =
+        check_path(global_id, relating, related, priorities, connection_types)?;
+    let (relating_priorities, related_priorities) = priorities;
+    let mut attributes = vec![Value::Null; 11];
+    attributes[0] = Value::Text(global_id.into());
+    attributes[5] = Value::Ref(relating);
+    attributes[6] = Value::Ref(related);
+    attributes[7] = integers(relating_priorities);
+    attributes[8] = integers(related_priorities);
+    attributes[9] = Value::Enum(related_token.into());
+    attributes[10] = Value::Enum(relating_token.into());
+    Ok(tx.create(Entity::new(PATH, attributes)))
+}
+
+/// [`connect_path_elements`] in the model's declared release, with a
+/// caller-supplied `IfcOwnerHistory`, which IFC2X3 requires.
+///
+/// # Errors
+///
+/// Those of [`connect_path_elements`], and the release and owner-history
+/// refusals of [`create_space_boundary`] and
+/// [`create_space_boundary_with_owner_history`]. Nothing is staged on an
+/// error.
+#[allow(clippy::too_many_arguments)]
+pub fn connect_path_elements_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    global_id: &str,
+    relating: EntityId,
+    related: EntityId,
+    priorities: (&[i64], &[i64]),
+    connection_types: (&str, &str),
+    owner_history: EntityId,
+) -> SpatialAuthoringResult<EntityId> {
+    let (relating_token, related_token) =
+        check_path(global_id, relating, related, priorities, connection_types)?;
+    let (relating_priorities, related_priorities) = priorities;
+    let values = vec![
+        ("GlobalId", Value::Text(global_id.into())),
+        ("RelatingElement", Value::Ref(relating)),
+        ("RelatedElement", Value::Ref(related)),
+        ("RelatingPriorities", integers(relating_priorities)),
+        ("RelatedPriorities", integers(related_priorities)),
+        ("RelatedConnectionType", Value::Enum(related_token.into())),
+        ("RelatingConnectionType", Value::Enum(relating_token.into())),
+    ];
+    stage(tx, model, PATH, values, Some(owner_history))
+}
+
+fn integers(values: &[i64]) -> Value {
+    Value::List(values.iter().copied().map(Value::Integer).collect())
+}
+
+/// The checks of [`connect_path_elements`]; the upper-cased relating and
+/// related connection-type tokens.
+fn check_path(
+    global_id: &str,
+    relating: EntityId,
+    related: EntityId,
+    priorities: (&[i64], &[i64]),
+    connection_types: (&str, &str),
+) -> SpatialAuthoringResult<(String, String)> {
     if Guid::parse(global_id).is_none() {
-        return Err(invalid(ENTITY, "GlobalId", global_id));
+        return Err(invalid(PATH, "GlobalId", global_id));
     }
     if relating == related {
-        return Err(invalid(ENTITY, "RelatedElement", "is the relating element"));
+        return Err(invalid(PATH, "RelatedElement", "is the relating element"));
     }
     let (relating_priorities, related_priorities) = priorities;
     for (values, attribute) in [
@@ -221,7 +325,7 @@ pub fn connect_path_elements(
         (related_priorities, "RelatedPriorities"),
     ] {
         if let Some(out) = values.iter().find(|value| !(0..=100).contains(*value)) {
-            return Err(invalid(ENTITY, attribute, out.to_string()));
+            return Err(invalid(PATH, attribute, out.to_string()));
         }
     }
     let (relating_type, related_type) = connection_types;
@@ -232,19 +336,8 @@ pub fn connect_path_elements(
         (&related_token, "RelatedConnectionType"),
     ] {
         if !CONNECTION_TYPE.contains(&token.as_str()) {
-            return Err(invalid(ENTITY, attribute, token.clone()));
+            return Err(invalid(PATH, attribute, token.clone()));
         }
     }
-
-    let integers =
-        |values: &[i64]| Value::List(values.iter().copied().map(Value::Integer).collect());
-    let mut attributes = vec![Value::Null; 11];
-    attributes[0] = Value::Text(global_id.into());
-    attributes[5] = Value::Ref(relating);
-    attributes[6] = Value::Ref(related);
-    attributes[7] = integers(relating_priorities);
-    attributes[8] = integers(related_priorities);
-    attributes[9] = Value::Enum(related_token.into());
-    attributes[10] = Value::Enum(relating_token.into());
-    Ok(tx.create(Entity::new(ENTITY, attributes)))
+    Ok((relating_token, related_token))
 }

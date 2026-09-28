@@ -23,6 +23,7 @@ pub fn all() -> Vec<&'static Case> {
         .iter()
         .chain(super::structure::CASES)
         .chain(super::types::CASES)
+        .chain(super::forms::CASES)
         .chain(super::rules::CASES)
         .collect()
 }
