@@ -116,6 +116,18 @@ truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
 
 ### Added
 
+- `exact_property_sets_where(model, object, select_set)` and
+  `ExactPropertySetEntry { name, set_id, source, members }`: the property
+  sets and quantity sets an object carries whose names the selector picks,
+  empty ones included (#186). `exact_properties_where` lists properties, so a
+  matching set without any left no trace; an IDS property facet must fail
+  on exactly that set. The traversal, type-over-occurrence order and
+  refusals are those of `exact_properties_where`, except that a
+  `HasProperties` or `Quantities` of `()` or `$` (invalid, both are
+  `SET [1:?]`) is listed with `members == 0` instead of refused: the question
+  is whether the set exists. A type set with an occurrence set's name is
+  listed as well, since overriding works per property.
+
 - `template_deviations(model)` compares every property set that an
   `IfcRelDefinesByTemplate` links to an `IfcPropertySetTemplate` with that
   template (#109), reading the model and its templates only, bound to the
