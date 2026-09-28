@@ -225,7 +225,7 @@ fn cost_and_schedule_authoring_is_conformant() {
 
     let mut model = model();
     let mut tx = Transaction::new(&model);
-    create_monetary_unit(&mut tx, "EUR").expect("currency");
+    create_monetary_unit(&mut tx, &model, "EUR").expect("currency");
     let schedule = create_cost_schedule(
         &mut tx,
         &model,

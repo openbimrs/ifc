@@ -167,7 +167,11 @@ fn authored_cost_records_validate_in_their_release() {
         assert!(back.diagnostics().is_empty(), "{:?}", back.diagnostics());
         let found = errors(&back, version, &written);
         assert!(found.is_empty(), "{schema}:\n  {}", found.join("\n  "));
-        let plan = CostView::new(&back).schedules().next().expect("schedule");
+        let plan = CostView::new(&back)
+            .schedules()
+            .expect("bound")
+            .next()
+            .expect("schedule");
         assert_eq!(plan.name(), Some("Estimate"), "{schema}");
         if version == SchemaVersion::Ifc2x3 {
             // SubmittedOn (7) and UpdateDate (10) reference their records.
@@ -193,8 +197,16 @@ fn authored_cost_records_validate_in_their_release() {
             );
             assert_eq!(written.len(), 9, "the three date records are validated");
         } else {
-            assert_eq!(plan.submitted_on(), Some("2026-09-28T00:00:00"), "{schema}");
-            assert_eq!(plan.update_date(), Some("2026-09-29T12:30:00"), "{schema}");
+            assert_eq!(
+                plan.submitted_on().and_then(|d| d.text()),
+                Some("2026-09-28T00:00:00"),
+                "{schema}"
+            );
+            assert_eq!(
+                plan.update_date().and_then(|d| d.text()),
+                Some("2026-09-29T12:30:00"),
+                "{schema}"
+            );
         }
     }
 }

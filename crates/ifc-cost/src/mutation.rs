@@ -7,7 +7,7 @@
 //! `IfcRoot.OwnerHistory`: the `IfcRoot` writers that leave it unset refuse
 //! an IFC2X3 model, and their `*_with_owner_history` variants take a
 //! caller-supplied one. The cost value, currency and monetary-unit writers
-//! still write the IFC4 layout.
+//! bind the release too (#213), so each record has its release's arity.
 //!
 //! Assigning cost items to their schedule is authored here; assigning a cost
 //! item to the products it prices is deliberately read-only

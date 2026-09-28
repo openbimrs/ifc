@@ -85,11 +85,13 @@ pub struct CostValueDraft<'a> {
     pub name: Option<&'a str>,
     /// Optional description.
     pub description: Option<&'a str>,
-    /// Optional IFC date lexical value from which the value applies.
-    pub applicable_date: Option<&'a str>,
-    /// Optional IFC date lexical value through which the value is fixed.
-    pub fixed_until_date: Option<&'a str>,
-    /// Optional cost category.
+    /// Optional date from which the value applies: `IfcDate` text in IFC4
+    /// and IFC4X3, an `IfcDateTimeSelect` record form in IFC2X3.
+    pub applicable_date: Option<DateTimeValue<'a>>,
+    /// Optional date through which the value is fixed, in the same forms.
+    pub fixed_until_date: Option<DateTimeValue<'a>>,
+    /// Optional cost category (`Category`; IFC2X3's `CostType`, which it
+    /// requires).
     pub category: Option<&'a str>,
     /// Optional applicability condition.
     pub condition: Option<&'a str>,
@@ -201,17 +203,19 @@ impl<'a> CostValueDraft<'a> {
         self
     }
 
-    /// Sets the IFC date from which the value applies.
+    /// Sets the date from which the value applies: text, or an IFC2X3
+    /// record form.
     #[must_use]
-    pub fn applicable_date(mut self, value: &'a str) -> Self {
-        self.applicable_date = Some(value);
+    pub fn applicable_date(mut self, value: impl Into<DateTimeValue<'a>>) -> Self {
+        self.applicable_date = Some(value.into());
         self
     }
 
-    /// Sets the IFC date through which the value is fixed.
+    /// Sets the date through which the value is fixed: text, or an IFC2X3
+    /// record form.
     #[must_use]
-    pub fn fixed_until_date(mut self, value: &'a str) -> Self {
-        self.fixed_until_date = Some(value);
+    pub fn fixed_until_date(mut self, value: impl Into<DateTimeValue<'a>>) -> Self {
+        self.fixed_until_date = Some(value.into());
         self
     }
 

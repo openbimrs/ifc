@@ -102,7 +102,11 @@ fn stages_a_queryable_cost_schedule_tree_atomically() {
         [value]
     );
     assert_eq!(
-        view.schedules().next().unwrap().predefined_type(),
+        view.schedules()
+            .expect("bound")
+            .next()
+            .unwrap()
+            .predefined_type(),
         Some("ESTIMATE")
     );
 }
@@ -301,13 +305,13 @@ fn staged_global_id_changes_participate_in_duplicate_validation() {
 fn an_authored_currency_reads_back() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    create_monetary_unit(&mut tx, "EUR").expect("currency");
+    create_monetary_unit(&mut tx, &model, "EUR").expect("currency");
     tx.commit(&mut model).expect("commit");
 
     assert_eq!(project_currency(&model).as_deref(), Ok("EUR"));
     assert_eq!(monetary_units(&model).len(), 1);
 
     let mut tx = Transaction::new(&model);
-    assert!(create_monetary_unit(&mut tx, "   ").is_err());
-    assert!(create_monetary_unit(&mut tx, "").is_err());
+    assert!(create_monetary_unit(&mut tx, &model, "   ").is_err());
+    assert!(create_monetary_unit(&mut tx, &model, "").is_err());
 }

@@ -236,6 +236,16 @@ impl<'a> DateTimeValue<'a> {
         }
     }
 
+    /// The entity a record form is staged as; `None` for text.
+    pub(super) const fn record_type(self) -> Option<&'static str> {
+        match self {
+            Self::Text(_) => None,
+            Self::Date(_) => Some("IFCCALENDARDATE"),
+            Self::Time(_) => Some("IFCLOCALTIME"),
+            Self::DateAndTime(..) => Some("IFCDATEANDTIME"),
+        }
+    }
+
     /// The value to lay the owning record out with before anything is
     /// staged: the text, or `placeholder` standing in for the record.
     pub(super) fn provisional(self, placeholder: EntityId) -> Value {
