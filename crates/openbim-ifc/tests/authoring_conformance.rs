@@ -60,58 +60,16 @@ fn describe(model: &Model, id: EntityId) -> String {
     )
 }
 
-/// A finding a sibling issue is fixing, tolerated in exactly one test.
-///
-/// Matched by rule id, entity type and attribute, and by how many times it
-/// occurs. An entry that no longer matches exactly fails the test as stale:
-/// the fix that removes the finding must delete its entry, and nothing else
-/// can hide behind it.
-struct Known {
-    rule: &'static str,
-    entity: &'static str,
-    attribute: &'static str,
-    count: usize,
-    issue: &'static str,
-}
-
 /// Validate and fail with the findings, not just a boolean.
 ///
 /// `Unsupported` findings are not failures: they mark rules the
 /// validator declines to evaluate, such as those needing geometry.
 fn assert_conformant(model: &Model, what: &str) {
-    assert_conformant_except(model, what, &[]);
-}
-
-/// [`assert_conformant`], tolerating exactly the `known` findings.
-fn assert_conformant_except(model: &Model, what: &str, known: &[Known]) {
     let report = ifc_validate::validate(model, ifc4());
-    let mut matched = vec![0usize; known.len()];
     let errors: Vec<String> = report
         .sorted()
         .iter()
         .filter(|finding| finding.severity == ifc_validate::Severity::Error)
-        .filter(|finding| {
-            let ifc_validate::Path::Attribute {
-                entity,
-                name: Some(name),
-                ..
-            } = &finding.path
-            else {
-                return true;
-            };
-            let Some(record) = model.get(*entity) else {
-                return true;
-            };
-            let hit = known.iter().position(|entry| {
-                entry.rule == finding.rule
-                    && record.type_name.eq_ignore_ascii_case(entry.entity)
-                    && name.eq_ignore_ascii_case(entry.attribute)
-            });
-            if let Some(index) = hit {
-                matched[index] += 1;
-            }
-            hit.is_none()
-        })
         .map(|finding| {
             let where_ = match &finding.path {
                 ifc_validate::Path::Entity(id) => describe(model, *id),
@@ -133,22 +91,6 @@ fn assert_conformant_except(model: &Model, what: &str, known: &[Known]) {
         errors.is_empty(),
         "{what} is not schema-conformant:\n  {}",
         errors.join("\n  ")
-    );
-    let stale: Vec<String> = known
-        .iter()
-        .zip(&matched)
-        .filter(|(entry, found)| entry.count != **found)
-        .map(|(entry, found)| {
-            format!(
-                "{} {}.{} ({}): expected {} occurrences, found {found}",
-                entry.rule, entry.entity, entry.attribute, entry.issue, entry.count
-            )
-        })
-        .collect();
-    assert!(
-        stale.is_empty(),
-        "{what}: stale allowlist entry, remove or correct it:\n  {}",
-        stale.join("\n  ")
     );
 }
 
@@ -525,21 +467,7 @@ fn georeferencing_and_alignment_authoring_is_conformant() {
     .expect("stationing");
     tx.commit(&mut model).expect("commit");
 
-    assert_conformant_except(
-        &model,
-        "georef and alignment authoring",
-        &[
-            // TODO(#201): `stationing` writes the station and the
-            // increasing-station flag bare in `NominalValue : IfcValue`.
-            Known {
-                rule: "type.select.untyped",
-                entity: "IFCPROPERTYSINGLEVALUE",
-                attribute: "NominalValue",
-                count: 2,
-                issue: "#201",
-            },
-        ],
-    );
+    assert_conformant(&model, "georef and alignment authoring");
 }
 /// `ifc-geometry` tessellation: meshes carried as indices, where the
 /// validator checks the record shape the writer produced.
@@ -744,19 +672,5 @@ fn later_geometry_authoring_is_conformant() {
     geometric_set(&mut tx, true, &[arc]).expect("curve set");
 
     tx.commit(&mut model).expect("commit");
-    assert_conformant_except(
-        &model,
-        "ifc-geometry later authoring",
-        &[
-            // TODO(#200): `point_on_curve` wraps `PointParameter :
-            // IfcParameterValue`, which is not a SELECT, as IFCPARAMETERVALUE.
-            Known {
-                rule: "type.typed.outside_select",
-                entity: "IFCPOINTONCURVE",
-                attribute: "PointParameter",
-                count: 1,
-                issue: "#200",
-            },
-        ],
-    );
+    assert_conformant(&model, "ifc-geometry later authoring");
 }

@@ -20,6 +20,20 @@ lockstep -- is archived in the
 
 ## [Unreleased]
 
+### ifc-alignment
+
+### Fixed
+
+- Referent authoring writes the SELECT values typed (#201):
+  - `point_by_distance` writes `DistanceAlong` as `IFCLENGTHMEASURE(..)`.
+    It is an `IfcCurveMeasureSelect`, where the wrapper is what tells a
+    length from a curve parameter. The offsets stay bare.
+  - `stationing` writes `Pset_Stationing`'s `NominalValue`s, declared
+    `IfcValue`, as `IFCLENGTHMEASURE(..)` for `Station` and
+    `IncomingStation` and `IFCBOOLEAN(..)` for `HasIncreasingStation`.
+
+  `station_equations` reads both forms, as before.
+
 ### ifc-author
 
 ### Added
@@ -45,6 +59,54 @@ lockstep -- is archived in the
   select-list, nested SELECTs included. A declared type the tables cannot
   resolve still accepts either form.
 
+### ifc-geometry
+
+### Added
+
+- `authoring::surface_curve_swept_area_solid_in` and
+  `authoring::fixed_reference_swept_area_solid_in` (#200). They take the
+  model and write `StartParam`/`EndParam` in the form its declared release
+  requires: bare in IFC2X3 and IFC4, where the slot is `IfcParameterValue`,
+  and `IFCPARAMETERVALUE(..)` in IFC4X3, where it is the SELECT
+  `IfcCurveMeasureSelect`. The release binds from `FILE_SCHEMA` as the
+  other authoring crates bind it (none binds IFC4). An attribute the release
+  requires left unset (IFC2X3 `Position`, `StartParam`, `EndParam`) is
+  refused with `InvalidAuthoredValue`.
+- `GeometryError::AuthoringSchemaUnbound` (an unknown or ambiguous
+  `FILE_SCHEMA`) and `GeometryError::AuthoringEntityNotInSchema` (the
+  release does not declare the entity, such as the fixed-reference sweep in
+  IFC2X3), for those writers. `GeometryError` is `#[non_exhaustive]`, so
+  this is not breaking.
+
+### Fixed
+
+- `IfcParameterValue` slots are written bare (#200):
+  `rectangular_trimmed_surface` (`U1`, `V1`, `U2`, `V2`), `point_on_curve`,
+  `point_on_surface`, `reparametrised_composite_curve_segment`
+  (`ParamLength`), and the `StartParam`/`EndParam` of `swept_disk_solid` and
+  `swept_disk_solid_polygonal`. Each is declared with the defined type
+  `IfcParameterValue`, not a SELECT, in every release that declares it, and
+  ISO 10303-21 writes a typed parameter only for a SELECT. The readers
+  accept both forms, as before.
+
+### Changed
+
+- `surface_curve_swept_area_solid` and `fixed_reference_swept_area_solid`
+  still write `IFCPARAMETERVALUE(..)`, which is correct in IFC4X3 only. They
+  cannot see the release; their docs now say so and point IFC4 (and IFC2X3)
+  callers to the `_in` writers.
+
+### ifc-schedule
+
+### Fixed
+
+- `create_lag_time` writes `IfcLagTime.LagValue` as the member of
+  `IfcTimeOrRatioSelect` it is (#201): a string as `IFCDURATION('P5D')` and
+  a number as `IFCRATIOMEASURE(0.5)`, an integer as that REAL. A bare value
+  in a SELECT slot does not say which member it is. A value already typed as
+  `IFCDURATION` or `IFCRATIOMEASURE` is accepted; any other is refused, as
+  before. `sequences` reads both forms, as before.
+
 ### ifc-schema
 
 ### Changed
@@ -54,6 +116,37 @@ lockstep -- is archived in the
   `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
+
+### ifc-structural
+
+### Added
+
+- `stage_boundary_condition_in(tx, schema, kind, draft)` (#200, #201). It
+  lays the record out by `schema`'s attribute names (IFC2X3 still says
+  `LinearStiffness...`) and writes each stiffness in the form its declared
+  type requires there: bare in IFC2X3, whose stiffnesses are plain
+  measures, and the typed parameter of the SELECT member in IFC4 and IFC4X3.
+  A boolean where the release admits none (every IFC2X3 stiffness) is
+  refused with `InvalidDraftValue`. It takes `&Schema` like the crate's
+  other writers.
+
+### Fixed
+
+- `stage_boundary_condition` writes the IFC4/IFC4X3 form correctly
+  (#200, #201):
+  - an edge condition's translational stiffness is
+    `IFCMODULUSOFLINEARSUBGRADEREACTIONMEASURE(..)`, the member of
+    `IfcModulusOfTranslationalSubgradeReactionSelect`, instead of
+    `IFCMODULUSOFTRANSLATIONALSUBGRADEREACTIONMEASURE`, which no release
+    declares;
+  - warping is `IFCWARPINGMOMENTMEASURE(..)`, the member of
+    `IfcWarpingStiffnessSelect`, instead of `IFCROTATIONALSTIFFNESSMEASURE`;
+  - a boolean stiffness is `IFCBOOLEAN(.T.)` instead of a bare `.T.`, which
+    does not say which SELECT member it is.
+
+  It is now `stage_boundary_condition_in` with the bundled IFC4 table, so it
+  is still not correct in IFC2X3; its docs point IFC2X3 callers to the new
+  writer. The readers accept a bare and a typed value, as before.
 
 ### ifc-validate
 
