@@ -11,7 +11,7 @@ Cost semantics as a borrowed view over the IFC model.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.2.2 (2026-09-28) |
+| Latest release | 0.2.3 (2026-09-28) |
 | Registries | [crates.io `ifc-cost`](https://crates.io/crates/ifc-cost) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `cost` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_cost/index.html) · [docs.rs](https://docs.rs/ifc-cost) |
@@ -28,38 +28,52 @@ Cost semantics as a borrowed view over the IFC model.
 
 ## Changes
 
-Latest release, 0.2.2 (2026-09-28):
+Latest release, 0.2.3 (2026-09-28):
 
 ### Added
 
-- `CostAuthoringError::MultipleSchemas`, `UnsupportedSchema`,
-  `EntityNotInSchema` and `AuthoringNotInSchema` for release-bound quantity
-  authoring (#190), and a re-export of `SchemaVersion`, which they name.
-  `CostAuthoringError` is `#[non_exhaustive]`, so this is not breaking. The
-  crate now depends on `ifc-schema` for the bundled release tables.
+- `create_cost_item_with_owner_history`,
+  `create_cost_schedule_with_owner_history`,
+  `nest_cost_items_with_owner_history` and
+  `assign_schedule_items_with_owner_history` (#202). Each takes a
+  caller-supplied `IfcOwnerHistory` id, which IFC2X3 requires on every
+  `IfcRoot`. It must be in the model or staged on the transaction
+  (`MissingReference` otherwise) and be an `IfcOwnerHistory`
+  (`WrongReferenceType`). None is ever invented. In IFC4 and IFC4X3 the
+  record is the plain writer's with the reference in the optional slot.
+- `CostAuthoringError::AuthoringValueType` and
+  `CostAuthoringError::AuthoringRequired`, appended to the
+  `#[non_exhaustive]` enum, so not breaking.
+
+### Changed
+
+- `create_cost_item`, `create_cost_schedule`, `nest_cost_items` and
+  `assign_schedule_items` bind the model's declared release and lay their
+  records out by attribute name from its table (#202), as quantity
+  authoring already did. They wrote the IFC4 layout with `OwnerHistory` `$`
+  into every model, which is invalid IFC2X3. **Behaviour change for IFC2X3
+  callers:** they now refuse an IFC2X3 model with
+  `AuthoringRequired { attribute: "OwnerHistory", .. }` and stage nothing;
+  use the `*_with_owner_history` variants there. What IFC2X3 cannot hold
+  is refused, never dropped: an `Identification`, `PredefinedType` or
+  cost values on a cost item (`AuthoringNotInSchema`), a date string where
+  it declares an `IfcDateTimeSelect` (`AuthoringValueType`), and a cost
+  schedule without its required `ID` (written from `identification`) or
+  `PredefinedType` (`AuthoringRequired`). A header declaring several
+  schemas, or one without a bundled table, is refused with
+  `MultipleSchemas` or `UnsupportedSchema`. A model without `FILE_SCHEMA`
+  binds IFC4 as before. IFC4 and IFC4X3 records are unchanged, record for
+  record.
 
 ### Fixed
 
-- `mutation::create_quantity` writes the quantity value bare (#190). It
-  wrote `IFCQUANTITYAREA('Q',$,$,IFCAREAMEASURE(12.5),$)`. But
-  `<Kind>Value` is declared with a defined measure type, not a SELECT, in
-  IFC2X3, IFC4 and IFC4X3, and ISO 10303-21 writes a typed parameter only
-  in a SELECT slot. It now writes `12.5`, and a count as the integer `4`.
-  `CostQuantity::value` reads both forms.
-- `mutation::create_quantity` binds the model's declared release, with the
-  same rule and output as `ifc-properties`' `create_quantity` (#190). It
-  wrote the IFC4 five-attribute layout into every model. Now attributes are
-  placed by name from the release's table, so an IFC2X3 quantity has four.
-  The signature is unchanged; the refusals are new:
-  - a `formula` in IFC2X3 (`AuthoringNotInSchema`);
-  - `QuantityKind::Number` outside IFC4X3 (`EntityNotInSchema`);
-  - a header declaring several schemas (`MultipleSchemas`);
-  - a header declaring one without a bundled table (`UnsupportedSchema`).
-
-  A model without `FILE_SCHEMA` binds IFC4 as before. **Behaviour change:**
-  such a model now refuses `QuantityKind::Number`, which IFC4 does not
-  declare; declare IFC4X3 to author one. IFC4 and IFC4X3 records are
-  otherwise unchanged apart from the bare value, and match `ifc-properties`
-  byte for byte in all three releases.
+- `assign_cost_quantities` accepts every instantiable subtype of the
+  release's own `CostQuantities` declaration (`IfcPhysicalQuantity`), read
+  from its table instead of a fixed list (#203). An IFC4X3
+  `IfcQuantityNumber` was refused. IFC4 still refuses it, as IFC4 does not
+  declare it. The slot is found by name, and an IFC2X3 cost item, which
+  has no `CostQuantities`, is refused with `AuthoringNotInSchema` instead
+  of written past its five attributes. A header that binds no single
+  known release is refused as above.
 
 Full history: [`crates/ifc-cost/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-cost/CHANGELOG.md)

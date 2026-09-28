@@ -16,32 +16,32 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`ifc-author`](./crates/ifc-author) | <span class="status-implemented">Implemented</span> | 0.2.1 | Schema-checked IFC authoring: construct entities by attribute name with arity and type validation. |
+| [`ifc-author`](./crates/ifc-author) | <span class="status-implemented">Implemented</span> | 0.2.2 | Schema-checked IFC authoring: construct entities by attribute name with arity and type validation. |
 | [`ifc-model`](./crates/ifc-model) | <span class="status-implemented">Implemented</span> | 0.2.3 | The IFC entity graph: storage and structural queries, free of domain semantics and serialization. |
 | [`ifc-schema`](./crates/ifc-schema) | <span class="status-implemented">Implemented</span> | 0.2.4 | IFC schema as data: entity table, supertype chain, attribute names. |
 | [`ifc-step`](./crates/ifc-step) | <span class="status-implemented">Implemented</span> | 0.3.0 | STEP physical file (ISO 10303-21) codec for the IFC model. |
-| [`ifc-validate`](./crates/ifc-validate) | <span class="status-implemented">Implemented</span> | 0.3.0 | Schema conformance: WHERE rules, cardinality, GUID and reference integrity. |
+| [`ifc-validate`](./crates/ifc-validate) | <span class="status-implemented">Implemented</span> | 0.3.1 | Schema conformance: WHERE rules, cardinality, GUID and reference integrity. |
 | [`ifc-xml`](./crates/ifc-xml) | <span class="status-implemented">Implemented</span> | 0.2.1 | ifcXML (ISO 10303-28) codec for the IFC model. |
 
 ## Domain views
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`ifc-approval`](./crates/ifc-approval) | <span class="status-implemented">Implemented</span> | 0.2.0 | Bounded IFC4 approval resource semantics. |
+| [`ifc-approval`](./crates/ifc-approval) | <span class="status-implemented">Implemented</span> | 0.2.1 | Bounded IFC4 approval resource semantics. |
 | [`ifc-classification`](./crates/ifc-classification) | <span class="status-implemented">Implemented</span> | 0.2.2 | Classification systems, document references, libraries, external references. |
-| [`ifc-constraint`](./crates/ifc-constraint) | <span class="status-implemented">Implemented</span> | 0.2.0 | Bounded IFC4 metric, objective, and constraint relationships. |
-| [`ifc-control`](./crates/ifc-control) | <span class="status-implemented">Implemented</span> | 0.2.1 | Bounded IFC control semantics: permits, project orders, action requests, and performance history. |
-| [`ifc-cost`](./crates/ifc-cost) | <span class="status-implemented">Implemented</span> | 0.2.2 | Cost semantics as a borrowed view over the IFC model. |
-| [`ifc-element-type`](./crates/ifc-element-type) | <span class="status-implemented">Implemented</span> | 0.2.0 | Element, resource, and process type definitions: the IfcTypeObject catalogue. |
+| [`ifc-constraint`](./crates/ifc-constraint) | <span class="status-implemented">Implemented</span> | 0.2.1 | Bounded IFC4 metric, objective, and constraint relationships. |
+| [`ifc-control`](./crates/ifc-control) | <span class="status-implemented">Implemented</span> | 0.2.2 | Bounded IFC control semantics: permits, project orders, action requests, and performance history. |
+| [`ifc-cost`](./crates/ifc-cost) | <span class="status-implemented">Implemented</span> | 0.2.3 | Cost semantics as a borrowed view over the IFC model. |
+| [`ifc-element-type`](./crates/ifc-element-type) | <span class="status-implemented">Implemented</span> | 0.2.1 | Element, resource, and process type definitions: the IfcTypeObject catalogue. |
 | [`ifc-material`](./crates/ifc-material) | <span class="status-implemented">Implemented</span> | 0.3.0 | Material definitions: layer sets, profile sets, constituents, usage. |
-| [`ifc-occurrence`](./crates/ifc-occurrence) | <span class="status-implemented">Implemented</span> | 0.2.0 | Built element and distribution occurrence classes and their type pairing. |
-| [`ifc-properties`](./crates/ifc-properties) | <span class="status-implemented">Implemented</span> | 0.5.1 | Property sets, quantities, and unit resolution. No geometry. |
+| [`ifc-occurrence`](./crates/ifc-occurrence) | <span class="status-implemented">Implemented</span> | 0.2.1 | Built element and distribution occurrence classes and their type pairing. |
+| [`ifc-properties`](./crates/ifc-properties) | <span class="status-implemented">Implemented</span> | 0.5.2 | Property sets, quantities, and unit resolution. No geometry. |
 | [`ifc-resource`](./crates/ifc-resource) | <span class="status-partial">Partial</span> | 0.2.0 | Construction resources: labour, equipment, material, crew, subcontract. |
-| [`ifc-schedule`](./crates/ifc-schedule) | <span class="status-implemented">Implemented</span> | 0.2.0 | IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage. |
-| [`ifc-spatial`](./crates/ifc-spatial) | <span class="status-implemented">Implemented</span> | 0.2.3 | IFC spatial containment and objectified relationship traversal: project, site, building, storey, element. |
-| [`ifc-structural`](./crates/ifc-structural) | <span class="status-implemented">Implemented</span> | 0.2.0 | Structural analysis model: members, connections, actions, reactions, loads. |
+| [`ifc-schedule`](./crates/ifc-schedule) | <span class="status-implemented">Implemented</span> | 0.2.1 | IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage. |
+| [`ifc-spatial`](./crates/ifc-spatial) | <span class="status-implemented">Implemented</span> | 0.2.4 | IFC spatial containment and objectified relationship traversal: project, site, building, storey, element. |
+| [`ifc-structural`](./crates/ifc-structural) | <span class="status-implemented">Implemented</span> | 0.2.1 | Structural analysis model: members, connections, actions, reactions, loads. |
 | [`ifc-style`](./crates/ifc-style) | <span class="status-implemented">Implemented</span> | 0.3.0 | Presentation: styles, colours, textures, layers, annotation. |
-| [`ifc-systems`](./crates/ifc-systems) | <span class="status-implemented">Implemented</span> | 0.2.2 | Distribution systems, ports, and connectivity between elements. |
+| [`ifc-systems`](./crates/ifc-systems) | <span class="status-implemented">Implemented</span> | 0.2.3 | Distribution systems, ports, and connectivity between elements. |
 | [`ifc-tabular`](./crates/ifc-tabular) | <span class="status-implemented">Implemented</span> | 0.2.1 | Structured IFC value containers indexed by position or time. |
 | [`ifc-template-catalog`](./crates/ifc-template-catalog) | <span class="status-implemented">Implemented</span> | 0.2.1 | Versioned IFC PSD/QTO catalog definitions and correction overlays |
 
@@ -49,8 +49,8 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`ifc-alignment`](./crates/ifc-alignment) | <span class="status-partial">Partial</span> | 0.3.1 | IFC4x3 linear positioning: alignments, referents, linear placement, spirals. |
-| [`ifc-geometry`](./crates/ifc-geometry) | <span class="status-partial">Partial</span> | 0.4.3 | IFC semantic views lowered into the format-neutral geometry DAG. |
+| [`ifc-alignment`](./crates/ifc-alignment) | <span class="status-partial">Partial</span> | 0.3.2 | IFC4x3 linear positioning: alignments, referents, linear placement, spirals. |
+| [`ifc-geometry`](./crates/ifc-geometry) | <span class="status-partial">Partial</span> | 0.4.4 | IFC semantic views lowered into the format-neutral geometry DAG. |
 | [`ifc-georef`](./crates/ifc-georef) | <span class="status-partial">Partial</span> | 0.3.0 | Georeferencing: map conversion, coordinate reference systems, site placement. |
 
 ## Language bindings

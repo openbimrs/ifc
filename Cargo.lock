@@ -722,7 +722,7 @@ checksum = "4804bdc1dc124eb7e1aa9e144ecc04096bcf787a10a15fa44af682b51f0f6cce"
 
 [[package]]
 name = "ifc-alignment"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "axiolid-core",
  "axiolid-curve",
@@ -735,7 +735,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-approval"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -745,7 +745,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-author"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -764,16 +764,6 @@ dependencies = [
 
 [[package]]
 name = "ifc-constraint"
-version = "0.2.0"
-dependencies = [
- "ifc-model",
- "ifc-schema",
- "ifc-step",
- "thiserror",
-]
-
-[[package]]
-name = "ifc-control"
 version = "0.2.1"
 dependencies = [
  "ifc-model",
@@ -783,7 +773,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ifc-cost"
+name = "ifc-control"
 version = "0.2.2"
 dependencies = [
  "ifc-model",
@@ -793,8 +783,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ifc-cost"
+version = "0.2.3"
+dependencies = [
+ "ifc-model",
+ "ifc-schema",
+ "ifc-step",
+ "thiserror",
+]
+
+[[package]]
 name = "ifc-element-type"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -803,7 +803,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-geometry"
-version = "0.4.3"
+version = "0.4.4"
 dependencies = [
  "axiolid-construct",
  "axiolid-contracts",
@@ -864,7 +864,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-occurrence"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -873,7 +873,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-properties"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -890,7 +890,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-schedule"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -909,7 +909,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-spatial"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -928,7 +928,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-structural"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -947,7 +947,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-systems"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -977,7 +977,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-validate"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "ifc-model",
  "ifc-schema",
