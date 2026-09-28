@@ -20,6 +20,9 @@ group = "domain"
 # A domain VIEW: borrows the model, owns no storage, and is therefore optional
 # at compile time without any data loss. See docs/adr/0006.
 ifc-model.workspace = true
+# The bundled release tables: quantity authoring lays its record out by
+# attribute name from the model's declared release (#190).
+ifc-schema.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]

@@ -1,10 +1,18 @@
 //! `IfcQuantityNumber`: the dimensionless quantity.
 //!
 //! IFC4X3 only, and the one quantity that may be negative: it counts
-//! or rates rather than measuring a physical extent.
+//! or rates rather than measuring a physical extent. The quantity writer
+//! binds the declared release (#190), so these models declare IFC4X3; an
+//! IFC4 model refuses the entity (`quantity_release.rs`).
 
 use ifc_cost::mutation::{create_quantity, QuantityDraft, QuantityKind};
 use ifc_model::{Model, Transaction};
+
+fn ifc4x3() -> Model {
+    let mut model = Model::new();
+    model.header_mut().schema = vec!["IFC4X3_ADD2".to_owned()];
+    model
+}
 
 fn draft(kind: QuantityKind, value: f64) -> QuantityDraft<'static> {
     QuantityDraft {
@@ -20,7 +28,7 @@ fn draft(kind: QuantityKind, value: f64) -> QuantityDraft<'static> {
 /// A number quantity stages its five slots.
 #[test]
 fn a_number_quantity_stages() {
-    let mut model = Model::default();
+    let mut model = ifc4x3();
     let mut tx = Transaction::new(&model);
     let id = create_quantity(&mut tx, &model, draft(QuantityKind::Number, 7.0))
         .expect("number quantity");
@@ -34,7 +42,7 @@ fn a_number_quantity_stages() {
 /// A number may be negative; a physical extent may not.
 #[test]
 fn only_the_number_quantity_accepts_a_negative() {
-    let model = Model::default();
+    let model = ifc4x3();
     let mut tx = Transaction::new(&model);
 
     create_quantity(&mut tx, &model, draft(QuantityKind::Number, -3.0))

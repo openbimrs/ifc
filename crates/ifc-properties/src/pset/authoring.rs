@@ -5,6 +5,10 @@
 //! from memory: a pset writes HasProperties at slot 4 because
 //! four IfcRoot fields precede it.
 //!
+//! The `IfcRoot` writers that take the model, and the
+//! `*_with_owner_history` variants, are bound to the declared release in
+//! `root_authoring.rs` (#191).
+//!
 //! # Why the schema WHERE rules are enforced here
 //!
 //! IfcPropertySet states ExistsName and UniquePropertyNames.
@@ -13,7 +17,6 @@
 use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 
 use ifc_model::guid::Guid;
-use ifc_schema::ifc4;
 
 use crate::{PropertyError, PropertyResult};
 
@@ -89,6 +92,15 @@ pub fn add_property_single_value(
 
 /// Stage an `IfcPropertySet`.
 ///
+/// # Release
+///
+/// `OwnerHistory` is left `$`, which IFC4 and IFC4X3 allow and IFC2X3
+/// forbids. This function takes no model, so it cannot see the release and
+/// cannot refuse an IFC2X3 one; for IFC2X3 use
+/// [`add_property_set_with_owner_history`](crate::add_property_set_with_owner_history).
+/// [`attach_property_set_with_owner_history`](crate::attach_property_set_with_owner_history)
+/// refuses to attach, in IFC2X3, a set written here.
+///
 /// # Errors
 ///
 /// Refuses a blank name (ExistsName), an empty property list
@@ -105,6 +117,23 @@ pub fn add_property_set(
     description: Option<&str>,
     properties: &[(&str, EntityId)],
 ) -> PropertyResult<EntityId> {
+    check_property_set(global_id, name, properties)?;
+    let refs = properties.iter().map(|(_, id)| Value::Ref(*id)).collect();
+    let mut attributes = vec![Value::Null; pset_slot::HAS_PROPERTIES + 1];
+    attributes[pset_slot::GLOBAL_ID] = Value::Text(global_id.into());
+    attributes[pset_slot::NAME] = Value::Text(name.into());
+    attributes[pset_slot::DESCRIPTION] = optional_text(description);
+    attributes[pset_slot::HAS_PROPERTIES] = Value::List(refs);
+    Ok(tx.create(Entity::new("IFCPROPERTYSET", attributes)))
+}
+
+/// The `IfcPropertySet` rules [`add_property_set`] enforces, shared with its
+/// release-bound variant.
+pub(super) fn check_property_set(
+    global_id: &str,
+    name: &str,
+    properties: &[(&str, EntityId)],
+) -> PropertyResult<()> {
     if Guid::parse(global_id).is_none() {
         return Err(PropertyError::AuthoringInvalid {
             entity: "IFCPROPERTYSET",
@@ -136,13 +165,7 @@ pub fn add_property_set(
             });
         }
     }
-    let refs = properties.iter().map(|(_, id)| Value::Ref(*id)).collect();
-    let mut attributes = vec![Value::Null; pset_slot::HAS_PROPERTIES + 1];
-    attributes[pset_slot::GLOBAL_ID] = Value::Text(global_id.into());
-    attributes[pset_slot::NAME] = Value::Text(name.into());
-    attributes[pset_slot::DESCRIPTION] = optional_text(description);
-    attributes[pset_slot::HAS_PROPERTIES] = Value::List(refs);
-    Ok(tx.create(Entity::new("IFCPROPERTYSET", attributes)))
+    Ok(())
 }
 
 pub(super) fn optional_text(value: Option<&str>) -> Value {
@@ -151,12 +174,26 @@ pub(super) fn optional_text(value: Option<&str>) -> Value {
 
 /// Stage an `IfcRelDefinesByProperties` attaching a set to objects.
 ///
+/// # Release
+///
+/// Bound to the model's declared release (`quantity/release.rs`): the
+/// record is laid out by attribute name from its table, and the
+/// NoRelatedTypeObject check uses its inheritance. `OwnerHistory` is left
+/// `$`, which IFC4 and IFC4X3 allow; IFC2X3 requires it, so an IFC2X3 model
+/// is refused with [`PropertyError::AuthoringRequired`]. Use
+/// [`attach_property_set_with_owner_history`](crate::attach_property_set_with_owner_history)
+/// there.
+///
 /// # Errors
 ///
 /// Refuses an empty object list, and any object whose type is an
 /// `IfcTypeObject` subtype. The schema states NoRelatedTypeObject:
 /// a type carries properties through IfcRelDefinesByType instead, and
 /// attaching here would be read by nothing that walks type properties.
+/// Refuses a model that binds no single known release with
+/// [`PropertyError::MultipleSchemas`] or
+/// [`PropertyError::UnsupportedSchema`], and an IFC2X3 model with
+/// [`PropertyError::AuthoringRequired`]. Nothing is staged on an error.
 ///
 /// Needs the model because the rule is stated over the related
 /// objects types, which only the committed model knows.
@@ -167,39 +204,7 @@ pub fn attach_property_set(
     objects: &[EntityId],
     property_set: EntityId,
 ) -> PropertyResult<EntityId> {
-    if Guid::parse(global_id).is_none() {
-        return Err(PropertyError::AuthoringInvalid {
-            entity: "IFCRELDEFINESBYPROPERTIES",
-            attribute: "GlobalId",
-            value: global_id.to_owned(),
-        });
-    }
-    if objects.is_empty() {
-        return Err(PropertyError::AuthoringInvalid {
-            entity: "IFCRELDEFINESBYPROPERTIES",
-            attribute: "RelatedObjects",
-            value: String::from("an empty set"),
-        });
-    }
-    let schema = ifc4();
-    for object in objects {
-        let Some(entity) = model.get(*object) else {
-            return Err(PropertyError::MissingEntity { id: *object });
-        };
-        if schema.is_a(entity.type_name.as_ref(), "IFCTYPEOBJECT") {
-            return Err(PropertyError::AuthoringInvalid {
-                entity: "IFCRELDEFINESBYPROPERTIES",
-                attribute: "RelatedObjects",
-                value: entity.type_name.to_string(),
-            });
-        }
-    }
-    let refs = objects.iter().copied().map(Value::Ref).collect();
-    let mut attributes = vec![Value::Null; defines_slot::RELATING_DEFINITION + 1];
-    attributes[defines_slot::GLOBAL_ID] = Value::Text(global_id.into());
-    attributes[defines_slot::RELATED_OBJECTS] = Value::List(refs);
-    attributes[defines_slot::RELATING_DEFINITION] = Value::Ref(property_set);
-    Ok(tx.create(Entity::new("IFCRELDEFINESBYPROPERTIES", attributes)))
+    super::root_authoring::attach_definition(tx, model, global_id, objects, property_set, None)
 }
 
 /// `IfcPropertyEnumeratedValue` slots.
@@ -651,6 +656,13 @@ pub mod complex_quantity_slot {
 /// [`attach_property_set`], which accepts any
 /// `IfcPropertySetDefinition`.
 ///
+/// # Release
+///
+/// `OwnerHistory` is left `$`, which IFC4 and IFC4X3 allow and IFC2X3
+/// forbids. This function takes no model, so it cannot refuse an IFC2X3
+/// one; there use
+/// [`add_element_quantity_with_owner_history`](crate::add_element_quantity_with_owner_history).
+///
 /// # Errors
 ///
 /// Refuses a malformed GUID and an empty quantity list, which the
@@ -662,6 +674,23 @@ pub fn add_element_quantity(
     method_of_measurement: Option<&str>,
     quantities: &[EntityId],
 ) -> PropertyResult<EntityId> {
+    check_element_quantity(global_id, name, quantities)?;
+    let mut attributes = vec![Value::Null; element_quantity_slot::QUANTITIES + 1];
+    attributes[element_quantity_slot::GLOBAL_ID] = Value::Text(global_id.into());
+    attributes[element_quantity_slot::NAME] = Value::Text(name.into());
+    attributes[element_quantity_slot::METHOD] = optional_text(method_of_measurement);
+    attributes[element_quantity_slot::QUANTITIES] =
+        Value::List(quantities.iter().copied().map(Value::Ref).collect());
+    Ok(tx.create(Entity::new("IFCELEMENTQUANTITY", attributes)))
+}
+
+/// The `IfcElementQuantity` rules [`add_element_quantity`] enforces, shared
+/// with its release-bound variant.
+pub(super) fn check_element_quantity(
+    global_id: &str,
+    name: &str,
+    quantities: &[EntityId],
+) -> PropertyResult<()> {
     if Guid::parse(global_id).is_none() {
         return Err(PropertyError::AuthoringInvalid {
             entity: "IFCELEMENTQUANTITY",
@@ -677,13 +706,7 @@ pub fn add_element_quantity(
             value: "empty".to_owned(),
         });
     }
-    let mut attributes = vec![Value::Null; element_quantity_slot::QUANTITIES + 1];
-    attributes[element_quantity_slot::GLOBAL_ID] = Value::Text(global_id.into());
-    attributes[element_quantity_slot::NAME] = Value::Text(name.into());
-    attributes[element_quantity_slot::METHOD] = optional_text(method_of_measurement);
-    attributes[element_quantity_slot::QUANTITIES] =
-        Value::List(quantities.iter().copied().map(Value::Ref).collect());
-    Ok(tx.create(Entity::new("IFCELEMENTQUANTITY", attributes)))
+    Ok(())
 }
 
 /// Stage an `IfcPhysicalComplexQuantity`.

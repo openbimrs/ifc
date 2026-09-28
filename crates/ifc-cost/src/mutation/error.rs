@@ -1,6 +1,7 @@
 //! Typed refusal reasons for cost authoring.
 
 use ifc_model::EntityId;
+use ifc_schema::SchemaVersion;
 use thiserror::Error;
 
 /// Why a bounded IFC4 cost draft was refused before staging.
@@ -54,6 +55,41 @@ pub enum CostAuthoringError {
     NestingCycle {
         /// Item at which cycle validation refused the draft.
         item: EntityId,
+    },
+    /// The model's header declares several schemas; release-bound
+    /// authoring binds to exactly one.
+    #[error("the header declares {schemas} schemas; authoring binds to exactly one")]
+    MultipleSchemas {
+        /// Number of `FILE_SCHEMA` declarations.
+        schemas: usize,
+    },
+    /// The model's header declares one schema with no bundled table, so no
+    /// layout can be trusted.
+    #[error("the header declares {schema}, which has no bundled table")]
+    UnsupportedSchema {
+        /// The `FILE_SCHEMA` token as written.
+        schema: String,
+    },
+    /// The model's release does not declare this entity, such as
+    /// `IfcQuantityNumber` (IFC4X3 only) in an IFC2X3 or IFC4 model.
+    #[error("{entity} is not an entity of {schema:?}")]
+    EntityNotInSchema {
+        /// IFC entity type being authored.
+        entity: &'static str,
+        /// The release the model declares.
+        schema: SchemaVersion,
+    },
+    /// A draft supplied a value for an attribute the model's release does
+    /// not declare, such as a `Formula` for an IFC2X3 quantity. It is
+    /// refused rather than dropped.
+    #[error("cannot author {entity}.{attribute}: not defined by {schema:?}")]
+    AuthoringNotInSchema {
+        /// IFC entity type being authored.
+        entity: &'static str,
+        /// The attribute.
+        attribute: &'static str,
+        /// The release the model declares.
+        schema: SchemaVersion,
     },
 }
 

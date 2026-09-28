@@ -783,6 +783,7 @@ name = "ifc-cost"
 version = "0.2.1"
 dependencies = [
  "ifc-model",
+ "ifc-schema",
  "ifc-step",
  "thiserror",
 ]

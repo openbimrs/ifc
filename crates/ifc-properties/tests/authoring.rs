@@ -11,12 +11,14 @@ use ifc_properties::{
 
 // ---- PROP-EDIT -----------------------------------------------------------
 
-/// A staged quantity update keeps the declared measure type.
+/// A staged quantity update writes the bare value (#190).
 ///
-/// Writing a bare real would produce a file that parses and has lost the
-/// statement of what the number means.
+/// `AreaValue` is declared `IfcAreaMeasure`, a defined type and not a
+/// SELECT, so the schema already states what the number means and ISO
+/// 10303-21 writes no typed parameter there. The fixture holds the typed
+/// form; the update replaces it, and the reader still knows the measure.
 #[test]
-fn a_quantity_update_preserves_its_measure() {
+fn a_quantity_update_is_written_bare() {
     let mut model = fixture();
     let set = quantity_sets(&model).0.into_iter().next().expect("a set");
     let area = set
@@ -33,13 +35,12 @@ fn a_quantity_update_preserves_its_measure() {
     tx.commit(&mut model).expect("no conflicts");
 
     let stored = model.get(area).unwrap().attribute(3).unwrap();
-    match stored {
-        Value::Typed { type_name, value } => {
-            assert_eq!(&**type_name, "IfcAreaMeasure", "the measure survives");
-            assert_eq!(value.as_f64(), Some(42.5));
-        }
-        other => panic!("expected a typed measure, got {other:?}"),
-    }
+    assert_eq!(stored, &Value::Real(42.5), "a bare real, not a typed one");
+    let set = quantity_sets(&model).0.into_iter().next().expect("a set");
+    assert!(set.quantities.iter().any(|q| matches!(
+        q,
+        Quantity::Simple { id, kind: QuantityKind::Area, value, .. } if *id == area && *value == 42.5
+    )));
 }
 
 /// A whole count is written as an integer: valid for IFC4's `NUMBER`
@@ -67,13 +68,10 @@ fn a_count_is_written_as_an_integer() {
     tx.commit(&mut model).expect("no conflicts");
 
     let stored = model.get(count).unwrap().attribute(3).unwrap();
-    let Value::Typed { value, .. } = stored else {
-        panic!("expected typed");
-    };
     assert_eq!(
-        **value,
-        Value::Integer(7),
-        "a count is an integer, not a real"
+        stored,
+        &Value::Integer(7),
+        "a count is a bare integer, not a real and not a typed parameter"
     );
 }
 

@@ -1,5 +1,9 @@
 //! Transaction-staged IFC4 cost authoring.
 //!
+//! The quantity writer is the exception: it binds the model's declared
+//! release (IFC2X3, IFC4 or IFC4X3) and lays its record out by attribute
+//! name, as `ifc-properties` does (#190).
+//!
 //! Assigning cost items to their schedule is authored here; assigning a cost
 //! item to the products it prices is deliberately read-only
 //! ([`crate::relation::controlled_by`]). Validating that an arbitrary target
@@ -11,6 +15,7 @@ mod control;
 mod draft;
 mod error;
 mod quantity;
+mod release;
 mod validate;
 mod value;
 

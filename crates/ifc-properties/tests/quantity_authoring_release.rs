@@ -7,11 +7,17 @@
 //! `IfcQuantityNumber`. `IfcCountMeasure` is `NUMBER` in IFC2X3 and IFC4,
 //! `INTEGER` in IFC4X3. Every round trip here goes through STEP text and
 //! back, then through both the permissive and the exact view.
+//!
+//! `<Kind>Value` is declared with a defined measure type, not a SELECT, in
+//! all three releases, so the value is written bare (#190); the readers
+//! accept the typed form too. IFC2X3 requires `IfcRoot.OwnerHistory`, so the
+//! IFC2X3 set and relationship are written with a caller-supplied one (#191).
 
 use ifc_model::{Codec, Entity, EntityId, Model, Transaction, Value};
 use ifc_properties::{
-    add_element_quantity, attach_property_set, create_quantity, create_quantity_with,
-    exact_property, quantity_set, set_quantity_value, ExactResolution, PropertyError, Quantity,
+    add_element_quantity, add_element_quantity_with_owner_history, attach_property_set,
+    attach_property_set_with_owner_history, create_quantity, create_quantity_with, exact_property,
+    quantity_set, set_quantity_value, ExactResolution, ExactValue, PropertyError, Quantity,
     QuantityExtras, QuantityKind, SchemaVersion,
 };
 use ifc_step::StepCodec;
@@ -29,34 +35,66 @@ fn declaring(schema: &str) -> Model {
     model
 }
 
+/// The `IfcOwnerHistory` every `IfcRoot` below points at: `#5`. The same
+/// records are valid in all three releases.
+const OWNER: [&str; 5] = [
+    "#1=IFCPERSON($,'Doe','Jane',$,$,$,$,$);",
+    "#2=IFCORGANIZATION($,'Acme',$,$,$);",
+    "#3=IFCPERSONANDORGANIZATION(#1,#2,$);",
+    "#4=IFCAPPLICATION(#2,'1.0','Test','test');",
+    "#5=IFCOWNERHISTORY(#3,#4,$,.NOCHANGE.,$,$,$,1700000000);",
+];
+const OWNER_ID: EntityId = EntityId(5);
+
 /// Author a wall carrying one quantity set of `quantities`, then write the
-/// model to STEP and read it back.
+/// model to STEP and read it back. IFC4 and IFC4X3 use the writers that
+/// leave `OwnerHistory` unset, as before; IFC2X3 requires one.
 fn round_trip(
     schema: &str,
     wall_arity: usize,
     author: impl Fn(&mut Transaction, &Model) -> Vec<EntityId>,
 ) -> Model {
-    let mut model = declaring(schema);
+    let mut model = step(schema, &OWNER);
+    let ifc2x3 = schema == "IFC2X3";
     let mut tx = Transaction::new(&model);
     let mut wall = vec![Value::Null; wall_arity];
     wall[0] = Value::Text("1xS3BCk291UvhgP2dvNsgp".into());
+    wall[1] = Value::Ref(OWNER_ID);
     wall[2] = Value::Text("Wall".into());
     let wall = tx.create(Entity::new("IFCWALL", wall));
     let quantities = author(&mut tx, &model);
-    let set = add_element_quantity(
-        &mut tx,
-        "0YvctVUKr0kugbFTf53O08",
-        "Qto_T",
-        None,
-        &quantities,
-    )
+    let (guid, name) = ("0YvctVUKr0kugbFTf53O08", "Qto_T");
+    let set = if ifc2x3 {
+        add_element_quantity_with_owner_history(
+            &mut tx,
+            &model,
+            guid,
+            name,
+            None,
+            &quantities,
+            OWNER_ID,
+        )
+    } else {
+        add_element_quantity(&mut tx, guid, name, None, &quantities)
+    }
     .expect("quantity set");
     tx.commit(&mut model).expect("commit");
     let mut tx = Transaction::new(&model);
-    attach_property_set(&mut tx, &model, "0YvctVUKr0kugbFTf53O09", &[wall], set).expect("attach");
+    let guid = "0YvctVUKr0kugbFTf53O09";
+    if ifc2x3 {
+        attach_property_set_with_owner_history(&mut tx, &model, guid, &[wall], set, OWNER_ID)
+    } else {
+        attach_property_set(&mut tx, &model, guid, &[wall], set)
+    }
+    .expect("attach");
     tx.commit(&mut model).expect("commit");
 
     let bytes = StepCodec.write_bytes(&model).expect("written");
+    let text = String::from_utf8(bytes.clone()).expect("utf8");
+    assert!(
+        !text.contains("MEASURE("),
+        "{schema}: a quantity value is written bare:\n{text}"
+    );
     let back = StepCodec.read_bytes(&bytes).expect("read back");
     assert!(back.diagnostics().is_empty(), "{:?}", back.diagnostics());
     back
@@ -250,10 +288,11 @@ fn a_count_is_never_truncated() {
         let mut tx = Transaction::new(&model);
         let count = create_quantity(&mut tx, &model, QuantityKind::Count, "C", 2.5).expect(schema);
         tx.commit(&mut model).expect("commit");
-        let Value::Typed { value, .. } = &model.get(count).expect("written").attributes[3] else {
-            panic!("{schema}: a typed measure");
-        };
-        assert_eq!(**value, Value::Real(2.5), "{schema}");
+        assert_eq!(
+            model.get(count).expect("written").attributes[3],
+            Value::Real(2.5),
+            "{schema}: a bare real"
+        );
     }
 }
 
@@ -329,4 +368,59 @@ fn setting_a_value_refuses_what_the_release_cannot_hold() {
             schema: SchemaVersion::Ifc4
         }
     ));
+}
+
+/// Both forms of a quantity value read back, in every release (#190).
+///
+/// The writers emit the bare value, but files in the wild also carry the
+/// typed parameter `IFCAREAMEASURE(12.5)`. The permissive and the exact
+/// reader keep accepting both and report the declared measure.
+#[test]
+fn a_bare_and_a_typed_value_both_read_back() {
+    for (schema, _, wall_arity, arity) in RELEASES {
+        let tail = if arity == 5 { ",$" } else { "" };
+        let wall_tail = ",$".repeat(wall_arity - 3);
+        let records = [
+            format!("#10=IFCQUANTITYAREA('Bare',$,$,12.5{tail});"),
+            format!("#11=IFCQUANTITYAREA('Typed',$,$,IFCAREAMEASURE(12.5){tail});"),
+            format!("#12=IFCQUANTITYCOUNT('BareCount',$,$,4{tail});"),
+            format!("#13=IFCQUANTITYCOUNT('TypedCount',$,$,IFCCOUNTMEASURE(4){tail});"),
+            "#20=IFCELEMENTQUANTITY('0YvctVUKr0kugbFTf53O08',#5,'Q',$,$,(#10,#11,#12,#13));"
+                .to_owned(),
+            format!("#30=IFCWALL('1xS3BCk291UvhgP2dvNsgp',#5,'W'{wall_tail});"),
+            "#40=IFCRELDEFINESBYPROPERTIES('0YvctVUKr0kugbFTf53O09',#5,$,$,(#30),#20);".to_owned(),
+        ];
+        let mut all: Vec<&str> = OWNER.to_vec();
+        all.extend(records.iter().map(String::as_str));
+        let model = step(schema, &all);
+
+        let (set, anomalies) = quantity_set(&model, EntityId(20)).expect("readable");
+        assert!(anomalies.is_empty(), "{schema}: {anomalies:?}");
+        let values: Vec<f64> = set
+            .quantities
+            .iter()
+            .map(|quantity| match quantity {
+                Quantity::Simple { value, .. } => *value,
+                other => panic!("{schema}: {other:?}"),
+            })
+            .collect();
+        assert_eq!(values, [12.5, 12.5, 4.0, 4.0], "{schema}");
+
+        for (name, measure, expected) in [
+            ("Bare", "IFCAREAMEASURE", ExactValue::Real(12.5)),
+            ("Typed", "IFCAREAMEASURE", ExactValue::Real(12.5)),
+            ("BareCount", "IFCCOUNTMEASURE", ExactValue::Integer(4)),
+            ("TypedCount", "IFCCOUNTMEASURE", ExactValue::Integer(4)),
+        ] {
+            let exact = present(
+                exact_property(&model, EntityId(30), Some("Q"), name).expect("exact resolves"),
+            );
+            assert_eq!(
+                exact.value_type.as_deref(),
+                Some(measure),
+                "{schema} {name}"
+            );
+            assert_eq!(exact.value, expected, "{schema} {name}");
+        }
+    }
 }

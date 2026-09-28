@@ -8,9 +8,21 @@
 //! lands in slot 3, whatever the subtype calls it. The reader in
 //! `crate::quantity` relies on exactly that, and these constructors must
 //! agree with it or an authored quantity reads back as None.
+//!
+//! # Release-bound, and written bare (#190)
+//!
+//! Unlike the rest of this crate's IFC4 authoring, [`create_quantity`] binds
+//! the model's declared release (`release.rs`) and places attributes by name
+//! from its table: IFC2X3 declares four attributes and no `Formula`, IFC4
+//! and IFC4X3 five, and only IFC4X3 declares `IfcQuantityNumber`. The value
+//! attribute is declared with a defined measure type, not a SELECT, so the
+//! value is written bare (`12.5`, never `IFCAREAMEASURE(12.5)`), as ISO
+//! 10303-21 requires. `ifc-properties` writes the same bytes; the facade
+//! test `quantity_writer_agreement.rs` holds the two together.
 
-use ifc_model::{Entity, EntityId, Model, Transaction, Value};
+use ifc_model::{EntityId, Model, Transaction, Value};
 
+use super::release::bind;
 use super::validate::invalid;
 use super::CostAuthoringResult;
 
@@ -54,7 +66,10 @@ impl QuantityKind {
         }
     }
 
-    /// The typed measure wrapper the value slot must carry.
+    /// The measure type the value slot is declared with.
+    ///
+    /// A defined type, not a SELECT, so [`create_quantity`] writes the value
+    /// bare; the declaration already states the measure.
     pub fn measure_name(self) -> &'static str {
         match self {
             Self::Length => "IFCLENGTHMEASURE",
@@ -64,6 +79,20 @@ impl QuantityKind {
             Self::Weight => "IFCMASSMEASURE",
             Self::Time => "IFCTIMEMEASURE",
             Self::Number => "IFCNUMERICMEASURE",
+        }
+    }
+
+    /// The value attribute's name, the same in every release that declares
+    /// the entity.
+    fn value_attribute(self) -> &'static str {
+        match self {
+            Self::Length => "LengthValue",
+            Self::Area => "AreaValue",
+            Self::Volume => "VolumeValue",
+            Self::Count => "CountValue",
+            Self::Weight => "WeightValue",
+            Self::Time => "TimeValue",
+            Self::Number => "NumberValue",
         }
     }
 }
@@ -87,16 +116,33 @@ pub struct QuantityDraft<'a> {
     pub formula: Option<&'a str>,
 }
 
-/// Stage one simple physical quantity.
+/// Stage one simple physical quantity, in the model's declared release.
 ///
 /// A count is a cardinality, so a fractional or negative count is refused;
 /// the remaining dimensions refuse negatives because no physical extent is
 /// negative, and a sign error here silently inverts a cost sum.
+///
+/// # Errors
+///
+/// Besides those refusals and a `Unit` that is not an `IfcNamedUnit`:
+/// [`CostAuthoringError::MultipleSchemas`] or
+/// [`CostAuthoringError::UnsupportedSchema`] when the model binds no single
+/// known release (a model without `FILE_SCHEMA` binds IFC4);
+/// [`CostAuthoringError::EntityNotInSchema`] for a kind the release does not
+/// declare (`Number` outside IFC4X3); and
+/// [`CostAuthoringError::AuthoringNotInSchema`] for a `formula` in IFC2X3.
+/// Nothing is staged on an error.
+///
+/// [`CostAuthoringError::MultipleSchemas`]: super::CostAuthoringError::MultipleSchemas
+/// [`CostAuthoringError::UnsupportedSchema`]: super::CostAuthoringError::UnsupportedSchema
+/// [`CostAuthoringError::EntityNotInSchema`]: super::CostAuthoringError::EntityNotInSchema
+/// [`CostAuthoringError::AuthoringNotInSchema`]: super::CostAuthoringError::AuthoringNotInSchema
 pub fn create_quantity(
     tx: &mut Transaction,
     model: &Model,
     draft: QuantityDraft<'_>,
 ) -> CostAuthoringResult<EntityId> {
+    let release = bind(model)?;
     let entity = draft.kind.entity_name();
     if draft.name.trim().is_empty() {
         return Err(invalid(entity, "Name", "expected a non-empty name"));
@@ -120,29 +166,29 @@ pub fn create_quantity(
     if let Some(unit) = draft.unit {
         super::validate::reference_type(tx, model, entity, "Unit", unit, "IFCNAMEDUNIT")?;
     }
-    Ok(tx.create(Entity::new(
+    // Bare: the declared type is a defined measure, not a SELECT. A whole
+    // count is an INTEGER, valid for IfcCountMeasure as NUMBER (IFC2X3,
+    // IFC4) and as INTEGER (IFC4X3); every other measure here is REAL. The
+    // whole-count check above has already run, so the cast cannot lose a
+    // fraction.
+    let value = if draft.kind == QuantityKind::Count {
+        #[allow(clippy::cast_possible_truncation)]
+        Value::Integer(draft.value as i64)
+    } else {
+        Value::Real(draft.value)
+    };
+    let text = |text: Option<&str>| text.map_or(Value::Null, |text| Value::Text(text.into()));
+    let record = release.record(
         entity,
         vec![
-            Value::Text(draft.name.into()),
-            draft
-                .description
-                .map_or(Value::Null, |d| Value::Text(d.into())),
-            draft.unit.map_or(Value::Null, Value::Ref),
-            Value::Typed {
-                type_name: draft.kind.measure_name().into(),
-                // IfcCountMeasure is declared INTEGER in EXPRESS; every
-                // other measure here is REAL. The whole-count check above
-                // has already run, so the cast cannot lose a fraction.
-                value: Box::new(if draft.kind == QuantityKind::Count {
-                    #[allow(clippy::cast_possible_truncation)]
-                    Value::Integer(draft.value as i64)
-                } else {
-                    Value::Real(draft.value)
-                }),
-            },
-            draft.formula.map_or(Value::Null, |f| Value::Text(f.into())),
+            ("Name", Value::Text(draft.name.into())),
+            ("Description", text(draft.description)),
+            ("Unit", draft.unit.map_or(Value::Null, Value::Ref)),
+            (draft.kind.value_attribute(), value),
+            ("Formula", text(draft.formula)),
         ],
-    )))
+    )?;
+    Ok(tx.create(record))
 }
 
 /// Attach quantities to an existing `IfcCostItem`.

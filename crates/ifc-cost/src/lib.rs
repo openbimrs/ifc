@@ -27,7 +27,7 @@
 //! | [`value`] | `IfcCostValue` and applied monetary values |
 //! | [`quantity`] | Quantities a cost is computed against |
 //! | [`relation`] | Nesting and control assignment |
-//! | [`mutation`] | Transaction-staged bounded IFC4 authoring |
+//! | [`mutation`] | Transaction-staged bounded IFC4 authoring; release-bound quantities |
 //! | [`currency`] | Monetary unit agreement |
 //! | [`rollup`] | Summing a cost tree |
 //! | [`error`] | Why a cost lookup failed |
@@ -61,6 +61,9 @@ pub mod view;
 
 pub use currency::{monetary_units, project_currency, CurrencyError};
 pub use error::CostError;
+/// The IFC release a release-bound authoring error names (re-exported from
+/// `ifc-schema`).
+pub use ifc_schema::SchemaVersion;
 pub use item::CostItem;
 pub use mutation::{
     assign_schedule_items, create_cost_item, create_cost_schedule, create_cost_value,
