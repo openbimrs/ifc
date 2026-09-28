@@ -465,6 +465,13 @@ pub fn create_event_time(
 /// `lag_value` is an `IfcTimeOrRatioSelect`. A duration is an ISO 8601
 /// string; a ratio is a plain number. The caller picks, because the two
 /// mean different things and this crate will not guess.
+///
+/// `LagValue` is declared `IfcTimeOrRatioSelect = SELECT (IfcDuration,
+/// IfcRatioMeasure)` in IFC4 and IFC4X3, so the value is written as the
+/// typed parameter of the member it is (#201): a string as
+/// `IFCDURATION('P5D')`, a number as `IFCRATIOMEASURE(0.5)` (an integer is
+/// written as that REAL). A value already typed as one of those two members
+/// is accepted as is.
 pub fn create_lag_time(
     tx: &mut Transaction,
     name: Option<&str>,
@@ -478,16 +485,31 @@ pub fn create_lag_time(
             expected: "a non-empty IfcTaskDurationEnum value",
         });
     }
-    if !matches!(
-        lag_value,
-        Value::Text(_) | Value::Real(_) | Value::Integer(_)
-    ) {
-        return Err(ScheduleAuthoringError::InvalidValue {
-            entity: "IFCLAGTIME",
-            attribute: "LagValue",
-            expected: "a duration string or a ratio number",
-        });
-    }
+    // (member, payload): the SELECT member the value is, as a bare value.
+    let (member, payload) = match lag_value {
+        Value::Typed { type_name, value } => (Some(type_name), *value),
+        bare => (None, bare),
+    };
+    let is = |name: &str| member.as_ref().is_none_or(|m| m.eq_ignore_ascii_case(name));
+    #[allow(clippy::cast_precision_loss)]
+    let (member, payload) = match payload {
+        Value::Text(text) if is("IFCDURATION") => ("IFCDURATION", Value::Text(text)),
+        Value::Real(ratio) if is("IFCRATIOMEASURE") => ("IFCRATIOMEASURE", Value::Real(ratio)),
+        Value::Integer(ratio) if is("IFCRATIOMEASURE") => {
+            ("IFCRATIOMEASURE", Value::Real(ratio as f64))
+        }
+        _ => {
+            return Err(ScheduleAuthoringError::InvalidValue {
+                entity: "IFCLAGTIME",
+                attribute: "LagValue",
+                expected: "a duration string or a ratio number",
+            })
+        }
+    };
+    let lag_value = Value::Typed {
+        type_name: member.into(),
+        value: Box::new(payload),
+    };
     let mut attributes = vec![Value::Null; lag_slot::DURATION_TYPE + 1];
     attributes[event_time_slot::NAME] = optional_text(name);
     attributes[lag_slot::LAG_VALUE] = lag_value;

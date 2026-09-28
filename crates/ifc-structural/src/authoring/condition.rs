@@ -14,10 +14,10 @@
 //! `IfcBoundaryCondition` contributes `Name` as slot 0, so the stiffness
 //! values start at slot 1 in every family.
 
-use ifc_model::{Entity, EntityId, Transaction, Value};
+use ifc_model::{EntityId, Transaction, Value};
 use ifc_schema::Schema;
 
-use super::build_named;
+use super::{build_named, stiffness};
 
 use crate::condition::{AxisValues, BoundaryConditionKind, FailureLimits, StiffnessValue};
 use crate::error::{StructuralError, StructuralResult};
@@ -38,7 +38,27 @@ pub struct BoundaryConditionDraft<'a> {
     pub warping: Option<StiffnessValue>,
 }
 
-/// Stage a boundary condition of the given family.
+/// Stage a boundary condition of the given family, in the IFC4 form.
+///
+/// Equivalent to [`stage_boundary_condition_in`] with the bundled IFC4
+/// table. IFC4 and IFC4X3 declare the same stiffness SELECTs, so the record
+/// is correct in both. It is **not** correct in IFC2X3, whose stiffness
+/// attributes are plain measures that take no wrapper and admit no boolean:
+/// IFC2X3 callers use [`stage_boundary_condition_in`] with
+/// [`ifc_schema::ifc2x3`] (#200).
+///
+/// # Errors
+///
+/// As [`stage_boundary_condition_in`].
+pub fn stage_boundary_condition(
+    tx: &mut Transaction,
+    kind: BoundaryConditionKind,
+    draft: BoundaryConditionDraft<'_>,
+) -> StructuralResult<EntityId> {
+    stage_boundary_condition_in(tx, ifc_schema::ifc4(), kind, draft)
+}
+
+/// Stage a boundary condition of the given family in `schema`'s release.
 ///
 /// The kind selects the entity, and with it the attribute names the reader
 /// will look for. Face conditions declare no rotational or warping values
@@ -46,21 +66,42 @@ pub struct BoundaryConditionDraft<'a> {
 /// family does not declare it is refused rather than silently dropped: a
 /// caller who sets a rotational spring on a face has a modelling error, not
 /// a formatting one.
-pub fn stage_boundary_condition(
+///
+/// The record is laid out by `schema`'s attribute names (IFC2X3 still calls
+/// the translational values `LinearStiffness...`), and each value is written
+/// in the form its declared type requires in that release (#200, #201):
+///
+/// ```text
+/// IFC2X3        LinearStiffnessX : IfcLinearStiffnessMeasure      1.5
+/// IFC4, IFC4X3  TranslationalStiffnessX : IfcTranslationalStiffnessSelect
+///                 a measure  IFCLINEARSTIFFNESSMEASURE(1.5)
+///                 a boolean  IFCBOOLEAN(.T.)
+/// ```
+///
+/// # Errors
+///
+/// [`StructuralError::InvalidDraftValue`] for a value the family does not
+/// declare, a non-finite measure, or a boolean where the release's declared
+/// type admits none (every IFC2X3 stiffness).
+/// [`StructuralError::UnsupportedAttribute`] or
+/// [`StructuralError::UnsupportedSchema`] if `schema` does not declare the
+/// family's attributes. Nothing is staged on error.
+pub fn stage_boundary_condition_in(
     tx: &mut Transaction,
+    schema: &Schema,
     kind: BoundaryConditionKind,
     draft: BoundaryConditionDraft<'_>,
 ) -> StructuralResult<EntityId> {
-    let entity_type = entity_name(kind);
+    let entity_type = stiffness::entity_name(kind);
     if kind == BoundaryConditionKind::Face && has_any(draft.rotational) {
-        return Err(crate::error::StructuralError::InvalidDraftValue {
+        return Err(StructuralError::InvalidDraftValue {
             entity_type,
             attribute: "RotationalStiffness",
             expected: "no rotational stiffness: face conditions do not declare one",
         });
     }
     if draft.warping.is_some() && kind != BoundaryConditionKind::NodeWarping {
-        return Err(crate::error::StructuralError::InvalidDraftValue {
+        return Err(StructuralError::InvalidDraftValue {
             entity_type,
             attribute: "WarpingStiffness",
             expected: "no warping stiffness outside IfcBoundaryNodeConditionWarping",
@@ -69,7 +110,7 @@ pub fn stage_boundary_condition(
     for (axis, value) in axes(draft.translational).chain(axes(draft.rotational)) {
         if let Some(StiffnessValue::Measure(measure)) = value {
             if !measure.is_finite() {
-                return Err(crate::error::StructuralError::InvalidDraftValue {
+                return Err(StructuralError::InvalidDraftValue {
                     entity_type,
                     attribute: axis,
                     expected: "a finite stiffness measure",
@@ -77,64 +118,15 @@ pub fn stage_boundary_condition(
             }
         }
     }
-    let mut attributes = vec![optional_text(draft.name)];
-    attributes.extend(stiffness_triple(draft.translational, kind, true));
+    let mut fields = vec![("Name", optional_text(draft.name))];
+    fields.extend(stiffness::triple(schema, kind, true, draft.translational)?);
     if kind != BoundaryConditionKind::Face {
-        attributes.extend(stiffness_triple(draft.rotational, kind, false));
+        fields.extend(stiffness::triple(schema, kind, false, draft.rotational)?);
     }
     if kind == BoundaryConditionKind::NodeWarping {
-        attributes.push(stiffness_value(draft.warping, kind, false));
+        fields.push(stiffness::warping(schema, draft.warping)?);
     }
-    Ok(tx.create(Entity::new(entity_type, attributes)))
-}
-
-fn entity_name(kind: BoundaryConditionKind) -> &'static str {
-    match kind {
-        BoundaryConditionKind::Edge => "IFCBOUNDARYEDGECONDITION",
-        BoundaryConditionKind::Face => "IFCBOUNDARYFACECONDITION",
-        BoundaryConditionKind::Node => "IFCBOUNDARYNODECONDITION",
-        BoundaryConditionKind::NodeWarping => "IFCBOUNDARYNODECONDITIONWARPING",
-    }
-}
-
-/// The measure each family uses. A node condition carries a stiffness, an
-/// edge condition stiffness per length, a face condition per area: writing
-/// the wrong wrapper states a different physical quantity.
-fn measure_name(kind: BoundaryConditionKind, translational: bool) -> &'static str {
-    match (kind, translational) {
-        (BoundaryConditionKind::Edge, true) => "IFCMODULUSOFTRANSLATIONALSUBGRADEREACTIONMEASURE",
-        (BoundaryConditionKind::Edge, false) => "IFCMODULUSOFROTATIONALSUBGRADEREACTIONMEASURE",
-        (BoundaryConditionKind::Face, _) => "IFCMODULUSOFSUBGRADEREACTIONMEASURE",
-        (_, true) => "IFCLINEARSTIFFNESSMEASURE",
-        (_, false) => "IFCROTATIONALSTIFFNESSMEASURE",
-    }
-}
-
-fn stiffness_value(
-    value: Option<StiffnessValue>,
-    kind: BoundaryConditionKind,
-    translational: bool,
-) -> Value {
-    match value {
-        None => Value::Null,
-        Some(StiffnessValue::Boolean(flag)) => Value::Bool(flag),
-        Some(StiffnessValue::Measure(measure)) => Value::Typed {
-            type_name: measure_name(kind, translational).into(),
-            value: Box::new(Value::Real(measure)),
-        },
-    }
-}
-
-fn stiffness_triple(
-    values: AxisValues<Option<StiffnessValue>>,
-    kind: BoundaryConditionKind,
-    translational: bool,
-) -> [Value; 3] {
-    [
-        stiffness_value(values.x, kind, translational),
-        stiffness_value(values.y, kind, translational),
-        stiffness_value(values.z, kind, translational),
-    ]
+    Ok(tx.create(build_named(schema, entity_type, fields)?))
 }
 
 fn has_any(values: AxisValues<Option<StiffnessValue>>) -> bool {

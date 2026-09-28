@@ -60,6 +60,14 @@ everything released before per-crate changelogs began.
   record is invalid, use the `*_with_owner_history` variants (#202).
   `create_recurrence_pattern` moved to its own module; its path and
   behaviour are unchanged.
+### Fixed
+
+- `create_lag_time` writes `IfcLagTime.LagValue` as the member of
+  `IfcTimeOrRatioSelect` it is (#201): a string as `IFCDURATION('P5D')` and
+  a number as `IFCRATIOMEASURE(0.5)`, an integer as that REAL. A bare value
+  in a SELECT slot does not say which member it is. A value already typed as
+  `IFCDURATION` or `IFCRATIOMEASURE` is accepted; any other is refused, as
+  before. `sequences` reads both forms, as before.
 
 ## [0.2.0] - 2026-09-22
 

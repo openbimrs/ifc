@@ -15,6 +15,12 @@
 //! Slot positions are not restated here. Each writer indexes the same
 //! `pub(crate) mod slot` constants its reader uses, so a layout correction
 //! lands once and serves both directions.
+//!
+//! Values follow the declared attribute type (#200): a defined type such as
+//! `IfcParameterValue` is written bare, and only a SELECT slot carries the
+//! typed parameter of its member. Where a slot changes kind between releases
+//! (the directrix sweeps' trims), a `*_in` writer takes the model and binds
+//! its declared release.
 
 mod brep;
 mod connection;
@@ -23,12 +29,14 @@ mod curve;
 mod placement;
 mod profile;
 mod profile2;
+mod release;
 mod solid;
 mod spiral;
 mod std_profile;
 mod surface;
 mod surface_curve;
 mod swept;
+mod swept_in;
 mod tessellation;
 mod transform;
 
@@ -87,6 +95,7 @@ pub use swept::{
     surface_of_linear_extrusion, surface_of_revolution, swept_disk_solid,
     swept_disk_solid_polygonal, SectionedKind, SweepTrim,
 };
+pub use swept_in::{fixed_reference_swept_area_solid_in, surface_curve_swept_area_solid_in};
 pub use tessellation::{
     cartesian_point_list_2d, cartesian_point_list_3d, indexed_polygonal_face,
     indexed_polygonal_face_with_voids, polygonal_face_set, triangulated_face_set,
