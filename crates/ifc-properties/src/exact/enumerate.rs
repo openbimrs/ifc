@@ -28,7 +28,7 @@ use ifc_model::{EntityId, Model};
 
 use super::assignment::assigned_sets;
 use super::release::{validate_model, Release};
-use super::set::load_named;
+use super::set::load_source_set;
 use super::{ExactProperty, ExactPropertyError, ExactSource};
 
 /// One property of an enumeration, with the name it was selected by.
@@ -149,13 +149,13 @@ where
 }
 
 /// The caller's two selectors.
-struct Selector<'a> {
-    set: &'a mut dyn FnMut(&str) -> bool,
-    property: &'a mut dyn FnMut(&str) -> bool,
+pub(super) struct Selector<'a> {
+    pub(super) set: &'a mut dyn FnMut(&str) -> bool,
+    pub(super) property: &'a mut dyn FnMut(&str) -> bool,
 }
 
 /// The selected properties of the selected sets of one source.
-fn collect(
+pub(super) fn collect(
     model: &Model,
     release: Release,
     sets: &[EntityId],
@@ -165,7 +165,7 @@ fn collect(
     let mut entries = Vec::new();
     let mut selected_sets: BTreeMap<&str, EntityId> = BTreeMap::new();
     for &set_id in sets {
-        let set = load_named(model, release, set_id)?;
+        let set = load_source_set(model, release, source, set_id)?;
         if !(select.set)(set.name) {
             set.refuse_unselected(release, &mut *select.property)?;
             continue;
@@ -289,7 +289,7 @@ where
 }
 
 /// The selected sets of one source.
-fn list_sets(
+pub(super) fn list_sets(
     model: &Model,
     release: Release,
     sets: &[EntityId],
@@ -299,7 +299,7 @@ fn list_sets(
     let mut entries = Vec::new();
     let mut selected: BTreeMap<&str, EntityId> = BTreeMap::new();
     for &set_id in sets {
-        let set = load_named(model, release, set_id)?;
+        let set = load_source_set(model, release, source, set_id)?;
         if !select_set(set.name) {
             continue;
         }

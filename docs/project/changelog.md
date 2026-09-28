@@ -20,6 +20,22 @@ lockstep -- is archived in the
 
 ## [Unreleased]
 
+### ifc-properties
+
+### Added
+
+- `exact_material_property`, `exact_material_properties_where` and
+  `exact_material_property_sets_where` (#218): exact readers for the
+  property sets of a material definition, as `exact_property` and its
+  enumerations read an object's. IFC4 and IFC4X3 `IfcMaterialProperties`
+  (the inverse `HasProperties`) and IFC2X3 `IfcExtendedMaterialProperties`
+  resolve their named properties; an IFC2X3 typed subtype
+  (`IfcGeneralMaterialProperties`, ...) resolves its attributes as a
+  predefined set does, keyed by its entity name. Results carry the new
+  `ExactSource::Material`; a material without sets is a proven absence,
+  and a target that is no material definition of the release is
+  `InvalidQueryObject`.
+
 ### ifc-schema
 
 ### Changed

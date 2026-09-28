@@ -47,6 +47,7 @@ mod value;
 
 pub use error::{PropertyAnomaly, PropertyError, PropertyResult, TemplateError};
 pub use exact::{
+    exact_material_properties_where, exact_material_property, exact_material_property_sets_where,
     exact_predefined_sets, exact_properties, exact_properties_where, exact_property,
     exact_property_sets_where, exact_schema, exact_unit, ExactBoundedValue, ExactComplexMember,
     ExactComplexValue, ExactEntityRef, ExactEnumeratedValue, ExactEnumeration, ExactLogical,
