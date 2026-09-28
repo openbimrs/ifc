@@ -50,7 +50,47 @@ lockstep -- is archived in the
 
 ### ifc-approval
 
+### Added
+
+- `DateTimeInput`: an approval time as IFC4/IFC4X3 `IfcDateTime` text or
+  an IFC2X3 `IfcDateTimeSelect` record (`From<&str>`, `From<EntityId>`).
+- `ApprovalError::NotInSchema`, `StructuredValue`, `EntityNotInSchema`,
+  `AuthoringNotInSchema` and `AuthoringValueType`, and projections'
+  `release()`. `SchemaVersion` is re-exported.
+
 ### Changed (breaking)
+
+- The approval views read every attribute by name in the model's declared
+  release (#212). They read the IFC4 positions from every file, so an
+  IFC2X3 `IfcApproval` answered its description as the identifier and its
+  date record as the name, and an IFC2X3 `IfcApprovalRelationship` swapped
+  its ends. `ApprovalView` binds the header (IFC2X3, IFC4 or IFC4X3; none
+  reads as IFC4) and a lookup refuses IFC4X1, IFC4X2, unknown and multiple
+  schemas. An attribute the release does not declare is `NotInSchema`
+  (IFC2X3 `IfcApproval` has no `RequestingApproval`, `GivingApproval`, or
+  `Status`, `Level` and `Qualifier` under those names, which are not
+  documented as its `ApprovalStatus`, `ApprovalLevel` and
+  `ApprovalQualifier`), and `time_of_approval` on IFC2X3's
+  `ApprovalDateTime` record is `StructuredValue` with the record id. IFC2X3
+  `RelatedApproval` is read as a one-element `related_approvals`. IFC4 and
+  IFC4X3 answers are unchanged.
+- `create_approval`, `relate_approvals` and `relate_resource_approval`
+  bind the declared release and lay their records out by name (#212). In
+  IFC2X3 an `IfcApproval` has seven attributes and requires `Identifier`,
+  `Name` and `ApprovalDateTime` (the IFC4 `TimeOfApproval`) as a date
+  record; an `IfcApprovalRelationship` takes exactly one related approval
+  and requires `Name`; `IfcResourceApprovalRelationship` does not exist
+  (`EntityNotInSchema`). A value the release does not declare is
+  `AuthoringNotInSchema` (formerly `AuthoringInvalid`) and one it cannot
+  hold `AuthoringValueType`. IFC4 and IFC4X3 records are unchanged.
+- `ApprovalDraft::time_of_approval` is `Option<DateTimeInput>`; the setter
+  takes `impl Into<DateTimeInput>`, so `.time_of_approval("…")` still
+  compiles.
+- `Approval::try_new`, `ApprovalRelationship::try_new`,
+  `ResourceApprovalRelationship::try_new` and `ApprovalAssignment::try_new`
+  take the `SchemaVersion` to read against, refusing IFC4X1, IFC4X2 and an
+  entity the release does not declare. `ApprovalView::new` is no longer
+  `const`.
 
 - `ApprovalDraft`, `ApprovalRelationshipDraft`, `ResourceApprovalDraft`
   and `ApprovalAssociationDraft` are `#[non_exhaustive]` (#214). Struct
@@ -126,7 +166,49 @@ lockstep -- is archived in the
 
 ### ifc-constraint
 
+### Added
+
+- `DateTimeInput`: a creation time as IFC4/IFC4X3 `IfcDateTime` text or an
+  IFC2X3 `IfcDateTimeSelect` record (`From<&str>`, `From<EntityId>`).
+- `ConstraintError::NotInSchema`, `StructuredValue`, `EntityNotInSchema`,
+  `AuthoringNotInSchema` and `AuthoringValueType`, and projections'
+  `release()`. `SchemaVersion` is re-exported.
+
 ### Changed (breaking)
+
+- The constraint views read every attribute by name in the model's
+  declared release (#212). They read IFC4 positions, types and SELECTs
+  from every file. `ConstraintView` binds the header (IFC2X3, IFC4 or
+  IFC4X3; none reads as IFC4) and a lookup refuses IFC4X1, IFC4X2, unknown
+  and multiple schemas. An attribute the release does not declare is
+  `NotInSchema`: IFC2X3 `IfcMetric.ReferencePath`, and IFC2X3
+  `IfcObjective.LogicalAggregator`, whose slot holds `ResultValues`, an
+  `IfcMetric`, which was reported as a malformed operator. An IFC2X3
+  `CreationTime` record is `StructuredValue` with the record id instead of
+  `InvalidValue`; IFC2X3's single `BenchmarkValues` metric is a one-element
+  list; `DataValue` is checked against the release's own
+  `IfcMetricValueSelect` and is required in IFC2X3. IFC4 and IFC4X3 answers
+  are unchanged.
+- `create_metric`, `create_objective`, `relate_resource_constraint` and
+  `create_reference` bind the declared release and lay their records out by
+  name (#212). In IFC2X3 a metric has ten attributes and requires
+  `DataValue`, `ReferencePath` is `AuthoringNotInSchema`, an objective takes
+  exactly one `IfcMetric` benchmark and no logical aggregator, text
+  `CreationTime` is `AuthoringValueType`, and
+  `IfcResourceConstraintRelationship` and `IfcReference` are
+  `EntityNotInSchema`. Enumeration tokens are checked against the release's
+  enumeration (IFC2X3 lacks, for example, `INCLUDES` and `MODELVIEW`). IFC4
+  and IFC4X3 records are unchanged.
+- `ConstraintBaseDraft::creation_time` is `Option<DateTimeInput>`; the
+  setter takes `impl Into<DateTimeInput>`, so `.creation_time("…")` still
+  compiles.
+- `Metric::try_new`, `Objective::try_new`,
+  `ResourceConstraintRelationship::try_new` and
+  `ConstraintAssignment::try_new` take the `SchemaVersion` to read against,
+  refusing IFC4X1, IFC4X2 and an entity the release does not declare.
+  `ConstraintView::new` is no longer `const`. A value for an attribute the
+  release does not declare, which `associate_constraint` could not hit, is
+  `AuthoringNotInSchema` rather than `AuthoringInvalid`.
 
 - Every public draft is `#[non_exhaustive]`, so struct literals no longer
   compile outside the crate. Each gains a constructor taking its required
@@ -203,6 +285,39 @@ lockstep -- is archived in the
 
 ### Changed (breaking)
 
+- `create_cost_value`, `create_monetary_unit` and
+  `create_currency_relationship` bind the model's declared release and lay
+  their records out by attribute name (#213). They wrote the IFC4 layout
+  into every model. In IFC2X3 an `IfcCostValue` has eight attributes and
+  requires `CostType`, written from `category` (IFC4 renamed `CostType` to
+  `Category`); a composed value (`ArithmeticOperator`, `Components`) is
+  refused with `AuthoringNotInSchema`. `IfcMonetaryUnit.Currency` is an
+  `IfcCurrencyEnum` enumerator in IFC2X3 (a label it does not list is
+  `AuthoringValueType`) and an `IfcLabel` from IFC4 on. An IFC2X3
+  `IfcCurrencyRelationship` has five attributes and requires `RateDateTime`
+  as an `IfcDateAndTime` record. IFC4 and IFC4X3 records are unchanged.
+- `create_monetary_unit` takes the `&Model` (`create_monetary_unit(tx,
+  model, currency)`), which it needs to bind the release.
+- `CostValueDraft::applicable_date` and `fixed_until_date` are
+  `Option<DateTimeValue>`, and `create_currency_relationship` takes
+  `rate_date_time: Option<DateTimeValue>`: IFC4 and IFC4X3 text as before
+  (`"2026-01-01".into()`; the draft setters take `impl Into<DateTimeValue>`),
+  or an IFC2X3 record form, which the writer stages. A form the release does
+  not declare is refused with `AuthoringValueType`.
+- `CostView::schedules` returns `Result<impl Iterator<Item = CostSchedule>,
+  CostError>` and every `CostSchedule` accessor reads its attribute by name
+  in the model's declared release (#212). The IFC4 positions misread an
+  IFC2X3 `IfcCostSchedule`: `PreparedBy` as the predefined type, the
+  `SubmittedOn` record as the status and `SubmittedBy` as the
+  identification. `identification` reads IFC2X3's `ID`, which IFC4 renamed.
+  A header declaring IFC4X1, IFC4X2 or an unknown release is
+  `CostError::UnsupportedSchema`, several `CostError::MultipleSchemas`
+  (new variants); no header reads as IFC4.
+- `CostSchedule::submitted_on` and `update_date` return
+  `Option<AuthoredDateTime>`: IFC4/IFC4X3 text or the IFC2X3 date record
+  (`AuthoredDateTime::Record`), never `None` for a stated IFC2X3 date.
+- `CostSchedule::new(id, entity, release)` takes the release to read
+  against and returns `Result`, refusing IFC4X1 and IFC4X2.
 - `CostValueDraft`, `CostItemDraft`, `CostScheduleDraft`, `NestingDraft`,
   `ScheduleAssignmentDraft` and `QuantityDraft` are `#[non_exhaustive]`:
   build them with their constructors and setters instead of a struct
@@ -525,6 +640,39 @@ lockstep -- is archived in the
 
 ### Changed (breaking)
 
+- The task, work-control and sequence readers bind the model's declared
+  release and read every attribute by name from its table (#212). They
+  read IFC4 slot constants from every file, so an IFC2X3 task answered its
+  `Status` as the long description, `WorkMethod` as the status and
+  `Priority` as the milestone flag, and an IFC2X3 work plan or schedule its
+  `WorkControlType` as the predefined type. The header binds IFC2X3, IFC4
+  or IFC4X3 (none reads as IFC4); IFC4X1, IFC4X2, unknown and multiple
+  schemas are refused with the new `ScheduleReadError`. IFC4 and IFC4X3
+  answers are unchanged.
+- `tasks`, `work_plans`, `work_schedules`, `sequences`, `predecessors_of`,
+  `successors_of`, `start_tasks`, `end_tasks`, `tasks_of_schedule` and
+  `subtasks_of` return `Result<_, ScheduleReadError>`; `find_cycle` returns
+  `Result<Option<SequenceCycle>, ScheduleReadError>`; `downstream_of` and
+  `execution_order` return `ScheduleReadError::Cycle(SequenceCycle)` for a
+  loop instead of a bare `SequenceCycle`.
+- `Task::new(id, entity, release)` and `WorkControl::new(id, entity,
+  release)` take the `SchemaVersion` to read against and return `Result`,
+  refusing IFC4X1 and IFC4X2; `WorkControl::new` is `Ok(None)` for another
+  entity. `Task::release` and `WorkControl::release` report the binding.
+- An attribute IFC2X3 does not declare reads as `None`: `Task::
+  long_description`, `predefined_type` and `task_time_ref`, and
+  `WorkControl::predefined_type`. `Task::identification` reads IFC2X3's
+  `TaskId` and `WorkControl::identification` its `Identifier`, which IFC4
+  promoted to `Identification`. `WorkControl::work_control_type` reads
+  IFC2X3's `WorkControlType`, which is not aliased to `PredefinedType`.
+- `WorkControl::creation_date`, `start_time` and `finish_time` return
+  `Option<AuthoredDateTime>` (IFC4/IFC4X3 text, or the IFC2X3
+  `IfcDateTimeSelect` record), and `duration` and `total_float` return
+  `Option<AuthoredDuration>` (IFC4/IFC4X3 text, or the IFC2X3
+  `IfcTimeMeasure`), instead of `None` for a stated IFC2X3 value.
+- `Sequence` gains `time_lag_measure`, IFC2X3's `IfcRelSequence.TimeLag`
+  (an `IfcTimeMeasure` on the relationship); `lag` stays the IFC4/IFC4X3
+  `IfcLagTime`.
 - `TaskDraft`, `WorkControlDraft`, `EventDraft`, `EventTimeDraft`,
   `RecurrenceDraft`, `ProcedureDraft` and `TaskTimeDraft` are
   `#[non_exhaustive]`: build them with `new` and the setters instead of a
@@ -694,6 +842,20 @@ lockstep -- is archived in the
 
 ### Changed (breaking)
 
+- `assign_to_actor`, `assign_to_process`, `connect_with_realizing_elements`
+  and `interfere_elements` take the `&Model` and bind its declared release
+  (#213). They wrote records with the wrong number of attributes: seven of
+  `IfcRelAssignsToActor`'s and `IfcRelAssignsToProcess`'s eight, eight of
+  `IfcRelConnectsWithRealizingElements`'s nine, and ten for
+  `IfcRelInterferesElements` where IFC4 declares nine. Each record is now
+  laid out by attribute name with the release's own arity (the interference
+  has ten attributes in IFC4X3). IFC4 records gain a trailing `$` for the
+  first three (`ActingRole`, `QuantityInProcess`, `ConnectionType`) and the
+  IFC4 interference loses its trailing `$`; IFC4X3 records of the first
+  three gain the same trailing `$`, and its interference is unchanged. An
+  IFC2X3 model, which requires `OwnerHistory` (and declares no
+  `IfcRelInterferesElements`), and a header binding no single verified
+  release are refused; use the `*_with_owner_history` variants in IFC2X3.
 - `SpatialDraft`, `FacilityDraft`, `BoundaryDraft`, `ExternalSpatialDraft`
   and `ProjectLibraryDraft` are `#[non_exhaustive]`: struct literals and
   `..Default::default()` updates no longer compile outside the crate; build

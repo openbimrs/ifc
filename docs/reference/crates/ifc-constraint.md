@@ -19,7 +19,9 @@ Bounded IFC4 metric, objective, and constraint relationships.
 
 ## Overview
 
-Bounded IFC4 metric, objective, and constraint-relationship semantics.
+Bounded metric, objective, and constraint-relationship semantics, read and
+written by attribute name in the model's declared release (IFC2X3, IFC4
+or IFC4X3).
 
 Values are projected and preserved; this crate does not evaluate compliance,
 formulas, references, tables, or time series.
