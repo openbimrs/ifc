@@ -34,9 +34,14 @@ pub(super) enum SetKind {
     Properties,
     /// An `IfcElementQuantity`.
     Quantities,
-    /// Any other `IfcPropertySetDefinition`: a predefined set, whose values
-    /// are attributes of its own entity.
+    /// Any other `IfcPropertySetDefinition`, or an IFC2X3 typed
+    /// `IfcMaterialProperties` subtype (#218): a predefined set, whose
+    /// values are attributes of its own entity.
     Predefined,
+    /// An IFC4 or IFC4X3 `IfcMaterialProperties`, or an IFC2X3
+    /// `IfcExtendedMaterialProperties`: named properties of a material
+    /// (#218).
+    MaterialProperties,
 }
 
 /// One member of a set: a property or quantity entity, or the slot of a
@@ -95,6 +100,82 @@ pub(super) fn load_set(
     Ok((set, kind))
 }
 
+/// Load a set of `source`: an assigned definition, or for
+/// [`ExactSource::Material`] a material property set.
+///
+/// # Errors
+///
+/// Those of [`load_named`] or [`load_material_named`].
+pub(super) fn load_source_set(
+    model: &Model,
+    release: Release,
+    source: ExactSource,
+    id: EntityId,
+) -> Result<LoadedSet<'_>, ExactPropertyError> {
+    match source {
+        ExactSource::Material(_) => load_material_named(model, release, id),
+        _ => load_named(model, release, id),
+    }
+}
+
+/// Load material property set `id`, classify it and name it (#218).
+///
+/// An IFC4 or IFC4X3 `IfcMaterialProperties` and an IFC2X3
+/// `IfcExtendedMaterialProperties` hold named properties; an IFC2X3 typed
+/// subtype (`IfcGeneralMaterialProperties`, ...) holds its values in its
+/// own attributes, as a predefined set does, and has no `Name`. A set
+/// without a name is named by its entity, as a predefined set is.
+///
+/// # Errors
+///
+/// A missing entity, a slot-count mismatch, an entity that is no
+/// `IfcMaterialProperties`, or a `Name` that is not text (`$` too where the
+/// release requires it).
+pub(super) fn load_material_named(
+    model: &Model,
+    release: Release,
+    id: EntityId,
+) -> Result<LoadedSet<'_>, ExactPropertyError> {
+    let schema = release.schema;
+    let entity = model
+        .get(id)
+        .ok_or(ExactPropertyError::MissingReference { from: id, to: id })?;
+    release.require_exact_slots(id, entity)?;
+    let type_name = entity.type_name.as_ref();
+    if !schema.is_a(type_name, "IFCMATERIALPROPERTIES") {
+        return Err(ExactPropertyError::UnsupportedDefinition {
+            entity: id,
+            type_name: entity.type_name.clone(),
+        });
+    }
+    let kind = if material_member_list(release, type_name).is_some() {
+        SetKind::MaterialProperties
+    } else {
+        SetKind::Predefined
+    };
+    let (name, named) = predefined_key(release, id, entity)?;
+    Ok(LoadedSet {
+        id,
+        entity,
+        kind,
+        name,
+        named,
+    })
+}
+
+/// The slot and name of a material property set's member list: IFC4 and
+/// IFC4X3 `Properties`, IFC2X3 `ExtendedProperties`; `None` for a typed
+/// IFC2X3 subtype.
+fn material_member_list(release: Release, type_name: &str) -> Option<(usize, &'static str)> {
+    ["Properties", "ExtendedProperties"]
+        .into_iter()
+        .find_map(|name| {
+            release
+                .attribute(type_name, name)
+                .map(|(slot, _)| (slot, name))
+        })
+}
+
 /// [`load_set`], then the set's name.
 ///
 /// # Errors
@@ -149,14 +230,15 @@ impl<'m> LoadedSet<'m> {
     /// that already stated it.
     ///
     /// Two sets that state one `Name` on one source are ambiguous whatever
-    /// is asked. Predefined sets that state none are not: a door carries
-    /// one `IfcDoorPanelProperties` per leaf. Those are ambiguous only for a
-    /// member both hold, which the callers detect per member.
+    /// is asked. Sets that state none (predefined or material sets) are not:
+    /// a door carries one `IfcDoorPanelProperties` per leaf. Those are
+    /// ambiguous only for a member both hold, which the callers detect per
+    /// member.
     pub(super) fn shares_name(
         &self,
         selected: &mut BTreeMap<&'m str, EntityId>,
     ) -> Option<EntityId> {
-        if self.kind == SetKind::Predefined && !self.named {
+        if !self.named {
             return None;
         }
         selected.insert(self.name, self.id)
@@ -172,6 +254,12 @@ impl<'m> LoadedSet<'m> {
         let slot = match self.kind {
             SetKind::Properties => slot(release, "IFCPROPERTYSET", "HasProperties"),
             SetKind::Quantities => slot(release, "IFCELEMENTQUANTITY", "Quantities"),
+            SetKind::MaterialProperties => {
+                let Some((slot, _)) = material_member_list(release, &self.entity.type_name) else {
+                    return false;
+                };
+                slot
+            }
             SetKind::Predefined => return false,
         };
         match self.entity.attributes.get(slot) {
@@ -200,9 +288,24 @@ impl<'m> LoadedSet<'m> {
                 .collect()
         };
         Ok(match self.kind {
-            SetKind::Properties => {
-                entities(property_members(model, release, self.id, self.entity)?)
-            }
+            SetKind::Properties => entities(property_members(
+                model,
+                release,
+                self.id,
+                self.entity,
+                (
+                    slot(release, "IFCPROPERTYSET", "HasProperties"),
+                    "HasProperties",
+                ),
+            )?),
+            SetKind::MaterialProperties => entities(property_members(
+                model,
+                release,
+                self.id,
+                self.entity,
+                material_member_list(release, &self.entity.type_name)
+                    .expect("classified by its member list"),
+            )?),
             SetKind::Quantities => {
                 entities(quantity_members(model, release, self.id, self.entity)?)
             }
@@ -261,21 +364,23 @@ impl<'m> LoadedSet<'m> {
     }
 }
 
-/// Every member of an `IfcPropertySet` with its `Name`, in file order.
+/// Every member of an `IfcPropertySet`, or of a material property set, with
+/// its `Name`, in file order; `list` is the slot and name of the member list.
 ///
 /// # Errors
 ///
-/// A malformed or empty `HasProperties`, a missing, foreign or non-property
+/// A malformed or empty member list, a missing, foreign or non-property
 /// member, a member with the wrong arity, or a member without a text name.
 pub(super) fn property_members<'m>(
     model: &'m Model,
     release: Release,
     set_id: EntityId,
     set: &Entity,
+    (list, attribute): (usize, &'static str),
 ) -> Result<Vec<(EntityId, &'m str)>, ExactPropertyError> {
     let schema = release.schema;
     let mut members = Vec::new();
-    for property_id in nonempty_refs_at(set_id, set.attributes.get(4), "HasProperties")? {
+    for property_id in nonempty_refs_at(set_id, set.attributes.get(list), attribute)? {
         let property = model
             .get(property_id)
             .ok_or(ExactPropertyError::MissingReference {
@@ -355,7 +460,7 @@ pub(super) fn find_property(
     let mut result: Option<ExactProperty> = None;
     let mut matching_sets = BTreeMap::new();
     for &set_id in sets {
-        let set = load_named(model, release, set_id)?;
+        let set = load_source_set(model, release, source, set_id)?;
         if wanted_set.is_some_and(|name| set.name != name) {
             set.refuse_unselected(release, |name| name == wanted_property)?;
             continue;

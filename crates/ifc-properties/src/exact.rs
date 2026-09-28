@@ -21,6 +21,7 @@ mod assignment;
 mod complex;
 mod composite;
 mod enumerate;
+mod material;
 mod measure;
 mod predefined;
 mod quantity;
@@ -40,6 +41,9 @@ use assignment::assigned_sets;
 pub use enumerate::{
     exact_properties, exact_properties_where, exact_property_sets_where, ExactPropertyEntry,
     ExactPropertySetEntry,
+};
+pub use material::{
+    exact_material_properties_where, exact_material_property, exact_material_property_sets_where,
 };
 pub use predefined::{exact_predefined_sets, ExactPredefinedSet};
 use release::validate_model;
@@ -62,6 +66,10 @@ pub enum ExactSource {
     /// type object is queried, that object's own set (#193), so the id is
     /// then the queried object's.
     Type(EntityId),
+    /// Resolved from a material property set of the material definition
+    /// with this entity id (#218): an `IfcMaterialProperties`, or in IFC2X3
+    /// one of its subtypes, whose `Material` is that definition.
+    Material(EntityId),
 }
 
 /// Exact IFC logical value without collapsing unknown into a boolean.
@@ -258,7 +266,9 @@ pub enum ExactPropertyError {
     /// The queried entity can carry no property sets in the declared
     /// release: it is neither an object `IfcRelDefinesByProperties` may
     /// relate (`IfcObject` in IFC2X3, a non-type `IfcObjectDefinition` in
-    /// IFC4 and IFC4X3) nor an `IfcTypeObject` (accepted since #193).
+    /// IFC4 and IFC4X3) nor an `IfcTypeObject` (accepted since #193). For
+    /// a material query (#218): the entity is no material definition the
+    /// release's `IfcMaterialProperties.Material` accepts.
     InvalidQueryObject {
         /// The rejected query object.
         object: EntityId,

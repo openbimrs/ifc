@@ -210,20 +210,25 @@ pub fn exact_predefined_sets(
     Ok(found)
 }
 
-/// The name a set selector sees for a predefined set, and whether it is a
-/// stated `Name`: its `Name`, or its entity name when `Name` is `$`.
+/// The name a set selector sees for a predefined or material set, and
+/// whether it is a stated `Name`: its `Name`, or its entity name when `Name`
+/// is `$` where the release allows it, or when the entity declares no
+/// `Name` (an IFC2X3 typed `IfcMaterialProperties` subtype, #218).
 ///
 /// # Errors
 ///
 /// [`ExactPropertyError::MalformedName`] for a `Name` that is neither text
-/// nor `$`.
+/// nor an allowed `$`.
 pub(super) fn predefined_key(
     release: Release,
     set_id: EntityId,
     set: &Entity,
 ) -> Result<(&str, bool), ExactPropertyError> {
-    match set.attributes.get(2) {
-        Some(Value::Null) => Ok((canonical_name(release, set), false)),
+    let Some((slot, attribute)) = release.attribute(&set.type_name, "Name") else {
+        return Ok((canonical_name(release, set), false));
+    };
+    match set.attributes.get(slot) {
+        Some(Value::Null) if attribute.optional => Ok((canonical_name(release, set), false)),
         name => text_at(set_id, name, "Name").map(|name| (name, true)),
     }
 }
@@ -237,13 +242,20 @@ fn canonical_name(release: Release, set: &Entity) -> &'static str {
 }
 
 /// The slot and name of each attribute a predefined set declares below
-/// `IfcPropertySetDefinition` (whose `IfcRoot` attributes every set shares).
+/// `IfcPropertySetDefinition` (whose `IfcRoot` attributes every set shares),
+/// or an IFC2X3 typed material property set below `IfcMaterialProperties`
+/// (whose `Material` every such set shares, #218).
 pub(super) fn own_attributes(
     release: Release,
     set: &Entity,
 ) -> impl Iterator<Item = (usize, &'static str)> {
     let schema = release.schema;
-    let inherited = schema.attribute_names("IFCPROPERTYSETDEFINITION").len();
+    let base = if schema.is_a(set.type_name.as_ref(), "IFCMATERIALPROPERTIES") {
+        "IFCMATERIALPROPERTIES"
+    } else {
+        "IFCPROPERTYSETDEFINITION"
+    };
+    let inherited = schema.attribute_names(base).len();
     schema
         .attributes(set.type_name.as_ref())
         .into_iter()
