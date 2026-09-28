@@ -19,60 +19,40 @@ fn authors_a_complete_surface_style_graph_in_one_transaction() {
     let colour = create_colour_rgb(
         &mut tx,
         schema,
-        ColourRgbDraft {
-            name: Some("blue"),
-            red: 0.1,
-            green: 0.2,
-            blue: 0.9,
-        },
+        ColourRgbDraft::new(0.1, 0.2, 0.9).name("blue"),
     )
     .unwrap();
     let shading = create_surface_style_shading(
         &mut tx,
         &model,
         schema,
-        SurfaceStyleShadingDraft {
-            surface_colour: colour,
-            transparency: Some(0.25),
-        },
+        SurfaceStyleShadingDraft::new(colour).transparency(0.25),
     )
     .unwrap();
     let surface = create_surface_style(
         &mut tx,
         &model,
         schema,
-        SurfaceStyleDraft {
-            name: Some("annotation fill"),
-            side: SurfaceSide::Both,
-            elements: vec![shading],
-        },
+        SurfaceStyleDraft::new(SurfaceSide::Both, vec![shading]).name("annotation fill"),
     )
     .unwrap();
     let styled = create_styled_item(
         &mut tx,
         &model,
         schema,
-        StyledItemDraft {
-            item: Some(item),
-            styles: vec![surface],
-            name: None,
-        },
+        StyledItemDraft::new(vec![surface]).item(item),
     )
     .unwrap();
     let layer = create_presentation_layer_with_style(
         &mut tx,
         &model,
         schema,
-        PresentationLayerDraft {
-            name: "A-ANNO",
-            description: None,
-            assigned_items: vec![item],
-            identifier: Some("A-ANNO"),
-            layer_on: Some(true),
-            layer_frozen: Some(false),
-            layer_blocked: Some(false),
-            layer_styles: vec![surface],
-        },
+        PresentationLayerDraft::new("A-ANNO", vec![item])
+            .identifier("A-ANNO")
+            .layer_on(true)
+            .layer_frozen(false)
+            .layer_blocked(false)
+            .layer_styles(vec![surface]),
     )
     .unwrap();
 
@@ -112,11 +92,7 @@ fn ifc2x3_writer_emits_the_required_presentation_style_assignment_wrapper() {
         &mut tx,
         &model,
         schema,
-        StyledItemDraft {
-            item: Some(item),
-            styles: vec![style],
-            name: None,
-        },
+        StyledItemDraft::new(vec![style]).item(item),
     )
     .unwrap();
 
@@ -137,17 +113,8 @@ fn ifc2x3_writer_emits_the_required_presentation_style_assignment_wrapper() {
 fn invalid_colour_is_rejected_before_any_edit_is_staged() {
     let model = Model::new();
     let mut tx = Transaction::new(&model);
-    let err = create_colour_rgb(
-        &mut tx,
-        ifc4x3(),
-        ColourRgbDraft {
-            name: None,
-            red: 1.25,
-            green: 0.0,
-            blue: 1.0,
-        },
-    )
-    .unwrap_err();
+    let err =
+        create_colour_rgb(&mut tx, ifc4x3(), ColourRgbDraft::new(1.25, 0.0, 1.0)).unwrap_err();
     assert!(matches!(
         err,
         StyleError::AuthoringInvalid {
@@ -169,16 +136,10 @@ fn empty_layer_styles_are_valid_in_all_supported_schemas() {
             &mut tx,
             &model,
             schema,
-            PresentationLayerDraft {
-                name: "A-ANNO",
-                description: None,
-                assigned_items: vec![item],
-                identifier: None,
-                layer_on: Some(true),
-                layer_frozen: Some(false),
-                layer_blocked: Some(false),
-                layer_styles: vec![],
-            },
+            PresentationLayerDraft::new("A-ANNO", vec![item])
+                .layer_on(true)
+                .layer_frozen(false)
+                .layer_blocked(false),
         )
         .unwrap();
 
@@ -211,16 +172,11 @@ fn ifc2x3_writer_emits_a_valid_nonempty_layer_style_aggregate() {
         &mut tx,
         &model,
         schema,
-        PresentationLayerDraft {
-            name: "A-ANNO",
-            description: None,
-            assigned_items: vec![item],
-            identifier: None,
-            layer_on: Some(true),
-            layer_frozen: Some(false),
-            layer_blocked: Some(false),
-            layer_styles: vec![style],
-        },
+        PresentationLayerDraft::new("A-ANNO", vec![item])
+            .layer_on(true)
+            .layer_frozen(false)
+            .layer_blocked(false)
+            .layer_styles(vec![style]),
     )
     .unwrap();
 
@@ -240,35 +196,19 @@ fn surface_style_authoring_rejects_duplicate_where_rule_category_without_partial
     let schema = ifc4();
     let model = Model::new();
     let mut tx = Transaction::new(&model);
-    let colour = create_colour_rgb(
-        &mut tx,
-        schema,
-        ColourRgbDraft {
-            name: None,
-            red: 1.0,
-            green: 0.0,
-            blue: 0.0,
-        },
-    )
-    .unwrap();
+    let colour = create_colour_rgb(&mut tx, schema, ColourRgbDraft::new(1.0, 0.0, 0.0)).unwrap();
     let first = create_surface_style_shading(
         &mut tx,
         &model,
         schema,
-        SurfaceStyleShadingDraft {
-            surface_colour: colour,
-            transparency: None,
-        },
+        SurfaceStyleShadingDraft::new(colour),
     )
     .unwrap();
     let second = create_surface_style_shading(
         &mut tx,
         &model,
         schema,
-        SurfaceStyleShadingDraft {
-            surface_colour: colour,
-            transparency: Some(0.5),
-        },
+        SurfaceStyleShadingDraft::new(colour).transparency(0.5),
     )
     .unwrap();
     let staged_before = tx.len();
@@ -277,11 +217,7 @@ fn surface_style_authoring_rejects_duplicate_where_rule_category_without_partial
         &mut tx,
         &model,
         schema,
-        SurfaceStyleDraft {
-            name: None,
-            side: SurfaceSide::Both,
-            elements: vec![first, second],
-        },
+        SurfaceStyleDraft::new(SurfaceSide::Both, vec![first, second]),
     )
     .unwrap_err();
 

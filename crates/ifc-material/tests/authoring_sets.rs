@@ -13,16 +13,7 @@ use ifc_material::{
 use ifc_model::{Entity, Model, Transaction, Value};
 
 fn material(tx: &mut Transaction, model: &Model, name: &str) -> ifc_model::EntityId {
-    create_material(
-        tx,
-        model,
-        MaterialDraft {
-            name,
-            description: None,
-            category: None,
-        },
-    )
-    .expect("an IFC4 material")
+    create_material(tx, model, MaterialDraft::new(name)).expect("an IFC4 material")
 }
 
 #[test]
@@ -33,13 +24,7 @@ fn a_constituent_set_commits_and_reads_back() {
     let c = create_constituent(
         &mut tx,
         &model,
-        ConstituentDraft {
-            name: Some("Core"),
-            description: None,
-            material: steel,
-            fraction: Some(0.6),
-            category: None,
-        },
+        ConstituentDraft::new(steel).name("Core").fraction(0.6),
     )
     .expect("constituent");
     let set =
@@ -55,17 +40,7 @@ fn a_fraction_outside_the_normalised_range_is_refused() {
     let model = Model::default();
     let mut tx = Transaction::new(&model);
     let steel = material(&mut tx, &model, "Steel");
-    let err = create_constituent(
-        &mut tx,
-        &model,
-        ConstituentDraft {
-            name: None,
-            description: None,
-            material: steel,
-            fraction: Some(1.5),
-            category: None,
-        },
-    );
+    let err = create_constituent(&mut tx, &model, ConstituentDraft::new(steel).fraction(1.5));
     assert!(err.is_err(), "a 150% constituent share must be refused");
 }
 
@@ -95,15 +70,7 @@ fn a_layer_with_offsets_writes_inherited_slots_before_its_own() {
     let layer = create_layer_with_offsets(
         &mut tx,
         &model,
-        LayerDraft {
-            material: Some(steel),
-            thickness: 0.2,
-            is_ventilated: None,
-            name: Some("Core"),
-            description: None,
-            category: None,
-            priority: None,
-        },
+        LayerDraft::new(0.2).material(steel).name("Core"),
         LayerSetDirection::Axis2,
         [0.05, -0.05],
     )
@@ -127,30 +94,9 @@ fn a_usage_must_point_at_the_matching_kind_of_set() {
     let model = Model::default();
     let mut tx = Transaction::new(&model);
     let steel = material(&mut tx, &model, "Steel");
-    let layer = create_layer(
-        &mut tx,
-        &model,
-        LayerDraft {
-            material: Some(steel),
-            thickness: 0.1,
-            is_ventilated: None,
-            name: None,
-            description: None,
-            category: None,
-            priority: None,
-        },
-    )
-    .expect("layer");
-    let layer_set = create_layer_set(
-        &mut tx,
-        &model,
-        LayerSetDraft {
-            layers: &[layer],
-            name: None,
-            description: None,
-        },
-    )
-    .expect("layer set");
+    let layer = create_layer(&mut tx, &model, LayerDraft::new(0.1).material(steel)).expect("layer");
+    let layer_set =
+        create_layer_set(&mut tx, &model, LayerSetDraft::new(&[layer])).expect("layer set");
     // A layer set is not a profile set: the usage must refuse it.
     assert!(
         create_profile_set_usage(&mut tx, &model, layer_set, Some(1), None).is_err(),
@@ -187,14 +133,10 @@ fn a_profile_set_commits_and_refuses_a_bad_priority() {
             Value::Real(0.5),
         ],
     ));
-    let good = ProfileDraft {
-        name: Some("Column"),
-        description: None,
-        material: Some(steel),
-        profile: shape,
-        priority: Some(50),
-        category: None,
-    };
+    let good = ProfileDraft::new(shape)
+        .name("Column")
+        .material(steel)
+        .priority(50);
     let profile = create_profile(&mut tx, &model, good).expect("profile");
     let set = create_profile_set(&mut tx, &model, &[profile], Some("S"), None, None)
         .expect("profile set");

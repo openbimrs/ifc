@@ -16,6 +16,23 @@ everything released before per-crate changelogs began.
 
 - `AppearanceSupport` is `#[non_exhaustive]`: a match needs a wildcard arm;
   `AppearanceDeclaration` is `#[non_exhaustive]`.
+- Every authoring draft is `#[non_exhaustive]`, so a struct literal no
+  longer compiles outside the crate. Each gains `new(required…)` and one
+  builder setter per other field, named after the field and taking the
+  unwrapped value: `BlobTextureDraft::new(raster_format, raster_code)`,
+  `TextModelDraft::new()`, `LightSourceDraft::new(light_colour)`,
+  `AnnotationDraft::new(global_id)`,
+  `TextLiteralDraft::new(literal, placement, path)`,
+  `TextLiteralWithExtentDraft::new(literal, placement, path, extent,
+  box_alignment)`, `AnnotationFillAreaDraft::new(outer_boundary)`,
+  `CurveStyleDraft::new()`,
+  `PixelTextureDraft::new(width, height, colour_components, pixel)`,
+  `ColourRgbDraft::new(red, green, blue)`,
+  `SurfaceStyleShadingDraft::new(surface_colour)`,
+  `SurfaceStyleDraft::new(side, elements)`, `StyledItemDraft::new(styles)`,
+  `PresentationLayerDraft::new(name, assigned_items)`,
+  `SurfaceStyleRenderingDraft::new(surface_colour, reflectance_method)` and
+  `ImageTextureDraft::new(url_reference)`. Fields stay public.
 
 ## [0.3.0] - 2026-09-23
 

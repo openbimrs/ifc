@@ -24,6 +24,7 @@ use crate::StyleResult;
 
 /// What to stage for an `IfcImageTexture`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ImageTextureDraft<'a> {
     /// `RepeatS`: does the texture tile along the s axis?
     pub repeat_s: bool,
@@ -35,6 +36,57 @@ pub struct ImageTextureDraft<'a> {
     pub texture_transform: Option<EntityId>,
     /// `URLReference`: where the image lives.
     pub url_reference: &'a str,
+}
+
+impl<'a> ImageTextureDraft<'a> {
+    /// Starts a draft from its required `url_reference`; every other field is
+    /// unset.
+    #[must_use]
+    pub fn new(url_reference: &'a str) -> Self {
+        Self {
+            repeat_s: false,
+            repeat_t: false,
+            mode: None,
+            texture_transform: None,
+            url_reference,
+        }
+    }
+
+    /// Sets `repeat_s`.
+    ///
+    /// `RepeatS`: does the texture tile along the s axis?
+    #[must_use]
+    pub fn repeat_s(mut self, value: bool) -> Self {
+        self.repeat_s = value;
+        self
+    }
+
+    /// Sets `repeat_t`.
+    ///
+    /// `RepeatT`: does the texture tile along the t axis?
+    #[must_use]
+    pub fn repeat_t(mut self, value: bool) -> Self {
+        self.repeat_t = value;
+        self
+    }
+
+    /// Sets `mode`.
+    ///
+    /// `Mode`: how the texture combines with the underlying colour.
+    #[must_use]
+    pub fn mode(mut self, value: &'a str) -> Self {
+        self.mode = Some(value);
+        self
+    }
+
+    /// Sets `texture_transform`.
+    ///
+    /// `TextureTransform`: an `IfcCartesianTransformationOperator2D`.
+    #[must_use]
+    pub fn texture_transform(mut self, value: EntityId) -> Self {
+        self.texture_transform = Some(value);
+        self
+    }
 }
 
 /// Stage an `IfcImageTexture`.

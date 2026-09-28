@@ -166,6 +166,8 @@ fn authored_records_validate_in_their_release() {
                 ifc_validate::Path::Entity(id)
                 | ifc_validate::Path::Attribute { entity: id, .. } => written.contains(id),
                 ifc_validate::Path::File => false,
+                // A path kind a later ifc-validate adds names no authored record.
+                _ => false,
             })
             .map(|finding| format!("{} at {}: {}", finding.rule, finding.path, finding.message))
             .collect();

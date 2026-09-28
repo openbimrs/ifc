@@ -161,30 +161,27 @@ fn author(model: &mut Model, version: SchemaVersion) -> Vec<Expect> {
         ),
     ];
     for (kind, bare, typed) in families {
-        let draft = BoundaryConditionDraft {
-            name: None,
-            translational: stiffness(1.5),
-            rotational: if kind == BoundaryConditionKind::Face {
-                AxisValues::default()
-            } else {
-                stiffness(4.5)
-            },
-            warping: (kind == BoundaryConditionKind::NodeWarping)
-                .then_some(StiffnessValue::Measure(7.5)),
+        let draft = {
+            let mut draft = BoundaryConditionDraft::new()
+                .translational(stiffness(1.5))
+                .rotational(if kind == BoundaryConditionKind::Face {
+                    AxisValues::default()
+                } else {
+                    stiffness(4.5)
+                });
+            draft.warping = (kind == BoundaryConditionKind::NodeWarping)
+                .then_some(StiffnessValue::Measure(7.5));
+            draft
         };
         let id = stage_boundary_condition_in(&mut tx, schema, kind, draft).expect("condition");
         out.push((id, if x2 { bare } else { typed }));
     }
     if !x2 {
-        let flags = BoundaryConditionDraft {
-            name: None,
-            translational: AxisValues {
-                x: Some(StiffnessValue::Boolean(true)),
-                y: None,
-                z: None,
-            },
-            ..BoundaryConditionDraft::default()
-        };
+        let flags = BoundaryConditionDraft::new().translational(AxisValues {
+            x: Some(StiffnessValue::Boolean(true)),
+            y: None,
+            z: None,
+        });
         let id = stage_boundary_condition_in(&mut tx, schema, BoundaryConditionKind::Node, flags)
             .expect("boolean condition");
         out.push((id, "($,IFCBOOLEAN(.T.),$,$,$,$,$)"));
@@ -285,6 +282,8 @@ fn authored_values_have_their_declared_form_and_validate() {
                 ifc_validate::Path::Entity(id)
                 | ifc_validate::Path::Attribute { entity: id, .. } => ids.contains(id),
                 ifc_validate::Path::File => false,
+                // A path kind a later ifc-validate adds names no authored record.
+                _ => false,
             })
             .map(|finding| format!("{} at {}: {}", finding.rule, finding.path, finding.message))
             .collect();

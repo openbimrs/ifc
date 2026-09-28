@@ -55,6 +55,7 @@ pub use texture::{
 /// Draft input for [`create_annotation`]: the writable attributes of a new
 /// `IfcAnnotation`.
 #[derive(Debug, Clone, Default)]
+#[non_exhaustive]
 pub struct AnnotationDraft<'a> {
     /// The `GlobalId` (IFC GUID); must parse as a valid base64-like GUID.
     pub global_id: &'a str,
@@ -75,9 +76,92 @@ pub struct AnnotationDraft<'a> {
     pub predefined_type: Option<AnnotationType>,
 }
 
+impl<'a> AnnotationDraft<'a> {
+    /// Starts a draft from its required `global_id`; every other field is
+    /// unset.
+    #[must_use]
+    pub fn new(global_id: &'a str) -> Self {
+        Self {
+            global_id,
+            owner_history: None,
+            name: None,
+            description: None,
+            object_type: None,
+            object_placement: None,
+            representation: None,
+            predefined_type: None,
+        }
+    }
+
+    /// Sets `owner_history`.
+    ///
+    /// The `OwnerHistory` reference, when supplied.
+    #[must_use]
+    pub fn owner_history(mut self, value: EntityId) -> Self {
+        self.owner_history = Some(value);
+        self
+    }
+
+    /// Sets `name`.
+    ///
+    /// The `Name` attribute, when supplied.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets `description`.
+    ///
+    /// The `Description` attribute, when supplied.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets `object_type`.
+    ///
+    /// The `ObjectType` attribute. Required (non-empty) when `predefined_type`
+    /// is `AnnotationType::UserDefined`.
+    #[must_use]
+    pub fn object_type(mut self, value: &'a str) -> Self {
+        self.object_type = Some(value);
+        self
+    }
+
+    /// Sets `object_placement`.
+    ///
+    /// The `ObjectPlacement` reference, when supplied.
+    #[must_use]
+    pub fn object_placement(mut self, value: EntityId) -> Self {
+        self.object_placement = Some(value);
+        self
+    }
+
+    /// Sets `representation`.
+    ///
+    /// The `Representation` reference, when supplied.
+    #[must_use]
+    pub fn representation(mut self, value: EntityId) -> Self {
+        self.representation = Some(value);
+        self
+    }
+
+    /// Sets `predefined_type`.
+    ///
+    /// The IFC4X3 `PredefinedType`, when supplied.
+    #[must_use]
+    pub fn predefined_type(mut self, value: AnnotationType) -> Self {
+        self.predefined_type = Some(value);
+        self
+    }
+}
+
 /// Draft input for [`create_text_literal`]: the writable attributes of a new
 /// `IfcTextLiteral`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct TextLiteralDraft<'a> {
     /// The `Literal` attribute; must be non-empty.
     pub literal: &'a str,
@@ -87,9 +171,23 @@ pub struct TextLiteralDraft<'a> {
     pub path: TextPath,
 }
 
+impl<'a> TextLiteralDraft<'a> {
+    /// Starts a draft from its required `literal`, `placement`, `path`; every
+    /// other field is unset.
+    #[must_use]
+    pub fn new(literal: &'a str, placement: EntityId, path: TextPath) -> Self {
+        Self {
+            literal,
+            placement,
+            path,
+        }
+    }
+}
+
 /// Draft input for [`create_text_literal_with_extent`]: the writable
 /// attributes of a new `IfcTextLiteralWithExtent`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct TextLiteralWithExtentDraft<'a> {
     /// The `Literal` attribute; must be non-empty.
     pub literal: &'a str,
@@ -103,15 +201,59 @@ pub struct TextLiteralWithExtentDraft<'a> {
     pub box_alignment: BoxAlignment,
 }
 
+impl<'a> TextLiteralWithExtentDraft<'a> {
+    /// Starts a draft from its required `literal`, `placement`, `path`,
+    /// `extent`, `box_alignment`; every other field is unset.
+    #[must_use]
+    pub fn new(
+        literal: &'a str,
+        placement: EntityId,
+        path: TextPath,
+        extent: EntityId,
+        box_alignment: BoxAlignment,
+    ) -> Self {
+        Self {
+            literal,
+            placement,
+            path,
+            extent,
+            box_alignment,
+        }
+    }
+}
+
 /// Draft input for [`create_annotation_fill_area`]: the writable attributes
 /// of a new `IfcAnnotationFillArea`.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct AnnotationFillAreaDraft {
     /// The `OuterBoundary` reference to an `IfcCurve`.
     pub outer_boundary: EntityId,
     /// The `InnerBoundaries` references, if any; an empty list is written
     /// as the IFC null value.
     pub inner_boundaries: Vec<EntityId>,
+}
+
+impl AnnotationFillAreaDraft {
+    /// Starts a draft from its required `outer_boundary`; every other field is
+    /// unset.
+    #[must_use]
+    pub fn new(outer_boundary: EntityId) -> Self {
+        Self {
+            outer_boundary,
+            inner_boundaries: Vec::new(),
+        }
+    }
+
+    /// Sets `inner_boundaries`.
+    ///
+    /// The `InnerBoundaries` references, if any; an empty list is written
+    /// as the IFC null value.
+    #[must_use]
+    pub fn inner_boundaries(mut self, value: Vec<EntityId>) -> Self {
+        self.inner_boundaries = value;
+        self
+    }
 }
 
 /// Stage a new `IfcAnnotation` in `tx`. Fails if `GlobalId` does not parse as

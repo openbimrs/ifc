@@ -19,15 +19,7 @@ use ifc_structural::{
 const GUID: &str = "1hqA$FMcT8$hVvcqsRDBzZ";
 
 fn root() -> StructuralRootDraft {
-    StructuralRootDraft {
-        global_id: GUID.to_owned(),
-        owner_history: None,
-        name: Some("Sweep".to_owned()),
-        description: None,
-        object_type: None,
-        object_placement: None,
-        representation: None,
-    }
+    StructuralRootDraft::new(GUID).name("Sweep")
 }
 
 /// Every `ConnectionDraftKind` variant stages its own type.
@@ -70,7 +62,7 @@ fn every_connection_variant_stages() {
             &mut tx,
             &model,
             ifc4x3(),
-            ConnectionDraft { root: root(), kind },
+            ConnectionDraft::new(root(), kind),
         )
         .unwrap_or_else(|error| panic!("{expected} refused: {error:?}"));
         tx.commit(&mut model).expect("commit");
@@ -124,13 +116,8 @@ fn every_member_variant_stages() {
     for (kind, expected) in cases {
         let mut model = seed.clone();
         let mut tx = Transaction::new(&model);
-        let id = stage_member(
-            &mut tx,
-            &model,
-            ifc4x3(),
-            MemberDraft { root: root(), kind },
-        )
-        .unwrap_or_else(|error| panic!("{expected} refused: {error:?}"));
+        let id = stage_member(&mut tx, &model, ifc4x3(), MemberDraft::new(root(), kind))
+            .unwrap_or_else(|error| panic!("{expected} refused: {error:?}"));
         tx.commit(&mut model).expect("commit");
         assert_eq!(model.get(id).expect("staged").type_name.as_ref(), expected);
     }
@@ -185,14 +172,8 @@ fn every_action_variant_stages() {
             &mut tx,
             &model,
             ifc4x3(),
-            ActionDraft {
-                root: root(),
-                applied_load: load,
-                coordinate_system: CoordinateSystem::Global,
-                destabilizing_load: Some(false),
-                caused_by: None,
-                kind,
-            },
+            ActionDraft::new(root(), load, CoordinateSystem::Global, kind)
+                .destabilizing_load(false),
         )
         .unwrap_or_else(|error| panic!("{expected} refused: {error:?}"));
         tx.commit(&mut model).expect("commit");
@@ -219,13 +200,13 @@ fn the_curve_forms_use_their_own_axis_attribute() {
         &mut tx,
         &model,
         ifc4x3(),
-        ConnectionDraft {
-            root: root(),
-            kind: ConnectionDraftKind::Curve {
+        ConnectionDraft::new(
+            root(),
+            ConnectionDraftKind::Curve {
                 applied_condition: None,
                 axis: Some(axis),
             },
-        },
+        ),
     )
     .expect("curve connection");
     tx.commit(&mut model).expect("commit");
@@ -244,14 +225,14 @@ fn the_curve_forms_use_their_own_axis_attribute() {
         &mut tx,
         &model,
         ifc4x3(),
-        MemberDraft {
-            root: root(),
-            kind: MemberDraftKind::Curve {
+        MemberDraft::new(
+            root(),
+            MemberDraftKind::Curve {
                 predefined_type: MemberPredefinedType::Cable,
                 axis: Some(axis),
                 varying: false,
             },
-        },
+        ),
     )
     .expect("curve member");
     tx.commit(&mut model).expect("commit");

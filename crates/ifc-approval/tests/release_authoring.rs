@@ -60,13 +60,7 @@ fn model(schema: &[&str]) -> Model {
 }
 
 fn draft(related: &[EntityId]) -> ApprovalAssociationDraft<'_> {
-    ApprovalAssociationDraft {
-        global_id: G1,
-        name: Some("Approved"),
-        description: None,
-        related_objects: related,
-        relating_approval: APPROVAL,
-    }
+    ApprovalAssociationDraft::new(G1, related, APPROVAL).name("Approved")
 }
 
 /// Refused before anything is staged.

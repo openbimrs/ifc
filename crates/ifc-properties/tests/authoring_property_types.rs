@@ -73,13 +73,10 @@ fn every_property_value_type_resolves_as_authored() {
     .expect("list");
     let table = add_property_table_value(
         &mut tx,
-        TableValueDraft {
-            name: "Deflection",
-            defining: Some(vec![length(0.0), length(1.0)]),
-            defined: Some(vec![length(0.0), length(0.05)]),
-            interpolation: Some("LINEAR"),
-            ..TableValueDraft::default()
-        },
+        TableValueDraft::new("Deflection")
+            .defining(vec![length(0.0), length(1.0)])
+            .defined(vec![length(0.0), length(0.05)])
+            .interpolation("LINEAR"),
     )
     .expect("table");
     let reference =
@@ -218,12 +215,9 @@ fn the_schema_rules_for_each_value_type_are_enforced() {
     assert!(
         add_property_table_value(
             &mut tx,
-            TableValueDraft {
-                name: "Deflection",
-                defining: Some(vec![length(0.0), length(1.0)]),
-                defined: Some(vec![length(0.0)]),
-                ..TableValueDraft::default()
-            },
+            TableValueDraft::new("Deflection")
+                .defining(vec![length(0.0), length(1.0)])
+                .defined(vec![length(0.0)]),
         )
         .is_err(),
         "ragged table columns are refused"
@@ -237,12 +231,9 @@ fn the_schema_rules_for_each_value_type_are_enforced() {
     assert!(
         add_property_table_value(
             &mut tx,
-            TableValueDraft {
-                name: "Deflection",
-                defining: Some(vec![length(0.0), mixed]),
-                defined: Some(vec![length(0.0), length(0.05)]),
-                ..TableValueDraft::default()
-            },
+            TableValueDraft::new("Deflection")
+                .defining(vec![length(0.0), mixed])
+                .defined(vec![length(0.0), length(0.05)]),
         )
         .is_err(),
         "a heterogeneous column is refused"
@@ -312,14 +303,11 @@ fn the_value_types_survive_step_text() {
     let mut tx = Transaction::new(&model);
     let table = add_property_table_value(
         &mut tx,
-        TableValueDraft {
-            name: "Deflection",
-            defining: Some(vec![length(0.0), length(1.0)]),
-            defined: Some(vec![length(0.0), length(0.05)]),
-            expression: Some("y = 0.05x"),
-            interpolation: Some("LINEAR"),
-            ..TableValueDraft::default()
-        },
+        TableValueDraft::new("Deflection")
+            .defining(vec![length(0.0), length(1.0)])
+            .defined(vec![length(0.0), length(0.05)])
+            .expression("y = 0.05x")
+            .interpolation("LINEAR"),
     )
     .expect("table");
     let pset = add_property_set(

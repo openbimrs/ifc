@@ -17,6 +17,8 @@ everything released before per-crate changelogs began.
 - `Support` is `#[non_exhaustive]`: a match needs a wildcard arm.
 - `Finding` is `#[non_exhaustive]`; it can no longer be built with a struct
   literal outside the crate.
+- `Path` is `#[non_exhaustive]`, so a later release can name a new location
+  kind; a match needs a wildcard arm.
 
 ## [0.3.1] - 2026-09-28
 

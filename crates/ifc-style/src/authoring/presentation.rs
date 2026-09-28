@@ -172,6 +172,7 @@ impl CurveWidth {
 
 /// Attributes of an `IfcCurveStyle`.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct CurveStyleDraft<'a> {
     /// `Name`.
     pub name: Option<&'a str>,
@@ -183,6 +184,59 @@ pub struct CurveStyleDraft<'a> {
     pub curve_colour: Option<EntityId>,
     /// `ModelOrDraughting`.
     pub model_or_draughting: Option<bool>,
+}
+
+impl<'a> CurveStyleDraft<'a> {
+    /// Starts a draft with every field unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets `name`.
+    ///
+    /// `Name`.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets `curve_font`.
+    ///
+    /// `CurveFont`: an `IfcCurveStyleFont` or `IfcCurveStyleFontAndScaling`.
+    #[must_use]
+    pub fn curve_font(mut self, value: EntityId) -> Self {
+        self.curve_font = Some(value);
+        self
+    }
+
+    /// Sets `curve_width`.
+    ///
+    /// `CurveWidth`.
+    #[must_use]
+    pub fn curve_width(mut self, value: CurveWidth) -> Self {
+        self.curve_width = Some(value);
+        self
+    }
+
+    /// Sets `curve_colour`.
+    ///
+    /// `CurveColour`: an `IfcColourRgb` or predefined colour.
+    #[must_use]
+    pub fn curve_colour(mut self, value: EntityId) -> Self {
+        self.curve_colour = Some(value);
+        self
+    }
+
+    /// Sets `model_or_draughting`.
+    ///
+    /// `ModelOrDraughting`.
+    #[must_use]
+    pub fn model_or_draughting(mut self, value: bool) -> Self {
+        self.model_or_draughting = Some(value);
+        self
+    }
 }
 
 /// Which `IfcFillStyleSelect` member a fill style is.
@@ -446,6 +500,7 @@ pub fn create_pixel_texture(
 
 /// Attributes of an `IfcPixelTexture`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct PixelTextureDraft<'a> {
     /// `RepeatS`.
     pub repeat_s: bool,
@@ -461,6 +516,50 @@ pub struct PixelTextureDraft<'a> {
     pub colour_components: i32,
     /// `Pixel`: hex literals, one per cell, all the same length.
     pub pixel: &'a [&'a str],
+}
+
+impl<'a> PixelTextureDraft<'a> {
+    /// Starts a draft from its required `width`, `height`, `colour_components`,
+    /// `pixel`; every other field is unset.
+    #[must_use]
+    pub fn new(width: i32, height: i32, colour_components: i32, pixel: &'a [&'a str]) -> Self {
+        Self {
+            repeat_s: false,
+            repeat_t: false,
+            mode: None,
+            width,
+            height,
+            colour_components,
+            pixel,
+        }
+    }
+
+    /// Sets `repeat_s`.
+    ///
+    /// `RepeatS`.
+    #[must_use]
+    pub fn repeat_s(mut self, value: bool) -> Self {
+        self.repeat_s = value;
+        self
+    }
+
+    /// Sets `repeat_t`.
+    ///
+    /// `RepeatT`.
+    #[must_use]
+    pub fn repeat_t(mut self, value: bool) -> Self {
+        self.repeat_t = value;
+        self
+    }
+
+    /// Sets `mode`.
+    ///
+    /// `Mode`.
+    #[must_use]
+    pub fn mode(mut self, value: &'a str) -> Self {
+        self.mode = Some(value);
+        self
+    }
 }
 
 /// Stage an `IfcTextureVertex`: one 2-tuple of parameter values.

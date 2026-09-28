@@ -24,6 +24,7 @@ const BAR_SURFACE: &[&str] = &["PLAIN", "TEXTURED"];
 /// `total_cross_section_area` and `steel_grade` are required by the
 /// schema, so they are plain fields rather than options.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ReinforcementBarDraft<'a> {
     /// `TotalCrossSectionArea`, an area measure. Required.
     pub total_cross_section_area: f64,
@@ -37,6 +38,58 @@ pub struct ReinforcementBarDraft<'a> {
     pub nominal_bar_diameter: Option<f64>,
     /// `BarCount`, an integer count.
     pub bar_count: Option<i64>,
+}
+
+impl<'a> ReinforcementBarDraft<'a> {
+    /// Starts a draft from its required `total_cross_section_area`,
+    /// `steel_grade`; every other field is unset.
+    #[must_use]
+    pub fn new(total_cross_section_area: f64, steel_grade: &'a str) -> Self {
+        Self {
+            total_cross_section_area,
+            steel_grade,
+            bar_surface: None,
+            effective_depth: None,
+            nominal_bar_diameter: None,
+            bar_count: None,
+        }
+    }
+
+    /// Sets `bar_surface`.
+    ///
+    /// `BarSurface`: `PLAIN` or `TEXTURED`.
+    #[must_use]
+    pub fn bar_surface(mut self, value: &'a str) -> Self {
+        self.bar_surface = Some(value);
+        self
+    }
+
+    /// Sets `effective_depth`.
+    ///
+    /// `EffectiveDepth`, a length. May be negative.
+    #[must_use]
+    pub fn effective_depth(mut self, value: f64) -> Self {
+        self.effective_depth = Some(value);
+        self
+    }
+
+    /// Sets `nominal_bar_diameter`.
+    ///
+    /// `NominalBarDiameter`, a positive length.
+    #[must_use]
+    pub fn nominal_bar_diameter(mut self, value: f64) -> Self {
+        self.nominal_bar_diameter = Some(value);
+        self
+    }
+
+    /// Sets `bar_count`.
+    ///
+    /// `BarCount`, an integer count.
+    #[must_use]
+    pub fn bar_count(mut self, value: i64) -> Self {
+        self.bar_count = Some(value);
+        self
+    }
 }
 
 /// Stage an `IfcReinforcementBarProperties`.
@@ -142,6 +195,7 @@ const BAR_ROLE: &[&str] = &[
 
 /// Attributes of an `IfcSectionReinforcementProperties`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct SectionReinforcementDraft<'a> {
     /// `LongitudinalStartPosition`, a length. Required.
     pub longitudinal_start_position: f64,
@@ -156,6 +210,38 @@ pub struct SectionReinforcementDraft<'a> {
     /// `CrossSectionReinforcementDefinitions`: at least one
     /// `IfcReinforcementBarProperties`.
     pub cross_section_reinforcement_definitions: &'a [EntityId],
+}
+
+impl<'a> SectionReinforcementDraft<'a> {
+    /// Starts a draft from its required `longitudinal_start_position`,
+    /// `longitudinal_end_position`, `reinforcement_role`, `section_definition`,
+    /// `cross_section_reinforcement_definitions`; every other field is unset.
+    #[must_use]
+    pub fn new(
+        longitudinal_start_position: f64,
+        longitudinal_end_position: f64,
+        reinforcement_role: &'a str,
+        section_definition: EntityId,
+        cross_section_reinforcement_definitions: &'a [EntityId],
+    ) -> Self {
+        Self {
+            longitudinal_start_position,
+            longitudinal_end_position,
+            transverse_position: None,
+            reinforcement_role,
+            section_definition,
+            cross_section_reinforcement_definitions,
+        }
+    }
+
+    /// Sets `transverse_position`.
+    ///
+    /// `TransversePosition`, a length.
+    #[must_use]
+    pub fn transverse_position(mut self, value: f64) -> Self {
+        self.transverse_position = Some(value);
+        self
+    }
 }
 
 /// Stage an `IfcSectionReinforcementProperties`.

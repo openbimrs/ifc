@@ -18,14 +18,13 @@ use ifc_tabular::{
 const HEADERS: [&str; 2] = ["IFC4", "IFC4X3_ADD2"];
 
 fn series(name: &str) -> SeriesDraft<'_> {
-    SeriesDraft {
+    SeriesDraft::new(
         name,
-        start_time: "2026-01-01T00:00:00",
-        end_time: "2026-01-02T00:00:00",
-        data_type: "CONTINUOUS",
-        data_origin: "MEASURED",
-        ..SeriesDraft::default()
-    }
+        "2026-01-01T00:00:00",
+        "2026-01-02T00:00:00",
+        "CONTINUOUS",
+        "MEASURED",
+    )
 }
 
 /// Commit `tx`, write STEP under `header`, and parse it back.
@@ -73,15 +72,8 @@ fn an_authored_table_reads_back_in_both_schemas() {
             false,
         )
         .unwrap();
-        let column = add_table_column(
-            &mut tx,
-            ColumnDraft {
-                identifier: Some("area"),
-                name: Some("Area"),
-                ..ColumnDraft::default()
-            },
-        )
-        .unwrap();
+        let column =
+            add_table_column(&mut tx, ColumnDraft::new().identifier("area").name("Area")).unwrap();
         add_table(
             &mut tx,
             Some("Room schedule"),

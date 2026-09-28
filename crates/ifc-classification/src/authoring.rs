@@ -46,6 +46,7 @@ use crate::{ClassificationError, ClassificationResult};
 
 /// Draft for one `IfcClassification`, fields named as IFC4 names them.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ClassificationDraft<'a> {
     /// `Source` publishing organization, when stated. Required by IFC2X3.
     pub source: Option<&'a str>,
@@ -68,7 +69,8 @@ pub struct ClassificationDraft<'a> {
 }
 
 /// Draft for one `IfcClassificationReference`.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct ClassificationReferenceDraft<'a> {
     /// `Location` (URI) of the reference; at least one of location/identification/name must be given.
     pub location: Option<&'a str>,
@@ -89,6 +91,7 @@ pub struct ClassificationReferenceDraft<'a> {
 
 /// Draft for one `IfcDocumentInformation`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct DocumentDraft<'a> {
     /// Required `Identification` code of the document (`DocumentId` in IFC2X3).
     pub identification: &'a str,
@@ -134,7 +137,8 @@ pub struct DocumentDraft<'a> {
 }
 
 /// Draft for one `IfcDocumentReference`.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct DocumentReferenceDraft<'a> {
     /// `Location` (URI) of the reference; at least one of location/identification/name must be given.
     pub location: Option<&'a str>,
@@ -152,6 +156,7 @@ pub struct DocumentReferenceDraft<'a> {
 
 /// Draft for one `IfcLibraryInformation`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct LibraryDraft<'a> {
     /// Required `Name` of the library.
     pub name: &'a str,
@@ -170,7 +175,8 @@ pub struct LibraryDraft<'a> {
 }
 
 /// Draft for one `IfcLibraryReference`.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct LibraryReferenceDraft<'a> {
     /// `Location` (URI) of the reference; at least one of location/identification/name must be given.
     pub location: Option<&'a str>,
@@ -190,6 +196,7 @@ pub struct LibraryReferenceDraft<'a> {
 
 /// Draft shared by `IfcRelAssociatesClassification`/`Document`/`Library`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct AssociationDraft<'a> {
     /// Required `GlobalId`; must parse as a valid IFC GUID.
     pub global_id: &'a str,
@@ -342,3 +349,5 @@ fn require_enum(
         })
     }
 }
+
+mod builders;

@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `ControlDraft` and `ControlAssignmentDraft` are `#[non_exhaustive]`
+  (#214). Struct literals no longer compile outside the crate: build them
+  with `ControlDraft::new()` and
+  `ControlAssignmentDraft::new(global_id, control, related_objects)` plus
+  field-named setters (`.name("Permit")`). Fields stay public.
+
 ## [0.2.2] - 2026-09-28
 
 ### Added

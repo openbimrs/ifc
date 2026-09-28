@@ -25,15 +25,9 @@ fn ifc2x3_refuses_what_it_cannot_hold() {
     let model = base("IFC2X3", SchemaVersion::Ifc2x3);
     let mut tx = Transaction::new(&model);
     let v = SchemaVersion::Ifc2x3;
-    let classification = ClassificationDraft {
-        source: Some("NBS"),
-        edition: Some("2024"),
-        edition_date: None,
-        name: "Uniclass",
-        description: None,
-        location: None,
-        reference_tokens: None,
-    };
+    let classification = ClassificationDraft::new("Uniclass")
+        .source("NBS")
+        .edition("2024");
     let refused = |result: Result<EntityId, ClassificationError>, tx: &Transaction| {
         assert!(tx.is_empty(), "a refusal stages nothing");
         result.expect_err("refused")
@@ -43,38 +37,21 @@ fn ifc2x3_refuses_what_it_cannot_hold() {
         attribute,
         schema: v,
     };
-    let result = create_classification_in(
-        &mut tx,
-        &model,
-        ClassificationDraft {
-            description: Some("d"),
-            ..classification
-        },
-    );
+    let result = create_classification_in(&mut tx, &model, classification.description("d"));
     assert_eq!(
         refused(result, &tx),
         not_in_schema("IFCCLASSIFICATION", "Description")
     );
-    let result = create_classification_in(
-        &mut tx,
-        &model,
-        ClassificationDraft {
-            location: Some("https://x"),
-            ..classification
-        },
-    );
+    let result = create_classification_in(&mut tx, &model, classification.location("https://x"));
     assert_eq!(
         refused(result, &tx),
         not_in_schema("IFCCLASSIFICATION", "Location")
     );
-    let result = create_classification_in(
-        &mut tx,
-        &model,
-        ClassificationDraft {
-            source: None,
-            ..classification
-        },
-    );
+    let result = create_classification_in(&mut tx, &model, {
+        let mut draft = classification;
+        draft.source = None;
+        draft
+    });
     assert_eq!(
         refused(result, &tx),
         ClassificationError::AuthoringRequired {
@@ -83,14 +60,8 @@ fn ifc2x3_refuses_what_it_cannot_hold() {
             schema: v,
         }
     );
-    let result = create_classification_in(
-        &mut tx,
-        &model,
-        ClassificationDraft {
-            edition_date: Some("2024-01-01"),
-            ..classification
-        },
-    );
+    let result =
+        create_classification_in(&mut tx, &model, classification.edition_date("2024-01-01"));
     assert_eq!(
         refused(result, &tx),
         ClassificationError::AuthoringValueType {
@@ -100,18 +71,7 @@ fn ifc2x3_refuses_what_it_cannot_hold() {
             schema: v,
         }
     );
-    let result = create_library(
-        &mut tx,
-        &model,
-        LibraryDraft {
-            name: "L",
-            version: None,
-            publisher: Some(PERSON),
-            version_date: None,
-            location: None,
-            description: None,
-        },
-    );
+    let result = create_library(&mut tx, &model, LibraryDraft::new("L").publisher(PERSON));
     assert_eq!(
         refused(result, &tx),
         ClassificationError::AuthoringReferenceType {
@@ -123,12 +83,7 @@ fn ifc2x3_refuses_what_it_cannot_hold() {
     let result = create_external_reference_relationship(
         &mut tx,
         &model,
-        ExternalReferenceRelationshipDraft {
-            name: None,
-            description: None,
-            relating_reference: WALL,
-            related_resources: &[ORGANIZATION],
-        },
+        ExternalReferenceRelationshipDraft::new(WALL, &[ORGANIZATION]),
     );
     assert_eq!(
         refused(result, &tx),
@@ -138,33 +93,8 @@ fn ifc2x3_refuses_what_it_cannot_hold() {
         }
     );
 
-    let document = DocumentDraft {
-        identification: "DOC-1",
-        name: "Spec",
-        description: None,
-        location: None,
-        purpose: None,
-        intended_use: None,
-        scope: None,
-        revision: None,
-        document_owner: None,
-        editors: None,
-        creation_time: None,
-        last_revision_time: None,
-        electronic_format: None,
-        valid_from: None,
-        valid_until: None,
-        confidentiality: None,
-        status: None,
-    };
-    let result = create_document(
-        &mut tx,
-        &model,
-        DocumentDraft {
-            location: Some("https://x"),
-            ..document
-        },
-    );
+    let document = DocumentDraft::new("DOC-1", "Spec");
+    let result = create_document(&mut tx, &model, document.location("https://x"));
     assert_eq!(
         refused(result, &tx),
         not_in_schema("IFCDOCUMENTINFORMATION", "Location")
@@ -172,10 +102,7 @@ fn ifc2x3_refuses_what_it_cannot_hold() {
     let result = create_document(
         &mut tx,
         &model,
-        DocumentDraft {
-            creation_time: Some("2026-09-28T00:00:00"),
-            ..document
-        },
+        document.creation_time("2026-09-28T00:00:00"),
     );
     assert_eq!(
         refused(result, &tx),
@@ -186,14 +113,7 @@ fn ifc2x3_refuses_what_it_cannot_hold() {
             schema: v,
         }
     );
-    let result = create_document(
-        &mut tx,
-        &model,
-        DocumentDraft {
-            status: Some("APPROVED"),
-            ..document
-        },
-    );
+    let result = create_document(&mut tx, &model, document.status("APPROVED"));
     assert_eq!(
         refused(result, &tx),
         ClassificationError::AuthoringInvalid {
@@ -208,14 +128,9 @@ fn ifc2x3_refuses_what_it_cannot_hold() {
     let reference = create_classification_reference(
         &mut tx,
         &model,
-        ClassificationReferenceDraft {
-            location: None,
-            identification: Some("Pr_20"),
-            name: None,
-            referenced_source: Some(system),
-            description: None,
-            sort: None,
-        },
+        ClassificationReferenceDraft::new()
+            .identification("Pr_20")
+            .referenced_source(system),
     )
     .unwrap();
     let information = create_document(&mut tx, &model, document).unwrap();
@@ -228,13 +143,9 @@ fn ifc2x3_refuses_what_it_cannot_hold() {
     let result = create_document_reference(
         &mut tx,
         &model,
-        DocumentReferenceDraft {
-            location: None,
-            identification: Some("7"),
-            name: None,
-            description: None,
-            referenced_document: Some(information),
-        },
+        DocumentReferenceDraft::new()
+            .identification("7")
+            .referenced_document(information),
     );
     assert_eq!(
         staged_after(result, &tx),
@@ -244,14 +155,9 @@ fn ifc2x3_refuses_what_it_cannot_hold() {
     let result = create_classification_reference(
         &mut tx,
         &model,
-        ClassificationReferenceDraft {
-            location: None,
-            identification: Some("Pr_20_10"),
-            name: None,
-            referenced_source: Some(reference),
-            description: None,
-            sort: None,
-        },
+        ClassificationReferenceDraft::new()
+            .identification("Pr_20_10")
+            .referenced_source(reference),
     );
     assert_eq!(
         staged_after(result, &tx),

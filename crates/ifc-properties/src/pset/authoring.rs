@@ -436,6 +436,7 @@ pub fn add_property_list_value(
 /// columns, two units and two free-text fields, and positional
 /// arguments of the same types are easy to transpose silently.
 #[derive(Debug, Default)]
+#[non_exhaustive]
 pub struct TableValueDraft<'a> {
     /// `Name`. Required, and the key every lookup uses.
     pub name: &'a str,
@@ -748,3 +749,5 @@ pub fn add_physical_complex_quantity(
     attributes[complex_quantity_slot::DISCRIMINATION] = Value::Text(discrimination.into());
     Ok(tx.create(Entity::new("IFCPHYSICALCOMPLEXQUANTITY", attributes)))
 }
+
+mod builders;

@@ -34,6 +34,7 @@ use crate::{DirectionSense, LayerSetDirection, LogicalValue, MaterialError, Mate
 
 /// Authored identity fields for `IfcMaterial`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct MaterialDraft<'a> {
     /// `IfcMaterial.Name`.
     pub name: &'a str,
@@ -43,8 +44,35 @@ pub struct MaterialDraft<'a> {
     pub category: Option<&'a str>,
 }
 
+impl<'a> MaterialDraft<'a> {
+    /// Starts a draft for a material called `name`.
+    #[must_use]
+    pub const fn new(name: &'a str) -> Self {
+        Self {
+            name,
+            description: None,
+            category: None,
+        }
+    }
+
+    /// Sets `Description`.
+    #[must_use]
+    pub const fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets `Category`.
+    #[must_use]
+    pub const fn category(mut self, value: &'a str) -> Self {
+        self.category = Some(value);
+        self
+    }
+}
+
 /// Authored fields for `IfcMaterialLayer`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct LayerDraft<'a> {
     /// `IfcMaterialLayer.Material`, an `IfcMaterial` reference, if given.
     pub material: Option<EntityId>,
@@ -64,8 +92,67 @@ pub struct LayerDraft<'a> {
     pub priority: Option<i64>,
 }
 
+impl<'a> LayerDraft<'a> {
+    /// Starts a draft for a layer `thickness` thick.
+    #[must_use]
+    pub const fn new(thickness: f64) -> Self {
+        Self {
+            material: None,
+            thickness,
+            is_ventilated: None,
+            name: None,
+            description: None,
+            category: None,
+            priority: None,
+        }
+    }
+
+    /// Sets `Material`, an `IfcMaterial` reference.
+    #[must_use]
+    pub const fn material(mut self, value: EntityId) -> Self {
+        self.material = Some(value);
+        self
+    }
+
+    /// Sets `IsVentilated`.
+    #[must_use]
+    pub const fn is_ventilated(mut self, value: LogicalValue) -> Self {
+        self.is_ventilated = Some(value);
+        self
+    }
+
+    /// Sets `Name`.
+    #[must_use]
+    pub const fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets `Description`.
+    #[must_use]
+    pub const fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets `Category`.
+    #[must_use]
+    pub const fn category(mut self, value: &'a str) -> Self {
+        self.category = Some(value);
+        self
+    }
+
+    /// Sets `Priority`.
+    #[must_use]
+    pub const fn priority(mut self, value: i64) -> Self {
+        self.priority = Some(value);
+        self
+    }
+}
+
 /// Ordered composition fields for `IfcMaterialLayerSet`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct LayerSetDraft<'a> {
     /// `IfcMaterialLayerSet.MaterialLayers`, in set order. Must be non-empty.
     pub layers: &'a [EntityId],
@@ -75,8 +162,35 @@ pub struct LayerSetDraft<'a> {
     pub description: Option<&'a str>,
 }
 
+impl<'a> LayerSetDraft<'a> {
+    /// Starts a draft for a set of `layers`, in set order.
+    #[must_use]
+    pub const fn new(layers: &'a [EntityId]) -> Self {
+        Self {
+            layers,
+            name: None,
+            description: None,
+        }
+    }
+
+    /// Sets `LayerSetName`.
+    #[must_use]
+    pub const fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets `Description`.
+    #[must_use]
+    pub const fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+}
+
 /// Authored fields for `IfcRelAssociatesMaterial`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct MaterialAssignmentDraft<'a> {
     /// `IfcRelAssociatesMaterial.GlobalId`. Must be a valid IFC compressed
     /// GUID.
@@ -91,6 +205,39 @@ pub struct MaterialAssignmentDraft<'a> {
     /// `IfcRelAssociatesMaterial.RelatingMaterial`, an `IfcMaterialSelect`
     /// branch reference.
     pub relating_material: EntityId,
+}
+
+impl<'a> MaterialAssignmentDraft<'a> {
+    /// Starts a draft associating `relating_material` with
+    /// `related_objects`.
+    #[must_use]
+    pub const fn new(
+        global_id: &'a str,
+        related_objects: &'a [EntityId],
+        relating_material: EntityId,
+    ) -> Self {
+        Self {
+            global_id,
+            name: None,
+            description: None,
+            related_objects,
+            relating_material,
+        }
+    }
+
+    /// Sets `Name`.
+    #[must_use]
+    pub const fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets `Description`.
+    #[must_use]
+    pub const fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
 }
 
 /// Stage a material identity record in the model's release layout.

@@ -18,6 +18,7 @@ use crate::{AuthorError, AuthorResult};
 
 /// Authored fields for `IfcPerson`.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct PersonDraft<'a> {
     /// `IfcPerson.Identification`.
     pub identification: Option<&'a str>,
@@ -27,8 +28,42 @@ pub struct PersonDraft<'a> {
     pub given_name: Option<&'a str>,
 }
 
+impl<'a> PersonDraft<'a> {
+    /// Starts a draft with every field unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            identification: None,
+            family_name: None,
+            given_name: None,
+        }
+    }
+
+    /// Sets [`Self::identification`]: `IfcPerson.Identification`.
+    #[must_use]
+    pub fn identification(mut self, value: &'a str) -> Self {
+        self.identification = Some(value);
+        self
+    }
+
+    /// Sets [`Self::family_name`]: `IfcPerson.FamilyName`.
+    #[must_use]
+    pub fn family_name(mut self, value: &'a str) -> Self {
+        self.family_name = Some(value);
+        self
+    }
+
+    /// Sets [`Self::given_name`]: `IfcPerson.GivenName`.
+    #[must_use]
+    pub fn given_name(mut self, value: &'a str) -> Self {
+        self.given_name = Some(value);
+        self
+    }
+}
+
 /// Authored fields for `IfcOrganization`.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct OrganizationDraft<'a> {
     /// `IfcOrganization.Identification`.
     pub identification: Option<&'a str>,
@@ -38,8 +73,35 @@ pub struct OrganizationDraft<'a> {
     pub description: Option<&'a str>,
 }
 
+impl<'a> OrganizationDraft<'a> {
+    /// Starts a draft with its required fields; the rest are unset.
+    #[must_use]
+    pub fn new(name: &'a str) -> Self {
+        Self {
+            identification: None,
+            name,
+            description: None,
+        }
+    }
+
+    /// Sets [`Self::identification`]: `IfcOrganization.Identification`.
+    #[must_use]
+    pub fn identification(mut self, value: &'a str) -> Self {
+        self.identification = Some(value);
+        self
+    }
+
+    /// Sets [`Self::description`]: `IfcOrganization.Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+}
+
 /// Authored fields for `IfcApplication`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ApplicationDraft<'a> {
     /// `IfcApplication.ApplicationDeveloper`, an `IfcOrganization`.
     pub developer: EntityId,
@@ -49,6 +111,24 @@ pub struct ApplicationDraft<'a> {
     pub full_name: &'a str,
     /// `IfcApplication.ApplicationIdentifier`.
     pub identifier: &'a str,
+}
+
+impl<'a> ApplicationDraft<'a> {
+    /// Starts a draft with its required fields; the rest are unset.
+    #[must_use]
+    pub fn new(
+        developer: EntityId,
+        version: &'a str,
+        full_name: &'a str,
+        identifier: &'a str,
+    ) -> Self {
+        Self {
+            developer,
+            version,
+            full_name,
+            identifier,
+        }
+    }
 }
 
 /// Stage an `IfcPerson`.
@@ -144,6 +224,7 @@ pub fn add_application(
 
 /// Authored fields for `IfcOwnerHistory`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct OwnerHistoryDraft<'a> {
     /// `IfcOwnerHistory.OwningUser`, an `IfcPersonAndOrganization`.
     pub owning_user: EntityId,
@@ -156,6 +237,34 @@ pub struct OwnerHistoryDraft<'a> {
     pub creation_date: i64,
     /// `IfcOwnerHistory.LastModifiedDate`, if the record was edited.
     pub last_modified_date: Option<i64>,
+}
+
+impl<'a> OwnerHistoryDraft<'a> {
+    /// Starts a draft with its required fields; the rest are unset.
+    #[must_use]
+    pub fn new(owning_user: EntityId, owning_application: EntityId, creation_date: i64) -> Self {
+        Self {
+            owning_user,
+            owning_application,
+            change_action: None,
+            creation_date,
+            last_modified_date: None,
+        }
+    }
+
+    /// Sets [`Self::change_action`]: `IfcOwnerHistory.ChangeAction`, an `IfcChangeActionEnum` constant.
+    #[must_use]
+    pub fn change_action(mut self, value: &'a str) -> Self {
+        self.change_action = Some(value);
+        self
+    }
+
+    /// Sets [`Self::last_modified_date`]: `IfcOwnerHistory.LastModifiedDate`, if the record was edited.
+    #[must_use]
+    pub fn last_modified_date(mut self, value: i64) -> Self {
+        self.last_modified_date = Some(value);
+        self
+    }
 }
 
 /// Valid `IfcChangeActionEnum` constants in IFC4 ADD2 TC1.

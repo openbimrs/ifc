@@ -131,15 +131,7 @@ fn properties_authoring_is_conformant() {
     let mut tx = Transaction::new(&model);
     let wall = product(&mut tx, "IFCWALL", "0aBcDeFgHiJkLmNoPqRsTu");
 
-    let metre = add_si_unit(
-        &mut tx,
-        SiUnitDraft {
-            unit_type: "LENGTHUNIT",
-            prefix: None,
-            name: "METRE",
-        },
-    )
-    .expect("si unit");
+    let metre = add_si_unit(&mut tx, SiUnitDraft::new("LENGTHUNIT", "METRE")).expect("si unit");
     let exponents = add_dimensional_exponents(&mut tx, [1, 0, 0, 0, 0, 0, 0]);
     add_context_dependent_unit(&mut tx, exponents, "LENGTHUNIT", "Module")
         .expect("context dependent unit");
@@ -147,7 +139,7 @@ fn properties_authoring_is_conformant() {
     // property writers store the value they are given.
     add_measure_with_unit(&mut tx, measure("IFCLENGTHMEASURE", 25.4), metre)
         .expect("measure with unit");
-    add_monetary_unit(&mut tx, MonetaryUnitDraft { currency: "EUR" }).expect("monetary unit");
+    add_monetary_unit(&mut tx, MonetaryUnitDraft::new("EUR")).expect("monetary unit");
 
     let height =
         add_property_single_value(&mut tx, "Height", None, None, None).expect("single value");
@@ -378,15 +370,7 @@ fn georeferencing_and_alignment_authoring_is_conformant() {
     let mut model = model();
     let mut tx = Transaction::new(&model);
 
-    let metre = add_si_unit(
-        &mut tx,
-        SiUnitDraft {
-            unit_type: "LENGTHUNIT",
-            prefix: None,
-            name: "METRE",
-        },
-    )
-    .expect("si unit");
+    let metre = add_si_unit(&mut tx, SiUnitDraft::new("LENGTHUNIT", "METRE")).expect("si unit");
     let origin = cartesian_point(&mut tx, &[0.0, 0.0, 0.0]).expect("origin");
     let placement = tx.create(Entity::new(
         "IFCAXIS2PLACEMENT3D",
@@ -406,11 +390,7 @@ fn georeferencing_and_alignment_authoring_is_conformant() {
         .expect("subcontext");
     create_projected_crs(
         &mut tx,
-        ProjectedCrsDraft {
-            name: "EPSG:25832",
-            map_unit: Some(metre),
-            ..ProjectedCrsDraft::default()
-        },
+        ProjectedCrsDraft::new("EPSG:25832").map_unit(metre),
     )
     .expect("crs");
 

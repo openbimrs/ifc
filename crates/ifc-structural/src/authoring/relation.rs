@@ -11,6 +11,7 @@ use crate::error::{StructuralError, StructuralResult};
 
 /// Staged `IfcRoot`-level attributes shared by every staged structural relationship.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct RelationshipRootDraft {
     /// `GlobalId`; must parse as a 22-character IFC GUID.
     pub global_id: String,
@@ -20,6 +21,41 @@ pub struct RelationshipRootDraft {
     pub name: Option<String>,
     /// `Description`.
     pub description: Option<String>,
+}
+
+impl RelationshipRootDraft {
+    /// Starts a draft from its required fields; every other field is unset.
+    #[must_use]
+    pub fn new(global_id: impl Into<String>) -> Self {
+        Self {
+            global_id: global_id.into(),
+            owner_history: None,
+            name: None,
+            description: None,
+        }
+    }
+
+    /// Sets `owner_history`: `OwnerHistory`, validated against the
+    /// model/transaction if present.
+    #[must_use]
+    pub fn owner_history(mut self, value: EntityId) -> Self {
+        self.owner_history = Some(value);
+        self
+    }
+
+    /// Sets `name`: `Name`.
+    #[must_use]
+    pub fn name(mut self, value: impl Into<String>) -> Self {
+        self.name = Some(value.into());
+        self
+    }
+
+    /// Sets `description`: `Description`.
+    #[must_use]
+    pub fn description(mut self, value: impl Into<String>) -> Self {
+        self.description = Some(value.into());
+        self
+    }
 }
 
 impl Default for RelationshipRootDraft {
@@ -35,6 +71,7 @@ impl Default for RelationshipRootDraft {
 
 /// Staged fields for creating an `IfcRelConnectsStructuralMember` via [`stage_member_connection`].
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct MemberConnectionDraft {
     /// `IfcRoot` attributes shared with other staged structural relationships.
     pub root: RelationshipRootDraft,
@@ -58,8 +95,68 @@ pub struct MemberConnectionDraft {
     pub eccentricity: Option<EntityId>,
 }
 
+impl MemberConnectionDraft {
+    /// Starts a draft from its required fields; every other field is unset.
+    #[must_use]
+    pub fn new(root: RelationshipRootDraft, member: EntityId, connection: EntityId) -> Self {
+        Self {
+            root,
+            member,
+            connection,
+            applied_condition: None,
+            additional_conditions: None,
+            supported_length: None,
+            condition_coordinate_system: None,
+            eccentricity: None,
+        }
+    }
+
+    /// Sets `applied_condition`: `AppliedCondition`, an `IfcBoundaryCondition`
+    /// reference.
+    #[must_use]
+    pub fn applied_condition(mut self, value: EntityId) -> Self {
+        self.applied_condition = Some(value);
+        self
+    }
+
+    /// Sets `additional_conditions`: `AdditionalConditions`, an
+    /// `IfcStructuralConnectionCondition` reference.
+    #[must_use]
+    pub fn additional_conditions(mut self, value: EntityId) -> Self {
+        self.additional_conditions = Some(value);
+        self
+    }
+
+    /// Sets `supported_length`: `SupportedLength`; must be a positive finite
+    /// value when set.
+    #[must_use]
+    pub fn supported_length(mut self, value: f64) -> Self {
+        self.supported_length = Some(value);
+        self
+    }
+
+    /// Sets `condition_coordinate_system`: `ConditionCoordinateSystem`, an
+    /// `IfcAxis2Placement3D` reference.
+    #[must_use]
+    pub fn condition_coordinate_system(mut self, value: EntityId) -> Self {
+        self.condition_coordinate_system = Some(value);
+        self
+    }
+
+    /// Sets `eccentricity`: `ConnectionConstraint`, an `IfcConnectionGeometry`
+    /// reference.  Selects `IfcRelConnectsWithEccentricity`, whose only added
+    /// slot this is. The slot is required there, so a subtype cannot be staged
+    /// without it and the base cannot carry it.
+    #[must_use]
+    pub fn eccentricity(mut self, value: EntityId) -> Self {
+        self.eccentricity = Some(value);
+        self
+    }
+}
+
 /// Staged fields for creating an `IfcRelConnectsStructuralActivity` via [`stage_activity_assignment`].
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct ActivityAssignmentDraft {
     /// `IfcRoot` attributes shared with other staged structural relationships.
     pub root: RelationshipRootDraft,
@@ -67,6 +164,22 @@ pub struct ActivityAssignmentDraft {
     pub relating_element: EntityId,
     /// `RelatedStructuralActivity`, the `IfcStructuralActivity` being attached.
     pub activity: EntityId,
+}
+
+impl ActivityAssignmentDraft {
+    /// Starts a draft from its required fields; every other field is unset.
+    #[must_use]
+    pub fn new(
+        root: RelationshipRootDraft,
+        relating_element: EntityId,
+        activity: EntityId,
+    ) -> Self {
+        Self {
+            root,
+            relating_element,
+            activity,
+        }
+    }
 }
 
 fn validate_root(

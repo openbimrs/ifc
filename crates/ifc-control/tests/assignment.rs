@@ -41,22 +41,13 @@ fn model_with(types: &[&str]) -> (Model, Vec<EntityId>) {
 }
 
 fn stage_control(tx: &mut Transaction, schema: &Schema, kind: ControlKind) -> EntityId {
-    let draft = ControlDraft {
-        name: Some("Control"),
-        life_cycle_phase: (kind == ControlKind::PerformanceHistory).then_some("OPERATION"),
-        ..ControlDraft::default()
-    };
+    let mut draft = ControlDraft::new().name("Control");
+    draft.life_cycle_phase = (kind == ControlKind::PerformanceHistory).then_some("OPERATION");
     create_control(tx, schema, kind, CONTROL_GUID, None, draft).expect("control")
 }
 
 fn draft(control: EntityId, related: &[EntityId]) -> ControlAssignmentDraft<'_> {
-    ControlAssignmentDraft {
-        global_id: REL_GUID,
-        name: Some("Governed work"),
-        description: None,
-        control,
-        related_objects: related,
-    }
+    ControlAssignmentDraft::new(REL_GUID, control, related).name("Governed work")
 }
 
 fn invalid_attribute(err: &ControlError) -> Option<&'static str> {

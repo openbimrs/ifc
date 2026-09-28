@@ -14,6 +14,10 @@ everything released before per-crate changelogs began.
 
 ### Changed (breaking)
 
+- The authoring draft `ClassifiedSystemDraft` is `#[non_exhaustive]`:
+  build it with `ClassifiedSystemDraft::new()` and the setters
+  `description`, `object_type`, `predefined_type` and `long_name`. Fields
+  stay public.
 - `SystemAnomaly` and `RoleInconsistency` are `#[non_exhaustive]`: a match
   needs a wildcard arm.
 - The read-side `Connection`, `Port`, `System`, `Zone` and

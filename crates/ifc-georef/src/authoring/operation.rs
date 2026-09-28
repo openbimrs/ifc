@@ -29,6 +29,7 @@ use crate::GeorefResult;
 
 /// What to stage for an `IfcGeographicCRS`.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct GeographicCrsDraft<'a> {
     /// `Name`: the CRS identifier, e.g. `EPSG:4326`.
     pub name: Option<&'a str>,
@@ -42,6 +43,56 @@ pub struct GeographicCrsDraft<'a> {
     pub angle_unit: Option<EntityId>,
     /// `HeightUnit`: an `IfcNamedUnit` for ellipsoidal height.
     pub height_unit: Option<EntityId>,
+}
+
+impl<'a> GeographicCrsDraft<'a> {
+    /// Starts an empty draft with every attribute unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets `Name`, the CRS identifier.
+    #[must_use]
+    pub const fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets `Description`.
+    #[must_use]
+    pub const fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets `GeodeticDatum`.
+    #[must_use]
+    pub const fn geodetic_datum(mut self, value: &'a str) -> Self {
+        self.geodetic_datum = Some(value);
+        self
+    }
+
+    /// Sets `PrimeMeridian`.
+    #[must_use]
+    pub const fn prime_meridian(mut self, value: &'a str) -> Self {
+        self.prime_meridian = Some(value);
+        self
+    }
+
+    /// Sets `AngleUnit`, an `IfcNamedUnit` reference.
+    #[must_use]
+    pub const fn angle_unit(mut self, value: EntityId) -> Self {
+        self.angle_unit = Some(value);
+        self
+    }
+
+    /// Sets `HeightUnit`, an `IfcNamedUnit` reference.
+    #[must_use]
+    pub const fn height_unit(mut self, value: EntityId) -> Self {
+        self.height_unit = Some(value);
+        self
+    }
 }
 
 /// Stage an `IfcGeographicCRS`.
@@ -84,6 +135,7 @@ pub fn create_geographic_crs(
 
 /// The offset and rotation placing a local grid on a projection.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct MapConversionDraft {
     /// `SourceCRS`: usually the model's engineering context.
     pub source_crs: EntityId,
@@ -102,6 +154,44 @@ pub struct MapConversionDraft {
     pub x_axis: Option<(f64, f64)>,
     /// `Scale`.
     pub scale: Option<f64>,
+}
+
+impl MapConversionDraft {
+    /// Starts a draft placing `source_crs` on `target_crs` at the given
+    /// offset, with no rotation or scale.
+    #[must_use]
+    pub const fn new(
+        source_crs: EntityId,
+        target_crs: EntityId,
+        eastings: f64,
+        northings: f64,
+        orthogonal_height: f64,
+    ) -> Self {
+        Self {
+            source_crs,
+            target_crs,
+            eastings,
+            northings,
+            orthogonal_height,
+            x_axis: None,
+            scale: None,
+        }
+    }
+
+    /// Sets `XAxisAbscissa` and `XAxisOrdinate`, the rotation vector, as
+    /// `(abscissa, ordinate)`.
+    #[must_use]
+    pub const fn x_axis(mut self, value: (f64, f64)) -> Self {
+        self.x_axis = Some(value);
+        self
+    }
+
+    /// Sets `Scale`.
+    #[must_use]
+    pub const fn scale(mut self, value: f64) -> Self {
+        self.scale = Some(value);
+        self
+    }
 }
 
 fn resolved_type(tx: &Transaction, model: &Model, target: EntityId) -> Option<String> {

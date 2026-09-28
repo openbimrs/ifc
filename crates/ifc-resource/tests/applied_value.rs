@@ -22,11 +22,9 @@ fn an_applied_value_stages() {
     let mut editor = ResourceEditor::for_model(&mut model).expect("editor");
     let id = editor
         .create_applied_value(
-            AppliedValueDraft {
-                name: Some("Unit rate"),
-                category: Some("Labour"),
-                ..AppliedValueDraft::default()
-            },
+            AppliedValueDraft::new()
+                .name("Unit rate")
+                .category("Labour"),
             &[],
         )
         .expect("applied value");
@@ -51,13 +49,7 @@ fn an_operator_without_components_is_refused() {
     let mut editor = ResourceEditor::for_model(&mut model).expect("editor");
     assert!(
         editor
-            .create_applied_value(
-                AppliedValueDraft {
-                    arithmetic_operator: Some("ADD"),
-                    ..AppliedValueDraft::default()
-                },
-                &[]
-            )
+            .create_applied_value(AppliedValueDraft::new().arithmetic_operator("ADD"), &[])
             .is_err(),
         "accepted an operator over no operands",
     );
@@ -69,21 +61,12 @@ fn a_nested_component_must_be_an_applied_value() {
     let mut model = model();
     let mut editor = ResourceEditor::for_model(&mut model).expect("editor");
     let inner = editor
-        .create_applied_value(
-            AppliedValueDraft {
-                name: Some("Base"),
-                ..AppliedValueDraft::default()
-            },
-            &[],
-        )
+        .create_applied_value(AppliedValueDraft::new().name("Base"), &[])
         .expect("inner");
 
     let outer = editor
         .create_applied_value(
-            AppliedValueDraft {
-                arithmetic_operator: Some("ADD"),
-                ..AppliedValueDraft::default()
-            },
+            AppliedValueDraft::new().arithmetic_operator("ADD"),
             &[inner],
         )
         .expect("outer");

@@ -135,6 +135,7 @@ impl ControlKind {
 
 /// Attributes shared by every control.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct ControlDraft<'a> {
     /// `Name`.
     pub name: Option<&'a str>,
@@ -153,6 +154,71 @@ pub struct ControlDraft<'a> {
     /// `LifeCyclePhase`, slot 6. Required by
     /// `IfcPerformanceHistory` and declared by no other control.
     pub life_cycle_phase: Option<&'a str>,
+}
+
+impl<'a> ControlDraft<'a> {
+    /// Starts a draft with every field unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            name: None,
+            description: None,
+            object_type: None,
+            identification: None,
+            status: None,
+            long_description: None,
+            life_cycle_phase: None,
+        }
+    }
+
+    /// Sets [`Self::name`]: `Name`.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets [`Self::description`]: `Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets [`Self::object_type`]: `ObjectType`, slot 4. Required when the predefined type is `USERDEFINED`.
+    #[must_use]
+    pub fn object_type(mut self, value: &'a str) -> Self {
+        self.object_type = Some(value);
+        self
+    }
+
+    /// Sets [`Self::identification`]: `Identification`, slot 5: the permit or order number.
+    #[must_use]
+    pub fn identification(mut self, value: &'a str) -> Self {
+        self.identification = Some(value);
+        self
+    }
+
+    /// Sets [`Self::status`]: `Status`, slot 7. Not declared by `IfcPerformanceHistory`.
+    #[must_use]
+    pub fn status(mut self, value: &'a str) -> Self {
+        self.status = Some(value);
+        self
+    }
+
+    /// Sets [`Self::long_description`]: `LongDescription`, slot 8. Not declared by `IfcPerformanceHistory`.
+    #[must_use]
+    pub fn long_description(mut self, value: &'a str) -> Self {
+        self.long_description = Some(value);
+        self
+    }
+
+    /// Sets [`Self::life_cycle_phase`]: `LifeCyclePhase`, slot 6. Required by `IfcPerformanceHistory` and declared by no other control.
+    #[must_use]
+    pub fn life_cycle_phase(mut self, value: &'a str) -> Self {
+        self.life_cycle_phase = Some(value);
+        self
+    }
 }
 
 fn invalid(

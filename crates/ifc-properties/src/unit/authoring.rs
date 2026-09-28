@@ -23,6 +23,7 @@ use crate::{PropertyError, PropertyResult};
 
 /// Authored fields for `IfcSIUnit`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct SiUnitDraft<'a> {
     /// `IfcNamedUnit.UnitType`, an `IfcUnitEnum` constant such as `LENGTHUNIT`.
     pub unit_type: &'a str,
@@ -35,11 +36,45 @@ pub struct SiUnitDraft<'a> {
     pub prefix: Option<&'a str>,
 }
 
+impl<'a> SiUnitDraft<'a> {
+    /// Starts a draft from its required `unit_type`, `name`; every other field
+    /// is unset.
+    #[must_use]
+    pub fn new(unit_type: &'a str, name: &'a str) -> Self {
+        Self {
+            unit_type,
+            name,
+            prefix: None,
+        }
+    }
+
+    /// Sets `prefix`.
+    ///
+    /// `IfcSIUnit.Prefix`, an `IfcSIPrefix` constant such as `MILLI`.
+    ///
+    /// `None` writes an unprefixed unit. A prefix that is not a schema
+    /// constant is refused; see the module note.
+    #[must_use]
+    pub fn prefix(mut self, value: &'a str) -> Self {
+        self.prefix = Some(value);
+        self
+    }
+}
+
 /// Authored fields for `IfcMonetaryUnit`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct MonetaryUnitDraft<'a> {
     /// `IfcMonetaryUnit.Currency`, an ISO 4217 code such as `EUR`.
     pub currency: &'a str,
+}
+
+impl<'a> MonetaryUnitDraft<'a> {
+    /// Starts a draft from its required `currency`; every other field is unset.
+    #[must_use]
+    pub fn new(currency: &'a str) -> Self {
+        Self { currency }
+    }
 }
 
 /// Stage an `IfcSIUnit`.
@@ -87,6 +122,7 @@ pub fn add_monetary_unit(
 
 /// Authored fields for `IfcConversionBasedUnit`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ConversionBasedUnitDraft<'a> {
     /// `IfcConversionBasedUnit.UnitType`, an `IfcUnitEnum` constant.
     pub unit_type: &'a str,
@@ -96,6 +132,25 @@ pub struct ConversionBasedUnitDraft<'a> {
     pub conversion_factor: EntityId,
     /// `IfcConversionBasedUnit.Dimensions`, an `IfcDimensionalExponents`.
     pub dimensions: EntityId,
+}
+
+impl<'a> ConversionBasedUnitDraft<'a> {
+    /// Starts a draft from its required `unit_type`, `name`,
+    /// `conversion_factor`, `dimensions`; every other field is unset.
+    #[must_use]
+    pub fn new(
+        unit_type: &'a str,
+        name: &'a str,
+        conversion_factor: EntityId,
+        dimensions: EntityId,
+    ) -> Self {
+        Self {
+            unit_type,
+            name,
+            conversion_factor,
+            dimensions,
+        }
+    }
 }
 
 /// Stage an `IfcConversionBasedUnit`.

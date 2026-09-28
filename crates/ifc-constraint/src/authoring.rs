@@ -19,6 +19,7 @@ const RESOURCE_REL: &str = "IFCRESOURCECONSTRAINTRELATIONSHIP";
 
 /// Common inherited `IfcConstraint` fields.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ConstraintBaseDraft<'a> {
     /// Required constraint name.
     pub name: &'a str,
@@ -36,8 +37,61 @@ pub struct ConstraintBaseDraft<'a> {
     pub user_defined_grade: Option<&'a str>,
 }
 
+impl<'a> ConstraintBaseDraft<'a> {
+    /// Starts a draft from its required fields; every other field is unset.
+    #[must_use]
+    pub fn new(name: &'a str, grade: ConstraintGrade) -> Self {
+        Self {
+            name,
+            description: None,
+            grade,
+            source: None,
+            creating_actor: None,
+            creation_time: None,
+            user_defined_grade: None,
+        }
+    }
+
+    /// Sets `description`: Optional description.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets `source`: Optional source label.
+    #[must_use]
+    pub fn source(mut self, value: &'a str) -> Self {
+        self.source = Some(value);
+        self
+    }
+
+    /// Sets `creating_actor`: Optional existing or earlier-staged actor-select
+    /// target.
+    #[must_use]
+    pub fn creating_actor(mut self, value: EntityId) -> Self {
+        self.creating_actor = Some(value);
+        self
+    }
+
+    /// Sets `creation_time`: Optional IFC date-time lexical value.
+    #[must_use]
+    pub fn creation_time(mut self, value: &'a str) -> Self {
+        self.creation_time = Some(value);
+        self
+    }
+
+    /// Sets `user_defined_grade`: Required when `grade` is user-defined.
+    #[must_use]
+    pub fn user_defined_grade(mut self, value: &'a str) -> Self {
+        self.user_defined_grade = Some(value);
+        self
+    }
+}
+
 /// Draft for one `IfcMetric`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct MetricDraft<'a> {
     /// Inherited constraint fields.
     pub base: ConstraintBaseDraft<'a>,
@@ -51,8 +105,45 @@ pub struct MetricDraft<'a> {
     pub reference_path: Option<EntityId>,
 }
 
+impl<'a> MetricDraft<'a> {
+    /// Starts a draft from its required fields; every other field is unset.
+    #[must_use]
+    pub fn new(base: ConstraintBaseDraft<'a>, benchmark: Benchmark) -> Self {
+        Self {
+            base,
+            benchmark,
+            value_source: None,
+            data_value: None,
+            reference_path: None,
+        }
+    }
+
+    /// Sets `value_source`: Optional source label for the data value.
+    #[must_use]
+    pub fn value_source(mut self, value: &'a str) -> Self {
+        self.value_source = Some(value);
+        self
+    }
+
+    /// Sets `data_value`: Optional preserved metric SELECT value.
+    #[must_use]
+    pub fn data_value(mut self, value: MetricValueDraft<'a>) -> Self {
+        self.data_value = Some(value);
+        self
+    }
+
+    /// Sets `reference_path`: Optional existing or earlier-staged
+    /// `IfcReference`.
+    #[must_use]
+    pub fn reference_path(mut self, value: EntityId) -> Self {
+        self.reference_path = Some(value);
+        self
+    }
+}
+
 /// Draft for one `IfcObjective`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ObjectiveDraft<'a> {
     /// Inherited constraint fields.
     pub base: ConstraintBaseDraft<'a>,
@@ -66,8 +157,45 @@ pub struct ObjectiveDraft<'a> {
     pub user_defined_qualifier: Option<&'a str>,
 }
 
+impl<'a> ObjectiveDraft<'a> {
+    /// Starts a draft from its required fields; every other field is unset.
+    #[must_use]
+    pub fn new(base: ConstraintBaseDraft<'a>, qualifier: ObjectiveQualifier) -> Self {
+        Self {
+            base,
+            benchmark_values: None,
+            logical_aggregator: None,
+            qualifier,
+            user_defined_qualifier: None,
+        }
+    }
+
+    /// Sets `benchmark_values`: Optional non-empty ordered constraints.
+    #[must_use]
+    pub fn benchmark_values(mut self, value: &'a [EntityId]) -> Self {
+        self.benchmark_values = Some(value);
+        self
+    }
+
+    /// Sets `logical_aggregator`: Optional logical operator.
+    #[must_use]
+    pub fn logical_aggregator(mut self, value: LogicalOperator) -> Self {
+        self.logical_aggregator = Some(value);
+        self
+    }
+
+    /// Sets `user_defined_qualifier`: Required when `qualifier` is user-
+    /// defined.
+    #[must_use]
+    pub fn user_defined_qualifier(mut self, value: &'a str) -> Self {
+        self.user_defined_qualifier = Some(value);
+        self
+    }
+}
+
 /// Draft for one resource-level constraint relationship.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ResourceConstraintDraft<'a> {
     /// Optional relationship name.
     pub name: Option<&'a str>,
@@ -77,6 +205,33 @@ pub struct ResourceConstraintDraft<'a> {
     pub relating_constraint: EntityId,
     /// Non-empty unique resource-select targets.
     pub related_resources: &'a [EntityId],
+}
+
+impl<'a> ResourceConstraintDraft<'a> {
+    /// Starts a draft from its required fields; every other field is unset.
+    #[must_use]
+    pub fn new(relating_constraint: EntityId, related_resources: &'a [EntityId]) -> Self {
+        Self {
+            name: None,
+            description: None,
+            relating_constraint,
+            related_resources,
+        }
+    }
+
+    /// Sets `name`: Optional relationship name.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets `description`: Optional relationship description.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
 }
 
 /// Validate and stage one metric.
@@ -253,7 +408,8 @@ fn validate_set(
 }
 
 /// Draft for one `IfcReference`: a path into another entity's attributes.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct ReferenceDraft<'a> {
     /// `TypeIdentifier`, the referenced entity's type name.
     pub type_identifier: Option<&'a str>,
@@ -265,6 +421,58 @@ pub struct ReferenceDraft<'a> {
     pub list_positions: &'a [i64],
     /// `InnerReference`, the next step along the path.
     pub inner_reference: Option<EntityId>,
+}
+
+impl<'a> ReferenceDraft<'a> {
+    /// Starts an empty draft; every field is unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            type_identifier: None,
+            attribute_identifier: None,
+            instance_name: None,
+            list_positions: &[],
+            inner_reference: None,
+        }
+    }
+
+    /// Sets `type_identifier`: `TypeIdentifier`, the referenced entity's type
+    /// name.
+    #[must_use]
+    pub fn type_identifier(mut self, value: &'a str) -> Self {
+        self.type_identifier = Some(value);
+        self
+    }
+
+    /// Sets `attribute_identifier`: `AttributeIdentifier`, the attribute being
+    /// addressed.
+    #[must_use]
+    pub fn attribute_identifier(mut self, value: &'a str) -> Self {
+        self.attribute_identifier = Some(value);
+        self
+    }
+
+    /// Sets `instance_name`: `InstanceName`, naming the addressed instance.
+    #[must_use]
+    pub fn instance_name(mut self, value: &'a str) -> Self {
+        self.instance_name = Some(value);
+        self
+    }
+
+    /// Sets `list_positions`: `ListPositions`, 1-based indices into list-valued
+    /// attributes.
+    #[must_use]
+    pub fn list_positions(mut self, value: &'a [i64]) -> Self {
+        self.list_positions = value;
+        self
+    }
+
+    /// Sets `inner_reference`: `InnerReference`, the next step along the path.
+    #[must_use]
+    pub fn inner_reference(mut self, value: EntityId) -> Self {
+        self.inner_reference = Some(value);
+        self
+    }
 }
 
 /// Stage an `IfcReference`.

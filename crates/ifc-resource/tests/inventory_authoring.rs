@@ -16,12 +16,9 @@ fn model_with_person() -> (Model, EntityId) {
 }
 
 fn draft() -> InventoryDraft<'static> {
-    InventoryDraft {
-        global_id: GUID,
-        name: Some("Fixed assets"),
-        predefined_type: Some("ASSETINVENTORY"),
-        ..InventoryDraft::default()
-    }
+    InventoryDraft::new(GUID)
+        .name("Fixed assets")
+        .predefined_type("ASSETINVENTORY")
 }
 
 /// An inventory stages its eleven slots.

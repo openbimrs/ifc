@@ -65,31 +65,23 @@ fn physical_product_structural_assignment_and_geometry_join_on_entity_id() {
         &mut tx,
         &model,
         schema,
-        ActionDraft {
-            root: StructuralRootDraft {
-                global_id: "0YvctVUKbD0xjK5xJ8Jg72".into(),
-                ..Default::default()
-            },
-            applied_load: load,
-            coordinate_system: CoordinateSystem::Global,
-            destabilizing_load: None,
-            caused_by: None,
-            kind: ActionDraftKind::Point,
-        },
+        ActionDraft::new(
+            StructuralRootDraft::new("0YvctVUKbD0xjK5xJ8Jg72"),
+            load,
+            CoordinateSystem::Global,
+            ActionDraftKind::Point,
+        ),
     )
     .unwrap();
     stage_activity_assignment(
         &mut tx,
         &model,
         schema,
-        ActivityAssignmentDraft {
-            root: RelationshipRootDraft {
-                global_id: "0YvctVUKbD0xjK5xJ8Jg73".into(),
-                ..Default::default()
-            },
-            relating_element: wall,
-            activity: action,
-        },
+        ActivityAssignmentDraft::new(
+            RelationshipRootDraft::new("0YvctVUKbD0xjK5xJ8Jg73"),
+            wall,
+            action,
+        ),
     )
     .unwrap();
     tx.commit(&mut model).unwrap();

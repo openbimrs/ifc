@@ -55,6 +55,7 @@ pub fn add_irregular_value(
 
 /// The `IfcTimeSeries` supertype attributes, shared by both subtypes.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct SeriesDraft<'a> {
     /// `Name`. Required.
     pub name: &'a str,
@@ -72,6 +73,50 @@ pub struct SeriesDraft<'a> {
     pub user_defined_data_origin: Option<&'a str>,
     /// `Unit`, an `IfcUnit` reference.
     pub unit: Option<EntityId>,
+}
+
+impl<'a> SeriesDraft<'a> {
+    /// Starts a draft with its required fields; the rest are unset.
+    #[must_use]
+    pub fn new(
+        name: &'a str,
+        start_time: &'a str,
+        end_time: &'a str,
+        data_type: &'a str,
+        data_origin: &'a str,
+    ) -> Self {
+        Self {
+            name,
+            description: None,
+            start_time,
+            end_time,
+            data_type,
+            data_origin,
+            user_defined_data_origin: None,
+            unit: None,
+        }
+    }
+
+    /// Sets [`Self::description`]: `Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets [`Self::user_defined_data_origin`]: `UserDefinedDataOrigin`.
+    #[must_use]
+    pub fn user_defined_data_origin(mut self, value: &'a str) -> Self {
+        self.user_defined_data_origin = Some(value);
+        self
+    }
+
+    /// Sets [`Self::unit`]: `Unit`, an `IfcUnit` reference.
+    #[must_use]
+    pub fn unit(mut self, value: EntityId) -> Self {
+        self.unit = Some(value);
+        self
+    }
 }
 
 fn supertype_slots(entity: &'static str, draft: SeriesDraft<'_>) -> TabularResult<Vec<Value>> {

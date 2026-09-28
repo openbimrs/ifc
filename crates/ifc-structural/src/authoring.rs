@@ -38,6 +38,7 @@ pub use relation::{
 
 /// Staged fields for creating an `IfcStructuralAnalysisModel` via [`stage_analysis_model`].
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct AnalysisModelDraft {
     /// `GlobalId`; must parse as a 22-character IFC GUID.
     pub global_id: String,
@@ -727,3 +728,5 @@ pub(super) fn projected_entity(
     }
     projected
 }
+
+mod builders;

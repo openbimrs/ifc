@@ -26,6 +26,7 @@ use super::predefined::{invalid, measure, ratio, require_guid, Measure};
 
 /// Attributes of an `IfcDoorLiningProperties`.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct DoorLiningDraft<'a> {
     /// `Name`.
     pub name: Option<&'a str>,
@@ -57,6 +58,149 @@ pub struct DoorLiningDraft<'a> {
     pub lining_to_panel_offset_x: Option<f64>,
     /// `LiningToPanelOffsetY`, a length.
     pub lining_to_panel_offset_y: Option<f64>,
+}
+
+impl<'a> DoorLiningDraft<'a> {
+    /// Starts a draft with every field unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets `name`.
+    ///
+    /// `Name`.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets `description`.
+    ///
+    /// `Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets `lining_depth`.
+    ///
+    /// `LiningDepth`, a positive length. Requires `lining_thickness` (WR31).
+    #[must_use]
+    pub fn lining_depth(mut self, value: f64) -> Self {
+        self.lining_depth = Some(value);
+        self
+    }
+
+    /// Sets `lining_thickness`.
+    ///
+    /// `LiningThickness`, a non-negative length.
+    #[must_use]
+    pub fn lining_thickness(mut self, value: f64) -> Self {
+        self.lining_thickness = Some(value);
+        self
+    }
+
+    /// Sets `threshold_depth`.
+    ///
+    /// `ThresholdDepth`, a positive length. Requires `threshold_thickness` (WR32).
+    #[must_use]
+    pub fn threshold_depth(mut self, value: f64) -> Self {
+        self.threshold_depth = Some(value);
+        self
+    }
+
+    /// Sets `threshold_thickness`.
+    ///
+    /// `ThresholdThickness`, a non-negative length.
+    #[must_use]
+    pub fn threshold_thickness(mut self, value: f64) -> Self {
+        self.threshold_thickness = Some(value);
+        self
+    }
+
+    /// Sets `transom_thickness`.
+    ///
+    /// `TransomThickness`, a non-negative length. Paired with `transom_offset` (WR33).
+    #[must_use]
+    pub fn transom_thickness(mut self, value: f64) -> Self {
+        self.transom_thickness = Some(value);
+        self
+    }
+
+    /// Sets `transom_offset`.
+    ///
+    /// `TransomOffset`, a length. Paired with `transom_thickness` (WR33).
+    #[must_use]
+    pub fn transom_offset(mut self, value: f64) -> Self {
+        self.transom_offset = Some(value);
+        self
+    }
+
+    /// Sets `lining_offset`.
+    ///
+    /// `LiningOffset`, a length.
+    #[must_use]
+    pub fn lining_offset(mut self, value: f64) -> Self {
+        self.lining_offset = Some(value);
+        self
+    }
+
+    /// Sets `threshold_offset`.
+    ///
+    /// `ThresholdOffset`, a length.
+    #[must_use]
+    pub fn threshold_offset(mut self, value: f64) -> Self {
+        self.threshold_offset = Some(value);
+        self
+    }
+
+    /// Sets `casing_thickness`.
+    ///
+    /// `CasingThickness`, a positive length. Paired with `casing_depth` (WR34).
+    #[must_use]
+    pub fn casing_thickness(mut self, value: f64) -> Self {
+        self.casing_thickness = Some(value);
+        self
+    }
+
+    /// Sets `casing_depth`.
+    ///
+    /// `CasingDepth`, a positive length. Paired with `casing_thickness` (WR34).
+    #[must_use]
+    pub fn casing_depth(mut self, value: f64) -> Self {
+        self.casing_depth = Some(value);
+        self
+    }
+
+    /// Sets `shape_aspect_style`.
+    ///
+    /// `ShapeAspectStyle`.
+    #[must_use]
+    pub fn shape_aspect_style(mut self, value: EntityId) -> Self {
+        self.shape_aspect_style = Some(value);
+        self
+    }
+
+    /// Sets `lining_to_panel_offset_x`.
+    ///
+    /// `LiningToPanelOffsetX`, a length.
+    #[must_use]
+    pub fn lining_to_panel_offset_x(mut self, value: f64) -> Self {
+        self.lining_to_panel_offset_x = Some(value);
+        self
+    }
+
+    /// Sets `lining_to_panel_offset_y`.
+    ///
+    /// `LiningToPanelOffsetY`, a length.
+    #[must_use]
+    pub fn lining_to_panel_offset_y(mut self, value: f64) -> Self {
+        self.lining_to_panel_offset_y = Some(value);
+        self
+    }
 }
 
 /// Stage an `IfcDoorLiningProperties`.
@@ -224,6 +368,7 @@ fn door_lining<'a>(global_id: &'a str, draft: DoorLiningDraft<'a>) -> PropertyRe
 
 /// Attributes of an `IfcWindowLiningProperties`.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct WindowLiningDraft<'a> {
     /// `Name`.
     pub name: Option<&'a str>,
@@ -253,6 +398,140 @@ pub struct WindowLiningDraft<'a> {
     pub lining_to_panel_offset_x: Option<f64>,
     /// `LiningToPanelOffsetY`, a length.
     pub lining_to_panel_offset_y: Option<f64>,
+}
+
+impl<'a> WindowLiningDraft<'a> {
+    /// Starts a draft with every field unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets `name`.
+    ///
+    /// `Name`.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets `description`.
+    ///
+    /// `Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets `lining_depth`.
+    ///
+    /// `LiningDepth`, a positive length. Requires `lining_thickness` (WR31).
+    #[must_use]
+    pub fn lining_depth(mut self, value: f64) -> Self {
+        self.lining_depth = Some(value);
+        self
+    }
+
+    /// Sets `lining_thickness`.
+    ///
+    /// `LiningThickness`, a non-negative length.
+    #[must_use]
+    pub fn lining_thickness(mut self, value: f64) -> Self {
+        self.lining_thickness = Some(value);
+        self
+    }
+
+    /// Sets `transom_thickness`.
+    ///
+    /// `TransomThickness`, a non-negative length.
+    #[must_use]
+    pub fn transom_thickness(mut self, value: f64) -> Self {
+        self.transom_thickness = Some(value);
+        self
+    }
+
+    /// Sets `mullion_thickness`.
+    ///
+    /// `MullionThickness`, a non-negative length.
+    #[must_use]
+    pub fn mullion_thickness(mut self, value: f64) -> Self {
+        self.mullion_thickness = Some(value);
+        self
+    }
+
+    /// Sets `first_transom_offset`.
+    ///
+    /// `FirstTransomOffset`, a normalised ratio.
+    #[must_use]
+    pub fn first_transom_offset(mut self, value: f64) -> Self {
+        self.first_transom_offset = Some(value);
+        self
+    }
+
+    /// Sets `second_transom_offset`.
+    ///
+    /// `SecondTransomOffset`, a normalised ratio. Needs the first (WR32).
+    #[must_use]
+    pub fn second_transom_offset(mut self, value: f64) -> Self {
+        self.second_transom_offset = Some(value);
+        self
+    }
+
+    /// Sets `first_mullion_offset`.
+    ///
+    /// `FirstMullionOffset`, a normalised ratio.
+    #[must_use]
+    pub fn first_mullion_offset(mut self, value: f64) -> Self {
+        self.first_mullion_offset = Some(value);
+        self
+    }
+
+    /// Sets `second_mullion_offset`.
+    ///
+    /// `SecondMullionOffset`, a normalised ratio. Needs the first (WR33).
+    #[must_use]
+    pub fn second_mullion_offset(mut self, value: f64) -> Self {
+        self.second_mullion_offset = Some(value);
+        self
+    }
+
+    /// Sets `shape_aspect_style`.
+    ///
+    /// `ShapeAspectStyle`.
+    #[must_use]
+    pub fn shape_aspect_style(mut self, value: EntityId) -> Self {
+        self.shape_aspect_style = Some(value);
+        self
+    }
+
+    /// Sets `lining_offset`.
+    ///
+    /// `LiningOffset`, a length.
+    #[must_use]
+    pub fn lining_offset(mut self, value: f64) -> Self {
+        self.lining_offset = Some(value);
+        self
+    }
+
+    /// Sets `lining_to_panel_offset_x`.
+    ///
+    /// `LiningToPanelOffsetX`, a length.
+    #[must_use]
+    pub fn lining_to_panel_offset_x(mut self, value: f64) -> Self {
+        self.lining_to_panel_offset_x = Some(value);
+        self
+    }
+
+    /// Sets `lining_to_panel_offset_y`.
+    ///
+    /// `LiningToPanelOffsetY`, a length.
+    #[must_use]
+    pub fn lining_to_panel_offset_y(mut self, value: f64) -> Self {
+        self.lining_to_panel_offset_y = Some(value);
+        self
+    }
 }
 
 /// Stage an `IfcWindowLiningProperties`.

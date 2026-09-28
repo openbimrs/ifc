@@ -19,6 +19,18 @@ everything released before per-crate changelogs began.
   `Property`, `PropertySet`, `QuantitySet`, `ResolvedSet` and
   `PropertySetTemplate` are `#[non_exhaustive]`; compare their fields
   instead of building one with a struct literal.
+- Every authoring draft is `#[non_exhaustive]`, so a struct literal no
+  longer compiles outside the crate. Each gains `new(required…)` and one
+  builder setter per other field, named after the field and taking the
+  unwrapped value: `TableValueDraft::new(name)`, `DoorLiningDraft::new()`,
+  `WindowLiningDraft::new()`,
+  `ReinforcementBarDraft::new(total_cross_section_area, steel_grade)`,
+  `SectionReinforcementDraft::new(longitudinal_start_position,
+  longitudinal_end_position, reinforcement_role, section_definition,
+  cross_section_reinforcement_definitions)`,
+  `SiUnitDraft::new(unit_type, name)`, `MonetaryUnitDraft::new(currency)`
+  and `ConversionBasedUnitDraft::new(unit_type, name, conversion_factor,
+  dimensions)`. Fields stay public.
 
 ## [0.5.3] - 2026-09-28
 

@@ -50,36 +50,21 @@ fn a_door_depth_without_its_thickness_is_refused() {
     let model = Model::new();
     let mut tx = Transaction::new(&model);
 
-    let err = add_door_lining_properties(
-        &mut tx,
-        GUID,
-        DoorLiningDraft {
-            lining_depth: Some(0.1),
-            ..DoorLiningDraft::default()
-        },
-    )
-    .expect_err("WR31");
+    let err = add_door_lining_properties(&mut tx, GUID, DoorLiningDraft::new().lining_depth(0.1))
+        .expect_err("WR31");
     assert!(invalid(&err), "{err}");
 
-    let err = add_door_lining_properties(
-        &mut tx,
-        GUID,
-        DoorLiningDraft {
-            threshold_depth: Some(0.1),
-            ..DoorLiningDraft::default()
-        },
-    )
-    .expect_err("WR32");
+    let err =
+        add_door_lining_properties(&mut tx, GUID, DoorLiningDraft::new().threshold_depth(0.1))
+            .expect_err("WR32");
     assert!(invalid(&err), "{err}");
 
     add_door_lining_properties(
         &mut tx,
         GUID,
-        DoorLiningDraft {
-            lining_depth: Some(0.1),
-            lining_thickness: Some(0.02),
-            ..DoorLiningDraft::default()
-        },
+        DoorLiningDraft::new()
+            .lining_depth(0.1)
+            .lining_thickness(0.02),
     )
     .expect("a depth with its thickness is legal");
 }
@@ -91,22 +76,10 @@ fn door_transom_and_casing_pairs_are_all_or_nothing() {
     let mut tx = Transaction::new(&model);
 
     for draft in [
-        DoorLiningDraft {
-            transom_offset: Some(0.5),
-            ..DoorLiningDraft::default()
-        },
-        DoorLiningDraft {
-            transom_thickness: Some(0.02),
-            ..DoorLiningDraft::default()
-        },
-        DoorLiningDraft {
-            casing_depth: Some(0.1),
-            ..DoorLiningDraft::default()
-        },
-        DoorLiningDraft {
-            casing_thickness: Some(0.02),
-            ..DoorLiningDraft::default()
-        },
+        DoorLiningDraft::new().transom_offset(0.5),
+        DoorLiningDraft::new().transom_thickness(0.02),
+        DoorLiningDraft::new().casing_depth(0.1),
+        DoorLiningDraft::new().casing_thickness(0.02),
     ] {
         let err = add_door_lining_properties(&mut tx, GUID, draft).expect_err("half a pair");
         assert!(invalid(&err), "{err}");
@@ -115,13 +88,11 @@ fn door_transom_and_casing_pairs_are_all_or_nothing() {
     add_door_lining_properties(
         &mut tx,
         GUID,
-        DoorLiningDraft {
-            transom_offset: Some(0.5),
-            transom_thickness: Some(0.02),
-            casing_depth: Some(0.1),
-            casing_thickness: Some(0.02),
-            ..DoorLiningDraft::default()
-        },
+        DoorLiningDraft::new()
+            .transom_offset(0.5)
+            .transom_thickness(0.02)
+            .casing_depth(0.1)
+            .casing_thickness(0.02),
     )
     .expect("complete pairs are legal");
 }
@@ -140,22 +111,13 @@ fn window_offsets_are_ordered_not_paired() {
     add_window_lining_properties(
         &mut tx,
         GUID,
-        WindowLiningDraft {
-            first_transom_offset: Some(0.25),
-            ..WindowLiningDraft::default()
-        },
+        WindowLiningDraft::new().first_transom_offset(0.25),
     )
     .expect("a first offset alone is legal on a window");
 
     for draft in [
-        WindowLiningDraft {
-            second_transom_offset: Some(0.75),
-            ..WindowLiningDraft::default()
-        },
-        WindowLiningDraft {
-            second_mullion_offset: Some(0.75),
-            ..WindowLiningDraft::default()
-        },
+        WindowLiningDraft::new().second_transom_offset(0.75),
+        WindowLiningDraft::new().second_mullion_offset(0.75),
     ] {
         let err = add_window_lining_properties(&mut tx, GUID, draft)
             .expect_err("a second offset without the first");
@@ -165,13 +127,11 @@ fn window_offsets_are_ordered_not_paired() {
     add_window_lining_properties(
         &mut tx,
         GUID,
-        WindowLiningDraft {
-            first_transom_offset: Some(0.25),
-            second_transom_offset: Some(0.75),
-            first_mullion_offset: Some(0.3),
-            second_mullion_offset: Some(0.6),
-            ..WindowLiningDraft::default()
-        },
+        WindowLiningDraft::new()
+            .first_transom_offset(0.25)
+            .second_transom_offset(0.75)
+            .first_mullion_offset(0.3)
+            .second_mullion_offset(0.6),
     )
     .expect("both offsets in order are legal");
 }
@@ -184,10 +144,7 @@ fn window_offsets_are_bounded_ratios() {
     let err = add_window_lining_properties(
         &mut tx,
         GUID,
-        WindowLiningDraft {
-            first_transom_offset: Some(1.5),
-            ..WindowLiningDraft::default()
-        },
+        WindowLiningDraft::new().first_transom_offset(1.5),
     )
     .expect_err("IfcNormalisedRatioMeasure is bounded to [0, 1]");
     assert!(invalid(&err), "{err}");
@@ -205,25 +162,19 @@ fn length_measures_keep_their_own_sign_rules() {
     add_door_lining_properties(
         &mut tx,
         GUID,
-        DoorLiningDraft {
-            lining_offset: Some(-0.01),
-            threshold_offset: Some(-0.02),
-            ..DoorLiningDraft::default()
-        },
+        DoorLiningDraft::new()
+            .lining_offset(-0.01)
+            .threshold_offset(-0.02),
     )
     .expect("IfcLengthMeasure admits a negative offset");
 
     for draft in [
-        DoorLiningDraft {
-            lining_depth: Some(0.0),
-            lining_thickness: Some(0.01),
-            ..DoorLiningDraft::default()
-        },
-        DoorLiningDraft {
-            lining_depth: Some(0.1),
-            lining_thickness: Some(-0.01),
-            ..DoorLiningDraft::default()
-        },
+        DoorLiningDraft::new()
+            .lining_depth(0.0)
+            .lining_thickness(0.01),
+        DoorLiningDraft::new()
+            .lining_depth(0.1)
+            .lining_thickness(-0.01),
     ] {
         let err = add_door_lining_properties(&mut tx, GUID, draft)
             .expect_err("a non-positive depth or negative thickness");
@@ -418,25 +369,17 @@ fn complex_template_children_are_uniquely_named() {
 fn a_window_lining_depth_needs_its_thickness() {
     let model = Model::new();
     let mut tx = Transaction::new(&model);
-    let err = add_window_lining_properties(
-        &mut tx,
-        GUID,
-        WindowLiningDraft {
-            lining_depth: Some(0.1),
-            ..WindowLiningDraft::default()
-        },
-    )
-    .expect_err("WR31 on the window");
+    let err =
+        add_window_lining_properties(&mut tx, GUID, WindowLiningDraft::new().lining_depth(0.1))
+            .expect_err("WR31 on the window");
     assert!(invalid(&err), "{err}");
 
     add_window_lining_properties(
         &mut tx,
         GUID,
-        WindowLiningDraft {
-            lining_depth: Some(0.1),
-            lining_thickness: Some(0.02),
-            ..WindowLiningDraft::default()
-        },
+        WindowLiningDraft::new()
+            .lining_depth(0.1)
+            .lining_thickness(0.02),
     )
     .expect("a depth with its thickness is legal");
 }

@@ -16,14 +16,10 @@ use ifc_schema::{ifc4, ifc4x3};
 const GUID: &str = "3Ovv5_Gsj7hgnPnCVjCDRV";
 
 fn bar<'a>() -> ReinforcementBarDraft<'a> {
-    ReinforcementBarDraft {
-        total_cross_section_area: 452.4,
-        steel_grade: "B500B",
-        bar_surface: Some("PLAIN"),
-        effective_depth: None,
-        nominal_bar_diameter: Some(12.0),
-        bar_count: Some(4),
-    }
+    ReinforcementBarDraft::new(452.4, "B500B")
+        .bar_surface("PLAIN")
+        .nominal_bar_diameter(12.0)
+        .bar_count(4)
 }
 
 /// `BarCount` is `IfcCountMeasure`, declared INTEGER in EXPRESS.
@@ -116,14 +112,7 @@ fn empty_required_sets_are_refused() {
 
     add_section_reinforcement_properties(
         &mut tx,
-        SectionReinforcementDraft {
-            longitudinal_start_position: 0.0,
-            longitudinal_end_position: 1000.0,
-            transverse_position: None,
-            reinforcement_role: "MAIN",
-            section_definition: section,
-            cross_section_reinforcement_definitions: &[],
-        },
+        SectionReinforcementDraft::new(0.0, 1000.0, "MAIN", section, &[]),
     )
     .expect_err("[1:?] bars");
 
@@ -145,14 +134,8 @@ fn longitudinal_positions_admit_negatives_and_any_order() {
 
     let id = add_section_reinforcement_properties(
         &mut tx,
-        SectionReinforcementDraft {
-            longitudinal_start_position: -250.0,
-            longitudinal_end_position: -500.0,
-            transverse_position: Some(-30.0),
-            reinforcement_role: "SHEAR",
-            section_definition: section,
-            cross_section_reinforcement_definitions: &[rebar],
-        },
+        SectionReinforcementDraft::new(-250.0, -500.0, "SHEAR", section, &[rebar])
+            .transverse_position(-30.0),
     )
     .expect("negative stations are legal");
     tx.commit(&mut model).expect("commit");
@@ -178,14 +161,7 @@ fn only_the_definition_set_carries_a_global_id() {
     let rebar = add_reinforcement_bar_properties(&mut tx, bar()).expect("bar");
     let reinforcement = add_section_reinforcement_properties(
         &mut tx,
-        SectionReinforcementDraft {
-            longitudinal_start_position: 0.0,
-            longitudinal_end_position: 1000.0,
-            transverse_position: None,
-            reinforcement_role: "MAIN",
-            section_definition: section,
-            cross_section_reinforcement_definitions: &[rebar],
-        },
+        SectionReinforcementDraft::new(0.0, 1000.0, "MAIN", section, &[rebar]),
     )
     .expect("reinforcement");
 
@@ -250,14 +226,8 @@ fn a_role_outside_its_enumeration_is_refused() {
     let section = add_section_properties(&mut tx, "UNIFORM", profile, None).expect("section");
     let rebar = add_reinforcement_bar_properties(&mut tx, bar()).expect("bar");
 
-    let mut draft = SectionReinforcementDraft {
-        longitudinal_start_position: 0.0,
-        longitudinal_end_position: 1000.0,
-        transverse_position: None,
-        reinforcement_role: "TENSION",
-        section_definition: section,
-        cross_section_reinforcement_definitions: &[rebar],
-    };
+    let rebars = [rebar];
+    let mut draft = SectionReinforcementDraft::new(0.0, 1000.0, "TENSION", section, &rebars);
     add_section_reinforcement_properties(&mut tx, draft).expect_err("not a bar role");
 
     draft.reinforcement_role = "main";

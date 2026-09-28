@@ -32,13 +32,10 @@ fn an_authored_crs_resolves_through_map_conversion() {
             .expect("context");
     let crs = create_projected_crs(
         &mut tx,
-        ProjectedCrsDraft {
-            name: "EPSG:25832",
-            map_projection: Some("UTM"),
-            map_zone: Some("32N"),
-            map_unit: Some(metre),
-            ..ProjectedCrsDraft::default()
-        },
+        ProjectedCrsDraft::new("EPSG:25832")
+            .map_projection("UTM")
+            .map_zone("32N")
+            .map_unit(metre),
     )
     .expect("crs");
     let conversion = tx.create(Entity::new(
@@ -109,14 +106,7 @@ fn meaningless_georeferencing_is_refused() {
     assert!(create_direction(&mut tx, &[f64::NAN, 1.0]).is_err());
 
     // A CRS the reader cannot match by name.
-    assert!(create_projected_crs(
-        &mut tx,
-        ProjectedCrsDraft {
-            name: "   ",
-            ..ProjectedCrsDraft::default()
-        },
-    )
-    .is_err(),);
+    assert!(create_projected_crs(&mut tx, ProjectedCrsDraft::new("   "),).is_err(),);
 
     // Dimension outside 1..=3, and a precision that is not a number.
     assert!(create_representation_context(&mut tx, None, 4, None, origin, None).is_err());

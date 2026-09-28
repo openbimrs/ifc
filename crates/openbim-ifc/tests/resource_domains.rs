@@ -28,77 +28,42 @@ fn author_resource_graph() -> (Model, [ifc::EntityId; 5]) {
     let reference = create_classification_reference(
         &mut tx,
         &model,
-        ClassificationReferenceDraft {
-            location: Some("https://example/requirement"),
-            identification: Some("REQ-1"),
-            name: None,
-            referenced_source: None,
-            description: None,
-            sort: None,
-        },
+        ClassificationReferenceDraft::new()
+            .location("https://example/requirement")
+            .identification("REQ-1"),
     )
     .unwrap();
     let approval = create_approval(
         &mut tx,
         &model,
-        ApprovalDraft {
-            identifier: Some("APP-1"),
-            status: Some("APPROVED"),
-            ..Default::default()
-        },
+        ApprovalDraft::new().identifier("APP-1").status("APPROVED"),
     )
     .unwrap();
     let metric = create_metric(
         &mut tx,
         &model,
-        MetricDraft {
-            base: ConstraintBaseDraft {
-                name: "Tolerance",
-                description: None,
-                grade: ConstraintGrade::Hard,
-                source: None,
-                creating_actor: None,
-                creation_time: None,
-                user_defined_grade: None,
-            },
-            benchmark: Benchmark::LessThanOrEqualTo,
-            value_source: None,
-            data_value: None,
-            reference_path: None,
-        },
+        MetricDraft::new(
+            ConstraintBaseDraft::new("Tolerance", ConstraintGrade::Hard),
+            Benchmark::LessThanOrEqualTo,
+        ),
     )
     .unwrap();
     let external = create_external_reference_relationship(
         &mut tx,
         &model,
-        ExternalReferenceRelationshipDraft {
-            name: Some("approval evidence"),
-            description: None,
-            relating_reference: reference,
-            related_resources: &[approval],
-        },
+        ExternalReferenceRelationshipDraft::new(reference, &[approval]).name("approval evidence"),
     )
     .unwrap();
     let approved_metric = relate_resource_approval(
         &mut tx,
         &model,
-        ResourceApprovalDraft {
-            name: None,
-            description: None,
-            related_resources: &[metric],
-            relating_approval: approval,
-        },
+        ResourceApprovalDraft::new(&[metric], approval),
     )
     .unwrap();
     relate_resource_constraint(
         &mut tx,
         &model,
-        ResourceConstraintDraft {
-            name: None,
-            description: None,
-            relating_constraint: metric,
-            related_resources: &[approval],
-        },
+        ResourceConstraintDraft::new(metric, &[approval]),
     )
     .unwrap();
     tx.commit(&mut model).unwrap();

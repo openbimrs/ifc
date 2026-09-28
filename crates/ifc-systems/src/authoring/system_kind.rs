@@ -236,6 +236,7 @@ impl SystemKind {
 
 /// Attributes of a classified system beyond `GlobalId` and `Name`.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct ClassifiedSystemDraft<'a> {
     /// `Description`.
     pub description: Option<&'a str>,
@@ -245,6 +246,42 @@ pub struct ClassifiedSystemDraft<'a> {
     pub predefined_type: Option<&'a str>,
     /// `LongName`: the full name where `Name` is an abbreviation.
     pub long_name: Option<&'a str>,
+}
+
+impl<'a> ClassifiedSystemDraft<'a> {
+    /// Starts an empty draft with every attribute unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets `Description`.
+    #[must_use]
+    pub const fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets `ObjectType`, required when `predefined_type` is `USERDEFINED`.
+    #[must_use]
+    pub const fn object_type(mut self, value: &'a str) -> Self {
+        self.object_type = Some(value);
+        self
+    }
+
+    /// Sets `PredefinedType`, a token of the entity's own enum.
+    #[must_use]
+    pub const fn predefined_type(mut self, value: &'a str) -> Self {
+        self.predefined_type = Some(value);
+        self
+    }
+
+    /// Sets `LongName`.
+    #[must_use]
+    pub const fn long_name(mut self, value: &'a str) -> Self {
+        self.long_name = Some(value);
+        self
+    }
 }
 /// Stage a classified system.
 ///
