@@ -114,8 +114,8 @@ pub enum ClassificationError {
         /// IFC type name the target actually has.
         actual: String,
     },
-    /// The header declares several schemas, one of them IFC2X3, so no single
-    /// release can be bound to read the model against.
+    /// The header declares several schemas, so no single release can be
+    /// bound to read or write the model against.
     #[error("the header declares {schemas} schemas; classification reads bind to exactly one")]
     MultipleSchemas {
         /// Number of `FILE_SCHEMA` declarations.
@@ -149,6 +149,62 @@ pub enum ClassificationError {
         attribute: &'static str,
         /// The entity record holding the value.
         target: EntityId,
+    },
+    /// The header declares one schema this crate has no bundled table for,
+    /// so no slot position can be trusted. Never read as IFC4.
+    #[error("the header declares {schema}, which has no bundled schema table")]
+    UnsupportedSchema {
+        /// The `FILE_SCHEMA` token as written.
+        schema: String,
+    },
+    /// An authoring call would write a record type the model's release
+    /// cannot instantiate, such as an `IfcExternalReferenceRelationship`
+    /// into an IFC2X3 model.
+    #[error("cannot author {entity}: not an instantiable entity of {schema:?}")]
+    EntityNotInSchema {
+        /// The IFC entity type name.
+        entity: &'static str,
+        /// The release the model is bound to.
+        schema: SchemaVersion,
+    },
+    /// An authoring call supplied a value for an attribute the model's
+    /// release does not declare, such as a `Description` for an IFC2X3
+    /// `IfcClassification`. The value is refused, never silently dropped.
+    #[error("cannot author {entity}.{attribute}: not defined by {schema:?}")]
+    AuthoringNotInSchema {
+        /// The IFC entity type name being authored.
+        entity: &'static str,
+        /// The attribute, as this crate names it (IFC4).
+        attribute: &'static str,
+        /// The release the model is bound to.
+        schema: SchemaVersion,
+    },
+    /// The model's release requires an attribute the authoring call leaves
+    /// unset, such as the IFC2X3 `IfcRoot.OwnerHistory` or the IFC2X3
+    /// `IfcClassification.Source`.
+    #[error("cannot author {entity}: {schema:?} requires {attribute}")]
+    AuthoringRequired {
+        /// The IFC entity type name being authored.
+        entity: &'static str,
+        /// The required attribute, as the release names it.
+        attribute: &'static str,
+        /// The release the model is bound to.
+        schema: SchemaVersion,
+    },
+    /// An authoring call supplied text for an attribute the model's release
+    /// types as an entity record, such as an IFC2X3 `IfcCalendarDate`
+    /// `EditionDate`. The text is refused rather than written into a slot
+    /// that cannot hold it.
+    #[error("cannot author {entity}.{attribute} as text: {schema:?} declares {declared}")]
+    AuthoringValueType {
+        /// The IFC entity type name being authored.
+        entity: &'static str,
+        /// The attribute, as this crate names it (IFC4).
+        attribute: &'static str,
+        /// The type the release declares for the attribute.
+        declared: &'static str,
+        /// The release the model is bound to.
+        schema: SchemaVersion,
     },
 }
 

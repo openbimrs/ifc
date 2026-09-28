@@ -3,37 +3,42 @@
 //! # WR1 is a real constraint, not a convention
 //!
 //! `IfcZone` carries a WHERE rule restricting its members to `IfcZone`,
-//! `IfcSpace`, and in IFC4 also `IfcSpatialZone` -- nothing else. A zone
+//! `IfcSpace`, and from IFC4 also `IfcSpatialZone` -- nothing else. A zone
 //! grouping a pump is not a stylistic choice, it is an invalid file.
 //!
 //! The rule is enforced as a REPORTED anomaly rather than a hard error: a
 //! file with one bad member still has a usable zone structure, and refusing
 //! the whole read would lose the valid members too.
 //!
-//! # Zones are systems in IFC4 only
+//! # Zones are systems from IFC4 on
 //!
-//! IFC4 has `IfcZone -> IfcSystem -> IfcGroup`, so `systems()` returns zones
-//! there. IFC2X3 has `IfcZone -> IfcGroup`, so it does not. This module adds
-//! what is specific to zones: the member restriction, the IFC4 `LongName` at
-//! slot 5, and the spatial elements they cover.
+//! IFC4 and IFC4X3 have `IfcZone -> IfcSystem -> IfcGroup`, so `systems()`
+//! returns zones there. IFC2X3 has `IfcZone -> IfcGroup`, so it does not.
+//! This module adds what is specific to zones: the member restriction, the
+//! `LongName` (IFC4 onwards), and the spatial elements they cover.
+//!
+//! # Every slot is read by name in the declared release
+//!
+//! ```text
+//! IfcZone               IFC2X3  GlobalId OwnerHistory Name Description ObjectType
+//!                       IFC4    ... ObjectType LongName          (IFC4X3 the same)
+//! IfcRelAssignsToGroup  all     GlobalId OwnerHistory Name Description
+//!                               RelatedObjects RelatedObjectsType RelatingGroup
+//! ```
+//!
+//! IFC4X3 ADD2 retypes `IfcRelAssigns.RelatedObjectsType` as
+//! `IfcStrippedOptional` but keeps its position, so `RelatingGroup` stays the
+//! seventh attribute. Positions come from the table, not from constants.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use ifc_model::{EntityId, Model, Value};
 
-use crate::error::{NotInSchema, SchemaGap, SystemAnomaly};
+use crate::error::{NotInSchema, SchemaGap, SchemaResolutionError, SystemAnomaly};
 use crate::release::{self, Release};
 
-/// Attribute slots. `IfcZone` adds `LongName` at 5, after the four
-/// `IfcObject` attributes; it has no placement or representation because a
-/// zone is a grouping, not a product.
-mod slot {
-    pub const LONG_NAME: usize = 5;
-    /// `IfcRelAssignsToGroup`: members at 4, group at 6 (5 is
-    /// `RelatedObjectsType`).
-    pub const ASSIGNS_MEMBERS: usize = 4;
-    pub const ASSIGNS_GROUP: usize = 6;
-}
+const ZONE: &str = "IFCZONE";
+const ASSIGNS: &str = "IFCRELASSIGNSTOGROUP";
 
 /// The types WR1 permits inside an `IfcZone`.
 ///
@@ -48,7 +53,7 @@ pub struct Zone {
     pub id: EntityId,
     /// `Name`, if the file states one.
     pub name: Option<String>,
-    /// `LongName` (slot 5), the descriptive name.
+    /// `LongName`, the descriptive name (IFC4 onwards).
     pub long_name: Option<String>,
     /// Members that satisfy WR1, ascending by id.
     ///
@@ -71,7 +76,12 @@ fn refs(value: Option<&Value>) -> Vec<EntityId> {
     }
 }
 
-fn text(model: &Model, id: EntityId, slot: usize) -> Option<String> {
+/// The text at the `IfcZone` `attribute` of `id`, read by name in
+/// `release`; `None` when unset, not text, or not declared by the release.
+/// A subtype keeps its inherited attributes first, so `IfcZone`'s position
+/// holds for it too.
+fn text(model: &Model, release: Release, id: EntityId, attribute: &str) -> Option<String> {
+    let slot = release.slot(ZONE, attribute)?;
     match model.get(id)?.attributes.get(slot)? {
         Value::Text(t) => Some(t.to_string()),
         _ => None,
@@ -83,41 +93,75 @@ fn text(model: &Model, id: EntityId, slot: usize) -> Option<String> {
 /// Zones are found by schema ancestry so that any future subtype is included
 /// automatically, consistent with how systems and ports are discovered.
 ///
-/// Reads against the release the model's `FILE_SCHEMA` header declares.
-/// WR1 differs by release: IFC4 admits `IfcZone`, `IfcSpace` and
+/// Reads against the release the model's `FILE_SCHEMA` header declares:
+/// IFC2X3, IFC4 or IFC4X3 (#194), every slot by attribute name. WR1
+/// differs by release: IFC4 and IFC4X3 admit `IfcZone`, `IfcSpace` and
 /// `IfcSpatialZone`; IFC2X3 admits only `IfcZone` and `IfcSpace`, because
 /// it has no `IfcSpatialZone`. Membership is checked by ancestry in the
 /// declared table, so an `IfcSpatialZone` in an IFC2X3 file is reported as
 /// `ZoneMemberNotSpatial`. `long_name` is `None` for every zone under
-/// IFC2X3, whose `IfcZone` has no `LongName` slot (issue #52). This bulk
-/// reader cannot tell that apart from a file that left the slot empty,
-/// because `Zone::long_name` predates #52 and stays `Option<String>`. Use
+/// IFC2X3, whose `IfcZone` has no `LongName` (issue #52). This bulk reader
+/// cannot tell that apart from a file that left it empty, because
+/// `Zone::long_name` predates #52 and stays `Option<String>`. Use
 /// [`long_name_of`] when that distinction matters.
+///
+/// This signature has no error channel: a header declaring no schema,
+/// several, or one without a bundled table is read against IFC4, as in
+/// 0.2.0. Use [`try_zones`] to have the last two refused.
 pub fn zones(model: &Model) -> (Vec<Zone>, Vec<SystemAnomaly>) {
-    let release = release::resolve_or_ifc4(model);
+    zones_in(model, release::resolve_zones_or_ifc4(model))
+}
+
+/// [`zones`], refusing a header that binds no single known release.
+///
+/// A header declaring no schema (an in-memory model) is read against IFC4,
+/// as [`zones`] reads it.
+///
+/// # Errors
+///
+/// [`SchemaResolutionError::MultipleSchemas`] when the header declares
+/// several schemas, and [`SchemaResolutionError::UnsupportedSchema`] when it
+/// declares one without a bundled table. Neither is read as IFC4.
+pub fn try_zones(model: &Model) -> Result<(Vec<Zone>, Vec<SystemAnomaly>), SchemaResolutionError> {
+    let release = match release::resolve_zones(model) {
+        Err(SchemaResolutionError::MissingSchema) => release::ifc4(),
+        resolved => resolved?,
+    };
+    Ok(zones_in(model, release))
+}
+
+fn zones_in(model: &Model, release: Release) -> (Vec<Zone>, Vec<SystemAnomaly>) {
     let mut anomalies = Vec::new();
 
     let mut zone_ids = BTreeSet::new();
     for (type_name, _) in model.type_histogram() {
-        if release.is_a(type_name, "IFCZONE") {
+        if release.is_a(type_name, ZONE) {
             zone_ids.extend(model.ids_of_type(type_name).iter().copied());
         }
     }
 
     // Members, gathered per zone and filtered by WR1.
     let mut members: BTreeMap<EntityId, Vec<EntityId>> = BTreeMap::new();
-    for &relation in model.ids_of_type("IFCRELASSIGNSTOGROUP") {
+    // Every bundled release declares both; `zone_slots_resolve_by_name`
+    // pins them per release.
+    let group_slot = release
+        .slot(ASSIGNS, "RelatingGroup")
+        .expect("every bundled release declares IfcRelAssignsToGroup.RelatingGroup");
+    let members_slot = release
+        .slot(ASSIGNS, "RelatedObjects")
+        .expect("every bundled release declares IfcRelAssigns.RelatedObjects");
+    for &relation in model.ids_of_type(ASSIGNS) {
         let Some(entity) = model.get(relation) else {
             continue;
         };
-        let group = match entity.attributes.get(slot::ASSIGNS_GROUP) {
+        let group = match entity.attributes.get(group_slot) {
             Some(Value::Ref(id)) => *id,
             _ => continue,
         };
         if !zone_ids.contains(&group) {
             continue;
         }
-        for member in refs(entity.attributes.get(slot::ASSIGNS_MEMBERS)) {
+        for member in refs(entity.attributes.get(members_slot)) {
             let Some(member_entity) = model.get(member) else {
                 anomalies.push(SystemAnomaly::Dangling {
                     relation,
@@ -152,17 +196,12 @@ pub fn zones(model: &Model) -> (Vec<Zone>, Vec<SystemAnomaly>) {
             member_ids.dedup();
             Zone {
                 id,
-                name: text(model, id, 2),
+                name: text(model, release, id, "Name"),
                 // Under IFC2X3 this is unconditionally None: that release's
-                // IfcZone has no LongName slot (`release.has_slot` below is
-                // false), so no attempt is made to read slot 5 at all. See
-                // long_name_of for a caller that needs to tell that apart
+                // IfcZone declares no LongName, so no slot is read at all.
+                // See long_name_of for a caller that needs to tell that apart
                 // from an authored-empty LongName.
-                long_name: if release.has_slot("IFCZONE", slot::LONG_NAME) {
-                    text(model, id, slot::LONG_NAME)
-                } else {
-                    None
-                },
+                long_name: text(model, release, id, "LongName"),
                 members: member_ids,
             }
         })
@@ -176,24 +215,25 @@ pub fn zones(model: &Model) -> (Vec<Zone>, Vec<SystemAnomaly>) {
 ///
 /// [`zones`] cannot make this distinction: its `Zone::long_name` field is
 /// `Option<String>` and predates #52, so both cases collapse to `None`
-/// there. IFC2X3's `IfcZone` has no `LongName` slot at all (it is a plain
-/// five-attribute `IfcGroup` subtype), unlike IFC4's, which adds `LongName`
-/// as its sixth. Reading it under IFC2X3 is therefore not "the file left it
-/// blank" -- there is no slot to have left blank -- and a caller that needs
-/// to tell the two apart should use this accessor instead of `Zone::long_name`.
+/// there. IFC2X3's `IfcZone` has no `LongName` at all (it is a plain
+/// five-attribute `IfcGroup` subtype), unlike IFC4's and IFC4X3's, which add
+/// `LongName` as the sixth. Reading it under IFC2X3 is therefore not "the
+/// file left it blank" -- there is no slot to have left blank -- and a
+/// caller that needs to tell the two apart should use this accessor instead
+/// of `Zone::long_name`.
 ///
 /// # Errors
 ///
 /// [`SchemaGap::Schema`] if the model's `FILE_SCHEMA` does not resolve to
-/// IFC2X3 or IFC4 (see [`crate::schema_of`]). [`SchemaGap::NotInSchema`] if
-/// the resolved release does not declare `LongName` for `IfcZone` (IFC2X3).
+/// IFC2X3, IFC4 or IFC4X3. [`SchemaGap::NotInSchema`] if the resolved
+/// release does not declare `LongName` for `IfcZone` (IFC2X3).
 pub fn long_name_of(model: &Model, zone: EntityId) -> Result<Option<String>, SchemaGap> {
-    let release: Release = release::resolve(model)?;
-    if !release.has_slot("IFCZONE", slot::LONG_NAME) {
+    let release: Release = release::resolve_zones(model)?;
+    if release.slot(ZONE, "LongName").is_none() {
         return Err(SchemaGap::NotInSchema(NotInSchema {
             entity: zone,
             schema: release.version,
         }));
     }
-    Ok(text(model, zone, slot::LONG_NAME))
+    Ok(text(model, release, zone, "LongName"))
 }

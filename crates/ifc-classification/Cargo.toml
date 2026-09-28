@@ -21,5 +21,9 @@ ifc-model.workspace = true
 ifc-schema.workspace = true
 thiserror.workspace = true
 
+# Tests only: authored records are written and re-read as STEP.
+[dev-dependencies]
+ifc-step.workspace = true
+
 [lints]
 workspace = true

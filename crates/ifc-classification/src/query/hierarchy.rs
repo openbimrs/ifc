@@ -244,22 +244,24 @@ impl<'m> ClassificationView<'m> {
             )?;
         }
 
+        const TYPING: &str = "IFCRELDEFINESBYTYPE";
+        let release = self.release();
         let mut types = Vec::new();
-        for (relationship_id, entity) in self.model().of_type("IFCRELDEFINESBYTYPE") {
+        for (relationship_id, entity) in self.model().of_type(TYPING) {
             if required_refs(
-                "IFCRELDEFINESBYTYPE",
+                TYPING,
                 relationship_id,
                 entity,
-                4,
+                release.slot(TYPING, relationship_id, "RelatedObjects")?,
                 "RelatedObjects",
             )?
             .contains(&object)
             {
                 let type_id = required_ref(
-                    "IFCRELDEFINESBYTYPE",
+                    TYPING,
                     relationship_id,
                     entity,
-                    5,
+                    release.slot(TYPING, relationship_id, "RelatingType")?,
                     "RelatingType",
                 )?;
                 self.model()
