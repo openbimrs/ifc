@@ -8,6 +8,7 @@ use crate::slot::projected_crs as slot;
 
 /// A projected coordinate reference system read from `IfcProjectedCRS`.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct ProjectedCrs {
     /// The `IfcProjectedCRS` entity this was read from.
     pub entity: EntityId,

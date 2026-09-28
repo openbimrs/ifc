@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- The read-side `HorizontalSegment`, `CantSegment`, `CantLayout`,
+  `CantAtStation`, `LinearPlacement`, `StationEquation`,
+  `LoweredAlignmentCurve`, `PartialHorizontalLayout` and `RefusedSegment`
+  are `#[non_exhaustive]`; they can no longer be built with a struct literal
+  outside the crate.
+
 ## [0.3.2] - 2026-09-28
 
 ### Fixed

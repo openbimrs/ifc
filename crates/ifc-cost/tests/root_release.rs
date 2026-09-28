@@ -13,7 +13,9 @@ use ifc_cost::mutation::{
     nest_cost_items_with_owner_history, CostAuthoringError, CostItemDraft, CostItemType,
     CostScheduleDraft, CostScheduleType, CostValueDraft, NestingDraft, ScheduleAssignmentDraft,
 };
-use ifc_cost::{children_of, controlled_by, CostView, SchemaVersion};
+use ifc_cost::{
+    children_of, controlled_by, CalendarDate, CostView, DateTimeValue, LocalTime, SchemaVersion,
+};
 use ifc_model::{Codec, Edit, Entity, EntityId, Model, Transaction, Value};
 use ifc_step::StepCodec;
 
@@ -58,29 +60,22 @@ fn base(schema: &str) -> Model {
 }
 
 fn item(global_id: &str, ifc4: bool) -> CostItemDraft<'_> {
-    CostItemDraft {
-        global_id,
-        name: Some("Excavation"),
-        description: Some("Bulk dig"),
-        object_type: None,
-        identification: ifc4.then_some("1.1"),
-        predefined_type: ifc4.then_some(CostItemType::NotDefined),
-        cost_values: &[],
-    }
+    let mut draft = CostItemDraft::new(global_id)
+        .name("Excavation")
+        .description("Bulk dig");
+    draft.identification = ifc4.then_some("1.1");
+    draft.predefined_type = ifc4.then_some(CostItemType::NotDefined);
+    draft
 }
 
 fn schedule(ifc4: bool) -> CostScheduleDraft<'static> {
-    CostScheduleDraft {
-        global_id: G[0],
-        name: Some("Estimate"),
-        description: None,
-        object_type: None,
-        identification: Some("CS-1"),
-        predefined_type: Some(CostScheduleType::Estimate),
-        status: Some("DRAFT"),
-        submitted_on: ifc4.then_some("2026-09-28T00:00:00"),
-        update_date: None,
-    }
+    let mut draft = CostScheduleDraft::new(G[0])
+        .name("Estimate")
+        .identification("CS-1")
+        .predefined_type(CostScheduleType::Estimate)
+        .status("DRAFT");
+    draft.submitted_on = ifc4.then_some("2026-09-28T00:00:00".into());
+    draft
 }
 
 fn staged(tx: &Transaction, id: EntityId) -> Entity {
@@ -107,17 +102,11 @@ fn cost_records_round_trip_in_their_release() {
             .expect(schema);
         let child = create_cost_item_with_owner_history(&mut tx, &model, item(G[2], ifc4), OWNER)
             .expect(schema);
-        let nests = NestingDraft {
-            global_id: G[3],
-            parent,
-            children: &[child],
-        };
+        let children = [child];
+        let nests = NestingDraft::new(G[3], parent, &children);
         let nest = nest_cost_items_with_owner_history(&mut tx, &model, nests, OWNER).expect(schema);
-        let assignment = ScheduleAssignmentDraft {
-            global_id: G[4],
-            schedule: plan,
-            items: &[parent],
-        };
+        let items = [parent];
+        let assignment = ScheduleAssignmentDraft::new(G[4], plan, &items);
         let assign = assign_schedule_items_with_owner_history(&mut tx, &model, assignment, OWNER)
             .expect(schema);
         tx.commit(&mut model).expect("commit");
@@ -157,15 +146,11 @@ fn ifc4_and_ifc4x3_records_are_unchanged() {
         let model = base(schema);
         let mut tx = Transaction::new(&model);
         let value = create_cost_value(&mut tx, &model, CostValueDraft::monetary(10.0)).unwrap();
-        let draft = CostItemDraft {
-            cost_values: &[value],
-            ..item(G[1], true)
-        };
+        let values = [value];
+        let draft = item(G[1], true).cost_values(&values);
         let plain = create_cost_item(&mut tx, &model, draft).unwrap();
-        let draft = CostItemDraft {
-            global_id: G[2],
-            ..draft
-        };
+        let mut draft = draft;
+        draft.global_id = G[2];
         let with = create_cost_item_with_owner_history(&mut tx, &model, draft, OWNER).unwrap();
         let mut expected = vec![
             t(G[1]),
@@ -184,9 +169,10 @@ fn ifc4_and_ifc4x3_records_are_unchanged() {
         assert_eq!(staged(&tx, with).attributes, expected, "{schema}");
 
         let plain = create_cost_schedule(&mut tx, &model, schedule(true)).unwrap();
-        let draft = CostScheduleDraft {
-            global_id: G[5],
-            ..schedule(true)
+        let draft = {
+            let mut draft = schedule(true);
+            draft.global_id = G[5];
+            draft
         };
         let with = create_cost_schedule_with_owner_history(&mut tx, &model, draft, OWNER).unwrap();
         let mut expected = vec![
@@ -219,24 +205,11 @@ fn ifc4_and_ifc4x3_relationships_are_unchanged() {
         let a = create_cost_item(&mut tx, &model, item(G[1], true)).unwrap();
         let b = create_cost_item(&mut tx, &model, item(G[2], true)).unwrap();
         let c = create_cost_item(&mut tx, &model, item(G[3], true)).unwrap();
-        let plain = nest_cost_items(
-            &mut tx,
-            &model,
-            NestingDraft {
-                global_id: G[4],
-                parent: a,
-                children: &[b],
-            },
-        )
-        .unwrap();
+        let plain = nest_cost_items(&mut tx, &model, NestingDraft::new(G[4], a, &[b])).unwrap();
         let with = nest_cost_items_with_owner_history(
             &mut tx,
             &model,
-            NestingDraft {
-                global_id: G[5],
-                parent: a,
-                children: &[c],
-            },
+            NestingDraft::new(G[5], a, &[c]),
             OWNER,
         )
         .unwrap();
@@ -257,11 +230,7 @@ fn ifc4_and_ifc4x3_relationships_are_unchanged() {
         );
 
         let items = [a];
-        let assignment = |global_id| ScheduleAssignmentDraft {
-            global_id,
-            schedule: plan,
-            items: &items,
-        };
+        let assignment = |global_id| ScheduleAssignmentDraft::new(global_id, plan, &items);
         let guid = "1kTvXnbbzCWw8lcMd1dR4o";
         let plain = assign_schedule_items(&mut tx, &model, assignment(guid)).unwrap();
         let guid2 = "1kTvXnbbzCWw8lcMd1dR4p";
@@ -329,16 +298,12 @@ fn ifc2x3_refuses_what_it_cannot_hold() {
             schema: v,
         }
     );
-    let unidentified = CostScheduleDraft {
-        identification: None,
-        ..schedule(false)
-    };
+    let mut unidentified = schedule(false);
+    unidentified.identification = None;
     let result = create_cost_schedule_with_owner_history(&mut tx, &model, unidentified, OWNER);
     assert_eq!(refused(&tx, result), required("IFCCOSTSCHEDULE", "ID"));
-    let untyped = CostScheduleDraft {
-        predefined_type: None,
-        ..schedule(false)
-    };
+    let mut untyped = schedule(false);
+    untyped.predefined_type = None;
     let result = create_cost_schedule_with_owner_history(&mut tx, &model, untyped, OWNER);
     assert_eq!(
         refused(&tx, result),
@@ -389,4 +354,65 @@ fn owner_history_and_binding_are_checked() {
             schema: "IFC5".into()
         }
     );
+}
+
+/// IFC2X3 dates are `IfcDateTimeSelect` records the writer stages (#214);
+/// a record form the schema's rules refuse, and one in IFC4 or IFC4X3, is
+/// refused before anything is staged.
+#[test]
+fn schedule_dates_take_the_release_form() {
+    let v = SchemaVersion::Ifc2x3;
+    let model = base("IFC2X3");
+    let mut tx = Transaction::new(&model);
+    let invalid = |date: DateTimeValue<'static>| schedule(false).submitted_on(date);
+    for (date, attribute) in [
+        (CalendarDate::new(2026, 2, 29).into(), "DayComponent"),
+        (CalendarDate::new(2026, 13, 1).into(), "MonthComponent"),
+        (LocalTime::new(-1).into(), "HourComponent"),
+        (LocalTime::new(8).second(5.0).into(), "MinuteComponent"),
+    ] {
+        let result = create_cost_schedule_with_owner_history(&mut tx, &model, invalid(date), OWNER);
+        match refused(&tx, result) {
+            CostAuthoringError::InvalidValue { attribute: a, .. } => assert_eq!(a, attribute),
+            other => panic!("{date:?}: {other:?}"),
+        }
+    }
+    // A refused schedule stages none of its dates.
+    let dated = schedule(false).update_date(CalendarDate::new(2026, 9, 28));
+    let result = create_cost_schedule_with_owner_history(&mut tx, &model, dated, WALL);
+    assert!(matches!(
+        refused(&tx, result),
+        CostAuthoringError::WrongReferenceType { .. }
+    ));
+    let result = create_cost_schedule(&mut tx, &model, dated);
+    assert_eq!(
+        refused(&tx, result),
+        CostAuthoringError::AuthoringRequired {
+            entity: "IFCCOSTSCHEDULE",
+            attribute: "OwnerHistory",
+            schema: v,
+        }
+    );
+    let id = create_cost_schedule_with_owner_history(&mut tx, &model, dated, OWNER).unwrap();
+    assert_eq!(tx.len(), 2, "the date record and the schedule");
+    let Value::Ref(date) = staged(&tx, id).attributes[10] else {
+        panic!("UpdateDate");
+    };
+    assert_eq!(&*staged(&tx, date).type_name, "IFCCALENDARDATE");
+
+    for (schema, version) in &RELEASES[1..] {
+        let model = base(schema);
+        let mut tx = Transaction::new(&model);
+        let dated = schedule(true).update_date(LocalTime::new(8));
+        let result = create_cost_schedule(&mut tx, &model, dated);
+        assert_eq!(
+            refused(&tx, result),
+            CostAuthoringError::AuthoringValueType {
+                entity: "IFCCOSTSCHEDULE",
+                attribute: "UpdateDate",
+                declared: "IfcDateTime",
+                schema: *version,
+            }
+        );
+    }
 }

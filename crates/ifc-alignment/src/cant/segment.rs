@@ -43,6 +43,7 @@ pub enum CantSegmentType {
 /// Borrowed projection of one nested segment of an `IfcAlignmentCant` layout
 /// (`IfcAlignmentCantSegment`), with lengths already reduced to metres.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct CantSegment {
     /// The `IfcAlignmentCantSegment` entity this was read from.
     pub entity: EntityId,

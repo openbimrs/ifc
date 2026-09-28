@@ -67,13 +67,11 @@ fn variants_write_the_plain_record_with_an_owner_history() {
             guid(n)
         };
         let mut pairs: Vec<(EntityId, EntityId, usize)> = Vec::new();
-        let draft = SpatialDraft {
-            name: Some("Site"),
-            description: Some("d"),
-            long_name: Some("Long"),
-            composition: Some("ELEMENT"),
-            placement: None,
-        };
+        let draft = SpatialDraft::new()
+            .name("Site")
+            .description("d")
+            .long_name("Long")
+            .composition("ELEMENT");
         for (kind, arity) in [
             (SpatialKind::Site, 14),
             (SpatialKind::Building, 12),
@@ -88,7 +86,8 @@ fn variants_write_the_plain_record_with_an_owner_history() {
         }
         pairs.push((
             create_project(t, &g(), Some("P"), Some(UNITS)).unwrap(),
-            create_project_with_owner_history(t, &m, &g(), Some("P"), Some(UNITS), OWNER).unwrap(),
+            create_project_with_owner_history(t, &m, &g(), Some("P"), Some(UNITS), &[], OWNER)
+                .unwrap(),
             9,
         ));
         pairs.push((
@@ -189,25 +188,21 @@ fn variants_write_the_plain_record_with_an_owner_history() {
             .unwrap(),
             11,
         ));
-        let external = ExternalSpatialDraft {
-            name: Some("Outside"),
-            object_type: Some("Yard"),
-            long_name: Some("L"),
-            predefined_type: Some("USERDEFINED"),
-            ..ExternalSpatialDraft::default()
-        };
+        let external = ExternalSpatialDraft::new()
+            .name("Outside")
+            .object_type("Yard")
+            .long_name("L")
+            .predefined_type("USERDEFINED");
         pairs.push((
             create_external_spatial_element(t, &g(), external).unwrap(),
             create_external_spatial_element_with_owner_history(t, &m, &g(), external, OWNER)
                 .unwrap(),
             9,
         ));
-        let library = ProjectLibraryDraft {
-            name: Some("Lib"),
-            phase: Some("Design"),
-            units: Some(UNITS),
-            ..ProjectLibraryDraft::default()
-        };
+        let library = ProjectLibraryDraft::new()
+            .name("Lib")
+            .phase("Design")
+            .units(UNITS);
         pairs.push((
             create_project_library(t, &g(), library, &[CONTEXT]).unwrap(),
             create_project_library_with_owner_history(t, &m, &g(), library, &[CONTEXT], OWNER)
@@ -215,11 +210,7 @@ fn variants_write_the_plain_record_with_an_owner_history() {
             9,
         ));
         if version == SchemaVersion::Ifc4x3 {
-            let bridge = FacilityDraft {
-                name: Some("Bridge"),
-                composition: Some("ELEMENT"),
-                ..FacilityDraft::default()
-            };
+            let bridge = FacilityDraft::new().name("Bridge").composition("ELEMENT");
             pairs.push((
                 create_facility(t, IFCBRIDGE, &g(), Some("GIRDER"), bridge).unwrap(),
                 create_facility_with_owner_history(
@@ -270,24 +261,12 @@ fn space_boundary_records_are_unchanged() {
         let model = base(schema, version);
         let mut tx = Transaction::new(&model);
         let text = |s: &str| Value::Text(s.into());
-        let draft = BoundaryDraft {
-            name: Some("B"),
-            description: Some("D"),
-            space: SPACE,
-            element: WALL,
-            connection_geometry: None,
-            physical_or_virtual: "physical",
-            internal_or_external: "EXTERNAL_EARTH",
-            parent: None,
-            corresponding: None,
-        };
+        let draft = BoundaryDraft::new(SPACE, WALL, "physical", "EXTERNAL_EARTH")
+            .name("B")
+            .description("D");
         let parent =
             create_space_boundary(&mut tx, &model, BoundaryLevel::First, &guid(1), draft).unwrap();
-        let second = BoundaryDraft {
-            parent: Some(parent),
-            corresponding: Some(parent),
-            ..draft
-        };
+        let second = draft.parent(parent).corresponding(parent);
         let plain = create_space_boundary(&mut tx, &model, BoundaryLevel::Second, &guid(2), second)
             .unwrap();
         let owned = create_space_boundary_with_owner_history(

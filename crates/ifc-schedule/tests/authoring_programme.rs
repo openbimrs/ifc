@@ -17,16 +17,7 @@ use ifc_schedule::{
 };
 
 fn task(tx: &mut Transaction, guid: &str, name: &str) -> ifc_model::EntityId {
-    create_task(
-        tx,
-        TaskDraft {
-            global_id: guid,
-            name: Some(name),
-            is_milestone: false,
-            ..TaskDraft::default()
-        },
-    )
-    .expect("authored task")
+    create_task(tx, TaskDraft::new(guid).name(name)).expect("authored task")
 }
 
 /// A schedule, its tasks and their nesting read back as authored.
@@ -38,14 +29,13 @@ fn an_authored_programme_reads_back_through_the_queries() {
     let schedule = create_work_control(
         &mut tx,
         WorkControlKind::Schedule,
-        WorkControlDraft {
-            global_id: "0aBcDeFgHiJkLmNoPqRsTu",
-            name: Some("Programme"),
-            creation_date: "2026-01-05T08:00:00",
-            start_time: "2026-01-05T08:00:00",
-            finish_time: Some("2026-06-30T17:00:00"),
-            ..WorkControlDraft::default()
-        },
+        WorkControlDraft::new(
+            "0aBcDeFgHiJkLmNoPqRsTu",
+            "2026-01-05T08:00:00",
+            "2026-01-05T08:00:00",
+        )
+        .name("Programme")
+        .finish_time("2026-06-30T17:00:00"),
     )
     .expect("authored schedule");
 
@@ -135,12 +125,7 @@ fn values_that_would_parse_but_mean_nothing_are_refused() {
     assert!(create_work_control(
         &mut tx,
         WorkControlKind::Schedule,
-        WorkControlDraft {
-            global_id: "0aBcDeFgHiJkLmNoPqRsTu",
-            creation_date: "2026-01-05T08:00:00",
-            start_time: "   ",
-            ..WorkControlDraft::default()
-        },
+        WorkControlDraft::new("0aBcDeFgHiJkLmNoPqRsTu", "2026-01-05T08:00:00", "   "),
     )
     .is_err());
 
@@ -173,13 +158,12 @@ fn an_authored_programme_survives_step_text() {
     let schedule = create_work_control(
         &mut tx,
         WorkControlKind::Schedule,
-        WorkControlDraft {
-            global_id: "0aBcDeFgHiJkLmNoPqRsTu",
-            name: Some("Programme"),
-            creation_date: "2026-01-05T08:00:00",
-            start_time: "2026-01-05T08:00:00",
-            ..WorkControlDraft::default()
-        },
+        WorkControlDraft::new(
+            "0aBcDeFgHiJkLmNoPqRsTu",
+            "2026-01-05T08:00:00",
+            "2026-01-05T08:00:00",
+        )
+        .name("Programme"),
     )
     .expect("authored schedule");
     let parent = task(&mut tx, "1aBcDeFgHiJkLmNoPqRsTu", "Substructure");

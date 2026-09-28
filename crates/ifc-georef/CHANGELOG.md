@@ -12,6 +12,11 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- The read-side `ProjectToMap` and `ProjectedCrs` are `#[non_exhaustive]`;
+  they can no longer be built with a struct literal outside the crate.
+
 ## [0.3.0] - 2026-09-23
 
 ### Changed

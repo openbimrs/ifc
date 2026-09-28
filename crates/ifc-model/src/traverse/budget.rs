@@ -42,6 +42,7 @@ impl Default for Budget {
 
 /// Why a walk stopped.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Stop {
     /// Every reachable entity was visited.
     Exhausted,

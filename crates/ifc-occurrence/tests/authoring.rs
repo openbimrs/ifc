@@ -25,11 +25,7 @@ fn an_occurrence_keeps_its_slots() {
         GUID,
         Some("SOLIDWALL"),
         None,
-        OccurrenceDraft {
-            name: Some("W-01"),
-            tag: Some("wall-tag"),
-            ..OccurrenceDraft::default()
-        },
+        OccurrenceDraft::new().name("W-01").tag("wall-tag"),
     )
     .expect("a well formed wall is accepted");
     tx.commit(&mut model).expect("commit");
@@ -248,10 +244,7 @@ fn a_blank_object_type_does_not_satisfy_userdefined() {
         GUID,
         Some("USERDEFINED"),
         None,
-        OccurrenceDraft {
-            object_type: Some("   "),
-            ..OccurrenceDraft::default()
-        },
+        OccurrenceDraft::new().object_type("   "),
     )
     .expect_err("blank is not a name");
     assert!(matches!(

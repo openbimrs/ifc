@@ -32,10 +32,6 @@ use crate::error::{ElementTypeError, ElementTypeResult};
 pub(crate) struct Layout {
     version: SchemaVersion,
     schema: &'static Schema,
-    /// Refuse a required attribute left `$`. Off only for the catalogue
-    /// layout of the writers that take no model, whose output is kept
-    /// exactly as it was before #202.
-    strict: bool,
 }
 
 /// Bind `model`'s declared release.
@@ -58,26 +54,19 @@ pub(crate) fn bind(model: &Model) -> ElementTypeResult<Layout> {
 
 impl Layout {
     /// The catalogue's own release, which the writers that take no model
-    /// write, unchanged: a required attribute the draft has no field for,
-    /// such as `IfcFurnitureType.AssemblyPlace`, stays `$` there. The
-    /// model-bound writers refuse it with
-    /// [`ElementTypeError::AuthoringRequired`] instead.
+    /// write. A required attribute left unset, such as
+    /// `IfcFurnitureType.AssemblyPlace`, is refused with
+    /// [`ElementTypeError::AuthoringRequired`] here as in every other
+    /// release (#214); before, this layout wrote `$` into it.
     pub(crate) fn catalogue() -> ElementTypeResult<Self> {
-        Ok(Self {
-            strict: false,
-            ..Self::of(SchemaVersion::Ifc4x3)?
-        })
+        Self::of(SchemaVersion::Ifc4x3)
     }
 
     fn of(version: SchemaVersion) -> ElementTypeResult<Self> {
         let schema = for_version(version).ok_or_else(|| ElementTypeError::UnsupportedSchema {
             schema: format!("{version:?}"),
         })?;
-        Ok(Self {
-            version,
-            schema,
-            strict: true,
-        })
+        Ok(Self { version, schema })
     }
 
     /// Fail unless this release declares `entity` as instantiable.
@@ -151,7 +140,7 @@ impl Layout {
             }
         }
         for (declaration, value) in declared.iter().zip(&attributes) {
-            if self.strict && *value == Value::Null && !declaration.optional {
+            if *value == Value::Null && !declaration.optional {
                 return Err(ElementTypeError::AuthoringRequired {
                     entity,
                     attribute: declaration.name.as_str(),

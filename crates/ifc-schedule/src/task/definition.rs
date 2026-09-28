@@ -106,6 +106,7 @@ pub(crate) mod time_slot {
 /// span four calendar days across a weekend, and a caller converting one to
 /// the other needs the calendar.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DurationType {
     /// `.ELAPSEDTIME.`: calendar time, weekends included.
     ElapsedTime,
@@ -128,6 +129,7 @@ impl DurationType {
 
 /// A contradiction between a task and its stated time.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TaskTimeAnomaly {
     /// The task is a milestone but its time states a schedule duration.
     ///

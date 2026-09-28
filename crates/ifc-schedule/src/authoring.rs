@@ -35,11 +35,14 @@ use crate::sequence::lag_slot;
 use crate::sequence::relation::slot as sequence_slot;
 use crate::task::definition::task_slot;
 
+pub use datetime::{CalendarDate, DateTimeValue, LocalTime};
+
 /// Result of a schedule authoring call.
 pub type ScheduleAuthoringResult<T> = Result<T, ScheduleAuthoringError>;
 
 /// Authored fields for `IfcTask`.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct TaskDraft<'a> {
     /// `IfcRoot.GlobalId`. Must be a valid IFC compressed GUID.
     pub global_id: &'a str,
@@ -133,10 +136,13 @@ pub fn create_sequence(
 /// Authored fields for `IfcWorkPlan` and `IfcWorkSchedule`.
 ///
 /// Both are `IfcWorkControl` subtypes with identical slots, so one draft
-/// serves both and the kind picks the entity type. Timestamps and
-/// durations are ISO 8601 strings written exactly as given, for the same
-/// reason `IfcTaskTime` does not parse them.
+/// serves both and the kind picks the entity type. In IFC4 and IFC4X3
+/// timestamps and durations are ISO 8601 strings written exactly as given,
+/// for the same reason `IfcTaskTime` does not parse them; IFC2X3 dates are
+/// [`DateTimeValue`] records, which only
+/// [`create_work_control_with_owner_history`] writes.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct WorkControlDraft<'a> {
     /// `IfcRoot.GlobalId`. Must be a valid IFC compressed GUID.
     pub global_id: &'a str,
@@ -146,18 +152,21 @@ pub struct WorkControlDraft<'a> {
     pub description: Option<&'a str>,
     /// `IfcWorkControl.Identification`, if given.
     pub identification: Option<&'a str>,
-    /// `IfcWorkControl.CreationDate`. Required by the schema.
-    pub creation_date: &'a str,
+    /// `IfcWorkControl.CreationDate`. Required by the schema: ISO 8601
+    /// text in IFC4 and IFC4X3, an `IfcDateTimeSelect` record in IFC2X3.
+    pub creation_date: DateTimeValue<'a>,
     /// `IfcWorkControl.Purpose`, if given.
     pub purpose: Option<&'a str>,
     /// `IfcWorkControl.Duration`, an ISO 8601 duration, if given.
     pub duration: Option<&'a str>,
     /// `IfcWorkControl.TotalFloat`, an ISO 8601 duration, if given.
     pub total_float: Option<&'a str>,
-    /// `IfcWorkControl.StartTime`. Required by the schema.
-    pub start_time: &'a str,
-    /// `IfcWorkControl.FinishTime`, if given.
-    pub finish_time: Option<&'a str>,
+    /// `IfcWorkControl.StartTime`. Required by the schema, in the same
+    /// form as `creation_date`.
+    pub start_time: DateTimeValue<'a>,
+    /// `IfcWorkControl.FinishTime`, if given, in the same form as
+    /// `creation_date`.
+    pub finish_time: Option<DateTimeValue<'a>>,
     /// `IfcWorkControl.PredefinedType`, if given.
     pub predefined_type: Option<&'a str>,
 }
@@ -170,8 +179,10 @@ pub struct WorkControlDraft<'a> {
 ///
 /// # Errors
 ///
-/// Refuses a malformed GUID, and an empty required timestamp -- a blank
-/// `StartTime` writes a schedule that validates and schedules nothing.
+/// Refuses a malformed GUID, an empty required timestamp -- a blank
+/// `StartTime` writes a schedule that validates and schedules nothing --
+/// and a date that is not ISO 8601 text: the IFC2X3 `IfcDateTimeSelect`
+/// records are not IFC4 or IFC4X3 values.
 ///
 /// `OwnerHistory` is written `$`, which IFC4 and IFC4X3 allow, in their
 /// shared layout. This writer takes no model, so it cannot see the declared
@@ -184,17 +195,32 @@ pub fn create_work_control(
     draft: WorkControlDraft<'_>,
 ) -> ScheduleAuthoringResult<EntityId> {
     let type_name = checks::work_control(kind, &draft)?;
+    let text = |attribute: &'static str, value: DateTimeValue<'_>| {
+        value.text().map(|text| Value::Text(text.into())).ok_or(
+            ScheduleAuthoringError::InvalidValue {
+                entity: type_name,
+                attribute,
+                expected: "ISO 8601 text: IfcDateTimeSelect records are IFC2X3 only",
+            },
+        )
+    };
+    let creation_date = text("CreationDate", draft.creation_date)?;
+    let start_time = text("StartTime", draft.start_time)?;
+    let finish_time = match draft.finish_time {
+        Some(value) => text("FinishTime", value)?,
+        None => Value::Null,
+    };
     let mut attributes = vec![Value::Null; control_slot::PREDEFINED_TYPE + 1];
     attributes[control_slot::GLOBAL_ID] = Value::Text(draft.global_id.into());
     attributes[control_slot::NAME] = optional_text(draft.name);
     attributes[control_slot::DESCRIPTION] = optional_text(draft.description);
     attributes[control_slot::IDENTIFICATION] = optional_text(draft.identification);
-    attributes[control_slot::CREATION_DATE] = Value::Text(draft.creation_date.into());
+    attributes[control_slot::CREATION_DATE] = creation_date;
     attributes[control_slot::PURPOSE] = optional_text(draft.purpose);
     attributes[control_slot::DURATION] = optional_text(draft.duration);
     attributes[control_slot::TOTAL_FLOAT] = optional_text(draft.total_float);
-    attributes[control_slot::START_TIME] = Value::Text(draft.start_time.into());
-    attributes[control_slot::FINISH_TIME] = optional_text(draft.finish_time);
+    attributes[control_slot::START_TIME] = start_time;
+    attributes[control_slot::FINISH_TIME] = finish_time;
     attributes[control_slot::PREDEFINED_TYPE] = draft
         .predefined_type
         .map_or(Value::Null, |t| Value::Enum(t.into()));
@@ -347,6 +373,7 @@ pub(super) fn reference_list(ids: &[EntityId]) -> Value {
 /// downstream validator: both produce a file that parses cleanly and reads
 /// back as a different event than the author meant.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct EventDraft<'a> {
     /// `IfcRoot.GlobalId`. Must be a valid IFC compressed GUID.
     pub global_id: &'a str,
@@ -425,6 +452,7 @@ pub(super) fn optional_enum(value: Option<&str>) -> Value {
 /// Dates are ISO 8601 strings written exactly as given, matching how
 /// [`create_task_time`] treats its timestamps.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct EventTimeDraft<'a> {
     /// `IfcSchedulingTime.Name`, if given.
     pub name: Option<&'a str>,
@@ -524,6 +552,7 @@ pub fn create_lag_time(
 /// values are refused rather than written, because a reader has no way to
 /// tell a 0-based authoring mistake from a deliberate value.
 #[derive(Debug, Clone, Default)]
+#[non_exhaustive]
 pub struct RecurrenceDraft<'a> {
     /// `RecurrenceType`. Required by the schema.
     pub recurrence_type: &'a str,
@@ -611,7 +640,9 @@ fn integer_list(values: &[i64]) -> Value {
     Value::List(values.iter().copied().map(Value::Integer).collect())
 }
 
+mod builders;
 mod checks;
+mod datetime;
 mod owned;
 mod procedure;
 mod timing;
@@ -620,7 +651,7 @@ pub use owned::{
     assign_tasks_to_control_with_owner_history, create_event_with_owner_history,
     create_procedure_with_owner_history, create_sequence_with_owner_history,
     create_task_with_owner_history, create_work_calendar_with_owner_history,
-    create_work_control_with_owner_history, nest_tasks_with_owner_history,
+    create_work_control_with_owner_history, nest_tasks_with_owner_history, TimeLag,
 };
 pub use procedure::{create_procedure, ProcedureDraft};
 pub use timing::{create_task_time, create_task_time_recurring, create_time_period, TaskTimeDraft};

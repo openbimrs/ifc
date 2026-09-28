@@ -12,6 +12,51 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- IFC2X3 cost schedules can carry their dates (#214): `DateTimeValue`
+  carries a date either as IFC4/IFC4X3 `IfcDateTime` text
+  (`DateTimeValue::Text`, `From<&str>`) or as one of the IFC2X3
+  `IfcDateTimeSelect` records (`Date(CalendarDate)`, `Time(LocalTime)`,
+  `DateAndTime(CalendarDate, LocalTime)`). In IFC2X3
+  `create_cost_schedule_with_owner_history` stages the `IfcCalendarDate`,
+  `IfcLocalTime` and `IfcDateAndTime` records for `SubmittedOn` and
+  `UpdateDate` and references them, only once the schedule itself is
+  accepted. Record forms are checked against the schema's rules before
+  anything is staged (`IfcValidCalendarDate` with `IfcLeapYear`,
+  `IfcValidTime`, and the component ranges), refused with `InvalidValue`.
+  The types duplicate `ifc-schedule`'s, since sibling domain crates may not
+  depend on each other.
+- Every draft has a constructor and a setter per optional field, named
+  after it: `CostItemDraft::new(global_id)`,
+  `CostScheduleDraft::new(global_id)`,
+  `NestingDraft::new(global_id, parent, children)`,
+  `ScheduleAssignmentDraft::new(global_id, schedule, items)`,
+  `QuantityDraft::new(kind, name, value)`; `CostValueDraft` keeps
+  `monetary` and `Default` and gains setters.
+
+### Fixed
+
+- `create_cost_schedule_with_owner_history` no longer refuses every dated
+  IFC2X3 schedule (#214): a record form is written as the
+  `IfcDateTimeSelect` IFC2X3 declares. In IFC4 and IFC4X3 a record form is
+  refused with `AuthoringValueType`, as text is in IFC2X3.
+
+### Changed (breaking)
+
+- `CostValueDraft`, `CostItemDraft`, `CostScheduleDraft`, `NestingDraft`,
+  `ScheduleAssignmentDraft` and `QuantityDraft` are `#[non_exhaustive]`:
+  build them with their constructors and setters instead of a struct
+  literal. Their fields stay public to read and assign.
+- `CostScheduleDraft::submitted_on` and `update_date` are
+  `Option<DateTimeValue<'a>>` (were `Option<&'a str>`); text converts with
+  `.into()` or through the setters, and IFC4/IFC4X3 output is unchanged.
+- `#[non_exhaustive]` on the public enums and result structs a later
+  release could extend: `CostItemType`, `CostScheduleType`,
+  `CostValueKind`, `QuantityKind`, `ArithmeticOperator`, `UnitBasis` and
+  `Consistency`. A `match` outside the crate needs a wildcard arm, and the
+  structs can no longer be built outside it.
+
 ## [0.2.3] - 2026-09-28
 
 ### Added

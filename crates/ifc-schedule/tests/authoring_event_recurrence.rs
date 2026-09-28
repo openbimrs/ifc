@@ -16,16 +16,7 @@ use ifc_step::StepCodec;
 
 /// A task, since a sequence needs two of them.
 fn task(tx: &mut Transaction, guid: &str, name: &str) -> ifc_model::EntityId {
-    create_task(
-        tx,
-        TaskDraft {
-            global_id: guid,
-            name: Some(name),
-            is_milestone: false,
-            ..TaskDraft::default()
-        },
-    )
-    .expect("authored task")
+    create_task(tx, TaskDraft::new(guid).name(name)).expect("authored task")
 }
 
 /// An authored event and its occurrence time read back through `events()`.
@@ -35,24 +26,19 @@ fn an_authored_event_reads_back() {
     let mut tx = Transaction::new(&model);
     let time = create_event_time(
         &mut tx,
-        EventTimeDraft {
-            actual: Some("2026-03-02T08:00:00"),
-            schedule: Some("2026-03-01T08:00:00"),
-            ..EventTimeDraft::default()
-        },
+        EventTimeDraft::new()
+            .actual("2026-03-02T08:00:00")
+            .schedule("2026-03-01T08:00:00"),
     )
     .expect("authored event time");
     create_event(
         &mut tx,
-        EventDraft {
-            global_id: "0aBcDeFgHiJkLmNoPqRsTu",
-            name: Some("Concrete pour hold point"),
-            identification: Some("EV-01"),
-            predefined_type: Some("STARTEVENT"),
-            trigger_type: Some("EVENTRULE"),
-            occurence_time: Some(time),
-            ..EventDraft::default()
-        },
+        EventDraft::new("0aBcDeFgHiJkLmNoPqRsTu")
+            .name("Concrete pour hold point")
+            .identification("EV-01")
+            .predefined_type("STARTEVENT")
+            .trigger_type("EVENTRULE")
+            .occurence_time(time),
     )
     .expect("authored event");
     tx.commit(&mut model).expect("commit");
@@ -114,13 +100,10 @@ fn a_recurrence_pattern_reads_back() {
     let mut tx = Transaction::new(&model);
     let pattern = create_recurrence_pattern(
         &mut tx,
-        &RecurrenceDraft {
-            recurrence_type: "WEEKLY",
-            weekdays: vec![1, 2, 3, 4, 5],
-            interval: Some(1),
-            occurrences: Some(52),
-            ..RecurrenceDraft::default()
-        },
+        &RecurrenceDraft::new("WEEKLY")
+            .weekdays(vec![1, 2, 3, 4, 5])
+            .interval(1)
+            .occurrences(52),
     )
     .expect("authored pattern");
     let working = create_work_time(
@@ -163,46 +146,32 @@ fn a_userdefined_discriminator_without_its_label_is_refused() {
     // CorrectPredefinedType: USERDEFINED needs IfcObject.ObjectType.
     assert!(create_event(
         &mut tx,
-        EventDraft {
-            global_id: "0aBcDeFgHiJkLmNoPqRsTu",
-            predefined_type: Some("USERDEFINED"),
-            ..EventDraft::default()
-        },
+        EventDraft::new("0aBcDeFgHiJkLmNoPqRsTu").predefined_type("USERDEFINED"),
     )
     .is_err());
 
     // CorrectTypeAssigned: USERDEFINED needs UserDefinedEventTriggerType.
     assert!(create_event(
         &mut tx,
-        EventDraft {
-            global_id: "0aBcDeFgHiJkLmNoPqRsTu",
-            trigger_type: Some("USERDEFINED"),
-            ..EventDraft::default()
-        },
+        EventDraft::new("0aBcDeFgHiJkLmNoPqRsTu").trigger_type("USERDEFINED"),
     )
     .is_err());
 
     // Whitespace satisfies EXISTS in the schema but carries no meaning.
     assert!(create_event(
         &mut tx,
-        EventDraft {
-            global_id: "0aBcDeFgHiJkLmNoPqRsTu",
-            trigger_type: Some("USERDEFINED"),
-            user_defined_trigger_type: Some("   "),
-            ..EventDraft::default()
-        },
+        EventDraft::new("0aBcDeFgHiJkLmNoPqRsTu")
+            .trigger_type("USERDEFINED")
+            .user_defined_trigger_type("   "),
     )
     .is_err());
 
     // Supplying the label makes the same event legal.
     assert!(create_event(
         &mut tx,
-        EventDraft {
-            global_id: "0aBcDeFgHiJkLmNoPqRsTu",
-            trigger_type: Some("USERDEFINED"),
-            user_defined_trigger_type: Some("ClientInstruction"),
-            ..EventDraft::default()
-        },
+        EventDraft::new("0aBcDeFgHiJkLmNoPqRsTu")
+            .trigger_type("USERDEFINED")
+            .user_defined_trigger_type("ClientInstruction"),
     )
     .is_ok());
 }
@@ -217,42 +186,23 @@ fn out_of_range_recurrence_components_are_refused() {
     let model = Model::default();
     let mut tx = Transaction::new(&model);
 
-    let zero_weekday = RecurrenceDraft {
-        recurrence_type: "WEEKLY",
-        weekdays: vec![0],
-        ..RecurrenceDraft::default()
-    };
+    let zero_weekday = RecurrenceDraft::new("WEEKLY").weekdays(vec![0]);
     assert!(create_recurrence_pattern(&mut tx, &zero_weekday).is_err());
 
-    let eighth_day = RecurrenceDraft {
-        recurrence_type: "WEEKLY",
-        weekdays: vec![8],
-        ..RecurrenceDraft::default()
-    };
+    let eighth_day = RecurrenceDraft::new("WEEKLY").weekdays(vec![8]);
     assert!(create_recurrence_pattern(&mut tx, &eighth_day).is_err());
 
-    let month_zero = RecurrenceDraft {
-        recurrence_type: "YEARLY_BY_DAY_OF_MONTH",
-        months: vec![0],
-        ..RecurrenceDraft::default()
-    };
+    let month_zero = RecurrenceDraft::new("YEARLY_BY_DAY_OF_MONTH").months(vec![0]);
     assert!(create_recurrence_pattern(&mut tx, &month_zero).is_err());
 
     // "every 0 weeks" parses and describes nothing.
-    let never = RecurrenceDraft {
-        recurrence_type: "WEEKLY",
-        interval: Some(0),
-        ..RecurrenceDraft::default()
-    };
+    let never = RecurrenceDraft::new("WEEKLY").interval(0);
     assert!(create_recurrence_pattern(&mut tx, &never).is_err());
 
     // A negative position is legal: it counts back from the period end.
-    let last_friday = RecurrenceDraft {
-        recurrence_type: "MONTHLY_BY_POSITION",
-        weekdays: vec![5],
-        position: Some(-1),
-        ..RecurrenceDraft::default()
-    };
+    let last_friday = RecurrenceDraft::new("MONTHLY_BY_POSITION")
+        .weekdays(vec![5])
+        .position(-1);
     assert!(create_recurrence_pattern(&mut tx, &last_friday).is_ok());
 }
 
@@ -292,24 +242,15 @@ fn the_records_survive_step_text() {
         ..ifc_model::Header::default()
     };
     let mut tx = Transaction::new(&model);
-    let time = create_event_time(
-        &mut tx,
-        EventTimeDraft {
-            actual: Some("2026-03-02T08:00:00"),
-            ..EventTimeDraft::default()
-        },
-    )
-    .expect("authored event time");
+    let time = create_event_time(&mut tx, EventTimeDraft::new().actual("2026-03-02T08:00:00"))
+        .expect("authored event time");
     create_event(
         &mut tx,
-        EventDraft {
-            global_id: "0aBcDeFgHiJkLmNoPqRsTu",
-            name: Some("Hold point"),
-            trigger_type: Some("USERDEFINED"),
-            user_defined_trigger_type: Some("ClientInstruction"),
-            occurence_time: Some(time),
-            ..EventDraft::default()
-        },
+        EventDraft::new("0aBcDeFgHiJkLmNoPqRsTu")
+            .name("Hold point")
+            .trigger_type("USERDEFINED")
+            .user_defined_trigger_type("ClientInstruction")
+            .occurence_time(time),
     )
     .expect("authored event");
     tx.commit(&mut model).expect("commit");
@@ -344,15 +285,8 @@ fn an_omitted_component_set_is_written_as_absent() {
         ..ifc_model::Header::default()
     };
     let mut tx = Transaction::new(&model);
-    create_recurrence_pattern(
-        &mut tx,
-        &RecurrenceDraft {
-            recurrence_type: "DAILY",
-            interval: Some(2),
-            ..RecurrenceDraft::default()
-        },
-    )
-    .expect("authored pattern");
+    create_recurrence_pattern(&mut tx, &RecurrenceDraft::new("DAILY").interval(2))
+        .expect("authored pattern");
     tx.commit(&mut model).expect("commit");
 
     let mut bytes = Vec::new();

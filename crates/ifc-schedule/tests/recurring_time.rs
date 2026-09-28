@@ -7,17 +7,10 @@ use ifc_schedule::{
 };
 
 fn draft() -> TaskTimeDraft<'static> {
-    TaskTimeDraft {
-        name: Some("Weekly inspection"),
-        duration_type: Some("WORKTIME"),
-        schedule_duration: Some("PT2H"),
-        schedule_start: None,
-        schedule_finish: None,
-        actual_start: None,
-        actual_finish: None,
-        is_critical: None,
-        completion: None,
-    }
+    TaskTimeDraft::new()
+        .name("Weekly inspection")
+        .duration_type("WORKTIME")
+        .schedule_duration("PT2H")
 }
 
 /// The recurring form adds Recurrence at slot 20.
@@ -25,14 +18,8 @@ fn draft() -> TaskTimeDraft<'static> {
 fn a_recurring_task_time_stages() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let pattern = create_recurrence_pattern(
-        &mut tx,
-        &RecurrenceDraft {
-            recurrence_type: "WEEKLY",
-            ..RecurrenceDraft::default()
-        },
-    )
-    .expect("pattern");
+    let pattern =
+        create_recurrence_pattern(&mut tx, &RecurrenceDraft::new("WEEKLY")).expect("pattern");
 
     let plain = create_task_time(&mut tx, draft()).expect("task time");
     let recurring =

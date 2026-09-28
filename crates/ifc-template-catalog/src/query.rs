@@ -81,6 +81,7 @@ impl EntityHierarchy for ifc_schema::Schema {
 
 /// One selector that could not be evaluated because schema data was missing.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct UnresolvedApplicability<'a> {
     /// The template whose selector could not be resolved.
     pub template: &'a SetTemplate,

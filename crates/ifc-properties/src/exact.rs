@@ -139,6 +139,7 @@ pub enum ExactValue {
 
 /// A uniquely resolved property with IFC identity and provenance.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct ExactProperty {
     /// Whether the value came from the occurrence or from a type object's
     /// `HasPropertySets` (inherited, or the queried type object's own).

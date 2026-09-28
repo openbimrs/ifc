@@ -41,6 +41,7 @@ pub enum DiagnosticSeverity {
 
 /// One structural or schema-aware defect found in a catalog snapshot.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct CatalogDiagnostic {
     /// Category of the defect.
     pub code: DiagnosticCode,

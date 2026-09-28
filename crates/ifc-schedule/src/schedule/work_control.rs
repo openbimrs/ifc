@@ -61,6 +61,7 @@ pub mod slot {
 
 /// Whether a work control is a plan or a schedule.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum WorkControlKind {
     /// `IfcWorkPlan`: a container for schedules.
     Plan,

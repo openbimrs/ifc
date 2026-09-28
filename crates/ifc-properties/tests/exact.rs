@@ -119,18 +119,19 @@ fn occurrence_overrides_inherited_and_reports_ids() {
     property(&mut m, 20, "FireRating", Value::Text("occurrence".into()));
     pset(&mut m, 21, "Pset_WallCommon", vec![20]);
     occurrence(&mut m, 22, 21);
-    assert_eq!(
-        exact_property(&m, EntityId(1), Some("Pset_WallCommon"), "FireRating").unwrap(),
-        ExactResolution::Present(ifc_properties::ExactProperty {
-            source: ExactSource::Occurrence,
-            property_set: Arc::from("Pset_WallCommon"),
-            set_id: EntityId(21),
-            property_id: EntityId(20),
-            value_type: Some(Arc::from("IFCTEXT")),
-            unit_id: None,
-            value: ExactValue::Text(Arc::from("occurrence")),
-        })
-    );
+    // `ExactProperty` is non_exhaustive, so its fields are compared one by one.
+    let ExactResolution::Present(found) =
+        exact_property(&m, EntityId(1), Some("Pset_WallCommon"), "FireRating").unwrap()
+    else {
+        panic!("the occurrence property resolves");
+    };
+    assert_eq!(found.source, ExactSource::Occurrence);
+    assert_eq!(found.property_set, Arc::from("Pset_WallCommon"));
+    assert_eq!(found.set_id, EntityId(21));
+    assert_eq!(found.property_id, EntityId(20));
+    assert_eq!(found.value_type, Some(Arc::from("IFCTEXT")));
+    assert_eq!(found.unit_id, None);
+    assert_eq!(found.value, ExactValue::Text(Arc::from("occurrence")));
 }
 
 #[test]

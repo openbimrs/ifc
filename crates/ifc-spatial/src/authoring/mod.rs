@@ -72,7 +72,12 @@ pub use relationships::{
 };
 
 /// Authored fields shared by the spatial containers.
+///
+/// `#[non_exhaustive]`: build it with [`SpatialDraft::new`] and the
+/// setters, so a field a later release needs can be added without breaking
+/// callers.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct SpatialDraft<'a> {
     /// `IfcRoot.Name`.
     pub name: Option<&'a str>,
@@ -84,7 +89,66 @@ pub struct SpatialDraft<'a> {
     pub composition: Option<&'a str>,
     /// `ObjectPlacement`, when the container is placed.
     pub placement: Option<EntityId>,
+    /// IFC2X3 `IfcSpace.InteriorOrExteriorSpace`, an
+    /// `IfcInternalOrExternalEnum` token that release requires on a space
+    /// (#214). IFC4 and IFC4X3 do not declare it, so a value there, or on a
+    /// container other than a space, is refused rather than dropped.
+    pub interior_or_exterior: Option<&'a str>,
 }
+
+impl<'a> SpatialDraft<'a> {
+    /// An empty draft: every attribute unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set `IfcRoot.Name`.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Set `IfcRoot.Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Set `LongName`.
+    #[must_use]
+    pub fn long_name(mut self, value: &'a str) -> Self {
+        self.long_name = Some(value);
+        self
+    }
+
+    /// Set `CompositionType`, an `IfcElementCompositionEnum` token.
+    #[must_use]
+    pub fn composition(mut self, value: &'a str) -> Self {
+        self.composition = Some(value);
+        self
+    }
+
+    /// Set `ObjectPlacement`.
+    #[must_use]
+    pub fn placement(mut self, value: EntityId) -> Self {
+        self.placement = Some(value);
+        self
+    }
+
+    /// Set the IFC2X3 `IfcSpace.InteriorOrExteriorSpace` token.
+    #[must_use]
+    pub fn interior_or_exterior(mut self, value: &'a str) -> Self {
+        self.interior_or_exterior = Some(value);
+        self
+    }
+}
+
+/// The IFC2X3 `IfcSpace` attribute [`SpatialDraft::interior_or_exterior`]
+/// fills.
+pub(crate) const INTERIOR_OR_EXTERIOR: &str = "InteriorOrExteriorSpace";
 
 /// Stage a spatial container.
 ///
@@ -100,7 +164,10 @@ pub struct SpatialDraft<'a> {
 /// # Errors
 ///
 /// Refuses a malformed GlobalId. IfcRoot.GlobalId is required and
-/// is how every relationship names this container.
+/// is how every relationship names this container. Refuses
+/// `interior_or_exterior` with
+/// [`AuthoringNotInSchema`](SpatialAuthoringError::AuthoringNotInSchema):
+/// only IFC2X3 declares it, and this writer cannot write IFC2X3.
 pub fn create_spatial_element(
     tx: &mut Transaction,
     kind: SpatialKind,
@@ -108,6 +175,15 @@ pub fn create_spatial_element(
     draft: SpatialDraft<'_>,
 ) -> SpatialAuthoringResult<EntityId> {
     let (type_name, width) = container(kind, global_id)?;
+    // IFC4 and IFC4X3 declare no `InteriorOrExteriorSpace`; dropping the
+    // value would lose what the caller stated.
+    if draft.interior_or_exterior.is_some() {
+        return Err(SpatialAuthoringError::AuthoringNotInSchema {
+            entity: type_name,
+            attribute: INTERIOR_OR_EXTERIOR,
+            schema: ifc_schema::SchemaVersion::Ifc4,
+        });
+    }
     let mut attributes = vec![Value::Null; width];
     attributes[0] = Value::Text(global_id.into());
     attributes[2] = optional_text(draft.name);

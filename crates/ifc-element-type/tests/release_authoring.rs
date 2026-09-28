@@ -10,11 +10,13 @@
 
 mod release_support;
 
-use ifc_element_type::table::IFCWALLTYPE;
+use ifc_element_type::table::{
+    IFCDOORTYPE, IFCEVENTTYPE, IFCFURNITURETYPE, IFCWALLTYPE, IFCWINDOWTYPE,
+};
 use ifc_element_type::{
     create_supertype, create_supertype_with_owner_history, create_type, create_type_in,
-    create_type_with_owner_history, ElementTypeError, Family, SupertypeDraft, TypeDraft, ALL,
-    ALL_SUPERTYPES, BUILT_ELEMENT_TYPE, TYPE_PRODUCT,
+    create_type_with_owner_history, ElementType, ElementTypeError, Family, SupertypeDraft,
+    TypeDraft, ALL, ALL_SUPERTYPES, BUILT_ELEMENT_TYPE, TYPE_PRODUCT,
 };
 use ifc_model::{Codec, Model, Transaction, Value};
 use ifc_schema::SchemaVersion;
@@ -56,6 +58,7 @@ fn the_whole_catalogue_is_written_in_every_release() {
                     let slot7 = match kind.family {
                         Family::Element => "Tag",
                         Family::ResourceOrProcess => "LongDescription",
+                        other => panic!("{entity}: unknown family {other:?}"),
                     };
                     assert_eq!(record.attributes[at(slot7)], Value::Text("T-1".into()));
                     if let Some(token) = &token {
@@ -94,19 +97,20 @@ fn the_whole_catalogue_is_written_in_every_release() {
         }
         assert_eq!(written + absent + required.len(), ALL.len());
         // Minimum counts, so a sweep that silently matched nothing fails.
-        // Minimum counts, so a sweep that silently matched nothing fails.
+        #[allow(unreachable_patterns)]
         let (min_written, min_absent) = match version {
             SchemaVersion::Ifc4x3 => (ALL.len() - 4, 0),
             SchemaVersion::Ifc4 => (100, 15),
             SchemaVersion::Ifc2x3 => (65, 50),
+            other => panic!("no expectation for {other:?}"),
         };
         assert!(
             written >= min_written && absent >= min_absent,
             "{schema}: {written} written, {absent} absent"
         );
-        // Required attributes `TypeDraft` has no field for. They are
-        // refused, never written `$`; `create_type`, which takes no model,
-        // still writes them `$` as it did before #202.
+        // Required type-specific attributes the sweep's draft leaves unset.
+        // They are refused, never written `$`, here and by `create_type`
+        // (#214); `type_specific_fields_are_written` supplies them.
         let expected: &[&str] = if version == SchemaVersion::Ifc2x3 {
             &["IFCFURNITURETYPE.AssemblyPlace"]
         } else {
@@ -132,10 +136,116 @@ fn catalogue_rows_are_the_ifc4x3_tables() {
     }
 }
 
+/// The four catalogue types that require a type-specific attribute.
+const REQUIRES_SPECIFIC: [&str; 4] = [
+    "IFCDOORTYPE",
+    "IFCEVENTTYPE",
+    "IFCFURNITURETYPE",
+    "IFCWINDOWTYPE",
+];
+
+/// The type-specific attributes are written, by name, in every release that
+/// declares the type: `create_type` in the catalogue's IFC4X3 layout, the
+/// model-bound writers in the bound release's (#214).
+#[test]
+fn type_specific_fields_are_written() {
+    /// A type, its token, the draft, and the values expected by name.
+    type Case<'a> = (ElementType, &'a str, TypeDraft<'a>, &'a [(&'a str, Value)]);
+    let cases: [Case<'_>; 4] = [
+        (
+            IFCDOORTYPE,
+            "DOOR",
+            TypeDraft::new()
+                .name("D")
+                .operation_type("USERDEFINED")
+                .user_defined_operation_type("Revolving")
+                .parameter_takes_precedence(true),
+            &[
+                ("OperationType", Value::Enum("USERDEFINED".into())),
+                ("UserDefinedOperationType", Value::Text("Revolving".into())),
+                ("ParameterTakesPrecedence", Value::Bool(true)),
+            ],
+        ),
+        (
+            IFCWINDOWTYPE,
+            "WINDOW",
+            TypeDraft::new()
+                .name("W")
+                .partitioning_type("DOUBLE_PANEL_VERTICAL")
+                .parameter_takes_precedence(false),
+            &[
+                (
+                    "PartitioningType",
+                    Value::Enum("DOUBLE_PANEL_VERTICAL".into()),
+                ),
+                ("ParameterTakesPrecedence", Value::Bool(false)),
+            ],
+        ),
+        (
+            IFCEVENTTYPE,
+            "STARTEVENT",
+            TypeDraft::new()
+                .name("E")
+                .event_trigger_type("USERDEFINED")
+                .user_defined_event_trigger_type("Permit issued"),
+            &[
+                ("EventTriggerType", Value::Enum("USERDEFINED".into())),
+                (
+                    "UserDefinedEventTriggerType",
+                    Value::Text("Permit issued".into()),
+                ),
+            ],
+        ),
+        (
+            IFCFURNITURETYPE,
+            "CHAIR",
+            TypeDraft::new().name("F").assembly_place("SITE"),
+            &[("AssemblyPlace", Value::Enum("SITE".into()))],
+        ),
+    ];
+    let mut written = 0;
+    for (kind, token, draft, expected) in &cases {
+        let check = |tx: &Transaction, version| {
+            let bound = table(version);
+            let record = staged(tx);
+            assert_eq!(
+                record.attributes.len(),
+                bound.attributes(kind.type_name).len()
+            );
+            for (attribute, value) in *expected {
+                let at = slot(bound, kind.type_name, attribute);
+                assert_eq!(&record.attributes[at], value, "{version:?} {attribute}");
+            }
+        };
+        let mut tx = Transaction::new(&Model::new());
+        create_type(&mut tx, *kind, GUID, Some(token), *draft).expect(kind.type_name);
+        check(&tx, SchemaVersion::Ifc4x3);
+        for (schema, version) in RELEASES {
+            let bound = table(version);
+            if !declares(bound, kind.type_name) {
+                continue;
+            }
+            let token = members(bound, kind.type_name)
+                .is_some_and(|m| m.iter().any(|t| t == token))
+                .then_some(*token);
+            let model = model(&[schema]);
+            let mut tx = Transaction::new(&model);
+            create_type_with_owner_history(&mut tx, &model, *kind, GUID, token, *draft, OWNER)
+                .unwrap_or_else(|error| panic!("{schema}: {}: {error:?}", kind.type_name));
+            check(&tx, version);
+            written += 1;
+        }
+    }
+    // Three types in IFC4 and IFC4X3 each, furniture in all three.
+    assert_eq!(written, 9);
+}
+
 /// `create_type`, which takes no model, still writes the record the
-/// catalogue row laid out before #202; and `create_type_in` writes the
-/// same record into an IFC4X3 model, and into an IFC4 model wherever IFC4
-/// declares the type with the same layout and token.
+/// catalogue row laid out before #202, except the four types it wrote `$`
+/// into a required attribute of, which it now refuses (#214); and
+/// `create_type_in` writes the same record into an IFC4X3 model, and into
+/// an IFC4 model wherever IFC4 declares the type with the same layout and
+/// token.
 #[test]
 fn ifc4x3_and_ifc4_output_is_unchanged() {
     let ifc4x3 = model(&["IFC4X3_ADD2"]);
@@ -147,13 +257,11 @@ fn ifc4x3_and_ifc4_output_is_unchanged() {
         } else {
             Some(kind.members[0])
         };
-        let mut draft = TypeDraft {
-            name: Some("N"),
-            description: Some("D"),
-            applicable_occurrence: Some("A"),
-            tag_or_long_description: Some("T"),
-            ..TypeDraft::default()
-        };
+        let mut draft = TypeDraft::new()
+            .name("N")
+            .description("D")
+            .applicable_occurrence("A")
+            .tag_or_long_description("T");
         if token == Some("USERDEFINED") {
             draft.fallback = Some("F");
         }
@@ -169,8 +277,18 @@ fn ifc4x3_and_ifc4_output_is_unchanged() {
         before[kind.predefined_slot] = token.map_or(Value::Null, |t| Value::Enum(t.into()));
 
         let mut tx = Transaction::new(&ifc4x3);
-        create_type(&mut tx, *kind, GUID, token, draft).expect(kind.type_name);
-        assert_eq!(staged(&tx).attributes, before, "{}", kind.type_name);
+        match create_type(&mut tx, *kind, GUID, token, draft) {
+            Ok(_) => assert_eq!(staged(&tx).attributes, before, "{}", kind.type_name),
+            // The four types with a required type-specific attribute this
+            // draft leaves unset used to be written with `$` there; they
+            // are refused now, staging nothing (#214).
+            Err(ElementTypeError::AuthoringRequired { entity, .. }) => {
+                assert!(REQUIRES_SPECIFIC.contains(&entity), "{entity}");
+                assert!(tx.edits().is_empty());
+                continue;
+            }
+            Err(other) => panic!("{}: {other:?}", kind.type_name),
+        }
 
         for (index, model) in [&ifc4x3, &ifc4].into_iter().enumerate() {
             let version = if index == 0 {
@@ -189,13 +307,7 @@ fn ifc4x3_and_ifc4_output_is_unchanged() {
                 continue;
             }
             let mut tx = Transaction::new(model);
-            match create_type_in(&mut tx, model, *kind, GUID, token, draft) {
-                Ok(_) => {}
-                // The four types with a required attribute `TypeDraft`
-                // cannot carry (see the sweep above): refused, not `$`.
-                Err(ElementTypeError::AuthoringRequired { .. }) => continue,
-                Err(other) => panic!("{}: {other:?}", kind.type_name),
-            }
+            create_type_in(&mut tx, model, *kind, GUID, token, draft).expect(kind.type_name);
             assert_eq!(
                 staged(&tx).attributes,
                 before,
@@ -288,10 +400,7 @@ fn a_sample_round_trips_in_every_release() {
             TYPE_PRODUCT,
             "2hqA$FMcT8$hVvcqsRDBzZ",
             "Product",
-            SupertypeDraft {
-                tag: Some("P-1"),
-                ..SupertypeDraft::default()
-            },
+            SupertypeDraft::new().tag("P-1"),
             OWNER,
         )
         .expect(schema);

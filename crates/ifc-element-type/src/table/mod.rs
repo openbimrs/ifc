@@ -17,6 +17,7 @@
 
 /// Which supertype layout an element type follows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Family {
     /// `RepresentationMaps` at 6, `Tag` at 7, `ElementType` at 8.
     Element,
@@ -27,6 +28,7 @@ pub enum Family {
 
 /// One element type: its STEP name, slots, and enum tokens.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ElementType {
     /// STEP type name, upper-case as stored.
     pub type_name: &'static str,

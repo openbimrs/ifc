@@ -12,6 +12,11 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `ClassificationHierarchy` and `EffectiveClassifications` are
+  `#[non_exhaustive]`.
+
 ## [0.2.2] - 2026-09-28
 
 ### Changed (breaking behaviour)

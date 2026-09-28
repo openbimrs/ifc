@@ -12,6 +12,13 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `PanelPosition` and `Unreachable` are `#[non_exhaustive]`: a match needs a
+  wildcard arm.
+- `Sector` and `ContainerElements` are `#[non_exhaustive]`; they can no
+  longer be built with a struct literal outside the crate.
+
 ## [0.8.1] - 2026-09-28
 
 ### Changed

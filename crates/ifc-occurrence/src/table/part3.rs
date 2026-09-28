@@ -18,6 +18,8 @@ pub const IFCEVAPORATOR: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCEVAPORATORTYPE"),
+    ifc4_type_class: Some("IFCEVAPORATORTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcFan`, 9 permitted tokens.
@@ -37,6 +39,8 @@ pub const IFCFAN: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCFANTYPE"),
+    ifc4_type_class: Some("IFCFANTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcFastener`, 5 permitted tokens.
@@ -46,6 +50,8 @@ pub const IFCFASTENER: Occurrence = Occurrence {
     predefined_slot: Some(8),
     members: &["GLUE", "MORTAR", "WELD", "USERDEFINED", "NOTDEFINED"],
     type_class: Some("IFCFASTENERTYPE"),
+    ifc4_type_class: Some("IFCFASTENERTYPE"),
+    ifc2x3_type_class: Some("IFCFASTENERTYPE"),
 };
 
 /// `IfcFilter`, 8 permitted tokens.
@@ -64,6 +70,8 @@ pub const IFCFILTER: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCFILTERTYPE"),
+    ifc4_type_class: Some("IFCFILTERTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcFireSuppressionTerminal`, 8 permitted tokens.
@@ -82,6 +90,8 @@ pub const IFCFIRESUPPRESSIONTERMINAL: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCFIRESUPPRESSIONTERMINALTYPE"),
+    ifc4_type_class: Some("IFCFIRESUPPRESSIONTERMINALTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcFlowInstrument`, 12 permitted tokens.
@@ -104,6 +114,8 @@ pub const IFCFLOWINSTRUMENT: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCFLOWINSTRUMENTTYPE"),
+    ifc4_type_class: Some("IFCFLOWINSTRUMENTTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcFlowMeter`, 6 permitted tokens.
@@ -120,6 +132,8 @@ pub const IFCFLOWMETER: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCFLOWMETERTYPE"),
+    ifc4_type_class: Some("IFCFLOWMETERTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcFooting`, 7 permitted tokens.
@@ -137,6 +151,8 @@ pub const IFCFOOTING: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCFOOTINGTYPE"),
+    ifc4_type_class: Some("IFCFOOTINGTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcFurnishingElement`, 0 permitted tokens.
@@ -146,6 +162,8 @@ pub const IFCFURNISHINGELEMENT: Occurrence = Occurrence {
     predefined_slot: None,
     members: &[],
     type_class: None,
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcFurniture`, 10 permitted tokens.
@@ -166,6 +184,8 @@ pub const IFCFURNITURE: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCFURNITURETYPE"),
+    ifc4_type_class: Some("IFCFURNITURETYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcGeographicElement`, 5 permitted tokens.
@@ -181,6 +201,8 @@ pub const IFCGEOGRAPHICELEMENT: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCGEOGRAPHICELEMENTTYPE"),
+    ifc4_type_class: Some("IFCGEOGRAPHICELEMENTTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcGeomodel`, 0 permitted tokens.
@@ -190,6 +212,8 @@ pub const IFCGEOMODEL: Occurrence = Occurrence {
     predefined_slot: None,
     members: &[],
     type_class: None,
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcGeoslice`, 0 permitted tokens.
@@ -199,6 +223,8 @@ pub const IFCGEOSLICE: Occurrence = Occurrence {
     predefined_slot: None,
     members: &[],
     type_class: None,
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcGeotechnicalStratum`, 5 permitted tokens.
@@ -208,6 +234,8 @@ pub const IFCGEOTECHNICALSTRATUM: Occurrence = Occurrence {
     predefined_slot: Some(8),
     members: &["SOLID", "VOID", "WATER", "USERDEFINED", "NOTDEFINED"],
     type_class: None,
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcHeatExchanger`, 5 permitted tokens.
@@ -223,6 +251,8 @@ pub const IFCHEATEXCHANGER: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCHEATEXCHANGERTYPE"),
+    ifc4_type_class: Some("IFCHEATEXCHANGERTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcHumidifier`, 15 permitted tokens.
@@ -248,6 +278,8 @@ pub const IFCHUMIDIFIER: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCHUMIDIFIERTYPE"),
+    ifc4_type_class: Some("IFCHUMIDIFIERTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcImpactProtectionDevice`, 6 permitted tokens.
@@ -264,6 +296,8 @@ pub const IFCIMPACTPROTECTIONDEVICE: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCIMPACTPROTECTIONDEVICETYPE"),
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcInterceptor`, 6 permitted tokens.
@@ -280,6 +314,8 @@ pub const IFCINTERCEPTOR: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCINTERCEPTORTYPE"),
+    ifc4_type_class: Some("IFCINTERCEPTORTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcJunctionBox`, 4 permitted tokens.
@@ -289,6 +325,8 @@ pub const IFCJUNCTIONBOX: Occurrence = Occurrence {
     predefined_slot: Some(8),
     members: &["DATA", "POWER", "USERDEFINED", "NOTDEFINED"],
     type_class: Some("IFCJUNCTIONBOXTYPE"),
+    ifc4_type_class: Some("IFCJUNCTIONBOXTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcKerb`, 2 permitted tokens.
@@ -298,6 +336,8 @@ pub const IFCKERB: Occurrence = Occurrence {
     predefined_slot: Some(8),
     members: &["USERDEFINED", "NOTDEFINED"],
     type_class: Some("IFCKERBTYPE"),
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcLamp`, 11 permitted tokens.
@@ -319,6 +359,8 @@ pub const IFCLAMP: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCLAMPTYPE"),
+    ifc4_type_class: Some("IFCLAMPTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcLightFixture`, 5 permitted tokens.
@@ -334,6 +376,8 @@ pub const IFCLIGHTFIXTURE: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCLIGHTFIXTURETYPE"),
+    ifc4_type_class: Some("IFCLIGHTFIXTURETYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcLiquidTerminal`, 4 permitted tokens.
@@ -343,6 +387,8 @@ pub const IFCLIQUIDTERMINAL: Occurrence = Occurrence {
     predefined_slot: Some(8),
     members: &["HOSEREEL", "LOADINGARM", "USERDEFINED", "NOTDEFINED"],
     type_class: Some("IFCLIQUIDTERMINALTYPE"),
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcMechanicalFastener`, 17 permitted tokens.
@@ -370,6 +416,8 @@ pub const IFCMECHANICALFASTENER: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCMECHANICALFASTENERTYPE"),
+    ifc4_type_class: Some("IFCMECHANICALFASTENERTYPE"),
+    ifc2x3_type_class: Some("IFCMECHANICALFASTENERTYPE"),
 };
 
 /// `IfcMedicalDevice`, 7 permitted tokens.
@@ -387,6 +435,8 @@ pub const IFCMEDICALDEVICE: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCMEDICALDEVICETYPE"),
+    ifc4_type_class: Some("IFCMEDICALDEVICETYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcMember`, 21 permitted tokens.
@@ -418,6 +468,8 @@ pub const IFCMEMBER: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCMEMBERTYPE"),
+    ifc4_type_class: Some("IFCMEMBERTYPE"),
+    ifc2x3_type_class: Some("IFCMEMBERTYPE"),
 };
 
 /// `IfcMobileTelecommunicationsAppliance`, 15 permitted tokens.
@@ -443,6 +495,8 @@ pub const IFCMOBILETELECOMMUNICATIONSAPPLIANCE: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCMOBILETELECOMMUNICATIONSAPPLIANCETYPE"),
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcMooringDevice`, 7 permitted tokens.
@@ -460,6 +514,8 @@ pub const IFCMOORINGDEVICE: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCMOORINGDEVICETYPE"),
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcMotorConnection`, 5 permitted tokens.
@@ -475,4 +531,6 @@ pub const IFCMOTORCONNECTION: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCMOTORCONNECTIONTYPE"),
+    ifc4_type_class: Some("IFCMOTORCONNECTIONTYPE"),
+    ifc2x3_type_class: None,
 };

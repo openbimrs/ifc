@@ -174,7 +174,7 @@ fn unsupported_rules_are_reported_not_passed() -> TestResult {
         .iter()
         .filter_map(|rule| match rule.support {
             Support::Unsupported(reason) => Some(reason),
-            Support::Implemented => None,
+            _ => None,
         })
         .collect();
     for category in ["INVERSE", "aggregate bounds", "EXPRESS expression"] {

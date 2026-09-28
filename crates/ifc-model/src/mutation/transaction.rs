@@ -394,6 +394,7 @@ impl Transaction {
 
 /// What a committed transaction did.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct Applied {
     /// Ids created, in commit order.
     pub created: Vec<EntityId>,

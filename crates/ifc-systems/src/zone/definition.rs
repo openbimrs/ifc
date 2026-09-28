@@ -48,6 +48,7 @@ const ZONE_MEMBER_TYPES: [&str; 3] = ["IFCZONE", "IFCSPACE", "IFCSPATIALZONE"];
 
 /// A zone: a grouping of spatial elements.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Zone {
     /// Entity id of the `IfcZone` itself.
     pub id: EntityId,

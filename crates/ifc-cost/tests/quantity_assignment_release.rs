@@ -26,22 +26,11 @@ fn declaring(schema: &str) -> Model {
 }
 
 fn item() -> CostItemDraft<'static> {
-    CostItemDraft {
-        global_id: GUID,
-        name: Some("Item"),
-        ..CostItemDraft::default()
-    }
+    CostItemDraft::new(GUID).name("Item")
 }
 
 fn quantity(kind: QuantityKind, value: f64) -> QuantityDraft<'static> {
-    QuantityDraft {
-        kind,
-        name: "Measured",
-        description: None,
-        unit: None,
-        value,
-        formula: None,
-    }
+    QuantityDraft::new(kind, "Measured", value)
 }
 
 /// The #203 case: a Number quantity attaches in IFC4X3 and reads back.

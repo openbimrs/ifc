@@ -21,6 +21,7 @@ use crate::horizontal::AlignmentUnits;
 /// equation: the station value that would have continued from the *previous*
 /// segment, immediately before it is replaced by `station` at this point.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct StationEquation {
     /// The `IfcReferent` entity carrying `Pset_Stationing`.
     pub referent: EntityId,

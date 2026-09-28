@@ -40,6 +40,20 @@ pub(super) fn task(draft: &TaskDraft<'_>) -> ScheduleAuthoringResult<()> {
     Ok(())
 }
 
+/// `IfcRelSequence.TimeLag` given as seconds: a finite `IfcTimeMeasure`.
+pub(super) fn time_lag(time_lag: Option<super::TimeLag>) -> ScheduleAuthoringResult<()> {
+    if let Some(super::TimeLag::Seconds(seconds)) = time_lag {
+        if !seconds.is_finite() {
+            return Err(invalid(
+                "IFCRELSEQUENCE",
+                "TimeLag",
+                "a finite IfcTimeMeasure in seconds",
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// `IfcRelSequence`: a valid GUID and no task preceding itself.
 pub(super) fn sequence(
     global_id: &str,
@@ -72,13 +86,17 @@ pub(super) fn work_control(
         ("CreationDate", draft.creation_date),
         ("StartTime", draft.start_time),
     ] {
-        if value.trim().is_empty() {
+        if value.text().is_some_and(|text| text.trim().is_empty()) {
             return Err(invalid(
                 type_name,
                 attribute,
                 "a non-empty ISO 8601 timestamp",
             ));
         }
+        value.check()?;
+    }
+    if let Some(finish) = draft.finish_time {
+        finish.check()?;
     }
     Ok(type_name)
 }

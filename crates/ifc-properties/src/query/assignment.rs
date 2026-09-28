@@ -45,6 +45,7 @@ pub enum Source {
 
 /// A property set that applies to an object, with its provenance.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct ResolvedSet {
     /// Where it came from.
     pub source: Source,

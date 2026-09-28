@@ -12,6 +12,7 @@ use crate::value::EntityId;
 
 /// A reason a transaction cannot be committed.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Conflict {
     /// The model changed since the transaction was opened.
     ///

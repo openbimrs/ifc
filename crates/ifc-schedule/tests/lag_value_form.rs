@@ -14,15 +14,7 @@ use ifc_schedule::{create_lag_time, create_sequence, create_task, sequences, Tas
 use ifc_step::StepCodec;
 
 fn task(tx: &mut Transaction, guid: &str) -> EntityId {
-    create_task(
-        tx,
-        TaskDraft {
-            global_id: guid,
-            name: Some("task"),
-            ..TaskDraft::default()
-        },
-    )
-    .expect("authored task")
+    create_task(tx, TaskDraft::new(guid).name("task")).expect("authored task")
 }
 
 fn typed(member: &str, value: Value) -> Value {

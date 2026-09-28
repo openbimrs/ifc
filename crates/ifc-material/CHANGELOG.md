@@ -12,6 +12,10 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `ResolvedAssignment` is `#[non_exhaustive]`.
+
 ## [0.3.0] - 2026-09-27
 
 ### Changed (breaking)
