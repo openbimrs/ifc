@@ -18,6 +18,7 @@ The [`openbim-ifc`](https://crates.io/crates/openbim-ifc) facade also provides i
 
 ## Design notes
 
-- The crate depends on `ifc-model` alone. `ifc-schema` may be added only
-  for generic schema validation, never to drive the projections, which
-  read fixed, documented slots.
+- The crate depends on `ifc-model` and, for the bundled release tables,
+  `ifc-schema`. The tables lay out the records the `*_with_owner_history`
+  writers author in the model's declared release (#202); they never drive
+  the projections, which read fixed, documented slots.

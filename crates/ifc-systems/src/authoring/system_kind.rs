@@ -24,9 +24,10 @@
 //! exists and then withholds it.
 
 use ifc_model::guid::Guid;
-use ifc_model::{Entity, EntityId, Transaction, Value};
+use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 use ifc_schema::Schema;
 
+use super::release::bind;
 use super::{invalid, SystemAuthoringResult};
 
 /// `IfcBuildingSystemTypeEnum`, IFC4 and IFC4X3.
@@ -258,6 +259,11 @@ pub struct ClassifiedSystemDraft<'a> {
 /// (`IfcBuiltSystem` on IFC4); a token outside the entity's enum for
 /// the schema in hand; and `USERDEFINED` without `object_type`
 /// (CorrectPredefinedType).
+///
+/// `OwnerHistory` is written `$`. IFC2X3 declares none of the four
+/// entities, so the record is IFC4/IFC4X3 only either way; use
+/// [`create_classified_system_with_owner_history`] to bind the model's
+/// release and set an owner history.
 pub fn create_classified_system(
     tx: &mut Transaction,
     schema: &Schema,
@@ -277,15 +283,7 @@ pub fn create_classified_system(
     if declared.is_empty() {
         return Err(invalid(entity, "Entity", schema.name().to_owned()));
     }
-
-    if let Some(token) = draft.predefined_type {
-        if !kind.members(schema).contains(&token) {
-            return Err(invalid(entity, "PredefinedType", token));
-        }
-        if token == "USERDEFINED" && blank(draft.object_type) {
-            return Err(invalid(entity, "ObjectType", "required by USERDEFINED"));
-        }
-    }
+    check_predefined(schema, kind, draft)?;
 
     let mut attributes = vec![Value::Null; declared.len()];
     attributes[0] = Value::Text(global_id.into());
@@ -305,4 +303,69 @@ fn text(value: Option<&str>) -> Value {
 
 fn blank(value: Option<&str>) -> bool {
     value.is_none_or(|v| v.trim().is_empty())
+}
+
+/// A token of the entity's own enum for `schema`, and CorrectPredefinedType.
+fn check_predefined(
+    schema: &Schema,
+    kind: SystemKind,
+    draft: ClassifiedSystemDraft<'_>,
+) -> SystemAuthoringResult<()> {
+    let entity = kind.type_name();
+    if let Some(token) = draft.predefined_type {
+        if !kind.members(schema).contains(&token) {
+            return Err(invalid(entity, "PredefinedType", token));
+        }
+        if token == "USERDEFINED" && blank(draft.object_type) {
+            return Err(invalid(entity, "ObjectType", "required by USERDEFINED"));
+        }
+    }
+    Ok(())
+}
+
+/// [`create_classified_system`] in `model`'s declared release, with a
+/// caller-supplied `IfcOwnerHistory` (#202).
+///
+/// The release is bound from `FILE_SCHEMA` (none binds IFC4) instead of
+/// taken from a schema argument, and the record is laid out by attribute
+/// name from its table. IFC2X3 declares none of the four entities and
+/// IFC4 no `IfcBuiltSystem`. The owner history is never invented.
+///
+/// # Errors
+///
+/// Those of [`create_classified_system`] (an undeclared entity is
+/// [`EntityNotInSchema`](super::SystemAuthoringError::EntityNotInSchema)
+/// here), and the release and owner-history refusals of
+/// [`create_system_with_owner_history`](super::create_system_with_owner_history).
+/// Nothing is staged on an error.
+pub fn create_classified_system_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    kind: SystemKind,
+    global_id: &str,
+    name: Option<&str>,
+    draft: ClassifiedSystemDraft<'_>,
+    owner_history: EntityId,
+) -> SystemAuthoringResult<EntityId> {
+    let release = bind(model)?;
+    let entity = kind.type_name();
+    if Guid::parse(global_id).is_none() {
+        return Err(invalid(entity, "GlobalId", global_id));
+    }
+    release.require_entity(entity)?;
+    check_predefined(release.schema(), kind, draft)?;
+    let values = vec![
+        ("GlobalId", Value::Text(global_id.into())),
+        ("Name", text(name)),
+        ("Description", text(draft.description)),
+        ("ObjectType", text(draft.object_type)),
+        (
+            "PredefinedType",
+            draft
+                .predefined_type
+                .map_or(Value::Null, |t| Value::Enum(t.into())),
+        ),
+        ("LongName", text(draft.long_name)),
+    ];
+    release.stage(tx, model, entity, values, owner_history)
 }

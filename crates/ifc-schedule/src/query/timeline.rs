@@ -10,8 +10,8 @@
 //! # What this module does NOT compute
 //!
 //! No critical path, no forward/backward pass, no date arithmetic. Those need
-//! calendar expansion and a date library; this crate's only dependency is
-//! `ifc-model`. What it does provide is the ordering those algorithms run on,
+//! calendar expansion and a date library, which this crate does not
+//! depend on. What it does provide is the ordering those algorithms run on,
 //! plus the anomalies that make them meaningless if ignored.
 
 use std::collections::{HashMap, HashSet};

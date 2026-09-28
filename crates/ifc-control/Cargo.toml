@@ -21,5 +21,9 @@ ifc-model.workspace = true
 ifc-schema.workspace = true
 thiserror.workspace = true
 
+[dev-dependencies]
+# Test-only: release round trips write and re-read STEP.
+ifc-step.workspace = true
+
 [lints]
 workspace = true

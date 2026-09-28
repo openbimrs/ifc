@@ -52,6 +52,11 @@ pub struct ExternalSpatialDraft<'a> {
 
 /// Stage an `IfcExternalSpatialElement`.
 ///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`create_external_spatial_element_with_owner_history`](super::create_external_spatial_element_with_owner_history), which binds the model's declared
+/// release.
+///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId, a token outside
@@ -62,22 +67,7 @@ pub fn create_external_spatial_element(
     global_id: &str,
     draft: ExternalSpatialDraft<'_>,
 ) -> SpatialAuthoringResult<EntityId> {
-    const ENTITY: &str = "IFCEXTERNALSPATIALELEMENT";
-    if Guid::parse(global_id).is_none() {
-        return Err(invalid(ENTITY, "GlobalId", global_id));
-    }
-    if let Some(token) = draft.predefined_type {
-        if !EXTERNAL_KIND.contains(&token) {
-            return Err(invalid(ENTITY, "PredefinedType", token));
-        }
-        if token == "USERDEFINED"
-            && draft
-                .object_type
-                .is_none_or(|value| value.trim().is_empty())
-        {
-            return Err(invalid(ENTITY, "ObjectType", "required by USERDEFINED"));
-        }
-    }
+    check_external(global_id, &draft)?;
     let mut attributes = vec![Value::Null; 9];
     attributes[0] = Value::Text(global_id.into());
     attributes[2] = optional_text(draft.name);
@@ -89,7 +79,32 @@ pub fn create_external_spatial_element(
     attributes[8] = draft
         .predefined_type
         .map_or(Value::Null, |t| Value::Enum(t.into()));
-    Ok(tx.create(Entity::new(ENTITY, attributes)))
+    Ok(tx.create(Entity::new(EXTERNAL, attributes)))
+}
+
+pub(super) const EXTERNAL: &str = "IFCEXTERNALSPATIALELEMENT";
+
+/// The checks of [`create_external_spatial_element`].
+pub(super) fn check_external(
+    global_id: &str,
+    draft: &ExternalSpatialDraft<'_>,
+) -> SpatialAuthoringResult<()> {
+    if Guid::parse(global_id).is_none() {
+        return Err(invalid(EXTERNAL, "GlobalId", global_id));
+    }
+    if let Some(token) = draft.predefined_type {
+        if !EXTERNAL_KIND.contains(&token) {
+            return Err(invalid(EXTERNAL, "PredefinedType", token));
+        }
+        if token == "USERDEFINED"
+            && draft
+                .object_type
+                .is_none_or(|value| value.trim().is_empty())
+        {
+            return Err(invalid(EXTERNAL, "ObjectType", "required by USERDEFINED"));
+        }
+    }
+    Ok(())
 }
 
 /// Attributes of an `IfcProjectLibrary`.
@@ -118,6 +133,11 @@ pub struct ProjectLibraryDraft<'a> {
 ///
 /// `RepresentationContexts` is `SET [1:?]`: absent is legal,
 /// present and empty is not.
+///
+/// IFC4 and IFC4X3 only: it writes their layout and leaves
+/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
+/// [`create_project_library_with_owner_history`](super::create_project_library_with_owner_history), which binds the model's declared
+/// release.
 ///
 /// # Errors
 ///

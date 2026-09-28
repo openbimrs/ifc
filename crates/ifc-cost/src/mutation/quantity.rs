@@ -22,9 +22,9 @@
 
 use ifc_model::{EntityId, Model, Transaction, Value};
 
-use super::release::bind;
+use super::release::{bind, Release};
 use super::validate::invalid;
-use super::CostAuthoringResult;
+use super::{CostAuthoringError, CostAuthoringResult};
 
 /// The physical dimension a simple quantity measures.
 ///
@@ -191,67 +191,80 @@ pub fn create_quantity(
     Ok(tx.create(record))
 }
 
-/// Attach quantities to an existing `IfcCostItem`.
+/// Attach quantities to an existing `IfcCostItem`, in the model's declared
+/// release.
 ///
-/// Replaces `CostQuantities` (slot 8) wholesale rather than appending: a
-/// partial update would leave the caller unable to express removal, and
-/// silently accumulating duplicates would double a measured sum.
+/// Replaces `CostQuantities` wholesale rather than appending: a partial
+/// update would leave the caller unable to express removal, and silently
+/// accumulating duplicates would double a measured sum.
+///
+/// Every quantity must be an instantiable subtype of the release's own
+/// `CostQuantities` declaration (`IfcPhysicalQuantity`), read from its
+/// table rather than a fixed list (#203): IFC4X3 adds `IfcQuantityNumber`,
+/// which IFC4 does not declare. The slot is found by name, not assumed.
+///
+/// # Errors
+///
+/// A `cost_item` that is not an `IfcCostItem`; an empty or duplicated
+/// quantity list; a quantity that is missing (`MissingReference`) or not a
+/// physical quantity of the release (`WrongReferenceType`, such as an
+/// `IfcQuantityNumber` in IFC4); a header binding no single known release
+/// (`MultipleSchemas`, `UnsupportedSchema`); and an IFC2X3 model, whose
+/// `IfcCostItem` declares no `CostQuantities` (`AuthoringNotInSchema`).
+/// Nothing is staged on an error.
+///
+/// [`CostAuthoringError::AuthoringNotInSchema`]: super::CostAuthoringError::AuthoringNotInSchema
 pub fn assign_cost_quantities(
     tx: &mut Transaction,
     model: &Model,
     cost_item: EntityId,
     quantities: &[EntityId],
 ) -> CostAuthoringResult<()> {
-    super::validate::reference_type(
-        tx,
-        model,
-        "IFCCOSTITEM",
-        "CostQuantities",
-        cost_item,
-        "IFCCOSTITEM",
-    )?;
+    const ENTITY: &str = "IFCCOSTITEM";
+    let release = bind(model)?;
+    super::validate::reference_type(tx, model, ENTITY, "CostQuantities", cost_item, ENTITY)?;
+    let (slot, declared) = release.declared(ENTITY, "CostQuantities")?;
     // Reuses the crate's own emptiness/duplicate rule rather than restating
     // it: a duplicated quantity would double the measured sum.
-    super::validate::non_empty_unique("IFCCOSTITEM", "CostQuantities", quantities)?;
+    super::validate::non_empty_unique(ENTITY, "CostQuantities", quantities)?;
     for &quantity in quantities {
-        require_quantity(tx, model, quantity)?;
+        require_quantity(tx, model, release, &declared.type_name, quantity)?;
     }
     tx.set_attribute(
         cost_item,
-        crate::item::slot::COST_QUANTITIES,
+        slot,
         Value::List(quantities.iter().copied().map(Value::Ref).collect()),
     );
     Ok(())
 }
 
-/// Accept any concrete `IfcPhysicalQuantity` subtype.
+/// Accept any instantiable subtype of `declared` in the bound release.
 ///
-/// `validate::reference_type` compares one exact name, but CostQuantities
-/// is typed to the abstract supertype: an area, a volume and a count are
-/// all valid there. Enumerating the concrete subtypes keeps the check
-/// closed -- an unrelated entity is still refused -- without binding a
-/// release for one subtype question.
-fn require_quantity(tx: &Transaction, model: &Model, target: EntityId) -> CostAuthoringResult<()> {
-    const ACCEPTED: &[&str] = &[
-        "IFCQUANTITYLENGTH",
-        "IFCQUANTITYAREA",
-        "IFCQUANTITYVOLUME",
-        "IFCQUANTITYCOUNT",
-        "IFCQUANTITYWEIGHT",
-        "IFCQUANTITYTIME",
-        "IFCPHYSICALCOMPLEXQUANTITY",
-    ];
+/// `validate::reference_type` compares one exact name, but `CostQuantities`
+/// is typed to the abstract `IfcPhysicalQuantity`: an area, a volume, a
+/// count and (in IFC4X3) a number are all valid there. The accepted set is
+/// the release's own subtype tree, so an unrelated entity, or a subtype
+/// another release added, is still refused.
+fn require_quantity(
+    tx: &Transaction,
+    model: &Model,
+    release: Release,
+    declared: &str,
+    target: EntityId,
+) -> CostAuthoringResult<()> {
     let Some(actual) = super::validate::projected_type(tx, model, target) else {
-        return Err(crate::mutation::CostAuthoringError::MissingReference {
+        return Err(CostAuthoringError::MissingReference {
             entity: "IFCCOSTITEM",
             attribute: "CostQuantities",
             target,
         });
     };
-    if ACCEPTED.iter().any(|k| actual.eq_ignore_ascii_case(k)) {
+    let schema = release.schema();
+    let instantiable = schema.entity(&actual).is_some_and(|e| !e.abstract_);
+    if instantiable && schema.accepts_type(declared, &actual) {
         return Ok(());
     }
-    Err(crate::mutation::CostAuthoringError::WrongReferenceType {
+    Err(CostAuthoringError::WrongReferenceType {
         entity: "IFCCOSTITEM",
         attribute: "CostQuantities",
         target,
