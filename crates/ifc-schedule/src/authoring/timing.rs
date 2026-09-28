@@ -15,6 +15,7 @@ use crate::task::definition::time_slot;
 /// datetimes, written exactly as given. Parsing them here would mean this
 /// crate owning calendar arithmetic it deliberately does not.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct TaskTimeDraft<'a> {
     /// `IfcPhysicalQuantity`-style Name, slot 0.
     pub name: Option<&'a str>,

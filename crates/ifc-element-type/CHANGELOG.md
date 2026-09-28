@@ -12,6 +12,43 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `TypeDraft` fields for the type-specific attributes IFC4 and IFC4X3
+  require (#214): `operation_type` and `user_defined_operation_type`
+  (`IfcDoorType`), `partitioning_type` and `user_defined_partitioning_type`
+  (`IfcWindowType`), `parameter_takes_precedence` (both), `event_trigger_type`
+  and `user_defined_event_trigger_type` (`IfcEventType`), and
+  `assembly_place` (`IfcFurnitureType`, IFC2X3 too). Tokens are checked
+  against the bound release's enumeration (`Invalid` otherwise); a value for
+  an attribute the type does not declare is refused with
+  `AuthoringNotInSchema`; `USERDEFINED` `event_trigger_type` without a
+  non-blank `user_defined_event_trigger_type` is refused
+  (`CorrectEventTriggerType`). These four types can now be authored in every
+  release that declares them.
+- `TypeDraft::new` and `SupertypeDraft::new`, and one builder setter per
+  field, named after it (`TypeDraft::new().name("Beam").tag_or_long_description("B-1")`).
+
+### Fixed
+
+- `create_type` (and `create_supertype`), which take no model, no longer
+  write `$` into an attribute IFC4X3 requires: a required attribute left
+  unset is refused with `AuthoringRequired`, staging nothing, as the
+  model-bound writers already did (#214).
+
+### Changed (breaking)
+
+- `TypeDraft` and `SupertypeDraft` are `#[non_exhaustive]`: struct literals
+  outside the crate no longer compile. Use `new()` (or `default()`) and the
+  setters; the fields stay public for reading and assignment.
+- `create_type` refuses `IfcDoorType`, `IfcWindowType`, `IfcEventType` and
+  `IfcFurnitureType` without their required type-specific attribute, where
+  it wrote `$` before.
+- `Slot6`, `Family`, `ElementType` and `SupertypeKind` are
+  `#[non_exhaustive]`: a `match` on `Family` or `Slot6` needs a wildcard arm,
+  and catalogue rows can no longer be built by struct literal outside the
+  crate (use the generated constants).
+
 ### Changed
 
 - Depends on `ifc-schema` with its default features named explicitly

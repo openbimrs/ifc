@@ -30,6 +30,7 @@ use crate::unit::{unit, UnitKind};
 
 /// How an authored quantity compares to an externally computed value.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum Comparison {
     /// The file agrees with the computed value within tolerance.
     Agrees {

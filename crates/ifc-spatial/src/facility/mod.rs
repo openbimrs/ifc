@@ -27,6 +27,7 @@ pub use table::{IFCROAD, IFCROADPART};
 
 /// One facility class and the slots that distinguish it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Facility {
     /// STEP type name, upper-case as stored.
     pub type_name: &'static str,
@@ -136,7 +137,11 @@ impl std::error::Error for FacilityError {}
 pub type FacilityResult<T> = Result<T, FacilityError>;
 
 /// Attributes a facility shares with every spatial container.
+///
+/// `#[non_exhaustive]`: build it with [`FacilityDraft::new`] and the
+/// setters.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct FacilityDraft<'a> {
     /// `IfcRoot.Name`, slot 2.
     pub name: Option<&'a str>,
@@ -152,6 +157,63 @@ pub struct FacilityDraft<'a> {
     pub composition: Option<&'a str>,
     /// `UsageType`, slot 9. Mandatory on a part, refused otherwise.
     pub usage: Option<&'a str>,
+}
+
+impl<'a> FacilityDraft<'a> {
+    /// An empty draft: every attribute unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set `IfcRoot.Name`.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Set `IfcRoot.Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Set `IfcObject.ObjectType`, which names a `USERDEFINED` token.
+    #[must_use]
+    pub fn object_type(mut self, value: &'a str) -> Self {
+        self.object_type = Some(value);
+        self
+    }
+
+    /// Set `IfcProduct.ObjectPlacement`.
+    #[must_use]
+    pub fn placement(mut self, value: EntityId) -> Self {
+        self.placement = Some(value);
+        self
+    }
+
+    /// Set `LongName`.
+    #[must_use]
+    pub fn long_name(mut self, value: &'a str) -> Self {
+        self.long_name = Some(value);
+        self
+    }
+
+    /// Set `CompositionType`, an `IfcElementCompositionEnum` token.
+    #[must_use]
+    pub fn composition(mut self, value: &'a str) -> Self {
+        self.composition = Some(value);
+        self
+    }
+
+    /// Set `UsageType`; mandatory on a facility part, refused otherwise.
+    #[must_use]
+    pub fn usage(mut self, value: &'a str) -> Self {
+        self.usage = Some(value);
+        self
+    }
 }
 
 const USAGE_TOKENS: &[&str] = &[

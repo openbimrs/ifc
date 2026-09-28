@@ -15,14 +15,7 @@ fn ifc4x3() -> Model {
 }
 
 fn draft(kind: QuantityKind, value: f64) -> QuantityDraft<'static> {
-    QuantityDraft {
-        kind,
-        name: "Rating",
-        description: None,
-        unit: None,
-        value,
-        formula: None,
-    }
+    QuantityDraft::new(kind, "Rating", value)
 }
 
 /// A number quantity stages its five slots.

@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `ViolationKind`, `Support` and `FunctionStatus` are `#[non_exhaustive]`: a
+  match needs a wildcard arm.
+- `RuleViolation`, `LoweredGeometry` and `MappedInstance` are
+  `#[non_exhaustive]`; they can no longer be built with a struct literal
+  outside the crate.
+
 ### Changed
 
 - Depends on `ifc-schema` with its default features named explicitly

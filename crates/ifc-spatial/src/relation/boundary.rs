@@ -61,6 +61,7 @@ mod slot {
 /// schema states it explicitly: a file saying "not defined" is making a
 /// claim, and collapsing it into "absent" loses that.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum BoundaryPhysicality {
     /// Real fabric: a wall, slab or roof.
     Physical,
@@ -74,6 +75,7 @@ pub enum BoundaryPhysicality {
 
 /// Whether the boundary faces conditioned space or outside.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum BoundaryExposure {
     /// Faces another internal space.
     Internal,
@@ -148,6 +150,7 @@ pub enum ConnectionGeometryAnomaly {
 
 /// One space boundary as the file states it.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct SpaceBoundary {
     /// The relationship entity itself.
     pub id: EntityId,

@@ -12,6 +12,10 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `ResolvedAssignment` is `#[non_exhaustive]`.
+
 ### Changed
 
 - Depends on `ifc-schema` with its default features named explicitly

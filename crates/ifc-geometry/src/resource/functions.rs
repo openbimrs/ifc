@@ -5,6 +5,7 @@
 
 /// Current implementation state of one normative EXPRESS function.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum FunctionStatus {
     /// Rust's format-neutral math primitive already provides the operation.
     NativePrimitive,

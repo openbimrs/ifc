@@ -18,7 +18,7 @@ use ifc_schedule::{
     create_work_control, create_work_control_with_owner_history, create_work_time, events,
     nest_tasks, nest_tasks_with_owner_history, subtasks_of, successors_of, tasks,
     tasks_of_schedule, work_calendars, work_schedules, EventDraft, ProcedureDraft, SchemaVersion,
-    TaskDraft, WorkControlDraft, WorkControlKind,
+    TaskDraft, TimeLag, WorkControlDraft, WorkControlKind,
 };
 use ifc_schema::for_version;
 use ifc_step::StepCodec;
@@ -37,51 +37,37 @@ const G: [&str; 10] = [
 ];
 
 fn task(global_id: &'static str, name: &'static str, ifc4: bool) -> TaskDraft<'static> {
-    TaskDraft {
-        global_id,
-        name: Some(name),
-        description: Some("Pour"),
-        identification: Some("T-1"),
-        long_description: ifc4.then_some("Long"),
-        status: Some("PLANNED"),
-        work_method: Some("Pump"),
-        is_milestone: false,
-        priority: Some(10),
-        task_time: None,
-        predefined_type: ifc4.then_some("CONSTRUCTION"),
-    }
+    let mut draft = TaskDraft::new(global_id)
+        .name(name)
+        .description("Pour")
+        .identification("T-1")
+        .status("PLANNED")
+        .work_method("Pump")
+        .priority(10);
+    draft.long_description = ifc4.then_some("Long");
+    draft.predefined_type = ifc4.then_some("CONSTRUCTION");
+    draft
 }
 
 fn schedule_draft() -> WorkControlDraft<'static> {
-    WorkControlDraft {
-        global_id: G[5],
-        name: Some("Programme"),
-        identification: Some("WS-1"),
-        creation_date: "2026-09-28T00:00:00",
-        start_time: "2026-10-01T08:00:00",
-        predefined_type: Some("PLANNED"),
-        ..WorkControlDraft::default()
-    }
+    WorkControlDraft::new(G[5], "2026-09-28T00:00:00", "2026-10-01T08:00:00")
+        .name("Programme")
+        .identification("WS-1")
+        .predefined_type("PLANNED")
 }
 
 fn event_draft() -> EventDraft<'static> {
-    EventDraft {
-        global_id: G[7],
-        name: Some("Handover"),
-        predefined_type: Some("ENDEVENT"),
-        trigger_type: Some("EVENTTIME"),
-        ..EventDraft::default()
-    }
+    EventDraft::new(G[7])
+        .name("Handover")
+        .predefined_type("ENDEVENT")
+        .trigger_type("EVENTTIME")
 }
 
 fn procedure_draft() -> ProcedureDraft<'static> {
-    ProcedureDraft {
-        global_id: G[2],
-        name: Some("Calibrate"),
-        identification: Some("P-1"),
-        predefined_type: Some("CALIBRATION"),
-        ..ProcedureDraft::default()
-    }
+    ProcedureDraft::new(G[2])
+        .name("Calibrate")
+        .identification("P-1")
+        .predefined_type("CALIBRATION")
 }
 
 /// Author what `version` can hold through the variants, commit, and return
@@ -266,7 +252,7 @@ fn ifc4_and_ifc4x3_records_are_unchanged() {
             a,
             b,
             Some("FINISH_START"),
-            Some(EntityId(12)),
+            Some(TimeLag::LagTime(EntityId(12))),
             OWNER,
         )
         .unwrap();

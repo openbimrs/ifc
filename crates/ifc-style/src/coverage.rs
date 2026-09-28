@@ -19,6 +19,7 @@ pub enum AppearanceKind {
 /// How thoroughly this crate exposes a given IFC4 ADD2 presentation-appearance
 /// schema declaration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum AppearanceSupport {
     /// Exposed as a dedicated typed `*View`/projection struct in this crate.
     StrictView,
@@ -35,6 +36,7 @@ pub enum AppearanceSupport {
 /// One census entry: an IFC4 ADD2 presentation-appearance schema declaration
 /// paired with how this crate supports it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct AppearanceDeclaration {
     /// The schema declaration's name, e.g. `"IfcSurfaceStyle"`.
     pub name: &'static str,

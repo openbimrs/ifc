@@ -12,6 +12,7 @@ use crate::{
 
 /// Chain of `IfcClassificationReference` nodes from a leaf up to its root, plus the terminating `IfcClassification` system if the chain resolved fully.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct ClassificationHierarchy<'m> {
     /// References from the queried leaf (index 0) up through its ancestors, in traversal order.
     pub references: Vec<ClassificationReference<'m>>,
@@ -21,6 +22,7 @@ pub struct ClassificationHierarchy<'m> {
 
 /// Classification assignments effective on an object: those directly assigned plus, when the object has an `IfcRelDefinesByType` type, those inherited from that type.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct EffectiveClassifications<'m> {
     /// Assignments made directly on the queried occurrence object.
     pub occurrence: Vec<ClassificationAssignment<'m>>,

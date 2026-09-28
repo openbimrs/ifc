@@ -20,6 +20,7 @@ use ifc_schema::SchemaVersion;
 
 /// One entity's place in the containment tree.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct SpatialNode {
     /// The entity this node describes.
     pub id: EntityId,

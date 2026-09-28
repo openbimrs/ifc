@@ -63,6 +63,7 @@ pub const MAX_SEQUENCE_DEPTH: usize = 4096;
 ///
 /// `IfcSequenceEnum`, verified against IFC4 EXPRESS.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SequenceType {
     /// Successor starts after predecessor starts.
     StartStart,
@@ -94,6 +95,7 @@ impl SequenceType {
 
 /// The lag between two sequenced tasks.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct Lag {
     /// The `IfcLagTime` entity.
     pub id: EntityId,
@@ -109,6 +111,7 @@ pub struct Lag {
 
 /// One directed sequence link.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct Sequence {
     /// The `IfcRelSequence` entity.
     pub id: EntityId,
@@ -127,6 +130,7 @@ pub struct Sequence {
 /// A schedule whose tasks depend on each other in a loop has no valid
 /// ordering. This is data to report, not a condition to crash on.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct SequenceCycle {
     /// The task the walk returned to.
     pub repeated: EntityId,

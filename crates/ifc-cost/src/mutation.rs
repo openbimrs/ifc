@@ -17,6 +17,7 @@
 #![deny(missing_docs)]
 
 mod control;
+mod datetime;
 mod draft;
 mod error;
 mod quantity;
@@ -29,6 +30,7 @@ pub use control::{
     create_cost_item_with_owner_history, create_cost_schedule,
     create_cost_schedule_with_owner_history, nest_cost_items, nest_cost_items_with_owner_history,
 };
+pub use datetime::{CalendarDate, DateTimeValue, LocalTime};
 pub use draft::{
     CostItemDraft, CostItemType, CostScheduleDraft, CostScheduleType, CostValueDraft,
     CostValueKind, NestingDraft, ScheduleAssignmentDraft,

@@ -213,6 +213,7 @@ impl MappingWalker {
 
 /// One resolved mapped item: everything needed to place the reused geometry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct MappedInstance {
     /// The `IfcMappedItem` this came from.
     pub item: EntityId,

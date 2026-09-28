@@ -12,6 +12,13 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `ValidationIssue`, `ValidationReport`, `CatalogDiagnostic`,
+  `ExportSummary`, `Advisory`, `AppliedPatch` and `UnresolvedApplicability`
+  are `#[non_exhaustive]`; they can no longer be built with a struct literal
+  outside the crate.
+
 ## [0.2.1] - 2026-09-27
 
 ### Fixed

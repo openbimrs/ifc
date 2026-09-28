@@ -24,6 +24,7 @@ use ifc_schema::{Schema, SchemaVersion};
 
 /// Whether this validator evaluates a given rule.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Support {
     /// Implemented and evaluated on every run.
     Implemented,

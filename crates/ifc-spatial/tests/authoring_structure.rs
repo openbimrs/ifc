@@ -24,10 +24,7 @@ fn an_authored_structure_walks_as_authored() {
     let mut tx = Transaction::new(&model);
     let project =
         create_project(&mut tx, "0aBcDeFgHiJkLmNoPqRsTu", Some("Tower"), None).expect("project");
-    let named = |n| SpatialDraft {
-        name: Some(n),
-        ..SpatialDraft::default()
-    };
+    let named = |n| SpatialDraft::new().name(n);
     let site = create_spatial_element(
         &mut tx,
         SpatialKind::Site,
@@ -79,10 +76,7 @@ fn an_authored_structure_walks_as_authored() {
 fn the_two_relationships_keep_their_opposite_slots() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let named = |n| SpatialDraft {
-        name: Some(n),
-        ..SpatialDraft::default()
-    };
+    let named = |n| SpatialDraft::new().name(n);
     let storey = create_spatial_element(
         &mut tx,
         SpatialKind::Storey,
@@ -112,10 +106,7 @@ fn meaningless_structures_are_refused() {
     let model = Model::default();
     let mut tx = Transaction::new(&model);
     let g = "1aBcDeFgHiJkLmNoPqRsTu";
-    let named = |n| SpatialDraft {
-        name: Some(n),
-        ..SpatialDraft::default()
-    };
+    let named = |n| SpatialDraft::new().name(n);
     let s = create_spatial_element(&mut tx, SpatialKind::Storey, g, named("L1")).expect("storey");
 
     // A malformed GlobalId: nothing can reference this container.
@@ -145,11 +136,7 @@ fn meaningless_structures_are_refused() {
 fn each_container_is_written_at_its_own_width() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let draft = SpatialDraft {
-        name: Some("Name"),
-        long_name: Some("Long"),
-        ..SpatialDraft::default()
-    };
+    let draft = SpatialDraft::new().name("Name").long_name("Long");
     let site = create_spatial_element(&mut tx, SpatialKind::Site, "1aBcDeFgHiJkLmNoPqRsTu", draft)
         .expect("site");
     let building = create_spatial_element(

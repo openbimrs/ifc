@@ -6,6 +6,7 @@ use super::slots::RelSlots;
 
 /// Which objectified relationship a link came from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RelationshipKind {
     /// `IfcRelAggregates` -- decomposition of a spatial structure or element.
     Aggregates,
@@ -43,6 +44,7 @@ pub enum RelationshipKind {
 
 /// One relationship instance, resolved to its ends.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Relationship {
     /// The relationship entity itself.
     pub id: EntityId,

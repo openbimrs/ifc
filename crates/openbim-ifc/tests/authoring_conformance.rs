@@ -237,34 +237,25 @@ fn cost_and_schedule_authoring_is_conformant() {
     let schedule = create_cost_schedule(
         &mut tx,
         &model,
-        CostScheduleDraft {
-            global_id: "0O2Fr$t4X7Zf8NOew3FLOH",
-            name: Some("Tender"),
-            predefined_type: Some(CostScheduleType::Estimate),
-            ..Default::default()
-        },
+        CostScheduleDraft::new("0O2Fr$t4X7Zf8NOew3FLOH")
+            .name("Tender")
+            .predefined_type(CostScheduleType::Estimate),
     )
     .expect("schedule");
     let root = create_cost_item(
         &mut tx,
         &model,
-        CostItemDraft {
-            global_id: "1O2Fr$t4X7Zf8NOew3FLOH",
-            name: Some("Superstructure"),
-            predefined_type: Some(CostItemType::NotDefined),
-            ..Default::default()
-        },
+        CostItemDraft::new("1O2Fr$t4X7Zf8NOew3FLOH")
+            .name("Superstructure")
+            .predefined_type(CostItemType::NotDefined),
     )
     .expect("root");
     let child = create_cost_item(
         &mut tx,
         &model,
-        CostItemDraft {
-            global_id: "2O2Fr$t4X7Zf8NOew3FLOH",
-            name: Some("Slab"),
-            predefined_type: Some(CostItemType::NotDefined),
-            ..Default::default()
-        },
+        CostItemDraft::new("2O2Fr$t4X7Zf8NOew3FLOH")
+            .name("Slab")
+            .predefined_type(CostItemType::NotDefined),
     )
     .expect("child");
     tx.commit(&mut model).expect("commit");
@@ -273,21 +264,13 @@ fn cost_and_schedule_authoring_is_conformant() {
     nest_cost_items(
         &mut tx,
         &model,
-        CostNesting {
-            global_id: "3O2Fr$t4X7Zf8NOew3FLOH",
-            parent: root,
-            children: &[child],
-        },
+        CostNesting::new("3O2Fr$t4X7Zf8NOew3FLOH", root, &[child]),
     )
     .expect("cost nesting");
     assign_schedule_items(
         &mut tx,
         &model,
-        ScheduleAssignmentDraft {
-            global_id: "04OFr$t4X7Zf8NOew3FLOH",
-            schedule,
-            items: &[root],
-        },
+        ScheduleAssignmentDraft::new("04OFr$t4X7Zf8NOew3FLOH", schedule, &[root]),
     )
     .expect("assignment");
     tx.commit(&mut model).expect("commit");
@@ -311,16 +294,7 @@ fn nesting_writers_are_conformant() {
 
     // ifc-schedule nests tasks under a summary task.
     let mut task = |guid: &str, name: &str| {
-        create_task(
-            &mut tx,
-            TaskDraft {
-                global_id: guid,
-                name: Some(name),
-                is_milestone: false,
-                ..TaskDraft::default()
-            },
-        )
-        .expect("task")
+        create_task(&mut tx, TaskDraft::new(guid).name(name)).expect("task")
     };
     let summary = task("0O2Fr$t4X7Zf8NOew3FLOH", "Structure");
     let leaf = task("1O2Fr$t4X7Zf8NOew3FLOH", "Pour slab");

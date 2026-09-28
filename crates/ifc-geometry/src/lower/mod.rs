@@ -50,6 +50,7 @@ pub use tessellated::{lower_polygonal_face_set_node, lower_triangulated_face_set
 
 /// One lowered root and the immutable DAG that owns all of its dependencies.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct LoweredGeometry {
     /// Format-neutral exact geometry graph.
     pub graph: GeometryGraph,

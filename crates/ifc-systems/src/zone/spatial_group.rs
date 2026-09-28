@@ -48,6 +48,7 @@ pub(crate) mod slot {
 
 /// Where one element sits in the spatial structure.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub struct SpatialPlacement {
     /// The single containing structure, if the file states one.
     ///

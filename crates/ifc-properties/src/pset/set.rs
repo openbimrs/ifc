@@ -53,6 +53,7 @@ pub enum Attachment {
 
 /// An `IfcPropertySet` with its properties resolved.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct PropertySet {
     /// The `IfcPropertySet` entity.
     pub id: EntityId,

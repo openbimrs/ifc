@@ -7,6 +7,7 @@ use ifc_model::EntityId;
 /// Kept separate from the message so a consumer can filter (
 /// "show me only degeneracies") without string matching.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ViolationKind {
     /// Coordinate-space mismatch, e.g. a 2D direction on a 3D placement.
     Dimensionality,
@@ -29,6 +30,7 @@ pub enum ViolationKind {
 /// difference between a diagnostic someone can act on and one they can only
 /// report.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct RuleViolation {
     /// The entity that violates the rule.
     pub entity: EntityId,

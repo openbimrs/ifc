@@ -81,6 +81,7 @@ pub enum AssignmentSource {
 
 /// A fully resolved material for one object, with provenance.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ResolvedAssignment<'m> {
     /// The `IfcRelAssociatesMaterial` that produced this resolution.
     pub assignment: MaterialAssignment<'m>,

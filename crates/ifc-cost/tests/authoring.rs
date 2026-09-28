@@ -19,11 +19,7 @@ fn item(tx: &mut Transaction, model: &Model, global_id: &str) -> EntityId {
     create_cost_item(
         tx,
         model,
-        CostItemDraft {
-            global_id,
-            predefined_type: Some(CostItemType::NotDefined),
-            ..Default::default()
-        },
+        CostItemDraft::new(global_id).predefined_type(CostItemType::NotDefined),
     )
     .unwrap()
 }
@@ -35,68 +31,49 @@ fn stages_a_queryable_cost_schedule_tree_atomically() {
     let value = create_cost_value(
         &mut tx,
         &model,
-        CostValueDraft {
-            name: Some("Labour"),
-            category: Some("Labour"),
-            kind: CostValueKind::Monetary(125.5),
-            ..Default::default()
-        },
+        CostValueDraft::default()
+            .name("Labour")
+            .category("Labour")
+            .kind(CostValueKind::Monetary(125.5)),
     )
     .unwrap();
     let root = create_cost_item(
         &mut tx,
         &model,
-        CostItemDraft {
-            global_id: ROOT_GUID,
-            name: Some("Root"),
-            identification: Some("1"),
-            predefined_type: Some(CostItemType::NotDefined),
-            cost_values: &[value],
-            ..Default::default()
-        },
+        CostItemDraft::new(ROOT_GUID)
+            .name("Root")
+            .identification("1")
+            .predefined_type(CostItemType::NotDefined)
+            .cost_values(&[value]),
     )
     .unwrap();
     let child = create_cost_item(
         &mut tx,
         &model,
-        CostItemDraft {
-            global_id: CHILD_GUID,
-            name: Some("Child"),
-            predefined_type: Some(CostItemType::NotDefined),
-            ..Default::default()
-        },
+        CostItemDraft::new(CHILD_GUID)
+            .name("Child")
+            .predefined_type(CostItemType::NotDefined),
     )
     .unwrap();
     let schedule = create_cost_schedule(
         &mut tx,
         &model,
-        CostScheduleDraft {
-            global_id: SCHEDULE_GUID,
-            name: Some("Estimate"),
-            predefined_type: Some(CostScheduleType::Estimate),
-            status: Some("Draft"),
-            ..Default::default()
-        },
+        CostScheduleDraft::new(SCHEDULE_GUID)
+            .name("Estimate")
+            .predefined_type(CostScheduleType::Estimate)
+            .status("Draft"),
     )
     .unwrap();
     nest_cost_items(
         &mut tx,
         &model,
-        NestingDraft {
-            global_id: NEST_GUID,
-            parent: root,
-            children: &[child],
-        },
+        NestingDraft::new(NEST_GUID, root, &[child]),
     )
     .unwrap();
     let assignment = assign_schedule_items(
         &mut tx,
         &model,
-        ScheduleAssignmentDraft {
-            global_id: ASSIGN_GUID,
-            schedule,
-            items: &[root],
-        },
+        ScheduleAssignmentDraft::new(ASSIGN_GUID, schedule, &[root]),
     )
     .unwrap();
 
@@ -139,13 +116,10 @@ fn composed_values_round_trip_in_authored_order() {
     let sum = create_cost_value(
         &mut tx,
         &model,
-        CostValueDraft {
-            kind: CostValueKind::Components {
-                operator: ArithmeticOperator::Add,
-                components: &[a, b],
-            },
-            ..Default::default()
-        },
+        CostValueDraft::default().kind(CostValueKind::Components {
+            operator: ArithmeticOperator::Add,
+            components: &[a, b],
+        }),
     )
     .unwrap();
     tx.commit(&mut model).unwrap();
@@ -169,14 +143,7 @@ fn invalid_drafts_stage_nothing_and_failed_commit_is_atomic() {
     assert_eq!(tx.len(), before);
 
     assert!(matches!(
-        create_cost_item(
-            &mut tx,
-            &model,
-            CostItemDraft {
-                global_id: "invalid",
-                ..Default::default()
-            },
-        ),
+        create_cost_item(&mut tx, &model, CostItemDraft::new("invalid"),),
         Err(CostAuthoringError::InvalidValue {
             attribute: "GlobalId",
             ..
@@ -188,11 +155,7 @@ fn invalid_drafts_stage_nothing_and_failed_commit_is_atomic() {
         create_cost_item(
             &mut tx,
             &model,
-            CostItemDraft {
-                global_id: ROOT_GUID,
-                cost_values: &[EntityId(999)],
-                ..Default::default()
-            },
+            CostItemDraft::new(ROOT_GUID).cost_values(&[EntityId(999)]),
         ),
         Err(CostAuthoringError::MissingReference {
             target: EntityId(999),
@@ -215,27 +178,11 @@ fn nesting_refuses_self_duplicates_and_wrong_kinds_before_staging() {
     let mut model = Model::new();
     let not_item = model.push(Entity::new("IFCWALL", vec![]));
     let mut tx = Transaction::new(&model);
-    let item = create_cost_item(
-        &mut tx,
-        &model,
-        CostItemDraft {
-            global_id: ROOT_GUID,
-            ..Default::default()
-        },
-    )
-    .unwrap();
+    let item = create_cost_item(&mut tx, &model, CostItemDraft::new(ROOT_GUID)).unwrap();
     let before = tx.len();
     for draft in [
-        NestingDraft {
-            global_id: NEST_GUID,
-            parent: item,
-            children: &[item],
-        },
-        NestingDraft {
-            global_id: NEST_GUID,
-            parent: item,
-            children: &[not_item],
-        },
+        NestingDraft::new(NEST_GUID, item, &[item]),
+        NestingDraft::new(NEST_GUID, item, &[not_item]),
     ] {
         assert!(nest_cost_items(&mut tx, &model, draft).is_err());
         assert_eq!(tx.len(), before);
@@ -246,63 +193,28 @@ fn nesting_refuses_self_duplicates_and_wrong_kinds_before_staging() {
 fn refuses_second_parent_cycles_and_duplicate_global_ids_before_staging() {
     let model = Model::new();
     let mut tx = Transaction::new(&model);
-    let a = create_cost_item(
-        &mut tx,
-        &model,
-        CostItemDraft {
-            global_id: ROOT_GUID,
-            ..Default::default()
-        },
-    )
-    .unwrap();
-    let b = create_cost_item(
-        &mut tx,
-        &model,
-        CostItemDraft {
-            global_id: CHILD_GUID,
-            ..Default::default()
-        },
-    )
-    .unwrap();
+    let a = create_cost_item(&mut tx, &model, CostItemDraft::new(ROOT_GUID)).unwrap();
+    let b = create_cost_item(&mut tx, &model, CostItemDraft::new(CHILD_GUID)).unwrap();
     let c = create_cost_item(
         &mut tx,
         &model,
-        CostItemDraft {
-            global_id: "0JH8Y2dTv1LhX9ZzQqFbca",
-            ..Default::default()
-        },
+        CostItemDraft::new("0JH8Y2dTv1LhX9ZzQqFbca"),
     )
     .unwrap();
-    nest_cost_items(
-        &mut tx,
-        &model,
-        NestingDraft {
-            global_id: NEST_GUID,
-            parent: a,
-            children: &[b],
-        },
-    )
-    .unwrap();
+    nest_cost_items(&mut tx, &model, NestingDraft::new(NEST_GUID, a, &[b])).unwrap();
     let before = tx.len();
     assert!(matches!(
-        nest_cost_items(&mut tx, &model, NestingDraft { global_id: "1JH8Y2dTv1LhX9ZzQqFbca", parent: c, children: &[b] }),
+        nest_cost_items(&mut tx, &model, NestingDraft::new("1JH8Y2dTv1LhX9ZzQqFbca", c, &[b])),
         Err(CostAuthoringError::MultipleParents { child, existing_parent }) if child == b && existing_parent == a
     ));
     assert_eq!(tx.len(), before);
     assert!(matches!(
-        nest_cost_items(&mut tx, &model, NestingDraft { global_id: "2JH8Y2dTv1LhX9ZzQqFbca", parent: b, children: &[a] }),
+        nest_cost_items(&mut tx, &model, NestingDraft::new("2JH8Y2dTv1LhX9ZzQqFbca", b, &[a])),
         Err(CostAuthoringError::NestingCycle { item }) if item == a
     ));
     assert_eq!(tx.len(), before);
     assert!(matches!(
-        create_cost_schedule(
-            &mut tx,
-            &model,
-            CostScheduleDraft {
-                global_id: ROOT_GUID,
-                ..Default::default()
-            }
-        ),
+        create_cost_schedule(&mut tx, &model, CostScheduleDraft::new(ROOT_GUID)),
         Err(CostAuthoringError::InvalidValue {
             attribute: "GlobalId",
             ..
@@ -321,11 +233,7 @@ fn staged_relation_removal_allows_reparenting() {
     let relation = nest_cost_items(
         &mut tx,
         &model,
-        NestingDraft {
-            global_id: "00D0000000000000000034",
-            parent: left,
-            children: &[child],
-        },
+        NestingDraft::new("00D0000000000000000034", left, &[child]),
     )
     .unwrap();
     tx.commit(&mut model).unwrap();
@@ -335,11 +243,7 @@ fn staged_relation_removal_allows_reparenting() {
     nest_cost_items(
         &mut tx,
         &model,
-        NestingDraft {
-            global_id: "00D0000000000000000035",
-            parent: right,
-            children: &[child],
-        },
+        NestingDraft::new("00D0000000000000000035", right, &[child]),
     )
     .unwrap();
     tx.commit(&mut model).unwrap();
@@ -379,14 +283,7 @@ fn staged_global_id_changes_participate_in_duplicate_validation() {
     tx.set_attribute(changed, 0, Value::Text(COLLISION.into()));
     let before = tx.len();
     assert!(matches!(
-        create_cost_item(
-            &mut tx,
-            &model,
-            CostItemDraft {
-                global_id: COLLISION,
-                ..Default::default()
-            },
-        ),
+        create_cost_item(&mut tx, &model, CostItemDraft::new(COLLISION),),
         Err(CostAuthoringError::InvalidValue {
             attribute: "GlobalId",
             ..

@@ -17,6 +17,8 @@ pub const IFCACTUATOR: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCACTUATORTYPE"),
+    ifc4_type_class: Some("IFCACTUATORTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcAirTerminal`, 6 permitted tokens.
@@ -33,6 +35,8 @@ pub const IFCAIRTERMINAL: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCAIRTERMINALTYPE"),
+    ifc4_type_class: Some("IFCAIRTERMINALTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcAirTerminalBox`, 5 permitted tokens.
@@ -48,6 +52,8 @@ pub const IFCAIRTERMINALBOX: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCAIRTERMINALBOXTYPE"),
+    ifc4_type_class: Some("IFCAIRTERMINALBOXTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcAirToAirHeatRecovery`, 11 permitted tokens.
@@ -69,6 +75,8 @@ pub const IFCAIRTOAIRHEATRECOVERY: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCAIRTOAIRHEATRECOVERYTYPE"),
+    ifc4_type_class: Some("IFCAIRTOAIRHEATRECOVERYTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcAlarm`, 10 permitted tokens.
@@ -89,6 +97,8 @@ pub const IFCALARM: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCALARMTYPE"),
+    ifc4_type_class: Some("IFCALARMTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcAudioVisualAppliance`, 15 permitted tokens.
@@ -114,6 +124,8 @@ pub const IFCAUDIOVISUALAPPLIANCE: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCAUDIOVISUALAPPLIANCETYPE"),
+    ifc4_type_class: Some("IFCAUDIOVISUALAPPLIANCETYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcBeam`, 14 permitted tokens.
@@ -138,6 +150,8 @@ pub const IFCBEAM: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCBEAMTYPE"),
+    ifc4_type_class: Some("IFCBEAMTYPE"),
+    ifc2x3_type_class: Some("IFCBEAMTYPE"),
 };
 
 /// `IfcBearing`, 10 permitted tokens.
@@ -158,6 +172,8 @@ pub const IFCBEARING: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCBEARINGTYPE"),
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcBoiler`, 4 permitted tokens.
@@ -167,6 +183,8 @@ pub const IFCBOILER: Occurrence = Occurrence {
     predefined_slot: Some(8),
     members: &["STEAM", "WATER", "USERDEFINED", "NOTDEFINED"],
     type_class: Some("IFCBOILERTYPE"),
+    ifc4_type_class: Some("IFCBOILERTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcBorehole`, 0 permitted tokens.
@@ -176,6 +194,8 @@ pub const IFCBOREHOLE: Occurrence = Occurrence {
     predefined_slot: None,
     members: &[],
     type_class: None,
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcBuildingElementPart`, 7 permitted tokens.
@@ -193,6 +213,8 @@ pub const IFCBUILDINGELEMENTPART: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCBUILDINGELEMENTPARTTYPE"),
+    ifc4_type_class: Some("IFCBUILDINGELEMENTPARTTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcBuildingElementProxy`, 7 permitted tokens.
@@ -210,6 +232,8 @@ pub const IFCBUILDINGELEMENTPROXY: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCBUILDINGELEMENTPROXYTYPE"),
+    ifc4_type_class: Some("IFCBUILDINGELEMENTPROXYTYPE"),
+    ifc2x3_type_class: Some("IFCBUILDINGELEMENTPROXYTYPE"),
 };
 
 /// `IfcBuiltElement`, 0 permitted tokens.
@@ -219,6 +243,8 @@ pub const IFCBUILTELEMENT: Occurrence = Occurrence {
     predefined_slot: None,
     members: &[],
     type_class: None,
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcBurner`, 2 permitted tokens.
@@ -228,6 +254,8 @@ pub const IFCBURNER: Occurrence = Occurrence {
     predefined_slot: Some(8),
     members: &["USERDEFINED", "NOTDEFINED"],
     type_class: Some("IFCBURNERTYPE"),
+    ifc4_type_class: Some("IFCBURNERTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcCableCarrierFitting`, 9 permitted tokens.
@@ -247,6 +275,8 @@ pub const IFCCABLECARRIERFITTING: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCCABLECARRIERFITTINGTYPE"),
+    ifc4_type_class: Some("IFCCABLECARRIERFITTINGTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcCableCarrierSegment`, 9 permitted tokens.
@@ -266,6 +296,8 @@ pub const IFCCABLECARRIERSEGMENT: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCCABLECARRIERSEGMENTTYPE"),
+    ifc4_type_class: Some("IFCCABLECARRIERSEGMENTTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcCableFitting`, 8 permitted tokens.
@@ -284,6 +316,8 @@ pub const IFCCABLEFITTING: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCCABLEFITTINGTYPE"),
+    ifc4_type_class: Some("IFCCABLEFITTINGTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcCableSegment`, 12 permitted tokens.
@@ -306,6 +340,8 @@ pub const IFCCABLESEGMENT: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCCABLESEGMENTTYPE"),
+    ifc4_type_class: Some("IFCCABLESEGMENTTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcCaissonFoundation`, 4 permitted tokens.
@@ -315,6 +351,8 @@ pub const IFCCAISSONFOUNDATION: Occurrence = Occurrence {
     predefined_slot: Some(8),
     members: &["CAISSON", "WELL", "USERDEFINED", "NOTDEFINED"],
     type_class: Some("IFCCAISSONFOUNDATIONTYPE"),
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcChiller`, 5 permitted tokens.
@@ -330,6 +368,8 @@ pub const IFCCHILLER: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCCHILLERTYPE"),
+    ifc4_type_class: Some("IFCCHILLERTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcChimney`, 2 permitted tokens.
@@ -339,6 +379,8 @@ pub const IFCCHIMNEY: Occurrence = Occurrence {
     predefined_slot: Some(8),
     members: &["USERDEFINED", "NOTDEFINED"],
     type_class: Some("IFCCHIMNEYTYPE"),
+    ifc4_type_class: Some("IFCCHIMNEYTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcCivilElement`, 0 permitted tokens.
@@ -348,6 +390,8 @@ pub const IFCCIVILELEMENT: Occurrence = Occurrence {
     predefined_slot: None,
     members: &[],
     type_class: None,
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcCoil`, 9 permitted tokens.
@@ -367,6 +411,8 @@ pub const IFCCOIL: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCCOILTYPE"),
+    ifc4_type_class: Some("IFCCOILTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcColumn`, 7 permitted tokens.
@@ -384,6 +430,8 @@ pub const IFCCOLUMN: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCCOLUMNTYPE"),
+    ifc4_type_class: Some("IFCCOLUMNTYPE"),
+    ifc2x3_type_class: Some("IFCCOLUMNTYPE"),
 };
 
 /// `IfcCommunicationsAppliance`, 26 permitted tokens.
@@ -420,6 +468,8 @@ pub const IFCCOMMUNICATIONSAPPLIANCE: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCCOMMUNICATIONSAPPLIANCETYPE"),
+    ifc4_type_class: Some("IFCCOMMUNICATIONSAPPLIANCETYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcCompressor`, 17 permitted tokens.
@@ -447,6 +497,8 @@ pub const IFCCOMPRESSOR: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCCOMPRESSORTYPE"),
+    ifc4_type_class: Some("IFCCOMPRESSORTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcCondenser`, 9 permitted tokens.
@@ -466,6 +518,8 @@ pub const IFCCONDENSER: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCCONDENSERTYPE"),
+    ifc4_type_class: Some("IFCCONDENSERTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcController`, 7 permitted tokens.
@@ -483,6 +537,8 @@ pub const IFCCONTROLLER: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCCONTROLLERTYPE"),
+    ifc4_type_class: Some("IFCCONTROLLERTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcConveyorSegment`, 6 permitted tokens.
@@ -499,4 +555,6 @@ pub const IFCCONVEYORSEGMENT: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCCONVEYORSEGMENTTYPE"),
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };

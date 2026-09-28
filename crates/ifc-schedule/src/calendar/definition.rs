@@ -76,6 +76,7 @@ pub mod recurrence_slot {
 
 /// Whether a period declares work or an exception to it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum WorkTimeRole {
     /// From `WorkingTimes`: work happens in this period.
     Working,
@@ -87,6 +88,7 @@ pub enum WorkTimeRole {
 ///
 /// `IfcRecurrenceTypeEnum`, verified against IFC4 EXPRESS.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RecurrenceType {
     /// `.DAILY.`
     Daily,
@@ -129,6 +131,7 @@ impl RecurrenceType {
 /// finite expansion at all. The stated shape is returned and expansion is left
 /// to a caller who can supply both.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Recurrence {
     /// The entity.
     pub id: EntityId,
@@ -160,6 +163,7 @@ impl Recurrence {
 
 /// One working or exception period.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct WorkTime {
     /// The `IfcWorkTime` entity.
     pub id: EntityId,

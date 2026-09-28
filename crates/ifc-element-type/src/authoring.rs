@@ -20,6 +20,9 @@
 //! given elsewhere". Without that elsewhere the value asserts a name
 //! exists and then withholds it, which no reader can resolve.
 //!
+//! The same holds for `IfcEventType.CorrectEventTriggerType`, stated over
+//! `EventTriggerType` and `UserDefinedEventTriggerType`.
+//!
 //! This module is stricter than `EXISTS`: a blank fallback string satisfies
 //! EXPRESS but names nothing, so it is refused too. And the writer takes an
 //! [`ElementType`] from the catalogue rather than a type-name string, so an
@@ -50,13 +53,32 @@ pub(crate) fn invalid(
     }
 }
 
-/// Attributes shared by every type definition.
+/// Attributes of a type definition: those every type shares, and the few
+/// one type requires on top.
 ///
 /// `tag_or_long_description` and `maps_or_identification` occupy slots
 /// 7 and 6, whose meaning depends on [`Family`]. Naming them for both
 /// readings keeps a caller from assuming the element-type reading on a
 /// resource type, where it would file a tag as a description.
+///
+/// The type-specific fields (#214) carry the attributes IFC4 and IFC4X3
+/// require on four types, as `references/ifc-spec` declares them:
+///
+/// ```text
+/// IfcDoorType       OperationType    : IfcDoorTypeOperationEnum;
+/// IfcWindowType     PartitioningType : IfcWindowTypePartitioningEnum;
+/// IfcEventType      EventTriggerType : IfcEventTriggerTypeEnum;
+/// IfcFurnitureType  AssemblyPlace    : IfcAssemblyPlaceEnum;  (IFC2X3 too)
+/// ```
+///
+/// A value for an attribute the type does not declare in the bound release
+/// is refused, never dropped.
+///
+/// The struct is `#[non_exhaustive]`: build it with [`TypeDraft::new`] and
+/// the setters, so a field a later release needs can be added without
+/// breaking callers.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct TypeDraft<'a> {
     /// `Name`.
     pub name: Option<&'a str>,
@@ -71,10 +93,138 @@ pub struct TypeDraft<'a> {
     /// Slot 8: the `USERDEFINED` fallback. Required when the
     /// predefined type is `USERDEFINED`.
     pub fallback: Option<&'a str>,
+    /// `IfcDoorType.OperationType`, an `IfcDoorTypeOperationEnum` token;
+    /// required on `IfcDoorType`.
+    pub operation_type: Option<&'a str>,
+    /// `IfcDoorType.UserDefinedOperationType`.
+    pub user_defined_operation_type: Option<&'a str>,
+    /// `IfcWindowType.PartitioningType`, an `IfcWindowTypePartitioningEnum`
+    /// token; required on `IfcWindowType`.
+    pub partitioning_type: Option<&'a str>,
+    /// `IfcWindowType.UserDefinedPartitioningType`.
+    pub user_defined_partitioning_type: Option<&'a str>,
+    /// `ParameterTakesPrecedence` on `IfcDoorType` and `IfcWindowType`.
+    pub parameter_takes_precedence: Option<bool>,
+    /// `IfcEventType.EventTriggerType`, an `IfcEventTriggerTypeEnum` token;
+    /// required on `IfcEventType`.
+    pub event_trigger_type: Option<&'a str>,
+    /// `IfcEventType.UserDefinedEventTriggerType`. Required when
+    /// `event_trigger_type` is `USERDEFINED` (`CorrectEventTriggerType`).
+    pub user_defined_event_trigger_type: Option<&'a str>,
+    /// `IfcFurnitureType.AssemblyPlace`, an `IfcAssemblyPlaceEnum` token;
+    /// required on `IfcFurnitureType`.
+    pub assembly_place: Option<&'a str>,
+}
+
+impl<'a> TypeDraft<'a> {
+    /// Starts an empty draft with every attribute unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets `Name`, which `NameRequired` makes mandatory.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets `Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets `ApplicableOccurrence`.
+    #[must_use]
+    pub fn applicable_occurrence(mut self, value: &'a str) -> Self {
+        self.applicable_occurrence = Some(value);
+        self
+    }
+
+    /// Sets slot 6: `RepresentationMaps` or `Identification`.
+    #[must_use]
+    pub fn maps_or_identification(mut self, value: Slot6<'a>) -> Self {
+        self.maps_or_identification = Some(value);
+        self
+    }
+
+    /// Sets slot 7: `Tag` or `LongDescription`.
+    #[must_use]
+    pub fn tag_or_long_description(mut self, value: &'a str) -> Self {
+        self.tag_or_long_description = Some(value);
+        self
+    }
+
+    /// Sets the slot-8 `USERDEFINED` fallback.
+    #[must_use]
+    pub fn fallback(mut self, value: &'a str) -> Self {
+        self.fallback = Some(value);
+        self
+    }
+
+    /// Sets `IfcDoorType.OperationType`.
+    #[must_use]
+    pub fn operation_type(mut self, value: &'a str) -> Self {
+        self.operation_type = Some(value);
+        self
+    }
+
+    /// Sets `IfcDoorType.UserDefinedOperationType`.
+    #[must_use]
+    pub fn user_defined_operation_type(mut self, value: &'a str) -> Self {
+        self.user_defined_operation_type = Some(value);
+        self
+    }
+
+    /// Sets `IfcWindowType.PartitioningType`.
+    #[must_use]
+    pub fn partitioning_type(mut self, value: &'a str) -> Self {
+        self.partitioning_type = Some(value);
+        self
+    }
+
+    /// Sets `IfcWindowType.UserDefinedPartitioningType`.
+    #[must_use]
+    pub fn user_defined_partitioning_type(mut self, value: &'a str) -> Self {
+        self.user_defined_partitioning_type = Some(value);
+        self
+    }
+
+    /// Sets `ParameterTakesPrecedence` (`IfcDoorType`, `IfcWindowType`).
+    #[must_use]
+    pub fn parameter_takes_precedence(mut self, value: bool) -> Self {
+        self.parameter_takes_precedence = Some(value);
+        self
+    }
+
+    /// Sets `IfcEventType.EventTriggerType`.
+    #[must_use]
+    pub fn event_trigger_type(mut self, value: &'a str) -> Self {
+        self.event_trigger_type = Some(value);
+        self
+    }
+
+    /// Sets `IfcEventType.UserDefinedEventTriggerType`.
+    #[must_use]
+    pub fn user_defined_event_trigger_type(mut self, value: &'a str) -> Self {
+        self.user_defined_event_trigger_type = Some(value);
+        self
+    }
+
+    /// Sets `IfcFurnitureType.AssemblyPlace`.
+    #[must_use]
+    pub fn assembly_place(mut self, value: &'a str) -> Self {
+        self.assembly_place = Some(value);
+        self
+    }
 }
 
 /// What slot 6 holds, which differs by [`Family`].
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub enum Slot6<'a> {
     /// `RepresentationMaps`: shape definitions the occurrences map.
     RepresentationMaps(&'a [EntityId]),
@@ -104,7 +254,15 @@ pub enum Slot6<'a> {
 /// Refuses a malformed GlobalId, a token outside the entity's enum, a
 /// missing predefined type where the schema requires one, `USERDEFINED`
 /// without the fallback attribute, and a slot-6 value of the wrong
-/// shape for the entity's family.
+/// shape for the entity's family. A type-specific token outside its
+/// enumeration is [`ElementTypeError::Invalid`], one for an attribute the
+/// type does not declare [`ElementTypeError::AuthoringNotInSchema`], and
+/// `USERDEFINED` `event_trigger_type` without
+/// `user_defined_event_trigger_type` is refused (`CorrectEventTriggerType`).
+/// A required attribute left unset, such as `IfcDoorType.OperationType` or
+/// `IfcFurnitureType.AssemblyPlace`, is
+/// [`ElementTypeError::AuthoringRequired`], never written `$` (#214).
+/// Nothing is staged on an error.
 pub fn create_type(
     tx: &mut Transaction,
     kind: ElementType,
@@ -141,7 +299,7 @@ pub fn create_type(
 /// `IfcBearingType`); [`ElementTypeError::AuthoringNotInSchema`] for a
 /// token where the release declares no `PredefinedType`, and
 /// [`ElementTypeError::AuthoringRequired`] for any other attribute the
-/// release requires that the draft cannot carry. Nothing is staged on an
+/// release requires that the draft leaves unset. Nothing is staged on an
 /// error.
 pub fn create_type_in(
     tx: &mut Transaction,
@@ -291,27 +449,96 @@ fn author(
         Family::ResourceOrProcess => "LongDescription",
     };
 
-    let record = layout.named_record(
-        entity,
-        vec![
-            ("GlobalId", Value::Text(global_id.into())),
-            (
-                "OwnerHistory",
-                owner_history.map_or(Value::Null, Value::Ref),
-            ),
-            ("Name", text(draft.name)),
-            ("Description", text(draft.description)),
-            ("ApplicableOccurrence", text(draft.applicable_occurrence)),
-            (slot6_name, slot6),
-            (slot7_name, text(draft.tag_or_long_description)),
-            (kind.fallback_attr, text(draft.fallback)),
-            (
-                "PredefinedType",
-                predefined_type.map_or(Value::Null, |t| Value::Enum(t.into())),
-            ),
-        ],
-    )?;
+    let specific = specific_values(layout, entity, &draft)?;
+    let mut values = vec![
+        ("GlobalId", Value::Text(global_id.into())),
+        (
+            "OwnerHistory",
+            owner_history.map_or(Value::Null, Value::Ref),
+        ),
+        ("Name", text(draft.name)),
+        ("Description", text(draft.description)),
+        ("ApplicableOccurrence", text(draft.applicable_occurrence)),
+        (slot6_name, slot6),
+        (slot7_name, text(draft.tag_or_long_description)),
+        (kind.fallback_attr, text(draft.fallback)),
+        (
+            "PredefinedType",
+            predefined_type.map_or(Value::Null, |t| Value::Enum(t.into())),
+        ),
+    ];
+    values.extend(specific);
+    let record = layout.named_record(entity, values)?;
     Ok(tx.create(record))
+}
+
+/// The type-specific attributes of `draft` (#214), checked against the
+/// bound release: a token must be a member of the enumeration the release
+/// declares for that attribute on `entity`, and a value for an attribute
+/// `entity` does not declare there is
+/// [`ElementTypeError::AuthoringNotInSchema`]. Unset fields yield `$`,
+/// which [`Layout::named_record`] drops for an undeclared attribute and
+/// refuses for a required one.
+fn specific_values(
+    layout: Layout,
+    entity: &'static str,
+    draft: &TypeDraft<'_>,
+) -> ElementTypeResult<Vec<(&'static str, Value)>> {
+    let enums = [
+        ("OperationType", draft.operation_type),
+        ("PartitioningType", draft.partitioning_type),
+        ("EventTriggerType", draft.event_trigger_type),
+        ("AssemblyPlace", draft.assembly_place),
+    ];
+    let mut values = Vec::new();
+    for (attribute, token) in enums {
+        let Some(token) = token else {
+            continue;
+        };
+        let Some(members) = layout.members(entity, attribute) else {
+            return Err(ElementTypeError::AuthoringNotInSchema {
+                entity,
+                attribute,
+                schema: layout.version(),
+            });
+        };
+        if !members.contains(&token) {
+            return Err(invalid(entity, attribute, token));
+        }
+        values.push((attribute, Value::Enum(token.into())));
+    }
+    // `IfcEventType.CorrectEventTriggerType`: USERDEFINED names its trigger
+    // in `UserDefinedEventTriggerType`. Blank is refused as for `fallback`.
+    if draft.event_trigger_type == Some("USERDEFINED")
+        && blank(draft.user_defined_event_trigger_type)
+    {
+        return Err(invalid(
+            entity,
+            "UserDefinedEventTriggerType",
+            "required by USERDEFINED",
+        ));
+    }
+    values.extend([
+        (
+            "UserDefinedOperationType",
+            text(draft.user_defined_operation_type),
+        ),
+        (
+            "UserDefinedPartitioningType",
+            text(draft.user_defined_partitioning_type),
+        ),
+        (
+            "UserDefinedEventTriggerType",
+            text(draft.user_defined_event_trigger_type),
+        ),
+        (
+            "ParameterTakesPrecedence",
+            draft
+                .parameter_takes_precedence
+                .map_or(Value::Null, Value::Bool),
+        ),
+    ]);
+    Ok(values)
 }
 
 fn text(value: Option<&str>) -> Value {

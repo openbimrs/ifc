@@ -65,6 +65,7 @@ impl HorizontalSegmentType {
 
 /// Resolved IFC4x3 `IfcAlignmentHorizontalSegment` parameters in SI units.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct HorizontalSegment {
     /// The `IfcAlignmentHorizontalSegment` entity this was read from.
     pub entity: EntityId,

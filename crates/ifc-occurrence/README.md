@@ -28,3 +28,10 @@ The [`openbim-ifc`](https://crates.io/crates/openbim-ifc) facade also provides i
   release's table, so a class IFC4 lacks is refused in an IFC4 model, and
   IFC2X3, which requires `IfcRoot.OwnerHistory`, needs the owner-history
   variant.
+- The type pairing is the declared release's own: the IFC4X3 and IFC4
+  `CorrectTypeAssigned` rules, and IFC2X3's documented pairing, which
+  types an `IfcDoor` by an `IfcDoorStyle`. The catalogue records one
+  column per release, generated from each release's EXPRESS source.
+- `OccurrenceDraft` is `#[non_exhaustive]`: build it with `new()` and the
+  setters named after its fields. It carries what IFC2X3 requires of a
+  few classes (`ShapeType`, the reinforcement bar measures, `BarRole`).

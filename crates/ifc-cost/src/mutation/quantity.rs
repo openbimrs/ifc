@@ -32,6 +32,7 @@ use super::{CostAuthoringError, CostAuthoringResult};
 /// carries. Keeping the pair together is what stops an area being written
 /// with a length measure, which parses and validates but is wrong.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum QuantityKind {
     /// `IfcQuantityLength.LengthValue`, an `IfcLengthMeasure`.
     Length,
@@ -99,6 +100,7 @@ impl QuantityKind {
 
 /// Authored fields for a simple physical quantity.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct QuantityDraft<'a> {
     /// The dimension being measured.
     pub kind: QuantityKind,
@@ -271,4 +273,41 @@ fn require_quantity(
         actual,
         expected: "IFCPHYSICALQUANTITY",
     })
+}
+
+impl<'a> QuantityDraft<'a> {
+    /// Starts a draft for a quantity of `kind` named `name` measuring
+    /// `value`, with every optional attribute unset.
+    #[must_use]
+    pub const fn new(kind: QuantityKind, name: &'a str, value: f64) -> Self {
+        Self {
+            kind,
+            name,
+            description: None,
+            unit: None,
+            value,
+            formula: None,
+        }
+    }
+
+    /// Sets `IfcPhysicalQuantity.Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets `IfcPhysicalSimpleQuantity.Unit`, an `IfcNamedUnit` reference.
+    #[must_use]
+    pub fn unit(mut self, value: EntityId) -> Self {
+        self.unit = Some(value);
+        self
+    }
+
+    /// Sets `Formula`, the derivation note.
+    #[must_use]
+    pub fn formula(mut self, value: &'a str) -> Self {
+        self.formula = Some(value);
+        self
+    }
 }

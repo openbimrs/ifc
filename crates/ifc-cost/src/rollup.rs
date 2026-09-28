@@ -53,6 +53,7 @@ pub fn rolled_up_total(view: &CostView<'_>, item: &CostItem<'_>) -> Result<f64, 
 
 /// How an item's own stated total compares with the sum of its children.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub struct Consistency {
     /// The item's own stated values.
     pub direct: f64,

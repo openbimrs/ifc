@@ -127,7 +127,11 @@ pub enum DoorOperationType {
 }
 
 /// `IfcDoorPanelPositionEnum`: where a panel sits in the door, as written.
+///
+/// Non-exhaustive, so a later IFC release can add a position without a
+/// breaking change here.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum PanelPosition {
     /// `LEFT`: at local low x.
     Left,

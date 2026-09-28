@@ -11,6 +11,7 @@ use crate::view::GeorefView;
 
 /// A resolved project-to-map coordinate operation, normalised to metres.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct ProjectToMap {
     /// The source `IfcGeometricRepresentationContext`.
     pub source_crs: EntityId,

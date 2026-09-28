@@ -15,14 +15,11 @@ fn a_nameless_procedure_is_refused() {
     let model = Model::default();
     let mut tx = Transaction::new(&model);
     for name in [None, Some(""), Some("   ")] {
-        create_procedure(
-            &mut tx,
-            ProcedureDraft {
-                global_id: GUID,
-                name,
-                ..ProcedureDraft::default()
-            },
-        )
+        create_procedure(&mut tx, {
+            let mut draft = ProcedureDraft::new(GUID);
+            draft.name = name;
+            draft
+        })
         .expect_err("HasName");
     }
     assert!(tx.is_empty(), "nothing staged when the rule fails");
@@ -35,14 +32,11 @@ fn the_tail_lands_in_the_declared_slots() {
     let mut tx = Transaction::new(&model);
     let procedure = create_procedure(
         &mut tx,
-        ProcedureDraft {
-            global_id: GUID,
-            name: Some("Commission chiller"),
-            identification: Some("PRC-14"),
-            long_description: Some("Full commissioning sequence"),
-            predefined_type: Some("STARTUP"),
-            ..ProcedureDraft::default()
-        },
+        ProcedureDraft::new(GUID)
+            .name("Commission chiller")
+            .identification("PRC-14")
+            .long_description("Full commissioning sequence")
+            .predefined_type("STARTUP"),
     )
     .expect("procedure");
     tx.commit(&mut model).expect("commit");
@@ -76,23 +70,17 @@ fn userdefined_without_an_object_type_is_refused() {
     let mut tx = Transaction::new(&model);
     create_procedure(
         &mut tx,
-        ProcedureDraft {
-            global_id: GUID,
-            name: Some("Bespoke purge"),
-            predefined_type: Some("USERDEFINED"),
-            ..ProcedureDraft::default()
-        },
+        ProcedureDraft::new(GUID)
+            .name("Bespoke purge")
+            .predefined_type("USERDEFINED"),
     )
     .expect_err("CorrectPredefinedType");
     create_procedure(
         &mut tx,
-        ProcedureDraft {
-            global_id: GUID,
-            name: Some("Bespoke purge"),
-            object_type: Some("Nitrogen purge"),
-            predefined_type: Some("USERDEFINED"),
-            ..ProcedureDraft::default()
-        },
+        ProcedureDraft::new(GUID)
+            .name("Bespoke purge")
+            .object_type("Nitrogen purge")
+            .predefined_type("USERDEFINED"),
     )
     .expect("named kind is accepted");
     assert_eq!(tx.len(), 1, "only the named draft staged");
@@ -105,12 +93,9 @@ fn a_token_outside_the_enum_is_refused() {
     let mut tx = Transaction::new(&model);
     create_procedure(
         &mut tx,
-        ProcedureDraft {
-            global_id: GUID,
-            name: Some("Commission"),
-            predefined_type: Some("COMMISSIONING"),
-            ..ProcedureDraft::default()
-        },
+        ProcedureDraft::new(GUID)
+            .name("Commission")
+            .predefined_type("COMMISSIONING"),
     )
     .expect_err("COMMISSIONING is not a declared token");
 }

@@ -10,19 +10,7 @@ use ifc_schedule::{create_work_control, WorkControlDraft, WorkControlKind};
 const GUID: &str = "1hqA$FMcT8$hVvcqsRDBzZ";
 
 fn draft() -> WorkControlDraft<'static> {
-    WorkControlDraft {
-        global_id: GUID,
-        name: Some("Sweep"),
-        description: None,
-        identification: None,
-        creation_date: "2026-09-22T09:00:00",
-        purpose: None,
-        duration: None,
-        total_float: None,
-        start_time: "2026-09-22T09:00:00",
-        finish_time: None,
-        predefined_type: None,
-    }
+    WorkControlDraft::new(GUID, "2026-09-22T09:00:00", "2026-09-22T09:00:00").name("Sweep")
 }
 
 /// Both work-control forms stage under their own type name.

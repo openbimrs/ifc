@@ -30,6 +30,7 @@ use crate::view::AlignmentView;
 
 /// Exact neutral curve graph for one or more IFC alignment segments.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct LoweredAlignmentCurve {
     /// The neutral geometry graph holding the lowered curve and its
     /// supporting nodes (trims, composites).
@@ -94,6 +95,7 @@ fn closed_form_end_point(segment: &HorizontalSegment) -> Option<Point2> {
 /// `CLOTHOID` rather than "some unsupported segment", and the entity id so
 /// it can point at the offending line of the source file.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct RefusedSegment {
     /// The `IfcAlignmentHorizontalSegment` entity that was refused.
     pub entity: EntityId,
@@ -115,6 +117,7 @@ pub struct RefusedSegment {
 /// would. A run ends wherever a segment is refused: continuity across a
 /// segment this crate did not lower is not a fact it is entitled to assert.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct PartialHorizontalLayout {
     /// Maximal runs of consecutive exactly-lowered segments, in authored
     /// order.

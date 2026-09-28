@@ -12,6 +12,15 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `SystemAnomaly` and `RoleInconsistency` are `#[non_exhaustive]`: a match
+  needs a wildcard arm.
+- The read-side `Connection`, `Port`, `System`, `Zone` and
+  `SpatialPlacement` are `#[non_exhaustive]`, so a later release's attribute
+  can be added without a breaking change; they can no longer be built with a
+  struct literal outside the crate.
+
 ### Changed
 
 - Depends on `ifc-schema` with its default features named explicitly

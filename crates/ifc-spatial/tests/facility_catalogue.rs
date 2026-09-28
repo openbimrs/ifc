@@ -16,15 +16,7 @@ const GUID: &str = "1hqA$FMcT8$hVvcqsRDBzZ";
 
 /// A draft naming itself, so `USERDEFINED` tokens are legal.
 fn named() -> FacilityDraft<'static> {
-    FacilityDraft {
-        name: Some("Sweep"),
-        description: None,
-        object_type: Some("Bespoke"),
-        placement: None,
-        long_name: None,
-        composition: None,
-        usage: None,
-    }
+    FacilityDraft::new().name("Sweep").object_type("Bespoke")
 }
 
 /// Every catalogued facility stages, with the arity its row declares.

@@ -32,7 +32,11 @@ const EXTERNAL_KIND: &[&str] = &[
 ];
 
 /// Attributes of an `IfcExternalSpatialElement`.
+///
+/// `#[non_exhaustive]`: build it with [`ExternalSpatialDraft::new`] and the
+/// setters.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct ExternalSpatialDraft<'a> {
     /// `Name`.
     pub name: Option<&'a str>,
@@ -48,6 +52,63 @@ pub struct ExternalSpatialDraft<'a> {
     pub long_name: Option<&'a str>,
     /// `PredefinedType`, an `IfcExternalSpatialElementTypeEnum` token.
     pub predefined_type: Option<&'a str>,
+}
+
+impl<'a> ExternalSpatialDraft<'a> {
+    /// An empty draft: every attribute unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set `Name`.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Set `Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Set `ObjectType`; required when `predefined_type` is `USERDEFINED`.
+    #[must_use]
+    pub fn object_type(mut self, value: &'a str) -> Self {
+        self.object_type = Some(value);
+        self
+    }
+
+    /// Set `ObjectPlacement`.
+    #[must_use]
+    pub fn placement(mut self, value: EntityId) -> Self {
+        self.placement = Some(value);
+        self
+    }
+
+    /// Set `Representation`.
+    #[must_use]
+    pub fn representation(mut self, value: EntityId) -> Self {
+        self.representation = Some(value);
+        self
+    }
+
+    /// Set `LongName`.
+    #[must_use]
+    pub fn long_name(mut self, value: &'a str) -> Self {
+        self.long_name = Some(value);
+        self
+    }
+
+    /// Set `PredefinedType`, an `IfcExternalSpatialElementTypeEnum` token.
+    #[must_use]
+    pub fn predefined_type(mut self, value: &'a str) -> Self {
+        self.predefined_type = Some(value);
+        self
+    }
 }
 
 /// Stage an `IfcExternalSpatialElement`.
@@ -108,7 +169,11 @@ pub(super) fn check_external(
 }
 
 /// Attributes of an `IfcProjectLibrary`.
+///
+/// `#[non_exhaustive]`: build it with [`ProjectLibraryDraft::new`] and the
+/// setters.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct ProjectLibraryDraft<'a> {
     /// `Name`.
     pub name: Option<&'a str>,
@@ -122,6 +187,56 @@ pub struct ProjectLibraryDraft<'a> {
     pub phase: Option<&'a str>,
     /// `UnitsInContext`, an `IfcUnitAssignment`.
     pub units: Option<EntityId>,
+}
+
+impl<'a> ProjectLibraryDraft<'a> {
+    /// An empty draft: every attribute unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set `Name`.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Set `Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Set `ObjectType`.
+    #[must_use]
+    pub fn object_type(mut self, value: &'a str) -> Self {
+        self.object_type = Some(value);
+        self
+    }
+
+    /// Set `LongName`.
+    #[must_use]
+    pub fn long_name(mut self, value: &'a str) -> Self {
+        self.long_name = Some(value);
+        self
+    }
+
+    /// Set `Phase`.
+    #[must_use]
+    pub fn phase(mut self, value: &'a str) -> Self {
+        self.phase = Some(value);
+        self
+    }
+
+    /// Set `UnitsInContext`, an `IfcUnitAssignment`.
+    #[must_use]
+    pub fn units(mut self, value: EntityId) -> Self {
+        self.units = Some(value);
+        self
+    }
 }
 
 /// Stage an `IfcProjectLibrary`.

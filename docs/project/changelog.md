@@ -22,6 +22,14 @@ lockstep -- is archived in the
 
 ### ifc-alignment
 
+### Changed (breaking)
+
+- The read-side `HorizontalSegment`, `CantSegment`, `CantLayout`,
+  `CantAtStation`, `LinearPlacement`, `StationEquation`,
+  `LoweredAlignmentCurve`, `PartialHorizontalLayout` and `RefusedSegment`
+  are `#[non_exhaustive]`; they can no longer be built with a struct literal
+  outside the crate.
+
 ### Changed
 
 - Depends on `ifc-schema` with its default features named explicitly
@@ -55,6 +63,11 @@ lockstep -- is archived in the
   follows `ifc_schema::TypeKind` becoming `#[non_exhaustive]`.
 
 ### ifc-classification
+
+### Changed (breaking)
+
+- `ClassificationHierarchy` and `EffectiveClassifications` are
+  `#[non_exhaustive]`.
 
 ### Changed
 
@@ -94,6 +107,51 @@ lockstep -- is archived in the
 
 ### ifc-cost
 
+### Added
+
+- IFC2X3 cost schedules can carry their dates (#214): `DateTimeValue`
+  carries a date either as IFC4/IFC4X3 `IfcDateTime` text
+  (`DateTimeValue::Text`, `From<&str>`) or as one of the IFC2X3
+  `IfcDateTimeSelect` records (`Date(CalendarDate)`, `Time(LocalTime)`,
+  `DateAndTime(CalendarDate, LocalTime)`). In IFC2X3
+  `create_cost_schedule_with_owner_history` stages the `IfcCalendarDate`,
+  `IfcLocalTime` and `IfcDateAndTime` records for `SubmittedOn` and
+  `UpdateDate` and references them, only once the schedule itself is
+  accepted. Record forms are checked against the schema's rules before
+  anything is staged (`IfcValidCalendarDate` with `IfcLeapYear`,
+  `IfcValidTime`, and the component ranges), refused with `InvalidValue`.
+  The types duplicate `ifc-schedule`'s, since sibling domain crates may not
+  depend on each other.
+- Every draft has a constructor and a setter per optional field, named
+  after it: `CostItemDraft::new(global_id)`,
+  `CostScheduleDraft::new(global_id)`,
+  `NestingDraft::new(global_id, parent, children)`,
+  `ScheduleAssignmentDraft::new(global_id, schedule, items)`,
+  `QuantityDraft::new(kind, name, value)`; `CostValueDraft` keeps
+  `monetary` and `Default` and gains setters.
+
+### Fixed
+
+- `create_cost_schedule_with_owner_history` no longer refuses every dated
+  IFC2X3 schedule (#214): a record form is written as the
+  `IfcDateTimeSelect` IFC2X3 declares. In IFC4 and IFC4X3 a record form is
+  refused with `AuthoringValueType`, as text is in IFC2X3.
+
+### Changed (breaking)
+
+- `CostValueDraft`, `CostItemDraft`, `CostScheduleDraft`, `NestingDraft`,
+  `ScheduleAssignmentDraft` and `QuantityDraft` are `#[non_exhaustive]`:
+  build them with their constructors and setters instead of a struct
+  literal. Their fields stay public to read and assign.
+- `CostScheduleDraft::submitted_on` and `update_date` are
+  `Option<DateTimeValue<'a>>` (were `Option<&'a str>`); text converts with
+  `.into()` or through the setters, and IFC4/IFC4X3 output is unchanged.
+- `#[non_exhaustive]` on the public enums and result structs a later
+  release could extend: `CostItemType`, `CostScheduleType`,
+  `CostValueKind`, `QuantityKind`, `ArithmeticOperator`, `UnitBasis` and
+  `Consistency`. A `match` outside the crate needs a wildcard arm, and the
+  structs can no longer be built outside it.
+
 ### Changed
 
 - Depends on `ifc-schema` with its default features named explicitly
@@ -105,6 +163,43 @@ lockstep -- is archived in the
   never read as IFC4 or IFC4X3.
 
 ### ifc-element-type
+
+### Added
+
+- `TypeDraft` fields for the type-specific attributes IFC4 and IFC4X3
+  require (#214): `operation_type` and `user_defined_operation_type`
+  (`IfcDoorType`), `partitioning_type` and `user_defined_partitioning_type`
+  (`IfcWindowType`), `parameter_takes_precedence` (both), `event_trigger_type`
+  and `user_defined_event_trigger_type` (`IfcEventType`), and
+  `assembly_place` (`IfcFurnitureType`, IFC2X3 too). Tokens are checked
+  against the bound release's enumeration (`Invalid` otherwise); a value for
+  an attribute the type does not declare is refused with
+  `AuthoringNotInSchema`; `USERDEFINED` `event_trigger_type` without a
+  non-blank `user_defined_event_trigger_type` is refused
+  (`CorrectEventTriggerType`). These four types can now be authored in every
+  release that declares them.
+- `TypeDraft::new` and `SupertypeDraft::new`, and one builder setter per
+  field, named after it (`TypeDraft::new().name("Beam").tag_or_long_description("B-1")`).
+
+### Fixed
+
+- `create_type` (and `create_supertype`), which take no model, no longer
+  write `$` into an attribute IFC4X3 requires: a required attribute left
+  unset is refused with `AuthoringRequired`, staging nothing, as the
+  model-bound writers already did (#214).
+
+### Changed (breaking)
+
+- `TypeDraft` and `SupertypeDraft` are `#[non_exhaustive]`: struct literals
+  outside the crate no longer compile. Use `new()` (or `default()`) and the
+  setters; the fields stay public for reading and assignment.
+- `create_type` refuses `IfcDoorType`, `IfcWindowType`, `IfcEventType` and
+  `IfcFurnitureType` without their required type-specific attribute, where
+  it wrote `$` before.
+- `Slot6`, `Family`, `ElementType` and `SupertypeKind` are
+  `#[non_exhaustive]`: a `match` on `Family` or `Slot6` needs a wildcard arm,
+  and catalogue rows can no longer be built by struct literal outside the
+  crate (use the generated constants).
 
 ### Changed
 
@@ -118,6 +213,14 @@ lockstep -- is archived in the
 
 ### ifc-geometry
 
+### Changed (breaking)
+
+- `ViolationKind`, `Support` and `FunctionStatus` are `#[non_exhaustive]`: a
+  match needs a wildcard arm.
+- `RuleViolation`, `LoweredGeometry` and `MappedInstance` are
+  `#[non_exhaustive]`; they can no longer be built with a struct literal
+  outside the crate.
+
 ### Changed
 
 - Depends on `ifc-schema` with its default features named explicitly
@@ -129,6 +232,11 @@ lockstep -- is archived in the
   never read as IFC4 or IFC4X3.
 
 ### ifc-georef
+
+### Changed (breaking)
+
+- The read-side `ProjectToMap` and `ProjectedCrs` are `#[non_exhaustive]`;
+  they can no longer be built with a struct literal outside the crate.
 
 ### Changed
 
@@ -142,6 +250,10 @@ lockstep -- is archived in the
 
 ### ifc-material
 
+### Changed (breaking)
+
+- `ResolvedAssignment` is `#[non_exhaustive]`.
+
 ### Changed
 
 - Depends on `ifc-schema` with its default features named explicitly
@@ -154,7 +266,64 @@ lockstep -- is archived in the
   releases, but no layout here is verified against them, so they are
   never read as IFC4 or IFC4X3.
 
+### ifc-model
+
+### Changed (breaking)
+
+- `Conflict` and `Stop` are `#[non_exhaustive]`: a match needs a wildcard
+  arm, so a new commit-conflict or walk-stop reason is not a breaking
+  change.
+- `Applied` is `#[non_exhaustive]`: read its fields; it can no longer be
+  built with a struct literal outside the crate.
+
 ### ifc-occurrence
+
+### Added
+
+- `OccurrenceDraft` fields for what IFC2X3 TC1 requires of a few classes
+  (#214): `shape_type` (`IfcRamp`, `IfcRoof`, `IfcStair`), `nominal_diameter`
+  and `cross_section_area` (`IfcReinforcingBar`, `IfcTendon`), `bar_role`
+  (`IfcReinforcingBar`), and `longitudinal_bars` and `transverse_bars`
+  (`IfcReinforcingMesh`), each a new `MeshBars` of nominal diameter,
+  cross-section area and spacing. These IFC2X3 records can now be authored
+  with `create_with_owner_history`; IFC4 and IFC4X3, which declare the
+  measures `OPTIONAL`, write them when given. A value for an attribute the
+  bound release does not declare on the class is refused with
+  `AuthoringNotInSchema`.
+- `OccurrenceError::UnknownToken` (a `ShapeType` or `BarRole` outside the
+  release's enumeration), `InvalidMeasure` (a non-positive or non-finite
+  `IfcPositiveLengthMeasure`, a non-finite `IfcAreaMeasure`) and
+  `TypeClassNotInSchema` (the bound release pairs no type class with the
+  occurrence, such as an IFC2X3 `IfcStair`), appended.
+- `OccurrenceError` implements `Display` and `std::error::Error`.
+- `OccurrenceDraft::new` and one builder setter per field, named after it.
+- `Occurrence::ifc4_type_class` and `Occurrence::ifc2x3_type_class`: the type
+  class IFC4 ADD2 TC1 and IFC2X3 TC1 pair with each class, generated from
+  their EXPRESS sources by `scripts/gen-occurrences.py`.
+
+### Fixed
+
+- The occurrence-to-type pairing follows the declared release (#214). It was
+  IFC4X3's `CorrectTypeAssigned` in every release, so an IFC2X3 `IfcDoor`
+  typed by an `IfcDoorStyle` was refused; IFC2X3 now pairs doors and windows
+  with `IfcDoorStyle` and `IfcWindowStyle` and every other class with the
+  later releases' type class where IFC2X3 declares it, and IFC4 uses its own
+  rules (IFC4's `IfcTransformer` rule names the undeclared
+  `IFCTRANFORMERTYPE`, an erratum recorded as written). The referenced type
+  is compared with `TYPEOF` semantics, subtypes included.
+
+### Changed (breaking)
+
+- `OccurrenceDraft` is `#[non_exhaustive]`: struct literals outside the crate
+  no longer compile. Use `new()` (or `default()`) and the setters; the fields
+  stay public.
+- `Occurrence`, the generated catalogue row, is `#[non_exhaustive]` and has
+  two new fields; it can no longer be built by struct literal outside the
+  crate (use the generated constants).
+- An IFC2X3 or IFC4 `typed_by` is checked against that release's pairing:
+  a class IFC2X3 pairs with nothing (its type class undeclared there) is
+  refused with `TypeClassNotInSchema` where it was checked against the
+  IFC4X3 class, and `WrongTypeClass.expected` names the release's class.
 
 ### Changed
 
@@ -167,6 +336,14 @@ lockstep -- is archived in the
   never read as IFC4 or IFC4X3.
 
 ### ifc-properties
+
+### Changed (breaking)
+
+- `Comparison` is `#[non_exhaustive]`: a match needs a wildcard arm.
+- The read results `ExactProperty`, `ExactPropertyEntry`, `ExactTableRow`,
+  `Property`, `PropertySet`, `QuantitySet`, `ResolvedSet` and
+  `PropertySetTemplate` are `#[non_exhaustive]`; compare their fields
+  instead of building one with a struct literal.
 
 ### Changed
 
@@ -200,6 +377,71 @@ lockstep -- is archived in the
   `#[non_exhaustive]`.
 
 ### ifc-schedule
+
+### Added
+
+- IFC2X3 work plans and work schedules can be authored (#214):
+  `DateTimeValue` carries a date either as IFC4/IFC4X3 `IfcDateTime` text
+  (`DateTimeValue::Text`, `From<&str>`) or as one of the IFC2X3
+  `IfcDateTimeSelect` records (`Date(CalendarDate)`, `Time(LocalTime)`,
+  `DateAndTime(CalendarDate, LocalTime)`). In IFC2X3
+  `create_work_control_with_owner_history` stages the `IfcCalendarDate`,
+  `IfcLocalTime` and `IfcDateAndTime` records and references them, only
+  once the work control itself is accepted. Record forms are checked
+  against the schema's rules before anything is staged
+  (`IfcValidCalendarDate` with `IfcLeapYear`, `IfcValidTime`, and the
+  ranges of `IfcMonthInYearNumber`, `IfcHourInDay`, `IfcMinuteInHour` and
+  `IfcSecondInMinute`), refused with `InvalidValue`. `CalendarDate` and
+  `LocalTime` are `#[non_exhaustive]`; `LocalTime` does not yet carry
+  `Zone` or `DaylightSavingOffset`, which are written `$`.
+- IFC2X3 sequences can be authored (#214): `TimeLag::Seconds` is the
+  IFC2X3 `IfcRelSequence.TimeLag : IfcTimeMeasure`, `TimeLag::LagTime` the
+  IFC4/IFC4X3 `IfcLagTime` reference. A non-finite lag is refused with
+  `InvalidValue`.
+- `ProcedureDraft::user_defined_procedure_type`, written as the IFC2X3
+  `IfcProcedure.UserDefinedProcedureType` (#214), so a `USERDEFINED` IFC2X3
+  procedure can be authored.
+- Every draft has a `new` constructor taking its required fields
+  (`TaskDraft::new(global_id)`, `WorkControlDraft::new(global_id,
+  creation_date, start_time)`, `EventDraft::new(global_id)`,
+  `ProcedureDraft::new(global_id)`, `RecurrenceDraft::new(recurrence_type)`,
+  `EventTimeDraft::new()`, `TaskTimeDraft::new()`) and a setter per other
+  field, named after it, as `ifc-resource`'s drafts are built.
+
+### Fixed
+
+- `create_work_control_with_owner_history`, `create_sequence_with_owner_history`
+  and `create_procedure_with_owner_history` no longer refuse the IFC2X3
+  records the drafts could not carry (#214). `IfcProcedure.WR4` is enforced
+  instead: an IFC2X3 `USERDEFINED` procedure without a non-blank
+  `user_defined_procedure_type` is refused with `InvalidValue`.
+- The release-bound writers refuse a `SchemaVersion` this build carries no
+  table for with `UnsupportedSchema` instead of panicking.
+
+### Changed (breaking)
+
+- `TaskDraft`, `WorkControlDraft`, `EventDraft`, `EventTimeDraft`,
+  `RecurrenceDraft`, `ProcedureDraft` and `TaskTimeDraft` are
+  `#[non_exhaustive]`: build them with `new` and the setters instead of a
+  struct literal. Their fields stay public to read and assign.
+- `WorkControlDraft::creation_date` and `start_time` are
+  `DateTimeValue<'a>` (were `&'a str`) and `finish_time` is
+  `Option<DateTimeValue<'a>>` (was `Option<&'a str>`). The plain
+  `create_work_control` refuses a record form with `InvalidValue`; with text
+  its output is unchanged.
+- `create_sequence_with_owner_history` takes `time_lag: Option<TimeLag>`
+  (was `Option<EntityId>`); wrap an `IfcLagTime` id in `TimeLag::LagTime`.
+  The plain `create_sequence` is unchanged.
+- `ProcedureDraft` has the new `user_defined_procedure_type` field; the
+  plain `create_procedure`, which writes IFC4/IFC4X3, refuses a value for
+  it with `InvalidValue`, and the release-bound writer refuses it in IFC4
+  and IFC4X3 with `AuthoringNotInSchema`.
+- `#[non_exhaustive]` on the public enums and result structs a later
+  release could extend: `SequenceType`, `DurationType`, `TaskTimeAnomaly`,
+  `WorkControlKind`, `WorkTimeRole`, `RecurrenceType`, `Lag`, `Sequence`,
+  `SequenceCycle`, `EventTime`, `Recurrence` and `WorkTime`. A `match`
+  outside the crate needs a wildcard arm, and the structs can no longer be
+  built outside it.
 
 ### Changed
 
@@ -297,6 +539,57 @@ lockstep -- is archived in the
 
 ### ifc-spatial
 
+### Added
+
+- `SpatialDraft::interior_or_exterior`: the IFC2X3 `IfcSpace.
+  InteriorOrExteriorSpace` (`IfcInternalOrExternalEnum`), which that
+  release requires, so `create_spatial_element_with_owner_history` can
+  author an IFC2X3 space (#214). IFC4 and IFC4X3 do not declare the
+  attribute: a value there, or on a container other than a space, is
+  refused with `AuthoringNotInSchema`, a token outside IFC2X3's enumeration
+  with `AuthoringValueType`, and the plain IFC4/IFC4X3 `create_spatial_element`
+  refuses it with `AuthoringNotInSchema` instead of dropping it.
+- `create_project_with_owner_history` takes the project's representation
+  contexts, so an IFC2X3 `IfcProject`, which requires
+  `RepresentationContexts` (and `UnitsInContext`), can be authored (#214).
+  Each context must resolve in the model or on the transaction
+  (`MissingReference`), be an `IfcRepresentationContext`
+  (`WrongReferenceType`), not be an `IfcGeometricRepresentationSubContext`
+  (IFC2X3 `WR32`, IFC4 and IFC4X3 `CorrectContext`), and not repeat
+  (`Invalid`); an empty slice leaves the attribute `$`, which IFC2X3 refuses
+  with `AuthoringRequired`.
+- A constructor and builder setters on every draft: `SpatialDraft::new()`,
+  `FacilityDraft::new()`, `ExternalSpatialDraft::new()` and
+  `ProjectLibraryDraft::new()` start empty; `BoundaryDraft::new(space,
+  element, physical_or_virtual, internal_or_external)` takes the four
+  attributes the schema requires. Each optional field has a setter of the
+  same name taking the unwrapped value (`SpatialDraft::new().name("L1")
+  .composition("ELEMENT")`), following `ifc-resource`'s drafts.
+
+### Fixed
+
+- A model whose declared release has no bundled table is refused with
+  `UnsupportedSchema` by the release-bound writers instead of panicking.
+
+### Changed (breaking)
+
+- `SpatialDraft`, `FacilityDraft`, `BoundaryDraft`, `ExternalSpatialDraft`
+  and `ProjectLibraryDraft` are `#[non_exhaustive]`: struct literals and
+  `..Default::default()` updates no longer compile outside the crate; build
+  them with `new` and the setters. Fields stay public for reading and
+  assignment.
+- `SpatialDraft` has a new field, `interior_or_exterior`.
+- `create_project_with_owner_history(tx, model, global_id, name, units,
+  representation_contexts, owner_history)`: the new `representation_contexts:
+  &[EntityId]` parameter sits before `owner_history`. Pass `&[]` for the
+  previous IFC4/IFC4X3 record.
+- `#[non_exhaustive]` on the public read-side and catalogue types a later
+  IFC release could extend: `SpaceBoundary`, `BoundaryPhysicality`,
+  `BoundaryExposure`, `Relationship`, `RelationshipKind`, `SpatialKind`,
+  `SpatialNode`, `BoundaryLevel` and `Facility`. Matches on the enums need
+  a wildcard arm outside the crate, and the structs can no longer be built
+  by literal there.
+
 ### Changed
 
 - Depends on `ifc-schema` with its default features named explicitly
@@ -310,6 +603,10 @@ lockstep -- is archived in the
   never read as IFC4 or IFC4X3.
 
 ### ifc-structural
+
+### Changed (breaking)
+
+- `MemberConnection` and `ActivityAssignment` are `#[non_exhaustive]`.
 
 ### Changed
 
@@ -325,6 +622,11 @@ lockstep -- is archived in the
   `#[non_exhaustive]`.
 
 ### ifc-style
+
+### Changed (breaking)
+
+- `AppearanceSupport` is `#[non_exhaustive]`: a match needs a wildcard arm;
+  `AppearanceDeclaration` is `#[non_exhaustive]`.
 
 ### Added
 
@@ -345,6 +647,15 @@ lockstep -- is archived in the
 
 ### ifc-systems
 
+### Changed (breaking)
+
+- `SystemAnomaly` and `RoleInconsistency` are `#[non_exhaustive]`: a match
+  needs a wildcard arm.
+- The read-side `Connection`, `Port`, `System`, `Zone` and
+  `SpatialPlacement` are `#[non_exhaustive]`, so a later release's attribute
+  can be added without a breaking change; they can no longer be built with a
+  struct literal outside the crate.
+
 ### Changed
 
 - Depends on `ifc-schema` with its default features named explicitly
@@ -364,7 +675,22 @@ lockstep -- is archived in the
   crate's dependency (`ifc_schema::ifc4()`) enables it on its own
   `ifc-schema` dependency (default features bundle every release).
 
+### ifc-template-catalog
+
+### Changed (breaking)
+
+- `ValidationIssue`, `ValidationReport`, `CatalogDiagnostic`,
+  `ExportSummary`, `Advisory`, `AppliedPatch` and `UnresolvedApplicability`
+  are `#[non_exhaustive]`; they can no longer be built with a struct literal
+  outside the crate.
+
 ### ifc-validate
+
+### Changed (breaking)
+
+- `Support` is `#[non_exhaustive]`: a match needs a wildcard arm.
+- `Finding` is `#[non_exhaustive]`; it can no longer be built with a struct
+  literal outside the crate.
 
 ### Changed
 
@@ -383,6 +709,11 @@ lockstep -- is archived in the
 ### openbim-ifc
 
 ### Changed (breaking)
+
+- `PanelPosition` and `Unreachable` are `#[non_exhaustive]`: a match needs a
+  wildcard arm.
+- `Sector` and `ContainerElements` are `#[non_exhaustive]`; they can no
+  longer be built with a struct literal outside the crate.
 
 - Code previously behind `schema` is behind `schema-api`, which `schema`
   and every release feature imply; `schema::for_version` returns a

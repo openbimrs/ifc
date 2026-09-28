@@ -127,6 +127,14 @@ impl<'m> ResourceView<'m, 'static> {
                     token: token.clone(),
                 });
             }
+            // A release added to `SchemaVersion` later has no reviewed
+            // resource layout: refused rather than read with another's.
+            #[allow(unreachable_patterns)]
+            _ => {
+                return Err(ResourceError::UnsupportedSchema {
+                    token: token.clone(),
+                });
+            }
         };
         Self::new(model, schema)
     }

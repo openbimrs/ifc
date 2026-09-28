@@ -12,6 +12,71 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- IFC2X3 work plans and work schedules can be authored (#214):
+  `DateTimeValue` carries a date either as IFC4/IFC4X3 `IfcDateTime` text
+  (`DateTimeValue::Text`, `From<&str>`) or as one of the IFC2X3
+  `IfcDateTimeSelect` records (`Date(CalendarDate)`, `Time(LocalTime)`,
+  `DateAndTime(CalendarDate, LocalTime)`). In IFC2X3
+  `create_work_control_with_owner_history` stages the `IfcCalendarDate`,
+  `IfcLocalTime` and `IfcDateAndTime` records and references them, only
+  once the work control itself is accepted. Record forms are checked
+  against the schema's rules before anything is staged
+  (`IfcValidCalendarDate` with `IfcLeapYear`, `IfcValidTime`, and the
+  ranges of `IfcMonthInYearNumber`, `IfcHourInDay`, `IfcMinuteInHour` and
+  `IfcSecondInMinute`), refused with `InvalidValue`. `CalendarDate` and
+  `LocalTime` are `#[non_exhaustive]`; `LocalTime` does not yet carry
+  `Zone` or `DaylightSavingOffset`, which are written `$`.
+- IFC2X3 sequences can be authored (#214): `TimeLag::Seconds` is the
+  IFC2X3 `IfcRelSequence.TimeLag : IfcTimeMeasure`, `TimeLag::LagTime` the
+  IFC4/IFC4X3 `IfcLagTime` reference. A non-finite lag is refused with
+  `InvalidValue`.
+- `ProcedureDraft::user_defined_procedure_type`, written as the IFC2X3
+  `IfcProcedure.UserDefinedProcedureType` (#214), so a `USERDEFINED` IFC2X3
+  procedure can be authored.
+- Every draft has a `new` constructor taking its required fields
+  (`TaskDraft::new(global_id)`, `WorkControlDraft::new(global_id,
+  creation_date, start_time)`, `EventDraft::new(global_id)`,
+  `ProcedureDraft::new(global_id)`, `RecurrenceDraft::new(recurrence_type)`,
+  `EventTimeDraft::new()`, `TaskTimeDraft::new()`) and a setter per other
+  field, named after it, as `ifc-resource`'s drafts are built.
+
+### Fixed
+
+- `create_work_control_with_owner_history`, `create_sequence_with_owner_history`
+  and `create_procedure_with_owner_history` no longer refuse the IFC2X3
+  records the drafts could not carry (#214). `IfcProcedure.WR4` is enforced
+  instead: an IFC2X3 `USERDEFINED` procedure without a non-blank
+  `user_defined_procedure_type` is refused with `InvalidValue`.
+- The release-bound writers refuse a `SchemaVersion` this build carries no
+  table for with `UnsupportedSchema` instead of panicking.
+
+### Changed (breaking)
+
+- `TaskDraft`, `WorkControlDraft`, `EventDraft`, `EventTimeDraft`,
+  `RecurrenceDraft`, `ProcedureDraft` and `TaskTimeDraft` are
+  `#[non_exhaustive]`: build them with `new` and the setters instead of a
+  struct literal. Their fields stay public to read and assign.
+- `WorkControlDraft::creation_date` and `start_time` are
+  `DateTimeValue<'a>` (were `&'a str`) and `finish_time` is
+  `Option<DateTimeValue<'a>>` (was `Option<&'a str>`). The plain
+  `create_work_control` refuses a record form with `InvalidValue`; with text
+  its output is unchanged.
+- `create_sequence_with_owner_history` takes `time_lag: Option<TimeLag>`
+  (was `Option<EntityId>`); wrap an `IfcLagTime` id in `TimeLag::LagTime`.
+  The plain `create_sequence` is unchanged.
+- `ProcedureDraft` has the new `user_defined_procedure_type` field; the
+  plain `create_procedure`, which writes IFC4/IFC4X3, refuses a value for
+  it with `InvalidValue`, and the release-bound writer refuses it in IFC4
+  and IFC4X3 with `AuthoringNotInSchema`.
+- `#[non_exhaustive]` on the public enums and result structs a later
+  release could extend: `SequenceType`, `DurationType`, `TaskTimeAnomaly`,
+  `WorkControlKind`, `WorkTimeRole`, `RecurrenceType`, `Lag`, `Sequence`,
+  `SequenceCycle`, `EventTime`, `Recurrence` and `WorkTime`. A `match`
+  outside the crate needs a wildcard arm, and the structs can no longer be
+  built outside it.
+
 ### Changed
 
 - Depends on `ifc-schema` with its default features named explicitly

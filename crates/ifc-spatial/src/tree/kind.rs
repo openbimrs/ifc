@@ -20,6 +20,7 @@ use ifc_schema::{for_version, Schema, SchemaVersion};
 /// The five named kinds are those exact entities. Every other spatial
 /// element of the release is [`OtherContainer`](Self::OtherContainer).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum SpatialKind {
     /// `IfcProject` -- the root. A conformant file has exactly one.
     Project,

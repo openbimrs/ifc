@@ -77,6 +77,14 @@ impl<'m> GeorefView<'m> {
                     token: token.clone(),
                 });
             }
+            // A release added to `SchemaVersion` later has no reviewed
+            // georeferencing layout: refused rather than read with another's.
+            #[allow(unreachable_patterns)]
+            _ => {
+                return Err(GeorefError::UnsupportedSchema {
+                    token: token.clone(),
+                });
+            }
         };
         Ok(Self {
             model,

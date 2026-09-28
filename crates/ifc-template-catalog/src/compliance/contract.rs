@@ -150,6 +150,7 @@ pub enum ValidationCode {
 }
 /// One deviation found while validating an [`ObservedSet`] against a template.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ValidationIssue {
     /// Which check produced this issue.
     pub code: ValidationCode,
@@ -162,6 +163,7 @@ pub struct ValidationIssue {
 }
 /// Every deviation found by one [`validate`](super::validate) call.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub struct ValidationReport {
     /// Issues found, in the order they were detected.
     pub issues: Vec<ValidationIssue>,

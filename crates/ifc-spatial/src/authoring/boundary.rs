@@ -23,6 +23,7 @@ use super::{invalid, SpatialAuthoringResult};
 
 /// Which space-boundary level to stage.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum BoundaryLevel {
     /// `IfcRelSpaceBoundary`: the boundary alone.
     Base,
@@ -44,7 +45,11 @@ impl BoundaryLevel {
 }
 
 /// Authored fields for a space boundary.
+///
+/// `#[non_exhaustive]`: build it with [`BoundaryDraft::new`] and the
+/// setters.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct BoundaryDraft<'a> {
     /// `IfcRoot.Name`.
     pub name: Option<&'a str>,
@@ -64,6 +69,66 @@ pub struct BoundaryDraft<'a> {
     pub parent: Option<EntityId>,
     /// `CorrespondingBoundary`. Second level only.
     pub corresponding: Option<EntityId>,
+}
+
+impl<'a> BoundaryDraft<'a> {
+    /// A boundary of `space` formed by `element`, with the two enumeration
+    /// tokens the schema requires (`PhysicalOrVirtualBoundary`,
+    /// `InternalOrExternalBoundary`); every optional attribute unset.
+    #[must_use]
+    pub fn new(
+        space: EntityId,
+        element: EntityId,
+        physical_or_virtual: &'a str,
+        internal_or_external: &'a str,
+    ) -> Self {
+        Self {
+            name: None,
+            description: None,
+            space,
+            element,
+            connection_geometry: None,
+            physical_or_virtual,
+            internal_or_external,
+            parent: None,
+            corresponding: None,
+        }
+    }
+
+    /// Set `IfcRoot.Name`.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Set `IfcRoot.Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Set `ConnectionGeometry`.
+    #[must_use]
+    pub fn connection_geometry(mut self, value: EntityId) -> Self {
+        self.connection_geometry = Some(value);
+        self
+    }
+
+    /// Set `ParentBoundary` (first and second levels only).
+    #[must_use]
+    pub fn parent(mut self, value: EntityId) -> Self {
+        self.parent = Some(value);
+        self
+    }
+
+    /// Set `CorrespondingBoundary` (second level only).
+    #[must_use]
+    pub fn corresponding(mut self, value: EntityId) -> Self {
+        self.corresponding = Some(value);
+        self
+    }
 }
 
 const PHYS_OR_VIRT: &[&str] = &["PHYSICAL", "VIRTUAL", "NOTDEFINED"];

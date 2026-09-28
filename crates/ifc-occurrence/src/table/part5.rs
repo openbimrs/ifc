@@ -27,6 +27,8 @@ pub const IFCSTAIR: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCSTAIRTYPE"),
+    ifc4_type_class: Some("IFCSTAIRTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcStairFlight`, 7 permitted tokens.
@@ -44,6 +46,8 @@ pub const IFCSTAIRFLIGHT: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCSTAIRFLIGHTTYPE"),
+    ifc4_type_class: Some("IFCSTAIRFLIGHTTYPE"),
+    ifc2x3_type_class: Some("IFCSTAIRFLIGHTTYPE"),
 };
 
 /// `IfcSurfaceFeature`, 13 permitted tokens.
@@ -67,6 +71,8 @@ pub const IFCSURFACEFEATURE: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: None,
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcSwitchingDevice`, 13 permitted tokens.
@@ -90,6 +96,8 @@ pub const IFCSWITCHINGDEVICE: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCSWITCHINGDEVICETYPE"),
+    ifc4_type_class: Some("IFCSWITCHINGDEVICETYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcSystemFurnitureElement`, 5 permitted tokens.
@@ -105,6 +113,8 @@ pub const IFCSYSTEMFURNITUREELEMENT: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCSYSTEMFURNITUREELEMENTTYPE"),
+    ifc4_type_class: Some("IFCSYSTEMFURNITUREELEMENTTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcTank`, 10 permitted tokens.
@@ -125,6 +135,8 @@ pub const IFCTANK: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCTANKTYPE"),
+    ifc4_type_class: Some("IFCTANKTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcTendon`, 6 permitted tokens.
@@ -141,6 +153,8 @@ pub const IFCTENDON: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCTENDONTYPE"),
+    ifc4_type_class: Some("IFCTENDONTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcTendonAnchor`, 5 permitted tokens.
@@ -156,6 +170,8 @@ pub const IFCTENDONANCHOR: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCTENDONANCHORTYPE"),
+    ifc4_type_class: Some("IFCTENDONANCHORTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcTendonConduit`, 7 permitted tokens.
@@ -173,6 +189,8 @@ pub const IFCTENDONCONDUIT: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCTENDONCONDUITTYPE"),
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcTrackElement`, 10 permitted tokens.
@@ -193,6 +211,8 @@ pub const IFCTRACKELEMENT: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCTRACKELEMENTTYPE"),
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcTransformer`, 9 permitted tokens.
@@ -212,6 +232,8 @@ pub const IFCTRANSFORMER: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCTRANSFORMERTYPE"),
+    ifc4_type_class: Some("IFCTRANFORMERTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcTransportElement`, 8 permitted tokens.
@@ -230,6 +252,8 @@ pub const IFCTRANSPORTELEMENT: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCTRANSPORTELEMENTTYPE"),
+    ifc4_type_class: Some("IFCTRANSPORTELEMENTTYPE"),
+    ifc2x3_type_class: Some("IFCTRANSPORTELEMENTTYPE"),
 };
 
 /// `IfcTubeBundle`, 3 permitted tokens.
@@ -239,6 +263,8 @@ pub const IFCTUBEBUNDLE: Occurrence = Occurrence {
     predefined_slot: Some(8),
     members: &["FINNED", "USERDEFINED", "NOTDEFINED"],
     type_class: Some("IFCTUBEBUNDLETYPE"),
+    ifc4_type_class: Some("IFCTUBEBUNDLETYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcUnitaryControlElement`, 12 permitted tokens.
@@ -261,6 +287,8 @@ pub const IFCUNITARYCONTROLELEMENT: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCUNITARYCONTROLELEMENTTYPE"),
+    ifc4_type_class: Some("IFCUNITARYCONTROLELEMENTTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcUnitaryEquipment`, 7 permitted tokens.
@@ -278,6 +306,8 @@ pub const IFCUNITARYEQUIPMENT: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCUNITARYEQUIPMENTTYPE"),
+    ifc4_type_class: Some("IFCUNITARYEQUIPMENTTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcValve`, 23 permitted tokens.
@@ -311,6 +341,8 @@ pub const IFCVALVE: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCVALVETYPE"),
+    ifc4_type_class: Some("IFCVALVETYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcVehicle`, 9 permitted tokens.
@@ -330,6 +362,8 @@ pub const IFCVEHICLE: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCVEHICLETYPE"),
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcVibrationDamper`, 8 permitted tokens.
@@ -348,6 +382,8 @@ pub const IFCVIBRATIONDAMPER: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCVIBRATIONDAMPERTYPE"),
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcVibrationIsolator`, 5 permitted tokens.
@@ -357,6 +393,8 @@ pub const IFCVIBRATIONISOLATOR: Occurrence = Occurrence {
     predefined_slot: Some(8),
     members: &["BASE", "COMPRESSION", "SPRING", "USERDEFINED", "NOTDEFINED"],
     type_class: Some("IFCVIBRATIONISOLATORTYPE"),
+    ifc4_type_class: Some("IFCVIBRATIONISOLATORTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcVirtualElement`, 5 permitted tokens.
@@ -372,6 +410,8 @@ pub const IFCVIRTUALELEMENT: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: None,
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcVoidingFeature`, 8 permitted tokens.
@@ -390,6 +430,8 @@ pub const IFCVOIDINGFEATURE: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: None,
+    ifc4_type_class: None,
+    ifc2x3_type_class: None,
 };
 
 /// `IfcWall`, 13 permitted tokens.
@@ -413,6 +455,8 @@ pub const IFCWALL: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCWALLTYPE"),
+    ifc4_type_class: Some("IFCWALLTYPE"),
+    ifc2x3_type_class: Some("IFCWALLTYPE"),
 };
 
 /// `IfcWallStandardCase`, 13 permitted tokens.
@@ -436,6 +480,8 @@ pub const IFCWALLSTANDARDCASE: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: None,
+    ifc4_type_class: Some("IFCWALLTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcWasteTerminal`, 9 permitted tokens.
@@ -455,6 +501,8 @@ pub const IFCWASTETERMINAL: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCWASTETERMINALTYPE"),
+    ifc4_type_class: Some("IFCWASTETERMINALTYPE"),
+    ifc2x3_type_class: None,
 };
 
 /// `IfcWindow`, 5 permitted tokens.
@@ -470,4 +518,6 @@ pub const IFCWINDOW: Occurrence = Occurrence {
         "NOTDEFINED",
     ],
     type_class: Some("IFCWINDOWTYPE"),
+    ifc4_type_class: Some("IFCWINDOWTYPE"),
+    ifc2x3_type_class: Some("IFCWINDOWSTYLE"),
 };

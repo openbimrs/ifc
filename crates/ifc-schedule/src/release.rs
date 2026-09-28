@@ -55,7 +55,11 @@ pub(crate) fn bind(model: &Model) -> Result<Release> {
             })
         }
     };
-    let schema = for_version(version).expect("every SchemaVersion has a bundled table");
+    // A release this build carries no table for (a future `SchemaVersion`)
+    // is refused, never assumed to be laid out like another.
+    let schema = for_version(version).map_err(|_| ScheduleAuthoringError::UnsupportedSchema {
+        schema: format!("{version:?}"),
+    })?;
     Ok(Release { version, schema })
 }
 

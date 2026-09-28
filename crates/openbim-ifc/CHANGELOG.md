@@ -14,6 +14,11 @@ everything released before per-crate changelogs began.
 
 ### Changed (breaking)
 
+- `PanelPosition` and `Unreachable` are `#[non_exhaustive]`: a match needs a
+  wildcard arm.
+- `Sector` and `ContainerElements` are `#[non_exhaustive]`; they can no
+  longer be built with a struct literal outside the crate.
+
 - Code previously behind `schema` is behind `schema-api`, which `schema`
   and every release feature imply; `schema::for_version` returns a
   `Result` (see `ifc-schema`).

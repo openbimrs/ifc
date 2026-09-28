@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `Comparison` is `#[non_exhaustive]`: a match needs a wildcard arm.
+- The read results `ExactProperty`, `ExactPropertyEntry`, `ExactTableRow`,
+  `Property`, `PropertySet`, `QuantitySet`, `ResolvedSet` and
+  `PropertySetTemplate` are `#[non_exhaustive]`; compare their fields
+  instead of building one with a struct literal.
+
 ### Changed
 
 - Depends on `ifc-schema` with its default features named explicitly

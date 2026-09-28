@@ -22,3 +22,12 @@ The [`openbim-ifc`](https://crates.io/crates/openbim-ifc) facade also provides i
   their `*_with_owner_history` variants write the model's declared release
   instead, laid out from its own table; IFC2X3, which requires
   `IfcRoot.OwnerHistory`, needs the owner-history variants.
+- Every writer refuses a required attribute left unset rather than write
+  `$` into it. `TypeDraft` carries the four type-specific attributes the
+  releases require (`IfcDoorType.OperationType`,
+  `IfcWindowType.PartitioningType`, `IfcEventType.EventTriggerType`,
+  `IfcFurnitureType.AssemblyPlace`), each token checked against the bound
+  release's enumeration.
+- The drafts are `#[non_exhaustive]`: build them with `new()` and the
+  setters named after their fields, so a field a later release needs can
+  be added without breaking callers.

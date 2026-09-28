@@ -13,6 +13,7 @@ use ifc_schema::SchemaVersion;
 /// relationship still has a usable system graph, and refusing the whole
 /// model would make the crate useless on real exports.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SystemAnomaly {
     /// A relationship names an entity that is not in the file.
     Dangling {

@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `Support` is `#[non_exhaustive]`: a match needs a wildcard arm.
+- `Finding` is `#[non_exhaustive]`; it can no longer be built with a struct
+  literal outside the crate.
+
 ### Changed
 
 - Depends on `ifc-schema` with its default features named explicitly

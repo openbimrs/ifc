@@ -78,14 +78,7 @@ fn author(model: &mut Model, owned: bool) -> Vec<EntityId> {
     .expect("property");
     let area = create_quantity(&mut tx, model, QuantityKind::Area, "GrossArea", 12.5).expect("q");
     let count = create_quantity(&mut tx, model, QuantityKind::Count, "Doors", 4.0).expect("q");
-    let draft = QuantityDraft {
-        kind: Cost::Volume,
-        name: "Concrete",
-        description: None,
-        unit: None,
-        value: 3.75,
-        formula: None,
-    };
+    let draft = QuantityDraft::new(Cost::Volume, "Concrete", 3.75);
     let volume = cost_quantity(&mut tx, model, draft).expect("cost quantity");
     let (g1, g2) = ("0YvctVUKr0kugbFTf53O08", "0YvctVUKr0kugbFTf53O09");
     let pset = if owned {

@@ -10,9 +10,9 @@ mod release_fixture;
 use ifc_model::{Codec, Value};
 use ifc_schema::{for_version, SchemaVersion};
 use ifc_spatial::relation::{self, boundary, RelationshipKind};
-use ifc_spatial::SpatialTree;
+use ifc_spatial::{SpatialKind, SpatialTree};
 use ifc_step::StepCodec;
-use release_fixture::{author, base, OWNER, RELEASES, SPACE, WALL, WALL2};
+use release_fixture::{author, base, CONTEXT, OWNER, RELEASES, SPACE, WALL, WALL2};
 
 #[test]
 fn every_spatial_record_round_trips_in_its_release() {
@@ -21,10 +21,11 @@ fn every_spatial_record_round_trips_in_its_release() {
         let mut model = base(schema, version);
         let authored = author(&mut model, version);
         let expected = match version {
-            SchemaVersion::Ifc2x3 => 22,
+            SchemaVersion::Ifc2x3 => 25,
             SchemaVersion::Ifc4 => 32,
             SchemaVersion::Ifc4x3 => 36,
-            other => unreachable!("{other:?} is not swept"),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!("RELEASES names these three"),
         };
         assert_eq!(authored.written.len(), expected, "{schema}");
 
@@ -63,6 +64,30 @@ fn every_spatial_record_round_trips_in_its_release() {
         let ancestors = tree.ancestors(authored.storey);
         for parent in [authored.building, authored.site, authored.project] {
             assert!(ancestors.contains(&parent), "{schema}: {ancestors:?}");
+        }
+        // #214: IFC2X3 spaces carry `InteriorOrExteriorSpace`, and its
+        // project the required `RepresentationContexts`; IFC4 and IFC4X3
+        // keep the project without them.
+        let slot_of = |entity: &str, attribute: &str| {
+            let names = table.attribute_names(entity);
+            names.iter().position(|n| *n == attribute).unwrap()
+        };
+        let project = back.get(authored.project).unwrap();
+        let contexts = &project.attributes[slot_of("IFCPROJECT", "RepresentationContexts")];
+        if version == SchemaVersion::Ifc2x3 {
+            let room = back.get(authored.room).unwrap();
+            assert_eq!(
+                room.attributes[slot_of("IFCSPACE", "InteriorOrExteriorSpace")],
+                Value::Enum("INTERNAL".into())
+            );
+            assert_eq!(*contexts, Value::List(vec![Value::Ref(CONTEXT)]));
+            assert!(tree.ancestors(authored.room).contains(&authored.storey));
+            assert_eq!(
+                tree.node(authored.room).map(|n| n.kind),
+                Some(SpatialKind::Space)
+            );
+        } else {
+            assert_eq!(*contexts, Value::Null, "{schema}");
         }
         let relationships = relation::all(&back);
         let covering = relationships

@@ -779,6 +779,7 @@ fn declared_variant_support_matches_runtime_behaviour() {
                     "{family} / {variant:?} must be a typed gap, not corruption: {error}"
                 );
             }
+            other => panic!("{family} / {variant:?}: support {other:?} has no corpus check"),
         }
     }
 }

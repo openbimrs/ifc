@@ -29,24 +29,20 @@ fn each_shape_lands_its_tail_in_the_declared_slots() {
     let external = create_external_spatial_element(
         &mut tx,
         GUID,
-        ExternalSpatialDraft {
-            name: Some("North air"),
-            placement: Some(placement),
-            long_name: Some("Air space north of the facade"),
-            predefined_type: Some("EXTERNAL_EARTH"),
-            ..ExternalSpatialDraft::default()
-        },
+        ExternalSpatialDraft::new()
+            .name("North air")
+            .placement(placement)
+            .long_name("Air space north of the facade")
+            .predefined_type("EXTERNAL_EARTH"),
     )
     .expect("external spatial element");
     let library = create_project_library(
         &mut tx,
         GUID2,
-        ProjectLibraryDraft {
-            name: Some("Standard types"),
-            phase: Some("Design"),
-            units: Some(units),
-            ..ProjectLibraryDraft::default()
-        },
+        ProjectLibraryDraft::new()
+            .name("Standard types")
+            .phase("Design")
+            .units(units),
         &[context],
     )
     .expect("project library");
@@ -76,20 +72,15 @@ fn userdefined_without_an_object_type_is_refused() {
     create_external_spatial_element(
         &mut tx,
         GUID,
-        ExternalSpatialDraft {
-            predefined_type: Some("USERDEFINED"),
-            ..ExternalSpatialDraft::default()
-        },
+        ExternalSpatialDraft::new().predefined_type("USERDEFINED"),
     )
     .expect_err("USERDEFINED needs ObjectType");
     create_external_spatial_element(
         &mut tx,
         GUID,
-        ExternalSpatialDraft {
-            predefined_type: Some("USERDEFINED"),
-            object_type: Some("Acoustic buffer"),
-            ..ExternalSpatialDraft::default()
-        },
+        ExternalSpatialDraft::new()
+            .predefined_type("USERDEFINED")
+            .object_type("Acoustic buffer"),
     )
     .expect("named kind is accepted");
     assert_eq!(tx.len(), 1, "only the named draft staged");
@@ -103,10 +94,7 @@ fn a_token_outside_the_enum_is_refused() {
     create_external_spatial_element(
         &mut tx,
         GUID,
-        ExternalSpatialDraft {
-            predefined_type: Some("EXTERNAL_AIR"),
-            ..ExternalSpatialDraft::default()
-        },
+        ExternalSpatialDraft::new().predefined_type("EXTERNAL_AIR"),
     )
     .expect_err("EXTERNAL_AIR is not a declared token");
     assert!(tx.is_empty(), "nothing staged when the token is unknown");
@@ -133,16 +121,9 @@ fn declared_arities_match_the_schema() {
 fn an_absent_context_set_is_null_not_empty() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let library = create_project_library(
-        &mut tx,
-        GUID,
-        ProjectLibraryDraft {
-            name: Some("Types"),
-            ..ProjectLibraryDraft::default()
-        },
-        &[],
-    )
-    .expect("library without contexts");
+    let library =
+        create_project_library(&mut tx, GUID, ProjectLibraryDraft::new().name("Types"), &[])
+            .expect("library without contexts");
     tx.commit(&mut model).expect("commit");
     let l = model.get(library).expect("library");
     assert_eq!(

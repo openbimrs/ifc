@@ -41,6 +41,7 @@ use ifc_spatial::SpatialTree;
 
 /// Why one product will not be drawn.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Unreachable {
     /// No `IfcRelContainedInSpatialStructure` names it, and no aggregation,
     /// nesting or voiding relationship explains the absence.

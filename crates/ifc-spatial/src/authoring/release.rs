@@ -63,7 +63,12 @@ pub(crate) fn bind(model: &Model) -> SpatialAuthoringResult<Release> {
             })
         }
     };
-    let schema = for_version(version).expect("every SchemaVersion has a bundled table");
+    // A release this build carries no table for (a future `SchemaVersion`
+    // member, or one whose table is feature-gated off) is refused, not
+    // assumed to share another release's layout.
+    let schema = for_version(version).map_err(|_| SpatialAuthoringError::UnsupportedSchema {
+        schema: version.release_id().to_owned(),
+    })?;
     Ok(Release { version, schema })
 }
 
@@ -161,6 +166,60 @@ impl Release {
                 expected: "IFCOWNERHISTORY",
             })
         }
+    }
+}
+
+impl Release {
+    /// Fail unless every id in `contexts` is, in the model or staged on
+    /// `tx`, an `IfcRepresentationContext` of this release that is not an
+    /// `IfcGeometricRepresentationSubContext`, and none repeats.
+    ///
+    /// `IfcContext.RepresentationContexts` is a `SET`, and every release's
+    /// `IfcProject` forbids a sub-context there (IFC2X3 TC1 `WR32`, IFC4 ADD2
+    /// TC1 and IFC4X3 ADD2 `CorrectContext`).
+    pub(crate) fn require_contexts(
+        self,
+        tx: &Transaction,
+        model: &Model,
+        entity: &'static str,
+        contexts: &[EntityId],
+    ) -> SpatialAuthoringResult<()> {
+        const ATTRIBUTE: &str = "RepresentationContexts";
+        const CONTEXT: &str = "IFCREPRESENTATIONCONTEXT";
+        const SUBCONTEXT: &str = "IFCGEOMETRICREPRESENTATIONSUBCONTEXT";
+        for (index, &id) in contexts.iter().enumerate() {
+            if contexts[..index].contains(&id) {
+                return Err(super::invalid(
+                    entity,
+                    ATTRIBUTE,
+                    format!("#{} repeats in a SET", id.0),
+                ));
+            }
+            let actual = projected_type(tx, model, id)
+                .ok_or(SpatialAuthoringError::MissingReference {
+                    entity,
+                    attribute: ATTRIBUTE,
+                    target: id,
+                })?
+                .to_ascii_uppercase();
+            if !self.schema.is_a(&actual, CONTEXT) {
+                return Err(SpatialAuthoringError::WrongReferenceType {
+                    entity,
+                    attribute: ATTRIBUTE,
+                    target: id,
+                    actual,
+                    expected: CONTEXT,
+                });
+            }
+            if self.schema.is_a(&actual, SUBCONTEXT) {
+                return Err(super::invalid(
+                    entity,
+                    ATTRIBUTE,
+                    format!("#{} is an IfcGeometricRepresentationSubContext", id.0),
+                ));
+            }
+        }
+        Ok(())
     }
 }
 

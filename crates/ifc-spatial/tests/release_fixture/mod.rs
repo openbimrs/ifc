@@ -36,8 +36,6 @@ pub const RELEASES: [(&str, SchemaVersion); 3] = [
 ];
 
 pub const OWNER: EntityId = EntityId(5);
-/// The IFC2X3 fixture's project; IFC4 and IFC4X3 author theirs.
-pub const PROJECT: EntityId = EntityId(6);
 pub const CONTEXT: EntityId = EntityId(7);
 pub const UNITS: EntityId = EntityId(8);
 pub const WALL: EntityId = EntityId(10);
@@ -88,9 +86,8 @@ pub fn guid(n: usize) -> String {
 }
 
 /// Actors, an owner history (`#5`), a representation context, units and
-/// the elements the relationships name, in `schema`. The IFC2X3 model
-/// also holds its project (`#6`): IFC2X3 requires the representation
-/// contexts the project writer does not take.
+/// the elements the relationships name, in `schema`. The project is
+/// authored, with the representation contexts IFC2X3 requires (#214).
 pub fn base(schema: &str, version: SchemaVersion) -> Model {
     let table = for_version(version).unwrap();
     let mut data = String::from(
@@ -105,12 +102,6 @@ pub fn base(schema: &str, version: SchemaVersion) -> Model {
          #90=IFCCARTESIANPOINT((0.,0.,0.));\n\
          #91=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);\n",
     );
-    if version == SchemaVersion::Ifc2x3 {
-        data.push_str(&format!(
-            "#6=IFCPROJECT('{}',#5,'Project',$,$,$,$,(#7),#8);\n",
-            guid(900)
-        ));
-    }
     let mut rooted = ROOTED.to_vec();
     if version == SchemaVersion::Ifc4x3 {
         rooted.push((ALIGNMENT, "IFCALIGNMENT"));
@@ -143,6 +134,9 @@ pub fn base(schema: &str, version: SchemaVersion) -> Model {
 /// What authoring staged, by role.
 pub struct Authored {
     pub project: EntityId,
+    /// The authored `IfcSpace`: in IFC2X3 with its required
+    /// `InteriorOrExteriorSpace` and aggregated into the storey (#214).
+    pub room: EntityId,
     pub site: EntityId,
     pub building: EntityId,
     pub storey: EntityId,
@@ -173,19 +167,14 @@ pub fn author(model: &mut Model, version: SchemaVersion) -> Authored {
         written.push(id);
         id
     };
-    let project = if ifc4 {
-        keep(
-            create_project_with_owner_history(tx, m, &next(), Some("P"), Some(UNITS), OWNER)
-                .unwrap(),
-        )
-    } else {
-        PROJECT
-    };
-    let element = |name| SpatialDraft {
-        name: Some(name),
-        composition: Some("ELEMENT"),
-        ..SpatialDraft::default()
-    };
+    // IFC2X3 requires `RepresentationContexts`; IFC4 and IFC4X3 records
+    // are kept as they were before #214, without them.
+    let contexts: &[EntityId] = if ifc4 { &[] } else { &[CONTEXT] };
+    let project = keep(
+        create_project_with_owner_history(tx, m, &next(), Some("P"), Some(UNITS), contexts, OWNER)
+            .unwrap(),
+    );
+    let element = |name| SpatialDraft::new().name(name).composition("ELEMENT");
     let spatial = |tx: &mut Transaction, kind, id: &str, name| {
         create_spatial_element_with_owner_history(tx, m, kind, id, element(name), OWNER).unwrap()
     };
@@ -238,17 +227,7 @@ pub fn author(model: &mut Model, version: SchemaVersion) -> Authored {
         )
         .unwrap(),
     );
-    let boundary = |space, element| BoundaryDraft {
-        name: None,
-        description: None,
-        space,
-        element,
-        connection_geometry: None,
-        physical_or_virtual: "PHYSICAL",
-        internal_or_external: "INTERNAL",
-        parent: None,
-        corresponding: None,
-    };
+    let boundary = |space, element| BoundaryDraft::new(space, element, "PHYSICAL", "INTERNAL");
     let base_boundary = keep(
         create_space_boundary_with_owner_history(
             tx,
@@ -260,12 +239,25 @@ pub fn author(model: &mut Model, version: SchemaVersion) -> Authored {
         )
         .unwrap(),
     );
-    if ifc4 {
-        let space_draft = SpatialDraft {
-            name: Some("Room"),
-            ..SpatialDraft::default()
-        };
-        keep(
+    let room;
+    if !ifc4 {
+        // IFC2X3 requires `CompositionType` and `InteriorOrExteriorSpace`.
+        let space_draft = element("Room").interior_or_exterior("INTERNAL");
+        room = keep(
+            create_spatial_element_with_owner_history(
+                tx,
+                m,
+                SpatialKind::Space,
+                &next(),
+                space_draft,
+                OWNER,
+            )
+            .unwrap(),
+        );
+        keep(aggregate_with_owner_history(tx, m, &next(), storey, &[room], OWNER).unwrap());
+    } else {
+        let space_draft = SpatialDraft::new().name("Room");
+        room = keep(
             create_spatial_element_with_owner_history(
                 tx,
                 m,
@@ -294,19 +286,14 @@ pub fn author(model: &mut Model, version: SchemaVersion) -> Authored {
             interfere_elements_with_owner_history(tx, m, &next(), WALL, WALL2, None, OWNER)
                 .unwrap(),
         );
-        let external = ExternalSpatialDraft {
-            name: Some("Outside"),
-            predefined_type: Some("EXTERNAL"),
-            ..ExternalSpatialDraft::default()
-        };
+        let external = ExternalSpatialDraft::new()
+            .name("Outside")
+            .predefined_type("EXTERNAL");
         keep(
             create_external_spatial_element_with_owner_history(tx, m, &next(), external, OWNER)
                 .unwrap(),
         );
-        let library = ProjectLibraryDraft {
-            name: Some("Library"),
-            ..ProjectLibraryDraft::default()
-        };
+        let library = ProjectLibraryDraft::new().name("Library");
         keep(
             create_project_library_with_owner_history(tx, m, &next(), library, &[CONTEXT], OWNER)
                 .unwrap(),
@@ -322,10 +309,7 @@ pub fn author(model: &mut Model, version: SchemaVersion) -> Authored {
             )
             .unwrap(),
         );
-        let second = BoundaryDraft {
-            parent: Some(first),
-            ..boundary(SPACE, WALL2)
-        };
+        let second = boundary(SPACE, WALL2).parent(first);
         keep(
             create_space_boundary_with_owner_history(
                 tx,
@@ -350,11 +334,7 @@ pub fn author(model: &mut Model, version: SchemaVersion) -> Authored {
             associate_profile_def_with_owner_history(tx, m, &next(), PROFILE, &[WALL_TYPE], OWNER)
                 .unwrap(),
         );
-        let bridge = FacilityDraft {
-            name: Some("Bridge"),
-            composition: Some("ELEMENT"),
-            ..FacilityDraft::default()
-        };
+        let bridge = FacilityDraft::new().name("Bridge").composition("ELEMENT");
         keep(
             create_facility_with_owner_history(
                 tx,
@@ -371,6 +351,7 @@ pub fn author(model: &mut Model, version: SchemaVersion) -> Authored {
     staged.commit(model).expect("commit");
     Authored {
         project,
+        room,
         site,
         building,
         storey,

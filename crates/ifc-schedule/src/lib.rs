@@ -53,8 +53,9 @@ pub use authoring::{
     create_task_with_owner_history, create_time_period, create_work_calendar,
     create_work_calendar_with_owner_history, create_work_control,
     create_work_control_with_owner_history, create_work_time, nest_tasks,
-    nest_tasks_with_owner_history, EventDraft, EventTimeDraft, ProcedureDraft, RecurrenceDraft,
-    ScheduleAuthoringResult, TaskDraft, TaskTimeDraft, WorkControlDraft,
+    nest_tasks_with_owner_history, CalendarDate, DateTimeValue, EventDraft, EventTimeDraft,
+    LocalTime, ProcedureDraft, RecurrenceDraft, ScheduleAuthoringResult, TaskDraft, TaskTimeDraft,
+    TimeLag, WorkControlDraft,
 };
 pub use calendar::{
     work_calendars, Recurrence, RecurrenceType, WorkCalendar, WorkTime, WorkTimeRole,

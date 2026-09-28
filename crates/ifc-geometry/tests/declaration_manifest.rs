@@ -225,6 +225,7 @@ fn the_support_ledger_agrees_with_the_function_registry() {
             FunctionStatus::NativePrimitive => "native-primitive",
             FunctionStatus::NotApplicable => "not-applicable",
             FunctionStatus::Scaffolded => "scaffolded",
+            other => panic!("{other:?} has no ledger spelling"),
         };
         let actual = ledger
             .get(&support.name.to_ascii_lowercase())
