@@ -20,165 +20,6 @@ lockstep -- is archived in the
 
 ## [Unreleased]
 
-### ifc-geometry
-
-### Added
-
-- `BodyItem::item_world`: the frame each described item is placed in, the
-  context and product placement composed with every `MappingTarget o
-  MappingOrigin` it was reached through (#185). It is reported for every item
-  kind, including mapped B-reps and tessellations, and is not required to be
-  rigid, so a mapping that mirrors or scales shows. `BodyItem::is_mirrored()`
-  answers whether that frame reverses handedness, and
-  `Transform::determinant()` gives its signed volume scale. Additive:
-  `BodyItem` is `#[non_exhaustive]`.
-
-### ifc-properties
-
-### Changed (breaking)
-
-- `quantity_set`, `quantity_sets` and complex quantities list a simple
-  quantity whose value is `$`, cut off by a truncated record, or not a
-  number, as the new `Quantity::Unresolved` (#138). It sits in file order
-  beside the others and carries the quantity's id, `Name`, `Description`,
-  kind, stated unit and `Formula`, and a `reason`: the new
-  `UnresolvedValue::Missing` or `UnresolvedValue::NotNumeric { found }`.
-  It has no value field, so nothing can read it as 0. Since #107 such a
-  quantity was reported but left out of `quantities`, so a caller listing a
-  set could not see that it existed. `PropertyAnomaly::QuantityValueMissing`
-  and `QuantityValueNotNumeric` are still reported, once each.
-- `Quantity` is `#[non_exhaustive]`. Exhaustive matches need an arm for
-  `Unresolved` and a wildcard arm. `UnresolvedValue` is `#[non_exhaustive]`
-  too.
-- `compare` returns `Comparison::NotComparable` for an unresolved quantity,
-  and `stated_unit` returns its stated unit.
-- A quantity without a readable value is now checked against `WR21`: a
-  stated unit of the wrong kind is reported as
-  `PropertyAnomaly::QuantityUnitMismatch`, as it is for a valued quantity.
-- New `QuantityKind::Number` for IFC4X3 `IfcQuantityNumber` (#138), and
-  `QuantityKind` is `#[non_exhaustive]`. Exhaustive matches need an arm
-  for `Number` and a wildcard arm. In a model whose declared release is
-  IFC4X3, the permissive readers now resolve `IfcQuantityNumber` as a
-  `Simple` quantity, where they returned `Quantity::Unsupported`.
-  `NumberValue` and `Formula` are located by name in that release's table.
-  A `$` or non-numeric value is `Quantity::Unresolved`, and the anomalies
-  are reported as for the other kinds. Its measure is `IfcNumericMeasure`.
-  It has no WHERE rule, so there is no unit-kind check (`required_unit` is
-  `None`) and a negative number is not a `NegativeQuantity`. `compare`
-  compares it only against a computed `Number`, and `stated_unit` returns
-  whatever unit it states. IFC2X3 and IFC4 do not declare the entity. In
-  their models, and in a model without one known declared release, it
-  stays `Quantity::Unsupported`.
-- Quantity authoring binds to the model's declared release (#138).
-  `create_quantity(tx, model, kind, name, value)` and
-  `create_quantity_with(tx, model, kind, name, value, extras)` take the
-  `&Model` they write into and return `Result<EntityId, PropertyError>`.
-  They used to write the IFC4 five-attribute record into every model, so
-  an IFC2X3 quantity got a `Formula` slot IFC2X3 does not declare.
-  Attributes are now placed by name in the release's table: IFC2X3
-  quantities have four attributes, IFC4 and IFC4X3 ones five. The binding
-  is the one `ifc-material` uses. One recognised `FILE_SCHEMA` binds that
-  release, and a model with no `FILE_SCHEMA` binds IFC4. Several
-  declarations are refused with the new `PropertyError::MultipleSchemas`,
-  and an unknown one with `UnsupportedSchema`. Also refused:
-  - `QuantityKind::Number` outside IFC4X3, with `EntityNotInSchema`;
-  - a `Formula` for an IFC2X3 model, with `AuthoringNotInSchema`;
-  - a non-finite value, with `AuthoringInvalid`.
-
-  A count is no longer truncated. A whole count is still written as an
-  integer. A fractional one is written as a real where `IfcCountMeasure`
-  is `NUMBER` (IFC2X3, IFC4), and refused where it is `INTEGER` (IFC4X3).
-  `set_quantity_value` binds the same way. It writes the value slot named
-  in the release, refuses a record whose attribute count is not the
-  release's with `MalformedEntitySlots`, and repairs a `$` value (a
-  `Quantity::Unresolved`) into a simple quantity. Nothing is staged on a
-  refusal. The new `PropertyError` variants are additive, since the enum is
-  `#[non_exhaustive]`; the signatures are the breaking part.
-  `add_quantity_to_set`, `add_element_quantity` and
-  `add_physical_complex_quantity` are unchanged, because `IfcElementQuantity`
-  and `IfcPhysicalComplexQuantity` have the same attributes in all three
-  releases.
-
-The exact API is unchanged and agrees: `exact_property` refuses a `$` value
-with `MissingValueSlot`, a non-numeric one with `UnsupportedValue` and a
-truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
-
-- `PropertyTemplate` reads every attribute of both template entities by
-  name from the declared release's table (#108) and gains `kind`
-  (`PropertyTemplateKind::Simple` or `Complex`), `enumerators`,
-  `secondary_unit`, `expression`, `access_state`, `usage_name` and
-  `templates` (the nested `HasPropertyTemplates` of a complex template,
-  read through the same bounded, cycle-aware traversal as complex
-  properties, with `template(name)` to look one up). It is now
-  `#[non_exhaustive]`, so code that builds it with a struct literal or
-  destructures it exhaustively must change; later fields will not break
-  callers again.
-
-### Added
-
-- `exact_property_sets_where(model, object, select_set)` and
-  `ExactPropertySetEntry { name, set_id, source, members }`: the property
-  sets and quantity sets an object carries whose names the selector picks,
-  empty ones included (#186). `exact_properties_where` lists properties, so a
-  matching set without any left no trace; an IDS property facet must fail
-  on exactly that set. The traversal, type-over-occurrence order and
-  refusals are those of `exact_properties_where`, except that a
-  `HasProperties` or `Quantities` of `()` or `$` (invalid, both are
-  `SET [1:?]`) is listed with `members == 0` instead of refused: the question
-  is whether the set exists. A type set with an occurrence set's name is
-  listed as well, since overriding works per property.
-
-- `template_deviations(model)` compares every property set that an
-  `IfcRelDefinesByTemplate` links to an `IfcPropertySetTemplate` with that
-  template (#109), reading the model and its templates only, bound to the
-  declared release (IFC4 or IFC4X3; IFC2X3 has no templates and is refused
-  with `TemplateError::NoTemplates`). It returns a `TemplateReport` of
-  `TemplateFinding`s, each naming the set, the template and the concrete
-  mismatch: `MissingProperty`, `UnexpectedProperty` (matched by `Name`, as
-  the IFC4 `IfcPropertySetTemplate` documentation states), `WrongForm` (the
-  property's entity against the template's `TemplateType`, e.g. a single
-  value where `P_ENUMERATEDVALUE` is prescribed), `WrongMeasureType`
-  (`PrimaryMeasureType`, and `SecondaryMeasureType` for bounded and table
-  values, against the declared type of each value or the referenced
-  entity), `WrongSetKind` (a `QTO_*` template on an `IfcPropertySet`, a
-  `PSET_*` one on an `IfcElementQuantity`), `WrongAttachment` (a
-  `*_TYPEDRIVENONLY` set on an occurrence, an `*_OCCURRENCEDRIVEN` set on a
-  type) and `OutsideApplicableEntity` (`IfcEntity[/PREDEFINEDTYPE]`
-  entries, comma separated). Complex properties are compared with complex
-  templates member by member. Quantity sets are checked the same way with
-  `Q_*` templates. What the documentation leaves open is
-  `TemplateFinding::Undecided` with an `UndecidedReason`, never guessed:
-  an unknown or undocumented template type (IFC4X3 `Q_NUMBER`), an unknown
-  measure type or `ApplicableEntity` entry, an object whose predefined
-  type is unstated, a `[PerformanceHistory]` entry, a predefined property
-  set. Malformed facts met on the way are `PropertyAnomaly`s in the same
-  report. New types: `TemplateReport`, `TemplateFinding`, `MeasureRole`,
-  `UndecidedReason`, `TemplateError`, all `#[non_exhaustive]`.
-- `property_template_checked` and `property_set_template_checked` read a
-  template bound to the declared release and report every malformed fact
-  met (#108), refusing a model without a single supported release, an
-  IFC2X3 model (`TemplateError::NoTemplates`), an absent entity and a
-  non-template with `TemplateError`.
-- `PropertyAnomaly::NotATemplate`, `PropertyAnomaly::SlotCountMismatch` and
-  `PropertyAnomaly::MalformedAttribute` (#108, #109): a template member or
-  `RelatingTemplate` that is no template, a record whose attribute count
-  is not the release's, and an attribute value its declared type does not
-  admit (including an enumeration constant the release does not define).
-  `PropertyAnomaly` is `#[non_exhaustive]`, so this is not breaking.
-
-### Fixed
-
-- `property_template` read every template with the
-  `IfcSimplePropertyTemplate` layout (#108), so an
-  `IfcComplexPropertyTemplate`, including one written by
-  `add_complex_property_template`, reported its `UsageName` as its
-  `TemplateType` and never exposed its nested templates; and any entity at
-  all read as a template. It now returns `None` for an entity that is not a
-  simple or complex template in the declared release (the IFC4 table when
-  the header names none it bundles, and nothing in an IFC2X3 file).
-  `property_set_template`, `property_set_templates` and `template_of_set`
-  read their attributes by name the same way.
-
 ### ifc-schema
 
 ### Changed
@@ -189,56 +30,23 @@ truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
 
-### ifc-spatial
-
-### Added
-
-- `SpatialTree::referenced_elements(container)` and
-  `SpatialTree::referencing_structures(element)` (#121): the elements an
-  `IfcRelReferencedInSpatialStructure` references in a container, and the
-  containers referencing an element, in file order and each once, in
-  IFC2X3, IFC4 and IFC4X3. They are kept apart from containment:
-  `elements_of` and `container_of` are unchanged, and a referenced element
-  is never a second home or a `ContainedTwice` anomaly. A reference naming
-  an absent entity is reported by `dangling()`.
-- `SpatialAnomaly::ContainedInNonContainer` and
-  `SpatialAnomaly::ReferencedInNonContainer` (#121): an
-  `IfcRelContainedInSpatialStructure` or `IfcRelReferencedInSpatialStructure`
-  whose `RelatingStructure` is not a spatial container of the release is
-  reported with the relationship and the structure, where containment used
-  to drop it silently.
-- `SpatialKind::classify_in(type_name, release)`, `SpatialTree::release()`
-  and a re-export of `ifc_schema::SchemaVersion`.
-
-### Changed
-
-- Spatial containers are classified from the release the file's
-  `FILE_SCHEMA` declares (#121): an entity is a container when that
-  release's bundled table makes it an `IfcSpatialElement` (IFC2X3:
-  `IfcSpatialStructureElement`), or it is the `IfcProject`. `ifc-schema` is
-  therefore a normal dependency. The IFC4X3 facilities and facility parts
-  (`IfcFacility`, `IfcBridge`, `IfcRoad`, `IfcRailway`,
-  `IfcMarineFacility`, `IfcBridgePart`, `IfcRoadPart`, `IfcRailwayPart`,
-  `IfcMarinePart`, `IfcFacilityPartCommon`) and `IfcExternalSpatialElement`
-  were classified as elements by the old name patterns, so containment into
-  them was dropped; they are now `OtherContainer`, as that variant's
-  documentation promised. `SpatialKind` gains no variant, so this stays
-  additive. A file with no single bundled release is classified as any
-  bundled release would, and `release()` returns `None`.
-- `SpatialKind::classify` answers from the bundled tables instead of name
-  patterns: a name no release declares as a spatial element (such as a
-  vendor `IFCSPATIALFOO`) is an `Element`.
-
-### Fixed
-
-- Only `IfcRelAggregates` and `IfcRelContainedInSpatialStructure` build the
-  tree (#121). Another relationship family whose relating end is a
-  container placed its targets as contained elements: an `IfcRelDeclares`
-  put the project's declared types into the project, and an
-  `IfcRelCoversSpaces` put a space's coverings into the space. Their absent
-  targets are still reported by `dangling()`.
+## [0.8.0] - 2026-09-28
 
 ### openbim-ifc
+
+### Changed (breaking)
+
+- `properties` re-exports `ifc-properties` 0.5.0, whose breaking changes
+  pass through (see that crate's changelog):
+  - `Quantity` and `QuantityKind` are `#[non_exhaustive]`, and gain
+    `Quantity::Unresolved` for a quantity without a readable value (#138)
+    and `QuantityKind::Number` for IFC4X3 `IfcQuantityNumber`;
+  - `create_quantity` / `create_quantity_with` take the `&Model` they write
+    into and write its release's layout;
+  - `PropertyTemplate` gains fields and is `#[non_exhaustive]` (#108).
+- Requires `ifc-spatial` 0.2.3 (`referenced_elements`, release-bound
+  container classification) and `ifc-geometry` 0.4.3
+  (`BodyItem::item_world`, #185).
 
 ### Added
 
@@ -395,7 +203,153 @@ truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
   the domain writers stage into a `Transaction`, which facade users could not
   name, so an editor could be built but never applied.
 
-## [0.5.0] - 2026-09-26
+## [0.5.0] - 2026-09-28
+
+### ifc-properties
+
+### Changed (breaking)
+
+- `quantity_set`, `quantity_sets` and complex quantities list a simple
+  quantity whose value is `$`, cut off by a truncated record, or not a
+  number, as the new `Quantity::Unresolved` (#138). It sits in file order
+  beside the others and carries the quantity's id, `Name`, `Description`,
+  kind, stated unit and `Formula`, and a `reason`: the new
+  `UnresolvedValue::Missing` or `UnresolvedValue::NotNumeric { found }`.
+  It has no value field, so nothing can read it as 0. Since #107 such a
+  quantity was reported but left out of `quantities`, so a caller listing a
+  set could not see that it existed. `PropertyAnomaly::QuantityValueMissing`
+  and `QuantityValueNotNumeric` are still reported, once each.
+- `Quantity` is `#[non_exhaustive]`. Exhaustive matches need an arm for
+  `Unresolved` and a wildcard arm. `UnresolvedValue` is `#[non_exhaustive]`
+  too.
+- `compare` returns `Comparison::NotComparable` for an unresolved quantity,
+  and `stated_unit` returns its stated unit.
+- A quantity without a readable value is now checked against `WR21`: a
+  stated unit of the wrong kind is reported as
+  `PropertyAnomaly::QuantityUnitMismatch`, as it is for a valued quantity.
+- New `QuantityKind::Number` for IFC4X3 `IfcQuantityNumber` (#138), and
+  `QuantityKind` is `#[non_exhaustive]`. Exhaustive matches need an arm
+  for `Number` and a wildcard arm. In a model whose declared release is
+  IFC4X3, the permissive readers now resolve `IfcQuantityNumber` as a
+  `Simple` quantity, where they returned `Quantity::Unsupported`.
+  `NumberValue` and `Formula` are located by name in that release's table.
+  A `$` or non-numeric value is `Quantity::Unresolved`, and the anomalies
+  are reported as for the other kinds. Its measure is `IfcNumericMeasure`.
+  It has no WHERE rule, so there is no unit-kind check (`required_unit` is
+  `None`) and a negative number is not a `NegativeQuantity`. `compare`
+  compares it only against a computed `Number`, and `stated_unit` returns
+  whatever unit it states. IFC2X3 and IFC4 do not declare the entity. In
+  their models, and in a model without one known declared release, it
+  stays `Quantity::Unsupported`.
+- Quantity authoring binds to the model's declared release (#138).
+  `create_quantity(tx, model, kind, name, value)` and
+  `create_quantity_with(tx, model, kind, name, value, extras)` take the
+  `&Model` they write into and return `Result<EntityId, PropertyError>`.
+  They used to write the IFC4 five-attribute record into every model, so
+  an IFC2X3 quantity got a `Formula` slot IFC2X3 does not declare.
+  Attributes are now placed by name in the release's table: IFC2X3
+  quantities have four attributes, IFC4 and IFC4X3 ones five. The binding
+  is the one `ifc-material` uses. One recognised `FILE_SCHEMA` binds that
+  release, and a model with no `FILE_SCHEMA` binds IFC4. Several
+  declarations are refused with the new `PropertyError::MultipleSchemas`,
+  and an unknown one with `UnsupportedSchema`. Also refused:
+  - `QuantityKind::Number` outside IFC4X3, with `EntityNotInSchema`;
+  - a `Formula` for an IFC2X3 model, with `AuthoringNotInSchema`;
+  - a non-finite value, with `AuthoringInvalid`.
+
+  A count is no longer truncated. A whole count is still written as an
+  integer. A fractional one is written as a real where `IfcCountMeasure`
+  is `NUMBER` (IFC2X3, IFC4), and refused where it is `INTEGER` (IFC4X3).
+  `set_quantity_value` binds the same way. It writes the value slot named
+  in the release, refuses a record whose attribute count is not the
+  release's with `MalformedEntitySlots`, and repairs a `$` value (a
+  `Quantity::Unresolved`) into a simple quantity. Nothing is staged on a
+  refusal. The new `PropertyError` variants are additive, since the enum is
+  `#[non_exhaustive]`; the signatures are the breaking part.
+  `add_quantity_to_set`, `add_element_quantity` and
+  `add_physical_complex_quantity` are unchanged, because `IfcElementQuantity`
+  and `IfcPhysicalComplexQuantity` have the same attributes in all three
+  releases.
+
+The exact API is unchanged and agrees: `exact_property` refuses a `$` value
+with `MissingValueSlot`, a non-numeric one with `UnsupportedValue` and a
+truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
+
+- `PropertyTemplate` reads every attribute of both template entities by
+  name from the declared release's table (#108) and gains `kind`
+  (`PropertyTemplateKind::Simple` or `Complex`), `enumerators`,
+  `secondary_unit`, `expression`, `access_state`, `usage_name` and
+  `templates` (the nested `HasPropertyTemplates` of a complex template,
+  read through the same bounded, cycle-aware traversal as complex
+  properties, with `template(name)` to look one up). It is now
+  `#[non_exhaustive]`, so code that builds it with a struct literal or
+  destructures it exhaustively must change; later fields will not break
+  callers again.
+
+### Added
+
+- `exact_property_sets_where(model, object, select_set)` and
+  `ExactPropertySetEntry { name, set_id, source, members }`: the property
+  sets and quantity sets an object carries whose names the selector picks,
+  empty ones included (#186). `exact_properties_where` lists properties, so a
+  matching set without any left no trace; an IDS property facet must fail
+  on exactly that set. The traversal, type-over-occurrence order and
+  refusals are those of `exact_properties_where`, except that a
+  `HasProperties` or `Quantities` of `()` or `$` (invalid, both are
+  `SET [1:?]`) is listed with `members == 0` instead of refused: the question
+  is whether the set exists. A type set with an occurrence set's name is
+  listed as well, since overriding works per property.
+
+- `template_deviations(model)` compares every property set that an
+  `IfcRelDefinesByTemplate` links to an `IfcPropertySetTemplate` with that
+  template (#109), reading the model and its templates only, bound to the
+  declared release (IFC4 or IFC4X3; IFC2X3 has no templates and is refused
+  with `TemplateError::NoTemplates`). It returns a `TemplateReport` of
+  `TemplateFinding`s, each naming the set, the template and the concrete
+  mismatch: `MissingProperty`, `UnexpectedProperty` (matched by `Name`, as
+  the IFC4 `IfcPropertySetTemplate` documentation states), `WrongForm` (the
+  property's entity against the template's `TemplateType`, e.g. a single
+  value where `P_ENUMERATEDVALUE` is prescribed), `WrongMeasureType`
+  (`PrimaryMeasureType`, and `SecondaryMeasureType` for bounded and table
+  values, against the declared type of each value or the referenced
+  entity), `WrongSetKind` (a `QTO_*` template on an `IfcPropertySet`, a
+  `PSET_*` one on an `IfcElementQuantity`), `WrongAttachment` (a
+  `*_TYPEDRIVENONLY` set on an occurrence, an `*_OCCURRENCEDRIVEN` set on a
+  type) and `OutsideApplicableEntity` (`IfcEntity[/PREDEFINEDTYPE]`
+  entries, comma separated). Complex properties are compared with complex
+  templates member by member. Quantity sets are checked the same way with
+  `Q_*` templates. What the documentation leaves open is
+  `TemplateFinding::Undecided` with an `UndecidedReason`, never guessed:
+  an unknown or undocumented template type (IFC4X3 `Q_NUMBER`), an unknown
+  measure type or `ApplicableEntity` entry, an object whose predefined
+  type is unstated, a `[PerformanceHistory]` entry, a predefined property
+  set. Malformed facts met on the way are `PropertyAnomaly`s in the same
+  report. New types: `TemplateReport`, `TemplateFinding`, `MeasureRole`,
+  `UndecidedReason`, `TemplateError`, all `#[non_exhaustive]`.
+- `property_template_checked` and `property_set_template_checked` read a
+  template bound to the declared release and report every malformed fact
+  met (#108), refusing a model without a single supported release, an
+  IFC2X3 model (`TemplateError::NoTemplates`), an absent entity and a
+  non-template with `TemplateError`.
+- `PropertyAnomaly::NotATemplate`, `PropertyAnomaly::SlotCountMismatch` and
+  `PropertyAnomaly::MalformedAttribute` (#108, #109): a template member or
+  `RelatingTemplate` that is no template, a record whose attribute count
+  is not the release's, and an attribute value its declared type does not
+  admit (including an enumeration constant the release does not define).
+  `PropertyAnomaly` is `#[non_exhaustive]`, so this is not breaking.
+
+### Fixed
+
+- `property_template` read every template with the
+  `IfcSimplePropertyTemplate` layout (#108), so an
+  `IfcComplexPropertyTemplate`, including one written by
+  `add_complex_property_template`, reported its `UsageName` as its
+  `TemplateType` and never exposed its nested templates; and any entity at
+  all read as a template. It now returns `None` for an entity that is not a
+  simple or complex template in the declared release (the IFC4 table when
+  the header names none it bundles, and nothing in an IFC2X3 file).
+  `property_set_template`, `property_set_templates` and `template_of_set`
+  read their attributes by name the same way.
 
 ### openbim-ifc
 
@@ -411,6 +365,21 @@ truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
 - **Breaking:** re-exports ifc-properties 0.3, whose
   `UnitKind::Si::prefix_exponent` is now `Option<i32>` and whose
   `UnitKind::Conversion` gains an `offset` field.
+
+## [0.4.3] - 2026-09-28
+
+### ifc-geometry
+
+### Added
+
+- `BodyItem::item_world`: the frame each described item is placed in, the
+  context and product placement composed with every `MappingTarget o
+  MappingOrigin` it was reached through (#185). It is reported for every item
+  kind, including mapped B-reps and tessellations, and is not required to be
+  rigid, so a mapping that mirrors or scales shows. `BodyItem::is_mirrored()`
+  answers whether that frame reverses handedness, and
+  `Transform::determinant()` gives its signed volume scale. Additive:
+  `BodyItem` is `#[non_exhaustive]`.
 
 ## [0.4.2] - 2026-09-27
 
@@ -1370,7 +1339,18 @@ variant, three rule ids are renamed, and `Budget::max_depth` is removed.
 - **Breaking:** requires `ifc-style` 0.3.0, re-exported as `ifc::style`.
   `IndexedTextureMap::maps` there now returns `Vec<EntityId>`.
 
-## [0.2.3] - 2026-09-27
+## [0.2.4] - 2026-09-27
+
+### ifc-schema
+
+Maintenance release from `maint/ifc-schema-0.2`; the code is unchanged since
+0.2.3.
+
+### Added
+
+- A crate README, which is the crates.io page.
+
+## [0.2.3] - 2026-09-28
 
 ### ifc-model
 
@@ -1416,6 +1396,55 @@ dependent's `^0.2.2` resolves to it. `main` carries the same change.
   text that nothing here evaluates. A schema parsed at run time with
   `Schema::from_express` keeps them. The artifacts are about 23-38% smaller.
   `data/NOTICE.md` now states the provenance of the bundled files.
+
+### ifc-spatial
+
+### Added
+
+- `SpatialTree::referenced_elements(container)` and
+  `SpatialTree::referencing_structures(element)` (#121): the elements an
+  `IfcRelReferencedInSpatialStructure` references in a container, and the
+  containers referencing an element, in file order and each once, in
+  IFC2X3, IFC4 and IFC4X3. They are kept apart from containment:
+  `elements_of` and `container_of` are unchanged, and a referenced element
+  is never a second home or a `ContainedTwice` anomaly. A reference naming
+  an absent entity is reported by `dangling()`.
+- `SpatialAnomaly::ContainedInNonContainer` and
+  `SpatialAnomaly::ReferencedInNonContainer` (#121): an
+  `IfcRelContainedInSpatialStructure` or `IfcRelReferencedInSpatialStructure`
+  whose `RelatingStructure` is not a spatial container of the release is
+  reported with the relationship and the structure, where containment used
+  to drop it silently.
+- `SpatialKind::classify_in(type_name, release)`, `SpatialTree::release()`
+  and a re-export of `ifc_schema::SchemaVersion`.
+
+### Changed
+
+- Spatial containers are classified from the release the file's
+  `FILE_SCHEMA` declares (#121): an entity is a container when that
+  release's bundled table makes it an `IfcSpatialElement` (IFC2X3:
+  `IfcSpatialStructureElement`), or it is the `IfcProject`. `ifc-schema` is
+  therefore a normal dependency. The IFC4X3 facilities and facility parts
+  (`IfcFacility`, `IfcBridge`, `IfcRoad`, `IfcRailway`,
+  `IfcMarineFacility`, `IfcBridgePart`, `IfcRoadPart`, `IfcRailwayPart`,
+  `IfcMarinePart`, `IfcFacilityPartCommon`) and `IfcExternalSpatialElement`
+  were classified as elements by the old name patterns, so containment into
+  them was dropped; they are now `OtherContainer`, as that variant's
+  documentation promised. `SpatialKind` gains no variant, so this stays
+  additive. A file with no single bundled release is classified as any
+  bundled release would, and `release()` returns `None`.
+- `SpatialKind::classify` answers from the bundled tables instead of name
+  patterns: a name no release declares as a spatial element (such as a
+  vendor `IFCSPATIALFOO`) is an `Element`.
+
+### Fixed
+
+- Only `IfcRelAggregates` and `IfcRelContainedInSpatialStructure` build the
+  tree (#121). Another relationship family whose relating end is a
+  container placed its targets as contained elements: an `IfcRelDeclares`
+  put the project's declared types into the project, and an
+  `IfcRelCoversSpaces` put a space's coverings into the space. Their absent
+  targets are still reported by `dangling()`.
 
 ## [0.2.2] - 2026-09-27
 

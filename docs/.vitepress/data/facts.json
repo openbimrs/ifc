@@ -130,10 +130,10 @@
           "url": "https://crates.io/crates/ifc-geometry"
         }
       ],
-      "released": "0.4.2",
-      "released_date": "2026-09-27",
+      "released": "0.4.3",
+      "released_date": "2026-09-28",
       "status": "partial",
-      "version": "0.4.2"
+      "version": "0.4.3"
     },
     "ifc-georef": {
       "description": "Georeferencing: map conversion, coordinate reference systems, site placement.",
@@ -205,10 +205,10 @@
           "url": "https://crates.io/crates/ifc-properties"
         }
       ],
-      "released": "0.4.1",
-      "released_date": "2026-09-27",
+      "released": "0.5.0",
+      "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.4.1"
+      "version": "0.5.0"
     },
     "ifc-resource": {
       "description": "Construction resources: labour, equipment, material, crew, subcontract.",
@@ -250,7 +250,7 @@
           "url": "https://crates.io/crates/ifc-schema"
         }
       ],
-      "released": "0.2.3",
+      "released": "0.2.4",
       "released_date": "2026-09-27",
       "status": "implemented",
       "version": "0.2.2"
@@ -265,10 +265,10 @@
           "url": "https://crates.io/crates/ifc-spatial"
         }
       ],
-      "released": "0.2.2",
-      "released_date": "2026-09-27",
+      "released": "0.2.3",
+      "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.2.2"
+      "version": "0.2.3"
     },
     "ifc-step": {
       "description": "STEP physical file (ISO 10303-21) codec for the IFC model.",
@@ -400,10 +400,10 @@
           "url": "https://crates.io/crates/openbim-ifc"
         }
       ],
-      "released": "0.7.3",
-      "released_date": "2026-09-27",
+      "released": "0.8.0",
+      "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.7.3"
+      "version": "0.8.0"
     },
     "openbim-ifc-binding-core": {
       "description": "Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python).",
