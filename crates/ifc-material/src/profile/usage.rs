@@ -5,7 +5,14 @@ use ifc_model::EntityId;
 use crate::view::{borrowed_entity, optional_integer, optional_number, required_ref, MaterialView};
 use crate::{CardinalPointReference, MaterialError, MaterialResult};
 
-borrowed_entity!(MaterialProfileSetUsage, "IFCMATERIALPROFILESETUSAGE");
+// `IfcMaterialProfileSetUsageTapering` is `SUBTYPE OF
+// (IfcMaterialProfileSetUsage)` in IFC4 and IFC4X3 and keeps its three
+// attributes at slots 0..2, so the supertype projection accepts it (#136).
+borrowed_entity!(
+    MaterialProfileSetUsage,
+    "IFCMATERIALPROFILESETUSAGE",
+    ["IFCMATERIALPROFILESETUSAGETAPERING"]
+);
 borrowed_entity!(
     MaterialProfileSetUsageTapering,
     "IFCMATERIALPROFILESETUSAGETAPERING"
@@ -94,6 +101,23 @@ usage_accessors!(
     "IFCMATERIALPROFILESETUSAGETAPERING"
 );
 
+impl<'m> MaterialProfileSetUsage<'m> {
+    /// The tapering projection of this usage when the record is an
+    /// `IfcMaterialProfileSetUsageTapering`, giving its `ForProfileEndSet`
+    /// and `CardinalEndPoint`; `None` for a plain usage.
+    pub fn tapering(self) -> Option<MaterialProfileSetUsageTapering<'m>> {
+        self.entity()
+            .is_type("IFCMATERIALPROFILESETUSAGETAPERING")
+            .then(|| {
+                MaterialProfileSetUsageTapering::from_known(
+                    self.id(),
+                    self.entity(),
+                    self.release(),
+                )
+            })
+    }
+}
+
 impl MaterialProfileSetUsageTapering<'_> {
     /// `IfcMaterialProfileSetUsageTapering.ForProfileEndSet`. Required.
     pub fn end_profile_set_id(self) -> MaterialResult<EntityId> {
@@ -120,11 +144,24 @@ impl MaterialProfileSetUsageTapering<'_> {
 }
 
 impl<'m> MaterialView<'m> {
-    /// Iterates every `IfcMaterialProfileSetUsage` instance in the model.
+    /// Iterates every `IfcMaterialProfileSetUsage` in the model, including
+    /// its subtype `IfcMaterialProfileSetUsageTapering` (#136), in entity-id
+    /// order.
+    ///
+    /// A tapering usage is a profile-set usage, so a caller asking for usages
+    /// does not miss it; [`MaterialProfileSetUsage::tapering`] reaches its end
+    /// set and end cardinal point. [`Self::tapering_profile_set_usages`]
+    /// yields the subtype alone.
     pub fn profile_set_usages(self) -> impl Iterator<Item = MaterialProfileSetUsage<'m>> + 'm {
         let release = self.release();
-        self.model()
+        let mut usages: Vec<_> = self
+            .model()
             .of_type("IFCMATERIALPROFILESETUSAGE")
+            .chain(self.model().of_type("IFCMATERIALPROFILESETUSAGETAPERING"))
+            .collect();
+        usages.sort_unstable_by_key(|(id, _)| *id);
+        usages
+            .into_iter()
             .map(move |(id, entity)| MaterialProfileSetUsage::from_known(id, entity, release))
     }
 

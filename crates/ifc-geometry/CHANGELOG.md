@@ -12,6 +12,15 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- `MaterialProfileSetUsageGeometry::new` accepts
+  `IfcMaterialProfileSetUsageTapering`, the schema subtype of
+  `IfcMaterialProfileSetUsage`, whose inherited slots it reads unchanged;
+  the new `MaterialProfileSetUsageGeometry::tapering()` returns its
+  `MaterialProfileSetUsageTaperingGeometry` (end profile set and end
+  cardinal point), or `None` for a plain usage (#136).
+
 ### Changed (breaking)
 
 - `ViolationKind`, `Support` and `FunctionStatus` are `#[non_exhaustive]`: a
