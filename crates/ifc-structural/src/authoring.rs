@@ -16,11 +16,12 @@ mod item;
 mod load_group;
 mod reaction;
 mod relation;
+mod stiffness;
 
 pub use action::{stage_action, ActionDraft, ActionDraftKind, ProjectedOrTrue};
 pub use condition::{
-    stage_boundary_condition, stage_connection_condition, BoundaryConditionDraft,
-    ConnectionConditionDraft,
+    stage_boundary_condition, stage_boundary_condition_in, stage_connection_condition,
+    BoundaryConditionDraft, ConnectionConditionDraft,
 };
 pub use item::{
     stage_connection, stage_member, ConnectionDraft, ConnectionDraftKind, MemberDraft,

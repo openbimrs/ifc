@@ -12,6 +12,41 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `authoring::surface_curve_swept_area_solid_in` and
+  `authoring::fixed_reference_swept_area_solid_in` (#200). They take the
+  model and write `StartParam`/`EndParam` in the form its declared release
+  requires: bare in IFC2X3 and IFC4, where the slot is `IfcParameterValue`,
+  and `IFCPARAMETERVALUE(..)` in IFC4X3, where it is the SELECT
+  `IfcCurveMeasureSelect`. The release binds from `FILE_SCHEMA` as the
+  other authoring crates bind it (none binds IFC4). An attribute the release
+  requires left unset (IFC2X3 `Position`, `StartParam`, `EndParam`) is
+  refused with `InvalidAuthoredValue`.
+- `GeometryError::AuthoringSchemaUnbound` (an unknown or ambiguous
+  `FILE_SCHEMA`) and `GeometryError::AuthoringEntityNotInSchema` (the
+  release does not declare the entity, such as the fixed-reference sweep in
+  IFC2X3), for those writers. `GeometryError` is `#[non_exhaustive]`, so
+  this is not breaking.
+
+### Fixed
+
+- `IfcParameterValue` slots are written bare (#200):
+  `rectangular_trimmed_surface` (`U1`, `V1`, `U2`, `V2`), `point_on_curve`,
+  `point_on_surface`, `reparametrised_composite_curve_segment`
+  (`ParamLength`), and the `StartParam`/`EndParam` of `swept_disk_solid` and
+  `swept_disk_solid_polygonal`. Each is declared with the defined type
+  `IfcParameterValue`, not a SELECT, in every release that declares it, and
+  ISO 10303-21 writes a typed parameter only for a SELECT. The readers
+  accept both forms, as before.
+
+### Changed
+
+- `surface_curve_swept_area_solid` and `fixed_reference_swept_area_solid`
+  still write `IFCPARAMETERVALUE(..)`, which is correct in IFC4X3 only. They
+  cannot see the release; their docs now say so and point IFC4 (and IFC2X3)
+  callers to the `_in` writers.
+
 ## [0.4.3] - 2026-09-28
 
 ### Added

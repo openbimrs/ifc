@@ -12,6 +12,18 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed
+
+- Referent authoring writes the SELECT values typed (#201):
+  - `point_by_distance` writes `DistanceAlong` as `IFCLENGTHMEASURE(..)`.
+    It is an `IfcCurveMeasureSelect`, where the wrapper is what tells a
+    length from a curve parameter. The offsets stay bare.
+  - `stationing` writes `Pset_Stationing`'s `NominalValue`s, declared
+    `IfcValue`, as `IFCLENGTHMEASURE(..)` for `Station` and
+    `IncomingStation` and `IFCBOOLEAN(..)` for `HasIncreasingStation`.
+
+  `station_equations` reads both forms, as before.
+
 ## [0.3.1] - 2026-09-27
 
 ### Changed

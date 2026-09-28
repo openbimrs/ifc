@@ -188,7 +188,8 @@ pub fn composite_curve_on_surface(
 ///
 /// The plain segment's three slots plus `ParamLength`, which restates
 /// the segment's parameter range so a composite can be walked without
-/// evaluating each piece.
+/// evaluating each piece. `ParamLength` is written bare: it is declared
+/// `IfcParameterValue`, a defined type.
 ///
 /// # Errors
 ///
@@ -213,10 +214,9 @@ pub fn reparametrised_composite_curve_segment(
     attrs[segment_slot::TRANSITION] = Value::Enum(transition.token().into());
     attrs[segment_slot::SAME_SENSE] = Value::Bool(same_sense);
     attrs[segment_slot::PARENT_CURVE] = Value::Ref(parent_curve);
-    attrs[segment_slot::PARAM_LENGTH] = Value::Typed {
-        type_name: "IFCPARAMETERVALUE".into(),
-        value: Box::new(Value::Real(param_length)),
-    };
+    // `ParamLength : IfcParameterValue`, a defined type in IFC4 and IFC4X3
+    // (IFC2X3 has no such entity): bare, not a typed parameter (#200).
+    attrs[segment_slot::PARAM_LENGTH] = Value::Real(param_length);
     Ok(tx.create(Entity::new(T, attrs)))
 }
 

@@ -200,6 +200,29 @@ pub enum GeometryError {
         /// Why it cannot be written.
         detail: String,
     },
+
+    /// A release-aware writer could not bind one known IFC release from the
+    /// model's `FILE_SCHEMA`: it names an unrecognised release, or several.
+    ///
+    /// A model with no `FILE_SCHEMA` binds IFC4, like the other authoring
+    /// crates. Nothing is staged.
+    #[error("cannot author {type_name}: {detail}")]
+    AuthoringSchemaUnbound {
+        /// The IFC type being authored.
+        type_name: &'static str,
+        /// What the header declares instead of one known release.
+        detail: String,
+    },
+
+    /// The model's declared release does not declare the entity a
+    /// release-aware writer was asked to author. Nothing is staged.
+    #[error("{type_name} is not declared by {schema:?}")]
+    AuthoringEntityNotInSchema {
+        /// The IFC type being authored.
+        type_name: &'static str,
+        /// The bound release.
+        schema: ifc_schema::SchemaVersion,
+    },
 }
 
 impl GeometryError {
@@ -224,7 +247,10 @@ impl GeometryError {
             Self::NotASolid { entity, .. } => Some(*entity),
             // The opening is what failed; `host` stays readable on the variant.
             Self::OpeningNotSubtracted { opening, .. } => Some(*opening),
-            Self::Units(_) | Self::InvalidAuthoredValue { .. } => None,
+            Self::Units(_)
+            | Self::InvalidAuthoredValue { .. }
+            | Self::AuthoringSchemaUnbound { .. }
+            | Self::AuthoringEntityNotInSchema { .. } => None,
         }
     }
 
