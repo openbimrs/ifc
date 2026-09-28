@@ -89,7 +89,10 @@ pub fn exact_properties(
 /// order. An inherited property is left out when an occurrence set of the
 /// same name has a selected property of the same name: the occurrence
 /// value overrides it at property level. An empty result is a proven
-/// absence of every selected property.
+/// absence of every selected property. For a queried `IfcTypeObject` the
+/// result is its own `HasPropertySets`, each entry with
+/// [`ExactSource::Type`] of `object` (#193), as for
+/// [`exact_property`].
 ///
 /// # Errors
 ///
@@ -222,7 +225,8 @@ pub struct ExactPropertySetEntry {
     pub name: Arc<str>,
     /// The set entity.
     pub set_id: EntityId,
-    /// Whether the object carries the set itself or inherits it from its type.
+    /// Whether the object carries the set itself or inherits it from its
+    /// type; a queried type object's own sets are `Type` of that object.
     pub source: ExactSource,
     /// How many members the set holds, each validated; `0` for an empty set.
     pub members: usize,
@@ -246,7 +250,9 @@ pub struct ExactPropertySetEntry {
 /// only whether the set exists, and it does. Occurrence sets come first, then the sets
 /// inherited from the object's `IfcTypeObject`, each in assignment order. A
 /// type set is listed even when an occurrence set has the same name:
-/// overriding works per property, so both sets exist for the object.
+/// overriding works per property, so both sets exist for the object. A
+/// queried `IfcTypeObject` lists its own `HasPropertySets` with
+/// [`ExactSource::Type`] of `object` (#193).
 ///
 /// # Errors
 ///

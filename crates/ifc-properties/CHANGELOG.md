@@ -30,6 +30,34 @@ everything released before per-crate changelogs began.
   model's release requires an attribute the call leaves unset (#191).
   `PropertyError` is `#[non_exhaustive]`, so this is not breaking.
 
+### Changed
+
+- Type objects are no longer refused by the exact API (#193).
+  `exact_property`, `exact_properties`, `exact_properties_where`,
+  `exact_property_sets_where` and `exact_predefined_sets` answered an
+  `IfcTypeObject` with `ExactPropertyError::InvalidQueryObject`, so a
+  checker could not test an `IfcWallType` as IDS does. They now resolve
+  the type object's own `HasPropertySets`: property sets, quantity sets
+  and predefined sets, in IFC2X3, IFC4 and IFC4X3. Every subtype of the
+  release's `IfcTypeObject` is accepted, IFC2X3 `IfcDoorStyle` and
+  `IfcWindowStyle` included. The list is read and validated by the code
+  that already reads an occurrence's inherited type sets. A result carries
+  `ExactSource::Type(id)` with the queried object's id, which is what an
+  occurrence of that type reports for the same set. `HasPropertySets = $`
+  is a proven absence; `()` is refused with `MalformedAggregate`, and
+  duplicate names with `DuplicateMatchingSets { source: Type(id), .. }` and
+  `DuplicateMatchingProperties`, as for an inherited type. A type object
+  named in `IfcRelDefinesByProperties.RelatedObjects` is still refused with
+  `InvalidOccurrenceTarget`, also when it is the queried object: IFC2X3
+  admits only `IfcObject` there, and IFC4 and IFC4X3 forbid it by
+  `NoRelatedTypeObject` ("handled through the direct relationship
+  HasPropertySets at IfcTypeObject"). Occurrence results are unchanged. No
+  type or signature changes; callers that relied on the refusal now get
+  answers, and `InvalidQueryObject` remains for what is neither an
+  occurrence nor a type object. In `openbim-ifc`, `door_operation` and
+  `window_operation` given a type object now refuse with `NotADoor` or
+  `NotAWindow` instead of `Property(InvalidQueryObject)`.
+
 ### Fixed
 
 - Quantity values are written bare (#190). `create_quantity`,
