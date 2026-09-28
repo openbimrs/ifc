@@ -33,6 +33,13 @@ Controls relate to the work they govern through
 writes that relationship, so this crate stages it for its own four
 controls and refuses any other.
 
+Records are laid out by attribute name from one release's table
+(#198). `IfcRoot.OwnerHistory` is required in IFC2X3 and optional from
+IFC4 on, so the writers that leave it unset refuse IFC2X3 with
+`ControlError::AuthoringRequired`; the `*_with_owner_history`
+variants bind the model's declared release and take a caller-supplied
+`IfcOwnerHistory` (#202).
+
 `IfcCostItem`, `IfcCostSchedule`, `IfcWorkCalendar` and
 `IfcWorkControl` are `IfcControl` subtypes too, but they belong to
 `ifc-cost` and `ifc-schedule`: the crates split by domain, not by

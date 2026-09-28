@@ -18,6 +18,9 @@ group = "domain"
 
 [dependencies]
 ifc-model.workspace = true
+# The bundled release tables: the `*_with_owner_history` writers lay their
+# records out by attribute name from the model's declared release (#202).
+ifc-schema.workspace = true
 
 [dev-dependencies]
 # Test-only: fixtures are STEP files, and parsing them is not a production

@@ -30,10 +30,14 @@ mod release;
 mod system;
 
 pub use authoring::{
-    assign_to_group, connect_port_to_element, connect_ports, contain_in_spatial_structure,
-    create_classified_system, create_group, create_port, create_system, nest_ports,
-    reference_in_spatial_structure, ClassifiedSystemDraft, SystemAuthoringError,
-    SystemAuthoringResult, SystemKind,
+    assign_to_group, assign_to_group_with_owner_history, connect_port_to_element,
+    connect_port_to_element_with_owner_history, connect_ports, connect_ports_with_owner_history,
+    contain_in_spatial_structure, contain_in_spatial_structure_with_owner_history,
+    create_classified_system, create_classified_system_with_owner_history, create_group,
+    create_group_with_owner_history, create_port, create_port_with_owner_history, create_system,
+    create_system_with_owner_history, nest_ports, nest_ports_with_owner_history,
+    reference_in_spatial_structure, reference_in_spatial_structure_with_owner_history,
+    ClassifiedSystemDraft, SystemAuthoringError, SystemAuthoringResult, SystemKind,
 };
 pub use connectivity::{
     Connection, ConnectionGraph, Direction, FlowNetwork, FlowQuery, NetworkGraph,

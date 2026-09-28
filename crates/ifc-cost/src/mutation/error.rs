@@ -91,6 +91,33 @@ pub enum CostAuthoringError {
         /// The release the model declares.
         schema: SchemaVersion,
     },
+    /// A draft supplied a value the release's declaration cannot hold, such
+    /// as a date string where IFC2X3 declares an `IfcDateTimeSelect` record
+    /// (`IfcCostSchedule.SubmittedOn`), or a token its enumeration lacks.
+    #[error("cannot author {entity}.{attribute}: {schema:?} declares it {declared}")]
+    AuthoringValueType {
+        /// IFC entity type being authored.
+        entity: &'static str,
+        /// The attribute, by its IFC4 name.
+        attribute: &'static str,
+        /// The type the release declares.
+        declared: &'static str,
+        /// The release the model declares.
+        schema: SchemaVersion,
+    },
+    /// The release requires an attribute the call leaves unset, such as the
+    /// IFC2X3 `IfcRoot.OwnerHistory` (#202). It is refused rather than
+    /// written as `$`; the `*_with_owner_history` writers take the
+    /// `IfcOwnerHistory` IFC2X3 needs.
+    #[error("cannot author {entity}: {schema:?} requires {attribute}")]
+    AuthoringRequired {
+        /// IFC entity type being authored.
+        entity: &'static str,
+        /// The attribute, by the release's own name.
+        attribute: &'static str,
+        /// The release the model declares.
+        schema: SchemaVersion,
+    },
 }
 
 /// Result returned by bounded cost authoring helpers.

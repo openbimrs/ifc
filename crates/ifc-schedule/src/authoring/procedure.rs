@@ -54,11 +54,35 @@ pub struct ProcedureDraft<'a> {
 /// Refuses a malformed GlobalId, a blank name (`HasName`), a token
 /// outside `IfcProcedureTypeEnum`, and `USERDEFINED` without
 /// `ObjectType` (`CorrectPredefinedType`).
+///
+/// `OwnerHistory` is written `$`, which IFC4 and IFC4X3 allow, in their
+/// shared layout. This writer takes no model, so it cannot see the declared
+/// release: it is for IFC4 and IFC4X3 only. IFC2X3 requires
+/// `OwnerHistory` and lays the record out differently; use
+/// [`create_procedure_with_owner_history`](super::create_procedure_with_owner_history) there, which binds the release (#202).
 pub fn create_procedure(
     tx: &mut Transaction,
     draft: ProcedureDraft<'_>,
 ) -> ScheduleAuthoringResult<EntityId> {
-    const ENTITY: &str = "IFCPROCEDURE";
+    check(&draft)?;
+    let mut attributes = vec![Value::Null; 8];
+    attributes[0] = Value::Text(draft.global_id.into());
+    attributes[2] = optional_text(draft.name);
+    attributes[3] = optional_text(draft.description);
+    attributes[4] = optional_text(draft.object_type);
+    attributes[5] = optional_text(draft.identification);
+    attributes[6] = optional_text(draft.long_description);
+    attributes[7] = draft
+        .predefined_type
+        .map_or(Value::Null, |t| Value::Enum(t.into()));
+    Ok(tx.create(Entity::new(ENTITY, attributes)))
+}
+
+/// The entity [`create_procedure`] stages.
+pub(super) const ENTITY: &str = "IFCPROCEDURE";
+
+/// The draft rules [`create_procedure`] and its owner-history variant share.
+pub(super) fn check(draft: &ProcedureDraft<'_>) -> ScheduleAuthoringResult<()> {
     if Guid::parse(draft.global_id).is_none() {
         return Err(ScheduleAuthoringError::InvalidValue {
             entity: ENTITY,
@@ -93,15 +117,5 @@ pub fn create_procedure(
             });
         }
     }
-    let mut attributes = vec![Value::Null; 8];
-    attributes[0] = Value::Text(draft.global_id.into());
-    attributes[2] = optional_text(draft.name);
-    attributes[3] = optional_text(draft.description);
-    attributes[4] = optional_text(draft.object_type);
-    attributes[5] = optional_text(draft.identification);
-    attributes[6] = optional_text(draft.long_description);
-    attributes[7] = draft
-        .predefined_type
-        .map_or(Value::Null, |t| Value::Enum(t.into()));
-    Ok(tx.create(Entity::new(ENTITY, attributes)))
+    Ok(())
 }

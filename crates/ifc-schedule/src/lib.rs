@@ -15,8 +15,8 @@
 //! Not computed: dates, durations in real time, or the critical path. Every
 //! date in IFC is an ISO 8601 string and every duration an ISO 8601 duration;
 //! turning those into a timeline needs a date library and calendar expansion.
-//! This crate's only dependency is `ifc-model`, so it returns the authored
-//! strings intact and leaves arithmetic to a caller who already has a date
+//! This crate depends only on `ifc-model` and the `ifc-schema` release
+//! tables, so it returns the authored strings intact and leaves arithmetic to a caller who already has a date
 //! library and knows which calendar applies.
 //!
 //! What it does supply is the part that arithmetic needs and cannot recover on
@@ -41,14 +41,19 @@ pub mod error;
 pub mod event;
 pub mod query;
 mod recurrence;
+mod release;
 pub mod schedule;
 pub mod sequence;
 
 pub use authoring::{
-    assign_tasks_to_control, create_event, create_event_time, create_lag_time, create_procedure,
-    create_recurrence_pattern, create_sequence, create_task, create_task_time,
-    create_task_time_recurring, create_time_period, create_work_calendar, create_work_control,
-    create_work_time, nest_tasks, EventDraft, EventTimeDraft, ProcedureDraft, RecurrenceDraft,
+    assign_tasks_to_control, assign_tasks_to_control_with_owner_history, create_event,
+    create_event_time, create_event_with_owner_history, create_lag_time, create_procedure,
+    create_procedure_with_owner_history, create_recurrence_pattern, create_sequence,
+    create_sequence_with_owner_history, create_task, create_task_time, create_task_time_recurring,
+    create_task_with_owner_history, create_time_period, create_work_calendar,
+    create_work_calendar_with_owner_history, create_work_control,
+    create_work_control_with_owner_history, create_work_time, nest_tasks,
+    nest_tasks_with_owner_history, EventDraft, EventTimeDraft, ProcedureDraft, RecurrenceDraft,
     ScheduleAuthoringResult, TaskDraft, TaskTimeDraft, WorkControlDraft,
 };
 pub use calendar::{
@@ -56,6 +61,9 @@ pub use calendar::{
 };
 pub use error::{SequenceCycle, TaskTimeAnomaly};
 pub use event::{events, Event, EventTime};
+/// The IFC release a schedule record is written against (re-exported from
+/// `ifc-schema`).
+pub use ifc_schema::SchemaVersion;
 pub use query::{end_tasks, execution_order, start_tasks, subtasks_of, tasks_of_schedule};
 pub use schedule::{work_plans, work_schedules, WorkControl, WorkControlKind};
 pub use sequence::{

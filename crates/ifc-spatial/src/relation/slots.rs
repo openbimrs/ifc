@@ -33,6 +33,28 @@ pub(crate) struct RelSlots {
     pub related: usize,
 }
 
+impl RelSlots {
+    /// The IFC4 name of the attribute at the relating slot.
+    ///
+    /// Read from the bundled IFC4X3 ADD2 table, which declares every
+    /// relationship the writers stage (`IfcRelPositions`,
+    /// `IfcRelAdheresToElement` and `IfcRelAssociatesProfileDef` only there)
+    /// under the names IFC4 ADD2 TC1 gives the ones it declares; the unit
+    /// test below pins that. Authoring maps it to a release's own name.
+    pub(crate) fn relating_name(self) -> &'static str {
+        ifc4_name(self.type_name, self.relating)
+    }
+
+    /// The IFC4 name of the attribute at the related slot.
+    pub(crate) fn related_name(self) -> &'static str {
+        ifc4_name(self.type_name, self.related)
+    }
+}
+
+fn ifc4_name(entity: &str, slot: usize) -> &'static str {
+    ifc_schema::ifc4x3().attribute_names(entity)[slot]
+}
+
 /// `IfcRelAggregates`: decomposition, e.g. site to building, building to storey.
 pub(crate) const AGGREGATES: RelSlots = RelSlots {
     type_name: "IFCRELAGGREGATES",
@@ -101,9 +123,8 @@ pub(crate) const SPACE_BOUNDARY_2ND: RelSlots = RelSlots {
 /// with no boundaries at all rather than failing.
 ///
 /// The hierarchy is closed at these three in IFC4, so it is enumerated here
-/// and asserted against the shipped schemas in `tests/slot_layout.rs`. This
-/// crate deliberately does not depend on `ifc-schema` (see `Cargo.toml`), so
-/// there is no runtime `is_a` available to do it instead.
+/// and asserted against the shipped schemas in `tests/slot_layout.rs`, so
+/// the relationship readers need no schema table to find them.
 pub(crate) const SPACE_BOUNDARY_TYPES: [RelSlots; 3] =
     [SPACE_BOUNDARY, SPACE_BOUNDARY_1ST, SPACE_BOUNDARY_2ND];
 
@@ -337,3 +358,55 @@ pub(crate) const ASSOCIATES_PROFILE_DEF: RelSlots = RelSlots {
     relating: 5,
     related: 4,
 };
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every relationship the writers stage, by the slots readers use.
+    const WRITTEN: [RelSlots; 22] = [
+        AGGREGATES,
+        CONTAINED_IN,
+        COVERS_ELEMENTS,
+        COVERS_SPACES,
+        DECLARES,
+        DEFINES_BY_OBJECT,
+        SERVICES_BUILDINGS,
+        FLOW_CONTROL_ELEMENTS,
+        ASSIGNS_TO_ACTOR,
+        ASSIGNS_TO_PRODUCT,
+        ASSIGNS_TO_PROCESS,
+        ASSIGNS_TO_GROUP_BY_FACTOR,
+        ASSIGNS_TO_RESOURCE,
+        CONNECTS_ELEMENTS,
+        CONNECTS_WITH_REALIZING,
+        CONNECTS_PATH_ELEMENTS,
+        INTERFERES_ELEMENTS,
+        VOIDS_ELEMENT,
+        FILLS_ELEMENT,
+        PROJECTS_ELEMENT,
+        ADHERES_TO_ELEMENT,
+        POSITIONS,
+    ];
+
+    /// The names authoring lays records out by are the IFC4 names at the
+    /// reader's slots, and IFC4X3 does not rename them.
+    #[test]
+    fn written_names_are_the_ifc4_names_at_the_reader_slots() {
+        let mut checked = 0;
+        for rel in WRITTEN.into_iter().chain([ASSOCIATES_PROFILE_DEF]) {
+            let ifc4 = ifc_schema::ifc4().attribute_names(rel.type_name);
+            let ifc4x3 = ifc_schema::ifc4x3().attribute_names(rel.type_name);
+            assert!(!ifc4x3.is_empty(), "{}", rel.type_name);
+            assert_eq!(rel.relating_name(), ifc4x3[rel.relating]);
+            assert_eq!(rel.related_name(), ifc4x3[rel.related]);
+            if !ifc4.is_empty() {
+                assert_eq!(rel.relating_name(), ifc4[rel.relating], "{}", rel.type_name);
+                assert_eq!(rel.related_name(), ifc4[rel.related], "{}", rel.type_name);
+                checked += 1;
+            }
+        }
+        // Only the three IFC4X3-only relationships are skipped.
+        assert_eq!(checked, 20);
+    }
+}
