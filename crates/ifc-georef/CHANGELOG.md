@@ -12,8 +12,25 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `ProjectedCrs.well_known_text`: the OGC WKT literal of the one IFC4X3
+  `IfcWellKnownText` defining the CRS, verbatim (#142).
+- `GeorefError::RuleViolation { entity, rule }` for a schema WHERE rule or
+  inverse cardinality a record breaks.
+
 ### Changed (breaking)
 
+- `ProjectedCrs.name` is `Option<String>` (#142). IFC4X3 declares
+  `IfcCoordinateReferenceSystem.Name : OPTIONAL IfcLabel` with
+  `WHERE NameOrWKT : (HIINDEX(WellKnownText) = 1) OR EXISTS(Name)`: under an
+  IFC4X3 header an unnamed CRS defined by exactly one `IfcWellKnownText` now
+  reads, one with neither is refused with the new
+  `GeorefError::RuleViolation { rule: "NameOrWKT" }`, and two definitions
+  for one CRS (the inverse is `SET [0:1]`) are refused too. IFC4, or a
+  missing or ambiguous header, keeps requiring the name
+  (`MissingAttribute`), so `name` is always `Some` there. Migrate with
+  `crs.name.as_deref()`.
 - The authoring drafts `ProjectedCrsDraft`, `GeographicCrsDraft` and
   `MapConversionDraft` are `#[non_exhaustive]`: build them with
   `ProjectedCrsDraft::new(name)`, `GeographicCrsDraft::new()` or

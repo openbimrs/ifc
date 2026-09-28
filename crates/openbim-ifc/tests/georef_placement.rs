@@ -98,7 +98,7 @@ fn a_products_resolved_placement_composes_into_known_map_coordinates() {
         .to_geom();
     let operation = resolve_project_to_map(&model, MAP_CONVERSION, units.length_to_metres)
         .expect("map conversion resolves");
-    assert_eq!(operation.target_crs.name, "EPSG:25832");
+    assert_eq!(operation.target_crs.name.as_deref(), Some("EPSG:25832"));
 
     let map_frame = compose_project_frame(&operation, project_frame).expect("composes");
 

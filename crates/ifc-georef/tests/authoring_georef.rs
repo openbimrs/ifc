@@ -54,7 +54,7 @@ fn an_authored_crs_resolves_through_map_conversion() {
     tx.commit(&mut model).expect("commit");
 
     let resolved = resolve_project_to_map(&model, conversion, 1.0).expect("resolves");
-    assert_eq!(resolved.target_crs.name, "EPSG:25832");
+    assert_eq!(resolved.target_crs.name.as_deref(), Some("EPSG:25832"));
     assert_eq!(resolved.target_crs.map_projection.as_deref(), Some("UTM"));
 }
 

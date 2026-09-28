@@ -83,7 +83,7 @@ fn resolves_ifc4_map_conversion_into_a_metres_to_metres_transform() {
     assert_eq!(actual, Vec3::new(992.0, 2006.0, 60.0));
     assert_eq!(operation.source_crs, id(1));
     assert_eq!(operation.target_crs.entity, id(2));
-    assert_eq!(operation.target_crs.name, "EPSG:25832");
+    assert_eq!(operation.target_crs.name.as_deref(), Some("EPSG:25832"));
     assert_eq!(operation.map_unit.metres_per_unit, 1.0);
 }
 
@@ -244,5 +244,5 @@ fn resolves_a_committed_ifc_fixture_to_the_neutral_map_transform() {
         .transform
         .transform_point3(Point3::new(1.0, 2.0, 3.0));
     assert_eq!(mapped, Vec3::new(2.0, 4.0, 3.01));
-    assert_eq!(operation.target_crs.name, "EPSG:25832");
+    assert_eq!(operation.target_crs.name.as_deref(), Some("EPSG:25832"));
 }
