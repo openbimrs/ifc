@@ -26,6 +26,21 @@
 //!
 //! The bound is now on distinct types visited, which is bounded by the schema
 //! and cannot be exhausted by a legal file.
+//!
+//! # Only nested SELECTs are walked, never defined types
+//!
+//! ISO 10303-21:2016 §12.1.8 requires the keyword of a typed parameter to
+//! name the value's own type, and that type to be one of the types listed by
+//! the SELECT or, recursively, by a SELECT nested in it. A defined type in the list is a leaf: `IfcColourOrFactor` lists
+//! `IfcNormalisedRatioMeasure`, whose underlying type is `IfcRatioMeasure`,
+//! and `IFCRATIOMEASURE(0.5)` is not a member -- a ratio is not known to be
+//! normalised. A previous walk descended into defined types and accepted it.
+//!
+//! A type that *aliases* a SELECT is encoded as that SELECT, though
+//! (§12.1.8, EXAMPLE 2): given `TYPE Computed_Load = Number_Or_Flag` where
+//! `Number_Or_Flag` is a SELECT, a `Computed_Load` value is written
+//! `COMPUTED_LOAD(PLAIN_NUMBER(1.5))`, its parameter itself typed.
+//! [`resolve_select`] follows such aliases.
 
 use std::collections::BTreeSet;
 
@@ -38,16 +53,40 @@ use ifc_schema::{Schema, TypeKind};
 /// hang a validation run. Cycles are already handled by the visited set.
 const MAX_VISITED: usize = 4096;
 
-/// Whether `candidate` is reachable as a member of SELECT `type_name`.
+/// How many defined-type alias hops are followed to find a SELECT.
 ///
-/// Returns `None` when `type_name` is not a SELECT, so a caller can tell
-/// "not a member" from "not a select".
+/// No bundled IFC release aliases a SELECT at all; this only stops a
+/// malformed cyclic table from looping.
+const MAX_ALIAS_HOPS: usize = 16;
+
+/// The SELECT a declared type is, following defined-type aliases.
+///
+/// `IfcValue` -> `IfcValue`; `Computed_Load` -> `Number_Or_Flag` for
+/// `TYPE Computed_Load = Number_Or_Flag`; `IfcLabel` -> `None`. A type
+/// aliasing an aggregate or a primitive is not a SELECT, and neither is an
+/// entity or a name the schema does not declare.
+#[must_use]
+pub fn resolve_select(schema: &Schema, type_name: &str) -> Option<String> {
+    let mut current = type_name.trim().to_string();
+    for _ in 0..MAX_ALIAS_HOPS {
+        match &schema.type_def(&current)?.kind {
+            TypeKind::Select(_) => return Some(current),
+            TypeKind::Defined(target) => current = target.trim().to_string(),
+            TypeKind::Enumeration(_) => return None,
+        }
+    }
+    None
+}
+
+/// Whether `candidate` is named in the select-list of SELECT `type_name`,
+/// or of a SELECT nested in it.
+///
+/// Returns `None` when `type_name` is not a SELECT, even through aliases,
+/// so a caller can tell "not a member" from "not a select".
 #[must_use]
 pub fn accepts(schema: &Schema, type_name: &str, candidate: &str) -> Option<bool> {
-    let TypeKind::Select(_) = &schema.type_def(type_name)?.kind else {
-        return None;
-    };
-    let mut frontier = vec![type_name.to_ascii_uppercase()];
+    let select = resolve_select(schema, type_name)?;
+    let mut frontier = vec![select.to_ascii_uppercase()];
     let mut seen: BTreeSet<String> = BTreeSet::new();
     while let Some(current) = frontier.pop() {
         if !seen.insert(current.clone()) {
@@ -58,27 +97,19 @@ pub fn accepts(schema: &Schema, type_name: &str, candidate: &str) -> Option<bool
             // has not proven the candidate absent.
             return None;
         }
-        let Some(definition) = schema.type_def(&current) else {
-            // An entity or primitive leaf: it matches only by name, which the
-            // push site already checked.
+        // Entities, defined types and enumerations are leaves: they match
+        // only by name, which the push site already checked. Only a nested
+        // SELECT contributes members of its own (§12.1.8 NOTE 1).
+        let Some(TypeKind::Select(members)) =
+            schema.type_def(&current).map(|definition| &definition.kind)
+        else {
             continue;
         };
-        match &definition.kind {
-            TypeKind::Select(members) => {
-                for member in members {
-                    if member.eq_ignore_ascii_case(candidate) {
-                        return Some(true);
-                    }
-                    frontier.push(member.to_ascii_uppercase());
-                }
+        for member in members {
+            if member.eq_ignore_ascii_case(candidate) {
+                return Some(true);
             }
-            TypeKind::Defined(target) => {
-                if target.eq_ignore_ascii_case(candidate) {
-                    return Some(true);
-                }
-                frontier.push(target.trim().to_ascii_uppercase());
-            }
-            TypeKind::Enumeration(_) => {}
+            frontier.push(member.to_ascii_uppercase());
         }
     }
     Some(false)
@@ -100,15 +131,13 @@ struct EntityMembers {
 ///
 /// `None` when `type_name` is not a SELECT, or the visit bound was hit.
 fn entity_members(schema: &Schema, type_name: &str) -> Option<EntityMembers> {
-    let TypeKind::Select(_) = &schema.type_def(type_name)?.kind else {
-        return None;
-    };
+    let select = resolve_select(schema, type_name)?;
     let mut members = EntityMembers {
         entities: Vec::new(),
         values: false,
         unknown: false,
     };
-    let mut frontier = vec![type_name.to_ascii_uppercase()];
+    let mut frontier = vec![select.to_ascii_uppercase()];
     let mut seen: BTreeSet<String> = BTreeSet::new();
     while let Some(current) = frontier.pop() {
         if !seen.insert(current.clone()) {

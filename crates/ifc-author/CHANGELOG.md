@@ -12,6 +12,29 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `AuthorError::ValueForm`: a value of the declared type written in the
+  form ISO 10303-21 does not use for it (#199). A typed parameter
+  (`IFCAREAMEASURE(12.5)`) is refused where the declared type is not a
+  SELECT, and a bare value where it is one, for scalars and for each member
+  of an aggregate, in `EntityBuilder` and `EntityEditor`.
+
+### Changed
+
+- `EntityEditor` re-checks every slot of the projected entity, as before, so
+  editing an entity whose untouched slots already hold a value in the wrong
+  form is now refused with `ValueForm` until that slot is rewritten.
+
+### Fixed
+
+- A typed wrapper was judged against its own type only, so any wrapper
+  passed in a slot whose declared type is not a SELECT (#199). `IFCLABEL('x')`
+  in `IfcQuantityArea.AreaValue`, or in an entity-typed slot, is now a
+  `TypeMismatch`, and so is a wrapper naming a type outside a SELECT's
+  select-list, nested SELECTs included. A declared type the tables cannot
+  resolve still accepts either form.
+
 ## [0.2.1] - 2026-09-27
 
 ### Fixed

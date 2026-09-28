@@ -21,6 +21,7 @@
 //! | Attribute set twice | two `Name` calls |
 //! | Required attribute unset | `IfcAnnotation` with no `GlobalId` |
 //! | Declared-type mismatch | a string where `IfcLengthMeasure` is declared |
+//! | Value form (ISO 10303-21) | `IFCAREAMEASURE(12.5)` where `IfcAreaMeasure`, not a SELECT, is declared; a bare `1.` where `IfcValue` is |
 //! | Scalar/aggregate confusion | a scalar where `LIST OF` is declared |
 //! | Malformed GlobalId | not 22 characters in IFC's base-64 alphabet |
 //!

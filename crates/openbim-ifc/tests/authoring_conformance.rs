@@ -94,6 +94,14 @@ fn assert_conformant(model: &Model, what: &str) {
     );
 }
 
+/// A number as the typed parameter a SELECT slot requires.
+fn measure(type_name: &str, value: f64) -> Value {
+    Value::Typed {
+        type_name: type_name.into(),
+        value: Box::new(Value::Real(value)),
+    }
+}
+
 /// Stage a minimal product for relationships to point at.
 ///
 /// The arity comes from the schema rather than a literal: these stubs
@@ -135,21 +143,34 @@ fn properties_authoring_is_conformant() {
     let exponents = add_dimensional_exponents(&mut tx, [1, 0, 0, 0, 0, 0, 0]);
     add_context_dependent_unit(&mut tx, exponents, "LENGTHUNIT", "Module")
         .expect("context dependent unit");
-    add_measure_with_unit(&mut tx, Value::Real(25.4), metre).expect("measure with unit");
+    // `IfcValue` slots take the typed form (ISO 10303-21:2016 §12.1.8); the
+    // property writers store the value they are given.
+    add_measure_with_unit(&mut tx, measure("IFCLENGTHMEASURE", 25.4), metre)
+        .expect("measure with unit");
     add_monetary_unit(&mut tx, MonetaryUnitDraft { currency: "EUR" }).expect("monetary unit");
 
     let height =
         add_property_single_value(&mut tx, "Height", None, None, None).expect("single value");
     let range = add_property_bounded_value(&mut tx, "Range", None, None, None, None, None)
         .expect("bounded value");
-    let listed =
-        add_property_list_value(&mut tx, "Layers", None, Some(vec![Value::Real(1.0)]), None)
-            .expect("list value");
+    let listed = add_property_list_value(
+        &mut tx,
+        "Layers",
+        None,
+        Some(vec![measure("IFCLENGTHMEASURE", 1.0)]),
+        None,
+    )
+    .expect("list value");
     let referenced =
         add_property_reference_value(&mut tx, "Doc", None, None, None).expect("reference value");
-    let enumerated =
-        add_property_enumerated_value(&mut tx, "Grade", None, Some(vec![Value::Real(2.0)]), None)
-            .expect("enumerated value");
+    let enumerated = add_property_enumerated_value(
+        &mut tx,
+        "Grade",
+        None,
+        Some(vec![measure("IFCREAL", 2.0)]),
+        None,
+    )
+    .expect("enumerated value");
 
     let count = create_quantity(&mut tx, &model, QuantityKind::Count, "Doors", 4.0).expect("count");
     let area = create_quantity_with(

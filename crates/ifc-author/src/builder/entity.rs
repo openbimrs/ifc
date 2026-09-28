@@ -19,7 +19,7 @@
 use ifc_model::{Entity, Value};
 use ifc_schema::Schema;
 
-use crate::check::{aggregate_element, describe_value, is_derived_slot, value_matches};
+use crate::check::{aggregate_element, describe_value, is_derived_slot, judge_value, Verdict};
 use crate::error::{AuthorError, AuthorResult};
 
 /// A partially-specified entity, checked against the schema on [`build`].
@@ -239,19 +239,38 @@ pub(crate) fn check_value(
     // Aggregate element types are checked per item; the declaration names the
     // element type, not the container. For an aliased aggregate the element
     // type is the alias's, e.g. `INTEGER` for `IfcCompoundPlaneAngleMeasure`.
+    //
+    // The first refused item is the one reported; a wrong type is reported
+    // before a wrong form, since rewrapping would not fix it.
     let element_type = aliased.as_deref().unwrap_or(&attribute.type_name);
-    let admissible = match value {
+    let verdicts: Vec<(Verdict, &Value)> = match value {
         Value::List(items) => items
             .iter()
-            .all(|item| value_matches(schema, element_type, item)),
-        scalar => value_matches(schema, &attribute.type_name, scalar),
+            .map(|item| (judge_value(schema, element_type, item), item))
+            .collect(),
+        scalar => vec![(judge_value(schema, &attribute.type_name, scalar), scalar)],
     };
-    if !admissible {
+    if verdicts
+        .iter()
+        .any(|(verdict, _)| *verdict == Verdict::WrongType)
+    {
         return Err(AuthorError::TypeMismatch {
             entity: entity.to_owned(),
             attribute: attribute.name.clone(),
             expected: attribute.type_name.clone(),
             found: describe_value(value),
+        });
+    }
+    if let Some((Verdict::WrongForm { typed_required }, offending)) = verdicts
+        .into_iter()
+        .find(|(verdict, _)| matches!(verdict, Verdict::WrongForm { .. }))
+    {
+        return Err(AuthorError::ValueForm {
+            entity: entity.to_owned(),
+            attribute: attribute.name.clone(),
+            declared: element_type.to_owned(),
+            typed_required,
+            found: describe_value(offending),
         });
     }
     Ok(())
