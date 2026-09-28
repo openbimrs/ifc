@@ -12,6 +12,15 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed
+
+- `create_lag_time` writes `IfcLagTime.LagValue` as the member of
+  `IfcTimeOrRatioSelect` it is (#201): a string as `IFCDURATION('P5D')` and
+  a number as `IFCRATIOMEASURE(0.5)`, an integer as that REAL. A bare value
+  in a SELECT slot does not say which member it is. A value already typed as
+  `IFCDURATION` or `IFCRATIOMEASURE` is accepted; any other is refused, as
+  before. `sequences` reads both forms, as before.
+
 ## [0.2.0] - 2026-09-22
 
 First release under per-crate versioning. See the
