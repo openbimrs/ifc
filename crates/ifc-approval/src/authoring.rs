@@ -3,15 +3,19 @@
 //! `IfcApproval` and the two approval relationships are resources, not
 //! `IfcRoot` subtypes, so they carry no `GlobalId`; never invent one for
 //! them. Only `IfcRelAssociatesApproval` is rooted, and its caller-supplied
-//! GlobalId is validated before staging. It is the one writer bound to the
-//! model's declared release (see `release.rs`), because it is the one that
-//! carries `IfcRoot.OwnerHistory`, which IFC2X3 requires.
+//! GlobalId is validated before staging; it carries `IfcRoot.OwnerHistory`,
+//! which IFC2X3 requires.
+//!
+//! Every writer binds the model's declared release and lays its record out
+//! by attribute name from that release's table (see `release.rs`, #202,
+//! #212). What the release cannot hold is refused, never dropped or
+//! written into a slot that means something else.
 
 use std::collections::HashSet;
 use std::sync::Arc;
 
 use ifc_model::guid::Guid;
-use ifc_model::{Edit, Entity, EntityId, Model, Transaction, Value};
+use ifc_model::{Edit, EntityId, Model, Transaction, Value};
 
 use ifc_schema::Schema;
 
@@ -23,6 +27,34 @@ const APPROVAL_REL: &str = "IFCAPPROVALRELATIONSHIP";
 const RESOURCE_REL: &str = "IFCRESOURCEAPPROVALRELATIONSHIP";
 const ASSIGNMENT: &str = "IFCRELASSOCIATESAPPROVAL";
 
+/// A date and time for an authoring draft, in the form the release
+/// declares it.
+///
+/// IFC4 and IFC4X3 declare `IfcDateTime`, ISO 8601 text written as given;
+/// IFC2X3 declares `IfcDateTimeSelect`, a reference to an existing or
+/// earlier-staged `IfcCalendarDate`, `IfcLocalTime` or `IfcDateAndTime`.
+/// A form the release does not declare is refused.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum DateTimeInput<'a> {
+    /// IFC4/IFC4X3 `IfcDateTime` text.
+    Text(&'a str),
+    /// An IFC2X3 `IfcDateTimeSelect` record.
+    Record(EntityId),
+}
+
+impl<'a> From<&'a str> for DateTimeInput<'a> {
+    fn from(text: &'a str) -> Self {
+        Self::Text(text)
+    }
+}
+
+impl From<EntityId> for DateTimeInput<'_> {
+    fn from(record: EntityId) -> Self {
+        Self::Record(record)
+    }
+}
+
 /// Draft for one `IfcApproval`.
 #[derive(Debug, Clone, Copy, Default)]
 #[non_exhaustive]
@@ -33,8 +65,10 @@ pub struct ApprovalDraft<'a> {
     pub name: Option<&'a str>,
     /// Optional description.
     pub description: Option<&'a str>,
-    /// Optional IFC date-time lexical value.
-    pub time_of_approval: Option<&'a str>,
+    /// Optional approval time: IFC4/IFC4X3 `IfcDateTime` text, or an
+    /// existing or earlier-staged IFC2X3 `IfcDateTimeSelect` record
+    /// (`ApprovalDateTime`, which IFC2X3 requires).
+    pub time_of_approval: Option<DateTimeInput<'a>>,
     /// Optional status label.
     pub status: Option<&'a str>,
     /// Optional level label.
@@ -85,10 +119,10 @@ impl<'a> ApprovalDraft<'a> {
         self
     }
 
-    /// Sets [`Self::time_of_approval`]: Optional IFC date-time lexical value.
+    /// Sets [`Self::time_of_approval`]: text, or an IFC2X3 date record.
     #[must_use]
-    pub fn time_of_approval(mut self, value: &'a str) -> Self {
-        self.time_of_approval = Some(value);
+    pub fn time_of_approval(mut self, value: impl Into<DateTimeInput<'a>>) -> Self {
+        self.time_of_approval = Some(value.into());
         self
     }
 
@@ -258,12 +292,31 @@ impl<'a> ApprovalAssociationDraft<'a> {
     }
 }
 
-/// Validate and stage one approval.
+/// Validate and stage one approval in the model's declared release.
+///
+/// # Release
+///
+/// IFC4 and IFC4X3 declare nine attributes and require at least one of
+/// `Identifier` and `Name`. IFC2X3 declares seven and requires `Identifier`,
+/// `Name` and `ApprovalDateTime` (the IFC4 `TimeOfApproval`) as an
+/// `IfcDateTimeSelect` record; it declares no `Status`, `Level`,
+/// `Qualifier`, `RequestingApproval` or `GivingApproval` under those names.
+///
+/// # Errors
+///
+/// Neither identifier nor name; an actor that is not an `IfcActorSelect`; a
+/// date record that is not a date record of the release; a header binding
+/// no single verified release (`MultipleSchemas`, `UnsupportedSchema`); a
+/// value the release does not declare (`AuthoringNotInSchema`) or cannot
+/// hold (`AuthoringValueType`: text where IFC2X3 declares a record, a
+/// record where IFC4 declares text); and a required value left unset
+/// (`AuthoringRequired`). Nothing is staged on an error.
 pub fn create_approval(
     tx: &mut Transaction,
     model: &Model,
     draft: ApprovalDraft<'_>,
 ) -> ApprovalResult<EntityId> {
+    let layout = bind(model)?;
     if draft.identifier.is_none() && draft.name.is_none() {
         return Err(ApprovalError::AuthoringInvalid {
             entity: APPROVAL,
@@ -275,32 +328,74 @@ pub fn create_approval(
         .into_iter()
         .flatten()
     {
-        validate_target(tx, model, target, "IfcActorSelect")?;
+        validate_target_in(layout.schema(), tx, model, target, "IfcActorSelect")?;
     }
-    Ok(tx.create(Entity::new(
+    let time = match draft.time_of_approval {
+        None => Value::Null,
+        Some(DateTimeInput::Text(text)) => Value::Text(Arc::from(text)),
+        Some(DateTimeInput::Record(target)) => {
+            if let Some((_, declared)) = layout.declared(APPROVAL, "TimeOfApproval") {
+                if layout.admits_entity(&declared.type_name, 8) {
+                    validate_target_in(
+                        layout.schema(),
+                        tx,
+                        model,
+                        target,
+                        declared.type_name.as_str(),
+                    )?;
+                }
+            }
+            Value::Ref(target)
+        }
+    };
+    let record = layout.named_record(
         APPROVAL,
         vec![
-            optional_text(draft.identifier),
-            optional_text(draft.name),
-            optional_text(draft.description),
-            optional_text(draft.time_of_approval),
-            optional_text(draft.status),
-            optional_text(draft.level),
-            optional_text(draft.qualifier),
-            optional_ref(draft.requesting_approval),
-            optional_ref(draft.giving_approval),
+            ("Identifier", optional_text(draft.identifier)),
+            ("Name", optional_text(draft.name)),
+            ("Description", optional_text(draft.description)),
+            ("TimeOfApproval", time),
+            ("Status", optional_text(draft.status)),
+            ("Level", optional_text(draft.level)),
+            ("Qualifier", optional_text(draft.qualifier)),
+            (
+                "RequestingApproval",
+                optional_ref(draft.requesting_approval),
+            ),
+            ("GivingApproval", optional_ref(draft.giving_approval)),
         ],
-    )))
+    )?;
+    Ok(tx.create(record))
 }
 
-/// Validate and stage one approval-to-approval relationship.
+/// Validate and stage one approval-to-approval relationship in the model's
+/// declared release.
+///
+/// IFC2X3 declares a single `RelatedApproval` and a required `Name`; IFC4
+/// and IFC4X3 a set of `RelatedApprovals` and an optional `Name`.
+///
+/// # Errors
+///
+/// An empty, duplicated or self-referencing set; a target that is not an
+/// `IfcApproval`; a header binding no single verified release; in IFC2X3
+/// more than one related approval (`AuthoringValueType`) or no name
+/// (`AuthoringRequired`). Nothing is staged on an error.
 pub fn relate_approvals(
     tx: &mut Transaction,
     model: &Model,
     draft: ApprovalRelationshipDraft<'_>,
 ) -> ApprovalResult<EntityId> {
-    validate_target(tx, model, draft.relating_approval, APPROVAL)?;
+    let layout = bind(model)?;
+    layout.require_entity(APPROVAL_REL)?;
+    validate_target_in(
+        layout.schema(),
+        tx,
+        model,
+        draft.relating_approval,
+        APPROVAL,
+    )?;
     validate_set(
+        layout.schema(),
         tx,
         model,
         APPROVAL_REL,
@@ -309,25 +404,59 @@ pub fn relate_approvals(
         APPROVAL,
         Some(draft.relating_approval),
     )?;
-    Ok(tx.create(Entity::new(
+    let single = layout
+        .declared(APPROVAL_REL, "RelatedApprovals")
+        .is_some_and(|(_, declared)| !declared.aggregate);
+    let related = match (single, draft.related_approvals) {
+        (false, related) => refs(related),
+        (true, [one]) => Value::Ref(*one),
+        (true, _) => {
+            return Err(ApprovalError::AuthoringValueType {
+                entity: APPROVAL_REL,
+                attribute: "RelatedApprovals",
+                declared: "IfcApproval",
+                schema: layout.version(),
+            })
+        }
+    };
+    let record = layout.named_record(
         APPROVAL_REL,
         vec![
-            optional_text(draft.name),
-            optional_text(draft.description),
-            Value::Ref(draft.relating_approval),
-            refs(draft.related_approvals),
+            ("Name", optional_text(draft.name)),
+            ("Description", optional_text(draft.description)),
+            ("RelatingApproval", Value::Ref(draft.relating_approval)),
+            ("RelatedApprovals", related),
         ],
-    )))
+    )?;
+    Ok(tx.create(record))
 }
 
-/// Validate and stage one approval-to-resource relationship.
+/// Validate and stage one approval-to-resource relationship in the model's
+/// declared release.
+///
+/// # Errors
+///
+/// An empty or duplicated set; a relating target that is not an
+/// `IfcApproval` or a resource outside `IfcResourceObjectSelect`; a header
+/// binding no single verified release; and an IFC2X3 model, which declares
+/// no `IfcResourceApprovalRelationship` (`EntityNotInSchema`). Nothing is
+/// staged on an error.
 pub fn relate_resource_approval(
     tx: &mut Transaction,
     model: &Model,
     draft: ResourceApprovalDraft<'_>,
 ) -> ApprovalResult<EntityId> {
-    validate_target(tx, model, draft.relating_approval, APPROVAL)?;
+    let layout = bind(model)?;
+    layout.require_entity(RESOURCE_REL)?;
+    validate_target_in(
+        layout.schema(),
+        tx,
+        model,
+        draft.relating_approval,
+        APPROVAL,
+    )?;
     validate_set(
+        layout.schema(),
         tx,
         model,
         RESOURCE_REL,
@@ -336,15 +465,16 @@ pub fn relate_resource_approval(
         "IfcResourceObjectSelect",
         None,
     )?;
-    Ok(tx.create(Entity::new(
+    let record = layout.named_record(
         RESOURCE_REL,
         vec![
-            optional_text(draft.name),
-            optional_text(draft.description),
-            refs(draft.related_resources),
-            Value::Ref(draft.relating_approval),
+            ("Name", optional_text(draft.name)),
+            ("Description", optional_text(draft.description)),
+            ("RelatedResourceObjects", refs(draft.related_resources)),
+            ("RelatingApproval", Value::Ref(draft.relating_approval)),
         ],
-    )))
+    )?;
+    Ok(tx.create(record))
 }
 
 /// Validate and stage one rooted approval association.
@@ -461,7 +591,9 @@ fn associate(
     Ok(tx.create(record))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn validate_set(
+    schema: &Schema,
     tx: &Transaction,
     model: &Model,
     kind: &'static str,
@@ -493,21 +625,13 @@ fn validate_set(
                 value: format!("self reference {target}"),
             });
         }
-        validate_target(tx, model, target, expected)?;
+        validate_target_in(schema, tx, model, target, expected)?;
     }
     Ok(())
 }
 
-fn validate_target(
-    tx: &Transaction,
-    model: &Model,
-    target: EntityId,
-    expected: &'static str,
-) -> ApprovalResult<()> {
-    validate_target_in(ifc_schema::ifc4(), tx, model, target, expected)
-}
-
-/// [`validate_target`] against `schema` instead of the IFC4 table.
+/// Fail unless `target` resolves, in the model or staged on `tx`, to a type
+/// `schema` accepts as `expected`.
 fn validate_target_in(
     schema: &Schema,
     tx: &Transaction,

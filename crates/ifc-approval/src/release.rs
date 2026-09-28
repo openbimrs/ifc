@@ -1,43 +1,59 @@
-//! The IFC release `IfcRelAssociatesApproval` is authored against (#202).
+//! The IFC release approval records are read and written against (#202,
+//! #212).
 //!
-//! `IfcRoot.OwnerHistory` is required in IFC2X3 TC1 and `OPTIONAL` from IFC4
-//! on, and `IfcRelAssociates.RelatedObjects` is `SET OF IfcRoot` with WR21 in
-//! IFC2X3 where IFC4 and IFC4X3 declare `SET OF IfcDefinitionSelect`:
+//! The layouts differ, from the EXPRESS sources:
 //!
 //! ```text
-//! IFC2X3_TC1   OwnerHistory : IfcOwnerHistory;
-//!              RelatedObjects : SET [1:?] OF IfcRoot;   (WR21)
-//! IFC4         OwnerHistory : OPTIONAL IfcOwnerHistory;
-//! IFC4X3_ADD2  RelatedObjects : SET [1:?] OF IfcDefinitionSelect;
+//! IfcApproval
+//!   IFC2X3_TC1 (7)   Description, ApprovalDateTime (IfcDateTimeSelect),
+//!                    ApprovalStatus, ApprovalLevel, ApprovalQualifier,
+//!                    Name (required), Identifier (required)
+//!   IFC4, IFC4X3 (9) Identifier, Name, Description, TimeOfApproval
+//!                    (IfcDateTime), Status, Level, Qualifier,
+//!                    RequestingApproval, GivingApproval
+//! IfcApprovalRelationship
+//!   IFC2X3_TC1 (4)   RelatedApproval (one), RelatingApproval, Description,
+//!                    Name (required)
+//!   IFC4, IFC4X3 (4) Name, Description, RelatingApproval,
+//!                    RelatedApprovals (SET [1:?])
+//! IfcResourceApprovalRelationship   IFC4 and IFC4X3 only
+//! IfcRelAssociatesApproval
+//!   IFC2X3_TC1       OwnerHistory required; RelatedObjects SET OF IfcRoot
+//!   IFC4, IFC4X3     OwnerHistory OPTIONAL; SET OF IfcDefinitionSelect
 //! ```
 //!
-//! The record is laid out by attribute name from the bound release's table,
-//! and reference targets are checked against that table. Binding, from
-//! `FILE_SCHEMA`, as `ifc-material` (#77), `ifc-properties` (#191) and
-//! `ifc-classification` (#194) bind their authoring:
-//! - one recognised declaration binds that release's table;
-//! - one unrecognised declaration fails with
+//! Every slot is found by attribute name in the bound release's table, so
+//! no record is read or written with another release's positions. Two
+//! IFC4 names differ from IFC2X3's for the same attribute, per the IFC4
+//! ADD2 TC1 documentation: `IfcApproval.TimeOfApproval` was "renamed from
+//! ApprovalDateTime", and `IfcApprovalRelationship.RelatedApprovals` is
+//! IFC2X3's `RelatedApproval` whose "cardinality ... has been changed to
+//! SET". No other name is aliased: IFC2X3's `ApprovalStatus`,
+//! `ApprovalLevel` and `ApprovalQualifier` are not documented as the IFC4
+//! `Status`, `Level` and `Qualifier`, so those accessors refuse an IFC2X3
+//! record with [`ApprovalError::NotInSchema`].
+//!
+//! Binding, from `FILE_SCHEMA`, as `ifc-material` (#77), `ifc-properties`
+//! (#191) and `ifc-classification` (#194) bind:
+//! - one declaration of IFC2X3, IFC4 or IFC4X3 binds that release's table;
+//! - any other single declaration, IFC4X1 and IFC4X2 included, fails with
 //!   [`ApprovalError::UnsupportedSchema`];
 //! - several fail with [`ApprovalError::MultipleSchemas`];
 //! - none at all (an in-memory [`Model::new`]) binds IFC4.
 
 use ifc_model::{Edit, Entity, EntityId, Model, Transaction, Value};
-use ifc_schema::{for_version, Schema, SchemaVersion};
+use ifc_schema::{for_version, Attribute, Schema, SchemaVersion, TypeKind};
 
 use crate::{ApprovalError, ApprovalResult};
 
-/// The release a record is written in.
+/// The release a record is read or written in.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Layout {
     version: SchemaVersion,
     schema: &'static Schema,
 }
 
-/// Releases this crate's layouts are proven against.
-///
-/// `ifc-schema` also bundles IFC4X1 and IFC4X2, but nothing here is verified
-/// against their tables, so a header declaring either is refused with the
-/// unsupported-schema error rather than read through a neighbour's layout.
+/// Releases this crate's layouts are verified against.
 const fn proven(version: SchemaVersion) -> bool {
     matches!(
         version,
@@ -45,31 +61,96 @@ const fn proven(version: SchemaVersion) -> bool {
     )
 }
 
+/// A model's binding, kept by a view until a projection needs it.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum Binding<'m> {
+    /// A verified release.
+    Bound(Layout),
+    /// The header declares this many schemas.
+    Multiple(usize),
+    /// The header declares one schema this crate is not verified against.
+    Unsupported(&'m str),
+}
+
+impl<'m> Binding<'m> {
+    /// The binding `model`'s header declares.
+    pub(crate) fn of(model: &'m Model) -> Self {
+        match model.header().schema.as_slice() {
+            [] => Layout::of_version(SchemaVersion::Ifc4)
+                .map_or(Self::Unsupported("IFC4"), Self::Bound),
+            [token] => SchemaVersion::from_header_token(token)
+                .and_then(|version| Layout::of_version(version).ok())
+                .map_or(Self::Unsupported(token.as_str()), Self::Bound),
+            tokens => Self::Multiple(tokens.len()),
+        }
+    }
+
+    /// The bound layout, or the refusal.
+    pub(crate) fn layout(self) -> ApprovalResult<Layout> {
+        match self {
+            Self::Bound(layout) => Ok(layout),
+            Self::Multiple(schemas) => Err(ApprovalError::MultipleSchemas { schemas }),
+            Self::Unsupported(schema) => Err(ApprovalError::UnsupportedSchema {
+                schema: schema.to_owned(),
+            }),
+        }
+    }
+}
+
 /// Bind `model`'s declared release.
 pub(crate) fn bind(model: &Model) -> ApprovalResult<Layout> {
-    let version = match model.header().schema.as_slice() {
-        [] => SchemaVersion::Ifc4,
-        [token] => SchemaVersion::from_header_token(token)
-            .filter(|version| proven(*version))
-            .ok_or_else(|| ApprovalError::UnsupportedSchema {
-                schema: token.clone(),
-            })?,
-        tokens => {
-            return Err(ApprovalError::MultipleSchemas {
-                schemas: tokens.len(),
-            })
-        }
-    };
-    let schema = for_version(version).map_err(|_| ApprovalError::UnsupportedSchema {
-        schema: format!("{version:?}"),
-    })?;
-    Ok(Layout { version, schema })
+    Binding::of(model).layout()
 }
 
 impl Layout {
+    /// Bind `version`, refusing a release this crate is not verified for.
+    pub(crate) fn of_version(version: SchemaVersion) -> ApprovalResult<Self> {
+        let unsupported = || ApprovalError::UnsupportedSchema {
+            schema: version.release_id().to_owned(),
+        };
+        if !proven(version) {
+            return Err(unsupported());
+        }
+        let schema = for_version(version).map_err(|_| unsupported())?;
+        Ok(Self { version, schema })
+    }
+
+    /// The bound release.
+    pub(crate) const fn version(self) -> SchemaVersion {
+        self.version
+    }
+
     /// The bound release's bundled table.
     pub(crate) fn schema(self) -> &'static Schema {
         self.schema
+    }
+
+    /// Fail with [`ApprovalError::EntityNotInSchema`] unless the release
+    /// instantiates `entity`.
+    pub(crate) fn require_entity(self, entity: &'static str) -> ApprovalResult<()> {
+        if self.schema.entity(entity).is_some_and(|e| !e.abstract_) {
+            Ok(())
+        } else {
+            Err(ApprovalError::EntityNotInSchema {
+                entity,
+                schema: self.version,
+            })
+        }
+    }
+
+    /// Position and declaration of the attribute this crate knows by its
+    /// IFC4 name, in this release.
+    pub(crate) fn declared(
+        self,
+        entity: &str,
+        attribute: &'static str,
+    ) -> Option<(usize, &'static Attribute)> {
+        let name = release_name(self.version, entity, attribute);
+        self.schema
+            .attributes(entity)
+            .into_iter()
+            .enumerate()
+            .find(|(_, declared)| declared.name.eq_ignore_ascii_case(name))
     }
 
     /// Does `actual` satisfy `RelatedObjects` of an `IfcRelAssociates` in
@@ -85,34 +166,44 @@ impl Layout {
     }
 
     /// Build a record of `entity` in this release's layout from values named
-    /// by attribute; unnamed slots are `$`.
+    /// by their IFC4 attribute names; unnamed slots are `$`.
     ///
-    /// Refuses, before anything is staged, a required attribute left `$`
-    /// with [`ApprovalError::AuthoringRequired`], such as the IFC2X3
-    /// `OwnerHistory`, and a value for an attribute the release does not
-    /// declare with [`ApprovalError::AuthoringInvalid`].
+    /// Refuses, before anything is staged, an entity the release does not
+    /// declare ([`ApprovalError::EntityNotInSchema`]); a value for an
+    /// attribute it does not declare ([`ApprovalError::AuthoringNotInSchema`]);
+    /// text where it declares a record, a list where it declares a single
+    /// reference, or a reference where it declares text
+    /// ([`ApprovalError::AuthoringValueType`]); and a required attribute
+    /// left `$` ([`ApprovalError::AuthoringRequired`]), such as the IFC2X3
+    /// `OwnerHistory`.
     pub(crate) fn named_record(
         self,
         entity: &'static str,
         values: Vec<(&'static str, Value)>,
     ) -> ApprovalResult<Entity> {
+        self.require_entity(entity)?;
         let declared = self.schema.attributes(entity);
         let mut attributes = vec![Value::Null; declared.len()];
         for (attribute, value) in values {
-            let slot = declared
-                .iter()
-                .position(|found| found.name.eq_ignore_ascii_case(attribute));
-            match slot {
-                Some(slot) => attributes[slot] = value,
-                None if value == Value::Null => {}
-                None => {
-                    return Err(ApprovalError::AuthoringInvalid {
-                        entity,
-                        attribute,
-                        value: format!("not declared by {:?}", self.version),
-                    })
+            let Some((slot, declaration)) = self.declared(entity, attribute) else {
+                if value == Value::Null {
+                    continue;
                 }
+                return Err(ApprovalError::AuthoringNotInSchema {
+                    entity,
+                    attribute,
+                    schema: self.version,
+                });
+            };
+            if !self.holds(declaration, &value) {
+                return Err(ApprovalError::AuthoringValueType {
+                    entity,
+                    attribute,
+                    declared: declaration.type_name.as_str(),
+                    schema: self.version,
+                });
             }
+            attributes[slot] = value;
         }
         for (declaration, value) in declared.iter().zip(&attributes) {
             if *value == Value::Null && !declaration.optional {
@@ -124,6 +215,61 @@ impl Layout {
             }
         }
         Ok(Entity::new(entity, attributes))
+    }
+
+    /// Whether `value`'s shape fits `declaration`: text only in a string
+    /// type, references only where an entity is reachable, a list only in
+    /// an aggregate. Reference targets are checked by the caller.
+    fn holds(self, declaration: &Attribute, value: &Value) -> bool {
+        match value {
+            Value::Null => true,
+            Value::List(items) => {
+                declaration.aggregate
+                    && items
+                        .iter()
+                        .all(|item| self.holds_scalar(&declaration.type_name, item))
+            }
+            other => !declaration.aggregate && self.holds_scalar(&declaration.type_name, other),
+        }
+    }
+
+    fn holds_scalar(self, declared: &str, value: &Value) -> bool {
+        match value {
+            Value::Text(_) => self.is_text(declared),
+            Value::Ref(_) => self.admits_entity(declared, 8),
+            _ => true,
+        }
+    }
+
+    /// Whether `declared` resolves to a STRING type.
+    pub(crate) fn is_text(self, declared: &str) -> bool {
+        self.schema
+            .resolve_defined(declared)
+            .to_ascii_uppercase()
+            .starts_with("STRING")
+    }
+
+    /// Whether `declared` is an entity, or a SELECT that reaches one.
+    pub(crate) fn admits_entity(self, declared: &str, depth: usize) -> bool {
+        if self.schema.entity(declared).is_some() {
+            return true;
+        }
+        match self.schema.type_def(declared).map(|t| &t.kind) {
+            Some(TypeKind::Select(members)) if depth > 0 => members
+                .iter()
+                .any(|member| self.admits_entity(member, depth - 1)),
+            _ => false,
+        }
+    }
+}
+
+/// The name `release` gives the attribute this crate knows by its IFC4
+/// name; see the module documentation for the two renames.
+fn release_name(release: SchemaVersion, entity: &str, attribute: &'static str) -> &'static str {
+    match (release, entity, attribute) {
+        (SchemaVersion::Ifc2x3, "IFCAPPROVAL", "TimeOfApproval") => "ApprovalDateTime",
+        (SchemaVersion::Ifc2x3, "IFCAPPROVALRELATIONSHIP", "RelatedApprovals") => "RelatedApproval",
+        _ => attribute,
     }
 }
 
