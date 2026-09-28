@@ -108,6 +108,17 @@ impl Transform {
         })
     }
 
+    /// The determinant of the linear part: the signed volume scale.
+    ///
+    /// Negative when the transform mirrors (reverses handedness), positive
+    /// when it preserves it; its magnitude is the volume scale factor. Zero or
+    /// non-finite only for a degenerate basis, which an IFC placement or a
+    /// cartesian transformation operator cannot state validly (`Scale` is
+    /// positive and the axes are independent).
+    pub fn determinant(&self) -> f64 {
+        dot(self.basis[0], cross(self.basis[1], self.basis[2]))
+    }
+
     /// Apply this transform to a point.
     pub fn apply(&self, p: [f64; 3]) -> [f64; 3] {
         [

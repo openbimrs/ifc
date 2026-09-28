@@ -463,3 +463,110 @@ fn every_lowered_family_has_a_body_kind() {
     );
     assert_eq!(BodyKind::classify("IFCMAPPEDITEM"), None);
 }
+
+/// A B-rep and a tessellation, each mappable; the maps differ only in their
+/// `MappingTarget` (#185).
+///
+/// ```text
+/// #300 B-rep map, #310 tessellation map (one triangle)
+/// #320 identity operator (every axis `$`)
+/// #321 mirror: Axis1 (1,0,0), Axis2 (0,-1,0), Axis3 (0,0,1); Axis2 opposes
+///      Axis3 x Axis1, so the frame is left-handed
+/// #322 uniform Scale 2 with default axes
+/// ```
+const MAPPED_KINDS: &str = "#300=IFCFACE(());
+     #301=IFCCLOSEDSHELL((#300));
+     #302=IFCFACETEDBREP(#301);
+     #303=IFCSHAPEREPRESENTATION(#10,'Body','Brep',(#302));
+     #304=IFCCARTESIANPOINT((0.,0.,0.));
+     #305=IFCAXIS2PLACEMENT3D(#304,$,$);
+     #306=IFCREPRESENTATIONMAP(#305,#303);
+     #310=IFCCARTESIANPOINTLIST3D(((0.,0.,0.),(1.,0.,0.),(0.,1.,0.)),$);
+     #311=IFCTRIANGULATEDFACESET(#310,$,$,((1,2,3)),$);
+     #312=IFCSHAPEREPRESENTATION(#10,'Body','Tessellation',(#311));
+     #313=IFCREPRESENTATIONMAP(#305,#312);
+     #319=IFCCARTESIANPOINT((0.,0.,0.));
+     #320=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#319,$,$);
+     #323=IFCDIRECTION((1.,0.,0.));
+     #324=IFCDIRECTION((0.,-1.,0.));
+     #325=IFCDIRECTION((0.,0.,1.));
+     #321=IFCCARTESIANTRANSFORMATIONOPERATOR3D(#323,#324,#319,$,#325);
+     #322=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#319,2.,$);";
+
+fn mapped_item(records: &str, item: &str) -> ifc_geometry::BodyItem {
+    let model = metres(&format!("{MAPPED_KINDS}\n     {records}"), item);
+    let body = body_description(&model, &units::resolve(&model), PRODUCT)
+        .expect("describes")
+        .expect("has a body");
+    body.sole_item().expect("one item").clone()
+}
+
+/// The composed frame of a mapped B-rep says whether the mapping mirrors it.
+#[test]
+fn a_mapped_brep_reports_the_handedness_of_its_mapping() {
+    let identity = mapped_item("#330=IFCMAPPEDITEM(#306,#320);", "#330");
+    assert_eq!(identity.kind, BodyKind::Brep);
+    assert_eq!(identity.mapped_by, [EntityId(330)]);
+    assert!(
+        close([identity.item_world.determinant()], [1.0]),
+        "{identity:?}"
+    );
+    assert_eq!(identity.is_mirrored(), Some(false));
+
+    let mirrored = mapped_item("#330=IFCMAPPEDITEM(#306,#321);", "#330");
+    assert!(
+        close([mirrored.item_world.determinant()], [-1.0]),
+        "{mirrored:?}"
+    );
+    assert_eq!(mirrored.is_mirrored(), Some(true));
+    // The mirror is the operator's: y flips, x and z stay.
+    assert!(close(
+        [mirrored.item_world.apply_direction([0.0, 1.0, 0.0])[1]],
+        [-1.0]
+    ));
+}
+
+/// Any item kind reached through a map carries the frame, not only sweeps.
+#[test]
+fn a_mapped_tessellation_reports_the_handedness_of_its_mapping() {
+    let mirrored = mapped_item("#330=IFCMAPPEDITEM(#313,#321);", "#330");
+    assert_eq!(mirrored.kind, BodyKind::Tessellated);
+    assert!(mirrored.swept.is_none());
+    assert_eq!(mirrored.is_mirrored(), Some(true));
+}
+
+/// Mirrors compose: a mirrored map inside a mirrored map is not mirrored.
+#[test]
+fn nested_mirrors_cancel() {
+    let item = mapped_item(
+        "#330=IFCMAPPEDITEM(#306,#321);
+         #331=IFCSHAPEREPRESENTATION(#10,'Body','MappedRepresentation',(#330));
+         #332=IFCREPRESENTATIONMAP(#305,#331);
+         #333=IFCMAPPEDITEM(#332,#321);",
+        "#333",
+    );
+    assert_eq!(item.mapped_by, [EntityId(333), EntityId(330)]);
+    assert!(close([item.item_world.determinant()], [1.0]), "{item:?}");
+    assert_eq!(item.is_mirrored(), Some(false));
+}
+
+/// The determinant is the signed volume scale, not only its sign.
+#[test]
+fn a_scaled_mapping_scales_the_determinant() {
+    let item = mapped_item("#330=IFCMAPPEDITEM(#306,#322);", "#330");
+    assert!(close([item.item_world.determinant()], [8.0]), "{item:?}");
+    assert_eq!(item.is_mirrored(), Some(false));
+}
+
+/// An item authored in place reports the product frame, unmirrored.
+#[test]
+fn a_direct_item_reports_the_product_frame() {
+    let model = metres(MAPPED_KINDS, "#302");
+    let body = body_description(&model, &units::resolve(&model), PRODUCT)
+        .unwrap()
+        .unwrap();
+    let item = body.sole_item().unwrap();
+    assert!(item.mapped_by.is_empty());
+    assert_eq!(item.is_mirrored(), Some(false));
+    assert!(close([item.item_world.determinant()], [1.0]));
+}
