@@ -19,7 +19,7 @@ result differs from the committed report.
 | --- | ---: |
 | Concrete entities in IFC4X3 ADD2 | 743 |
 | Created by a writer in the test suite | 743 (100.0%) |
-| Landed in a model by any path | 735 |
+| Landed in a model by any path | 736 |
 | Seen only through a codec or fixture, never written | 0 |
 | Never produced at all | 0 |
 
