@@ -265,13 +265,12 @@ fn author(model: &mut Model, version: SchemaVersion) -> Vec<EntityId> {
             for value in &entity.attributes {
                 if let Value::Ref(id) = value {
                     let staged = model.get(*id).expect("reference");
-                    if staged.type_name.starts_with("IFCCALENDARDATE")
-                        || staged.type_name.starts_with("IFCLOCALTIME")
-                        || staged.type_name.starts_with("IFCDATEANDTIME")
-                    {
-                        if !written.contains(id) {
-                            written.push(*id);
-                        }
+                    let is_date = matches!(
+                        &*staged.type_name,
+                        "IFCCALENDARDATE" | "IFCLOCALTIME" | "IFCDATEANDTIME"
+                    );
+                    if is_date && !written.contains(id) {
+                        written.push(*id);
                     }
                 }
             }
