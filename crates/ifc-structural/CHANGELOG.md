@@ -15,6 +15,22 @@ everything released before per-crate changelogs began.
 ### Changed (breaking)
 
 - `MemberConnection` and `ActivityAssignment` are `#[non_exhaustive]`.
+- Every public draft is `#[non_exhaustive]`, so struct literals no longer
+  compile outside the crate. Each gains a constructor taking its required
+  fields and one builder setter per other field, named after the field and
+  taking the unwrapped value (`.name("Frame")` sets `Some`; `String` fields
+  take `impl Into<String>`):
+  - `AnalysisModelDraft::new(global_id, predefined_type)`
+  - `StructuralRootDraft::new(global_id)`
+  - `RelationshipRootDraft::new(global_id)`
+  - `MemberDraft::new(root, kind)`, `ConnectionDraft::new(root, kind)`
+  - `ActionDraft::new(root, applied_load, coordinate_system, kind)`
+  - `ReactionDraft::new(root, applied_load, coordinate_system, kind)`
+  - `LoadGroupDraft::new(global_id, action_type, action_source, kind)`
+  - `ResultGroupDraft::new(global_id, theory_type, is_linear)`
+  - `MemberConnectionDraft::new(root, member, connection)`
+  - `ActivityAssignmentDraft::new(root, relating_element, activity)`
+  - `BoundaryConditionDraft::new()`
 
 ### Changed
 

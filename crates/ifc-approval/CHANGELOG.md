@@ -12,6 +12,17 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `ApprovalDraft`, `ApprovalRelationshipDraft`, `ResourceApprovalDraft`
+  and `ApprovalAssociationDraft` are `#[non_exhaustive]` (#214). Struct
+  literals no longer compile outside the crate: build them with
+  `ApprovalDraft::new()`,
+  `ApprovalRelationshipDraft::new(relating_approval, related_approvals)`,
+  `ResourceApprovalDraft::new(related_resources, relating_approval)` and
+  `ApprovalAssociationDraft::new(global_id, related_objects,
+  relating_approval)` plus field-named setters. Fields stay public.
+
 ### Changed
 
 - Depends on `ifc-schema` with its default features named explicitly

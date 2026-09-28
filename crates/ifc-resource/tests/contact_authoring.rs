@@ -25,11 +25,7 @@ fn an_actor_role_stages() {
     let mut model = model();
     let mut editor = ResourceEditor::for_model(&mut model).expect("editor");
     let id = editor
-        .create_actor_role(ActorRoleDraft {
-            role: "ARCHITECT",
-            user_defined_role: None,
-            description: Some("Lead designer"),
-        })
+        .create_actor_role(ActorRoleDraft::new("ARCHITECT").description("Lead designer"))
         .expect("role");
 
     let staged = model.get(id).expect("staged");
@@ -45,20 +41,12 @@ fn a_userdefined_role_without_a_name_is_refused() {
     let mut editor = ResourceEditor::for_model(&mut model).expect("editor");
     assert!(
         editor
-            .create_actor_role(ActorRoleDraft {
-                role: "USERDEFINED",
-                user_defined_role: None,
-                description: None,
-            })
+            .create_actor_role(ActorRoleDraft::new("USERDEFINED"))
             .is_err(),
         "a nameless USERDEFINED role was accepted",
     );
     editor
-        .create_actor_role(ActorRoleDraft {
-            role: "USERDEFINED",
-            user_defined_role: Some("BIM coordinator"),
-            description: None,
-        })
+        .create_actor_role(ActorRoleDraft::new("USERDEFINED").user_defined_role("BIM coordinator"))
         .expect("a named USERDEFINED role is legal");
 }
 
@@ -103,10 +91,7 @@ fn an_unreachable_telecom_address_is_refused() {
     // route satisfies it.
     editor
         .create_telecom_address(
-            TelecomAddressDraft {
-                pager_number: Some("555"),
-                ..TelecomAddressDraft::default()
-            },
+            TelecomAddressDraft::new().pager_number("555"),
             TelecomLists::default(),
         )
         .expect("a pager number alone satisfies MinimumDataProvided");

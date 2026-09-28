@@ -59,26 +59,24 @@ fn model(version: SchemaVersion) -> Model {
 }
 
 fn door_lining(ifc4: bool) -> DoorLiningDraft<'static> {
-    DoorLiningDraft {
-        name: Some("Lining"),
-        lining_depth: Some(120.0),
-        lining_thickness: Some(40.0),
-        casing_thickness: Some(10.0),
-        casing_depth: Some(60.0),
-        lining_to_panel_offset_x: ifc4.then_some(5.0),
-        ..DoorLiningDraft::default()
-    }
+    let mut draft = DoorLiningDraft::new()
+        .name("Lining")
+        .lining_depth(120.0)
+        .lining_thickness(40.0)
+        .casing_thickness(10.0)
+        .casing_depth(60.0);
+    draft.lining_to_panel_offset_x = ifc4.then_some(5.0);
+    draft
 }
 
 fn window_lining(ifc4: bool) -> WindowLiningDraft<'static> {
-    WindowLiningDraft {
-        name: Some("Window lining"),
-        lining_depth: Some(100.0),
-        lining_thickness: Some(50.0),
-        first_transom_offset: Some(0.5),
-        lining_offset: ifc4.then_some(-5.0),
-        ..WindowLiningDraft::default()
-    }
+    let mut draft = WindowLiningDraft::new()
+        .name("Window lining")
+        .lining_depth(100.0)
+        .lining_thickness(50.0)
+        .first_transom_offset(0.5);
+    draft.lining_offset = ifc4.then_some(-5.0);
+    draft
 }
 
 /// Every predefined set, with an owner history, in `version`'s layout.
@@ -86,27 +84,16 @@ fn author_predefined(tx: &mut Transaction, model: &Model, version: SchemaVersion
     let ifc4 = version != SchemaVersion::Ifc2x3;
     let bar = add_reinforcement_bar_properties(
         tx,
-        ReinforcementBarDraft {
-            total_cross_section_area: 314.0,
-            steel_grade: "B500B",
-            bar_surface: Some("TEXTURED"),
-            effective_depth: None,
-            nominal_bar_diameter: Some(20.0),
-            bar_count: Some(4),
-        },
+        ReinforcementBarDraft::new(314.0, "B500B")
+            .bar_surface("TEXTURED")
+            .nominal_bar_diameter(20.0)
+            .bar_count(4),
     )
     .expect("bar");
     let section = add_section_properties(tx, "UNIFORM", PROFILE, None).expect("section");
     let reinforcement = add_section_reinforcement_properties(
         tx,
-        SectionReinforcementDraft {
-            longitudinal_start_position: 0.0,
-            longitudinal_end_position: 3000.0,
-            transverse_position: None,
-            reinforcement_role: "MAIN",
-            section_definition: section,
-            cross_section_reinforcement_definitions: &[bar],
-        },
+        SectionReinforcementDraft::new(0.0, 3000.0, "MAIN", section, &[bar]),
     )
     .expect("section reinforcement");
     let panel = (Some(40.0), Some(0.5));
@@ -263,27 +250,16 @@ fn ifc4_and_ifc4x3_output_is_unchanged() {
         let mut plain = Transaction::new(&model);
         let bar = add_reinforcement_bar_properties(
             &mut plain,
-            ReinforcementBarDraft {
-                total_cross_section_area: 314.0,
-                steel_grade: "B500B",
-                bar_surface: Some("TEXTURED"),
-                effective_depth: None,
-                nominal_bar_diameter: Some(20.0),
-                bar_count: Some(4),
-            },
+            ReinforcementBarDraft::new(314.0, "B500B")
+                .bar_surface("TEXTURED")
+                .nominal_bar_diameter(20.0)
+                .bar_count(4),
         )
         .unwrap();
         let section = add_section_properties(&mut plain, "UNIFORM", PROFILE, None).unwrap();
         let reinforcement = add_section_reinforcement_properties(
             &mut plain,
-            SectionReinforcementDraft {
-                longitudinal_start_position: 0.0,
-                longitudinal_end_position: 3000.0,
-                transverse_position: None,
-                reinforcement_role: "MAIN",
-                section_definition: section,
-                cross_section_reinforcement_definitions: &[bar],
-            },
+            SectionReinforcementDraft::new(0.0, 3000.0, "MAIN", section, &[bar]),
         )
         .unwrap();
         let (panel, frame) = ((Some(40.0), Some(0.5)), (Some(60.0), Some(50.0)));
@@ -381,10 +357,7 @@ fn ifc2x3_refuses_what_it_does_not_declare() {
             schema: SchemaVersion::Ifc2x3,
         }
     );
-    let zero = DoorLiningDraft {
-        lining_thickness: Some(0.0),
-        ..door_lining(false)
-    };
+    let zero = door_lining(false).lining_thickness(0.0);
     let error = refused(&model, |tx| {
         add_door_lining_properties_with_owner_history(tx, &model, G[0], zero, OWNER)
     });

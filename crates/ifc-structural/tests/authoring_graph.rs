@@ -16,17 +16,11 @@ use ifc_structural::{
 use support::{model, named};
 
 fn root(guid: &str) -> StructuralRootDraft {
-    StructuralRootDraft {
-        global_id: guid.into(),
-        ..StructuralRootDraft::default()
-    }
+    StructuralRootDraft::new(guid)
 }
 
 fn relation_root(guid: &str) -> RelationshipRootDraft {
-    RelationshipRootDraft {
-        global_id: guid.into(),
-        ..RelationshipRootDraft::default()
-    }
+    RelationshipRootDraft::new(guid)
 }
 
 #[test]
@@ -40,43 +34,36 @@ fn stages_structural_graph_atomically_and_reads_it_back() {
         &mut tx,
         &model,
         schema,
-        MemberDraft {
-            root: root("0YvctVUKbD0xjK5xJ8Jg11"),
-            kind: MemberDraftKind::Curve {
+        MemberDraft::new(
+            root("0YvctVUKbD0xjK5xJ8Jg11"),
+            MemberDraftKind::Curve {
                 predefined_type: MemberPredefinedType::RigidJoinedMember,
                 axis: Some(axis),
                 varying: false,
             },
-        },
+        ),
     )
     .unwrap();
     let connection = stage_connection(
         &mut tx,
         &model,
         schema,
-        ConnectionDraft {
-            root: root("0YvctVUKbD0xjK5xJ8Jg12"),
-            kind: ConnectionDraftKind::Curve {
+        ConnectionDraft::new(
+            root("0YvctVUKbD0xjK5xJ8Jg12"),
+            ConnectionDraftKind::Curve {
                 applied_condition: Some(condition),
                 axis: Some(axis),
             },
-        },
+        ),
     )
     .unwrap();
     stage_member_connection(
         &mut tx,
         &model,
         schema,
-        MemberConnectionDraft {
-            root: relation_root("0YvctVUKbD0xjK5xJ8Jg13"),
-            member,
-            connection,
-            applied_condition: Some(condition),
-            additional_conditions: None,
-            supported_length: Some(2.5),
-            condition_coordinate_system: None,
-            eccentricity: None,
-        },
+        MemberConnectionDraft::new(relation_root("0YvctVUKbD0xjK5xJ8Jg13"), member, connection)
+            .applied_condition(condition)
+            .supported_length(2.5),
     )
     .unwrap();
     let load = stage_load(
@@ -93,27 +80,21 @@ fn stages_structural_graph_atomically_and_reads_it_back() {
         &mut tx,
         &model,
         schema,
-        ActionDraft {
-            root: root("0YvctVUKbD0xjK5xJ8Jg14"),
-            applied_load: load,
-            coordinate_system: CoordinateSystem::Global,
-            destabilizing_load: None,
-            caused_by: None,
-            kind: ActionDraftKind::Linear {
+        ActionDraft::new(
+            root("0YvctVUKbD0xjK5xJ8Jg14"),
+            load,
+            CoordinateSystem::Global,
+            ActionDraftKind::Linear {
                 projected_or_true: Some(ProjectedOrTrue::TrueLength),
             },
-        },
+        ),
     )
     .unwrap();
     stage_activity_assignment(
         &mut tx,
         &model,
         schema,
-        ActivityAssignmentDraft {
-            root: relation_root("0YvctVUKbD0xjK5xJ8Jg15"),
-            relating_element: member,
-            activity: action,
-        },
+        ActivityAssignmentDraft::new(relation_root("0YvctVUKbD0xjK5xJ8Jg15"), member, action),
     )
     .unwrap();
     tx.commit(&mut model).unwrap();
@@ -145,14 +126,14 @@ fn stages_ifc2x3_legacy_structural_types() {
         &mut tx,
         &model,
         schema,
-        MemberDraft {
-            root: common,
-            kind: MemberDraftKind::Curve {
+        MemberDraft::new(
+            common,
+            MemberDraftKind::Curve {
                 predefined_type: MemberPredefinedType::RigidJoinedMember,
                 axis: None,
                 varying: false,
             },
-        },
+        ),
     )
     .unwrap();
     let mut connection_root = root("0YvctVUKbD0xjK5xJ8Jg22");
@@ -161,13 +142,13 @@ fn stages_ifc2x3_legacy_structural_types() {
         &mut tx,
         &model,
         schema,
-        ConnectionDraft {
-            root: connection_root,
-            kind: ConnectionDraftKind::Curve {
+        ConnectionDraft::new(
+            connection_root,
+            ConnectionDraftKind::Curve {
                 applied_condition: None,
                 axis: None,
             },
-        },
+        ),
     )
     .unwrap();
     let load = stage_load(
@@ -186,16 +167,15 @@ fn stages_ifc2x3_legacy_structural_types() {
         &mut tx,
         &model,
         schema,
-        ActionDraft {
-            root: action_root,
-            applied_load: load,
-            coordinate_system: CoordinateSystem::Global,
-            destabilizing_load: Some(false),
-            caused_by: None,
-            kind: ActionDraftKind::Linear {
+        ActionDraft::new(
+            action_root,
+            load,
+            CoordinateSystem::Global,
+            ActionDraftKind::Linear {
                 projected_or_true: Some(ProjectedOrTrue::ProjectedLength),
             },
-        },
+        )
+        .destabilizing_load(false),
     )
     .unwrap();
     tx.commit(&mut model).unwrap();
@@ -215,14 +195,14 @@ fn invalid_drafts_do_not_stage_partial_edits() {
         &mut tx,
         &model,
         schema,
-        MemberDraft {
-            root: root("0YvctVUKbD0xjK5xJ8Jg31"),
-            kind: MemberDraftKind::Curve {
+        MemberDraft::new(
+            root("0YvctVUKbD0xjK5xJ8Jg31"),
+            MemberDraftKind::Curve {
                 predefined_type: MemberPredefinedType::RigidJoinedMember,
                 axis: None,
                 varying: false,
             },
-        },
+        ),
     );
     assert!(matches!(
         missing_axis,
@@ -233,14 +213,14 @@ fn invalid_drafts_do_not_stage_partial_edits() {
         &mut tx,
         &model,
         schema,
-        MemberDraft {
-            root: root("0YvctVUKbD0xjK5xJ8Jg32"),
-            kind: MemberDraftKind::Surface {
+        MemberDraft::new(
+            root("0YvctVUKbD0xjK5xJ8Jg32"),
+            MemberDraftKind::Surface {
                 predefined_type: MemberPredefinedType::Shell,
                 thickness: None,
                 varying: false,
             },
-        },
+        ),
     );
     assert!(matches!(
         shell,
@@ -262,16 +242,7 @@ fn projected_removals_and_wrong_relationship_values_are_refused() {
         &mut tx,
         &model,
         schema,
-        MemberConnectionDraft {
-            root: relation_root("0YvctVUKbD0xjK5xJ8Jg41"),
-            member,
-            connection,
-            applied_condition: None,
-            additional_conditions: None,
-            supported_length: None,
-            condition_coordinate_system: None,
-            eccentricity: None,
-        },
+        MemberConnectionDraft::new(relation_root("0YvctVUKbD0xjK5xJ8Jg41"), member, connection),
     );
     assert!(matches!(
         removed,
@@ -284,16 +255,8 @@ fn projected_removals_and_wrong_relationship_values_are_refused() {
         &mut tx,
         &model,
         schema,
-        MemberConnectionDraft {
-            root: relation_root("0YvctVUKbD0xjK5xJ8Jg42"),
-            member,
-            connection,
-            applied_condition: None,
-            additional_conditions: None,
-            supported_length: Some(0.0),
-            condition_coordinate_system: None,
-            eccentricity: None,
-        },
+        MemberConnectionDraft::new(relation_root("0YvctVUKbD0xjK5xJ8Jg42"), member, connection)
+            .supported_length(0.0),
     );
     assert!(matches!(
         invalid_length,
@@ -313,11 +276,7 @@ fn an_activity_cannot_be_attached_twice_in_projected_state() {
         &mut tx,
         &model,
         schema,
-        ActivityAssignmentDraft {
-            root: relation_root("0YvctVUKbD0xjK5xJ8Jg51"),
-            relating_element: product,
-            activity,
-        },
+        ActivityAssignmentDraft::new(relation_root("0YvctVUKbD0xjK5xJ8Jg51"), product, activity),
     )
     .unwrap();
     let before = tx.len();
@@ -325,11 +284,7 @@ fn an_activity_cannot_be_attached_twice_in_projected_state() {
         &mut tx,
         &model,
         schema,
-        ActivityAssignmentDraft {
-            root: relation_root("0YvctVUKbD0xjK5xJ8Jg52"),
-            relating_element: product,
-            activity,
-        },
+        ActivityAssignmentDraft::new(relation_root("0YvctVUKbD0xjK5xJ8Jg52"), product, activity),
     );
     assert!(matches!(
         duplicate,
@@ -348,14 +303,12 @@ fn incompatible_action_load_is_refused_before_staging() {
         &mut tx,
         &model,
         schema,
-        ActionDraft {
-            root: root("0YvctVUKbD0xjK5xJ8Jg61"),
-            applied_load: linear,
-            coordinate_system: CoordinateSystem::Global,
-            destabilizing_load: None,
-            caused_by: None,
-            kind: ActionDraftKind::Point,
-        },
+        ActionDraft::new(
+            root("0YvctVUKbD0xjK5xJ8Jg61"),
+            linear,
+            CoordinateSystem::Global,
+            ActionDraftKind::Point,
+        ),
     );
     assert!(matches!(
         result,
@@ -377,14 +330,14 @@ fn entity_specific_authoring_rules_are_independently_enforced() {
         &mut tx,
         &model,
         schema,
-        MemberDraft {
-            root: root("0YvctVUKbD0xjK5xJ8Jg81"),
-            kind: MemberDraftKind::Curve {
+        MemberDraft::new(
+            root("0YvctVUKbD0xjK5xJ8Jg81"),
+            MemberDraftKind::Curve {
                 predefined_type: MemberPredefinedType::UserDefined,
                 axis: Some(axis),
                 varying: false,
             },
-        },
+        ),
     );
     assert!(matches!(
         user_defined,
@@ -397,14 +350,14 @@ fn entity_specific_authoring_rules_are_independently_enforced() {
         &mut tx,
         &model,
         schema,
-        MemberDraft {
-            root: root("0YvctVUKbD0xjK5xJ8Jg82"),
-            kind: MemberDraftKind::Curve {
+        MemberDraft::new(
+            root("0YvctVUKbD0xjK5xJ8Jg82"),
+            MemberDraftKind::Curve {
                 predefined_type: MemberPredefinedType::Shell,
                 axis: Some(axis),
                 varying: false,
             },
-        },
+        ),
     );
     assert!(matches!(
         wrong_enum,
@@ -420,13 +373,13 @@ fn entity_specific_authoring_rules_are_independently_enforced() {
         &mut tx,
         &model,
         schema,
-        ConnectionDraft {
-            root: root("0YvctVUKbD0xjK5xJ8Jg83"),
-            kind: ConnectionDraftKind::Curve {
+        ConnectionDraft::new(
+            root("0YvctVUKbD0xjK5xJ8Jg83"),
+            ConnectionDraftKind::Curve {
                 applied_condition: None,
                 axis: None,
             },
-        },
+        ),
     );
     assert!(matches!(
         missing_connection_axis,
@@ -439,16 +392,14 @@ fn entity_specific_authoring_rules_are_independently_enforced() {
         &mut tx,
         &model,
         schema,
-        ActionDraft {
-            root: root("0YvctVUKbD0xjK5xJ8Jg84"),
-            applied_load: linear,
-            coordinate_system: CoordinateSystem::Local,
-            destabilizing_load: None,
-            caused_by: None,
-            kind: ActionDraftKind::Linear {
+        ActionDraft::new(
+            root("0YvctVUKbD0xjK5xJ8Jg84"),
+            linear,
+            CoordinateSystem::Local,
+            ActionDraftKind::Linear {
                 projected_or_true: Some(ProjectedOrTrue::ProjectedLength),
             },
-        },
+        ),
     );
     assert!(matches!(
         projected_local,
@@ -461,11 +412,7 @@ fn entity_specific_authoring_rules_are_independently_enforced() {
         &mut tx,
         &model,
         schema,
-        ActivityAssignmentDraft {
-            root: relation_root("0YvctVUKbD0xjK5xJ8Jg85"),
-            relating_element: axis,
-            activity,
-        },
+        ActivityAssignmentDraft::new(relation_root("0YvctVUKbD0xjK5xJ8Jg85"), axis, activity),
     );
     assert!(matches!(
         wrong_select,
@@ -487,16 +434,15 @@ fn ifc2x3_linear_action_requires_projected_or_true() {
         &mut tx,
         &model,
         schema,
-        ActionDraft {
-            root: action_root,
-            applied_load: load,
-            coordinate_system: CoordinateSystem::Global,
-            destabilizing_load: Some(false),
-            caused_by: None,
-            kind: ActionDraftKind::Linear {
+        ActionDraft::new(
+            action_root,
+            load,
+            CoordinateSystem::Global,
+            ActionDraftKind::Linear {
                 projected_or_true: None,
             },
-        },
+        )
+        .destabilizing_load(false),
     );
     assert!(
         matches!(result, Err(StructuralError::MissingRequired { attribute, .. }) if attribute == "ProjectedOrTrue")

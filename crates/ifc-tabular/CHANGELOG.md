@@ -12,6 +12,13 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `SeriesDraft` and `ColumnDraft` are `#[non_exhaustive]` (#214). Struct
+  literals no longer compile outside the crate: build them with
+  `SeriesDraft::new(name, start_time, end_time, data_type, data_origin)`
+  and `ColumnDraft::new()` plus field-named setters. Fields stay public.
+
 ### Changed
 
 - Links no bundled schema table itself: every entry point takes the

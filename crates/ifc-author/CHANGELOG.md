@@ -12,6 +12,17 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `PersonDraft`, `OrganizationDraft`, `ApplicationDraft` and
+  `OwnerHistoryDraft` are `#[non_exhaustive]` (#214), so a later release can
+  add a field without another break. Struct literals no longer compile
+  outside the crate: build each with `new(...)` and field-named setters,
+  `PersonDraft::new()`, `OrganizationDraft::new(name)`,
+  `ApplicationDraft::new(developer, version, full_name, identifier)` and
+  `OwnerHistoryDraft::new(owning_user, owning_application, creation_date)`
+  (then e.g. `.change_action("ADDED")`). Fields stay public.
+
 ### Changed
 
 - Links no bundled schema table itself: every entry point takes the

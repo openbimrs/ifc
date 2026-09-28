@@ -24,6 +24,7 @@ use crate::error::{StructuralError, StructuralResult};
 
 /// Authored fields for a boundary condition.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct BoundaryConditionDraft<'a> {
     /// `IfcBoundaryCondition.Name`, if given.
     pub name: Option<&'a str>,
@@ -36,6 +37,50 @@ pub struct BoundaryConditionDraft<'a> {
     pub rotational: AxisValues<Option<StiffnessValue>>,
     /// Warping stiffness. Only `NodeWarping` declares it.
     pub warping: Option<StiffnessValue>,
+}
+
+impl<'a> BoundaryConditionDraft<'a> {
+    /// Starts an empty draft; every field is unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            name: None,
+            translational: Default::default(),
+            rotational: Default::default(),
+            warping: None,
+        }
+    }
+
+    /// Sets `name`: `IfcBoundaryCondition.Name`, if given.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets `translational`: Translational stiffness per axis. `None` leaves
+    /// the axis unset, which the reader reports as absent rather than zero --
+    /// an unset support is not a free one.
+    #[must_use]
+    pub fn translational(mut self, value: AxisValues<Option<StiffnessValue>>) -> Self {
+        self.translational = value;
+        self
+    }
+
+    /// Sets `rotational`: Rotational stiffness per axis. Ignored for face
+    /// conditions, which declare no rotational attributes.
+    #[must_use]
+    pub fn rotational(mut self, value: AxisValues<Option<StiffnessValue>>) -> Self {
+        self.rotational = value;
+        self
+    }
+
+    /// Sets `warping`: Warping stiffness. Only `NodeWarping` declares it.
+    #[must_use]
+    pub fn warping(mut self, value: StiffnessValue) -> Self {
+        self.warping = Some(value);
+        self
+    }
 }
 
 /// Stage a boundary condition of the given family, in the IFC4 form.

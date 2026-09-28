@@ -15,26 +15,8 @@ fn the_material_list_writer_stages() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
 
-    let first = create_material(
-        &mut tx,
-        &model,
-        MaterialDraft {
-            name: "Concrete",
-            description: None,
-            category: None,
-        },
-    )
-    .unwrap();
-    let second = create_material(
-        &mut tx,
-        &model,
-        MaterialDraft {
-            name: "Steel",
-            description: None,
-            category: None,
-        },
-    )
-    .unwrap();
+    let first = create_material(&mut tx, &model, MaterialDraft::new("Concrete")).unwrap();
+    let second = create_material(&mut tx, &model, MaterialDraft::new("Steel")).unwrap();
     tx.commit(&mut model).expect("commit");
 
     let mut tx = Transaction::new(&model);

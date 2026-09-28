@@ -13,16 +13,7 @@ fn colour(tx: &mut Transaction) -> EntityId {
 }
 
 fn rendering(surface_colour: EntityId) -> SurfaceStyleRenderingDraft {
-    SurfaceStyleRenderingDraft {
-        surface_colour,
-        transparency: None,
-        diffuse: None,
-        transmission: None,
-        diffuse_transmission: None,
-        reflection: None,
-        specular: None,
-        reflectance_method: "PHONG",
-    }
+    SurfaceStyleRenderingDraft::new(surface_colour, "PHONG")
 }
 
 /// A colour member and a factor member land in the same slot.

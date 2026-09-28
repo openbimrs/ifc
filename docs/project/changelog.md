@@ -24,6 +24,16 @@ lockstep -- is archived in the
 
 ### Changed (breaking)
 
+- The authoring drafts `HorizontalSegmentDraft`, `VerticalSegmentDraft`
+  and `CantSegmentDraft` are `#[non_exhaustive]`: build them with
+  `HorizontalSegmentDraft::new(start_point, start_direction, start_radius,
+  end_radius, segment_length, predefined_type)`,
+  `VerticalSegmentDraft::new(start_dist_along, horizontal_length,
+  start_height, start_gradient, end_gradient, predefined_type)` or
+  `CantSegmentDraft::new(start_dist_along, horizontal_length,
+  start_cant_left, start_cant_right, predefined_type)` and the setters
+  `gravity_center_line_height`, `radius_of_curvature`, `end_cant_left` and
+  `end_cant_right`. Fields stay public.
 - The read-side `HorizontalSegment`, `CantSegment`, `CantLayout`,
   `CantAtStation`, `LinearPlacement`, `StationEquation`,
   `LoweredAlignmentCurve`, `PartialHorizontalLayout` and `RefusedSegment`
@@ -40,6 +50,17 @@ lockstep -- is archived in the
 
 ### ifc-approval
 
+### Changed (breaking)
+
+- `ApprovalDraft`, `ApprovalRelationshipDraft`, `ResourceApprovalDraft`
+  and `ApprovalAssociationDraft` are `#[non_exhaustive]` (#214). Struct
+  literals no longer compile outside the crate: build them with
+  `ApprovalDraft::new()`,
+  `ApprovalRelationshipDraft::new(relating_approval, related_approvals)`,
+  `ResourceApprovalDraft::new(related_resources, relating_approval)` and
+  `ApprovalAssociationDraft::new(global_id, related_objects,
+  relating_approval)` plus field-named setters. Fields stay public.
+
 ### Changed
 
 - Depends on `ifc-schema` with its default features named explicitly
@@ -51,6 +72,17 @@ lockstep -- is archived in the
   never read as IFC4 or IFC4X3.
 
 ### ifc-author
+
+### Changed (breaking)
+
+- `PersonDraft`, `OrganizationDraft`, `ApplicationDraft` and
+  `OwnerHistoryDraft` are `#[non_exhaustive]` (#214), so a later release can
+  add a field without another break. Struct literals no longer compile
+  outside the crate: build each with `new(...)` and field-named setters,
+  `PersonDraft::new()`, `OrganizationDraft::new(name)`,
+  `ApplicationDraft::new(developer, version, full_name, identifier)` and
+  `OwnerHistoryDraft::new(owning_user, owning_application, creation_date)`
+  (then e.g. `.change_action("ADDED")`). Fields stay public.
 
 ### Changed
 
@@ -68,6 +100,17 @@ lockstep -- is archived in the
 
 - `ClassificationHierarchy` and `EffectiveClassifications` are
   `#[non_exhaustive]`.
+- Every public draft is `#[non_exhaustive]`, so struct literals no longer
+  compile outside the crate. Each gains a constructor taking its required
+  fields and one builder setter per other field, named after the field and
+  taking the unwrapped value (`.source("NBS")` sets `Some`):
+  - `ClassificationDraft::new(name)`
+  - `DocumentDraft::new(identification, name)`
+  - `LibraryDraft::new(name)`
+  - `AssociationDraft::new(global_id, related_objects)`
+  - `ExternalReferenceRelationshipDraft::new(relating_reference, related_resources)`
+  - `ClassificationReferenceDraft::new()`, `DocumentReferenceDraft::new()` and
+    `LibraryReferenceDraft::new()`, which now also derive `Default`
 
 ### Changed
 
@@ -83,6 +126,19 @@ lockstep -- is archived in the
 
 ### ifc-constraint
 
+### Changed (breaking)
+
+- Every public draft is `#[non_exhaustive]`, so struct literals no longer
+  compile outside the crate. Each gains a constructor taking its required
+  fields and one builder setter per other field, named after the field and
+  taking the unwrapped value (`.description("…")` sets `Some`):
+  - `ConstraintBaseDraft::new(name, grade)`
+  - `MetricDraft::new(base, benchmark)`
+  - `ObjectiveDraft::new(base, qualifier)`
+  - `ResourceConstraintDraft::new(relating_constraint, related_resources)`
+  - `ConstraintAssociationDraft::new(global_id, related_objects, relating_constraint)`
+  - `ReferenceDraft::new()`, which now also derives `Default`
+
 ### Changed
 
 - Depends on `ifc-schema` with its default features named explicitly
@@ -94,6 +150,14 @@ lockstep -- is archived in the
   never read as IFC4 or IFC4X3.
 
 ### ifc-control
+
+### Changed (breaking)
+
+- `ControlDraft` and `ControlAssignmentDraft` are `#[non_exhaustive]`
+  (#214). Struct literals no longer compile outside the crate: build them
+  with `ControlDraft::new()` and
+  `ControlAssignmentDraft::new(global_id, control, related_objects)` plus
+  field-named setters (`.name("Permit")`). Fields stay public.
 
 ### Changed
 
@@ -235,6 +299,13 @@ lockstep -- is archived in the
 
 ### Changed (breaking)
 
+- The authoring drafts `ProjectedCrsDraft`, `GeographicCrsDraft` and
+  `MapConversionDraft` are `#[non_exhaustive]`: build them with
+  `ProjectedCrsDraft::new(name)`, `GeographicCrsDraft::new()` or
+  `MapConversionDraft::new(source_crs, target_crs, eastings, northings,
+  orthogonal_height)` and a setter named after each optional field
+  (`.map_unit(unit)`, `.x_axis((abscissa, ordinate))`, `.scale(s)`). Fields
+  stay public.
 - The read-side `ProjectToMap` and `ProjectedCrs` are `#[non_exhaustive]`;
   they can no longer be built with a struct literal outside the crate.
 
@@ -252,6 +323,14 @@ lockstep -- is archived in the
 
 ### Changed (breaking)
 
+- The authoring drafts `MaterialDraft`, `LayerDraft`, `LayerSetDraft`,
+  `MaterialAssignmentDraft`, `ConstituentDraft` and `ProfileDraft` are
+  `#[non_exhaustive]`: build them with `MaterialDraft::new(name)`,
+  `LayerDraft::new(thickness)`, `LayerSetDraft::new(layers)`,
+  `MaterialAssignmentDraft::new(global_id, related_objects,
+  relating_material)`, `ConstituentDraft::new(material)` or
+  `ProfileDraft::new(profile)` and a setter named after each optional field
+  (`LayerDraft::new(0.2).material(brick).priority(80)`). Fields stay public.
 - `ResolvedAssignment` is `#[non_exhaustive]`.
 
 ### Changed
@@ -344,6 +423,18 @@ lockstep -- is archived in the
   `Property`, `PropertySet`, `QuantitySet`, `ResolvedSet` and
   `PropertySetTemplate` are `#[non_exhaustive]`; compare their fields
   instead of building one with a struct literal.
+- Every authoring draft is `#[non_exhaustive]`, so a struct literal no
+  longer compiles outside the crate. Each gains `new(required…)` and one
+  builder setter per other field, named after the field and taking the
+  unwrapped value: `TableValueDraft::new(name)`, `DoorLiningDraft::new()`,
+  `WindowLiningDraft::new()`,
+  `ReinforcementBarDraft::new(total_cross_section_area, steel_grade)`,
+  `SectionReinforcementDraft::new(longitudinal_start_position,
+  longitudinal_end_position, reinforcement_role, section_definition,
+  cross_section_reinforcement_definitions)`,
+  `SiUnitDraft::new(unit_type, name)`, `MonetaryUnitDraft::new(currency)`
+  and `ConversionBasedUnitDraft::new(unit_type, name, conversion_factor,
+  dimensions)`. Fields stay public.
 
 ### Changed
 
@@ -362,6 +453,20 @@ lockstep -- is archived in the
   `#[non_exhaustive]`.
 
 ### ifc-resource
+
+### Changed (breaking)
+
+- `ActorRoleDraft`, `PostalAddressDraft`, `TelecomAddressDraft`,
+  `ActorDraft`, `AssetDraft`, `InventoryDraft`, `AppliedValueDraft`,
+  `ResourceDraft`, `ResourceTimeDraft`, `AllocationDraft` and the resource
+  `NestingDraft` are `#[non_exhaustive]` (#214). Struct literals no longer
+  compile outside the crate: build each with `new(...)` and field-named
+  setters. New constructors: `ActorRoleDraft::new(role)`,
+  `PostalAddressDraft::new()`, `TelecomAddressDraft::new()`,
+  `ActorDraft::new(global_id, the_actor)`, `AssetDraft::new(global_id)`,
+  `InventoryDraft::new(global_id)` and `AppliedValueDraft::new()`, each
+  with a setter per remaining field. The drafts that already had builders
+  keep them unchanged. Fields stay public where they were.
 
 ### Changed
 
@@ -607,6 +712,22 @@ lockstep -- is archived in the
 ### Changed (breaking)
 
 - `MemberConnection` and `ActivityAssignment` are `#[non_exhaustive]`.
+- Every public draft is `#[non_exhaustive]`, so struct literals no longer
+  compile outside the crate. Each gains a constructor taking its required
+  fields and one builder setter per other field, named after the field and
+  taking the unwrapped value (`.name("Frame")` sets `Some`; `String` fields
+  take `impl Into<String>`):
+  - `AnalysisModelDraft::new(global_id, predefined_type)`
+  - `StructuralRootDraft::new(global_id)`
+  - `RelationshipRootDraft::new(global_id)`
+  - `MemberDraft::new(root, kind)`, `ConnectionDraft::new(root, kind)`
+  - `ActionDraft::new(root, applied_load, coordinate_system, kind)`
+  - `ReactionDraft::new(root, applied_load, coordinate_system, kind)`
+  - `LoadGroupDraft::new(global_id, action_type, action_source, kind)`
+  - `ResultGroupDraft::new(global_id, theory_type, is_linear)`
+  - `MemberConnectionDraft::new(root, member, connection)`
+  - `ActivityAssignmentDraft::new(root, relating_element, activity)`
+  - `BoundaryConditionDraft::new()`
 
 ### Changed
 
@@ -627,6 +748,23 @@ lockstep -- is archived in the
 
 - `AppearanceSupport` is `#[non_exhaustive]`: a match needs a wildcard arm;
   `AppearanceDeclaration` is `#[non_exhaustive]`.
+- Every authoring draft is `#[non_exhaustive]`, so a struct literal no
+  longer compiles outside the crate. Each gains `new(required…)` and one
+  builder setter per other field, named after the field and taking the
+  unwrapped value: `BlobTextureDraft::new(raster_format, raster_code)`,
+  `TextModelDraft::new()`, `LightSourceDraft::new(light_colour)`,
+  `AnnotationDraft::new(global_id)`,
+  `TextLiteralDraft::new(literal, placement, path)`,
+  `TextLiteralWithExtentDraft::new(literal, placement, path, extent,
+  box_alignment)`, `AnnotationFillAreaDraft::new(outer_boundary)`,
+  `CurveStyleDraft::new()`,
+  `PixelTextureDraft::new(width, height, colour_components, pixel)`,
+  `ColourRgbDraft::new(red, green, blue)`,
+  `SurfaceStyleShadingDraft::new(surface_colour)`,
+  `SurfaceStyleDraft::new(side, elements)`, `StyledItemDraft::new(styles)`,
+  `PresentationLayerDraft::new(name, assigned_items)`,
+  `SurfaceStyleRenderingDraft::new(surface_colour, reflectance_method)` and
+  `ImageTextureDraft::new(url_reference)`. Fields stay public.
 
 ### Added
 
@@ -648,6 +786,11 @@ lockstep -- is archived in the
 ### ifc-systems
 
 ### Changed (breaking)
+
+- The authoring draft `ClassifiedSystemDraft` is `#[non_exhaustive]`:
+  build it with `ClassifiedSystemDraft::new()` and the setters
+  `description`, `object_type`, `predefined_type` and `long_name`. Fields
+  stay public.
 
 - The bulk readers no longer fall back to the IFC4 table. `systems`,
   `ports`, `zones`, `spatial_placements`, `role_inconsistencies`,
@@ -682,6 +825,13 @@ lockstep -- is archived in the
 
 ### ifc-tabular
 
+### Changed (breaking)
+
+- `SeriesDraft` and `ColumnDraft` are `#[non_exhaustive]` (#214). Struct
+  literals no longer compile outside the crate: build them with
+  `SeriesDraft::new(name, start_time, end_time, data_type, data_origin)`
+  and `ColumnDraft::new()` plus field-named setters. Fields stay public.
+
 ### Changed
 
 - Links no bundled schema table itself: every entry point takes the
@@ -705,6 +855,8 @@ lockstep -- is archived in the
 - `Support` is `#[non_exhaustive]`: a match needs a wildcard arm.
 - `Finding` is `#[non_exhaustive]`; it can no longer be built with a struct
   literal outside the crate.
+- `Path` is `#[non_exhaustive]`, so a later release can name a new location
+  kind; a match needs a wildcard arm.
 
 ### Changed
 

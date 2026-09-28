@@ -524,6 +524,7 @@ pub(crate) fn refs(values: &[EntityId]) -> Value {
 
 /// Draft for one `IfcAppliedValue`.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct AppliedValueDraft<'a> {
     /// `Name`.
     pub name: Option<&'a str>,
@@ -543,6 +544,87 @@ pub struct AppliedValueDraft<'a> {
     pub condition: Option<&'a str>,
     /// `ArithmeticOperator`, an `IfcArithmeticOperatorEnum` token.
     pub arithmetic_operator: Option<&'a str>,
+}
+
+impl<'a> AppliedValueDraft<'a> {
+    /// Starts a draft with every field unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            name: None,
+            description: None,
+            applied_value: None,
+            unit_basis: None,
+            applicable_date: None,
+            fixed_until_date: None,
+            category: None,
+            condition: None,
+            arithmetic_operator: None,
+        }
+    }
+
+    /// Sets [`Self::name`]: `Name`.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets [`Self::description`]: `Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets [`Self::applied_value`]: `AppliedValue`, an `IfcAppliedValueSelect` reference.
+    #[must_use]
+    pub fn applied_value(mut self, value: EntityId) -> Self {
+        self.applied_value = Some(value);
+        self
+    }
+
+    /// Sets [`Self::unit_basis`]: `UnitBasis`, the `IfcMeasureWithUnit` the value is quoted per.
+    #[must_use]
+    pub fn unit_basis(mut self, value: EntityId) -> Self {
+        self.unit_basis = Some(value);
+        self
+    }
+
+    /// Sets [`Self::applicable_date`]: `ApplicableDate`, an ISO 8601 date written as given.
+    #[must_use]
+    pub fn applicable_date(mut self, value: &'a str) -> Self {
+        self.applicable_date = Some(value);
+        self
+    }
+
+    /// Sets [`Self::fixed_until_date`]: `FixedUntilDate`, an ISO 8601 date written as given.
+    #[must_use]
+    pub fn fixed_until_date(mut self, value: &'a str) -> Self {
+        self.fixed_until_date = Some(value);
+        self
+    }
+
+    /// Sets [`Self::category`]: `Category`.
+    #[must_use]
+    pub fn category(mut self, value: &'a str) -> Self {
+        self.category = Some(value);
+        self
+    }
+
+    /// Sets [`Self::condition`]: `Condition`.
+    #[must_use]
+    pub fn condition(mut self, value: &'a str) -> Self {
+        self.condition = Some(value);
+        self
+    }
+
+    /// Sets [`Self::arithmetic_operator`]: `ArithmeticOperator`, an `IfcArithmeticOperatorEnum` token.
+    #[must_use]
+    pub fn arithmetic_operator(mut self, value: &'a str) -> Self {
+        self.arithmetic_operator = Some(value);
+        self
+    }
 }
 
 impl ResourceEditor<'_> {

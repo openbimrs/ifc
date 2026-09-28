@@ -28,6 +28,7 @@ const ACTOR_SELECT: &[&str] = &["IfcOrganization", "IfcPerson", "IfcPersonAndOrg
 
 /// Attributes of an `IfcActor` or `IfcOccupant` beyond the party.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ActorDraft<'a> {
     /// `GlobalId`, a compressed IFC GUID.
     pub global_id: &'a str,
@@ -49,12 +50,56 @@ pub struct ActorDraft<'a> {
     pub predefined_type: Option<&'a str>,
 }
 
+impl<'a> ActorDraft<'a> {
+    /// Starts a draft with its required fields; the rest are unset.
+    #[must_use]
+    pub fn new(global_id: &'a str, the_actor: EntityId) -> Self {
+        Self {
+            global_id,
+            the_actor,
+            name: None,
+            description: None,
+            object_type: None,
+            predefined_type: None,
+        }
+    }
+
+    /// Sets [`Self::name`]: `Name`.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets [`Self::description`]: `Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets [`Self::object_type`]: `ObjectType`. Required when `predefined_type` is `USERDEFINED`.
+    #[must_use]
+    pub fn object_type(mut self, value: &'a str) -> Self {
+        self.object_type = Some(value);
+        self
+    }
+
+    /// Sets [`Self::predefined_type`]: `PredefinedType`, an `IfcOccupantTypeEnum` token.
+    #[must_use]
+    pub fn predefined_type(mut self, value: &'a str) -> Self {
+        self.predefined_type = Some(value);
+        self
+    }
+}
+
 /// Attributes of an `IfcAsset`.
 ///
 /// Every attribute past the group slots is optional: an asset is the
 /// accounting view of things modelled elsewhere, and a register may
 /// know an item's owner long before it knows its depreciated value.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct AssetDraft<'a> {
     /// `GlobalId`, a compressed IFC GUID.
     pub global_id: &'a str,
@@ -82,6 +127,112 @@ pub struct AssetDraft<'a> {
     pub incorporation_date: Option<&'a str>,
     /// `DepreciatedValue`, an `IfcCostValue`.
     pub depreciated_value: Option<EntityId>,
+}
+
+impl<'a> AssetDraft<'a> {
+    /// Starts a draft with its required fields; the rest are unset.
+    #[must_use]
+    pub fn new(global_id: &'a str) -> Self {
+        Self {
+            global_id,
+            name: None,
+            description: None,
+            object_type: None,
+            identification: None,
+            original_value: None,
+            current_value: None,
+            total_replacement_cost: None,
+            owner: None,
+            user: None,
+            responsible_person: None,
+            incorporation_date: None,
+            depreciated_value: None,
+        }
+    }
+
+    /// Sets [`Self::name`]: `Name`.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets [`Self::description`]: `Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets [`Self::object_type`]: `ObjectType`.
+    #[must_use]
+    pub fn object_type(mut self, value: &'a str) -> Self {
+        self.object_type = Some(value);
+        self
+    }
+
+    /// Sets [`Self::identification`]: `Identification`: the asset register's own number.
+    #[must_use]
+    pub fn identification(mut self, value: &'a str) -> Self {
+        self.identification = Some(value);
+        self
+    }
+
+    /// Sets [`Self::original_value`]: `OriginalValue`, an `IfcCostValue`.
+    #[must_use]
+    pub fn original_value(mut self, value: EntityId) -> Self {
+        self.original_value = Some(value);
+        self
+    }
+
+    /// Sets [`Self::current_value`]: `CurrentValue`, an `IfcCostValue`.
+    #[must_use]
+    pub fn current_value(mut self, value: EntityId) -> Self {
+        self.current_value = Some(value);
+        self
+    }
+
+    /// Sets [`Self::total_replacement_cost`]: `TotalReplacementCost`, an `IfcCostValue`.
+    #[must_use]
+    pub fn total_replacement_cost(mut self, value: EntityId) -> Self {
+        self.total_replacement_cost = Some(value);
+        self
+    }
+
+    /// Sets [`Self::owner`]: `Owner`, an `IfcActorSelect`.
+    #[must_use]
+    pub fn owner(mut self, value: EntityId) -> Self {
+        self.owner = Some(value);
+        self
+    }
+
+    /// Sets [`Self::user`]: `User`, an `IfcActorSelect`.
+    #[must_use]
+    pub fn user(mut self, value: EntityId) -> Self {
+        self.user = Some(value);
+        self
+    }
+
+    /// Sets [`Self::responsible_person`]: `ResponsiblePerson`, an `IfcPerson`.
+    #[must_use]
+    pub fn responsible_person(mut self, value: EntityId) -> Self {
+        self.responsible_person = Some(value);
+        self
+    }
+
+    /// Sets [`Self::incorporation_date`]: `IncorporationDate`, an `IfcDate` in ISO 8601 form.
+    #[must_use]
+    pub fn incorporation_date(mut self, value: &'a str) -> Self {
+        self.incorporation_date = Some(value);
+        self
+    }
+
+    /// Sets [`Self::depreciated_value`]: `DepreciatedValue`, an `IfcCostValue`.
+    #[must_use]
+    pub fn depreciated_value(mut self, value: EntityId) -> Self {
+        self.depreciated_value = Some(value);
+        self
+    }
 }
 
 impl ResourceEditor<'_> {
@@ -288,6 +439,7 @@ impl ResourceEditor<'_> {
 
 /// Draft for one `IfcInventory`: a counted collection of things.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct InventoryDraft<'a> {
     /// `GlobalId`.
     pub global_id: &'a str,
@@ -307,4 +459,78 @@ pub struct InventoryDraft<'a> {
     pub current_value: Option<EntityId>,
     /// `OriginalValue`, an `IfcCostValue`.
     pub original_value: Option<EntityId>,
+}
+
+impl<'a> InventoryDraft<'a> {
+    /// Starts a draft with its required fields; the rest are unset.
+    #[must_use]
+    pub fn new(global_id: &'a str) -> Self {
+        Self {
+            global_id,
+            name: None,
+            description: None,
+            object_type: None,
+            predefined_type: None,
+            jurisdiction: None,
+            last_update_date: None,
+            current_value: None,
+            original_value: None,
+        }
+    }
+
+    /// Sets [`Self::name`]: `Name`.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets [`Self::description`]: `Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets [`Self::object_type`]: `ObjectType`. Required when `predefined_type` is `USERDEFINED`.
+    #[must_use]
+    pub fn object_type(mut self, value: &'a str) -> Self {
+        self.object_type = Some(value);
+        self
+    }
+
+    /// Sets [`Self::predefined_type`]: `PredefinedType`, an `IfcInventoryTypeEnum` token.
+    #[must_use]
+    pub fn predefined_type(mut self, value: &'a str) -> Self {
+        self.predefined_type = Some(value);
+        self
+    }
+
+    /// Sets [`Self::jurisdiction`]: `Jurisdiction`, an `IfcActorSelect`.
+    #[must_use]
+    pub fn jurisdiction(mut self, value: EntityId) -> Self {
+        self.jurisdiction = Some(value);
+        self
+    }
+
+    /// Sets [`Self::last_update_date`]: `LastUpdateDate`, an ISO 8601 date written as given.
+    #[must_use]
+    pub fn last_update_date(mut self, value: &'a str) -> Self {
+        self.last_update_date = Some(value);
+        self
+    }
+
+    /// Sets [`Self::current_value`]: `CurrentValue`, an `IfcCostValue`.
+    #[must_use]
+    pub fn current_value(mut self, value: EntityId) -> Self {
+        self.current_value = Some(value);
+        self
+    }
+
+    /// Sets [`Self::original_value`]: `OriginalValue`, an `IfcCostValue`.
+    #[must_use]
+    pub fn original_value(mut self, value: EntityId) -> Self {
+        self.original_value = Some(value);
+        self
+    }
 }

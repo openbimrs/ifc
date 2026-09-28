@@ -7,6 +7,7 @@ use crate::ResourceKind;
 /// Staged fields for authoring a concrete `IfcConstructionResource`
 /// occurrence before it is committed through `ResourceEditor`.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct ResourceDraft<'a> {
     pub(crate) kind: ResourceKind,
     pub(crate) global_id: &'a str,
@@ -100,6 +101,7 @@ impl<'a> ResourceDraft<'a> {
 /// Staged fields for authoring an `IfcResourceTime` before it is committed
 /// through `ResourceEditor`.
 #[derive(Debug, Clone, Default)]
+#[non_exhaustive]
 pub struct ResourceTimeDraft<'a> {
     pub(crate) name: Option<&'a str>,
     pub(crate) schedule_work: Option<&'a str>,
@@ -226,6 +228,7 @@ impl<'a> ResourceTimeDraft<'a> {
 /// Staged fields for authoring an `IfcRelAssignsToResource` relation before
 /// it is committed through `ResourceEditor`.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct AllocationDraft<'a> {
     pub(crate) global_id: &'a str,
     pub(crate) name: Option<&'a str>,
@@ -275,6 +278,7 @@ impl<'a> AllocationDraft<'a> {
 /// resources under a parent before it is committed through
 /// `ResourceEditor`.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct NestingDraft<'a> {
     pub(crate) global_id: &'a str,
     pub(crate) name: Option<&'a str>,

@@ -14,13 +14,11 @@ fn a_reference_stages_its_slots() {
     let id = create_reference(
         &mut tx,
         &model,
-        ReferenceDraft {
-            type_identifier: Some("IfcWall"),
-            attribute_identifier: Some("Name"),
-            instance_name: Some("Wall 1"),
-            list_positions: &[],
-            inner_reference: None,
-        },
+        ReferenceDraft::new()
+            .type_identifier("IfcWall")
+            .attribute_identifier("Name")
+            .instance_name("Wall 1")
+            .list_positions(&[]),
     )
     .expect("reference");
     tx.commit(&mut model).expect("commit");
@@ -46,26 +44,19 @@ fn an_inner_reference_must_be_a_reference() {
     let inner = create_reference(
         &mut tx,
         &model,
-        ReferenceDraft {
-            type_identifier: Some("IfcWall"),
-            attribute_identifier: None,
-            instance_name: None,
-            list_positions: &[],
-            inner_reference: None,
-        },
+        ReferenceDraft::new()
+            .type_identifier("IfcWall")
+            .list_positions(&[]),
     )
     .expect("inner");
 
     let outer = create_reference(
         &mut tx,
         &model,
-        ReferenceDraft {
-            type_identifier: None,
-            attribute_identifier: Some("HasProperties"),
-            instance_name: None,
-            list_positions: &[2],
-            inner_reference: Some(inner),
-        },
+        ReferenceDraft::new()
+            .attribute_identifier("HasProperties")
+            .list_positions(&[2])
+            .inner_reference(inner),
     )
     .expect("outer");
     tx.commit(&mut model).expect("commit");
@@ -93,13 +84,9 @@ fn a_non_reference_inner_target_is_refused() {
         create_reference(
             &mut tx,
             &model,
-            ReferenceDraft {
-                type_identifier: None,
-                attribute_identifier: None,
-                instance_name: None,
-                list_positions: &[],
-                inner_reference: Some(wall),
-            },
+            ReferenceDraft::new()
+                .list_positions(&[])
+                .inner_reference(wall),
         )
         .is_err(),
         "accepted a wall as an InnerReference",

@@ -6,30 +6,7 @@ use ifc_classification::{create_document, relate_documents, DocumentDraft};
 use ifc_model::{Model, Transaction, Value};
 
 fn document(tx: &mut Transaction, model: &Model, id: &str) -> ifc_model::EntityId {
-    create_document(
-        tx,
-        model,
-        DocumentDraft {
-            identification: id,
-            name: id,
-            description: None,
-            location: None,
-            purpose: None,
-            intended_use: None,
-            scope: None,
-            revision: None,
-            document_owner: None,
-            editors: None,
-            creation_time: None,
-            last_revision_time: None,
-            electronic_format: None,
-            valid_from: None,
-            valid_until: None,
-            confidentiality: None,
-            status: None,
-        },
-    )
-    .expect("document")
+    create_document(tx, model, DocumentDraft::new(id, id)).expect("document")
 }
 
 /// A document relationship stages its five slots.

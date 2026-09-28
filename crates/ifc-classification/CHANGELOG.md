@@ -16,6 +16,17 @@ everything released before per-crate changelogs began.
 
 - `ClassificationHierarchy` and `EffectiveClassifications` are
   `#[non_exhaustive]`.
+- Every public draft is `#[non_exhaustive]`, so struct literals no longer
+  compile outside the crate. Each gains a constructor taking its required
+  fields and one builder setter per other field, named after the field and
+  taking the unwrapped value (`.source("NBS")` sets `Some`):
+  - `ClassificationDraft::new(name)`
+  - `DocumentDraft::new(identification, name)`
+  - `LibraryDraft::new(name)`
+  - `AssociationDraft::new(global_id, related_objects)`
+  - `ExternalReferenceRelationshipDraft::new(relating_reference, related_resources)`
+  - `ClassificationReferenceDraft::new()`, `DocumentReferenceDraft::new()` and
+    `LibraryReferenceDraft::new()`, which now also derive `Default`
 
 ### Changed
 

@@ -17,16 +17,7 @@ use ifc_step::StepCodec;
 
 /// A material to relate.
 fn material(tx: &mut Transaction, model: &Model, name: &str) -> EntityId {
-    create_material(
-        tx,
-        model,
-        MaterialDraft {
-            name,
-            description: None,
-            category: None,
-        },
-    )
-    .expect("an IFC4 material")
+    create_material(tx, model, MaterialDraft::new(name)).expect("an IFC4 material")
 }
 
 /// A concrete mix relates to its constituent materials.
@@ -213,14 +204,11 @@ fn an_offset_profile_survives_step_text() {
     tx.commit(&mut model).expect("commit");
     let mut tx = Transaction::new(&model);
 
-    let draft = ProfileDraft {
-        name: Some("Flange"),
-        description: None,
-        material: Some(steel),
-        profile,
-        priority: Some(40),
-        category: Some("Load bearing"),
-    };
+    let draft = ProfileDraft::new(profile)
+        .name("Flange")
+        .material(steel)
+        .priority(40)
+        .category("Load bearing");
     let mut over = draft;
     over.priority = Some(101);
     assert!(

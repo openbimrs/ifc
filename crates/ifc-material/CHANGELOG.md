@@ -14,6 +14,14 @@ everything released before per-crate changelogs began.
 
 ### Changed (breaking)
 
+- The authoring drafts `MaterialDraft`, `LayerDraft`, `LayerSetDraft`,
+  `MaterialAssignmentDraft`, `ConstituentDraft` and `ProfileDraft` are
+  `#[non_exhaustive]`: build them with `MaterialDraft::new(name)`,
+  `LayerDraft::new(thickness)`, `LayerSetDraft::new(layers)`,
+  `MaterialAssignmentDraft::new(global_id, related_objects,
+  relating_material)`, `ConstituentDraft::new(material)` or
+  `ProfileDraft::new(profile)` and a setter named after each optional field
+  (`LayerDraft::new(0.2).material(brick).priority(80)`). Fields stay public.
 - `ResolvedAssignment` is `#[non_exhaustive]`.
 
 ### Changed

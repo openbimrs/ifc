@@ -30,24 +30,14 @@ fn the_predefined_type_selects_the_occupant() {
     let (mut model, person) = model_with_person();
     let mut editor = ResourceEditor::for_model(&mut model).expect("editor");
     let actor = editor
-        .create_actor(ActorDraft {
-            global_id: GUID,
-            the_actor: person,
-            name: Some("Client"),
-            description: None,
-            object_type: None,
-            predefined_type: None,
-        })
+        .create_actor(ActorDraft::new(GUID, person).name("Client"))
         .expect("actor");
     let occupant = editor
-        .create_actor(ActorDraft {
-            global_id: GUID2,
-            the_actor: person,
-            name: Some("Tenant"),
-            description: None,
-            object_type: None,
-            predefined_type: Some("LESSEE"),
-        })
+        .create_actor(
+            ActorDraft::new(GUID2, person)
+                .name("Tenant")
+                .predefined_type("LESSEE"),
+        )
         .expect("occupant");
 
     let a = model.get(actor).expect("actor");
@@ -71,24 +61,14 @@ fn userdefined_without_an_object_type_is_refused() {
     let (mut model, person) = model_with_person();
     let mut editor = ResourceEditor::for_model(&mut model).expect("editor");
     editor
-        .create_actor(ActorDraft {
-            global_id: GUID,
-            the_actor: person,
-            name: None,
-            description: None,
-            object_type: None,
-            predefined_type: Some("USERDEFINED"),
-        })
+        .create_actor(ActorDraft::new(GUID, person).predefined_type("USERDEFINED"))
         .expect_err("WR31");
     editor
-        .create_actor(ActorDraft {
-            global_id: GUID,
-            the_actor: person,
-            name: None,
-            description: None,
-            object_type: Some("Facility manager"),
-            predefined_type: Some("USERDEFINED"),
-        })
+        .create_actor(
+            ActorDraft::new(GUID, person)
+                .object_type("Facility manager")
+                .predefined_type("USERDEFINED"),
+        )
         .expect("named role is accepted");
 }
 
@@ -102,14 +82,7 @@ fn an_actor_outside_the_select_is_refused() {
     let wall = model.push(Entity::new("IFCWALL", vec![Value::Null; 8]));
     let mut editor = ResourceEditor::for_model(&mut model).expect("editor");
     editor
-        .create_actor(ActorDraft {
-            global_id: GUID,
-            the_actor: wall,
-            name: None,
-            description: None,
-            object_type: None,
-            predefined_type: None,
-        })
+        .create_actor(ActorDraft::new(GUID, wall))
         .expect_err("a wall is not an IfcActorSelect");
 }
 
@@ -125,18 +98,10 @@ fn asset_value_slots_must_be_cost_values() {
     let wall = model.push(Entity::new("IFCWALL", vec![Value::Null; 8]));
     let mut editor = ResourceEditor::for_model(&mut model).expect("editor");
     editor
-        .create_asset(AssetDraft {
-            global_id: GUID,
-            original_value: Some(cost),
-            ..AssetDraft::default()
-        })
+        .create_asset(AssetDraft::new(GUID).original_value(cost))
         .expect("a cost value is accepted");
     editor
-        .create_asset(AssetDraft {
-            global_id: GUID2,
-            original_value: Some(wall),
-            ..AssetDraft::default()
-        })
+        .create_asset(AssetDraft::new(GUID2).original_value(wall))
         .expect_err("a wall is not an IfcCostValue");
 }
 
@@ -148,16 +113,15 @@ fn the_asset_tail_lands_in_the_declared_slots() {
     let person = model.push(Entity::new("IFCPERSON", vec![Value::Null; 8]));
     let mut editor = ResourceEditor::for_model(&mut model).expect("editor");
     let asset = editor
-        .create_asset(AssetDraft {
-            global_id: GUID,
-            name: Some("Chiller"),
-            identification: Some("AST-001"),
-            current_value: Some(cost),
-            owner: Some(person),
-            responsible_person: Some(person),
-            incorporation_date: Some("2026-09-22"),
-            ..AssetDraft::default()
-        })
+        .create_asset(
+            AssetDraft::new(GUID)
+                .name("Chiller")
+                .identification("AST-001")
+                .current_value(cost)
+                .owner(person)
+                .responsible_person(person)
+                .incorporation_date("2026-09-22"),
+        )
         .expect("asset");
     let a = model.get(asset).expect("asset");
     assert_eq!(a.attributes.len(), 14, "IfcAsset arity");

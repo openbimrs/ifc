@@ -12,6 +12,20 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `ActorRoleDraft`, `PostalAddressDraft`, `TelecomAddressDraft`,
+  `ActorDraft`, `AssetDraft`, `InventoryDraft`, `AppliedValueDraft`,
+  `ResourceDraft`, `ResourceTimeDraft`, `AllocationDraft` and the resource
+  `NestingDraft` are `#[non_exhaustive]` (#214). Struct literals no longer
+  compile outside the crate: build each with `new(...)` and field-named
+  setters. New constructors: `ActorRoleDraft::new(role)`,
+  `PostalAddressDraft::new()`, `TelecomAddressDraft::new()`,
+  `ActorDraft::new(global_id, the_actor)`, `AssetDraft::new(global_id)`,
+  `InventoryDraft::new(global_id)` and `AppliedValueDraft::new()`, each
+  with a setter per remaining field. The drafts that already had builders
+  keep them unchanged. Fields stay public where they were.
+
 ### Changed
 
 - Depends on `ifc-schema` with its default features named explicitly

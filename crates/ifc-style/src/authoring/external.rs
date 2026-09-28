@@ -181,6 +181,7 @@ pub fn create_texture_coordinate_indices_with_voids(
 
 /// Attributes of an `IfcBlobTexture`.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct BlobTextureDraft<'a> {
     /// `RepeatS`: whether the texture tiles along S.
     pub repeat_s: bool,
@@ -197,6 +198,7 @@ pub struct BlobTextureDraft<'a> {
     /// `RasterCode`: the hex payload, a whole number of bytes.
     pub raster_code: &'a str,
 }
+
 /// Raster formats `SupportedRasterFormat` admits.
 ///
 /// Closed and upper-case in the schema: 'png' is not 'PNG'.
@@ -445,6 +447,7 @@ fn finite(entity: &'static str, attribute: &'static str, value: f64) -> StyleRes
 
 /// Attributes of an `IfcTextStyleTextModel`.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct TextModelDraft<'a> {
     /// `TextIndent`.
     pub text_indent: Option<SizeValue<'a>>,
@@ -707,3 +710,5 @@ pub fn create_light_intensity_distribution(
     ];
     Ok(tx.create(build_named(schema, ENTITY, values)?))
 }
+
+mod builders;

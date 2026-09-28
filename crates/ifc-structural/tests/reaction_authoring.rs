@@ -15,15 +15,7 @@ use ifc_structural::{
 const GUID: &str = "1hqA$FMcT8$hVvcqsRDBzZ";
 
 fn root() -> StructuralRootDraft {
-    StructuralRootDraft {
-        global_id: GUID.to_owned(),
-        owner_history: None,
-        name: Some("Reaction".to_owned()),
-        description: None,
-        object_type: None,
-        object_placement: None,
-        representation: None,
-    }
+    StructuralRootDraft::new(GUID).name("Reaction")
 }
 
 /// A model holding one load a reaction can point at.
@@ -65,12 +57,7 @@ fn every_reaction_variant_stages() {
             &mut tx,
             &model,
             ifc4x3(),
-            ReactionDraft {
-                root: root(),
-                applied_load: load,
-                coordinate_system: CoordinateSystem::Global,
-                kind,
-            },
+            ReactionDraft::new(root(), load, CoordinateSystem::Global, kind),
         )
         .unwrap_or_else(|error| panic!("{expected} refused: {error:?}"));
         tx.commit(&mut model).expect("commit");
@@ -90,12 +77,12 @@ fn the_point_reaction_has_no_predefined_type() {
         &mut tx,
         &model,
         ifc4x3(),
-        ReactionDraft {
-            root: root(),
-            applied_load: load,
-            coordinate_system: CoordinateSystem::Local,
-            kind: ReactionDraftKind::Point,
-        },
+        ReactionDraft::new(
+            root(),
+            load,
+            CoordinateSystem::Local,
+            ReactionDraftKind::Point,
+        ),
     )
     .expect("point reaction");
     tx.commit(&mut model).expect("commit");
@@ -128,12 +115,12 @@ fn a_non_load_applied_load_is_refused() {
             &mut tx,
             &model,
             ifc4x3(),
-            ReactionDraft {
-                root: root(),
-                applied_load: wrong,
-                coordinate_system: CoordinateSystem::Global,
-                kind: ReactionDraftKind::Point,
-            },
+            ReactionDraft::new(
+                root(),
+                wrong,
+                CoordinateSystem::Global,
+                ReactionDraftKind::Point
+            ),
         )
         .is_err(),
         "a wall was accepted as an applied load",
@@ -150,14 +137,14 @@ fn a_bogus_reaction_token_is_refused() {
             &mut tx,
             &model,
             ifc4x3(),
-            ReactionDraft {
-                root: root(),
-                applied_load: load,
-                coordinate_system: CoordinateSystem::Global,
-                kind: ReactionDraftKind::Curve {
+            ReactionDraft::new(
+                root(),
+                load,
+                CoordinateSystem::Global,
+                ReactionDraftKind::Curve {
                     predefined_type: "NOT_A_TOKEN",
-                },
-            },
+                }
+            ),
         )
         .is_err(),
         "an undeclared activity token was accepted",
@@ -173,16 +160,7 @@ fn a_result_group_stages() {
         &mut tx,
         &model,
         ifc4x3(),
-        ResultGroupDraft {
-            global_id: GUID.to_owned(),
-            owner_history: None,
-            name: Some("Results".to_owned()),
-            description: None,
-            object_type: None,
-            theory_type: "FIRST_ORDER_THEORY".to_owned(),
-            result_for_load_group: None,
-            is_linear: true,
-        },
+        ResultGroupDraft::new(GUID, "FIRST_ORDER_THEORY".to_owned(), true).name("Results"),
     )
     .expect("result group");
     tx.commit(&mut model).expect("commit");
@@ -206,16 +184,7 @@ fn a_userdefined_theory_without_an_object_type_is_refused() {
             &mut tx,
             &model,
             ifc4x3(),
-            ResultGroupDraft {
-                global_id: GUID.to_owned(),
-                owner_history: None,
-                name: None,
-                description: None,
-                object_type: None,
-                theory_type: "USERDEFINED".to_owned(),
-                result_for_load_group: None,
-                is_linear: false,
-            },
+            ResultGroupDraft::new(GUID, "USERDEFINED".to_owned(), false),
         )
         .is_err(),
         "a USERDEFINED theory was accepted with no ObjectType",
@@ -230,16 +199,8 @@ fn a_userdefined_theory_without_an_object_type_is_refused() {
             &mut tx,
             &model,
             ifc4x3(),
-            ResultGroupDraft {
-                global_id: GUID.to_owned(),
-                owner_history: None,
-                name: None,
-                description: None,
-                object_type: Some("Custom theory".to_owned()),
-                theory_type: "USERDEFINED".to_owned(),
-                result_for_load_group: None,
-                is_linear: false,
-            },
+            ResultGroupDraft::new(GUID, "USERDEFINED".to_owned(), false)
+                .object_type("Custom theory"),
         )
         .is_ok(),
         "a named USERDEFINED theory was refused",
@@ -344,21 +305,7 @@ fn an_eccentricity_selects_the_eccentric_connection() {
             &mut tx,
             &model,
             ifc4x3(),
-            MemberConnectionDraft {
-                root: RelationshipRootDraft {
-                    global_id: GUID.to_owned(),
-                    owner_history: None,
-                    name: None,
-                    description: None,
-                },
-                member,
-                connection,
-                applied_condition: None,
-                additional_conditions: None,
-                supported_length: None,
-                condition_coordinate_system: None,
-                eccentricity: None,
-            },
+            MemberConnectionDraft::new(RelationshipRootDraft::new(GUID), member, connection),
         )
         .expect("base connection");
         let mut committed = model.clone();
@@ -377,21 +324,8 @@ fn an_eccentricity_selects_the_eccentric_connection() {
         &mut tx,
         &model,
         ifc4x3(),
-        MemberConnectionDraft {
-            root: RelationshipRootDraft {
-                global_id: GUID.to_owned(),
-                owner_history: None,
-                name: None,
-                description: None,
-            },
-            member,
-            connection,
-            applied_condition: None,
-            additional_conditions: None,
-            supported_length: None,
-            condition_coordinate_system: None,
-            eccentricity: Some(constraint),
-        },
+        MemberConnectionDraft::new(RelationshipRootDraft::new(GUID), member, connection)
+            .eccentricity(constraint),
     )
     .expect("eccentric connection");
     tx.commit(&mut model).expect("commit");

@@ -89,19 +89,13 @@ fn analysis_model_authoring_rejects_duplicate_set_members_atomically() {
             (vec![], vec![result_group; 2], "HasResults"),
         ] {
             let mut tx = Transaction::new(&model);
-            let result = stage_analysis_model(
-                &mut tx,
-                &model,
-                schema,
-                AnalysisModelDraft {
-                    global_id: GUID.into(),
-                    owner_history: (token == "IFC2X3").then_some(owner),
-                    predefined_type: AnalysisModelType::Loading3d,
-                    loaded_by,
-                    result_groups,
-                    ..AnalysisModelDraft::default()
-                },
-            );
+            let result = stage_analysis_model(&mut tx, &model, schema, {
+                let mut draft = AnalysisModelDraft::new(GUID, AnalysisModelType::Loading3d)
+                    .loaded_by(loaded_by)
+                    .result_groups(result_groups);
+                draft.owner_history = (token == "IFC2X3").then_some(owner);
+                draft
+            });
             assert!(matches!(
                 result,
                 Err(StructuralError::InvalidDraftValue { attribute: found, .. }) if found == attribute

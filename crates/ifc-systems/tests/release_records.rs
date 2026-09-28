@@ -96,12 +96,10 @@ fn ifc4_and_ifc4x3_records_are_unchanged() {
             tag: Some("T"),
         };
         let kind = DistributionElementKind::FlowSegment;
-        let draft = ClassifiedSystemDraft {
-            description: Some("D"),
-            object_type: None,
-            predefined_type: Some("HEATING"),
-            long_name: Some("L"),
-        };
+        let draft = ClassifiedSystemDraft::new()
+            .description("D")
+            .predefined_type("HEATING")
+            .long_name("L");
         let x = ifc_systems::authoring::create_distribution_element; // plain
         let pairs: Vec<(EntityId, EntityId, Vec<Value>)> = vec![
             (
@@ -309,11 +307,9 @@ fn ifc4_and_ifc4x3_records_are_unchanged() {
                     SystemKind::Building,
                     g,
                     None,
-                    ClassifiedSystemDraft {
-                        predefined_type: Some("SHADING"),
-                        long_name: Some("L"),
-                        ..ClassifiedSystemDraft::default()
-                    },
+                    ClassifiedSystemDraft::new()
+                        .predefined_type("SHADING")
+                        .long_name("L"),
                 )
                 .unwrap(),
                 create_classified_system_with_owner_history(
@@ -322,11 +318,9 @@ fn ifc4_and_ifc4x3_records_are_unchanged() {
                     SystemKind::Building,
                     g,
                     None,
-                    ClassifiedSystemDraft {
-                        predefined_type: Some("SHADING"),
-                        long_name: Some("L"),
-                        ..ClassifiedSystemDraft::default()
-                    },
+                    ClassifiedSystemDraft::new()
+                        .predefined_type("SHADING")
+                        .long_name("L"),
                     OWNER,
                 )
                 .unwrap(),

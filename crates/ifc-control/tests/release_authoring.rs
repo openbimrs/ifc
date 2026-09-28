@@ -61,15 +61,13 @@ fn draft(
         _ if ifc4 => Some("NOTDEFINED"),
         _ => None,
     };
-    let draft = ControlDraft {
-        name: Some("Control"),
-        description: Some("Governs the east wing"),
-        object_type: None,
-        identification: (ifc4 || !history).then_some("C-1"),
-        status: (!history && (ifc4 || kind == ControlKind::ProjectOrder)).then_some("OPEN"),
-        long_description: (ifc4 && !history).then_some("Long"),
-        life_cycle_phase: history.then_some("OPERATION"),
-    };
+    let mut draft = ControlDraft::new()
+        .name("Control")
+        .description("Governs the east wing");
+    draft.identification = (ifc4 || !history).then_some("C-1");
+    draft.status = (!history && (ifc4 || kind == ControlKind::ProjectOrder)).then_some("OPEN");
+    draft.long_description = (ifc4 && !history).then_some("Long");
+    draft.life_cycle_phase = history.then_some("OPERATION");
     (predefined, draft)
 }
 
@@ -119,13 +117,7 @@ fn controls_round_trip_in_their_release() {
             written.push((kind, id));
         }
         let permit = written[0].1;
-        let assignment = ControlAssignmentDraft {
-            global_id: REL_GUID,
-            name: None,
-            description: None,
-            control: permit,
-            related_objects: &[WALL],
-        };
+        let assignment = ControlAssignmentDraft::new(REL_GUID, permit, &[WALL]);
         let relation = assign_to_control_with_owner_history(&mut tx, &model, assignment, OWNER)
             .expect("assignment");
         tx.commit(&mut model).expect("commit");
@@ -200,13 +192,7 @@ fn ifc4_and_ifc4x3_records_are_unchanged() {
         let (predefined, draft) = draft(ControlKind::Permit, *version);
         let permit =
             create_control(&mut tx, table, ControlKind::Permit, GUID, predefined, draft).unwrap();
-        let assignment = ControlAssignmentDraft {
-            global_id: REL_GUID,
-            name: Some("Governed"),
-            description: None,
-            control: permit,
-            related_objects: &[WALL],
-        };
+        let assignment = ControlAssignmentDraft::new(REL_GUID, permit, &[WALL]).name("Governed");
         let plain = assign_to_control(&mut tx, &model, table, assignment).unwrap();
         let with =
             assign_to_control_with_owner_history(&mut tx, &model, assignment, OWNER).unwrap();
@@ -240,11 +226,7 @@ fn staged(tx: &Transaction, id: EntityId) -> Entity {
 fn ifc2x3_refuses_what_it_cannot_hold() {
     let model = base("IFC2X3", SchemaVersion::Ifc2x3);
     let mut tx = Transaction::new(&model);
-    let named = ControlDraft {
-        name: Some("Control"),
-        identification: Some("C-1"),
-        ..ControlDraft::default()
-    };
+    let named = ControlDraft::new().name("Control").identification("C-1");
     let with = |tx: &mut Transaction, kind, predefined, draft| {
         create_control_with_owner_history(tx, &model, kind, GUID, predefined, draft, OWNER)
     };
@@ -260,34 +242,23 @@ fn ifc2x3_refuses_what_it_cannot_hold() {
     };
     let result = with(&mut tx, ControlKind::Permit, Some("BUILDING"), named);
     assert_eq!(refused(&tx, result), not_in("IFCPERMIT", "PredefinedType"));
-    let status = ControlDraft {
-        status: Some("OPEN"),
-        ..named
-    };
+    let status = named.status("OPEN");
     let result = with(&mut tx, ControlKind::ActionRequest, None, status);
     assert_eq!(refused(&tx, result), not_in("IFCACTIONREQUEST", "Status"));
-    let long = ControlDraft {
-        long_description: Some("Long"),
-        ..named
-    };
+    let long = named.long_description("Long");
     let result = with(&mut tx, ControlKind::ProjectOrder, Some("WORKORDER"), long);
     assert_eq!(
         refused(&tx, result),
         not_in("IFCPROJECTORDER", "LongDescription")
     );
-    let history = ControlDraft {
-        life_cycle_phase: Some("OPERATION"),
-        ..named
-    };
+    let history = named.life_cycle_phase("OPERATION");
     let result = with(&mut tx, ControlKind::PerformanceHistory, None, history);
     assert_eq!(
         refused(&tx, result),
         not_in("IFCPERFORMANCEHISTORY", "Identification")
     );
-    let anonymous = ControlDraft {
-        identification: None,
-        ..named
-    };
+    let mut anonymous = named;
+    anonymous.identification = None;
     let result = with(&mut tx, ControlKind::Permit, None, anonymous);
     assert_eq!(refused(&tx, result), required("IFCPERMIT", "PermitID"));
     let result = with(&mut tx, ControlKind::ProjectOrder, None, named);
@@ -349,21 +320,13 @@ fn owner_history_and_binding_are_checked() {
         }
     );
 
-    let assignment = ControlAssignmentDraft {
-        global_id: REL_GUID,
-        name: None,
-        description: None,
-        control: WALL,
-        related_objects: &[WALL],
-    };
+    let assignment = ControlAssignmentDraft::new(REL_GUID, WALL, &[WALL]);
     let result = assign_to_control(&mut tx, &model, ifc2x3(), assignment);
     assert!(result.is_err(), "a wall is no control");
     let permit = write(&mut tx, &model, OWNER).expect("permit");
     let staged = tx.len();
-    let assignment = ControlAssignmentDraft {
-        control: permit,
-        ..assignment
-    };
+    let mut assignment = assignment;
+    assignment.control = permit;
     let result = assign_to_control(&mut tx, &model, ifc2x3(), assignment);
     assert_eq!(
         result.expect_err("IFC2X3 needs an owner history"),

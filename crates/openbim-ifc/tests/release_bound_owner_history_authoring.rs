@@ -174,24 +174,11 @@ fn author(model: &mut Model, version: SchemaVersion) -> Vec<EntityId> {
         }
     }
     let gid = next();
-    let approval = ApprovalAssociationDraft {
-        global_id: &gid,
-        name: Some("Approved"),
-        description: None,
-        related_objects: &[WALL],
-        relating_approval: APPROVAL,
-    };
+    let approval = ApprovalAssociationDraft::new(&gid, &[WALL], APPROVAL).name("Approved");
     written
         .push(associate_approval_with_owner_history(&mut tx, model, approval, OWNER).expect("a"));
     let gid = next();
-    let constraint = ConstraintAssociationDraft {
-        global_id: &gid,
-        name: None,
-        description: None,
-        related_objects: &[WALL],
-        intent: Some("DESIGN"),
-        relating_constraint: METRIC,
-    };
+    let constraint = ConstraintAssociationDraft::new(&gid, &[WALL], METRIC).intent("DESIGN");
     written.push(
         associate_constraint_with_owner_history(&mut tx, model, constraint, OWNER).expect("c"),
     );
@@ -211,23 +198,19 @@ fn author(model: &mut Model, version: SchemaVersion) -> Vec<EntityId> {
     );
     let ifc4 = version != SchemaVersion::Ifc2x3;
     let gid = next();
-    let lining = DoorLiningDraft {
-        lining_depth: Some(120.0),
-        lining_thickness: Some(40.0),
-        lining_to_panel_offset_x: ifc4.then_some(5.0),
-        ..DoorLiningDraft::default()
-    };
+    let mut lining = DoorLiningDraft::new()
+        .lining_depth(120.0)
+        .lining_thickness(40.0);
+    lining.lining_to_panel_offset_x = ifc4.then_some(5.0);
     written.push(
         add_door_lining_properties_with_owner_history(&mut tx, model, &gid, lining, OWNER)
             .expect("dl"),
     );
     let gid = next();
-    let window = WindowLiningDraft {
-        lining_depth: Some(100.0),
-        lining_thickness: Some(50.0),
-        lining_offset: ifc4.then_some(-5.0),
-        ..WindowLiningDraft::default()
-    };
+    let mut window = WindowLiningDraft::new()
+        .lining_depth(100.0)
+        .lining_thickness(50.0);
+    window.lining_offset = ifc4.then_some(-5.0);
     written.push(
         add_window_lining_properties_with_owner_history(&mut tx, model, &gid, window, OWNER)
             .expect("wl"),
@@ -294,6 +277,8 @@ fn errors(model: &Model, version: SchemaVersion, ids: &[EntityId]) -> Vec<String
                 ids.contains(id)
             }
             ifc_validate::Path::File => false,
+            // A path kind a later ifc-validate adds names no authored record.
+            _ => false,
         })
         .map(|finding| format!("{} at {}: {}", finding.rule, finding.path, finding.message))
         .collect()

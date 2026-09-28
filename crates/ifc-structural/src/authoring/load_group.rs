@@ -55,6 +55,7 @@ pub enum LoadGroupKind {
 /// no `ObjectPlacement` or `Representation`, so this draft has no
 /// fields for them rather than accepting and dropping them.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct LoadGroupDraft {
     /// `GlobalId`; must parse as a 22-character IFC GUID.
     pub global_id: String,
@@ -77,6 +78,75 @@ pub struct LoadGroupDraft {
     pub purpose: Option<String>,
     /// Which group form, and its form-specific attributes.
     pub kind: LoadGroupKind,
+}
+
+impl LoadGroupDraft {
+    /// Starts a draft from its required fields; every other field is unset.
+    #[must_use]
+    pub fn new(
+        global_id: impl Into<String>,
+        action_type: &'static str,
+        action_source: &'static str,
+        kind: LoadGroupKind,
+    ) -> Self {
+        Self {
+            global_id: global_id.into(),
+            owner_history: None,
+            name: None,
+            description: None,
+            object_type: None,
+            action_type,
+            action_source,
+            coefficient: None,
+            purpose: None,
+            kind,
+        }
+    }
+
+    /// Sets `owner_history`: `OwnerHistory`, validated against the
+    /// model/transaction if present.
+    #[must_use]
+    pub fn owner_history(mut self, value: EntityId) -> Self {
+        self.owner_history = Some(value);
+        self
+    }
+
+    /// Sets `name`: `Name`.
+    #[must_use]
+    pub fn name(mut self, value: impl Into<String>) -> Self {
+        self.name = Some(value.into());
+        self
+    }
+
+    /// Sets `description`: `Description`.
+    #[must_use]
+    pub fn description(mut self, value: impl Into<String>) -> Self {
+        self.description = Some(value.into());
+        self
+    }
+
+    /// Sets `object_type`: `ObjectType`; required non-blank when any of the
+    /// three enum attributes is `USERDEFINED`.
+    #[must_use]
+    pub fn object_type(mut self, value: impl Into<String>) -> Self {
+        self.object_type = Some(value.into());
+        self
+    }
+
+    /// Sets `coefficient`: `Coefficient`, a ratio applied to every load in the
+    /// group.
+    #[must_use]
+    pub fn coefficient(mut self, value: f64) -> Self {
+        self.coefficient = Some(value);
+        self
+    }
+
+    /// Sets `purpose`: `Purpose`.
+    #[must_use]
+    pub fn purpose(mut self, value: impl Into<String>) -> Self {
+        self.purpose = Some(value.into());
+        self
+    }
 }
 
 /// Stage an `IfcStructuralLoadGroup` or `IfcStructuralLoadCase`.

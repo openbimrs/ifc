@@ -32,33 +32,21 @@ fn blob_texture_enforces_its_two_where_rules() {
     let mut model = model();
     let mut tx = Transaction::new(&model);
 
-    let good = BlobTextureDraft {
-        repeat_s: true,
-        repeat_t: false,
-        raster_format: "PNG",
-        raster_code: "89504E47",
-        ..BlobTextureDraft::default()
-    };
+    let good = BlobTextureDraft::new("PNG", "89504E47").repeat_s(true);
     let id = create_blob_texture(&mut tx, ifc4(), good).expect("blob");
 
     // Odd digit count: half a byte.
-    let odd = BlobTextureDraft {
-        raster_code: "89504E4",
-        ..good
-    };
+    let mut odd = good;
+    odd.raster_code = "89504E4";
     create_blob_texture(&mut tx, ifc4(), odd).expect_err("RasterCodeByteStream");
 
     // Lower case is a different string to the schema.
-    let lower = BlobTextureDraft {
-        raster_format: "png",
-        ..good
-    };
+    let mut lower = good;
+    lower.raster_format = "png";
     create_blob_texture(&mut tx, ifc4(), lower).expect_err("SupportedRasterFormat");
 
-    let bad = BlobTextureDraft {
-        raster_format: "TIFF",
-        ..good
-    };
+    let mut bad = good;
+    bad.raster_format = "TIFF";
     create_blob_texture(&mut tx, ifc4(), bad).expect_err("format outside the list");
 
     tx.commit(&mut model).expect("commit");
@@ -202,36 +190,20 @@ fn text_model_words_are_closed_and_case_sensitive() {
     let id = create_text_style_text_model(
         &mut tx,
         ifc4(),
-        TextModelDraft {
-            text_align: Some("center"),
-            text_decoration: Some("underline"),
-            text_transform: Some("uppercase"),
-            ..TextModelDraft::default()
-        },
+        TextModelDraft::new()
+            .text_align("center")
+            .text_decoration("underline")
+            .text_transform("uppercase"),
     )
     .expect("model");
 
     // 'Center' is not 'center'.
-    create_text_style_text_model(
-        &mut tx,
-        ifc4(),
-        TextModelDraft {
-            text_align: Some("Center"),
-            ..TextModelDraft::default()
-        },
-    )
-    .expect_err("upper case fails WR1");
+    create_text_style_text_model(&mut tx, ifc4(), TextModelDraft::new().text_align("Center"))
+        .expect_err("upper case fails WR1");
 
     // 'middle' is a plausible word the schema does not list.
-    create_text_style_text_model(
-        &mut tx,
-        ifc4(),
-        TextModelDraft {
-            text_align: Some("middle"),
-            ..TextModelDraft::default()
-        },
-    )
-    .expect_err("outside the closed list");
+    create_text_style_text_model(&mut tx, ifc4(), TextModelDraft::new().text_align("middle"))
+        .expect_err("outside the closed list");
 
     tx.commit(&mut model).expect("commit");
     let entity = model.get(id).expect("entity");
@@ -248,11 +220,9 @@ fn size_select_is_written_typed_and_bounded() {
     let id = create_text_style_text_model(
         &mut tx,
         ifc4(),
-        TextModelDraft {
-            text_indent: Some(SizeValue::Length(-2.0)),
-            line_height: Some(SizeValue::NormalisedRatio(0.5)),
-            ..TextModelDraft::default()
-        },
+        TextModelDraft::new()
+            .text_indent(SizeValue::Length(-2.0))
+            .line_height(SizeValue::NormalisedRatio(0.5)),
     )
     .expect("a length may be negative");
 
@@ -260,10 +230,7 @@ fn size_select_is_written_typed_and_bounded() {
     create_text_style_text_model(
         &mut tx,
         ifc4(),
-        TextModelDraft {
-            line_height: Some(SizeValue::NormalisedRatio(1.5)),
-            ..TextModelDraft::default()
-        },
+        TextModelDraft::new().line_height(SizeValue::NormalisedRatio(1.5)),
     )
     .expect_err("outside 0 to 1");
 
@@ -271,10 +238,7 @@ fn size_select_is_written_typed_and_bounded() {
     create_text_style_text_model(
         &mut tx,
         ifc4(),
-        TextModelDraft {
-            letter_spacing: Some(SizeValue::PositiveLength(0.0)),
-            ..TextModelDraft::default()
-        },
+        TextModelDraft::new().letter_spacing(SizeValue::PositiveLength(0.0)),
     )
     .expect_err("zero is not positive");
 
@@ -399,11 +363,7 @@ fn declared_arities_match_the_schema() {
 fn a_non_hex_raster_payload_is_refused() {
     let model = model();
     let mut tx = Transaction::new(&model);
-    let draft = BlobTextureDraft {
-        raster_format: "PNG",
-        raster_code: "ZZZZ",
-        ..BlobTextureDraft::default()
-    };
+    let draft = BlobTextureDraft::new("PNG", "ZZZZ");
     create_blob_texture(&mut tx, ifc4(), draft).expect_err("not hex");
     assert!(
         tx.is_empty(),

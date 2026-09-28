@@ -14,14 +14,7 @@ const WKT: &str = "PROJCS[\"ETRS89 / UTM zone 32N\",GEOGCS[\"ETRS89\"]]";
 fn a_well_known_text_stages() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let crs = create_projected_crs(
-        &mut tx,
-        ProjectedCrsDraft {
-            name: "EPSG:25832",
-            ..ProjectedCrsDraft::default()
-        },
-    )
-    .expect("crs");
+    let crs = create_projected_crs(&mut tx, ProjectedCrsDraft::new("EPSG:25832")).expect("crs");
 
     let id = create_well_known_text(&mut tx, &model, WKT, crs).expect("wkt");
     tx.commit(&mut model).expect("commit");
@@ -42,14 +35,7 @@ fn a_well_known_text_stages() {
 fn a_degenerate_well_known_text_is_refused() {
     let model = Model::default();
     let mut tx = Transaction::new(&model);
-    let crs = create_projected_crs(
-        &mut tx,
-        ProjectedCrsDraft {
-            name: "EPSG:25832",
-            ..ProjectedCrsDraft::default()
-        },
-    )
-    .expect("crs");
+    let crs = create_projected_crs(&mut tx, ProjectedCrsDraft::new("EPSG:25832")).expect("crs");
     let stray = tx.create(Entity::new("IFCSIUNIT", vec![Value::Null; 4]));
 
     assert!(

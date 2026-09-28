@@ -10,6 +10,7 @@ use ifc_model::EntityId;
 /// attribute needs the entity and slot as data, and formatting is a
 /// presentation choice made at the edge.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum Path {
     /// The file as a whole, e.g. a header or global-rule finding.
     File,

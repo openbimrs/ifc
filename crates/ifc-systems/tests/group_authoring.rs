@@ -41,11 +41,9 @@ fn a_distribution_system_stages_with_its_own_slot_order() {
         SystemKind::DistributionSystem,
         GUID,
         Some("CHW"),
-        ClassifiedSystemDraft {
-            long_name: Some("Chilled water"),
-            predefined_type: Some("CHILLEDWATER"),
-            ..ClassifiedSystemDraft::default()
-        },
+        ClassifiedSystemDraft::new()
+            .long_name("Chilled water")
+            .predefined_type("CHILLEDWATER"),
     )
     .expect("distribution system");
     tx.commit(&mut model).expect("commit");
@@ -75,10 +73,7 @@ fn a_newer_distribution_token_is_refused_on_ifc4() {
         SystemKind::DistributionSystem,
         GUID,
         None,
-        ClassifiedSystemDraft {
-            predefined_type: Some("MONITORINGSYSTEM"),
-            ..ClassifiedSystemDraft::default()
-        },
+        ClassifiedSystemDraft::new().predefined_type("MONITORINGSYSTEM"),
     );
     assert!(staged_on_x3.is_ok(), "IFC4X3 declares MONITORINGSYSTEM");
 
@@ -88,10 +83,7 @@ fn a_newer_distribution_token_is_refused_on_ifc4() {
         SystemKind::DistributionSystem,
         GUID,
         None,
-        ClassifiedSystemDraft {
-            predefined_type: Some("MONITORINGSYSTEM"),
-            ..ClassifiedSystemDraft::default()
-        },
+        ClassifiedSystemDraft::new().predefined_type("MONITORINGSYSTEM"),
     );
     assert!(
         staged_on_ifc4.is_err(),

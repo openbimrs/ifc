@@ -20,12 +20,7 @@ fn the_conversion_based_unit_writer_stages() {
 
     let id = add_conversion_based_unit(
         &mut tx,
-        ConversionBasedUnitDraft {
-            unit_type: "LENGTHUNIT",
-            name: "inch",
-            conversion_factor: factor,
-            dimensions,
-        },
+        ConversionBasedUnitDraft::new("LENGTHUNIT", "inch", factor, dimensions),
     )
     .expect("conversion based unit");
     tx.commit(&mut model).expect("commit");

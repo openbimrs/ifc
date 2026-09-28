@@ -33,12 +33,10 @@ fn a_node_condition_reads_back_every_authored_stiffness() {
     let id = stage_boundary_condition(
         &mut tx,
         BoundaryConditionKind::Node,
-        BoundaryConditionDraft {
-            name: Some("Pinned"),
-            translational: measures(1.0, 2.0, 3.0),
-            rotational: AxisValues::default(),
-            warping: None,
-        },
+        BoundaryConditionDraft::new()
+            .name("Pinned")
+            .translational(measures(1.0, 2.0, 3.0))
+            .rotational(AxisValues::default()),
     )
     .expect("node condition");
     tx.commit(&mut model).expect("commit");
@@ -68,12 +66,9 @@ fn each_family_writes_the_attribute_names_its_reader_expects() {
         let id = stage_boundary_condition(
             &mut tx,
             kind,
-            BoundaryConditionDraft {
-                name: None,
-                translational: measures(1.0, 2.0, 3.0),
-                rotational,
-                warping: None,
-            },
+            BoundaryConditionDraft::new()
+                .translational(measures(1.0, 2.0, 3.0))
+                .rotational(rotational),
         )
         .expect("condition");
         tx.commit(&mut model).expect("commit");
@@ -108,12 +103,10 @@ fn warping_is_readable_only_on_the_family_that_declares_it() {
     let id = stage_boundary_condition(
         &mut tx,
         BoundaryConditionKind::NodeWarping,
-        BoundaryConditionDraft {
-            name: None,
-            translational: measures(1.0, 2.0, 3.0),
-            rotational: measures(4.0, 5.0, 6.0),
-            warping: Some(StiffnessValue::Measure(7.0)),
-        },
+        BoundaryConditionDraft::new()
+            .translational(measures(1.0, 2.0, 3.0))
+            .rotational(measures(4.0, 5.0, 6.0))
+            .warping(StiffnessValue::Measure(7.0)),
     )
     .expect("warping condition");
     tx.commit(&mut model).expect("commit");
@@ -137,12 +130,9 @@ fn a_value_the_family_does_not_declare_is_refused() {
         stage_boundary_condition(
             &mut tx,
             BoundaryConditionKind::Face,
-            BoundaryConditionDraft {
-                name: None,
-                translational: measures(1.0, 2.0, 3.0),
-                rotational: measures(4.0, 5.0, 6.0),
-                warping: None,
-            },
+            BoundaryConditionDraft::new()
+                .translational(measures(1.0, 2.0, 3.0))
+                .rotational(measures(4.0, 5.0, 6.0)),
         )
         .is_err(),
         "a rotational spring on a face is a modelling error, not a dropped field"
@@ -152,12 +142,10 @@ fn a_value_the_family_does_not_declare_is_refused() {
         stage_boundary_condition(
             &mut tx,
             BoundaryConditionKind::Node,
-            BoundaryConditionDraft {
-                name: None,
-                translational: AxisValues::default(),
-                rotational: AxisValues::default(),
-                warping: Some(StiffnessValue::Measure(1.0)),
-            },
+            BoundaryConditionDraft::new()
+                .translational(AxisValues::default())
+                .rotational(AxisValues::default())
+                .warping(StiffnessValue::Measure(1.0)),
         )
         .is_err(),
         "a plain node condition declares no warping stiffness"

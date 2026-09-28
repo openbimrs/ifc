@@ -170,11 +170,9 @@ fn author(model: &mut Model, version: SchemaVersion) -> Authored {
             OWNER,
         )
         .unwrap();
-        let heating = ClassifiedSystemDraft {
-            predefined_type: Some("HEATING"),
-            long_name: Some("Heating water"),
-            ..ClassifiedSystemDraft::default()
-        };
+        let heating = ClassifiedSystemDraft::new()
+            .predefined_type("HEATING")
+            .long_name("Heating water");
         let distribution = create_classified_system_with_owner_history(
             &mut tx,
             m,
@@ -190,10 +188,7 @@ fn author(model: &mut Model, version: SchemaVersion) -> Authored {
         } else {
             (SystemKind::Building, "FOUNDATION")
         };
-        let built = ClassifiedSystemDraft {
-            predefined_type: Some(token),
-            ..ClassifiedSystemDraft::default()
-        };
+        let built = ClassifiedSystemDraft::new().predefined_type(token);
         let built = create_classified_system_with_owner_history(
             &mut tx,
             m,

@@ -14,6 +14,7 @@ use crate::MaterialResult;
 
 /// Authored fields for `IfcMaterialConstituent`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ConstituentDraft<'a> {
     /// `IfcMaterialConstituent.Name`, if given.
     pub name: Option<&'a str>,
@@ -25,6 +26,48 @@ pub struct ConstituentDraft<'a> {
     pub fraction: Option<f64>,
     /// `IfcMaterialConstituent.Category`, if given.
     pub category: Option<&'a str>,
+}
+
+impl<'a> ConstituentDraft<'a> {
+    /// Starts a draft for a constituent made of `material`.
+    #[must_use]
+    pub const fn new(material: EntityId) -> Self {
+        Self {
+            name: None,
+            description: None,
+            material,
+            fraction: None,
+            category: None,
+        }
+    }
+
+    /// Sets `Name`.
+    #[must_use]
+    pub const fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets `Description`.
+    #[must_use]
+    pub const fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets `Fraction`, a ratio in `0.0..=1.0`.
+    #[must_use]
+    pub const fn fraction(mut self, value: f64) -> Self {
+        self.fraction = Some(value);
+        self
+    }
+
+    /// Sets `Category`.
+    #[must_use]
+    pub const fn category(mut self, value: &'a str) -> Self {
+        self.category = Some(value);
+        self
+    }
 }
 
 /// Stage an `IfcMaterialConstituent`. IFC4 onwards.
@@ -98,6 +141,7 @@ pub fn create_constituent_set(
 
 /// Authored fields for `IfcMaterialProfile`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ProfileDraft<'a> {
     /// `IfcMaterialProfile.Name`, if given.
     pub name: Option<&'a str>,
@@ -111,6 +155,57 @@ pub struct ProfileDraft<'a> {
     pub priority: Option<i64>,
     /// `IfcMaterialProfile.Category`, if given.
     pub category: Option<&'a str>,
+}
+
+impl<'a> ProfileDraft<'a> {
+    /// Starts a draft for a material profile of `profile`, an
+    /// `IfcProfileDef` reference.
+    #[must_use]
+    pub const fn new(profile: EntityId) -> Self {
+        Self {
+            name: None,
+            description: None,
+            material: None,
+            profile,
+            priority: None,
+            category: None,
+        }
+    }
+
+    /// Sets `Name`.
+    #[must_use]
+    pub const fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets `Description`.
+    #[must_use]
+    pub const fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets `Material`, an `IfcMaterial` reference.
+    #[must_use]
+    pub const fn material(mut self, value: EntityId) -> Self {
+        self.material = Some(value);
+        self
+    }
+
+    /// Sets `Priority`, in `0..=100`.
+    #[must_use]
+    pub const fn priority(mut self, value: i64) -> Self {
+        self.priority = Some(value);
+        self
+    }
+
+    /// Sets `Category`.
+    #[must_use]
+    pub const fn category(mut self, value: &'a str) -> Self {
+        self.category = Some(value);
+        self
+    }
 }
 
 /// The profile attributes [`create_profile`] and

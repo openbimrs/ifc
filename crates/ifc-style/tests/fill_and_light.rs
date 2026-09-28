@@ -129,12 +129,7 @@ fn a_goniometric_light_stages() {
         &mut tx,
         &model,
         ifc4(),
-        LightSourceDraft {
-            name: Some("Luminaire"),
-            light_colour,
-            ambient_intensity: None,
-            intensity: None,
-        },
+        LightSourceDraft::new(light_colour).name("Luminaire"),
         GoniometricLight {
             position,
             colour_appearance: None,
@@ -169,12 +164,7 @@ fn a_lightless_luminaire_is_refused() {
         "IFCLIGHTINTENSITYDISTRIBUTION",
         vec![Value::Null; 2],
     ));
-    let draft = LightSourceDraft {
-        name: None,
-        light_colour,
-        ambient_intensity: None,
-        intensity: None,
-    };
+    let draft = LightSourceDraft::new(light_colour);
     let base = GoniometricLight {
         position,
         colour_appearance: None,

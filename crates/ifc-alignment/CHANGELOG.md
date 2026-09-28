@@ -14,6 +14,16 @@ everything released before per-crate changelogs began.
 
 ### Changed (breaking)
 
+- The authoring drafts `HorizontalSegmentDraft`, `VerticalSegmentDraft`
+  and `CantSegmentDraft` are `#[non_exhaustive]`: build them with
+  `HorizontalSegmentDraft::new(start_point, start_direction, start_radius,
+  end_radius, segment_length, predefined_type)`,
+  `VerticalSegmentDraft::new(start_dist_along, horizontal_length,
+  start_height, start_gradient, end_gradient, predefined_type)` or
+  `CantSegmentDraft::new(start_dist_along, horizontal_length,
+  start_cant_left, start_cant_right, predefined_type)` and the setters
+  `gravity_center_line_height`, `radius_of_curvature`, `end_cant_left` and
+  `end_cant_right`. Fields stay public.
 - The read-side `HorizontalSegment`, `CantSegment`, `CantLayout`,
   `CantAtStation`, `LinearPlacement`, `StationEquation`,
   `LoweredAlignmentCurve`, `PartialHorizontalLayout` and `RefusedSegment`

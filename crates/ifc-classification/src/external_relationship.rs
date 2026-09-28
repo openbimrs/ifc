@@ -149,6 +149,7 @@ impl<'m> ClassificationView<'m> {
 
 /// Draft for one generic external-reference relationship (IFC4 onwards).
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ExternalReferenceRelationshipDraft<'a> {
     /// Optional relationship name.
     pub name: Option<&'a str>,
@@ -159,6 +160,33 @@ pub struct ExternalReferenceRelationshipDraft<'a> {
     /// Non-empty unique `IfcResourceObjectSelect` targets, as the model's
     /// release declares that select (IFC4X3 adds `IfcShapeAspect`).
     pub related_resources: &'a [EntityId],
+}
+
+impl<'a> ExternalReferenceRelationshipDraft<'a> {
+    /// Starts a draft from its required fields; every other field is unset.
+    #[must_use]
+    pub fn new(relating_reference: EntityId, related_resources: &'a [EntityId]) -> Self {
+        Self {
+            name: None,
+            description: None,
+            relating_reference,
+            related_resources,
+        }
+    }
+
+    /// Sets `name`: Optional relationship name.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets `description`: Optional relationship description.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
 }
 
 /// Validate and stage one `IfcExternalReferenceRelationship` in the layout

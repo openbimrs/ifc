@@ -14,6 +14,11 @@ everything released before per-crate changelogs began.
 
 ### Changed (breaking)
 
+- The authoring draft `ClassifiedSystemDraft` is `#[non_exhaustive]`:
+  build it with `ClassifiedSystemDraft::new()` and the setters
+  `description`, `object_type`, `predefined_type` and `long_name`. Fields
+  stay public.
+
 - The bulk readers no longer fall back to the IFC4 table. `systems`,
   `ports`, `zones`, `spatial_placements`, `role_inconsistencies`,
   `ConnectionGraph::build` and `ElementRole::of` return

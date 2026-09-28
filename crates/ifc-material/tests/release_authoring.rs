@@ -26,23 +26,11 @@ fn gid(seed: u8) -> String {
 }
 
 fn draft(name: &str) -> MaterialDraft<'_> {
-    MaterialDraft {
-        name,
-        description: None,
-        category: None,
-    }
+    MaterialDraft::new(name)
 }
 
 fn layer(material: EntityId, thickness: f64) -> LayerDraft<'static> {
-    LayerDraft {
-        material: Some(material),
-        thickness,
-        is_ventilated: None,
-        name: None,
-        description: None,
-        category: None,
-        priority: None,
-    }
+    LayerDraft::new(thickness).material(material)
 }
 
 fn assignment<'a>(
@@ -50,13 +38,7 @@ fn assignment<'a>(
     objects: &'a [EntityId],
     material: EntityId,
 ) -> MaterialAssignmentDraft<'a> {
-    MaterialAssignmentDraft {
-        global_id,
-        name: None,
-        description: None,
-        related_objects: objects,
-        relating_material: material,
-    }
+    MaterialAssignmentDraft::new(global_id, objects, material)
 }
 
 fn not_in_schema(entity: &'static str, attribute: &'static str) -> MaterialError {
@@ -88,11 +70,7 @@ fn ifc2x3_authoring_writes_ifc2x3_layouts() {
     let set = create_layer_set(
         &mut tx,
         &model,
-        LayerSetDraft {
-            layers: &[core],
-            name: Some("Wall 240"),
-            description: None,
-        },
+        LayerSetDraft::new(&[core]).name("Wall 240"),
     )
     .unwrap();
     let usage = create_layer_set_usage(
@@ -166,44 +144,20 @@ fn ifc2x3_authoring_refuses_values_it_cannot_hold() {
     ));
     let mut tx = Transaction::new(&model);
 
-    let categorised = MaterialDraft {
-        category: Some("Masonry"),
-        ..draft("Brick")
-    };
+    let categorised = draft("Brick").category("Masonry");
     assert_eq!(
         create_material(&mut tx, &model, categorised).unwrap_err(),
         not_in_schema("IFCMATERIAL", "Category")
     );
-    let described = MaterialDraft {
-        description: Some("Clay"),
-        ..draft("Brick")
-    };
+    let described = draft("Brick").description("Clay");
     assert_eq!(
         create_material(&mut tx, &model, described).unwrap_err(),
         not_in_schema("IFCMATERIAL", "Description")
     );
     for (named, attribute) in [
-        (
-            LayerDraft {
-                name: Some("Core"),
-                ..layer(brick, 0.2)
-            },
-            "Name",
-        ),
-        (
-            LayerDraft {
-                category: Some("LoadBearing"),
-                ..layer(brick, 0.2)
-            },
-            "Category",
-        ),
-        (
-            LayerDraft {
-                priority: Some(10),
-                ..layer(brick, 0.2)
-            },
-            "Priority",
-        ),
+        (layer(brick, 0.2).name("Core"), "Name"),
+        (layer(brick, 0.2).category("LoadBearing"), "Category"),
+        (layer(brick, 0.2).priority(10), "Priority"),
     ] {
         assert_eq!(
             create_layer(&mut tx, &model, named).unwrap_err(),
@@ -226,11 +180,7 @@ fn ifc2x3_authoring_refuses_values_it_cannot_hold() {
         create_layer_set(
             &mut tx,
             &model,
-            LayerSetDraft {
-                layers: &[core],
-                name: None,
-                description: Some("External"),
-            },
+            LayerSetDraft::new(&[core]).description("External"),
         )
         .unwrap_err(),
         not_in_schema("IFCMATERIALLAYERSET", "Description")
@@ -289,13 +239,7 @@ fn ifc2x3_authoring_refuses_entities_it_lacks() {
     ));
     let profile = model.push(Entity::new("IFCRECTANGLEPROFILEDEF", vec![Value::Null; 5]));
     let mut tx = Transaction::new(&model);
-    let constituent = ConstituentDraft {
-        name: None,
-        description: None,
-        material: brick,
-        fraction: Some(1.0),
-        category: None,
-    };
+    let constituent = ConstituentDraft::new(brick).fraction(1.0);
     assert_eq!(
         create_constituent(&mut tx, &model, constituent).unwrap_err(),
         no_entity("IFCMATERIALCONSTITUENT")
@@ -304,14 +248,7 @@ fn ifc2x3_authoring_refuses_entities_it_lacks() {
         create_constituent_set(&mut tx, &model, &[brick], None, None).unwrap_err(),
         no_entity("IFCMATERIALCONSTITUENTSET")
     );
-    let profile_draft = ProfileDraft {
-        name: None,
-        description: None,
-        material: Some(brick),
-        profile,
-        priority: None,
-        category: None,
-    };
+    let profile_draft = ProfileDraft::new(profile).material(brick);
     assert_eq!(
         create_profile(&mut tx, &model, profile_draft).unwrap_err(),
         no_entity("IFCMATERIALPROFILE")
@@ -347,15 +284,7 @@ fn ifc2x3_authoring_refuses_entities_it_lacks() {
         vec![Value::Null; 9],
     ));
     assert!(matches!(
-        create_layer_set(
-            &mut tx,
-            &model,
-            LayerSetDraft {
-                layers: &[offsets],
-                name: None,
-                description: None,
-            },
-        ),
+        create_layer_set(&mut tx, &model, LayerSetDraft::new(&[offsets]),),
         Err(MaterialError::AuthoringReferenceType { .. })
     ));
     assert!(tx.is_empty());
@@ -368,33 +297,13 @@ fn ifc4_authoring_writes_ifc4_layouts() {
         let mut model = declared(schemas);
         let wall = model.push(Entity::new("IFCWALL", vec![Value::Null; 8]));
         let mut tx = Transaction::new(&model);
-        let brick = create_material(
-            &mut tx,
-            &model,
-            MaterialDraft {
-                category: Some("Masonry"),
-                ..draft("Brick")
-            },
-        )
-        .unwrap();
-        let core = create_layer(
-            &mut tx,
-            &model,
-            LayerDraft {
-                name: Some("Core"),
-                priority: Some(80),
-                ..layer(brick, 0.0)
-            },
-        )
-        .unwrap();
+        let brick = create_material(&mut tx, &model, draft("Brick").category("Masonry")).unwrap();
+        let core =
+            create_layer(&mut tx, &model, layer(brick, 0.0).name("Core").priority(80)).unwrap();
         let set = create_layer_set(
             &mut tx,
             &model,
-            LayerSetDraft {
-                layers: &[core],
-                name: None,
-                description: Some("External"),
-            },
+            LayerSetDraft::new(&[core]).description("External"),
         )
         .unwrap();
         let usage = create_layer_set_usage(
@@ -458,13 +367,7 @@ fn ifc4x3_authoring_writes_ifc4x3_layouts() {
     let constituent = create_constituent(
         &mut tx,
         &model,
-        ConstituentDraft {
-            name: Some("Binder"),
-            description: None,
-            material: cement,
-            fraction: Some(0.2),
-            category: None,
-        },
+        ConstituentDraft::new(cement).name("Binder").fraction(0.2),
     )
     .unwrap();
     let set = create_constituent_set(&mut tx, &model, &[constituent], Some("Mix"), None).unwrap();

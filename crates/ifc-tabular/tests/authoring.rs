@@ -7,14 +7,13 @@ use ifc_tabular::{
 };
 
 fn series(name: &str) -> SeriesDraft<'_> {
-    SeriesDraft {
+    SeriesDraft::new(
         name,
-        start_time: "2026-01-01T00:00:00",
-        end_time: "2026-01-02T00:00:00",
-        data_type: "CONTINUOUS",
-        data_origin: "MEASURED",
-        ..SeriesDraft::default()
-    }
+        "2026-01-01T00:00:00",
+        "2026-01-02T00:00:00",
+        "CONTINUOUS",
+        "MEASURED",
+    )
 }
 
 /// WR1: a ragged table is refused.
@@ -168,13 +167,7 @@ fn blank_required_text_is_refused() {
         Err(TabularError::BlankRequired { .. })
     ));
     assert!(matches!(
-        add_table_column(
-            &mut tx,
-            ColumnDraft {
-                identifier: Some(" "),
-                ..ColumnDraft::default()
-            }
-        ),
+        add_table_column(&mut tx, ColumnDraft::new().identifier(" ")),
         Err(TabularError::BlankRequired { .. })
     ));
 }
@@ -188,14 +181,7 @@ fn rows_and_columns_do_not_share_a_slot() {
     let mut model = Model::new();
     let mut tx = Transaction::new(&model);
     let row = add_table_row(&mut tx, vec![Value::Integer(1)], false).unwrap();
-    let column = add_table_column(
-        &mut tx,
-        ColumnDraft {
-            identifier: Some("A"),
-            ..ColumnDraft::default()
-        },
-    )
-    .unwrap();
+    let column = add_table_column(&mut tx, ColumnDraft::new().identifier("A")).unwrap();
     let table = add_table(&mut tx, None, &[(row, 1, false)], &[column]).unwrap();
     tx.commit(&mut model).unwrap();
     let entity = model.get(table).expect("table committed");

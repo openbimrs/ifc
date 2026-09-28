@@ -21,12 +21,7 @@ fn stages_and_commits_an_ifc4_analysis_model_atomically() {
         &mut tx,
         &model,
         schema,
-        AnalysisModelDraft {
-            global_id: GUID.into(),
-            name: Some("Frame".into()),
-            predefined_type: AnalysisModelType::Loading3d,
-            ..AnalysisModelDraft::default()
-        },
+        AnalysisModelDraft::new(GUID, AnalysisModelType::Loading3d).name("Frame"),
     )
     .unwrap();
     assert_eq!(tx.len(), 1);
@@ -50,11 +45,7 @@ fn ifc2x3_requires_owner_history_before_staging() {
         &mut tx,
         &model,
         schema,
-        AnalysisModelDraft {
-            global_id: GUID.into(),
-            predefined_type: AnalysisModelType::Loading3d,
-            ..AnalysisModelDraft::default()
-        },
+        AnalysisModelDraft::new(GUID, AnalysisModelType::Loading3d),
     )
     .unwrap_err();
     assert!(matches!(err, StructuralError::MissingRequired { .. }));
@@ -70,11 +61,7 @@ fn user_defined_authoring_requires_object_type_before_staging() {
         &mut tx,
         &model,
         schema,
-        AnalysisModelDraft {
-            global_id: GUID.into(),
-            predefined_type: AnalysisModelType::UserDefined,
-            ..AnalysisModelDraft::default()
-        },
+        AnalysisModelDraft::new(GUID, AnalysisModelType::UserDefined),
     )
     .unwrap_err();
     assert!(matches!(err, StructuralError::SemanticViolation { .. }));

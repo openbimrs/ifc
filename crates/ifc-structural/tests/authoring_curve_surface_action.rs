@@ -15,10 +15,10 @@ use ifc_structural::{
 const GUID: &str = "1A$vWGh2j9nOAcMUCJ3$Ab";
 
 fn root(object_type: Option<&str>) -> StructuralRootDraft {
-    StructuralRootDraft {
-        global_id: GUID.into(),
-        object_type: object_type.map(Into::into),
-        ..StructuralRootDraft::default()
+    {
+        let mut draft = StructuralRootDraft::new(GUID);
+        draft.object_type = object_type.map(Into::into);
+        draft
     }
 }
 
@@ -47,17 +47,16 @@ fn a_curve_action_keeps_its_predefined_type() {
         &mut tx,
         &model,
         schema,
-        ActionDraft {
-            root: root(None),
-            applied_load: load,
-            coordinate_system: CoordinateSystem::Global,
-            destabilizing_load: Some(false),
-            caused_by: None,
-            kind: ActionDraftKind::Curve {
+        ActionDraft::new(
+            root(None),
+            load,
+            CoordinateSystem::Global,
+            ActionDraftKind::Curve {
                 projected_or_true: None,
                 predefined_type: "CONST",
             },
-        },
+        )
+        .destabilizing_load(false),
     )
     .expect("a curve action is accepted");
 
@@ -100,17 +99,16 @@ fn a_surface_action_is_not_a_curve_action() {
         &mut tx,
         &model,
         schema,
-        ActionDraft {
-            root: root(None),
-            applied_load: load,
-            coordinate_system: CoordinateSystem::Global,
-            destabilizing_load: Some(false),
-            caused_by: None,
-            kind: ActionDraftKind::Surface {
+        ActionDraft::new(
+            root(None),
+            load,
+            CoordinateSystem::Global,
+            ActionDraftKind::Surface {
                 projected_or_true: None,
                 predefined_type: "NOTDEFINED",
             },
-        },
+        )
+        .destabilizing_load(false),
     )
     .expect("a surface action is accepted");
 
@@ -135,17 +133,16 @@ fn userdefined_without_an_object_type_is_refused() {
             tx,
             &model,
             schema,
-            ActionDraft {
-                root: root(object_type),
-                applied_load: load,
-                coordinate_system: CoordinateSystem::Global,
-                destabilizing_load: Some(false),
-                caused_by: None,
-                kind: ActionDraftKind::Curve {
+            ActionDraft::new(
+                root(object_type),
+                load,
+                CoordinateSystem::Global,
+                ActionDraftKind::Curve {
                     projected_or_true: None,
                     predefined_type: "USERDEFINED",
                 },
-            },
+            )
+            .destabilizing_load(false),
         )
     };
 
@@ -184,17 +181,16 @@ fn a_curve_action_refuses_a_planar_load() {
         &mut tx,
         &model,
         schema,
-        ActionDraft {
-            root: root(None),
-            applied_load: planar,
-            coordinate_system: CoordinateSystem::Global,
-            destabilizing_load: Some(false),
-            caused_by: None,
-            kind: ActionDraftKind::Curve {
+        ActionDraft::new(
+            root(None),
+            planar,
+            CoordinateSystem::Global,
+            ActionDraftKind::Curve {
                 projected_or_true: None,
                 predefined_type: "CONST",
             },
-        },
+        )
+        .destabilizing_load(false),
     );
     assert!(
         result.is_err(),

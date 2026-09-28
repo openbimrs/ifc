@@ -25,6 +25,7 @@ const ASSIGNMENT: &str = "IFCRELASSOCIATESAPPROVAL";
 
 /// Draft for one `IfcApproval`.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct ApprovalDraft<'a> {
     /// Optional identifier; at least this or `name` is required.
     pub identifier: Option<&'a str>,
@@ -46,8 +47,90 @@ pub struct ApprovalDraft<'a> {
     pub giving_approval: Option<EntityId>,
 }
 
+impl<'a> ApprovalDraft<'a> {
+    /// Starts a draft with every field unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            identifier: None,
+            name: None,
+            description: None,
+            time_of_approval: None,
+            status: None,
+            level: None,
+            qualifier: None,
+            requesting_approval: None,
+            giving_approval: None,
+        }
+    }
+
+    /// Sets [`Self::identifier`]: Optional identifier; at least this or `name` is required.
+    #[must_use]
+    pub fn identifier(mut self, value: &'a str) -> Self {
+        self.identifier = Some(value);
+        self
+    }
+
+    /// Sets [`Self::name`]: Optional name; at least this or `identifier` is required.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets [`Self::description`]: Optional description.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets [`Self::time_of_approval`]: Optional IFC date-time lexical value.
+    #[must_use]
+    pub fn time_of_approval(mut self, value: &'a str) -> Self {
+        self.time_of_approval = Some(value);
+        self
+    }
+
+    /// Sets [`Self::status`]: Optional status label.
+    #[must_use]
+    pub fn status(mut self, value: &'a str) -> Self {
+        self.status = Some(value);
+        self
+    }
+
+    /// Sets [`Self::level`]: Optional level label.
+    #[must_use]
+    pub fn level(mut self, value: &'a str) -> Self {
+        self.level = Some(value);
+        self
+    }
+
+    /// Sets [`Self::qualifier`]: Optional qualifier text.
+    #[must_use]
+    pub fn qualifier(mut self, value: &'a str) -> Self {
+        self.qualifier = Some(value);
+        self
+    }
+
+    /// Sets [`Self::requesting_approval`]: Optional existing or earlier-staged `IfcActorSelect` target.
+    #[must_use]
+    pub fn requesting_approval(mut self, value: EntityId) -> Self {
+        self.requesting_approval = Some(value);
+        self
+    }
+
+    /// Sets [`Self::giving_approval`]: Optional existing or earlier-staged `IfcActorSelect` target.
+    #[must_use]
+    pub fn giving_approval(mut self, value: EntityId) -> Self {
+        self.giving_approval = Some(value);
+        self
+    }
+}
+
 /// Draft for one direct approval relationship.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ApprovalRelationshipDraft<'a> {
     /// Optional relationship name.
     pub name: Option<&'a str>,
@@ -59,8 +142,36 @@ pub struct ApprovalRelationshipDraft<'a> {
     pub related_approvals: &'a [EntityId],
 }
 
+impl<'a> ApprovalRelationshipDraft<'a> {
+    /// Starts a draft with its required fields; the rest are unset.
+    #[must_use]
+    pub fn new(relating_approval: EntityId, related_approvals: &'a [EntityId]) -> Self {
+        Self {
+            name: None,
+            description: None,
+            relating_approval,
+            related_approvals,
+        }
+    }
+
+    /// Sets [`Self::name`]: Optional relationship name.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets [`Self::description`]: Optional relationship description.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+}
+
 /// Draft for one approval-to-resource relationship.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ResourceApprovalDraft<'a> {
     /// Optional relationship name.
     pub name: Option<&'a str>,
@@ -72,8 +183,36 @@ pub struct ResourceApprovalDraft<'a> {
     pub relating_approval: EntityId,
 }
 
+impl<'a> ResourceApprovalDraft<'a> {
+    /// Starts a draft with its required fields; the rest are unset.
+    #[must_use]
+    pub fn new(related_resources: &'a [EntityId], relating_approval: EntityId) -> Self {
+        Self {
+            name: None,
+            description: None,
+            related_resources,
+            relating_approval,
+        }
+    }
+
+    /// Sets [`Self::name`]: Optional relationship name.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets [`Self::description`]: Optional relationship description.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+}
+
 /// Draft for one rooted approval association to definitions.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ApprovalAssociationDraft<'a> {
     /// Compressed IFC GlobalId.
     pub global_id: &'a str,
@@ -85,6 +224,38 @@ pub struct ApprovalAssociationDraft<'a> {
     pub related_objects: &'a [EntityId],
     /// Existing or earlier-staged approval.
     pub relating_approval: EntityId,
+}
+
+impl<'a> ApprovalAssociationDraft<'a> {
+    /// Starts a draft with its required fields; the rest are unset.
+    #[must_use]
+    pub fn new(
+        global_id: &'a str,
+        related_objects: &'a [EntityId],
+        relating_approval: EntityId,
+    ) -> Self {
+        Self {
+            global_id,
+            name: None,
+            description: None,
+            related_objects,
+            relating_approval,
+        }
+    }
+
+    /// Sets [`Self::name`]: Optional relationship name.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets [`Self::description`]: Optional relationship description.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
 }
 
 /// Validate and stage one approval.
