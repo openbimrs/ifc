@@ -2,9 +2,10 @@
 
 use std::collections::HashSet;
 
-use ifc_model::{Entity, EntityId, Model, Transaction, Value};
+use ifc_model::{EntityId, Model, Transaction, Value};
 
-use crate::authoring::{final_type, text};
+use crate::authoring::{require_accepts, text};
+use crate::release::Release;
 use crate::view::{
     borrowed_entity, optional_text, required_ref, required_refs, ClassificationView,
 };
@@ -63,35 +64,24 @@ impl<'m> ExternalReferenceRelationship<'m> {
     }
 
     fn validate(self, model: &Model) -> ClassificationResult<Self> {
-        validate_target(
-            self,
-            model,
-            "RelatingReference",
-            self.relating_reference()?,
-            "IfcExternalReference",
-        )?;
+        validate_target(self, model, "RelatingReference", self.relating_reference()?)?;
         for target in self.related_resources()? {
-            validate_target(
-                self,
-                model,
-                "RelatedResourceObjects",
-                target,
-                "IfcResourceObjectSelect",
-            )?;
+            validate_target(self, model, "RelatedResourceObjects", target)?;
         }
         Ok(self)
     }
 }
 
-/// Check `target` against `expected` in the release this relationship is
-/// read against. IFC2X3 has no `IfcExternalReferenceRelationship`, so any
-/// read there already fails `NotInSchema` before this is reached.
+/// Check `target` against the type the bound release declares for
+/// `attribute`: `IfcExternalReference` and `IfcResourceObjectSelect`, whose
+/// members differ by release (IFC4X3 adds `IfcShapeAspect`). IFC2X3 has no
+/// `IfcExternalReferenceRelationship`, so any read there already fails
+/// `NotInSchema` before this is reached.
 fn validate_target(
     relationship: ExternalReferenceRelationship<'_>,
     model: &Model,
     attribute: &'static str,
     target: EntityId,
-    expected: &'static str,
 ) -> ClassificationResult<()> {
     let relation = relationship.id();
     let entity = model
@@ -102,8 +92,8 @@ fn validate_target(
             attribute,
             target,
         })?;
-    let (_, schema) = relationship.release().bound()?;
-    if schema.accepts_type(expected, &entity.type_name) {
+    let release = relationship.release();
+    if release.accepts(KIND, relation, attribute, &entity.type_name)? {
         Ok(())
     } else {
         Err(ClassificationError::ReferenceType {
@@ -111,7 +101,7 @@ fn validate_target(
             id: relation,
             attribute,
             target,
-            expected,
+            expected: release.declared_type(KIND, relation, attribute)?,
             actual: entity.type_name.to_string(),
         })
     }
@@ -157,7 +147,7 @@ impl<'m> ClassificationView<'m> {
     }
 }
 
-/// Draft for one IFC4 generic external-reference relationship.
+/// Draft for one generic external-reference relationship (IFC4 onwards).
 #[derive(Debug, Clone, Copy)]
 pub struct ExternalReferenceRelationshipDraft<'a> {
     /// Optional relationship name.
@@ -166,16 +156,27 @@ pub struct ExternalReferenceRelationshipDraft<'a> {
     pub description: Option<&'a str>,
     /// Existing or earlier-staged subtype of `IfcExternalReference`.
     pub relating_reference: EntityId,
-    /// Non-empty unique `IfcResourceObjectSelect` targets.
+    /// Non-empty unique `IfcResourceObjectSelect` targets, as the model's
+    /// release declares that select (IFC4X3 adds `IfcShapeAspect`).
     pub related_resources: &'a [EntityId],
 }
 
-/// Validate and stage one `IfcExternalReferenceRelationship`.
+/// Validate and stage one `IfcExternalReferenceRelationship` in the layout
+/// of `model`'s declared release.
+///
+/// # Errors
+///
+/// An empty or duplicated related set; a reference the release's declared
+/// type does not accept; an IFC2X3 model, which has no such entity
+/// (`EntityNotInSchema`); and a header binding no single known release.
+/// Nothing is staged on an error.
 pub fn create_external_reference_relationship(
     tx: &mut Transaction,
     model: &Model,
     draft: ExternalReferenceRelationshipDraft<'_>,
 ) -> ClassificationResult<EntityId> {
+    let release = Release::of(model);
+    release.require_entity(KIND)?;
     if draft.related_resources.is_empty() {
         return Err(ClassificationError::AuthoringInvalid {
             entity: KIND,
@@ -183,7 +184,14 @@ pub fn create_external_reference_relationship(
             value: "empty SET [1:?]".into(),
         });
     }
-    validate_draft_target(tx, model, draft.relating_reference, "IfcExternalReference")?;
+    require_accepts(
+        tx,
+        model,
+        release,
+        KIND,
+        "RelatingReference",
+        draft.relating_reference,
+    )?;
     let mut seen = HashSet::new();
     for &target in draft.related_resources {
         if !seen.insert(target) {
@@ -193,41 +201,26 @@ pub fn create_external_reference_relationship(
                 value: format!("duplicate {target}"),
             });
         }
-        validate_draft_target(tx, model, target, "IfcResourceObjectSelect")?;
+        require_accepts(tx, model, release, KIND, "RelatedResourceObjects", target)?;
     }
-    Ok(tx.create(Entity::new(
+    let record = release.record(
         KIND,
         vec![
-            draft.name.map_or(Value::Null, text),
-            draft.description.map_or(Value::Null, text),
-            Value::Ref(draft.relating_reference),
-            Value::List(
-                draft
-                    .related_resources
-                    .iter()
-                    .copied()
-                    .map(Value::Ref)
-                    .collect(),
+            ("Name", draft.name.map_or(Value::Null, text)),
+            ("Description", draft.description.map_or(Value::Null, text)),
+            ("RelatingReference", Value::Ref(draft.relating_reference)),
+            (
+                "RelatedResourceObjects",
+                Value::List(
+                    draft
+                        .related_resources
+                        .iter()
+                        .copied()
+                        .map(Value::Ref)
+                        .collect(),
+                ),
             ),
         ],
-    )))
-}
-
-fn validate_draft_target(
-    tx: &Transaction,
-    model: &Model,
-    target: EntityId,
-    expected: &'static str,
-) -> ClassificationResult<()> {
-    let actual =
-        final_type(tx, model, target).ok_or(ClassificationError::UnknownEntity { id: target })?;
-    if ifc_schema::ifc4().accepts_type(expected, actual) {
-        Ok(())
-    } else {
-        Err(ClassificationError::AuthoringReferenceType {
-            target,
-            expected,
-            actual: actual.into(),
-        })
-    }
+    )?;
+    Ok(tx.create(record))
 }

@@ -1,4 +1,5 @@
-//! Borrowed `IfcClassification` projection (IFC4 slots 0..6).
+//! Borrowed `IfcClassification` projection, read by attribute name in the
+//! bound release.
 use crate::view::{
     borrowed_entity, optional_text, optional_texts, required_text, ClassificationView,
 };
@@ -56,6 +57,10 @@ impl<'m> ClassificationSystem<'m> {
         )
     }
     /// The `Location` (e.g. a URI) of this classification system, when authored.
+    ///
+    /// IFC4X3 ADD2 names this attribute `Specification`, at the same position
+    /// and with the same type; it is read here. IFC2X3 has neither, which is
+    /// `NotInSchema`.
     pub fn location(self) -> ClassificationResult<Option<&'m str>> {
         optional_text(
             "IFCCLASSIFICATION",

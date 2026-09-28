@@ -25,7 +25,7 @@ impl<'m> ClassificationView<'m> {
         self.model
     }
     /// The release this view's projections read against.
-    pub(crate) fn release(self) -> Release {
+    pub(crate) fn release(self) -> Release<'m> {
         Release::of(self.model)
     }
 }
@@ -35,13 +35,13 @@ macro_rules! borrowed_entity {
         #[doc = concat!("Borrowed projection of an `", $kind, "` entity.")]
         #[doc = ""]
         #[doc = "Projections handed out by a [`crate::ClassificationView`] read against"]
-        #[doc = "the release the model declares; one built with `try_new` has no model"]
-        #[doc = "and reads against IFC4, as in 0.2.0."]
+        #[doc = "the release the model declares (IFC2X3, IFC4 or IFC4X3); one built with"]
+        #[doc = "`try_new` has no model and reads against IFC4, as in 0.2.0."]
         #[derive(Debug, Clone, Copy)]
         pub struct $name<'m> {
             id: ifc_model::EntityId,
             entity: &'m ifc_model::Entity,
-            release: crate::release::Release,
+            release: crate::release::Release<'m>,
         }
         impl<'m> $name<'m> {
             #[doc = concat!(
@@ -62,7 +62,7 @@ macro_rules! borrowed_entity {
             pub(crate) fn try_bound(
                 id: ifc_model::EntityId,
                 entity: &'m ifc_model::Entity,
-                release: crate::release::Release,
+                release: crate::release::Release<'m>,
             ) -> crate::ClassificationResult<Self> {
                 if entity.is_type($kind) {
                     Ok(Self {
@@ -85,7 +85,7 @@ macro_rules! borrowed_entity {
             pub(crate) const fn from_known(
                 id: ifc_model::EntityId,
                 entity: &'m ifc_model::Entity,
-                release: crate::release::Release,
+                release: crate::release::Release<'m>,
             ) -> Self {
                 Self {
                     id,
@@ -122,7 +122,7 @@ macro_rules! borrowed_entity {
             }
             /// The release binding of this projection.
             #[allow(dead_code)]
-            pub(crate) const fn release(self) -> crate::release::Release {
+            pub(crate) const fn release(self) -> crate::release::Release<'m> {
                 self.release
             }
         }

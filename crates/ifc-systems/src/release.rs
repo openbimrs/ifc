@@ -35,17 +35,39 @@ impl Release {
         self.schema.is_a(candidate, ancestor)
     }
 
-    /// Whether attribute `slot` of `entity` is declared under this release
-    /// at all -- i.e. the entity's arity in this schema covers that index.
+    /// Position of `attribute` on `entity` in this release, by name; `None`
+    /// when the release does not declare it.
     ///
     /// Used to tell "the file left this attribute empty" apart from "this
     /// release does not have this attribute" (e.g. IFC2X3 `IfcZone` has no
-    /// `LongName`, and IFC2X3 `IfcDistributionPort` has no `PredefinedType`
-    /// or `SystemType`).
-    pub(crate) fn has_slot(self, entity: &str, slot: usize) -> bool {
-        self.schema.attributes(entity).len() > slot
+    /// `LongName`).
+    pub(crate) fn slot(self, entity: &str, attribute: &str) -> Option<usize> {
+        self.schema
+            .attribute_names(entity)
+            .iter()
+            .position(|name| name.eq_ignore_ascii_case(attribute))
+    }
+
+    fn bind(version: SchemaVersion) -> Self {
+        Self {
+            version,
+            schema: for_version(version).expect("every SchemaVersion has a bundled table"),
+        }
     }
 }
+
+/// Releases whose zone semantics are verified against their own tables:
+/// `IfcZone`, `IfcRelAssignsToGroup` and the WR1 member types (#194).
+const ZONE_RELEASES: &[SchemaVersion] = &[
+    SchemaVersion::Ifc2x3,
+    SchemaVersion::Ifc4,
+    SchemaVersion::Ifc4x3,
+];
+
+/// Releases verified for the system, port, flow and connectivity readers.
+/// IFC4X3's distribution semantics (`IfcBuiltSystem`, the IFC4X3
+/// distribution-system enumeration) are not verified yet.
+const SYSTEM_RELEASES: &[SchemaVersion] = &[SchemaVersion::Ifc2x3, SchemaVersion::Ifc4];
 
 /// Resolve the IFC release a model declares, from its `FILE_SCHEMA` header.
 ///
@@ -53,7 +75,10 @@ impl Release {
 /// callers who want to know (or assert) which release a model will be read
 /// under -- without pulling in `ifc-schema` themselves -- can call this
 /// directly. It refuses a file with no schema, more than one, or a release
-/// this crate has not verified (including IFC4X3).
+/// this crate has not verified for its system, port and flow readers
+/// (including IFC4X3). The zone readers ([`crate::zones`],
+/// [`crate::try_zones`], [`crate::long_name_of`]) are verified for IFC4X3
+/// and bind its table (#194); this function still refuses it.
 ///
 /// The crate's bulk accessors (`systems`, `zones`, `ports`,
 /// `ElementRole::of`, `ConnectionGraph::build`, ...) do NOT surface that
@@ -70,17 +95,28 @@ pub fn schema_of(model: &Model) -> Result<SchemaVersion, SchemaResolutionError> 
 }
 
 /// Internal resolution: version tag plus the bundled table to read against.
+///
+/// IFC4X3 is bundled in ifc-schema, but the system, port, flow and
+/// connectivity reads have only been verified against IFC2X3 and IFC4
+/// semantics (#52 scope); it stays refused here until that verification
+/// happens. Zones resolve through [`resolve_zones`] instead.
 pub(crate) fn resolve(model: &Model) -> Result<Release, SchemaResolutionError> {
+    resolve_among(model, SYSTEM_RELEASES)
+}
+
+/// [`resolve`] for the zone readers, which are verified for IFC4X3 too.
+pub(crate) fn resolve_zones(model: &Model) -> Result<Release, SchemaResolutionError> {
+    resolve_among(model, ZONE_RELEASES)
+}
+
+fn resolve_among(
+    model: &Model,
+    verified: &[SchemaVersion],
+) -> Result<Release, SchemaResolutionError> {
     match model.header().schema.as_slice() {
         [] => Err(SchemaResolutionError::MissingSchema),
         [token] => match SchemaVersion::from_header_token(token) {
-            // IFC4X3 is bundled in ifc-schema, but this crate's reads have
-            // only been verified against IFC2X3 and IFC4 semantics (#52
-            // scope); it stays refused until that verification happens.
-            Some(version @ (SchemaVersion::Ifc2x3 | SchemaVersion::Ifc4)) => Ok(Release {
-                version,
-                schema: for_version(version).expect("IFC2X3 and IFC4 are bundled"),
-            }),
+            Some(version) if verified.contains(&version) => Ok(Release::bind(version)),
             _ => Err(SchemaResolutionError::UnsupportedSchema {
                 schema: token.clone(),
             }),
@@ -89,6 +125,11 @@ pub(crate) fn resolve(model: &Model) -> Result<Release, SchemaResolutionError> {
             schemas: schemas.len(),
         }),
     }
+}
+
+/// The IFC4 table, which the bulk readers fall back to.
+pub(crate) fn ifc4() -> Release {
+    Release::bind(SchemaVersion::Ifc4)
 }
 
 /// Resolve the declared release for the crate's bulk accessors
@@ -108,8 +149,11 @@ pub(crate) fn resolve(model: &Model) -> Result<Release, SchemaResolutionError> {
 /// A caller who needs a hard refusal instead of this fallback should call
 /// [`schema_of`] first and act on its `Err`.
 pub(crate) fn resolve_or_ifc4(model: &Model) -> Release {
-    resolve(model).unwrap_or_else(|_| Release {
-        version: SchemaVersion::Ifc4,
-        schema: for_version(SchemaVersion::Ifc4).expect("IFC4 is bundled"),
-    })
+    resolve(model).unwrap_or_else(|_| ifc4())
+}
+
+/// [`resolve_or_ifc4`] for `zones()`: an IFC4X3 header binds the IFC4X3
+/// table; a header binding nothing falls back to IFC4 as before.
+pub(crate) fn resolve_zones_or_ifc4(model: &Model) -> Release {
+    resolve_zones(model).unwrap_or_else(|_| ifc4())
 }

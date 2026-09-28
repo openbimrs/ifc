@@ -1,4 +1,5 @@
-//! Borrowed `IfcDocumentInformation` projection (IFC4 slots 0..16).
+//! Borrowed `IfcDocumentInformation` projection, read by attribute name in
+//! the bound release.
 use crate::view::{
     borrowed_entity, optional_enum, optional_ref, optional_refs, optional_text, required_text,
     ClassificationView,
@@ -156,33 +157,29 @@ impl<'m> DocumentInformation<'m> {
             "ValidUntil",
         )
     }
-    /// The `Confidentiality` enumerator of the document, when authored (`PUBLIC`, `RESTRICTED`, `CONFIDENTIAL`, `PERSONAL`, `USERDEFINED`, or `NOTDEFINED`).
+    /// The `Confidentiality` enumerator of the document, when authored: one
+    /// of the bound release's `IfcDocumentConfidentialityEnum` values
+    /// (`PUBLIC`, `RESTRICTED`, `CONFIDENTIAL`, `PERSONAL`, `USERDEFINED`,
+    /// `NOTDEFINED` in IFC2X3, IFC4 and IFC4X3).
     pub fn confidentiality(self) -> ClassificationResult<Option<&'m str>> {
-        optional_enum(
-            "IFCDOCUMENTINFORMATION",
-            self.id(),
-            self.entity(),
-            self.slot("Confidentiality")?,
-            "Confidentiality",
-            &[
-                "PUBLIC",
-                "RESTRICTED",
-                "CONFIDENTIAL",
-                "PERSONAL",
-                "USERDEFINED",
-                "NOTDEFINED",
-            ],
-        )
+        self.enumerated("Confidentiality")
     }
-    /// The `Status` enumerator of the document, when authored (`DRAFT`, `FINAL`, `REVISION`, or `NOTDEFINED`).
+    /// The `Status` enumerator of the document, when authored: one of the
+    /// bound release's `IfcDocumentStatusEnum` values (`DRAFT`, `FINALDRAFT`,
+    /// `FINAL`, `REVISION`, `NOTDEFINED` in IFC2X3, IFC4 and IFC4X3).
     pub fn status(self) -> ClassificationResult<Option<&'m str>> {
+        self.enumerated("Status")
+    }
+    fn enumerated(self, attribute: &'static str) -> ClassificationResult<Option<&'m str>> {
+        const ENTITY: &str = "IFCDOCUMENTINFORMATION";
+        let allowed = self.release().enumerators(ENTITY, self.id(), attribute)?;
         optional_enum(
-            "IFCDOCUMENTINFORMATION",
+            ENTITY,
             self.id(),
             self.entity(),
-            self.slot("Status")?,
-            "Status",
-            &["DRAFT", "FINAL", "REVISION", "NOTDEFINED"],
+            self.slot(attribute)?,
+            attribute,
+            &allowed,
         )
     }
 }
