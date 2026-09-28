@@ -1,6 +1,6 @@
 //! An authored distribution system, read back by the systems readers.
 //!
-//! Asserting through ports(), systems() and the connection graph
+//! Asserting through ports().unwrap(), systems().unwrap() and the connection graph
 //! proves the authored slots are the ones those readers resolve.
 
 use ifc_model::{Entity, EntityId, Model, Transaction, Value};
@@ -9,6 +9,14 @@ use ifc_systems::{
     create_port, create_system, nest_ports, ports, reference_in_spatial_structure,
     spatial_placements, systems, ConnectionGraph,
 };
+
+/// An in-memory model declaring IFC4: the readers refuse a model whose
+/// header binds no release.
+fn ifc4_model() -> Model {
+    let mut model = Model::new();
+    model.header_mut().schema = vec!["IFC4".to_owned()];
+    model
+}
 
 /// A pipe segment to carry flow.
 fn segment(tx: &mut Transaction, guid: &str) -> EntityId {
@@ -20,7 +28,7 @@ fn segment(tx: &mut Transaction, guid: &str) -> EntityId {
 /// A whole system authored, then read back by the crate's readers.
 #[test]
 fn an_authored_system_reads_back() {
-    let mut model = Model::default();
+    let mut model = ifc4_model();
     let mut tx = Transaction::new(&model);
     let system =
         create_system(&mut tx, "0aBcDeFgHiJkLmNoPqRsTu", Some("Chilled water")).expect("system");
@@ -44,14 +52,14 @@ fn an_authored_system_reads_back() {
     assign_to_group(&mut tx, "0ABcDeFgHiJkLmNoPqRsTu", system, &[a, b]).expect("assign");
     tx.commit(&mut model).expect("commit");
 
-    let (found, anomalies) = systems(&model);
+    let (found, anomalies) = systems(&model).unwrap();
     assert!(
         anomalies.is_empty(),
         "authored system is clean: {anomalies:?}"
     );
     assert_eq!(found.len(), 1);
 
-    let (read_ports, port_anomalies) = ports(&model);
+    let (read_ports, port_anomalies) = ports(&model).unwrap();
     assert!(
         port_anomalies.is_empty(),
         "ports are clean: {port_anomalies:?}"
@@ -59,7 +67,7 @@ fn an_authored_system_reads_back() {
     assert_eq!(read_ports.len(), 2);
 
     // The two segments are one connected component through their ports.
-    let graph = ConnectionGraph::build(&model).0;
+    let graph = ConnectionGraph::build(&model).unwrap().0;
     assert_eq!(graph.neighbours(out), vec![inp]);
     assert_eq!(graph.reachable_from(out), vec![out, inp]);
 }
@@ -67,7 +75,7 @@ fn an_authored_system_reads_back() {
 /// Records that parse but describe no system are refused.
 #[test]
 fn meaningless_connections_are_refused() {
-    let model = Model::default();
+    let model = ifc4_model();
     let mut tx = Transaction::new(&model);
     let g = "1aBcDeFgHiJkLmNoPqRsTu";
     let sys = create_system(&mut tx, g, Some("S")).expect("system");
@@ -100,7 +108,7 @@ fn meaningless_connections_are_refused() {
 /// IfcDistributionPort.FlowDirection at 7.
 #[test]
 fn every_relationship_writes_its_schema_slots() {
-    let mut model = Model::default();
+    let mut model = ifc4_model();
     let mut tx = Transaction::new(&model);
     let sys = create_system(&mut tx, "0aBcDeFgHiJkLmNoPqRsTu", None).expect("sys");
     let el = segment(&mut tx, "1aBcDeFgHiJkLmNoPqRsTu");
@@ -133,7 +141,7 @@ fn every_relationship_writes_its_schema_slots() {
 /// silent change of meaning rather than a parse error.
 #[test]
 fn placement_distinguishes_containment_from_reference() {
-    let mut model = Model::default();
+    let mut model = ifc4_model();
     let mut tx = Transaction::new(&model);
     let storey = segment(&mut tx, "0aBcDeFgHiJkLmNoPqRsTu");
     let other = segment(&mut tx, "1aBcDeFgHiJkLmNoPqRsTu");
@@ -144,7 +152,7 @@ fn placement_distinguishes_containment_from_reference() {
         .expect("referenced");
     tx.commit(&mut model).expect("commit");
 
-    let (placements, anomalies) = spatial_placements(&model);
+    let (placements, anomalies) = spatial_placements(&model).unwrap();
     assert!(
         anomalies.is_empty(),
         "authored placement is clean: {anomalies:?}"

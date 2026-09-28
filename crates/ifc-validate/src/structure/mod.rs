@@ -5,18 +5,21 @@
 //! - `reference`: dangling and wrong-kind references
 //! - `required`: required/derived slot presence and record arity
 //! - `cardinality`: scalar-vs-aggregate shape
-//! - `unique`: duplicate `GlobalId`s
+//! - `bounds`: aggregate bounds, nesting and element uniqueness
+//! - `unique`: the release's `UNIQUE` clauses
 
+mod bounds;
 mod cardinality;
 mod reference;
 mod required;
 mod unique;
 
+pub use bounds::aggregate_bounds;
 pub use cardinality::aggregate_shape;
 pub(crate) use reference::expected_references;
 pub use reference::{dangling_references, wrong_kind_references};
 pub use required::required_attributes;
-pub use unique::duplicate_global_ids;
+pub use unique::unique_rules;
 
 use ifc_model::Model;
 use ifc_schema::Schema;
@@ -34,6 +37,8 @@ pub fn check(model: &Model, schema: &Schema, budget: Budget, report: &mut Report
     wrong_kind_references(model, schema, report);
     required_attributes(model, schema, report);
     aggregate_shape(model, schema, report);
+    aggregate_bounds(model, schema, report);
+    unique_rules(model, schema, report);
     if report.findings().len() >= budget.max_findings {
         report.mark_truncated();
     }

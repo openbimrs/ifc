@@ -22,7 +22,7 @@ group = "domain"
 ifc-model.workspace = true
 # The bundled release tables: quantity authoring lays its record out by
 # attribute name from the model's declared release (#190).
-ifc-schema.workspace = true
+ifc-schema = { workspace = true, features = ["default"] }
 thiserror.workspace = true
 
 [dev-dependencies]

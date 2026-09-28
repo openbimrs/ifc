@@ -23,7 +23,19 @@ group = "binding"
 
 [dependencies]
 # ADR 0013: bindings depend on the facade only, never on an ifc-* crate.
-openbim-ifc = { workspace = true, default-features = false, features = ["step", "schema"] }
+# `schema-api` without a release: the release features below choose the
+# bundled tables (#112).
+openbim-ifc = { workspace = true, default-features = false, features = ["step", "schema-api"] }
+
+[features]
+# Every bundled IFC release, as before #112. The browser package turns
+# defaults off and names the releases it ships (see openbim-ifc-wasm).
+default = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
+ifc2x3 = ["openbim-ifc/ifc2x3"]
+ifc4 = ["openbim-ifc/ifc4"]
+ifc4x1 = ["openbim-ifc/ifc4x1"]
+ifc4x2 = ["openbim-ifc/ifc4x2"]
+ifc4x3 = ["openbim-ifc/ifc4x3"]
 
 [lints]
 workspace = true

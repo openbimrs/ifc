@@ -20,20 +20,63 @@ group = "core"
 
 [dependencies]
 ahash.workspace = true
-openbim-step.workspace = true
+# EXPRESS extraction. Optional: the bundled tables decode into this crate's
+# own types without it; only `express` (runtime .exp parsing) and
+# `generation` (the artifact compiler) link it.
+# Pinned here rather than through the workspace: ifc-step stays on its own
+# openbim-step line, and only the build-time extractor needs 0.10's
+# aggregation, INVERSE and UNIQUE extraction (#111).
+openbim-step = { version = "=0.10.0", optional = true }
 bincode = { version = "2.0.1", optional = true }
 thiserror = { workspace = true, optional = true }
 
 [features]
-default = ["ifc4"]
-# Ships the compiled schema artifacts and their accessors: ifc2x3(), ifc4(),
-# ifc4x3(), and for_version(). Named `ifc4` for compatibility with existing
-# consumers; it now covers all three bundled validation targets.
-ifc4 = ["dep:bincode", "dep:thiserror"]
+# Every bundled release. A default build keeps all five, exactly as before
+# the per-release split; a size-sensitive build (browser WASM) turns
+# defaults off and names the releases it ships.
+default = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
+# One feature per bundled release (#112). Each ships that release's compiled
+# table and its accessor (`ifc2x3()`, `ifc4()`, ...). A release whose feature
+# is off is still a `SchemaVersion`: `for_version` refuses it with
+# `NotBundled`, so a caller can tell "not compiled in" from an unknown token.
+ifc2x3 = ["artifact"]
+ifc4 = ["artifact"]
+ifc4x1 = ["artifact"]
+ifc4x2 = ["artifact"]
+ifc4x3 = ["artifact"]
+# The compiled-artifact decoder (`artifact_decode_schema`). Every release
+# feature enables it; on its own it bundles no table.
+artifact = ["dep:bincode", "dep:thiserror"]
 # Compiles a user-supplied .exp into a committed artifact. Not part of
 # default: the generator reads a normative ISO/buildingSMART source file that
 # must never ship inside the published crate.
-generation = ["ifc4"]
+generation = ["express", "ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
+# `Schema::from_express` / `from_express_bytes`: parse EXPRESS source at run
+# time through `openbim-step`. No `openbim-step` type is part of this crate's
+# API either way.
+express = ["dep:openbim-step"]
+
+# Parses the fetched normative .exp files to compare them with the bundle.
+[[test]]
+name = "real_schemas"
+required-features = ["express", "ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
+
+# These exercise every bundled table.
+[[test]]
+name = "subtypes"
+required-features = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
+
+[[test]]
+name = "structural_catalog_export"
+required-features = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
+
+[[test]]
+name = "direct_structural_catalog_export"
+required-features = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
+
+[[test]]
+name = "select_membership"
+required-features = ["ifc4"]
 
 [[bin]]
 name = "ifc-schema-generate"

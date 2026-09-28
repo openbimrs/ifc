@@ -31,6 +31,13 @@ pub enum StyleError {
         /// The entity type name that is undeclared.
         entity: &'static str,
     },
+    /// The schema is a recognised IFC release whose layout this projection
+    /// is not verified for.
+    #[error("schema {schema} is not a release this projection is verified for")]
+    UnsupportedSchema {
+        /// The schema's name.
+        schema: String,
+    },
     /// A mandatory attribute was absent, so the value cannot be inferred.
     #[error("{entity} {id} is missing required attribute {attribute}")]
     MissingAttribute {

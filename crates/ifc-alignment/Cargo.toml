@@ -18,7 +18,7 @@ status = "partial"
 group = "geometry"
 
 [dependencies]
-ifc-schema.workspace = true
+ifc-schema = { workspace = true, features = ["default"] }
 ifc-model.workspace = true
 axiolid-core.workspace = true
 axiolid-curve.workspace = true

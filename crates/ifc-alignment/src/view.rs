@@ -254,3 +254,25 @@ mod tests {
         ));
     }
 }
+
+#[cfg(test)]
+mod intermediate_release_tests {
+    use super::*;
+
+    /// IFC4X1 and IFC4X2 have bundled tables but no verified layout here:
+    /// refused with the unsupported-schema error, never read as IFC4/IFC4X3.
+    #[test]
+    fn ifc4x1_and_ifc4x2_are_refused_not_aliased() {
+        for token in ["IFC4X1", "IFC4X2"] {
+            let mut model = Model::new();
+            model.header_mut().schema = vec![token.to_owned()];
+            assert!(
+                matches!(
+                    AlignmentView::for_model(&model),
+                    Err(AlignmentError::UnsupportedSchema { token: found }) if found == token
+                ),
+                "{token} must be refused"
+            );
+        }
+    }
+}

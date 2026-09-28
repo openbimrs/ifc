@@ -6,93 +6,176 @@
 //!
 //! The artifacts under `data/` are the *parsed* schema (entities, attributes,
 //! types), not the EXPRESS source text — they never contain normative
-//! buildingSMART/ISO 16739 prose, only the structural facts
-//! `openbim_step::express::parse` would extract. The build-time `generation`
-//! feature that produces them requires a user-supplied copy of the `.exp`
-//! file; that file is never vendored into this crate or its published archive
-//! (see `tools/generate.rs`).
+//! buildingSMART/ISO 16739 prose, only the structural facts the EXPRESS
+//! extractor would read, decoded into this crate's own types. The build-time
+//! `generation` feature that produces them requires a user-supplied copy of
+//! the `.exp` file; that file is never vendored into this crate or its
+//! published archive (see `tools/generate.rs`).
 //!
 //! # Bundled versions
 //!
-//! IFC2x3 TC1, IFC4 ADD2 TC1, and IFC4X3 ADD2 are separate artifacts. Version
-//! dispatch never substitutes one table for another; that would turn schema
-//! validation into confident nonsense.
+//! IFC2x3 TC1, IFC4 ADD2 TC1, IFC4X1 FINAL, IFC4X2 FINAL and IFC4X3 ADD2 are
+//! separate artifacts. Version dispatch never substitutes one table for
+//! another; that would turn schema validation into confident nonsense.
+//!
+//! # One feature per release
+//!
+//! Each release is behind its own feature (`ifc2x3`, `ifc4`, `ifc4x1`,
+//! `ifc4x2`, `ifc4x3`), all on by default. Its accessor (`ifc4()`, ...)
+//! exists only with its feature. [`for_version`] exists in every build and
+//! returns [`NotBundled`] for a release whose feature is off, so a
+//! single-release build refuses the others with a typed error: an unknown
+//! header token is `None` from [`SchemaVersion::from_header_token`], a known
+//! release that is not compiled in is `Err(NotBundled)` here.
 
+#[cfg(feature = "artifact")]
 use std::sync::OnceLock;
 
+#[cfg(feature = "artifact")]
 use crate::artifact::decode_schema;
 use crate::registry::Schema;
 use crate::version::SchemaVersion;
 
-static IFC4: OnceLock<Schema> = OnceLock::new();
-static IFC4X3: OnceLock<Schema> = OnceLock::new();
-static IFC2X3: OnceLock<Schema> = OnceLock::new();
-
-/// The bundled IFC2x3 TC1 schema (653 entities, 327 types).
+/// A recognised IFC release whose table is not compiled into this build.
 ///
-/// Still the most common schema in the wild. Its layouts differ from IFC4 in
-/// ways that silently corrupt a reader that assumes the newer tables:
-/// `IfcWallStandardCase` has 8 attributes here and 9 in IFC4, because IFC4
-/// inserts `PredefinedType`.
-///
-/// Parsed once on first use and cached for the life of the process.
-#[must_use]
-pub fn ifc2x3() -> &'static Schema {
-    IFC2X3.get_or_init(|| {
-        let parsed = decode_schema(include_bytes!("../data/ifc2x3-tc1.bin")).expect(
-            "the bundled IFC2x3 artifact is produced and verified by this crate's own build",
-        );
-        Schema::from_parsed(parsed)
-    })
+/// Returned by [`for_version`] when the release's cargo feature (`ifc2x3`,
+/// `ifc4`, `ifc4x1`, `ifc4x2` or `ifc4x3` on `ifc-schema`, passed through by
+/// `openbim-ifc`) is off. Distinct from an unknown `FILE_SCHEMA` token, which
+/// never becomes a [`SchemaVersion`] at all.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub struct NotBundled {
+    /// The release that was asked for.
+    pub version: SchemaVersion,
 }
 
-/// The bundled IFC4 ADD2 TC1 schema (776 entities, 397 types).
-///
-/// Parsed once on first use and cached for the life of the process. Building
-/// this schema costs nothing beyond a `bincode` decode of a committed
-/// artifact: the 372 KB `IFC4.exp` EXPRESS source is never read at runtime
-/// and is not present in the published crate.
-///
-/// Custom schema files remain available through [`Schema::from_express`] or
-/// [`Schema::from_express_bytes`] directly.
-#[must_use]
-pub fn ifc4() -> &'static Schema {
-    IFC4.get_or_init(|| {
-        let parsed = decode_schema(include_bytes!("../data/ifc4-add2-tc1.bin"))
-            .expect("the bundled IFC4 artifact is produced and verified by this crate's own build");
-        Schema::from_parsed(parsed)
-    })
-}
-
-/// The bundled IFC4X3 ADD2 schema (876 entities, 436 types).
-///
-/// Parsed once on first use from its own generated artifact. It is never an
-/// alias for IFC4: renamed and civil entities require the declared tables.
-#[must_use]
-pub fn ifc4x3() -> &'static Schema {
-    IFC4X3.get_or_init(|| {
-        let parsed = decode_schema(include_bytes!("../data/ifc4x3-add2.bin")).expect(
-            "the bundled IFC4X3 artifact is produced and verified by this crate's own build",
-        );
-        Schema::from_parsed(parsed)
-    })
-}
-
-/// The bundled schema for `version`, or `None` when none is bundled.
-///
-/// This is the lookup a reader should use after parsing `FILE_SCHEMA`, so an
-/// unbundled schema becomes an explicit "cannot check this" rather than a
-/// silent fallback to the wrong tables.
-#[must_use]
-pub fn for_version(version: SchemaVersion) -> Option<&'static Schema> {
-    match version {
-        SchemaVersion::Ifc2x3 => Some(ifc2x3()),
-        SchemaVersion::Ifc4 => Some(ifc4()),
-        SchemaVersion::Ifc4x3 => Some(ifc4x3()),
+impl std::fmt::Display for NotBundled {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "IFC release {} is not compiled into this build (enable the `{}` feature of ifc-schema)",
+            self.version.release_id(),
+            self.version.feature_name()
+        )
     }
 }
 
-#[cfg(test)]
+impl std::error::Error for NotBundled {}
+
+/// Declares one release's cached accessor, compiled only with its feature.
+macro_rules! bundled_release {
+    ($feature:literal, $cell:ident, $name:ident, $file:literal, $label:literal, $doc:literal) => {
+        #[cfg(feature = $feature)]
+        static $cell: OnceLock<Schema> = OnceLock::new();
+
+        #[doc = $doc]
+        ///
+        /// Decoded once on first use and cached for the life of the process.
+        #[doc = concat!("Requires the `", $feature, "` feature (on by default).")]
+        #[cfg(feature = $feature)]
+        #[must_use]
+        pub fn $name() -> &'static Schema {
+            $cell.get_or_init(|| {
+                decode_schema(include_bytes!($file)).expect(concat!(
+                    "the bundled ",
+                    $label,
+                    " artifact is produced and verified by this crate's own build"
+                ))
+            })
+        }
+    };
+}
+
+bundled_release!(
+    "ifc2x3",
+    IFC2X3,
+    ifc2x3,
+    "../data/ifc2x3-tc1.bin",
+    "IFC2x3",
+    "The bundled IFC2x3 TC1 schema (653 entities, 327 types).\n\n\
+     Still the most common schema in the wild. Its layouts differ from IFC4 \
+     in ways that silently corrupt a reader that assumes the newer tables: \
+     `IfcWallStandardCase` has 8 attributes here and 9 in IFC4, because IFC4 \
+     inserts `PredefinedType`."
+);
+bundled_release!(
+    "ifc4",
+    IFC4,
+    ifc4,
+    "../data/ifc4-add2-tc1.bin",
+    "IFC4",
+    "The bundled IFC4 ADD2 TC1 schema (776 entities, 397 types).\n\n\
+     Building it costs a `bincode` decode of a committed artifact: the \
+     `IFC4.exp` EXPRESS source is never read at runtime and is not in the \
+     published crate. Custom schema files remain available through \
+     `Schema::from_express` (the `express` feature) or [`Schema::new`]."
+);
+bundled_release!(
+    "ifc4x1",
+    IFC4X1,
+    ifc4x1,
+    "../data/ifc4x1-final.bin",
+    "IFC4X1",
+    "The bundled IFC4X1 FINAL schema (801 entities, 400 types).\n\n\
+     Its own artifact: IFC4X1 adds the alignment entities to IFC4 and is not \
+     an alias for either IFC4 or IFC4X3."
+);
+bundled_release!(
+    "ifc4x2",
+    IFC4X2,
+    ifc4x2,
+    "../data/ifc4x2-final.bin",
+    "IFC4X2",
+    "The bundled IFC4X2 FINAL schema (816 entities, 407 types).\n\n\
+     Its own artifact: IFC4X2 adds bridges to IFC4X1 and is not an alias for \
+     IFC4 or IFC4X3."
+);
+bundled_release!(
+    "ifc4x3",
+    IFC4X3,
+    ifc4x3,
+    "../data/ifc4x3-add2.bin",
+    "IFC4X3",
+    "The bundled IFC4X3 ADD2 schema (876 entities, 436 types).\n\n\
+     Its own artifact. It is never an alias for IFC4: renamed and civil \
+     entities require the declared tables."
+);
+
+/// The bundled schema for `version`.
+///
+/// This is the lookup a reader should use after parsing `FILE_SCHEMA`, so a
+/// release without tables becomes an explicit "cannot check this" rather
+/// than a silent fallback to the wrong tables.
+///
+/// # Errors
+///
+/// [`NotBundled`] when `version`'s release feature is off in this build.
+/// With default features every release is bundled and this never fails.
+pub fn for_version(version: SchemaVersion) -> Result<&'static Schema, NotBundled> {
+    match version {
+        #[cfg(feature = "ifc2x3")]
+        SchemaVersion::Ifc2x3 => Ok(ifc2x3()),
+        #[cfg(feature = "ifc4")]
+        SchemaVersion::Ifc4 => Ok(ifc4()),
+        #[cfg(feature = "ifc4x1")]
+        SchemaVersion::Ifc4x1 => Ok(ifc4x1()),
+        #[cfg(feature = "ifc4x2")]
+        SchemaVersion::Ifc4x2 => Ok(ifc4x2()),
+        #[cfg(feature = "ifc4x3")]
+        SchemaVersion::Ifc4x3 => Ok(ifc4x3()),
+        #[allow(unreachable_patterns)]
+        _ => Err(NotBundled { version }),
+    }
+}
+
+#[cfg(all(
+    test,
+    feature = "ifc2x3",
+    feature = "ifc4",
+    feature = "ifc4x1",
+    feature = "ifc4x2",
+    feature = "ifc4x3"
+))]
 mod tests {
     use super::*;
 
@@ -137,15 +220,15 @@ mod tests {
     fn version_lookup_returns_the_matching_table() {
         assert_eq!(
             for_version(SchemaVersion::Ifc4).map(|s| s.entity_count()),
-            Some(776)
+            Ok(776)
         );
         assert_eq!(
             for_version(SchemaVersion::Ifc2x3).map(|s| s.entity_count()),
-            Some(653)
+            Ok(653)
         );
         assert_eq!(
             for_version(SchemaVersion::Ifc4x3).map(|s| s.entity_count()),
-            Some(876),
+            Ok(876),
             "IFC4X3 must select its own bundled tables"
         );
     }
@@ -302,34 +385,207 @@ mod tests {
     fn the_generator_guards_match_the_bundled_artifacts() {
         // Parsed out of the generator's TARGETS table so the two cannot drift.
         let source = include_str!("../tools/generate.rs");
-        let expected: Vec<(usize, usize)> = source
+        let expected: Vec<(String, usize, usize)> = source
             .split("Target {")
             .skip(1)
             .filter_map(|block| {
-                let number = |key: &str| -> Option<usize> {
+                let field = |key: &str| -> Option<&str> {
                     let start = block.find(key)? + key.len();
                     let rest = &block[start..];
                     let end = rest.find(',')?;
-                    rest[..end].trim().parse().ok()
+                    Some(rest[..end].trim())
                 };
-                Some((number("entities:")?, number("types:")?))
+                Some((
+                    field("selector:")?.trim_matches('"').to_owned(),
+                    field("entities:")?.parse().ok()?,
+                    field("types:")?.parse().ok()?,
+                ))
             })
             .collect();
-        assert_eq!(expected.len(), 3, "three schemas are generated");
+        let bundled = [
+            ("ifc2x3", SchemaVersion::Ifc2x3, ifc2x3()),
+            ("ifc4", SchemaVersion::Ifc4, ifc4()),
+            ("ifc4x1", SchemaVersion::Ifc4x1, ifc4x1()),
+            ("ifc4x2", SchemaVersion::Ifc4x2, ifc4x2()),
+            ("ifc4x3", SchemaVersion::Ifc4x3, ifc4x3()),
+        ];
+        assert_eq!(expected.len(), bundled.len(), "one generator target each");
+        for ((selector, entities, types), (name, version, schema)) in expected.iter().zip(bundled) {
+            assert_eq!(selector, name, "generator target order");
+            assert_eq!(
+                (*entities, *types),
+                (schema.entity_count(), schema.type_count()),
+                "{name} generator guard vs the committed artifact"
+            );
+            assert_eq!(
+                (*entities, *types),
+                (
+                    version.expected_entity_count(),
+                    version.expected_type_count()
+                ),
+                "{name} generator guard vs SchemaVersion"
+            );
+            assert_eq!(schema.version(), Some(version), "{name} declared name");
+        }
+    }
+
+    /// INVERSE and UNIQUE declarations (#111), counted per release. The
+    /// IFC2X3, IFC4 and IFC4X3 figures were counted independently of this
+    /// crate from the normative EXPRESS; a bundle that dropped or duplicated
+    /// a clause fails here.
+    #[test]
+    fn inverse_and_unique_declarations_match_the_normative_counts() {
+        for (schema, inverses, unique) in [
+            (ifc2x3(), 115, 17),
+            (ifc4(), 153, 4),
+            (ifc4x1(), 158, 4),
+            (ifc4x2(), 160, 4),
+            (ifc4x3(), 165, 4),
+        ] {
+            let counted: usize = schema.entities().map(|e| e.inverses.len()).sum();
+            assert_eq!(counted, inverses, "{} INVERSE", schema.name());
+            let counted: usize = schema.entities().map(|e| e.unique_rules.len()).sum();
+            assert_eq!(counted, unique, "{} UNIQUE", schema.name());
+            // Every aggregate attribute carries its levels.
+            for entity in schema.entities() {
+                for attribute in &entity.attributes {
+                    assert_eq!(
+                        attribute.aggregate,
+                        !attribute.aggregation.is_empty(),
+                        "{} {}.{}",
+                        schema.name(),
+                        entity.name,
+                        attribute.name
+                    );
+                }
+            }
+        }
+        let root = ifc4().entity("IfcRoot").unwrap();
+        assert_eq!(root.unique_rules[0].label.as_deref(), Some("UR1"));
+        assert_eq!(root.unique_rules[0].attributes, ["GlobalId"]);
+        let object = ifc4().entity("IfcObjectDefinition").unwrap();
+        let decomposes = object
+            .inverses
+            .iter()
+            .find(|inverse| inverse.name == "Decomposes")
+            .unwrap();
+        assert_eq!(decomposes.entity, "IfcRelAggregates");
+        assert_eq!(decomposes.for_attribute, "RelatedObjects");
+        let set = decomposes.aggregation.as_ref().unwrap();
         assert_eq!(
-            expected[0],
-            (ifc2x3().entity_count(), ifc2x3().type_count()),
-            "ifc2x3 generator guard vs the committed artifact"
+            (set.kind, &set.lower, &set.upper),
+            (
+                crate::AggregateKind::Set,
+                &crate::Bound::Integer(0),
+                &crate::Bound::Integer(1)
+            )
+        );
+    }
+
+    /// Aggregate bounds and nesting survive, and a nested aggregate's
+    /// `type_name` is its innermost element type (#111, #215).
+    #[test]
+    fn aggregate_bounds_and_nesting_are_bundled() {
+        use crate::{AggregateKind, Bound};
+        let coords = ifc4()
+            .attributes("IfcCartesianPointList3D")
+            .into_iter()
+            .find(|attribute| attribute.name == "CoordList")
+            .unwrap()
+            .clone();
+        assert_eq!(coords.type_name, "IfcLengthMeasure");
+        assert_eq!(coords.aggregation.len(), 2);
+        assert_eq!(coords.aggregation[0].kind, AggregateKind::List);
+        assert_eq!(coords.aggregation[0].lower, Bound::Integer(1));
+        assert_eq!(coords.aggregation[0].upper, Bound::Unbounded);
+        assert_eq!(coords.aggregation[1].lower, Bound::Integer(3));
+        assert_eq!(coords.aggregation[1].upper, Bound::Integer(3));
+
+        let point = ifc2x3()
+            .attributes("IfcCartesianPoint")
+            .into_iter()
+            .find(|attribute| attribute.name == "Coordinates")
+            .unwrap()
+            .clone();
+        assert_eq!(point.type_name, "IfcLengthMeasure");
+        assert_eq!(point.aggregation.len(), 1);
+        assert_eq!(
+            (&point.aggregation[0].lower, &point.aggregation[0].upper),
+            (&Bound::Integer(1), &Bound::Integer(3))
+        );
+
+        let polyline = ifc4()
+            .attributes("IfcPolyLoop")
+            .into_iter()
+            .find(|attribute| attribute.name == "Polygon")
+            .unwrap()
+            .clone();
+        assert!(polyline.aggregation[0].unique);
+        assert_eq!(polyline.aggregation[0].lower, Bound::Integer(3));
+    }
+
+    /// IFC4X1 and IFC4X2 are their own tables, not a paste of a neighbour:
+    /// each count differs from IFC4 and IFC4X3, and each carries the
+    /// entities its release introduced and none its successor added.
+    #[test]
+    fn the_intermediate_releases_are_distinct_tables() {
+        for schema in [ifc4x1(), ifc4x2()] {
+            for neighbour in [ifc4(), ifc4x3()] {
+                assert_ne!(schema.entity_count(), neighbour.entity_count());
+            }
+        }
+        assert_ne!(ifc4x1().entity_count(), ifc4x2().entity_count());
+
+        assert!(ifc4().entity("IfcAlignment").is_none());
+        assert!(ifc4x1().entity("IfcAlignment").is_some());
+        assert!(ifc4x1().entity("IfcAlignmentCurve").is_some());
+        assert!(ifc4x1().entity("IfcBridge").is_none());
+        assert!(ifc4x2().entity("IfcBridge").is_some());
+        assert!(ifc4x2().entity("IfcBuiltElement").is_none());
+        assert!(ifc4x3().entity("IfcAlignmentCurve").is_none());
+
+        assert_eq!(
+            for_version(SchemaVersion::Ifc4x1).map(Schema::name),
+            Ok("IFC4X1")
         );
         assert_eq!(
-            expected[1],
-            (ifc4().entity_count(), ifc4().type_count()),
-            "ifc4 generator guard vs the committed artifact"
+            for_version(SchemaVersion::Ifc4x2).map(Schema::name),
+            Ok("IFC4X2")
         );
+        assert!(std::ptr::eq(ifc4x1(), ifc4x1()), "constructor must cache");
+    }
+}
+
+/// A build without a release's feature refuses that release with a typed
+/// error, and still serves the releases it does bundle. Run by the gate as
+/// `cargo test -p ifc-schema --no-default-features --features ifc4`.
+#[cfg(all(test, feature = "ifc4", not(feature = "ifc4x3")))]
+mod single_release_tests {
+    use super::*;
+
+    #[test]
+    fn an_unbundled_release_is_refused_with_not_bundled() {
         assert_eq!(
-            expected[2],
-            (ifc4x3().entity_count(), ifc4x3().type_count()),
-            "ifc4x3 generator guard vs the committed artifact"
+            for_version(SchemaVersion::Ifc4).map(Schema::name),
+            Ok("IFC4")
+        );
+        let refused = for_version(SchemaVersion::Ifc4x3).expect_err("not compiled in");
+        assert_eq!(
+            refused,
+            NotBundled {
+                version: SchemaVersion::Ifc4x3
+            }
+        );
+        assert!(!SchemaVersion::Ifc4x3.is_bundled());
+        assert!(SchemaVersion::Ifc4.is_bundled());
+        assert!(
+            refused.to_string().contains("`ifc4x3` feature"),
+            "{refused}"
+        );
+        // A known release without tables is not an unknown token.
+        assert_eq!(
+            SchemaVersion::from_header_token("IFC4X3"),
+            Some(SchemaVersion::Ifc4x3)
         );
     }
 }

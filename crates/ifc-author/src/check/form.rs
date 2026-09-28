@@ -44,6 +44,7 @@ pub(crate) fn form_of(schema: &Schema, type_name: &str) -> Form {
             Some(TypeKind::Select(_)) => return Form::Typed,
             Some(TypeKind::Enumeration(_)) => return Form::Bare,
             Some(TypeKind::Defined(target)) => current = target.trim().to_owned(),
+            Some(_) => return Form::Unresolved,
             None if is_builtin(&current) => return Form::Bare,
             None => return Form::Unresolved,
         }
@@ -89,6 +90,7 @@ pub(crate) fn select_lists(schema: &Schema, type_name: &str, keyword: &str) -> O
             TypeKind::Select(_) => break,
             TypeKind::Defined(target) => start = target.trim().to_owned(),
             TypeKind::Enumeration(_) => return None,
+            _ => return None,
         }
     }
     let mut frontier = vec![start];

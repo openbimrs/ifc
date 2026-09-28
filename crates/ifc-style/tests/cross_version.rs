@@ -1,7 +1,8 @@
-//! Cross-schema (IFC2x3/IFC4/IFC4X3) integration tests for style projections.
+//! Cross-schema (IFC2x3/IFC4/IFC4X1/IFC4X2/IFC4X3) integration tests for
+//! style projections.
 
 use ifc_model::{Entity, Model, Value};
-use ifc_schema::{ifc2x3, ifc4, ifc4x3, Schema};
+use ifc_schema::{ifc2x3, ifc4, ifc4x1, ifc4x2, ifc4x3, Schema, TypeKind};
 use ifc_style::{AnnotationType, ColourOrFactor, StyleView};
 use std::sync::Arc;
 
@@ -123,6 +124,60 @@ fn rendering_selects_and_annotation_predefined_type_remain_typed() {
                 .unwrap(),
             (schema.version() == Some(ifc_schema::SchemaVersion::Ifc4x3))
                 .then_some(AnnotationType::Text)
+        );
+    }
+}
+
+/// IFC4X1 and IFC4X2 declare `IfcStyledItem.Styles` over the IFC4
+/// `IfcStyleAssignmentSelect`, which still admits the legacy
+/// `IfcPresentationStyleAssignment` wrapper; only IFC4X3 narrowed it to
+/// `IfcPresentationStyle`. Proven from each release's own table, and the
+/// projection must follow it rather than the IFC4X3 rule.
+#[test]
+fn intermediate_releases_accept_the_ifc4_styled_item_select() {
+    for schema in [ifc4x1(), ifc4x2()] {
+        let styles = schema
+            .attributes("IfcStyledItem")
+            .into_iter()
+            .find(|attribute| attribute.name == "Styles")
+            .expect("Styles slot");
+        assert_eq!(styles.type_name, "IfcStyleAssignmentSelect");
+        let Some(TypeKind::Select(members)) = schema
+            .type_def("IfcStyleAssignmentSelect")
+            .map(|definition| &definition.kind)
+        else {
+            panic!("{}: IfcStyleAssignmentSelect is a SELECT", schema.name());
+        };
+        assert_eq!(
+            members,
+            &["IfcPresentationStyle", "IfcPresentationStyleAssignment"]
+        );
+
+        let mut model = Model::new();
+        let style = model.push(named_entity(
+            schema,
+            "IfcCurveStyle",
+            vec![("Name", text("direct"))],
+        ));
+        let wrapper = model.push(named_entity(
+            schema,
+            "IfcPresentationStyleAssignment",
+            vec![("Styles", Value::List(vec![Value::Ref(style)]))],
+        ));
+        let item = model.push(named_entity(
+            schema,
+            "IfcStyledItem",
+            vec![(
+                "Styles",
+                Value::List(vec![Value::Ref(style), Value::Ref(wrapper)]),
+            )],
+        ));
+        let view = StyleView::new(&model, schema);
+        assert_eq!(
+            view.styled_item(item).unwrap().styles().unwrap(),
+            [style, wrapper],
+            "{}",
+            schema.name()
         );
     }
 }

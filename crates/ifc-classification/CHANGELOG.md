@@ -28,6 +28,18 @@ everything released before per-crate changelogs began.
   - `ClassificationReferenceDraft::new()`, `DocumentReferenceDraft::new()` and
     `LibraryReferenceDraft::new()`, which now also derive `Default`
 
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- `UnsupportedSchema` reads "a release this crate has no verified layout
+  for" instead of "no bundled schema table".
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ## [0.2.2] - 2026-09-28
 
 ### Changed (breaking behaviour)

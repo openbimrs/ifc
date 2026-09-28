@@ -15,6 +15,8 @@ fn exports_each_bundled_schema_with_exact_release_identity_and_counts() {
     let cases = [
         (SchemaVersion::Ifc2x3, "IFC2X3_TC1", 653, 327),
         (SchemaVersion::Ifc4, "IFC4_ADD2_TC1", 776, 397),
+        (SchemaVersion::Ifc4x1, "IFC4X1_FINAL", 801, 400),
+        (SchemaVersion::Ifc4x2, "IFC4X2_FINAL", 816, 407),
         (SchemaVersion::Ifc4x3, "IFC4X3_ADD2", 876, 436),
     ];
 

@@ -36,11 +36,7 @@ fn parse_full(output: &str) -> BTreeMap<String, (Vec<String>, Vec<String>)> {
 
 #[test]
 fn direct_catalogs_reconstruct_every_expanded_schema_exactly() {
-    for version in [
-        SchemaVersion::Ifc2x3,
-        SchemaVersion::Ifc4,
-        SchemaVersion::Ifc4x3,
-    ] {
+    for version in SchemaVersion::ALL {
         let direct = parse_full(&export_direct(version));
         let mut expanded_bytes = Vec::new();
         write_structural_catalog(version, &mut expanded_bytes).expect("expanded catalog");

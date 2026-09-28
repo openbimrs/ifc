@@ -74,12 +74,12 @@ impl RuleEntry {
 
 /// Reason strings, shared so the same gap reads identically everywhere.
 const NEEDS_EXPRESSIONS: &str = "requires an EXPRESS expression evaluator";
-const NEEDS_BOUNDS: &str = "requires aggregate bounds, which the schema parser does not retain";
 const NEEDS_INVERSES: &str =
     "not implemented uniformly: IFC2X3 requires INVERSE relationship semantics, which validation does not derive";
 const NEEDS_GEOMETRY: &str = "requires geometric evaluation, which validation does not perform";
 
-/// Every bundled release.
+/// Every release the registry is verified against (`tests/registry_scope.rs`).
+/// IFC4X1 and IFC4X2 are bundled but not yet scoped: no rule applies to them.
 const ALL: &[SchemaVersion] = &[
     SchemaVersion::Ifc2x3,
     SchemaVersion::Ifc4,
@@ -222,13 +222,13 @@ pub const RULES: &[RuleEntry] = &[
         id: "IfcPolyLoop.WR21",
         entity: Some("IfcPolyLoop"),
         releases: IFC2X3,
-        support: Support::Unsupported(NEEDS_BOUNDS),
+        support: Support::Unsupported(NEEDS_EXPRESSIONS),
     },
     RuleEntry {
         id: "IfcPolyLoop.AllPointsSameDim",
         entity: Some("IfcPolyLoop"),
         releases: IFC4_FAMILY,
-        support: Support::Unsupported(NEEDS_BOUNDS),
+        support: Support::Unsupported(NEEDS_EXPRESSIONS),
     },
     RuleEntry {
         id: "IfcQuantityLength.WR21",
@@ -336,7 +336,15 @@ mod tests {
                 Support::Implemented => None,
             })
             .collect();
-        for required in ["aggregate bounds", "EXPRESS expression", "INVERSE"] {
+        // Aggregate bounds are checked since #111 (`structure::bounds`), so no
+        // rule may still claim to need them.
+        assert!(
+            reasons
+                .iter()
+                .all(|reason| !reason.contains("aggregate bounds")),
+            "{reasons:?}"
+        );
+        for required in ["EXPRESS expression", "INVERSE"] {
             assert!(
                 reasons.iter().any(|reason| reason.contains(required)),
                 "missing explicit unsupported boundary for {required}: {reasons:?}"

@@ -38,6 +38,11 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | `geometry` |  | Representation selection plus lowering into the neutral geometry DAG. |
 | `geometry-select` |  | Representation selection only: contexts, plan/body choice, placements and units, with no geometry kernel. |
 | `georef` |  | [`ifc-georef`](./ifc-georef): Georeferencing: map conversion, coordinate reference systems, site placement. |
+| `ifc2x3` |  | The schema API with the bundled IFC2X3 TC1 table. |
+| `ifc4` |  | The schema API with the bundled IFC4 ADD2 TC1 table. |
+| `ifc4x1` |  | The schema API with the bundled IFC4X1 FINAL table. |
+| `ifc4x2` |  | The schema API with the bundled IFC4X2 FINAL table. |
+| `ifc4x3` |  | The schema API with the bundled IFC4X3 ADD2 table. |
 | `ifcxml` |  | [`ifc-xml`](./ifc-xml): ifcXML (ISO 10303-28) codec for the IFC model. |
 | `material` |  | [`ifc-material`](./ifc-material): Material definitions: layer sets, profile sets, constituents, usage. |
 | `material-templates` |  | Material views together with the property template catalogue. |
@@ -46,7 +51,8 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | `property-catalog` |  | [`ifc-template-catalog`](./ifc-template-catalog): Versioned IFC PSD/QTO catalog definitions and correction overlays |
 | `resource` |  | [`ifc-resource`](./ifc-resource): Construction resources: labour, equipment, material, crew, subcontract. |
 | `schedule` |  | [`ifc-schedule`](./ifc-schedule): IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage. |
-| `schema` |  | [`ifc-schema`](./ifc-schema): IFC schema as data: entity table, supertype chain, attribute names. |
+| `schema` |  | The schema API with every bundled release (IFC2X3, IFC4, IFC4X1, IFC4X2, IFC4X3). |
+| `schema-api` |  | The schema API without a bundled release; implied by each release feature. |
 | `spatial` |  | [`ifc-spatial`](./ifc-spatial): IFC spatial containment and objectified relationship traversal: project, site, building, storey, element. |
 | `step` | yes | [`ifc-step`](./ifc-step): STEP physical file (ISO 10303-21) codec for the IFC model. |
 | `structural` |  | [`ifc-structural`](./ifc-structural): Structural analysis model: members, connections, actions, reactions, loads. |

@@ -57,6 +57,16 @@ everything released before per-crate changelogs began.
   `Consistency`. A `match` outside the crate needs a wildcard arm, and the
   structs can no longer be built outside it.
 
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ## [0.2.3] - 2026-09-28
 
 ### Added

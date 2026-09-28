@@ -1,20 +1,10 @@
 //! Aggregates where the schema expects a scalar, and the reverse.
 //!
-//! # What this can and cannot check
-//!
-//! The EXPRESS parser records *whether* an attribute is an aggregate
-//! (`LIST`/`SET`/`ARRAY`/`BAG`), not its bounds. So `LIST [1:?] OF X` and
-//! `LIST [3:3] OF X` are indistinguishable here: a three-element list where
-//! the schema demands exactly two is **not** caught, and this module does not
-//! pretend otherwise.
-//!
-//! What is caught is the shape mismatch that actually occurs in the wild: a
-//! scalar written where an aggregate belongs, or an aggregate written where a
-//! scalar belongs. Both are usually a writer that guessed the slot layout.
-//!
-//! Bounds checking needs the parser to retain them. Until it does, a bounds
-//! violation is unchecked rather than passed, and
-//! [`crate::where_rule`] counts it.
+//! What is caught here is the shape mismatch that actually occurs in the
+//! wild: a scalar written where an aggregate belongs, or an aggregate
+//! written where a scalar belongs. Both are usually a writer that guessed
+//! the slot layout. Bounds, inner nesting levels and element uniqueness are
+//! `bounds`'s findings.
 
 use ifc_model::{Model, Value};
 use ifc_schema::Schema;

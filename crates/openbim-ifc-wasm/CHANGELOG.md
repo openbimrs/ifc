@@ -8,6 +8,13 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added
+
+- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2`, `ifc4x3` (all
+  default, so the npm package is unchanged). A browser build with one
+  release, `--no-default-features --features ifc4`, is 699,687 bytes after
+  `wasm-bindgen` instead of 1,236,036 (#112).
+
 ## [0.1.1] - 2026-09-26
 
 The first npm release built and published by the release workflow, with npm

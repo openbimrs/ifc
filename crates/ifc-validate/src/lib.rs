@@ -33,20 +33,23 @@
 //! unsupported and reported, so a clean report never silently means
 //! "unchecked". See [`where_rule::RULES`].
 //!
-//! It does not check aggregate bounds (`LIST [3:?]`), because the schema
-//! parser retains whether an attribute is an aggregate but not its bounds.
-//! Claiming otherwise would be worse than the gap.
+//! It checks the aggregate bounds, nesting and element uniqueness of
+//! explicit attributes, and every `UNIQUE` clause of the declared release
+//! ([`structure`]). A bound written as an expression, and the bounds of an
+//! aggregate reached through a defined type, are not evaluated.
 //!
-//! It also does not derive `INVERSE` relationship semantics. A selected rule
-//! whose IFC2X3 form depends on an inverse is therefore reported unsupported,
-//! even when a later schema revision exposes equivalent direct attributes.
+//! It does not derive `INVERSE` relationship semantics: the schema tables
+//! record every INVERSE clause, but no cardinality over them is checked. A
+//! selected rule whose IFC2X3 form depends on an inverse is therefore
+//! reported unsupported, even when a later schema revision exposes
+//! equivalent direct attributes.
 //!
 //! # Module map
 //!
 //! | Module | Role |
 //! |---|---|
 //! | [`header`] | Declared schema and implementation level |
-//! | [`structure`] | References, required slots, cardinality, unique ids |
+//! | [`structure`] | References, required slots, cardinality, bounds, UNIQUE clauses |
 //! | [`type_check`] | Values against their declared EXPRESS types |
 //! | [`where_rule`] | Native rules, and honest reporting of the rest |
 //! | [`report`] | Findings, paths, severities, summaries |
@@ -108,10 +111,11 @@ pub fn validate_declared(model: &Model) -> Result<Report, ValidateError> {
         .ok_or(ValidateError::NoSchemaDeclared)?;
     let version = SchemaVersion::from_header_token(token)
         .ok_or_else(|| ValidateError::UnknownSchema(token.to_string()))?;
-    // `for_version` returns None for a recognised schema this build does not
-    // bundle. Both cases are refusals, but they are different facts: one is
-    // "no idea what that token is", the other is "known schema, no tables".
+    // `for_version` refuses a recognised schema this build does not bundle
+    // with `NotBundled`. Both cases are refusals, but they are different
+    // facts: one is "no idea what that token is", the other is "known schema,
+    // no tables".
     let schema = ifc_schema::for_version(version)
-        .ok_or_else(|| ValidateError::UnbundledSchema(token.to_string()))?;
+        .map_err(|_| ValidateError::UnbundledSchema(token.to_string()))?;
     Ok(validate(model, schema))
 }

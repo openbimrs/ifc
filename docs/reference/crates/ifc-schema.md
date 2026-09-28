@@ -14,7 +14,7 @@ IFC schema as data: entity table, supertype chain, attribute names.
 | Latest release | 0.2.4 (2026-09-27) |
 | On `main` | 0.2.2 (unreleased) |
 | Registries | [crates.io `ifc-schema`](https://crates.io/crates/ifc-schema) |
-| Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties`, `schema` |
+| Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties`, `schema-api` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_schema/index.html) · [docs.rs](https://docs.rs/ifc-schema) |
 | Source | [`crates/ifc-schema/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-schema) |
 
@@ -26,8 +26,14 @@ IFC schema as data: entity table, supertype chain, attribute names.
 
 | Feature | Default | Enables |
 | --- | --- | --- |
-| `generation` |  | `ifc4` |
-| `ifc4` | yes | `dep:bincode`, `dep:thiserror` |
+| `artifact` |  | `dep:bincode`, `dep:thiserror` |
+| `express` |  | `dep:openbim-step` |
+| `generation` |  | `express`, `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2`, `ifc4x3` |
+| `ifc2x3` | yes | `artifact` |
+| `ifc4` | yes | `artifact` |
+| `ifc4x1` | yes | `artifact` |
+| `ifc4x2` | yes | `artifact` |
+| `ifc4x3` | yes | `artifact` |
 
 ## Changes
 

@@ -34,6 +34,16 @@ A test of anything that does not need a JS host belongs in
 `openbim-ifc-binding-core`, where `cargo test` runs it natively; the Node
 suites here cover only the JS conversion itself.
 
+## Features
+
+| Feature | Default | Enables |
+| --- | --- | --- |
+| `ifc2x3` | yes | `openbim-ifc-binding-core/ifc2x3` |
+| `ifc4` | yes | `openbim-ifc-binding-core/ifc4` |
+| `ifc4x1` | yes | `openbim-ifc-binding-core/ifc4x1` |
+| `ifc4x2` | yes | `openbim-ifc-binding-core/ifc4x2` |
+| `ifc4x3` | yes | `openbim-ifc-binding-core/ifc4x3` |
+
 ## Depends on
 
 - [`openbim-ifc-binding-core`](./openbim-ifc-binding-core)

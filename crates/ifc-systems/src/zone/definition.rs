@@ -106,29 +106,14 @@ fn text(model: &Model, release: Release, id: EntityId, attribute: &str) -> Optio
 /// `Zone::long_name` predates #52 and stays `Option<String>`. Use
 /// [`long_name_of`] when that distinction matters.
 ///
-/// This signature has no error channel: a header declaring no schema,
-/// several, or one without a bundled table is read against IFC4, as in
-/// 0.2.0. Use [`try_zones`] to have the last two refused.
-pub fn zones(model: &Model) -> (Vec<Zone>, Vec<SystemAnomaly>) {
-    zones_in(model, release::resolve_zones_or_ifc4(model))
-}
-
-/// [`zones`], refusing a header that binds no single known release.
-///
-/// A header declaring no schema (an in-memory model) is read against IFC4,
-/// as [`zones`] reads it.
-///
 /// # Errors
 ///
-/// [`SchemaResolutionError::MultipleSchemas`] when the header declares
-/// several schemas, and [`SchemaResolutionError::UnsupportedSchema`] when it
-/// declares one without a bundled table. Neither is read as IFC4.
-pub fn try_zones(model: &Model) -> Result<(Vec<Zone>, Vec<SystemAnomaly>), SchemaResolutionError> {
-    let release = match release::resolve_zones(model) {
-        Err(SchemaResolutionError::MissingSchema) => release::ifc4(),
-        resolved => resolved?,
-    };
-    Ok(zones_in(model, release))
+/// [`SchemaResolutionError`] when the model's `FILE_SCHEMA` binds no release
+/// this crate is verified for (see [`crate::schema_of`]): no schema,
+/// several, or any release but IFC2X3, IFC4 and IFC4X3. None is read as
+/// IFC4.
+pub fn zones(model: &Model) -> Result<(Vec<Zone>, Vec<SystemAnomaly>), SchemaResolutionError> {
+    Ok(zones_in(model, release::resolve(model)?))
 }
 
 fn zones_in(model: &Model, release: Release) -> (Vec<Zone>, Vec<SystemAnomaly>) {
@@ -229,7 +214,7 @@ fn zones_in(model: &Model, release: Release) -> (Vec<Zone>, Vec<SystemAnomaly>) 
 /// IFC2X3, IFC4 or IFC4X3. [`SchemaGap::NotInSchema`] if the resolved
 /// release does not declare `LongName` for `IfcZone` (IFC2X3).
 pub fn long_name_of(model: &Model, zone: EntityId) -> Result<Option<String>, SchemaGap> {
-    let release: Release = release::resolve_zones(model)?;
+    let release: Release = release::resolve(model)?;
     if release.slot(ZONE, "LongName").is_none() {
         return Err(SchemaGap::NotInSchema(NotInSchema {
             entity: zone,

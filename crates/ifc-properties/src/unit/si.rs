@@ -60,9 +60,7 @@ pub(crate) fn si_name_dimensions(version: SchemaVersion, name: &str) -> Option<D
         "FARAD" => match version {
             SchemaVersion::Ifc2x3 => IFC2X3_FARAD,
             SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3 => IFC4_FARAD,
-            // A release added to `SchemaVersion` later: no dimensions are
-            // claimed for it until its `IfcDimensionsForSiUnit` is reviewed.
-            #[allow(unreachable_patterns)]
+            // Not verified against IFC4X1/IFC4X2 IfcDimensionsForSiUnit.
             _ => return None,
         },
         "OHM" => [2, 1, -3, -2, 0, 0, 0],
@@ -98,9 +96,7 @@ pub(crate) fn unit_enum_dimensions(version: SchemaVersion, unit_type: &str) -> O
         "ELECTRICCAPACITANCEUNIT" => match version {
             SchemaVersion::Ifc2x3 => IFC2X3_CAPACITANCE,
             SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3 => IFC4_CAPACITANCE,
-            // A release added to `SchemaVersion` later: no dimensions are
-            // claimed for it until its `IfcCorrectDimensions` is reviewed.
-            #[allow(unreachable_patterns)]
+            // Not verified against IFC4X1/IFC4X2 IfcCorrectDimensions.
             _ => return None,
         },
         "ELECTRICCHARGEUNIT" => [0, 0, 1, 1, 0, 0, 0],

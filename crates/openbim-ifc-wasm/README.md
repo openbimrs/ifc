@@ -15,7 +15,8 @@ Documentation: [JavaScript guide](https://openbimrs.github.io/ifc/bindings/javas
 
 - Parse a STEP file into a model; write a model back to STEP.
 - List entities, filter by exact type or by type including subtypes (using
-  the bundled IFC2X3, IFC4 or IFC4X3 schema the file declares), read and
+  the bundled IFC2X3, IFC4, IFC4X1, IFC4X2 or IFC4X3 schema the file
+  declares), read and
   edit attributes, add and remove entities, find dangling references.
 - Keep every value **lossless** across the boundary: `$` vs `*`, `.U.` vs
   `.F.`, integer vs real, typed wrappers such as `IFCLENGTHMEASURE(2.5)`,
