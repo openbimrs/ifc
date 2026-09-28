@@ -261,7 +261,7 @@ fn systems_round_trip_in_their_release() {
             zone_arity
         );
 
-        let (found, anomalies) = systems(&back);
+        let (found, anomalies) = systems(&back).unwrap();
         // IFC2X3 `IfcZone` is an `IfcGroup`, not an `IfcSystem` (#52), so
         // the systems reader reports the zone's assignment and skips it.
         assert!(
@@ -274,17 +274,17 @@ fn systems_round_trip_in_their_release() {
             .find(|s| s.id == authored.system)
             .expect("system");
         assert_eq!(system.members, vec![s1, s2], "{schema}");
-        let (found, anomalies) = zones(&back);
+        let (found, anomalies) = zones(&back).unwrap();
         assert!(anomalies.is_empty(), "{schema}: {anomalies:?}");
         let zone = found.iter().find(|z| z.id == authored.zone).expect("zone");
         assert_eq!(zone.members, vec![SPACE], "{schema}");
         let long_name = (version != SchemaVersion::Ifc2x3).then(|| "Thermal zone A".to_owned());
         assert_eq!(zone.long_name, long_name, "{schema}");
-        let (found, anomalies) = ports(&back);
+        let (found, anomalies) = ports(&back).unwrap();
         assert!(anomalies.is_empty(), "{schema}: {anomalies:?}");
         let port = found.iter().find(|p| p.id == p1).expect("port");
         assert_eq!(port.element, Some(s1), "{schema}");
-        let (graph, anomalies) = ConnectionGraph::build(&back);
+        let (graph, anomalies) = ConnectionGraph::build(&back).unwrap();
         assert!(anomalies.is_empty(), "{schema}: {anomalies:?}");
         assert_eq!(graph.neighbours(p1), vec![p2], "{schema}");
     }
