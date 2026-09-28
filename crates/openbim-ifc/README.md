@@ -27,6 +27,9 @@ and geometry capability is opt-in, so a build compiles only what it asks for.
   `#[cfg(all(feature = "spatial", feature = "geometry-select"))]`, and that
   feature pair is added to the build matrix in `scripts/gate.sh`:
   `--all-features` cannot see a break that appears in one combination only.
+  A test-only pair, an integration test gated on several features with no
+  facade item behind it, is not added: no shipped item exists only in that
+  combination, and the gate's `--all-features` test run covers it.
 - The facade never depends on another OpenBIM.rs standard family crate
   (`crates/ifc-model/tests/package_architecture.rs` enforces it); those
   families build on IFC, not the reverse.

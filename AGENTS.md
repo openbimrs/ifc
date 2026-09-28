@@ -25,6 +25,12 @@ Dependencies point down: `ifc-model` and `ifc-schema` at the bottom, codecs
 and domain views above them, the `openbim-ifc` facade above those, and the
 bindings above the facade through `openbim-ifc-binding-core`. Sibling domain
 crates never depend on one another; cross-domain work belongs in the facade.
+The geometry bridges (`ifc-geometry`, `ifc-georef`, `ifc-alignment`) have
+one allowed edge between them: `ifc-geometry -> ifc-alignment`, optional
+behind `lowering`, for linear placement (ADR 0003 amendment). `ifc-alignment`
+never depends on `ifc-geometry`, and `ifc-georef` neither depends on nor is
+depended on by the other two; compose them in the facade. A new edge amends
+ADR 0003 and `BRIDGE_EDGES` together.
 The enforced truth is `crates/ifc-model/tests/package_architecture.rs`; the
 generated map is `docs/architecture/crates.md`.
 
@@ -82,6 +88,12 @@ cargo test -p ifc-geometry --test declaration_manifest
 cargo test -p ifc-geometry --test no_backend_dependency
 cargo test -p ifc-geometry --test kernel_free_build
 ```
+
+A facade item gated on several features gets that combination in
+`gate_features`: `--all-features` cannot see a break in one combination
+only. A test-only pair (a facade test gated on several features, with no
+facade item behind it, such as `georef_placement.rs`) does not: nothing
+shipped exists only in that combination, and `--all-features` runs it.
 
 Mutation-verify a new architecture or context test before trusting it: break
 the rule, watch the test fail, restore. A performance claim needs a committed

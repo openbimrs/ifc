@@ -121,8 +121,9 @@ fn a_products_resolved_placement_composes_into_known_map_coordinates() {
 }
 
 /// The composition is only this layer's to make if neither bridge reaches
-/// into the other. `ifc-model`'s architecture test allows bridge-to-bridge
-/// edges in general, so the specific pair is pinned here.
+/// into the other. `ifc-model`'s architecture test enforces the stated
+/// bridge edges (`BRIDGE_EDGES`, #143); this pins the pair this composition
+/// relies on from the side that relies on it.
 #[test]
 fn geometry_and_georef_do_not_depend_on_each_other() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
