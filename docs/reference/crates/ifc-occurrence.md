@@ -29,11 +29,15 @@ type class, and a mismatch is refused rather than written.
 
 The catalogue in `table` is generated from
 `references/ifc-spec/ifc4x3-add2/IFC4X3_ADD2.exp` by
-`scripts/gen-occurrences.py`; `create` is the writer.
+`scripts/gen-occurrences.py`; `create` and
+`create_with_owner_history` are the writers. They write the model's
+declared release, laid out from its own table, not the catalogue's
+IFC4X3 row.
 
 ## Depends on
 
 - [`ifc-model`](./ifc-model)
+- [`ifc-schema`](./ifc-schema)
 
 ## Changes
 
