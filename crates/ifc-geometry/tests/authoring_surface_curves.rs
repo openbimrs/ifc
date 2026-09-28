@@ -335,13 +335,13 @@ fn a_curve_segment_keeps_start_and_length_apart() {
     assert_eq!(entity.attributes[4], Value::Ref(parent), "ParentCurve");
 }
 
-/// A reparametrised segment's `ParamLength` keeps its measure type.
+/// A reparametrised segment's `ParamLength` is written bare.
 ///
-/// It is an `IfcParameterValue`, and a bare real loses the only marker
-/// saying so -- invisible to a round-trip, like every other measure
-/// wrapper in this crate.
+/// It is declared `IfcParameterValue`, a defined type rather than a
+/// SELECT, so ISO 10303-21 writes no wrapper (#200). A wrapper would
+/// round-trip unnoticed, which is why the stored value is checked.
 #[test]
-fn a_reparametrised_segment_keeps_its_parameter_measure() {
+fn a_reparametrised_segment_writes_a_bare_parameter() {
     let model = Model::default();
     let mut tx = Transaction::new(&model);
     let at = origin(&mut tx);
@@ -354,11 +354,9 @@ fn a_reparametrised_segment_keeps_its_parameter_measure() {
     let mut model = model;
     tx.commit(&mut model).expect("commit");
 
-    match &model.get(id).expect("segment").attributes[3] {
-        Value::Typed { type_name, value } => {
-            assert_eq!(type_name.as_ref(), "IFCPARAMETERVALUE");
-            assert_eq!(**value, Value::Real(2.5));
-        }
-        other => panic!("ParamLength lost its measure wrapper: {other:?}"),
-    }
+    assert_eq!(
+        model.get(id).expect("segment").attributes[3],
+        Value::Real(2.5),
+        "ParamLength"
+    );
 }

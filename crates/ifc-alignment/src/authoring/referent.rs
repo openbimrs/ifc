@@ -45,6 +45,12 @@ pub fn cartesian_point(
 /// coordinates, which is what keeps a referent attached to the
 /// alignment when the geometry is re-fitted.
 ///
+/// `distance_along` is a length along `basis_curve`. `DistanceAlong` is
+/// declared `IfcCurveMeasureSelect = SELECT (IfcLengthMeasure,
+/// IfcParameterValue)`, so it is written `IFCLENGTHMEASURE(..)`: the wrapper
+/// is what tells a length from a curve parameter (#201). The offsets are
+/// plain `IfcLengthMeasure` and stay bare.
+///
 /// # Errors
 ///
 /// Refuses a non-finite distance or offset.
@@ -70,7 +76,8 @@ pub fn point_by_distance(
         }
     }
     let mut attrs = vec![Value::Null; slot::point_by_distance::ARITY];
-    attrs[slot::point_by_distance::DISTANCE_ALONG] = Value::Real(distance_along);
+    attrs[slot::point_by_distance::DISTANCE_ALONG] =
+        typed("IFCLENGTHMEASURE", Value::Real(distance_along));
     attrs[slot::point_by_distance::OFFSET_LATERAL] = lateral.map_or(Value::Null, Value::Real);
     attrs[slot::point_by_distance::OFFSET_VERTICAL] = vertical.map_or(Value::Null, Value::Real);
     attrs[slot::point_by_distance::OFFSET_LONGITUDINAL] =
@@ -179,12 +186,14 @@ pub fn stationing(
     let pset_guid = guid("IFCPROPERTYSET", pset_global_id)?;
     let rel_guid = guid("IFCRELDEFINESBYPROPERTIES", rel_global_id)?;
 
-    let mut properties = vec![single_value(tx, "Station", Value::Real(station))];
+    let length = |value| typed("IFCLENGTHMEASURE", Value::Real(value));
+    let mut properties = vec![single_value(tx, "Station", length(station))];
     if let Some(value) = incoming_station {
-        properties.push(single_value(tx, "IncomingStation", Value::Real(value)));
+        properties.push(single_value(tx, "IncomingStation", length(value)));
     }
     if let Some(value) = has_increasing_station {
-        properties.push(single_value(tx, "HasIncreasingStation", Value::Bool(value)));
+        let flag = typed("IFCBOOLEAN", Value::Bool(value));
+        properties.push(single_value(tx, "HasIncreasingStation", flag));
     }
 
     let mut pset_attrs = vec![Value::Null; 5];
@@ -200,7 +209,20 @@ pub fn stationing(
     Ok(tx.create(Entity::new("IFCRELDEFINESBYPROPERTIES", rel_attrs)))
 }
 
+/// `value` as the typed parameter of the SELECT member `member`.
+fn typed(member: &str, value: Value) -> Value {
+    Value::Typed {
+        type_name: member.into(),
+        value: Box::new(value),
+    }
+}
+
 /// Stage an `IfcPropertySingleValue` for the stationing set.
+///
+/// `NominalValue` is declared `IfcValue`, a SELECT, so `value` arrives as the
+/// typed parameter of its member (#201): `Station` and `IncomingStation`
+/// are `IfcLengthMeasure` (their `Pset_Stationing` template type) and
+/// `HasIncreasingStation` is an `IfcBoolean`.
 fn single_value(tx: &mut Transaction, name: &str, value: Value) -> EntityId {
     let mut attrs = vec![Value::Null; 4];
     attrs[0] = Value::Text(name.into());

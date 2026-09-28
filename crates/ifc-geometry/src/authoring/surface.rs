@@ -164,12 +164,12 @@ pub fn rectangular_trimmed_surface(
     Ok(tx.create(Entity::new(T, attrs)))
 }
 
-/// An `IfcParameterValue`, which must carry its measure type.
+/// An `IfcParameterValue` in `U1`/`V1`/`U2`/`V2`.
+///
+/// Those are declared with the defined type `IfcParameterValue`, not a
+/// SELECT, in IFC2X3, IFC4 and IFC4X3, so the value is written bare (#200).
 fn parameter(value: f64) -> Value {
-    Value::Typed {
-        type_name: "IFCPARAMETERVALUE".into(),
-        value: Box::new(Value::Real(value)),
-    }
+    Value::Real(value)
 }
 
 /// A knot vector along one surface direction.

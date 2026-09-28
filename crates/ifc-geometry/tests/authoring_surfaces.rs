@@ -328,15 +328,15 @@ fn each_trim_sense_follows_its_own_direction() {
     assert!(rect.vsense, "v ascends, so vsense is true");
     assert_ne!(rect.usense, rect.vsense, "the senses are independent");
 
-    // Each parameter keeps its measure type. The reader tolerates a
-    // bare real, so only the stored value shows the wrapper survived.
+    // Each parameter is declared `IfcParameterValue`, a defined type, so it
+    // is written bare (#200). The reader tolerates both forms, so only the
+    // stored value shows which one was written.
     for (index, name) in [(1, "U1"), (2, "V1"), (3, "U2"), (4, "V2")] {
-        match &entity.attributes[index] {
-            Value::Typed { type_name, .. } => {
-                assert_eq!(type_name.as_ref(), "IFCPARAMETERVALUE", "{name}");
-            }
-            other => panic!("{name} lost its measure wrapper: {other:?}"),
-        }
+        assert!(
+            matches!(entity.attributes[index], Value::Real(_)),
+            "{name} is a bare real: {:?}",
+            entity.attributes[index]
+        );
     }
 }
 

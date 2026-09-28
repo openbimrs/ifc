@@ -25,13 +25,18 @@ use crate::solid::swept::{
     directrix_slot, disk_slot, extruded_slot, revolved_slot, swept_area_slot,
 };
 
+use super::release::Release;
 use super::std_profile::positive;
 use super::{invalid, refs, require_finite};
 
 /// Optional trim parameters shared by the directrix-driven sweeps.
 ///
-/// Absent means the sweep runs the whole directrix. Both are
-/// `IfcParameterValue`, so they carry their measure type when written.
+/// Absent means the sweep runs the whole directrix. Both are parameter
+/// values on the directrix. How they are written depends on the declared
+/// type of the slot (#200): bare where it is `IfcParameterValue` (the swept
+/// disks in every release, the other sweeps in IFC4), and
+/// `IFCPARAMETERVALUE(..)` where it is the IFC4X3 SELECT
+/// `IfcCurveMeasureSelect`.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SweepTrim {
     /// `StartParam`.
@@ -40,21 +45,38 @@ pub struct SweepTrim {
     pub end: Option<f64>,
 }
 
-/// Write an optional `IfcParameterValue` into its slot.
+/// How a trim parameter is written.
+#[derive(Debug, Clone, Copy)]
+pub(super) enum ParamForm {
+    /// The slot is declared `IfcParameterValue`, a defined type: bare.
+    Bare,
+    /// The slot is declared `IfcCurveMeasureSelect`, a SELECT: typed.
+    Select,
+    /// The form the model's declared release requires.
+    Release(Release),
+}
+
+/// Write an optional trim parameter into its slot in `form`.
 fn put_param(
     attrs: &mut [Value],
     index: usize,
     value: Option<f64>,
+    form: ParamForm,
     type_name: &'static str,
     attribute: &'static str,
 ) -> Result<(), GeometryError> {
     if let Some(value) = value {
         require_finite(type_name, attribute, &[value])?;
-        attrs[index] = Value::Typed {
+    }
+    attrs[index] = match (form, value) {
+        (ParamForm::Release(release), value) => release.parameter(type_name, attribute, value)?,
+        (_, None) => Value::Null,
+        (ParamForm::Bare, Some(value)) => Value::Real(value),
+        (ParamForm::Select, Some(value)) => Value::Typed {
             type_name: "IFCPARAMETERVALUE".into(),
             value: Box::new(Value::Real(value)),
-        };
-    }
+        },
+    };
     Ok(())
 }
 
@@ -110,10 +132,18 @@ pub fn revolved_area_solid_tapered(
     Ok(tx.create(Entity::new(T, attrs)))
 }
 
-/// Stage an `IfcSurfaceCurveSweptAreaSolid`.
+/// Stage an `IfcSurfaceCurveSweptAreaSolid`, in the IFC4X3 form.
 ///
 /// The profile is swept along `directrix` while staying on
 /// `reference_surface`, which is what fixes its orientation.
+///
+/// This writer does not see the model, so it cannot know the release, and
+/// the trim parameters change kind between releases: IFC4X3 declares them
+/// `IfcCurveMeasureSelect` and this writer keeps writing that form,
+/// `IFCPARAMETERVALUE(..)`. IFC4 and IFC2X3 declare `IfcParameterValue`,
+/// which is written bare; for those, use
+/// [`surface_curve_swept_area_solid_in`](super::surface_curve_swept_area_solid_in),
+/// which binds the model's declared release (#200).
 ///
 /// # Errors
 ///
@@ -127,15 +157,21 @@ pub fn surface_curve_swept_area_solid(
     reference_surface: EntityId,
 ) -> Result<EntityId, GeometryError> {
     const T: &str = "IFCSURFACECURVESWEPTAREASOLID";
-    let mut attrs = directrix_attrs(T, swept_area, position, directrix, trim)?;
+    let mut attrs = directrix_attrs(T, swept_area, position, directrix, trim, ParamForm::Select)?;
     attrs[directrix_slot::REFERENCE_SURFACE] = Value::Ref(reference_surface);
     Ok(tx.create(Entity::new(T, attrs)))
 }
 
-/// Stage an `IfcFixedReferenceSweptAreaSolid`.
+/// Stage an `IfcFixedReferenceSweptAreaSolid`, in the IFC4X3 form.
 ///
 /// Like the surface-curve sweep, but the profile's orientation is fixed
 /// by a direction rather than by a surface.
+///
+/// As [`surface_curve_swept_area_solid`], the trim parameters are written
+/// `IFCPARAMETERVALUE(..)`, the IFC4X3 form. IFC4 declares them
+/// `IfcParameterValue`, written bare; for IFC4, use
+/// [`fixed_reference_swept_area_solid_in`](super::fixed_reference_swept_area_solid_in),
+/// which binds the model's declared release (#200).
 ///
 /// # Errors
 ///
@@ -149,21 +185,23 @@ pub fn fixed_reference_swept_area_solid(
     fixed_reference: EntityId,
 ) -> Result<EntityId, GeometryError> {
     const T: &str = "IFCFIXEDREFERENCESWEPTAREASOLID";
-    let mut attrs = directrix_attrs(T, swept_area, position, directrix, trim)?;
+    let mut attrs = directrix_attrs(T, swept_area, position, directrix, trim, ParamForm::Select)?;
     attrs[directrix_slot::FIXED_REFERENCE] = Value::Ref(fixed_reference);
     Ok(tx.create(Entity::new(T, attrs)))
 }
 
-/// The six slots the two directrix-driven sweeps share.
+/// The six slots the directrix-driven sweeps share, trim parameters in
+/// `form`.
 ///
 /// Slot 5 is left for the caller: it is `ReferenceSurface` on one
-/// subtype and `FixedReference` on the other.
-fn directrix_attrs(
+/// subtype and `FixedReference` on the others.
+pub(super) fn directrix_attrs(
     type_name: &'static str,
     swept_area: EntityId,
     position: Option<EntityId>,
     directrix: EntityId,
     trim: SweepTrim,
+    form: ParamForm,
 ) -> Result<Vec<Value>, GeometryError> {
     let mut attrs = vec![Value::Null; 6];
     attrs[swept_area_slot::SWEPT_AREA] = Value::Ref(swept_area);
@@ -173,6 +211,7 @@ fn directrix_attrs(
         &mut attrs,
         directrix_slot::START_PARAM,
         trim.start,
+        form,
         type_name,
         "StartParam",
     )?;
@@ -180,6 +219,7 @@ fn directrix_attrs(
         &mut attrs,
         directrix_slot::END_PARAM,
         trim.end,
+        form,
         type_name,
         "EndParam",
     )?;
@@ -269,10 +309,12 @@ fn disk_attrs(
         }
         attrs[disk_slot::INNER_RADIUS] = Value::Real(inner);
     }
+    // `IfcParameterValue` on both swept disks in every release: bare (#200).
     put_param(
         &mut attrs,
         disk_slot::START_PARAM,
         trim.start,
+        ParamForm::Bare,
         type_name,
         "StartParam",
     )?;
@@ -280,6 +322,7 @@ fn disk_attrs(
         &mut attrs,
         disk_slot::END_PARAM,
         trim.end,
+        ParamForm::Bare,
         type_name,
         "EndParam",
     )?;
@@ -372,6 +415,9 @@ pub fn axis1_placement(
 /// rotates with the curve as it sweeps. Same six slots, different
 /// meaning, so it is its own entity rather than a flag.
 ///
+/// Only IFC4X3 declares it, and there the trim parameters are the SELECT
+/// `IfcCurveMeasureSelect`, so they are written `IFCPARAMETERVALUE(..)`.
+///
 /// # Errors
 ///
 /// Refuses a non-finite trim parameter.
@@ -384,7 +430,7 @@ pub fn directrix_derived_reference_swept_area_solid(
     fixed_reference: EntityId,
 ) -> Result<EntityId, GeometryError> {
     const T: &str = "IFCDIRECTRIXDERIVEDREFERENCESWEPTAREASOLID";
-    let mut attrs = directrix_attrs(T, swept_area, position, directrix, trim)?;
+    let mut attrs = directrix_attrs(T, swept_area, position, directrix, trim, ParamForm::Select)?;
     attrs[directrix_slot::FIXED_REFERENCE] = Value::Ref(fixed_reference);
     Ok(tx.create(Entity::new(T, attrs)))
 }

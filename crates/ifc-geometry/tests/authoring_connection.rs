@@ -162,9 +162,12 @@ fn connection_geometry_distinguishes_its_two_sides() {
     assert_eq!(entity.attributes[4], Value::Real(-0.1), "Z, and signed");
 }
 
-/// Points on curves and surfaces keep their parameter measures.
+/// Points on curves and surfaces write their parameters bare.
+///
+/// `PointParameter*` is declared `IfcParameterValue`, a defined type, not a
+/// SELECT, so ISO 10303-21 writes the value without a wrapper (#200).
 #[test]
-fn parametric_points_keep_their_measures() {
+fn parametric_points_write_bare_parameters() {
     let model = Model::default();
     let mut tx = Transaction::new(&model);
     let at = origin(&mut tx);
@@ -184,14 +187,8 @@ fn parametric_points_keep_their_measures() {
 
     let unwrap =
         |id: EntityId, index: usize| match &model.get(id).expect("entity").attributes[index] {
-            Value::Typed { type_name, value } => {
-                assert_eq!(type_name.as_ref(), "IFCPARAMETERVALUE");
-                match **value {
-                    Value::Real(v) => v,
-                    ref other => panic!("not a real: {other:?}"),
-                }
-            }
-            other => panic!("slot {index} lost its measure: {other:?}"),
+            Value::Real(v) => *v,
+            other => panic!("slot {index} is not a bare real: {other:?}"),
         };
     assert_eq!(unwrap(on_curve, 1), 0.25);
     assert_eq!(unwrap(on_surface, 1), 0.25, "PointParameterU");

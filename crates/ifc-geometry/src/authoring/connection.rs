@@ -221,12 +221,12 @@ pub fn point_on_surface(
     Ok(tx.create(Entity::new(T, attrs)))
 }
 
-/// An `IfcParameterValue`, carrying its measure type.
+/// An `IfcParameterValue` in `PointParameter`/`PointParameterU`/`V`.
+///
+/// Those are declared with the defined type `IfcParameterValue`, not a
+/// SELECT, in IFC2X3, IFC4 and IFC4X3, so the value is written bare (#200).
 fn parameter(value: f64) -> Value {
-    Value::Typed {
-        type_name: "IFCPARAMETERVALUE".into(),
-        value: Box::new(Value::Real(value)),
-    }
+    Value::Real(value)
 }
 
 /// Stage an `IfcGeometricSet` or `IfcGeometricCurveSet`.
