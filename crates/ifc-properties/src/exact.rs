@@ -56,8 +56,10 @@ pub enum ExactSource {
     /// Resolved from a property set assigned directly to the occurrence
     /// via `IfcRelDefinesByProperties`.
     Occurrence,
-    /// Resolved from a property set inherited through the occurrence's
-    /// `IfcTypeObject`, identified by that type's entity id.
+    /// Resolved from a set in `HasPropertySets` of the `IfcTypeObject` with
+    /// this entity id: inherited through the occurrence's type, or, when a
+    /// type object is queried, that object's own set (#193), so the id is
+    /// then the queried object's.
     Type(EntityId),
 }
 
@@ -122,7 +124,8 @@ pub enum ExactValue {
 /// A uniquely resolved property with IFC identity and provenance.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExactProperty {
-    /// Whether the value came from the occurrence or was inherited from its type.
+    /// Whether the value came from the occurrence or from a type object's
+    /// `HasPropertySets` (inherited, or the queried type object's own).
     pub source: ExactSource,
     /// The owning `IfcPropertySet.Name` or `IfcElementQuantity.Name`; for a
     /// predefined set its `Name`, or its entity name in the release's
@@ -224,7 +227,10 @@ pub enum ExactPropertyError {
         second: EntityId,
     },
     /// `IfcRelDefinesByProperties.RelatedObjects` names an object that is
-    /// not a non-type `IfcObjectDefinition`.
+    /// not a non-type `IfcObjectDefinition`. A type object there is refused
+    /// even when it is the queried object: its sets belong in its
+    /// `HasPropertySets` (IFC4 and IFC4X3 `NoRelatedTypeObject`; IFC2X3
+    /// admits only `IfcObject`).
     InvalidOccurrenceTarget {
         /// The `IfcRelDefinesByProperties` relationship.
         relationship: EntityId,
@@ -239,8 +245,10 @@ pub enum ExactPropertyError {
         /// The invalid related object.
         object: EntityId,
     },
-    /// The queried entity is not a non-type `IfcObjectDefinition` and
-    /// therefore cannot carry properties.
+    /// The queried entity can carry no property sets in the declared
+    /// release: it is neither an object `IfcRelDefinesByProperties` may
+    /// relate (`IfcObject` in IFC2X3, a non-type `IfcObjectDefinition` in
+    /// IFC4 and IFC4X3) nor an `IfcTypeObject` (accepted since #193).
     InvalidQueryObject {
         /// The rejected query object.
         object: EntityId,
@@ -438,6 +446,14 @@ impl std::error::Error for ExactPropertyError {}
 /// assigned sets are searched. Occurrence values override matching inherited
 /// values at property level. To enumerate every property instead of naming
 /// one, use [`exact_properties`].
+///
+/// `object` may also be an `IfcTypeObject` of the release (an `IfcWallType`,
+/// an IFC2X3 `IfcDoorStyle`, ...). Its own `HasPropertySets` are then
+/// searched, with the validation an occurrence's inherited type sets get,
+/// and a result carries [`ExactSource::Type`] with `object`'s id. `$` states
+/// no sets, a proven absence; an empty list is refused as for an inherited
+/// type. A type object named in an `IfcRelDefinesByProperties` is refused
+/// ([`ExactPropertyError::InvalidOccurrenceTarget`]), never ignored.
 ///
 /// Quantity sets are searched like property sets, as buildingSMART IDS
 /// treats a quantity as a property: `Qto_WallBaseQuantities.Length` resolves

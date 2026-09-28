@@ -167,6 +167,20 @@ fn a_non_window_is_refused() {
 }
 
 #[test]
+fn a_window_type_is_refused_as_no_window() {
+    // The exact property reader accepts a type object since
+    // ifc-properties#193; the type still has no placement or partitioning
+    // of its own, so it is refused here.
+    assert!(matches!(
+        window_operation(&casement().model(), WINDOW_TYPE),
+        Err(E::NotAWindow {
+            entity: WINDOW_TYPE,
+            ..
+        })
+    ));
+}
+
+#[test]
 fn panels_must_match_the_partitioning() {
     // Too few for the partitioning.
     let window = Window::new(

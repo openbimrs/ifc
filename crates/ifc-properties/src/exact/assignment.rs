@@ -16,6 +16,21 @@
 //!
 //! Every relationship in the file is validated, not only those relating the
 //! queried object: a malformed one could otherwise hide an assignment.
+//!
+//! # A queried type object (#193)
+//!
+//! An `IfcTypeObject` of the release (`is_a`, so every subtype: IFC2X3
+//! `IfcDoorStyle` as much as IFC4 `IfcWallType`) may be queried too. Its sets
+//! are its own `HasPropertySets`, read by the code that reads an occurrence's
+//! inherited type sets, so the two cannot diverge. A type object has no other
+//! route: IFC2X3 `RelatedObjects` is `SET OF IfcObject`, and IFC4 and IFC4X3
+//! add the `NoRelatedTypeObject` rule, whose IFC4 documentation says "the
+//! relationship between a IfcTypeObject and a IfcPropertySet is handled
+//! through the direct relationship HasPropertySets at IfcTypeObject". A type
+//! object in any `IfcRelDefinesByProperties` therefore stays refused with
+//! [`ExactPropertyError::InvalidOccurrenceTarget`], also when it is the
+//! queried object, rather than ignored. `IfcRelDefinesByType.RelatedObjects`
+//! is `SET OF IfcObject` in every release, so a type object has no type.
 
 use ifc_model::{EntityId, Model};
 
@@ -28,7 +43,9 @@ use super::ExactPropertyError;
 pub(super) struct Assigned {
     /// Definitions related to the occurrence by `IfcRelDefinesByProperties`.
     pub(super) occurrence_sets: Vec<EntityId>,
-    /// The object's `IfcTypeObject` and its `HasPropertySets`, if typed.
+    /// The object's `IfcTypeObject` and its `HasPropertySets`, if typed; for
+    /// a queried type object, the object itself and its own
+    /// `HasPropertySets`.
     pub(super) type_sets: Option<(EntityId, Vec<EntityId>)>,
 }
 
@@ -62,7 +79,9 @@ pub(super) fn assigned_sets(
         release.slot_accepts("IFCRELDEFINESBYPROPERTIES", 4, type_name)
             && !schema.is_a(type_name, "IFCTYPEOBJECT")
     };
-    if !occurrence_domain(query_entity.type_name.as_ref()) {
+    // A type object is queried for its own `HasPropertySets` (#193).
+    let queried_type = schema.is_a(query_entity.type_name.as_ref(), "IFCTYPEOBJECT");
+    if !queried_type && !occurrence_domain(query_entity.type_name.as_ref()) {
         return Err(ExactPropertyError::InvalidQueryObject {
             object,
             type_name: query_entity.type_name.clone(),
@@ -160,10 +179,19 @@ pub(super) fn assigned_sets(
             }
         }
     }
-    let type_sets = match assigned_type {
+    // A queried type object met in `RelatedObjects` of either relationship
+    // was refused above, so it has no occurrence sets and no type.
+    debug_assert!(!queried_type || (occurrence_sets.is_empty() && assigned_type.is_none()));
+    let holder = if queried_type {
+        Some(object)
+    } else {
+        assigned_type
+    };
+    let type_sets = match holder {
         Some(type_id) => {
-            // Checked above: a known `IfcTypeObject` with the release's
-            // arity, so `HasPropertySets` is slot 5 in every bundled release.
+            // Checked above, for the assigned type and the queried object
+            // alike: a known `IfcTypeObject` with the release's arity, so
+            // `HasPropertySets` is slot 5 in every bundled release.
             let type_object = model.get(type_id).expect("checked reference");
             let sets = optional_refs_at(type_id, type_object.attributes.get(5), "HasPropertySets")?;
             Some((type_id, sets))

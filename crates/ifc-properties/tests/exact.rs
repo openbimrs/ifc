@@ -249,7 +249,10 @@ fn empty_has_properties_is_not_exact_absence() {
 #[test]
 fn type_object_cannot_receive_occurrence_property_assignment() {
     let mut m = model();
-    m.insert(EntityId(2), Entity::new("IFCWALLTYPE", vec![]));
+    m.insert(
+        EntityId(2),
+        Entity::new("IFCWALLTYPE", type_attributes(Value::Null)),
+    );
     property(&mut m, 10, "x", Value::Integer(1));
     pset(&mut m, 11, "Pset_Test", vec![10]);
     m.insert(
@@ -273,11 +276,13 @@ fn type_object_cannot_receive_occurrence_property_assignment() {
             ..
         })
     ));
+    // Queried itself (#193), the type is refused for that relationship too:
+    // `NoRelatedTypeObject` puts its sets in `HasPropertySets` only.
     assert!(matches!(
         exact_property(&m, EntityId(2), None, "x"),
-        Err(ExactPropertyError::InvalidQueryObject {
+        Err(ExactPropertyError::InvalidOccurrenceTarget {
+            relationship: EntityId(12),
             object: EntityId(2),
-            ..
         })
     ));
 }
