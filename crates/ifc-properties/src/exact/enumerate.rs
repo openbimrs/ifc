@@ -12,11 +12,12 @@
 //! - A set whose name the set selector rejects is skipped unread, as
 //!   [`exact_property`] skips a set of another name. Every member of a
 //!   selected set is validated before anything is matched.
-//! - A selected `IfcComplexProperty`, a selected complex quantity, a
-//!   selected predefined-set attribute that cannot be read exactly (an
+//! - A selected predefined-set attribute that cannot be read exactly (an
 //!   aggregate), and an unnamed predefined set outside the set selection
-//!   one of whose own attributes is selected are refused. An unselected
-//!   member must be well formed but need not have a supported value form.
+//!   one of whose own attributes is selected, are refused. A complex
+//!   property or quantity resolves as `ExactValue::Complex` (#208). An
+//!   unselected member must be well formed but need not have a supported
+//!   value form.
 //!
 //! [`ExactResolution::Absent`]: super::ExactResolution::Absent
 //! [`exact_property`]: super::exact_property
@@ -46,9 +47,8 @@ pub struct ExactPropertyEntry {
 /// `object`, resolved exactly.
 ///
 /// Equivalent to [`exact_properties_where`] selecting every set and every
-/// property, so any assigned `IfcComplexProperty`, any complex quantity and
-/// any predefined set with an aggregate attribute is refused. Every
-/// `IfcSimpleProperty` kind resolves, as for
+/// property, so any predefined set with an aggregate attribute is refused.
+/// Every property and quantity kind resolves, complex ones included, as for
 /// [`exact_property`](super::exact_property). Callers that need
 /// only some properties (an IDS pattern facet) select them with
 /// [`exact_properties_where`], so an unsupported member they do not ask

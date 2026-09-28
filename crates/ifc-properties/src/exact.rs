@@ -18,6 +18,7 @@
 //! unit losslessly into its own model must reject it rather than coerce it.
 
 mod assignment;
+mod complex;
 mod composite;
 mod enumerate;
 mod measure;
@@ -45,8 +46,8 @@ use release::validate_model;
 use set::find_property;
 pub use unit::{exact_unit, ExactUnit, ExactUnitError};
 pub use values::{
-    ExactBoundedValue, ExactEntityRef, ExactEnumeratedValue, ExactEnumeration, ExactReferenceValue,
-    ExactTableRow, ExactTableValue, ExactTypedValue,
+    ExactBoundedValue, ExactComplexMember, ExactComplexValue, ExactEntityRef, ExactEnumeratedValue,
+    ExactEnumeration, ExactReferenceValue, ExactTableRow, ExactTableValue, ExactTypedValue,
 };
 
 /// Provenance of an exact result.
@@ -79,7 +80,9 @@ pub enum ExactLogical {
 /// An `IfcPropertySingleValue` or a simple quantity resolves to one of the
 /// scalar variants. The other `IfcSimpleProperty` kinds resolve to a
 /// composite variant whose scalars carry their own declared types
-/// ([`ExactTypedValue`]); for those, [`ExactProperty::value_type`] is `None`.
+/// ([`ExactTypedValue`]), and a complex property or quantity to
+/// [`ExactValue::Complex`]; for those, [`ExactProperty::value_type`] is
+/// `None`.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum ExactValue {
@@ -119,6 +122,11 @@ pub enum ExactValue {
     /// An entity held by a predefined set's attribute, e.g. the
     /// `IfcShapeAspect` of `ShapeAspectStyle`; checked, not followed.
     Entity(ExactEntityRef),
+    /// An `IfcComplexProperty` or `IfcPhysicalComplexQuantity` (#208): its
+    /// members, each resolved as a set member is. The complex is present
+    /// but is no value of any type, so [`ExactProperty::value_type`] and
+    /// [`ExactProperty::unit_id`] are `None`.
+    Complex(ExactComplexValue),
 }
 
 /// A uniquely resolved property with IFC identity and provenance.
@@ -134,15 +142,17 @@ pub struct ExactProperty {
     /// Entity id of the `IfcPropertySet`, `IfcElementQuantity` or
     /// predefined set.
     pub set_id: EntityId,
-    /// Entity id of the `IfcSimpleProperty` (single, enumerated, list,
-    /// bounded, table or reference value), or of the simple
-    /// `IfcPhysicalQuantity` (e.g. `IfcQuantityLength`). For an attribute of
-    /// a predefined set, which is no entity of its own, the set's id.
+    /// Entity id of the `IfcProperty` (single, enumerated, list, bounded,
+    /// table or reference value, or complex), or of the
+    /// `IfcPhysicalQuantity` (e.g. `IfcQuantityLength`, or a complex
+    /// quantity). For an attribute of a predefined set, which is no entity
+    /// of its own, the set's id.
     pub property_id: EntityId,
     /// Declared IFC value type (for example `IFCINTEGER` or `IFCLENGTHMEASURE`).
     ///
-    /// `None` for a single value whose `NominalValue` is `$`, and for a
-    /// composite value, whose scalars carry their own types.
+    /// `None` for a single value whose `NominalValue` is `$`, for a
+    /// composite value, whose scalars carry their own types, and for a
+    /// complex property or quantity, which has no value type at all.
     ///
     /// For a quantity it is the declared type of its value attribute in the
     /// bound release (`LengthValue : IfcLengthMeasure` gives
@@ -305,9 +315,11 @@ pub enum ExactPropertyError {
         /// The entity's actual IFC type name.
         type_name: Arc<str>,
     },
-    /// A member of `IfcPropertySet.HasProperties` is not an `IfcProperty`,
-    /// or is a property kind the exact resolver does not yet support
-    /// (`IfcComplexProperty`).
+    /// A member of `IfcPropertySet.HasProperties` or
+    /// `IfcComplexProperty.HasProperties` is not an `IfcProperty`, or a
+    /// member of `IfcElementQuantity.Quantities` or
+    /// `IfcPhysicalComplexQuantity.HasQuantities` is not an
+    /// `IfcPhysicalQuantity`.
     UnsupportedProperty {
         /// The rejected entity.
         entity: EntityId,
@@ -399,6 +411,32 @@ pub enum ExactPropertyError {
         /// Its IFC type name.
         type_name: Arc<str>,
     },
+    /// A complex property or quantity reaches itself again through its
+    /// members (#208). The schema forbids only a direct self-member; a
+    /// longer cycle has no finite resolution either.
+    ComplexCycle {
+        /// The complex whose member list closes the cycle.
+        complex: EntityId,
+        /// The member already being resolved higher up the path.
+        member: EntityId,
+    },
+    /// A complex property or quantity nested deeper than the resolver
+    /// follows below one set member (#208).
+    ComplexTooDeep {
+        /// The complex whose members would exceed the depth.
+        complex: EntityId,
+        /// The nesting depth followed.
+        limit: usize,
+    },
+    /// Resolving one set member followed more nested member references
+    /// than its budget (#208). Members may be shared between complexes,
+    /// so a small file can expand into an enormous tree.
+    ComplexBudgetExceeded {
+        /// The complex whose member exceeded the budget.
+        complex: EntityId,
+        /// The nested member references followed.
+        limit: usize,
+    },
 }
 impl fmt::Display for ExactPropertyError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -426,12 +464,12 @@ pub fn exact_schema(model: &Model) -> Result<SchemaVersion, ExactPropertyError> 
 
 impl std::error::Error for ExactPropertyError {}
 
-/// Resolve an `IfcSimpleProperty` or simple quantity by exact set and
-/// property name.
+/// Resolve a property or quantity by exact set and property name.
 ///
 /// Single, enumerated, list, bounded, table and reference values resolve,
-/// the last five as composite [`ExactValue`]s; an `IfcComplexProperty` is
-/// refused.
+/// the last five as composite [`ExactValue`]s. An `IfcComplexProperty` or
+/// `IfcPhysicalComplexQuantity` resolves as [`ExactValue::Complex`]: present,
+/// with no value type (#208).
 ///
 /// A predefined property set (`IfcDoorLiningProperties` and the like) is
 /// searched too: its members are the attributes its entity declares, by

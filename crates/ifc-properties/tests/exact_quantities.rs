@@ -111,15 +111,16 @@ fn malformed_quantities_are_refused() {
 }
 
 #[test]
-fn a_complex_or_duplicated_quantity_is_refused() {
+fn a_complex_quantity_is_present_and_a_duplicated_one_is_refused() {
+    // A complex quantity resolves as a composite with no value type (#208).
     let complex = ifc4(
         "#10=IFCPHYSICALCOMPLEXQUANTITY('Foo',$,(#11),'Layer',$,$);
 #11=IFCQUANTITYLENGTH('Width',$,$,0.2,$);",
     );
-    assert!(matches!(
-        exact_property(&complex, WALL, None, "Foo"),
-        Err(ExactPropertyError::UnsupportedProperty { entity, .. }) if entity == EntityId(10)
-    ));
+    let found = present(exact_property(&complex, WALL, None, "Foo"));
+    assert_eq!(found.property_id, EntityId(10));
+    assert_eq!(found.value_type, None);
+    assert!(matches!(found.value, ExactValue::Complex(_)));
 
     let twice = parse(
         "IFC4",

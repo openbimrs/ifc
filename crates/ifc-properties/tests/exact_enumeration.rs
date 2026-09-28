@@ -223,44 +223,32 @@ fn an_empty_result_is_a_proven_absence() {
 }
 
 #[test]
-fn an_unsupported_member_refuses_only_when_it_is_selected() {
-    // Every `IfcSimpleProperty` kind resolves (#150); a complex property
-    // is still refused.
+fn a_complex_property_or_quantity_is_enumerated_as_a_composite() {
+    // Complex members resolve as `ExactValue::Complex` (#208), each as
+    // `exact_property` answers for it.
     let m = wall_model(&[
         "#50=IFCCOMPLEXPROPERTY('Status',$,'Grouping',(#54));",
         &single(54, "Inner", "IFCLABEL('NEW')"),
         &pset(51, "Pset_Status", &[50]),
         &defines(52, &[1], 51),
-    ]);
-    let refused = Err(ExactPropertyError::UnsupportedProperty {
-        entity: EntityId(50),
-        type_name: "IFCCOMPLEXPROPERTY".into(),
-    });
-    assert_eq!(exact_properties(&m, EntityId(1)), refused);
-    let entries = exact_properties_where(&m, EntityId(1), |set| set != "Pset_Status", |_| true)
-        .expect("the set of the enumerated value is not selected");
-    assert_eq!(entries.len(), 5);
-    let entries = exact_properties_where(&m, EntityId(1), |_| true, |name| name != "Status")
-        .expect("the enumerated value is not selected");
-    assert_eq!(entries.len(), 5);
-}
-
-#[test]
-fn a_complex_quantity_refuses_only_when_it_is_selected() {
-    let m = wall_model(&[
         "#60=IFCPHYSICALCOMPLEXQUANTITY('Layer',$,(#61),'layer',$,$);",
         "#61=IFCQUANTITYLENGTH('Width',$,$,0.2,$);",
         &qset(62, "Qto_Layers", &[60]),
         &defines(63, &[1], 62),
     ]);
-    assert_eq!(
-        exact_properties(&m, EntityId(1)),
-        Err(ExactPropertyError::UnsupportedProperty {
-            entity: EntityId(60),
-            type_name: "IFCPHYSICALCOMPLEXQUANTITY".into(),
-        })
-    );
-    assert!(exact_properties_where(&m, EntityId(1), |_| true, |name| name != "Layer").is_ok());
+    let entries = exact_properties(&m, EntityId(1)).expect("complex members resolve");
+    assert_eq!(entries.len(), 7);
+    for (set, name) in [("Pset_Status", "Status"), ("Qto_Layers", "Layer")] {
+        let entry = entries
+            .iter()
+            .find(|entry| &*entry.name == name)
+            .expect("the complex member is enumerated");
+        assert!(matches!(entry.property.value, ExactValue::Complex(_)));
+        assert_eq!(
+            exact_property(&m, EntityId(1), Some(set), name),
+            Ok(ExactResolution::Present(entry.property.clone()))
+        );
+    }
 }
 
 #[test]

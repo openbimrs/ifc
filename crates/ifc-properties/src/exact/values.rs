@@ -115,3 +115,39 @@ pub struct ExactReferenceValue {
     /// IFC4 and IFC4X3.
     pub target: Option<ExactEntityRef>,
 }
+
+/// An `IfcComplexProperty` or `IfcPhysicalComplexQuantity` (#208).
+///
+/// A complex groups named members and is no value itself, so an IDS data
+/// type or value restriction on it cannot hold, while its presence does.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct ExactComplexValue {
+    /// `IfcComplexProperty.UsageName`, or `IfcPhysicalComplexQuantity.Usage`
+    /// when stated.
+    pub usage: Option<Arc<str>>,
+    /// `IfcPhysicalComplexQuantity.Discrimination`; `None` for a complex
+    /// property.
+    pub discrimination: Option<Arc<str>>,
+    /// `IfcPhysicalComplexQuantity.Quality` when stated; `None` for a
+    /// complex property.
+    pub quality: Option<Arc<str>>,
+    /// `HasProperties` or `HasQuantities` in file order, never empty.
+    pub members: Vec<ExactComplexMember>,
+}
+
+/// One member of an [`ExactComplexValue`], resolved as a set member is.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct ExactComplexMember {
+    /// Its `Name`; unique within the complex where the release requires.
+    pub name: Arc<str>,
+    /// Entity id of the member property or quantity.
+    pub id: EntityId,
+    /// As [`ExactProperty::value_type`](super::ExactProperty::value_type).
+    pub value_type: Option<Arc<str>>,
+    /// As [`ExactProperty::unit_id`](super::ExactProperty::unit_id).
+    pub unit_id: Option<EntityId>,
+    /// The resolved value; [`ExactValue::Complex`] for a nested complex.
+    pub value: ExactValue,
+}
