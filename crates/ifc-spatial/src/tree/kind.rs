@@ -72,6 +72,13 @@ impl SpatialKind {
     }
 }
 
+/// Releases the spatial classification is verified against.
+const VERIFIED: [SchemaVersion; 3] = [
+    SchemaVersion::Ifc2x3,
+    SchemaVersion::Ifc4,
+    SchemaVersion::Ifc4x3,
+];
+
 /// The table(s) a classification is answered from.
 pub(crate) struct Classifier {
     /// The bound release, if the file declares exactly one bundled release.
@@ -80,13 +87,18 @@ pub(crate) struct Classifier {
 }
 
 impl Classifier {
-    /// The release `model` declares, when it names exactly one bundled
-    /// release; otherwise every bundled release.
+    /// The release `model` declares, when it names exactly one release this
+    /// classifier is verified for; otherwise every verified release, with
+    /// none bound.
+    ///
+    /// IFC4X1 and IFC4X2 are bundled by `ifc-schema` but not verified here,
+    /// so they bind nothing ([`Self::bound_release`] is `None`) rather than
+    /// being read as IFC4 or IFC4X3.
     pub(crate) fn for_model(model: &Model) -> Self {
         match model.header().schema.as_slice() {
             [token] => match SchemaVersion::from_header_token(token) {
-                Some(release) => Self::for_release(release),
-                None => Self::any_release(),
+                Some(release) if VERIFIED.contains(&release) => Self::for_release(release),
+                _ => Self::any_release(),
             },
             _ => Self::any_release(),
         }
@@ -100,14 +112,10 @@ impl Classifier {
     }
 
     fn any_release() -> Self {
-        let tables = [
-            SchemaVersion::Ifc2x3,
-            SchemaVersion::Ifc4,
-            SchemaVersion::Ifc4x3,
-        ]
-        .into_iter()
-        .filter_map(for_version)
-        .collect();
+        let tables = VERIFIED
+            .into_iter()
+            .filter_map(|release| for_version(release).ok())
+            .collect();
         Self {
             release: None,
             tables,
@@ -147,4 +155,31 @@ fn is_spatial(table: &Schema, upper: &str) -> bool {
     // answers false, so the IFC4 root is tried first and the IFC2X3 one
     // only matters where it is the root.
     table.is_a(upper, "IFCSPATIALELEMENT") || table.is_a(upper, "IFCSPATIALSTRUCTUREELEMENT")
+}
+
+#[cfg(test)]
+mod intermediate_release_tests {
+    use super::*;
+
+    /// An IFC4X1 or IFC4X2 header binds no release: the classifier answers
+    /// from the verified tables with nothing bound, instead of claiming the
+    /// file was read as IFC4 or IFC4X3.
+    #[test]
+    fn ifc4x1_and_ifc4x2_bind_no_release() {
+        for token in ["IFC4X1", "IFC4X2"] {
+            let mut model = Model::new();
+            model.header_mut().schema = vec![token.to_owned()];
+            assert_eq!(
+                Classifier::for_model(&model).bound_release(),
+                None,
+                "{token}"
+            );
+        }
+        let mut model = Model::new();
+        model.header_mut().schema = vec!["IFC4X3".to_owned()];
+        assert_eq!(
+            Classifier::for_model(&model).bound_release(),
+            Some(SchemaVersion::Ifc4x3)
+        );
+    }
 }

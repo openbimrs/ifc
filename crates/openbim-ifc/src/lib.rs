@@ -78,20 +78,20 @@ pub use ifc_step::{OnMalformed, ParseOptions, StepReader};
 pub use ifc_xml::{XmlCodec, XmlProfile};
 
 /// The IFC schema as queryable data.
-#[cfg(feature = "schema")]
+#[cfg(feature = "schema-api")]
 pub use ifc_schema::{Schema, SchemaVersion};
 
 /// The whole schema crate, including the bundled schemas
 /// (`schema::ifc4()`, `schema::for_version(..)`) that
 /// [`ids_of_type_including_subtypes`] needs as input.
-#[cfg(feature = "schema")]
+#[cfg(feature = "schema-api")]
 pub use ifc_schema as schema;
 
 // Needs the model's type index and the schema's subtype tree, which ADR 0003
 // keeps in separate crates, so the join lives in this orchestration layer.
-#[cfg(feature = "schema")]
+#[cfg(feature = "schema-api")]
 mod subtype_query;
-#[cfg(feature = "schema")]
+#[cfg(feature = "schema-api")]
 pub use subtype_query::ids_of_type_including_subtypes;
 
 /// Cost semantics as a borrowed view.

@@ -24,7 +24,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use ifc_model::{EntityId, Model, Value};
 
-use crate::error::SystemAnomaly;
+use crate::error::{SchemaResolutionError, SystemAnomaly};
 
 fn refs(value: Option<&Value>) -> Vec<EntityId> {
     match value {
@@ -79,9 +79,16 @@ impl SpatialPlacement {
 ///
 /// Elements with no spatial relationship are absent from the map rather than
 /// present-and-empty: absence is the file's actual statement.
+///
+/// # Errors
+///
+/// [`SchemaResolutionError`] when the model's `FILE_SCHEMA` binds no release
+/// this crate is verified for (see [`crate::schema_of`]); the fixed slots
+/// above are pinned against each verified release's table.
 pub fn spatial_placements(
     model: &Model,
-) -> (BTreeMap<EntityId, SpatialPlacement>, Vec<SystemAnomaly>) {
+) -> Result<(BTreeMap<EntityId, SpatialPlacement>, Vec<SystemAnomaly>), SchemaResolutionError> {
+    crate::release::resolve(model)?;
     let mut out: BTreeMap<EntityId, SpatialPlacement> = BTreeMap::new();
     let mut anomalies = Vec::new();
 
@@ -131,5 +138,5 @@ pub fn spatial_placements(
         out.entry(element).or_default().referenced_in = structures.into_iter().collect();
     }
 
-    (out, anomalies)
+    Ok((out, anomalies))
 }

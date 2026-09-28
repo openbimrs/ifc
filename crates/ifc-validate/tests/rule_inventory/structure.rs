@@ -89,16 +89,80 @@ fn containment(member: &str) -> Report {
     ifc4(&model)
 }
 
-/// Two walls with the given GlobalIds, checked by the whole-file index
-/// that `structure` exports but `validate` does not run.
-fn duplicate_ids(first: &str, second: &str) -> Report {
+/// An `IfcCartesianPoint` (`LIST [1:3] OF IfcLengthMeasure`) with `n`
+/// coordinates.
+fn point(n: usize) -> Report {
+    let mut model = Model::new();
+    model.push(entity(
+        ifc_schema::ifc4(),
+        "IFCCARTESIANPOINT",
+        &[("Coordinates", Value::List(vec![Value::Real(0.0); n]))],
+    ));
+    ifc4(&model)
+}
+
+/// An `IfcCartesianPointList3D` (`LIST [1:?] OF LIST [3:3] OF
+/// IfcLengthMeasure`) with the given rows.
+fn point_list(rows: Vec<Value>) -> Report {
+    let mut model = Model::new();
+    model.push(entity(
+        ifc_schema::ifc4(),
+        "IFCCARTESIANPOINTLIST3D",
+        &[("CoordList", Value::List(rows))],
+    ));
+    ifc4(&model)
+}
+
+fn row(values: &[f64]) -> Value {
+    Value::List(values.iter().map(|&v| Value::Real(v)).collect())
+}
+
+/// An `IfcPolyLoop` (`LIST [3:?] OF UNIQUE IfcCartesianPoint`) over the
+/// points `order` names, out of three distinct points.
+fn poly_loop(order: &[u64]) -> Report {
     let schema = ifc_schema::ifc4();
     let mut model = Model::new();
-    model.push(wall(schema, first, &[]));
-    model.push(wall(schema, second, &[]));
-    let mut report = Report::new();
-    ifc_validate::structure::duplicate_global_ids(&model, schema, &mut report);
-    report
+    for id in 1..=3 {
+        model.insert(
+            EntityId(id),
+            entity(
+                schema,
+                "IFCCARTESIANPOINT",
+                &[("Coordinates", row(&[id as f64, 0.0, 0.0]))],
+            ),
+        );
+    }
+    model.insert(
+        EntityId(10),
+        entity(
+            schema,
+            "IFCPOLYLOOP",
+            &[(
+                "Polygon",
+                Value::List(order.iter().map(|&id| Value::Ref(EntityId(id))).collect()),
+            )],
+        ),
+    );
+    ifc4(&model)
+}
+
+/// Two `IfcApplication`s, checked against `UR1` (unique
+/// `ApplicationIdentifier`).
+fn applications(first: &str, second: &str) -> Report {
+    let schema = ifc_schema::ifc4();
+    let mut model = Model::new();
+    for (n, identifier) in [first, second].into_iter().enumerate() {
+        model.push(entity(
+            schema,
+            "IFCAPPLICATION",
+            &[
+                ("ApplicationIdentifier", text(identifier)),
+                ("ApplicationFullName", text(&format!("App {n}"))),
+                ("Version", text("1")),
+            ],
+        ));
+    }
+    ifc4(&model)
 }
 
 pub const CASES: &[Case] = &[
@@ -167,9 +231,51 @@ pub const CASES: &[Case] = &[
         passes: || wall_with("Name", text("a")),
     },
     Case {
-        rule: "structure.unique.duplicate_global_id",
-        form: "two roots sharing a GlobalId",
-        fails: || duplicate_ids(GUID_A, GUID_A),
-        passes: || duplicate_ids(GUID_A, GUID_B),
+        rule: "structure.aggregate.too_few",
+        form: "an empty LIST [1:3]",
+        fails: || point(0),
+        passes: || point(3),
+    },
+    Case {
+        rule: "structure.aggregate.too_few",
+        form: "a two-element row of LIST [1:?] OF LIST [3:3]",
+        fails: || point_list(vec![row(&[0.0, 0.0, 0.0]), row(&[0.0, 0.0])]),
+        passes: || point_list(vec![row(&[0.0, 0.0, 0.0]), row(&[1.0, 0.0, 0.0])]),
+    },
+    Case {
+        rule: "structure.aggregate.too_many",
+        form: "four elements in a LIST [1:3]",
+        fails: || point(4),
+        passes: || point(2),
+    },
+    Case {
+        rule: "structure.aggregate.nesting",
+        form: "a scalar where LIST OF LIST nests a row",
+        fails: || point_list(vec![row(&[0.0, 0.0, 0.0]), Value::Real(1.0)]),
+        passes: || point_list(vec![row(&[0.0, 0.0, 0.0]), row(&[1.0, 0.0, 0.0])]),
+    },
+    Case {
+        rule: "structure.aggregate.duplicate",
+        form: "a repeated point in LIST OF UNIQUE",
+        fails: || poly_loop(&[1, 2, 1]),
+        passes: || poly_loop(&[1, 2, 3]),
+    },
+    Case {
+        rule: "structure.unique.violation",
+        form: "two applications sharing ApplicationIdentifier (UR1)",
+        fails: || applications("id", "id"),
+        passes: || applications("id", "other"),
+    },
+    Case {
+        rule: "type.scalar.mismatch",
+        form: "a string inside the inner level of LIST OF LIST OF IfcLengthMeasure",
+        fails: || {
+            point_list(vec![Value::List(vec![
+                Value::Real(0.0),
+                text("x"),
+                Value::Real(0.0),
+            ])])
+        },
+        passes: || point_list(vec![row(&[0.0, 0.5, 0.0])]),
     },
 ];

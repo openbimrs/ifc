@@ -2,7 +2,9 @@
 //!
 //! Every accessor in this crate — `systems`, `zones`, `ports`, `flow::of`,
 //! `connectivity::build` — must interpret entities against the IFC release
-//! the file actually declares, not against a hard-wired one (issue #52).
+//! the file actually declares, not against a hard-wired one (issue #52), and
+//! refuses a file that binds no verified release instead of reading it as
+//! IFC4.
 //! `IfcZone` is a subtype of `IfcSystem` in IFC4 but of `IfcGroup` in
 //! IFC2X3; reading an IFC2X3 file under the IFC4 table therefore
 //! misclassifies zones as systems and vice versa for `IfcElectricalCircuit`.
@@ -48,75 +50,52 @@ impl Release {
             .position(|name| name.eq_ignore_ascii_case(attribute))
     }
 
-    fn bind(version: SchemaVersion) -> Self {
-        Self {
-            version,
-            schema: for_version(version).expect("every SchemaVersion has a bundled table"),
-        }
+    fn bind(version: SchemaVersion) -> Result<Self, SchemaResolutionError> {
+        let schema =
+            for_version(version).map_err(|_| SchemaResolutionError::UnsupportedSchema {
+                schema: version.release_id().to_owned(),
+            })?;
+        Ok(Self { version, schema })
     }
 }
 
-/// Releases whose zone semantics are verified against their own tables:
-/// `IfcZone`, `IfcRelAssignsToGroup` and the WR1 member types (#194).
-const ZONE_RELEASES: &[SchemaVersion] = &[
+/// Releases every reader in this crate is verified against its own table.
+///
+/// IFC2X3 and IFC4 since #52; IFC4X3 since #215: the zone readers in #194,
+/// the system, port, connectivity and flow readers by `tests/ifc4x3.rs`,
+/// which round-trips each through STEP text, and by `slots_hold_in_every_verified_release`
+/// below, which pins every fixed slot against each table. IFC4X1 and IFC4X2
+/// are bundled but unverified here, so they are refused.
+const VERIFIED: &[SchemaVersion] = &[
     SchemaVersion::Ifc2x3,
     SchemaVersion::Ifc4,
     SchemaVersion::Ifc4x3,
 ];
 
-/// Releases verified for the system, port, flow and connectivity readers.
-/// IFC4X3's distribution semantics (`IfcBuiltSystem`, the IFC4X3
-/// distribution-system enumeration) are not verified yet.
-const SYSTEM_RELEASES: &[SchemaVersion] = &[SchemaVersion::Ifc2x3, SchemaVersion::Ifc4];
-
 /// Resolve the IFC release a model declares, from its `FILE_SCHEMA` header.
 ///
-/// This is the public seam issue #52 asks every read path to go through:
-/// callers who want to know (or assert) which release a model will be read
-/// under -- without pulling in `ifc-schema` themselves -- can call this
-/// directly. It refuses a file with no schema, more than one, or a release
-/// this crate has not verified for its system, port and flow readers
-/// (including IFC4X3). The zone readers ([`crate::zones`],
-/// [`crate::try_zones`], [`crate::long_name_of`]) are verified for IFC4X3
-/// and bind its table (#194); this function still refuses it.
-///
-/// The crate's bulk accessors (`systems`, `zones`, `ports`,
-/// `ElementRole::of`, `ConnectionGraph::build`, ...) do NOT surface that
-/// refusal: their signatures have no error slot, so where this function
-/// would refuse they read the model under the IFC4 table instead. A caller
-/// who needs the refusal calls this first and acts on its `Err`.
+/// This is the seam every read in this crate goes through: [`crate::systems`],
+/// [`crate::ports`], [`crate::zones`], [`crate::ConnectionGraph::build`],
+/// [`crate::ElementRole::of`], [`crate::role_inconsistencies`] and
+/// [`crate::spatial_placements`] all refuse exactly what this refuses, with
+/// the same error. Nothing is read against a release the file did not
+/// declare.
 ///
 /// # Errors
 ///
-/// Returns [`SchemaResolutionError`] when the header names zero or more
-/// than one schema, or names a schema other than IFC2X3 or IFC4.
+/// [`SchemaResolutionError`] when the header names no schema, more than one,
+/// or a release this crate has not verified (anything but IFC2X3, IFC4 and
+/// IFC4X3), or one this build does not bundle.
 pub fn schema_of(model: &Model) -> Result<SchemaVersion, SchemaResolutionError> {
     resolve(model).map(|release| release.version)
 }
 
 /// Internal resolution: version tag plus the bundled table to read against.
-///
-/// IFC4X3 is bundled in ifc-schema, but the system, port, flow and
-/// connectivity reads have only been verified against IFC2X3 and IFC4
-/// semantics (#52 scope); it stays refused here until that verification
-/// happens. Zones resolve through [`resolve_zones`] instead.
 pub(crate) fn resolve(model: &Model) -> Result<Release, SchemaResolutionError> {
-    resolve_among(model, SYSTEM_RELEASES)
-}
-
-/// [`resolve`] for the zone readers, which are verified for IFC4X3 too.
-pub(crate) fn resolve_zones(model: &Model) -> Result<Release, SchemaResolutionError> {
-    resolve_among(model, ZONE_RELEASES)
-}
-
-fn resolve_among(
-    model: &Model,
-    verified: &[SchemaVersion],
-) -> Result<Release, SchemaResolutionError> {
     match model.header().schema.as_slice() {
         [] => Err(SchemaResolutionError::MissingSchema),
         [token] => match SchemaVersion::from_header_token(token) {
-            Some(version) if verified.contains(&version) => Ok(Release::bind(version)),
+            Some(version) if VERIFIED.contains(&version) => Release::bind(version),
             _ => Err(SchemaResolutionError::UnsupportedSchema {
                 schema: token.clone(),
             }),
@@ -127,33 +106,108 @@ fn resolve_among(
     }
 }
 
-/// The IFC4 table, which the bulk readers fall back to.
-pub(crate) fn ifc4() -> Release {
-    Release::bind(SchemaVersion::Ifc4)
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-/// Resolve the declared release for the crate's bulk accessors
-/// (`systems`, `zones`, `ports`, `ElementRole::of`, `ConnectionGraph::build`).
-///
-/// These functions predate #52 and return `(Vec<_>, Vec<SystemAnomaly>)`,
-/// not a `Result`: there is no return-type slot to carry a hard refusal
-/// without a breaking signature change. So when [`resolve`] cannot bind a
-/// release -- the header names no schema, several, or one this crate has
-/// not verified (including IFC4X3) -- they fall back to the IFC4 table,
-/// exactly as every one of them was hard-wired to do before this change.
-/// This keeps every existing caller's behaviour identical for models that
-/// never carried a `FILE_SCHEMA` header at all (every hand-built fixture in
-/// this crate's own test suite included) while a file that DOES declare
-/// IFC2X3 is now read correctly under IFC2X3 semantics.
-///
-/// A caller who needs a hard refusal instead of this fallback should call
-/// [`schema_of`] first and act on its `Err`.
-pub(crate) fn resolve_or_ifc4(model: &Model) -> Release {
-    resolve(model).unwrap_or_else(|_| ifc4())
-}
+    /// Every fixed slot position these readers use, by entity and attribute,
+    /// holds in each verified release's own table. A release whose layout
+    /// moved one of them must fail here before it is added to `VERIFIED`.
+    #[test]
+    fn slots_hold_in_every_verified_release() {
+        use crate::connectivity::relation::slot as connects;
+        use crate::port::definition::slot as port;
+        use crate::system::group::slot as group;
+        use crate::zone::spatial_group::slot as spatial;
+        let pinned = [
+            (
+                "IFCRELASSIGNSTOGROUP",
+                "RelatedObjects",
+                group::ASSIGNS_RELATED,
+            ),
+            (
+                "IFCRELASSIGNSTOGROUP",
+                "RelatingGroup",
+                group::ASSIGNS_GROUP,
+            ),
+            ("IFCRELCONNECTSPORTS", "RelatingPort", connects::RELATING),
+            ("IFCRELCONNECTSPORTS", "RelatedPort", connects::RELATED),
+            (
+                "IFCRELCONNECTSPORTS",
+                "RealizingElement",
+                connects::REALIZING,
+            ),
+            ("IFCRELNESTS", "RelatingObject", port::NESTS_PARENT),
+            ("IFCRELNESTS", "RelatedObjects", port::NESTS_CHILDREN),
+            (
+                "IFCRELCONNECTSPORTTOELEMENT",
+                "RelatingPort",
+                port::PORT_TO_ELEMENT_PORT,
+            ),
+            (
+                "IFCRELCONNECTSPORTTOELEMENT",
+                "RelatedElement",
+                port::PORT_TO_ELEMENT_ELEMENT,
+            ),
+            ("IFCDISTRIBUTIONPORT", "FlowDirection", port::FLOW_DIRECTION),
+            (
+                "IFCRELCONTAINEDINSPATIALSTRUCTURE",
+                "RelatedElements",
+                spatial::RELATED_ELEMENTS,
+            ),
+            (
+                "IFCRELCONTAINEDINSPATIALSTRUCTURE",
+                "RelatingStructure",
+                spatial::RELATING_STRUCTURE,
+            ),
+            (
+                "IFCRELREFERENCEDINSPATIALSTRUCTURE",
+                "RelatedElements",
+                spatial::RELATED_ELEMENTS,
+            ),
+            (
+                "IFCRELREFERENCEDINSPATIALSTRUCTURE",
+                "RelatingStructure",
+                spatial::RELATING_STRUCTURE,
+            ),
+            ("IFCSYSTEM", "Name", group::NAME),
+            ("IFCDISTRIBUTIONPORT", "Name", port::NAME),
+        ];
+        let mut checked = 0;
+        for &version in VERIFIED {
+            let release = Release::bind(version).expect("verified releases are bundled");
+            for (entity, attribute, slot) in pinned {
+                assert_eq!(
+                    release.slot(entity, attribute),
+                    Some(slot),
+                    "{version:?} {entity}.{attribute}"
+                );
+                checked += 1;
+            }
+        }
+        assert_eq!(checked, 3 * pinned.len());
+    }
 
-/// [`resolve_or_ifc4`] for `zones()`: an IFC4X3 header binds the IFC4X3
-/// table; a header binding nothing falls back to IFC4 as before.
-pub(crate) fn resolve_zones_or_ifc4(model: &Model) -> Release {
-    resolve_zones(model).unwrap_or_else(|_| ifc4())
+    #[test]
+    fn unbound_and_unverified_headers_are_refused() {
+        let mut model = Model::new();
+        assert!(matches!(
+            resolve(&model),
+            Err(SchemaResolutionError::MissingSchema)
+        ));
+        for token in ["IFC4X1", "IFC4X2", "IFC9"] {
+            model.header_mut().schema = vec![token.to_owned()];
+            assert!(
+                matches!(resolve(&model), Err(SchemaResolutionError::UnsupportedSchema { ref schema }) if schema == token),
+                "{token}"
+            );
+        }
+        model.header_mut().schema = vec!["IFC4".into(), "IFC2X3".into()];
+        assert!(matches!(
+            resolve(&model),
+            Err(SchemaResolutionError::MultipleSchemas { schemas: 2 })
+        ));
+        model.header_mut().schema = vec!["IFC4X3_ADD2".into()];
+        assert_eq!(schema_of(&model), Ok(SchemaVersion::Ifc4x3));
+    }
 }

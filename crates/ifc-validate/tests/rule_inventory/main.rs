@@ -139,7 +139,8 @@ fn the_source_scan_finds_the_rule_ids_it_must() {
     for known in [
         "header.schema.missing",
         "structure.reference.dangling",
-        "structure.unique.duplicate_global_id",
+        "structure.unique.violation",
+        "structure.aggregate.too_few",
         "type.enumeration.member",
         "global.UniqueGlobalId",
         "IfcRelSpaceBoundary.CorrectPhysOrVirt",

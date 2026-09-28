@@ -77,6 +77,28 @@ fn parses_ifc4x3_add2() {
     assert_eq!(schema.type_count(), 436, "IFC4x3 ADD2 type count");
 }
 
+#[test]
+fn parses_ifc4x1_final() {
+    let Some(schema) = load("ifc4x1-final/IFC4x1.exp") else {
+        eprintln!("skipped: references/ifc-spec not present");
+        return;
+    };
+    assert_eq!(schema.version(), Some(SchemaVersion::Ifc4x1));
+    assert_eq!(schema.entity_count(), 801, "IFC4X1 FINAL entity count");
+    assert_eq!(schema.type_count(), 400, "IFC4X1 FINAL type count");
+}
+
+#[test]
+fn parses_ifc4x2_final() {
+    let Some(schema) = load("ifc4x2-final/IFC4x2.exp") else {
+        eprintln!("skipped: references/ifc-spec not present");
+        return;
+    };
+    assert_eq!(schema.version(), Some(SchemaVersion::Ifc4x2));
+    assert_eq!(schema.entity_count(), 816, "IFC4X2 FINAL entity count");
+    assert_eq!(schema.type_count(), 407, "IFC4X2 FINAL type count");
+}
+
 /// Real inheritance chains, read from the real schema.
 #[test]
 fn resolves_deep_inheritance_in_ifc4() {
@@ -147,6 +169,8 @@ fn bundled_schemas_carry_rule_labels_but_no_rule_text() {
     for (release, schema) in [
         ("IFC2X3", ifc_schema::ifc2x3()),
         ("IFC4", ifc_schema::ifc4()),
+        ("IFC4X1", ifc_schema::ifc4x1()),
+        ("IFC4X2", ifc_schema::ifc4x2()),
         ("IFC4X3", ifc_schema::ifc4x3()),
     ] {
         let mut labels = 0;
@@ -172,6 +196,8 @@ fn bundled_schemas_match_the_fetched_schemas_less_rule_text() {
     for (rel, bundled) in [
         ("ifc2x3-tc1/IFC2X3_TC1.exp", ifc_schema::ifc2x3()),
         ("ifc4-add2-tc1/IFC4.exp", ifc_schema::ifc4()),
+        ("ifc4x1-final/IFC4x1.exp", ifc_schema::ifc4x1()),
+        ("ifc4x2-final/IFC4x2.exp", ifc_schema::ifc4x2()),
         ("ifc4x3-add2/IFC4X3_ADD2.exp", ifc_schema::ifc4x3()),
     ] {
         let Some(fetched) = load(rel) else { return };

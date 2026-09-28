@@ -71,11 +71,14 @@ fn the_declared_release_is_reported() {
         schema_of(&Model::new()),
         Err(SchemaResolutionError::MissingSchema)
     );
+    // Verified since #215 (tests/ifc4x3.rs).
     let ifc4x3 = step("'IFC4X3_ADD2'", OWNER);
+    assert_eq!(schema_of(&ifc4x3), Ok(SchemaVersion::Ifc4x3));
+    let ifc4x1 = step("'IFC4X1'", OWNER);
     assert_eq!(
-        schema_of(&ifc4x3),
+        schema_of(&ifc4x1),
         Err(SchemaResolutionError::UnsupportedSchema {
-            schema: "IFC4X3_ADD2".into()
+            schema: "IFC4X1".into()
         })
     );
     let both = step("'IFC2X3','IFC4'", OWNER);
@@ -87,7 +90,7 @@ fn the_declared_release_is_reported() {
 
 #[test]
 fn ifc2x3_systems_are_the_system_and_the_circuit_not_the_zone() {
-    let (found, anomalies) = systems(&ifc2x3());
+    let (found, anomalies) = systems(&ifc2x3()).unwrap();
     assert_eq!(ids(&found), [EntityId(10), EntityId(11)]);
     assert_eq!(found[1].type_name, "IFCELECTRICALCIRCUIT");
     assert_eq!(found[1].members, [EntityId(21)]);
@@ -105,7 +108,7 @@ fn ifc2x3_systems_are_the_system_and_the_circuit_not_the_zone() {
 
 #[test]
 fn ifc4_keeps_the_zone_as_a_system() {
-    let (found, anomalies) = systems(&ifc4());
+    let (found, anomalies) = systems(&ifc4()).unwrap();
     assert_eq!(ids(&found), [EntityId(10), EntityId(11), EntityId(12)]);
     assert!(anomalies.is_empty(), "{anomalies:?}");
 }
@@ -113,7 +116,7 @@ fn ifc4_keeps_the_zone_as_a_system() {
 #[test]
 fn ifc2x3_zones_have_no_long_name_slot() {
     let model = ifc2x3();
-    let (found, anomalies) = zones(&model);
+    let (found, anomalies) = zones(&model).unwrap();
     assert_eq!(found.len(), 1);
     assert_eq!(found[0].id, EntityId(12));
     assert_eq!(found[0].members, [EntityId(22)]);
@@ -129,7 +132,10 @@ fn ifc2x3_zones_have_no_long_name_slot() {
     ));
     // IFC4 reads it.
     let model = ifc4();
-    assert_eq!(zones(&model).0[0].long_name.as_deref(), Some("Long A"));
+    assert_eq!(
+        zones(&model).unwrap().0[0].long_name.as_deref(),
+        Some("Long A")
+    );
     assert_eq!(
         long_name_of(&model, EntityId(12)),
         Ok(Some("Long A".into()))
@@ -150,7 +156,7 @@ fn a_group_that_is_not_a_system_is_still_an_anomaly_under_ifc2x3() {
 #20=IFCFLOWSEGMENT('p',#1,'Pipe',$,$,$,$,$);
 #33=IFCRELASSIGNSTOGROUP('a4',#1,$,$,(#20),$,#13);",
     );
-    let (found, anomalies) = systems(&model);
+    let (found, anomalies) = systems(&model).unwrap();
     assert!(found.is_empty());
     assert_eq!(
         anomalies,
@@ -177,20 +183,20 @@ fn ifc2x3_ports_attach_and_connect() {
 #51=IFCRELCONNECTSPORTTOELEMENT('e2',#1,$,$,#41,#21);
 #60=IFCRELCONNECTSPORTS('c',#1,$,$,#40,#41,$);",
     );
-    let (found, anomalies) = ports(&model);
+    let (found, anomalies) = ports(&model).unwrap();
     assert!(anomalies.is_empty(), "{anomalies:?}");
     assert_eq!(found.len(), 2);
     assert_eq!(found[0].element, Some(EntityId(20)));
     assert_eq!(found[0].attachment, Some(Attachment::ConnectsPortToElement));
-    let (graph, anomalies) = ConnectionGraph::build(&model);
+    let (graph, anomalies) = ConnectionGraph::build(&model).unwrap();
     assert!(anomalies.is_empty(), "{anomalies:?}");
     assert_eq!(graph.connections().len(), 1);
     assert_eq!(
-        ElementRole::of(&model, EntityId(20)),
+        ElementRole::of(&model, EntityId(20)).unwrap(),
         Some(ElementRole::Segment)
     );
     assert_eq!(
-        ElementRole::of(&model, EntityId(21)),
+        ElementRole::of(&model, EntityId(21)).unwrap(),
         Some(ElementRole::Terminal)
     );
 }
@@ -212,12 +218,12 @@ fn ifc4_only_records_have_no_ifc2x3_role_system_or_zone_membership() {
 #32=IFCRELASSIGNSTOGROUP('a',#1,$,$,(#44),$,#12);",
     );
     // IfcPipeSegment does not exist in IFC2X3.
-    assert_eq!(ElementRole::of(&model, EntityId(20)), None);
+    assert_eq!(ElementRole::of(&model, EntityId(20)).unwrap(), None);
     // Nor does IfcDistributionSystem: it is no IFC2X3 system.
-    assert!(!ids(&systems(&model).0).contains(&EntityId(11)));
+    assert!(!ids(&systems(&model).unwrap().0).contains(&EntityId(11)));
     // IfcSpatialZone is IFC4-only, so it is not a permitted zone member in
     // an IFC2X3 file.
-    let (_, anomalies) = zones(&model);
+    let (_, anomalies) = zones(&model).unwrap();
     assert!(
         anomalies.iter().any(|a| matches!(
             a,
@@ -239,9 +245,13 @@ fn ifc4_only_records_have_no_ifc2x3_role_system_or_zone_membership() {
 #11=IFCDISTRIBUTIONSYSTEM('c',#1,'Circuit',$,$,$,.ELECTRICAL.);",
     );
     assert_eq!(
-        ElementRole::of(&model, EntityId(20)),
+        ElementRole::of(&model, EntityId(20)).unwrap(),
         Some(ElementRole::Segment)
     );
-    assert!(ids(&systems(&model).0).contains(&EntityId(11)));
-    assert!(zones(&model).1.is_empty(), "{:?}", zones(&model).1);
+    assert!(ids(&systems(&model).unwrap().0).contains(&EntityId(11)));
+    assert!(
+        zones(&model).unwrap().1.is_empty(),
+        "{:?}",
+        zones(&model).unwrap().1
+    );
 }

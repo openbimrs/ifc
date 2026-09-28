@@ -256,8 +256,8 @@ never means "the rules we did not implement passed".
 | `IfcRelSpaceBoundary.CorrectPhysOrVirt` | `IfcRelSpaceBoundary` and subtypes | IFC4, IFC4X3 | yes |  |
 | `IfcDocumentReference.WR1` | `IfcDocumentReference` and subtypes | IFC2X3, IFC4, IFC4X3 | no | not implemented uniformly: IFC2X3 requires INVERSE relationship semantics, which validation does not derive |
 | `IfcRepresentationContextSameWCS` | (global) | IFC2X3, IFC4, IFC4X3 | no | requires geometric evaluation, which validation does not perform |
-| `IfcPolyLoop.WR21` | `IfcPolyLoop` and subtypes | IFC2X3 | no | requires aggregate bounds, which the schema parser does not retain |
-| `IfcPolyLoop.AllPointsSameDim` | `IfcPolyLoop` and subtypes | IFC4, IFC4X3 | no | requires aggregate bounds, which the schema parser does not retain |
+| `IfcPolyLoop.WR21` | `IfcPolyLoop` and subtypes | IFC2X3 | no | requires an EXPRESS expression evaluator |
+| `IfcPolyLoop.AllPointsSameDim` | `IfcPolyLoop` and subtypes | IFC4, IFC4X3 | no | requires an EXPRESS expression evaluator |
 | `IfcQuantityLength.WR21` | `IfcQuantityLength` and subtypes | IFC2X3, IFC4, IFC4X3 | no | requires an EXPRESS expression evaluator |
 | `IfcZone.WR1` | `IfcZone` and subtypes | IFC2X3, IFC4, IFC4X3 | no | requires an EXPRESS expression evaluator |
 

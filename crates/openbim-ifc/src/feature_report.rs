@@ -15,6 +15,18 @@ pub fn compiled_features() -> Vec<&'static str> {
     features.push("ifcxml");
     #[cfg(feature = "schema")]
     features.push("schema");
+    #[cfg(feature = "schema-api")]
+    features.push("schema-api");
+    #[cfg(feature = "ifc2x3")]
+    features.push("ifc2x3");
+    #[cfg(feature = "ifc4")]
+    features.push("ifc4");
+    #[cfg(feature = "ifc4x1")]
+    features.push("ifc4x1");
+    #[cfg(feature = "ifc4x2")]
+    features.push("ifc4x2");
+    #[cfg(feature = "ifc4x3")]
+    features.push("ifc4x3");
     #[cfg(feature = "properties")]
     features.push("properties");
     #[cfg(feature = "property-catalog")]

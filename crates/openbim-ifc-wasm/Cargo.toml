@@ -34,5 +34,19 @@ openbim-ifc-binding-core.workspace = true
 wasm-bindgen = "=0.2.128"
 js-sys = "=0.3.105"
 
+[features]
+# Every bundled IFC release, so the published npm package reads every file
+# it did before #112. A size-sensitive browser build turns defaults off and
+# names the releases it ships, e.g.
+# `cargo build -p openbim-ifc-wasm --no-default-features --features ifc4`;
+# a file declaring any other release is then refused with
+# `unsupported-schema` by the subtype query.
+default = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
+ifc2x3 = ["openbim-ifc-binding-core/ifc2x3"]
+ifc4 = ["openbim-ifc-binding-core/ifc4"]
+ifc4x1 = ["openbim-ifc-binding-core/ifc4x1"]
+ifc4x2 = ["openbim-ifc-binding-core/ifc4x2"]
+ifc4x3 = ["openbim-ifc-binding-core/ifc4x3"]
+
 [lints]
 workspace = true

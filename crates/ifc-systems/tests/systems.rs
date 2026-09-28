@@ -8,6 +8,14 @@ use ifc_systems::{
     ports, systems, Attachment, ConnectionGraph, FlowDirection, NetworkGraph, SystemAnomaly,
 };
 
+/// An in-memory model declaring IFC4: the readers refuse a model whose
+/// header binds no release.
+fn ifc4_model() -> Model {
+    let mut model = Model::new();
+    model.header_mut().schema = vec!["IFC4".to_owned()];
+    model
+}
+
 /// A subtype system is found, not just an exact `IfcSystem`.
 ///
 /// `Model::ids_of_type` is an exact index, so a file whose only system is an
@@ -15,7 +23,7 @@ use ifc_systems::{
 /// no systems at all if the crate asked for `IFCSYSTEM` directly.
 #[test]
 fn a_distribution_system_is_found_as_a_system() {
-    let (found, anomalies) = systems(&model_with_system());
+    let (found, anomalies) = systems(&model_with_system()).unwrap();
     assert_eq!(found.len(), 1, "the distribution system must be found");
     assert_eq!(found[0].type_name, "IFCDISTRIBUTIONSYSTEM");
     assert_eq!(found[0].name.as_deref(), Some("Heating"));
@@ -29,7 +37,7 @@ fn a_distribution_system_is_found_as_a_system() {
 /// enumeration and the membership silently disappears.
 #[test]
 fn members_are_read_from_the_relating_group_slot() {
-    let (found, _) = systems(&model_with_system());
+    let (found, _) = systems(&model_with_system()).unwrap();
     assert_eq!(found[0].members, vec![EntityId(1), EntityId(2)]);
 }
 
@@ -40,7 +48,7 @@ fn members_are_read_from_the_relating_group_slot() {
 /// by walking memberships would drop it and understate the model.
 #[test]
 fn a_system_with_no_members_is_still_a_system() {
-    let mut model = Model::new();
+    let mut model = ifc4_model();
     model.insert(
         EntityId(1),
         Entity::new(
@@ -52,7 +60,7 @@ fn a_system_with_no_members_is_still_a_system() {
             ],
         ),
     );
-    let (found, anomalies) = systems(&model);
+    let (found, anomalies) = systems(&model).unwrap();
     assert_eq!(found.len(), 1);
     assert!(found[0].members.is_empty());
     assert!(anomalies.is_empty());
@@ -61,7 +69,7 @@ fn a_system_with_no_members_is_still_a_system() {
 /// A membership naming an absent entity is reported, not silently dropped.
 #[test]
 fn a_dangling_member_is_reported() {
-    let mut model = Model::new();
+    let mut model = ifc4_model();
     let system = EntityId(1);
     model.insert(
         system,
@@ -85,7 +93,7 @@ fn a_dangling_member_is_reported() {
             ],
         ),
     );
-    let (found, anomalies) = systems(&model);
+    let (found, anomalies) = systems(&model).unwrap();
     assert!(
         found[0].members.is_empty(),
         "the absent member is not a member"
@@ -108,7 +116,7 @@ fn a_dangling_member_is_reported() {
 /// `IfcInventory` is a sibling group that is not a system.
 #[test]
 fn assignment_to_a_non_system_group_is_not_a_system_membership() {
-    let mut model = Model::new();
+    let mut model = ifc4_model();
     let inventory = EntityId(1);
     model.insert(
         inventory,
@@ -132,7 +140,7 @@ fn assignment_to_a_non_system_group_is_not_a_system_membership() {
             ],
         ),
     );
-    let (found, anomalies) = systems(&model);
+    let (found, anomalies) = systems(&model).unwrap();
     assert!(found.is_empty(), "an IfcInventory is not an IfcSystem");
     assert_eq!(
         anomalies,
@@ -151,7 +159,7 @@ fn assignment_to_a_non_system_group_is_not_a_system_membership() {
 /// zone dropped from system discovery is a silently missing part of the model.
 #[test]
 fn a_zone_is_discovered_because_the_schema_makes_it_a_system() {
-    let mut model = Model::new();
+    let mut model = ifc4_model();
     model.insert(
         EntityId(1),
         Entity::new(
@@ -163,7 +171,7 @@ fn a_zone_is_discovered_because_the_schema_makes_it_a_system() {
             ],
         ),
     );
-    let (found, _) = systems(&model);
+    let (found, _) = systems(&model).unwrap();
     assert_eq!(found.len(), 1, "IfcZone -> IfcSystem in the IFC4 schema");
     assert_eq!(found[0].name.as_deref(), Some("Fire compartment"));
 }
@@ -176,7 +184,7 @@ fn a_zone_is_discovered_because_the_schema_makes_it_a_system() {
 #[test]
 fn the_committed_fixture_reads_its_systems() {
     let model = fixture();
-    let (found, anomalies) = systems(&model);
+    let (found, anomalies) = systems(&model).unwrap();
 
     // Two distribution systems plus one zone: the zone counts because
     // IfcZone -> IfcSystem in IFC4.
@@ -218,7 +226,7 @@ fn systems_are_returned_in_ascending_id_order() {
     let model = ifc_step::StepCodec
         .read_path(&path)
         .expect("fixture parses");
-    let (found, _) = systems(&model);
+    let (found, _) = systems(&model).unwrap();
     let ids: Vec<_> = found.iter().map(|s| s.id).collect();
     let mut sorted = ids.clone();
     sorted.sort_unstable();
@@ -237,7 +245,7 @@ fn systems_are_returned_in_ascending_id_order() {
 #[test]
 fn ports_attached_by_either_mechanism_resolve_to_their_element() {
     let model = fixture();
-    let (ports, _) = ports(&model);
+    let (ports, _) = ports(&model).unwrap();
 
     let nested = ports
         .iter()
@@ -270,7 +278,7 @@ fn ports_are_found_by_ancestry_not_by_exact_type() {
         model.ids_of_type("IFCPORT").is_empty(),
         "IfcPort is abstract; nothing is literally an IFCPORT"
     );
-    let (ports, _) = ports(&model);
+    let (ports, _) = ports(&model).unwrap();
     assert_eq!(ports.len(), 18, "every distribution port is found");
 }
 
@@ -278,7 +286,7 @@ fn ports_are_found_by_ancestry_not_by_exact_type() {
 #[test]
 fn an_unattached_port_keeps_its_place_with_no_element() {
     let model = fixture();
-    let (ports, _) = ports(&model);
+    let (ports, _) = ports(&model).unwrap();
     let orphan = ports
         .iter()
         .find(|p| p.name.as_deref() == Some("orphan"))
@@ -291,7 +299,7 @@ fn an_unattached_port_keeps_its_place_with_no_element() {
 #[test]
 fn flow_direction_is_read_from_its_own_slot() {
     let model = fixture();
-    let (ports, _) = ports(&model);
+    let (ports, _) = ports(&model).unwrap();
     let by = |name: &str| {
         ports
             .iter()
@@ -315,7 +323,7 @@ fn flow_direction_is_read_from_its_own_slot() {
 #[test]
 fn the_connection_graph_is_undirected() {
     let model = fixture();
-    let (graph, _) = ConnectionGraph::build(&model);
+    let (graph, _) = ConnectionGraph::build(&model).unwrap();
     let connection = graph
         .connections()
         .first()
@@ -339,7 +347,7 @@ fn the_connection_graph_is_undirected() {
 #[test]
 fn a_connection_keeps_its_realizing_element() {
     let model = fixture();
-    let (graph, _) = ConnectionGraph::build(&model);
+    let (graph, _) = ConnectionGraph::build(&model).unwrap();
     let realized = graph
         .connections()
         .iter()
@@ -360,8 +368,8 @@ fn a_connection_keeps_its_realizing_element() {
 #[test]
 fn stated_connections_alone_leave_a_chain_in_pieces() {
     let model = fixture();
-    let (graph, _) = ConnectionGraph::build(&model);
-    let (ports_list, _) = ports(&model);
+    let (graph, _) = ConnectionGraph::build(&model).unwrap();
+    let (ports_list, _) = ports(&model).unwrap();
 
     let start = ports_list
         .iter()
@@ -391,8 +399,8 @@ fn stated_connections_alone_leave_a_chain_in_pieces() {
 #[test]
 fn the_network_graph_connects_the_chain_and_terminates_on_a_ring() {
     let model = fixture();
-    let (graph, _) = ConnectionGraph::build(&model);
-    let (ports_list, _) = ports(&model);
+    let (graph, _) = ConnectionGraph::build(&model).unwrap();
+    let (ports_list, _) = ports(&model).unwrap();
     let network = NetworkGraph::build(&graph, &ports_list);
 
     let start = ports_list
@@ -414,8 +422,8 @@ fn the_network_graph_connects_the_chain_and_terminates_on_a_ring() {
 #[test]
 fn a_disconnected_system_is_its_own_component() {
     let model = fixture();
-    let (graph, _) = ConnectionGraph::build(&model);
-    let (ports_list, _) = ports(&model);
+    let (graph, _) = ConnectionGraph::build(&model).unwrap();
+    let (ports_list, _) = ports(&model).unwrap();
     let network = NetworkGraph::build(&graph, &ports_list);
 
     let mut sizes: Vec<_> = network.components().iter().map(Vec::len).collect();

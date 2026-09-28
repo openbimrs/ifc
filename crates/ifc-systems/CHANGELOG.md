@@ -18,12 +18,37 @@ everything released before per-crate changelogs began.
   build it with `ClassifiedSystemDraft::new()` and the setters
   `description`, `object_type`, `predefined_type` and `long_name`. Fields
   stay public.
+
+- The bulk readers no longer fall back to the IFC4 table. `systems`,
+  `ports`, `zones`, `spatial_placements`, `role_inconsistencies`,
+  `ConnectionGraph::build` and `ElementRole::of` return
+  `Result<_, SchemaResolutionError>` and refuse a header that binds no
+  verified release: no `FILE_SCHEMA` (an in-memory model now needs a
+  header), several, IFC4X1/IFC4X2, or a release this build does not
+  bundle. `ElementRole::of` returns `Result<Option<_>, _>`.
+- `try_zones` is removed: `zones` now has the error channel it added.
+- IFC4X3 is verified for every reader (#215), not only the zone readers:
+  `schema_of` resolves it. Every fixed slot the readers use is pinned
+  against the IFC2X3, IFC4 and IFC4X3 tables, and `tests/ifc4x3.rs`
+  round-trips systems (including `IfcBuiltSystem`), both port
+  attachments, connections, flow roles and spatial placements through
+  IFC4X3 STEP text.
 - `SystemAnomaly` and `RoleInconsistency` are `#[non_exhaustive]`: a match
   needs a wildcard arm.
 - The read-side `Connection`, `Port`, `System`, `Zone` and
   `SpatialPlacement` are `#[non_exhaustive]`, so a later release's attribute
   can be added without a breaking change; they can no longer be built with a
   struct literal outside the crate.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
 
 ## [0.2.3] - 2026-09-28
 

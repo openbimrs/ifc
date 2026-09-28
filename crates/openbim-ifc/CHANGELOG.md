@@ -25,6 +25,32 @@ everything released before per-crate changelogs began.
 - `Sector` and `ContainerElements` are `#[non_exhaustive]`; they can no
   longer be built with a struct literal outside the crate.
 
+- Code previously behind `schema` is behind `schema-api`, which `schema`
+  and every release feature imply; `schema::for_version` returns a
+  `Result` (see `ifc-schema`).
+
+### Changed
+
+- The georeferencing and alignment conformance test gives its placeholder
+  `IfcPolyline` two points (`Points` is `LIST [2:?]`, checked since #111).
+- Door and window operation reads name the type-object entity per
+  verified release (IFC2X3, IFC4, IFC4X3) and refuse any other with
+  `ExactPropertyError::UnsupportedSchema`, instead of treating every
+  non-IFC2X3 release as IFC4.
+
+### Added
+
+- Per-release schema features (#112): `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2`,
+  `ifc4x3`, each providing the schema API with that one bundled table, and
+  `schema-api` (the API with no table). `schema` keeps its meaning: the API
+  with every release. A single-release build refuses the others through
+  `schema::for_version` with `schema::NotBundled`. Domain features link the
+  releases their crates read, so enabling one brings every release it
+  reads.
+- `compiled_features()` reports `schema-api` and each release feature.
+- `tests/intermediate_releases.rs`: IFC4X1 and IFC4X2 files resolve to
+  their own `SchemaVersion`, release id and bundled table (#33).
+
 ## [0.8.1] - 2026-09-28
 
 ### Changed

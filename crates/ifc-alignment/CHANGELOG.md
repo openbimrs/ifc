@@ -38,6 +38,14 @@ everything released before per-crate changelogs began.
   are `#[non_exhaustive]`; they can no longer be built with a struct literal
   outside the crate.
 
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- Pinned by test: `AlignmentView::for_model` refuses `IFC4X1` and
+  `IFC4X2` (their alignment model differs from IFC4X3).
+
 ## [0.3.2] - 2026-09-28
 
 ### Fixed

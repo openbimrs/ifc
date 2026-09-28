@@ -564,6 +564,14 @@ const DELIBERATELY_INVALID: &[&str] = &[
     // upstream's.
     "issue_2019_wall_two_overlapping_openings.ifc",
     "swept_disk_composite_arc_crankbar.ifc",
+    // Found by the aggregate-bounds check (#111). An upstream ifc-lite
+    // fixture (kept byte-identical, as above) whose #40
+    // IfcShapeRepresentation has an empty `Items` (declared SET [1:?]).
+    "nested_mapped_item.ifc",
+    // Its (A, A, B, B) sliver face #134 repeats points in an IfcPolyLoop
+    // (LIST [3:?] OF UNIQUE): the meshing coverage refuses it on purpose
+    // (test/fixtures/README.md), and the bounds check now names why.
+    "meshing_coverage.ifc",
 ];
 
 #[test]
@@ -605,8 +613,11 @@ fn every_well_formed_bundled_schema_fixture_validates_clean() {
     // schema-valid: its collapsed loop is a geometry refusal, not a schema error.
     // 39 since synthetic-surfaces/synthetic_space_boundary_face_surface.ifc
     // (#155), which `ifcopenshell.validate` also passes with zero issues.
+    // 37 since #111: the aggregate checks found meshing_coverage.ifc's sliver
+    // loop repeating points in a `LIST OF UNIQUE` and nested_mapped_item.ifc's
+    // empty `SET [1:?]`; both moved to DELIBERATELY_INVALID with reasons.
     assert_eq!(
-        checked, 39,
+        checked, 37,
         "all intended-clean fixtures must run; raw-header fail fixtures stay excluded"
     );
     assert!(

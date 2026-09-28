@@ -6,6 +6,14 @@
 
 use ifc_model::{Codec, Entity, EntityId, Model, Value};
 
+/// An in-memory model declaring IFC4: the readers refuse a model whose
+/// header binds no release.
+fn ifc4_model() -> Model {
+    let mut model = Model::new();
+    model.header_mut().schema = vec!["IFC4".to_owned()];
+    model
+}
+
 /// Build a model stating one distribution system with two members.
 /// The committed fixture: a real STEP file, not a synthetic model.
 pub fn fixture() -> Model {
@@ -18,7 +26,7 @@ pub fn fixture() -> Model {
 
 #[allow(dead_code)] // used by systems.rs; each test binary compiles this separately
 pub fn model_with_system() -> Model {
-    let mut model = Model::new();
+    let mut model = ifc4_model();
     let seg = EntityId(1);
     model.insert(seg, Entity::new("IfcFlowSegment", vec![]));
     let fitting = EntityId(2);

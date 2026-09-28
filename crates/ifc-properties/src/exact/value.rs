@@ -84,6 +84,7 @@ pub(super) fn typed_payload_matches(
                 }
                 _ => false,
             },
+            _ => false,
         });
     visited.remove(&key);
     matches

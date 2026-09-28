@@ -3,12 +3,15 @@
 //! ```text
 //! ifc-schema-generate ifc2x3 references/ifc-spec/ifc2x3-tc1/IFC2X3_TC1.exp
 //! ifc-schema-generate ifc4   references/ifc-spec/ifc4-add2-tc1/IFC4.exp
+//! ifc-schema-generate ifc4x1 references/ifc-spec/ifc4x1-final/IFC4x1.exp
+//! ifc-schema-generate ifc4x2 references/ifc-spec/ifc4x2-final/IFC4x2.exp
 //! ifc-schema-generate ifc4x3 references/ifc-spec/ifc4x3-add2/IFC4X3_ADD2.exp
 //! ```
 //!
-//! The artifact records structure only: names, supertypes, attributes and
-//! their types, derived-attribute names, enumerations, selects, and each
-//! WHERE rule's label. It never records a WHERE rule's expression. The
+//! The artifact records structure only: names, supertypes, attributes with
+//! their types and aggregation bounds, derived-attribute names, INVERSE
+//! attributes, UNIQUE rules, enumerations, selects, and each WHERE rule's
+//! label. It never records a WHERE rule's expression. The
 //! schemas are CC BY-ND 4.0, and the expressions are the one part of them
 //! that is authored text rather than the interface a STEP reader must agree
 //! with; nothing in this repository evaluates them. A test that needs the
@@ -25,6 +28,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use ifc_schema::artifact_encode_schema as encode_schema;
+use ifc_schema::Schema;
 
 /// A schema this tool can compile: selector, output file, and the counts a
 /// correct source must produce.
@@ -53,6 +57,20 @@ const TARGETS: &[Target] = &[
         entities: 776,
         types: 397,
         label: "IFC4 ADD2 TC1",
+    },
+    Target {
+        selector: "ifc4x1",
+        output: "data/ifc4x1-final.bin",
+        entities: 801,
+        types: 400,
+        label: "IFC4X1 FINAL",
+    },
+    Target {
+        selector: "ifc4x2",
+        output: "data/ifc4x2-final.bin",
+        entities: 816,
+        types: 407,
+        label: "IFC4X2 FINAL",
     },
     Target {
         selector: "ifc4x3",
@@ -90,20 +108,22 @@ fn run() -> Result<(), String> {
     let output = manifest_dir.join(target.output);
 
     let bytes = fs::read(&source).map_err(|error| format!("read {}: {error}", source.display()))?;
-    // EXPRESS files are Latin-1 and may use CRLF; both are handled by mapping
-    // each byte to its code point and letting the tokenizer treat `\r` as
-    // whitespace.
-    let text: String = bytes.iter().map(|&b| b as char).collect();
-    let mut parsed = openbim_step::express::parse(&text);
+    let parsed = Schema::from_express_bytes(&bytes);
     // Labels identify rules; expressions are schema text (see module docs).
-    for entity in &mut parsed.entities {
-        for rule in &mut entity.where_rules {
-            rule.expression.clear();
-        }
-    }
+    let entities = parsed
+        .entities()
+        .cloned()
+        .map(|mut entity| {
+            for rule in &mut entity.where_rules {
+                rule.expression.clear();
+            }
+            entity
+        })
+        .collect();
+    let parsed = Schema::new(parsed.name(), entities, parsed.types().cloned().collect());
 
-    let entity_count = parsed.entities.len();
-    let type_count = parsed.types.len();
+    let entity_count = parsed.entity_count();
+    let type_count = parsed.type_count();
     if entity_count != target.entities {
         return Err(format!(
             "{} declares {} entities, got {entity_count} -- wrong source file?",

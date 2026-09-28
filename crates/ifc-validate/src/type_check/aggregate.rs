@@ -9,12 +9,14 @@
 //! type whose values are lists. The parser keeps such a right-hand side as
 //! text, so its element type is read back out of that text here.
 //!
-//! # What stays unchecked
+//! # Nested aggregates
 //!
 //! A nested attribute aggregate (`LIST OF LIST OF IfcLengthMeasure`) is
-//! recorded by the parser with the token `LIST`, which names no type. Its
-//! members are therefore not judged -- "no basis" rather than a guess --
-//! until the schema tables retain nested element types.
+//! recorded with its innermost element type (#111), so the members of every
+//! level are judged against `IfcLengthMeasure`; `structure::bounds` judges
+//! the nesting itself. A defined type aliasing a nested aggregate still
+//! yields its inner keyword from the alias text and leaves its members
+//! unjudged.
 
 use ifc_schema::{Schema, TypeKind};
 

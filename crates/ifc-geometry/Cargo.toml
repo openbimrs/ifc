@@ -65,7 +65,7 @@ compile-reference-backend = [
 
 [dependencies]
 ifc-model.workspace = true
-ifc-schema.workspace = true
+ifc-schema = { workspace = true, features = ["default"] }
 # ADR 0003 (amended 2026-09-15): a bridge may depend on a bridge. Optional and
 # reached only through `lowering`, because `ifc-alignment` links the kernel
 # unconditionally and the kernel-free column must stay kernel-free.
@@ -99,6 +99,9 @@ axiolid-construct = { workspace = true, optional = true }
 axiolid-curve-evaluate-contract = { workspace = true, optional = true }
 
 [dev-dependencies]
+# `Schema::from_express` for tests that parse EXPRESS fixtures or the
+# fetched normative schemas; production builds never link the parser.
+ifc-schema = { workspace = true, features = ["default", "express"] }
 # Tests only: a concrete evaluator to inject, proving the seam works.
 # The library names the capability and links no implementation.
 axiolid-evaluate.workspace = true

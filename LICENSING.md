@@ -31,7 +31,8 @@ license.
 ### IFC schema-derived data
 
 `crates/ifc-schema/data/` and `crates/ifc-geometry/data/` hold tables derived
-from the buildingSMART IFC EXPRESS schemas (CC BY-ND 4.0): names, attribute
+from the buildingSMART IFC EXPRESS schemas (CC BY-ND 4.0) -- IFC2X3 TC1,
+IFC4 ADD2 TC1, IFC4.1 FINAL, IFC4.2 FINAL and IFC4.3 ADD2: names, attribute
 order and types, and rule labels, plus this repository's own analysis. They
 contain no schema text. The schemas themselves are fetched, never committed.
 See the `NOTICE.md` in each directory.

@@ -40,6 +40,14 @@ lockstep -- is archived in the
   are `#[non_exhaustive]`; they can no longer be built with a struct literal
   outside the crate.
 
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- Pinned by test: `AlignmentView::for_model` refuses `IFC4X1` and
+  `IFC4X2` (their alignment model differs from IFC4X3).
+
 ### ifc-approval
 
 ### Changed (breaking)
@@ -53,6 +61,16 @@ lockstep -- is archived in the
   `ApprovalAssociationDraft::new(global_id, related_objects,
   relating_approval)` plus field-named setters. Fields stay public.
 
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ### ifc-author
 
 ### Changed (breaking)
@@ -65,6 +83,16 @@ lockstep -- is archived in the
   `ApplicationDraft::new(developer, version, full_name, identifier)` and
   `OwnerHistoryDraft::new(owning_user, owning_application, creation_date)`
   (then e.g. `.change_action("ADDED")`). Fields stay public.
+
+### Changed
+
+- Links no bundled schema table itself: every entry point takes the
+  `Schema` from the caller. A consumer that used a table through this
+  crate's dependency (`ifc_schema::ifc4()`) enables it on its own
+  `ifc-schema` dependency (default features bundle every release).
+- A type declaration form `ifc-schema` adds later resolves as unresolved
+  (no refusal on shape, no form claim) instead of failing to compile;
+  follows `ifc_schema::TypeKind` becoming `#[non_exhaustive]`.
 
 ### ifc-classification
 
@@ -84,6 +112,18 @@ lockstep -- is archived in the
   - `ClassificationReferenceDraft::new()`, `DocumentReferenceDraft::new()` and
     `LibraryReferenceDraft::new()`, which now also derive `Default`
 
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- `UnsupportedSchema` reads "a release this crate has no verified layout
+  for" instead of "no bundled schema table".
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ### ifc-constraint
 
 ### Changed (breaking)
@@ -99,6 +139,16 @@ lockstep -- is archived in the
   - `ConstraintAssociationDraft::new(global_id, related_objects, relating_constraint)`
   - `ReferenceDraft::new()`, which now also derives `Default`
 
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ### ifc-control
 
 ### Changed (breaking)
@@ -108,6 +158,16 @@ lockstep -- is archived in the
   with `ControlDraft::new()` and
   `ControlAssignmentDraft::new(global_id, control, related_objects)` plus
   field-named setters (`.name("Permit")`). Fields stay public.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
 
 ### ifc-cost
 
@@ -156,6 +216,16 @@ lockstep -- is archived in the
   `Consistency`. A `match` outside the crate needs a wildcard arm, and the
   structs can no longer be built outside it.
 
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ### ifc-element-type
 
 ### Added
@@ -195,6 +265,16 @@ lockstep -- is archived in the
   and catalogue rows can no longer be built by struct literal outside the
   crate (use the generated constants).
 
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ### ifc-geometry
 
 ### Changed (breaking)
@@ -204,6 +284,16 @@ lockstep -- is archived in the
 - `RuleViolation`, `LoweredGeometry` and `MappedInstance` are
   `#[non_exhaustive]`; they can no longer be built with a struct literal
   outside the crate.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
 
 ### ifc-georef
 
@@ -219,6 +309,16 @@ lockstep -- is archived in the
 - The read-side `ProjectToMap` and `ProjectedCrs` are `#[non_exhaustive]`;
   they can no longer be built with a struct literal outside the crate.
 
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ### ifc-material
 
 ### Changed (breaking)
@@ -232,6 +332,18 @@ lockstep -- is archived in the
   `ProfileDraft::new(profile)` and a setter named after each optional field
   (`LayerDraft::new(0.2).material(brick).priority(80)`). Fields stay public.
 - `ResolvedAssignment` is `#[non_exhaustive]`.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- `UnsupportedSchema` reads "a release this crate has no verified layout
+  for" instead of "no bundled schema table".
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
 
 ### ifc-model
 
@@ -292,6 +404,16 @@ lockstep -- is archived in the
   refused with `TypeClassNotInSchema` where it was checked against the
   IFC4X3 class, and `WrongTypeClass.expected` names the release's class.
 
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ### ifc-properties
 
 ### Changed (breaking)
@@ -314,6 +436,22 @@ lockstep -- is archived in the
   and `ConversionBasedUnitDraft::new(unit_type, name, conversion_factor,
   dimensions)`. Fields stay public.
 
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- The unique-member-name rule of complex properties and quantities is
+  labelled per verified release only; another release is refused with
+  `UnsupportedSchema` rather than given the IFC4 label.
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+- Exact value checks treat a type declaration form `ifc-schema` adds later
+  as not matching; follows `ifc_schema::TypeKind` becoming
+  `#[non_exhaustive]`.
+
 ### ifc-resource
 
 ### Changed (breaking)
@@ -329,6 +467,19 @@ lockstep -- is archived in the
   `InventoryDraft::new(global_id)` and `AppliedValueDraft::new()`, each
   with a setter per remaining field. The drafts that already had builders
   keep them unchanged. Fields stay public where they were.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+- Enumeration checks treat a type declaration form `ifc-schema` adds later
+  as not matching; follows `ifc_schema::TypeKind` becoming
+  `#[non_exhaustive]`.
 
 ### ifc-schedule
 
@@ -397,7 +548,107 @@ lockstep -- is archived in the
   outside the crate needs a wildcard arm, and the structs can no longer be
   built outside it.
 
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ### ifc-schema
+
+### Changed (breaking)
+
+- Artifact format 3 records the facts above; format 1 and 2 artifacts
+  still decode, with those facts empty.
+- A nested aggregate attribute's `type_name` is its innermost element
+  type (`IfcLengthMeasure` for `LIST OF LIST OF IfcLengthMeasure`), where
+  the old extractor recorded the inner keyword `LIST`.
+- The `express` and `generation` features use `openbim-step` `=0.10.0`
+  (the runtime links none).
+- One cargo feature per bundled release (#112): `ifc2x3`, `ifc4`, `ifc4x1`,
+  `ifc4x2` and `ifc4x3`, all in `default`, so a default build bundles every
+  release as before. Each accessor (`ifc2x3()`, `ifc4()`, ...) exists only
+  with its feature. `ifc4` used to ship all bundled tables; it now ships
+  IFC4 only, so a build with `default-features = false, features =
+  ["ifc4"]` loses the other releases -- name them, or keep defaults.
+- `for_version` returns `Result<&Schema, NotBundled>` instead of
+  `Option<&Schema>`, and exists in every build. `Err(NotBundled)` means a
+  recognised release whose feature is off; an unknown `FILE_SCHEMA` token
+  is still `None` from `SchemaVersion::from_header_token`, so the two cases
+  stay distinguishable.
+- `write_structural_catalog` and `write_direct_structural_catalog` exist in
+  every build and return an `io::ErrorKind::Unsupported` error wrapping
+  `NotBundled` for a release that is not compiled in, instead of panicking.
+- `artifact_decode_schema` and `BundledSchemaError` need the new
+  `artifact` feature (enabled by every release feature) instead of `ifc4`.
+- `SchemaVersion` is `#[non_exhaustive]`, derives `Hash`, and gains
+  `Ifc4x1` and `Ifc4x2` (#33). A `match` on it needs a wildcard arm; a
+  consumer should refuse a release it has not verified, never alias it to
+  a neighbour. `write_structural_catalog` and
+  `write_direct_structural_catalog` accept the new versions.
+- `ifc-schema` owns its schema types. `Attribute`, `EntityDef`, `TypeDef`,
+  `TypeKind` and the newly exported `WhereRule` are defined here instead of
+  re-exported from `openbim_step::express`, and all five are
+  `#[non_exhaustive]`: construct them with `Attribute::new`,
+  `EntityDef::new`, `TypeDef::new`, `WhereRule::new` and the builder methods
+  (`with_supertype`, `with_attribute`, `with_derived`, `with_where_rule`,
+  `abstract_entity`, `optional`, `aggregate`), and give every `match` on
+  `TypeKind` a wildcard arm. Field names, `supertype()`, `is_derived()` and
+  `is_defined()` are unchanged. Rationale: an `openbim-step` release no
+  longer ripples into this crate's public API, and later facts about a
+  declaration (aggregate bounds, INVERSE, UNIQUE) can be added as fields
+  without another break.
+- `openbim-step` is an optional dependency, linked only by the new `express`
+  feature and by `generation`. The bundled tables decode straight into the
+  owned types; the default build no longer links a parser.
+- `Schema::from_express` and `Schema::from_express_bytes` require the new
+  `express` feature.
+- Removed: `Schema::from_parsed(ParsedSchema)` (use
+  `Schema::new(name, entities, types)`), `Schema::graph()` (the
+  `openbim_step::SchemaGraph` it returned is no longer held; `Schema`
+  answers the same queries itself), and the `express` module with its
+  `parse`/`ParsedSchema` re-exports (use `openbim_step::express` directly).
+- `EntityDef` no longer carries `redeclared`/`is_redeclared()`. No bundled
+  table ever recorded explicit redeclarations (the artifact format drops
+  them), so they were always empty for `ifc2x3()`, `ifc4()` and `ifc4x3()`.
+- `artifact_decode_schema` returns a `Schema` and `artifact_encode_schema`
+  (`generation`) takes one, instead of `openbim_step::express::ParsedSchema`.
+
+### Added
+
+- Aggregate bounds, nested aggregation, INVERSE and UNIQUE (#111):
+  `Attribute::aggregation` (levels outermost first, each an `Aggregation`
+  with `AggregateKind`, lower and upper `Bound`, `unique`,
+  `optional_elements`), `EntityDef::inverses` (`InverseAttribute`) and
+  `EntityDef::unique_rules` (`UniqueRule`), with builders. Additive: the
+  types were already `#[non_exhaustive]`. All five bundled tables are
+  regenerated with them: 115/153/158/160/165 INVERSE and 17/4/4/4/4
+  UNIQUE declarations for IFC2X3/IFC4/IFC4X1/IFC4X2/IFC4X3, pinned by
+  tests.
+- `NotBundled`, `SchemaVersion::is_bundled()` and
+  `SchemaVersion::feature_name()`.
+- IFC4X1 FINAL and IFC4X2 FINAL (#33): bundled tables
+  `data/ifc4x1-final.bin` (801 entities, 400 types) and
+  `data/ifc4x2-final.bin` (816 entities, 407 types), generated from the
+  official EXPRESS files like the other three; accessors `ifc4x1()` and
+  `ifc4x2()`; `for_version` returns them; header tokens `IFC4X1` and
+  `IFC4X2` (the files' own `SCHEMA` names); release ids `IFC4X1_FINAL`
+  and `IFC4X2_FINAL`. Tests pin that both counts differ from IFC4 and
+  IFC4X3 and that each carries its own release's entities.
+- `SchemaVersion::ALL`, every known version oldest first.
+- `Schema::new`, `Schema::entities()` and `Schema::types()` (declarations in
+  source order), `PartialEq`/`Eq` for `Schema`, and the `BundledSchemaError`
+  export.
+
+### Unchanged
+
+- The bundled artifacts are byte-identical: regenerating all three with the
+  ported generator reproduces the committed files, and `FORMAT_VERSION`
+  stays 2.
 
 ### Changed
 
@@ -460,6 +711,18 @@ lockstep -- is archived in the
   a wildcard arm outside the crate, and the structs can no longer be built
   by literal there.
 
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- The spatial classifier binds no release for an `IFC4X1` or `IFC4X2`
+  header (`release()` is `None`) and answers from the verified tables.
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ### ifc-structural
 
 ### Changed (breaking)
@@ -481,6 +744,19 @@ lockstep -- is archived in the
   - `MemberConnectionDraft::new(root, member, connection)`
   - `ActivityAssignmentDraft::new(root, relating_element, activity)`
   - `BoundaryConditionDraft::new()`
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+- Enumeration checks treat a type declaration form `ifc-schema` adds later
+  as not matching; follows `ifc_schema::TypeKind` becoming
+  `#[non_exhaustive]`.
 
 ### ifc-style
 
@@ -506,6 +782,23 @@ lockstep -- is archived in the
   `SurfaceStyleRenderingDraft::new(surface_colour, reflectance_method)` and
   `ImageTextureDraft::new(url_reference)`. Fields stay public.
 
+### Added
+
+- `StyleError::UnsupportedSchema`: `StyledItem::styles` refuses a
+  recognised release it is not verified for instead of applying the
+  IFC4X3 rule to it.
+
+### Changed
+
+- Links no bundled schema table itself: every entry point takes the
+  `Schema` from the caller. A consumer that used a table through this
+  crate's dependency (`ifc_schema::ifc4()`) enables it on its own
+  `ifc-schema` dependency (default features bundle every release).
+- `StyledItem::styles` reads IFC4X1 and IFC4X2 like IFC4: both declare
+  `Styles` over `IfcStyleAssignmentSelect`, which still admits
+  `IfcPresentationStyleAssignment`; only IFC4X3 narrowed it. Pinned
+  against both bundled tables.
+
 ### ifc-systems
 
 ### Changed (breaking)
@@ -514,12 +807,37 @@ lockstep -- is archived in the
   build it with `ClassifiedSystemDraft::new()` and the setters
   `description`, `object_type`, `predefined_type` and `long_name`. Fields
   stay public.
+
+- The bulk readers no longer fall back to the IFC4 table. `systems`,
+  `ports`, `zones`, `spatial_placements`, `role_inconsistencies`,
+  `ConnectionGraph::build` and `ElementRole::of` return
+  `Result<_, SchemaResolutionError>` and refuse a header that binds no
+  verified release: no `FILE_SCHEMA` (an in-memory model now needs a
+  header), several, IFC4X1/IFC4X2, or a release this build does not
+  bundle. `ElementRole::of` returns `Result<Option<_>, _>`.
+- `try_zones` is removed: `zones` now has the error channel it added.
+- IFC4X3 is verified for every reader (#215), not only the zone readers:
+  `schema_of` resolves it. Every fixed slot the readers use is pinned
+  against the IFC2X3, IFC4 and IFC4X3 tables, and `tests/ifc4x3.rs`
+  round-trips systems (including `IfcBuiltSystem`), both port
+  attachments, connections, flow roles and spatial placements through
+  IFC4X3 STEP text.
 - `SystemAnomaly` and `RoleInconsistency` are `#[non_exhaustive]`: a match
   needs a wildcard arm.
 - The read-side `Connection`, `Port`, `System`, `Zone` and
   `SpatialPlacement` are `#[non_exhaustive]`, so a later release's attribute
   can be added without a breaking change; they can no longer be built with a
   struct literal outside the crate.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
 
 ### ifc-tabular
 
@@ -529,6 +847,13 @@ lockstep -- is archived in the
   literals no longer compile outside the crate: build them with
   `SeriesDraft::new(name, start_time, end_time, data_type, data_origin)`
   and `ColumnDraft::new()` plus field-named setters. Fields stay public.
+
+### Changed
+
+- Links no bundled schema table itself: every entry point takes the
+  `Schema` from the caller. A consumer that used a table through this
+  crate's dependency (`ifc_schema::ifc4()`) enables it on its own
+  `ifc-schema` dependency (default features bundle every release).
 
 ### ifc-template-catalog
 
@@ -541,13 +866,49 @@ lockstep -- is archived in the
 
 ### ifc-validate
 
+### Added
+
+- Aggregate checks from the schema's bounds (#111): a level outside its
+  declared size (`structure.aggregate.too_few`,
+  `structure.aggregate.too_many`; `ARRAY [l:u]` needs exactly u-l+1), an
+  inner level of a nested aggregate that is not an aggregate
+  (`structure.aggregate.nesting`), and a repeated element in a `SET` or
+  `UNIQUE` level (`structure.aggregate.duplicate`). The members of a
+  `LIST OF LIST` are now type-checked against the innermost element type
+  (#215).
+- Every `UNIQUE` clause of the declared release is checked across the
+  declaring entity and its subtypes (`structure.unique.violation`), except
+  `IfcRoot.UR1`, which stays `global.UniqueGlobalId`.
+
 ### Changed (breaking)
 
+- `structure::duplicate_global_ids` and its rule id
+  `structure.unique.duplicate_global_id` are removed: the function
+  duplicated `global.UniqueGlobalId` and `validate` never ran it. Its
+  module now checks the release's UNIQUE clauses (`structure::unique_rules`,
+  run by `validate`).
+- No registered rule claims to need aggregate bounds any more:
+  `IfcPolyLoop.WR21` and `IfcPolyLoop.AllPointsSameDim` are unsupported
+  for needing an expression evaluator.
 - `Support` is `#[non_exhaustive]`: a match needs a wildcard arm.
 - `Finding` is `#[non_exhaustive]`; it can no longer be built with a struct
   literal outside the crate.
 - `Path` is `#[non_exhaustive]`, so a later release can name a new location
   kind; a match needs a wildcard arm.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- `validate_declared` validates IFC4X1 and IFC4X2 files against their own
+  bundled tables instead of refusing them as unknown. No WHERE rule is
+  registered for either release yet, so their report carries one
+  `where.release` finding (severity `Unsupported`) saying WHERE rules were
+  not evaluated, rather than reading as if they passed.
+- SELECT resolution treats a type declaration form `ifc-schema` adds later
+  like an undeclared member (fails closed); follows `ifc_schema::TypeKind`
+  becoming `#[non_exhaustive]`.
 
 ### openbim-ifc
 
@@ -557,6 +918,32 @@ lockstep -- is archived in the
   wildcard arm.
 - `Sector` and `ContainerElements` are `#[non_exhaustive]`; they can no
   longer be built with a struct literal outside the crate.
+
+- Code previously behind `schema` is behind `schema-api`, which `schema`
+  and every release feature imply; `schema::for_version` returns a
+  `Result` (see `ifc-schema`).
+
+### Changed
+
+- The georeferencing and alignment conformance test gives its placeholder
+  `IfcPolyline` two points (`Points` is `LIST [2:?]`, checked since #111).
+- Door and window operation reads name the type-object entity per
+  verified release (IFC2X3, IFC4, IFC4X3) and refuse any other with
+  `ExactPropertyError::UnsupportedSchema`, instead of treating every
+  non-IFC2X3 release as IFC4.
+
+### Added
+
+- Per-release schema features (#112): `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2`,
+  `ifc4x3`, each providing the schema API with that one bundled table, and
+  `schema-api` (the API with no table). `schema` keeps its meaning: the API
+  with every release. A single-release build refuses the others through
+  `schema::for_version` with `schema::NotBundled`. Domain features link the
+  releases their crates read, so enabling one brings every release it
+  reads.
+- `compiled_features()` reports `schema-api` and each release feature.
+- `tests/intermediate_releases.rs`: IFC4X1 and IFC4X2 files resolve to
+  their own `SchemaVersion`, release id and bundled table (#33).
 
 ## [0.8.1] - 2026-09-28
 

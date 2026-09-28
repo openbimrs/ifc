@@ -240,6 +240,14 @@ fn step_and_express_syntax_live_below_ifc() {
             "{consumer} must consume the generic openbim-step substrate"
         );
     }
+    // ifc-schema owns its declaration types and decodes its bundled tables
+    // without a parser; only the opt-in `express`/`generation` features link
+    // the EXPRESS extractor, so an openbim-step release cannot reach its
+    // default build or its API.
+    assert!(
+        optional_behind_compile(packages.get("ifc-schema").unwrap(), "openbim-step"),
+        "ifc-schema must link openbim-step only behind a non-default feature"
+    );
 
     for extracted in ["lexer.rs", "escape.rs", "header.rs", "partition.rs"] {
         assert!(

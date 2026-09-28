@@ -54,10 +54,7 @@ impl fmt::Display for BindingError {
             Self::InvalidValue(detail) => write!(f, "invalid IFC value: {detail}"),
             Self::OutOfRange(detail) => write!(f, "out of range: {detail}"),
             Self::UnsupportedSchema(token) => {
-                write!(
-                    f,
-                    "no bundled schema for {token:?}; expected IFC2X3, IFC4 or IFC4X3"
-                )
+                write!(f, "no bundled schema for {token:?} in this build")
             }
             Self::Io(detail) => write!(f, "cannot read file: {detail}"),
         }

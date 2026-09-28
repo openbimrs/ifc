@@ -9,6 +9,14 @@ use ifc_systems::{
     FlowNetwork, RoleInconsistency, SystemAnomaly,
 };
 
+/// An in-memory model declaring IFC4: the readers refuse a model whose
+/// header binds no release.
+fn ifc4_model() -> Model {
+    let mut model = Model::new();
+    model.header_mut().schema = vec!["IFC4".to_owned()];
+    model
+}
+
 // ---- SYS-FLOW ------------------------------------------------------------
 
 /// A role is read from the element type, by ancestry.
@@ -18,12 +26,12 @@ use ifc_systems::{
 #[test]
 fn element_roles_come_from_schema_ancestry() {
     let model = fixture();
-    let (ports, _) = ports(&model);
+    let (ports, _) = ports(&model).unwrap();
 
     let mut roles = std::collections::BTreeMap::new();
     for port in &ports {
         if let Some(element) = port.element {
-            if let Some(role) = ElementRole::of(&model, element) {
+            if let Some(role) = ElementRole::of(&model, element).unwrap() {
                 roles.insert(element, role);
             }
         }
@@ -62,7 +70,7 @@ fn element_roles_come_from_schema_ancestry() {
 /// independently, so only a cross-check finds it.
 #[test]
 fn an_element_with_no_inlet_is_reported() {
-    let mut model = Model::default();
+    let mut model = ifc4_model();
     let mut add = |id: u64, ty: &str, attrs: Vec<Value>| {
         model.insert(
             EntityId(id),
@@ -100,8 +108,8 @@ fn an_element_with_no_inlet_is_reported() {
         ],
     );
 
-    let (ports, _) = ports(&model);
-    let found = role_inconsistencies(&model, &ports);
+    let (ports, _) = ports(&model).unwrap();
+    let found = role_inconsistencies(&model, &ports).unwrap();
     assert!(
         found.iter().any(|i| matches!(
             i,
@@ -121,7 +129,7 @@ fn an_element_with_no_inlet_is_reported() {
 #[test]
 fn a_zone_member_that_wr1_forbids_is_excluded_and_reported() {
     let model = fixture();
-    let (found, anomalies) = zones(&model);
+    let (found, anomalies) = zones(&model).unwrap();
 
     let zone = found.first().expect("one zone");
     assert_eq!(zone.members.len(), 2, "only the two spaces are members");
@@ -144,7 +152,7 @@ fn a_zone_member_that_wr1_forbids_is_excluded_and_reported() {
 #[test]
 fn containment_and_referencing_are_not_merged() {
     let model = fixture();
-    let (placements, anomalies) = spatial_placements(&model);
+    let (placements, anomalies) = spatial_placements(&model).unwrap();
     assert!(
         anomalies.is_empty(),
         "fixture is well-formed: {anomalies:?}"
@@ -172,8 +180,8 @@ fn containment_and_referencing_are_not_merged() {
 #[test]
 fn downstream_and_upstream_differ() {
     let model = fixture();
-    let (ports, _) = ports(&model);
-    let (graph, _) = ConnectionGraph::build(&model);
+    let (ports, _) = ports(&model).unwrap();
+    let (graph, _) = ConnectionGraph::build(&model).unwrap();
     let network = FlowNetwork::build(&graph, &ports);
 
     // The first pipe in the heating chain.
@@ -203,8 +211,8 @@ fn downstream_and_upstream_differ() {
 #[test]
 fn an_unstated_direction_is_flagged_not_hidden() {
     let model = fixture();
-    let (ports, _) = ports(&model);
-    let (graph, _) = ConnectionGraph::build(&model);
+    let (ports, _) = ports(&model).unwrap();
+    let (graph, _) = ConnectionGraph::build(&model).unwrap();
     let network = FlowNetwork::build(&graph, &ports);
 
     let seg0 = ports
@@ -234,8 +242,8 @@ fn an_unstated_direction_is_flagged_not_hidden() {
 #[test]
 fn a_directed_query_terminates_on_a_loop() {
     let model = fixture();
-    let (ports, _) = ports(&model);
-    let (graph, _) = ConnectionGraph::build(&model);
+    let (ports, _) = ports(&model).unwrap();
+    let (graph, _) = ConnectionGraph::build(&model).unwrap();
     let network = FlowNetwork::build(&graph, &ports);
 
     for port in &ports {
@@ -255,8 +263,8 @@ fn a_directed_query_terminates_on_a_loop() {
 #[test]
 fn an_element_that_cannot_pass_flow_is_reported() {
     let model = fixture();
-    let (ports_list, _) = ports(&model);
-    let found = role_inconsistencies(&model, &ports_list);
+    let (ports_list, _) = ports(&model).unwrap();
+    let found = role_inconsistencies(&model, &ports_list).unwrap();
 
     let no_path = found
         .iter()
@@ -284,7 +292,7 @@ fn an_element_that_cannot_pass_flow_is_reported() {
 /// answer would silently include the wrong half of the network.
 #[test]
 fn a_sink_does_not_emit_downstream() {
-    let mut model = Model::default();
+    let mut model = ifc4_model();
     let mut add = |id: u64, ty: &str, attrs: Vec<Value>| {
         model.insert(
             EntityId(id),
@@ -349,8 +357,8 @@ fn a_sink_does_not_emit_downstream() {
         ],
     );
 
-    let (graph, _) = ConnectionGraph::build(&model);
-    let (ports_list, _) = ports(&model);
+    let (graph, _) = ConnectionGraph::build(&model).unwrap();
+    let (ports_list, _) = ports(&model).unwrap();
     let flow = FlowNetwork::build(&graph, &ports_list);
 
     // Downstream of element 1 reaches element 2 -- flow enters its SINK.
@@ -376,7 +384,7 @@ fn a_sink_does_not_emit_downstream() {
 /// last-writer-wins would hide a real modelling error.
 #[test]
 fn an_element_contained_twice_is_reported() {
-    let mut model = Model::default();
+    let mut model = ifc4_model();
     let mut add = |id: u64, ty: &str, attrs: Vec<Value>| {
         model.insert(
             EntityId(id),
@@ -404,7 +412,7 @@ fn an_element_contained_twice_is_reported() {
         );
     }
 
-    let (placements, anomalies) = spatial_placements(&model);
+    let (placements, anomalies) = spatial_placements(&model).unwrap();
 
     assert!(
         anomalies
@@ -431,8 +439,8 @@ fn an_element_contained_twice_is_reported() {
 #[test]
 fn flow_does_not_run_backwards_through_a_sink() {
     let model = fixture();
-    let (graph, _) = ConnectionGraph::build(&model);
-    let (ports_list, _) = ports(&model);
+    let (graph, _) = ConnectionGraph::build(&model).unwrap();
+    let (ports_list, _) = ports(&model).unwrap();
     let flow = FlowNetwork::build(&graph, &ports_list);
 
     let terminal = ports_list
@@ -464,8 +472,8 @@ fn flow_does_not_run_backwards_through_a_sink() {
 #[test]
 fn a_sink_cannot_emit_even_towards_an_accepting_port() {
     let model = fixture();
-    let (graph, _) = ConnectionGraph::build(&model);
-    let (ports_list, _) = ports(&model);
+    let (graph, _) = ConnectionGraph::build(&model).unwrap();
+    let (ports_list, _) = ports(&model).unwrap();
     let flow = FlowNetwork::build(&graph, &ports_list);
 
     let owner = |port: &str| {
@@ -500,8 +508,8 @@ fn a_sink_cannot_emit_even_towards_an_accepting_port() {
 #[test]
 fn a_one_way_spur_is_reachable_in_one_direction_only() {
     let model = fixture();
-    let (graph, _) = ConnectionGraph::build(&model);
-    let (ports_list, _) = ports(&model);
+    let (graph, _) = ConnectionGraph::build(&model).unwrap();
+    let (ports_list, _) = ports(&model).unwrap();
     let flow = FlowNetwork::build(&graph, &ports_list);
 
     let owner = |port: &str| {
