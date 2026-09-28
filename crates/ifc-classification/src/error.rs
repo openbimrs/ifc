@@ -150,9 +150,9 @@ pub enum ClassificationError {
         /// The entity record holding the value.
         target: EntityId,
     },
-    /// The header declares one schema this crate has no bundled table for,
+    /// The header declares one schema this crate has no verified layout for,
     /// so no slot position can be trusted. Never read as IFC4.
-    #[error("the header declares {schema}, which has no bundled schema table")]
+    #[error("the header declares {schema}, a release this crate has no verified layout for")]
     UnsupportedSchema {
         /// The `FILE_SCHEMA` token as written.
         schema: String,

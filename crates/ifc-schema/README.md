@@ -1,8 +1,9 @@
 # ifc-schema
 
 The IFC schema as data: the normative EXPRESS declarations for IFC2X3 TC1,
-IFC4 ADD2 TC1 and IFC4X3 ADD2 as bundled tables of entities, supertype chains,
-attributes and types, instead of generated structs per entity.
+IFC4 ADD2 TC1, IFC4X1 FINAL, IFC4X2 FINAL and IFC4X3 ADD2 as bundled tables of
+entities, supertype chains, attributes and types, instead of generated structs
+per entity.
 
 ```bash
 cargo add ifc-schema

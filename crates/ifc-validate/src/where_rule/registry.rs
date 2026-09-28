@@ -78,7 +78,8 @@ const NEEDS_INVERSES: &str =
     "not implemented uniformly: IFC2X3 requires INVERSE relationship semantics, which validation does not derive";
 const NEEDS_GEOMETRY: &str = "requires geometric evaluation, which validation does not perform";
 
-/// Every bundled release.
+/// Every release the registry is verified against (`tests/registry_scope.rs`).
+/// IFC4X1 and IFC4X2 are bundled but not yet scoped: no rule applies to them.
 const ALL: &[SchemaVersion] = &[
     SchemaVersion::Ifc2x3,
     SchemaVersion::Ifc4,

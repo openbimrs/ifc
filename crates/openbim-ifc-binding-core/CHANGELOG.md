@@ -24,3 +24,10 @@ a release here does not imply a release of any other crate in the family.
   `openbim-ifc-wasm`.
 - Non-finite reals (NaN, infinity) are refused for every host; STEP has no
   form for them.
+
+### Changed
+
+- `ids_of_type_including_subtypes` resolves IFC4X1 and IFC4X2 files through
+  their own bundled tables; `UnsupportedSchema` no longer lists the
+  releases in its message.
+

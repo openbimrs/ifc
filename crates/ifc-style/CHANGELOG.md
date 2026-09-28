@@ -12,6 +12,19 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `StyleError::UnsupportedSchema`: `StyledItem::styles` refuses a
+  recognised release it is not verified for instead of applying the
+  IFC4X3 rule to it.
+
+### Changed
+
+- `StyledItem::styles` reads IFC4X1 and IFC4X2 like IFC4: both declare
+  `Styles` over `IfcStyleAssignmentSelect`, which still admits
+  `IfcPresentationStyleAssignment`; only IFC4X3 narrowed it. Pinned
+  against both bundled tables.
+
 ## [0.3.0] - 2026-09-23
 
 ### Added

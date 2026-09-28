@@ -112,9 +112,9 @@ pub enum MaterialError {
         /// Number of `FILE_SCHEMA` declarations.
         schemas: usize,
     },
-    /// The header declares one schema this crate has no bundled table for,
+    /// The header declares one schema this crate has no verified layout for,
     /// so no slot position can be trusted.
-    #[error("the header declares {schema}, which has no bundled schema table")]
+    #[error("the header declares {schema}, a release this crate has no verified layout for")]
     UnsupportedSchema {
         /// The `FILE_SCHEMA` token as written.
         schema: String,

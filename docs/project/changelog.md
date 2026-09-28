@@ -20,6 +20,22 @@ lockstep -- is archived in the
 
 ## [Unreleased]
 
+### ifc-alignment
+
+### Changed
+
+- Pinned by test: `AlignmentView::for_model` refuses `IFC4X1` and
+  `IFC4X2` (their alignment model differs from IFC4X3).
+
+### ifc-approval
+
+### Changed
+
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ### ifc-author
 
 ### Changed
@@ -28,10 +44,102 @@ lockstep -- is archived in the
   (no refusal on shape, no form claim) instead of failing to compile;
   follows `ifc_schema::TypeKind` becoming `#[non_exhaustive]`.
 
+### ifc-classification
+
+### Changed
+
+- `UnsupportedSchema` reads "a release this crate has no verified layout
+  for" instead of "no bundled schema table".
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
+### ifc-constraint
+
+### Changed
+
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
+### ifc-control
+
+### Changed
+
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
+### ifc-cost
+
+### Changed
+
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
+### ifc-element-type
+
+### Changed
+
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
+### ifc-geometry
+
+### Changed
+
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
+### ifc-georef
+
+### Changed
+
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
+### ifc-material
+
+### Changed
+
+- `UnsupportedSchema` reads "a release this crate has no verified layout
+  for" instead of "no bundled schema table".
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
+### ifc-occurrence
+
+### Changed
+
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ### ifc-properties
 
 ### Changed
 
+- The unique-member-name rule of complex properties and quantities is
+  labelled per verified release only; another release is refused with
+  `UnsupportedSchema` rather than given the IFC4 label.
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
 - Exact value checks treat a type declaration form `ifc-schema` adds later
   as not matching; follows `ifc_schema::TypeKind` becoming
   `#[non_exhaustive]`.
@@ -40,14 +148,32 @@ lockstep -- is archived in the
 
 ### Changed
 
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
 - Enumeration checks treat a type declaration form `ifc-schema` adds later
   as not matching; follows `ifc_schema::TypeKind` becoming
   `#[non_exhaustive]`.
+
+### ifc-schedule
+
+### Changed
+
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
 
 ### ifc-schema
 
 ### Changed (breaking)
 
+- `SchemaVersion` is `#[non_exhaustive]`, derives `Hash`, and gains
+  `Ifc4x1` and `Ifc4x2` (#33). A `match` on it needs a wildcard arm; a
+  consumer should refuse a release it has not verified, never alias it to
+  a neighbour. `write_structural_catalog` and
+  `write_direct_structural_catalog` accept the new versions.
 - `ifc-schema` owns its schema types. `Attribute`, `EntityDef`, `TypeDef`,
   `TypeKind` and the newly exported `WhereRule` are defined here instead of
   re-exported from `openbim_step::express`, and all five are
@@ -78,6 +204,15 @@ lockstep -- is archived in the
 
 ### Added
 
+- IFC4X1 FINAL and IFC4X2 FINAL (#33): bundled tables
+  `data/ifc4x1-final.bin` (801 entities, 400 types) and
+  `data/ifc4x2-final.bin` (816 entities, 407 types), generated from the
+  official EXPRESS files like the other three; accessors `ifc4x1()` and
+  `ifc4x2()`; `for_version` returns them; header tokens `IFC4X1` and
+  `IFC4X2` (the files' own `SCHEMA` names); release ids `IFC4X1_FINAL`
+  and `IFC4X2_FINAL`. Tests pin that both counts differ from IFC4 and
+  IFC4X3 and that each carries its own release's entities.
+- `SchemaVersion::ALL`, every known version oldest first.
 - `Schema::new`, `Schema::entities()` and `Schema::types()` (declarations in
   source order), `PartialEq`/`Eq` for `Schema`, and the `BundledSchemaError`
   export.
@@ -96,21 +231,79 @@ lockstep -- is archived in the
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
 
+### ifc-spatial
+
+### Changed
+
+- The spatial classifier binds no release for an `IFC4X1` or `IFC4X2`
+  header (`release()` is `None`) and answers from the verified tables.
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ### ifc-structural
 
 ### Changed
 
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
 - Enumeration checks treat a type declaration form `ifc-schema` adds later
   as not matching; follows `ifc_schema::TypeKind` becoming
   `#[non_exhaustive]`.
+
+### ifc-style
+
+### Added
+
+- `StyleError::UnsupportedSchema`: `StyledItem::styles` refuses a
+  recognised release it is not verified for instead of applying the
+  IFC4X3 rule to it.
+
+### Changed
+
+- `StyledItem::styles` reads IFC4X1 and IFC4X2 like IFC4: both declare
+  `Styles` over `IfcStyleAssignmentSelect`, which still admits
+  `IfcPresentationStyleAssignment`; only IFC4X3 narrowed it. Pinned
+  against both bundled tables.
+
+### ifc-systems
+
+### Changed
+
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
 
 ### ifc-validate
 
 ### Changed
 
+- `validate_declared` validates IFC4X1 and IFC4X2 files against their own
+  bundled tables instead of refusing them as unknown. No WHERE rule is
+  registered for either release yet, so their report carries one
+  `where.release` finding (severity `Unsupported`) saying WHERE rules were
+  not evaluated, rather than reading as if they passed.
 - SELECT resolution treats a type declaration form `ifc-schema` adds later
   like an undeclared member (fails closed); follows `ifc_schema::TypeKind`
   becoming `#[non_exhaustive]`.
+
+### openbim-ifc
+
+### Changed
+
+- Door and window operation reads name the type-object entity per
+  verified release (IFC2X3, IFC4, IFC4X3) and refuse any other with
+  `ExactPropertyError::UnsupportedSchema`, instead of treating every
+  non-IFC2X3 release as IFC4.
+
+### Added
+
+- `tests/intermediate_releases.rs`: IFC4X1 and IFC4X2 files resolve to
+  their own `SchemaVersion`, release id and bundled table (#33).
 
 ## [0.8.1] - 2026-09-28
 

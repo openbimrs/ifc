@@ -57,6 +57,16 @@ pub(super) fn bind(model: &Model, type_name: &'static str) -> Result<Release, Ge
             )))
         }
     };
+    // IFC4X1 and IFC4X2 are bundled by ifc-schema, but no geometry writer is
+    // verified against their tables: refused, never aliased to a neighbour.
+    if !matches!(
+        version,
+        SchemaVersion::Ifc2x3 | SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3
+    ) {
+        return Err(unbound(format!(
+            "geometry authoring is not verified for {version:?}"
+        )));
+    }
     let schema =
         for_version(version).ok_or_else(|| unbound(format!("no bundled table for {version:?}")))?;
     if schema
@@ -160,5 +170,24 @@ impl Release {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod intermediate_release_tests {
+    use super::*;
+
+    /// IFC4X1 and IFC4X2 have bundled tables but no verified layout here:
+    /// refused with the unsupported-schema error, never read as IFC4/IFC4X3.
+    #[test]
+    fn ifc4x1_and_ifc4x2_are_refused_not_aliased() {
+        for token in ["IFC4X1", "IFC4X2"] {
+            let mut model = Model::new();
+            model.header_mut().schema = vec![token.to_owned()];
+            assert!(
+                matches!(bind(&model, "IfcGrid"), Err(GeometryError::AuthoringSchemaUnbound { .. }) if true),
+                "{token} must be refused"
+            );
+        }
     }
 }

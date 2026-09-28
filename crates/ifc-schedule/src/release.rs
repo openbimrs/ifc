@@ -28,15 +28,27 @@ pub(crate) struct Release {
     schema: &'static Schema,
 }
 
+/// Releases this crate's layouts are proven against.
+///
+/// `ifc-schema` also bundles IFC4X1 and IFC4X2, but nothing here is verified
+/// against their tables, so a header declaring either is refused with the
+/// unsupported-schema error rather than read through a neighbour's layout.
+const fn proven(version: SchemaVersion) -> bool {
+    matches!(
+        version,
+        SchemaVersion::Ifc2x3 | SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3
+    )
+}
+
 /// Bind `model`'s declared release.
 pub(crate) fn bind(model: &Model) -> Result<Release> {
     let version = match model.header().schema.as_slice() {
         [] => SchemaVersion::Ifc4,
-        [token] => SchemaVersion::from_header_token(token).ok_or_else(|| {
-            ScheduleAuthoringError::UnsupportedSchema {
+        [token] => SchemaVersion::from_header_token(token)
+            .filter(|version| proven(*version))
+            .ok_or_else(|| ScheduleAuthoringError::UnsupportedSchema {
                 schema: token.clone(),
-            }
-        })?,
+            })?,
         tokens => {
             return Err(ScheduleAuthoringError::MultipleSchemas {
                 schemas: tokens.len(),
@@ -236,5 +248,24 @@ fn admits_entity(schema: &Schema, declared: &str, depth: usize) -> bool {
             .iter()
             .any(|member| admits_entity(schema, member, depth - 1)),
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod intermediate_release_tests {
+    use super::*;
+
+    /// IFC4X1 and IFC4X2 have bundled tables but no verified layout here:
+    /// refused with the unsupported-schema error, never read as IFC4/IFC4X3.
+    #[test]
+    fn ifc4x1_and_ifc4x2_are_refused_not_aliased() {
+        for token in ["IFC4X1", "IFC4X2"] {
+            let mut model = Model::new();
+            model.header_mut().schema = vec![token.to_owned()];
+            assert!(
+                matches!(bind(&model), Err(ScheduleAuthoringError::UnsupportedSchema { schema }) if schema == token),
+                "{token} must be refused"
+            );
+        }
     }
 }

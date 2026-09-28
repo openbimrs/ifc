@@ -12,6 +12,18 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- Door and window operation reads name the type-object entity per
+  verified release (IFC2X3, IFC4, IFC4X3) and refuse any other with
+  `ExactPropertyError::UnsupportedSchema`, instead of treating every
+  non-IFC2X3 release as IFC4.
+
+### Added
+
+- `tests/intermediate_releases.rs`: IFC4X1 and IFC4X2 files resolve to
+  their own `SchemaVersion`, release id and bundled table (#33).
+
 ## [0.8.1] - 2026-09-28
 
 ### Changed

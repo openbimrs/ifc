@@ -12,6 +12,15 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- The spatial classifier binds no release for an `IFC4X1` or `IFC4X2`
+  header (`release()` is `None`) and answers from the verified tables.
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ## [0.2.4] - 2026-09-28
 
 ### Added

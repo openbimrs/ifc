@@ -24,6 +24,7 @@ fn every_spatial_record_round_trips_in_its_release() {
             SchemaVersion::Ifc2x3 => 22,
             SchemaVersion::Ifc4 => 32,
             SchemaVersion::Ifc4x3 => 36,
+            other => unreachable!("{other:?} is not swept"),
         };
         assert_eq!(authored.written.len(), expected, "{schema}");
 

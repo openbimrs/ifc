@@ -289,6 +289,8 @@ fn release_label(variant: &str) -> Result<&'static str, String> {
     match variant {
         "Ifc2x3" => Ok("IFC2X3"),
         "Ifc4" => Ok("IFC4"),
+        "Ifc4x1" => Ok("IFC4X1"),
+        "Ifc4x2" => Ok("IFC4X2"),
         "Ifc4x3" => Ok("IFC4X3"),
         other => Err(format!("{VALIDATION}: unknown release `{other}`")),
     }

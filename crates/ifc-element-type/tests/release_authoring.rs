@@ -99,6 +99,7 @@ fn the_whole_catalogue_is_written_in_every_release() {
             SchemaVersion::Ifc4x3 => (ALL.len() - 4, 0),
             SchemaVersion::Ifc4 => (100, 15),
             SchemaVersion::Ifc2x3 => (65, 50),
+            other => unreachable!("{other:?} is not swept"),
         };
         assert!(
             written >= min_written && absent >= min_absent,

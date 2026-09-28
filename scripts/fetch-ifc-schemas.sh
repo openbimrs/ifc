@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Fetch the three normative EXPRESS schemas the schema-backed tests need.
+# Fetch the normative EXPRESS schemas the schema-backed tests and the
+# ifc-schema artifact generator need.
 #
 # references/ifc-spec/ is a symlink to bulk storage and is NOT committed:
 # the schemas are CC BY-ND 4.0, so this repo does not redistribute them.
@@ -16,16 +17,24 @@ set -euo pipefail
 
 DEST="${1:-references/ifc-spec}"
 UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
-BASE="${IFC_SPEC_BASE:-https://standards.buildingsmart.org/IFC/RELEASE}"
+BASE="${IFC_SPEC_BASE:-https://standards.buildingsmart.org/IFC}"
 # The archive indexes the canonical origin, independent of BASE.
-ORIGIN="https://standards.buildingsmart.org/IFC/RELEASE"
+ORIGIN="https://standards.buildingsmart.org/IFC"
 ARCHIVE="https://web.archive.org/web"
 
-# rel-path | sha256 of LF-normalised bytes | url
+# rel-path | sha256 of LF-normalised bytes | url below $BASE
+#
+# IFC4X1 and IFC4X2 are the FINAL publications of the two minor releases
+# between IFC4 and IFC4X3. IFC4X2 was published under IFC/DEV/ rather than
+# IFC/RELEASE/; buildingSMART no longer serves that path, so it comes from
+# the archive of the same canonical URL, verified against the same pinned
+# checksum as every other source.
 SCHEMAS="
-ifc2x3-tc1/IFC2X3_TC1.exp bf89eda341bccec041df37dffb79f0b8d4e3d5411d07541560d05bf69d53fc3a IFC2x3/TC1/EXPRESS/IFC2X3_TC1.exp
-ifc4-add2-tc1/IFC4.exp a3e46d39a85c2b683e7167572165d74b4ff6f8ef7e7c1e7f314a4980a63c9edb IFC4/ADD2_TC1/EXPRESS/IFC4.exp
-ifc4x3-add2/IFC4X3_ADD2.exp f67c8762b13a099c28082061e6f16b9ef1284ceec34069792afc702725675860 IFC4_3/HTML/IFC4X3_ADD2.exp
+ifc2x3-tc1/IFC2X3_TC1.exp bf89eda341bccec041df37dffb79f0b8d4e3d5411d07541560d05bf69d53fc3a RELEASE/IFC2x3/TC1/EXPRESS/IFC2X3_TC1.exp
+ifc4-add2-tc1/IFC4.exp a3e46d39a85c2b683e7167572165d74b4ff6f8ef7e7c1e7f314a4980a63c9edb RELEASE/IFC4/ADD2_TC1/EXPRESS/IFC4.exp
+ifc4x1-final/IFC4x1.exp 29015743562212b0ead10f2536af125bc46510fd3bf2f4b9998dfbcc464490f5 RELEASE/IFC4_1/FINAL/EXPRESS/IFC4x1.exp
+ifc4x2-final/IFC4x2.exp b3d4ae9aab3123b25d0344bef05222e7545a1f2f2debcb274283e7571c7ea6e6 DEV/IFC4_2/FINAL/EXPRESS/IFC4x2.exp
+ifc4x3-add2/IFC4X3_ADD2.exp f67c8762b13a099c28082061e6f16b9ef1284ceec34069792afc702725675860 RELEASE/IFC4_3/HTML/IFC4X3_ADD2.exp
 "
 
 echo "$SCHEMAS" | while read -r rel want url; do

@@ -3,6 +3,8 @@
 //! ```text
 //! ifc-schema-generate ifc2x3 references/ifc-spec/ifc2x3-tc1/IFC2X3_TC1.exp
 //! ifc-schema-generate ifc4   references/ifc-spec/ifc4-add2-tc1/IFC4.exp
+//! ifc-schema-generate ifc4x1 references/ifc-spec/ifc4x1-final/IFC4x1.exp
+//! ifc-schema-generate ifc4x2 references/ifc-spec/ifc4x2-final/IFC4x2.exp
 //! ifc-schema-generate ifc4x3 references/ifc-spec/ifc4x3-add2/IFC4X3_ADD2.exp
 //! ```
 //!
@@ -54,6 +56,20 @@ const TARGETS: &[Target] = &[
         entities: 776,
         types: 397,
         label: "IFC4 ADD2 TC1",
+    },
+    Target {
+        selector: "ifc4x1",
+        output: "data/ifc4x1-final.bin",
+        entities: 801,
+        types: 400,
+        label: "IFC4X1 FINAL",
+    },
+    Target {
+        selector: "ifc4x2",
+        output: "data/ifc4x2-final.bin",
+        entities: 816,
+        types: 407,
+        label: "IFC4X2 FINAL",
     },
     Target {
         selector: "ifc4x3",

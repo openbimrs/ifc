@@ -8,10 +8,15 @@ Provenance for the bundled schema artifacts in this directory.
 |---|---|
 | `ifc2x3-tc1.bin` | IFC2x3 TC1 EXPRESS schema (`IFC2X3_TC1.exp`) |
 | `ifc4-add2-tc1.bin` | IFC4 ADD2 TC1 EXPRESS schema (`IFC4.exp`) |
+| `ifc4x1-final.bin` | IFC4.1 FINAL EXPRESS schema (`IFC4x1.exp`) |
+| `ifc4x2-final.bin` | IFC4.2 FINAL EXPRESS schema (`IFC4x2.exp`) |
 | `ifc4x3-add2.bin` | IFC4.3 ADD2 EXPRESS schema (`IFC4X3_ADD2.exp`) |
 
 The schemas are published by buildingSMART International at
-<https://standards.buildingsmart.org/> under CC BY-ND 4.0. They are not
+<https://standards.buildingsmart.org/> under CC BY-ND 4.0. IFC4.2 was
+published under `IFC/DEV/IFC4_2/FINAL/`, which buildingSMART no longer
+serves; the fetch script reads the archived copy of that URL and verifies it
+against the same pinned checksum. They are not
 redistributed here: `scripts/fetch-ifc-schemas.sh` fetches them into the
 gitignored `references/ifc-spec/`, which is never a build dependency.
 

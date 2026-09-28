@@ -14,6 +14,10 @@ everything released before per-crate changelogs began.
 
 ### Changed
 
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
 - Enumeration checks treat a type declaration form `ifc-schema` adds later
   as not matching; follows `ifc_schema::TypeKind` becoming
   `#[non_exhaustive]`.

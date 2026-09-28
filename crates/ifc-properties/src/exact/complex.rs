@@ -112,11 +112,25 @@ impl Family {
     }
 
     /// The release's label of the unique-member-name rule, if it has one.
-    fn unique_names_rule(self, version: SchemaVersion) -> Option<&'static str> {
+    ///
+    /// Only the releases exact resolution is verified for are named; any
+    /// other is refused rather than given a neighbour's label.
+    fn unique_names_rule(
+        self,
+        version: SchemaVersion,
+    ) -> Result<Option<&'static str>, ExactPropertyError> {
         match (self, version) {
-            (Self::Properties, _) => Some("WR22"),
-            (Self::Quantities, SchemaVersion::Ifc2x3) => None,
-            (Self::Quantities, _) => Some("UniqueQuantityNames"),
+            (
+                Self::Properties,
+                SchemaVersion::Ifc2x3 | SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3,
+            ) => Ok(Some("WR22")),
+            (Self::Quantities, SchemaVersion::Ifc2x3) => Ok(None),
+            (Self::Quantities, SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3) => {
+                Ok(Some("UniqueQuantityNames"))
+            }
+            (_, other) => Err(ExactPropertyError::UnsupportedSchema {
+                schema: format!("{other:?}"),
+            }),
         }
     }
 }
@@ -180,7 +194,7 @@ impl<'m> Walk<'m> {
             }
             let (member, name) = self.member(id, family, member_id)?;
             if !names.insert(name) {
-                if let Some(rule) = family.unique_names_rule(self.release.version) {
+                if let Some(rule) = family.unique_names_rule(self.release.version)? {
                     return Err(ExactPropertyError::InconsistentValues { entity: id, rule });
                 }
             }

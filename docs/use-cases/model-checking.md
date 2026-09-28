@@ -25,8 +25,10 @@ below); `validate_declared` picks them from the file.
 
 Reading is permissive on purpose, so validation is a separate, explicit pass.
 `validate_declared` resolves the file's own `FILE_SCHEMA` token to the bundled
-IFC2x3 TC1, IFC4 ADD2 TC1 or IFC4X3 ADD2 tables and checks the model against
-exactly that release. A file that declares no schema, an unrecognised token,
+IFC2x3 TC1, IFC4 ADD2 TC1, IFC4X1 FINAL, IFC4X2 FINAL or IFC4X3 ADD2 tables
+and checks the model against exactly that release. No WHERE rule is registered
+for IFC4X1 or IFC4X2 yet; their reports carry one `where.release` finding
+saying so. A file that declares no schema, an unrecognised token,
 or a release this build bundles no tables for is a `ValidateError`, never a
 validation against a guessed release.
 

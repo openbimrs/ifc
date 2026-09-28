@@ -14,6 +14,11 @@ everything released before per-crate changelogs began.
 
 ### Changed (breaking)
 
+- `SchemaVersion` is `#[non_exhaustive]`, derives `Hash`, and gains
+  `Ifc4x1` and `Ifc4x2` (#33). A `match` on it needs a wildcard arm; a
+  consumer should refuse a release it has not verified, never alias it to
+  a neighbour. `write_structural_catalog` and
+  `write_direct_structural_catalog` accept the new versions.
 - `ifc-schema` owns its schema types. `Attribute`, `EntityDef`, `TypeDef`,
   `TypeKind` and the newly exported `WhereRule` are defined here instead of
   re-exported from `openbim_step::express`, and all five are
@@ -44,6 +49,15 @@ everything released before per-crate changelogs began.
 
 ### Added
 
+- IFC4X1 FINAL and IFC4X2 FINAL (#33): bundled tables
+  `data/ifc4x1-final.bin` (801 entities, 400 types) and
+  `data/ifc4x2-final.bin` (816 entities, 407 types), generated from the
+  official EXPRESS files like the other three; accessors `ifc4x1()` and
+  `ifc4x2()`; `for_version` returns them; header tokens `IFC4X1` and
+  `IFC4X2` (the files' own `SCHEMA` names); release ids `IFC4X1_FINAL`
+  and `IFC4X2_FINAL`. Tests pin that both counts differ from IFC4 and
+  IFC4X3 and that each carries its own release's entities.
+- `SchemaVersion::ALL`, every known version oldest first.
 - `Schema::new`, `Schema::entities()` and `Schema::types()` (declarations in
   source order), `PartialEq`/`Eq` for `Schema`, and the `BundledSchemaError`
   export.

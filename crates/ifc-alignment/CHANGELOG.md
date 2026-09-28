@@ -12,6 +12,11 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- Pinned by test: `AlignmentView::for_model` refuses `IFC4X1` and
+  `IFC4X2` (their alignment model differs from IFC4X3).
+
 ## [0.3.2] - 2026-09-28
 
 ### Fixed

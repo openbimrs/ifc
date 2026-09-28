@@ -14,6 +14,11 @@ everything released before per-crate changelogs began.
 
 ### Changed
 
+- `validate_declared` validates IFC4X1 and IFC4X2 files against their own
+  bundled tables instead of refusing them as unknown. No WHERE rule is
+  registered for either release yet, so their report carries one
+  `where.release` finding (severity `Unsupported`) saying WHERE rules were
+  not evaluated, rather than reading as if they passed.
 - SELECT resolution treats a type declaration form `ifc-schema` adds later
   like an undeclared member (fails closed); follows `ifc_schema::TypeKind`
   becoming `#[non_exhaustive]`.

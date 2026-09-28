@@ -74,7 +74,7 @@ pub use artifact::encode_schema as artifact_encode_schema;
 pub use artifact::BundledSchemaError;
 pub use attribute::Attribute;
 #[cfg(feature = "ifc4")]
-pub use bundled::{for_version, ifc2x3, ifc4, ifc4x3};
+pub use bundled::{for_version, ifc2x3, ifc4, ifc4x1, ifc4x2, ifc4x3};
 pub use entity::{EntityDef, WhereRule};
 #[cfg(feature = "ifc4")]
 pub use export::{

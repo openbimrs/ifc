@@ -120,7 +120,9 @@ impl<'m> ResourceView<'m, 'static> {
         let schema = match version {
             SchemaVersion::Ifc4 => ifc4(),
             SchemaVersion::Ifc4x3 => ifc4x3(),
-            SchemaVersion::Ifc2x3 => {
+            // IFC2X3 predates these layouts; IFC4X1 and IFC4X2 are bundled
+            // by ifc-schema but not verified here. Refused, never aliased.
+            _ => {
                 return Err(ResourceError::UnsupportedSchema {
                     token: token.clone(),
                 });
@@ -514,6 +516,28 @@ impl<'m, 's> Record<'m, 's> {
             entity: self.id,
             attribute,
             expected,
+        }
+    }
+}
+
+#[cfg(test)]
+mod intermediate_release_tests {
+    use super::*;
+
+    /// IFC4X1 and IFC4X2 have bundled tables but no verified layout here:
+    /// refused with the unsupported-schema error, never read as IFC4/IFC4X3.
+    #[test]
+    fn ifc4x1_and_ifc4x2_are_refused_not_aliased() {
+        for token in ["IFC4X1", "IFC4X2"] {
+            let mut model = Model::new();
+            model.header_mut().schema = vec![token.to_owned()];
+            assert!(
+                matches!(
+                    ResourceView::for_model(&model),
+                    Err(ResourceError::UnsupportedSchema { token: found }) if found == token
+                ),
+                "{token} must be refused"
+            );
         }
     }
 }

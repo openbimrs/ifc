@@ -41,9 +41,18 @@ pub(crate) struct Layout {
 
 /// The layout of `version`, for writers that take no model and write one
 /// fixed release.
+///
+/// IFC4X1 and IFC4X2 are bundled by `ifc-schema` but these writers are not
+/// verified against them, so they are refused like an unbundled release.
 pub(crate) fn layout(version: SchemaVersion) -> PropertyResult<Layout> {
-    let schema = for_version(version).ok_or_else(|| PropertyError::UnsupportedSchema {
-        schema: format!("{version:?}"),
+    let proven = matches!(
+        version,
+        SchemaVersion::Ifc2x3 | SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3
+    );
+    let schema = for_version(version).filter(|_| proven).ok_or_else(|| {
+        PropertyError::UnsupportedSchema {
+            schema: format!("{version:?}"),
+        }
     })?;
     Ok(Layout { version, schema })
 }
@@ -52,11 +61,11 @@ pub(crate) fn layout(version: SchemaVersion) -> PropertyResult<Layout> {
 pub(crate) fn bind(model: &Model) -> PropertyResult<Layout> {
     let version = match model.header().schema.as_slice() {
         [] => SchemaVersion::Ifc4,
-        [token] => SchemaVersion::from_header_token(token).ok_or_else(|| {
-            PropertyError::UnsupportedSchema {
+        [token] => SchemaVersion::from_header_token(token)
+            .filter(|version| layout(*version).is_ok())
+            .ok_or_else(|| PropertyError::UnsupportedSchema {
                 schema: token.clone(),
-            }
-        })?,
+            })?,
         tokens => {
             return Err(PropertyError::MultipleSchemas {
                 schemas: tokens.len(),
@@ -246,4 +255,23 @@ pub(crate) fn projected(tx: &Transaction, model: &Model, id: EntityId) -> Option
         }
     }
     current
+}
+
+#[cfg(test)]
+mod intermediate_release_tests {
+    use super::*;
+
+    /// IFC4X1 and IFC4X2 have bundled tables but no verified layout here:
+    /// refused with the unsupported-schema error, never read as IFC4/IFC4X3.
+    #[test]
+    fn ifc4x1_and_ifc4x2_are_refused_not_aliased() {
+        for token in ["IFC4X1", "IFC4X2"] {
+            let mut model = Model::new();
+            model.header_mut().schema = vec![token.to_owned()];
+            assert!(
+                matches!(bind(&model), Err(PropertyError::UnsupportedSchema { schema }) if schema == token),
+                "{token} must be refused"
+            );
+        }
+    }
 }

@@ -183,6 +183,7 @@ fn every_slot_resolves_per_release_or_is_absent_by_schema() {
                                 }),
                         }
                     }
+                    other => unreachable!("{other:?} is not swept"),
                 };
                 assert_eq!(resolved, expected, "{version:?} {entity}.{attribute}");
             }

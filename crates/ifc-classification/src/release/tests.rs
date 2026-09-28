@@ -299,6 +299,7 @@ fn every_slot_resolves_per_release_or_is_absent_by_schema() {
                             attribute,
                             schema: version,
                         }),
+                    other => unreachable!("{other:?} is not swept"),
                 };
                 assert_eq!(
                     release.slot(entity, id, attribute),

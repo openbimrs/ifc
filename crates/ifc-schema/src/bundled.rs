@@ -14,7 +14,8 @@
 //!
 //! # Bundled versions
 //!
-//! IFC2x3 TC1, IFC4 ADD2 TC1, and IFC4X3 ADD2 are separate artifacts. Version
+//! IFC2x3 TC1, IFC4 ADD2 TC1, IFC4X1 FINAL, IFC4X2 FINAL and IFC4X3 ADD2 are
+//! separate artifacts. Version
 //! dispatch never substitutes one table for another; that would turn schema
 //! validation into confident nonsense.
 
@@ -27,6 +28,8 @@ use crate::version::SchemaVersion;
 static IFC4: OnceLock<Schema> = OnceLock::new();
 static IFC4X3: OnceLock<Schema> = OnceLock::new();
 static IFC2X3: OnceLock<Schema> = OnceLock::new();
+static IFC4X1: OnceLock<Schema> = OnceLock::new();
+static IFC4X2: OnceLock<Schema> = OnceLock::new();
 
 /// The bundled IFC2x3 TC1 schema (653 entities, 327 types).
 ///
@@ -62,6 +65,32 @@ pub fn ifc4() -> &'static Schema {
     })
 }
 
+/// The bundled IFC4X1 FINAL schema (801 entities, 400 types).
+///
+/// Its own artifact: IFC4X1 adds the alignment entities to IFC4 and is not
+/// an alias for either IFC4 or IFC4X3.
+#[must_use]
+pub fn ifc4x1() -> &'static Schema {
+    IFC4X1.get_or_init(|| {
+        decode_schema(include_bytes!("../data/ifc4x1-final.bin")).expect(
+            "the bundled IFC4X1 artifact is produced and verified by this crate's own build",
+        )
+    })
+}
+
+/// The bundled IFC4X2 FINAL schema (816 entities, 407 types).
+///
+/// Its own artifact: IFC4X2 adds bridges to IFC4X1 and is not an alias for
+/// IFC4 or IFC4X3.
+#[must_use]
+pub fn ifc4x2() -> &'static Schema {
+    IFC4X2.get_or_init(|| {
+        decode_schema(include_bytes!("../data/ifc4x2-final.bin")).expect(
+            "the bundled IFC4X2 artifact is produced and verified by this crate's own build",
+        )
+    })
+}
+
 /// The bundled IFC4X3 ADD2 schema (876 entities, 436 types).
 ///
 /// Parsed once on first use from its own generated artifact. It is never an
@@ -85,6 +114,8 @@ pub fn for_version(version: SchemaVersion) -> Option<&'static Schema> {
     match version {
         SchemaVersion::Ifc2x3 => Some(ifc2x3()),
         SchemaVersion::Ifc4 => Some(ifc4()),
+        SchemaVersion::Ifc4x1 => Some(ifc4x1()),
+        SchemaVersion::Ifc4x2 => Some(ifc4x2()),
         SchemaVersion::Ifc4x3 => Some(ifc4x3()),
     }
 }
@@ -299,34 +330,78 @@ mod tests {
     fn the_generator_guards_match_the_bundled_artifacts() {
         // Parsed out of the generator's TARGETS table so the two cannot drift.
         let source = include_str!("../tools/generate.rs");
-        let expected: Vec<(usize, usize)> = source
+        let expected: Vec<(String, usize, usize)> = source
             .split("Target {")
             .skip(1)
             .filter_map(|block| {
-                let number = |key: &str| -> Option<usize> {
+                let field = |key: &str| -> Option<&str> {
                     let start = block.find(key)? + key.len();
                     let rest = &block[start..];
                     let end = rest.find(',')?;
-                    rest[..end].trim().parse().ok()
+                    Some(rest[..end].trim())
                 };
-                Some((number("entities:")?, number("types:")?))
+                Some((
+                    field("selector:")?.trim_matches('"').to_owned(),
+                    field("entities:")?.parse().ok()?,
+                    field("types:")?.parse().ok()?,
+                ))
             })
             .collect();
-        assert_eq!(expected.len(), 3, "three schemas are generated");
+        let bundled = [
+            ("ifc2x3", SchemaVersion::Ifc2x3, ifc2x3()),
+            ("ifc4", SchemaVersion::Ifc4, ifc4()),
+            ("ifc4x1", SchemaVersion::Ifc4x1, ifc4x1()),
+            ("ifc4x2", SchemaVersion::Ifc4x2, ifc4x2()),
+            ("ifc4x3", SchemaVersion::Ifc4x3, ifc4x3()),
+        ];
+        assert_eq!(expected.len(), bundled.len(), "one generator target each");
+        for ((selector, entities, types), (name, version, schema)) in expected.iter().zip(bundled) {
+            assert_eq!(selector, name, "generator target order");
+            assert_eq!(
+                (*entities, *types),
+                (schema.entity_count(), schema.type_count()),
+                "{name} generator guard vs the committed artifact"
+            );
+            assert_eq!(
+                (*entities, *types),
+                (
+                    version.expected_entity_count(),
+                    version.expected_type_count()
+                ),
+                "{name} generator guard vs SchemaVersion"
+            );
+            assert_eq!(schema.version(), Some(version), "{name} declared name");
+        }
+    }
+
+    /// IFC4X1 and IFC4X2 are their own tables, not a paste of a neighbour:
+    /// each count differs from IFC4 and IFC4X3, and each carries the
+    /// entities its release introduced and none its successor added.
+    #[test]
+    fn the_intermediate_releases_are_distinct_tables() {
+        for schema in [ifc4x1(), ifc4x2()] {
+            for neighbour in [ifc4(), ifc4x3()] {
+                assert_ne!(schema.entity_count(), neighbour.entity_count());
+            }
+        }
+        assert_ne!(ifc4x1().entity_count(), ifc4x2().entity_count());
+
+        assert!(ifc4().entity("IfcAlignment").is_none());
+        assert!(ifc4x1().entity("IfcAlignment").is_some());
+        assert!(ifc4x1().entity("IfcAlignmentCurve").is_some());
+        assert!(ifc4x1().entity("IfcBridge").is_none());
+        assert!(ifc4x2().entity("IfcBridge").is_some());
+        assert!(ifc4x2().entity("IfcBuiltElement").is_none());
+        assert!(ifc4x3().entity("IfcAlignmentCurve").is_none());
+
         assert_eq!(
-            expected[0],
-            (ifc2x3().entity_count(), ifc2x3().type_count()),
-            "ifc2x3 generator guard vs the committed artifact"
+            for_version(SchemaVersion::Ifc4x1).map(Schema::name),
+            Some("IFC4X1")
         );
         assert_eq!(
-            expected[1],
-            (ifc4().entity_count(), ifc4().type_count()),
-            "ifc4 generator guard vs the committed artifact"
+            for_version(SchemaVersion::Ifc4x2).map(Schema::name),
+            Some("IFC4X2")
         );
-        assert_eq!(
-            expected[2],
-            (ifc4x3().entity_count(), ifc4x3().type_count()),
-            "ifc4x3 generator guard vs the committed artifact"
-        );
+        assert!(std::ptr::eq(ifc4x1(), ifc4x1()), "constructor must cache");
     }
 }
