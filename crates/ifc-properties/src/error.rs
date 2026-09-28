@@ -377,18 +377,6 @@ pub enum PropertyError {
         /// The release the model declares.
         schema: SchemaVersion,
     },
-    /// The model's release requires an attribute the authoring call leaves
-    /// unset, such as the IFC2X3 `IfcRoot.OwnerHistory` (#191). It is refused
-    /// rather than written as `$`; the `*_with_owner_history` writers take
-    /// the `IfcOwnerHistory` IFC2X3 needs.
-    AuthoringRequired {
-        /// The entity type being authored.
-        entity: &'static str,
-        /// The required attribute, as the release names it.
-        attribute: &'static str,
-        /// The release the model declares.
-        schema: SchemaVersion,
-    },
     /// The record to edit does not have the attribute count its release
     /// declares, so no slot in it can be trusted.
     MalformedEntitySlots {
@@ -400,6 +388,20 @@ pub enum PropertyError {
         expected: usize,
         /// Attribute count the record has.
         actual: usize,
+    },
+    /// The model's release requires an attribute the authoring call leaves
+    /// unset, such as the IFC2X3 `IfcRoot.OwnerHistory` (#191). It is refused
+    /// rather than written as `$`; the `*_with_owner_history` writers take
+    /// the `IfcOwnerHistory` IFC2X3 needs.
+    //
+    // Last, so no earlier variant's implicit discriminant moves.
+    AuthoringRequired {
+        /// The entity type being authored.
+        entity: &'static str,
+        /// The required attribute, as the release names it.
+        attribute: &'static str,
+        /// The release the model declares.
+        schema: SchemaVersion,
     },
 }
 
