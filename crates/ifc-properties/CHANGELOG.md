@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-09-28
+
 ### Added
 
 - `exact_material_property`, `exact_material_properties_where` and
@@ -581,7 +583,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-properties-v0.5.2...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-properties-v0.5.3...HEAD
+[0.5.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.5.3
 [0.5.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.5.2
 [0.5.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.5.1
 [0.5.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.5.0

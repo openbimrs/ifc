@@ -35,7 +35,7 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 | [`ifc-element-type`](./crates/ifc-element-type) | <span class="status-implemented">Implemented</span> | 0.2.1 | Element, resource, and process type definitions: the IfcTypeObject catalogue. |
 | [`ifc-material`](./crates/ifc-material) | <span class="status-implemented">Implemented</span> | 0.3.0 | Material definitions: layer sets, profile sets, constituents, usage. |
 | [`ifc-occurrence`](./crates/ifc-occurrence) | <span class="status-implemented">Implemented</span> | 0.2.1 | Built element and distribution occurrence classes and their type pairing. |
-| [`ifc-properties`](./crates/ifc-properties) | <span class="status-implemented">Implemented</span> | 0.5.2 | Property sets, quantities, and unit resolution. No geometry. |
+| [`ifc-properties`](./crates/ifc-properties) | <span class="status-implemented">Implemented</span> | 0.5.3 | Property sets, quantities, and unit resolution. No geometry. |
 | [`ifc-resource`](./crates/ifc-resource) | <span class="status-partial">Partial</span> | 0.2.0 | Construction resources: labour, equipment, material, crew, subcontract. |
 | [`ifc-schedule`](./crates/ifc-schedule) | <span class="status-implemented">Implemented</span> | 0.2.1 | IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage. |
 | [`ifc-spatial`](./crates/ifc-spatial) | <span class="status-implemented">Implemented</span> | 0.2.4 | IFC spatial containment and objectified relationship traversal: project, site, building, storey, element. |

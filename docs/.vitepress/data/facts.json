@@ -205,10 +205,10 @@
           "url": "https://crates.io/crates/ifc-properties"
         }
       ],
-      "released": "0.5.2",
+      "released": "0.5.3",
       "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.5.2"
+      "version": "0.5.3"
     },
     "ifc-resource": {
       "description": "Construction resources: labour, equipment, material, crew, subcontract.",
