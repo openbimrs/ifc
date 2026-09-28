@@ -1,43 +1,53 @@
-//! The IFC release `IfcRelAssociatesConstraint` is authored against (#202).
+//! The IFC release constraint records are read and written against (#202,
+//! #212).
 //!
-//! `IfcRoot.OwnerHistory` is required in IFC2X3 TC1 and `OPTIONAL` from IFC4
-//! on, and `IfcRelAssociates.RelatedObjects` is `SET OF IfcRoot` with WR21 in
-//! IFC2X3 where IFC4 and IFC4X3 declare `SET OF IfcDefinitionSelect`:
+//! The layouts differ, from the EXPRESS sources:
 //!
 //! ```text
-//! IFC2X3_TC1   OwnerHistory : IfcOwnerHistory;
-//!              RelatedObjects : SET [1:?] OF IfcRoot;   (WR21)
-//! IFC4         OwnerHistory : OPTIONAL IfcOwnerHistory;
-//! IFC4X3_ADD2  RelatedObjects : SET [1:?] OF IfcDefinitionSelect;
+//! IfcMetric
+//!   IFC2X3_TC1 (10)  Name .. UserDefinedGrade, Benchmark, ValueSource,
+//!                    DataValue (required); CreationTime IfcDateTimeSelect
+//!   IFC4, IFC4X3 (11) the same ten, DataValue optional, CreationTime
+//!                    IfcDateTime, then ReferencePath
+//! IfcObjective
+//!   IFC2X3_TC1 (11)  .. BenchmarkValues (one IfcMetric), ResultValues
+//!                    (IfcMetric), ObjectiveQualifier, UserDefinedQualifier
+//!   IFC4, IFC4X3 (11) .. BenchmarkValues (LIST OF IfcConstraint),
+//!                    LogicalAggregator (enum), ObjectiveQualifier, ..
+//! IfcResourceConstraintRelationship, IfcReference   IFC4 and IFC4X3 only
+//! IfcRelAssociatesConstraint
+//!   IFC2X3_TC1       OwnerHistory and Intent required; SET OF IfcRoot
+//!   IFC4, IFC4X3     both OPTIONAL; SET OF IfcDefinitionSelect
 //! ```
 //!
-//! The record is laid out by attribute name from the bound release's table,
-//! and reference targets are checked against that table. Binding, from
-//! `FILE_SCHEMA`, as `ifc-material` (#77), `ifc-properties` (#191) and
-//! `ifc-classification` (#194) bind their authoring:
-//! - one recognised declaration binds that release's table;
-//! - one unrecognised declaration fails with
+//! Every slot is found by attribute name in the bound release's table, so
+//! no record is read or written with another release's positions. IFC2X3's
+//! `ResultValues` is not IFC4's `LogicalAggregator` (the IFC4 documentation
+//! says the aggregator "replaces" it, with another type and meaning), so
+//! `logical_aggregator` refuses an IFC2X3 record with
+//! [`ConstraintError::NotInSchema`] rather than read the metric reference.
+//!
+//! Binding, from `FILE_SCHEMA`, as `ifc-material` (#77), `ifc-properties`
+//! (#191) and `ifc-classification` (#194) bind:
+//! - one declaration of IFC2X3, IFC4 or IFC4X3 binds that release's table;
+//! - any other single declaration, IFC4X1 and IFC4X2 included, fails with
 //!   [`ConstraintError::UnsupportedSchema`];
 //! - several fail with [`ConstraintError::MultipleSchemas`];
 //! - none at all (an in-memory [`Model::new`]) binds IFC4.
 
 use ifc_model::{Edit, Entity, EntityId, Model, Transaction, Value};
-use ifc_schema::{for_version, Schema, SchemaVersion};
+use ifc_schema::{for_version, Attribute, Schema, SchemaVersion, TypeKind};
 
 use crate::{ConstraintError, ConstraintResult};
 
-/// The release a record is written in.
+/// The release a record is read or written in.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Layout {
     version: SchemaVersion,
     schema: &'static Schema,
 }
 
-/// Releases this crate's layouts are proven against.
-///
-/// `ifc-schema` also bundles IFC4X1 and IFC4X2, but nothing here is verified
-/// against their tables, so a header declaring either is refused with the
-/// unsupported-schema error rather than read through a neighbour's layout.
+/// Releases this crate's layouts are verified against.
 const fn proven(version: SchemaVersion) -> bool {
     matches!(
         version,
@@ -45,31 +55,96 @@ const fn proven(version: SchemaVersion) -> bool {
     )
 }
 
+/// A model's binding, kept by a view until a projection needs it.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum Binding<'m> {
+    /// A verified release.
+    Bound(Layout),
+    /// The header declares this many schemas.
+    Multiple(usize),
+    /// The header declares one schema this crate is not verified against.
+    Unsupported(&'m str),
+}
+
+impl<'m> Binding<'m> {
+    /// The binding `model`'s header declares.
+    pub(crate) fn of(model: &'m Model) -> Self {
+        match model.header().schema.as_slice() {
+            [] => Layout::of_version(SchemaVersion::Ifc4)
+                .map_or(Self::Unsupported("IFC4"), Self::Bound),
+            [token] => SchemaVersion::from_header_token(token)
+                .and_then(|version| Layout::of_version(version).ok())
+                .map_or(Self::Unsupported(token.as_str()), Self::Bound),
+            tokens => Self::Multiple(tokens.len()),
+        }
+    }
+
+    /// The bound layout, or the refusal.
+    pub(crate) fn layout(self) -> ConstraintResult<Layout> {
+        match self {
+            Self::Bound(layout) => Ok(layout),
+            Self::Multiple(schemas) => Err(ConstraintError::MultipleSchemas { schemas }),
+            Self::Unsupported(schema) => Err(ConstraintError::UnsupportedSchema {
+                schema: schema.to_owned(),
+            }),
+        }
+    }
+}
+
 /// Bind `model`'s declared release.
 pub(crate) fn bind(model: &Model) -> ConstraintResult<Layout> {
-    let version = match model.header().schema.as_slice() {
-        [] => SchemaVersion::Ifc4,
-        [token] => SchemaVersion::from_header_token(token)
-            .filter(|version| proven(*version))
-            .ok_or_else(|| ConstraintError::UnsupportedSchema {
-                schema: token.clone(),
-            })?,
-        tokens => {
-            return Err(ConstraintError::MultipleSchemas {
-                schemas: tokens.len(),
-            })
-        }
-    };
-    let schema = for_version(version).map_err(|_| ConstraintError::UnsupportedSchema {
-        schema: format!("{version:?}"),
-    })?;
-    Ok(Layout { version, schema })
+    Binding::of(model).layout()
 }
 
 impl Layout {
+    /// Bind `version`, refusing a release this crate is not verified for.
+    pub(crate) fn of_version(version: SchemaVersion) -> ConstraintResult<Self> {
+        let unsupported = || ConstraintError::UnsupportedSchema {
+            schema: version.release_id().to_owned(),
+        };
+        if !proven(version) {
+            return Err(unsupported());
+        }
+        let schema = for_version(version).map_err(|_| unsupported())?;
+        Ok(Self { version, schema })
+    }
+
+    /// The bound release.
+    pub(crate) const fn version(self) -> SchemaVersion {
+        self.version
+    }
+
     /// The bound release's bundled table.
     pub(crate) fn schema(self) -> &'static Schema {
         self.schema
+    }
+
+    /// Fail with [`ConstraintError::EntityNotInSchema`] unless the release
+    /// instantiates `entity`, such as `IfcReference` or
+    /// `IfcResourceConstraintRelationship` in IFC2X3.
+    pub(crate) fn require_entity(self, entity: &'static str) -> ConstraintResult<()> {
+        if self.schema.entity(entity).is_some_and(|e| !e.abstract_) {
+            Ok(())
+        } else {
+            Err(ConstraintError::EntityNotInSchema {
+                entity,
+                schema: self.version,
+            })
+        }
+    }
+
+    /// Position and declaration of `attribute` in this release. No constraint
+    /// attribute is renamed between IFC2X3, IFC4 and IFC4X3.
+    pub(crate) fn declared(
+        self,
+        entity: &str,
+        attribute: &'static str,
+    ) -> Option<(usize, &'static Attribute)> {
+        self.schema
+            .attributes(entity)
+            .into_iter()
+            .enumerate()
+            .find(|(_, declared)| declared.name.eq_ignore_ascii_case(attribute))
     }
 
     /// Does `actual` satisfy `RelatedObjects` of an `IfcRelAssociates` in
@@ -85,34 +160,44 @@ impl Layout {
     }
 
     /// Build a record of `entity` in this release's layout from values named
-    /// by attribute; unnamed slots are `$`.
+    /// by their IFC4 attribute names; unnamed slots are `$`.
     ///
-    /// Refuses, before anything is staged, a required attribute left `$`
-    /// with [`ConstraintError::AuthoringRequired`], such as the IFC2X3
-    /// `OwnerHistory`, and a value for an attribute the release does not
-    /// declare with [`ConstraintError::AuthoringInvalid`].
+    /// Refuses, before anything is staged, an entity the release does not
+    /// declare ([`ConstraintError::EntityNotInSchema`]); a value for an
+    /// attribute it does not declare ([`ConstraintError::AuthoringNotInSchema`]);
+    /// text where it declares a record, a list where it declares a single
+    /// reference, or a reference where it declares text
+    /// ([`ConstraintError::AuthoringValueType`]); and a required attribute
+    /// left `$` ([`ConstraintError::AuthoringRequired`]), such as the IFC2X3
+    /// `OwnerHistory` or `DataValue`.
     pub(crate) fn named_record(
         self,
         entity: &'static str,
         values: Vec<(&'static str, Value)>,
     ) -> ConstraintResult<Entity> {
+        self.require_entity(entity)?;
         let declared = self.schema.attributes(entity);
         let mut attributes = vec![Value::Null; declared.len()];
         for (attribute, value) in values {
-            let slot = declared
-                .iter()
-                .position(|found| found.name.eq_ignore_ascii_case(attribute));
-            match slot {
-                Some(slot) => attributes[slot] = value,
-                None if value == Value::Null => {}
-                None => {
-                    return Err(ConstraintError::AuthoringInvalid {
-                        entity,
-                        attribute,
-                        value: format!("not declared by {:?}", self.version),
-                    })
+            let Some((slot, declaration)) = self.declared(entity, attribute) else {
+                if value == Value::Null {
+                    continue;
                 }
+                return Err(ConstraintError::AuthoringNotInSchema {
+                    entity,
+                    attribute,
+                    schema: self.version,
+                });
+            };
+            if !self.holds(declaration, &value) {
+                return Err(ConstraintError::AuthoringValueType {
+                    entity,
+                    attribute,
+                    declared: declaration.type_name.as_str(),
+                    schema: self.version,
+                });
             }
+            attributes[slot] = value;
         }
         for (declaration, value) in declared.iter().zip(&attributes) {
             if *value == Value::Null && !declaration.optional {
@@ -124,6 +209,51 @@ impl Layout {
             }
         }
         Ok(Entity::new(entity, attributes))
+    }
+
+    /// Whether `value`'s shape fits `declaration`: text only in a string
+    /// type, references only where an entity is reachable, a list only in
+    /// an aggregate. Reference targets are checked by the caller.
+    fn holds(self, declaration: &Attribute, value: &Value) -> bool {
+        match value {
+            Value::Null => true,
+            Value::List(items) => {
+                declaration.aggregate
+                    && items
+                        .iter()
+                        .all(|item| self.holds_scalar(&declaration.type_name, item))
+            }
+            other => !declaration.aggregate && self.holds_scalar(&declaration.type_name, other),
+        }
+    }
+
+    fn holds_scalar(self, declared: &str, value: &Value) -> bool {
+        match value {
+            Value::Text(_) => self.is_text(declared),
+            Value::Ref(_) => self.admits_entity(declared, 8),
+            _ => true,
+        }
+    }
+
+    /// Whether `declared` resolves to a STRING type.
+    pub(crate) fn is_text(self, declared: &str) -> bool {
+        self.schema
+            .resolve_defined(declared)
+            .to_ascii_uppercase()
+            .starts_with("STRING")
+    }
+
+    /// Whether `declared` is an entity, or a SELECT that reaches one.
+    pub(crate) fn admits_entity(self, declared: &str, depth: usize) -> bool {
+        if self.schema.entity(declared).is_some() {
+            return true;
+        }
+        match self.schema.type_def(declared).map(|t| &t.kind) {
+            Some(TypeKind::Select(members)) if depth > 0 => members
+                .iter()
+                .any(|member| self.admits_entity(member, depth - 1)),
+            _ => false,
+        }
     }
 }
 

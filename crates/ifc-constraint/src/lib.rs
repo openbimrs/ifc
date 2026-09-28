@@ -1,4 +1,6 @@
-//! Bounded IFC4 metric, objective, and constraint-relationship semantics.
+//! Bounded metric, objective, and constraint-relationship semantics, read and
+//! written by attribute name in the model's declared release (IFC2X3, IFC4
+//! or IFC4X3).
 //!
 //! Values are projected and preserved; this crate does not evaluate compliance,
 //! formulas, references, tables, or time series.
@@ -16,9 +18,13 @@ pub use association::{
 };
 pub use authoring::{
     create_metric, create_objective, create_reference, relate_resource_constraint,
-    ConstraintBaseDraft, MetricDraft, ObjectiveDraft, ReferenceDraft, ResourceConstraintDraft,
+    ConstraintBaseDraft, DateTimeInput, MetricDraft, ObjectiveDraft, ReferenceDraft,
+    ResourceConstraintDraft,
 };
 pub use error::{ConstraintError, ConstraintResult};
+/// The IFC release a projection reads against (re-exported from
+/// `ifc-schema`).
+pub use ifc_schema::SchemaVersion;
 pub use projection::{ConstraintAssignment, Metric, Objective, ResourceConstraintRelationship};
 pub use types::{
     Benchmark, ConstraintGrade, LogicalOperator, MetricValue, MetricValueDraft, ObjectiveQualifier,
