@@ -73,12 +73,12 @@ fn the_offset_unit_carries_its_offset() {
     let mut tx = Transaction::new(&model);
     let dimensions = add_dimensional_exponents(&mut tx, [0, 0, 0, 0, 1, 0, 0]);
     let factor = tx.create(Entity::new("IFCMEASUREWITHUNIT", vec![Value::Null; 2]));
-    let draft = ConversionBasedUnitDraft {
-        unit_type: "THERMODYNAMICTEMPERATUREUNIT",
-        name: "DEGREE CELSIUS",
-        conversion_factor: factor,
+    let draft = ConversionBasedUnitDraft::new(
+        "THERMODYNAMICTEMPERATUREUNIT",
+        "DEGREE CELSIUS",
+        factor,
         dimensions,
-    };
+    );
 
     let plain = add_conversion_based_unit(&mut tx, draft).expect("plain");
     // Celsius converts to kelvin by a factor of one and an offset of

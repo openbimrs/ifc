@@ -18,47 +18,24 @@ fn authored_layered_material_roundtrips_and_resolves() {
     let material = create_material(
         &mut tx,
         &model,
-        MaterialDraft {
-            name: "Concrete",
-            description: None,
-            category: Some("Structural"),
-        },
+        MaterialDraft::new("Concrete").category("Structural"),
     )
     .unwrap();
     let layer = create_layer(
         &mut tx,
         &model,
-        LayerDraft {
-            material: Some(material),
-            thickness: 0.2,
-            is_ventilated: Some(LogicalValue::False),
-            name: Some("Core"),
-            description: None,
-            category: None,
-            priority: Some(80),
-        },
+        LayerDraft::new(0.2)
+            .material(material)
+            .is_ventilated(LogicalValue::False)
+            .name("Core")
+            .priority(80),
     )
     .unwrap();
-    let set = create_layer_set(
-        &mut tx,
-        &model,
-        LayerSetDraft {
-            layers: &[layer],
-            name: Some("Wall"),
-            description: None,
-        },
-    )
-    .unwrap();
+    let set = create_layer_set(&mut tx, &model, LayerSetDraft::new(&[layer]).name("Wall")).unwrap();
     let relationship = associate_material(
         &mut tx,
         &model,
-        MaterialAssignmentDraft {
-            global_id: &gid(),
-            name: None,
-            description: None,
-            related_objects: &[wall],
-            relating_material: set,
-        },
+        MaterialAssignmentDraft::new(&gid(), &[wall], set),
     )
     .unwrap();
     tx.commit(&mut model).unwrap();
@@ -80,34 +57,14 @@ fn authored_layered_material_roundtrips_and_resolves() {
 fn invalid_authoring_refuses_to_stage_a_partial_material_graph() {
     let model = Model::new();
     let mut tx = Transaction::new(&model);
-    let result = create_layer(
-        &mut tx,
-        &model,
-        LayerDraft {
-            material: None,
-            thickness: f64::NAN,
-            is_ventilated: None,
-            name: None,
-            description: None,
-            category: None,
-            priority: None,
-        },
-    );
+    let result = create_layer(&mut tx, &model, LayerDraft::new(f64::NAN));
     assert!(result.is_err());
     assert!(
         tx.is_empty(),
         "invalid data must not reserve a partial graph"
     );
 
-    let result = create_layer_set(
-        &mut tx,
-        &model,
-        LayerSetDraft {
-            layers: &[],
-            name: None,
-            description: None,
-        },
-    );
+    let result = create_layer_set(&mut tx, &model, LayerSetDraft::new(&[]));
     assert!(result.is_err());
     assert!(tx.is_empty());
 }
@@ -117,26 +74,11 @@ fn failed_commit_rolls_back_the_entire_authored_graph() {
     let mut model = Model::new();
     let wall = model.push(Entity::new("IFCWALL", vec![]));
     let mut tx = Transaction::new(&model);
-    let material = create_material(
-        &mut tx,
-        &model,
-        MaterialDraft {
-            name: "Concrete",
-            description: None,
-            category: None,
-        },
-    )
-    .unwrap();
+    let material = create_material(&mut tx, &model, MaterialDraft::new("Concrete")).unwrap();
     let relationship = associate_material(
         &mut tx,
         &model,
-        MaterialAssignmentDraft {
-            global_id: &gid(),
-            name: None,
-            description: None,
-            related_objects: &[wall],
-            relating_material: material,
-        },
+        MaterialAssignmentDraft::new(&gid(), &[wall], material),
     )
     .unwrap();
     tx.set_attribute(relationship, 5, Value::Ref(EntityId(99_999)));
@@ -150,57 +92,17 @@ fn malformed_guid_and_non_material_reference_are_refused_before_staging() {
     let mut model = Model::new();
     let wall = model.push(Entity::new("IFCWALL", vec![]));
     let mut tx = Transaction::new(&model);
-    let material = create_material(
-        &mut tx,
-        &model,
-        MaterialDraft {
-            name: "Concrete",
-            description: None,
-            category: None,
-        },
-    )
-    .unwrap();
+    let material = create_material(&mut tx, &model, MaterialDraft::new("Concrete")).unwrap();
     let invalid_guid = associate_material(
         &mut tx,
         &model,
-        MaterialAssignmentDraft {
-            global_id: "not-an-ifc-guid",
-            name: None,
-            description: None,
-            related_objects: &[wall],
-            relating_material: material,
-        },
+        MaterialAssignmentDraft::new("not-an-ifc-guid", &[wall], material),
     );
     assert!(invalid_guid.is_err());
     assert_eq!(tx.len(), 1, "the invalid relationship itself is not staged");
 
-    let wrong_material = create_layer(
-        &mut tx,
-        &model,
-        LayerDraft {
-            material: Some(wall),
-            thickness: 0.1,
-            is_ventilated: None,
-            name: None,
-            description: None,
-            category: None,
-            priority: None,
-        },
-    );
+    let wrong_material = create_layer(&mut tx, &model, LayerDraft::new(0.1).material(wall));
     assert!(wrong_material.is_err());
     assert_eq!(tx.len(), 1);
-    assert!(create_layer(
-        &mut tx,
-        &model,
-        LayerDraft {
-            material: Some(material),
-            thickness: 0.1,
-            is_ventilated: None,
-            name: None,
-            description: None,
-            category: None,
-            priority: None,
-        },
-    )
-    .is_ok());
+    assert!(create_layer(&mut tx, &model, LayerDraft::new(0.1).material(material),).is_ok());
 }

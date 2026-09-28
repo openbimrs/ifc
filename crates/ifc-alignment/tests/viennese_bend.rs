@@ -38,18 +38,11 @@ fn fixture(gravity_height: Option<f64>, with_cant: bool) -> Fixture {
         "IFCCARTESIANPOINT",
         vec![Value::List(vec![Value::Real(0.0), Value::Real(0.0)])],
     ));
-    let parameters = horizontal_segment(
-        &mut tx,
-        &HorizontalSegmentDraft {
-            start_point: start,
-            start_direction: 0.0,
-            start_radius: 0.0,
-            end_radius: 500.0,
-            segment_length: 120.0,
-            gravity_center_line_height: gravity_height,
-            predefined_type: "VIENNESEBEND",
-        },
-    )
+    let parameters = horizontal_segment(&mut tx, &{
+        let mut draft = HorizontalSegmentDraft::new(start, 0.0, 0.0, 500.0, 120.0, "VIENNESEBEND");
+        draft.gravity_center_line_height = gravity_height;
+        draft
+    })
     .expect("authored segment");
     let segment =
         alignment_segment(&mut tx, "0aBcDeFgHiJkLmNoPqRsTu", parameters).expect("wrapper");
@@ -72,15 +65,9 @@ fn fixture(gravity_height: Option<f64>, with_cant: bool) -> Fixture {
     if with_cant {
         let cseg = cant_segment(
             &mut tx,
-            &CantSegmentDraft {
-                start_dist_along: 0.0,
-                horizontal_length: 120.0,
-                start_cant_left: 0.0,
-                end_cant_left: Some(0.15),
-                start_cant_right: 0.0,
-                end_cant_right: Some(-0.05),
-                predefined_type: "LINEARTRANSITION",
-            },
+            &CantSegmentDraft::new(0.0, 120.0, 0.0, 0.0, "LINEARTRANSITION")
+                .end_cant_left(0.15)
+                .end_cant_right(-0.05),
         )
         .expect("authored cant segment");
         let wrapper =
@@ -252,28 +239,13 @@ fn staggered_fixture() -> (Model, EntityId, EntityId) {
     ));
     let straight = horizontal_segment(
         &mut tx,
-        &HorizontalSegmentDraft {
-            start_point: origin,
-            start_direction: 0.0,
-            start_radius: 0.0,
-            end_radius: 0.0,
-            segment_length: 50.0,
-            gravity_center_line_height: None,
-            predefined_type: "LINE",
-        },
+        &HorizontalSegmentDraft::new(origin, 0.0, 0.0, 0.0, 50.0, "LINE"),
     )
     .expect("straight");
     let bend = horizontal_segment(
         &mut tx,
-        &HorizontalSegmentDraft {
-            start_point: bend_start,
-            start_direction: 0.0,
-            start_radius: 0.0,
-            end_radius: 500.0,
-            segment_length: 120.0,
-            gravity_center_line_height: Some(1.8),
-            predefined_type: "VIENNESEBEND",
-        },
+        &HorizontalSegmentDraft::new(bend_start, 0.0, 0.0, 500.0, 120.0, "VIENNESEBEND")
+            .gravity_center_line_height(1.8),
     )
     .expect("bend");
     let w1 = alignment_segment(&mut tx, "0aBcDeFgHiJkLmNoPqRsTu", straight).expect("w1");
@@ -295,28 +267,16 @@ fn staggered_fixture() -> (Model, EntityId, EntityId) {
     let cant = cant_layout(&mut tx, "3aBcDeFgHiJkLmNoPqRsTu", Some("C"), 1.5).expect("cant");
     let flat = cant_segment(
         &mut tx,
-        &CantSegmentDraft {
-            start_dist_along: 0.0,
-            horizontal_length: 50.0,
-            start_cant_left: 0.0,
-            end_cant_left: Some(0.0),
-            start_cant_right: 0.0,
-            end_cant_right: Some(0.0),
-            predefined_type: "LINEARTRANSITION",
-        },
+        &CantSegmentDraft::new(0.0, 50.0, 0.0, 0.0, "LINEARTRANSITION")
+            .end_cant_left(0.0)
+            .end_cant_right(0.0),
     )
     .expect("flat cant");
     let ramp = cant_segment(
         &mut tx,
-        &CantSegmentDraft {
-            start_dist_along: 50.0,
-            horizontal_length: 120.0,
-            start_cant_left: 0.0,
-            end_cant_left: Some(0.30),
-            start_cant_right: 0.0,
-            end_cant_right: Some(0.0),
-            predefined_type: "LINEARTRANSITION",
-        },
+        &CantSegmentDraft::new(50.0, 120.0, 0.0, 0.0, "LINEARTRANSITION")
+            .end_cant_left(0.30)
+            .end_cant_right(0.0),
     )
     .expect("ramp cant");
     let cw1 = alignment_segment(&mut tx, "04BcDeFgHiJkLmNoPqRsTu", flat).expect("cw1");

@@ -16,27 +16,16 @@ use ifc_style::create_colour_rgb;
 
 /// Stage a colour to hang the lights off.
 fn colour(tx: &mut Transaction, schema: &Schema) -> ifc_model::EntityId {
-    create_colour_rgb(
-        tx,
-        schema,
-        ColourRgbDraft {
-            name: None,
-            red: 1.0,
-            green: 1.0,
-            blue: 1.0,
-        },
-    )
-    .expect("a white colour is valid")
+    create_colour_rgb(tx, schema, ColourRgbDraft::new(1.0, 1.0, 1.0))
+        .expect("a white colour is valid")
 }
 
 /// A plain light draft with both ratios set.
 fn draft(colour: ifc_model::EntityId) -> LightSourceDraft<'static> {
-    LightSourceDraft {
-        name: Some("key"),
-        light_colour: colour,
-        ambient_intensity: Some(0.25),
-        intensity: Some(0.75),
-    }
+    LightSourceDraft::new(colour)
+        .name("key")
+        .ambient_intensity(0.25)
+        .intensity(0.75)
 }
 
 /// The four light sources round-trip, each keeping its own slots.
@@ -140,23 +129,13 @@ fn out_of_range_measures_are_refused() {
     let position = tx.create(Entity::new("IFCCARTESIANPOINT", vec![Value::Null]));
     let orientation = tx.create(Entity::new("IFCDIRECTION", vec![Value::Null]));
 
-    let over = LightSourceDraft {
-        name: None,
-        light_colour: c,
-        ambient_intensity: Some(1.5),
-        intensity: None,
-    };
+    let over = LightSourceDraft::new(c).ambient_intensity(1.5);
     assert!(
         create_light_source_ambient(&mut tx, &model, schema, over).is_err(),
         "a normalised ratio above one is refused"
     );
 
-    let under = LightSourceDraft {
-        name: None,
-        light_colour: c,
-        ambient_intensity: None,
-        intensity: Some(-0.1),
-    };
+    let under = LightSourceDraft::new(c).intensity(-0.1);
     assert!(
         create_light_source_ambient(&mut tx, &model, schema, under).is_err(),
         "a negative intensity is refused"
@@ -199,17 +178,7 @@ fn surface_style_lighting_and_refraction() {
 
     // Four distinct colours so any transposition is visible.
     let mut mk = |r: f64| {
-        create_colour_rgb(
-            &mut tx,
-            schema,
-            ColourRgbDraft {
-                name: None,
-                red: r,
-                green: 0.0,
-                blue: 0.0,
-            },
-        )
-        .expect("colour")
+        create_colour_rgb(&mut tx, schema, ColourRgbDraft::new(r, 0.0, 0.0)).expect("colour")
     };
     let (dt, dr, tr, rf) = (mk(0.1), mk(0.2), mk(0.3), mk(0.4));
 

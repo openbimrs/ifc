@@ -51,15 +51,7 @@ fn an_authored_vertical_segment_survives_step_text() {
     let mut tx = Transaction::new(&model);
     let parameters = vertical_segment(
         &mut tx,
-        &VerticalSegmentDraft {
-            start_dist_along: 100.0,
-            horizontal_length: 250.0,
-            start_height: 12.5,
-            start_gradient: 0.02,
-            end_gradient: 0.035,
-            radius_of_curvature: None,
-            predefined_type: "CONSTANTGRADIENT",
-        },
+        &VerticalSegmentDraft::new(100.0, 250.0, 12.5, 0.02, 0.035, "CONSTANTGRADIENT"),
     )
     .expect("authored segment");
     tx.commit(&mut model).expect("commit");
@@ -101,15 +93,7 @@ fn an_authored_alignment_lowers_after_a_text_round_trip() {
     // visible rather than absorbed by a tolerance.
     let h_params = horizontal_segment(
         &mut tx,
-        &HorizontalSegmentDraft {
-            start_point: start,
-            start_direction: 0.0,
-            start_radius: 0.0,
-            end_radius: 0.0,
-            segment_length: 100.0,
-            gravity_center_line_height: None,
-            predefined_type: "LINE",
-        },
+        &HorizontalSegmentDraft::new(start, 0.0, 0.0, 0.0, 100.0, "LINE"),
     )
     .expect("authored horizontal");
     let h_segment = alignment_segment(&mut tx, "0aBcDeFgHiJkLmNoPqRsTu", h_params)
@@ -119,15 +103,7 @@ fn an_authored_alignment_lowers_after_a_text_round_trip() {
 
     let v_params = vertical_segment(
         &mut tx,
-        &VerticalSegmentDraft {
-            start_dist_along: 0.0,
-            horizontal_length: 100.0,
-            start_height: 10.0,
-            start_gradient: 0.02,
-            end_gradient: 0.02,
-            radius_of_curvature: None,
-            predefined_type: "CONSTANTGRADIENT",
-        },
+        &VerticalSegmentDraft::new(0.0, 100.0, 10.0, 0.02, 0.02, "CONSTANTGRADIENT"),
     )
     .expect("authored vertical");
     let v_segment = alignment_segment(&mut tx, "2aBcDeFgHiJkLmNoPqRsTu", v_params)

@@ -43,6 +43,7 @@ pub enum ReactionDraftKind<'a> {
 
 /// Authored fields for one structural reaction.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct ReactionDraft<'a> {
     /// `IfcRoot` attributes shared with other structural entities.
     pub root: StructuralRootDraft,
@@ -52,6 +53,24 @@ pub struct ReactionDraft<'a> {
     pub coordinate_system: CoordinateSystem,
     /// Which subtype, and its PredefinedType where one applies.
     pub kind: ReactionDraftKind<'a>,
+}
+
+impl<'a> ReactionDraft<'a> {
+    /// Starts a draft from its required fields; every other field is unset.
+    #[must_use]
+    pub fn new(
+        root: StructuralRootDraft,
+        applied_load: EntityId,
+        coordinate_system: CoordinateSystem,
+        kind: ReactionDraftKind<'a>,
+    ) -> Self {
+        Self {
+            root,
+            applied_load,
+            coordinate_system,
+            kind,
+        }
+    }
 }
 
 /// Stage an `IfcStructuralReaction` subtype.
@@ -113,6 +132,7 @@ pub fn stage_reaction(
 /// no fields for them rather than accepting and dropping them. Same
 /// reasoning as [`crate::LoadGroupDraft`].
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct ResultGroupDraft {
     /// `GlobalId`; must parse as a 22-character IFC GUID.
     pub global_id: String,
@@ -130,6 +150,64 @@ pub struct ResultGroupDraft {
     pub result_for_load_group: Option<EntityId>,
     /// `IsLinear`.
     pub is_linear: bool,
+}
+
+impl ResultGroupDraft {
+    /// Starts a draft from its required fields; every other field is unset.
+    #[must_use]
+    pub fn new(
+        global_id: impl Into<String>,
+        theory_type: impl Into<String>,
+        is_linear: bool,
+    ) -> Self {
+        Self {
+            global_id: global_id.into(),
+            owner_history: None,
+            name: None,
+            description: None,
+            object_type: None,
+            theory_type: theory_type.into(),
+            result_for_load_group: None,
+            is_linear,
+        }
+    }
+
+    /// Sets `owner_history`: `OwnerHistory`.
+    #[must_use]
+    pub fn owner_history(mut self, value: EntityId) -> Self {
+        self.owner_history = Some(value);
+        self
+    }
+
+    /// Sets `name`: `Name`.
+    #[must_use]
+    pub fn name(mut self, value: impl Into<String>) -> Self {
+        self.name = Some(value.into());
+        self
+    }
+
+    /// Sets `description`: `Description`.
+    #[must_use]
+    pub fn description(mut self, value: impl Into<String>) -> Self {
+        self.description = Some(value.into());
+        self
+    }
+
+    /// Sets `object_type`: `ObjectType`; required when `theory_type` is
+    /// `USERDEFINED`.
+    #[must_use]
+    pub fn object_type(mut self, value: impl Into<String>) -> Self {
+        self.object_type = Some(value.into());
+        self
+    }
+
+    /// Sets `result_for_load_group`: `ResultForLoadGroup`, an
+    /// `IfcStructuralLoadGroup` reference.
+    #[must_use]
+    pub fn result_for_load_group(mut self, value: EntityId) -> Self {
+        self.result_for_load_group = Some(value);
+        self
+    }
 }
 
 /// Stage an `IfcStructuralResultGroup`.

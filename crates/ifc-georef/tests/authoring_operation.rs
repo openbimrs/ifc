@@ -19,26 +19,14 @@ fn context(tx: &mut Transaction) -> EntityId {
 }
 
 fn projected(tx: &mut Transaction) -> EntityId {
-    create_projected_crs(
-        tx,
-        ProjectedCrsDraft {
-            name: "EPSG:25832",
-            ..ProjectedCrsDraft::default()
-        },
-    )
-    .expect("a named projected CRS is accepted")
+    create_projected_crs(tx, ProjectedCrsDraft::new("EPSG:25832"))
+        .expect("a named projected CRS is accepted")
 }
 
 fn draft(source: EntityId, target: EntityId) -> MapConversionDraft {
-    MapConversionDraft {
-        source_crs: source,
-        target_crs: target,
-        eastings: 400_000.0,
-        northings: 5_600_000.0,
-        orthogonal_height: 112.5,
-        x_axis: Some((0.8, 0.6)),
-        scale: Some(1.0),
-    }
+    MapConversionDraft::new(source, target, 400_000.0, 5_600_000.0, 112.5)
+        .x_axis((0.8, 0.6))
+        .scale(1.0)
 }
 
 /// A map conversion refuses a target that is not a projected CRS.
@@ -51,14 +39,8 @@ fn a_map_conversion_requires_a_projected_target() {
     let mut tx = Transaction::new(&model);
 
     let source = context(&mut tx);
-    let geographic = create_geographic_crs(
-        &mut tx,
-        GeographicCrsDraft {
-            name: Some("EPSG:4326"),
-            ..GeographicCrsDraft::default()
-        },
-    )
-    .expect("a named geographic CRS is accepted");
+    let geographic = create_geographic_crs(&mut tx, GeographicCrsDraft::new().name("EPSG:4326"))
+        .expect("a named geographic CRS is accepted");
 
     assert!(
         create_map_conversion(&mut tx, &model, draft(source, geographic)).is_err(),
@@ -102,15 +84,7 @@ fn a_zero_length_x_axis_is_refused() {
     let target = projected(&mut tx);
 
     assert!(
-        create_map_conversion(
-            &mut tx,
-            &model,
-            MapConversionDraft {
-                x_axis: Some((0.0, 0.0)),
-                ..draft(source, target)
-            },
-        )
-        .is_err(),
+        create_map_conversion(&mut tx, &model, draft(source, target).x_axis((0.0, 0.0)),).is_err(),
         "a zero-length vector has no direction"
     );
 
@@ -118,37 +92,23 @@ fn a_zero_length_x_axis_is_refused() {
         create_map_conversion(
             &mut tx,
             &model,
-            MapConversionDraft {
-                x_axis: Some((f64::NAN, 1.0)),
-                ..draft(source, target)
-            },
+            draft(source, target).x_axis((f64::NAN, 1.0)),
         )
         .is_err(),
         "a non-finite component is refused"
     );
 
     assert!(
-        create_map_conversion(
-            &mut tx,
-            &model,
-            MapConversionDraft {
-                scale: Some(0.0),
-                ..draft(source, target)
-            },
-        )
-        .is_err(),
+        create_map_conversion(&mut tx, &model, draft(source, target).scale(0.0),).is_err(),
         "a zero scale collapses the model"
     );
 
     assert!(
-        create_map_conversion(
-            &mut tx,
-            &model,
-            MapConversionDraft {
-                eastings: f64::INFINITY,
-                ..draft(source, target)
-            },
-        )
+        create_map_conversion(&mut tx, &model, {
+            let mut infinite = draft(source, target);
+            infinite.eastings = f64::INFINITY;
+            infinite
+        },)
         .is_err(),
         "a non-finite easting is refused"
     );
@@ -199,14 +159,8 @@ fn a_rigid_operation_accepts_any_target() {
     let mut tx = Transaction::new(&model);
 
     let source = context(&mut tx);
-    let geographic = create_geographic_crs(
-        &mut tx,
-        GeographicCrsDraft {
-            name: Some("EPSG:4326"),
-            ..GeographicCrsDraft::default()
-        },
-    )
-    .expect("accepted");
+    let geographic = create_geographic_crs(&mut tx, GeographicCrsDraft::new().name("EPSG:4326"))
+        .expect("accepted");
 
     assert!(
         create_rigid_operation(&mut tx, source, geographic, (f64::NAN, 2.0), None).is_err(),
@@ -233,24 +187,15 @@ fn a_blank_crs_name_is_refused() {
     let mut tx = Transaction::new(&model);
 
     assert!(
-        create_geographic_crs(
-            &mut tx,
-            GeographicCrsDraft {
-                name: Some("   "),
-                ..GeographicCrsDraft::default()
-            },
-        )
-        .is_err(),
+        create_geographic_crs(&mut tx, GeographicCrsDraft::new().name("   "),).is_err(),
         "a blank name identifies no CRS"
     );
 
     let id = create_geographic_crs(
         &mut tx,
-        GeographicCrsDraft {
-            name: Some("EPSG:4979"),
-            geodetic_datum: Some("WGS84"),
-            ..GeographicCrsDraft::default()
-        },
+        GeographicCrsDraft::new()
+            .name("EPSG:4979")
+            .geodetic_datum("WGS84"),
     )
     .expect("accepted");
 

@@ -164,46 +164,36 @@ fn authors_the_requested_annotation_graph_atomically() {
         &mut tx,
         &model,
         schema,
-        AnnotationDraft {
-            global_id: "3vB2YO$MX4xv5uCqZZG05x",
-            name: Some("Fire note"),
-            predefined_type: Some(AnnotationType::Text),
-            ..AnnotationDraft::default()
-        },
+        AnnotationDraft::new("3vB2YO$MX4xv5uCqZZG05x")
+            .name("Fire note")
+            .predefined_type(AnnotationType::Text),
     )
     .unwrap();
     let literal = create_text_literal(
         &mut tx,
         &model,
         schema,
-        TextLiteralDraft {
-            literal: "EI 90",
-            placement,
-            path: TextPath::Right,
-        },
+        TextLiteralDraft::new("EI 90", placement, TextPath::Right),
     )
     .unwrap();
     let literal_with_extent = create_text_literal_with_extent(
         &mut tx,
         &model,
         schema,
-        TextLiteralWithExtentDraft {
-            literal: "EI 90",
+        TextLiteralWithExtentDraft::new(
+            "EI 90",
             placement,
-            path: TextPath::Right,
+            TextPath::Right,
             extent,
-            box_alignment: BoxAlignment::TopLeft,
-        },
+            BoxAlignment::TopLeft,
+        ),
     )
     .unwrap();
     let fill = create_annotation_fill_area(
         &mut tx,
         &model,
         schema,
-        AnnotationFillAreaDraft {
-            outer_boundary: outer,
-            inner_boundaries: vec![inner],
-        },
+        AnnotationFillAreaDraft::new(outer).inner_boundaries(vec![inner]),
     )
     .unwrap();
 
@@ -245,10 +235,7 @@ fn authoring_rejects_wrong_reference_types_without_staging_partial_edits() {
         &mut tx,
         &model,
         schema,
-        AnnotationFillAreaDraft {
-            outer_boundary: not_a_curve,
-            inner_boundaries: vec![],
-        },
+        AnnotationFillAreaDraft::new(not_a_curve),
     )
     .unwrap_err();
 
@@ -276,12 +263,9 @@ fn user_defined_annotation_requires_object_type_before_staging() {
         &mut tx,
         &model,
         schema,
-        AnnotationDraft {
-            global_id: "3vB2YO$MX4xv5uCqZZG05x",
-            predefined_type: Some(AnnotationType::UserDefined),
-            object_type: Some("  "),
-            ..AnnotationDraft::default()
-        },
+        AnnotationDraft::new("3vB2YO$MX4xv5uCqZZG05x")
+            .predefined_type(AnnotationType::UserDefined)
+            .object_type("  "),
     )
     .unwrap_err();
 

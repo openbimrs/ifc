@@ -18,11 +18,7 @@ fn a_millimetre_project_context_commits_and_reads_back() {
     let mut tx = Transaction::new(&model);
     let mm = add_si_unit(
         &mut tx,
-        SiUnitDraft {
-            unit_type: "LENGTHUNIT",
-            name: "METRE",
-            prefix: Some("MILLI"),
-        },
+        SiUnitDraft::new("LENGTHUNIT", "METRE").prefix("MILLI"),
     )
     .expect("millimetre is a valid SI unit");
     let assignment = assign_units(&mut tx, &[mm]).expect("one unit is enough");
@@ -41,11 +37,7 @@ fn a_prefix_the_schema_does_not_define_is_refused() {
     let mut tx = Transaction::new(&model);
     let refused = add_si_unit(
         &mut tx,
-        SiUnitDraft {
-            unit_type: "LENGTHUNIT",
-            name: "METRE",
-            prefix: Some("MILLIMETRE"),
-        },
+        SiUnitDraft::new("LENGTHUNIT", "METRE").prefix("MILLIMETRE"),
     );
     assert!(
         refused.is_err(),
@@ -69,15 +61,7 @@ fn an_empty_unit_assignment_is_refused() {
 fn a_zero_exponent_derived_unit_element_is_refused() {
     let model = Model::default();
     let mut tx = Transaction::new(&model);
-    let metre = add_si_unit(
-        &mut tx,
-        SiUnitDraft {
-            unit_type: "LENGTHUNIT",
-            name: "METRE",
-            prefix: None,
-        },
-    )
-    .expect("metre");
+    let metre = add_si_unit(&mut tx, SiUnitDraft::new("LENGTHUNIT", "METRE")).expect("metre");
     assert!(
         add_derived_unit_element(&mut tx, metre, 0).is_err(),
         "exponent zero contributes nothing and hides an authoring mistake"
@@ -88,15 +72,7 @@ fn a_zero_exponent_derived_unit_element_is_refused() {
 fn a_derived_unit_composes_base_units_with_exponents() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let metre = add_si_unit(
-        &mut tx,
-        SiUnitDraft {
-            unit_type: "LENGTHUNIT",
-            name: "METRE",
-            prefix: None,
-        },
-    )
-    .expect("metre");
+    let metre = add_si_unit(&mut tx, SiUnitDraft::new("LENGTHUNIT", "METRE")).expect("metre");
     let cubed = add_derived_unit_element(&mut tx, metre, 3).expect("m^3");
     let volume = add_derived_unit(&mut tx, &[cubed], "VOLUMEUNIT", None)
         .expect("a one-element derived unit is well formed");
@@ -130,11 +106,7 @@ fn a_derived_attribute_is_written_as_an_asterisk() {
     let mut tx = Transaction::new(&model);
     add_si_unit(
         &mut tx,
-        SiUnitDraft {
-            unit_type: "LENGTHUNIT",
-            prefix: Some("MILLI"),
-            name: "METRE",
-        },
+        SiUnitDraft::new("LENGTHUNIT", "METRE").prefix("MILLI"),
     )
     .expect("unit");
     tx.commit(&mut model).expect("commit");

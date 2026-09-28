@@ -42,10 +42,5 @@ pub fn base(schema: &str, version: SchemaVersion) -> Model {
 }
 
 pub fn relation(global_id: &str) -> AssociationDraft<'_> {
-    AssociationDraft {
-        global_id,
-        name: None,
-        description: None,
-        related_objects: &[WALL],
-    }
+    AssociationDraft::new(global_id, &[WALL])
 }

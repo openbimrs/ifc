@@ -15,6 +15,7 @@ use crate::error::{ResourceError, ResourceResult};
 
 /// Draft for one `IfcActorRole`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ActorRoleDraft<'a> {
     /// `Role`, an `IfcRoleEnum` token.
     pub role: &'a str,
@@ -24,8 +25,35 @@ pub struct ActorRoleDraft<'a> {
     pub description: Option<&'a str>,
 }
 
+impl<'a> ActorRoleDraft<'a> {
+    /// Starts a draft with its required fields; the rest are unset.
+    #[must_use]
+    pub fn new(role: &'a str) -> Self {
+        Self {
+            role,
+            user_defined_role: None,
+            description: None,
+        }
+    }
+
+    /// Sets [`Self::user_defined_role`]: `UserDefinedRole`. Required when `role` is `USERDEFINED`.
+    #[must_use]
+    pub fn user_defined_role(mut self, value: &'a str) -> Self {
+        self.user_defined_role = Some(value);
+        self
+    }
+
+    /// Sets [`Self::description`]: `Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+}
+
 /// Draft for one `IfcPostalAddress`.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct PostalAddressDraft<'a> {
     /// `Purpose`, an `IfcAddressTypeEnum` token.
     pub purpose: Option<&'a str>,
@@ -47,8 +75,90 @@ pub struct PostalAddressDraft<'a> {
     pub country: Option<&'a str>,
 }
 
+impl<'a> PostalAddressDraft<'a> {
+    /// Starts a draft with every field unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            purpose: None,
+            description: None,
+            user_defined_purpose: None,
+            internal_location: None,
+            postal_box: None,
+            town: None,
+            region: None,
+            postal_code: None,
+            country: None,
+        }
+    }
+
+    /// Sets [`Self::purpose`]: `Purpose`, an `IfcAddressTypeEnum` token.
+    #[must_use]
+    pub fn purpose(mut self, value: &'a str) -> Self {
+        self.purpose = Some(value);
+        self
+    }
+
+    /// Sets [`Self::description`]: `Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets [`Self::user_defined_purpose`]: `UserDefinedPurpose`. Required when `purpose` is `USERDEFINED`.
+    #[must_use]
+    pub fn user_defined_purpose(mut self, value: &'a str) -> Self {
+        self.user_defined_purpose = Some(value);
+        self
+    }
+
+    /// Sets [`Self::internal_location`]: `InternalLocation`: a room or desk within the building.
+    #[must_use]
+    pub fn internal_location(mut self, value: &'a str) -> Self {
+        self.internal_location = Some(value);
+        self
+    }
+
+    /// Sets [`Self::postal_box`]: `PostalBox`.
+    #[must_use]
+    pub fn postal_box(mut self, value: &'a str) -> Self {
+        self.postal_box = Some(value);
+        self
+    }
+
+    /// Sets [`Self::town`]: `Town`.
+    #[must_use]
+    pub fn town(mut self, value: &'a str) -> Self {
+        self.town = Some(value);
+        self
+    }
+
+    /// Sets [`Self::region`]: `Region`.
+    #[must_use]
+    pub fn region(mut self, value: &'a str) -> Self {
+        self.region = Some(value);
+        self
+    }
+
+    /// Sets [`Self::postal_code`]: `PostalCode`.
+    #[must_use]
+    pub fn postal_code(mut self, value: &'a str) -> Self {
+        self.postal_code = Some(value);
+        self
+    }
+
+    /// Sets [`Self::country`]: `Country`.
+    #[must_use]
+    pub fn country(mut self, value: &'a str) -> Self {
+        self.country = Some(value);
+        self
+    }
+}
+
 /// Draft for one `IfcTelecomAddress`.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct TelecomAddressDraft<'a> {
     /// `Purpose`, an `IfcAddressTypeEnum` token.
     pub purpose: Option<&'a str>,
@@ -60,6 +170,55 @@ pub struct TelecomAddressDraft<'a> {
     pub pager_number: Option<&'a str>,
     /// `WWWHomePageURL`.
     pub www_home_page_url: Option<&'a str>,
+}
+
+impl<'a> TelecomAddressDraft<'a> {
+    /// Starts a draft with every field unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            purpose: None,
+            description: None,
+            user_defined_purpose: None,
+            pager_number: None,
+            www_home_page_url: None,
+        }
+    }
+
+    /// Sets [`Self::purpose`]: `Purpose`, an `IfcAddressTypeEnum` token.
+    #[must_use]
+    pub fn purpose(mut self, value: &'a str) -> Self {
+        self.purpose = Some(value);
+        self
+    }
+
+    /// Sets [`Self::description`]: `Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets [`Self::user_defined_purpose`]: `UserDefinedPurpose`. Required when `purpose` is `USERDEFINED`.
+    #[must_use]
+    pub fn user_defined_purpose(mut self, value: &'a str) -> Self {
+        self.user_defined_purpose = Some(value);
+        self
+    }
+
+    /// Sets [`Self::pager_number`]: `PagerNumber`.
+    #[must_use]
+    pub fn pager_number(mut self, value: &'a str) -> Self {
+        self.pager_number = Some(value);
+        self
+    }
+
+    /// Sets [`Self::www_home_page_url`]: `WWWHomePageURL`.
+    #[must_use]
+    pub fn www_home_page_url(mut self, value: &'a str) -> Self {
+        self.www_home_page_url = Some(value);
+        self
+    }
 }
 
 /// The `LIST [1:?]` attributes of an `IfcTelecomAddress`.

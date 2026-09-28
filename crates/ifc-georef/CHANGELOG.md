@@ -14,6 +14,13 @@ everything released before per-crate changelogs began.
 
 ### Changed (breaking)
 
+- The authoring drafts `ProjectedCrsDraft`, `GeographicCrsDraft` and
+  `MapConversionDraft` are `#[non_exhaustive]`: build them with
+  `ProjectedCrsDraft::new(name)`, `GeographicCrsDraft::new()` or
+  `MapConversionDraft::new(source_crs, target_crs, eastings, northings,
+  orthogonal_height)` and a setter named after each optional field
+  (`.map_unit(unit)`, `.x_axis((abscissa, ordinate))`, `.scale(s)`). Fields
+  stay public.
 - The read-side `ProjectToMap` and `ProjectedCrs` are `#[non_exhaustive]`;
   they can no longer be built with a struct literal outside the crate.
 

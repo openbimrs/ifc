@@ -60,6 +60,7 @@ pub enum ActionDraftKind {
 
 /// Staged fields for creating an `IfcStructuralAction` via [`stage_action`].
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct ActionDraft {
     /// `IfcRoot` attributes shared with other staged structural entities.
     pub root: StructuralRootDraft,
@@ -73,6 +74,42 @@ pub struct ActionDraft {
     pub caused_by: Option<EntityId>,
     /// Which `IfcStructuralAction` subtype to create, and its subtype-specific attributes.
     pub kind: ActionDraftKind,
+}
+
+impl ActionDraft {
+    /// Starts a draft from its required fields; every other field is unset.
+    #[must_use]
+    pub fn new(
+        root: StructuralRootDraft,
+        applied_load: EntityId,
+        coordinate_system: CoordinateSystem,
+        kind: ActionDraftKind,
+    ) -> Self {
+        Self {
+            root,
+            applied_load,
+            coordinate_system,
+            destabilizing_load: None,
+            caused_by: None,
+            kind,
+        }
+    }
+
+    /// Sets `destabilizing_load`: `DestabilizingLoad`; required when the target
+    /// schema (IFC2X3) declares it mandatory.
+    #[must_use]
+    pub fn destabilizing_load(mut self, value: bool) -> Self {
+        self.destabilizing_load = Some(value);
+        self
+    }
+
+    /// Sets `caused_by`: `CausedBy`; only staged when the target schema
+    /// declares the attribute.
+    #[must_use]
+    pub fn caused_by(mut self, value: EntityId) -> Self {
+        self.caused_by = Some(value);
+        self
+    }
 }
 
 /// Stage an `IfcStructuralAction` create edit on `tx`.

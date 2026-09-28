@@ -253,14 +253,9 @@ fn multiple_or_unknown_schemas_are_refused() {
         );
 
         let mut tx = Transaction::new(&model);
-        let draft = ClassificationReferenceDraft {
-            location: None,
-            identification: Some("Pr_30"),
-            name: None,
-            referenced_source: Some(SYSTEM),
-            description: None,
-            sort: None,
-        };
+        let draft = ClassificationReferenceDraft::new()
+            .identification("Pr_30")
+            .referenced_source(SYSTEM);
         assert_eq!(
             create_classification_reference(&mut tx, &model, draft),
             Err(error)

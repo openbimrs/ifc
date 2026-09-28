@@ -21,15 +21,7 @@ fn metres() -> AlignmentUnits {
 fn an_authored_vertical_segment_reads_back_through_the_reader() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let draft = VerticalSegmentDraft {
-        start_dist_along: 100.0,
-        horizontal_length: 250.0,
-        start_height: 12.5,
-        start_gradient: 0.02,
-        end_gradient: 0.035,
-        radius_of_curvature: None,
-        predefined_type: "CONSTANTGRADIENT",
-    };
+    let draft = VerticalSegmentDraft::new(100.0, 250.0, 12.5, 0.02, 0.035, "CONSTANTGRADIENT");
     let id = vertical_segment(&mut tx, &draft).expect("authored");
     tx.commit(&mut model).expect("commit");
 
@@ -60,15 +52,7 @@ fn an_authored_horizontal_layout_lowers_to_an_exact_curve() {
     ));
     let parameters = horizontal_segment(
         &mut tx,
-        &HorizontalSegmentDraft {
-            start_point: start,
-            start_direction: 0.0,
-            start_radius: 0.0,
-            end_radius: 0.0,
-            segment_length: 100.0,
-            gravity_center_line_height: None,
-            predefined_type: "LINE",
-        },
+        &HorizontalSegmentDraft::new(start, 0.0, 0.0, 0.0, 100.0, "LINE"),
     )
     .expect("authored segment");
     let segment =
@@ -126,15 +110,9 @@ fn an_authored_cant_layout_and_segment_read_back() {
         .expect("authored cant layout");
     let segment = cant_segment(
         &mut tx,
-        &CantSegmentDraft {
-            start_dist_along: 0.0,
-            horizontal_length: 60.0,
-            start_cant_left: 0.05,
-            end_cant_left: Some(0.09),
-            start_cant_right: -0.05,
-            end_cant_right: Some(-0.09),
-            predefined_type: "LINEARTRANSITION",
-        },
+        &CantSegmentDraft::new(0.0, 60.0, 0.05, -0.05, "LINEARTRANSITION")
+            .end_cant_left(0.09)
+            .end_cant_right(-0.09),
     )
     .expect("authored cant segment");
     tx.commit(&mut model).expect("commit");
@@ -158,53 +136,26 @@ fn values_the_reader_would_reject_are_refused_before_staging() {
     let mut tx = Transaction::new(&model);
     let point = tx.create(Entity::new("IFCCARTESIANPOINT", vec![Value::Null]));
 
-    let line_with_radius = HorizontalSegmentDraft {
-        start_point: point,
-        start_direction: 0.0,
-        start_radius: 250.0,
-        end_radius: 250.0,
-        segment_length: 10.0,
-        gravity_center_line_height: None,
-        predefined_type: "LINE",
-    };
+    let line_with_radius = HorizontalSegmentDraft::new(point, 0.0, 250.0, 250.0, 10.0, "LINE");
     assert!(horizontal_segment(&mut tx, &line_with_radius).is_err());
 
-    let negative_horizontal = HorizontalSegmentDraft {
-        segment_length: -1.0,
-        start_radius: 0.0,
-        end_radius: 0.0,
-        ..line_with_radius
-    };
+    let mut negative_horizontal = line_with_radius;
+    negative_horizontal.segment_length = -1.0;
+    negative_horizontal.start_radius = 0.0;
+    negative_horizontal.end_radius = 0.0;
     assert!(horizontal_segment(&mut tx, &negative_horizontal).is_err());
 
-    let arc_without_radius = VerticalSegmentDraft {
-        start_dist_along: 0.0,
-        horizontal_length: 50.0,
-        start_height: 0.0,
-        start_gradient: 0.01,
-        end_gradient: -0.01,
-        radius_of_curvature: None,
-        predefined_type: "CIRCULARARC",
-    };
+    let arc_without_radius = VerticalSegmentDraft::new(0.0, 50.0, 0.0, 0.01, -0.01, "CIRCULARARC");
     assert!(vertical_segment(&mut tx, &arc_without_radius).is_err());
 
-    let negative_length = VerticalSegmentDraft {
-        horizontal_length: -1.0,
-        radius_of_curvature: None,
-        predefined_type: "CONSTANTGRADIENT",
-        ..arc_without_radius
-    };
+    let mut negative_length = arc_without_radius;
+    negative_length.horizontal_length = -1.0;
+    negative_length.radius_of_curvature = None;
+    negative_length.predefined_type = "CONSTANTGRADIENT";
     assert!(vertical_segment(&mut tx, &negative_length).is_err());
 
-    let unpaired_ends = CantSegmentDraft {
-        start_dist_along: 0.0,
-        horizontal_length: 60.0,
-        start_cant_left: 0.05,
-        end_cant_left: Some(0.09),
-        start_cant_right: -0.05,
-        end_cant_right: None,
-        predefined_type: "LINEARTRANSITION",
-    };
+    let unpaired_ends =
+        CantSegmentDraft::new(0.0, 60.0, 0.05, -0.05, "LINEARTRANSITION").end_cant_left(0.09);
     assert!(cant_segment(&mut tx, &unpaired_ends).is_err());
 
     assert!(cant_layout(&mut tx, "3aBcDeFgHiJkLmNoPqRsTu", None, 0.0).is_err());

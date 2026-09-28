@@ -18,15 +18,7 @@ fn gid(seed: u8) -> String {
 }
 
 fn base<'a>(name: &'a str) -> ConstraintBaseDraft<'a> {
-    ConstraintBaseDraft {
-        name,
-        description: None,
-        grade: ConstraintGrade::Hard,
-        source: None,
-        creating_actor: None,
-        creation_time: None,
-        user_defined_grade: None,
-    }
+    ConstraintBaseDraft::new(name, ConstraintGrade::Hard)
 }
 
 #[test]
@@ -111,55 +103,35 @@ fn stages_typed_metrics_objectives_and_both_relationship_families() {
     let metric = create_metric(
         &mut tx,
         &model,
-        MetricDraft {
-            base: ConstraintBaseDraft {
-                creating_actor: Some(actor),
-                ..base("Tolerance")
-            },
-            benchmark: Benchmark::LessThanOrEqualTo,
-            value_source: Some("design"),
-            data_value: Some(MetricValueDraft::Typed {
-                type_name: "IfcLengthMeasure",
-                value: &scalar,
-            }),
-            reference_path: None,
-        },
+        MetricDraft::new(
+            base("Tolerance").creating_actor(actor),
+            Benchmark::LessThanOrEqualTo,
+        )
+        .value_source("design")
+        .data_value(MetricValueDraft::Typed {
+            type_name: "IfcLengthMeasure",
+            value: &scalar,
+        }),
     )
     .unwrap();
     let objective = create_objective(
         &mut tx,
         &model,
-        ObjectiveDraft {
-            base: base("Envelope"),
-            benchmark_values: Some(&[metric]),
-            logical_aggregator: Some(LogicalOperator::LogicalAnd),
-            qualifier: ObjectiveQualifier::Requirement,
-            user_defined_qualifier: None,
-        },
+        ObjectiveDraft::new(base("Envelope"), ObjectiveQualifier::Requirement)
+            .benchmark_values(&[metric])
+            .logical_aggregator(LogicalOperator::LogicalAnd),
     )
     .unwrap();
     let resource_relation = relate_resource_constraint(
         &mut tx,
         &model,
-        ResourceConstraintDraft {
-            name: None,
-            description: None,
-            relating_constraint: objective,
-            related_resources: &[approval],
-        },
+        ResourceConstraintDraft::new(objective, &[approval]),
     )
     .unwrap();
     let association = associate_constraint(
         &mut tx,
         &model,
-        ConstraintAssociationDraft {
-            global_id: &gid(4),
-            name: None,
-            description: None,
-            related_objects: &[wall],
-            intent: Some("design requirement"),
-            relating_constraint: objective,
-        },
+        ConstraintAssociationDraft::new(&gid(4), &[wall], objective).intent("design requirement"),
     )
     .unwrap();
     tx.commit(&mut model).unwrap();
@@ -270,16 +242,10 @@ fn where_rules_selects_and_draft_atomicity_fail_closed() {
         create_metric(
             &mut tx,
             &model,
-            MetricDraft {
-                base: ConstraintBaseDraft {
-                    grade: ConstraintGrade::UserDefined,
-                    ..base("Custom")
-                },
-                benchmark: Benchmark::EqualTo,
-                value_source: None,
-                data_value: None,
-                reference_path: None,
-            }
+            MetricDraft::new(
+                ConstraintBaseDraft::new("Custom", ConstraintGrade::UserDefined),
+                Benchmark::EqualTo
+            )
         ),
         Err(ConstraintError::AuthoringInvalid {
             attribute: "WR11",
@@ -291,13 +257,7 @@ fn where_rules_selects_and_draft_atomicity_fail_closed() {
         create_objective(
             &mut tx,
             &model,
-            ObjectiveDraft {
-                base: base("Custom purpose"),
-                benchmark_values: None,
-                logical_aggregator: None,
-                qualifier: ObjectiveQualifier::UserDefined,
-                user_defined_qualifier: None,
-            }
+            ObjectiveDraft::new(base("Custom purpose"), ObjectiveQualifier::UserDefined)
         ),
         Err(ConstraintError::AuthoringInvalid {
             attribute: "WR21",
@@ -309,13 +269,7 @@ fn where_rules_selects_and_draft_atomicity_fail_closed() {
         create_metric(
             &mut tx,
             &model,
-            MetricDraft {
-                base: base("Wrong"),
-                benchmark: Benchmark::EqualTo,
-                value_source: None,
-                data_value: Some(MetricValueDraft::Entity(wall)),
-                reference_path: None,
-            }
+            MetricDraft::new(base("Wrong"), Benchmark::EqualTo).data_value(MetricValueDraft::Entity(wall))
         ),
         Err(ConstraintError::AuthoringReferenceType { target, .. }) if target == wall
     ));
@@ -355,16 +309,12 @@ fn typed_metric_drafts_reject_types_outside_metric_value_select() {
         create_metric(
             &mut tx,
             &model,
-            MetricDraft {
-                base: base("Bad typed"),
-                benchmark: Benchmark::EqualTo,
-                value_source: None,
-                data_value: Some(MetricValueDraft::Typed {
+            MetricDraft::new(base("Bad typed"), Benchmark::EqualTo).data_value(
+                MetricValueDraft::Typed {
                     type_name: "IfcObjectiveEnum",
                     value: &scalar,
-                }),
-                reference_path: None,
-            }
+                }
+            )
         ),
         Err(ConstraintError::AuthoringInvalid {
             attribute: "DataValue",

@@ -17,6 +17,7 @@ const ASSIGNMENT: &str = "IFCRELASSOCIATESCONSTRAINT";
 
 /// Draft for one rooted constraint association.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ConstraintAssociationDraft<'a> {
     /// Compressed IFC GlobalId.
     pub global_id: &'a str,
@@ -30,6 +31,46 @@ pub struct ConstraintAssociationDraft<'a> {
     pub intent: Option<&'a str>,
     /// Existing or earlier-staged metric/objective.
     pub relating_constraint: EntityId,
+}
+
+impl<'a> ConstraintAssociationDraft<'a> {
+    /// Starts a draft from its required fields; every other field is unset.
+    #[must_use]
+    pub fn new(
+        global_id: &'a str,
+        related_objects: &'a [EntityId],
+        relating_constraint: EntityId,
+    ) -> Self {
+        Self {
+            global_id,
+            name: None,
+            description: None,
+            related_objects,
+            intent: None,
+            relating_constraint,
+        }
+    }
+
+    /// Sets `name`: Optional relationship name.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets `description`: Optional relationship description.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets `intent`: Optional association intent.
+    #[must_use]
+    pub fn intent(mut self, value: &'a str) -> Self {
+        self.intent = Some(value);
+        self
+    }
 }
 
 /// Validate and stage one rooted constraint association.

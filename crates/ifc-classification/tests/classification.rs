@@ -516,99 +516,43 @@ fn transactional_authoring_roundtrips_all_owned_records() {
     let mut tx = Transaction::new(&model);
     let system = create_classification(
         &mut tx,
-        ClassificationDraft {
-            source: Some("NBS"),
-            edition: Some("2025"),
-            edition_date: None,
-            name: "Uniclass",
-            description: None,
-            location: None,
-            reference_tokens: Some(&["Co"]),
-        },
+        ClassificationDraft::new("Uniclass")
+            .source("NBS")
+            .edition("2025")
+            .reference_tokens(&["Co"]),
     )
     .unwrap();
     let class_ref = create_classification_reference(
         &mut tx,
         &model,
-        ClassificationReferenceDraft {
-            location: None,
-            identification: Some("Co_20"),
-            name: Some("Administrative"),
-            referenced_source: Some(system),
-            description: None,
-            sort: None,
-        },
+        ClassificationReferenceDraft::new()
+            .identification("Co_20")
+            .name("Administrative")
+            .referenced_source(system),
     )
     .unwrap();
-    let document = create_document(
-        &mut tx,
-        &model,
-        DocumentDraft {
-            identification: "DOC-1",
-            name: "Spec",
-            description: None,
-            location: None,
-            purpose: None,
-            intended_use: None,
-            scope: None,
-            revision: None,
-            document_owner: None,
-            editors: None,
-            creation_time: None,
-            last_revision_time: None,
-            electronic_format: None,
-            valid_from: None,
-            valid_until: None,
-            confidentiality: None,
-            status: None,
-        },
-    )
-    .unwrap();
+    let document = create_document(&mut tx, &model, DocumentDraft::new("DOC-1", "Spec")).unwrap();
     let document_ref = create_document_reference(
         &mut tx,
         &model,
-        DocumentReferenceDraft {
-            location: None,
-            identification: Some("7"),
-            name: None,
-            description: None,
-            referenced_document: Some(document),
-        },
+        DocumentReferenceDraft::new()
+            .identification("7")
+            .referenced_document(document),
     )
     .unwrap();
-    let library = create_library(
-        &mut tx,
-        &model,
-        LibraryDraft {
-            name: "Products",
-            version: None,
-            publisher: None,
-            version_date: None,
-            location: None,
-            description: None,
-        },
-    )
-    .unwrap();
+    let library = create_library(&mut tx, &model, LibraryDraft::new("Products")).unwrap();
     let library_ref = create_library_reference(
         &mut tx,
         &model,
-        LibraryReferenceDraft {
-            location: None,
-            identification: Some("P1"),
-            name: None,
-            description: None,
-            language: Some("en"),
-            referenced_library: Some(library),
-        },
+        LibraryReferenceDraft::new()
+            .identification("P1")
+            .language("en")
+            .referenced_library(library),
     )
     .unwrap();
     let related_objects = [wall];
-    let relation = |seed| AssociationDraft {
-        global_id: Box::leak(gid(seed).into_boxed_str()),
-        name: None,
-        description: None,
-        related_objects: &related_objects,
-    };
+    let relation =
+        |seed| AssociationDraft::new(Box::leak(gid(seed).into_boxed_str()), &related_objects);
     associate_classification(&mut tx, &model, relation(10), class_ref).unwrap();
     associate_document(&mut tx, &model, relation(11), document_ref).unwrap();
     associate_library(&mut tx, &model, relation(12), library_ref).unwrap();
@@ -635,80 +579,37 @@ fn invalid_authoring_stages_nothing_and_failed_commit_rolls_back() {
     let invalid = create_document_reference(
         &mut tx,
         &model,
-        DocumentReferenceDraft {
-            location: None,
-            identification: None,
-            name: Some("Name"),
-            description: None,
-            referenced_document: Some(document),
-        },
+        DocumentReferenceDraft::new()
+            .name("Name")
+            .referenced_document(document),
     );
     assert!(invalid.is_err());
     assert!(tx.is_empty());
     assert!(create_document_reference(
         &mut tx,
         &model,
-        DocumentReferenceDraft {
-            location: None,
-            identification: None,
-            name: None,
-            description: None,
-            referenced_document: Some(document),
-        },
+        DocumentReferenceDraft::new().referenced_document(document),
     )
     .is_err());
     assert!(tx.is_empty());
-    assert!(create_classification_reference(
-        &mut tx,
-        &model,
-        ClassificationReferenceDraft {
-            location: None,
-            identification: None,
-            name: None,
-            referenced_source: None,
-            description: None,
-            sort: None,
-        },
-    )
-    .is_err());
+    assert!(
+        create_classification_reference(&mut tx, &model, ClassificationReferenceDraft::new(),)
+            .is_err()
+    );
     assert!(tx.is_empty());
     assert!(create_library(
         &mut tx,
         &model,
-        LibraryDraft {
-            name: "Invalid publisher",
-            version: None,
-            publisher: Some(wall),
-            version_date: None,
-            location: None,
-            description: None,
-        },
+        LibraryDraft::new("Invalid publisher").publisher(wall),
     )
     .is_err());
     assert!(tx.is_empty());
-    let system = create_classification(
-        &mut tx,
-        ClassificationDraft {
-            source: None,
-            edition: None,
-            edition_date: None,
-            name: "System",
-            description: None,
-            location: None,
-            reference_tokens: None,
-        },
-    )
-    .unwrap();
+    let system = create_classification(&mut tx, ClassificationDraft::new("System")).unwrap();
     let staged = tx.len();
     assert!(associate_classification(
         &mut tx,
         &model,
-        AssociationDraft {
-            global_id: "not-an-ifc-guid",
-            name: None,
-            description: None,
-            related_objects: &[wall],
-        },
+        AssociationDraft::new("not-an-ifc-guid", &[wall]),
         system,
     )
     .is_err());
@@ -716,12 +617,7 @@ fn invalid_authoring_stages_nothing_and_failed_commit_rolls_back() {
     assert!(associate_classification(
         &mut tx,
         &model,
-        AssociationDraft {
-            global_id: &gid(18),
-            name: None,
-            description: None,
-            related_objects: &[point],
-        },
+        AssociationDraft::new(&gid(18), &[point]),
         system,
     )
     .is_err());
@@ -729,12 +625,7 @@ fn invalid_authoring_stages_nothing_and_failed_commit_rolls_back() {
     assert!(associate_classification(
         &mut tx,
         &model,
-        AssociationDraft {
-            global_id: &gid(19),
-            name: None,
-            description: None,
-            related_objects: &[wall, wall],
-        },
+        AssociationDraft::new(&gid(19), &[wall, wall]),
         system,
     )
     .is_err());
@@ -742,12 +633,7 @@ fn invalid_authoring_stages_nothing_and_failed_commit_rolls_back() {
     assert!(associate_classification(
         &mut tx,
         &model,
-        AssociationDraft {
-            global_id: &gid(20),
-            name: None,
-            description: None,
-            related_objects: &[wall],
-        },
+        AssociationDraft::new(&gid(20), &[wall]),
         wall,
     )
     .is_err());
@@ -755,12 +641,7 @@ fn invalid_authoring_stages_nothing_and_failed_commit_rolls_back() {
     let relation = associate_classification(
         &mut tx,
         &model,
-        AssociationDraft {
-            global_id: &gid(20),
-            name: None,
-            description: None,
-            related_objects: &[wall],
-        },
+        AssociationDraft::new(&gid(20), &[wall]),
         system,
     )
     .unwrap();

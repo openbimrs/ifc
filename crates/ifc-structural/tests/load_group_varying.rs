@@ -16,30 +16,11 @@ const GUID: &str = "1hqA$FMcT8$hVvcqsRDBzZ";
 const GUID2: &str = "2kLmN$PqR9$tUvWxYzAbCd";
 
 fn root(global_id: &str) -> StructuralRootDraft {
-    StructuralRootDraft {
-        global_id: global_id.to_owned(),
-        owner_history: None,
-        name: None,
-        description: None,
-        object_type: None,
-        object_placement: None,
-        representation: None,
-    }
+    StructuralRootDraft::new(global_id)
 }
 
 fn group(kind: LoadGroupKind) -> LoadGroupDraft {
-    LoadGroupDraft {
-        global_id: GUID.to_owned(),
-        owner_history: None,
-        name: Some("Dead load".to_owned()),
-        description: None,
-        object_type: None,
-        action_type: "PERMANENT_G",
-        action_source: "DEAD_LOAD_G",
-        coefficient: None,
-        purpose: None,
-        kind,
-    }
+    LoadGroupDraft::new(GUID, "PERMANENT_G", "DEAD_LOAD_G", kind).name("Dead load")
 }
 
 /// IsLoadCasePredefinedType is enforced by construction.
@@ -176,14 +157,14 @@ fn the_varying_forms_keep_the_base_slot_layout() {
         &mut tx,
         &model,
         ifc4x3(),
-        MemberDraft {
-            root: root(GUID),
-            kind: MemberDraftKind::Curve {
+        MemberDraft::new(
+            root(GUID),
+            MemberDraftKind::Curve {
                 predefined_type: MemberPredefinedType::Cable,
                 axis: Some(axis),
                 varying: true,
             },
-        },
+        ),
     )
     .expect("varying curve member");
 
@@ -191,14 +172,14 @@ fn the_varying_forms_keep_the_base_slot_layout() {
         &mut tx,
         &model,
         ifc4x3(),
-        MemberDraft {
-            root: root(GUID2),
-            kind: MemberDraftKind::Curve {
+        MemberDraft::new(
+            root(GUID2),
+            MemberDraftKind::Curve {
                 predefined_type: MemberPredefinedType::Cable,
                 axis: Some(axis),
                 varying: false,
             },
-        },
+        ),
     )
     .expect("curve member");
     tx.commit(&mut model).expect("commit");
@@ -233,16 +214,17 @@ fn a_curve_action_refuses_equidistant() {
         vec![Value::Null; 7],
     ));
 
-    let action = |token: &'static str| ActionDraft {
-        root: root(GUID),
-        applied_load: load,
-        coordinate_system: CoordinateSystem::Global,
-        destabilizing_load: Some(false),
-        caused_by: None,
-        kind: ActionDraftKind::Curve {
-            projected_or_true: None,
-            predefined_type: token,
-        },
+    let action = |token: &'static str| {
+        ActionDraft::new(
+            root(GUID),
+            load,
+            CoordinateSystem::Global,
+            ActionDraftKind::Curve {
+                projected_or_true: None,
+                predefined_type: token,
+            },
+        )
+        .destabilizing_load(false)
     };
 
     assert!(
@@ -275,14 +257,14 @@ fn the_surface_varying_form_names_itself() {
         &mut tx,
         &model,
         ifc4x3(),
-        MemberDraft {
-            root: root(GUID),
-            kind: MemberDraftKind::Surface {
+        MemberDraft::new(
+            root(GUID),
+            MemberDraftKind::Surface {
                 predefined_type: MemberPredefinedType::Shell,
                 thickness: Some(0.2),
                 varying: true,
             },
-        },
+        ),
     )
     .expect("varying surface member");
     tx.commit(&mut model).expect("commit");

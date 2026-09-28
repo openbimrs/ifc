@@ -66,25 +66,15 @@ fn author(model: &mut Model, version: SchemaVersion) -> Vec<EntityId> {
             _ if ifc4 => Some("NOTDEFINED"),
             _ => None,
         };
-        let draft = ControlDraft {
-            name: Some("Control"),
-            description: Some("East wing"),
-            object_type: None,
-            identification: (ifc4 || !history).then_some("C-1"),
-            status: (!history && (ifc4 || kind == ControlKind::ProjectOrder)).then_some("OPEN"),
-            long_description: (ifc4 && !history).then_some("Long"),
-            life_cycle_phase: history.then_some("OPERATION"),
-        };
+        let mut draft = ControlDraft::new().name("Control").description("East wing");
+        draft.identification = (ifc4 || !history).then_some("C-1");
+        draft.status = (!history && (ifc4 || kind == ControlKind::ProjectOrder)).then_some("OPEN");
+        draft.long_description = (ifc4 && !history).then_some("Long");
+        draft.life_cycle_phase = history.then_some("OPERATION");
         let control =
             create_control_with_owner_history(&mut tx, model, kind, guid, predefined, draft, OWNER)
                 .expect("control");
-        let assignment = ControlAssignmentDraft {
-            global_id: relation,
-            name: None,
-            description: None,
-            control,
-            related_objects: &[WALL],
-        };
+        let assignment = ControlAssignmentDraft::new(relation, control, &[WALL]);
         let assigned = assign_to_control_with_owner_history(&mut tx, model, assignment, OWNER)
             .expect("assignment");
         written.extend([control, assigned]);

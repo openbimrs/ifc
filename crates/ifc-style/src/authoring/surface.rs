@@ -17,6 +17,7 @@ use crate::surface_style::{duplicate_surface_element_category, SURFACE_STYLE_ELE
 /// Draft input for [`create_colour_rgb`]: the writable attributes of a new
 /// `IfcColourRgb`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ColourRgbDraft<'a> {
     /// The `Name` attribute, when supplied.
     pub name: Option<&'a str>,
@@ -28,9 +29,33 @@ pub struct ColourRgbDraft<'a> {
     pub blue: f64,
 }
 
+impl<'a> ColourRgbDraft<'a> {
+    /// Starts a draft from its required `red`, `green`, `blue`; every other
+    /// field is unset.
+    #[must_use]
+    pub fn new(red: f64, green: f64, blue: f64) -> Self {
+        Self {
+            name: None,
+            red,
+            green,
+            blue,
+        }
+    }
+
+    /// Sets `name`.
+    ///
+    /// The `Name` attribute, when supplied.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+}
+
 /// Draft input for [`create_surface_style_shading`]: the writable attributes
 /// of a new `IfcSurfaceStyleShading`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct SurfaceStyleShadingDraft {
     /// The `SurfaceColour` reference to an `IfcColourRgb`.
     pub surface_colour: EntityId,
@@ -39,9 +64,32 @@ pub struct SurfaceStyleShadingDraft {
     pub transparency: Option<f64>,
 }
 
+impl SurfaceStyleShadingDraft {
+    /// Starts a draft from its required `surface_colour`; every other field is
+    /// unset.
+    #[must_use]
+    pub fn new(surface_colour: EntityId) -> Self {
+        Self {
+            surface_colour,
+            transparency: None,
+        }
+    }
+
+    /// Sets `transparency`.
+    ///
+    /// The `Transparency` factor, when supplied; must be a finite value in
+    /// `[0, 1]`.
+    #[must_use]
+    pub fn transparency(mut self, value: f64) -> Self {
+        self.transparency = Some(value);
+        self
+    }
+}
+
 /// Draft input for [`create_surface_style`]: the writable attributes of a
 /// new `IfcSurfaceStyle`.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct SurfaceStyleDraft<'a> {
     /// The `Name` attribute, when supplied.
     pub name: Option<&'a str>,
@@ -53,9 +101,32 @@ pub struct SurfaceStyleDraft<'a> {
     pub elements: Vec<EntityId>,
 }
 
+impl<'a> SurfaceStyleDraft<'a> {
+    /// Starts a draft from its required `side`, `elements`; every other field
+    /// is unset.
+    #[must_use]
+    pub fn new(side: crate::SurfaceSide, elements: Vec<EntityId>) -> Self {
+        Self {
+            name: None,
+            side,
+            elements,
+        }
+    }
+
+    /// Sets `name`.
+    ///
+    /// The `Name` attribute, when supplied.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+}
+
 /// Draft input for [`create_styled_item`]: the writable attributes of a new
 /// `IfcStyledItem`.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct StyledItemDraft<'a> {
     /// The `Item` reference to an `IfcRepresentationItem`, when supplied.
     pub item: Option<EntityId>,
@@ -66,9 +137,40 @@ pub struct StyledItemDraft<'a> {
     pub name: Option<&'a str>,
 }
 
+impl<'a> StyledItemDraft<'a> {
+    /// Starts a draft from its required `styles`; every other field is unset.
+    #[must_use]
+    pub fn new(styles: Vec<EntityId>) -> Self {
+        Self {
+            item: None,
+            styles,
+            name: None,
+        }
+    }
+
+    /// Sets `item`.
+    ///
+    /// The `Item` reference to an `IfcRepresentationItem`, when supplied.
+    #[must_use]
+    pub fn item(mut self, value: EntityId) -> Self {
+        self.item = Some(value);
+        self
+    }
+
+    /// Sets `name`.
+    ///
+    /// The `Name` attribute, when supplied.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+}
+
 /// Draft input for [`create_presentation_layer_with_style`]: the writable
 /// attributes of a new `IfcPresentationLayerWithStyle`.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct PresentationLayerDraft<'a> {
     /// The `Name` attribute; must be non-empty.
     pub name: &'a str,
@@ -87,6 +189,78 @@ pub struct PresentationLayerDraft<'a> {
     pub layer_blocked: Option<bool>,
     /// The `LayerStyles` references.
     pub layer_styles: Vec<EntityId>,
+}
+
+impl<'a> PresentationLayerDraft<'a> {
+    /// Starts a draft from its required `name`, `assigned_items`; every other
+    /// field is unset.
+    #[must_use]
+    pub fn new(name: &'a str, assigned_items: Vec<EntityId>) -> Self {
+        Self {
+            name,
+            description: None,
+            assigned_items,
+            identifier: None,
+            layer_on: None,
+            layer_frozen: None,
+            layer_blocked: None,
+            layer_styles: Vec::new(),
+        }
+    }
+
+    /// Sets `description`.
+    ///
+    /// The `Description` attribute, when supplied.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets `identifier`.
+    ///
+    /// The `Identifier` attribute, when supplied.
+    #[must_use]
+    pub fn identifier(mut self, value: &'a str) -> Self {
+        self.identifier = Some(value);
+        self
+    }
+
+    /// Sets `layer_on`.
+    ///
+    /// The `LayerOn` attribute, when supplied.
+    #[must_use]
+    pub fn layer_on(mut self, value: bool) -> Self {
+        self.layer_on = Some(value);
+        self
+    }
+
+    /// Sets `layer_frozen`.
+    ///
+    /// The `LayerFrozen` attribute, when supplied.
+    #[must_use]
+    pub fn layer_frozen(mut self, value: bool) -> Self {
+        self.layer_frozen = Some(value);
+        self
+    }
+
+    /// Sets `layer_blocked`.
+    ///
+    /// The `LayerBlocked` attribute, when supplied.
+    #[must_use]
+    pub fn layer_blocked(mut self, value: bool) -> Self {
+        self.layer_blocked = Some(value);
+        self
+    }
+
+    /// Sets `layer_styles`.
+    ///
+    /// The `LayerStyles` references.
+    #[must_use]
+    pub fn layer_styles(mut self, value: Vec<EntityId>) -> Self {
+        self.layer_styles = value;
+        self
+    }
 }
 
 /// Stage a new `IfcColourRgb` in `tx`. Fails if any channel is not a finite
@@ -332,6 +506,7 @@ fn validate_layered_item(
 /// caller states either an explicit colour or a factor of the surface
 /// colour -- the two are not interchangeable and the schema keeps both.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct SurfaceStyleRenderingDraft {
     /// `SurfaceColour`, an `IfcColourRgb`.
     pub surface_colour: EntityId,
@@ -349,6 +524,78 @@ pub struct SurfaceStyleRenderingDraft {
     pub specular: Option<ColourOrFactor>,
     /// `ReflectanceMethod`, an `IfcReflectanceMethodEnum` token.
     pub reflectance_method: &'static str,
+}
+
+impl SurfaceStyleRenderingDraft {
+    /// Starts a draft from its required `surface_colour`, `reflectance_method`;
+    /// every other field is unset.
+    #[must_use]
+    pub fn new(surface_colour: EntityId, reflectance_method: &'static str) -> Self {
+        Self {
+            surface_colour,
+            transparency: None,
+            diffuse: None,
+            transmission: None,
+            diffuse_transmission: None,
+            reflection: None,
+            specular: None,
+            reflectance_method,
+        }
+    }
+
+    /// Sets `transparency`.
+    ///
+    /// `Transparency`, a normalised ratio.
+    #[must_use]
+    pub fn transparency(mut self, value: f64) -> Self {
+        self.transparency = Some(value);
+        self
+    }
+
+    /// Sets `diffuse`.
+    ///
+    /// `DiffuseColour`.
+    #[must_use]
+    pub fn diffuse(mut self, value: ColourOrFactor) -> Self {
+        self.diffuse = Some(value);
+        self
+    }
+
+    /// Sets `transmission`.
+    ///
+    /// `TransmissionColour`.
+    #[must_use]
+    pub fn transmission(mut self, value: ColourOrFactor) -> Self {
+        self.transmission = Some(value);
+        self
+    }
+
+    /// Sets `diffuse_transmission`.
+    ///
+    /// `DiffuseTransmissionColour`.
+    #[must_use]
+    pub fn diffuse_transmission(mut self, value: ColourOrFactor) -> Self {
+        self.diffuse_transmission = Some(value);
+        self
+    }
+
+    /// Sets `reflection`.
+    ///
+    /// `ReflectionColour`.
+    #[must_use]
+    pub fn reflection(mut self, value: ColourOrFactor) -> Self {
+        self.reflection = Some(value);
+        self
+    }
+
+    /// Sets `specular`.
+    ///
+    /// `SpecularColour`.
+    #[must_use]
+    pub fn specular(mut self, value: ColourOrFactor) -> Self {
+        self.specular = Some(value);
+        self
+    }
 }
 
 /// Stage an `IfcSurfaceStyleRendering`.

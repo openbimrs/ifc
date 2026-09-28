@@ -55,12 +55,7 @@ fn authored_relationship_round_trips_and_queries_by_resource() {
     let relation = create_external_reference_relationship(
         &mut tx,
         &model,
-        ExternalReferenceRelationshipDraft {
-            name: Some("evidence"),
-            description: None,
-            relating_reference: reference,
-            related_resources: &[approval],
-        },
+        ExternalReferenceRelationshipDraft::new(reference, &[approval]).name("evidence"),
     )
     .unwrap();
     tx.commit(&mut model).unwrap();
@@ -101,12 +96,7 @@ fn invalid_selects_and_malformed_sets_are_refused() {
         create_external_reference_relationship(
             &mut tx,
             &model,
-            ExternalReferenceRelationshipDraft {
-                name: None,
-                description: None,
-                relating_reference: reference,
-                related_resources: &[wall],
-            }
+            ExternalReferenceRelationshipDraft::new(reference, &[wall])
         ),
         Err(ClassificationError::AuthoringReferenceType { target, .. }) if target == wall
     ));
@@ -115,12 +105,7 @@ fn invalid_selects_and_malformed_sets_are_refused() {
         create_external_reference_relationship(
             &mut tx,
             &model,
-            ExternalReferenceRelationshipDraft {
-                name: None,
-                description: None,
-                relating_reference: reference,
-                related_resources: &[person, person],
-            }
+            ExternalReferenceRelationshipDraft::new(reference, &[person, person])
         ),
         Err(ClassificationError::AuthoringInvalid {
             attribute: "RelatedResourceObjects",

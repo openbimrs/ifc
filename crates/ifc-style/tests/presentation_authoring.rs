@@ -31,10 +31,7 @@ fn curve_width_carries_its_measure() {
     let id = create_curve_style(
         &mut tx,
         ifc4x3(),
-        CurveStyleDraft {
-            curve_width: Some(CurveWidth::PositiveLength(0.35)),
-            ..CurveStyleDraft::default()
-        },
+        CurveStyleDraft::new().curve_width(CurveWidth::PositiveLength(0.35)),
     )
     .expect("a positive length is a legal width");
 
@@ -58,10 +55,7 @@ fn by_layer_width_is_a_descriptive_measure() {
     let id = create_curve_style(
         &mut tx,
         ifc4x3(),
-        CurveStyleDraft {
-            curve_width: Some(CurveWidth::ByLayer),
-            ..CurveStyleDraft::default()
-        },
+        CurveStyleDraft::new().curve_width(CurveWidth::ByLayer),
     )
     .expect("by layer is a legal width");
     tx.commit(&mut model).expect("the style commits");
@@ -82,10 +76,7 @@ fn a_non_positive_curve_width_is_refused() {
         let err = create_curve_style(
             &mut tx,
             ifc4x3(),
-            CurveStyleDraft {
-                curve_width: Some(CurveWidth::PositiveLength(width)),
-                ..CurveStyleDraft::default()
-            },
+            CurveStyleDraft::new().curve_width(CurveWidth::PositiveLength(width)),
         )
         .expect_err("IfcPositiveLengthMeasure excludes {width}");
         assert!(matches!(err, StyleError::AuthoringInvalid { .. }), "{err}");
@@ -104,15 +95,9 @@ fn a_pixel_texture_must_match_its_declared_size() {
     let err = create_pixel_texture(
         &mut tx,
         ifc4x3(),
-        PixelTextureDraft {
-            repeat_s: true,
-            repeat_t: true,
-            mode: None,
-            width: 2,
-            height: 2,
-            colour_components: 3,
-            pixel: &["FF0000", "00FF00", "0000FF"],
-        },
+        PixelTextureDraft::new(2, 2, 3, &["FF0000", "00FF00", "0000FF"])
+            .repeat_s(true)
+            .repeat_t(true),
     )
     .expect_err("three pixels cannot fill a 2x2 texture");
     assert!(matches!(err, StyleError::AuthoringInvalid { .. }), "{err}");
@@ -128,20 +113,8 @@ fn ragged_or_half_byte_pixels_are_refused() {
         ["FF0000", "00FF0"].as_slice(), // second is not whole bytes
         ["FF0000", "00FF"].as_slice(),  // whole bytes, but shorter
     ] {
-        let err = create_pixel_texture(
-            &mut tx,
-            ifc4x3(),
-            PixelTextureDraft {
-                repeat_s: false,
-                repeat_t: false,
-                mode: None,
-                width: 2,
-                height: 1,
-                colour_components: 3,
-                pixel: pixels,
-            },
-        )
-        .expect_err("PixelAsByteAndSameLength rejects it");
+        let err = create_pixel_texture(&mut tx, ifc4x3(), PixelTextureDraft::new(2, 1, 3, pixels))
+            .expect_err("PixelAsByteAndSameLength rejects it");
         assert!(matches!(err, StyleError::AuthoringInvalid { .. }), "{err}");
     }
 }
@@ -155,15 +128,7 @@ fn colour_component_count_is_bounded() {
         let err = create_pixel_texture(
             &mut tx,
             ifc4x3(),
-            PixelTextureDraft {
-                repeat_s: false,
-                repeat_t: false,
-                mode: None,
-                width: 1,
-                height: 1,
-                colour_components: components,
-                pixel: &["FF"],
-            },
+            PixelTextureDraft::new(1, 1, components, &["FF"]),
         )
         .expect_err("NumberOfColours admits 1..=4 only");
         assert!(matches!(err, StyleError::AuthoringInvalid { .. }), "{err}");
@@ -178,15 +143,9 @@ fn a_well_formed_pixel_texture_commits() {
     let id = create_pixel_texture(
         &mut tx,
         ifc4x3(),
-        PixelTextureDraft {
-            repeat_s: true,
-            repeat_t: false,
-            mode: Some("MODULATE"),
-            width: 2,
-            height: 2,
-            colour_components: 3,
-            pixel: &["FF0000", "00FF00", "0000FF", "FFFFFF"],
-        },
+        PixelTextureDraft::new(2, 2, 3, &["FF0000", "00FF00", "0000FF", "FFFFFF"])
+            .repeat_s(true)
+            .mode("MODULATE"),
     )
     .expect("a 2x2 texture with four equal-length pixels is legal");
     tx.commit(&mut model).expect("commits");
@@ -391,15 +350,7 @@ fn equal_length_half_byte_pixels_are_refused() {
     let err = create_pixel_texture(
         &mut tx,
         ifc4x3(),
-        PixelTextureDraft {
-            repeat_s: false,
-            repeat_t: false,
-            mode: None,
-            width: 2,
-            height: 1,
-            colour_components: 3,
-            pixel: &["FF000", "00FF0"],
-        },
+        PixelTextureDraft::new(2, 1, 3, &["FF000", "00FF0"]),
     )
     .expect_err("five hex digits is not a whole number of bytes");
     assert!(matches!(err, StyleError::AuthoringInvalid { .. }), "{err}");

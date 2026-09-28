@@ -14,6 +14,7 @@ use crate::slot;
 /// Radii follow the IFC convention the reader already applies: zero means
 /// straight, and a signed value carries the turn direction.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct HorizontalSegmentDraft {
     /// `StartPoint`, an existing `IfcCartesianPoint`.
     pub start_point: EntityId,
@@ -29,6 +30,36 @@ pub struct HorizontalSegmentDraft {
     pub gravity_center_line_height: Option<f64>,
     /// `PredefinedType`, e.g. `LINE` or `CIRCULARARC`.
     pub predefined_type: &'static str,
+}
+
+impl HorizontalSegmentDraft {
+    /// Starts a draft with the segment's required attributes.
+    #[must_use]
+    pub const fn new(
+        start_point: EntityId,
+        start_direction: f64,
+        start_radius: f64,
+        end_radius: f64,
+        segment_length: f64,
+        predefined_type: &'static str,
+    ) -> Self {
+        Self {
+            start_point,
+            start_direction,
+            start_radius,
+            end_radius,
+            segment_length,
+            gravity_center_line_height: None,
+            predefined_type,
+        }
+    }
+
+    /// Sets `GravityCenterLineHeight`.
+    #[must_use]
+    pub const fn gravity_center_line_height(mut self, value: f64) -> Self {
+        self.gravity_center_line_height = Some(value);
+        self
+    }
 }
 
 const HSEG: &str = "IFCALIGNMENTHORIZONTALSEGMENT";
@@ -80,6 +111,7 @@ pub fn horizontal_segment(
 
 /// Authored fields for `IfcAlignmentVerticalSegment`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct VerticalSegmentDraft {
     /// `StartDistAlong`, measured along the horizontal layout.
     pub start_dist_along: f64,
@@ -95,6 +127,36 @@ pub struct VerticalSegmentDraft {
     pub radius_of_curvature: Option<f64>,
     /// `PredefinedType`, e.g. `CONSTANTGRADIENT` or `CIRCULARARC`.
     pub predefined_type: &'static str,
+}
+
+impl VerticalSegmentDraft {
+    /// Starts a draft with the segment's required attributes.
+    #[must_use]
+    pub const fn new(
+        start_dist_along: f64,
+        horizontal_length: f64,
+        start_height: f64,
+        start_gradient: f64,
+        end_gradient: f64,
+        predefined_type: &'static str,
+    ) -> Self {
+        Self {
+            start_dist_along,
+            horizontal_length,
+            start_height,
+            start_gradient,
+            end_gradient,
+            radius_of_curvature: None,
+            predefined_type,
+        }
+    }
+
+    /// Sets `RadiusOfCurvature`, required by the arc families.
+    #[must_use]
+    pub const fn radius_of_curvature(mut self, value: f64) -> Self {
+        self.radius_of_curvature = Some(value);
+        self
+    }
 }
 
 const VSEG: &str = "IFCALIGNMENTVERTICALSEGMENT";
@@ -149,6 +211,7 @@ pub fn vertical_segment(
 
 /// Authored fields for `IfcAlignmentCantSegment`.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct CantSegmentDraft {
     /// `StartDistAlong`.
     pub start_dist_along: f64,
@@ -164,6 +227,43 @@ pub struct CantSegmentDraft {
     pub end_cant_right: Option<f64>,
     /// `PredefinedType`, e.g. `CONSTANTCANT` or `LINEARTRANSITION`.
     pub predefined_type: &'static str,
+}
+
+impl CantSegmentDraft {
+    /// Starts a draft with the segment's required attributes and no end
+    /// cant.
+    #[must_use]
+    pub const fn new(
+        start_dist_along: f64,
+        horizontal_length: f64,
+        start_cant_left: f64,
+        start_cant_right: f64,
+        predefined_type: &'static str,
+    ) -> Self {
+        Self {
+            start_dist_along,
+            horizontal_length,
+            start_cant_left,
+            end_cant_left: None,
+            start_cant_right,
+            end_cant_right: None,
+            predefined_type,
+        }
+    }
+
+    /// Sets `EndCantLeft`; pair it with [`Self::end_cant_right`].
+    #[must_use]
+    pub const fn end_cant_left(mut self, value: f64) -> Self {
+        self.end_cant_left = Some(value);
+        self
+    }
+
+    /// Sets `EndCantRight`; pair it with [`Self::end_cant_left`].
+    #[must_use]
+    pub const fn end_cant_right(mut self, value: f64) -> Self {
+        self.end_cant_right = Some(value);
+        self
+    }
 }
 
 const CSEG: &str = "IFCALIGNMENTCANTSEGMENT";

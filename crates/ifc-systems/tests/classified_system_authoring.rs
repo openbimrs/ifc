@@ -23,11 +23,9 @@ fn each_class_lands_its_tail_in_the_declared_slots() {
         SystemKind::Building,
         GUID,
         Some("Shell"),
-        ClassifiedSystemDraft {
-            long_name: Some("Outer shell system"),
-            predefined_type: Some("OUTERSHELL"),
-            ..ClassifiedSystemDraft::default()
-        },
+        ClassifiedSystemDraft::new()
+            .long_name("Outer shell system")
+            .predefined_type("OUTERSHELL"),
     )
     .expect("building system");
     let circuit = create_classified_system(
@@ -36,11 +34,9 @@ fn each_class_lands_its_tail_in_the_declared_slots() {
         SystemKind::DistributionCircuit,
         "3rT4B$mkwDKiVwGW6SyGua",
         Some("Ring"),
-        ClassifiedSystemDraft {
-            long_name: Some("Lighting ring main"),
-            predefined_type: Some("ELECTRICAL"),
-            ..ClassifiedSystemDraft::default()
-        },
+        ClassifiedSystemDraft::new()
+            .long_name("Lighting ring main")
+            .predefined_type("ELECTRICAL"),
     )
     .expect("distribution circuit");
     tx.commit(&mut model).expect("commit");
@@ -86,10 +82,7 @@ fn a_token_from_a_sibling_enum_is_refused() {
         SystemKind::Built,
         GUID,
         None,
-        ClassifiedSystemDraft {
-            predefined_type: Some("MOORING"),
-            ..ClassifiedSystemDraft::default()
-        },
+        ClassifiedSystemDraft::new().predefined_type("MOORING"),
     )
     .expect("MOORING is a built-system token");
     create_classified_system(
@@ -98,10 +91,7 @@ fn a_token_from_a_sibling_enum_is_refused() {
         SystemKind::Building,
         GUID,
         None,
-        ClassifiedSystemDraft {
-            predefined_type: Some("MOORING"),
-            ..ClassifiedSystemDraft::default()
-        },
+        ClassifiedSystemDraft::new().predefined_type("MOORING"),
     )
     .expect_err("not a building-system token");
 }
@@ -118,10 +108,7 @@ fn userdefined_without_an_object_type_is_refused() {
             class,
             GUID,
             None,
-            ClassifiedSystemDraft {
-                predefined_type: Some("USERDEFINED"),
-                ..ClassifiedSystemDraft::default()
-            },
+            ClassifiedSystemDraft::new().predefined_type("USERDEFINED"),
         )
         .expect_err("CorrectPredefinedType");
         create_classified_system(
@@ -130,11 +117,9 @@ fn userdefined_without_an_object_type_is_refused() {
             class,
             GUID,
             None,
-            ClassifiedSystemDraft {
-                predefined_type: Some("USERDEFINED"),
-                object_type: Some("Green roof assembly"),
-                ..ClassifiedSystemDraft::default()
-            },
+            ClassifiedSystemDraft::new()
+                .predefined_type("USERDEFINED")
+                .object_type("Green roof assembly"),
         )
         .expect("named kind is accepted");
     }

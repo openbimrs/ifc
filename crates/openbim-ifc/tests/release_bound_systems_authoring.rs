@@ -161,11 +161,9 @@ fn author(model: &mut Model, version: SchemaVersion) -> Vec<EntityId> {
             )
             .unwrap(),
         );
-        let heating = ClassifiedSystemDraft {
-            predefined_type: Some("HEATING"),
-            long_name: Some("Heating water"),
-            ..ClassifiedSystemDraft::default()
-        };
+        let heating = ClassifiedSystemDraft::new()
+            .predefined_type("HEATING")
+            .long_name("Heating water");
         let kinds = [
             (SystemKind::DistributionSystem, heating),
             (SystemKind::DistributionCircuit, heating),
@@ -175,10 +173,7 @@ fn author(model: &mut Model, version: SchemaVersion) -> Vec<EntityId> {
                 } else {
                     SystemKind::Building
                 },
-                ClassifiedSystemDraft {
-                    predefined_type: Some("FOUNDATION"),
-                    ..ClassifiedSystemDraft::default()
-                },
+                ClassifiedSystemDraft::new().predefined_type("FOUNDATION"),
             ),
         ];
         for (n, (kind, draft)) in kinds.into_iter().enumerate() {

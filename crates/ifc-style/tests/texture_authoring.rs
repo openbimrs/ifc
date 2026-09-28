@@ -42,13 +42,7 @@ fn a_texture_needs_somewhere_to_load_the_image_from() {
             &mut tx,
             &model,
             schema,
-            ImageTextureDraft {
-                repeat_s: true,
-                repeat_t: true,
-                mode: None,
-                texture_transform: None,
-                url_reference: "   ",
-            },
+            ImageTextureDraft::new("   ").repeat_s(true).repeat_t(true),
         )
         .is_err(),
         "a blank URL names no image"
@@ -58,13 +52,9 @@ fn a_texture_needs_somewhere_to_load_the_image_from() {
         &mut tx,
         &model,
         schema,
-        ImageTextureDraft {
-            repeat_s: true,
-            repeat_t: false,
-            mode: Some("MODULATE"),
-            texture_transform: None,
-            url_reference: "../textures/brick.png",
-        },
+        ImageTextureDraft::new("../textures/brick.png")
+            .repeat_s(true)
+            .mode("MODULATE"),
     )
     .expect("a referenced image is accepted");
 

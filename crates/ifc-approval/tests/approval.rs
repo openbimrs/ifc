@@ -90,67 +90,40 @@ fn stages_and_queries_the_complete_bounded_approval_graph() {
     let requested = create_approval(
         &mut tx,
         &model,
-        ApprovalDraft {
-            identifier: Some("REQ-1"),
-            name: None,
-            description: Some("Requested"),
-            time_of_approval: None,
-            status: Some("PENDING"),
-            level: None,
-            qualifier: None,
-            requesting_approval: Some(actor),
-            giving_approval: None,
-        },
+        ApprovalDraft::new()
+            .identifier("REQ-1")
+            .description("Requested")
+            .status("PENDING")
+            .requesting_approval(actor),
     )
     .unwrap();
     let approved = create_approval(
         &mut tx,
         &model,
-        ApprovalDraft {
-            identifier: None,
-            name: Some("Accepted"),
-            description: None,
-            time_of_approval: Some("2026-09-01T10:00:00"),
-            status: Some("APPROVED"),
-            level: Some("PROJECT"),
-            qualifier: None,
-            requesting_approval: None,
-            giving_approval: Some(actor),
-        },
+        ApprovalDraft::new()
+            .name("Accepted")
+            .time_of_approval("2026-09-01T10:00:00")
+            .status("APPROVED")
+            .level("PROJECT")
+            .giving_approval(actor),
     )
     .unwrap();
     let relation = relate_approvals(
         &mut tx,
         &model,
-        ApprovalRelationshipDraft {
-            name: Some("supersedes"),
-            description: None,
-            relating_approval: approved,
-            related_approvals: &[requested],
-        },
+        ApprovalRelationshipDraft::new(approved, &[requested]).name("supersedes"),
     )
     .unwrap();
     let resource_relation = relate_resource_approval(
         &mut tx,
         &model,
-        ResourceApprovalDraft {
-            name: None,
-            description: None,
-            related_resources: &[metric],
-            relating_approval: approved,
-        },
+        ResourceApprovalDraft::new(&[metric], approved),
     )
     .unwrap();
     let assignment = associate_approval(
         &mut tx,
         &model,
-        ApprovalAssociationDraft {
-            global_id: &gid(1),
-            name: None,
-            description: None,
-            related_objects: &[wall],
-            relating_approval: approved,
-        },
+        ApprovalAssociationDraft::new(&gid(1), &[wall], approved),
     )
     .unwrap();
     tx.commit(&mut model).unwrap();
@@ -230,11 +203,7 @@ fn malformed_views_and_invalid_drafts_fail_closed_before_staging() {
         create_approval(
             &mut tx,
             &model,
-            ApprovalDraft {
-                identifier: Some("A"),
-                requesting_approval: Some(wall),
-                ..Default::default()
-            }
+            ApprovalDraft::new().identifier("A").requesting_approval(wall)
         ),
         Err(ApprovalError::AuthoringReferenceType { target, .. }) if target == wall
     ));
@@ -266,12 +235,7 @@ fn relationship_sets_refuse_empty_duplicates_self_and_wrong_select_members() {
         let result = relate_approvals(
             &mut tx,
             &model,
-            ApprovalRelationshipDraft {
-                name: None,
-                description: None,
-                relating_approval: approval,
-                related_approvals: related,
-            },
+            ApprovalRelationshipDraft::new(approval, related),
         );
         assert!(result.is_err());
         assert_eq!(tx.len(), 0);
@@ -280,12 +244,7 @@ fn relationship_sets_refuse_empty_duplicates_self_and_wrong_select_members() {
         relate_resource_approval(
             &mut tx,
             &model,
-            ResourceApprovalDraft {
-                name: None,
-                description: None,
-                related_resources: &[wall],
-                relating_approval: approval,
-            }
+            ResourceApprovalDraft::new(&[wall], approval)
         ),
         Err(ApprovalError::AuthoringReferenceType { target, .. }) if target == wall
     ));

@@ -28,6 +28,7 @@ use crate::StyleResult;
 
 /// The four attributes every `IfcLightSource` carries.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct LightSourceDraft<'a> {
     /// `Name`.
     pub name: Option<&'a str>,
@@ -37,6 +38,47 @@ pub struct LightSourceDraft<'a> {
     pub ambient_intensity: Option<f64>,
     /// `Intensity`, a normalised ratio.
     pub intensity: Option<f64>,
+}
+
+impl<'a> LightSourceDraft<'a> {
+    /// Starts a draft from its required `light_colour`; every other field is
+    /// unset.
+    #[must_use]
+    pub fn new(light_colour: EntityId) -> Self {
+        Self {
+            name: None,
+            light_colour,
+            ambient_intensity: None,
+            intensity: None,
+        }
+    }
+
+    /// Sets `name`.
+    ///
+    /// `Name`.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets `ambient_intensity`.
+    ///
+    /// `AmbientIntensity`, a normalised ratio.
+    #[must_use]
+    pub fn ambient_intensity(mut self, value: f64) -> Self {
+        self.ambient_intensity = Some(value);
+        self
+    }
+
+    /// Sets `intensity`.
+    ///
+    /// `Intensity`, a normalised ratio.
+    #[must_use]
+    pub fn intensity(mut self, value: f64) -> Self {
+        self.intensity = Some(value);
+        self
+    }
 }
 
 /// Attenuation over distance, as three coefficients.

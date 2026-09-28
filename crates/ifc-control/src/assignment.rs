@@ -44,6 +44,7 @@ const RELATION: &str = "IFCRELASSIGNSTOCONTROL";
 
 /// One `IfcRelAssignsToControl` to stage.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ControlAssignmentDraft<'a> {
     /// `GlobalId`: a 22-character compressed IFC GUID.
     pub global_id: &'a str,
@@ -57,6 +58,34 @@ pub struct ControlAssignmentDraft<'a> {
     pub control: EntityId,
     /// `RelatedObjects`: the work the control governs.
     pub related_objects: &'a [EntityId],
+}
+
+impl<'a> ControlAssignmentDraft<'a> {
+    /// Starts a draft with its required fields; the rest are unset.
+    #[must_use]
+    pub fn new(global_id: &'a str, control: EntityId, related_objects: &'a [EntityId]) -> Self {
+        Self {
+            global_id,
+            name: None,
+            description: None,
+            control,
+            related_objects,
+        }
+    }
+
+    /// Sets [`Self::name`]: `Name`.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets [`Self::description`]: `Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
 }
 
 /// Stage one `IfcRelAssignsToControl` relating work to an owned control.

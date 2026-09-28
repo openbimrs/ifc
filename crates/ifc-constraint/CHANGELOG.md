@@ -12,6 +12,19 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- Every public draft is `#[non_exhaustive]`, so struct literals no longer
+  compile outside the crate. Each gains a constructor taking its required
+  fields and one builder setter per other field, named after the field and
+  taking the unwrapped value (`.description("…")` sets `Some`):
+  - `ConstraintBaseDraft::new(name, grade)`
+  - `MetricDraft::new(base, benchmark)`
+  - `ObjectiveDraft::new(base, qualifier)`
+  - `ResourceConstraintDraft::new(relating_constraint, related_resources)`
+  - `ConstraintAssociationDraft::new(global_id, related_objects, relating_constraint)`
+  - `ReferenceDraft::new()`, which now also derives `Default`
+
 ## [0.2.1] - 2026-09-28
 
 ### Added

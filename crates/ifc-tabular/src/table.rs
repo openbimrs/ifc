@@ -34,6 +34,7 @@ pub fn add_table_row(
 
 /// Attributes of an `IfcTableColumn`.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct ColumnDraft<'a> {
     /// `Identifier`.
     pub identifier: Option<&'a str>,
@@ -48,6 +49,55 @@ pub struct ColumnDraft<'a> {
     /// Taken as an id rather than modelled here: `IfcReference` is a
     /// property-path concept this crate does not own.
     pub reference_path: Option<EntityId>,
+}
+
+impl<'a> ColumnDraft<'a> {
+    /// Starts a draft with every field unset.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            identifier: None,
+            name: None,
+            description: None,
+            unit: None,
+            reference_path: None,
+        }
+    }
+
+    /// Sets [`Self::identifier`]: `Identifier`.
+    #[must_use]
+    pub fn identifier(mut self, value: &'a str) -> Self {
+        self.identifier = Some(value);
+        self
+    }
+
+    /// Sets [`Self::name`]: `Name`.
+    #[must_use]
+    pub fn name(mut self, value: &'a str) -> Self {
+        self.name = Some(value);
+        self
+    }
+
+    /// Sets [`Self::description`]: `Description`.
+    #[must_use]
+    pub fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets [`Self::unit`]: `Unit`, an `IfcUnit` reference.
+    #[must_use]
+    pub fn unit(mut self, value: EntityId) -> Self {
+        self.unit = Some(value);
+        self
+    }
+
+    /// Sets [`Self::reference_path`]: `ReferencePath`, an `IfcReference` reference.
+    #[must_use]
+    pub fn reference_path(mut self, value: EntityId) -> Self {
+        self.reference_path = Some(value);
+        self
+    }
 }
 
 fn optional_text(value: Option<&str>) -> Value {

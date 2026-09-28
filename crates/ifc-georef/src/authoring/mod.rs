@@ -63,6 +63,7 @@ pub fn create_direction(tx: &mut Transaction, ratios: &[f64]) -> GeorefResult<En
 
 /// Authored fields for `IfcProjectedCRS`.
 #[derive(Debug, Clone, Copy, Default)]
+#[non_exhaustive]
 pub struct ProjectedCrsDraft<'a> {
     /// `Name`, the CRS identifier such as `EPSG:25832`.
     pub name: &'a str,
@@ -78,6 +79,64 @@ pub struct ProjectedCrsDraft<'a> {
     pub map_zone: Option<&'a str>,
     /// `MapUnit`, an `IfcNamedUnit` reference.
     pub map_unit: Option<EntityId>,
+}
+
+impl<'a> ProjectedCrsDraft<'a> {
+    /// Starts a draft for the CRS called `name`, such as `EPSG:25832`.
+    #[must_use]
+    pub const fn new(name: &'a str) -> Self {
+        Self {
+            name,
+            description: None,
+            geodetic_datum: None,
+            vertical_datum: None,
+            map_projection: None,
+            map_zone: None,
+            map_unit: None,
+        }
+    }
+
+    /// Sets `Description`.
+    #[must_use]
+    pub const fn description(mut self, value: &'a str) -> Self {
+        self.description = Some(value);
+        self
+    }
+
+    /// Sets `GeodeticDatum`.
+    #[must_use]
+    pub const fn geodetic_datum(mut self, value: &'a str) -> Self {
+        self.geodetic_datum = Some(value);
+        self
+    }
+
+    /// Sets `VerticalDatum`.
+    #[must_use]
+    pub const fn vertical_datum(mut self, value: &'a str) -> Self {
+        self.vertical_datum = Some(value);
+        self
+    }
+
+    /// Sets `MapProjection`.
+    #[must_use]
+    pub const fn map_projection(mut self, value: &'a str) -> Self {
+        self.map_projection = Some(value);
+        self
+    }
+
+    /// Sets `MapZone`.
+    #[must_use]
+    pub const fn map_zone(mut self, value: &'a str) -> Self {
+        self.map_zone = Some(value);
+        self
+    }
+
+    /// Sets `MapUnit`, an `IfcNamedUnit` reference.
+    #[must_use]
+    pub const fn map_unit(mut self, value: EntityId) -> Self {
+        self.map_unit = Some(value);
+        self
+    }
 }
 
 /// Stage an `IfcProjectedCRS`.

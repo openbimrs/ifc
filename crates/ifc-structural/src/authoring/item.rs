@@ -7,6 +7,7 @@ use crate::error::{StructuralError, StructuralResult};
 
 /// Staged `IfcRoot`-level attributes shared by every staged structural entity.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct StructuralRootDraft {
     /// `GlobalId`; must parse as a 22-character IFC GUID.
     pub global_id: String,
@@ -22,6 +23,68 @@ pub struct StructuralRootDraft {
     pub object_placement: Option<EntityId>,
     /// `Representation`, an `IfcProductRepresentation` reference.
     pub representation: Option<EntityId>,
+}
+
+impl StructuralRootDraft {
+    /// Starts a draft from its required fields; every other field is unset.
+    #[must_use]
+    pub fn new(global_id: impl Into<String>) -> Self {
+        Self {
+            global_id: global_id.into(),
+            owner_history: None,
+            name: None,
+            description: None,
+            object_type: None,
+            object_placement: None,
+            representation: None,
+        }
+    }
+
+    /// Sets `owner_history`: `OwnerHistory`, validated against the
+    /// model/transaction if present.
+    #[must_use]
+    pub fn owner_history(mut self, value: EntityId) -> Self {
+        self.owner_history = Some(value);
+        self
+    }
+
+    /// Sets `name`: `Name`.
+    #[must_use]
+    pub fn name(mut self, value: impl Into<String>) -> Self {
+        self.name = Some(value.into());
+        self
+    }
+
+    /// Sets `description`: `Description`.
+    #[must_use]
+    pub fn description(mut self, value: impl Into<String>) -> Self {
+        self.description = Some(value.into());
+        self
+    }
+
+    /// Sets `object_type`: `ObjectType`; required non-blank on entities whose
+    /// predefined type is `USERDEFINED`.
+    #[must_use]
+    pub fn object_type(mut self, value: impl Into<String>) -> Self {
+        self.object_type = Some(value.into());
+        self
+    }
+
+    /// Sets `object_placement`: `ObjectPlacement`, an `IfcObjectPlacement`
+    /// reference.
+    #[must_use]
+    pub fn object_placement(mut self, value: EntityId) -> Self {
+        self.object_placement = Some(value);
+        self
+    }
+
+    /// Sets `representation`: `Representation`, an `IfcProductRepresentation`
+    /// reference.
+    #[must_use]
+    pub fn representation(mut self, value: EntityId) -> Self {
+        self.representation = Some(value);
+        self
+    }
 }
 
 impl Default for StructuralRootDraft {
@@ -114,11 +177,20 @@ pub enum MemberDraftKind {
 
 /// Staged fields for creating an `IfcStructuralMember` via [`stage_member`].
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct MemberDraft {
     /// `IfcRoot` attributes shared with other staged structural entities.
     pub root: StructuralRootDraft,
     /// Which `IfcStructuralMember` subtype to create, and its subtype-specific attributes.
     pub kind: MemberDraftKind,
+}
+
+impl MemberDraft {
+    /// Starts a draft from its required fields; every other field is unset.
+    #[must_use]
+    pub fn new(root: StructuralRootDraft, kind: MemberDraftKind) -> Self {
+        Self { root, kind }
+    }
 }
 
 /// Staged connection subtype for [`ConnectionDraft::kind`].
@@ -147,11 +219,20 @@ pub enum ConnectionDraftKind {
 
 /// Staged fields for creating an `IfcStructuralConnection` via [`stage_connection`].
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct ConnectionDraft {
     /// `IfcRoot` attributes shared with other staged structural entities.
     pub root: StructuralRootDraft,
     /// Which `IfcStructuralConnection` subtype to create, and its subtype-specific attributes.
     pub kind: ConnectionDraftKind,
+}
+
+impl ConnectionDraft {
+    /// Starts a draft from its required fields; every other field is unset.
+    #[must_use]
+    pub fn new(root: StructuralRootDraft, kind: ConnectionDraftKind) -> Self {
+        Self { root, kind }
+    }
 }
 
 pub(super) fn validate_root(

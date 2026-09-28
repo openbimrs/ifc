@@ -52,12 +52,7 @@ fn base(schema: &str, version: SchemaVersion) -> Model {
 }
 
 fn relation(global_id: &str) -> AssociationDraft<'_> {
-    AssociationDraft {
-        global_id,
-        name: Some("Classified"),
-        description: None,
-        related_objects: &[WALL],
-    }
+    AssociationDraft::new(global_id, &[WALL]).name("Classified")
 }
 
 /// Author through every writer with the values `version` can hold.
@@ -66,70 +61,66 @@ fn author(model: &mut Model, version: SchemaVersion) -> Vec<EntityId> {
     let ifc4 = version != SchemaVersion::Ifc2x3;
     let since = |value| ifc4.then_some(value);
     let mut tx = Transaction::new(model);
-    let draft = ClassificationDraft {
-        source: Some("NBS"),
-        edition: Some("2024"),
-        edition_date: since("2024-01-01"),
-        name: "Uniclass",
-        description: since("Unified classification"),
-        location: since("https://uniclass.thenbs.com"),
-        reference_tokens: ifc4.then_some(&["_"][..]),
+    let draft = {
+        let mut draft = ClassificationDraft::new("Uniclass")
+            .source("NBS")
+            .edition("2024");
+        draft.edition_date = since("2024-01-01");
+        draft.description = since("Unified classification");
+        draft.location = since("https://uniclass.thenbs.com");
+        draft.reference_tokens = ifc4.then_some(&["_"][..]);
+        draft
     };
     let system = create_classification_in(&mut tx, model, draft).expect("system");
-    let reference = ClassificationReferenceDraft {
-        location: None,
-        identification: Some("Pr_20"),
-        name: Some("Products"),
-        referenced_source: Some(system),
-        description: since("Structural"),
-        sort: since("20"),
+    let reference = {
+        let mut draft = ClassificationReferenceDraft::new()
+            .identification("Pr_20")
+            .name("Products")
+            .referenced_source(system);
+        draft.description = since("Structural");
+        draft.sort = since("20");
+        draft
     };
     let reference = create_classification_reference(&mut tx, model, reference).expect("ref");
-    let document = |identification| DocumentDraft {
-        identification,
-        name: "Spec",
-        description: None,
-        location: since("https://example.org/spec.pdf"),
-        purpose: None,
-        intended_use: None,
-        scope: None,
-        revision: Some("B"),
-        document_owner: Some(ORGANIZATION),
-        editors: Some(&[PERSON]),
-        creation_time: since("2026-09-28T00:00:00"),
-        last_revision_time: None,
-        electronic_format: since("application/pdf"),
-        valid_from: since("2026-09-28"),
-        valid_until: None,
-        confidentiality: Some("PUBLIC"),
-        status: Some("FINALDRAFT"),
+    let document = |identification| {
+        let mut draft = DocumentDraft::new(identification, "Spec")
+            .revision("B")
+            .document_owner(ORGANIZATION)
+            .editors(&[PERSON])
+            .confidentiality("PUBLIC")
+            .status("FINALDRAFT");
+        draft.location = since("https://example.org/spec.pdf");
+        draft.creation_time = since("2026-09-28T00:00:00");
+        draft.electronic_format = since("application/pdf");
+        draft.valid_from = since("2026-09-28");
+        draft
     };
     let current = create_document(&mut tx, model, document("DOC-1")).expect("document");
     let old = create_document(&mut tx, model, document("DOC-0")).expect("document");
-    let document_ref = DocumentReferenceDraft {
-        location: None,
-        identification: Some("7"),
-        name: (!ifc4).then_some("Spec sheet"),
-        description: since("Sheet 7"),
-        referenced_document: ifc4.then_some(current),
+    let document_ref = {
+        let mut draft = DocumentReferenceDraft::new().identification("7");
+        draft.name = (!ifc4).then_some("Spec sheet");
+        draft.description = since("Sheet 7");
+        draft.referenced_document = ifc4.then_some(current);
+        draft
     };
     let document_ref = create_document_reference(&mut tx, model, document_ref).expect("doc ref");
-    let library = LibraryDraft {
-        name: "Products",
-        version: Some("3"),
-        publisher: Some(ORGANIZATION),
-        version_date: since("2026-09-28T00:00:00"),
-        location: since("https://example.org/lib"),
-        description: None,
+    let library = {
+        let mut draft = LibraryDraft::new("Products")
+            .version("3")
+            .publisher(ORGANIZATION);
+        draft.version_date = since("2026-09-28T00:00:00");
+        draft.location = since("https://example.org/lib");
+        draft
     };
     let library = create_library(&mut tx, model, library).expect("library");
-    let library_ref = LibraryReferenceDraft {
-        location: None,
-        identification: Some("P1"),
-        name: Some("Pump"),
-        description: None,
-        language: since("en"),
-        referenced_library: ifc4.then_some(library),
+    let library_ref = {
+        let mut draft = LibraryReferenceDraft::new()
+            .identification("P1")
+            .name("Pump");
+        draft.language = since("en");
+        draft.referenced_library = ifc4.then_some(library);
+        draft
     };
     let library_ref = create_library_reference(&mut tx, model, library_ref).expect("lib ref");
     let superseding = relate_documents(&mut tx, model, current, &[old], Some("SUPERSEDES"))
@@ -177,12 +168,7 @@ fn author(model: &mut Model, version: SchemaVersion) -> Vec<EntityId> {
     ];
     written.extend(associations);
     if ifc4 {
-        let draft = ExternalReferenceRelationshipDraft {
-            name: None,
-            description: None,
-            relating_reference: library_ref,
-            related_resources: &[ORGANIZATION],
-        };
+        let draft = ExternalReferenceRelationshipDraft::new(library_ref, &[ORGANIZATION]);
         written.push(create_external_reference_relationship(&mut tx, model, draft).expect("err"));
     }
     tx.commit(model).expect("commit");

@@ -36,16 +36,18 @@ fn measures(x: f64, y: f64, z: f64) -> AxisValues<Option<StiffnessValue>> {
 }
 
 fn draft(kind: BoundaryConditionKind) -> BoundaryConditionDraft<'static> {
-    BoundaryConditionDraft {
-        name: Some("Support"),
-        translational: measures(1.5, 2.5, 3.5),
-        rotational: if kind == BoundaryConditionKind::Face {
-            AxisValues::default()
-        } else {
-            measures(4.5, 5.5, 6.5)
-        },
-        warping: (kind == BoundaryConditionKind::NodeWarping)
-            .then_some(StiffnessValue::Measure(7.5)),
+    {
+        let mut draft = BoundaryConditionDraft::new()
+            .name("Support")
+            .translational(measures(1.5, 2.5, 3.5))
+            .rotational(if kind == BoundaryConditionKind::Face {
+                AxisValues::default()
+            } else {
+                measures(4.5, 5.5, 6.5)
+            });
+        draft.warping =
+            (kind == BoundaryConditionKind::NodeWarping).then_some(StiffnessValue::Measure(7.5));
+        draft
     }
 }
 
@@ -226,12 +228,13 @@ fn a_boolean_is_typed_where_a_select_admits_it_and_refused_in_ifc2x3() {
         for kind in KINDS {
             let mut model = model(token);
             let mut tx = Transaction::new(&model);
-            let draft = BoundaryConditionDraft {
-                name: None,
-                translational: flags,
-                rotational: AxisValues::default(),
-                warping: (kind == BoundaryConditionKind::NodeWarping)
-                    .then_some(StiffnessValue::Boolean(true)),
+            let draft = {
+                let mut draft = BoundaryConditionDraft::new()
+                    .translational(flags)
+                    .rotational(AxisValues::default());
+                draft.warping = (kind == BoundaryConditionKind::NodeWarping)
+                    .then_some(StiffnessValue::Boolean(true));
+                draft
             };
             let staged = stage_boundary_condition_in(&mut tx, schema, kind, draft);
             if schema.version() == Some(SchemaVersion::Ifc2x3) {

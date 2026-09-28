@@ -12,10 +12,7 @@ use ifc_schema::{ifc4, ifc4x3};
 const GUID: &str = "0RSPnzHdf5hAmvCJDbRDzy";
 
 fn named(name: &str) -> ControlDraft<'_> {
-    ControlDraft {
-        name: Some(name),
-        ..ControlDraft::default()
-    }
+    ControlDraft::new().name(name)
 }
 
 fn invalid(err: &ControlError) -> bool {
@@ -28,14 +25,12 @@ fn attributes_land_in_the_declared_slots() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
 
-    let draft = ControlDraft {
-        name: Some("Demolition consent"),
-        description: Some("Phase 1"),
-        identification: Some("PRM-2026-014"),
-        status: Some("GRANTED"),
-        long_description: Some("Covers the east wing only."),
-        ..ControlDraft::default()
-    };
+    let draft = ControlDraft::new()
+        .name("Demolition consent")
+        .description("Phase 1")
+        .identification("PRM-2026-014")
+        .status("GRANTED")
+        .long_description("Covers the east wing only.");
     let permit = create_control(
         &mut tx,
         ifc4(),
@@ -67,11 +62,9 @@ fn performance_history_has_its_own_tail() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
 
-    let draft = ControlDraft {
-        name: Some("Chiller COP"),
-        life_cycle_phase: Some("OPERATION"),
-        ..ControlDraft::default()
-    };
+    let draft = ControlDraft::new()
+        .name("Chiller COP")
+        .life_cycle_phase("OPERATION");
     let history = create_control(
         &mut tx,
         ifc4(),
@@ -121,18 +114,14 @@ fn undeclared_attributes_are_refused() {
 
     // A performance history declares neither Status nor LongDescription.
     for draft in [
-        ControlDraft {
-            name: Some("H"),
-            life_cycle_phase: Some("OPERATION"),
-            status: Some("OPEN"),
-            ..ControlDraft::default()
-        },
-        ControlDraft {
-            name: Some("H"),
-            life_cycle_phase: Some("OPERATION"),
-            long_description: Some("..."),
-            ..ControlDraft::default()
-        },
+        ControlDraft::new()
+            .name("H")
+            .life_cycle_phase("OPERATION")
+            .status("OPEN"),
+        ControlDraft::new()
+            .name("H")
+            .life_cycle_phase("OPERATION")
+            .long_description("..."),
     ] {
         let err = create_control(
             &mut tx,
@@ -152,11 +141,7 @@ fn undeclared_attributes_are_refused() {
         ControlKind::ProjectOrder,
         ControlKind::ActionRequest,
     ] {
-        let draft = ControlDraft {
-            name: Some("C"),
-            life_cycle_phase: Some("OPERATION"),
-            ..ControlDraft::default()
-        };
+        let draft = ControlDraft::new().name("C").life_cycle_phase("OPERATION");
         let err =
             create_control(&mut tx, ifc4(), kind, GUID, None, draft).expect_err("not declared");
         assert!(invalid(&err), "{err}");
@@ -192,15 +177,10 @@ fn a_token_from_another_control_is_refused() {
         (ControlKind::ActionRequest, "PHONE"),
         (ControlKind::PerformanceHistory, "NOTDEFINED"),
     ] {
-        let draft = ControlDraft {
-            name: Some("C"),
-            life_cycle_phase: if kind == ControlKind::PerformanceHistory {
-                Some("OPERATION")
-            } else {
-                None
-            },
-            ..ControlDraft::default()
-        };
+        let mut draft = ControlDraft::new().name("C");
+        if kind == ControlKind::PerformanceHistory {
+            draft = draft.life_cycle_phase("OPERATION");
+        }
         create_control(&mut tx, ifc4(), kind, GUID, Some(token), draft).expect("own token");
     }
 }
@@ -223,11 +203,7 @@ fn userdefined_without_an_object_type_is_refused() {
     assert!(invalid(&err), "{err}");
 
     // Blank is not a name either.
-    let blank = ControlDraft {
-        name: Some("Consent"),
-        object_type: Some("   "),
-        ..ControlDraft::default()
-    };
+    let blank = ControlDraft::new().name("Consent").object_type("   ");
     create_control(
         &mut tx,
         ifc4(),
@@ -240,11 +216,9 @@ fn userdefined_without_an_object_type_is_refused() {
     assert!(tx.is_empty(), "nothing is staged when the rule fails");
 
     // With the name supplied it stages.
-    let ok = ControlDraft {
-        name: Some("Consent"),
-        object_type: Some("Heritage consent"),
-        ..ControlDraft::default()
-    };
+    let ok = ControlDraft::new()
+        .name("Consent")
+        .object_type("Heritage consent");
     create_control(
         &mut tx,
         ifc4(),
@@ -318,16 +292,10 @@ fn the_writer_agrees_with_both_schemas() {
             let mut model = Model::default();
             let mut tx = Transaction::new(&model);
             for token in kind.members() {
-                let draft = ControlDraft {
-                    name: Some("C"),
-                    object_type: Some("named"),
-                    life_cycle_phase: if kind == ControlKind::PerformanceHistory {
-                        Some("OPERATION")
-                    } else {
-                        None
-                    },
-                    ..ControlDraft::default()
-                };
+                let mut draft = ControlDraft::new().name("C").object_type("named");
+                if kind == ControlKind::PerformanceHistory {
+                    draft = draft.life_cycle_phase("OPERATION");
+                }
                 create_control(&mut tx, schema, kind, GUID, Some(token), draft)
                     .expect("declared token");
             }

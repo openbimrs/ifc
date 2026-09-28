@@ -61,14 +61,9 @@ fn model(schema: &[&str]) -> Model {
 }
 
 fn draft(related: &[EntityId]) -> ConstraintAssociationDraft<'_> {
-    ConstraintAssociationDraft {
-        global_id: G1,
-        name: Some("Constrained"),
-        description: None,
-        related_objects: related,
-        intent: Some("DESIGN"),
-        relating_constraint: METRIC,
-    }
+    ConstraintAssociationDraft::new(G1, related, METRIC)
+        .name("Constrained")
+        .intent("DESIGN")
 }
 
 /// Refused before anything is staged.
@@ -184,9 +179,10 @@ fn ifc2x3_without_an_owner_history_is_refused() {
 fn ifc2x3_requires_an_intent() {
     let model = model(&["IFC2X3"]);
     let error = refused(&model, |tx| {
-        let draft = ConstraintAssociationDraft {
-            intent: None,
-            ..draft(&[WALL])
+        let draft = {
+            let mut draft = draft(&[WALL]);
+            draft.intent = None;
+            draft
         };
         associate_constraint_with_owner_history(tx, &model, draft, OWNER)
     });
