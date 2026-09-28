@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.4.2 (2026-09-27) |
+| Latest release | 0.4.3 (2026-09-28) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_geometry/index.html) · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -37,14 +37,17 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.4.2 (2026-09-27):
+Latest release, 0.4.3 (2026-09-28):
 
-### Changed
+### Added
 
-- `data/ifc4-where-rules.tsv` lists each geometry WHERE rule by entity,
-  label and support state only. Its `expression` column held the rule bodies
-  verbatim, which are CC BY-ND schema text and are no longer shipped.
-  `data/NOTICE.md` covers all five data files and no longer claims the
-  directory holds no rule bodies while it did.
+- `BodyItem::item_world`: the frame each described item is placed in, the
+  context and product placement composed with every `MappingTarget o
+  MappingOrigin` it was reached through (#185). It is reported for every item
+  kind, including mapped B-reps and tessellations, and is not required to be
+  rigid, so a mapping that mirrors or scales shows. `BodyItem::is_mirrored()`
+  answers whether that frame reverses handedness, and
+  `Transform::determinant()` gives its signed volume scale. Additive:
+  `BodyItem` is `#[non_exhaustive]`.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
