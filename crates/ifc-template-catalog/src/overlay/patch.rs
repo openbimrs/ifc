@@ -2,7 +2,7 @@
 
 use thiserror::Error;
 
-use crate::definition::{Applicability, CatalogEdition};
+use crate::definition::{Applicability, CatalogEdition, PropertyTemplate};
 
 /// One ledger entry correcting or annotating an official set template.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -38,6 +38,10 @@ pub enum PatchOperation {
         /// Applicability list to install in its place.
         replacement: Vec<Applicability>,
     },
+    /// Append a property template the edition's documentation lists but its
+    /// machine-readable PSD omits. Rejected when the target is a quantity set
+    /// or already has a member of that name.
+    AddProperty(PropertyTemplate),
     /// Attach an [`Advisory`] to the target template without changing its data.
     AddAdvisory {
         /// How serious the advisory is.
@@ -129,7 +133,8 @@ pub enum PatchError {
         /// The unmatched target template name.
         template: String,
     },
-    /// An [`PatchOperation::AddApplicability`] selector already exists on the target.
+    /// An [`PatchOperation::AddApplicability`] selector, or a
+    /// [`PatchOperation::AddProperty`] member name, already exists on the target.
     #[error("patch `{patch_id}` is already reflected in `{template}`")]
     AlreadyApplied {
         /// Id of the offending patch.
@@ -141,6 +146,14 @@ pub enum PatchError {
     /// match the template's current applicability.
     #[error("patch `{patch_id}` expected different applicability on `{template}`")]
     StaleTarget {
+        /// Id of the offending patch.
+        patch_id: String,
+        /// The target template name.
+        template: String,
+    },
+    /// A [`PatchOperation::AddProperty`] targets a quantity set template.
+    #[error("patch `{patch_id}` adds a property to quantity set `{template}`")]
+    NotAPropertySet {
         /// Id of the offending patch.
         patch_id: String,
         /// The target template name.

@@ -19,8 +19,11 @@ it behind its `property-catalog` feature.
 ## Embedded editions and profiles
 
 Official snapshots are embedded for IFC2X3 TC1, IFC4 ADD2 TC1, and IFC4X3
-ADD2. Corrected overlays are deliberately available only for IFC4 ADD2 TC1;
-official artifacts are never rewritten.
+ADD2. Corrected overlays exist for IFC4 ADD2 TC1 and IFC4X3 ADD2; IFC2X3
+TC1 has the official profile only. Official artifacts are never rewritten:
+the IFC4X3 overlay adds `Pset_Stationing.HasIncreasingStation`, which the
+published ADD2 documentation lists and the PSD XML the snapshot is built
+from omits.
 
 ## Version-explicit TSV index
 

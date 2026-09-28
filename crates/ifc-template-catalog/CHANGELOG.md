@@ -12,6 +12,15 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `corrected_catalog(CatalogEdition::Ifc4x3Add2)`: an IFC4X3 ADD2 corrected
+  profile whose one patch, `NEH-IFC4X3-PSD-0001`, adds
+  `Pset_Stationing.HasIncreasingStation` (`IfcBoolean`). The published ADD2
+  documentation (6.6.4.10) lists it; the PSD XML the official snapshot is
+  generated from omits it, and the official snapshot is unchanged (#216).
+- `PatchOperation::AddProperty` and `PatchError::NotAPropertySet`.
+
 ### Changed (breaking)
 
 - `ValidationIssue`, `ValidationReport`, `CatalogDiagnostic`,

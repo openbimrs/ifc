@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `tests/stationing_template.rs`: a referent's `Pset_Stationing` authored
+  by `alignment` and read by `properties` checks clean against the
+  `property-catalog` IFC4X3 ADD2 corrected profile (#216).
+
 ### Changed (breaking)
 
 - `PanelPosition` and `Unreachable` are `#[non_exhaustive]`: a match needs a

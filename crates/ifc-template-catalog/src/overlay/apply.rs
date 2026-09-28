@@ -3,6 +3,7 @@
 use std::collections::BTreeSet;
 
 use crate::catalog::{Catalog, CatalogProfile};
+use crate::definition::SetTemplateKind;
 
 use super::{Advisory, AppliedPatch, Patch, PatchError, PatchOperation};
 
@@ -103,6 +104,24 @@ impl Catalog {
                         });
                     }
                     template.applicability = replacement.clone();
+                }
+                PatchOperation::AddProperty(property) => {
+                    let SetTemplateKind::Property { properties, .. } = &mut template.kind else {
+                        return Err(PatchError::NotAPropertySet {
+                            patch_id: patch.id.clone(),
+                            template: template.name.clone(),
+                        });
+                    };
+                    if properties
+                        .iter()
+                        .any(|existing| existing.name == property.name)
+                    {
+                        return Err(PatchError::AlreadyApplied {
+                            patch_id: patch.id.clone(),
+                            template: template.name.clone(),
+                        });
+                    }
+                    properties.push(property.clone());
                 }
                 PatchOperation::AddAdvisory { severity, message } => {
                     advisories.push(Advisory {
