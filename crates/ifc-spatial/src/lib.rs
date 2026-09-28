@@ -61,11 +61,18 @@ pub use ifc_schema::SchemaVersion;
 
 pub mod facility;
 
-pub use facility::{create_facility, Facility, FacilityDraft, FacilityError, FacilityResult};
+pub use facility::{
+    create_facility, create_facility_with_owner_history, Facility, FacilityDraft, FacilityError,
+    FacilityResult,
+};
 
 pub use authoring::{
-    aggregate, connect_path_elements, contain, create_external_spatial_element, create_project,
-    create_project_library, create_space_boundary, create_spatial_element, BoundaryDraft,
-    BoundaryLevel, ExternalSpatialDraft, ProjectLibraryDraft, SpatialAuthoringError,
-    SpatialAuthoringResult, SpatialDraft,
+    aggregate, aggregate_with_owner_history, connect_path_elements,
+    connect_path_elements_with_owner_history, contain, contain_with_owner_history,
+    create_external_spatial_element, create_external_spatial_element_with_owner_history,
+    create_project, create_project_library, create_project_library_with_owner_history,
+    create_project_with_owner_history, create_space_boundary,
+    create_space_boundary_with_owner_history, create_spatial_element,
+    create_spatial_element_with_owner_history, BoundaryDraft, BoundaryLevel, ExternalSpatialDraft,
+    ProjectLibraryDraft, SpatialAuthoringError, SpatialAuthoringResult, SpatialDraft,
 };

@@ -20,8 +20,9 @@
 //! parses and then answers spatial queries incorrectly, which is why
 //! they get separate constructors rather than a flag.
 
-use ifc_model::{Entity, EntityId, Transaction, Value};
+use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 
+use super::release::bind;
 use crate::authoring::{invalid, SystemAuthoringResult};
 
 /// `IfcDistributionElement` slots, from IFC4X3 ADD2.
@@ -155,6 +156,9 @@ fn reference(value: Option<EntityId>) -> Value {
 
 /// Stage a distribution element occurrence.
 ///
+/// Writes `OwnerHistory` `$`, so the record is IFC4/IFC4X3 only; use
+/// [`create_distribution_element_with_owner_history`] for IFC2X3.
+///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId.
@@ -183,6 +187,11 @@ pub fn create_distribution_element(
 /// `IfcRelAssignsToGroup` pointing at this entity, which is why this
 /// takes no member list -- staging one here would imply the zone
 /// owns its contents, and it does not.
+///
+/// Writes the IFC4/IFC4X3 six-attribute layout with `OwnerHistory` `$`,
+/// so the record is IFC4/IFC4X3 only; use
+/// [`create_zone_with_owner_history`] for IFC2X3, which declares five
+/// (no `LongName`).
 ///
 /// # Errors
 ///
@@ -215,6 +224,10 @@ pub fn create_zone(
 /// unrecoverable, so it is refused here rather than written out as
 /// a file nobody can interpret.
 ///
+/// Writes `OwnerHistory` `$`, so the record is IFC4/IFC4X3 only; use
+/// [`create_spatial_zone_with_owner_history`] for a release-bound record.
+/// IFC2X3 declares no `IfcSpatialZone`.
+///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId, and USERDEFINED without an
@@ -227,15 +240,7 @@ pub fn create_spatial_zone(
     predefined_type: Option<&str>,
     object_type: Option<&str>,
 ) -> SystemAuthoringResult<EntityId> {
-    super::guid("IFCSPATIALZONE", global_id)?;
-
-    if predefined_type == Some("USERDEFINED") && object_type.is_none() {
-        return Err(invalid(
-            "IFCSPATIALZONE",
-            "PredefinedType",
-            "USERDEFINED requires an ObjectType naming the kind",
-        ));
-    }
+    check_spatial_zone(global_id, predefined_type, object_type)?;
 
     let mut attrs = vec![Value::Null; spatial_zone_slot::WIDTH];
     attrs[spatial_zone_slot::GLOBAL_ID] = Value::Text(global_id.into());
@@ -248,4 +253,135 @@ pub fn create_spatial_zone(
     attrs[spatial_zone_slot::PREDEFINED_TYPE] =
         predefined_type.map_or(Value::Null, |t| Value::Enum(t.into()));
     Ok(tx.create(Entity::new("IFCSPATIALZONE", attrs)))
+}
+
+/// The plain spatial-zone checks, shared with the release-bound variant.
+fn check_spatial_zone(
+    global_id: &str,
+    predefined_type: Option<&str>,
+    object_type: Option<&str>,
+) -> SystemAuthoringResult<()> {
+    super::guid("IFCSPATIALZONE", global_id)?;
+    if predefined_type == Some("USERDEFINED") && object_type.is_none() {
+        return Err(invalid(
+            "IFCSPATIALZONE",
+            "PredefinedType",
+            "USERDEFINED requires an ObjectType naming the kind",
+        ));
+    }
+    Ok(())
+}
+
+/// [`create_distribution_element`] in `model`'s declared release, with a
+/// caller-supplied `IfcOwnerHistory`, which IFC2X3 requires (#202).
+///
+/// Every [`DistributionElementKind`] declares the same eight attributes in
+/// IFC2X3, IFC4 and IFC4X3; only `OwnerHistory` changes, from required to
+/// optional. The owner history is never invented.
+///
+/// # Errors
+///
+/// Those of [`create_distribution_element`], and the release and
+/// owner-history refusals of
+/// [`create_system_with_owner_history`](super::create_system_with_owner_history).
+/// Nothing is staged on an error.
+pub fn create_distribution_element_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    kind: DistributionElementKind,
+    global_id: &str,
+    attributes: ElementAttributes<'_>,
+    owner_history: EntityId,
+) -> SystemAuthoringResult<EntityId> {
+    let release = bind(model)?;
+    let type_name = kind.type_name();
+    super::guid(type_name, global_id)?;
+    let values = vec![
+        ("GlobalId", Value::Text(global_id.into())),
+        ("Name", text(attributes.name)),
+        ("Description", text(attributes.description)),
+        ("ObjectPlacement", reference(attributes.placement)),
+        ("Representation", reference(attributes.representation)),
+        ("Tag", text(attributes.tag)),
+    ];
+    release.stage(tx, model, type_name, values, owner_history)
+}
+
+/// [`create_zone`] in `model`'s declared release, with a caller-supplied
+/// `IfcOwnerHistory`, which IFC2X3 requires (#202).
+///
+/// IFC2X3 `IfcZone` declares no `LongName`, so a `long_name` there is
+/// refused rather than dropped.
+///
+/// # Errors
+///
+/// Those of [`create_zone`], the release and owner-history refusals of
+/// [`create_system_with_owner_history`](super::create_system_with_owner_history),
+/// and [`AuthoringNotInSchema`](super::SystemAuthoringError::AuthoringNotInSchema)
+/// for an IFC2X3 `long_name`. Nothing is staged on an error.
+pub fn create_zone_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    global_id: &str,
+    name: Option<&str>,
+    description: Option<&str>,
+    long_name: Option<&str>,
+    owner_history: EntityId,
+) -> SystemAuthoringResult<EntityId> {
+    let release = bind(model)?;
+    super::guid("IFCZONE", global_id)?;
+    let values = vec![
+        ("GlobalId", Value::Text(global_id.into())),
+        ("Name", text(name)),
+        ("Description", text(description)),
+        ("LongName", text(long_name)),
+    ];
+    release.stage(tx, model, "IFCZONE", values, owner_history)
+}
+
+/// [`create_spatial_zone`] in `model`'s declared release, with a
+/// caller-supplied `IfcOwnerHistory` (#202).
+///
+/// `PredefinedType` is checked against the release's own
+/// `IfcSpatialZoneTypeEnum`: IFC4X3 adds `INTERFERENCE` and `RESERVATION`,
+/// which IFC4 refuses.
+///
+/// # Errors
+///
+/// Those of [`create_spatial_zone`], the release and owner-history
+/// refusals of
+/// [`create_system_with_owner_history`](super::create_system_with_owner_history),
+/// [`EntityNotInSchema`](super::SystemAuthoringError::EntityNotInSchema) in
+/// IFC2X3, and
+/// [`AuthoringValueType`](super::SystemAuthoringError::AuthoringValueType)
+/// for a token the release does not declare. Nothing is staged on an error.
+#[allow(clippy::too_many_arguments)]
+pub fn create_spatial_zone_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    global_id: &str,
+    attributes: ElementAttributes<'_>,
+    long_name: Option<&str>,
+    predefined_type: Option<&str>,
+    object_type: Option<&str>,
+    owner_history: EntityId,
+) -> SystemAuthoringResult<EntityId> {
+    const ENTITY: &str = "IFCSPATIALZONE";
+    let release = bind(model)?;
+    release.require_entity(ENTITY)?;
+    check_spatial_zone(global_id, predefined_type, object_type)?;
+    let values = vec![
+        ("GlobalId", Value::Text(global_id.into())),
+        ("Name", text(attributes.name)),
+        ("Description", text(attributes.description)),
+        ("ObjectType", text(object_type)),
+        ("ObjectPlacement", reference(attributes.placement)),
+        ("Representation", reference(attributes.representation)),
+        ("LongName", text(long_name)),
+        (
+            "PredefinedType",
+            predefined_type.map_or(Value::Null, |t| Value::Enum(t.into())),
+        ),
+    ];
+    release.stage(tx, model, ENTITY, values, owner_history)
 }

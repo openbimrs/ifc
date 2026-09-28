@@ -24,6 +24,7 @@ IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage.
 ## Depends on
 
 - [`ifc-model`](./ifc-model)
+- [`ifc-schema`](./ifc-schema)
 
 ## Changes
 

@@ -8,11 +8,20 @@
 //! `IfcProcess`, and a constructor that counted only the six declared
 //! attributes would put Status where GlobalId belongs.
 //!
+//! # Releases (#202)
+//!
+//! The writers here take no model, so they cannot see the declared release.
+//! They write the layout IFC4 ADD2 TC1 and IFC4X3 ADD2 share, with
+//! `IfcRoot.OwnerHistory` unset, and are for those releases only. IFC2X3
+//! requires `OwnerHistory` and lays several records out differently, so
+//! each `IfcRoot` writer has a `*_with_owner_history` variant that binds the
+//! model's declared release, takes a caller-supplied `IfcOwnerHistory` and
+//! places every attribute by name from that release's table.
+//!
 //! Durations and timestamps are written as authored: ISO 8601 strings are
 //! not parsed here, because a scheduling tool owns calendar semantics and
 //! silently normalising them would lose the authored intent.
 
-use ifc_model::guid::Guid;
 use ifc_model::{Entity, EntityId, Transaction, Value};
 
 use crate::calendar::recurrence_slot;
@@ -60,26 +69,17 @@ pub struct TaskDraft<'a> {
 ///
 /// Slots are filled by the reader's own constants, so the seven inherited
 /// positions are reserved even when unset rather than counted by hand.
+///
+/// `OwnerHistory` is written `$`, which IFC4 and IFC4X3 allow, in their
+/// shared layout. This writer takes no model, so it cannot see the declared
+/// release: it is for IFC4 and IFC4X3 only. IFC2X3 requires
+/// `OwnerHistory` and lays the record out differently; use
+/// [`create_task_with_owner_history`] there, which binds the release (#202).
 pub fn create_task(
     tx: &mut Transaction,
     draft: TaskDraft<'_>,
 ) -> ScheduleAuthoringResult<EntityId> {
-    if Guid::parse(draft.global_id).is_none() {
-        return Err(ScheduleAuthoringError::InvalidValue {
-            entity: "IFCTASK",
-            attribute: "GlobalId",
-            expected: "an IFC compressed GUID",
-        });
-    }
-    if let Some(priority) = draft.priority {
-        if !(0..=100).contains(&priority) {
-            return Err(ScheduleAuthoringError::InvalidValue {
-                entity: "IFCTASK",
-                attribute: "Priority",
-                expected: "an integer in 0..=100",
-            });
-        }
-    }
+    checks::task(&draft)?;
     let mut attributes = vec![Value::Null; task_slot::PREDEFINED_TYPE + 1];
     attributes[task_slot::GLOBAL_ID] = Value::Text(draft.global_id.into());
     attributes[task_slot::NAME] = optional_text(draft.name);
@@ -105,6 +105,12 @@ pub(crate) fn optional_text(value: Option<&str>) -> Value {
 /// A task may not precede itself: a self-loop is an unsatisfiable
 /// constraint that the traversal in [`crate::query`] would otherwise have
 /// to detect as a cycle at read time.
+///
+/// `OwnerHistory` is written `$`, which IFC4 and IFC4X3 allow, in their
+/// shared layout. This writer takes no model, so it cannot see the declared
+/// release: it is for IFC4 and IFC4X3 only. IFC2X3 requires
+/// `OwnerHistory` and lays the record out differently; use
+/// [`create_sequence_with_owner_history`] there, which binds the release (#202).
 pub fn create_sequence(
     tx: &mut Transaction,
     global_id: &str,
@@ -113,20 +119,7 @@ pub fn create_sequence(
     sequence_type: Option<&str>,
     time_lag: Option<EntityId>,
 ) -> ScheduleAuthoringResult<EntityId> {
-    if Guid::parse(global_id).is_none() {
-        return Err(ScheduleAuthoringError::InvalidValue {
-            entity: "IFCRELSEQUENCE",
-            attribute: "GlobalId",
-            expected: "an IFC compressed GUID",
-        });
-    }
-    if predecessor == successor {
-        return Err(ScheduleAuthoringError::InvalidValue {
-            entity: "IFCRELSEQUENCE",
-            attribute: "RelatedProcess",
-            expected: "a successor distinct from the predecessor",
-        });
-    }
+    checks::sequence(global_id, predecessor, successor)?;
     let mut attributes = vec![Value::Null; sequence_slot::SEQUENCE_TYPE + 2];
     attributes[0] = Value::Text(global_id.into());
     attributes[sequence_slot::RELATING] = Value::Ref(predecessor);
@@ -179,34 +172,18 @@ pub struct WorkControlDraft<'a> {
 ///
 /// Refuses a malformed GUID, and an empty required timestamp -- a blank
 /// `StartTime` writes a schedule that validates and schedules nothing.
+///
+/// `OwnerHistory` is written `$`, which IFC4 and IFC4X3 allow, in their
+/// shared layout. This writer takes no model, so it cannot see the declared
+/// release: it is for IFC4 and IFC4X3 only. IFC2X3 requires
+/// `OwnerHistory` and lays the record out differently; use
+/// [`create_work_control_with_owner_history`] there, which binds the release (#202).
 pub fn create_work_control(
     tx: &mut Transaction,
     kind: WorkControlKind,
     draft: WorkControlDraft<'_>,
 ) -> ScheduleAuthoringResult<EntityId> {
-    let type_name = match kind {
-        WorkControlKind::Plan => "IFCWORKPLAN",
-        WorkControlKind::Schedule => "IFCWORKSCHEDULE",
-    };
-    if Guid::parse(draft.global_id).is_none() {
-        return Err(ScheduleAuthoringError::InvalidValue {
-            entity: type_name,
-            attribute: "GlobalId",
-            expected: "an IFC compressed GUID",
-        });
-    }
-    for (attribute, value) in [
-        ("CreationDate", draft.creation_date),
-        ("StartTime", draft.start_time),
-    ] {
-        if value.trim().is_empty() {
-            return Err(ScheduleAuthoringError::InvalidValue {
-                entity: type_name,
-                attribute,
-                expected: "a non-empty ISO 8601 timestamp",
-            });
-        }
-    }
+    let type_name = checks::work_control(kind, &draft)?;
     let mut attributes = vec![Value::Null; control_slot::PREDEFINED_TYPE + 1];
     attributes[control_slot::GLOBAL_ID] = Value::Text(draft.global_id.into());
     attributes[control_slot::NAME] = optional_text(draft.name);
@@ -233,26 +210,19 @@ pub fn create_work_control(
 ///
 /// Refuses a malformed GUID, and an empty task list -- an assignment
 /// relating no objects parses and assigns nothing.
+///
+/// `OwnerHistory` is written `$`, which IFC4 and IFC4X3 allow, in their
+/// shared layout. This writer takes no model, so it cannot see the declared
+/// release: it is for IFC4 and IFC4X3 only. IFC2X3 requires
+/// `OwnerHistory` and lays the record out differently; use
+/// [`assign_tasks_to_control_with_owner_history`] there, which binds the release (#202).
 pub fn assign_tasks_to_control(
     tx: &mut Transaction,
     global_id: &str,
     control: EntityId,
     tasks: &[EntityId],
 ) -> ScheduleAuthoringResult<EntityId> {
-    if Guid::parse(global_id).is_none() {
-        return Err(ScheduleAuthoringError::InvalidValue {
-            entity: "IFCRELASSIGNSTOCONTROL",
-            attribute: "GlobalId",
-            expected: "an IFC compressed GUID",
-        });
-    }
-    if tasks.is_empty() {
-        return Err(ScheduleAuthoringError::InvalidValue {
-            entity: "IFCRELASSIGNSTOCONTROL",
-            attribute: "RelatedObjects",
-            expected: "at least one assigned object",
-        });
-    }
+    checks::assignment(global_id, tasks)?;
     let mut attributes = vec![Value::Null; assigns_slot::RELATING + 1];
     attributes[assigns_slot::GLOBAL_ID] = Value::Text(global_id.into());
     attributes[assigns_slot::RELATED] =
@@ -272,33 +242,19 @@ pub fn assign_tasks_to_control(
 /// Refuses a malformed GUID, an empty child list, and a parent that also
 /// appears among its own children -- a self-nesting task is a cycle the
 /// timeline walk cannot terminate on.
+///
+/// `OwnerHistory` is written `$`, which IFC4 and IFC4X3 allow, in their
+/// shared layout. This writer takes no model, so it cannot see the declared
+/// release: it is for IFC4 and IFC4X3 only. IFC2X3 requires
+/// `OwnerHistory` and lays the record out differently; use
+/// [`nest_tasks_with_owner_history`] there, which binds the release (#202).
 pub fn nest_tasks(
     tx: &mut Transaction,
     global_id: &str,
     parent: EntityId,
     children: &[EntityId],
 ) -> ScheduleAuthoringResult<EntityId> {
-    if Guid::parse(global_id).is_none() {
-        return Err(ScheduleAuthoringError::InvalidValue {
-            entity: "IFCRELNESTS",
-            attribute: "GlobalId",
-            expected: "an IFC compressed GUID",
-        });
-    }
-    if children.is_empty() {
-        return Err(ScheduleAuthoringError::InvalidValue {
-            entity: "IFCRELNESTS",
-            attribute: "RelatedObjects",
-            expected: "at least one nested object",
-        });
-    }
-    if children.contains(&parent) {
-        return Err(ScheduleAuthoringError::InvalidValue {
-            entity: "IFCRELNESTS",
-            attribute: "RelatedObjects",
-            expected: "children that do not include the parent",
-        });
-    }
+    checks::nesting(global_id, parent, children)?;
     let mut attributes = vec![Value::Null; nests_slot::RELATED + 1];
     attributes[nests_slot::GLOBAL_ID] = Value::Text(global_id.into());
     attributes[nests_slot::RELATING] = Value::Ref(parent);
@@ -349,6 +305,12 @@ pub fn create_work_time(
 ///
 /// Refuses a malformed GUID, and a calendar with neither working nor
 /// exception times -- it constrains nothing but reads as a real calendar.
+///
+/// `OwnerHistory` is written `$`, which IFC4 and IFC4X3 allow, in their
+/// shared layout. This writer takes no model, so it cannot see the declared
+/// release: it is for IFC4 and IFC4X3 only. IFC2X3 requires
+/// `OwnerHistory` and lays the record out differently; use
+/// [`create_work_calendar_with_owner_history`] there, which binds the release (#202).
 pub fn create_work_calendar(
     tx: &mut Transaction,
     global_id: &str,
@@ -357,20 +319,7 @@ pub fn create_work_calendar(
     exception_times: &[EntityId],
     predefined_type: Option<&str>,
 ) -> ScheduleAuthoringResult<EntityId> {
-    if Guid::parse(global_id).is_none() {
-        return Err(ScheduleAuthoringError::InvalidValue {
-            entity: "IFCWORKCALENDAR",
-            attribute: "GlobalId",
-            expected: "an IFC compressed GUID",
-        });
-    }
-    if working_times.is_empty() && exception_times.is_empty() {
-        return Err(ScheduleAuthoringError::InvalidValue {
-            entity: "IFCWORKCALENDAR",
-            attribute: "WorkingTimes",
-            expected: "at least one working or exception period",
-        });
-    }
+    checks::calendar(global_id, working_times, exception_times)?;
     let mut attributes = vec![Value::Null; work_calendar_slot::PREDEFINED_TYPE + 1];
     attributes[work_calendar_slot::GLOBAL_ID] = Value::Text(global_id.into());
     attributes[work_calendar_slot::NAME] = optional_text(name);
@@ -385,7 +334,7 @@ pub fn create_work_calendar(
 ///
 /// An empty IFC set is not the same as an absent one: writing `()` where
 /// the file means "not stated" reads back as an authored empty set.
-fn reference_list(ids: &[EntityId]) -> Value {
+pub(super) fn reference_list(ids: &[EntityId]) -> Value {
     if ids.is_empty() {
         return Value::Null;
     }
@@ -427,31 +376,17 @@ pub struct EventDraft<'a> {
 /// missing. The schema states both as WHERE rules, and a reader that meets
 /// one has no way to recover what the author meant: the event reads back
 /// as user-defined with nothing saying what it is.
+///
+/// `OwnerHistory` is written `$`, which IFC4 and IFC4X3 allow, in their
+/// shared layout. This writer takes no model, so it cannot see the declared
+/// release: it is for IFC4 and IFC4X3 only. IFC2X3 requires
+/// `OwnerHistory` and lays the record out differently; use
+/// [`create_event_with_owner_history`] there, which binds the release (#202).
 pub fn create_event(
     tx: &mut Transaction,
     draft: EventDraft<'_>,
 ) -> ScheduleAuthoringResult<EntityId> {
-    if Guid::parse(draft.global_id).is_none() {
-        return Err(ScheduleAuthoringError::InvalidValue {
-            entity: "IFCEVENT",
-            attribute: "GlobalId",
-            expected: "an IFC compressed GUID",
-        });
-    }
-    if is_user_defined(draft.predefined_type) && blank(draft.object_type) {
-        return Err(ScheduleAuthoringError::InvalidValue {
-            entity: "IFCEVENT",
-            attribute: "ObjectType",
-            expected: "a label when PredefinedType is USERDEFINED",
-        });
-    }
-    if is_user_defined(draft.trigger_type) && blank(draft.user_defined_trigger_type) {
-        return Err(ScheduleAuthoringError::InvalidValue {
-            entity: "IFCEVENT",
-            attribute: "UserDefinedEventTriggerType",
-            expected: "a label when EventTriggerType is USERDEFINED",
-        });
-    }
+    checks::event(&draft)?;
     let mut attributes = vec![Value::Null; event_slot::EVENT_OCCURENCE_TIME + 1];
     attributes[event_slot::GLOBAL_ID] = Value::Text(draft.global_id.into());
     attributes[event_slot::NAME] = optional_text(draft.name);
@@ -468,7 +403,7 @@ pub fn create_event(
 }
 
 /// Whether a discriminator names the USERDEFINED case.
-fn is_user_defined(value: Option<&str>) -> bool {
+pub(super) fn is_user_defined(value: Option<&str>) -> bool {
     value.is_some_and(|v| v.eq_ignore_ascii_case("USERDEFINED"))
 }
 
@@ -476,12 +411,12 @@ fn is_user_defined(value: Option<&str>) -> bool {
 ///
 /// A blank string satisfies EXISTS in the schema but carries no meaning, so
 /// it is treated as absent here.
-fn blank(value: Option<&str>) -> bool {
+pub(super) fn blank(value: Option<&str>) -> bool {
     value.is_none_or(|v| v.trim().is_empty())
 }
 
 /// An optional enumeration value.
-fn optional_enum(value: Option<&str>) -> Value {
+pub(super) fn optional_enum(value: Option<&str>) -> Value {
     value.map_or(Value::Null, |v| Value::Enum(v.into()))
 }
 
@@ -654,8 +589,16 @@ fn integer_list(values: &[i64]) -> Value {
     Value::List(values.iter().copied().map(Value::Integer).collect())
 }
 
+mod checks;
+mod owned;
 mod procedure;
 mod timing;
 
+pub use owned::{
+    assign_tasks_to_control_with_owner_history, create_event_with_owner_history,
+    create_procedure_with_owner_history, create_sequence_with_owner_history,
+    create_task_with_owner_history, create_work_calendar_with_owner_history,
+    create_work_control_with_owner_history, nest_tasks_with_owner_history,
+};
 pub use procedure::{create_procedure, ProcedureDraft};
 pub use timing::{create_task_time, create_task_time_recurring, create_time_period, TaskTimeDraft};
