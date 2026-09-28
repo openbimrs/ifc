@@ -82,7 +82,7 @@ impl Layout {
     }
 
     fn of(version: SchemaVersion) -> ElementTypeResult<Self> {
-        let schema = for_version(version).ok_or_else(|| ElementTypeError::UnsupportedSchema {
+        let schema = for_version(version).map_err(|_| ElementTypeError::UnsupportedSchema {
             schema: format!("{version:?}"),
         })?;
         Ok(Self {

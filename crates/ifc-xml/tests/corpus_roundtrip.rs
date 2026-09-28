@@ -128,8 +128,7 @@ fn configurations(source: &Model) -> Vec<(&'static str, XmlCodec)> {
     let token = source.header().schema_token().unwrap_or_default();
     let version = SchemaVersion::from_header_token(token)
         .unwrap_or_else(|| panic!("fixture declares unrecognised schema {token:?}"));
-    let schema = ifc_schema::for_version(version)
-        .unwrap_or_else(|| panic!("no bundled schema for {version:?}"));
+    let schema = ifc_schema::for_version(version).unwrap_or_else(|refused| panic!("{refused}"));
     codecs.push(("schema", XmlCodec::with_schema(Arc::new(schema.clone()))));
     if token == XmlProfile::Ifc4Add2Tc1.schema_token() {
         codecs.push((

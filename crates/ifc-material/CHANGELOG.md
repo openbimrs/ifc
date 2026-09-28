@@ -14,6 +14,9 @@ everything released before per-crate changelogs began.
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - `UnsupportedSchema` reads "a release this crate has no verified layout
   for" instead of "no bundled schema table".
 - A model whose header declares `IFC4X1` or `IFC4X2` is refused with the

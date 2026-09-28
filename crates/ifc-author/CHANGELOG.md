@@ -14,6 +14,10 @@ everything released before per-crate changelogs began.
 
 ### Changed
 
+- Links no bundled schema table itself: every entry point takes the
+  `Schema` from the caller. A consumer that used a table through this
+  crate's dependency (`ifc_schema::ifc4()`) enables it on its own
+  `ifc-schema` dependency (default features bundle every release).
 - A type declaration form `ifc-schema` adds later resolves as unresolved
   (no refusal on shape, no form claim) instead of failing to compile;
   follows `ifc_schema::TypeKind` becoming `#[non_exhaustive]`.

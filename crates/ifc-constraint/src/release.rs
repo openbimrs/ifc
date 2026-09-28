@@ -60,7 +60,7 @@ pub(crate) fn bind(model: &Model) -> ConstraintResult<Layout> {
             })
         }
     };
-    let schema = for_version(version).ok_or_else(|| ConstraintError::UnsupportedSchema {
+    let schema = for_version(version).map_err(|_| ConstraintError::UnsupportedSchema {
         schema: format!("{version:?}"),
     })?;
     Ok(Layout { version, schema })

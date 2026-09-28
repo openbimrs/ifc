@@ -21,12 +21,13 @@ group = "core"
 # store and the schema tables, and nothing else. NO codec dependency -- an
 # authored model is serialized by whichever codec the caller chose.
 ifc-model.workspace = true
+# The caller passes the schema; production links no bundled table.
 ifc-schema.workspace = true
 
 [dev-dependencies]
 # `Schema::from_express` for tests that parse EXPRESS fixtures or the
 # fetched normative schemas; production builds never link the parser.
-ifc-schema = { workspace = true, features = ["express"] }
+ifc-schema = { workspace = true, features = ["default", "express"] }
 ifc-step.workspace = true
 
 [lints]

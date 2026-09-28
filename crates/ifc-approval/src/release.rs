@@ -60,7 +60,7 @@ pub(crate) fn bind(model: &Model) -> ApprovalResult<Layout> {
             })
         }
     };
-    let schema = for_version(version).ok_or_else(|| ApprovalError::UnsupportedSchema {
+    let schema = for_version(version).map_err(|_| ApprovalError::UnsupportedSchema {
         schema: format!("{version:?}"),
     })?;
     Ok(Layout { version, schema })

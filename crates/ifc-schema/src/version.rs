@@ -90,6 +90,31 @@ impl SchemaVersion {
         }
     }
 
+    /// The `ifc-schema` cargo feature that bundles this release's table.
+    #[must_use]
+    pub const fn feature_name(self) -> &'static str {
+        match self {
+            Self::Ifc2x3 => "ifc2x3",
+            Self::Ifc4 => "ifc4",
+            Self::Ifc4x1 => "ifc4x1",
+            Self::Ifc4x2 => "ifc4x2",
+            Self::Ifc4x3 => "ifc4x3",
+        }
+    }
+
+    /// Whether this build bundles this release's table, i.e. whether
+    /// `for_version(self)` succeeds.
+    #[must_use]
+    pub const fn is_bundled(self) -> bool {
+        match self {
+            Self::Ifc2x3 => cfg!(feature = "ifc2x3"),
+            Self::Ifc4 => cfg!(feature = "ifc4"),
+            Self::Ifc4x1 => cfg!(feature = "ifc4x1"),
+            Self::Ifc4x2 => cfg!(feature = "ifc4x2"),
+            Self::Ifc4x3 => cfg!(feature = "ifc4x3"),
+        }
+    }
+
     /// Parse the token found in a STEP file's `FILE_SCHEMA` header entry.
     pub fn from_header_token(token: &str) -> Option<Self> {
         match token.trim().to_ascii_uppercase().as_str() {

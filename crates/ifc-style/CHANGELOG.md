@@ -20,6 +20,10 @@ everything released before per-crate changelogs began.
 
 ### Changed
 
+- Links no bundled schema table itself: every entry point takes the
+  `Schema` from the caller. A consumer that used a table through this
+  crate's dependency (`ifc_schema::ifc4()`) enables it on its own
+  `ifc-schema` dependency (default features bundle every release).
 - `StyledItem::styles` reads IFC4X1 and IFC4X2 like IFC4: both declare
   `Styles` over `IfcStyleAssignmentSelect`, which still admits
   `IfcPresentationStyleAssignment`; only IFC4X3 narrowed it. Pinned

@@ -56,7 +56,7 @@ pub(super) fn bind(model: &Model) -> CostAuthoringResult<Release> {
             })
         }
     };
-    let schema = for_version(version).ok_or_else(|| CostAuthoringError::UnsupportedSchema {
+    let schema = for_version(version).map_err(|_| CostAuthoringError::UnsupportedSchema {
         schema: format!("{version:?}"),
     })?;
     Ok(Release { version, schema })

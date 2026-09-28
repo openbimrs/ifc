@@ -61,7 +61,7 @@ pub(crate) fn bind(model: &Model) -> OccurrenceResult<Layout> {
             })
         }
     };
-    let schema = for_version(version).ok_or_else(|| OccurrenceError::UnsupportedSchema {
+    let schema = for_version(version).map_err(|_| OccurrenceError::UnsupportedSchema {
         schema: format!("{version:?}"),
     })?;
     Ok(Layout { version, schema })

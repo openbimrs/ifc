@@ -359,7 +359,7 @@ mod tests {
     }
 }
 
-#[cfg(all(test, feature = "ifc4"))]
+#[cfg(test)]
 mod header_tests {
     use super::*;
 

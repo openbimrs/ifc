@@ -24,6 +24,9 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - Pinned by test: `AlignmentView::for_model` refuses `IFC4X1` and
   `IFC4X2` (their alignment model differs from IFC4X3).
 
@@ -31,6 +34,9 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
   existing unsupported-schema error. `ifc-schema` now bundles both
   releases, but no layout here is verified against them, so they are
@@ -40,6 +46,10 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Links no bundled schema table itself: every entry point takes the
+  `Schema` from the caller. A consumer that used a table through this
+  crate's dependency (`ifc_schema::ifc4()`) enables it on its own
+  `ifc-schema` dependency (default features bundle every release).
 - A type declaration form `ifc-schema` adds later resolves as unresolved
   (no refusal on shape, no form claim) instead of failing to compile;
   follows `ifc_schema::TypeKind` becoming `#[non_exhaustive]`.
@@ -48,6 +58,9 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - `UnsupportedSchema` reads "a release this crate has no verified layout
   for" instead of "no bundled schema table".
 - A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
@@ -59,6 +72,9 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
   existing unsupported-schema error. `ifc-schema` now bundles both
   releases, but no layout here is verified against them, so they are
@@ -68,6 +84,9 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
   existing unsupported-schema error. `ifc-schema` now bundles both
   releases, but no layout here is verified against them, so they are
@@ -77,6 +96,9 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
   existing unsupported-schema error. `ifc-schema` now bundles both
   releases, but no layout here is verified against them, so they are
@@ -86,6 +108,9 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
   existing unsupported-schema error. `ifc-schema` now bundles both
   releases, but no layout here is verified against them, so they are
@@ -95,6 +120,9 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
   existing unsupported-schema error. `ifc-schema` now bundles both
   releases, but no layout here is verified against them, so they are
@@ -104,6 +132,9 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
   existing unsupported-schema error. `ifc-schema` now bundles both
   releases, but no layout here is verified against them, so they are
@@ -113,6 +144,9 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - `UnsupportedSchema` reads "a release this crate has no verified layout
   for" instead of "no bundled schema table".
 - A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
@@ -124,6 +158,9 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
   existing unsupported-schema error. `ifc-schema` now bundles both
   releases, but no layout here is verified against them, so they are
@@ -133,6 +170,9 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - The unique-member-name rule of complex properties and quantities is
   labelled per verified release only; another release is refused with
   `UnsupportedSchema` rather than given the IFC4 label.
@@ -148,6 +188,9 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
   existing unsupported-schema error. `ifc-schema` now bundles both
   releases, but no layout here is verified against them, so they are
@@ -160,6 +203,9 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
   existing unsupported-schema error. `ifc-schema` now bundles both
   releases, but no layout here is verified against them, so they are
@@ -169,6 +215,22 @@ lockstep -- is archived in the
 
 ### Changed (breaking)
 
+- One cargo feature per bundled release (#112): `ifc2x3`, `ifc4`, `ifc4x1`,
+  `ifc4x2` and `ifc4x3`, all in `default`, so a default build bundles every
+  release as before. Each accessor (`ifc2x3()`, `ifc4()`, ...) exists only
+  with its feature. `ifc4` used to ship all bundled tables; it now ships
+  IFC4 only, so a build with `default-features = false, features =
+  ["ifc4"]` loses the other releases -- name them, or keep defaults.
+- `for_version` returns `Result<&Schema, NotBundled>` instead of
+  `Option<&Schema>`, and exists in every build. `Err(NotBundled)` means a
+  recognised release whose feature is off; an unknown `FILE_SCHEMA` token
+  is still `None` from `SchemaVersion::from_header_token`, so the two cases
+  stay distinguishable.
+- `write_structural_catalog` and `write_direct_structural_catalog` exist in
+  every build and return an `io::ErrorKind::Unsupported` error wrapping
+  `NotBundled` for a release that is not compiled in, instead of panicking.
+- `artifact_decode_schema` and `BundledSchemaError` need the new
+  `artifact` feature (enabled by every release feature) instead of `ifc4`.
 - `SchemaVersion` is `#[non_exhaustive]`, derives `Hash`, and gains
   `Ifc4x1` and `Ifc4x2` (#33). A `match` on it needs a wildcard arm; a
   consumer should refuse a release it has not verified, never alias it to
@@ -204,6 +266,8 @@ lockstep -- is archived in the
 
 ### Added
 
+- `NotBundled`, `SchemaVersion::is_bundled()` and
+  `SchemaVersion::feature_name()`.
 - IFC4X1 FINAL and IFC4X2 FINAL (#33): bundled tables
   `data/ifc4x1-final.bin` (801 entities, 400 types) and
   `data/ifc4x2-final.bin` (816 entities, 407 types), generated from the
@@ -235,6 +299,9 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - The spatial classifier binds no release for an `IFC4X1` or `IFC4X2`
   header (`release()` is `None`) and answers from the verified tables.
 - A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
@@ -246,6 +313,9 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
   existing unsupported-schema error. `ifc-schema` now bundles both
   releases, but no layout here is verified against them, so they are
@@ -264,6 +334,10 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Links no bundled schema table itself: every entry point takes the
+  `Schema` from the caller. A consumer that used a table through this
+  crate's dependency (`ifc_schema::ifc4()`) enables it on its own
+  `ifc-schema` dependency (default features bundle every release).
 - `StyledItem::styles` reads IFC4X1 and IFC4X2 like IFC4: both declare
   `Styles` over `IfcStyleAssignmentSelect`, which still admits
   `IfcPresentationStyleAssignment`; only IFC4X3 narrowed it. Pinned
@@ -273,15 +347,30 @@ lockstep -- is archived in the
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
   existing unsupported-schema error. `ifc-schema` now bundles both
   releases, but no layout here is verified against them, so they are
   never read as IFC4 or IFC4X3.
 
+### ifc-tabular
+
+### Changed
+
+- Links no bundled schema table itself: every entry point takes the
+  `Schema` from the caller. A consumer that used a table through this
+  crate's dependency (`ifc_schema::ifc4()`) enables it on its own
+  `ifc-schema` dependency (default features bundle every release).
+
 ### ifc-validate
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - `validate_declared` validates IFC4X1 and IFC4X2 files against their own
   bundled tables instead of refusing them as unknown. No WHERE rule is
   registered for either release yet, so their report carries one
@@ -293,6 +382,12 @@ lockstep -- is archived in the
 
 ### openbim-ifc
 
+### Changed (breaking)
+
+- Code previously behind `schema` is behind `schema-api`, which `schema`
+  and every release feature imply; `schema::for_version` returns a
+  `Result` (see `ifc-schema`).
+
 ### Changed
 
 - Door and window operation reads name the type-object entity per
@@ -302,6 +397,14 @@ lockstep -- is archived in the
 
 ### Added
 
+- Per-release schema features (#112): `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2`,
+  `ifc4x3`, each providing the schema API with that one bundled table, and
+  `schema-api` (the API with no table). `schema` keeps its meaning: the API
+  with every release. A single-release build refuses the others through
+  `schema::for_version` with `schema::NotBundled`. Domain features link the
+  releases their crates read, so enabling one brings every release it
+  reads.
+- `compiled_features()` reports `schema-api` and each release feature.
 - `tests/intermediate_releases.rs`: IFC4X1 and IFC4X2 files resolve to
   their own `SchemaVersion`, release id and bundled table (#33).
 

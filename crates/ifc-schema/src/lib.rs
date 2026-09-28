@@ -31,6 +31,20 @@
 //! you consult to *interpret* what was stored, and it is optional: a file whose
 //! schema is unknown still parses, and its entities still round-trip.
 //!
+//! # Features
+//!
+//! | Feature | Default | Provides |
+//! | --- | --- | --- |
+//! | `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2`, `ifc4x3` | yes | That release's bundled table and accessor (`ifc2x3()`, ...) |
+//! | `artifact` | via any release | The compiled-artifact decoder |
+//! | `express` | no | `Schema::from_express` through `openbim-step` |
+//! | `generation` | no | The artifact generator binary |
+//!
+//! A default build bundles every release. A build that turns defaults off
+//! and names one release still recognises every [`SchemaVersion`], and
+//! [`for_version`] refuses the others with [`NotBundled`] -- a typed error,
+//! never a panic, and distinct from an unknown header token.
+//!
 //! # Owned declaration types
 //!
 //! [`EntityDef`], [`Attribute`], [`TypeDef`], [`TypeKind`] and [`WhereRule`]
@@ -50,14 +64,12 @@
 //! # }
 //! ```
 
-#[cfg(feature = "ifc4")]
+#[cfg(feature = "artifact")]
 mod artifact;
 pub mod attribute;
-#[cfg(feature = "ifc4")]
 mod bundled;
 pub mod completeness;
 pub mod entity;
-#[cfg(feature = "ifc4")]
 pub mod export;
 #[cfg(feature = "express")]
 mod express;
@@ -66,17 +78,25 @@ pub mod registry;
 pub mod types;
 pub mod version;
 
-#[cfg(feature = "ifc4")]
+#[cfg(feature = "artifact")]
 pub use artifact::decode_schema as artifact_decode_schema;
 #[cfg(feature = "generation")]
 pub use artifact::encode_schema as artifact_encode_schema;
-#[cfg(feature = "ifc4")]
+#[cfg(feature = "artifact")]
 pub use artifact::BundledSchemaError;
 pub use attribute::Attribute;
+#[cfg(feature = "ifc2x3")]
+pub use bundled::ifc2x3;
 #[cfg(feature = "ifc4")]
-pub use bundled::{for_version, ifc2x3, ifc4, ifc4x1, ifc4x2, ifc4x3};
+pub use bundled::ifc4;
+#[cfg(feature = "ifc4x1")]
+pub use bundled::ifc4x1;
+#[cfg(feature = "ifc4x2")]
+pub use bundled::ifc4x2;
+#[cfg(feature = "ifc4x3")]
+pub use bundled::ifc4x3;
+pub use bundled::{for_version, NotBundled};
 pub use entity::{EntityDef, WhereRule};
-#[cfg(feature = "ifc4")]
 pub use export::{
     write_direct_structural_catalog, write_structural_catalog, StructuralCatalogSummary,
 };

@@ -49,11 +49,12 @@ pub(crate) fn layout(version: SchemaVersion) -> PropertyResult<Layout> {
         version,
         SchemaVersion::Ifc2x3 | SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3
     );
-    let schema = for_version(version).filter(|_| proven).ok_or_else(|| {
-        PropertyError::UnsupportedSchema {
+    let schema = for_version(version)
+        .ok()
+        .filter(|_| proven)
+        .ok_or_else(|| PropertyError::UnsupportedSchema {
             schema: format!("{version:?}"),
-        }
-    })?;
+        })?;
     Ok(Layout { version, schema })
 }
 

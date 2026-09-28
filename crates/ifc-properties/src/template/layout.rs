@@ -41,7 +41,7 @@ impl Layout {
     pub(crate) fn permissive(model: &Model) -> Self {
         let declared = match model.header().schema.as_slice() {
             [token] => SchemaVersion::from_header_token(token)
-                .and_then(|version| for_version(version).map(|schema| (version, schema))),
+                .and_then(|version| for_version(version).ok().map(|schema| (version, schema))),
             _ => None,
         };
         let (version, schema) = declared.unwrap_or((SchemaVersion::Ifc4, ifc4()));
@@ -58,7 +58,8 @@ impl Layout {
     /// `IfcPropertySetTemplate`.
     pub(crate) fn declared(model: &Model) -> Result<Self, TemplateError> {
         let version = exact_schema(model).map_err(TemplateError::Release)?;
-        let schema = for_version(version).ok_or(TemplateError::NoTemplates { schema: version })?;
+        let schema =
+            for_version(version).map_err(|_| TemplateError::NoTemplates { schema: version })?;
         if schema.entity("IFCPROPERTYSETTEMPLATE").is_none() {
             return Err(TemplateError::NoTemplates { schema: version });
         }

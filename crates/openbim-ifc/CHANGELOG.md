@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- Code previously behind `schema` is behind `schema-api`, which `schema`
+  and every release feature imply; `schema::for_version` returns a
+  `Result` (see `ifc-schema`).
+
 ### Changed
 
 - Door and window operation reads name the type-object entity per
@@ -21,6 +27,14 @@ everything released before per-crate changelogs began.
 
 ### Added
 
+- Per-release schema features (#112): `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2`,
+  `ifc4x3`, each providing the schema API with that one bundled table, and
+  `schema-api` (the API with no table). `schema` keeps its meaning: the API
+  with every release. A single-release build refuses the others through
+  `schema::for_version` with `schema::NotBundled`. Domain features link the
+  releases their crates read, so enabling one brings every release it
+  reads.
+- `compiled_features()` reports `schema-api` and each release feature.
 - `tests/intermediate_releases.rs`: IFC4X1 and IFC4X2 files resolve to
   their own `SchemaVersion`, release id and bundled table (#33).
 

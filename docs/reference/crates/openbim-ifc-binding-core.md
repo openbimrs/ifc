@@ -29,6 +29,16 @@ every binding exposes it.
 This crate adds no IFC behaviour of its own. It is a thin, host-shaped
 view of `openbim-ifc`; if a binding needs more, the facade grows first.
 
+## Features
+
+| Feature | Default | Enables |
+| --- | --- | --- |
+| `ifc2x3` | yes | `openbim-ifc/ifc2x3` |
+| `ifc4` | yes | `openbim-ifc/ifc4` |
+| `ifc4x1` | yes | `openbim-ifc/ifc4x1` |
+| `ifc4x2` | yes | `openbim-ifc/ifc4x2` |
+| `ifc4x3` | yes | `openbim-ifc/ifc4x3` |
+
 ## Depends on
 
 - [`openbim-ifc`](./openbim-ifc)

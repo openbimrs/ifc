@@ -14,6 +14,9 @@ everything released before per-crate changelogs began.
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - `validate_declared` validates IFC4X1 and IFC4X2 files against their own
   bundled tables instead of refusing them as unknown. No WHERE rule is
   registered for either release yet, so their report carries one

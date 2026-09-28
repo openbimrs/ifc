@@ -18,6 +18,10 @@ a release here does not imply a release of any other crate in the family.
 
 ### Added
 
+- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2`, `ifc4x3` (all
+  default), passed to `openbim-ifc`. With a release left out,
+  `ids_of_type_including_subtypes` refuses a file declaring it with
+  `UnsupportedSchema`, whose message says the release is not compiled in.
 - The host-independent half of the language bindings (ADR 0013): `IfcModel`
   operations, the lossless `Tagged` value encoding and `BindingError` with
   stable codes, shared by the WASM, C and Python bindings. Extracted from

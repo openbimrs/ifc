@@ -19,7 +19,7 @@ status = "partial"
 group = "domain"
 
 [dependencies]
-ifc-schema.workspace = true
+ifc-schema = { workspace = true, features = ["default"] }
 ifc-model.workspace = true
 
 [lints]

@@ -14,6 +14,22 @@ everything released before per-crate changelogs began.
 
 ### Changed (breaking)
 
+- One cargo feature per bundled release (#112): `ifc2x3`, `ifc4`, `ifc4x1`,
+  `ifc4x2` and `ifc4x3`, all in `default`, so a default build bundles every
+  release as before. Each accessor (`ifc2x3()`, `ifc4()`, ...) exists only
+  with its feature. `ifc4` used to ship all bundled tables; it now ships
+  IFC4 only, so a build with `default-features = false, features =
+  ["ifc4"]` loses the other releases -- name them, or keep defaults.
+- `for_version` returns `Result<&Schema, NotBundled>` instead of
+  `Option<&Schema>`, and exists in every build. `Err(NotBundled)` means a
+  recognised release whose feature is off; an unknown `FILE_SCHEMA` token
+  is still `None` from `SchemaVersion::from_header_token`, so the two cases
+  stay distinguishable.
+- `write_structural_catalog` and `write_direct_structural_catalog` exist in
+  every build and return an `io::ErrorKind::Unsupported` error wrapping
+  `NotBundled` for a release that is not compiled in, instead of panicking.
+- `artifact_decode_schema` and `BundledSchemaError` need the new
+  `artifact` feature (enabled by every release feature) instead of `ifc4`.
 - `SchemaVersion` is `#[non_exhaustive]`, derives `Hash`, and gains
   `Ifc4x1` and `Ifc4x2` (#33). A `match` on it needs a wildcard arm; a
   consumer should refuse a release it has not verified, never alias it to
@@ -49,6 +65,8 @@ everything released before per-crate changelogs began.
 
 ### Added
 
+- `NotBundled`, `SchemaVersion::is_bundled()` and
+  `SchemaVersion::feature_name()`.
 - IFC4X1 FINAL and IFC4X2 FINAL (#33): bundled tables
   `data/ifc4x1-final.bin` (801 entities, 400 types) and
   `data/ifc4x2-final.bin` (816 entities, 407 types), generated from the

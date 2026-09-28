@@ -33,6 +33,13 @@ full = "Everything: codecs, schema tables, every domain, catalogues, geometry, g
 geometry = "Representation selection plus lowering into the neutral geometry DAG."
 geometry-select = "Representation selection only: contexts, plan/body choice, placements and units, with no geometry kernel."
 material-templates = "Material views together with the property template catalogue."
+schema = "The schema API with every bundled release (IFC2X3, IFC4, IFC4X1, IFC4X2, IFC4X3)."
+schema-api = "The schema API without a bundled release; implied by each release feature."
+ifc2x3 = "The schema API with the bundled IFC2X3 TC1 table."
+ifc4 = "The schema API with the bundled IFC4 ADD2 TC1 table."
+ifc4x1 = "The schema API with the bundled IFC4X1 FINAL table."
+ifc4x2 = "The schema API with the bundled IFC4X2 FINAL table."
+ifc4x3 = "The schema API with the bundled IFC4X3 ADD2 table."
 properties = "Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door and window operation geometry; together with `spatial`, element properties by spatial container."
 
 [lib]
@@ -84,7 +91,21 @@ step = ["dep:ifc-step"]
 ifcxml = ["dep:ifc-xml"]
 
 # --- schema ---
-schema = ["dep:ifc-schema", "ifc-template-catalog?/schema"]
+# The schema API with every bundled release: the meaning `schema` always had.
+schema = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
+# One bundled IFC release each (#112). Any of them provides the schema API;
+# a release left out is refused by `schema::for_version` with
+# `schema::NotBundled`. A size-sensitive build (browser WASM) names only the
+# releases it ships. Domain features link their own releases through their
+# crates, so they bring every release they read.
+ifc2x3 = ["schema-api", "ifc-schema/ifc2x3"]
+ifc4 = ["schema-api", "ifc-schema/ifc4"]
+ifc4x1 = ["schema-api", "ifc-schema/ifc4x1"]
+ifc4x2 = ["schema-api", "ifc-schema/ifc4x2"]
+ifc4x3 = ["schema-api", "ifc-schema/ifc4x3"]
+# The schema API (`Schema`, `SchemaVersion`, `schema::for_version`) without
+# choosing a release; every release feature implies it.
+schema-api = ["dep:ifc-schema", "ifc-template-catalog?/schema"]
 
 # --- domains ---
 # `ifc-properties` already links `ifc-schema`; naming it here lets the
@@ -151,7 +172,7 @@ full = ["codecs", "schema", "domains", "property-catalog", "material-templates",
 [dev-dependencies]
 # `Schema::from_express` for the documented authoring example; production
 # builds never link the EXPRESS parser.
-ifc-schema = { workspace = true, features = ["express"] }
+ifc-schema = { workspace = true, features = ["default", "express"] }
 
 [lints]
 workspace = true

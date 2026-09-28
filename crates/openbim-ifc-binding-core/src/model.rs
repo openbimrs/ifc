@@ -128,9 +128,12 @@ impl IfcModel {
         type_name: &str,
     ) -> Result<Vec<u64>, BindingError> {
         let token = self.schema().unwrap_or("");
-        let schema = ifc::SchemaVersion::from_header_token(token)
-            .and_then(ifc::schema::for_version)
+        // An unknown token and a release this build does not bundle are both
+        // `UnsupportedSchema`; the message names which.
+        let version = ifc::SchemaVersion::from_header_token(token)
             .ok_or_else(|| BindingError::UnsupportedSchema(token.to_owned()))?;
+        let schema = ifc::schema::for_version(version)
+            .map_err(|refused| BindingError::UnsupportedSchema(format!("{token} ({refused})")))?;
         Ok(
             ifc::ids_of_type_including_subtypes(&self.inner, schema, type_name)
                 .into_iter()

@@ -108,10 +108,11 @@ pub fn validate_declared(model: &Model) -> Result<Report, ValidateError> {
         .ok_or(ValidateError::NoSchemaDeclared)?;
     let version = SchemaVersion::from_header_token(token)
         .ok_or_else(|| ValidateError::UnknownSchema(token.to_string()))?;
-    // `for_version` returns None for a recognised schema this build does not
-    // bundle. Both cases are refusals, but they are different facts: one is
-    // "no idea what that token is", the other is "known schema, no tables".
+    // `for_version` refuses a recognised schema this build does not bundle
+    // with `NotBundled`. Both cases are refusals, but they are different
+    // facts: one is "no idea what that token is", the other is "known schema,
+    // no tables".
     let schema = ifc_schema::for_version(version)
-        .ok_or_else(|| ValidateError::UnbundledSchema(token.to_string()))?;
+        .map_err(|_| ValidateError::UnbundledSchema(token.to_string()))?;
     Ok(validate(model, schema))
 }

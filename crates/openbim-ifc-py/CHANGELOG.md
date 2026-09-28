@@ -8,6 +8,11 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed
+
+- Links every bundled IFC release explicitly through the binding core's
+  new release features; behaviour is unchanged.
+
 ### Added (lazy loading)
 
 - `IfcModel.open(path, *, mapped=False)`: read a file straight into the

@@ -129,7 +129,7 @@ gate_features() {
     cargo test -p ifc-geometry --features compile
     cargo clippy -p ifc-geometry --features compile --all-targets -- -D warnings
 
-    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,geometry-select" "--features step,spatial,geometry-select" "--features step,properties,geometry-select" "--features step,spatial,properties" "--all-features"; do
+    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,ifc4" "--features step,schema-api" "--features step,geometry-select" "--features step,spatial,geometry-select" "--features step,properties,geometry-select" "--features step,spatial,properties" "--all-features"; do
         # shellcheck disable=SC2086
         cargo build -p openbim-ifc $features
         # shellcheck disable=SC2086
@@ -151,14 +151,26 @@ gate_features() {
     # `properties`.
     cargo test -p openbim-ifc --features step,spatial,properties --test spatial_properties
 
+    # Per-release schema column (#112). `--all-features` always bundles every
+    # release, so a single-release build is the only place the `NotBundled`
+    # refusal is reachable: the schema crate and the binding core each test
+    # it with one release compiled in, and clippy checks the release-free
+    # build.
+    cargo test -p ifc-schema --no-default-features --features ifc4
+    cargo clippy -p ifc-schema --no-default-features --all-targets -- -D warnings
+    cargo clippy -p ifc-schema --no-default-features --features ifc4 --all-targets -- -D warnings
+    cargo test -p openbim-ifc-binding-core --no-default-features --features ifc4
+
     # Browser WASM column (#34). The facade must build for
     # wasm32-unknown-unknown with its default and widest pure-Rust feature
     # sets; a native-only dependency (getrandom via ahash was the first)
     # breaks every JS consumer silently.
-    for features in "" "--features schema,ifcxml,author,domains,spatial"; do
+    for features in "" "--features schema,ifcxml,author,domains,spatial" "--no-default-features --features step,ifc4"; do
         # shellcheck disable=SC2086
         cargo build -p openbim-ifc --target wasm32-unknown-unknown $features
     done
+    # The browser package with one bundled release (#112).
+    cargo build -p openbim-ifc-wasm --target wasm32-unknown-unknown --no-default-features --features ifc4
 }
 
 gate_bindings() {

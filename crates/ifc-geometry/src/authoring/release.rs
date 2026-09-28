@@ -68,7 +68,7 @@ pub(super) fn bind(model: &Model, type_name: &'static str) -> Result<Release, Ge
         )));
     }
     let schema =
-        for_version(version).ok_or_else(|| unbound(format!("no bundled table for {version:?}")))?;
+        for_version(version).map_err(|_| unbound(format!("no bundled table for {version:?}")))?;
     if schema
         .entity(type_name)
         .is_none_or(|entity| entity.abstract_)

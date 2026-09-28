@@ -14,6 +14,9 @@ everything released before per-crate changelogs began.
 
 ### Changed
 
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
 - The unique-member-name rule of complex properties and quantities is
   labelled per verified release only; another release is refused with
   `UnsupportedSchema` rather than given the IFC4 label.

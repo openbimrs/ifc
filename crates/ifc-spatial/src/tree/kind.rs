@@ -111,7 +111,10 @@ impl Classifier {
     }
 
     fn any_release() -> Self {
-        let tables = VERIFIED.into_iter().filter_map(for_version).collect();
+        let tables = VERIFIED
+            .into_iter()
+            .filter_map(|release| for_version(release).ok())
+            .collect();
         Self {
             release: None,
             tables,
