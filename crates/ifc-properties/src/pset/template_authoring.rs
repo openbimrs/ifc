@@ -8,13 +8,17 @@
 //!
 //! The template writers take no model and write `OwnerHistory` as `$`.
 //! That is valid in IFC4 and IFC4X3, the only releases that declare
-//! templates; IFC2X3 declares none of these entities.
+//! templates; IFC2X3 declares none of these entities. Their
+//! `*_with_owner_history` variants take the model and refuse an IFC2X3
+//! one with [`EntityNotInSchema`](crate::PropertyError::EntityNotInSchema)
+//! (#202).
 
-use ifc_model::guid::Guid;
-use ifc_model::{Entity, EntityId, Model, Transaction, Value};
+use ifc_model::{EntityId, Model, Transaction, Value};
 
 use super::authoring::{optional_text, require_name};
-use crate::error::{PropertyError, PropertyResult};
+use super::owned::{stage_ifc4, stage_owned, Rooted};
+use super::predefined::{invalid, require_guid, token};
+use crate::error::PropertyResult;
 
 /// `IfcRelDefinesByType` slots.
 pub mod defines_by_type_slot {
@@ -38,7 +42,7 @@ pub mod defines_by_type_slot {
 /// Bound to the model's declared release like
 /// [`super::authoring::attach_property_set`]: laid out by attribute name,
 /// type checks against that release's inheritance, and an IFC2X3 model
-/// refused with [`PropertyError::AuthoringRequired`] because its
+/// refused with [`AuthoringRequired`](crate::PropertyError::AuthoringRequired) because its
 /// `OwnerHistory` would be `$`. Use
 /// [`attach_type_with_owner_history`](crate::attach_type_with_owner_history)
 /// there.
@@ -90,6 +94,10 @@ pub mod defines_by_template_slot {
 /// Declares what a property set should contain before any instance
 /// exists: which properties, of what measure, on which entities.
 ///
+/// Takes no model, so it cannot refuse an IFC2X3 model, which declares no
+/// templates. Use [`add_property_set_template_with_owner_history`] to
+/// write against the model's declared release.
+///
 /// # Errors
 ///
 /// Refuses a malformed GUID and an empty template list, which the
@@ -101,34 +109,72 @@ pub fn add_property_set_template(
     applicable_entity: Option<&str>,
     templates: &[EntityId],
 ) -> PropertyResult<EntityId> {
-    if Guid::parse(global_id).is_none() {
-        return Err(PropertyError::AuthoringInvalid {
-            entity: "IFCPROPERTYSETTEMPLATE",
-            attribute: "GlobalId",
-            value: global_id.to_owned(),
-        });
-    }
-    require_name("IFCPROPERTYSETTEMPLATE", name)?;
+    stage_ifc4(
+        tx,
+        set_template(global_id, name, applicable_entity, templates)?,
+    )
+}
+
+/// [`add_property_set_template`] in the model's declared release, with a
+/// caller-supplied `IfcOwnerHistory` (#202).
+///
+/// # Errors
+///
+/// Those of [`add_property_set_template`];
+/// [`EntityNotInSchema`](crate::PropertyError::EntityNotInSchema) in an
+/// IFC2X3 model, which declares no property templates; and the release and
+/// owner-history refusals of
+/// [`add_door_lining_properties_with_owner_history`](crate::add_door_lining_properties_with_owner_history).
+/// Nothing is staged on an error.
+pub fn add_property_set_template_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    global_id: &str,
+    name: &str,
+    applicable_entity: Option<&str>,
+    templates: &[EntityId],
+    owner_history: EntityId,
+) -> PropertyResult<EntityId> {
+    let rooted = set_template(global_id, name, applicable_entity, templates)?;
+    stage_owned(tx, model, rooted, owner_history)
+}
+
+fn set_template<'a>(
+    global_id: &'a str,
+    name: &'a str,
+    applicable_entity: Option<&str>,
+    templates: &[EntityId],
+) -> PropertyResult<Rooted<'a>> {
+    const ENTITY: &str = "IFCPROPERTYSETTEMPLATE";
+    require_guid(ENTITY, global_id)?;
+    require_name(ENTITY, name)?;
     if templates.is_empty() {
-        return Err(PropertyError::AuthoringInvalid {
-            entity: "IFCPROPERTYSETTEMPLATE",
-            attribute: "HasPropertyTemplates",
-            value: "empty".to_owned(),
-        });
+        return Err(invalid(ENTITY, "HasPropertyTemplates", "empty"));
     }
-    let mut attributes = vec![Value::Null; pset_template_slot::HAS_PROPERTY_TEMPLATES + 1];
-    attributes[pset_template_slot::GLOBAL_ID] = Value::Text(global_id.into());
-    attributes[pset_template_slot::NAME] = Value::Text(name.into());
-    attributes[pset_template_slot::APPLICABLE_ENTITY] = optional_text(applicable_entity);
-    attributes[pset_template_slot::HAS_PROPERTY_TEMPLATES] =
-        Value::List(templates.iter().copied().map(Value::Ref).collect());
-    Ok(tx.create(Entity::new("IFCPROPERTYSETTEMPLATE", attributes)))
+    let values = vec![
+        ("ApplicableEntity", optional_text(applicable_entity)),
+        (
+            "HasPropertyTemplates",
+            Value::List(templates.iter().copied().map(Value::Ref).collect()),
+        ),
+    ];
+    Ok(Rooted {
+        entity: ENTITY,
+        global_id,
+        name: Some(name),
+        description: None,
+        values,
+    })
 }
 
 /// Stage an `IfcRelDefinesByTemplate`.
 ///
 /// Binds authored property sets to the template they follow, which is
 /// how a checker knows an instance was meant to conform.
+///
+/// Takes no model, so it cannot refuse an IFC2X3 model, which declares no
+/// templates. Use [`attach_template_with_owner_history`] to write against
+/// the model's declared release.
 ///
 /// # Errors
 ///
@@ -140,24 +186,136 @@ pub fn attach_template(
     property_sets: &[EntityId],
     template: EntityId,
 ) -> PropertyResult<EntityId> {
-    if Guid::parse(global_id).is_none() {
-        return Err(PropertyError::AuthoringInvalid {
-            entity: "IFCRELDEFINESBYTEMPLATE",
-            attribute: "GlobalId",
-            value: global_id.to_owned(),
-        });
-    }
+    stage_ifc4(tx, defines_by_template(global_id, property_sets, template)?)
+}
+
+/// [`attach_template`] in the model's declared release, with a
+/// caller-supplied `IfcOwnerHistory` (#202).
+///
+/// # Errors
+///
+/// Those of [`attach_template`], and those of
+/// [`add_property_set_template_with_owner_history`]. Nothing is staged on
+/// an error.
+pub fn attach_template_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    global_id: &str,
+    property_sets: &[EntityId],
+    template: EntityId,
+    owner_history: EntityId,
+) -> PropertyResult<EntityId> {
+    let rooted = defines_by_template(global_id, property_sets, template)?;
+    stage_owned(tx, model, rooted, owner_history)
+}
+
+fn defines_by_template<'a>(
+    global_id: &'a str,
+    property_sets: &[EntityId],
+    template: EntityId,
+) -> PropertyResult<Rooted<'a>> {
+    const ENTITY: &str = "IFCRELDEFINESBYTEMPLATE";
+    require_guid(ENTITY, global_id)?;
     if property_sets.is_empty() {
-        return Err(PropertyError::AuthoringInvalid {
-            entity: "IFCRELDEFINESBYTEMPLATE",
-            attribute: "RelatedPropertySets",
-            value: "empty".to_owned(),
-        });
+        return Err(invalid(ENTITY, "RelatedPropertySets", "empty"));
     }
-    let mut attributes = vec![Value::Null; defines_by_template_slot::RELATING_TEMPLATE + 1];
-    attributes[defines_by_template_slot::GLOBAL_ID] = Value::Text(global_id.into());
-    attributes[defines_by_template_slot::RELATED_PROPERTY_SETS] =
-        Value::List(property_sets.iter().copied().map(Value::Ref).collect());
-    attributes[defines_by_template_slot::RELATING_TEMPLATE] = Value::Ref(template);
-    Ok(tx.create(Entity::new("IFCRELDEFINESBYTEMPLATE", attributes)))
+    let values = vec![
+        (
+            "RelatedPropertySets",
+            Value::List(property_sets.iter().copied().map(Value::Ref).collect()),
+        ),
+        ("RelatingTemplate", Value::Ref(template)),
+    ];
+    Ok(Rooted {
+        entity: ENTITY,
+        global_id,
+        name: None,
+        description: None,
+        values,
+    })
+}
+
+const COMPLEX_TEMPLATE_TYPE: &[&str] = &["P_COMPLEX", "Q_COMPLEX"];
+
+/// Stage an `IfcComplexPropertyTemplate`.
+///
+/// Takes no model, so it cannot refuse an IFC2X3 model, which declares no
+/// templates. Use [`add_complex_property_template_with_owner_history`] to
+/// write against the model's declared release.
+///
+/// # Errors
+///
+/// Refuses a malformed GlobalId, an empty template set (the attribute
+/// is `SET [1:?]` when present), a duplicate template reference, and a
+/// `TemplateType` outside its enumeration.
+///
+/// `NoSelfReference` needs no check: [`Transaction::create`] allocates
+/// the id as it stages the entity, so a caller cannot hold that id in
+/// order to pass it as one of its own children.
+///
+/// `UniquePropertyNames` is stated over the templates' names, which a
+/// staged entity cannot be read back to supply. Callers pass
+/// `(name, id)` pairs, matching `add_property_set`.
+pub fn add_complex_property_template(
+    tx: &mut Transaction,
+    global_id: &str,
+    name: Option<&str>,
+    usage: (Option<&str>, Option<&str>),
+    templates: &[(&str, EntityId)],
+) -> PropertyResult<EntityId> {
+    stage_ifc4(tx, complex_template(global_id, name, usage, templates)?)
+}
+
+/// [`add_complex_property_template`] in the model's declared release,
+/// with a caller-supplied `IfcOwnerHistory` (#202).
+///
+/// # Errors
+///
+/// Those of [`add_complex_property_template`], and those of
+/// [`add_property_set_template_with_owner_history`]. Nothing is staged on
+/// an error.
+pub fn add_complex_property_template_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    global_id: &str,
+    name: Option<&str>,
+    usage: (Option<&str>, Option<&str>),
+    templates: &[(&str, EntityId)],
+    owner_history: EntityId,
+) -> PropertyResult<EntityId> {
+    let rooted = complex_template(global_id, name, usage, templates)?;
+    stage_owned(tx, model, rooted, owner_history)
+}
+
+fn complex_template<'a>(
+    global_id: &'a str,
+    name: Option<&'a str>,
+    (usage_name, template_type): (Option<&str>, Option<&str>),
+    templates: &[(&str, EntityId)],
+) -> PropertyResult<Rooted<'a>> {
+    const ENTITY: &str = "IFCCOMPLEXPROPERTYTEMPLATE";
+    require_guid(ENTITY, global_id)?;
+    let mut values = vec![("UsageName", optional_text(usage_name))];
+    if let Some(kind) = template_type {
+        values.push((
+            "TemplateType",
+            token(ENTITY, "TemplateType", kind, COMPLEX_TEMPLATE_TYPE)?,
+        ));
+    }
+    if !templates.is_empty() {
+        for (index, (child, _)) in templates.iter().enumerate() {
+            if templates[..index].iter().any(|(seen, _)| seen == child) {
+                return Err(invalid(ENTITY, "HasPropertyTemplates", (*child).to_owned()));
+            }
+        }
+        let children = templates.iter().map(|(_, id)| Value::Ref(*id));
+        values.push(("HasPropertyTemplates", Value::List(children.collect())));
+    }
+    Ok(Rooted {
+        entity: ENTITY,
+        global_id,
+        name,
+        description: None,
+        values,
+    })
 }

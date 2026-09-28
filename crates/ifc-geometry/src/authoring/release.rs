@@ -72,6 +72,16 @@ pub(super) fn bind(model: &Model, type_name: &'static str) -> Result<Release, Ge
 }
 
 impl Release {
+    /// The bound release.
+    pub(super) fn version(self) -> SchemaVersion {
+        self.version
+    }
+
+    /// The bound release's bundled table.
+    pub(super) fn schema(self) -> &'static Schema {
+        self.schema
+    }
+
     /// An `IfcParameterValue` in the form `type_name.attribute` declares it
     /// in this release, or `$` for `None`.
     ///

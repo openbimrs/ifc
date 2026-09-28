@@ -24,44 +24,21 @@
 //! EXPRESS but names nothing, so it is refused too. And the writer takes an
 //! [`ElementType`] from the catalogue rather than a type-name string, so an
 //! entity the catalogue does not know cannot be written at all.
+//!
+//! # Which release is written
+//!
+//! [`create_type`] takes no model and writes the catalogue's IFC4X3
+//! layout. [`create_type_in`] and [`create_type_with_owner_history`] write
+//! the model's declared release (#202): see `release.rs`.
 
 use ifc_model::guid::Guid;
-use ifc_model::{Entity, EntityId, Transaction, Value};
+use ifc_model::{EntityId, Model, Transaction, Value};
 
+use crate::error::{ElementTypeError, ElementTypeResult};
+use crate::release::{bind, require_owner_history, Layout};
 use crate::table::{ElementType, Family};
 
-/// Why a type definition was refused.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum ElementTypeError {
-    /// An attribute value the schema does not permit.
-    Invalid {
-        /// STEP type name.
-        entity: &'static str,
-        /// Attribute that was rejected.
-        attribute: &'static str,
-        /// The offending value.
-        value: String,
-    },
-}
-
-impl std::fmt::Display for ElementTypeError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self::Invalid {
-            entity,
-            attribute,
-            value,
-        } = self;
-        write!(f, "{entity}.{attribute}: {value}")
-    }
-}
-
-impl std::error::Error for ElementTypeError {}
-
-/// Result of staging a type definition.
-pub type ElementTypeResult<T> = Result<T, ElementTypeError>;
-
-fn invalid(
+pub(crate) fn invalid(
     entity: &'static str,
     attribute: &'static str,
     value: impl Into<String>,
@@ -112,6 +89,16 @@ pub enum Slot6<'a> {
 /// has no `SUBMERSIBLEPUMP` member merely because some other pump-like
 /// enum does.
 ///
+/// # Release
+///
+/// Takes no model, so it writes the catalogue's IFC4X3 layout with
+/// `OwnerHistory` `$`, and cannot refuse a model that declares another
+/// release. That record is valid in IFC4X3 and, where IFC4 declares the
+/// type with the same layout and token, in IFC4; it is never valid IFC2X3,
+/// which requires `OwnerHistory`. Use [`create_type_in`] or
+/// [`create_type_with_owner_history`] to write the model's declared
+/// release.
+///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId, a token outside the entity's enum, a
@@ -125,6 +112,110 @@ pub fn create_type(
     predefined_type: Option<&str>,
     draft: TypeDraft<'_>,
 ) -> ElementTypeResult<EntityId> {
+    let request = Request {
+        kind,
+        global_id,
+        predefined_type,
+        draft,
+    };
+    author(tx, Layout::catalogue()?, request, None)
+}
+
+/// [`create_type`] in the model's declared release (#202).
+///
+/// The record is laid out by attribute name from that release's table, and
+/// `predefined_type` is checked against that release's enumeration.
+/// `OwnerHistory` is left `$`, which IFC4 and IFC4X3 allow and IFC2X3 does
+/// not, so an IFC2X3 model is refused with
+/// [`ElementTypeError::AuthoringRequired`]; use
+/// [`create_type_with_owner_history`] there. A header without
+/// `FILE_SCHEMA` binds IFC4.
+///
+/// # Errors
+///
+/// Those of [`create_type`], checked against the bound release, and:
+/// [`ElementTypeError::MultipleSchemas`] or
+/// [`ElementTypeError::UnsupportedSchema`] for a model that binds no single
+/// known release; [`ElementTypeError::EntityNotInSchema`] for a type the
+/// release does not declare (IFC2X3 has no `IfcDoorType`, IFC4 no
+/// `IfcBearingType`); [`ElementTypeError::AuthoringNotInSchema`] for a
+/// token where the release declares no `PredefinedType`, and
+/// [`ElementTypeError::AuthoringRequired`] for any other attribute the
+/// release requires that the draft cannot carry. Nothing is staged on an
+/// error.
+pub fn create_type_in(
+    tx: &mut Transaction,
+    model: &Model,
+    kind: ElementType,
+    global_id: &str,
+    predefined_type: Option<&str>,
+    draft: TypeDraft<'_>,
+) -> ElementTypeResult<EntityId> {
+    let request = Request {
+        kind,
+        global_id,
+        predefined_type,
+        draft,
+    };
+    author(tx, bind(model)?, request, None)
+}
+
+/// [`create_type_in`] with a caller-supplied `IfcOwnerHistory`, which
+/// IFC2X3 requires on every `IfcRoot`.
+///
+/// `owner_history` must be in the model or staged earlier on `tx`, and must
+/// be an `IfcOwnerHistory`; one is never invented here (build it with
+/// `ifc-author`). In IFC4 and IFC4X3 the reference fills the optional slot.
+///
+/// # Errors
+///
+/// Those of [`create_type_in`] except the IFC2X3 `OwnerHistory` refusal,
+/// and [`ElementTypeError::MissingEntity`] for an `owner_history` that does
+/// not resolve or [`ElementTypeError::Invalid`] on `OwnerHistory` for one
+/// that is another entity. Nothing is staged on an error.
+pub fn create_type_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    kind: ElementType,
+    global_id: &str,
+    predefined_type: Option<&str>,
+    draft: TypeDraft<'_>,
+    owner_history: EntityId,
+) -> ElementTypeResult<EntityId> {
+    let layout = bind(model)?;
+    // Checked before the draft so a wrong reference is reported as such.
+    require_owner_history(tx, model, kind.type_name, owner_history)?;
+    let request = Request {
+        kind,
+        global_id,
+        predefined_type,
+        draft,
+    };
+    author(tx, layout, request, Some(owner_history))
+}
+
+/// The caller's arguments, bundled.
+struct Request<'a> {
+    kind: ElementType,
+    global_id: &'a str,
+    predefined_type: Option<&'a str>,
+    draft: TypeDraft<'a>,
+}
+
+/// Stage one type definition in `layout`; `None` leaves `OwnerHistory` `$`.
+/// The owner history, if any, has been checked by the caller.
+fn author(
+    tx: &mut Transaction,
+    layout: Layout,
+    request: Request<'_>,
+    owner_history: Option<EntityId>,
+) -> ElementTypeResult<EntityId> {
+    let Request {
+        kind,
+        global_id,
+        predefined_type,
+        draft,
+    } = request;
     let entity = kind.type_name;
     if Guid::parse(global_id).is_none() {
         return Err(invalid(entity, "GlobalId", global_id));
@@ -136,39 +227,52 @@ pub fn create_type(
     if blank(draft.name) {
         return Err(invalid(entity, "Name", "NameRequired"));
     }
+    layout.require_entity(entity)?;
 
-    match predefined_type {
-        None if !kind.predefined_optional => {
-            return Err(invalid(entity, "PredefinedType", "required"));
-        }
-        Some(token) if !kind.members.contains(&token) => {
-            return Err(invalid(entity, "PredefinedType", token));
-        }
-        Some(token) if token == "USERDEFINED" && blank(draft.fallback) => {
-            return Err(invalid(
+    // The release's own `PredefinedType`: whether it is required, and its
+    // tokens. For the catalogue's release these are the row's own.
+    match layout.attribute(entity, "PredefinedType") {
+        None if predefined_type.is_some() => {
+            return Err(ElementTypeError::AuthoringNotInSchema {
                 entity,
-                kind.fallback_attr,
-                "required by USERDEFINED",
-            ));
+                attribute: "PredefinedType",
+                schema: layout.version(),
+            });
         }
-        _ => {}
+        None => {}
+        Some(declared) => {
+            let members = layout.members(entity, "PredefinedType").unwrap_or_default();
+            match predefined_type {
+                None if !declared.optional => {
+                    return Err(invalid(entity, "PredefinedType", "required"));
+                }
+                Some(token) if !members.contains(&token) => {
+                    return Err(invalid(entity, "PredefinedType", token));
+                }
+                _ => {}
+            }
+        }
+    }
+    if predefined_type == Some("USERDEFINED") && blank(draft.fallback) {
+        return Err(invalid(
+            entity,
+            kind.fallback_attr,
+            "required by USERDEFINED",
+        ));
     }
 
-    let mut attrs = vec![Value::Null; kind.arity];
-    attrs[0] = Value::Text(global_id.into());
-    attrs[2] = text(draft.name);
-    attrs[3] = text(draft.description);
-    attrs[4] = text(draft.applicable_occurrence);
-
-    match (draft.maps_or_identification, kind.family) {
+    let (slot6_name, slot6) = match (draft.maps_or_identification, kind.family) {
         (Some(Slot6::RepresentationMaps(maps)), Family::Element) => {
             if maps.is_empty() {
                 return Err(invalid(entity, "RepresentationMaps", "empty"));
             }
-            attrs[6] = Value::List(maps.iter().copied().map(Value::Ref).collect());
+            (
+                "RepresentationMaps",
+                Value::List(maps.iter().copied().map(Value::Ref).collect()),
+            )
         }
         (Some(Slot6::Identification(id)), Family::ResourceOrProcess) => {
-            attrs[6] = Value::Text(id.into());
+            ("Identification", Value::Text(id.into()))
         }
         (Some(Slot6::RepresentationMaps(_)), Family::ResourceOrProcess) => {
             return Err(invalid(entity, "Identification", "expected text, got maps"));
@@ -180,14 +284,34 @@ pub fn create_type(
                 "expected maps, got text",
             ));
         }
-        (None, _) => {}
-    }
+        (None, _) => ("RepresentationMaps", Value::Null),
+    };
+    let slot7_name = match kind.family {
+        Family::Element => "Tag",
+        Family::ResourceOrProcess => "LongDescription",
+    };
 
-    attrs[7] = text(draft.tag_or_long_description);
-    attrs[kind.fallback_slot] = text(draft.fallback);
-    attrs[kind.predefined_slot] = predefined_type.map_or(Value::Null, |t| Value::Enum(t.into()));
-
-    Ok(tx.create(Entity::new(entity, attrs)))
+    let record = layout.named_record(
+        entity,
+        vec![
+            ("GlobalId", Value::Text(global_id.into())),
+            (
+                "OwnerHistory",
+                owner_history.map_or(Value::Null, Value::Ref),
+            ),
+            ("Name", text(draft.name)),
+            ("Description", text(draft.description)),
+            ("ApplicableOccurrence", text(draft.applicable_occurrence)),
+            (slot6_name, slot6),
+            (slot7_name, text(draft.tag_or_long_description)),
+            (kind.fallback_attr, text(draft.fallback)),
+            (
+                "PredefinedType",
+                predefined_type.map_or(Value::Null, |t| Value::Enum(t.into())),
+            ),
+        ],
+    )?;
+    Ok(tx.create(record))
 }
 
 fn text(value: Option<&str>) -> Value {

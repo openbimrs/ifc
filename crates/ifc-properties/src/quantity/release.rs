@@ -39,6 +39,15 @@ pub(crate) struct Layout {
     schema: &'static Schema,
 }
 
+/// The layout of `version`, for writers that take no model and write one
+/// fixed release.
+pub(crate) fn layout(version: SchemaVersion) -> PropertyResult<Layout> {
+    let schema = for_version(version).ok_or_else(|| PropertyError::UnsupportedSchema {
+        schema: format!("{version:?}"),
+    })?;
+    Ok(Layout { version, schema })
+}
+
 /// Bind `model`'s declared release.
 pub(crate) fn bind(model: &Model) -> PropertyResult<Layout> {
     let version = match model.header().schema.as_slice() {
@@ -54,10 +63,7 @@ pub(crate) fn bind(model: &Model) -> PropertyResult<Layout> {
             })
         }
     };
-    let schema = for_version(version).ok_or_else(|| PropertyError::UnsupportedSchema {
-        schema: format!("{version:?}"),
-    })?;
-    Ok(Layout { version, schema })
+    layout(version)
 }
 
 impl Layout {

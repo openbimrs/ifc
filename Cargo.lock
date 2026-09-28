@@ -739,6 +739,7 @@ version = "0.2.0"
 dependencies = [
  "ifc-model",
  "ifc-schema",
+ "ifc-step",
  "thiserror",
 ]
 
@@ -767,6 +768,7 @@ version = "0.2.0"
 dependencies = [
  "ifc-model",
  "ifc-schema",
+ "ifc-step",
  "thiserror",
 ]
 
@@ -795,6 +797,7 @@ version = "0.2.0"
 dependencies = [
  "ifc-model",
  "ifc-schema",
+ "ifc-step",
 ]
 
 [[package]]
@@ -863,6 +866,8 @@ name = "ifc-occurrence"
 version = "0.2.0"
 dependencies = [
  "ifc-model",
+ "ifc-schema",
+ "ifc-step",
 ]
 
 [[package]]

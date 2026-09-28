@@ -1,6 +1,7 @@
 //! Typed failures for bounded IFC4 constraint semantics.
 
 use ifc_model::EntityId;
+use ifc_schema::SchemaVersion;
 use thiserror::Error;
 
 /// Constraint projection or authoring failure.
@@ -102,6 +103,32 @@ pub enum ConstraintError {
         expected: &'static str,
         /// Actual entity kind.
         actual: String,
+    },
+    /// The model's header declares several schemas; authoring binds to
+    /// exactly one release.
+    #[error("the header declares {schemas} schemas; authoring binds to exactly one")]
+    MultipleSchemas {
+        /// Number of `FILE_SCHEMA` declarations.
+        schemas: usize,
+    },
+    /// The model's header declares one schema with no bundled table, so no
+    /// layout can be trusted.
+    #[error("the header declares {schema}, which has no bundled table")]
+    UnsupportedSchema {
+        /// The `FILE_SCHEMA` token as written.
+        schema: String,
+    },
+    /// The model's release requires an attribute the authoring call leaves
+    /// unset, such as the IFC2X3 `IfcRoot.OwnerHistory` or the IFC2X3
+    /// `IfcRelAssociatesConstraint.Intent`.
+    #[error("cannot author {entity}: {schema:?} requires {attribute}")]
+    AuthoringRequired {
+        /// The entity type being authored.
+        entity: &'static str,
+        /// The required attribute, as the release names it.
+        attribute: &'static str,
+        /// The release the model declares.
+        schema: SchemaVersion,
     },
 }
 

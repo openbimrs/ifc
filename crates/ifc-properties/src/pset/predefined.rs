@@ -4,23 +4,16 @@
 //! These are `IfcPropertySetDefinition` subtypes, so they carry the four
 //! `IfcRoot` slots before their own attributes. Unlike a generic
 //! `IfcPropertySet` they have fixed, named, typed attributes and a set of
-//! WHERE rules over them.
-//!
-//! # Paired attributes
-//!
-//! The lining rules are pairing constraints, and door and window state
-//! them differently. A door's transom and casing pairs are XOR: both or
-//! neither. A window's transom and mullion offsets are ordered: the
-//! second may only appear when the first does. Writing one half of
-//! either pair produces a file that parses and reports a dimension
-//! nothing can interpret.
+//! WHERE rules over them. The linings are in `lining.rs`; the release
+//! each is written in is explained in `owned.rs`.
 
 use ifc_model::guid::Guid;
-use ifc_model::{Entity, EntityId, Transaction, Value};
+use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 
 use crate::{PropertyError, PropertyResult};
 
 use super::authoring::optional_text;
+use super::owned::{stage_ifc4, stage_owned, Rooted};
 
 pub(super) fn invalid(
     entity: &'static str,
@@ -34,21 +27,12 @@ pub(super) fn invalid(
     }
 }
 
-pub(super) fn root_slots(
-    entity: &'static str,
-    global_id: &str,
-    name: Option<&str>,
-    description: Option<&str>,
-    arity: usize,
-) -> PropertyResult<Vec<Value>> {
+/// Refuse a GlobalId that is not a 22-character IFC GUID.
+pub(super) fn require_guid(entity: &'static str, global_id: &str) -> PropertyResult<()> {
     if Guid::parse(global_id).is_none() {
         return Err(invalid(entity, "GlobalId", global_id));
     }
-    let mut attributes = vec![Value::Null; arity];
-    attributes[0] = Value::Text(global_id.into());
-    attributes[2] = optional_text(name);
-    attributes[3] = optional_text(description);
-    Ok(attributes)
+    Ok(())
 }
 
 /// The three length measure kinds these entities use.
@@ -87,183 +71,8 @@ pub(super) fn measure(
     Ok(Value::Real(value))
 }
 
-/// Attributes of an `IfcDoorLiningProperties`.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct DoorLiningDraft<'a> {
-    /// `Name`.
-    pub name: Option<&'a str>,
-    /// `Description`.
-    pub description: Option<&'a str>,
-    /// `LiningDepth`, a positive length. Requires `lining_thickness` (WR31).
-    pub lining_depth: Option<f64>,
-    /// `LiningThickness`, a non-negative length.
-    pub lining_thickness: Option<f64>,
-    /// `ThresholdDepth`, a positive length. Requires `threshold_thickness` (WR32).
-    pub threshold_depth: Option<f64>,
-    /// `ThresholdThickness`, a non-negative length.
-    pub threshold_thickness: Option<f64>,
-    /// `TransomThickness`, a non-negative length. Paired with `transom_offset` (WR33).
-    pub transom_thickness: Option<f64>,
-    /// `TransomOffset`, a length. Paired with `transom_thickness` (WR33).
-    pub transom_offset: Option<f64>,
-    /// `LiningOffset`, a length.
-    pub lining_offset: Option<f64>,
-    /// `ThresholdOffset`, a length.
-    pub threshold_offset: Option<f64>,
-    /// `CasingThickness`, a positive length. Paired with `casing_depth` (WR34).
-    pub casing_thickness: Option<f64>,
-    /// `CasingDepth`, a positive length. Paired with `casing_thickness` (WR34).
-    pub casing_depth: Option<f64>,
-    /// `ShapeAspectStyle`.
-    pub shape_aspect_style: Option<EntityId>,
-    /// `LiningToPanelOffsetX`, a length.
-    pub lining_to_panel_offset_x: Option<f64>,
-    /// `LiningToPanelOffsetY`, a length.
-    pub lining_to_panel_offset_y: Option<f64>,
-}
-
-/// Stage an `IfcDoorLiningProperties`.
-///
-/// # Errors
-///
-/// Refuses a malformed GlobalId; a depth without its thickness (WR31,
-/// WR32); a transom or casing pair with exactly one half set (WR33,
-/// WR34); and any measure that violates its schema measure type.
-///
-/// WR35 requires the set to define an `IfcDoorType`. That is a property
-/// of the attachment, not of this record, so it is enforced where the
-/// set is attached rather than invented here.
-pub fn add_door_lining_properties(
-    tx: &mut Transaction,
-    global_id: &str,
-    draft: DoorLiningDraft<'_>,
-) -> PropertyResult<EntityId> {
-    const ENTITY: &str = "IFCDOORLININGPROPERTIES";
-    if draft.lining_depth.is_some() && draft.lining_thickness.is_none() {
-        return Err(invalid(
-            ENTITY,
-            "LiningThickness",
-            "WR31: a lining depth needs its thickness",
-        ));
-    }
-    if draft.threshold_depth.is_some() && draft.threshold_thickness.is_none() {
-        return Err(invalid(
-            ENTITY,
-            "ThresholdThickness",
-            "WR32: a threshold depth needs its thickness",
-        ));
-    }
-    if draft.transom_offset.is_some() != draft.transom_thickness.is_some() {
-        return Err(invalid(
-            ENTITY,
-            "TransomOffset",
-            "WR33: transom offset and thickness are all or nothing",
-        ));
-    }
-    if draft.casing_depth.is_some() != draft.casing_thickness.is_some() {
-        return Err(invalid(
-            ENTITY,
-            "CasingDepth",
-            "WR34: casing depth and thickness are all or nothing",
-        ));
-    }
-
-    let mut attributes = root_slots(ENTITY, global_id, draft.name, draft.description, 17)?;
-    attributes[4] = measure(ENTITY, "LiningDepth", draft.lining_depth, Measure::Positive)?;
-    attributes[5] = measure(
-        ENTITY,
-        "LiningThickness",
-        draft.lining_thickness,
-        Measure::NonNegative,
-    )?;
-    attributes[6] = measure(
-        ENTITY,
-        "ThresholdDepth",
-        draft.threshold_depth,
-        Measure::Positive,
-    )?;
-    attributes[7] = measure(
-        ENTITY,
-        "ThresholdThickness",
-        draft.threshold_thickness,
-        Measure::NonNegative,
-    )?;
-    attributes[8] = measure(
-        ENTITY,
-        "TransomThickness",
-        draft.transom_thickness,
-        Measure::NonNegative,
-    )?;
-    attributes[9] = measure(
-        ENTITY,
-        "TransomOffset",
-        draft.transom_offset,
-        Measure::Length,
-    )?;
-    attributes[10] = measure(ENTITY, "LiningOffset", draft.lining_offset, Measure::Length)?;
-    attributes[11] = measure(
-        ENTITY,
-        "ThresholdOffset",
-        draft.threshold_offset,
-        Measure::Length,
-    )?;
-    attributes[12] = measure(
-        ENTITY,
-        "CasingThickness",
-        draft.casing_thickness,
-        Measure::Positive,
-    )?;
-    attributes[13] = measure(ENTITY, "CasingDepth", draft.casing_depth, Measure::Positive)?;
-    attributes[14] = draft.shape_aspect_style.map_or(Value::Null, Value::Ref);
-    attributes[15] = measure(
-        ENTITY,
-        "LiningToPanelOffsetX",
-        draft.lining_to_panel_offset_x,
-        Measure::Length,
-    )?;
-    attributes[16] = measure(
-        ENTITY,
-        "LiningToPanelOffsetY",
-        draft.lining_to_panel_offset_y,
-        Measure::Length,
-    )?;
-    Ok(tx.create(Entity::new(ENTITY, attributes)))
-}
-
-/// Attributes of an `IfcWindowLiningProperties`.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct WindowLiningDraft<'a> {
-    /// `Name`.
-    pub name: Option<&'a str>,
-    /// `Description`.
-    pub description: Option<&'a str>,
-    /// `LiningDepth`, a positive length. Requires `lining_thickness` (WR31).
-    pub lining_depth: Option<f64>,
-    /// `LiningThickness`, a non-negative length.
-    pub lining_thickness: Option<f64>,
-    /// `TransomThickness`, a non-negative length.
-    pub transom_thickness: Option<f64>,
-    /// `MullionThickness`, a non-negative length.
-    pub mullion_thickness: Option<f64>,
-    /// `FirstTransomOffset`, a normalised ratio.
-    pub first_transom_offset: Option<f64>,
-    /// `SecondTransomOffset`, a normalised ratio. Needs the first (WR32).
-    pub second_transom_offset: Option<f64>,
-    /// `FirstMullionOffset`, a normalised ratio.
-    pub first_mullion_offset: Option<f64>,
-    /// `SecondMullionOffset`, a normalised ratio. Needs the first (WR33).
-    pub second_mullion_offset: Option<f64>,
-    /// `ShapeAspectStyle`.
-    pub shape_aspect_style: Option<EntityId>,
-    /// `LiningOffset`, a length.
-    pub lining_offset: Option<f64>,
-    /// `LiningToPanelOffsetX`, a length.
-    pub lining_to_panel_offset_x: Option<f64>,
-    /// `LiningToPanelOffsetY`, a length.
-    pub lining_to_panel_offset_y: Option<f64>,
-}
-
-fn ratio(
+/// An `IfcNormalisedRatioMeasure`, bounded to `[0, 1]`.
+pub(super) fn ratio(
     entity: &'static str,
     attribute: &'static str,
     value: Option<f64>,
@@ -275,87 +84,6 @@ fn ratio(
         return Err(invalid(entity, attribute, format!("{value}")));
     }
     Ok(Value::Real(value))
-}
-
-/// Stage an `IfcWindowLiningProperties`.
-///
-/// # Errors
-///
-/// Refuses a malformed GlobalId; a lining depth without its thickness
-/// (WR31); a second transom or mullion offset without the first (WR32,
-/// WR33); and any measure outside its schema type. The offsets are
-/// `IfcNormalisedRatioMeasure`, so they are bounded to `[0, 1]` rather
-/// than treated as free lengths.
-///
-/// Unlike the door rules, these are ordered rather than XOR: a first
-/// offset alone is legal, a second alone is not.
-pub fn add_window_lining_properties(
-    tx: &mut Transaction,
-    global_id: &str,
-    draft: WindowLiningDraft<'_>,
-) -> PropertyResult<EntityId> {
-    const ENTITY: &str = "IFCWINDOWLININGPROPERTIES";
-    if draft.lining_depth.is_some() && draft.lining_thickness.is_none() {
-        return Err(invalid(
-            ENTITY,
-            "LiningThickness",
-            "WR31: a lining depth needs its thickness",
-        ));
-    }
-    if draft.second_transom_offset.is_some() && draft.first_transom_offset.is_none() {
-        return Err(invalid(
-            ENTITY,
-            "SecondTransomOffset",
-            "WR32: a second transom offset needs the first",
-        ));
-    }
-    if draft.second_mullion_offset.is_some() && draft.first_mullion_offset.is_none() {
-        return Err(invalid(
-            ENTITY,
-            "SecondMullionOffset",
-            "WR33: a second mullion offset needs the first",
-        ));
-    }
-
-    let mut attributes = root_slots(ENTITY, global_id, draft.name, draft.description, 16)?;
-    attributes[4] = measure(ENTITY, "LiningDepth", draft.lining_depth, Measure::Positive)?;
-    attributes[5] = measure(
-        ENTITY,
-        "LiningThickness",
-        draft.lining_thickness,
-        Measure::NonNegative,
-    )?;
-    attributes[6] = measure(
-        ENTITY,
-        "TransomThickness",
-        draft.transom_thickness,
-        Measure::NonNegative,
-    )?;
-    attributes[7] = measure(
-        ENTITY,
-        "MullionThickness",
-        draft.mullion_thickness,
-        Measure::NonNegative,
-    )?;
-    attributes[8] = ratio(ENTITY, "FirstTransomOffset", draft.first_transom_offset)?;
-    attributes[9] = ratio(ENTITY, "SecondTransomOffset", draft.second_transom_offset)?;
-    attributes[10] = ratio(ENTITY, "FirstMullionOffset", draft.first_mullion_offset)?;
-    attributes[11] = ratio(ENTITY, "SecondMullionOffset", draft.second_mullion_offset)?;
-    attributes[12] = draft.shape_aspect_style.map_or(Value::Null, Value::Ref);
-    attributes[13] = measure(ENTITY, "LiningOffset", draft.lining_offset, Measure::Length)?;
-    attributes[14] = measure(
-        ENTITY,
-        "LiningToPanelOffsetX",
-        draft.lining_to_panel_offset_x,
-        Measure::Length,
-    )?;
-    attributes[15] = measure(
-        ENTITY,
-        "LiningToPanelOffsetY",
-        draft.lining_to_panel_offset_y,
-        Measure::Length,
-    )?;
-    Ok(tx.create(Entity::new(ENTITY, attributes)))
 }
 
 const DOOR_PANEL_OPERATION: &[&str] = &[
@@ -390,7 +118,7 @@ const WINDOW_PANEL_POSITION: &[&str] = &["BOTTOM", "LEFT", "MIDDLE", "RIGHT", "T
 const PERMEABLE_COVERING_OPERATION: &[&str] =
     &["GRILL", "LOUVER", "SCREEN", "USERDEFINED", "NOTDEFINED"];
 
-fn token(
+pub(super) fn token(
     entity: &'static str,
     attribute: &'static str,
     value: &str,
@@ -408,6 +136,11 @@ fn token(
 /// not mark them OPTIONAL, so a panel always states how it moves and
 /// where it sits.
 ///
+/// Takes no model, so it writes the IFC4 layout with `OwnerHistory` `$`:
+/// valid IFC4 and IFC4X3, never valid IFC2X3. Use
+/// [`add_door_panel_properties_with_owner_history`] to write the model's
+/// declared release.
+///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId, a token outside its own enumeration,
@@ -422,17 +155,72 @@ pub fn add_door_panel_properties(
     position: &str,
     panel: (Option<f64>, Option<f64>),
 ) -> PropertyResult<EntityId> {
+    stage_ifc4(tx, door_panel(global_id, name, operation, position, panel)?)
+}
+
+/// [`add_door_panel_properties`] in the model's declared release, with a
+/// caller-supplied `IfcOwnerHistory`, which IFC2X3 requires (#202).
+///
+/// # Errors
+///
+/// Those of [`add_door_panel_properties`], a token the release's own
+/// enumeration does not list, and the release and owner-history refusals
+/// of [`add_door_lining_properties_with_owner_history`](crate::add_door_lining_properties_with_owner_history).
+/// Nothing is staged on an error.
+#[allow(clippy::too_many_arguments)]
+pub fn add_door_panel_properties_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    global_id: &str,
+    name: Option<&str>,
+    operation: &str,
+    position: &str,
+    panel: (Option<f64>, Option<f64>),
+    owner_history: EntityId,
+) -> PropertyResult<EntityId> {
+    let rooted = door_panel(global_id, name, operation, position, panel)?;
+    stage_owned(tx, model, rooted, owner_history)
+}
+
+fn door_panel<'a>(
+    global_id: &'a str,
+    name: Option<&'a str>,
+    operation: &str,
+    position: &str,
+    (depth, width): (Option<f64>, Option<f64>),
+) -> PropertyResult<Rooted<'a>> {
     const ENTITY: &str = "IFCDOORPANELPROPERTIES";
-    let (depth, width) = panel;
-    let mut attributes = root_slots(ENTITY, global_id, name, None, 9)?;
-    attributes[4] = measure(ENTITY, "PanelDepth", depth, Measure::Positive)?;
-    attributes[5] = token(ENTITY, "PanelOperation", operation, DOOR_PANEL_OPERATION)?;
-    attributes[6] = ratio(ENTITY, "PanelWidth", width)?;
-    attributes[7] = token(ENTITY, "PanelPosition", position, DOOR_PANEL_POSITION)?;
-    Ok(tx.create(Entity::new(ENTITY, attributes)))
+    require_guid(ENTITY, global_id)?;
+    let values = vec![
+        (
+            "PanelDepth",
+            measure(ENTITY, "PanelDepth", depth, Measure::Positive)?,
+        ),
+        (
+            "PanelOperation",
+            token(ENTITY, "PanelOperation", operation, DOOR_PANEL_OPERATION)?,
+        ),
+        ("PanelWidth", ratio(ENTITY, "PanelWidth", width)?),
+        (
+            "PanelPosition",
+            token(ENTITY, "PanelPosition", position, DOOR_PANEL_POSITION)?,
+        ),
+    ];
+    Ok(Rooted {
+        entity: ENTITY,
+        global_id,
+        name,
+        description: None,
+        values,
+    })
 }
 
 /// Stage an `IfcWindowPanelProperties`.
+///
+/// Takes no model, so it writes the IFC4 layout with `OwnerHistory` `$`:
+/// valid IFC4 and IFC4X3, never valid IFC2X3. Use
+/// [`add_window_panel_properties_with_owner_history`] to write the
+/// model's declared release.
 ///
 /// # Errors
 ///
@@ -447,17 +235,38 @@ pub fn add_window_panel_properties(
     position: &str,
     frame: (Option<f64>, Option<f64>),
 ) -> PropertyResult<EntityId> {
-    const ENTITY: &str = "IFCWINDOWPANELPROPERTIES";
-    let (frame_depth, frame_thickness) = frame;
-    let mut attributes = root_slots(ENTITY, global_id, name, None, 9)?;
-    attributes[4] = token(ENTITY, "OperationType", operation, WINDOW_PANEL_OPERATION)?;
-    attributes[5] = token(ENTITY, "PanelPosition", position, WINDOW_PANEL_POSITION)?;
-    attributes[6] = measure(ENTITY, "FrameDepth", frame_depth, Measure::Positive)?;
-    attributes[7] = measure(ENTITY, "FrameThickness", frame_thickness, Measure::Positive)?;
-    Ok(tx.create(Entity::new(ENTITY, attributes)))
+    let rooted = framed(WINDOW_PANEL, global_id, name, operation, position, frame)?;
+    stage_ifc4(tx, rooted)
+}
+
+/// [`add_window_panel_properties`] in the model's declared release, with
+/// a caller-supplied `IfcOwnerHistory`, which IFC2X3 requires (#202).
+///
+/// # Errors
+///
+/// Those of [`add_door_panel_properties_with_owner_history`], against the
+/// window enumerations. Nothing is staged on an error.
+#[allow(clippy::too_many_arguments)]
+pub fn add_window_panel_properties_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    global_id: &str,
+    name: Option<&str>,
+    operation: &str,
+    position: &str,
+    frame: (Option<f64>, Option<f64>),
+    owner_history: EntityId,
+) -> PropertyResult<EntityId> {
+    let rooted = framed(WINDOW_PANEL, global_id, name, operation, position, frame)?;
+    stage_owned(tx, model, rooted, owner_history)
 }
 
 /// Stage an `IfcPermeableCoveringProperties`.
+///
+/// Takes no model, so it writes the IFC4 layout with `OwnerHistory` `$`:
+/// valid IFC4 and IFC4X3, never valid IFC2X3. Use
+/// [`add_permeable_covering_properties_with_owner_history`] to write the
+/// model's declared release.
 ///
 /// # Errors
 ///
@@ -471,19 +280,83 @@ pub fn add_permeable_covering_properties(
     position: &str,
     frame: (Option<f64>, Option<f64>),
 ) -> PropertyResult<EntityId> {
-    const ENTITY: &str = "IFCPERMEABLECOVERINGPROPERTIES";
-    let (frame_depth, frame_thickness) = frame;
-    let mut attributes = root_slots(ENTITY, global_id, name, None, 9)?;
-    attributes[4] = token(
-        ENTITY,
-        "OperationType",
-        operation,
-        PERMEABLE_COVERING_OPERATION,
-    )?;
-    attributes[5] = token(ENTITY, "PanelPosition", position, WINDOW_PANEL_POSITION)?;
-    attributes[6] = measure(ENTITY, "FrameDepth", frame_depth, Measure::Positive)?;
-    attributes[7] = measure(ENTITY, "FrameThickness", frame_thickness, Measure::Positive)?;
-    Ok(tx.create(Entity::new(ENTITY, attributes)))
+    let rooted = framed(PERMEABLE, global_id, name, operation, position, frame)?;
+    stage_ifc4(tx, rooted)
+}
+
+/// [`add_permeable_covering_properties`] in the model's declared release,
+/// with a caller-supplied `IfcOwnerHistory`, which IFC2X3 requires (#202).
+///
+/// # Errors
+///
+/// Those of [`add_door_panel_properties_with_owner_history`], against the
+/// permeable-covering enumerations. Nothing is staged on an error.
+#[allow(clippy::too_many_arguments)]
+pub fn add_permeable_covering_properties_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    global_id: &str,
+    name: Option<&str>,
+    operation: &str,
+    position: &str,
+    frame: (Option<f64>, Option<f64>),
+    owner_history: EntityId,
+) -> PropertyResult<EntityId> {
+    let rooted = framed(PERMEABLE, global_id, name, operation, position, frame)?;
+    stage_owned(tx, model, rooted, owner_history)
+}
+
+/// A window panel or permeable covering: its entity and the enumerations
+/// its `OperationType` and `PanelPosition` take.
+struct Framed {
+    entity: &'static str,
+    operations: &'static [&'static str],
+}
+
+const WINDOW_PANEL: Framed = Framed {
+    entity: "IFCWINDOWPANELPROPERTIES",
+    operations: WINDOW_PANEL_OPERATION,
+};
+const PERMEABLE: Framed = Framed {
+    entity: "IFCPERMEABLECOVERINGPROPERTIES",
+    operations: PERMEABLE_COVERING_OPERATION,
+};
+
+fn framed<'a>(
+    kind: Framed,
+    global_id: &'a str,
+    name: Option<&'a str>,
+    operation: &str,
+    position: &str,
+    (frame_depth, frame_thickness): (Option<f64>, Option<f64>),
+) -> PropertyResult<Rooted<'a>> {
+    let entity = kind.entity;
+    require_guid(entity, global_id)?;
+    let values = vec![
+        (
+            "OperationType",
+            token(entity, "OperationType", operation, kind.operations)?,
+        ),
+        (
+            "PanelPosition",
+            token(entity, "PanelPosition", position, WINDOW_PANEL_POSITION)?,
+        ),
+        (
+            "FrameDepth",
+            measure(entity, "FrameDepth", frame_depth, Measure::Positive)?,
+        ),
+        (
+            "FrameThickness",
+            measure(entity, "FrameThickness", frame_thickness, Measure::Positive)?,
+        ),
+    ];
+    Ok(Rooted {
+        entity,
+        global_id,
+        name,
+        description: None,
+        values,
+    })
 }
 
 /// The STEP type name of an `IfcValue`, for the homogeneity rule.
@@ -553,48 +426,6 @@ pub fn add_property_enumeration(
         Value::List(values),
         unit.map_or(Value::Null, Value::Ref),
     ];
-    Ok(tx.create(Entity::new(ENTITY, attributes)))
-}
-
-const COMPLEX_TEMPLATE_TYPE: &[&str] = &["P_COMPLEX", "Q_COMPLEX"];
-
-/// Stage an `IfcComplexPropertyTemplate`.
-///
-/// # Errors
-///
-/// Refuses a malformed GlobalId, an empty template set (the attribute
-/// is `SET [1:?]` when present), a duplicate template reference, and a
-/// `TemplateType` outside its enumeration.
-///
-/// `NoSelfReference` needs no check: [`Transaction::create`] allocates
-/// the id as it stages the entity, so a caller cannot hold that id in
-/// order to pass it as one of its own children.
-///
-/// `UniquePropertyNames` is stated over the templates' names, which a
-/// staged entity cannot be read back to supply. Callers pass
-/// `(name, id)` pairs, matching `add_property_set`.
-pub fn add_complex_property_template(
-    tx: &mut Transaction,
-    global_id: &str,
-    name: Option<&str>,
-    usage: (Option<&str>, Option<&str>),
-    templates: &[(&str, EntityId)],
-) -> PropertyResult<EntityId> {
-    const ENTITY: &str = "IFCCOMPLEXPROPERTYTEMPLATE";
-    let (usage_name, template_type) = usage;
-    let mut attributes = root_slots(ENTITY, global_id, name, None, 7)?;
-    attributes[4] = optional_text(usage_name);
-    if let Some(kind) = template_type {
-        attributes[5] = token(ENTITY, "TemplateType", kind, COMPLEX_TEMPLATE_TYPE)?;
-    }
-    if !templates.is_empty() {
-        for (index, (child, _)) in templates.iter().enumerate() {
-            if templates[..index].iter().any(|(seen, _)| seen == child) {
-                return Err(invalid(ENTITY, "HasPropertyTemplates", (*child).to_owned()));
-            }
-        }
-        attributes[6] = Value::List(templates.iter().map(|(_, id)| Value::Ref(*id)).collect());
-    }
     Ok(tx.create(Entity::new(ENTITY, attributes)))
 }
 

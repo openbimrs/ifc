@@ -18,9 +18,12 @@ group = "domain"
 
 [dependencies]
 ifc-model.workspace = true
+# The declared release's table lays out each type definition (#202).
+ifc-schema.workspace = true
 
 [dev-dependencies]
-ifc-schema.workspace = true
+# Test-only: release round trips are written and read back as STEP.
+ifc-step.workspace = true
 
 [lints]
 workspace = true

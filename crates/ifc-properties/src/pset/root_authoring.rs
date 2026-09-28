@@ -258,7 +258,7 @@ pub(super) fn attach_type_record(
 }
 
 /// Fail unless `id` is an `IfcOwnerHistory` in the model or staged on `tx`.
-fn require_owner_history(
+pub(super) fn require_owner_history(
     tx: &Transaction,
     model: &Model,
     layout: Layout,

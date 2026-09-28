@@ -12,6 +12,47 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `*_with_owner_history` variants of the predefined property-set writers
+  (#202): `add_door_lining_properties_with_owner_history`,
+  `add_window_lining_properties_with_owner_history`,
+  `add_door_panel_properties_with_owner_history`,
+  `add_window_panel_properties_with_owner_history`,
+  `add_permeable_covering_properties_with_owner_history` and
+  `add_reinforcement_definition_properties_with_owner_history`. Each takes
+  the model and a caller-supplied `IfcOwnerHistory`, which IFC2X3 requires
+  on every `IfcRoot`, validated as for #191 (`MissingEntity`,
+  `AuthoringInvalid`); none is ever invented. The record is laid out by
+  attribute name from the declared release's table, and each value is
+  checked against the type that release declares for it. In IFC2X3 that
+  refuses `LiningToPanelOffsetX/Y` (and a window's `LiningOffset`) with
+  `AuthoringNotInSchema`, and a zero thickness, which IFC2X3 types as
+  `IfcPositiveLengthMeasure` where IFC4 has `IfcNonNegativeLengthMeasure`,
+  with `AuthoringInvalid`; a token outside the release's enumeration is
+  refused too. In IFC4 and IFC4X3 the record is the old writer's with the
+  owner history in its optional slot.
+- `*_with_owner_history` variants of the template writers (#202):
+  `add_property_set_template_with_owner_history`,
+  `add_complex_property_template_with_owner_history` and
+  `attach_template_with_owner_history`. They bind the model's release, so
+  an IFC2X3 model, which declares no templates, is refused with
+  `EntityNotInSchema`.
+
+### Changed
+
+- The predefined property-set and template writers that take no model
+  (`add_door_lining_properties`, ..., `add_reinforcement_definition_properties`,
+  `add_property_set_template`, `add_complex_property_template`,
+  `attach_template`) are unchanged: they write the IFC4 layout with
+  `OwnerHistory` `$`, which is valid IFC4 and IFC4X3 (whose layouts of these
+  entities are the same) and never valid IFC2X3. Without a model they
+  cannot refuse IFC2X3; their documentation now says so, as #191 did for
+  `add_property_set`. They now lay the IFC4 record out by attribute name
+  from the IFC4 table instead of fixed slots; the output is identical. The
+  lining writers moved to `pset/lining.rs` and `add_complex_property_template`
+  to `pset/template_authoring.rs`; public paths are unchanged.
+
 ## [0.5.1] - 2026-09-28
 
 ### Added

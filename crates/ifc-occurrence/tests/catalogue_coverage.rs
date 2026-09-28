@@ -15,13 +15,22 @@ use ifc_occurrence::{create, OccurrenceDraft};
 
 const GUID: &str = "1hqA$FMcT8$hVvcqsRDBzZ";
 
+/// An empty model declaring IFC4X3, the catalogue's own release. Since
+/// #202 the writer binds the declared release, and a header without
+/// `FILE_SCHEMA` binds IFC4, which lacks the IFC4X3-only rows.
+fn ifc4x3() -> Model {
+    let mut model = Model::default();
+    model.header_mut().schema = vec!["IFC4X3_ADD2".into()];
+    model
+}
+
 /// Every catalogued occurrence stages, with the arity its row declares.
 #[test]
 fn every_catalogued_occurrence_stages() {
     assert!(ALL.len() > 100, "catalogue looks truncated: {}", ALL.len());
 
     for kind in ALL {
-        let mut model = Model::default();
+        let mut model = ifc4x3();
         let mut tx = Transaction::new(&model);
         let id = create(
             &mut tx,
@@ -49,7 +58,7 @@ fn every_catalogued_occurrence_stages() {
 /// Every row accepts its own declared tokens and refuses a foreign one.
 #[test]
 fn catalogued_predefined_tokens_round_trip() {
-    let model = Model::default();
+    let model = ifc4x3();
     for kind in ALL {
         if kind.predefined_slot.is_none() {
             continue;

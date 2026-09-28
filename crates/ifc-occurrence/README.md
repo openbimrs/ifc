@@ -22,3 +22,9 @@ The [`openbim-ifc`](https://crates.io/crates/openbim-ifc) facade also provides i
   it (the generic distribution classes, which `ifc-systems` owns). Test
   fixtures and doc examples elsewhere never count as authoring a class,
   which is why common classes such as `IfcWall` are generated here.
+- The catalogue names the classes; the model's declared release lays each
+  record out. `create` and `create_with_owner_history` take slots, the
+  `PredefinedType` enumeration and required attributes from that
+  release's table, so a class IFC4 lacks is refused in an IFC4 model, and
+  IFC2X3, which requires `IfcRoot.OwnerHistory`, needs the owner-history
+  variant.

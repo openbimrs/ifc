@@ -10,12 +10,13 @@
 //! four are `IfcPropertyAbstraction` subtypes and start at their own
 //! first attribute.
 
-use ifc_model::{Entity, EntityId, Transaction, Value};
+use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 
 use crate::PropertyResult;
 
 use super::authoring::optional_text;
-use super::predefined::{invalid, measure, root_slots, Measure};
+use super::owned::{stage_ifc4, stage_owned, Rooted};
+use super::predefined::{invalid, measure, require_guid, Measure};
 const BAR_SURFACE: &[&str] = &["PLAIN", "TEXTURED"];
 
 /// Attributes of an `IfcReinforcementBarProperties`.
@@ -229,6 +230,11 @@ pub fn add_section_reinforcement_properties(
 /// a GlobalId. The others are `IfcPropertyAbstraction` subtypes with no
 /// identity of their own.
 ///
+/// Takes no model, so it writes the IFC4 layout with `OwnerHistory` `$`:
+/// valid IFC4 and IFC4X3, never valid IFC2X3. Use
+/// [`add_reinforcement_definition_properties_with_owner_history`] to
+/// write the model's declared release.
+///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId and an empty section-definition list,
@@ -241,23 +247,72 @@ pub fn add_reinforcement_definition_properties(
     definition_type: Option<&str>,
     reinforcement_section_definitions: &[EntityId],
 ) -> PropertyResult<EntityId> {
+    let rooted = reinforcement_definition(
+        global_id,
+        (name, description),
+        definition_type,
+        reinforcement_section_definitions,
+    )?;
+    stage_ifc4(tx, rooted)
+}
+
+/// [`add_reinforcement_definition_properties`] in the model's declared
+/// release, with a caller-supplied `IfcOwnerHistory`, which IFC2X3
+/// requires (#202).
+///
+/// # Errors
+///
+/// Those of [`add_reinforcement_definition_properties`], and the release
+/// and owner-history refusals of
+/// [`add_door_lining_properties_with_owner_history`](crate::add_door_lining_properties_with_owner_history).
+/// Nothing is staged on an error.
+#[allow(clippy::too_many_arguments)]
+pub fn add_reinforcement_definition_properties_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    global_id: &str,
+    name: Option<&str>,
+    description: Option<&str>,
+    definition_type: Option<&str>,
+    reinforcement_section_definitions: &[EntityId],
+    owner_history: EntityId,
+) -> PropertyResult<EntityId> {
+    let rooted = reinforcement_definition(
+        global_id,
+        (name, description),
+        definition_type,
+        reinforcement_section_definitions,
+    )?;
+    stage_owned(tx, model, rooted, owner_history)
+}
+
+fn reinforcement_definition<'a>(
+    global_id: &'a str,
+    (name, description): (Option<&'a str>, Option<&'a str>),
+    definition_type: Option<&str>,
+    reinforcement_section_definitions: &[EntityId],
+) -> PropertyResult<Rooted<'a>> {
     const ENTITY: &str = "IFCREINFORCEMENTDEFINITIONPROPERTIES";
 
     if reinforcement_section_definitions.is_empty() {
         return Err(invalid(ENTITY, "ReinforcementSectionDefinitions", "empty"));
     }
-
-    let mut attributes = root_slots(ENTITY, global_id, name, description, 6)?;
-    attributes[4] = optional_text(definition_type);
-    attributes[5] = Value::List(
-        reinforcement_section_definitions
-            .iter()
-            .copied()
-            .map(Value::Ref)
-            .collect(),
-    );
-
-    Ok(tx.create(Entity::new(ENTITY, attributes)))
+    require_guid(ENTITY, global_id)?;
+    let sections = reinforcement_section_definitions.iter().copied();
+    let values = vec![
+        ("DefinitionType", optional_text(definition_type)),
+        (
+            "ReinforcementSectionDefinitions",
+            Value::List(sections.map(Value::Ref).collect()),
+        ),
+    ];
+    Ok(Rooted {
+        entity: ENTITY,
+        global_id,
+        name,
+        description,
+        values,
+    })
 }
 
 /// Stage an `IfcProfileProperties`.
