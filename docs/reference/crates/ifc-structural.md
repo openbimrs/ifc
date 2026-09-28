@@ -11,7 +11,7 @@ Structural analysis model: members, connections, actions, reactions, loads.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.2.0 (2026-09-22) |
+| Latest release | 0.2.1 (2026-09-28) |
 | Registries | [crates.io `ifc-structural`](https://crates.io/crates/ifc-structural) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `structural` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_structural/index.html) · [docs.rs](https://docs.rs/ifc-structural) |
@@ -37,9 +37,35 @@ claim computed reaction/result authoring.
 
 ## Changes
 
-Latest release, 0.2.0 (2026-09-22):
+Latest release, 0.2.1 (2026-09-28):
 
-First release under per-crate versioning. See the
-that produced this version.
+### Added
+
+- `stage_boundary_condition_in(tx, schema, kind, draft)` (#200, #201). It
+  lays the record out by `schema`'s attribute names (IFC2X3 still says
+  `LinearStiffness...`) and writes each stiffness in the form its declared
+  type requires there: bare in IFC2X3, whose stiffnesses are plain
+  measures, and the typed parameter of the SELECT member in IFC4 and IFC4X3.
+  A boolean where the release admits none (every IFC2X3 stiffness) is
+  refused with `InvalidDraftValue`. It takes `&Schema` like the crate's
+  other writers.
+
+### Fixed
+
+- `stage_boundary_condition` writes the IFC4/IFC4X3 form correctly
+  (#200, #201):
+  - an edge condition's translational stiffness is
+    `IFCMODULUSOFLINEARSUBGRADEREACTIONMEASURE(..)`, the member of
+    `IfcModulusOfTranslationalSubgradeReactionSelect`, instead of
+    `IFCMODULUSOFTRANSLATIONALSUBGRADEREACTIONMEASURE`, which no release
+    declares;
+  - warping is `IFCWARPINGMOMENTMEASURE(..)`, the member of
+    `IfcWarpingStiffnessSelect`, instead of `IFCROTATIONALSTIFFNESSMEASURE`;
+  - a boolean stiffness is `IFCBOOLEAN(.T.)` instead of a bare `.T.`, which
+    does not say which SELECT member it is.
+
+  It is now `stage_boundary_condition_in` with the bundled IFC4 table, so it
+  is still not correct in IFC2X3; its docs point IFC2X3 callers to the new
+  writer. The readers accept a bare and a typed value, as before.
 
 Full history: [`crates/ifc-structural/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-structural/CHANGELOG.md)

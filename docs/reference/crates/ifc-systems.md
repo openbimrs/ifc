@@ -11,7 +11,7 @@ Distribution systems, ports, and connectivity between elements.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.2.2 (2026-09-28) |
+| Latest release | 0.2.3 (2026-09-28) |
 | Registries | [crates.io `ifc-systems`](https://crates.io/crates/ifc-systems) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `systems` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_systems/index.html) · [docs.rs](https://docs.rs/ifc-systems) |
@@ -32,40 +32,51 @@ that can be traced -- the basis of any MEP analysis.
 
 ## Changes
 
-Latest release, 0.2.2 (2026-09-28):
-
-### Fixed
-
-- The zone readers bind an IFC4X3 header to the bundled IFC4X3 ADD2 table
-  (#194). Before, `zones()` read IFC4X3 against IFC4 and `long_name_of`
-  refused it with `UnsupportedSchema`. Now:
-  - `zones()` reads IFC4X3 against its own table, and reads every slot by
-    attribute name (`IfcZone.Name`/`LongName`,
-    `IfcRelAssignsToGroup.RelatedObjects`/`RelatingGroup`) instead of
-    fixed positions. IFC4X3 retypes `IfcRelAssigns.RelatedObjectsType` as
-    `IfcStrippedOptional` at the same position, adds `IfcBuiltSystem` under
-    `IfcSystem` (no WR1 zone member), and leaves `IfcZone` as in IFC4, so
-    IFC4-shaped data gives the same zones as before;
-  - `long_name_of` answers for an IFC4X3 model instead of refusing it.
+Latest release, 0.2.3 (2026-09-28):
 
 ### Added
 
-- `try_zones(model)`: `zones()` with an error channel. A header declaring
-  several schemas is refused with `SchemaResolutionError::MultipleSchemas`
-  and one without a bundled table with `UnsupportedSchema`, where `zones()`
-  reads both against IFC4. A header with no schema (an in-memory model)
-  reads against IFC4, as `zones()` does.
+- A release-bound `*_with_owner_history` variant of every systems writer
+  (#202): `create_system_with_owner_history`,
+  `create_port_with_owner_history`, `assign_to_group_with_owner_history`,
+  `nest_ports_with_owner_history`,
+  `connect_port_to_element_with_owner_history`,
+  `connect_ports_with_owner_history`,
+  `contain_in_spatial_structure_with_owner_history`,
+  `reference_in_spatial_structure_with_owner_history`,
+  `create_group_with_owner_history`,
+  `authoring::create_distribution_element_with_owner_history`,
+  `authoring::create_zone_with_owner_history`,
+  `authoring::create_spatial_zone_with_owner_history` and
+  `create_classified_system_with_owner_history`. Each takes the model and a
+  caller-supplied `IfcOwnerHistory` id, which IFC2X3 requires on every
+  `IfcRoot`. The id must be in the model or staged on the transaction and
+  be an `IfcOwnerHistory`; none is ever invented. Each binds the model's
+  declared release (a header without `FILE_SCHEMA` binds IFC4, as the other
+  crates do), runs the plain writer's checks, and lays the record out by
+  attribute name from that release's table. So an IFC2X3
+  `IfcDistributionPort` has eight attributes and an IFC2X3 `IfcZone` five.
+  Enumeration tokens are checked against the release's own table (IFC4
+  refuses the IFC4X3 `IfcSpatialZoneTypeEnum` tokens). In IFC4 and IFC4X3 a
+  variant writes the plain writer's record with the reference in the
+  optional slot. `create_classified_system_with_owner_history` binds the
+  model's release instead of taking a schema argument.
+- `SystemAuthoringError::MultipleSchemas`, `UnsupportedSchema`,
+  `EntityNotInSchema`, `AuthoringNotInSchema`, `AuthoringValueType`,
+  `AuthoringRequired`, `MissingReference` and `WrongReferenceType`, for the
+  variants' refusals: a header binding no single known release, an entity
+  or attribute the release does not declare (IFC2X3 `IfcSpatialZone`,
+  `IfcZone.LongName`; `IfcBuiltSystem` outside IFC4X3), a value it cannot
+  hold, a required attribute left unset, and a missing or wrong-type owner
+  history. `SystemAuthoringError` is `#[non_exhaustive]` and the variants are
+  appended, so this is not breaking. Nothing is staged on a refusal.
 
-### Unchanged
+### Documented
 
-- `zones()` keeps its signature and its fallback: a header it cannot bind
-  (none, several, or unknown) reads against IFC4, as in 0.2.0.
-- `schema_of`, `systems`, `ports`, `ElementRole::of` and
-  `ConnectionGraph::build` still treat IFC4X3 as unverified: `schema_of`
-  refuses it and the bulk readers read it against IFC4. Only the zone
-  readers are verified for IFC4X3.
-- The `Display` text of `SchemaResolutionError::UnsupportedSchema` no
-  longer claims only IFC2X3 and IFC4 resolve, since the zone readers
-  resolve IFC4X3.
+- The plain writers take no model, so they cannot see the release: they
+  still write the IFC4/IFC4X3 layout with `OwnerHistory` `$`, unchanged, and
+  are documented as IFC4/IFC4X3 only, pointing to their variant. IFC2X3
+  declares none of the classified-system entities, so
+  `create_classified_system` never wrote an IFC2X3 record.
 
 Full history: [`crates/ifc-systems/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-systems/CHANGELOG.md)

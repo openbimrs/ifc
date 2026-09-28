@@ -11,7 +11,7 @@ IFC4x3 linear positioning: alignments, referents, linear placement, spirals.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.3.1 (2026-09-27) |
+| Latest release | 0.3.2 (2026-09-28) |
 | Registries | [crates.io `ifc-alignment`](https://crates.io/crates/ifc-alignment) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `alignment` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_alignment/index.html) · [docs.rs](https://docs.rs/ifc-alignment) |
@@ -33,18 +33,18 @@ consumers should never compile spiral curve laws.
 
 ## Changes
 
-Latest release, 0.3.1 (2026-09-27):
+Latest release, 0.3.2 (2026-09-28):
 
-### Changed
+### Fixed
 
-- `profile_law` (and so `lower_gradient_curve`) now refuses a vertical
-  profile whose seams do not join: a segment's `StartHeight` must match the
-  previous segment's end height and its `StartGradient` the previous
-  `EndGradient`, within the same magnitude-scaled tolerance already used for
-  `StartDistAlong` contiguity. A height step or grade kink was previously
-  accepted and silently shifted every downstream height. The refusal is the
-  new `AlignmentError::ProfileDiscontinuity`, naming both segments, the
-  discontinuous quantity (`ProfileSeam::Height` or `ProfileSeam::Gradient`)
-  and both values (#95).
+- Referent authoring writes the SELECT values typed (#201):
+  - `point_by_distance` writes `DistanceAlong` as `IFCLENGTHMEASURE(..)`.
+    It is an `IfcCurveMeasureSelect`, where the wrapper is what tells a
+    length from a curve parameter. The offsets stay bare.
+  - `stationing` writes `Pset_Stationing`'s `NominalValue`s, declared
+    `IfcValue`, as `IFCLENGTHMEASURE(..)` for `Station` and
+    `IncomingStation` and `IFCBOOLEAN(..)` for `HasIncreasingStation`.
+
+  `station_equations` reads both forms, as before.
 
 Full history: [`crates/ifc-alignment/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-alignment/CHANGELOG.md)

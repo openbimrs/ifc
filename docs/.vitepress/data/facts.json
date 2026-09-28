@@ -10,10 +10,10 @@
           "url": "https://crates.io/crates/ifc-alignment"
         }
       ],
-      "released": "0.3.1",
-      "released_date": "2026-09-27",
+      "released": "0.3.2",
+      "released_date": "2026-09-28",
       "status": "partial",
-      "version": "0.3.1"
+      "version": "0.3.2"
     },
     "ifc-approval": {
       "description": "Bounded IFC4 approval resource semantics.",
@@ -25,10 +25,10 @@
           "url": "https://crates.io/crates/ifc-approval"
         }
       ],
-      "released": "0.2.0",
-      "released_date": "2026-09-22",
+      "released": "0.2.1",
+      "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.2.0"
+      "version": "0.2.1"
     },
     "ifc-author": {
       "description": "Schema-checked IFC authoring: construct entities by attribute name with arity and type validation.",
@@ -40,10 +40,10 @@
           "url": "https://crates.io/crates/ifc-author"
         }
       ],
-      "released": "0.2.1",
-      "released_date": "2026-09-27",
+      "released": "0.2.2",
+      "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.2.1"
+      "version": "0.2.2"
     },
     "ifc-classification": {
       "description": "Classification systems, document references, libraries, external references.",
@@ -70,10 +70,10 @@
           "url": "https://crates.io/crates/ifc-constraint"
         }
       ],
-      "released": "0.2.0",
-      "released_date": "2026-09-22",
+      "released": "0.2.1",
+      "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.2.0"
+      "version": "0.2.1"
     },
     "ifc-control": {
       "description": "Bounded IFC control semantics: permits, project orders, action requests, and performance history.",
@@ -85,10 +85,10 @@
           "url": "https://crates.io/crates/ifc-control"
         }
       ],
-      "released": "0.2.1",
-      "released_date": "2026-09-27",
+      "released": "0.2.2",
+      "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.2.1"
+      "version": "0.2.2"
     },
     "ifc-cost": {
       "description": "Cost semantics as a borrowed view over the IFC model.",
@@ -100,10 +100,10 @@
           "url": "https://crates.io/crates/ifc-cost"
         }
       ],
-      "released": "0.2.2",
+      "released": "0.2.3",
       "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.2.2"
+      "version": "0.2.3"
     },
     "ifc-element-type": {
       "description": "Element, resource, and process type definitions: the IfcTypeObject catalogue.",
@@ -115,10 +115,10 @@
           "url": "https://crates.io/crates/ifc-element-type"
         }
       ],
-      "released": "0.2.0",
-      "released_date": "2026-09-22",
+      "released": "0.2.1",
+      "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.2.0"
+      "version": "0.2.1"
     },
     "ifc-geometry": {
       "description": "IFC semantic views lowered into the format-neutral geometry DAG.",
@@ -130,10 +130,10 @@
           "url": "https://crates.io/crates/ifc-geometry"
         }
       ],
-      "released": "0.4.3",
+      "released": "0.4.4",
       "released_date": "2026-09-28",
       "status": "partial",
-      "version": "0.4.3"
+      "version": "0.4.4"
     },
     "ifc-georef": {
       "description": "Georeferencing: map conversion, coordinate reference systems, site placement.",
@@ -190,10 +190,10 @@
           "url": "https://crates.io/crates/ifc-occurrence"
         }
       ],
-      "released": "0.2.0",
-      "released_date": "2026-09-22",
+      "released": "0.2.1",
+      "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.2.0"
+      "version": "0.2.1"
     },
     "ifc-properties": {
       "description": "Property sets, quantities, and unit resolution. No geometry.",
@@ -205,10 +205,10 @@
           "url": "https://crates.io/crates/ifc-properties"
         }
       ],
-      "released": "0.5.1",
+      "released": "0.5.2",
       "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.5.1"
+      "version": "0.5.2"
     },
     "ifc-resource": {
       "description": "Construction resources: labour, equipment, material, crew, subcontract.",
@@ -235,10 +235,10 @@
           "url": "https://crates.io/crates/ifc-schedule"
         }
       ],
-      "released": "0.2.0",
-      "released_date": "2026-09-22",
+      "released": "0.2.1",
+      "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.2.0"
+      "version": "0.2.1"
     },
     "ifc-schema": {
       "description": "IFC schema as data: entity table, supertype chain, attribute names.",
@@ -265,10 +265,10 @@
           "url": "https://crates.io/crates/ifc-spatial"
         }
       ],
-      "released": "0.2.3",
+      "released": "0.2.4",
       "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.2.3"
+      "version": "0.2.4"
     },
     "ifc-step": {
       "description": "STEP physical file (ISO 10303-21) codec for the IFC model.",
@@ -295,10 +295,10 @@
           "url": "https://crates.io/crates/ifc-structural"
         }
       ],
-      "released": "0.2.0",
-      "released_date": "2026-09-22",
+      "released": "0.2.1",
+      "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.2.0"
+      "version": "0.2.1"
     },
     "ifc-style": {
       "description": "Presentation: styles, colours, textures, layers, annotation.",
@@ -325,10 +325,10 @@
           "url": "https://crates.io/crates/ifc-systems"
         }
       ],
-      "released": "0.2.2",
+      "released": "0.2.3",
       "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.2.2"
+      "version": "0.2.3"
     },
     "ifc-tabular": {
       "description": "Structured IFC value containers indexed by position or time.",
@@ -370,10 +370,10 @@
           "url": "https://crates.io/crates/ifc-validate"
         }
       ],
-      "released": "0.3.0",
-      "released_date": "2026-09-27",
+      "released": "0.3.1",
+      "released_date": "2026-09-28",
       "status": "implemented",
-      "version": "0.3.0"
+      "version": "0.3.1"
     },
     "ifc-xml": {
       "description": "ifcXML (ISO 10303-28) codec for the IFC model.",
