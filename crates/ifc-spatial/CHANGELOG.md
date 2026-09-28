@@ -46,6 +46,20 @@ everything released before per-crate changelogs began.
 
 ### Changed (breaking)
 
+- `assign_to_actor`, `assign_to_process`, `connect_with_realizing_elements`
+  and `interfere_elements` take the `&Model` and bind its declared release
+  (#213). They wrote records with the wrong number of attributes: seven of
+  `IfcRelAssignsToActor`'s and `IfcRelAssignsToProcess`'s eight, eight of
+  `IfcRelConnectsWithRealizingElements`'s nine, and ten for
+  `IfcRelInterferesElements` where IFC4 declares nine. Each record is now
+  laid out by attribute name with the release's own arity (the interference
+  has ten attributes in IFC4X3). IFC4 records gain a trailing `$` for the
+  first three (`ActingRole`, `QuantityInProcess`, `ConnectionType`) and the
+  IFC4 interference loses its trailing `$`; IFC4X3 records of the first
+  three gain the same trailing `$`, and its interference is unchanged. An
+  IFC2X3 model, which requires `OwnerHistory` (and declares no
+  `IfcRelInterferesElements`), and a header binding no single verified
+  release are refused; use the `*_with_owner_history` variants in IFC2X3.
 - `SpatialDraft`, `FacilityDraft`, `BoundaryDraft`, `ExternalSpatialDraft`
   and `ProjectLibraryDraft` are `#[non_exhaustive]`: struct literals and
   `..Default::default()` updates no longer compile outside the crate; build

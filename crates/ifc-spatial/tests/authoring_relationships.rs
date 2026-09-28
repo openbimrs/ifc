@@ -89,7 +89,7 @@ fn set_relationships_refuse_empty_and_self_membership() {
         "a flow element cannot control itself"
     );
     assert!(
-        assign_to_actor(&mut tx, "not-a-guid", parent, &[child]).is_err(),
+        assign_to_actor(&mut tx, &model, "not-a-guid", parent, &[child]).is_err(),
         "a malformed GlobalId is refused"
     );
 
@@ -98,7 +98,7 @@ fn set_relationships_refuse_empty_and_self_membership() {
         "a well formed assignment is accepted"
     );
     assert!(
-        assign_to_process(&mut tx, GUID_B, parent, &[child]).is_ok(),
+        assign_to_process(&mut tx, &model, GUID_B, parent, &[child]).is_ok(),
         "a well formed assignment is accepted"
     );
 }
@@ -120,7 +120,7 @@ fn pair_relationships_refuse_self_connection() {
         "an element cannot connect to itself"
     );
     assert!(
-        interfere_elements(&mut tx, GUID_A, a, a, None).is_err(),
+        interfere_elements(&mut tx, &model, GUID_A, a, a, None).is_err(),
         "an element cannot interfere with itself"
     );
 
@@ -149,11 +149,11 @@ fn a_realizing_connection_needs_realizing_elements() {
     let weld = element(&mut tx);
 
     assert!(
-        connect_with_realizing_elements(&mut tx, GUID_A, a, b, &[]).is_err(),
+        connect_with_realizing_elements(&mut tx, &model, GUID_A, a, b, &[]).is_err(),
         "the subtype exists to name the realizing elements"
     );
 
-    let id = connect_with_realizing_elements(&mut tx, GUID_A, a, b, &[weld])
+    let id = connect_with_realizing_elements(&mut tx, &model, GUID_A, a, b, &[weld])
         .expect("a well formed realizing connection is accepted");
 
     let mut model = model;
@@ -181,8 +181,8 @@ fn implied_order_writes_unknown_rather_than_null() {
     let a = element(&mut tx);
     let b = element(&mut tx);
 
-    let unknown = interfere_elements(&mut tx, GUID_A, a, b, None).expect("accepted");
-    let ordered = interfere_elements(&mut tx, GUID_B, a, b, Some(true)).expect("accepted");
+    let unknown = interfere_elements(&mut tx, &model, GUID_A, a, b, None).expect("accepted");
+    let ordered = interfere_elements(&mut tx, &model, GUID_B, a, b, Some(true)).expect("accepted");
 
     let mut model = model;
     tx.commit(&mut model).expect("commit");
@@ -259,7 +259,7 @@ fn each_set_writer_stages_its_own_type() {
             "IFCRELFLOWCONTROLELEMENTS",
         ),
         (
-            assign_to_actor(&mut tx, GUID_A, parent, &[child]),
+            assign_to_actor(&mut tx, &model, GUID_A, parent, &[child]),
             "IFCRELASSIGNSTOACTOR",
         ),
         (
@@ -267,7 +267,7 @@ fn each_set_writer_stages_its_own_type() {
             "IFCRELASSIGNSTOPRODUCT",
         ),
         (
-            assign_to_process(&mut tx, GUID_A, parent, &[child]),
+            assign_to_process(&mut tx, &model, GUID_A, parent, &[child]),
             "IFCRELASSIGNSTOPROCESS",
         ),
     ];
@@ -306,11 +306,11 @@ fn pair_writers_refuse_a_malformed_guid() {
         "a 22-character base64 GlobalId is required"
     );
     assert!(
-        interfere_elements(&mut tx, "still-not-a-guid", a, b, None).is_err(),
+        interfere_elements(&mut tx, &model, "still-not-a-guid", a, b, None).is_err(),
         "a clash record carries a GlobalId too"
     );
     assert!(
-        connect_with_realizing_elements(&mut tx, "nope", a, b, &[a]).is_err(),
+        connect_with_realizing_elements(&mut tx, &model, "nope", a, b, &[a]).is_err(),
         "the realizing subtype carries one as well"
     );
 }

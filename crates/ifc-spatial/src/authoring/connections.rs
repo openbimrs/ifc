@@ -9,7 +9,9 @@
 //! connectivity reader in this crate will follow forever.
 
 use ifc_model::guid::Guid;
-use ifc_model::{Entity, EntityId, Transaction, Value};
+use ifc_model::{Entity, EntityId, Model, Transaction, Value};
+
+use super::owned_relationships::{pair_owned, refs};
 
 use crate::authoring::{invalid, SpatialAuthoringResult};
 use crate::relation::slots::{
@@ -92,69 +94,79 @@ pub fn connect_elements(
 /// The realizing elements are what physically make the connection
 /// -- a weld, a bolt, a bracket.
 ///
-/// IFC4 and IFC4X3 only: it writes their layout and leaves
-/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
-/// [`connect_with_realizing_elements_with_owner_history`](super::connect_with_realizing_elements_with_owner_history), which binds the model's declared
-/// release.
+/// Bound to the model's declared release (#213): the record is laid out by
+/// attribute name with the release's nine attributes (`ConnectionGeometry`
+/// and `ConnectionType` unset). `OwnerHistory` is left `$`, which IFC4 and
+/// IFC4X3 allow and IFC2X3 does not; in IFC2X3 use
+/// [`connect_with_realizing_elements_with_owner_history`](super::connect_with_realizing_elements_with_owner_history).
 ///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId, an element connected to itself,
 /// and an empty realizing set: the subtype exists precisely to name
 /// those elements, so omitting them makes it an
-/// `IfcRelConnectsElements` wearing the wrong type name.
+/// `IfcRelConnectsElements` wearing the wrong type name. A header binding
+/// no single verified release (`MultipleSchemas`, `UnsupportedSchema`) and
+/// an IFC2X3 model (`AuthoringRequired`) are refused. Nothing is staged on
+/// an error.
 pub fn connect_with_realizing_elements(
     tx: &mut Transaction,
+    model: &Model,
     global_id: &str,
     relating: EntityId,
     related: EntityId,
     realizing: &[EntityId],
 ) -> SpatialAuthoringResult<EntityId> {
     check_realizing(realizing)?;
-    let id = pair(tx, CONNECTS_WITH_REALIZING, global_id, relating, related, 8)?;
-    tx.set_attribute(
-        id,
-        REALIZING_SLOT,
-        Value::List(realizing.iter().copied().map(Value::Ref).collect()),
-    );
-    Ok(id)
+    pair_owned(
+        tx,
+        model,
+        CONNECTS_WITH_REALIZING,
+        global_id,
+        relating,
+        related,
+        vec![("RealizingElements", refs(realizing))],
+        None,
+    )
 }
-
-/// `RealizingElements` on `IfcRelConnectsWithRealizingElements`.
-const REALIZING_SLOT: usize = 7;
 
 /// Stage an `IfcRelInterferesElements`: a detected clash.
 ///
-/// `implied_order` is `ImpliedOrder`, an `IfcLogical` at slot 8. It
-/// says whether the relating/related order carries meaning (which
-/// element gives way). `None` writes UNKNOWN, which is the honest
-/// value when a clash detector reports an overlap without deciding
-/// precedence.
+/// `implied_order` is `ImpliedOrder`, an `IfcLogical`. It says whether the
+/// relating/related order carries meaning (which element gives way).
+/// `None` writes UNKNOWN, which is the honest value when a clash detector
+/// reports an overlap without deciding precedence.
 ///
-/// IFC4 and IFC4X3 only: it writes their layout and leaves
-/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
-/// [`interfere_elements_with_owner_history`](super::interfere_elements_with_owner_history), which binds the model's declared
-/// release.
+/// Bound to the model's declared release (#213): the record has the
+/// release's own arity, nine attributes in IFC4 and ten in IFC4X3
+/// (`InterferenceSpace` unset), laid out by name. IFC2X3 declares no
+/// `IfcRelInterferesElements` (`EntityNotInSchema`).
 ///
 /// # Errors
 ///
-/// Refuses a malformed GlobalId and an element interfering with
-/// itself.
+/// Refuses a malformed GlobalId, an element interfering with itself, a
+/// header binding no single verified release (`MultipleSchemas`,
+/// `UnsupportedSchema`) and an IFC2X3 model. Nothing is staged on an
+/// error.
 pub fn interfere_elements(
     tx: &mut Transaction,
+    model: &Model,
     global_id: &str,
     relating: EntityId,
     related: EntityId,
     implied_order: Option<bool>,
 ) -> SpatialAuthoringResult<EntityId> {
-    let id = pair(tx, INTERFERES_ELEMENTS, global_id, relating, related, 10)?;
-    tx.set_attribute(
-        id,
-        IMPLIED_ORDER_SLOT,
-        implied_order.map_or(Value::LogicalUnknown, Value::Bool),
-    );
-    Ok(id)
+    pair_owned(
+        tx,
+        model,
+        INTERFERES_ELEMENTS,
+        global_id,
+        relating,
+        related,
+        vec![(
+            "ImpliedOrder",
+            implied_order.map_or(Value::LogicalUnknown, Value::Bool),
+        )],
+        None,
+    )
 }
-
-/// `ImpliedOrder` on `IfcRelInterferesElements`.
-const IMPLIED_ORDER_SLOT: usize = 8;

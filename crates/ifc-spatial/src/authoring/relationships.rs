@@ -13,8 +13,9 @@
 //! named `parent`/`children` arguments and resolve positions through
 //! `RelSlots` rather than indexing literals.
 
-use ifc_model::{EntityId, Transaction, Value};
+use ifc_model::{EntityId, Model, Transaction, Value};
 
+use super::owned_relationships::relate_owned;
 use crate::authoring::{invalid, SpatialAuthoringResult};
 use crate::relation::slots::{
     ADHERES_TO_ELEMENT, ASSIGNS_TO_ACTOR, ASSIGNS_TO_GROUP_BY_FACTOR, ASSIGNS_TO_PROCESS,
@@ -153,22 +154,35 @@ pub fn control_flow_element(
 
 /// Stage an `IfcRelAssignsToActor`: objects assigned to an actor.
 ///
-/// IFC4 and IFC4X3 only: it writes their layout and leaves
-/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
-/// [`assign_to_actor_with_owner_history`](super::assign_to_actor_with_owner_history), which binds the model's declared
-/// release.
+/// Bound to the model's declared release (#213): the record is laid out by
+/// attribute name from that release's table, with all eight attributes
+/// (`ActingRole` unset). `OwnerHistory` is left `$`, which IFC4 and IFC4X3
+/// allow and IFC2X3 does not; in IFC2X3 use
+/// [`assign_to_actor_with_owner_history`](super::assign_to_actor_with_owner_history).
 ///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId, an empty object set, and the actor
-/// listed among the objects assigned to it.
+/// listed among the objects assigned to it. A header binding no single
+/// verified release (`MultipleSchemas`, `UnsupportedSchema`) and an IFC2X3
+/// model (`AuthoringRequired`) are refused. Nothing is staged on an error.
 pub fn assign_to_actor(
     tx: &mut Transaction,
+    model: &Model,
     global_id: &str,
     actor: EntityId,
     objects: &[EntityId],
 ) -> SpatialAuthoringResult<EntityId> {
-    super::relate(tx, ASSIGNS_TO_ACTOR, global_id, actor, objects)
+    relate_owned(
+        tx,
+        model,
+        ASSIGNS_TO_ACTOR,
+        global_id,
+        actor,
+        objects,
+        Vec::new(),
+        None,
+    )
 }
 
 /// Stage an `IfcRelAssignsToProduct`: objects assigned to a product.
@@ -193,22 +207,35 @@ pub fn assign_to_product(
 
 /// Stage an `IfcRelAssignsToProcess`: objects assigned to a process.
 ///
-/// IFC4 and IFC4X3 only: it writes their layout and leaves
-/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
-/// [`assign_to_process_with_owner_history`](super::assign_to_process_with_owner_history), which binds the model's declared
-/// release.
+/// Bound to the model's declared release (#213): the record is laid out by
+/// attribute name from that release's table, with all eight attributes
+/// (`QuantityInProcess` unset). `OwnerHistory` is left `$`, which IFC4 and IFC4X3
+/// allow and IFC2X3 does not; in IFC2X3 use
+/// [`assign_to_process_with_owner_history`](super::assign_to_process_with_owner_history).
 ///
 /// # Errors
 ///
 /// Refuses a malformed GlobalId, an empty object set, and the process
-/// listed among the objects assigned to it.
+/// listed among the objects assigned to it. A header binding no single
+/// verified release (`MultipleSchemas`, `UnsupportedSchema`) and an IFC2X3
+/// model (`AuthoringRequired`) are refused. Nothing is staged on an error.
 pub fn assign_to_process(
     tx: &mut Transaction,
+    model: &Model,
     global_id: &str,
     process: EntityId,
     objects: &[EntityId],
 ) -> SpatialAuthoringResult<EntityId> {
-    super::relate(tx, ASSIGNS_TO_PROCESS, global_id, process, objects)
+    relate_owned(
+        tx,
+        model,
+        ASSIGNS_TO_PROCESS,
+        global_id,
+        process,
+        objects,
+        Vec::new(),
+        None,
+    )
 }
 
 /// Stage an `IfcRelAssignsToGroupByFactor`.
