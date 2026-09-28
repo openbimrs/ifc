@@ -11,7 +11,7 @@ Property sets, quantities, and unit resolution. No geometry.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.5.1 (2026-09-28) |
+| Latest release | 0.5.2 (2026-09-28) |
 | Registries | [crates.io `ifc-properties`](https://crates.io/crates/ifc-properties) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_properties/index.html) · [docs.rs](https://docs.rs/ifc-properties) |
@@ -34,84 +34,58 @@ standard Psets are data here rather than hand-written tables.
 
 ## Changes
 
-Latest release, 0.5.1 (2026-09-28):
+Latest release, 0.5.2 (2026-09-28):
 
 ### Added
 
-- `add_property_set_with_owner_history`,
-  `add_element_quantity_with_owner_history`,
-  `attach_property_set_with_owner_history` and
-  `attach_type_with_owner_history` (#191). Each takes the model and a
-  caller-supplied `IfcOwnerHistory` id, which IFC2X3 requires on every
-  `IfcRoot`. The id must be in the model or staged on the transaction and
-  must be an `IfcOwnerHistory`; a missing one is refused with
-  `MissingEntity`, another entity with `AuthoringInvalid`. None is ever
-  invented. The record is laid out by attribute name from the declared
-  release's table, and in IFC4 and IFC4X3 the reference is written into
-  the optional slot. This follows `ifc-material`'s
-  `associate_material_with_owner_history` (#77).
-- `PropertyError::AuthoringRequired { entity, attribute, schema }`: the
-  model's release requires an attribute the call leaves unset (#191).
-  `PropertyError` is `#[non_exhaustive]`, so this is not breaking.
+- `*_with_owner_history` variants of the predefined property-set writers
+  (#202): `add_door_lining_properties_with_owner_history`,
+  `add_window_lining_properties_with_owner_history`,
+  `add_door_panel_properties_with_owner_history`,
+  `add_window_panel_properties_with_owner_history`,
+  `add_permeable_covering_properties_with_owner_history` and
+  `add_reinforcement_definition_properties_with_owner_history`. Each takes
+  the model and a caller-supplied `IfcOwnerHistory`, which IFC2X3 requires
+  on every `IfcRoot`, validated as for #191 (`MissingEntity`,
+  `AuthoringInvalid`); none is ever invented. The record is laid out by
+  attribute name from the declared release's table, and each value is
+  checked against the type that release declares for it. In IFC2X3 that
+  refuses `LiningToPanelOffsetX/Y` (and a window's `LiningOffset`) with
+  `AuthoringNotInSchema`, and a zero thickness, which IFC2X3 types as
+  `IfcPositiveLengthMeasure` where IFC4 has `IfcNonNegativeLengthMeasure`,
+  with `AuthoringInvalid`; a token outside the release's enumeration is
+  refused too. In IFC4 and IFC4X3 the record is the old writer's with the
+  owner history in its optional slot.
+- `*_with_owner_history` variants of the template writers (#202):
+  `add_property_set_template_with_owner_history`,
+  `add_complex_property_template_with_owner_history` and
+  `attach_template_with_owner_history`. They bind the model's release, so
+  an IFC2X3 model, which declares no templates, is refused with
+  `EntityNotInSchema`.
+
+- `ExactValue::Complex` with `ExactComplexValue` and `ExactComplexMember`
+  (#208): `exact_property` and the enumerations resolve an
+  `IfcComplexProperty` or `IfcPhysicalComplexQuantity` as a present
+  composite in IFC2X3, IFC4 and IFC4X3, with no value type, instead of
+  refusing it with `UnsupportedProperty`. Members resolve as set members
+  do, nested complexes included. New errors `ComplexCycle`,
+  `ComplexTooDeep` and `ComplexBudgetExceeded` refuse a cycle, nesting
+  past 16 levels and more than 10 000 nested members; a repeated member
+  name is `InconsistentValues` where the release forbids it (`WR22`,
+  `UniqueQuantityNames`).
 
 ### Changed
 
-- Type objects are no longer refused by the exact API (#193).
-  `exact_property`, `exact_properties`, `exact_properties_where`,
-  `exact_property_sets_where` and `exact_predefined_sets` answered an
-  `IfcTypeObject` with `ExactPropertyError::InvalidQueryObject`, so a
-  checker could not test an `IfcWallType` as IDS does. They now resolve
-  the type object's own `HasPropertySets`: property sets, quantity sets
-  and predefined sets, in IFC2X3, IFC4 and IFC4X3. Every subtype of the
-  release's `IfcTypeObject` is accepted, IFC2X3 `IfcDoorStyle` and
-  `IfcWindowStyle` included. The list is read and validated by the code
-  that already reads an occurrence's inherited type sets. A result carries
-  `ExactSource::Type(id)` with the queried object's id, which is what an
-  occurrence of that type reports for the same set. `HasPropertySets = $`
-  is a proven absence; `()` is refused with `MalformedAggregate`, and
-  duplicate names with `DuplicateMatchingSets { source: Type(id), .. }` and
-  `DuplicateMatchingProperties`, as for an inherited type. A type object
-  named in `IfcRelDefinesByProperties.RelatedObjects` is still refused with
-  `InvalidOccurrenceTarget`, also when it is the queried object: IFC2X3
-  admits only `IfcObject` there, and IFC4 and IFC4X3 forbid it by
-  `NoRelatedTypeObject` ("handled through the direct relationship
-  HasPropertySets at IfcTypeObject"). Occurrence results are unchanged. No
-  type or signature changes; callers that relied on the refusal now get
-  answers, and `InvalidQueryObject` remains for what is neither an
-  occurrence nor a type object. In `openbim-ifc`, `door_operation` and
-  `window_operation` given a type object now refuse with `NotADoor` or
-  `NotAWindow` instead of `Property(InvalidQueryObject)`.
-
-### Fixed
-
-- Quantity values are written bare (#190). `create_quantity`,
-  `create_quantity_with` and `set_quantity_value` wrote
-  `IFCQUANTITYAREA('A',$,$,IFCAREAMEASURE(12.5),$)`. But `<Kind>Value` is
-  declared with a defined measure type (`IfcAreaMeasure`, ...), not a
-  SELECT, in IFC2X3, IFC4 and IFC4X3, and ISO 10303-21 writes a typed
-  parameter only in a SELECT slot. They now write `12.5` (a whole count as
-  the integer `4`). `set_quantity_value` replaces a typed value it finds
-  with the bare one. The readers (`quantity_set`, `exact_property`) still
-  accept both forms. Code that inspects the written `Value` sees
-  `Value::Real`/`Value::Integer` where it saw `Value::Typed`.
-- `IfcRoot.OwnerHistory` is no longer written as `$` into an IFC2X3 model
-  by `attach_property_set` and `attach_type` (#191). It is mandatory in
-  IFC2X3 (`OPTIONAL` from IFC4 on), so those records were invalid.
-  **Behaviour change for IFC2X3 callers:** both now refuse an IFC2X3 model
-  with `PropertyError::AuthoringRequired { attribute: "OwnerHistory", .. }`
-  and stage nothing; use the `*_with_owner_history` variants there.
-  Both now bind the model's declared release the way quantity authoring
-  does. So a model whose header declares several schemas, or one without a
-  bundled table, is refused with `MultipleSchemas` or `UnsupportedSchema`
-  where it used to be written in the IFC4 layout. `NoRelatedTypeObject`
-  and the `IfcTypeObject` checks use the declared release's inheritance
-  instead of IFC4's. IFC4 and IFC4X3 output is unchanged.
-  `add_property_set` and `add_element_quantity` take no model, so they
-  cannot see the release. They still write `$` and are documented as
-  IFC4/IFC4X3 only. In IFC2X3, `attach_property_set_with_owner_history`
-  refuses to attach a definition whose `OwnerHistory` is unset. Not
-  changed: the template writers, whose entities IFC2X3 does not declare,
-  and the predefined property-set writers, which write the IFC4 layout
-  without a model.
+- The predefined property-set and template writers that take no model
+  (`add_door_lining_properties`, ..., `add_reinforcement_definition_properties`,
+  `add_property_set_template`, `add_complex_property_template`,
+  `attach_template`) are unchanged: they write the IFC4 layout with
+  `OwnerHistory` `$`, which is valid IFC4 and IFC4X3 (whose layouts of these
+  entities are the same) and never valid IFC2X3. Without a model they
+  cannot refuse IFC2X3; their documentation now says so, as #191 did for
+  `add_property_set`. They now lay the IFC4 record out by attribute name
+  from the IFC4 table instead of fixed slots; the output is identical. The
+  lining writers moved to `pset/lining.rs` and `add_complex_property_template`
+  to `pset/template_authoring.rs`; public paths are unchanged.
 
 Full history: [`crates/ifc-properties/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-properties/CHANGELOG.md)

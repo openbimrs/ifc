@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.4.3 (2026-09-28) |
+| Latest release | 0.4.4 (2026-09-28) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_geometry/index.html) · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -37,17 +37,57 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.4.3 (2026-09-28):
+Latest release, 0.4.4 (2026-09-28):
 
 ### Added
 
-- `BodyItem::item_world`: the frame each described item is placed in, the
-  context and product placement composed with every `MappingTarget o
-  MappingOrigin` it was reached through (#185). It is reported for every item
-  kind, including mapped B-reps and tessellations, and is not required to be
-  rigid, so a mapping that mirrors or scales shows. `BodyItem::is_mirrored()`
-  answers whether that frame reverses handedness, and
-  `Transform::determinant()` gives its signed volume scale. Additive:
-  `BodyItem` is `#[non_exhaustive]`.
+- `authoring::surface_curve_swept_area_solid_in` and
+  `authoring::fixed_reference_swept_area_solid_in` (#200). They take the
+  model and write `StartParam`/`EndParam` in the form its declared release
+  requires: bare in IFC2X3 and IFC4, where the slot is `IfcParameterValue`,
+  and `IFCPARAMETERVALUE(..)` in IFC4X3, where it is the SELECT
+  `IfcCurveMeasureSelect`. The release binds from `FILE_SCHEMA` as the
+  other authoring crates bind it (none binds IFC4). An attribute the release
+  requires left unset (IFC2X3 `Position`, `StartParam`, `EndParam`) is
+  refused with `InvalidAuthoredValue`.
+- `GeometryError::AuthoringSchemaUnbound` (an unknown or ambiguous
+  `FILE_SCHEMA`) and `GeometryError::AuthoringEntityNotInSchema` (the
+  release does not declare the entity, such as the fixed-reference sweep in
+  IFC2X3), for those writers. `GeometryError` is `#[non_exhaustive]`, so
+  this is not breaking.
+- `authoring::grid_with_owner_history` (#202): an `IfcGrid` in the model's
+  declared release, with a caller-supplied `IfcOwnerHistory`, which IFC2X3
+  requires on every `IfcRoot`. It binds the release as the `_in` writers
+  above do, and lays the record out by attribute name from its table, so
+  an IFC2X3 grid has its 10 attributes, not IFC4's 11. A `predefined_type`
+  in IFC2X3, which declares none, or outside the release's
+  `IfcGridTypeEnum`, is refused with `InvalidAuthoredValue`. The owner
+  history must be in the model or staged on the transaction and be an
+  `IfcOwnerHistory` (`InvalidAuthoredValue` on `OwnerHistory` otherwise);
+  none is ever invented. IFC4 and IFC4X3 records are `grid`'s with the
+  owner history in its optional slot. No error variant is added.
+
+### Fixed
+
+- `IfcParameterValue` slots are written bare (#200):
+  `rectangular_trimmed_surface` (`U1`, `V1`, `U2`, `V2`), `point_on_curve`,
+  `point_on_surface`, `reparametrised_composite_curve_segment`
+  (`ParamLength`), and the `StartParam`/`EndParam` of `swept_disk_solid` and
+  `swept_disk_solid_polygonal`. Each is declared with the defined type
+  `IfcParameterValue`, not a SELECT, in every release that declares it, and
+  ISO 10303-21 writes a typed parameter only for a SELECT. The readers
+  accept both forms, as before.
+
+### Changed
+
+- `surface_curve_swept_area_solid` and `fixed_reference_swept_area_solid`
+  still write `IFCPARAMETERVALUE(..)`, which is correct in IFC4X3 only. They
+  cannot see the release; their docs now say so and point IFC4 (and IFC2X3)
+  callers to the `_in` writers.
+- `authoring::grid` is unchanged and documents its limitation (#202): it
+  takes no model, so it writes the IFC4 layout (11 attributes,
+  `OwnerHistory` `$`), which is never valid IFC2X3. It moved from
+  `authoring/transform.rs` to `authoring/grid.rs`; the public path is the
+  same.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)

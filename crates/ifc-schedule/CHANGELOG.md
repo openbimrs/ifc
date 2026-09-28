@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-28
+
 ### Added
 
 - `create_task_with_owner_history`, `create_sequence_with_owner_history`,
@@ -75,5 +77,6 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-schedule-v0.2.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-schedule-v0.2.1...HEAD
+[0.2.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-schedule-v0.2.1
 [0.2.0]: https://github.com/openbimrs/ifc/releases/tag/v0.2.0

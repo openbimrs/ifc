@@ -11,7 +11,7 @@ Schema-checked IFC authoring: construct entities by attribute name with arity an
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.2.1 (2026-09-27) |
+| Latest release | 0.2.2 (2026-09-28) |
 | Registries | [crates.io `ifc-author`](https://crates.io/crates/ifc-author) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `author` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_author/index.html) · [docs.rs](https://docs.rs/ifc-author) |
@@ -28,26 +28,29 @@ Schema-checked IFC authoring: construct entities by attribute name with arity an
 
 ## Changes
 
-Latest release, 0.2.1 (2026-09-27):
-
-### Fixed
-
-- An attribute declared as a defined type that aliases an aggregate is an
-  aggregate (#17). `IfcSite.RefLatitude`/`RefLongitude`
-  (`IfcCompoundPlaneAngleMeasure = LIST [3:4] OF INTEGER`) were refused with
-  `AggregateMismatch`, which blocked georeferencing. Their elements are now
-  checked against the alias's element type.
-- A slot that the entity or a supertype redeclares as `DERIVE` is written `*`
-  automatically (#18). `IfcSIUnit.Dimensions` and the four derived slots of
-  `IfcGeometricRepresentationSubContext` reported `MissingRequired`, so no unit
-  assignment or Body/Axis subcontext could be authored. Passing
-  `Value::Derived` explicitly is also accepted.
+Latest release, 0.2.2 (2026-09-28):
 
 ### Added
 
-- `AuthorError::DerivedAttribute` refuses a value or `$` in a derived slot.
-  `AuthorError::NotDerived` refuses `*` in a slot the schema does not derive.
-  Before, `*` was accepted in any slot and the file was invalid. Both apply to
-  `EntityBuilder` and `EntityEditor`.
+- `AuthorError::ValueForm`: a value of the declared type written in the
+  form ISO 10303-21 does not use for it (#199). A typed parameter
+  (`IFCAREAMEASURE(12.5)`) is refused where the declared type is not a
+  SELECT, and a bare value where it is one, for scalars and for each member
+  of an aggregate, in `EntityBuilder` and `EntityEditor`.
+
+### Changed
+
+- `EntityEditor` re-checks every slot of the projected entity, as before, so
+  editing an entity whose untouched slots already hold a value in the wrong
+  form is now refused with `ValueForm` until that slot is rewritten.
+
+### Fixed
+
+- A typed wrapper was judged against its own type only, so any wrapper
+  passed in a slot whose declared type is not a SELECT (#199). `IFCLABEL('x')`
+  in `IfcQuantityArea.AreaValue`, or in an entity-typed slot, is now a
+  `TypeMismatch`, and so is a wrapper naming a type outside a SELECT's
+  select-list, nested SELECTs included. A declared type the tables cannot
+  resolve still accepts either form.
 
 Full history: [`crates/ifc-author/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-author/CHANGELOG.md)

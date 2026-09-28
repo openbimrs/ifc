@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-09-28
+
 ### Added
 
 - A `*_with_owner_history` variant of every `IfcRoot` writer (#202):
@@ -166,7 +168,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-spatial-v0.2.3...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-spatial-v0.2.4...HEAD
+[0.2.4]: https://github.com/openbimrs/ifc/releases/tag/ifc-spatial-v0.2.4
 [0.2.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-spatial-v0.2.3
 [0.2.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-spatial-v0.2.2
 [0.2.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-spatial-v0.2.1

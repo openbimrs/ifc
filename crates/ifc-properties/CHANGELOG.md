@@ -25,6 +25,11 @@ everything released before per-crate changelogs began.
   `ExactSource::Material`; a material without sets is a proven absence,
   and a target that is no material definition of the release is
   `InvalidQueryObject`.
+
+## [0.5.2] - 2026-09-28
+
+### Added
+
 - `*_with_owner_history` variants of the predefined property-set writers
   (#202): `add_door_lining_properties_with_owner_history`,
   `add_window_lining_properties_with_owner_history`,
@@ -576,7 +581,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-properties-v0.5.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-properties-v0.5.2...HEAD
+[0.5.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.5.2
 [0.5.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.5.1
 [0.5.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.5.0
 [0.4.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.4.1
