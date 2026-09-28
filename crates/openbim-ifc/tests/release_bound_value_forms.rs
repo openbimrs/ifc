@@ -282,6 +282,8 @@ fn authored_values_have_their_declared_form_and_validate() {
                 ifc_validate::Path::Entity(id)
                 | ifc_validate::Path::Attribute { entity: id, .. } => ids.contains(id),
                 ifc_validate::Path::File => false,
+                // A path kind a later ifc-validate adds names no authored record.
+                _ => false,
             })
             .map(|finding| format!("{} at {}: {}", finding.rule, finding.path, finding.message))
             .collect();

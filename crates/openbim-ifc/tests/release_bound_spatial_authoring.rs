@@ -382,6 +382,8 @@ fn errors(model: &Model, version: SchemaVersion, ids: &[EntityId]) -> Vec<String
                 ids.contains(id)
             }
             ifc_validate::Path::File => false,
+            // A path kind a later ifc-validate adds names no authored record.
+            _ => false,
         })
         .map(|finding| format!("{} at {}: {}", finding.rule, finding.path, finding.message))
         .collect()
