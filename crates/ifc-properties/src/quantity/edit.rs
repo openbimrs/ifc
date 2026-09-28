@@ -24,14 +24,16 @@
 //! # }
 //! ```
 //!
-//! # Why writes are refused rather than coerced
+//! # The value is written bare
 //!
-//! A quantity's value slot is typed: `IfcQuantityArea` holds an
-//! `IfcAreaMeasure`. Writing a bare real into it would produce a file that
-//! parses and has lost the statement of what the number means -- the exact
-//! failure `value.rs` exists to prevent on read. So these helpers preserve
-//! the declared measure type, and refuse when the target is not the kind of
-//! quantity the caller thinks it is.
+//! A quantity's value slot is typed by its declaration: `IfcQuantityArea`
+//! declares `AreaValue : IfcAreaMeasure`, a defined type and not a SELECT.
+//! The measure is therefore already stated by the schema, and ISO 10303-21
+//! writes the simple value there (`12.5`); a typed parameter such as
+//! `IFCAREAMEASURE(12.5)` belongs only in a SELECT slot, where the type is
+//! otherwise ambiguous (#190). The readers accept both forms, because files
+//! in the wild carry both. These helpers refuse when the target is not the
+//! kind of quantity the caller thinks it is, rather than coerce it.
 
 use ifc_model::{EntityId, Model, Transaction, Value};
 
@@ -42,13 +44,11 @@ use crate::quantity::set::QuantityKind;
 /// Stage a new value for an existing simple quantity.
 ///
 /// The value is written into the slot the model's declared release gives
-/// the quantity's value attribute (`release.rs` has the binding). The
-/// measure type already on the entity is preserved, so an
-/// `IfcQuantityArea` keeps writing `IfcAreaMeasure`. A quantity whose value
-/// slot is `$` or untyped is written with the measure implied by its own
-/// entity type, which is the only defensible reading: the schema fixes which
-/// measure each subtype carries. This repairs a quantity read as
-/// [`Quantity::Unresolved`](crate::Quantity::Unresolved).
+/// the quantity's value attribute (`release.rs` has the binding), as a bare
+/// number: the schema fixes which measure each subtype carries, so no
+/// wrapper is written. A value read in the typed form
+/// (`IFCAREAMEASURE(12.5)`) is replaced by the bare one. This also repairs
+/// a quantity read as [`Quantity::Unresolved`](crate::Quantity::Unresolved).
 ///
 /// # Errors
 ///
@@ -88,22 +88,7 @@ pub fn set_quantity_value(
     let slot = layout
         .slot(&name, kind.value_attribute())
         .expect("every release that declares a quantity declares its value");
-    // Prefer the measure already written; fall back to the one the entity
-    // type implies. Never write a bare number.
-    let measure = entity
-        .attribute(slot)
-        .and_then(declared_measure)
-        .unwrap_or_else(|| kind.measure_type().to_string());
-    let numeric = layout.scalar(kind, value)?;
-
-    tx.set_attribute(
-        id,
-        slot,
-        Value::Typed {
-            type_name: measure.into(),
-            value: Box::new(numeric),
-        },
-    );
+    tx.set_attribute(id, slot, layout.scalar(kind, value)?);
     Ok(())
 }
 
@@ -157,9 +142,10 @@ pub fn set_description(
 /// Stage a brand-new simple quantity in `model`'s release, returning the id
 /// reserved for it.
 ///
-/// The entity is created with the measure type its kind implies and no unit,
-/// meaning "the project default applies" -- which is what most authored
-/// quantities mean. Attach it to a set with [`add_quantity_to_set`].
+/// The entity is created with its value written bare in the slot whose
+/// declared measure its kind implies, and no unit, meaning "the project
+/// default applies" -- which is what most authored quantities mean. Attach
+/// it to a set with [`add_quantity_to_set`].
 ///
 /// # Errors
 ///
@@ -202,7 +188,9 @@ pub struct QuantityExtras<'a> {
 /// Attributes are placed by name in the declared release's table. IFC4 and
 /// IFC4X3 quantities have five attributes (`Name`, `Description`, `Unit`,
 /// the value, `Formula`); IFC2X3 ones have four, with no `Formula`. A
-/// model without `FILE_SCHEMA` binds IFC4.
+/// model without `FILE_SCHEMA` binds IFC4. The value is written bare
+/// (`IFCQUANTITYAREA('A',$,$,12.5,$)`), since its declared type is a
+/// defined measure and not a SELECT.
 ///
 /// # Errors
 ///
@@ -236,13 +224,8 @@ pub fn create_quantity_with(
             ("Name", Value::Text(name.into())),
             ("Description", text(extras.description)),
             ("Unit", extras.unit.map_or(Value::Null, Value::Ref)),
-            (
-                kind.value_attribute(),
-                Value::Typed {
-                    type_name: kind.measure_type().into(),
-                    value: Box::new(numeric),
-                },
-            ),
+            // Bare: the declared type is a defined measure, not a SELECT.
+            (kind.value_attribute(), numeric),
             ("Formula", text(extras.formula)),
         ],
     )?;
@@ -296,12 +279,4 @@ pub fn add_quantity_to_set(
     }
     tx.set_attribute(set, QUANTITIES_SLOT, Value::List(members));
     Ok(())
-}
-
-/// The measure type named by a typed value, if it has one.
-fn declared_measure(value: &Value) -> Option<String> {
-    match value {
-        Value::Typed { type_name, .. } => Some(type_name.to_string()),
-        _ => None,
-    }
 }

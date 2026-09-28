@@ -389,6 +389,20 @@ pub enum PropertyError {
         /// Attribute count the record has.
         actual: usize,
     },
+    /// The model's release requires an attribute the authoring call leaves
+    /// unset, such as the IFC2X3 `IfcRoot.OwnerHistory` (#191). It is refused
+    /// rather than written as `$`; the `*_with_owner_history` writers take
+    /// the `IfcOwnerHistory` IFC2X3 needs.
+    //
+    // Last, so no earlier variant's implicit discriminant moves.
+    AuthoringRequired {
+        /// The entity type being authored.
+        entity: &'static str,
+        /// The required attribute, as the release names it.
+        attribute: &'static str,
+        /// The release the model declares.
+        schema: SchemaVersion,
+    },
 }
 
 impl std::fmt::Display for PropertyError {
@@ -430,6 +444,11 @@ impl std::fmt::Display for PropertyError {
                 f,
                 "cannot author {entity}.{attribute}: not defined by {schema:?}"
             ),
+            Self::AuthoringRequired {
+                entity,
+                attribute,
+                schema,
+            } => write!(f, "cannot author {entity}: {schema:?} requires {attribute}"),
             Self::MalformedEntitySlots {
                 id,
                 type_name,

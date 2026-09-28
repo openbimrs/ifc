@@ -16,9 +16,13 @@
 //! Both wrote the same six entity types and disagreed: one emitted four
 //! attributes where IFC4 declares five, dropping `Formula`, and the
 //! other encoded a whole `IfcCountMeasure` as a real (`NUMBER` in IFC4,
-//! `INTEGER` in IFC4X3). Both produced files that parse. The models
-//! here declare no `FILE_SCHEMA`, which both writers bind to IFC4. Comparing the emitted
-//! STEP text is what makes a divergence fail rather than accumulate.
+//! `INTEGER` in IFC4X3). Both produced files that parse. Later both
+//! wrapped the value in a typed parameter (`IFCAREAMEASURE(12.5)`) where
+//! the declared type is a defined measure, not a SELECT, and only one of
+//! them bound the model's release (#190). Both writers now bind it, so the
+//! comparison runs in IFC2X3, IFC4 and IFC4X3, and in a model without
+//! `FILE_SCHEMA`, which both bind to IFC4. Comparing the emitted STEP text
+//! is what makes a divergence fail rather than accumulate.
 
 #![cfg(all(feature = "cost", feature = "properties", feature = "step"))]
 
@@ -44,7 +48,15 @@ fn quantity_line(model: &Model) -> String {
         .to_owned()
 }
 
-/// Every quantity kind is written identically by both crates.
+/// A model declaring `schema`, or none at all.
+fn declaring(schema: Option<&str>) -> Model {
+    let mut model = Model::default();
+    model.header_mut().schema = schema.into_iter().map(str::to_owned).collect();
+    model
+}
+
+/// Every quantity kind is written identically by both crates, in every
+/// release that declares it.
 #[test]
 fn both_crates_write_the_same_quantity_record() {
     let pairs = [
@@ -54,33 +66,64 @@ fn both_crates_write_the_same_quantity_record() {
         (PropertyKind::Count, CostKind::Count, 4.0),
         (PropertyKind::Weight, CostKind::Weight, 12.0),
         (PropertyKind::Time, CostKind::Time, 8.0),
+        (PropertyKind::Number, CostKind::Number, -3.5),
     ];
+    let schemas = [None, Some("IFC2X3"), Some("IFC4"), Some("IFC4X3_ADD2")];
 
-    for (property_kind, cost_kind, value) in pairs {
-        let mut from_properties = Model::default();
-        let mut tx = Transaction::new(&from_properties);
-        property_quantity(&mut tx, &from_properties, property_kind, "Q", value)
-            .expect("property quantity");
-        tx.commit(&mut from_properties).expect("commit");
+    for schema in schemas {
+        for (property_kind, cost_kind, value) in pairs {
+            for formula in [None, Some("l * h")] {
+                let mut from_properties = declaring(schema);
+                let mut tx = Transaction::new(&from_properties);
+                let extras = QuantityExtras {
+                    description: Some("d"),
+                    formula,
+                    ..QuantityExtras::default()
+                };
+                let by_properties = create_quantity_with(
+                    &mut tx,
+                    &from_properties,
+                    property_kind,
+                    "Q",
+                    value,
+                    extras,
+                );
+                if by_properties.is_ok() {
+                    tx.commit(&mut from_properties).expect("commit");
+                }
 
-        let mut from_cost = Model::default();
-        let mut tx = Transaction::new(&from_cost);
-        let draft = QuantityDraft {
-            kind: cost_kind,
-            name: "Q",
-            description: None,
-            unit: None,
-            value,
-            formula: None,
-        };
-        cost_quantity(&mut tx, &from_cost, draft).expect("cost quantity");
-        tx.commit(&mut from_cost).expect("commit");
+                let mut from_cost = declaring(schema);
+                let mut tx = Transaction::new(&from_cost);
+                let draft = QuantityDraft {
+                    kind: cost_kind,
+                    name: "Q",
+                    description: Some("d"),
+                    unit: None,
+                    value,
+                    formula,
+                };
+                let by_cost = cost_quantity(&mut tx, &from_cost, draft);
+                if by_cost.is_ok() {
+                    tx.commit(&mut from_cost).expect("commit");
+                }
 
-        assert_eq!(
-            quantity_line(&from_properties),
-            quantity_line(&from_cost),
-            "{property_kind:?}: the two writers disagree",
-        );
+                // Both accept, or both refuse (a number outside IFC4X3, a
+                // formula in IFC2X3).
+                assert_eq!(
+                    by_properties.is_ok(),
+                    by_cost.is_ok(),
+                    "{schema:?} {property_kind:?} {formula:?}: \
+                     {by_properties:?} against {by_cost:?}",
+                );
+                if by_properties.is_ok() {
+                    assert_eq!(
+                        quantity_line(&from_properties),
+                        quantity_line(&from_cost),
+                        "{schema:?} {property_kind:?} {formula:?}: the two writers disagree",
+                    );
+                }
+            }
+        }
     }
 }
 
@@ -135,9 +178,11 @@ fn the_agreed_record_matches_the_schema() {
         .expect("area written");
     assert!(area_line.contains("Painted face"), "{area_line}");
     assert!(area_line.contains("l * h"), "Formula survives: {area_line}");
+    // AreaValue is declared IfcAreaMeasure, a defined type and not a
+    // SELECT, so the value is bare: no typed parameter (#190).
     assert!(
-        area_line.contains("IFCAREAMEASURE(12.5)"),
-        "a real measure keeps its decimal: {area_line}",
+        area_line.contains(",12.5,") && !area_line.contains("MEASURE("),
+        "a real measure is written bare and keeps its decimal: {area_line}",
     );
     // Unit is slot 2 and must reference the authored IFCSIUNIT; dropping
     // it silently reinterprets the quantity in the project default.
@@ -157,11 +202,11 @@ fn the_agreed_record_matches_the_schema() {
     // Asserted on the closing delimiter, not on a bare "(4)": that is a
     // substring of "(4.)" and would hold for the real encoding too.
     assert!(
-        count_line.contains("IFCCOUNTMEASURE(4),"),
-        "a count is an integer, not a real: {count_line}",
+        count_line.contains(",4,") && !count_line.contains("MEASURE("),
+        "a count is a bare integer, not a real: {count_line}",
     );
     assert!(
-        !count_line.contains("IFCCOUNTMEASURE(4."),
+        !count_line.contains(",4.,"),
         "a count carries no decimal point: {count_line}",
     );
 }

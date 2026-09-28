@@ -5,10 +5,13 @@
 //! should contain before any instance exists, and
 //! `IfcRelDefinesByType` carries a type's properties to its
 //! occurrences -- the route `IfcRelDefinesByProperties` refuses.
+//!
+//! The template writers take no model and write `OwnerHistory` as `$`.
+//! That is valid in IFC4 and IFC4X3, the only releases that declare
+//! templates; IFC2X3 declares none of these entities.
 
 use ifc_model::guid::Guid;
 use ifc_model::{Entity, EntityId, Model, Transaction, Value};
-use ifc_schema::ifc4;
 
 use super::authoring::{optional_text, require_name};
 use crate::error::{PropertyError, PropertyResult};
@@ -30,11 +33,22 @@ pub mod defines_by_type_slot {
 /// type reach its occurrences through this relationship, which is why
 /// `IfcRelDefinesByProperties` refuses a type object outright.
 ///
+/// # Release
+///
+/// Bound to the model's declared release like
+/// [`super::authoring::attach_property_set`]: laid out by attribute name,
+/// type checks against that release's inheritance, and an IFC2X3 model
+/// refused with [`PropertyError::AuthoringRequired`] because its
+/// `OwnerHistory` would be `$`. Use
+/// [`attach_type_with_owner_history`](crate::attach_type_with_owner_history)
+/// there.
+///
 /// # Errors
 ///
 /// Refuses a malformed GUID, an empty occurrence list (`SET [1:?]`),
 /// a relating type that is not an `IfcTypeObject` subtype, and any
-/// occurrence that is itself a type object.
+/// occurrence that is itself a type object; a model that binds no single
+/// known release, and an IFC2X3 model. Nothing is staged on an error.
 pub fn attach_type(
     tx: &mut Transaction,
     model: &Model,
@@ -42,48 +56,7 @@ pub fn attach_type(
     objects: &[EntityId],
     relating_type: EntityId,
 ) -> PropertyResult<EntityId> {
-    if Guid::parse(global_id).is_none() {
-        return Err(PropertyError::AuthoringInvalid {
-            entity: "IFCRELDEFINESBYTYPE",
-            attribute: "GlobalId",
-            value: global_id.to_owned(),
-        });
-    }
-    if objects.is_empty() {
-        return Err(PropertyError::AuthoringInvalid {
-            entity: "IFCRELDEFINESBYTYPE",
-            attribute: "RelatedObjects",
-            value: "empty".to_owned(),
-        });
-    }
-    let schema = ifc4();
-    let is_type = |id: EntityId| {
-        model
-            .get(id)
-            .is_some_and(|entity| schema.is_a(&entity.type_name, "IFCTYPEOBJECT"))
-    };
-    if !is_type(relating_type) {
-        return Err(PropertyError::AuthoringInvalid {
-            entity: "IFCRELDEFINESBYTYPE",
-            attribute: "RelatingType",
-            value: "not an IfcTypeObject".to_owned(),
-        });
-    }
-    for object in objects {
-        if is_type(*object) {
-            return Err(PropertyError::AuthoringInvalid {
-                entity: "IFCRELDEFINESBYTYPE",
-                attribute: "RelatedObjects",
-                value: "a type object cannot be an occurrence".to_owned(),
-            });
-        }
-    }
-    let mut attributes = vec![Value::Null; defines_by_type_slot::RELATING_TYPE + 1];
-    attributes[defines_by_type_slot::GLOBAL_ID] = Value::Text(global_id.into());
-    attributes[defines_by_type_slot::RELATED_OBJECTS] =
-        Value::List(objects.iter().copied().map(Value::Ref).collect());
-    attributes[defines_by_type_slot::RELATING_TYPE] = Value::Ref(relating_type);
-    Ok(tx.create(Entity::new("IFCRELDEFINESBYTYPE", attributes)))
+    super::root_authoring::attach_type_record(tx, model, global_id, objects, relating_type, None)
 }
 
 /// `IfcPropertySetTemplate` slots.

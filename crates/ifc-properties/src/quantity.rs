@@ -15,7 +15,7 @@
 
 mod complex;
 mod edit;
-mod release;
+pub(crate) mod release;
 mod set;
 mod simple;
 mod validation;

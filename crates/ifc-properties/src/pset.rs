@@ -8,6 +8,8 @@
 //! - `table.rs`: table values and interpolation metadata.
 //! - `reference.rs`: object/reference properties.
 //! - `complex.rs`: nested complex properties.
+//! - `root_authoring.rs`: release-bound `IfcRoot` writers and their
+//!   `*_with_owner_history` variants.
 
 mod complex;
 mod reference;
@@ -19,6 +21,7 @@ mod aggregate;
 mod authoring;
 mod predefined;
 mod reinforcement;
+mod root_authoring;
 mod template_authoring;
 
 pub use authoring::{
@@ -39,6 +42,10 @@ pub use reinforcement::{
     add_profile_properties, add_reinforcement_bar_properties,
     add_reinforcement_definition_properties, add_section_properties,
     add_section_reinforcement_properties, ReinforcementBarDraft, SectionReinforcementDraft,
+};
+pub use root_authoring::{
+    add_element_quantity_with_owner_history, add_property_set_with_owner_history,
+    attach_property_set_with_owner_history, attach_type_with_owner_history,
 };
 pub use scalar::{property, property_checked, Property, PropertyValue};
 pub use set::{
