@@ -12,6 +12,56 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `add_property_set_with_owner_history`,
+  `add_element_quantity_with_owner_history`,
+  `attach_property_set_with_owner_history` and
+  `attach_type_with_owner_history` (#191). Each takes the model and a
+  caller-supplied `IfcOwnerHistory` id, which IFC2X3 requires on every
+  `IfcRoot`. The id must be in the model or staged on the transaction and
+  must be an `IfcOwnerHistory`; a missing one is refused with
+  `MissingEntity`, another entity with `AuthoringInvalid`. None is ever
+  invented. The record is laid out by attribute name from the declared
+  release's table, and in IFC4 and IFC4X3 the reference is written into
+  the optional slot. This follows `ifc-material`'s
+  `associate_material_with_owner_history` (#77).
+- `PropertyError::AuthoringRequired { entity, attribute, schema }`: the
+  model's release requires an attribute the call leaves unset (#191).
+  `PropertyError` is `#[non_exhaustive]`, so this is not breaking.
+
+### Fixed
+
+- Quantity values are written bare (#190). `create_quantity`,
+  `create_quantity_with` and `set_quantity_value` wrote
+  `IFCQUANTITYAREA('A',$,$,IFCAREAMEASURE(12.5),$)`. But `<Kind>Value` is
+  declared with a defined measure type (`IfcAreaMeasure`, ...), not a
+  SELECT, in IFC2X3, IFC4 and IFC4X3, and ISO 10303-21 writes a typed
+  parameter only in a SELECT slot. They now write `12.5` (a whole count as
+  the integer `4`). `set_quantity_value` replaces a typed value it finds
+  with the bare one. The readers (`quantity_set`, `exact_property`) still
+  accept both forms. Code that inspects the written `Value` sees
+  `Value::Real`/`Value::Integer` where it saw `Value::Typed`.
+- `IfcRoot.OwnerHistory` is no longer written as `$` into an IFC2X3 model
+  by `attach_property_set` and `attach_type` (#191). It is mandatory in
+  IFC2X3 (`OPTIONAL` from IFC4 on), so those records were invalid.
+  **Behaviour change for IFC2X3 callers:** both now refuse an IFC2X3 model
+  with `PropertyError::AuthoringRequired { attribute: "OwnerHistory", .. }`
+  and stage nothing; use the `*_with_owner_history` variants there.
+  Both now bind the model's declared release the way quantity authoring
+  does. So a model whose header declares several schemas, or one without a
+  bundled table, is refused with `MultipleSchemas` or `UnsupportedSchema`
+  where it used to be written in the IFC4 layout. `NoRelatedTypeObject`
+  and the `IfcTypeObject` checks use the declared release's inheritance
+  instead of IFC4's. IFC4 and IFC4X3 output is unchanged.
+  `add_property_set` and `add_element_quantity` take no model, so they
+  cannot see the release. They still write `$` and are documented as
+  IFC4/IFC4X3 only. In IFC2X3, `attach_property_set_with_owner_history`
+  refuses to attach a definition whose `OwnerHistory` is unset. Not
+  changed: the template writers, whose entities IFC2X3 does not declare,
+  and the predefined property-set writers, which write the IFC4 layout
+  without a model.
+
 ## [0.5.0] - 2026-09-28
 
 ### Changed (breaking)

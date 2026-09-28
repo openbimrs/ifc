@@ -229,8 +229,8 @@ pub fn assign_cost_quantities(
 /// `validate::reference_type` compares one exact name, but CostQuantities
 /// is typed to the abstract supertype: an area, a volume and a count are
 /// all valid there. Enumerating the concrete subtypes keeps the check
-/// closed -- an unrelated entity is still refused -- without pulling a
-/// schema dependency into this crate for one subtype question.
+/// closed -- an unrelated entity is still refused -- without binding a
+/// release for one subtype question.
 fn require_quantity(tx: &Transaction, model: &Model, target: EntityId) -> CostAuthoringResult<()> {
     const ACCEPTED: &[&str] = &[
         "IFCQUANTITYLENGTH",

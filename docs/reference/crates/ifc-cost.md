@@ -24,6 +24,7 @@ Cost semantics as a borrowed view over the IFC model.
 ## Depends on
 
 - [`ifc-model`](./ifc-model)
+- [`ifc-schema`](./ifc-schema)
 
 ## Changes
 

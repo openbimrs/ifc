@@ -2,8 +2,9 @@
 
 Cost semantics as a borrowed view over the IFC model: cost schedules and
 items, cost values, quantities, nesting and roll-up, plus transaction-staged
-IFC4 cost authoring. The crate owns no data, so a file with cost data
-round-trips identically with or without it.
+IFC4 cost authoring; quantities are authored in the model's declared
+release. The crate owns no data, so a file with cost data round-trips
+identically with or without it.
 
 ```bash
 cargo add ifc-cost
