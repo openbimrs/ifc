@@ -84,7 +84,7 @@ fn a_lag_reads_back_in_the_form_it_was_authored() {
     .expect("authored sequence");
     tx.commit(&mut model).expect("commit");
 
-    let found = sequences(&model);
+    let found = sequences(&model).expect("bound");
     assert_eq!(found.len(), 1, "one sequence");
     let lag = found[0].lag.as_ref().expect("lag present");
     assert_eq!(lag.duration.as_deref(), Some("P5D"));

@@ -17,7 +17,7 @@
 use ifc_model::{Edit, Entity, EntityId, Model, Transaction, Value};
 use ifc_schema::{for_version, Attribute, Schema, SchemaVersion, TypeKind};
 
-use crate::error::ScheduleAuthoringError;
+use crate::error::{ScheduleAuthoringError, ScheduleReadError};
 
 type Result<T> = std::result::Result<T, ScheduleAuthoringError>;
 
@@ -177,6 +177,117 @@ fn projected_type(tx: &Transaction, model: &Model, target: EntityId) -> Option<S
         }
     }
     model.get(target).map(|entity| entity.type_name.to_string())
+}
+
+/// The release the readers interpret records against (#212).
+///
+/// The same rule as [`bind`]: one declaration of IFC2X3, IFC4 or IFC4X3
+/// binds that release's table; any other single declaration (IFC4X1 and
+/// IFC4X2 included) is [`ScheduleReadError::UnsupportedSchema`]; several
+/// are [`ScheduleReadError::MultipleSchemas`]; none reads as IFC4.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct ReadRelease {
+    version: SchemaVersion,
+    schema: &'static Schema,
+}
+
+impl ReadRelease {
+    /// Bind `version`, refusing a release the readers are not verified for.
+    pub(crate) fn of_version(
+        version: SchemaVersion,
+    ) -> std::result::Result<Self, ScheduleReadError> {
+        let unsupported = || ScheduleReadError::UnsupportedSchema {
+            schema: version.release_id().to_owned(),
+        };
+        if !proven(version) {
+            return Err(unsupported());
+        }
+        let schema = for_version(version).map_err(|_| unsupported())?;
+        Ok(Self { version, schema })
+    }
+
+    /// Bind `model`'s declared release.
+    pub(crate) fn of(model: &Model) -> std::result::Result<Self, ScheduleReadError> {
+        match model.header().schema.as_slice() {
+            [] => Self::of_version(SchemaVersion::Ifc4),
+            [token] => SchemaVersion::from_header_token(token)
+                .filter(|version| proven(*version))
+                .ok_or_else(|| ScheduleReadError::UnsupportedSchema {
+                    schema: token.clone(),
+                })
+                .and_then(Self::of_version),
+            tokens => Err(ScheduleReadError::MultipleSchemas {
+                schemas: tokens.len(),
+            }),
+        }
+    }
+
+    /// The bound release.
+    pub(crate) const fn version(self) -> SchemaVersion {
+        self.version
+    }
+
+    fn slot(self, entity: &str, attribute: &'static str) -> Option<usize> {
+        let entity = entity.to_ascii_uppercase();
+        let name = release_name(self.version, &entity, attribute);
+        self.schema
+            .attribute_names(&entity)
+            .iter()
+            .position(|declared| declared.eq_ignore_ascii_case(name))
+    }
+
+    /// The value of `attribute` (IFC4 name) on a record of `entity`; `None`
+    /// when the release does not declare it, the record leaves it `$`, or
+    /// the record ends before it.
+    pub(crate) fn value<'m>(
+        self,
+        entity: &str,
+        record: &'m Entity,
+        attribute: &'static str,
+    ) -> Option<&'m Value> {
+        match record.attribute(self.slot(entity, attribute)?)? {
+            Value::Null => None,
+            value => Some(value),
+        }
+    }
+
+    /// The text of `attribute`, or `None`.
+    pub(crate) fn text<'m>(
+        self,
+        entity: &str,
+        record: &'m Entity,
+        attribute: &'static str,
+    ) -> Option<&'m str> {
+        self.value(entity, record, attribute)?
+            .unwrap_typed()
+            .as_text()
+    }
+
+    /// The enumeration token of `attribute`, without its dots, or `None`.
+    pub(crate) fn token<'m>(
+        self,
+        entity: &str,
+        record: &'m Entity,
+        attribute: &'static str,
+    ) -> Option<&'m str> {
+        match self.value(entity, record, attribute)? {
+            Value::Enum(token) => Some(token),
+            _ => None,
+        }
+    }
+
+    /// The reference in `attribute`, or `None`.
+    pub(crate) fn reference(
+        self,
+        entity: &str,
+        record: &Entity,
+        attribute: &'static str,
+    ) -> Option<EntityId> {
+        match self.value(entity, record, attribute)? {
+            Value::Ref(id) => Some(*id),
+            _ => None,
+        }
+    }
 }
 
 /// The name `release` gives the attribute this crate knows by its IFC4

@@ -262,22 +262,32 @@ fn read_back(back: &Model, version: SchemaVersion, written: &[EntityId]) {
         panic!("written");
     };
     assert_eq!(
-        names(work_plans(back)),
+        names(work_plans(back).expect("bound")),
         vec![(plan, Some("Masterplan"), Some("WP-1"))]
     );
     assert_eq!(
-        names(work_schedules(back)),
+        names(work_schedules(back).expect("bound")),
         vec![(schedule, Some("Programme"), Some("WS-1"))]
     );
-    assert_eq!(tasks_of_schedule(back, schedule), vec![t1]);
-    assert_eq!(successors_of(back, t1), vec![t2]);
-    let link = sequences(back).into_iter().next().expect("sequence");
+    assert_eq!(tasks_of_schedule(back, schedule).expect("bound"), vec![t1]);
+    assert_eq!(successors_of(back, t1).expect("bound"), vec![t2]);
+    let link = sequences(back)
+        .expect("bound")
+        .into_iter()
+        .next()
+        .expect("sequence");
     assert_eq!(link.id, sequence);
     assert_eq!(link.sequence_type, Some(SequenceType::FinishStart));
     if version != SchemaVersion::Ifc2x3 {
-        let schedule = &work_schedules(back)[0];
-        assert_eq!(schedule.creation_date(), Some("2026-09-28T00:00:00"));
-        assert_eq!(schedule.start_time(), Some("2026-10-01T08:00:00"));
+        let schedule = &work_schedules(back).expect("bound")[0];
+        assert_eq!(
+            schedule.creation_date().and_then(|d| d.text()),
+            Some("2026-09-28T00:00:00")
+        );
+        assert_eq!(
+            schedule.start_time().and_then(|d| d.text()),
+            Some("2026-10-01T08:00:00")
+        );
         return;
     }
     let int = Value::Integer;

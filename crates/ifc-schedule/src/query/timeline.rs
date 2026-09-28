@@ -16,11 +16,17 @@
 
 use std::collections::{HashMap, HashSet};
 
-use ifc_model::{EntityId, Model, Value};
+use ifc_model::{EntityId, Model};
 
+use crate::error::ScheduleReadError;
+use crate::release::ReadRelease;
 use crate::sequence::{sequences, SequenceCycle};
 
-/// `IfcRelAssignsToControl` slots.
+const ASSIGNS: &str = "IFCRELASSIGNSTOCONTROL";
+const NESTS: &str = "IFCRELNESTS";
+
+/// `IfcRelAssignsToControl` slots, the same in IFC2X3, IFC4 and IFC4X3.
+/// The writers lay records out with them; the readers go by name.
 pub mod assigns {
     /// `GlobalId` (from `IfcRoot`).
     pub const GLOBAL_ID: usize = 0;
@@ -30,7 +36,8 @@ pub mod assigns {
     pub const RELATING: usize = 6;
 }
 
-/// `IfcRelNests` slots.
+/// `IfcRelNests` slots, the same in IFC2X3, IFC4 and IFC4X3. The writers
+/// lay records out with them; the readers go by name.
 pub mod nests {
     /// `GlobalId` (from `IfcRoot`).
     pub const GLOBAL_ID: usize = 0;
@@ -43,18 +50,23 @@ pub mod nests {
 /// Tasks assigned to a work schedule, in file order.
 ///
 /// Uses `IfcRelAssignsToControl`, whose `RelatingControl` is the schedule.
-#[must_use]
-pub fn tasks_of_schedule(model: &Model, schedule: EntityId) -> Vec<EntityId> {
+///
+/// # Errors
+///
+/// [`ScheduleReadError::UnsupportedSchema`] or
+/// [`ScheduleReadError::MultipleSchemas`] for a header the readers cannot
+/// bind; a header with no schema reads as IFC4.
+pub fn tasks_of_schedule(
+    model: &Model,
+    schedule: EntityId,
+) -> Result<Vec<EntityId>, ScheduleReadError> {
+    let release = ReadRelease::of(model)?;
     let mut out = Vec::new();
-    for (_, entity) in model.of_type("IFCRELASSIGNSTOCONTROL") {
-        let relating = match entity.attribute(assigns::RELATING) {
-            Some(Value::Ref(id)) => *id,
-            _ => continue,
-        };
-        if relating != schedule {
+    for (_, entity) in model.of_type(ASSIGNS) {
+        if release.reference(ASSIGNS, entity, "RelatingControl") != Some(schedule) {
             continue;
         }
-        if let Some(v) = entity.attribute(assigns::RELATED) {
+        if let Some(v) = release.value(ASSIGNS, entity, "RelatedObjects") {
             v.for_each_ref(&mut |id| {
                 if !out.contains(&id) {
                     out.push(id);
@@ -62,57 +74,63 @@ pub fn tasks_of_schedule(model: &Model, schedule: EntityId) -> Vec<EntityId> {
             });
         }
     }
-    out
+    Ok(out)
 }
 
 /// Sub-tasks nested directly under a task, in authored order.
 ///
 /// A work breakdown structure nests tasks with `IfcRelNests`, the same
 /// relationship cost items use.
-#[must_use]
-pub fn subtasks_of(model: &Model, parent: EntityId) -> Vec<EntityId> {
+///
+/// # Errors
+///
+/// As [`tasks_of_schedule`].
+pub fn subtasks_of(model: &Model, parent: EntityId) -> Result<Vec<EntityId>, ScheduleReadError> {
+    let release = ReadRelease::of(model)?;
     let mut out = Vec::new();
-    for (_, entity) in model.of_type("IFCRELNESTS") {
-        let relating = match entity.attribute(nests::RELATING) {
-            Some(Value::Ref(id)) => *id,
-            _ => continue,
-        };
-        if relating != parent {
+    for (_, entity) in model.of_type(NESTS) {
+        if release.reference(NESTS, entity, "RelatingObject") != Some(parent) {
             continue;
         }
-        if let Some(v) = entity.attribute(nests::RELATED) {
+        if let Some(v) = release.value(NESTS, entity, "RelatedObjects") {
             v.for_each_ref(&mut |id| out.push(id));
         }
     }
-    out
+    Ok(out)
 }
 
 /// Tasks with no predecessor: where the schedule can start.
 ///
 /// In file order, so the result is stable.
-#[must_use]
-pub fn start_tasks(model: &Model) -> Vec<EntityId> {
-    let links = sequences(model);
+///
+/// # Errors
+///
+/// The binding refusals of [`sequences`].
+pub fn start_tasks(model: &Model) -> Result<Vec<EntityId>, ScheduleReadError> {
+    let links = sequences(model)?;
     let has_predecessor: HashSet<EntityId> = links.iter().map(|s| s.successor).collect();
-    model
+    Ok(model
         .ids_of_type("IFCTASK")
         .iter()
         .copied()
         .filter(|id| !has_predecessor.contains(id))
-        .collect()
+        .collect())
 }
 
 /// Tasks with no successor: where the schedule ends.
-#[must_use]
-pub fn end_tasks(model: &Model) -> Vec<EntityId> {
-    let links = sequences(model);
+///
+/// # Errors
+///
+/// The binding refusals of [`sequences`].
+pub fn end_tasks(model: &Model) -> Result<Vec<EntityId>, ScheduleReadError> {
+    let links = sequences(model)?;
     let has_successor: HashSet<EntityId> = links.iter().map(|s| s.predecessor).collect();
-    model
+    Ok(model
         .ids_of_type("IFCTASK")
         .iter()
         .copied()
         .filter(|id| !has_successor.contains(id))
-        .collect()
+        .collect())
 }
 
 /// Every task in a valid execution order.
@@ -123,10 +141,11 @@ pub fn end_tasks(model: &Model) -> Vec<EntityId> {
 ///
 /// # Errors
 ///
-/// [`SequenceCycle`] when the graph loops, because a cyclic schedule has no
-/// valid ordering at all.
-pub fn execution_order(model: &Model) -> Result<Vec<EntityId>, SequenceCycle> {
-    let links = sequences(model);
+/// [`ScheduleReadError::Cycle`] when the graph loops, because a cyclic
+/// schedule has no valid ordering at all, and the binding refusals of
+/// [`sequences`].
+pub fn execution_order(model: &Model) -> Result<Vec<EntityId>, ScheduleReadError> {
+    let links = sequences(model)?;
     let tasks: Vec<EntityId> = model.ids_of_type("IFCTASK").to_vec();
     let position: HashMap<EntityId, usize> =
         tasks.iter().enumerate().map(|(i, id)| (*id, i)).collect();
@@ -172,8 +191,8 @@ pub fn execution_order(model: &Model) -> Result<Vec<EntityId>, SequenceCycle> {
     if out.len() != tasks.len() {
         // Kahn's algorithm stalls exactly when a cycle remains. Find it and
         // report the path rather than a bare "graph is cyclic".
-        if let Some(cycle) = crate::sequence::find_cycle(model) {
-            return Err(cycle);
+        if let Some(cycle) = crate::sequence::find_cycle(model)? {
+            return Err(cycle.into());
         }
         // Unreachable for a well-formed model: a stall implies a cycle. Report
         // the first unemitted task rather than claiming a clean result.
@@ -185,7 +204,8 @@ pub fn execution_order(model: &Model) -> Result<Vec<EntityId>, SequenceCycle> {
         return Err(SequenceCycle {
             repeated: stalled,
             path: vec![stalled],
-        });
+        }
+        .into());
     }
     Ok(out)
 }

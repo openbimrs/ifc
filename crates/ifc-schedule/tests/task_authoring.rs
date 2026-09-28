@@ -43,6 +43,7 @@ fn an_authored_task_reads_back_through_the_task_reader() {
     .expect("task");
     tx.commit(&mut model).expect("commit");
     let found = tasks(&model)
+        .expect("bound")
         .into_iter()
         .find(|t| t.id() == id)
         .expect("readable");

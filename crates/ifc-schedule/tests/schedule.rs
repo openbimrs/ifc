@@ -4,8 +4,8 @@ use ifc_model::{Codec, Entity, EntityId, Model, Value};
 use ifc_schedule::{
     end_tasks, events, execution_order, find_cycle, predecessors_of, sequences, start_tasks,
     subtasks_of, successors_of, tasks, tasks_of_schedule, work_calendars, work_plans,
-    work_schedules, DurationType, RecurrenceType, SequenceType, Task, TaskTimeAnomaly,
-    WorkControlKind, WorkTimeRole,
+    work_schedules, DurationType, RecurrenceType, SchemaVersion, SequenceType, Task,
+    TaskTimeAnomaly, WorkControlKind, WorkTimeRole,
 };
 
 fn fixture() -> Model {
@@ -18,6 +18,7 @@ fn fixture() -> Model {
 
 fn task_named<'m>(model: &'m Model, name: &str) -> Task<'m> {
     tasks(model)
+        .expect("bound")
         .into_iter()
         .find(|t| t.name() == Some(name))
         .expect("task in fixture")
@@ -35,18 +36,30 @@ fn task_named<'m>(model: &'m Model, name: &str) -> Task<'m> {
 fn work_controls_read_their_inherited_slots() {
     let model = fixture();
 
-    let plans = work_plans(&model);
+    let plans = work_plans(&model).expect("bound");
     assert_eq!(plans.len(), 1);
     let plan = plans[0];
     assert_eq!(plan.kind(), WorkControlKind::Plan);
     assert_eq!(plan.name(), Some("Programme"));
     assert_eq!(plan.identification(), Some("WP-1"), "slot 5");
-    assert_eq!(plan.creation_date(), Some("2026-01-10T08:00:00"), "slot 6");
-    assert_eq!(plan.start_time(), Some("2026-03-02T08:00:00"), "slot 11");
-    assert_eq!(plan.finish_time(), Some("2026-06-30T17:00:00"), "slot 12");
+    assert_eq!(
+        plan.creation_date().and_then(|d| d.text()),
+        Some("2026-01-10T08:00:00"),
+        "slot 6"
+    );
+    assert_eq!(
+        plan.start_time().and_then(|d| d.text()),
+        Some("2026-03-02T08:00:00"),
+        "slot 11"
+    );
+    assert_eq!(
+        plan.finish_time().and_then(|d| d.text()),
+        Some("2026-06-30T17:00:00"),
+        "slot 12"
+    );
     assert_eq!(plan.predefined_type(), Some("PLANNED"), "slot 13, not 6");
 
-    let schedules = work_schedules(&model);
+    let schedules = work_schedules(&model).expect("bound");
     assert_eq!(schedules.len(), 1);
     assert_eq!(schedules[0].kind(), WorkControlKind::Schedule);
     assert_eq!(schedules[0].identification(), Some("WS-1"));
@@ -56,9 +69,9 @@ fn work_controls_read_their_inherited_slots() {
 #[test]
 fn a_schedule_holds_its_tasks() {
     let model = fixture();
-    let schedule = work_schedules(&model)[0];
+    let schedule = work_schedules(&model).expect("bound")[0];
 
-    let members = tasks_of_schedule(&model, schedule.id());
+    let members = tasks_of_schedule(&model, schedule.id()).expect("bound");
     assert_eq!(members.len(), 5, "every task is assigned");
     for id in members {
         let entity = model.get(id).expect("member resolves");
@@ -142,7 +155,9 @@ fn a_task_time_pointing_elsewhere_is_reported() {
         ],
     ));
 
-    let (time, anomalies) = Task::new(task, model.get(task).unwrap()).time(&model);
+    let (time, anomalies) = Task::new(task, model.get(task).unwrap(), SchemaVersion::Ifc4)
+        .expect("verified")
+        .time(&model);
     assert!(time.is_none(), "a wall is not a task time");
     assert!(matches!(
         anomalies.as_slice(),
@@ -156,7 +171,7 @@ fn a_task_time_pointing_elsewhere_is_reported() {
 #[test]
 fn sequences_state_direction_type_and_lag() {
     let model = fixture();
-    let all = sequences(&model);
+    let all = sequences(&model).expect("bound");
     assert_eq!(all.len(), 4);
 
     let pour = task_named(&model, "Pour foundations");
@@ -183,6 +198,7 @@ fn sequence_type_distinguishes_start_start_from_finish_start() {
     let fitout = task_named(&model, "Fit out");
 
     let link = sequences(&model)
+        .expect("bound")
         .into_iter()
         .find(|s| s.predecessor == clad.id() && s.successor == fitout.id())
         .expect("cladding precedes fit-out");
@@ -196,10 +212,18 @@ fn predecessors_and_successors_agree() {
     let excavate = task_named(&model, "Excavate");
     let pour = task_named(&model, "Pour foundations");
 
-    assert_eq!(successors_of(&model, excavate.id()), vec![pour.id()]);
-    assert_eq!(predecessors_of(&model, pour.id()), vec![excavate.id()]);
+    assert_eq!(
+        successors_of(&model, excavate.id()).expect("bound"),
+        vec![pour.id()]
+    );
+    assert_eq!(
+        predecessors_of(&model, pour.id()).expect("bound"),
+        vec![excavate.id()]
+    );
     assert!(
-        predecessors_of(&model, excavate.id()).is_empty(),
+        predecessors_of(&model, excavate.id())
+            .expect("bound")
+            .is_empty(),
         "excavation starts the chain"
     );
 }
@@ -234,7 +258,7 @@ fn a_sequence_cycle_is_reported() {
         ));
     }
 
-    let cycle = find_cycle(&model).expect("the graph loops");
+    let cycle = find_cycle(&model).expect("bound").expect("the graph loops");
     assert!(
         cycle.path.len() >= 2,
         "the path is reported: {:?}",
@@ -313,7 +337,7 @@ fn execution_order_is_a_valid_topological_sort() {
     assert_eq!(order.len(), 5, "every task is ordered");
 
     let position = |id: EntityId| order.iter().position(|o| *o == id).expect("ordered");
-    for link in sequences(&model) {
+    for link in sequences(&model).expect("bound") {
         assert!(
             position(link.predecessor) < position(link.successor),
             "predecessor precedes successor"
@@ -405,8 +429,8 @@ fn start_and_end_tasks_are_the_graph_boundary() {
     let excavate = task_named(&model, "Excavate");
     let handover = task_named(&model, "Practical completion");
 
-    assert_eq!(start_tasks(&model), vec![excavate.id()]);
-    assert_eq!(end_tasks(&model), vec![handover.id()]);
+    assert_eq!(start_tasks(&model).expect("bound"), vec![excavate.id()]);
+    assert_eq!(end_tasks(&model).expect("bound"), vec![handover.id()]);
 }
 
 /// Tasks nest into a work breakdown, independently of sequencing.
@@ -417,7 +441,7 @@ fn tasks_nest_independently_of_sequence() {
     let pour = task_named(&model, "Pour foundations");
 
     assert_eq!(
-        subtasks_of(&model, excavate.id()),
+        subtasks_of(&model, excavate.id()).expect("bound"),
         vec![pour.id()],
         "nesting is a separate relationship from sequencing"
     );

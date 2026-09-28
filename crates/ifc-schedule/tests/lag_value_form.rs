@@ -101,7 +101,7 @@ fn a_lag_value_is_its_select_member_in_every_release() {
             );
 
             let back = StepCodec.read_bytes(&bytes).expect("read back");
-            let found = sequences(&back);
+            let found = sequences(&back).expect("bound");
             let read = found[0].lag.as_ref().expect("lag");
             assert_eq!(read.duration.as_deref(), case.duration, "{token}");
             assert_eq!(read.ratio, case.ratio, "{token}");
@@ -145,7 +145,7 @@ fn the_reader_accepts_both_forms() {
              ENDSEC;\nEND-ISO-10303-21;\n"
         );
         let model = StepCodec.read_bytes(text.as_bytes()).expect("parses");
-        let found = sequences(&model);
+        let found = sequences(&model).expect("bound");
         let read = found[0].lag.as_ref().expect("lag");
         assert_eq!(read.duration.as_deref(), duration, "{lag}");
         assert_eq!(read.ratio, ratio, "{lag}");
