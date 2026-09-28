@@ -76,9 +76,10 @@ fn authored_stationing() -> ObservedSet {
 
 fn check(catalog: &Catalog, observed: &ObservedSet) -> ValidationReport {
     let template = catalog.get("Pset_Stationing").expect("Pset_Stationing");
-    let mut policy = ValidationPolicy::default();
-    policy.require_all_members = true;
-    policy.unexpected_members = UnexpectedMemberPolicy::Error;
+    let policy = ValidationPolicy {
+        require_all_members: true,
+        unexpected_members: UnexpectedMemberPolicy::Error,
+    };
     validate(template, observed, policy)
 }
 
