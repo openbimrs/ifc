@@ -28,6 +28,17 @@ everything released before per-crate changelogs began.
   release does not declare the entity, such as the fixed-reference sweep in
   IFC2X3), for those writers. `GeometryError` is `#[non_exhaustive]`, so
   this is not breaking.
+- `authoring::grid_with_owner_history` (#202): an `IfcGrid` in the model's
+  declared release, with a caller-supplied `IfcOwnerHistory`, which IFC2X3
+  requires on every `IfcRoot`. It binds the release as the `_in` writers
+  above do, and lays the record out by attribute name from its table, so
+  an IFC2X3 grid has its 10 attributes, not IFC4's 11. A `predefined_type`
+  in IFC2X3, which declares none, or outside the release's
+  `IfcGridTypeEnum`, is refused with `InvalidAuthoredValue`. The owner
+  history must be in the model or staged on the transaction and be an
+  `IfcOwnerHistory` (`InvalidAuthoredValue` on `OwnerHistory` otherwise);
+  none is ever invented. IFC4 and IFC4X3 records are `grid`'s with the
+  owner history in its optional slot. No error variant is added.
 
 ### Fixed
 
@@ -46,6 +57,11 @@ everything released before per-crate changelogs began.
   still write `IFCPARAMETERVALUE(..)`, which is correct in IFC4X3 only. They
   cannot see the release; their docs now say so and point IFC4 (and IFC2X3)
   callers to the `_in` writers.
+- `authoring::grid` is unchanged and documents its limitation (#202): it
+  takes no model, so it writes the IFC4 layout (11 attributes,
+  `OwnerHistory` `$`), which is never valid IFC2X3. It moved from
+  `authoring/transform.rs` to `authoring/grid.rs`; the public path is the
+  same.
 
 ## [0.4.3] - 2026-09-28
 

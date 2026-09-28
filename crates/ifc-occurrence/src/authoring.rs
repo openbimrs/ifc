@@ -15,10 +15,19 @@
 //! catalogue. That costs a model lookup, which is why `create` takes
 //! a `&Model`: a pairing that is not checked against the real entity
 //! is not checked at all.
+//!
+//! # The release decides the layout
+//!
+//! The same `&Model` names the release the occurrence is written in
+//! (#202). Slots, the `PredefinedType` enumeration and the required
+//! attributes come from that release's table by attribute name, never
+//! from the IFC4X3 catalogue row; see `release.rs`.
 
 use ifc_model::guid::Guid;
-use ifc_model::{Entity, EntityId, Model, Transaction, Value};
+use ifc_model::{EntityId, Model, Transaction, Value};
+use ifc_schema::SchemaVersion;
 
+use crate::release::{bind, require_owner_history};
 use crate::table::Occurrence;
 
 /// Why an occurrence was refused.
@@ -66,6 +75,59 @@ pub enum OccurrenceError {
         /// The dangling id.
         id: EntityId,
     },
+    /// The model's header declares several schemas; authoring binds to
+    /// exactly one release.
+    MultipleSchemas {
+        /// Number of `FILE_SCHEMA` declarations.
+        schemas: usize,
+    },
+    /// The model's header declares one schema with no bundled table, so no
+    /// layout can be trusted.
+    UnsupportedSchema {
+        /// The `FILE_SCHEMA` token as written.
+        schema: String,
+    },
+    /// The model's release does not declare the class, or declares it
+    /// abstract, such as `IfcBorehole` (IFC4X3 only) in an IFC4 model.
+    EntityNotInSchema {
+        /// STEP class.
+        entity: &'static str,
+        /// The release the model declares.
+        schema: SchemaVersion,
+    },
+    /// A value for an attribute the model's release does not declare. It is
+    /// refused rather than dropped.
+    AuthoringNotInSchema {
+        /// STEP class.
+        entity: &'static str,
+        /// The attribute.
+        attribute: &'static str,
+        /// The release the model declares.
+        schema: SchemaVersion,
+    },
+    /// The model's release requires an attribute the call leaves unset,
+    /// such as the IFC2X3 `IfcRoot.OwnerHistory`.
+    AuthoringRequired {
+        /// STEP class.
+        entity: &'static str,
+        /// The required attribute, as the release names it.
+        attribute: &'static str,
+        /// The release the model declares.
+        schema: SchemaVersion,
+    },
+    /// The owner-history reference resolves neither in the model nor on the
+    /// transaction.
+    UnresolvedOwnerHistory {
+        /// The dangling id.
+        id: EntityId,
+    },
+    /// The owner-history reference is not an `IfcOwnerHistory`.
+    NotAnOwnerHistory {
+        /// The referenced id.
+        id: EntityId,
+        /// What the referenced entity actually is.
+        found: String,
+    },
 }
 
 /// Result alias for this crate.
@@ -105,6 +167,26 @@ fn slot_ref(v: Option<EntityId>) -> Value {
 /// Refuses a malformed `global_id`, a `predefined_type` outside the
 /// class enum, `USERDEFINED` without `draft.object_type`, and a
 /// `typed_by` of the wrong class or one that does not resolve.
+///
+/// # Release
+///
+/// Written in the model's declared release (#202), laid out by attribute
+/// name from its table; a header without `FILE_SCHEMA` binds IFC4.
+/// `predefined_type` is checked against that release's enumeration, and a
+/// class the release does not declare is refused with
+/// [`OccurrenceError::EntityNotInSchema`]. `OwnerHistory` is left `$`,
+/// which IFC4 and IFC4X3 allow and IFC2X3 does not, so an IFC2X3 model is
+/// refused with [`OccurrenceError::AuthoringRequired`]; use
+/// [`create_with_owner_history`] there. Any other attribute the release
+/// requires and the draft cannot carry (IFC2X3 `IfcStair.ShapeType`, for
+/// one) is refused the same way. The type pairing is the IFC4X3
+/// `CorrectTypeAssigned` class of the catalogue row in every release.
+///
+/// # Errors
+///
+/// The refusals above; [`OccurrenceError::MultipleSchemas`] or
+/// [`OccurrenceError::UnsupportedSchema`] for a model that binds no single
+/// known release. Nothing is staged on an error.
 pub fn create(
     tx: &mut Transaction,
     model: &Model,
@@ -114,17 +196,86 @@ pub fn create(
     typed_by: Option<EntityId>,
     draft: OccurrenceDraft<'_>,
 ) -> OccurrenceResult<EntityId> {
+    let request = Request {
+        kind,
+        global_id,
+        predefined_type,
+        typed_by,
+        draft,
+    };
+    author(tx, model, request, None)
+}
+
+/// [`create`] with a caller-supplied `IfcOwnerHistory`, which IFC2X3
+/// requires on every `IfcRoot`.
+///
+/// `owner_history` must be in the model or staged earlier on `tx`, and must
+/// be an `IfcOwnerHistory`; one is never invented here (build it with
+/// `ifc-author`). In IFC4 and IFC4X3 the reference fills the optional slot.
+///
+/// # Errors
+///
+/// Those of [`create`] except the IFC2X3 `OwnerHistory` refusal, and
+/// [`OccurrenceError::UnresolvedOwnerHistory`] or
+/// [`OccurrenceError::NotAnOwnerHistory`] for an `owner_history` that does
+/// not resolve or is another entity. Nothing is staged on an error.
+#[allow(clippy::too_many_arguments)]
+pub fn create_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    kind: Occurrence,
+    global_id: &str,
+    predefined_type: Option<&str>,
+    typed_by: Option<EntityId>,
+    draft: OccurrenceDraft<'_>,
+    owner_history: EntityId,
+) -> OccurrenceResult<EntityId> {
+    let request = Request {
+        kind,
+        global_id,
+        predefined_type,
+        typed_by,
+        draft,
+    };
+    author(tx, model, request, Some(owner_history))
+}
+
+/// The caller's arguments, bundled.
+struct Request<'a> {
+    kind: Occurrence,
+    global_id: &'a str,
+    predefined_type: Option<&'a str>,
+    typed_by: Option<EntityId>,
+    draft: OccurrenceDraft<'a>,
+}
+
+/// Stage one occurrence; `None` leaves `OwnerHistory` `$`.
+fn author(
+    tx: &mut Transaction,
+    model: &Model,
+    request: Request<'_>,
+    owner_history: Option<EntityId>,
+) -> OccurrenceResult<EntityId> {
+    let Request {
+        kind,
+        global_id,
+        predefined_type,
+        typed_by,
+        draft,
+    } = request;
     let entity = kind.type_name;
     if Guid::parse(global_id).is_none() {
         return Err(OccurrenceError::MalformedGuid {
             value: global_id.into(),
         });
     }
+    let layout = bind(model)?;
+    layout.require_entity(entity)?;
     if let Some(token) = predefined_type {
-        if kind.predefined_slot.is_none() {
+        let Some(members) = layout.predefined_members(entity) else {
             return Err(OccurrenceError::NoPredefinedType { entity });
-        }
-        if !kind.members.contains(&token) {
+        };
+        if !members.contains(&token) {
             return Err(OccurrenceError::UnknownPredefinedType {
                 entity,
                 token: token.into(),
@@ -153,16 +304,25 @@ pub fn create(
         }
     }
 
-    let mut attrs = vec![Value::Null; kind.arity];
-    attrs[0] = Value::Text(global_id.into());
-    attrs[2] = text(draft.name);
-    attrs[3] = text(draft.description);
-    attrs[4] = text(draft.object_type);
-    attrs[5] = slot_ref(draft.placement);
-    attrs[6] = slot_ref(draft.representation);
-    attrs[7] = text(draft.tag);
-    if let (Some(slot), Some(token)) = (kind.predefined_slot, predefined_type) {
-        attrs[slot] = Value::Enum(token.into());
+    if let Some(owner_history) = owner_history {
+        require_owner_history(tx, model, owner_history)?;
     }
-    Ok(tx.create(Entity::new(entity, attrs)))
+    let record = layout.named_record(
+        entity,
+        vec![
+            ("GlobalId", Value::Text(global_id.into())),
+            ("OwnerHistory", slot_ref(owner_history)),
+            ("Name", text(draft.name)),
+            ("Description", text(draft.description)),
+            ("ObjectType", text(draft.object_type)),
+            ("ObjectPlacement", slot_ref(draft.placement)),
+            ("Representation", slot_ref(draft.representation)),
+            ("Tag", text(draft.tag)),
+            (
+                "PredefinedType",
+                predefined_type.map_or(Value::Null, |token| Value::Enum(token.into())),
+            ),
+        ],
+    )?;
+    Ok(tx.create(record))
 }

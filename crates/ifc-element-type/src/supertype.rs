@@ -25,9 +25,11 @@
 //! parses and then cannot be referred to by anything.
 
 use ifc_model::guid::Guid;
-use ifc_model::{Entity, EntityId, Transaction, Value};
+use ifc_model::{EntityId, Model, Transaction, Value};
 
-use crate::authoring::{ElementTypeError, ElementTypeResult};
+use crate::authoring::invalid;
+use crate::error::ElementTypeResult;
+use crate::release::{bind, require_owner_history, Layout};
 
 /// A type definition with no `PredefinedType` enum.
 ///
@@ -123,18 +125,6 @@ pub struct SupertypeDraft<'a> {
     pub element_type: Option<&'a str>,
 }
 
-fn invalid(
-    entity: &'static str,
-    attribute: &'static str,
-    value: impl Into<String>,
-) -> ElementTypeError {
-    ElementTypeError::Invalid {
-        entity,
-        attribute,
-        value: value.into(),
-    }
-}
-
 fn text(value: Option<&str>) -> Value {
     value.map_or(Value::Null, |v| Value::Text(v.into()))
 }
@@ -144,6 +134,14 @@ fn text(value: Option<&str>) -> Value {
 /// `name` is taken by value, not as an `Option`: `NameRequired` makes it
 /// mandatory for every type object, so there is no legal way to omit it
 /// and the signature says so.
+///
+/// # Release
+///
+/// Takes no model, so it writes the IFC4X3 layout with `OwnerHistory` `$`
+/// and cannot refuse a model that declares another release; that record is
+/// never valid IFC2X3, which requires `OwnerHistory`. Use
+/// [`create_supertype_in`] or [`create_supertype_with_owner_history`] to
+/// write the model's declared release.
 ///
 /// # Errors
 ///
@@ -158,6 +156,103 @@ pub fn create_supertype(
     name: &str,
     draft: SupertypeDraft<'_>,
 ) -> ElementTypeResult<EntityId> {
+    let request = Request {
+        kind,
+        global_id,
+        name,
+        draft,
+    };
+    author(tx, Layout::catalogue()?, request, None)
+}
+
+/// [`create_supertype`] in the model's declared release (#202).
+///
+/// The record is laid out by attribute name from that release's table.
+/// `OwnerHistory` is left `$`, which IFC4 and IFC4X3 allow and IFC2X3 does
+/// not, so an IFC2X3 model is refused with
+/// [`AuthoringRequired`](crate::ElementTypeError::AuthoringRequired); use
+/// [`create_supertype_with_owner_history`] there. A header without
+/// `FILE_SCHEMA` binds IFC4.
+///
+/// # Errors
+///
+/// Those of [`create_supertype`], where "not declared" means not declared
+/// by the bound release, and: [`MultipleSchemas`](crate::ElementTypeError::MultipleSchemas) or
+/// [`UnsupportedSchema`](crate::ElementTypeError::UnsupportedSchema) for a model that binds no single
+/// known release; [`EntityNotInSchema`](crate::ElementTypeError::EntityNotInSchema) for a type the
+/// release does not declare or declares abstract (`IfcBuiltElementType` is
+/// IFC4X3 only). Nothing is staged on an error.
+pub fn create_supertype_in(
+    tx: &mut Transaction,
+    model: &Model,
+    kind: SupertypeKind,
+    global_id: &str,
+    name: &str,
+    draft: SupertypeDraft<'_>,
+) -> ElementTypeResult<EntityId> {
+    let request = Request {
+        kind,
+        global_id,
+        name,
+        draft,
+    };
+    author(tx, bind(model)?, request, None)
+}
+
+/// [`create_supertype_in`] with a caller-supplied `IfcOwnerHistory`, which
+/// IFC2X3 requires on every `IfcRoot`.
+///
+/// `owner_history` must be in the model or staged earlier on `tx`, and must
+/// be an `IfcOwnerHistory`; one is never invented here.
+///
+/// # Errors
+///
+/// Those of [`create_supertype_in`] except the IFC2X3 `OwnerHistory`
+/// refusal, and [`MissingEntity`](crate::ElementTypeError::MissingEntity) or
+/// [`Invalid`](crate::ElementTypeError::Invalid) on `OwnerHistory` for an `owner_history`
+/// that does not resolve or is another entity. Nothing is staged on an
+/// error.
+pub fn create_supertype_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    kind: SupertypeKind,
+    global_id: &str,
+    name: &str,
+    draft: SupertypeDraft<'_>,
+    owner_history: EntityId,
+) -> ElementTypeResult<EntityId> {
+    let layout = bind(model)?;
+    require_owner_history(tx, model, kind.type_name, owner_history)?;
+    let request = Request {
+        kind,
+        global_id,
+        name,
+        draft,
+    };
+    author(tx, layout, request, Some(owner_history))
+}
+
+/// The caller's arguments, bundled.
+struct Request<'a> {
+    kind: SupertypeKind,
+    global_id: &'a str,
+    name: &'a str,
+    draft: SupertypeDraft<'a>,
+}
+
+/// Stage a supertype in `layout`; `None` leaves `OwnerHistory` `$`.
+fn author(
+    tx: &mut Transaction,
+    layout: Layout,
+    request: Request<'_>,
+    owner_history: Option<EntityId>,
+) -> ElementTypeResult<EntityId> {
+    let Request {
+        kind,
+        global_id,
+        name,
+        draft,
+    } = request;
     let entity = kind.type_name;
     if Guid::parse(global_id).is_none() {
         return Err(invalid(entity, "GlobalId", global_id));
@@ -165,12 +260,18 @@ pub fn create_supertype(
     if name.trim().is_empty() {
         return Err(invalid(entity, "Name", "NameRequired"));
     }
+    layout.require_entity(entity)?;
 
-    let mut attrs = vec![Value::Null; kind.arity];
-    attrs[0] = Value::Text(global_id.into());
-    attrs[2] = Value::Text(name.into());
-    attrs[3] = text(draft.description);
-    attrs[4] = text(draft.applicable_occurrence);
+    let mut values = vec![
+        ("GlobalId", Value::Text(global_id.into())),
+        (
+            "OwnerHistory",
+            owner_history.map_or(Value::Null, Value::Ref),
+        ),
+        ("Name", Value::Text(name.into())),
+        ("Description", text(draft.description)),
+        ("ApplicableOccurrence", text(draft.applicable_occurrence)),
+    ];
 
     if !draft.property_sets.is_empty() {
         for (index, (set_name, _)) in draft.property_sets.iter().enumerate() {
@@ -187,44 +288,34 @@ pub fn create_supertype(
                 return Err(invalid(entity, "HasPropertySets", (*set_name).to_owned()));
             }
         }
-        attrs[5] = Value::List(
-            draft
-                .property_sets
-                .iter()
-                .map(|(_, id)| Value::Ref(*id))
-                .collect(),
-        );
+        let sets = draft.property_sets.iter().map(|(_, id)| Value::Ref(*id));
+        values.push(("HasPropertySets", Value::List(sets.collect())));
     }
 
-    // Slots 6-8 exist only at the deeper arities. An attribute the
-    // entity does not declare is refused, not dropped: silently
-    // discarding a caller's Tag writes a file missing data they
-    // believe they supplied.
+    // `RepresentationMaps`, `Tag` and `ElementType` exist only on the
+    // deeper types. An attribute the entity does not declare is refused,
+    // not dropped: silently discarding a caller's Tag writes a file
+    // missing data they believe they supplied.
+    let declared = |attribute| layout.attribute(entity, attribute).is_some();
     if !draft.representation_maps.is_empty() {
-        if kind.arity < 8 {
+        if !declared("RepresentationMaps") {
             return Err(invalid(entity, "RepresentationMaps", "not declared"));
         }
-        attrs[6] = Value::List(
-            draft
-                .representation_maps
-                .iter()
-                .copied()
-                .map(Value::Ref)
-                .collect(),
-        );
+        let maps = draft.representation_maps.iter().copied().map(Value::Ref);
+        values.push(("RepresentationMaps", Value::List(maps.collect())));
     }
     if draft.tag.is_some() {
-        if kind.arity < 8 {
+        if !declared("Tag") {
             return Err(invalid(entity, "Tag", "not declared"));
         }
-        attrs[7] = text(draft.tag);
+        values.push(("Tag", text(draft.tag)));
     }
     if draft.element_type.is_some() {
-        if kind.arity < 9 {
+        if !declared("ElementType") {
             return Err(invalid(entity, "ElementType", "not declared"));
         }
-        attrs[8] = text(draft.element_type);
+        values.push(("ElementType", text(draft.element_type)));
     }
 
-    Ok(tx.create(Entity::new(entity, attrs)))
+    Ok(tx.create(layout.named_record(entity, values)?))
 }

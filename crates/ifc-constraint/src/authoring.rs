@@ -1,10 +1,12 @@
 //! Transaction-staged authoring for bounded IFC4 constraints.
+//!
+//! The rooted `IfcRelAssociatesConstraint` lives in `association.rs`.
 
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use ifc_model::guid::Guid;
 use ifc_model::{Edit, Entity, EntityId, Model, Transaction, Value};
+use ifc_schema::Schema;
 
 use crate::types::{
     Benchmark, ConstraintGrade, LogicalOperator, MetricValueDraft, ObjectiveQualifier,
@@ -14,7 +16,6 @@ use crate::{ConstraintError, ConstraintResult};
 const METRIC: &str = "IFCMETRIC";
 const OBJECTIVE: &str = "IFCOBJECTIVE";
 const RESOURCE_REL: &str = "IFCRESOURCECONSTRAINTRELATIONSHIP";
-const ASSIGNMENT: &str = "IFCRELASSOCIATESCONSTRAINT";
 
 /// Common inherited `IfcConstraint` fields.
 #[derive(Debug, Clone, Copy)]
@@ -76,23 +77,6 @@ pub struct ResourceConstraintDraft<'a> {
     pub relating_constraint: EntityId,
     /// Non-empty unique resource-select targets.
     pub related_resources: &'a [EntityId],
-}
-
-/// Draft for one rooted constraint association.
-#[derive(Debug, Clone, Copy)]
-pub struct ConstraintAssociationDraft<'a> {
-    /// Compressed IFC GlobalId.
-    pub global_id: &'a str,
-    /// Optional relationship name.
-    pub name: Option<&'a str>,
-    /// Optional relationship description.
-    pub description: Option<&'a str>,
-    /// Non-empty unique definition-select targets.
-    pub related_objects: &'a [EntityId],
-    /// Optional association intent.
-    pub intent: Option<&'a str>,
-    /// Existing or earlier-staged metric/objective.
-    pub relating_constraint: EntityId,
 }
 
 /// Validate and stage one metric.
@@ -216,42 +200,6 @@ pub fn relate_resource_constraint(
             optional_text(draft.description),
             Value::Ref(draft.relating_constraint),
             refs(draft.related_resources),
-        ],
-    )))
-}
-
-/// Validate and stage one rooted constraint association.
-pub fn associate_constraint(
-    tx: &mut Transaction,
-    model: &Model,
-    draft: ConstraintAssociationDraft<'_>,
-) -> ConstraintResult<EntityId> {
-    if Guid::parse(draft.global_id).is_none() {
-        return Err(ConstraintError::AuthoringInvalid {
-            entity: ASSIGNMENT,
-            attribute: "GlobalId",
-            value: draft.global_id.into(),
-        });
-    }
-    validate_target(tx, model, draft.relating_constraint, "IfcConstraint")?;
-    validate_set(
-        tx,
-        model,
-        ASSIGNMENT,
-        "RelatedObjects",
-        draft.related_objects,
-        "IfcDefinitionSelect",
-    )?;
-    Ok(tx.create(Entity::new(
-        ASSIGNMENT,
-        vec![
-            text(draft.global_id),
-            Value::Null,
-            optional_text(draft.name),
-            optional_text(draft.description),
-            refs(draft.related_objects),
-            optional_text(draft.intent),
-            Value::Ref(draft.relating_constraint),
         ],
     )))
 }
@@ -398,9 +346,20 @@ fn validate_target(
     target: EntityId,
     expected: &'static str,
 ) -> ConstraintResult<()> {
+    validate_target_in(ifc_schema::ifc4(), tx, model, target, expected)
+}
+
+/// [`validate_target`] against `schema` instead of the IFC4 table.
+pub(crate) fn validate_target_in(
+    schema: &Schema,
+    tx: &Transaction,
+    model: &Model,
+    target: EntityId,
+    expected: &'static str,
+) -> ConstraintResult<()> {
     let actual =
         final_type(tx, model, target).ok_or(ConstraintError::UnknownEntity { id: target })?;
-    if ifc_schema::ifc4().accepts_type(expected, actual) {
+    if schema.accepts_type(expected, actual) {
         Ok(())
     } else {
         Err(ConstraintError::AuthoringReferenceType {
@@ -411,7 +370,11 @@ fn validate_target(
     }
 }
 
-fn final_type<'a>(tx: &'a Transaction, model: &'a Model, id: EntityId) -> Option<&'a str> {
+pub(crate) fn final_type<'a>(
+    tx: &'a Transaction,
+    model: &'a Model,
+    id: EntityId,
+) -> Option<&'a str> {
     for edit in tx.edits().iter().rev() {
         match edit {
             Edit::Create {
@@ -429,18 +392,18 @@ fn final_type<'a>(tx: &'a Transaction, model: &'a Model, id: EntityId) -> Option
     model.get(id).map(|entity| entity.type_name.as_ref())
 }
 
-fn text(value: &str) -> Value {
+pub(crate) fn text(value: &str) -> Value {
     Value::Text(Arc::from(value))
 }
-fn optional_text(value: Option<&str>) -> Value {
+pub(crate) fn optional_text(value: Option<&str>) -> Value {
     value.map_or(Value::Null, text)
 }
-fn optional_ref(value: Option<EntityId>) -> Value {
+pub(crate) fn optional_ref(value: Option<EntityId>) -> Value {
     value.map_or(Value::Null, Value::Ref)
 }
 fn enumeration(value: &str) -> Value {
     Value::Enum(Arc::from(value))
 }
-fn refs(values: &[EntityId]) -> Value {
+pub(crate) fn refs(values: &[EntityId]) -> Value {
     Value::List(values.iter().copied().map(Value::Ref).collect())
 }

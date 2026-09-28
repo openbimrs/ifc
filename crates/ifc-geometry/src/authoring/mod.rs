@@ -26,6 +26,7 @@ mod brep;
 mod connection;
 mod csg;
 mod curve;
+mod grid;
 mod placement;
 mod profile;
 mod profile2;
@@ -61,6 +62,7 @@ pub use curve::{
     polynomial_curve, rational_bspline_curve_with_knots, segmented_reference_curve, trimmed_curve,
     vector, KnotVector, PolyCurveSegment, PolynomialCoefficients,
 };
+pub use grid::{grid, grid_with_owner_history};
 pub use placement::{axis2_placement_2d, axis2_placement_3d, cartesian_point, direction};
 pub use profile::{
     arbitrary_closed_profile, circle_profile, polyline, rectangle_profile, ProfileType,
@@ -102,7 +104,7 @@ pub use tessellation::{
     triangulated_irregular_network, TriangulatedExtras,
 };
 pub use transform::{
-    grid, mapped_item, representation_map, shape_aspect, topology_representation,
+    mapped_item, representation_map, shape_aspect, topology_representation,
     transformation_operator_2d, transformation_operator_2d_non_uniform, transformation_operator_3d,
     transformation_operator_3d_non_uniform, Transform,
 };

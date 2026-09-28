@@ -7,11 +7,13 @@
 mod authoring;
 mod error;
 mod projection;
+mod release;
 mod view;
 
 pub use authoring::{
-    associate_approval, create_approval, relate_approvals, relate_resource_approval,
-    ApprovalAssociationDraft, ApprovalDraft, ApprovalRelationshipDraft, ResourceApprovalDraft,
+    associate_approval, associate_approval_with_owner_history, create_approval, relate_approvals,
+    relate_resource_approval, ApprovalAssociationDraft, ApprovalDraft, ApprovalRelationshipDraft,
+    ResourceApprovalDraft,
 };
 pub use error::{ApprovalError, ApprovalResult};
 pub use projection::{

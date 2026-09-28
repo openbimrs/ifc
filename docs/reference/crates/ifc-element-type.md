@@ -33,11 +33,15 @@ Splitting them across domain crates would copy the same rule and
 the same slot table into a dozen places.
 
 The catalogue in `table` is generated from the schema by
-`scripts/gen-element-types.py`; `create_type` is the writer.
+`scripts/gen-element-types.py`; `create_type` is the writer. It takes
+no model and writes the catalogue's IFC4X3 layout; `create_type_in`
+and `create_type_with_owner_history` write the model's declared
+release, which IFC2X3 needs for its required `OwnerHistory` (#202).
 
 ## Depends on
 
 - [`ifc-model`](./ifc-model)
+- [`ifc-schema`](./ifc-schema)
 
 ## Changes
 

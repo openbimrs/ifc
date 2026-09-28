@@ -3,7 +3,9 @@
 //! `IfcApproval` and the two approval relationships are resources, not
 //! `IfcRoot` subtypes, so they carry no `GlobalId`; never invent one for
 //! them. Only `IfcRelAssociatesApproval` is rooted, and its caller-supplied
-//! GlobalId is validated before staging.
+//! GlobalId is validated before staging. It is the one writer bound to the
+//! model's declared release (see `release.rs`), because it is the one that
+//! carries `IfcRoot.OwnerHistory`, which IFC2X3 requires.
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -11,6 +13,9 @@ use std::sync::Arc;
 use ifc_model::guid::Guid;
 use ifc_model::{Edit, Entity, EntityId, Model, Transaction, Value};
 
+use ifc_schema::Schema;
+
+use crate::release::{bind, require_owner_history};
 use crate::{ApprovalError, ApprovalResult};
 
 const APPROVAL: &str = "IFCAPPROVAL";
@@ -172,11 +177,62 @@ pub fn relate_resource_approval(
 }
 
 /// Validate and stage one rooted approval association.
+///
+/// # Release
+///
+/// Bound to the model's declared release (#202): the record is laid out by
+/// attribute name from that release's table, and its references are checked
+/// against it (`RelatedObjects` is `IfcDefinitionSelect` in IFC4 and IFC4X3,
+/// `IfcRoot` restricted by WR21 in IFC2X3). `OwnerHistory` is left `$`,
+/// which IFC4 and IFC4X3 allow and IFC2X3 does not, so an IFC2X3 model is
+/// refused with [`ApprovalError::AuthoringRequired`]. Use
+/// [`associate_approval_with_owner_history`] there.
+///
+/// # Errors
+///
+/// A malformed GlobalId, a relating approval that is not an `IfcApproval`,
+/// an empty, duplicated or out-of-type `RelatedObjects`; a model that binds
+/// no single known release ([`ApprovalError::MultipleSchemas`],
+/// [`ApprovalError::UnsupportedSchema`]), and an IFC2X3 model. Nothing is
+/// staged on an error.
 pub fn associate_approval(
     tx: &mut Transaction,
     model: &Model,
     draft: ApprovalAssociationDraft<'_>,
 ) -> ApprovalResult<EntityId> {
+    associate(tx, model, draft, None)
+}
+
+/// [`associate_approval`] with a caller-supplied `IfcOwnerHistory`, which
+/// IFC2X3 requires on every `IfcRoot`.
+///
+/// `owner_history` must be in the model or staged earlier on `tx`, and must
+/// be an `IfcOwnerHistory`; one is never invented here (build it with
+/// `ifc-author`). In IFC4 and IFC4X3 the reference fills the optional slot.
+///
+/// # Errors
+///
+/// Those of [`associate_approval`] except the IFC2X3 refusal, and
+/// [`ApprovalError::UnknownEntity`] for an `owner_history` that does not
+/// resolve or [`ApprovalError::AuthoringReferenceType`] for one that is not
+/// an `IfcOwnerHistory`. Nothing is staged on an error.
+pub fn associate_approval_with_owner_history(
+    tx: &mut Transaction,
+    model: &Model,
+    draft: ApprovalAssociationDraft<'_>,
+    owner_history: EntityId,
+) -> ApprovalResult<EntityId> {
+    associate(tx, model, draft, Some(owner_history))
+}
+
+/// Stage an `IfcRelAssociatesApproval`; `None` leaves `OwnerHistory` `$`.
+fn associate(
+    tx: &mut Transaction,
+    model: &Model,
+    draft: ApprovalAssociationDraft<'_>,
+    owner_history: Option<EntityId>,
+) -> ApprovalResult<EntityId> {
+    let layout = bind(model)?;
     if Guid::parse(draft.global_id).is_none() {
         return Err(ApprovalError::AuthoringInvalid {
             entity: ASSIGNMENT,
@@ -184,27 +240,54 @@ pub fn associate_approval(
             value: draft.global_id.into(),
         });
     }
-    validate_target(tx, model, draft.relating_approval, APPROVAL)?;
-    validate_set(
+    validate_target_in(
+        layout.schema(),
         tx,
         model,
-        ASSIGNMENT,
-        "RelatedObjects",
-        draft.related_objects,
-        "IfcDefinitionSelect",
-        None,
+        draft.relating_approval,
+        APPROVAL,
     )?;
-    Ok(tx.create(Entity::new(
+    if draft.related_objects.is_empty() {
+        return Err(ApprovalError::AuthoringInvalid {
+            entity: ASSIGNMENT,
+            attribute: "RelatedObjects",
+            value: "empty SET [1:?]".into(),
+        });
+    }
+    let mut seen = HashSet::new();
+    for &target in draft.related_objects {
+        if !seen.insert(target) {
+            return Err(ApprovalError::AuthoringInvalid {
+                entity: ASSIGNMENT,
+                attribute: "RelatedObjects",
+                value: format!("duplicate {target}"),
+            });
+        }
+        let actual =
+            final_type(tx, model, target).ok_or(ApprovalError::UnknownEntity { id: target })?;
+        if !layout.is_definition(actual) {
+            return Err(ApprovalError::AuthoringReferenceType {
+                target,
+                expected: "IfcDefinitionSelect",
+                actual: actual.into(),
+            });
+        }
+    }
+    if let Some(owner_history) = owner_history {
+        require_owner_history(tx, model, owner_history)?;
+    }
+    let record = layout.named_record(
         ASSIGNMENT,
         vec![
-            text(draft.global_id),
-            Value::Null,
-            optional_text(draft.name),
-            optional_text(draft.description),
-            refs(draft.related_objects),
-            Value::Ref(draft.relating_approval),
+            ("GlobalId", text(draft.global_id)),
+            ("OwnerHistory", optional_ref(owner_history)),
+            ("Name", optional_text(draft.name)),
+            ("Description", optional_text(draft.description)),
+            ("RelatedObjects", refs(draft.related_objects)),
+            ("RelatingApproval", Value::Ref(draft.relating_approval)),
         ],
-    )))
+    )?;
+    Ok(tx.create(record))
 }
 
 fn validate_set(
@@ -250,9 +333,20 @@ fn validate_target(
     target: EntityId,
     expected: &'static str,
 ) -> ApprovalResult<()> {
+    validate_target_in(ifc_schema::ifc4(), tx, model, target, expected)
+}
+
+/// [`validate_target`] against `schema` instead of the IFC4 table.
+fn validate_target_in(
+    schema: &Schema,
+    tx: &Transaction,
+    model: &Model,
+    target: EntityId,
+    expected: &'static str,
+) -> ApprovalResult<()> {
     let actual =
         final_type(tx, model, target).ok_or(ApprovalError::UnknownEntity { id: target })?;
-    if ifc_schema::ifc4().accepts_type(expected, actual) {
+    if schema.accepts_type(expected, actual) {
         Ok(())
     } else {
         Err(ApprovalError::AuthoringReferenceType {

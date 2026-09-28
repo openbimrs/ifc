@@ -12,16 +12,24 @@
 //! the same slot table into a dozen places.
 //!
 //! The catalogue in [`table`] is generated from the schema by
-//! `scripts/gen-element-types.py`; [`create_type`] is the writer.
+//! `scripts/gen-element-types.py`; [`create_type`] is the writer. It takes
+//! no model and writes the catalogue's IFC4X3 layout; [`create_type_in`]
+//! and [`create_type_with_owner_history`] write the model's declared
+//! release, which IFC2X3 needs for its required `OwnerHistory` (#202).
 
 mod authoring;
+mod error;
+mod release;
 mod supertype;
 pub mod table;
 
-pub use authoring::{create_type, ElementTypeError, ElementTypeResult, Slot6, TypeDraft};
+pub use authoring::{
+    create_type, create_type_in, create_type_with_owner_history, Slot6, TypeDraft,
+};
+pub use error::{ElementTypeError, ElementTypeResult};
 pub use supertype::{
-    create_supertype, SupertypeDraft, SupertypeKind, ALL_SUPERTYPES, BUILT_ELEMENT_TYPE,
-    CIVIL_ELEMENT_TYPE, DEEP_FOUNDATION_TYPE, DISTRIBUTION_ELEMENT_TYPE, FURNISHING_ELEMENT_TYPE,
-    TYPE_OBJECT, TYPE_PRODUCT,
+    create_supertype, create_supertype_in, create_supertype_with_owner_history, SupertypeDraft,
+    SupertypeKind, ALL_SUPERTYPES, BUILT_ELEMENT_TYPE, CIVIL_ELEMENT_TYPE, DEEP_FOUNDATION_TYPE,
+    DISTRIBUTION_ELEMENT_TYPE, FURNISHING_ELEMENT_TYPE, TYPE_OBJECT, TYPE_PRODUCT,
 };
 pub use table::{ElementType, Family, ALL};
