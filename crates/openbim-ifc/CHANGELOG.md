@@ -25,6 +25,8 @@ everything released before per-crate changelogs began.
 
 ### Changed
 
+- The georeferencing and alignment conformance test gives its placeholder
+  `IfcPolyline` two points (`Points` is `LIST [2:?]`, checked since #111).
 - Door and window operation reads name the type-object entity per
   verified release (IFC2X3, IFC4, IFC4X3) and refuse any other with
   `ExactPropertyError::UnsupportedSchema`, instead of treating every

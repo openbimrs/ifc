@@ -429,6 +429,101 @@ mod tests {
         }
     }
 
+    /// INVERSE and UNIQUE declarations (#111), counted per release. The
+    /// IFC2X3, IFC4 and IFC4X3 figures were counted independently of this
+    /// crate from the normative EXPRESS; a bundle that dropped or duplicated
+    /// a clause fails here.
+    #[test]
+    fn inverse_and_unique_declarations_match_the_normative_counts() {
+        for (schema, inverses, unique) in [
+            (ifc2x3(), 115, 17),
+            (ifc4(), 153, 4),
+            (ifc4x1(), 158, 4),
+            (ifc4x2(), 160, 4),
+            (ifc4x3(), 165, 4),
+        ] {
+            let counted: usize = schema.entities().map(|e| e.inverses.len()).sum();
+            assert_eq!(counted, inverses, "{} INVERSE", schema.name());
+            let counted: usize = schema.entities().map(|e| e.unique_rules.len()).sum();
+            assert_eq!(counted, unique, "{} UNIQUE", schema.name());
+            // Every aggregate attribute carries its levels.
+            for entity in schema.entities() {
+                for attribute in &entity.attributes {
+                    assert_eq!(
+                        attribute.aggregate,
+                        !attribute.aggregation.is_empty(),
+                        "{} {}.{}",
+                        schema.name(),
+                        entity.name,
+                        attribute.name
+                    );
+                }
+            }
+        }
+        let root = ifc4().entity("IfcRoot").unwrap();
+        assert_eq!(root.unique_rules[0].label.as_deref(), Some("UR1"));
+        assert_eq!(root.unique_rules[0].attributes, ["GlobalId"]);
+        let object = ifc4().entity("IfcObjectDefinition").unwrap();
+        let decomposes = object
+            .inverses
+            .iter()
+            .find(|inverse| inverse.name == "Decomposes")
+            .unwrap();
+        assert_eq!(decomposes.entity, "IfcRelAggregates");
+        assert_eq!(decomposes.for_attribute, "RelatedObjects");
+        let set = decomposes.aggregation.as_ref().unwrap();
+        assert_eq!(
+            (set.kind, &set.lower, &set.upper),
+            (
+                crate::AggregateKind::Set,
+                &crate::Bound::Integer(0),
+                &crate::Bound::Integer(1)
+            )
+        );
+    }
+
+    /// Aggregate bounds and nesting survive, and a nested aggregate's
+    /// `type_name` is its innermost element type (#111, #215).
+    #[test]
+    fn aggregate_bounds_and_nesting_are_bundled() {
+        use crate::{AggregateKind, Bound};
+        let coords = ifc4()
+            .attributes("IfcCartesianPointList3D")
+            .into_iter()
+            .find(|attribute| attribute.name == "CoordList")
+            .unwrap()
+            .clone();
+        assert_eq!(coords.type_name, "IfcLengthMeasure");
+        assert_eq!(coords.aggregation.len(), 2);
+        assert_eq!(coords.aggregation[0].kind, AggregateKind::List);
+        assert_eq!(coords.aggregation[0].lower, Bound::Integer(1));
+        assert_eq!(coords.aggregation[0].upper, Bound::Unbounded);
+        assert_eq!(coords.aggregation[1].lower, Bound::Integer(3));
+        assert_eq!(coords.aggregation[1].upper, Bound::Integer(3));
+
+        let point = ifc2x3()
+            .attributes("IfcCartesianPoint")
+            .into_iter()
+            .find(|attribute| attribute.name == "Coordinates")
+            .unwrap()
+            .clone();
+        assert_eq!(point.type_name, "IfcLengthMeasure");
+        assert_eq!(point.aggregation.len(), 1);
+        assert_eq!(
+            (&point.aggregation[0].lower, &point.aggregation[0].upper),
+            (&Bound::Integer(1), &Bound::Integer(3))
+        );
+
+        let polyline = ifc4()
+            .attributes("IfcPolyLoop")
+            .into_iter()
+            .find(|attribute| attribute.name == "Polygon")
+            .unwrap()
+            .clone();
+        assert!(polyline.aggregation[0].unique);
+        assert_eq!(polyline.aggregation[0].lower, Bound::Integer(3));
+    }
+
     /// IFC4X1 and IFC4X2 are their own tables, not a paste of a neighbour:
     /// each count differs from IFC4 and IFC4X3, and each carries the
     /// entities its release introduced and none its successor added.

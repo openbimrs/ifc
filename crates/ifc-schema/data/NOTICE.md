@@ -26,10 +26,13 @@ Each file is a compact binary table, written by `tools/generate.rs`, of the
 structure a STEP reader and a validator must agree with:
 
 - entity names, supertypes and abstractness;
-- explicit attributes in declaration order: name, declared type name,
-  optional flag, aggregate flag;
+- explicit attributes in declaration order: name, declared (innermost)
+  type name, optional flag, and each aggregation level's kind, bounds and
+  uniqueness;
 - the names of derived attributes;
 - WHERE rules by **label** only;
+- INVERSE attributes (name, inverse entity and attribute, cardinality) and
+  UNIQUE rules (label and attribute names);
 - defined types, enumeration items and select members.
 
 ## Why redistribution is permitted

@@ -12,8 +12,30 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- Aggregate checks from the schema's bounds (#111): a level outside its
+  declared size (`structure.aggregate.too_few`,
+  `structure.aggregate.too_many`; `ARRAY [l:u]` needs exactly u-l+1), an
+  inner level of a nested aggregate that is not an aggregate
+  (`structure.aggregate.nesting`), and a repeated element in a `SET` or
+  `UNIQUE` level (`structure.aggregate.duplicate`). The members of a
+  `LIST OF LIST` are now type-checked against the innermost element type
+  (#215).
+- Every `UNIQUE` clause of the declared release is checked across the
+  declaring entity and its subtypes (`structure.unique.violation`), except
+  `IfcRoot.UR1`, which stays `global.UniqueGlobalId`.
+
 ### Changed (breaking)
 
+- `structure::duplicate_global_ids` and its rule id
+  `structure.unique.duplicate_global_id` are removed: the function
+  duplicated `global.UniqueGlobalId` and `validate` never ran it. Its
+  module now checks the release's UNIQUE clauses (`structure::unique_rules`,
+  run by `validate`).
+- No registered rule claims to need aggregate bounds any more:
+  `IfcPolyLoop.WR21` and `IfcPolyLoop.AllPointsSameDim` are unsupported
+  for needing an expression evaluator.
 - `Support` is `#[non_exhaustive]`: a match needs a wildcard arm.
 - `Finding` is `#[non_exhaustive]`; it can no longer be built with a struct
   literal outside the crate.

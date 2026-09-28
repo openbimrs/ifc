@@ -141,13 +141,14 @@ for rule in RULES {
 
 <!-- /SNIPPET -->
 
+Aggregate bounds, nested aggregates and the release's `UNIQUE` clauses are
+checked structurally (`structure.aggregate.*`, `structure.unique.violation`).
 The unsupported categories, each with a registered example on the
 [coverage page](/coverage#validation):
 
 | Category | Why it is not evaluated |
 | --- | --- |
 | Arbitrary EXPRESS `WHERE` expressions | There is no expression evaluator; only predicates provable from direct structure and scalars are implemented natively. |
-| Aggregate bounds (`LIST [3:?]`) | The schema parser keeps whether an attribute is an aggregate, but not its bounds. |
 | `INVERSE` semantics | Validation does not derive inverse relationships, so a rule whose form in some release depends on one is unsupported in every release. |
 | Geometric consistency | Validation does not evaluate geometry. |
 

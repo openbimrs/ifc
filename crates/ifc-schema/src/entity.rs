@@ -1,6 +1,89 @@
 //! Entity descriptors used by the IFC schema registry.
 
-use crate::attribute::Attribute;
+use crate::attribute::{Aggregation, Attribute};
+
+/// One `INVERSE` attribute: `Name : SET [0:1] OF Entity FOR Attribute;`.
+///
+/// Inverse attributes occupy no Part 21 slot; they state how many instances
+/// of `entity` may point at this one through `for_attribute`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct InverseAttribute {
+    /// Declared name, unqualified.
+    pub name: String,
+    /// The supertype named when a subtype redeclares an inherited inverse
+    /// (`SELF\X.Name : ...`); `None` for a new inverse attribute.
+    pub redeclares: Option<String>,
+    /// The entity whose attribute points back at this one.
+    pub entity: String,
+    /// The attribute named after `FOR`, as written.
+    pub for_attribute: String,
+    /// `SET` or `BAG` with its bounds; `None` for a single-valued inverse.
+    pub aggregation: Option<Aggregation>,
+}
+
+impl InverseAttribute {
+    /// Creates a single-valued inverse attribute.
+    #[must_use]
+    pub fn new(
+        name: impl Into<String>,
+        entity: impl Into<String>,
+        for_attribute: impl Into<String>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            redeclares: None,
+            entity: entity.into(),
+            for_attribute: for_attribute.into(),
+            aggregation: None,
+        }
+    }
+
+    /// Marks the inverse a redeclaration of `supertype`'s.
+    #[must_use]
+    pub fn redeclaring(mut self, supertype: impl Into<String>) -> Self {
+        self.redeclares = Some(supertype.into());
+        self
+    }
+
+    /// Makes the inverse an aggregate (`SET` or `BAG`).
+    #[must_use]
+    pub fn with_aggregation(mut self, aggregation: Aggregation) -> Self {
+        self.aggregation = Some(aggregation);
+        self
+    }
+}
+
+/// One `UNIQUE` rule: the named attributes are unique, jointly, across
+/// every instance of the declaring entity and its subtypes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct UniqueRule {
+    /// Rule label, e.g. `UR1`; `None` when the rule is unlabelled.
+    pub label: Option<String>,
+    /// Attribute names as written; a qualified name (`SELF\X.Y`) is kept.
+    pub attributes: Vec<String>,
+}
+
+impl UniqueRule {
+    /// Creates a labelled rule over `attributes`.
+    #[must_use]
+    pub fn new(label: impl Into<String>, attributes: Vec<String>) -> Self {
+        Self {
+            label: Some(label.into()),
+            attributes,
+        }
+    }
+
+    /// Creates an unlabelled rule over `attributes`.
+    #[must_use]
+    pub const fn unlabelled(attributes: Vec<String>) -> Self {
+        Self {
+            label: None,
+            attributes,
+        }
+    }
+}
 
 /// One `WHERE` rule: a named constraint an instance must satisfy.
 ///
@@ -31,8 +114,8 @@ impl WhereRule {
 /// One structural entity declaration.
 ///
 /// `#[non_exhaustive]`: build one with [`EntityDef::new`] and the builder
-/// methods. Declaration facts not yet recorded (INVERSE and UNIQUE clauses,
-/// aggregate bounds) are added as new fields without breaking readers.
+/// methods. Declaration facts not yet recorded are added as new fields
+/// without breaking readers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct EntityDef {
@@ -58,6 +141,14 @@ pub struct EntityDef {
     /// `WHERE` rules declared by this entity (not inherited ones), in
     /// declaration order.
     pub where_rules: Vec<WhereRule>,
+    /// `INVERSE` attributes declared by this entity, in declaration order.
+    /// Empty in a table written before they were recorded (artifact format
+    /// 1 or 2).
+    pub inverses: Vec<InverseAttribute>,
+    /// `UNIQUE` rules declared by this entity (not inherited ones), in
+    /// declaration order. Empty in a table written before they were
+    /// recorded (artifact format 1 or 2).
+    pub unique_rules: Vec<UniqueRule>,
 }
 
 impl EntityDef {
@@ -71,7 +162,23 @@ impl EntityDef {
             attributes: Vec::new(),
             derived: Vec::new(),
             where_rules: Vec::new(),
+            inverses: Vec::new(),
+            unique_rules: Vec::new(),
         }
+    }
+
+    /// Appends an `INVERSE` attribute in declaration order.
+    #[must_use]
+    pub fn with_inverse(mut self, inverse: InverseAttribute) -> Self {
+        self.inverses.push(inverse);
+        self
+    }
+
+    /// Appends a `UNIQUE` rule in declaration order.
+    #[must_use]
+    pub fn with_unique_rule(mut self, rule: UniqueRule) -> Self {
+        self.unique_rules.push(rule);
+        self
     }
 
     /// Appends a direct supertype, after any already declared.

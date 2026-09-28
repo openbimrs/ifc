@@ -14,6 +14,13 @@ everything released before per-crate changelogs began.
 
 ### Changed (breaking)
 
+- Artifact format 3 records the facts above; format 1 and 2 artifacts
+  still decode, with those facts empty.
+- A nested aggregate attribute's `type_name` is its innermost element
+  type (`IfcLengthMeasure` for `LIST OF LIST OF IfcLengthMeasure`), where
+  the old extractor recorded the inner keyword `LIST`.
+- The `express` and `generation` features use `openbim-step` `=0.10.0`
+  (the runtime links none).
 - One cargo feature per bundled release (#112): `ifc2x3`, `ifc4`, `ifc4x1`,
   `ifc4x2` and `ifc4x3`, all in `default`, so a default build bundles every
   release as before. Each accessor (`ifc2x3()`, `ifc4()`, ...) exists only
@@ -65,6 +72,15 @@ everything released before per-crate changelogs began.
 
 ### Added
 
+- Aggregate bounds, nested aggregation, INVERSE and UNIQUE (#111):
+  `Attribute::aggregation` (levels outermost first, each an `Aggregation`
+  with `AggregateKind`, lower and upper `Bound`, `unique`,
+  `optional_elements`), `EntityDef::inverses` (`InverseAttribute`) and
+  `EntityDef::unique_rules` (`UniqueRule`), with builders. Additive: the
+  types were already `#[non_exhaustive]`. All five bundled tables are
+  regenerated with them: 115/153/158/160/165 INVERSE and 17/4/4/4/4
+  UNIQUE declarations for IFC2X3/IFC4/IFC4X1/IFC4X2/IFC4X3, pinned by
+  tests.
 - `NotBundled`, `SchemaVersion::is_bundled()` and
   `SchemaVersion::feature_name()`.
 - IFC4X1 FINAL and IFC4X2 FINAL (#33): bundled tables

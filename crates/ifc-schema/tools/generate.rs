@@ -8,9 +8,10 @@
 //! ifc-schema-generate ifc4x3 references/ifc-spec/ifc4x3-add2/IFC4X3_ADD2.exp
 //! ```
 //!
-//! The artifact records structure only: names, supertypes, attributes and
-//! their types, derived-attribute names, enumerations, selects, and each
-//! WHERE rule's label. It never records a WHERE rule's expression. The
+//! The artifact records structure only: names, supertypes, attributes with
+//! their types and aggregation bounds, derived-attribute names, INVERSE
+//! attributes, UNIQUE rules, enumerations, selects, and each WHERE rule's
+//! label. It never records a WHERE rule's expression. The
 //! schemas are CC BY-ND 4.0, and the expressions are the one part of them
 //! that is authored text rather than the interface a STEP reader must agree
 //! with; nothing in this repository evaluates them. A test that needs the

@@ -903,7 +903,7 @@ version = "0.2.2"
 dependencies = [
  "ahash",
  "bincode",
- "openbim-step",
+ "openbim-step 0.10.0",
  "thiserror",
 ]
 
@@ -922,7 +922,7 @@ version = "0.3.0"
 dependencies = [
  "ifc-model",
  "memmap2",
- "openbim-step",
+ "openbim-step 0.8.0",
  "thiserror",
 ]
 
@@ -1168,6 +1168,16 @@ name = "openbim-step"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ac271e7fe420285c2b6a73dc37b55ce8ea6aaf78e7b5c01e06372fdc3b58f2f"
+dependencies = [
+ "encoding_rs",
+ "memchr",
+]
+
+[[package]]
+name = "openbim-step"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "453137855c5567e04d212fb9256e67ef9cde6a6ae80ecd42e4ffe83a6b5b7ac6"
 dependencies = [
  "encoding_rs",
  "memchr",

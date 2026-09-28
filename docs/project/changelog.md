@@ -562,6 +562,13 @@ lockstep -- is archived in the
 
 ### Changed (breaking)
 
+- Artifact format 3 records the facts above; format 1 and 2 artifacts
+  still decode, with those facts empty.
+- A nested aggregate attribute's `type_name` is its innermost element
+  type (`IfcLengthMeasure` for `LIST OF LIST OF IfcLengthMeasure`), where
+  the old extractor recorded the inner keyword `LIST`.
+- The `express` and `generation` features use `openbim-step` `=0.10.0`
+  (the runtime links none).
 - One cargo feature per bundled release (#112): `ifc2x3`, `ifc4`, `ifc4x1`,
   `ifc4x2` and `ifc4x3`, all in `default`, so a default build bundles every
   release as before. Each accessor (`ifc2x3()`, `ifc4()`, ...) exists only
@@ -613,6 +620,15 @@ lockstep -- is archived in the
 
 ### Added
 
+- Aggregate bounds, nested aggregation, INVERSE and UNIQUE (#111):
+  `Attribute::aggregation` (levels outermost first, each an `Aggregation`
+  with `AggregateKind`, lower and upper `Bound`, `unique`,
+  `optional_elements`), `EntityDef::inverses` (`InverseAttribute`) and
+  `EntityDef::unique_rules` (`UniqueRule`), with builders. Additive: the
+  types were already `#[non_exhaustive]`. All five bundled tables are
+  regenerated with them: 115/153/158/160/165 INVERSE and 17/4/4/4/4
+  UNIQUE declarations for IFC2X3/IFC4/IFC4X1/IFC4X2/IFC4X3, pinned by
+  tests.
 - `NotBundled`, `SchemaVersion::is_bundled()` and
   `SchemaVersion::feature_name()`.
 - IFC4X1 FINAL and IFC4X2 FINAL (#33): bundled tables
@@ -850,8 +866,30 @@ lockstep -- is archived in the
 
 ### ifc-validate
 
+### Added
+
+- Aggregate checks from the schema's bounds (#111): a level outside its
+  declared size (`structure.aggregate.too_few`,
+  `structure.aggregate.too_many`; `ARRAY [l:u]` needs exactly u-l+1), an
+  inner level of a nested aggregate that is not an aggregate
+  (`structure.aggregate.nesting`), and a repeated element in a `SET` or
+  `UNIQUE` level (`structure.aggregate.duplicate`). The members of a
+  `LIST OF LIST` are now type-checked against the innermost element type
+  (#215).
+- Every `UNIQUE` clause of the declared release is checked across the
+  declaring entity and its subtypes (`structure.unique.violation`), except
+  `IfcRoot.UR1`, which stays `global.UniqueGlobalId`.
+
 ### Changed (breaking)
 
+- `structure::duplicate_global_ids` and its rule id
+  `structure.unique.duplicate_global_id` are removed: the function
+  duplicated `global.UniqueGlobalId` and `validate` never ran it. Its
+  module now checks the release's UNIQUE clauses (`structure::unique_rules`,
+  run by `validate`).
+- No registered rule claims to need aggregate bounds any more:
+  `IfcPolyLoop.WR21` and `IfcPolyLoop.AllPointsSameDim` are unsupported
+  for needing an expression evaluator.
 - `Support` is `#[non_exhaustive]`: a match needs a wildcard arm.
 - `Finding` is `#[non_exhaustive]`; it can no longer be built with a struct
   literal outside the crate.
@@ -887,6 +925,8 @@ lockstep -- is archived in the
 
 ### Changed
 
+- The georeferencing and alignment conformance test gives its placeholder
+  `IfcPolyline` two points (`Points` is `LIST [2:?]`, checked since #111).
 - Door and window operation reads name the type-object entity per
   verified release (IFC2X3, IFC4, IFC4X3) and refuse any other with
   `ExactPropertyError::UnsupportedSchema`, instead of treating every

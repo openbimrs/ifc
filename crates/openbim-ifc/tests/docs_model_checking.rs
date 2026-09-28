@@ -177,7 +177,8 @@ fn unsupported_rules_are_reported_not_passed() -> TestResult {
             _ => None,
         })
         .collect();
-    for category in ["INVERSE", "aggregate bounds", "EXPRESS expression"] {
+    // Aggregate bounds left this list in #111: they are checked now.
+    for category in ["INVERSE", "EXPRESS expression"] {
         assert!(
             reasons.iter().any(|reason| reason.contains(category)),
             "{category}: {reasons:?}"

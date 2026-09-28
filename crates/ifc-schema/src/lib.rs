@@ -84,7 +84,7 @@ pub use artifact::decode_schema as artifact_decode_schema;
 pub use artifact::encode_schema as artifact_encode_schema;
 #[cfg(feature = "artifact")]
 pub use artifact::BundledSchemaError;
-pub use attribute::Attribute;
+pub use attribute::{AggregateKind, Aggregation, Attribute, Bound};
 #[cfg(feature = "ifc2x3")]
 pub use bundled::ifc2x3;
 #[cfg(feature = "ifc4")]
@@ -96,7 +96,7 @@ pub use bundled::ifc4x2;
 #[cfg(feature = "ifc4x3")]
 pub use bundled::ifc4x3;
 pub use bundled::{for_version, NotBundled};
-pub use entity::{EntityDef, WhereRule};
+pub use entity::{EntityDef, InverseAttribute, UniqueRule, WhereRule};
 pub use export::{
     write_direct_structural_catalog, write_structural_catalog, StructuralCatalogSummary,
 };
