@@ -12,6 +12,22 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-28
+
+### Changed (breaking)
+
+- `properties` re-exports `ifc-properties` 0.5.0, whose breaking changes
+  pass through (see that crate's changelog):
+  - `Quantity` and `QuantityKind` are `#[non_exhaustive]`, and gain
+    `Quantity::Unresolved` for a quantity without a readable value (#138)
+    and `QuantityKind::Number` for IFC4X3 `IfcQuantityNumber`;
+  - `create_quantity` / `create_quantity_with` take the `&Model` they write
+    into and write its release's layout;
+  - `PropertyTemplate` gains fields and is `#[non_exhaustive]` (#108).
+- Requires `ifc-spatial` 0.2.3 (`referenced_elements`, release-bound
+  container classification) and `ifc-geometry` 0.4.3
+  (`BodyItem::item_world`, #185).
+
 ### Added
 
 - `spatial_properties(model)` (features `spatial` and `properties`): every
@@ -216,7 +232,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.7.3...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.8.0...HEAD
+[0.8.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.8.0
 [0.7.3]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.7.3
 [0.7.2]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.7.2
 [0.7.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.7.1

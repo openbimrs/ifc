@@ -20,6 +20,15 @@ everything released before per-crate changelogs began.
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
 
+## [0.2.4] - 2026-09-27
+
+Maintenance release from `maint/ifc-schema-0.2`; the code is unchanged since
+0.2.3.
+
+### Added
+
+- A crate README, which is the crates.io page.
+
 ## [0.2.3] - 2026-09-27
 
 Maintenance release from `maint/ifc-schema-0.2`: the 0.2.2 code with only
@@ -62,7 +71,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-schema-v0.2.3...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-schema-v0.2.4...HEAD
+[0.2.4]: https://github.com/openbimrs/ifc/releases/tag/ifc-schema-v0.2.4
 [0.2.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-schema-v0.2.3
 [0.2.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-schema-v0.2.2
 [0.2.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-schema-v0.2.1

@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-09-28
+
 ### Added
 
 - `BodyItem::item_world`: the frame each described item is placed in, the
@@ -435,7 +437,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.4.2...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.4.3...HEAD
+[0.4.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.4.3
 [0.4.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.4.2
 [0.4.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.4.1
 [0.4.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.4.0
