@@ -35,7 +35,7 @@ conflicts. [Coverage](/coverage) measures what each crate does instead.
 | --- | ---: | --- |
 | `ifc-alignment` | 12 | <span class="status-partial">Partial</span> |
 | `ifc-approval` | 0 | <span class="status-implemented">Implemented</span> |
-| `ifc-author` | 3 | <span class="status-implemented">Implemented</span> |
+| `ifc-author` | 2 | <span class="status-implemented">Implemented</span> |
 | `ifc-classification` | 4 | <span class="status-implemented">Implemented</span> |
 | `ifc-constraint` | 0 | <span class="status-implemented">Implemented</span> |
 | `ifc-control` | 0 | <span class="status-implemented">Implemented</span> |

@@ -60,16 +60,58 @@ fn describe(model: &Model, id: EntityId) -> String {
     )
 }
 
+/// A finding a sibling issue is fixing, tolerated in exactly one test.
+///
+/// Matched by rule id, entity type and attribute, and by how many times it
+/// occurs. An entry that no longer matches exactly fails the test as stale:
+/// the fix that removes the finding must delete its entry, and nothing else
+/// can hide behind it.
+struct Known {
+    rule: &'static str,
+    entity: &'static str,
+    attribute: &'static str,
+    count: usize,
+    issue: &'static str,
+}
+
 /// Validate and fail with the findings, not just a boolean.
 ///
 /// `Unsupported` findings are not failures: they mark rules the
 /// validator declines to evaluate, such as those needing geometry.
 fn assert_conformant(model: &Model, what: &str) {
+    assert_conformant_except(model, what, &[]);
+}
+
+/// [`assert_conformant`], tolerating exactly the `known` findings.
+fn assert_conformant_except(model: &Model, what: &str, known: &[Known]) {
     let report = ifc_validate::validate(model, ifc4());
+    let mut matched = vec![0usize; known.len()];
     let errors: Vec<String> = report
         .sorted()
         .iter()
         .filter(|finding| finding.severity == ifc_validate::Severity::Error)
+        .filter(|finding| {
+            let ifc_validate::Path::Attribute {
+                entity,
+                name: Some(name),
+                ..
+            } = &finding.path
+            else {
+                return true;
+            };
+            let Some(record) = model.get(*entity) else {
+                return true;
+            };
+            let hit = known.iter().position(|entry| {
+                entry.rule == finding.rule
+                    && record.type_name.eq_ignore_ascii_case(entry.entity)
+                    && name.eq_ignore_ascii_case(entry.attribute)
+            });
+            if let Some(index) = hit {
+                matched[index] += 1;
+            }
+            hit.is_none()
+        })
         .map(|finding| {
             let where_ = match &finding.path {
                 ifc_validate::Path::Entity(id) => describe(model, *id),
@@ -92,6 +134,30 @@ fn assert_conformant(model: &Model, what: &str) {
         "{what} is not schema-conformant:\n  {}",
         errors.join("\n  ")
     );
+    let stale: Vec<String> = known
+        .iter()
+        .zip(&matched)
+        .filter(|(entry, found)| entry.count != **found)
+        .map(|(entry, found)| {
+            format!(
+                "{} {}.{} ({}): expected {} occurrences, found {found}",
+                entry.rule, entry.entity, entry.attribute, entry.issue, entry.count
+            )
+        })
+        .collect();
+    assert!(
+        stale.is_empty(),
+        "{what}: stale allowlist entry, remove or correct it:\n  {}",
+        stale.join("\n  ")
+    );
+}
+
+/// A number as the typed parameter a SELECT slot requires.
+fn measure(type_name: &str, value: f64) -> Value {
+    Value::Typed {
+        type_name: type_name.into(),
+        value: Box::new(Value::Real(value)),
+    }
 }
 
 /// Stage a minimal product for relationships to point at.
@@ -135,21 +201,34 @@ fn properties_authoring_is_conformant() {
     let exponents = add_dimensional_exponents(&mut tx, [1, 0, 0, 0, 0, 0, 0]);
     add_context_dependent_unit(&mut tx, exponents, "LENGTHUNIT", "Module")
         .expect("context dependent unit");
-    add_measure_with_unit(&mut tx, Value::Real(25.4), metre).expect("measure with unit");
+    // `IfcValue` slots take the typed form (ISO 10303-21:2016 §12.1.8); the
+    // property writers store the value they are given.
+    add_measure_with_unit(&mut tx, measure("IFCLENGTHMEASURE", 25.4), metre)
+        .expect("measure with unit");
     add_monetary_unit(&mut tx, MonetaryUnitDraft { currency: "EUR" }).expect("monetary unit");
 
     let height =
         add_property_single_value(&mut tx, "Height", None, None, None).expect("single value");
     let range = add_property_bounded_value(&mut tx, "Range", None, None, None, None, None)
         .expect("bounded value");
-    let listed =
-        add_property_list_value(&mut tx, "Layers", None, Some(vec![Value::Real(1.0)]), None)
-            .expect("list value");
+    let listed = add_property_list_value(
+        &mut tx,
+        "Layers",
+        None,
+        Some(vec![measure("IFCLENGTHMEASURE", 1.0)]),
+        None,
+    )
+    .expect("list value");
     let referenced =
         add_property_reference_value(&mut tx, "Doc", None, None, None).expect("reference value");
-    let enumerated =
-        add_property_enumerated_value(&mut tx, "Grade", None, Some(vec![Value::Real(2.0)]), None)
-            .expect("enumerated value");
+    let enumerated = add_property_enumerated_value(
+        &mut tx,
+        "Grade",
+        None,
+        Some(vec![measure("IFCREAL", 2.0)]),
+        None,
+    )
+    .expect("enumerated value");
 
     let count = create_quantity(&mut tx, &model, QuantityKind::Count, "Doors", 4.0).expect("count");
     let area = create_quantity_with(
@@ -446,7 +525,21 @@ fn georeferencing_and_alignment_authoring_is_conformant() {
     .expect("stationing");
     tx.commit(&mut model).expect("commit");
 
-    assert_conformant(&model, "georef and alignment authoring");
+    assert_conformant_except(
+        &model,
+        "georef and alignment authoring",
+        &[
+            // TODO(#201): `stationing` writes the station and the
+            // increasing-station flag bare in `NominalValue : IfcValue`.
+            Known {
+                rule: "type.select.untyped",
+                entity: "IFCPROPERTYSINGLEVALUE",
+                attribute: "NominalValue",
+                count: 2,
+                issue: "#201",
+            },
+        ],
+    );
 }
 /// `ifc-geometry` tessellation: meshes carried as indices, where the
 /// validator checks the record shape the writer produced.
@@ -651,5 +744,19 @@ fn later_geometry_authoring_is_conformant() {
     geometric_set(&mut tx, true, &[arc]).expect("curve set");
 
     tx.commit(&mut model).expect("commit");
-    assert_conformant(&model, "ifc-geometry later authoring");
+    assert_conformant_except(
+        &model,
+        "ifc-geometry later authoring",
+        &[
+            // TODO(#200): `point_on_curve` wraps `PointParameter :
+            // IfcParameterValue`, which is not a SELECT, as IFCPARAMETERVALUE.
+            Known {
+                rule: "type.typed.outside_select",
+                entity: "IFCPOINTONCURVE",
+                attribute: "PointParameter",
+                count: 1,
+                issue: "#200",
+            },
+        ],
+    );
 }

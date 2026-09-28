@@ -20,6 +20,31 @@ lockstep -- is archived in the
 
 ## [Unreleased]
 
+### ifc-author
+
+### Added
+
+- `AuthorError::ValueForm`: a value of the declared type written in the
+  form ISO 10303-21 does not use for it (#199). A typed parameter
+  (`IFCAREAMEASURE(12.5)`) is refused where the declared type is not a
+  SELECT, and a bare value where it is one, for scalars and for each member
+  of an aggregate, in `EntityBuilder` and `EntityEditor`.
+
+### Changed
+
+- `EntityEditor` re-checks every slot of the projected entity, as before, so
+  editing an entity whose untouched slots already hold a value in the wrong
+  form is now refused with `ValueForm` until that slot is rewritten.
+
+### Fixed
+
+- A typed wrapper was judged against its own type only, so any wrapper
+  passed in a slot whose declared type is not a SELECT (#199). `IFCLABEL('x')`
+  in `IfcQuantityArea.AreaValue`, or in an entity-typed slot, is now a
+  `TypeMismatch`, and so is a wrapper naming a type outside a SELECT's
+  select-list, nested SELECTs included. A declared type the tables cannot
+  resolve still accepts either form.
+
 ### ifc-schema
 
 ### Changed
@@ -29,6 +54,44 @@ lockstep -- is archived in the
   `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
   accessor for multiple inheritance; IFC schemas are single-inheritance, so
   the serialized artifact is unchanged.
+
+### ifc-validate
+
+### Added
+
+- The form of every value is checked against ISO 10303-21:2016 (#199): a
+  typed parameter is written exactly where the declared type is a SELECT
+  (§12.1.8), and the bare value everywhere else (§12.1.6, §12.1.7). Three
+  new rule ids, all errors, each pinned by adversarial fixture pairs:
+  - `type.typed.outside_select`: a typed parameter of the declared type,
+    or of a specialisation of it, where the declared type is not a SELECT.
+    `IFCAREAMEASURE(12.5)` in `IfcQuantityArea.AreaValue` is reported; it
+    used to pass because the payload was judged against the wrapper alone.
+  - `type.typed.wrong_type`: a typed parameter of another type there.
+    `IFCLABEL('x')` in `AreaValue` used to pass as well.
+  - `type.select.untyped`: a bare value that is not a reference where the
+    declared type is a SELECT, such as `NominalValue : IfcValue` written
+    `1.` instead of `IFCREAL(1.)`. Part 21 requires the typed form for every
+    SELECT, not only ambiguous ones. A SELECT of entities alone still
+    reports `type.entity.expected_reference`.
+
+  All three apply to aggregate members against the element type, and to
+  the parameter inside a typed wrapper against the wrapper's type. Whether
+  the declared type is a SELECT follows defined-type aliases, as §12.1.8
+  EXAMPLE 2 encodes a type aliasing a SELECT. They are errors, not warnings,
+  although many readers unwrap a well-typed wrapper: the file is not legal,
+  and `ifcopenshell.validate` rejects both forms. The reasoning is in the
+  `type_check` module docs.
+- `type_check::Mismatch` has the variants `TypedOutsideSelect`,
+  `TypedWrongType` and `UntypedSelectValue`.
+
+### Changed
+
+- `type.select.member` walks only nested SELECTs, never the underlying
+  type of a defined type in the select-list: §12.1.8 requires the keyword
+  to name a type the SELECT, or a SELECT nested in it, lists. `IFCRATIOMEASURE(0.5)` in an
+  `IfcColourOrFactor` slot, which lists `IfcNormalisedRatioMeasure`, is now
+  reported.
 
 ## [0.8.1] - 2026-09-28
 
