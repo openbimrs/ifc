@@ -18,6 +18,7 @@ use crate::resource::placement::axis_placement_transform;
 use crate::slots::Slots;
 use crate::solid::swept::area::{ExtrudedAreaSolidTapered, RevolvedAreaSolidTapered};
 use crate::solid::swept::directrix::{FixedReferenceSweptAreaSolid, SectionedSpine};
+use crate::solid::swept::TrimMeasure;
 use crate::transform::Transform;
 use crate::units::UnitScale;
 
@@ -414,6 +415,33 @@ fn tapered_revolution_node(
     )
 }
 
+/// A directrix sweep's trim as parameters in the directrix's own space.
+///
+/// An IFC4X3 trim may be an `IfcLengthMeasure`, a distance along the
+/// directrix (#210). Turning that into the directrix's parameter needs its
+/// arc length, which is evaluation, not lowering; and the kernel's range is a
+/// parameter range. A length trim is therefore refused as `Unsupported`,
+/// never passed on as if it were a parameter.
+pub(crate) fn directrix_parameter_trims(
+    session: &LoweringSession<'_>,
+    sweep: EntityId,
+    sweep_type: &str,
+    start: Option<TrimMeasure>,
+    end: Option<TrimMeasure>,
+) -> GeometryResult<(Option<f64>, Option<f64>)> {
+    let parameter = |trim: Option<TrimMeasure>| match trim {
+        None => Ok(None),
+        Some(TrimMeasure::Parameter(value)) => Ok(Some(value)),
+        Some(_) => Err(session.unsupported(
+            sweep,
+            sweep_type,
+            "an IfcLengthMeasure StartParam/EndParam is a distance along the directrix; \
+             lowering takes curve parameters and does not evaluate arc length",
+        )),
+    };
+    Ok((parameter(start)?, parameter(end)?))
+}
+
 /// Lower an `IfcFixedReferenceSweptAreaSolid` into a `FixedReferenceSweep`.
 ///
 /// The fixed reference is what distinguishes this from an ordinary directrix
@@ -438,15 +466,11 @@ fn fixed_reference_sweep_node(
     // StartParam/EndParam live in the DIRECTRIX's parameterisation: an angle
     // on a conic, the accumulated parametric length on a composite. Same rule
     // as IfcSweptDiskSolid; see lower_sweep_directrix.
-    let (directrix, parameter_range) = lower_sweep_directrix(
-        session,
-        id,
-        "IFCFIXEDREFERENCESWEPTAREASOLID",
-        view.directrix()?,
-        world,
-        view.start_param(),
-        view.end_param(),
-    )?;
+    const T: &str = "IFCFIXEDREFERENCESWEPTAREASOLID";
+    let (start, end) =
+        directrix_parameter_trims(session, id, T, view.start_param()?, view.end_param()?)?;
+    let (directrix, parameter_range) =
+        lower_sweep_directrix(session, id, T, view.directrix()?, world, start, end)?;
 
     let profile = lower_profile_node(session, profile_ref)?;
     let operation = session.node_for(

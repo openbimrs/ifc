@@ -242,17 +242,21 @@ fn a_terrain_network_stages_unclosed() {
 #[test]
 fn the_directrix_derived_sweep_stages() {
     use ifc_geometry::authoring::{
-        directrix_derived_reference_swept_area_solid, fixed_reference_swept_area_solid, SweepTrim,
+        directrix_derived_reference_swept_area_solid, fixed_reference_swept_area_solid_in,
+        SweepTrim,
     };
 
     let mut model = Model::default();
+    // The directrix-derived sweep is IFC4X3 only.
+    model.header_mut().schema = vec!["IFC4X3_ADD2".to_owned()];
     let mut tx = Transaction::new(&model);
     let curve = directrix(&mut tx);
     let profile = rectangle_profile(&mut tx, None, None, 1.0, 1.0).expect("profile");
     let reference = direction(&mut tx, &[0.0, 0.0, 1.0]).expect("reference");
 
-    let fixed = fixed_reference_swept_area_solid(
+    let fixed = fixed_reference_swept_area_solid_in(
         &mut tx,
+        &model,
         profile,
         None,
         curve,

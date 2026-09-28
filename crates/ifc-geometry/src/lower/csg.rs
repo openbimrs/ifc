@@ -40,6 +40,7 @@ use crate::lower::curve::lower_sweep_directrix;
 use crate::lower::profile::lower_profile_node;
 use crate::lower::session::LoweringSession;
 use crate::lower::surface::lower_surface_node;
+use crate::lower::swept::directrix_parameter_trims;
 use crate::resource::placement::axis_placement_transform;
 use crate::slots::Slots;
 use crate::solid::csg::{CsgPrimitive3D, CsgSolid};
@@ -275,16 +276,13 @@ pub fn lower_surface_curve_swept_area_solid_node(
     };
 
     let profile = lower_profile_node(session, base.swept_area()?)?;
-    // Same rule as the swept disk: see lower_sweep_directrix.
-    let (directrix, parameter_range) = lower_sweep_directrix(
-        session,
-        id,
-        "IFCSURFACECURVESWEPTAREASOLID",
-        view.directrix()?,
-        placed,
-        view.start_param(),
-        view.end_param(),
-    )?;
+    // Same rule as the swept disk: see lower_sweep_directrix. An IFC4X3
+    // length trim is refused, not read as a parameter (#210).
+    const T: &str = "IFCSURFACECURVESWEPTAREASOLID";
+    let (start, end) =
+        directrix_parameter_trims(session, id, T, view.start_param()?, view.end_param()?)?;
+    let (directrix, parameter_range) =
+        lower_sweep_directrix(session, id, T, view.directrix()?, placed, start, end)?;
     let reference_surface = lower_surface_node(session, view.reference_surface()?, placed)?;
 
     let node = session.node_for(

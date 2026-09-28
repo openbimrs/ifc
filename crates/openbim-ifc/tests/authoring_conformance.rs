@@ -480,7 +480,7 @@ fn geometry_authoring_is_conformant() {
     use ifc::geometry::authoring::{
         axis1_placement, axis2_placement_3d, block, cartesian_point, circle, cylinder, direction,
         edge_curve, face, face_outer_bound, line, manifold_solid_brep, oriented_edge, poly_loop,
-        shell, sphere, swept_disk_solid, trimmed_curve, vertex_point, BrepKind, ShellKind,
+        shell, sphere, swept_disk_solid_in, trimmed_curve, vertex_point, BrepKind, ShellKind,
         SweepTrim,
     };
 
@@ -515,7 +515,7 @@ fn geometry_authoring_is_conformant() {
     .expect("trimmed");
 
     // A swept disk over that curve.
-    swept_disk_solid(&mut tx, arc, 0.2, Some(0.1), SweepTrim::default()).expect("disk");
+    swept_disk_solid_in(&mut tx, &model, arc, 0.2, Some(0.1), SweepTrim::default()).expect("disk");
 
     // B-rep topology: the oriented edge is the DERIVE case.
     let p1 = cartesian_point(&mut tx, &[1.0, 0.0, 0.0]).expect("p1");

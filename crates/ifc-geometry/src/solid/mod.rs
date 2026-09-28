@@ -86,7 +86,7 @@ pub use surface_model::{
 pub use swept::{
     ExtrudedAreaSolid, ExtrudedAreaSolidTapered, FixedReferenceSweptAreaSolid, RevolvedAreaSolid,
     RevolvedAreaSolidTapered, SectionedSpine, SurfaceCurveSweptAreaSolid, SweptAreaSolid,
-    SweptDiskSolid, SweptDiskSolidPolygonal,
+    SweptDiskSolid, SweptDiskSolidPolygonal, TrimMeasure,
 };
 pub use tessellated::{
     IndexedPolygonalFace, IndexedPolygonalFaceWithVoids, PolygonalFaceSet, TessellatedFaceSet,

@@ -2,8 +2,9 @@
 //!
 //! Most writers here need no release: an `IfcParameterValue` attribute is
 //! declared with that defined type in IFC2X3, IFC4 and IFC4X3 alike, so its
-//! value is written bare everywhere. A few attributes change kind between
-//! releases, and only those writers take the model and bind its release:
+//! value is written bare everywhere. A few attributes change kind or
+//! optionality between releases, and only those writers take the model and
+//! bind its release:
 //!
 //! ```text
 //! IfcSurfaceCurveSweptAreaSolid.StartParam / EndParam
@@ -15,6 +16,11 @@
 //!           IfcDirectrixCurveSweptAreaSolid
 //!           = SELECT (IfcLengthMeasure, IfcParameterValue)
 //!                                       -> IFCPARAMETERVALUE(0.5)
+//!
+//! IfcSweptDiskSolid.StartParam / EndParam (#210)
+//!   IFC2X3  IfcParameterValue           (required)
+//!   IFC4    OPTIONAL IfcParameterValue
+//!   IFC4X3  OPTIONAL IfcParameterValue
 //! ```
 //!
 //! ISO 10303-21 writes a typed parameter only where the declared type is a

@@ -23,6 +23,7 @@
 
 pub mod area;
 pub mod directrix;
+pub mod trim;
 
 pub use area::{
     ExtrudedAreaSolid, ExtrudedAreaSolidTapered, RevolvedAreaSolid, RevolvedAreaSolidTapered,
@@ -32,6 +33,7 @@ pub use directrix::{
     FixedReferenceSweptAreaSolid, SectionedSpine, SurfaceCurveSweptAreaSolid, SweptDiskSolid,
     SweptDiskSolidPolygonal,
 };
+pub use trim::TrimMeasure;
 
 /// `IfcSweptAreaSolid` attribute slots, inherited by every subtype.
 ///
@@ -79,9 +81,10 @@ pub(crate) mod revolved_slot {
 pub(crate) mod directrix_slot {
     /// `Directrix : IfcCurve`, absolute slot 2.
     pub const DIRECTRIX: usize = 2;
-    /// `StartParam : OPTIONAL IfcParameterValue`, absolute slot 3.
+    /// `StartParam`, absolute slot 3: `IfcParameterValue` (IFC2X3, IFC4) or
+    /// `IfcCurveMeasureSelect` (IFC4X3); see [`super::trim`].
     pub const START_PARAM: usize = 3;
-    /// `EndParam : OPTIONAL IfcParameterValue`, absolute slot 4.
+    /// `EndParam`, absolute slot 4, declared as `StartParam`.
     pub const END_PARAM: usize = 4;
     /// `ReferenceSurface : IfcSurface` on `IfcSurfaceCurveSweptAreaSolid`.
     pub const REFERENCE_SURFACE: usize = 5;

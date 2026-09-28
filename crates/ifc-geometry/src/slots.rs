@@ -197,7 +197,7 @@ impl<'m> Slots<'m> {
     }
 
     /// Build a kind mismatch error naming what was actually found.
-    fn kind_error(
+    pub(crate) fn kind_error(
         &self,
         attribute: &'static str,
         expected: &'static str,
