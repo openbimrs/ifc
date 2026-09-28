@@ -12,6 +12,40 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed
+
+- The zone readers bind an IFC4X3 header to the bundled IFC4X3 ADD2 table
+  (#194). Before, `zones()` read IFC4X3 against IFC4 and `long_name_of`
+  refused it with `UnsupportedSchema`. Now:
+  - `zones()` reads IFC4X3 against its own table, and reads every slot by
+    attribute name (`IfcZone.Name`/`LongName`,
+    `IfcRelAssignsToGroup.RelatedObjects`/`RelatingGroup`) instead of
+    fixed positions. IFC4X3 retypes `IfcRelAssigns.RelatedObjectsType` as
+    `IfcStrippedOptional` at the same position, adds `IfcBuiltSystem` under
+    `IfcSystem` (no WR1 zone member), and leaves `IfcZone` as in IFC4, so
+    IFC4-shaped data gives the same zones as before;
+  - `long_name_of` answers for an IFC4X3 model instead of refusing it.
+
+### Added
+
+- `try_zones(model)`: `zones()` with an error channel. A header declaring
+  several schemas is refused with `SchemaResolutionError::MultipleSchemas`
+  and one without a bundled table with `UnsupportedSchema`, where `zones()`
+  reads both against IFC4. A header with no schema (an in-memory model)
+  reads against IFC4, as `zones()` does.
+
+### Unchanged
+
+- `zones()` keeps its signature and its fallback: a header it cannot bind
+  (none, several, or unknown) reads against IFC4, as in 0.2.0.
+- `schema_of`, `systems`, `ports`, `ElementRole::of` and
+  `ConnectionGraph::build` still treat IFC4X3 as unverified: `schema_of`
+  refuses it and the bulk readers read it against IFC4. Only the zone
+  readers are verified for IFC4X3.
+- The `Display` text of `SchemaResolutionError::UnsupportedSchema` no
+  longer claims only IFC2X3 and IFC4 resolve, since the zone readers
+  resolve IFC4X3.
+
 ## [0.2.1] - 2026-09-25
 
 ### Fixed
