@@ -7,6 +7,7 @@
 
 mod association;
 mod authoring;
+mod datetime;
 mod error;
 mod projection;
 mod release;
@@ -18,9 +19,9 @@ pub use association::{
 };
 pub use authoring::{
     create_metric, create_objective, create_reference, relate_resource_constraint,
-    ConstraintBaseDraft, DateTimeInput, MetricDraft, ObjectiveDraft, ReferenceDraft,
-    ResourceConstraintDraft,
+    ConstraintBaseDraft, MetricDraft, ObjectiveDraft, ReferenceDraft, ResourceConstraintDraft,
 };
+pub use datetime::DateTimeInput;
 pub use error::{ConstraintError, ConstraintResult};
 /// The IFC release a projection reads against (re-exported from
 /// `ifc-schema`).
