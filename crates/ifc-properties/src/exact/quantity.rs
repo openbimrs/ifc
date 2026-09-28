@@ -20,6 +20,7 @@
 
 use ifc_model::{Entity, EntityId, Model, Value};
 
+use super::complex::{complex_value, is_complex};
 use super::refs::{nonempty_refs_at, text_at};
 use super::release::Release;
 use super::value::{exact_value, ResolvedValue};
@@ -74,18 +75,38 @@ pub(super) fn quantity_members<'m>(
     Ok(members)
 }
 
-/// The value of quantity `quantity_id`, which must be simple.
+/// The value of quantity `quantity_id`: a simple quantity's, or an
+/// `IfcPhysicalComplexQuantity` as
+/// [`ExactValue::Complex`](super::ExactValue::Complex) (#208).
 ///
 /// # Errors
 ///
-/// [`ExactPropertyError::UnsupportedProperty`] for a complex quantity, or a
-/// malformed unit or value.
+/// A malformed unit or value, or any error of a complex quantity.
 pub(super) fn quantity_value(
     model: &Model,
     release: Release,
     quantity_id: EntityId,
 ) -> Result<ResolvedValue, ExactPropertyError> {
     let quantity = model.get(quantity_id).expect("checked reference");
+    if is_complex(release, quantity) {
+        return complex_value(model, release, quantity_id, quantity);
+    }
+    simple_quantity_value(model, release, quantity_id, quantity)
+}
+
+/// The value of `IfcPhysicalSimpleQuantity` `quantity`, whose arity the
+/// caller confirmed.
+///
+/// # Errors
+///
+/// [`ExactPropertyError::UnsupportedProperty`] for any other quantity kind,
+/// or a malformed unit or value.
+pub(super) fn simple_quantity_value(
+    model: &Model,
+    release: Release,
+    quantity_id: EntityId,
+    quantity: &Entity,
+) -> Result<ResolvedValue, ExactPropertyError> {
     if !release
         .schema
         .is_a(quantity.type_name.as_ref(), "IFCPHYSICALSIMPLEQUANTITY")

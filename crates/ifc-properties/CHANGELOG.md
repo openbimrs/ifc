@@ -39,6 +39,17 @@ everything released before per-crate changelogs began.
   an IFC2X3 model, which declares no templates, is refused with
   `EntityNotInSchema`.
 
+- `ExactValue::Complex` with `ExactComplexValue` and `ExactComplexMember`
+  (#208): `exact_property` and the enumerations resolve an
+  `IfcComplexProperty` or `IfcPhysicalComplexQuantity` as a present
+  composite in IFC2X3, IFC4 and IFC4X3, with no value type, instead of
+  refusing it with `UnsupportedProperty`. Members resolve as set members
+  do, nested complexes included. New errors `ComplexCycle`,
+  `ComplexTooDeep` and `ComplexBudgetExceeded` refuse a cycle, nesting
+  past 16 levels and more than 10 000 nested members; a repeated member
+  name is `InconsistentValues` where the release forbids it (`WR22`,
+  `UniqueQuantityNames`).
+
 ### Changed
 
 - The predefined property-set and template writers that take no model

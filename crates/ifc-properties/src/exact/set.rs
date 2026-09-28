@@ -18,6 +18,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use ifc_model::{Entity, EntityId, Model, Value};
 
+use super::complex::{complex_value, is_complex};
 use super::composite::composite_value;
 use super::predefined::{attribute_value, own_attributes, predefined_key};
 use super::quantity::{quantity_members, quantity_value, slot};
@@ -224,8 +225,8 @@ impl<'m> LoadedSet<'m> {
     ///
     /// # Errors
     ///
-    /// An unsupported property or quantity kind, an attribute that cannot
-    /// be read exactly, or any value, unit or rule error.
+    /// An attribute that cannot be read exactly, or any value, unit, rule
+    /// or nesting error.
     pub(super) fn value(
         &self,
         model: &Model,
@@ -297,20 +298,38 @@ pub(super) fn property_members<'m>(
     Ok(members)
 }
 
-/// The value of property `property_id`, which must be an
-/// `IfcSimpleProperty`: a single, enumerated, list, bounded, table or
-/// reference value.
+/// The value of property `property_id`: a single, enumerated, list,
+/// bounded, table or reference value, or an `IfcComplexProperty` as
+/// [`ExactValue::Complex`](super::ExactValue::Complex) (#208).
 ///
 /// # Errors
 ///
-/// [`ExactPropertyError::UnsupportedProperty`] for an `IfcComplexProperty`,
-/// or any value, unit or rule error of the property.
+/// Any value, unit, rule or nesting error of the property.
 pub(super) fn property_value(
     model: &Model,
     release: Release,
     property_id: EntityId,
 ) -> Result<ResolvedValue, ExactPropertyError> {
     let property = model.get(property_id).expect("checked reference");
+    if is_complex(release, property) {
+        return complex_value(model, release, property_id, property);
+    }
+    simple_property_value(model, release, property_id, property)
+}
+
+/// The value of `IfcSimpleProperty` `property`, whose arity the caller
+/// confirmed.
+///
+/// # Errors
+///
+/// [`ExactPropertyError::UnsupportedProperty`] for any other property kind,
+/// or any value, unit or rule error of the property.
+pub(super) fn simple_property_value(
+    model: &Model,
+    release: Release,
+    property_id: EntityId,
+    property: &Entity,
+) -> Result<ResolvedValue, ExactPropertyError> {
     if property.is_type("IFCPROPERTYSINGLEVALUE") {
         return exact_property_value(model, release, property_id, property);
     }
