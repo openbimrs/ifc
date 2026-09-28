@@ -16,11 +16,11 @@
 
 use std::{collections::BTreeMap, sync::Arc};
 
-use ifc_model::{Entity, EntityId, Model};
+use ifc_model::{Entity, EntityId, Model, Value};
 
 use super::composite::composite_value;
 use super::predefined::{attribute_value, own_attributes, predefined_key};
-use super::quantity::{quantity_members, quantity_value};
+use super::quantity::{quantity_members, quantity_value, slot};
 use super::refs::{nonempty_refs_at, text_at};
 use super::release::Release;
 use super::value::{exact_property_value, ResolvedValue};
@@ -159,6 +159,25 @@ impl<'m> LoadedSet<'m> {
             return None;
         }
         selected.insert(self.name, self.id)
+    }
+
+    /// Whether the set's member list is empty or unset (`()` or `$`).
+    ///
+    /// `HasProperties` and `Quantities` are `SET [1:?]` in every release, so
+    /// such a set is invalid and [`Self::members`] refuses it. Enumerating
+    /// sets (#186) still needs to see it: the set exists and holds nothing.
+    /// A predefined set has no member list.
+    pub(super) fn member_list_is_empty(&self, release: Release) -> bool {
+        let slot = match self.kind {
+            SetKind::Properties => slot(release, "IFCPROPERTYSET", "HasProperties"),
+            SetKind::Quantities => slot(release, "IFCELEMENTQUANTITY", "Quantities"),
+            SetKind::Predefined => return false,
+        };
+        match self.entity.attributes.get(slot) {
+            Some(Value::Null) => true,
+            Some(value) => value.as_list().is_some_and(<[Value]>::is_empty),
+            None => false,
+        }
     }
 
     /// Every member with its name, in file or schema order. Each is

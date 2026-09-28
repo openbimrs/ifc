@@ -212,3 +212,111 @@ fn collect(
     }
     Ok(entries)
 }
+
+/// One assigned property set or quantity set that a set selector picked.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct ExactPropertySetEntry {
+    /// The name the selector saw: `Name`, or for a predefined set that states
+    /// none, its entity name (`IfcDoorLiningProperties`).
+    pub name: Arc<str>,
+    /// The set entity.
+    pub set_id: EntityId,
+    /// Whether the object carries the set itself or inherits it from its type.
+    pub source: ExactSource,
+    /// How many members the set holds, each validated; `0` for an empty set.
+    pub members: usize,
+}
+
+/// The property sets and quantity sets of `object` whose names `select_set`
+/// picks, empty ones included (#186).
+///
+/// [`exact_properties_where`] lists properties, so a selected set with no
+/// members leaves no trace in its answer. This lists the sets themselves:
+/// an IDS property facet must fail on a matching set that is empty, and it
+/// can tell that case from "no such set" only here. An empty result is a
+/// proven absence of every selected set.
+///
+/// The traversal, model and assignment validation and refusals are those of
+/// [`exact_properties_where`]; every member of a selected set is validated,
+/// though none is resolved. One difference: a set whose `HasProperties` or
+/// `Quantities` is `()` or `$` is listed with `members == 0`. The schema
+/// declares both `SET [1:?]`, so [`exact_properties_where`] refuses such a
+/// set as [`ExactPropertyError::MalformedAggregate`]; here the question is
+/// only whether the set exists, and it does. Occurrence sets come first, then the sets
+/// inherited from the object's `IfcTypeObject`, each in assignment order. A
+/// type set is listed even when an occurrence set has the same name:
+/// overriding works per property, so both sets exist for the object.
+///
+/// # Errors
+///
+/// Any [`ExactPropertyError`], as for [`exact_properties_where`]; in
+/// particular two selected sets of one name on one source are
+/// [`ExactPropertyError::DuplicateMatchingSets`].
+pub fn exact_property_sets_where<S>(
+    model: &Model,
+    object: EntityId,
+    mut select_set: S,
+) -> Result<Vec<ExactPropertySetEntry>, ExactPropertyError>
+where
+    S: FnMut(&str) -> bool,
+{
+    let release = validate_model(model)?;
+    let assigned = assigned_sets(model, release, object)?;
+    let mut entries = list_sets(
+        model,
+        release,
+        &assigned.occurrence_sets,
+        ExactSource::Occurrence,
+        &mut select_set,
+    )?;
+    if let Some((type_id, sets)) = &assigned.type_sets {
+        entries.extend(list_sets(
+            model,
+            release,
+            sets,
+            ExactSource::Type(*type_id),
+            &mut select_set,
+        )?);
+    }
+    Ok(entries)
+}
+
+/// The selected sets of one source.
+fn list_sets(
+    model: &Model,
+    release: Release,
+    sets: &[EntityId],
+    source: ExactSource,
+    select_set: &mut dyn FnMut(&str) -> bool,
+) -> Result<Vec<ExactPropertySetEntry>, ExactPropertyError> {
+    let mut entries = Vec::new();
+    let mut selected: BTreeMap<&str, EntityId> = BTreeMap::new();
+    for &set_id in sets {
+        let set = load_named(model, release, set_id)?;
+        if !select_set(set.name) {
+            continue;
+        }
+        if let Some(first) = set.shares_name(&mut selected) {
+            return Err(ExactPropertyError::DuplicateMatchingSets {
+                source,
+                first,
+                second: set_id,
+            });
+        }
+        // An empty or unset member list violates `SET [1:?]`, but the set
+        // exists and holds nothing, which is what an IDS facet must see.
+        let members = if set.member_list_is_empty(release) {
+            0
+        } else {
+            set.members(model, release)?.len()
+        };
+        entries.push(ExactPropertySetEntry {
+            name: Arc::from(set.name),
+            set_id,
+            source,
+            members,
+        });
+    }
+    Ok(entries)
+}

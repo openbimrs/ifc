@@ -36,7 +36,10 @@ use ifc_model::{EntityId, Model};
 use ifc_schema::SchemaVersion;
 
 use assignment::assigned_sets;
-pub use enumerate::{exact_properties, exact_properties_where, ExactPropertyEntry};
+pub use enumerate::{
+    exact_properties, exact_properties_where, exact_property_sets_where, ExactPropertyEntry,
+    ExactPropertySetEntry,
+};
 pub use predefined::{exact_predefined_sets, ExactPredefinedSet};
 use release::validate_model;
 use set::find_property;

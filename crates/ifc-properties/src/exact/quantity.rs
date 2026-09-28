@@ -26,7 +26,7 @@ use super::value::{exact_value, ResolvedValue};
 use super::ExactPropertyError;
 
 /// The slot `attribute` occupies on `entity` in the bound release.
-fn slot(release: Release, entity: &str, attribute: &str) -> usize {
+pub(super) fn slot(release: Release, entity: &str, attribute: &str) -> usize {
     release
         .schema
         .attribute_names(entity)
