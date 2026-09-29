@@ -13,6 +13,7 @@ static IFC2X3_TC1: OnceLock<Result<Catalog, ArchiveError>> = OnceLock::new();
 static IFC4_ADD2_TC1: OnceLock<Result<Catalog, ArchiveError>> = OnceLock::new();
 static IFC4X3_ADD2: OnceLock<Result<Catalog, ArchiveError>> = OnceLock::new();
 static IFC4_ADD2_TC1_CORRECTED: OnceLock<Result<Catalog, EmbeddedCatalogError>> = OnceLock::new();
+static IFC4X3_ADD2_CORRECTED: OnceLock<Result<Catalog, EmbeddedCatalogError>> = OnceLock::new();
 
 /// Load a catalog snapshot from committed generated data.
 pub fn load_catalog(
@@ -48,6 +49,14 @@ pub fn official_catalog(edition: CatalogEdition) -> Result<Catalog, EmbeddedCata
 pub fn corrected_catalog(edition: CatalogEdition) -> Result<Catalog, EmbeddedCatalogError> {
     match edition {
         CatalogEdition::Ifc4Add2Tc1 => IFC4_ADD2_TC1_CORRECTED
+            .get_or_init(|| {
+                let official = official_catalog(edition)?;
+                official
+                    .with_patches(CatalogProfile::Corrected, &corrected_patches(edition))
+                    .map_err(EmbeddedCatalogError::Patch)
+            })
+            .clone(),
+        CatalogEdition::Ifc4x3Add2 => IFC4X3_ADD2_CORRECTED
             .get_or_init(|| {
                 let official = official_catalog(edition)?;
                 official

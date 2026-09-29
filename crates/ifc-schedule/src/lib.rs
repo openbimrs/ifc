@@ -47,11 +47,11 @@ pub mod sequence;
 
 pub use authoring::{
     assign_tasks_to_control, assign_tasks_to_control_with_owner_history, create_event,
-    create_event_time, create_event_with_owner_history, create_lag_time, create_procedure,
-    create_procedure_with_owner_history, create_recurrence_pattern, create_sequence,
-    create_sequence_with_owner_history, create_task, create_task_time, create_task_time_recurring,
-    create_task_with_owner_history, create_time_period, create_work_calendar,
-    create_work_calendar_with_owner_history, create_work_control,
+    create_event_time, create_event_with_owner_history, create_lag_time, create_lag_time_in,
+    create_procedure, create_procedure_with_owner_history, create_recurrence_pattern,
+    create_sequence, create_sequence_with_owner_history, create_task, create_task_time,
+    create_task_time_recurring, create_task_with_owner_history, create_time_period,
+    create_work_calendar, create_work_calendar_with_owner_history, create_work_control,
     create_work_control_with_owner_history, create_work_time, nest_tasks,
     nest_tasks_with_owner_history, CalendarDate, DateTimeValue, EventDraft, EventTimeDraft,
     LocalTime, ProcedureDraft, RecurrenceDraft, ScheduleAuthoringResult, TaskDraft, TaskTimeDraft,

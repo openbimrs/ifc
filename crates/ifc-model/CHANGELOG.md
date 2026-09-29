@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- `tests/package_architecture.rs` enumerates the allowed bridge-to-bridge
+  dependencies (`BRIDGE_EDGES`: only `ifc-geometry -> ifc-alignment`)
+  instead of allowing any bridge pair, and a new test requires the
+  manifests to match that list exactly (#143, ADR 0003 amendment
+  2026-09-28). No crate API changes.
+
 ### Changed (breaking)
 
 - `Conflict` and `Stop` are `#[non_exhaustive]`: a match needs a wildcard

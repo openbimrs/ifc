@@ -52,6 +52,15 @@ pub(crate) mod projected_crs {
     pub const MAP_UNIT: usize = 6;
 }
 
+/// `IfcWellKnownText` (IFC4X3 only): the forward side of
+/// `IfcCoordinateReferenceSystem.WellKnownText`.
+pub(crate) mod well_known_text {
+    /// `WellKnownText : IfcWellKnownTextLiteral`.
+    pub const WELL_KNOWN_TEXT: usize = 0;
+    /// `CoordinateReferenceSystem : IfcCoordinateReferenceSystem`.
+    pub const COORDINATE_REFERENCE_SYSTEM: usize = 1;
+}
+
 /// `IfcGeometricRepresentationContext`: `IfcRepresentationContext`
 /// contributes `ContextIdentifier` and `ContextType` at 0..1.
 pub(crate) mod geometric_context {
@@ -239,6 +248,19 @@ mod tests {
             "IfcMapConversionScaled must extend IfcMapConversion's layout"
         );
         assert_eq!(scaled[8..], ["FactorX", "FactorY", "FactorZ"]);
+        assert!(ifc4().entity("IfcWellKnownText").is_none());
+        let wkt = ifc4x3().attribute_names("IfcWellKnownText");
+        assert_eq!(wkt.len(), 2);
+        assert_eq!(
+            wkt[well_known_text::WELL_KNOWN_TEXT],
+            "WellKnownText",
+            "{wkt:?}"
+        );
+        assert_eq!(
+            wkt[well_known_text::COORDINATE_REFERENCE_SYSTEM],
+            "CoordinateReferenceSystem",
+            "{wkt:?}"
+        );
         assert_eq!(
             ifc4x3().attribute_names("IfcRigidOperation"),
             [

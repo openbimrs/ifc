@@ -11,6 +11,15 @@ use cargo_metadata::{DependencyKind, Metadata, MetadataCommand, Package};
 const GENERIC: &[&str] = &["ifc-model", "ifc-schema"];
 const CODECS: &[&str] = &["ifc-step", "ifc-xml"];
 const BRIDGES: &[&str] = &["ifc-geometry", "ifc-georef", "ifc-alignment"];
+/// The only bridge-to-bridge dependencies, as `(dependent, dependency)`
+/// (ADR 0003 amendment; stated in `AGENTS.md`, #143).
+///
+/// `ifc-geometry` reaches `ifc-alignment`, optionally behind `lowering`, to
+/// resolve linear placements. Nothing else: `ifc-alignment` never reaches
+/// `ifc-geometry` (that would be a cycle), and `ifc-georef` neither reaches
+/// nor is reached by either other bridge -- a placement carried into map
+/// coordinates is composed in the facade (`georef_placement.rs`).
+const BRIDGE_EDGES: &[(&str, &str)] = &[("ifc-geometry", "ifc-alignment")];
 /// The one crate allowed to reach an execution provider (ADR 0004).
 const COMPILE_HOST: &str = "ifc-geometry";
 
@@ -274,14 +283,15 @@ fn layer_allows(krate: &str, dependency: &str) -> bool {
         // may read the schema tables for applicability but never the model.
         "ifc-template-catalog" => dependency == "ifc-schema",
         "ifc-xml" | "ifc-validate" => GENERIC.contains(&dependency),
-        // ADR 0003, amended 2026-09-15: a bridge may depend on a bridge.
-        // Justified by measurement, not convenience -- every crate a thin
-        // `ifc-geometry` pulls in is already in `ifc-alignment`, so the
-        // dependency adds nothing a consumer has not already paid for. A
-        // semantic crate still may not reach a sibling, and a non-bridge
-        // still may not reach a bridge.
+        // ADR 0003, amended 2026-09-15: a bridge may depend on a bridge,
+        // but only along an edge `BRIDGE_EDGES` names (#143). Justified by
+        // measurement, not convenience -- every crate a thin `ifc-geometry`
+        // pulls in is already in `ifc-alignment`, so the dependency adds
+        // nothing a consumer has not already paid for. A semantic crate
+        // still may not reach a sibling, and a non-bridge still may not
+        // reach a bridge.
         _ if BRIDGES.contains(&krate) => {
-            GENERIC.contains(&dependency) || BRIDGES.contains(&dependency)
+            GENERIC.contains(&dependency) || BRIDGE_EDGES.contains(&(krate, dependency))
         }
         _ => GENERIC.contains(&dependency),
     }
@@ -295,10 +305,22 @@ fn layer_allows(krate: &str, dependency: &str) -> bool {
 /// depends on a bridge today.
 #[test]
 fn the_layer_rule_permits_only_bridge_to_bridge() {
-    // The exception, and the dependency it exists to allow.
+    // The exception, and the one dependency it exists to allow.
     assert!(layer_allows("ifc-geometry", "ifc-alignment"));
-    assert!(layer_allows("ifc-alignment", "ifc-geometry"));
-    assert!(layer_allows("ifc-georef", "ifc-geometry"));
+    // Every other bridge pair stays refused (#143): no cycle back from
+    // alignment, and georef composes with the others only in the facade.
+    for (krate, dependency) in [
+        ("ifc-alignment", "ifc-geometry"),
+        ("ifc-geometry", "ifc-georef"),
+        ("ifc-georef", "ifc-geometry"),
+        ("ifc-alignment", "ifc-georef"),
+        ("ifc-georef", "ifc-alignment"),
+    ] {
+        assert!(
+            !layer_allows(krate, dependency),
+            "{krate} -> {dependency} is not a stated bridge edge"
+        );
+    }
 
     // Generic stays available to everyone below the facade.
     assert!(layer_allows("ifc-cost", "ifc-model"));
@@ -320,6 +342,43 @@ fn the_layer_rule_permits_only_bridge_to_bridge() {
     assert!(layer_allows("ifc-template-catalog", "ifc-schema"));
     assert!(!layer_allows("ifc-template-catalog", "ifc-model"));
     assert!(!layer_allows("ifc-template-catalog", "ifc-properties"));
+}
+
+/// The bridge edges in the manifests are exactly `BRIDGE_EDGES` (#143).
+///
+/// `dependencies_follow_the_ifc_layers` refuses an edge the table does not
+/// name; this also refuses a table entry no manifest uses, so an allowance
+/// cannot outlive the dependency it was granted for. Optional dependencies
+/// count: `ifc-geometry` reaches `ifc-alignment` only behind `lowering`.
+#[test]
+fn bridge_edges_are_exactly_the_stated_ones() {
+    let packages = ifc_packages();
+    let bridges: Vec<(&str, &Package)> = BRIDGES
+        .iter()
+        .filter_map(|name| packages.get(*name).map(|package| (*name, package)))
+        .collect();
+    assert_eq!(
+        bridges.len(),
+        BRIDGES.len(),
+        "expected every bridge crate by name, found {:?}",
+        bridges.iter().map(|(name, _)| name).collect::<Vec<_>>()
+    );
+    let mut actual = BTreeSet::new();
+    for (krate, package) in &bridges {
+        for dependency in production_dependencies(package) {
+            if BRIDGES.contains(&dependency.as_str()) {
+                actual.insert((krate.to_string(), dependency));
+            }
+        }
+    }
+    let stated: BTreeSet<(String, String)> = BRIDGE_EDGES
+        .iter()
+        .map(|(krate, dependency)| (krate.to_string(), dependency.to_string()))
+        .collect();
+    assert_eq!(
+        actual, stated,
+        "bridge-to-bridge dependencies differ from BRIDGE_EDGES and AGENTS.md"
+    );
 }
 
 /// May the facade depend on `dependency`?

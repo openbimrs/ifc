@@ -133,16 +133,36 @@ fn required_enum<'a>(
 }
 
 #[derive(Debug, Clone, Copy)]
-/// Geometry-only projection of `IfcMaterialProfileSetUsage`.
+/// Geometry-only projection of `IfcMaterialProfileSetUsage`, including its
+/// subtype `IfcMaterialProfileSetUsageTapering` (#136).
 pub struct MaterialProfileSetUsageGeometry<'m> {
     slots: Slots<'m>,
 }
 impl<'m> MaterialProfileSetUsageGeometry<'m> {
-    /// Borrows `entity`, checking it declares the expected IFC type.
+    /// Borrows `entity`, checking it is an `IfcMaterialProfileSetUsage` or
+    /// its subtype `IfcMaterialProfileSetUsageTapering`.
+    ///
+    /// The subtype keeps `ForProfileSet`, `CardinalPoint` and
+    /// `ReferenceExtent` at slots 0..2 in IFC4 and IFC4X3, so every accessor
+    /// here reads it unchanged; [`Self::tapering`] reaches its end profile
+    /// set and end cardinal point.
     pub fn new(id: EntityId, entity: &'m Entity) -> GeometryResult<Self> {
+        if entity.is_type("IFCMATERIALPROFILESETUSAGETAPERING") {
+            return Ok(Self {
+                slots: Slots::new(id, entity),
+            });
+        }
         Ok(Self {
             slots: checked(id, entity, "IFCMATERIALPROFILESETUSAGE")?,
         })
+    }
+    /// The tapering projection when the record is an
+    /// `IfcMaterialProfileSetUsageTapering`; `None` for a plain usage.
+    pub fn tapering(self) -> Option<MaterialProfileSetUsageTaperingGeometry<'m>> {
+        self.slots
+            .type_name()
+            .eq_ignore_ascii_case("IFCMATERIALPROFILESETUSAGETAPERING")
+            .then_some(MaterialProfileSetUsageTaperingGeometry { slots: self.slots })
     }
     /// The `ForProfileSet` reference.
     pub fn profile_set_id(self) -> GeometryResult<EntityId> {
@@ -315,6 +335,44 @@ mod tests {
         assert_eq!(view.reference_extent().unwrap(), Some(4.0));
         assert_eq!(view.end_profile_set_id().unwrap(), EntityId(11));
         assert_eq!(view.cardinal_end_point().unwrap().unwrap().get(), 5);
+    }
+
+    /// #136: the subtype is a profile-set usage, and its taper stays
+    /// reachable; a plain usage has no taper, and other types are refused.
+    #[test]
+    fn profile_set_usage_accepts_its_tapering_subtype() {
+        let tapering = Entity::new(
+            "IFCMATERIALPROFILESETUSAGETAPERING",
+            vec![
+                r(10),
+                Value::Integer(9),
+                Value::Real(4.0),
+                r(11),
+                Value::Integer(5),
+            ],
+        );
+        let usage = MaterialProfileSetUsageGeometry::new(EntityId(1), &tapering).unwrap();
+        assert_eq!(usage.profile_set_id().unwrap(), EntityId(10));
+        assert_eq!(usage.cardinal_point().unwrap().unwrap().get(), 9);
+        assert_eq!(usage.reference_extent().unwrap(), Some(4.0));
+        let taper = usage
+            .tapering()
+            .expect("a tapering usage exposes its taper");
+        assert_eq!(taper.end_profile_set_id().unwrap(), EntityId(11));
+        assert_eq!(taper.cardinal_end_point().unwrap().unwrap().get(), 5);
+
+        let plain = Entity::new(
+            "IFCMATERIALPROFILESETUSAGE",
+            vec![r(10), Value::Null, Value::Null],
+        );
+        let usage = MaterialProfileSetUsageGeometry::new(EntityId(2), &plain).unwrap();
+        assert!(usage.tapering().is_none());
+
+        let other = Entity::new("IFCMATERIALLAYERSETUSAGE", vec![r(10)]);
+        assert!(matches!(
+            MaterialProfileSetUsageGeometry::new(EntityId(3), &other),
+            Err(GeometryError::WrongEntityType { .. })
+        ));
     }
 
     #[test]

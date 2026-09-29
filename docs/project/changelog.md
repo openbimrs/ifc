@@ -22,6 +22,14 @@ lockstep -- is archived in the
 
 ### ifc-alignment
 
+### Fixed
+
+- `read_vertical_segment`, `read_cant_segment` and `CantLayout::resolve`
+  (`RailHeadDistance`) read a typed parameter such as
+  `IFCLENGTHMEASURE(1.)` exactly like the bare number, as
+  `read_horizontal_segment` already did; they refused it as the wrong kind
+  (#140).
+
 ### Changed (breaking)
 
 - The authoring drafts `HorizontalSegmentDraft`, `VerticalSegmentDraft`
@@ -277,6 +285,15 @@ lockstep -- is archived in the
 
 ### ifc-geometry
 
+### Changed
+
+- `MaterialProfileSetUsageGeometry::new` accepts
+  `IfcMaterialProfileSetUsageTapering`, the schema subtype of
+  `IfcMaterialProfileSetUsage`, whose inherited slots it reads unchanged;
+  the new `MaterialProfileSetUsageGeometry::tapering()` returns its
+  `MaterialProfileSetUsageTaperingGeometry` (end profile set and end
+  cardinal point), or `None` for a plain usage (#136).
+
 ### Changed (breaking)
 
 - `ViolationKind`, `Support` and `FunctionStatus` are `#[non_exhaustive]`: a
@@ -341,8 +358,25 @@ lockstep -- is archived in the
 
 ### ifc-georef
 
+### Added
+
+- `ProjectedCrs.well_known_text`: the OGC WKT literal of the one IFC4X3
+  `IfcWellKnownText` defining the CRS, verbatim (#142).
+- `GeorefError::RuleViolation { entity, rule }` for a schema WHERE rule or
+  inverse cardinality a record breaks.
+
 ### Changed (breaking)
 
+- `ProjectedCrs.name` is `Option<String>` (#142). IFC4X3 declares
+  `IfcCoordinateReferenceSystem.Name : OPTIONAL IfcLabel` with
+  `WHERE NameOrWKT : (HIINDEX(WellKnownText) = 1) OR EXISTS(Name)`: under an
+  IFC4X3 header an unnamed CRS defined by exactly one `IfcWellKnownText` now
+  reads, one with neither is refused with the new
+  `GeorefError::RuleViolation { rule: "NameOrWKT" }`, and two definitions
+  for one CRS (the inverse is `SET [0:1]`) are refused too. IFC4, or a
+  missing or ambiguous header, keeps requiring the name
+  (`MissingAttribute`), so `name` is always `Some` there. Migrate with
+  `crs.name.as_deref()`.
 - The authoring drafts `ProjectedCrsDraft`, `GeographicCrsDraft` and
   `MapConversionDraft` are `#[non_exhaustive]`: build them with
   `ProjectedCrsDraft::new(name)`, `GeographicCrsDraft::new()` or
@@ -367,6 +401,15 @@ lockstep -- is archived in the
 
 ### Changed (breaking)
 
+- `MaterialView::profile_set_usages()` also yields
+  `IfcMaterialProfileSetUsageTapering`, the schema subtype of
+  `IfcMaterialProfileSetUsage` in IFC4 and IFC4X3, in entity-id order, and
+  `MaterialProfileSetUsage::try_new` / `try_from_view` accept it (#136). A
+  caller that iterated both `profile_set_usages()` and
+  `tapering_profile_set_usages()` sees each tapering usage twice; iterate
+  `profile_set_usages()` alone and branch on the new
+  `MaterialProfileSetUsage::tapering()`, which returns the tapering
+  projection (`end_profile_set_id`, `cardinal_end_point`) or `None`.
 - The authoring drafts `MaterialDraft`, `LayerDraft`, `LayerSetDraft`,
   `MaterialAssignmentDraft`, `ConstituentDraft` and `ProfileDraft` are
   `#[non_exhaustive]`: build them with `MaterialDraft::new(name)`,
@@ -390,6 +433,14 @@ lockstep -- is archived in the
   never read as IFC4 or IFC4X3.
 
 ### ifc-model
+
+### Changed
+
+- `tests/package_architecture.rs` enumerates the allowed bridge-to-bridge
+  dependencies (`BRIDGE_EDGES`: only `ifc-geometry -> ifc-alignment`)
+  instead of allowing any bridge pair, and a new test requires the
+  manifests to match that list exactly (#143, ADR 0003 amendment
+  2026-09-28). No crate API changes.
 
 ### Changed (breaking)
 
@@ -529,6 +580,11 @@ lockstep -- is archived in the
 
 ### Added
 
+- `create_lag_time_in(tx, model, name, lag_value, duration_type)`: the
+  model-bound `create_lag_time`. IFC2X3 declares no `IfcLagTime` and is
+  refused with `EntityNotInSchema`, nothing staged; IFC4 and IFC4X3 stage
+  exactly what `create_lag_time` stages. `create_lag_time` documents that
+  it is for IFC4 and IFC4X3 only (#211).
 - IFC2X3 work plans and work schedules can be authored (#214):
   `DateTimeValue` carries a date either as IFC4/IFC4X3 `IfcDateTime` text
   (`DateTimeValue::Text`, `From<&str>`) or as one of the IFC2X3
@@ -901,6 +957,15 @@ lockstep -- is archived in the
 
 ### ifc-template-catalog
 
+### Added
+
+- `corrected_catalog(CatalogEdition::Ifc4x3Add2)`: an IFC4X3 ADD2 corrected
+  profile whose one patch, `NEH-IFC4X3-PSD-0001`, adds
+  `Pset_Stationing.HasIncreasingStation` (`IfcBoolean`). The published ADD2
+  documentation (6.6.4.10) lists it; the PSD XML the official snapshot is
+  generated from omits it, and the official snapshot is unchanged (#216).
+- `PatchOperation::AddProperty` and `PatchError::NotAPropertySet`.
+
 ### Changed (breaking)
 
 - `ValidationIssue`, `ValidationReport`, `CatalogDiagnostic`,
@@ -955,6 +1020,12 @@ lockstep -- is archived in the
   becoming `#[non_exhaustive]`.
 
 ### openbim-ifc
+
+### Added
+
+- `tests/stationing_template.rs`: a referent's `Pset_Stationing` authored
+  by `alignment` and read by `properties` checks clean against the
+  `property-catalog` IFC4X3 ADD2 corrected profile (#216).
 
 ### Changed (breaking)
 

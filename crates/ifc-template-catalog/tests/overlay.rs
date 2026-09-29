@@ -3,9 +3,12 @@
 #[path = "support/mod.rs"]
 mod support;
 use ifc_template_catalog::catalog::{Catalog, CatalogProfile};
-use ifc_template_catalog::definition::{Applicability, CatalogEdition};
+use ifc_template_catalog::definition::{
+    Applicability, CatalogEdition, PropertyDataType, PropertyKind, PropertyTemplate,
+    QuantitySetType, SetTemplateKind,
+};
 use ifc_template_catalog::overlay::{AdvisorySeverity, Patch, PatchError, PatchOperation};
-use support::{manifest, property_set};
+use support::{manifest, property_set, quantity_set};
 
 fn add_type_patch(id: &str) -> Patch {
     Patch {
@@ -191,4 +194,73 @@ fn advisories_are_provenance_bearing_and_do_not_rewrite_templates() {
     let advisories = corrected.advisories_for("Pset_EnvironmentalImpactValues");
     assert_eq!(advisories.len(), 1);
     assert_eq!(advisories[0].patch_id, "NEH-IFC4-EPD-0001");
+}
+
+fn add_property_patch(id: &str, target: &str) -> Patch {
+    Patch {
+        id: id.into(),
+        edition: CatalogEdition::Ifc4Add2Tc1,
+        target_template: target.into(),
+        rationale: "fixture".into(),
+        evidence: "fixture".into(),
+        operation: PatchOperation::AddProperty(PropertyTemplate {
+            name: "Flag".into(),
+            guid: None,
+            definition: None,
+            name_aliases: Vec::new(),
+            definition_aliases: Vec::new(),
+            kind: PropertyKind::SingleValue {
+                data_type: PropertyDataType::new("IfcBoolean"),
+            },
+        }),
+    }
+}
+
+#[test]
+fn an_added_property_is_appended_once_and_only_to_a_property_set() {
+    let official = Catalog::try_new(
+        manifest(1, 1),
+        CatalogProfile::Official,
+        vec![
+            property_set("Pset_Test"),
+            quantity_set("Qto_Test", QuantitySetType::Unspecified),
+        ],
+    )
+    .unwrap();
+    let corrected = official
+        .with_patches(
+            CatalogProfile::Corrected,
+            &[add_property_patch("P-1", "Pset_Test")],
+        )
+        .unwrap();
+    let SetTemplateKind::Property { properties, .. } = &corrected.get("Pset_Test").unwrap().kind
+    else {
+        panic!()
+    };
+    assert_eq!(properties.len(), 1);
+    assert_eq!(properties[0].name, "Flag");
+    assert!(matches!(
+        corrected.with_patches(
+            CatalogProfile::Corrected,
+            &[add_property_patch("P-2", "Pset_Test")]
+        ),
+        Err(PatchError::InvalidProfileTransition { .. })
+    ));
+    assert!(matches!(
+        official.with_patches(
+            CatalogProfile::Corrected,
+            &[
+                add_property_patch("P-1", "Pset_Test"),
+                add_property_patch("P-2", "Pset_Test")
+            ]
+        ),
+        Err(PatchError::AlreadyApplied { .. })
+    ));
+    assert!(matches!(
+        official.with_patches(
+            CatalogProfile::Corrected,
+            &[add_property_patch("P-1", "Qto_Test")]
+        ),
+        Err(PatchError::NotAPropertySet { .. })
+    ));
 }

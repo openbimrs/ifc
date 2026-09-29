@@ -117,6 +117,14 @@ pub enum GeorefError {
         /// The direction entity.
         entity: EntityId,
     },
+    /// An entity breaks a WHERE rule or an inverse cardinality its declared
+    /// release states, such as IFC4X3 `IfcCoordinateReferenceSystem.NameOrWKT`.
+    RuleViolation {
+        /// The entity that breaks the rule.
+        entity: EntityId,
+        /// The rule's schema label, such as `NameOrWKT`.
+        rule: &'static str,
+    },
 }
 
 impl std::fmt::Display for GeorefError {
@@ -189,6 +197,9 @@ impl std::fmt::Display for GeorefError {
             }
             Self::NonFiniteDirection { entity } => {
                 write!(f, "{entity} has a non-finite or zero-length direction")
+            }
+            Self::RuleViolation { entity, rule } => {
+                write!(f, "{entity} violates {rule}")
             }
         }
     }

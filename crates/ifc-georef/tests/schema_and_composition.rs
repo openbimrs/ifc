@@ -85,7 +85,7 @@ fn georef_view_pins_ifc4_and_resolves_a_map_conversion_through_it() {
     let view = GeorefView::for_model(&model).expect("IFC4 is a valid georeferencing profile");
 
     let operation = resolve_project_to_map_in(&view, id(4), 1.0).expect("resolves under IFC4");
-    assert_eq!(operation.target_crs.name, "EPSG:25832");
+    assert_eq!(operation.target_crs.name.as_deref(), Some("EPSG:25832"));
 
     // Both entry points agree: the schema-agnostic resolver is not a
     // shortcut that skips validation, it is the same underlying resolution.

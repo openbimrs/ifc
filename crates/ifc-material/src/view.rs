@@ -59,6 +59,11 @@ impl<'m> MaterialView<'m> {
 
 macro_rules! borrowed_entity {
     ($name:ident, $ifc_name:literal) => {
+        crate::view::borrowed_entity!($name, $ifc_name, []);
+    };
+    // `$subtype`s are schema subtypes the projection also accepts: records
+    // that carry every slot of `$ifc_name` at the same position.
+    ($name:ident, $ifc_name:literal, [$($subtype:literal),*]) => {
         #[doc = concat!("Borrowed projection of `", $ifc_name, "`.")]
         #[doc = ""]
         #[doc = "Projections handed out by a [`crate::MaterialView`] read against the"]
@@ -110,7 +115,7 @@ macro_rules! borrowed_entity {
                 entity: &'m ifc_model::Entity,
                 release: crate::release::Release<'m>,
             ) -> crate::MaterialResult<Self> {
-                if !entity.is_type($ifc_name) {
+                if !(entity.is_type($ifc_name) $(|| entity.is_type($subtype))*) {
                     return Err(crate::MaterialError::WrongEntityType {
                         expected: $ifc_name,
                         actual: entity.type_name.to_string(),

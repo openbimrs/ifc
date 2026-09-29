@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed
+
+- `read_vertical_segment`, `read_cant_segment` and `CantLayout::resolve`
+  (`RailHeadDistance`) read a typed parameter such as
+  `IFCLENGTHMEASURE(1.)` exactly like the bare number, as
+  `read_horizontal_segment` already did; they refused it as the wrong kind
+  (#140).
+
 ### Changed (breaking)
 
 - The authoring drafts `HorizontalSegmentDraft`, `VerticalSegmentDraft`

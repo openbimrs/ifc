@@ -52,7 +52,7 @@ impl CantLayout {
         let rail_head_distance = cant_entity
             .attributes
             .last()
-            .and_then(|value| value.as_f64())
+            .and_then(|value| value.unwrap_typed().as_f64())
             .ok_or(AlignmentError::InvalidAttribute {
                 entity,
                 index: cant_entity.attributes.len().saturating_sub(1),

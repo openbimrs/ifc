@@ -201,15 +201,16 @@ fn length(value: f64, units: AlignmentUnits) -> f64 {
 }
 
 fn number(values: &[Value], id: EntityId, slot: usize, name: &'static str) -> AlignmentResult<f64> {
-    match values.get(slot) {
-        Some(Value::Real(value)) => Ok(*value),
-        Some(Value::Integer(value)) => Ok(*value as f64),
-        _ => Err(AlignmentError::InvalidAttribute {
+    // A typed parameter (`IFCLENGTHMEASURE(1.)`) reads as the bare number,
+    // as in the horizontal reader (#140).
+    values
+        .get(slot)
+        .and_then(|value| value.unwrap_typed().as_f64())
+        .ok_or(AlignmentError::InvalidAttribute {
             entity: id,
             index: slot,
             name,
-        }),
-    }
+        })
 }
 
 fn optional_number(
@@ -220,13 +221,7 @@ fn optional_number(
 ) -> AlignmentResult<Option<f64>> {
     match values.get(slot) {
         Some(Value::Null) => Ok(None),
-        Some(Value::Real(value)) => Ok(Some(*value)),
-        Some(Value::Integer(value)) => Ok(Some(*value as f64)),
-        _ => Err(AlignmentError::InvalidAttribute {
-            entity: id,
-            index: slot,
-            name,
-        }),
+        _ => number(values, id, slot, name).map(Some),
     }
 }
 

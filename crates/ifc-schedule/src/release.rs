@@ -69,6 +69,18 @@ impl Release {
         self.version
     }
 
+    /// Fail with `EntityNotInSchema` unless this release declares `entity`
+    /// as an instantiable entity.
+    pub(crate) fn require_entity(self, entity: &'static str) -> Result<()> {
+        if self.schema.entity(entity).is_none_or(|e| e.abstract_) {
+            return Err(ScheduleAuthoringError::EntityNotInSchema {
+                entity,
+                schema: self.version,
+            });
+        }
+        Ok(())
+    }
+
     /// Build `entity`'s record in this release's layout from values named
     /// by their IFC4 attribute names.
     ///
@@ -82,12 +94,7 @@ impl Release {
         entity: &'static str,
         values: Vec<(&'static str, Value)>,
     ) -> Result<Entity> {
-        if self.schema.entity(entity).is_none_or(|e| e.abstract_) {
-            return Err(ScheduleAuthoringError::EntityNotInSchema {
-                entity,
-                schema: self.version,
-            });
-        }
+        self.require_entity(entity)?;
         let declared = self.schema.attributes(entity);
         let mut slots = vec![Value::Null; declared.len()];
         for (attribute, value) in values {

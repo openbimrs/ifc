@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-08-26
 - **Amended:** 2026-09-15 — bridges may depend on bridges; semantic crates still may not
+- **Amended:** 2026-09-28 — the bridge-to-bridge allowance is the one edge `ifc-geometry -> ifc-alignment`
 - **Deciders:** openbimrs contributors
 - **Supersedes:** —
 
@@ -118,3 +119,19 @@ relationship breaks and the exception loses its justification.
 `ifc-model/tests/package_architecture.rs`) therefore asserts the premise
 directly and fails with a pointer to this amendment, rather than leaving a
 stale allowance in place.
+
+## Amendment (2026-09-28): the allowed bridge edges are enumerated
+
+The 2026-09-15 rule let any bridge depend on any other, but the measurement
+behind it covers one pair only: `ifc-geometry` reaching `ifc-alignment` for
+linear placement. Nothing states the others, and #133 had to pin
+`ifc-geometry` and `ifc-georef` apart in a facade test.
+
+**The rule is now an explicit edge list** (#143): `ifc-geometry ->
+ifc-alignment`, optional behind `lowering`, and nothing else.
+`ifc-alignment -> ifc-geometry` would be a cycle; `ifc-georef` neither
+depends on nor is depended on by the other two bridges, because a placement
+carried into map coordinates is composed in the facade. `BRIDGE_EDGES` in
+`ifc-model/tests/package_architecture.rs` refuses any other edge and any
+listed edge no manifest uses. A new edge amends this record and that list
+together.

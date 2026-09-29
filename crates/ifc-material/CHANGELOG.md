@@ -14,6 +14,15 @@ everything released before per-crate changelogs began.
 
 ### Changed (breaking)
 
+- `MaterialView::profile_set_usages()` also yields
+  `IfcMaterialProfileSetUsageTapering`, the schema subtype of
+  `IfcMaterialProfileSetUsage` in IFC4 and IFC4X3, in entity-id order, and
+  `MaterialProfileSetUsage::try_new` / `try_from_view` accept it (#136). A
+  caller that iterated both `profile_set_usages()` and
+  `tapering_profile_set_usages()` sees each tapering usage twice; iterate
+  `profile_set_usages()` alone and branch on the new
+  `MaterialProfileSetUsage::tapering()`, which returns the tapering
+  projection (`end_profile_set_id`, `cardinal_end_point`) or `None`.
 - The authoring drafts `MaterialDraft`, `LayerDraft`, `LayerSetDraft`,
   `MaterialAssignmentDraft`, `ConstituentDraft` and `ProfileDraft` are
   `#[non_exhaustive]`: build them with `MaterialDraft::new(name)`,

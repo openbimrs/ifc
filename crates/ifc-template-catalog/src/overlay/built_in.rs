@@ -1,6 +1,8 @@
 //! Evidence-backed Nehirde correction ledger.
 
-use crate::definition::{Applicability, CatalogEdition};
+use crate::definition::{
+    Applicability, CatalogEdition, PropertyDataType, PropertyKind, PropertyTemplate,
+};
 
 use super::{AdvisorySeverity, Patch, PatchOperation};
 
@@ -27,6 +29,29 @@ pub fn corrected_patches(edition: CatalogEdition) -> Vec<Patch> {
                 "Pset_EnvironmentalImpactValues",
             ),
         ],
+        CatalogEdition::Ifc4x3Add2 => vec![Patch {
+            id: "NEH-IFC4X3-PSD-0001".into(),
+            edition,
+            target_template: "Pset_Stationing".into(),
+            rationale: "The published ADD2 documentation lists HasIncreasingStation; the \
+                        embedded reference_schemas PSD XML omits it"
+                .into(),
+            evidence: "IFC 4.3.2.0 (IFC4X3 ADD2) documentation, 6.6.4.10 Pset_Stationing, \
+                       Table 6.6.4.10.A: HasIncreasingStation, IfcPropertySingleValue, IfcBoolean"
+                .into(),
+            // Name, form and type only: the documentation publishes no
+            // GlobalId for the member, and its prose is not restated here.
+            operation: PatchOperation::AddProperty(PropertyTemplate {
+                name: "HasIncreasingStation".into(),
+                guid: None,
+                definition: None,
+                name_aliases: Vec::new(),
+                definition_aliases: Vec::new(),
+                kind: PropertyKind::SingleValue {
+                    data_type: PropertyDataType::new("IfcBoolean"),
+                },
+            }),
+        }],
         _ => Vec::new(),
     }
 }

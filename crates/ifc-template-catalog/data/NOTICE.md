@@ -1,6 +1,6 @@
 # IFC template-catalog provenance
 
-Committed binary snapshots and TSV exports are deterministic format shifts of authenticated, read-only buildingSMART PSD/QTO XML. Normal builds require neither XML, network access, nor the reference checkout. Official and corrected profiles remain distinct: only IFC4 ADD2 TC1 currently has built-in corrected overlays; IFC2X3 TC1 and IFC4X3 ADD2 expose the unmodified official profile only.
+Committed binary snapshots and TSV exports are deterministic format shifts of authenticated, read-only buildingSMART PSD/QTO XML. Normal builds require neither XML, network access, nor the reference checkout. Official and corrected profiles remain distinct: IFC4 ADD2 TC1 and IFC4X3 ADD2 have built-in corrected overlays; IFC2X3 TC1 exposes the unmodified official profile only. The IFC4X3 ADD2 overlay adds `Pset_Stationing.HasIncreasingStation` (`IfcBoolean`), listed by the published IFC 4.3.2.0 documentation (6.6.4.10) but absent from the `reference_schemas/psd` XML at the pinned commit; the official snapshot keeps the XML as published.
 
 | Edition | Authenticated input | Inventory (PSD/QTO/members) | Ordered source SHA-256 | Binary (bytes / SHA-256) | TSV (rows / bytes / SHA-256) |
 |---|---|---:|---|---|---|

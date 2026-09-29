@@ -11,9 +11,15 @@
 //! `GeodeticDatum`=2, `VerticalDatum`=3, `MapProjection`=4, `MapZone`=5,
 //! `MapUnit`=6) are identical in both schemas. `IfcMapConversion`'s own six
 //! attributes are unchanged too. So `resolve_project_to_map` and
-//! `projected_crs` need no version branch -- confirmed against
+//! `projected_crs` need no version branch for slots -- confirmed against
 //! `IFC4.exp`/`IFC4X3_ADD2.exp` directly, and asserted against both bundled
 //! schema tables by `crate::slot`'s tests.
+//!
+//! The one rule that does differ is `Name`: mandatory in IFC4, `OPTIONAL`
+//! in IFC4X3 under `NameOrWKT : (HIINDEX(WellKnownText) = 1) OR
+//! EXISTS(Name)`. `projected_crs` reads the header's release for that alone
+//! (#142): under IFC4X3 an unnamed CRS reads when exactly one
+//! `IfcWellKnownText` defines it; anything else requires the name.
 //!
 //! # What actually differs
 //!
