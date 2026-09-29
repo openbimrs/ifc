@@ -11,7 +11,7 @@ Bounded IFC control semantics: permits, project orders, action requests, and per
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.2.2 (2026-09-28) |
+| Latest release | 0.3.0 (2026-09-29) |
 | Registries | [crates.io `ifc-control`](https://crates.io/crates/ifc-control) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `control` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_control/index.html) · [docs.rs](https://docs.rs/ifc-control) |
@@ -52,40 +52,24 @@ supertype, so those entities do not move here.
 
 ## Changes
 
-Latest release, 0.2.2 (2026-09-28):
+Latest release, 0.3.0 (2026-09-29):
 
-### Added
+### Changed (breaking)
 
-- `create_control_with_owner_history` and
-  `assign_to_control_with_owner_history` (#198, #202). Each binds the
-  model's declared release (a header without `FILE_SCHEMA` binds IFC4) and
-  takes a caller-supplied `IfcOwnerHistory` id, which IFC2X3 requires on
-  every `IfcRoot`. It must be in the model or staged on the transaction
-  (`UnknownEntity` otherwise) and be an `IfcOwnerHistory`
-  (`AuthoringInvalid`). None is ever invented. In IFC4 and IFC4X3 the
-  record is the plain writer's with the reference in the optional slot.
-- `ControlError::MultipleSchemas`, `UnsupportedSchema`,
-  `AuthoringNotInSchema`, `AuthoringValueType` and `AuthoringRequired`,
-  appended to the `#[non_exhaustive]` enum, so not breaking.
+- `ControlDraft` and `ControlAssignmentDraft` are `#[non_exhaustive]`
+  (#214). Struct literals no longer compile outside the crate: build them
+  with `ControlDraft::new()` and
+  `ControlAssignmentDraft::new(global_id, control, related_objects)` plus
+  field-named setters (`.name("Permit")`). Fields stay public.
 
-### Fixed
+### Changed
 
-- `create_control` no longer panics on an IFC2X3 `IfcPermit`,
-  `IfcActionRequest` or `IfcPerformanceHistory` (#198). It indexed IFC4
-  positions into their six-attribute IFC2X3 records. `create_control` and
-  `assign_to_control` now lay records out by attribute name from the table
-  they are given, so a value that table does not declare is refused
-  (`AuthoringNotInSchema`: an IFC2X3 permit has no `PredefinedType`,
-  `Status` or `LongDescription`), one it cannot hold is refused
-  (`AuthoringValueType`), and a required one left unset is refused
-  (`AuthoringRequired`). In IFC2X3, `identification` is written as the
-  entity's own identifier (`PermitID`, `RequestID`, `ID`), which the IFC4
-  documentation records as renamed to `Identification`.
-  **Behaviour change for IFC2X3 callers:** `IfcRoot.OwnerHistory` is
-  mandatory there, so both plain writers refuse an IFC2X3 schema with
-  `AuthoringRequired { attribute: "OwnerHistory", .. }` and stage nothing
-  (an IFC2X3 project order used to be written with `$`); use the
-  `*_with_owner_history` variants. IFC4 and IFC4X3 records are unchanged,
-  record for record.
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
 
 Full history: [`crates/ifc-control/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-control/CHANGELOG.md)

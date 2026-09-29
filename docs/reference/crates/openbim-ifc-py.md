@@ -11,7 +11,7 @@ Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.1.0 (2026-09-26) |
+| Latest release | 0.2.0 (2026-09-29) |
 | Registries | [PyPI `openbim-ifc`](https://pypi.org/project/openbim-ifc/) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/openbim_ifc_py/index.html) |
 | Source | [`crates/openbim-ifc-py/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-py) |
@@ -40,26 +40,21 @@ This crate adds calling-convention glue only. IFC behaviour belongs in
 
 ## Changes
 
-Latest release, 0.1.0 (2026-09-26):
+Latest release, 0.2.0 (2026-09-29):
 
-### Added
+### Changed
 
-- Opt-in `rusty_alloc` feature (off by default): the extension's Rust
-  allocations go through the pure-Rust rusty_alloc allocator, pinned to
-  exactly 2.2.1. Reading STEP into a model takes 18-35% less CPU time on
-  seven real IFC files, at 1-7% less peak memory; the models are identical
-  on 2,273 corpus files. Build with
-  `maturin build --release --features rusty_alloc`. It replaces the C
-  `mimalloc` feature, which cost more CPU time than the system allocator on
-  a host with transparent huge pages set to `always` (#49).
+- Links every bundled IFC release explicitly through the binding core's
+  new release features; behaviour is unchanged.
 
-- Python bindings for the IFC facade (#39, ADR 0013), built with pyo3 and
-  maturin as one abi3 wheel for CPython 3.9+. `IfcModel` parses and writes
-  IFC STEP, queries by exact type or including subtypes, reads and edits
-  attributes, adds and removes entities, and reports dangling references.
-- Attribute values are frozen dataclasses (`Null`, `Derived`, `Unknown`,
-  `Typed`, ...); bare Python values are refused rather than guessed.
-- Every failure raises `IfcError` with the stable `code` shared with the
-  C and JavaScript bindings. Parsing releases the GIL.
+### Added (lazy loading)
+
+- `IfcModel.open(path, *, mapped=False)`: read a file straight into the
+  model with the GIL released; `mapped=True` memory-maps it (the file must
+  not change while the model lives). Failures raise `IfcError` with the
+  new code `io`.
+- Parsed models decode entities on first access (ADR 0015), so opening a
+  large file is several times faster and holds the file plus what was
+  touched. `IfcModel.parse` now copies its input once, not twice.
 
 Full history: [`crates/openbim-ifc-py/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-py/CHANGELOG.md)

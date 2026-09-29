@@ -11,8 +11,7 @@ IFC schema as data: entity table, supertype chain, attribute names.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.2.4 (2026-09-27) |
-| On `main` | 0.2.2 (unreleased) |
+| Latest release | 0.3.0 (2026-09-29) |
 | Registries | [crates.io `ifc-schema`](https://crates.io/crates/ifc-schema) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties`, `schema-api` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_schema/index.html) · [docs.rs](https://docs.rs/ifc-schema) |
@@ -37,13 +36,104 @@ IFC schema as data: entity table, supertype chain, attribute names.
 
 ## Changes
 
-Latest release, 0.2.4 (2026-09-27):
+Latest release, 0.3.0 (2026-09-29):
 
-Maintenance release from `maint/ifc-schema-0.2`; the code is unchanged since
-0.2.3.
+### Changed (breaking)
+
+- Artifact format 3 records the facts above; format 1 and 2 artifacts
+  still decode, with those facts empty.
+- A nested aggregate attribute's `type_name` is its innermost element
+  type (`IfcLengthMeasure` for `LIST OF LIST OF IfcLengthMeasure`), where
+  the old extractor recorded the inner keyword `LIST`.
+- The `express` and `generation` features use `openbim-step` `=0.10.0`
+  (the runtime links none).
+- One cargo feature per bundled release (#112): `ifc2x3`, `ifc4`, `ifc4x1`,
+  `ifc4x2` and `ifc4x3`, all in `default`, so a default build bundles every
+  release as before. Each accessor (`ifc2x3()`, `ifc4()`, ...) exists only
+  with its feature. `ifc4` used to ship all bundled tables; it now ships
+  IFC4 only, so a build with `default-features = false, features =
+  ["ifc4"]` loses the other releases -- name them, or keep defaults.
+- `for_version` returns `Result<&Schema, NotBundled>` instead of
+  `Option<&Schema>`, and exists in every build. `Err(NotBundled)` means a
+  recognised release whose feature is off; an unknown `FILE_SCHEMA` token
+  is still `None` from `SchemaVersion::from_header_token`, so the two cases
+  stay distinguishable.
+- `write_structural_catalog` and `write_direct_structural_catalog` exist in
+  every build and return an `io::ErrorKind::Unsupported` error wrapping
+  `NotBundled` for a release that is not compiled in, instead of panicking.
+- `artifact_decode_schema` and `BundledSchemaError` need the new
+  `artifact` feature (enabled by every release feature) instead of `ifc4`.
+- `SchemaVersion` is `#[non_exhaustive]`, derives `Hash`, and gains
+  `Ifc4x1` and `Ifc4x2` (#33). A `match` on it needs a wildcard arm; a
+  consumer should refuse a release it has not verified, never alias it to
+  a neighbour. `write_structural_catalog` and
+  `write_direct_structural_catalog` accept the new versions.
+- `ifc-schema` owns its schema types. `Attribute`, `EntityDef`, `TypeDef`,
+  `TypeKind` and the newly exported `WhereRule` are defined here instead of
+  re-exported from `openbim_step::express`, and all five are
+  `#[non_exhaustive]`: construct them with `Attribute::new`,
+  `EntityDef::new`, `TypeDef::new`, `WhereRule::new` and the builder methods
+  (`with_supertype`, `with_attribute`, `with_derived`, `with_where_rule`,
+  `abstract_entity`, `optional`, `aggregate`), and give every `match` on
+  `TypeKind` a wildcard arm. Field names, `supertype()`, `is_derived()` and
+  `is_defined()` are unchanged. Rationale: an `openbim-step` release no
+  longer ripples into this crate's public API, and later facts about a
+  declaration (aggregate bounds, INVERSE, UNIQUE) can be added as fields
+  without another break.
+- `openbim-step` is an optional dependency, linked only by the new `express`
+  feature and by `generation`. The bundled tables decode straight into the
+  owned types; the default build no longer links a parser.
+- `Schema::from_express` and `Schema::from_express_bytes` require the new
+  `express` feature.
+- Removed: `Schema::from_parsed(ParsedSchema)` (use
+  `Schema::new(name, entities, types)`), `Schema::graph()` (the
+  `openbim_step::SchemaGraph` it returned is no longer held; `Schema`
+  answers the same queries itself), and the `express` module with its
+  `parse`/`ParsedSchema` re-exports (use `openbim_step::express` directly).
+- `EntityDef` no longer carries `redeclared`/`is_redeclared()`. No bundled
+  table ever recorded explicit redeclarations (the artifact format drops
+  them), so they were always empty for `ifc2x3()`, `ifc4()` and `ifc4x3()`.
+- `artifact_decode_schema` returns a `Schema` and `artifact_encode_schema`
+  (`generation`) takes one, instead of `openbim_step::express::ParsedSchema`.
 
 ### Added
 
-- A crate README, which is the crates.io page.
+- Aggregate bounds, nested aggregation, INVERSE and UNIQUE (#111):
+  `Attribute::aggregation` (levels outermost first, each an `Aggregation`
+  with `AggregateKind`, lower and upper `Bound`, `unique`,
+  `optional_elements`), `EntityDef::inverses` (`InverseAttribute`) and
+  `EntityDef::unique_rules` (`UniqueRule`), with builders. Additive: the
+  types were already `#[non_exhaustive]`. All five bundled tables are
+  regenerated with them: 115/153/158/160/165 INVERSE and 17/4/4/4/4
+  UNIQUE declarations for IFC2X3/IFC4/IFC4X1/IFC4X2/IFC4X3, pinned by
+  tests.
+- `NotBundled`, `SchemaVersion::is_bundled()` and
+  `SchemaVersion::feature_name()`.
+- IFC4X1 FINAL and IFC4X2 FINAL (#33): bundled tables
+  `data/ifc4x1-final.bin` (801 entities, 400 types) and
+  `data/ifc4x2-final.bin` (816 entities, 407 types), generated from the
+  official EXPRESS files like the other three; accessors `ifc4x1()` and
+  `ifc4x2()`; `for_version` returns them; header tokens `IFC4X1` and
+  `IFC4X2` (the files' own `SCHEMA` names); release ids `IFC4X1_FINAL`
+  and `IFC4X2_FINAL`. Tests pin that both counts differ from IFC4 and
+  IFC4X3 and that each carries its own release's entities.
+- `SchemaVersion::ALL`, every known version oldest first.
+- `Schema::new`, `Schema::entities()` and `Schema::types()` (declarations in
+  source order), `PartialEq`/`Eq` for `Schema`, and the `BundledSchemaError`
+  export.
+
+### Unchanged
+
+- The bundled artifacts are byte-identical: regenerating all three with the
+  ported generator reproduces the committed files, and `FORMAT_VERSION`
+  stays 2.
+
+### Changed
+
+- Requires `openbim-step` 0.7.0, matching `ifc-step`. Both pin the parser
+  exactly, so the pair must move together. `openbim-step` 0.6 replaced
+  `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
+  accessor for multiple inheritance; IFC schemas are single-inheritance, so
+  the serialized artifact is unchanged.
 
 Full history: [`crates/ifc-schema/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-schema/CHANGELOG.md)

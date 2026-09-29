@@ -11,7 +11,7 @@ Bounded IFC4 approval resource semantics.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.2.1 (2026-09-28) |
+| Latest release | 0.3.0 (2026-09-29) |
 | Registries | [crates.io `ifc-approval`](https://crates.io/crates/ifc-approval) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `approval` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_approval/index.html) · [docs.rs](https://docs.rs/ifc-approval) |
@@ -34,36 +34,67 @@ signatures, or policy decisions.
 
 ## Changes
 
-Latest release, 0.2.1 (2026-09-28):
+Latest release, 0.3.0 (2026-09-29):
 
 ### Added
 
-- `associate_approval_with_owner_history` (#202). It takes the model and a
-  caller-supplied `IfcOwnerHistory` id, which IFC2X3 requires on every
-  `IfcRoot`. The id must be in the model or staged on the transaction and
-  must be an `IfcOwnerHistory`: a missing one is refused with
-  `UnknownEntity`, another entity with `AuthoringReferenceType`. None is
-  ever invented. In IFC4 and IFC4X3 the reference fills the optional slot.
-  This follows `ifc-material`'s `associate_material_with_owner_history`
-  (#77) and `ifc-properties`' `*_with_owner_history` writers (#191).
-- `ApprovalError::MultipleSchemas`, `ApprovalError::UnsupportedSchema` and
-  `ApprovalError::AuthoringRequired { entity, attribute, schema }` (#202).
-  `ApprovalError` is `#[non_exhaustive]`, so this is not breaking.
+- `DateTimeInput`: an approval time as IFC4/IFC4X3 `IfcDateTime` text or
+  an IFC2X3 `IfcDateTimeSelect` record (`From<&str>`, `From<EntityId>`).
+- `ApprovalError::NotInSchema`, `StructuredValue`, `EntityNotInSchema`,
+  `AuthoringNotInSchema` and `AuthoringValueType`, and projections'
+  `release()`. `SchemaVersion` is re-exported.
 
-### Fixed
+### Changed (breaking)
 
-- `associate_approval` no longer writes `IfcRelAssociatesApproval` with
-  `OwnerHistory` `$` into an IFC2X3 model, where it is mandatory (#202).
-  It binds the model's declared release (a header without `FILE_SCHEMA`
-  binds IFC4), lays the record out by attribute name from that release's
-  table, and checks `RelatedObjects` against it: `IfcDefinitionSelect` in
-  IFC4 and IFC4X3, `IfcRoot` restricted by WR21 (object and property
-  definitions) in IFC2X3. IFC4 and IFC4X3 output is unchanged.
-  **Behaviour change:** an IFC2X3 model is refused with
-  `AuthoringRequired { attribute: "OwnerHistory", .. }` and nothing is
-  staged; use `associate_approval_with_owner_history` there. A header that
-  declares several schemas, or one without a bundled table, is refused with
-  `MultipleSchemas` or `UnsupportedSchema` where it was written before.
-  The other writers of this crate carry no `IfcRoot` and are unchanged.
+- The approval views read every attribute by name in the model's declared
+  release (#212). They read the IFC4 positions from every file, so an
+  IFC2X3 `IfcApproval` answered its description as the identifier and its
+  date record as the name, and an IFC2X3 `IfcApprovalRelationship` swapped
+  its ends. `ApprovalView` binds the header (IFC2X3, IFC4 or IFC4X3; none
+  reads as IFC4) and a lookup refuses IFC4X1, IFC4X2, unknown and multiple
+  schemas. An attribute the release does not declare is `NotInSchema`
+  (IFC2X3 `IfcApproval` has no `RequestingApproval`, `GivingApproval`, or
+  `Status`, `Level` and `Qualifier` under those names, which are not
+  documented as its `ApprovalStatus`, `ApprovalLevel` and
+  `ApprovalQualifier`), and `time_of_approval` on IFC2X3's
+  `ApprovalDateTime` record is `StructuredValue` with the record id. IFC2X3
+  `RelatedApproval` is read as a one-element `related_approvals`. IFC4 and
+  IFC4X3 answers are unchanged.
+- `create_approval`, `relate_approvals` and `relate_resource_approval`
+  bind the declared release and lay their records out by name (#212). In
+  IFC2X3 an `IfcApproval` has seven attributes and requires `Identifier`,
+  `Name` and `ApprovalDateTime` (the IFC4 `TimeOfApproval`) as a date
+  record; an `IfcApprovalRelationship` takes exactly one related approval
+  and requires `Name`; `IfcResourceApprovalRelationship` does not exist
+  (`EntityNotInSchema`). A value the release does not declare is
+  `AuthoringNotInSchema` (formerly `AuthoringInvalid`) and one it cannot
+  hold `AuthoringValueType`. IFC4 and IFC4X3 records are unchanged.
+- `ApprovalDraft::time_of_approval` is `Option<DateTimeInput>`; the setter
+  takes `impl Into<DateTimeInput>`, so `.time_of_approval("…")` still
+  compiles.
+- `Approval::try_new`, `ApprovalRelationship::try_new`,
+  `ResourceApprovalRelationship::try_new` and `ApprovalAssignment::try_new`
+  take the `SchemaVersion` to read against, refusing IFC4X1, IFC4X2 and an
+  entity the release does not declare. `ApprovalView::new` is no longer
+  `const`.
+
+- `ApprovalDraft`, `ApprovalRelationshipDraft`, `ResourceApprovalDraft`
+  and `ApprovalAssociationDraft` are `#[non_exhaustive]` (#214). Struct
+  literals no longer compile outside the crate: build them with
+  `ApprovalDraft::new()`,
+  `ApprovalRelationshipDraft::new(relating_approval, related_approvals)`,
+  `ResourceApprovalDraft::new(related_resources, relating_approval)` and
+  `ApprovalAssociationDraft::new(global_id, related_objects,
+  relating_approval)` plus field-named setters. Fields stay public.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
 
 Full history: [`crates/ifc-approval/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-approval/CHANGELOG.md)

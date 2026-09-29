@@ -11,7 +11,7 @@ Schema conformance: WHERE rules, cardinality, GUID and reference integrity.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.1 (2026-09-28) |
+| Latest release | 0.4.0 (2026-09-29) |
 | Registries | [crates.io `ifc-validate`](https://crates.io/crates/ifc-validate) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `validate` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_validate/index.html) · [docs.rs](https://docs.rs/ifc-validate) |
@@ -38,42 +38,50 @@ so parsing is permissive and validation is an explicit, separate pass.
 
 ## Changes
 
-Latest release, 0.3.1 (2026-09-28):
+Latest release, 0.4.0 (2026-09-29):
 
 ### Added
 
-- The form of every value is checked against ISO 10303-21:2016 (#199): a
-  typed parameter is written exactly where the declared type is a SELECT
-  (§12.1.8), and the bare value everywhere else (§12.1.6, §12.1.7). Three
-  new rule ids, all errors, each pinned by adversarial fixture pairs:
-  - `type.typed.outside_select`: a typed parameter of the declared type,
-    or of a specialisation of it, where the declared type is not a SELECT.
-    `IFCAREAMEASURE(12.5)` in `IfcQuantityArea.AreaValue` is reported; it
-    used to pass because the payload was judged against the wrapper alone.
-  - `type.typed.wrong_type`: a typed parameter of another type there.
-    `IFCLABEL('x')` in `AreaValue` used to pass as well.
-  - `type.select.untyped`: a bare value that is not a reference where the
-    declared type is a SELECT, such as `NominalValue : IfcValue` written
-    `1.` instead of `IFCREAL(1.)`. Part 21 requires the typed form for every
-    SELECT, not only ambiguous ones. A SELECT of entities alone still
-    reports `type.entity.expected_reference`.
+- Aggregate checks from the schema's bounds (#111): a level outside its
+  declared size (`structure.aggregate.too_few`,
+  `structure.aggregate.too_many`; `ARRAY [l:u]` needs exactly u-l+1), an
+  inner level of a nested aggregate that is not an aggregate
+  (`structure.aggregate.nesting`), and a repeated element in a `SET` or
+  `UNIQUE` level (`structure.aggregate.duplicate`). The members of a
+  `LIST OF LIST` are now type-checked against the innermost element type
+  (#215).
+- Every `UNIQUE` clause of the declared release is checked across the
+  declaring entity and its subtypes (`structure.unique.violation`), except
+  `IfcRoot.UR1`, which stays `global.UniqueGlobalId`.
 
-  All three apply to aggregate members against the element type, and to
-  the parameter inside a typed wrapper against the wrapper's type. Whether
-  the declared type is a SELECT follows defined-type aliases, as §12.1.8
-  EXAMPLE 2 encodes a type aliasing a SELECT. They are errors, not warnings,
-  although many readers unwrap a well-typed wrapper: the file is not legal,
-  and `ifcopenshell.validate` rejects both forms. The reasoning is in the
-  `type_check` module docs.
-- `type_check::Mismatch` has the variants `TypedOutsideSelect`,
-  `TypedWrongType` and `UntypedSelectValue`.
+### Changed (breaking)
+
+- `structure::duplicate_global_ids` and its rule id
+  `structure.unique.duplicate_global_id` are removed: the function
+  duplicated `global.UniqueGlobalId` and `validate` never ran it. Its
+  module now checks the release's UNIQUE clauses (`structure::unique_rules`,
+  run by `validate`).
+- No registered rule claims to need aggregate bounds any more:
+  `IfcPolyLoop.WR21` and `IfcPolyLoop.AllPointsSameDim` are unsupported
+  for needing an expression evaluator.
+- `Support` is `#[non_exhaustive]`: a match needs a wildcard arm.
+- `Finding` is `#[non_exhaustive]`; it can no longer be built with a struct
+  literal outside the crate.
+- `Path` is `#[non_exhaustive]`, so a later release can name a new location
+  kind; a match needs a wildcard arm.
 
 ### Changed
 
-- `type.select.member` walks only nested SELECTs, never the underlying
-  type of a defined type in the select-list: §12.1.8 requires the keyword
-  to name a type the SELECT, or a SELECT nested in it, lists. `IFCRATIOMEASURE(0.5)` in an
-  `IfcColourOrFactor` slot, which lists `IfcNormalisedRatioMeasure`, is now
-  reported.
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- `validate_declared` validates IFC4X1 and IFC4X2 files against their own
+  bundled tables instead of refusing them as unknown. No WHERE rule is
+  registered for either release yet, so their report carries one
+  `where.release` finding (severity `Unsupported`) saying WHERE rules were
+  not evaluated, rather than reading as if they passed.
+- SELECT resolution treats a type declaration form `ifc-schema` adds later
+  like an undeclared member (fails closed); follows `ifc_schema::TypeKind`
+  becoming `#[non_exhaustive]`.
 
 Full history: [`crates/ifc-validate/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-validate/CHANGELOG.md)

@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-29
+
 ### Changed (breaking)
 
 - Artifact format 3 records the facts above; format 1 and 2 artifacts

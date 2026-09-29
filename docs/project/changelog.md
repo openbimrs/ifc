@@ -18,1168 +18,7 @@ lockstep -- is archived in the
 
 <!-- CHANGELOG:BEGIN -->
 
-## [Unreleased]
-
-### ifc-alignment
-
-### Fixed
-
-- `read_vertical_segment`, `read_cant_segment` and `CantLayout::resolve`
-  (`RailHeadDistance`) read a typed parameter such as
-  `IFCLENGTHMEASURE(1.)` exactly like the bare number, as
-  `read_horizontal_segment` already did; they refused it as the wrong kind
-  (#140).
-
-### Changed (breaking)
-
-- The authoring drafts `HorizontalSegmentDraft`, `VerticalSegmentDraft`
-  and `CantSegmentDraft` are `#[non_exhaustive]`: build them with
-  `HorizontalSegmentDraft::new(start_point, start_direction, start_radius,
-  end_radius, segment_length, predefined_type)`,
-  `VerticalSegmentDraft::new(start_dist_along, horizontal_length,
-  start_height, start_gradient, end_gradient, predefined_type)` or
-  `CantSegmentDraft::new(start_dist_along, horizontal_length,
-  start_cant_left, start_cant_right, predefined_type)` and the setters
-  `gravity_center_line_height`, `radius_of_curvature`, `end_cant_left` and
-  `end_cant_right`. Fields stay public.
-- The read-side `HorizontalSegment`, `CantSegment`, `CantLayout`,
-  `CantAtStation`, `LinearPlacement`, `StationEquation`,
-  `LoweredAlignmentCurve`, `PartialHorizontalLayout` and `RefusedSegment`
-  are `#[non_exhaustive]`; they can no longer be built with a struct literal
-  outside the crate.
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- Pinned by test: `AlignmentView::for_model` refuses `IFC4X1` and
-  `IFC4X2` (their alignment model differs from IFC4X3).
-
-### ifc-approval
-
-### Added
-
-- `DateTimeInput`: an approval time as IFC4/IFC4X3 `IfcDateTime` text or
-  an IFC2X3 `IfcDateTimeSelect` record (`From<&str>`, `From<EntityId>`).
-- `ApprovalError::NotInSchema`, `StructuredValue`, `EntityNotInSchema`,
-  `AuthoringNotInSchema` and `AuthoringValueType`, and projections'
-  `release()`. `SchemaVersion` is re-exported.
-
-### Changed (breaking)
-
-- The approval views read every attribute by name in the model's declared
-  release (#212). They read the IFC4 positions from every file, so an
-  IFC2X3 `IfcApproval` answered its description as the identifier and its
-  date record as the name, and an IFC2X3 `IfcApprovalRelationship` swapped
-  its ends. `ApprovalView` binds the header (IFC2X3, IFC4 or IFC4X3; none
-  reads as IFC4) and a lookup refuses IFC4X1, IFC4X2, unknown and multiple
-  schemas. An attribute the release does not declare is `NotInSchema`
-  (IFC2X3 `IfcApproval` has no `RequestingApproval`, `GivingApproval`, or
-  `Status`, `Level` and `Qualifier` under those names, which are not
-  documented as its `ApprovalStatus`, `ApprovalLevel` and
-  `ApprovalQualifier`), and `time_of_approval` on IFC2X3's
-  `ApprovalDateTime` record is `StructuredValue` with the record id. IFC2X3
-  `RelatedApproval` is read as a one-element `related_approvals`. IFC4 and
-  IFC4X3 answers are unchanged.
-- `create_approval`, `relate_approvals` and `relate_resource_approval`
-  bind the declared release and lay their records out by name (#212). In
-  IFC2X3 an `IfcApproval` has seven attributes and requires `Identifier`,
-  `Name` and `ApprovalDateTime` (the IFC4 `TimeOfApproval`) as a date
-  record; an `IfcApprovalRelationship` takes exactly one related approval
-  and requires `Name`; `IfcResourceApprovalRelationship` does not exist
-  (`EntityNotInSchema`). A value the release does not declare is
-  `AuthoringNotInSchema` (formerly `AuthoringInvalid`) and one it cannot
-  hold `AuthoringValueType`. IFC4 and IFC4X3 records are unchanged.
-- `ApprovalDraft::time_of_approval` is `Option<DateTimeInput>`; the setter
-  takes `impl Into<DateTimeInput>`, so `.time_of_approval("…")` still
-  compiles.
-- `Approval::try_new`, `ApprovalRelationship::try_new`,
-  `ResourceApprovalRelationship::try_new` and `ApprovalAssignment::try_new`
-  take the `SchemaVersion` to read against, refusing IFC4X1, IFC4X2 and an
-  entity the release does not declare. `ApprovalView::new` is no longer
-  `const`.
-
-- `ApprovalDraft`, `ApprovalRelationshipDraft`, `ResourceApprovalDraft`
-  and `ApprovalAssociationDraft` are `#[non_exhaustive]` (#214). Struct
-  literals no longer compile outside the crate: build them with
-  `ApprovalDraft::new()`,
-  `ApprovalRelationshipDraft::new(relating_approval, related_approvals)`,
-  `ResourceApprovalDraft::new(related_resources, relating_approval)` and
-  `ApprovalAssociationDraft::new(global_id, related_objects,
-  relating_approval)` plus field-named setters. Fields stay public.
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
-
-### ifc-author
-
-### Changed (breaking)
-
-- `PersonDraft`, `OrganizationDraft`, `ApplicationDraft` and
-  `OwnerHistoryDraft` are `#[non_exhaustive]` (#214), so a later release can
-  add a field without another break. Struct literals no longer compile
-  outside the crate: build each with `new(...)` and field-named setters,
-  `PersonDraft::new()`, `OrganizationDraft::new(name)`,
-  `ApplicationDraft::new(developer, version, full_name, identifier)` and
-  `OwnerHistoryDraft::new(owning_user, owning_application, creation_date)`
-  (then e.g. `.change_action("ADDED")`). Fields stay public.
-
-### Changed
-
-- Links no bundled schema table itself: every entry point takes the
-  `Schema` from the caller. A consumer that used a table through this
-  crate's dependency (`ifc_schema::ifc4()`) enables it on its own
-  `ifc-schema` dependency (default features bundle every release).
-- A type declaration form `ifc-schema` adds later resolves as unresolved
-  (no refusal on shape, no form claim) instead of failing to compile;
-  follows `ifc_schema::TypeKind` becoming `#[non_exhaustive]`.
-
-### ifc-classification
-
-### Changed (breaking)
-
-- `ClassificationHierarchy` and `EffectiveClassifications` are
-  `#[non_exhaustive]`.
-- Every public draft is `#[non_exhaustive]`, so struct literals no longer
-  compile outside the crate. Each gains a constructor taking its required
-  fields and one builder setter per other field, named after the field and
-  taking the unwrapped value (`.source("NBS")` sets `Some`):
-  - `ClassificationDraft::new(name)`
-  - `DocumentDraft::new(identification, name)`
-  - `LibraryDraft::new(name)`
-  - `AssociationDraft::new(global_id, related_objects)`
-  - `ExternalReferenceRelationshipDraft::new(relating_reference, related_resources)`
-  - `ClassificationReferenceDraft::new()`, `DocumentReferenceDraft::new()` and
-    `LibraryReferenceDraft::new()`, which now also derive `Default`
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- `UnsupportedSchema` reads "a release this crate has no verified layout
-  for" instead of "no bundled schema table".
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
-
-### ifc-constraint
-
-### Added
-
-- `DateTimeInput`: a creation time as IFC4/IFC4X3 `IfcDateTime` text or an
-  IFC2X3 `IfcDateTimeSelect` record (`From<&str>`, `From<EntityId>`).
-- `ConstraintError::NotInSchema`, `StructuredValue`, `EntityNotInSchema`,
-  `AuthoringNotInSchema` and `AuthoringValueType`, and projections'
-  `release()`. `SchemaVersion` is re-exported.
-
-### Changed (breaking)
-
-- The constraint views read every attribute by name in the model's
-  declared release (#212). They read IFC4 positions, types and SELECTs
-  from every file. `ConstraintView` binds the header (IFC2X3, IFC4 or
-  IFC4X3; none reads as IFC4) and a lookup refuses IFC4X1, IFC4X2, unknown
-  and multiple schemas. An attribute the release does not declare is
-  `NotInSchema`: IFC2X3 `IfcMetric.ReferencePath`, and IFC2X3
-  `IfcObjective.LogicalAggregator`, whose slot holds `ResultValues`, an
-  `IfcMetric`, which was reported as a malformed operator. An IFC2X3
-  `CreationTime` record is `StructuredValue` with the record id instead of
-  `InvalidValue`; IFC2X3's single `BenchmarkValues` metric is a one-element
-  list; `DataValue` is checked against the release's own
-  `IfcMetricValueSelect` and is required in IFC2X3. IFC4 and IFC4X3 answers
-  are unchanged.
-- `create_metric`, `create_objective`, `relate_resource_constraint` and
-  `create_reference` bind the declared release and lay their records out by
-  name (#212). In IFC2X3 a metric has ten attributes and requires
-  `DataValue`, `ReferencePath` is `AuthoringNotInSchema`, an objective takes
-  exactly one `IfcMetric` benchmark and no logical aggregator, text
-  `CreationTime` is `AuthoringValueType`, and
-  `IfcResourceConstraintRelationship` and `IfcReference` are
-  `EntityNotInSchema`. Enumeration tokens are checked against the release's
-  enumeration (IFC2X3 lacks, for example, `INCLUDES` and `MODELVIEW`). IFC4
-  and IFC4X3 records are unchanged.
-- `ConstraintBaseDraft::creation_time` is `Option<DateTimeInput>`; the
-  setter takes `impl Into<DateTimeInput>`, so `.creation_time("…")` still
-  compiles.
-- `Metric::try_new`, `Objective::try_new`,
-  `ResourceConstraintRelationship::try_new` and
-  `ConstraintAssignment::try_new` take the `SchemaVersion` to read against,
-  refusing IFC4X1, IFC4X2 and an entity the release does not declare.
-  `ConstraintView::new` is no longer `const`. A value for an attribute the
-  release does not declare, which `associate_constraint` could not hit, is
-  `AuthoringNotInSchema` rather than `AuthoringInvalid`.
-
-- Every public draft is `#[non_exhaustive]`, so struct literals no longer
-  compile outside the crate. Each gains a constructor taking its required
-  fields and one builder setter per other field, named after the field and
-  taking the unwrapped value (`.description("…")` sets `Some`):
-  - `ConstraintBaseDraft::new(name, grade)`
-  - `MetricDraft::new(base, benchmark)`
-  - `ObjectiveDraft::new(base, qualifier)`
-  - `ResourceConstraintDraft::new(relating_constraint, related_resources)`
-  - `ConstraintAssociationDraft::new(global_id, related_objects, relating_constraint)`
-  - `ReferenceDraft::new()`, which now also derives `Default`
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
-
-### ifc-control
-
-### Changed (breaking)
-
-- `ControlDraft` and `ControlAssignmentDraft` are `#[non_exhaustive]`
-  (#214). Struct literals no longer compile outside the crate: build them
-  with `ControlDraft::new()` and
-  `ControlAssignmentDraft::new(global_id, control, related_objects)` plus
-  field-named setters (`.name("Permit")`). Fields stay public.
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
-
-### ifc-cost
-
-### Added
-
-- IFC2X3 cost schedules can carry their dates (#214): `DateTimeValue`
-  carries a date either as IFC4/IFC4X3 `IfcDateTime` text
-  (`DateTimeValue::Text`, `From<&str>`) or as one of the IFC2X3
-  `IfcDateTimeSelect` records (`Date(CalendarDate)`, `Time(LocalTime)`,
-  `DateAndTime(CalendarDate, LocalTime)`). In IFC2X3
-  `create_cost_schedule_with_owner_history` stages the `IfcCalendarDate`,
-  `IfcLocalTime` and `IfcDateAndTime` records for `SubmittedOn` and
-  `UpdateDate` and references them, only once the schedule itself is
-  accepted. Record forms are checked against the schema's rules before
-  anything is staged (`IfcValidCalendarDate` with `IfcLeapYear`,
-  `IfcValidTime`, and the component ranges), refused with `InvalidValue`.
-  The types duplicate `ifc-schedule`'s, since sibling domain crates may not
-  depend on each other.
-- Every draft has a constructor and a setter per optional field, named
-  after it: `CostItemDraft::new(global_id)`,
-  `CostScheduleDraft::new(global_id)`,
-  `NestingDraft::new(global_id, parent, children)`,
-  `ScheduleAssignmentDraft::new(global_id, schedule, items)`,
-  `QuantityDraft::new(kind, name, value)`; `CostValueDraft` keeps
-  `monetary` and `Default` and gains setters.
-
-### Fixed
-
-- `create_cost_schedule_with_owner_history` no longer refuses every dated
-  IFC2X3 schedule (#214): a record form is written as the
-  `IfcDateTimeSelect` IFC2X3 declares. In IFC4 and IFC4X3 a record form is
-  refused with `AuthoringValueType`, as text is in IFC2X3.
-
-### Changed (breaking)
-
-- `create_cost_value`, `create_monetary_unit` and
-  `create_currency_relationship` bind the model's declared release and lay
-  their records out by attribute name (#213). They wrote the IFC4 layout
-  into every model. In IFC2X3 an `IfcCostValue` has eight attributes and
-  requires `CostType`, written from `category` (IFC4 renamed `CostType` to
-  `Category`); a composed value (`ArithmeticOperator`, `Components`) is
-  refused with `AuthoringNotInSchema`. `IfcMonetaryUnit.Currency` is an
-  `IfcCurrencyEnum` enumerator in IFC2X3 (a label it does not list is
-  `AuthoringValueType`) and an `IfcLabel` from IFC4 on. An IFC2X3
-  `IfcCurrencyRelationship` has five attributes and requires `RateDateTime`
-  as an `IfcDateAndTime` record. IFC4 and IFC4X3 records are unchanged.
-- `create_monetary_unit` takes the `&Model` (`create_monetary_unit(tx,
-  model, currency)`), which it needs to bind the release.
-- `CostValueDraft::applicable_date` and `fixed_until_date` are
-  `Option<DateTimeValue>`, and `create_currency_relationship` takes
-  `rate_date_time: Option<DateTimeValue>`: IFC4 and IFC4X3 text as before
-  (`"2026-01-01".into()`; the draft setters take `impl Into<DateTimeValue>`),
-  or an IFC2X3 record form, which the writer stages. A form the release does
-  not declare is refused with `AuthoringValueType`.
-- `CostView::schedules` returns `Result<impl Iterator<Item = CostSchedule>,
-  CostError>` and every `CostSchedule` accessor reads its attribute by name
-  in the model's declared release (#212). The IFC4 positions misread an
-  IFC2X3 `IfcCostSchedule`: `PreparedBy` as the predefined type, the
-  `SubmittedOn` record as the status and `SubmittedBy` as the
-  identification. `identification` reads IFC2X3's `ID`, which IFC4 renamed.
-  A header declaring IFC4X1, IFC4X2 or an unknown release is
-  `CostError::UnsupportedSchema`, several `CostError::MultipleSchemas`
-  (new variants); no header reads as IFC4.
-- `CostSchedule::submitted_on` and `update_date` return
-  `Option<AuthoredDateTime>`: IFC4/IFC4X3 text or the IFC2X3 date record
-  (`AuthoredDateTime::Record`), never `None` for a stated IFC2X3 date.
-- `CostSchedule::new(id, entity, release)` takes the release to read
-  against and returns `Result`, refusing IFC4X1 and IFC4X2.
-- `CostValueDraft`, `CostItemDraft`, `CostScheduleDraft`, `NestingDraft`,
-  `ScheduleAssignmentDraft` and `QuantityDraft` are `#[non_exhaustive]`:
-  build them with their constructors and setters instead of a struct
-  literal. Their fields stay public to read and assign.
-- `CostScheduleDraft::submitted_on` and `update_date` are
-  `Option<DateTimeValue<'a>>` (were `Option<&'a str>`); text converts with
-  `.into()` or through the setters, and IFC4/IFC4X3 output is unchanged.
-- `#[non_exhaustive]` on the public enums and result structs a later
-  release could extend: `CostItemType`, `CostScheduleType`,
-  `CostValueKind`, `QuantityKind`, `ArithmeticOperator`, `UnitBasis` and
-  `Consistency`. A `match` outside the crate needs a wildcard arm, and the
-  structs can no longer be built outside it.
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
-
-### ifc-element-type
-
-### Added
-
-- `TypeDraft` fields for the type-specific attributes IFC4 and IFC4X3
-  require (#214): `operation_type` and `user_defined_operation_type`
-  (`IfcDoorType`), `partitioning_type` and `user_defined_partitioning_type`
-  (`IfcWindowType`), `parameter_takes_precedence` (both), `event_trigger_type`
-  and `user_defined_event_trigger_type` (`IfcEventType`), and
-  `assembly_place` (`IfcFurnitureType`, IFC2X3 too). Tokens are checked
-  against the bound release's enumeration (`Invalid` otherwise); a value for
-  an attribute the type does not declare is refused with
-  `AuthoringNotInSchema`; `USERDEFINED` `event_trigger_type` without a
-  non-blank `user_defined_event_trigger_type` is refused
-  (`CorrectEventTriggerType`). These four types can now be authored in every
-  release that declares them.
-- `TypeDraft::new` and `SupertypeDraft::new`, and one builder setter per
-  field, named after it (`TypeDraft::new().name("Beam").tag_or_long_description("B-1")`).
-
-### Fixed
-
-- `create_type` (and `create_supertype`), which take no model, no longer
-  write `$` into an attribute IFC4X3 requires: a required attribute left
-  unset is refused with `AuthoringRequired`, staging nothing, as the
-  model-bound writers already did (#214).
-
-### Changed (breaking)
-
-- `TypeDraft` and `SupertypeDraft` are `#[non_exhaustive]`: struct literals
-  outside the crate no longer compile. Use `new()` (or `default()`) and the
-  setters; the fields stay public for reading and assignment.
-- `create_type` refuses `IfcDoorType`, `IfcWindowType`, `IfcEventType` and
-  `IfcFurnitureType` without their required type-specific attribute, where
-  it wrote `$` before.
-- `Slot6`, `Family`, `ElementType` and `SupertypeKind` are
-  `#[non_exhaustive]`: a `match` on `Family` or `Slot6` needs a wildcard arm,
-  and catalogue rows can no longer be built by struct literal outside the
-  crate (use the generated constants).
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
-
-### ifc-geometry
-
-### Changed
-
-- `MaterialProfileSetUsageGeometry::new` accepts
-  `IfcMaterialProfileSetUsageTapering`, the schema subtype of
-  `IfcMaterialProfileSetUsage`, whose inherited slots it reads unchanged;
-  the new `MaterialProfileSetUsageGeometry::tapering()` returns its
-  `MaterialProfileSetUsageTaperingGeometry` (end profile set and end
-  cardinal point), or `None` for a plain usage (#136).
-
-### Changed (breaking)
-
-- `ViolationKind`, `Support` and `FunctionStatus` are `#[non_exhaustive]`: a
-  match needs a wildcard arm.
-- `RuleViolation`, `LoweredGeometry` and `MappedInstance` are
-  `#[non_exhaustive]`; they can no longer be built with a struct literal
-  outside the crate.
-- `authoring::surface_curve_swept_area_solid`,
-  `authoring::fixed_reference_swept_area_solid` and
-  `authoring::swept_disk_solid` are removed (#210). Without the model they
-  could not write every release correctly: the two directrix sweeps wrote
-  the IFC4X3 `IFCPARAMETERVALUE(..)` trim into IFC4 files, and the swept
-  disk wrote `$` for the trim IFC2X3 requires. Use
-  `surface_curve_swept_area_solid_in`, `fixed_reference_swept_area_solid_in`
-  and the new `swept_disk_solid_in`, which take `&Model` after the
-  transaction and otherwise the same arguments.
-- `SurfaceCurveSweptAreaSolid::start_param`/`end_param` and
-  `FixedReferenceSweptAreaSolid::start_param`/`end_param` return
-  `GeometryResult<Option<TrimMeasure>>` instead of `Option<f64>` (#210). In
-  IFC4X3 the trim is an `IfcCurveMeasureSelect`, and an
-  `IFCLENGTHMEASURE(..)` trim is a distance along the directrix, not a curve
-  parameter; the reader now says which (`TrimMeasure::Parameter` or
-  `TrimMeasure::Length`) instead of returning both as a parameter. A bare
-  number is a parameter, as IFC2X3 and IFC4 declare. A typed value that is
-  not one of the SELECT's members is refused with `WrongValueKind` instead
-  of being unwrapped.
-- Lowering an `IfcSurfaceCurveSweptAreaSolid` or
-  `IfcFixedReferenceSweptAreaSolid` whose trim is an `IfcLengthMeasure`
-  fails with `Unsupported` (#210). It used to pass the length on as a curve
-  parameter, which on a conic directrix reads metres as radians; converting
-  a length into the directrix's parameter needs arc-length evaluation,
-  which lowering does not do.
-
-### Added
-
-- `authoring::swept_disk_solid_in` (#210): an `IfcSweptDiskSolid` in the
-  model's declared release. The trim is written bare in every release, as
-  before; in IFC2X3, which declares `StartParam` and `EndParam` required,
-  an unset one is refused with `InvalidAuthoredValue` and nothing is
-  staged.
-- `solid::swept::TrimMeasure` (re-exported from `solid`), the kind and
-  value of a directrix sweep's trim, and `TrimMeasure::parameter`.
-
-### Fixed
-
-- `authoring::curve_segment` writes a `CurveMeasure::Length` as
-  `IFCLENGTHMEASURE(..)` (#210). It wrote `IFCNONNEGATIVELENGTHMEASURE(..)`,
-  which is not a member of IFC4X3 `IfcCurveMeasureSelect =
-  SELECT (IfcLengthMeasure, IfcParameterValue)` and is an `ifc-validate`
-  error. Because `IfcLengthMeasure` is signed and neither slot is bounded,
-  a negative length is now written as given instead of refused.
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
-
-### ifc-georef
-
-### Added
-
-- `ProjectedCrs.well_known_text`: the OGC WKT literal of the one IFC4X3
-  `IfcWellKnownText` defining the CRS, verbatim (#142).
-- `GeorefError::RuleViolation { entity, rule }` for a schema WHERE rule or
-  inverse cardinality a record breaks.
-
-### Changed (breaking)
-
-- `ProjectedCrs.name` is `Option<String>` (#142). IFC4X3 declares
-  `IfcCoordinateReferenceSystem.Name : OPTIONAL IfcLabel` with
-  `WHERE NameOrWKT : (HIINDEX(WellKnownText) = 1) OR EXISTS(Name)`: under an
-  IFC4X3 header an unnamed CRS defined by exactly one `IfcWellKnownText` now
-  reads, one with neither is refused with the new
-  `GeorefError::RuleViolation { rule: "NameOrWKT" }`, and two definitions
-  for one CRS (the inverse is `SET [0:1]`) are refused too. IFC4, or a
-  missing or ambiguous header, keeps requiring the name
-  (`MissingAttribute`), so `name` is always `Some` there. Migrate with
-  `crs.name.as_deref()`.
-- The authoring drafts `ProjectedCrsDraft`, `GeographicCrsDraft` and
-  `MapConversionDraft` are `#[non_exhaustive]`: build them with
-  `ProjectedCrsDraft::new(name)`, `GeographicCrsDraft::new()` or
-  `MapConversionDraft::new(source_crs, target_crs, eastings, northings,
-  orthogonal_height)` and a setter named after each optional field
-  (`.map_unit(unit)`, `.x_axis((abscissa, ordinate))`, `.scale(s)`). Fields
-  stay public.
-- The read-side `ProjectToMap` and `ProjectedCrs` are `#[non_exhaustive]`;
-  they can no longer be built with a struct literal outside the crate.
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
-
-### ifc-material
-
-### Changed (breaking)
-
-- `MaterialView::profile_set_usages()` also yields
-  `IfcMaterialProfileSetUsageTapering`, the schema subtype of
-  `IfcMaterialProfileSetUsage` in IFC4 and IFC4X3, in entity-id order, and
-  `MaterialProfileSetUsage::try_new` / `try_from_view` accept it (#136). A
-  caller that iterated both `profile_set_usages()` and
-  `tapering_profile_set_usages()` sees each tapering usage twice; iterate
-  `profile_set_usages()` alone and branch on the new
-  `MaterialProfileSetUsage::tapering()`, which returns the tapering
-  projection (`end_profile_set_id`, `cardinal_end_point`) or `None`.
-- The authoring drafts `MaterialDraft`, `LayerDraft`, `LayerSetDraft`,
-  `MaterialAssignmentDraft`, `ConstituentDraft` and `ProfileDraft` are
-  `#[non_exhaustive]`: build them with `MaterialDraft::new(name)`,
-  `LayerDraft::new(thickness)`, `LayerSetDraft::new(layers)`,
-  `MaterialAssignmentDraft::new(global_id, related_objects,
-  relating_material)`, `ConstituentDraft::new(material)` or
-  `ProfileDraft::new(profile)` and a setter named after each optional field
-  (`LayerDraft::new(0.2).material(brick).priority(80)`). Fields stay public.
-- `ResolvedAssignment` is `#[non_exhaustive]`.
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- `UnsupportedSchema` reads "a release this crate has no verified layout
-  for" instead of "no bundled schema table".
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
-
-### ifc-model
-
-### Changed
-
-- `tests/package_architecture.rs` enumerates the allowed bridge-to-bridge
-  dependencies (`BRIDGE_EDGES`: only `ifc-geometry -> ifc-alignment`)
-  instead of allowing any bridge pair, and a new test requires the
-  manifests to match that list exactly (#143, ADR 0003 amendment
-  2026-09-28). No crate API changes.
-
-### Changed (breaking)
-
-- `Conflict` and `Stop` are `#[non_exhaustive]`: a match needs a wildcard
-  arm, so a new commit-conflict or walk-stop reason is not a breaking
-  change.
-- `Applied` is `#[non_exhaustive]`: read its fields; it can no longer be
-  built with a struct literal outside the crate.
-
-### ifc-occurrence
-
-### Added
-
-- `OccurrenceDraft` fields for what IFC2X3 TC1 requires of a few classes
-  (#214): `shape_type` (`IfcRamp`, `IfcRoof`, `IfcStair`), `nominal_diameter`
-  and `cross_section_area` (`IfcReinforcingBar`, `IfcTendon`), `bar_role`
-  (`IfcReinforcingBar`), and `longitudinal_bars` and `transverse_bars`
-  (`IfcReinforcingMesh`), each a new `MeshBars` of nominal diameter,
-  cross-section area and spacing. These IFC2X3 records can now be authored
-  with `create_with_owner_history`; IFC4 and IFC4X3, which declare the
-  measures `OPTIONAL`, write them when given. A value for an attribute the
-  bound release does not declare on the class is refused with
-  `AuthoringNotInSchema`.
-- `OccurrenceError::UnknownToken` (a `ShapeType` or `BarRole` outside the
-  release's enumeration), `InvalidMeasure` (a non-positive or non-finite
-  `IfcPositiveLengthMeasure`, a non-finite `IfcAreaMeasure`) and
-  `TypeClassNotInSchema` (the bound release pairs no type class with the
-  occurrence, such as an IFC2X3 `IfcStair`), appended.
-- `OccurrenceError` implements `Display` and `std::error::Error`.
-- `OccurrenceDraft::new` and one builder setter per field, named after it.
-- `Occurrence::ifc4_type_class` and `Occurrence::ifc2x3_type_class`: the type
-  class IFC4 ADD2 TC1 and IFC2X3 TC1 pair with each class, generated from
-  their EXPRESS sources by `scripts/gen-occurrences.py`.
-
-### Fixed
-
-- The occurrence-to-type pairing follows the declared release (#214). It was
-  IFC4X3's `CorrectTypeAssigned` in every release, so an IFC2X3 `IfcDoor`
-  typed by an `IfcDoorStyle` was refused; IFC2X3 now pairs doors and windows
-  with `IfcDoorStyle` and `IfcWindowStyle` and every other class with the
-  later releases' type class where IFC2X3 declares it, and IFC4 uses its own
-  rules (IFC4's `IfcTransformer` rule names the undeclared
-  `IFCTRANFORMERTYPE`, an erratum recorded as written). The referenced type
-  is compared with `TYPEOF` semantics, subtypes included.
-
-### Changed (breaking)
-
-- `OccurrenceDraft` is `#[non_exhaustive]`: struct literals outside the crate
-  no longer compile. Use `new()` (or `default()`) and the setters; the fields
-  stay public.
-- `Occurrence`, the generated catalogue row, is `#[non_exhaustive]` and has
-  two new fields; it can no longer be built by struct literal outside the
-  crate (use the generated constants).
-- An IFC2X3 or IFC4 `typed_by` is checked against that release's pairing:
-  a class IFC2X3 pairs with nothing (its type class undeclared there) is
-  refused with `TypeClassNotInSchema` where it was checked against the
-  IFC4X3 class, and `WrongTypeClass.expected` names the release's class.
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
-
-### ifc-properties
-
-### Changed (breaking)
-
-- `Comparison` is `#[non_exhaustive]`: a match needs a wildcard arm.
-- The read results `ExactProperty`, `ExactPropertyEntry`, `ExactTableRow`,
-  `Property`, `PropertySet`, `QuantitySet`, `ResolvedSet` and
-  `PropertySetTemplate` are `#[non_exhaustive]`; compare their fields
-  instead of building one with a struct literal.
-- Every authoring draft is `#[non_exhaustive]`, so a struct literal no
-  longer compiles outside the crate. Each gains `new(required…)` and one
-  builder setter per other field, named after the field and taking the
-  unwrapped value: `TableValueDraft::new(name)`, `DoorLiningDraft::new()`,
-  `WindowLiningDraft::new()`,
-  `ReinforcementBarDraft::new(total_cross_section_area, steel_grade)`,
-  `SectionReinforcementDraft::new(longitudinal_start_position,
-  longitudinal_end_position, reinforcement_role, section_definition,
-  cross_section_reinforcement_definitions)`,
-  `SiUnitDraft::new(unit_type, name)`, `MonetaryUnitDraft::new(currency)`
-  and `ConversionBasedUnitDraft::new(unit_type, name, conversion_factor,
-  dimensions)`. Fields stay public.
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- The unique-member-name rule of complex properties and quantities is
-  labelled per verified release only; another release is refused with
-  `UnsupportedSchema` rather than given the IFC4 label.
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
-- Exact value checks treat a type declaration form `ifc-schema` adds later
-  as not matching; follows `ifc_schema::TypeKind` becoming
-  `#[non_exhaustive]`.
-
-### ifc-resource
-
-### Changed (breaking)
-
-- `ActorRoleDraft`, `PostalAddressDraft`, `TelecomAddressDraft`,
-  `ActorDraft`, `AssetDraft`, `InventoryDraft`, `AppliedValueDraft`,
-  `ResourceDraft`, `ResourceTimeDraft`, `AllocationDraft` and the resource
-  `NestingDraft` are `#[non_exhaustive]` (#214). Struct literals no longer
-  compile outside the crate: build each with `new(...)` and field-named
-  setters. New constructors: `ActorRoleDraft::new(role)`,
-  `PostalAddressDraft::new()`, `TelecomAddressDraft::new()`,
-  `ActorDraft::new(global_id, the_actor)`, `AssetDraft::new(global_id)`,
-  `InventoryDraft::new(global_id)` and `AppliedValueDraft::new()`, each
-  with a setter per remaining field. The drafts that already had builders
-  keep them unchanged. Fields stay public where they were.
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
-- Enumeration checks treat a type declaration form `ifc-schema` adds later
-  as not matching; follows `ifc_schema::TypeKind` becoming
-  `#[non_exhaustive]`.
-
-### ifc-schedule
-
-### Added
-
-- `create_lag_time_in(tx, model, name, lag_value, duration_type)`: the
-  model-bound `create_lag_time`. IFC2X3 declares no `IfcLagTime` and is
-  refused with `EntityNotInSchema`, nothing staged; IFC4 and IFC4X3 stage
-  exactly what `create_lag_time` stages. `create_lag_time` documents that
-  it is for IFC4 and IFC4X3 only (#211).
-- IFC2X3 work plans and work schedules can be authored (#214):
-  `DateTimeValue` carries a date either as IFC4/IFC4X3 `IfcDateTime` text
-  (`DateTimeValue::Text`, `From<&str>`) or as one of the IFC2X3
-  `IfcDateTimeSelect` records (`Date(CalendarDate)`, `Time(LocalTime)`,
-  `DateAndTime(CalendarDate, LocalTime)`). In IFC2X3
-  `create_work_control_with_owner_history` stages the `IfcCalendarDate`,
-  `IfcLocalTime` and `IfcDateAndTime` records and references them, only
-  once the work control itself is accepted. Record forms are checked
-  against the schema's rules before anything is staged
-  (`IfcValidCalendarDate` with `IfcLeapYear`, `IfcValidTime`, and the
-  ranges of `IfcMonthInYearNumber`, `IfcHourInDay`, `IfcMinuteInHour` and
-  `IfcSecondInMinute`), refused with `InvalidValue`. `CalendarDate` and
-  `LocalTime` are `#[non_exhaustive]`; `LocalTime` does not yet carry
-  `Zone` or `DaylightSavingOffset`, which are written `$`.
-- IFC2X3 sequences can be authored (#214): `TimeLag::Seconds` is the
-  IFC2X3 `IfcRelSequence.TimeLag : IfcTimeMeasure`, `TimeLag::LagTime` the
-  IFC4/IFC4X3 `IfcLagTime` reference. A non-finite lag is refused with
-  `InvalidValue`.
-- `ProcedureDraft::user_defined_procedure_type`, written as the IFC2X3
-  `IfcProcedure.UserDefinedProcedureType` (#214), so a `USERDEFINED` IFC2X3
-  procedure can be authored.
-- Every draft has a `new` constructor taking its required fields
-  (`TaskDraft::new(global_id)`, `WorkControlDraft::new(global_id,
-  creation_date, start_time)`, `EventDraft::new(global_id)`,
-  `ProcedureDraft::new(global_id)`, `RecurrenceDraft::new(recurrence_type)`,
-  `EventTimeDraft::new()`, `TaskTimeDraft::new()`) and a setter per other
-  field, named after it, as `ifc-resource`'s drafts are built.
-
-### Fixed
-
-- `create_work_control_with_owner_history`, `create_sequence_with_owner_history`
-  and `create_procedure_with_owner_history` no longer refuse the IFC2X3
-  records the drafts could not carry (#214). `IfcProcedure.WR4` is enforced
-  instead: an IFC2X3 `USERDEFINED` procedure without a non-blank
-  `user_defined_procedure_type` is refused with `InvalidValue`.
-- The release-bound writers refuse a `SchemaVersion` this build carries no
-  table for with `UnsupportedSchema` instead of panicking.
-
-### Changed (breaking)
-
-- The task, work-control and sequence readers bind the model's declared
-  release and read every attribute by name from its table (#212). They
-  read IFC4 slot constants from every file, so an IFC2X3 task answered its
-  `Status` as the long description, `WorkMethod` as the status and
-  `Priority` as the milestone flag, and an IFC2X3 work plan or schedule its
-  `WorkControlType` as the predefined type. The header binds IFC2X3, IFC4
-  or IFC4X3 (none reads as IFC4); IFC4X1, IFC4X2, unknown and multiple
-  schemas are refused with the new `ScheduleReadError`. IFC4 and IFC4X3
-  answers are unchanged.
-- `tasks`, `work_plans`, `work_schedules`, `sequences`, `predecessors_of`,
-  `successors_of`, `start_tasks`, `end_tasks`, `tasks_of_schedule` and
-  `subtasks_of` return `Result<_, ScheduleReadError>`; `find_cycle` returns
-  `Result<Option<SequenceCycle>, ScheduleReadError>`; `downstream_of` and
-  `execution_order` return `ScheduleReadError::Cycle(SequenceCycle)` for a
-  loop instead of a bare `SequenceCycle`.
-- `Task::new(id, entity, release)` and `WorkControl::new(id, entity,
-  release)` take the `SchemaVersion` to read against and return `Result`,
-  refusing IFC4X1 and IFC4X2; `WorkControl::new` is `Ok(None)` for another
-  entity. `Task::release` and `WorkControl::release` report the binding.
-- An attribute IFC2X3 does not declare reads as `None`: `Task::
-  long_description`, `predefined_type` and `task_time_ref`, and
-  `WorkControl::predefined_type`. `Task::identification` reads IFC2X3's
-  `TaskId` and `WorkControl::identification` its `Identifier`, which IFC4
-  promoted to `Identification`. `WorkControl::work_control_type` reads
-  IFC2X3's `WorkControlType`, which is not aliased to `PredefinedType`.
-- `WorkControl::creation_date`, `start_time` and `finish_time` return
-  `Option<AuthoredDateTime>` (IFC4/IFC4X3 text, or the IFC2X3
-  `IfcDateTimeSelect` record), and `duration` and `total_float` return
-  `Option<AuthoredDuration>` (IFC4/IFC4X3 text, or the IFC2X3
-  `IfcTimeMeasure`), instead of `None` for a stated IFC2X3 value.
-- `Sequence` gains `time_lag_measure`, IFC2X3's `IfcRelSequence.TimeLag`
-  (an `IfcTimeMeasure` on the relationship); `lag` stays the IFC4/IFC4X3
-  `IfcLagTime`.
-- `TaskDraft`, `WorkControlDraft`, `EventDraft`, `EventTimeDraft`,
-  `RecurrenceDraft`, `ProcedureDraft` and `TaskTimeDraft` are
-  `#[non_exhaustive]`: build them with `new` and the setters instead of a
-  struct literal. Their fields stay public to read and assign.
-- `WorkControlDraft::creation_date` and `start_time` are
-  `DateTimeValue<'a>` (were `&'a str`) and `finish_time` is
-  `Option<DateTimeValue<'a>>` (was `Option<&'a str>`). The plain
-  `create_work_control` refuses a record form with `InvalidValue`; with text
-  its output is unchanged.
-- `create_sequence_with_owner_history` takes `time_lag: Option<TimeLag>`
-  (was `Option<EntityId>`); wrap an `IfcLagTime` id in `TimeLag::LagTime`.
-  The plain `create_sequence` is unchanged.
-- `ProcedureDraft` has the new `user_defined_procedure_type` field; the
-  plain `create_procedure`, which writes IFC4/IFC4X3, refuses a value for
-  it with `InvalidValue`, and the release-bound writer refuses it in IFC4
-  and IFC4X3 with `AuthoringNotInSchema`.
-- `#[non_exhaustive]` on the public enums and result structs a later
-  release could extend: `SequenceType`, `DurationType`, `TaskTimeAnomaly`,
-  `WorkControlKind`, `WorkTimeRole`, `RecurrenceType`, `Lag`, `Sequence`,
-  `SequenceCycle`, `EventTime`, `Recurrence` and `WorkTime`. A `match`
-  outside the crate needs a wildcard arm, and the structs can no longer be
-  built outside it.
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
-
-### ifc-schema
-
-### Changed (breaking)
-
-- Artifact format 3 records the facts above; format 1 and 2 artifacts
-  still decode, with those facts empty.
-- A nested aggregate attribute's `type_name` is its innermost element
-  type (`IfcLengthMeasure` for `LIST OF LIST OF IfcLengthMeasure`), where
-  the old extractor recorded the inner keyword `LIST`.
-- The `express` and `generation` features use `openbim-step` `=0.10.0`
-  (the runtime links none).
-- One cargo feature per bundled release (#112): `ifc2x3`, `ifc4`, `ifc4x1`,
-  `ifc4x2` and `ifc4x3`, all in `default`, so a default build bundles every
-  release as before. Each accessor (`ifc2x3()`, `ifc4()`, ...) exists only
-  with its feature. `ifc4` used to ship all bundled tables; it now ships
-  IFC4 only, so a build with `default-features = false, features =
-  ["ifc4"]` loses the other releases -- name them, or keep defaults.
-- `for_version` returns `Result<&Schema, NotBundled>` instead of
-  `Option<&Schema>`, and exists in every build. `Err(NotBundled)` means a
-  recognised release whose feature is off; an unknown `FILE_SCHEMA` token
-  is still `None` from `SchemaVersion::from_header_token`, so the two cases
-  stay distinguishable.
-- `write_structural_catalog` and `write_direct_structural_catalog` exist in
-  every build and return an `io::ErrorKind::Unsupported` error wrapping
-  `NotBundled` for a release that is not compiled in, instead of panicking.
-- `artifact_decode_schema` and `BundledSchemaError` need the new
-  `artifact` feature (enabled by every release feature) instead of `ifc4`.
-- `SchemaVersion` is `#[non_exhaustive]`, derives `Hash`, and gains
-  `Ifc4x1` and `Ifc4x2` (#33). A `match` on it needs a wildcard arm; a
-  consumer should refuse a release it has not verified, never alias it to
-  a neighbour. `write_structural_catalog` and
-  `write_direct_structural_catalog` accept the new versions.
-- `ifc-schema` owns its schema types. `Attribute`, `EntityDef`, `TypeDef`,
-  `TypeKind` and the newly exported `WhereRule` are defined here instead of
-  re-exported from `openbim_step::express`, and all five are
-  `#[non_exhaustive]`: construct them with `Attribute::new`,
-  `EntityDef::new`, `TypeDef::new`, `WhereRule::new` and the builder methods
-  (`with_supertype`, `with_attribute`, `with_derived`, `with_where_rule`,
-  `abstract_entity`, `optional`, `aggregate`), and give every `match` on
-  `TypeKind` a wildcard arm. Field names, `supertype()`, `is_derived()` and
-  `is_defined()` are unchanged. Rationale: an `openbim-step` release no
-  longer ripples into this crate's public API, and later facts about a
-  declaration (aggregate bounds, INVERSE, UNIQUE) can be added as fields
-  without another break.
-- `openbim-step` is an optional dependency, linked only by the new `express`
-  feature and by `generation`. The bundled tables decode straight into the
-  owned types; the default build no longer links a parser.
-- `Schema::from_express` and `Schema::from_express_bytes` require the new
-  `express` feature.
-- Removed: `Schema::from_parsed(ParsedSchema)` (use
-  `Schema::new(name, entities, types)`), `Schema::graph()` (the
-  `openbim_step::SchemaGraph` it returned is no longer held; `Schema`
-  answers the same queries itself), and the `express` module with its
-  `parse`/`ParsedSchema` re-exports (use `openbim_step::express` directly).
-- `EntityDef` no longer carries `redeclared`/`is_redeclared()`. No bundled
-  table ever recorded explicit redeclarations (the artifact format drops
-  them), so they were always empty for `ifc2x3()`, `ifc4()` and `ifc4x3()`.
-- `artifact_decode_schema` returns a `Schema` and `artifact_encode_schema`
-  (`generation`) takes one, instead of `openbim_step::express::ParsedSchema`.
-
-### Added
-
-- Aggregate bounds, nested aggregation, INVERSE and UNIQUE (#111):
-  `Attribute::aggregation` (levels outermost first, each an `Aggregation`
-  with `AggregateKind`, lower and upper `Bound`, `unique`,
-  `optional_elements`), `EntityDef::inverses` (`InverseAttribute`) and
-  `EntityDef::unique_rules` (`UniqueRule`), with builders. Additive: the
-  types were already `#[non_exhaustive]`. All five bundled tables are
-  regenerated with them: 115/153/158/160/165 INVERSE and 17/4/4/4/4
-  UNIQUE declarations for IFC2X3/IFC4/IFC4X1/IFC4X2/IFC4X3, pinned by
-  tests.
-- `NotBundled`, `SchemaVersion::is_bundled()` and
-  `SchemaVersion::feature_name()`.
-- IFC4X1 FINAL and IFC4X2 FINAL (#33): bundled tables
-  `data/ifc4x1-final.bin` (801 entities, 400 types) and
-  `data/ifc4x2-final.bin` (816 entities, 407 types), generated from the
-  official EXPRESS files like the other three; accessors `ifc4x1()` and
-  `ifc4x2()`; `for_version` returns them; header tokens `IFC4X1` and
-  `IFC4X2` (the files' own `SCHEMA` names); release ids `IFC4X1_FINAL`
-  and `IFC4X2_FINAL`. Tests pin that both counts differ from IFC4 and
-  IFC4X3 and that each carries its own release's entities.
-- `SchemaVersion::ALL`, every known version oldest first.
-- `Schema::new`, `Schema::entities()` and `Schema::types()` (declarations in
-  source order), `PartialEq`/`Eq` for `Schema`, and the `BundledSchemaError`
-  export.
-
-### Unchanged
-
-- The bundled artifacts are byte-identical: regenerating all three with the
-  ported generator reproduces the committed files, and `FORMAT_VERSION`
-  stays 2.
-
-### Changed
-
-- Requires `openbim-step` 0.7.0, matching `ifc-step`. Both pin the parser
-  exactly, so the pair must move together. `openbim-step` 0.6 replaced
-  `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
-  accessor for multiple inheritance; IFC schemas are single-inheritance, so
-  the serialized artifact is unchanged.
-
-### ifc-spatial
-
-### Added
-
-- `SpatialDraft::interior_or_exterior`: the IFC2X3 `IfcSpace.
-  InteriorOrExteriorSpace` (`IfcInternalOrExternalEnum`), which that
-  release requires, so `create_spatial_element_with_owner_history` can
-  author an IFC2X3 space (#214). IFC4 and IFC4X3 do not declare the
-  attribute: a value there, or on a container other than a space, is
-  refused with `AuthoringNotInSchema`, a token outside IFC2X3's enumeration
-  with `AuthoringValueType`, and the plain IFC4/IFC4X3 `create_spatial_element`
-  refuses it with `AuthoringNotInSchema` instead of dropping it.
-- `create_project_with_owner_history` takes the project's representation
-  contexts, so an IFC2X3 `IfcProject`, which requires
-  `RepresentationContexts` (and `UnitsInContext`), can be authored (#214).
-  Each context must resolve in the model or on the transaction
-  (`MissingReference`), be an `IfcRepresentationContext`
-  (`WrongReferenceType`), not be an `IfcGeometricRepresentationSubContext`
-  (IFC2X3 `WR32`, IFC4 and IFC4X3 `CorrectContext`), and not repeat
-  (`Invalid`); an empty slice leaves the attribute `$`, which IFC2X3 refuses
-  with `AuthoringRequired`.
-- A constructor and builder setters on every draft: `SpatialDraft::new()`,
-  `FacilityDraft::new()`, `ExternalSpatialDraft::new()` and
-  `ProjectLibraryDraft::new()` start empty; `BoundaryDraft::new(space,
-  element, physical_or_virtual, internal_or_external)` takes the four
-  attributes the schema requires. Each optional field has a setter of the
-  same name taking the unwrapped value (`SpatialDraft::new().name("L1")
-  .composition("ELEMENT")`), following `ifc-resource`'s drafts.
-
-### Fixed
-
-- A model whose declared release has no bundled table is refused with
-  `UnsupportedSchema` by the release-bound writers instead of panicking.
-
-### Changed (breaking)
-
-- `assign_to_actor`, `assign_to_process`, `connect_with_realizing_elements`
-  and `interfere_elements` take the `&Model` and bind its declared release
-  (#213). They wrote records with the wrong number of attributes: seven of
-  `IfcRelAssignsToActor`'s and `IfcRelAssignsToProcess`'s eight, eight of
-  `IfcRelConnectsWithRealizingElements`'s nine, and ten for
-  `IfcRelInterferesElements` where IFC4 declares nine. Each record is now
-  laid out by attribute name with the release's own arity (the interference
-  has ten attributes in IFC4X3). IFC4 records gain a trailing `$` for the
-  first three (`ActingRole`, `QuantityInProcess`, `ConnectionType`) and the
-  IFC4 interference loses its trailing `$`; IFC4X3 records of the first
-  three gain the same trailing `$`, and its interference is unchanged. An
-  IFC2X3 model, which requires `OwnerHistory` (and declares no
-  `IfcRelInterferesElements`), and a header binding no single verified
-  release are refused; use the `*_with_owner_history` variants in IFC2X3.
-- `SpatialDraft`, `FacilityDraft`, `BoundaryDraft`, `ExternalSpatialDraft`
-  and `ProjectLibraryDraft` are `#[non_exhaustive]`: struct literals and
-  `..Default::default()` updates no longer compile outside the crate; build
-  them with `new` and the setters. Fields stay public for reading and
-  assignment.
-- `SpatialDraft` has a new field, `interior_or_exterior`.
-- `create_project_with_owner_history(tx, model, global_id, name, units,
-  representation_contexts, owner_history)`: the new `representation_contexts:
-  &[EntityId]` parameter sits before `owner_history`. Pass `&[]` for the
-  previous IFC4/IFC4X3 record.
-- `#[non_exhaustive]` on the public read-side and catalogue types a later
-  IFC release could extend: `SpaceBoundary`, `BoundaryPhysicality`,
-  `BoundaryExposure`, `Relationship`, `RelationshipKind`, `SpatialKind`,
-  `SpatialNode`, `BoundaryLevel` and `Facility`. Matches on the enums need
-  a wildcard arm outside the crate, and the structs can no longer be built
-  by literal there.
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- The spatial classifier binds no release for an `IFC4X1` or `IFC4X2`
-  header (`release()` is `None`) and answers from the verified tables.
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
-
-### ifc-structural
-
-### Changed (breaking)
-
-- `MemberConnection` and `ActivityAssignment` are `#[non_exhaustive]`.
-- Every public draft is `#[non_exhaustive]`, so struct literals no longer
-  compile outside the crate. Each gains a constructor taking its required
-  fields and one builder setter per other field, named after the field and
-  taking the unwrapped value (`.name("Frame")` sets `Some`; `String` fields
-  take `impl Into<String>`):
-  - `AnalysisModelDraft::new(global_id, predefined_type)`
-  - `StructuralRootDraft::new(global_id)`
-  - `RelationshipRootDraft::new(global_id)`
-  - `MemberDraft::new(root, kind)`, `ConnectionDraft::new(root, kind)`
-  - `ActionDraft::new(root, applied_load, coordinate_system, kind)`
-  - `ReactionDraft::new(root, applied_load, coordinate_system, kind)`
-  - `LoadGroupDraft::new(global_id, action_type, action_source, kind)`
-  - `ResultGroupDraft::new(global_id, theory_type, is_linear)`
-  - `MemberConnectionDraft::new(root, member, connection)`
-  - `ActivityAssignmentDraft::new(root, relating_element, activity)`
-  - `BoundaryConditionDraft::new()`
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
-- Enumeration checks treat a type declaration form `ifc-schema` adds later
-  as not matching; follows `ifc_schema::TypeKind` becoming
-  `#[non_exhaustive]`.
-
-### ifc-style
-
-### Changed (breaking)
-
-- `AppearanceSupport` is `#[non_exhaustive]`: a match needs a wildcard arm;
-  `AppearanceDeclaration` is `#[non_exhaustive]`.
-- Every authoring draft is `#[non_exhaustive]`, so a struct literal no
-  longer compiles outside the crate. Each gains `new(required…)` and one
-  builder setter per other field, named after the field and taking the
-  unwrapped value: `BlobTextureDraft::new(raster_format, raster_code)`,
-  `TextModelDraft::new()`, `LightSourceDraft::new(light_colour)`,
-  `AnnotationDraft::new(global_id)`,
-  `TextLiteralDraft::new(literal, placement, path)`,
-  `TextLiteralWithExtentDraft::new(literal, placement, path, extent,
-  box_alignment)`, `AnnotationFillAreaDraft::new(outer_boundary)`,
-  `CurveStyleDraft::new()`,
-  `PixelTextureDraft::new(width, height, colour_components, pixel)`,
-  `ColourRgbDraft::new(red, green, blue)`,
-  `SurfaceStyleShadingDraft::new(surface_colour)`,
-  `SurfaceStyleDraft::new(side, elements)`, `StyledItemDraft::new(styles)`,
-  `PresentationLayerDraft::new(name, assigned_items)`,
-  `SurfaceStyleRenderingDraft::new(surface_colour, reflectance_method)` and
-  `ImageTextureDraft::new(url_reference)`. Fields stay public.
-
-### Added
-
-- `StyleError::UnsupportedSchema`: `StyledItem::styles` refuses a
-  recognised release it is not verified for instead of applying the
-  IFC4X3 rule to it.
-
-### Changed
-
-- Links no bundled schema table itself: every entry point takes the
-  `Schema` from the caller. A consumer that used a table through this
-  crate's dependency (`ifc_schema::ifc4()`) enables it on its own
-  `ifc-schema` dependency (default features bundle every release).
-- `StyledItem::styles` reads IFC4X1 and IFC4X2 like IFC4: both declare
-  `Styles` over `IfcStyleAssignmentSelect`, which still admits
-  `IfcPresentationStyleAssignment`; only IFC4X3 narrowed it. Pinned
-  against both bundled tables.
-
-### ifc-systems
-
-### Changed (breaking)
-
-- The authoring draft `ClassifiedSystemDraft` is `#[non_exhaustive]`:
-  build it with `ClassifiedSystemDraft::new()` and the setters
-  `description`, `object_type`, `predefined_type` and `long_name`. Fields
-  stay public.
-
-- The bulk readers no longer fall back to the IFC4 table. `systems`,
-  `ports`, `zones`, `spatial_placements`, `role_inconsistencies`,
-  `ConnectionGraph::build` and `ElementRole::of` return
-  `Result<_, SchemaResolutionError>` and refuse a header that binds no
-  verified release: no `FILE_SCHEMA` (an in-memory model now needs a
-  header), several, IFC4X1/IFC4X2, or a release this build does not
-  bundle. `ElementRole::of` returns `Result<Option<_>, _>`.
-- `try_zones` is removed: `zones` now has the error channel it added.
-- IFC4X3 is verified for every reader (#215), not only the zone readers:
-  `schema_of` resolves it. Every fixed slot the readers use is pinned
-  against the IFC2X3, IFC4 and IFC4X3 tables, and `tests/ifc4x3.rs`
-  round-trips systems (including `IfcBuiltSystem`), both port
-  attachments, connections, flow roles and spatial placements through
-  IFC4X3 STEP text.
-- `SystemAnomaly` and `RoleInconsistency` are `#[non_exhaustive]`: a match
-  needs a wildcard arm.
-- The read-side `Connection`, `Port`, `System`, `Zone` and
-  `SpatialPlacement` are `#[non_exhaustive]`, so a later release's attribute
-  can be added without a breaking change; they can no longer be built with a
-  struct literal outside the crate.
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
-
-### ifc-tabular
-
-### Changed (breaking)
-
-- `SeriesDraft` and `ColumnDraft` are `#[non_exhaustive]` (#214). Struct
-  literals no longer compile outside the crate: build them with
-  `SeriesDraft::new(name, start_time, end_time, data_type, data_origin)`
-  and `ColumnDraft::new()` plus field-named setters. Fields stay public.
-
-### Changed
-
-- Links no bundled schema table itself: every entry point takes the
-  `Schema` from the caller. A consumer that used a table through this
-  crate's dependency (`ifc_schema::ifc4()`) enables it on its own
-  `ifc-schema` dependency (default features bundle every release).
-
-### ifc-template-catalog
-
-### Added
-
-- `corrected_catalog(CatalogEdition::Ifc4x3Add2)`: an IFC4X3 ADD2 corrected
-  profile whose one patch, `NEH-IFC4X3-PSD-0001`, adds
-  `Pset_Stationing.HasIncreasingStation` (`IfcBoolean`). The published ADD2
-  documentation (6.6.4.10) lists it; the PSD XML the official snapshot is
-  generated from omits it, and the official snapshot is unchanged (#216).
-- `PatchOperation::AddProperty` and `PatchError::NotAPropertySet`.
-
-### Changed (breaking)
-
-- `ValidationIssue`, `ValidationReport`, `CatalogDiagnostic`,
-  `ExportSummary`, `Advisory`, `AppliedPatch` and `UnresolvedApplicability`
-  are `#[non_exhaustive]`; they can no longer be built with a struct literal
-  outside the crate.
-
-### ifc-validate
-
-### Added
-
-- Aggregate checks from the schema's bounds (#111): a level outside its
-  declared size (`structure.aggregate.too_few`,
-  `structure.aggregate.too_many`; `ARRAY [l:u]` needs exactly u-l+1), an
-  inner level of a nested aggregate that is not an aggregate
-  (`structure.aggregate.nesting`), and a repeated element in a `SET` or
-  `UNIQUE` level (`structure.aggregate.duplicate`). The members of a
-  `LIST OF LIST` are now type-checked against the innermost element type
-  (#215).
-- Every `UNIQUE` clause of the declared release is checked across the
-  declaring entity and its subtypes (`structure.unique.violation`), except
-  `IfcRoot.UR1`, which stays `global.UniqueGlobalId`.
-
-### Changed (breaking)
-
-- `structure::duplicate_global_ids` and its rule id
-  `structure.unique.duplicate_global_id` are removed: the function
-  duplicated `global.UniqueGlobalId` and `validate` never ran it. Its
-  module now checks the release's UNIQUE clauses (`structure::unique_rules`,
-  run by `validate`).
-- No registered rule claims to need aggregate bounds any more:
-  `IfcPolyLoop.WR21` and `IfcPolyLoop.AllPointsSameDim` are unsupported
-  for needing an expression evaluator.
-- `Support` is `#[non_exhaustive]`: a match needs a wildcard arm.
-- `Finding` is `#[non_exhaustive]`; it can no longer be built with a struct
-  literal outside the crate.
-- `Path` is `#[non_exhaustive]`, so a later release can name a new location
-  kind; a match needs a wildcard arm.
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- `validate_declared` validates IFC4X1 and IFC4X2 files against their own
-  bundled tables instead of refusing them as unknown. No WHERE rule is
-  registered for either release yet, so their report carries one
-  `where.release` finding (severity `Unsupported`) saying WHERE rules were
-  not evaluated, rather than reading as if they passed.
-- SELECT resolution treats a type declaration form `ifc-schema` adds later
-  like an undeclared member (fails closed); follows `ifc_schema::TypeKind`
-  becoming `#[non_exhaustive]`.
+## [0.9.0] - 2026-09-29
 
 ### openbim-ifc
 
@@ -1381,7 +220,45 @@ lockstep -- is archived in the
   already links, so the door join reads attributes by name from the bound
   release's table. No crate is added to a build.
 
-## [0.6.0] - 2026-09-26
+## [0.6.0] - 2026-09-29
+
+### ifc-properties
+
+### Changed (breaking)
+
+- `Comparison` is `#[non_exhaustive]`: a match needs a wildcard arm.
+- The read results `ExactProperty`, `ExactPropertyEntry`, `ExactTableRow`,
+  `Property`, `PropertySet`, `QuantitySet`, `ResolvedSet` and
+  `PropertySetTemplate` are `#[non_exhaustive]`; compare their fields
+  instead of building one with a struct literal.
+- Every authoring draft is `#[non_exhaustive]`, so a struct literal no
+  longer compiles outside the crate. Each gains `new(required…)` and one
+  builder setter per other field, named after the field and taking the
+  unwrapped value: `TableValueDraft::new(name)`, `DoorLiningDraft::new()`,
+  `WindowLiningDraft::new()`,
+  `ReinforcementBarDraft::new(total_cross_section_area, steel_grade)`,
+  `SectionReinforcementDraft::new(longitudinal_start_position,
+  longitudinal_end_position, reinforcement_role, section_definition,
+  cross_section_reinforcement_definitions)`,
+  `SiUnitDraft::new(unit_type, name)`, `MonetaryUnitDraft::new(currency)`
+  and `ConversionBasedUnitDraft::new(unit_type, name, conversion_factor,
+  dimensions)`. Fields stay public.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- The unique-member-name rule of complex properties and quantities is
+  labelled per verified release only; another release is refused with
+  `UnsupportedSchema` rather than given the IFC4 label.
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+- Exact value checks treat a type declaration form `ifc-schema` adds later
+  as not matching; follows `ifc_schema::TypeKind` becoming
+  `#[non_exhaustive]`.
 
 ### openbim-ifc
 
@@ -1567,7 +444,80 @@ lockstep -- is archived in the
   and the predefined property-set writers, which write the IFC4 layout
   without a model.
 
-## [0.5.0] - 2026-09-28
+## [0.5.0] - 2026-09-29
+
+### ifc-geometry
+
+### Changed
+
+- `MaterialProfileSetUsageGeometry::new` accepts
+  `IfcMaterialProfileSetUsageTapering`, the schema subtype of
+  `IfcMaterialProfileSetUsage`, whose inherited slots it reads unchanged;
+  the new `MaterialProfileSetUsageGeometry::tapering()` returns its
+  `MaterialProfileSetUsageTaperingGeometry` (end profile set and end
+  cardinal point), or `None` for a plain usage (#136).
+
+### Changed (breaking)
+
+- `ViolationKind`, `Support` and `FunctionStatus` are `#[non_exhaustive]`: a
+  match needs a wildcard arm.
+- `RuleViolation`, `LoweredGeometry` and `MappedInstance` are
+  `#[non_exhaustive]`; they can no longer be built with a struct literal
+  outside the crate.
+- `authoring::surface_curve_swept_area_solid`,
+  `authoring::fixed_reference_swept_area_solid` and
+  `authoring::swept_disk_solid` are removed (#210). Without the model they
+  could not write every release correctly: the two directrix sweeps wrote
+  the IFC4X3 `IFCPARAMETERVALUE(..)` trim into IFC4 files, and the swept
+  disk wrote `$` for the trim IFC2X3 requires. Use
+  `surface_curve_swept_area_solid_in`, `fixed_reference_swept_area_solid_in`
+  and the new `swept_disk_solid_in`, which take `&Model` after the
+  transaction and otherwise the same arguments.
+- `SurfaceCurveSweptAreaSolid::start_param`/`end_param` and
+  `FixedReferenceSweptAreaSolid::start_param`/`end_param` return
+  `GeometryResult<Option<TrimMeasure>>` instead of `Option<f64>` (#210). In
+  IFC4X3 the trim is an `IfcCurveMeasureSelect`, and an
+  `IFCLENGTHMEASURE(..)` trim is a distance along the directrix, not a curve
+  parameter; the reader now says which (`TrimMeasure::Parameter` or
+  `TrimMeasure::Length`) instead of returning both as a parameter. A bare
+  number is a parameter, as IFC2X3 and IFC4 declare. A typed value that is
+  not one of the SELECT's members is refused with `WrongValueKind` instead
+  of being unwrapped.
+- Lowering an `IfcSurfaceCurveSweptAreaSolid` or
+  `IfcFixedReferenceSweptAreaSolid` whose trim is an `IfcLengthMeasure`
+  fails with `Unsupported` (#210). It used to pass the length on as a curve
+  parameter, which on a conic directrix reads metres as radians; converting
+  a length into the directrix's parameter needs arc-length evaluation,
+  which lowering does not do.
+
+### Added
+
+- `authoring::swept_disk_solid_in` (#210): an `IfcSweptDiskSolid` in the
+  model's declared release. The trim is written bare in every release, as
+  before; in IFC2X3, which declares `StartParam` and `EndParam` required,
+  an unset one is refused with `InvalidAuthoredValue` and nothing is
+  staged.
+- `solid::swept::TrimMeasure` (re-exported from `solid`), the kind and
+  value of a directrix sweep's trim, and `TrimMeasure::parameter`.
+
+### Fixed
+
+- `authoring::curve_segment` writes a `CurveMeasure::Length` as
+  `IFCLENGTHMEASURE(..)` (#210). It wrote `IFCNONNEGATIVELENGTHMEASURE(..)`,
+  which is not a member of IFC4X3 `IfcCurveMeasureSelect =
+  SELECT (IfcLengthMeasure, IfcParameterValue)` and is an `ifc-validate`
+  error. Because `IfcLengthMeasure` is signed and neither slot is bounded,
+  a negative length is now written as given instead of refused.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
 
 ### ifc-properties
 
@@ -1989,7 +939,43 @@ truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
 - The `property` documentation claimed over-deep nesting yields
   `PropertyValue::Unsupported`; it never did. It now states what happens.
 
-## [0.4.0] - 2026-09-27
+## [0.4.0] - 2026-09-29
+
+### ifc-alignment
+
+### Fixed
+
+- `read_vertical_segment`, `read_cant_segment` and `CantLayout::resolve`
+  (`RailHeadDistance`) read a typed parameter such as
+  `IFCLENGTHMEASURE(1.)` exactly like the bare number, as
+  `read_horizontal_segment` already did; they refused it as the wrong kind
+  (#140).
+
+### Changed (breaking)
+
+- The authoring drafts `HorizontalSegmentDraft`, `VerticalSegmentDraft`
+  and `CantSegmentDraft` are `#[non_exhaustive]`: build them with
+  `HorizontalSegmentDraft::new(start_point, start_direction, start_radius,
+  end_radius, segment_length, predefined_type)`,
+  `VerticalSegmentDraft::new(start_dist_along, horizontal_length,
+  start_height, start_gradient, end_gradient, predefined_type)` or
+  `CantSegmentDraft::new(start_dist_along, horizontal_length,
+  start_cant_left, start_cant_right, predefined_type)` and the setters
+  `gravity_center_line_height`, `radius_of_curvature`, `end_cant_left` and
+  `end_cant_right`. Fields stay public.
+- The read-side `HorizontalSegment`, `CantSegment`, `CantLayout`,
+  `CantAtStation`, `LinearPlacement`, `StationEquation`,
+  `LoweredAlignmentCurve`, `PartialHorizontalLayout` and `RefusedSegment`
+  are `#[non_exhaustive]`; they can no longer be built with a struct literal
+  outside the crate.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- Pinned by test: `AlignmentView::for_model` refuses `IFC4X1` and
+  `IFC4X2` (their alignment model differs from IFC4X3).
 
 ### ifc-geometry
 
@@ -2171,6 +1157,82 @@ truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
   axiolid/kernel#165) brings the composite-curve D within 1e-5 of its exact
   volume.
 
+### ifc-georef
+
+### Added
+
+- `ProjectedCrs.well_known_text`: the OGC WKT literal of the one IFC4X3
+  `IfcWellKnownText` defining the CRS, verbatim (#142).
+- `GeorefError::RuleViolation { entity, rule }` for a schema WHERE rule or
+  inverse cardinality a record breaks.
+
+### Changed (breaking)
+
+- `ProjectedCrs.name` is `Option<String>` (#142). IFC4X3 declares
+  `IfcCoordinateReferenceSystem.Name : OPTIONAL IfcLabel` with
+  `WHERE NameOrWKT : (HIINDEX(WellKnownText) = 1) OR EXISTS(Name)`: under an
+  IFC4X3 header an unnamed CRS defined by exactly one `IfcWellKnownText` now
+  reads, one with neither is refused with the new
+  `GeorefError::RuleViolation { rule: "NameOrWKT" }`, and two definitions
+  for one CRS (the inverse is `SET [0:1]`) are refused too. IFC4, or a
+  missing or ambiguous header, keeps requiring the name
+  (`MissingAttribute`), so `name` is always `Some` there. Migrate with
+  `crs.name.as_deref()`.
+- The authoring drafts `ProjectedCrsDraft`, `GeographicCrsDraft` and
+  `MapConversionDraft` are `#[non_exhaustive]`: build them with
+  `ProjectedCrsDraft::new(name)`, `GeographicCrsDraft::new()` or
+  `MapConversionDraft::new(source_crs, target_crs, eastings, northings,
+  orthogonal_height)` and a setter named after each optional field
+  (`.map_unit(unit)`, `.x_axis((abscissa, ordinate))`, `.scale(s)`). Fields
+  stay public.
+- The read-side `ProjectToMap` and `ProjectedCrs` are `#[non_exhaustive]`;
+  they can no longer be built with a struct literal outside the crate.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
+### ifc-material
+
+### Changed (breaking)
+
+- `MaterialView::profile_set_usages()` also yields
+  `IfcMaterialProfileSetUsageTapering`, the schema subtype of
+  `IfcMaterialProfileSetUsage` in IFC4 and IFC4X3, in entity-id order, and
+  `MaterialProfileSetUsage::try_new` / `try_from_view` accept it (#136). A
+  caller that iterated both `profile_set_usages()` and
+  `tapering_profile_set_usages()` sees each tapering usage twice; iterate
+  `profile_set_usages()` alone and branch on the new
+  `MaterialProfileSetUsage::tapering()`, which returns the tapering
+  projection (`end_profile_set_id`, `cardinal_end_point`) or `None`.
+- The authoring drafts `MaterialDraft`, `LayerDraft`, `LayerSetDraft`,
+  `MaterialAssignmentDraft`, `ConstituentDraft` and `ProfileDraft` are
+  `#[non_exhaustive]`: build them with `MaterialDraft::new(name)`,
+  `LayerDraft::new(thickness)`, `LayerSetDraft::new(layers)`,
+  `MaterialAssignmentDraft::new(global_id, related_objects,
+  relating_material)`, `ConstituentDraft::new(material)` or
+  `ProfileDraft::new(profile)` and a setter named after each optional field
+  (`LayerDraft::new(0.2).material(brick).priority(80)`). Fields stay public.
+- `ResolvedAssignment` is `#[non_exhaustive]`.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- `UnsupportedSchema` reads "a release this crate has no verified layout
+  for" instead of "no bundled schema table".
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ### ifc-properties
 
 ### Added
@@ -2232,6 +1294,93 @@ truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
     could be the set asked for.
   - Results change from `Absent` to `Present` or an error only where the
     old answer was unproven.
+
+### ifc-style
+
+### Changed (breaking)
+
+- `AppearanceSupport` is `#[non_exhaustive]`: a match needs a wildcard arm;
+  `AppearanceDeclaration` is `#[non_exhaustive]`.
+- Every authoring draft is `#[non_exhaustive]`, so a struct literal no
+  longer compiles outside the crate. Each gains `new(required…)` and one
+  builder setter per other field, named after the field and taking the
+  unwrapped value: `BlobTextureDraft::new(raster_format, raster_code)`,
+  `TextModelDraft::new()`, `LightSourceDraft::new(light_colour)`,
+  `AnnotationDraft::new(global_id)`,
+  `TextLiteralDraft::new(literal, placement, path)`,
+  `TextLiteralWithExtentDraft::new(literal, placement, path, extent,
+  box_alignment)`, `AnnotationFillAreaDraft::new(outer_boundary)`,
+  `CurveStyleDraft::new()`,
+  `PixelTextureDraft::new(width, height, colour_components, pixel)`,
+  `ColourRgbDraft::new(red, green, blue)`,
+  `SurfaceStyleShadingDraft::new(surface_colour)`,
+  `SurfaceStyleDraft::new(side, elements)`, `StyledItemDraft::new(styles)`,
+  `PresentationLayerDraft::new(name, assigned_items)`,
+  `SurfaceStyleRenderingDraft::new(surface_colour, reflectance_method)` and
+  `ImageTextureDraft::new(url_reference)`. Fields stay public.
+
+### Added
+
+- `StyleError::UnsupportedSchema`: `StyledItem::styles` refuses a
+  recognised release it is not verified for instead of applying the
+  IFC4X3 rule to it.
+
+### Changed
+
+- Links no bundled schema table itself: every entry point takes the
+  `Schema` from the caller. A consumer that used a table through this
+  crate's dependency (`ifc_schema::ifc4()`) enables it on its own
+  `ifc-schema` dependency (default features bundle every release).
+- `StyledItem::styles` reads IFC4X1 and IFC4X2 like IFC4: both declare
+  `Styles` over `IfcStyleAssignmentSelect`, which still admits
+  `IfcPresentationStyleAssignment`; only IFC4X3 narrowed it. Pinned
+  against both bundled tables.
+
+### ifc-validate
+
+### Added
+
+- Aggregate checks from the schema's bounds (#111): a level outside its
+  declared size (`structure.aggregate.too_few`,
+  `structure.aggregate.too_many`; `ARRAY [l:u]` needs exactly u-l+1), an
+  inner level of a nested aggregate that is not an aggregate
+  (`structure.aggregate.nesting`), and a repeated element in a `SET` or
+  `UNIQUE` level (`structure.aggregate.duplicate`). The members of a
+  `LIST OF LIST` are now type-checked against the innermost element type
+  (#215).
+- Every `UNIQUE` clause of the declared release is checked across the
+  declaring entity and its subtypes (`structure.unique.violation`), except
+  `IfcRoot.UR1`, which stays `global.UniqueGlobalId`.
+
+### Changed (breaking)
+
+- `structure::duplicate_global_ids` and its rule id
+  `structure.unique.duplicate_global_id` are removed: the function
+  duplicated `global.UniqueGlobalId` and `validate` never ran it. Its
+  module now checks the release's UNIQUE clauses (`structure::unique_rules`,
+  run by `validate`).
+- No registered rule claims to need aggregate bounds any more:
+  `IfcPolyLoop.WR21` and `IfcPolyLoop.AllPointsSameDim` are unsupported
+  for needing an expression evaluator.
+- `Support` is `#[non_exhaustive]`: a match needs a wildcard arm.
+- `Finding` is `#[non_exhaustive]`; it can no longer be built with a struct
+  literal outside the crate.
+- `Path` is `#[non_exhaustive]`, so a later release can name a new location
+  kind; a match needs a wildcard arm.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- `validate_declared` validates IFC4X1 and IFC4X2 files against their own
+  bundled tables instead of refusing them as unknown. No WHERE rule is
+  registered for either release yet, so their report carries one
+  `where.release` finding (severity `Unsupported`) saying WHERE rules were
+  not evaluated, rather than reading as if they passed.
+- SELECT resolution treats a type declaration form `ifc-schema` adds later
+  like an undeclared member (fails closed); follows `ifc_schema::TypeKind`
+  becoming `#[non_exhaustive]`.
 
 ### openbim-ifc
 
@@ -2482,7 +1631,7 @@ truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
   `ifc::schema::ifc4()`, are reachable without a direct `ifc-schema`
   dependency. Found by building a crates.io-only consumer of 0.3.0.
 
-## [0.3.0] - 2026-09-27
+## [0.3.0] - 2026-09-29
 
 ### ifc-alignment
 
@@ -2491,6 +1640,348 @@ truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
 - **Breaking:** requires Axiolid 0.3. Lowered alignment curves are returned as
   `axiolid_model::GeometryGraph` and `NodeId`, so the major Axiolid version is
   part of this crate's public API. No code change.
+
+### ifc-approval
+
+### Added
+
+- `DateTimeInput`: an approval time as IFC4/IFC4X3 `IfcDateTime` text or
+  an IFC2X3 `IfcDateTimeSelect` record (`From<&str>`, `From<EntityId>`).
+- `ApprovalError::NotInSchema`, `StructuredValue`, `EntityNotInSchema`,
+  `AuthoringNotInSchema` and `AuthoringValueType`, and projections'
+  `release()`. `SchemaVersion` is re-exported.
+
+### Changed (breaking)
+
+- The approval views read every attribute by name in the model's declared
+  release (#212). They read the IFC4 positions from every file, so an
+  IFC2X3 `IfcApproval` answered its description as the identifier and its
+  date record as the name, and an IFC2X3 `IfcApprovalRelationship` swapped
+  its ends. `ApprovalView` binds the header (IFC2X3, IFC4 or IFC4X3; none
+  reads as IFC4) and a lookup refuses IFC4X1, IFC4X2, unknown and multiple
+  schemas. An attribute the release does not declare is `NotInSchema`
+  (IFC2X3 `IfcApproval` has no `RequestingApproval`, `GivingApproval`, or
+  `Status`, `Level` and `Qualifier` under those names, which are not
+  documented as its `ApprovalStatus`, `ApprovalLevel` and
+  `ApprovalQualifier`), and `time_of_approval` on IFC2X3's
+  `ApprovalDateTime` record is `StructuredValue` with the record id. IFC2X3
+  `RelatedApproval` is read as a one-element `related_approvals`. IFC4 and
+  IFC4X3 answers are unchanged.
+- `create_approval`, `relate_approvals` and `relate_resource_approval`
+  bind the declared release and lay their records out by name (#212). In
+  IFC2X3 an `IfcApproval` has seven attributes and requires `Identifier`,
+  `Name` and `ApprovalDateTime` (the IFC4 `TimeOfApproval`) as a date
+  record; an `IfcApprovalRelationship` takes exactly one related approval
+  and requires `Name`; `IfcResourceApprovalRelationship` does not exist
+  (`EntityNotInSchema`). A value the release does not declare is
+  `AuthoringNotInSchema` (formerly `AuthoringInvalid`) and one it cannot
+  hold `AuthoringValueType`. IFC4 and IFC4X3 records are unchanged.
+- `ApprovalDraft::time_of_approval` is `Option<DateTimeInput>`; the setter
+  takes `impl Into<DateTimeInput>`, so `.time_of_approval("…")` still
+  compiles.
+- `Approval::try_new`, `ApprovalRelationship::try_new`,
+  `ResourceApprovalRelationship::try_new` and `ApprovalAssignment::try_new`
+  take the `SchemaVersion` to read against, refusing IFC4X1, IFC4X2 and an
+  entity the release does not declare. `ApprovalView::new` is no longer
+  `const`.
+
+- `ApprovalDraft`, `ApprovalRelationshipDraft`, `ResourceApprovalDraft`
+  and `ApprovalAssociationDraft` are `#[non_exhaustive]` (#214). Struct
+  literals no longer compile outside the crate: build them with
+  `ApprovalDraft::new()`,
+  `ApprovalRelationshipDraft::new(relating_approval, related_approvals)`,
+  `ResourceApprovalDraft::new(related_resources, relating_approval)` and
+  `ApprovalAssociationDraft::new(global_id, related_objects,
+  relating_approval)` plus field-named setters. Fields stay public.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
+### ifc-author
+
+### Changed (breaking)
+
+- `PersonDraft`, `OrganizationDraft`, `ApplicationDraft` and
+  `OwnerHistoryDraft` are `#[non_exhaustive]` (#214), so a later release can
+  add a field without another break. Struct literals no longer compile
+  outside the crate: build each with `new(...)` and field-named setters,
+  `PersonDraft::new()`, `OrganizationDraft::new(name)`,
+  `ApplicationDraft::new(developer, version, full_name, identifier)` and
+  `OwnerHistoryDraft::new(owning_user, owning_application, creation_date)`
+  (then e.g. `.change_action("ADDED")`). Fields stay public.
+
+### Changed
+
+- Links no bundled schema table itself: every entry point takes the
+  `Schema` from the caller. A consumer that used a table through this
+  crate's dependency (`ifc_schema::ifc4()`) enables it on its own
+  `ifc-schema` dependency (default features bundle every release).
+- A type declaration form `ifc-schema` adds later resolves as unresolved
+  (no refusal on shape, no form claim) instead of failing to compile;
+  follows `ifc_schema::TypeKind` becoming `#[non_exhaustive]`.
+
+### ifc-classification
+
+### Changed (breaking)
+
+- `ClassificationHierarchy` and `EffectiveClassifications` are
+  `#[non_exhaustive]`.
+- Every public draft is `#[non_exhaustive]`, so struct literals no longer
+  compile outside the crate. Each gains a constructor taking its required
+  fields and one builder setter per other field, named after the field and
+  taking the unwrapped value (`.source("NBS")` sets `Some`):
+  - `ClassificationDraft::new(name)`
+  - `DocumentDraft::new(identification, name)`
+  - `LibraryDraft::new(name)`
+  - `AssociationDraft::new(global_id, related_objects)`
+  - `ExternalReferenceRelationshipDraft::new(relating_reference, related_resources)`
+  - `ClassificationReferenceDraft::new()`, `DocumentReferenceDraft::new()` and
+    `LibraryReferenceDraft::new()`, which now also derive `Default`
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- `UnsupportedSchema` reads "a release this crate has no verified layout
+  for" instead of "no bundled schema table".
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
+### ifc-constraint
+
+### Added
+
+- `DateTimeInput`: a creation time as IFC4/IFC4X3 `IfcDateTime` text or an
+  IFC2X3 `IfcDateTimeSelect` record (`From<&str>`, `From<EntityId>`).
+- `ConstraintError::NotInSchema`, `StructuredValue`, `EntityNotInSchema`,
+  `AuthoringNotInSchema` and `AuthoringValueType`, and projections'
+  `release()`. `SchemaVersion` is re-exported.
+
+### Changed (breaking)
+
+- The constraint views read every attribute by name in the model's
+  declared release (#212). They read IFC4 positions, types and SELECTs
+  from every file. `ConstraintView` binds the header (IFC2X3, IFC4 or
+  IFC4X3; none reads as IFC4) and a lookup refuses IFC4X1, IFC4X2, unknown
+  and multiple schemas. An attribute the release does not declare is
+  `NotInSchema`: IFC2X3 `IfcMetric.ReferencePath`, and IFC2X3
+  `IfcObjective.LogicalAggregator`, whose slot holds `ResultValues`, an
+  `IfcMetric`, which was reported as a malformed operator. An IFC2X3
+  `CreationTime` record is `StructuredValue` with the record id instead of
+  `InvalidValue`; IFC2X3's single `BenchmarkValues` metric is a one-element
+  list; `DataValue` is checked against the release's own
+  `IfcMetricValueSelect` and is required in IFC2X3. IFC4 and IFC4X3 answers
+  are unchanged.
+- `create_metric`, `create_objective`, `relate_resource_constraint` and
+  `create_reference` bind the declared release and lay their records out by
+  name (#212). In IFC2X3 a metric has ten attributes and requires
+  `DataValue`, `ReferencePath` is `AuthoringNotInSchema`, an objective takes
+  exactly one `IfcMetric` benchmark and no logical aggregator, text
+  `CreationTime` is `AuthoringValueType`, and
+  `IfcResourceConstraintRelationship` and `IfcReference` are
+  `EntityNotInSchema`. Enumeration tokens are checked against the release's
+  enumeration (IFC2X3 lacks, for example, `INCLUDES` and `MODELVIEW`). IFC4
+  and IFC4X3 records are unchanged.
+- `ConstraintBaseDraft::creation_time` is `Option<DateTimeInput>`; the
+  setter takes `impl Into<DateTimeInput>`, so `.creation_time("…")` still
+  compiles.
+- `Metric::try_new`, `Objective::try_new`,
+  `ResourceConstraintRelationship::try_new` and
+  `ConstraintAssignment::try_new` take the `SchemaVersion` to read against,
+  refusing IFC4X1, IFC4X2 and an entity the release does not declare.
+  `ConstraintView::new` is no longer `const`. A value for an attribute the
+  release does not declare, which `associate_constraint` could not hit, is
+  `AuthoringNotInSchema` rather than `AuthoringInvalid`.
+
+- Every public draft is `#[non_exhaustive]`, so struct literals no longer
+  compile outside the crate. Each gains a constructor taking its required
+  fields and one builder setter per other field, named after the field and
+  taking the unwrapped value (`.description("…")` sets `Some`):
+  - `ConstraintBaseDraft::new(name, grade)`
+  - `MetricDraft::new(base, benchmark)`
+  - `ObjectiveDraft::new(base, qualifier)`
+  - `ResourceConstraintDraft::new(relating_constraint, related_resources)`
+  - `ConstraintAssociationDraft::new(global_id, related_objects, relating_constraint)`
+  - `ReferenceDraft::new()`, which now also derives `Default`
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
+### ifc-control
+
+### Changed (breaking)
+
+- `ControlDraft` and `ControlAssignmentDraft` are `#[non_exhaustive]`
+  (#214). Struct literals no longer compile outside the crate: build them
+  with `ControlDraft::new()` and
+  `ControlAssignmentDraft::new(global_id, control, related_objects)` plus
+  field-named setters (`.name("Permit")`). Fields stay public.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
+### ifc-cost
+
+### Added
+
+- IFC2X3 cost schedules can carry their dates (#214): `DateTimeValue`
+  carries a date either as IFC4/IFC4X3 `IfcDateTime` text
+  (`DateTimeValue::Text`, `From<&str>`) or as one of the IFC2X3
+  `IfcDateTimeSelect` records (`Date(CalendarDate)`, `Time(LocalTime)`,
+  `DateAndTime(CalendarDate, LocalTime)`). In IFC2X3
+  `create_cost_schedule_with_owner_history` stages the `IfcCalendarDate`,
+  `IfcLocalTime` and `IfcDateAndTime` records for `SubmittedOn` and
+  `UpdateDate` and references them, only once the schedule itself is
+  accepted. Record forms are checked against the schema's rules before
+  anything is staged (`IfcValidCalendarDate` with `IfcLeapYear`,
+  `IfcValidTime`, and the component ranges), refused with `InvalidValue`.
+  The types duplicate `ifc-schedule`'s, since sibling domain crates may not
+  depend on each other.
+- Every draft has a constructor and a setter per optional field, named
+  after it: `CostItemDraft::new(global_id)`,
+  `CostScheduleDraft::new(global_id)`,
+  `NestingDraft::new(global_id, parent, children)`,
+  `ScheduleAssignmentDraft::new(global_id, schedule, items)`,
+  `QuantityDraft::new(kind, name, value)`; `CostValueDraft` keeps
+  `monetary` and `Default` and gains setters.
+
+### Fixed
+
+- `create_cost_schedule_with_owner_history` no longer refuses every dated
+  IFC2X3 schedule (#214): a record form is written as the
+  `IfcDateTimeSelect` IFC2X3 declares. In IFC4 and IFC4X3 a record form is
+  refused with `AuthoringValueType`, as text is in IFC2X3.
+
+### Changed (breaking)
+
+- `create_cost_value`, `create_monetary_unit` and
+  `create_currency_relationship` bind the model's declared release and lay
+  their records out by attribute name (#213). They wrote the IFC4 layout
+  into every model. In IFC2X3 an `IfcCostValue` has eight attributes and
+  requires `CostType`, written from `category` (IFC4 renamed `CostType` to
+  `Category`); a composed value (`ArithmeticOperator`, `Components`) is
+  refused with `AuthoringNotInSchema`. `IfcMonetaryUnit.Currency` is an
+  `IfcCurrencyEnum` enumerator in IFC2X3 (a label it does not list is
+  `AuthoringValueType`) and an `IfcLabel` from IFC4 on. An IFC2X3
+  `IfcCurrencyRelationship` has five attributes and requires `RateDateTime`
+  as an `IfcDateAndTime` record. IFC4 and IFC4X3 records are unchanged.
+- `create_monetary_unit` takes the `&Model` (`create_monetary_unit(tx,
+  model, currency)`), which it needs to bind the release.
+- `CostValueDraft::applicable_date` and `fixed_until_date` are
+  `Option<DateTimeValue>`, and `create_currency_relationship` takes
+  `rate_date_time: Option<DateTimeValue>`: IFC4 and IFC4X3 text as before
+  (`"2026-01-01".into()`; the draft setters take `impl Into<DateTimeValue>`),
+  or an IFC2X3 record form, which the writer stages. A form the release does
+  not declare is refused with `AuthoringValueType`.
+- `CostView::schedules` returns `Result<impl Iterator<Item = CostSchedule>,
+  CostError>` and every `CostSchedule` accessor reads its attribute by name
+  in the model's declared release (#212). The IFC4 positions misread an
+  IFC2X3 `IfcCostSchedule`: `PreparedBy` as the predefined type, the
+  `SubmittedOn` record as the status and `SubmittedBy` as the
+  identification. `identification` reads IFC2X3's `ID`, which IFC4 renamed.
+  A header declaring IFC4X1, IFC4X2 or an unknown release is
+  `CostError::UnsupportedSchema`, several `CostError::MultipleSchemas`
+  (new variants); no header reads as IFC4.
+- `CostSchedule::submitted_on` and `update_date` return
+  `Option<AuthoredDateTime>`: IFC4/IFC4X3 text or the IFC2X3 date record
+  (`AuthoredDateTime::Record`), never `None` for a stated IFC2X3 date.
+- `CostSchedule::new(id, entity, release)` takes the release to read
+  against and returns `Result`, refusing IFC4X1 and IFC4X2.
+- `CostValueDraft`, `CostItemDraft`, `CostScheduleDraft`, `NestingDraft`,
+  `ScheduleAssignmentDraft` and `QuantityDraft` are `#[non_exhaustive]`:
+  build them with their constructors and setters instead of a struct
+  literal. Their fields stay public to read and assign.
+- `CostScheduleDraft::submitted_on` and `update_date` are
+  `Option<DateTimeValue<'a>>` (were `Option<&'a str>`); text converts with
+  `.into()` or through the setters, and IFC4/IFC4X3 output is unchanged.
+- `#[non_exhaustive]` on the public enums and result structs a later
+  release could extend: `CostItemType`, `CostScheduleType`,
+  `CostValueKind`, `QuantityKind`, `ArithmeticOperator`, `UnitBasis` and
+  `Consistency`. A `match` outside the crate needs a wildcard arm, and the
+  structs can no longer be built outside it.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
+### ifc-element-type
+
+### Added
+
+- `TypeDraft` fields for the type-specific attributes IFC4 and IFC4X3
+  require (#214): `operation_type` and `user_defined_operation_type`
+  (`IfcDoorType`), `partitioning_type` and `user_defined_partitioning_type`
+  (`IfcWindowType`), `parameter_takes_precedence` (both), `event_trigger_type`
+  and `user_defined_event_trigger_type` (`IfcEventType`), and
+  `assembly_place` (`IfcFurnitureType`, IFC2X3 too). Tokens are checked
+  against the bound release's enumeration (`Invalid` otherwise); a value for
+  an attribute the type does not declare is refused with
+  `AuthoringNotInSchema`; `USERDEFINED` `event_trigger_type` without a
+  non-blank `user_defined_event_trigger_type` is refused
+  (`CorrectEventTriggerType`). These four types can now be authored in every
+  release that declares them.
+- `TypeDraft::new` and `SupertypeDraft::new`, and one builder setter per
+  field, named after it (`TypeDraft::new().name("Beam").tag_or_long_description("B-1")`).
+
+### Fixed
+
+- `create_type` (and `create_supertype`), which take no model, no longer
+  write `$` into an attribute IFC4X3 requires: a required attribute left
+  unset is refused with `AuthoringRequired`, staging nothing, as the
+  model-bound writers already did (#214).
+
+### Changed (breaking)
+
+- `TypeDraft` and `SupertypeDraft` are `#[non_exhaustive]`: struct literals
+  outside the crate no longer compile. Use `new()` (or `default()`) and the
+  setters; the fields stay public for reading and assignment.
+- `create_type` refuses `IfcDoorType`, `IfcWindowType`, `IfcEventType` and
+  `IfcFurnitureType` without their required type-specific attribute, where
+  it wrote `$` before.
+- `Slot6`, `Family`, `ElementType` and `SupertypeKind` are
+  `#[non_exhaustive]`: a `match` on `Family` or `Slot6` needs a wildcard arm,
+  and catalogue rows can no longer be built by struct literal outside the
+  crate (use the generated constants).
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
 
 ### ifc-geometry
 
@@ -2605,6 +2096,83 @@ truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
   so this is never a decode error and never normalises: the accessors
   keep returning the authored fractions.
 
+### ifc-model
+
+### Changed
+
+- `tests/package_architecture.rs` enumerates the allowed bridge-to-bridge
+  dependencies (`BRIDGE_EDGES`: only `ifc-geometry -> ifc-alignment`)
+  instead of allowing any bridge pair, and a new test requires the
+  manifests to match that list exactly (#143, ADR 0003 amendment
+  2026-09-28). No crate API changes.
+
+### Changed (breaking)
+
+- `Conflict` and `Stop` are `#[non_exhaustive]`: a match needs a wildcard
+  arm, so a new commit-conflict or walk-stop reason is not a breaking
+  change.
+- `Applied` is `#[non_exhaustive]`: read its fields; it can no longer be
+  built with a struct literal outside the crate.
+
+### ifc-occurrence
+
+### Added
+
+- `OccurrenceDraft` fields for what IFC2X3 TC1 requires of a few classes
+  (#214): `shape_type` (`IfcRamp`, `IfcRoof`, `IfcStair`), `nominal_diameter`
+  and `cross_section_area` (`IfcReinforcingBar`, `IfcTendon`), `bar_role`
+  (`IfcReinforcingBar`), and `longitudinal_bars` and `transverse_bars`
+  (`IfcReinforcingMesh`), each a new `MeshBars` of nominal diameter,
+  cross-section area and spacing. These IFC2X3 records can now be authored
+  with `create_with_owner_history`; IFC4 and IFC4X3, which declare the
+  measures `OPTIONAL`, write them when given. A value for an attribute the
+  bound release does not declare on the class is refused with
+  `AuthoringNotInSchema`.
+- `OccurrenceError::UnknownToken` (a `ShapeType` or `BarRole` outside the
+  release's enumeration), `InvalidMeasure` (a non-positive or non-finite
+  `IfcPositiveLengthMeasure`, a non-finite `IfcAreaMeasure`) and
+  `TypeClassNotInSchema` (the bound release pairs no type class with the
+  occurrence, such as an IFC2X3 `IfcStair`), appended.
+- `OccurrenceError` implements `Display` and `std::error::Error`.
+- `OccurrenceDraft::new` and one builder setter per field, named after it.
+- `Occurrence::ifc4_type_class` and `Occurrence::ifc2x3_type_class`: the type
+  class IFC4 ADD2 TC1 and IFC2X3 TC1 pair with each class, generated from
+  their EXPRESS sources by `scripts/gen-occurrences.py`.
+
+### Fixed
+
+- The occurrence-to-type pairing follows the declared release (#214). It was
+  IFC4X3's `CorrectTypeAssigned` in every release, so an IFC2X3 `IfcDoor`
+  typed by an `IfcDoorStyle` was refused; IFC2X3 now pairs doors and windows
+  with `IfcDoorStyle` and `IfcWindowStyle` and every other class with the
+  later releases' type class where IFC2X3 declares it, and IFC4 uses its own
+  rules (IFC4's `IfcTransformer` rule names the undeclared
+  `IFCTRANFORMERTYPE`, an erratum recorded as written). The referenced type
+  is compared with `TYPEOF` semantics, subtypes included.
+
+### Changed (breaking)
+
+- `OccurrenceDraft` is `#[non_exhaustive]`: struct literals outside the crate
+  no longer compile. Use `new()` (or `default()`) and the setters; the fields
+  stay public.
+- `Occurrence`, the generated catalogue row, is `#[non_exhaustive]` and has
+  two new fields; it can no longer be built by struct literal outside the
+  crate (use the generated constants).
+- An IFC2X3 or IFC4 `typed_by` is checked against that release's pairing:
+  a class IFC2X3 pairs with nothing (its type class undeclared there) is
+  refused with `TypeClassNotInSchema` where it was checked against the
+  IFC4X3 class, and `WrongTypeClass.expected` names the release's class.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
 ### ifc-properties
 
 ### Added
@@ -2639,6 +2207,329 @@ truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
   It is `None` for an unknown prefix.
 - `UnitKind::Conversion` gains the `offset` field, so exhaustive patterns
   must name it or use `..`.
+
+### ifc-resource
+
+### Changed (breaking)
+
+- `ActorRoleDraft`, `PostalAddressDraft`, `TelecomAddressDraft`,
+  `ActorDraft`, `AssetDraft`, `InventoryDraft`, `AppliedValueDraft`,
+  `ResourceDraft`, `ResourceTimeDraft`, `AllocationDraft` and the resource
+  `NestingDraft` are `#[non_exhaustive]` (#214). Struct literals no longer
+  compile outside the crate: build each with `new(...)` and field-named
+  setters. New constructors: `ActorRoleDraft::new(role)`,
+  `PostalAddressDraft::new()`, `TelecomAddressDraft::new()`,
+  `ActorDraft::new(global_id, the_actor)`, `AssetDraft::new(global_id)`,
+  `InventoryDraft::new(global_id)` and `AppliedValueDraft::new()`, each
+  with a setter per remaining field. The drafts that already had builders
+  keep them unchanged. Fields stay public where they were.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+- Enumeration checks treat a type declaration form `ifc-schema` adds later
+  as not matching; follows `ifc_schema::TypeKind` becoming
+  `#[non_exhaustive]`.
+
+### ifc-schedule
+
+### Added
+
+- `create_lag_time_in(tx, model, name, lag_value, duration_type)`: the
+  model-bound `create_lag_time`. IFC2X3 declares no `IfcLagTime` and is
+  refused with `EntityNotInSchema`, nothing staged; IFC4 and IFC4X3 stage
+  exactly what `create_lag_time` stages. `create_lag_time` documents that
+  it is for IFC4 and IFC4X3 only (#211).
+- IFC2X3 work plans and work schedules can be authored (#214):
+  `DateTimeValue` carries a date either as IFC4/IFC4X3 `IfcDateTime` text
+  (`DateTimeValue::Text`, `From<&str>`) or as one of the IFC2X3
+  `IfcDateTimeSelect` records (`Date(CalendarDate)`, `Time(LocalTime)`,
+  `DateAndTime(CalendarDate, LocalTime)`). In IFC2X3
+  `create_work_control_with_owner_history` stages the `IfcCalendarDate`,
+  `IfcLocalTime` and `IfcDateAndTime` records and references them, only
+  once the work control itself is accepted. Record forms are checked
+  against the schema's rules before anything is staged
+  (`IfcValidCalendarDate` with `IfcLeapYear`, `IfcValidTime`, and the
+  ranges of `IfcMonthInYearNumber`, `IfcHourInDay`, `IfcMinuteInHour` and
+  `IfcSecondInMinute`), refused with `InvalidValue`. `CalendarDate` and
+  `LocalTime` are `#[non_exhaustive]`; `LocalTime` does not yet carry
+  `Zone` or `DaylightSavingOffset`, which are written `$`.
+- IFC2X3 sequences can be authored (#214): `TimeLag::Seconds` is the
+  IFC2X3 `IfcRelSequence.TimeLag : IfcTimeMeasure`, `TimeLag::LagTime` the
+  IFC4/IFC4X3 `IfcLagTime` reference. A non-finite lag is refused with
+  `InvalidValue`.
+- `ProcedureDraft::user_defined_procedure_type`, written as the IFC2X3
+  `IfcProcedure.UserDefinedProcedureType` (#214), so a `USERDEFINED` IFC2X3
+  procedure can be authored.
+- Every draft has a `new` constructor taking its required fields
+  (`TaskDraft::new(global_id)`, `WorkControlDraft::new(global_id,
+  creation_date, start_time)`, `EventDraft::new(global_id)`,
+  `ProcedureDraft::new(global_id)`, `RecurrenceDraft::new(recurrence_type)`,
+  `EventTimeDraft::new()`, `TaskTimeDraft::new()`) and a setter per other
+  field, named after it, as `ifc-resource`'s drafts are built.
+
+### Fixed
+
+- `create_work_control_with_owner_history`, `create_sequence_with_owner_history`
+  and `create_procedure_with_owner_history` no longer refuse the IFC2X3
+  records the drafts could not carry (#214). `IfcProcedure.WR4` is enforced
+  instead: an IFC2X3 `USERDEFINED` procedure without a non-blank
+  `user_defined_procedure_type` is refused with `InvalidValue`.
+- The release-bound writers refuse a `SchemaVersion` this build carries no
+  table for with `UnsupportedSchema` instead of panicking.
+
+### Changed (breaking)
+
+- The task, work-control and sequence readers bind the model's declared
+  release and read every attribute by name from its table (#212). They
+  read IFC4 slot constants from every file, so an IFC2X3 task answered its
+  `Status` as the long description, `WorkMethod` as the status and
+  `Priority` as the milestone flag, and an IFC2X3 work plan or schedule its
+  `WorkControlType` as the predefined type. The header binds IFC2X3, IFC4
+  or IFC4X3 (none reads as IFC4); IFC4X1, IFC4X2, unknown and multiple
+  schemas are refused with the new `ScheduleReadError`. IFC4 and IFC4X3
+  answers are unchanged.
+- `tasks`, `work_plans`, `work_schedules`, `sequences`, `predecessors_of`,
+  `successors_of`, `start_tasks`, `end_tasks`, `tasks_of_schedule` and
+  `subtasks_of` return `Result<_, ScheduleReadError>`; `find_cycle` returns
+  `Result<Option<SequenceCycle>, ScheduleReadError>`; `downstream_of` and
+  `execution_order` return `ScheduleReadError::Cycle(SequenceCycle)` for a
+  loop instead of a bare `SequenceCycle`.
+- `Task::new(id, entity, release)` and `WorkControl::new(id, entity,
+  release)` take the `SchemaVersion` to read against and return `Result`,
+  refusing IFC4X1 and IFC4X2; `WorkControl::new` is `Ok(None)` for another
+  entity. `Task::release` and `WorkControl::release` report the binding.
+- An attribute IFC2X3 does not declare reads as `None`: `Task::
+  long_description`, `predefined_type` and `task_time_ref`, and
+  `WorkControl::predefined_type`. `Task::identification` reads IFC2X3's
+  `TaskId` and `WorkControl::identification` its `Identifier`, which IFC4
+  promoted to `Identification`. `WorkControl::work_control_type` reads
+  IFC2X3's `WorkControlType`, which is not aliased to `PredefinedType`.
+- `WorkControl::creation_date`, `start_time` and `finish_time` return
+  `Option<AuthoredDateTime>` (IFC4/IFC4X3 text, or the IFC2X3
+  `IfcDateTimeSelect` record), and `duration` and `total_float` return
+  `Option<AuthoredDuration>` (IFC4/IFC4X3 text, or the IFC2X3
+  `IfcTimeMeasure`), instead of `None` for a stated IFC2X3 value.
+- `Sequence` gains `time_lag_measure`, IFC2X3's `IfcRelSequence.TimeLag`
+  (an `IfcTimeMeasure` on the relationship); `lag` stays the IFC4/IFC4X3
+  `IfcLagTime`.
+- `TaskDraft`, `WorkControlDraft`, `EventDraft`, `EventTimeDraft`,
+  `RecurrenceDraft`, `ProcedureDraft` and `TaskTimeDraft` are
+  `#[non_exhaustive]`: build them with `new` and the setters instead of a
+  struct literal. Their fields stay public to read and assign.
+- `WorkControlDraft::creation_date` and `start_time` are
+  `DateTimeValue<'a>` (were `&'a str`) and `finish_time` is
+  `Option<DateTimeValue<'a>>` (was `Option<&'a str>`). The plain
+  `create_work_control` refuses a record form with `InvalidValue`; with text
+  its output is unchanged.
+- `create_sequence_with_owner_history` takes `time_lag: Option<TimeLag>`
+  (was `Option<EntityId>`); wrap an `IfcLagTime` id in `TimeLag::LagTime`.
+  The plain `create_sequence` is unchanged.
+- `ProcedureDraft` has the new `user_defined_procedure_type` field; the
+  plain `create_procedure`, which writes IFC4/IFC4X3, refuses a value for
+  it with `InvalidValue`, and the release-bound writer refuses it in IFC4
+  and IFC4X3 with `AuthoringNotInSchema`.
+- `#[non_exhaustive]` on the public enums and result structs a later
+  release could extend: `SequenceType`, `DurationType`, `TaskTimeAnomaly`,
+  `WorkControlKind`, `WorkTimeRole`, `RecurrenceType`, `Lag`, `Sequence`,
+  `SequenceCycle`, `EventTime`, `Recurrence` and `WorkTime`. A `match`
+  outside the crate needs a wildcard arm, and the structs can no longer be
+  built outside it.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
+### ifc-schema
+
+### Changed (breaking)
+
+- Artifact format 3 records the facts above; format 1 and 2 artifacts
+  still decode, with those facts empty.
+- A nested aggregate attribute's `type_name` is its innermost element
+  type (`IfcLengthMeasure` for `LIST OF LIST OF IfcLengthMeasure`), where
+  the old extractor recorded the inner keyword `LIST`.
+- The `express` and `generation` features use `openbim-step` `=0.10.0`
+  (the runtime links none).
+- One cargo feature per bundled release (#112): `ifc2x3`, `ifc4`, `ifc4x1`,
+  `ifc4x2` and `ifc4x3`, all in `default`, so a default build bundles every
+  release as before. Each accessor (`ifc2x3()`, `ifc4()`, ...) exists only
+  with its feature. `ifc4` used to ship all bundled tables; it now ships
+  IFC4 only, so a build with `default-features = false, features =
+  ["ifc4"]` loses the other releases -- name them, or keep defaults.
+- `for_version` returns `Result<&Schema, NotBundled>` instead of
+  `Option<&Schema>`, and exists in every build. `Err(NotBundled)` means a
+  recognised release whose feature is off; an unknown `FILE_SCHEMA` token
+  is still `None` from `SchemaVersion::from_header_token`, so the two cases
+  stay distinguishable.
+- `write_structural_catalog` and `write_direct_structural_catalog` exist in
+  every build and return an `io::ErrorKind::Unsupported` error wrapping
+  `NotBundled` for a release that is not compiled in, instead of panicking.
+- `artifact_decode_schema` and `BundledSchemaError` need the new
+  `artifact` feature (enabled by every release feature) instead of `ifc4`.
+- `SchemaVersion` is `#[non_exhaustive]`, derives `Hash`, and gains
+  `Ifc4x1` and `Ifc4x2` (#33). A `match` on it needs a wildcard arm; a
+  consumer should refuse a release it has not verified, never alias it to
+  a neighbour. `write_structural_catalog` and
+  `write_direct_structural_catalog` accept the new versions.
+- `ifc-schema` owns its schema types. `Attribute`, `EntityDef`, `TypeDef`,
+  `TypeKind` and the newly exported `WhereRule` are defined here instead of
+  re-exported from `openbim_step::express`, and all five are
+  `#[non_exhaustive]`: construct them with `Attribute::new`,
+  `EntityDef::new`, `TypeDef::new`, `WhereRule::new` and the builder methods
+  (`with_supertype`, `with_attribute`, `with_derived`, `with_where_rule`,
+  `abstract_entity`, `optional`, `aggregate`), and give every `match` on
+  `TypeKind` a wildcard arm. Field names, `supertype()`, `is_derived()` and
+  `is_defined()` are unchanged. Rationale: an `openbim-step` release no
+  longer ripples into this crate's public API, and later facts about a
+  declaration (aggregate bounds, INVERSE, UNIQUE) can be added as fields
+  without another break.
+- `openbim-step` is an optional dependency, linked only by the new `express`
+  feature and by `generation`. The bundled tables decode straight into the
+  owned types; the default build no longer links a parser.
+- `Schema::from_express` and `Schema::from_express_bytes` require the new
+  `express` feature.
+- Removed: `Schema::from_parsed(ParsedSchema)` (use
+  `Schema::new(name, entities, types)`), `Schema::graph()` (the
+  `openbim_step::SchemaGraph` it returned is no longer held; `Schema`
+  answers the same queries itself), and the `express` module with its
+  `parse`/`ParsedSchema` re-exports (use `openbim_step::express` directly).
+- `EntityDef` no longer carries `redeclared`/`is_redeclared()`. No bundled
+  table ever recorded explicit redeclarations (the artifact format drops
+  them), so they were always empty for `ifc2x3()`, `ifc4()` and `ifc4x3()`.
+- `artifact_decode_schema` returns a `Schema` and `artifact_encode_schema`
+  (`generation`) takes one, instead of `openbim_step::express::ParsedSchema`.
+
+### Added
+
+- Aggregate bounds, nested aggregation, INVERSE and UNIQUE (#111):
+  `Attribute::aggregation` (levels outermost first, each an `Aggregation`
+  with `AggregateKind`, lower and upper `Bound`, `unique`,
+  `optional_elements`), `EntityDef::inverses` (`InverseAttribute`) and
+  `EntityDef::unique_rules` (`UniqueRule`), with builders. Additive: the
+  types were already `#[non_exhaustive]`. All five bundled tables are
+  regenerated with them: 115/153/158/160/165 INVERSE and 17/4/4/4/4
+  UNIQUE declarations for IFC2X3/IFC4/IFC4X1/IFC4X2/IFC4X3, pinned by
+  tests.
+- `NotBundled`, `SchemaVersion::is_bundled()` and
+  `SchemaVersion::feature_name()`.
+- IFC4X1 FINAL and IFC4X2 FINAL (#33): bundled tables
+  `data/ifc4x1-final.bin` (801 entities, 400 types) and
+  `data/ifc4x2-final.bin` (816 entities, 407 types), generated from the
+  official EXPRESS files like the other three; accessors `ifc4x1()` and
+  `ifc4x2()`; `for_version` returns them; header tokens `IFC4X1` and
+  `IFC4X2` (the files' own `SCHEMA` names); release ids `IFC4X1_FINAL`
+  and `IFC4X2_FINAL`. Tests pin that both counts differ from IFC4 and
+  IFC4X3 and that each carries its own release's entities.
+- `SchemaVersion::ALL`, every known version oldest first.
+- `Schema::new`, `Schema::entities()` and `Schema::types()` (declarations in
+  source order), `PartialEq`/`Eq` for `Schema`, and the `BundledSchemaError`
+  export.
+
+### Unchanged
+
+- The bundled artifacts are byte-identical: regenerating all three with the
+  ported generator reproduces the committed files, and `FORMAT_VERSION`
+  stays 2.
+
+### Changed
+
+- Requires `openbim-step` 0.7.0, matching `ifc-step`. Both pin the parser
+  exactly, so the pair must move together. `openbim-step` 0.6 replaced
+  `EntityDef::supertype` (a field) with `supertypes` plus a `supertype()`
+  accessor for multiple inheritance; IFC schemas are single-inheritance, so
+  the serialized artifact is unchanged.
+
+### ifc-spatial
+
+### Added
+
+- `SpatialDraft::interior_or_exterior`: the IFC2X3 `IfcSpace.
+  InteriorOrExteriorSpace` (`IfcInternalOrExternalEnum`), which that
+  release requires, so `create_spatial_element_with_owner_history` can
+  author an IFC2X3 space (#214). IFC4 and IFC4X3 do not declare the
+  attribute: a value there, or on a container other than a space, is
+  refused with `AuthoringNotInSchema`, a token outside IFC2X3's enumeration
+  with `AuthoringValueType`, and the plain IFC4/IFC4X3 `create_spatial_element`
+  refuses it with `AuthoringNotInSchema` instead of dropping it.
+- `create_project_with_owner_history` takes the project's representation
+  contexts, so an IFC2X3 `IfcProject`, which requires
+  `RepresentationContexts` (and `UnitsInContext`), can be authored (#214).
+  Each context must resolve in the model or on the transaction
+  (`MissingReference`), be an `IfcRepresentationContext`
+  (`WrongReferenceType`), not be an `IfcGeometricRepresentationSubContext`
+  (IFC2X3 `WR32`, IFC4 and IFC4X3 `CorrectContext`), and not repeat
+  (`Invalid`); an empty slice leaves the attribute `$`, which IFC2X3 refuses
+  with `AuthoringRequired`.
+- A constructor and builder setters on every draft: `SpatialDraft::new()`,
+  `FacilityDraft::new()`, `ExternalSpatialDraft::new()` and
+  `ProjectLibraryDraft::new()` start empty; `BoundaryDraft::new(space,
+  element, physical_or_virtual, internal_or_external)` takes the four
+  attributes the schema requires. Each optional field has a setter of the
+  same name taking the unwrapped value (`SpatialDraft::new().name("L1")
+  .composition("ELEMENT")`), following `ifc-resource`'s drafts.
+
+### Fixed
+
+- A model whose declared release has no bundled table is refused with
+  `UnsupportedSchema` by the release-bound writers instead of panicking.
+
+### Changed (breaking)
+
+- `assign_to_actor`, `assign_to_process`, `connect_with_realizing_elements`
+  and `interfere_elements` take the `&Model` and bind its declared release
+  (#213). They wrote records with the wrong number of attributes: seven of
+  `IfcRelAssignsToActor`'s and `IfcRelAssignsToProcess`'s eight, eight of
+  `IfcRelConnectsWithRealizingElements`'s nine, and ten for
+  `IfcRelInterferesElements` where IFC4 declares nine. Each record is now
+  laid out by attribute name with the release's own arity (the interference
+  has ten attributes in IFC4X3). IFC4 records gain a trailing `$` for the
+  first three (`ActingRole`, `QuantityInProcess`, `ConnectionType`) and the
+  IFC4 interference loses its trailing `$`; IFC4X3 records of the first
+  three gain the same trailing `$`, and its interference is unchanged. An
+  IFC2X3 model, which requires `OwnerHistory` (and declares no
+  `IfcRelInterferesElements`), and a header binding no single verified
+  release are refused; use the `*_with_owner_history` variants in IFC2X3.
+- `SpatialDraft`, `FacilityDraft`, `BoundaryDraft`, `ExternalSpatialDraft`
+  and `ProjectLibraryDraft` are `#[non_exhaustive]`: struct literals and
+  `..Default::default()` updates no longer compile outside the crate; build
+  them with `new` and the setters. Fields stay public for reading and
+  assignment.
+- `SpatialDraft` has a new field, `interior_or_exterior`.
+- `create_project_with_owner_history(tx, model, global_id, name, units,
+  representation_contexts, owner_history)`: the new `representation_contexts:
+  &[EntityId]` parameter sits before `owner_history`. Pass `&[]` for the
+  previous IFC4/IFC4X3 record.
+- `#[non_exhaustive]` on the public read-side and catalogue types a later
+  IFC release could extend: `SpaceBoundary`, `BoundaryPhysicality`,
+  `BoundaryExposure`, `Relationship`, `RelationshipKind`, `SpatialKind`,
+  `SpatialNode`, `BoundaryLevel` and `Facility`. Matches on the enums need
+  a wildcard arm outside the crate, and the structs can no longer be built
+  by literal there.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- The spatial classifier binds no release for an `IFC4X1` or `IFC4X2`
+  header (`release()` is `None`) and answers from the verified tables.
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
 
 ### ifc-step
 
@@ -2688,6 +2579,41 @@ truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
   2,273 files); reading takes 22-40% fewer instructions and 13-35% fewer
   cycles on seven real IFC files, with resident memory unchanged.
 
+### ifc-structural
+
+### Changed (breaking)
+
+- `MemberConnection` and `ActivityAssignment` are `#[non_exhaustive]`.
+- Every public draft is `#[non_exhaustive]`, so struct literals no longer
+  compile outside the crate. Each gains a constructor taking its required
+  fields and one builder setter per other field, named after the field and
+  taking the unwrapped value (`.name("Frame")` sets `Some`; `String` fields
+  take `impl Into<String>`):
+  - `AnalysisModelDraft::new(global_id, predefined_type)`
+  - `StructuralRootDraft::new(global_id)`
+  - `RelationshipRootDraft::new(global_id)`
+  - `MemberDraft::new(root, kind)`, `ConnectionDraft::new(root, kind)`
+  - `ActionDraft::new(root, applied_load, coordinate_system, kind)`
+  - `ReactionDraft::new(root, applied_load, coordinate_system, kind)`
+  - `LoadGroupDraft::new(global_id, action_type, action_source, kind)`
+  - `ResultGroupDraft::new(global_id, theory_type, is_linear)`
+  - `MemberConnectionDraft::new(root, member, connection)`
+  - `ActivityAssignmentDraft::new(root, relating_element, activity)`
+  - `BoundaryConditionDraft::new()`
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+- Enumeration checks treat a type declaration form `ifc-schema` adds later
+  as not matching; follows `ifc_schema::TypeKind` becoming
+  `#[non_exhaustive]`.
+
 ### ifc-style
 
 ### Added
@@ -2706,6 +2632,80 @@ truncated record with `MalformedEntitySlots`, in IFC2X3, IFC4 and IFC4X3.
   `Maps` is `LIST [1:?] OF IfcSurfaceTexture`, but it was read as a single
   reference, so it returned an error on every conforming file, including
   those this crate writes itself.
+
+### ifc-systems
+
+### Changed (breaking)
+
+- The authoring draft `ClassifiedSystemDraft` is `#[non_exhaustive]`:
+  build it with `ClassifiedSystemDraft::new()` and the setters
+  `description`, `object_type`, `predefined_type` and `long_name`. Fields
+  stay public.
+
+- The bulk readers no longer fall back to the IFC4 table. `systems`,
+  `ports`, `zones`, `spatial_placements`, `role_inconsistencies`,
+  `ConnectionGraph::build` and `ElementRole::of` return
+  `Result<_, SchemaResolutionError>` and refuse a header that binds no
+  verified release: no `FILE_SCHEMA` (an in-memory model now needs a
+  header), several, IFC4X1/IFC4X2, or a release this build does not
+  bundle. `ElementRole::of` returns `Result<Option<_>, _>`.
+- `try_zones` is removed: `zones` now has the error channel it added.
+- IFC4X3 is verified for every reader (#215), not only the zone readers:
+  `schema_of` resolves it. Every fixed slot the readers use is pinned
+  against the IFC2X3, IFC4 and IFC4X3 tables, and `tests/ifc4x3.rs`
+  round-trips systems (including `IfcBuiltSystem`), both port
+  attachments, connections, flow roles and spatial placements through
+  IFC4X3 STEP text.
+- `SystemAnomaly` and `RoleInconsistency` are `#[non_exhaustive]`: a match
+  needs a wildcard arm.
+- The read-side `Connection`, `Port`, `System`, `Zone` and
+  `SpatialPlacement` are `#[non_exhaustive]`, so a later release's attribute
+  can be added without a breaking change; they can no longer be built with a
+  struct literal outside the crate.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+
+### ifc-tabular
+
+### Changed (breaking)
+
+- `SeriesDraft` and `ColumnDraft` are `#[non_exhaustive]` (#214). Struct
+  literals no longer compile outside the crate: build them with
+  `SeriesDraft::new(name, start_time, end_time, data_type, data_origin)`
+  and `ColumnDraft::new()` plus field-named setters. Fields stay public.
+
+### Changed
+
+- Links no bundled schema table itself: every entry point takes the
+  `Schema` from the caller. A consumer that used a table through this
+  crate's dependency (`ifc_schema::ifc4()`) enables it on its own
+  `ifc-schema` dependency (default features bundle every release).
+
+### ifc-template-catalog
+
+### Added
+
+- `corrected_catalog(CatalogEdition::Ifc4x3Add2)`: an IFC4X3 ADD2 corrected
+  profile whose one patch, `NEH-IFC4X3-PSD-0001`, adds
+  `Pset_Stationing.HasIncreasingStation` (`IfcBoolean`). The published ADD2
+  documentation (6.6.4.10) lists it; the PSD XML the official snapshot is
+  generated from omits it, and the official snapshot is unchanged (#216).
+- `PatchOperation::AddProperty` and `PatchError::NotAPropertySet`.
+
+### Changed (breaking)
+
+- `ValidationIssue`, `ValidationReport`, `CatalogDiagnostic`,
+  `ExportSummary`, `Advisory`, `AppliedPatch` and `UnresolvedApplicability`
+  are `#[non_exhaustive]`; they can no longer be built with a struct literal
+  outside the crate.
 
 ### ifc-validate
 

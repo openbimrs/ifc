@@ -11,7 +11,7 @@ The IFC entity graph: storage and structural queries, free of domain semantics a
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.2.3 (2026-09-26) |
+| Latest release | 0.3.0 (2026-09-29) |
 | Registries | [crates.io `ifc-model`](https://crates.io/crates/ifc-model) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_model/index.html) · [docs.rs](https://docs.rs/ifc-model) |
 | Source | [`crates/ifc-model/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-model) |
@@ -29,34 +29,22 @@ serialization.
 
 ## Changes
 
-Latest release, 0.2.3 (2026-09-26):
+Latest release, 0.3.0 (2026-09-29):
 
-### Added
+### Changed
 
-- Lazily decoded entities (ADR 0015). A codec builds a model with
-  `Model::with_source(Arc<dyn EntitySource>)` and registers each entity as
-  a byte span plus type name with `Model::insert_lazy`; `Model::get` decodes
-  an entity on first access and keeps it, so references stay stable and
-  every later access is a lookup. Type queries, ids, `len`, `contains` and
-  `next_id` need no decoding. `Model::decode_all(threads)` decodes the rest
-  in parallel for a consumer about to touch everything;
-  `Model::decoded_len` reports progress. Editing, cloning and removal
-  decode first and then behave exactly as before; clones share the source.
-- `Codec::read_owned(Vec<u8>)`: read from a buffer the model may keep.
-  Defaults to `read_bytes`; `read_from` now hands its buffer over.
+- `tests/package_architecture.rs` enumerates the allowed bridge-to-bridge
+  dependencies (`BRIDGE_EDGES`: only `ifc-geometry -> ifc-alignment`)
+  instead of allowing any bridge pair, and a new test requires the
+  manifests to match that list exactly (#143, ADR 0003 amendment
+  2026-09-28). No crate API changes.
 
-### Fixed
+### Changed (breaking)
 
-- `Guid::parse` rejects a GlobalId whose leading character is not `0`–`3`
-  (#62). 22 base-64 digits carry 132 bits and a UUID has 128, so a higher
-  leading digit names no UUID. Before, it was accepted and `to_uuid` dropped
-  the extra high bits: `0000000000000000000000` and `4000000000000000000000`
-  expanded to the same UUID, and `$$$$…` came back from a round trip as
-  `3$$$…`. Every accepted `Guid` now round-trips through
-  `to_uuid`/`from_uuid` unchanged.
-- Authoring helpers that validate through `Guid::parse` (in `ifc-spatial`,
-  `ifc-systems`, `ifc-structural` and others) now refuse such ids as well.
-  `ifc-resource` already did. A file that was written with one would have
-  failed its own GlobalId check.
+- `Conflict` and `Stop` are `#[non_exhaustive]`: a match needs a wildcard
+  arm, so a new commit-conflict or walk-stop reason is not a breaking
+  change.
+- `Applied` is `#[non_exhaustive]`: read its fields; it can no longer be
+  built with a struct literal outside the crate.
 
 Full history: [`crates/ifc-model/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-model/CHANGELOG.md)

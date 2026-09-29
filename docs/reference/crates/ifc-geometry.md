@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.4.4 (2026-09-28) |
+| Latest release | 0.5.0 (2026-09-29) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_geometry/index.html) · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -37,57 +37,77 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.4.4 (2026-09-28):
-
-### Added
-
-- `authoring::surface_curve_swept_area_solid_in` and
-  `authoring::fixed_reference_swept_area_solid_in` (#200). They take the
-  model and write `StartParam`/`EndParam` in the form its declared release
-  requires: bare in IFC2X3 and IFC4, where the slot is `IfcParameterValue`,
-  and `IFCPARAMETERVALUE(..)` in IFC4X3, where it is the SELECT
-  `IfcCurveMeasureSelect`. The release binds from `FILE_SCHEMA` as the
-  other authoring crates bind it (none binds IFC4). An attribute the release
-  requires left unset (IFC2X3 `Position`, `StartParam`, `EndParam`) is
-  refused with `InvalidAuthoredValue`.
-- `GeometryError::AuthoringSchemaUnbound` (an unknown or ambiguous
-  `FILE_SCHEMA`) and `GeometryError::AuthoringEntityNotInSchema` (the
-  release does not declare the entity, such as the fixed-reference sweep in
-  IFC2X3), for those writers. `GeometryError` is `#[non_exhaustive]`, so
-  this is not breaking.
-- `authoring::grid_with_owner_history` (#202): an `IfcGrid` in the model's
-  declared release, with a caller-supplied `IfcOwnerHistory`, which IFC2X3
-  requires on every `IfcRoot`. It binds the release as the `_in` writers
-  above do, and lays the record out by attribute name from its table, so
-  an IFC2X3 grid has its 10 attributes, not IFC4's 11. A `predefined_type`
-  in IFC2X3, which declares none, or outside the release's
-  `IfcGridTypeEnum`, is refused with `InvalidAuthoredValue`. The owner
-  history must be in the model or staged on the transaction and be an
-  `IfcOwnerHistory` (`InvalidAuthoredValue` on `OwnerHistory` otherwise);
-  none is ever invented. IFC4 and IFC4X3 records are `grid`'s with the
-  owner history in its optional slot. No error variant is added.
-
-### Fixed
-
-- `IfcParameterValue` slots are written bare (#200):
-  `rectangular_trimmed_surface` (`U1`, `V1`, `U2`, `V2`), `point_on_curve`,
-  `point_on_surface`, `reparametrised_composite_curve_segment`
-  (`ParamLength`), and the `StartParam`/`EndParam` of `swept_disk_solid` and
-  `swept_disk_solid_polygonal`. Each is declared with the defined type
-  `IfcParameterValue`, not a SELECT, in every release that declares it, and
-  ISO 10303-21 writes a typed parameter only for a SELECT. The readers
-  accept both forms, as before.
+Latest release, 0.5.0 (2026-09-29):
 
 ### Changed
 
-- `surface_curve_swept_area_solid` and `fixed_reference_swept_area_solid`
-  still write `IFCPARAMETERVALUE(..)`, which is correct in IFC4X3 only. They
-  cannot see the release; their docs now say so and point IFC4 (and IFC2X3)
-  callers to the `_in` writers.
-- `authoring::grid` is unchanged and documents its limitation (#202): it
-  takes no model, so it writes the IFC4 layout (11 attributes,
-  `OwnerHistory` `$`), which is never valid IFC2X3. It moved from
-  `authoring/transform.rs` to `authoring/grid.rs`; the public path is the
-  same.
+- `MaterialProfileSetUsageGeometry::new` accepts
+  `IfcMaterialProfileSetUsageTapering`, the schema subtype of
+  `IfcMaterialProfileSetUsage`, whose inherited slots it reads unchanged;
+  the new `MaterialProfileSetUsageGeometry::tapering()` returns its
+  `MaterialProfileSetUsageTaperingGeometry` (end profile set and end
+  cardinal point), or `None` for a plain usage (#136).
+
+### Changed (breaking)
+
+- `ViolationKind`, `Support` and `FunctionStatus` are `#[non_exhaustive]`: a
+  match needs a wildcard arm.
+- `RuleViolation`, `LoweredGeometry` and `MappedInstance` are
+  `#[non_exhaustive]`; they can no longer be built with a struct literal
+  outside the crate.
+- `authoring::surface_curve_swept_area_solid`,
+  `authoring::fixed_reference_swept_area_solid` and
+  `authoring::swept_disk_solid` are removed (#210). Without the model they
+  could not write every release correctly: the two directrix sweeps wrote
+  the IFC4X3 `IFCPARAMETERVALUE(..)` trim into IFC4 files, and the swept
+  disk wrote `$` for the trim IFC2X3 requires. Use
+  `surface_curve_swept_area_solid_in`, `fixed_reference_swept_area_solid_in`
+  and the new `swept_disk_solid_in`, which take `&Model` after the
+  transaction and otherwise the same arguments.
+- `SurfaceCurveSweptAreaSolid::start_param`/`end_param` and
+  `FixedReferenceSweptAreaSolid::start_param`/`end_param` return
+  `GeometryResult<Option<TrimMeasure>>` instead of `Option<f64>` (#210). In
+  IFC4X3 the trim is an `IfcCurveMeasureSelect`, and an
+  `IFCLENGTHMEASURE(..)` trim is a distance along the directrix, not a curve
+  parameter; the reader now says which (`TrimMeasure::Parameter` or
+  `TrimMeasure::Length`) instead of returning both as a parameter. A bare
+  number is a parameter, as IFC2X3 and IFC4 declare. A typed value that is
+  not one of the SELECT's members is refused with `WrongValueKind` instead
+  of being unwrapped.
+- Lowering an `IfcSurfaceCurveSweptAreaSolid` or
+  `IfcFixedReferenceSweptAreaSolid` whose trim is an `IfcLengthMeasure`
+  fails with `Unsupported` (#210). It used to pass the length on as a curve
+  parameter, which on a conic directrix reads metres as radians; converting
+  a length into the directrix's parameter needs arc-length evaluation,
+  which lowering does not do.
+
+### Added
+
+- `authoring::swept_disk_solid_in` (#210): an `IfcSweptDiskSolid` in the
+  model's declared release. The trim is written bare in every release, as
+  before; in IFC2X3, which declares `StartParam` and `EndParam` required,
+  an unset one is refused with `InvalidAuthoredValue` and nothing is
+  staged.
+- `solid::swept::TrimMeasure` (re-exported from `solid`), the kind and
+  value of a directrix sweep's trim, and `TrimMeasure::parameter`.
+
+### Fixed
+
+- `authoring::curve_segment` writes a `CurveMeasure::Length` as
+  `IFCLENGTHMEASURE(..)` (#210). It wrote `IFCNONNEGATIVELENGTHMEASURE(..)`,
+  which is not a member of IFC4X3 `IfcCurveMeasureSelect =
+  SELECT (IfcLengthMeasure, IfcParameterValue)` and is an `ifc-validate`
+  error. Because `IfcLengthMeasure` is signed and neither slot is bounded,
+  a negative length is now written as given instead of refused.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
