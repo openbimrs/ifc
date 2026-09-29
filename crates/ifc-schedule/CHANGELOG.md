@@ -59,6 +59,39 @@ everything released before per-crate changelogs began.
 
 ### Changed (breaking)
 
+- The task, work-control and sequence readers bind the model's declared
+  release and read every attribute by name from its table (#212). They
+  read IFC4 slot constants from every file, so an IFC2X3 task answered its
+  `Status` as the long description, `WorkMethod` as the status and
+  `Priority` as the milestone flag, and an IFC2X3 work plan or schedule its
+  `WorkControlType` as the predefined type. The header binds IFC2X3, IFC4
+  or IFC4X3 (none reads as IFC4); IFC4X1, IFC4X2, unknown and multiple
+  schemas are refused with the new `ScheduleReadError`. IFC4 and IFC4X3
+  answers are unchanged.
+- `tasks`, `work_plans`, `work_schedules`, `sequences`, `predecessors_of`,
+  `successors_of`, `start_tasks`, `end_tasks`, `tasks_of_schedule` and
+  `subtasks_of` return `Result<_, ScheduleReadError>`; `find_cycle` returns
+  `Result<Option<SequenceCycle>, ScheduleReadError>`; `downstream_of` and
+  `execution_order` return `ScheduleReadError::Cycle(SequenceCycle)` for a
+  loop instead of a bare `SequenceCycle`.
+- `Task::new(id, entity, release)` and `WorkControl::new(id, entity,
+  release)` take the `SchemaVersion` to read against and return `Result`,
+  refusing IFC4X1 and IFC4X2; `WorkControl::new` is `Ok(None)` for another
+  entity. `Task::release` and `WorkControl::release` report the binding.
+- An attribute IFC2X3 does not declare reads as `None`: `Task::
+  long_description`, `predefined_type` and `task_time_ref`, and
+  `WorkControl::predefined_type`. `Task::identification` reads IFC2X3's
+  `TaskId` and `WorkControl::identification` its `Identifier`, which IFC4
+  promoted to `Identification`. `WorkControl::work_control_type` reads
+  IFC2X3's `WorkControlType`, which is not aliased to `PredefinedType`.
+- `WorkControl::creation_date`, `start_time` and `finish_time` return
+  `Option<AuthoredDateTime>` (IFC4/IFC4X3 text, or the IFC2X3
+  `IfcDateTimeSelect` record), and `duration` and `total_float` return
+  `Option<AuthoredDuration>` (IFC4/IFC4X3 text, or the IFC2X3
+  `IfcTimeMeasure`), instead of `None` for a stated IFC2X3 value.
+- `Sequence` gains `time_lag_measure`, IFC2X3's `IfcRelSequence.TimeLag`
+  (an `IfcTimeMeasure` on the relationship); `lag` stays the IFC4/IFC4X3
+  `IfcLagTime`.
 - `TaskDraft`, `WorkControlDraft`, `EventDraft`, `EventTimeDraft`,
   `RecurrenceDraft`, `ProcedureDraft` and `TaskTimeDraft` are
   `#[non_exhaustive]`: build them with `new` and the setters instead of a

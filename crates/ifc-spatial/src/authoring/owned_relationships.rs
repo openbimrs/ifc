@@ -43,7 +43,7 @@ pub(super) fn relate_owned(
     parent: EntityId,
     children: &[EntityId],
     extra: Vec<(&'static str, Value)>,
-    owner_history: EntityId,
+    owner_history: Option<EntityId>,
 ) -> SpatialAuthoringResult<EntityId> {
     check_relate(rel, global_id, parent, children)?;
     let mut values = vec![
@@ -52,7 +52,7 @@ pub(super) fn relate_owned(
         (rel.related_name(), refs(children)),
     ];
     values.extend(extra);
-    stage(tx, model, rel.type_name, values, Some(owner_history))
+    stage(tx, model, rel.type_name, values, owner_history)
 }
 
 /// A single-valued relationship: [`super::relate_one`] by name.
@@ -74,9 +74,9 @@ fn relate_one_owned(
     stage(tx, model, rel.type_name, values, Some(owner_history))
 }
 
-/// Two distinct elements: the plain `pair` by name.
+/// Two distinct elements by name; `None` leaves `OwnerHistory` `$`.
 #[allow(clippy::too_many_arguments)]
-fn pair_owned(
+pub(super) fn pair_owned(
     tx: &mut Transaction,
     model: &Model,
     rel: RelSlots,
@@ -84,7 +84,7 @@ fn pair_owned(
     relating: EntityId,
     related: EntityId,
     extra: Vec<(&'static str, Value)>,
-    owner_history: EntityId,
+    owner_history: Option<EntityId>,
 ) -> SpatialAuthoringResult<EntityId> {
     distinct(rel, global_id, relating, related)?;
     let mut values = vec![
@@ -93,7 +93,7 @@ fn pair_owned(
         (rel.related_name(), Value::Ref(related)),
     ];
     values.extend(extra);
-    stage(tx, model, rel.type_name, values, Some(owner_history))
+    stage(tx, model, rel.type_name, values, owner_history)
 }
 
 macro_rules! set_valued {
@@ -122,7 +122,7 @@ macro_rules! set_valued {
                 $parent,
                 $children,
                 Vec::new(),
-                owner_history,
+                Some(owner_history),
             )
         }
     };
@@ -196,7 +196,7 @@ set_valued!(
     /// [`assign_to_actor`](super::assign_to_actor) in the model's declared
     /// release, with a caller-supplied `IfcOwnerHistory`, which IFC2X3
     /// requires. The record has the release's eight attributes, `ActingRole`
-    /// unset; the plain writer stops at seven.
+    /// unset, as the plain writer's does (#213).
     assign_to_actor_with_owner_history, assign_to_actor, ASSIGNS_TO_ACTOR, actor, objects
 );
 set_valued!(
@@ -209,7 +209,7 @@ set_valued!(
     /// [`assign_to_process`](super::assign_to_process) in the model's
     /// declared release, with a caller-supplied `IfcOwnerHistory`, which
     /// IFC2X3 requires. The record has the release's eight attributes,
-    /// `QuantityInProcess` unset; the plain writer stops at seven.
+    /// `QuantityInProcess` unset, as the plain writer's does (#213).
     assign_to_process_with_owner_history, assign_to_process, ASSIGNS_TO_PROCESS, process, objects
 );
 set_valued!(
@@ -289,7 +289,7 @@ pub fn assign_to_group_by_factor_with_owner_history(
         group,
         members,
         vec![("Factor", Value::Real(factor))],
-        owner_history,
+        Some(owner_history),
     )
 }
 
@@ -319,15 +319,15 @@ pub fn connect_elements_with_owner_history(
         relating,
         related,
         Vec::new(),
-        owner_history,
+        Some(owner_history),
     )
 }
 
 /// [`connect_with_realizing_elements`](super::connect_with_realizing_elements)
 /// in the model's declared release, with a caller-supplied
 /// `IfcOwnerHistory`, which IFC2X3 requires. The record has the release's
-/// nine attributes, `ConnectionType` unset; the plain writer stops at
-/// eight.
+/// nine attributes, `ConnectionType` unset, as the plain writer's does
+/// (#213).
 ///
 /// # Errors
 ///
@@ -354,7 +354,7 @@ pub fn connect_with_realizing_elements_with_owner_history(
         relating,
         related,
         vec![("RealizingElements", refs(realizing))],
-        owner_history,
+        Some(owner_history),
     )
 }
 
@@ -363,8 +363,8 @@ pub fn connect_with_realizing_elements_with_owner_history(
 /// declares no `IfcRelInterferesElements` (`EntityNotInSchema`).
 ///
 /// The record has the release's own arity: nine attributes in IFC4, ten
-/// in IFC4X3 (`InterferenceSpace`, unset). The plain writer writes ten in
-/// both.
+/// in IFC4X3 (`InterferenceSpace`, unset), as the plain writer's does
+/// (#213).
 ///
 /// # Errors
 ///
@@ -392,6 +392,6 @@ pub fn interfere_elements_with_owner_history(
             "ImpliedOrder",
             implied_order.map_or(Value::LogicalUnknown, Value::Bool),
         )],
-        owner_history,
+        Some(owner_history),
     )
 }

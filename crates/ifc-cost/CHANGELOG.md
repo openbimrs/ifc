@@ -44,6 +44,39 @@ everything released before per-crate changelogs began.
 
 ### Changed (breaking)
 
+- `create_cost_value`, `create_monetary_unit` and
+  `create_currency_relationship` bind the model's declared release and lay
+  their records out by attribute name (#213). They wrote the IFC4 layout
+  into every model. In IFC2X3 an `IfcCostValue` has eight attributes and
+  requires `CostType`, written from `category` (IFC4 renamed `CostType` to
+  `Category`); a composed value (`ArithmeticOperator`, `Components`) is
+  refused with `AuthoringNotInSchema`. `IfcMonetaryUnit.Currency` is an
+  `IfcCurrencyEnum` enumerator in IFC2X3 (a label it does not list is
+  `AuthoringValueType`) and an `IfcLabel` from IFC4 on. An IFC2X3
+  `IfcCurrencyRelationship` has five attributes and requires `RateDateTime`
+  as an `IfcDateAndTime` record. IFC4 and IFC4X3 records are unchanged.
+- `create_monetary_unit` takes the `&Model` (`create_monetary_unit(tx,
+  model, currency)`), which it needs to bind the release.
+- `CostValueDraft::applicable_date` and `fixed_until_date` are
+  `Option<DateTimeValue>`, and `create_currency_relationship` takes
+  `rate_date_time: Option<DateTimeValue>`: IFC4 and IFC4X3 text as before
+  (`"2026-01-01".into()`; the draft setters take `impl Into<DateTimeValue>`),
+  or an IFC2X3 record form, which the writer stages. A form the release does
+  not declare is refused with `AuthoringValueType`.
+- `CostView::schedules` returns `Result<impl Iterator<Item = CostSchedule>,
+  CostError>` and every `CostSchedule` accessor reads its attribute by name
+  in the model's declared release (#212). The IFC4 positions misread an
+  IFC2X3 `IfcCostSchedule`: `PreparedBy` as the predefined type, the
+  `SubmittedOn` record as the status and `SubmittedBy` as the
+  identification. `identification` reads IFC2X3's `ID`, which IFC4 renamed.
+  A header declaring IFC4X1, IFC4X2 or an unknown release is
+  `CostError::UnsupportedSchema`, several `CostError::MultipleSchemas`
+  (new variants); no header reads as IFC4.
+- `CostSchedule::submitted_on` and `update_date` return
+  `Option<AuthoredDateTime>`: IFC4/IFC4X3 text or the IFC2X3 date record
+  (`AuthoredDateTime::Record`), never `None` for a stated IFC2X3 date.
+- `CostSchedule::new(id, entity, release)` takes the release to read
+  against and returns `Result`, refusing IFC4X1 and IFC4X2.
 - `CostValueDraft`, `CostItemDraft`, `CostScheduleDraft`, `NestingDraft`,
   `ScheduleAssignmentDraft` and `QuantityDraft` are `#[non_exhaustive]`:
   build them with their constructors and setters instead of a struct

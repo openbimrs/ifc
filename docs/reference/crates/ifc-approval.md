@@ -19,11 +19,13 @@ Bounded IFC4 approval resource semantics.
 
 ## Overview
 
-Bounded IFC4 approval-resource views and transaction-staged authoring.
+Bounded approval-resource views and transaction-staged authoring.
 
 This crate owns `IfcApproval`, its resource-level relationships, and
-`IfcRelAssociatesApproval`. It validates selected IFC4 WHERE/SELECT rules but
-does not implement workflow, authorization, signatures, or policy decisions.
+`IfcRelAssociatesApproval`, read and written in the model's declared
+release (IFC2X3, IFC4 or IFC4X3) by attribute name. It validates selected
+WHERE/SELECT rules but does not implement workflow, authorization,
+signatures, or policy decisions.
 
 ## Depends on
 

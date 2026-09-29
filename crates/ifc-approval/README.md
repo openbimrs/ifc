@@ -1,9 +1,11 @@
 # ifc-approval
 
-Bounded IFC4 approval semantics: `IfcApproval`, its resource-level
+Bounded approval semantics: `IfcApproval`, its resource-level
 relationships and `IfcRelAssociatesApproval`, as borrowed views over
-`ifc-model` plus transaction-staged authoring. Approval status is an authored
-fact; the crate implements no workflow, signatures or authorization.
+`ifc-model` plus transaction-staged authoring, read and written by
+attribute name in the model's declared release (IFC2X3, IFC4 or IFC4X3).
+Approval status is an authored fact; the crate implements no workflow,
+signatures or authorization.
 
 ```bash
 cargo add ifc-approval

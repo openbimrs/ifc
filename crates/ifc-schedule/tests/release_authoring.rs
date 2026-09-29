@@ -179,21 +179,35 @@ fn schedule_records_round_trip_in_their_release() {
         // The views. Relationships and names read the same slots in every
         // release; IFC2X3 task attributes past TaskId are not asserted
         // through the IFC4-positioned `Task` accessors.
-        let names: Vec<_> = tasks(&back).iter().filter_map(|t| t.name()).collect();
+        let names: Vec<_> = tasks(&back)
+            .expect("bound")
+            .iter()
+            .filter_map(|t| t.name())
+            .collect();
         assert_eq!(names, ["Slab", "Walls"], "{schema}");
-        assert_eq!(subtasks_of(&back, t1), [t2], "{schema}");
+        assert_eq!(subtasks_of(&back, t1).expect("bound"), [t2], "{schema}");
         let schedule = written
             .iter()
             .find(|(e, _)| *e == "IFCWORKSCHEDULE")
             .map_or(common::IFC2X3_SCHEDULE, |(_, id)| *id);
-        assert_eq!(tasks_of_schedule(&back, schedule), [t1], "{schema}");
+        assert_eq!(
+            tasks_of_schedule(&back, schedule).expect("bound"),
+            [t1],
+            "{schema}"
+        );
         if version != SchemaVersion::Ifc2x3 {
-            let task = tasks(&back).into_iter().find(|t| t.id() == t1).unwrap();
+            let task = tasks(&back)
+                .expect("bound")
+                .into_iter()
+                .find(|t| t.id() == t1)
+                .unwrap();
             assert_eq!(task.identification(), Some("T-1"));
             assert_eq!(task.predefined_type(), Some("CONSTRUCTION"));
-            assert_eq!(successors_of(&back, t1), [t2], "{schema}");
+            assert_eq!(successors_of(&back, t1).expect("bound"), [t2], "{schema}");
             assert_eq!(
-                work_schedules(&back)[0].start_time(),
+                work_schedules(&back).expect("bound")[0]
+                    .start_time()
+                    .and_then(|d| d.text()),
                 Some("2026-10-01T08:00:00")
             );
             assert_eq!(work_calendars(&back).len(), 1, "{schema}");

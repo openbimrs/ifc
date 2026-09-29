@@ -171,3 +171,55 @@ impl std::fmt::Display for ScheduleAuthoringError {
 }
 
 impl std::error::Error for ScheduleAuthoringError {}
+
+/// Why a schedule read could not answer (#212).
+///
+/// The readers bind the release the model's header declares and find every
+/// attribute by name in its table. A header they cannot bind is refused,
+/// never read through another release's positions.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ScheduleReadError {
+    /// The header declares several schemas; a read binds to exactly one.
+    MultipleSchemas {
+        /// Number of `FILE_SCHEMA` declarations.
+        schemas: usize,
+    },
+    /// The header declares one schema the readers are not verified against
+    /// (anything but IFC2X3, IFC4 and IFC4X3, so IFC4X1 and IFC4X2 too).
+    UnsupportedSchema {
+        /// The `FILE_SCHEMA` token as written, or the release identifier.
+        schema: String,
+    },
+    /// The sequence graph loops, so no ordering or downstream walk exists.
+    Cycle(SequenceCycle),
+}
+
+impl From<SequenceCycle> for ScheduleReadError {
+    fn from(cycle: SequenceCycle) -> Self {
+        Self::Cycle(cycle)
+    }
+}
+
+impl std::fmt::Display for ScheduleReadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::MultipleSchemas { schemas } => write!(
+                f,
+                "the header declares {schemas} schemas; a read binds to exactly one"
+            ),
+            Self::UnsupportedSchema { schema } => write!(
+                f,
+                "the header declares {schema}, which the schedule readers are not verified against"
+            ),
+            Self::Cycle(cycle) => write!(
+                f,
+                "the sequence graph returns to {} after {} steps",
+                cycle.repeated,
+                cycle.path.len()
+            ),
+        }
+    }
+}
+
+impl std::error::Error for ScheduleReadError {}

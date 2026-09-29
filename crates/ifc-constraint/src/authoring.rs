@@ -1,12 +1,19 @@
-//! Transaction-staged authoring for bounded IFC4 constraints.
+//! Transaction-staged authoring for bounded constraints.
 //!
-//! The rooted `IfcRelAssociatesConstraint` lives in `association.rs`.
+//! Every writer binds the model's declared release and lays its record out
+//! by attribute name from that release's table (see `release.rs`, #212).
+//! What the release cannot hold is refused, never dropped or written into a
+//! slot that means something else. The rooted `IfcRelAssociatesConstraint`
+//! lives in `association.rs`.
 
 use std::collections::HashSet;
 use std::sync::Arc;
 
 use ifc_model::{Edit, Entity, EntityId, Model, Transaction, Value};
-use ifc_schema::Schema;
+use ifc_schema::{Schema, TypeKind};
+
+use crate::datetime::DateTimeInput;
+use crate::release::{bind, Layout};
 
 use crate::types::{
     Benchmark, ConstraintGrade, LogicalOperator, MetricValueDraft, ObjectiveQualifier,
@@ -31,8 +38,9 @@ pub struct ConstraintBaseDraft<'a> {
     pub source: Option<&'a str>,
     /// Optional existing or earlier-staged actor-select target.
     pub creating_actor: Option<EntityId>,
-    /// Optional IFC date-time lexical value.
-    pub creation_time: Option<&'a str>,
+    /// Optional creation time: IFC4/IFC4X3 `IfcDateTime` text, or an
+    /// existing or earlier-staged IFC2X3 `IfcDateTimeSelect` record.
+    pub creation_time: Option<DateTimeInput<'a>>,
     /// Required when `grade` is user-defined.
     pub user_defined_grade: Option<&'a str>,
 }
@@ -74,10 +82,10 @@ impl<'a> ConstraintBaseDraft<'a> {
         self
     }
 
-    /// Sets `creation_time`: Optional IFC date-time lexical value.
+    /// Sets `creation_time`: text, or an IFC2X3 date record.
     #[must_use]
-    pub fn creation_time(mut self, value: &'a str) -> Self {
-        self.creation_time = Some(value);
+    pub fn creation_time(mut self, value: impl Into<DateTimeInput<'a>>) -> Self {
+        self.creation_time = Some(value.into());
         self
     }
 
@@ -234,28 +242,56 @@ impl<'a> ResourceConstraintDraft<'a> {
     }
 }
 
-/// Validate and stage one metric.
+/// Validate and stage one metric in the model's declared release.
+///
+/// # Release
+///
+/// IFC4 and IFC4X3 declare eleven attributes. IFC2X3 declares ten: no
+/// `ReferencePath`, a required `DataValue`, `CreationTime` as an
+/// `IfcDateTimeSelect` record, and an `IfcBenchmarkEnum` without IFC4's
+/// `INCLUDES`, `NOTINCLUDES`, `INCLUDEDIN` and `NOTINCLUDEDIN`.
+///
+/// # Errors
+///
+/// A user-defined grade without `UserDefinedGrade`; a reference outside its
+/// declared type in the release; a header binding no single verified
+/// release (`MultipleSchemas`, `UnsupportedSchema`); a value the release
+/// does not declare (`AuthoringNotInSchema`) or cannot hold
+/// (`AuthoringValueType`: a token its enumeration lacks, text where it
+/// declares a record); a data value type outside the release's
+/// `IfcMetricValueSelect` (`AuthoringInvalid`); and a required value left unset
+/// (`AuthoringRequired`). Nothing is staged on an error.
 pub fn create_metric(
     tx: &mut Transaction,
     model: &Model,
     draft: MetricDraft<'_>,
 ) -> ConstraintResult<EntityId> {
-    validate_base(tx, model, METRIC, draft.base)?;
+    let layout = bind(model)?;
+    layout.require_entity(METRIC)?;
+    let base = base_values(layout, tx, model, METRIC, draft.base)?;
     if let Some(path) = draft.reference_path {
-        validate_target(tx, model, path, "IfcReference")?;
+        if layout.declared(METRIC, "ReferencePath").is_some() {
+            validate_target_in(layout.schema(), tx, model, path, "IfcReference")?;
+        }
     }
     let data_value = match draft.data_value {
         None => Value::Null,
         Some(MetricValueDraft::Entity(target)) => {
-            validate_target(tx, model, target, "IfcMetricValueSelect")?;
+            validate_target_in(layout.schema(), tx, model, target, "IfcMetricValueSelect")?;
             Value::Ref(target)
         }
         Some(MetricValueDraft::Typed { type_name, value }) => {
-            if !ifc_schema::ifc4().accepts_type("IfcMetricValueSelect", type_name) {
+            if !layout
+                .schema()
+                .accepts_type("IfcMetricValueSelect", type_name)
+            {
                 return Err(ConstraintError::AuthoringInvalid {
                     entity: METRIC,
                     attribute: "DataValue",
-                    value: format!("type {type_name} is outside IfcMetricValueSelect"),
+                    value: format!(
+                        "type {type_name} is outside {:?} IfcMetricValueSelect",
+                        layout.version()
+                    ),
                 });
             }
             Value::Typed {
@@ -264,31 +300,46 @@ pub fn create_metric(
             }
         }
     };
-    Ok(tx.create(Entity::new(
-        METRIC,
-        vec![
-            text(draft.base.name),
-            optional_text(draft.base.description),
-            enumeration(draft.base.grade.token()),
-            optional_text(draft.base.source),
-            optional_ref(draft.base.creating_actor),
-            optional_text(draft.base.creation_time),
-            optional_text(draft.base.user_defined_grade),
-            enumeration(draft.benchmark.token()),
-            optional_text(draft.value_source),
-            data_value,
-            optional_ref(draft.reference_path),
-        ],
-    )))
+    let mut values = base;
+    values.extend([
+        (
+            "Benchmark",
+            enumerator(layout, METRIC, "Benchmark", draft.benchmark.token())?,
+        ),
+        ("ValueSource", optional_text(draft.value_source)),
+        ("DataValue", data_value),
+        ("ReferencePath", optional_ref(draft.reference_path)),
+    ]);
+    let record = layout.named_record(METRIC, values)?;
+    Ok(tx.create(record))
 }
 
-/// Validate and stage one objective.
+/// Validate and stage one objective in the model's declared release.
+///
+/// # Release
+///
+/// IFC4 and IFC4X3 declare `BenchmarkValues` as a `LIST OF IfcConstraint`
+/// and a `LogicalAggregator`. IFC2X3 declares a single `IfcMetric` there
+/// and `ResultValues`, an `IfcMetric`, in the aggregator's place; its
+/// `IfcObjectiveEnum` lacks several IFC4 qualifiers (`CODEWAIVER`,
+/// `EXTERNAL`, `MERGECONFLICT`, `MODELVIEW`, `PARAMETER` among them).
+///
+/// # Errors
+///
+/// A user-defined grade or qualifier without its label; an empty benchmark
+/// list or a benchmark outside its declared type; a header binding no single
+/// verified release; in IFC2X3 more than one benchmark
+/// (`AuthoringValueType`) or a logical aggregator (`AuthoringNotInSchema`);
+/// and a token the release's enumeration lacks (`AuthoringValueType`).
+/// Nothing is staged on an error.
 pub fn create_objective(
     tx: &mut Transaction,
     model: &Model,
     draft: ObjectiveDraft<'_>,
 ) -> ConstraintResult<EntityId> {
-    validate_base(tx, model, OBJECTIVE, draft.base)?;
+    let layout = bind(model)?;
+    layout.require_entity(OBJECTIVE)?;
+    let base = base_values(layout, tx, model, OBJECTIVE, draft.base)?;
     if draft.qualifier == ObjectiveQualifier::UserDefined && draft.user_defined_qualifier.is_none()
     {
         return Err(ConstraintError::AuthoringInvalid {
@@ -307,40 +358,80 @@ pub fn create_objective(
             });
         }
         Some(values) => {
+            let (aggregate, expected) = layout
+                .declared(OBJECTIVE, "BenchmarkValues")
+                .map_or((true, "IfcConstraint"), |(_, declared)| {
+                    (declared.aggregate, declared.type_name.as_str())
+                });
             for &target in values {
-                validate_target(tx, model, target, "IfcConstraint")?;
+                validate_target_in(layout.schema(), tx, model, target, expected)?;
             }
-            refs(values)
+            match (aggregate, values) {
+                (true, values) => refs(values),
+                (false, [one]) => Value::Ref(*one),
+                (false, _) => {
+                    return Err(ConstraintError::AuthoringValueType {
+                        entity: OBJECTIVE,
+                        attribute: "BenchmarkValues",
+                        declared: expected,
+                        schema: layout.version(),
+                    })
+                }
+            }
         }
     };
-    Ok(tx.create(Entity::new(
-        OBJECTIVE,
-        vec![
-            text(draft.base.name),
-            optional_text(draft.base.description),
-            enumeration(draft.base.grade.token()),
-            optional_text(draft.base.source),
-            optional_ref(draft.base.creating_actor),
-            optional_text(draft.base.creation_time),
-            optional_text(draft.base.user_defined_grade),
-            benchmarks,
-            draft
-                .logical_aggregator
-                .map_or(Value::Null, |value| enumeration(value.token())),
-            enumeration(draft.qualifier.token()),
+    let aggregator = match draft.logical_aggregator {
+        None => Value::Null,
+        Some(value) => enumerator(layout, OBJECTIVE, "LogicalAggregator", value.token())?,
+    };
+    let mut values = base;
+    values.extend([
+        ("BenchmarkValues", benchmarks),
+        ("LogicalAggregator", aggregator),
+        (
+            "ObjectiveQualifier",
+            enumerator(
+                layout,
+                OBJECTIVE,
+                "ObjectiveQualifier",
+                draft.qualifier.token(),
+            )?,
+        ),
+        (
+            "UserDefinedQualifier",
             optional_text(draft.user_defined_qualifier),
-        ],
-    )))
+        ),
+    ]);
+    let record = layout.named_record(OBJECTIVE, values)?;
+    Ok(tx.create(record))
 }
 
-/// Validate and stage one resource-level constraint relationship.
+/// Validate and stage one resource-level constraint relationship in the
+/// model's declared release.
+///
+/// # Errors
+///
+/// An empty or duplicated set; a relating target that is not an
+/// `IfcConstraint` or a resource outside `IfcResourceObjectSelect`; a header
+/// binding no single verified release; and an IFC2X3 model, which declares
+/// no `IfcResourceConstraintRelationship` (`EntityNotInSchema`). Nothing is
+/// staged on an error.
 pub fn relate_resource_constraint(
     tx: &mut Transaction,
     model: &Model,
     draft: ResourceConstraintDraft<'_>,
 ) -> ConstraintResult<EntityId> {
-    validate_target(tx, model, draft.relating_constraint, "IfcConstraint")?;
+    let layout = bind(model)?;
+    layout.require_entity(RESOURCE_REL)?;
+    validate_target_in(
+        layout.schema(),
+        tx,
+        model,
+        draft.relating_constraint,
+        "IfcConstraint",
+    )?;
     validate_set(
+        layout.schema(),
         tx,
         model,
         RESOURCE_REL,
@@ -348,23 +439,27 @@ pub fn relate_resource_constraint(
         draft.related_resources,
         "IfcResourceObjectSelect",
     )?;
-    Ok(tx.create(Entity::new(
+    let record = layout.named_record(
         RESOURCE_REL,
         vec![
-            optional_text(draft.name),
-            optional_text(draft.description),
-            Value::Ref(draft.relating_constraint),
-            refs(draft.related_resources),
+            ("Name", optional_text(draft.name)),
+            ("Description", optional_text(draft.description)),
+            ("RelatingConstraint", Value::Ref(draft.relating_constraint)),
+            ("RelatedResourceObjects", refs(draft.related_resources)),
         ],
-    )))
+    )?;
+    Ok(tx.create(record))
 }
 
-fn validate_base(
+/// The inherited `IfcConstraint` values of `draft`, checked against the
+/// release, named for [`Layout::named_record`].
+fn base_values(
+    layout: Layout,
     tx: &Transaction,
     model: &Model,
     kind: &'static str,
     draft: ConstraintBaseDraft<'_>,
-) -> ConstraintResult<()> {
+) -> ConstraintResult<Vec<(&'static str, Value)>> {
     if draft.grade == ConstraintGrade::UserDefined && draft.user_defined_grade.is_none() {
         return Err(ConstraintError::AuthoringInvalid {
             entity: kind,
@@ -373,12 +468,79 @@ fn validate_base(
         });
     }
     if let Some(actor) = draft.creating_actor {
-        validate_target(tx, model, actor, "IfcActorSelect")?;
+        validate_target_in(layout.schema(), tx, model, actor, "IfcActorSelect")?;
     }
-    Ok(())
+    let creation_time = match draft.creation_time {
+        None => Value::Null,
+        Some(DateTimeInput::Text(text)) => Value::Text(Arc::from(text)),
+        Some(DateTimeInput::Record(target)) => {
+            if let Some((_, declared)) = layout.declared(kind, "CreationTime") {
+                if layout.admits_entity(&declared.type_name, 8) {
+                    validate_target_in(
+                        layout.schema(),
+                        tx,
+                        model,
+                        target,
+                        declared.type_name.as_str(),
+                    )?;
+                }
+            }
+            Value::Ref(target)
+        }
+    };
+    Ok(vec![
+        ("Name", text(draft.name)),
+        ("Description", optional_text(draft.description)),
+        (
+            "ConstraintGrade",
+            enumerator(layout, kind, "ConstraintGrade", draft.grade.token())?,
+        ),
+        ("ConstraintSource", optional_text(draft.source)),
+        ("CreatingActor", optional_ref(draft.creating_actor)),
+        ("CreationTime", creation_time),
+        ("UserDefinedGrade", optional_text(draft.user_defined_grade)),
+    ])
+}
+
+/// `token` as an enumerator of the enumeration the release declares for
+/// `kind.attribute`: `AuthoringNotInSchema` when the release does not
+/// declare the attribute, `AuthoringValueType` when it lacks the token.
+fn enumerator(
+    layout: Layout,
+    kind: &'static str,
+    attribute: &'static str,
+    token: &str,
+) -> ConstraintResult<Value> {
+    let Some((_, declared)) = layout.declared(kind, attribute) else {
+        return Err(ConstraintError::AuthoringNotInSchema {
+            entity: kind,
+            attribute,
+            schema: layout.version(),
+        });
+    };
+    match layout
+        .schema()
+        .type_def(&declared.type_name)
+        .map(|t| &t.kind)
+    {
+        Some(TypeKind::Enumeration(members))
+            if members
+                .iter()
+                .any(|member| member.eq_ignore_ascii_case(token)) =>
+        {
+            Ok(enumeration(token))
+        }
+        _ => Err(ConstraintError::AuthoringValueType {
+            entity: kind,
+            attribute,
+            declared: declared.type_name.as_str(),
+            schema: layout.version(),
+        }),
+    }
 }
 
 fn validate_set(
+    schema: &Schema,
     tx: &Transaction,
     model: &Model,
     kind: &'static str,
@@ -402,7 +564,7 @@ fn validate_set(
                 value: format!("duplicate {target}"),
             });
         }
-        validate_target(tx, model, target, expected)?;
+        validate_target_in(schema, tx, model, target, expected)?;
     }
     Ok(())
 }
@@ -490,13 +652,17 @@ impl<'a> ReferenceDraft<'a> {
 /// # Errors
 ///
 /// Refuses a fully empty draft, an empty or non-positive `ListPositions`,
-/// and an `inner_reference` that is not itself an `IfcReference`.
+/// an `inner_reference` that is not itself an `IfcReference`, a header
+/// binding no single verified release, and an IFC2X3 model, which declares
+/// no `IfcReference` (`EntityNotInSchema`).
 pub fn create_reference(
     tx: &mut Transaction,
     model: &Model,
     draft: ReferenceDraft<'_>,
 ) -> ConstraintResult<EntityId> {
     const ENTITY: &str = "IfcReference";
+    let layout = bind(model)?;
+    layout.require_entity("IFCREFERENCE")?;
     let empty = draft.type_identifier.is_none()
         && draft.attribute_identifier.is_none()
         && draft.instance_name.is_none()
@@ -519,7 +685,7 @@ pub fn create_reference(
         }
     }
     if let Some(inner) = draft.inner_reference {
-        validate_target(tx, model, inner, ENTITY)?;
+        validate_target_in(layout.schema(), tx, model, inner, ENTITY)?;
     }
 
     let positions = if draft.list_positions.is_empty() {
@@ -548,16 +714,8 @@ pub fn create_reference(
     )))
 }
 
-fn validate_target(
-    tx: &Transaction,
-    model: &Model,
-    target: EntityId,
-    expected: &'static str,
-) -> ConstraintResult<()> {
-    validate_target_in(ifc_schema::ifc4(), tx, model, target, expected)
-}
-
-/// [`validate_target`] against `schema` instead of the IFC4 table.
+/// Fail unless `target` resolves, in the model or staged on `tx`, to a type
+/// `schema` accepts as `expected`.
 pub(crate) fn validate_target_in(
     schema: &Schema,
     tx: &Transaction,

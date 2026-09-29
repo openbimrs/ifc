@@ -27,7 +27,7 @@
 //! | [`value`] | `IfcCostValue` and applied monetary values |
 //! | [`quantity`] | Quantities a cost is computed against |
 //! | [`relation`] | Nesting and control assignment |
-//! | [`mutation`] | Transaction-staged bounded IFC4 authoring; release-bound quantities |
+//! | [`mutation`] | Transaction-staged authoring bound to the declared release |
 //! | [`currency`] | Monetary unit agreement |
 //! | [`rollup`] | Summing a cost tree |
 //! | [`error`] | Why a cost lookup failed |
@@ -54,6 +54,7 @@ pub mod item;
 pub mod mutation;
 pub mod quantity;
 pub mod relation;
+mod release;
 pub mod rollup;
 pub mod schedule;
 pub mod value;
@@ -79,6 +80,7 @@ pub use relation::{
     children_of, controlled_by, controls_of, descendants_of, nesting_anomalies, parent_of,
     parents_of, CostAnomaly, CostRelationError, MAX_NESTING_DEPTH,
 };
+pub use release::AuthoredDateTime;
 pub use rollup::{consistency, direct_total, grand_total, rolled_up_total, roots, Consistency};
 pub use schedule::CostSchedule;
 pub use value::{ArithmeticOperator, CostValue, UnitBasis};

@@ -1,17 +1,24 @@
 //! `IfcRelSequence`: predecessor/successor links and their lag.
 //!
-//! # Slots, verified against IFC4 EXPRESS
+//! # Read by name in the declared release (#212)
 //!
 //! ```text
 //! IfcRelSequence  (IfcRelConnects -> IfcRelationship -> IfcRoot)
-//! 0 GlobalId          1 OwnerHistory      2 Name
-//! 3 Description       4 RelatingProcess   5 RelatedProcess
-//! 6 TimeLag           7 SequenceType      8 UserDefinedSequenceType
+//! IFC4, IFC4X3  0 GlobalId  1 OwnerHistory  2 Name  3 Description
+//!               4 RelatingProcess  5 RelatedProcess
+//!               6 TimeLag (OPTIONAL IfcLagTime)  7 SequenceType
+//!               8 UserDefinedSequenceType
+//! IFC2X3        the same first six, 6 TimeLag (IfcTimeMeasure, required)
+//!               7 SequenceType (required)
 //!
-//! IfcLagTime  (IfcSchedulingTime)
+//! IfcLagTime  (IfcSchedulingTime; IFC4 and IFC4X3 only)
 //! 0 Name              1 DataOrigin        2 UserDefinedDataOrigin
 //! 3 LagValue          4 DurationType
 //! ```
+//!
+//! Every attribute is found by name in the model's declared release. An
+//! IFC2X3 lag is a time measure on the relationship itself, reported as
+//! [`Sequence::time_lag_measure`], never as an `IfcLagTime`.
 //!
 //! # Direction is stated, not inferred
 //!
@@ -36,7 +43,14 @@ use std::collections::HashSet;
 
 use ifc_model::{EntityId, Model, Value};
 
-/// `IfcRelSequence` slots.
+use crate::error::ScheduleReadError;
+use crate::release::ReadRelease;
+
+const SEQUENCE: &str = "IFCRELSEQUENCE";
+const LAG_TIME: &str = "IFCLAGTIME";
+
+/// `IfcRelSequence` slots in the layout IFC4 and IFC4X3 share, which the
+/// modelless `create_sequence` writes. The reader goes by name.
 pub(crate) mod slot {
     /// `RelatingProcess`, the predecessor.
     pub const RELATING: usize = 4;
@@ -48,7 +62,8 @@ pub(crate) mod slot {
     pub const SEQUENCE_TYPE: usize = 7;
 }
 
-/// `IfcLagTime` slots.
+/// `IfcLagTime` slots (IFC4 and IFC4X3; IFC2X3 has no `IfcLagTime`). The
+/// reader goes by name.
 pub mod lag_slot {
     /// `LagValue`. Required by the schema.
     pub const LAG_VALUE: usize = 3;
@@ -121,8 +136,12 @@ pub struct Sequence {
     pub successor: EntityId,
     /// Which ends are linked, if stated.
     pub sequence_type: Option<SequenceType>,
-    /// The lag, if stated.
+    /// The `IfcLagTime` lag, if stated (IFC4 and IFC4X3).
     pub lag: Option<Lag>,
+    /// IFC2X3's `TimeLag`, an `IfcTimeMeasure` in the project's time unit
+    /// stated on the relationship itself; `None` in IFC4 and IFC4X3, whose
+    /// lag is [`Self::lag`].
+    pub time_lag_measure: Option<f64>,
 }
 
 /// A cycle in the sequence graph.
@@ -138,42 +157,50 @@ pub struct SequenceCycle {
     pub path: Vec<EntityId>,
 }
 
-/// Every sequence link in the model, in file order.
-#[must_use]
-pub fn sequences(model: &Model) -> Vec<Sequence> {
+/// Every sequence link in the model, in file order, read against the
+/// model's declared release.
+///
+/// # Errors
+///
+/// [`ScheduleReadError::UnsupportedSchema`] or
+/// [`ScheduleReadError::MultipleSchemas`] for a header the readers cannot
+/// bind; a header with no schema reads as IFC4.
+pub fn sequences(model: &Model) -> Result<Vec<Sequence>, ScheduleReadError> {
+    let release = ReadRelease::of(model)?;
     let mut out = Vec::new();
-    for (id, entity) in model.of_type("IFCRELSEQUENCE") {
-        let (Some(Value::Ref(predecessor)), Some(Value::Ref(successor))) = (
-            entity.attribute(slot::RELATING),
-            entity.attribute(slot::RELATED),
+    for (id, entity) in model.of_type(SEQUENCE) {
+        let (Some(predecessor), Some(successor)) = (
+            release.reference(SEQUENCE, entity, "RelatingProcess"),
+            release.reference(SEQUENCE, entity, "RelatedProcess"),
         ) else {
             continue;
         };
-        let sequence_type = match entity.attribute(slot::SEQUENCE_TYPE) {
-            Some(Value::Enum(token)) => SequenceType::parse(token),
-            _ => None,
-        };
-        let lag = match entity.attribute(slot::TIME_LAG) {
-            Some(Value::Ref(lag_id)) => read_lag(model, *lag_id),
-            _ => None,
+        let sequence_type = release
+            .token(SEQUENCE, entity, "SequenceType")
+            .and_then(SequenceType::parse);
+        let (lag, time_lag_measure) = match release.value(SEQUENCE, entity, "TimeLag") {
+            Some(Value::Ref(lag_id)) => (read_lag(model, release, *lag_id), None),
+            Some(value) => (None, value.unwrap_typed().as_f64()),
+            None => (None, None),
         };
         out.push(Sequence {
             id,
-            predecessor: *predecessor,
-            successor: *successor,
+            predecessor,
+            successor,
             sequence_type,
             lag,
+            time_lag_measure,
         });
     }
-    out
+    Ok(out)
 }
 
-fn read_lag(model: &Model, id: EntityId) -> Option<Lag> {
+fn read_lag(model: &Model, release: ReadRelease, id: EntityId) -> Option<Lag> {
     let entity = model.get(id)?;
-    if !entity.type_name.eq_ignore_ascii_case("IFCLAGTIME") {
+    if !entity.type_name.eq_ignore_ascii_case(LAG_TIME) {
         return None;
     }
-    let value = entity.attribute(lag_slot::LAG_VALUE);
+    let value = release.value(LAG_TIME, entity, "LagValue");
     // IfcTimeOrRatioSelect: IfcDuration is a string, IfcRatioMeasure a real.
     // The wrapper distinguishes them, so read both rather than guessing.
     let duration = value
@@ -184,9 +211,6 @@ fn read_lag(model: &Model, id: EntityId) -> Option<Lag> {
     } else {
         value.and_then(|v| v.unwrap_typed().as_f64())
     };
-    // DurationType is read to confirm the lag is a duration at all; a ratio
-    // lag leaves it meaningless.
-    let _ = entity.attribute(lag_slot::DURATION_TYPE);
     Some(Lag {
         id,
         duration,
@@ -195,23 +219,29 @@ fn read_lag(model: &Model, id: EntityId) -> Option<Lag> {
 }
 
 /// Tasks that must finish (or start) before `task`, in file order.
-#[must_use]
-pub fn predecessors_of(model: &Model, task: EntityId) -> Vec<EntityId> {
-    sequences(model)
+///
+/// # Errors
+///
+/// The binding refusals of [`sequences`].
+pub fn predecessors_of(model: &Model, task: EntityId) -> Result<Vec<EntityId>, ScheduleReadError> {
+    Ok(sequences(model)?
         .into_iter()
         .filter(|s| s.successor == task)
         .map(|s| s.predecessor)
-        .collect()
+        .collect())
 }
 
 /// Tasks that follow `task`, in file order.
-#[must_use]
-pub fn successors_of(model: &Model, task: EntityId) -> Vec<EntityId> {
-    sequences(model)
+///
+/// # Errors
+///
+/// The binding refusals of [`sequences`].
+pub fn successors_of(model: &Model, task: EntityId) -> Result<Vec<EntityId>, ScheduleReadError> {
+    Ok(sequences(model)?
         .into_iter()
         .filter(|s| s.predecessor == task)
         .map(|s| s.successor)
-        .collect()
+        .collect())
 }
 
 /// Every task reachable downstream of `task`, depth-first.
@@ -222,14 +252,20 @@ pub fn successors_of(model: &Model, task: EntityId) -> Vec<EntityId> {
 ///
 /// # Errors
 ///
-/// [`SequenceCycle`] when a task is reachable from itself.
-pub fn downstream_of(model: &Model, task: EntityId) -> Result<Vec<EntityId>, SequenceCycle> {
-    let all = sequences(model);
+/// [`ScheduleReadError::Cycle`] when a task is reachable from itself, and
+/// the binding refusals of [`sequences`].
+pub fn downstream_of(model: &Model, task: EntityId) -> Result<Vec<EntityId>, ScheduleReadError> {
+    let all = sequences(model)?;
+    Ok(downstream_in(&all, task)?)
+}
+
+/// [`downstream_of`] over already read links.
+fn downstream_in(all: &[Sequence], task: EntityId) -> Result<Vec<EntityId>, SequenceCycle> {
     let mut out = Vec::new();
     let mut path = Vec::new();
     let mut on_path = HashSet::new();
     let mut seen = HashSet::new();
-    walk(&all, task, &mut out, &mut path, &mut on_path, &mut seen)?;
+    walk(all, task, &mut out, &mut path, &mut on_path, &mut seen)?;
     Ok(out)
 }
 
@@ -276,12 +312,16 @@ fn walk(
 /// The first cycle in the whole sequence graph, if any.
 ///
 /// Checks every task, so a cycle in a disconnected component is still found.
-#[must_use]
-pub fn find_cycle(model: &Model) -> Option<SequenceCycle> {
+///
+/// # Errors
+///
+/// The binding refusals of [`sequences`].
+pub fn find_cycle(model: &Model) -> Result<Option<SequenceCycle>, ScheduleReadError> {
+    let all = sequences(model)?;
     for (id, _) in model.of_type("IFCTASK") {
-        if let Err(cycle) = downstream_of(model, id) {
-            return Some(cycle);
+        if let Err(cycle) = downstream_in(&all, id) {
+            return Ok(Some(cycle));
         }
     }
-    None
+    Ok(None)
 }

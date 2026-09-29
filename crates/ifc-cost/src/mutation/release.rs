@@ -68,6 +68,50 @@ impl Release {
         self.schema
     }
 
+    /// The bound release.
+    pub(super) const fn version(self) -> SchemaVersion {
+        self.version
+    }
+
+    /// Whether this release's declaration of `entity.attribute` accepts a
+    /// reference to a `record` entity: a date record form in the slot its
+    /// release types. `IfcDateTimeSelect` admits all three IFC2X3 date
+    /// records, `IfcDateAndTime` only itself, and `IfcDateTime` text none.
+    pub(super) fn accepts_record(
+        self,
+        entity: &'static str,
+        attribute: &'static str,
+        record: &str,
+    ) -> CostAuthoringResult<bool> {
+        let (_, declaration) = self.declared(entity, attribute)?;
+        Ok(self.schema.accepts_type(&declaration.type_name, record))
+    }
+
+    /// The enumerator `token` names in the enumeration this release declares
+    /// for `entity.attribute`, spelled as the release spells it; `None`
+    /// when the attribute is not an enumeration or lacks the token.
+    pub(super) fn enumerator(
+        self,
+        entity: &'static str,
+        attribute: &'static str,
+        token: &str,
+    ) -> CostAuthoringResult<Option<&'static str>> {
+        let (_, declaration) = self.declared(entity, attribute)?;
+        Ok(
+            match self
+                .schema
+                .type_def(&declaration.type_name)
+                .map(|t| &t.kind)
+            {
+                Some(TypeKind::Enumeration(members)) => members
+                    .iter()
+                    .find(|member| member.trim().eq_ignore_ascii_case(token.trim()))
+                    .map(String::as_str),
+                _ => None,
+            },
+        )
+    }
+
     /// Fail with `EntityNotInSchema` unless the release instantiates
     /// `entity`.
     pub(super) fn require_entity(self, entity: &'static str) -> CostAuthoringResult<()> {
@@ -185,9 +229,14 @@ impl Release {
 /// promoted to supertype IfcControl". It keeps its meaning, the schedule's
 /// identifier, which IFC2X3 requires. IFC2X3 `IfcCostItem` declares no
 /// identifier at all.
+///
+/// IFC4 also renamed `IfcCostValue.CostType` to `Category`: the IFC4 ADD2
+/// TC1 documentation of `IfcCostValue` lists `Category` as "Name changed
+/// from CostType to Category", required in IFC2X3 and optional from IFC4.
 fn release_name(release: SchemaVersion, entity: &str, attribute: &'static str) -> &'static str {
     match (release, entity, attribute) {
         (SchemaVersion::Ifc2x3, "IFCCOSTSCHEDULE", "Identification") => "ID",
+        (SchemaVersion::Ifc2x3, "IFCCOSTVALUE", "Category") => "CostType",
         _ => attribute,
     }
 }

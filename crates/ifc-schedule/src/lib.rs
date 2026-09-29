@@ -60,13 +60,15 @@ pub use authoring::{
 pub use calendar::{
     work_calendars, Recurrence, RecurrenceType, WorkCalendar, WorkTime, WorkTimeRole,
 };
-pub use error::{SequenceCycle, TaskTimeAnomaly};
+pub use error::{ScheduleReadError, SequenceCycle, TaskTimeAnomaly};
 pub use event::{events, Event, EventTime};
 /// The IFC release a schedule record is written against (re-exported from
 /// `ifc-schema`).
 pub use ifc_schema::SchemaVersion;
 pub use query::{end_tasks, execution_order, start_tasks, subtasks_of, tasks_of_schedule};
-pub use schedule::{work_plans, work_schedules, WorkControl, WorkControlKind};
+pub use schedule::{
+    work_plans, work_schedules, AuthoredDateTime, AuthoredDuration, WorkControl, WorkControlKind,
+};
 pub use sequence::{
     downstream_of, find_cycle, predecessors_of, sequences, successors_of, Lag, Sequence,
     SequenceType, MAX_SEQUENCE_DEPTH,

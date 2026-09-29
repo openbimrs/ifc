@@ -160,7 +160,7 @@ pub fn aggregate_with_owner_history(
         parent,
         children,
         extra,
-        owner_history,
+        Some(owner_history),
     )
 }
 
@@ -189,7 +189,7 @@ pub fn contain_with_owner_history(
         structure,
         elements,
         extra,
-        owner_history,
+        Some(owner_history),
     )
 }
 

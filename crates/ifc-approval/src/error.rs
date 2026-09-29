@@ -1,4 +1,4 @@
-//! Typed failures for bounded IFC4 approval semantics.
+//! Typed failures for bounded approval semantics.
 
 use ifc_model::EntityId;
 use ifc_schema::SchemaVersion;
@@ -111,12 +111,76 @@ pub enum ApprovalError {
         /// Number of `FILE_SCHEMA` declarations.
         schemas: usize,
     },
-    /// The model's header declares one schema with no bundled table, so no
-    /// layout can be trusted.
-    #[error("the header declares {schema}, which has no bundled table")]
+    /// The model's header declares one schema this crate is not verified
+    /// against (anything but IFC2X3, IFC4 and IFC4X3), so no layout can be
+    /// trusted. Never read or written as another release.
+    #[error("the header declares {schema}, which this crate is not verified against")]
     UnsupportedSchema {
         /// The `FILE_SCHEMA` token as written.
         schema: String,
+    },
+    /// An accessor asked for an attribute the model's release does not
+    /// declare, such as `RequestingApproval` on an IFC2X3 `IfcApproval`.
+    /// Never read from the slot another release gives it (#212).
+    #[error("{entity} {id}.{attribute} is not defined by {schema:?}")]
+    NotInSchema {
+        /// Entity kind.
+        entity: &'static str,
+        /// Entity identifier.
+        id: EntityId,
+        /// The attribute, by this crate's (IFC4) name.
+        attribute: &'static str,
+        /// The release the model is read against.
+        schema: SchemaVersion,
+    },
+    /// A text accessor met an attribute the release types as an entity
+    /// record, such as the IFC2X3 `IfcApproval.ApprovalDateTime`, an
+    /// `IfcDateTimeSelect`. The value is valid; read it through `target`.
+    #[error("{entity} {id}.{attribute} is the record {target}, not text")]
+    StructuredValue {
+        /// Entity kind.
+        entity: &'static str,
+        /// Entity identifier.
+        id: EntityId,
+        /// The attribute, by this crate's (IFC4) name.
+        attribute: &'static str,
+        /// The entity record holding the value.
+        target: EntityId,
+    },
+    /// The model's release does not declare this entity, such as
+    /// `IfcResourceApprovalRelationship` in IFC2X3.
+    #[error("{entity} is not an instantiable entity of {schema:?}")]
+    EntityNotInSchema {
+        /// The entity type.
+        entity: &'static str,
+        /// The release the model declares.
+        schema: SchemaVersion,
+    },
+    /// A draft supplied a value for an attribute the model's release does
+    /// not declare, such as a `Status` for an IFC2X3 `IfcApproval`. It is
+    /// refused rather than dropped.
+    #[error("cannot author {entity}.{attribute}: not defined by {schema:?}")]
+    AuthoringNotInSchema {
+        /// The entity type being authored.
+        entity: &'static str,
+        /// The attribute, by this crate's (IFC4) name.
+        attribute: &'static str,
+        /// The release the model declares.
+        schema: SchemaVersion,
+    },
+    /// A draft supplied a value in a form the release's declaration cannot
+    /// hold, such as text where IFC2X3 declares an `IfcDateTimeSelect`
+    /// record, or several related approvals where IFC2X3 declares one.
+    #[error("cannot author {entity}.{attribute}: {schema:?} declares {declared}")]
+    AuthoringValueType {
+        /// The entity type being authored.
+        entity: &'static str,
+        /// The attribute, by this crate's (IFC4) name.
+        attribute: &'static str,
+        /// The type the release declares.
+        declared: &'static str,
+        /// The release the model declares.
+        schema: SchemaVersion,
     },
     /// The model's release requires an attribute the authoring call leaves
     /// unset, such as the IFC2X3 `IfcRoot.OwnerHistory`.

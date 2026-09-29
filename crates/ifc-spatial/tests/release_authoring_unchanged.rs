@@ -2,11 +2,10 @@
 //!
 //! The writers that take no model keep their record; the
 //! `*_with_owner_history` variant writes the same record with the owner
-//! history in slot 1. Where a plain writer's arity disagrees with the
-//! release, the variant writes the release's own arity and the difference
-//! is pinned here: `assign_to_actor` and `assign_to_process` stop at seven
-//! of eight attributes, `connect_with_realizing_elements` at eight of nine,
-//! and `interfere_elements` writes ten where IFC4 declares nine.
+//! history in slot 1. `assign_to_actor`, `assign_to_process`,
+//! `connect_with_realizing_elements` and `interfere_elements` used to stop
+//! short of (or run past) the release's arity; since #213 they bind the
+//! release and write its own arity, pinned below.
 
 mod release_fixture;
 
@@ -115,14 +114,13 @@ fn variants_write_the_plain_record_with_an_owner_history() {
             assign_to_product_with_owner_history(t, &m, &g(), PROXY, &[WALL], OWNER).unwrap(),
             7,
         ));
-        // Plain stops at seven: ActingRole / QuantityInProcess are unset.
         pairs.push((
-            assign_to_actor(t, &g(), ACTOR, &[WALL]).unwrap(),
+            assign_to_actor(t, &m, &g(), ACTOR, &[WALL]).unwrap(),
             assign_to_actor_with_owner_history(t, &m, &g(), ACTOR, &[WALL], OWNER).unwrap(),
             8,
         ));
         pairs.push((
-            assign_to_process(t, &g(), TASK, &[WALL]).unwrap(),
+            assign_to_process(t, &m, &g(), TASK, &[WALL]).unwrap(),
             assign_to_process_with_owner_history(t, &m, &g(), TASK, &[WALL], OWNER).unwrap(),
             8,
         ));
@@ -138,7 +136,7 @@ fn variants_write_the_plain_record_with_an_owner_history() {
             7,
         ));
         pairs.push((
-            connect_with_realizing_elements(t, &g(), WALL, WALL2, &[PROXY]).unwrap(),
+            connect_with_realizing_elements(t, &m, &g(), WALL, WALL2, &[PROXY]).unwrap(),
             connect_with_realizing_elements_with_owner_history(
                 t,
                 &m,
@@ -157,7 +155,7 @@ fn variants_write_the_plain_record_with_an_owner_history() {
             10
         };
         pairs.push((
-            interfere_elements(t, &g(), WALL, WALL2, Some(true)).unwrap(),
+            interfere_elements(t, &m, &g(), WALL, WALL2, Some(true)).unwrap(),
             interfere_elements_with_owner_history(t, &m, &g(), WALL, WALL2, Some(true), OWNER)
                 .unwrap(),
             interferes,
@@ -233,20 +231,41 @@ fn variants_write_the_plain_record_with_an_owner_history() {
     }
 }
 
-/// The plain arity of the four writers whose record disagrees with the
-/// release, pinned so a fix is a deliberate, changelogged change.
+/// The four writers #213 fixed write the declared release's arity, laid
+/// out by name: eight for the assignments, nine for the realizing
+/// connection, and nine (IFC4) or ten (IFC4X3) for the interference.
 #[test]
-fn known_plain_arity_disagreements_are_pinned() {
-    let mut model = base("IFC4", SchemaVersion::Ifc4);
-    let mut tx = Transaction::new(&model);
-    let actor = assign_to_actor(&mut tx, &guid(1), ACTOR, &[WALL]).unwrap();
-    let process = assign_to_process(&mut tx, &guid(2), TASK, &[WALL]).unwrap();
-    let realizing =
-        connect_with_realizing_elements(&mut tx, &guid(3), WALL, WALL2, &[PROXY]).unwrap();
-    let interferes = interfere_elements(&mut tx, &guid(4), WALL, WALL2, None).unwrap();
-    tx.commit(&mut model).expect("commit");
-    for (id, arity) in [(actor, 7), (process, 7), (realizing, 8), (interferes, 10)] {
-        assert_eq!(model.get(id).unwrap().attributes.len(), arity);
+fn fixed_plain_writers_have_the_release_arity() {
+    for (schema, version, interferes) in [
+        ("IFC4", SchemaVersion::Ifc4, 9),
+        ("IFC4X3_ADD2", SchemaVersion::Ifc4x3, 10),
+    ] {
+        let mut model = base(schema, version);
+        let m = model.clone();
+        let mut tx = Transaction::new(&model);
+        let actor = assign_to_actor(&mut tx, &m, &guid(1), ACTOR, &[WALL]).unwrap();
+        let process = assign_to_process(&mut tx, &m, &guid(2), TASK, &[WALL]).unwrap();
+        let realizing =
+            connect_with_realizing_elements(&mut tx, &m, &guid(3), WALL, WALL2, &[PROXY]).unwrap();
+        let clash = interfere_elements(&mut tx, &m, &guid(4), WALL, WALL2, None).unwrap();
+        tx.commit(&mut model).expect("commit");
+        let record = |id| model.get(id).unwrap().attributes.clone();
+        for (id, arity) in [
+            (actor, 8),
+            (process, 8),
+            (realizing, 9),
+            (clash, interferes),
+        ] {
+            assert_eq!(record(id).len(), arity, "{schema}");
+        }
+        assert_eq!(record(actor)[6], Value::Ref(ACTOR), "RelatingActor");
+        assert_eq!(record(process)[6], Value::Ref(TASK), "RelatingProcess");
+        assert_eq!(
+            record(realizing)[7],
+            Value::List(vec![Value::Ref(PROXY)]),
+            "RealizingElements"
+        );
+        assert_eq!(record(clash)[8], Value::LogicalUnknown, "ImpliedOrder");
     }
 }
 

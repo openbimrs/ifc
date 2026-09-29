@@ -11,12 +11,18 @@ use ifc_model::{Model, Transaction, Value};
 fn a_currency_relationship_stages() {
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
-    let eur = create_monetary_unit(&mut tx, "EUR").expect("eur");
-    let gbp = create_monetary_unit(&mut tx, "GBP").expect("gbp");
+    let eur = create_monetary_unit(&mut tx, &model, "EUR").expect("eur");
+    let gbp = create_monetary_unit(&mut tx, &model, "GBP").expect("gbp");
 
-    let id =
-        create_currency_relationship(&mut tx, &model, eur, gbp, 0.85, Some("2026-09-22T00:00:00"))
-            .expect("currency relationship");
+    let id = create_currency_relationship(
+        &mut tx,
+        &model,
+        eur,
+        gbp,
+        0.85,
+        Some("2026-09-22T00:00:00".into()),
+    )
+    .expect("currency relationship");
     tx.commit(&mut model).expect("commit");
 
     let staged = model.get(id).expect("staged");
@@ -32,8 +38,8 @@ fn a_currency_relationship_stages() {
 fn an_impossible_rate_is_refused() {
     let model = Model::default();
     let mut tx = Transaction::new(&model);
-    let eur = create_monetary_unit(&mut tx, "EUR").expect("eur");
-    let gbp = create_monetary_unit(&mut tx, "GBP").expect("gbp");
+    let eur = create_monetary_unit(&mut tx, &model, "EUR").expect("eur");
+    let gbp = create_monetary_unit(&mut tx, &model, "GBP").expect("gbp");
 
     for rate in [0.0, -1.0, f64::NAN, f64::INFINITY] {
         assert!(
@@ -52,7 +58,7 @@ fn an_impossible_rate_is_refused() {
 fn a_non_monetary_reference_is_refused() {
     let model = Model::default();
     let mut tx = Transaction::new(&model);
-    let eur = create_monetary_unit(&mut tx, "EUR").expect("eur");
+    let eur = create_monetary_unit(&mut tx, &model, "EUR").expect("eur");
     let stray = tx.create(ifc_model::Entity::new("IFCSIUNIT", vec![Value::Null; 4]));
 
     assert!(

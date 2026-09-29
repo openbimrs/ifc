@@ -56,7 +56,11 @@ fn cost_item_slots_match_the_schema() {
 fn cost_schedule_predefined_type_is_not_the_submission_date() {
     let model = fixture();
     let view = CostView::new(&model);
-    let schedule = view.schedules().next().expect("schedule in fixture");
+    let schedule = view
+        .schedules()
+        .expect("bound")
+        .next()
+        .expect("schedule in fixture");
 
     assert_eq!(schedule.predefined_type(), Some("BUDGET"));
     assert_eq!(schedule.name(), Some("Budget"));

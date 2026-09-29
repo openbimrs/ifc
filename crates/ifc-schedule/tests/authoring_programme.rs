@@ -48,13 +48,22 @@ fn an_authored_programme_reads_back_through_the_queries() {
     nest_tasks(&mut tx, "05BcDeFgHiJkLmNoPqRsTu", parent, &[first, second]).expect("nested");
     tx.commit(&mut model).expect("commit");
 
-    let found = work_schedules(&model);
+    let found = work_schedules(&model).expect("bound");
     assert_eq!(found.len(), 1, "one schedule");
     assert_eq!(found[0].name(), Some("Programme"));
-    assert_eq!(found[0].start_time(), Some("2026-01-05T08:00:00"));
+    assert_eq!(
+        found[0].start_time().and_then(|d| d.text()),
+        Some("2026-01-05T08:00:00")
+    );
 
-    assert_eq!(tasks_of_schedule(&model, schedule), vec![parent]);
-    assert_eq!(subtasks_of(&model, parent), vec![first, second]);
+    assert_eq!(
+        tasks_of_schedule(&model, schedule).expect("bound"),
+        vec![parent]
+    );
+    assert_eq!(
+        subtasks_of(&model, parent).expect("bound"),
+        vec![first, second]
+    );
 }
 
 /// A calendar with working and exception periods reads back in both roles.
@@ -179,15 +188,15 @@ fn an_authored_programme_survives_step_text() {
         .expect("written");
     let reparsed = ifc_step::StepCodec.read_bytes(&bytes).expect("reparsed");
 
-    let found = work_schedules(&reparsed);
+    let found = work_schedules(&reparsed).expect("bound");
     assert_eq!(found.len(), 1, "one schedule after the round trip");
     assert_eq!(found[0].name(), Some("Programme"));
     // Entity ids are assigned by the parser, so compare the shape of the
     // graph rather than the ids the authoring transaction happened to use.
-    let tasks = tasks_of_schedule(&reparsed, found[0].id());
+    let tasks = tasks_of_schedule(&reparsed, found[0].id()).expect("bound");
     assert_eq!(tasks.len(), 1, "the assignment survived");
     assert_eq!(
-        subtasks_of(&reparsed, tasks[0]).len(),
+        subtasks_of(&reparsed, tasks[0]).expect("bound").len(),
         1,
         "nesting survived"
     );

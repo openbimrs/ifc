@@ -1,9 +1,10 @@
 # ifc-constraint
 
-Bounded IFC4 constraint semantics: `IfcMetric`, `IfcObjective` and their
+Bounded constraint semantics: `IfcMetric`, `IfcObjective` and their
 relationships, as borrowed views over `ifc-model` plus transaction-staged
-authoring. Values are preserved as authored; the crate does not evaluate
-compliance or formulas.
+authoring, read and written by attribute name in the model's declared
+release (IFC2X3, IFC4 or IFC4X3). Values are preserved as authored; the
+crate does not evaluate compliance or formulas.
 
 ```bash
 cargo add ifc-constraint

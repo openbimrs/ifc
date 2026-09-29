@@ -4,7 +4,9 @@
 //! coexist over the same model, and dropping one cannot lose data — which is
 //! what makes `ifc-cost` safe to leave uncompiled.
 
+use crate::error::CostError;
 use crate::item::CostItem;
+use crate::release::ReadRelease;
 use crate::schedule::CostSchedule;
 use crate::value::CostValue;
 use ifc_model::Model;
@@ -21,13 +23,23 @@ impl<'m> CostView<'m> {
         Self { model }
     }
 
-    /// Every cost schedule in the file.
-    pub fn schedules(&self) -> impl Iterator<Item = CostSchedule<'m>> + '_ {
-        self.model
+    /// Every cost schedule in the file, read against the model's declared
+    /// release (#212).
+    ///
+    /// # Errors
+    ///
+    /// [`CostError::UnsupportedSchema`] when the header declares a release
+    /// the cost readers are not verified against (IFC4X1, IFC4X2 or an
+    /// unknown token), [`CostError::MultipleSchemas`] when it declares
+    /// several. A header with no schema reads as IFC4.
+    pub fn schedules(&self) -> Result<impl Iterator<Item = CostSchedule<'m>> + '_, CostError> {
+        let release = ReadRelease::of(self.model)?;
+        Ok(self
+            .model
             .of_type("IFCCOSTSCHEDULE")
-            .map(|(id, entity)| CostSchedule::new(id, entity))
+            .map(move |(id, entity)| CostSchedule::bound(id, entity, release))
             .collect::<Vec<_>>()
-            .into_iter()
+            .into_iter())
     }
 
     /// Every cost item in the file.
