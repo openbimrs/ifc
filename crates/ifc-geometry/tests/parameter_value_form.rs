@@ -10,16 +10,15 @@
 //! round trip unnoticed.
 
 use ifc_geometry::authoring::{
-    axis2_placement_3d, cartesian_point, circle, direction, fixed_reference_swept_area_solid,
-    fixed_reference_swept_area_solid_in, plane, point_on_curve, point_on_surface, polyline,
-    rectangle_profile, rectangular_trimmed_surface, reparametrised_composite_curve_segment,
-    surface_curve_swept_area_solid, surface_curve_swept_area_solid_in, swept_disk_solid,
-    swept_disk_solid_polygonal, SweepTrim,
+    axis2_placement_3d, cartesian_point, circle, direction, fixed_reference_swept_area_solid_in,
+    plane, point_on_curve, point_on_surface, polyline, rectangle_profile,
+    rectangular_trimmed_surface, reparametrised_composite_curve_segment,
+    surface_curve_swept_area_solid_in, swept_disk_solid_in, swept_disk_solid_polygonal, SweepTrim,
 };
 use ifc_geometry::curve::{CompositeCurveSegment, TransitionCode};
 use ifc_geometry::resource::point::{PointOnCurve, PointOnSurface};
 use ifc_geometry::solid::swept::{
-    FixedReferenceSweptAreaSolid, SurfaceCurveSweptAreaSolid, SweptDiskSolid,
+    FixedReferenceSweptAreaSolid, SurfaceCurveSweptAreaSolid, SweptDiskSolid, TrimMeasure,
 };
 use ifc_geometry::surface::bounded::RectangularTrimmedSurface;
 use ifc_geometry::GeometryError;
@@ -140,7 +139,7 @@ fn author(model: &mut Model, version: SchemaVersion) -> Authored {
     let trimmed = rectangular_trimmed_surface(&mut tx, flat, (0.25, 2.5), (0.5, 3.5)).expect("t");
     let on_curve = point_on_curve(&mut tx, arc, 0.25).expect("on curve");
     let on_surface = point_on_surface(&mut tx, flat, 0.25, 0.75).expect("on surface");
-    let disk = swept_disk_solid(&mut tx, line, 0.2, None, TRIM).expect("disk");
+    let disk = swept_disk_solid_in(&mut tx, model, line, 0.2, None, TRIM).expect("disk");
     let surface_curve =
         surface_curve_swept_area_solid_in(&mut tx, model, profile, Some(at), line, TRIM, flat)
             .expect("surface-curve sweep");
@@ -236,10 +235,19 @@ fn every_release_writes_its_declared_form_and_reads_back() {
             (disk.start_param(), disk.end_param()),
             (Some(0.25), Some(0.75))
         );
+        // Every release's trim reads back as a parameter, never a length.
+        let parameters = (
+            Some(TrimMeasure::Parameter(0.25)),
+            Some(TrimMeasure::Parameter(0.75)),
+        );
         let sweep = SurfaceCurveSweptAreaSolid::new(ids.surface_curve, get(ids.surface_curve));
         assert_eq!(
-            (sweep.start_param(), sweep.end_param()),
-            (Some(0.25), Some(0.75))
+            (
+                sweep.start_param().expect("s"),
+                sweep.end_param().expect("e")
+            ),
+            parameters,
+            "{token}"
         );
         if let Some((segment, polygonal, fixed)) = ids.later {
             let segment = CompositeCurveSegment::new(segment, get(segment));
@@ -248,17 +256,21 @@ fn every_release_writes_its_declared_form_and_reads_back() {
             assert_eq!(polygonal.start_param(), Some(0.25));
             let fixed = FixedReferenceSweptAreaSolid::new(fixed, get(fixed));
             assert_eq!(
-                (fixed.start_param(), fixed.end_param()),
-                (Some(0.25), Some(0.75))
+                (
+                    fixed.start_param().expect("s"),
+                    fixed.end_param().expect("e")
+                ),
+                parameters,
+                "{token}"
             );
         }
     }
 }
 
-/// Without a model the directrix sweeps keep writing the IFC4X3 form; the
-/// `_in` writers agree with them there, and differ in IFC4.
+/// The release-bound writers follow `FILE_SCHEMA`, and a model without one
+/// binds IFC4: typed trims only in IFC4X3, and the swept disk bare in all.
 #[test]
-fn the_model_free_sweeps_are_the_ifc4x3_form() {
+fn the_bound_sweeps_follow_the_declared_release() {
     for (token, typed) in [("IFC4X3_ADD2", true), ("IFC4", false), ("", false)] {
         let tokens: &[&str] = if token.is_empty() { &[] } else { &[token] };
         let model = model(tokens);
@@ -269,28 +281,27 @@ fn the_model_free_sweeps_are_the_ifc4x3_form() {
         let up = direction(&mut tx, &[0.0, 0.0, 1.0]).expect("up");
         // Any staged entity will do: nothing here resolves the references.
         let (area, line) = (p, flat);
-        let free = [
-            surface_curve_swept_area_solid(&mut tx, area, Some(at), line, TRIM, flat),
-            fixed_reference_swept_area_solid(&mut tx, area, Some(at), line, TRIM, up),
-        ];
-        let bound = [
+        let sweeps = [
             surface_curve_swept_area_solid_in(&mut tx, &model, area, Some(at), line, TRIM, flat),
             fixed_reference_swept_area_solid_in(&mut tx, &model, area, Some(at), line, TRIM, up),
         ];
+        let disk = swept_disk_solid_in(&mut tx, &model, line, 0.2, None, TRIM).expect("disk");
         let mut model = model;
         tx.commit(&mut model).expect("commit");
-        for (free, bound) in free.into_iter().zip(bound) {
-            let free = model.get(free.expect("free")).expect("free").clone();
-            let bound = model.get(bound.expect("bound")).expect("bound").clone();
-            assert_eq!(free == bound, typed, "{token:?}: {free:?} / {bound:?}");
-            assert!(matches!(free.attributes[3], Value::Typed { .. }));
+        for sweep in sweeps {
+            let sweep = model.get(sweep.expect("sweep")).expect("sweep");
             let expected = if typed {
-                free.attributes[3].clone()
+                Value::Typed {
+                    type_name: "IFCPARAMETERVALUE".into(),
+                    value: Box::new(Value::Real(0.25)),
+                }
             } else {
                 Value::Real(0.25)
             };
-            assert_eq!(bound.attributes[3], expected, "{token:?} StartParam");
+            assert_eq!(sweep.attributes[3], expected, "{token:?} StartParam");
         }
+        let disk = model.get(disk).expect("disk");
+        assert_eq!(disk.attributes[3], Value::Real(0.25), "{token:?}");
     }
 }
 
@@ -434,17 +445,92 @@ fn the_readers_accept_both_forms() {
             form(0.75),
             Value::Ref(r),
         ];
+        let parameters = (
+            Some(TrimMeasure::Parameter(0.25)),
+            Some(TrimMeasure::Parameter(0.75)),
+        );
         let sweep = Entity::new("IFCSURFACECURVESWEPTAREASOLID", sweep_attrs.clone());
         let view = SurfaceCurveSweptAreaSolid::new(r, &sweep);
         assert_eq!(
-            (view.start_param(), view.end_param()),
-            (Some(0.25), Some(0.75))
+            (view.start_param().expect("s"), view.end_param().expect("e")),
+            parameters
         );
         let fixed = Entity::new("IFCFIXEDREFERENCESWEPTAREASOLID", sweep_attrs);
         let view = FixedReferenceSweptAreaSolid::new(r, &fixed);
         assert_eq!(
-            (view.start_param(), view.end_param()),
-            (Some(0.25), Some(0.75))
+            (view.start_param().expect("s"), view.end_param().expect("e")),
+            parameters
         );
+    }
+}
+
+/// An IFC4X3 trim may be a length along the directrix (#210). The readers
+/// say so rather than handing the length back as a parameter.
+#[test]
+fn a_length_trim_reads_as_a_length() {
+    let r = EntityId(1);
+    let length = |v: f64| Value::Typed {
+        type_name: "IFCLENGTHMEASURE".into(),
+        value: Box::new(Value::Real(v)),
+    };
+    let attrs = vec![
+        Value::Ref(r),
+        Value::Null,
+        Value::Ref(r),
+        length(0.5),
+        length(4.0),
+        Value::Ref(r),
+    ];
+    let lengths = (
+        Some(TrimMeasure::Length(0.5)),
+        Some(TrimMeasure::Length(4.0)),
+    );
+    let sweep = Entity::new("IFCSURFACECURVESWEPTAREASOLID", attrs.clone());
+    let view = SurfaceCurveSweptAreaSolid::new(r, &sweep);
+    assert_eq!(
+        (view.start_param().expect("s"), view.end_param().expect("e")),
+        lengths
+    );
+    let fixed = Entity::new("IFCFIXEDREFERENCESWEPTAREASOLID", attrs);
+    let view = FixedReferenceSweptAreaSolid::new(r, &fixed);
+    assert_eq!(
+        (view.start_param().expect("s"), view.end_param().expect("e")),
+        lengths
+    );
+}
+
+/// IFC2X3 requires the swept disk's trim; later releases do not (#210).
+#[test]
+fn an_ifc2x3_swept_disk_needs_both_trim_values() {
+    let line = EntityId(901);
+    let ifc2x3 = model(&["IFC2X3"]);
+    let mut tx = Transaction::new(&ifc2x3);
+    for (trim, attribute) in [
+        (SweepTrim::default(), "StartParam"),
+        (
+            SweepTrim {
+                start: Some(0.0),
+                end: None,
+            },
+            "EndParam",
+        ),
+    ] {
+        let refused = swept_disk_solid_in(&mut tx, &ifc2x3, line, 0.2, None, trim);
+        assert!(
+            matches!(
+                &refused,
+                Err(GeometryError::InvalidAuthoredValue { attribute: a, .. }) if *a == attribute
+            ),
+            "{refused:?}"
+        );
+    }
+    assert!(tx.is_empty(), "a refusal stages nothing");
+    swept_disk_solid_in(&mut tx, &ifc2x3, line, 0.2, None, TRIM).expect("trimmed IFC2X3 disk");
+
+    for token in ["IFC4", "IFC4X3_ADD2"] {
+        let later = model(&[token]);
+        let mut tx = Transaction::new(&later);
+        swept_disk_solid_in(&mut tx, &later, line, 0.2, None, SweepTrim::default())
+            .unwrap_or_else(|e| panic!("{token} leaves the trim optional: {e}"));
     }
 }

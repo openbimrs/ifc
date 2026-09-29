@@ -7,9 +7,9 @@
 
 use ifc_geometry::authoring::{
     axis1_placement, axis2_placement_3d, cartesian_point, cylindrical_surface, direction,
-    extruded_area_solid_tapered, fixed_reference_swept_area_solid, plane, polyline,
-    rectangle_profile, revolved_area_solid_tapered, surface_curve_swept_area_solid,
-    surface_of_linear_extrusion, surface_of_revolution, swept_disk_solid,
+    extruded_area_solid_tapered, fixed_reference_swept_area_solid_in, plane, polyline,
+    rectangle_profile, revolved_area_solid_tapered, surface_curve_swept_area_solid_in,
+    surface_of_linear_extrusion, surface_of_revolution, swept_disk_solid_in,
     swept_disk_solid_polygonal, SweepTrim,
 };
 use ifc_geometry::solid::swept::{
@@ -88,8 +88,9 @@ fn a_swept_disk_solid_starts_at_its_directrix() {
     let b = cartesian_point(&mut tx, &[5.0, 0.0, 0.0]).expect("b");
     let directrix = polyline(&mut tx, &[a, b]).expect("directrix");
 
-    let id = swept_disk_solid(
+    let id = swept_disk_solid_in(
         &mut tx,
+        &model,
         directrix,
         0.1,
         Some(0.08),
@@ -125,15 +126,31 @@ fn a_disk_solid_bore_must_be_narrower_than_the_tube() {
     let directrix = polyline(&mut tx, &[a, b]).expect("directrix");
 
     assert!(
-        swept_disk_solid(&mut tx, directrix, 0.1, Some(0.1), SweepTrim::default()).is_err(),
+        swept_disk_solid_in(
+            &mut tx,
+            &model,
+            directrix,
+            0.1,
+            Some(0.1),
+            SweepTrim::default()
+        )
+        .is_err(),
         "an inner radius equal to the outer one leaves nothing"
     );
     assert!(
-        swept_disk_solid(&mut tx, directrix, 0.1, Some(0.2), SweepTrim::default()).is_err(),
+        swept_disk_solid_in(
+            &mut tx,
+            &model,
+            directrix,
+            0.1,
+            Some(0.2),
+            SweepTrim::default()
+        )
+        .is_err(),
         "a bore wider than the tube is not a solid"
     );
     assert!(
-        swept_disk_solid(&mut tx, directrix, 0.0, None, SweepTrim::default()).is_err(),
+        swept_disk_solid_in(&mut tx, &model, directrix, 0.0, None, SweepTrim::default()).is_err(),
         "a zero radius disk sweeps nothing"
     );
 
@@ -168,7 +185,9 @@ fn a_disk_solid_bore_must_be_narrower_than_the_tube() {
 /// The two directrix sweeps share slots 0-4 and differ only at slot 5.
 #[test]
 fn directrix_sweeps_differ_only_in_their_last_slot() {
-    let model = Model::default();
+    let mut model = Model::default();
+    // IFC4X3, where the trims are the SELECT and keep their measure type.
+    model.header_mut().schema = vec!["IFC4X3_ADD2".to_owned()];
     let mut tx = Transaction::new(&model);
     let (origin, placement, profile) = setup(&mut tx);
     let a = cartesian_point(&mut tx, &[0.0, 0.0, 0.0]).expect("a");
@@ -182,12 +201,26 @@ fn directrix_sweeps_differ_only_in_their_last_slot() {
         start: Some(0.0),
         end: Some(4.0),
     };
-    let on_surface =
-        surface_curve_swept_area_solid(&mut tx, profile, Some(placement), directrix, trim, surface)
-            .expect("surface curve sweep");
-    let fixed =
-        fixed_reference_swept_area_solid(&mut tx, profile, Some(placement), directrix, trim, up)
-            .expect("fixed reference sweep");
+    let on_surface = surface_curve_swept_area_solid_in(
+        &mut tx,
+        &model,
+        profile,
+        Some(placement),
+        directrix,
+        trim,
+        surface,
+    )
+    .expect("surface curve sweep");
+    let fixed = fixed_reference_swept_area_solid_in(
+        &mut tx,
+        &model,
+        profile,
+        Some(placement),
+        directrix,
+        trim,
+        up,
+    )
+    .expect("fixed reference sweep");
 
     let mut model = model;
     tx.commit(&mut model).expect("commit");

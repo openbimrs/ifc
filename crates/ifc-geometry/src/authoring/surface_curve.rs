@@ -226,33 +226,38 @@ pub fn reparametrised_composite_curve_segment(
 /// interchangeable: a length is in the model's length unit, a
 /// parameter is in whatever the curve's own parameterisation uses.
 /// Writing one where the other is meant rescales the segment.
+///
+/// IFC4X3 ADD2 declares the SELECT's members exactly:
+///
+/// ```text
+/// TYPE IfcCurveMeasureSelect = SELECT (IfcLengthMeasure, IfcParameterValue);
+/// ```
+///
+/// so a length is written `IFCLENGTHMEASURE(..)` and a parameter
+/// `IFCPARAMETERVALUE(..)`. A specialisation of a member, such as
+/// `IfcNonNegativeLengthMeasure`, is not itself a member and is never
+/// written (#210).
 #[derive(Debug, Clone, Copy)]
 pub enum CurveMeasure {
-    /// `IfcNonNegativeLengthMeasure`: a distance along the curve.
+    /// `IfcLengthMeasure`: a signed distance along the curve.
     Length(f64),
     /// `IfcParameterValue`: a value in the curve's parameter space.
     Parameter(f64),
 }
 
 impl CurveMeasure {
-    /// Encode with the measure type that says which kind this is.
+    /// Encode with the `IfcCurveMeasureSelect` member that says which kind
+    /// this is.
     fn to_value(
         self,
         type_name: &'static str,
         attribute: &'static str,
     ) -> Result<Value, GeometryError> {
         let (measure, value) = match self {
-            Self::Length(v) => ("IFCNONNEGATIVELENGTHMEASURE", v),
+            Self::Length(v) => ("IFCLENGTHMEASURE", v),
             Self::Parameter(v) => ("IFCPARAMETERVALUE", v),
         };
         require_finite(type_name, attribute, &[value])?;
-        if matches!(self, Self::Length(_)) && value < 0.0 {
-            return Err(invalid(
-                type_name,
-                attribute,
-                format!("expected a non-negative length, got {value}"),
-            ));
-        }
         Ok(Value::Typed {
             type_name: measure.into(),
             value: Box::new(Value::Real(value)),
@@ -266,9 +271,14 @@ impl CurveMeasure {
 /// where along the parent curve it starts and how far it runs, rather
 /// than relying on the parent's parameterisation alone.
 ///
+/// Each measure is written with the `IfcCurveMeasureSelect` member that
+/// names its kind (see [`CurveMeasure`]). `IfcLengthMeasure` is a signed
+/// `REAL` and the schema bounds neither slot, so a negative length is
+/// written as given rather than refused.
+///
 /// # Errors
 ///
-/// Refuses a non-finite measure, or a negative length measure.
+/// Refuses a non-finite measure.
 pub fn curve_segment(
     tx: &mut Transaction,
     transition: TransitionCode,

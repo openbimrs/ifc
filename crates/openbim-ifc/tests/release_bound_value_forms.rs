@@ -1,7 +1,7 @@
 //! Values authored in the form each release declares validate against their
 //! own release (#200, #201).
 //!
-//! The writers #200 and #201 name are authored in IFC2X3, IFC4 and IFC4X3
+//! The writers #200, #201 and #210 name are authored in IFC2X3, IFC4 and IFC4X3
 //! (each only where the release declares the entity), written to STEP, read
 //! back with `ifc-step` and checked by `ifc-validate` against the declared
 //! release's table. No record this test wrote may carry an error finding.
@@ -24,10 +24,11 @@ use ifc::alignment::{
     axis2_placement_linear, linear_placement, point_by_distance, referent, stationing,
 };
 use ifc::geometry::authoring::{
-    axis2_placement_3d, cartesian_point, circle, direction, fixed_reference_swept_area_solid_in,
-    plane, point_on_curve, point_on_surface, polyline, rectangle_profile,
-    rectangular_trimmed_surface, reparametrised_composite_curve_segment,
-    surface_curve_swept_area_solid_in, swept_disk_solid, swept_disk_solid_polygonal, SweepTrim,
+    axis2_placement_3d, cartesian_point, circle, curve_segment, direction,
+    fixed_reference_swept_area_solid_in, plane, point_on_curve, point_on_surface, polyline,
+    rectangle_profile, rectangular_trimmed_surface, reparametrised_composite_curve_segment,
+    surface_curve_swept_area_solid_in, swept_disk_solid_in, swept_disk_solid_polygonal,
+    CurveMeasure, SweepTrim,
 };
 use ifc::geometry::curve::TransitionCode;
 use ifc::schedule::create_lag_time;
@@ -93,7 +94,7 @@ fn author(model: &mut Model, version: SchemaVersion) -> Vec<Expect> {
             ",0.25,0.75)",
         ),
         (
-            swept_disk_solid(&mut tx, line, 0.2, None, TRIM).expect("disk"),
+            swept_disk_solid_in(&mut tx, model, line, 0.2, None, TRIM).expect("disk"),
             ",0.25,0.75)",
         ),
         (
@@ -195,6 +196,31 @@ fn author(model: &mut Model, version: SchemaVersion) -> Vec<Expect> {
     }
     let mut properties = Vec::new();
     if x3 {
+        // IfcCurveSegment: IFC4X3 only. Each measure is written with the
+        // IfcCurveMeasureSelect member naming its kind (#210).
+        let by_length = curve_segment(
+            &mut tx,
+            TransitionCode::Continuous,
+            at,
+            CurveMeasure::Length(0.0),
+            CurveMeasure::Length(4.0),
+            line,
+        )
+        .expect("length segment");
+        out.push((by_length, ",IFCLENGTHMEASURE(0.),IFCLENGTHMEASURE(4.),#"));
+        let by_parameter = curve_segment(
+            &mut tx,
+            TransitionCode::Continuous,
+            at,
+            CurveMeasure::Parameter(0.0),
+            CurveMeasure::Parameter(0.5),
+            line,
+        )
+        .expect("parameter segment");
+        out.push((
+            by_parameter,
+            ",IFCPARAMETERVALUE(0.),IFCPARAMETERVALUE(0.5),#",
+        ));
         // Referents: IFC4X3 only.
         let point = point_by_distance(&mut tx, 125.0, (None, None, None), line).expect("point");
         out.push((point, "(IFCLENGTHMEASURE(125.),$,$,$,#"));
@@ -241,7 +267,7 @@ fn authored_values_have_their_declared_form_and_validate() {
     for (token, version, count) in [
         ("IFC2X3", SchemaVersion::Ifc2x3, 9),
         ("IFC4", SchemaVersion::Ifc4, 15),
-        ("IFC4X3_ADD2", SchemaVersion::Ifc4x3, 19),
+        ("IFC4X3_ADD2", SchemaVersion::Ifc4x3, 21),
     ] {
         let mut model = model(token);
         let written = author(&mut model, version);
@@ -326,4 +352,69 @@ fn the_validator_catches_the_old_boundary_condition_wrappers() {
             report.findings()
         );
     }
+}
+
+/// The defects #210 fixes are error findings too, so the oracle above would
+/// have caught them: `IFCNONNEGATIVELENGTHMEASURE(..)` in an IFC4X3
+/// `IfcCurveMeasureSelect` slot (a specialisation of a member, not a member),
+/// and an IFC2X3 swept disk with `$` for its required `StartParam`.
+#[test]
+fn the_validator_catches_the_old_geometry_value_forms() {
+    let error_at = |model: &Model, version: SchemaVersion, id: EntityId, index: usize| {
+        let report = ifc_validate::validate(model, for_version(version).unwrap());
+        assert!(
+            report.findings().iter().any(|finding| {
+                finding.severity == ifc_validate::Severity::Error
+                    && matches!(
+                        &finding.path,
+                        ifc_validate::Path::Attribute { entity, index: i, .. }
+                            if *entity == id && *i == index
+                    )
+            }),
+            "#{} slot {index}: {:?}",
+            id.0,
+            report.findings()
+        );
+    };
+    let typed = |name: &str, value: f64| Value::Typed {
+        type_name: name.into(),
+        value: Box::new(Value::Real(value)),
+    };
+
+    let mut ifc4x3 = model("IFC4X3_ADD2");
+    let mut tx = Transaction::new(&ifc4x3);
+    let p = cartesian_point(&mut tx, &[0.0, 0.0, 0.0]).expect("p");
+    let q = cartesian_point(&mut tx, &[5.0, 0.0, 0.0]).expect("q");
+    let at = axis2_placement_3d(&mut tx, p, None, None);
+    let line = polyline(&mut tx, &[p, q]).expect("line");
+    let segment = tx.create(ifc::Entity::new(
+        "IFCCURVESEGMENT",
+        vec![
+            Value::Enum("CONTINUOUS".into()),
+            Value::Ref(at),
+            typed("IFCNONNEGATIVELENGTHMEASURE", 0.0),
+            typed("IFCLENGTHMEASURE", 4.0),
+            Value::Ref(line),
+        ],
+    ));
+    tx.commit(&mut ifc4x3).expect("commit");
+    error_at(&ifc4x3, SchemaVersion::Ifc4x3, segment, 2);
+
+    let mut ifc2x3 = model("IFC2X3");
+    let mut tx = Transaction::new(&ifc2x3);
+    let p = cartesian_point(&mut tx, &[0.0, 0.0, 0.0]).expect("p");
+    let q = cartesian_point(&mut tx, &[5.0, 0.0, 0.0]).expect("q");
+    let line = polyline(&mut tx, &[p, q]).expect("line");
+    let disk = tx.create(ifc::Entity::new(
+        "IFCSWEPTDISKSOLID",
+        vec![
+            Value::Ref(line),
+            Value::Real(0.2),
+            Value::Null,
+            Value::Null,
+            Value::Null,
+        ],
+    ));
+    tx.commit(&mut ifc2x3).expect("commit");
+    error_at(&ifc2x3, SchemaVersion::Ifc2x3, disk, 3);
 }

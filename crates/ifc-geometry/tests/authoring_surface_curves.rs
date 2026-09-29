@@ -196,18 +196,16 @@ fn a_curve_measure_states_which_kind_it_is() {
     )
     .expect("parameter segment");
 
-    assert!(
-        curve_segment(
-            &mut tx,
-            TransitionCode::Continuous,
-            at,
-            CurveMeasure::Length(-1.0),
-            CurveMeasure::Length(4.0),
-            parent,
-        )
-        .is_err(),
-        "IfcNonNegativeLengthMeasure: a negative distance along a curve"
-    );
+    // `IfcLengthMeasure` is a signed REAL and neither slot is bounded.
+    let signed = curve_segment(
+        &mut tx,
+        TransitionCode::Continuous,
+        at,
+        CurveMeasure::Length(-1.0),
+        CurveMeasure::Length(-4.0),
+        parent,
+    )
+    .expect("a signed length is an IfcLengthMeasure");
     assert!(
         curve_segment(
             &mut tx,
@@ -224,13 +222,42 @@ fn a_curve_measure_states_which_kind_it_is() {
     let mut model = model;
     tx.commit(&mut model).expect("commit");
 
+    // Every wrapper written is a member of the IFC4X3 SELECT itself, not a
+    // specialisation of one: `IfcNonNegativeLengthMeasure` is not (#210).
+    let schema = ifc_schema::for_version(ifc_schema::SchemaVersion::Ifc4x3).expect("bundled");
+    let Some(ifc_schema::TypeKind::Select(members)) = schema
+        .type_def("IfcCurveMeasureSelect")
+        .map(|definition| &definition.kind)
+    else {
+        panic!("IfcCurveMeasureSelect is a SELECT");
+    };
+    let member = |value: &Value| match value {
+        Value::Typed { type_name, .. } => members
+            .iter()
+            .any(|member| member.eq_ignore_ascii_case(type_name)),
+        _ => false,
+    };
+    for id in [by_length, by_parameter, signed] {
+        let entity = model.get(id).expect("segment");
+        for slot in [2, 3] {
+            assert!(member(&entity.attributes[slot]), "{:?}", entity.attributes);
+        }
+    }
+
     let entity = model.get(by_length).expect("length");
     match &entity.attributes[3] {
         Value::Typed { type_name, .. } => {
-            assert_eq!(type_name.as_ref(), "IFCNONNEGATIVELENGTHMEASURE");
+            assert_eq!(type_name.as_ref(), "IFCLENGTHMEASURE");
         }
         other => panic!("SegmentLength lost its measure: {other:?}"),
     }
+    assert_eq!(
+        model.get(signed).expect("signed").attributes[3],
+        Value::Typed {
+            type_name: "IFCLENGTHMEASURE".into(),
+            value: Box::new(Value::Real(-4.0)),
+        }
+    );
 
     let entity = model.get(by_parameter).expect("parameter");
     match &entity.attributes[3] {

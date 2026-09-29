@@ -4,6 +4,7 @@
 //! axis drives the sweep, which is why the orientation rules differ per type
 //! and why each one records its own frame convention.
 
+use super::trim::{read_trim, TrimMeasure};
 use super::{directrix_slot, disk_slot, spine_slot};
 use crate::error::GeometryResult;
 use crate::slots::Slots;
@@ -19,7 +20,8 @@ use ifc_model::{Entity, EntityId};
 /// non-developable surface -- this is how curved facade mullions go wrong.
 ///
 /// `StartParam`/`EndParam` may be absent, in which case the directrix must
-/// itself be bounded or conic and is used in full.
+/// itself be bounded or conic and is used in full. In IFC4X3 each may be a
+/// length rather than a parameter; see [`TrimMeasure`].
 #[derive(Debug, Clone, Copy)]
 pub struct SurfaceCurveSweptAreaSolid<'m> {
     slots: Slots<'m>,
@@ -48,14 +50,25 @@ impl<'m> SurfaceCurveSweptAreaSolid<'m> {
         self.slots.req_ref(directrix_slot::DIRECTRIX, "Directrix")
     }
 
-    /// The parameter at which the sweep starts, if trimmed.
-    pub fn start_param(&self) -> Option<f64> {
-        self.slots.opt_f64(directrix_slot::START_PARAM)
+    /// Where the sweep starts, if trimmed, and whether the file states it as
+    /// a curve parameter or (IFC4X3) a length along the directrix.
+    ///
+    /// # Errors
+    ///
+    /// [`GeometryError::WrongValueKind`](crate::GeometryError::WrongValueKind)
+    /// for a value that is neither a number nor an `IfcCurveMeasureSelect`
+    /// member.
+    pub fn start_param(&self) -> GeometryResult<Option<TrimMeasure>> {
+        read_trim(&self.slots, directrix_slot::START_PARAM, "StartParam")
     }
 
-    /// The parameter at which the sweep ends, if trimmed.
-    pub fn end_param(&self) -> Option<f64> {
-        self.slots.opt_f64(directrix_slot::END_PARAM)
+    /// Where the sweep ends, if trimmed; as [`Self::start_param`].
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::start_param`].
+    pub fn end_param(&self) -> GeometryResult<Option<TrimMeasure>> {
+        read_trim(&self.slots, directrix_slot::END_PARAM, "EndParam")
     }
 
     /// The `IfcSurface` reference the directrix lies on.
@@ -100,14 +113,25 @@ impl<'m> FixedReferenceSweptAreaSolid<'m> {
         self.slots.req_ref(directrix_slot::DIRECTRIX, "Directrix")
     }
 
-    /// The parameter at which the sweep starts, if trimmed.
-    pub fn start_param(&self) -> Option<f64> {
-        self.slots.opt_f64(directrix_slot::START_PARAM)
+    /// Where the sweep starts, if trimmed, and whether the file states it as
+    /// a curve parameter or (IFC4X3) a length along the directrix.
+    ///
+    /// # Errors
+    ///
+    /// [`GeometryError::WrongValueKind`](crate::GeometryError::WrongValueKind)
+    /// for a value that is neither a number nor an `IfcCurveMeasureSelect`
+    /// member.
+    pub fn start_param(&self) -> GeometryResult<Option<TrimMeasure>> {
+        read_trim(&self.slots, directrix_slot::START_PARAM, "StartParam")
     }
 
-    /// The parameter at which the sweep ends, if trimmed.
-    pub fn end_param(&self) -> Option<f64> {
-        self.slots.opt_f64(directrix_slot::END_PARAM)
+    /// Where the sweep ends, if trimmed; as [`Self::start_param`].
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::start_param`].
+    pub fn end_param(&self) -> GeometryResult<Option<TrimMeasure>> {
+        read_trim(&self.slots, directrix_slot::END_PARAM, "EndParam")
     }
 
     /// The `IfcDirection` reference that fixes the section's orientation.
@@ -310,8 +334,11 @@ mod tests {
         let view = SurfaceCurveSweptAreaSolid::new(EntityId(1), &e);
         assert_eq!(view.base().swept_area().unwrap(), EntityId(10));
         assert_eq!(view.directrix().unwrap(), EntityId(30));
-        assert_eq!(view.start_param(), Some(0.0));
-        assert_eq!(view.end_param(), Some(1.0));
+        assert_eq!(
+            view.start_param().unwrap(),
+            Some(TrimMeasure::Parameter(0.0))
+        );
+        assert_eq!(view.end_param().unwrap(), Some(TrimMeasure::Parameter(1.0)));
         assert_eq!(view.reference_surface().unwrap(), EntityId(60));
     }
 
@@ -322,8 +349,8 @@ mod tests {
             vec![r(10), r(20), r(30), Value::Null, Value::Null, r(60)],
         );
         let view = SurfaceCurveSweptAreaSolid::new(EntityId(1), &e);
-        assert_eq!(view.start_param(), None);
-        assert_eq!(view.end_param(), None);
+        assert_eq!(view.start_param().unwrap(), None);
+        assert_eq!(view.end_param().unwrap(), None);
     }
 
     /// Slot 5 is a surface on one sweep and a direction on the other;

@@ -17,6 +17,12 @@
 //! The one invariant worth enforcing is the disk solid's
 //! `InnerRadius < Radius`: a hollow tube whose bore is wider than the
 //! tube is not a solid, and that is arithmetic rather than geometry.
+//!
+//! The directrix sweeps and the plain swept disk are written by the
+//! release-bound writers in `swept_in.rs`, because their trim parameters
+//! change form or optionality between releases (#200, #210). This module
+//! keeps the shared slot layouts and the writers whose record is the same
+//! in every release that declares the entity.
 
 use ifc_model::{Entity, EntityId, Transaction, Value};
 
@@ -34,9 +40,11 @@ use super::{invalid, refs, require_finite};
 /// Absent means the sweep runs the whole directrix. Both are parameter
 /// values on the directrix. How they are written depends on the declared
 /// type of the slot (#200): bare where it is `IfcParameterValue` (the swept
-/// disks in every release, the other sweeps in IFC4), and
+/// disks in every release, the other sweeps in IFC2X3 and IFC4), and
 /// `IFCPARAMETERVALUE(..)` where it is the IFC4X3 SELECT
-/// `IfcCurveMeasureSelect`.
+/// `IfcCurveMeasureSelect`. Whether absent is allowed depends on the release
+/// too: IFC2X3 requires both on every sweep that declares them, which is why
+/// the writers of those sweeps take the model (#210).
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SweepTrim {
     /// `StartParam`.
@@ -132,64 +140,6 @@ pub fn revolved_area_solid_tapered(
     Ok(tx.create(Entity::new(T, attrs)))
 }
 
-/// Stage an `IfcSurfaceCurveSweptAreaSolid`, in the IFC4X3 form.
-///
-/// The profile is swept along `directrix` while staying on
-/// `reference_surface`, which is what fixes its orientation.
-///
-/// This writer does not see the model, so it cannot know the release, and
-/// the trim parameters change kind between releases: IFC4X3 declares them
-/// `IfcCurveMeasureSelect` and this writer keeps writing that form,
-/// `IFCPARAMETERVALUE(..)`. IFC4 and IFC2X3 declare `IfcParameterValue`,
-/// which is written bare; for those, use
-/// [`surface_curve_swept_area_solid_in`](super::surface_curve_swept_area_solid_in),
-/// which binds the model's declared release (#200).
-///
-/// # Errors
-///
-/// Refuses a non-finite trim parameter.
-pub fn surface_curve_swept_area_solid(
-    tx: &mut Transaction,
-    swept_area: EntityId,
-    position: Option<EntityId>,
-    directrix: EntityId,
-    trim: SweepTrim,
-    reference_surface: EntityId,
-) -> Result<EntityId, GeometryError> {
-    const T: &str = "IFCSURFACECURVESWEPTAREASOLID";
-    let mut attrs = directrix_attrs(T, swept_area, position, directrix, trim, ParamForm::Select)?;
-    attrs[directrix_slot::REFERENCE_SURFACE] = Value::Ref(reference_surface);
-    Ok(tx.create(Entity::new(T, attrs)))
-}
-
-/// Stage an `IfcFixedReferenceSweptAreaSolid`, in the IFC4X3 form.
-///
-/// Like the surface-curve sweep, but the profile's orientation is fixed
-/// by a direction rather than by a surface.
-///
-/// As [`surface_curve_swept_area_solid`], the trim parameters are written
-/// `IFCPARAMETERVALUE(..)`, the IFC4X3 form. IFC4 declares them
-/// `IfcParameterValue`, written bare; for IFC4, use
-/// [`fixed_reference_swept_area_solid_in`](super::fixed_reference_swept_area_solid_in),
-/// which binds the model's declared release (#200).
-///
-/// # Errors
-///
-/// Refuses a non-finite trim parameter.
-pub fn fixed_reference_swept_area_solid(
-    tx: &mut Transaction,
-    swept_area: EntityId,
-    position: Option<EntityId>,
-    directrix: EntityId,
-    trim: SweepTrim,
-    fixed_reference: EntityId,
-) -> Result<EntityId, GeometryError> {
-    const T: &str = "IFCFIXEDREFERENCESWEPTAREASOLID";
-    let mut attrs = directrix_attrs(T, swept_area, position, directrix, trim, ParamForm::Select)?;
-    attrs[directrix_slot::FIXED_REFERENCE] = Value::Ref(fixed_reference);
-    Ok(tx.create(Entity::new(T, attrs)))
-}
-
 /// The six slots the directrix-driven sweeps share, trim parameters in
 /// `form`.
 ///
@@ -226,38 +176,20 @@ pub(super) fn directrix_attrs(
     Ok(attrs)
 }
 
-/// Stage an `IfcSweptDiskSolid`: a disk swept along a curve.
-///
-/// Note the slot layout: this subtypes `IfcSolidModel` directly, so
-/// `Directrix` is slot 0 and there is no `SweptArea` or `Position`.
-///
-/// # Errors
-///
-/// Refuses a non-positive radius, a non-positive inner radius, a
-/// non-finite trim parameter, or an inner radius that is not smaller
-/// than the outer one -- a bore wider than its tube leaves no solid.
-pub fn swept_disk_solid(
-    tx: &mut Transaction,
-    directrix: EntityId,
-    radius: f64,
-    inner_radius: Option<f64>,
-    trim: SweepTrim,
-) -> Result<EntityId, GeometryError> {
-    const T: &str = "IFCSWEPTDISKSOLID";
-    let attrs = disk_attrs(T, directrix, radius, inner_radius, trim)?;
-    Ok(tx.create(Entity::new(T, attrs)))
-}
-
 /// Stage an `IfcSweptDiskSolidPolygonal`.
 ///
 /// The polygonal form approximates the directrix with straight
 /// segments; `fillet_radius` rounds the joints between them.
 ///
+/// Only IFC4 and later declare it, and there `StartParam`/`EndParam` are
+/// `OPTIONAL IfcParameterValue` in every release, so the record does not
+/// depend on the release and this writer needs no model.
+///
 /// # Errors
 ///
-/// Everything [`swept_disk_solid`] refuses, plus a negative fillet
-/// radius. Zero is legal: `IfcNonNegativeLengthMeasure` means a sharp
-/// joint, not an error.
+/// Everything [`swept_disk_solid_in`](super::swept_disk_solid_in) refuses
+/// for the radii and trim values, plus a negative fillet radius. Zero is
+/// legal: `IfcNonNegativeLengthMeasure` means a sharp joint, not an error.
 pub fn swept_disk_solid_polygonal(
     tx: &mut Transaction,
     directrix: EntityId,
@@ -267,7 +199,7 @@ pub fn swept_disk_solid_polygonal(
     fillet_radius: Option<f64>,
 ) -> Result<EntityId, GeometryError> {
     const T: &str = "IFCSWEPTDISKSOLIDPOLYGONAL";
-    let mut attrs = disk_attrs(T, directrix, radius, inner_radius, trim)?;
+    let mut attrs = disk_attrs(T, directrix, radius, inner_radius, trim, ParamForm::Bare)?;
     attrs.push(Value::Null);
     if let Some(fillet) = fillet_radius {
         require_finite(T, "FilletRadius", &[fillet])?;
@@ -283,13 +215,14 @@ pub fn swept_disk_solid_polygonal(
     Ok(tx.create(Entity::new(T, attrs)))
 }
 
-/// The five slots both swept disk solids share.
-fn disk_attrs(
+/// The five slots both swept disk solids share, trim parameters in `form`.
+pub(super) fn disk_attrs(
     type_name: &'static str,
     directrix: EntityId,
     radius: f64,
     inner_radius: Option<f64>,
     trim: SweepTrim,
+    form: ParamForm,
 ) -> Result<Vec<Value>, GeometryError> {
     positive(type_name, "Radius", radius)?;
     let mut attrs = vec![Value::Null; 5];
@@ -314,7 +247,7 @@ fn disk_attrs(
         &mut attrs,
         disk_slot::START_PARAM,
         trim.start,
-        ParamForm::Bare,
+        form,
         type_name,
         "StartParam",
     )?;
@@ -322,7 +255,7 @@ fn disk_attrs(
         &mut attrs,
         disk_slot::END_PARAM,
         trim.end,
-        ParamForm::Bare,
+        form,
         type_name,
         "EndParam",
     )?;

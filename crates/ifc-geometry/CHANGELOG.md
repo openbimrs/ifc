@@ -19,6 +19,50 @@ everything released before per-crate changelogs began.
 - `RuleViolation`, `LoweredGeometry` and `MappedInstance` are
   `#[non_exhaustive]`; they can no longer be built with a struct literal
   outside the crate.
+- `authoring::surface_curve_swept_area_solid`,
+  `authoring::fixed_reference_swept_area_solid` and
+  `authoring::swept_disk_solid` are removed (#210). Without the model they
+  could not write every release correctly: the two directrix sweeps wrote
+  the IFC4X3 `IFCPARAMETERVALUE(..)` trim into IFC4 files, and the swept
+  disk wrote `$` for the trim IFC2X3 requires. Use
+  `surface_curve_swept_area_solid_in`, `fixed_reference_swept_area_solid_in`
+  and the new `swept_disk_solid_in`, which take `&Model` after the
+  transaction and otherwise the same arguments.
+- `SurfaceCurveSweptAreaSolid::start_param`/`end_param` and
+  `FixedReferenceSweptAreaSolid::start_param`/`end_param` return
+  `GeometryResult<Option<TrimMeasure>>` instead of `Option<f64>` (#210). In
+  IFC4X3 the trim is an `IfcCurveMeasureSelect`, and an
+  `IFCLENGTHMEASURE(..)` trim is a distance along the directrix, not a curve
+  parameter; the reader now says which (`TrimMeasure::Parameter` or
+  `TrimMeasure::Length`) instead of returning both as a parameter. A bare
+  number is a parameter, as IFC2X3 and IFC4 declare. A typed value that is
+  not one of the SELECT's members is refused with `WrongValueKind` instead
+  of being unwrapped.
+- Lowering an `IfcSurfaceCurveSweptAreaSolid` or
+  `IfcFixedReferenceSweptAreaSolid` whose trim is an `IfcLengthMeasure`
+  fails with `Unsupported` (#210). It used to pass the length on as a curve
+  parameter, which on a conic directrix reads metres as radians; converting
+  a length into the directrix's parameter needs arc-length evaluation,
+  which lowering does not do.
+
+### Added
+
+- `authoring::swept_disk_solid_in` (#210): an `IfcSweptDiskSolid` in the
+  model's declared release. The trim is written bare in every release, as
+  before; in IFC2X3, which declares `StartParam` and `EndParam` required,
+  an unset one is refused with `InvalidAuthoredValue` and nothing is
+  staged.
+- `solid::swept::TrimMeasure` (re-exported from `solid`), the kind and
+  value of a directrix sweep's trim, and `TrimMeasure::parameter`.
+
+### Fixed
+
+- `authoring::curve_segment` writes a `CurveMeasure::Length` as
+  `IFCLENGTHMEASURE(..)` (#210). It wrote `IFCNONNEGATIVELENGTHMEASURE(..)`,
+  which is not a member of IFC4X3 `IfcCurveMeasureSelect =
+  SELECT (IfcLengthMeasure, IfcParameterValue)` and is an `ifc-validate`
+  error. Because `IfcLengthMeasure` is signed and neither slot is bounded,
+  a negative length is now written as given instead of refused.
 
 ### Changed
 
