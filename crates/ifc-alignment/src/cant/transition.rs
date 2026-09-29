@@ -1,1 +1,0 @@
-//! Planned owner: `cant::transition`.

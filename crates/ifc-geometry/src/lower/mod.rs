@@ -60,6 +60,4 @@ pub struct LoweredGeometry {
     pub provenance: ProvenanceMap,
 }
 
-mod placement;
 mod provenance;
-mod solid;

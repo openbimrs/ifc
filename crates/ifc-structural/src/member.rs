@@ -6,8 +6,6 @@ use ifc_schema::SchemaVersion;
 use crate::error::{StructuralError, StructuralResult};
 use crate::view::Record;
 
-mod curve;
-mod surface;
 mod varying;
 
 /// Which `IfcStructuralMember` subtype (and mutable-cross-section variant) a member carries.

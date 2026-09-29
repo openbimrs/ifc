@@ -17,11 +17,7 @@ mod usage;
 mod view;
 
 mod actor;
-mod crew;
-mod equipment;
 mod inventory;
-mod labour;
-mod material;
 
 pub use actor::{ActorRole, Organization, OrganizationRelationship, Person, PersonAndOrganization};
 pub use author::{

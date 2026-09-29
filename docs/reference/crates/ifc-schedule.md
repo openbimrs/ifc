@@ -10,7 +10,7 @@ IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage.
 
 | | |
 | --- | --- |
-| Status | <span class="status-implemented">Implemented</span> |
+| Status | <span class="status-partial">Partial</span> |
 | Latest release | 0.3.0 (2026-09-29) |
 | Registries | [crates.io `ifc-schedule`](https://crates.io/crates/ifc-schedule) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `schedule` |

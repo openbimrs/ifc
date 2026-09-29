@@ -5,7 +5,6 @@
 //! library; an application that needs EPSG parameters resolves the returned
 //! identifier itself.
 
-mod identifier;
 mod projected;
 mod unit;
 

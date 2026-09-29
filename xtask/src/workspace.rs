@@ -41,6 +41,9 @@ pub(crate) struct Crate {
     /// The crate directory, relative to the workspace root.
     pub(crate) dir: String,
     pub(crate) status: String,
+    /// `[package.metadata.openbim] gaps`: the open issues that keep the crate
+    /// from a higher status. A `partial` crate names at least one.
+    pub(crate) gaps: Vec<u64>,
     pub(crate) group: String,
     /// `[features]`, without `default`.
     pub(crate) features: BTreeMap<String, Vec<String>>,
@@ -131,6 +134,18 @@ impl Workspace {
                     "{name}: status `{status}` is not one of {STATUSES:?}"
                 ));
             }
+            let gaps = match declared.get("gaps") {
+                None => Vec::new(),
+                Some(value) => value
+                    .as_array()
+                    .and_then(|items| items.iter().map(|item| item.as_u64()).collect())
+                    .ok_or_else(|| format!("{name}: `gaps` must be a list of issue numbers"))?,
+            };
+            if status == "partial" && gaps.is_empty() {
+                return Err(format!(
+                    "{name}: a partial crate must name the issues it lacks in `gaps`"
+                ));
+            }
             let group = text("group")?;
             if !GROUPS.iter().any(|(key, _)| *key == group) {
                 return Err(format!("{name}: group `{group}` is not a known group"));
@@ -189,6 +204,7 @@ impl Workspace {
                 publish: package.publish.as_ref().is_none_or(|to| !to.is_empty()),
                 dir,
                 status,
+                gaps,
                 group,
                 features,
                 default_features,

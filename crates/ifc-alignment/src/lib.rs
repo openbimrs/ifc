@@ -9,7 +9,6 @@
 //!
 //! | Module | Role |
 //! |---|---|
-//! | `alignment` | `IfcAlignment` and its horizontal/vertical/cant parts |
 //! | `horizontal` | Horizontal segments: line, arc, spiral transitions |
 //! | `vertical` | Vertical segments: grades and parabolic curves |
 //! | `cant` | Superelevation (`IfcAlignmentCant`) for rail |
@@ -22,7 +21,6 @@
 //! (`Curve2::Intrinsic`), never integrated here. Families without an exact
 //! law are typed refusals, tracked in GitHub issues.
 
-mod alignment;
 pub mod authoring;
 mod cant;
 mod curve;

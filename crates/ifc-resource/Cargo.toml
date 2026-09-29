@@ -12,9 +12,9 @@ readme = "README.md"
 # Published on the docs site by `cargo run -p xtask -- docs`.
 [package.metadata.openbim]
 # implemented | partial | scaffold -- a judgement, never inferred from size.
-# IFC2X3 lacks IfcConstructionResourceType and IfcResourceTime, so it is a
-# typed UnsupportedSchema refusal rather than a gap.
+# `gaps`: the open issues behind the status; a partial crate names one.
 status = "partial"
+gaps = [237]
 # core | domain | geometry | facade | binding
 group = "domain"
 

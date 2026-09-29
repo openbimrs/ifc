@@ -2,9 +2,11 @@
 
 IFC4X3 linear positioning: `IfcAlignment` with its horizontal, vertical and
 cant layouts, referents and stationing, and linear placement. Alignment
-curves, transition spirals included, are lowered exactly into the
-format-neutral Axiolid geometry model; nothing is tessellated or numerically
-integrated.
+curves are lowered exactly into the format-neutral Axiolid geometry model;
+nothing is tessellated or numerically integrated. A segment form that cannot
+be lowered exactly yet (the cubic spiral, circular and clothoid vertical
+curves) is a typed refusal, and the open gaps are listed on the
+[capabilities page](https://openbimrs.github.io/ifc/capabilities).
 
 ```bash
 cargo add ifc-alignment

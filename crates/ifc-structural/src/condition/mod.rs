@@ -9,9 +9,6 @@ use ifc_schema::SchemaVersion;
 use crate::error::{StructuralError, StructuralResult};
 use crate::view::Record;
 
-mod rotation;
-mod translation;
-
 /// Three values ordered by the structural X, Y, and Z axes.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AxisValues<T> {

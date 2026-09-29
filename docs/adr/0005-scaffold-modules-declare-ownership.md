@@ -1,6 +1,6 @@
 # 0005 — Scaffold modules declare ownership without claiming capability
 
-- **Status:** Accepted
+- **Status:** Accepted; points 1 and 3 superseded by [0019](/adr/0019-planned-work-is-an-issue-not-a-file)
 - **Date:** 2026-08-26
 - **Deciders:** openbimrs contributors
 - **Supersedes:** —

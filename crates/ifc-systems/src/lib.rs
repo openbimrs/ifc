@@ -18,8 +18,8 @@
 //!
 //! Implemented: systems with subtype-aware discovery and membership, ports
 //! and both element-attachment forms, the undirected connection graph with
-//! cycle-safe traversal, flow roles and direction, and zones. `assignment`
-//! (services-building relationships) is a reserved scaffold.
+//! cycle-safe traversal, flow roles and direction, and zones.
+//! Services-building relationships are not read yet.
 
 pub mod authoring;
 mod connectivity;
@@ -51,5 +51,4 @@ pub use release::schema_of;
 pub use system::{systems, System};
 pub use zone::{long_name_of, spatial_placements, zones, SpatialPlacement, Zone};
 
-mod assignment;
 pub(crate) mod zone;

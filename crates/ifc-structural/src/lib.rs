@@ -17,7 +17,6 @@ mod load;
 mod member;
 mod model;
 mod query;
-mod reaction;
 mod view;
 
 mod condition;

@@ -14,16 +14,10 @@
 //!
 //! - `assignment.rs`: project unit context.
 //! - `si.rs`: SI prefixes, per-release dimension tables, base-unit scales.
-//! - `conversion.rs`: conversion-based units.
-//! - `derived.rs`: derived dimensions/elements.
 
 mod assignment;
 mod authoring;
-mod conversion;
-mod derived;
 pub(crate) mod si;
-
-mod monetary;
 
 pub use assignment::{prefix_exponent, project_unit_for, project_units, unit, unit_type, UnitKind};
 pub use authoring::{

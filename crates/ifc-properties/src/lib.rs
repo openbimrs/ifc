@@ -13,7 +13,6 @@
 //! | `pset` | `IfcPropertySet` and single/enumerated/list/table properties |
 //! | `quantity` | `IfcElementQuantity`: length, area, volume, weight, count |
 //! | `template` | `IfcPropertySetTemplate`, property templates, and sets checked against them |
-//! | `standard` | The official Pset catalogue from the shipped XML definitions |
 //! | `unit` | Unit assignment, prefixes and conversion-based units |
 //! | `value` | `IfcValue` measure types and their interpretation |
 //! | `query` | Lookup helpers: property by name, pset by element |
@@ -24,8 +23,8 @@
 //!
 //! Implemented: `value`, `pset`, `quantity` (including transactional quantity
 //! edits), `unit`, `template`, `query` and the release-bound `exact` lookups.
-//! `standard` is a reserved scaffold; the shipped Pset/Qto catalogue is
-//! `ifc-template-catalog`. Open work is tracked in GitHub issues.
+//! The shipped Pset/Qto catalogue is `ifc-template-catalog`. Open work is
+//! tracked in GitHub issues.
 //!
 //! # What this crate will not do
 //!
@@ -40,7 +39,6 @@ mod nesting;
 mod pset;
 mod quantity;
 mod query;
-mod standard;
 mod template;
 mod unit;
 mod value;

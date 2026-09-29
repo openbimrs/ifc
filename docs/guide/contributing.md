@@ -101,9 +101,9 @@ with an evidence column rather than in prose.
 **Spelling is consistent per page.** British or American spelling is not
 enforced, but one page does not mix them.
 
-**Scaffold modules stay honest.** A placeholder module states `Planned owner:`
-on its first doc line and stays crate-private until it owns a tested public
-contract. See [ADR 0005](/adr/0005-scaffold-modules-declare-ownership).
+**No placeholder modules.** Planned work is an issue, not a file that
+reserves a name; a module holding only comments fails the gate. See
+[ADR 0019](/adr/0019-planned-work-is-an-issue-not-a-file).
 
 ## Where knowledge lives
 

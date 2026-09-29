@@ -6,7 +6,6 @@ use crate::error::{StructuralError, StructuralResult};
 use crate::view::Record;
 
 mod dynamic;
-mod r#static;
 
 pub use dynamic::LoadConfiguration;
 

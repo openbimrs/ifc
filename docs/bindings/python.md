@@ -8,6 +8,12 @@ compiled wheels.
 pip install openbim-ifc
 ```
 
+The binding exposes the record model over STEP: parse, read and edit
+attributes, and write. Domain views such as property sets or the spatial tree
+([#123](https://github.com/openbimrs/ifc/issues/123)), ifcXML, validation and
+checked transactions ([#244](https://github.com/openbimrs/ifc/issues/244)) are
+not bound yet; use the Rust crates for those.
+
 ## Read, edit and write
 
 <!-- SNIPPET:py-read-edit-write -->

@@ -6,12 +6,8 @@
 //!
 //! ## Internal split
 //!
-//! - `type_index.rs`: existing type-name lookup ownership.
 //! - `reverse.rs`: target-to-referrer and slot reverse index.
-//! - `builder.rs`: derived index construction and rebuild.
 
-mod builder;
 mod reverse;
-mod type_index;
 
 pub use reverse::{Referrer, ReverseIndex};
