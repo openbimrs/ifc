@@ -11,7 +11,7 @@ Versioned IFC PSD/QTO catalog definitions and correction overlays
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.2.1 (2026-09-27) |
+| Latest release | 0.3.0 (2026-09-29) |
 | Registries | [crates.io `ifc-template-catalog`](https://crates.io/crates/ifc-template-catalog) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `property-catalog` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_template_catalog/index.html) · [docs.rs](https://docs.rs/ifc-template-catalog) |
@@ -39,12 +39,22 @@ and quantity instances remain in `ifc-properties`.
 
 ## Changes
 
-Latest release, 0.2.1 (2026-09-27):
+Latest release, 0.3.0 (2026-09-29):
 
-### Fixed
+### Added
 
-- The built-in environmental advisories cite their decision record at its
-  restored path, `docs/adr/0017-versioned-psd-qto-catalog.md`; the old
-  `0010` path had been reassigned to an unrelated ADR.
+- `corrected_catalog(CatalogEdition::Ifc4x3Add2)`: an IFC4X3 ADD2 corrected
+  profile whose one patch, `NEH-IFC4X3-PSD-0001`, adds
+  `Pset_Stationing.HasIncreasingStation` (`IfcBoolean`). The published ADD2
+  documentation (6.6.4.10) lists it; the PSD XML the official snapshot is
+  generated from omits it, and the official snapshot is unchanged (#216).
+- `PatchOperation::AddProperty` and `PatchError::NotAPropertySet`.
+
+### Changed (breaking)
+
+- `ValidationIssue`, `ValidationReport`, `CatalogDiagnostic`,
+  `ExportSummary`, `Advisory`, `AppliedPatch` and `UnresolvedApplicability`
+  are `#[non_exhaustive]`; they can no longer be built with a struct literal
+  outside the crate.
 
 Full history: [`crates/ifc-template-catalog/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-template-catalog/CHANGELOG.md)

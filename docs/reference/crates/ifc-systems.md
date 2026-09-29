@@ -11,7 +11,7 @@ Distribution systems, ports, and connectivity between elements.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.2.3 (2026-09-28) |
+| Latest release | 0.3.0 (2026-09-29) |
 | Registries | [crates.io `ifc-systems`](https://crates.io/crates/ifc-systems) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `systems` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_systems/index.html) · [docs.rs](https://docs.rs/ifc-systems) |
@@ -32,51 +32,44 @@ that can be traced -- the basis of any MEP analysis.
 
 ## Changes
 
-Latest release, 0.2.3 (2026-09-28):
+Latest release, 0.3.0 (2026-09-29):
 
-### Added
+### Changed (breaking)
 
-- A release-bound `*_with_owner_history` variant of every systems writer
-  (#202): `create_system_with_owner_history`,
-  `create_port_with_owner_history`, `assign_to_group_with_owner_history`,
-  `nest_ports_with_owner_history`,
-  `connect_port_to_element_with_owner_history`,
-  `connect_ports_with_owner_history`,
-  `contain_in_spatial_structure_with_owner_history`,
-  `reference_in_spatial_structure_with_owner_history`,
-  `create_group_with_owner_history`,
-  `authoring::create_distribution_element_with_owner_history`,
-  `authoring::create_zone_with_owner_history`,
-  `authoring::create_spatial_zone_with_owner_history` and
-  `create_classified_system_with_owner_history`. Each takes the model and a
-  caller-supplied `IfcOwnerHistory` id, which IFC2X3 requires on every
-  `IfcRoot`. The id must be in the model or staged on the transaction and
-  be an `IfcOwnerHistory`; none is ever invented. Each binds the model's
-  declared release (a header without `FILE_SCHEMA` binds IFC4, as the other
-  crates do), runs the plain writer's checks, and lays the record out by
-  attribute name from that release's table. So an IFC2X3
-  `IfcDistributionPort` has eight attributes and an IFC2X3 `IfcZone` five.
-  Enumeration tokens are checked against the release's own table (IFC4
-  refuses the IFC4X3 `IfcSpatialZoneTypeEnum` tokens). In IFC4 and IFC4X3 a
-  variant writes the plain writer's record with the reference in the
-  optional slot. `create_classified_system_with_owner_history` binds the
-  model's release instead of taking a schema argument.
-- `SystemAuthoringError::MultipleSchemas`, `UnsupportedSchema`,
-  `EntityNotInSchema`, `AuthoringNotInSchema`, `AuthoringValueType`,
-  `AuthoringRequired`, `MissingReference` and `WrongReferenceType`, for the
-  variants' refusals: a header binding no single known release, an entity
-  or attribute the release does not declare (IFC2X3 `IfcSpatialZone`,
-  `IfcZone.LongName`; `IfcBuiltSystem` outside IFC4X3), a value it cannot
-  hold, a required attribute left unset, and a missing or wrong-type owner
-  history. `SystemAuthoringError` is `#[non_exhaustive]` and the variants are
-  appended, so this is not breaking. Nothing is staged on a refusal.
+- The authoring draft `ClassifiedSystemDraft` is `#[non_exhaustive]`:
+  build it with `ClassifiedSystemDraft::new()` and the setters
+  `description`, `object_type`, `predefined_type` and `long_name`. Fields
+  stay public.
 
-### Documented
+- The bulk readers no longer fall back to the IFC4 table. `systems`,
+  `ports`, `zones`, `spatial_placements`, `role_inconsistencies`,
+  `ConnectionGraph::build` and `ElementRole::of` return
+  `Result<_, SchemaResolutionError>` and refuse a header that binds no
+  verified release: no `FILE_SCHEMA` (an in-memory model now needs a
+  header), several, IFC4X1/IFC4X2, or a release this build does not
+  bundle. `ElementRole::of` returns `Result<Option<_>, _>`.
+- `try_zones` is removed: `zones` now has the error channel it added.
+- IFC4X3 is verified for every reader (#215), not only the zone readers:
+  `schema_of` resolves it. Every fixed slot the readers use is pinned
+  against the IFC2X3, IFC4 and IFC4X3 tables, and `tests/ifc4x3.rs`
+  round-trips systems (including `IfcBuiltSystem`), both port
+  attachments, connections, flow roles and spatial placements through
+  IFC4X3 STEP text.
+- `SystemAnomaly` and `RoleInconsistency` are `#[non_exhaustive]`: a match
+  needs a wildcard arm.
+- The read-side `Connection`, `Port`, `System`, `Zone` and
+  `SpatialPlacement` are `#[non_exhaustive]`, so a later release's attribute
+  can be added without a breaking change; they can no longer be built with a
+  struct literal outside the crate.
 
-- The plain writers take no model, so they cannot see the release: they
-  still write the IFC4/IFC4X3 layout with `OwnerHistory` `$`, unchanged, and
-  are documented as IFC4/IFC4X3 only, pointing to their variant. IFC2X3
-  declares none of the classified-system entities, so
-  `create_classified_system` never wrote an IFC2X3 record.
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
 
 Full history: [`crates/ifc-systems/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-systems/CHANGELOG.md)

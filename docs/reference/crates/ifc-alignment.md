@@ -11,7 +11,7 @@ IFC4x3 linear positioning: alignments, referents, linear placement, spirals.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.3.2 (2026-09-28) |
+| Latest release | 0.4.0 (2026-09-29) |
 | Registries | [crates.io `ifc-alignment`](https://crates.io/crates/ifc-alignment) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `alignment` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_alignment/index.html) · [docs.rs](https://docs.rs/ifc-alignment) |
@@ -33,18 +33,40 @@ consumers should never compile spiral curve laws.
 
 ## Changes
 
-Latest release, 0.3.2 (2026-09-28):
+Latest release, 0.4.0 (2026-09-29):
 
 ### Fixed
 
-- Referent authoring writes the SELECT values typed (#201):
-  - `point_by_distance` writes `DistanceAlong` as `IFCLENGTHMEASURE(..)`.
-    It is an `IfcCurveMeasureSelect`, where the wrapper is what tells a
-    length from a curve parameter. The offsets stay bare.
-  - `stationing` writes `Pset_Stationing`'s `NominalValue`s, declared
-    `IfcValue`, as `IFCLENGTHMEASURE(..)` for `Station` and
-    `IncomingStation` and `IFCBOOLEAN(..)` for `HasIncreasingStation`.
+- `read_vertical_segment`, `read_cant_segment` and `CantLayout::resolve`
+  (`RailHeadDistance`) read a typed parameter such as
+  `IFCLENGTHMEASURE(1.)` exactly like the bare number, as
+  `read_horizontal_segment` already did; they refused it as the wrong kind
+  (#140).
 
-  `station_equations` reads both forms, as before.
+### Changed (breaking)
+
+- The authoring drafts `HorizontalSegmentDraft`, `VerticalSegmentDraft`
+  and `CantSegmentDraft` are `#[non_exhaustive]`: build them with
+  `HorizontalSegmentDraft::new(start_point, start_direction, start_radius,
+  end_radius, segment_length, predefined_type)`,
+  `VerticalSegmentDraft::new(start_dist_along, horizontal_length,
+  start_height, start_gradient, end_gradient, predefined_type)` or
+  `CantSegmentDraft::new(start_dist_along, horizontal_length,
+  start_cant_left, start_cant_right, predefined_type)` and the setters
+  `gravity_center_line_height`, `radius_of_curvature`, `end_cant_left` and
+  `end_cant_right`. Fields stay public.
+- The read-side `HorizontalSegment`, `CantSegment`, `CantLayout`,
+  `CantAtStation`, `LinearPlacement`, `StationEquation`,
+  `LoweredAlignmentCurve`, `PartialHorizontalLayout` and `RefusedSegment`
+  are `#[non_exhaustive]`; they can no longer be built with a struct literal
+  outside the crate.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- Pinned by test: `AlignmentView::for_model` refuses `IFC4X1` and
+  `IFC4X2` (their alignment model differs from IFC4X3).
 
 Full history: [`crates/ifc-alignment/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-alignment/CHANGELOG.md)

@@ -11,7 +11,7 @@ Property sets, quantities, and unit resolution. No geometry.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.5.3 (2026-09-28) |
+| Latest release | 0.6.0 (2026-09-29) |
 | Registries | [crates.io `ifc-properties`](https://crates.io/crates/ifc-properties) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_properties/index.html) · [docs.rs](https://docs.rs/ifc-properties) |
@@ -34,20 +34,42 @@ standard Psets are data here rather than hand-written tables.
 
 ## Changes
 
-Latest release, 0.5.3 (2026-09-28):
+Latest release, 0.6.0 (2026-09-29):
 
-### Added
+### Changed (breaking)
 
-- `exact_material_property`, `exact_material_properties_where` and
-  `exact_material_property_sets_where` (#218): exact readers for the
-  property sets of a material definition, as `exact_property` and its
-  enumerations read an object's. IFC4 and IFC4X3 `IfcMaterialProperties`
-  (the inverse `HasProperties`) and IFC2X3 `IfcExtendedMaterialProperties`
-  resolve their named properties; an IFC2X3 typed subtype
-  (`IfcGeneralMaterialProperties`, ...) resolves its attributes as a
-  predefined set does, keyed by its entity name. Results carry the new
-  `ExactSource::Material`; a material without sets is a proven absence,
-  and a target that is no material definition of the release is
-  `InvalidQueryObject`.
+- `Comparison` is `#[non_exhaustive]`: a match needs a wildcard arm.
+- The read results `ExactProperty`, `ExactPropertyEntry`, `ExactTableRow`,
+  `Property`, `PropertySet`, `QuantitySet`, `ResolvedSet` and
+  `PropertySetTemplate` are `#[non_exhaustive]`; compare their fields
+  instead of building one with a struct literal.
+- Every authoring draft is `#[non_exhaustive]`, so a struct literal no
+  longer compiles outside the crate. Each gains `new(required…)` and one
+  builder setter per other field, named after the field and taking the
+  unwrapped value: `TableValueDraft::new(name)`, `DoorLiningDraft::new()`,
+  `WindowLiningDraft::new()`,
+  `ReinforcementBarDraft::new(total_cross_section_area, steel_grade)`,
+  `SectionReinforcementDraft::new(longitudinal_start_position,
+  longitudinal_end_position, reinforcement_role, section_definition,
+  cross_section_reinforcement_definitions)`,
+  `SiUnitDraft::new(unit_type, name)`, `MonetaryUnitDraft::new(currency)`
+  and `ConversionBasedUnitDraft::new(unit_type, name, conversion_factor,
+  dimensions)`. Fields stay public.
+
+### Changed
+
+- Depends on `ifc-schema` with its default features named explicitly
+  (every bundled release), now that the workspace dependency turns them
+  off for the facade's per-release features (#112).
+- The unique-member-name rule of complex properties and quantities is
+  labelled per verified release only; another release is refused with
+  `UnsupportedSchema` rather than given the IFC4 label.
+- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
+  existing unsupported-schema error. `ifc-schema` now bundles both
+  releases, but no layout here is verified against them, so they are
+  never read as IFC4 or IFC4X3.
+- Exact value checks treat a type declaration form `ifc-schema` adds later
+  as not matching; follows `ifc_schema::TypeKind` becoming
+  `#[non_exhaustive]`.
 
 Full history: [`crates/ifc-properties/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-properties/CHANGELOG.md)

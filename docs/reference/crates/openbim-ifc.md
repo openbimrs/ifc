@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.8.1 (2026-09-28) |
+| Latest release | 0.9.0 (2026-09-29) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc/index.html) · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -92,18 +92,45 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.8.1 (2026-09-28):
+Latest release, 0.9.0 (2026-09-29):
+
+### Added
+
+- `tests/stationing_template.rs`: a referent's `Pset_Stationing` authored
+  by `alignment` and read by `properties` checks clean against the
+  `property-catalog` IFC4X3 ADD2 corrected profile (#216).
+
+### Changed (breaking)
+
+- `PanelPosition` and `Unreachable` are `#[non_exhaustive]`: a match needs a
+  wildcard arm.
+- `Sector` and `ContainerElements` are `#[non_exhaustive]`; they can no
+  longer be built with a struct literal outside the crate.
+
+- Code previously behind `schema` is behind `schema-api`, which `schema`
+  and every release feature imply; `schema::for_version` returns a
+  `Result` (see `ifc-schema`).
 
 ### Changed
 
-- Requires the patch releases published with it: `ifc-properties` 0.5.1
-  (bare quantity values, IFC2X3 `*_with_owner_history` authoring, type
-  objects in the exact API), `ifc-cost` 0.2.2, `ifc-classification` 0.2.2
-  (IFC4X3 binding) and `ifc-systems` 0.2.2.
-- `door_operation` and `window_operation` given a type object (an
-  `IfcDoorType`, IFC2X3 `IfcDoorStyle`, ...) refuse it with `NotADoor` or
-  `NotAWindow`, where they returned `Property(InvalidQueryObject)`: the
-  exact property reader now accepts type objects (ifc-properties #193).
-  Results and refusals for doors and windows are unchanged.
+- The georeferencing and alignment conformance test gives its placeholder
+  `IfcPolyline` two points (`Points` is `LIST [2:?]`, checked since #111).
+- Door and window operation reads name the type-object entity per
+  verified release (IFC2X3, IFC4, IFC4X3) and refuse any other with
+  `ExactPropertyError::UnsupportedSchema`, instead of treating every
+  non-IFC2X3 release as IFC4.
+
+### Added
+
+- Per-release schema features (#112): `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2`,
+  `ifc4x3`, each providing the schema API with that one bundled table, and
+  `schema-api` (the API with no table). `schema` keeps its meaning: the API
+  with every release. A single-release build refuses the others through
+  `schema::for_version` with `schema::NotBundled`. Domain features link the
+  releases their crates read, so enabling one brings every release it
+  reads.
+- `compiled_features()` reports `schema-api` and each release feature.
+- `tests/intermediate_releases.rs`: IFC4X1 and IFC4X2 files resolve to
+  their own `SchemaVersion`, release id and bundled table (#33).
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

@@ -11,7 +11,7 @@ WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from J
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.1.1 (2026-09-26) |
+| Latest release | 0.2.0 (2026-09-29) |
 | Registries | [npm `@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/openbim_ifc_wasm/index.html) |
 | Source | [`crates/openbim-ifc-wasm/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-wasm) |
@@ -50,19 +50,13 @@ suites here cover only the JS conversion itself.
 
 ## Changes
 
-Latest release, 0.1.1 (2026-09-26):
+Latest release, 0.2.0 (2026-09-29):
 
-The first npm release built and published by the release workflow, with npm
-provenance. The JavaScript API is unchanged.
+### Added
 
-### Changed
-
-- Reading STEP is faster: the model is now built straight from
-  `openbim-step` 0.7.0's borrowed events instead of copying every value
-  twice. Real files read with 22-40% fewer instructions, and the parsed
-  model is identical (checked on 2,273 files).
-- Built against `openbim-ifc` 0.5.0.
-- The crate is not published to crates.io (`publish = false`). The package
-  ships on npm as `@openbim/ifc` only.
+- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2`, `ifc4x3` (all
+  default, so the npm package is unchanged). A browser build with one
+  release, `--no-default-features --features ifc4`, is 699,687 bytes after
+  `wasm-bindgen` instead of 1,236,036 (#112).
 
 Full history: [`crates/openbim-ifc-wasm/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-wasm/CHANGELOG.md)

@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-29
+
 ### Changed (breaking)
 
 - `PersonDraft`, `OrganizationDraft`, `ApplicationDraft` and
@@ -86,7 +88,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-author-v0.2.2...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-author-v0.3.0...HEAD
+[0.3.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-author-v0.3.0
 [0.2.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-author-v0.2.2
 [0.2.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-author-v0.2.1
 [0.2.0]: https://github.com/openbimrs/ifc/releases/tag/v0.2.0

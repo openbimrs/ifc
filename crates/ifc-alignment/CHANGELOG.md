@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-29
+
 ### Fixed
 
 - `read_vertical_segment`, `read_cant_segment` and `CantLayout::resolve`
@@ -88,7 +90,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-alignment-v0.3.2...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-alignment-v0.4.0...HEAD
+[0.4.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.4.0
 [0.3.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.3.2
 [0.3.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.3.1
 [0.3.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.3.0
