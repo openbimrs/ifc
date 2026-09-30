@@ -11,7 +11,8 @@
 //! IfcMeasureWithUnit       0 = ValueComponent  1 = UnitComponent
 //! IfcDerivedUnit           0 = Elements     1 = UnitType  2 = UserDefinedType
 //! IfcDerivedUnitElement    0 = Unit         1 = Exponent
-//! IfcMonetaryUnit          0 = Currency
+//! IfcMonetaryUnit          0 = Currency     (IfcCurrencyEnum in IFC2X3,
+//!                                            IfcLabel from IFC4 on)
 //! ```
 //!
 //! `IfcSIUnit` inherits `Dimensions`/`UnitType` from `IfcNamedUnit`, so its
@@ -93,7 +94,8 @@ pub enum UnitKind {
     },
     /// `IfcMonetaryUnit`: a currency, with no dimension.
     Monetary {
-        /// ISO currency code as stated.
+        /// ISO currency code as stated: the `IfcCurrencyEnum` token in
+        /// IFC2X3, the `IfcLabel` text from IFC4 on.
         currency: Option<Arc<str>>,
     },
     /// `IfcContextDependentUnit` or another named unit form.
@@ -252,7 +254,9 @@ pub fn unit(model: &Model, id: EntityId) -> Option<UnitKind> {
             })
         }
         "IFCMONETARYUNIT" => Some(UnitKind::Monetary {
-            currency: entity.attributes.get(MONETARY_CURRENCY).and_then(text),
+            // IFC2X3 declares `IfcCurrencyEnum` (`.EUR.`), IFC4 on an
+            // `IfcLabel` (`'EUR'`); both state the same currency.
+            currency: entity.attributes.get(MONETARY_CURRENCY).and_then(enum_text),
         }),
         "IFCCONTEXTDEPENDENTUNIT" => Some(UnitKind::ContextDependent {
             unit_type: entity
