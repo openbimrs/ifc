@@ -45,6 +45,17 @@ lockstep -- is archived in the
   carries the currency instead of `None`, and the quantity unit check
   that consumes it sees the currency too (#232).
 
+### ifc-systems
+
+### Added
+
+- `System` gains `long_name` and `predefined_type` (#231): the
+  `IfcDistributionSystem` `LongName` and `PredefinedType`
+  (`IfcDistributionSystemEnum` token), read by attribute name in the
+  declared release's table, for `IfcDistributionSystem` and its subtype
+  `IfcDistributionCircuit` under IFC4 and IFC4X3. Both are `None` for every
+  other system type and on IFC2X3, which has no `IfcDistributionSystem`.
+
 ## [0.9.0] - 2026-09-29
 
 ### openbim-ifc
