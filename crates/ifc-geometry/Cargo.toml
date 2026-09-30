@@ -12,9 +12,9 @@ readme = "README.md"
 # Published on the docs site by `cargo run -p xtask -- docs`.
 [package.metadata.openbim]
 # implemented | partial | scaffold -- a judgement, never inferred from size.
-# Some families admit only part of their authored forms; the variant
-# table on the capabilities page lists every refused form.
+# `gaps`: the open issues behind the status; a partial crate names one.
 status = "partial"
+gaps = [243]
 # core | domain | geometry | facade | binding
 group = "geometry"
 

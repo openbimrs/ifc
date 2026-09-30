@@ -39,8 +39,6 @@
 //! | [`diagnostic`] | Non-fatal findings a codec attaches after a recovered read |
 //! | `index` | Derived indices: inverse references |
 //! | [`mutation`] | Transactional authoring: staged edits, preflight, commit |
-//! | `relation` | Structural relationship traversal (no domain meaning) |
-//! | `spatial` | The spatial containment tree |
 //! | `traverse` | Graph walks over references |
 //! | [`error`] | Failure modes |
 
@@ -56,9 +54,6 @@ pub mod index;
 mod lazy;
 pub mod model;
 pub mod mutation;
-mod provenance;
-mod relation;
-mod spatial;
 pub mod traverse;
 pub mod value;
 

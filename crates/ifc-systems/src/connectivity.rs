@@ -10,10 +10,8 @@
 //! ## Internal split
 //!
 //! - `relation.rs`: port/element connections.
-//! - `graph.rs`: semantic graph.
 //! - `traversal.rs`: bounded traversal.
 
-mod graph;
 pub(crate) mod relation;
 mod traversal;
 

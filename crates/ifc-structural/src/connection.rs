@@ -5,10 +5,6 @@ use ifc_model::EntityId;
 use crate::error::{StructuralError, StructuralResult};
 use crate::view::Record;
 
-mod curve;
-mod point;
-mod surface;
-
 /// Which `IfcStructuralConnection` application geometry a connection carries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConnectionKind {

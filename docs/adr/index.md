@@ -20,7 +20,7 @@ for new records.
 | [0002](/adr/0002-codec-as-a-model-crate-trait) | Codec as a trait owned by the model crate | Accepted |
 | [0003](/adr/0003-domain-crates-as-borrowed-views) | Domain crates as borrowed views | Accepted |
 | [0004](/adr/0004-geometry-bridge-not-kernel) | Geometry bridge, not geometry kernel | Accepted |
-| [0005](/adr/0005-scaffold-modules-declare-ownership) | Scaffold modules declare ownership without claiming capability | Accepted |
+| [0005](/adr/0005-scaffold-modules-declare-ownership) | Scaffold modules declare ownership without claiming capability | Accepted; points 1 and 3 superseded by [0019](/adr/0019-planned-work-is-an-issue-not-a-file) |
 | [0006](/adr/0006-facade-features-default-to-thin) | Facade features default to thin | Accepted |
 | [0007](/adr/0007-authoring-is-a-schema-layer-not-a-model-layer) | Authoring is a schema-layer concern, not a model-layer one | Accepted |
 | [0008](/adr/0008-fixed-slot-constants-for-stable-relationships) | Fixed slot constants for stable relationships | Accepted |
@@ -34,5 +34,6 @@ for new records.
 | [0016](/adr/0016-open-work-lives-in-issues) | Open work lives in issues, not in checked-in plans | Accepted |
 | [0017](/adr/0017-versioned-psd-qto-catalog) | Versioned PSD/QTO template catalogs | Accepted |
 | [0018](/adr/0018-kernel-free-geometry-is-a-feature-not-a-crate) | Kernel-free geometry is a feature, not a crate | Accepted |
+| [0019](/adr/0019-planned-work-is-an-issue-not-a-file) | Planned work is an issue, not a placeholder file | Accepted |
 
 <!-- ADR:INDEX:END -->

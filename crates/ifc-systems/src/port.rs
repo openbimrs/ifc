@@ -5,9 +5,7 @@
 //! ## Internal split
 //!
 //! - `definition.rs`: IfcPort/DistributionPort.
-//! - `assignment.rs`: port nesting/attachment.
 
-mod assignment;
 pub(crate) mod definition;
 
 pub use definition::{ports, Attachment, Port};

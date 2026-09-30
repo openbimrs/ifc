@@ -237,7 +237,7 @@
       ],
       "released": "0.3.0",
       "released_date": "2026-09-29",
-      "status": "implemented",
+      "status": "partial",
       "version": "0.3.0"
     },
     "ifc-schema": {
@@ -456,8 +456,8 @@
   },
   "crates": {
     "by_status": {
-      "implemented": 24,
-      "partial": 7,
+      "implemented": 23,
+      "partial": 8,
       "scaffold": 0
     },
     "groups": [

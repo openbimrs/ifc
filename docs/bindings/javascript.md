@@ -12,6 +12,13 @@ npm install @openbim/ifc
 The package is CommonJS: `const { IfcModel } = require("@openbim/ifc");`,
 or a default import from ES modules.
 
+The binding exposes the record model over STEP: parse, read and edit
+attributes, and write. Domain views such as property sets or the spatial tree
+([#123](https://github.com/openbimrs/ifc/issues/123)), ifcXML, validation and
+checked transactions ([#244](https://github.com/openbimrs/ifc/issues/244)) are
+not bound yet; use the Rust crates for those. The browser and bundler build is
+[#40](https://github.com/openbimrs/ifc/issues/40).
+
 ## Read, edit and write
 
 <!-- SNIPPET:js-read-edit-write -->

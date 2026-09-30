@@ -6,10 +6,6 @@ use ifc_schema::SchemaVersion;
 use crate::error::{StructuralError, StructuralResult};
 use crate::view::Record;
 
-mod linear;
-mod planar;
-mod point;
-
 /// Which `IfcStructuralActivity` application geometry an action carries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActionKind {

@@ -5,8 +5,6 @@
 //!
 //! - `set.rs`: IfcPropertySet and relationships.
 //! - `scalar.rs`: single/bounded/list/enumerated values.
-//! - `table.rs`: table values and interpolation metadata.
-//! - `reference.rs`: object/reference properties.
 //! - `complex.rs`: nested complex properties.
 //! - `root_authoring.rs`: release-bound `IfcRoot` writers and their
 //!   `*_with_owner_history` variants.
@@ -15,12 +13,9 @@
 //!   `*_with_owner_history` variants in the model's release (#202).
 
 mod complex;
-mod reference;
 pub(crate) mod scalar;
 mod set;
-mod table;
 
-mod aggregate;
 mod authoring;
 mod lining;
 mod owned;

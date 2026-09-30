@@ -40,7 +40,6 @@ pub mod calendar;
 pub mod error;
 pub mod event;
 pub mod query;
-mod recurrence;
 mod release;
 pub mod schedule;
 pub mod sequence;

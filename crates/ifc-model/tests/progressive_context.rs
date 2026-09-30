@@ -21,8 +21,7 @@ mod progressive_markdown;
 use progressive_markdown::{context_pointer_tokens, inline_code_tokens};
 
 // This registry deliberately duplicates the initial capability set. A coordinated
-// source/module deletion must still change a separate reviewable baseline, and
-// every ownership scaffold (`//! Planned owner:`) must be listed here.
+// source/module deletion must still change a separate reviewable baseline.
 const REQUIRED_SCAFFOLD_PATHS: &str = include_str!("required_scaffold_paths.txt");
 
 /// The root `AGENTS.md` is read in full before any change, so it stays short.
@@ -249,12 +248,14 @@ fn required_scaffold_paths() -> Vec<&'static str> {
         .collect()
 }
 
+/// Planned work is an issue, not a file (ADR 0019): a module whose every line
+/// is blank or a comment reserves a name without code, and a reader takes the
+/// name for a capability.
 #[test]
-fn ownership_scaffolds_are_registered() {
+fn no_module_is_comments_only() {
     let root = crates_dir(&ifc_root());
-    let registered: BTreeSet<_> = required_scaffold_paths().into_iter().collect();
-    let mut scaffolds = 0;
-    let mut unregistered = Vec::new();
+    let mut scanned = 0;
+    let mut placeholders = Vec::new();
     for entry in std::fs::read_dir(&root).expect("read crates/") {
         let crate_dir = entry.expect("directory entry").path();
         if !is_ifc_layer_dir(&crate_dir) {
@@ -266,28 +267,27 @@ fn ownership_scaffolds_are_registered() {
             .into_iter()
             .filter(|path| path.extension().is_some_and(|ext| ext == "rs"))
         {
+            scanned += 1;
             let text = std::fs::read_to_string(&source).unwrap();
-            if !text.contains("//! Planned owner:") {
-                continue;
-            }
-            scaffolds += 1;
-            let relative = source.strip_prefix(&root).unwrap();
-            assert!(normalized_relative(relative));
-            let relative = relative.to_string_lossy().replace('\\', "/");
-            if !registered.contains(relative.as_str()) {
-                unregistered.push(relative);
+            let code = text
+                .lines()
+                .map(str::trim)
+                .any(|line| !line.is_empty() && !line.starts_with("//"));
+            if !code {
+                let relative = source.strip_prefix(&root).unwrap();
+                placeholders.push(relative.to_string_lossy().replace('\\', "/"));
             }
         }
     }
     assert!(
-        unregistered.is_empty(),
-        "ownership scaffolds missing from tests/required_scaffold_paths.txt:\n{}",
-        unregistered.join("\n")
+        placeholders.is_empty(),
+        "comment-only modules; file the planned work as an issue and delete them:\n{}",
+        placeholders.join("\n")
     );
     // Guards the scan itself: a layout change that finds nothing must not pass.
     assert!(
-        scaffolds >= 1,
-        "found no `//! Planned owner:` scaffold; did the source layout move?"
+        scanned >= 500,
+        "scanned only {scanned} source files; did the source layout move?"
     );
 }
 
@@ -301,8 +301,11 @@ fn required_scaffold_capability_seams_are_preserved() {
     // both were doc-only placeholders whose slots are owned by
     // `lower::profile` and `resource::topology`/`solid::brep` respectively, so
     // keeping them would have mandated a second reader of the same slots.
+    // Lowered 185 -> 131 on 2026-09-29 when the `Planned owner:` placeholders
+    // were retired (ADR 0019, #127): each was covered elsewhere or became an
+    // issue (#228-#244).
     assert!(
-        required.len() >= 185,
+        required.len() >= 131,
         "the explicit capability baseline must not shrink silently"
     );
 

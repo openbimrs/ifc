@@ -8,7 +8,6 @@ pub mod authoring;
 mod context;
 mod conversion;
 mod crs;
-mod elevation;
 mod error;
 mod north;
 mod slot;

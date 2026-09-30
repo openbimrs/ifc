@@ -14,8 +14,6 @@ mod layout;
 mod property;
 mod property_set;
 
-mod relationship;
-
 pub use check::{
     template_deviations, MeasureRole, TemplateFinding, TemplateReport, UndecidedReason,
 };

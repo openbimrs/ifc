@@ -14,6 +14,7 @@ readme = "README.md"
 # Published on the docs site by `cargo run -p xtask -- docs`.
 [package.metadata.openbim]
 # implemented | partial | scaffold -- a judgement, never inferred from size.
+# `gaps`: the open issues behind the status; a partial crate names one.
 status = "implemented"
 # core | domain | geometry | facade | binding
 group = "core"

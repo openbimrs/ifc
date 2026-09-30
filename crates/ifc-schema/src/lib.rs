@@ -22,7 +22,6 @@
 //! | [`attribute`] | Attribute descriptors and declared types |
 //! | [`types`] | Defined types, enumerations, selects |
 //! | [`registry`] | The assembled, queryable schema |
-//! | `inheritance` | Supertype-chain walking |
 //!
 //! # Relationship to the model
 //!
@@ -73,7 +72,6 @@ pub mod entity;
 pub mod export;
 #[cfg(feature = "express")]
 mod express;
-mod inheritance;
 pub mod registry;
 pub mod types;
 pub mod version;

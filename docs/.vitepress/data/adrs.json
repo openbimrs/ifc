@@ -26,7 +26,7 @@
   {
     "number": "0005",
     "slug": "0005-scaffold-modules-declare-ownership",
-    "status": "Accepted",
+    "status": "Accepted; points 1 and 3 superseded by [0019](/adr/0019-planned-work-is-an-issue-not-a-file)",
     "title": "Scaffold modules declare ownership without claiming capability"
   },
   {
@@ -106,5 +106,11 @@
     "slug": "0018-kernel-free-geometry-is-a-feature-not-a-crate",
     "status": "Accepted",
     "title": "Kernel-free geometry is a feature, not a crate"
+  },
+  {
+    "number": "0019",
+    "slug": "0019-planned-work-is-an-issue-not-a-file",
+    "status": "Accepted",
+    "title": "Planned work is an issue, not a placeholder file"
   }
 ]

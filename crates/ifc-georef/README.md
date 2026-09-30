@@ -1,8 +1,10 @@
 # ifc-georef
 
-Georeferencing: resolves `IfcMapConversion`, rigid operations, projected CRS
-metadata, true north and site elevation into a format-neutral project-to-map
-transform. It does not place products or reproject coordinates.
+Georeferencing: resolves `IfcMapConversion`, projected CRS metadata and true
+north into a format-neutral project-to-map transform. It does not place
+products or reproject coordinates. IFC4X3 rigid operations and scaled map
+conversions are refused with a typed error for now ([#241](https://github.com/openbimrs/ifc/issues/241)), and site reference
+elevation is not read yet ([#242](https://github.com/openbimrs/ifc/issues/242)).
 
 ```bash
 cargo add ifc-georef
