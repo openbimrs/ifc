@@ -6,6 +6,10 @@
 node_modules
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+# Assembled from every crate's CHANGELOG.md by `cargo run -p xtask -- docs`
+# (also under --check, before the site build). Committing it made every pair
+# of open pull requests conflict on its [Unreleased] section.
+/docs/project/changelog.md
 
 # Local read-only reference checkouts (upstream schemas, competitor sources).
 # Never redistributable, never a build dependency -- see AGENTS.md.
