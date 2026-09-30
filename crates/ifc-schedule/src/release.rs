@@ -256,6 +256,22 @@ impl ReadRelease {
             .collect()
     }
 
+    /// Whether this release declares `entity` as an entity (#234).
+    ///
+    /// IFC2X3 declares no `IfcWorkCalendar` or `IfcEvent`, and IFC4 and
+    /// IFC4X3 no `IfcRelAssignsTasks` or `IfcScheduleTimeControl`; a
+    /// record of an undeclared type is not one of that release's.
+    pub(crate) fn declares(self, entity: &str) -> bool {
+        self.schema.entity(entity).is_some()
+    }
+
+    /// Whether `type_name` is `ancestor` or one of its subtypes in this
+    /// release (#235), so an `IfcTaskTimeRecurring` is an `IfcTaskTime`.
+    /// An undeclared type is nothing.
+    pub(crate) fn is_a(self, type_name: &str, ancestor: &str) -> bool {
+        self.schema.is_a(type_name, ancestor)
+    }
+
     fn slot(self, entity: &str, attribute: &'static str) -> Option<usize> {
         let entity = entity.to_ascii_uppercase();
         let name = release_name(self.version, &entity, attribute);
@@ -327,8 +343,10 @@ impl ReadRelease {
 /// `IfcTask.TaskId` and `IfcProcedure.ProcedureID`; and on `IfcProcedure`,
 /// "ProcedureType renamed to PredefinedType". On `IfcWorkControl`,
 /// `Identification` is the "attribute unified by promoting from various
-/// subtypes of IfcControl", IFC2X3's `IfcWorkControl.Identifier`. Each keeps
-/// its meaning.
+/// subtypes of IfcControl", IFC2X3's `IfcWorkControl.Identifier`. IFC4X3
+/// ADD2 renames `IfcWorkTime.Start` and `Finish` to `StartDate` and
+/// `FinishDate` at the same positions, both still `IfcDate` (#234). Each
+/// keeps its meaning.
 fn release_name(release: SchemaVersion, entity: &str, attribute: &'static str) -> &'static str {
     match (release, entity, attribute) {
         (SchemaVersion::Ifc2x3, "IFCWORKPLAN" | "IFCWORKSCHEDULE", "Identification") => {
@@ -337,6 +355,8 @@ fn release_name(release: SchemaVersion, entity: &str, attribute: &'static str) -
         (SchemaVersion::Ifc2x3, "IFCTASK", "Identification") => "TaskId",
         (SchemaVersion::Ifc2x3, "IFCPROCEDURE", "Identification") => "ProcedureID",
         (SchemaVersion::Ifc2x3, "IFCPROCEDURE", "PredefinedType") => "ProcedureType",
+        (SchemaVersion::Ifc4x3, "IFCWORKTIME", "Start") => "StartDate",
+        (SchemaVersion::Ifc4x3, "IFCWORKTIME", "Finish") => "FinishDate",
         _ => attribute,
     }
 }

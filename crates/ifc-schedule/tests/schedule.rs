@@ -2,8 +2,8 @@
 
 use ifc_model::{Codec, Entity, EntityId, Model, Value};
 use ifc_schedule::{
-    end_tasks, events, execution_order, find_cycle, predecessors_of, sequences, start_tasks,
-    subtasks_of, successors_of, tasks, tasks_of_schedule, work_calendars, work_plans,
+    end_tasks, execution_order, find_cycle, predecessors_of, read_events, read_work_calendars,
+    sequences, start_tasks, subtasks_of, successors_of, tasks, tasks_of_schedule, work_plans,
     work_schedules, DurationType, RecurrenceType, SchemaVersion, SequenceType, Task,
     TaskTimeAnomaly, WorkControlKind, WorkTimeRole,
 };
@@ -276,7 +276,7 @@ fn a_sequence_cycle_is_reported() {
 #[test]
 fn working_and_exception_times_are_not_interchangeable() {
     let model = fixture();
-    let calendars = work_calendars(&model);
+    let calendars = read_work_calendars(&model).expect("bound");
     assert_eq!(calendars.len(), 1);
     let calendar = calendars[0];
     assert_eq!(calendar.identification(), Some("CAL-1"));
@@ -295,7 +295,7 @@ fn working_and_exception_times_are_not_interchangeable() {
 #[test]
 fn an_unbounded_recurrence_is_reported_not_expanded() {
     let model = fixture();
-    let calendar = work_calendars(&model)[0];
+    let calendar = read_work_calendars(&model).expect("bound")[0];
     let working = calendar.working_times(&model);
     let recurrence = working[0].recurrence.as_ref().expect("weekdays recur");
 
@@ -314,7 +314,7 @@ fn an_unbounded_recurrence_is_reported_not_expanded() {
 #[test]
 fn an_event_states_scheduled_and_actual_dates() {
     let model = fixture();
-    let all = events(&model);
+    let all = read_events(&model).expect("bound");
     assert_eq!(all.len(), 1);
     let event = all[0];
 

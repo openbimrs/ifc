@@ -6,4 +6,8 @@
 
 mod definition;
 
-pub use definition::{events, slot as event_slot, time_slot as event_time_slot, Event, EventTime};
+#[allow(deprecated)]
+pub use definition::events;
+pub use definition::{
+    read_events, slot as event_slot, time_slot as event_time_slot, Event, EventTime,
+};

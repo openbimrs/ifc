@@ -44,6 +44,11 @@ fn families_read(crates_dir: &Path) -> BTreeSet<String> {
     found
 }
 
+/// Concrete families IFC2X3 TC1 declares and IFC4X3 ADD2 does not, which a
+/// crate reads for IFC2X3 files: `IfcRelAssignsTasks` carries the IFC2X3
+/// task time (`TimeForTask`) that `ifc-schedule` reads (#235).
+const IFC2X3_ONLY: [&str; 1] = ["ifcrelassignstasks"];
+
 /// The six abstract supertypes are not families a file can instantiate.
 const ABSTRACT: [&str; 6] = [
     "ifcrelationship",
@@ -110,11 +115,26 @@ fn capabilities_states_the_real_relationship_count() {
         .split_whitespace()
         .find_map(|t| t.parse::<usize>().ok())
         .expect("row states a count");
-    let actual = families_read(&workspace.join("crates")).len();
+    let found = families_read(&workspace.join("crates"));
+    // Families only an earlier release declares are read too, but are not
+    // among IFC4X3's 45; the row names each of them separately.
+    let earlier_only: Vec<&str> = IFC2X3_ONLY
+        .iter()
+        .copied()
+        .filter(|family| found.contains(*family))
+        .collect();
+    let actual = found.len() - earlier_only.len();
     assert_eq!(
         claimed, actual,
-        "capabilities.md claims {claimed} IfcRel* families but the source reads {actual}"
+        "capabilities.md claims {claimed} IFC4X3 IfcRel* families but the source reads {actual}"
     );
+    let row_lower = row.to_ascii_lowercase();
+    for family in &earlier_only {
+        assert!(
+            row_lower.contains(family),
+            "{family} is read but the relationship row does not name it"
+        );
+    }
     assert!(
         row.contains("All 45 concrete"),
         "coverage is complete, so the row must say so verbatim; \

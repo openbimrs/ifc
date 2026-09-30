@@ -1,5 +1,7 @@
 //! #212: the task, work-control and sequence readers bind the declared
-//! release and read by attribute name.
+//! release and read by attribute name. #234 extends that to the calendar
+//! and event readers, #235 to the task time variants: IFC4/IFC4X3
+//! `IfcTaskTimeRecurring` and IFC2X3 `IfcScheduleTimeControl`.
 //!
 //! From the EXPRESS sources: IFC2X3 TC1 declares `IfcTask` with ten
 //! attributes (`TaskId`, `Status`, `WorkMethod`, `IsMilestone`, `Priority`
@@ -15,13 +17,16 @@
 mod common;
 
 use ifc_model::{Codec, Entity, EntityId, Model, Transaction, Value};
+use ifc_schedule::error::ScheduleAuthoringError;
 use ifc_schedule::{
-    create_sequence_with_owner_history, create_task_with_owner_history,
-    create_work_control_with_owner_history, end_tasks, execution_order, find_cycle,
-    predecessors_of, sequences, start_tasks, subtasks_of, successors_of, tasks, tasks_of_schedule,
-    work_plans, work_schedules, AuthoredDateTime, AuthoredDuration, CalendarDate, DateTimeValue,
-    LocalTime, ScheduleReadError, SchemaVersion, Task, TaskDraft, TimeLag, WorkControl,
-    WorkControlDraft, WorkControlKind,
+    create_recurrence_pattern_in, create_sequence_with_owner_history, create_task_time_recurring,
+    create_task_with_owner_history, create_work_control_with_owner_history, end_tasks,
+    execution_order, find_cycle, predecessors_of, read_events, read_work_calendars,
+    recurrence_pattern, sequences, start_tasks, subtasks_of, successors_of, tasks,
+    tasks_of_schedule, work_plans, work_schedules, AuthoredDateTime, AuthoredDuration,
+    CalendarDate, DateTimeValue, LocalTime, RecurrenceDraft, RecurrenceType, ScheduleReadError,
+    SchemaVersion, Task, TaskDraft, TaskTimeAnomaly, TaskTimeDraft, TimeLag, WorkControl,
+    WorkControlDraft, WorkControlKind, WorkTimeRole,
 };
 use ifc_step::StepCodec;
 
@@ -313,14 +318,23 @@ fn unverified_and_multiple_releases_are_refused() {
             tasks_of_schedule(&model, EntityId(1)).err(),
             Some(refused.clone())
         );
-        assert_eq!(subtasks_of(&model, EntityId(10)).err(), Some(refused));
+        assert_eq!(
+            subtasks_of(&model, EntityId(10)).err(),
+            Some(refused.clone())
+        );
+        assert_eq!(read_work_calendars(&model).err(), Some(refused.clone()));
+        assert_eq!(read_events(&model).err(), Some(refused.clone()));
+        assert_eq!(
+            recurrence_pattern(&model, EntityId(10)).err(),
+            Some(refused)
+        );
     }
     let mut model = Model::new();
     model.header_mut().schema = vec!["IFC4".into(), "IFC2X3".into()];
-    assert_eq!(
-        tasks(&model).err(),
-        Some(ScheduleReadError::MultipleSchemas { schemas: 2 })
-    );
+    let multiple = Some(ScheduleReadError::MultipleSchemas { schemas: 2 });
+    assert_eq!(tasks(&model).err(), multiple);
+    assert_eq!(read_work_calendars(&model).err(), multiple);
+    assert_eq!(read_events(&model).err(), multiple);
     let entity = Entity::new("IFCTASK", vec![Value::Null; 13]);
     for version in [SchemaVersion::Ifc4x1, SchemaVersion::Ifc4x2] {
         assert!(matches!(
@@ -332,4 +346,253 @@ fn unverified_and_multiple_releases_are_refused() {
             Err(ScheduleReadError::UnsupportedSchema { .. })
         ));
     }
+}
+
+/// #234, #235: a calendar, an event and a recurring task time, written by
+/// hand at the positions IFC4 ADD2 TC1 and IFC4X3 ADD2 share. IFC4X3 names
+/// `IfcWorkTime.Start`/`Finish` `StartDate`/`FinishDate`; both releases
+/// read the same values by name.
+#[test]
+fn calendars_events_and_recurring_task_times_are_read_by_name() {
+    for (schema, version) in [
+        ("IFC4", SchemaVersion::Ifc4),
+        ("IFC4X3_ADD2", SchemaVersion::Ifc4x3),
+    ] {
+        let model = read(&format!(
+            "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n\
+             FILE_NAME('','',(''),(''),'','','');\nFILE_SCHEMA(('{schema}'));\nENDSEC;\nDATA;\n\
+             #20=IFCTIMEPERIOD('08:00:00','12:00:00');\n\
+             #21=IFCRECURRENCEPATTERN(.WEEKLY.,$,(1,2,3,4,5),$,$,1,$,(#20));\n\
+             #22=IFCWORKTIME('Weekdays',.PREDICTED.,$,#21,'2026-01-01','2026-12-31');\n\
+             #23=IFCWORKTIME('Holiday',.USERDEFINED.,'Decree',$,'2026-10-03','2026-10-03');\n\
+             #24=IFCWORKCALENDAR('0YvctVUKr0kugbFTf53O10',$,'Site',$,$,'CAL-1',(#22),(#23),\
+             .FIRSTSHIFT.);\n\
+             #30=IFCEVENTTIME('Handover',.MEASURED.,$,'2026-12-01T09:00:00',$,$,\
+             '2026-11-30T09:00:00');\n\
+             #31=IFCEVENT('0YvctVUKr0kugbFTf53O11',$,'Handover',$,$,'E-1','Keys',.ENDEVENT.,\
+             .USERDEFINED.,'Signature',#30);\n\
+             #40=IFCTASKTIMERECURRING('Inspect',$,$,.WORKTIME.,'PT2H',$,$,$,$,$,$,$,$,$,$,$,\
+             $,$,$,$,#21);\n\
+             #41=IFCTASK('0YvctVUKr0kugbFTf53O12',$,'Inspect',$,$,'T-1',$,$,$,.F.,$,#40,\
+             .INSPECTION.);\n\
+             ENDSEC;\nEND-ISO-10303-21;\n"
+        ));
+
+        let calendars = read_work_calendars(&model).expect("bound");
+        let [calendar] = calendars.as_slice() else {
+            panic!("{schema}: {calendars:?}");
+        };
+        assert_eq!(calendar.release(), version);
+        assert_eq!(calendar.identification(), Some("CAL-1"), "{schema}");
+        assert_eq!(calendar.predefined_type(), Some("FIRSTSHIFT"));
+        let working = calendar.working_times(&model);
+        let [week] = working.as_slice() else {
+            panic!("{schema}: {working:?}");
+        };
+        assert_eq!(week.role, WorkTimeRole::Working);
+        assert_eq!(week.start.as_deref(), Some("2026-01-01"), "{schema}");
+        assert_eq!(week.finish.as_deref(), Some("2026-12-31"), "{schema}");
+        assert_eq!(week.data_origin.as_deref(), Some("PREDICTED"));
+        let recurrence = week.recurrence.as_ref().expect("pattern");
+        assert_eq!(recurrence.recurrence_type, Some(RecurrenceType::Weekly));
+        assert_eq!(recurrence.weekdays, vec![1, 2, 3, 4, 5]);
+        assert_eq!(recurrence.interval, Some(1));
+        assert_eq!(
+            recurrence.time_periods[0].end_time.as_deref(),
+            Some("12:00:00")
+        );
+        let exceptions = calendar.exception_times(&model);
+        assert_eq!(exceptions[0].role, WorkTimeRole::Exception);
+        assert_eq!(exceptions[0].start.as_deref(), Some("2026-10-03"));
+        assert_eq!(exceptions[0].data_origin.as_deref(), Some("USERDEFINED"));
+        assert_eq!(
+            exceptions[0].user_defined_data_origin.as_deref(),
+            Some("Decree")
+        );
+
+        let events = read_events(&model).expect("bound");
+        let event = &events[0];
+        assert_eq!(event.release(), version);
+        assert_eq!(event.long_description(), Some("Keys"));
+        assert_eq!(event.predefined_type(), Some("ENDEVENT"));
+        assert_eq!(event.trigger_type(), Some("USERDEFINED"));
+        assert_eq!(event.user_defined_trigger_type(), Some("Signature"));
+        let time = event.time(&model).expect("event time");
+        assert_eq!(time.name.as_deref(), Some("Handover"));
+        assert_eq!(time.data_origin.as_deref(), Some("MEASURED"));
+        assert_eq!(time.actual.as_deref(), Some("2026-12-01T09:00:00"));
+        assert_eq!(time.scheduled.as_deref(), Some("2026-11-30T09:00:00"));
+
+        // #235: the subtype is a task time, and its recurrence is exposed.
+        let found = tasks(&model).expect("bound");
+        let (time, anomalies) = found[0].time(&model);
+        assert!(anomalies.is_empty(), "{schema}: {anomalies:?}");
+        let time = time.expect("IfcTaskTimeRecurring is an IfcTaskTime");
+        assert!(time.is_recurring());
+        assert_eq!(time.schedule_duration(), Some("PT2H"));
+        assert_eq!(time.recurrence_ref(), Some(EntityId(21)));
+        let pattern = time.recurrence(&model).expect("recurrence");
+        assert_eq!(pattern.recurrence_type, Some(RecurrenceType::Weekly));
+        assert_eq!(
+            recurrence_pattern(&model, EntityId(21)).expect("bound"),
+            Some(pattern)
+        );
+        let (none, _) = found[0].schedule_time_controls(&model);
+        assert!(none.is_empty(), "IFC4 and IFC4X3 declare none");
+    }
+}
+
+/// #235: a recurring task time authored into IFC4 and IFC4X3 reads back
+/// through `Task::time`; IFC2X3, which declares no `IfcTaskTimeRecurring`,
+/// is refused and nothing is staged.
+#[test]
+fn recurring_task_times_round_trip_and_ifc2x3_is_refused() {
+    for (schema, version) in common::RELEASES {
+        let mut model = common::base(schema, version);
+        let m = model.clone();
+        let mut tx = Transaction::new(&model);
+        let draft = TaskTimeDraft::new()
+            .name("Inspect")
+            .schedule_duration("PT2H");
+        if version == SchemaVersion::Ifc2x3 {
+            assert_eq!(
+                create_task_time_recurring(&mut tx, &m, draft, EntityId(10)),
+                Err(ScheduleAuthoringError::EntityNotInSchema {
+                    entity: "IFCTASKTIMERECURRING",
+                    schema: version,
+                })
+            );
+            assert!(tx.edits().is_empty(), "nothing staged");
+            continue;
+        }
+        let pattern =
+            create_recurrence_pattern_in(&mut tx, &m, &RecurrenceDraft::new("DAILY").interval(2))
+                .expect("pattern");
+        let time = create_task_time_recurring(&mut tx, &m, draft, pattern).expect("recurring");
+        let task = create_task_with_owner_history(
+            &mut tx,
+            &m,
+            TaskDraft::new(G[0]).name("Inspect").task_time(time),
+            OWNER,
+        )
+        .expect("task");
+        tx.commit(&mut model).expect("commit");
+        let back = round_trip(&model);
+        let found = tasks(&back).expect("bound");
+        let read = found.iter().find(|t| t.id() == task).expect("task");
+        let (read_time, anomalies) = read.time(&back);
+        assert!(anomalies.is_empty(), "{schema}: {anomalies:?}");
+        let read_time = read_time.expect("recurring time");
+        assert_eq!(read_time.id(), time);
+        assert!(read_time.is_recurring());
+        let recurrence = read_time.recurrence(&back).expect("recurrence");
+        assert_eq!(recurrence.id, pattern);
+        assert_eq!(recurrence.recurrence_type, Some(RecurrenceType::Daily));
+        assert_eq!(recurrence.interval, Some(2));
+    }
+}
+
+/// #234, #235: IFC2X3 declares no calendar, event or `IfcTaskTime`; a
+/// task's times are the `IfcScheduleTimeControl` its `IfcRelAssignsTasks`
+/// names in `TimeForTask`, read by name from IFC2X3 TC1.
+#[test]
+fn ifc2x3_schedule_time_control_is_a_typed_view() {
+    let model = read(
+        "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n\
+         FILE_NAME('','',(''),(''),'','','');\nFILE_SCHEMA(('IFC2X3'));\nENDSEC;\nDATA;\n\
+         #1=IFCPERSON($,'Doe','Jane',$,$,$,$,$);\n\
+         #2=IFCORGANIZATION($,'Acme',$,$,$);\n\
+         #3=IFCPERSONANDORGANIZATION(#1,#2,$);\n\
+         #4=IFCAPPLICATION(#2,'1.0','Test','test');\n\
+         #5=IFCOWNERHISTORY(#3,#4,$,.NOCHANGE.,$,$,$,1700000000);\n\
+         #10=IFCTASK('0YvctVUKr0kugbFTf53O08',#5,'Dig',$,$,'T-9',$,$,.F.,$);\n\
+         #11=IFCTASK('0YvctVUKr0kugbFTf53O09',#5,'Pour',$,$,'T-10',$,$,.F.,$);\n\
+         #12=IFCCALENDARDATE(28,9,2026);\n\
+         #13=IFCCALENDARDATE(2,10,2026);\n\
+         #14=IFCWORKSCHEDULE('0YvctVUKr0kugbFTf53O0A',#5,'Programme',$,$,'WS-1',#12,$,$,\
+         $,$,#12,$,$,$);\n\
+         #15=IFCSCHEDULETIMECONTROL('0YvctVUKr0kugbFTf53O0B',#5,'Dig time',$,$,#12,$,$,#12,\
+         $,$,$,#13,345600.,$,86400.,$,3600.,.T.,#12,$,7200.,0.25);\n\
+         #16=IFCRELASSIGNSTASKS('0YvctVUKr0kugbFTf53O0C',#5,$,$,(#10),$,#14,#15);\n\
+         #17=IFCRELASSIGNSTASKS('0YvctVUKr0kugbFTf53O0D',#5,$,$,(#11),$,#14,#12);\n\
+         ENDSEC;\nEND-ISO-10303-21;\n",
+    );
+    assert!(read_work_calendars(&model).expect("bound").is_empty());
+    assert!(read_events(&model).expect("bound").is_empty());
+    assert_eq!(recurrence_pattern(&model, EntityId(12)), Ok(None));
+
+    let found = tasks(&model).expect("bound");
+    let (dig, pour) = (&found[0], &found[1]);
+    assert_eq!(dig.time(&model).0.map(|t| t.id()), None, "no TaskTime");
+    let (controls, anomalies) = dig.schedule_time_controls(&model);
+    assert!(anomalies.is_empty(), "{anomalies:?}");
+    let [control] = controls.as_slice() else {
+        panic!("{controls:?}");
+    };
+    assert_eq!(control.id(), EntityId(15));
+    assert_eq!(control.assignment(), EntityId(16));
+    assert_eq!(control.work_control(), Some(EntityId(14)));
+    assert_eq!(control.release(), SchemaVersion::Ifc2x3);
+    assert_eq!(control.name(), Some("Dig time"));
+    let date = Some(AuthoredDateTime::Record(EntityId(12)));
+    assert_eq!(control.actual_start(), date, "slot 5");
+    assert_eq!(control.early_start(), None);
+    assert_eq!(control.schedule_start(), date, "slot 8");
+    assert_eq!(
+        control.schedule_finish(),
+        Some(AuthoredDateTime::Record(EntityId(13))),
+        "slot 12"
+    );
+    assert_eq!(control.schedule_duration(), Some(345_600.0), "slot 13");
+    assert_eq!(control.remaining_time(), Some(86_400.0), "slot 15");
+    assert_eq!(control.total_float(), Some(3_600.0), "slot 17");
+    assert_eq!(control.is_critical(), Some(true), "slot 18");
+    assert_eq!(control.status_time(), date, "slot 19");
+    assert_eq!(control.start_float(), None, "slot 20");
+    assert_eq!(control.finish_float(), Some(7_200.0), "slot 21");
+    assert_eq!(control.completion(), Some(0.25), "slot 22");
+
+    // A TimeForTask that is not a schedule time control is reported.
+    let (controls, anomalies) = pour.schedule_time_controls(&model);
+    assert!(controls.is_empty());
+    assert_eq!(
+        anomalies,
+        vec![TaskTimeAnomaly::NotAScheduleTimeControl {
+            task: EntityId(11),
+            assignment: EntityId(17),
+            target: EntityId(12),
+            found: "IFCCALENDARDATE".into(),
+        }]
+    );
+    // The subtype still assigns its task to the schedule.
+    assert_eq!(
+        tasks_of_schedule(&model, EntityId(14)).unwrap(),
+        vec![EntityId(10), EntityId(11)]
+    );
+}
+
+/// #234: the deprecated `work_calendars` and `events` keep their
+/// signatures and read an unbindable header as IFC4, as they always did.
+#[test]
+#[allow(deprecated)]
+fn deprecated_calendar_and_event_readers_keep_their_behaviour() {
+    let model = read(
+        "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n\
+         FILE_NAME('','',(''),(''),'','','');\nFILE_SCHEMA(('IFC4X1'));\nENDSEC;\nDATA;\n\
+         #22=IFCWORKTIME('Weekdays',$,$,$,'2026-01-01',$);\n\
+         #24=IFCWORKCALENDAR('0YvctVUKr0kugbFTf53O10',$,'Site',$,$,$,(#22),$,$);\n\
+         #31=IFCEVENT('0YvctVUKr0kugbFTf53O11',$,'Handover',$,$,$,$,$,.EVENTTIME.,$,$);\n\
+         ENDSEC;\nEND-ISO-10303-21;\n",
+    );
+    assert!(read_work_calendars(&model).is_err());
+    let calendars = ifc_schedule::work_calendars(&model);
+    assert_eq!(calendars[0].release(), SchemaVersion::Ifc4);
+    assert_eq!(
+        calendars[0].working_times(&model)[0].start.as_deref(),
+        Some("2026-01-01")
+    );
+    assert_eq!(
+        ifc_schedule::events(&model)[0].trigger_type(),
+        Some("EVENTTIME")
+    );
 }

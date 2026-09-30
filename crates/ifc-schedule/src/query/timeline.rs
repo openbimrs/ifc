@@ -49,7 +49,9 @@ pub mod nests {
 
 /// Tasks assigned to a work schedule, in file order.
 ///
-/// Uses `IfcRelAssignsToControl`, whose `RelatingControl` is the schedule.
+/// Uses `IfcRelAssignsToControl` and its subtypes in the bound release
+/// (IFC2X3's `IfcRelAssignsTasks`), whose `RelatingControl` is the
+/// schedule.
 ///
 /// # Errors
 ///
@@ -62,7 +64,12 @@ pub fn tasks_of_schedule(
 ) -> Result<Vec<EntityId>, ScheduleReadError> {
     let release = ReadRelease::of(model)?;
     let mut out = Vec::new();
-    for (_, entity) in model.of_type(ASSIGNS) {
+    // IFC2X3 assigns a timed task with the `IfcRelAssignsTasks` subtype
+    // (#235), so every subtype in the bound release is read.
+    for id in release.instances_of(model, ASSIGNS) {
+        let Some(entity) = model.get(id) else {
+            continue;
+        };
         if release.reference(ASSIGNS, entity, "RelatingControl") != Some(schedule) {
             continue;
         }

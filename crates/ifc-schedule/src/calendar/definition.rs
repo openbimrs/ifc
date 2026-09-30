@@ -1,7 +1,19 @@
 //! `IfcWorkCalendar`, the working/exception times it declares, and their
 //! recurrence patterns and time periods.
 //!
+//! # Read by name in the declared release (#234)
+//!
+//! The readers bind the model's declared release like the task readers
+//! (#212) and find every attribute by name in its table. IFC4 ADD2 TC1 and
+//! IFC4X3 ADD2 lay the records out alike, except that IFC4X3 names
+//! `IfcWorkTime.Start` and `Finish` `StartDate` and `FinishDate`. IFC2X3 TC1
+//! declares none of these entities, so an IFC2X3 model has no calendars.
+//! IFC4X1, IFC4X2 and a header with several schemas are refused.
+//!
 //! # Slots, verified against IFC4 EXPRESS
+//!
+//! The slot modules below are the IFC4/IFC4X3 positions the modelless
+//! writers lay records out with; the readers never go through them.
 //!
 //! `IfcWorkCalendar` is an `IfcControl`, so the first six slots are inherited:
 //!
@@ -31,6 +43,10 @@
 //! uniformly turns holidays into working days.
 
 use ifc_model::{Entity, EntityId, Model, Value};
+
+use crate::error::ScheduleReadError;
+use crate::release::ReadRelease;
+use crate::SchemaVersion;
 
 /// `IfcWorkCalendar` slots.
 pub mod slot {
@@ -211,19 +227,30 @@ pub struct WorkTime {
     pub role: WorkTimeRole,
     /// The period name, as authored.
     pub name: Option<String>,
-    /// Start date, as authored.
+    /// `DataOrigin` (`IfcDataOriginEnum`), the token without its dots
+    /// (#234).
+    pub data_origin: Option<String>,
+    /// `UserDefinedDataOrigin`, as authored (#234).
+    pub user_defined_data_origin: Option<String>,
+    /// Start date, as authored: IFC4's `Start`, IFC4X3's `StartDate`.
     pub start: Option<String>,
-    /// Finish date, as authored.
+    /// Finish date, as authored: IFC4's `Finish`, IFC4X3's `FinishDate`.
     pub finish: Option<String>,
     /// The recurrence pattern, if the period repeats.
     pub recurrence: Option<Recurrence>,
 }
 
-/// A borrowed view of an `IfcWorkCalendar`.
+const CALENDAR: &str = "IFCWORKCALENDAR";
+const WORK_TIME: &str = "IFCWORKTIME";
+const PATTERN: &str = "IFCRECURRENCEPATTERN";
+const PERIOD: &str = "IFCTIMEPERIOD";
+
+/// A borrowed view of an `IfcWorkCalendar`, read against one release.
 #[derive(Debug, Clone, Copy)]
 pub struct WorkCalendar<'m> {
     id: EntityId,
     entity: &'m Entity,
+    release: ReadRelease,
 }
 
 impl<'m> WorkCalendar<'m> {
@@ -233,153 +260,216 @@ impl<'m> WorkCalendar<'m> {
         self.id
     }
 
+    /// The release this calendar is read against.
+    #[must_use]
+    pub fn release(&self) -> SchemaVersion {
+        self.release.version()
+    }
+
+    fn text(&self, attribute: &'static str) -> Option<&'m str> {
+        self.release.text(CALENDAR, self.entity, attribute)
+    }
+
+    /// The `GlobalId` string.
+    #[must_use]
+    pub fn global_id(&self) -> Option<&'m str> {
+        self.text("GlobalId")
+    }
+
     /// The calendar name.
     #[must_use]
     pub fn name(&self) -> Option<&'m str> {
-        self.entity.text(slot::NAME)
+        self.text("Name")
     }
 
     /// The user-facing identification code.
     #[must_use]
     pub fn identification(&self) -> Option<&'m str> {
-        self.entity.text(slot::IDENTIFICATION)
+        self.text("Identification")
     }
 
     /// The predefined type token, without its dots.
     #[must_use]
     pub fn predefined_type(&self) -> Option<&'m str> {
-        match self.entity.attribute(slot::PREDEFINED_TYPE)? {
-            Value::Enum(token) => Some(token),
-            _ => None,
-        }
+        self.release.token(CALENDAR, self.entity, "PredefinedType")
     }
 
     /// Periods when work happens.
     #[must_use]
     pub fn working_times(&self, model: &Model) -> Vec<WorkTime> {
-        self.times(model, slot::WORKING_TIMES, WorkTimeRole::Working)
+        self.times(model, "WorkingTimes", WorkTimeRole::Working)
     }
 
     /// Periods when work does not happen, such as holidays.
     #[must_use]
     pub fn exception_times(&self, model: &Model) -> Vec<WorkTime> {
-        self.times(model, slot::EXCEPTION_TIMES, WorkTimeRole::Exception)
+        self.times(model, "ExceptionTimes", WorkTimeRole::Exception)
     }
 
-    fn times(&self, model: &Model, slot: usize, role: WorkTimeRole) -> Vec<WorkTime> {
+    fn times(&self, model: &Model, attribute: &'static str, role: WorkTimeRole) -> Vec<WorkTime> {
         let mut refs = Vec::new();
-        if let Some(v) = self.entity.attribute(slot) {
+        if let Some(v) = self.release.value(CALENDAR, self.entity, attribute) {
             v.for_each_ref(&mut |id| refs.push(id));
         }
         refs.into_iter()
-            .filter_map(|id| read_work_time(model, id, role))
+            .filter_map(|id| read_work_time(self.release, model, id, role))
             .collect()
     }
 }
 
-fn read_work_time(model: &Model, id: EntityId, role: WorkTimeRole) -> Option<WorkTime> {
+fn read_work_time(
+    release: ReadRelease,
+    model: &Model,
+    id: EntityId,
+    role: WorkTimeRole,
+) -> Option<WorkTime> {
     let entity = model.get(id)?;
-    if !entity.type_name.eq_ignore_ascii_case("IFCWORKTIME") {
+    if !release.is_a(&entity.type_name, WORK_TIME) {
         return None;
     }
-    let recurrence = match entity.attribute(work_time_slot::RECURRENCE_PATTERN) {
-        Some(Value::Ref(pattern)) => read_recurrence(model, *pattern),
-        _ => None,
+    let text = |attribute| {
+        release
+            .text(WORK_TIME, entity, attribute)
+            .map(str::to_string)
     };
+    let recurrence = release
+        .reference(WORK_TIME, entity, "RecurrencePattern")
+        .and_then(|pattern| read_recurrence(release, model, pattern));
     Some(WorkTime {
         id,
         role,
-        name: entity.text(work_time_slot::NAME).map(str::to_string),
-        start: entity.text(work_time_slot::START).map(str::to_string),
-        finish: entity.text(work_time_slot::FINISH).map(str::to_string),
+        name: text("Name"),
+        data_origin: release
+            .token(WORK_TIME, entity, "DataOrigin")
+            .map(str::to_string),
+        user_defined_data_origin: text("UserDefinedDataOrigin"),
+        start: text("Start"),
+        finish: text("Finish"),
         recurrence,
     })
 }
 
-/// The `IfcRecurrencePattern` `id`, read as authored (#233).
+/// The `IfcRecurrencePattern` `id`, read by name in the model's declared
+/// release (#233, #234).
 ///
 /// For patterns referenced from somewhere other than a work calendar, such
-/// as `IfcTaskTimeRecurring.Recurrence`. `None` when `id` is absent or not
-/// an `IfcRecurrencePattern`. The slots are those IFC4 and IFC4X3 share;
-/// IFC2X3 declares no recurrence pattern.
-#[must_use]
-pub fn recurrence_pattern(model: &Model, id: EntityId) -> Option<Recurrence> {
-    read_recurrence(model, id)
+/// as `IfcTaskTimeRecurring.Recurrence` (also reachable through
+/// [`TaskTime::recurrence`](crate::TaskTime::recurrence)). `Ok(None)` when
+/// `id` is absent or not an `IfcRecurrencePattern` of that release; IFC2X3
+/// declares none.
+///
+/// # Errors
+///
+/// [`ScheduleReadError::UnsupportedSchema`] or
+/// [`ScheduleReadError::MultipleSchemas`] for a header the readers cannot
+/// bind; a header with no schema reads as IFC4.
+pub fn recurrence_pattern(
+    model: &Model,
+    id: EntityId,
+) -> Result<Option<Recurrence>, ScheduleReadError> {
+    Ok(read_recurrence(ReadRelease::of(model)?, model, id))
 }
 
-fn read_recurrence(model: &Model, id: EntityId) -> Option<Recurrence> {
+pub(crate) fn read_recurrence(
+    release: ReadRelease,
+    model: &Model,
+    id: EntityId,
+) -> Option<Recurrence> {
     let entity = model.get(id)?;
-    if !entity
-        .type_name
-        .eq_ignore_ascii_case("IFCRECURRENCEPATTERN")
-    {
+    if !release.is_a(&entity.type_name, PATTERN) {
         return None;
     }
-    let recurrence_type = match entity.attribute(recurrence_slot::RECURRENCE_TYPE) {
-        Some(Value::Enum(token)) => RecurrenceType::parse(token),
-        _ => None,
-    };
     let mut time_periods = Vec::new();
-    if let Some(value) = entity.attribute(recurrence_slot::TIME_PERIODS) {
+    if let Some(value) = release.value(PATTERN, entity, "TimePeriods") {
         value.for_each_ref(&mut |period| {
-            if let Some(period) = read_time_period(model, period) {
+            if let Some(period) = read_time_period(release, model, period) {
                 time_periods.push(period);
             }
         });
     }
-    Some(Recurrence {
-        id,
-        recurrence_type,
-        days: integers(entity, recurrence_slot::DAY_COMPONENT),
-        weekdays: integers(entity, recurrence_slot::WEEKDAY_COMPONENT),
-        months: integers(entity, recurrence_slot::MONTH_COMPONENT),
-        position: entity
-            .attribute(recurrence_slot::POSITION)
-            .and_then(|v| v.unwrap_typed().as_i64()),
-        interval: entity
-            .attribute(recurrence_slot::INTERVAL)
-            .and_then(|v| v.unwrap_typed().as_i64()),
-        occurrences: entity
-            .attribute(recurrence_slot::OCCURRENCES)
-            .and_then(|v| v.unwrap_typed().as_i64()),
-        time_periods,
-    })
-}
-
-/// The integer members of an aggregate slot, in authored order.
-fn integers(entity: &Entity, slot: usize) -> Vec<i64> {
-    match entity.attribute(slot) {
+    let integer = |attribute| {
+        release
+            .value(PATTERN, entity, attribute)
+            .and_then(|v| v.unwrap_typed().as_i64())
+    };
+    let integers = |attribute| match release.value(PATTERN, entity, attribute) {
         Some(Value::List(items)) => items
             .iter()
             .filter_map(|item| item.unwrap_typed().as_i64())
             .collect(),
         _ => Vec::new(),
-    }
-}
-
-fn read_time_period(model: &Model, id: EntityId) -> Option<TimePeriod> {
-    let entity = model.get(id)?;
-    if !entity.type_name.eq_ignore_ascii_case("IFCTIMEPERIOD") {
-        return None;
-    }
-    let text = |slot| {
-        entity
-            .attribute(slot)
-            .and_then(|v| v.unwrap_typed().as_text())
-            .map(str::to_string)
     };
-    Some(TimePeriod {
+    Some(Recurrence {
         id,
-        start_time: text(time_period_slot::START_TIME),
-        end_time: text(time_period_slot::END_TIME),
+        recurrence_type: release
+            .token(PATTERN, entity, "RecurrenceType")
+            .and_then(RecurrenceType::parse),
+        days: integers("DayComponent"),
+        weekdays: integers("WeekdayComponent"),
+        months: integers("MonthComponent"),
+        position: integer("Position"),
+        interval: integer("Interval"),
+        occurrences: integer("Occurrences"),
+        time_periods,
     })
 }
 
+fn read_time_period(release: ReadRelease, model: &Model, id: EntityId) -> Option<TimePeriod> {
+    let entity = model.get(id)?;
+    if !release.is_a(&entity.type_name, PERIOD) {
+        return None;
+    }
+    let text = |attribute| release.text(PERIOD, entity, attribute).map(str::to_string);
+    Some(TimePeriod {
+        id,
+        start_time: text("StartTime"),
+        end_time: text("EndTime"),
+    })
+}
+
+/// Every work calendar in the model, in file order, read against the
+/// model's declared release (#234).
+///
+/// IFC2X3 declares no `IfcWorkCalendar`, so an IFC2X3 model has none.
+///
+/// # Errors
+///
+/// [`ScheduleReadError::UnsupportedSchema`] or
+/// [`ScheduleReadError::MultipleSchemas`] for a header the readers cannot
+/// bind; a header with no schema reads as IFC4.
+pub fn read_work_calendars(model: &Model) -> Result<Vec<WorkCalendar<'_>>, ScheduleReadError> {
+    Ok(calendars_in(model, ReadRelease::of(model)?))
+}
+
 /// Every work calendar in the model, in file order.
+///
+/// Reads against the model's declared release when the readers can bind
+/// it. A header they cannot bind (IFC4X1, IFC4X2, several schemas) is read
+/// as IFC4, as this function always did; [`read_work_calendars`] refuses it
+/// instead.
+#[deprecated(
+    note = "reads an unverified or multi-schema header as IFC4; use `read_work_calendars`, which refuses it (#234)"
+)]
 #[must_use]
 pub fn work_calendars(model: &Model) -> Vec<WorkCalendar<'_>> {
-    model
-        .of_type("IFCWORKCALENDAR")
-        .map(|(id, entity)| WorkCalendar { id, entity })
+    ReadRelease::of(model)
+        .or_else(|_| ReadRelease::of_version(SchemaVersion::Ifc4))
+        .map_or_else(|_| Vec::new(), |release| calendars_in(model, release))
+}
+
+fn calendars_in(model: &Model, release: ReadRelease) -> Vec<WorkCalendar<'_>> {
+    if !release.declares(CALENDAR) {
+        return Vec::new();
+    }
+    release
+        .instances_of(model, CALENDAR)
+        .into_iter()
+        .filter_map(|id| {
+            Some(WorkCalendar {
+                id,
+                entity: model.get(id)?,
+                release,
+            })
+        })
         .collect()
 }

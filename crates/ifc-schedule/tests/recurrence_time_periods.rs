@@ -90,7 +90,9 @@ fn a_pattern_with_periods_round_trips_in_ifc4_and_ifc4x3() {
             reread.diagnostics()
         );
         assert_eq!(reread.get(pattern).expect("present").attributes.len(), 8);
-        let recurrence = recurrence_pattern(&reread, pattern).expect("a pattern");
+        let recurrence = recurrence_pattern(&reread, pattern)
+            .expect("bound")
+            .expect("a pattern");
         assert_eq!(
             recurrence.recurrence_type,
             Some(RecurrenceType::YearlyByDayOfMonth)
@@ -196,7 +198,7 @@ fn a_calendar_pattern_reads_days_months_and_periods() {
         #4=IFCWORKCALENDAR('0YvctVUKr0kugbFTf53O9L',$,'Cal',$,$,$,(#3),$,$);\n\
         ENDSEC;\nEND-ISO-10303-21;\n";
     let model = StepCodec.read_bytes(text.as_bytes()).expect("parses");
-    let calendars = ifc_schedule::work_calendars(&model);
+    let calendars = ifc_schedule::read_work_calendars(&model).expect("bound");
     let recurrence = calendars[0].working_times(&model)[0]
         .recurrence
         .clone()

@@ -12,7 +12,7 @@ use ifc_model::{Model, Transaction};
 use ifc_schedule::schedule::{work_schedules, WorkControlKind};
 use ifc_schedule::{
     assign_tasks_to_control, create_task, create_work_calendar, create_work_control,
-    create_work_time, nest_tasks, subtasks_of, tasks_of_schedule, work_calendars, TaskDraft,
+    create_work_time, nest_tasks, read_work_calendars, subtasks_of, tasks_of_schedule, TaskDraft,
     WorkControlDraft,
 };
 
@@ -100,7 +100,7 @@ fn an_authored_calendar_separates_working_from_exception_time() {
     .expect("authored calendar");
     tx.commit(&mut model).expect("commit");
 
-    let found = work_calendars(&model);
+    let found = read_work_calendars(&model).expect("bound");
     assert_eq!(found.len(), 1, "one calendar");
     assert_eq!(found[0].id(), calendar);
 

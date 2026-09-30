@@ -22,6 +22,12 @@ The [`openbim-ifc`](https://crates.io/crates/openbim-ifc) facade also provides i
 - The crate depends on `ifc-model` and, for the bundled release tables,
   `ifc-schema`. The tables lay out the records the `*_with_owner_history`
   writers author in the model's declared release (#202), and the task,
-  work-control, sequence and assignment readers find every attribute by
-  name in that release's table (#212). The calendar and event readers,
-  whose entities IFC2X3 does not declare, still read the IFC4 slots.
+  work-control, sequence, assignment, calendar and event readers find
+  every attribute by name in that release's table (#212, #234), so IFC4X3's
+  `IfcWorkTime.StartDate`/`FinishDate` read as IFC4's `Start`/`Finish`.
+  A header they cannot bind (IFC4X1, IFC4X2, several schemas) is refused
+  with `ScheduleReadError`.
+- A task's times are its `IfcTaskTime` or `IfcTaskTimeRecurring` in IFC4
+  and IFC4X3 (`Task::time`, `TaskTime::recurrence`), and in IFC2X3 the
+  `IfcScheduleTimeControl` its `IfcRelAssignsTasks` names
+  (`Task::schedule_time_controls`) (#235).
