@@ -9,6 +9,7 @@ use crate::error::{StructuralError, StructuralResult};
 use crate::{
     AnalysisModel, BoundaryCondition, ConnectionCondition, LoadConfiguration, LoadGroup, Member,
     Reaction, ResultGroup, StaticLoad, StructuralAction, StructuralConnection,
+    SurfaceReinforcementArea,
 };
 
 /// Entry point for strict structural-analysis projections.
@@ -81,6 +82,13 @@ impl<'m, 's> StructuralView<'m, 's> {
     }
 
     /// Project `id` as an `IfcStructuralLoadStatic` value.
+    ///
+    /// Every static subtype is read, including the displacement,
+    /// displacement-distortion and force-warping forms; see [`LoadKind`].
+    /// An `IfcSurfaceReinforcementArea` is not a static load: read it with
+    /// [`StructuralView::surface_reinforcement_area`].
+    ///
+    /// [`LoadKind`]: crate::LoadKind
     pub fn load(&self, id: EntityId) -> StructuralResult<StaticLoad<'m, 's>> {
         StaticLoad::from_record(self.record(id, "IfcStructuralLoad")?)
     }
@@ -90,6 +98,26 @@ impl<'m, 's> StructuralView<'m, 's> {
         Ok(LoadConfiguration::from_record(
             self.record(id, "IfcStructuralLoadConfiguration")?,
         ))
+    }
+
+    /// Project `id` as an `IfcSurfaceReinforcementArea` (IFC4 and IFC4X3).
+    ///
+    /// Fails with [`StructuralError::UnsupportedSchema`] when the view's
+    /// schema does not declare the entity (IFC2X3), with
+    /// [`StructuralError::WrongType`] for any other entity, and with
+    /// [`StructuralError::SemanticViolation`] when none of the three areas
+    /// is specified (`SurfaceAndOrShearAreaSpecified`).
+    pub fn surface_reinforcement_area(
+        &self,
+        id: EntityId,
+    ) -> StructuralResult<SurfaceReinforcementArea<'m, 's>> {
+        const ENTITY: &str = "IfcSurfaceReinforcementArea";
+        if self.schema.entity(ENTITY).is_none() {
+            return Err(StructuralError::UnsupportedSchema {
+                token: self.schema.name().to_owned(),
+            });
+        }
+        SurfaceReinforcementArea::from_record(self.record(id, ENTITY)?)
     }
 
     /// Project a concrete structural reaction.
