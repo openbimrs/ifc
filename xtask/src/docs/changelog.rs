@@ -5,6 +5,11 @@
 //! grouped by release version, and one aggregated page is written between
 //! sentinel comments. Ordering is by version descending, so the newest release
 //! across the whole family leads the page whichever crate produced it.
+//!
+//! The page is a gitignored build artifact, not a committed file: nearly every
+//! pull request adds an `[Unreleased]` entry, so a committed copy made any two
+//! open pull requests conflict on it even when they touched different crates.
+//! The crate changelogs are the record; this page only presents them.
 
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
@@ -17,6 +22,29 @@ const TARGET: &str = "docs/project/changelog.md";
 const BLOB: &str = "https://github.com/openbimrs/ifc/blob/main";
 const BEGIN: &str = "<!-- CHANGELOG:BEGIN -->";
 const END: &str = "<!-- CHANGELOG:END -->";
+
+/// The page around the assembled entries.
+const PAGE: &str = "# Changelog
+
+<!--
+  Assembled from the per-crate CHANGELOG.md files by
+  `cargo run -p xtask -- docs` and gitignored. Edit a crate's CHANGELOG.md,
+  never this file.
+-->
+
+Each crate in the family owns its own changelog and is versioned
+independently: a release of one does not imply a release of any other.
+This page collects them, newest version first, with the crates that
+changed in each. Entries follow
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+History up to and including 0.2.0 -- when the family was released in
+lockstep -- is archived in the
+[repository changelog](https://github.com/openbimrs/ifc/blob/main/CHANGELOG.md).
+
+<!-- CHANGELOG:BEGIN -->
+<!-- CHANGELOG:END -->
+";
 
 /// One release section of one crate's changelog.
 struct Section {
@@ -43,9 +71,8 @@ pub(super) fn generate(workspace: &Workspace) -> Result<Output, String> {
         ));
     }
     let body = assemble(workspace, &members)?;
-    Output::derive(workspace, TARGET, |current| {
-        splice(current, BEGIN, END, &body)
-    })
+    let page = splice(PAGE, BEGIN, END, &body).map_err(|error| format!("{TARGET}: {error}"))?;
+    Ok(Output::artifact(workspace, TARGET, page))
 }
 
 /// Group every crate section by version, newest release first.
