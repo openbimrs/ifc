@@ -14,10 +14,12 @@
 //! H = OrthogonalHeight + Scale * FactorZ * z
 //! ```
 //!
-//! The `.exp` carries no formula; this is the one IfcOpenShell's
-//! `ifcopenshell.util.geolocation.xyz2enh` implements for the subtype
-//! (`references/competitor/ifcopenshell`), which reduces to the
-//! `IfcMapConversion` formula when every factor is `1`. A general
+//! The `.exp` carries no formula. The IFC4.3 documentation of
+//! `IfcMapConversionScaled` (buildingSMART `IFC4.3.x-development`,
+//! `docs/schemas/resource/IfcRepresentationResource/Entities/`) defines the
+//! order: scale by `Scale`, multiply each axis by its factor, rotate
+//! anti-clockwise by the grid-north angle, then translate. That is the
+//! formula above; it reduces to `IfcMapConversion` when every factor is `1`. A general
 //! `Transform3` holds the resulting non-uniform linear part exactly, so
 //! the subtype resolves rather than being refused. A factor that is zero,
 //! negative or non-finite is refused like a non-positive `Scale`.
