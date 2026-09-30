@@ -1,7 +1,8 @@
 //! Absolute attribute slots the georeferencing readers index.
 //!
 //! Every position was read from `IFC4.exp` (IFC4 ADD2 TC1) and
-//! `IFC4X3_ADD2.exp` and is asserted below against the bundled tables
+//! `IFC4X3_ADD2.exp` (and, for `IfcSite`, `IFC2X3_TC1.exp`) and is asserted
+//! below against the bundled tables
 //! (`ifc_schema::ifc4()`, `ifc4x3()`), so a slot that is wrong in either
 //! version fails a test rather than silently reading the neighbouring
 //! attribute. The readers index this module; never restate a slot number
@@ -31,6 +32,19 @@ pub(crate) mod map_conversion {
     pub const X_AXIS_ORDINATE: usize = 6;
     /// `Scale : OPTIONAL IfcReal`.
     pub const SCALE: usize = 7;
+}
+
+/// `IfcSite`: `IfcRoot` (0..3), `IfcObject.ObjectType` (4), `IfcProduct`
+/// (5..6) and the spatial-element `LongName`/`CompositionType` (7..8) come
+/// first. Identical in IFC2X3, IFC4 and IFC4X3, asserted below against all
+/// three bundled tables.
+pub(crate) mod site {
+    /// `RefLatitude : OPTIONAL IfcCompoundPlaneAngleMeasure`.
+    pub const REF_LATITUDE: usize = 9;
+    /// `RefLongitude : OPTIONAL IfcCompoundPlaneAngleMeasure`.
+    pub const REF_LONGITUDE: usize = 10;
+    /// `RefElevation : OPTIONAL IfcLengthMeasure`.
+    pub const REF_ELEVATION: usize = 11;
 }
 
 /// `IfcProjectedCRS`, inherited `IfcCoordinateReferenceSystem` slots first.
@@ -282,6 +296,25 @@ mod tests {
                 "HeightUnit"
             ]
         );
+    }
+
+    /// `IfcSite` is the one entity also read under IFC2X3: its three
+    /// reference attributes sit at the same absolute slots in every release
+    /// `crate::site` binds.
+    #[test]
+    fn site_reference_slots_match_ifc2x3_ifc4_and_ifc4x3() {
+        for schema in [ifc2x3(), ifc4(), ifc4x3()] {
+            let names = schema.attribute_names("IfcSite");
+            assert_eq!(
+                names.len(),
+                14,
+                "{} IfcSite arity: {names:?}",
+                schema.name()
+            );
+            assert_eq!(names[site::REF_LATITUDE], "RefLatitude", "{names:?}");
+            assert_eq!(names[site::REF_LONGITUDE], "RefLongitude", "{names:?}");
+            assert_eq!(names[site::REF_ELEVATION], "RefElevation", "{names:?}");
+        }
     }
 
     /// IFC2X3 is refused by `GeorefView` because it declares none of the

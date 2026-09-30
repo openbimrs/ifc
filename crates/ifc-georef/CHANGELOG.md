@@ -12,6 +12,22 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `site_reference` reads `IfcSite.RefLatitude`, `RefLongitude` and
+  `RefElevation` (metres, through the project length scale) under IFC2X3,
+  IFC4 and IFC4X3 into `SiteReference`; compound angles are validated
+  against the declared release's own WHERE rules and the WGS84 range, and
+  convert to decimal degrees via `CompoundPlaneAngle` (#242).
+- `relate_site_elevation` compares `RefElevation` with the map height of
+  the site origin (`OrthogonalHeight` plus the scaled site-origin height)
+  and returns `SiteElevationCheck`: a disagreement beyond the tolerance
+  (`SITE_ELEVATION_TOLERANCE_M`, 1 cm suggested) is a reported finding
+  carrying both values and the target CRS's `VerticalDatum`, never a
+  silent pick (#242).
+- `GeorefError::InvalidCompoundAngle` and `GeorefError::InvalidParameter`
+  (#242).
+
 ## [0.4.0] - 2026-09-29
 
 ### Added

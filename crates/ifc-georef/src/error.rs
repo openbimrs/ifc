@@ -125,6 +125,27 @@ pub enum GeorefError {
         /// The rule's schema label, such as `NameOrWKT`.
         rule: &'static str,
     },
+    /// An `IfcCompoundPlaneAngleMeasure` breaks a WHERE rule of its type in
+    /// the declared release (such as IFC4 `ConsistentSign` or IFC2X3 `WR1`),
+    /// or the WGS84 range its attribute definition states.
+    InvalidCompoundAngle {
+        /// The entity holding the angle.
+        entity: EntityId,
+        /// Zero-based slot index of the angle attribute.
+        index: usize,
+        /// Schema name of the attribute, such as `RefLatitude`.
+        name: &'static str,
+        /// The rule's schema label, or the stated range that is broken.
+        rule: &'static str,
+    },
+    /// A caller-supplied number is non-finite or outside its documented
+    /// domain, such as a negative comparison tolerance.
+    InvalidParameter {
+        /// The parameter's name.
+        name: &'static str,
+        /// The rejected value.
+        value: f64,
+    },
 }
 
 impl std::fmt::Display for GeorefError {
@@ -200,6 +221,15 @@ impl std::fmt::Display for GeorefError {
             }
             Self::RuleViolation { entity, rule } => {
                 write!(f, "{entity} violates {rule}")
+            }
+            Self::InvalidCompoundAngle {
+                entity,
+                index,
+                name,
+                rule,
+            } => write!(f, "{entity} {name} at slot {index} violates {rule}"),
+            Self::InvalidParameter { name, value } => {
+                write!(f, "parameter {name} has invalid value {value}")
             }
         }
     }

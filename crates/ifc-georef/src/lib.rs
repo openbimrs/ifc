@@ -10,6 +10,7 @@ mod conversion;
 mod crs;
 mod error;
 mod north;
+mod site;
 mod slot;
 mod view;
 
@@ -25,5 +26,9 @@ pub use crs::{LengthUnit, ProjectedCrs};
 pub use error::{GeorefError, GeorefResult};
 pub use north::{
     grid_north_direction, project_north_direction, resolve_true_north, NorthReference,
+};
+pub use site::{
+    relate_site_elevation, site_reference, CompoundPlaneAngle, SiteElevationCheck,
+    SiteElevationComparison, SiteReference, SITE_ELEVATION_TOLERANCE_M,
 };
 pub use view::GeorefView;
