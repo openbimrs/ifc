@@ -108,7 +108,7 @@ fn declares_ifc4x3(model: &Model) -> bool {
 /// More than one `IfcWellKnownText` for the CRS breaks the inverse's
 /// cardinality and is refused whether or not the CRS is named, rather than
 /// one definition being picked.
-fn name_or_wkt(
+pub(crate) fn name_or_wkt(
     model: &Model,
     id: EntityId,
     entity: &Entity,

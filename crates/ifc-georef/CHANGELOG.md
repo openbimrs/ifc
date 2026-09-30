@@ -12,6 +12,52 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- IFC4X3 `IfcRigidOperation` with `IfcLengthMeasure` coordinates resolves
+  to a translation through `resolve_project_to_map(_in)`: the offsets and
+  `Height` are in the target `MapUnit`, and the linear part is the identity
+  in metres (#241). `WHERE SameCoordinateType` is checked; an untyped REAL,
+  mixed or non-length/non-angle coordinates are refused with
+  `GeorefError::RuleViolation { rule: "SameCoordinateType" }`, and a
+  length operation onto a non-projected target with `WrongType`.
+- `resolve_geographic_offset_in` and `GeographicOffset`: an IFC4X3
+  plane-angle `IfcRigidOperation` read as authored onto its
+  `IfcGeographicCRS` (#241). The project-to-map resolver refuses that form
+  with the new `GeorefError::CoordinateMeasureMismatch`, since no metre
+  transform expresses a latitude/longitude offset.
+- `GeographicCrs` and `AngleUnit`: IFC4X3 `IfcGeographicCRS` with
+  `PrimeMeridian`, `AngleUnit` (`PLANEANGLEUNIT`) and `HeightUnit`
+  (`LENGTHUNIT`); an absent unit stays `None` (#241).
+- `create_angular_rigid_operation`, writing `IFCPLANEANGLEMEASURE(..)`
+  coordinates (#241).
+- `OperationSource`, `resolve_operation_source` and
+  `coordinate_operation_for`: the operation's `SourceCRS` validated as an
+  `IfcCoordinateReferenceSystemSelect` member of the pinned release, and
+  the `HasCoordinateOperation` inverse read from a context or CRS (#101).
+- `ProjectToMap.source`, `.operation` and `.kind` (`OperationKind`).
+
+### Changed
+
+- `IfcMapConversionScaled` resolves instead of being refused with
+  `UnsupportedOperation`: `FactorX/Y/Z` scale the source axes before the
+  rotation, and a non-positive factor is refused with `InvalidAttribute`
+  (#241). `grid_north_direction` accounts for unequal `FactorX`/`FactorY`.
+- `create_rigid_operation` writes its coordinates as
+  `IFCLENGTHMEASURE(..)` instead of bare REALs, which cannot satisfy
+  `SameCoordinateType` (#241).
+- Every resolved operation now validates its `SourceCRS` (#101): a
+  dangling reference is `MissingEntity`, a wrong type `WrongType`, a
+  sub-context `RuleViolation { rule: "NoCoordOperation" }`, and a source
+  named by more than one operation `RuleViolation` on the
+  `HasCoordinateOperation : SET [0:1]` inverse. Files that resolved with
+  such a source before are now refused.
+- `resolve_project_to_map` pins the header's release when it names IFC4 or
+  IFC4X3, so IFC4X3-only entities in an IFC4 file are refused as
+  undeclared by both entry points. A non-coordinate-operation id is
+  `WrongType { expected: "IFCCOORDINATEOPERATION" }` (was
+  `"IFCMAPCONVERSION"`).
+
 ## [0.4.0] - 2026-09-29
 
 ### Added

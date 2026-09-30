@@ -4,10 +4,12 @@
 //! northings are coordinates on a projection plane, so aiming them at
 //! a geographic CRS produces numbers that parse and denote nothing.
 
+use axiolid_core::{Point3, Vec3};
 use ifc_georef::{
-    create_geographic_crs, create_map_conversion, create_map_conversion_scaled,
-    create_projected_crs, create_rigid_operation, GeographicCrsDraft, MapConversionDraft,
-    ProjectedCrsDraft,
+    create_angular_rigid_operation, create_geographic_crs, create_map_conversion,
+    create_map_conversion_scaled, create_projected_crs, create_rigid_operation,
+    resolve_geographic_offset_in, resolve_project_to_map, GeographicCrsDraft, GeorefView,
+    MapConversionDraft, ProjectedCrsDraft,
 };
 use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 
@@ -148,36 +150,73 @@ fn scaled_factors_follow_the_inherited_attributes() {
     assert_eq!(entity.attributes[10], Value::Real(1.0), "FactorZ");
 }
 
-/// A rigid operation needs no projected target.
+/// A rigid operation needs no projected target, but its coordinates must
+/// be typed.
 ///
-/// It is a translation, not a projection, so it is meaningful between
-/// any two systems sharing units. Requiring a projected CRS here would
-/// refuse valid files.
+/// It is a translation, not a projection, so the writer does not demand a
+/// projected CRS. `FirstCoordinate` and `SecondCoordinate` are
+/// `IfcMeasureValue` selects under `SameCoordinateType`: an untyped REAL
+/// satisfies neither branch, so lengths are written `IFCLENGTHMEASURE(..)`
+/// and latitude/longitude offsets `IFCPLANEANGLEMEASURE(..)`. Both read
+/// back through the resolvers.
 #[test]
 fn a_rigid_operation_accepts_any_target() {
-    let model = Model::default();
+    let mut model = Model::default();
+    model.header_mut().schema = vec!["IFC4X3_ADD2".to_owned()];
     let mut tx = Transaction::new(&model);
 
     let source = context(&mut tx);
+    let target = projected(&mut tx);
     let geographic = create_geographic_crs(&mut tx, GeographicCrsDraft::new().name("EPSG:4326"))
         .expect("accepted");
 
     assert!(
-        create_rigid_operation(&mut tx, source, geographic, (f64::NAN, 2.0), None).is_err(),
+        create_rigid_operation(&mut tx, source, target, (f64::NAN, 2.0), None).is_err(),
         "a non-finite coordinate is refused"
     );
+    assert!(
+        create_angular_rigid_operation(&mut tx, source, geographic, (1.0, 2.0), Some(f64::NAN))
+            .is_err(),
+        "a non-finite height is refused"
+    );
 
-    let id = create_rigid_operation(&mut tx, source, geographic, (10.0, 20.0), Some(3.0))
-        .expect("a rigid shift to a geographic CRS is legitimate");
+    let length = create_rigid_operation(&mut tx, source, target, (10.0, 20.0), Some(3.0))
+        .expect("a length shift onto a projected CRS");
+    let second = context(&mut tx);
+    let angular = create_angular_rigid_operation(&mut tx, second, geographic, (0.5, 0.25), None)
+        .expect("an angular shift onto a geographic CRS");
 
-    let mut model = model;
     tx.commit(&mut model).expect("commit");
 
-    let entity = model.get(id).expect("staged");
+    let typed = |measure: &str, value: f64| Value::Typed {
+        type_name: measure.into(),
+        value: Box::new(Value::Real(value)),
+    };
+    let entity = model.get(length).expect("staged");
     assert_eq!(entity.type_name.as_ref(), "IFCRIGIDOPERATION");
-    assert_eq!(entity.attributes[2], Value::Real(10.0));
-    assert_eq!(entity.attributes[3], Value::Real(20.0));
-    assert_eq!(entity.attributes[4], Value::Real(3.0));
+    assert_eq!(entity.attributes[2], typed("IFCLENGTHMEASURE", 10.0));
+    assert_eq!(entity.attributes[3], typed("IFCLENGTHMEASURE", 20.0));
+    assert_eq!(
+        entity.attributes[4],
+        Value::Real(3.0),
+        "Height is not a select"
+    );
+    let entity = model.get(angular).expect("staged");
+    assert_eq!(entity.attributes[2], typed("IFCPLANEANGLEMEASURE", 0.5));
+    assert_eq!(entity.attributes[3], typed("IFCPLANEANGLEMEASURE", 0.25));
+    assert_eq!(entity.attributes[4], Value::Null);
+
+    let resolved = resolve_project_to_map(&model, length, 1.0).expect("length form resolves");
+    assert_eq!(
+        resolved.transform.transform_point3(Point3::ZERO),
+        Vec3::new(10.0, 20.0, 3.0)
+    );
+    let view = GeorefView::for_model(&model).expect("IFC4X3");
+    let offset = resolve_geographic_offset_in(&view, angular).expect("angular form reads");
+    assert_eq!(
+        (offset.first_coordinate, offset.second_coordinate),
+        (0.5, 0.25)
+    );
 }
 
 /// A geographic CRS with a blank name identifies nothing.
