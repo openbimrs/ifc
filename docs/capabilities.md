@@ -45,7 +45,7 @@ committed figure that moves that often only produces merge conflicts.
 | `ifc-material` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-model` | <span class="status-implemented">Implemented</span> | [#105](https://github.com/openbimrs/ifc/issues/105) |
 | `ifc-occurrence` | <span class="status-implemented">Implemented</span> |  |
-| `ifc-properties` | <span class="status-implemented">Implemented</span> | [#232](https://github.com/openbimrs/ifc/issues/232) |
+| `ifc-properties` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-resource` | <span class="status-partial">Partial</span> | [#237](https://github.com/openbimrs/ifc/issues/237) |
 | `ifc-schedule` | <span class="status-partial">Partial</span> | [#234](https://github.com/openbimrs/ifc/issues/234), [#235](https://github.com/openbimrs/ifc/issues/235) |
 | `ifc-schema` | <span class="status-implemented">Implemented</span> |  |
