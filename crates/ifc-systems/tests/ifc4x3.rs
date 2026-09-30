@@ -176,7 +176,12 @@ fn ifc4x3_systems_include_the_built_system_and_their_members() {
     assert_eq!(found[0].type_name, "IFCDISTRIBUTIONSYSTEM");
     assert_eq!(found[0].name.as_deref(), Some("Heating"));
     assert_eq!(found[0].members, [ids.pump, ids.pipe]);
+    // #231: read by name in the IFC4X3 table; LongName was left unset.
+    assert_eq!(found[0].predefined_type.as_deref(), Some("HEATING"));
+    assert_eq!(found[0].long_name, None);
     assert_eq!(found[1].type_name, "IFCBUILTSYSTEM");
+    // Only IfcDistributionSystem's attributes are exposed.
+    assert_eq!(found[1].predefined_type, None);
     assert!(found[1].members.is_empty());
     assert!(anomalies.is_empty(), "{anomalies:?}");
 }

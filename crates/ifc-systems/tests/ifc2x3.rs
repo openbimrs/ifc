@@ -94,6 +94,12 @@ fn ifc2x3_systems_are_the_system_and_the_circuit_not_the_zone() {
     assert_eq!(ids(&found), [EntityId(10), EntityId(11)]);
     assert_eq!(found[1].type_name, "IFCELECTRICALCIRCUIT");
     assert_eq!(found[1].members, [EntityId(21)]);
+    // IFC2X3 has no IfcDistributionSystem, so neither system has its
+    // LongName or PredefinedType (#231).
+    for system in &found {
+        assert_eq!(system.long_name, None);
+        assert_eq!(system.predefined_type, None);
+    }
     // The zone's IfcRelAssignsToGroup names a group that is not a system in
     // IFC2X3; that is the one expected report, not the circuit.
     assert_eq!(
