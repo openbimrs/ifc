@@ -31,13 +31,15 @@
 //!   `IfcCoordinateReferenceSystem` subtype IFC4 has).
 //! - **IFC4X3** adds three shapes IFC4 cannot express at all:
 //!   `IfcMapConversionScaled` (per-axis scale factors), `IfcRigidOperation`
-//!   (a pure offset with no scale/rotation, usable with plane-angle
-//!   coordinates for geodetic offsets), and `IfcGeographicCRS` (a second
+//!   (a pure offset with no scale/rotation, in length or plane-angle
+//!   coordinates), and `IfcGeographicCRS` (a second
 //!   `IfcCoordinateReferenceSystem` subtype, for geodetic rather than
-//!   projected targets). None of the three is implemented by this crate;
-//!   [`GeorefError::UnsupportedOperation`] names which one was encountered
-//!   so a caller can tell "not implemented yet" apart from "malformed
-//!   input" or "wrong schema entirely".
+//!   projected targets). The first two lower to a project-to-map transform
+//!   (a rigid operation only with length coordinates); a plane-angle rigid
+//!   operation onto an `IfcGeographicCRS` is read, not lowered, by
+//!   [`crate::resolve_geographic_offset_in`]. Under an IFC4 header all
+//!   three are refused with [`GeorefError::UnsupportedOperation`] naming
+//!   the release that does not declare them.
 
 use ifc_model::{EntityId, Model};
 use ifc_schema::{ifc4, ifc4x3, Schema, SchemaVersion};

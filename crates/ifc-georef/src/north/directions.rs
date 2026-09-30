@@ -29,7 +29,7 @@
 use ifc_model::value::Value;
 use ifc_model::{EntityId, Model};
 
-use crate::conversion::ProjectToMap;
+use crate::conversion::{OperationKind, ProjectToMap};
 use crate::error::{GeorefError, GeorefResult};
 use crate::slot;
 
@@ -135,10 +135,25 @@ pub fn resolve_true_north(model: &Model, context: EntityId) -> GeorefResult<Nort
 /// `(1, 0)`, i.e. the project's own X axis now points toward map north --
 /// consistent with the project frame having been rotated a quarter turn
 /// relative to the map.
+///
+/// An IFC4X3 `IfcMapConversionScaled` scales the project axes by `FactorX`
+/// and `FactorY` before rotating, so the pull-back also divides by them:
+/// `(b / FactorX, a / FactorY)`, normalized. With equal factors that is
+/// `(b, a)` again, and it is returned unchanged.
 #[must_use]
 pub fn grid_north_direction(operation: &ProjectToMap) -> NorthReference {
     let (a, b) = operation.x_axis_direction;
-    NorthReference::Grid { direction: (b, a) }
+    let direction = match operation.kind {
+        OperationKind::MapConversionScaled {
+            factors: (fx, fy, _),
+        } if fx != fy => {
+            let (x, y) = (b / fx, a / fy);
+            let norm = x.hypot(y);
+            (x / norm, y / norm)
+        }
+        _ => (b, a),
+    };
+    NorthReference::Grid { direction }
 }
 
 /// Read an `IfcDirection`'s two-component `DirectionRatios` and normalize.

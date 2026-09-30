@@ -10,7 +10,7 @@ Georeferencing: map conversion, coordinate reference systems, site placement.
 
 | | |
 | --- | --- |
-| Status | <span class="status-partial">Partial</span> |
+| Status | <span class="status-implemented">Implemented</span> |
 | Latest release | 0.4.0 (2026-09-29) |
 | Registries | [crates.io `ifc-georef`](https://crates.io/crates/ifc-georef) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `georef` |

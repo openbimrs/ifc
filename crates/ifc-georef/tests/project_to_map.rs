@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use axiolid_core::{Point3, Vec3};
-use ifc_georef::{resolve_project_to_map, GeorefError};
+use ifc_georef::{resolve_project_to_map, GeorefError, OperationKind};
 use ifc_model::value::Value;
 use ifc_model::{Codec, Entity, EntityId, Model};
 use ifc_step::StepCodec;
@@ -132,8 +132,10 @@ fn defaults_each_missing_axis_component_independently() {
     assert_eq!(mapped.z, 50.0);
 }
 
+/// Once refused as unsupported (#241); the per-axis factors now fold into
+/// the neutral transform, which holds a non-uniform linear part exactly.
 #[test]
-fn refuses_map_conversion_scaled_until_unequal_factors_are_represented() {
+fn resolves_map_conversion_scaled_with_per_axis_factors() {
     let mut model = model_with_map_conversion((Value::Null, Value::Null), Value::Real(1.0));
     model.insert(
         id(4),
@@ -155,12 +157,17 @@ fn refuses_map_conversion_scaled_until_unequal_factors_are_represented() {
         ),
     );
 
-    let error = resolve_project_to_map(&model, id(4), 1.0).expect_err("scaled subtype is explicit");
-    assert!(matches!(
-        error,
-        GeorefError::UnsupportedOperation { entity, actual }
-            if entity == id(4) && actual == "IFCMAPCONVERSIONSCALED"
-    ));
+    let operation = resolve_project_to_map(&model, id(4), 1.0).expect("scaled subtype resolves");
+    assert_eq!(
+        operation.kind,
+        OperationKind::MapConversionScaled {
+            factors: (2.0, 3.0, 4.0)
+        }
+    );
+    let mapped = operation
+        .transform
+        .transform_point3(Point3::new(1.0, 1.0, 1.0));
+    assert_eq!(mapped, Vec3::new(1002.0, 2003.0, 54.0));
 }
 
 #[test]
