@@ -28,7 +28,7 @@
 //! | Module | Role |
 //! | --- | --- |
 //! | [`schedule`] | `IfcWorkPlan` and `IfcWorkSchedule` |
-//! | [`task`] | `IfcTask` and `IfcTaskTime` |
+//! | [`task`] | `IfcTask`, `IfcTaskTime` and IFC2X3 `IfcScheduleTimeControl` |
 //! | [`sequence`] | `IfcRelSequence`, lag, and cycle reporting |
 //! | [`calendar`] | `IfcWorkCalendar` and recurrence patterns |
 //! | [`event`] | `IfcEvent` and `IfcEventTime` |
@@ -57,12 +57,16 @@ pub use authoring::{
     LocalTime, ProcedureDraft, RecurrenceDraft, ScheduleAuthoringResult, TaskDraft, TaskTimeDraft,
     TimeLag, WorkControlDraft,
 };
+#[allow(deprecated)]
+pub use calendar::work_calendars;
 pub use calendar::{
-    recurrence_pattern, work_calendars, Recurrence, RecurrenceType, TimePeriod, WorkCalendar,
+    read_work_calendars, recurrence_pattern, Recurrence, RecurrenceType, TimePeriod, WorkCalendar,
     WorkTime, WorkTimeRole,
 };
 pub use error::{ScheduleReadError, SequenceCycle, TaskTimeAnomaly};
-pub use event::{events, Event, EventTime};
+#[allow(deprecated)]
+pub use event::events;
+pub use event::{read_events, Event, EventTime};
 /// The IFC release a schedule record is written against (re-exported from
 /// `ifc-schema`).
 pub use ifc_schema::SchemaVersion;
@@ -77,6 +81,6 @@ pub use sequence::{
     downstream_of, find_cycle, predecessors_of, sequences, successors_of, Lag, Sequence,
     SequenceType, MAX_SEQUENCE_DEPTH,
 };
-pub use task::{tasks, DurationType, Task, TaskTime};
+pub use task::{tasks, DurationType, ScheduleTimeControl, Task, TaskTime};
 
 pub mod task;

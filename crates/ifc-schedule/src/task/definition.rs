@@ -34,6 +34,12 @@
 //! 18 RemainingTime         19 Completion
 //! ```
 //!
+//! IFC4 and IFC4X3 subtype it as `IfcTaskTimeRecurring`, which adds
+//! `20 Recurrence : IfcRecurrencePattern`. `Task::time` accepts any subtype
+//! the release declares (#235) and reads it with its own attribute list.
+//! IFC2X3 times a task with an `IfcScheduleTimeControl` instead; see
+//! `Task::schedule_time_controls`.
+//!
 //! # A milestone has no duration, and that is a rule
 //!
 //! `IfcTaskTime` carries WHERE rule `WR1`:
@@ -50,12 +56,15 @@
 
 use ifc_model::{Entity, EntityId, Model};
 
+use crate::calendar::definition::read_recurrence;
+use crate::calendar::Recurrence;
 use crate::error::ScheduleReadError;
 use crate::release::ReadRelease;
 use crate::SchemaVersion;
 
 const TASK: &str = "IFCTASK";
 const TASK_TIME: &str = "IFCTASKTIME";
+const TASK_TIME_RECURRING: &str = "IFCTASKTIMERECURRING";
 
 /// `IfcTask` slots in the layout IFC4 and IFC4X3 share, which the
 /// modelless `create_task` writes. The reader goes by name.
@@ -149,11 +158,24 @@ pub enum TaskTimeAnomaly {
         /// The duration the file states anyway.
         duration: String,
     },
-    /// `TaskTime` points at an entity that is not an `IfcTaskTime`.
+    /// `TaskTime` points at an entity that is not an `IfcTaskTime` or one
+    /// of its subtypes in the task's release.
     NotATaskTime {
         /// The task.
         task: EntityId,
         /// What it points at.
+        target: EntityId,
+        /// The type actually found.
+        found: String,
+    },
+    /// An IFC2X3 `IfcRelAssignsTasks.TimeForTask` points at an entity that
+    /// is not an `IfcScheduleTimeControl` (#235).
+    NotAScheduleTimeControl {
+        /// The task.
+        task: EntityId,
+        /// The `IfcRelAssignsTasks` that assigns it.
+        assignment: EntityId,
+        /// What `TimeForTask` points at.
         target: EntityId,
         /// The type actually found.
         found: String,
@@ -175,53 +197,91 @@ impl<'m> TaskTime<'m> {
         self.id
     }
 
+    /// The record's own type, so an `IfcTaskTimeRecurring` is read with
+    /// its own attribute list, `Recurrence` included (#235).
+    fn type_name(&self) -> &'m str {
+        &self.entity.type_name
+    }
+
+    /// Whether this is an `IfcTaskTimeRecurring` (IFC4, IFC4X3) (#235).
+    #[must_use]
+    pub fn is_recurring(&self) -> bool {
+        self.release.is_a(self.type_name(), TASK_TIME_RECURRING)
+    }
+
+    /// The `IfcTaskTimeRecurring.Recurrence` reference; `None` for a plain
+    /// `IfcTaskTime` (#235).
+    #[must_use]
+    pub fn recurrence_ref(&self) -> Option<EntityId> {
+        self.release
+            .reference(self.type_name(), self.entity, "Recurrence")
+    }
+
+    /// The recurrence pattern of an `IfcTaskTimeRecurring`, read by name
+    /// in the task's release (#235). `None` for a plain `IfcTaskTime`, or
+    /// when `Recurrence` (required by the schema) is missing or does not
+    /// reference an `IfcRecurrencePattern`.
+    #[must_use]
+    pub fn recurrence(&self, model: &Model) -> Option<Recurrence> {
+        read_recurrence(self.release, model, self.recurrence_ref()?)
+    }
+
     /// Whether the duration is working or elapsed time.
     #[must_use]
     pub fn duration_type(&self) -> Option<DurationType> {
-        DurationType::parse(self.release.token(TASK_TIME, self.entity, "DurationType")?)
+        DurationType::parse(
+            self.release
+                .token(self.type_name(), self.entity, "DurationType")?,
+        )
     }
 
     /// The planned duration, as an authored ISO 8601 duration.
     #[must_use]
     pub fn schedule_duration(&self) -> Option<&'m str> {
         self.release
-            .text(TASK_TIME, self.entity, "ScheduleDuration")
+            .text(self.type_name(), self.entity, "ScheduleDuration")
     }
 
     /// The planned start, as authored.
     #[must_use]
     pub fn schedule_start(&self) -> Option<&'m str> {
-        self.release.text(TASK_TIME, self.entity, "ScheduleStart")
+        self.release
+            .text(self.type_name(), self.entity, "ScheduleStart")
     }
 
     /// The planned finish, as authored.
     #[must_use]
     pub fn schedule_finish(&self) -> Option<&'m str> {
-        self.release.text(TASK_TIME, self.entity, "ScheduleFinish")
+        self.release
+            .text(self.type_name(), self.entity, "ScheduleFinish")
     }
 
     /// The earliest start, as authored.
     #[must_use]
     pub fn early_start(&self) -> Option<&'m str> {
-        self.release.text(TASK_TIME, self.entity, "EarlyStart")
+        self.release
+            .text(self.type_name(), self.entity, "EarlyStart")
     }
 
     /// The latest finish, as authored.
     #[must_use]
     pub fn late_finish(&self) -> Option<&'m str> {
-        self.release.text(TASK_TIME, self.entity, "LateFinish")
+        self.release
+            .text(self.type_name(), self.entity, "LateFinish")
     }
 
     /// Free float, as an authored ISO 8601 duration.
     #[must_use]
     pub fn free_float(&self) -> Option<&'m str> {
-        self.release.text(TASK_TIME, self.entity, "FreeFloat")
+        self.release
+            .text(self.type_name(), self.entity, "FreeFloat")
     }
 
     /// Total float, as an authored ISO 8601 duration.
     #[must_use]
     pub fn total_float(&self) -> Option<&'m str> {
-        self.release.text(TASK_TIME, self.entity, "TotalFloat")
+        self.release
+            .text(self.type_name(), self.entity, "TotalFloat")
     }
 
     /// Whether the file marks this task as critical.
@@ -233,33 +293,36 @@ impl<'m> TaskTime<'m> {
     #[must_use]
     pub fn is_critical(&self) -> Option<bool> {
         self.release
-            .value(TASK_TIME, self.entity, "IsCritical")?
+            .value(self.type_name(), self.entity, "IsCritical")?
             .as_bool()
     }
 
     /// The actual start, as authored.
     #[must_use]
     pub fn actual_start(&self) -> Option<&'m str> {
-        self.release.text(TASK_TIME, self.entity, "ActualStart")
+        self.release
+            .text(self.type_name(), self.entity, "ActualStart")
     }
 
     /// The actual finish, as authored.
     #[must_use]
     pub fn actual_finish(&self) -> Option<&'m str> {
-        self.release.text(TASK_TIME, self.entity, "ActualFinish")
+        self.release
+            .text(self.type_name(), self.entity, "ActualFinish")
     }
 
     /// The actual duration, as authored.
     #[must_use]
     pub fn actual_duration(&self) -> Option<&'m str> {
-        self.release.text(TASK_TIME, self.entity, "ActualDuration")
+        self.release
+            .text(self.type_name(), self.entity, "ActualDuration")
     }
 
     /// Percent complete, if stated.
     #[must_use]
     pub fn completion(&self) -> Option<f64> {
         self.release
-            .value(TASK_TIME, self.entity, "Completion")?
+            .value(self.type_name(), self.entity, "Completion")?
             .unwrap_typed()
             .as_f64()
     }
@@ -303,6 +366,10 @@ impl<'m> Task<'m> {
     #[must_use]
     pub fn release(&self) -> SchemaVersion {
         self.release.version()
+    }
+
+    pub(crate) const fn read_release(&self) -> ReadRelease {
+        self.release
     }
 
     fn text(&self, attribute: &'static str) -> Option<&'m str> {
@@ -389,10 +456,13 @@ impl<'m> Task<'m> {
         self.release.reference(TASK, self.entity, "TaskTime")
     }
 
-    /// Resolve this task's `IfcTaskTime`.
+    /// Resolve this task's `IfcTaskTime`, or its `IfcTaskTimeRecurring`
+    /// subtype (#235); see [`TaskTime::recurrence`].
     ///
     /// Returns the view and any anomaly found while resolving it: a reference
     /// to a non-`IfcTaskTime`, or a milestone that states a duration.
+    /// IFC2X3 declares no `TaskTime`; its tasks are timed by
+    /// [`Self::schedule_time_controls`].
     #[must_use]
     pub fn time(&self, model: &'m Model) -> (Option<TaskTime<'m>>, Vec<TaskTimeAnomaly>) {
         let mut anomalies = Vec::new();
@@ -402,7 +472,7 @@ impl<'m> Task<'m> {
         let Some(entity) = model.get(target) else {
             return (None, anomalies);
         };
-        if !entity.type_name.eq_ignore_ascii_case("IFCTASKTIME") {
+        if !self.release.is_a(&entity.type_name, TASK_TIME) {
             anomalies.push(TaskTimeAnomaly::NotATaskTime {
                 task: self.id,
                 target,

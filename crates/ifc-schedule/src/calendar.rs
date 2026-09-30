@@ -5,10 +5,12 @@
 //! - `definition.rs`: `IfcWorkCalendar`, `IfcWorkTime`,
 //!   `IfcRecurrencePattern` and `IfcTimePeriod`.
 
-mod definition;
+pub(crate) mod definition;
 
+#[allow(deprecated)]
+pub use definition::work_calendars;
 pub use definition::{
-    recurrence_pattern, recurrence_slot, slot as work_calendar_slot, time_period_slot,
-    work_calendars, work_time_slot, Recurrence, RecurrenceType, TimePeriod, WorkCalendar, WorkTime,
-    WorkTimeRole,
+    read_work_calendars, recurrence_pattern, recurrence_slot, slot as work_calendar_slot,
+    time_period_slot, work_time_slot, Recurrence, RecurrenceType, TimePeriod, WorkCalendar,
+    WorkTime, WorkTimeRole,
 };

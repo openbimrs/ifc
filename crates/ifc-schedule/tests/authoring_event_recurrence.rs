@@ -10,7 +10,7 @@ use ifc_model::codec::Codec;
 use ifc_model::{Model, Transaction, Value};
 use ifc_schedule::{
     create_event, create_event_time, create_lag_time, create_recurrence_pattern, create_sequence,
-    create_task, events, sequences, EventDraft, EventTimeDraft, RecurrenceDraft, TaskDraft,
+    create_task, read_events, sequences, EventDraft, EventTimeDraft, RecurrenceDraft, TaskDraft,
 };
 use ifc_step::StepCodec;
 
@@ -43,7 +43,7 @@ fn an_authored_event_reads_back() {
     .expect("authored event");
     tx.commit(&mut model).expect("commit");
 
-    let found = events(&model);
+    let found = read_events(&model).expect("bound");
     assert_eq!(found.len(), 1, "one event");
     assert_eq!(found[0].name(), Some("Concrete pour hold point"));
     assert_eq!(found[0].identification(), Some("EV-01"));
@@ -94,7 +94,7 @@ fn a_lag_reads_back_in_the_form_it_was_authored() {
 /// A recurrence pattern reads back through the calendar that owns it.
 #[test]
 fn a_recurrence_pattern_reads_back() {
-    use ifc_schedule::{create_work_calendar, create_work_time, work_calendars};
+    use ifc_schedule::{create_work_calendar, create_work_time, read_work_calendars};
 
     let mut model = Model::default();
     let mut tx = Transaction::new(&model);
@@ -125,7 +125,7 @@ fn a_recurrence_pattern_reads_back() {
     .expect("authored calendar");
     tx.commit(&mut model).expect("commit");
 
-    let found = work_calendars(&model);
+    let found = read_work_calendars(&model).expect("bound");
     let times = found[0].working_times(&model);
     let recurrence = times[0].recurrence.as_ref().expect("recurrence present");
     assert_eq!(recurrence.weekdays, vec![1, 2, 3, 4, 5]);
@@ -261,7 +261,7 @@ fn the_records_survive_step_text() {
     assert!(text.contains("IFCEVENT("), "the event reached the file");
 
     let reparsed = Codec::read_bytes(&StepCodec, &bytes).expect("reparsed");
-    let found = events(&reparsed);
+    let found = read_events(&reparsed).expect("bound");
     assert_eq!(found.len(), 1, "one event after reparse");
     assert_eq!(found[0].name(), Some("Hold point"));
     assert_eq!(found[0].trigger_type(), Some("USERDEFINED"));

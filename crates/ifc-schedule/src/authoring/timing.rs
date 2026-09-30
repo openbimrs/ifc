@@ -102,10 +102,17 @@ pub fn create_task_time(
 /// so it is a required argument rather than an optional draft field:
 /// a recurring time with no pattern recurs never.
 ///
+/// Binds `model`'s declared release (#235): IFC2X3 declares no
+/// `IfcTaskTimeRecurring` and is refused with `EntityNotInSchema`; IFC4 and
+/// IFC4X3 lay the record out alike.
+///
 /// # Errors
 ///
-/// As for [`create_task_time`], and refuses a `recurrence` that is not
-/// an `IfcRecurrencePattern`.
+/// `EntityNotInSchema` for a release without `IfcTaskTimeRecurring`,
+/// `MultipleSchemas` or `UnsupportedSchema` when the header binds no single
+/// known release, those of [`create_task_time`], and `InvalidValue` for a
+/// `recurrence` that is not an `IfcRecurrencePattern`. Nothing is staged
+/// on an error.
 pub fn create_task_time_recurring(
     tx: &mut Transaction,
     model: &Model,
@@ -114,6 +121,7 @@ pub fn create_task_time_recurring(
 ) -> ScheduleAuthoringResult<EntityId> {
     const ENTITY: &str = "IFCTASKTIMERECURRING";
     const RECURRENCE_SLOT: usize = 20;
+    crate::release::bind(model)?.require_entity(ENTITY)?;
     let pattern_is_valid = tx
         .edits()
         .iter()

@@ -15,10 +15,10 @@ use ifc_schedule::{
     create_event_with_owner_history, create_procedure, create_procedure_with_owner_history,
     create_sequence, create_sequence_with_owner_history, create_task,
     create_task_with_owner_history, create_work_calendar, create_work_calendar_with_owner_history,
-    create_work_control, create_work_control_with_owner_history, create_work_time, events,
-    nest_tasks, nest_tasks_with_owner_history, subtasks_of, successors_of, tasks,
-    tasks_of_schedule, work_calendars, work_schedules, EventDraft, ProcedureDraft, SchemaVersion,
-    TaskDraft, TimeLag, WorkControlDraft, WorkControlKind,
+    create_work_control, create_work_control_with_owner_history, create_work_time, nest_tasks,
+    nest_tasks_with_owner_history, read_events, read_work_calendars, subtasks_of, successors_of,
+    tasks, tasks_of_schedule, work_schedules, EventDraft, ProcedureDraft, SchemaVersion, TaskDraft,
+    TimeLag, WorkControlDraft, WorkControlKind,
 };
 use ifc_schema::for_version;
 use ifc_step::StepCodec;
@@ -210,8 +210,15 @@ fn schedule_records_round_trip_in_their_release() {
                     .and_then(|d| d.text()),
                 Some("2026-10-01T08:00:00")
             );
-            assert_eq!(work_calendars(&back).len(), 1, "{schema}");
-            assert_eq!(events(&back)[0].trigger_type(), Some("EVENTTIME"));
+            assert_eq!(
+                read_work_calendars(&back).expect("bound").len(),
+                1,
+                "{schema}"
+            );
+            assert_eq!(
+                read_events(&back).expect("bound")[0].trigger_type(),
+                Some("EVENTTIME")
+            );
         }
     }
 }

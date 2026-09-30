@@ -237,7 +237,7 @@
       ],
       "released": "0.3.0",
       "released_date": "2026-09-29",
-      "status": "partial",
+      "status": "implemented",
       "version": "0.3.0"
     },
     "ifc-schema": {
