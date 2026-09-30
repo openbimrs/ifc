@@ -14,6 +14,19 @@
 //! group is at 6 and NOT at 5 where every other `IfcRel*` in this crate puts
 //! its relating end. Reading slot 5 yields an enumeration, not a reference,
 //! and a membership silently vanishes.
+//!
+//! # Distribution-system attributes are read by name
+//!
+//! ```text
+//! IfcDistributionSystem  IFC4, IFC4X3  ... ObjectType LongName PredefinedType
+//! ```
+//!
+//! `LongName` and `PredefinedType` (`IfcDistributionSystemEnum`) are
+//! resolved by attribute name in the declared release's table, so an
+//! `IfcDistributionCircuit` (which adds nothing) reads them from its
+//! inherited positions. IFC2X3 declares no `IfcDistributionSystem`, so there
+//! the fields are `None` for every system, as they are for any system that is
+//! not an `IfcDistributionSystem`.
 
 use ifc_model::{EntityId, Model, Value};
 
@@ -41,6 +54,17 @@ pub struct System {
     pub type_name: String,
     /// `Name`, when present.
     pub name: Option<String>,
+    /// `IfcDistributionSystem.LongName`, when present (IFC4, IFC4X3).
+    ///
+    /// `None` when the file leaves it empty, and for every system that is
+    /// not an `IfcDistributionSystem` or subtype (a plain `IfcSystem`, a zone,
+    /// any IFC2X3 system), because only that type is read here.
+    pub long_name: Option<String>,
+    /// `IfcDistributionSystem.PredefinedType`: the `IfcDistributionSystemEnum`
+    /// token as the file states it, without dots (e.g. `HEATING`).
+    ///
+    /// `None` under the same conditions as [`System::long_name`].
+    pub predefined_type: Option<String>,
     /// Members, in file order.
     ///
     /// Order is preserved because IFC states no ordering and re-sorting would
@@ -51,6 +75,50 @@ pub struct System {
 fn text(model: &Model, id: EntityId, slot: usize) -> Option<String> {
     match model.get(id)?.attributes.get(slot)? {
         Value::Text(t) => Some(t.to_string()),
+        _ => None,
+    }
+}
+
+const DISTRIBUTION_SYSTEM: &str = "IFCDISTRIBUTIONSYSTEM";
+
+/// `attribute` of `IfcDistributionSystem` on `id`, read by name in `release`.
+///
+/// `None` when `type_name` is not an `IfcDistributionSystem` (or subtype)
+/// under the release, or when the release does not declare the attribute. A
+/// subtype keeps its inherited attributes first, so the supertype's position
+/// holds for it.
+fn distribution_attribute<'m>(
+    model: &'m Model,
+    release: Release,
+    id: EntityId,
+    type_name: &str,
+    attribute: &str,
+) -> Option<&'m Value> {
+    if !release.is_a(type_name, DISTRIBUTION_SYSTEM) {
+        return None;
+    }
+    let slot = release.slot(DISTRIBUTION_SYSTEM, attribute)?;
+    model.get(id)?.attributes.get(slot)
+}
+
+/// `LongName` (an `IfcLabel`); anything but text is not a label.
+fn long_name(model: &Model, release: Release, id: EntityId, type_name: &str) -> Option<String> {
+    match distribution_attribute(model, release, id, type_name, "LongName")? {
+        Value::Text(t) => Some(t.to_string()),
+        _ => None,
+    }
+}
+
+/// `PredefinedType` (an `IfcDistributionSystemEnum`); anything but an
+/// enumeration token is not one.
+fn predefined_type(
+    model: &Model,
+    release: Release,
+    id: EntityId,
+    type_name: &str,
+) -> Option<String> {
+    match distribution_attribute(model, release, id, type_name, "PredefinedType")? {
+        Value::Enum(token) => Some(token.to_string()),
         _ => None,
     }
 }
@@ -143,11 +211,14 @@ pub fn systems(model: &Model) -> Result<(Vec<System>, Vec<SystemAnomaly>), Schem
         let Some(entity) = model.get(id) else {
             continue;
         };
+        // Upper-cased for the same reason as `NotASystem::type_name`.
+        let type_name = entity.type_name.to_ascii_uppercase();
         systems.push(System {
             id,
-            // Upper-cased for the same reason as `NotASystem::type_name`.
-            type_name: entity.type_name.to_ascii_uppercase(),
             name: text(model, id, slot::NAME),
+            long_name: long_name(model, release, id, &type_name),
+            predefined_type: predefined_type(model, release, id, &type_name),
+            type_name,
             members: members.remove(&id).unwrap_or_default(),
         });
     }
