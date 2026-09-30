@@ -47,6 +47,40 @@ pub(crate) mod site {
     pub const REF_ELEVATION: usize = 11;
 }
 
+/// `IfcMapConversionScaled` (IFC4X3 only): the eight `IfcMapConversion`
+/// slots, then three per-axis factors.
+pub(crate) mod map_conversion_scaled {
+    /// `FactorX : IfcReal`.
+    pub const FACTOR_X: usize = 8;
+    /// `FactorY : IfcReal`.
+    pub const FACTOR_Y: usize = 9;
+    /// `FactorZ : IfcReal`.
+    pub const FACTOR_Z: usize = 10;
+}
+
+/// `IfcRigidOperation` (IFC4X3 only): `IfcCoordinateOperation` contributes
+/// `SourceCRS` and `TargetCRS` at 0..1.
+pub(crate) mod rigid_operation {
+    /// `FirstCoordinate : IfcMeasureValue`.
+    pub const FIRST_COORDINATE: usize = 2;
+    /// `SecondCoordinate : IfcMeasureValue`.
+    pub const SECOND_COORDINATE: usize = 3;
+    /// `Height : OPTIONAL IfcLengthMeasure`.
+    pub const HEIGHT: usize = 4;
+}
+
+/// `IfcGeographicCRS` (IFC4X3 only), inherited
+/// `IfcCoordinateReferenceSystem` slots first. `Name`, `Description` and
+/// `GeodeticDatum` share `projected_crs`'s positions.
+pub(crate) mod geographic_crs {
+    /// `PrimeMeridian : OPTIONAL IfcIdentifier`.
+    pub const PRIME_MERIDIAN: usize = 3;
+    /// `AngleUnit : OPTIONAL IfcNamedUnit`.
+    pub const ANGLE_UNIT: usize = 4;
+    /// `HeightUnit : OPTIONAL IfcNamedUnit`.
+    pub const HEIGHT_UNIT: usize = 5;
+}
+
 /// `IfcProjectedCRS`, inherited `IfcCoordinateReferenceSystem` slots first.
 pub(crate) mod projected_crs {
     /// `Name : IfcLabel` (IFC4) / `OPTIONAL IfcLabel` (IFC4X3).
@@ -240,11 +274,10 @@ mod tests {
         );
     }
 
-    /// The IFC4X3-only coordinate operations this crate refuses today
-    /// (`GeorefError::UnsupportedOperation`). Pinned here so later work
-    /// lowering them starts from checked positions, and so a
-    /// `IfcMapConversionScaled` provably shares every slot the
-    /// `IfcMapConversion` reader indexes.
+    /// The IFC4X3-only coordinate operations and CRS. Pinned so the readers
+    /// index checked positions, so an `IfcMapConversionScaled` provably
+    /// shares every slot the `IfcMapConversion` reader indexes, and so IFC4
+    /// keeps refusing all three as undeclared.
     #[test]
     fn ifc4x3_only_operations_are_absent_from_ifc4_and_laid_out_in_ifc4x3() {
         for entity in [
@@ -262,6 +295,25 @@ mod tests {
             "IfcMapConversionScaled must extend IfcMapConversion's layout"
         );
         assert_eq!(scaled[8..], ["FactorX", "FactorY", "FactorZ"]);
+        assert_eq!(scaled[map_conversion_scaled::FACTOR_X], "FactorX");
+        assert_eq!(scaled[map_conversion_scaled::FACTOR_Y], "FactorY");
+        assert_eq!(scaled[map_conversion_scaled::FACTOR_Z], "FactorZ");
+        let rigid = ifc4x3().attribute_names("IfcRigidOperation");
+        assert_eq!(rigid[map_conversion::SOURCE_CRS], "SourceCRS");
+        assert_eq!(rigid[map_conversion::TARGET_CRS], "TargetCRS");
+        assert_eq!(rigid[rigid_operation::FIRST_COORDINATE], "FirstCoordinate");
+        assert_eq!(
+            rigid[rigid_operation::SECOND_COORDINATE],
+            "SecondCoordinate"
+        );
+        assert_eq!(rigid[rigid_operation::HEIGHT], "Height");
+        let geographic = ifc4x3().attribute_names("IfcGeographicCRS");
+        assert_eq!(geographic[projected_crs::NAME], "Name");
+        assert_eq!(geographic[projected_crs::DESCRIPTION], "Description");
+        assert_eq!(geographic[projected_crs::GEODETIC_DATUM], "GeodeticDatum");
+        assert_eq!(geographic[geographic_crs::PRIME_MERIDIAN], "PrimeMeridian");
+        assert_eq!(geographic[geographic_crs::ANGLE_UNIT], "AngleUnit");
+        assert_eq!(geographic[geographic_crs::HEIGHT_UNIT], "HeightUnit");
         assert!(ifc4().entity("IfcWellKnownText").is_none());
         let wkt = ifc4x3().attribute_names("IfcWellKnownText");
         assert_eq!(wkt.len(), 2);

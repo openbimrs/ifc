@@ -1,197 +1,120 @@
-//! IFC4/IFC4X3 `IfcMapConversion` lowered to a metre-to-metre neutral transform.
+//! IFC4/IFC4X3 `IfcMapConversion` and IFC4X3 `IfcMapConversionScaled`
+//! lowered to a metre-to-metre neutral transform. The entry points that
+//! dispatch every coordinate-operation subtype live in `operation.rs`.
+//!
+//! # `IfcMapConversionScaled`
+//!
+//! IFC4X3 ADD2 declares `FactorX`, `FactorY`, `FactorZ : IfcReal` after the
+//! eight inherited `IfcMapConversion` attributes. The factors scale the
+//! source axes before the rotation, together with `Scale`:
+//!
+//! ```text
+//! E = Eastings  + Scale * (a * FactorX * x - b * FactorY * y)
+//! N = Northings + Scale * (b * FactorX * x + a * FactorY * y)
+//! H = OrthogonalHeight + Scale * FactorZ * z
+//! ```
+//!
+//! The `.exp` carries no formula. The IFC4.3 documentation of
+//! `IfcMapConversionScaled` (buildingSMART `IFC4.3.x-development`,
+//! `docs/schemas/resource/IfcRepresentationResource/Entities/`) defines the
+//! order: scale by `Scale`, multiply each axis by its factor, rotate
+//! anti-clockwise by the grid-north angle, then translate. That is the
+//! formula above; it reduces to `IfcMapConversion` when every factor is `1`. A general
+//! `Transform3` holds the resulting non-uniform linear part exactly, so
+//! the subtype resolves rather than being refused. A factor that is zero,
+//! negative or non-finite is refused like a non-positive `Scale`.
 
 use axiolid_core::{Mat3, Transform3, Vec3};
-use ifc_model::value::Value;
-use ifc_model::{Entity, EntityId, Model};
 
-use crate::crs::{projected_crs, LengthUnit, ProjectedCrs};
+use crate::context::operation_source;
+use crate::crs::{projected_crs, LengthUnit};
 use crate::error::{GeorefError, GeorefResult};
 use crate::slot::map_conversion as slot;
-use crate::view::GeorefView;
+use crate::slot::map_conversion_scaled as scaled_slot;
 
-/// A resolved project-to-map coordinate operation, normalised to metres.
-#[derive(Debug, Clone, PartialEq)]
-#[non_exhaustive]
-pub struct ProjectToMap {
-    /// The source `IfcGeometricRepresentationContext`.
-    pub source_crs: EntityId,
-    /// The target projected CRS.
-    pub target_crs: ProjectedCrs,
-    /// Affine operation from neutral project metres to neutral map metres.
-    pub transform: Transform3,
-    /// Length unit the project authored its coordinates in.
-    pub project_unit: LengthUnit,
-    /// Length unit the map coordinates are expressed in.
-    pub map_unit: LengthUnit,
-    /// IFC's declared scale before source/target unit normalization.
-    pub declared_scale: f64,
-    /// Normalized `(XAxisAbscissa, XAxisOrdinate)`: the project's local X
-    /// axis, as a unit vector, expressed in the map's XY plane. Exposed
-    /// (rather than only folded into `transform`) because grid-north
-    /// resolution needs the rotation alone, without `transform`'s scale
-    /// and translation.
-    pub x_axis_direction: (f64, f64),
-}
+use super::operation::{Operation, OperationKind, ProjectToMap};
 
-/// Resolve an `IfcMapConversion` and normalize both frames to metres.
-///
-/// `project_metres_per_unit` is the project's `IfcUnitAssignment` length scale.
-/// It is explicit here because project units are owned by the caller's model
-/// loading boundary, while `MapUnit` is owned by the target CRS.
-///
-/// This entry point does not pin a schema version. `IfcMapConversion` and
-/// `IfcProjectedCRS`'s attribute *layout* is identical in IFC4 and IFC4X3
-/// (see `view.rs`'s module doc), so it works for either without a
-/// `GeorefView`. It cannot, however, name an IFC4X3-only entity
-/// (`IfcMapConversionScaled`, `IfcRigidOperation`, `IfcGeographicCRS`) as
-/// "not declared in this schema" versus "not implemented in this crate" --
-/// both surface as the same [`GeorefError::UnsupportedOperation`]. Use
-/// [`resolve_project_to_map_in`] when that distinction matters.
-pub fn resolve_project_to_map(
-    model: &Model,
-    id: EntityId,
-    project_metres_per_unit: f64,
+/// Lower an `IfcMapConversion`, or with `scaled` its IFC4X3
+/// `IfcMapConversionScaled` subtype.
+pub(super) fn lower(
+    op: &Operation<'_, '_>,
+    project_unit: LengthUnit,
+    scaled: bool,
 ) -> GeorefResult<ProjectToMap> {
-    let entity = model.get(id).ok_or(GeorefError::MissingEntity {
-        referrer: id,
-        missing: id,
-    })?;
-    let actual_type = entity.type_name.to_ascii_uppercase();
-    resolve(model, id, entity, &actual_type, project_metres_per_unit)
-}
-
-/// Resolve an `IfcMapConversion` within a schema-pinned [`GeorefView`].
-///
-/// Distinguishes an entity that is IFC4X3-only (`IfcMapConversionScaled`,
-/// `IfcRigidOperation`, targeting `IfcGeographicCRS`) but was read from an
-/// IFC4 file -- the schema does not declare it there, so this is a
-/// malformed-for-schema file -- from one that is declared in the pinned
-/// schema but genuinely not implemented yet. Both are refused; the error
-/// message names which case it was.
-pub fn resolve_project_to_map_in(
-    view: &GeorefView,
-    id: EntityId,
-    project_metres_per_unit: f64,
-) -> GeorefResult<ProjectToMap> {
-    let actual_type = view.require_known_type(id)?.to_ascii_uppercase();
-    let entity = view.model.get(id).ok_or(GeorefError::MissingEntity {
-        referrer: id,
-        missing: id,
-    })?;
-    resolve(
-        view.model,
-        id,
-        entity,
-        &actual_type,
-        project_metres_per_unit,
-    )
-}
-
-fn resolve(
-    model: &Model,
-    id: EntityId,
-    entity: &Entity,
-    actual_type: &str,
-    project_metres_per_unit: f64,
-) -> GeorefResult<ProjectToMap> {
-    if !project_metres_per_unit.is_finite() || project_metres_per_unit <= 0.0 {
-        return Err(GeorefError::InvalidUnit {
-            entity: id,
-            detail: "project length scale must be finite and positive",
-        });
-    }
-    if actual_type != "IFCMAPCONVERSION" {
-        // Coordinate-operation siblings this crate does not yet lower
-        // (`IFCMAPCONVERSIONSCALED`, `IFCRIGIDOPERATION`) are a distinct
-        // failure from an entirely unrelated entity id: the former is "not
-        // implemented yet", the latter is "wrong entity entirely".
-        if matches!(actual_type, "IFCMAPCONVERSIONSCALED" | "IFCRIGIDOPERATION") {
-            return Err(GeorefError::UnsupportedOperation {
-                entity: id,
-                actual: actual_type.to_owned(),
-            });
-        }
-        return Err(GeorefError::WrongType {
-            entity: id,
-            expected: "IFCMAPCONVERSION",
-            actual: entity.type_name.to_string(),
-        });
-    }
+    let id = op.id;
     // Slots are pinned against the bundled IFC4 and IFC4X3 tables in
     // `crate::slot`.
-    let source_crs = required_ref(entity, id, slot::SOURCE_CRS, "SourceCRS")?;
-    let target_ref = required_ref(entity, id, slot::TARGET_CRS, "TargetCRS")?;
-    let target_crs = projected_crs(model, target_ref)?;
-    let project_unit = LengthUnit {
-        name: "PROJECT_LENGTH_UNIT".into(),
-        metres_per_unit: project_metres_per_unit,
-    };
+    let source = operation_source(op.model, op.view, id)?;
+    let source_crs = source.entity();
+    let target_ref = op.required_ref(slot::TARGET_CRS, "TargetCRS")?;
+    let target_crs = projected_crs(op.model, target_ref)?;
     let map_unit = target_crs
         .map_unit
         .clone()
         .unwrap_or_else(|| project_unit.clone());
 
-    let eastings = required_number(entity, id, slot::EASTINGS, "Eastings")?;
-    let northings = required_number(entity, id, slot::NORTHINGS, "Northings")?;
-    let height = required_number(entity, id, slot::ORTHOGONAL_HEIGHT, "OrthogonalHeight")?;
-    let a = optional_number(entity, id, slot::X_AXIS_ABSCISSA, "XAxisAbscissa")?.unwrap_or(1.0);
-    let b = optional_number(entity, id, slot::X_AXIS_ORDINATE, "XAxisOrdinate")?.unwrap_or(0.0);
+    let eastings = op.required_number(slot::EASTINGS, "Eastings")?;
+    let northings = op.required_number(slot::NORTHINGS, "Northings")?;
+    let height = op.required_number(slot::ORTHOGONAL_HEIGHT, "OrthogonalHeight")?;
+    let a = op
+        .optional_number(slot::X_AXIS_ABSCISSA, "XAxisAbscissa")?
+        .unwrap_or(1.0);
+    let b = op
+        .optional_number(slot::X_AXIS_ORDINATE, "XAxisOrdinate")?
+        .unwrap_or(0.0);
     let norm = a.hypot(b);
     if !norm.is_finite() || norm <= f64::EPSILON {
         return Err(GeorefError::DegenerateAxis { entity: id });
     }
     let (a, b) = (a / norm, b / norm);
-    let declared_scale = optional_number(entity, id, slot::SCALE, "Scale")?.unwrap_or(1.0);
+    let declared_scale = op.optional_number(slot::SCALE, "Scale")?.unwrap_or(1.0);
     if !declared_scale.is_finite() || declared_scale <= 0.0 {
         return Err(GeorefError::InvalidScale {
             entity: id,
             value: declared_scale,
         });
     }
-    for (index, name, value) in [
-        (slot::EASTINGS, "Eastings", eastings),
-        (slot::NORTHINGS, "Northings", northings),
-        (slot::ORTHOGONAL_HEIGHT, "OrthogonalHeight", height),
-    ] {
-        if !value.is_finite() {
-            return Err(GeorefError::InvalidAttribute {
-                entity: id,
-                index,
-                name,
-            });
-        }
-    }
+    op.finite(slot::EASTINGS, "Eastings", eastings)?;
+    op.finite(slot::NORTHINGS, "Northings", northings)?;
+    op.finite(slot::ORTHOGONAL_HEIGHT, "OrthogonalHeight", height)?;
+
+    let (kind, factors) = if scaled {
+        let factors = (
+            factor(op, scaled_slot::FACTOR_X, "FactorX")?,
+            factor(op, scaled_slot::FACTOR_Y, "FactorY")?,
+            factor(op, scaled_slot::FACTOR_Z, "FactorZ")?,
+        );
+        (OperationKind::MapConversionScaled { factors }, factors)
+    } else {
+        (OperationKind::MapConversion, (1.0, 1.0, 1.0))
+    };
 
     // IFC formula: E/N/H are target-map units; Scale maps source project
     // units to target units. The neutral operation takes and returns metres.
-    let scale = declared_scale * map_unit.metres_per_unit / project_metres_per_unit;
-    if !scale.is_finite() || scale <= 0.0 {
-        return Err(GeorefError::InvalidScale {
-            entity: id,
-            value: scale,
-        });
-    }
-    let x = Vec3::new(a * scale, b * scale, 0.0);
-    let y = Vec3::new(-b * scale, a * scale, 0.0);
-    let z = Vec3::new(0.0, 0.0, scale);
-    let translation = Vec3::new(eastings, northings, height) * map_unit.metres_per_unit;
-    for (index, name, value) in [
-        (slot::EASTINGS, "Eastings", translation.x),
-        (slot::NORTHINGS, "Northings", translation.y),
-        (slot::ORTHOGONAL_HEIGHT, "OrthogonalHeight", translation.z),
-    ] {
-        if !value.is_finite() {
-            return Err(GeorefError::InvalidAttribute {
+    let scale = declared_scale * map_unit.metres_per_unit / project_unit.metres_per_unit;
+    let (fx, fy, fz) = factors;
+    for axis_scale in [scale, scale * fx, scale * fy, scale * fz] {
+        if !axis_scale.is_finite() || axis_scale <= 0.0 {
+            return Err(GeorefError::InvalidScale {
                 entity: id,
-                index,
-                name,
+                value: axis_scale,
             });
         }
     }
+    let x = Vec3::new(a, b, 0.0) * (scale * fx);
+    let y = Vec3::new(-b, a, 0.0) * (scale * fy);
+    let z = Vec3::new(0.0, 0.0, scale * fz);
+    let translation = Vec3::new(eastings, northings, height) * map_unit.metres_per_unit;
+    op.finite(slot::EASTINGS, "Eastings", translation.x)?;
+    op.finite(slot::NORTHINGS, "Northings", translation.y)?;
+    op.finite(slot::ORTHOGONAL_HEIGHT, "OrthogonalHeight", translation.z)?;
     let transform = Transform3::from_mat3_translation(Mat3::from_cols(x, y, z), translation);
 
     Ok(ProjectToMap {
         source_crs,
+        source,
+        operation: id,
+        kind,
         target_crs,
         transform,
         project_unit,
@@ -201,52 +124,16 @@ fn resolve(
     })
 }
 
-fn required_ref(
-    entity: &Entity,
-    id: EntityId,
-    index: usize,
-    name: &'static str,
-) -> GeorefResult<EntityId> {
-    entity
-        .reference(index)
-        .ok_or(GeorefError::MissingAttribute {
-            entity: id,
+/// A mandatory `IfcMapConversionScaled` factor: finite and positive.
+fn factor(op: &Operation<'_, '_>, index: usize, name: &'static str) -> GeorefResult<f64> {
+    let value = op.required_number(index, name)?;
+    if value.is_finite() && value > 0.0 {
+        Ok(value)
+    } else {
+        Err(GeorefError::InvalidAttribute {
+            entity: op.id,
             index,
             name,
         })
-}
-
-fn required_number(
-    entity: &Entity,
-    id: EntityId,
-    index: usize,
-    name: &'static str,
-) -> GeorefResult<f64> {
-    entity
-        .attribute(index)
-        .and_then(|v| v.unwrap_typed().as_f64())
-        .ok_or(GeorefError::MissingAttribute {
-            entity: id,
-            index,
-            name,
-        })
-}
-
-fn optional_number(
-    entity: &Entity,
-    id: EntityId,
-    index: usize,
-    name: &'static str,
-) -> GeorefResult<Option<f64>> {
-    match entity.attribute(index).map(Value::unwrap_typed) {
-        None | Some(Value::Null) => Ok(None),
-        Some(value) => value
-            .as_f64()
-            .map(Some)
-            .ok_or(GeorefError::InvalidAttribute {
-                entity: id,
-                index,
-                name,
-            }),
     }
 }

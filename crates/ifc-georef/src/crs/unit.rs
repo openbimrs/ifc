@@ -1,4 +1,9 @@
-//! Explicit length-unit resolution for map coordinates.
+//! Explicit length- and plane-angle-unit resolution for CRS coordinates.
+//!
+//! Both kinds reduce the same way: an `IfcSIUnit` of the expected
+//! `UnitType` and base name, optionally prefixed, or an
+//! `IfcConversionBasedUnit` whose `ConversionFactor` bottoms out in one.
+//! Only the expected `UnitType`/base name and the base factor differ.
 
 use ifc_model::value::Value;
 use ifc_model::{EntityId, Model};
@@ -16,11 +21,58 @@ pub struct LengthUnit {
     pub metres_per_unit: f64,
 }
 
-pub(crate) fn resolve_length_unit(model: &Model, id: EntityId) -> GeorefResult<LengthUnit> {
-    resolve(model, id, &mut Vec::new())
+/// A plane-angle unit reduced to a radian factor, as an IFC4X3
+/// `IfcGeographicCRS.AngleUnit` declares it.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct AngleUnit {
+    /// Unit name, either an SI token such as `RADIAN` or the authored
+    /// `IfcConversionBasedUnit.Name` such as `DEGREE`.
+    pub name: String,
+    /// Radians per one unit. Always finite and strictly positive.
+    pub radians_per_unit: f64,
 }
 
-fn resolve(model: &Model, id: EntityId, chain: &mut Vec<EntityId>) -> GeorefResult<LengthUnit> {
+/// The unit kind being reduced: its `IfcUnitEnum` token and SI base name.
+#[derive(Clone, Copy)]
+struct Kind {
+    unit_type: &'static str,
+    si_name: &'static str,
+}
+
+const LENGTH: Kind = Kind {
+    unit_type: "LENGTHUNIT",
+    si_name: "METRE",
+};
+
+const PLANE_ANGLE: Kind = Kind {
+    unit_type: "PLANEANGLEUNIT",
+    si_name: "RADIAN",
+};
+
+pub(crate) fn resolve_length_unit(model: &Model, id: EntityId) -> GeorefResult<LengthUnit> {
+    let (name, metres_per_unit) = resolve(model, id, LENGTH, &mut Vec::new())?;
+    Ok(LengthUnit {
+        name,
+        metres_per_unit,
+    })
+}
+
+pub(crate) fn resolve_angle_unit(model: &Model, id: EntityId) -> GeorefResult<AngleUnit> {
+    let (name, radians_per_unit) = resolve(model, id, PLANE_ANGLE, &mut Vec::new())?;
+    Ok(AngleUnit {
+        name,
+        radians_per_unit,
+    })
+}
+
+/// Reduce `id` to `(name, SI base units per unit)`.
+fn resolve(
+    model: &Model,
+    id: EntityId,
+    kind: Kind,
+    chain: &mut Vec<EntityId>,
+) -> GeorefResult<(String, f64)> {
     if chain.len() >= 16 || chain.contains(&id) {
         return Err(GeorefError::UnitCycle { entity: id });
     }
@@ -31,14 +83,14 @@ fn resolve(model: &Model, id: EntityId, chain: &mut Vec<EntityId>) -> GeorefResu
     })?;
     let result = match entity.type_name.as_ref() {
         "IFCSIUNIT" => {
-            require_enum(entity.attribute(si_unit::UNIT_TYPE), id, "LENGTHUNIT")?;
+            require_enum(entity.attribute(si_unit::UNIT_TYPE), id, kind.unit_type)?;
             let prefix = optional_enum(
                 entity.attribute(si_unit::PREFIX),
                 id,
                 si_unit::PREFIX,
                 "Prefix",
             )?;
-            require_enum(entity.attribute(si_unit::NAME), id, "METRE")?;
+            require_enum(entity.attribute(si_unit::NAME), id, kind.si_name)?;
             let factor = match prefix.as_deref() {
                 None => 1.0,
                 Some("EXA") => 1e18,
@@ -64,16 +116,16 @@ fn resolve(model: &Model, id: EntityId, chain: &mut Vec<EntityId>) -> GeorefResu
                     })
                 }
             };
-            LengthUnit {
-                name: prefix.map_or_else(|| "METRE".into(), |p| format!("{p}METRE")),
-                metres_per_unit: factor,
-            }
+            (
+                prefix.map_or_else(|| kind.si_name.into(), |p| format!("{p}{}", kind.si_name)),
+                factor,
+            )
         }
         "IFCCONVERSIONBASEDUNIT" => {
             require_enum(
                 entity.attribute(conversion_based_unit::UNIT_TYPE),
                 id,
-                "LENGTHUNIT",
+                kind.unit_type,
             )?;
             let name = entity
                 .text(conversion_based_unit::NAME)
@@ -116,11 +168,8 @@ fn resolve(model: &Model, id: EntityId, chain: &mut Vec<EntityId>) -> GeorefResu
                     index: measure_with_unit::UNIT_COMPONENT,
                     name: "UnitComponent",
                 })?;
-            let base = resolve(model, base_ref, chain)?;
-            LengthUnit {
-                name,
-                metres_per_unit: value * base.metres_per_unit,
-            }
+            let (_, base) = resolve(model, base_ref, kind, chain)?;
+            (name, value * base)
         }
         actual => {
             return Err(GeorefError::WrongType {
@@ -131,7 +180,7 @@ fn resolve(model: &Model, id: EntityId, chain: &mut Vec<EntityId>) -> GeorefResu
         }
     };
     chain.pop();
-    if !result.metres_per_unit.is_finite() || result.metres_per_unit <= 0.0 {
+    if !result.1.is_finite() || result.1 <= 0.0 {
         return Err(GeorefError::InvalidUnit {
             entity: id,
             detail: "conversion factor must be finite and positive",

@@ -63,6 +63,18 @@ pub enum GeorefError {
         /// The IFC type actually declared.
         actual: String,
     },
+    /// A rigid operation's coordinates are the other `SameCoordinateType`
+    /// branch than the entry point reads: plane angles given to the
+    /// project-to-map resolver, which only lowers length offsets, or
+    /// lengths given to the geographic-offset reader.
+    CoordinateMeasureMismatch {
+        /// The `IfcRigidOperation` entity.
+        entity: EntityId,
+        /// The measure type this entry point reads.
+        expected: &'static str,
+        /// The measure type both coordinates carry.
+        actual: &'static str,
+    },
     /// The map x axis is zero-length or non-finite, so no rotation exists.
     DegenerateAxis {
         /// The map conversion entity.
@@ -177,6 +189,14 @@ impl std::fmt::Display for GeorefError {
             Self::UnsupportedOperation { entity, actual } => {
                 write!(f, "{entity} uses unsupported coordinate operation {actual}")
             }
+            Self::CoordinateMeasureMismatch {
+                entity,
+                expected,
+                actual,
+            } => write!(
+                f,
+                "{entity} has {actual} coordinates, this reader requires {expected}"
+            ),
             Self::DegenerateAxis { entity } => {
                 write!(f, "{entity} has a zero-length or non-finite map x axis")
             }

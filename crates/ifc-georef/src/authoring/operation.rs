@@ -342,10 +342,19 @@ pub fn create_map_conversion_scaled(
     Ok(tx.create(Entity::new("IFCMAPCONVERSIONSCALED", attributes)))
 }
 
-/// Stage an `IfcRigidOperation`: a translation with no rotation or scale.
+/// Stage an IFC4X3 `IfcRigidOperation` with length coordinates: a
+/// translation with no rotation or scale.
 ///
-/// Unlike a map conversion this does not require a projected target:
-/// a rigid shift is meaningful between any two systems sharing units.
+/// `FirstCoordinate` and `SecondCoordinate` are `IfcMeasureValue`, a
+/// SELECT, and `SameCoordinateType` requires both to be
+/// `IfcLengthMeasure` or both `IfcPlaneAngleMeasure`; an untyped REAL
+/// satisfies neither. So they are written typed, as
+/// `IFCLENGTHMEASURE(..)`. The reader lowers this form to a translation
+/// when the target is an `IfcProjectedCRS`; for latitude/longitude offsets
+/// on an `IfcGeographicCRS` use [`create_angular_rigid_operation`].
+///
+/// The target is not checked here: `IfcRigidOperation` carries no
+/// `TargetCRSOnlyProjected` rule.
 ///
 /// # Errors
 ///
@@ -356,6 +365,51 @@ pub fn create_rigid_operation(
     target_crs: EntityId,
     coordinates: (f64, f64),
     height: Option<f64>,
+) -> GeorefResult<EntityId> {
+    rigid_operation(
+        tx,
+        source_crs,
+        target_crs,
+        coordinates,
+        height,
+        "IFCLENGTHMEASURE",
+    )
+}
+
+/// Stage an IFC4X3 `IfcRigidOperation` with plane-angle coordinates, an
+/// offset of latitude and longitude on an `IfcGeographicCRS`.
+///
+/// Both coordinates are written as `IFCPLANEANGLEMEASURE(..)`, the other
+/// `SameCoordinateType` branch; `height` stays an `IfcLengthMeasure`.
+/// Read it back with [`crate::resolve_geographic_offset_in`].
+///
+/// # Errors
+///
+/// Refuses a non-finite coordinate or height.
+pub fn create_angular_rigid_operation(
+    tx: &mut Transaction,
+    source_crs: EntityId,
+    target_crs: EntityId,
+    coordinates: (f64, f64),
+    height: Option<f64>,
+) -> GeorefResult<EntityId> {
+    rigid_operation(
+        tx,
+        source_crs,
+        target_crs,
+        coordinates,
+        height,
+        "IFCPLANEANGLEMEASURE",
+    )
+}
+
+fn rigid_operation(
+    tx: &mut Transaction,
+    source_crs: EntityId,
+    target_crs: EntityId,
+    coordinates: (f64, f64),
+    height: Option<f64>,
+    measure: &'static str,
 ) -> GeorefResult<EntityId> {
     let (first, second) = coordinates;
     for (attribute, value) in [("FirstCoordinate", first), ("SecondCoordinate", second)] {
@@ -368,14 +422,18 @@ pub fn create_rigid_operation(
             return Err(invalid("IFCRIGIDOPERATION", "Height", value.to_string()));
         }
     }
+    let typed = |value: f64| Value::Typed {
+        type_name: measure.into(),
+        value: Box::new(Value::Real(value)),
+    };
 
     Ok(tx.create(Entity::new(
         "IFCRIGIDOPERATION",
         vec![
             Value::Ref(source_crs),
             Value::Ref(target_crs),
-            Value::Real(first),
-            Value::Real(second),
+            typed(first),
+            typed(second),
             height.map_or(Value::Null, Value::Real),
         ],
     )))
