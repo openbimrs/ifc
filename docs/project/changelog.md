@@ -18,6 +18,48 @@ lockstep -- is archived in the
 
 <!-- CHANGELOG:BEGIN -->
 
+## [Unreleased]
+
+### ifc-schedule
+
+### Added
+
+- `RecurrenceDraft::time_periods` places `IfcTimePeriod` records in a
+  pattern's `TimePeriods` (#233). `create_recurrence_pattern_in` and
+  `create_time_period_in` bind the model's declared release: IFC2X3,
+  which declares neither entity, is refused with `EntityNotInSchema`, and
+  the pattern writer refuses a period reference that is absent
+  (`MissingReference`) or not an `IfcTimePeriod` (`WrongReferenceType`).
+  Nothing is staged on a refusal.
+- `Recurrence` exposes `days` (`DayComponent`), `months`
+  (`MonthComponent`) and `time_periods`, read as the new `TimePeriod`
+  (`StartTime`, `EndTime` as authored); `recurrence_pattern(model, id)`
+  reads a pattern referenced from outside a work calendar, such as
+  `IfcTaskTimeRecurring.Recurrence`; `recurrence_slot::TIME_PERIODS` and
+  `time_period_slot` name the slots (#233).
+- `Lag` exposes `duration_type` (`IfcLagTime.DurationType`) and `name`
+  (#236).
+- `process_execution_order`: every `IfcProcess` (task, procedure, event)
+  in a deterministic execution order (#236).
+- `ScheduleReadError::SequenceDepthExceeded { start, limit }` (#236).
+
+### Fixed
+
+- `create_recurrence_pattern` writes all eight attributes IFC4 and IFC4X3
+  declare for `IfcRecurrencePattern`; it wrote seven, so every authored
+  pattern was a short record (#233).
+- A sequence walk that reaches `MAX_SEQUENCE_DEPTH` is refused with
+  `SequenceDepthExceeded` instead of returning a truncated result as if
+  complete: `downstream_of` and `find_cycle` report it (#236). The walk
+  uses an explicit stack, so the budget rather than the thread's stack
+  bounds it.
+- `find_cycle` walks from every `IfcProcess` in the declared release, not
+  only `IfcTask`, so a cycle through events or procedures is found (#236).
+- `execution_order` sorts over every `IfcProcess` and keeps the tasks, so a
+  constraint through an event or procedure (task A, event E, task B) orders
+  A before B, and a cycle through one is refused (#236). Its result is
+  still tasks only.
+
 ## [0.9.0] - 2026-09-29
 
 ### openbim-ifc

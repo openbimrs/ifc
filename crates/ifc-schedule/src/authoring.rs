@@ -24,7 +24,6 @@
 
 use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 
-use crate::calendar::recurrence_slot;
 use crate::calendar::{work_calendar_slot, work_time_slot};
 use crate::error::ScheduleAuthoringError;
 use crate::event::{event_slot, event_time_slot};
@@ -574,106 +573,12 @@ pub fn create_lag_time_in(
     create_lag_time(tx, name, lag_value, duration_type)
 }
 
-/// Authored fields for `IfcRecurrencePattern`.
-///
-/// Weekday and month components are 1-based in the schema: 1 = Monday
-/// through 7 = Sunday, and 1 = January through 12 = December. Out-of-range
-/// values are refused rather than written, because a reader has no way to
-/// tell a 0-based authoring mistake from a deliberate value.
-#[derive(Debug, Clone, Default)]
-#[non_exhaustive]
-pub struct RecurrenceDraft<'a> {
-    /// `RecurrenceType`. Required by the schema.
-    pub recurrence_type: &'a str,
-    /// `DayComponent`: days of the month, 1..=31.
-    pub days: Vec<i64>,
-    /// `WeekdayComponent`: 1 = Monday through 7 = Sunday.
-    pub weekdays: Vec<i64>,
-    /// `MonthComponent`: 1 = January through 12 = December.
-    pub months: Vec<i64>,
-    /// `Position`, for positional patterns. Negative counts from the end.
-    pub position: Option<i64>,
-    /// `Interval`: repeat every n periods. Must be positive.
-    pub interval: Option<i64>,
-    /// `Occurrences`: how many times it repeats. Must be positive.
-    pub occurrences: Option<i64>,
-}
-
-/// Stage an `IfcRecurrencePattern`.
-///
-/// Refuses component values outside the schema's 1-based ranges, and a
-/// non-positive interval or occurrence count: "every 0 weeks" and "repeats
-/// -1 times" both parse and both describe nothing.
-pub fn create_recurrence_pattern(
-    tx: &mut Transaction,
-    draft: &RecurrenceDraft<'_>,
-) -> ScheduleAuthoringResult<EntityId> {
-    if draft.recurrence_type.trim().is_empty() {
-        return Err(ScheduleAuthoringError::InvalidValue {
-            entity: "IFCRECURRENCEPATTERN",
-            attribute: "RecurrenceType",
-            expected: "a non-empty IfcRecurrenceTypeEnum value",
-        });
-    }
-    check_range(&draft.days, 1, 31, "DayComponent")?;
-    check_range(&draft.weekdays, 1, 7, "WeekdayComponent")?;
-    check_range(&draft.months, 1, 12, "MonthComponent")?;
-    check_positive(draft.interval, "Interval")?;
-    check_positive(draft.occurrences, "Occurrences")?;
-    let mut attributes = vec![Value::Null; recurrence_slot::OCCURRENCES + 1];
-    attributes[recurrence_slot::RECURRENCE_TYPE] = Value::Enum(draft.recurrence_type.into());
-    attributes[recurrence_slot::DAY_COMPONENT] = integer_list(&draft.days);
-    attributes[recurrence_slot::WEEKDAY_COMPONENT] = integer_list(&draft.weekdays);
-    attributes[recurrence_slot::MONTH_COMPONENT] = integer_list(&draft.months);
-    attributes[recurrence_slot::POSITION] = draft.position.map_or(Value::Null, Value::Integer);
-    attributes[recurrence_slot::INTERVAL] = draft.interval.map_or(Value::Null, Value::Integer);
-    attributes[recurrence_slot::OCCURRENCES] =
-        draft.occurrences.map_or(Value::Null, Value::Integer);
-    Ok(tx.create(Entity::new("IFCRECURRENCEPATTERN", attributes)))
-}
-
-/// Refuse component values outside the schema's inclusive range.
-fn check_range(
-    values: &[i64],
-    low: i64,
-    high: i64,
-    attribute: &'static str,
-) -> ScheduleAuthoringResult<()> {
-    if values.iter().any(|v| !(low..=high).contains(v)) {
-        return Err(ScheduleAuthoringError::InvalidValue {
-            entity: "IFCRECURRENCEPATTERN",
-            attribute,
-            expected: "components within the schema's 1-based range",
-        });
-    }
-    Ok(())
-}
-
-/// Refuse a stated count that is zero or negative.
-fn check_positive(value: Option<i64>, attribute: &'static str) -> ScheduleAuthoringResult<()> {
-    if value.is_some_and(|v| v <= 0) {
-        return Err(ScheduleAuthoringError::InvalidValue {
-            entity: "IFCRECURRENCEPATTERN",
-            attribute,
-            expected: "a positive count",
-        });
-    }
-    Ok(())
-}
-
-/// An omitted list stays `Null` rather than becoming an empty aggregate.
-fn integer_list(values: &[i64]) -> Value {
-    if values.is_empty() {
-        return Value::Null;
-    }
-    Value::List(values.iter().copied().map(Value::Integer).collect())
-}
-
 mod builders;
 mod checks;
 mod datetime;
 mod owned;
 mod procedure;
+mod recurrence;
 mod timing;
 
 pub use owned::{
@@ -683,4 +588,8 @@ pub use owned::{
     create_work_control_with_owner_history, nest_tasks_with_owner_history, TimeLag,
 };
 pub use procedure::{create_procedure, ProcedureDraft};
-pub use timing::{create_task_time, create_task_time_recurring, create_time_period, TaskTimeDraft};
+pub use recurrence::{create_recurrence_pattern, create_recurrence_pattern_in, RecurrenceDraft};
+pub use timing::{
+    create_task_time, create_task_time_recurring, create_time_period, create_time_period_in,
+    TaskTimeDraft,
+};

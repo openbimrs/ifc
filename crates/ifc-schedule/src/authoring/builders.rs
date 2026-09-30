@@ -333,6 +333,14 @@ impl<'a> RecurrenceDraft<'a> {
         self.occurrences = Some(value);
         self
     }
+
+    /// Sets `TimePeriods`, the `IfcTimePeriod` records the pattern's
+    /// occurrences span, in authored order (#233).
+    #[must_use]
+    pub fn time_periods(mut self, value: Vec<EntityId>) -> Self {
+        self.time_periods = value;
+        self
+    }
 }
 
 impl<'a> ProcedureDraft<'a> {

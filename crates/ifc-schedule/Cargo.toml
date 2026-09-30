@@ -14,7 +14,7 @@ readme = "README.md"
 # implemented | partial | scaffold -- a judgement, never inferred from size.
 # `gaps`: the open issues behind the status; a partial crate names one.
 status = "partial"
-gaps = [233, 234, 235, 236]
+gaps = [234, 235]
 # core | domain | geometry | facade | binding
 group = "domain"
 

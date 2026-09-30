@@ -145,6 +145,10 @@ pub fn create_task_time_recurring(
 
 /// Stage an `IfcTimePeriod`: a start and end time of day.
 ///
+/// Place it in a pattern with [`RecurrenceDraft::time_periods`](super::RecurrenceDraft::time_periods).
+/// Takes no model, so it is for IFC4 and IFC4X3 only; [`create_time_period_in`]
+/// checks the model's release.
+///
 /// Both slots are `IfcTime`, a time of day rather than a timestamp,
 /// and both are required. The values are written as given for the
 /// same reason `IfcTaskTime` does not parse its durations: the codec
@@ -173,4 +177,25 @@ pub fn create_time_period(
         ENTITY,
         vec![Value::Text(start_time.into()), Value::Text(end_time.into())],
     )))
+}
+
+/// [`create_time_period`] bound to `model`'s declared release (#233).
+///
+/// IFC4 and IFC4X3 stage exactly what [`create_time_period`] stages.
+/// IFC2X3 declares no `IfcTimePeriod` and is refused.
+///
+/// # Errors
+///
+/// `EntityNotInSchema` for a release without `IfcTimePeriod`,
+/// `MultipleSchemas` or `UnsupportedSchema` when the header binds no single
+/// known release, and those of [`create_time_period`]. Nothing is staged on
+/// an error.
+pub fn create_time_period_in(
+    tx: &mut Transaction,
+    model: &Model,
+    start_time: &str,
+    end_time: &str,
+) -> ScheduleAuthoringResult<EntityId> {
+    crate::release::bind(model)?.require_entity("IFCTIMEPERIOD")?;
+    create_time_period(tx, start_time, end_time)
 }

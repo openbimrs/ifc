@@ -139,22 +139,54 @@ pub fn end_tasks(model: &Model) -> Result<Vec<EntityId>, ScheduleReadError> {
 /// ready, the one appearing first in the file wins. Without that tie-break the
 /// order would depend on hash iteration and change between runs.
 ///
+/// The sort runs over every `IfcProcess` and keeps the `IfcTask`s (#236), so
+/// a constraint that passes through an `IfcEvent` or `IfcProcedure`
+/// (task A, then event E, then task B) still orders A before B, and a cycle
+/// through one is still refused. [`process_execution_order`] keeps every
+/// process.
+///
 /// # Errors
 ///
 /// [`ScheduleReadError::Cycle`] when the graph loops, because a cyclic
-/// schedule has no valid ordering at all, and the binding refusals of
-/// [`sequences`].
+/// schedule has no valid ordering at all, and the refusals of
+/// [`process_execution_order`].
 pub fn execution_order(model: &Model) -> Result<Vec<EntityId>, ScheduleReadError> {
-    let links = sequences(model)?;
-    let tasks: Vec<EntityId> = model.ids_of_type("IFCTASK").to_vec();
-    let position: HashMap<EntityId, usize> =
-        tasks.iter().enumerate().map(|(i, id)| (*id, i)).collect();
+    Ok(process_execution_order(model)?
+        .into_iter()
+        .filter(|id| {
+            model
+                .get(*id)
+                .is_some_and(|entity| entity.type_name.eq_ignore_ascii_case("IFCTASK"))
+        })
+        .collect())
+}
 
-    let mut indegree: HashMap<EntityId, usize> = tasks.iter().map(|id| (*id, 0)).collect();
+/// Every `IfcProcess` (task, procedure or event) in a valid execution order
+/// (#236).
+///
+/// The same deterministic sort as [`execution_order`], over every process
+/// the model's release declares, in file order among those ready together.
+///
+/// # Errors
+///
+/// [`ScheduleReadError::Cycle`] when the graph loops,
+/// [`ScheduleReadError::SequenceDepthExceeded`] when locating that cycle
+/// meets a chain longer than the walk budget, and the binding refusals of
+/// [`sequences`].
+pub fn process_execution_order(model: &Model) -> Result<Vec<EntityId>, ScheduleReadError> {
+    let links = sequences(model)?;
+    let processes = crate::sequence::relation::processes(model)?;
+    let position: HashMap<EntityId, usize> = processes
+        .iter()
+        .enumerate()
+        .map(|(i, id)| (*id, i))
+        .collect();
+
+    let mut indegree: HashMap<EntityId, usize> = processes.iter().map(|id| (*id, 0)).collect();
     let mut edges: HashMap<EntityId, Vec<EntityId>> = HashMap::new();
     for link in &links {
-        // Ignore links naming entities that are not tasks in this model: a
-        // dangling sequence must not silently drop a real task from the order.
+        // Ignore links naming entities that are not processes in this model:
+        // a dangling sequence must not silently drop a real process.
         if !position.contains_key(&link.predecessor) || !position.contains_key(&link.successor) {
             continue;
         }
@@ -167,7 +199,7 @@ pub fn execution_order(model: &Model) -> Result<Vec<EntityId>, ScheduleReadError
 
     // Ready set kept sorted by file position: deterministic, and cheap at the
     // sizes real schedules reach.
-    let mut ready: Vec<EntityId> = tasks
+    let mut ready: Vec<EntityId> = processes
         .iter()
         .copied()
         .filter(|id| indegree.get(id).copied().unwrap_or(0) == 0)
@@ -188,17 +220,18 @@ pub fn execution_order(model: &Model) -> Result<Vec<EntityId>, ScheduleReadError
         }
     }
 
-    if out.len() != tasks.len() {
+    if out.len() != processes.len() {
         // Kahn's algorithm stalls exactly when a cycle remains. Find it and
         // report the path rather than a bare "graph is cyclic".
         if let Some(cycle) = crate::sequence::find_cycle(model)? {
             return Err(cycle.into());
         }
         // Unreachable for a well-formed model: a stall implies a cycle. Report
-        // the first unemitted task rather than claiming a clean result.
-        let stalled = tasks
+        // the first unemitted process rather than claiming a clean result.
+        let emitted: HashSet<EntityId> = out.iter().copied().collect();
+        let stalled = processes
             .iter()
-            .find(|id| !out.contains(id))
+            .find(|id| !emitted.contains(id))
             .copied()
             .unwrap_or(EntityId(0));
         return Err(SequenceCycle {

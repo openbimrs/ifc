@@ -39,12 +39,13 @@
 //! `IfcLagTime.LagValue` may be negative: a negative lag is a lead, meaning
 //! the linked ends overlap. It is a stated fact, not a defect to refuse.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use ifc_model::{EntityId, Model, Value};
 
 use crate::error::ScheduleReadError;
 use crate::release::ReadRelease;
+use crate::task::DurationType;
 
 const SEQUENCE: &str = "IFCRELSEQUENCE";
 const LAG_TIME: &str = "IFCLAGTIME";
@@ -71,7 +72,11 @@ pub mod lag_slot {
     pub const DURATION_TYPE: usize = 4;
 }
 
-/// The maximum sequence-graph depth walked before reporting a runaway chain.
+/// The longest chain of processes a sequence walk follows.
+///
+/// A walk that would go deeper is refused with
+/// [`ScheduleReadError::SequenceDepthExceeded`] rather than returned
+/// truncated (#236).
 pub const MAX_SEQUENCE_DEPTH: usize = 4096;
 
 /// Which ends of two tasks a sequence links.
@@ -122,6 +127,12 @@ pub struct Lag {
     /// predecessor is 50% done" and cannot be converted to a duration without
     /// knowing that task's own duration.
     pub ratio: Option<f64>,
+    /// `IfcLagTime.DurationType`: whether the lag counts working time or
+    /// elapsed time (#236). Required by the schema; `None` when the record
+    /// leaves it unset or states a token outside `IfcTaskDurationEnum`.
+    pub duration_type: Option<DurationType>,
+    /// `IfcSchedulingTime.Name`, as authored (#236).
+    pub name: Option<String>,
 }
 
 /// One directed sequence link.
@@ -215,10 +226,14 @@ fn read_lag(model: &Model, release: ReadRelease, id: EntityId) -> Option<Lag> {
         id,
         duration,
         ratio,
+        duration_type: release
+            .token(LAG_TIME, entity, "DurationType")
+            .and_then(DurationType::parse),
+        name: release.text(LAG_TIME, entity, "Name").map(str::to_string),
     })
 }
 
-/// Tasks that must finish (or start) before `task`, in file order.
+/// Processes that must finish (or start) before `task`, in file order.
 ///
 /// # Errors
 ///
@@ -231,7 +246,7 @@ pub fn predecessors_of(model: &Model, task: EntityId) -> Result<Vec<EntityId>, S
         .collect())
 }
 
-/// Tasks that follow `task`, in file order.
+/// Processes that follow `task`, in file order.
 ///
 /// # Errors
 ///
@@ -244,83 +259,115 @@ pub fn successors_of(model: &Model, task: EntityId) -> Result<Vec<EntityId>, Sch
         .collect())
 }
 
-/// Every task reachable downstream of `task`, depth-first.
+/// Every process reachable downstream of `task`, depth-first.
 ///
 /// Excludes the start. Returns `Err` with the offending path if the graph
 /// cycles: a schedule that loops has no valid ordering, and the loop is the
-/// answer the caller needs.
+/// answer the caller needs. Every `IfcRelSequence` is followed, whatever
+/// `IfcProcess` it relates.
 ///
 /// # Errors
 ///
-/// [`ScheduleReadError::Cycle`] when a task is reachable from itself, and
-/// the binding refusals of [`sequences`].
+/// [`ScheduleReadError::Cycle`] when a process is reachable from itself,
+/// [`ScheduleReadError::SequenceDepthExceeded`] when a chain from `task` is
+/// longer than [`MAX_SEQUENCE_DEPTH`], and the binding refusals of
+/// [`sequences`].
 pub fn downstream_of(model: &Model, task: EntityId) -> Result<Vec<EntityId>, ScheduleReadError> {
     let all = sequences(model)?;
-    Ok(downstream_in(&all, task)?)
+    downstream_in(&successor_map(&all), task)
+}
+
+/// Successors of each predecessor, in file order of the links.
+fn successor_map(all: &[Sequence]) -> HashMap<EntityId, Vec<EntityId>> {
+    let mut map: HashMap<EntityId, Vec<EntityId>> = HashMap::new();
+    for link in all {
+        map.entry(link.predecessor)
+            .or_default()
+            .push(link.successor);
+    }
+    map
 }
 
 /// [`downstream_of`] over already read links.
-fn downstream_in(all: &[Sequence], task: EntityId) -> Result<Vec<EntityId>, SequenceCycle> {
+///
+/// An explicit stack rather than recursion, so the depth budget, not the
+/// thread's stack, bounds the walk.
+fn downstream_in(
+    successors: &HashMap<EntityId, Vec<EntityId>>,
+    start: EntityId,
+) -> Result<Vec<EntityId>, ScheduleReadError> {
     let mut out = Vec::new();
-    let mut path = Vec::new();
-    let mut on_path = HashSet::new();
     let mut seen = HashSet::new();
-    walk(all, task, &mut out, &mut path, &mut on_path, &mut seen)?;
-    Ok(out)
-}
-
-fn walk(
-    all: &[Sequence],
-    node: EntityId,
-    out: &mut Vec<EntityId>,
-    path: &mut Vec<EntityId>,
-    on_path: &mut HashSet<EntityId>,
-    seen: &mut HashSet<EntityId>,
-) -> Result<(), SequenceCycle> {
-    if path.len() >= MAX_SEQUENCE_DEPTH {
-        return Ok(());
-    }
-    path.push(node);
-    on_path.insert(node);
-
-    for successor in all
-        .iter()
-        .filter(|s| s.predecessor == node)
-        .map(|s| s.successor)
-    {
+    // The current path, each node with the index of its next successor.
+    let mut path: Vec<(EntityId, usize)> = vec![(start, 0)];
+    let mut on_path = HashSet::from([start]);
+    while let Some((node, next)) = path.last_mut() {
+        let node = *node;
+        let Some(&successor) = successors.get(&node).and_then(|all| all.get(*next)) else {
+            path.pop();
+            on_path.remove(&node);
+            continue;
+        };
+        *next += 1;
         if on_path.contains(&successor) {
-            let mut cycle = path.clone();
+            let mut cycle: Vec<EntityId> = path.iter().map(|(id, _)| *id).collect();
             cycle.push(successor);
             return Err(SequenceCycle {
                 repeated: successor,
                 path: cycle,
-            });
+            }
+            .into());
         }
-        // A diamond reconverges on the same task by two routes; report it
-        // once, but still recurse the first time it is seen.
+        // A diamond reconverges on the same process by two routes; report it
+        // once, but still descend the first time it is seen.
         if seen.insert(successor) {
             out.push(successor);
-            walk(all, successor, out, path, on_path, seen)?;
+            if path.len() >= MAX_SEQUENCE_DEPTH {
+                return Err(ScheduleReadError::SequenceDepthExceeded {
+                    start,
+                    limit: MAX_SEQUENCE_DEPTH,
+                });
+            }
+            path.push((successor, 0));
+            on_path.insert(successor);
         }
     }
+    Ok(out)
+}
 
-    path.pop();
-    on_path.remove(&node);
-    Ok(())
+/// Every `IfcProcess` in the model, in file order, per its declared release.
+pub(crate) fn processes(model: &Model) -> Result<Vec<EntityId>, ScheduleReadError> {
+    Ok(ReadRelease::of(model)?.instances_of(model, "IFCPROCESS"))
 }
 
 /// The first cycle in the whole sequence graph, if any.
 ///
-/// Checks every task, so a cycle in a disconnected component is still found.
+/// Walks from every `IfcProcess` (tasks, procedures and events alike), so a
+/// cycle through a non-task process, or in a disconnected component, is
+/// still found (#236).
 ///
 /// # Errors
 ///
-/// The binding refusals of [`sequences`].
+/// [`ScheduleReadError::SequenceDepthExceeded`] when a chain is longer than
+/// [`MAX_SEQUENCE_DEPTH`], since a truncated search cannot say there is no
+/// cycle, and the binding refusals of [`sequences`].
 pub fn find_cycle(model: &Model) -> Result<Option<SequenceCycle>, ScheduleReadError> {
     let all = sequences(model)?;
-    for (id, _) in model.of_type("IFCTASK") {
-        if let Err(cycle) = downstream_in(&all, id) {
-            return Ok(Some(cycle));
+    let successors = successor_map(&all);
+    // A process already reached from an earlier start had its whole
+    // downstream walked without a cycle, so walking from it again finds none.
+    let mut covered = HashSet::new();
+    for id in processes(model)? {
+        if covered.contains(&id) {
+            continue;
+        }
+        match downstream_in(&successors, id) {
+            Ok(reached) => {
+                covered.insert(id);
+                covered.extend(reached);
+            }
+            Err(ScheduleReadError::Cycle(cycle)) => return Ok(Some(cycle)),
+            Err(other) => return Err(other),
         }
     }
     Ok(None)
