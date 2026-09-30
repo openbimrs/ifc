@@ -193,6 +193,16 @@ pub enum ScheduleReadError {
     },
     /// The sequence graph loops, so no ordering or downstream walk exists.
     Cycle(SequenceCycle),
+    /// A sequence walk from `start` reached a chain longer than `limit`
+    /// processes ([`MAX_SEQUENCE_DEPTH`](crate::sequence::MAX_SEQUENCE_DEPTH))
+    /// and stopped (#236). The walk is refused rather than returned
+    /// truncated, so a partial answer never reads as a complete one.
+    SequenceDepthExceeded {
+        /// The process the walk started from.
+        start: EntityId,
+        /// The depth budget that was reached.
+        limit: usize,
+    },
 }
 
 impl From<SequenceCycle> for ScheduleReadError {
@@ -217,6 +227,10 @@ impl std::fmt::Display for ScheduleReadError {
                 "the sequence graph returns to {} after {} steps",
                 cycle.repeated,
                 cycle.path.len()
+            ),
+            Self::SequenceDepthExceeded { start, limit } => write!(
+                f,
+                "the sequence walk from {start} exceeds the depth budget of {limit} processes"
             ),
         }
     }

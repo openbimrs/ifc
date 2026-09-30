@@ -172,7 +172,7 @@ impl Release {
 }
 
 /// The type `target` will have once `tx` commits, or `None` if absent.
-fn projected_type(tx: &Transaction, model: &Model, target: EntityId) -> Option<String> {
+pub(crate) fn projected_type(tx: &Transaction, model: &Model, target: EntityId) -> Option<String> {
     for edit in tx.edits().iter().rev() {
         match edit {
             Edit::Remove { id } if *id == target => return None,
@@ -232,6 +232,28 @@ impl ReadRelease {
     /// The bound release.
     pub(crate) const fn version(self) -> SchemaVersion {
         self.version
+    }
+
+    /// Every instance of `ancestor` or one of its subtypes in this
+    /// release, in file order (#236).
+    ///
+    /// `IfcRelSequence` relates any `IfcProcess`: `IfcTask`, `IfcProcedure`
+    /// and, from IFC4, `IfcEvent`, plus IFC2X3's `IfcMove` and
+    /// `IfcOrderAction` under `IfcTask`. The subtypes come from the bound
+    /// release's table, never from a list written here.
+    pub(crate) fn instances_of(self, model: &Model, ancestor: &str) -> Vec<EntityId> {
+        let mut types: std::collections::HashSet<String> = self
+            .schema
+            .subtypes(ancestor)
+            .into_iter()
+            .map(str::to_ascii_uppercase)
+            .collect();
+        types.insert(ancestor.to_ascii_uppercase());
+        model
+            .iter()
+            .filter(|(_, entity)| types.contains(&entity.type_name.to_ascii_uppercase()))
+            .map(|(id, _)| id)
+            .collect()
     }
 
     fn slot(self, entity: &str, attribute: &'static str) -> Option<usize> {

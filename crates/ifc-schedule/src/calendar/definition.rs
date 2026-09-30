@@ -1,4 +1,5 @@
-//! `IfcWorkCalendar` and the working/exception times it declares.
+//! `IfcWorkCalendar`, the working/exception times it declares, and their
+//! recurrence patterns and time periods.
 //!
 //! # Slots, verified against IFC4 EXPRESS
 //!
@@ -17,6 +18,9 @@
 //! 0 RecurrenceType  1 DayComponent    2 WeekdayComponent
 //! 3 MonthComponent  4 Position        5 Interval
 //! 6 Occurrences     7 TimePeriods
+//!
+//! IfcTimePeriod
+//! 0 StartTime       1 EndTime
 //! ```
 //!
 //! # Working times and exception times are both `IfcWorkTime`
@@ -72,6 +76,16 @@ pub mod recurrence_slot {
     pub const INTERVAL: usize = 5;
     /// `Occurrences`.
     pub const OCCURRENCES: usize = 6;
+    /// `TimePeriods`, a list of `IfcTimePeriod` (#233).
+    pub const TIME_PERIODS: usize = 7;
+}
+
+/// `IfcTimePeriod` slots (IFC4 and IFC4X3; IFC2X3 has no `IfcTimePeriod`).
+pub mod time_period_slot {
+    /// `StartTime`, an `IfcTime`. Required by the schema.
+    pub const START_TIME: usize = 0;
+    /// `EndTime`, an `IfcTime`. Required by the schema.
+    pub const END_TIME: usize = 1;
 }
 
 /// Whether a period declares work or an exception to it.
@@ -137,8 +151,14 @@ pub struct Recurrence {
     pub id: EntityId,
     /// How it repeats.
     pub recurrence_type: Option<RecurrenceType>,
+    /// `DayComponent`: days of the month it applies to, 1 through 31
+    /// (#233).
+    pub days: Vec<i64>,
     /// Weekdays it applies to, 1 = Monday through 7 = Sunday.
     pub weekdays: Vec<i64>,
+    /// `MonthComponent`: months it applies to, 1 = January through
+    /// 12 = December (#233).
+    pub months: Vec<i64>,
     /// The ordinal position within the period, for positional patterns.
     ///
     /// `MONTHLY_BY_POSITION` uses it as "the 2nd Tuesday"; a negative value
@@ -148,6 +168,26 @@ pub struct Recurrence {
     pub interval: Option<i64>,
     /// How many times it repeats, if bounded.
     pub occurrences: Option<i64>,
+    /// `TimePeriods`: the times of day each occurrence spans, in authored
+    /// order (#233). A reference that is not an `IfcTimePeriod` is not
+    /// listed.
+    pub time_periods: Vec<TimePeriod>,
+}
+
+/// An `IfcTimePeriod`: a start and end time of day, as authored (#233).
+///
+/// Both are `IfcTime` strings and are not parsed, for the same reason
+/// dates are not: interpreting them is calendar arithmetic this crate
+/// leaves to the caller.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct TimePeriod {
+    /// The `IfcTimePeriod` entity.
+    pub id: EntityId,
+    /// `StartTime`, as authored.
+    pub start_time: Option<String>,
+    /// `EndTime`, as authored.
+    pub end_time: Option<String>,
 }
 
 impl Recurrence {
@@ -256,6 +296,17 @@ fn read_work_time(model: &Model, id: EntityId, role: WorkTimeRole) -> Option<Wor
     })
 }
 
+/// The `IfcRecurrencePattern` `id`, read as authored (#233).
+///
+/// For patterns referenced from somewhere other than a work calendar, such
+/// as `IfcTaskTimeRecurring.Recurrence`. `None` when `id` is absent or not
+/// an `IfcRecurrencePattern`. The slots are those IFC4 and IFC4X3 share;
+/// IFC2X3 declares no recurrence pattern.
+#[must_use]
+pub fn recurrence_pattern(model: &Model, id: EntityId) -> Option<Recurrence> {
+    read_recurrence(model, id)
+}
+
 fn read_recurrence(model: &Model, id: EntityId) -> Option<Recurrence> {
     let entity = model.get(id)?;
     if !entity
@@ -268,18 +319,20 @@ fn read_recurrence(model: &Model, id: EntityId) -> Option<Recurrence> {
         Some(Value::Enum(token)) => RecurrenceType::parse(token),
         _ => None,
     };
-    let mut weekdays = Vec::new();
-    if let Some(Value::List(items)) = entity.attribute(recurrence_slot::WEEKDAY_COMPONENT) {
-        for item in items {
-            if let Some(day) = item.unwrap_typed().as_i64() {
-                weekdays.push(day);
+    let mut time_periods = Vec::new();
+    if let Some(value) = entity.attribute(recurrence_slot::TIME_PERIODS) {
+        value.for_each_ref(&mut |period| {
+            if let Some(period) = read_time_period(model, period) {
+                time_periods.push(period);
             }
-        }
+        });
     }
     Some(Recurrence {
         id,
         recurrence_type,
-        weekdays,
+        days: integers(entity, recurrence_slot::DAY_COMPONENT),
+        weekdays: integers(entity, recurrence_slot::WEEKDAY_COMPONENT),
+        months: integers(entity, recurrence_slot::MONTH_COMPONENT),
         position: entity
             .attribute(recurrence_slot::POSITION)
             .and_then(|v| v.unwrap_typed().as_i64()),
@@ -289,6 +342,36 @@ fn read_recurrence(model: &Model, id: EntityId) -> Option<Recurrence> {
         occurrences: entity
             .attribute(recurrence_slot::OCCURRENCES)
             .and_then(|v| v.unwrap_typed().as_i64()),
+        time_periods,
+    })
+}
+
+/// The integer members of an aggregate slot, in authored order.
+fn integers(entity: &Entity, slot: usize) -> Vec<i64> {
+    match entity.attribute(slot) {
+        Some(Value::List(items)) => items
+            .iter()
+            .filter_map(|item| item.unwrap_typed().as_i64())
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+fn read_time_period(model: &Model, id: EntityId) -> Option<TimePeriod> {
+    let entity = model.get(id)?;
+    if !entity.type_name.eq_ignore_ascii_case("IFCTIMEPERIOD") {
+        return None;
+    }
+    let text = |slot| {
+        entity
+            .attribute(slot)
+            .and_then(|v| v.unwrap_typed().as_text())
+            .map(str::to_string)
+    };
+    Some(TimePeriod {
+        id,
+        start_time: text(time_period_slot::START_TIME),
+        end_time: text(time_period_slot::END_TIME),
     })
 }
 

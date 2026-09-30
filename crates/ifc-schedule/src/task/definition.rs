@@ -123,7 +123,7 @@ pub enum DurationType {
 }
 
 impl DurationType {
-    fn parse(token: &str) -> Option<Self> {
+    pub(crate) fn parse(token: &str) -> Option<Self> {
         Some(match token {
             "ELAPSEDTIME" => Self::ElapsedTime,
             "WORKTIME" => Self::WorkTime,
