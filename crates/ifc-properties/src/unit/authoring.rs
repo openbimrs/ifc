@@ -16,9 +16,11 @@
 //! file by a thousand, and the resulting model would still parse -- the worst
 //! kind of authoring bug, because nothing downstream can detect it.
 
-use ifc_model::{Entity, EntityId, Transaction, Value};
+use ifc_model::{Entity, EntityId, Model, Transaction, Value};
+use ifc_schema::TypeKind;
 
 use super::assignment::prefix_exponent;
+use crate::quantity::release::bind;
 use crate::{PropertyError, PropertyResult};
 
 /// Authored fields for `IfcSIUnit`.
@@ -66,6 +68,9 @@ impl<'a> SiUnitDraft<'a> {
 #[non_exhaustive]
 pub struct MonetaryUnitDraft<'a> {
     /// `IfcMonetaryUnit.Currency`, an ISO 4217 code such as `EUR`.
+    ///
+    /// An `IfcLabel` from IFC4 on, an `IfcCurrencyEnum` enumerator in
+    /// IFC2X3; [`create_monetary_unit`] writes the declared form.
     pub currency: &'a str,
 }
 
@@ -102,22 +107,107 @@ pub fn add_si_unit(tx: &mut Transaction, draft: SiUnitDraft<'_>) -> PropertyResu
     )))
 }
 
-/// Stage an `IfcMonetaryUnit`.
+/// Stage an `IfcMonetaryUnit` as IFC4 text, whatever the model's release.
+///
+/// Takes no model, so it cannot know the release, and always writes
+/// `Currency` as an `IfcLabel`. That is the IFC4, IFC4X1, IFC4X2 and
+/// IFC4X3 form; in IFC2X3 `Currency` is an `IfcCurrencyEnum`, so the
+/// record this writes there is schema-invalid.
+///
+/// # Errors
+///
+/// [`PropertyError::AuthoringInvalid`] for a blank currency.
+#[deprecated(
+    note = "writes IFC4 text even in IFC2X3; use `create_monetary_unit`, which binds the model's release (#232)"
+)]
 pub fn add_monetary_unit(
     tx: &mut Transaction,
     draft: MonetaryUnitDraft<'_>,
 ) -> PropertyResult<EntityId> {
-    if draft.currency.trim().is_empty() {
+    require_currency(draft.currency)?;
+    Ok(tx.create(Entity::new(
+        MONETARY_UNIT,
+        vec![Value::Text(draft.currency.into())],
+    )))
+}
+
+/// Stage an `IfcMonetaryUnit` in `model`'s declared release.
+///
+/// `Currency` changed type between releases:
+///
+/// ```text
+/// IFC2X3 TC1                         Currency : IfcCurrencyEnum
+/// IFC4, IFC4X1, IFC4X2, IFC4X3 ADD2  Currency : IfcLabel
+/// ```
+///
+/// In IFC2X3 the currency must name an `IfcCurrencyEnum` enumerator (matched
+/// ignoring ASCII case) and is written as that token, `.EUR.`; elsewhere it
+/// is written as the text given, `'EUR'`. The release binds as for
+/// [`create_quantity`](crate::create_quantity): IFC2X3, IFC4 and IFC4X3,
+/// with an empty header binding IFC4.
+///
+/// # Errors
+///
+/// Refused before anything is staged:
+/// - [`PropertyError::AuthoringInvalid`]: a blank currency, or in IFC2X3 a
+///   currency `IfcCurrencyEnum` does not list. It is never written as text
+///   there, nor mapped to another enumerator.
+/// - [`PropertyError::MultipleSchemas`] and
+///   [`PropertyError::UnsupportedSchema`]: the header binds no single
+///   release this writer is verified against.
+pub fn create_monetary_unit(
+    tx: &mut Transaction,
+    model: &Model,
+    draft: MonetaryUnitDraft<'_>,
+) -> PropertyResult<EntityId> {
+    let layout = bind(model)?;
+    require_currency(draft.currency)?;
+    let schema = layout.schema();
+    let declared = schema
+        .attributes(MONETARY_UNIT)
+        .into_iter()
+        .find(|attribute| attribute.name.eq_ignore_ascii_case("Currency"))
+        .ok_or(PropertyError::AuthoringNotInSchema {
+            entity: MONETARY_UNIT,
+            attribute: "Currency",
+            schema: layout.version(),
+        })?;
+    let currency = draft.currency.trim();
+    let value = match schema.type_def(&declared.type_name).map(|t| &t.kind) {
+        Some(TypeKind::Enumeration(members)) => {
+            let token = members
+                .iter()
+                .find(|member| member.eq_ignore_ascii_case(currency))
+                .ok_or_else(|| {
+                    authoring_invalid(
+                        MONETARY_UNIT,
+                        "Currency",
+                        format!(
+                            "{currency:?} is not an {} member in {:?}",
+                            declared.type_name,
+                            layout.version()
+                        ),
+                    )
+                })?;
+            Value::Enum(token.as_str().into())
+        }
+        _ => Value::Text(draft.currency.into()),
+    };
+    let record = layout.named_record(MONETARY_UNIT, vec![("Currency", value)])?;
+    Ok(tx.create(record))
+}
+
+const MONETARY_UNIT: &str = "IFCMONETARYUNIT";
+
+fn require_currency(currency: &str) -> PropertyResult<()> {
+    if currency.trim().is_empty() {
         return Err(authoring_invalid(
-            "IFCMONETARYUNIT",
+            MONETARY_UNIT,
             "Currency",
             "expected a currency code",
         ));
     }
-    Ok(tx.create(Entity::new(
-        "IFCMONETARYUNIT",
-        vec![Value::Text(draft.currency.into())],
-    )))
+    Ok(())
 }
 
 /// Authored fields for `IfcConversionBasedUnit`.
