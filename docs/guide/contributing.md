@@ -284,8 +284,9 @@ no-op, so a rate-limited run can be repeated safely.
 
 Each crate owns a `CHANGELOG.md` next to its `Cargo.toml`. The
 documentation page is assembled from all of them by
-`cargo run -p xtask -- docs`; never edit `docs/project/changelog.md`
-directly. The root `CHANGELOG.md` is a frozen archive of the
+`cargo run -p xtask -- docs` at build time. `docs/project/changelog.md` is
+gitignored: a committed copy made every pair of open pull requests conflict
+on it. Run the command once before `npm run docs:dev` in a fresh checkout. The root `CHANGELOG.md` is a frozen archive of the
 lockstep era through 0.2.0 and takes no new entries.
 
 The gate fails if a publishable crate has no changelog, which is what

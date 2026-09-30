@@ -5,6 +5,11 @@
 //! sentinels. This module compares and writes, so `--check` and regeneration
 //! can never disagree about what "current" means.
 //!
+//! A few outputs are build artifacts rather than committed files: pages that
+//! nearly every pull request would rewrite in the same place, so committing
+//! them only produced merge conflicts. They are gitignored, written by both
+//! modes (the site build needs them) and never reported as stale.
+//!
 //! ## Internal split
 //!
 //! - `changelog.rs`: `docs/project/changelog.md` from every crate's `CHANGELOG.md`.
@@ -43,6 +48,8 @@ pub(crate) struct Output {
     /// `None` when the file does not exist yet.
     pub(crate) current: Option<String>,
     pub(crate) updated: String,
+    /// `false` for a gitignored build artifact: always written, never checked.
+    pub(crate) committed: bool,
 }
 
 impl Output {
@@ -60,6 +67,7 @@ impl Output {
             path,
             current: Some(current),
             updated,
+            committed: true,
         })
     }
 
@@ -71,6 +79,15 @@ impl Output {
             path,
             current,
             updated,
+            committed: true,
+        }
+    }
+
+    /// A wholly generated, gitignored page the site build needs.
+    pub(crate) fn artifact(workspace: &Workspace, rel: &str, updated: String) -> Self {
+        Self {
+            committed: false,
+            ..Self::whole(workspace, rel, updated)
         }
     }
 
@@ -107,6 +124,12 @@ pub(crate) fn run(check: bool) -> Result<(), String> {
             .to_string()
     };
     let orphans = orphans(&workspace, &outputs);
+    // Artifacts are written in both modes: `--check` precedes the site build.
+    let (outputs, artifacts): (Vec<Output>, Vec<Output>) =
+        outputs.into_iter().partition(|o| o.committed);
+    for artifact in artifacts.iter().filter(|o| o.stale()) {
+        write(&artifact.path, &artifact.updated, &relative)?;
+    }
     let stale: Vec<&Output> = outputs.iter().filter(|o| o.stale()).collect();
     if check {
         if stale.is_empty() && orphans.is_empty() {
@@ -125,12 +148,7 @@ pub(crate) fn run(check: bool) -> Result<(), String> {
         ));
     }
     for output in &stale {
-        if let Some(parent) = output.path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|error| format!("cannot create {}: {error}", relative(parent)))?;
-        }
-        std::fs::write(&output.path, &output.updated)
-            .map_err(|error| format!("cannot write {}: {error}", relative(&output.path)))?;
+        write(&output.path, &output.updated, &relative)?;
         println!("updated {}", relative(&output.path));
     }
     for orphan in &orphans {
@@ -142,6 +160,15 @@ pub(crate) fn run(check: bool) -> Result<(), String> {
         println!("docs already in sync");
     }
     Ok(())
+}
+
+fn write(path: &Path, content: &str, relative: &impl Fn(&Path) -> String) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|error| format!("cannot create {}: {error}", relative(parent)))?;
+    }
+    std::fs::write(path, content)
+        .map_err(|error| format!("cannot write {}: {error}", relative(path)))
 }
 
 /// Files in a managed directory that no generator produced.
