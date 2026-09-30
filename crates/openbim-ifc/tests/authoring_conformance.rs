@@ -121,10 +121,10 @@ fn product(tx: &mut Transaction, type_name: &'static str, guid: &str) -> EntityI
 fn properties_authoring_is_conformant() {
     use ifc::properties::{
         add_context_dependent_unit, add_dimensional_exponents, add_measure_with_unit,
-        add_monetary_unit, add_property_bounded_value, add_property_enumerated_value,
-        add_property_list_value, add_property_reference_value, add_property_set,
-        add_property_single_value, add_si_unit, attach_property_set, create_quantity,
-        create_quantity_with, MonetaryUnitDraft, QuantityExtras, QuantityKind, SiUnitDraft,
+        add_property_bounded_value, add_property_enumerated_value, add_property_list_value,
+        add_property_reference_value, add_property_set, add_property_single_value, add_si_unit,
+        attach_property_set, create_monetary_unit, create_quantity, create_quantity_with,
+        MonetaryUnitDraft, QuantityExtras, QuantityKind, SiUnitDraft,
     };
 
     let mut model = model();
@@ -139,7 +139,7 @@ fn properties_authoring_is_conformant() {
     // property writers store the value they are given.
     add_measure_with_unit(&mut tx, measure("IFCLENGTHMEASURE", 25.4), metre)
         .expect("measure with unit");
-    add_monetary_unit(&mut tx, MonetaryUnitDraft::new("EUR")).expect("monetary unit");
+    create_monetary_unit(&mut tx, &model, MonetaryUnitDraft::new("EUR")).expect("monetary unit");
 
     let height =
         add_property_single_value(&mut tx, "Height", None, None, None).expect("single value");
