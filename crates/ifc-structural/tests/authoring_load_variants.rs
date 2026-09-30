@@ -1,52 +1,211 @@
 //! The four load subtypes that fell through the original batch.
 
-use ifc_model::{Model, Transaction, Value};
-use ifc_schema::ifc4x3;
-use ifc_structural::{stage_load, LoadDraft, StructuralError};
-/// Warping and distortion are plain numeric siblings: seven slots each.
+use ifc_model::{Entity, Model, Transaction, Value};
+use ifc_schema::{ifc2x3, ifc4, ifc4x3};
+use ifc_structural::{stage_load, LoadDraft, LoadKind, StructuralError, StructuralView};
+/// Warping and distortion are plain numeric siblings: seven slots each,
+/// read back through the view as their own kinds in every release.
 #[test]
 fn warping_and_distortion_loads_stage_their_components() {
-    let schema = ifc4x3();
+    for schema in [ifc2x3(), ifc4(), ifc4x3()] {
+        let mut model = Model::new();
+        let mut tx = Transaction::new(&model);
+
+        let warping = stage_load(
+            &mut tx,
+            schema,
+            LoadDraft::SingleForceWarping {
+                name: Some("Warp".into()),
+                force: [Some(1.0), Some(2.0), Some(3.0)],
+                moment: [Some(4.0), Some(5.0), Some(6.0)],
+                warping_moment: Some(7.0),
+            },
+        )
+        .expect("a finite warping load is accepted");
+
+        let distortion = stage_load(
+            &mut tx,
+            schema,
+            LoadDraft::SingleDisplacementDistortion {
+                name: None,
+                displacement: [Some(1.0), None, None],
+                rotation: [None, None, Some(2.0)],
+                distortion: Some(3.0),
+            },
+        )
+        .expect("a finite distortion load is accepted");
+
+        tx.commit(&mut model).expect("commit");
+        let view = StructuralView::new(&model, schema);
+
+        let w = view.load(warping).expect("the view reads a warping load");
+        assert_eq!(w.kind(), LoadKind::SingleForceWarping, "{}", schema.name());
+        assert_eq!(w.name().unwrap(), Some("Warp"));
+        assert_eq!(
+            w.components().unwrap(),
+            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0].map(Some).to_vec(),
+            "WarpingMoment last in {}",
+            schema.name()
+        );
+
+        let d = view
+            .static_load(distortion)
+            .expect("the view reads a distortion load");
+        assert_eq!(
+            d.kind(),
+            LoadKind::SingleDisplacementDistortion,
+            "{}",
+            schema.name()
+        );
+        assert_eq!(d.name().unwrap(), None);
+        assert_eq!(
+            d.components().unwrap(),
+            vec![Some(1.0), None, None, None, None, Some(2.0), Some(3.0)],
+            "Distortion last in {}",
+            schema.name()
+        );
+    }
+}
+
+/// A reinforcement area stages and reads back in IFC4 and IFC4X3.
+#[test]
+fn a_reinforcement_area_reads_back_through_the_view() {
+    for schema in [ifc4(), ifc4x3()] {
+        let mut model = Model::new();
+        let mut tx = Transaction::new(&model);
+        let id = stage_load(
+            &mut tx,
+            schema,
+            LoadDraft::SurfaceReinforcementArea {
+                name: Some("As".into()),
+                surface_1: Some(vec![1.5, 2.0]),
+                surface_2: Some(vec![0.5, 0.25, 0.75]),
+                shear: Some(0.1),
+            },
+        )
+        .expect("a well-formed reinforcement area");
+        tx.commit(&mut model).expect("commit");
+
+        let view = StructuralView::new(&model, schema);
+        let area = view
+            .surface_reinforcement_area(id)
+            .expect("the view reads a reinforcement area");
+        assert_eq!(area.id(), id);
+        assert_eq!(area.name().unwrap(), Some("As"));
+        assert_eq!(
+            area.surface_reinforcement_1().unwrap(),
+            Some(vec![1.5, 2.0])
+        );
+        assert_eq!(
+            area.surface_reinforcement_2().unwrap(),
+            Some(vec![0.5, 0.25, 0.75])
+        );
+        assert_eq!(area.shear_reinforcement().unwrap(), Some(0.1));
+
+        // Not a static load: the static projection refuses it by type.
+        assert!(
+            matches!(view.load(id), Err(StructuralError::WrongType { .. })),
+            "{}",
+            schema.name()
+        );
+    }
+}
+
+/// IFC2X3 declares no IfcSurfaceReinforcementArea: authoring and reading
+/// both refuse it as a schema matter, never by guessing a layout.
+#[test]
+fn ifc2x3_refuses_a_reinforcement_area() {
+    let schema = ifc2x3();
     let mut model = Model::new();
     let mut tx = Transaction::new(&model);
-
-    let warping = stage_load(
+    let err = stage_load(
         &mut tx,
         schema,
-        LoadDraft::SingleForceWarping {
-            name: Some("Warp".into()),
-            force: [Some(1.0), Some(2.0), Some(3.0)],
-            moment: [Some(4.0), Some(5.0), Some(6.0)],
-            warping_moment: Some(7.0),
-        },
-    )
-    .expect("a finite warping load is accepted");
-
-    let distortion = stage_load(
-        &mut tx,
-        schema,
-        LoadDraft::SingleDisplacementDistortion {
+        LoadDraft::SurfaceReinforcementArea {
             name: None,
-            displacement: [Some(1.0), None, None],
-            rotation: [None, None, Some(2.0)],
-            distortion: Some(3.0),
+            surface_1: Some(vec![1.0, 2.0]),
+            surface_2: None,
+            shear: None,
         },
     )
-    .expect("a finite distortion load is accepted");
-
-    tx.commit(&mut model).expect("commit");
-
-    let w = model.get(warping).expect("staged");
-    assert_eq!(w.type_name.as_ref(), "IFCSTRUCTURALLOADSINGLEFORCEWARPING");
-    assert_eq!(w.attributes[7], Value::Real(7.0), "WarpingMoment last");
-
-    let d = model.get(distortion).expect("staged");
-    assert_eq!(
-        d.type_name.as_ref(),
-        "IFCSTRUCTURALLOADSINGLEDISPLACEMENTDISTORTION"
+    .expect_err("IFC2X3 has no IfcSurfaceReinforcementArea");
+    assert!(
+        matches!(err, StructuralError::UnsupportedSchema { .. }),
+        "{err:?}"
     );
-    assert_eq!(d.attributes[7], Value::Real(3.0), "Distortion last");
+
+    let forged = model.push(Entity::new(
+        "IFCSURFACEREINFORCEMENTAREA",
+        vec![Value::Null, Value::Null, Value::Null, Value::Real(1.0)],
+    ));
+    let err = StructuralView::new(&model, schema)
+        .surface_reinforcement_area(forged)
+        .expect_err("IFC2X3 view refuses the entity");
+    assert!(
+        matches!(err, StructuralError::UnsupportedSchema { .. }),
+        "{err:?}"
+    );
 }
+
+/// The reader enforces the entity's WHERE rules and list bounds.
+#[test]
+fn a_malformed_reinforcement_area_is_refused_on_read() {
+    let schema = ifc4x3();
+    let reals = |values: &[f64]| Value::List(values.iter().copied().map(Value::Real).collect());
+    let mut model = Model::new();
+    let empty = model.push(Entity::new(
+        "IFCSURFACEREINFORCEMENTAREA",
+        vec![Value::Null; 4],
+    ));
+    let negative = model.push(Entity::new(
+        "IFCSURFACEREINFORCEMENTAREA",
+        vec![
+            Value::Null,
+            reals(&[1.0, -2.0]),
+            Value::Null,
+            Value::Real(-0.5),
+        ],
+    ));
+    let too_short = model.push(Entity::new(
+        "IFCSURFACEREINFORCEMENTAREA",
+        vec![Value::Null, Value::Null, reals(&[1.0]), Value::Null],
+    ));
+    let view = StructuralView::new(&model, schema);
+
+    assert!(matches!(
+        view.surface_reinforcement_area(empty),
+        Err(StructuralError::SemanticViolation {
+            rule: "SurfaceAndOrShearAreaSpecified",
+            ..
+        })
+    ));
+    let negative = view.surface_reinforcement_area(negative).unwrap();
+    assert!(matches!(
+        negative.surface_reinforcement_1(),
+        Err(StructuralError::SemanticViolation {
+            rule: "NonnegativeArea1",
+            ..
+        })
+    ));
+    assert!(matches!(
+        negative.shear_reinforcement(),
+        Err(StructuralError::SemanticViolation {
+            rule: "NonnegativeArea3",
+            ..
+        })
+    ));
+    let too_short = view.surface_reinforcement_area(too_short).unwrap();
+    assert!(matches!(
+        too_short.surface_reinforcement_2(),
+        Err(StructuralError::InvalidCardinality {
+            minimum: 2,
+            maximum: Some(3),
+            actual: 1,
+            ..
+        })
+    ));
+}
+
 /// SurfaceAndOrShearAreaSpecified: at least one area must exist.
 ///
 /// All-null is the failure a caller writing plain optional slots would

@@ -18,6 +18,34 @@ lockstep -- is archived in the
 
 <!-- CHANGELOG:BEGIN -->
 
+## [Unreleased]
+
+### ifc-structural
+
+### Changed (breaking)
+
+- `LoadKind` is `#[non_exhaustive]` and gains `SingleForceWarping`,
+  `SingleDisplacement` and `SingleDisplacementDistortion` (#228). An
+  exhaustive `match` on it no longer compiles; add a wildcard arm.
+
+### Added
+
+- `StructuralView::surface_reinforcement_area` and the
+  `SurfaceReinforcementArea` projection for `IfcSurfaceReinforcementArea`
+  (IFC4, IFC4X3), which `stage_load` already authored (#228). It enforces
+  `SurfaceAndOrShearAreaSpecified`, `NonnegativeArea1..3` and the
+  `LIST [2:3]` bounds; an IFC2X3 view refuses it with `UnsupportedSchema`.
+
+### Fixed
+
+- `StructuralView::load` / `static_load` read
+  `IfcStructuralLoadSingleDisplacement`,
+  `IfcStructuralLoadSingleDisplacementDistortion` and
+  `IfcStructuralLoadSingleForceWarping` instead of refusing them with
+  `WrongType` (#228). Classification uses `Schema::is_a`, most specific
+  subtype first, and `components()` returns the displacement and rotation
+  slots, with `Distortion` or `WarpingMoment` appended for the subtypes.
+
 ## [0.9.0] - 2026-09-29
 
 ### openbim-ifc

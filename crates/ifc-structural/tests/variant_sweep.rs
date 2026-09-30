@@ -9,11 +9,11 @@
 //! One test per writer, walking every variant.
 
 use ifc_model::{Entity, Model, Transaction, Value};
-use ifc_schema::ifc4x3;
+use ifc_schema::{ifc2x3, ifc4, ifc4x3};
 use ifc_structural::{
     stage_action, stage_connection, stage_load, stage_member, ActionDraft, ActionDraftKind,
-    ConnectionDraft, ConnectionDraftKind, CoordinateSystem, LoadDraft, MemberDraft,
-    MemberDraftKind, MemberPredefinedType, StructuralRootDraft,
+    ConnectionDraft, ConnectionDraftKind, CoordinateSystem, LoadDraft, LoadKind, MemberDraft,
+    MemberDraftKind, MemberPredefinedType, StructuralRootDraft, StructuralView,
 };
 
 const GUID: &str = "1hqA$FMcT8$hVvcqsRDBzZ";
@@ -253,26 +253,37 @@ fn the_curve_forms_use_their_own_axis_attribute() {
 /// It is the distortion form minus its trailing slot.
 #[test]
 fn the_single_displacement_form_stages() {
-    let mut model = Model::default();
-    let mut tx = Transaction::new(&model);
+    for schema in [ifc2x3(), ifc4(), ifc4x3()] {
+        let mut model = Model::default();
+        let mut tx = Transaction::new(&model);
 
-    let id = stage_load(
-        &mut tx,
-        ifc4x3(),
-        LoadDraft::SingleDisplacement {
-            name: Some("Settlement".to_owned()),
-            displacement: [Some(0.0), Some(0.0), Some(-0.012)],
-            rotation: [None, None, None],
-        },
-    )
-    .expect("single displacement");
-    tx.commit(&mut model).expect("commit");
+        let id = stage_load(
+            &mut tx,
+            schema,
+            LoadDraft::SingleDisplacement {
+                name: Some("Settlement".to_owned()),
+                displacement: [Some(0.0), Some(0.0), Some(-0.012)],
+                rotation: [None, None, None],
+            },
+        )
+        .expect("single displacement");
+        tx.commit(&mut model).expect("commit");
 
-    let staged = model.get(id).expect("staged");
-    assert_eq!(
-        staged.type_name.as_ref(),
-        "IFCSTRUCTURALLOADSINGLEDISPLACEMENT",
-    );
-    assert_eq!(staged.attributes.len(), 7, "no Distortion slot");
-    assert_eq!(staged.attributes[3], Value::Real(-0.012));
+        let load = StructuralView::new(&model, schema)
+            .load(id)
+            .expect("the view reads a single displacement back");
+        assert_eq!(
+            load.kind(),
+            LoadKind::SingleDisplacement,
+            "{}",
+            schema.name()
+        );
+        assert_eq!(load.name().unwrap(), Some("Settlement"));
+        assert_eq!(
+            load.components().unwrap(),
+            vec![Some(0.0), Some(0.0), Some(-0.012), None, None, None],
+            "six components, no Distortion slot in {}",
+            schema.name()
+        );
+    }
 }
