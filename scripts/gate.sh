@@ -36,14 +36,15 @@ gate_lint() {
     cargo clippy --workspace --all-targets --all-features -- -D warnings
     RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps
 
-    # Documentation gates. Every generated docs file and region (changelog,
-    # crate reference, install table, binding APIs, capability and coverage
+    # Documentation gates. Every committed generated docs file and region (crate
+    # reference, install table, binding APIs, capability and coverage
     # tables, facts.json) and every test-sourced snippet must match what
     # `cargo run -p xtask -- docs` would write, so drift is a build failure
     # rather than a silent inconsistency the reader has to notice. The same
     # check rejects hand-written code fences, git dependencies, pinned TOML
     # versions, typed crate counts and home paths on any page, and a
-    # publishable crate with no changelog.
+    # publishable crate with no changelog. It also writes the gitignored
+    # changelog page the site build below needs.
     cargo run --quiet -p xtask -- docs --check
 
     # Open work lives in GitHub issues: a code marker names its issue as
