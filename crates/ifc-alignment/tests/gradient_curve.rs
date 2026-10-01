@@ -366,24 +366,29 @@ fn a_zero_length_parabola_is_refused_before_it_becomes_infinite() {
     );
 }
 
-/// `Elevated3.plan` is a single `Curve2` and the neutral vocabulary has no
-/// composite `Curve2`, so a two-segment plan cannot be elevated. Flattening
-/// it to a B-spline would discard the exact spiral this composition exists
-/// to preserve, and elevating only the first segment would silently drop
-/// the rest of the road. Refused by name instead.
+/// A two-segment plan elevates as ONE intrinsic curve (#92): the layout's
+/// laws sit in a piecewise curvature law anchored at the first segment, so
+/// the whole road is elevated rather than refused or truncated to its first
+/// segment. The richer line -> clothoid -> arc case is in
+/// `horizontal_plan.rs`.
 #[test]
-fn a_multi_segment_plan_is_refused_rather_than_partially_elevated() {
-    // Two collinear lines: both lowerable, and continuous at the join, so
-    // the refusal under test is the composite one and not a continuity rule.
+fn a_multi_segment_plan_elevates_as_one_intrinsic_curve() {
+    // Two collinear lines: continuous in position and heading at the join.
     let (mut model, alignment) = alignment_model_with("LINE", 0.0);
     add_second_plan_segment(&mut model);
-    let error = lower_gradient_curve(&model, alignment, metres())
-        .expect_err("a composite plan has no single Curve2");
-    let text = format!("{error}");
-    assert!(
-        text.contains("multi-segment"),
-        "refusal must name the cause: {text}"
-    );
+    let lowered = lower_gradient_curve(&model, alignment, metres()).expect("composes");
+    let Some(GeometryNode::Curve3(Curve3::Elevated(elevated))) = lowered.graph.get(lowered.root)
+    else {
+        panic!("the root must be an elevated 3D curve");
+    };
+    let axiolid_curve::Curve2::Intrinsic(plan) = elevated.plan.as_ref() else {
+        panic!("a multi-segment plan is one intrinsic curve");
+    };
+    assert_eq!(plan.length, 150.0, "both segments, not only the first");
+    assert!(matches!(
+        &plan.curvature,
+        axiolid_curve::CurvatureLaw::Piecewise { breaks, .. } if breaks == &vec![100.0]
+    ));
 }
 
 /// Append a second horizontal segment, so the plan lowers to a composite

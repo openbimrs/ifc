@@ -12,6 +12,45 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `lower_horizontal_plan` lowers a whole `IfcAlignmentHorizontal` to one
+  exact `Curve2::Intrinsic`: the first segment's start frame and a
+  `CurvatureLaw::Piecewise` with one piece per segment. `HorizontalPlan`
+  carries it with its sources and seams (#92).
+- `HorizontalSeam` and `SeamCheck` report every seam between horizontal
+  segments and whether its position was verified in closed form or
+  accepted as authored after a transition spiral.
+  `LoweredAlignmentCurve::seams` carries them for layout and gradient
+  lowerings (#239).
+
+### Changed
+
+- `lower_gradient_curve` and `gradient_curve3` elevate a multi-segment plan
+  instead of refusing it, using `lower_horizontal_plan`. The plan is now
+  always that intrinsic curve, also for a single segment, where it used to
+  be the segment's basis line, circle or spiral. A heading kink between
+  segments is refused, since one intrinsic curve cannot carry it (#92).
+- `lower_horizontal_layout` lowers a layout containing transition spirals
+  to one composite instead of refusing it. A seam after a spiral is
+  accepted as authored, reported in `seams`, and declares
+  `Transition::Discontinuous` (no claim); a gap after a line or arc is
+  still refused. `lower_horizontal_layout_partial` no longer splits runs
+  at spirals, so `PartialHorizontalLayout::is_complete` again means one
+  run (#239).
+- A `CUBIC` horizontal segment is refused with its own reason: its end on
+  the curve inverts a non-elementary arc-length integral, and the pinned
+  neutral vocabulary has no arc-length trim. A `CUBIC` with a non-positive
+  length, non-finite radii or equal start and end radii is reported as
+  `InvalidSegment` first (#90, still open).
+
+### Fixed
+
+- A clockwise `CIRCULARARC` plan elevated through `lower_gradient_curve`
+  ran backwards: the evaluator reads a circle plan's distance
+  counter-clockwise, so a negative radius was traversed in reverse. The
+  intrinsic plan carries the signed curvature instead.
+
 ## [0.4.0] - 2026-09-29
 
 ### Fixed

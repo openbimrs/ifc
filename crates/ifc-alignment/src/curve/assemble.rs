@@ -20,7 +20,8 @@ use axiolid_model::{
 use ifc_model::{EntityId, Model};
 
 use crate::cant::CantLayout;
-use crate::curve::spiral::{is_exactly_lowerable, spiral_curve};
+use crate::curve::seam::{check_position, HorizontalSeam, SeamCheck};
+use crate::curve::spiral::{is_exactly_lowerable, refuse_unlowerable, spiral_curve};
 use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::{
     read_horizontal_segment, AlignmentUnits, HorizontalSegment, HorizontalSegmentType,
@@ -39,53 +40,25 @@ pub struct LoweredAlignmentCurve {
     pub root: NodeId,
     /// The segment(s) this graph was lowered from, in authored order.
     pub sources: Vec<EntityId>,
+    /// Seams between consecutive horizontal segments and how each was
+    /// checked, in authored order. Empty for a single segment and for a
+    /// vertical lowering.
+    pub seams: Vec<HorizontalSeam>,
 }
 
-/// How tightly two consecutive lowered segments actually connect.
+/// The composite transition a checked seam supports.
 ///
 /// IFC alignment segments carry no explicit continuity attribute (unlike
 /// `IfcCompositeCurveSegment.Transition`); it is a geometric fact about the
-/// lowered curves, not something the source states. Only exact equality
-/// counts here -- floating error from unrelated upstream authoring is not
-/// this crate's problem to paper over, so the tolerance is a parameter the
-/// caller controls rather than a silent default.
-fn observed_transition(end: Point2, next_start: Point2, tolerance: f64) -> Option<Transition> {
-    if end.distance(next_start) <= tolerance {
-        Some(Transition::Continuous)
-    } else {
-        None
-    }
-}
-
-/// Exact end point of a segment this crate can lower, in closed form.
-///
-/// `None` for every transition-spiral family: their end point is a
-/// Fresnel-type integral, so there is no closed form to return and this
-/// crate will not quadrature one into existence. That is the same boundary
-/// [`lower_horizontal_segment`] enforces, expressed as data so a caller can
-/// see where a run has to stop rather than only that it failed.
-fn closed_form_end_point(segment: &HorizontalSegment) -> Option<Point2> {
-    match segment.segment_type {
-        HorizontalSegmentType::Line => {
-            let direction = Vec2::new(segment.start_direction.cos(), segment.start_direction.sin());
-            Some(segment.start_point + direction * segment.segment_length)
-        }
-        HorizontalSegmentType::CircularArc if segment.start_radius != 0.0 => {
-            let direction = Vec2::new(segment.start_direction.cos(), segment.start_direction.sin());
-            let left = Vec2::new(-direction.y, direction.x);
-            let centre = segment.start_point + left * segment.start_radius;
-            let sweep = segment.segment_length / segment.start_radius;
-            let radial = segment.start_point - centre;
-            let (sin_s, cos_s) = sweep.sin_cos();
-            Some(
-                centre
-                    + Vec2::new(
-                        radial.x * cos_s - radial.y * sin_s,
-                        radial.x * sin_s + radial.y * cos_s,
-                    ),
-            )
-        }
-        _ => None,
+/// lowered curves. Only a seam whose position was verified in closed form
+/// claims `Continuous`. A seam after a transition spiral claims nothing:
+/// `Discontinuous` is this crate's no-claim value, the same one the first
+/// segment carries, and the seam itself is reported in
+/// [`LoweredAlignmentCurve::seams`] as [`SeamCheck::Authored`].
+fn seam_transition(seam: &HorizontalSeam) -> Transition {
+    match seam.position {
+        SeamCheck::Verified => Transition::Continuous,
+        _ => Transition::Discontinuous,
     }
 }
 
@@ -114,8 +87,10 @@ pub struct RefusedSegment {
 ///
 /// `runs` holds maximal stretches of consecutive lowerable segments, each
 /// assembled into a single composite exactly as [`lower_horizontal_layout`]
-/// would. A run ends wherever a segment is refused: continuity across a
-/// segment this crate did not lower is not a fact it is entitled to assert.
+/// would, seams included. A run ends only where a segment is refused:
+/// continuity across a segment this crate did not lower is not a fact it is
+/// entitled to assert. A seam after a transition spiral does not end a run;
+/// it is recorded in that run's `seams` as unverified.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub struct PartialHorizontalLayout {
@@ -132,7 +107,8 @@ impl PartialHorizontalLayout {
     /// Whether every segment lowered exactly.
     ///
     /// When true the layout is covered by exactly one run, matching what
-    /// [`lower_horizontal_layout`] returns.
+    /// [`lower_horizontal_layout`] returns: runs split only at refused
+    /// segments, never at a seam after a spiral.
     #[must_use]
     pub fn is_complete(&self) -> bool {
         self.refused.is_empty()
@@ -159,20 +135,14 @@ pub fn lower_horizontal_segment(
 ) -> AlignmentResult<LoweredAlignmentCurve> {
     let segment = read_horizontal_segment(model, id, units)?;
     let mut builder = GeometryGraphBuilder::new();
-    let root =
-        match &segment.segment_type {
-            HorizontalSegmentType::Line => push_line(&mut builder, &segment)?,
-            HorizontalSegmentType::CircularArc => push_arc(&mut builder, &segment)?,
-            HorizontalSegmentType::Transition(name) if is_exactly_lowerable(name, false) => {
-                push_spiral(&mut builder, &segment, name, None, 0.0)?
-            }
-            kind => return Err(AlignmentError::Unsupported {
-                entity: id,
-                type_name: kind.source_name().to_owned(),
-                detail:
-                    "the pinned neutral curve vocabulary has no exact transition-curve primitive",
-            }),
-        };
+    let root = match &segment.segment_type {
+        HorizontalSegmentType::Line => push_line(&mut builder, &segment)?,
+        HorizontalSegmentType::CircularArc => push_arc(&mut builder, &segment)?,
+        HorizontalSegmentType::Transition(name) if is_exactly_lowerable(name, false) => {
+            push_spiral(&mut builder, &segment, name, None, 0.0)?
+        }
+        _ => return Err(refuse_unlowerable(&segment)),
+    };
     finish(builder, root, vec![id])
 }
 
@@ -368,12 +338,19 @@ pub(super) fn finish(
         graph,
         root,
         sources,
+        seams: Vec::new(),
     })
 }
 
 /// Lower an `IfcAlignmentHorizontal`'s nested segment chain to one exact
 /// neutral curve, refusing (rather than approximating) any segment that
 /// `lower_horizontal_segment` cannot lower exactly.
+///
+/// Each segment keeps its own authored start frame inside the composite.
+/// Seams are checked by the rule in [`SeamCheck`]: a position gap after a
+/// `LINE` or `CIRCULARARC` is refused, and a seam after a transition spiral,
+/// whose end point has no closed form, is accepted as authored and reported
+/// in [`LoweredAlignmentCurve::seams`].
 pub fn lower_horizontal_layout(
     model: &Model,
     entity: EntityId,
@@ -409,6 +386,7 @@ pub fn lower_horizontal_layout(
 
     let mut builder = GeometryGraphBuilder::new();
     let mut composite_segments = Vec::with_capacity(segments.len());
+    let mut seams = Vec::with_capacity(segments.len().saturating_sub(1));
     let mut station = 0.0_f64;
     for (index, segment) in segments.iter().enumerate() {
         let curve = match &segment.segment_type {
@@ -419,33 +397,15 @@ pub fn lower_horizontal_layout(
             {
                 push_spiral(&mut builder, segment, name, cant, station)?
             }
-            kind => return Err(AlignmentError::Unsupported {
-                entity: segment.entity,
-                type_name: kind.source_name().to_owned(),
-                detail:
-                    "the pinned neutral curve vocabulary has no exact transition-curve primitive",
-            }),
+            _ => return Err(refuse_unlowerable(segment)),
         };
         let transition = if index == 0 {
             Transition::Discontinuous
         } else {
-            let previous = &segments[index - 1];
-            // A transition spiral's end point is a Fresnel-type integral, so
-            // continuity across it is not provable in closed form. The strict
-            // entry point promises a fully continuity-checked composite, so it
-            // refuses here rather than asserting a transition it cannot verify.
-            let previous_end =
-                closed_form_end_point(previous).ok_or(AlignmentError::Unsupported {
-                    entity: previous.entity,
-                    type_name: previous.segment_type.source_name().to_owned(),
-                    detail: "continuity across a transition spiral is not provable in closed form",
-                })?;
-            observed_transition(previous_end, segment.start_point, 1e-6).ok_or(
-                AlignmentError::SemanticViolation {
-                    entity: Some(segment.entity),
-                    rule: "consecutive horizontal segments must share an endpoint exactly",
-                },
-            )?
+            let seam = check_position(&segments[index - 1], segment, station)?;
+            let transition = seam_transition(&seam);
+            seams.push(seam);
+            transition
         };
         composite_segments.push(CurveSegment {
             curve,
@@ -461,15 +421,18 @@ pub fn lower_horizontal_layout(
             segments: composite_segments,
         }),
     )?;
-    finish(builder, root, ids)
+    let mut lowered = finish(builder, root, ids)?;
+    lowered.seams = seams;
+    Ok(lowered)
 }
 
 /// Lower a horizontal layout as far as exactness allows, reporting refusals.
 ///
-/// Unlike [`lower_horizontal_layout`], a transition spiral does not abort the
-/// whole layout. Lines and circular arcs around it still lower exactly; the
-/// spiral is recorded in [`PartialHorizontalLayout::refused`] with its
-/// authored type name and entity id.
+/// Unlike [`lower_horizontal_layout`], a segment without an exact law (such
+/// as `CUBIC`) does not abort the whole layout. The segments around it still
+/// lower exactly; the refused one is recorded in
+/// [`PartialHorizontalLayout::refused`] with its authored type name and
+/// entity id. Seams are checked by the same rule as the strict path.
 ///
 /// Nothing here is approximated. A refused segment stays refused -- this
 /// reports the boundary per segment instead of collapsing an entire
@@ -519,18 +482,10 @@ pub fn lower_horizontal_layout_partial(
     let mut builder = GeometryGraphBuilder::new();
     let mut pending: Vec<(usize, CurveSegment)> = Vec::new();
     let mut pending_ids: Vec<EntityId> = Vec::new();
+    let mut pending_seams: Vec<HorizontalSeam> = Vec::new();
     let mut station = 0.0_f64;
 
     for (index, segment) in segments.iter().enumerate() {
-        // Decide the run boundary BEFORE lowering: `flush_run` swaps in a new
-        // builder, so a node pushed beforehand would dangle in a finished
-        // graph. A predecessor whose end point is not closed form cannot
-        // support any continuity claim, so the run ends here.
-        if let Some((previous_index, _)) = pending.last() {
-            if closed_form_end_point(&segments[*previous_index]).is_none() {
-                flush_run(&mut runs, &mut builder, &mut pending, &mut pending_ids)?;
-            }
-        }
         let lowered = match &segment.segment_type {
             HorizontalSegmentType::Line => push_line(&mut builder, segment),
             HorizontalSegmentType::CircularArc => push_arc(&mut builder, segment),
@@ -539,13 +494,9 @@ pub fn lower_horizontal_layout_partial(
             {
                 push_spiral(&mut builder, segment, name, cant, station)
             }
-            kind => Err(AlignmentError::Unsupported {
-                entity: segment.entity,
-                type_name: kind.source_name().to_owned(),
-                detail:
-                    "the pinned neutral curve vocabulary has no exact transition-curve primitive",
-            }),
+            _ => Err(refuse_unlowerable(segment)),
         };
+        let start_station = station;
         // Advance before the refusal branch below: that path `continue`s, and
         // advancing at the loop tail would mis-station every later segment.
         station += segment.segment_length;
@@ -554,7 +505,13 @@ pub fn lower_horizontal_layout_partial(
             Err(reason) => {
                 // The run ends here: continuity across a segment this crate
                 // did not lower is not a fact it can assert.
-                flush_run(&mut runs, &mut builder, &mut pending, &mut pending_ids)?;
+                flush_run(
+                    &mut runs,
+                    &mut builder,
+                    &mut pending,
+                    &mut pending_ids,
+                    &mut pending_seams,
+                )?;
                 refused.push(RefusedSegment {
                     entity: segment.entity,
                     type_name: segment.segment_type.source_name().to_owned(),
@@ -568,20 +525,10 @@ pub fn lower_horizontal_layout_partial(
         let transition = match pending.last() {
             None => Transition::Discontinuous,
             Some((previous_index, _)) => {
-                let previous = &segments[*previous_index];
-                // Within a run the predecessor always has a closed-form end
-                // point: the boundary check above ended the run otherwise.
-                let previous_end = closed_form_end_point(previous)
-                    .expect("run boundary guarantees a closed-form predecessor end point");
-                match observed_transition(previous_end, segment.start_point, 1e-6) {
-                    Some(transition) => transition,
-                    None => {
-                        return Err(AlignmentError::SemanticViolation {
-                            entity: Some(segment.entity),
-                            rule: "consecutive horizontal segments must share an endpoint exactly",
-                        })
-                    }
-                }
+                let seam = check_position(&segments[*previous_index], segment, start_station)?;
+                let transition = seam_transition(&seam);
+                pending_seams.push(seam);
+                transition
             }
         };
         pending.push((
@@ -594,7 +541,13 @@ pub fn lower_horizontal_layout_partial(
         ));
         pending_ids.push(segment.entity);
     }
-    flush_run(&mut runs, &mut builder, &mut pending, &mut pending_ids)?;
+    flush_run(
+        &mut runs,
+        &mut builder,
+        &mut pending,
+        &mut pending_ids,
+        &mut pending_seams,
+    )?;
 
     Ok(PartialHorizontalLayout {
         runs,
@@ -612,12 +565,14 @@ fn flush_run(
     builder: &mut GeometryGraphBuilder,
     pending: &mut Vec<(usize, CurveSegment)>,
     pending_ids: &mut Vec<EntityId>,
+    pending_seams: &mut Vec<HorizontalSeam>,
 ) -> AlignmentResult<()> {
     if pending.is_empty() {
         // Nothing accumulated; drop whatever partial nodes exist so a refused
         // segment does not leak orphan nodes into the next run.
         *builder = GeometryGraphBuilder::new();
         pending_ids.clear();
+        pending_seams.clear();
         return Ok(());
     }
     let mut finished = GeometryGraphBuilder::new();
@@ -631,6 +586,8 @@ fn flush_run(
         }),
     )?;
     let sources = core::mem::take(pending_ids);
-    runs.push(finish(finished, root, sources)?);
+    let mut run = finish(finished, root, sources)?;
+    run.seams = core::mem::take(pending_seams);
+    runs.push(run);
     Ok(())
 }

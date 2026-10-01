@@ -5,10 +5,14 @@
 //! - `assemble.rs`: exact neutral composite curve.
 //! - `elevation.rs`: vertical segments as exact elevation laws.
 //! - `gradient.rs`: plan and profile composed as an exact 3D centreline.
+//! - `plan.rs`: a whole horizontal layout as one exact intrinsic curve.
+//! - `seam.rs`: the closed-form rule for checking horizontal seams.
 
 mod assemble;
 mod elevation;
 mod gradient;
+mod plan;
+mod seam;
 mod spiral;
 
 pub use assemble::{
@@ -17,3 +21,5 @@ pub use assemble::{
 };
 pub use elevation::{elevation_law, profile_law};
 pub use gradient::{gradient_curve3, lower_gradient_curve};
+pub use plan::{lower_horizontal_plan, HorizontalPlan};
+pub use seam::{HorizontalSeam, SeamCheck};

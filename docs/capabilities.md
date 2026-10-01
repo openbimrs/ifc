@@ -32,7 +32,7 @@ committed figure that moves that often only produces merge conflicts.
 
 | Crate | Status | Open gaps |
 | --- | --- | --- |
-| `ifc-alignment` | <span class="status-partial">Partial</span> | [#16](https://github.com/openbimrs/ifc/issues/16), [#90](https://github.com/openbimrs/ifc/issues/90), [#91](https://github.com/openbimrs/ifc/issues/91), [#92](https://github.com/openbimrs/ifc/issues/92), [#93](https://github.com/openbimrs/ifc/issues/93), [#238](https://github.com/openbimrs/ifc/issues/238), [#239](https://github.com/openbimrs/ifc/issues/239), [#240](https://github.com/openbimrs/ifc/issues/240) |
+| `ifc-alignment` | <span class="status-partial">Partial</span> | [#16](https://github.com/openbimrs/ifc/issues/16), [#90](https://github.com/openbimrs/ifc/issues/90), [#91](https://github.com/openbimrs/ifc/issues/91), [#93](https://github.com/openbimrs/ifc/issues/93), [#238](https://github.com/openbimrs/ifc/issues/238), [#240](https://github.com/openbimrs/ifc/issues/240) |
 | `ifc-approval` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-author` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-classification` | <span class="status-implemented">Implemented</span> |  |
