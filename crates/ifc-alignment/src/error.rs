@@ -134,6 +134,28 @@ pub enum AlignmentError {
         /// The id that resolved to nothing.
         target: EntityId,
     },
+    /// A distance along or a station value outside the range a mapping
+    /// covers, such as a distance before an alignment's first stationing
+    /// referent.
+    OutOfRange {
+        /// The entity whose mapping was queried (the `IfcAlignment` for
+        /// stationing).
+        entity: EntityId,
+        /// Which quantity was out of range.
+        quantity: &'static str,
+        /// The value queried, in SI units.
+        value: f64,
+    },
+    /// A station value that labels more than one distance along, as after
+    /// a station equation that steps back. Picking one would be a guess.
+    AmbiguousStation {
+        /// The `IfcAlignment` whose stationing was queried.
+        alignment: EntityId,
+        /// The station value queried, in metres.
+        station: f64,
+        /// Every distance along it labels, ascending, in metres.
+        distances: Vec<f64>,
+    },
     /// Graph traversal exceeded an explicit depth or node-count bound.
     BudgetExceeded {
         /// The configured maximum traversal depth.
@@ -227,6 +249,22 @@ impl std::fmt::Display for AlignmentError {
                 attribute,
                 target,
             } => write!(f, "{entity}.{attribute} references missing {target}"),
+            Self::OutOfRange {
+                entity,
+                quantity,
+                value,
+            } => write!(
+                f,
+                "{quantity} {value} lies outside the range {entity} covers"
+            ),
+            Self::AmbiguousStation {
+                alignment,
+                station,
+                distances,
+            } => write!(
+                f,
+                "station {station} of {alignment} labels several distances along: {distances:?}"
+            ),
             Self::BudgetExceeded {
                 max_depth,
                 max_nodes,
