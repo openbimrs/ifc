@@ -31,9 +31,12 @@ on:
         required: true
 
 # Nothing here may be cancelled halfway: a crate published without its npm
-# twin is a split release.
+# twin is a split release. The `v2` prefix retires the group of run
+# 36585949055 (ifc-schema-v0.3.0), which GitHub left stuck in "waiting": its
+# approval failed with HTTP 422, and it refused cancel, force-cancel and
+# re-run, so every later run for that tag would have queued behind it.
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-v2-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
