@@ -456,8 +456,8 @@
   },
   "crates": {
     "by_status": {
-      "implemented": 24,
-      "partial": 7,
+      "implemented": 25,
+      "partial": 6,
       "scaffold": 0
     },
     "groups": [
