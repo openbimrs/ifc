@@ -1,4 +1,7 @@
 //! `IfcAlignmentHorizontal`/`IfcLinearPlacement` layout resolution and placement.
+// Keeps exercising the deprecated model-wide `station_equations`, which
+// must go on working until it is removed.
+#![allow(deprecated)]
 
 use axiolid_curve::Curve2;
 use axiolid_model::{CurveRelation, GeometryNode, Transition};

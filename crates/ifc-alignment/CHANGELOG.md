@@ -24,6 +24,32 @@ everything released before per-crate changelogs began.
   `LoweredAlignmentCurve::seams` carries them for layout and gradient
   lowerings (#239).
 
+- `AlignmentView::hierarchy` returns an `AlignmentHierarchy`: the
+  horizontal, vertical and cant layouts and the `IfcReferent`s an
+  `IfcAlignment` nests (`IfcRelNests`, in nesting order), its parent and
+  child alignments (`IfcRelAggregates`), and the products it positions
+  (`IfcRelPositions`). `sole_horizontal`, `sole_vertical` and `sole_cant`
+  refuse several layouts of a kind instead of picking one;
+  `governing_horizontal` follows a child alignment to the horizontal
+  layout its parent nests; `layout_segments` lists a layout's parameter
+  segments; `alignments` and `model` round out the view (#238).
+- `VerticalLayout::resolve`, the vertical counterpart of
+  `CantLayout::resolve`: the ordered segments of an `IfcAlignmentVertical`,
+  refusing a gap or overlap and a kink in grade (#238).
+- `Stationing::resolve` scopes station equations to one alignment, from
+  the referents it nests or positions, and checks each `IncomingStation`
+  (or a plain continuation) against the station carried from the previous
+  referent within `STATION_TOLERANCE`. `station_at`, `distance_at` and
+  `distances_at` map between station and distance along across equations
+  and decreasing stationing; a station that occurs twice is
+  `AlignmentError::AmbiguousStation`, one outside the table
+  `AlignmentError::OutOfRange` (#240).
+- The IFC4X3 ADD2 declaration and slot inventory is pinned by tests against
+  the bundled schema table: every slot and arity the readers and authoring
+  index, the declarations read, the subtype and SELECT memberships relied
+  on, every segment `PredefinedType` member, and the absence of the layouts
+  from IFC2X3 through IFC4X2 (#16).
+
 ### Changed
 
 - `lower_gradient_curve` and `gradient_curve3` elevate a multi-segment plan
@@ -44,12 +70,18 @@ everything released before per-crate changelogs began.
   length, non-finite radii or equal start and end radii is reported as
   `InvalidSegment` first (#90, still open).
 
+### Deprecated
+
+- `station_equations`, which merges the referents of every alignment in the
+  model into one table. It keeps working; use `Stationing::resolve` (#240).
+
 ### Fixed
 
 - A clockwise `CIRCULARARC` plan elevated through `lower_gradient_curve`
   ran backwards: the evaluator reads a circle plan's distance
   counter-clockwise, so a negative radius was traversed in reverse. The
   intrinsic plan carries the signed curvature instead.
+
 
 ## [0.4.0] - 2026-09-29
 

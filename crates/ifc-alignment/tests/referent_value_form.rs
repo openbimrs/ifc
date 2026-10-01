@@ -8,6 +8,9 @@
 //! release this authoring supports. The records are written to STEP, read
 //! back with `ifc-step` and resolved by `station_equations`; the STEP text
 //! is asserted directly.
+// Keeps exercising the deprecated model-wide `station_equations`, which
+// must go on working until it is removed.
+#![allow(deprecated)]
 
 use ifc_alignment::{
     axis2_placement_linear, linear_placement, point_by_distance, referent, station_equations,

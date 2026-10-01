@@ -5,8 +5,15 @@
 
 //! ## Internal split
 //!
-//! - `station.rs`: station referents.
+//! - `station.rs`: one referent's `Pset_Stationing`, and the model-wide
+//!   table.
+//! - `stationing.rs`: one alignment's stationing, and station to distance
+//!   along lookup.
 
 mod station;
+mod stationing;
 
-pub use station::{station_equations, StationEquation};
+#[allow(deprecated)]
+pub use station::station_equations;
+pub use station::StationEquation;
+pub use stationing::{Stationing, STATION_TOLERANCE};
