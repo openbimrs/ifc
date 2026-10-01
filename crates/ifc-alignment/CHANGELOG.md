@@ -12,6 +12,58 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed
+
+- `lower_gradient_curve` and `gradient_curve3` read the vertical profile at
+  its own stations. `StartDistAlong` is measured from the start of the
+  horizontal layout, but the profile was read from plan distance 0, so a
+  profile starting at station `s` put every height `s` metres early. A
+  profile starting before the plan is now re-indexed exactly (Taylor shift
+  of the straddling piece); one starting after the plan start, or ending
+  before it, is refused with `Unsupported`, because the composed curve has
+  no domain to leave those stations without heights.
+
+### Added
+
+- `vertical_profile_law(model, vertical, units)`: the exact profile of an
+  `IfcAlignmentVertical`, with its seams checked at the precision the file
+  declares (#141).
+- `SeamTolerance` and `profile_law_within`: the seam tolerance as a value.
+  `SeamTolerance::for_model` reads `Precision` from the model's 3D
+  `IfcGeometricRepresentationContext`s (the coarsest, converted from the
+  project length unit, capped at 1 mm); `profile_law` keeps the
+  rounding-only rule (#141).
+- `CantLayout::for_alignment`: the alignment's sole cant layout; none or
+  several are a `SemanticViolation` (#93).
+- `CantLayout::frame_at_distance` and `CantFrame`: cant at a station as rail
+  heights, cant `D = left - right`, bank angle `arcsin(D / b)`, the
+  rotation-point elevation `(left + right) / 2` and the section frame;
+  `CantFrame::orient` places it on a caller-evaluated point and tangent
+  (#93).
+- `lower_segmented_reference_curve`: the cant-carrying centreline
+  (`IfcSegmentedReferenceCurve` role). It resolves the cant layout and then
+  refuses with `Unsupported`, because the pinned neutral curve vocabulary
+  has no roll law (#93).
+
+### Changed
+
+- `lower_vertical_segment` lowers through `elevation_law`, like the composed
+  gradient curve, so both paths accept and refuse the same segments.
+  `PARABOLICARC` now lowers exactly to a quadratic Bezier in the
+  (distance along, height) plane parameterised by plan distance; it was
+  refused (#91).
+- Vertical `CIRCULARARC` and `CLOTHOID` stay a typed `Unsupported`
+  refusal, now naming the family and why it has no polynomial law; exact
+  lowering waits on an Axiolid elevation law (#91, #258).
+- `lower_gradient_curve` and `gradient_curve3` check vertical seams at the
+  model's declared precision instead of rounding only, so files whose
+  exporter rounds `StartDistAlong` or `StartHeight` to that precision
+  compose (buildingSMART's `BC003_*` alignment reference datasets did not)
+  (#141).
+- A `CONSTANTGRADIENT` segment may carry `RadiusOfCurvature = 0.` and start
+  and end gradients equal up to rounding, as real exports write them; both
+  were refused.
+
 ## [0.4.0] - 2026-09-29
 
 ### Fixed

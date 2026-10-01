@@ -6,7 +6,8 @@
 use axiolid_curve::{Curve3, ElevationLaw};
 use axiolid_model::GeometryNode;
 use ifc_alignment::{
-    lower_gradient_curve, profile_law, AlignmentUnits, VerticalSegment, VerticalSegmentType,
+    lower_gradient_curve, profile_law, AlignmentError, AlignmentUnits, VerticalSegment,
+    VerticalSegmentType,
 };
 use ifc_model::{Entity, EntityId, Model, Value};
 use std::sync::Arc;
@@ -446,4 +447,119 @@ fn find_by_type(model: &Model, type_name: &str) -> EntityId {
         .find(|(_, e)| e.type_name.eq_ignore_ascii_case(type_name))
         .map(|(id, _)| id)
         .expect("entity present")
+}
+
+/// `(StartDistAlong, HorizontalLength, StartHeight, StartGradient,
+/// EndGradient, RadiusOfCurvature, PredefinedType)`.
+type ProfileRow<'a> = (f64, f64, f64, f64, f64, Option<f64>, &'a str);
+
+/// The fixture with its vertical profile replaced by `rows`, over a 200 m
+/// straight.
+fn alignment_with_profile(rows: &[ProfileRow]) -> (Model, EntityId) {
+    let (mut model, alignment) = alignment_model_with("LINE", 0.0);
+    // Lengthen the straight to 200 m (slot 6, SegmentLength).
+    let plan = find_by_type(&model, "IFCALIGNMENTHORIZONTALSEGMENT");
+    let mut attrs = model.get(plan).expect("plan").attributes.clone();
+    attrs[6] = Value::Real(200.0);
+    model.insert(plan, Entity::new("IFCALIGNMENTHORIZONTALSEGMENT", attrs));
+
+    let vertical_layout = find_by_type(&model, "IFCALIGNMENTVERTICAL");
+    let mut wrappers = Vec::new();
+    for (index, (start, length, height, entry, exit, radius, kind)) in rows.iter().enumerate() {
+        let params = EntityId(200 + 2 * index as u64);
+        model.insert(
+            params,
+            Entity::new(
+                "IFCALIGNMENTVERTICALSEGMENT",
+                vec![
+                    Value::Null,
+                    Value::Null,
+                    Value::Real(*start),
+                    Value::Real(*length),
+                    Value::Real(*height),
+                    Value::Real(*entry),
+                    Value::Real(*exit),
+                    radius.map_or(Value::Null, Value::Real),
+                    Value::Enum(Arc::from(*kind)),
+                ],
+            ),
+        );
+        let wrapper = EntityId(201 + 2 * index as u64);
+        let mut attrs = vec![Value::Null; 7];
+        attrs[0] = Value::Text(Arc::from("vs"));
+        attrs.push(Value::Ref(params));
+        model.insert(wrapper, Entity::new("IFCALIGNMENTSEGMENT", attrs));
+        wrappers.push(Value::Ref(wrapper));
+    }
+    let (nest, mut attrs) = model
+        .iter()
+        .filter(|(_, e)| e.type_name.eq_ignore_ascii_case("IFCRELNESTS"))
+        .find(|(_, e)| e.attributes[4] == Value::Ref(vertical_layout))
+        .map(|(id, e)| (id, e.attributes.clone()))
+        .expect("vertical nest");
+    attrs[5] = Value::List(wrappers);
+    model.insert(nest, Entity::new("IFCRELNESTS", attrs));
+    (model, alignment)
+}
+
+/// `StartDistAlong` is measured from the start of the horizontal layout, so
+/// a profile that begins 50 m before the plan is read at its own stations.
+///
+/// By hand: a 2% grade from height 50 at station -50 reaches 51.0 at
+/// station 0 (plan start) and 52.0 at station 50, where a 200 m crest from
+/// +2% to -3% begins: `52 + 0.02 x - 0.05/400 x^2` gives 52.75 at station
+/// 150 (x = 100) and 52.1875 at station 200 (x = 150). Read from plan
+/// distance 0 instead, station 0 would show
+/// 50.0 and station 150 would fall 50 m further along the crest.
+#[test]
+fn a_profile_is_read_at_its_own_stations_along_the_plan() {
+    let (model, alignment) = alignment_with_profile(&[
+        (-50.0, 100.0, 50.0, 0.02, 0.02, None, "CONSTANTGRADIENT"),
+        (
+            50.0,
+            200.0,
+            52.0,
+            0.02,
+            -0.03,
+            Some(-4000.0),
+            "PARABOLICARC",
+        ),
+    ]);
+    let Curve3::Elevated(elevated) =
+        ifc_alignment::gradient_curve3(&model, alignment, metres()).expect("composes")
+    else {
+        panic!("expected an elevated curve");
+    };
+    for (plan_distance, height, grade) in [
+        (0.0, 51.0, 0.02),
+        (50.0, 52.0, 0.02),
+        (150.0, 52.75, -0.005),
+        (200.0, 52.1875, -0.0175),
+    ] {
+        let z = elevated.elevation.height_at(plan_distance).expect("height");
+        let g = elevated.elevation.grade_at(plan_distance).expect("grade");
+        assert!((z - height).abs() < 1e-12, "z({plan_distance}) = {z}");
+        assert!((g - grade).abs() < 1e-14, "g({plan_distance}) = {g}");
+    }
+}
+
+/// A profile beginning after the plan start leaves the first stations
+/// without heights; the composed curve has no domain to say so, so it is
+/// refused rather than extrapolated.
+#[test]
+fn a_profile_starting_after_the_plan_start_is_refused() {
+    let (model, alignment) =
+        alignment_with_profile(&[(100.0, 100.0, 50.0, 0.02, 0.02, None, "CONSTANTGRADIENT")]);
+    let vertical = find_by_type(&model, "IFCALIGNMENTVERTICAL");
+    let error = lower_gradient_curve(&model, alignment, metres()).expect_err("starts at 100 m");
+    assert!(
+        matches!(
+            &error,
+            AlignmentError::Unsupported { entity, type_name, detail }
+                if *entity == vertical
+                    && type_name == "IfcAlignmentVertical"
+                    && detail.contains("plan start")
+        ),
+        "{error}"
+    );
 }

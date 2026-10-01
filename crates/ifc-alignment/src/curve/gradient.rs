@@ -19,7 +19,8 @@ use axiolid_model::{CurveRelation, GeometryGraphBuilder, GeometryNode};
 use ifc_model::{EntityId, Model};
 
 use super::assemble::{finish, LoweredAlignmentCurve};
-use super::elevation::profile_law;
+use super::elevation::{indexed_from_plan_start, profile_law_within};
+use super::tolerance::SeamTolerance;
 use crate::cant::CantLayout;
 use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::AlignmentUnits;
@@ -163,7 +164,17 @@ fn compose(
     for id in &ids {
         segments.push(read_vertical_segment(model, *id, units)?);
     }
-    let elevation = profile_law(&segments)?;
+    // The profile's seams are checked at the precision the file declares
+    // (#141), the same rule `vertical_profile_law` applies.
+    let tolerance = SeamTolerance::for_model(model, units)?;
+    let profile = profile_law_within(&segments, tolerance)?;
+    // `profile_law` is indexed from the first StartDistAlong; the plan from
+    // its own start. Re-index so both halves read the same distance.
+    let start = segments.first().map_or(0.0, |s| s.start_dist_along);
+    let end = segments
+        .last()
+        .map_or(0.0, |s| s.start_dist_along + s.horizontal_length);
+    let elevation = indexed_from_plan_start(profile, start, end, vertical, tolerance)?;
     Ok((Curve3::Elevated(Elevated3::new(plan, elevation)), ids))
 }
 

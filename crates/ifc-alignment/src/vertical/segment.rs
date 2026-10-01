@@ -13,16 +13,18 @@ use crate::slot;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VerticalSegmentType {
     /// `CONSTANTGRADIENT`: a straight grade line (`start_gradient` ==
-    /// `end_gradient`, no `radius_of_curvature`). The only kind exact
-    /// neutral lowering currently supports.
+    /// `end_gradient` up to rounding, no or zero `radius_of_curvature`).
+    /// Lowers exactly.
     ConstantGradient,
     /// `CIRCULARARC`: constant-radius vertical curve; requires
-    /// `radius_of_curvature`.
+    /// `radius_of_curvature`. Refused by lowering: not polynomial in plan
+    /// distance (#258).
     CircularArc,
     /// `PARABOLICARC`: parabolic vertical curve; requires
-    /// `radius_of_curvature`.
+    /// `radius_of_curvature`. Lowers exactly.
     ParabolicArc,
-    /// `CLOTHOID`: a clothoid-law vertical transition.
+    /// `CLOTHOID`: a clothoid-law vertical transition. Refused by lowering:
+    /// a Fresnel integral in plan distance (#258).
     Clothoid,
     /// `USERDEFINED`: an author-supplied law outside the enumerated set.
     UserDefined,
@@ -75,7 +77,7 @@ pub struct VerticalSegment {
 /// `IfcAlignmentVerticalSegment`, an attribute is missing or the wrong kind,
 /// `HorizontalLength` is negative, any value is non-finite, or
 /// `RadiusOfCurvature` is present/absent inconsistently with `PredefinedType`
-/// (required for `CircularArc`/`ParabolicArc`, forbidden otherwise).
+/// (required for `CircularArc`/`ParabolicArc`, absent or zero otherwise).
 pub fn read_vertical_segment(
     model: &Model,
     id: EntityId,
@@ -156,7 +158,12 @@ pub fn read_vertical_segment(
         predefined_type,
         VerticalSegmentType::CircularArc | VerticalSegmentType::ParabolicArc
     );
-    if needs_radius != radius_of_curvature.is_some() {
+    // A zero radius on a straight family is the "no curvature" convention
+    // the horizontal LINE uses too; exporters write it (Trimble Quadri,
+    // IFC4.x-IF STN01), so it is read as written rather than refused. Any
+    // other radius on a straight family still contradicts it.
+    let zero_on_straight = !needs_radius && radius_of_curvature == Some(0.0);
+    if needs_radius != radius_of_curvature.is_some() && !zero_on_straight {
         return Err(AlignmentError::InvalidSegment {
             entity: id,
             detail: "radius is required exactly for circular and parabolic vertical segments",

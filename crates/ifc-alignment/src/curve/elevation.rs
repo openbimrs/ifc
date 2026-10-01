@@ -9,11 +9,31 @@
 //! `z(d) = height + entry * d + (exit - entry) / (2 * length) * d^2`, which
 //! is the IFC parabolic vertical curve exactly, so PARABOLICARC needs no
 //! approximation.
+//!
+//! # Circular arcs and clothoids are a recorded refusal (#91, #258)
+//!
+//! IFC4.3 ADD2 (`IfcAlignmentVerticalSegmentTypeEnum`) defines
+//! `CIRCULARARC` as "the derivative of vertical angle with respect to
+//! sloping length along the track (3D length) is constant" and maps it to an
+//! `IfcCircle` parent curve in the (distance along, height) plane, and
+//! `CLOTHOID` as a vertical curvature varying linearly in that 3D length.
+//! Neither height is a polynomial in plan distance: the arc is
+//! `z = z_c - sqrt(R^2 - (d - d_c)^2)` and the clothoid is a Fresnel
+//! integral. The standard quotes the EN 13803 ordinate
+//! `z_c(s) = s^2 / (2 R)` only as the offset from the tangent, not as the
+//! definition of the segment, so substituting a parabola would move the road
+//! surface. The pinned `ElevationLaw` has only polynomial pieces, so both
+//! are typed [`AlignmentError::Unsupported`] refusals until Axiolid has an
+//! exact law for them (the upstream request is recorded on #258).
 
 use axiolid_curve::ElevationLaw;
+use ifc_model::{EntityId, Model};
 
+use super::tolerance::SeamTolerance;
 use crate::error::{AlignmentError, AlignmentResult, ProfileSeam};
-use crate::vertical::{VerticalSegment, VerticalSegmentType};
+use crate::horizontal::AlignmentUnits;
+use crate::vertical::{read_vertical_segment, VerticalSegment, VerticalSegmentType};
+use crate::view::AlignmentView;
 
 /// The exact elevation law for one `IfcAlignmentVerticalSegment`.
 ///
@@ -30,25 +50,45 @@ pub fn elevation_law(segment: &VerticalSegment) -> AlignmentResult<ElevationLaw>
     match segment.predefined_type {
         VerticalSegmentType::ConstantGradient => constant_gradient(segment),
         VerticalSegmentType::ParabolicArc => parabolic_arc(segment),
-        // A circular vertical curve is a circle, not a polynomial in plan
-        // distance: z = c - sqrt(r^2 - d^2) has no exact ElevationLaw form.
-        // Road profiles overwhelmingly use the parabola, and quietly
-        // substituting one for the other would move the road surface, so
-        // this is refused by name.
         ref kind => Err(AlignmentError::Unsupported {
             entity: segment.entity,
             type_name: kind.source_name().to_owned(),
-            detail: "no exact elevation law: only constant gradient and parabolic arc are polynomial in plan distance",
+            detail: refusal(kind),
         }),
     }
 }
 
+/// Why a vertical family has no exact elevation law, by name.
+fn refusal(kind: &VerticalSegmentType) -> &'static str {
+    match kind {
+        // A circle in (distance, height): z = z_c - sqrt(R^2 - (d - d_c)^2).
+        VerticalSegmentType::CircularArc => {
+            "no exact elevation law: a vertical circular arc is not polynomial in plan distance, \
+             and the pinned ElevationLaw has only polynomial pieces"
+        }
+        // Curvature linear in 3D arc length: a Fresnel integral.
+        VerticalSegmentType::Clothoid => {
+            "no exact elevation law: a vertical clothoid is a Fresnel integral in plan distance, \
+             and the pinned ElevationLaw has only polynomial pieces"
+        }
+        _ => "no exact elevation law: the vertical PredefinedType defines no curve law",
+    }
+}
+
 /// `CONSTANTGRADIENT`: a straight grade, degree 1.
+///
+/// The two gradients are compared at rounding precision, not bit for bit:
+/// an exporter that writes `0.0424413181578388` and `0.0424413181578387`
+/// (Trimble, IFC4.x-IF) states one grade. The law uses `StartGradient`. A
+/// zero `RadiusOfCurvature` is the straight-line convention, not a curve.
 fn constant_gradient(segment: &VerticalSegment) -> AlignmentResult<ElevationLaw> {
-    if segment.radius_of_curvature.is_some() || segment.start_gradient != segment.end_gradient {
+    let curved = segment.radius_of_curvature.is_some_and(|r| r != 0.0);
+    if curved
+        || !SeamTolerance::strict().same_gradient(segment.start_gradient, segment.end_gradient)
+    {
         return Err(AlignmentError::InvalidSegment {
             entity: segment.entity,
-            detail: "CONSTANTGRADIENT requires equal gradients and no curvature radius",
+            detail: "CONSTANTGRADIENT requires equal gradients and no non-zero curvature radius",
         });
     }
     Ok(ElevationLaw::constant_grade(
@@ -108,12 +148,33 @@ fn parabolic_arc(segment: &VerticalSegment) -> AlignmentResult<ElevationLaw> {
 /// silently shift every downstream height (a step) or its slope (a kink),
 /// so both are refused with [`AlignmentError::ProfileDiscontinuity`].
 ///
+/// Seams are compared with [`SeamTolerance::strict`]: floating-point
+/// rounding only. A file whose exporter rounds stations or heights states
+/// that in its `Precision`; use [`profile_law_within`] with
+/// [`SeamTolerance::for_model`], or [`vertical_profile_law`], to honour it.
+///
 /// # Errors
 ///
 /// Refuses an empty profile, segments that are not sorted and contiguous,
 /// a height or grade discontinuity at any seam, and any segment without an
 /// exact law.
 pub fn profile_law(segments: &[VerticalSegment]) -> AlignmentResult<ElevationLaw> {
+    profile_law_within(segments, SeamTolerance::strict())
+}
+
+/// [`profile_law`] with an explicit seam tolerance.
+///
+/// `tolerance` widens only the LENGTH seams (`StartDistAlong` contiguity and
+/// `StartHeight`); gradient seams stay at rounding precision. See
+/// [`SeamTolerance`] for the rule and its evidence.
+///
+/// # Errors
+///
+/// As [`profile_law`].
+pub fn profile_law_within(
+    segments: &[VerticalSegment],
+    tolerance: SeamTolerance,
+) -> AlignmentResult<ElevationLaw> {
     let Some(first) = segments.first() else {
         return Err(AlignmentError::SemanticViolation {
             entity: None,
@@ -136,13 +197,13 @@ pub fn profile_law(segments: &[VerticalSegment]) -> AlignmentResult<ElevationLaw
             // A gap or overlap means the profile does not describe one
             // continuous road. Joining it anyway would silently move every
             // downstream height, so it is refused.
-            if !approximately(segment.start_dist_along, expected) {
+            if !tolerance.same_length(segment.start_dist_along, expected) {
                 return Err(AlignmentError::InvalidSegment {
                     entity: segment.entity,
                     detail: "vertical segments must be contiguous and ascending in StartDistAlong",
                 });
             }
-            check_seam(previous, previous_law, segment)?;
+            check_seam(previous, previous_law, segment, tolerance)?;
             breaks.push(segment.start_dist_along - start);
         }
         laws.push(law);
@@ -161,6 +222,7 @@ fn check_seam(
     previous: &VerticalSegment,
     previous_law: &ElevationLaw,
     segment: &VerticalSegment,
+    tolerance: SeamTolerance,
 ) -> AlignmentResult<()> {
     let end_height = previous_law.height_at(previous.horizontal_length).ok_or(
         AlignmentError::InvalidSegment {
@@ -169,15 +231,21 @@ fn check_seam(
         },
     )?;
     let seams = [
-        (ProfileSeam::Height, end_height, segment.start_height),
+        (
+            ProfileSeam::Height,
+            end_height,
+            segment.start_height,
+            tolerance.same_length(segment.start_height, end_height),
+        ),
         (
             ProfileSeam::Gradient,
             previous.end_gradient,
             segment.start_gradient,
+            tolerance.same_gradient(segment.start_gradient, previous.end_gradient),
         ),
     ];
-    for (seam, expected, actual) in seams {
-        if !approximately(actual, expected) {
+    for (seam, expected, actual, same) in seams {
+        if !same {
             return Err(AlignmentError::ProfileDiscontinuity {
                 entity: segment.entity,
                 previous: previous.entity,
@@ -190,14 +258,138 @@ fn check_seam(
     Ok(())
 }
 
-/// Equal within a tolerance scaled to the magnitude involved.
+/// The exact profile of an `IfcAlignmentVertical`, checked at the seam
+/// tolerance the model declares.
 ///
-/// Station values run to tens of thousands of metres, where an exact
-/// equality test on f64 would reject a profile that is contiguous to any
-/// meaning a surveyor would recognise. Seam heights reuse the same rule;
-/// grades are ratios well below one, so the floor of one makes their
-/// tolerance an absolute 1e-9.
-fn approximately(left: f64, right: f64) -> bool {
-    let scale = left.abs().max(right.abs()).max(1.0);
-    (left - right).abs() <= 1e-9 * scale
+/// Reads the nested segment chain in authored order and joins it with
+/// [`profile_law_within`] at [`SeamTolerance::for_model`]. This is the
+/// entry point for a profile read from a file: an exporter that rounds
+/// stations or heights to its stated `Precision` is accepted, a step beyond
+/// it is still refused.
+///
+/// Like [`profile_law`], the law is indexed by distance from the FIRST
+/// segment's `StartDistAlong`; the composed gradient curve re-indexes it to
+/// plan distance.
+///
+/// # Errors
+///
+/// Refuses a model that is not IFC4X3, an entity that is not an
+/// `IfcAlignmentVertical`, an empty layout, an invalid declared
+/// `Precision`, and everything [`profile_law`] refuses.
+pub fn vertical_profile_law(
+    model: &Model,
+    entity: EntityId,
+    units: AlignmentUnits,
+) -> AlignmentResult<ElevationLaw> {
+    let view = AlignmentView::for_model(model)?;
+    let layout = model
+        .get(entity)
+        .ok_or(AlignmentError::MissingEntity { entity })?;
+    if !view.schema.is_a(&layout.type_name, "IfcAlignmentVertical") {
+        return Err(AlignmentError::WrongType {
+            entity,
+            expected: "IfcAlignmentVertical",
+            actual: layout.type_name.to_string(),
+        });
+    }
+    let tolerance = SeamTolerance::for_model(model, units)?;
+    let segments = view
+        .segment_chain(entity, "IfcAlignmentVerticalSegment")?
+        .into_iter()
+        .map(|id| read_vertical_segment(model, id, units))
+        .collect::<AlignmentResult<Vec<_>>>()?;
+    if segments.is_empty() {
+        return Err(AlignmentError::SemanticViolation {
+            entity: Some(entity),
+            rule: "IfcAlignmentVertical must nest at least one IfcAlignmentSegment",
+        });
+    }
+    profile_law_within(&segments, tolerance)
+}
+
+/// Re-index a profile law from its first `StartDistAlong` to plan distance.
+///
+/// IFC4.3 ADD2 measures `IfcAlignmentVerticalSegment.StartDistAlong` "from
+/// the start point of `IfcAlignmentHorizontal`", and `Elevated3` reads its
+/// law at plan distance. [`profile_law`] writes the law from the profile's
+/// own start, so a profile starting at station `start` must be shifted by it
+/// before composition, or every height lands `start` metres early.
+///
+/// - `start` within `tolerance` of zero: the law is already plan-indexed.
+/// - `start < 0` (the profile begins before the plan): pieces wholly before
+///   the plan start are dropped and the piece straddling it is rewritten by
+///   an exact Taylor shift, `q(d) = p(d + o)`, so plan distance 0 reads the
+///   profile at station 0.
+/// - `start > 0`, or a profile ending (`end`, its last station) before the
+///   plan starts: refused. Heights before the first `StartDistAlong` do not
+///   exist, and `Elevated3` has no domain bound to exclude them; composing
+///   anyway would invent the surface over `0..start`.
+pub(crate) fn indexed_from_plan_start(
+    law: ElevationLaw,
+    start: f64,
+    end: f64,
+    vertical: EntityId,
+    tolerance: SeamTolerance,
+) -> AlignmentResult<ElevationLaw> {
+    if tolerance.same_length(start, 0.0) {
+        return Ok(law);
+    }
+    if start > 0.0 || end < 0.0 {
+        return Err(AlignmentError::Unsupported {
+            entity: vertical,
+            type_name: "IfcAlignmentVertical".to_owned(),
+            detail: "the vertical profile does not cover the plan start; the composed curve has \
+                     no domain to leave stations outside the profile without heights",
+        });
+    }
+    let offset = -start;
+    let malformed = || AlignmentError::InvalidSegment {
+        entity: vertical,
+        detail: "vertical profile law is not a run of polynomial pieces",
+    };
+    let (breaks, laws) = match law {
+        ElevationLaw::Piecewise { breaks, laws } => (breaks, laws),
+        single => (Vec::new(), vec![single]),
+    };
+    // The piece holding profile distance `offset`, as `partition_point` in
+    // the kernel's own `piece_at` picks it: a seam belongs to the piece
+    // starting there.
+    let index = breaks.partition_point(|b| *b <= offset);
+    let piece_start = if index == 0 { 0.0 } else { breaks[index - 1] };
+    let mut laws = laws.into_iter().skip(index);
+    let Some(ElevationLaw::Polynomial { coefficients }) = laws.next() else {
+        return Err(malformed());
+    };
+    let mut shifted = vec![taylor_shift(&coefficients, offset - piece_start)];
+    shifted.extend(laws);
+    Ok(match shifted.len() {
+        1 => shifted.remove(0),
+        _ => ElevationLaw::Piecewise {
+            breaks: breaks[index..].iter().map(|b| b - offset).collect(),
+            laws: shifted,
+        },
+    })
+}
+
+/// Coefficients of `q(d) = p(d + offset)`, exactly by the binomial theorem:
+/// `q_k = sum_{j >= k} C(j, k) p_j offset^(j - k)`.
+fn taylor_shift(coefficients: &[f64], offset: f64) -> ElevationLaw {
+    let shifted = (0..coefficients.len())
+        .map(|k| {
+            let mut binomial = 1.0;
+            let mut power = 1.0;
+            let mut sum = 0.0;
+            for (j, coefficient) in coefficients.iter().enumerate().skip(k) {
+                if j > k {
+                    binomial = binomial * j as f64 / (j - k) as f64;
+                    power *= offset;
+                }
+                sum += binomial * coefficient * power;
+            }
+            sum
+        })
+        .collect();
+    ElevationLaw::Polynomial {
+        coefficients: shifted,
+    }
 }
