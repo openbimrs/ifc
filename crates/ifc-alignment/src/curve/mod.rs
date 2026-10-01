@@ -8,11 +8,15 @@
 //! - `reference.rs`: the cant-carrying 3D centreline, refused until Axiolid
 //!   has a roll law.
 //! - `tolerance.rs`: the seam tolerance a vertical profile is checked at.
+//! - `plan.rs`: a whole horizontal layout as one exact intrinsic curve.
+//! - `seam.rs`: the closed-form rule for checking horizontal seams.
 
 mod assemble;
 mod elevation;
 mod gradient;
+mod plan;
 mod reference;
+mod seam;
 mod spiral;
 mod tolerance;
 
@@ -22,5 +26,7 @@ pub use assemble::{
 };
 pub use elevation::{elevation_law, profile_law, profile_law_within, vertical_profile_law};
 pub use gradient::{gradient_curve3, lower_gradient_curve};
+pub use plan::{lower_horizontal_plan, HorizontalPlan};
 pub use reference::lower_segmented_reference_curve;
+pub use seam::{HorizontalSeam, SeamCheck};
 pub use tolerance::SeamTolerance;

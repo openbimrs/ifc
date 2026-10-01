@@ -320,27 +320,32 @@ pub fn vertical_profile_law(
 ///   the plan start are dropped and the piece straddling it is rewritten by
 ///   an exact Taylor shift, `q(d) = p(d + o)`, so plan distance 0 reads the
 ///   profile at station 0.
-/// - `start > 0`, or a profile ending (`end`, its last station) before the
-///   plan starts: refused. Heights before the first `StartDistAlong` do not
-///   exist, and `Elevated3` has no domain bound to exclude them; composing
-///   anyway would invent the surface over `0..start`.
+/// - a profile starting after the plan start, or ending (`end`, its last
+///   station) before the plan ends (`plan_length`), beyond `tolerance`:
+///   refused. Heights outside the profile do not exist, and `Elevated3` has
+///   no domain bound to exclude them; composing anyway would invent the
+///   surface there. A profile running past the plan end is fine: the plan
+///   bounds the curve.
 pub(crate) fn indexed_from_plan_start(
     law: ElevationLaw,
     start: f64,
     end: f64,
+    plan_length: f64,
     vertical: EntityId,
     tolerance: SeamTolerance,
 ) -> AlignmentResult<ElevationLaw> {
-    if tolerance.same_length(start, 0.0) {
-        return Ok(law);
-    }
-    if start > 0.0 || end < 0.0 {
+    let starts_late = start > 0.0 && !tolerance.same_length(start, 0.0);
+    let ends_early = end < plan_length && !tolerance.same_length(end, plan_length);
+    if starts_late || ends_early {
         return Err(AlignmentError::Unsupported {
             entity: vertical,
             type_name: "IfcAlignmentVertical".to_owned(),
-            detail: "the vertical profile does not cover the plan start; the composed curve has \
+            detail: "the vertical profile does not cover the whole plan; the composed curve has \
                      no domain to leave stations outside the profile without heights",
         });
+    }
+    if start >= 0.0 {
+        return Ok(law);
     }
     let offset = -start;
     let malformed = || AlignmentError::InvalidSegment {

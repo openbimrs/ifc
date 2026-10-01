@@ -367,24 +367,34 @@ fn a_zero_length_parabola_is_refused_before_it_becomes_infinite() {
     );
 }
 
-/// `Elevated3.plan` is a single `Curve2` and the neutral vocabulary has no
-/// composite `Curve2`, so a two-segment plan cannot be elevated. Flattening
-/// it to a B-spline would discard the exact spiral this composition exists
-/// to preserve, and elevating only the first segment would silently drop
-/// the rest of the road. Refused by name instead.
+/// A two-segment plan elevates as ONE intrinsic curve (#92): the layout's
+/// laws sit in a piecewise curvature law anchored at the first segment, so
+/// the whole road is elevated rather than refused or truncated to its first
+/// segment. The richer line -> clothoid -> arc case is in
+/// `horizontal_plan.rs`.
 #[test]
-fn a_multi_segment_plan_is_refused_rather_than_partially_elevated() {
-    // Two collinear lines: both lowerable, and continuous at the join, so
-    // the refusal under test is the composite one and not a continuity rule.
+fn a_multi_segment_plan_elevates_as_one_intrinsic_curve() {
+    // Two collinear lines: continuous in position and heading at the join.
     let (mut model, alignment) = alignment_model_with("LINE", 0.0);
     add_second_plan_segment(&mut model);
-    let error = lower_gradient_curve(&model, alignment, metres())
-        .expect_err("a composite plan has no single Curve2");
-    let text = format!("{error}");
-    assert!(
-        text.contains("multi-segment"),
-        "refusal must name the cause: {text}"
-    );
+    // The profile must cover the whole 150 m plan (HorizontalLength, slot 3).
+    let profile = find_by_type(&model, "IFCALIGNMENTVERTICALSEGMENT");
+    let mut attrs = model.get(profile).expect("profile").attributes.clone();
+    attrs[3] = Value::Real(150.0);
+    model.insert(profile, Entity::new("IFCALIGNMENTVERTICALSEGMENT", attrs));
+    let lowered = lower_gradient_curve(&model, alignment, metres()).expect("composes");
+    let Some(GeometryNode::Curve3(Curve3::Elevated(elevated))) = lowered.graph.get(lowered.root)
+    else {
+        panic!("the root must be an elevated 3D curve");
+    };
+    let axiolid_curve::Curve2::Intrinsic(plan) = elevated.plan.as_ref() else {
+        panic!("a multi-segment plan is one intrinsic curve");
+    };
+    assert_eq!(plan.length, 150.0, "both segments, not only the first");
+    assert!(matches!(
+        &plan.curvature,
+        axiolid_curve::CurvatureLaw::Piecewise { breaks, .. } if breaks == &vec![100.0]
+    ));
 }
 
 /// Append a second horizontal segment, so the plan lowers to a composite
@@ -558,8 +568,25 @@ fn a_profile_starting_after_the_plan_start_is_refused() {
             AlignmentError::Unsupported { entity, type_name, detail }
                 if *entity == vertical
                     && type_name == "IfcAlignmentVertical"
-                    && detail.contains("plan start")
+                    && detail.contains("whole plan")
         ),
         "{error}"
     );
+}
+
+/// A profile ending before the plan ends leaves the last stations without
+/// heights; refused for the same reason. One ending exactly at the plan end
+/// (here 0..200 m on the 200 m straight) composes.
+#[test]
+fn a_profile_ending_before_the_plan_end_is_refused() {
+    let (short, alignment) =
+        alignment_with_profile(&[(0.0, 150.0, 50.0, 0.02, 0.02, None, "CONSTANTGRADIENT")]);
+    let error = lower_gradient_curve(&short, alignment, metres()).expect_err("ends at 150 m");
+    assert!(
+        matches!(&error, AlignmentError::Unsupported { detail, .. } if detail.contains("whole plan")),
+        "{error}"
+    );
+    let (full, alignment) =
+        alignment_with_profile(&[(0.0, 200.0, 50.0, 0.02, 0.02, None, "CONSTANTGRADIENT")]);
+    lower_gradient_curve(&full, alignment, metres()).expect("covers the plan");
 }

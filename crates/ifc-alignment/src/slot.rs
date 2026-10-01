@@ -9,6 +9,11 @@
 //! Readers indexed these positions with bare literals before authoring
 //! existed. Both directions now index this module, so a slot cannot be
 //! corrected on one side only (ADR 0011).
+//!
+//! `tests.rs` pins every slot, arity, the IFC4X3 ADD2 profile name, the
+//! declarations the crate reads, the subtype and SELECT memberships the
+//! traversal relies on, and the absence of the layouts from earlier
+//! releases, against the table bundled in `ifc-schema` (#16).
 
 /// `IfcAlignmentHorizontalSegment`: `StartTag`/`EndTag` are inherited from
 /// `IfcAlignmentParameterSegment` at slots 0..1.
@@ -154,3 +159,65 @@ pub mod axis2_placement_linear {
     /// `RefDirection`.
     pub const REF_DIRECTION: usize = 2;
 }
+
+/// `IfcRelNests` and `IfcRelAggregates`: both are `IfcRelDecomposes`
+/// subtypes, so the `IfcRoot` quartet occupies slots 0..3 and each adds
+/// its own `RelatingObject`/`RelatedObjects` pair (a `LIST` for nesting,
+/// a `SET` for aggregation).
+pub(crate) mod decomposes {
+    /// `RelatingObject : IfcObjectDefinition`.
+    pub const RELATING_OBJECT: usize = 4;
+    /// `RelatedObjects : LIST|SET [1:?] OF IfcObjectDefinition`.
+    pub const RELATED_OBJECTS: usize = 5;
+    /// Attribute count.
+    #[cfg(test)]
+    pub const ARITY: usize = 6;
+}
+
+/// `IfcRelPositions`, an `IfcRelConnects` subtype.
+pub(crate) mod rel_positions {
+    /// `RelatingPositioningElement : IfcPositioningElement`.
+    pub const RELATING_POSITIONING_ELEMENT: usize = 4;
+    /// `RelatedProducts : SET [1:?] OF IfcProduct`.
+    pub const RELATED_PRODUCTS: usize = 5;
+    /// Attribute count.
+    #[cfg(test)]
+    pub const ARITY: usize = 6;
+}
+
+/// `IfcRelDefinesByProperties`, an `IfcRelDefines` subtype.
+pub(crate) mod rel_defines_by_properties {
+    /// `RelatedObjects : SET [1:?] OF IfcObjectDefinition`.
+    pub const RELATED_OBJECTS: usize = 4;
+    /// `RelatingPropertyDefinition : IfcPropertySetDefinitionSelect`.
+    pub const RELATING_PROPERTY_DEFINITION: usize = 5;
+    /// Attribute count.
+    #[cfg(test)]
+    pub const ARITY: usize = 6;
+}
+
+/// `IfcPropertySet`: `Name` is inherited from `IfcRoot`.
+pub(crate) mod property_set {
+    /// `Name : OPTIONAL IfcLabel` (inherited, required by `ExistsName`).
+    pub const NAME: usize = 2;
+    /// `HasProperties : SET [1:?] OF IfcProperty`.
+    pub const HAS_PROPERTIES: usize = 4;
+    /// Attribute count.
+    #[cfg(test)]
+    pub const ARITY: usize = 5;
+}
+
+/// `IfcPropertySingleValue`: `Name`/`Specification` come from
+/// `IfcProperty`; `IfcPropertyAbstraction` contributes none.
+pub(crate) mod property_single_value {
+    /// `Name : IfcIdentifier`.
+    pub const NAME: usize = 0;
+    /// `NominalValue : OPTIONAL IfcValue`.
+    pub const NOMINAL_VALUE: usize = 2;
+    /// Attribute count.
+    #[cfg(test)]
+    pub const ARITY: usize = 4;
+}
+
+#[cfg(test)]
+mod tests;

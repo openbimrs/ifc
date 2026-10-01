@@ -13,6 +13,7 @@ use ifc_model::{EntityId, Model};
 
 use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::AlignmentUnits;
+use crate::slot;
 
 /// One `IfcReferent` carrying `Pset_Stationing`, resolved to its distance
 /// along the alignment and station value.
@@ -48,6 +49,13 @@ pub struct StationEquation {
 /// (`DistanceAlong` of the underlying `IfcPointByDistanceExpression`), not
 /// from station: the two are related only by this returned table, never
 /// interchangeable.
+///
+/// This scans the whole model, so the referents of different alignments
+/// land in one table. [`crate::Stationing::resolve`] scopes the table to
+/// one alignment and maps station to distance along and back.
+#[deprecated(
+    note = "mixes the referents of every alignment; use `Stationing::resolve` for one alignment"
+)]
 pub fn station_equations(
     model: &Model,
     units: AlignmentUnits,
@@ -72,7 +80,9 @@ pub fn station_equations(
     Ok(out)
 }
 
-fn resolve_referent_stationing(
+/// The stationing of one referent, or `None` when it carries no
+/// `Pset_Stationing`.
+pub(crate) fn resolve_referent_stationing(
     model: &Model,
     referent: EntityId,
     units: AlignmentUnits,
@@ -104,12 +114,18 @@ fn find_pset_stationing(model: &Model, referent: EntityId) -> AlignmentResult<Op
         // Description are slots 0..3; RelatedObjects and
         // RelatingPropertyDefinition are this declaration's own slots 4..5.
         let values = &entity.attributes;
-        let related = values.get(4).and_then(Value::as_list).unwrap_or(&[]);
+        let related = values
+            .get(slot::rel_defines_by_properties::RELATED_OBJECTS)
+            .and_then(Value::as_list)
+            .unwrap_or(&[]);
         let targets_referent = related.iter().any(|v| v.as_ref_id() == Some(referent));
         if !targets_referent {
             continue;
         }
-        let Some(pset_id) = values.get(5).and_then(Value::as_ref_id) else {
+        let Some(pset_id) = values
+            .get(slot::rel_defines_by_properties::RELATING_PROPERTY_DEFINITION)
+            .and_then(Value::as_ref_id)
+        else {
             continue;
         };
         let Some(pset_entity) = model.get(pset_id) else {
@@ -122,7 +138,7 @@ fn find_pset_stationing(model: &Model, referent: EntityId) -> AlignmentResult<Op
         // covered by IfcRoot); HasProperties is this declaration's own slot 4.
         let is_stationing = pset_entity
             .attributes
-            .get(2)
+            .get(slot::property_set::NAME)
             .and_then(Value::as_text)
             .is_some_and(|name| name == "Pset_Stationing");
         if is_stationing {
@@ -142,7 +158,7 @@ fn read_stationing_properties(
         .ok_or(AlignmentError::MissingEntity { entity: pset })?;
     let properties = pset_entity
         .attributes
-        .get(4)
+        .get(slot::property_set::HAS_PROPERTIES)
         .and_then(Value::as_list)
         .unwrap_or(&[]);
 
@@ -165,14 +181,16 @@ fn read_stationing_properties(
         // and Unit are this declaration's own slots 2..3.
         let name = property_entity
             .attributes
-            .first()
+            .get(slot::property_single_value::NAME)
             .and_then(Value::as_text)
             .ok_or(AlignmentError::InvalidAttribute {
                 entity: property_id,
-                index: 0,
+                index: slot::property_single_value::NAME,
                 name: "Name",
             })?;
-        let nominal = property_entity.attributes.get(2);
+        let nominal = property_entity
+            .attributes
+            .get(slot::property_single_value::NOMINAL_VALUE);
         match name {
             "Station" => {
                 station = nominal.and_then(|v| v.unwrap_typed().as_f64());
@@ -208,13 +226,15 @@ fn referent_distance_along(
     let entity = model
         .get(referent)
         .ok_or(AlignmentError::MissingEntity { entity: referent })?;
-    let placement_id = entity.attributes.get(5).and_then(Value::as_ref_id).ok_or(
-        AlignmentError::InvalidAttribute {
+    let placement_id = entity
+        .attributes
+        .get(slot::product::OBJECT_PLACEMENT)
+        .and_then(Value::as_ref_id)
+        .ok_or(AlignmentError::InvalidAttribute {
             entity: referent,
-            index: 5,
+            index: slot::product::OBJECT_PLACEMENT,
             name: "ObjectPlacement",
-        },
-    )?;
+        })?;
     let placement = crate::placement::resolve_linear_placement(model, placement_id, units)?;
     match placement.relative_placement.distance_along {
         crate::placement::CurveMeasure::Length(value) => Ok(value),

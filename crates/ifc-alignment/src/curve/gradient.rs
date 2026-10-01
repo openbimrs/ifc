@@ -9,17 +9,21 @@
 //! The two diverge by sqrt(1 + g^2) wherever grade is non-zero, and the
 //! kernel names that convention in the type, so nothing here re-derives it.
 //!
-//! One limit is structural, not an omission here. `Elevated3.plan` is a
-//! single `Curve2`, and the neutral vocabulary has no composite `Curve2`:
-//! a multi-segment plan lowers to a `CurveRelation::Composite`, which is a
-//! graph node rather than a curve. Such a layout is refused by name.
+//! `Elevated3.plan` is a single `Curve2`, so the plan is the whole
+//! horizontal layout as ONE intrinsic curve with a piecewise curvature law
+//! ([`lower_horizontal_plan`]), not the per-segment composite. Its
+//! parameter is distance along the plan from the first horizontal
+//! segment's start. Seams the plan could not verify in closed form are
+//! reported on the result.
 
 use axiolid_curve::{Curve2, Curve3, Elevated3};
-use axiolid_model::{CurveRelation, GeometryGraphBuilder, GeometryNode};
+use axiolid_model::{GeometryGraphBuilder, GeometryNode};
 use ifc_model::{EntityId, Model};
 
 use super::assemble::{finish, LoweredAlignmentCurve};
 use super::elevation::{indexed_from_plan_start, profile_law_within};
+use super::plan::lower_horizontal_plan;
+use super::seam::HorizontalSeam;
 use super::tolerance::SeamTolerance;
 use crate::cant::CantLayout;
 use crate::error::{AlignmentError, AlignmentResult};
@@ -36,8 +40,10 @@ use crate::view::AlignmentView;
 /// # Errors
 ///
 /// Refuses an alignment without both layouts, a vertical segment family
-/// with no exact elevation law, a non-contiguous profile, and a plan that
-/// lowers to a composite rather than a single curve.
+/// with no exact elevation law, a non-contiguous profile, and any plan
+/// [`lower_horizontal_plan`] refuses (a segment without an exact law, a
+/// heading kink, or a closed-form position gap). Seams after a transition
+/// spiral are reported in [`LoweredAlignmentCurve::seams`], not refused.
 pub fn lower_gradient_curve(
     model: &Model,
     entity: EntityId,
@@ -58,9 +64,8 @@ pub fn lower_gradient_curve(
     let horizontal = sole_layout(&view, entity, "IfcAlignmentHorizontal")?;
     let vertical = sole_layout(&view, entity, "IfcAlignmentVertical")?;
 
-    // The plan must be a single curve: `Elevated3.plan` is one `Curve2`.
     let cant = optional_cant(model, &view, entity, units)?;
-    let (curve, ids) = compose(model, &view, horizontal, vertical, units, cant.as_ref())?;
+    let (curve, ids, seams) = compose(model, &view, horizontal, vertical, units, cant.as_ref())?;
 
     let mut builder = GeometryGraphBuilder::new();
     let root =
@@ -72,7 +77,9 @@ pub fn lower_gradient_curve(
 
     let mut sources = vec![horizontal, vertical];
     sources.extend(ids);
-    finish(builder, root, sources)
+    let mut lowered = finish(builder, root, sources)?;
+    lowered.seams = seams;
+    Ok(lowered)
 }
 
 /// The single nested layout of a given type.
@@ -98,54 +105,6 @@ fn sole_layout(
     }
 }
 
-/// The plan as one `Curve2`, or a refusal naming why it is not.
-///
-/// A single-segment layout lowers to a trim over one basis curve, which is
-/// the curve wanted here. A multi-segment layout lowers to a composite, and
-/// the neutral vocabulary has no composite `Curve2` to put in `plan`.
-/// Flattening it to a B-spline would discard the exact spirals this
-/// composition exists to preserve, so it is refused instead.
-fn sole_plan_curve(
-    model: &Model,
-    horizontal: EntityId,
-    units: AlignmentUnits,
-    cant: Option<&CantLayout>,
-) -> AlignmentResult<Curve2> {
-    let lowered = super::assemble::lower_horizontal_layout(model, horizontal, units, cant)?;
-    // A layout always lowers to a composite, even with one segment. Resolve
-    // through it rather than scanning the graph: picking an arbitrary curve
-    // node would silently elevate a fragment of the road.
-    let Some(GeometryNode::CurveRelation(CurveRelation::Composite { segments })) =
-        lowered.graph.get(lowered.root)
-    else {
-        return Err(AlignmentError::Unsupported {
-            entity: horizontal,
-            type_name: "IfcAlignmentHorizontal".to_owned(),
-            detail: "plan did not lower to a composite curve",
-        });
-    };
-    let [only] = segments.as_slice() else {
-        return Err(AlignmentError::Unsupported {
-            entity: horizontal,
-            type_name: "IfcAlignmentHorizontal".to_owned(),
-            detail: "a multi-segment plan has no single Curve2 to elevate; the neutral vocabulary has no composite Curve2",
-        });
-    };
-    // The segment is a trim over the basis curve carrying the real geometry.
-    if let Some(GeometryNode::CurveRelation(CurveRelation::Trimmed { basis, .. })) =
-        lowered.graph.get(only.curve)
-    {
-        if let Some(GeometryNode::Curve2(curve)) = lowered.graph.get(*basis) {
-            return Ok(curve.clone());
-        }
-    }
-    Err(AlignmentError::Unsupported {
-        entity: horizontal,
-        type_name: "IfcAlignmentHorizontal".to_owned(),
-        detail: "plan has no single basis curve to elevate",
-    })
-}
-
 /// The composed centreline, without a surrounding graph.
 ///
 /// Shared by the graph lowering and by callers that need the curve itself
@@ -157,8 +116,8 @@ fn compose(
     vertical: EntityId,
     units: AlignmentUnits,
     cant: Option<&CantLayout>,
-) -> AlignmentResult<(Curve3, Vec<EntityId>)> {
-    let plan = sole_plan_curve(model, horizontal, units, cant)?;
+) -> AlignmentResult<(Curve3, Vec<EntityId>, Vec<HorizontalSeam>)> {
+    let plan = lower_horizontal_plan(model, horizontal, units, cant)?;
     let ids = view.segment_chain(vertical, "IfcAlignmentVerticalSegment")?;
     let mut segments = Vec::with_capacity(ids.len());
     for id in &ids {
@@ -169,13 +128,26 @@ fn compose(
     let tolerance = SeamTolerance::for_model(model, units)?;
     let profile = profile_law_within(&segments, tolerance)?;
     // `profile_law` is indexed from the first StartDistAlong; the plan from
-    // its own start. Re-index so both halves read the same distance.
+    // its own start. Re-index so both halves read the same distance, and
+    // refuse a profile that does not cover the whole plan.
     let start = segments.first().map_or(0.0, |s| s.start_dist_along);
     let end = segments
         .last()
         .map_or(0.0, |s| s.start_dist_along + s.horizontal_length);
-    let elevation = indexed_from_plan_start(profile, start, end, vertical, tolerance)?;
-    Ok((Curve3::Elevated(Elevated3::new(plan, elevation)), ids))
+    let plan_length = match &plan.curve {
+        Curve2::Intrinsic(intrinsic) => intrinsic.length,
+        _ => {
+            return Err(AlignmentError::Graph {
+                detail: "the horizontal plan did not lower to an intrinsic curve".to_owned(),
+            })
+        }
+    };
+    let elevation = indexed_from_plan_start(profile, start, end, plan_length, vertical, tolerance)?;
+    Ok((
+        Curve3::Elevated(Elevated3::new(plan.curve, elevation)),
+        ids,
+        plan.seams,
+    ))
 }
 
 /// The exact 3D centreline of `entity`, an `IfcAlignment`.
@@ -203,7 +175,7 @@ pub fn gradient_curve3(
     let horizontal = sole_layout(&view, entity, "IfcAlignmentHorizontal")?;
     let vertical = sole_layout(&view, entity, "IfcAlignmentVertical")?;
     let cant = optional_cant(model, &view, entity, units)?;
-    let (curve, _) = compose(model, &view, horizontal, vertical, units, cant.as_ref())?;
+    let (curve, _, _) = compose(model, &view, horizontal, vertical, units, cant.as_ref())?;
     Ok(curve)
 }
 
