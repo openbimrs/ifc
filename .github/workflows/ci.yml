@@ -1,7 +1,15 @@
 name: CI
 
+# Each change is gated once per state that matters, not once per push:
+# - pull_request: the change merged with its base, before it can land;
+# - push to main or a maint/* branch: the exact commit a release tag will
+#   point at. release.yml requires a passed `push` run on the tagged commit,
+#   and that run is this one, so a release tag does not need a run of its own.
+# Pushes of feature branches and of tags used to run the full gate again on
+# commits a PR run or a branch run already covered.
 on:
   push:
+    branches: [main, "maint/**"]
   pull_request:
 
 permissions:
