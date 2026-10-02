@@ -18,8 +18,9 @@
 //!
 //! Implemented: systems with subtype-aware discovery and membership, ports
 //! and both element-attachment forms, the undirected connection graph with
-//! cycle-safe traversal, flow roles and direction, and zones.
-//! Services-building relationships are not read yet.
+//! cycle-safe traversal, flow roles and direction, zones, and what a system
+//! serves: `IfcRelServicesBuildings` and the IFC4X3 `ServicesFacilities`
+//! references, read onto [`System`] and authored with [`serve_buildings`].
 
 pub mod authoring;
 mod connectivity;
@@ -37,7 +38,8 @@ pub use authoring::{
     create_group_with_owner_history, create_port, create_port_with_owner_history, create_system,
     create_system_with_owner_history, nest_ports, nest_ports_with_owner_history,
     reference_in_spatial_structure, reference_in_spatial_structure_with_owner_history,
-    ClassifiedSystemDraft, SystemAuthoringError, SystemAuthoringResult, SystemKind,
+    serve_buildings, serve_buildings_with_owner_history, ClassifiedSystemDraft,
+    SystemAuthoringError, SystemAuthoringResult, SystemKind,
 };
 pub use connectivity::{
     Connection, ConnectionGraph, Direction, FlowNetwork, FlowQuery, NetworkGraph,

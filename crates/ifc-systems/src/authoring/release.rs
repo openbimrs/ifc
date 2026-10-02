@@ -63,6 +63,11 @@ impl Release {
         self.schema
     }
 
+    /// The bound release.
+    pub(super) const fn version(self) -> SchemaVersion {
+        self.version
+    }
+
     /// Fail with `EntityNotInSchema` unless the release can instantiate
     /// `entity` (IFC2X3 has no `IfcSpatialZone`, IFC4 no `IfcBuiltSystem`).
     pub(super) fn require_entity(self, entity: &'static str) -> SystemAuthoringResult<()> {
@@ -182,7 +187,7 @@ impl Release {
 }
 
 /// The type `target` will have once `tx` commits, or `None` if absent.
-fn projected_type(tx: &Transaction, model: &Model, target: EntityId) -> Option<String> {
+pub(super) fn projected_type(tx: &Transaction, model: &Model, target: EntityId) -> Option<String> {
     for edit in tx.edits().iter().rev() {
         match edit {
             Edit::Remove { id } if *id == target => return None,

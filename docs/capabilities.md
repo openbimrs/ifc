@@ -53,7 +53,7 @@ committed figure that moves that often only produces merge conflicts.
 | `ifc-step` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-structural` | <span class="status-implemented">Implemented</span> | [#228](https://github.com/openbimrs/ifc/issues/228) |
 | `ifc-style` | <span class="status-implemented">Implemented</span> |  |
-| `ifc-systems` | <span class="status-implemented">Implemented</span> | [#230](https://github.com/openbimrs/ifc/issues/230), [#231](https://github.com/openbimrs/ifc/issues/231) |
+| `ifc-systems` | <span class="status-implemented">Implemented</span> | [#231](https://github.com/openbimrs/ifc/issues/231) |
 | `ifc-tabular` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-template-catalog` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-validate` | <span class="status-implemented">Implemented</span> |  |

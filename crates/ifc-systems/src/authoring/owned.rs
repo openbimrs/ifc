@@ -316,6 +316,7 @@ mod tests {
     use crate::connectivity::relation::slot as connects_slot;
     use crate::port::definition::slot as port_slot;
     use crate::system::group::slot as group_slot;
+    use crate::system::services::slot as services_slot;
     use crate::zone::spatial_group::slot as placement_slot;
 
     /// Every attribute name the variants write is the one the reader's (and
@@ -381,6 +382,16 @@ mod tests {
                 "IFCRELREFERENCEDINSPATIALSTRUCTURE",
                 "RelatingStructure",
                 placement_slot::RELATING_STRUCTURE,
+            ),
+            (
+                "IFCRELSERVICESBUILDINGS",
+                "RelatingSystem",
+                services_slot::RELATING_SYSTEM,
+            ),
+            (
+                "IFCRELSERVICESBUILDINGS",
+                "RelatedBuildings",
+                services_slot::RELATED_BUILDINGS,
             ),
             ("IFCFLOWSEGMENT", "Name", distribution_slot::NAME),
             (

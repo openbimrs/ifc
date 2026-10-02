@@ -15,6 +15,9 @@
 //! its relating end. Reading slot 5 yields an enumeration, not a reference,
 //! and a membership silently vanishes.
 //!
+//! `IfcRelServicesBuildings` and the IFC4X3 `ServicesFacilities` view are
+//! read in `services.rs` and joined onto each [`System`].
+//!
 //! # Distribution-system attributes are read by name
 //!
 //! ```text
@@ -32,6 +35,7 @@ use ifc_model::{EntityId, Model, Value};
 
 use crate::error::{SchemaResolutionError, SystemAnomaly};
 use crate::release::{self, Release};
+use crate::system::services;
 
 /// Attribute slots, named so a misread is a compile error rather than a
 /// silently empty result.
@@ -70,6 +74,22 @@ pub struct System {
     /// Order is preserved because IFC states no ordering and re-sorting would
     /// invent one; a caller comparing two exports needs the file's own order.
     pub members: Vec<EntityId>,
+    /// `ServicesBuildings`: the spatial structures this system serves through
+    /// its `IfcRelServicesBuildings`, in file order (#230).
+    ///
+    /// The inverse is `SET [0:1]`, so only the lowest-id relationship is read;
+    /// a second is reported as [`SystemAnomaly::ServicesBuildingsTwice`].
+    /// Targets missing from the file ([`SystemAnomaly::Dangling`]) or of a
+    /// type the release does not admit ([`SystemAnomaly::ServicedNotSpatial`])
+    /// are reported and left out.
+    pub serviced_buildings: Vec<EntityId>,
+    /// `ServicesFacilities` (IFC4X3 only): the spatial elements whose
+    /// `IfcRelReferencedInSpatialStructure` lists this system, ascending by
+    /// id (#230).
+    ///
+    /// Always empty under IFC2X3 and IFC4, whose `RelatedElements` is
+    /// `IfcProduct` and cannot hold a system.
+    pub serviced_facilities: Vec<EntityId>,
 }
 
 fn text(model: &Model, id: EntityId, slot: usize) -> Option<String> {
@@ -203,6 +223,9 @@ pub fn systems(model: &Model) -> Result<(Vec<System>, Vec<SystemAnomaly>), Schem
         }
     }
 
+    let mut buildings = services::serviced_buildings(model, release, &mut anomalies);
+    let mut facilities = services::serviced_facilities(model, release, &mut anomalies);
+
     // `ids_of_type` is an EXACT index: asking it for IFCSYSTEM misses every
     // IfcDistributionSystem in the file, which is the common case. Systems are
     // therefore selected by schema ancestry over the file's own type keys.
@@ -220,6 +243,11 @@ pub fn systems(model: &Model) -> Result<(Vec<System>, Vec<SystemAnomaly>), Schem
             predefined_type: predefined_type(model, release, id, &type_name),
             type_name,
             members: members.remove(&id).unwrap_or_default(),
+            serviced_buildings: buildings.remove(&id).unwrap_or_default(),
+            serviced_facilities: facilities
+                .remove(&id)
+                .map(|set| set.into_iter().collect())
+                .unwrap_or_default(),
         });
     }
     Ok((systems, anomalies))
