@@ -89,7 +89,7 @@ ahash = { version = "0.8", default-features = false, features = ["std"] }
 thiserror = "2.0"
 rayon = "1.10"
 memmap2 = "0.9"
-quick-xml = "0.37"
+quick-xml = "0.42"
 
 [profile.release]
 opt-level = 3
