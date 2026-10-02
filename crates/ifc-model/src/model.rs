@@ -164,9 +164,7 @@ impl Model {
                 let previous = previous.into_entity(self.source.as_deref());
                 let previous_key = previous.type_name.to_ascii_uppercase();
                 if previous_key != key {
-                    if let Some(ids) = self.by_type.get_mut(&previous_key) {
-                        ids.retain(|existing| *existing != id);
-                    }
+                    self.unindex(&previous_key, id);
                 } else {
                     // Same type: the entry is still correct, so re-adding it
                     // below would duplicate it.
@@ -369,6 +367,20 @@ impl Model {
 
     pub(crate) fn by_type_mut(&mut self) -> &mut AHashMap<String, Vec<EntityId>> {
         &mut self.by_type
+    }
+
+    /// Drops `id` from the type-index bucket `key` (already upper-cased),
+    /// and the bucket itself once it is empty: a type no entity has any
+    /// more must not linger in [`Model::type_histogram`] with a count of
+    /// zero, which a model rebuilt from the same entities would not list
+    /// (#106).
+    pub(crate) fn unindex(&mut self, key: &str, id: EntityId) {
+        if let Some(ids) = self.by_type.get_mut(key) {
+            ids.retain(|existing| *existing != id);
+            if ids.is_empty() {
+                self.by_type.remove(key);
+            }
+        }
     }
 
     pub(crate) fn order_mut(&mut self) -> &mut Vec<EntityId> {

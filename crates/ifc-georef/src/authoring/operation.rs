@@ -259,17 +259,26 @@ fn check_conversion(
         }
     }
 
+    // The reader refuses a `Scale` that is zero, negative or non-finite
+    // (`GeorefError::InvalidScale`), so writing one would stage a record
+    // this crate cannot read back (#254). The schema puts no WHERE rule on
+    // `Scale`; the refusal is the reader's, mirrored here.
     if let Some(scale) = draft.scale {
-        if !scale.is_finite() || scale == 0.0 {
+        if !positive_finite(scale) {
             return Err(invalid(
                 entity,
                 "Scale",
-                format!("expected a non-zero finite scale, got {scale}"),
+                format!("expected a positive finite scale, got {scale}"),
             ));
         }
     }
 
     Ok(())
+}
+
+/// What the reader accepts for `Scale` and the per-axis factors.
+fn positive_finite(value: f64) -> bool {
+    value.is_finite() && value > 0.0
 }
 
 fn conversion_attributes(draft: &MapConversionDraft) -> Vec<Value> {
@@ -295,7 +304,8 @@ fn conversion_attributes(draft: &MapConversionDraft) -> Vec<Value> {
 ///
 /// Refuses a non-finite coordinate, a `TargetCRS` that is not an
 /// `IfcProjectedCRS`, a partially specified or zero-length X axis, and
-/// a zero or non-finite scale.
+/// a scale that is zero, negative or non-finite -- the values the reader
+/// refuses, so nothing is staged that cannot be read back.
 pub fn create_map_conversion(
     tx: &mut Transaction,
     model: &Model,
@@ -315,9 +325,9 @@ pub fn create_map_conversion(
 ///
 /// # Errors
 ///
-/// Everything [`create_map_conversion`] refuses, plus a zero or
-/// non-finite factor on any axis -- a zero factor collapses that axis
-/// entirely.
+/// Everything [`create_map_conversion`] refuses, plus a factor on any
+/// axis that is zero, negative or non-finite -- a zero factor collapses
+/// that axis entirely, and the reader refuses all three.
 pub fn create_map_conversion_scaled(
     tx: &mut Transaction,
     model: &Model,
@@ -326,13 +336,15 @@ pub fn create_map_conversion_scaled(
 ) -> GeorefResult<EntityId> {
     check_conversion("IFCMAPCONVERSIONSCALED", tx, model, &draft)?;
 
+    // Mirrors the reader, which refuses a factor that is not positive and
+    // finite (`GeorefError::InvalidAttribute`, #252); see #254.
     let (x, y, z) = factors;
     for (attribute, value) in [("FactorX", x), ("FactorY", y), ("FactorZ", z)] {
-        if !value.is_finite() || value == 0.0 {
+        if !positive_finite(value) {
             return Err(invalid(
                 "IFCMAPCONVERSIONSCALED",
                 attribute,
-                format!("expected a non-zero finite factor, got {value}"),
+                format!("expected a positive finite factor, got {value}"),
             ));
         }
     }

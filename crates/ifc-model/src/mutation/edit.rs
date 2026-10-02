@@ -115,9 +115,7 @@ impl Model {
 
         let old_key = previous.to_ascii_uppercase();
         let new_key = new_name.to_ascii_uppercase();
-        if let Some(ids) = self.by_type_mut().get_mut(&old_key) {
-            ids.retain(|existing| *existing != id);
-        }
+        self.unindex(&old_key, id);
         self.by_type_mut().entry(new_key).or_default().push(id);
         self.bump_revision();
 
@@ -133,9 +131,7 @@ impl Model {
     pub fn remove(&mut self, id: EntityId) -> Option<Entity> {
         let entity = self.take_entity(id)?;
         let key = entity.type_name.to_ascii_uppercase();
-        if let Some(ids) = self.by_type_mut().get_mut(&key) {
-            ids.retain(|existing| *existing != id);
-        }
+        self.unindex(&key, id);
         self.order_mut().retain(|existing| *existing != id);
         self.bump_revision();
         Some(entity)
