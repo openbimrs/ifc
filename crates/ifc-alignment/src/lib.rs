@@ -13,13 +13,16 @@
 //! | `vertical` | Vertical segments: grades and parabolic curves |
 //! | `cant` | Superelevation (`IfcAlignmentCant`) for rail |
 //! | `referent` | `IfcReferent` stationing and chainage |
+//! | `view` | The IFC4X3 profile pin and the `IfcAlignment` hierarchy |
 //! | `placement` | `IfcLinearPlacement` and distance expressions |
 //! | `error` | Why an alignment operation failed |
 //!
 //! Horizontal lines, circular arcs and transition spirals lower to exact
 //! neutral curve graphs; a spiral is stored as its curvature law
-//! (`Curve2::Intrinsic`), never integrated here. Families without an exact
-//! law are typed refusals, tracked in GitHub issues.
+//! (`Curve2::Intrinsic`), never integrated here. A whole layout is also one
+//! intrinsic plan curve with a piecewise curvature law, which is what an
+//! elevated 3D centreline carries. Families without an exact law are typed
+//! refusals, tracked in GitHub issues.
 
 pub mod authoring;
 mod cant;
@@ -43,8 +46,9 @@ pub use cant::{
 };
 pub use curve::{
     elevation_law, gradient_curve3, lower_gradient_curve, lower_horizontal_layout,
-    lower_horizontal_layout_partial, lower_horizontal_segment, lower_vertical_segment, profile_law,
-    LoweredAlignmentCurve, PartialHorizontalLayout, RefusedSegment,
+    lower_horizontal_layout_partial, lower_horizontal_plan, lower_horizontal_segment,
+    lower_vertical_segment, profile_law, HorizontalPlan, HorizontalSeam, LoweredAlignmentCurve,
+    PartialHorizontalLayout, RefusedSegment, SeamCheck,
 };
 pub use error::{AlignmentError, AlignmentResult, ProfileSeam};
 pub use horizontal::{
@@ -54,6 +58,8 @@ pub use placement::{
     resolve_linear_placement, resolve_point_by_distance, CurveMeasure, LinearPlacement,
     PointByDistance,
 };
-pub use referent::{station_equations, StationEquation};
-pub use vertical::{read_vertical_segment, VerticalSegment, VerticalSegmentType};
-pub use view::AlignmentView;
+#[allow(deprecated)]
+pub use referent::station_equations;
+pub use referent::{StationEquation, Stationing, STATION_TOLERANCE};
+pub use vertical::{read_vertical_segment, VerticalLayout, VerticalSegment, VerticalSegmentType};
+pub use view::{AlignmentHierarchy, AlignmentView};

@@ -4,6 +4,9 @@
 //! a distance along the basis curve, a linear axis placement at that
 //! point, and the placement. The stationing reader walks that whole
 //! chain, so it is what proves the authoring is wired correctly.
+// Keeps exercising the deprecated model-wide `station_equations`, which
+// must go on working until it is removed.
+#![allow(deprecated)]
 
 use ifc_alignment::{
     axis2_placement_linear, cartesian_point, linear_placement, point_by_distance, referent,

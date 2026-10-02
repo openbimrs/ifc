@@ -28,7 +28,7 @@ use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::HorizontalSegment;
 
 /// IFC alignment radius convention: 0 denotes a straight (zero curvature).
-fn curvature_of(radius: f64) -> f64 {
+pub(super) fn curvature_of(radius: f64) -> f64 {
     if radius == 0.0 {
         0.0
     } else {
@@ -181,6 +181,32 @@ pub fn spiral_curve(
     cant: Option<&CantLayout>,
     start_distance: f64,
 ) -> AlignmentResult<Curve2> {
+    let law = transition_curvature(segment, name, cant, start_distance)?;
+    let direction = Vec2::new(segment.start_direction.cos(), segment.start_direction.sin());
+    let frame = Frame2 {
+        origin: segment.start_point,
+        x: direction,
+        y: Vec2::new(-direction.y, direction.x),
+    };
+    Ok(Curve2::Intrinsic(Intrinsic2::new(
+        frame,
+        law,
+        segment.segment_length,
+    )))
+}
+
+/// The exact curvature law of a transition-spiral segment, in its own arc
+/// length.
+///
+/// Shared by [`spiral_curve`], which anchors the law to the segment's own
+/// start frame, and by the whole-layout plan, which anchors it by arc
+/// length inside one piecewise law instead.
+pub(super) fn transition_curvature(
+    segment: &HorizontalSegment,
+    name: &str,
+    cant: Option<&CantLayout>,
+    start_distance: f64,
+) -> AlignmentResult<CurvatureLaw> {
     if !(segment.segment_length.is_finite() && segment.segment_length > 0.0) {
         return Err(AlignmentError::InvalidSegment {
             entity: segment.entity,
@@ -207,23 +233,78 @@ pub fn spiral_curve(
             }
         })?
     };
-    let direction = Vec2::new(segment.start_direction.cos(), segment.start_direction.sin());
-    let frame = Frame2 {
-        origin: segment.start_point,
-        x: direction,
-        y: Vec2::new(-direction.y, direction.x),
-    };
-    let curve = Intrinsic2::new(frame, law, segment.segment_length);
     // The turning integral is closed form for every law above; a non-finite
     // result means the reconstructed law is degenerate, which is a refusal
     // rather than something to hand downstream.
-    if curve.total_turning().is_none_or(|turn| !turn.is_finite()) {
+    let probe = Intrinsic2::new(
+        Frame2 {
+            origin: segment.start_point,
+            x: Vec2::new(1.0, 0.0),
+            y: Vec2::new(0.0, 1.0),
+        },
+        law,
+        segment.segment_length,
+    );
+    if probe.total_turning().is_none_or(|turn| !turn.is_finite()) {
         return Err(AlignmentError::InvalidSegment {
             entity: segment.entity,
             detail: "transition spiral turning integral is not finite",
         });
     }
-    Ok(Curve2::Intrinsic(curve))
+    Ok(probe.curvature)
+}
+
+/// The refusal for a horizontal segment this crate cannot lower exactly.
+///
+/// `CUBIC` gets its own reason, and a malformed `CUBIC` is named as invalid
+/// data before it is named as unsupported, so a caller can tell a file
+/// error from a capability gap.
+///
+/// IFC4.3 defines `CUBIC` as `y = x^3 / (6 R L)` in the segment's own frame
+/// (`IfcAlignmentHorizontalSegmentTypeEnum`; geometrically an
+/// `IfcPolynomialCurve` with `CoefficientsX = [0, 1]` and a cubic
+/// `CoefficientsY`), and `SegmentLength` as "the length along the curve".
+/// The shape is an exact polynomial, but where it ends is not: the abscissa
+/// at arc length `L` inverts `s(x) = integral of sqrt(1 + (x^2 / (2 R L))^2)`,
+/// which is not elementary, and its curvature as a function of arc length
+/// is not elementary either. The pinned neutral vocabulary has neither an
+/// arc-length trim for a parametric curve nor a plan curve that chains a
+/// parametric piece by arc length, so `CUBIC` stays a typed refusal.
+pub(super) fn refuse_unlowerable(segment: &HorizontalSegment) -> AlignmentError {
+    let kind = segment.segment_type.source_name();
+    if kind == "CUBIC" {
+        if !(segment.segment_length.is_finite() && segment.segment_length > 0.0) {
+            return AlignmentError::InvalidSegment {
+                entity: segment.entity,
+                detail: "CUBIC requires a finite, positive segment length",
+            };
+        }
+        if !(segment.start_radius.is_finite() && segment.end_radius.is_finite()) {
+            return AlignmentError::InvalidSegment {
+                entity: segment.entity,
+                detail: "CUBIC endpoint radii must be finite",
+            };
+        }
+        if segment.start_radius == segment.end_radius {
+            return AlignmentError::InvalidSegment {
+                entity: segment.entity,
+                detail: "CUBIC is a transition and must change curvature: \
+                         its start and end radii must differ",
+            };
+        }
+        return AlignmentError::Unsupported {
+            entity: segment.entity,
+            type_name: kind.to_owned(),
+            detail: "CUBIC is y = x^3/(6RL) with SegmentLength measured along the curve; \
+                     its end abscissa inverts a non-elementary arc-length integral, and the \
+                     pinned neutral vocabulary has no arc-length trim for a parametric curve",
+        };
+    }
+    AlignmentError::Unsupported {
+        entity: segment.entity,
+        type_name: kind.to_owned(),
+        detail: "the pinned neutral curve vocabulary has no exact transition-curve primitive",
+    }
 }
 
 /// Resolve the Viennese bend law from the segment and its cant layout.

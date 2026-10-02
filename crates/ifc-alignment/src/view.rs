@@ -1,5 +1,14 @@
 //! Pins the authoritative IFC4X3 profile and exposes bounded traversal.
 //!
+//! [`AlignmentView`] is the read-side entry point: it refuses any release
+//! but IFC4X3, and [`AlignmentView::hierarchy`] answers what an
+//! `IfcAlignment` is made of (its layouts, child alignments and referents)
+//! without the caller re-walking `IfcRelNests`/`IfcRelAggregates`.
+//!
+//! ## Internal split
+//!
+//! - `hierarchy.rs`: the public alignment hierarchy.
+//!
 //! `IfcAlignment*` entities were introduced in IFC4X3; IFC2X3 and IFC4 ADD2
 //! TC1 do not declare them at all. Unlike `ifc-resource`/`ifc-structural`,
 //! there is therefore no cross-version dispatch table here -- exactly one
@@ -12,6 +21,37 @@ use ifc_model::{EntityId, Model};
 use ifc_schema::{ifc4x3, Schema, SchemaVersion};
 
 use crate::error::{AlignmentError, AlignmentResult};
+use crate::slot;
+
+mod hierarchy;
+
+pub use hierarchy::AlignmentHierarchy;
+
+/// Where a relationship keeps its two ends, and their schema names.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct RelationSlots {
+    relating: usize,
+    relating_name: &'static str,
+    related: usize,
+    related_name: &'static str,
+}
+
+impl RelationSlots {
+    /// `IfcRelNests` and `IfcRelAggregates` (`IfcRelDecomposes`).
+    pub(crate) const DECOMPOSES: Self = Self {
+        relating: slot::decomposes::RELATING_OBJECT,
+        relating_name: "RelatingObject",
+        related: slot::decomposes::RELATED_OBJECTS,
+        related_name: "RelatedObjects",
+    };
+    /// `IfcRelPositions`.
+    pub(crate) const POSITIONS: Self = Self {
+        relating: slot::rel_positions::RELATING_POSITIONING_ELEMENT,
+        relating_name: "RelatingPositioningElement",
+        related: slot::rel_positions::RELATED_PRODUCTS,
+        related_name: "RelatedProducts",
+    };
+}
 
 /// A model whose declared schema has been pinned to IFC4X3 ADD2.
 ///
@@ -70,53 +110,116 @@ impl<'m> AlignmentView<'m> {
         parent: EntityId,
         expected: &str,
     ) -> AlignmentResult<Vec<EntityId>> {
+        let children = self.related_by("IfcRelNests", RelationSlots::DECOMPOSES, parent)?;
+        Ok(self.filter_is_a(children, expected))
+    }
+
+    /// Every object a relationship of type `relation` relates to `relating`,
+    /// in relationship order and then in each `RelatedObjects` order.
+    ///
+    /// Each related reference must resolve: a dangling one is refused, not
+    /// skipped, because skipping it would silently shorten a layout.
+    pub(crate) fn related_by(
+        &self,
+        relation: &str,
+        slots: RelationSlots,
+        relating: EntityId,
+    ) -> AlignmentResult<Vec<EntityId>> {
         let mut result = Vec::new();
-        for relation in self.ids_of_ancestor("IfcRelNests") {
-            let entity = self
-                .model
-                .get(relation)
-                .ok_or(AlignmentError::MissingEntity { entity: relation })?;
-            let relating = entity
-                .attributes
-                .get(4)
-                .and_then(|value| value.as_ref_id())
-                .ok_or(AlignmentError::InvalidAttribute {
-                    entity: relation,
-                    index: 4,
-                    name: "RelatingObject",
-                })?;
-            if relating != parent {
-                continue;
-            }
-            let related = entity
-                .attributes
-                .get(5)
-                .and_then(|value| value.as_list())
-                .ok_or(AlignmentError::InvalidAttribute {
-                    entity: relation,
-                    index: 5,
-                    name: "RelatedObjects",
-                })?;
-            for value in related {
-                let child = value.as_ref_id().ok_or(AlignmentError::InvalidAttribute {
-                    entity: relation,
-                    index: 5,
-                    name: "RelatedObjects",
-                })?;
-                let child_entity =
-                    self.model
-                        .get(child)
-                        .ok_or(AlignmentError::DanglingReference {
-                            entity: relation,
-                            attribute: "RelatedObjects",
-                            target: child,
-                        })?;
-                if self.schema.is_a(&child_entity.type_name, expected) {
-                    result.push(child);
-                }
+        for id in self.ids_of_ancestor(relation) {
+            if self.relating_end(id, slots)? == relating {
+                result.extend(self.related_end(id, slots)?);
             }
         }
         Ok(result)
+    }
+
+    /// Every object that relates `related` through a relationship of type
+    /// `relation`: the inverse of [`Self::related_by`].
+    ///
+    /// Only relationships that list `related` are read in full, so a
+    /// malformed relationship elsewhere in the file does not refuse this
+    /// one's question.
+    pub(crate) fn relating_of(
+        &self,
+        relation: &str,
+        slots: RelationSlots,
+        related: EntityId,
+    ) -> AlignmentResult<Vec<EntityId>> {
+        let mut result = Vec::new();
+        for id in self.ids_of_ancestor(relation) {
+            let lists_it = self
+                .model
+                .get(id)
+                .and_then(|entity| entity.attributes.get(slots.related))
+                .and_then(|value| value.as_list())
+                .is_some_and(|values| values.iter().any(|v| v.as_ref_id() == Some(related)));
+            if lists_it {
+                result.push(self.relating_end(id, slots)?);
+            }
+        }
+        Ok(result)
+    }
+
+    /// `ids` restricted to entities whose declared type is `expected` or a
+    /// subtype of it.
+    pub(crate) fn filter_is_a(&self, ids: Vec<EntityId>, expected: &str) -> Vec<EntityId> {
+        ids.into_iter()
+            .filter(|id| {
+                self.model
+                    .get(*id)
+                    .is_some_and(|entity| self.schema.is_a(&entity.type_name, expected))
+            })
+            .collect()
+    }
+
+    /// The relating object of one relationship instance.
+    fn relating_end(&self, relation: EntityId, slots: RelationSlots) -> AlignmentResult<EntityId> {
+        self.model
+            .get(relation)
+            .ok_or(AlignmentError::MissingEntity { entity: relation })?
+            .attributes
+            .get(slots.relating)
+            .and_then(|value| value.as_ref_id())
+            .ok_or(AlignmentError::InvalidAttribute {
+                entity: relation,
+                index: slots.relating,
+                name: slots.relating_name,
+            })
+    }
+
+    /// The related objects of one relationship instance, each resolved.
+    fn related_end(
+        &self,
+        relation: EntityId,
+        slots: RelationSlots,
+    ) -> AlignmentResult<Vec<EntityId>> {
+        let invalid = AlignmentError::InvalidAttribute {
+            entity: relation,
+            index: slots.related,
+            name: slots.related_name,
+        };
+        let values = self
+            .model
+            .get(relation)
+            .ok_or(AlignmentError::MissingEntity { entity: relation })?
+            .attributes
+            .get(slots.related)
+            .and_then(|value| value.as_list())
+            .ok_or_else(|| invalid.clone())?;
+        let mut related = Vec::with_capacity(values.len());
+        for value in values {
+            let child = value.as_ref_id().ok_or_else(|| invalid.clone())?;
+            if self.model.get(child).is_none() {
+                return Err(AlignmentError::DanglingReference {
+                    entity: relation,
+                    attribute: slots.related_name,
+                    target: child,
+                });
+            }
+            related.push(child);
+        }
+        Ok(related)
     }
 
     /// The `IfcAlignmentSegment` instances nested under `parent`, together
@@ -148,15 +251,14 @@ impl<'m> AlignmentView<'m> {
                 .get(segment)
                 .ok_or(AlignmentError::MissingEntity { entity: segment })?;
             // `IfcAlignmentSegment` subtype of `IfcLinearElement` subtype of
-            // `IfcProduct`; `DesignParameters` is the sole attribute this
-            // crate's declaration contributes, past the inherited slots.
+            // `IfcProduct`; `DesignParameters` is its sole own attribute.
             let design_parameters = entity
                 .attributes
-                .last()
+                .get(slot::segment::DESIGN_PARAMETERS)
                 .and_then(|value| value.as_ref_id())
                 .ok_or(AlignmentError::InvalidAttribute {
                     entity: segment,
-                    index: entity.attributes.len().saturating_sub(1),
+                    index: slot::segment::DESIGN_PARAMETERS,
                     name: "DesignParameters",
                 })?;
             let parameters_entity =

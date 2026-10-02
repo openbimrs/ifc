@@ -3,9 +3,10 @@
 //! failing wholesale.
 
 use axiolid_curve::Curve2;
-use axiolid_model::GeometryNode;
+use axiolid_model::{CurveRelation, GeometryNode, Transition};
 use ifc_alignment::{
     lower_horizontal_layout, lower_horizontal_layout_partial, AlignmentError, AlignmentUnits,
+    SeamCheck,
 };
 use ifc_model::{Codec, EntityId};
 use ifc_step::StepCodec;
@@ -31,15 +32,56 @@ fn model() -> ifc_model::Model {
     load("synthetic_alignment_spiral.ifc")
 }
 
+/// The strict entry point lowers a spiral layout to ONE composite (#239).
+///
+/// Position after a spiral has no closed form, so those seams are recorded
+/// as authored rather than refused; seams after a line or arc are verified.
+/// Only a verified seam claims `Continuous`.
 #[test]
-fn the_all_or_nothing_entry_point_still_refuses_a_spiral_layout() {
-    // Backward compatibility: the strict entry point keeps its contract.
+fn the_strict_entry_point_lowers_a_spiral_layout_with_its_seams_recorded() {
     let model = model();
-    let error = lower_horizontal_layout(&model, HORIZONTAL, units(), None)
-        .expect_err("a CLOTHOID has no exact neutral primitive");
-    assert!(
-        matches!(&error, AlignmentError::Unsupported { type_name, .. } if type_name == "CLOTHOID"),
-        "expected a CLOTHOID refusal, got {error:?}"
+    let lowered = lower_horizontal_layout(&model, HORIZONTAL, units(), None)
+        .expect("a spiral no longer stops the strict path");
+    assert_eq!(
+        lowered.sources.iter().map(|id| id.0).collect::<Vec<_>>(),
+        vec![101, 103, 105, 107, 109]
+    );
+    let checks: Vec<(u64, u64, f64, SeamCheck)> = lowered
+        .seams
+        .iter()
+        .map(|seam| {
+            (
+                seam.previous.0,
+                seam.next.0,
+                seam.distance_along,
+                seam.position,
+            )
+        })
+        .collect();
+    assert_eq!(
+        checks,
+        vec![
+            (101, 103, 100.0, SeamCheck::Verified),
+            (103, 105, 160.0, SeamCheck::Authored),
+            (105, 107, 280.0, SeamCheck::Verified),
+            (107, 109, 340.0, SeamCheck::Authored),
+        ]
+    );
+    let Some(GeometryNode::CurveRelation(CurveRelation::Composite { segments })) =
+        lowered.graph.get(lowered.root)
+    else {
+        panic!("a layout lowers to a composite");
+    };
+    let transitions: Vec<Transition> = segments.iter().map(|s| s.transition).collect();
+    assert_eq!(
+        transitions,
+        vec![
+            Transition::Discontinuous,
+            Transition::Continuous,
+            Transition::Discontinuous,
+            Transition::Continuous,
+            Transition::Discontinuous,
+        ]
     );
 }
 
@@ -72,22 +114,29 @@ fn partial_lowering_keeps_the_exact_segments_and_names_the_refused_ones() {
 }
 
 #[test]
-fn a_refusal_splits_the_layout_into_separate_runs_rather_than_bridging_it() {
+fn a_spiral_seam_does_not_split_the_layout_into_runs() {
     let model = model();
     let result = lower_horizontal_layout_partial(&model, HORIZONTAL, units(), None)
         .expect("layout is readable");
 
-    // line | CLOTHOID | arc | CLOTHOID | line  =>  three runs of one segment.
-    // Continuity is never asserted across a segment that was not lowered.
-    assert_eq!(result.runs.len(), 3);
-    let sources: Vec<Vec<u64>> = result
-        .runs
+    // line | CLOTHOID | arc | CLOTHOID | line, all exact: one run, as the
+    // `is_complete` contract states. Runs split only at refused segments.
+    assert_eq!(result.runs.len(), 1);
+    assert_eq!(
+        result.runs[0]
+            .sources
+            .iter()
+            .map(|id| id.0)
+            .collect::<Vec<_>>(),
+        vec![101, 103, 105, 107, 109]
+    );
+    let authored: Vec<u64> = result.runs[0]
+        .seams
         .iter()
-        .map(|run| run.sources.iter().map(|id| id.0).collect())
+        .filter(|seam| seam.position == SeamCheck::Authored)
+        .map(|seam| seam.next.0)
         .collect();
-    // The clothoid joins the run it is provably continuous WITH, then ends
-    // it: continuity OUT of a spiral is not closed form.
-    assert_eq!(sources, vec![vec![101, 103], vec![105, 107], vec![109]]);
+    assert_eq!(authored, vec![105, 109], "the seams after each clothoid");
 
     // Each fixture spiral must appear in a run AND be an exact intrinsic
     // curve. Asserting against the fixture's known CLOTHOID ids, rather than

@@ -21,6 +21,12 @@ The [`openbim-ifc`](https://crates.io/crates/openbim-ifc) facade also provides i
 
 ## Design notes
 
+- A multi-segment horizontal layout elevates as one exact plan curve: the
+  first segment's start frame plus one curvature piece per segment. Seams
+  are checked in closed form: a heading kink, or a position gap after a
+  line or arc, is refused; the position after a transition spiral, a
+  Fresnel-type integral, is reported as authored rather than verified.
+
 - This crate is the geometric bridge for alignments, not a road or rail
   application. Product workflows (corridors, cross-sections, track
   design) and rendering policy stay out of it and belong to the
