@@ -403,6 +403,32 @@ pub enum PropertyError {
         /// The release the model declares.
         schema: SchemaVersion,
     },
+    /// A value of the declared type in the form ISO 10303-21 does not use
+    /// for it (#215).
+    ///
+    /// A typed parameter (`IFCLENGTHMEASURE(2.5)`) is written exactly where
+    /// the declared type is a SELECT, so a bare value in an `IfcValue` slot
+    /// cannot say which member it is (§12.1.8); a member's own parameter is
+    /// written bare (§12.1.6). Mirrors `ifc-author`'s `AuthorError::ValueForm`.
+    /// A value that is no member of the declared type at all is
+    /// [`AuthoringInvalid`](Self::AuthoringInvalid) instead.
+    //
+    // Last, so no earlier variant's implicit discriminant moves.
+    ValueForm {
+        /// The entity type being authored.
+        entity: &'static str,
+        /// The attribute that was set.
+        attribute: &'static str,
+        /// The declared type, or the element type of a declared aggregate,
+        /// e.g. `IfcValue`.
+        declared: &'static str,
+        /// Whether the declared type requires the typed form: `true` for a
+        /// bare value in a SELECT slot, `false` for a wrapper where a bare
+        /// value is written.
+        typed_required: bool,
+        /// What the supplied value actually was.
+        found: String,
+    },
 }
 
 impl std::fmt::Display for PropertyError {
@@ -449,6 +475,28 @@ impl std::fmt::Display for PropertyError {
                 attribute,
                 schema,
             } => write!(f, "cannot author {entity}: {schema:?} requires {attribute}"),
+            Self::ValueForm {
+                entity,
+                attribute,
+                declared,
+                typed_required: true,
+                found,
+            } => write!(
+                f,
+                "{entity}.{attribute} is declared {declared}, a SELECT, so a value must be \
+                 written as a typed parameter naming its type; found {found}"
+            ),
+            Self::ValueForm {
+                entity,
+                attribute,
+                declared,
+                typed_required: false,
+                found,
+            } => write!(
+                f,
+                "{entity}.{attribute} is declared {declared}, whose member's parameter is \
+                 written bare; found {found}"
+            ),
             Self::MalformedEntitySlots {
                 id,
                 type_name,

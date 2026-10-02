@@ -385,7 +385,9 @@ fn value_type(value: &Value) -> Option<String> {
 ///
 /// Refuses a blank name (UR1 makes it the unique key), an empty value
 /// list, a value that is not a single measure, a duplicate value (the
-/// list is UNIQUE), and a list mixing measure types (WR01).
+/// list is UNIQUE), and a list mixing measure types (WR01). Each value
+/// is an `IfcValue`: a bare literal is refused with
+/// [`PropertyError::ValueForm`](crate::PropertyError::ValueForm).
 pub fn add_property_enumeration(
     tx: &mut Transaction,
     name: &str,
@@ -399,6 +401,7 @@ pub fn add_property_enumeration(
     if values.is_empty() {
         return Err(invalid(ENTITY, "EnumerationValues", "empty"));
     }
+    super::value_form::require_ifc_values(ENTITY, "EnumerationValues", &values)?;
     let mut first: Option<String> = None;
     for value in &values {
         let Some(kind) = value_type(value) else {

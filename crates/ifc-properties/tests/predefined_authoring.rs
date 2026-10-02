@@ -245,34 +245,59 @@ fn a_malformed_guid_is_refused() {
 
 /// WR01: every enumeration value must share one measure type.
 ///
-/// TYPEOF compares the declared measure, so a bare 2.0 and an
-/// IFCLENGTHMEASURE(2.0) are different types even though both print as
-/// a real. A mixed list makes the enumeration uninterpretable.
+/// TYPEOF compares the declared measure, so an IFCLENGTHMEASURE(2.0) and
+/// an IFCPOSITIVELENGTHMEASURE(2.0) are different types even though both
+/// print a real. A mixed list makes the enumeration uninterpretable.
 #[test]
 fn enumeration_values_must_share_one_type() {
     let model = Model::new();
     let mut tx = Transaction::new(&model);
 
-    let length = |v: f64| Value::Typed {
-        type_name: "IFCLENGTHMEASURE".into(),
-        value: Box::new(Value::Real(v)),
-    };
-
     add_property_enumeration(&mut tx, "Widths", vec![length(0.9), length(1.2)], None)
         .expect("one measure throughout is legal");
 
-    let err = add_property_enumeration(&mut tx, "Mixed", vec![length(0.9), Value::Real(1.2)], None)
-        .expect_err("a wrapped and a bare value are different types");
+    let err = add_property_enumeration(
+        &mut tx,
+        "Mixed",
+        vec![
+            length(0.9),
+            typed("IFCPOSITIVELENGTHMEASURE", Value::Real(1.2)),
+        ],
+        None,
+    )
+    .expect_err("two measures are different types");
     assert!(invalid(&err), "{err}");
 
     let err = add_property_enumeration(
         &mut tx,
         "Mixed",
-        vec![Value::Text("a".into()), Value::Integer(1)],
+        vec![label("a"), typed("IFCINTEGER", Value::Integer(1))],
         None,
     )
     .expect_err("text among integers");
     assert!(invalid(&err), "{err}");
+}
+
+/// `EnumerationValues` is `LIST OF IfcValue`, a SELECT: a bare literal
+/// cannot say which member it is (#215).
+#[test]
+fn enumeration_values_are_typed_parameters() {
+    let model = Model::new();
+    let mut tx = Transaction::new(&model);
+    let err = add_property_enumeration(&mut tx, "Mixed", vec![length(0.9), Value::Real(1.2)], None)
+        .expect_err("a bare real names no measure");
+    assert!(
+        matches!(
+            err,
+            PropertyError::ValueForm {
+                attribute: "EnumerationValues",
+                typed_required: true,
+                ..
+            }
+        ),
+        "{err}"
+    );
+    assert!(tx.is_empty(), "nothing is staged when a value is bare");
 }
 
 /// The value list is UNIQUE and non-empty, and the name is the key.
@@ -280,31 +305,37 @@ fn enumeration_values_must_share_one_type() {
 fn enumeration_values_are_unique_and_named() {
     let model = Model::new();
     let mut tx = Transaction::new(&model);
+    let integer = |v: i64| typed("IFCINTEGER", Value::Integer(v));
 
     let err = add_property_enumeration(&mut tx, "Sizes", Vec::new(), None)
         .expect_err("EnumerationValues is LIST [1:?]");
     assert!(invalid(&err), "{err}");
 
-    let err = add_property_enumeration(&mut tx, "  ", vec![Value::Integer(1)], None)
+    let err = add_property_enumeration(&mut tx, "  ", vec![integer(1)], None)
         .expect_err("UR1 makes Name the key, so it cannot be blank");
     assert!(invalid(&err), "{err}");
 
-    let err = add_property_enumeration(
-        &mut tx,
-        "Sizes",
-        vec![Value::Integer(1), Value::Integer(1)],
-        None,
-    )
-    .expect_err("the list is UNIQUE");
+    let err = add_property_enumeration(&mut tx, "Sizes", vec![integer(1), integer(1)], None)
+        .expect_err("the list is UNIQUE");
     assert!(invalid(&err), "{err}");
 
-    add_property_enumeration(
-        &mut tx,
-        "Sizes",
-        vec![Value::Integer(1), Value::Integer(2)],
-        None,
-    )
-    .expect("distinct values of one type are legal");
+    add_property_enumeration(&mut tx, "Sizes", vec![integer(1), integer(2)], None)
+        .expect("distinct values of one type are legal");
+}
+
+fn typed(type_name: &str, value: Value) -> Value {
+    Value::Typed {
+        type_name: type_name.into(),
+        value: Box::new(value),
+    }
+}
+
+fn length(value: f64) -> Value {
+    typed("IFCLENGTHMEASURE", Value::Real(value))
+}
+
+fn label(text: &str) -> Value {
+    typed("IFCLABEL", Value::Text(text.into()))
 }
 
 /// NoSelfReference: a property cannot depend on itself.

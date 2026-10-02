@@ -355,7 +355,9 @@ pub fn assign_units(tx: &mut Transaction, units: &[EntityId]) -> PropertyResult<
 /// # Errors
 ///
 /// Refuses a null value component; the schema types it as a required
-/// `IfcValue`.
+/// `IfcValue`. A bare literal is refused with
+/// [`PropertyError::ValueForm`](crate::PropertyError::ValueForm): `IfcValue`
+/// is a SELECT, so the value names its measure as a typed parameter.
 pub fn add_measure_with_unit(
     tx: &mut Transaction,
     value: Value,
@@ -368,6 +370,7 @@ pub fn add_measure_with_unit(
             "expected a value",
         ));
     }
+    crate::pset::value_form::require_ifc_value("IFCMEASUREWITHUNIT", "ValueComponent", &value)?;
     Ok(tx.create(Entity::new(
         "IFCMEASUREWITHUNIT",
         vec![value, Value::Ref(unit)],

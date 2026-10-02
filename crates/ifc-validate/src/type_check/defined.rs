@@ -96,33 +96,62 @@ pub enum Mismatch {
 /// value would bury real defects under noise. The unchecked *rules* are
 /// counted once, in the where-rule registry.
 ///
-/// The members of an aggregate are checked against its element type, and
-/// the first mismatching member is reported. The form is judged too: a typed
-/// parameter outside a SELECT, and a bare value inside one. Which *entity* a reference
-/// points at needs the model, so it is judged by
-/// [`crate::structure::wrong_kind_references`] for entity-typed slots and by
-/// [`super::attribute_types`] for SELECTs; this function judges only that a
-/// reference was written where one may be.
+/// Returns the first of [`check_all`]'s mismatches; use that function to
+/// see every independent violation in the value.
 #[must_use]
 pub fn check(schema: &Schema, declared: &str, value: &Value) -> Option<Mismatch> {
-    check_nested(schema, declared, value, 0)
+    check_all(schema, declared, value).into_iter().next()
 }
 
-fn check_nested(schema: &Schema, declared: &str, value: &Value, depth: usize) -> Option<Mismatch> {
-    match value {
+/// Every independent way one value fails one declared type name, in the
+/// order the value is written.
+///
+/// The members of an aggregate are each checked against its element type,
+/// at every nesting level. The form is judged too: a typed parameter outside
+/// a SELECT, and a bare value inside one. A wrapper's form and its
+/// parameter are independent: `IFCLABEL(12)` in an `IfcLabel` slot is both
+/// the wrong form and a number where a string is declared, and both are
+/// returned. Identical mismatches are returned once, since a finding cannot
+/// tell them apart. Which *entity* a reference points at needs the model,
+/// so it is judged by [`crate::structure::wrong_kind_references`] for
+/// entity-typed slots and by [`super::attribute_types`] for SELECTs; this
+/// function judges only that a reference was written where one may be.
+#[must_use]
+pub fn check_all(schema: &Schema, declared: &str, value: &Value) -> Vec<Mismatch> {
+    let mut found = Vec::new();
+    check_nested(schema, declared, value, 0, &mut found);
+    found
+}
+
+/// Records `mismatch` unless an identical one already is.
+fn record(found: &mut Vec<Mismatch>, mismatch: Mismatch) {
+    if !found.contains(&mismatch) {
+        found.push(mismatch);
+    }
+}
+
+fn check_nested(
+    schema: &Schema,
+    declared: &str,
+    value: &Value,
+    depth: usize,
+    found: &mut Vec<Mismatch>,
+) {
+    let mismatch = match value {
         // `$` and `*` carry no type; presence is `structure`'s concern.
         Value::Null | Value::Derived => None,
         Value::List(items) => {
             if depth >= MAX_NESTING {
-                return None;
+                return;
             }
             // Whether a list belongs here at all is
             // `structure::cardinality`'s question; this one is whether its
             // members fit.
             let element = element_type(schema, declared);
-            items
-                .iter()
-                .find_map(|item| check_nested(schema, &element, item, depth + 1))
+            for item in items {
+                check_nested(schema, &element, item, depth + 1, found);
+            }
+            None
         }
         Value::Ref(_) => reference_in_value_slot(schema, declared, value),
         other if requires_reference(schema, declared, other) => Some(Mismatch::ExpectedReference {
@@ -149,62 +178,76 @@ fn check_nested(schema: &Schema, declared: &str, value: &Value, depth: usize) ->
                     .unwrap_or_default(),
             }),
         },
-        Value::Typed { type_name, value } => typed(schema, declared, type_name, value, depth),
+        Value::Typed { type_name, value } => {
+            typed(schema, declared, type_name, value, depth, found);
+            None
+        }
         Value::Text(text) => {
             // A fixed-width string is wrong at any other length, even when
             // it is a perfectly good string. `IfcGloballyUniqueId` is
             // `STRING(22) FIXED`; a 21-character GUID is malformed.
-            if let Some(width) = FixedWidth::from_resolved(&schema.resolve_defined(declared)) {
-                if !width.accepts(text) {
-                    return Some(Mismatch::FixedWidth {
-                        expected: width.0,
-                        actual: text.chars().count(),
-                    });
-                }
+            match FixedWidth::from_resolved(&schema.resolve_defined(declared)) {
+                Some(width) if !width.accepts(text) => Some(Mismatch::FixedWidth {
+                    expected: width.0,
+                    actual: text.chars().count(),
+                }),
+                _ => primitive_mismatch(schema, declared, value),
             }
-            primitive_mismatch(schema, declared, value)
         }
         other => primitive_mismatch(schema, declared, other),
+    };
+    if let Some(mismatch) = mismatch {
+        record(found, mismatch);
     }
 }
 
 /// A typed parameter `type_name(inner)` written in a `declared` slot.
 ///
 /// In a SELECT slot the wrapper must name a member of the select-list. In
-/// any other slot a wrapper is the wrong form (§12.1.6): of the wrong type
-/// when it does not name the declared type, and otherwise reported only if
-/// its parameter is sound, so a bad parameter's finding is not masked. The
-/// parameter is judged against the wrapper's type, which is what it claims
-/// to be.
+/// any other slot a wrapper is the wrong form (§12.1.6), and of the wrong
+/// type too when it does not name the declared type. Either way the
+/// parameter is judged as well, against the wrapper's type, which is what
+/// it claims to be: a bad parameter is a separate violation, and neither
+/// finding masks the other.
 fn typed(
     schema: &Schema,
     declared: &str,
     type_name: &str,
     inner: &Value,
     depth: usize,
-) -> Option<Mismatch> {
+    found: &mut Vec<Mismatch>,
+) {
     if select::resolve_select(schema, declared).is_some() {
         if select::accepts(schema, declared, type_name) == Some(false) {
-            return Some(Mismatch::SelectMember {
-                written: type_name.to_string(),
-                select: declared.to_string(),
-            });
+            record(
+                found,
+                Mismatch::SelectMember {
+                    written: type_name.to_string(),
+                    select: declared.to_string(),
+                },
+            );
         }
-        return check_nested(schema, type_name, inner, depth);
+        check_nested(schema, type_name, inner, depth, found);
+        return;
     }
     match wrapper_fits(schema, type_name, declared) {
-        Some(false) => Some(Mismatch::TypedWrongType {
-            written: type_name.to_string(),
-            declared: declared.to_string(),
-        }),
-        Some(true) => check_nested(schema, type_name, inner, depth).or_else(|| {
-            Some(Mismatch::TypedOutsideSelect {
+        Some(false) => record(
+            found,
+            Mismatch::TypedWrongType {
                 written: type_name.to_string(),
                 declared: declared.to_string(),
-            })
-        }),
-        None => check_nested(schema, type_name, inner, depth),
+            },
+        ),
+        Some(true) => record(
+            found,
+            Mismatch::TypedOutsideSelect {
+                written: type_name.to_string(),
+                declared: declared.to_string(),
+            },
+        ),
+        None => {}
     }
+    check_nested(schema, type_name, inner, depth, found);
 }
 
 /// Whether only an entity reference can fill a `declared` slot, so that
@@ -314,6 +357,81 @@ mod tests {
         assert_eq!(
             check(schema, "IfcMaterialSelect", &Value::Ref(EntityId(1))),
             None
+        );
+    }
+
+    /// Each bad member of an aggregate is its own violation, at every
+    /// nesting level (#215).
+    #[test]
+    fn every_bad_member_of_an_aggregate_is_reported() {
+        let schema = ifc_schema::ifc4();
+        let bad = Value::List(vec![
+            Value::Text("x".into()),
+            Value::Real(1.0),
+            Value::Bool(true),
+        ]);
+        let found = check_all(schema, "IfcLengthMeasure", &bad);
+        assert_eq!(found.len(), 2, "{found:?}");
+        // `IfcCartesianPointList3D.CoordList` is `LIST OF LIST OF
+        // IfcLengthMeasure`: two rows, each with its own defect.
+        let rows = Value::List(vec![
+            Value::List(vec![Value::Text("x".into()), Value::Real(0.0)]),
+            Value::List(vec![Value::Real(0.0), Value::Bool(false)]),
+        ]);
+        assert_eq!(check_all(schema, "IfcLengthMeasure", &rows).len(), 2);
+        // The same defect twice cannot be told apart in a finding.
+        let twice = Value::List(vec![Value::Text("x".into()), Value::Text("y".into())]);
+        assert_eq!(check_all(schema, "IfcLengthMeasure", &twice).len(), 1);
+        // `check` still answers the first.
+        assert!(matches!(
+            check(schema, "IfcLengthMeasure", &bad),
+            Some(Mismatch::Primitive {
+                actual: "a string",
+                ..
+            })
+        ));
+    }
+
+    /// A wrapper's form and its parameter are judged independently, so a
+    /// bad payload inside a wrapper does not hide the wrong form (#215).
+    #[test]
+    fn a_wrong_form_and_a_bad_payload_are_both_reported() {
+        let schema = ifc_schema::ifc4();
+        let wrapped = Value::Typed {
+            type_name: "IFCLABEL".into(),
+            value: Box::new(Value::Integer(12)),
+        };
+        let found = check_all(schema, "IfcLabel", &wrapped);
+        assert!(
+            found
+                .iter()
+                .any(|m| matches!(m, Mismatch::TypedOutsideSelect { .. })),
+            "{found:?}"
+        );
+        assert!(
+            found
+                .iter()
+                .any(|m| matches!(m, Mismatch::Primitive { .. })),
+            "{found:?}"
+        );
+        // A wrapper outside its SELECT, around a payload its own type
+        // refuses: both the membership and the payload.
+        let foreign = Value::Typed {
+            type_name: "IFCLABEL".into(),
+            value: Box::new(Value::Real(1.0)),
+        };
+        let found = check_all(schema, "IfcMeasureValue", &foreign);
+        assert!(
+            found
+                .iter()
+                .any(|m| matches!(m, Mismatch::SelectMember { .. })),
+            "{found:?}"
+        );
+        assert!(
+            found
+                .iter()
+                .any(|m| matches!(m, Mismatch::Primitive { .. })),
+            "{found:?}"
         );
     }
 }

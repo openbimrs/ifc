@@ -234,7 +234,7 @@ never means "the rules we did not implement passed".
 
 <!-- COVERAGE:VALIDATION:BEGIN -->
 
-16 of 22 registered rules are evaluated; the rest are reported as unsupported rather than silently passed (`crates/ifc-validate/src/where_rule/registry.rs`). A rule binds its declaring entity and every subtype, and runs only under the releases whose EXPRESS declares it under that id.
+20 of 26 registered rules are evaluated; the rest are reported as unsupported rather than silently passed (`crates/ifc-validate/src/where_rule/registry.rs`). A rule binds its declaring entity and every subtype, and runs only under the releases whose EXPRESS declares it under that id.
 
 | Rule | Constrains | Releases | Evaluated | Why not |
 | --- | --- | --- | --- | --- |
@@ -254,6 +254,10 @@ never means "the rules we did not implement passed".
 | `IfcRelConnectsPathElements.NormalizedRelatingPriorities` | `IfcRelConnectsPathElements` and subtypes | IFC4, IFC4X3 | yes |  |
 | `IfcRelConnectsPathElements.NormalizedRelatedPriorities` | `IfcRelConnectsPathElements` and subtypes | IFC4, IFC4X3 | yes |  |
 | `IfcRelSpaceBoundary.CorrectPhysOrVirt` | `IfcRelSpaceBoundary` and subtypes | IFC4, IFC4X3 | yes |  |
+| `IfcObject.UniquePropertySetNames` | `IfcObject` and subtypes | IFC4, IFC4X3 | yes |  |
+| `IfcTypeObject.UniquePropertySetNames` | `IfcTypeObject` and subtypes | IFC4, IFC4X3 | yes |  |
+| `IfcTypeProduct.WR41` | `IfcTypeProduct` and subtypes | IFC2X3 | yes |  |
+| `IfcTypeProduct.ApplicableOccurrence` | `IfcTypeProduct` and subtypes | IFC4, IFC4X3 | yes |  |
 | `IfcDocumentReference.WR1` | `IfcDocumentReference` and subtypes | IFC2X3, IFC4, IFC4X3 | no | not implemented uniformly: IFC2X3 requires INVERSE relationship semantics, which validation does not derive |
 | `IfcRepresentationContextSameWCS` | (global) | IFC2X3, IFC4, IFC4X3 | no | requires geometric evaluation, which validation does not perform |
 | `IfcPolyLoop.WR21` | `IfcPolyLoop` and subtypes | IFC2X3 | no | requires an EXPRESS expression evaluator |
