@@ -11,7 +11,7 @@ Schema conformance: WHERE rules, cardinality, GUID and reference integrity.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.0 (2026-09-29) |
+| Latest release | 0.5.0 (2026-10-02) |
 | Registries | [crates.io `ifc-validate`](https://crates.io/crates/ifc-validate) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `validate` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_validate/index.html) · [docs.rs](https://docs.rs/ifc-validate) |
@@ -38,50 +38,41 @@ so parsing is permissive and validation is an explicit, separate pass.
 
 ## Changes
 
-Latest release, 0.4.0 (2026-09-29):
+Latest release, 0.5.0 (2026-10-02):
 
 ### Added
 
-- Aggregate checks from the schema's bounds (#111): a level outside its
-  declared size (`structure.aggregate.too_few`,
-  `structure.aggregate.too_many`; `ARRAY [l:u]` needs exactly u-l+1), an
-  inner level of a nested aggregate that is not an aggregate
-  (`structure.aggregate.nesting`), and a repeated element in a `SET` or
-  `UNIQUE` level (`structure.aggregate.duplicate`). The members of a
-  `LIST OF LIST` are now type-checked against the innermost element type
-  (#215).
-- Every `UNIQUE` clause of the declared release is checked across the
-  declaring entity and its subtypes (`structure.unique.violation`), except
-  `IfcRoot.UR1`, which stays `global.UniqueGlobalId`.
+- Native WHERE rules over property sets and type assignments (#215),
+  registered only for the releases whose EXPRESS states them and checked
+  against it by `tests/registry_scope.rs`:
+  - `IfcObject.UniquePropertySetNames` (IFC4, IFC4X3):
+    `IfcUniqueDefinitionNames(IsDefinedBy)`, with the inverse rebuilt from
+    every `IfcRelDefinesByProperties` and an `IfcPropertySetDefinitionSet`
+    opened;
+  - `IfcTypeObject.UniquePropertySetNames` (IFC4, IFC4X3):
+    `IfcUniquePropertySetNames(HasPropertySets)`;
+  - `IfcTypeProduct.ApplicableOccurrence` (IFC4, IFC4X3) and its IFC2X3
+    label `IfcTypeProduct.WR41`: every object a type product is assigned
+    to by `IfcRelDefinesByType` is an `IfcProduct`.
 
-### Changed (breaking)
-
-- `structure::duplicate_global_ids` and its rule id
-  `structure.unique.duplicate_global_id` are removed: the function
-  duplicated `global.UniqueGlobalId` and `validate` never ran it. Its
-  module now checks the release's UNIQUE clauses (`structure::unique_rules`,
-  run by `validate`).
-- No registered rule claims to need aggregate bounds any more:
-  `IfcPolyLoop.WR21` and `IfcPolyLoop.AllPointsSameDim` are unsupported
-  for needing an expression evaluator.
-- `Support` is `#[non_exhaustive]`: a match needs a wildcard arm.
-- `Finding` is `#[non_exhaustive]`; it can no longer be built with a struct
-  literal outside the crate.
-- `Path` is `#[non_exhaustive]`, so a later release can name a new location
-  kind; a match needs a wildcard arm.
+  One finding per shared name; a definition the file lacks is an
+  evaluation error. IFC2X3 states no unique-set-name rule. The textual
+  `IfcTypeObject.ApplicableOccurrence` and
+  `IfcPropertySetTemplate.ApplicableEntity` are stated as a rule by no
+  release and are not checked.
+- `type_check::check_value_all`: every independent mismatch of one value
+  against one declared type.
 
 ### Changed
 
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- `validate_declared` validates IFC4X1 and IFC4X2 files against their own
-  bundled tables instead of refusing them as unknown. No WHERE rule is
-  registered for either release yet, so their report carries one
-  `where.release` finding (severity `Unsupported`) saying WHERE rules were
-  not evaluated, rather than reading as if they passed.
-- SELECT resolution treats a type declaration form `ifc-schema` adds later
-  like an undeclared member (fails closed); follows `ifc_schema::TypeKind`
-  becoming `#[non_exhaustive]`.
+- `type_check::attribute_types` reports every independent violation in a
+  slot instead of the first (#215): each bad member of an aggregate, at
+  every nesting level, and a wrapper's form together with a bad parameter
+  inside it (`IFCLABEL(12)` in an `IfcLabel` slot is now both
+  `type.typed.outside_select` and `type.scalar.mismatch`; a wrapper outside
+  its SELECT is `type.select.member` and its parameter is still judged).
+  Identical mismatches in one slot are reported once. A report on a
+  malformed file can therefore hold more findings than before.
+  `type_check::check_value` still returns the first.
 
 Full history: [`crates/ifc-validate/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-validate/CHANGELOG.md)

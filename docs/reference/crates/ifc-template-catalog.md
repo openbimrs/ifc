@@ -11,7 +11,7 @@ Versioned IFC PSD/QTO catalog definitions and correction overlays
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.0 (2026-09-29) |
+| Latest release | 0.3.1 (2026-10-02) |
 | Registries | [crates.io `ifc-template-catalog`](https://crates.io/crates/ifc-template-catalog) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `property-catalog` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_template_catalog/index.html) · [docs.rs](https://docs.rs/ifc-template-catalog) |
@@ -39,22 +39,15 @@ and quantity instances remain in `ifc-properties`.
 
 ## Changes
 
-Latest release, 0.3.0 (2026-09-29):
+Latest release, 0.3.1 (2026-10-02):
 
-### Added
+### Security
 
-- `corrected_catalog(CatalogEdition::Ifc4x3Add2)`: an IFC4X3 ADD2 corrected
-  profile whose one patch, `NEH-IFC4X3-PSD-0001`, adds
-  `Pset_Stationing.HasIncreasingStation` (`IfcBoolean`). The published ADD2
-  documentation (6.6.4.10) lists it; the PSD XML the official snapshot is
-  generated from omits it, and the official snapshot is unchanged (#216).
-- `PatchOperation::AddProperty` and `PatchError::NotAPropertySet`.
-
-### Changed (breaking)
-
-- `ValidationIssue`, `ValidationReport`, `CatalogDiagnostic`,
-  `ExportSummary`, `Advisory`, `AppliedPatch` and `UnresolvedApplicability`
-  are `#[non_exhaustive]`; they can no longer be built with a struct literal
-  outside the crate.
+- With the `xml` feature, require `quick-xml` 0.42 (was 0.37), which fixes
+  RUSTSEC-2026-0194 (quadratic duplicate-attribute check on one start tag)
+  and RUSTSEC-2026-0195 (unbounded namespace-declaration allocation in
+  `NsReader`); both are denial of service on untrusted input (#267). PSD and
+  QTO import reads the same values as before: references are resolved, and
+  literal tabs and line breaks in attributes and text are kept.
 
 Full history: [`crates/ifc-template-catalog/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-template-catalog/CHANGELOG.md)
