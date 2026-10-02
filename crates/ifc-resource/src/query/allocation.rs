@@ -67,7 +67,10 @@ impl<'m, 's> ResourceView<'m, 's> {
             }
         }
         if self.is_ifc2x3()
-            && matches!(projected.kind(), ResourceKind::Material | ResourceKind::Product)
+            && matches!(
+                projected.kind(),
+                ResourceKind::Material | ResourceKind::Product
+            )
         {
             if result.len() > 1 {
                 return Err(ResourceError::SemanticViolation {

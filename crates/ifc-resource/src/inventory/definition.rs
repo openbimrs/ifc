@@ -96,7 +96,8 @@ impl<'m, 's> Inventory<'m, 's> {
         if !self.record.is_ifc2x3() {
             return Err(self.record.not_in_schema("LastUpdateDate"));
         }
-        self.record.required_ref("LastUpdateDate", "IfcCalendarDate")
+        self.record
+            .required_ref("LastUpdateDate", "IfcCalendarDate")
     }
 
     /// The `CurrentValue` attribute, when authored.

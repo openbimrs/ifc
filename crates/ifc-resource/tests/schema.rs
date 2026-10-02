@@ -65,7 +65,7 @@ fn view_selects_only_the_proven_ifc4_schema() {
         Err(ResourceError::AmbiguousSchema { .. })
     ));
 
-    for token in ["IFC5"] {
+    for token in ["IFC5", "IFC4X1"] {
         let unsupported = model(token);
         assert!(matches!(
             ResourceView::for_model(&unsupported),

@@ -46,7 +46,11 @@ fn ifc2x3_model() -> Model {
 fn round_trip(model: &Model) -> Model {
     let bytes = ifc_step::StepCodec.write_bytes(model).expect("writes");
     let reread = ifc_step::StepCodec.read_bytes(&bytes).expect("re-reads");
-    assert!(reread.diagnostics().is_empty(), "{:?}", reread.diagnostics());
+    assert!(
+        reread.diagnostics().is_empty(),
+        "{:?}",
+        reread.diagnostics()
+    );
     reread
 }
 
@@ -56,7 +60,7 @@ fn not_in_schema(result: Result<impl std::fmt::Debug, ResourceError>, attr: Opti
             schema, attribute, ..
         }) => {
             assert_eq!(schema, "IFC2X3");
-            assert_eq!(attribute.as_deref(), attr);
+            assert_eq!(attribute, attr);
         }
         other => panic!("expected NotInSchema({attr:?}), got {other:?}"),
     }
@@ -89,7 +93,10 @@ fn assert_profile(model: &Model) {
 
     let material = view.resource(EntityId(11)).unwrap();
     assert_eq!(material.kind(), ResourceKind::Material);
-    assert_eq!(material.suppliers().unwrap(), vec![EntityId(5), EntityId(6)]);
+    assert_eq!(
+        material.suppliers().unwrap(),
+        vec![EntityId(5), EntityId(6)]
+    );
     assert_eq!(material.usage_ratio().unwrap(), Some(0.25));
     assert_eq!(material.base_quantity_measure().unwrap(), None);
 
@@ -115,7 +122,10 @@ fn assert_profile(model: &Model) {
         view.direct_members(EntityId(13)).unwrap(),
         vec![EntityId(10), EntityId(14)]
     );
-    assert_eq!(view.parent_resource(EntityId(14)).unwrap(), Some(EntityId(13)));
+    assert_eq!(
+        view.parent_resource(EntityId(14)).unwrap(),
+        Some(EntityId(13))
+    );
     let allocations = view.allocations_for(EntityId(11)).unwrap();
     assert_eq!(allocations.len(), 1);
     assert_eq!(allocations[0].related_objects(), &[EntityId(21)]);
@@ -136,7 +146,10 @@ fn assert_profile(model: &Model) {
     let inventory = view.inventory(EntityId(23)).unwrap();
     assert_eq!(inventory.predefined_type().unwrap(), Some("ASSETINVENTORY"));
     assert_eq!(inventory.jurisdiction().unwrap(), Some(EntityId(5)));
-    assert_eq!(inventory.responsible_person_ids().unwrap(), vec![EntityId(4)]);
+    assert_eq!(
+        inventory.responsible_person_ids().unwrap(),
+        vec![EntityId(4)]
+    );
     assert_eq!(inventory.last_update_calendar_date().unwrap(), EntityId(7));
     not_in_schema(inventory.last_update_date(), Some("LastUpdateDate"));
 }
