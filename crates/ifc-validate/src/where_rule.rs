@@ -11,11 +11,14 @@
 //! - `engine.rs`: bounded rule invocation.
 //! - `budget.rs`: rule execution limits.
 //! - `builtin.rs`: implemented native rules.
+//! - `definitions.rs`: the native rules over an object's property sets and
+//!   type assignments, which rebuild the inverses they read.
 //! - `operand.rs`: reading a rule's operands, and reporting the ones that
 //!   cannot be read as evaluation errors instead of skipping them.
 
 mod budget;
 mod builtin;
+mod definitions;
 mod engine;
 mod operand;
 mod registry;

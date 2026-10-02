@@ -20,6 +20,8 @@ use ifc_model::guid::Guid;
 
 use crate::{PropertyError, PropertyResult};
 
+use super::value_form::{require_ifc_value, require_ifc_values};
+
 /// `IfcPropertySet` slots.
 pub mod pset_slot {
     /// `GlobalId` (from `IfcRoot`).
@@ -57,9 +59,9 @@ pub mod defines_slot {
 /// Stage an `IfcPropertySingleValue`.
 ///
 /// `value` is an `IfcValue`: a measure-wrapped scalar such as
-/// `Value::Typed { type_name: IFCLENGTHMEASURE, .. }`. A bare
-/// literal is legal but dimensionally meaningless, so the caller
-/// chooses; this crate will not invent a measure.
+/// `Value::Typed { type_name: IFCLENGTHMEASURE, .. }`. `IfcValue` is a
+/// SELECT, so ISO 10303-21 writes its value as a typed parameter naming
+/// the member; this crate will not invent a measure for a bare literal.
 ///
 /// `specification` is `IfcProperty.Specification`: prose describing
 /// what the property means, kept distinct from its value.
@@ -67,7 +69,10 @@ pub mod defines_slot {
 /// # Errors
 ///
 /// Refuses a blank name: IfcProperty.Name is required, and a
-/// whitespace-only name satisfies EXISTS while naming nothing.
+/// whitespace-only name satisfies EXISTS while naming nothing. Refuses a
+/// bare literal with [`PropertyError::ValueForm`], and a value that is no
+/// `IfcValue` (a reference, an aggregate, an enumeration constant) with
+/// [`PropertyError::AuthoringInvalid`].
 pub fn add_property_single_value(
     tx: &mut Transaction,
     name: &str,
@@ -81,6 +86,9 @@ pub fn add_property_single_value(
             attribute: "Name",
             value: name.to_owned(),
         });
+    }
+    if let Some(value) = value.as_ref() {
+        require_ifc_value("IFCPROPERTYSINGLEVALUE", "NominalValue", value)?;
     }
     let mut attributes = vec![Value::Null; single_value_slot::UNIT + 1];
     attributes[single_value_slot::NAME] = Value::Text(name.into());
@@ -313,7 +321,8 @@ pub(super) fn require_name(entity: &'static str, name: &str) -> PropertyResult<(
 ///
 /// Refuses a blank name, and an empty value list: the schema types
 /// `EnumerationValues` as `LIST [1:?]`, so an empty aggregate is
-/// malformed where omission is legal.
+/// malformed where omission is legal. Each value is an `IfcValue`,
+/// refused as [`add_property_single_value`] refuses one.
 pub fn add_property_enumerated_value(
     tx: &mut Transaction,
     name: &str,
@@ -330,6 +339,7 @@ pub fn add_property_enumerated_value(
                 value: "empty".to_owned(),
             });
         }
+        require_ifc_values("IFCPROPERTYENUMERATEDVALUE", "EnumerationValues", values)?;
     }
     let mut attributes = vec![Value::Null; enumerated_slot::REFERENCE + 1];
     attributes[enumerated_slot::NAME] = Value::Text(name.into());
@@ -358,7 +368,9 @@ fn measure_of(value: &Value) -> Option<&str> {
 /// Refuses a blank name, and bounds whose measures disagree. The
 /// schema states SameUnitUpperLower, SameUnitLowerSet and
 /// SameUnitUpperSet: mixing a length lower bound with a mass upper
-/// bound parses and then compares two different quantities.
+/// bound parses and then compares two different quantities. Each bound
+/// is an `IfcValue`, refused as [`add_property_single_value`] refuses
+/// one.
 pub fn add_property_bounded_value(
     tx: &mut Transaction,
     name: &str,
@@ -369,6 +381,15 @@ pub fn add_property_bounded_value(
     unit: Option<EntityId>,
 ) -> PropertyResult<EntityId> {
     require_name("IFCPROPERTYBOUNDEDVALUE", name)?;
+    for (attribute, value) in [
+        ("UpperBoundValue", upper.as_ref()),
+        ("LowerBoundValue", lower.as_ref()),
+        ("SetPointValue", set_point.as_ref()),
+    ] {
+        if let Some(value) = value {
+            require_ifc_value("IFCPROPERTYBOUNDEDVALUE", attribute, value)?;
+        }
+    }
     let stated: Vec<(&str, &Value)> = [
         ("UpperBoundValue", upper.as_ref()),
         ("LowerBoundValue", lower.as_ref()),
@@ -404,7 +425,8 @@ pub fn add_property_bounded_value(
 /// # Errors
 ///
 /// Refuses a blank name and an empty list, which the schema types as
-/// `LIST [1:?]`.
+/// `LIST [1:?]`. Each value is an `IfcValue`, refused as
+/// [`add_property_single_value`] refuses one.
 pub fn add_property_list_value(
     tx: &mut Transaction,
     name: &str,
@@ -421,6 +443,7 @@ pub fn add_property_list_value(
                 value: "empty".to_owned(),
             });
         }
+        require_ifc_values("IFCPROPERTYLISTVALUE", "ListValues", values)?;
     }
     let mut attributes = vec![Value::Null; list_slot::UNIT + 1];
     attributes[list_slot::NAME] = Value::Text(name.into());
@@ -468,7 +491,8 @@ pub struct TableValueDraft<'a> {
 /// WR21, the two columns must be the same length, since a row whose
 /// input has no output is not a row; WR22 and WR23, each column must
 /// be homogeneous, since a column mixing lengths and masses cannot be
-/// interpolated.
+/// interpolated. Each value is an `IfcValue`, refused as
+/// [`add_property_single_value`] refuses one.
 pub fn add_property_table_value(
     tx: &mut Transaction,
     draft: TableValueDraft<'_>,
@@ -509,6 +533,7 @@ pub fn add_property_table_value(
                 value: "empty".to_owned(),
             });
         }
+        require_ifc_values("IFCPROPERTYTABLEVALUE", label, column)?;
         let want = measure_of(&column[0]);
         if column.iter().any(|value| measure_of(value) != want) {
             return Err(PropertyError::AuthoringInvalid {

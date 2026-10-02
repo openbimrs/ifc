@@ -119,6 +119,100 @@ fn self_reference(relation_type: &str, relating: &str, related: u64) -> Report {
     ifc4(&relation(schema, relation_type, relating, 1, related))
 }
 
+/// A wall `#1` defined by property set definitions `#10`, `#11`, ... of
+/// the given `(entity, name)`, through one relation per entry of
+/// `relations`. A relation naming one definition references it; one naming
+/// several writes an `IfcPropertySetDefinitionSet`.
+fn object_sets(schema: &Schema, sets: &[(&str, &str)], relations: &[&[u64]]) -> Report {
+    let mut model = Model::new();
+    model.insert(EntityId(1), wall(schema, GUID_A, &[]));
+    for (offset, (set_type, name)) in (10..).zip(sets) {
+        model.insert(
+            EntityId(offset),
+            entity(schema, set_type, &[("Name", text(name))]),
+        );
+    }
+    for definitions in relations {
+        let definition = match definitions {
+            [one] => Value::Ref(EntityId(*one)),
+            many => Value::Typed {
+                type_name: "IFCPROPERTYSETDEFINITIONSET".into(),
+                value: Box::new(Value::List(
+                    many.iter().map(|id| Value::Ref(EntityId(*id))).collect(),
+                )),
+            },
+        };
+        model.push(entity(
+            schema,
+            "IFCRELDEFINESBYPROPERTIES",
+            &[
+                ("RelatedObjects", Value::List(vec![Value::Ref(EntityId(1))])),
+                ("RelatingPropertyDefinition", definition),
+            ],
+        ));
+    }
+    validate(&model, schema)
+}
+
+/// Two property sets named `first` and `second` on a wall, one relation
+/// each, under IFC4.
+fn two_object_sets(first: &str, second: &str) -> Report {
+    let schema = ifc_schema::ifc4();
+    object_sets(
+        schema,
+        &[("IFCPROPERTYSET", first), ("IFCPROPERTYSET", second)],
+        &[&[10], &[11]],
+    )
+}
+
+/// A wall type whose `HasPropertySets` holds sets named `first` and
+/// `second`, under IFC4.
+fn type_sets(first: &str, second: &str) -> Report {
+    let schema = ifc_schema::ifc4();
+    let mut model = Model::new();
+    model.insert(
+        EntityId(10),
+        entity(schema, "IFCPROPERTYSET", &[("Name", text(first))]),
+    );
+    model.insert(
+        EntityId(11),
+        entity(schema, "IFCPROPERTYSET", &[("Name", text(second))]),
+    );
+    model.push(entity(
+        schema,
+        "IFCWALLTYPE",
+        &[
+            ("GlobalId", text(GUID_A)),
+            ("Name", text("type")),
+            (
+                "HasPropertySets",
+                Value::List(vec![Value::Ref(EntityId(10)), Value::Ref(EntityId(11))]),
+            ),
+        ],
+    ));
+    validate(&model, schema)
+}
+
+/// A wall type `#1` assigned to an object of `object_type` `#2` by an
+/// `IfcRelDefinesByType`, under `schema`.
+fn typed_object(schema: &Schema, object_type: &str) -> Report {
+    let mut model = Model::new();
+    model.insert(
+        EntityId(1),
+        entity(schema, "IFCWALLTYPE", &[("Name", text("type"))]),
+    );
+    model.insert(EntityId(2), entity(schema, object_type, &[]));
+    model.push(entity(
+        schema,
+        "IFCRELDEFINESBYTYPE",
+        &[
+            ("RelatingType", Value::Ref(EntityId(1))),
+            ("RelatedObjects", Value::List(vec![Value::Ref(EntityId(2))])),
+        ],
+    ));
+    validate(&model, schema)
+}
+
 pub const CASES: &[Case] = &[
     Case {
         rule: "global.IfcSingleProjectInstance",
@@ -245,5 +339,77 @@ pub const CASES: &[Case] = &[
         form: "VIRTUAL against a physical element",
         fails: || space_boundary("IFCWALL", "VIRTUAL"),
         passes: || space_boundary("IFCOPENINGELEMENT", "VIRTUAL"),
+    },
+    Case {
+        rule: "IfcObject.UniquePropertySetNames",
+        form: "two property sets of one name, one relation each",
+        fails: || two_object_sets("Pset_A", "Pset_A"),
+        passes: || two_object_sets("Pset_A", "Pset_B"),
+    },
+    Case {
+        rule: "IfcObject.UniquePropertySetNames",
+        form: "two property sets of one name in an IfcPropertySetDefinitionSet",
+        fails: || {
+            let sets = [("IFCPROPERTYSET", "Pset_A"), ("IFCPROPERTYSET", "Pset_A")];
+            object_sets(ifc_schema::ifc4(), &sets, &[&[10, 11]])
+        },
+        passes: || {
+            let sets = [("IFCPROPERTYSET", "Pset_A"), ("IFCPROPERTYSET", "Pset_B")];
+            object_sets(ifc_schema::ifc4(), &sets, &[&[10, 11]])
+        },
+    },
+    Case {
+        rule: "IfcObject.UniquePropertySetNames",
+        form: "one set attached twice is one member of the SET",
+        fails: || two_object_sets("Pset_A", "Pset_A"),
+        passes: || {
+            let sets = [("IFCPROPERTYSET", "Pset_A")];
+            object_sets(ifc_schema::ifc4(), &sets, &[&[10], &[10]])
+        },
+    },
+    Case {
+        rule: "IfcObject.UniquePropertySetNames",
+        form: "a quantity set counts as unnamed",
+        fails: || two_object_sets("Qto_A", "Qto_A"),
+        passes: || {
+            let sets = [("IFCPROPERTYSET", "Qto_A"), ("IFCELEMENTQUANTITY", "Qto_A")];
+            object_sets(ifc_schema::ifc4(), &sets, &[&[10], &[11]])
+        },
+    },
+    Case {
+        rule: "IfcObject.UniquePropertySetNames",
+        form: "IFC2X3 declares no such rule",
+        fails: || {
+            let sets = [("IFCPROPERTYSET", "Pset_A"), ("IFCPROPERTYSET", "Pset_A")];
+            object_sets(ifc_schema::ifc4x3(), &sets, &[&[10], &[11]])
+        },
+        passes: || {
+            let sets = [("IFCPROPERTYSET", "Pset_A"), ("IFCPROPERTYSET", "Pset_A")];
+            object_sets(ifc_schema::ifc2x3(), &sets, &[&[10], &[11]])
+        },
+    },
+    Case {
+        rule: "IfcTypeObject.UniquePropertySetNames",
+        form: "two property sets of one name on a type",
+        fails: || type_sets("Pset_A", "Pset_A"),
+        passes: || type_sets("Pset_A", "Pset_B"),
+    },
+    Case {
+        rule: "IfcTypeProduct.ApplicableOccurrence",
+        form: "IFC4: a type product assigned to a task",
+        fails: || typed_object(ifc_schema::ifc4(), "IFCTASK"),
+        passes: || typed_object(ifc_schema::ifc4(), "IFCWALL"),
+    },
+    Case {
+        rule: "IfcTypeProduct.ApplicableOccurrence",
+        form: "IFC4X3: a type product assigned to a task",
+        fails: || typed_object(ifc_schema::ifc4x3(), "IFCTASK"),
+        passes: || typed_object(ifc_schema::ifc4x3(), "IFCWALL"),
+    },
+    Case {
+        rule: "IfcTypeProduct.WR41",
+        form: "IFC2X3: a type product assigned to a task",
+        fails: || typed_object(ifc_schema::ifc2x3(), "IFCTASK"),
+        passes: || typed_object(ifc_schema::ifc2x3(), "IFCWALL"),
     },
 ];

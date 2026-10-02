@@ -23,6 +23,34 @@ everything released before per-crate changelogs began.
   supported release is refused with `MultipleSchemas` or
   `UnsupportedSchema`, as for the other release-bound writers.
 
+- `PropertyError::ValueForm { entity, attribute, declared, typed_required,
+  found }` (#215): a value of the declared type written in the form
+  ISO 10303-21 does not use for it, mirroring `ifc-author`'s
+  `AuthorError::ValueForm`. `PropertyError` is `#[non_exhaustive]`, so the
+  new variant is additive.
+
+### Changed
+
+- Behaviour change: every writer of an `IfcValue` slot refuses a bare
+  literal before staging (#215). `IfcValue` is a SELECT in every release,
+  whose members are all defined types, so its value is written as a typed
+  parameter (`IFCLENGTHMEASURE(2.5)`, §12.1.8); a bare `2.5` was accepted
+  and then reported by `ifc-validate` as `type.select.untyped`. Covered:
+  `add_property_single_value` (`NominalValue`),
+  `add_property_enumerated_value` and `add_property_enumeration`
+  (`EnumerationValues`), `add_property_bounded_value` (each bound and the
+  set point), `add_property_list_value` (`ListValues`),
+  `add_property_table_value` (`DefiningValues`, `DefinedValues`) and
+  `add_measure_with_unit` (`ValueComponent`). A bare number, string,
+  boolean, logical or binary is `PropertyError::ValueForm` with
+  `typed_required: true`; a wrapper around a wrapper is `ValueForm` with
+  `typed_required: false`; a reference, aggregate, enumeration constant,
+  `*`, or a wrapper around `$` is `PropertyError::AuthoringInvalid`.
+  Callers passing `Value::Real(..)` and the like must wrap the value in
+  the measure it is (`Value::Typed { type_name: "IFCLENGTHMEASURE", .. }`).
+  Which member a wrapper names is not checked here: these writers take no
+  model, and `ifc-validate` judges it against the declared release.
+
 ### Deprecated
 
 - `add_monetary_unit`: it takes no model and always writes IFC4 text,

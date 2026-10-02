@@ -37,6 +37,7 @@ use std::collections::HashMap;
 use ifc_model::{Entity, EntityId, Model, Value};
 use ifc_schema::{Schema, SchemaVersion};
 
+use super::definitions;
 use super::operand::Site;
 use super::registry::RuleEntry;
 use crate::report::{Finding, Path, Report};
@@ -83,21 +84,26 @@ pub fn run(entry: &RuleEntry, model: &Model, schema: &Schema, report: &mut Repor
             normalized_connection_priorities(&rule, "RelatedPriorities", report);
         }
         "IfcRelSpaceBoundary.CorrectPhysOrVirt" => space_boundary_physicality(&rule, report),
+        "IfcObject.UniquePropertySetNames" => definitions::object_set_names(&rule, report),
+        "IfcTypeObject.UniquePropertySetNames" => definitions::type_set_names(&rule, report),
+        "IfcTypeProduct.WR41" | "IfcTypeProduct.ApplicableOccurrence" => {
+            definitions::applicable_occurrence(&rule, report);
+        }
         _ => return false,
     }
     true
 }
 
 /// One registered rule applied to one model.
-struct Rule<'a> {
-    entry: &'a RuleEntry,
-    model: &'a Model,
-    schema: &'a Schema,
+pub(super) struct Rule<'a> {
+    pub(super) entry: &'a RuleEntry,
+    pub(super) model: &'a Model,
+    pub(super) schema: &'a Schema,
 }
 
 impl<'a> Rule<'a> {
     /// The operand reader for one instance.
-    fn site(&self, id: EntityId, entity: &'a Entity) -> Site<'a> {
+    pub(super) fn site(&self, id: EntityId, entity: &'a Entity) -> Site<'a> {
         Site {
             rule: self.entry.id,
             id,
@@ -107,7 +113,7 @@ impl<'a> Rule<'a> {
     }
 
     /// Every instance the entry's declaring entity constrains.
-    fn instances(&self) -> Vec<(EntityId, &'a Entity)> {
+    pub(super) fn instances(&self) -> Vec<(EntityId, &'a Entity)> {
         self.entry
             .entity
             .map(|entity| instances(self.model, self.schema, entity))

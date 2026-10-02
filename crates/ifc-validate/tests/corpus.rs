@@ -497,8 +497,7 @@ fn the_registry_declares_unevaluated_rules() {
 /// the dispatch list in `where_rule::engine`.
 #[test]
 fn every_implemented_rule_is_actually_dispatched() {
-    // The rules `where_rule::evaluate` calls, by id. Adding a rule to the
-    // registry as Implemented without adding it here fails this test.
+    // The rules `where_rule::evaluate` runs; an unlisted Implemented one fails.
     const DISPATCHED: &[&str] = &[
         "global.IfcSingleProjectInstance",
         "global.UniqueGlobalId",
@@ -516,6 +515,10 @@ fn every_implemented_rule_is_actually_dispatched() {
         "IfcRelConnectsPathElements.NormalizedRelatingPriorities",
         "IfcRelConnectsPathElements.NormalizedRelatedPriorities",
         "IfcRelSpaceBoundary.CorrectPhysOrVirt",
+        "IfcObject.UniquePropertySetNames",
+        "IfcTypeObject.UniquePropertySetNames",
+        "IfcTypeProduct.WR41",
+        "IfcTypeProduct.ApplicableOccurrence",
     ];
     let claimed: Vec<&str> = ifc_validate::where_rule::implemented()
         .map(|entry| entry.id)

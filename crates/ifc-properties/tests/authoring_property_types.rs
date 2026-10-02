@@ -49,7 +49,10 @@ fn every_property_value_type_resolves_as_authored() {
         &mut tx,
         "Finish",
         None,
-        Some(vec![Value::Text("Painted".into())]),
+        Some(vec![Value::Typed {
+            type_name: "IFCLABEL".into(),
+            value: Box::new(Value::Text("Painted".into())),
+        }]),
         None,
     )
     .expect("enumerated");

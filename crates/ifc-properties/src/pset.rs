@@ -11,6 +11,8 @@
 //! - `predefined.rs`, `lining.rs`, `reinforcement.rs`: predefined property
 //!   sets; `template_authoring.rs`: templates. `owned.rs` lays out their
 //!   `*_with_owner_history` variants in the model's release (#202).
+//! - `value_form.rs`: the typed form every authored `IfcValue` is written
+//!   in (#215).
 
 mod complex;
 pub(crate) mod scalar;
@@ -23,6 +25,7 @@ mod predefined;
 mod reinforcement;
 mod root_authoring;
 mod template_authoring;
+pub(crate) mod value_form;
 
 pub use authoring::{
     add_complex_property, add_element_quantity, add_physical_complex_quantity,

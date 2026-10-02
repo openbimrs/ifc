@@ -3,7 +3,7 @@
 use ifc_model::{Model, Value};
 use ifc_schema::Schema;
 
-use super::defined::{check, Mismatch};
+use super::defined::{check_all, Mismatch};
 use super::select::admits_entity;
 use crate::report::{Finding, Path, Report};
 use crate::structure::expected_references;
@@ -80,77 +80,77 @@ pub fn attribute_types(model: &Model, schema: &Schema, report: &mut Report) {
                 name: Some(attribute.name.clone()),
             };
             select_references(model, schema, &attribute.type_name, value, &path, report);
-            let Some(mismatch) = check(schema, &attribute.type_name, value) else {
-                continue;
-            };
-            let path = path();
-            let finding = match mismatch {
-                Mismatch::Primitive { expected, actual } => Finding::error(
-                    "type.scalar.mismatch",
-                    path,
-                    format!(
-                        "{} is {expected}, the file wrote {actual}",
-                        attribute.type_name
-                    ),
-                ),
-                Mismatch::FixedWidth { expected, actual } => Finding::error(
-                    "type.scalar.fixed_width",
-                    path,
-                    format!(
-                        "{} is STRING({expected}) FIXED, the file wrote {actual} characters",
-                        attribute.type_name
-                    ),
-                ),
-                Mismatch::EnumMember { member, declared } => Finding::error(
-                    "type.enumeration.member",
-                    path,
-                    format!(
-                        "{member} is not a member of {} ({})",
-                        attribute.type_name,
-                        if declared.is_empty() {
-                            "no members declared".to_string()
-                        } else {
-                            declared.join(", ")
-                        }
-                    ),
-                ),
-                Mismatch::SelectMember { written, select } => Finding::error(
-                    "type.select.member",
-                    path,
-                    format!("{written} is not a member of {select}"),
-                ),
-                Mismatch::ExpectedReference { declared, actual } => Finding::error(
-                    "type.entity.expected_reference",
-                    path,
-                    format!(
-                        "{} takes a reference to {declared}, the file wrote {actual}",
-                        attribute.name
-                    ),
-                ),
-                Mismatch::TypedOutsideSelect { written, declared } => Finding::error(
-                    "type.typed.outside_select",
-                    path,
-                    format!(
-                        "{declared} is not a SELECT, so its value is written bare, \
-                         not as the typed parameter {written}(...)"
-                    ),
-                ),
-                Mismatch::TypedWrongType { written, declared } => Finding::error(
-                    "type.typed.wrong_type",
-                    path,
-                    format!("{written} is not {declared}, and {declared} is not a SELECT"),
-                ),
-                Mismatch::UntypedSelectValue { select, actual } => Finding::error(
-                    "type.select.untyped",
-                    path,
-                    format!(
-                        "{select} is a SELECT, so a value that is not a reference is \
-                         written as a typed parameter; the file wrote {actual}"
-                    ),
-                ),
-            };
-            report.push(finding);
+            for mismatch in check_all(schema, &attribute.type_name, value) {
+                report.push(finding(
+                    mismatch,
+                    path(),
+                    &attribute.type_name,
+                    &attribute.name,
+                ));
+            }
         }
+    }
+}
+
+/// The finding one mismatch in the slot at `path` is reported as.
+fn finding(mismatch: Mismatch, path: Path, declared: &str, attribute: &str) -> Finding {
+    match mismatch {
+        Mismatch::Primitive { expected, actual } => Finding::error(
+            "type.scalar.mismatch",
+            path,
+            format!("{declared} is {expected}, the file wrote {actual}"),
+        ),
+        Mismatch::FixedWidth { expected, actual } => Finding::error(
+            "type.scalar.fixed_width",
+            path,
+            format!("{declared} is STRING({expected}) FIXED, the file wrote {actual} characters"),
+        ),
+        Mismatch::EnumMember {
+            member,
+            declared: members,
+        } => Finding::error(
+            "type.enumeration.member",
+            path,
+            format!(
+                "{member} is not a member of {declared} ({})",
+                if members.is_empty() {
+                    "no members declared".to_string()
+                } else {
+                    members.join(", ")
+                }
+            ),
+        ),
+        Mismatch::SelectMember { written, select } => Finding::error(
+            "type.select.member",
+            path,
+            format!("{written} is not a member of {select}"),
+        ),
+        Mismatch::ExpectedReference { declared, actual } => Finding::error(
+            "type.entity.expected_reference",
+            path,
+            format!("{attribute} takes a reference to {declared}, the file wrote {actual}"),
+        ),
+        Mismatch::TypedOutsideSelect { written, declared } => Finding::error(
+            "type.typed.outside_select",
+            path,
+            format!(
+                "{declared} is not a SELECT, so its value is written bare, \
+                 not as the typed parameter {written}(...)"
+            ),
+        ),
+        Mismatch::TypedWrongType { written, declared } => Finding::error(
+            "type.typed.wrong_type",
+            path,
+            format!("{written} is not {declared}, and {declared} is not a SELECT"),
+        ),
+        Mismatch::UntypedSelectValue { select, actual } => Finding::error(
+            "type.select.untyped",
+            path,
+            format!(
+                "{select} is a SELECT, so a value that is not a reference is \
+                 written as a typed parameter; the file wrote {actual}"
+            ),
+        ),
     }
 }
 
@@ -190,5 +190,46 @@ fn select_references(
             path(),
             format!("{target} is {actual}, which is not a member of {select}"),
         ));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ifc_model::Entity;
+
+    /// One slot with two independent violations yields two findings on the
+    /// same path (#215).
+    #[test]
+    fn a_slot_reports_each_independent_violation() {
+        let schema = ifc_schema::ifc4();
+        let mut model = Model::new();
+        let names = schema.attribute_names("IFCCARTESIANPOINTLIST3D");
+        let mut attributes = vec![Value::Null; names.len()];
+        attributes[0] = Value::List(vec![
+            Value::List(vec![
+                Value::Text("x".into()),
+                Value::Real(0.0),
+                Value::Real(0.0),
+            ]),
+            Value::List(vec![
+                Value::Real(0.0),
+                Value::Typed {
+                    type_name: "IFCLENGTHMEASURE".into(),
+                    value: Box::new(Value::Real(1.0)),
+                },
+                Value::Real(0.0),
+            ]),
+        ]);
+        let id = model.push(Entity::new("IFCCARTESIANPOINTLIST3D", attributes));
+        let mut report = Report::new();
+        attribute_types(&model, schema, &mut report);
+        let rules: Vec<&str> = report
+            .findings()
+            .iter()
+            .filter(|finding| matches!(finding.path, Path::Attribute { entity, index: 0, .. } if entity == id))
+            .map(|finding| finding.rule.as_str())
+            .collect();
+        assert_eq!(rules, ["type.scalar.mismatch", "type.typed.outside_select"]);
     }
 }

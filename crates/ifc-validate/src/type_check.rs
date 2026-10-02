@@ -19,7 +19,7 @@ mod select;
 mod typed;
 
 pub(crate) use aggregate::{aliased_aggregate, element_type};
-pub use defined::{check as check_value, Mismatch};
+pub use defined::{check as check_value, check_all as check_value_all, Mismatch};
 pub use entity::{abstract_instances, attribute_types, unknown_entity_types};
 pub(crate) use scalar::describe_value;
 pub use scalar::Primitive;

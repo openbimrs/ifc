@@ -12,6 +12,41 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- Native WHERE rules over property sets and type assignments (#215),
+  registered only for the releases whose EXPRESS states them and checked
+  against it by `tests/registry_scope.rs`:
+  - `IfcObject.UniquePropertySetNames` (IFC4, IFC4X3):
+    `IfcUniqueDefinitionNames(IsDefinedBy)`, with the inverse rebuilt from
+    every `IfcRelDefinesByProperties` and an `IfcPropertySetDefinitionSet`
+    opened;
+  - `IfcTypeObject.UniquePropertySetNames` (IFC4, IFC4X3):
+    `IfcUniquePropertySetNames(HasPropertySets)`;
+  - `IfcTypeProduct.ApplicableOccurrence` (IFC4, IFC4X3) and its IFC2X3
+    label `IfcTypeProduct.WR41`: every object a type product is assigned
+    to by `IfcRelDefinesByType` is an `IfcProduct`.
+
+  One finding per shared name; a definition the file lacks is an
+  evaluation error. IFC2X3 states no unique-set-name rule. The textual
+  `IfcTypeObject.ApplicableOccurrence` and
+  `IfcPropertySetTemplate.ApplicableEntity` are stated as a rule by no
+  release and are not checked.
+- `type_check::check_value_all`: every independent mismatch of one value
+  against one declared type.
+
+### Changed
+
+- `type_check::attribute_types` reports every independent violation in a
+  slot instead of the first (#215): each bad member of an aggregate, at
+  every nesting level, and a wrapper's form together with a bad parameter
+  inside it (`IFCLABEL(12)` in an `IfcLabel` slot is now both
+  `type.typed.outside_select` and `type.scalar.mismatch`; a wrapper outside
+  its SELECT is `type.select.member` and its parameter is still judged).
+  Identical mismatches in one slot are reported once. A report on a
+  malformed file can therefore hold more findings than before.
+  `type_check::check_value` still returns the first.
+
 ## [0.4.0] - 2026-09-29
 
 ### Added

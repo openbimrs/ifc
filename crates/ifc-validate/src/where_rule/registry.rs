@@ -204,6 +204,34 @@ pub const RULES: &[RuleEntry] = &[
         releases: IFC4_FAMILY,
         support: Support::Implemented,
     },
+    // `IfcUniqueDefinitionNames` / `IfcUniquePropertySetNames`; IFC2X3
+    // states no such rule.
+    RuleEntry {
+        id: "IfcObject.UniquePropertySetNames",
+        entity: Some("IfcObject"),
+        releases: IFC4_FAMILY,
+        support: Support::Implemented,
+    },
+    RuleEntry {
+        id: "IfcTypeObject.UniquePropertySetNames",
+        entity: Some("IfcTypeObject"),
+        releases: IFC4_FAMILY,
+        support: Support::Implemented,
+    },
+    // One predicate under two labels: IFC2X3 `WR41` over `ObjectTypeOf`,
+    // IFC4 on `ApplicableOccurrence` over `Types`.
+    RuleEntry {
+        id: "IfcTypeProduct.WR41",
+        entity: Some("IfcTypeProduct"),
+        releases: IFC2X3,
+        support: Support::Implemented,
+    },
+    RuleEntry {
+        id: "IfcTypeProduct.ApplicableOccurrence",
+        entity: Some("IfcTypeProduct"),
+        releases: IFC4_FAMILY,
+        support: Support::Implemented,
+    },
     RuleEntry {
         id: "IfcDocumentReference.WR1",
         entity: Some("IfcDocumentReference"),

@@ -417,3 +417,57 @@ fn ifc4_only_rules_do_not_run_under_ifc2x3() {
         assert!(!has(&report, rule), "{rule} is not declared by IFC2X3");
     }
 }
+
+/// Every name shared by two property sets of one object is its own
+/// finding, and a definition the file lacks is an evaluation error rather
+/// than a pass (#215).
+#[test]
+fn unique_property_set_names_reports_each_shared_name() {
+    let schema = ifc_schema::ifc4();
+    let mut model = Model::new();
+    model.insert(
+        EntityId(1),
+        entity(
+            schema,
+            "IFCWALL",
+            &[("GlobalId", Value::Text("0hMOPMBpTAoOL$IPqA1$xY".into()))],
+        ),
+    );
+    for (id, name) in [(10, "A"), (11, "A"), (12, "B"), (13, "B"), (14, "C")] {
+        model.insert(
+            EntityId(id),
+            entity(
+                schema,
+                "IFCPROPERTYSET",
+                &[("Name", Value::Text(name.into()))],
+            ),
+        );
+    }
+    let mut definitions: Vec<Value> = (10..=14).map(|id| Value::Ref(EntityId(id))).collect();
+    definitions.push(Value::Ref(EntityId(99)));
+    for definition in definitions {
+        model.push(entity(
+            schema,
+            "IFCRELDEFINESBYPROPERTIES",
+            &[
+                ("RelatedObjects", Value::List(vec![Value::Ref(EntityId(1))])),
+                ("RelatingPropertyDefinition", definition),
+            ],
+        ));
+    }
+    let report = validate(&model, schema);
+    let findings: Vec<_> = report
+        .findings()
+        .iter()
+        .filter(|finding| finding.rule == "IfcObject.UniquePropertySetNames")
+        .collect();
+    let errors = findings
+        .iter()
+        .filter(|finding| finding.severity == ifc_validate::Severity::Error)
+        .count();
+    let undecided = findings
+        .iter()
+        .filter(|finding| finding.severity == ifc_validate::Severity::EvaluationError)
+        .count();
+    assert_eq!((errors, undecided), (2, 1), "{findings:?}");
+}
