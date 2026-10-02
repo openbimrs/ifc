@@ -18,10 +18,33 @@ pub enum ResourceError {
         /// Every schema token found in the header.
         tokens: Vec<String>,
     },
-    /// The declared schema is not IFC4 ADD2 TC1 or IFC4X3 ADD2.
+    /// The declared schema is not one this operation supports: reads cover
+    /// IFC2X3 TC1, IFC4 ADD2 TC1 and IFC4X3 ADD2; authoring covers IFC4 ADD2
+    /// TC1 and IFC4X3 ADD2.
     UnsupportedSchema {
         /// The rejected schema token.
         token: String,
+    },
+    /// The view's release does not declare what an accessor reads, in the
+    /// form it reads it.
+    ///
+    /// IFC2X3 TC1 declares no `IfcResourceTime` and no resource types, and
+    /// its `IfcConstructionResource` carries no `LongDescription`, `Usage`,
+    /// `BaseCosts` or `PredefinedType`; its `BaseQuantity` is an
+    /// `IfcMeasureWithUnit` rather than an `IfcPhysicalQuantity`. Asking for
+    /// one of those under IFC2X3 is this refusal, never `None`, so "the
+    /// release cannot hold it" stays distinct from "the file left it unset".
+    /// The IFC2X3-only accessors refuse the same way under IFC4 and IFC4X3.
+    NotInSchema {
+        /// The bound release's schema name, e.g. `IFC2X3`.
+        schema: String,
+        /// The entity that was read, when the request named one.
+        entity: Option<EntityId>,
+        /// The entity type lacking the attribute, or the entity type the
+        /// release does not declare at all.
+        entity_type: String,
+        /// The attribute, or `None` when the entity type itself is absent.
+        attribute: Option<&'static str>,
     },
     /// A requested entity id does not exist in the model.
     EntityNotFound {
@@ -37,7 +60,9 @@ pub enum ResourceError {
         /// The IFC type actually declared.
         actual: String,
     },
-    /// The schema declares no attribute of this name on the entity type.
+    /// The stored record is shorter than the schema's attribute list, so a
+    /// declared attribute has no slot. (An attribute the release does not
+    /// declare at all is [`ResourceError::NotInSchema`].)
     MissingAttribute {
         /// The entity that was read.
         entity: EntityId,
@@ -157,9 +182,23 @@ impl std::fmt::Display for ResourceError {
             Self::UnsupportedSchema { token } => {
                 write!(
                     f,
-                    "unsupported resource schema `{token}`; expected IFC4 ADD2 TC1 or IFC4X3 ADD2"
+                    "unsupported resource schema `{token}`; reads cover IFC2X3 TC1, IFC4 ADD2 TC1 \
+                     and IFC4X3 ADD2, authoring IFC4 ADD2 TC1 and IFC4X3 ADD2"
                 )
             }
+            Self::NotInSchema {
+                schema,
+                entity_type,
+                attribute,
+                ..
+            } => match attribute {
+                Some(attribute) => write!(
+                    f,
+                    "{schema} does not declare {entity_type}.{attribute} in the form this \
+                     accessor reads"
+                ),
+                None => write!(f, "{schema} does not declare {entity_type}"),
+            },
             Self::EntityNotFound { id } => write!(f, "entity {id} does not exist"),
             Self::WrongType {
                 id,

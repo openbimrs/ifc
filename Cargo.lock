@@ -886,6 +886,7 @@ version = "0.3.0"
 dependencies = [
  "ifc-model",
  "ifc-schema",
+ "ifc-step",
 ]
 
 [[package]]
