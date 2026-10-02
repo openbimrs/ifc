@@ -17,7 +17,8 @@
 # Run it by hand (Actions -> Release -> Run workflow) with a tag name to
 # rehearse a release: everything is built and tested, nothing is published.
 # The gate itself is CI's: the plan job requires CI to have passed on the
-# commit rather than running scripts/gate.sh a second time.
+# commit rather than running scripts/gate.sh a second time. Tags must be on
+# main or on a maint/* branch (maintenance releases of an older line).
 name: Release
 
 on:
@@ -60,13 +61,22 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Require the tag to be on main
-        # A tag on an unmerged branch would publish code main never gated.
+      - name: Require the tag to be on main or a maintenance branch
+        # A tag on an unmerged branch would publish code nobody gated. A
+        # maintenance release of an older line (ifc-xml 0.2.x after 0.3) is
+        # cut from a `maint/<crate>-<line>` branch, which CI gates on push
+        # like main; the commit-must-pass-CI check below applies to both.
+        # Crates are trusted-publishing-only on crates.io, so this workflow
+        # is the only way such a release can be published.
         # A rehearsal checks the dispatched ref the same way.
         run: |
-          git fetch --quiet origin main
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
-            || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
+          git fetch --quiet origin main '+refs/heads/maint/*:refs/remotes/origin/maint/*'
+          for branch in origin/main $(git for-each-ref --format='%(refname:short)' refs/remotes/origin/maint/); do
+            if git merge-base --is-ancestor "$GITHUB_SHA" "$branch"; then
+              echo "$GITHUB_REF_NAME is on $branch"; exit 0
+            fi
+          done
+          echo "::error::$GITHUB_REF_NAME is not on main or a maint/* branch"; exit 1
       - name: Install Rust 1.88
         uses: dtolnay/rust-toolchain@688313b0823df1393bcebb1b4add0438a6d36884 # 1.88.0
         with:
@@ -83,7 +93,8 @@ jobs:
         # of `.github/workflows/ci.yml` on this commit and require its
         # verdict. Only `push` runs count: they test the commit itself, while
         # a pull_request run tests a merge with its base. The commit is on
-        # main (checked above), so CI ran main's workflow and gate.sh.
+        # main or a maint/* branch (checked above), so CI ran that branch's
+        # workflow and gate.sh.
         # Re-running a failed CI run and then this job picks up the new result.
         env:
           GH_TOKEN: ${{ github.token }}
