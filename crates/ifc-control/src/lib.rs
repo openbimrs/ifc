@@ -19,6 +19,12 @@
 //! variants bind the model's declared release and take a caller-supplied
 //! `IfcOwnerHistory` (#202).
 //!
+//! [`read_control`] and [`read_controls`] read the four controls back as
+//! borrowed [`Control`] views, by attribute name in the same declared
+//! release, together with the [`ControlAssignment`]s that govern work
+//! (#100). A record that does not fit its release is refused, never read
+//! as absent.
+//!
 //! `IfcCostItem`, `IfcCostSchedule`, `IfcWorkCalendar` and
 //! `IfcWorkControl` are `IfcControl` subtypes too, but they belong to
 //! `ifc-cost` and `ifc-schedule`: the crates split by domain, not by
@@ -27,6 +33,7 @@
 mod assignment;
 mod authoring;
 mod error;
+mod read;
 mod release;
 
 pub use assignment::{
@@ -34,3 +41,4 @@ pub use assignment::{
 };
 pub use authoring::{create_control, create_control_with_owner_history, ControlDraft, ControlKind};
 pub use error::{ControlError, ControlResult};
+pub use read::{read_control, read_controls, Control, ControlAssignment};

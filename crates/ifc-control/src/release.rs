@@ -143,7 +143,7 @@ const fn proven(version: SchemaVersion) -> bool {
     )
 }
 
-/// Bind `model`'s declared release.
+/// Bind `model`'s declared release, for writers and readers alike.
 pub(crate) fn bind(model: &Model) -> ControlResult<Release<'static>> {
     let version = match model.header().schema.as_slice() {
         [] => SchemaVersion::Ifc4,
@@ -189,7 +189,7 @@ pub(crate) fn projected_type(tx: &Transaction, model: &Model, target: EntityId) 
 /// Identification", "Atribute RequestID renamed to Identification" and
 /// (`IfcProjectOrder`) "Attribute ID renamed to Identification". IFC2X3
 /// `IfcPerformanceHistory` declares no identifier at all.
-fn release_name(
+pub(crate) fn release_name(
     release: Option<SchemaVersion>,
     entity: &str,
     attribute: &'static str,
@@ -203,7 +203,7 @@ fn release_name(
 }
 
 /// Whether `value` is a legal instance of `declared` in `schema`.
-fn conforms(schema: &Schema, declared: &Attribute, value: &Value) -> bool {
+pub(crate) fn conforms(schema: &Schema, declared: &Attribute, value: &Value) -> bool {
     match value {
         Value::Null => true,
         Value::List(items) => {

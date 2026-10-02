@@ -3,7 +3,10 @@
 Bounded IFC control semantics: permits, project orders, action requests and
 performance history, staged into an `ifc-model` transaction and validated
 against the schema, together with the `IfcRelAssignsToControl` relationships
-those controls own.
+those controls own. `read_control` and `read_controls` read them back as
+borrowed views, by attribute name in the model's declared release (IFC2X3,
+IFC4, IFC4X3), so everything the crate writes, assignments included, can be
+read again.
 
 ```bash
 cargo add ifc-control
