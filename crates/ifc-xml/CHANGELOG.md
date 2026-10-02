@@ -69,6 +69,14 @@ everything released before per-crate changelogs began.
   entity type of both release XSDs, which `scripts/fetch-ifc-schemas.sh` now
   fetches (checksummed, never committed). An env-gated test compares paired
   STEP and ifcXML files (`tests/xsd_corpus.rs` documents how to run it).
+- `tests/xsd_output.rs`, an opt-in (`--ignored`) check that writes every IFC4
+  and IFC4X3 fixture with the strict profile and validates it with `xmllint`
+  against the fetched release XSD (#117). It fails on malformed output, a
+  namespace that is not the XSD's `targetNamespace`, a control document the
+  XSD or `XmlCodec::xsd` refuses, and any XSD error beyond the documented
+  native-layout departures. The published `IFC4X3_ADD2.xsd` does not compile
+  in libxml2 or Xerces, which the check records. How to run it is in the
+  README.
 
 ### Security
 
@@ -85,6 +93,13 @@ everything released before per-crate changelogs began.
   entity and character references are still resolved, and literal tabs and
   line breaks in attribute values and text are still kept rather than
   normalised to spaces; a regression test pins this.
+
+### Documentation
+
+- Strict-profile output is documented as what it is: the crate's own layout
+  under the release XSD's target namespace and schema token, not the XSD
+  configuration, and not valid against the release XSD (#117). `XmlProfile`
+  no longer calls the XSD "bundled"; it is fetched, never shipped.
 
 ## [0.3.0] - 2026-09-29
 

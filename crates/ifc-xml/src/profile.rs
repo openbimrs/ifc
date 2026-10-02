@@ -1,12 +1,18 @@
 //! Supported ifcXML release profiles.
 
 /// A release-specific ifcXML namespace/profile contract.
+///
+/// A profile fixes the namespace and schema token, not the layout: native
+/// output under a profile is not valid against the release XSD, whose
+/// configuration this crate reads ([`crate::XmlLayout::Xsd`]) but does not
+/// write.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum XmlProfile {
-    /// IFC4 ADD2 TC1, as declared by the bundled official XSD.
+    /// IFC4 ADD2 TC1, whose namespace the official XSD (`IFC4.xsd`) declares.
     Ifc4Add2Tc1,
-    /// IFC4.3 ADD2, as declared by its official XSD (`IFC4X3_ADD2.xsd`).
+    /// IFC4.3 ADD2, whose namespace its official XSD (`IFC4X3_ADD2.xsd`)
+    /// declares.
     Ifc4x3Add2,
 }
 
