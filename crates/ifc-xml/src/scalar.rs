@@ -154,7 +154,7 @@ fn looks_real(text: &str) -> bool {
 }
 
 /// Scalar identity with reals compared bit for bit, so `-0.0` and `0.0` differ.
-fn same_scalar(left: &Value, right: &Value) -> bool {
+pub(crate) fn same_scalar(left: &Value, right: &Value) -> bool {
     match (left, right) {
         (Value::Real(left), Value::Real(right)) => left.to_bits() == right.to_bits(),
         (left, right) => left == right,

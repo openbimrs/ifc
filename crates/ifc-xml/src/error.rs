@@ -26,7 +26,7 @@ impl fmt::Display for XmlPath {
 }
 
 /// Failures specific to reading or writing ifcXML.
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, Error)]
 #[non_exhaustive]
 pub enum XmlError {
     /// The document is not well-formed XML.
@@ -100,6 +100,97 @@ pub enum XmlError {
     /// Writing to the output buffer failed.
     #[error("write failed: {0}")]
     Write(String),
+    /// An element names an entity type the schema does not declare.
+    #[error("`{name}` is not an entity the schema declares")]
+    UnknownEntity {
+        /// The element or type name as written.
+        name: String,
+    },
+    /// An abstract entity was instantiated.
+    #[error("`{name}` is abstract and cannot be instantiated")]
+    AbstractEntity {
+        /// The declared entity name.
+        name: String,
+    },
+    /// An XML attribute or child element that no attribute of the entity
+    /// declares. Never placed into a free slot.
+    #[error(
+        "{entity} has no attribute `{attribute}` (on element `{element}`); \
+         refusing to guess its slot"
+    )]
+    UnknownAttribute {
+        /// The entity type, as the schema declares it.
+        entity: String,
+        /// The XML element carrying it: the entity's own element, which is
+        /// an attribute name when the entity is defined in place.
+        element: String,
+        /// The XML attribute or child element name.
+        attribute: String,
+    },
+    /// A value whose kind the declared type does not admit: an integer in a
+    /// label, a reference where a measure is declared, an entity or typed
+    /// value outside its SELECT.
+    #[error("declared {declared}, found {found}")]
+    TypeMismatch {
+        /// The declared type, in EXPRESS terms.
+        declared: String,
+        /// What the document holds, in words.
+        found: String,
+    },
+    /// An attribute written in a form its declared type does not take in
+    /// this layout: a simple value as a child element, or an entity
+    /// reference as an XML attribute.
+    #[error("attribute `{attribute}` must be {expected}, found {found}")]
+    WrongForm {
+        /// The attribute name.
+        attribute: String,
+        /// The form the layout requires.
+        expected: &'static str,
+        /// The form the document used.
+        found: &'static str,
+    },
+    /// A reference to an id no element of the document defines.
+    #[error("reference to undefined id {id:?}")]
+    UnresolvedReference {
+        /// The referenced id as written.
+        id: String,
+    },
+    /// Two elements define the same id.
+    #[error("id {id:?} is defined twice")]
+    DuplicateId {
+        /// The repeated id.
+        id: String,
+    },
+    /// An inverse attribute implies a value its relationship contradicts.
+    #[error(
+        "inverse `{inverse}` places this entity in `{relationship}.{attribute}`, \
+         which {detail}"
+    )]
+    InverseConflict {
+        /// The inverse attribute's name.
+        inverse: String,
+        /// The relationship entity's type.
+        relationship: String,
+        /// The relationship's explicit attribute the inverse inverts.
+        attribute: String,
+        /// Why the implied value cannot be placed.
+        detail: String,
+    },
+    /// The schema given does not describe the selected release profile.
+    #[error("ifcXML profile {profile} needs the {profile} schema, given `{schema}`")]
+    SchemaMismatch {
+        /// The profile's schema token.
+        profile: &'static str,
+        /// The given schema's name.
+        schema: String,
+    },
+    /// Valid content this reader or writer does not implement. Refused,
+    /// never approximated.
+    #[error("unsupported: {construct}")]
+    Unsupported {
+        /// What was met, in words.
+        construct: String,
+    },
 }
 
 impl XmlError {

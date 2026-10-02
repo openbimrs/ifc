@@ -10,8 +10,27 @@
 //! was written.
 
 use crate::error::XmlError;
+use crate::scalar::infer;
 use crate::XmlCodec;
 use ifc_model::Value;
+
+/// A named value as the reader met it: an XML attribute's raw text, which
+/// only the slot's declaration can type, or a child element's value, whose
+/// kind the element spelled.
+pub(crate) enum Raw {
+    Text(String),
+    Value(Value),
+}
+
+impl Raw {
+    /// The value by inference: the lenient read, without a declaration.
+    fn inferred(self) -> Value {
+        match self {
+            Self::Text(text) => infer(&text),
+            Self::Value(value) => value,
+        }
+    }
+}
 
 /// Attribute names for a type: from the schema when available, else `a<i>`.
 ///
@@ -36,12 +55,13 @@ pub(crate) fn attribute_names(codec: &XmlCodec, type_name: &str, count: usize) -
 pub(crate) fn order(
     codec: &XmlCodec,
     type_name: &str,
-    named: Vec<(String, Value)>,
+    named: Vec<(String, Raw)>,
 ) -> Result<Vec<Value>, XmlError> {
     let names = schema_names(codec, type_name);
     let mut positioned: Vec<(usize, String, Value)> = Vec::new();
     let mut unknown = Vec::new();
-    for (name, value) in named {
+    for (name, raw) in named {
+        let value = raw.inferred();
         let slot = names
             .iter()
             .position(|candidate| *candidate == name)
@@ -102,4 +122,64 @@ fn schema_names(codec: &XmlCodec, type_name: &str) -> Vec<String> {
 /// `a12` -> `Some(12)`.
 fn positional_index(name: &str) -> Option<usize> {
     name.strip_prefix('a')?.parse().ok()
+}
+
+/// Order and type an entity's named values strictly from the schema.
+///
+/// Every name must be an explicit attribute the entity declares, matched
+/// exactly; an XML attribute's text is typed from that declaration, and a
+/// child element's explicit kind must be one the declaration admits.
+/// Nothing is inferred and nothing lands in a slot it does not name.
+#[cfg(feature = "schema")]
+pub(crate) fn order_strict(
+    layouts: &mut crate::typing::Layouts<'_>,
+    type_name: &str,
+    path: &str,
+    named: Vec<(String, Raw)>,
+) -> Result<Vec<Value>, XmlError> {
+    use crate::typing::{conform, scalar, Lexical};
+
+    let layout = layouts
+        .entity(type_name, false)?
+        .ok_or_else(|| XmlError::UnknownEntity {
+            name: type_name.into(),
+        })?;
+    if layout.abstract_ {
+        return Err(XmlError::AbstractEntity {
+            name: layout.name.to_string(),
+        });
+    }
+    let mut slots: Vec<Option<Value>> = vec![None; layout.slots.len()];
+    for (name, raw) in named {
+        let slot = layout
+            .slot(&name)
+            .ok_or_else(|| XmlError::UnknownAttribute {
+                entity: layout.name.to_string(),
+                element: type_name.into(),
+                attribute: name.clone(),
+            })?;
+        if slots[slot].is_some() {
+            return Err(XmlError::DuplicateSlot { name, slot });
+        }
+        let shape = &layout.slots[slot].shape;
+        let typed = match raw {
+            Raw::Text(text) if shape.levels.is_empty() => {
+                scalar(&shape.leaf, &text, Lexical::Native)
+            }
+            Raw::Text(_) => Err(XmlError::WrongForm {
+                attribute: name.clone(),
+                expected: "a list child element",
+                found: "an XML attribute",
+            }),
+            Raw::Value(value) => Ok(value),
+        };
+        let value = typed
+            .and_then(|value| conform(layouts.schema(), shape, &value).map(|()| value))
+            .map_err(|error| error.at(format!("{path}/{name}")))?;
+        slots[slot] = Some(value);
+    }
+    Ok(slots
+        .into_iter()
+        .map(|value| value.unwrap_or(Value::Null))
+        .collect())
 }

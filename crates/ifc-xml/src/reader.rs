@@ -3,13 +3,28 @@
 //! Uses `quick-xml`'s pull parser: an IFC file can be very large, so the
 //! document is never materialized as a tree.
 //!
-//! Unknown elements and attributes are preserved rather than rejected, on the
-//! same principle as the STEP reader: a file containing entities from a
-//! schema we do not know must still round-trip.
+//! What happens to content the schema does not describe depends on the
+//! codec, and the distinction is deliberate:
+//!
+//! - **Native layout, no schema or [`SchemaReading::Lenient`]:** unknown
+//!   elements and attributes are preserved rather than rejected, on the same
+//!   principle as the STEP reader: a file containing entities from a schema
+//!   we do not know must still round-trip. Value kinds are inferred from
+//!   attribute text.
+//! - **Native layout with a schema, [`SchemaReading::Strict`] (the
+//!   default):** every value is typed from its attribute's declaration, and
+//!   an entity, attribute or value the schema does not declare is a typed
+//!   [`XmlError`] naming it.
+//! - **[`XmlLayout::Xsd`]:** the buildingSMART configuration, always strict;
+//!   see the crate documentation.
+//!
+//! [`SchemaReading::Lenient`]: crate::SchemaReading::Lenient
+//! [`SchemaReading::Strict`]: crate::SchemaReading::Strict
 
 use crate::error::XmlError;
-use crate::scalar::{decode_element, format_ref, infer, parse_ref};
-use crate::{slots, XmlCodec};
+use crate::scalar::{decode_element, format_ref, parse_ref};
+use crate::slots::Raw;
+use crate::{slots, XmlCodec, XmlLayout};
 use ifc_model::{Entity, EntityId, Model, Value};
 use quick_xml::escape::unescape;
 use quick_xml::events::attributes::Attribute;
@@ -24,11 +39,101 @@ pub fn looks_like_xml(bytes: &[u8]) -> bool {
     let head = &bytes[..bytes.len().min(512)];
     let text = String::from_utf8_lossy(head);
     let trimmed = text.trim_start_matches(['\u{feff}', ' ', '\n', '\r', '\t']);
-    trimmed.starts_with("<?xml") || trimmed.starts_with("<ifcXML")
+    // A prefixed root (`<ifc:ifcXML`), as the buildingSMART examples write.
+    let prefixed = trimmed.starts_with('<')
+        && trimmed[1..]
+            .split(|c: char| c.is_whitespace() || c == '>')
+            .next()
+            .is_some_and(|name| name.ends_with(":ifcXML"));
+    trimmed.starts_with("<?xml") || trimmed.starts_with("<ifcXML") || prefixed
 }
 
-/// Parse an ifcXML document into a model.
+/// The schema tables a strict native read types values from.
+#[cfg(feature = "schema")]
+type Strict<'s> = Option<crate::typing::Layouts<'s>>;
+#[cfg(not(feature = "schema"))]
+type Strict<'s> = Option<std::marker::PhantomData<&'s ()>>;
+
+/// Parse an ifcXML document into a model, in the codec's layout.
+///
+/// Unlike [`ifc_model::Codec::read_bytes`], which flattens failures into a
+/// [`ifc_model::ModelError`], this keeps the typed [`XmlError`] and its path.
 pub fn read(codec: &XmlCodec, bytes: &[u8]) -> Result<Model, XmlError> {
+    if codec.layout() == XmlLayout::Xsd {
+        return read_xsd(codec, bytes);
+    }
+    #[cfg(feature = "schema")]
+    let mut strict: Strict<'_> = codec.strict_schema().map(crate::typing::Layouts::new);
+    #[cfg(not(feature = "schema"))]
+    let mut strict: Strict<'_> = None;
+    let model = read_native(codec, bytes, &mut strict)?;
+    #[cfg(feature = "schema")]
+    if let Some(layouts) = strict.as_mut() {
+        check_references(layouts, &model)?;
+    }
+    Ok(model)
+}
+
+#[cfg(feature = "schema")]
+fn read_xsd(codec: &XmlCodec, bytes: &[u8]) -> Result<Model, XmlError> {
+    match (codec.schema(), codec.profile()) {
+        (Some(schema), Some(profile)) => crate::xsd::read(schema, profile, bytes),
+        _ => Err(XmlError::Unsupported {
+            construct: "the XSD layout without a schema and release profile".into(),
+        }),
+    }
+}
+
+#[cfg(not(feature = "schema"))]
+fn read_xsd(_: &XmlCodec, _: &[u8]) -> Result<Model, XmlError> {
+    Err(XmlError::Unsupported {
+        construct: "the XSD layout without the `schema` feature".into(),
+    })
+}
+
+/// Every reference of a strictly read model resolves to an entity its
+/// declared type admits.
+#[cfg(feature = "schema")]
+fn check_references(
+    layouts: &mut crate::typing::Layouts<'_>,
+    model: &Model,
+) -> Result<(), XmlError> {
+    let schema = layouts.schema();
+    let mut references = Vec::new();
+    for (id, entity) in model.iter() {
+        let Some(layout) = layouts.entity(&entity.type_name, false)? else {
+            continue;
+        };
+        for (value, slot) in entity.attributes.iter().zip(&layout.slots) {
+            let path = format!(
+                "{}/{}",
+                raw_entity_path(&entity.type_name, Some(format_ref(id))),
+                slot.name
+            );
+            references.clear();
+            crate::typing::references(schema, &slot.shape, value, &mut references)
+                .map_err(|error| error.at(path.clone()))?;
+            for (target, declared) in &references {
+                let Some(found) = model.get(*target) else {
+                    return Err(XmlError::UnresolvedReference {
+                        id: format_ref(*target),
+                    }
+                    .at(path));
+                };
+                if !schema.accepts_type(declared, &found.type_name) {
+                    return Err(XmlError::TypeMismatch {
+                        declared: declared.to_string(),
+                        found: format!("a reference to an entity `{}`", found.type_name),
+                    }
+                    .at(path));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn read_native(codec: &XmlCodec, bytes: &[u8], strict: &mut Strict<'_>) -> Result<Model, XmlError> {
     // Text is NOT trimmed: a value element's text is the value, and leading
     // or trailing whitespace in a string is data. Indentation between
     // elements lands in `text_buf` too, but every value start clears it and
@@ -100,7 +205,7 @@ pub fn read(codec: &XmlCodec, bytes: &[u8]) -> Result<Model, XmlError> {
                 }
                 if current.is_none() && !in_header {
                     match start_entity(&e, &name) {
-                        Ok(Some(entity)) => finish_entity(codec, &mut model, entity)?,
+                        Ok(Some(entity)) => finish_entity(codec, &mut model, entity, strict)?,
                         Ok(None) => {}
                         Err(error) => {
                             return Err(error.at(raw_entity_path(&name, attr_value(&e, "id"))));
@@ -159,7 +264,7 @@ pub fn read(codec: &XmlCodec, bytes: &[u8]) -> Result<Model, XmlError> {
                             push_value(&mut stack, &mut current, pending.name.clone(), value);
                             text_buf.clear();
                         } else if let Some(entity) = current.take() {
-                            finish_entity(codec, &mut model, entity)?;
+                            finish_entity(codec, &mut model, entity, strict)?;
                         }
                         text_buf.clear();
                     }
@@ -242,7 +347,7 @@ fn validate_root(
 struct PendingEntity {
     id: EntityId,
     type_name: String,
-    attrs: Vec<(String, Value)>,
+    attrs: Vec<(String, Raw)>,
 }
 
 /// A child element whose value is still being accumulated.
@@ -299,7 +404,7 @@ fn push_value(
         return;
     }
     if let Some(entity) = current.as_mut() {
-        entity.attrs.push((name, value));
+        entity.attrs.push((name, Raw::Value(value)));
     }
 }
 
@@ -318,7 +423,7 @@ fn start_entity(e: &BytesStart<'_>, name: &str) -> Result<Option<PendingEntity>,
         let value = unescape_attribute(&attr)
             .map(|value| value.into_owned())
             .map_err(|error| XmlError::Malformed(error.to_string()))?;
-        attrs.push((key, infer(&value)));
+        attrs.push((key, Raw::Text(value)));
     }
     Ok(Some(PendingEntity {
         id,
@@ -328,17 +433,27 @@ fn start_entity(e: &BytesStart<'_>, name: &str) -> Result<Option<PendingEntity>,
 }
 
 /// Store a completed entity, placing each named value in its slot.
+///
+/// Strictly read, each value is typed from its slot's declaration; else
+/// an attribute's kind is inferred from its text.
 fn finish_entity(
     codec: &XmlCodec,
     model: &mut Model,
     entity: PendingEntity,
+    strict: &mut Strict<'_>,
 ) -> Result<(), XmlError> {
-    let values = slots::order(codec, &entity.type_name, entity.attrs).map_err(|error| {
-        error.at(raw_entity_path(
-            &entity.type_name,
-            Some(format_ref(entity.id)),
-        ))
-    })?;
+    let path = raw_entity_path(&entity.type_name, Some(format_ref(entity.id)));
+    #[cfg(feature = "schema")]
+    if let Some(layouts) = strict.as_mut() {
+        let values = slots::order_strict(layouts, &entity.type_name, &path, entity.attrs)
+            .map_err(|error| error.at(path))?;
+        model.insert(entity.id, Entity::new(entity.type_name, values));
+        return Ok(());
+    }
+    #[cfg(not(feature = "schema"))]
+    let _ = strict;
+    let values =
+        slots::order(codec, &entity.type_name, entity.attrs).map_err(|error| error.at(path))?;
     model.insert(entity.id, Entity::new(entity.type_name, values));
     Ok(())
 }

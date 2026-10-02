@@ -73,9 +73,10 @@ pub use ifc_step::StepCodec;
 #[cfg(feature = "step")]
 pub use ifc_step::{OnMalformed, ParseOptions, StepReader};
 
-/// The ifcXML codec (`.ifcxml`).
+/// The ifcXML codec (`.ifcxml`): its layouts, release profiles and how a
+/// schema-aware read treats content the schema does not declare.
 #[cfg(feature = "ifcxml")]
-pub use ifc_xml::{XmlCodec, XmlProfile};
+pub use ifc_xml::{SchemaReading, XmlCodec, XmlLayout, XmlProfile};
 
 /// The IFC schema as queryable data.
 #[cfg(feature = "schema-api")]

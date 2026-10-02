@@ -3,15 +3,51 @@
 use crate::{reader, writer, XmlProfile};
 use ifc_model::{Codec, Model, ModelError};
 
+/// Which XML layout a codec reads and writes.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum XmlLayout {
+    /// This crate's own lossless layout: one top-level element per entity,
+    /// `i<n>` ids and references, explicit `kind` markers where an attribute
+    /// string could not carry a value's kind. Reads and writes.
+    #[default]
+    Native,
+    /// The buildingSMART ifcXML configuration of ISO 10303-28 that the
+    /// release XSD declares: entities nested and defined in place, `ref` /
+    /// `href` references, inverse attributes, `-wrapper` typed values and
+    /// space-separated list attributes. Read only, always schema-strict.
+    Xsd,
+}
+
+/// How a native-layout codec with a schema treats content the schema does
+/// not declare.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum SchemaReading {
+    /// Every value is typed from its attribute's declaration, never from its
+    /// text, and an entity, attribute or value the schema does not declare
+    /// is a typed error naming it. The default with a schema.
+    #[default]
+    Strict,
+    /// The pre-0.4 behaviour: names resolve through the schema when they
+    /// can, values are inferred from their text, and unknown names are kept
+    /// after the declared slots. Round-trips models the schema does not
+    /// describe, at the price of reading `Name="1"` as an integer.
+    Lenient,
+}
+
 /// The ifcXML codec.
 ///
 /// Construct with [`XmlCodec::default`] for the lossless compatibility dialect,
-/// [`XmlCodec::strict`] for an exact namespace/release profile, or
+/// [`XmlCodec::strict`] for an exact namespace/release profile,
 /// [`XmlCodec::with_schema_and_profile`] for strict output with schema-correct
-/// attribute names.
-#[derive(Default)]
+/// attribute names, or [`XmlCodec::xsd`] to read the buildingSMART XSD
+/// configuration.
+#[derive(Debug, Clone, Default)]
 pub struct XmlCodec {
     profile: Option<XmlProfile>,
+    layout: XmlLayout,
+    reading: SchemaReading,
     #[cfg(feature = "schema")]
     schema: Option<std::sync::Arc<ifc_schema::Schema>>,
 }
@@ -22,6 +58,8 @@ impl XmlCodec {
     pub const fn strict(profile: XmlProfile) -> Self {
         Self {
             profile: Some(profile),
+            layout: XmlLayout::Native,
+            reading: SchemaReading::Strict,
             #[cfg(feature = "schema")]
             schema: None,
         }
@@ -33,17 +71,52 @@ impl XmlCodec {
         self.profile
     }
 
-    /// A codec that emits schema-correct attribute names.
+    /// The XML layout this codec reads and writes.
+    #[must_use]
+    pub const fn layout(&self) -> XmlLayout {
+        self.layout
+    }
+
+    /// How content the schema does not declare is treated. Applies to the
+    /// native layout with a schema; the XSD layout is always strict.
+    #[must_use]
+    pub const fn reading(&self) -> SchemaReading {
+        match self.layout {
+            XmlLayout::Xsd => SchemaReading::Strict,
+            XmlLayout::Native => self.reading,
+        }
+    }
+
+    /// The same codec reading native documents with `reading`.
+    ///
+    /// [`SchemaReading::Lenient`] restores the pre-0.4 schema-aware read.
+    /// Has no effect on an [`XmlLayout::Xsd`] codec, which has no lenient
+    /// mode.
+    #[must_use]
+    pub const fn with_reading(mut self, reading: SchemaReading) -> Self {
+        self.reading = reading;
+        self
+    }
+
+    /// A codec that emits schema-correct attribute names and reads strictly.
+    ///
+    /// Reading types every value from its declaration and refuses names the
+    /// schema does not declare ([`SchemaReading::Strict`]); chain
+    /// [`Self::with_reading`] for the lenient read.
     #[cfg(feature = "schema")]
     #[must_use]
     pub fn with_schema(schema: std::sync::Arc<ifc_schema::Schema>) -> Self {
         Self {
             profile: None,
+            layout: XmlLayout::Native,
+            reading: SchemaReading::Strict,
             schema: Some(schema),
         }
     }
 
     /// A strict release-profile codec with schema-backed attribute names.
+    ///
+    /// Reads strictly, as [`Self::with_schema`] does.
     #[cfg(feature = "schema")]
     #[must_use]
     pub fn with_schema_and_profile(
@@ -52,6 +125,24 @@ impl XmlCodec {
     ) -> Self {
         Self {
             profile: Some(profile),
+            layout: XmlLayout::Native,
+            reading: SchemaReading::Strict,
+            schema: Some(schema),
+        }
+    }
+
+    /// A reader of the buildingSMART XSD configuration of `profile`'s release.
+    ///
+    /// `schema` must be that release's schema; a mismatch is refused when
+    /// reading. The document reads into the same [`Model`] as its STEP
+    /// form. Writing this layout is not implemented and is refused.
+    #[cfg(feature = "schema")]
+    #[must_use]
+    pub fn xsd(schema: std::sync::Arc<ifc_schema::Schema>, profile: XmlProfile) -> Self {
+        Self {
+            profile: Some(profile),
+            layout: XmlLayout::Xsd,
+            reading: SchemaReading::Strict,
             schema: Some(schema),
         }
     }
@@ -61,6 +152,15 @@ impl XmlCodec {
     #[must_use]
     pub fn schema(&self) -> Option<&ifc_schema::Schema> {
         self.schema.as_deref()
+    }
+
+    /// The schema a native read types values from, when reading strictly.
+    #[cfg(feature = "schema")]
+    pub(crate) fn strict_schema(&self) -> Option<&ifc_schema::Schema> {
+        match self.reading {
+            SchemaReading::Strict => self.schema(),
+            SchemaReading::Lenient => None,
+        }
     }
 }
 

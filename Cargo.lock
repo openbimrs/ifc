@@ -991,6 +991,7 @@ dependencies = [
  "ifc-model",
  "ifc-schema",
  "ifc-step",
+ "ifc-validate",
  "quick-xml",
  "thiserror",
 ]
