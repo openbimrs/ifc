@@ -79,9 +79,17 @@ const SEEDS: [u64; 24] = [
 const STEPS: usize = 250;
 /// Ids are drawn from a small range so edits collide with existing entities.
 const ID_RANGE: u64 = 24;
-/// Mixed case on purpose: the index keys on the upper-cased name.
+/// Mixed case on purpose: the index keys on the upper-cased name. Not
+/// schema names: the model is schema-agnostic, and real IFC names here would
+/// count as retype coverage in the authored-coverage measurement
+/// (`scripts/authored-coverage.py`) that this test does not prove.
 const TYPES: [&str; 6] = [
-    "IFCWALL", "IfcWall", "IFCDOOR", "ifcslab", "IFCBEAM", "IfcBeam",
+    "XTESTALPHA",
+    "XTestAlpha",
+    "XTESTBETA",
+    "xtestgamma",
+    "XTESTDELTA",
+    "XTestDelta",
 ];
 
 /// The naive model: entities in file order, plus the highest id ever seen.
@@ -388,8 +396,8 @@ fn transaction(rng: &mut Rng, model: &mut Model, shadow: &mut Shadow, tally: &mu
     // Sometimes the model moves underneath an open transaction.
     let stale = rng.chance(10);
     if stale {
-        let id = model.push(Entity::new("IFCWALL", vec![]));
-        shadow.insert(id, Entity::new("IFCWALL", vec![]));
+        let id = model.push(Entity::new("XTESTSTALE", vec![]));
+        shadow.insert(id, Entity::new("XTESTSTALE", vec![]));
     }
 
     let before = snapshot(model);

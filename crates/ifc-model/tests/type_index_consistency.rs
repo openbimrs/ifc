@@ -61,23 +61,24 @@ fn the_histogram_agrees_with_the_index_after_replacement() {
 /// Regression (#106): the emptied bucket used to stay behind, so
 /// `type_histogram` listed the type with a count of zero -- a summary that
 /// disagreed with a model rebuilt from the same entities.
+/// Non-schema names keep this out of the authored-coverage measurement.
 #[test]
 fn an_emptied_type_leaves_the_histogram() {
     let mut model = Model::new();
-    let wall = EntityId(1);
-    let slab = EntityId(2);
-    let door = EntityId(3);
-    model.insert(wall, Entity::new("IFCWALL", vec![]));
-    model.insert(slab, Entity::new("IFCSLAB", vec![]));
-    model.insert(door, Entity::new("IFCDOOR", vec![]));
+    let removed = EntityId(1);
+    let retyped = EntityId(2);
+    let replaced = EntityId(3);
+    model.insert(removed, Entity::new("XTESTA", vec![]));
+    model.insert(retyped, Entity::new("XTESTB", vec![]));
+    model.insert(replaced, Entity::new("XTESTC", vec![]));
 
-    model.remove(wall);
-    model.retype(slab, "IFCBEAM");
-    model.insert(door, Entity::new("IFCWINDOW", vec![]));
+    model.remove(removed);
+    model.retype(retyped, "XTESTD");
+    model.insert(replaced, Entity::new("XTESTE", vec![]));
 
     assert_eq!(
         model.type_histogram(),
-        [("IFCBEAM", 1), ("IFCWINDOW", 1)],
+        [("XTESTD", 1), ("XTESTE", 1)],
         "removal, retype and replacement each empty a type"
     );
 }
