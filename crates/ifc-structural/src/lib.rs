@@ -31,7 +31,7 @@ pub use authoring::{
     BoundaryConditionDraft, ConnectionConditionDraft, ConnectionDraft, ConnectionDraftKind,
     LoadDraft, LoadGroupDraft, LoadGroupKind, MemberConnectionDraft, MemberDraft, MemberDraftKind,
     MemberPredefinedType, ProjectedOrTrue, ReactionDraft, ReactionDraftKind, RelationshipRootDraft,
-    ResultGroupDraft, StructuralRootDraft,
+    ResultGroupDraft, StructuralRootDraft, VaryingActionDraft,
 };
 pub use condition::{
     AxisValues, BoundaryCondition, BoundaryConditionKind, ConnectionCondition,

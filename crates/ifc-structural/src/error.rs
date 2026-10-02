@@ -123,6 +123,14 @@ pub enum StructuralError {
     },
     /// `GlobalId` was not a well-formed 22-character IFC GUID.
     InvalidGlobalId,
+    /// A draft names an entity the target schema does not declare, such as
+    /// `IfcStructuralLinearActionVarying` outside IFC2X3. Nothing is staged.
+    EntityNotInSchema {
+        /// The IFC entity type being authored.
+        entity: &'static str,
+        /// The target schema's name.
+        schema: String,
+    },
 }
 
 impl std::fmt::Display for StructuralError {
@@ -143,6 +151,7 @@ impl std::fmt::Display for StructuralError {
             Self::InvalidCardinality { entity, attribute, minimum, maximum, actual } => write!(f, "entity {entity}.{attribute} cardinality {actual} is outside {minimum}..{maximum:?}"),
             Self::SemanticViolation { rule, .. } => write!(f, "structural semantic rule `{rule}` failed"),
             Self::InvalidGlobalId => f.write_str("GlobalId is not a valid 22-character IFC GUID"),
+            Self::EntityNotInSchema { entity, schema } => write!(f, "{entity} is not an entity of {schema}"),
         }
     }
 }
