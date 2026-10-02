@@ -12,6 +12,25 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed
+
+- `Model::type_histogram` no longer lists a type with a count of zero
+  after its last entity is removed (`remove`), retyped (`retype`) or
+  replaced under the same id by another type (`insert`). The emptied
+  type-index bucket is now dropped, so the histogram equals that of a
+  model rebuilt from the same entities (#106). `ids_of_type` was already
+  correct (an empty slice either way).
+
+### Added
+
+- `tests/index_coherence_property.rs`: seeded random sequences of
+  `insert`, `push`, `remove`, `retype`, `set_attribute(s)` and committed,
+  refused and stale transactions, checked after every step against a
+  naive shadow store, a scan, a model rebuilt from scratch and an
+  independent reference walk for `ReverseIndex`; a refused transaction
+  must leave the model unchanged, revision included (#106). No new
+  dependency: a local SplitMix64 over fixed seeds keeps it deterministic.
+
 ## [0.3.0] - 2026-09-29
 
 ### Changed

@@ -55,3 +55,29 @@ fn the_histogram_agrees_with_the_index_after_replacement() {
         "counts must not double-count a replaced entity; ties sort by name"
     );
 }
+
+/// A type whose last entity is removed or retyped leaves the histogram.
+///
+/// Regression (#106): the emptied bucket used to stay behind, so
+/// `type_histogram` listed the type with a count of zero -- a summary that
+/// disagreed with a model rebuilt from the same entities.
+#[test]
+fn an_emptied_type_leaves_the_histogram() {
+    let mut model = Model::new();
+    let wall = EntityId(1);
+    let slab = EntityId(2);
+    let door = EntityId(3);
+    model.insert(wall, Entity::new("IFCWALL", vec![]));
+    model.insert(slab, Entity::new("IFCSLAB", vec![]));
+    model.insert(door, Entity::new("IFCDOOR", vec![]));
+
+    model.remove(wall);
+    model.retype(slab, "IFCBEAM");
+    model.insert(door, Entity::new("IFCWINDOW", vec![]));
+
+    assert_eq!(
+        model.type_histogram(),
+        [("IFCBEAM", 1), ("IFCWINDOW", 1)],
+        "removal, retype and replacement each empty a type"
+    );
+}

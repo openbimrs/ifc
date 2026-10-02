@@ -88,6 +88,13 @@ everything released before per-crate changelogs began.
   undeclared by both entry points. A non-coordinate-operation id is
   `WrongType { expected: "IFCCOORDINATEOPERATION" }` (was
   `"IFCMAPCONVERSION"`).
+- `create_map_conversion` and `create_map_conversion_scaled` refuse a
+  negative `Scale`, and `create_map_conversion_scaled` a negative
+  `FactorX`/`FactorY`/`FactorZ`, with `AuthoringInvalid` naming the
+  attribute and nothing staged (#254). Zero and non-finite values were
+  already refused. The reader refuses all of these (`InvalidScale`,
+  `InvalidAttribute`), so a caller that passed one got a record this
+  crate could not read back; such calls now fail at authoring time.
 
 ## [0.4.0] - 2026-09-29
 
