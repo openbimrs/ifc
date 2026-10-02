@@ -24,7 +24,15 @@
 //! output rather than silently producing wrong names. Namespace conformance
 //! is separately explicit: [`XmlCodec::strict`] selects one exact
 //! [`XmlProfile`], while the default keeps the historical compatibility
-//! dialect without claiming XSD conformance.
+//! dialect.
+//!
+//! Neither is valid against the release XSD. The strict profile writes this
+//! crate's own layout under the XSD's target namespace and the release's
+//! schema token; it does not write the XSD configuration (upper-case STEP
+//! type names, `i<n>` ids, `kind` elements and a `schema` root attribute
+//! are its own). An opt-in test, `tests/xsd_output.rs`, validates strict
+//! output from the fixture corpus with `xmllint` against the fetched XSDs
+//! and fails on any departure beyond those it documents.
 //!
 //! # Reading with a schema is strict
 //!

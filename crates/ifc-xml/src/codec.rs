@@ -54,6 +54,10 @@ pub struct XmlCodec {
 
 impl XmlCodec {
     /// A codec that enforces one exact ifcXML release namespace and schema token.
+    ///
+    /// It writes and reads the native layout under that namespace. The
+    /// output is well-formed and its root is the XSD's `ifcXML` element, but
+    /// it is not valid against the release XSD: see [`XmlProfile`].
     #[must_use]
     pub const fn strict(profile: XmlProfile) -> Self {
         Self {
@@ -116,7 +120,8 @@ impl XmlCodec {
 
     /// A strict release-profile codec with schema-backed attribute names.
     ///
-    /// Reads strictly, as [`Self::with_schema`] does.
+    /// Reads strictly, as [`Self::with_schema`] does. Like [`Self::strict`],
+    /// it writes the native layout, not the XSD configuration.
     #[cfg(feature = "schema")]
     #[must_use]
     pub fn with_schema_and_profile(
