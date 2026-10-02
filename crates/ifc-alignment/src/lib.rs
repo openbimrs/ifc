@@ -62,5 +62,8 @@ pub use placement::{
 #[allow(deprecated)]
 pub use referent::station_equations;
 pub use referent::{StationEquation, Stationing, STATION_TOLERANCE};
-pub use vertical::{read_vertical_segment, VerticalLayout, VerticalSegment, VerticalSegmentType};
+pub use vertical::{
+    read_vertical_segment, VerticalLayout, VerticalSeam, VerticalSeamKind, VerticalSegment,
+    VerticalSegmentType,
+};
 pub use view::{AlignmentHierarchy, AlignmentView};

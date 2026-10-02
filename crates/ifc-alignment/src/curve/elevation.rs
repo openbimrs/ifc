@@ -29,6 +29,7 @@
 use axiolid_curve::ElevationLaw;
 use ifc_model::{EntityId, Model};
 
+use super::terminal::split_closing;
 use super::tolerance::SeamTolerance;
 use crate::error::{AlignmentError, AlignmentResult, ProfileSeam};
 use crate::horizontal::AlignmentUnits;
@@ -141,12 +142,27 @@ fn parabolic_arc(segment: &VerticalSegment) -> AlignmentResult<ElevationLaw> {
 /// each written in its own distance restarting at zero. That is exactly how
 /// [`elevation_law`] writes a segment, so no rebasing is needed here.
 ///
-/// Every segment restates where it starts: `StartHeight` and
-/// `StartGradient`. Those must agree with where the previous segment ends --
-/// its law's height at its own `HorizontalLength`, and its `EndGradient` --
-/// or the profile has a step or a kink at the seam. Joining it anyway would
-/// silently shift every downstream height (a step) or its slope (a kink),
-/// so both are refused with [`AlignmentError::ProfileDiscontinuity`].
+/// Every segment restates where it starts: `StartDistAlong` and
+/// `StartHeight` must agree with where the previous segment ends (its
+/// station plus `HorizontalLength`, and its law's height there), or the
+/// profile has a gap or a step at the seam. Joining it anyway would
+/// silently shift every downstream height, so a step is refused with
+/// [`AlignmentError::ProfileDiscontinuity`] (`ProfileSeam::Height`).
+///
+/// A change of grade at a seam whose height is continuous is accepted: a
+/// grade break. IFC4.3 ADD2 (`IfcAlignmentVerticalSegment`): "The
+/// transition at the segment connection is not enforced to be tangential",
+/// and the schema has no attribute that would demand it. The pieces of the
+/// returned law are independent, so the break is carried exactly: each side
+/// keeps its own authored grade, and both meet at one height. Ask
+/// [`VerticalLayout::require_tangential`](crate::VerticalLayout::require_tangential)
+/// to demand tangency explicitly, and [`VerticalLayout::seams`](crate::VerticalLayout::seams)
+/// to list the breaks.
+///
+/// The zero-length segment IFC4.3 requires at the end of a layout adds no
+/// piece; its `StartDistAlong` and `StartHeight` are checked against the
+/// profile's end like any seam. A zero-length segment anywhere else, or as
+/// the only segment, is refused ([`AlignmentError::SemanticViolation`]).
 ///
 /// Seams are compared with [`SeamTolerance::strict`]: floating-point
 /// rounding only. A file whose exporter rounds stations or heights states
@@ -156,8 +172,8 @@ fn parabolic_arc(segment: &VerticalSegment) -> AlignmentResult<ElevationLaw> {
 /// # Errors
 ///
 /// Refuses an empty profile, segments that are not sorted and contiguous,
-/// a height or grade discontinuity at any seam, and any segment without an
-/// exact law.
+/// a height discontinuity at any seam, a misplaced zero-length segment, and
+/// any segment without an exact law.
 pub fn profile_law(segments: &[VerticalSegment]) -> AlignmentResult<ElevationLaw> {
     profile_law_within(segments, SeamTolerance::strict())
 }
@@ -165,8 +181,7 @@ pub fn profile_law(segments: &[VerticalSegment]) -> AlignmentResult<ElevationLaw
 /// [`profile_law`] with an explicit seam tolerance.
 ///
 /// `tolerance` widens only the LENGTH seams (`StartDistAlong` contiguity and
-/// `StartHeight`); gradient seams stay at rounding precision. See
-/// [`SeamTolerance`] for the rule and its evidence.
+/// `StartHeight`). See [`SeamTolerance`] for the rule and its evidence.
 ///
 /// # Errors
 ///
@@ -175,85 +190,71 @@ pub fn profile_law_within(
     segments: &[VerticalSegment],
     tolerance: SeamTolerance,
 ) -> AlignmentResult<ElevationLaw> {
-    let Some(first) = segments.first() else {
+    let (body, closing) = split_closing(segments, |s| s.horizontal_length, |s| s.entity)?;
+    let Some(first) = body.first() else {
         return Err(AlignmentError::SemanticViolation {
             entity: None,
             rule: "a vertical profile must have at least one segment",
         });
     };
-    if segments.len() == 1 {
-        return elevation_law(first);
-    }
 
-    let mut laws: Vec<ElevationLaw> = Vec::with_capacity(segments.len());
-    let mut breaks = Vec::with_capacity(segments.len() - 1);
+    let mut laws: Vec<ElevationLaw> = Vec::with_capacity(body.len());
+    let mut breaks = Vec::with_capacity(body.len() - 1);
     let start = first.start_dist_along;
-    for (index, segment) in segments.iter().enumerate() {
+    for (index, segment) in body.iter().enumerate() {
         let law = elevation_law(segment)?;
         if let (Some(previous), Some(previous_law)) =
-            (index.checked_sub(1).map(|i| &segments[i]), laws.last())
+            (index.checked_sub(1).map(|i| &body[i]), laws.last())
         {
-            let expected = previous.start_dist_along + previous.horizontal_length;
-            // A gap or overlap means the profile does not describe one
-            // continuous road. Joining it anyway would silently move every
-            // downstream height, so it is refused.
-            if !tolerance.same_length(segment.start_dist_along, expected) {
-                return Err(AlignmentError::InvalidSegment {
-                    entity: segment.entity,
-                    detail: "vertical segments must be contiguous and ascending in StartDistAlong",
-                });
-            }
             check_seam(previous, previous_law, segment, tolerance)?;
             breaks.push(segment.start_dist_along - start);
         }
         laws.push(law);
     }
-    Ok(ElevationLaw::Piecewise { breaks, laws })
+    if let (Some(closing), Some(last), Some(last_law)) = (closing, body.last(), laws.last()) {
+        check_seam(last, last_law, closing, tolerance)?;
+    }
+    Ok(match laws.len() {
+        1 => laws.remove(0),
+        _ => ElevationLaw::Piecewise { breaks, laws },
+    })
 }
 
-/// Refuse a step in height or a kink in grade where `segment` begins.
+/// Refuse a gap or overlap in station, or a step in height, where `segment`
+/// begins.
 ///
-/// The previous end height is evaluated from its exact law rather than
+/// A gap or overlap means the profile does not describe one continuous
+/// road. The previous end height is evaluated from its exact law rather than
 /// recomputed here, so the seam is compared against the same polynomial the
-/// profile will evaluate. The previous end grade is its authored
-/// `EndGradient`; for a constant gradient that equals `StartGradient`,
-/// which `elevation_law` has already enforced.
+/// profile will evaluate. The grade is not compared: a grade break at a
+/// height-continuous seam is legal IFC4.3 (see [`profile_law`]).
 fn check_seam(
     previous: &VerticalSegment,
     previous_law: &ElevationLaw,
     segment: &VerticalSegment,
     tolerance: SeamTolerance,
 ) -> AlignmentResult<()> {
+    let expected = previous.start_dist_along + previous.horizontal_length;
+    if !tolerance.same_length(segment.start_dist_along, expected) {
+        return Err(AlignmentError::InvalidSegment {
+            entity: segment.entity,
+            detail: "vertical segments must be contiguous and ascending in StartDistAlong",
+        });
+    }
     let end_height = previous_law.height_at(previous.horizontal_length).ok_or(
         AlignmentError::InvalidSegment {
             entity: previous.entity,
             detail: "vertical segment has no finite end height",
         },
     )?;
-    let seams = [
-        (
-            ProfileSeam::Height,
-            end_height,
-            segment.start_height,
-            tolerance.same_length(segment.start_height, end_height),
-        ),
-        (
-            ProfileSeam::Gradient,
-            previous.end_gradient,
-            segment.start_gradient,
-            tolerance.same_gradient(segment.start_gradient, previous.end_gradient),
-        ),
-    ];
-    for (seam, expected, actual, same) in seams {
-        if !same {
-            return Err(AlignmentError::ProfileDiscontinuity {
-                entity: segment.entity,
-                previous: previous.entity,
-                seam,
-                expected,
-                actual,
-            });
-        }
+    if !tolerance.same_length(segment.start_height, end_height) {
+        return Err(AlignmentError::ProfileDiscontinuity {
+            entity: segment.entity,
+            previous: previous.entity,
+            seam: ProfileSeam::Height,
+            expected: end_height,
+            actual: segment.start_height,
+        });
     }
     Ok(())
 }

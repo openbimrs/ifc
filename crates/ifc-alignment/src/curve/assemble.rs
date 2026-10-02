@@ -23,6 +23,7 @@ use crate::cant::CantLayout;
 use crate::curve::elevation::elevation_law;
 use crate::curve::seam::{check_position, HorizontalSeam, SeamCheck};
 use crate::curve::spiral::{is_exactly_lowerable, refuse_unlowerable, spiral_curve};
+use crate::curve::terminal::split_closing;
 use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::{
     read_horizontal_segment, AlignmentUnits, HorizontalSegment, HorizontalSegmentType,
@@ -128,13 +129,18 @@ impl PartialHorizontalLayout {
 /// spiral family not in `[is_exactly_lowerable]`'s set, or `CIRCULARARC`
 /// with unequal/zero/non-finite start and end radii, or `LINE` with a
 /// non-zero radius -- the pinned neutral curve vocabulary has no exact
-/// primitive for those cases.
+/// primitive for those cases. A zero-length segment, which IFC4.3 allows
+/// only as a layout's closing segment, has no geometry to lower and is
+/// refused as [`AlignmentError::InvalidSegment`].
 pub fn lower_horizontal_segment(
     model: &Model,
     id: EntityId,
     units: AlignmentUnits,
 ) -> AlignmentResult<LoweredAlignmentCurve> {
     let segment = read_horizontal_segment(model, id, units)?;
+    if segment.segment_length == 0.0 {
+        return Err(no_geometry(id));
+    }
     let mut builder = GeometryGraphBuilder::new();
     let root = match &segment.segment_type {
         HorizontalSegmentType::Line => push_line(&mut builder, &segment)?,
@@ -167,13 +173,18 @@ pub fn lower_horizontal_segment(
 ///
 /// Fails if `id` is missing or malformed, and with everything
 /// [`elevation_law`] refuses: `CIRCULARARC` and `CLOTHOID` (no exact law),
-/// and parameters that contradict their family.
+/// and parameters that contradict their family. A zero-length segment (a
+/// layout's closing segment) has no geometry to lower and is refused as
+/// [`AlignmentError::InvalidSegment`].
 pub fn lower_vertical_segment(
     model: &Model,
     id: EntityId,
     units: AlignmentUnits,
 ) -> AlignmentResult<LoweredAlignmentCurve> {
     let segment = read_vertical_segment(model, id, units)?;
+    if segment.horizontal_length == 0.0 {
+        return Err(no_geometry(id));
+    }
     let law = elevation_law(&segment)?;
     let mut builder = GeometryGraphBuilder::new();
     let root = push_vertical_law(&mut builder, &segment, &law)?;
@@ -365,6 +376,16 @@ fn push_spiral(
     )
 }
 
+/// A zero-length segment lowered on its own: IFC4.3 allows one only to
+/// close a layout, where it contributes no geometry.
+fn no_geometry(entity: EntityId) -> AlignmentError {
+    AlignmentError::InvalidSegment {
+        entity,
+        detail: "a zero-length segment has no geometry to lower; IFC4.3 allows it only as the \
+                 closing segment of a layout",
+    }
+}
+
 fn push(builder: &mut GeometryGraphBuilder, node: GeometryNode) -> AlignmentResult<NodeId> {
     builder.push(node).map_err(|error| AlignmentError::Graph {
         detail: error.to_string(),
@@ -398,6 +419,10 @@ pub(super) fn finish(
 /// `LINE` or `CIRCULARARC` is refused, and a seam after a transition spiral,
 /// whose end point has no closed form, is accepted as authored and reported
 /// in [`LoweredAlignmentCurve::seams`].
+///
+/// The zero-length segment IFC4.3 requires at the end of a layout adds no
+/// composite segment; its seam is checked and reported last. A zero-length
+/// segment anywhere else is refused ([`AlignmentError::SemanticViolation`]).
 pub fn lower_horizontal_layout(
     model: &Model,
     entity: EntityId,
@@ -431,11 +456,13 @@ pub fn lower_horizontal_layout(
         segments.push(read_horizontal_segment(model, *id, units)?);
     }
 
+    let (body, closing) = split_closing(&segments, |s| s.segment_length, |s| s.entity)?;
+
     let mut builder = GeometryGraphBuilder::new();
-    let mut composite_segments = Vec::with_capacity(segments.len());
+    let mut composite_segments = Vec::with_capacity(body.len());
     let mut seams = Vec::with_capacity(segments.len().saturating_sub(1));
     let mut station = 0.0_f64;
-    for (index, segment) in segments.iter().enumerate() {
+    for (index, segment) in body.iter().enumerate() {
         let curve = match &segment.segment_type {
             HorizontalSegmentType::Line => push_line(&mut builder, segment)?,
             HorizontalSegmentType::CircularArc => push_arc(&mut builder, segment)?,
@@ -449,7 +476,7 @@ pub fn lower_horizontal_layout(
         let transition = if index == 0 {
             Transition::Discontinuous
         } else {
-            let seam = check_position(&segments[index - 1], segment, station)?;
+            let seam = check_position(&body[index - 1], segment, station)?;
             let transition = seam_transition(&seam);
             seams.push(seam);
             transition
@@ -460,6 +487,11 @@ pub fn lower_horizontal_layout(
             transition,
         });
         station += segment.segment_length;
+    }
+    // The closing segment adds no composite segment; its start is still a
+    // seam against the last piece.
+    if let (Some(closing), Some(last)) = (closing, body.last()) {
+        seams.push(check_position(last, closing, station)?);
     }
 
     let root = push(
@@ -486,9 +518,15 @@ pub fn lower_horizontal_layout(
 /// production alignment into one opaque error.
 ///
 /// Errors that are not a lowering refusal (a wrong entity type, a malformed
-/// attribute, an empty layout) still fail the whole call, because they mean
-/// the layout could not be read at all rather than that one segment resisted
-/// exact lowering.
+/// attribute, an empty layout, a zero-length segment before the end) still
+/// fail the whole call, because they mean the layout could not be read at
+/// all rather than that one segment resisted exact lowering.
+///
+/// The closing zero-length segment IFC4.3 requires is neither lowered nor
+/// refused: it adds no geometry, counts in
+/// [`PartialHorizontalLayout::segment_count`] and
+/// [`PartialHorizontalLayout::lowered_count`], and its seam is reported on
+/// the last run when the segment before it was lowered.
 pub fn lower_horizontal_layout_partial(
     model: &Model,
     entity: EntityId,
@@ -522,6 +560,8 @@ pub fn lower_horizontal_layout_partial(
         segments.push(read_horizontal_segment(model, *id, units)?);
     }
 
+    let (body, closing) = split_closing(&segments, |s| s.segment_length, |s| s.entity)?;
+
     let mut runs = Vec::new();
     let mut refused = Vec::new();
     // Segments accumulated since the last refusal, as (index, node) pairs in a
@@ -532,7 +572,7 @@ pub fn lower_horizontal_layout_partial(
     let mut pending_seams: Vec<HorizontalSeam> = Vec::new();
     let mut station = 0.0_f64;
 
-    for (index, segment) in segments.iter().enumerate() {
+    for (index, segment) in body.iter().enumerate() {
         let lowered = match &segment.segment_type {
             HorizontalSegmentType::Line => push_line(&mut builder, segment),
             HorizontalSegmentType::CircularArc => push_arc(&mut builder, segment),
@@ -572,7 +612,7 @@ pub fn lower_horizontal_layout_partial(
         let transition = match pending.last() {
             None => Transition::Discontinuous,
             Some((previous_index, _)) => {
-                let seam = check_position(&segments[*previous_index], segment, start_station)?;
+                let seam = check_position(&body[*previous_index], segment, start_station)?;
                 let transition = seam_transition(&seam);
                 pending_seams.push(seam);
                 transition
@@ -587,6 +627,11 @@ pub fn lower_horizontal_layout_partial(
             },
         ));
         pending_ids.push(segment.entity);
+    }
+    // The closing segment joins the last run only when the piece before it
+    // was lowered: continuity across a refused segment is not asserted.
+    if let (Some(closing), Some((previous_index, _))) = (closing, pending.last()) {
+        pending_seams.push(check_position(&body[*previous_index], closing, station)?);
     }
     flush_run(
         &mut runs,

@@ -356,7 +356,7 @@ fn a_zero_length_parabola_is_refused_before_it_becomes_infinite() {
         -0.02,
         VerticalSegmentType::ParabolicArc,
     );
-    let error = profile_law(std::slice::from_ref(&segment))
+    let error = ifc_alignment::elevation_law(&segment)
         .expect_err("a zero-length parabola must not produce an infinite coefficient");
     // The length is named as the fault, rather than the non-finite
     // coefficient it would otherwise produce downstream.
@@ -365,6 +365,11 @@ fn a_zero_length_parabola_is_refused_before_it_becomes_infinite() {
         text.contains("positive horizontal length"),
         "refusal was: {text}"
     );
+    // As a whole profile it is a closing segment with nothing before it.
+    assert!(matches!(
+        profile_law(std::slice::from_ref(&segment)),
+        Err(AlignmentError::SemanticViolation { .. })
+    ));
 }
 
 /// A two-segment plan elevates as ONE intrinsic curve (#92): the layout's

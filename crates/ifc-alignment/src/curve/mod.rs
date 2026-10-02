@@ -10,6 +10,7 @@
 //! - `tolerance.rs`: the seam tolerance a vertical profile is checked at.
 //! - `plan.rs`: a whole horizontal layout as one exact intrinsic curve.
 //! - `seam.rs`: the closed-form rule for checking horizontal seams.
+//! - `terminal.rs`: the zero-length segment that closes every layout.
 
 mod assemble;
 mod elevation;
@@ -18,6 +19,7 @@ mod plan;
 mod reference;
 mod seam;
 mod spiral;
+pub(crate) mod terminal;
 mod tolerance;
 
 pub use assemble::{

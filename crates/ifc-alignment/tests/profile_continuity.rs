@@ -1,13 +1,18 @@
-//! Vertical profile seams: a step in height or a kink in grade is refused.
+//! Vertical profile seams: a step in height is refused, a grade break with
+//! continuous height is accepted (#259).
 //!
-//! Each segment restates its own `StartHeight` and `StartGradient`. When
-//! they disagree with where the previous segment ends, joining the pieces
-//! would shift every downstream height (a step) or slope (a kink) while the
-//! profile still looks well formed. Fixtures are entity records read through
+//! Each segment restates its own `StartHeight` and `StartGradient`. When the
+//! height disagrees with where the previous segment ends, joining the pieces
+//! would shift every downstream height while the profile still looks well
+//! formed. A change of grade at a height-continuous seam is legal IFC4.3
+//! ADD2 (`IfcAlignmentVerticalSegment`: "The transition at the segment
+//! connection is not enforced to be tangential") and is carried exactly by
+//! the piecewise law. Fixtures are entity records read through
 //! `read_vertical_segment`, so the check is proved on the path a file takes.
 
 use std::sync::Arc;
 
+use axiolid_curve::ElevationLaw;
 use ifc_alignment::{
     profile_law, read_vertical_segment, AlignmentError, AlignmentUnits, ProfileSeam,
     VerticalSegment,
@@ -162,36 +167,61 @@ fn a_millimetre_step_is_refused() {
     ));
 }
 
-/// Height agrees but the grade jumps from 2% to 3%: a kink.
-#[test]
-fn a_grade_kink_is_refused() {
-    let kinked = (1100.0, 100.0, 52.0, 0.03, 0.03, None, "CONSTANTGRADIENT");
-    let error = profile_law(&read_profile(&[GRADE, kinked])).expect_err("kink");
-    assert_eq!(
-        error,
-        AlignmentError::ProfileDiscontinuity {
-            entity: EntityId(2),
-            previous: EntityId(1),
-            seam: ProfileSeam::Gradient,
-            expected: 0.02,
-            actual: 0.03,
-        }
-    );
-    assert!(error.to_string().contains("gradient"), "{error}");
+/// The two pieces either side of the seam at plan distance `at`.
+fn pieces(law: &ElevationLaw, at: f64) -> (&ElevationLaw, &ElevationLaw, f64) {
+    let ElevationLaw::Piecewise { breaks, laws } = law else {
+        panic!("a multi-segment profile is piecewise: {law:?}");
+    };
+    let index = breaks.iter().position(|b| *b == at).expect("seam");
+    let start = if index == 0 { 0.0 } else { breaks[index - 1] };
+    (&laws[index], &laws[index + 1], at - start)
 }
 
-/// A kink after a parabola: the next piece must continue from its exit
-/// grade (-3%), not its entry grade (+2%).
+/// Height agrees but the grade changes from 2% to 3%: a grade break. It is
+/// accepted, and both sides keep their own grade at one exact height.
 #[test]
-fn a_kink_against_a_parabola_exit_grade_is_refused() {
-    let wrong = (1300.0, 50.0, 51.0, 0.02, 0.02, None, "CONSTANTGRADIENT");
-    assert!(matches!(
-        profile_law(&read_profile(&[GRADE, CREST, wrong])),
+fn a_grade_break_with_continuous_height_is_accepted() {
+    let broken = (1100.0, 100.0, 52.0, 0.03, 0.03, None, "CONSTANTGRADIENT");
+    let law = profile_law(&read_profile(&[GRADE, broken])).expect("grade break");
+    let (before, after, local_end) = pieces(&law, 100.0);
+    assert_eq!(before.height_at(local_end), Some(52.0));
+    assert_eq!(after.height_at(0.0), Some(52.0));
+    assert_eq!(before.grade_at(local_end), Some(0.02));
+    assert_eq!(after.grade_at(0.0), Some(0.03));
+    // Through the whole law: the seam belongs to the piece starting there.
+    assert_eq!(law.height_at(100.0), Some(52.0));
+    assert_eq!(law.grade_at(100.0), Some(0.03));
+    assert_eq!(law.height_at(200.0), Some(55.0));
+}
+
+/// A grade break after a parabola: the next piece starts at the parabola's
+/// end height (51.0) but at +2%, not its exit grade of -3%.
+#[test]
+fn a_grade_break_after_a_parabola_is_accepted() {
+    let rising = (1300.0, 50.0, 51.0, 0.02, 0.02, None, "CONSTANTGRADIENT");
+    let law = profile_law(&read_profile(&[GRADE, CREST, rising])).expect("grade break");
+    let (before, after, local_end) = pieces(&law, 300.0);
+    assert_eq!(before.height_at(local_end), Some(51.0));
+    assert_eq!(after.height_at(0.0), Some(51.0));
+    let exit = before.grade_at(local_end).expect("grade");
+    assert!((exit + 0.03).abs() < 1e-15, "parabola exit grade {exit}");
+    assert_eq!(after.grade_at(0.0), Some(0.02));
+    assert_eq!(law.height_at(350.0), Some(52.0));
+}
+
+/// A grade break does not excuse a step: height is still checked at the
+/// same seam.
+#[test]
+fn a_grade_break_with_a_height_step_is_refused() {
+    let stepped = (1100.0, 100.0, 52.5, 0.03, 0.03, None, "CONSTANTGRADIENT");
+    assert_eq!(
+        profile_law(&read_profile(&[GRADE, stepped])),
         Err(AlignmentError::ProfileDiscontinuity {
-            entity: EntityId(3),
-            previous: EntityId(2),
-            seam: ProfileSeam::Gradient,
-            ..
+            entity: EntityId(2),
+            previous: EntityId(1),
+            seam: ProfileSeam::Height,
+            expected: 52.0,
+            actual: 52.5,
         })
-    ));
+    );
 }

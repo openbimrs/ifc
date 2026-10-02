@@ -27,6 +27,13 @@ The [`openbim-ifc`](https://crates.io/crates/openbim-ifc) facade also provides i
   and heights to their stated precision are accepted; a step beyond it is
   refused. Without a declared precision only floating-point rounding is
   tolerated (`SeamTolerance`, `vertical_profile_law`).
+- A grade break at a height-continuous vertical seam is legal IFC4.3 and
+  accepted; the piecewise elevation law carries it exactly, and
+  `VerticalLayout::seams` reports it. `require_tangential` asks for a
+  tangent profile explicitly.
+- The zero-length segment IFC4.3 requires at the end of every layout adds
+  no geometry; its start is checked against the layout's end like any
+  seam. A zero-length segment anywhere else is refused.
 - Cant is exact data per station (`CantLayout::frame_at_distance`: rail
   heights, cant, bank angle `arcsin(D / b)`, rotation-point elevation and
   the section frame). The cant-carrying centreline

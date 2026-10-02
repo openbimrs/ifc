@@ -109,10 +109,12 @@ pub enum AlignmentError {
     },
     /// Two consecutive vertical segments disagree where they meet.
     ///
-    /// The segment at `entity` restates a start height or start gradient
-    /// that differs from where `previous` ends, beyond a magnitude-scaled
-    /// tolerance. A step in height or a kink in grade is refused rather than
-    /// joined, because joining it would shift every downstream height.
+    /// The segment at `entity` restates a start height that differs from
+    /// where `previous` ends, beyond the seam tolerance: a step, refused
+    /// rather than joined because joining it would shift every downstream
+    /// height. A grade break at a height-continuous seam is legal IFC4.3 and
+    /// is reported as [`ProfileSeam::Gradient`] only when tangency is asked
+    /// for explicitly (`VerticalLayout::require_tangential`).
     ProfileDiscontinuity {
         /// The segment whose start disagrees.
         entity: EntityId,
@@ -171,7 +173,10 @@ pub enum AlignmentError {
 pub enum ProfileSeam {
     /// `StartHeight` differs from the previous segment's end height: a step.
     Height,
-    /// `StartGradient` differs from the previous `EndGradient`: a kink.
+    /// `StartGradient` differs from the previous `EndGradient`: a grade
+    /// break. Legal IFC4.3; produced only by an explicit tangency request
+    /// (`VerticalLayout::require_tangential`), never by reading or lowering
+    /// a profile.
     Gradient,
 }
 

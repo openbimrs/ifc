@@ -11,6 +11,7 @@ use ifc_model::{EntityId, Model};
 
 use crate::cant::evaluate::{cant_at, CantAtStation};
 use crate::cant::segment::{read_cant_segment, CantSegment};
+use crate::curve::terminal::split_closing;
 use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::AlignmentUnits;
 use crate::view::AlignmentView;
@@ -30,6 +31,12 @@ pub struct CantLayout {
 impl CantLayout {
     /// Resolve `IfcAlignmentCant#entity`'s nested `IfcAlignmentSegment`
     /// chain into an ordered, continuity-checked cant profile.
+    ///
+    /// The zero-length segment IFC4.3 requires at the end of a layout is
+    /// kept in [`Self::segments`]; its station and start cant are checked
+    /// against the previous segment's end like any seam. A zero-length
+    /// segment anywhere else, or as the only segment, is refused
+    /// ([`AlignmentError::SemanticViolation`]).
     pub fn resolve(
         model: &Model,
         entity: EntityId,
@@ -78,6 +85,10 @@ impl CantLayout {
         for id in ids {
             segments.push(read_cant_segment(model, id, units)?);
         }
+        // IFC4.3 closes every layout with a zero-length segment; one
+        // anywhere else is refused. The closing segment stays in the layout
+        // and its start cant is checked below like any seam.
+        split_closing(&segments, |s| s.horizontal_length, |s| s.entity)?;
 
         // Ordering by nesting order is authoritative (IFC4X3 does not use a
         // numeric sequence field here), but a malformed file could still

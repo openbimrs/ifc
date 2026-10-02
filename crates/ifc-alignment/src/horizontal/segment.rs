@@ -78,7 +78,10 @@ pub struct HorizontalSegment {
     pub start_radius: f64,
     /// `EndRadiusOfCurvature`.
     pub end_radius: f64,
-    /// `SegmentLength`: arc length along the segment. Must be positive.
+    /// `SegmentLength`: arc length along the segment. Non-negative
+    /// (`IfcNonNegativeLengthMeasure`); zero only for the closing segment
+    /// IFC4.3 requires at the end of a layout, which the layout paths
+    /// accept in last place alone.
     pub segment_length: f64,
     /// `GravityCenterLineHeight`, when authored (rail/cant-related, not
     /// used by exact lowering).
@@ -100,7 +103,12 @@ use crate::slot::horizontal::{
 /// `IfcAlignmentHorizontalSegment`, `StartPoint` does not resolve to an
 /// `IfcCartesianPoint` with at least two coordinates, an attribute is
 /// missing or the wrong kind, any value is non-finite, or `SegmentLength`
-/// is not positive.
+/// is negative.
+///
+/// A zero `SegmentLength` is read: IFC4.3 (concept template *Alignment
+/// Layout - Horizontal, Vertical and Cant*) requires a zero-length segment
+/// at the end of every layout. Where it may stand is a layout question, so
+/// the layout paths decide it, not this reader.
 pub fn read_horizontal_segment(
     model: &Model,
     id: EntityId,
@@ -197,11 +205,11 @@ pub fn read_horizontal_segment(
     ];
     if values.iter().any(|value| !value.is_finite())
         || gravity_center_line_height.is_some_and(|value| !value.is_finite())
-        || segment_length <= 0.0
+        || segment_length < 0.0
     {
         return Err(AlignmentError::InvalidSegment {
             entity: id,
-            detail: "coordinates and parameters must be finite and SegmentLength positive",
+            detail: "coordinates and parameters must be finite and SegmentLength non-negative",
         });
     }
 
