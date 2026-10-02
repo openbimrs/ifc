@@ -2,8 +2,9 @@
 
 Distribution systems as borrowed views over `ifc-model`: systems and zones,
 ports and their attachment to elements, the port connection graph with
-cycle-safe traversal, and flow roles and direction, plus authoring for
-systems, ports and their relationships.
+cycle-safe traversal, flow roles and direction, and the buildings and
+facilities a system serves, plus authoring for systems, ports and their
+relationships.
 
 ```bash
 cargo add ifc-systems

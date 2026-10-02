@@ -44,6 +44,7 @@ mod distribution;
 mod error;
 mod owned;
 mod release;
+mod services;
 mod system_kind;
 
 pub use distribution::{
@@ -59,6 +60,7 @@ pub use owned::{
     create_system_with_owner_history, nest_ports_with_owner_history,
     reference_in_spatial_structure_with_owner_history,
 };
+pub use services::{serve_buildings, serve_buildings_with_owner_history};
 pub use system_kind::{
     create_classified_system, create_classified_system_with_owner_history, ClassifiedSystemDraft,
     SystemKind,

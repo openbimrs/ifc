@@ -77,9 +77,10 @@ pub enum SystemAnomaly {
         /// That entity's declared type, upper-cased.
         type_name: String,
     },
-    /// `IfcRelAssignsToGroup` whose `RelatingGroup` is not a system.
+    /// `IfcRelAssignsToGroup` whose `RelatingGroup` is not a system, or an
+    /// `IfcRelServicesBuildings` whose `RelatingSystem` is not one.
     ///
-    /// The relationship is shared with every other kind of group, so a
+    /// The group relationship is shared with every other kind of group, so a
     /// membership may legitimately point at something this crate does not
     /// model. It is recorded rather than silently dropped.
     NotASystem {
@@ -88,6 +89,35 @@ pub enum SystemAnomaly {
         /// The group it named.
         group: EntityId,
         /// The group's declared type, upper-cased.
+        type_name: String,
+    },
+    /// A system states more than one `IfcRelServicesBuildings` (#230).
+    ///
+    /// `IfcSystem.ServicesBuildings` is `SET [0:1]` in IFC2X3, IFC4 and
+    /// IFC4X3. The lowest relationship id is kept so the result is
+    /// deterministic, and every further one is reported here and not read.
+    ServicesBuildingsTwice {
+        /// The system.
+        system: EntityId,
+        /// The relationship that was kept.
+        kept: EntityId,
+        /// The relationship that was rejected.
+        rejected: EntityId,
+    },
+    /// A system-service relationship names a served structure the declared
+    /// release does not admit there (#230).
+    ///
+    /// `IfcRelServicesBuildings.RelatedBuildings` takes an
+    /// `IfcSpatialStructureElement` in IFC2X3 and an `IfcSpatialElement` in
+    /// IFC4 and IFC4X3; the IFC4X3 `ServicesFacilities` reference's
+    /// `RelatingStructure` takes an `IfcSpatialElement`. The target is
+    /// reported and left out.
+    ServicedNotSpatial {
+        /// The relationship stating it.
+        relation: EntityId,
+        /// The entity named as served.
+        target: EntityId,
+        /// Its declared type, upper-cased.
         type_name: String,
     },
 }

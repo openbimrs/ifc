@@ -118,6 +118,7 @@ mod tests {
         use crate::connectivity::relation::slot as connects;
         use crate::port::definition::slot as port;
         use crate::system::group::slot as group;
+        use crate::system::services::slot as services;
         use crate::zone::spatial_group::slot as spatial;
         let pinned = [
             (
@@ -169,6 +170,16 @@ mod tests {
                 "IFCRELREFERENCEDINSPATIALSTRUCTURE",
                 "RelatingStructure",
                 spatial::RELATING_STRUCTURE,
+            ),
+            (
+                "IFCRELSERVICESBUILDINGS",
+                "RelatingSystem",
+                services::RELATING_SYSTEM,
+            ),
+            (
+                "IFCRELSERVICESBUILDINGS",
+                "RelatedBuildings",
+                services::RELATED_BUILDINGS,
             ),
             ("IFCSYSTEM", "Name", group::NAME),
             ("IFCDISTRIBUTIONPORT", "Name", port::NAME),

@@ -14,6 +14,24 @@ everything released before per-crate changelogs began.
 
 ### Added
 
+- What a system serves (#230). `System` gains `serviced_buildings`, read
+  from `IfcRelServicesBuildings` in IFC2X3, IFC4 and IFC4X3, and
+  `serviced_facilities`, the IFC4X3 `IfcSystem.ServicesFacilities` view
+  (the structures whose `IfcRelReferencedInSpatialStructure` lists the
+  system; empty under IFC2X3 and IFC4, whose `RelatedElements` cannot hold
+  a system). The admissible target type comes from the declared release's
+  table (`IfcSpatialStructureElement` in IFC2X3, `IfcSpatialElement` after).
+  New `SystemAnomaly` variants report a second relationship for one system
+  (`ServicesBuildingsTwice`; `ServicesBuildings` is `SET [0:1]`) and a
+  target the release does not admit (`ServicedNotSpatial`); dangling
+  targets are `Dangling`, a non-system relating end `NotASystem`.
+- `serve_buildings` and `serve_buildings_with_owner_history` stage an
+  `IfcRelServicesBuildings` in the model's declared release, refusing a
+  relating end that is not an `IfcSystem`, a target the release's
+  `RelatedBuildings` does not admit, a missing reference, a repeated
+  target, and a system that already services buildings in the model or on
+  the transaction. A refusal stages nothing.
+
 - `System` gains `long_name` and `predefined_type` (#231): the
   `IfcDistributionSystem` `LongName` and `PredefinedType`
   (`IfcDistributionSystemEnum` token), read by attribute name in the
