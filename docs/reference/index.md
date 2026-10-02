@@ -21,7 +21,7 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 | [`ifc-schema`](./crates/ifc-schema) | <span class="status-implemented">Implemented</span> | 0.2.2 | IFC schema as data: entity table, supertype chain, attribute names. |
 | [`ifc-step`](./crates/ifc-step) | <span class="status-implemented">Implemented</span> | 0.3.0 | STEP physical file (ISO 10303-21) codec for the IFC model. |
 | [`ifc-validate`](./crates/ifc-validate) | <span class="status-implemented">Implemented</span> | 0.3.0 | Schema conformance: WHERE rules, cardinality, GUID and reference integrity. |
-| [`ifc-xml`](./crates/ifc-xml) | <span class="status-implemented">Implemented</span> | 0.2.1 | ifcXML (ISO 10303-28) codec for the IFC model. |
+| [`ifc-xml`](./crates/ifc-xml) | <span class="status-implemented">Implemented</span> | 0.2.2 | ifcXML (ISO 10303-28) codec for the IFC model. |
 
 ## Domain views
 

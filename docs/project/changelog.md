@@ -1108,7 +1108,7 @@ variant, three rule ids are renamed, and `Budget::max_depth` is removed.
   `ifc-resource` already did. A file that was written with one would have
   failed its own GlobalId check.
 
-## [0.2.2] - 2026-09-27
+## [0.2.2] - 2026-10-02
 
 ### ifc-model
 
@@ -1144,6 +1144,24 @@ variant, three rule ids are renamed, and `Budget::max_depth` is removed.
   and, where there is one, the target. The accessor is a method rather
   than a new field so that `SpaceBoundary`, which has only public fields,
   keeps its struct-literal construction and this change stays additive.
+
+### ifc-xml
+
+Maintenance release from `maint/ifc-xml-0.2`: the 0.2 line with only the
+quick-xml upgrade from #267, for consumers still on ifc-model 0.2.
+
+### Security
+
+- Require quick-xml 0.42 instead of 0.37, which is affected by
+  RUSTSEC-2026-0194 and RUSTSEC-2026-0195 (#267). Reading is unchanged:
+  entity and character references are resolved as before, literal tabs and
+  line breaks in attribute values are kept, and unknown entities are still
+  refused.
+
+### Changed
+
+- `impl From<quick_xml::Error> for XmlError` now names quick-xml 0.42's
+  error type.
 
 ## [0.2.1] - 2026-09-27
 

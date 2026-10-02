@@ -385,10 +385,10 @@
           "url": "https://crates.io/crates/ifc-xml"
         }
       ],
-      "released": "0.2.1",
-      "released_date": "2026-09-27",
+      "released": "0.2.2",
+      "released_date": "2026-10-02",
       "status": "implemented",
-      "version": "0.2.1"
+      "version": "0.2.2"
     },
     "openbim-ifc": {
       "description": "Facade for the openBIM IFC crates: pick codecs and domains as features.",
