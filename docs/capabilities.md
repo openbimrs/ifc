@@ -51,9 +51,9 @@ committed figure that moves that often only produces merge conflicts.
 | `ifc-schema` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-spatial` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-step` | <span class="status-implemented">Implemented</span> |  |
-| `ifc-structural` | <span class="status-implemented">Implemented</span> | [#228](https://github.com/openbimrs/ifc/issues/228) |
+| `ifc-structural` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-style` | <span class="status-implemented">Implemented</span> |  |
-| `ifc-systems` | <span class="status-implemented">Implemented</span> | [#231](https://github.com/openbimrs/ifc/issues/231) |
+| `ifc-systems` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-tabular` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-template-catalog` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-validate` | <span class="status-implemented">Implemented</span> |  |
