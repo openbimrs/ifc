@@ -109,6 +109,7 @@ gate_test() {
     cargo test -p ifc-geometry --test declaration_manifest
     cargo test -p ifc-geometry --test no_backend_dependency
     cargo test -p ifc-geometry --test kernel_free_build
+    cargo test -p ifc-georef --test kernel_free_build
 }
 
 gate_features() {
@@ -121,6 +122,15 @@ gate_features() {
     # Intra-doc links to feature-gated items resolve under `--all-features` and
     # break here, so rustdoc gets its own kernel-free run.
     RUSTDOCFLAGS="-D warnings" cargo doc -p ifc-geometry --no-default-features --no-deps
+
+    # The semantic georeferencing column (#268): without `transform`,
+    # ifc-georef reads CRS, map-conversion parameters and north with no
+    # geometry crate linked. kernel_free_build.rs asserts the resolved graph
+    # and reads an IFC4 map conversion and true north in this column.
+    cargo build -p ifc-georef --no-default-features
+    cargo test -p ifc-georef --no-default-features
+    cargo clippy -p ifc-georef --no-default-features --all-targets -- -D warnings
+    RUSTDOCFLAGS="-D warnings" cargo doc -p ifc-georef --no-default-features --no-deps
 
     # The compile column. `--all-features` builds it but cannot prove it is
     # OPTIONAL: a default-enabled feature edge would satisfy an --all-features

@@ -41,7 +41,6 @@
 //! here to the target's `AngleUnit`, so the values and the declared unit
 //! are both returned and the caller decides.
 
-use axiolid_core::{Mat3, Transform3, Vec3};
 use ifc_model::value::Value;
 use ifc_model::EntityId;
 
@@ -151,7 +150,7 @@ pub(super) fn lower(
         .clone()
         .unwrap_or_else(|| project_unit.clone());
     let metres = map_unit.metres_per_unit;
-    let translation = Vec3::new(
+    let translation = [
         op.finite(
             slot::FIRST_COORDINATE,
             "FirstCoordinate",
@@ -167,21 +166,25 @@ pub(super) fn lower(
             "Height",
             coordinates.height.unwrap_or(0.0) * metres,
         )?,
-    );
-    Ok(ProjectToMap {
-        source_crs: source.entity(),
+    ];
+    Ok(ProjectToMap::new(
         source,
-        operation: op.id,
-        kind: OperationKind::RigidOperation {
+        op.id,
+        OperationKind::RigidOperation {
             height: coordinates.height,
         },
         target_crs,
-        transform: Transform3::from_mat3_translation(Mat3::IDENTITY, translation),
-        project_unit,
-        map_unit,
-        declared_scale: 1.0,
-        x_axis_direction: (1.0, 0.0),
-    })
+        [
+            coordinates.first,
+            coordinates.second,
+            coordinates.height.unwrap_or(0.0),
+        ],
+        (project_unit, map_unit),
+        1.0,
+        (1.0, 0.0),
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+        translation,
+    ))
 }
 
 /// The two coordinates, their shared measure, and the optional height.

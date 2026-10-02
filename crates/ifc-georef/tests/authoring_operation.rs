@@ -4,7 +4,6 @@
 //! northings are coordinates on a projection plane, so aiming them at
 //! a geographic CRS produces numbers that parse and denote nothing.
 
-use axiolid_core::{Point3, Vec3};
 use ifc_georef::{
     create_angular_rigid_operation, create_geographic_crs, create_map_conversion,
     create_map_conversion_scaled, create_projected_crs, create_rigid_operation,
@@ -207,10 +206,7 @@ fn a_rigid_operation_accepts_any_target() {
     assert_eq!(entity.attributes[4], Value::Null);
 
     let resolved = resolve_project_to_map(&model, length, 1.0).expect("length form resolves");
-    assert_eq!(
-        resolved.transform.transform_point3(Point3::ZERO),
-        Vec3::new(10.0, 20.0, 3.0)
-    );
+    assert_eq!(resolved.map_point([0.0, 0.0, 0.0]), [10.0, 20.0, 3.0]);
     let view = GeorefView::for_model(&model).expect("IFC4X3");
     let offset = resolve_geographic_offset_in(&view, angular).expect("angular form reads");
     assert_eq!(

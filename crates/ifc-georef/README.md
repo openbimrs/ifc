@@ -15,6 +15,16 @@ reproject coordinates.
 cargo add ifc-georef
 ```
 
+The default `transform` feature adds the `axiolid_core::Transform3` view
+(`ProjectToMap::transform`, `compose_project_frame`). A semantic consumer
+that needs only the parameters (CRS, units, eastings, northings, height,
+axis, scale, north, site reference) turns it off and links no geometry
+crate:
+
+```bash
+cargo add ifc-georef --no-default-features
+```
+
 The [`openbim-ifc`](https://crates.io/crates/openbim-ifc) facade also provides it behind its
 `georef` feature.
 

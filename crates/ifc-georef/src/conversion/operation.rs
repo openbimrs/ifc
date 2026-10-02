@@ -12,7 +12,17 @@
 //! `IfcGeographicCRS`. No metre-to-metre affine transform expresses that,
 //! so it is refused with [`GeorefError::CoordinateMeasureMismatch`] rather
 //! than approximated.
+//!
+//! # Kernel-free parameters
+//!
+//! [`ProjectToMap`] carries the resolved operation as plain `f64` (its
+//! authored eastings, northings and height, and the metre-to-metre linear
+//! part and translation behind [`ProjectToMap::map_point`]). The
+//! `axiolid_core::Transform3` view of the same operation exists only with
+//! the default `transform` feature, so a semantic consumer can read every
+//! parameter without linking a geometry kernel (#268).
 
+#[cfg(feature = "transform")]
 use axiolid_core::Transform3;
 use ifc_model::value::Value;
 use ifc_model::{Entity, EntityId, Model};
@@ -64,7 +74,22 @@ pub struct ProjectToMap {
     /// The target projected CRS.
     pub target_crs: ProjectedCrs,
     /// Affine operation from neutral project metres to neutral map metres.
+    ///
+    /// Only with the default `transform` feature. The same operation is
+    /// always available as plain numbers through [`Self::map_point`],
+    /// [`Self::linear_part`] and [`Self::translation`].
+    #[cfg(feature = "transform")]
     pub transform: Transform3,
+    /// `Eastings` as authored, in `map_unit`. For a rigid operation,
+    /// `FirstCoordinate`, the offset along the target CRS's first axis.
+    pub eastings: f64,
+    /// `Northings` as authored, in `map_unit`. For a rigid operation,
+    /// `SecondCoordinate`, the offset along the target CRS's second axis.
+    pub northings: f64,
+    /// `OrthogonalHeight` as authored, in `map_unit`. For a rigid
+    /// operation, `Height`, or `0.0` when the file states none (see
+    /// [`OperationKind::RigidOperation`]).
+    pub orthogonal_height: f64,
     /// Length unit the project authored its coordinates in.
     pub project_unit: LengthUnit,
     /// Length unit the map coordinates are expressed in.
@@ -78,6 +103,88 @@ pub struct ProjectToMap {
     /// resolution needs the rotation alone, without `transform`'s scale
     /// and translation. `(1, 0)` for a rigid operation.
     pub x_axis_direction: (f64, f64),
+    /// Linear part, metres to metres, as three columns (the images of the
+    /// project's X, Y and Z axes).
+    linear: [[f64; 3]; 3],
+    /// Translation, map metres: the map position of the project origin.
+    translation: [f64; 3],
+}
+
+impl ProjectToMap {
+    /// Assemble the resolved value from its metre-to-metre affine parts,
+    /// deriving the `Transform3` view when the feature is on.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn new(
+        source: OperationSource,
+        operation: EntityId,
+        kind: OperationKind,
+        target_crs: ProjectedCrs,
+        authored: [f64; 3],
+        units: (LengthUnit, LengthUnit),
+        declared_scale: f64,
+        x_axis_direction: (f64, f64),
+        linear: [[f64; 3]; 3],
+        translation: [f64; 3],
+    ) -> Self {
+        let (project_unit, map_unit) = units;
+        Self {
+            source_crs: source.entity(),
+            source,
+            operation,
+            kind,
+            target_crs,
+            #[cfg(feature = "transform")]
+            transform: transform3(&linear, &translation),
+            eastings: authored[0],
+            northings: authored[1],
+            orthogonal_height: authored[2],
+            project_unit,
+            map_unit,
+            declared_scale,
+            x_axis_direction,
+            linear,
+            translation,
+        }
+    }
+
+    /// Carry a point from project metres to map metres.
+    ///
+    /// Plain arithmetic on the resolved parameters, identical to
+    /// `transform.transform_point3` (same operation order, so the same
+    /// rounding) and available without the `transform` feature.
+    #[must_use]
+    pub fn map_point(&self, point: [f64; 3]) -> [f64; 3] {
+        let [c0, c1, c2] = self.linear;
+        let t = self.translation;
+        std::array::from_fn(|i| c0[i] * point[0] + c1[i] * point[1] + c2[i] * point[2] + t[i])
+    }
+
+    /// The linear part, metres to metres, as three columns: the images of
+    /// the project's unit X, Y and Z axes. Scale, unit conversion, per-axis
+    /// factors and rotation are folded in.
+    #[must_use]
+    pub fn linear_part(&self) -> [[f64; 3]; 3] {
+        self.linear
+    }
+
+    /// The translation in map metres: where the project origin lands.
+    /// `[eastings, northings, orthogonal_height]` converted from
+    /// `map_unit` to metres.
+    #[must_use]
+    pub fn translation(&self) -> [f64; 3] {
+        self.translation
+    }
+}
+
+/// The `Transform3` view of an affine operation held as plain numbers.
+#[cfg(feature = "transform")]
+fn transform3(linear: &[[f64; 3]; 3], translation: &[f64; 3]) -> Transform3 {
+    use axiolid_core::{Mat3, Vec3};
+    let column = |c: &[f64; 3]| Vec3::new(c[0], c[1], c[2]);
+    Transform3::from_mat3_translation(
+        Mat3::from_cols(column(&linear[0]), column(&linear[1]), column(&linear[2])),
+        column(translation),
+    )
 }
 
 /// Resolve a project-to-map coordinate operation and normalize both frames

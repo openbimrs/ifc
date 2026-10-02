@@ -21,9 +21,16 @@ Georeferencing: map conversion, coordinate reference systems, site placement.
 
 IFC project-to-map coordinate operations.
 
-This crate resolves IFC references, units, axis defaults, and CRS metadata,
-then emits a format-neutral `axiolid_core::Transform3`. It does not place
+This crate resolves IFC references, units, axis defaults, and CRS metadata
+into plain-number operation parameters and, with the default `transform`
+feature, a format-neutral `axiolid_core::Transform3`. It does not place
 products, reproject coordinates, or select a geometry backend.
+
+## Features
+
+| Feature | Default | Enables |
+| --- | --- | --- |
+| `transform` | yes | `dep:axiolid-core` |
 
 ## Depends on
 

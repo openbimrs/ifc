@@ -4,7 +4,6 @@
 #[path = "support/step.rs"]
 mod support;
 
-use axiolid_core::{Point3, Vec3};
 use ifc_georef::{
     grid_north_direction, resolve_geographic_offset_in, resolve_project_to_map,
     resolve_project_to_map_in, GeorefError, GeorefView, OperationKind, OperationSource,
@@ -18,11 +17,12 @@ fn ifc4x3(operation: &str) -> Model {
     step("IFC4X3_ADD2", &format!("{BASE}{GEOGRAPHIC}{operation}\n"))
 }
 
-fn close(actual: Vec3, expected: Vec3) {
-    assert!(
-        (actual - expected).length() < 1e-9,
-        "{actual:?} != {expected:?}"
-    );
+fn close(actual: [f64; 3], expected: [f64; 3]) {
+    let distance = (0..3)
+        .map(|i| (actual[i] - expected[i]).powi(2))
+        .sum::<f64>()
+        .sqrt();
+    assert!(distance < 1e-9, "{actual:?} != {expected:?}");
 }
 
 #[test]
@@ -33,10 +33,8 @@ fn a_length_rigid_operation_resolves_to_a_translation_with_height() {
     let view = GeorefView::for_model(&model).expect("IFC4X3");
     let operation = resolve_project_to_map_in(&view, OPERATION, 1.0).expect("resolves");
     close(
-        operation
-            .transform
-            .transform_point3(Point3::new(1.0, 2.0, 3.0)),
-        Vec3::new(500_001.0, 5_800_002.0, 103.0),
+        operation.map_point([1.0, 2.0, 3.0]),
+        [500_001.0, 5_800_002.0, 103.0],
     );
     assert_eq!(
         operation.kind,
@@ -62,12 +60,7 @@ fn a_rigid_operation_preserves_distances_whatever_the_project_unit() {
         "#80=IFCRIGIDOPERATION(#7,#50,IFCLENGTHMEASURE(10.),IFCPOSITIVELENGTHMEASURE(20.),$);",
     );
     let operation = resolve_project_to_map(&model, OPERATION, 0.001).expect("resolves");
-    close(
-        operation
-            .transform
-            .transform_point3(Point3::new(1.0, 2.0, 3.0)),
-        Vec3::new(11.0, 22.0, 3.0),
-    );
+    close(operation.map_point([1.0, 2.0, 3.0]), [11.0, 22.0, 3.0]);
     assert_eq!(
         operation.kind,
         OperationKind::RigidOperation { height: None },
@@ -205,19 +198,20 @@ fn a_scaled_map_conversion_resolves_with_per_axis_factors() {
     // E = 1000 + 2 * (0.6 * 0.5 * x - 0.8 * 2 * y), and so on.
     let (x, y, z) = (1.0, 1.0, 1.0);
     close(
-        operation.transform.transform_point3(Point3::new(x, y, z)),
-        Vec3::new(
+        operation.map_point([x, y, z]),
+        [
             1000.0 + 2.0 * (0.6 * 0.5 * x - 0.8 * 2.0 * y),
             2000.0 + 2.0 * (0.8 * 0.5 * x + 0.6 * 2.0 * y),
             50.0 + 2.0 * 4.0 * z,
-        ),
+        ],
     );
 
     // Grid north, pushed through the operation, must point at map north.
     let (gx, gy) = grid_north_direction(&operation).direction();
     assert!((gx.hypot(gy) - 1.0).abs() < 1e-12, "normalized");
-    let pushed = operation.transform.matrix3.mul_vec3(Vec3::new(gx, gy, 0.0));
-    assert!(pushed.x.abs() < 1e-12 && pushed.y > 0.0, "{pushed:?}");
+    let [c0, c1, _] = operation.linear_part();
+    let pushed = (c0[0] * gx + c1[0] * gy, c0[1] * gx + c1[1] * gy);
+    assert!(pushed.0.abs() < 1e-12 && pushed.1 > 0.0, "{pushed:?}");
 }
 
 #[test]

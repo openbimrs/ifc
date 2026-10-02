@@ -1,8 +1,19 @@
 //! IFC project-to-map coordinate operations.
 //!
-//! This crate resolves IFC references, units, axis defaults, and CRS metadata,
-//! then emits a format-neutral `axiolid_core::Transform3`. It does not place
+//! This crate resolves IFC references, units, axis defaults, and CRS metadata
+//! into plain-number operation parameters and, with the default `transform`
+//! feature, a format-neutral `axiolid_core::Transform3`. It does not place
 //! products, reproject coordinates, or select a geometry backend.
+//!
+//! # Features
+//!
+//! - `transform` (default): links `axiolid-core` and adds
+//!   `ProjectToMap::transform` and `compose_project_frame`. With
+//!   `default-features = false` the crate links no geometry crate and still
+//!   exposes every resolved parameter: CRS metadata and units, eastings,
+//!   northings and height, axis direction, scale and IFC4X3 factors, the
+//!   affine parts through [`ProjectToMap::map_point`], true and grid north,
+//!   operation sources and the site reference.
 
 pub mod authoring;
 mod context;
@@ -20,9 +31,9 @@ pub use authoring::{
     create_representation_subcontext, create_rigid_operation, create_well_known_text,
     GeographicCrsDraft, MapConversionDraft, ProjectedCrsDraft,
 };
-pub use context::{
-    compose_project_frame, coordinate_operation_for, resolve_operation_source, OperationSource,
-};
+#[cfg(feature = "transform")]
+pub use context::compose_project_frame;
+pub use context::{coordinate_operation_for, resolve_operation_source, OperationSource};
 pub use conversion::{
     resolve_geographic_offset_in, resolve_project_to_map, resolve_project_to_map_in,
     GeographicOffset, OperationKind, ProjectToMap,
