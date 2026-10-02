@@ -17,10 +17,25 @@ status = "implemented"
 # core | domain | geometry | facade | binding
 group = "geometry"
 
+[features]
+# The `axiolid_core::Transform3` output (`ProjectToMap::transform`,
+# `compose_project_frame`) is what most consumers want, so it stays the
+# default: a plain `ifc-georef = "0.4"` keeps working unchanged.
+#
+# Turning it off leaves every resolved parameter -- CRS metadata, units,
+# eastings/northings/height, axis direction, scale and factors, true and
+# grid north, operation sources, the site reference -- with no geometry
+# kernel linked. That is the build a semantic adapter wants (#268);
+# `tests/kernel_free_build.rs` holds the line.
+default = ["transform"]
+transform = ["dep:axiolid-core"]
+
 [dependencies]
 ifc-schema = { workspace = true, features = ["default"] }
 ifc-model.workspace = true
-axiolid-core.workspace = true
+# Optional so a consumer that only reads georeferencing parameters links no
+# geometry kernel; see the `transform` feature.
+axiolid-core = { workspace = true, optional = true }
 
 [dev-dependencies]
 ifc-step = { path = "../ifc-step" }

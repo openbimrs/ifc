@@ -20,11 +20,9 @@
 //! order: scale by `Scale`, multiply each axis by its factor, rotate
 //! anti-clockwise by the grid-north angle, then translate. That is the
 //! formula above; it reduces to `IfcMapConversion` when every factor is `1`. A general
-//! `Transform3` holds the resulting non-uniform linear part exactly, so
+//! affine linear part holds the resulting non-uniform scaling exactly, so
 //! the subtype resolves rather than being refused. A factor that is zero,
 //! negative or non-finite is refused like a non-positive `Scale`.
-
-use axiolid_core::{Mat3, Transform3, Vec3};
 
 use crate::context::operation_source;
 use crate::crs::{projected_crs, LengthUnit};
@@ -45,7 +43,6 @@ pub(super) fn lower(
     // Slots are pinned against the bundled IFC4 and IFC4X3 tables in
     // `crate::slot`.
     let source = operation_source(op.model, op.view, id)?;
-    let source_crs = source.entity();
     let target_ref = op.required_ref(slot::TARGET_CRS, "TargetCRS")?;
     let target_crs = projected_crs(op.model, target_ref)?;
     let map_unit = target_crs
@@ -101,27 +98,31 @@ pub(super) fn lower(
             });
         }
     }
-    let x = Vec3::new(a, b, 0.0) * (scale * fx);
-    let y = Vec3::new(-b, a, 0.0) * (scale * fy);
-    let z = Vec3::new(0.0, 0.0, scale * fz);
-    let translation = Vec3::new(eastings, northings, height) * map_unit.metres_per_unit;
-    op.finite(slot::EASTINGS, "Eastings", translation.x)?;
-    op.finite(slot::NORTHINGS, "Northings", translation.y)?;
-    op.finite(slot::ORTHOGONAL_HEIGHT, "OrthogonalHeight", translation.z)?;
-    let transform = Transform3::from_mat3_translation(Mat3::from_cols(x, y, z), translation);
+    let (sx, sy) = (scale * fx, scale * fy);
+    let linear = [
+        [a * sx, b * sx, 0.0],
+        [-b * sy, a * sy, 0.0],
+        [0.0, 0.0, scale * fz],
+    ];
+    let metres = map_unit.metres_per_unit;
+    let translation = [
+        op.finite(slot::EASTINGS, "Eastings", eastings * metres)?,
+        op.finite(slot::NORTHINGS, "Northings", northings * metres)?,
+        op.finite(slot::ORTHOGONAL_HEIGHT, "OrthogonalHeight", height * metres)?,
+    ];
 
-    Ok(ProjectToMap {
-        source_crs,
+    Ok(ProjectToMap::new(
         source,
-        operation: id,
+        id,
         kind,
         target_crs,
-        transform,
-        project_unit,
-        map_unit,
+        [eastings, northings, height],
+        (project_unit, map_unit),
         declared_scale,
-        x_axis_direction: (a, b),
-    })
+        (a, b),
+        linear,
+        translation,
+    ))
 }
 
 /// A mandatory `IfcMapConversionScaled` factor: finite and positive.

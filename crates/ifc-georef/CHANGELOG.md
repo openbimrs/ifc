@@ -49,9 +49,27 @@ everything released before per-crate changelogs began.
   `IfcCoordinateReferenceSystemSelect` member of the pinned release, and
   the `HasCoordinateOperation` inverse read from a context or CRS (#101).
 - `ProjectToMap.source`, `.operation` and `.kind` (`OperationKind`).
+- A default `transform` feature carrying the `axiolid-core` dependency
+  (#268). With `default-features = false` the crate links no geometry
+  crate and still resolves CRS metadata and units, every map-conversion
+  and rigid-operation parameter, true and grid north, operation sources
+  and the site reference. `tests/kernel_free_build.rs` asserts the
+  resolved dependency graph, and the gate builds, tests, lints and
+  documents the column.
+- `ProjectToMap.eastings`, `.northings` and `.orthogonal_height`, as
+  authored in `map_unit` (a rigid operation's `FirstCoordinate`,
+  `SecondCoordinate` and `Height`, `0.0` when unstated), and the
+  plain-number operation: `ProjectToMap::map_point` (project metres to map
+  metres, bit-identical to `transform.transform_point3`),
+  `ProjectToMap::linear_part` and `ProjectToMap::translation` (#268).
 
 ### Changed
 
+- `ProjectToMap.transform` and `compose_project_frame` exist only with the
+  `transform` feature, which is on by default, so a default build is
+  source-compatible (#268). `relate_site_elevation` computes through
+  `ProjectToMap::map_point` and is available in both columns, with the
+  same results.
 - `IfcMapConversionScaled` resolves instead of being refused with
   `UnsupportedOperation`: `FactorX/Y/Z` scale the source axes before the
   rotation, and a non-positive factor is refused with `InvalidAttribute`

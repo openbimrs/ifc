@@ -4,9 +4,12 @@
 
 use std::sync::Arc;
 
+#[cfg(feature = "transform")]
 use axiolid_core::{Mat3, Point3, Transform3, Vec3};
+#[cfg(feature = "transform")]
+use ifc_georef::compose_project_frame;
 use ifc_georef::{
-    compose_project_frame, grid_north_direction, project_north_direction, resolve_project_to_map,
+    grid_north_direction, project_north_direction, resolve_project_to_map,
     resolve_project_to_map_in, resolve_true_north, GeorefError, GeorefView, NorthReference,
 };
 use ifc_model::value::Value;
@@ -90,7 +93,8 @@ fn georef_view_pins_ifc4_and_resolves_a_map_conversion_through_it() {
     // Both entry points agree: the schema-agnostic resolver is not a
     // shortcut that skips validation, it is the same underlying resolution.
     let unpinned = resolve_project_to_map(&model, id(4), 1.0).expect("resolves without a view");
-    assert_eq!(operation.transform, unpinned.transform);
+    assert_eq!(operation.linear_part(), unpinned.linear_part());
+    assert_eq!(operation.translation(), unpinned.translation());
 }
 
 #[test]
@@ -117,6 +121,7 @@ fn resolving_an_ifc4x3_only_entity_under_ifc4_names_the_schema_mismatch() {
 }
 
 #[test]
+#[cfg(feature = "transform")]
 fn compose_project_frame_chains_onto_the_pinned_view_s_resolved_operation() {
     let model = schema_pinned_model("IFC4X3");
     let view = GeorefView::for_model(&model).expect("IFC4X3 is accepted");

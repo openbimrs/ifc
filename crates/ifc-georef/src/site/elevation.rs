@@ -2,7 +2,6 @@
 //!
 //! The rule and its spec basis are documented on the parent module.
 
-use axiolid_core::Point3;
 use ifc_model::EntityId;
 use ifc_schema::SchemaVersion;
 
@@ -101,11 +100,8 @@ pub fn relate_site_elevation(
     let Some(map) = map else {
         return Ok(SiteElevationCheck::NoMapConversion);
     };
-    let orthogonal_height = map.transform.transform_point3(Point3::new(0.0, 0.0, 0.0)).z;
-    let site_origin_map_height = map
-        .transform
-        .transform_point3(Point3::new(0.0, 0.0, site_origin_z))
-        .z;
+    let orthogonal_height = map.map_point([0.0, 0.0, 0.0])[2];
+    let site_origin_map_height = map.map_point([0.0, 0.0, site_origin_z])[2];
     let difference = ref_elevation - site_origin_map_height;
     let comparison = SiteElevationComparison {
         site: site.entity,

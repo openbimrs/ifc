@@ -2,7 +2,6 @@
 
 use std::sync::Arc;
 
-use axiolid_core::{Point3, Vec3};
 use ifc_georef::{resolve_project_to_map, GeorefError, OperationKind};
 use ifc_model::value::Value;
 use ifc_model::{Codec, Entity, EntityId, Model};
@@ -76,11 +75,9 @@ fn resolves_ifc4_map_conversion_into_a_metres_to_metres_transform() {
     let model = model_with_map_conversion((Value::Real(0.0), Value::Real(2.0)), Value::Real(2.0));
 
     let operation = resolve_project_to_map(&model, id(4), 1.0).expect("valid conversion");
-    let actual = operation
-        .transform
-        .transform_point3(Point3::new(3.0, 4.0, 5.0));
+    let actual = operation.map_point([3.0, 4.0, 5.0]);
 
-    assert_eq!(actual, Vec3::new(992.0, 2006.0, 60.0));
+    assert_eq!(actual, [992.0, 2006.0, 60.0]);
     assert_eq!(operation.source_crs, id(1));
     assert_eq!(operation.target_crs.entity, id(2));
     assert_eq!(operation.target_crs.name.as_deref(), Some("EPSG:25832"));
@@ -102,11 +99,9 @@ fn converts_map_translation_and_scale_when_project_and_map_units_differ() {
     // at the neutral boundary. Map coordinates are also millimetres. IFC Scale
     // converts source millimetres to target millimetres here.
     let operation = resolve_project_to_map(&model, id(4), 0.001).expect("valid conversion");
-    let actual = operation
-        .transform
-        .transform_point3(Point3::new(3.0, 4.0, 5.0));
+    let actual = operation.map_point([3.0, 4.0, 5.0]);
 
-    assert_eq!(actual, Vec3::new(1.003, 2.004, 0.055));
+    assert_eq!(actual, [1.003, 2.004, 0.055]);
     assert_eq!(operation.map_unit.metres_per_unit, 0.001);
 }
 
@@ -115,21 +110,17 @@ fn defaults_each_missing_axis_component_independently() {
     let abscissa_only =
         model_with_map_conversion((Value::Real(2.0), Value::Null), Value::Real(1.0));
     let operation = resolve_project_to_map(&abscissa_only, id(4), 1.0).expect("ordinate defaults");
-    let mapped = operation
-        .transform
-        .transform_point3(Point3::new(3.0, 4.0, 0.0));
-    assert_eq!(mapped, Vec3::new(1003.0, 2004.0, 50.0));
+    let mapped = operation.map_point([3.0, 4.0, 0.0]);
+    assert_eq!(mapped, [1003.0, 2004.0, 50.0]);
 
     let ordinate_only =
         model_with_map_conversion((Value::Null, Value::Real(1.0)), Value::Real(1.0));
     let operation = resolve_project_to_map(&ordinate_only, id(4), 1.0).expect("abscissa defaults");
-    let mapped = operation
-        .transform
-        .transform_point3(Point3::new(3.0, 4.0, 0.0));
+    let mapped = operation.map_point([3.0, 4.0, 0.0]);
     let root_two = 2.0_f64.sqrt();
-    assert!((mapped.x - (1000.0 - 1.0 / root_two)).abs() < 1e-12);
-    assert!((mapped.y - (2000.0 + 7.0 / root_two)).abs() < 1e-12);
-    assert_eq!(mapped.z, 50.0);
+    assert!((mapped[0] - (1000.0 - 1.0 / root_two)).abs() < 1e-12);
+    assert!((mapped[1] - (2000.0 + 7.0 / root_two)).abs() < 1e-12);
+    assert_eq!(mapped[2], 50.0);
 }
 
 /// Once refused as unsupported (#241); the per-axis factors now fold into
@@ -164,10 +155,8 @@ fn resolves_map_conversion_scaled_with_per_axis_factors() {
             factors: (2.0, 3.0, 4.0)
         }
     );
-    let mapped = operation
-        .transform
-        .transform_point3(Point3::new(1.0, 1.0, 1.0));
-    assert_eq!(mapped, Vec3::new(1002.0, 2003.0, 54.0));
+    let mapped = operation.map_point([1.0, 1.0, 1.0]);
+    assert_eq!(mapped, [1002.0, 2003.0, 54.0]);
 }
 
 #[test]
@@ -247,9 +236,32 @@ fn resolves_a_committed_ifc_fixture_to_the_neutral_map_transform() {
         .join("../../test/fixtures/synthetic-surfaces/synthetic_conic_offset_bounded.ifc");
     let model = StepCodec.read_path(&path).expect("fixture parses");
     let operation = resolve_project_to_map(&model, id(51), 1.0).expect("conversion resolves");
-    let mapped = operation
-        .transform
-        .transform_point3(Point3::new(1.0, 2.0, 3.0));
-    assert_eq!(mapped, Vec3::new(2.0, 4.0, 3.01));
+    let mapped = operation.map_point([1.0, 2.0, 3.0]);
+    assert_eq!(mapped, [2.0, 4.0, 3.01]);
     assert_eq!(operation.target_crs.name.as_deref(), Some("EPSG:25832"));
+}
+
+/// The `Transform3` view and the plain-number parameters are one
+/// operation: the feature adds a representation, never a different answer.
+#[test]
+#[cfg(feature = "transform")]
+fn the_transform_view_agrees_bit_for_bit_with_the_plain_parameters() {
+    use axiolid_core::{Point3, Vec3};
+
+    let model = model_with_map_conversion((Value::Real(0.6), Value::Real(0.8)), Value::Real(2.0));
+    let operation = resolve_project_to_map(&model, id(4), 0.001).expect("valid conversion");
+    for point in [[0.0, 0.0, 0.0], [3.0, 4.0, 5.0], [-1.5, 7.25, 0.125]] {
+        let via_transform = operation
+            .transform
+            .transform_point3(Point3::new(point[0], point[1], point[2]));
+        assert_eq!(via_transform.to_array(), operation.map_point(point));
+    }
+    let [c0, c1, c2] = operation.linear_part();
+    assert_eq!(operation.transform.matrix3.x_axis, Vec3::from_array(c0));
+    assert_eq!(operation.transform.matrix3.y_axis, Vec3::from_array(c1));
+    assert_eq!(operation.transform.matrix3.z_axis, Vec3::from_array(c2));
+    assert_eq!(
+        operation.transform.translation,
+        Vec3::from_array(operation.translation())
+    );
 }

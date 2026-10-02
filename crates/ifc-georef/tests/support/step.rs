@@ -23,6 +23,7 @@ pub const BASE: &str = "\
 ";
 
 /// IFC4X3 only: `#70` a geographic CRS in degrees and metres.
+#[allow(dead_code)] // not every test binary that includes this module uses it
 pub const GEOGRAPHIC: &str = "\
 #70=IFCGEOGRAPHICCRS('EPSG:4979','WGS 84','WGS84','Greenwich',#3,#1);
 ";
