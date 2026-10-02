@@ -18,7 +18,7 @@ mod reaction;
 mod relation;
 mod stiffness;
 
-pub use action::{stage_action, ActionDraft, ActionDraftKind, ProjectedOrTrue};
+pub use action::{stage_action, ActionDraft, ActionDraftKind, ProjectedOrTrue, VaryingActionDraft};
 pub use condition::{
     stage_boundary_condition, stage_boundary_condition_in, stage_connection_condition,
     BoundaryConditionDraft, ConnectionConditionDraft,

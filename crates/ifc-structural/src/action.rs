@@ -6,6 +6,8 @@ use ifc_schema::SchemaVersion;
 use crate::error::{StructuralError, StructuralResult};
 use crate::view::Record;
 
+mod varying;
+
 /// Which `IfcStructuralActivity` application geometry an action carries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActionKind {
@@ -27,6 +29,11 @@ pub enum CoordinateSystem {
 }
 
 /// Borrowed projection of an `IfcStructuralAction` (point, curve/linear, or surface/planar).
+///
+/// The IFC2X3-only varying subtypes `IfcStructuralLinearActionVarying` and
+/// `IfcStructuralPlanarActionVarying` classify as [`ActionKind::Curve`] and
+/// [`ActionKind::Surface`]; [`StructuralAction::is_varying`] tells them apart
+/// and [`StructuralAction::subsequent_applied_loads`] reads their load list.
 #[derive(Debug, Clone, Copy)]
 pub struct StructuralAction<'m, 's> {
     record: Record<'m, 's>,

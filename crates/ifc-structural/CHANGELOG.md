@@ -20,6 +20,17 @@ everything released before per-crate changelogs began.
 
 ### Added
 
+- IFC2X3 varying linear and planar actions (#229).
+  `StructuralAction::is_varying`, `varying_applied_load_location` and
+  `subsequent_applied_loads` read `IfcStructuralLinearActionVarying` and
+  `IfcStructuralPlanarActionVarying`; the loads come back in list order as
+  `StaticLoad`, the `LIST [1:?]` / `LIST [2:?]` minimums are enforced with
+  `InvalidCardinality`, and all three return `None`/`false` under IFC4 and
+  IFC4X3, which declare neither entity. `ActionDraft::varying` with the new
+  `VaryingActionDraft` stages either subtype from a `Linear` or `Planar`
+  kind; outside IFC2X3 it refuses with the new
+  `StructuralError::EntityNotInSchema`, and a short list, another kind or a
+  wrong reference refuses before anything is staged.
 - `StructuralView::surface_reinforcement_area` and the
   `SurfaceReinforcementArea` projection for `IfcSurfaceReinforcementArea`
   (IFC4, IFC4X3), which `stage_load` already authored (#228). It enforces

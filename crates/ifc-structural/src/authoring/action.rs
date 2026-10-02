@@ -2,7 +2,7 @@ use ifc_model::{EntityId, Model, Transaction, Value};
 use ifc_schema::{Schema, TypeKind};
 
 use super::item::{root_fields, validate_root, StructuralRootDraft};
-use super::{build_named, optional_ref, validate_optional_ref, validate_ref_select};
+use super::{build_named, optional_ref, validate_optional_ref, validate_ref, validate_ref_select};
 use crate::action::CoordinateSystem;
 use crate::error::{StructuralError, StructuralResult};
 
@@ -74,6 +74,39 @@ pub struct ActionDraft {
     pub caused_by: Option<EntityId>,
     /// Which `IfcStructuralAction` subtype to create, and its subtype-specific attributes.
     pub kind: ActionDraftKind,
+    /// Varying-load attributes; when set, a [`ActionDraftKind::Linear`] or
+    /// [`ActionDraftKind::Planar`] kind stages the IFC2X3 varying subtype.
+    pub varying: Option<VaryingActionDraft>,
+}
+
+/// IFC2X3 varying-action attributes for [`ActionDraft::varying`].
+///
+/// With [`ActionDraftKind::Linear`] it stages an
+/// `IfcStructuralLinearActionVarying` (`SubsequentAppliedLoads : LIST [1:?]`);
+/// with [`ActionDraftKind::Planar`] an `IfcStructuralPlanarActionVarying`
+/// (`LIST [2:?]`). IFC4 and IFC4X3 declare neither entity.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct VaryingActionDraft {
+    /// `VaryingAppliedLoadLocation`, an `IfcShapeAspect` reference.
+    pub varying_applied_load_location: EntityId,
+    /// `SubsequentAppliedLoads`, `IfcStructuralLoad` references in list
+    /// order after the action's `AppliedLoad`. Repeats are allowed (LIST).
+    pub subsequent_applied_loads: Vec<EntityId>,
+}
+
+impl VaryingActionDraft {
+    /// Starts a draft from its two required attributes.
+    #[must_use]
+    pub fn new(
+        varying_applied_load_location: EntityId,
+        subsequent_applied_loads: Vec<EntityId>,
+    ) -> Self {
+        Self {
+            varying_applied_load_location,
+            subsequent_applied_loads,
+        }
+    }
 }
 
 impl ActionDraft {
@@ -92,6 +125,7 @@ impl ActionDraft {
             destabilizing_load: None,
             caused_by: None,
             kind,
+            varying: None,
         }
     }
 
@@ -110,6 +144,14 @@ impl ActionDraft {
         self.caused_by = Some(value);
         self
     }
+
+    /// Sets `varying`: stage the IFC2X3 varying subtype of a linear or
+    /// planar action with these attributes.
+    #[must_use]
+    pub fn varying(mut self, value: VaryingActionDraft) -> Self {
+        self.varying = Some(value);
+        self
+    }
 }
 
 /// Stage an `IfcStructuralAction` create edit on `tx`.
@@ -118,14 +160,24 @@ impl ActionDraft {
 /// is not one of the load types `kind` permits, [`StructuralError::SemanticViolation`]
 /// if `ProjectedOrTrue` is `PROJECTED_LENGTH` while `coordinate_system` is not
 /// `Global`, and [`StructuralError::MissingRequired`] if `destabilizing_load`
-/// is unset while the target schema requires it. Returns the id staged for
-/// the new entity.
+/// is unset while the target schema requires it.
+///
+/// With [`ActionDraft::varying`] set, a linear kind stages
+/// `IfcStructuralLinearActionVarying` and a planar kind
+/// `IfcStructuralPlanarActionVarying`. That fails with
+/// [`StructuralError::EntityNotInSchema`] outside IFC2X3, with
+/// [`StructuralError::InvalidDraftValue`] for any other kind or a
+/// `SubsequentAppliedLoads` list below its minimum (1 linear, 2 planar),
+/// and with the reference errors when the location is not an
+/// `IfcShapeAspect` or a subsequent load not an `IfcStructuralLoad`.
+/// Every refusal stages nothing. Returns the id staged for the new entity.
 pub fn stage_action(
     tx: &mut Transaction,
     model: &Model,
     schema: &Schema,
     draft: ActionDraft,
 ) -> StructuralResult<EntityId> {
+    let varying = validate_varying(tx, model, schema, &draft)?;
     validate_root(tx, model, schema, &draft.root)?;
     let (entity_type, projected_or_true, load_members): (&str, Option<ProjectedOrTrue>, &[&str]) =
         match draft.kind {
@@ -174,6 +226,7 @@ pub fn stage_action(
                 ],
             ),
         };
+    let entity_type = varying.as_ref().map_or(entity_type, |(name, _)| *name);
     validate_ref_select(
         tx,
         model,
@@ -278,7 +331,81 @@ pub fn stage_action(
         validate_activity_token(schema, entity_type, token)?;
         fields.push(("PredefinedType", Value::Enum(token.into())));
     }
+    if let Some((_, varying)) = varying {
+        fields.push((
+            "VaryingAppliedLoadLocation",
+            Value::Ref(varying.varying_applied_load_location),
+        ));
+        fields.push((
+            "SubsequentAppliedLoads",
+            Value::List(
+                varying
+                    .subsequent_applied_loads
+                    .into_iter()
+                    .map(Value::Ref)
+                    .collect(),
+            ),
+        ));
+    }
     Ok(tx.create(build_named(schema, entity_type, fields)?))
+}
+
+/// Resolve and check [`ActionDraft::varying`] before anything is staged.
+///
+/// Returns the varying entity type with its attributes, or `None` when the
+/// draft is not varying.
+fn validate_varying(
+    tx: &Transaction,
+    model: &Model,
+    schema: &Schema,
+    draft: &ActionDraft,
+) -> StructuralResult<Option<(&'static str, VaryingActionDraft)>> {
+    let Some(varying) = &draft.varying else {
+        return Ok(None);
+    };
+    let (entity_type, minimum, expected) = match draft.kind {
+        ActionDraftKind::Linear { .. } => (
+            "IfcStructuralLinearActionVarying",
+            1,
+            "LIST [1:?] of IfcStructuralLoad references",
+        ),
+        ActionDraftKind::Planar { .. } => (
+            "IfcStructuralPlanarActionVarying",
+            2,
+            "LIST [2:?] of IfcStructuralLoad references",
+        ),
+        _ => {
+            return Err(StructuralError::InvalidDraftValue {
+                entity_type: "IfcStructuralAction",
+                attribute: "SubsequentAppliedLoads",
+                expected: "a Linear or Planar action kind (only those have varying subtypes)",
+            })
+        }
+    };
+    if schema.entity(entity_type).is_none() {
+        return Err(StructuralError::EntityNotInSchema {
+            entity: entity_type,
+            schema: schema.name().to_owned(),
+        });
+    }
+    if varying.subsequent_applied_loads.len() < minimum {
+        return Err(StructuralError::InvalidDraftValue {
+            entity_type,
+            attribute: "SubsequentAppliedLoads",
+            expected,
+        });
+    }
+    validate_ref(
+        tx,
+        model,
+        schema,
+        varying.varying_applied_load_location,
+        "IfcShapeAspect",
+    )?;
+    for load in &varying.subsequent_applied_loads {
+        validate_ref(tx, model, schema, *load, "IfcStructuralLoad")?;
+    }
+    Ok(Some((entity_type, varying.clone())))
 }
 
 /// Refuse a `PredefinedType` token the schema does not declare
