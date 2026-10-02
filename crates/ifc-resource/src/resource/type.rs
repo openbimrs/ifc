@@ -1,4 +1,7 @@
 //! IFC4 `IfcConstructionResourceType` occurrence-kind projections.
+//!
+//! IFC2X3 declares no resource types: every entry point here refuses with
+//! [`ResourceError::NotInSchema`] under it.
 
 use ifc_model::EntityId;
 
@@ -145,7 +148,11 @@ impl<'m, 's> crate::view::ResourceView<'m, 's> {
     /// match. A repeated relation naming the *same* type states the same fact
     /// twice and is accepted. (`ifc-material` treats even that as ambiguous
     /// for its material lookup.)
+    ///
+    /// IFC2X3 declares no `IfcConstructionResourceType`, so this refuses
+    /// with [`ResourceError::NotInSchema`] there instead of answering `None`.
     pub fn assigned_resource_type(&self, occurrence: EntityId) -> ResourceResult<Option<EntityId>> {
+        self.require_entity("IfcConstructionResourceType")?;
         self.resource(occurrence)?;
         let mut found = None;
         for relation in self.ids_of_ancestor("IfcRelDefinesByType") {

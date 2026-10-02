@@ -22,9 +22,18 @@ pub struct ResourceEditor<'m> {
 
 impl<'m> ResourceEditor<'m> {
     /// Opens an editor for `model`, verifying it declares a supported
-    /// resource schema (IFC4 ADD2 TC1 or IFC4X3 ADD2).
+    /// resource authoring schema (IFC4 ADD2 TC1 or IFC4X3 ADD2).
+    ///
+    /// IFC2X3 TC1 is readable through [`ResourceView`] but not authored:
+    /// this refuses it with `UnsupportedSchema`, never writing IFC4 slots
+    /// into an IFC2X3 model.
     pub fn for_model(model: &'m mut Model) -> ResourceResult<Self> {
-        ResourceView::for_model(model)?;
+        let view = ResourceView::for_model(model)?;
+        if view.is_ifc2x3() {
+            return Err(ResourceError::UnsupportedSchema {
+                token: view.schema().name().to_owned(),
+            });
+        }
         Ok(Self {
             model,
             schema: ifc4(),

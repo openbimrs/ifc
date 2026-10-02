@@ -4,6 +4,7 @@ use ifc_model::EntityId;
 
 use crate::error::{ResourceError, ResourceResult};
 use crate::view::{validate_object_assignment, Record, ResourceView};
+use crate::ResourceKind;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// Decoded `IfcRelAssignsToResource` assignment: a resource and the objects
@@ -51,13 +52,41 @@ impl<'m, 's> ResourceView<'m, 's> {
 
     /// Every `IfcRelAssignsToResource` relation naming this resource as
     /// `RelatingResource`, in ancestor order.
+    ///
+    /// Under IFC2X3 an `IfcConstructionMaterialResource` or
+    /// `IfcConstructionProductResource` also carries the release's `WR1`
+    /// (at most one such relation) and `WR2` (its `RelatedObjectsType`, when
+    /// authored, is `PRODUCT`); a violation is a typed refusal.
     pub fn allocations_for(&self, resource: EntityId) -> ResourceResult<Vec<ResourceAllocation>> {
-        self.resource(resource)?;
+        let projected = self.resource(resource)?;
         let mut result = Vec::new();
         for relation in self.ids_of_ancestor("IfcRelAssignsToResource") {
             let allocation = self.allocation(relation)?;
             if allocation.resource == resource {
                 result.push(allocation);
+            }
+        }
+        if self.is_ifc2x3()
+            && matches!(
+                projected.kind(),
+                ResourceKind::Material | ResourceKind::Product
+            )
+        {
+            if result.len() > 1 {
+                return Err(ResourceError::SemanticViolation {
+                    entity: Some(resource),
+                    rule: "IFC2X3 material/product resource WR1: at most one ResourceOf",
+                });
+            }
+            if result.first().is_some_and(|allocation| {
+                allocation
+                    .related_objects_type()
+                    .is_some_and(|category| !category.eq_ignore_ascii_case("PRODUCT"))
+            }) {
+                return Err(ResourceError::SemanticViolation {
+                    entity: Some(resource),
+                    rule: "IFC2X3 material/product resource WR2: ResourceOf must be PRODUCT",
+                });
             }
         }
         Ok(result)

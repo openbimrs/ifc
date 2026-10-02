@@ -7,25 +7,37 @@
 //! files); IFC4X3 only adds `IfcQuantityNumber`, which is not one of the six
 //! projected simple-quantity kinds. One code path therefore serves both.
 //!
-//! IFC2X3 is refused with `UnsupportedSchema` on purpose: it declares no
-//! `IfcConstructionResourceType`, no `IfcResourceTime`, and no
-//! `PredefinedType` on `IfcCrewResource` or
-//! `IfcConstructionEquipmentResource`, so there is no normative behavior to
-//! project. A reduced IFC2X3 path needs a design decision first, not a
-//! fallback here.
+//! IFC2X3 TC1 is read through its own bundled table (#237). Every attribute
+//! is resolved by name against that table, so a record is never read with
+//! IFC4's slots. Where IFC2X3 declares the same concept under another name
+//! with the same declared type and position, the shared accessor reads it:
+//! `IfcConstructionResource.ResourceIdentifier` and `IfcPerson.Id` /
+//! `IfcOrganization.Id` (all `IfcIdentifier`) answer `identification()`,
+//! and `IfcInventory.InventoryType` (`IfcInventoryTypeEnum`) answers
+//! `predefined_type()`. What IFC2X3 lacks -- resource types,
+//! `IfcResourceTime`, `LongDescription`, `Usage`, `BaseCosts`,
+//! `PredefinedType` on resources, `IfcPhysicalSimpleQuantity.Formula` -- is
+//! [`ResourceError::NotInSchema`], as is an attribute IFC2X3 declares with a
+//! different type (`BaseQuantity : IfcMeasureWithUnit`,
+//! `IfcInventory.LastUpdateDate : IfcCalendarDate`), which its own
+//! IFC2X3-only accessor reads instead. Authoring stays IFC4/IFC4X3:
+//! `ResourceEditor` refuses an IFC2X3 model.
+//!
+//! IFC4X1 and IFC4X2 are bundled by `ifc-schema` but not verified here, so
+//! they are refused with `UnsupportedSchema`, never read as a neighbour.
 
 use std::collections::HashSet;
 
 use ifc_model::{Entity, EntityId, Model, Value};
-use ifc_schema::{ifc4, ifc4x3, Schema, SchemaVersion, TypeKind};
+use ifc_schema::{ifc2x3, ifc4, ifc4x3, Schema, SchemaVersion, TypeKind};
 
 use crate::error::{ResourceError, ResourceResult};
 use crate::{ConstructionResource, ResourceTime};
 
 #[derive(Debug, Clone, Copy)]
-/// Borrowed, schema-resolved entry point for the bounded IFC4 resource
-/// slice: pairs a model with the schema selected for it and exposes
-/// per-entity projection and query methods.
+/// Borrowed, schema-resolved entry point for the bounded resource slice
+/// (IFC2X3 TC1, IFC4 ADD2 TC1, IFC4X3 ADD2): pairs a model with the schema
+/// selected for it and exposes per-entity projection and query methods.
 pub struct ResourceView<'m, 's> {
     pub(crate) model: &'m Model,
     pub(crate) schema: &'s Schema,
@@ -33,7 +45,7 @@ pub struct ResourceView<'m, 's> {
 
 impl<'m, 's> ResourceView<'m, 's> {
     /// Builds a view over `model` using an explicit `schema`, failing if
-    /// `schema` is not IFC4 or IFC4X3, or does not match the model's
+    /// `schema` is not IFC2X3, IFC4 or IFC4X3, or does not match the model's
     /// declared `FILE_SCHEMA` token.
     pub fn new(model: &'m Model, schema: &'s Schema) -> ResourceResult<Self> {
         let Some(version) = schema.version() else {
@@ -41,7 +53,10 @@ impl<'m, 's> ResourceView<'m, 's> {
                 token: schema.name().to_owned(),
             });
         };
-        if !matches!(version, SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3) {
+        if !matches!(
+            version,
+            SchemaVersion::Ifc2x3 | SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3
+        ) {
             return Err(ResourceError::UnsupportedSchema {
                 token: schema.name().to_owned(),
             });
@@ -90,6 +105,17 @@ impl<'m, 's> ResourceView<'m, 's> {
         Record::new(self.model, self.schema, id, expected)
     }
 
+    /// Fail with [`ResourceError::NotInSchema`] unless the bound release
+    /// declares `entity_type`.
+    pub(crate) fn require_entity(&self, entity_type: &'static str) -> ResourceResult<()> {
+        require_entity(self.schema, None, entity_type)
+    }
+
+    /// Whether the view is bound to IFC2X3 TC1.
+    pub(crate) fn is_ifc2x3(&self) -> bool {
+        self.schema.version() == Some(SchemaVersion::Ifc2x3)
+    }
+
     pub(crate) fn ids_of_ancestor(&self, ancestor: &str) -> Vec<EntityId> {
         self.model
             .iter()
@@ -100,8 +126,9 @@ impl<'m, 's> ResourceView<'m, 's> {
 
 impl<'m> ResourceView<'m, 'static> {
     /// Selects the bundled schema matching the model's declared
-    /// `FILE_SCHEMA` token (IFC4 ADD2 TC1 or IFC4X3 ADD2), failing if the
-    /// header names no schema, more than one, or an unsupported one.
+    /// `FILE_SCHEMA` token (IFC2X3 TC1, IFC4 ADD2 TC1 or IFC4X3 ADD2),
+    /// failing if the header names no schema, more than one, or an
+    /// unsupported one.
     pub fn for_model(model: &'m Model) -> ResourceResult<Self> {
         let token = match model.header().schema.as_slice() {
             [] => return Err(ResourceError::MissingSchema),
@@ -118,10 +145,11 @@ impl<'m> ResourceView<'m, 'static> {
             }
         })?;
         let schema = match version {
+            SchemaVersion::Ifc2x3 => ifc2x3(),
             SchemaVersion::Ifc4 => ifc4(),
             SchemaVersion::Ifc4x3 => ifc4x3(),
-            // IFC2X3 predates these layouts; IFC4X1 and IFC4X2 are bundled
-            // by ifc-schema but not verified here. Refused, never aliased.
+            // IFC4X1 and IFC4X2 are bundled by ifc-schema but not verified
+            // here. Refused, never aliased.
             _ => {
                 return Err(ResourceError::UnsupportedSchema {
                     token: token.clone(),
@@ -138,6 +166,22 @@ impl<'m> ResourceView<'m, 'static> {
         };
         Self::new(model, schema)
     }
+}
+
+fn require_entity(
+    schema: &Schema,
+    entity: Option<EntityId>,
+    entity_type: &'static str,
+) -> ResourceResult<()> {
+    if schema.entity(entity_type).is_none() {
+        return Err(ResourceError::NotInSchema {
+            schema: schema.name().to_owned(),
+            entity,
+            entity_type: entity_type.to_owned(),
+            attribute: None,
+        });
+    }
+    Ok(())
 }
 
 pub(crate) fn validate_object_assignment(
@@ -201,6 +245,7 @@ impl<'m, 's> Record<'m, 's> {
         id: EntityId,
         expected: &'static str,
     ) -> ResourceResult<Self> {
+        require_entity(schema, Some(id), expected)?;
         let entity = model.get(id).ok_or(ResourceError::EntityNotFound { id })?;
         if !schema.is_a(&entity.type_name, expected) {
             return Err(ResourceError::WrongType {
@@ -222,10 +267,23 @@ impl<'m, 's> Record<'m, 's> {
             .attribute_names(&self.entity.type_name)
             .iter()
             .position(|name| name.eq_ignore_ascii_case(attribute))
-            .ok_or(ResourceError::MissingAttribute {
-                entity: self.id,
-                attribute,
-            })
+            .ok_or_else(|| self.not_in_schema(attribute))
+    }
+
+    /// Whether this record is read through the IFC2X3 TC1 table.
+    pub(crate) fn is_ifc2x3(&self) -> bool {
+        self.schema.version() == Some(SchemaVersion::Ifc2x3)
+    }
+
+    /// The refusal for an attribute the bound release does not declare on
+    /// this record's type in the form the caller reads it.
+    pub(crate) fn not_in_schema(&self, attribute: &'static str) -> ResourceError {
+        ResourceError::NotInSchema {
+            schema: self.schema.name().to_owned(),
+            entity: Some(self.id),
+            entity_type: self.entity.type_name.to_string(),
+            attribute: Some(attribute),
+        }
     }
 
     pub(crate) fn value(&self, attribute: &'static str) -> ResourceResult<&'m Value> {
@@ -300,6 +358,22 @@ impl<'m, 's> Record<'m, 's> {
         };
         if !value.is_finite() || value <= 0.0 {
             return Err(self.invalid(attribute, "finite positive number or null"));
+        }
+        Ok(Some(value))
+    }
+
+    pub(crate) fn optional_finite_number(
+        &self,
+        attribute: &'static str,
+    ) -> ResourceResult<Option<f64>> {
+        let value = match self.value(attribute)?.unwrap_typed() {
+            Value::Null | Value::Derived => return Ok(None),
+            Value::Integer(value) => *value as f64,
+            Value::Real(value) => *value,
+            _ => return Err(self.invalid(attribute, "finite number or null")),
+        };
+        if !value.is_finite() {
+            return Err(self.invalid(attribute, "finite number or null"));
         }
         Ok(Some(value))
     }
@@ -439,6 +513,18 @@ impl<'m, 's> Record<'m, 's> {
         optional: bool,
         unique: bool,
     ) -> ResourceResult<Vec<EntityId>> {
+        self.refs_select(attribute, expected, &[expected], minimum, optional, unique)
+    }
+
+    pub(crate) fn refs_select(
+        &self,
+        attribute: &'static str,
+        expected: &'static str,
+        members: &[&str],
+        minimum: usize,
+        optional: bool,
+        unique: bool,
+    ) -> ResourceResult<Vec<EntityId>> {
         let values = match self.value(attribute)?.unwrap_typed() {
             Value::Null | Value::Derived if optional => return Ok(Vec::new()),
             Value::List(values) => values,
@@ -465,7 +551,7 @@ impl<'m, 's> Record<'m, 's> {
                     target: *target,
                 });
             }
-            self.check_reference(attribute, *target, &[expected], expected)?;
+            self.check_reference(attribute, *target, members, expected)?;
             targets.push(*target);
         }
         Ok(targets)

@@ -65,7 +65,7 @@ fn view_selects_only_the_proven_ifc4_schema() {
         Err(ResourceError::AmbiguousSchema { .. })
     ));
 
-    for token in ["IFC2X3", "IFC5"] {
+    for token in ["IFC5", "IFC4X1"] {
         let unsupported = model(token);
         assert!(matches!(
             ResourceView::for_model(&unsupported),
@@ -79,6 +79,7 @@ fn view_selects_only_the_proven_ifc4_schema() {
         Err(ResourceError::UnsupportedSchema { .. })
     ));
 
+    ResourceView::for_model(&model("IFC2X3")).expect("IFC2X3 TC1 is read (#237)");
     ResourceView::for_model(&model("IFC4")).expect("IFC4 ADD2 TC1 is supported");
     ResourceView::for_model(&model("IFC4X3_ADD2")).expect("IFC4X3 ADD2 is supported");
 }

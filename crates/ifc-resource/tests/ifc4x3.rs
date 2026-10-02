@@ -28,10 +28,14 @@ fn ifc4x3_model_projects_labor_resource_type_and_person() {
 }
 
 #[test]
-fn ifc2x3_model_is_a_typed_refusal_because_resource_type_and_time_do_not_exist() {
+fn ifc2x3_model_is_read_but_resource_types_are_a_typed_refusal() {
     let ifc2x3 = model("IFC2X3");
+    let view = ResourceView::for_model(&ifc2x3).expect("IFC2X3 is read (#237)");
     assert!(matches!(
-        ResourceView::for_model(&ifc2x3),
-        Err(ResourceError::UnsupportedSchema { .. })
+        view.resource_type(ifc_model::EntityId(1)),
+        Err(ResourceError::NotInSchema {
+            attribute: None,
+            ..
+        })
     ));
 }

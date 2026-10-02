@@ -13,14 +13,18 @@ readme = "README.md"
 [package.metadata.openbim]
 # implemented | partial | scaffold -- a judgement, never inferred from size.
 # `gaps`: the open issues behind the status; a partial crate names one.
-status = "partial"
-gaps = [237]
+status = "implemented"
+gaps = []
 # core | domain | geometry | facade | binding
 group = "domain"
 
 [dependencies]
 ifc-schema = { workspace = true, features = ["default"] }
 ifc-model.workspace = true
+
+[dev-dependencies]
+# IFC2X3 fixtures are parsed from and written back to STEP text.
+ifc-step.workspace = true
 
 [lints]
 workspace = true

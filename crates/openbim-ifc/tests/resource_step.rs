@@ -78,11 +78,27 @@ fn ifc4x3_resource_data_round_trips_through_step() {
     assert_eq!(view.assigned_resource_type(labor).unwrap(), Some(ty));
 }
 
+/// #237: IFC2X3 is read through its own table; what it lacks (resource
+/// types) is a typed refusal, never a silent `None`.
 #[test]
-fn ifc2x3_step_file_is_a_typed_refusal_not_silently_dropped() {
+fn ifc2x3_step_file_is_read_and_missing_concepts_are_typed_refusals() {
     let model = StepCodec.read_bytes(IFC2X3_SOURCE).unwrap();
+    let view = ResourceView::for_model(&model).unwrap();
+    let labor = ifc::EntityId(1);
+    assert_eq!(
+        view.resource(labor).unwrap().name().unwrap(),
+        Some("Crew C")
+    );
     assert!(matches!(
-        ResourceView::for_model(&model),
-        Err(ResourceError::UnsupportedSchema { .. })
+        view.assigned_resource_type(labor),
+        Err(ResourceError::NotInSchema { .. })
     ));
+
+    let bytes = StepCodec.write_bytes(&model).unwrap();
+    let decoded = StepCodec.read_bytes(&bytes).unwrap();
+    let view = ResourceView::for_model(&decoded).unwrap();
+    assert_eq!(
+        view.resource(labor).unwrap().name().unwrap(),
+        Some("Crew C")
+    );
 }

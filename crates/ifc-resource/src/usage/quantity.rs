@@ -108,7 +108,8 @@ impl<'m, 's> SimpleQuantity<'m, 's> {
         self.record.optional_ref("Unit", "IfcNamedUnit")
     }
 
-    /// The `Formula` attribute, when authored.
+    /// The `Formula` attribute, when authored; IFC2X3 declares none
+    /// ([`ResourceError::NotInSchema`]).
     pub fn formula(&self) -> ResourceResult<Option<&'m str>> {
         self.record.optional_text("Formula")
     }

@@ -1,4 +1,4 @@
-//! `IfcPerson` — bounded IFC4 person projection.
+//! `IfcPerson` — bounded person projection (IFC2X3, IFC4, IFC4X3).
 
 use ifc_model::EntityId;
 
@@ -10,7 +10,9 @@ use crate::view::Record;
 ///
 /// Enforces `IfcPerson.IdentifiablePerson` (at least one of `Identification`,
 /// `FamilyName`, `GivenName` is present) and `IfcPerson.ValidSetOfNames`
-/// (`MiddleNames` requires `FamilyName` or `GivenName`).
+/// (`MiddleNames` requires `FamilyName` or `GivenName`). Under IFC2X3 the
+/// release's own `IfcPerson.WR1` applies instead: `FamilyName` or
+/// `GivenName` must exist, and `Id` does not count.
 #[derive(Debug, Clone, Copy)]
 pub struct Person<'m, 's> {
     record: Record<'m, 's>,
@@ -19,9 +21,18 @@ pub struct Person<'m, 's> {
 impl<'m, 's> Person<'m, 's> {
     pub(crate) fn from_record(record: Record<'m, 's>) -> ResourceResult<Self> {
         let person = Self { record };
-        let identification = person.record.optional_text("Identification")?;
+        let identification = person.identification()?;
         let family_name = person.record.optional_text("FamilyName")?;
         let given_name = person.record.optional_text("GivenName")?;
+        if person.record.is_ifc2x3() {
+            if family_name.is_none() && given_name.is_none() {
+                return Err(ResourceError::SemanticViolation {
+                    entity: Some(person.record.id),
+                    rule: "IfcPerson.WR1 (IFC2X3) requires FamilyName or GivenName",
+                });
+            }
+            return Ok(person);
+        }
         if identification.is_none() && family_name.is_none() && given_name.is_none() {
             return Err(ResourceError::SemanticViolation {
                 entity: Some(person.record.id),
@@ -45,9 +56,14 @@ impl<'m, 's> Person<'m, 's> {
         self.record.id
     }
 
-    /// The `Identification` attribute, when authored.
+    /// The `Identification` attribute, when authored. Under IFC2X3 this
+    /// reads `Id`, the `IfcIdentifier` IFC2X3 declares in the same position.
     pub fn identification(&self) -> ResourceResult<Option<&'m str>> {
-        self.record.optional_text("Identification")
+        if self.record.is_ifc2x3() {
+            self.record.optional_text("Id")
+        } else {
+            self.record.optional_text("Identification")
+        }
     }
 
     /// The `FamilyName` attribute, when authored.

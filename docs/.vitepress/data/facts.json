@@ -222,7 +222,7 @@
       ],
       "released": "0.3.0",
       "released_date": "2026-09-29",
-      "status": "partial",
+      "status": "implemented",
       "version": "0.3.0"
     },
     "ifc-schedule": {
@@ -456,8 +456,8 @@
   },
   "crates": {
     "by_status": {
-      "implemented": 25,
-      "partial": 6,
+      "implemented": 26,
+      "partial": 5,
       "scaffold": 0
     },
     "groups": [

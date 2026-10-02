@@ -1,5 +1,5 @@
-//! `IfcOrganization` and `IfcOrganizationRelationship` — bounded IFC4
-//! organization projections.
+//! `IfcOrganization` and `IfcOrganizationRelationship` — bounded
+//! organization projections (IFC2X3, IFC4, IFC4X3).
 
 use ifc_model::EntityId;
 
@@ -24,9 +24,14 @@ impl<'m, 's> Organization<'m, 's> {
         self.record.id
     }
 
-    /// The `Identification` attribute, when authored.
+    /// The `Identification` attribute, when authored. Under IFC2X3 this
+    /// reads `Id`, the `IfcIdentifier` IFC2X3 declares in the same position.
     pub fn identification(&self) -> ResourceResult<Option<&'m str>> {
-        self.record.optional_text("Identification")
+        if self.record.is_ifc2x3() {
+            self.record.optional_text("Id")
+        } else {
+            self.record.optional_text("Identification")
+        }
     }
 
     /// The `Name` attribute.

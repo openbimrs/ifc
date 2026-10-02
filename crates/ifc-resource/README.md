@@ -5,6 +5,15 @@ and subcontract resources and their types, actors and inventories, resource
 usage and allocation, as schema-resolved borrowed views with
 transaction-staged authoring. It schedules, levels and costs nothing.
 
+IFC2X3 TC1 is read, not authored, through its own table: shared concepts
+answer the shared accessors (`ResourceIdentifier` and `Id` answer
+`identification()`), IFC2X3-only attributes (`ResourceGroup`,
+`ResourceConsumption`, `BaseQuantity` as an `IfcMeasureWithUnit`,
+`SkillSet`, `Suppliers`, `UsageRatio`, `SubContractor`, `JobDescription`)
+have their own accessors, and what IFC2X3 lacks (resource types,
+`IfcResourceTime`, `PredefinedType`, `BaseCosts`) is a typed
+`ResourceError::NotInSchema`.
+
 ```bash
 cargo add ifc-resource
 ```
