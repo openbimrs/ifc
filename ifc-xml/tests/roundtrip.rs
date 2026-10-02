@@ -397,3 +397,30 @@ fn whitespace_and_type_names_are_escaped_for_conforming_parsers() {
     assert!(xml.contains(r#"type="ODD&quot;TYPE""#), "{xml}");
     assert_eq!(default_round_trip(&attributes), attributes);
 }
+
+/// The reader replaces entity and character references and changes nothing
+/// else: literal tabs and line breaks in attribute values and element text
+/// are kept as they are, not normalised to spaces or `\n`. Pins the values
+/// the reader has always produced across quick-xml upgrades.
+#[test]
+fn reader_unescapes_references_and_keeps_literal_whitespace() {
+    let xml = "<ifcXML schema=\"IFC4\"><IFCTEST id=\"i1\" \
+               a0=\"tab\there\nline\r\nend &amp; &lt;&gt;&quot;&apos; &#x41;&#66;\">\
+               <a1 kind=\"string\">tab\there\nline\r\nend &amp; &lt;&gt;&quot;&apos; &#x41;&#66;</a1>\
+               </IFCTEST></ifcXML>";
+    let model = XmlCodec::default().read_bytes(xml.as_bytes()).unwrap();
+    let expected = "tab\there\nline\r\nend & <>\"' AB";
+    let entity = model.get(EntityId(1)).unwrap();
+    assert_eq!(entity.text(0), Some(expected), "attribute value");
+    assert_eq!(entity.text(1), Some(expected), "element text");
+
+    for unknown in [
+        "<ifcXML><IFCTEST id=\"i1\" a0=\"&bogus;\"/></ifcXML>",
+        "<ifcXML><IFCTEST id=\"i1\"><a0 kind=\"string\">&bogus;</a0></IFCTEST></ifcXML>",
+    ] {
+        let error = XmlCodec::default()
+            .read_bytes(unknown.as_bytes())
+            .expect_err("an undeclared entity is refused, not passed through");
+        assert!(error.to_string().contains("bogus"), "{error}");
+    }
+}

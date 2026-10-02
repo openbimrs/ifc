@@ -12,6 +12,24 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-10-02
+
+Maintenance release from `maint/ifc-xml-0.2`: the 0.2 line with only the
+quick-xml upgrade from #267, for consumers still on ifc-model 0.2.
+
+### Security
+
+- Require quick-xml 0.42 instead of 0.37, which is affected by
+  RUSTSEC-2026-0194 and RUSTSEC-2026-0195 (#267). Reading is unchanged:
+  entity and character references are resolved as before, literal tabs and
+  line breaks in attribute values are kept, and unknown entities are still
+  refused.
+
+### Changed
+
+- `impl From<quick_xml::Error> for XmlError` now names quick-xml 0.42's
+  error type.
+
 ## [0.2.1] - 2026-09-27
 
 ### Fixed
