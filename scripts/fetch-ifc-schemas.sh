@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Fetch the normative EXPRESS schemas the schema-backed tests and the
-# ifc-schema artifact generator need.
+# ifc-schema artifact generator need, and the ifcXML XSDs the ifc-xml
+# configuration test checks its reader against.
 #
 # references/ifc-spec/ is a symlink to bulk storage and is NOT committed:
 # the schemas are CC BY-ND 4.0, so this repo does not redistribute them.
@@ -35,6 +36,8 @@ ifc4-add2-tc1/IFC4.exp a3e46d39a85c2b683e7167572165d74b4ff6f8ef7e7c1e7f314a4980a
 ifc4x1-final/IFC4x1.exp 29015743562212b0ead10f2536af125bc46510fd3bf2f4b9998dfbcc464490f5 RELEASE/IFC4_1/FINAL/EXPRESS/IFC4x1.exp
 ifc4x2-final/IFC4x2.exp b3d4ae9aab3123b25d0344bef05222e7545a1f2f2debcb274283e7571c7ea6e6 DEV/IFC4_2/FINAL/EXPRESS/IFC4x2.exp
 ifc4x3-add2/IFC4X3_ADD2.exp f67c8762b13a099c28082061e6f16b9ef1284ceec34069792afc702725675860 RELEASE/IFC4_3/HTML/IFC4X3_ADD2.exp
+ifc4-add2-tc1/IFC4.xsd 0afde823bd2d6bb510d87fea1b05e39b6996ea0eaf972a14fb5627b612071a6e RELEASE/IFC4/ADD2_TC1/XML/IFC4.xsd
+ifc4x3-add2/IFC4X3_ADD2.xsd e959e6b367161be5e41e3d414bac94d1f82d40bf5a53af04499046f4525da385 RELEASE/IFC4_3/HTML/IFC4X3_ADD2.xsd
 "
 
 echo "$SCHEMAS" | while read -r rel want url; do

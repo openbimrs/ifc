@@ -8,12 +8,19 @@
 //! entities, hostile strings), which is where a codec's value-kind inference
 //! actually gets tested.
 //!
-//! Three codec configurations are exercised, because they serialize the same
+//! Four codec configurations are exercised, because they serialize the same
 //! slot differently: positional `a<i>` names (the default), schema-backed
-//! names from the file's declared schema, and the strict IFC4 release profile
-//! for IFC4 files. Schema-backed names are the configuration that exposed a
-//! slot-order bug: scalars are XML attributes and structured values child
-//! elements, so document order is not slot order.
+//! names from the file's declared schema read leniently and strictly, and
+//! the strict IFC4 release profile for IFC4 files. Schema-backed names are
+//! the configuration that exposed a slot-order bug: scalars are XML
+//! attributes and structured values child elements, so document order is
+//! not slot order.
+//!
+//! A strict read types every value from the schema, so a fixture whose model
+//! the schema does not describe (an unknown entity, a string where a real is
+//! declared) is refused rather than read back. Such a refusal must be typed,
+//! and the source model must carry a type finding from `ifc-validate`: the
+//! strict reader refuses only what the validator would reject anyway.
 //!
 //! A missing or shrunken corpus fails the test rather than skipping it.
 
@@ -56,6 +63,7 @@ fn every_committed_fixture_round_trips_through_ifcxml() {
 
     let mut failures = Vec::new();
     let mut round_tripped = 0;
+    let mut strictly_refused = 0;
     for path in &fixtures {
         let relative = relative_name(&root, path);
         let bytes = std::fs::read(path).expect("read fixture");
@@ -75,9 +83,18 @@ fn every_committed_fixture_round_trips_through_ifcxml() {
                 continue;
             }
         };
-        for (label, codec) in configurations(&source) {
-            if let Err(detail) = round_trip(&source, &codec) {
-                failures.push(format!("{relative} [{label}]: {detail}"));
+        for (label, codec, may_refuse) in configurations(&source) {
+            match round_trip(&source, &codec) {
+                Ok(()) => {}
+                Err(Failure::Refused(detail)) if may_refuse => {
+                    if let Err(problem) = refusal_is_justified(&source) {
+                        failures.push(format!("{relative} [{label}]: {detail}; but {problem}"));
+                    }
+                    strictly_refused += 1;
+                }
+                Err(Failure::Refused(detail) | Failure::Differs(detail)) => {
+                    failures.push(format!("{relative} [{label}]: {detail}"));
+                }
             }
         }
         round_tripped += 1;
@@ -91,6 +108,48 @@ fn every_committed_fixture_round_trips_through_ifcxml() {
         failures.join("\n")
     );
     assert_eq!(round_tripped + EXCLUDED.len(), fixtures.len());
+    // Most fixtures are conformant; a strict read refusing most of them
+    // would mean the typing is wrong, not the fixtures.
+    assert!(
+        strictly_refused * 4 < fixtures.len(),
+        "{strictly_refused} strict refusals across {} fixtures",
+        fixtures.len()
+    );
+}
+
+/// Why a configuration did not round-trip.
+enum Failure {
+    /// Reading the written XML failed with a typed error.
+    Refused(String),
+    /// Something read back differently, or another stage failed.
+    Differs(String),
+}
+
+impl From<String> for Failure {
+    fn from(detail: String) -> Self {
+        Self::Differs(detail)
+    }
+}
+
+/// A strict refusal is justified when the schema's own type check rejects
+/// the source model.
+#[cfg(feature = "schema")]
+fn refusal_is_justified(source: &Model) -> Result<(), String> {
+    let token = source.header().schema_token().unwrap_or_default();
+    let version = ifc_schema::SchemaVersion::from_header_token(token)
+        .ok_or_else(|| format!("unrecognised schema {token:?}"))?;
+    let schema = ifc_schema::for_version(version).map_err(|error| error.to_string())?;
+    let mut report = ifc_validate::Report::new();
+    ifc_validate::type_check::check(source, schema, ifc_validate::Budget::default(), &mut report);
+    if report.findings().is_empty() {
+        return Err("ifc-validate finds no type error in the source".into());
+    }
+    Ok(())
+}
+
+#[cfg(not(feature = "schema"))]
+fn refusal_is_justified(_: &Model) -> Result<(), String> {
+    Err("no strict configuration exists without the schema feature".into())
 }
 
 /// Excluded entries must name real files, or they silently exclude nothing.
@@ -113,47 +172,57 @@ fn every_exclusion_names_a_committed_fixture() {
 ///
 /// Without the `schema` feature only positional names exist.
 #[cfg(not(feature = "schema"))]
-fn configurations(_: &Model) -> Vec<(&'static str, XmlCodec)> {
-    vec![("positional", XmlCodec::default())]
+fn configurations(_: &Model) -> Vec<(&'static str, XmlCodec, bool)> {
+    vec![("positional", XmlCodec::default(), false)]
 }
 
-/// The codec configurations a fixture is round-tripped through.
+/// The codec configurations a fixture is round-tripped through, and whether
+/// each may refuse a model its schema does not describe.
 #[cfg(feature = "schema")]
-fn configurations(source: &Model) -> Vec<(&'static str, XmlCodec)> {
+fn configurations(source: &Model) -> Vec<(&'static str, XmlCodec, bool)> {
     use ifc_schema::SchemaVersion;
-    use ifc_xml::XmlProfile;
+    use ifc_xml::{SchemaReading, XmlProfile};
     use std::sync::Arc;
 
-    let mut codecs = vec![("positional", XmlCodec::default())];
+    let mut codecs = vec![("positional", XmlCodec::default(), false)];
     let token = source.header().schema_token().unwrap_or_default();
     let version = SchemaVersion::from_header_token(token)
         .unwrap_or_else(|| panic!("fixture declares unrecognised schema {token:?}"));
-    let schema = ifc_schema::for_version(version).unwrap_or_else(|refused| panic!("{refused}"));
-    codecs.push(("schema", XmlCodec::with_schema(Arc::new(schema.clone()))));
+    let schema = Arc::new(
+        ifc_schema::for_version(version)
+            .unwrap_or_else(|refused| panic!("{refused}"))
+            .clone(),
+    );
+    codecs.push((
+        "schema-lenient",
+        XmlCodec::with_schema(schema.clone()).with_reading(SchemaReading::Lenient),
+        false,
+    ));
+    codecs.push(("schema", XmlCodec::with_schema(schema.clone()), true));
     if token == XmlProfile::Ifc4Add2Tc1.schema_token() {
         codecs.push((
             "strict",
-            XmlCodec::with_schema_and_profile(Arc::new(schema.clone()), XmlProfile::Ifc4Add2Tc1),
+            XmlCodec::with_schema_and_profile(schema, XmlProfile::Ifc4Add2Tc1),
+            true,
         ));
     }
     codecs
 }
 
 /// STEP model -> XML -> model -> STEP -> model, comparing at each stage.
-fn round_trip(source: &Model, codec: &XmlCodec) -> Result<(), String> {
+fn round_trip(source: &Model, codec: &XmlCodec) -> Result<(), Failure> {
     let xml = codec
         .write_bytes(source)
         .map_err(|error| format!("XML write: {error}"))?;
-    let from_xml = codec
-        .read_bytes(&xml)
-        .map_err(|error| format!("XML read: {error}"))?;
+    let from_xml = ifc_xml::reader::read(codec, &xml)
+        .map_err(|error| Failure::Refused(format!("XML read: {error}")))?;
     compare(source, &from_xml).map_err(|detail| format!("STEP -> XML: {detail}"))?;
     if from_xml.header().schema != source.header().schema {
-        return Err(format!(
+        return Err(Failure::Differs(format!(
             "schema header {:?} became {:?}",
             source.header().schema,
             from_xml.header().schema
-        ));
+        )));
     }
 
     // The writer is deterministic: re-writing what was read is byte-identical.
@@ -161,7 +230,9 @@ fn round_trip(source: &Model, codec: &XmlCodec) -> Result<(), String> {
         .write_bytes(&from_xml)
         .map_err(|error| format!("XML rewrite: {error}"))?;
     if rewritten != xml {
-        return Err("re-writing the read model changed the XML".into());
+        return Err(Failure::Differs(
+            "re-writing the read model changed the XML".into(),
+        ));
     }
 
     let step = StepCodec
@@ -170,7 +241,8 @@ fn round_trip(source: &Model, codec: &XmlCodec) -> Result<(), String> {
     let back = StepCodec
         .read_bytes(&step)
         .map_err(|error| format!("STEP re-read: {error}"))?;
-    compare(source, &back).map_err(|detail| format!("STEP -> XML -> STEP: {detail}"))
+    compare(source, &back)
+        .map_err(|detail| Failure::Differs(format!("STEP -> XML -> STEP: {detail}")))
 }
 
 /// Identical entity graphs: ids, type names and attributes.

@@ -12,6 +12,19 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- Behind `ifcxml`, the re-exported `XmlCodec` reads strictly by default when
+  it has a schema: values are typed from the schema and undeclared names
+  are refused (`ifc-xml` #266; see its changelog).
+  `.with_reading(SchemaReading::Lenient)` restores the previous read.
+
+### Added
+
+- Behind `ifcxml`, re-exports `SchemaReading` and `XmlLayout` beside
+  `XmlCodec` and `XmlProfile`, and with them the buildingSMART XSD layout
+  reader `XmlCodec::xsd` (`ifc-xml` #265).
+
 ## [0.9.0] - 2026-09-29
 
 ### Added

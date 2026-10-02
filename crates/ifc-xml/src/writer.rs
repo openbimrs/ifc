@@ -14,7 +14,7 @@
 
 use crate::error::XmlError;
 use crate::scalar::{attribute_text, element_form, format_ref};
-use crate::{slots, XmlCodec};
+use crate::{slots, XmlCodec, XmlLayout};
 use ifc_model::{Model, Value};
 use std::fmt::Write as _;
 
@@ -47,7 +47,14 @@ fn first_non_finite_real(value: &Value) -> Option<f64> {
 
 /// Serialize a model as ifcXML.
 pub fn write(codec: &XmlCodec, model: &Model) -> Result<Vec<u8>, XmlError> {
+    if codec.layout() == XmlLayout::Xsd {
+        return Err(XmlError::Unsupported {
+            construct: "writing the XSD configuration; write the native layout instead".into(),
+        });
+    }
     reject_non_finite_reals(model)?;
+    #[cfg(feature = "schema")]
+    let mut strict = codec.strict_schema().map(crate::typing::Layouts::new);
     let mut out = String::with_capacity(model.len() * 96);
     let schema_token = model.header().schema.first().cloned().unwrap_or_default();
     let namespace = if let Some(profile) = codec.profile() {
@@ -80,9 +87,32 @@ pub fn write(codec: &XmlCodec, model: &Model) -> Result<Vec<u8>, XmlError> {
         write_attr(&mut out, "id", &format_ref(id));
 
         // Scalars become XML attributes; everything else becomes a child.
+        #[cfg(feature = "schema")]
+        let layout = match strict.as_mut() {
+            // A type the schema cannot resolve is one the strict reader
+            // refuses whatever the writer does; write it losslessly anyway.
+            Some(layouts) => layouts
+                .entity(&entity.type_name, false)
+                .ok()
+                .flatten()
+                .filter(|layout| layout.slots.len() >= entity.attributes.len()),
+            None => None,
+        };
         let mut children: Vec<(usize, &Value)> = Vec::new();
         for (i, value) in entity.attributes.iter().enumerate() {
-            match attribute_text(value) {
+            let text = attribute_text(value);
+            // A strict reader types the text from the slot's declaration, so
+            // an attribute is used only where that typing agrees as well.
+            #[cfg(feature = "schema")]
+            let text = text.filter(|text| {
+                layout.as_ref().is_none_or(|layout| {
+                    let shape = &layout.slots[i].shape;
+                    shape.levels.is_empty()
+                        && crate::typing::scalar(&shape.leaf, text, crate::typing::Lexical::Native)
+                            .is_ok_and(|typed| crate::scalar::same_scalar(&typed, value))
+                })
+            });
+            match text {
                 Some(text) => write_attr(&mut out, &names[i], &text),
                 None => children.push((i, value)),
             }

@@ -279,7 +279,9 @@ fn schema_produces_conformant_attribute_names() {
     );
 }
 
-/// A three-slot schema for the slot-order regressions.
+/// A three-slot schema for the slot-order regressions, read leniently: the
+/// slots hold values `IfcLabel` does not admit, and the schema does not
+/// declare `IfcLabel`, so a strict read would refuse them.
 #[cfg(feature = "schema")]
 fn probe_codec() -> XmlCodec {
     let schema = ifc_schema::Schema::from_express(
@@ -287,7 +289,7 @@ fn probe_codec() -> XmlCodec {
          ENTITY IfcProbe; First : IfcLabel; Second : IfcLabel; Third : IfcLabel; END_ENTITY;\n\
          END_SCHEMA;",
     );
-    XmlCodec::with_schema(std::sync::Arc::new(schema))
+    XmlCodec::with_schema(std::sync::Arc::new(schema)).with_reading(ifc_xml::SchemaReading::Lenient)
 }
 
 /// Regression found by the fixture corpus (#118): with schema names, scalars

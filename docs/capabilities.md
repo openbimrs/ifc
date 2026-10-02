@@ -87,7 +87,7 @@ Every concrete `IfcRepresentationItem` subtype in IFC4 ADD2 TC1 is named somewhe
 | Entity graph with positional attributes | <span class="status-implemented">Implemented</span> | `ifc-model::Model` |
 | Round-trip of entities the build does not understand | <span class="status-implemented">Implemented</span> | `crates/openbim-ifc/tests/costing_roundtrip.rs` (runs with no domain crate compiled) |
 | STEP (`.ifc`) read and write | <span class="status-implemented">Implemented</span> | `ifc-step`; deterministic model order, finite scalar safeguards, generic syntax delegated to `openbim-step` |
-| ifcXML read and write | <span class="status-implemented">Implemented</span> | `ifc-xml`; explicit strict IFC4 ADD2 TC1 namespace profile and path-rich typed diagnostics; compatibility dialect is not claimed as generic XSD conformance |
+| ifcXML read and write | <span class="status-implemented">Implemented</span> | `ifc-xml`: its own lossless layout, read and written, typed from the schema when one is given (`SchemaReading::Strict`); the buildingSMART XSD configuration of IFC4 ADD2 TC1 and IFC4X3 ADD2, read only (`XmlCodec::xsd`), checked against both release XSDs; content either cannot read exactly is a typed error |
 | IFC-JSON | <span class="status-absent">Absent</span> | Would be a third `Codec` impl; no crate exists |
 | EXPRESS schema metadata, subtype queries | <span class="status-implemented">Implemented</span> | `ifc-schema` |
 | GlobalId base-64 encode/decode | <span class="status-implemented">Implemented</span> | `ifc-model::guid` |
