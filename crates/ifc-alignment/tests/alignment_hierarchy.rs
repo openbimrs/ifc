@@ -11,7 +11,7 @@ mod support;
 
 use ifc_alignment::{
     read_cant_segment, read_horizontal_segment, AlignmentError, AlignmentView, CantLayout,
-    ProfileSeam, VerticalLayout,
+    ProfileSeam, VerticalLayout, VerticalSeamKind,
 };
 use ifc_model::EntityId;
 use support::{metres, Builder};
@@ -320,10 +320,21 @@ fn a_vertical_layout_resolves_like_a_cant_layout() {
     );
     assert_eq!(layout.start_dist_along(), 100.0);
     assert_eq!(layout.length(), 190.0);
+    // Two seams between segments of positive length; the closing segment
+    // has none. Every grade continues.
+    assert_eq!(layout.seams().len(), 2);
+    assert!(layout
+        .seams()
+        .iter()
+        .all(|seam| seam.kind == VerticalSeamKind::Tangential));
+    layout.require_tangential().expect("tangent");
 }
 
+/// A gap and an empty layout are refused. A grade break is legal IFC4.3
+/// (#259): it resolves and is reported, and only an explicit tangency
+/// request refuses it.
 #[test]
-fn a_vertical_layout_refuses_gaps_kinks_and_emptiness() {
+fn a_vertical_layout_refuses_gaps_and_emptiness_and_reports_grade_breaks() {
     let mut b = Builder::new();
     let (gappy, kinked, empty) = (b.vertical(), b.vertical(), b.vertical());
     let g1 = b.vertical_segment(0.0, 50.0, 10.0, (0.02, 0.02), None, "CONSTANTGRADIENT");
@@ -339,13 +350,33 @@ fn a_vertical_layout_refuses_gaps_kinks_and_emptiness() {
         Err(AlignmentError::InvalidSegment { entity, .. })
             if entity == Builder::parameters_of(&model, g2)
     ));
-    assert!(matches!(
-        VerticalLayout::resolve(&model, kinked, metres()),
+    let kinked = VerticalLayout::resolve(&model, kinked, metres()).expect("grade break");
+    let (k1, k2) = (
+        Builder::parameters_of(&model, k1),
+        Builder::parameters_of(&model, k2),
+    );
+    assert_eq!(kinked.seams().len(), 1);
+    let seam = &kinked.seams()[0];
+    assert_eq!((seam.previous, seam.next), (k1, k2));
+    assert_eq!(seam.kind, VerticalSeamKind::GradeBreak);
+    assert_eq!(
+        (
+            seam.distance_along,
+            seam.incoming_gradient,
+            seam.outgoing_gradient
+        ),
+        (50.0, 0.02, 0.03)
+    );
+    assert_eq!(
+        kinked.require_tangential(),
         Err(AlignmentError::ProfileDiscontinuity {
+            entity: k2,
+            previous: k1,
             seam: ProfileSeam::Gradient,
-            ..
+            expected: 0.02,
+            actual: 0.03,
         })
-    ));
+    );
     assert!(matches!(
         VerticalLayout::resolve(&model, empty, metres()),
         Err(AlignmentError::SemanticViolation { entity: Some(e), .. }) if e == empty

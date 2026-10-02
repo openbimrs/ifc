@@ -32,6 +32,7 @@ use ifc_model::{EntityId, Model};
 
 use super::seam::{check_direction, check_position, HorizontalSeam};
 use super::spiral::{curvature_of, is_exactly_lowerable, refuse_unlowerable, transition_curvature};
+use super::terminal::split_closing;
 use crate::cant::CantLayout;
 use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::{
@@ -48,7 +49,8 @@ pub struct HorizontalPlan {
     pub curve: Curve2,
     /// The segments it was lowered from, in authored order.
     pub sources: Vec<EntityId>,
-    /// Every seam between consecutive segments and how it was checked.
+    /// Every seam between consecutive segments and how it was checked,
+    /// including the seam before a closing zero-length segment.
     pub seams: Vec<HorizontalSeam>,
 }
 
@@ -69,6 +71,11 @@ pub struct HorizontalPlan {
 /// heading kink at any seam, and a position gap at a seam whose predecessor
 /// has a closed-form end point. A seam after a transition spiral is not
 /// refused; it is reported in [`HorizontalPlan::seams`] as unverified.
+///
+/// The zero-length segment IFC4.3 requires at the end of a layout adds no
+/// piece; its start is checked against the curve's end like any seam, and
+/// that seam is reported last. A zero-length segment anywhere else, or as
+/// the only segment, is refused ([`AlignmentError::SemanticViolation`]).
 pub fn lower_horizontal_plan(
     model: &Model,
     entity: EntityId,
@@ -94,7 +101,10 @@ pub fn lower_horizontal_plan(
         .iter()
         .map(|id| read_horizontal_segment(model, *id, units))
         .collect::<AlignmentResult<Vec<_>>>()?;
-    let Some(first) = segments.first() else {
+    // The closing zero-length segment adds no curvature piece; its seam is
+    // checked below like any other.
+    let (body, closing) = split_closing(&segments, |s| s.segment_length, |s| s.entity)?;
+    let Some(first) = body.first() else {
         return Err(AlignmentError::SemanticViolation {
             entity: Some(entity),
             rule: "IfcAlignmentHorizontal must nest at least one IfcAlignmentSegment",
@@ -106,7 +116,7 @@ pub fn lower_horizontal_plan(
     let mut seams = Vec::with_capacity(segments.len().saturating_sub(1));
     let mut station = 0.0_f64;
     let mut previous: Option<(&HorizontalSegment, CurvatureLaw)> = None;
-    for segment in &segments {
+    for segment in body {
         let law = segment_law(segment, cant, station)?;
         if let Some((before, before_law)) = &previous {
             check_direction(before, before_law, segment)?;
@@ -123,6 +133,10 @@ pub fn lower_horizontal_plan(
         }
         station = end;
         previous = Some((segment, law));
+    }
+    if let (Some(closing), Some((before, before_law))) = (closing, &previous) {
+        check_direction(before, before_law, closing)?;
+        seams.push(check_position(before, closing, station)?);
     }
 
     let curvature = if laws.len() == 1 {

@@ -35,7 +35,7 @@ everything released before per-crate changelogs began.
   segments; `alignments` and `model` round out the view (#238).
 - `VerticalLayout::resolve`, the vertical counterpart of
   `CantLayout::resolve`: the ordered segments of an `IfcAlignmentVertical`,
-  refusing a gap or overlap and a kink in grade (#238).
+  refusing a gap or overlap (#238).
 - `Stationing::resolve` scopes station equations to one alignment, from
   the referents it nests or positions, and checks each `IncomingStation`
   (or a plain continuation) against the station carried from the previous
@@ -68,6 +68,15 @@ everything released before per-crate changelogs began.
   (`IfcSegmentedReferenceCurve` role). It resolves the cant layout and then
   refuses with `Unsupported`, because the pinned neutral curve vocabulary
   has no roll law (#93).
+- `VerticalLayout::seams` lists every seam between vertical segments of
+  positive length as a `VerticalSeam` (previous and next segment, station,
+  incoming and outgoing grade) with a `VerticalSeamKind`: `Tangential` or
+  `GradeBreak`. `VerticalLayout::require_tangential` refuses the first
+  grade break with `ProfileDiscontinuity { seam: ProfileSeam::Gradient }`
+  for a consumer that needs a tangent profile (#259).
+- `real_export_survey` (ignored test): runs every alignment path over a
+  local directory of real IFC4X3 exports (`IFC_ALIGNMENT_EXPORTS`) and
+  tallies acceptances and refusals by cause.
 
 ### Changed
 
@@ -104,9 +113,39 @@ everything released before per-crate changelogs began.
 - A `CONSTANTGRADIENT` segment may carry `RadiusOfCurvature = 0.` and start
   and end gradients equal up to rounding, as real exports write them; both
   were refused.
-- `VerticalLayout::resolve` checks contiguity and grade seams with the
+- `VerticalLayout::resolve` checks contiguity with the
   same `SeamTolerance` rule as `vertical_profile_law`, at the model's
   declared precision (#141).
+
+- Every layout path accepts the zero-length segment IFC4.3 requires at the
+  end of each horizontal, vertical and cant layout (concept template
+  *Alignment Layout - Horizontal, Vertical and Cant*). It adds no geometry
+  and no curve piece; its start is still checked against the end of the
+  previous segment by that layout's seam rule (closed-form position and
+  heading, station and height, station and cant), and the horizontal seam
+  is reported last in `seams`. A zero-length segment anywhere else, or as
+  a layout's only segment, is refused with `SemanticViolation`; the cant
+  and vertical paths accepted one anywhere before, and the horizontal
+  reader refused every one. Covers
+  `lower_horizontal_plan`, `lower_horizontal_layout`,
+  `lower_horizontal_layout_partial`, `profile_law`/`profile_law_within`,
+  `vertical_profile_law`, `VerticalLayout::resolve`, `CantLayout::resolve`
+  and the gradient curve (#262).
+- `read_horizontal_segment` reads `SegmentLength = 0` (the schema type is
+  `IfcNonNegativeLengthMeasure`); only a negative length is refused (#262).
+- `lower_horizontal_segment` and `lower_vertical_segment` refuse a
+  zero-length segment with `InvalidSegment`: on its own it has no geometry.
+  A zero-length `CONSTANTGRADIENT` lowered to a degenerate line before
+  (#262).
+- A grade break at a vertical seam whose height is continuous is accepted
+  by `profile_law`, `profile_law_within`, `vertical_profile_law`,
+  `VerticalLayout::resolve` and the gradient curve. IFC4.3 ADD2 does not
+  require vertical seams to be tangential
+  (`IfcAlignmentVerticalSegment`), and real exports carry such breaks
+  (buildingSMART `BC003_ALX2`, Trimble). The piecewise elevation law
+  carries the kink exactly: each piece keeps its own grade. A height step
+  beyond `SeamTolerance` is still refused, and `ProfileSeam::Gradient` is
+  now produced only by `require_tangential` (#259).
 
 ### Deprecated
 

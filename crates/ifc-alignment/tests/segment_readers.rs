@@ -240,15 +240,17 @@ fn refuses_a_missing_or_non_reference_start_point() {
     );
 }
 
-/// `SegmentLength` is typed `IfcNonNegativeLengthMeasure`, but a zero-length
-/// segment has no direction to lower, so the reader demands positive.
+/// `SegmentLength` is typed `IfcNonNegativeLengthMeasure`, and IFC4.3
+/// closes every layout with a zero-length segment (#262), so the reader
+/// takes zero and leaves where it may stand to the layout paths. A negative
+/// length is still refused.
 #[test]
-fn refuses_a_zero_or_negative_segment_length() {
+fn reads_a_zero_segment_length_and_refuses_a_negative_one() {
     let model = fixture();
-    for id in [24, 25] {
-        let error = read_horizontal_segment(&model, EntityId(id), metres()).expect_err("length");
-        assert!(invalid_segment(&error, id), "#{id}: {error}");
-    }
+    let zero = read_horizontal_segment(&model, EntityId(24), metres()).expect("zero length");
+    assert_eq!(zero.segment_length, 0.0);
+    let error = read_horizontal_segment(&model, EntityId(25), metres()).expect_err("negative");
+    assert!(invalid_segment(&error, 25), "#25: {error}");
 }
 
 #[test]
