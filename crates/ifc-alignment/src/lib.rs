@@ -42,13 +42,14 @@ pub use authoring::{
     vertical_segment, CantSegmentDraft, HorizontalSegmentDraft, VerticalSegmentDraft,
 };
 pub use cant::{
-    cant_at, read_cant_segment, CantAtStation, CantLayout, CantSegment, CantSegmentType,
+    cant_at, read_cant_segment, CantAtStation, CantFrame, CantLayout, CantSegment, CantSegmentType,
 };
 pub use curve::{
     elevation_law, gradient_curve3, lower_gradient_curve, lower_horizontal_layout,
     lower_horizontal_layout_partial, lower_horizontal_plan, lower_horizontal_segment,
-    lower_vertical_segment, profile_law, HorizontalPlan, HorizontalSeam, LoweredAlignmentCurve,
-    PartialHorizontalLayout, RefusedSegment, SeamCheck,
+    lower_segmented_reference_curve, lower_vertical_segment, profile_law, profile_law_within,
+    vertical_profile_law, HorizontalPlan, HorizontalSeam, LoweredAlignmentCurve,
+    PartialHorizontalLayout, RefusedSegment, SeamCheck, SeamTolerance,
 };
 pub use error::{AlignmentError, AlignmentResult, ProfileSeam};
 pub use horizontal::{

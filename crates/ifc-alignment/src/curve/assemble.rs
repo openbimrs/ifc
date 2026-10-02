@@ -12,7 +12,7 @@
 //! zero.
 
 use axiolid_core::{Frame2, Point2, Vec2};
-use axiolid_curve::{Circle2, Curve2, Line2};
+use axiolid_curve::{BSplineCurve2, Circle2, Curve2, ElevationLaw, KnotSpec, Line2};
 use axiolid_model::{
     CurveRelation, CurveSegment, GeometryGraph, GeometryGraphBuilder, GeometryNode, NodeId,
     Transition, TrimSelector, TrimmingPreference,
@@ -20,13 +20,14 @@ use axiolid_model::{
 use ifc_model::{EntityId, Model};
 
 use crate::cant::CantLayout;
+use crate::curve::elevation::elevation_law;
 use crate::curve::seam::{check_position, HorizontalSeam, SeamCheck};
 use crate::curve::spiral::{is_exactly_lowerable, refuse_unlowerable, spiral_curve};
 use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::{
     read_horizontal_segment, AlignmentUnits, HorizontalSegment, HorizontalSegmentType,
 };
-use crate::vertical::{read_vertical_segment, VerticalSegment, VerticalSegmentType};
+use crate::vertical::{read_vertical_segment, VerticalSegment};
 use crate::view::AlignmentView;
 
 /// Exact neutral curve graph for one or more IFC alignment segments.
@@ -146,20 +147,36 @@ pub fn lower_horizontal_segment(
     finish(builder, root, vec![id])
 }
 
-/// Lower one `IfcAlignmentVerticalSegment` to an exact neutral curve.
+/// Lower one `IfcAlignmentVerticalSegment` to an exact neutral curve in the
+/// (distance along, height) plane.
 ///
-/// Fails if `id` is missing or malformed, or the segment is not
-/// `CONSTANTGRADIENT`, or has a curvature radius, or unequal start/end
-/// gradients -- exact neutral vertical lowering does not yet cover arcs or
-/// parabolas.
+/// The segment goes through [`elevation_law`], the same law the composed
+/// gradient curve uses, so the per-segment and composed paths accept,
+/// refuse and place exactly the same segments. The law is then written as a
+/// `Curve2` whose parameter is plan distance from `StartDistAlong`, trimmed
+/// to `0..HorizontalLength`:
+///
+/// - degree 1 (`CONSTANTGRADIENT`): a line through
+///   `(StartDistAlong, StartHeight)` with direction `(1, grade)`;
+/// - degree 2 (`PARABOLICARC`): a quadratic Bezier over the knot span
+///   `0..L` with control points `z0`, `z0 + g0 L / 2`, `z(L)` at stations
+///   `d0`, `d0 + L / 2`, `d0 + L`. Equally spaced stations make the station
+///   linear in the parameter, so this is the IFC parabola exactly, not a fit.
+///
+/// # Errors
+///
+/// Fails if `id` is missing or malformed, and with everything
+/// [`elevation_law`] refuses: `CIRCULARARC` and `CLOTHOID` (no exact law),
+/// and parameters that contradict their family.
 pub fn lower_vertical_segment(
     model: &Model,
     id: EntityId,
     units: AlignmentUnits,
 ) -> AlignmentResult<LoweredAlignmentCurve> {
     let segment = read_vertical_segment(model, id, units)?;
+    let law = elevation_law(&segment)?;
     let mut builder = GeometryGraphBuilder::new();
-    let root = push_constant_gradient(&mut builder, &segment)?;
+    let root = push_vertical_law(&mut builder, &segment, &law)?;
     finish(builder, root, vec![id])
 }
 
@@ -254,41 +271,71 @@ fn push_arc(
     )
 }
 
-/// Push a `IfcAlignmentVerticalSegment.CONSTANTGRADIENT` as a trimmed
-/// neutral line in the (distance-along, height) plane.
-fn push_constant_gradient(
+/// Push a vertical segment's exact elevation law as a trimmed `Curve2` in
+/// the (distance along, height) plane, parameterised by plan distance.
+fn push_vertical_law(
     builder: &mut GeometryGraphBuilder,
     segment: &VerticalSegment,
+    law: &ElevationLaw,
 ) -> AlignmentResult<NodeId> {
-    if !matches!(
-        segment.predefined_type,
-        VerticalSegmentType::ConstantGradient
-    ) {
-        return Err(AlignmentError::Unsupported {
-            entity: segment.entity,
-            type_name: segment.predefined_type.source_name().to_owned(),
-            detail: "exact neutral vertical lowering is currently limited to constant gradient",
-        });
-    }
-    if segment.radius_of_curvature.is_some() || segment.start_gradient != segment.end_gradient {
-        return Err(AlignmentError::InvalidSegment {
-            entity: segment.entity,
-            detail: "CONSTANTGRADIENT requires equal gradients and no curvature radius",
-        });
-    }
-    let basis = push(
-        builder,
-        GeometryNode::Curve2(Curve2::Line(Line2 {
-            origin: Point2::new(segment.start_dist_along, segment.start_height),
-            direction: Vec2::new(1.0, segment.start_gradient),
-        })),
-    )?;
+    let unsupported = |detail| AlignmentError::Unsupported {
+        entity: segment.entity,
+        type_name: segment.predefined_type.source_name().to_owned(),
+        detail,
+    };
+    let ElevationLaw::Polynomial { coefficients } = law else {
+        return Err(unsupported(
+            "a single vertical segment lowers from one polynomial piece",
+        ));
+    };
+    let start = segment.start_dist_along;
+    let length = segment.horizontal_length;
+    let coefficient = |power: usize| coefficients.get(power).copied().unwrap_or(0.0);
+    let curve = match coefficients.len() {
+        0..=2 => Curve2::Line(Line2 {
+            origin: Point2::new(start, coefficient(0)),
+            direction: Vec2::new(1.0, coefficient(1)),
+        }),
+        3 => {
+            let (z0, g0, c2) = (coefficient(0), coefficient(1), coefficient(2));
+            let control_points = vec![
+                Point2::new(start, z0),
+                Point2::new(start + 0.5 * length, z0 + 0.5 * g0 * length),
+                Point2::new(start + length, z0 + g0 * length + c2 * length * length),
+            ];
+            if control_points
+                .iter()
+                .any(|p| !p.x.is_finite() || !p.y.is_finite())
+            {
+                return Err(AlignmentError::InvalidSegment {
+                    entity: segment.entity,
+                    detail: "vertical control points must be finite",
+                });
+            }
+            Curve2::BSpline(BSplineCurve2 {
+                degree: 2,
+                control_points,
+                knots: vec![0.0, length],
+                multiplicities: vec![3, 3],
+                weights: None,
+                closed: false,
+                self_intersect: Some(false),
+                knot_spec: KnotSpec::PiecewiseBezier,
+            })
+        }
+        _ => {
+            return Err(unsupported(
+                "the vertical law has no exact neutral curve of its degree",
+            ))
+        }
+    };
+    let basis = push(builder, GeometryNode::Curve2(curve))?;
     push(
         builder,
         GeometryNode::CurveRelation(CurveRelation::Trimmed {
             basis,
             start: vec![TrimSelector::Parameter(0.0)],
-            end: vec![TrimSelector::Parameter(segment.horizontal_length)],
+            end: vec![TrimSelector::Parameter(length)],
             sense_agreement: true,
             preference: TrimmingPreference::Parameter,
         }),

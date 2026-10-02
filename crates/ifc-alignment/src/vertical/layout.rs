@@ -8,6 +8,7 @@
 
 use ifc_model::{EntityId, Model};
 
+use crate::curve::SeamTolerance;
 use crate::error::{AlignmentError, AlignmentResult, ProfileSeam};
 use crate::horizontal::AlignmentUnits;
 use crate::vertical::segment::{read_vertical_segment, VerticalSegment};
@@ -28,14 +29,15 @@ impl VerticalLayout {
     ///
     /// Checks what the segments state directly: they are contiguous and
     /// ascending in `StartDistAlong`, and each `StartGradient` equals the
-    /// previous `EndGradient`. The height seam needs each segment's
+    /// previous `EndGradient`, at the [`SeamTolerance`] the model declares. The height seam needs each segment's
     /// elevation law and is checked by `profile_law` when the profile is
     /// lowered.
     ///
     /// # Errors
     ///
     /// Refuses a model that is not IFC4X3, an entity that is not an
-    /// `IfcAlignmentVertical`, a layout nesting no segment, a segment that
+    /// `IfcAlignmentVertical`, an invalid declared `Precision`, a layout
+    /// nesting no segment, a segment that
     /// does not read, a gap or overlap
     /// ([`AlignmentError::InvalidSegment`]), and a kink in grade
     /// ([`AlignmentError::ProfileDiscontinuity`]).
@@ -53,6 +55,9 @@ impl VerticalLayout {
                 rule: "IfcAlignmentVertical must nest at least one IfcAlignmentSegment",
             });
         }
+        // The same rule `vertical_profile_law` applies (#141): length seams
+        // within the model's declared precision, gradients at rounding.
+        let tolerance = SeamTolerance::for_model(model, units)?;
         let mut segments = Vec::with_capacity(ids.len());
         for id in ids {
             segments.push(read_vertical_segment(model, id, units)?);
@@ -62,13 +67,13 @@ impl VerticalLayout {
                 unreachable!("windows(2) yields pairs")
             };
             let previous_end = previous.start_dist_along + previous.horizontal_length;
-            if !approximately(next.start_dist_along, previous_end) {
+            if !tolerance.same_length(next.start_dist_along, previous_end) {
                 return Err(AlignmentError::InvalidSegment {
                     entity: next.entity,
                     detail: "vertical segments must be contiguous and ascending in StartDistAlong",
                 });
             }
-            if !approximately(next.start_gradient, previous.end_gradient) {
+            if !tolerance.same_gradient(next.start_gradient, previous.end_gradient) {
                 return Err(AlignmentError::ProfileDiscontinuity {
                     entity: next.entity,
                     previous: previous.entity,
@@ -99,12 +104,4 @@ impl VerticalLayout {
         let last = &self.segments[self.segments.len() - 1];
         last.start_dist_along + last.horizontal_length - self.start_dist_along()
     }
-}
-
-/// Equal within a tolerance scaled to the magnitude involved: the rule
-/// `profile_law` applies to the same seams, so a profile this accepts is
-/// not refused there for contiguity or grade (#141 tracks the bound).
-fn approximately(left: f64, right: f64) -> bool {
-    let scale = left.abs().max(right.abs()).max(1.0);
-    (left - right).abs() <= 1e-9 * scale
 }

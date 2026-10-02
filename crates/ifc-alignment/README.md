@@ -21,6 +21,17 @@ The [`openbim-ifc`](https://crates.io/crates/openbim-ifc) facade also provides i
 
 ## Design notes
 
+- A vertical profile read from a file is checked at the seam tolerance the
+  file declares: `IfcGeometricRepresentationContext.Precision` (3D, coarsest,
+  in the project length unit, capped at 1 mm). Exporters that round stations
+  and heights to their stated precision are accepted; a step beyond it is
+  refused. Without a declared precision only floating-point rounding is
+  tolerated (`SeamTolerance`, `vertical_profile_law`).
+- Cant is exact data per station (`CantLayout::frame_at_distance`: rail
+  heights, cant, bank angle `arcsin(D / b)`, rotation-point elevation and
+  the section frame). The cant-carrying centreline
+  (`IfcSegmentedReferenceCurve`) is a typed refusal: the neutral curve
+  vocabulary has no roll law yet (#93).
 - A multi-segment horizontal layout elevates as one exact plan curve: the
   first segment's start frame plus one curvature piece per segment. Seams
   are checked in closed form: a heading kink, or a position gap after a

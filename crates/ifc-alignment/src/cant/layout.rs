@@ -113,6 +113,51 @@ impl CantLayout {
         })
     }
 
+    /// The cant layout of `IfcAlignment#alignment`.
+    ///
+    /// Unlike the gradient-curve composition, where a road without cant is
+    /// ordinary, this is the call for work that NEEDS cant (the section
+    /// frames, the `IfcSegmentedReferenceCurve` role), so its absence is a
+    /// refusal rather than `None`.
+    ///
+    /// # Errors
+    ///
+    /// Refuses a model that is not IFC4X3, an entity that is not an
+    /// `IfcAlignment`, an alignment nesting no `IfcAlignmentCant` or several
+    /// of them (`SemanticViolation`: picking one would silently choose a
+    /// track), and everything [`Self::resolve`] refuses.
+    pub fn for_alignment(
+        model: &Model,
+        alignment: EntityId,
+        units: AlignmentUnits,
+    ) -> AlignmentResult<Self> {
+        let view = AlignmentView::for_model(model)?;
+        let entity = model
+            .get(alignment)
+            .ok_or(AlignmentError::MissingEntity { entity: alignment })?;
+        if !view.schema.is_a(&entity.type_name, "IfcAlignment") {
+            return Err(AlignmentError::WrongType {
+                entity: alignment,
+                expected: "IfcAlignment",
+                actual: entity.type_name.to_string(),
+            });
+        }
+        match view
+            .nested_children(alignment, "IfcAlignmentCant")?
+            .as_slice()
+        {
+            [only] => Self::resolve(model, *only, units),
+            [] => Err(AlignmentError::SemanticViolation {
+                entity: Some(alignment),
+                rule: "the alignment nests no IfcAlignmentCant layout",
+            }),
+            _ => Err(AlignmentError::SemanticViolation {
+                entity: Some(alignment),
+                rule: "an alignment with several cant layouts is ambiguous to compose",
+            }),
+        }
+    }
+
     /// Segments in authored (distance-along) order.
     #[must_use]
     pub fn segments(&self) -> &[CantSegment] {
