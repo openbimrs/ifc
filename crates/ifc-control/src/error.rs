@@ -46,10 +46,11 @@ pub enum ControlError {
         /// Rejected value.
         value: String,
     },
-    /// The relating control of an assignment is not one this crate owns.
+    /// The relating control of an assignment, or the record a reader was
+    /// asked for, is not one this crate owns.
     ///
     /// Cost schedules, cost items and work controls are `IfcControl`s
-    /// too; their own crates write assignments to them.
+    /// too; their own crates write and read them.
     #[error("{id} is {actual}, not a control ifc-control owns")]
     ForeignControl {
         /// The offered relating control.
@@ -117,6 +118,38 @@ pub enum ControlError {
         entity: &'static str,
         /// The attribute, by the release's own name.
         attribute: String,
+        /// Schema name.
+        schema: String,
+    },
+    /// A stored record holds, in a slot its release declares, a value that
+    /// declaration cannot hold (text where an enumeration belongs, a token
+    /// outside the release's enumeration). It is refused rather than read
+    /// as absent.
+    #[error("{entity} {id}: {schema} declares {attribute} as {declared}; the record holds another value")]
+    InvalidAttribute {
+        /// Entity kind.
+        entity: &'static str,
+        /// Entity identifier.
+        id: EntityId,
+        /// The attribute, by the release's own name.
+        attribute: &'static str,
+        /// The type the release declares.
+        declared: String,
+        /// Schema name.
+        schema: String,
+    },
+    /// A stored record has more attributes than its release declares, so
+    /// its layout is not the release's and no slot can be trusted.
+    #[error("{entity} {id} has {found} attributes; {schema} declares {declared}")]
+    ExtraAttributes {
+        /// Entity kind.
+        entity: &'static str,
+        /// Entity identifier.
+        id: EntityId,
+        /// Attributes the release declares.
+        declared: usize,
+        /// Attributes the record holds.
+        found: usize,
         /// Schema name.
         schema: String,
     },

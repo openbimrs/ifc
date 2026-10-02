@@ -40,6 +40,12 @@ IFC4 on, so the writers that leave it unset refuse IFC2X3 with
 variants bind the model's declared release and take a caller-supplied
 `IfcOwnerHistory` (#202).
 
+`read_control` and `read_controls` read the four controls back as
+borrowed `Control` views, by attribute name in the same declared
+release, together with the `ControlAssignment`s that govern work
+(#100). A record that does not fit its release is refused, never read
+as absent.
+
 `IfcCostItem`, `IfcCostSchedule`, `IfcWorkCalendar` and
 `IfcWorkControl` are `IfcControl` subtypes too, but they belong to
 `ifc-cost` and `ifc-schedule`: the crates split by domain, not by

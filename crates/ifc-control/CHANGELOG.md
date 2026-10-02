@@ -12,6 +12,21 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- Borrowed read views for the four controls (#100): `read_control` and
+  `read_controls` return a `Control` with `GlobalId`, `OwnerHistory`,
+  `Name`, `Description`, `ObjectType`, `Identification` (IFC2X3
+  `PermitID`, `RequestID`, `ID`), `PredefinedType`, `Status`,
+  `LongDescription` and `LifeCyclePhase`, each found by name in the
+  model's declared release, plus `Control::declares` and
+  `Control::assignments` (`ControlAssignment` views of the
+  `IfcRelAssignsToControl` the crate writes). A record that does not fit
+  its release is refused with the new `ControlError::InvalidAttribute` or
+  `ControlError::ExtraAttributes`, or with `MissingAttribute`; a foreign
+  type with `ForeignControl`.
+- `ControlKind::from_type_name`.
+
 ## [0.3.0] - 2026-09-29
 
 ### Changed (breaking)

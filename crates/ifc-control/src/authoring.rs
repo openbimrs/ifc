@@ -121,6 +121,16 @@ impl ControlKind {
         }
     }
 
+    /// The kind whose STEP type name is `type_name`, compared without
+    /// regard to case; `None` for any other entity, including the
+    /// `IfcControl` subtypes owned by `ifc-cost` and `ifc-schedule`.
+    #[must_use]
+    pub fn from_type_name(type_name: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|kind| kind.type_name().eq_ignore_ascii_case(type_name))
+    }
+
     /// The tokens this entity's own `PredefinedType` enum declares.
     #[must_use]
     pub const fn members(self) -> &'static [&'static str] {
