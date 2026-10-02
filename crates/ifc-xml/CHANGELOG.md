@@ -12,6 +12,22 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Security
+
+- Require `quick-xml` 0.42 (was 0.37), which fixes RUSTSEC-2026-0194
+  (quadratic duplicate-attribute check on one start tag) and
+  RUSTSEC-2026-0195 (unbounded namespace-declaration allocation in
+  `NsReader`); both are denial of service on untrusted input (#267).
+
+### Changed
+
+- `impl From<quick_xml::Error> for XmlError` is kept, but its source type is
+  now quick-xml 0.42's `Error`. Code that converts a quick-xml 0.37 error
+  into `XmlError` must upgrade quick-xml too. Values read are unchanged:
+  entity and character references are still resolved, and literal tabs and
+  line breaks in attribute values and text are still kept rather than
+  normalised to spaces; a regression test pins this.
+
 ## [0.3.0] - 2026-09-29
 
 ## [0.2.1] - 2026-09-27

@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 
+use quick_xml::escape::unescape;
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::Reader;
 
@@ -49,29 +50,33 @@ pub(super) fn parse(xml: &str, limits: super::ImportLimits) -> Result<Node, XmlI
         match reader.read_event() {
             Ok(Event::Start(start)) => {
                 check_node(&limits, &mut nodes, stack.len() + 1)?;
-                stack.push(new_node(&start, &reader)?);
+                stack.push(new_node(&start)?);
             }
             Ok(Event::Empty(start)) => {
                 check_node(&limits, &mut nodes, stack.len() + 1)?;
-                let node = new_node(&start, &reader)?;
+                let node = new_node(&start)?;
                 append(node, &mut stack, &mut root)?;
             }
+            // Text arrives verbatim and each entity or character reference
+            // as its own event; concatenating both yields the unescaped run.
             Ok(Event::Text(text)) => {
                 if let Some(parent) = stack.last_mut() {
-                    parent.text.push_str(
-                        &text
-                            .unescape()
-                            .map_err(|error| XmlImportError::Xml(error.to_string()))?,
-                    );
+                    parent.text.push_str(&text);
+                }
+            }
+            Ok(Event::GeneralRef(reference)) => {
+                // Resolve even outside an element so an unknown entity is
+                // refused wherever it appears.
+                let resolved = unescape(&format!("&{};", &*reference))
+                    .map(std::borrow::Cow::into_owned)
+                    .map_err(|error| XmlImportError::Xml(error.to_string()))?;
+                if let Some(parent) = stack.last_mut() {
+                    parent.text.push_str(&resolved);
                 }
             }
             Ok(Event::CData(text)) => {
                 if let Some(parent) = stack.last_mut() {
-                    parent.text.push_str(
-                        &text
-                            .decode()
-                            .map_err(|error| XmlImportError::Xml(error.to_string()))?,
-                    );
+                    parent.text.push_str(&text);
                 }
             }
             Ok(Event::End(_)) => {
@@ -118,15 +123,17 @@ fn check_node(
     Ok(())
 }
 
-fn new_node(start: &BytesStart<'_>, reader: &Reader<&[u8]>) -> Result<Node, XmlImportError> {
+fn new_node(start: &BytesStart<'_>) -> Result<Node, XmlImportError> {
     let name = local_name(start.name().as_ref());
     let mut attributes = BTreeMap::new();
     for attribute in start.attributes() {
         let attribute = attribute.map_err(|error| XmlImportError::Xml(error.to_string()))?;
         let key = local_name(attribute.key.as_ref());
-        let value = attribute
-            .decode_and_unescape_value(reader.decoder())
-            .map_err(|error| XmlImportError::Xml(error.to_string()))?;
+        // Entity and character references only, as before: attribute-value
+        // normalisation (`normalized_value`) would turn tabs and line breaks
+        // in definitions and descriptions into spaces.
+        let value =
+            unescape(&attribute.value).map_err(|error| XmlImportError::Xml(error.to_string()))?;
         attributes.insert(key, value.into_owned());
     }
     Ok(Node {
@@ -146,7 +153,41 @@ fn append(node: Node, stack: &mut [Node], root: &mut Option<Node>) -> Result<(),
     Ok(())
 }
 
-fn local_name(bytes: &[u8]) -> String {
-    let name = String::from_utf8_lossy(bytes);
-    name.rsplit(':').next().unwrap_or(&name).to_owned()
+fn local_name(name: &str) -> String {
+    name.rsplit(':').next().unwrap_or(name).to_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// References are replaced and nothing else changes: literal tabs and
+    /// line breaks survive in attribute values and text, and CDATA is kept
+    /// verbatim. Pins the values across quick-xml upgrades.
+    #[test]
+    fn unescapes_references_and_keeps_literal_whitespace() {
+        let xml = "<Root note=\"tab\there\nline\r\nend &amp; &lt;&gt;&quot;&apos; &#x41;&#66;\">\
+                   <Text>tab\there\nline\r\nend &amp; &lt;&gt;&quot;&apos; &#x41;&#66;</Text>\
+                   <Raw><![CDATA[raw &amp; <kept>]]></Raw></Root>";
+        let root = parse(xml, super::super::ImportLimits::default()).unwrap();
+        let expected = "tab\there\nline\r\nend & <>\"' AB";
+        assert_eq!(root.attribute("note"), Some(expected));
+        assert_eq!(
+            root.child("Text").map(|node| node.text.as_str()),
+            Some(expected)
+        );
+        assert_eq!(
+            root.child("Raw").map(|node| node.text.as_str()),
+            Some("raw &amp; <kept>")
+        );
+    }
+
+    #[test]
+    fn refuses_undeclared_entities() {
+        for xml in ["<Root a=\"&bogus;\"/>", "<Root>&bogus;</Root>"] {
+            let error = parse(xml, super::super::ImportLimits::default())
+                .expect_err("an undeclared entity is refused, not passed through");
+            assert!(error.to_string().contains("bogus"), "{error}");
+        }
+    }
 }

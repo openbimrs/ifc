@@ -11,7 +11,9 @@ use crate::error::XmlError;
 use crate::scalar::{decode_element, format_ref, infer, parse_ref};
 use crate::{slots, XmlCodec};
 use ifc_model::{Entity, EntityId, Model, Value};
-use quick_xml::events::{BytesStart, Event};
+use quick_xml::escape::unescape;
+use quick_xml::events::attributes::Attribute;
+use quick_xml::events::{BytesRef, BytesStart, Event};
 use quick_xml::name::ResolveResult;
 use quick_xml::reader::NsReader;
 
@@ -120,15 +122,20 @@ pub fn read(codec: &XmlCodec, bytes: &[u8]) -> Result<Model, XmlError> {
                 }
             }
 
-            Ok((_, Event::Text(t))) => {
-                let raw = t.unescape().map_err(|error| {
+            // Text arrives verbatim (no end-of-line normalisation) and each
+            // entity or character reference as its own event; concatenating
+            // both reproduces the unescaped text of the whole run.
+            Ok((_, Event::Text(t))) => text_buf.push_str(&t),
+
+            Ok((_, Event::GeneralRef(reference))) => {
+                let resolved = resolve_reference(&reference).map_err(|error| {
                     XmlError::Malformed(error.to_string()).at(current_path(&current, &stack, None))
                 })?;
-                text_buf.push_str(&raw);
+                text_buf.push_str(&resolved);
             }
 
             Ok((namespace, Event::End(e))) => {
-                let name = String::from_utf8_lossy(e.local_name().as_ref()).to_string();
+                let name = e.local_name().as_ref().to_owned();
                 validate_element(codec, namespace, &name)?;
                 element_depth = element_depth.saturating_sub(1);
                 if codec.profile().is_some() && element_depth == 0 {
@@ -180,13 +187,8 @@ fn validate_element(
     };
     let found = match namespace {
         ResolveResult::Unbound => None,
-        ResolveResult::Bound(namespace) => {
-            Some(String::from_utf8_lossy(namespace.as_ref()).into_owned())
-        }
-        ResolveResult::Unknown(prefix) => Some(format!(
-            "unresolved prefix `{}`",
-            String::from_utf8_lossy(&prefix)
-        )),
+        ResolveResult::Bound(namespace) => Some(namespace.as_ref().to_owned()),
+        ResolveResult::Unknown(prefix) => Some(format!("unresolved prefix `{prefix}`")),
     };
     if found.as_deref() != Some(profile.namespace()) {
         return Err(XmlError::Namespace {
@@ -309,13 +311,12 @@ fn start_entity(e: &BytesStart<'_>, name: &str) -> Result<Option<PendingEntity>,
     let id = parse_ref(&id_text).ok_or_else(|| XmlError::BadId(id_text.clone()))?;
     let mut attrs = Vec::new();
     for attr in e.attributes().flatten() {
-        let key = String::from_utf8_lossy(attr.key.local_name().as_ref()).to_string();
+        let key = attr.key.local_name().as_ref().to_owned();
         if key == "id" {
             continue;
         }
-        let value = attr
-            .unescape_value()
-            .map(|value| value.to_string())
+        let value = unescape_attribute(&attr)
+            .map(|value| value.into_owned())
             .map_err(|error| XmlError::Malformed(error.to_string()))?;
         attrs.push((key, infer(&value)));
     }
@@ -372,28 +373,45 @@ fn current_path(
 }
 
 fn local_name(e: &BytesStart<'_>) -> String {
-    String::from_utf8_lossy(e.local_name().as_ref()).to_string()
+    e.local_name().as_ref().to_owned()
+}
+
+/// An attribute value with entity and character references replaced, and
+/// nothing else changed.
+///
+/// Deliberately not `Attribute::normalized_value`: XML attribute-value
+/// normalisation would turn literal tabs and line breaks into spaces, and a
+/// string attribute's whitespace is data the reader has always preserved.
+fn unescape_attribute<'a>(
+    attribute: &'a Attribute<'_>,
+) -> Result<std::borrow::Cow<'a, str>, quick_xml::escape::EscapeError> {
+    unescape(&attribute.value)
+}
+
+/// The text a `&name;` or `&#N;` reference in element content stands for:
+/// one of the five predefined entities or a character reference. Any other
+/// entity is refused, as no DTD is processed.
+fn resolve_reference(reference: &BytesRef<'_>) -> Result<String, quick_xml::escape::EscapeError> {
+    unescape(&format!("&{};", &**reference)).map(std::borrow::Cow::into_owned)
 }
 
 fn has_true_xsi_nil(reader: &NsReader<&[u8]>, element: &BytesStart<'_>) -> bool {
     element.attributes().flatten().any(|attribute| {
-        if attribute.key.local_name().as_ref() != b"nil" {
+        if attribute.key.local_name().as_ref() != "nil" {
             return false;
         }
-        let (namespace, _) = reader.resolve_attribute(attribute.key);
+        let (namespace, _) = reader.resolver().resolve_attribute(attribute.key);
         matches!(
             namespace,
-            ResolveResult::Bound(namespace) if namespace.as_ref() == XSI_NAMESPACE.as_bytes()
-        ) && attribute
-            .unescape_value()
-            .is_ok_and(|value| value.as_ref() == "true")
+            ResolveResult::Bound(namespace) if namespace.as_ref() == XSI_NAMESPACE
+        ) && unescape_attribute(&attribute).is_ok_and(|value| value.as_ref() == "true")
     })
 }
 
 fn attr_value(e: &BytesStart<'_>, key: &str) -> Option<String> {
     e.attributes().flatten().find_map(|a| {
-        (a.key.local_name().as_ref() == key.as_bytes())
-            .then(|| a.unescape_value().map(|v| v.to_string()).ok())
+        (a.key.local_name().as_ref() == key)
+            .then(|| unescape_attribute(&a).map(|v| v.into_owned()).ok())
             .flatten()
     })
 }

@@ -31,7 +31,7 @@ fn assert_qualified_attributes_are_bound(bytes: &[u8]) {
             Event::Start(element) | Event::Empty(element) => {
                 for attribute in element.attributes() {
                     let attribute = attribute.expect("writer emits valid attributes");
-                    let (namespace, _) = reader.resolve_attribute(attribute.key);
+                    let (namespace, _) = reader.resolver().resolve_attribute(attribute.key);
                     assert!(
                         !matches!(namespace, ResolveResult::Unknown(_)),
                         "writer emitted an unbound namespace prefix"

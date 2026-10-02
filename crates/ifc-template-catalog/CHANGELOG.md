@@ -12,6 +12,15 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Security
+
+- With the `xml` feature, require `quick-xml` 0.42 (was 0.37), which fixes
+  RUSTSEC-2026-0194 (quadratic duplicate-attribute check on one start tag)
+  and RUSTSEC-2026-0195 (unbounded namespace-declaration allocation in
+  `NsReader`); both are denial of service on untrusted input (#267). PSD and
+  QTO import reads the same values as before: references are resolved, and
+  literal tabs and line breaks in attributes and text are kept.
+
 ## [0.3.0] - 2026-09-29
 
 ### Added
