@@ -34,7 +34,7 @@ ifc-xml = { path = "crates/ifc-xml", version = "0.4.0" }
 ifc-model = { path = "crates/ifc-model", version = "0.3.0" }
 ifc-geometry = { path = "crates/ifc-geometry", version = "0.7.0", default-features = false }
 ifc-properties = { path = "crates/ifc-properties", version = "0.7.0", default-features = false }
-ifc-template-catalog = { path = "crates/ifc-template-catalog", version = "0.3.0" }
+ifc-template-catalog = { path = "crates/ifc-template-catalog", version = "0.3.0", default-features = false }
 ifc-cost = { path = "crates/ifc-cost", version = "0.3.0", default-features = false }
 ifc-schedule = { path = "crates/ifc-schedule", version = "0.4.0" }
 ifc-material = { path = "crates/ifc-material", version = "0.4.0", default-features = false }

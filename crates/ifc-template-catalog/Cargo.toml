@@ -29,10 +29,26 @@ sha2 = { version = "0.11", optional = true, default-features = false }
 
 [features]
 default = ["embedded"]
+# The committed container of every edition, linked into the binary
+# (1.4 MB; `embedded::load_catalog`).
 embedded = []
+# Catalogs installed at runtime from per-edition snapshot bytes, each checked
+# against its pinned SHA-256 (`runtime::install`). Builds for wasm32.
+runtime = ["dep:sha2"]
 xml = ["dep:quick-xml"]
 schema = ["dep:ifc-schema"]
 generation = ["embedded", "xml", "dep:sha2"]
+
+[dev-dependencies]
+sha2 = { version = "0.11", default-features = false }
+
+[[example]]
+name = "export_snapshots"
+required-features = ["embedded", "runtime"]
+
+[[example]]
+name = "catalog_metrics"
+required-features = ["embedded"]
 
 [[bin]]
 name = "ifc-template-catalog-generate"

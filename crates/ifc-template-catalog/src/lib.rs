@@ -3,7 +3,7 @@
 //! This crate owns external standard-library metadata. Authored IFC property
 //! and quantity instances remain in `ifc-properties`.
 
-mod archive;
+mod pack;
 
 pub mod catalog;
 pub mod compliance;
@@ -14,12 +14,9 @@ pub mod embedded;
 pub mod export;
 pub mod overlay;
 pub mod query;
+#[cfg(feature = "runtime")]
+pub mod runtime;
+pub mod snapshot;
 
 #[cfg(feature = "xml")]
 pub mod xml;
-
-#[cfg(feature = "generation")]
-#[doc(hidden)]
-pub mod generation {
-    pub use crate::archive::{decode_catalog, encode_catalog, ArchiveError};
-}

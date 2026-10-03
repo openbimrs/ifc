@@ -244,14 +244,8 @@ fn property_count(properties: &[ifc_template_catalog::definition::PropertyTempla
         .sum()
 }
 
-pub fn default_output(manifest_dir: &Path, edition: CatalogEdition) -> Result<PathBuf, String> {
-    let filename = match edition {
-        CatalogEdition::Ifc2x3Tc1 => "ifc2x3-tc1.bin",
-        CatalogEdition::Ifc4Add2Tc1 => "ifc4-add2-tc1.bin",
-        CatalogEdition::Ifc4x3Add2 => "ifc4x3-add2.bin",
-        _ => return Err(format!("unsupported catalog edition {edition:?}")),
-    };
-    Ok(manifest_dir.join("data").join(filename))
+pub fn default_output(manifest_dir: &Path) -> PathBuf {
+    manifest_dir.join("data").join("catalog.bin")
 }
 
 #[cfg(all(test, unix))]

@@ -123,7 +123,14 @@ schema-api = ["dep:ifc-schema", "ifc-template-catalog?/schema"]
 # `PartitioningType` by attribute name from the bound release's table instead
 # of restating slot numbers. It adds no crate.
 properties = ["dep:ifc-properties", "dep:ifc-schema"]
-property-catalog = ["dep:ifc-template-catalog"]
+# The PSD/QTO catalog (ADR 0017), every edition embedded (1.4 MB).
+property-catalog = ["dep:ifc-template-catalog", "ifc-template-catalog/embedded"]
+# The same catalog supplied at runtime instead: nothing is embedded, and a
+# host installs an edition's pinned snapshot bytes
+# (`property_catalog::runtime::install`) before a `Pset_`/`Qto_` edit, which
+# is refused with `PropertyEditFailure::CatalogNotLoaded` until then. With
+# `property-catalog` too, the embedded catalog is used.
+property-catalog-runtime = ["dep:ifc-template-catalog", "ifc-template-catalog/runtime"]
 cost = ["dep:ifc-cost"]
 schedule = ["dep:ifc-schedule"]
 material = ["dep:ifc-material"]
