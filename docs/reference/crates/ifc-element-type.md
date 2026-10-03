@@ -14,7 +14,7 @@ Element, resource, and process type definitions: the IfcTypeObject catalogue.
 | Latest release | 0.3.0 (2026-09-29) |
 | Registries | [crates.io `ifc-element-type`](https://crates.io/crates/ifc-element-type) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `element-type` |
-| API documentation | [rustdoc](/ifc/api/rustdoc/ifc_element_type/index.html) · [docs.rs](https://docs.rs/ifc-element-type) |
+| API documentation | [rustdoc](/api/rustdoc/ifc_element_type/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-element-type) |
 | Source | [`crates/ifc-element-type/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-element-type) |
 
 ## Overview

@@ -14,7 +14,7 @@ Georeferencing: map conversion, coordinate reference systems, site placement.
 | Latest release | 0.6.0 (2026-10-03) |
 | Registries | [crates.io `ifc-georef`](https://crates.io/crates/ifc-georef) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `georef` |
-| API documentation | [rustdoc](/ifc/api/rustdoc/ifc_georef/index.html) · [docs.rs](https://docs.rs/ifc-georef) |
+| API documentation | [rustdoc](/api/rustdoc/ifc_georef/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-georef) |
 | Source | [`crates/ifc-georef/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-georef) |
 
 ## Overview

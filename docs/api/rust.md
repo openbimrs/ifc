@@ -4,7 +4,7 @@
 import facts from '../.vitepress/data/facts.json'
 </script>
 
-**[Browse the generated API reference →](/ifc/api/rustdoc/ifc/index.html)**
+**[Browse the generated API reference →](/api/rustdoc/ifc/index.html){target="_self"}**
 
 Every public item across the {{ facts.crates.total }} workspace crates is
 documented, and `missing_docs` is denied workspace-wide, so an undocumented

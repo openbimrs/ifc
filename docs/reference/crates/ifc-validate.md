@@ -14,7 +14,7 @@ Schema conformance: WHERE rules, cardinality, GUID and reference integrity.
 | Latest release | 0.6.0 (2026-10-03) |
 | Registries | [crates.io `ifc-validate`](https://crates.io/crates/ifc-validate) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `validate` |
-| API documentation | [rustdoc](/ifc/api/rustdoc/ifc_validate/index.html) · [docs.rs](https://docs.rs/ifc-validate) |
+| API documentation | [rustdoc](/api/rustdoc/ifc_validate/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-validate) |
 | Source | [`crates/ifc-validate/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-validate) |
 
 ## Overview

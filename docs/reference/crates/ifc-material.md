@@ -14,7 +14,7 @@ Material definitions: layer sets, profile sets, constituents, usage.
 | Latest release | 0.5.0 (2026-10-03) |
 | Registries | [crates.io `ifc-material`](https://crates.io/crates/ifc-material) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `material` |
-| API documentation | [rustdoc](/ifc/api/rustdoc/ifc_material/index.html) · [docs.rs](https://docs.rs/ifc-material) |
+| API documentation | [rustdoc](/api/rustdoc/ifc_material/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-material) |
 | Source | [`crates/ifc-material/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-material) |
 
 ## Overview

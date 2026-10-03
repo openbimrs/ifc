@@ -14,7 +14,7 @@ Structured IFC value containers indexed by position or time.
 | Latest release | 0.3.0 (2026-09-29) |
 | Registries | [crates.io `ifc-tabular`](https://crates.io/crates/ifc-tabular) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `tabular` |
-| API documentation | [rustdoc](/ifc/api/rustdoc/ifc_tabular/index.html) · [docs.rs](https://docs.rs/ifc-tabular) |
+| API documentation | [rustdoc](/api/rustdoc/ifc_tabular/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-tabular) |
 | Source | [`crates/ifc-tabular/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-tabular) |
 
 ## Overview

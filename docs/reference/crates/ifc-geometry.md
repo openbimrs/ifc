@@ -14,7 +14,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | Latest release | 0.8.0 (2026-10-03) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
-| API documentation | [rustdoc](/ifc/api/rustdoc/ifc_geometry/index.html) · [docs.rs](https://docs.rs/ifc-geometry) |
+| API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
 | Source | [`crates/ifc-geometry/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-geometry) |
 
 ## Overview
