@@ -12,6 +12,30 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+Input this crate refused now lowers exactly, onto the Axiolid relations
+of axiolid-curve 0.3.3 and axiolid-model 0.3.4: behaviour changes, so the
+next release is a minor one (0.8.0).
+
+### Changed
+
+- An `IfcCurveSegment` over a 2D `IfcPolynomialCurve` (the `CUBIC`
+  transition) lowers to its exact Bezier, placed rigidly and trimmed at
+  `TrimSelector::ArcLength(SegmentLength)`, instead of refusing (#90). A
+  non-zero `SegmentStart`, a backwards walk, a 3D polynomial, and one with
+  no degree-one coordinate to bound the trim stay refused by name.
+- An `IfcGradientCurve` whose base curve holds such a segment has a
+  `Curve2::Chain` plan: the polynomial is a parametric piece read by arc
+  length (#90).
+- A vertical `IfcCircle` segment in an `IfcGradientCurve` lowers to
+  `ElevationLaw::CircularArc`, and a vertical `IfcSpiral` (the
+  `IfcClothoid`) to `ElevationLaw::Intrinsic`, its extent read from the
+  next segment's start (#258).
+- `dispatch::PLANNED` keeps `IFCPOLYNOMIALCURVE` (unbounded on its own; it
+  lowers as an `IfcCurveSegment` parent) and `IFCSEGMENTEDREFERENCECURVE`,
+  now citing #311: the roll law exists, but the geometric form states cant
+  through stations (#307) and parent curves with no normative mapping. An
+  `IfcAxis2PlacementLinear` placement now cites #307.
+
 ## [0.7.0] - 2026-10-03
 
 `select::subtype` carries IFC4X3 ADD2 supertype chains (#293). Answers

@@ -256,54 +256,27 @@ pub(super) fn transition_curvature(
 
 /// The refusal for a horizontal segment this crate cannot lower exactly.
 ///
-/// `CUBIC` gets its own reason, and a malformed `CUBIC` is named as invalid
-/// data before it is named as unsupported, so a caller can tell a file
-/// error from a capability gap.
-///
-/// IFC4.3 defines `CUBIC` as `y = x^3 / (6 R L)` in the segment's own frame
-/// (`IfcAlignmentHorizontalSegmentTypeEnum`; geometrically an
-/// `IfcPolynomialCurve` with `CoefficientsX = [0, 1]` and a cubic
-/// `CoefficientsY`), and `SegmentLength` as "the length along the curve".
-/// The shape is an exact polynomial, but where it ends is not: the abscissa
-/// at arc length `L` inverts `s(x) = integral of sqrt(1 + (x^2 / (2 R L))^2)`,
-/// which is not elementary, and its curvature as a function of arc length
-/// is not elementary either. The pinned neutral vocabulary has neither an
-/// arc-length trim for a parametric curve nor a plan curve that chains a
-/// parametric piece by arc length, so `CUBIC` stays a typed refusal.
+/// Reached for the families with no exact law here (`USERDEFINED`,
+/// `NOTDEFINED`, an unknown token, a Viennese bend without its cant layout);
+/// `CUBIC` has its own rules in `cubic.rs`.
 pub(super) fn refuse_unlowerable(segment: &HorizontalSegment) -> AlignmentError {
     let kind = segment.segment_type.source_name();
-    if kind == "CUBIC" {
-        if !(segment.segment_length.is_finite() && segment.segment_length > 0.0) {
-            return AlignmentError::InvalidSegment {
-                entity: segment.entity,
-                detail: "CUBIC requires a finite, positive segment length",
-            };
+    if kind == super::cubic::CUBIC {
+        if let Some(refusal) = super::cubic::refuse(segment) {
+            return refusal;
         }
-        if !(segment.start_radius.is_finite() && segment.end_radius.is_finite()) {
-            return AlignmentError::InvalidSegment {
-                entity: segment.entity,
-                detail: "CUBIC endpoint radii must be finite",
-            };
-        }
-        if segment.start_radius == segment.end_radius {
-            return AlignmentError::InvalidSegment {
-                entity: segment.entity,
-                detail: "CUBIC is a transition and must change curvature: \
-                         its start and end radii must differ",
-            };
-        }
-        return AlignmentError::Unsupported {
-            entity: segment.entity,
-            type_name: kind.to_owned(),
-            detail: "CUBIC is y = x^3/(6RL) with SegmentLength measured along the curve; \
-                     its end abscissa inverts a non-elementary arc-length integral, and the \
-                     pinned neutral vocabulary has no arc-length trim for a parametric curve",
-        };
     }
+    let detail = if kind == "VIENNESEBEND" {
+        "a Viennese bend needs the IfcAlignmentCant layout: its curvature law depends on the \
+         superelevation swing"
+    } else {
+        "the PredefinedType states no curve law to lower exactly (USERDEFINED, NOTDEFINED or an \
+         unknown token)"
+    };
     AlignmentError::Unsupported {
         entity: segment.entity,
         type_name: kind.to_owned(),
-        detail: "the pinned neutral curve vocabulary has no exact transition-curve primitive",
+        detail,
     }
 }
 

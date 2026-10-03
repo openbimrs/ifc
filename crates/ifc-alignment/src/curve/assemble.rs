@@ -20,6 +20,7 @@ use axiolid_model::{
 use ifc_model::{EntityId, Model};
 
 use crate::cant::CantLayout;
+use crate::curve::cubic::{cubic_curve, start_frame, CUBIC};
 use crate::curve::elevation::elevation_law;
 use crate::curve::seam::{check_position, HorizontalSeam, SeamCheck};
 use crate::curve::spiral::{is_exactly_lowerable, refuse_unlowerable, spiral_curve};
@@ -125,11 +126,14 @@ impl PartialHorizontalLayout {
 
 /// Lower one `IfcAlignmentHorizontalSegment` to an exact neutral curve.
 ///
-/// Fails if `id` is missing or malformed, or the segment is a transition
-/// spiral family not in `[is_exactly_lowerable]`'s set, or `CIRCULARARC`
-/// with unequal/zero/non-finite start and end radii, or `LINE` with a
-/// non-zero radius -- the pinned neutral curve vocabulary has no exact
-/// primitive for those cases. A zero-length segment, which IFC4.3 allows
+/// A `CUBIC` lowers as its exact cubic parabola trimmed at
+/// `TrimSelector::ArcLength(SegmentLength)` (see `cubic.rs`).
+///
+/// Fails if `id` is missing or malformed, or the segment is a family with
+/// no exact law here (`USERDEFINED`, `NOTDEFINED`, an unknown token, a
+/// `VIENNESEBEND` without its cant layout, a `CUBIC` that does not leave a
+/// straight), or `CIRCULARARC` with unequal/zero/non-finite start and end
+/// radii, or `LINE` with a non-zero radius. A zero-length segment, which IFC4.3 allows
 /// only as a layout's closing segment, has no geometry to lower and is
 /// refused as [`AlignmentError::InvalidSegment`].
 pub fn lower_horizontal_segment(
@@ -145,6 +149,9 @@ pub fn lower_horizontal_segment(
     let root = match &segment.segment_type {
         HorizontalSegmentType::Line => push_line(&mut builder, &segment)?,
         HorizontalSegmentType::CircularArc => push_arc(&mut builder, &segment)?,
+        HorizontalSegmentType::Transition(name) if name == CUBIC => {
+            push_cubic(&mut builder, &segment)?
+        }
         HorizontalSegmentType::Transition(name) if is_exactly_lowerable(name, false) => {
             push_spiral(&mut builder, &segment, name, None, 0.0)?
         }
@@ -169,11 +176,15 @@ pub fn lower_horizontal_segment(
 ///   `d0`, `d0 + L / 2`, `d0 + L`. Equally spaced stations make the station
 ///   linear in the parameter, so this is the IFC parabola exactly, not a fit.
 ///
+/// A `CIRCULARARC` is the circle itself, `Curve2::Circle`, trimmed by angle
+/// from the start to where the plan distance `HorizontalLength` ends; its
+/// parameter is that angle, not plan distance.
+///
 /// # Errors
 ///
 /// Fails if `id` is missing or malformed, and with everything
-/// [`elevation_law`] refuses: `CIRCULARARC` and `CLOTHOID` (no exact law),
-/// and parameters that contradict their family. A zero-length segment (a
+/// [`elevation_law`] refuses: `CLOTHOID` (its curvature is not stated), and
+/// parameters that contradict their family. A zero-length segment (a
 /// layout's closing segment) has no geometry to lower and is refused as
 /// [`AlignmentError::InvalidSegment`].
 pub fn lower_vertical_segment(
@@ -294,10 +305,16 @@ fn push_vertical_law(
         type_name: segment.predefined_type.source_name().to_owned(),
         detail,
     };
-    let ElevationLaw::Polynomial { coefficients } = law else {
-        return Err(unsupported(
-            "a single vertical segment lowers from one polynomial piece",
-        ));
+    let coefficients = match law {
+        ElevationLaw::Polynomial { coefficients } => coefficients,
+        ElevationLaw::CircularArc { grade, radius, .. } => {
+            return push_vertical_arc(builder, segment, *grade, *radius)
+        }
+        _ => {
+            return Err(unsupported(
+                "a single vertical segment lowers from one polynomial or circular piece",
+            ))
+        }
     };
     let start = segment.start_dist_along;
     let length = segment.horizontal_length;
@@ -353,6 +370,59 @@ fn push_vertical_law(
     )
 }
 
+/// Push a vertical `CIRCULARARC` as the circle itself in the
+/// (distance along, height) plane, trimmed by angle.
+///
+/// The circle starts at `(StartDistAlong, StartHeight)` with its tangent at
+/// `atan(grade)`, centre `R` along the left normal (above for a sag), in the
+/// same right-handed frame as a horizontal arc. It sweeps `t1 - t0`, where
+/// `sin t1 = sin t0 + L / R` is where the plan distance `L` ends: closed-form
+/// trigonometry on the stated values, nothing evaluated.
+fn push_vertical_arc(
+    builder: &mut GeometryGraphBuilder,
+    segment: &VerticalSegment,
+    grade: f64,
+    radius: f64,
+) -> AlignmentResult<NodeId> {
+    // sin and cos of atan(grade) without forming the angle.
+    let norm = grade.hypot(1.0);
+    let (sin0, cos0) = (grade / norm, 1.0 / norm);
+    let left = Vec2::new(-sin0, cos0);
+    let start = Point2::new(segment.start_dist_along, segment.start_height);
+    let centre = start + left * radius;
+    let x = left * -radius.signum();
+    let y = Vec2::new(-x.y, x.x);
+    let sin1 = sin0 + segment.horizontal_length / radius;
+    let sweep = sin1.asin() - sin0.atan2(cos0);
+    if [centre.x, centre.y, sweep].iter().any(|v| !v.is_finite()) || sin1.abs() >= 1.0 {
+        return Err(AlignmentError::InvalidSegment {
+            entity: segment.entity,
+            detail: "CIRCULARARC derived frame and trim angle must be finite",
+        });
+    }
+    let basis = push(
+        builder,
+        GeometryNode::Curve2(Curve2::Circle(Circle2 {
+            frame: Frame2 {
+                origin: centre,
+                x,
+                y,
+            },
+            radius: radius.abs(),
+        })),
+    )?;
+    push(
+        builder,
+        GeometryNode::CurveRelation(CurveRelation::Trimmed {
+            basis,
+            start: vec![TrimSelector::Parameter(0.0)],
+            end: vec![TrimSelector::Parameter(sweep)],
+            sense_agreement: true,
+            preference: TrimmingPreference::Parameter,
+        }),
+    )
+}
+
 /// Push a transition spiral as an exact intrinsic curve, trimmed to its
 /// authored length.
 fn push_spiral(
@@ -370,6 +440,30 @@ fn push_spiral(
             basis,
             start: vec![TrimSelector::Parameter(0.0)],
             end: vec![TrimSelector::Parameter(segment.segment_length)],
+            sense_agreement: true,
+            preference: TrimmingPreference::Parameter,
+        }),
+    )
+}
+
+/// Push a `CUBIC` as its exact cubic parabola, trimmed where its arc length
+/// reaches `SegmentLength` (see `cubic.rs`).
+///
+/// The trim end is `TrimSelector::ArcLength`: the parameter there inverts an
+/// elliptic integral, which an evaluator resolves to a stated tolerance and
+/// this crate never computes.
+fn push_cubic(
+    builder: &mut GeometryGraphBuilder,
+    segment: &HorizontalSegment,
+) -> AlignmentResult<NodeId> {
+    let curve = cubic_curve(segment, start_frame(segment))?;
+    let basis = push(builder, GeometryNode::Curve2(curve))?;
+    push(
+        builder,
+        GeometryNode::CurveRelation(CurveRelation::Trimmed {
+            basis,
+            start: vec![TrimSelector::Parameter(0.0)],
+            end: vec![TrimSelector::ArcLength(segment.segment_length)],
             sense_agreement: true,
             preference: TrimmingPreference::Parameter,
         }),
@@ -466,6 +560,9 @@ pub fn lower_horizontal_layout(
         let curve = match &segment.segment_type {
             HorizontalSegmentType::Line => push_line(&mut builder, segment)?,
             HorizontalSegmentType::CircularArc => push_arc(&mut builder, segment)?,
+            HorizontalSegmentType::Transition(name) if name == CUBIC => {
+                push_cubic(&mut builder, segment)?
+            }
             HorizontalSegmentType::Transition(name)
                 if is_exactly_lowerable(name, cant.is_some()) =>
             {
@@ -508,7 +605,7 @@ pub fn lower_horizontal_layout(
 /// Lower a horizontal layout as far as exactness allows, reporting refusals.
 ///
 /// Unlike [`lower_horizontal_layout`], a segment without an exact law (such
-/// as `CUBIC`) does not abort the whole layout. The segments around it still
+/// as a `USERDEFINED` one) does not abort the whole layout. The segments around it still
 /// lower exactly; the refused one is recorded in
 /// [`PartialHorizontalLayout::refused`] with its authored type name and
 /// entity id. Seams are checked by the same rule as the strict path.
@@ -576,6 +673,9 @@ pub fn lower_horizontal_layout_partial(
         let lowered = match &segment.segment_type {
             HorizontalSegmentType::Line => push_line(&mut builder, segment),
             HorizontalSegmentType::CircularArc => push_arc(&mut builder, segment),
+            HorizontalSegmentType::Transition(name) if name == CUBIC => {
+                push_cubic(&mut builder, segment)
+            }
             HorizontalSegmentType::Transition(name)
                 if is_exactly_lowerable(name, cant.is_some()) =>
             {

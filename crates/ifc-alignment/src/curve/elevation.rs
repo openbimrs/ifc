@@ -10,21 +10,36 @@
 //! is the IFC parabolic vertical curve exactly, so PARABOLICARC needs no
 //! approximation.
 //!
-//! # Circular arcs and clothoids are a recorded refusal (#91, #258)
+//! # Circular arcs are the circle itself (#258)
 //!
-//! IFC4.3 ADD2 (`IfcAlignmentVerticalSegmentTypeEnum`) defines
+//! IFC4.3 ADD2 (`IfcAlignmentVerticalSegmentTypeEnum`, 8.7.2.3) defines
 //! `CIRCULARARC` as "the derivative of vertical angle with respect to
-//! sloping length along the track (3D length) is constant" and maps it to an
-//! `IfcCircle` parent curve in the (distance along, height) plane, and
-//! `CLOTHOID` as a vertical curvature varying linearly in that 3D length.
-//! Neither height is a polynomial in plan distance: the arc is
-//! `z = z_c - sqrt(R^2 - (d - d_c)^2)` and the clothoid is a Fresnel
-//! integral. The standard quotes the EN 13803 ordinate
-//! `z_c(s) = s^2 / (2 R)` only as the offset from the tangent, not as the
-//! definition of the segment, so substituting a parabola would move the road
-//! surface. The pinned `ElevationLaw` has only polynomial pieces, so both
-//! are typed [`AlignmentError::Unsupported`] refusals until Axiolid has an
-//! exact law for them (the upstream request is recorded on #258).
+//! sloping length along the track (3D length) is constant": a circle in the
+//! (distance along, height) plane, of the signed `RadiusOfCurvature`
+//! (`IfcAlignmentVerticalSegment`: "positive values imply a CCW direction",
+//! a sag). Its height is not a polynomial in plan distance, and the
+//! standard quotes the EN 13803 ordinate `z_c(s) = s^2 / (2 R)` only as the
+//! offset from the tangent, not as the definition, so a parabola must not
+//! be substituted. `ElevationLaw::CircularArc` is that circle in closed
+//! form: `sin t(d) = sin t0 + d / R`, `t0 = atan(StartGradient)`.
+//!
+//! `RadiusOfCurvature` is the curve parameter; IFC4.3 lists the end
+//! direction among the values that "can be calculated". So the law is
+//! `StartHeight`, `StartGradient` and the radius, and `EndGradient` is only
+//! checked for the direction the radius turns, never used to place the
+//! road.
+//!
+//! # Clothoids stay a refusal
+//!
+//! A vertical `CLOTHOID` has curvature linear in its own 3D arc length
+//! (8.7.2.3: `kappa_v(s) = kappa_v1 + xi dkappa_v`), which
+//! `ElevationLaw::Intrinsic` carries exactly. But the business segment does
+//! not state `kappa_v1` or `kappa_v2`: `RadiusOfCurvature` is defined for
+//! arcs and parabolas only, and the reader refuses one on a clothoid. Two
+//! grades and a plan length leave the law one value short, so a
+//! `CLOTHOID` is a typed refusal naming that, not a guessed curvature. The
+//! geometry form (`IfcCurveSegment` over an `IfcClothoid` in an
+//! `IfcGradientCurve`) states the law and lowers in `ifc-geometry`.
 
 use axiolid_curve::ElevationLaw;
 use ifc_model::{EntityId, Model};
@@ -44,13 +59,15 @@ use crate::view::AlignmentView;
 ///
 /// # Errors
 ///
-/// Refuses a segment whose family has no exact polynomial form
-/// (`CIRCULARARC`, `CLOTHOID`), and one whose stated parameters contradict
-/// its family.
+/// Refuses a segment whose family has no determined exact law (`CLOTHOID`,
+/// whose business segment states no curvature, and the user-defined and
+/// unknown families), and one whose stated parameters contradict its
+/// family.
 pub fn elevation_law(segment: &VerticalSegment) -> AlignmentResult<ElevationLaw> {
     match segment.predefined_type {
         VerticalSegmentType::ConstantGradient => constant_gradient(segment),
         VerticalSegmentType::ParabolicArc => parabolic_arc(segment),
+        VerticalSegmentType::CircularArc => circular_arc(segment),
         ref kind => Err(AlignmentError::Unsupported {
             entity: segment.entity,
             type_name: kind.source_name().to_owned(),
@@ -62,15 +79,11 @@ pub fn elevation_law(segment: &VerticalSegment) -> AlignmentResult<ElevationLaw>
 /// Why a vertical family has no exact elevation law, by name.
 fn refusal(kind: &VerticalSegmentType) -> &'static str {
     match kind {
-        // A circle in (distance, height): z = z_c - sqrt(R^2 - (d - d_c)^2).
-        VerticalSegmentType::CircularArc => {
-            "no exact elevation law: a vertical circular arc is not polynomial in plan distance, \
-             and the pinned ElevationLaw has only polynomial pieces"
-        }
-        // Curvature linear in 3D arc length: a Fresnel integral.
+        // Curvature linear in 3D arc length, but neither end value stated.
         VerticalSegmentType::Clothoid => {
-            "no exact elevation law: a vertical clothoid is a Fresnel integral in plan distance, \
-             and the pinned ElevationLaw has only polynomial pieces"
+            "no determined elevation law: a vertical clothoid's curvature runs linearly along its \
+             3D arc length, but IfcAlignmentVerticalSegment states neither its start nor its end \
+             curvature (RadiusOfCurvature is defined for arcs and parabolas only)"
         }
         _ => "no exact elevation law: the vertical PredefinedType defines no curve law",
     }
@@ -131,6 +144,49 @@ fn parabolic_arc(segment: &VerticalSegment) -> AlignmentResult<ElevationLaw> {
             entity: segment.entity,
             detail: "PARABOLICARC parameters do not form a finite elevation law",
         });
+    }
+    Ok(law)
+}
+
+/// `CIRCULARARC`: the vertical circle, in closed form (see the module
+/// documentation).
+///
+/// Refuses a non-positive length, a radius whose sense contradicts the
+/// authored change of gradient (a sag, positive radius, must not lose
+/// grade), and an arc that turns vertical before its end
+/// (`|sin t0 + L / R| >= 1`): past that point it has no height at a plan
+/// distance.
+fn circular_arc(segment: &VerticalSegment) -> AlignmentResult<ElevationLaw> {
+    let invalid = |detail| {
+        Err(AlignmentError::InvalidSegment {
+            entity: segment.entity,
+            detail,
+        })
+    };
+    if segment.horizontal_length <= 0.0 {
+        return invalid("CIRCULARARC requires a positive horizontal length");
+    }
+    let Some(radius) = segment
+        .radius_of_curvature
+        .filter(|r| r.is_finite() && *r != 0.0)
+    else {
+        return invalid("CIRCULARARC requires a finite, non-zero RadiusOfCurvature");
+    };
+    let change = segment.end_gradient - segment.start_gradient;
+    let turns =
+        !SeamTolerance::strict().same_gradient(segment.start_gradient, segment.end_gradient);
+    if turns && change.signum() != radius.signum() {
+        return invalid(
+            "CIRCULARARC RadiusOfCurvature turns against the authored change of gradient \
+             (a positive radius is a sag and gains grade)",
+        );
+    }
+    let law = ElevationLaw::circular_arc(segment.start_height, segment.start_gradient, radius);
+    if !law.is_well_formed() || law.height_at(segment.horizontal_length).is_none() {
+        return invalid(
+            "CIRCULARARC turns vertical before its end: |sin t0 + L / R| reaches 1, so the arc \
+             has no height there",
+        );
     }
     Ok(law)
 }
@@ -318,9 +374,10 @@ pub fn vertical_profile_law(
 ///
 /// - `start` within `tolerance` of zero: the law is already plan-indexed.
 /// - `start < 0` (the profile begins before the plan): pieces wholly before
-///   the plan start are dropped and the piece straddling it is rewritten by
-///   an exact Taylor shift, `q(d) = p(d + o)`, so plan distance 0 reads the
-///   profile at station 0.
+///   the plan start are dropped and the piece straddling it is rewritten so
+///   plan distance 0 reads the profile at station 0: a polynomial by an
+///   exact Taylor shift, `q(d) = p(d + o)`, a circular arc as the same
+///   circle from its closed-form height and grade at `o`.
 /// - a profile starting after the plan start, or ending (`end`, its last
 ///   station) before the plan ends (`plan_length`), beyond `tolerance`:
 ///   refused. Heights outside the profile do not exist, and `Elevated3` has
@@ -351,7 +408,7 @@ pub(crate) fn indexed_from_plan_start(
     let offset = -start;
     let malformed = || AlignmentError::InvalidSegment {
         entity: vertical,
-        detail: "vertical profile law is not a run of polynomial pieces",
+        detail: "vertical profile law is not a run of polynomial and circular pieces",
     };
     let (breaks, laws) = match law {
         ElevationLaw::Piecewise { breaks, laws } => (breaks, laws),
@@ -363,10 +420,20 @@ pub(crate) fn indexed_from_plan_start(
     let index = breaks.partition_point(|b| *b <= offset);
     let piece_start = if index == 0 { 0.0 } else { breaks[index - 1] };
     let mut laws = laws.into_iter().skip(index);
-    let Some(ElevationLaw::Polynomial { coefficients }) = laws.next() else {
-        return Err(malformed());
+    let local = offset - piece_start;
+    let first = match laws.next() {
+        Some(ElevationLaw::Polynomial { coefficients }) => taylor_shift(&coefficients, local),
+        // The same circle read from `local` on: its height and grade there,
+        // both closed form, and the unchanged radius.
+        Some(arc @ ElevationLaw::CircularArc { radius, .. }) => {
+            match (arc.height_at(local), arc.grade_at(local)) {
+                (Some(height), Some(grade)) => ElevationLaw::circular_arc(height, grade, radius),
+                _ => return Err(malformed()),
+            }
+        }
+        _ => return Err(malformed()),
     };
-    let mut shifted = vec![taylor_shift(&coefficients, offset - piece_start)];
+    let mut shifted = vec![first];
     shifted.extend(laws);
     Ok(match shifted.len() {
         1 => shifted.remove(0),
