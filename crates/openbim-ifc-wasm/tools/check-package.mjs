@@ -245,6 +245,8 @@ async function inBrowser(chrome, dir) {
     browser.kill();
     await exited;
     server.close();
-    await rm(profile, { recursive: true, force: true });
+    // Chrome's helper processes can outlive the main one and still write
+    // into the profile, so a single rmdir may race them (ENOTEMPTY).
+    await rm(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 }
