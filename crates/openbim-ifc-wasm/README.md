@@ -71,10 +71,8 @@ model.setAttributeByName(wall, "Name", { kind: "text", value: "Renamed" });
 writeFileSync("house-edited.ifc", model.write());
 ```
 
-Ids are `bigint`s. Attribute names resolve against the release the file's
-header declares, inherited attributes included; `attributeNames(id)` lists
-them in slot order. `attribute(id, index)` and `setAttribute(id, index,
-value)` address a slot by its 0-based position instead.
+Ids are `bigint`s. Names resolve against the release the header declares;
+`attribute(id, index)` addresses a slot by its 0-based position instead.
 
 ## Browsers and bundlers
 
