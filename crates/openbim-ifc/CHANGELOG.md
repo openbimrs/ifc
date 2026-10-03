@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-03
+
 ### Added (#123, property sets: write side)
 
 - `apply_property_edits` and `stage_property_edits` (feature
@@ -370,7 +372,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.12.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.13.0...HEAD
+[0.13.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.13.0
 [0.12.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.12.0
 [0.11.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.11.0
 [0.10.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.10.0

@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-03
+
 ### Added (#123, property sets: write side)
 
 - `IfcModel.setProperties(edits)`, `setProperty(object, set, name, value,
@@ -154,7 +156,8 @@ Published to npm by hand, before the release workflow existed.
 - `scripts/build-node-pkg.sh` builds a Node package with the pinned
   `wasm-bindgen` CLI and runs the Node smoke and corpus suites.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.2.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.3.0...HEAD
+[0.3.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.3.0
 [0.2.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.2.1
 [0.2.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.2.0
 [0.1.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.1.1

@@ -11,7 +11,7 @@ Georeferencing: map conversion, coordinate reference systems, site placement.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.5.1 (2026-10-03) |
+| Latest release | 0.6.0 (2026-10-03) |
 | Registries | [crates.io `ifc-georef`](https://crates.io/crates/ifc-georef) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `georef` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_georef/index.html) · [docs.rs](https://docs.rs/ifc-georef) |
@@ -44,21 +44,21 @@ products, reproject coordinates, or select a geometry backend.
 
 ## Changes
 
-Latest release, 0.5.1 (2026-10-03):
+Latest release, 0.6.0 (2026-10-03):
 
-### Added
+### Changed (breaking)
 
-- `ProjectToMap::declared_map_unit()`: the target `IfcProjectedCRS.MapUnit`
-  exactly as authored, `None` when the file leaves it unset, next to the
-  resolved `ProjectToMap::map_unit`, which keeps the project length unit
-  as the default for an omitted `MapUnit` and is what the transform uses.
-  A CRS stating the project's unit is now distinguishable from one stating
-  none, under IFC4 and IFC4X3, with or without the `transform` feature
-  (#296).
+- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
+  default, forward to `ifc-schema`, which this crate now depends on without
+  its default features (#306). Each links one release's table, so a
+  single-release build carries only that table: an IFC4-only browser
+  module with georeferencing (and the property sets it needs) shrinks from 1,583,507 to 990,688 bytes. The default
+  build links every release, as before.
+- `GeorefView::for_model` refuses an IFC4 or IFC4X3 file whose table the
+  build leaves out with `GeorefError::UnsupportedSchema`. The semantic
+  column (`--no-default-features`) therefore names its releases too, e.g.
+  `--no-default-features --features ifc4,ifc4x3`.
 
-### Changed
-
-- Documented that `ProjectedCrs::map_unit` is the declared `MapUnit`
-  (`None` when unset), never filled in with the project default (#296).
+Under 0.x, a minor release.
 
 Full history: [`crates/ifc-georef/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-georef/CHANGELOG.md)

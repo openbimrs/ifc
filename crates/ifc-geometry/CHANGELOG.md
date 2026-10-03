@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-03
+
 Input this crate refused now lowers exactly, onto the Axiolid relations
 of axiolid-curve 0.3.3 and axiolid-model 0.3.4: behaviour changes, so the
 next release is a minor one (0.8.0).
@@ -748,7 +750,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.7.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.8.0...HEAD
+[0.8.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.8.0
 [0.7.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.7.0
 [0.6.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.6.1
 [0.6.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.6.0

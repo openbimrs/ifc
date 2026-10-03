@@ -11,7 +11,7 @@ Classification systems, document references, libraries, external references.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.0 (2026-09-29) |
+| Latest release | 0.4.0 (2026-10-03) |
 | Registries | [crates.io `ifc-classification`](https://crates.io/crates/ifc-classification) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `classification` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_classification/index.html) · [docs.rs](https://docs.rs/ifc-classification) |
@@ -50,34 +50,21 @@ and entities the release cannot hold. No query performs external I/O.
 
 ## Changes
 
-Latest release, 0.3.0 (2026-09-29):
+Latest release, 0.4.0 (2026-10-03):
 
 ### Changed (breaking)
 
-- `ClassificationHierarchy` and `EffectiveClassifications` are
-  `#[non_exhaustive]`.
-- Every public draft is `#[non_exhaustive]`, so struct literals no longer
-  compile outside the crate. Each gains a constructor taking its required
-  fields and one builder setter per other field, named after the field and
-  taking the unwrapped value (`.source("NBS")` sets `Some`):
-  - `ClassificationDraft::new(name)`
-  - `DocumentDraft::new(identification, name)`
-  - `LibraryDraft::new(name)`
-  - `AssociationDraft::new(global_id, related_objects)`
-  - `ExternalReferenceRelationshipDraft::new(relating_reference, related_resources)`
-  - `ClassificationReferenceDraft::new()`, `DocumentReferenceDraft::new()` and
-    `LibraryReferenceDraft::new()`, which now also derive `Default`
+- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
+  default, forward to `ifc-schema`, which this crate now depends on without
+  its default features (#306). Each links one release's table, so a
+  single-release build carries only that table: an IFC4-only browser
+  module with classification shrinks from 1,420,062 to 827,350 bytes. The default
+  build links every release, as before.
+- A release the build leaves out is refused with `UnsupportedSchema`
+  instead of panicking; so is the IFC4 baseline of a model with no
+  header in a build without IFC4. A build without default features
+  therefore has to name the releases it reads.
 
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- `UnsupportedSchema` reads "a release this crate has no verified layout
-  for" instead of "no bundled schema table".
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
+Under 0.x, a minor release.
 
 Full history: [`crates/ifc-classification/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-classification/CHANGELOG.md)

@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-03
+
 ### Added (#123, property sets: write side)
 
 - `openbim_ifc_v0_1_model_set_properties` (a batch as one value tape,

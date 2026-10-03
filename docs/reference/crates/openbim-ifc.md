@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.12.0 (2026-10-03) |
+| Latest release | 0.13.0 (2026-10-03) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc/index.html) · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -92,14 +92,53 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.12.0 (2026-10-03):
+Latest release, 0.13.0 (2026-10-03):
+
+### Added (#123, property sets: write side)
+
+- `apply_property_edits` and `stage_property_edits` (feature
+  `properties`): a batch of `PropertyEdit`s (set or remove a value,
+  addressed by object, set name and property name) planned against the
+  model and staged on one `Transaction`, committed all or nothing. An
+  inherited value is overridden on the occurrence, never on the type's
+  shared set; a shared set or property entity is copied before it
+  changes; an emptied set is removed with its relationship. Values are
+  checked against the declared release (IFC2X3, IFC4, IFC4X3) and, with
+  `property-catalog`, a `Pset_`/`Qto_` set against the release's PSD/QTO
+  catalog; without it such a set is refused
+  (`PropertyEditFailure::CatalogUnavailable`). New sets and relationships
+  take the object's owner history and a name-based `GlobalId`. Types
+  `PropertyEdit`, `SetType`, `PropertyEditOutcome`,
+  `StagedPropertyEdits`, `PropertyEditError`, `PropertyEditFailure`.
+- Additive: on its own a patch release; this release is a minor one for
+  #306 anyway.
 
 ### Changed (breaking)
 
-- Behind `geometry`, the re-exported `ifc_geometry` is 0.7 (was 0.6). Its
-  `select::subtype` carries the IFC4X3 ADD2 supertype chains (#293), so
-  `is_a`, select membership and `BodyKind::classify` now answer for
-  IFC4X3-only entity names that previously classified as nothing; the new
-  `is_a_in`/`supertypes_of_in` answer for one named release.
+- `validate`, `spatial`, `geometry-select`, `properties`,
+  `classification`, `material`, `systems`, `cost` and `georef` link only
+  the releases the build names (#306): each release feature (`ifc2x3` ...
+  `ifc4x3`, and `schema` for all five) now forwards to their crates, which
+  no longer pull every release's table in through `ifc-schema`'s
+  defaults. An IFC4-only build with all of them carries the IFC4 table
+  alone. A build that enabled one of these features without a release
+  feature must now add one (or `schema`): `spatial` and `properties` fail
+  to compile without one, and the others refuse every file with their
+  unsupported- or unbundled-schema error. `full` and `domains` (which
+  implies `schema` through `author`) are unchanged. Under 0.x, a minor
+  release.
+
+### Added
+
+- `root_identity(model, schema, id)` and `RootIdentity` (behind
+  `schema-api`): the `GlobalId` and `Name` of an entity the given schema
+  declares an `IfcRoot`, read by attribute name, never guessed from a
+  slot (#123).
+- `georeferencing(model)` and `GeoreferencingError` (behind
+  `georef` + `properties`): every `IfcCoordinateOperation` resolved with
+  the project length unit, which `ifc-properties` resolves exactly; the
+  join the language bindings carry (#123).
+- Re-exports `Budget` from `ifc-model`, which bounded domain traversals
+  (a classification hierarchy) take.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)
