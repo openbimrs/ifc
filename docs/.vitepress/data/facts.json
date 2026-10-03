@@ -145,10 +145,10 @@
           "url": "https://crates.io/crates/ifc-georef"
         }
       ],
-      "released": "0.5.0",
-      "released_date": "2026-10-02",
+      "released": "0.5.1",
+      "released_date": "2026-10-03",
       "status": "implemented",
-      "version": "0.5.0"
+      "version": "0.5.1"
     },
     "ifc-material": {
       "description": "Material definitions: layer sets, profile sets, constituents, usage.",
