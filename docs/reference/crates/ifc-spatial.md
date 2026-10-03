@@ -11,7 +11,7 @@ IFC spatial containment and objectified relationship traversal: project, site, b
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.0 (2026-09-29) |
+| Latest release | 0.4.0 (2026-10-03) |
 | Registries | [crates.io `ifc-spatial`](https://crates.io/crates/ifc-spatial) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `spatial` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_spatial/index.html) · [docs.rs](https://docs.rs/ifc-spatial) |
@@ -28,83 +28,30 @@ IFC spatial containment and objectified relationship traversal: project, site, b
 
 ## Changes
 
-Latest release, 0.3.0 (2026-09-29):
-
-### Added
-
-- `SpatialDraft::interior_or_exterior`: the IFC2X3 `IfcSpace.
-  InteriorOrExteriorSpace` (`IfcInternalOrExternalEnum`), which that
-  release requires, so `create_spatial_element_with_owner_history` can
-  author an IFC2X3 space (#214). IFC4 and IFC4X3 do not declare the
-  attribute: a value there, or on a container other than a space, is
-  refused with `AuthoringNotInSchema`, a token outside IFC2X3's enumeration
-  with `AuthoringValueType`, and the plain IFC4/IFC4X3 `create_spatial_element`
-  refuses it with `AuthoringNotInSchema` instead of dropping it.
-- `create_project_with_owner_history` takes the project's representation
-  contexts, so an IFC2X3 `IfcProject`, which requires
-  `RepresentationContexts` (and `UnitsInContext`), can be authored (#214).
-  Each context must resolve in the model or on the transaction
-  (`MissingReference`), be an `IfcRepresentationContext`
-  (`WrongReferenceType`), not be an `IfcGeometricRepresentationSubContext`
-  (IFC2X3 `WR32`, IFC4 and IFC4X3 `CorrectContext`), and not repeat
-  (`Invalid`); an empty slice leaves the attribute `$`, which IFC2X3 refuses
-  with `AuthoringRequired`.
-- A constructor and builder setters on every draft: `SpatialDraft::new()`,
-  `FacilityDraft::new()`, `ExternalSpatialDraft::new()` and
-  `ProjectLibraryDraft::new()` start empty; `BoundaryDraft::new(space,
-  element, physical_or_virtual, internal_or_external)` takes the four
-  attributes the schema requires. Each optional field has a setter of the
-  same name taking the unwrapped value (`SpatialDraft::new().name("L1")
-  .composition("ELEMENT")`), following `ifc-resource`'s drafts.
-
-### Fixed
-
-- A model whose declared release has no bundled table is refused with
-  `UnsupportedSchema` by the release-bound writers instead of panicking.
+Latest release, 0.4.0 (2026-10-03):
 
 ### Changed (breaking)
 
-- `assign_to_actor`, `assign_to_process`, `connect_with_realizing_elements`
-  and `interfere_elements` take the `&Model` and bind its declared release
-  (#213). They wrote records with the wrong number of attributes: seven of
-  `IfcRelAssignsToActor`'s and `IfcRelAssignsToProcess`'s eight, eight of
-  `IfcRelConnectsWithRealizingElements`'s nine, and ten for
-  `IfcRelInterferesElements` where IFC4 declares nine. Each record is now
-  laid out by attribute name with the release's own arity (the interference
-  has ten attributes in IFC4X3). IFC4 records gain a trailing `$` for the
-  first three (`ActingRole`, `QuantityInProcess`, `ConnectionType`) and the
-  IFC4 interference loses its trailing `$`; IFC4X3 records of the first
-  three gain the same trailing `$`, and its interference is unchanged. An
-  IFC2X3 model, which requires `OwnerHistory` (and declares no
-  `IfcRelInterferesElements`), and a header binding no single verified
-  release are refused; use the `*_with_owner_history` variants in IFC2X3.
-- `SpatialDraft`, `FacilityDraft`, `BoundaryDraft`, `ExternalSpatialDraft`
-  and `ProjectLibraryDraft` are `#[non_exhaustive]`: struct literals and
-  `..Default::default()` updates no longer compile outside the crate; build
-  them with `new` and the setters. Fields stay public for reading and
-  assignment.
-- `SpatialDraft` has a new field, `interior_or_exterior`.
-- `create_project_with_owner_history(tx, model, global_id, name, units,
-  representation_contexts, owner_history)`: the new `representation_contexts:
-  &[EntityId]` parameter sits before `owner_history`. Pass `&[]` for the
-  previous IFC4/IFC4X3 record.
-- `#[non_exhaustive]` on the public read-side and catalogue types a later
-  IFC release could extend: `SpaceBoundary`, `BoundaryPhysicality`,
-  `BoundaryExposure`, `Relationship`, `RelationshipKind`, `SpatialKind`,
-  `SpatialNode`, `BoundaryLevel` and `Facility`. Matches on the enums need
-  a wildcard arm outside the crate, and the structs can no longer be built
-  by literal there.
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- The spatial classifier binds no release for an `IFC4X1` or `IFC4X2`
-  header (`release()` is `None`) and answers from the verified tables.
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
+- `serve_buildings` takes the `&Model`, binds its declared release and
+  checks its targets (#286), as `ifc_systems::serve_buildings` does (#277).
+  It accepted any targets: per the EXPRESS sources `RelatingSystem` must be
+  an `IfcSystem` and `RelatedBuildings` a `SET [1:?] OF
+  IfcSpatialStructureElement` (IFC2X3 TC1) or `OF IfcSpatialElement` (IFC4
+  ADD2 TC1, IFC4X3 ADD2). Without the model it could not see either end.
+  Like the other release-bound plain writers it refuses IFC2X3, which
+  requires `OwnerHistory`, with `AuthoringRequired`; use
+  `serve_buildings_with_owner_history` there. IFC4 and IFC4X3 records are
+  unchanged, slot for slot.
+- **Behaviour change:** `serve_buildings` and
+  `serve_buildings_with_owner_history` now refuse, staging nothing, input
+  they used to write: a system that is missing (`MissingReference`) or not
+  an `IfcSystem` (`WrongReferenceType`), a building that is missing or not
+  admitted by the declared release's `RelatedBuildings`
+  (`WrongReferenceType`; an `IfcSpatialZone` is admitted in IFC4 and IFC4X3,
+  not in IFC2X3), a repeated building (`Invalid`, the attribute is a
+  `SET`), and a second relationship for a system that already services
+  buildings in the model or on the transaction (`Invalid`;
+  `IfcSystem.ServicesBuildings` is `SET [0:1]`). The writers moved to
+  `authoring::services`; the public paths are unchanged.
 
 Full history: [`crates/ifc-spatial/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-spatial/CHANGELOG.md)

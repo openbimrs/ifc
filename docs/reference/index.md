@@ -10,7 +10,7 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`openbim-ifc`](./crates/openbim-ifc) | <span class="status-implemented">Implemented</span> | 0.10.0 | Facade for the openBIM IFC crates: pick codecs and domains as features. |
+| [`openbim-ifc`](./crates/openbim-ifc) | <span class="status-implemented">Implemented</span> | 0.11.0 | Facade for the openBIM IFC crates: pick codecs and domains as features. |
 
 ## Model, codecs, schema, authoring and validation
 
@@ -18,10 +18,10 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 | --- | --- | --- | --- |
 | [`ifc-author`](./crates/ifc-author) | <span class="status-implemented">Implemented</span> | 0.3.0 | Schema-checked IFC authoring: construct entities by attribute name with arity and type validation. |
 | [`ifc-model`](./crates/ifc-model) | <span class="status-implemented">Implemented</span> | 0.3.1 | The IFC entity graph: storage and structural queries, free of domain semantics and serialization. |
-| [`ifc-schema`](./crates/ifc-schema) | <span class="status-implemented">Implemented</span> | 0.3.0 | IFC schema as data: entity table, supertype chain, attribute names. |
-| [`ifc-step`](./crates/ifc-step) | <span class="status-implemented">Implemented</span> | 0.4.0 | STEP physical file (ISO 10303-21) codec for the IFC model. |
+| [`ifc-schema`](./crates/ifc-schema) | <span class="status-implemented">Implemented</span> | 0.3.1 | IFC schema as data: entity table, supertype chain, attribute names. |
+| [`ifc-step`](./crates/ifc-step) | <span class="status-implemented">Implemented</span> | 0.5.0 | STEP physical file (ISO 10303-21) codec for the IFC model. |
 | [`ifc-validate`](./crates/ifc-validate) | <span class="status-implemented">Implemented</span> | 0.5.0 | Schema conformance: WHERE rules, cardinality, GUID and reference integrity. |
-| [`ifc-xml`](./crates/ifc-xml) | <span class="status-implemented">Implemented</span> | 0.4.0 | ifcXML (ISO 10303-28) codec for the IFC model. |
+| [`ifc-xml`](./crates/ifc-xml) | <span class="status-implemented">Implemented</span> | 0.4.1 | ifcXML (ISO 10303-28) codec for the IFC model. |
 
 ## Domain views
 
@@ -38,7 +38,7 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 | [`ifc-properties`](./crates/ifc-properties) | <span class="status-implemented">Implemented</span> | 0.7.0 | Property sets, quantities, and unit resolution. No geometry. |
 | [`ifc-resource`](./crates/ifc-resource) | <span class="status-implemented">Implemented</span> | 0.4.0 | Construction resources: labour, equipment, material, crew, subcontract. |
 | [`ifc-schedule`](./crates/ifc-schedule) | <span class="status-implemented">Implemented</span> | 0.4.0 | IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage. |
-| [`ifc-spatial`](./crates/ifc-spatial) | <span class="status-implemented">Implemented</span> | 0.3.0 | IFC spatial containment and objectified relationship traversal: project, site, building, storey, element. |
+| [`ifc-spatial`](./crates/ifc-spatial) | <span class="status-implemented">Implemented</span> | 0.4.0 | IFC spatial containment and objectified relationship traversal: project, site, building, storey, element. |
 | [`ifc-structural`](./crates/ifc-structural) | <span class="status-implemented">Implemented</span> | 0.4.0 | Structural analysis model: members, connections, actions, reactions, loads. |
 | [`ifc-style`](./crates/ifc-style) | <span class="status-implemented">Implemented</span> | 0.4.0 | Presentation: styles, colours, textures, layers, annotation. |
 | [`ifc-systems`](./crates/ifc-systems) | <span class="status-implemented">Implemented</span> | 0.3.1 | Distribution systems, ports, and connectivity between elements. |
@@ -50,7 +50,7 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
 | [`ifc-alignment`](./crates/ifc-alignment) | <span class="status-partial">Partial</span> | 0.5.0 | IFC4x3 linear positioning: alignments, referents, linear placement, spirals. |
-| [`ifc-geometry`](./crates/ifc-geometry) | <span class="status-partial">Partial</span> | 0.6.0 | IFC semantic views lowered into the format-neutral geometry DAG. |
+| [`ifc-geometry`](./crates/ifc-geometry) | <span class="status-partial">Partial</span> | 0.6.1 | IFC semantic views lowered into the format-neutral geometry DAG. |
 | [`ifc-georef`](./crates/ifc-georef) | <span class="status-implemented">Implemented</span> | 0.5.0 | Georeferencing: map conversion, coordinate reference systems, site placement. |
 
 ## Language bindings

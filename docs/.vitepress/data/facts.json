@@ -130,10 +130,10 @@
           "url": "https://crates.io/crates/ifc-geometry"
         }
       ],
-      "released": "0.6.0",
-      "released_date": "2026-10-02",
+      "released": "0.6.1",
+      "released_date": "2026-10-03",
       "status": "partial",
-      "version": "0.6.0"
+      "version": "0.6.1"
     },
     "ifc-georef": {
       "description": "Georeferencing: map conversion, coordinate reference systems, site placement.",
@@ -250,10 +250,10 @@
           "url": "https://crates.io/crates/ifc-schema"
         }
       ],
-      "released": "0.3.0",
-      "released_date": "2026-09-29",
+      "released": "0.3.1",
+      "released_date": "2026-10-03",
       "status": "implemented",
-      "version": "0.3.0"
+      "version": "0.3.1"
     },
     "ifc-spatial": {
       "description": "IFC spatial containment and objectified relationship traversal: project, site, building, storey, element.",
@@ -265,10 +265,10 @@
           "url": "https://crates.io/crates/ifc-spatial"
         }
       ],
-      "released": "0.3.0",
-      "released_date": "2026-09-29",
+      "released": "0.4.0",
+      "released_date": "2026-10-03",
       "status": "implemented",
-      "version": "0.3.0"
+      "version": "0.4.0"
     },
     "ifc-step": {
       "description": "STEP physical file (ISO 10303-21) codec for the IFC model.",
@@ -280,10 +280,10 @@
           "url": "https://crates.io/crates/ifc-step"
         }
       ],
-      "released": "0.4.0",
-      "released_date": "2026-09-29",
+      "released": "0.5.0",
+      "released_date": "2026-10-03",
       "status": "implemented",
-      "version": "0.4.0"
+      "version": "0.5.0"
     },
     "ifc-structural": {
       "description": "Structural analysis model: members, connections, actions, reactions, loads.",
@@ -385,10 +385,10 @@
           "url": "https://crates.io/crates/ifc-xml"
         }
       ],
-      "released": "0.4.0",
-      "released_date": "2026-10-02",
+      "released": "0.4.1",
+      "released_date": "2026-10-03",
       "status": "implemented",
-      "version": "0.4.0"
+      "version": "0.4.1"
     },
     "openbim-ifc": {
       "description": "Facade for the openBIM IFC crates: pick codecs and domains as features.",
@@ -400,10 +400,10 @@
           "url": "https://crates.io/crates/openbim-ifc"
         }
       ],
-      "released": "0.10.0",
-      "released_date": "2026-10-02",
+      "released": "0.11.0",
+      "released_date": "2026-10-03",
       "status": "implemented",
-      "version": "0.10.0"
+      "version": "0.11.0"
     },
     "openbim-ifc-binding-core": {
       "description": "Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python).",
