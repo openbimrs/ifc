@@ -11,7 +11,7 @@ Schema conformance: WHERE rules, cardinality, GUID and reference integrity.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.5.0 (2026-10-02) |
+| Latest release | 0.6.0 (2026-10-03) |
 | Registries | [crates.io `ifc-validate`](https://crates.io/crates/ifc-validate) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `validate` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_validate/index.html) · [docs.rs](https://docs.rs/ifc-validate) |
@@ -42,41 +42,20 @@ so parsing is permissive and validation is an explicit, separate pass.
 
 ## Changes
 
-Latest release, 0.5.0 (2026-10-02):
+Latest release, 0.6.0 (2026-10-03):
 
-### Added
+### Changed (breaking)
 
-- Native WHERE rules over property sets and type assignments (#215),
-  registered only for the releases whose EXPRESS states them and checked
-  against it by `tests/registry_scope.rs`:
-  - `IfcObject.UniquePropertySetNames` (IFC4, IFC4X3):
-    `IfcUniqueDefinitionNames(IsDefinedBy)`, with the inverse rebuilt from
-    every `IfcRelDefinesByProperties` and an `IfcPropertySetDefinitionSet`
-    opened;
-  - `IfcTypeObject.UniquePropertySetNames` (IFC4, IFC4X3):
-    `IfcUniquePropertySetNames(HasPropertySets)`;
-  - `IfcTypeProduct.ApplicableOccurrence` (IFC4, IFC4X3) and its IFC2X3
-    label `IfcTypeProduct.WR41`: every object a type product is assigned
-    to by `IfcRelDefinesByType` is an `IfcProduct`.
-
-  One finding per shared name; a definition the file lacks is an
-  evaluation error. IFC2X3 states no unique-set-name rule. The textual
-  `IfcTypeObject.ApplicableOccurrence` and
-  `IfcPropertySetTemplate.ApplicableEntity` are stated as a rule by no
-  release and are not checked.
-- `type_check::check_value_all`: every independent mismatch of one value
-  against one declared type.
-
-### Changed
-
-- `type_check::attribute_types` reports every independent violation in a
-  slot instead of the first (#215): each bad member of an aggregate, at
-  every nesting level, and a wrapper's form together with a bad parameter
-  inside it (`IFCLABEL(12)` in an `IfcLabel` slot is now both
-  `type.typed.outside_select` and `type.scalar.mismatch`; a wrapper outside
-  its SELECT is `type.select.member` and its parameter is still judged).
-  Identical mismatches in one slot are reported once. A report on a
-  malformed file can therefore hold more findings than before.
-  `type_check::check_value` still returns the first.
+- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
+  default, forward to `ifc-schema`, which this crate now depends on without
+  its default features (#306). Each links one release's table, so a build
+  naming only `ifc4` no longer carries the other four: an IFC4-only browser
+  module with validation shrinks from 1,518,692 to 926,023 bytes. The
+  default build links every release, as before. `ifc4` alone used to link
+  every release too; it now links IFC4's, and `validate_declared` refuses
+  a file declaring another release with `UnbundledSchema`. Under 0.x, a
+  minor release.
+- `validate_declared` is no longer gated on the `ifc4` feature: it exists
+  in every build and refuses a release the build does not bundle.
 
 Full history: [`crates/ifc-validate/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-validate/CHANGELOG.md)

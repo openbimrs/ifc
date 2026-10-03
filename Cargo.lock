@@ -722,7 +722,7 @@ checksum = "4804bdc1dc124eb7e1aa9e144ecc04096bcf787a10a15fa44af682b51f0f6cce"
 
 [[package]]
 name = "ifc-alignment"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "axiolid-core",
  "axiolid-curve",
@@ -754,7 +754,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-classification"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -784,7 +784,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-cost"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -803,7 +803,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-geometry"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "axiolid-construct",
  "axiolid-contracts",
@@ -833,7 +833,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-georef"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "axiolid-core",
  "ifc-model",
@@ -843,7 +843,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-material"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -873,7 +873,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-properties"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -910,7 +910,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-spatial"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -948,7 +948,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-systems"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -978,7 +978,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-validate"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -1099,7 +1099,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "openbim-ifc"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "ifc-alignment",
  "ifc-approval",
@@ -1138,7 +1138,7 @@ dependencies = [
 
 [[package]]
 name = "openbim-ifc-capi"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "cbindgen",
  "openbim-ifc-binding-core",
@@ -1148,7 +1148,7 @@ dependencies = [
 
 [[package]]
 name = "openbim-ifc-py"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "openbim-ifc-binding-core",
  "pyo3",
@@ -1158,7 +1158,7 @@ dependencies = [
 
 [[package]]
 name = "openbim-ifc-wasm"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "js-sys",
  "openbim-ifc-binding-core",

@@ -11,7 +11,7 @@ Distribution systems, ports, and connectivity between elements.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.1 (2026-10-02) |
+| Latest release | 0.4.0 (2026-10-03) |
 | Registries | [crates.io `ifc-systems`](https://crates.io/crates/ifc-systems) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `systems` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_systems/index.html) · [docs.rs](https://docs.rs/ifc-systems) |
@@ -42,33 +42,21 @@ that can be traced -- the basis of any MEP analysis.
 
 ## Changes
 
-Latest release, 0.3.1 (2026-10-02):
+Latest release, 0.4.0 (2026-10-03):
 
-### Added
+### Changed (breaking)
 
-- What a system serves (#230). `System` gains `serviced_buildings`, read
-  from `IfcRelServicesBuildings` in IFC2X3, IFC4 and IFC4X3, and
-  `serviced_facilities`, the IFC4X3 `IfcSystem.ServicesFacilities` view
-  (the structures whose `IfcRelReferencedInSpatialStructure` lists the
-  system; empty under IFC2X3 and IFC4, whose `RelatedElements` cannot hold
-  a system). The admissible target type comes from the declared release's
-  table (`IfcSpatialStructureElement` in IFC2X3, `IfcSpatialElement` after).
-  New `SystemAnomaly` variants report a second relationship for one system
-  (`ServicesBuildingsTwice`; `ServicesBuildings` is `SET [0:1]`) and a
-  target the release does not admit (`ServicedNotSpatial`); dangling
-  targets are `Dangling`, a non-system relating end `NotASystem`.
-- `serve_buildings` and `serve_buildings_with_owner_history` stage an
-  `IfcRelServicesBuildings` in the model's declared release, refusing a
-  relating end that is not an `IfcSystem`, a target the release's
-  `RelatedBuildings` does not admit, a missing reference, a repeated
-  target, and a system that already services buildings in the model or on
-  the transaction. A refusal stages nothing.
+- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
+  default, forward to `ifc-schema`, which this crate now depends on without
+  its default features (#306). Each links one release's table, so a
+  single-release build carries only that table: an IFC4-only browser
+  module with systems shrinks from 1,423,611 to 831,006 bytes. The default
+  build links every release, as before.
+- Authoring refuses a release the build leaves out with
+  `SystemAuthoringError::UnsupportedSchema` instead of panicking; reads
+  already refused it. A build without default features therefore has to
+  name the releases it reads.
 
-- `System` gains `long_name` and `predefined_type` (#231): the
-  `IfcDistributionSystem` `LongName` and `PredefinedType`
-  (`IfcDistributionSystemEnum` token), read by attribute name in the
-  declared release's table, for `IfcDistributionSystem` and its subtype
-  `IfcDistributionCircuit` under IFC4 and IFC4X3. Both are `None` for every
-  other system type and on IFC2X3, which has no `IfcDistributionSystem`.
+Under 0.x, a minor release.
 
 Full history: [`crates/ifc-systems/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-systems/CHANGELOG.md)

@@ -8,7 +8,7 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
-### Changed (#318: the catalog is loaded lazily)
+### Changed (breaking, #318: the catalog is loaded lazily)
 
 - The module no longer embeds the PSD/QTO catalog: default feature
   `property-catalog-runtime` replaces `property-catalog`. The default
@@ -27,11 +27,14 @@ a release here does not imply a release of any other crate in the family.
   throws the new code `catalog-not-loaded`, never unchecked. A build with
   `property-catalog` embeds the catalog (1.4 MB) and `loadCatalog` is a
   no-op.
-- The property writer of #123 is unreleased, so against 0.2.1 this stays
-  additive: a patch release.
+- A write to a `Pset_`/`Qto_` set that 0.3.0 checked without a load now
+  needs `loadCatalog` first: a breaking change, a minor release under 0.x
+  (0.4.0).
 - TypeScript: `IfcModel.loadCatalog` (a namespace merged with the class),
   `CatalogLoadOptions`; `IfcErrorCode` gains `template-violation`,
   `missing-property` and `catalog-not-loaded`.
+
+## [0.3.0] - 2026-10-03
 
 ### Added (#123, property sets: write side)
 
@@ -179,7 +182,8 @@ Published to npm by hand, before the release workflow existed.
 - `scripts/build-node-pkg.sh` builds a Node package with the pinned
   `wasm-bindgen` CLI and runs the Node smoke and corpus suites.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.2.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.3.0...HEAD
+[0.3.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.3.0
 [0.2.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.2.1
 [0.2.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.2.0
 [0.1.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.1.1

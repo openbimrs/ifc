@@ -11,8 +11,10 @@ a release here does not imply a release of any other crate in the family.
 ### Added (#318)
 
 - `OPENBIM_IFC_STATUS_CATALOG_NOT_LOADED` (27), so every binding code has
-  a status. This library embeds the catalog and never returns it. Still
-  ABI 0.1.3 (unreleased); additive, a patch release.
+  a status. This library embeds the catalog and never returns it. The ABI
+  version is 0.1.4; no `v0_1` symbol changed. Additive, a patch release.
+
+## [0.1.1] - 2026-10-03
 
 ### Added (#123, property sets: write side)
 

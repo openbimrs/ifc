@@ -284,7 +284,7 @@ without the core's `property-catalog` feature refuses a write to a
 `Pset_`/`Qto_` set with `FEATURE_DISABLED`. Status 27,
 `OPENBIM_IFC_STATUS_CATALOG_NOT_LOADED` (`catalog-not-loaded`), is the
 refusal of the npm build, which loads the catalog at runtime; this library
-embeds it, so it never returns 27.
+embeds it, so it never returns 27. Adding it makes the ABI version 0.1.4.
 
 Not bound yet: checked multi-edit transactions over arbitrary entities
 (`Transaction`, `Applied`, `Conflict`), deferred until a host asks for

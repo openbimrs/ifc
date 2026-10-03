@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-03
+
 Input this crate refused now lowers exactly, onto the Axiolid relations
 of axiolid-curve 0.3.3 and axiolid-model 0.3.4 (kernel#238, #239, #240),
 and `HorizontalPlan::curve` can now be a `Curve2::Chain`: behaviour
@@ -292,7 +294,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-alignment-v0.5.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-alignment-v0.6.0...HEAD
+[0.6.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.6.0
 [0.5.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.5.0
 [0.4.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.4.0
 [0.3.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.3.2
