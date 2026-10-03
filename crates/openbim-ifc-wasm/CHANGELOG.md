@@ -21,12 +21,12 @@ a release here does not imply a release of any other crate in the family.
 
 ### Changed
 
-- The module is shrunk with `wasm-opt -Oz` (binaryen 132). Measured on the
-  default build: 1,337,025 bytes after `wasm-bindgen`, 1,295,241 after
-  `wasm-opt` (-3.1%; the code section shrinks 9.1%, from 424,262 to
-  385,757 bytes). The compressed size does not fall: 459,437 to 461,953
-  bytes with `gzip -9`. The bundled schema data, which wasm-opt cannot
-  shrink, is 908,687 of the 1,337,025 bytes.
+- `wasm-opt -Oz` was measured, not applied, because it increases the gzip
+  and brotli size. With binaryen 132 on the default build the module went
+  from 1,337,025 to 1,295,241 bytes raw (-3.1%), but from 459,437 to
+  461,953 bytes under `gzip -9` and from 276,835 to 278,749 under brotli.
+  The bundled schema data, which wasm-opt cannot shrink, is 908,687 of the
+  1,337,025 bytes.
 - The tarball carries one copy of the module per target, so it grows from
   about 0.5 MB to 1.4 MB packed; a consumer loads only one.
 

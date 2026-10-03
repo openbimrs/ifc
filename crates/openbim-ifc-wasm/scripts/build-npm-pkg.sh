@@ -3,8 +3,7 @@
 #
 #   crates/openbim-ifc-wasm/scripts/build-npm-pkg.sh [out-dir]
 #
-# One release build of the wasm module, bound three times by wasm-bindgen
-# and shrunk by `wasm-opt -Oz`:
+# One release build of the wasm module, bound three times by wasm-bindgen:
 #
 #   <out>/            --target nodejs   CommonJS for Node (the `node` condition)
 #   <out>/bundler/    --target bundler  ES module for webpack, Vite, Rollup
@@ -18,8 +17,12 @@
 # The wasm-bindgen CLI must match the `wasm-bindgen` crate version pinned in
 # Cargo.toml exactly: a mismatch fails at bindgen time with a schema error,
 # or worse, generates glue for a different ABI. This script refuses early and
-# names the version to install. wasm-opt and webpack come pinned from
+# names the version to install. webpack comes pinned from
 # tools/package-lock.json.
+#
+# No wasm-opt pass: measured with binaryen 132 on this module (#40), -Oz cut
+# the raw size 3.1% but grew it 0.5% under gzip -9 and 0.7% under brotli,
+# which is what a browser downloads.
 set -euo pipefail
 
 crate_dir="$(cd "$(dirname "$0")/.." && pwd)"
@@ -48,7 +51,6 @@ if [[ "$crate_version" != "$npm_version" ]]; then
 fi
 
 (cd "$crate_dir/tools" && npm ci --no-audit --no-fund --loglevel=error)
-wasm_opt="$crate_dir/tools/node_modules/.bin/wasm-opt"
 
 target_dir="${CARGO_TARGET_DIR:-$root/target}"
 (cd "$root" && cargo build -p openbim-ifc-wasm --target wasm32-unknown-unknown --release)
@@ -58,22 +60,6 @@ rm -rf "$out"
 wasm-bindgen --target nodejs --out-dir "$out" "$module"
 wasm-bindgen --target bundler --out-dir "$out/bundler" "$module"
 wasm-bindgen --target web --out-dir "$out/web" "$module"
-
-# -Oz after wasm-bindgen, which rewrites the module. The --enable flags are
-# exactly the features rustc enables by default for wasm32-unknown-unknown
-# (Rust >= 1.82): binaryen must accept what the module already uses and
-# must not introduce anything newer.
-for dir in "$out" "$out/bundler" "$out/web"; do
-    wasm="$dir/openbim_ifc_wasm_bg.wasm"
-    before="$(wc -c <"$wasm")"
-    "$wasm_opt" -Oz \
-        --enable-bulk-memory --enable-bulk-memory-opt --enable-multivalue \
-        --enable-mutable-globals --enable-nontrapping-float-to-int \
-        --enable-reference-types --enable-sign-ext \
-        "$wasm" -o "$wasm.opt"
-    mv "$wasm.opt" "$wasm"
-    echo "wasm-opt -Oz ${dir#"$out"}/: $before -> $(wc -c <"$wasm") bytes"
-done
 
 # The nodejs glue is CommonJS. Without its own package.json, Node resolves
 # the nearest enclosing one -- inside this repo that is the docs site's, which

@@ -55,7 +55,7 @@ jobs:
           key: ifc-spec-${{ hashFiles('scripts/fetch-ifc-schemas.sh') }}
       - name: Set up Node
         # bindings runs the Node suites and the npm package check, whose
-        # webpack and wasm-opt come from crates/openbim-ifc-wasm/tools and
+        # webpack comes from crates/openbim-ifc-wasm/tools and
         # whose headless Chrome is the one the hosted ubuntu image ships;
         # lint builds the docs site.
         if: matrix.section == 'bindings' || matrix.section == 'lint'

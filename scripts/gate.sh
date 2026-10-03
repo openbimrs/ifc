@@ -186,7 +186,7 @@ gate_features() {
 
 gate_bindings() {
     # JavaScript bindings (#34, #40, ADR 0013): build the npm package's three
-    # targets with the pinned wasm-bindgen CLI and wasm-opt, run the Node
+    # targets with the pinned wasm-bindgen CLI, run the Node
     # smoke and corpus suites, then check the packed tarball from Node, a
     # webpack bundle and headless Chrome, so the binding is proven to work
     # from JS, not just to compile.

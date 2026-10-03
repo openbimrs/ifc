@@ -119,10 +119,15 @@ cargo install wasm-bindgen-cli --version 0.2.128 --locked
 crates/openbim-ifc-wasm/scripts/build-npm-pkg.sh   # builds pkg/ and tests every target
 ```
 
-The script builds the module once, binds it for each target, shrinks it with
-`wasm-opt -Oz`, runs the Node suites, and checks the packed tarball from
-Node, webpack and headless Chrome (`CHROME_BIN` names the browser if it is
-not on `PATH`). wasm-opt and webpack come pinned from `tools/package-lock.json`.
+The script builds the module once, binds it for each target, runs the Node
+suites, and checks the packed tarball from Node, webpack and headless Chrome
+(`CHROME_BIN` names the browser if it is not on `PATH`). webpack comes pinned
+from `tools/package-lock.json`.
+
+`wasm-opt -Oz` was measured, not applied, because it increases the gzip and
+brotli size: with binaryen 132 the module went from 1,337,025 to 1,295,241
+bytes raw, but from 459,437 to 461,953 bytes under `gzip -9` and from
+276,835 to 278,749 under brotli.
 
 ## License
 

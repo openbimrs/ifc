@@ -61,8 +61,9 @@ await init(); // fetches openbim_ifc_wasm_bg.wasm from next to the module
 bytes or a compiled `WebAssembly.Module`. Serve `.wasm` files as
 `application/wasm` so the browser compiles while it downloads.
 
-Every build is shrunk by `wasm-opt -Oz`. The published module bundles the
-schema of every IFC release, most of its size; a build from source with
+The published module bundles the schema of every IFC release, most of its
+size; `wasm-opt -Oz` was measured, not applied, because it increases the
+gzip and brotli size. A build from source with
 `--no-default-features --features ifc4` carries one
 ([#112](https://github.com/openbimrs/ifc/issues/112)).
 
