@@ -30,9 +30,10 @@
 //! crate's own layout under the XSD's target namespace and the release's
 //! schema token; it does not write the XSD configuration (upper-case STEP
 //! type names, `i<n>` ids, `kind` elements and a `schema` root attribute
-//! are its own). An opt-in test, `tests/xsd_output.rs`, validates strict
-//! output from the fixture corpus with `xmllint` against the fetched XSDs
-//! and fails on any departure beyond those it documents.
+//! are its own). For output the XSD accepts, use [`XmlCodec::xsd`] (below).
+//! An opt-in test, `tests/xsd_output.rs`, validates both with `xmllint`
+//! against the fetched XSDs: strict output departs only as it documents,
+//! XSD-layout output has no validity error at all.
 //!
 //! # Reading with a schema is strict
 //!
@@ -47,14 +48,20 @@
 //!
 //! # The buildingSMART XSD configuration
 //!
-//! [`XmlCodec::xsd`] reads the ifcXML configuration the release XSD
-//! declares (IFC4 ADD2 TC1, IFC4X3 ADD2): entities nested and defined in
+//! [`XmlCodec::xsd`] reads and writes the ifcXML configuration the release
+//! XSD declares (IFC4 ADD2 TC1, IFC4X3 ADD2): entities nested and defined in
 //! place, `ref`/`href` references, inverse attributes, `-wrapper` typed
 //! values, space-separated list attributes. It reads into the same
-//! [`ifc_model::Model`] as the document's STEP form, and refuses with a
-//! typed error what it cannot read exactly. It does not write. The rules
-//! are in the `xsd` module documentation; a schema-backed test checks them
-//! against both XSDs.
+//! [`ifc_model::Model`] as the document's STEP form, and writes that model
+//! back: every entity at the top level, references as `ref` with `xsi:nil`,
+//! the attributes the configuration leaves off a relationship through the
+//! inverse of the entity they name. Written documents validate against
+//! `IFC4.xsd` and read back to the same model. Both directions refuse with
+//! a typed error what they cannot carry exactly; a model the configuration
+//! cannot represent is [`XmlError::Unrepresentable`], never different
+//! output. Reader and writer share one derivation of each attribute's form
+//! from the schema; the rules are in the `xsd` module documentation, and a
+//! schema-backed test checks them, element by element, against both XSDs.
 //!
 //! ```
 //! # #[cfg(feature = "schema")] {
@@ -73,6 +80,25 @@
 //! let person = model.get(ifc_model::EntityId(1)).unwrap();
 //! assert_eq!(&*person.type_name, "IFCPERSON");
 //! assert_eq!(person.text(0), Some("1"));
+//! # }
+//! ```
+//!
+//! ```
+//! # #[cfg(feature = "schema")] {
+//! use ifc_model::{Codec, Entity, EntityId, Model, Value};
+//! use ifc_xml::{XmlCodec, XmlProfile};
+//! use std::sync::Arc;
+//!
+//! # let schema = ifc_schema::Schema::from_express(
+//! #     "SCHEMA IFC4; ENTITY IfcPerson; FamilyName : OPTIONAL STRING; END_ENTITY; END_SCHEMA;",
+//! # );
+//! let codec = XmlCodec::xsd(Arc::new(schema), XmlProfile::Ifc4Add2Tc1);
+//! let mut model = Model::new();
+//! model.header_mut().schema = vec!["IFC4".into()];
+//! model.insert(EntityId(1), Entity::new("IFCPERSON", vec![Value::Text("1".into())]));
+//! let xml = String::from_utf8(codec.write_bytes(&model).unwrap()).unwrap();
+//! assert!(xml.contains(r#"<IfcPerson id="i1" FamilyName="1"/>"#));
+//! assert_eq!(codec.read_bytes(xml.as_bytes()).unwrap().get(EntityId(1)), model.get(EntityId(1)));
 //! # }
 //! ```
 //!

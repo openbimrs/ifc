@@ -12,6 +12,47 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `XmlCodec::xsd` now writes the buildingSMART XSD configuration too (#274).
+  Every entity is a top-level element named as the schema spells it
+  (`IfcWall`) with `id="i<n>"`; entity values are `ref` references with
+  `xsi:nil`, and `xsi:type` where the entity is a subtype of the declared
+  type; simple values are XML attributes in their XSD lexical form (lower
+  case enumerations, `xs:double` reals with a '.', `xs:hexBinary`), lists
+  whitespace separated; SELECTs hold entity elements or `-wrapper` values;
+  aggregates are containers of items, `Seq-` wrapped inner lists, or flat
+  items with `ifc:arraySize`; the 21 attributes the configuration leaves off
+  a relationship (`IfcRelAggregates.RelatingObject`) are written as
+  references inside the inverse of the entity they name (`IsDecomposedBy`);
+  the header is the XSD's. Each attribute's form comes from the derivation
+  the reader uses, now one shared rule plus the configuration's few
+  exceptions, and a schema-backed test checks every attribute, inverse and
+  element order against both release XSDs. Every IFC4 fixture the writer
+  accepts validates against `IFC4.xsd` with no error and reads back with the
+  XSD reader to the same model (entities numbered in model order, `SET`s
+  filled through inverses in document order); the STEP implementation level
+  has no ifcXML field and is not written.
+- `XmlError::Unrepresentable`: the writer refuses a model the configuration
+  cannot carry exactly rather than write a different model or an invalid
+  document -- an integer where a real is declared, a string with a tab or
+  line break (the XSD types strings as `xs:normalizedString`) or over its
+  declared width, a string with whitespace in a list attribute, a
+  partial-byte binary, an unset mandatory element, an aggregate outside its
+  declared bounds, more than one header author, organization or
+  description, `IfcRelDefinesByObject.RelatingObject` (the configuration
+  writes no inverse for it), a second relationship where the XSD allows one
+  (`HasOpenings`), or an inverse the entity's XSD type restricts away
+  (IFC4 `IfcOrientedEdge.StyledByItem`). Models the schema does not describe
+  are refused with the existing typed errors.
+
+### Fixed
+
+- The XSD reader accepts the namespace-qualified `ifc:arraySize`,
+  `ifc:itemType` and `ifc:cType` a valid document carries: the XSD declares
+  them as global attributes, so unqualified ones are not valid. It refused
+  them as undeclared; unqualified ones are still read.
+
 ## [0.4.0] - 2026-10-02
 
 ### Changed (breaking)

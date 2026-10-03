@@ -340,8 +340,12 @@ impl State<'_> {
         };
         let declared = &layout.slots[slot];
         let shape = &declared.shape;
-        let list_binary = shape.leaf == Leaf::Binary && !shape.levels.is_empty();
-        if !shape.leaf.is_simple() || (shape.leaf == Leaf::Binary && !list_binary) {
+        // The form the configuration gives the attribute; an aggregate of
+        // simple values it writes as a container is also read from a list
+        // attribute, as some exporters write it.
+        let attribute_form = declared.form == XsdForm::Attribute
+            || (!shape.levels.is_empty() && shape.leaf.is_simple());
+        if !attribute_form {
             return Err(XmlError::WrongForm {
                 attribute: attribute.into(),
                 expected: "a child element",

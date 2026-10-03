@@ -22,7 +22,7 @@ pub(crate) fn scalar(leaf: &Leaf, text: &str, lexical: Lexical) -> Result<Value,
                 Err(_) => Value::Real(finite(leaf, token, text)?),
             },
         },
-        Leaf::Text { fixed } => {
+        Leaf::Text { fixed, .. } => {
             if let Some(width) = fixed {
                 if text.chars().count() != *width {
                     return Err(invalid(leaf, text));
@@ -228,7 +228,7 @@ fn conform_at(schema: &Schema, shape: &Shape, value: &Value, depth: usize) -> Re
         | (Leaf::Boolean, Value::Bool(_))
         | (Leaf::Logical, Value::Bool(_) | Value::LogicalUnknown)
         | (Leaf::Binary, Value::Binary(_)) => true,
-        (Leaf::Text { fixed }, Value::Text(text)) => {
+        (Leaf::Text { fixed, .. }, Value::Text(text)) => {
             if let Some(width) = fixed {
                 if text.chars().count() != *width {
                     return Err(invalid(&shape.leaf, text));

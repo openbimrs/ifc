@@ -10,10 +10,12 @@
 //! `scripts/fetch-ifc-schemas.sh` fetches them, and with
 //! `IFC_SPEC_REQUIRED` set a missing file fails rather than skips.
 
-use crate::typing::{Layouts, Leaf};
+use super::config::{self, InverseForm};
+use crate::typing::{Items, Layouts, Leaf, XsdForm};
 use ifc_schema::Schema;
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// One element of the parsed XSD: its local name, attributes and children.
@@ -91,6 +93,39 @@ fn node(element: &quick_xml::events::BytesStart<'_>, local: impl Fn(&str) -> Str
     }
 }
 
+/// The element names of an entity complex type's content model, resolved
+/// through its base types: an extension appends to its base's content, a
+/// restriction restates it.
+fn content(complex_types: &HashMap<&str, &Node>, name: &str) -> Vec<String> {
+    let Some(complex) = complex_types.get(name) else {
+        return Vec::new();
+    };
+    let Some(derivation) = complex.child("complexContent").and_then(|content| {
+        content
+            .child("extension")
+            .or_else(|| content.child("restriction"))
+    }) else {
+        return Vec::new();
+    };
+    let mut out = if derivation.name == "extension" {
+        let base = derivation.attribute("base").unwrap_or_default();
+        content(complex_types, base.trim_start_matches("ifc:"))
+    } else {
+        Vec::new()
+    };
+    if let Some(sequence) = derivation.child("sequence") {
+        out.extend(
+            sequence
+                .children
+                .iter()
+                .filter(|child| child.name == "element")
+                .filter_map(|child| child.attribute("name"))
+                .map(str::to_string),
+        );
+    }
+    out
+}
+
 /// The fetched XSD, or `None` (a skip) when absent and not required.
 fn xsd(release: &str, file: &str) -> Option<Vec<u8>> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -117,7 +152,7 @@ fn check(schema: &Schema, document: &Node) -> usize {
     let top = document.child("schema").expect("XSD root");
     let mut layouts = Layouts::new(schema);
     let mut failures = Vec::new();
-    let simple_types: std::collections::HashMap<&str, &Node> = top
+    let simple_types: HashMap<&str, &Node> = top
         .children
         .iter()
         .filter(|child| child.name == "simpleType")
@@ -125,7 +160,7 @@ fn check(schema: &Schema, document: &Node) -> usize {
         .collect();
     // A named attribute type is a list when it, or the `List-` simple type
     // a complex type of that name extends (IFC4X3 `RefLatitude`), is one.
-    let complex_types: std::collections::HashMap<&str, &Node> = top
+    let complex_types: HashMap<&str, &Node> = top
         .children
         .iter()
         .filter(|child| child.name == "complexType")
@@ -144,17 +179,6 @@ fn check(schema: &Schema, document: &Node) -> usize {
             .filter_map(|name| simple_types.get(name))
             .any(|simple| simple.descendant("list").is_some())
     };
-    // `(entity, attribute)` pairs some inverse attribute inverts.
-    let inverted: std::collections::HashSet<(String, String)> = schema
-        .entities()
-        .flat_map(|entity| entity.inverses.iter())
-        .map(|inverse| {
-            let declarer = schema
-                .entity(&inverse.entity)
-                .map_or(inverse.entity.clone(), |entity| entity.name.clone());
-            (declarer, inverse.for_attribute.clone())
-        })
-        .collect();
     let mut checked = 0;
     for complex in top
         .children
@@ -195,11 +219,10 @@ fn check(schema: &Schema, document: &Node) -> usize {
                 continue;
             };
             let shape = &layout.slots[slot].shape;
-            let as_attribute =
-                shape.leaf.is_simple() && (shape.leaf != Leaf::Binary || !shape.levels.is_empty());
             let is_list = attribute.descendant("list").is_some()
                 || attribute.attribute("type").is_some_and(names_list);
-            if !as_attribute || is_list == shape.levels.is_empty() {
+            let form = layout.slots[slot].form;
+            if form != XsdForm::Attribute || is_list == shape.levels.is_empty() {
                 failures.push(format!(
                     "{name}.{attribute_name}: XSD list={is_list}, reader shape {}",
                     shape.describe()
@@ -227,24 +250,29 @@ fn check(schema: &Schema, document: &Node) -> usize {
             let sequence = complex_type.and_then(|complex| complex.child("sequence"));
             if let Some(slot) = layout.slot(element_name) {
                 let shape = &layout.slots[slot].shape;
+                let form = layout.slots[slot].form;
                 let accepted = if typed {
-                    shape.levels.is_empty() && matches!(shape.leaf, Leaf::Entity(_) | Leaf::Binary)
+                    matches!(form, XsdForm::Entity | XsdForm::Text)
                 } else if group {
                     // A SELECT, or an aggregate of one: either way the items
                     // are the SELECT's entity elements and wrappers.
                     matches!(shape.leaf, Leaf::Select(_))
+                        && (form == XsdForm::Select) == shape.levels.is_empty()
                 } else if let Some(sequence) = sequence {
-                    // A container: entity items, wrappers of the leaf type, or
-                    // `Seq-` wrapped inner lists.
+                    // A container: entity items, wrappers of the leaf type,
+                    // or `Seq-` wrapped inner lists of a nested aggregate.
                     let item = sequence.child("element");
                     let wrapper = item
                         .and_then(|item| item.attribute("ref").or_else(|| item.attribute("name")))
                         .map(|item| item.trim_start_matches("ifc:"))
                         .unwrap_or_default();
-                    !shape.levels.is_empty()
-                        && (!shape.leaf.is_simple()
-                            || wrapper == format!("{}-wrapper", shape.named)
-                            || wrapper == format!("Seq-{}-wrapper", shape.named))
+                    let expected = if form == XsdForm::Container(Items::Seq) {
+                        format!("Seq-{}-wrapper", shape.named)
+                    } else {
+                        format!("{}-wrapper", shape.named)
+                    };
+                    matches!(form, XsdForm::Container(_))
+                        && (!shape.leaf.is_simple() || wrapper == expected)
                 } else {
                     false
                 };
@@ -254,26 +282,113 @@ fn check(schema: &Schema, document: &Node) -> usize {
                         shape.describe()
                     ));
                 }
-            } else if layout.inverse(element_name).is_none() {
+                // A reference is an empty element with `xsi:nil`, so an
+                // entity element must be nillable; and the writer refuses an
+                // unset value wherever the XSD requires the element.
+                if form == XsdForm::Entity && element.attribute("nillable") != Some("true") {
+                    failures.push(format!(
+                        "{name}.{element_name}: entity element not nillable"
+                    ));
+                }
+                if element.attribute("minOccurs") != Some("0") && layout.slots[slot].optional {
+                    failures.push(format!("{name}.{element_name}: required, but OPTIONAL"));
+                }
+            } else if let Some(inverse) = layout.inverse(element_name) {
+                let direct = typed || complex_type.is_none() && element.attribute("ref").is_some();
+                let configured = config::elements(schema, &layout).into_iter().find_map(
+                    |element| match element {
+                        config::Element::Inverse {
+                            inverse: found,
+                            form,
+                        } if found.name == inverse.name => Some(form),
+                        _ => None,
+                    },
+                );
+                let expected = if direct {
+                    InverseForm::Direct
+                } else {
+                    InverseForm::Container
+                };
+                if configured != Some(expected) {
+                    failures.push(format!(
+                        "{name}.{element_name}: inverse form {expected:?}, configured {configured:?}"
+                    ));
+                }
+            } else {
                 failures.push(format!(
                     "{name}.{element_name}: child element, no attribute"
                 ));
             }
         }
         // Every explicit attribute this entity declares has an XSD form,
-        // unless an inverse attribute inverts it: the configuration then
-        // writes the relationship inside the inverse, and the reader fills
-        // the attribute from it.
+        // exactly unless the configuration leaves it off: the writer then
+        // writes the relationship inside an inverse of the entity it names,
+        // and the reader fills the attribute from it.
         for attribute in &definition.attributes {
             let derived = layout
                 .slot(&attribute.name)
                 .is_some_and(|slot| layout.slots[slot].derived);
-            if !derived
-                && !seen.contains(&attribute.name)
-                && !inverted.contains(&(name.to_string(), attribute.name.clone()))
-            {
-                failures.push(format!("{name}.{}: no XSD counterpart", attribute.name));
+            let omitted = config::omitted(schema, name, &attribute.name);
+            if !derived && seen.contains(&attribute.name) == omitted {
+                failures.push(format!(
+                    "{name}.{}: in the XSD {}, configured omitted {omitted}",
+                    attribute.name,
+                    seen.contains(&attribute.name)
+                ));
             }
+        }
+        // The child elements in content-model order, inherited ones first,
+        // as the writer emits them.
+        let declared = content(&complex_types, name);
+        let configured: Vec<String> = config::elements(schema, &layout)
+            .iter()
+            .map(|element| match element {
+                config::Element::Slot(slot) => layout.slots[*slot].name.to_string(),
+                config::Element::Inverse { inverse, .. } => inverse.name.to_string(),
+            })
+            .collect();
+        if declared != configured {
+            failures.push(format!(
+                "{name}: XSD content {declared:?}, writer order {configured:?}"
+            ));
+        }
+    }
+    // Every enumeration's XSD values are its EXPRESS members in lower case,
+    // as the writer spells them.
+    for simple in top
+        .children
+        .iter()
+        .filter(|child| child.name == "simpleType")
+    {
+        let Some(name) = simple.attribute("name") else {
+            continue;
+        };
+        let Some(ifc_schema::TypeKind::Enumeration(members)) = schema
+            .type_def(name)
+            .filter(|definition| definition.name == name)
+            .map(|definition| &definition.kind)
+        else {
+            continue;
+        };
+        let values: Vec<String> = simple
+            .descendant("restriction")
+            .map(|restriction| {
+                restriction
+                    .children
+                    .iter()
+                    .filter_map(|child| child.attribute("value"))
+                    .map(str::to_string)
+                    .collect()
+            })
+            .unwrap_or_default();
+        let expected: Vec<String> = members
+            .iter()
+            .map(|member| member.to_ascii_lowercase())
+            .collect();
+        if values != expected {
+            failures.push(format!(
+                "{name}: XSD values {values:?}, members {expected:?}"
+            ));
         }
     }
     // Every typed wrapper names a defined type, which is what the reader

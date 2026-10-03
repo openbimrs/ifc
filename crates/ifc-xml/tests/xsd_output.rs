@@ -1,4 +1,15 @@
-//! Strict-profile output against the official release XSDs, opt in.
+//! Output against the official release XSDs, opt in.
+//!
+//! # What the XSD layout claims
+//!
+//! [`XmlCodec::xsd`] writes the buildingSMART XSD configuration. Its claim
+//! is the strongest: every document it writes validates against the
+//! release XSD. The check writes the hand-built construct models of
+//! `support/xsd_models.rs` and every IFC4 fixture (a model the writer
+//! refuses writes no document; `xsd_corpus_write.rs` pins those), and
+//! `xmllint` must report every document valid, with no validity error at
+//! all. For IFC4X3 ADD2 the documents must be well-formed and in the XSD's
+//! target namespace, since that XSD does not compile (below).
 //!
 //! # What the strict profile claims
 //!
@@ -6,9 +17,8 @@
 //! layout (upper-case STEP type names, `i<n>` ids, `kind` child elements,
 //! a `schema` attribute on the root, a header mirroring STEP's) under the
 //! release's exact namespace and schema token. It does **not** write the
-//! buildingSMART XSD configuration, which this crate reads
-//! ([`XmlCodec::xsd`]) but does not write, so its output is not valid
-//! against the release XSD and does not claim to be. What it claims is that
+//! buildingSMART XSD configuration (that is [`XmlCodec::xsd`]), so its
+//! output is not valid against the release XSD and does not claim to be. What it claims is that
 //! the output is well-formed XML whose root is the XSD's `ifcXML` element in
 //! the XSD's target namespace. This check validates exactly that with a
 //! W3C XML Schema validator, and pins the ways the output departs from the
@@ -29,8 +39,7 @@
 //! `xmllint` reports the first unexpected entity element of the root and
 //! then stops checking the root's content, so beyond the envelope (root,
 //! namespace, root attributes, header) the check proves well-formedness
-//! only. That is all the strict profile claims; writing the XSD
-//! configuration is tracked in #274.
+//! only. That is all the strict profile claims.
 //!
 //! The published `IFC4X3_ADD2.xsd` is not a valid XML Schema: libxml2 and
 //! Xerces both refuse to compile it (`maxOccurs="?"`, and the complex types
@@ -52,8 +61,12 @@
 //! cargo test -p ifc-xml --test xsd_output -- --ignored --nocapture
 //! ```
 //!
-//! `XMLLINT=<path>` selects another `xmllint` binary. The written documents
-//! stay under `target/tmp/ifc-xml-xsd-output/` for inspection.
+//! `XMLLINT=<path>` selects another `xmllint` binary; without root, extract
+//! one from the package (`apt-get download libxml2-utils`, then
+//! `dpkg-deb -x libxml2-utils_*.deb <dir>`) and point `XMLLINT` at
+//! `<dir>/usr/bin/xmllint`. The written documents stay under
+//! `target/tmp/ifc-xml-xsd-output/` (strict) and
+//! `target/tmp/ifc-xml-xsd-writer-output/` (XSD layout) for inspection.
 //!
 //! `xmllint` (libxml2) is the validator rather than a Rust crate: it is the
 //! reference W3C XML Schema 1.0 implementation on every Linux distribution,
@@ -61,6 +74,10 @@
 //! libxml2 headers. The pure-Rust XSD validators on crates.io are pre-1.0
 //! and unproven against schemas of this size.
 #![cfg(feature = "schema")]
+
+#[path = "support/xsd_models.rs"]
+#[allow(dead_code)]
+mod support;
 
 use ifc_model::{Codec, Model};
 use ifc_step::StepCodec;
@@ -205,6 +222,139 @@ fn strict_output_meets_its_claims_against_the_release_xsd() {
         "strict output departs from its claims:\n{}",
         failures.join("\n")
     );
+}
+
+/// The XSD writer's output validates against `IFC4.xsd` with no error.
+///
+/// Every IFC4 fixture is written with [`XmlCodec::xsd`]; a fixture the
+/// writer refuses (a model the configuration cannot carry, see
+/// `tests/xsd_corpus_write.rs`) writes no document. Every written document
+/// must validate: `xmllint` must report it as valid, with no validity
+/// error at all. For IFC4X3 ADD2, whose XSD does not compile
+/// ([`UNCOMPILABLE`]), the documents must be well-formed and in the XSD's
+/// target namespace.
+#[test]
+#[ignore = "opt in: needs the fetched XSDs and xmllint; see the module documentation"]
+fn xsd_writer_output_validates_against_the_release_xsd() {
+    let xmllint = xmllint();
+    let corpus = corpus();
+    let out = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("ifc-xml-xsd-writer-output");
+    let _ = std::fs::remove_dir_all(&out);
+    std::fs::create_dir_all(&out).expect("create the output directory");
+
+    let mut failures = Vec::new();
+    for &(profile, release, file, min_fixtures) in RELEASES {
+        let xsd = xsd_path(release, file);
+        let label = profile.schema_token();
+        let dir = out.join(label);
+        std::fs::create_dir_all(&dir).expect("create the release directory");
+        let target = target_namespace(&xsd);
+        if target != profile.namespace() {
+            failures.push(format!(
+                "{label}: XmlProfile::namespace is {:?}, the XSD declares {target:?}",
+                profile.namespace()
+            ));
+        }
+
+        let codec = XmlCodec::xsd(schema(profile), profile);
+        let mut documents = Vec::new();
+        let mut refused = 0;
+        // The hand-built models that exercise every construct, then the
+        // corpus.
+        let constructs = support::models()
+            .into_iter()
+            .map(|(name, model)| (format!("construct/{name}"), model));
+        let models: Vec<(String, Model)> = constructs.chain(corpus.iter().cloned()).collect();
+        for (name, model) in &models {
+            if model.header().schema_token() != Some(profile.schema_token()) {
+                continue;
+            }
+            match codec.write_bytes(model) {
+                Ok(bytes) => {
+                    if let Err(problem) = root_namespace(&bytes, profile) {
+                        failures.push(format!("{name}: {problem}"));
+                    }
+                    let path = dir.join(format!("{}.xml", name.replace('/', "__")));
+                    std::fs::write(&path, bytes).expect("write the document");
+                    documents.push(path);
+                }
+                Err(_) => refused += 1,
+            }
+        }
+        if documents.len() < min_fixtures {
+            failures.push(format!(
+                "{label}: wrote {} documents, expected at least {min_fixtures}",
+                documents.len()
+            ));
+        }
+
+        let well_formed = run(Command::new(&xmllint).arg("--noout").args(&documents));
+        if !well_formed.status.success() {
+            failures.push(format!(
+                "{label}: xmllint finds malformed output:\n{}",
+                stderr(&well_formed)
+            ));
+        }
+
+        let validated = run(Command::new(&xmllint)
+            .arg("--noout")
+            .arg("--schema")
+            .arg(&xsd)
+            .args(&documents));
+        let report = stderr(&validated);
+        let uncompilable = UNCOMPILABLE.iter().find(|(known, _)| *known == profile);
+        match (validated.status.code(), uncompilable) {
+            (Some(5), Some((_, reason))) => println!(
+                "{label}: {} documents written ({refused} refused), well-formed; the XSD does \
+                 not compile, as recorded ({reason}), so validation is skipped",
+                documents.len()
+            ),
+            (Some(0), None) => {
+                let valid = documents
+                    .iter()
+                    .filter(|document| {
+                        report.contains(&format!("{} validates", document.display()))
+                    })
+                    .count();
+                let errors = report
+                    .lines()
+                    .filter(|line| line.contains("Schemas validity error"))
+                    .count();
+                if valid != documents.len() || errors != 0 {
+                    failures.push(format!(
+                        "{label}: {valid} of {} documents valid, {errors} errors:\n{report}",
+                        documents.len()
+                    ));
+                }
+                println!(
+                    "{label}: {} documents written ({refused} refused), {valid} valid, {errors} XSD errors",
+                    documents.len()
+                );
+            }
+            (_, Some(_)) => failures.push(format!(
+                "{label}: the XSD now compiles; remove its UNCOMPILABLE entry"
+            )),
+            (code, None) => {
+                failures.push(format!("{label}: xmllint exited with {code:?}:\n{report}"))
+            }
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "XSD writer output fails its claims:\n{}",
+        failures.join("\n")
+    );
+}
+
+/// The root of a written document is `ifcXML` in the profile's namespace.
+fn root_namespace(bytes: &[u8], profile: XmlProfile) -> Result<(), String> {
+    let text = std::str::from_utf8(bytes).map_err(|error| error.to_string())?;
+    let root = format!("<ifcXML xmlns=\"{}\"", profile.namespace());
+    if text.contains(&root) {
+        Ok(())
+    } else {
+        Err(format!("the root is not `{root}`"))
+    }
 }
 
 /// Check one release's validation report: the control validates, every

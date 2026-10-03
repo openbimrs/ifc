@@ -10,31 +10,37 @@ trait as `ifc-step`, over the same model. Two layouts:
   `SchemaReading::Lenient` restores inference. Without a schema it falls back
   to marked positional names; both round-trip losslessly.
 - **The buildingSMART XSD configuration** of IFC4 ADD2 TC1 and IFC4X3 ADD2,
-  read only (`XmlCodec::xsd`): nested and inline entities, `ref`/`href`
+  read and written (`XmlCodec::xsd`): nested and inline entities, `ref`/`href`
   references, inverse attributes, `-wrapper` typed values and list
-  attributes, read into the same model as the document's STEP form. What it
-  cannot read exactly is refused with a typed error.
+  attributes, read into the same model as the document's STEP form. The
+  writer writes that model back as a document that validates against
+  `IFC4.xsd` and reads back to the same model. Each attribute's form comes
+  from one derivation both share, checked against both XSDs. What either
+  direction cannot carry exactly is refused with a typed error
+  (`XmlError::Unrepresentable` for a model the configuration cannot
+  represent), never approximated.
 
 A strict release profile (`XmlCodec::strict`, `with_schema_and_profile`)
 fixes the namespace and schema token of the native layout; it does not make
-the output valid against the release XSD, and does not claim to. Writing the
-XSD configuration is [#274](https://github.com/openbimrs/ifc/issues/274).
+the output valid against the release XSD, and does not claim to. Use
+`XmlCodec::xsd` for that.
 
 ```bash
 cargo add ifc-xml
 ```
 
-## Checking strict output against the official XSD
+## Checking output against the official XSD
 
-An opt-in test writes every IFC4 and IFC4X3 fixture with the strict profile
-and validates it with `xmllint` (libxml2) against the release XSD. It checks
-what the profile claims: well-formed XML whose root is the XSD's `ifcXML`
-element in the XSD's target namespace, and no XSD error beyond the documented
-native-layout departures (the `schema` root attribute, upper-case entity
-elements, the header order). The published `IFC4X3_ADD2.xsd` does not compile
-in any conforming validator, which the test records. The XSDs are CC BY-ND
-4.0 and never committed; normal builds and the gate do not need them, the
-network or `xmllint`. Once run, anything missing is a failure:
+An opt-in test validates output with `xmllint` (libxml2) against the release
+XSD. Every IFC4 fixture written with `XmlCodec::xsd` must validate with no
+error. Strict native output must be well-formed, rooted in the XSD's
+`ifcXML` element and target namespace, and depart only as documented (the
+`schema` root attribute, upper-case entity elements, the header order). The
+published `IFC4X3_ADD2.xsd` does not compile in any conforming validator,
+which the test records; for that release it checks well-formedness and the
+namespace. The XSDs are CC BY-ND 4.0 and never committed; normal builds and
+the gate do not need them, the network or `xmllint`. Once run, anything
+missing is a failure:
 
 ```bash
 scripts/fetch-ifc-schemas.sh          # IFC4.xsd, IFC4X3_ADD2.xsd into references/ifc-spec

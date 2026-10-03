@@ -11,6 +11,10 @@
 //! attributes, and anything whose *kind* cannot be inferred from an attribute
 //! string is written as a typed child element. That keeps the output readable
 //! for the common case while remaining exactly reversible.
+//!
+//! That is this crate's own layout. A codec in [`XmlLayout::Xsd`] writes the
+//! buildingSMART XSD configuration instead, by the rules in the `xsd`
+//! module, and refuses what that configuration cannot carry exactly.
 
 use crate::error::XmlError;
 use crate::scalar::{attribute_text, element_form, format_ref};
@@ -48,9 +52,7 @@ fn first_non_finite_real(value: &Value) -> Option<f64> {
 /// Serialize a model as ifcXML.
 pub fn write(codec: &XmlCodec, model: &Model) -> Result<Vec<u8>, XmlError> {
     if codec.layout() == XmlLayout::Xsd {
-        return Err(XmlError::Unsupported {
-            construct: "writing the XSD configuration; write the native layout instead".into(),
-        });
+        return write_xsd(codec, model);
     }
     reject_non_finite_reals(model)?;
     #[cfg(feature = "schema")]
@@ -131,6 +133,24 @@ pub fn write(codec: &XmlCodec, model: &Model) -> Result<Vec<u8>, XmlError> {
 
     out.push_str("</ifcXML>\n");
     Ok(out.into_bytes())
+}
+
+/// The buildingSMART XSD configuration, from the codec's schema and profile.
+#[cfg(feature = "schema")]
+fn write_xsd(codec: &XmlCodec, model: &Model) -> Result<Vec<u8>, XmlError> {
+    match (codec.schema(), codec.profile()) {
+        (Some(schema), Some(profile)) => crate::xsd::write(schema, profile, model),
+        _ => Err(XmlError::Unsupported {
+            construct: "the XSD layout without a schema and release profile".into(),
+        }),
+    }
+}
+
+#[cfg(not(feature = "schema"))]
+fn write_xsd(_: &XmlCodec, _: &Model) -> Result<Vec<u8>, XmlError> {
+    Err(XmlError::Unsupported {
+        construct: "the XSD layout without the `schema` feature".into(),
+    })
 }
 
 fn fmt_err(e: std::fmt::Error) -> XmlError {
@@ -222,7 +242,7 @@ fn write_attr(out: &mut String, name: &str, value: &str) {
 /// Tab, line feed and carriage return are written as character references:
 /// a conforming parser normalizes them to spaces inside attribute values and
 /// folds CR/LF line ends in text, so a literal one would not survive.
-fn escape_into(out: &mut String, text: &str) {
+pub(crate) fn escape_into(out: &mut String, text: &str) {
     for c in text.chars() {
         match c {
             '\t' => out.push_str("&#9;"),

@@ -3,9 +3,9 @@
 /// A release-specific ifcXML namespace/profile contract.
 ///
 /// A profile fixes the namespace and schema token, not the layout: native
-/// output under a profile is not valid against the release XSD, whose
-/// configuration this crate reads ([`crate::XmlLayout::Xsd`]) but does not
-/// write.
+/// output under a profile is not valid against the release XSD. The XSD's
+/// own configuration is a separate layout ([`crate::XmlLayout::Xsd`]),
+/// which this crate reads and writes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum XmlProfile {
@@ -35,8 +35,8 @@ impl XmlProfile {
     /// the release's own published examples (Annex E of the ADD2 TC1
     /// documentation) declare it, as the XSD did before its namespace moved
     /// to the `standards.buildingsmart.org` URL. Only the XSD layout reader
-    /// accepts it; this crate's own layout is checked against
-    /// [`Self::namespace`] alone.
+    /// accepts it, and its writer writes [`Self::namespace`]; this crate's
+    /// own layout is checked against [`Self::namespace`] alone.
     #[must_use]
     pub const fn namespaces(self) -> &'static [&'static str] {
         match self {
