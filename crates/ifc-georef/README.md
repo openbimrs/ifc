@@ -8,8 +8,10 @@ IFC4X3 `IfcGeographicCRS` is read as authored, not lowered: no metre
 transform expresses a latitude/longitude offset. `IfcSite` reference
 latitude, longitude and elevation are read for IFC2X3, IFC4 and IFC4X3, and
 a site elevation that disagrees with the map conversion's orthogonal height
-is reported, never silently resolved. It does not place products or
-reproject coordinates.
+is reported, never silently resolved. An omitted `IfcProjectedCRS.MapUnit`
+resolves to the project length unit, while the unit as authored stays
+readable (`ProjectToMap::declared_map_unit`, `None` when unset). It does not
+place products or reproject coordinates.
 
 ```bash
 cargo add ifc-georef

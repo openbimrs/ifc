@@ -12,6 +12,21 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `ProjectToMap::declared_map_unit()`: the target `IfcProjectedCRS.MapUnit`
+  exactly as authored, `None` when the file leaves it unset, next to the
+  resolved `ProjectToMap::map_unit`, which keeps the project length unit
+  as the default for an omitted `MapUnit` and is what the transform uses.
+  A CRS stating the project's unit is now distinguishable from one stating
+  none, under IFC4 and IFC4X3, with or without the `transform` feature
+  (#296).
+
+### Changed
+
+- Documented that `ProjectedCrs::map_unit` is the declared `MapUnit`
+  (`None` when unset), never filled in with the project default (#296).
+
 ## [0.5.0] - 2026-10-02
 
 ### Added
