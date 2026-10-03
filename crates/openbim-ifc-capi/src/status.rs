@@ -6,7 +6,7 @@ use openbim_ifc_binding_core::BindingError;
 
 /// Result of every ABI call. `Ok` is zero; every failure is non-zero.
 ///
-/// The values from `Parse` to `Io` are the binding errors
+/// The values from `Parse` to `FeatureDisabled` are the binding errors
 /// shared with the JavaScript and Python bindings; the rest describe misuse
 /// of the C boundary itself.
 #[repr(i32)]
@@ -36,6 +36,10 @@ pub enum OpenbimIfcStatus {
     UnsupportedSchema = 15,
     /// A file could not be opened or read (`io`).
     Io = 16,
+    /// No ifcXML XSD profile has that name (`unsupported-profile`).
+    UnsupportedProfile = 17,
+    /// This build leaves out the feature the call needs (`feature-disabled`).
+    FeatureDisabled = 18,
     /// The requested value does not exist (no schema token, no error, ...).
     NoValue = 20,
     /// A Rust panic was contained at the boundary. Report it as a bug.
@@ -52,6 +56,8 @@ impl From<&BindingError> for OpenbimIfcStatus {
             BindingError::OutOfRange(_) => Self::OutOfRange,
             BindingError::UnsupportedSchema(_) => Self::UnsupportedSchema,
             BindingError::Io(_) => Self::Io,
+            BindingError::UnsupportedProfile(_) => Self::UnsupportedProfile,
+            BindingError::FeatureDisabled(_) => Self::FeatureDisabled,
         }
     }
 }
@@ -111,6 +117,14 @@ mod tests {
                 OpenbimIfcStatus::UnsupportedSchema,
             ),
             (BindingError::Io(String::new()), OpenbimIfcStatus::Io),
+            (
+                BindingError::UnsupportedProfile(String::new()),
+                OpenbimIfcStatus::UnsupportedProfile,
+            ),
+            (
+                BindingError::FeatureDisabled(""),
+                OpenbimIfcStatus::FeatureDisabled,
+            ),
         ];
         for (error, status) in cases {
             assert_eq!(OpenbimIfcStatus::from(&error), status, "{}", error.code());

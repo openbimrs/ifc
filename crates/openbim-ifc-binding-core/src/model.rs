@@ -5,15 +5,15 @@
 
 use std::path::Path;
 
-use ifc::{Codec, Entity, EntityId, Model, ModelError, StepCodec};
+use ifc::{Codec, Entity, EntityId, Model, ModelError, StepCodec, StepReader};
 
 use crate::value::Tagged;
-use crate::BindingError;
+use crate::{BindingError, ParseOptions};
 
 /// An IFC model: entities keyed by their `#id`, in file order.
 #[derive(Debug, Default)]
 pub struct IfcModel {
-    inner: Model,
+    pub(crate) inner: Model,
 }
 
 impl IfcModel {
@@ -35,9 +35,21 @@ impl IfcModel {
         Self::loaded(StepCodec.read_bytes(bytes))
     }
 
+    /// [`Self::parse`] under explicit [`ParseOptions`]: a lenient read
+    /// skips malformed records and reports each one in
+    /// [`Self::diagnostics`] instead of failing.
+    pub fn parse_with(bytes: &[u8], options: ParseOptions) -> Result<Self, BindingError> {
+        Self::loaded(reader(options).read_bytes(bytes))
+    }
+
     /// [`Self::parse`] from a buffer the model keeps, without copying it.
     pub fn parse_owned(bytes: Vec<u8>) -> Result<Self, BindingError> {
         Self::loaded(StepCodec.read_owned(bytes))
+    }
+
+    /// [`Self::parse_owned`] under explicit [`ParseOptions`].
+    pub fn parse_owned_with(bytes: Vec<u8>, options: ParseOptions) -> Result<Self, BindingError> {
+        Self::loaded(reader(options).read_owned(bytes))
     }
 
     /// Read a STEP file from disk into a buffer the model owns.
@@ -46,6 +58,11 @@ impl IfcModel {
     /// file is read once, straight into the model's source.
     pub fn open(path: &Path) -> Result<Self, BindingError> {
         Self::loaded(StepCodec.read_path(path))
+    }
+
+    /// [`Self::open`] under explicit [`ParseOptions`].
+    pub fn open_with(path: &Path, options: ParseOptions) -> Result<Self, BindingError> {
+        Self::loaded(reader(options).read_path(path))
     }
 
     /// Read a memory-mapped STEP file: no copy, and the pages belong to the
@@ -58,24 +75,44 @@ impl IfcModel {
     /// file makes that panic, end the process (`SIGBUS` on truncation), or
     /// read other content. See `ifc_step::StepReader::read_path_mapped`.
     pub unsafe fn open_mapped(path: &Path) -> Result<Self, BindingError> {
-        let reader = ifc::StepReader::new(ifc::ParseOptions::strict());
         // SAFETY: forwarded caller contract.
-        Self::loaded(unsafe { reader.read_path_mapped(path) })
+        unsafe { Self::open_mapped_with(path, ParseOptions::strict()) }
     }
 
-    fn loaded(result: Result<Model, ModelError>) -> Result<Self, BindingError> {
+    /// [`Self::open_mapped`] under explicit [`ParseOptions`].
+    ///
+    /// # Safety
+    ///
+    /// As [`Self::open_mapped`].
+    pub unsafe fn open_mapped_with(
+        path: &Path,
+        options: ParseOptions,
+    ) -> Result<Self, BindingError> {
+        // SAFETY: forwarded caller contract.
+        Self::loaded(unsafe { reader(options).read_path_mapped(path) })
+    }
+
+    /// A read through any codec, its failure named for `format`.
+    pub(crate) fn loaded_as(
+        format: &str,
+        result: Result<Model, ModelError>,
+    ) -> Result<Self, BindingError> {
         match result {
             Ok(inner) => Ok(Self { inner }),
             Err(ModelError::Io(detail)) => Err(BindingError::Io(detail)),
-            Err(error) => Err(BindingError::Parse(error.to_string())),
+            Err(error) => Err(BindingError::Parse(format!("{format}: {error}"))),
         }
+    }
+
+    fn loaded(result: Result<Model, ModelError>) -> Result<Self, BindingError> {
+        Self::loaded_as("STEP", result)
     }
 
     /// Serialize as STEP.
     pub fn write(&self) -> Result<Vec<u8>, BindingError> {
         StepCodec
             .write_bytes(&self.inner)
-            .map_err(|error| BindingError::Write(error.to_string()))
+            .map_err(|error| BindingError::Write(format!("STEP: {error}")))
     }
 
     /// Number of entities.
@@ -127,13 +164,7 @@ impl IfcModel {
         &self,
         type_name: &str,
     ) -> Result<Vec<u64>, BindingError> {
-        let token = self.schema().unwrap_or("");
-        // An unknown token and a release this build does not bundle are both
-        // `UnsupportedSchema`; the message names which.
-        let version = ifc::SchemaVersion::from_header_token(token)
-            .ok_or_else(|| BindingError::UnsupportedSchema(token.to_owned()))?;
-        let schema = ifc::schema::for_version(version)
-            .map_err(|refused| BindingError::UnsupportedSchema(format!("{token} ({refused})")))?;
+        let schema = self.declared_schema()?;
         Ok(
             ifc::ids_of_type_including_subtypes(&self.inner, schema, type_name)
                 .into_iter()
@@ -206,11 +237,28 @@ impl IfcModel {
             .collect()
     }
 
+    /// The bundled schema the header declares.
+    ///
+    /// An unknown token and a release this build does not bundle are both
+    /// `UnsupportedSchema`; the message names which.
+    pub(crate) fn declared_schema(&self) -> Result<&'static ifc::Schema, BindingError> {
+        let token = self.schema().unwrap_or("");
+        let version = ifc::SchemaVersion::from_header_token(token)
+            .ok_or_else(|| BindingError::UnsupportedSchema(token.to_owned()))?;
+        ifc::schema::for_version(version)
+            .map_err(|refused| BindingError::UnsupportedSchema(format!("{token} ({refused})")))
+    }
+
     fn entity(&self, id: u64) -> Result<&Entity, BindingError> {
         self.inner
             .get(EntityId(id))
             .ok_or(BindingError::MissingEntity(id))
     }
+}
+
+/// A STEP reader applying `options`.
+fn reader(options: ParseOptions) -> StepReader {
+    StepReader::new(options.to_facade())
 }
 
 /// Build an entity, validating the type name as a STEP identifier.

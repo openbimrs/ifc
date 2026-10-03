@@ -8,6 +8,27 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#244)
+
+- `IfcModel.parseWithOptions(bytes, options)`: lenient reads
+  (`onMalformed: "skip"`, `checkReferences`, `acceptRealWithoutPoint`).
+- `model.header()` and `model.setHeader(header)`.
+- `model.validate(maxFindings?)`: a `ValidationReport` with sorted
+  findings.
+- `IfcModel.parseIfcXml(bytes, profile?)` and `model.writeIfcXml(profile?)`.
+- `model.unreachableProducts()`.
+- TypeScript types `ParseOptions`, `IfcHeader`, `ValidationReport`,
+  `ValidationFinding`, `UnreachableProduct`; `IfcErrorCode` gains `io`
+  (already thrown, previously missing from the type), `unsupported-profile`
+  and `feature-disabled`.
+- Default features `ifcxml`, `validate` and `unreachable`; a browser build
+  can leave each out, and its methods then throw `feature-disabled`. Their
+  cost after `wasm-bindgen`: the default package grows from 1,337,025 to
+  1,891,591 bytes; ifcXML adds 314,659, validation 161,630 and the
+  reachability lint 65,809. With all three left out the package is
+  1,349,493 bytes (744,356 -> 756,824 for an IFC4-only build).
+- Additive: a patch release.
+
 ## [0.2.0] - 2026-09-29
 
 ### Added

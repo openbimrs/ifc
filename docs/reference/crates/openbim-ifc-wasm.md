@@ -43,6 +43,9 @@ suites here cover only the JS conversion itself.
 | `ifc4x1` | yes | `openbim-ifc-binding-core/ifc4x1` |
 | `ifc4x2` | yes | `openbim-ifc-binding-core/ifc4x2` |
 | `ifc4x3` | yes | `openbim-ifc-binding-core/ifc4x3` |
+| `ifcxml` | yes | `openbim-ifc-binding-core/ifcxml` |
+| `unreachable` | yes | `openbim-ifc-binding-core/unreachable` |
+| `validate` | yes | `openbim-ifc-binding-core/validate` |
 
 ## Depends on
 

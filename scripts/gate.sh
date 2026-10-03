@@ -171,6 +171,10 @@ gate_features() {
     cargo clippy -p ifc-schema --no-default-features --all-targets -- -D warnings
     cargo clippy -p ifc-schema --no-default-features --features ifc4 --all-targets -- -D warnings
     cargo test -p openbim-ifc-binding-core --no-default-features --features ifc4
+    # The binding capabilities (#244) are features too: the line above runs
+    # with all three left out (their `feature-disabled` refusals), this one
+    # reaches the XSD-profile refusal for a release left out of the build.
+    cargo test -p openbim-ifc-binding-core --no-default-features --features ifc4,ifcxml
 
     # Browser WASM column (#34). The facade must build for
     # wasm32-unknown-unknown with its default and widest pure-Rust feature

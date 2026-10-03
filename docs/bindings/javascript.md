@@ -12,12 +12,11 @@ npm install @openbim/ifc
 The package is CommonJS: `const { IfcModel } = require("@openbim/ifc");`,
 or a default import from ES modules.
 
-The binding exposes the record model over STEP: parse, read and edit
-attributes, and write. Domain views such as property sets or the spatial tree
-([#123](https://github.com/openbimrs/ifc/issues/123)), ifcXML, validation and
-checked transactions ([#244](https://github.com/openbimrs/ifc/issues/244)) are
-not bound yet; use the Rust crates for those. The browser and bundler build is
-[#40](https://github.com/openbimrs/ifc/issues/40).
+The binding exposes the record model over STEP -- parse, read and edit
+attributes, and write -- plus lenient reads, the file header, validation,
+ifcXML and the reachability lint (see
+[Beyond the record model](#beyond-the-record-model)). The browser and bundler
+build is [#40](https://github.com/openbimrs/ifc/issues/40).
 
 ## Read, edit and write
 
@@ -46,6 +45,59 @@ payload. A file read and written back is unchanged.
 Every failure throws an `IfcError` whose `code` is one of the
 `IfcErrorCode` values below, the same codes the Python and C bindings use.
 
+## Beyond the record model
+
+<!-- SNIPPET:js-beyond-records -->
+
+```js
+// A damaged export: skip what cannot be read, and say what was skipped.
+const model = IfcModel.parseWithOptions(bytes, { onMalformed: "skip" });
+const skipped = model.diagnostics(); // one message per dropped record
+
+const header = model.header(); // { name, timeStamp, author, schema, ... }
+model.setHeader({ ...header, author: ["Reviewer"] });
+
+const report = model.validate(); // { conformant, errors, findings, ... }
+const errors = report.findings.filter((f) => f.severity === "error");
+// each finding: { rule, entity, attributeName, path, message, ... }
+
+const xml = model.writeIfcXml(); // lossless ifcXML; or writeIfcXml("IFC4")
+const fromXml = IfcModel.parseIfcXml(xml);
+```
+
+<!-- /SNIPPET -->
+
+- **Lenient reads.** `IfcModel.parseWithOptions(bytes, options)` takes
+  `onMalformed: "skip"`, `checkReferences` and `acceptRealWithoutPoint`;
+  every recovery is listed by `diagnostics()`. Omitted options are strict.
+- **Header.** `header()` returns every `FILE_DESCRIPTION`, `FILE_NAME` and
+  `FILE_SCHEMA` field; `setHeader()` replaces them all.
+- **Validation.** `validate(maxFindings?)` checks the model against the
+  schema its header declares and returns a `ValidationReport`: counts by
+  severity, `conformant`, `truncated`, and findings sorted by severity,
+  rule, entity and slot.
+- **ifcXML.** `writeIfcXml()` and `IfcModel.parseIfcXml(bytes)` use this
+  library's lossless layout; pass `"IFC4"` or `"IFC4X3_ADD2"` for the
+  buildingSMART XSD layout of that release, which refuses with `write`
+  what it cannot carry exactly.
+- **Reachability.** `unreachableProducts()` lists products no viewer will
+  draw, each with a stable `reason`.
+
+Validation, ifcXML and the reachability lint are cargo features of
+`openbim-ifc-wasm` (`validate`, `ifcxml`, `unreachable`), on by default.
+A size-trimmed browser build can leave them out, as it can leave out IFC
+releases; their methods then throw `feature-disabled`. Measured after
+`wasm-bindgen`, without `wasm-opt`: ifcXML adds about 315 KB, validation
+about 170 KB with every release bundled (about 760 KB on an IFC4-only
+build, because the validator links every release's schema table), and the
+reachability lint about 65 KB.
+
+Not bound yet: checked multi-edit transactions (`Transaction`, `Applied`,
+`Conflict`), deferred until a host asks for them, and the domain views
+such as property sets or the spatial tree
+([#123](https://github.com/openbimrs/ifc/issues/123)), which come next as
+opt-in features. Use the Rust crates for those.
+
 ## API
 
 Generated from the `#[wasm_bindgen]` exports in
@@ -57,7 +109,14 @@ Generated from the `#[wasm_bindgen]` exports in
 | --- | --- | --- |
 | `new IfcModel()` |  | An empty model. |
 | `IfcModel.parse(bytes: Uint8Array): IfcModel` | yes | Parse a STEP (`.ifc`) file from its bytes. |
+| `IfcModel.parseWithOptions(bytes: Uint8Array, options: ParseOptions): IfcModel` | yes | Parse a STEP file under explicit read options. With `onMalformed: "skip"` a damaged record is dropped and reported by `diagnostics()` instead of failing the read; omitted options are strict. |
+| `IfcModel.parseIfcXml(bytes: Uint8Array, profile: string \| undefined): IfcModel` | yes | Parse an ifcXML document: the library's lossless layout without a profile, or the buildingSMART XSD layout of `"IFC4"` or `"IFC4X3_ADD2"`. |
 | `model.write(): Uint8Array` | yes | Serialize as STEP bytes. |
+| `model.writeIfcXml(profile: string \| undefined): Uint8Array` | yes | Serialize as ifcXML bytes, in the layout `parseIfcXml` reads. |
+| `model.header(): IfcHeader` |  | The STEP file header: description, name, time stamp, author, organization, preprocessor, originating system, authorization and schema tokens. |
+| `model.setHeader(header: IfcHeader): void` | yes | Replace the STEP file header; every field is required. |
+| `model.validate(maxFindings: number \| undefined): ValidationReport` | yes | Validate against the schema the header declares; findings are sorted by severity, rule, entity and slot. `maxFindings` caps the report (default 10,000) and sets `truncated` when reached. |
+| `model.unreachableProducts(): UnreachableProduct[]` | yes | Products no viewer will draw (outside the spatial structure, or with geometry only in non-model contexts), with a stable `reason`. |
 | `model.size: number` |  | Number of entities. |
 | `model.schema: string \| undefined` |  | The first `FILE_SCHEMA` token, e.g. `"IFC4"`, or `undefined`. |
 | `model.diagnostics(): string[]` |  | Non-fatal problems found while reading. |
@@ -97,7 +156,70 @@ export type IfcErrorCode =
   | "missing-entity"
   | "invalid-value"
   | "out-of-range"
-  | "unsupported-schema";
+  | "unsupported-schema"
+  | "io"
+  | "unsupported-profile"
+  | "feature-disabled";
+
+/** How `IfcModel.parseWithOptions` treats damaged input; omitted fields are strict. */
+export interface ParseOptions {
+  /** `"skip"` drops a malformed record and reports it in `diagnostics()`. */
+  onMalformed?: "abort" | "skip";
+  /** Report duplicate ids and references to undefined ids as diagnostics. */
+  checkReferences?: boolean;
+  /** Read `1E-05` (no decimal point) as a real, with a diagnostic. */
+  acceptRealWithoutPoint?: boolean;
+}
+
+/** The STEP file header (`FILE_DESCRIPTION`, `FILE_NAME`, `FILE_SCHEMA`). */
+export interface IfcHeader {
+  description: string[];
+  implementationLevel: string;
+  name: string;
+  timeStamp: string;
+  author: string[];
+  organization: string[];
+  preprocessorVersion: string;
+  originatingSystem: string;
+  authorization: string;
+  schema: string[];
+}
+
+/** One validation finding. `entity` is `undefined` for the file as a whole. */
+export interface ValidationFinding {
+  severity: "error" | "evaluation-error" | "warning" | "unsupported";
+  rule: string;
+  entity: bigint | undefined;
+  attributeIndex: number | undefined;
+  attributeName: string | undefined;
+  path: string;
+  message: string;
+}
+
+/** The result of `IfcModel.validate`. */
+export interface ValidationReport {
+  /** No errors and no evaluation errors; unsupported rules do not count. */
+  conformant: boolean;
+  /** The finding budget was reached: counts are lower bounds. */
+  truncated: boolean;
+  errors: number;
+  evaluationErrors: number;
+  warnings: number;
+  unsupported: number;
+  findings: ValidationFinding[];
+}
+
+/** A product no viewer will draw, from `IfcModel.unreachableProducts`. */
+export interface UnreachableProduct {
+  id: bigint;
+  reason:
+    | "not-contained-in-spatial-structure"
+    | "no-representation-in-model-context"
+    | "representation-without-context";
+  /** Target views the geometry was found in instead, for the second reason. */
+  foundViews: string[];
+  message: string;
+}
 ```
 
 <!-- API:JS:END -->

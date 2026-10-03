@@ -18,7 +18,7 @@ publish = false
 # implemented | partial | scaffold -- a judgement, never inferred from size.
 # `gaps`: the open issues behind the status; a partial crate names one.
 status = "partial"
-gaps = [40, 123, 244]
+gaps = [40, 123]
 # core | domain | geometry | facade | binding
 group = "binding"
 
@@ -41,12 +41,23 @@ js-sys = "=0.3.105"
 # `cargo build -p openbim-ifc-wasm --no-default-features --features ifc4`;
 # a file declaring any other release is then refused with
 # `unsupported-schema` by the subtype query.
-default = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
+#
+# The capabilities (#244) are default too and can be left out the same way:
+# `--no-default-features --features ifc4,ifcxml` ships ifcXML but no
+# validation. A left-out capability's methods remain and throw
+# `feature-disabled`, so the TypeScript surface is the same in every build.
+default = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3", "ifcxml", "validate", "unreachable"]
 ifc2x3 = ["openbim-ifc-binding-core/ifc2x3"]
 ifc4 = ["openbim-ifc-binding-core/ifc4"]
 ifc4x1 = ["openbim-ifc-binding-core/ifc4x1"]
 ifc4x2 = ["openbim-ifc-binding-core/ifc4x2"]
 ifc4x3 = ["openbim-ifc-binding-core/ifc4x3"]
+# The ifcXML codec, both layouts.
+ifcxml = ["openbim-ifc-binding-core/ifcxml"]
+# Schema validation; links every release's schema table.
+validate = ["openbim-ifc-binding-core/validate"]
+# The viewer reachability lint; links every release's schema table.
+unreachable = ["openbim-ifc-binding-core/unreachable"]
 
 [lints]
 workspace = true

@@ -8,10 +8,27 @@
 //!
 //! This crate adds no IFC behaviour of its own. It is a thin, host-shaped
 //! view of `openbim-ifc`; if a binding needs more, the facade grows first.
+//!
+//! # Features
+//!
+//! Beyond the release features (`ifc2x3` ... `ifc4x3`, #112), three
+//! default features select facade capabilities that add to a browser
+//! build's size: `ifcxml` (the ifcXML codec), `validate` (schema
+//! validation) and `unreachable` (the viewer reachability lint). An
+//! operation whose feature is off still exists, so every host keeps one
+//! surface, and refuses with `feature-disabled`.
 
 mod error;
+pub mod header;
 mod model;
+mod options;
+pub mod unreachable;
+pub mod validation;
 pub mod value;
+mod xml;
 
 pub use error::BindingError;
 pub use model::IfcModel;
+pub use options::{OnMalformed, ParseOptions};
+pub use unreachable::UnreachableProduct;
+pub use validation::{ValidationFinding, ValidationReport, ValidationSummary};

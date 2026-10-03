@@ -211,6 +211,7 @@ fn typescript(ty: &Type) -> Result<String, String> {
         "IfcModel" => "IfcModel",
         "Vec<String>" => "string[]",
         "Option<String>" => "string | undefined",
+        "Option<u32>" => "number | undefined",
         _ => {
             return Err(format!(
                 "{MODEL}: no TypeScript spelling for `{rust}`; add `unchecked_param_type` / \

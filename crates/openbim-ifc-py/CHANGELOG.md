@@ -8,6 +8,20 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#244)
+
+- `IfcModel.parse(data, options=...)` and `IfcModel.open(path, options=...)`
+  take a frozen `ParseOptions` (`ParseOptions.lenient()` skips damaged
+  records); recoveries are listed by `diagnostics()`.
+- `IfcModel.header` (a frozen `Header`) and `set_header()`.
+- `IfcModel.validate(max_findings=None)`: a frozen `ValidationReport` of
+  `ValidationFinding`s.
+- `IfcModel.parse_ifcxml()` and `write_ifcxml()`, with an optional
+  `xsd_profile` (`"IFC4"`, `"IFC4X3_ADD2"`).
+- `IfcModel.unreachable_products()`: `UnreachableProduct` records.
+- Error codes `unsupported-profile` and `feature-disabled`.
+- Additive: a patch release.
+
 ## [0.2.0] - 2026-09-29
 
 ### Changed

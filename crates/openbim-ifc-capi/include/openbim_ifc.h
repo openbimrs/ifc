@@ -75,9 +75,32 @@
 #define OPENBIM_IFC_KIND_UNKNOWN 3
 
 /**
+ * Read a real written without its decimal point (`1E-05`) as that real,
+ * with a diagnostic.
+ */
+#define OPENBIM_IFC_PARSE_ACCEPT_REAL_WITHOUT_POINT 4
+
+/**
+ * Report duplicate instance ids and references to undefined ids as
+ * diagnostics. Nothing is dropped.
+ */
+#define OPENBIM_IFC_PARSE_CHECK_REFERENCES 2
+
+/**
+ * The lenient preset: `SKIP_MALFORMED | ACCEPT_REAL_WITHOUT_POINT`.
+ */
+#define OPENBIM_IFC_PARSE_LENIENT 5
+
+/**
+ * Skip a data record that cannot be parsed and report it as a diagnostic,
+ * instead of failing the read.
+ */
+#define OPENBIM_IFC_PARSE_SKIP_MALFORMED 1
+
+/**
  * Result of every ABI call. `Ok` is zero; every failure is non-zero.
  *
- * The values from `Parse` to `Io` are the binding errors
+ * The values from `Parse` to `FeatureDisabled` are the binding errors
  * shared with the JavaScript and Python bindings; the rest describe misuse
  * of the C boundary itself.
  */
@@ -135,6 +158,14 @@ enum OpenbimIfcStatus
    */
   OPENBIM_IFC_STATUS_IO = 16,
   /**
+   * No ifcXML XSD profile has that name (`unsupported-profile`).
+   */
+  OPENBIM_IFC_STATUS_UNSUPPORTED_PROFILE = 17,
+  /**
+   * This build leaves out the feature the call needs (`feature-disabled`).
+   */
+  OPENBIM_IFC_STATUS_FEATURE_DISABLED = 18,
+  /**
    * The requested value does not exist (no schema token, no error, ...).
    */
   OPENBIM_IFC_STATUS_NO_VALUE = 20,
@@ -185,6 +216,40 @@ typedef struct {
    */
   uint64_t str_len;
 } OpenbimIfcValueNode;
+
+/**
+ * Counts from one validation run.
+ */
+typedef struct {
+  /**
+   * Number of findings on the tape.
+   */
+  size_t finding_count;
+  /**
+   * Schema violations.
+   */
+  size_t errors;
+  /**
+   * Implemented rules that could not be decided for an instance.
+   */
+  size_t evaluation_errors;
+  /**
+   * Legal but suspicious conditions.
+   */
+  size_t warnings;
+  /**
+   * Rules this validator does not evaluate.
+   */
+  size_t unsupported;
+  /**
+   * 1 when there are no errors and no evaluation errors, else 0.
+   */
+  uint32_t conformant;
+  /**
+   * 1 when the run hit `max_findings`: the counts are lower bounds.
+   */
+  uint32_t truncated;
+} OpenbimIfcValidationSummary;
 
 /**
  * ABI and crate versions, reported separately: the ABI version changes only
@@ -386,6 +451,25 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_diagnostic(OpenbimIfcModel model,
 OpenbimIfcStatus openbim_ifc_v0_1_model_diagnostic_count(OpenbimIfcModel model, size_t *out_count);
 
 /**
+ * The file header as a value tape: one `LIST` of ten values, in STEP
+ * header order -- description (`LIST` of `TEXT`), implementation level,
+ * name, time stamp, author (`LIST`), organization (`LIST`), preprocessor
+ * version, originating system, authorization, schema (`LIST`).
+ *
+ * # Safety
+ * As for `openbim_ifc_v0_1_entity_attribute`: each buffer null with
+ * capacity 0, or valid for its capacity; both `out_*_required` valid for
+ * one write.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_header(OpenbimIfcModel model,
+                                               OpenbimIfcValueNode *nodes,
+                                               size_t node_capacity,
+                                               size_t *out_nodes_required,
+                                               uint8_t *strings,
+                                               size_t string_capacity,
+                                               size_t *out_strings_required);
+
+/**
  * Every entity id, in file order.
  *
  * # Safety
@@ -470,6 +554,35 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_open_mapped(const uint8_t *path,
                                                     size_t capacity);
 
 /**
+ * As `openbim_ifc_v0_1_model_open_mapped`, under the
+ * `OPENBIM_IFC_PARSE_*` `flags`.
+ *
+ * # Safety
+ * As `openbim_ifc_v0_1_model_open_mapped`: the file must not be modified
+ * or truncated until the model is destroyed.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_open_mapped_with_options(const uint8_t *path,
+                                                                 size_t path_len,
+                                                                 uint32_t flags,
+                                                                 OpenbimIfcModel *out_model,
+                                                                 uint8_t *error_buffer,
+                                                                 size_t capacity);
+
+/**
+ * As `openbim_ifc_v0_1_model_open`, under the `OPENBIM_IFC_PARSE_*`
+ * `flags`.
+ *
+ * # Safety
+ * As `openbim_ifc_v0_1_model_open`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_open_with_options(const uint8_t *path,
+                                                          size_t path_len,
+                                                          uint32_t flags,
+                                                          OpenbimIfcModel *out_model,
+                                                          uint8_t *error_buffer,
+                                                          size_t capacity);
+
+/**
  * Parse `len` bytes of STEP and write the new model's handle.
  *
  * A parse failure has no model to hold its error, so the message is written
@@ -486,6 +599,44 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_parse(const uint8_t *data,
                                               size_t capacity);
 
 /**
+ * Parse `len` bytes of ifcXML and write the new model's handle.
+ *
+ * `profile` (UTF-8, `profile_len` bytes) is null with length 0 for the
+ * native layout, else `IFC4` or `IFC4X3_ADD2` (any case) for that
+ * release's XSD configuration. `UnsupportedProfile` for any other name,
+ * `UnsupportedSchema` when the release is not bundled, `Parse` when the
+ * document does not read, `FeatureDisabled` without the `ifcxml` feature.
+ * The message goes to the optional `error_buffer` as for
+ * `openbim_ifc_v0_1_model_parse`.
+ *
+ * # Safety
+ * As `openbim_ifc_v0_1_model_parse`; `profile`, if non-null, valid for
+ * `profile_len` reads.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_parse_ifcxml(const uint8_t *data,
+                                                     size_t len,
+                                                     const uint8_t *profile,
+                                                     size_t profile_len,
+                                                     OpenbimIfcModel *out_model,
+                                                     uint8_t *error_buffer,
+                                                     size_t capacity);
+
+/**
+ * As `openbim_ifc_v0_1_model_parse`, under the `OPENBIM_IFC_PARSE_*`
+ * `flags` (0 is the strict read). What a lenient read recovers from is
+ * listed by `openbim_ifc_v0_1_model_diagnostic`.
+ *
+ * # Safety
+ * As `openbim_ifc_v0_1_model_parse`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_parse_with_options(const uint8_t *data,
+                                                           size_t len,
+                                                           uint32_t flags,
+                                                           OpenbimIfcModel *out_model,
+                                                           uint8_t *error_buffer,
+                                                           size_t capacity);
+
+/**
  * The first `FILE_SCHEMA` token as a NUL-terminated string, or `NoValue`.
  *
  * # Safety
@@ -495,6 +646,69 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_schema(OpenbimIfcModel model,
                                                uint8_t *buffer,
                                                size_t capacity,
                                                size_t *out_required);
+
+/**
+ * Replace the file header with the one on the tape. A tape of any other
+ * shape is `InvalidValue` and leaves the header unchanged.
+ *
+ * # Safety
+ * As for `openbim_ifc_v0_1_entity_set_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_set_header(OpenbimIfcModel model,
+                                                   const OpenbimIfcValueNode *nodes,
+                                                   size_t node_count,
+                                                   const uint8_t *strings,
+                                                   size_t string_len);
+
+/**
+ * Products no viewer will draw, in id order, and how many.
+ *
+ * The tape is a `LIST` of products; each is a `LIST` of four values: the
+ * product (`REF`), the reason (`TEXT`: `not-contained-in-spatial-structure`,
+ * `no-representation-in-model-context` or `representation-without-context`),
+ * the target views its geometry was found in instead (`LIST` of `TEXT`,
+ * empty unless the reason is the second), and a one-line message (`TEXT`).
+ * `FeatureDisabled` in a build without the `unreachable` feature.
+ *
+ * # Safety
+ * `out_count` valid for one write; otherwise as for
+ * `openbim_ifc_v0_1_entity_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_unreachable_products(OpenbimIfcModel model,
+                                                             size_t *out_count,
+                                                             OpenbimIfcValueNode *nodes,
+                                                             size_t node_capacity,
+                                                             size_t *out_nodes_required,
+                                                             uint8_t *strings,
+                                                             size_t string_capacity,
+                                                             size_t *out_strings_required);
+
+/**
+ * Validate against the schema the header declares.
+ *
+ * `out_summary` gets the counts, also when the tape does not fit. The tape
+ * is a `LIST` of findings, sorted by severity, rule, entity and slot; each
+ * finding is a `LIST` of seven values: severity (`TEXT`: `error`,
+ * `evaluation-error`, `warning` or `unsupported`), rule id (`TEXT`),
+ * entity (`REF`, or `NULL` for the file), attribute index (`INTEGER` or
+ * `NULL`), attribute name (`TEXT` or `NULL`), path (`TEXT`) and message
+ * (`TEXT`). `max_findings` 0 is the validator's default budget (10,000).
+ * `UnsupportedSchema` when the declared schema is not bundled;
+ * `FeatureDisabled` in a build without the `validate` feature.
+ *
+ * # Safety
+ * `out_summary` valid for one write; otherwise as for
+ * `openbim_ifc_v0_1_entity_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_validate(OpenbimIfcModel model,
+                                                 size_t max_findings,
+                                                 OpenbimIfcValidationSummary *out_summary,
+                                                 OpenbimIfcValueNode *nodes,
+                                                 size_t node_capacity,
+                                                 size_t *out_nodes_required,
+                                                 uint8_t *strings,
+                                                 size_t string_capacity,
+                                                 size_t *out_strings_required);
 
 /**
  * Serialize as STEP into a caller buffer; `out_required` gets the size.
@@ -507,6 +721,23 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_write(OpenbimIfcModel model,
                                               uint8_t *buffer,
                                               size_t capacity,
                                               size_t *out_required);
+
+/**
+ * Serialize as ifcXML into a caller buffer; `out_required` gets the size.
+ * `profile` as for `openbim_ifc_v0_1_model_parse_ifcxml`. An XSD-layout
+ * write needs the header to declare the profile's schema, and refuses
+ * with `Write` what the configuration cannot carry.
+ *
+ * # Safety
+ * As `openbim_ifc_v0_1_model_write`; `profile`, if non-null, valid for
+ * `profile_len` reads.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_write_ifcxml(OpenbimIfcModel model,
+                                                     const uint8_t *profile,
+                                                     size_t profile_len,
+                                                     uint8_t *buffer,
+                                                     size_t capacity,
+                                                     size_t *out_required);
 
 /**
  * Write the ABI and crate versions.

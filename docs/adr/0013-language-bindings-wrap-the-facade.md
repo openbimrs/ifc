@@ -45,6 +45,21 @@ crate directly.
   structs, so no Rust allocation crosses the C ABI).
 - Every binding has an executable round-trip smoke test in its host language
   that parses a file, reads an entity, edits one, and writes the file back.
+- *Amended 2026-10-03:* beyond the record model, the bindings carry the
+  facade's non-domain surface (#244): lenient STEP reads (`ParseOptions`,
+  their recoveries reported as diagnostics), the whole STEP `Header`, read
+  and replaced, schema validation as structured findings, the ifcXML codec
+  in its native and XSD layouts, and `unreachable_products`. Each is
+  bound once in `openbim-ifc-binding-core` and carried by all three hosts
+  with the same records and error codes (new: `unsupported-profile`,
+  `feature-disabled`). The capabilities that add to a browser build --
+  `ifcxml`, `validate`, `unreachable` -- are default features of the core
+  and the WASM crate, so a size-sensitive build leaves them out as it
+  leaves out IFC releases (#112); a left-out capability keeps its methods
+  and refuses with `feature-disabled`, so every build has one surface.
+  Checked multi-edit transactions (`Transaction`/`Applied`/`Conflict`) are
+  deferred until a host asks for them. Domain views (#123) are the next
+  layer, each an opt-in feature of the same kind.
 
 ## Alternatives considered
 

@@ -28,6 +28,12 @@ pub enum BindingError {
     UnsupportedSchema(String),
     /// A file could not be opened or read.
     Io(String),
+    /// No ifcXML XSD profile is named by the given token (only `IFC4` and
+    /// `IFC4X3_ADD2` have one).
+    UnsupportedProfile(String),
+    /// The operation needs a binding feature this build left out, e.g.
+    /// `validate` in a size-trimmed browser package.
+    FeatureDisabled(&'static str),
 }
 
 impl BindingError {
@@ -41,6 +47,8 @@ impl BindingError {
             Self::OutOfRange(_) => "out-of-range",
             Self::UnsupportedSchema(_) => "unsupported-schema",
             Self::Io(_) => "io",
+            Self::UnsupportedProfile(_) => "unsupported-profile",
+            Self::FeatureDisabled(_) => "feature-disabled",
         }
     }
 }
@@ -48,8 +56,9 @@ impl BindingError {
 impl fmt::Display for BindingError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Parse(detail) => write!(f, "cannot parse STEP: {detail}"),
-            Self::Write(detail) => write!(f, "cannot write STEP: {detail}"),
+            // The detail names its format: `STEP: ...` or `ifcXML: ...`.
+            Self::Parse(detail) => write!(f, "cannot parse {detail}"),
+            Self::Write(detail) => write!(f, "cannot write {detail}"),
             Self::MissingEntity(id) => write!(f, "no entity #{id}"),
             Self::InvalidValue(detail) => write!(f, "invalid IFC value: {detail}"),
             Self::OutOfRange(detail) => write!(f, "out of range: {detail}"),
@@ -57,6 +66,13 @@ impl fmt::Display for BindingError {
                 write!(f, "no bundled schema for {token:?} in this build")
             }
             Self::Io(detail) => write!(f, "cannot read file: {detail}"),
+            Self::UnsupportedProfile(token) => write!(
+                f,
+                "no ifcXML XSD profile for {token:?} (IFC4 or IFC4X3_ADD2)"
+            ),
+            Self::FeatureDisabled(feature) => {
+                write!(f, "this build leaves out the `{feature}` feature")
+            }
         }
     }
 }
@@ -79,6 +95,8 @@ mod tests {
         "out-of-range",
         "unsupported-schema",
         "io",
+        "unsupported-profile",
+        "feature-disabled",
     ];
 
     /// One value of every variant, in declaration order.
@@ -91,6 +109,8 @@ mod tests {
             BindingError::OutOfRange(String::new()),
             BindingError::UnsupportedSchema(String::new()),
             BindingError::Io(String::new()),
+            BindingError::UnsupportedProfile(String::new()),
+            BindingError::FeatureDisabled(""),
         ];
         // Exhaustive on purpose: a new variant does not compile until it is
         // listed above, so its code cannot escape the snapshot.
@@ -102,7 +122,9 @@ mod tests {
                 | BindingError::InvalidValue(_)
                 | BindingError::OutOfRange(_)
                 | BindingError::UnsupportedSchema(_)
-                | BindingError::Io(_) => {}
+                | BindingError::Io(_)
+                | BindingError::UnsupportedProfile(_)
+                | BindingError::FeatureDisabled(_) => {}
             }
         }
         all

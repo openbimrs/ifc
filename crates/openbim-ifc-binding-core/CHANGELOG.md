@@ -8,6 +8,30 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#244)
+
+- Lenient STEP reads: `ParseOptions` (`on_malformed`, `check_references`,
+  `accept_real_without_point`; `strict()` and `lenient()` presets) and
+  `IfcModel::parse_with`, `parse_owned_with`, `open_with` and the unsafe
+  `open_mapped_with`. Recoveries are reported by `diagnostics()`.
+- The STEP header: `IfcModel::header` and `set_header`, with the
+  `header` module's tagged form (`to_tagged`, `from_tagged`) for the C tape.
+- `IfcModel::validate(max_findings)`: validation against the declared
+  schema as a `ValidationReport` of `ValidationFinding` records, sorted.
+- `IfcModel::parse_ifcxml` and `write_ifcxml`: the native ifcXML layout,
+  or the XSD layout of the `IFC4` / `IFC4X3_ADD2` profile.
+- `IfcModel::unreachable_products`: `UnreachableProduct` records with a
+  stable `reason` code.
+- Default features `ifcxml`, `validate` and `unreachable`. With one left
+  out, its operation refuses with `FeatureDisabled`.
+- `BindingError::UnsupportedProfile` (`unsupported-profile`) and
+  `BindingError::FeatureDisabled` (`feature-disabled`). `BindingError` is
+  exhaustive, so for a Rust matcher the new variants are a breaking
+  (minor, under 0.x) change; the crate is internal (`publish = false`) and
+  unreleased, and every host in this workspace is updated with it.
+- Parse and write errors name their format in the detail (`STEP: ...`,
+  `ifcXML: ...`); the messages of STEP errors are unchanged.
+
 ### Added (lazy loading)
 
 - `IfcModel::parse_owned(Vec<u8>)`, `IfcModel::open(path)` and the unsafe

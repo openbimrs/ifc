@@ -22,12 +22,24 @@ Documentation: [JavaScript guide](https://openbimrs.github.io/ifc/bindings/javas
   `.F.`, integer vs real, typed wrappers such as `IFCLENGTHMEASURE(2.5)`,
   and 64-bit integers (as `bigint`).
 
+- Read damaged files leniently (`IfcModel.parseWithOptions`), read and
+  replace the STEP header, validate against the declared schema, read and
+  write ifcXML (lossless or the buildingSMART XSD layout), and list
+  products no viewer will draw.
+
 ## What it does not do (yet)
 
-- No schema validation, no domain views (properties,
-  quantities, spatial tree), no geometry. These exist in the Rust crates and
-  will be exposed as the bindings grow; see ADR 0013.
-- No ifcXML.
+- No domain views (properties, quantities, spatial tree), no geometry, no
+  checked multi-edit transactions. These exist in the Rust crates; see
+  ADR 0013.
+
+## Smaller builds
+
+Validation, ifcXML and the reachability lint are default cargo features
+(`validate`, `ifcxml`, `unreachable`), like the IFC releases. A browser
+build can leave any of them out, e.g.
+`--no-default-features --features ifc4,ifcxml`; the left-out methods then
+throw `feature-disabled`.
 
 ## Example (Node)
 
@@ -81,7 +93,8 @@ The TypeScript declarations export this union as `IfcValue`.
 
 Every failure throws an `Error` with `name === "IfcError"` and a stable
 `code`: `parse`, `write`, `missing-entity`, `invalid-value`,
-`out-of-range` or `unsupported-schema`; a code is never renamed or reused. A
+`out-of-range`, `unsupported-schema`, `io`, `unsupported-profile` or
+`feature-disabled`; a code is never renamed or reused. A
 refused edit leaves the model unchanged.
 
 ## Building

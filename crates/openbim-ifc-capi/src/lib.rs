@@ -36,23 +36,34 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 mod buffer;
+mod checks;
 mod errors;
+mod header;
 mod model;
 mod open;
+mod options;
 mod registry;
 mod status;
 pub mod tape;
+mod xml;
 
+pub use checks::*;
 pub use errors::*;
+pub use header::*;
 pub use model::*;
 pub use open::*;
+pub use options::*;
 pub use status::{OpenbimIfcStatus, OpenbimIfcVersion};
 pub use tape::OpenbimIfcValueNode;
+pub use xml::*;
 
 /// Opt-in allocator (feature `rusty_alloc`, off by default). It only covers
 /// this library's Rust allocations; the host's `malloc` is untouched, and
 /// no Rust allocation crosses the ABI, so the host never frees one. See
 /// #49 for the measurements.
+#[cfg(test)]
+mod capability_tests;
+
 #[cfg(feature = "rusty_alloc")]
 #[global_allocator]
 static ALLOCATOR: rusty_alloc_api::RustyAlloc = rusty_alloc_api::RustyAlloc;

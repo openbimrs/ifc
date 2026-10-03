@@ -57,6 +57,12 @@ byte buffer holding every string.
 `LIST(REF 1, TYPED "IFCLABEL" (TEXT "x"))` is four nodes. Unused fields
 must be zero; a malformed tape is `INVALID_VALUE` and changes nothing.
 
+Records cross on the same tapes: the STEP header (`model_header`,
+`model_set_header`) is a `LIST` of its ten fields in STEP order, and the
+results of `model_validate` and `model_unreachable_products` are a `LIST`
+of one `LIST` per finding or product; each export documents its fields.
+Lenient reads (`*_with_options`) take `OPENBIM_IFC_PARSE_*` flag bits.
+
 ## Build and test
 
 ```sh
@@ -82,4 +88,5 @@ global allocator is a build-time choice; the version is pinned exactly.
 ## Not yet
 
 No CMake package and no prebuilt binaries; a host builds the library with
-cargo. Domain views (properties, quantities, geometry) are not bound.
+cargo. Domain views (properties, quantities, geometry) and checked
+multi-edit transactions are not bound.

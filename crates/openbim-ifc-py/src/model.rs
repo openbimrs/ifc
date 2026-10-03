@@ -1,11 +1,28 @@
 //! The native model class, wrapped by `openbim_ifc.IfcModel` in Python.
 
-use openbim_ifc_binding_core::IfcModel;
+use openbim_ifc_binding_core::{IfcModel, ParseOptions};
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyDict, PyList};
+use pyo3::types::{PyBool, PyBytes, PyDict, PyList};
 
 use crate::convert::{from_py, to_py};
 use crate::error::py_err;
+use crate::records;
+
+/// Parse options from the native keywords; `None` flags are `False`.
+fn options(
+    py: Python<'_>,
+    on_malformed: &str,
+    check_references: Option<&Bound<'_, PyAny>>,
+    accept_real_without_point: Option<&Bound<'_, PyAny>>,
+) -> PyResult<ParseOptions> {
+    let off = PyBool::new(py, false).to_owned().into_any();
+    records::parse_options(
+        on_malformed,
+        check_references.unwrap_or(&off),
+        accept_real_without_point.unwrap_or(&off),
+    )
+    .map_err(py_err)
+}
 
 /// Native half of `openbim_ifc.IfcModel`; not part of the public API.
 ///
@@ -31,11 +48,39 @@ impl NativeModel {
     /// Parse STEP bytes. Parsing releases the GIL, so other Python threads
     /// keep running while a large file loads. The one copy made to release
     /// the GIL becomes the model's source; nothing is copied again.
+    ///
+    /// The keywords are the read options (`openbim_ifc.ParseOptions`);
+    /// their defaults are the strict read.
     #[staticmethod]
-    fn parse(py: Python<'_>, data: &[u8]) -> PyResult<Self> {
+    #[pyo3(signature = (data, on_malformed = "abort", check_references = None, accept_real_without_point = None))]
+    fn parse(
+        py: Python<'_>,
+        data: &[u8],
+        on_malformed: &str,
+        check_references: Option<&Bound<'_, PyAny>>,
+        accept_real_without_point: Option<&Bound<'_, PyAny>>,
+    ) -> PyResult<Self> {
+        let options = options(
+            py,
+            on_malformed,
+            check_references,
+            accept_real_without_point,
+        )?;
         let owned = data.to_vec();
         let inner = py
-            .detach(move || IfcModel::parse_owned(owned))
+            .detach(move || IfcModel::parse_owned_with(owned, options))
+            .map_err(py_err)?;
+        Ok(Self { inner })
+    }
+
+    /// Parse an ifcXML document, releasing the GIL: the native layout
+    /// without `xsd_profile`, else that release's XSD layout.
+    #[staticmethod]
+    #[pyo3(signature = (data, xsd_profile = None))]
+    fn parse_ifcxml(py: Python<'_>, data: &[u8], xsd_profile: Option<String>) -> PyResult<Self> {
+        let owned = data.to_vec();
+        let inner = py
+            .detach(move || IfcModel::parse_ifcxml(&owned, xsd_profile.as_deref()))
             .map_err(py_err)?;
         Ok(Self { inner })
     }
@@ -43,17 +88,30 @@ impl NativeModel {
     /// Read a STEP file from disk, releasing the GIL. `mapped` reads it
     /// through a memory mapping; see `openbim_ifc.IfcModel.open`.
     #[staticmethod]
-    #[pyo3(signature = (path, mapped = false))]
-    fn open(py: Python<'_>, path: std::path::PathBuf, mapped: bool) -> PyResult<Self> {
+    #[pyo3(signature = (path, mapped = false, on_malformed = "abort", check_references = None, accept_real_without_point = None))]
+    fn open(
+        py: Python<'_>,
+        path: std::path::PathBuf,
+        mapped: bool,
+        on_malformed: &str,
+        check_references: Option<&Bound<'_, PyAny>>,
+        accept_real_without_point: Option<&Bound<'_, PyAny>>,
+    ) -> PyResult<Self> {
+        let options = options(
+            py,
+            on_malformed,
+            check_references,
+            accept_real_without_point,
+        )?;
         let inner = py
             .detach(move || {
                 if mapped {
                     // SAFETY: the Python API documents the contract -- the
                     // file must stay unchanged while the model is alive --
                     // and only reaches here when the caller asked for it.
-                    unsafe { IfcModel::open_mapped(&path) }
+                    unsafe { IfcModel::open_mapped_with(&path, options) }
                 } else {
-                    IfcModel::open(&path)
+                    IfcModel::open_with(&path, options)
                 }
             })
             .map_err(py_err)?;
@@ -64,6 +122,47 @@ impl NativeModel {
     fn write<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyBytes>> {
         let bytes = self.inner.write().map_err(py_err)?;
         Ok(PyBytes::new(py, &bytes))
+    }
+
+    /// Serialize as ifcXML bytes.
+    #[pyo3(signature = (xsd_profile = None))]
+    fn write_ifcxml<'py>(
+        &self,
+        py: Python<'py>,
+        xsd_profile: Option<&str>,
+    ) -> PyResult<Bound<'py, PyBytes>> {
+        let bytes = self.inner.write_ifcxml(xsd_profile).map_err(py_err)?;
+        Ok(PyBytes::new(py, &bytes))
+    }
+
+    /// The STEP header as a dict.
+    fn header<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
+        records::header_to_py(py, &self.inner.header())
+    }
+
+    /// Replace the STEP header from a dict with every field.
+    fn set_header(&mut self, header: &Bound<'_, PyAny>) -> PyResult<()> {
+        let header = records::header_from_py(header).map_err(py_err)?;
+        self.inner.set_header(header);
+        Ok(())
+    }
+
+    /// Validate against the declared schema, releasing the GIL.
+    #[pyo3(signature = (max_findings = None))]
+    fn validate<'py>(
+        &self,
+        py: Python<'py>,
+        max_findings: Option<usize>,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let inner = &self.inner;
+        let report = py.detach(|| inner.validate(max_findings)).map_err(py_err)?;
+        records::report_to_py(py, &report)
+    }
+
+    /// Products no viewer will draw, as dicts.
+    fn unreachable_products<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyList>> {
+        let products = self.inner.unreachable_products().map_err(py_err)?;
+        records::unreachable_to_py(py, &products)
     }
 
     fn __len__(&self) -> usize {

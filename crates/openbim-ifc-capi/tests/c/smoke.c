@@ -62,6 +62,121 @@ static int documented_example(void) {
   return 0;
 }
 
+/* The capabilities example published on the docs site's C page. */
+static int documented_capabilities(const uint8_t *data, size_t len) {
+  // docs:snippet c-beyond-records
+  /* A damaged export: skip what cannot be read; each skip is a diagnostic. */
+  OpenbimIfcModel model = 0;
+  if (openbim_ifc_v0_1_model_parse_with_options(data, len, OPENBIM_IFC_PARSE_LENIENT,
+                                                &model, NULL, 0) != OPENBIM_IFC_STATUS_OK) {
+    return 1;
+  }
+
+  /* Validation: the counts land in a summary even on a size query; the
+   * findings come as a value tape, fetched like any other. */
+  OpenbimIfcValidationSummary summary;
+  memset(&summary, 0, sizeof summary);
+  size_t nodes_needed = 0, strings_needed = 0;
+  openbim_ifc_v0_1_model_validate(model, 0, &summary, NULL, 0, &nodes_needed,
+                                  NULL, 0, &strings_needed);
+  printf("%zu errors, conformant: %u\n", summary.errors, (unsigned)summary.conformant);
+
+  openbim_ifc_v0_1_model_destroy(model);
+  // docs:end
+  return summary.errors > 0 ? 0 : 1;
+}
+
+/* The #244 surface: lenient reads, the header, validation, ifcXML and the
+ * reachability lint. Returns 0 on success. */
+static int capabilities(void) {
+  static const char DAMAGED[] =
+      "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n"
+      "FILE_NAME('d.ifc','',('Ann'),(''),'','','');\nFILE_SCHEMA(('IFC4'));\n"
+      "ENDSEC;\nDATA;\n#1=IFCWALL('0abc',$,'Wall',$,$,$,$,$,.STANDARD.);\n"
+      "#2=IFCWALL('x',,;\n"
+      "#3=IFCRELDEFINESBYPROPERTIES('0def',$,$,$,(#1),#9);\nENDSEC;\n"
+      "END-ISO-10303-21;\n";
+  OpenbimIfcModel model = 0;
+  char message[256];
+  CHECK(openbim_ifc_v0_1_model_parse((const uint8_t *)DAMAGED, strlen(DAMAGED),
+                                     &model, NULL, 0) == OPENBIM_IFC_STATUS_PARSE,
+        "a strict read refuses a damaged file");
+  CHECK(openbim_ifc_v0_1_model_parse_with_options(
+            (const uint8_t *)DAMAGED, strlen(DAMAGED), 1u << 9, &model,
+            (uint8_t *)message, sizeof message) == OPENBIM_IFC_STATUS_INVALID_VALUE,
+        "an unknown parse flag is invalid-value");
+  OK(openbim_ifc_v0_1_model_parse_with_options(
+      (const uint8_t *)DAMAGED, strlen(DAMAGED), OPENBIM_IFC_PARSE_LENIENT, &model,
+      NULL, 0));
+  size_t count = 0;
+  OK(openbim_ifc_v0_1_model_diagnostic_count(model, &count));
+  CHECK(count == 1, "the skipped record is reported");
+
+  /* The header: a LIST of ten values; field 2 is the name. */
+  OpenbimIfcValueNode nodes[64];
+  uint8_t strings[2048];
+  size_t node_count = 0, string_len = 0;
+  OK(openbim_ifc_v0_1_model_header(model, nodes, 64, &node_count, strings,
+                                   sizeof strings, &string_len));
+  CHECK(nodes[0].kind == OPENBIM_IFC_KIND_LIST && nodes[0].child_count == 10,
+        "header tape is a list of ten fields");
+  /* nodes[1] is the description list (one item), nodes[2] its text,
+   * nodes[3] the implementation level, nodes[4] the name. */
+  CHECK(nodes[4].kind == OPENBIM_IFC_KIND_TEXT && nodes[4].str_len == 5 &&
+            memcmp(strings + nodes[4].str_offset, "d.ifc", 5) == 0,
+        "header name");
+  /* Write the same tape back: a no-op replacement is accepted. */
+  OK(openbim_ifc_v0_1_model_set_header(model, nodes, node_count, strings,
+                                       string_len));
+
+  /* Validation: #3 references the missing #9. */
+  OpenbimIfcValidationSummary summary;
+  memset(&summary, 0, sizeof summary);
+  OK(openbim_ifc_v0_1_model_validate(model, 0, &summary, nodes, 64, &node_count,
+                                     strings, sizeof strings, &string_len));
+  CHECK(summary.conformant == 0 && summary.errors >= 1, "a dangling reference is an error");
+  CHECK(nodes[0].kind == OPENBIM_IFC_KIND_LIST &&
+            nodes[0].child_count == summary.finding_count,
+        "one tape record per finding");
+  CHECK(nodes[1].kind == OPENBIM_IFC_KIND_LIST && nodes[1].child_count == 7,
+        "a finding has seven fields");
+
+  /* ifcXML: native layout out and back; an unknown profile is refused. */
+  size_t need = 0;
+  CHECK(openbim_ifc_v0_1_model_write_ifcxml(model, NULL, 0, NULL, 0, &need) ==
+            OPENBIM_IFC_STATUS_BUFFER_TOO_SMALL,
+        "ifcXML size query");
+  uint8_t *xml = (uint8_t *)malloc(need);
+  OK(openbim_ifc_v0_1_model_write_ifcxml(model, NULL, 0, xml, need, &need));
+  OpenbimIfcModel from_xml = 0;
+  OK(openbim_ifc_v0_1_model_parse_ifcxml(xml, need, NULL, 0, &from_xml, NULL, 0));
+  free(xml);
+  OK(openbim_ifc_v0_1_model_len(from_xml, &count));
+  CHECK(count == 2, "ifcXML round trip keeps both entities");
+  OK(openbim_ifc_v0_1_model_destroy(from_xml));
+  const char profile[] = "IFC2X3";
+  CHECK(openbim_ifc_v0_1_model_write_ifcxml(model, (const uint8_t *)profile,
+                                            strlen(profile), NULL, 0, &need) ==
+            OPENBIM_IFC_STATUS_UNSUPPORTED_PROFILE,
+        "no XSD profile for IFC2X3");
+  char code[32];
+  OK(openbim_ifc_v0_1_last_error_code(model, (uint8_t *)code, sizeof code, &need));
+  CHECK(strcmp(code, "unsupported-profile") == 0, "stable profile error code");
+
+  /* The wall has no representation: nothing is unreachable. */
+  OK(openbim_ifc_v0_1_model_unreachable_products(model, &count, nodes, 64,
+                                                  &node_count, strings,
+                                                  sizeof strings, &string_len));
+  CHECK(count == 0 && nodes[0].kind == OPENBIM_IFC_KIND_LIST &&
+            nodes[0].child_count == 0,
+        "no unreachable products");
+
+  OK(openbim_ifc_v0_1_model_destroy(model));
+  CHECK(documented_capabilities((const uint8_t *)DAMAGED, strlen(DAMAGED)) == 0,
+        "the documented capabilities example runs");
+  return 0;
+}
+
 int main(void) {
   OpenbimIfcVersion version;
   OK(openbim_ifc_v0_1_version(&version));
@@ -201,6 +316,7 @@ int main(void) {
   CHECK(strlen(message) > 0, "io error message");
 
   CHECK(documented_example() == 0, "the documented example runs");
+  CHECK(capabilities() == 0, "the #244 surface works from C");
 
   size_t live = 1;
   OK(openbim_ifc_v0_1_live_models(&live));

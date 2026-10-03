@@ -40,8 +40,8 @@ or a `Real`, `"x"` a `Text` or an `Enum`, and the binding does not guess.
 ## Errors
 
 Every failure raises `IfcError` with a stable `code`: `parse`, `write`,
-`missing-entity`, `invalid-value`, `out-of-range`, `unsupported-schema` or
-`io`. The codes are shared with the JavaScript and C bindings; a code is
+`missing-entity`, `invalid-value`, `out-of-range`, `unsupported-schema`,
+`io`, `unsupported-profile` or `feature-disabled`. The codes are shared with the JavaScript and C bindings; a code is
 never renamed or reused.
 
 ## Threads
@@ -51,9 +51,11 @@ threads; the GIL serialises calls on it.
 
 ## Scope
 
-The record model only: entities, attributes, the STEP codec, exact and
-subtype queries. Domain views (properties, quantities, geometry) are not
-bound yet.
+The record model -- entities, attributes, the STEP codec, exact and
+subtype queries -- plus lenient reads (`ParseOptions`), the STEP header,
+validation, ifcXML and the reachability lint, each as frozen dataclasses.
+Domain views (properties, quantities, geometry) and checked multi-edit
+transactions are not bound yet.
 
 ## Build from source
 
