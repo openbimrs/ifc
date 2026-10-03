@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-03
+
 IFC4X3 ADD2 geometry families (#243). Every concrete IFC4X3 representation
 item and profile is now lowered or refused with a named reason.
 
@@ -668,7 +670,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.6.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.6.1...HEAD
+[0.6.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.6.1
 [0.6.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.6.0
 [0.5.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.5.0
 [0.4.4]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.4.4

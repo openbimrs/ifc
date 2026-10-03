@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.10.0 (2026-10-02) |
+| Latest release | 0.11.0 (2026-10-03) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc/index.html) · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -92,19 +92,15 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.10.0 (2026-10-02):
+Latest release, 0.11.0 (2026-10-03):
 
 ### Changed (breaking)
 
-- Behind `ifcxml`, the re-exported `XmlCodec` reads strictly by default when
-  it has a schema: values are typed from the schema and undeclared names
-  are refused (`ifc-xml` #266; see its changelog).
-  `.with_reading(SchemaReading::Lenient)` restores the previous read.
-
-### Added
-
-- Behind `ifcxml`, re-exports `SchemaReading` and `XmlLayout` beside
-  `XmlCodec` and `XmlProfile`, and with them the buildingSMART XSD layout
-  reader `XmlCodec::xsd` (`ifc-xml` #265).
+- Behind `step`, the re-exported `ParseOptions` and `OnMalformed` are
+  `openbim-step` 0.11's (were 0.8's), through `ifc-step` (#288). 0.11 adds
+  `ParseOptions::accept_real_without_point`, included in
+  `ParseOptions::lenient()`: a lenient read keeps a REAL written without
+  its decimal point (`1E-05`) with a diagnostic instead of skipping its
+  record. Strict reads still refuse it.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-03
+
 ### Changed
 
 - The `express` and `generation` features use the workspace's

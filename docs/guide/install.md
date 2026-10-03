@@ -8,7 +8,7 @@ one reads the same in the others.
 
 | Language | Package | Latest release | Install | Requires | Reference |
 | --- | --- | --- | --- | --- | --- |
-| Rust | [`openbim-ifc`](https://crates.io/crates/openbim-ifc) | 0.10.0 (2026-10-02) | `cargo add openbim-ifc` | Rust `1.88.0` | [`openbim-ifc`](/reference/crates/openbim-ifc) |
+| Rust | [`openbim-ifc`](https://crates.io/crates/openbim-ifc) | 0.11.0 (2026-10-03) | `cargo add openbim-ifc` | Rust `1.88.0` | [`openbim-ifc`](/reference/crates/openbim-ifc) |
 | JavaScript / TypeScript | [`@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) | 0.2.0 (2026-09-29) | `npm install @openbim/ifc` | Node `>=18` | [`openbim-ifc-wasm`](/reference/crates/openbim-ifc-wasm) |
 | Python | [`openbim-ifc`](https://pypi.org/project/openbim-ifc/) | 0.2.0 (2026-09-29) | `pip install openbim-ifc` | Python `>=3.9` | [`openbim-ifc-py`](/reference/crates/openbim-ifc-py) |
 | C / C++ | `openbim-ifc-capi` (not published) | not released | build from source | a C11 or C++17 compiler, and Rust to build | [`openbim-ifc-capi`](/reference/crates/openbim-ifc-capi) |
