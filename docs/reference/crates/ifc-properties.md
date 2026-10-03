@@ -11,7 +11,7 @@ Property sets, quantities, and unit resolution. No geometry.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.7.0 (2026-10-02) |
+| Latest release | 0.8.0 (2026-10-03) |
 | Registries | [crates.io `ifc-properties`](https://crates.io/crates/ifc-properties) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_properties/index.html) · [docs.rs](https://docs.rs/ifc-properties) |
@@ -44,57 +44,24 @@ standard Psets are data here rather than hand-written tables.
 
 ## Changes
 
-Latest release, 0.7.0 (2026-10-02):
+Latest release, 0.8.0 (2026-10-03):
 
-### Added
+### Changed (breaking)
 
-- `create_monetary_unit(tx, model, draft)` stages an `IfcMonetaryUnit` in
-  the model's declared release (#232). `Currency` is an `IfcCurrencyEnum`
-  in IFC2X3 TC1 and an `IfcLabel` from IFC4 on: IFC2X3 writes the
-  enumerator token (`.EUR.`, matched ignoring case) and refuses a currency
-  the enumeration does not list with `PropertyError::AuthoringInvalid`;
-  IFC4 and IFC4X3 write the text given. A header binding no single
-  supported release is refused with `MultipleSchemas` or
-  `UnsupportedSchema`, as for the other release-bound writers.
+- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
+  default, forward to `ifc-schema`, which this crate now depends on without
+  its default features (#306). Each links one release's table, so a
+  single-release build carries only that table: an IFC4-only browser
+  module with property sets shrinks from 1,519,870 to 926,986 bytes. The default
+  build links every release, as before.
+- A file declaring IFC2X3, IFC4 or IFC4X3 when the build leaves that
+  release out is refused by the exact reads with `UnsupportedSchema`
+  instead of panicking. Permissive reads (type objects in
+  `property_sets_by_object`, template reads) keep the IFC4 table as their
+  baseline and fall back to the newest bundled one in a build without it.
+  A build naming no release fails to compile with a message naming the
+  features, so a build without default features has to name one.
 
-- `PropertyError::ValueForm { entity, attribute, declared, typed_required,
-  found }` (#215): a value of the declared type written in the form
-  ISO 10303-21 does not use for it, mirroring `ifc-author`'s
-  `AuthorError::ValueForm`. `PropertyError` is `#[non_exhaustive]`, so the
-  new variant is additive.
-
-### Changed
-
-- Behaviour change: every writer of an `IfcValue` slot refuses a bare
-  literal before staging (#215). `IfcValue` is a SELECT in every release,
-  whose members are all defined types, so its value is written as a typed
-  parameter (`IFCLENGTHMEASURE(2.5)`, §12.1.8); a bare `2.5` was accepted
-  and then reported by `ifc-validate` as `type.select.untyped`. Covered:
-  `add_property_single_value` (`NominalValue`),
-  `add_property_enumerated_value` and `add_property_enumeration`
-  (`EnumerationValues`), `add_property_bounded_value` (each bound and the
-  set point), `add_property_list_value` (`ListValues`),
-  `add_property_table_value` (`DefiningValues`, `DefinedValues`) and
-  `add_measure_with_unit` (`ValueComponent`). A bare number, string,
-  boolean, logical or binary is `PropertyError::ValueForm` with
-  `typed_required: true`; a wrapper around a wrapper is `ValueForm` with
-  `typed_required: false`; a reference, aggregate, enumeration constant,
-  `*`, or a wrapper around `$` is `PropertyError::AuthoringInvalid`.
-  Callers passing `Value::Real(..)` and the like must wrap the value in
-  the measure it is (`Value::Typed { type_name: "IFCLENGTHMEASURE", .. }`).
-  Which member a wrapper names is not checked here: these writers take no
-  model, and `ifc-validate` judges it against the declared release.
-
-### Deprecated
-
-- `add_monetary_unit`: it takes no model and always writes IFC4 text,
-  which is schema-invalid in IFC2X3. Use `create_monetary_unit` (#232).
-
-### Fixed
-
-- `unit()` and `project_units()` read an IFC2X3 `IfcMonetaryUnit` whose
-  `Currency` is an `IfcCurrencyEnum` token: `UnitKind::Monetary` now
-  carries the currency instead of `None`, and the quantity unit check
-  that consumes it sees the currency too (#232).
+Under 0.x, a minor release.
 
 Full history: [`crates/ifc-properties/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-properties/CHANGELOG.md)

@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-03
+
 ### Changed (breaking)
 
 - Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
@@ -231,7 +233,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-cost-v0.3.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-cost-v0.4.0...HEAD
+[0.4.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-cost-v0.4.0
 [0.3.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-cost-v0.3.0
 [0.2.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-cost-v0.2.3
 [0.2.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-cost-v0.2.2

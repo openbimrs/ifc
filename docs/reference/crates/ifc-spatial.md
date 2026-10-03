@@ -11,7 +11,7 @@ IFC spatial containment and objectified relationship traversal: project, site, b
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.0 (2026-10-03) |
+| Latest release | 0.5.0 (2026-10-03) |
 | Registries | [crates.io `ifc-spatial`](https://crates.io/crates/ifc-spatial) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `spatial` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_spatial/index.html) · [docs.rs](https://docs.rs/ifc-spatial) |
@@ -38,30 +38,29 @@ IFC spatial containment and objectified relationship traversal: project, site, b
 
 ## Changes
 
-Latest release, 0.4.0 (2026-10-03):
+Latest release, 0.5.0 (2026-10-03):
 
 ### Changed (breaking)
 
-- `serve_buildings` takes the `&Model`, binds its declared release and
-  checks its targets (#286), as `ifc_systems::serve_buildings` does (#277).
-  It accepted any targets: per the EXPRESS sources `RelatingSystem` must be
-  an `IfcSystem` and `RelatedBuildings` a `SET [1:?] OF
-  IfcSpatialStructureElement` (IFC2X3 TC1) or `OF IfcSpatialElement` (IFC4
-  ADD2 TC1, IFC4X3 ADD2). Without the model it could not see either end.
-  Like the other release-bound plain writers it refuses IFC2X3, which
-  requires `OwnerHistory`, with `AuthoringRequired`; use
-  `serve_buildings_with_owner_history` there. IFC4 and IFC4X3 records are
-  unchanged, slot for slot.
-- **Behaviour change:** `serve_buildings` and
-  `serve_buildings_with_owner_history` now refuse, staging nothing, input
-  they used to write: a system that is missing (`MissingReference`) or not
-  an `IfcSystem` (`WrongReferenceType`), a building that is missing or not
-  admitted by the declared release's `RelatedBuildings`
-  (`WrongReferenceType`; an `IfcSpatialZone` is admitted in IFC4 and IFC4X3,
-  not in IFC2X3), a repeated building (`Invalid`, the attribute is a
-  `SET`), and a second relationship for a system that already services
-  buildings in the model or on the transaction (`Invalid`;
-  `IfcSystem.ServicesBuildings` is `SET [0:1]`). The writers moved to
-  `authoring::services`; the public paths are unchanged.
+- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
+  default, forward to `ifc-schema`, which this crate now depends on without
+  its default features (#306). Each links one release's table, so a
+  single-release build carries only that table. The default build links
+  every release, as before. Container classification needs IFC2X3, IFC4 or
+  IFC4X3: a build naming none of them would classify nothing as a
+  container, so it fails to compile with a message naming the features.
+  A build without default features therefore has to name a release; under
+  0.x, a minor release.
+- A file declaring a verified release the build leaves out binds none
+  (`SpatialTree::release` is `None`) and is classified against every
+  release the build bundles, as an IFC4X1 or IFC4X2 file already was,
+  rather than against an empty table that would make every entity an
+  element.
+
+### Changed
+
+- The relationship attribute names authoring writes are constants instead
+  of IFC4X3 table lookups, so authoring links no table; the unit test pins
+  all 29 against the IFC4 and IFC4X3 tables.
 
 Full history: [`crates/ifc-spatial/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-spatial/CHANGELOG.md)

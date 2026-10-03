@@ -11,7 +11,7 @@ Material definitions: layer sets, profile sets, constituents, usage.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.0 (2026-09-29) |
+| Latest release | 0.5.0 (2026-10-03) |
 | Registries | [crates.io `ifc-material`](https://crates.io/crates/ifc-material) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `material` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_material/index.html) · [docs.rs](https://docs.rs/ifc-material) |
@@ -52,39 +52,21 @@ another release's slot.
 
 ## Changes
 
-Latest release, 0.4.0 (2026-09-29):
+Latest release, 0.5.0 (2026-10-03):
 
 ### Changed (breaking)
 
-- `MaterialView::profile_set_usages()` also yields
-  `IfcMaterialProfileSetUsageTapering`, the schema subtype of
-  `IfcMaterialProfileSetUsage` in IFC4 and IFC4X3, in entity-id order, and
-  `MaterialProfileSetUsage::try_new` / `try_from_view` accept it (#136). A
-  caller that iterated both `profile_set_usages()` and
-  `tapering_profile_set_usages()` sees each tapering usage twice; iterate
-  `profile_set_usages()` alone and branch on the new
-  `MaterialProfileSetUsage::tapering()`, which returns the tapering
-  projection (`end_profile_set_id`, `cardinal_end_point`) or `None`.
-- The authoring drafts `MaterialDraft`, `LayerDraft`, `LayerSetDraft`,
-  `MaterialAssignmentDraft`, `ConstituentDraft` and `ProfileDraft` are
-  `#[non_exhaustive]`: build them with `MaterialDraft::new(name)`,
-  `LayerDraft::new(thickness)`, `LayerSetDraft::new(layers)`,
-  `MaterialAssignmentDraft::new(global_id, related_objects,
-  relating_material)`, `ConstituentDraft::new(material)` or
-  `ProfileDraft::new(profile)` and a setter named after each optional field
-  (`LayerDraft::new(0.2).material(brick).priority(80)`). Fields stay public.
-- `ResolvedAssignment` is `#[non_exhaustive]`.
+- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
+  default, forward to `ifc-schema`, which this crate now depends on without
+  its default features (#306). Each links one release's table, so a
+  single-release build carries only that table: an IFC4-only browser
+  module with materials shrinks from 1,445,151 to 852,448 bytes. The default
+  build links every release, as before.
+- A release the build leaves out is refused with `UnsupportedSchema`
+  instead of panicking; so is the IFC4 baseline of a model with no
+  header in a build without IFC4. A build without default features
+  therefore has to name the releases it reads.
 
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- `UnsupportedSchema` reads "a release this crate has no verified layout
-  for" instead of "no bundled schema table".
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
+Under 0.x, a minor release.
 
 Full history: [`crates/ifc-material/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-material/CHANGELOG.md)

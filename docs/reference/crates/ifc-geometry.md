@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.7.0 (2026-10-03) |
+| Latest release | 0.8.0 (2026-10-03) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_geometry/index.html) · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -42,58 +42,30 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.7.0 (2026-10-03):
+Latest release, 0.8.0 (2026-10-03):
 
-`select::subtype` carries IFC4X3 ADD2 supertype chains (#293). Answers
-change for IFC4X3-only entity names, and a build without default features
-links fewer schema tables (#306), so the next release is a minor one.
-
-### Changed (breaking)
-
-- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
-  default, forward to `ifc-schema`, which this crate now depends on without
-  its default features (#306). Each links one release's table. The default
-  build links every release, as before, but a build without default
-  features (the kernel-free column, `openbim-ifc`'s `geometry-select`) now
-  links only the releases it names; release-bound authoring refuses the
-  others with `GeometryError::AuthoringSchemaUnbound`. Representation
-  selection reads no table and is unaffected. `lowering` still links
-  every release through `ifc-alignment`.
-
-### Added
-
-- `select::is_a_in`, `supertypes_of_in` and `known_entities_in` answer for
-  one named release, and `VERIFIED_SCHEMA_VERSIONS` lists the releases they
-  answer verbatim: IFC4 ADD2 TC1 and IFC4X3 ADD2.
-  `tables_are_verified_for(Ifc4x3)` is now `true`.
-- The IFC4X3 rows are a delta over the IFC4 tables: the 19 concrete
-  geometry, profile and placement entities IFC4X3 adds, the abstract
-  supertypes they introduce (`IfcSpiral`, `IfcSegment`, `IfcOffsetCurve`,
-  `IfcDirectrixCurveSweptAreaSolid`, `IfcSectionedSolid`), and the IFC4X3
-  chains of the four IFC4 entities IFC4X3 re-parents.
-  `tests/schema_coverage.rs` compares every chain, per release, with
-  `IFC4.exp` and `IFC4X3_ADD2.exp`.
+Input this crate refused now lowers exactly, onto the Axiolid relations
+of axiolid-curve 0.3.3 and axiolid-model 0.3.4: behaviour changes, so the
+next release is a minor one (0.8.0).
 
 ### Changed
 
-- The release-neutral `is_a` and `supertypes_of` now resolve IFC4X3-only
-  entities with their IFC4X3 chain: `is_a("IFCCLOTHOID", "IFCCURVE")`,
-  `is_a("IFCGRADIENTCURVE", "IFCCOMPOSITECURVE")`,
-  `is_a("IFCTRIANGULATEDIRREGULARNETWORK", "IFCTESSELLATEDFACESET")` and
-  `is_a("IFCOPENCROSSPROFILEDEF", "IFCPROFILEDEF")` were `false` and are
-  `true`. Every answer for an entity IFC4 declares is unchanged, including
-  the four IFC4X3 re-parents (`IfcOffsetCurve2D`, `IfcOffsetCurve3D`,
-  `IfcFixedReferenceSweptAreaSolid`, `IfcSurfaceCurveSweptAreaSolid`), which
-  keep their IFC4 chain unless a caller asks `is_a_in(Ifc4x3, ..)`.
-- Visible effects: the select resolvers (`GeometricSetSelect`,
-  `BooleanOperand`, `PointOrVertexPoint`, ...) accept IFC4X3-only members
-  instead of reporting a wrong type. `BodyKind::classify` returns `Curve`
-  for the six `IfcSpiral` subtypes, `IfcPolynomialCurve`,
-  `IfcOffsetCurveByDistances` and `IfcSegmentedReferenceCurve`, and
-  `Surface` for `IfcSectionedSurface`, so body description lists those
-  items instead of refusing them. Lowering is unchanged: those families
-  still lower, or refuse with the `dispatch::PLANNED` reason, as before.
-  Where-rules that test inheritance (dimensionality, swept-area rules) now
-  also apply to the IFC4X3 subtypes the schema makes them inherit.
+- An `IfcCurveSegment` over a 2D `IfcPolynomialCurve` (the `CUBIC`
+  transition) lowers to its exact Bezier, placed rigidly and trimmed at
+  `TrimSelector::ArcLength(SegmentLength)`, instead of refusing (#90). A
+  non-zero `SegmentStart`, a backwards walk, a 3D polynomial, and one with
+  no degree-one coordinate to bound the trim stay refused by name.
+- An `IfcGradientCurve` whose base curve holds such a segment has a
+  `Curve2::Chain` plan: the polynomial is a parametric piece read by arc
+  length (#90).
+- A vertical `IfcCircle` segment in an `IfcGradientCurve` lowers to
+  `ElevationLaw::CircularArc`, and a vertical `IfcSpiral` (the
+  `IfcClothoid`) to `ElevationLaw::Intrinsic`, its extent read from the
+  next segment's start (#258).
+- `dispatch::PLANNED` keeps `IFCPOLYNOMIALCURVE` (unbounded on its own; it
+  lowers as an `IfcCurveSegment` parent) and `IFCSEGMENTEDREFERENCECURVE`,
+  now citing #311: the roll law exists, but the geometric form states cant
+  through stations (#307) and parent curves with no normative mapping. An
+  `IfcAxis2PlacementLinear` placement now cites #307.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
