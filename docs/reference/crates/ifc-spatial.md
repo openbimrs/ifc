@@ -14,7 +14,7 @@ IFC spatial containment and objectified relationship traversal: project, site, b
 | Latest release | 0.5.0 (2026-10-03) |
 | Registries | [crates.io `ifc-spatial`](https://crates.io/crates/ifc-spatial) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `spatial` |
-| API documentation | [rustdoc](/ifc/api/rustdoc/ifc_spatial/index.html) · [docs.rs](https://docs.rs/ifc-spatial) |
+| API documentation | [rustdoc](/api/rustdoc/ifc_spatial/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-spatial) |
 | Source | [`crates/ifc-spatial/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-spatial) |
 
 ## Overview

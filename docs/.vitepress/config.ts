@@ -68,7 +68,7 @@ export default defineConfig({
   // dist/api/rustdoc/ after this build runs, so VitePress cannot see those
   // files here. Scoped to that one prefix: every other dead link still fails
   // the build.
-  ignoreDeadLinks: [/^\/ifc\/api\/rustdoc\//],
+  ignoreDeadLinks: [/^\/api\/rustdoc\//],
   markdown: {
     // The generated capability tables emit status badges as inline
     // `<span class="status-...">` and delimit their regions with HTML
@@ -150,7 +150,7 @@ export default defineConfig({
           text: 'API reference',
           items: [
             { text: 'Rust', link: '/api/rust' },
-            { text: 'Generated rustdoc', link: '/ifc/api/rustdoc/ifc/index.html', target: '_self' },
+            { text: 'Generated rustdoc', link: '/api/rustdoc/ifc/index.html', target: '_self' },
           ],
         },
       ],

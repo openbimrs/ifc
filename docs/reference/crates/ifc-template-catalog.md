@@ -14,7 +14,7 @@ Versioned IFC PSD/QTO catalog definitions and correction overlays
 | Latest release | 0.3.1 (2026-10-02) |
 | Registries | [crates.io `ifc-template-catalog`](https://crates.io/crates/ifc-template-catalog) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `property-catalog`, `property-catalog-runtime` |
-| API documentation | [rustdoc](/ifc/api/rustdoc/ifc_template_catalog/index.html) · [docs.rs](https://docs.rs/ifc-template-catalog) |
+| API documentation | [rustdoc](/api/rustdoc/ifc_template_catalog/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-template-catalog) |
 | Source | [`crates/ifc-template-catalog/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-template-catalog) |
 
 ## Overview
