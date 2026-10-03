@@ -33,6 +33,16 @@ Authoring helpers stage records on a caller-owned
 `ifc_model::Transaction` in the same release's layout, refusing values
 and entities the release cannot hold. No query performs external I/O.
 
+## Features
+
+| Feature | Default | Enables |
+| --- | --- | --- |
+| `ifc2x3` | yes | `ifc-schema/ifc2x3` |
+| `ifc4` | yes | `ifc-schema/ifc4` |
+| `ifc4x1` | yes | `ifc-schema/ifc4x1` |
+| `ifc4x2` | yes | `ifc-schema/ifc4x2` |
+| `ifc4x3` | yes | `ifc-schema/ifc4x3` |
+
 ## Depends on
 
 - [`ifc-model`](./ifc-model)

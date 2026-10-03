@@ -32,7 +32,30 @@
 //! authoring tool asserted, and it may disagree with the geometry. Callers
 //! that want a check compute the value with a geometry service and pass it to
 //! [`compare`], which reports agreement rather than inventing it.
+//!
+//! # Releases
+//!
+//! The release features (`ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2`, `ifc4x3`, all
+//! on by default) choose which schema tables are linked (#306). Release-bound
+//! reads refuse a release the build leaves out with `UnsupportedSchema`.
+//! Permissive reads take the IFC4 ADD2 TC1 table as their baseline, or the
+//! newest release the build bundles when IFC4 is left out, so a build
+//! naming no release at all is refused at compile time.
 
+#[cfg(not(any(
+    feature = "ifc2x3",
+    feature = "ifc4",
+    feature = "ifc4x1",
+    feature = "ifc4x2",
+    feature = "ifc4x3"
+)))]
+compile_error!(
+    "ifc-properties reads through a release's schema table: enable at least \
+     one of the features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` or `ifc4x3` \
+     (through `openbim-ifc`: `schema` or one of those release features)"
+);
+
+mod baseline;
 mod error;
 mod exact;
 mod nesting;

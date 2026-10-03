@@ -31,28 +31,30 @@ pub(crate) struct RelSlots {
     pub relating: usize,
     /// Slot holding the child/member end.
     pub related: usize,
+    /// The IFC4 name of the attribute at `relating`.
+    relating_name: &'static str,
+    /// The IFC4 name of the attribute at `related`.
+    related_name: &'static str,
 }
 
 impl RelSlots {
     /// The IFC4 name of the attribute at the relating slot.
     ///
-    /// Read from the bundled IFC4X3 ADD2 table, which declares every
-    /// relationship the writers stage (`IfcRelPositions`,
-    /// `IfcRelAdheresToElement` and `IfcRelAssociatesProfileDef` only there)
-    /// under the names IFC4 ADD2 TC1 gives the ones it declares; the unit
-    /// test below pins that. Authoring maps it to a release's own name.
+    /// A constant rather than a table lookup, so this crate links only the
+    /// schema tables its release features name (#306). The names are the
+    /// ones IFC4X3 ADD2 declares, which equal IFC4 ADD2 TC1's for every
+    /// relationship IFC4 declares (`IfcRelPositions`,
+    /// `IfcRelAdheresToElement` and `IfcRelAssociatesProfileDef` exist only
+    /// in IFC4X3); the unit test below pins both. Authoring maps the name to
+    /// a release's own.
     pub(crate) fn relating_name(self) -> &'static str {
-        ifc4_name(self.type_name, self.relating)
+        self.relating_name
     }
 
     /// The IFC4 name of the attribute at the related slot.
     pub(crate) fn related_name(self) -> &'static str {
-        ifc4_name(self.type_name, self.related)
+        self.related_name
     }
-}
-
-fn ifc4_name(entity: &str, slot: usize) -> &'static str {
-    ifc_schema::ifc4x3().attribute_names(entity)[slot]
 }
 
 /// `IfcRelAggregates`: decomposition, e.g. site to building, building to storey.
@@ -60,6 +62,8 @@ pub(crate) const AGGREGATES: RelSlots = RelSlots {
     type_name: "IFCRELAGGREGATES",
     relating: 4,
     related: 5,
+    relating_name: "RelatingObject",
+    related_name: "RelatedObjects",
 };
 
 /// `IfcRelContainedInSpatialStructure`: elements placed in a spatial container.
@@ -69,6 +73,8 @@ pub(crate) const CONTAINED_IN: RelSlots = RelSlots {
     type_name: "IFCRELCONTAINEDINSPATIALSTRUCTURE",
     relating: 5,
     related: 4,
+    relating_name: "RelatingStructure",
+    related_name: "RelatedElements",
 };
 
 /// `IfcRelReferencedInSpatialStructure`: elements referenced by a spatial
@@ -81,6 +87,8 @@ pub(crate) const REFERENCED_IN: RelSlots = RelSlots {
     type_name: "IFCRELREFERENCEDINSPATIALSTRUCTURE",
     relating: 5,
     related: 4,
+    relating_name: "RelatingStructure",
+    related_name: "RelatedElements",
 };
 
 /// `IfcRelNests`: ordered decomposition, e.g. a stair into its flights.
@@ -88,6 +96,8 @@ pub(crate) const NESTS: RelSlots = RelSlots {
     type_name: "IFCRELNESTS",
     relating: 4,
     related: 5,
+    relating_name: "RelatingObject",
+    related_name: "RelatedObjects",
 };
 
 /// `IfcRelSpaceBoundary`: which element bounds a space, and how.
@@ -98,6 +108,8 @@ pub(crate) const SPACE_BOUNDARY: RelSlots = RelSlots {
     type_name: "IFCRELSPACEBOUNDARY",
     relating: 4,
     related: 5,
+    relating_name: "RelatingSpace",
+    related_name: "RelatedBuildingElement",
 };
 
 /// `IfcRelSpaceBoundary1stLevel`: adds `ParentBoundary` at slot 9.
@@ -105,6 +117,8 @@ pub(crate) const SPACE_BOUNDARY_1ST: RelSlots = RelSlots {
     type_name: "IFCRELSPACEBOUNDARY1STLEVEL",
     relating: 4,
     related: 5,
+    relating_name: "RelatingSpace",
+    related_name: "RelatedBuildingElement",
 };
 
 /// `IfcRelSpaceBoundary2ndLevel`: adds `CorrespondingBoundary` at slot 10.
@@ -112,6 +126,8 @@ pub(crate) const SPACE_BOUNDARY_2ND: RelSlots = RelSlots {
     type_name: "IFCRELSPACEBOUNDARY2NDLEVEL",
     relating: 4,
     related: 5,
+    relating_name: "RelatingSpace",
+    related_name: "RelatedBuildingElement",
 };
 
 /// Every concrete type in the `IfcRelSpaceBoundary` hierarchy.
@@ -136,6 +152,8 @@ pub(crate) const COVERS_ELEMENTS: RelSlots = RelSlots {
     type_name: "IFCRELCOVERSBLDGELEMENTS",
     relating: 4,
     related: 5,
+    relating_name: "RelatingBuildingElement",
+    related_name: "RelatedCoverings",
 };
 
 /// `IfcRelCoversSpaces`: finishes bounding a space.
@@ -147,6 +165,8 @@ pub(crate) const COVERS_SPACES: RelSlots = RelSlots {
     type_name: "IFCRELCOVERSSPACES",
     relating: 4,
     related: 5,
+    relating_name: "RelatingSpace",
+    related_name: "RelatedCoverings",
 };
 
 /// `IfcRelConnectsElements`: one element connected to another.
@@ -162,6 +182,8 @@ pub(crate) const CONNECTS_ELEMENTS: RelSlots = RelSlots {
     type_name: "IFCRELCONNECTSELEMENTS",
     relating: 5,
     related: 6,
+    relating_name: "RelatingElement",
+    related_name: "RelatedElement",
 };
 
 /// `IfcRelConnectsPathElements`: a connection carrying path priorities.
@@ -169,6 +191,8 @@ pub(crate) const CONNECTS_PATH_ELEMENTS: RelSlots = RelSlots {
     type_name: "IFCRELCONNECTSPATHELEMENTS",
     relating: 5,
     related: 6,
+    relating_name: "RelatingElement",
+    related_name: "RelatedElement",
 };
 
 /// `IfcRelConnectsWithRealizingElements`: a connection realized by others.
@@ -176,6 +200,8 @@ pub(crate) const CONNECTS_WITH_REALIZING: RelSlots = RelSlots {
     type_name: "IFCRELCONNECTSWITHREALIZINGELEMENTS",
     relating: 5,
     related: 6,
+    relating_name: "RelatingElement",
+    related_name: "RelatedElement",
 };
 
 /// Every concrete type in the `IfcRelConnectsElements` hierarchy.
@@ -197,6 +223,8 @@ pub(crate) const INTERFERES_ELEMENTS: RelSlots = RelSlots {
     type_name: "IFCRELINTERFERESELEMENTS",
     relating: 4,
     related: 5,
+    relating_name: "RelatingElement",
+    related_name: "RelatedElement",
 };
 
 /// `IfcRelAssignsToActor`: who is responsible for an object.
@@ -218,6 +246,8 @@ pub(crate) const ASSIGNS_TO_ACTOR: RelSlots = RelSlots {
     type_name: "IFCRELASSIGNSTOACTOR",
     relating: 6,
     related: 4,
+    relating_name: "RelatingActor",
+    related_name: "RelatedObjects",
 };
 
 /// `IfcRelAssignsToProcess`: which task consumes or produces an object.
@@ -225,6 +255,8 @@ pub(crate) const ASSIGNS_TO_PROCESS: RelSlots = RelSlots {
     type_name: "IFCRELASSIGNSTOPROCESS",
     relating: 6,
     related: 4,
+    relating_name: "RelatingProcess",
+    related_name: "RelatedObjects",
 };
 
 /// `IfcRelAssignsToProduct`: which product an object is assigned to.
@@ -232,6 +264,8 @@ pub(crate) const ASSIGNS_TO_PRODUCT: RelSlots = RelSlots {
     type_name: "IFCRELASSIGNSTOPRODUCT",
     relating: 6,
     related: 4,
+    relating_name: "RelatingProduct",
+    related_name: "RelatedObjects",
 };
 
 /// `IfcRelAssignsToGroupByFactor`: group membership carrying a ratio.
@@ -243,6 +277,8 @@ pub(crate) const ASSIGNS_TO_GROUP_BY_FACTOR: RelSlots = RelSlots {
     type_name: "IFCRELASSIGNSTOGROUPBYFACTOR",
     relating: 6,
     related: 4,
+    relating_name: "RelatingGroup",
+    related_name: "RelatedObjects",
 };
 
 /// `IfcRelDeclares`: what a project or library context declares.
@@ -253,6 +289,8 @@ pub(crate) const DECLARES: RelSlots = RelSlots {
     type_name: "IFCRELDECLARES",
     relating: 4,
     related: 5,
+    relating_name: "RelatingContext",
+    related_name: "RelatedDefinitions",
 };
 
 /// `IfcRelDefinesByObject`: an occurrence defined by another occurrence.
@@ -264,6 +302,8 @@ pub(crate) const DEFINES_BY_OBJECT: RelSlots = RelSlots {
     type_name: "IFCRELDEFINESBYOBJECT",
     relating: 5,
     related: 4,
+    relating_name: "RelatingObject",
+    related_name: "RelatedObjects",
 };
 
 /// `IfcRelFlowControlElements`: controls governing a flow element.
@@ -274,6 +314,8 @@ pub(crate) const FLOW_CONTROL_ELEMENTS: RelSlots = RelSlots {
     type_name: "IFCRELFLOWCONTROLELEMENTS",
     relating: 5,
     related: 4,
+    relating_name: "RelatingFlowElement",
+    related_name: "RelatedControlElements",
 };
 
 /// `IfcRelServicesBuildings`: which spatial structures a system serves.
@@ -285,6 +327,8 @@ pub(crate) const SERVICES_BUILDINGS: RelSlots = RelSlots {
     type_name: "IFCRELSERVICESBUILDINGS",
     relating: 4,
     related: 5,
+    relating_name: "RelatingSystem",
+    related_name: "RelatedBuildings",
 };
 
 /// `IfcRelConnectsWithEccentricity`: a structural connection with an offset.
@@ -296,6 +340,8 @@ pub(crate) const CONNECTS_WITH_ECCENTRICITY: RelSlots = RelSlots {
     type_name: "IFCRELCONNECTSWITHECCENTRICITY",
     relating: 4,
     related: 5,
+    relating_name: "RelatingStructuralMember",
+    related_name: "RelatedStructuralConnection",
 };
 
 /// `IfcRelVoidsElement`: an element voided by an opening.
@@ -305,6 +351,8 @@ pub(crate) const VOIDS_ELEMENT: RelSlots = RelSlots {
     type_name: "IFCRELVOIDSELEMENT",
     relating: 4,
     related: 5,
+    relating_name: "RelatingBuildingElement",
+    related_name: "RelatedOpeningElement",
 };
 
 /// `IfcRelFillsElement`: an opening filled by an element.
@@ -316,6 +364,8 @@ pub(crate) const FILLS_ELEMENT: RelSlots = RelSlots {
     type_name: "IFCRELFILLSELEMENT",
     relating: 4,
     related: 5,
+    relating_name: "RelatingOpeningElement",
+    related_name: "RelatedBuildingElement",
 };
 
 /// `IfcRelProjectsElement`: an element with an added feature, e.g. a ledge.
@@ -323,6 +373,8 @@ pub(crate) const PROJECTS_ELEMENT: RelSlots = RelSlots {
     type_name: "IFCRELPROJECTSELEMENT",
     relating: 4,
     related: 5,
+    relating_name: "RelatingElement",
+    related_name: "RelatedFeatureElement",
 };
 
 /// `IfcRelAdheresToElement`: surface features bound to an element.
@@ -330,6 +382,8 @@ pub(crate) const ADHERES_TO_ELEMENT: RelSlots = RelSlots {
     type_name: "IFCRELADHERESTOELEMENT",
     relating: 4,
     related: 5,
+    relating_name: "RelatingElement",
+    related_name: "RelatedSurfaceFeatures",
 };
 
 /// `IfcRelPositions`: products positioned by a positioning element.
@@ -337,6 +391,8 @@ pub(crate) const POSITIONS: RelSlots = RelSlots {
     type_name: "IFCRELPOSITIONS",
     relating: 4,
     related: 5,
+    relating_name: "RelatingPositioningElement",
+    related_name: "RelatedProducts",
 };
 
 /// `IfcRelAssignsToResource`: objects assigned to a resource.
@@ -348,6 +404,8 @@ pub(crate) const ASSIGNS_TO_RESOURCE: RelSlots = RelSlots {
     type_name: "IFCRELASSIGNSTORESOURCE",
     relating: 6,
     related: 4,
+    relating_name: "RelatingResource",
+    related_name: "RelatedObjects",
 };
 
 /// `IfcRelAssociatesProfileDef`: a profile associated with objects.
@@ -357,11 +415,24 @@ pub(crate) const ASSOCIATES_PROFILE_DEF: RelSlots = RelSlots {
     type_name: "IFCRELASSOCIATESPROFILEDEF",
     relating: 5,
     related: 4,
+    relating_name: "RelatingProfileDef",
+    related_name: "RelatedObjects",
 };
 
-#[cfg(test)]
+// The names are pinned against both tables, so the test needs both.
+#[cfg(all(test, feature = "ifc4", feature = "ifc4x3"))]
 mod tests {
     use super::*;
+
+    /// Relationships only the readers use.
+    const READ_ONLY: [RelSlots; 6] = [
+        REFERENCED_IN,
+        NESTS,
+        SPACE_BOUNDARY,
+        SPACE_BOUNDARY_1ST,
+        SPACE_BOUNDARY_2ND,
+        CONNECTS_WITH_ECCENTRICITY,
+    ];
 
     /// Every relationship the writers stage, by the slots readers use.
     const WRITTEN: [RelSlots; 22] = [
@@ -390,11 +461,16 @@ mod tests {
     ];
 
     /// The names authoring lays records out by are the IFC4 names at the
-    /// reader's slots, and IFC4X3 does not rename them.
+    /// reader's slots, and IFC4X3 does not rename them. Every constant is
+    /// checked, read-only ones too, so no name is unpinned.
     #[test]
     fn written_names_are_the_ifc4_names_at_the_reader_slots() {
         let mut checked = 0;
-        for rel in WRITTEN.into_iter().chain([ASSOCIATES_PROFILE_DEF]) {
+        for rel in WRITTEN
+            .into_iter()
+            .chain(READ_ONLY)
+            .chain([ASSOCIATES_PROFILE_DEF])
+        {
             let ifc4 = ifc_schema::ifc4().attribute_names(rel.type_name);
             let ifc4x3 = ifc_schema::ifc4x3().attribute_names(rel.type_name);
             assert!(!ifc4x3.is_empty(), "{}", rel.type_name);
@@ -407,6 +483,6 @@ mod tests {
             }
         }
         // Only the three IFC4X3-only relationships are skipped.
-        assert_eq!(checked, 20);
+        assert_eq!(checked, 26);
     }
 }

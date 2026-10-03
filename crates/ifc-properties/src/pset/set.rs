@@ -25,7 +25,6 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use ifc_model::{EntityId, Model, Value};
-use ifc_schema::ifc4;
 
 use crate::error::PropertyAnomaly;
 use crate::nesting::Nesting;
@@ -175,7 +174,9 @@ pub fn property_sets_by_object(model: &Model) -> (AttachedSets, Vec<PropertyAnom
     let mut out: AttachedSets = BTreeMap::new();
     let mut anomalies = Vec::new();
     let mut cache = SetCache::default();
-    let schema = ifc4();
+    // Which entities are type objects, from the IFC4 table as always, or
+    // the newest bundled one in a build without it (#306).
+    let (_, schema) = crate::baseline::table(None);
 
     // Route 1: IfcRelDefinesByProperties, for occurrences.
     for &id in model.ids_of_type("IFCRELDEFINESBYPROPERTIES") {

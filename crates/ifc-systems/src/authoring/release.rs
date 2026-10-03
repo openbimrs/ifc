@@ -53,7 +53,10 @@ pub(super) fn bind(model: &Model) -> SystemAuthoringResult<Release> {
             })
         }
     };
-    let schema = for_version(version).expect("every SchemaVersion has a bundled table");
+    // A release whose table this build leaves out (#306) is refused too.
+    let schema = for_version(version).map_err(|_| SystemAuthoringError::UnsupportedSchema {
+        schema: version.header_tokens()[0].to_owned(),
+    })?;
     Ok(Release { version, schema })
 }
 

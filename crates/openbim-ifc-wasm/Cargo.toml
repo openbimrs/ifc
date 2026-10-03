@@ -62,9 +62,9 @@ ifc4x2 = ["openbim-ifc-binding-core/ifc4x2"]
 ifc4x3 = ["openbim-ifc-binding-core/ifc4x3"]
 # The ifcXML codec, both layouts.
 ifcxml = ["openbim-ifc-binding-core/ifcxml"]
-# Schema validation; links every release's schema table.
+# Schema validation; links only the enabled releases' tables (#306).
 validate = ["openbim-ifc-binding-core/validate"]
-# The viewer reachability lint; links every release's schema table.
+# The viewer reachability lint; links only the enabled releases' tables.
 unreachable = ["openbim-ifc-binding-core/unreachable"]
 # Domain views (#123), one per facade domain.
 properties = ["openbim-ifc-binding-core/properties"]

@@ -140,7 +140,9 @@ gate_features() {
     cargo test -p ifc-geometry --features compile
     cargo clippy -p ifc-geometry --features compile --all-targets -- -D warnings
 
-    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,ifc4" "--features step,schema-api" "--features step,geometry-select" "--features step,spatial,geometry-select" "--features step,properties,geometry-select" "--features step,spatial,properties" "--features step,georef,properties" "--all-features"; do
+    # `spatial` and `properties` need a release to read through (#306), so
+    # their combinations name one; both crates refuse to compile without.
+    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,ifc4" "--features step,schema-api" "--features step,geometry-select" "--features step,ifc4,validate" "--features step,ifc4,spatial,geometry-select" "--features step,ifc4,properties,geometry-select" "--features step,ifc4,spatial,properties" "--features step,ifc4,georef,properties" "--all-features"; do
         # shellcheck disable=SC2086
         cargo build -p openbim-ifc $features
         # shellcheck disable=SC2086
@@ -150,21 +152,21 @@ gate_features() {
     # The unreachable-product lint spans two sibling domains, so it exists
     # only when both are on. `--all-features` would hide a break in that exact
     # pairing.
-    cargo test -p openbim-ifc --features step,spatial,geometry-select --test unreachable_corpus
+    cargo test -p openbim-ifc --features step,schema,spatial,geometry-select --test unreachable_corpus
     # Door and window operation geometry (#148, #170) join placement and
     # panel properties, so they exist only with both `geometry-select` and
     # `properties`.
-    cargo test -p openbim-ifc --features step,properties,geometry-select --lib \
+    cargo test -p openbim-ifc --features step,schema,properties,geometry-select --lib \
         --test door_operation --test door_operation_refusals \
         --test window_operation --test window_operation_refusals
     # Element properties by spatial container (#121) join the spatial tree and
     # exact property resolution, so they exist only with both `spatial` and
     # `properties`.
-    cargo test -p openbim-ifc --features step,spatial,properties --test spatial_properties
+    cargo test -p openbim-ifc --features step,schema,spatial,properties --test spatial_properties
     # Every coordinate operation scaled by the project length unit (#123) joins
     # `ifc-georef` and exact unit resolution, so it exists only with both
     # `georef` and `properties`.
-    cargo test -p openbim-ifc --features step,georef,properties --test georeferencing
+    cargo test -p openbim-ifc --features step,schema,georef,properties --test georeferencing
 
     # Per-release schema column (#112). `--all-features` always bundles every
     # release, so a single-release build is the only place the `NotBundled`
@@ -184,6 +186,29 @@ gate_features() {
     # which brings property sets with it and leaves the other five out.
     cargo test -p openbim-ifc-binding-core --no-default-features --features ifc4,georef
 
+    # Every crate the bindings reach takes its releases from the build too
+    # (#306): each builds and tests with one release; the binding core with
+    # every capability and domain on still refuses a release left out, and
+    # links the IFC4 table alone. `cargo tree -e normal` leaves out the
+    # dev-dependencies, whose `ifc-schema/default` would bundle every release
+    # into test builds and hide a leak.
+    all_bound="ifc4,ifcxml,validate,unreachable,properties,spatial,classification,material,systems,cost,georef"
+    for crate in ifc-validate ifc-spatial ifc-geometry ifc-properties ifc-classification \
+        ifc-material ifc-systems ifc-cost ifc-georef; do
+        cargo test -p "$crate" --no-default-features --features ifc4 --lib
+        cargo clippy -p "$crate" --no-default-features --features ifc4 --all-targets -- -D warnings
+    done
+    cargo clippy -p ifc-validate --no-default-features --all-targets -- -D warnings
+    cargo test -p openbim-ifc-binding-core --no-default-features --features "$all_bound"
+    releases="$(cargo tree -p openbim-ifc-binding-core --no-default-features \
+        --features "$all_bound" -e features,normal -i ifc-schema |
+        grep -oE 'ifc-schema feature "ifc[0-9x]+"' | sort -u || true)"
+    if [[ "$releases" != 'ifc-schema feature "ifc4"' ]]; then
+        echo "error: an IFC4-only binding core links other releases' tables:" >&2
+        echo "$releases" >&2
+        exit 1
+    fi
+
     # Browser WASM column (#34). The facade must build for
     # wasm32-unknown-unknown with its default and widest pure-Rust feature
     # sets; a native-only dependency (getrandom via ahash was the first)
@@ -192,8 +217,10 @@ gate_features() {
         # shellcheck disable=SC2086
         cargo build -p openbim-ifc --target wasm32-unknown-unknown $features
     done
-    # The browser package with one bundled release (#112).
+    # The browser package with one bundled release (#112), without and with
+    # the capabilities (#244, #306).
     cargo build -p openbim-ifc-wasm --target wasm32-unknown-unknown --no-default-features --features ifc4
+    cargo build -p openbim-ifc-wasm --target wasm32-unknown-unknown --no-default-features --features "$all_bound"
 }
 
 gate_bindings() {
