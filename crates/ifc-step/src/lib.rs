@@ -10,7 +10,6 @@
 //! | [`codec`] | [`StepCodec`]/[`StepReader`]: detection, parse policy, I/O |
 //! | [`error`] | STEP-specific failure modes |
 //! | `parser` | Generic exchange to IFC record model |
-//! | `real_point` | Lenient reading of REALs written without a decimal point |
 //! | `writer` | IFC record model to physical file |
 
 pub mod codec;
@@ -18,7 +17,6 @@ pub mod error;
 mod index;
 mod lazy;
 mod parser;
-mod real_point;
 mod writer;
 
 pub use codec::{StepCodec, StepReader};

@@ -12,6 +12,15 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- The `express` and `generation` features use the workspace's
+  `openbim-step` pin, `=0.11.0` (was its own `=0.10.0`), shared with
+  `ifc-step`, so a build with `express` links one `openbim-step` (#288).
+  0.11 changed no EXPRESS extraction: the bundled tables still match the
+  fetched schemas. No `openbim-step` type is part of this crate's API, and
+  the default build links none.
+
 ## [0.3.0] - 2026-09-29
 
 ### Changed (breaking)

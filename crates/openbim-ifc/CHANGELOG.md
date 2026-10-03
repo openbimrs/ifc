@@ -12,6 +12,15 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- Behind `step`, the re-exported `ParseOptions` and `OnMalformed` are
+  `openbim-step` 0.11's (were 0.8's), through `ifc-step` (#288). 0.11 adds
+  `ParseOptions::accept_real_without_point`, included in
+  `ParseOptions::lenient()`: a lenient read keeps a REAL written without
+  its decimal point (`1E-05`) with a diagnostic instead of skipping its
+  record. Strict reads still refuse it.
+
 ## [0.10.0] - 2026-10-02
 
 ### Changed (breaking)

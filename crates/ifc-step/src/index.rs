@@ -25,7 +25,7 @@
 use std::collections::HashMap;
 
 use ifc_model::{Entity, EntityId, Model, Value};
-use openbim_step::Span;
+use openbim_step::{ParseOptions, Span};
 
 use crate::{parser, StepError};
 
@@ -61,7 +61,8 @@ impl<'a> Index<'a> {
     /// type the IFC record model cannot hold (an id beyond `u64`, a complex
     /// instance). Defects inside a record surface when it is decoded.
     pub fn scan(source: &'a [u8]) -> Result<Self, StepError> {
-        let scanned = openbim_step::scan(source)?;
+        let scanned =
+            openbim_step::scan(source).map_err(|error| StepError::from_step(source, error))?;
         let mut header = ifc_model::header::Header::default();
         parser::apply_header(&mut header, scanned.header().standard());
         let mut ids = Vec::new();
@@ -70,7 +71,7 @@ impl<'a> Index<'a> {
         let mut type_names: Vec<String> = Vec::new();
         let mut seen: HashMap<String, u32> = HashMap::new();
         for record in scanned.records() {
-            let record = record?;
+            let record = record.map_err(|error| StepError::from_step(source, error))?;
             let id = record.id.as_str().parse::<u64>().map_err(|_| {
                 unrepresentable(
                     record.span,
@@ -187,7 +188,8 @@ impl<'a> Index<'a> {
         let Some(position) = self.position(id) else {
             return Ok(None);
         };
-        let record = parser::decode(self.source, self.spans[position])?;
+        let (record, _) =
+            parser::decode(self.source, self.spans[position], ParseOptions::strict())?;
         Ok(Some(parser::convert(record)?.1))
     }
 
@@ -241,7 +243,8 @@ impl<'a> Index<'a> {
         let mut model = Model::new();
         *model.header_mut() = self.header.clone();
         for position in positions {
-            let record = parser::decode(self.source, self.spans[position])?;
+            let (record, _) =
+                parser::decode(self.source, self.spans[position], ParseOptions::strict())?;
             let (id, entity) = parser::convert(record)?;
             model.insert(id, entity);
         }

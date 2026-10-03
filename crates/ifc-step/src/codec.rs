@@ -54,7 +54,9 @@ pub struct StepCodec;
 
 impl StepCodec {
     /// A reader that skips unreadable data records and reports each one as a
-    /// [`Model`] diagnostic.
+    /// [`Model`] diagnostic, and reads a REAL written without its decimal
+    /// point (`1E-05`) as the REAL it spells, with a diagnostic
+    /// ([`ParseOptions::lenient`]).
     ///
     /// Header structure and the physical-file marker remain fatal: a file
     /// whose identity cannot be established is not partially readable.
@@ -128,7 +130,7 @@ impl StepReader {
             return Err(wrong_format());
         }
         if self.is_lazy() {
-            return lazy::read(Bytes::Mapped(map)).map_err(Into::into);
+            return lazy::read(Bytes::Mapped(map), self.options).map_err(Into::into);
         }
         parser::parse(&map, self.options).map_err(Into::into)
     }
@@ -207,7 +209,7 @@ impl Codec for StepReader {
         }
         if self.is_lazy() {
             // The model keeps its source, so the borrowed input is copied.
-            return lazy::read(Bytes::Owned(bytes.to_vec())).map_err(Into::into);
+            return lazy::read(Bytes::Owned(bytes.to_vec()), self.options).map_err(Into::into);
         }
         parser::parse(bytes, self.options).map_err(Into::into)
     }
@@ -217,7 +219,7 @@ impl Codec for StepReader {
             return Err(wrong_format());
         }
         if self.is_lazy() {
-            return lazy::read(Bytes::Owned(bytes)).map_err(Into::into);
+            return lazy::read(Bytes::Owned(bytes), self.options).map_err(Into::into);
         }
         parser::parse(&bytes, self.options).map_err(Into::into)
     }

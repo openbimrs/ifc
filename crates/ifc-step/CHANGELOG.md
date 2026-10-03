@@ -12,18 +12,34 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- Requires `openbim-step` `=0.11.0` (was `=0.8.0`; #288). `ParseOptions`
+  and `OnMalformed`, re-exported here and taken by `StepCodec::with_options`
+  and `StepReader::new`, are now that release's types, as is the source of
+  `From<openbim_step::StepError> for StepError`. Code that names
+  `openbim_step` 0.8 types alongside this crate must move to 0.11. The
+  0.9 owned-model changes (`Str`, `Instance`, boxed parameter lists) stay
+  inside this crate: no `openbim-step` model type is part of its API.
+
 ### Added
 
-- Lenient reading (`StepCodec::lenient`, `OnMalformed::Skip`) accepts a
-  REAL written without its decimal point (`1E-05`, `-2E3`, `3e+2`), as
-  buildingSMART's IFC4.x alignment test files do (#285). ISO 10303-21
-  requires the point (`REAL = [sign] digit {digit} "." {digit}
-  [exponent]`); the meaning of such a token is not in doubt, so the read
-  takes it as the REAL it spells and reports one located model diagnostic
-  per token instead of skipping the record. Text in strings, binary
-  literals and comments is never touched; a token that is not a number
-  (`1E`, `1EE2`) is still skipped as a malformed record. The writer still
-  always emits the point.
+- Lenient reading (`StepCodec::lenient`) accepts a REAL written without
+  its decimal point (`1E-05`, `-2E3`, `3e+2`), as buildingSMART's IFC4.x
+  alignment test files do (#285). ISO 10303-21 requires the point (`REAL =
+  [sign] digit {digit} "." {digit} [exponent]`); the meaning of such a
+  token is not in doubt, so the read takes it as the REAL it spells and
+  reports one located model diagnostic per token instead of skipping the
+  record. Recognising the token is `openbim-step`'s
+  `ParseOptions::accept_real_without_point`, which `ParseOptions::lenient()`
+  includes (#288); this crate only words the diagnostic. Text in strings is
+  never touched; a token that is not a number (`1E`, `1EE2`) is still
+  skipped as a malformed record. The writer still always emits the point.
+- `ParseOptions::strict().accept_real_without_point(true)` keeps the abort
+  policy and reads lazily: each record is validated under the read's
+  options and its diagnostics are added in file order, exactly as the
+  eager read adds them. `ParseOptions::strict().on_malformed_record(Skip)`
+  does not accept such tokens; it skips their records, as 0.4.0 did.
 - `StepError::RealWithoutDecimalPoint { offset, token }`: a strict read
   (lazy or eager, and `Index::entity`) refuses such a token as before, now
   with an error naming it; through `Codec` it surfaces as

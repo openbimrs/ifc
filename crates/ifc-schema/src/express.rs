@@ -12,7 +12,7 @@
 //! attributes (`SELF\X.a : T;`) are dropped: they add no Part 21 slot and no
 //! bundled table carries them.
 //!
-//! `openbim-step` is pinned exactly (`=0.10.0`), and its declaration enums
+//! `openbim-step` is pinned exactly (`=0.11.0`), and its declaration enums
 //! are `#[non_exhaustive]`: a variant this conversion does not name cannot
 //! occur in the pinned version, and a new one must be mapped here before the
 //! pin moves. The wildcard arms say so rather than guess.
@@ -80,7 +80,7 @@ fn aggregation(parsed: step::Aggregation) -> Aggregation {
         step::AggregateKind::Set => AggregateKind::Set,
         step::AggregateKind::Bag => AggregateKind::Bag,
         step::AggregateKind::Array => AggregateKind::Array,
-        other => unreachable!("openbim-step =0.10.0 declares no aggregate kind {other:?}"),
+        other => unreachable!("openbim-step =0.11.0 declares no aggregate kind {other:?}"),
     };
     let mut built = Aggregation::new(kind, bound(parsed.lower), bound(parsed.upper));
     built.unique = parsed.unique;
@@ -93,7 +93,7 @@ fn bound(parsed: step::Bound) -> Bound {
         step::Bound::Integer(value) => Bound::Integer(value),
         step::Bound::Unbounded => Bound::Unbounded,
         step::Bound::Expression(text) => Bound::Expression(text),
-        other => unreachable!("openbim-step =0.10.0 declares no bound form {other:?}"),
+        other => unreachable!("openbim-step =0.11.0 declares no bound form {other:?}"),
     }
 }
 
@@ -102,7 +102,7 @@ fn type_def(parsed: step::TypeDef) -> TypeDef {
         step::TypeKind::Defined(alias) => TypeKind::Defined(alias),
         step::TypeKind::Enumeration(members) => TypeKind::Enumeration(members),
         step::TypeKind::Select(members) => TypeKind::Select(members),
-        other => unreachable!("openbim-step =0.10.0 declares no type kind {other:?}"),
+        other => unreachable!("openbim-step =0.11.0 declares no type kind {other:?}"),
     };
     TypeDef::new(parsed.name, kind)
 }

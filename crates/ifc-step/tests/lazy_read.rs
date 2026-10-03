@@ -241,3 +241,45 @@ fn opting_out_or_recovering_reads_eagerly() {
     let eager_model = eager().read_bytes(&clean).unwrap();
     assert_eq!(eager_model.decoded_len(), 1);
 }
+
+#[test]
+fn reals_without_a_point_read_lazily_with_the_eager_diagnostics() {
+    // The abort policy with `accept_real_without_point` loads lazily (#288):
+    // each record is decoded under the read's options, and its diagnostics
+    // are those, in that order, of the eager read with the same options.
+    let options = ParseOptions::strict().accept_real_without_point(true);
+    let small = wrap(
+        "#1=IFCCARTESIANPOINT((1E-05,-2E3,3e+2));\n\
+         #2=IFCPERSON($,$,'1E2',$,$,$,$,$);\n\
+         #3=IFCCARTESIANPOINT((0.,+4E0));\n",
+    );
+    // Large enough to validate on several threads.
+    let large = wrap(
+        &(1..=100_000)
+            .map(|id| format!("#{id}=IFCCARTESIANPOINT(({id}E-3,0.,-{id}E2));\n"))
+            .collect::<String>(),
+    );
+    for bytes in [small, large] {
+        let lazy = StepReader::new(options).read_bytes(&bytes);
+        let model = lazy.as_ref().expect("accepted under the option");
+        assert_eq!(model.decoded_len(), 0, "loaded lazily");
+        assert!(!model.diagnostics().is_empty());
+        for diagnostic in model.diagnostics() {
+            let range = diagnostic.byte_range().expect("located").clone();
+            let token = std::str::from_utf8(&bytes[range]).unwrap();
+            assert!(diagnostic.detail().contains(&format!("`{token}`")));
+        }
+        assert_eq!(
+            snapshot(&lazy),
+            snapshot(&StepReader::new(options).eager().read_bytes(&bytes))
+        );
+    }
+    let model = StepReader::new(options)
+        .read_bytes(&wrap("#1=IFCCARTESIANPOINT((1E-05,-2E3));\n"))
+        .unwrap();
+    assert_eq!(
+        model.get(EntityId(1)).unwrap().attributes[0],
+        Value::List(vec![Value::Real(1e-5), Value::Real(-2e3)])
+    );
+    assert_eq!(model.diagnostics().len(), 2);
+}
