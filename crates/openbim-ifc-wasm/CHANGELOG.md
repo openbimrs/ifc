@@ -8,6 +8,28 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added
+
+- Browser and bundler builds in the npm package (#40). `@openbim/ifc`
+  resolves to the CommonJS build under Node, as before, and to a
+  `wasm-bindgen --target bundler` ES module in a bundler;
+  `@openbim/ifc/web` is the `--target web` build for a browser without a
+  bundler (`await init()` first). Every existing import path still resolves.
+- `scripts/build-npm-pkg.sh` (was `build-node-pkg.sh`) builds all three
+  targets and checks the packed tarball from Node, a webpack 5 bundle, and
+  both browser builds in headless Chrome.
+
+### Changed
+
+- The module is shrunk with `wasm-opt -Oz` (binaryen 132). Measured on the
+  default build: 1,337,025 bytes after `wasm-bindgen`, 1,295,241 after
+  `wasm-opt` (-3.1%; the code section shrinks 9.1%, from 424,262 to
+  385,757 bytes). The compressed size does not fall: 459,437 to 461,953
+  bytes with `gzip -9`. The bundled schema data, which wasm-opt cannot
+  shrink, is 908,687 of the 1,337,025 bytes.
+- The tarball carries one copy of the module per target, so it grows from
+  about 0.5 MB to 1.4 MB packed; a consumer loads only one.
+
 ## [0.2.0] - 2026-09-29
 
 ### Added

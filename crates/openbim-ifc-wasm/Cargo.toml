@@ -18,7 +18,7 @@ publish = false
 # implemented | partial | scaffold -- a judgement, never inferred from size.
 # `gaps`: the open issues behind the status; a partial crate names one.
 status = "partial"
-gaps = [40, 123, 244]
+gaps = [123, 244]
 # core | domain | geometry | facade | binding
 group = "binding"
 

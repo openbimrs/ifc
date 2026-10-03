@@ -54,14 +54,17 @@ jobs:
           path: references/ifc-spec
           key: ifc-spec-${{ hashFiles('scripts/fetch-ifc-schemas.sh') }}
       - name: Set up Node
-        # bindings runs the Node suites; lint builds the docs site.
+        # bindings runs the Node suites and the npm package check, whose
+        # webpack and wasm-opt come from crates/openbim-ifc-wasm/tools and
+        # whose headless Chrome is the one the hosted ubuntu image ships;
+        # lint builds the docs site.
         if: matrix.section == 'bindings' || matrix.section == 'lint'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "20"
       - name: Install wasm-bindgen CLI
         # Must equal the `wasm-bindgen` pin in crates/openbim-ifc-wasm/Cargo.toml;
-        # build-node-pkg.sh refuses a mismatch.
+        # build-npm-pkg.sh refuses a mismatch.
         if: matrix.section == 'bindings'
         uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
         with:

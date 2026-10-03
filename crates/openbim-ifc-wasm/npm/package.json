@@ -11,11 +11,35 @@
   "type": "commonjs",
   "main": "openbim_ifc_wasm.js",
   "types": "openbim_ifc_wasm.d.ts",
+  "exports": {
+    ".": {
+      "node": {
+        "types": "./openbim_ifc_wasm.d.ts",
+        "default": "./openbim_ifc_wasm.js"
+      },
+      "default": {
+        "types": "./bundler/openbim_ifc_wasm.d.ts",
+        "default": "./bundler/openbim_ifc_wasm.js"
+      }
+    },
+    "./bundler": {
+      "types": "./bundler/openbim_ifc_wasm.d.ts",
+      "default": "./bundler/openbim_ifc_wasm.js"
+    },
+    "./web": {
+      "types": "./web/openbim_ifc_wasm.d.ts",
+      "default": "./web/openbim_ifc_wasm.js"
+    },
+    "./package.json": "./package.json",
+    "./*": "./*"
+  },
   "files": [
     "openbim_ifc_wasm.js",
     "openbim_ifc_wasm.d.ts",
     "openbim_ifc_wasm_bg.wasm",
     "openbim_ifc_wasm_bg.wasm.d.ts",
+    "bundler/",
+    "web/",
     "README.md"
   ],
   "engines": {

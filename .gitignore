@@ -20,7 +20,7 @@ docs/.vitepress/cache/
 # during upstream development. Never committed.
 .cargo/
 
-# wasm-bindgen output of crates/openbim-ifc-wasm/scripts/build-node-pkg.sh
+# wasm-bindgen output of crates/openbim-ifc-wasm/scripts/build-npm-pkg.sh
 crates/openbim-ifc-wasm/pkg/
 
 # Python bytecode (openbim-ifc-py)
