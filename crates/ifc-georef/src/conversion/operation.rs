@@ -92,7 +92,11 @@ pub struct ProjectToMap {
     pub orthogonal_height: f64,
     /// Length unit the project authored its coordinates in.
     pub project_unit: LengthUnit,
-    /// Length unit the map coordinates are expressed in.
+    /// Length unit the map coordinates are expressed in, resolved: the
+    /// target CRS's `MapUnit` when stated, otherwise the project length
+    /// unit, which IFC prescribes for an omitted `MapUnit`. `transform`,
+    /// [`Self::map_point`] and [`Self::translation`] use this unit. Whether
+    /// the file stated it is [`Self::declared_map_unit`].
     pub map_unit: LengthUnit,
     /// IFC's declared scale before source/target unit normalization. `1.0`
     /// for a rigid operation, which has none.
@@ -165,6 +169,18 @@ impl ProjectToMap {
     #[must_use]
     pub fn linear_part(&self) -> [[f64; 3]; 3] {
         self.linear
+    }
+
+    /// The target CRS's `MapUnit` exactly as authored: `None` when the
+    /// file leaves it unset, even though [`Self::map_unit`] then resolves
+    /// to the project length unit. With `MapUnit` stated, this and
+    /// `map_unit` are the same unit.
+    ///
+    /// The value is [`ProjectedCrs::map_unit`] of [`Self::target_crs`];
+    /// this accessor names it next to the resolved unit (#296).
+    #[must_use]
+    pub fn declared_map_unit(&self) -> Option<&LengthUnit> {
+        self.target_crs.map_unit.as_ref()
     }
 
     /// The translation in map metres: where the project origin lands.

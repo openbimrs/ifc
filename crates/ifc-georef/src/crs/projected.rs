@@ -31,7 +31,18 @@ pub struct ProjectedCrs {
     pub map_projection: Option<String>,
     /// Optional projection zone, such as `32N`.
     pub map_zone: Option<String>,
-    /// Explicit target unit. `None` means IFC inherits the project length unit.
+    /// `MapUnit` as authored: `None` when the file leaves it unset.
+    ///
+    /// IFC4 and IFC4X3 both declare `MapUnit : OPTIONAL IfcNamedUnit`
+    /// (`WHERE` it is a `LENGTHUNIT` when it exists); an omitted unit means
+    /// the coordinate axes use the project's default length unit. This field
+    /// never fills that default in, so a CRS that states the project's unit
+    /// stays distinguishable from one that states none. The resolved unit,
+    /// with the default applied, is [`ProjectToMap::map_unit`]; the same
+    /// declared value is [`ProjectToMap::declared_map_unit`] (#296).
+    ///
+    /// [`ProjectToMap::map_unit`]: crate::ProjectToMap::map_unit
+    /// [`ProjectToMap::declared_map_unit`]: crate::ProjectToMap::declared_map_unit
     pub map_unit: Option<LengthUnit>,
     /// IFC4X3: the OGC WKT literal of the one `IfcWellKnownText` whose
     /// `CoordinateReferenceSystem` is this CRS, verbatim. Always `None`
