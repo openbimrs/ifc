@@ -54,6 +54,30 @@ pub enum StepError {
     Io(String),
 }
 
+impl StepError {
+    /// Maps an `openbim-step` failure over `input` onto this crate's error.
+    ///
+    /// The substrate refuses a REAL without its decimal point with a typed
+    /// error whose span covers exactly the number; with the source at hand,
+    /// that becomes [`StepError::RealWithoutDecimalPoint`] naming the token
+    /// as written. Every other failure maps as [`From`] does.
+    pub(crate) fn from_step(input: &[u8], error: openbim_step::StepError) -> Self {
+        if error.is_real_without_point() {
+            let span = error.span();
+            if let Some(token) = input.get(span.start..span.end) {
+                return Self::RealWithoutDecimalPoint {
+                    offset: span.start,
+                    token: String::from_utf8_lossy(token).into_owned(),
+                };
+            }
+        }
+        error.into()
+    }
+}
+
+/// Without the source bytes the token cannot be quoted, so a REAL without
+/// its decimal point maps to [`StepError::Syntax`] at the token's offset,
+/// with the substrate's detail, which names the token.
 impl From<openbim_step::StepError> for StepError {
     fn from(error: openbim_step::StepError) -> Self {
         if error.is_not_step() {

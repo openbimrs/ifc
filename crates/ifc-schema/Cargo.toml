@@ -24,10 +24,10 @@ ahash.workspace = true
 # EXPRESS extraction. Optional: the bundled tables decode into this crate's
 # own types without it; only `express` (runtime .exp parsing) and
 # `generation` (the artifact compiler) link it.
-# Pinned here rather than through the workspace: ifc-step stays on its own
-# openbim-step line, and only the build-time extractor needs 0.10's
-# aggregation, INVERSE and UNIQUE extraction (#111).
-openbim-step = { version = "=0.10.0", optional = true }
+# The workspace pin, shared with ifc-step, so a build with `express` links
+# one openbim-step. The extractor needs 0.10's aggregation, INVERSE and
+# UNIQUE extraction (#111); 0.11 left `express` unchanged.
+openbim-step = { workspace = true, optional = true }
 bincode = { version = "2.0.1", optional = true }
 thiserror = { workspace = true, optional = true }
 

@@ -3,7 +3,7 @@
 use crate::StepError;
 use ifc_model::{EntityId, Model, Value};
 use openbim_step::{
-    DataRecord, DataSection, Exchange, HeaderRecord, HeaderSection, InstanceId, Parameter,
+    DataRecord, DataSection, Exchange, HeaderRecord, HeaderSection, InstanceId, Parameter, Str,
 };
 use std::io::Write;
 
@@ -39,42 +39,26 @@ fn exchange_from_model(model: &Model) -> Exchange {
         records: vec![
             HeaderRecord {
                 name: "FILE_DESCRIPTION".into(),
-                parameters: vec![
-                    Parameter::List(
-                        header
-                            .description
-                            .iter()
-                            .cloned()
-                            .map(Parameter::Text)
-                            .collect(),
-                    ),
-                    Parameter::Text(header.implementation_level.clone()),
-                ],
+                parameters: Box::new([
+                    Parameter::List(header.description.iter().map(text).collect()),
+                    text(&header.implementation_level),
+                ]),
             },
             HeaderRecord {
                 name: "FILE_NAME".into(),
-                parameters: vec![
-                    Parameter::Text(header.name.clone()),
-                    Parameter::Text(header.time_stamp.clone()),
-                    Parameter::List(header.author.iter().cloned().map(Parameter::Text).collect()),
-                    Parameter::List(
-                        header
-                            .organization
-                            .iter()
-                            .cloned()
-                            .map(Parameter::Text)
-                            .collect(),
-                    ),
-                    Parameter::Text(header.preprocessor_version.clone()),
-                    Parameter::Text(header.originating_system.clone()),
-                    Parameter::Text(header.authorization.clone()),
-                ],
+                parameters: Box::new([
+                    text(&header.name),
+                    text(&header.time_stamp),
+                    Parameter::List(header.author.iter().map(text).collect()),
+                    Parameter::List(header.organization.iter().map(text).collect()),
+                    text(&header.preprocessor_version),
+                    text(&header.originating_system),
+                    text(&header.authorization),
+                ]),
             },
             HeaderRecord {
                 name: "FILE_SCHEMA".into(),
-                parameters: vec![Parameter::List(
-                    header.schema.iter().cloned().map(Parameter::Text).collect(),
-                )],
+                parameters: Box::new([Parameter::List(header.schema.iter().map(text).collect())]),
             },
         ],
     };
@@ -84,13 +68,21 @@ fn exchange_from_model(model: &Model) -> Exchange {
             .map(|(id, entity)| {
                 DataRecord::simple(
                     InstanceId::from(id.0),
-                    entity.type_name.to_string(),
-                    entity.attributes.iter().map(value_to_parameter).collect(),
+                    Str::from(entity.type_name.clone()),
+                    entity
+                        .attributes
+                        .iter()
+                        .map(value_to_parameter)
+                        .collect::<Box<[_]>>(),
                 )
             })
             .collect(),
     };
     Exchange { header, data }
+}
+
+fn text(value: impl AsRef<str>) -> Parameter {
+    Parameter::Text(value.as_ref().into())
 }
 
 fn value_to_parameter(value: &Value) -> Parameter {
@@ -99,15 +91,15 @@ fn value_to_parameter(value: &Value) -> Parameter {
         Value::Derived => Parameter::Derived,
         Value::Bool(value) => Parameter::Bool(*value),
         Value::LogicalUnknown => Parameter::LogicalUnknown,
-        Value::Integer(value) => Parameter::Integer(value.to_string()),
-        Value::Real(value) => Parameter::Real(format_real(*value)),
-        Value::Text(value) => Parameter::Text(value.to_string()),
-        Value::Binary(value) => Parameter::Binary(value.to_string()),
-        Value::Enum(value) => Parameter::Enum(value.to_string()),
+        Value::Integer(value) => Parameter::Integer(value.to_string().into()),
+        Value::Real(value) => Parameter::Real(format_real(*value).into()),
+        Value::Text(value) => Parameter::Text(Str::from(value.clone())),
+        Value::Binary(value) => Parameter::Binary(Str::from(value.clone())),
+        Value::Enum(value) => Parameter::Enum(Str::from(value.clone())),
         Value::Ref(EntityId(id)) => Parameter::Ref(InstanceId::from(*id)),
         Value::List(values) => Parameter::List(values.iter().map(value_to_parameter).collect()),
         Value::Typed { type_name, value } => Parameter::Typed {
-            type_name: type_name.to_string(),
+            type_name: Str::from(type_name.clone()),
             value: Box::new(value_to_parameter(value)),
         },
     }

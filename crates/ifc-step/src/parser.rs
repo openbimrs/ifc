@@ -7,79 +7,25 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
-use crate::{real_point, StepError};
+use crate::StepError;
 use ifc_model::{Diagnostic, Entity, EntityId, Model, Value};
-use openbim_step::{OnMalformed, Parameter, ParseOptions, StandardHeader};
+use openbim_step::{
+    DiagnosticKind, Instance, OnMalformed, Parameter, ParseOptions, StandardHeader,
+};
 
 /// Borrowed parser events: text is a slice of the input unless the source
 /// needed rewriting, so conversion allocates once per value, not twice.
 type Text<'a> = Cow<'a, str>;
 
+/// Reads `input` eagerly under `options`.
+///
+/// A REAL written without its decimal point (`1E-05`, #285) is the
+/// substrate's to recognise: a strict parse refuses it with a typed error,
+/// which [`StepError::from_step`] names, and a parse with
+/// `ParseOptions::accept_real_without_point` (part of
+/// `ParseOptions::lenient()`) reads it with a diagnostic, which
+/// [`diagnostic`] words.
 pub(crate) fn parse(input: &[u8], options: ParseOptions) -> Result<Model, StepError> {
-    if options.on_malformed_record == OnMalformed::Skip {
-        // Recovery reads a REAL written without its decimal point (#285);
-        // see `real_point`. Nothing is rewritten when no token needs it.
-        let missing = real_point::find(input);
-        if !missing.is_empty() {
-            let repaired = real_point::repair(input, &missing);
-            let mut model = parse_exact(&repaired, options, &|offset| {
-                real_point::original_offset(&missing, offset)
-            })?;
-            for entry in &missing {
-                model.push_diagnostic(Diagnostic::warning(
-                    entry.token.clone(),
-                    format!(
-                        "read REAL `{}` without the decimal point ISO 10303-21 requires",
-                        real_point::text(input, entry)
-                    ),
-                ));
-            }
-            return Ok(model);
-        }
-        return parse_exact(input, options, &|offset| offset);
-    }
-    parse_exact(input, options, &|offset| offset)
-        .map_err(|error| named_real(input, 0..input.len(), error))
-}
-
-/// Decodes the record framed by `span` under the strict policy, as the
-/// lazy reader and [`crate::Index`] do.
-pub(crate) fn decode(
-    input: &[u8],
-    span: openbim_step::Span,
-) -> Result<openbim_step::DataRecord<Text<'_>>, StepError> {
-    openbim_step::decode_record_borrowed(input, span)
-        .map_err(|error| named_real(input, span.start..span.end, error.into()))
-}
-
-/// A strict refusal at a REAL without a decimal point inside
-/// `input[within]`, named as such; any other error unchanged.
-fn named_real(input: &[u8], within: std::ops::Range<usize>, error: StepError) -> StepError {
-    let StepError::Syntax { offset, .. } = error else {
-        return error;
-    };
-    let Some(window) = input.get(within.clone()) else {
-        return error;
-    };
-    match real_point::find(window)
-        .into_iter()
-        .find(|missing| within.start + missing.token.start == offset)
-    {
-        Some(missing) => StepError::RealWithoutDecimalPoint {
-            offset,
-            token: real_point::text(window, &missing),
-        },
-        None => error,
-    }
-}
-
-/// Parses `input` as given; `original` maps a diagnostic offset back to the
-/// caller's bytes when `input` is a repaired copy.
-fn parse_exact(
-    input: &[u8],
-    options: ParseOptions,
-    original: &dyn Fn(usize) -> usize,
-) -> Result<Model, StepError> {
     // Records are converted as they arrive rather than collected first.
     // openbim_step::parse_with builds a Vec of every DataRecord, so the
     // generic records and the converted model are both fully resident at
@@ -93,7 +39,8 @@ fn parse_exact(
         recovering: options.on_malformed_record == OnMalformed::Skip,
         error: None,
     };
-    let diagnostics = openbim_step::parse_events_borrowed(input, &mut sink, options)?;
+    let diagnostics = openbim_step::parse_events_borrowed(input, &mut sink, options)
+        .map_err(|error| StepError::from_step(input, error))?;
     if let Some(error) = sink.error {
         return Err(error);
     }
@@ -101,13 +48,45 @@ fn parse_exact(
     apply_header(model.header_mut(), sink.header.standard());
     // Diagnostics are only available once the parse finishes, so they are
     // appended after the records rather than interleaved with them.
-    for diagnostic in &diagnostics {
-        model.push_diagnostic(Diagnostic::warning(
-            original(diagnostic.span().start)..original(diagnostic.span().end),
-            diagnostic.detail(),
-        ));
+    for found in &diagnostics {
+        model.push_diagnostic(diagnostic(input, found));
     }
     Ok(model)
+}
+
+/// Decodes the record framed by `span` under `options`, as the lazy reader
+/// and [`crate::Index`] do, with the record's diagnostics.
+pub(crate) fn decode(
+    input: &[u8],
+    span: openbim_step::Span,
+    options: ParseOptions,
+) -> Result<
+    (
+        openbim_step::DataRecord<Text<'_>>,
+        Vec<openbim_step::Diagnostic>,
+    ),
+    StepError,
+> {
+    openbim_step::decode_record_borrowed_with(input, span, options)
+        .map_err(|error| StepError::from_step(input, error))
+}
+
+/// A substrate diagnostic over `input` as a model diagnostic, located at
+/// the bytes it covers. A REAL read without its decimal point quotes the
+/// token as written.
+pub(crate) fn diagnostic(input: &[u8], found: &openbim_step::Diagnostic) -> Diagnostic {
+    let span = found.span();
+    let range = span.start..span.end;
+    match (found.kind(), input.get(range.clone())) {
+        (DiagnosticKind::RealWithoutPoint, Some(token)) => Diagnostic::warning(
+            range,
+            format!(
+                "read REAL `{}` without the decimal point ISO 10303-21 requires",
+                String::from_utf8_lossy(token)
+            ),
+        ),
+        _ => Diagnostic::warning(range, found.detail()),
+    }
 }
 
 /// Converts records into the model as the parser emits them.
@@ -166,12 +145,9 @@ pub(crate) fn convert(
     instance: openbim_step::DataRecord<Text<'_>>,
 ) -> Result<(EntityId, Entity), StepError> {
     let id = instance_id(&instance.id)?;
-    simple(&instance)?;
-    let record = instance
-        .records
-        .into_iter()
-        .next()
-        .expect("`simple` guarantees exactly one record");
+    let Instance::Simple(record) = instance.instance else {
+        return Err(complex());
+    };
     let attributes = values(record.parameters)?;
     Ok((id, Entity::new(upper_arc(record.name), attributes)))
 }
@@ -223,10 +199,14 @@ fn instance_id(id: &openbim_step::InstanceId) -> Result<EntityId, StepError> {
 fn simple<'r, 'a>(
     instance: &'r openbim_step::DataRecord<Text<'a>>,
 ) -> Result<&'r openbim_step::Record<Text<'a>>, StepError> {
-    instance.as_simple().ok_or_else(|| StepError::Syntax {
+    instance.as_simple().ok_or_else(complex)
+}
+
+fn complex() -> StepError {
+    StepError::Syntax {
         offset: 0,
         detail: "complex STEP instances are not representable in the IFC record model".into(),
-    })
+    }
 }
 
 fn integer(value: &str) -> Result<i64, StepError> {
@@ -273,8 +253,13 @@ fn upper_arc(name: Text<'_>) -> Arc<str> {
 
 fn owned_header_record(record: openbim_step::HeaderRecord<Text<'_>>) -> openbim_step::HeaderRecord {
     openbim_step::HeaderRecord {
-        name: upper(record.name),
-        parameters: record.parameters.into_iter().map(owned_parameter).collect(),
+        name: upper(record.name).into(),
+        parameters: record
+            .parameters
+            .into_vec()
+            .into_iter()
+            .map(owned_parameter)
+            .collect(),
     }
 }
 
@@ -284,17 +269,17 @@ fn owned_parameter(parameter: Parameter<Text<'_>>) -> Parameter {
         Parameter::Derived => Parameter::Derived,
         Parameter::Bool(value) => Parameter::Bool(value),
         Parameter::LogicalUnknown => Parameter::LogicalUnknown,
-        Parameter::Integer(value) => Parameter::Integer(value.into_owned()),
-        Parameter::Real(value) => Parameter::Real(value.into_owned()),
-        Parameter::Text(value) => Parameter::Text(value.into_owned()),
-        Parameter::Binary(value) => Parameter::Binary(value.into_owned()),
-        Parameter::Enum(value) => Parameter::Enum(upper(value)),
+        Parameter::Integer(value) => Parameter::Integer((*value).into()),
+        Parameter::Real(value) => Parameter::Real((*value).into()),
+        Parameter::Text(value) => Parameter::Text((*value).into()),
+        Parameter::Binary(value) => Parameter::Binary((*value).into()),
+        Parameter::Enum(value) => Parameter::Enum(upper(value).into()),
         Parameter::Ref(id) => Parameter::Ref(id),
         Parameter::List(values) => {
-            Parameter::List(values.into_iter().map(owned_parameter).collect())
+            Parameter::List(values.into_vec().into_iter().map(owned_parameter).collect())
         }
         Parameter::Typed { type_name, value } => Parameter::Typed {
-            type_name: upper(type_name),
+            type_name: upper(type_name).into(),
             value: Box::new(owned_parameter(*value)),
         },
     }
@@ -340,9 +325,9 @@ pub(crate) fn apply_header(header: &mut ifc_model::header::Header, source: Stand
 /// and the parser grows its buffers by doubling. Every entity would then
 /// keep up to twice the memory its attributes need for the life of the
 /// model -- measured at +14-41% resident on real files.
-fn values(parameters: Vec<Parameter<Text<'_>>>) -> Result<Vec<Value>, StepError> {
+fn values(parameters: Box<[Parameter<Text<'_>>]>) -> Result<Vec<Value>, StepError> {
     let mut out = Vec::with_capacity(parameters.len());
-    for parameter in parameters {
+    for parameter in parameters.into_vec() {
         out.push(parameter_to_value(parameter)?);
     }
     Ok(out)
