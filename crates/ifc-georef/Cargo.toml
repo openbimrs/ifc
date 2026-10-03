@@ -27,11 +27,23 @@ group = "geometry"
 # grid north, operation sources, the site reference -- with no geometry
 # kernel linked. That is the build a semantic adapter wants (#268);
 # `tests/kernel_free_build.rs` holds the line.
-default = ["transform"]
+default = ["transform", "ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
 transform = ["dep:axiolid-core"]
+# One feature per bundled IFC release, forwarded to `ifc-schema` (#306).
+# Each links that release's schema table; a release left out is refused
+# with `GeorefError::UnsupportedSchema`. The
+# default keeps all five, as before; a size-sensitive build (browser WASM)
+# names only the releases it ships, and the `openbim-ifc` facade forwards
+# its own release features here.
+ifc2x3 = ["ifc-schema/ifc2x3"]
+ifc4 = ["ifc-schema/ifc4"]
+ifc4x1 = ["ifc-schema/ifc4x1"]
+ifc4x2 = ["ifc-schema/ifc4x2"]
+ifc4x3 = ["ifc-schema/ifc4x3"]
 
 [dependencies]
-ifc-schema = { workspace = true, features = ["default"] }
+# No default features: the release features choose the tables (#306).
+ifc-schema.workspace = true
 ifc-model.workspace = true
 # Optional so a consumer that only reads georeferencing parameters links no
 # geometry kernel; see the `transform` feature.
@@ -39,6 +51,9 @@ axiolid-core = { workspace = true, optional = true }
 
 [dev-dependencies]
 ifc-step = { path = "../ifc-step" }
+# The slot tests compare layouts across IFC2X3, IFC4 and IFC4X3 whatever
+# release features the library is built with (#306).
+ifc-schema = { workspace = true, features = ["default"] }
 
 [lints]
 workspace = true

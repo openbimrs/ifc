@@ -38,6 +38,15 @@ a release here does not imply a release of any other crate in the family.
   refuses a bundled release it does not read with the same code. The code
   and the payload of the existing refusals are unchanged.
 
+### Changed (#306)
+
+- `validate`, `unreachable` and the seven domain features link only the
+  schema tables of the releases the build enables; they linked every
+  release's before. The default build, with all five releases, is
+  unchanged. A build with one release refuses the others with
+  `unsupported-schema` whichever features are on, and its test runs again
+  in every such build.
+
 ### Added (#244)
 
 - Lenient STEP reads: `ParseOptions` (`on_malformed`, `check_references`,

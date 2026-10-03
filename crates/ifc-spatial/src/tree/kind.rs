@@ -60,6 +60,10 @@ impl SpatialKind {
     }
 
     /// Classify a STEP type name against one release's schema table.
+    ///
+    /// A release whose feature this build leaves out has no table, so every
+    /// name classifies as [`Element`](Self::Element); check
+    /// `ifc_schema::for_version` first when the build is single-release.
     #[must_use]
     pub fn classify_in(type_name: &str, release: SchemaVersion) -> Self {
         Classifier::for_release(release).classify(type_name)
@@ -93,11 +97,15 @@ impl Classifier {
     ///
     /// IFC4X1 and IFC4X2 are bundled by `ifc-schema` but not verified here,
     /// so they bind nothing ([`Self::bound_release`] is `None`) rather than
-    /// being read as IFC4 or IFC4X3.
+    /// being read as IFC4 or IFC4X3. A verified release whose table this
+    /// build leaves out (its release feature is off, #306) binds nothing the
+    /// same way: its empty table would classify every entity as an element.
     pub(crate) fn for_model(model: &Model) -> Self {
         match model.header().schema.as_slice() {
             [token] => match SchemaVersion::from_header_token(token) {
-                Some(release) if VERIFIED.contains(&release) => Self::for_release(release),
+                Some(release) if VERIFIED.contains(&release) && for_version(release).is_ok() => {
+                    Self::for_release(release)
+                }
                 _ => Self::any_release(),
             },
             _ => Self::any_release(),

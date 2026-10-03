@@ -48,16 +48,17 @@ ifc4x3 = ["openbim-ifc/ifc4x3"]
 # The ifcXML codec: the native layout, and the XSD layout of the bundled
 # IFC4 / IFC4X3 releases.
 ifcxml = ["openbim-ifc/ifcxml"]
-# Schema validation. ifc-validate links every release's table whatever
-# the release features say.
+# Schema validation, against the tables of the releases enabled above
+# (#306).
 validate = ["openbim-ifc/validate"]
 # The viewer reachability lint: spatial containment plus representation
-# contexts, with no geometry kernel. Links every release's table, too.
+# contexts, with no geometry kernel. Classifies containers from the
+# enabled releases' tables (#306).
 unreachable = ["openbim-ifc/spatial", "openbim-ifc/geometry-select"]
 # Domain views (#123), each an owned-snapshot read of one facade domain.
 # Like the capabilities, each adds to a browser build, and an operation
-# whose feature is off refuses with `feature-disabled`. Every domain crate
-# links every release's schema table it reads.
+# whose feature is off refuses with `feature-disabled`. Each reads only
+# the schema tables of the releases enabled above (#306).
 # Property sets, quantities (type inheritance included) and exact units.
 properties = ["openbim-ifc/properties"]
 # Their checked edit (#123): facade code over the crates `properties`

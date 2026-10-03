@@ -100,8 +100,9 @@ pub fn validate_with(model: &Model, schema: &Schema, budget: Budget) -> Report {
 /// Returns [`ValidateError`] when the file declares no schema, or declares
 /// one this build has no tables for. Validating an IFC2X3 file against IFC4
 /// tables would produce confident nonsense, so it is refused rather than
-/// approximated.
-#[cfg(feature = "ifc4")]
+/// approximated. Which releases have tables is the build's choice: the
+/// release features (`ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2`, `ifc4x3`, all on
+/// by default) each bundle one.
 pub fn validate_declared(model: &Model) -> Result<Report, ValidateError> {
     use ifc_schema::SchemaVersion;
 

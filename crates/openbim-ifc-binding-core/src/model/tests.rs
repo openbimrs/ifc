@@ -238,25 +238,9 @@ fn a_subtype_query_needs_a_known_schema() {
 /// A release this build does not bundle (#112) is refused like an unknown
 /// one, and the message says it is known but not compiled in. The gate runs
 /// this as `cargo test -p openbim-ifc-binding-core --no-default-features
-/// --features ifc4`. A capability or domain feature that links every
-/// release's table (validation, the lint, every domain crate) bundles
-/// IFC4X3 whatever the release features say, so the refusal is unreachable
-/// there.
-#[cfg(all(
-    feature = "ifc4",
-    not(any(
-        feature = "ifc4x3",
-        feature = "validate",
-        feature = "unreachable",
-        feature = "properties",
-        feature = "spatial",
-        feature = "classification",
-        feature = "material",
-        feature = "systems",
-        feature = "cost",
-        feature = "georef"
-    ))
-))]
+/// --features ifc4`, and with every capability and domain on too: since
+/// #306 they link only the releases the build names.
+#[cfg(all(feature = "ifc4", not(feature = "ifc4x3")))]
 #[test]
 fn a_subtype_query_refuses_a_release_left_out_of_the_build() {
     let text = FILE.replace("FILE_SCHEMA(('IFC4'))", "FILE_SCHEMA(('IFC4X3'))");

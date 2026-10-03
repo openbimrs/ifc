@@ -67,14 +67,18 @@ pub(super) fn validate_model(model: &Model) -> Result<Release, ExactPropertyErro
         // Each release listed here is verified for exact resolution: IFC2X3
         // TC1 (#48), IFC4 ADD2 TC1, and IFC4X3 ADD2 (#76). Any other token,
         // including a release the schema crate bundles later, is refused
-        // until it is verified, never approximated.
+        // until it is verified, never approximated. A verified release
+        // whose table this build leaves out (its release feature is off,
+        // #306) is refused the same way.
         [token] => match SchemaVersion::from_header_token(token) {
             Some(
                 version @ (SchemaVersion::Ifc2x3 | SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3),
-            ) => Ok(Release {
-                version,
-                schema: for_version(version).expect("verified releases are bundled"),
-            }),
+            ) => match for_version(version) {
+                Ok(schema) => Ok(Release { version, schema }),
+                Err(_) => Err(ExactPropertyError::UnsupportedSchema {
+                    schema: token.clone(),
+                }),
+            },
             _ => Err(ExactPropertyError::UnsupportedSchema {
                 schema: token.clone(),
             }),

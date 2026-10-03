@@ -267,6 +267,8 @@ mod spatial {
         assert!(tree.orphans.is_empty() && tree.anomalies.is_empty());
     }
 
+    // The file declares IFC4X1, which a build must bundle to read it (#306).
+    #[cfg(feature = "ifc4x1")]
     #[test]
     fn a_release_the_tree_is_not_verified_for_binds_none() {
         let text = std::fs::read_to_string(format!(
@@ -552,6 +554,8 @@ fn cost_without_the_feature_refuses() {
 mod georef {
     use super::*;
 
+    // The fixture declares IFC4X3, which a build must bundle to read it (#306).
+    #[cfg(feature = "ifc4x3")]
     #[test]
     fn a_map_conversion_crosses_with_its_crs_and_units() {
         let maps = fixture("synthetic-surfaces/synthetic_conic_offset_bounded.ifc")

@@ -21,6 +21,16 @@ Cost semantics as a borrowed view over the IFC model.
 
 `ifc-cost` — cost semantics as a **view** over the model.
 
+## Features
+
+| Feature | Default | Enables |
+| --- | --- | --- |
+| `ifc2x3` | yes | `ifc-schema/ifc2x3` |
+| `ifc4` | yes | `ifc-schema/ifc4` |
+| `ifc4x1` | yes | `ifc-schema/ifc4x1` |
+| `ifc4x2` | yes | `ifc-schema/ifc4x2` |
+| `ifc4x3` | yes | `ifc-schema/ifc4x3` |
+
 ## Depends on
 
 - [`ifc-model`](./ifc-model)

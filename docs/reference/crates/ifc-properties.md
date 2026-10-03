@@ -27,6 +27,16 @@ consumers actually want.
 317 for IFC2x3 and 420 for IFC4. That is a machine-readable catalogue, so
 standard Psets are data here rather than hand-written tables.
 
+## Features
+
+| Feature | Default | Enables |
+| --- | --- | --- |
+| `ifc2x3` | yes | `ifc-schema/ifc2x3` |
+| `ifc4` | yes | `ifc-schema/ifc4` |
+| `ifc4x1` | yes | `ifc-schema/ifc4x1` |
+| `ifc4x2` | yes | `ifc-schema/ifc4x2` |
+| `ifc4x3` | yes | `ifc-schema/ifc4x3` |
+
 ## Depends on
 
 - [`ifc-model`](./ifc-model)
