@@ -8,6 +8,12 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#318)
+
+- `OPENBIM_IFC_STATUS_CATALOG_NOT_LOADED` (27), so every binding code has
+  a status. This library embeds the catalog and never returns it. Still
+  ABI 0.1.3 (unreleased); additive, a patch release.
+
 ### Added (#123, property sets: write side)
 
 - `openbim_ifc_v0_1_model_set_properties` (a batch as one value tape,

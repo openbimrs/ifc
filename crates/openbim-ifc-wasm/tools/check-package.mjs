@@ -4,9 +4,14 @@
 //
 // 1. `npm pack` the package and unpack the tarball into a scratch project's
 //    node_modules, so the `files` list and the `exports` map are what is
-//    under test, not the build directory.
+//    under test, not the build directory. The tarball must carry the
+//    PSD/QTO catalog files and their loader (#318), which the release
+//    workflow publishes from the same build.
 // 2. Node: tests/js/web/node-entry.mjs resolves the package by name through
-//    `require` and `import`, and loads the `web` build from its bytes.
+//    `require` and `import`, and loads the `web` build from its bytes. Each
+//    target loads the catalog lazily and writes a `Pset_` property
+//    (tests/js/web/smoke-core.mjs); webpack emits the catalog file it
+//    needs as an asset, and the browser fetches it.
 // 3. Bundler: webpack bundles tests/js/web/bundler-entry.mjs for the browser
 //    with `experiments.asyncWebAssembly`, the bundler target's contract.
 // 4. Browser: headless Chrome loads one page that imports the `web` build
@@ -53,6 +58,14 @@ const HARNESS = `<!doctype html>
   await fetch("/result", { method: "POST", body: JSON.stringify(results) });
 </script>
 `;
+
+/** Files the published tarball must carry beside the module (#318). */
+const REQUIRED = [
+  "catalog.mjs",
+  "catalog/ifc2x3-tc1.bin",
+  "catalog/ifc4-add2-tc1.bin",
+  "catalog/ifc4x3-add2.bin",
+];
 
 const TYPES = {
   ".html": "text/html",
@@ -106,12 +119,20 @@ if (failed) process.exit(1);
 
 /** Pack `pkg` as npm publishes it and unpack it as an install would. */
 async function unpack(dir) {
-  const [{ filename }] = JSON.parse(
+  const [{ filename, files }] = JSON.parse(
     execFileSync("npm", ["pack", "--json", "--pack-destination", dir], {
       cwd: pkg,
       encoding: "utf8",
     }),
   );
+  const packed = new Set(files.map((file) => file.path));
+  const missing = REQUIRED.filter((file) => !packed.has(file));
+  if (missing.length > 0) {
+    throw new Error(`the packed tarball lacks ${missing.join(", ")}`);
+  }
+  for (const file of files.filter((f) => f.path.startsWith("catalog/"))) {
+    console.log(`packed ${file.path}: ${file.size} bytes`);
+  }
   const scope = path.join(dir, "node_modules/@openbim");
   await mkdir(scope, { recursive: true });
   execFileSync("tar", ["-xzf", path.join(dir, filename), "-C", scope]);

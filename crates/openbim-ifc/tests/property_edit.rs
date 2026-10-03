@@ -687,7 +687,7 @@ fn a_catalog_set_is_checked_against_its_template() {
     );
 }
 
-#[cfg(not(feature = "property-catalog"))]
+#[cfg(not(any(feature = "property-catalog", feature = "property-catalog-runtime")))]
 #[test]
 fn a_catalog_set_is_refused_without_the_catalog() {
     let mut model = fixture();

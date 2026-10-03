@@ -7,7 +7,7 @@ use openbim_ifc_binding_core::BindingError;
 /// Result of every ABI call. `Ok` is zero; every failure is non-zero.
 ///
 /// The values from `Parse` to `FeatureDisabled`, `InvalidModel`, and
-/// `MissingReference` to `MissingProperty`, are the binding errors shared
+/// `MissingReference` to `CatalogNotLoaded`, are the binding errors shared
 /// with the JavaScript and Python bindings; the rest describe misuse of the
 /// C boundary itself.
 #[repr(i32)]
@@ -64,6 +64,11 @@ pub enum OpenbimIfcStatus {
     /// A property edit removed a property the object does not state
     /// (`missing-property`).
     MissingProperty = 26,
+    /// A property edit wrote to a `Pset_`/`Qto_` set before its release's
+    /// catalog was loaded (`catalog-not-loaded`). This library embeds the
+    /// catalog, so it never returns this; the value is reserved so every
+    /// binding code has one.
+    CatalogNotLoaded = 27,
     /// A Rust panic was contained at the boundary. Report it as a bug.
     Panic = 255,
 }
@@ -87,6 +92,7 @@ impl From<&BindingError> for OpenbimIfcStatus {
             BindingError::WrongEntityType(_) => Self::WrongEntityType,
             BindingError::TemplateViolation(_) => Self::TemplateViolation,
             BindingError::MissingProperty(_) => Self::MissingProperty,
+            BindingError::CatalogNotLoaded(_) => Self::CatalogNotLoaded,
         }
     }
 }
@@ -181,6 +187,10 @@ mod tests {
             (
                 BindingError::MissingProperty(String::new()),
                 OpenbimIfcStatus::MissingProperty,
+            ),
+            (
+                BindingError::CatalogNotLoaded(String::new()),
+                OpenbimIfcStatus::CatalogNotLoaded,
             ),
         ];
         for (error, status) in cases {

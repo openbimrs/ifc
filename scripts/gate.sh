@@ -142,7 +142,7 @@ gate_features() {
 
     # `spatial` and `properties` need a release to read through (#306), so
     # their combinations name one; both crates refuse to compile without.
-    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,ifc4" "--features step,schema-api" "--features step,geometry-select" "--features step,ifc4,validate" "--features step,ifc4,spatial,geometry-select" "--features step,ifc4,properties,geometry-select" "--features step,ifc4,spatial,properties" "--features step,ifc4,georef,properties" "--all-features"; do
+    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,ifc4" "--features step,schema-api" "--features step,geometry-select" "--features step,ifc4,validate" "--features step,ifc4,spatial,geometry-select" "--features step,ifc4,properties,geometry-select" "--features step,ifc4,spatial,properties" "--features step,ifc4,georef,properties" "--features step,ifc4,properties,property-catalog-runtime" "--all-features"; do
         # shellcheck disable=SC2086
         cargo build -p openbim-ifc $features
         # shellcheck disable=SC2086
@@ -171,6 +171,14 @@ gate_features() {
     # catalog when `property-catalog` is on; `--all-features` hides the
     # refusal a build without it gives.
     cargo test -p openbim-ifc --features step,schema,properties --test property_edit
+    # With the catalog supplied at runtime (#318), a `Pset_`/`Qto_` edit
+    # waits for its edition to be installed; `--all-features` embeds it.
+    cargo test -p openbim-ifc --features step,schema,properties,property-catalog-runtime \
+        --test property_edit --test property_catalog_runtime
+    # The catalog crate on its own: the runtime column without the embedded
+    # container, and its wasm32 build (sha2 for the pins must build there).
+    cargo clippy -p ifc-template-catalog --no-default-features --features runtime --lib -- -D warnings
+    cargo build -p ifc-template-catalog --no-default-features --features runtime --target wasm32-unknown-unknown
 
     # Per-release schema column (#112). `--all-features` always bundles every
     # release, so a single-release build is the only place the `NotBundled`
@@ -193,6 +201,9 @@ gate_features() {
     # another: this run writes without the catalog, with the IFC4 table
     # alone, so an IFC2X3 file is refused as unbundled.
     cargo test -p openbim-ifc-binding-core --no-default-features --features ifc4,properties-write
+    # The npm package's catalog (#318): loaded at runtime, refused with
+    # `catalog-not-loaded` before; tests/catalog.rs loads it.
+    cargo test -p openbim-ifc-binding-core --no-default-features --features ifc4,property-catalog-runtime
 
     # Every crate the bindings reach takes its releases from the build too
     # (#306): each builds and tests with one release; the binding core with

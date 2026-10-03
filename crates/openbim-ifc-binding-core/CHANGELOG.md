@@ -8,6 +8,19 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#318, runtime PSD/QTO catalog)
+
+- Feature `property-catalog-runtime`: the catalog is loaded at runtime
+  instead of embedded. Module `catalog`: `file_name(release)`,
+  `is_loaded(release)`, `load(release, bytes)` (pinned SHA-256, else
+  `invalid-value`) and `RELEASES`; with the embedded catalog `is_loaded`
+  is `true` and `load` a no-op, without either feature each refuses with
+  `feature-disabled`.
+- `BindingError::CatalogNotLoaded` (`catalog-not-loaded`): a write to a
+  `Pset_`/`Qto_` set before its release's catalog is loaded, in a
+  runtime-catalog build. `BindingError` is exhaustive, so a breaking
+  change: minor (internal, unreleased).
+
 ### Added (#123, property sets: write side)
 
 - `IfcModel::set_properties` (one checked transaction over a batch of

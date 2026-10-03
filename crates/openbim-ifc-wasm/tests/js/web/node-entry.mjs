@@ -17,4 +17,4 @@ if (Required !== Imported) {
 const wasm = new URL("openbim_ifc_wasm_bg.wasm", import.meta.resolve("@openbim/ifc/web"));
 await init({ module_or_path: await readFile(wasm) });
 
-export const result = { node: smoke(Imported), web: smoke(Web) };
+export const result = { node: await smoke(Imported), web: await smoke(Web) };

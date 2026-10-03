@@ -66,11 +66,17 @@ properties = ["openbim-ifc/properties"]
 # read side itself, so a read-only build can leave it out.
 properties-write = ["properties"]
 # The versioned PSD/QTO catalog (ADR 0017) property edits check `Pset_` and
-# `Qto_` sets against. It embeds the IFC2X3, IFC4 and IFC4X3 catalogs:
-# +3.7 MB (+0.99 MB gzip), the largest single addition to a browser build.
+# `Qto_` sets against. It embeds the IFC2X3, IFC4 and IFC4X3 catalogs in one
+# container (#317): +1.4 MB (+0.53 MB gzip) to a browser build.
 # Without it, a write to such a set refuses with `feature-disabled` rather
 # than going unchecked.
 property-catalog = ["properties-write", "openbim-ifc/property-catalog"]
+# The same catalog loaded at runtime instead (#318): nothing is embedded;
+# the host hands each edition's pinned snapshot bytes to `catalog::load`,
+# and a write to a `Pset_`/`Qto_` set refuses with `catalog-not-loaded`
+# until its release is loaded. The npm package's choice. With
+# `property-catalog` too, the embedded catalog is used.
+property-catalog-runtime = ["properties-write", "openbim-ifc/property-catalog-runtime"]
 # The spatial containment tree.
 spatial = ["openbim-ifc/spatial"]
 # Classification references, inherited from the type object too.

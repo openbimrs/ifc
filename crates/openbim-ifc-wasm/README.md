@@ -28,7 +28,7 @@ Documentation: [JavaScript guide](https://openbimrs.github.io/ifc/bindings/javas
   with type inheritance (`propertySets`, `resolveUnit`), the spatial tree,
   classifications, materials, systems, cost and georeferencing (#123).
 - Write property sets and quantities (`setProperties`) as one checked
-  transaction, checked against the release and its PSD/QTO catalog (#123).
+  transaction; `await IfcModel.loadCatalog(release)` loads its PSD/QTO catalog.
 
 ## What it does not do (yet)
 
@@ -41,11 +41,11 @@ Validation, ifcXML, the reachability lint, the seven domain views, the
 property writer and its PSD/QTO catalog are default cargo features
 (`validate`, `ifcxml`, `unreachable`, `properties`, `spatial`,
 `classification`, `material`, `systems`, `cost`, `georef`,
-`properties-write`, `property-catalog`), like the IFC releases. A browser
-build can leave any of them out, e.g. `--no-default-features --features
-ifc4,ifcxml,spatial`; the left-out methods then throw `feature-disabled`.
-The catalog is the largest at 3.7 MB. IFC4 alone is 770,860 bytes, with
-everything but the catalog 1,963,827 ([sizes](https://openbimrs.github.io/ifc/bindings/javascript#module-size)).
+`properties-write`, `property-catalog-runtime`), like the IFC releases. A
+browser build can leave any of them out, e.g. `--no-default-features
+--features ifc4,ifcxml,spatial`; the left-out methods then throw
+`feature-disabled`. The default module is 2,648,193 bytes; IFC4 alone is
+770,860 ([sizes](https://openbimrs.github.io/ifc/bindings/javascript#module-size)).
 
 ## Example (Node)
 

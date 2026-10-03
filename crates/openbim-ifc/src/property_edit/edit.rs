@@ -213,6 +213,15 @@ pub enum PropertyEditFailure {
     /// A `Pset_` or `Qto_` set cannot be checked: the build leaves out the
     /// `property-catalog` feature.
     CatalogUnavailable(String),
+    /// A `Pset_` or `Qto_` set cannot be checked yet: the build reads the
+    /// catalog at runtime (`property-catalog-runtime`) and the release's
+    /// edition has not been installed.
+    CatalogNotLoaded {
+        /// The set name.
+        set: String,
+        /// The catalog edition the release reads, such as `IFC4X3 ADD2`.
+        edition: String,
+    },
     /// The planned transaction failed its preflight.
     Conflict(Vec<Conflict>),
 }
@@ -264,6 +273,10 @@ impl fmt::Display for PropertyEditFailure {
             Self::CatalogUnavailable(set) => write!(
                 f,
                 "{set} is a catalog set and this build has no catalog to check it against"
+            ),
+            Self::CatalogNotLoaded { set, edition } => write!(
+                f,
+                "{set} is a catalog set and the {edition} catalog is not installed"
             ),
             Self::Conflict(conflicts) => write!(f, "the planned edit conflicts: {conflicts:?}"),
         }

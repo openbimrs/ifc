@@ -9,4 +9,4 @@ import init, { IfcModel } from "@openbim/ifc/web";
 await init(); // fetches openbim_ifc_wasm_bg.wasm from next to the module
 // docs:end
 
-export const result = smoke(IfcModel);
+export const result = await smoke(IfcModel);

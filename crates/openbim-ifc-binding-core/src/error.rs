@@ -62,6 +62,10 @@ pub enum BindingError {
     /// A property edit (#123) removed a property the object does not state,
     /// including one it only inherits from its type object.
     MissingProperty(String),
+    /// A property edit wrote to a `Pset_`/`Qto_` set before the release's
+    /// PSD/QTO catalog was loaded, in a build that loads it at runtime
+    /// (`property-catalog-runtime`, #318). Load it and retry.
+    CatalogNotLoaded(String),
 }
 
 impl BindingError {
@@ -84,6 +88,7 @@ impl BindingError {
             Self::WrongEntityType(_) => "wrong-entity-type",
             Self::TemplateViolation(_) => "template-violation",
             Self::MissingProperty(_) => "missing-property",
+            Self::CatalogNotLoaded(_) => "catalog-not-loaded",
         }
     }
 }
@@ -115,6 +120,11 @@ impl fmt::Display for BindingError {
             Self::WrongEntityType(detail) => write!(f, "wrong entity type: {detail}"),
             Self::TemplateViolation(detail) => write!(f, "template violation: {detail}"),
             Self::MissingProperty(detail) => write!(f, "missing property: {detail}"),
+            Self::CatalogNotLoaded(detail) => write!(
+                f,
+                "catalog not loaded: {detail}; load the release's catalog first \
+                 (JavaScript: `await IfcModel.loadCatalog(release)`)"
+            ),
         }
     }
 }
@@ -146,6 +156,7 @@ mod tests {
         "wrong-entity-type",
         "template-violation",
         "missing-property",
+        "catalog-not-loaded",
     ];
 
     /// One value of every variant, in declaration order.
@@ -167,6 +178,7 @@ mod tests {
             BindingError::WrongEntityType(String::new()),
             BindingError::TemplateViolation(String::new()),
             BindingError::MissingProperty(String::new()),
+            BindingError::CatalogNotLoaded(String::new()),
         ];
         // Exhaustive on purpose: a new variant does not compile until it is
         // listed above, so its code cannot escape the snapshot.
@@ -187,7 +199,8 @@ mod tests {
                 | BindingError::Unsupported(_)
                 | BindingError::WrongEntityType(_)
                 | BindingError::TemplateViolation(_)
-                | BindingError::MissingProperty(_) => {}
+                | BindingError::MissingProperty(_)
+                | BindingError::CatalogNotLoaded(_) => {}
             }
         }
         all

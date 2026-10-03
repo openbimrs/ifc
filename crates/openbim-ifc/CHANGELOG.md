@@ -12,6 +12,20 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#318, runtime PSD/QTO catalog)
+
+- Feature `property-catalog-runtime`: property edits check `Pset_`/`Qto_`
+  sets against a catalog the host installs at runtime
+  (`property_catalog::runtime::install`) instead of the embedded one; until
+  the release's edition is installed such an edit is refused with the new
+  `PropertyEditFailure::CatalogNotLoaded { set, edition }` and nothing is
+  written. With `property-catalog` too, the embedded catalog is used.
+  `property-catalog` now enables `ifc-template-catalog/embedded`
+  explicitly. The embedded catalog shrinks from 3.7 MB to 1.4 MB with the
+  catalog's compact format (#317).
+- Additive (`PropertyEditFailure` is `#[non_exhaustive]`): a patch
+  release on its own.
+
 ### Added (#123, property sets: write side)
 
 - `apply_property_edits` and `stage_property_edits` (feature

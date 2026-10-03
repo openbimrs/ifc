@@ -428,8 +428,25 @@ test("domain refusals carry the shared codes", () => {
   throwsCode(() => ifc4x1.propertySets(3n), "unsupported-schema");
 });
 
-test("property sets are written as one checked transaction", () => {
+test("property sets are written as one checked transaction", async () => {
   const model = openFixture("synthetic-properties/synthetic_properties.ifc");
+  const unchecked = { object: 31n, set: "Pset_WallCommon", name: "FireRating", value: { kind: "typed", type: "IFCLABEL", value: { kind: "text", value: "F60" } } };
+  // Before its release's catalog is loaded, a Pset_/Qto_ write is refused
+  // (#318) and the model is unchanged; other sets need no catalog.
+  const unloaded = model.write();
+  assert.equal(IfcModel.catalogLoaded("IFC4"), false);
+  assert.throws(
+    () => model.setProperties([unchecked]),
+    (error) => error.code === "catalog-not-loaded" && /loadCatalog/.test(error.message),
+  );
+  assert.deepEqual(model.write(), unloaded);
+  // docs:snippet js-catalog-load
+  // The module embeds no PSD/QTO catalog: load the release's edition once,
+  // before the first write to a Pset_ or Qto_ set.
+  await IfcModel.loadCatalog(model.schema); // reads catalog/ifc4-add2-tc1.bin
+  // docs:end
+  assert.equal(IfcModel.catalogLoaded("IFC4"), true);
+  assert.equal(IfcModel.catalogLoaded("IFC4X3"), false, "only the edition asked for");
   // docs:snippet js-domain-write
   const label = (value) => ({ kind: "typed", type: "IFCLABEL", value: { kind: "text", value } });
   // Wall #31 inherits FireRating from its type: the write overrides it on
@@ -486,4 +503,38 @@ test("property sets are written as one checked transaction", () => {
   refuses([{ object: 31n, set: "Custom", name: "A" }], "invalid-value");
   const ifc4x1 = IfcModel.parse(new TextEncoder().encode(CLASSIFIED.replace("'IFC4'", "'IFC4X1'")));
   throwsCode(() => ifc4x1.setProperty(3n, "Custom", "A", label("x")), "unsupported-schema");
+});
+
+test("the catalog loads per release, from bytes or a base URL, checked against its pin", async () => {
+  const catalog = path.join(pkg, "catalog");
+  const files = ["IFC2X3", "IFC4", "IFC4X3"].map((release) => IfcModel.catalogFile(release));
+  assert.deepEqual(files, ["ifc2x3-tc1.bin", "ifc4-add2-tc1.bin", "ifc4x3-add2.bin"]);
+  assert.equal(IfcModel.catalogFile("IFC4X3_ADD2"), "ifc4x3-add2.bin");
+  throwsCode(() => IfcModel.catalogFile("IFC4X1"), "unsupported-schema");
+  await assert.rejects(IfcModel.loadCatalog("IFC4X1"), (error) => error.code === "unsupported-schema");
+
+  // Another edition's bytes, or damaged ones, load nothing.
+  const ifc2x3 = readFileSync(path.join(catalog, "ifc2x3-tc1.bin"));
+  const ifc4x3 = readFileSync(path.join(catalog, "ifc4x3-add2.bin"));
+  throwsCode(() => IfcModel.loadCatalogBytes("IFC2X3", ifc4x3), "invalid-value");
+  const damaged = Uint8Array.from(ifc2x3);
+  damaged[damaged.length - 1] ^= 1;
+  await assert.rejects(
+    IfcModel.loadCatalog("IFC2X3", { bytes: damaged }),
+    (error) => error.code === "invalid-value",
+  );
+  assert.equal(IfcModel.catalogLoaded("IFC2X3"), false);
+
+  // The caller's bytes, then a base URL: each edition once.
+  await IfcModel.loadCatalog("IFC2X3", { bytes: ifc2x3 });
+  assert.equal(IfcModel.catalogLoaded("IFC2X3"), true);
+  await assert.rejects(
+    IfcModel.loadCatalog("IFC4X3", { baseUrl: new URL("file:///nonexistent/") }),
+    (error) => error.code === "io",
+  );
+  const base = new URL(`file://${catalog}`); // no trailing slash: still a directory
+  await Promise.all([IfcModel.loadCatalog("IFC4X3", { baseUrl: base }), IfcModel.loadCatalog("IFC4X3_ADD2")]);
+  assert.equal(IfcModel.catalogLoaded("IFC4X3"), true);
+  // Every edition is loaded now; loading all again is a no-op.
+  await IfcModel.loadCatalog();
 });
