@@ -41,7 +41,9 @@ export type IfcErrorCode =
   | "wrong-entity-type"
   | "template-violation"
   | "missing-property"
-  | "catalog-not-loaded";
+  | "catalog-not-loaded"
+  | "unknown-attribute"
+  | "derived-attribute";
 
 /**
  * Where `IfcModel.loadCatalog` reads a catalog snapshot from. By default
@@ -124,5 +126,23 @@ export interface UnreachableProduct {
   /** Target views the geometry was found in instead, for the second reason. */
   foundViews: string[];
   message: string;
+}
+
+/** One explicit attribute of an entity, from `IfcModel.attributeNames`. */
+export interface AttributeInfo {
+  /** The declared name in the schema's spelling, e.g. `GlobalId`. */
+  name: string;
+  /** Its slot: the `index` of `attribute` and `setAttribute`. */
+  index: number;
+  /** The declared type, or an aggregate's element type. */
+  typeName: string;
+  /** `{ kind: "null" }` is a valid value. */
+  optional: boolean;
+  /** A `LIST`, `SET`, `BAG` or `ARRAY`. */
+  aggregate: boolean;
+  /** Derived for this entity: written `*`, refused by `setAttributeByName`. */
+  derived: boolean;
+  /** The entity that declares the attribute, e.g. `IfcRoot`. */
+  declaredBy: string;
 }
 "#;

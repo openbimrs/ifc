@@ -66,6 +66,13 @@ pub enum BindingError {
     /// PSD/QTO catalog was loaded, in a build that loads it at runtime
     /// (`property-catalog-runtime`, #318). Load it and retry.
     CatalogNotLoaded(String),
+    /// A by-name attribute access (#326) named no explicit attribute of
+    /// the entity's type in the declared release (an `INVERSE` attribute
+    /// has no slot and is unknown too).
+    UnknownAttribute(String),
+    /// A by-name attribute write (#326) named a slot the entity's type
+    /// derives: the file writes it `*` and it holds no value to set.
+    DerivedAttribute(String),
 }
 
 impl BindingError {
@@ -89,6 +96,8 @@ impl BindingError {
             Self::TemplateViolation(_) => "template-violation",
             Self::MissingProperty(_) => "missing-property",
             Self::CatalogNotLoaded(_) => "catalog-not-loaded",
+            Self::UnknownAttribute(_) => "unknown-attribute",
+            Self::DerivedAttribute(_) => "derived-attribute",
         }
     }
 }
@@ -125,6 +134,8 @@ impl fmt::Display for BindingError {
                 "catalog not loaded: {detail}; load the release's catalog first \
                  (JavaScript: `await IfcModel.loadCatalog(release)`)"
             ),
+            Self::UnknownAttribute(detail) => write!(f, "unknown attribute: {detail}"),
+            Self::DerivedAttribute(detail) => write!(f, "derived attribute: {detail}"),
         }
     }
 }
@@ -157,6 +168,8 @@ mod tests {
         "template-violation",
         "missing-property",
         "catalog-not-loaded",
+        "unknown-attribute",
+        "derived-attribute",
     ];
 
     /// One value of every variant, in declaration order.
@@ -179,6 +192,8 @@ mod tests {
             BindingError::TemplateViolation(String::new()),
             BindingError::MissingProperty(String::new()),
             BindingError::CatalogNotLoaded(String::new()),
+            BindingError::UnknownAttribute(String::new()),
+            BindingError::DerivedAttribute(String::new()),
         ];
         // Exhaustive on purpose: a new variant does not compile until it is
         // listed above, so its code cannot escape the snapshot.
@@ -200,7 +215,9 @@ mod tests {
                 | BindingError::WrongEntityType(_)
                 | BindingError::TemplateViolation(_)
                 | BindingError::MissingProperty(_)
-                | BindingError::CatalogNotLoaded(_) => {}
+                | BindingError::CatalogNotLoaded(_)
+                | BindingError::UnknownAttribute(_)
+                | BindingError::DerivedAttribute(_) => {}
             }
         }
         all

@@ -93,6 +93,56 @@ The protocol is documented in the crate's
   caller-owned buffer, sized by a first call with `NULL, 0`;
 - every failure is an `OpenbimIfcStatus`, never a crash.
 
+## Attributes by name
+
+<!-- SNIPPET:c-attribute-by-name -->
+
+```c
+/* Read and write #1's Name by name: the slot comes from the release the
+ * header declares, so the same call works for IFC2X3, IFC4 and IFC4X3. */
+OpenbimIfcValueNode value[4];
+uint8_t text[64];
+size_t value_nodes = 0, text_len = 0;
+const char name[] = "Name";
+if (openbim_ifc_v0_1_entity_attribute_by_name(model, 1, (const uint8_t *)name,
+                                              strlen(name), value, 4, &value_nodes,
+                                              text, sizeof text,
+                                              &text_len) != OPENBIM_IFC_STATUS_OK) {
+  return 1;
+}
+printf("Name: %.*s\n", (int)value[0].str_len, (const char *)text + value[0].str_offset);
+
+/* The new value is a one-value tape: TEXT at offset 0 of `renamed`. */
+const char renamed[] = "Renamed";
+OpenbimIfcValueNode edit;
+memset(&edit, 0, sizeof edit);
+edit.kind = OPENBIM_IFC_KIND_TEXT;
+edit.str_len = strlen(renamed);
+OpenbimIfcStatus status = openbim_ifc_v0_1_entity_set_attribute_by_name(
+    model, 1, (const uint8_t *)name, strlen(name), &edit, 1,
+    (const uint8_t *)renamed, strlen(renamed));
+```
+
+<!-- /SNIPPET -->
+
+`openbim_ifc_v0_1_entity_attribute_by_name` and
+`openbim_ifc_v0_1_entity_set_attribute_by_name` take the name as UTF-8
+bytes and resolve it against the release the file's header declares:
+`IfcTask.Status` is slot 6 of an IFC2X3 file and slot 7 of an IFC4 one.
+`openbim_ifc_v0_1_entity_attribute_names` returns a tape `LIST` of
+`AttributeInfo` records, one per explicit attribute in slot order,
+inherited first: name (`TEXT`), index (`INTEGER`), type name (`TEXT`),
+optional, aggregate and derived (`BOOL`), declared by (`TEXT`). Names
+match case-insensitively and come back in the schema's spelling.
+`INVERSE` attributes hold no slot and are unknown names
+(`OPENBIM_IFC_STATUS_UNKNOWN_ATTRIBUTE`, `unknown-attribute`). A derived
+slot reads as stored (`OPENBIM_IFC_KIND_DERIVED`) and refuses a write
+(`OPENBIM_IFC_STATUS_DERIVED_ATTRIBUTE`, `derived-attribute`). An entity
+type the declared release does not have is
+`OPENBIM_IFC_STATUS_UNSUPPORTED_SCHEMA`. The positional
+`openbim_ifc_v0_1_entity_attribute` and `_entity_set_attribute` are
+unchanged.
+
 ## Beyond the record model
 
 <!-- SNIPPET:c-beyond-records -->
@@ -323,6 +373,44 @@ Attribute `index` of entity `id` as a value tape (`$` past the end).
 As for `fill_tape`: each buffer null with capacity 0, or valid for its
 capacity; both `out_*_required` valid for one write.
 
+#### `openbim_ifc_v0_1_entity_attribute_by_name`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_entity_attribute_by_name(OpenbimIfcModel model, uint64_t id, const uint8_t *name, size_t name_len, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+Attribute `name` (UTF-8, `name_len` bytes, any case, e.g. `Name`) of
+entity `id` as a value tape; `NULL` when the record stops before its
+slot.
+
+`MissingEntity`, `UnknownAttribute`, `UnsupportedSchema` as for
+`openbim_ifc_v0_1_entity_attribute_names`.
+
+**Safety.**
+`name` valid for `name_len` reads; otherwise as for
+`openbim_ifc_v0_1_entity_attribute`.
+
+#### `openbim_ifc_v0_1_entity_attribute_names`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_entity_attribute_names(OpenbimIfcModel model, uint64_t id, size_t *out_count, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+Every explicit attribute of entity `id` in slot order, inherited first:
+a `LIST` of `AttributeInfo` records, their number in `out_count`.
+`AttributeInfo`: name (`TEXT`, the schema's spelling), index
+(`INTEGER`, the slot), type name (`TEXT`), optional (`BOOL`), aggregate
+(`BOOL`), derived (`BOOL`: written `*`, not writable), declared by
+(`TEXT`, the entity introducing it). `INVERSE` attributes hold no slot
+and are not listed.
+
+`MissingEntity`; `UnsupportedSchema` when the header names no bundled
+release or the release does not declare the entity's type.
+
+**Safety.**
+`out_count` valid for one write; otherwise as for
+`openbim_ifc_v0_1_entity_attribute`.
+
 #### `openbim_ifc_v0_1_entity_attributes`
 
 ```c
@@ -356,6 +444,23 @@ the end pads the gap with `$`.
 **Safety.**
 `nodes` must be valid for `node_count` reads and `strings` for
 `string_len` reads (either may be null when its length is 0).
+
+#### `openbim_ifc_v0_1_entity_set_attribute_by_name`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_entity_set_attribute_by_name(OpenbimIfcModel model, uint64_t id, const uint8_t *name, size_t name_len, const OpenbimIfcValueNode *nodes, size_t node_count, const uint8_t *strings, size_t string_len);
+```
+
+Set attribute `name` (UTF-8, any case) of entity `id` from a one-value
+tape. Every check runs before the write, so a refusal changes nothing.
+
+`DerivedAttribute` for a slot the entity's type derives (written `*`);
+otherwise as for `openbim_ifc_v0_1_entity_attribute_by_name` and
+`openbim_ifc_v0_1_entity_set_attribute`.
+
+**Safety.**
+`name` valid for `name_len` reads; the tape as for
+`openbim_ifc_v0_1_entity_set_attribute`.
 
 #### `openbim_ifc_v0_1_entity_type`
 
@@ -957,6 +1062,8 @@ Write the ABI and crate versions.
 | `OPENBIM_IFC_STATUS_TEMPLATE_VIOLATION` | 25 | A property edit wrote a value its PSD/QTO template or property enumeration refuses (`template-violation`). |
 | `OPENBIM_IFC_STATUS_MISSING_PROPERTY` | 26 | A property edit removed a property the object does not state (`missing-property`). |
 | `OPENBIM_IFC_STATUS_CATALOG_NOT_LOADED` | 27 | A property edit wrote to a `Pset_`/`Qto_` set before its release's catalog was loaded (`catalog-not-loaded`). This library embeds the catalog, so it never returns this; the value is reserved so every binding code has one. |
+| `OPENBIM_IFC_STATUS_UNKNOWN_ATTRIBUTE` | 28 | A by-name attribute access named no explicit attribute of the entity's type in the declared release (`unknown-attribute`). |
+| `OPENBIM_IFC_STATUS_DERIVED_ATTRIBUTE` | 29 | A by-name attribute write named a slot the entity's type derives, written `*` (`derived-attribute`). |
 | `OPENBIM_IFC_STATUS_PANIC` | 255 | A Rust panic was contained at the boundary. Report it as a bug. |
 
 <!-- API:C:END -->

@@ -39,6 +39,15 @@ with cargo.
 - **Threads.** Calls on different models run in parallel; calls on the same
   model are serialised.
 
+## Attributes by name
+
+`openbim_ifc_v0_1_entity_attribute_by_name` and
+`_entity_set_attribute_by_name` resolve a UTF-8 attribute name
+(case-insensitive) against the release the header declares, inherited
+attributes included; `_entity_attribute_names` lists every explicit
+attribute in slot order as a tape of records. An unknown name is
+`UNKNOWN_ATTRIBUTE`, a write to a derived (`*`) slot `DERIVED_ATTRIBUTE`.
+
 ## Values: tapes
 
 An attribute value is a tree (`(#1,#2)`, `IFCLABEL('x')`), so it crosses

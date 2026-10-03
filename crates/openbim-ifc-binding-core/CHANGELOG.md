@@ -8,6 +8,18 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#326, attributes by name)
+
+- `IfcModel::attribute_names(id)` (the `AttributeInfo` records, a
+  `ToRecord`, in slot order), `attribute_by_name(id, name)` and
+  `set_attribute_by_name(id, name, value)`, resolved against the release
+  the header declares through the facade's `attribute_slots`. Names match
+  case-insensitively. An entity type the release does not declare, or a
+  release the build leaves out, is `unsupported-schema`.
+- `BindingError::UnknownAttribute` (`unknown-attribute`) and
+  `DerivedAttribute` (`derived-attribute`). `BindingError` is exhaustive,
+  so a breaking change: minor (internal, unreleased).
+
 ### Added (#318, runtime PSD/QTO catalog)
 
 - Feature `property-catalog-runtime`: the catalog is loaded at runtime

@@ -24,13 +24,30 @@ model = IfcModel.parse(data)  # or IfcModel.open("model.ifc")
 schema = model.schema  # "IFC4"
 
 for wall in model.ids_of_type("IfcWall"):
-    name = model.attribute(wall, 2)  # Text(value='Wall')
-    model.set_attribute(wall, 2, Text(f"{name.value} (checked)"))
+    # Names resolve against the release the header declares.
+    name = model.attribute_by_name(wall, "Name")  # Text(value='Wall')
+    model.set_attribute_by_name(wall, "Name", Text(f"{name.value} (checked)"))
 
 data = model.write()  # bytes, ready to save
 ```
 
 <!-- /SNIPPET -->
+
+Attributes are addressed by name or by position. `attribute_by_name(id,
+"Name")` and `set_attribute_by_name(id, "Name", value)` resolve the name
+against the release the file's header declares, so the same code reads
+`IfcTask.Status` from slot 6 of an IFC2X3 file and slot 7 of an IFC4 one.
+`attribute_names(id)` lists every explicit attribute in slot order,
+inherited first, as frozen `AttributeInfo(name, index, type_name,
+optional, aggregate, derived, declared_by)` records. Names match
+case-insensitively and come back in the schema's spelling. `INVERSE`
+attributes hold no slot and are unknown names (`unknown-attribute`). A
+slot the entity's type derives is listed with `derived=True`, reads as
+stored (`Derived()`) and refuses a write (`derived-attribute`). An entity
+type the declared release does not have, or a release the build leaves
+out, is `unsupported-schema`. `attribute(id, index)` and
+`set_attribute(id, index, value)` stay the raw, release-independent slot
+access.
 
 Attribute values are frozen dataclasses, one per STEP form, so nothing is
 lost in a round trip: `Null()` is `$`, `Derived()` is `*`, `Unknown()` is
@@ -230,6 +247,9 @@ Generated from the `openbim_ifc` package source.
 | `model.attributes(id: int) -> List[Value]` | Every attribute of entity `id`, in declaration order. |
 | `model.attribute(id: int, index: int) -> Value` | Attribute `index` of entity `id`; `Null` past the end. |
 | `model.set_attribute(id: int, index: int, value: Value) -> Value` | Set attribute `index` of entity `id`; returns the old value. |
+| `model.attribute_names(id: int) -> List[AttributeInfo]` | Every explicit attribute of entity `id` in slot order, inherited first, as the release the header declares defines them. `INVERSE` attributes hold no slot and are not listed. |
+| `model.attribute_by_name(id: int, name: str) -> Value` | Attribute `name` of entity `id`, matched case-insensitively (`"Name"`) and resolved against the declared release; `Null` when the record stops before its slot. |
+| `model.set_attribute_by_name(id: int, name: str, value: Value) -> Value` | Set attribute `name` of entity `id`; returns the old value. A derived attribute raises `derived-attribute`, an unknown name `unknown-attribute`, and a refused write changes nothing. |
 | `model.add(type_name: str, attributes: Iterable[Value]) -> int` | Append an entity; returns its new id. |
 | `model.remove(id: int) -> None` | Remove entity `id`, leaving references to it dangling. |
 | `model.dangling_references() -> List[Tuple[int, int]]` | Every `(from, to)` pair where `to` does not exist. |

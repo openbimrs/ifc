@@ -324,6 +324,39 @@ impl NativeModel {
         )
     }
 
+    /// Every explicit attribute of `id`, in slot order, as `AttributeInfo`
+    /// record dicts.
+    fn attribute_names<'py>(&self, py: Python<'py>, id: u64) -> PyResult<Bound<'py, PyList>> {
+        let names = self.inner.attribute_names(id).map_err(py_err)?;
+        records::records_to_py(py, &to_records(&names))
+    }
+
+    fn attribute_by_name<'py>(
+        &self,
+        py: Python<'py>,
+        id: u64,
+        name: &str,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        to_py(py, &self.inner.attribute_by_name(id, name).map_err(py_err)?)
+    }
+
+    fn set_attribute_by_name<'py>(
+        &mut self,
+        py: Python<'py>,
+        id: u64,
+        name: &str,
+        value: &Bound<'py, PyAny>,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let value = from_py(value).map_err(py_err)?;
+        to_py(
+            py,
+            &self
+                .inner
+                .set_attribute_by_name(id, name, value)
+                .map_err(py_err)?,
+        )
+    }
+
     fn add(&mut self, type_name: &str, attributes: &Bound<'_, PyAny>) -> PyResult<u64> {
         let values = attributes
             .try_iter()

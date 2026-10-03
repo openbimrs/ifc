@@ -93,13 +93,19 @@ pub use ifc_schema as schema;
 // keeps in separate crates, so the join lives in this orchestration layer.
 // Whether an entity is an `IfcRoot`, and where its `GlobalId` and `Name`
 // sit, are the same model/schema join, for every binding and report that
-// keys by GlobalId (#123). Both modules gate themselves on `schema-api`
+// keys by GlobalId (#123), and so is the slot an attribute name occupies in
+// the declared release (#326). The modules gate themselves on `schema-api`
 // with an inner `#![cfg]`.
 mod identity;
+mod named_attribute;
 mod subtype_query;
 #[cfg(feature = "schema-api")]
 pub use self::{
     identity::{root_identity, RootIdentity},
+    named_attribute::{
+        attribute_by_name, attribute_slot, attribute_slots, set_attribute_by_name, AttributeSlot,
+        NamedAttributeError,
+    },
     subtype_query::ids_of_type_including_subtypes,
 };
 

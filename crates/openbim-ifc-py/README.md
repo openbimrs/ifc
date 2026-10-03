@@ -19,12 +19,17 @@ with open("model.ifc", "rb") as f:
 
 print(model.schema, len(model))
 for id in model.ids_of_type_including_subtypes("IfcWall"):
-    print(id, model.attribute(id, 2))      # Name, e.g. Text('Wall')
+    print(id, model.attribute_by_name(id, "Name"))  # e.g. Text('Wall')
 
-model.set_attribute(id, 2, Text("Renamed"))
+model.set_attribute_by_name(id, "Name", Text("Renamed"))
 with open("out.ifc", "wb") as f:
     f.write(model.write())
 ```
+
+Names resolve against the release the file's header declares, inherited
+attributes included; `attribute_names(id)` lists them in slot order with
+their `optional` and `derived` flags. `attribute(id, index)` and
+`set_attribute(id, index, value)` address a slot by position.
 
 ## Values
 

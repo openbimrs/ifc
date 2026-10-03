@@ -43,9 +43,11 @@ export async function smoke(IfcModel) {
     `count ${JSON.stringify(count, (_, v) => (typeof v === "bigint" ? `${v}n` : v))}`,
   );
 
-  model.setAttribute(5n, 2, { kind: "text", value: "Renamed" });
+  // Attributes by name (#326), resolved against the declared IFC4.
+  model.setAttributeByName(5n, "Name", { kind: "text", value: "Renamed" });
   const again = IfcModel.parse(model.write());
-  const name = again.attribute(5n, 2);
+  const name = again.attributeByName(5n, "name");
+  check(again.attributeNames(5n)[2].name === "Name", "attributeNames");
   check(name.kind === "text" && name.value === "Renamed", "edit survives write and re-parse");
 
   let code;
