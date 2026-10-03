@@ -107,9 +107,16 @@ pub use self::{
 #[cfg(feature = "cost")]
 pub use ifc_cost as cost;
 
-/// Property sets and quantities.
+/// Property sets and quantities, and their checked edit (`property_edit`
+/// below).
 #[cfg(feature = "properties")]
-pub use ifc_properties as properties;
+pub use {
+    ifc_properties as properties,
+    property_edit::{
+        apply_property_edits, stage_property_edits, PropertyEdit, PropertyEditError,
+        PropertyEditFailure, PropertyEditOutcome, SetType, StagedPropertyEdits,
+    },
+};
 
 /// Versioned external PSD/QTO template catalogs and correction profiles.
 #[cfg(feature = "property-catalog")]
@@ -294,11 +301,6 @@ pub use georeference::{georeferencing, GeoreferencingError};
 // on `properties` with an inner `#![cfg]`; the catalog checks need
 // `property-catalog` too.
 mod property_edit;
-#[cfg(feature = "properties")]
-pub use property_edit::{
-    apply_property_edits, stage_property_edits, PropertyEdit, PropertyEditError,
-    PropertyEditFailure, PropertyEditOutcome, SetType, StagedPropertyEdits,
-};
 
 mod feature_report;
 mod io;

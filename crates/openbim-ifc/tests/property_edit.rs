@@ -704,6 +704,17 @@ fn a_catalog_set_is_refused_without_the_catalog() {
         refused,
         PropertyEditFailure::CatalogUnavailable("Pset_WallCommon".into())
     );
+    // The object is checked first.
+    let (_, refused) = failure(
+        &mut model,
+        &[PropertyEdit::set(
+            EntityId(999),
+            "Pset_WallCommon",
+            "FireRating",
+            label("F90"),
+        )],
+    );
+    assert_eq!(refused, PropertyEditFailure::MissingEntity(EntityId(999)));
     // Removal needs no template.
     apply_property_edits(
         &mut model,

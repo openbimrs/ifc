@@ -87,6 +87,8 @@ __all__ = [
     "PropertyTable",
     "PropertyTableRow",
     "ResolvedUnit",
+    "PropertyEdit",
+    "PropertyEditResult",
     "SpatialTree",
     "SpatialNode",
     "SpatialDanglingReference",

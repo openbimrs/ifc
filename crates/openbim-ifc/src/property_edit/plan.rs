@@ -194,8 +194,10 @@ impl<'m> Planner<'m> {
                 )));
             }
         }
-        let template = self.template(set)?;
+        // The object first: a missing or unfit object is the refusal even
+        // where the set's template could not be read.
         let is_type = self.holder(object)?.is_type;
+        let template = self.template(set)?;
         let draft = self
             .draft(index, object, set, hint, template.as_ref(), true)?
             .expect("a draft is created when asked to");
