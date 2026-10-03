@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.9.0 (2026-09-29) |
+| Latest release | 0.10.0 (2026-10-02) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc/index.html) · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -92,45 +92,19 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.9.0 (2026-09-29):
-
-### Added
-
-- `tests/stationing_template.rs`: a referent's `Pset_Stationing` authored
-  by `alignment` and read by `properties` checks clean against the
-  `property-catalog` IFC4X3 ADD2 corrected profile (#216).
+Latest release, 0.10.0 (2026-10-02):
 
 ### Changed (breaking)
 
-- `PanelPosition` and `Unreachable` are `#[non_exhaustive]`: a match needs a
-  wildcard arm.
-- `Sector` and `ContainerElements` are `#[non_exhaustive]`; they can no
-  longer be built with a struct literal outside the crate.
-
-- Code previously behind `schema` is behind `schema-api`, which `schema`
-  and every release feature imply; `schema::for_version` returns a
-  `Result` (see `ifc-schema`).
-
-### Changed
-
-- The georeferencing and alignment conformance test gives its placeholder
-  `IfcPolyline` two points (`Points` is `LIST [2:?]`, checked since #111).
-- Door and window operation reads name the type-object entity per
-  verified release (IFC2X3, IFC4, IFC4X3) and refuse any other with
-  `ExactPropertyError::UnsupportedSchema`, instead of treating every
-  non-IFC2X3 release as IFC4.
+- Behind `ifcxml`, the re-exported `XmlCodec` reads strictly by default when
+  it has a schema: values are typed from the schema and undeclared names
+  are refused (`ifc-xml` #266; see its changelog).
+  `.with_reading(SchemaReading::Lenient)` restores the previous read.
 
 ### Added
 
-- Per-release schema features (#112): `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2`,
-  `ifc4x3`, each providing the schema API with that one bundled table, and
-  `schema-api` (the API with no table). `schema` keeps its meaning: the API
-  with every release. A single-release build refuses the others through
-  `schema::for_version` with `schema::NotBundled`. Domain features link the
-  releases their crates read, so enabling one brings every release it
-  reads.
-- `compiled_features()` reports `schema-api` and each release feature.
-- `tests/intermediate_releases.rs`: IFC4X1 and IFC4X2 files resolve to
-  their own `SchemaVersion`, release id and bundled table (#33).
+- Behind `ifcxml`, re-exports `SchemaReading` and `XmlLayout` beside
+  `XmlCodec` and `XmlProfile`, and with them the buildingSMART XSD layout
+  reader `XmlCodec::xsd` (`ifc-xml` #265).
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

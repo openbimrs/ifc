@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-02
+
 ### Added
 
 - Borrowed read views for the four controls (#100): `read_control` and
@@ -103,7 +105,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-control-v0.3.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-control-v0.3.1...HEAD
+[0.3.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-control-v0.3.1
 [0.3.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-control-v0.3.0
 [0.2.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-control-v0.2.2
 [0.2.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-control-v0.2.1

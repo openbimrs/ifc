@@ -11,7 +11,7 @@ IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.0 (2026-09-29) |
+| Latest release | 0.4.0 (2026-10-02) |
 | Registries | [crates.io `ifc-schedule`](https://crates.io/crates/ifc-schedule) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `schedule` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_schedule/index.html) · [docs.rs](https://docs.rs/ifc-schedule) |
@@ -28,119 +28,83 @@ IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage.
 
 ## Changes
 
-Latest release, 0.3.0 (2026-09-29):
+Latest release, 0.4.0 (2026-10-02):
 
 ### Added
 
-- `create_lag_time_in(tx, model, name, lag_value, duration_type)`: the
-  model-bound `create_lag_time`. IFC2X3 declares no `IfcLagTime` and is
-  refused with `EntityNotInSchema`, nothing staged; IFC4 and IFC4X3 stage
-  exactly what `create_lag_time` stages. `create_lag_time` documents that
-  it is for IFC4 and IFC4X3 only (#211).
-- IFC2X3 work plans and work schedules can be authored (#214):
-  `DateTimeValue` carries a date either as IFC4/IFC4X3 `IfcDateTime` text
-  (`DateTimeValue::Text`, `From<&str>`) or as one of the IFC2X3
-  `IfcDateTimeSelect` records (`Date(CalendarDate)`, `Time(LocalTime)`,
-  `DateAndTime(CalendarDate, LocalTime)`). In IFC2X3
-  `create_work_control_with_owner_history` stages the `IfcCalendarDate`,
-  `IfcLocalTime` and `IfcDateAndTime` records and references them, only
-  once the work control itself is accepted. Record forms are checked
-  against the schema's rules before anything is staged
-  (`IfcValidCalendarDate` with `IfcLeapYear`, `IfcValidTime`, and the
-  ranges of `IfcMonthInYearNumber`, `IfcHourInDay`, `IfcMinuteInHour` and
-  `IfcSecondInMinute`), refused with `InvalidValue`. `CalendarDate` and
-  `LocalTime` are `#[non_exhaustive]`; `LocalTime` does not yet carry
-  `Zone` or `DaylightSavingOffset`, which are written `$`.
-- IFC2X3 sequences can be authored (#214): `TimeLag::Seconds` is the
-  IFC2X3 `IfcRelSequence.TimeLag : IfcTimeMeasure`, `TimeLag::LagTime` the
-  IFC4/IFC4X3 `IfcLagTime` reference. A non-finite lag is refused with
-  `InvalidValue`.
-- `ProcedureDraft::user_defined_procedure_type`, written as the IFC2X3
-  `IfcProcedure.UserDefinedProcedureType` (#214), so a `USERDEFINED` IFC2X3
-  procedure can be authored.
-- Every draft has a `new` constructor taking its required fields
-  (`TaskDraft::new(global_id)`, `WorkControlDraft::new(global_id,
-  creation_date, start_time)`, `EventDraft::new(global_id)`,
-  `ProcedureDraft::new(global_id)`, `RecurrenceDraft::new(recurrence_type)`,
-  `EventTimeDraft::new()`, `TaskTimeDraft::new()`) and a setter per other
-  field, named after it, as `ifc-resource`'s drafts are built.
+- `read_work_calendars` and `read_events` bind the model's declared
+  release like `tasks` (#212) and return `Result<_, ScheduleReadError>`:
+  IFC4X1, IFC4X2 and several schemas are refused with `UnsupportedSchema`
+  or `MultipleSchemas`; IFC2X3, which declares neither entity, has none
+  (#234). `WorkCalendar` and `Event` expose `release()` and `global_id()`,
+  `Event` also `object_type()` and `user_defined_trigger_type()`
+  (`UserDefinedEventTriggerType`); `WorkTime` and `EventTime` carry
+  `data_origin` and `user_defined_data_origin`, and `EventTime` its
+  `name` (#234).
+- `TaskTime::is_recurring`, `TaskTime::recurrence_ref` and
+  `TaskTime::recurrence` expose an `IfcTaskTimeRecurring`'s pattern (#235).
+- `Task::schedule_time_controls` and the `ScheduleTimeControl` view read
+  the IFC2X3 `IfcScheduleTimeControl` that `IfcRelAssignsTasks.TimeForTask`
+  assigns to a task, every attribute by name from IFC2X3 TC1: dates as
+  `AuthoredDateTime` records, durations and floats as `IfcTimeMeasure`
+  numbers. A `TimeForTask` of another type is reported as the new
+  `TaskTimeAnomaly::NotAScheduleTimeControl` (#235).
+- `RecurrenceDraft::time_periods` places `IfcTimePeriod` records in a
+  pattern's `TimePeriods` (#233). `create_recurrence_pattern_in` and
+  `create_time_period_in` bind the model's declared release: IFC2X3,
+  which declares neither entity, is refused with `EntityNotInSchema`, and
+  the pattern writer refuses a period reference that is absent
+  (`MissingReference`) or not an `IfcTimePeriod` (`WrongReferenceType`).
+  Nothing is staged on a refusal.
+- `Recurrence` exposes `days` (`DayComponent`), `months`
+  (`MonthComponent`) and `time_periods`, read as the new `TimePeriod`
+  (`StartTime`, `EndTime` as authored); `recurrence_pattern(model, id)`
+  reads a pattern referenced from outside a work calendar, such as
+  `IfcTaskTimeRecurring.Recurrence`, by name in the declared release,
+  returning `Result<Option<Recurrence>, ScheduleReadError>` (#234); `recurrence_slot::TIME_PERIODS` and
+  `time_period_slot` name the slots (#233).
+- `Lag` exposes `duration_type` (`IfcLagTime.DurationType`) and `name`
+  (#236).
+- `process_execution_order`: every `IfcProcess` (task, procedure, event)
+  in a deterministic execution order (#236).
+- `ScheduleReadError::SequenceDepthExceeded { start, limit }` (#236).
+
+### Deprecated
+
+- `work_calendars` and `events`: use `read_work_calendars` and
+  `read_events`. They keep their signatures and now read by name in the
+  declared release too, but read a header the readers cannot bind as IFC4,
+  as before, instead of refusing it (#234).
 
 ### Fixed
 
-- `create_work_control_with_owner_history`, `create_sequence_with_owner_history`
-  and `create_procedure_with_owner_history` no longer refuse the IFC2X3
-  records the drafts could not carry (#214). `IfcProcedure.WR4` is enforced
-  instead: an IFC2X3 `USERDEFINED` procedure without a non-blank
-  `user_defined_procedure_type` is refused with `InvalidValue`.
-- The release-bound writers refuse a `SchemaVersion` this build carries no
-  table for with `UnsupportedSchema` instead of panicking.
+- The calendar, event and recurrence readers find every attribute by name
+  in the declared release instead of reading fixed IFC4 positions; IFC4X3's
+  `IfcWorkTime.StartDate` and `FinishDate` were read only because they sit
+  where IFC4's `Start` and `Finish` do (#234).
+- `Task::time` accepts an `IfcTaskTimeRecurring` (IFC4, IFC4X3) through the
+  release's subtype table; it was reported as `NotATaskTime` and dropped
+  (#235).
+- `create_task_time_recurring` binds the model's declared release: IFC2X3,
+  which declares no `IfcTaskTimeRecurring`, is refused with
+  `EntityNotInSchema`, nothing staged (#235).
+- `tasks_of_schedule` reads every `IfcRelAssignsToControl` subtype in the
+  bound release, so an IFC2X3 task assigned with `IfcRelAssignsTasks` is
+  listed (#235).
 
-### Changed (breaking)
-
-- The task, work-control and sequence readers bind the model's declared
-  release and read every attribute by name from its table (#212). They
-  read IFC4 slot constants from every file, so an IFC2X3 task answered its
-  `Status` as the long description, `WorkMethod` as the status and
-  `Priority` as the milestone flag, and an IFC2X3 work plan or schedule its
-  `WorkControlType` as the predefined type. The header binds IFC2X3, IFC4
-  or IFC4X3 (none reads as IFC4); IFC4X1, IFC4X2, unknown and multiple
-  schemas are refused with the new `ScheduleReadError`. IFC4 and IFC4X3
-  answers are unchanged.
-- `tasks`, `work_plans`, `work_schedules`, `sequences`, `predecessors_of`,
-  `successors_of`, `start_tasks`, `end_tasks`, `tasks_of_schedule` and
-  `subtasks_of` return `Result<_, ScheduleReadError>`; `find_cycle` returns
-  `Result<Option<SequenceCycle>, ScheduleReadError>`; `downstream_of` and
-  `execution_order` return `ScheduleReadError::Cycle(SequenceCycle)` for a
-  loop instead of a bare `SequenceCycle`.
-- `Task::new(id, entity, release)` and `WorkControl::new(id, entity,
-  release)` take the `SchemaVersion` to read against and return `Result`,
-  refusing IFC4X1 and IFC4X2; `WorkControl::new` is `Ok(None)` for another
-  entity. `Task::release` and `WorkControl::release` report the binding.
-- An attribute IFC2X3 does not declare reads as `None`: `Task::
-  long_description`, `predefined_type` and `task_time_ref`, and
-  `WorkControl::predefined_type`. `Task::identification` reads IFC2X3's
-  `TaskId` and `WorkControl::identification` its `Identifier`, which IFC4
-  promoted to `Identification`. `WorkControl::work_control_type` reads
-  IFC2X3's `WorkControlType`, which is not aliased to `PredefinedType`.
-- `WorkControl::creation_date`, `start_time` and `finish_time` return
-  `Option<AuthoredDateTime>` (IFC4/IFC4X3 text, or the IFC2X3
-  `IfcDateTimeSelect` record), and `duration` and `total_float` return
-  `Option<AuthoredDuration>` (IFC4/IFC4X3 text, or the IFC2X3
-  `IfcTimeMeasure`), instead of `None` for a stated IFC2X3 value.
-- `Sequence` gains `time_lag_measure`, IFC2X3's `IfcRelSequence.TimeLag`
-  (an `IfcTimeMeasure` on the relationship); `lag` stays the IFC4/IFC4X3
-  `IfcLagTime`.
-- `TaskDraft`, `WorkControlDraft`, `EventDraft`, `EventTimeDraft`,
-  `RecurrenceDraft`, `ProcedureDraft` and `TaskTimeDraft` are
-  `#[non_exhaustive]`: build them with `new` and the setters instead of a
-  struct literal. Their fields stay public to read and assign.
-- `WorkControlDraft::creation_date` and `start_time` are
-  `DateTimeValue<'a>` (were `&'a str`) and `finish_time` is
-  `Option<DateTimeValue<'a>>` (was `Option<&'a str>`). The plain
-  `create_work_control` refuses a record form with `InvalidValue`; with text
-  its output is unchanged.
-- `create_sequence_with_owner_history` takes `time_lag: Option<TimeLag>`
-  (was `Option<EntityId>`); wrap an `IfcLagTime` id in `TimeLag::LagTime`.
-  The plain `create_sequence` is unchanged.
-- `ProcedureDraft` has the new `user_defined_procedure_type` field; the
-  plain `create_procedure`, which writes IFC4/IFC4X3, refuses a value for
-  it with `InvalidValue`, and the release-bound writer refuses it in IFC4
-  and IFC4X3 with `AuthoringNotInSchema`.
-- `#[non_exhaustive]` on the public enums and result structs a later
-  release could extend: `SequenceType`, `DurationType`, `TaskTimeAnomaly`,
-  `WorkControlKind`, `WorkTimeRole`, `RecurrenceType`, `Lag`, `Sequence`,
-  `SequenceCycle`, `EventTime`, `Recurrence` and `WorkTime`. A `match`
-  outside the crate needs a wildcard arm, and the structs can no longer be
-  built outside it.
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
+- `create_recurrence_pattern` writes all eight attributes IFC4 and IFC4X3
+  declare for `IfcRecurrencePattern`; it wrote seven, so every authored
+  pattern was a short record (#233).
+- A sequence walk that reaches `MAX_SEQUENCE_DEPTH` is refused with
+  `SequenceDepthExceeded` instead of returning a truncated result as if
+  complete: `downstream_of` and `find_cycle` report it (#236). The walk
+  uses an explicit stack, so the budget rather than the thread's stack
+  bounds it.
+- `find_cycle` walks from every `IfcProcess` in the declared release, not
+  only `IfcTask`, so a cycle through events or procedures is found (#236).
+- `execution_order` sorts over every `IfcProcess` and keeps the tasks, so a
+  constraint through an event or procedure (task A, event E, task B) orders
+  A before B, and a cycle through one is refused (#236). Its result is
+  still tasks only.
 
 Full history: [`crates/ifc-schedule/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-schedule/CHANGELOG.md)

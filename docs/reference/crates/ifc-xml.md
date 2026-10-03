@@ -11,7 +11,7 @@ ifcXML (ISO 10303-28) codec for the IFC model.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.0 (2026-09-29) |
+| Latest release | 0.4.0 (2026-10-02) |
 | Registries | [crates.io `ifc-xml`](https://crates.io/crates/ifc-xml) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `ifcxml` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_xml/index.html) · [docs.rs](https://docs.rs/ifc-xml) |
@@ -33,5 +33,96 @@ ifcXML (ISO 10303-28) codec for the IFC model.
 - [`ifc-schema`](./ifc-schema)
 
 ## Changes
+
+Latest release, 0.4.0 (2026-10-02):
+
+### Changed (breaking)
+
+- A codec built with `XmlCodec::with_schema` or
+  `XmlCodec::with_schema_and_profile` now reads strictly
+  (`SchemaReading::Strict`, #266). Every value is typed from its attribute's
+  declaration instead of inferred from its text: `Name="1"` reads as the
+  label `'1'` (it read as the integer `1`), an enumeration's text is checked
+  against its members, a `kind` the declaration does not admit (an integer
+  in a label, a bare value in a SELECT, a typed value outside it) is refused.
+  An XML attribute or child element the entity does not declare is refused
+  with `XmlError::UnknownAttribute`, naming entity, element and attribute;
+  it was placed after the declared slots. An entity the schema does not
+  declare, an abstract one, and a reference to a missing entity or one of a
+  type the declaration does not admit are refused too. The old read
+  silently misread such content, so the safe read is now the default;
+  `.with_reading(SchemaReading::Lenient)` restores it, and the codec without
+  a schema is unchanged. Unknown entities and attributes still round-trip
+  through the schema-less codec and the lenient read.
+- The schema-aware writer writes a value as an XML attribute only where the
+  strict read types its text back to the same value; elsewhere it uses the
+  explicit `kind` element, which the lenient read accepts and the strict
+  read refuses unless the declaration admits it. Output for models the
+  schema describes is unchanged.
+
+### Added
+
+- `XmlCodec::xsd` and `XmlLayout::Xsd`: a reader of the buildingSMART ifcXML
+  configuration the release XSD declares (#265), for IFC4 ADD2 TC1 and IFC4X3
+  ADD2. Entities nested and defined in place, `ref`/`href` references with
+  `xsi:nil`, `xsi:type`, inverse attributes (which supply the attribute they
+  invert), space-separated and flattened list attributes, `-wrapper` and
+  `Seq-...-wrapper` values, and enumeration, boolean, logical and binary text
+  typed from the schema, read into the same model as the STEP form: entity
+  type, typed-parameter and enumeration names upper-case, entities numbered
+  in document order. Refused with a typed error rather than approximated: a
+  name the entity does not declare, a value its declaration does not admit
+  (including decimal commas), a flattened nested aggregate whose inner sizes
+  neither the schema nor an `arraySize` fixes, an inverse contradicting its
+  relationship or implying a position in an ordered list, `pos`/`path`
+  addressing, external `href`s, partial-byte binaries. A value for a slot a
+  subtype redeclares DERIVE, which the XSD still admits as an XML attribute,
+  is typed and read as derived. The layout is read only; writing it is
+  refused.
+- `XmlProfile::Ifc4x3Add2`, `XmlProfile::namespaces` (IFC4 ADD2 TC1 also
+  accepts the `http://www.buildingsmart-tech.org/ifcXML/IFC4/Add2` namespace
+  its own Annex E examples declare, in the XSD layout only) and
+  `XmlProfile::version`.
+- `SchemaReading`, `XmlCodec::with_reading`, `XmlCodec::reading` and
+  `XmlCodec::layout`.
+- `XmlError` variants `UnknownEntity`, `AbstractEntity`, `UnknownAttribute`,
+  `TypeMismatch`, `WrongForm`, `UnresolvedReference`, `DuplicateId`,
+  `InverseConflict`, `SchemaMismatch` and `Unsupported`.
+- `XmlCodec` implements `Debug` and `Clone`; `XmlError` implements `Clone`.
+- A schema-backed test checks the XSD reader's configuration against every
+  entity type of both release XSDs, which `scripts/fetch-ifc-schemas.sh` now
+  fetches (checksummed, never committed). An env-gated test compares paired
+  STEP and ifcXML files (`tests/xsd_corpus.rs` documents how to run it).
+- `tests/xsd_output.rs`, an opt-in (`--ignored`) check that writes every IFC4
+  and IFC4X3 fixture with the strict profile and validates it with `xmllint`
+  against the fetched release XSD (#117). It fails on malformed output, a
+  namespace that is not the XSD's `targetNamespace`, a control document the
+  XSD or `XmlCodec::xsd` refuses, and any XSD error beyond the documented
+  native-layout departures. The published `IFC4X3_ADD2.xsd` does not compile
+  in libxml2 or Xerces, which the check records. How to run it is in the
+  README.
+
+### Security
+
+- Require `quick-xml` 0.42 (was 0.37), which fixes RUSTSEC-2026-0194
+  (quadratic duplicate-attribute check on one start tag) and
+  RUSTSEC-2026-0195 (unbounded namespace-declaration allocation in
+  `NsReader`); both are denial of service on untrusted input (#267).
+
+### Changed
+
+- `impl From<quick_xml::Error> for XmlError` is kept, but its source type is
+  now quick-xml 0.42's `Error`. Code that converts a quick-xml 0.37 error
+  into `XmlError` must upgrade quick-xml too. Values read are unchanged:
+  entity and character references are still resolved, and literal tabs and
+  line breaks in attribute values and text are still kept rather than
+  normalised to spaces; a regression test pins this.
+
+### Documentation
+
+- Strict-profile output is documented as what it is: the crate's own layout
+  under the release XSD's target namespace and schema token, not the XSD
+  configuration, and not valid against the release XSD (#117). `XmlProfile`
+  no longer calls the XSD "bundled"; it is fetched, never shipped.
 
 Full history: [`crates/ifc-xml/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-xml/CHANGELOG.md)

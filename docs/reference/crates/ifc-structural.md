@@ -11,7 +11,7 @@ Structural analysis model: members, connections, actions, reactions, loads.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.0 (2026-09-29) |
+| Latest release | 0.4.0 (2026-10-02) |
 | Registries | [crates.io `ifc-structural`](https://crates.io/crates/ifc-structural) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `structural` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_structural/index.html) · [docs.rs](https://docs.rs/ifc-structural) |
@@ -37,39 +37,41 @@ claim computed reaction/result authoring.
 
 ## Changes
 
-Latest release, 0.3.0 (2026-09-29):
+Latest release, 0.4.0 (2026-10-02):
 
 ### Changed (breaking)
 
-- `MemberConnection` and `ActivityAssignment` are `#[non_exhaustive]`.
-- Every public draft is `#[non_exhaustive]`, so struct literals no longer
-  compile outside the crate. Each gains a constructor taking its required
-  fields and one builder setter per other field, named after the field and
-  taking the unwrapped value (`.name("Frame")` sets `Some`; `String` fields
-  take `impl Into<String>`):
-  - `AnalysisModelDraft::new(global_id, predefined_type)`
-  - `StructuralRootDraft::new(global_id)`
-  - `RelationshipRootDraft::new(global_id)`
-  - `MemberDraft::new(root, kind)`, `ConnectionDraft::new(root, kind)`
-  - `ActionDraft::new(root, applied_load, coordinate_system, kind)`
-  - `ReactionDraft::new(root, applied_load, coordinate_system, kind)`
-  - `LoadGroupDraft::new(global_id, action_type, action_source, kind)`
-  - `ResultGroupDraft::new(global_id, theory_type, is_linear)`
-  - `MemberConnectionDraft::new(root, member, connection)`
-  - `ActivityAssignmentDraft::new(root, relating_element, activity)`
-  - `BoundaryConditionDraft::new()`
+- `LoadKind` is `#[non_exhaustive]` and gains `SingleForceWarping`,
+  `SingleDisplacement` and `SingleDisplacementDistortion` (#228). An
+  exhaustive `match` on it no longer compiles; add a wildcard arm.
 
-### Changed
+### Added
 
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
-- Enumeration checks treat a type declaration form `ifc-schema` adds later
-  as not matching; follows `ifc_schema::TypeKind` becoming
-  `#[non_exhaustive]`.
+- IFC2X3 varying linear and planar actions (#229).
+  `StructuralAction::is_varying`, `varying_applied_load_location` and
+  `subsequent_applied_loads` read `IfcStructuralLinearActionVarying` and
+  `IfcStructuralPlanarActionVarying`; the loads come back in list order as
+  `StaticLoad`, the `LIST [1:?]` / `LIST [2:?]` minimums are enforced with
+  `InvalidCardinality`, and all three return `None`/`false` under IFC4 and
+  IFC4X3, which declare neither entity. `ActionDraft::varying` with the new
+  `VaryingActionDraft` stages either subtype from a `Linear` or `Planar`
+  kind; outside IFC2X3 it refuses with the new
+  `StructuralError::EntityNotInSchema`, and a short list, another kind or a
+  wrong reference refuses before anything is staged.
+- `StructuralView::surface_reinforcement_area` and the
+  `SurfaceReinforcementArea` projection for `IfcSurfaceReinforcementArea`
+  (IFC4, IFC4X3), which `stage_load` already authored (#228). It enforces
+  `SurfaceAndOrShearAreaSpecified`, `NonnegativeArea1..3` and the
+  `LIST [2:3]` bounds; an IFC2X3 view refuses it with `UnsupportedSchema`.
+
+### Fixed
+
+- `StructuralView::load` / `static_load` read
+  `IfcStructuralLoadSingleDisplacement`,
+  `IfcStructuralLoadSingleDisplacementDistortion` and
+  `IfcStructuralLoadSingleForceWarping` instead of refusing them with
+  `WrongType` (#228). Classification uses `Schema::is_a`, most specific
+  subtype first, and `components()` returns the displacement and rotation
+  slots, with `Distortion` or `WarpingMoment` appended for the subtypes.
 
 Full history: [`crates/ifc-structural/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-structural/CHANGELOG.md)

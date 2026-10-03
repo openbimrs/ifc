@@ -11,7 +11,7 @@ Distribution systems, ports, and connectivity between elements.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.0 (2026-09-29) |
+| Latest release | 0.3.1 (2026-10-02) |
 | Registries | [crates.io `ifc-systems`](https://crates.io/crates/ifc-systems) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `systems` |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc_systems/index.html) · [docs.rs](https://docs.rs/ifc-systems) |
@@ -32,44 +32,33 @@ that can be traced -- the basis of any MEP analysis.
 
 ## Changes
 
-Latest release, 0.3.0 (2026-09-29):
+Latest release, 0.3.1 (2026-10-02):
 
-### Changed (breaking)
+### Added
 
-- The authoring draft `ClassifiedSystemDraft` is `#[non_exhaustive]`:
-  build it with `ClassifiedSystemDraft::new()` and the setters
-  `description`, `object_type`, `predefined_type` and `long_name`. Fields
-  stay public.
+- What a system serves (#230). `System` gains `serviced_buildings`, read
+  from `IfcRelServicesBuildings` in IFC2X3, IFC4 and IFC4X3, and
+  `serviced_facilities`, the IFC4X3 `IfcSystem.ServicesFacilities` view
+  (the structures whose `IfcRelReferencedInSpatialStructure` lists the
+  system; empty under IFC2X3 and IFC4, whose `RelatedElements` cannot hold
+  a system). The admissible target type comes from the declared release's
+  table (`IfcSpatialStructureElement` in IFC2X3, `IfcSpatialElement` after).
+  New `SystemAnomaly` variants report a second relationship for one system
+  (`ServicesBuildingsTwice`; `ServicesBuildings` is `SET [0:1]`) and a
+  target the release does not admit (`ServicedNotSpatial`); dangling
+  targets are `Dangling`, a non-system relating end `NotASystem`.
+- `serve_buildings` and `serve_buildings_with_owner_history` stage an
+  `IfcRelServicesBuildings` in the model's declared release, refusing a
+  relating end that is not an `IfcSystem`, a target the release's
+  `RelatedBuildings` does not admit, a missing reference, a repeated
+  target, and a system that already services buildings in the model or on
+  the transaction. A refusal stages nothing.
 
-- The bulk readers no longer fall back to the IFC4 table. `systems`,
-  `ports`, `zones`, `spatial_placements`, `role_inconsistencies`,
-  `ConnectionGraph::build` and `ElementRole::of` return
-  `Result<_, SchemaResolutionError>` and refuse a header that binds no
-  verified release: no `FILE_SCHEMA` (an in-memory model now needs a
-  header), several, IFC4X1/IFC4X2, or a release this build does not
-  bundle. `ElementRole::of` returns `Result<Option<_>, _>`.
-- `try_zones` is removed: `zones` now has the error channel it added.
-- IFC4X3 is verified for every reader (#215), not only the zone readers:
-  `schema_of` resolves it. Every fixed slot the readers use is pinned
-  against the IFC2X3, IFC4 and IFC4X3 tables, and `tests/ifc4x3.rs`
-  round-trips systems (including `IfcBuiltSystem`), both port
-  attachments, connections, flow roles and spatial placements through
-  IFC4X3 STEP text.
-- `SystemAnomaly` and `RoleInconsistency` are `#[non_exhaustive]`: a match
-  needs a wildcard arm.
-- The read-side `Connection`, `Port`, `System`, `Zone` and
-  `SpatialPlacement` are `#[non_exhaustive]`, so a later release's attribute
-  can be added without a breaking change; they can no longer be built with a
-  struct literal outside the crate.
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
+- `System` gains `long_name` and `predefined_type` (#231): the
+  `IfcDistributionSystem` `LongName` and `PredefinedType`
+  (`IfcDistributionSystemEnum` token), read by attribute name in the
+  declared release's table, for `IfcDistributionSystem` and its subtype
+  `IfcDistributionCircuit` under IFC4 and IFC4X3. Both are `None` for every
+  other system type and on IFC2X3, which has no `IfcDistributionSystem`.
 
 Full history: [`crates/ifc-systems/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-systems/CHANGELOG.md)
