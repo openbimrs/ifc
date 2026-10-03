@@ -35,5 +35,6 @@ for new records.
 | [0017](/adr/0017-versioned-psd-qto-catalog) | Versioned PSD/QTO template catalogs | Accepted |
 | [0018](/adr/0018-kernel-free-geometry-is-a-feature-not-a-crate) | Kernel-free geometry is a feature, not a crate | Accepted |
 | [0019](/adr/0019-planned-work-is-an-issue-not-a-file) | Planned work is an issue, not a placeholder file | Accepted |
+| [0020](/adr/0020-ifc5-is-a-separate-family) | IFC5 is a separate family; no IFC-JSON codec | Accepted |
 
 <!-- ADR:INDEX:END -->
