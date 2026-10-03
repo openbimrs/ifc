@@ -6,14 +6,18 @@
 //! the previous segment should match both. This crate computes nothing it
 //! cannot compute in closed form, so the rule is:
 //!
-//! - **Direction** is always checkable. Every curvature law this crate
-//!   lowers has an elementary antiderivative, so the heading at a segment's
-//!   end is its `StartDirection` plus a closed-form turning integral.
+//! - **Direction** is checkable after every segment with a curvature law.
+//!   Each law this crate lowers has an elementary antiderivative, so the
+//!   heading at a segment's end is its `StartDirection` plus a closed-form
+//!   turning integral. A `CUBIC` has no curvature law in arc length: its
+//!   end heading is `atan(x_e^2 / (2 R L))` at the abscissa `x_e` where its
+//!   arc length reaches `L`, an elliptic-integral inverse.
 //! - **Position** is checkable only after a `LINE` or `CIRCULARARC`, whose
 //!   end point is elementary. After a transition spiral the end point is a
-//!   Fresnel-type integral. Rather than quadrature it, or refusing every
-//!   real alignment, the seam is recorded as [`SeamCheck::Authored`]: the
-//!   authored `StartPoint` is accepted as stated and named as unverified.
+//!   Fresnel-type integral, after a `CUBIC` the same elliptic inverse.
+//!   Rather than quadrature it, or refusing every real alignment, the seam
+//!   is recorded as [`SeamCheck::Authored`]: the authored `StartPoint` (and,
+//!   after a `CUBIC`, the authored `StartDirection`) is named as unverified.
 //!
 //! A mismatch that IS checkable is refused, never smoothed over.
 
@@ -39,9 +43,11 @@ pub enum SeamCheck {
     /// The previous segment's end point is closed form and matches the
     /// authored `StartPoint` of the next segment within 1e-6 m.
     Verified,
-    /// The previous segment is a transition spiral, whose end point is a
-    /// non-elementary integral this crate does not evaluate. The authored
-    /// `StartPoint` of the next segment was accepted as stated, not verified.
+    /// The previous segment is a transition spiral or a `CUBIC`, whose end
+    /// point is a non-elementary integral this crate does not evaluate. The
+    /// authored `StartPoint` of the next segment was accepted as stated, not
+    /// verified. After a `CUBIC` its `StartDirection` is not verified either:
+    /// the cubic's end heading is not closed form.
     Authored,
 }
 
@@ -62,9 +68,9 @@ pub struct HorizontalSeam {
 
 /// Exact end point of a segment, in closed form.
 ///
-/// `None` for every transition-spiral family: their end point is a
-/// Fresnel-type integral, so there is no closed form to return and this
-/// crate will not quadrature one into existence.
+/// `None` for every transition-spiral family and `CUBIC`: their end point
+/// is a Fresnel-type or elliptic integral, so there is no closed form to
+/// return and this crate will not quadrature one into existence.
 pub(super) fn closed_form_end_point(segment: &HorizontalSegment) -> Option<Point2> {
     match segment.segment_type {
         HorizontalSegmentType::Line => {

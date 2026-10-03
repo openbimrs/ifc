@@ -262,26 +262,40 @@ fn unsupported_segment_forms_are_typed_refusals() {
     assert!(error.is_unsupported(), "{error}");
     assert!(error.to_string().contains("IfcParameterValue"), "{error}");
 
-    // An IfcPolynomialCurve parent needs an arc-length trim (#90).
-    let mut b = Builder::new();
-    let position = b.placement([0.0, 0.0], [1.0, 0.0]);
-    let polynomial = b.add(entity(
-        "IFCPOLYNOMIALCURVE",
-        vec![
-            r(position),
-            Value::List(vec![n(0.0), n(1.0)]),
-            Value::List(vec![n(0.0), n(0.0), n(0.0), n(1e-6)]),
-            Value::Null,
-        ],
-    ));
-    let place = b.placement([0.0, 0.0], [1.0, 0.0]);
-    let segment = b.segment(place, length(0.0), length(10.0), polynomial);
-    let error = lower(&b.model, segment).expect_err("polynomial parent");
-    assert!(error.is_unsupported(), "{error}");
-    assert_eq!(error.entity(), Some(EntityId(polynomial)));
-    assert!(error.to_string().contains("#90"), "{error}");
+    // A polynomial parent cut where its placed start is not closed form, or
+    // with no closed-form bound for its trim.
+    for (x, z, start, run, needle) in [
+        (vec![0.0, 1.0], None, 5.0, 10.0, "non-zero SegmentStart"),
+        (vec![0.0, 1.0], None, 0.0, -10.0, "backwards"),
+        (vec![0.0, 1.0, 0.5], None, 0.0, 10.0, "degree one"),
+        (
+            vec![0.0, 1.0],
+            Some(vec![0.0, 1.0]),
+            0.0,
+            10.0,
+            "3D polynomial",
+        ),
+    ] {
+        let mut b = Builder::new();
+        let position = b.placement([0.0, 0.0], [1.0, 0.0]);
+        let polynomial = b.add(entity(
+            "IFCPOLYNOMIALCURVE",
+            vec![
+                r(position),
+                Value::List(x.into_iter().map(n).collect()),
+                Value::List(vec![n(0.0), n(0.0), n(0.0), n(1e-6)]),
+                z.map_or(Value::Null, |z| Value::List(z.into_iter().map(n).collect())),
+            ],
+        ));
+        let place = b.placement([0.0, 0.0], [1.0, 0.0]);
+        let segment = b.segment(place, length(start), length(run), polynomial);
+        let error = lower(&b.model, segment).expect_err(needle);
+        assert!(error.is_unsupported(), "{error}");
+        assert_eq!(error.entity(), Some(EntityId(polynomial)));
+        assert!(error.to_string().contains(needle), "{needle}: {error}");
+    }
 
-    // An IfcAxis2PlacementLinear placement belongs to cant (#93).
+    // An IfcAxis2PlacementLinear placement stands at a station (#307).
     let mut b = Builder::new();
     let line = b.line();
     let linear = b.add(entity(
@@ -291,7 +305,7 @@ fn unsupported_segment_forms_are_typed_refusals() {
     let segment = b.segment(linear, length(0.0), length(1.0), line);
     let error = lower(&b.model, segment).expect_err("linear placement");
     assert!(error.is_unsupported(), "{error}");
-    assert!(error.to_string().contains("#93"), "{error}");
+    assert!(error.to_string().contains("#307"), "{error}");
 
     // An untyped measure is malformed, not a gap.
     let mut b = Builder::new();
@@ -337,4 +351,71 @@ fn a_composite_drops_only_its_closing_zero_length_segment() {
     let (model, composite) = build(false);
     let error = lower(&model, composite).expect_err("misplaced zero-length segment");
     assert!(!error.is_unsupported(), "{error}");
+}
+
+/// The end of `y = a x^3` by arc length, independently of the kernel:
+/// composite Simpson quadrature of `sqrt(1 + (3 a x^2)^2)` and bisection.
+fn cubic_end(a: f64, run: f64) -> [f64; 2] {
+    let arc = |x: f64| {
+        let steps = 2000;
+        let h = x / f64::from(steps);
+        let speed = |t: f64| (1.0 + (3.0 * a * t * t).powi(2)).sqrt();
+        let mut sum = speed(0.0) + speed(x);
+        for i in 1..steps {
+            sum += speed(f64::from(i) * h) * if i % 2 == 1 { 4.0 } else { 2.0 };
+        }
+        sum * h / 3.0
+    };
+    let (mut lo, mut hi) = (0.0, run);
+    for _ in 0..200 {
+        let mid = 0.5 * (lo + hi);
+        if arc(mid) < run {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    let x = 0.5 * (lo + hi);
+    [x, a * x.powi(3)]
+}
+
+/// A CUBIC transition `y = x^3 / (6 R L)` (`R = 300`, `L = 60`) as an
+/// `IfcPolynomialCurve` parent (#90): its Bezier, placed at `(10, 20)`
+/// heading north, trimmed where its arc length reaches 60. The control
+/// points are the power-to-Bernstein conversion over `x in [0, 60]`
+/// (`CoefficientsX = (0, 1)` bounds the parameter by the length):
+/// `(0, 0)`, `(20, 0)`, `(40, 0)`, `(60, 2)` in the segment's own frame.
+#[test]
+fn a_polynomial_parent_is_its_bezier_trimmed_by_arc_length() {
+    let a = 1.0 / (6.0 * 300.0 * 60.0);
+    let mut b = Builder::new();
+    let cubic = b.parabola(&[0.0, 0.0, 0.0, a]);
+    let segment = b.segment_at([10.0, 20.0], [0.0, 1.0], 60.0, cubic);
+    let lowered = lower(&b.model, segment).expect("polynomial parent");
+    let GeometryNode::CurveRelation(CurveRelation::Trimmed {
+        basis, start, end, ..
+    }) = root(&lowered)
+    else {
+        panic!("expected a trimmed curve");
+    };
+    assert_eq!(start.as_slice(), [TrimSelector::Parameter(0.0)]);
+    assert_eq!(end.as_slice(), [TrimSelector::ArcLength(60.0)]);
+    let Some(GeometryNode::Curve3(curve @ Curve3::BSpline(bezier))) = lowered.graph.get(*basis)
+    else {
+        panic!("expected a B-spline basis");
+    };
+    assert_eq!(bezier.degree, 3);
+    assert_eq!(bezier.knots, vec![0.0, 60.0]);
+    assert_eq!(bezier.multiplicities, vec![4, 4]);
+    // Heading north: local x is world +y, local y (left) is world -x.
+    let expected = [[10.0, 20.0], [10.0, 40.0], [10.0, 60.0], [8.0, 80.0]];
+    for (point, [x, y]) in bezier.control_points.iter().zip(expected) {
+        assert_near(point.to_array(), [x, y, 0.0], 1e-12);
+    }
+    let resolved =
+        axiolid_evaluate::parameter_at_arc_length3(curve, 0.0, 60.0).expect("arc-length trim");
+    let [x, y] = cubic_end(a, 60.0);
+    assert!((resolved - x).abs() < 1e-9, "{resolved} != {x}");
+    let point = axiolid_evaluate::evaluate3(curve, resolved).expect("end");
+    assert_near(point.to_array(), [10.0 - y, 20.0 + x, 0.0], 1e-9);
 }

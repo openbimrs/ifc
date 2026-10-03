@@ -1,18 +1,20 @@
-//! Curve capability scaffold.
+//! Exact neutral curves for alignment layouts.
 
 //! ## Internal split
 //!
 //! - `assemble.rs`: exact neutral composite curve.
 //! - `elevation.rs`: vertical segments as exact elevation laws.
 //! - `gradient.rs`: plan and profile composed as an exact 3D centreline.
-//! - `reference.rs`: the cant-carrying 3D centreline, refused until Axiolid
-//!   has a roll law.
+//! - `reference.rs`: the cant-carrying 3D centreline, a banked curve.
+//! - `cubic.rs`: the `CUBIC` transition as a cubic parabola read by arc
+//!   length.
 //! - `tolerance.rs`: the seam tolerance a vertical profile is checked at.
 //! - `plan.rs`: a whole horizontal layout as one exact intrinsic curve.
 //! - `seam.rs`: the closed-form rule for checking horizontal seams.
 //! - `terminal.rs`: the zero-length segment that closes every layout.
 
 mod assemble;
+mod cubic;
 mod elevation;
 mod gradient;
 mod plan;
@@ -29,6 +31,6 @@ pub use assemble::{
 pub use elevation::{elevation_law, profile_law, profile_law_within, vertical_profile_law};
 pub use gradient::{gradient_curve3, lower_gradient_curve};
 pub use plan::{lower_horizontal_plan, HorizontalPlan};
-pub use reference::lower_segmented_reference_curve;
+pub use reference::{lower_segmented_reference_curve, segmented_reference_curve3};
 pub use seam::{HorizontalSeam, SeamCheck};
 pub use tolerance::SeamTolerance;

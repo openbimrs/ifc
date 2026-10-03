@@ -10,7 +10,7 @@
 
 use std::f64::consts::FRAC_PI_2;
 
-use axiolid_curve::{CurvatureLaw, Curve2, Curve3, Elevated3, ElevationLaw};
+use axiolid_curve::{ChainPiece2, CurvatureLaw, Curve2, Curve3, Elevated3, ElevationLaw};
 use axiolid_model::GeometryNode;
 use ifc_model::{EntityId, Value};
 
@@ -211,12 +211,14 @@ fn gradient_curve_refusals_are_typed() {
         assert!(error.is_unsupported(), "{error}");
         assert!(error.to_string().contains(needle), "{needle}: {error}");
     };
+    // A vertical circle lowers (#258), but this one does not end where the
+    // parabola starts.
     refused(
         Spec {
             vertical_arc: true,
             ..Spec::default()
         },
-        "#258",
+        "does not end where the next one starts",
     );
     refused(
         Spec {
@@ -251,7 +253,7 @@ fn gradient_curve_refusals_are_typed() {
             parabola_last: true,
             ..Spec::default()
         },
-        "#90",
+        "no next segment",
     );
     refused(
         Spec {
@@ -262,7 +264,8 @@ fn gradient_curve_refusals_are_typed() {
     );
 }
 
-/// Cant has no neutral roll law: always refused, naming #93.
+/// The geometric form of cant has no normative mapping: refused, naming
+/// #311.
 #[test]
 fn a_segmented_reference_curve_is_refused_citing_cant() {
     let (mut b, gradient) = alignment(&Spec::default());
@@ -280,5 +283,176 @@ fn a_segmented_reference_curve_is_refused_citing_cant() {
         .expect_err("cant");
     assert!(error.is_unsupported(), "{error}");
     assert_eq!(error.entity(), Some(EntityId(reference)));
-    assert!(error.to_string().contains("#93"), "{error}");
+    assert!(error.to_string().contains("#311"), "{error}");
+}
+
+/// A flat 150 m line plan, and `profile` over it.
+fn over_a_line(b: &mut Builder, profile: &[u64]) -> u64 {
+    let line = b.line();
+    let h1 = b.segment_at([0.0, 0.0], [1.0, 0.0], 150.0, line);
+    let closing = b.segment_at([150.0, 0.0], [1.0, 0.0], 0.0, line);
+    let base = b.composite(&[h1, closing]);
+    b.add(entity(
+        "IFCGRADIENTCURVE",
+        vec![
+            Value::List(profile.iter().copied().map(r).collect()),
+            Value::Bool(false),
+            r(base),
+            Value::Null,
+        ],
+    ))
+}
+
+/// A vertical `IfcCircle` is the circle (#258), both senses: a sag of
+/// `R = 1000` from -2% (positive `SegmentLength`, turning left in the
+/// (distance, height) plane), and a crest walked backwards. The
+/// `SegmentLength` is the 3D arc that covers the 150 m plan; every height
+/// below is the circle's own equation about its centre.
+#[test]
+fn a_vertical_circle_lowers_to_the_circular_law() {
+    for sense in [1.0_f64, -1.0] {
+        let (grade, radius) = (-0.02 * sense, 1000.0 * sense);
+        let norm = grade.hypot(1.0);
+        let (sin0, cos0) = (grade / norm, 1.0 / norm);
+        let t1 = (sin0 + 150.0 / radius).asin();
+        let arc = radius * (t1 - sin0.atan2(cos0));
+        let centre = [-radius * sin0, 10.0 + radius * cos0];
+        let height = |d: f64| centre[1] - sense * (1e6 - (d - centre[0]).powi(2)).sqrt();
+
+        let mut b = Builder::new();
+        let circle = b.circle(1000.0);
+        let v1 = b.segment_at([0.0, 10.0], [cos0, sin0], arc.abs() * sense, circle);
+        let line = b.line();
+        let closing = b.segment_at([150.0, height(150.0)], [1.0, t1.tan()], 0.0, line);
+        let gradient = over_a_line(&mut b, &[v1, closing]);
+        let curve = lower(&b, gradient, Transform::identity()).expect("vertical circle");
+        assert_eq!(
+            curve.elevation,
+            ElevationLaw::circular_arc(10.0, grade, radius),
+            "sense {sense}"
+        );
+        for d in [0.0, 37.5, 75.0, 112.5, 150.0] {
+            assert_near(at(&curve, d), [d, 0.0, height(d)]);
+        }
+    }
+}
+
+/// A vertical `IfcClothoid` is `ElevationLaw::Intrinsic` (#258): curvature
+/// `s / A^2` along its own arc, from level at height 10. Its plan extent is
+/// a Fresnel integral, so the closing segment states it; the expected end
+/// below is that integral, computed here by Simpson quadrature, not by the
+/// kernel.
+#[test]
+fn a_vertical_clothoid_lowers_to_the_intrinsic_law() {
+    let a = 400.0_f64;
+    // (x, z) after arc length s of a clothoid from level: heading s^2/(2A^2).
+    let end = |s: f64| {
+        let steps = 4000;
+        let h = s / f64::from(steps);
+        let mut sum = [0.0, 0.0];
+        for i in 0..=steps {
+            let t = f64::from(i) * h;
+            let w = if i == 0 || i == steps {
+                1.0
+            } else if i % 2 == 1 {
+                4.0
+            } else {
+                2.0
+            };
+            let heading = t * t / (2.0 * a * a);
+            sum[0] += w * heading.cos();
+            sum[1] += w * heading.sin();
+        }
+        [sum[0] * h / 3.0, sum[1] * h / 3.0]
+    };
+    let (mut lo, mut hi) = (150.0, 200.0);
+    for _ in 0..100 {
+        let mid = 0.5 * (lo + hi);
+        if end(mid)[0] < 150.0 {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    let run = 0.5 * (lo + hi);
+    let [x, z] = end(run);
+
+    let mut b = Builder::new();
+    let clothoid = b.clothoid(a);
+    let v1 = b.segment_at([0.0, 10.0], [1.0, 0.0], run, clothoid);
+    let line = b.line();
+    let heading = run * run / (2.0 * a * a);
+    let closing = b.segment_at([x, 10.0 + z], [heading.cos(), heading.sin()], 0.0, line);
+    let gradient = over_a_line(&mut b, &[v1, closing]);
+    let curve = lower(&b, gradient, Transform::identity()).expect("vertical clothoid");
+    let ElevationLaw::Intrinsic {
+        height,
+        grade,
+        curvature,
+    } = &curve.elevation
+    else {
+        panic!("expected an intrinsic profile, got {:?}", curve.elevation);
+    };
+    assert_eq!((*height, *grade), (10.0, 0.0));
+    assert_eq!(curvature.constant_value(), None, "a clothoid, not an arc");
+    let point = at(&curve, 150.0);
+    assert!((point[2] - (10.0 + z)).abs() < 1e-7, "{point:?} vs {z}");
+}
+
+/// A horizontal `IfcPolynomialCurve` (a CUBIC, `y = x^3 / (6 R L)`,
+/// `R = 200`, `L = 50`) makes the plan an arc-length chain (#90): the line,
+/// then the cubic read by arc length in its own frame.
+#[test]
+fn a_horizontal_polynomial_makes_the_plan_a_chain() {
+    let a = 1.0 / (6.0 * 200.0 * 50.0);
+    let mut b = Builder::new();
+    let line = b.line();
+    let cubic = b.parabola(&[0.0, 0.0, 0.0, a]);
+    let h1 = b.segment_at([0.0, 0.0], [1.0, 0.0], 100.0, line);
+    let h2 = b.segment_at([100.0, 0.0], [1.0, 0.0], 50.0, cubic);
+    // After a polynomial the end is not closed form: stated, not checked.
+    let closing = b.segment_at([149.99, 0.52], [1.0, 0.0], 0.0, line);
+    let base = b.composite(&[h1, h2, closing]);
+    let v1 = b.segment_at([0.0, 10.0], [1.0, 0.0], 150.0, line);
+    let v2 = b.segment_at([150.0, 10.0], [1.0, 0.0], 0.0, line);
+    let gradient = b.add(entity(
+        "IFCGRADIENTCURVE",
+        vec![
+            Value::List(vec![r(v1), r(v2)]),
+            Value::Bool(false),
+            r(base),
+            Value::Null,
+        ],
+    ));
+    let curve = lower(&b, gradient, Transform::identity()).expect("chain plan");
+    let Curve2::Chain(chain) = curve.plan.as_ref() else {
+        panic!("expected a chain plan, got {:?}", curve.plan);
+    };
+    assert_eq!(chain.length(), Some(150.0));
+    assert!(matches!(
+        &chain.pieces[0],
+        ChainPiece2::Intrinsic { length, curvature } if *length == 100.0 && curvature.is_straight()
+    ));
+    let ChainPiece2::Parametric {
+        curve: Curve2::BSpline(bezier),
+        start,
+        length,
+    } = &chain.pieces[1]
+    else {
+        panic!("the polynomial is a parametric piece");
+    };
+    assert_eq!((*start, *length), (0.0, 50.0));
+    let local = [
+        [0.0, 0.0],
+        [50.0 / 3.0, 0.0],
+        [100.0 / 3.0, 0.0],
+        [50.0, 50.0 / 24.0],
+    ];
+    for (point, [x, y]) in bezier.control_points.iter().zip(local) {
+        assert!((point.x - x).abs() < 1e-12 && (point.y - y).abs() < 1e-12);
+    }
+    // Continuous at the join, through the evaluator.
+    for side in [100.0 - 1e-9, 100.0 + 1e-9] {
+        assert_near(at(&curve, side), [100.0, 0.0, 10.0]);
+    }
 }

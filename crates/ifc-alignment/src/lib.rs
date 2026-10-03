@@ -19,9 +19,13 @@
 //!
 //! Horizontal lines, circular arcs and transition spirals lower to exact
 //! neutral curve graphs; a spiral is stored as its curvature law
-//! (`Curve2::Intrinsic`), never integrated here. A whole layout is also one
-//! intrinsic plan curve with a piecewise curvature law, which is what an
-//! elevated 3D centreline carries. Families without an exact law are typed
+//! (`Curve2::Intrinsic`), never integrated here, and a `CUBIC` as its cubic
+//! parabola trimmed by arc length. A whole layout is also one plan curve
+//! parameterised by distance along it (an intrinsic curve with a piecewise
+//! curvature law, or an arc-length chain when it holds a `CUBIC`), which is
+//! what an elevated 3D centreline carries. Vertical circular arcs are the
+//! circle itself, and cant makes the centreline a banked curve that rolls
+//! the section about its tangent. Families without an exact law are typed
 //! refusals, tracked in GitHub issues.
 
 pub mod authoring;
@@ -48,8 +52,8 @@ pub use curve::{
     elevation_law, gradient_curve3, lower_gradient_curve, lower_horizontal_layout,
     lower_horizontal_layout_partial, lower_horizontal_plan, lower_horizontal_segment,
     lower_segmented_reference_curve, lower_vertical_segment, profile_law, profile_law_within,
-    vertical_profile_law, HorizontalPlan, HorizontalSeam, LoweredAlignmentCurve,
-    PartialHorizontalLayout, RefusedSegment, SeamCheck, SeamTolerance,
+    segmented_reference_curve3, vertical_profile_law, HorizontalPlan, HorizontalSeam,
+    LoweredAlignmentCurve, PartialHorizontalLayout, RefusedSegment, SeamCheck, SeamTolerance,
 };
 pub use error::{AlignmentError, AlignmentResult, ProfileSeam};
 pub use horizontal::{

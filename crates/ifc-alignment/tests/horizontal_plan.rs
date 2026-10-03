@@ -1,5 +1,6 @@
 //! A whole horizontal layout as one exact plan curve (#92), the seam rule
-//! across transition spirals (#239), and the `CUBIC` refusal (#90).
+//! across transition spirals (#239), and the `CUBIC` read by arc length
+//! (#90).
 //!
 //! Expected positions are independent of the code under test: the spiral
 //! fixture's authored `StartPoint`s were computed outside this crate, and
@@ -8,8 +9,8 @@
 
 use std::sync::Arc;
 
-use axiolid_curve::{CurvatureLaw, Curve2, Curve3, Elevated3};
-use axiolid_model::GeometryNode;
+use axiolid_curve::{ChainPiece2, CurvatureLaw, Curve2, Curve3, Elevated3};
+use axiolid_model::{CurveRelation, GeometryNode, TrimSelector};
 use ifc_alignment::{
     lower_gradient_curve, lower_horizontal_layout, lower_horizontal_layout_partial,
     lower_horizontal_plan, lower_horizontal_segment, profile_law, read_vertical_segment,
@@ -420,32 +421,167 @@ fn a_cubic_with_equal_radii_is_an_invalid_segment() {
     );
 }
 
-/// A well-formed CUBIC is a typed refusal on every path, naming why: its
-/// end on the curve inverts a non-elementary arc-length integral.
+/// The end of a CUBIC `y = x^3 / (6 R L)` by arc length, computed here
+/// independently of the evaluator: composite Simpson quadrature of
+/// `sqrt(1 + (x^2 / (2 R L))^2)` and bisection for the abscissa where it
+/// reaches `L`.
+fn cubic_end(radius: f64, length: f64) -> (f64, f64) {
+    let slope = |x: f64| x * x / (2.0 * radius * length);
+    let arc = |x: f64| {
+        let n = 2000;
+        let h = x / n as f64;
+        let f = |t: f64| (1.0 + slope(t).powi(2)).sqrt();
+        let mut sum = f(0.0) + f(x);
+        for i in 1..n {
+            sum += f(i as f64 * h) * if i % 2 == 1 { 4.0 } else { 2.0 };
+        }
+        sum * h / 3.0
+    };
+    let (mut lo, mut hi) = (0.0, length);
+    for _ in 0..200 {
+        let mid = 0.5 * (lo + hi);
+        if arc(mid) < length {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    let x = 0.5 * (lo + hi);
+    (x, x.powi(3) / (6.0 * radius * length))
+}
+
+/// A CUBIC lowers exactly on every path (#90): its cubic parabola, trimmed
+/// where its arc length reaches `SegmentLength`.
+///
+/// Line 100 m east, then a CUBIC leaving the straight to `R = 300` over
+/// `L = 60` m. IFC4X3_ADD2 (`IfcAlignmentHorizontalSegmentTypeEnum`):
+/// `y = x^3 / (6 R L)`; `SegmentLength` is measured along the curve. The
+/// cubic is stored as the Bezier `(0, 0)`, `(20, 0)`, `(40, 0)`,
+/// `(60, 60^2 / 1800 = 2)` placed at `(100, 0)`.
 #[test]
-fn a_well_formed_cubic_is_refused_by_name_on_every_path() {
+fn a_cubic_lowers_exactly_on_every_path() {
     let (mut model, alignment, horizontal, ids) = layout_model(&[
         (0.0, 0.0, 0.0, 0.0, 0.0, 100.0, "LINE"),
         (100.0, 0.0, 0.0, 0.0, 300.0, 60.0, "CUBIC"),
     ]);
-    let is_cubic_gap = |error: &AlignmentError| {
-        matches!(error, AlignmentError::Unsupported { entity, type_name, detail }
-            if *entity == ids[1] && type_name == "CUBIC" && detail.contains("arc-length"))
-    };
-    let single = lower_horizontal_segment(&model, ids[1], metres()).expect_err("cubic");
-    assert!(is_cubic_gap(&single), "got {single:?}");
-    let strict = lower_horizontal_layout(&model, horizontal, metres(), None).expect_err("cubic");
-    assert!(is_cubic_gap(&strict), "got {strict:?}");
-    let partial =
-        lower_horizontal_layout_partial(&model, horizontal, metres(), None).expect("readable");
-    assert_eq!(partial.runs.len(), 1, "the line still lowers");
-    assert!(is_cubic_gap(&partial.refused[0].reason));
+    let (x_end, y_end) = cubic_end(300.0, 60.0);
 
+    // Per segment: the Bezier and the arc-length trim.
+    let single = lower_horizontal_segment(&model, ids[1], metres()).expect("cubic");
+    let Some(GeometryNode::CurveRelation(CurveRelation::Trimmed {
+        basis, start, end, ..
+    })) = single.graph.get(single.root)
+    else {
+        panic!("a CUBIC is a trimmed curve");
+    };
+    assert_eq!(start.as_slice(), [TrimSelector::Parameter(0.0)]);
+    assert_eq!(end.as_slice(), [TrimSelector::ArcLength(60.0)]);
+    let Some(GeometryNode::Curve2(Curve2::BSpline(bezier))) = single.graph.get(*basis) else {
+        panic!("its basis is a B-spline");
+    };
+    assert_eq!(bezier.degree, 3);
+    assert_eq!(bezier.knots, vec![0.0, 60.0]);
+    assert_eq!(bezier.multiplicities, vec![4, 4]);
+    assert!(bezier.weights.is_none());
+    let expected = [(100.0, 0.0), (120.0, 0.0), (140.0, 0.0), (160.0, 2.0)];
+    for (point, (x, y)) in bezier.control_points.iter().zip(expected) {
+        assert!((point.x - x).abs() < 1e-12 && (point.y - y).abs() < 1e-12);
+    }
+    // The curve is y = x^3 / (6 R L) in its own frame, at any abscissa.
+    let curve = Curve2::BSpline(bezier.clone());
+    for x in [0.0, 15.0, 30.0, 45.0, 60.0] {
+        let point = axiolid_evaluate::evaluate2(&curve, x).expect("point");
+        assert!((point.x - (100.0 + x)).abs() < 1e-12, "x at {x}");
+        assert!((point.y - x.powi(3) / 108_000.0).abs() < 1e-12, "y at {x}");
+    }
+    // The evaluator resolves the trim where the independent quadrature does.
+    let resolved = axiolid_evaluate::parameter_at_arc_length2(&curve, 0.0, 60.0).expect("trim");
+    assert!((resolved - x_end).abs() < 1e-9, "{resolved} != {x_end}");
+
+    // The composite and the partial walk accept it; its seam after the line
+    // is verified, the line's end being closed form.
+    let strict = lower_horizontal_layout(&model, horizontal, metres(), None).expect("strict");
+    assert_eq!(strict.seams[0].position, SeamCheck::Verified);
+    let partial =
+        lower_horizontal_layout_partial(&model, horizontal, metres(), None).expect("partial");
+    assert!(partial.is_complete());
+    assert_eq!(partial.runs.len(), 1);
+
+    // The plan is an arc-length chain: the straight, then the cubic read by
+    // arc length in its own frame.
+    let plan = lower_horizontal_plan(&model, horizontal, metres(), None).expect("plan");
+    let Curve2::Chain(chain) = &plan.curve else {
+        panic!("a plan with a CUBIC is a chain, got {:?}", plan.curve);
+    };
+    assert_eq!(chain.length(), Some(160.0));
+    assert!(matches!(
+        &chain.pieces[0],
+        ChainPiece2::Intrinsic { length, curvature } if *length == 100.0 && curvature.is_straight()
+    ));
+    let ChainPiece2::Parametric { start, length, .. } = &chain.pieces[1] else {
+        panic!("the CUBIC is a parametric piece");
+    };
+    assert_eq!((*start, *length), (0.0, 60.0));
+    let end = axiolid_evaluate::chain_point(chain, 160.0).expect("end");
+    assert!(
+        (end.x - (100.0 + x_end)).abs() < 1e-9,
+        "{} vs {}",
+        end.x,
+        100.0 + x_end
+    );
+    assert!((end.y - y_end).abs() < 1e-9, "{} vs {y_end}", end.y);
+
+    // Seam continuity at the join, through the evaluator: position and
+    // heading approach the join from both sides.
+    for side in [100.0 - 1e-9, 100.0 + 1e-9] {
+        let point = axiolid_evaluate::chain_point(chain, side).expect("point");
+        let tangent = axiolid_evaluate::chain_tangent(chain, side).expect("tangent");
+        assert!((point.x - 100.0).abs() < 1e-8 && point.y.abs() < 1e-8);
+        assert!((tangent.x - 1.0).abs() < 1e-12 && tangent.y.abs() < 1e-12);
+    }
+
+    // And it elevates: height at plan distance, on the chain's position.
     add_profile(
         &mut model,
         alignment,
-        &[(0.0, 160.0, 5.0, 0.0, 0.0, "CONSTANTGRADIENT")],
+        &[(0.0, 160.0, 5.0, 0.01, 0.01, "CONSTANTGRADIENT")],
     );
-    let elevated = lower_gradient_curve(&model, alignment, metres()).expect_err("cubic");
-    assert!(is_cubic_gap(&elevated), "got {elevated:?}");
+    let lowered = lower_gradient_curve(&model, alignment, metres()).expect("elevates");
+    let point = axiolid_evaluate::elevated_point(elevated(&lowered), 160.0).expect("point");
+    assert!((point.x - (100.0 + x_end)).abs() < 1e-9);
+    assert!((point.z - 6.6).abs() < 1e-12, "z {}", point.z);
+}
+
+/// After a CUBIC neither the end point nor the end heading is closed form:
+/// the next segment's start is reported as authored, not refused.
+#[test]
+fn the_seam_after_a_cubic_is_authored() {
+    let (x_end, y_end) = cubic_end(300.0, 60.0);
+    let heading = (x_end * x_end / (2.0 * 300.0 * 60.0)).atan();
+    let (model, _, horizontal, _) = layout_model(&[
+        (0.0, 0.0, 0.0, 0.0, 300.0, 60.0, "CUBIC"),
+        (x_end, y_end, heading, 300.0, 300.0, 20.0, "CIRCULARARC"),
+    ]);
+    let plan = lower_horizontal_plan(&model, horizontal, metres(), None).expect("plan");
+    assert_eq!(plan.seams[0].position, SeamCheck::Authored);
+    let strict = lower_horizontal_layout(&model, horizontal, metres(), None).expect("strict");
+    assert_eq!(strict.seams[0].position, SeamCheck::Authored);
+}
+
+/// IFC4.3 states the CUBIC only as leaving a straight; one that starts
+/// curved is a typed refusal naming that, on every path.
+#[test]
+fn a_cubic_that_starts_curved_is_refused_by_name() {
+    let (model, _, horizontal, ids) = layout_model(&[(0.0, 0.0, 0.0, 600.0, 300.0, 60.0, "CUBIC")]);
+    let is_gap = |error: &AlignmentError| {
+        matches!(error, AlignmentError::Unsupported { entity, type_name, detail }
+            if *entity == ids[0] && type_name == "CUBIC" && detail.contains("starting curved"))
+    };
+    let single = lower_horizontal_segment(&model, ids[0], metres()).expect_err("curved start");
+    assert!(is_gap(&single), "{single:?}");
+    let plan = lower_horizontal_plan(&model, horizontal, metres(), None).expect_err("plan");
+    assert!(is_gap(&plan), "{plan:?}");
+    let partial =
+        lower_horizontal_layout_partial(&model, horizontal, metres(), None).expect("readable");
+    assert!(is_gap(&partial.refused[0].reason));
 }

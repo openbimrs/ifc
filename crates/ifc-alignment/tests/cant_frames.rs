@@ -1,5 +1,6 @@
 //! Cant at chosen stations as rail heights, bank angle and section frame
-//! (#93), and the typed refusals around the cant-carrying centreline.
+//! (#93), the banked centreline that carries it, and the typed refusals
+//! around it.
 //!
 //! The fixture is an authored alignment: a 100 m straight along +x, a 2%
 //! grade from height 10, and a cant layout rotating about the low (right)
@@ -10,11 +11,13 @@
 //! linear cant `D(s) = D1 + xi * dD`, bank angle `psi = arcsin(D / b)`.
 
 use axiolid_core::Vec3;
+use axiolid_curve::{BankConvention, Curve3};
+use axiolid_model::GeometryNode;
 use ifc_alignment::{
     alignment, alignment_segment, cant_layout, cant_segment, gradient_curve3, horizontal_layout,
-    horizontal_segment, lower_segmented_reference_curve, vertical_layout, vertical_segment,
-    AlignmentError, AlignmentUnits, CantLayout, CantSegmentDraft, HorizontalSegmentDraft,
-    VerticalSegmentDraft,
+    horizontal_segment, lower_segmented_reference_curve, segmented_reference_curve3,
+    vertical_layout, vertical_segment, AlignmentError, AlignmentUnits, CantLayout,
+    CantSegmentDraft, HorizontalSegmentDraft, VerticalSegmentDraft,
 };
 use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 
@@ -154,8 +157,9 @@ fn cant_values_at_chosen_stations_match_the_ifc_definitions() {
 /// The left rail head, b/2 along y from the origin, rises
 /// `0.75 * 0.08 / s` above the rotation point: the authored `D / 2 = 0.06`
 /// times `cos(theta) = 1 / s`, the grade's cosine. That is the documented
-/// consequence of rotating about the 3D tangent; IFC does not say which
-/// reading it intends, and the upstream request asks Axiolid to fix it.
+/// consequence of rotating about the 3D tangent, the reading IFC4.3 states
+/// (`psi = arcsin(D / b)` is the "angle of cant") and the banked curve
+/// lowers under (`BankConvention::TangentRotation`).
 #[test]
 fn the_section_frame_on_the_evaluated_centreline_matches_the_hand_values() {
     let (model, a) = fixture(1);
@@ -247,25 +251,93 @@ fn an_ambiguous_cant_layout_is_a_typed_refusal() {
     );
 }
 
-/// With exactly one sound cant layout, the refusal names the structural gap:
-/// no roll law in the pinned neutral vocabulary, at the cant layout entity.
+/// With exactly one sound cant layout, the centreline lowers to an exact
+/// banked curve (#93): one `Curve3::Banked` node rotating the section about
+/// the tangent, and its sources name every layout and segment.
 #[test]
-fn the_cant_carrying_centreline_is_refused_for_want_of_a_roll_law() {
+fn the_cant_carrying_centreline_lowers_to_a_banked_curve() {
     let (model, a) = fixture(1);
     let cant = CantLayout::for_alignment(&model, a, metres()).expect("cant");
-    let error =
-        lower_segmented_reference_curve(&model, a, metres()).expect_err("no roll law upstream");
-    let AlignmentError::Unsupported {
-        entity,
-        type_name,
-        detail,
-    } = error
-    else {
-        panic!("expected Unsupported, got {error}");
+    let lowered = lower_segmented_reference_curve(&model, a, metres()).expect("banked");
+    let Some(GeometryNode::Curve3(Curve3::Banked(banked))) = lowered.graph.get(lowered.root) else {
+        panic!("the root must be a banked curve");
     };
-    assert_eq!(entity, cant.entity);
-    assert_eq!(type_name, "IfcSegmentedReferenceCurve");
-    assert!(detail.contains("roll"), "{detail}");
+    assert_eq!(banked.convention, BankConvention::TangentRotation);
+    assert_eq!(banked.rail_head_distance, 1.5);
+    assert_eq!(banked.span(), 100.0);
+    assert!(
+        lowered.sources.contains(&cant.entity),
+        "names the cant layout"
+    );
+    for segment in cant.segments() {
+        assert!(lowered.sources.contains(&segment.entity));
+    }
+    // The ramp rotates about the low rail: cant D and pivot D / 2.
+    for (station, left) in [(30.0, 0.06), (60.0, 0.12), (80.0, 0.12)] {
+        close(banked.cant_at(station).expect("cant"), left, "cant law");
+        close(
+            banked.pivot_at(station).expect("pivot").0,
+            left / 2.0,
+            "pivot law",
+        );
+    }
+}
+
+/// The evaluated section agrees with `CantFrame`, the crate's own algebra
+/// for the same rotation, where the pivot is still (80 m, past the ramp).
+///
+/// Axes: `BankedSection::frame` returns x the tangent, y the section up and
+/// z the right-hand lateral, `-lateral`. The curve-evaluation contract
+/// documents z as up; the reference provider's layout is the one asserted
+/// here (axiolid/kernel#242). Nothing in the lowering depends on it.
+#[test]
+fn the_banked_section_agrees_with_the_cant_frame() {
+    let (model, a) = fixture(1);
+    let curve = segmented_reference_curve3(&model, a, metres()).expect("banked");
+    let Curve3::Banked(banked) = &curve else {
+        panic!("expected a banked curve, got {curve:?}");
+    };
+    let elevated = gradient_curve3(&model, a, metres()).expect("gradient curve");
+    let Curve3::Elevated(elevated) = &elevated else {
+        panic!("expected an elevated curve");
+    };
+    let near = |actual: Vec3, expected: Vec3, what: &str| {
+        assert!(
+            (actual - expected).length() < 1e-12,
+            "{what}: {actual:?} != {expected:?}"
+        );
+    };
+
+    let section = axiolid_evaluate::banked_section(banked, 80.0).expect("section");
+    let point = axiolid_evaluate::elevated_point(elevated, 80.0).expect("point");
+    let tangent = axiolid_evaluate::elevated_tangent(elevated, 80.0).expect("tangent");
+    let frame = CantLayout::for_alignment(&model, a, metres())
+        .expect("cant")
+        .frame_at_distance(80.0)
+        .expect("frame")
+        .orient(point, tangent)
+        .expect("oriented");
+    near(section.point, frame.origin, "rotation point");
+    near(section.tangent, frame.x, "tangent");
+    near(section.lateral, frame.y, "rail axis");
+    near(section.up, frame.z, "section up");
+    close(section.roll, (0.12_f64 / 1.5).asin(), "roll = psi");
+
+    let axes = section.frame();
+    near(axes.x, section.tangent, "frame x: tangent (kernel#242)");
+    near(axes.y, section.up, "frame y: section up (kernel#242)");
+    near(axes.z, -section.lateral, "frame z: right (kernel#242)");
+
+    // Mid-ramp the pivot climbs with the cant, so the section stands on the
+    // profile raised by D / 2 = 0.03 at the cant the ramp states.
+    let section = axiolid_evaluate::banked_section(banked, 30.0).expect("section");
+    let profile = axiolid_evaluate::elevated_point(elevated, 30.0).expect("point");
+    near(
+        section.point,
+        profile + Vec3::Z * 0.03,
+        "pivot above the profile",
+    );
+    close(section.cant, 0.06, "cant mid-ramp");
 }
 
 /// Cant beyond the rail head distance has no real bank angle.

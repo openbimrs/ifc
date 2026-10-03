@@ -5,47 +5,72 @@
 //! "Gradient curve is a type of 3D curve representation that is based on its
 //! 2D projection (BaseCurve) and a height defined by its gradient segments";
 //! "the value of the parameter equals the parameter value of BaseCurve". So
-//! it lowers to `Curve3::Elevated`: the plan as ONE `Curve2::Intrinsic` with
-//! a piecewise curvature law, and the height as an `ElevationLaw` over
-//! distance along that plan. Nothing is integrated or sampled.
+//! it lowers to `Curve3::Elevated`: the plan as ONE curve parameterised by
+//! arc length, and the height as an `ElevationLaw` over distance along that
+//! plan. Nothing is integrated or sampled.
 //!
 //! **Plan.** `BaseCurve` must be an `IfcCompositeCurve` of `IfcCurveSegment`s
 //! with 2D placements whose parents have an elementary law (line, circle,
-//! spiral; see `segment.rs`). The curve is anchored at the first segment's
-//! placement and every later piece by arc length. Each later placement is
-//! still checked: its heading in closed form at every seam (a kink is
-//! refused), its position after a line or arc, whose end point is closed
-//! form. After a spiral the end point is a Fresnel-type integral, so the
+//! spiral; see `segment.rs`) or are a 2D `IfcPolynomialCurve` (the `CUBIC`
+//! transition; see `polynomial.rs`). Without a polynomial the plan is one
+//! `Curve2::Intrinsic` with a piecewise curvature law; with one it is a
+//! `Curve2::Chain`, the polynomial a parametric piece read by arc length.
+//! Either is anchored at the first segment's placement and every later
+//! piece by arc length. Each later placement is still checked: its heading
+//! in closed form at every seam after a curvature law (a kink is refused),
+//! its position after a line or arc, whose end point is closed form. After
+//! a spiral the end point is a Fresnel-type integral, after a polynomial
+//! the end point and heading are an elliptic-integral inverse, so the
 //! authored placement is accepted as stated, not verified -- the same rule
 //! `ifc-alignment` applies to the business layout.
 //!
 //! **Profile.** The `Segments` are `IfcCurveSegment`s in the
 //! (distance along, height) plane: `Placement.Location` is
 //! `(StartDistAlong, StartHeight)` and lengths are arc lengths along the
-//! parent, as for every curve segment. An `IfcLine` parent rising at
-//! `RefDirection = (dx, dz)` covers `|SegmentLength| dx` of plan distance at
-//! grade `dz/dx`, exactly. An `IfcPolynomialCurve` parabola is a height
-//! function of distance only when the placement keeps its start tangent; its
-//! end abscissa inverts a non-elementary arc-length integral, so it is read
-//! from the next segment's placement (or the closing segment, or `EndPoint`)
-//! and the stated `SegmentLength` is checked against the closed-form
-//! parabola arc length. Vertical circular arcs and clothoids are not
-//! polynomial in plan distance and stay refused (#258).
+//! parent, as for every curve segment.
 //!
-//! # Segmented reference curve: refused (#93)
+//! - An `IfcLine` parent rising at `RefDirection = (dx, dz)` covers
+//!   `|SegmentLength| dx` of plan distance at grade `dz/dx`, exactly.
+//! - An `IfcPolynomialCurve` parabola is a height function of distance only
+//!   when the placement keeps its start tangent; its end abscissa inverts a
+//!   non-elementary arc-length integral, so it is read from the next
+//!   segment's placement (or the closing segment, or `EndPoint`) and the
+//!   stated `SegmentLength` is checked against the closed-form parabola arc
+//!   length.
+//! - An `IfcCircle` parent is `ElevationLaw::CircularArc` (#258): the
+//!   circle through the placement, turning left (a sag) for a positive
+//!   `SegmentLength`. Its plan extent `R (sin t1 - sin t0)`, with
+//!   `t1 = t0 + |SegmentLength| / R`, and its end height are closed form,
+//!   so both seams are checked.
+//! - An `IfcSpiral` parent (the vertical `IfcClothoid`) is
+//!   `ElevationLaw::Intrinsic`: its curvature against its own arc length,
+//!   rebased to the segment. Its plan extent and end height are
+//!   Fresnel-type integrals, so the extent is read from the next start, as
+//!   for the parabola, and the seam height there is accepted as authored.
 //!
-//! It adds cant -- a roll of the cross-section about the centreline -- which
-//! the pinned neutral vocabulary has no value for.
+//! # Segmented reference curve: refused
+//!
+//! Axiolid now has a banked curve to carry cant, and `ifc-alignment` lowers
+//! the business cant layout onto it. The geometric form is still refused:
+//! its segments stand at stations along the base curve
+//! (`IfcAxis2PlacementLinear`, #307) or carry cant in placement axes, and
+//! IFC4.3 ADD2 gives no normative mapping from a segment's `ParentCurve` to
+//! the cant law ("the superelevation rate of change is directly
+//! proportionate to the curve segment parent curve curvature gradient").
+//! Reading one would be a guess.
 
 use std::f64::consts::TAU;
 
 use axiolid_core::{Frame2, Point2, Vec2};
-use axiolid_curve::{CurvatureLaw, Curve2, Curve3, Elevated3, ElevationLaw, Intrinsic2};
+use axiolid_curve::{
+    Chain2, ChainPiece2, CurvatureLaw, Curve2, Curve3, Elevated3, ElevationLaw, Intrinsic2,
+};
 use axiolid_model::{GeometryNode, NodeId};
 use ifc_alignment::{AlignmentUnits, SeamTolerance};
 use ifc_model::EntityId;
 
-use super::segment::{read_segment, refuse_parent, segment_curvature, Segment};
+use super::segment::{circle_radius, read_segment, refuse_parent, segment_curvature, Segment};
+use super::{polynomial, spiral};
 use crate::curve::composite::CompositeCurve;
 use crate::error::GeometryResult;
 use crate::lower::session::LoweringSession;
@@ -57,13 +82,9 @@ const SEGMENT: &str = "IFCCURVESEGMENT";
 
 /// Why an `IfcSegmentedReferenceCurve` is refused.
 pub(crate) const SEGMENTED_REFERENCE: &str =
-    "IfcSegmentedReferenceCurve adds cant (a roll of the section about the centreline); the \
-     pinned neutral curve vocabulary has no roll law to carry it exactly (#93)";
-
-/// Why a vertical circular arc or clothoid is refused.
-const VERTICAL_NOT_POLYNOMIAL: &str =
-    "a vertical IfcCircle or IfcClothoid is not polynomial in plan distance, and the pinned \
-     ElevationLaw has only polynomial pieces (#258)";
+    "IfcSegmentedReferenceCurve states cant through segments placed at stations along its base \
+     curve and parent curves with no normative mapping to a cant law; the business cant layout \
+     lowers to a banked curve through ifc-alignment (#311)";
 
 /// Largest heading difference, in radians, accepted at a plan seam.
 const HEADING_TOLERANCE: f64 = 1e-6;
@@ -115,23 +136,45 @@ pub(super) fn gradient_curve(
     // The frame keeps the vertical: rotate and move the plan, lift the height.
     let origin = frame.apply([plan.start.origin.x, plan.start.origin.y, 0.0]);
     let x = frame.apply_direction([plan.start.x.x, plan.start.x.y, 0.0]);
-    let placed = Intrinsic2::new(
-        Frame2 {
-            origin: Point2::new(origin[0], origin[1]),
-            x: Vec2::new(x[0], x[1]),
-            y: Vec2::new(-x[1], x[0]),
-        },
-        plan.curvature,
-        plan.length,
-    );
-    let elevation = lifted(elevation, origin[2]);
+    let start = Frame2 {
+        origin: Point2::new(origin[0], origin[1]),
+        x: Vec2::new(x[0], x[1]),
+        y: Vec2::new(-x[1], x[0]),
+    };
+    let placed = match plan.pieces {
+        PlanPieces::Law(curvature) => {
+            Curve2::Intrinsic(Intrinsic2::new(start, curvature, plan.length))
+        }
+        PlanPieces::Chain(pieces) => Curve2::Chain(Chain2::new(start, pieces)),
+    };
+    let Some(elevation) = lifted(elevation, origin[2]) else {
+        return Err(session.degenerate(id, GRADIENT, "the profile law cannot be lifted"));
+    };
     session.node_for(
         id,
-        GeometryNode::Curve3(Curve3::Elevated(Elevated3::new(
-            Curve2::Intrinsic(placed),
-            elevation,
-        ))),
+        GeometryNode::Curve3(Curve3::Elevated(Elevated3::new(placed, elevation))),
     )
+}
+
+/// The plan: where it starts, its pieces, and its arc length.
+struct Plan {
+    start: Frame2,
+    pieces: PlanPieces,
+    length: f64,
+}
+
+/// One curvature law over the whole plan, or a chain when a piece has none.
+enum PlanPieces {
+    Law(CurvatureLaw),
+    Chain(Vec<ChainPiece2>),
+}
+
+/// One horizontal segment of the plan.
+enum PlanPiece {
+    /// A curvature law in the segment's own arc length.
+    Law(CurvatureLaw),
+    /// An `IfcPolynomialCurve` in its local frame, read by arc length.
+    Polynomial(Curve2),
 }
 
 /// Seam tolerance: the model's declared precision, floored at rounding.
@@ -173,13 +216,14 @@ fn keeps_vertical(frame: &Transform) -> bool {
         && frame.origin.iter().all(|v| v.is_finite())
 }
 
-/// The plan: one intrinsic curve over every horizontal segment.
+/// The plan: one curve over every horizontal segment, parameterised by arc
+/// length.
 fn plan(
     session: &LoweringSession<'_>,
     owner: EntityId,
     base: EntityId,
     tolerance: Tolerance,
-) -> GeometryResult<Intrinsic2> {
+) -> GeometryResult<Plan> {
     if session.type_name(base)? != "IFCCOMPOSITECURVE" {
         return Err(session.unsupported(
             owner,
@@ -193,46 +237,86 @@ fn plan(
         return Err(session.degenerate(base, "IFCCOMPOSITECURVE", "no segment of positive length"));
     };
 
-    let mut laws = Vec::with_capacity(body.len());
-    let mut breaks = Vec::with_capacity(body.len());
+    let mut pieces = Vec::with_capacity(body.len());
     let mut station = 0.0;
     for (index, segment) in body.iter().enumerate() {
-        let law = segment_curvature(session, segment)?;
         let run = segment.length.abs();
-        if let Some(next) = body.get(index + 1).or(closing) {
-            check_plan_seam(session, segment, &law, run, next, tolerance)?;
+        let piece = if segment.parent_kind == "IFCPOLYNOMIALCURVE" {
+            PlanPiece::Polynomial(Curve2::BSpline(polynomial::local_bezier(session, segment)?))
+        } else {
+            PlanPiece::Law(segment_curvature(session, segment)?)
+        };
+        // After a polynomial neither the end point nor the end heading is
+        // closed form: the next placement is accepted as authored.
+        if let (PlanPiece::Law(law), Some(next)) = (&piece, body.get(index + 1).or(closing)) {
+            check_plan_seam(session, segment, law, run, next, tolerance)?;
         }
-        if index > 0 {
-            breaks.push(station);
-        }
-        laws.push(law);
+        pieces.push((run, piece));
         station += run;
     }
-    let curvature = if laws.len() == 1 {
-        laws.remove(0)
-    } else {
-        CurvatureLaw::piecewise(breaks, laws)
-    };
-    let x = first.placement.basis[0];
-    let curve = Intrinsic2::new(
-        Frame2 {
-            origin: Point2::new(first.placement.origin[0], first.placement.origin[1]),
-            x: Vec2::new(x[0], x[1]),
-            y: Vec2::new(-x[1], x[0]),
-        },
-        curvature,
-        station,
-    );
-    if !curve.curvature.is_well_formed()
-        || curve.total_turning().is_none_or(|turn| !turn.is_finite())
-    {
-        return Err(session.degenerate(
+    let malformed = || {
+        session.degenerate(
             base,
             "IFCCOMPOSITECURVE",
-            "the horizontal segments did not assemble into a well-formed curvature law",
-        ));
-    }
-    Ok(curve)
+            "the horizontal segments did not assemble into a well-formed plan curve",
+        )
+    };
+    let x = first.placement.basis[0];
+    let start = Frame2 {
+        origin: Point2::new(first.placement.origin[0], first.placement.origin[1]),
+        x: Vec2::new(x[0], x[1]),
+        y: Vec2::new(-x[1], x[0]),
+    };
+    let pieces = if pieces
+        .iter()
+        .all(|(_, piece)| matches!(piece, PlanPiece::Law(_)))
+    {
+        let mut laws = Vec::with_capacity(pieces.len());
+        let mut breaks = Vec::with_capacity(pieces.len());
+        let mut at = 0.0;
+        for (index, (run, piece)) in pieces.into_iter().enumerate() {
+            if let PlanPiece::Law(law) = piece {
+                if index > 0 {
+                    breaks.push(at);
+                }
+                laws.push(law);
+            }
+            at += run;
+        }
+        let curvature = if laws.len() == 1 {
+            laws.remove(0)
+        } else {
+            CurvatureLaw::piecewise(breaks, laws)
+        };
+        let curve = Intrinsic2::new(start, curvature, station);
+        if !curve.curvature.is_well_formed()
+            || curve.total_turning().is_none_or(|turn| !turn.is_finite())
+        {
+            return Err(malformed());
+        }
+        PlanPieces::Law(curve.curvature)
+    } else {
+        let pieces: Vec<ChainPiece2> = pieces
+            .into_iter()
+            .map(|(length, piece)| match piece {
+                PlanPiece::Law(curvature) => ChainPiece2::Intrinsic { curvature, length },
+                PlanPiece::Polynomial(curve) => ChainPiece2::Parametric {
+                    curve,
+                    start: 0.0,
+                    length,
+                },
+            })
+            .collect();
+        if !Chain2::new(start, pieces.clone()).is_well_formed() {
+            return Err(malformed());
+        }
+        PlanPieces::Chain(pieces)
+    };
+    Ok(Plan {
+        start,
+        pieces,
+        length: station,
+    })
 }
 
 /// Check where `next` starts against where `segment` ends.
@@ -380,9 +464,23 @@ fn profile(
             .or(end_point);
         let d0 = segment.placement.origin[0];
         let (law, extent) = vertical_piece(session, segment, next.map(|p| p[0] - d0), tolerance)?;
-        let end = [d0 + extent, horner(&law, extent)];
+        // A spiral's end height is a Fresnel-type integral: accepted as the
+        // next start states it. Every other piece ends in closed form.
+        let end_height = match (&law, law.height_at(extent)) {
+            (ElevationLaw::Intrinsic { .. }, _) => None,
+            (_, Some(height)) => Some(height),
+            (_, None) => {
+                return Err(session.degenerate(
+                    segment.id,
+                    SEGMENT,
+                    "the vertical segment has no finite end height",
+                ))
+            }
+        };
+        let end = d0 + extent;
         if let Some(next) = next {
-            if !(tolerance.same(end[0], next[0]) && tolerance.same(end[1], next[1])) {
+            let height_ok = end_height.is_none_or(|height| tolerance.same(height, next[1]));
+            if !(tolerance.same(end, next[0]) && height_ok) {
                 return Err(session.unsupported(
                     segment.id,
                     SEGMENT,
@@ -394,8 +492,8 @@ fn profile(
         if index > 0 {
             breaks.push(d0);
         }
-        laws.push(ElevationLaw::Polynomial { coefficients: law });
-        reach = end[0];
+        laws.push(law);
+        reach = end;
     }
     if !tolerance.same(reach, plan_length) {
         return Err(session.unsupported(
@@ -420,17 +518,17 @@ fn profile(
     }
 }
 
-/// One vertical segment: its height polynomial in local distance, and the
-/// plan distance it covers.
+/// One vertical segment: its elevation law in local distance, and the plan
+/// distance it covers.
 ///
 /// `to_next` is the plan distance to the next stated start, when there is
-/// one; only a parabola needs it.
+/// one; a parabola and a spiral need it.
 fn vertical_piece(
     session: &LoweringSession<'_>,
     segment: &Segment,
     to_next: Option<f64>,
     tolerance: Tolerance,
-) -> GeometryResult<(Vec<f64>, f64)> {
+) -> GeometryResult<(ElevationLaw, f64)> {
     let [dx, dz] = [segment.placement.basis[0][0], segment.placement.basis[0][1]];
     if dx.is_nan() || dx <= 0.0 {
         return Err(session.unsupported(
@@ -440,16 +538,59 @@ fn vertical_piece(
         ));
     }
     let z0 = segment.placement.origin[1];
-    match segment.parent_kind.as_str() {
-        "IFCLINE" => Ok((vec![z0, dz / dx], segment.length.abs() * dx)),
-        "IFCPOLYNOMIALCURVE" => parabola(session, segment, to_next, tolerance),
-        "IFCCIRCLE" | "IFCCLOTHOID" => Err(session.unsupported(
-            segment.parent,
-            &segment.parent_kind,
-            VERTICAL_NOT_POLYNOMIAL,
+    let kind = segment.parent_kind.as_str();
+    match kind {
+        "IFCLINE" => Ok((
+            ElevationLaw::constant_grade(z0, dz / dx),
+            segment.length.abs() * dx,
         )),
+        "IFCPOLYNOMIALCURVE" => parabola(session, segment, to_next, tolerance)
+            .map(|(coefficients, extent)| (ElevationLaw::Polynomial { coefficients }, extent)),
+        "IFCCIRCLE" => vertical_arc(session, segment, z0, dx, dz),
+        _ if spiral::is_spiral(kind) => {
+            let curvature = segment_curvature(session, segment)?;
+            let Some(extent) = to_next.filter(|e| e.is_finite() && *e > 0.0) else {
+                return Err(session.unsupported(
+                    segment.parent,
+                    kind,
+                    "a vertical spiral's plan extent is a Fresnel-type integral and no next \
+                     segment, closing segment or EndPoint states it",
+                ));
+            };
+            Ok((ElevationLaw::intrinsic(z0, dz / dx, curvature), extent))
+        }
         _ => Err(refuse_parent(session, segment)),
     }
+}
+
+/// A vertical `IfcCircle`: the circle through the placement, as
+/// `ElevationLaw::CircularArc`, and the plan distance it covers.
+///
+/// A positive `SegmentLength` travels the circle in its own sense, turning
+/// left in the (distance, height) plane: a sag, positive radius. The arc
+/// turns by `|SegmentLength| / R` from `t0 = atan(dz / dx)` and covers
+/// `R (sin t1 - sin t0)` of plan distance, both closed form. An arc that
+/// turns vertical or back on itself before its end has no height there and
+/// is refused.
+fn vertical_arc(
+    session: &LoweringSession<'_>,
+    segment: &Segment,
+    z0: f64,
+    dx: f64,
+    dz: f64,
+) -> GeometryResult<(ElevationLaw, f64)> {
+    let radius = circle_radius(session, segment)?.copysign(segment.length);
+    let start = dz.atan2(dx);
+    let end = start + segment.length.abs() / radius;
+    if end.abs() >= std::f64::consts::FRAC_PI_2 {
+        return Err(session.unsupported(
+            segment.id,
+            SEGMENT,
+            "the vertical arc turns vertical before its end, so it has no height there",
+        ));
+    }
+    let extent = radius * (end.sin() - start.sin());
+    Ok((ElevationLaw::circular_arc(z0, dz / dx, radius), extent))
 }
 
 /// A vertical `IfcPolynomialCurve` of degree at most 2, as `z(t)`.
@@ -462,7 +603,10 @@ fn parabola(
     let parent = segment.parent;
     let refuse = |detail: &'static str| session.unsupported(parent, "IFCPOLYNOMIALCURVE", detail);
     if !tolerance.same(segment.start, 0.0) || segment.length < 0.0 {
-        return Err(refuse(super::segment::POLYNOMIAL_PARENT));
+        return Err(refuse(
+            "a vertical IfcPolynomialCurve cut from a non-zero SegmentStart, or walked \
+             backwards: its placed start inverts a non-elementary arc-length integral",
+        ));
     }
     let slots = session.slots(parent)?;
     let x = slots
@@ -506,7 +650,7 @@ fn parabola(
     let Some(extent) = to_next.filter(|e| e.is_finite() && *e > 0.0) else {
         return Err(refuse(
             "a parabola's end abscissa inverts a non-elementary arc-length integral and no next \
-             segment, closing segment or EndPoint states it (#90)",
+             segment, closing segment or EndPoint states it",
         ));
     };
     if !tolerance.same(parabola_arc_length(grade, bend, extent), segment.length) {
@@ -529,14 +673,13 @@ fn parabola_arc_length(g: f64, c: f64, x: f64) -> f64 {
     (primitive(g + 2.0 * c * x) - primitive(g)) / (2.0 * c)
 }
 
-/// Evaluate ascending coefficients at `t`.
-fn horner(coefficients: &[f64], t: f64) -> f64 {
-    coefficients.iter().rev().fold(0.0, |acc, c| acc * t + c)
-}
-
 /// The law raised by `dz` everywhere.
-fn lifted(law: ElevationLaw, dz: f64) -> ElevationLaw {
-    match law {
+///
+/// Every law this module builds is listed: a height left unlifted would put
+/// the road `dz` off, so an unknown law is a degenerate result, not a
+/// pass-through.
+fn lifted(law: ElevationLaw, dz: f64) -> Option<ElevationLaw> {
+    Some(match law {
         ElevationLaw::Polynomial { mut coefficients } => {
             if let Some(c) = coefficients.first_mut() {
                 *c += dz;
@@ -547,10 +690,23 @@ fn lifted(law: ElevationLaw, dz: f64) -> ElevationLaw {
         }
         ElevationLaw::Piecewise { breaks, laws } => ElevationLaw::Piecewise {
             breaks,
-            laws: laws.into_iter().map(|law| lifted(law, dz)).collect(),
+            laws: laws
+                .into_iter()
+                .map(|law| lifted(law, dz))
+                .collect::<Option<_>>()?,
         },
-        other => other,
-    }
+        ElevationLaw::CircularArc {
+            height,
+            grade,
+            radius,
+        } => ElevationLaw::circular_arc(height + dz, grade, radius),
+        ElevationLaw::Intrinsic {
+            height,
+            grade,
+            curvature,
+        } => ElevationLaw::intrinsic(height + dz, grade, curvature),
+        _ => return None,
+    })
 }
 
 fn angle(x: [f64; 3]) -> f64 {
