@@ -9,12 +9,17 @@ use ifc_model::{EntityId, Model};
 
 use super::{slot, OPEN_PROFILE};
 use crate::error::{GeometryError, GeometryResult};
+use crate::input::profile::{describe_profile, open_cross_vertices, ProfileParameters};
 use crate::lower::session::LoweringSession;
 use crate::slots::Slots;
 use crate::transform::Transform;
 use crate::units::UnitScale;
 
-/// Append one authored `IfcArbitraryOpenProfileDef` without implying area.
+/// Append one authored open profile without implying area.
+///
+/// Admits `IfcArbitraryOpenProfileDef`, whose path is its `Curve`, and the
+/// IFC4X3 `IfcOpenCrossProfileDef`, whose path is the polyline its widths and
+/// slopes construct (see `input::profile::open_cross` for the convention).
 ///
 /// Area-profile callers deliberately use [`super::lower_profile_node`] instead.
 /// This separate entry point prevents an open path from becoming a swept-area
@@ -29,20 +34,76 @@ pub fn lower_open_profile_node(
     }
 
     let type_name = session.type_name(id)?;
-    if type_name != "IFCARBITRARYOPENPROFILEDEF" {
-        return Err(session.unsupported(
-            id,
-            &type_name,
-            "only IfcArbitraryOpenProfileDef has authored open-path semantics",
-        ));
-    }
-
-    let path_ref = session.slots(id)?.req_ref(slot::OUTER_CURVE, "Curve")?;
-    let path_curve = open_curve2(session.model(), path_ref, session.units())?;
-    let path = session.node_for(path_ref, GeometryNode::Curve2(path_curve))?;
+    let path = match type_name.as_str() {
+        "IFCARBITRARYOPENPROFILEDEF" => {
+            let path_ref = session.slots(id)?.req_ref(slot::OUTER_CURVE, "Curve")?;
+            let path_curve = open_curve2(session.model(), path_ref, session.units())?;
+            session.node_for(path_ref, GeometryNode::Curve2(path_curve))?
+        }
+        // The chain has no curve entity of its own: the profile states it as
+        // widths and slopes, so the path node is attributed to the profile.
+        "IFCOPENCROSSPROFILEDEF" => {
+            let path_curve = open_cross_curve2(session.model(), id, session.units())?;
+            session.node_for(id, GeometryNode::Curve2(path_curve))?
+        }
+        _ => {
+            return Err(session.unsupported(
+                id,
+                &type_name,
+                "only IfcArbitraryOpenProfileDef and IfcOpenCrossProfileDef have \
+                 authored open-path semantics",
+            ))
+        }
+    };
     let node = session.node_for(id, GeometryNode::OpenProfile(OpenProfile::new(path)))?;
     session.memoize(id, OPEN_PROFILE, frame, node);
     Ok(node)
+}
+
+/// The exact open polyline an `IfcOpenCrossProfileDef` states.
+///
+/// The vertices are closed-form sums of the authored widths and slopes, one
+/// per tag, so the polyline is the profile exactly. A chain whose last vertex
+/// returns onto its first (all widths zero, for instance) is not an open path
+/// and is refused, as for an arbitrary open profile.
+fn open_cross_curve2(model: &Model, id: EntityId, units: &UnitScale) -> GeometryResult<Curve2> {
+    let description = describe_profile(model, units, id)?;
+    let ProfileParameters::OpenCross {
+        horizontal_widths,
+        widths,
+        slopes,
+        offset_point,
+        ..
+    } = &description.parameters
+    else {
+        return Err(GeometryError::Unsupported {
+            entity: id,
+            type_name: description.type_name,
+            detail: "expected an IfcOpenCrossProfileDef description",
+        });
+    };
+    let points: Vec<Vec2> = open_cross_vertices(*horizontal_widths, widths, slopes, *offset_point)
+        .into_iter()
+        .map(Vec2::from_array)
+        .collect();
+    if points.iter().any(|point| !point.is_finite()) {
+        return Err(GeometryError::Degenerate {
+            entity: id,
+            type_name: description.type_name,
+            detail: "open cross profile vertex is not finite".to_string(),
+        });
+    }
+    if points[0] == *points.last().expect("at least one segment") {
+        return Err(GeometryError::Degenerate {
+            entity: id,
+            type_name: description.type_name,
+            detail: "open cross profile chain returns to its start point".to_string(),
+        });
+    }
+    Ok(Curve2::Polyline(Polyline2 {
+        points,
+        closed: false,
+    }))
 }
 
 /// Extract the exact `Curve2` used by an authored open profile.

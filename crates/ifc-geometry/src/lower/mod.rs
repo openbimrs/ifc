@@ -14,6 +14,7 @@ pub mod mapped;
 pub mod net;
 pub mod point;
 pub mod profile;
+mod sectioned;
 pub mod session;
 pub mod surface;
 pub mod swept;

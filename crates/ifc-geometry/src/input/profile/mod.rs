@@ -25,9 +25,13 @@
 //! dimension, a nesting cycle and an unknown family are all typed errors
 //! naming the entity. Nothing is defaulted to make a description succeed.
 
+mod open_cross;
 mod outline;
 mod section;
 mod types;
+
+#[cfg(feature = "lowering")]
+pub(crate) use open_cross::vertices as open_cross_vertices;
 
 pub use outline::{profile_outline, ProfileOutline};
 pub use types::{ProfileDescription, ProfileOperator, ProfileParameters, ProfilePosition};
@@ -60,7 +64,8 @@ const KIND: &str = "profile";
 
 /// Read one `IfcProfileDef` into its family parameters, in metres and radians.
 ///
-/// Every concrete IFC4 profile family is described. A bare `IfcProfileDef`
+/// Every concrete IFC4 profile family is described, and the IFC4X3
+/// `IfcOpenCrossProfileDef`. A bare `IfcProfileDef`
 /// and any unknown type are refused as [`GeometryError::Unsupported`]; a
 /// profile that references itself through a composite or derived chain is
 /// refused as [`GeometryError::CyclicChain`].
@@ -163,6 +168,9 @@ fn parameters(
         "IFCARBITRARYOPENPROFILEDEF" => ProfileParameters::ArbitraryOpen {
             curve: curve_ref(model, slots, slot::OUTER_CURVE, "Curve")?,
         },
+        // IFC4X3. Open like the arbitrary open profile: described, and
+        // refused by the area consumers through `bounds_area`.
+        "IFCOPENCROSSPROFILEDEF" => open_cross::read(model, units, slots)?,
         "IFCCENTERLINEPROFILEDEF" => ProfileParameters::CenterLine {
             curve: curve_ref(model, slots, section_slot::CL_CURVE, "Curve")?,
             thickness: units.length(slots.req_f64(section_slot::CL_THICKNESS, "Thickness")?),
@@ -212,6 +220,7 @@ fn is_parameterized(parameters: &ProfileParameters) -> bool {
         ProfileParameters::ArbitraryClosed { .. }
             | ProfileParameters::ArbitraryWithVoids { .. }
             | ProfileParameters::ArbitraryOpen { .. }
+            | ProfileParameters::OpenCross { .. }
             | ProfileParameters::CenterLine { .. }
             | ProfileParameters::Composite { .. }
             | ProfileParameters::Derived { .. }

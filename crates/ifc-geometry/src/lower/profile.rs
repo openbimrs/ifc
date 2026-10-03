@@ -151,7 +151,7 @@ fn build(
         // closing the curve would fabricate a face the file never described,
         // and silently sweeping it would produce a solid from a shape that
         // bounds no area. State that rather than emitting a generic gap.
-        ProfileParameters::ArbitraryOpen { .. } => {
+        ProfileParameters::ArbitraryOpen { .. } | ProfileParameters::OpenCross { .. } => {
             return Err(GeometryError::Unsupported {
                 entity: description.entity,
                 type_name: description.type_name.clone(),

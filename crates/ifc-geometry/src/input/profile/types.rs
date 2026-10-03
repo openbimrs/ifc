@@ -39,11 +39,12 @@ impl ProfileDescription {
     /// Does this profile bound an area?
     ///
     /// `false` when the profile, or any member or parent it is built from, is
-    /// an `IfcArbitraryOpenProfileDef`. An open curve bounds nothing, so it
-    /// cannot be the cross section of a swept solid.
+    /// an `IfcArbitraryOpenProfileDef` or an `IfcOpenCrossProfileDef`. An open
+    /// curve bounds nothing, so it cannot be the cross section of a swept
+    /// solid.
     pub fn bounds_area(&self) -> bool {
         match &self.parameters {
-            ProfileParameters::ArbitraryOpen { .. } => false,
+            ProfileParameters::ArbitraryOpen { .. } | ProfileParameters::OpenCross { .. } => false,
             ProfileParameters::Composite { profiles, .. } => {
                 profiles.iter().all(ProfileDescription::bounds_area)
             }
@@ -316,6 +317,28 @@ pub enum ProfileParameters {
     ArbitraryOpen {
         /// `Curve`.
         curve: EntityId,
+    },
+    /// `IfcOpenCrossProfileDef` (IFC4X3): an open chain of straight segments,
+    /// each a width and a slope, starting at `offset_point`. Bounds no area.
+    ///
+    /// The values are the authored ones in SI units; the lowering derives the
+    /// chain's vertices from them and documents that construction.
+    #[non_exhaustive]
+    OpenCross {
+        /// `HorizontalWidths`: `true` when each width is the horizontal run
+        /// of its segment, `false` when it is the length along the slope.
+        horizontal_widths: bool,
+        /// `Widths`, in metres, one per segment.
+        widths: Vec<f64>,
+        /// `Slopes`, in radians, one per segment; positive rises along +X.
+        slopes: Vec<f64>,
+        /// `Tags`, one per point (one more than there are segments), when
+        /// authored. They pair points across consecutive sections of a
+        /// sectioned sweep and do not change this profile's shape.
+        tags: Option<Vec<String>>,
+        /// `OffsetPoint`, in metres. `None` means the chain starts at the
+        /// profile origin.
+        offset_point: Option<[f64; 2]>,
     },
     /// `IfcCenterLineProfileDef`: a path thickened symmetrically.
     #[non_exhaustive]

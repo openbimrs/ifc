@@ -197,6 +197,7 @@ pub(super) fn parameterized(
         ProfileParameters::ArbitraryClosed { .. }
         | ProfileParameters::ArbitraryWithVoids { .. }
         | ProfileParameters::ArbitraryOpen { .. }
+        | ProfileParameters::OpenCross { .. }
         | ProfileParameters::CenterLine { .. }
         | ProfileParameters::Composite { .. }
         | ProfileParameters::Derived { .. }

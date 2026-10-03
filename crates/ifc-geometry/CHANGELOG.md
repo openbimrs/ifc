@@ -14,6 +14,30 @@ everything released before per-crate changelogs began.
 
 ### Added
 
+- IFC4X3 `IfcOpenCrossProfileDef` lowers exactly through
+  `lower_open_profile_node` to an open polyline whose vertices are the
+  closed-form sums of its widths and slopes (horizontal or along-slope
+  widths, `OffsetPoint` honoured, slopes measured from +X towards +Y as the
+  IFC4.3 figure states). `describe_profile` reads it as the new
+  `ProfileParameters::OpenCross`, in metres and radians, refusing a
+  `Widths`/`Slopes` or `Tags` count mismatch, a negative width and a vertical
+  slope with horizontal widths. It bounds no area, so the area-profile path
+  refuses it, as for `IfcArbitraryOpenProfileDef` (#243).
+- IFC4X3 `IfcDirectrixDerivedReferenceSweptAreaSolid` lowers to the same
+  exact `FixedReferenceSweep` as its supertype when the directrix defines only
+  a tangent, which IFC4.3 says is the identical behaviour. A directrix that
+  defines a tangent plane (built from `IfcCurveSegment`s, such as
+  `IfcGradientCurve` and `IfcSegmentedReferenceCurve`, or lying on a surface)
+  is refused as `Unsupported` naming the missing neutral primitive, the
+  public `lower::swept::DIRECTRIX_DERIVED_TANGENT_PLANE` (#243).
+- IFC4X3 `IfcSectionedSolidHorizontal` and `IfcSectionedSurface` are refused
+  as `Unsupported` with a named reason instead of the generic "not lowered
+  yet": their sections stand at `IfcAxis2PlacementLinear` stations along the
+  directrix, and Axiolid has no sectioned sweep over curve-measure stations
+  nor any sectioned-surface relation (#243).
+- `section_slot::OC_*` slot constants for `IfcOpenCrossProfileDef`.
+
+<<GATE>>
 - `IfcTriangulatedIrregularNetwork` (IFC4X3) lowers as a triangle mesh when
   every `Flags` value is a breakline code (0 to 7). A void or hole triangle
   (-2, -1) or an undocumented code is a typed `Unsupported` refusal; a

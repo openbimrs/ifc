@@ -41,6 +41,12 @@ const TAPERED_EXTRUSION: &str = "tapered extruded area solid";
 const TAPERED_REVOLUTION: &str = "tapered revolved area solid";
 /// Memo/chain kind for `IfcFixedReferenceSweptAreaSolid`.
 const FIXED_REFERENCE: &str = "fixed reference swept area solid";
+/// Memo/chain kind for `IfcDirectrixDerivedReferenceSweptAreaSolid`.
+const DIRECTRIX_DERIVED: &str = "directrix derived reference swept area solid";
+/// IFC type of the fixed-reference sweep, named in its refusals.
+const FIXED_REFERENCE_TYPE: &str = "IFCFIXEDREFERENCESWEPTAREASOLID";
+/// IFC type of the IFC4X3 directrix-derived sweep, named in its refusals.
+const DIRECTRIX_DERIVED_TYPE: &str = "IFCDIRECTRIXDERIVEDREFERENCESWEPTAREASOLID";
 /// Memo/chain kind for `IfcSectionedSpine`.
 const SECTIONED_SPINE: &str = "sectioned spine";
 
@@ -146,11 +152,102 @@ pub fn lower_fixed_reference_sweep_node(
         return Ok(node);
     }
     session.enter(id, "swept solid")?;
-    let result = fixed_reference_sweep_node(session, id, world);
+    let result = fixed_reference_sweep_node(session, id, world, FIXED_REFERENCE_TYPE);
     session.exit(id);
     let node = result?;
     session.memoize(id, FIXED_REFERENCE, world, node);
     Ok(node)
+}
+
+/// Append one IFC4X3 `IfcDirectrixDerivedReferenceSweptAreaSolid`.
+///
+/// IFC4.3 defines it as behaving exactly like its supertype
+/// `IfcFixedReferenceSweptAreaSolid` "except when the Directrix not only
+/// defines a tangent direction but a tangent plane for each point on the
+/// curve", for example an `IfcSegmentedReferenceCurve`, where the tangent
+/// plane's change in Y direction is added to the fixed reference. So:
+///
+/// - a directrix that defines only a tangent lowers to the same exact
+///   `FixedReferenceSweep` its supertype does;
+/// - a directrix that defines a tangent plane is refused as
+///   [`crate::GeometryError::Unsupported`] with
+///   [`DIRECTRIX_DERIVED_TANGENT_PLANE`]: the neutral `FixedReferenceSweep`
+///   carries one constant reference direction and no law that rotates it
+///   with the directrix's own frame, and composing that rotation here would
+///   mean evaluating the curve.
+///
+/// Which directrices count: the directrix, or anything it references at any
+/// depth, is a segment-built curve (`IfcCurveSegment`, `IfcGradientCurve`,
+/// `IfcSegmentedReferenceCurve`, `IfcOffsetCurveByDistances`) or a curve on a
+/// surface.
+pub fn lower_directrix_derived_reference_sweep_node(
+    session: &mut LoweringSession<'_>,
+    id: EntityId,
+    world: Transform,
+) -> GeometryResult<NodeId> {
+    if let Some(node) = session.memoized(id, DIRECTRIX_DERIVED, world) {
+        return Ok(node);
+    }
+    session.enter(id, "swept solid")?;
+    let result = directrix_derived_reference_sweep_node(session, id, world);
+    session.exit(id);
+    let node = result?;
+    session.memoize(id, DIRECTRIX_DERIVED, world, node);
+    Ok(node)
+}
+
+/// Why an `IfcDirectrixDerivedReferenceSweptAreaSolid` is refused: the
+/// reason the dispatch registry states for its refused variant.
+pub const DIRECTRIX_DERIVED_TANGENT_PLANE: &str =
+    "kernel: the directrix defines a tangent plane (it is built from \
+     IfcCurveSegment placements or lies on a surface), so the derived \
+     reference adds that plane's rotation to FixedReference; the neutral \
+     FixedReferenceSweep carries only a constant reference direction";
+
+/// Curve families that give every point a tangent PLANE, not only a tangent.
+///
+/// `IfcCurveSegment` places its parent curve by an `IfcPlacement`, so a curve
+/// built from segments (`IfcGradientCurve`, `IfcSegmentedReferenceCurve`, an
+/// IFC4X3 `IfcCompositeCurve` of curve segments) carries the segment frame,
+/// cant included. A curve on a surface carries the surface's tangent plane.
+/// `IfcOffsetCurveByDistances` is positioned in its basis curve's frame.
+const TANGENT_PLANE_CURVES: &[&str] = &[
+    "IFCCURVESEGMENT",
+    "IFCGRADIENTCURVE",
+    "IFCSEGMENTEDREFERENCECURVE",
+    "IFCOFFSETCURVEBYDISTANCES",
+    "IFCPCURVE",
+    "IFCSURFACECURVE",
+    "IFCINTERSECTIONCURVE",
+    "IFCSEAMCURVE",
+    "IFCCOMPOSITECURVEONSURFACE",
+    "IFCBOUNDARYCURVE",
+    "IFCOUTERBOUNDARYCURVE",
+];
+
+/// Does this directrix define a tangent plane at each point?
+///
+/// Conservative by construction: true when the directrix, or anything it
+/// references at any depth, is one of [`TANGENT_PLANE_CURVES`]. A trimmed or
+/// composite curve over a segment-built basis is therefore caught, and a
+/// directrix this cannot classify is refused rather than assumed tangent-only.
+/// The walk keeps a visited set, so a reference cycle terminates.
+pub(crate) fn defines_tangent_plane(model: &Model, directrix: EntityId) -> bool {
+    let mut visited = std::collections::BTreeSet::new();
+    let mut pending = vec![directrix];
+    while let Some(id) = pending.pop() {
+        if !visited.insert(id) {
+            continue;
+        }
+        let Some(entity) = model.get(id) else {
+            continue;
+        };
+        if TANGENT_PLANE_CURVES.iter().any(|name| entity.is_type(name)) {
+            return true;
+        }
+        pending.extend(entity.references());
+    }
+    false
 }
 
 /// Append one `IfcSectionedSpine` to a shared session.
@@ -452,6 +549,7 @@ fn fixed_reference_sweep_node(
     session: &mut LoweringSession<'_>,
     id: EntityId,
     world: Transform,
+    sweep_type: &str,
 ) -> GeometryResult<NodeId> {
     let model = session.model();
     let units = session.units();
@@ -466,11 +564,22 @@ fn fixed_reference_sweep_node(
     // StartParam/EndParam live in the DIRECTRIX's parameterisation: an angle
     // on a conic, the accumulated parametric length on a composite. Same rule
     // as IfcSweptDiskSolid; see lower_sweep_directrix.
-    const T: &str = "IFCFIXEDREFERENCESWEPTAREASOLID";
-    let (start, end) =
-        directrix_parameter_trims(session, id, T, view.start_param()?, view.end_param()?)?;
-    let (directrix, parameter_range) =
-        lower_sweep_directrix(session, id, T, view.directrix()?, world, start, end)?;
+    let (start, end) = directrix_parameter_trims(
+        session,
+        id,
+        sweep_type,
+        view.start_param()?,
+        view.end_param()?,
+    )?;
+    let (directrix, parameter_range) = lower_sweep_directrix(
+        session,
+        id,
+        sweep_type,
+        view.directrix()?,
+        world,
+        start,
+        end,
+    )?;
 
     let profile = lower_profile_node(session, profile_ref)?;
     let operation = session.node_for(
@@ -489,6 +598,27 @@ fn fixed_reference_sweep_node(
             transform: placement,
         }),
     )
+}
+
+/// Lower an `IfcDirectrixDerivedReferenceSweptAreaSolid` whose directrix
+/// defines only a tangent, exactly as its supertype; refuse the rest.
+///
+/// The attribute layout is the supertype's: the subtype declares nothing.
+fn directrix_derived_reference_sweep_node(
+    session: &mut LoweringSession<'_>,
+    id: EntityId,
+    world: Transform,
+) -> GeometryResult<NodeId> {
+    let entity = session.entity(id, id)?;
+    let directrix = FixedReferenceSweptAreaSolid::new(id, entity).directrix()?;
+    if defines_tangent_plane(session.model(), directrix) {
+        return Err(session.unsupported(
+            id,
+            DIRECTRIX_DERIVED_TYPE,
+            DIRECTRIX_DERIVED_TANGENT_PLANE,
+        ));
+    }
+    fixed_reference_sweep_node(session, id, world, DIRECTRIX_DERIVED_TYPE)
 }
 
 /// Lower an `IfcSectionedSpine` into a `SectionedSpine`.

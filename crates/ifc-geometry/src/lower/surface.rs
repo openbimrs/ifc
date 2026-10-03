@@ -79,6 +79,9 @@ pub fn lower_surface_node(
             "IFCRECTANGULARTRIMMEDSURFACE" => lower_rectangular_trimmed(session, id, frame),
             "IFCCURVEBOUNDEDPLANE" => lower_curve_bounded(session, id, frame),
             "IFCCURVEBOUNDEDSURFACE" => lower_curve_bounded_surface(session, id, frame),
+            "IFCSECTIONEDSURFACE" => {
+                crate::lower::sectioned::lower_sectioned_surface_node(session, id)
+            }
             other => Err(session.unsupported(id, other, "curved and B-spline surfaces")),
         }
     })();
