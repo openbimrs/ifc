@@ -18,7 +18,8 @@ status = "implemented"
 group = "core"
 
 [dependencies]
-ifc-schema = { workspace = true, features = ["default"] }
+# No default features: the release features below choose the tables (#306).
+ifc-schema.workspace = true
 ifc-model.workspace = true
 
 [dev-dependencies]
@@ -29,12 +30,18 @@ ifc-schema = { workspace = true, features = ["default", "express"] }
 ifc-step.workspace = true
 
 [features]
-default = ["ifc4"]
-# Enables validate_declared(), which resolves the file's own schema token
-# against that release's bundled table. The name predates the per-release
-# split (#112): this crate links every release through its ifc-schema
-# dependency either way.
+default = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
+# One feature per bundled IFC release, forwarded to `ifc-schema` (#306).
+# Each links that release's schema table; `validate_declared` refuses a
+# file declaring a release left out with `ValidateError::UnbundledSchema`. The default keeps all
+# five, as before; a size-sensitive build (browser WASM) names only the
+# releases it ships, and the `openbim-ifc` facade forwards its own release
+# features here.
+ifc2x3 = ["ifc-schema/ifc2x3"]
 ifc4 = ["ifc-schema/ifc4"]
+ifc4x1 = ["ifc-schema/ifc4x1"]
+ifc4x2 = ["ifc-schema/ifc4x2"]
+ifc4x3 = ["ifc-schema/ifc4x3"]
 
 [lints]
 workspace = true

@@ -43,11 +43,12 @@ ifc4x3 = ["openbim-ifc/ifc4x3"]
 # The ifcXML codec: the native layout, and the XSD layout of the bundled
 # IFC4 / IFC4X3 releases.
 ifcxml = ["openbim-ifc/ifcxml"]
-# Schema validation. ifc-validate links every release's table whatever
-# the release features say.
+# Schema validation, against the tables of the releases enabled above
+# (#306).
 validate = ["openbim-ifc/validate"]
 # The viewer reachability lint: spatial containment plus representation
-# contexts, with no geometry kernel. Links every release's table, too.
+# contexts, with no geometry kernel. Classifies containers from the
+# enabled releases' tables (#306).
 unreachable = ["openbim-ifc/spatial", "openbim-ifc/geometry-select"]
 
 [lints]

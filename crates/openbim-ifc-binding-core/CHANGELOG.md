@@ -8,6 +8,12 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#306)
+
+- `validate` and `unreachable` link only the schema tables of the
+  releases the build enables; they linked every release's before. The
+  default build, with all five releases, is unchanged.
+
 ### Added (#244)
 
 - Lenient STEP reads: `ParseOptions` (`on_malformed`, `check_references`,

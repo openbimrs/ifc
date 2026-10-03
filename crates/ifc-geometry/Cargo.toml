@@ -26,7 +26,19 @@ group = "geometry"
 # body selection, profiles, curves, surfaces, solids, units, placements -- which
 # read `ifc-model` slots and link no geometry kernel at all. That is the build a
 # 2D drawing consumer wants; `tests/kernel_free_build.rs` holds the line.
-default = ["lowering"]
+default = ["lowering", "ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
+# One feature per bundled IFC release, forwarded to `ifc-schema` (#306).
+# Each links that release's schema table; release-bound authoring refuses a
+# release left out with `GeometryError::AuthoringSchemaUnbound`. The default
+# keeps all five, as before. A size-sensitive build (browser WASM) turns
+# defaults off and names the releases it ships; the `openbim-ifc` facade
+# forwards its own release features here. `lowering` reaches
+# `ifc-alignment`, which still links every release itself.
+ifc2x3 = ["ifc-schema/ifc2x3"]
+ifc4 = ["ifc-schema/ifc4"]
+ifc4x1 = ["ifc-schema/ifc4x1"]
+ifc4x2 = ["ifc-schema/ifc4x2"]
+ifc4x3 = ["ifc-schema/ifc4x3"]
 lowering = [
     "dep:ifc-alignment",
     "dep:axiolid-core",
@@ -65,7 +77,8 @@ compile-reference-backend = [
 
 [dependencies]
 ifc-model.workspace = true
-ifc-schema = { workspace = true, features = ["default"] }
+# No default features: the release features above choose the tables (#306).
+ifc-schema.workspace = true
 # ADR 0003 (amended 2026-09-15): a bridge may depend on a bridge. Optional and
 # reached only through `lowering`, because `ifc-alignment` links the kernel
 # unconditionally and the kernel-free column must stay kernel-free.

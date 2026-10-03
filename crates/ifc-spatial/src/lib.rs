@@ -45,6 +45,22 @@
 //! This crate reads containment. It does not validate it — `ifc-validate` owns
 //! WHERE rules and cardinality — and it does not interpret geometry or
 //! properties of the elements it groups.
+//!
+//! # Releases
+//!
+//! The release features (`ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2`, `ifc4x3`, all
+//! on by default) choose which schema tables are linked. Classification needs
+//! one of the three it is verified against -- IFC2X3, IFC4 or IFC4X3 --
+//! because without a table nothing would classify as a container and every
+//! tree would be silently empty; a build naming none of them is refused at
+//! compile time.
+
+#[cfg(not(any(feature = "ifc2x3", feature = "ifc4", feature = "ifc4x3")))]
+compile_error!(
+    "ifc-spatial classifies containers from a release's schema table: enable \
+     at least one of the features `ifc2x3`, `ifc4` or `ifc4x3` (through \
+     `openbim-ifc`: `schema` or one of those release features)"
+);
 
 pub mod authoring;
 pub mod relation;

@@ -23,6 +23,8 @@ missing_docs = "deny"
 # registry dependencies when packages are published.
 # default-features = false: the facade and the bindings pick releases one by
 # one (#112); a member that needs every bundled table asks for `default`.
+# ifc-validate, ifc-spatial and ifc-geometry do the same (#306): their
+# release features forward to ifc-schema's, and the facade chooses them.
 ifc-schema = { path = "crates/ifc-schema", version = "0.3.0", default-features = false }
 openbim-ifc = { path = "crates/openbim-ifc", version = "0.11.0", default-features = false }
 openbim-ifc-binding-core = { path = "crates/openbim-ifc-binding-core", version = "0.1.0", default-features = false }
@@ -48,9 +50,9 @@ ifc-constraint = { path = "crates/ifc-constraint", version = "0.3.0" }
 ifc-georef = { path = "crates/ifc-georef", version = "0.5.0" }
 ifc-systems = { path = "crates/ifc-systems", version = "0.3.0" }
 ifc-alignment = { path = "crates/ifc-alignment", version = "0.5.0" }
-ifc-validate = { path = "crates/ifc-validate", version = "0.5.0" }
+ifc-validate = { path = "crates/ifc-validate", version = "0.5.0", default-features = false }
 ifc-author = { path = "crates/ifc-author", version = "0.3.0" }
-ifc-spatial = { path = "crates/ifc-spatial", version = "0.4.0" }
+ifc-spatial = { path = "crates/ifc-spatial", version = "0.4.0", default-features = false }
 openbim-step = "=0.11.0"
 
 # Format-neutral geometry contracts. IFC bridges select representations, never
