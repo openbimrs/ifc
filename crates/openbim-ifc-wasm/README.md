@@ -43,7 +43,8 @@ default cargo features (`validate`, `ifcxml`, `unreachable`, `properties`,
 `spatial`, `classification`, `material`, `systems`, `cost`, `georef`),
 like the IFC releases. A browser build can leave any of them out, e.g.
 `--no-default-features --features ifc4,ifcxml,spatial`; the left-out
-methods then throw `feature-disabled`.
+methods then throw `feature-disabled`. IFC4 alone is 759,820 bytes, with
+everything 1,750,572 ([sizes](https://openbimrs.github.io/ifc/bindings/javascript#module-size)).
 
 ## Example (Node)
 
@@ -140,10 +141,8 @@ suites, and checks the packed tarball from Node, webpack and headless Chrome
 (`CHROME_BIN` names the browser if it is not on `PATH`). webpack comes pinned
 from `tools/package-lock.json`.
 
-`wasm-opt -Oz` was measured, not applied, because it increases the gzip and
-brotli size: with binaryen 132 the module went from 1,337,025 to 1,295,241
-bytes raw, but from 459,437 to 461,953 bytes under `gzip -9` and from
-276,835 to 278,749 under brotli.
+Neither `wasm-opt -Oz` nor `opt-level = "z"` is applied (the guide has
+why); `scripts/bench-opt-level.sh` reruns the opt-level comparison (#303).
 
 ## License
 
