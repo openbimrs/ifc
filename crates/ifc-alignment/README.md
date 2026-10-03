@@ -3,10 +3,12 @@
 IFC4X3 linear positioning: `IfcAlignment` with its horizontal, vertical and
 cant layouts, referents and stationing, and linear placement. Alignment
 curves are lowered exactly into the format-neutral Axiolid geometry model;
-nothing is tessellated or numerically integrated. A segment form that cannot
-be lowered exactly yet (the cubic spiral, circular and clothoid vertical
-curves) is a typed refusal, and the open gaps are listed on the
-[capabilities page](https://openbimrs.github.io/ifc/capabilities).
+nothing is tessellated or numerically integrated. Transition spirals are
+curvature laws, a `CUBIC` is its cubic parabola trimmed by arc length, a
+vertical arc is the circle itself, and cant makes the centreline a banked
+curve. A form the file does not determine (a vertical `CLOTHOID`, whose
+segment states no curvature) is a typed refusal, and the open gaps are
+listed on the [capabilities page](https://openbimrs.github.io/ifc/capabilities).
 
 ```bash
 cargo add ifc-alignment
@@ -36,14 +38,29 @@ The [`openbim-ifc`](https://crates.io/crates/openbim-ifc) facade also provides i
   seam. A zero-length segment anywhere else is refused.
 - Cant is exact data per station (`CantLayout::frame_at_distance`: rail
   heights, cant, bank angle `arcsin(D / b)`, rotation-point elevation and
-  the section frame). The cant-carrying centreline
-  (`IfcSegmentedReferenceCurve`) is a typed refusal: the neutral curve
-  vocabulary has no roll law yet (#93).
+  the section frame), and the cant-carrying centreline
+  (`IfcSegmentedReferenceCurve`) is a `Curve3::Banked`
+  (`lower_segmented_reference_curve`): the gradient curve, the cant law
+  `D = left - right` and the pivot `(left + right) / 2`, one piece per cant
+  segment in the IFC4.3 base formula, rotating the section about the 3D
+  tangent by `arcsin(D / b)` (`BankConvention::TangentRotation`, the angle
+  reading IFC4.3 states). A pivot that moves through a Viennese bend is
+  refused: it would follow the bank angle, which a height-form pivot law
+  cannot carry.
 - A multi-segment horizontal layout elevates as one exact plan curve: the
-  first segment's start frame plus one curvature piece per segment. Seams
-  are checked in closed form: a heading kink, or a position gap after a
-  line or arc, is refused; the position after a transition spiral, a
-  Fresnel-type integral, is reported as authored rather than verified.
+  first segment's start frame plus one curvature piece per segment, or an
+  arc-length chain when it holds a `CUBIC`. Seams are checked in closed
+  form: a heading kink after a segment with a curvature law, or a position
+  gap after a line or arc, is refused; the position after a transition
+  spiral, and the position and heading after a `CUBIC`, are reported as
+  authored rather than verified.
+- A `CUBIC` is IFC4.3's `y = x^3 / (6 R L)` leaving a straight, with
+  `SegmentLength` along the curve: an exact cubic Bezier trimmed at
+  `TrimSelector::ArcLength`, the inverse left to the kernel. A `CUBIC` that
+  starts curved has no formula in the standard and is refused.
+- A vertical `CIRCULARARC` is `ElevationLaw::CircularArc` from
+  `StartHeight`, `StartGradient` and the signed `RadiusOfCurvature`
+  (positive is a sag), not the EN 13803 parabola that approximates it.
 
 - This crate is the geometric bridge for alignments, not a road or rail
   application. Product workflows (corridors, cross-sections, track

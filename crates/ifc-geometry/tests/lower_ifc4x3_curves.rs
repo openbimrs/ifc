@@ -227,7 +227,6 @@ fn ifc4x3_partial_rows_match_runtime_behaviour() {
         entity.attributes[slot] = value;
         move |m: &mut Model| m.insert(id, entity.clone())
     };
-    let circle = only(&model, "IFCCIRCLE");
     let next = model.next_id();
 
     let probes: Vec<(&str, &str, Model, EntityId)> = vec![
@@ -252,8 +251,24 @@ fn ifc4x3_partial_rows_match_runtime_behaviour() {
         ),
         (
             "IFCCURVESEGMENT",
-            "ParentCurve is an IfcPolynomialCurve",
+            "ParentCurve is a 2D IfcPolynomialCurve with a degree-one \
+             coordinate, cut forwards from SegmentStart 0",
             model.clone(),
+            profile[1],
+        ),
+        (
+            "IFCCURVESEGMENT",
+            "ParentCurve is an IfcPolynomialCurve cut from a non-zero \
+             SegmentStart, walked backwards, 3D, or with no degree-one \
+             coordinate",
+            edited(&with_slot(
+                profile[1],
+                2,
+                Value::Typed {
+                    type_name: "IFCLENGTHMEASURE".into(),
+                    value: Box::new(Value::Real(5.0)),
+                },
+            )),
             profile[1],
         ),
         (
@@ -283,22 +298,17 @@ fn ifc4x3_partial_rows_match_runtime_behaviour() {
         ),
         (
             "IFCGRADIENTCURVE",
-            "horizontal IfcCurveSegments over lines, arcs and spirals; vertical \
-             IfcCurveSegments over IfcLine or a degree-2 IfcPolynomialCurve that \
-             keeps its start tangent",
+            "horizontal IfcCurveSegments over lines, arcs, spirals and 2D \
+             IfcPolynomialCurves; vertical IfcCurveSegments over IfcLine, \
+             IfcCircle, an IfcSpiral subtype, or a degree-2 IfcPolynomialCurve \
+             that keeps its start tangent",
             model.clone(),
             gradient_id,
         ),
         (
             "IFCGRADIENTCURVE",
-            "a vertical IfcCircle or IfcClothoid segment",
-            edited(&with_slot(profile[0], 4, Value::Ref(circle))),
-            gradient_id,
-        ),
-        (
-            "IFCGRADIENTCURVE",
-            "a vertical parabola with no following segment, closing segment or \
-             EndPoint",
+            "a vertical parabola or spiral with no following segment, closing \
+             segment or EndPoint",
             edited(&|m: &mut Model| {
                 let mut g = gradient.clone();
                 g.attributes[0] = Value::List(vec![Value::Ref(profile[0]), Value::Ref(profile[1])]);

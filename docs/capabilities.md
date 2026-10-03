@@ -32,7 +32,7 @@ committed figure that moves that often only produces merge conflicts.
 
 | Crate | Status | Open gaps |
 | --- | --- | --- |
-| `ifc-alignment` | <span class="status-partial">Partial</span> | [#90](https://github.com/openbimrs/ifc/issues/90), [#93](https://github.com/openbimrs/ifc/issues/93), [#258](https://github.com/openbimrs/ifc/issues/258) |
+| `ifc-alignment` | <span class="status-partial">Partial</span> | [#312](https://github.com/openbimrs/ifc/issues/312) |
 | `ifc-approval` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-author` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-classification` | <span class="status-implemented">Implemented</span> |  |
@@ -40,7 +40,7 @@ committed figure that moves that often only produces merge conflicts.
 | `ifc-control` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-cost` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-element-type` | <span class="status-implemented">Implemented</span> |  |
-| `ifc-geometry` | <span class="status-partial">Partial</span> | [#90](https://github.com/openbimrs/ifc/issues/90), [#93](https://github.com/openbimrs/ifc/issues/93), [#307](https://github.com/openbimrs/ifc/issues/307) |
+| `ifc-geometry` | <span class="status-partial">Partial</span> | [#307](https://github.com/openbimrs/ifc/issues/307), [#311](https://github.com/openbimrs/ifc/issues/311) |
 | `ifc-georef` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-material` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-model` | <span class="status-implemented">Implemented</span> | [#105](https://github.com/openbimrs/ifc/issues/105) |
@@ -320,15 +320,15 @@ neither implemented nor planned with a reason.
 | `IfcPointOnCurve` | <span class="status-implemented">Implemented</span> |
 | `IfcPointOnSurface` | <span class="status-implemented">Implemented</span> |
 | `IfcCurveSegment` | <span class="status-partial">Partial</span> — 3 authored form(s) refused; see [variants](#partially-supported-variants) |
-| `IfcGradientCurve` | <span class="status-partial">Partial</span> — 4 authored form(s) refused; see [variants](#partially-supported-variants) |
+| `IfcGradientCurve` | <span class="status-partial">Partial</span> — 3 authored form(s) refused; see [variants](#partially-supported-variants) |
 | `IfcClothoid` | <span class="status-partial">Planned</span> — an IfcSpiral is unbounded (-inf < u < inf) and the neutral intrinsic curve needs a finite arc length; it lowers exactly as the ParentCurve of an IfcCurveSegment |
 | `IfcSecondOrderPolynomialSpiral` | <span class="status-partial">Planned</span> — an IfcSpiral is unbounded (-inf < u < inf) and the neutral intrinsic curve needs a finite arc length; it lowers exactly as the ParentCurve of an IfcCurveSegment |
 | `IfcThirdOrderPolynomialSpiral` | <span class="status-partial">Planned</span> — an IfcSpiral is unbounded (-inf < u < inf) and the neutral intrinsic curve needs a finite arc length; it lowers exactly as the ParentCurve of an IfcCurveSegment |
 | `IfcSeventhOrderPolynomialSpiral` | <span class="status-partial">Planned</span> — an IfcSpiral is unbounded (-inf < u < inf) and the neutral intrinsic curve needs a finite arc length; it lowers exactly as the ParentCurve of an IfcCurveSegment |
 | `IfcCosineSpiral` | <span class="status-partial">Planned</span> — an IfcCosineSpiral or IfcSineSpiral law depends on the length L of the IfcCurveSegment using it; it lowers exactly only as the ParentCurve of an IfcCurveSegment |
 | `IfcSineSpiral` | <span class="status-partial">Planned</span> — an IfcCosineSpiral or IfcSineSpiral law depends on the length L of the IfcCurveSegment using it; it lowers exactly only as the ParentCurve of an IfcCurveSegment |
-| `IfcPolynomialCurve` | <span class="status-partial">Planned</span> — an IfcPolynomialCurve is unbounded (-inf < u < inf) and the neutral vocabulary has no unbounded polynomial curve; bounded by an IfcCurveSegment it needs an arc-length trim (#90) |
-| `IfcSegmentedReferenceCurve` | <span class="status-partial">Planned</span> — IfcSegmentedReferenceCurve adds cant (a roll of the section about the centreline); the pinned neutral curve vocabulary has no roll law to carry it exactly (#93) |
+| `IfcPolynomialCurve` | <span class="status-partial">Planned</span> — an IfcPolynomialCurve is unbounded (-inf < u < inf) and the neutral vocabulary has no unbounded polynomial curve; it lowers exactly as the ParentCurve of an IfcCurveSegment |
+| `IfcSegmentedReferenceCurve` | <span class="status-partial">Planned</span> — IfcSegmentedReferenceCurve states cant through segments placed at stations along its base curve and parent curves with no normative mapping to a cant law; the business cant layout lowers to a banked curve through ifc-alignment (#311) |
 | `IfcSectionedSolidHorizontal` | <span class="status-partial">Planned</span> — kernel: sections stand at IfcAxis2PlacementLinear stations (a measure along the directrix plus offsets) and are swept horizontally with tag-matched linear interpolation; the neutral SectionedSpine takes only resolved section frames, and resolving a station is curve evaluation |
 | `IfcSectionedSurface` | <span class="status-partial">Planned</span> — kernel: no neutral sectioned-surface relation exists; its open sections stand at IfcAxis2PlacementLinear stations along the directrix and are joined by tag, and the neutral SectionedSpine is a solid over area profiles |
 | `IfcOffsetCurveByDistances` | <span class="status-partial">Planned</span> — offsets are stated at stations along the basis curve as IfcPointByDistanceExpression values; the neutral model has no distance-along-curve point or station-offset curve to hold them |
@@ -357,14 +357,14 @@ Those are listed with their reasoning in
 | `IfcCurveSegment` | ParentCurve is an IfcLine, IfcCircle or 2D IfcPolyline, measured by IfcLengthMeasure | <span class="status-implemented">Admitted</span> | a line, arc or polyline cut by arc length and placed rigidly is elementary: a polyline or an angle-trimmed circle |
 | `IfcCurveSegment` | ParentCurve is an IfcSpiral subtype, measured by IfcLengthMeasure | <span class="status-implemented">Admitted</span> | the spiral's curvature law, rebased to the segment in closed form, on a planar intrinsic curve; nothing is integrated |
 | `IfcCurveSegment` | SegmentLength is zero (the closing segment of a layout) | <span class="status-implemented">Admitted</span> | its placement exactly: a planar intrinsic curve of length zero |
-| `IfcCurveSegment` | ParentCurve is an IfcPolynomialCurve | <span class="status-partial">Refused</span> | an IfcPolynomialCurve trimmed by arc length: the end parameter inverts a non-elementary arc-length integral and the neutral vocabulary has no arc-length trim (#90) |
+| `IfcCurveSegment` | ParentCurve is a 2D IfcPolynomialCurve with a degree-one coordinate, cut forwards from SegmentStart 0 | <span class="status-implemented">Admitted</span> | its Bezier over a closed-form parameter bound, placed rigidly and trimmed at TrimSelector::ArcLength: the kernel inverts the arc length, nothing is integrated here |
+| `IfcCurveSegment` | ParentCurve is an IfcPolynomialCurve cut from a non-zero SegmentStart, walked backwards, 3D, or with no degree-one coordinate | <span class="status-partial">Refused</span> | the placed start point inverts a non-elementary arc-length integral, a 3D polynomial has no plane for the placement, and without a degree-one coordinate the trim has no closed-form parameter bound |
 | `IfcCurveSegment` | SegmentStart or SegmentLength is an IfcParameterValue | <span class="status-partial">Refused</span> | SegmentStart/SegmentLength given as IfcParameterValue: IFC4.3 ADD2 defines no parametric space for IfcCurveSegment parents yet (informal proposition 1 requires IfcLengthMeasure) |
-| `IfcCurveSegment` | Placement is an IfcAxis2PlacementLinear | <span class="status-partial">Refused</span> | an IfcAxis2PlacementLinear placement belongs to an IfcSegmentedReferenceCurve (cant); the neutral vocabulary has no roll law to carry it (#93) |
+| `IfcCurveSegment` | Placement is an IfcAxis2PlacementLinear | <span class="status-partial">Refused</span> | an IfcAxis2PlacementLinear placement stands at a distance along a basis curve; the neutral model has no distance-along-curve point relation to anchor it (#307) |
 | `IfcDirectrixDerivedReferenceSweptAreaSolid` | directrix defines only a tangent (no IfcCurveSegment, segment-built or surface curve reachable) | <span class="status-implemented">Admitted</span> | IFC4.3 gives it exactly the behaviour of IfcFixedReferenceSweptAreaSolid in this case, so it lowers to the same FixedReferenceSweep |
 | `IfcDirectrixDerivedReferenceSweptAreaSolid` | directrix defines a tangent plane | <span class="status-partial">Refused</span> | kernel: the directrix defines a tangent plane (it is built from IfcCurveSegment placements or lies on a surface), so the derived reference adds that plane's rotation to FixedReference; the neutral FixedReferenceSweep carries only a constant reference direction |
-| `IfcGradientCurve` | horizontal IfcCurveSegments over lines, arcs and spirals; vertical IfcCurveSegments over IfcLine or a degree-2 IfcPolynomialCurve that keeps its start tangent | <span class="status-implemented">Admitted</span> | one intrinsic plan with a piecewise curvature law plus a piecewise polynomial elevation law: Curve3::Elevated, exact |
-| `IfcGradientCurve` | a vertical IfcCircle or IfcClothoid segment | <span class="status-partial">Refused</span> | neither is polynomial in plan distance and the pinned ElevationLaw has only polynomial pieces (#258) |
-| `IfcGradientCurve` | a vertical parabola with no following segment, closing segment or EndPoint | <span class="status-partial">Refused</span> | its end abscissa inverts a non-elementary arc-length integral (#90) |
+| `IfcGradientCurve` | horizontal IfcCurveSegments over lines, arcs, spirals and 2D IfcPolynomialCurves; vertical IfcCurveSegments over IfcLine, IfcCircle, an IfcSpiral subtype, or a degree-2 IfcPolynomialCurve that keeps its start tangent | <span class="status-implemented">Admitted</span> | one plan parameterised by arc length (an intrinsic curve, or an arc-length chain with a polynomial piece) plus a piecewise elevation law of polynomial, circular and intrinsic pieces: Curve3::Elevated, exact |
+| `IfcGradientCurve` | a vertical parabola or spiral with no following segment, closing segment or EndPoint | <span class="status-partial">Refused</span> | its plan extent inverts a non-elementary arc-length integral, and nothing states it |
 | `IfcGradientCurve` | a heading kink, a closed-form position gap, or a profile that does not span the base curve | <span class="status-partial">Refused</span> | one plan curve and one elevation law cannot carry a kink or a gap, and an elevation law must cover the whole plan |
 | `IfcGradientCurve` | placed by a frame that tilts, scales or mirrors the vertical | <span class="status-partial">Refused</span> | a plan plus a height is carried only by frames that keep the vertical axis |
 | `IfcPcurve` | reference curve is an IfcPolyline | <span class="status-implemented">Admitted</span> | an ordered 2D point sequence needs no evaluation |

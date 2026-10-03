@@ -29,14 +29,17 @@
 //! - a 2D `IfcPolyline`: the polyline cut at both arc lengths.
 //! - the six `IfcSpiral` subtypes: a planar `Curve3::Intrinsic` carrying the
 //!   spiral's law rebased to the segment (see `spiral.rs`).
+//! - a 2D `IfcPolynomialCurve` (the `CUBIC` transition): its Bezier, placed,
+//!   trimmed at `TrimSelector::ArcLength(SegmentLength)`; the parameter
+//!   there inverts a non-elementary integral, which the kernel resolves
+//!   (see `polynomial.rs`).
 //!
-//! `IfcPolynomialCurve` is refused: its arc-length trim inverts a
-//! non-elementary integral (#90). A zero-length segment, which IFC4.3 puts at
-//! the end of every alignment layout, is its placement exactly: a planar
-//! intrinsic curve of length zero.
+//! A zero-length segment, which IFC4.3 puts at the end of every alignment
+//! layout, is its placement exactly: a planar intrinsic curve of length
+//! zero.
 
 use axiolid_core::Frame3;
-use axiolid_curve::{Circle3, CurvatureLaw, Curve3, Intrinsic3, Polyline3};
+use axiolid_curve::{BSplineCurve3, Circle3, CurvatureLaw, Curve3, Intrinsic3, Polyline3};
 use axiolid_model::{
     CurveRelation, CurveSegment, GeometryNode, NodeId, TrimSelector,
     TrimmingPreference as KernelPreference,
@@ -61,23 +64,18 @@ pub(crate) const PARAMETER_MEASURE: &str =
 
 /// Why an `IfcAxis2PlacementLinear` placement is refused.
 pub(crate) const LINEAR_PLACEMENT: &str =
-    "an IfcAxis2PlacementLinear placement belongs to an IfcSegmentedReferenceCurve (cant); \
-     the neutral vocabulary has no roll law to carry it (#93)";
-
-/// Why an `IfcPolynomialCurve` parent is refused.
-pub(crate) const POLYNOMIAL_PARENT: &str =
-    "an IfcPolynomialCurve trimmed by arc length: the end parameter inverts a non-elementary \
-     arc-length integral and the neutral vocabulary has no arc-length trim (#90)";
+    "an IfcAxis2PlacementLinear placement stands at a distance along a basis curve; the neutral \
+     model has no distance-along-curve point relation to anchor it (#307)";
 
 /// Why an `IfcPolynomialCurve` met on its own is refused.
 pub(crate) const STANDALONE_POLYNOMIAL: &str =
     "an IfcPolynomialCurve is unbounded (-inf < u < inf) and the neutral vocabulary has no \
-     unbounded polynomial curve; bounded by an IfcCurveSegment it needs an arc-length trim (#90)";
+     unbounded polynomial curve; it lowers exactly as the ParentCurve of an IfcCurveSegment";
 
 /// Why another parent family is refused.
 const OTHER_PARENT: &str =
-    "IfcCurveSegment ParentCurve family: only IfcLine, IfcCircle, a 2D IfcPolyline and the \
-     IfcSpiral subtypes are lowered";
+    "IfcCurveSegment ParentCurve family: only IfcLine, IfcCircle, a 2D IfcPolyline, a 2D \
+     IfcPolynomialCurve and the IfcSpiral subtypes are lowered";
 
 /// Why a scaled or mirrored frame is refused.
 const NOT_RIGID: &str =
@@ -206,16 +204,14 @@ pub(crate) fn refuse_parent(
     session: &LoweringSession<'_>,
     segment: &Segment,
 ) -> crate::GeometryError {
-    match segment.parent_kind.as_str() {
-        "IFCPOLYNOMIALCURVE" => {
-            session.unsupported(segment.parent, "IFCPOLYNOMIALCURVE", POLYNOMIAL_PARENT)
-        }
-        other => session.unsupported(segment.parent, other, OTHER_PARENT),
-    }
+    session.unsupported(segment.parent, &segment.parent_kind, OTHER_PARENT)
 }
 
 /// `IfcCircle.Radius` in metres, checked positive.
-fn circle_radius(session: &LoweringSession<'_>, segment: &Segment) -> GeometryResult<f64> {
+pub(crate) fn circle_radius(
+    session: &LoweringSession<'_>,
+    segment: &Segment,
+) -> GeometryResult<f64> {
     let radius = session
         .units()
         .length(session.slots(segment.parent)?.req_f64(1, "Radius")?);
@@ -258,6 +254,7 @@ pub(super) fn lower_segment(
         }
         "IFCCIRCLE" => arc(session, &segment, start, run),
         "IFCPOLYLINE" => polyline(session, &segment, start),
+        "IFCPOLYNOMIALCURVE" => polynomial(session, &segment, start, run),
         _ => {
             let law = segment_curvature(session, &segment)?;
             intrinsic(session, id, start, law, run)
@@ -311,6 +308,45 @@ fn arc(
             basis,
             start: vec![TrimSelector::Parameter(0.0)],
             end: vec![TrimSelector::Parameter(run / radius)],
+            sense_agreement: true,
+            preference: KernelPreference::Parameter,
+        }),
+    )
+}
+
+/// A 2D `IfcPolynomialCurve` parent: its Bezier placed in `start`'s XY
+/// plane, trimmed where its arc length reaches `run`.
+fn polynomial(
+    session: &mut LoweringSession<'_>,
+    segment: &Segment,
+    start: Frame3,
+    run: f64,
+) -> GeometryResult<NodeId> {
+    let local = polynomial::local_bezier(session, segment)?;
+    let control_points = local
+        .control_points
+        .iter()
+        .map(|p| start.origin + start.x * p.x + start.y * p.y)
+        .collect();
+    let basis = session.node_for(
+        segment.id,
+        GeometryNode::Curve3(Curve3::BSpline(BSplineCurve3 {
+            degree: local.degree,
+            control_points,
+            knots: local.knots,
+            multiplicities: local.multiplicities,
+            weights: None,
+            closed: false,
+            self_intersect: local.self_intersect,
+            knot_spec: local.knot_spec,
+        })),
+    )?;
+    session.node_for(
+        segment.id,
+        GeometryNode::CurveRelation(CurveRelation::Trimmed {
+            basis,
+            start: vec![TrimSelector::Parameter(0.0)],
+            end: vec![TrimSelector::ArcLength(run)],
             sense_agreement: true,
             preference: KernelPreference::Parameter,
         }),
@@ -473,5 +509,6 @@ pub(super) fn composite_member(
     }))
 }
 
+pub(crate) mod polynomial;
 #[cfg(test)]
 mod tests;

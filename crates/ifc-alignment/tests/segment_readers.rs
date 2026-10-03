@@ -18,6 +18,7 @@
 use std::f64::consts::PI;
 use std::sync::Arc;
 
+use axiolid_curve::ElevationLaw;
 use ifc_alignment::{
     elevation_law, read_horizontal_segment, read_vertical_segment, AlignmentError, AlignmentUnits,
     HorizontalSegmentType, VerticalSegmentType,
@@ -356,9 +357,10 @@ fn reads_a_parabolic_arc_vertical_segment_and_lowers_it() {
 }
 
 /// A circular vertical arc is read faithfully -- the reader does not judge
-/// lowerability -- and only `elevation_law` refuses it, by name.
+/// lowerability -- and `elevation_law` lowers it to the circle itself
+/// (#258): start height, start grade and the signed radius.
 #[test]
-fn reads_a_circular_arc_vertical_segment_that_lowering_then_refuses() {
+fn reads_a_circular_arc_vertical_segment_and_lowers_it_to_the_circle() {
     let segment = read_vertical_segment(&fixture(), EntityId(11), millimetres_and_degrees())
         .expect("circular arc");
     assert_eq!(segment.predefined_type, VerticalSegmentType::CircularArc);
@@ -367,11 +369,14 @@ fn reads_a_circular_arc_vertical_segment_that_lowering_then_refuses() {
     assert_eq!(segment.start_gradient, -0.01);
     assert_eq!(segment.end_gradient, 0.01);
     assert_eq!(segment.radius_of_curvature, Some(5000.0));
-    assert!(matches!(
+    assert_eq!(
         elevation_law(&segment),
-        Err(AlignmentError::Unsupported { entity, ref type_name, .. })
-            if entity == EntityId(11) && type_name == "CIRCULARARC"
-    ));
+        Ok(ElevationLaw::CircularArc {
+            height: 100.0,
+            grade: -0.01,
+            radius: 5000.0,
+        })
+    );
 }
 
 /// `RadiusOfCurvature` is required exactly for the two arc families and

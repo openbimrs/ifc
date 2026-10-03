@@ -19,11 +19,12 @@
 //! -- the rail-to-rail axis is `cos(psi) n + sin(psi) u` and the section's
 //! up axis `-sin(psi) n + cos(psi) u`.
 //!
-//! This is data, not lowered geometry: the neutral curve vocabulary has no
-//! roll law to attach it to (see `lower_segmented_reference_curve`), and the
-//! tangent comes from whichever evaluator the caller uses. [`CantFrame::orient`]
-//! turns a caller-supplied point and tangent into a world frame; it is
-//! algebra on those vectors, not evaluation of any curve.
+//! This is the same rotation the lowered banked centreline carries
+//! (`lower_segmented_reference_curve`, `BankConvention::TangentRotation`),
+//! stated as data at one station: the tangent comes from whichever
+//! evaluator the caller uses. [`CantFrame::orient`] turns a caller-supplied
+//! point and tangent into a world frame; it is algebra on those vectors,
+//! not evaluation of any curve.
 
 use axiolid_core::{Frame3, Point3, Vec2, Vec3};
 

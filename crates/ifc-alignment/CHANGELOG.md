@@ -12,6 +12,50 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+Input this crate refused now lowers exactly, onto the Axiolid relations
+of axiolid-curve 0.3.3 and axiolid-model 0.3.4 (kernel#238, #239, #240),
+and `HorizontalPlan::curve` can now be a `Curve2::Chain`: behaviour
+changes, so the next release is a minor one (0.6.0).
+
+### Added
+
+- `lower_segmented_reference_curve` lowers an alignment with cant to an
+  exact `Curve3::Banked` instead of refusing it, and
+  `segmented_reference_curve3` returns that curve directly (#93). The cant
+  law is `D = left - right` and the pivot `(left + right) / 2`, one
+  `CantPiece` per cant segment in the IFC4.3 base formula (the Helmert
+  transition as its two halves, the Viennese bend as its bank angle);
+  the section rolls about the 3D tangent by `arcsin(D / b)`
+  (`BankConvention::TangentRotation`, the reading IFC4.3 ADD2 states).
+
+### Changed
+
+- A `CUBIC` horizontal segment lowers on every path (#90): per segment and
+  in the composite as its exact cubic Bezier trimmed at
+  `TrimSelector::ArcLength(SegmentLength)`, and in the plan as a
+  `ChainPiece2::Parametric` read by arc length, which makes
+  `lower_horizontal_plan` return a `Curve2::Chain` for a layout holding
+  one. The seam after a `CUBIC` reports its position (and heading) as
+  `SeamCheck::Authored`.
+- A vertical `CIRCULARARC` lowers to `ElevationLaw::CircularArc` from
+  `StartHeight`, `StartGradient` and the signed `RadiusOfCurvature`, on
+  the per-segment path as the circle itself trimmed by angle (#258). A
+  radius turning against the authored grades, or an arc turning vertical
+  before its end, is `InvalidSegment`.
+- A profile starting before the plan rebases a straddling circular arc
+  exactly, as it already rebased a polynomial piece.
+
+### Still refused, by name
+
+- A vertical `CLOTHOID`: its segment states neither end curvature
+  (`RadiusOfCurvature` is defined for arcs and parabolas only), so its
+  law is undetermined.
+- A `CUBIC` that starts curved: IFC4.3 defines only `y = x^3 / (6 R L)`
+  leaving a straight.
+- A pivot that moves through a Viennese bend (Axiolid's
+  `BankError::AngleInPivot`), a cant layout that does not span the plan,
+  and `|D| > b`.
+
 ## [0.5.0] - 2026-10-02
 
 ### Added

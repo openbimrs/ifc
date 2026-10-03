@@ -298,11 +298,13 @@ fn the_composed_centreline_evaluates_where_it_should() {
     assert!((point.z - 12.0).abs() < 1e-9, "z was {}", point.z);
 }
 
-/// A circular vertical curve has no exact polynomial form in plan distance.
-/// Substituting a parabola would move the road surface, so it is refused.
+/// A circular vertical curve is the circle itself in the composed profile,
+/// not the parabola it resembles near its vertex (#258): a crest of
+/// `R = -4000` from +3% over 200 m, checked against the circle's own
+/// equation about its centre.
 #[test]
-fn a_circular_vertical_curve_is_refused_not_approximated() {
-    let segment = vertical(
+fn a_circular_vertical_curve_is_the_circle_not_a_parabola() {
+    let mut segment = vertical(
         0.0,
         200.0,
         100.0,
@@ -310,10 +312,79 @@ fn a_circular_vertical_curve_is_refused_not_approximated() {
         -0.02,
         VerticalSegmentType::CircularArc,
     );
-    let error = profile_law(std::slice::from_ref(&segment)).expect_err("no exact law");
+    segment.radius_of_curvature = Some(-4000.0);
+    let law = profile_law(std::slice::from_ref(&segment)).expect("exact circle");
+    // Centre R along the left normal of the start tangent: below, for a crest.
+    let norm = 0.03_f64.hypot(1.0);
+    let (centre_d, centre_z) = (-4000.0 * -0.03 / norm, 100.0 + -4000.0 / norm);
+    for d in [0.0, 50.0, 100.0, 150.0, 200.0] {
+        let circle = centre_z + (4000.0_f64.powi(2) - (d - centre_d).powi(2)).sqrt();
+        let height = law.height_at(d).expect("height");
+        assert!(
+            (height - circle).abs() < 1e-9,
+            "at {d}: {height} != {circle}"
+        );
+    }
+    // The EN 13803 parabola z0 + g0 d + d^2 / (2R) is an approximation of
+    // it; the two part by millimetres over 200 m.
+    let parabola = 100.0 + 0.03 * 200.0 - 200.0_f64.powi(2) / 8000.0;
+    assert!((law.height_at(200.0).expect("height") - parabola).abs() > 1e-3);
+}
+
+/// A grade, a crest arc and a grade, joined tangentially, through the
+/// reference evaluator: height and grade meet themselves at both seams.
+/// The arc's end height and grade come from the circle about its centre,
+/// not from the law under test.
+#[test]
+fn a_profile_through_a_circular_arc_is_continuous_at_its_seams() {
+    let norm = 0.02_f64.hypot(1.0);
+    let sin_end = 0.02 / norm + 200.0 / -4000.0;
+    let end_grade = sin_end / (1.0 - sin_end * sin_end).sqrt();
+    let centre = (100.0 + 4000.0 * 0.02 / norm, 52.0 - 4000.0 / norm);
+    let end_height = centre.1 + (4000.0_f64.powi(2) - (300.0 - centre.0).powi(2)).sqrt();
+    let mut arc = vertical(
+        100.0,
+        200.0,
+        52.0,
+        0.02,
+        end_grade,
+        VerticalSegmentType::CircularArc,
+    );
+    arc.radius_of_curvature = Some(-4000.0);
+    let segments = [
+        vertical(
+            0.0,
+            100.0,
+            50.0,
+            0.02,
+            0.02,
+            VerticalSegmentType::ConstantGradient,
+        ),
+        arc,
+        vertical(
+            300.0,
+            100.0,
+            end_height,
+            end_grade,
+            end_grade,
+            VerticalSegmentType::ConstantGradient,
+        ),
+    ];
+    let law = profile_law(&segments).expect("tangent profile");
+    for seam in [100.0, 300.0] {
+        let height = axiolid_evaluate::elevation_height(&law, seam).expect("height");
+        let grade = axiolid_evaluate::elevation_grade(&law, seam).expect("grade");
+        for side in [seam - 1e-9, seam + 1e-9] {
+            let near = axiolid_evaluate::elevation_height(&law, side).expect("height");
+            let slope = axiolid_evaluate::elevation_grade(&law, side).expect("grade");
+            assert!((near - height).abs() < 1e-9, "height steps at {seam}");
+            assert!((slope - grade).abs() < 1e-9, "grade breaks at {seam}");
+        }
+    }
+    let at_end = axiolid_evaluate::elevation_height(&law, 300.0).expect("height");
     assert!(
-        format!("{error}").contains("exact"),
-        "the refusal must name the gap: {error}"
+        (at_end - end_height).abs() < 1e-9,
+        "{at_end} != {end_height}"
     );
 }
 

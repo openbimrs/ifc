@@ -17,14 +17,13 @@ pub enum VerticalSegmentType {
     /// Lowers exactly.
     ConstantGradient,
     /// `CIRCULARARC`: constant-radius vertical curve; requires
-    /// `radius_of_curvature`. Refused by lowering: not polynomial in plan
-    /// distance (#258).
+    /// `radius_of_curvature`. Lowers exactly, as the circle itself.
     CircularArc,
     /// `PARABOLICARC`: parabolic vertical curve; requires
     /// `radius_of_curvature`. Lowers exactly.
     ParabolicArc,
     /// `CLOTHOID`: a clothoid-law vertical transition. Refused by lowering:
-    /// a Fresnel integral in plan distance (#258).
+    /// the segment states neither end curvature, so its law is undetermined.
     Clothoid,
     /// `USERDEFINED`: an author-supplied law outside the enumerated set.
     UserDefined,

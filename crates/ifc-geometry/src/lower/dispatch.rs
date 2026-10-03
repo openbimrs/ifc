@@ -166,9 +166,10 @@ pub const PLANNED: &[(&str, &str)] = &[
     ("IFCSINESPIRAL", "an IfcCosineSpiral or IfcSineSpiral law depends on the length L of the IfcCurveSegment \
          using it; it lowers exactly only as the ParentCurve of an IfcCurveSegment"),
     ("IFCPOLYNOMIALCURVE", "an IfcPolynomialCurve is unbounded (-inf < u < inf) and the neutral vocabulary has no \
-         unbounded polynomial curve; bounded by an IfcCurveSegment it needs an arc-length trim (#90)"),
-    ("IFCSEGMENTEDREFERENCECURVE", "IfcSegmentedReferenceCurve adds cant (a roll of the section about the centreline); the \
-         pinned neutral curve vocabulary has no roll law to carry it exactly (#93)"),
+         unbounded polynomial curve; it lowers exactly as the ParentCurve of an IfcCurveSegment"),
+    ("IFCSEGMENTEDREFERENCECURVE", "IfcSegmentedReferenceCurve states cant through segments placed at stations along its base \
+         curve and parent curves with no normative mapping to a cant law; the business cant layout \
+         lowers to a banked curve through ifc-alignment (#311)"),
     // Sections along an alignment (IFC4X3); `lower::sectioned` raises these.
     (
         "IFCSECTIONEDSOLIDHORIZONTAL",
@@ -398,10 +399,23 @@ pub const PARTIAL: &[Variant] = &[
     },
     Variant {
         family: "IFCCURVESEGMENT",
-        variant: "ParentCurve is an IfcPolynomialCurve",
+        variant: "ParentCurve is a 2D IfcPolynomialCurve with a degree-one \
+                  coordinate, cut forwards from SegmentStart 0",
+        support: Support::Admitted,
+        rationale: "its Bezier over a closed-form parameter bound, placed \
+                    rigidly and trimmed at TrimSelector::ArcLength: the kernel \
+                    inverts the arc length, nothing is integrated here",
+    },
+    Variant {
+        family: "IFCCURVESEGMENT",
+        variant: "ParentCurve is an IfcPolynomialCurve cut from a non-zero \
+                  SegmentStart, walked backwards, 3D, or with no degree-one \
+                  coordinate",
         support: Support::Refused,
-        rationale: "an IfcPolynomialCurve trimmed by arc length: the end parameter inverts a non-elementary \
-         arc-length integral and the neutral vocabulary has no arc-length trim (#90)",
+        rationale: "the placed start point inverts a non-elementary arc-length \
+                    integral, a 3D polynomial has no plane for the placement, \
+                    and without a degree-one coordinate the trim has no \
+                    closed-form parameter bound",
     },
     Variant {
         family: "IFCCURVESEGMENT",
@@ -414,32 +428,28 @@ pub const PARTIAL: &[Variant] = &[
         family: "IFCCURVESEGMENT",
         variant: "Placement is an IfcAxis2PlacementLinear",
         support: Support::Refused,
-        rationale: "an IfcAxis2PlacementLinear placement belongs to an IfcSegmentedReferenceCurve (cant); \
-         the neutral vocabulary has no roll law to carry it (#93)",
+        rationale: "an IfcAxis2PlacementLinear placement stands at a distance along a basis curve; the neutral \
+         model has no distance-along-curve point relation to anchor it (#307)",
     },
     Variant {
         family: "IFCGRADIENTCURVE",
-        variant: "horizontal IfcCurveSegments over lines, arcs and spirals; \
-                  vertical IfcCurveSegments over IfcLine or a degree-2 \
+        variant: "horizontal IfcCurveSegments over lines, arcs, spirals and \
+                  2D IfcPolynomialCurves; vertical IfcCurveSegments over \
+                  IfcLine, IfcCircle, an IfcSpiral subtype, or a degree-2 \
                   IfcPolynomialCurve that keeps its start tangent",
         support: Support::Admitted,
-        rationale: "one intrinsic plan with a piecewise curvature law plus a \
-                    piecewise polynomial elevation law: Curve3::Elevated, exact",
+        rationale: "one plan parameterised by arc length (an intrinsic curve, \
+                    or an arc-length chain with a polynomial piece) plus a \
+                    piecewise elevation law of polynomial, circular and \
+                    intrinsic pieces: Curve3::Elevated, exact",
     },
     Variant {
         family: "IFCGRADIENTCURVE",
-        variant: "a vertical IfcCircle or IfcClothoid segment",
+        variant: "a vertical parabola or spiral with no following segment, \
+                  closing segment or EndPoint",
         support: Support::Refused,
-        rationale: "neither is polynomial in plan distance and the pinned \
-                    ElevationLaw has only polynomial pieces (#258)",
-    },
-    Variant {
-        family: "IFCGRADIENTCURVE",
-        variant: "a vertical parabola with no following segment, closing \
-                  segment or EndPoint",
-        support: Support::Refused,
-        rationale: "its end abscissa inverts a non-elementary arc-length \
-                    integral (#90)",
+        rationale: "its plan extent inverts a non-elementary arc-length \
+                    integral, and nothing states it",
     },
     Variant {
         family: "IFCGRADIENTCURVE",

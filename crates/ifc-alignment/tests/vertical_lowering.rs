@@ -1,5 +1,6 @@
 //! One vertical segment lowered on its own agrees with the composed profile
-//! (#91): both go through `elevation_law`.
+//! (#91): both go through `elevation_law`. Circular arcs lower to the circle
+//! itself (#258); clothoids state no curvature and stay refused.
 //!
 //! Heights and grades are hand-computed from the IFC4.3 PARABOLICARC
 //! definition (constant rate of change of gradient over plan distance):
@@ -15,7 +16,7 @@
 
 use std::sync::Arc;
 
-use axiolid_curve::Curve2;
+use axiolid_curve::{Curve2, ElevationLaw};
 use axiolid_model::{CurveRelation, GeometryNode, TrimSelector};
 use ifc_alignment::{
     elevation_law, lower_vertical_segment, profile_law, read_vertical_segment, AlignmentError,
@@ -162,31 +163,114 @@ fn a_constant_gradient_still_lowers_to_a_line() {
     assert!((point.y - 52.0).abs() < 1e-12);
 }
 
-/// Circular arcs and clothoids are refused identically on both paths, by
-/// name, rather than approximated.
+/// A vertical `CIRCULARARC` is the circle itself on both paths (#258).
+///
+/// IFC4X3_ADD2 (`IfcAlignmentVerticalSegmentTypeEnum`): the derivative of
+/// the vertical angle with respect to the 3D arc length is constant, `1 /
+/// R`, and `RadiusOfCurvature` is positive counter-clockwise (a sag). The
+/// crest here, `R = -4000` from +2% at station 1100 and height 52, has its
+/// centre `R` along the start tangent's left normal: below the road. Every
+/// expected height is that circle's own equation about its centre.
 #[test]
-fn circular_and_clothoid_vertical_curves_are_refused_on_both_paths() {
-    for (kind, radius, needle) in [
-        ("CIRCULARARC", Some(-4000.0), "circular arc"),
-        ("CLOTHOID", None, "clothoid"),
-    ] {
-        let model = record(1100.0, 200.0, 52.0, 0.02, -0.03, radius, kind);
+fn a_circular_arc_lowers_to_the_circle_on_both_paths() {
+    let model = record(
+        1100.0,
+        200.0,
+        52.0,
+        0.02,
+        -0.030_007,
+        Some(-4000.0),
+        "CIRCULARARC",
+    );
+    let segment = read_vertical_segment(&model, EntityId(1), metres()).expect("reads");
+    let law = elevation_law(&segment).expect("exact circle");
+    assert_eq!(law, ElevationLaw::circular_arc(52.0, 0.02, -4000.0));
+
+    let norm = 0.02_f64.hypot(1.0);
+    let centre = (1100.0 + 4000.0 * 0.02 / norm, 52.0 - 4000.0 / norm);
+    let circle =
+        |station: f64| centre.1 + (4000.0_f64.powi(2) - (station - centre.0).powi(2)).sqrt();
+    for local in [0.0, 50.0, 100.0, 150.0, 200.0] {
+        let height = law.height_at(local).expect("height");
+        let expected = circle(1100.0 + local);
+        assert!(
+            (height - expected).abs() < 1e-9,
+            "at {local}: {height} != {expected}"
+        );
+    }
+
+    // Per segment: the circle, trimmed by angle from the start to where the
+    // plan distance 200 ends.
+    let lowered = lower_vertical_segment(&model, EntityId(1), metres()).expect("per segment");
+    let (curve, end) = basis(&lowered);
+    let Curve2::Circle(arc) = curve else {
+        panic!("a vertical arc is a circle, got {curve:?}");
+    };
+    assert_eq!(arc.radius, 4000.0);
+    assert!((arc.frame.origin.x - centre.0).abs() < 1e-9);
+    assert!((arc.frame.origin.y - centre.1).abs() < 1e-9);
+    let start = axiolid_evaluate::evaluate2(curve, 0.0).expect("start");
+    assert!((start.x - 1100.0).abs() < 1e-9 && (start.y - 52.0).abs() < 1e-9);
+    let tangent = axiolid_evaluate::derivative2(curve, 0.0).expect("tangent");
+    assert!((tangent.y / tangent.x - 0.02).abs() < 1e-12, "start grade");
+    let finish = axiolid_evaluate::evaluate2(curve, end).expect("end");
+    assert!(
+        (finish.x - 1300.0).abs() < 1e-9,
+        "ends at the plan length: {}",
+        finish.x
+    );
+    assert!((finish.y - circle(1300.0)).abs() < 1e-9);
+    // The two paths place the same road in between.
+    for fraction in [0.25, 0.5, 0.75] {
+        let point = axiolid_evaluate::evaluate2(curve, end * fraction).expect("point");
+        let height = law.height_at(point.x - 1100.0).expect("height");
+        assert!(
+            (point.y - height).abs() < 1e-9,
+            "paths disagree at {}",
+            point.x
+        );
+    }
+}
+
+/// A vertical clothoid states neither end curvature, so its law is
+/// undetermined: refused identically on both paths, by name.
+#[test]
+fn a_vertical_clothoid_is_refused_on_both_paths() {
+    let model = record(1100.0, 200.0, 52.0, 0.02, -0.03, None, "CLOTHOID");
+    let segment = read_vertical_segment(&model, EntityId(1), metres()).expect("reads");
+    let composed = elevation_law(&segment).expect_err("no stated curvature");
+    let per_segment =
+        lower_vertical_segment(&model, EntityId(1), metres()).expect_err("no stated curvature");
+    assert_eq!(per_segment, composed, "the paths must agree");
+    let AlignmentError::Unsupported {
+        entity,
+        type_name,
+        detail,
+    } = per_segment
+    else {
+        panic!("expected Unsupported, got {per_segment}");
+    };
+    assert_eq!(entity, EntityId(1));
+    assert_eq!(type_name, "CLOTHOID");
+    assert!(detail.contains("states neither"), "{detail}");
+}
+
+/// A radius turning against the authored grades, and an arc that turns
+/// vertical inside its plan length, are invalid data on both paths.
+#[test]
+fn a_contradictory_circular_arc_is_refused_on_both_paths() {
+    for (radius, needle) in [(4000.0, "turns against"), (-100.0, "turns vertical")] {
+        let model = record(0.0, 200.0, 52.0, 0.02, -0.03, Some(radius), "CIRCULARARC");
         let segment = read_vertical_segment(&model, EntityId(1), metres()).expect("reads");
-        let composed = elevation_law(&segment).expect_err("no exact law");
-        let per_segment =
-            lower_vertical_segment(&model, EntityId(1), metres()).expect_err("no exact curve");
-        assert_eq!(per_segment, composed, "{kind}: the paths must agree");
-        let AlignmentError::Unsupported {
-            entity,
-            type_name,
-            detail,
-        } = per_segment
-        else {
-            panic!("{kind}: expected Unsupported, got {per_segment}");
-        };
-        assert_eq!(entity, EntityId(1));
-        assert_eq!(type_name, kind);
-        assert!(detail.contains(needle), "{kind}: {detail}");
+        let composed = elevation_law(&segment).expect_err("contradiction");
+        assert_eq!(
+            lower_vertical_segment(&model, EntityId(1), metres()),
+            Err(composed.clone())
+        );
+        assert!(
+            matches!(&composed, AlignmentError::InvalidSegment { detail, .. } if detail.contains(needle)),
+            "R {radius}: {composed}"
+        );
     }
 }
 
