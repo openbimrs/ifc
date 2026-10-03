@@ -62,7 +62,8 @@
 pub use ifc_model::{codec, Codec, Entity, EntityId, Header, Model, ModelError, Value};
 // `EntityEditor::stage` and the domain writers take a transaction; without
 // these a facade user could build an editor but never apply it.
-pub use ifc_model::{Applied, Conflict, Transaction};
+// `Budget` bounds the domain views' traversals (a classification hierarchy).
+pub use ifc_model::{Applied, Budget, Conflict, Transaction};
 
 /// The STEP physical file codec (`.ifc`).
 #[cfg(feature = "step")]
@@ -90,10 +91,17 @@ pub use ifc_schema as schema;
 
 // Needs the model's type index and the schema's subtype tree, which ADR 0003
 // keeps in separate crates, so the join lives in this orchestration layer.
-#[cfg(feature = "schema-api")]
+// Whether an entity is an `IfcRoot`, and where its `GlobalId` and `Name`
+// sit, are the same model/schema join, for every binding and report that
+// keys by GlobalId (#123). Both modules gate themselves on `schema-api`
+// with an inner `#![cfg]`.
+mod identity;
 mod subtype_query;
 #[cfg(feature = "schema-api")]
-pub use subtype_query::ids_of_type_including_subtypes;
+pub use self::{
+    identity::{root_identity, RootIdentity},
+    subtype_query::ids_of_type_including_subtypes,
+};
 
 /// Cost semantics as a borrowed view.
 #[cfg(feature = "cost")]
@@ -271,6 +279,14 @@ pub use spatial_properties::{
     spatial_properties, ContainerElements, ContainerName, ElementMember, ElementProperties,
     SpatialContainer, SpatialMembership, SpatialProperties,
 };
+
+// Every coordinate operation resolved to project-to-map parameters (#123)
+// needs the project length unit from `ifc-properties` AND the operation
+// from `ifc-georef`, siblings under ADR 0003. The module gates itself on
+// `all(georef, properties)` with an inner `#![cfg]`.
+mod georeference;
+#[cfg(all(feature = "georef", feature = "properties"))]
+pub use georeference::{georeferencing, GeoreferencingError};
 
 mod feature_report;
 mod io;

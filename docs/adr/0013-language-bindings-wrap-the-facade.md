@@ -60,6 +60,24 @@ crate directly.
   Checked multi-edit transactions (`Transaction`/`Applied`/`Conflict`) are
   deferred until a host asks for them. Domain views (#123) are the next
   layer, each an opt-in feature of the same kind.
+- *Amended 2026-10-03 (#123, read side):* the bindings carry the facade's
+  domain views as owned snapshots. A view borrows `&Model` and cannot cross
+  a boundary, so `openbim-ifc-binding-core` builds each answer into plain
+  records keyed by entity id, with the `GlobalId` where the entity has one,
+  and every host converts them with one generic function: a record is a
+  named, ordered list of fields (a JS object, a frozen Python dataclass, a
+  C tape `LIST`). Bound read-only, each behind its own feature: property
+  sets and quantities with type inheritance (exact, release-bound) and unit
+  resolution, the spatial tree, classification, materials, systems, cost,
+  and georeferencing (a new facade join of `georef` and `properties`, since
+  the project length unit scales every operation). IFC values in them keep
+  the tagged encoding, typed with their declared type; resolved parameters
+  (thicknesses, map offsets) are host numbers. A release a view does not
+  read is refused with `unsupported-schema`; new codes `invalid-model`,
+  `missing-reference`, `budget-exceeded`, `unsupported` and
+  `wrong-entity-type` keep the domain crates' refusals distinct. All seven
+  are default features of the core and the npm package, which carries
+  every capability; writing property sets is the second half of #123.
 
 ## Alternatives considered
 

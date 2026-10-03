@@ -27,20 +27,23 @@ Documentation: [JavaScript guide](https://openbimrs.github.io/ifc/bindings/javas
   replace the STEP header, validate against the declared schema, read and
   write ifcXML (lossless or the buildingSMART XSD layout), and list
   products no viewer will draw.
+- Read the domain views as snapshot objects: property sets and quantities
+  with type inheritance (`propertySets`, `resolveUnit`), the spatial tree,
+  classifications, materials, systems, cost and georeferencing (#123).
 
 ## What it does not do (yet)
 
-- No domain views (properties, quantities, spatial tree), no geometry, no
-  checked multi-edit transactions. These exist in the Rust crates; see
-  ADR 0013.
+- No property set writing (#123), no geometry, no checked multi-edit
+  transactions. These exist in the Rust crates; see ADR 0013.
 
 ## Smaller builds
 
-Validation, ifcXML and the reachability lint are default cargo features
-(`validate`, `ifcxml`, `unreachable`), like the IFC releases. A browser
-build can leave any of them out, e.g.
-`--no-default-features --features ifc4,ifcxml`; the left-out methods then
-throw `feature-disabled`.
+Validation, ifcXML, the reachability lint and the seven domain views are
+default cargo features (`validate`, `ifcxml`, `unreachable`, `properties`,
+`spatial`, `classification`, `material`, `systems`, `cost`, `georef`),
+like the IFC releases. A browser build can leave any of them out, e.g.
+`--no-default-features --features ifc4,ifcxml,spatial`; the left-out
+methods then throw `feature-disabled`.
 
 ## Example (Node)
 

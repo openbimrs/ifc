@@ -6,6 +6,17 @@ import os
 from typing import Iterable, List, Optional, Tuple, Union
 
 from ._native import NativeModel
+from . import domains
+from .domains import (
+    Classification,
+    Cost,
+    MapConversion,
+    MaterialAssignment,
+    PropertySet,
+    ResolvedUnit,
+    SpatialTree,
+    Systems,
+)
 from .records import Header, ParseOptions, UnreachableProduct, ValidationReport
 from .values import Value, from_wire, to_wire
 
@@ -16,7 +27,9 @@ class IfcModel:
     Failures raise :class:`openbim_ifc.IfcError`, whose ``code`` is one of
     ``parse``, ``write``, ``missing-entity``, ``invalid-value``,
     ``out-of-range``, ``unsupported-schema``, ``io``,
-    ``unsupported-profile`` or ``feature-disabled``.
+    ``unsupported-profile``, ``feature-disabled``, or, from a domain view,
+    ``invalid-model``, ``missing-reference``, ``budget-exceeded``,
+    ``unsupported`` or ``wrong-entity-type``.
 
     A parsed model decodes each entity the first time it is read: parsing
     checks every record but builds nothing, so opening a large file is fast
@@ -118,6 +131,52 @@ class IfcModel:
     def unreachable_products(self) -> List[UnreachableProduct]:
         """Products no viewer will draw, with a stable ``reason``, in id order."""
         return [UnreachableProduct(**row) for row in self._native.unreachable_products()]
+
+    def property_sets(self, id: int) -> List[PropertySet]:
+        """The property sets, quantity sets and predefined property sets of
+        object ``id``: its own first, then those its type object holds, an
+        occurrence property overriding an inherited one of the same name.
+
+        Values keep their declared IFC type, e.g.
+        ``Typed("IFCLENGTHMEASURE", Real(0.2))``. Resolved against the
+        release the header declares (IFC2X3, IFC4 or IFC4X3).
+        """
+        return list(domains._from_wire(self._native.property_sets(id)))
+
+    def resolve_unit(self, measure_type: str, unit: Optional[int] = None) -> ResolvedUnit:
+        """The effective unit of a ``measure_type`` value
+        (``"IFCAREAMEASURE"``): ``unit`` when given (a property's stated
+        unit), otherwise the project default, resolved exactly to SI."""
+        return domains._from_wire(self._native.resolve_unit(measure_type, unit))
+
+    def spatial_tree(self) -> SpatialTree:
+        """The spatial containment tree: every container with its parent,
+        sub-containers and contained elements."""
+        return domains._from_wire(self._native.spatial_tree())
+
+    def classifications(self, id: int) -> List[Classification]:
+        """The classifications of object ``id``: its own, then its type's."""
+        return list(domains._from_wire(self._native.classifications(id)))
+
+    def material(self, id: int) -> Optional[MaterialAssignment]:
+        """The material association of object ``id``, its own or its
+        type's, or ``None``."""
+        wire = self._native.material(id)
+        return None if wire is None else domains._from_wire(wire)
+
+    def systems(self) -> Systems:
+        """Every system with its members and served structures, and the
+        memberships the reader could not honour."""
+        return domains._from_wire(self._native.systems())
+
+    def cost(self) -> Cost:
+        """Every cost schedule and cost item; values as authored, typed."""
+        return domains._from_wire(self._native.cost())
+
+    def georeferencing(self) -> List[MapConversion]:
+        """Every coordinate operation resolved with the project length
+        unit; empty when the model has none."""
+        return list(domains._from_wire(self._native.georeferencing()))
 
     def __len__(self) -> int:
         return len(self._native)

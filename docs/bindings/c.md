@@ -6,7 +6,7 @@ ships as a CMake package, `openbim_ifc`, rather than through a registry.
 
 The binding exposes the record model over STEP -- parse, read and edit
 attributes, and write -- plus lenient reads, the file header, validation,
-ifcXML and the reachability lint (see
+ifcXML, the reachability lint and read-only domain views (see
 [Beyond the record model](#beyond-the-record-model)).
 
 ## Install via CMake
@@ -138,11 +138,94 @@ openbim_ifc_v0_1_model_destroy(model);
 - **Reachability.** `openbim_ifc_v0_1_model_unreachable_products` returns a
   tape of products no viewer will draw, each with a stable reason.
 
-Not bound yet: checked multi-edit transactions (`Transaction`, `Applied`,
-`Conflict`), deferred until a host asks for them, and the domain views
-such as property sets or the spatial tree
-([#123](https://github.com/openbimrs/ifc/issues/123)), which come next as
-opt-in features. Use the Rust crates for those.
+### Domain views
+
+<!-- SNIPPET:c-domain-views -->
+
+```c
+OpenbimIfcModel model = 0;
+if (openbim_ifc_v0_1_model_parse(data, len, &model, NULL, 0) != OPENBIM_IFC_STATUS_OK) {
+  return 1;
+}
+
+/* The property sets of wall #3, inherited ones included: a LIST of
+ * PropertySet records, each a LIST of its fields (see the table below). */
+size_t sets = 0, nodes_needed = 0, strings_needed = 0;
+openbim_ifc_v0_1_model_property_sets(model, 3, &sets, NULL, 0, &nodes_needed, NULL, 0,
+                                     &strings_needed);
+OpenbimIfcValueNode *nodes =
+    (OpenbimIfcValueNode *)malloc(nodes_needed * sizeof(OpenbimIfcValueNode));
+uint8_t *strings = (uint8_t *)malloc(strings_needed);
+openbim_ifc_v0_1_model_property_sets(model, 3, &sets, nodes, nodes_needed, &nodes_needed,
+                                     strings, strings_needed, &strings_needed);
+/* nodes[4] is the first set's name, nodes[6] its source ("type"). */
+printf("%zu set(s); first: %.*s\n", sets, (int)nodes[4].str_len,
+       (const char *)strings + nodes[4].str_offset);
+free(nodes);
+free(strings);
+openbim_ifc_v0_1_model_destroy(model);
+```
+
+<!-- /SNIPPET -->
+
+The domain views of the Rust facade cross as value tapes. Each record is a
+`LIST` of its fields in the order below; a nested record is a nested
+`LIST`, an id a `REF`, an absent field `NULL`, a count an `INTEGER`, a
+resolved parameter (a thickness, a map offset) a `REAL`, and an IFC value
+its own tagged node, typed wrapper included
+(`TYPED IFCLENGTHMEASURE` over `REAL 0.2`). As for validation, a size
+query runs the read.
+
+| Export | Tape |
+| --- | --- |
+| `openbim_ifc_v0_1_model_property_sets(model, object, &count, ...)` | `LIST` of `PropertySet`, the object's own then its type's |
+| `openbim_ifc_v0_1_model_resolve_unit(model, measure, len, unit, ...)` | one `ResolvedUnit`; `unit` 0 is the project default |
+| `openbim_ifc_v0_1_model_spatial_tree(model, ...)` | one `SpatialTree` |
+| `openbim_ifc_v0_1_model_classifications(model, object, &count, ...)` | `LIST` of `Classification` |
+| `openbim_ifc_v0_1_model_material(model, object, ...)` | one `MaterialAssignment`, or `NULL` when there is none |
+| `openbim_ifc_v0_1_model_systems(model, ...)` | one `Systems` |
+| `openbim_ifc_v0_1_model_cost(model, ...)` | one `Cost` |
+| `openbim_ifc_v0_1_model_georeferencing(model, &count, ...)` | `LIST` of `MapConversion` |
+
+#### Domain record tapes
+
+| Record | Fields, in tape order |
+| --- | --- |
+| `PropertySet` | id, global id, name, type name, source (`occurrence`/`type`), source id, properties (`LIST` of `Property`) |
+| `Property` | id, name, type name, kind, value type, unit, value (tagged), enumeration, bounds, table, usage, discrimination, quality, members (`LIST` of `Property`) |
+| `PropertyEnumeration` | id, name, values (`LIST` of tagged values) |
+| `PropertyBounds` | lower, upper, set point (tagged values, `NULL` when unstated) |
+| `PropertyTable` | rows (`LIST` of `[defining, defined]`), expression, defining unit, defined unit, interpolation |
+| `ResolvedUnit` | unit, from project (`BOOL`), dimensions (seven `INTEGER`s), scale, offset |
+| `SpatialTree` | release, roots, nodes (`LIST` of `SpatialNode`), orphans, dangling (`LIST` of `[relation, target]`), anomalies (`LIST` of `[kind, relation, subject, kept]`) |
+| `SpatialNode` | id, global id, name, type name, kind, parent, children, elements, referenced |
+| `Classification` | relationship, global id, source, type object, target, kind, identification, name, location, notation, parents, system (`[id, name, source, edition]`) |
+| `MaterialAssignment` | relationship, global id, source, type object, target, type name, kind, set, name, materials, layers, profiles, constituents, usage |
+| `MaterialRef` | id, name, category |
+| `MaterialLayer` | id, material, thickness, is ventilated (tagged), name, category, priority |
+| `MaterialProfile` | id, material, profile, name, category, priority |
+| `MaterialConstituent` | id, material, name, category, fraction |
+| `MaterialUsage` | layer set direction, direction sense, offset from reference line, reference extent, cardinal point, end set, cardinal end point |
+| `Systems` | systems (`LIST` of `System`), anomalies (`LIST` of `[kind, subject, other, message]`) |
+| `System` | id, global id, type name, name, long name, predefined type, members, serviced buildings, serviced facilities |
+| `Cost` | schedules, items, anomalies (`LIST` of `[item, kept, rejected, relation]`) |
+| `CostSchedule` | id, global id, name, identification, status, predefined type, items |
+| `CostItem` | id, global id, name, identification, description, predefined type, parent, children, values, quantities, objects |
+| `CostValue` | id, name, description, category, condition, applied value (tagged), operator, unit basis (`[id, value, unit]`), components (`LIST` of `CostValue`) |
+| `MapConversion` | operation, kind, source, source kind, target CRS, eastings, northings, orthogonal height, x axis, scale, factors, project unit, map unit, map unit declared, linear (three columns), translation |
+| `ProjectedCrs` | id, name, description, geodetic datum, vertical datum, map projection, map zone, well-known text |
+| `LengthUnit` | name, metres per unit |
+
+Refusals keep the codes every host shares, with new statuses
+`INVALID_MODEL` (19), `MISSING_REFERENCE` (21), `BUDGET_EXCEEDED` (22),
+`UNSUPPORTED` (23) and `WRONG_ENTITY_TYPE` (24); a release a view does not
+read is `UNSUPPORTED_SCHEMA`. These exports make the ABI version 0.1.2;
+no `v0_1` symbol changed.
+
+Not bound yet: writing property sets (the second half of
+[#123](https://github.com/openbimrs/ifc/issues/123)) and checked
+multi-edit transactions (`Transaction`, `Applied`, `Conflict`), deferred
+until a host asks for them. Use the Rust crates for those.
 
 ## API
 
@@ -258,6 +341,41 @@ Number of live models, for leak checks.
 **Safety.**
 `out_count` must be null or valid for one write.
 
+#### `openbim_ifc_v0_1_model_classifications`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_classifications(OpenbimIfcModel model, uint64_t object, size_t *out_count, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+The classifications of `object`: a `LIST` of `Classification` records,
+its own then its type object's; `out_count` gets their number.
+`Classification`: relationship (`REF`), global id, source, type object,
+target (`REF`), kind (`reference`, `system` or `notation`),
+identification, name, location, notation (`LIST` of `TEXT`), parents
+(`LIST` of `REF`), system (`id, name, source, edition` or `NULL`).
+
+`MissingEntity`, `UnsupportedSchema`, `InvalidModel`,
+`MissingReference`, `BudgetExceeded`, `FeatureDisabled`.
+
+**Safety.**
+As for `openbim_ifc_v0_1_model_property_sets`.
+
+#### `openbim_ifc_v0_1_model_cost`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_cost(OpenbimIfcModel model, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+Every cost schedule and cost item as one `Cost` record: schedules
+(`LIST` of `CostSchedule`), items (`LIST` of `CostItem`, each with its
+`CostValue` tree, applied values tagged), anomalies.
+
+`UnsupportedSchema`, `MissingReference`, `BudgetExceeded`,
+`FeatureDisabled`.
+
+**Safety.**
+As for `openbim_ifc_v0_1_entity_attribute`.
+
 #### `openbim_ifc_v0_1_model_create`
 
 ```c
@@ -310,6 +428,26 @@ Number of non-fatal parse diagnostics.
 
 **Safety.**
 `out_count` must be null or valid for one write.
+
+#### `openbim_ifc_v0_1_model_georeferencing`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_georeferencing(OpenbimIfcModel model, size_t *out_count, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+Every coordinate operation, resolved: a `LIST` of `MapConversion`
+records, empty when the model has none; `out_count` gets their number.
+`MapConversion`: operation, kind, source, source kind, target CRS
+(`ProjectedCrs` record), eastings, northings, orthogonal height, x axis
+(two `REAL`s), scale, factors (three `REAL`s or `NULL`), project unit
+and map unit (`name, metres per unit`), map unit declared (`BOOL`),
+linear (three columns of three `REAL`s), translation (three `REAL`s).
+
+`UnsupportedSchema` (anything but IFC4 and IFC4X3), `Unsupported`,
+`InvalidModel`, `MissingReference`, `FeatureDisabled`.
+
+**Safety.**
+As for `openbim_ifc_v0_1_model_property_sets`.
 
 #### `openbim_ifc_v0_1_model_header`
 
@@ -374,6 +512,24 @@ Number of entities.
 
 **Safety.**
 `out_count` must be null or valid for one write.
+
+#### `openbim_ifc_v0_1_model_material`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_material(OpenbimIfcModel model, uint64_t object, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+The material association of `object`, its own or its type object's, as
+one `MaterialAssignment` record, or a `NULL` tape when there is none:
+relationship, global id, source, type object, target, type name, kind,
+set, name, materials, layers, profiles, constituents (each a `LIST` of
+records), usage (record or `NULL`).
+
+`MissingEntity`, `UnsupportedSchema`, `InvalidModel`,
+`MissingReference`, `FeatureDisabled`.
+
+**Safety.**
+As for `openbim_ifc_v0_1_entity_attribute`.
 
 #### `openbim_ifc_v0_1_model_open`
 
@@ -481,6 +637,47 @@ listed by `openbim_ifc_v0_1_model_diagnostic`.
 **Safety.**
 As `openbim_ifc_v0_1_model_parse`.
 
+#### `openbim_ifc_v0_1_model_property_sets`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_property_sets(OpenbimIfcModel model, uint64_t object, size_t *out_count, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+The property sets of `object`: a `LIST` of `PropertySet` records, its
+own sets first, then those its type object holds; `out_count` gets their
+number. `PropertySet`: id (`REF`), global id, name, type name, source
+(`occurrence` or `type`), source id (`REF` or `NULL`), properties
+(`LIST` of `Property`). `Property`: id, name, type name, kind, value
+type, unit (`REF` or `NULL`), value (tagged, typed), enumeration,
+bounds, table, usage, discrimination, quality, members (`LIST` of
+`Property`).
+
+`MissingEntity`, `WrongEntityType`, `UnsupportedSchema` (a release other
+than IFC2X3, IFC4 or IFC4X3), `InvalidModel`, `FeatureDisabled`.
+
+**Safety.**
+`out_count` valid for one write; otherwise as for
+`openbim_ifc_v0_1_entity_attribute`.
+
+#### `openbim_ifc_v0_1_model_resolve_unit`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_resolve_unit(OpenbimIfcModel model, const uint8_t *measure_type, size_t measure_len, uint64_t unit, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+The effective unit of a `measure_type` value (`IFCAREAMEASURE`, UTF-8,
+`measure_len` bytes): `unit` when non-zero (a property's stated unit),
+otherwise the project default. The tape is one `ResolvedUnit`: unit
+(`REF` or `NULL`), from project (`BOOL`), dimensions (`LIST` of seven
+`INTEGER`s, SI exponents L M T I Θ N J), scale (`REAL`), offset (`REAL`).
+
+`InvalidValue` for a type that is no measure, `Unsupported`,
+`InvalidModel`, `FeatureDisabled`.
+
+**Safety.**
+`measure_type` valid for `measure_len` reads; otherwise as for
+`openbim_ifc_v0_1_entity_attribute`.
+
 #### `openbim_ifc_v0_1_model_schema`
 
 ```c
@@ -503,6 +700,40 @@ shape is `InvalidValue` and leaves the header unchanged.
 
 **Safety.**
 As for `openbim_ifc_v0_1_entity_set_attribute`.
+
+#### `openbim_ifc_v0_1_model_spatial_tree`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_spatial_tree(OpenbimIfcModel model, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+The spatial containment tree as one `SpatialTree` record: release
+(`TEXT` or `NULL`), roots (`LIST` of `REF`), nodes (`LIST` of
+`SpatialNode`: id, global id, name, type name, kind, parent, children,
+elements, referenced), orphans, dangling (`LIST` of `[relation,
+target]`), anomalies (`LIST` of `kind, relation, subject, kept`).
+
+`UnsupportedSchema` when the header names no bundled release;
+`FeatureDisabled`.
+
+**Safety.**
+As for `openbim_ifc_v0_1_entity_attribute`.
+
+#### `openbim_ifc_v0_1_model_systems`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_systems(OpenbimIfcModel model, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+Every system as one `Systems` record: systems (`LIST` of `System`: id,
+global id, type name, name, long name, predefined type, members,
+serviced buildings, serviced facilities) and anomalies (`LIST` of
+`kind, subject, other, message`).
+
+`UnsupportedSchema`, `FeatureDisabled`.
+
+**Safety.**
+As for `openbim_ifc_v0_1_entity_attribute`.
 
 #### `openbim_ifc_v0_1_model_unreachable_products`
 
@@ -597,11 +828,16 @@ Write the ABI and crate versions.
 | `OPENBIM_IFC_STATUS_MISSING_ENTITY` | 12 | No entity has the given id (`missing-entity`). |
 | `OPENBIM_IFC_STATUS_INVALID_VALUE` | 13 | A value did not follow the encoding (`invalid-value`). |
 | `OPENBIM_IFC_STATUS_OUT_OF_RANGE` | 14 | An id or index is outside the representable range (`out-of-range`). |
-| `OPENBIM_IFC_STATUS_UNSUPPORTED_SCHEMA` | 15 | The file's schema is not bundled (`unsupported-schema`). |
+| `OPENBIM_IFC_STATUS_UNSUPPORTED_SCHEMA` | 15 | The file's schema is not bundled, or a domain view does not read it (`unsupported-schema`). |
 | `OPENBIM_IFC_STATUS_IO` | 16 | A file could not be opened or read (`io`). |
 | `OPENBIM_IFC_STATUS_UNSUPPORTED_PROFILE` | 17 | No ifcXML XSD profile has that name (`unsupported-profile`). |
 | `OPENBIM_IFC_STATUS_FEATURE_DISABLED` | 18 | This build leaves out the feature the call needs (`feature-disabled`). |
+| `OPENBIM_IFC_STATUS_INVALID_MODEL` | 19 | A domain view refused the file's data as malformed, ambiguous or unprovable (`invalid-model`). |
 | `OPENBIM_IFC_STATUS_NO_VALUE` | 20 | The requested value does not exist (no schema token, no error, ...). |
+| `OPENBIM_IFC_STATUS_MISSING_REFERENCE` | 21 | A domain view followed a reference to an entity the file lacks (`missing-reference`). |
+| `OPENBIM_IFC_STATUS_BUDGET_EXCEEDED` | 22 | A domain view stopped at a cycle or its depth budget (`budget-exceeded`). |
+| `OPENBIM_IFC_STATUS_UNSUPPORTED` | 23 | A domain view met a construct it does not interpret (`unsupported`). |
+| `OPENBIM_IFC_STATUS_WRONG_ENTITY_TYPE` | 24 | A domain query named an entity of a type it does not accept (`wrong-entity-type`). |
 | `OPENBIM_IFC_STATUS_PANIC` | 255 | A Rust panic was contained at the boundary. Report it as a bug. |
 
 <!-- API:C:END -->

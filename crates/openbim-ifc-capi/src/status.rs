@@ -6,9 +6,9 @@ use openbim_ifc_binding_core::BindingError;
 
 /// Result of every ABI call. `Ok` is zero; every failure is non-zero.
 ///
-/// The values from `Parse` to `FeatureDisabled` are the binding errors
-/// shared with the JavaScript and Python bindings; the rest describe misuse
-/// of the C boundary itself.
+/// The values from `Parse` to `FeatureDisabled`, and `InvalidModel` to
+/// `WrongEntityType`, are the binding errors shared with the JavaScript and
+/// Python bindings; the rest describe misuse of the C boundary itself.
 #[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OpenbimIfcStatus {
@@ -32,7 +32,8 @@ pub enum OpenbimIfcStatus {
     InvalidValue = 13,
     /// An id or index is outside the representable range (`out-of-range`).
     OutOfRange = 14,
-    /// The file's schema is not bundled (`unsupported-schema`).
+    /// The file's schema is not bundled, or a domain view does not read it
+    /// (`unsupported-schema`).
     UnsupportedSchema = 15,
     /// A file could not be opened or read (`io`).
     Io = 16,
@@ -40,8 +41,22 @@ pub enum OpenbimIfcStatus {
     UnsupportedProfile = 17,
     /// This build leaves out the feature the call needs (`feature-disabled`).
     FeatureDisabled = 18,
+    /// A domain view refused the file's data as malformed, ambiguous or
+    /// unprovable (`invalid-model`).
+    InvalidModel = 19,
     /// The requested value does not exist (no schema token, no error, ...).
     NoValue = 20,
+    /// A domain view followed a reference to an entity the file lacks
+    /// (`missing-reference`).
+    MissingReference = 21,
+    /// A domain view stopped at a cycle or its depth budget
+    /// (`budget-exceeded`).
+    BudgetExceeded = 22,
+    /// A domain view met a construct it does not interpret (`unsupported`).
+    Unsupported = 23,
+    /// A domain query named an entity of a type it does not accept
+    /// (`wrong-entity-type`).
+    WrongEntityType = 24,
     /// A Rust panic was contained at the boundary. Report it as a bug.
     Panic = 255,
 }
@@ -58,6 +73,11 @@ impl From<&BindingError> for OpenbimIfcStatus {
             BindingError::Io(_) => Self::Io,
             BindingError::UnsupportedProfile(_) => Self::UnsupportedProfile,
             BindingError::FeatureDisabled(_) => Self::FeatureDisabled,
+            BindingError::InvalidModel(_) => Self::InvalidModel,
+            BindingError::MissingReference(_) => Self::MissingReference,
+            BindingError::BudgetExceeded(_) => Self::BudgetExceeded,
+            BindingError::Unsupported(_) => Self::Unsupported,
+            BindingError::WrongEntityType(_) => Self::WrongEntityType,
         }
     }
 }
@@ -124,6 +144,26 @@ mod tests {
             (
                 BindingError::FeatureDisabled(""),
                 OpenbimIfcStatus::FeatureDisabled,
+            ),
+            (
+                BindingError::InvalidModel(String::new()),
+                OpenbimIfcStatus::InvalidModel,
+            ),
+            (
+                BindingError::MissingReference(String::new()),
+                OpenbimIfcStatus::MissingReference,
+            ),
+            (
+                BindingError::BudgetExceeded(String::new()),
+                OpenbimIfcStatus::BudgetExceeded,
+            ),
+            (
+                BindingError::Unsupported(String::new()),
+                OpenbimIfcStatus::Unsupported,
+            ),
+            (
+                BindingError::WrongEntityType(String::new()),
+                OpenbimIfcStatus::WrongEntityType,
             ),
         ];
         for (error, status) in cases {

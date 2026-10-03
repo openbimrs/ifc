@@ -8,6 +8,19 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#123, domain views: read side)
+
+- `openbim_ifc_v0_1_model_property_sets`, `_model_resolve_unit`,
+  `_model_spatial_tree`, `_model_classifications`, `_model_material`,
+  `_model_systems`, `_model_cost` and `_model_georeferencing`: each domain
+  record as a value tape, a `LIST` of its fields in the shared core's
+  order; no Rust allocation crosses the ABI.
+- `OPENBIM_IFC_STATUS_INVALID_MODEL` (19), `_MISSING_REFERENCE` (21),
+  `_BUDGET_EXCEEDED` (22), `_UNSUPPORTED` (23) and `_WRONG_ENTITY_TYPE`
+  (24).
+- The ABI version is 0.1.2: every export above is new, no `v0_1` symbol
+  changed. Additive, so a patch release.
+
 ## [0.1.0] - 2026-10-03
 
 ### Added (#244)

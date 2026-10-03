@@ -202,3 +202,53 @@ pub(crate) fn unreachable_to_js(products: &[UnreachableProduct]) -> Array {
         })
         .collect()
 }
+
+/// A domain record (#123) as a plain object: field names camelCase, ids
+/// and `Int` fields `bigint`, counts and reals `number`, an absent field
+/// `undefined`, an IFC value in the tagged encoding. One conversion for
+/// every domain, so no record can drift from the core's.
+pub(crate) fn record_to_js(record: &openbim_ifc_binding_core::Record) -> JsValue {
+    let object = Object::new();
+    for (name, field) in &record.fields {
+        set(&object, &camel_case(name), &field_to_js(field));
+    }
+    object.into()
+}
+
+/// A list of domain records as an array.
+pub(crate) fn records_to_js(records: &[openbim_ifc_binding_core::Record]) -> Array {
+    records.iter().map(record_to_js).collect()
+}
+
+fn field_to_js(field: &openbim_ifc_binding_core::Field) -> JsValue {
+    use openbim_ifc_binding_core::Field;
+    match field {
+        Field::Null => JsValue::UNDEFINED,
+        Field::Id(id) => BigInt::from(*id).into(),
+        Field::Bool(value) => (*value).into(),
+        Field::Count(count) => JsValue::from_f64(*count as f64),
+        Field::Int(value) => BigInt::from(*value).into(),
+        Field::Real(value) => JsValue::from_f64(*value),
+        Field::Text(text) => text.as_str().into(),
+        Field::Value(value) => crate::value::to_js(value),
+        Field::List(items) => items.iter().map(field_to_js).collect::<Array>().into(),
+        Field::Record(record) => record_to_js(record),
+    }
+}
+
+/// `global_id` -> `globalId`.
+fn camel_case(name: &str) -> String {
+    let mut out = String::with_capacity(name.len());
+    let mut upper = false;
+    for c in name.chars() {
+        if c == '_' {
+            upper = true;
+        } else if upper {
+            out.push(c.to_ascii_uppercase());
+            upper = false;
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}

@@ -50,14 +50,14 @@ fn parse_flags(bytes: &[u8], flags: u32) -> (OpenbimIfcStatus, OpenbimIfcModel, 
     )
 }
 
-fn parse(bytes: &[u8]) -> OpenbimIfcModel {
+pub(crate) fn parse(bytes: &[u8]) -> OpenbimIfcModel {
     let (status, model, error) = parse_flags(bytes, 0);
     assert_eq!(status, OpenbimIfcStatus::Ok, "{error}");
     model
 }
 
 /// Size query, then fetch, for any tape export; returns the decoded value.
-fn tape(
+pub(crate) fn tape(
     call: impl Fn(
         *mut OpenbimIfcValueNode,
         usize,
@@ -98,7 +98,7 @@ fn tape(
         .expect("a well-formed tape"))
 }
 
-fn last_code(model: OpenbimIfcModel) -> String {
+pub(crate) fn last_code(model: OpenbimIfcModel) -> String {
     let mut buffer = vec![0u8; 64];
     let mut need = 0;
     // SAFETY: buffer valid for its length.
