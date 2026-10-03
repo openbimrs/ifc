@@ -24,12 +24,15 @@ use crate::lower::curve::lower_curve_node;
 use crate::lower::halfspace::lower_half_space_node;
 use crate::lower::mapped::lower_mapped_item_node;
 use crate::lower::point::{lower_point_on_curve_node, lower_point_on_surface_node};
+use crate::lower::sectioned::{
+    lower_sectioned_solid_horizontal_node, lower_sectioned_surface_node,
+};
 use crate::lower::session::LoweringSession;
 use crate::lower::surface::lower_surface_node;
 use crate::lower::swept::{
-    lower_extruded_area_solid_node, lower_fixed_reference_sweep_node,
-    lower_revolved_area_solid_node, lower_sectioned_spine_node, lower_tapered_extrusion_node,
-    lower_tapered_revolution_node,
+    lower_directrix_derived_reference_sweep_node, lower_extruded_area_solid_node,
+    lower_fixed_reference_sweep_node, lower_revolved_area_solid_node, lower_sectioned_spine_node,
+    lower_tapered_extrusion_node, lower_tapered_revolution_node,
 };
 use crate::lower::tessellated::{lower_polygonal_face_set_node, lower_triangulated_face_set_node};
 use crate::select::is_a;
@@ -244,6 +247,11 @@ pub fn lower_representation_item(
     frame: Transform,
 ) -> GeometryResult<NodeId> {
     let type_name = session.type_name(id)?;
+    // IFC4X3 sectioned surface, routed before the inheritance test so the
+    // named refusal holds whether or not the subtype table knows the type.
+    if type_name == "IFCSECTIONEDSURFACE" {
+        return lower_sectioned_surface_node(session, id);
+    }
     // Shape representations may legitimately contain bare curve and surface
     // items (Curve2D/Curve3D/SurfaceModel). Route by generated IFC inheritance
     // before the concrete solid table so plan and surface selections lower
@@ -284,6 +292,10 @@ pub fn lower_representation_item(
         "IFCEXTRUDEDAREASOLIDTAPERED" => lower_tapered_extrusion_node(session, id, frame),
         "IFCREVOLVEDAREASOLIDTAPERED" => lower_tapered_revolution_node(session, id, frame),
         "IFCFIXEDREFERENCESWEPTAREASOLID" => lower_fixed_reference_sweep_node(session, id, frame),
+        "IFCDIRECTRIXDERIVEDREFERENCESWEPTAREASOLID" => {
+            lower_directrix_derived_reference_sweep_node(session, id, frame)
+        }
+        "IFCSECTIONEDSOLIDHORIZONTAL" => lower_sectioned_solid_horizontal_node(session, id),
         "IFCSECTIONEDSPINE" => lower_sectioned_spine_node(session, id, frame),
         "IFCSHELLBASEDSURFACEMODEL"
         | "IFCFACEBASEDSURFACEMODEL"
