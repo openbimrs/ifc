@@ -9,9 +9,10 @@ repository = "https://github.com/openbimrs/ifc"
 description = "Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP files from C and C++."
 keywords = ["ifc", "bim", "ffi", "c-abi", "openbim"]
 categories = ["api-bindings", "parser-implementations"]
-# Distributed as a C library and header, not through Cargo: a CMake package
-# and prebuilt release archives are tracked in #41. On crates.io it would also
-# need openbim-ifc-binding-core published, an internal layer.
+# Distributed as a C library and header, not through Cargo: the CMake package
+# in CMakeLists.txt, and prebuilt archives of it on each `openbim-ifc-capi-v*`
+# GitHub release (#41). On crates.io it would also need
+# openbim-ifc-binding-core published, an internal layer.
 publish = false
 
 # Published on the docs site by `cargo run -p xtask -- docs`.
@@ -19,7 +20,7 @@ publish = false
 # implemented | partial | scaffold -- a judgement, never inferred from size.
 # `gaps`: the open issues behind the status; a partial crate names one.
 status = "partial"
-gaps = [41, 123, 244]
+gaps = [123, 244]
 # core | domain | geometry | facade | binding
 group = "binding"
 

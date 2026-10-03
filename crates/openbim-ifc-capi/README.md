@@ -8,8 +8,10 @@ cbindgen and checked for drift in the gate.
 The conventions follow Axiolid's C ABI (its ADR 0040), so a host can load
 both the same way.
 
-The library is built from source with cargo (see [Build and test](#build-and-test));
-it is not distributed through a registry.
+It is not distributed through a registry. Use it from CMake (see
+[CMake](#cmake)), either from a prebuilt archive attached to each
+`openbim-ifc-capi-v*` GitHub release or from a checkout, which builds it
+with cargo.
 
 - C binding guide and API: [openbimrs.github.io/ifc/bindings/c](https://openbimrs.github.io/ifc/bindings/c)
 - Reference page: [openbimrs.github.io/ifc](https://openbimrs.github.io/ifc/reference/crates/openbim-ifc-capi)
@@ -57,11 +59,50 @@ byte buffer holding every string.
 `LIST(REF 1, TYPED "IFCLABEL" (TEXT "x"))` is four nodes. Unused fields
 must be zero; a malformed tape is `INVALID_VALUE` and changes nothing.
 
+## CMake
+
+The package is `openbim_ifc`, its target `openbim_ifc::openbim_ifc`:
+
+```cmake
+find_package(openbim_ifc 0.1 CONFIG REQUIRED)
+target_link_libraries(app PRIVATE openbim_ifc::openbim_ifc)
+```
+
+`openbim_ifc::openbim_ifc` is the shared library; set
+`OPENBIM_IFC_LINKAGE=STATIC` before `find_package` for the static one, or
+link `openbim_ifc::openbim_ifc_shared` / `openbim_ifc::openbim_ifc_static`
+directly. The static target carries the system libraries Rust's standard
+library needs.
+
+- **Prebuilt.** Each release attaches
+  `openbim-ifc-capi-v<version>-<target>.tar.gz` (`.zip` on Windows) for
+  Linux and macOS (x86_64 and aarch64) and Windows (x86_64, MSVC), plus
+  `SHA256SUMS`. Unpack one anywhere and pass its directory as
+  `CMAKE_PREFIX_PATH`.
+- **Installed from a checkout.** `cmake -S crates/openbim-ifc-capi -B build`,
+  `cmake --build build`, `cmake --install build --prefix <prefix>`.
+- **Source tree.** `add_subdirectory(<checkout>/crates/openbim-ifc-capi)`
+  builds the library with cargo as part of your build and defines the same
+  targets. `OPENBIM_IFC_CARGO_FEATURES` passes crate features (for example
+  `rusty_alloc`).
+
+The shared library records its bare name (ELF `SONAME`, Mach-O install
+name `@rpath/libopenbim_ifc_capi.dylib`), so it can be moved with the
+application. CMake gives a consumer's build tree the runtime path; an
+installed application sets its own (`INSTALL_RPATH` on Linux and macOS,
+the DLL beside the executable on Windows). Windows needs MSVC.
+
+`scripts/check-cmake.py` builds a consumer
+(`tests/cmake-consumer/`) running the C smoke test against the source tree,
+the installed package and the unpacked archive, shared and static. The gate
+runs it on Linux, the `Native` workflow on macOS and Windows.
+
 ## Build and test
 
 ```sh
 cargo build -p openbim-ifc-capi --release      # libopenbim_ifc_capi.{a,so}
 crates/openbim-ifc-capi/scripts/check-c.sh     # C11 and C++17 smoke tests
+python3 crates/openbim-ifc-capi/scripts/check-cmake.py   # the CMake package
 UPDATE_HEADER=1 cargo test -p openbim-ifc-capi --test header   # regenerate
 ```
 
@@ -81,5 +122,4 @@ global allocator is a build-time choice; the version is pinned exactly.
 
 ## Not yet
 
-No CMake package and no prebuilt binaries; a host builds the library with
-cargo. Domain views (properties, quantities, geometry) are not bound.
+Domain views (properties, quantities, geometry) are not bound.

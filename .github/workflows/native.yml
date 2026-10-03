@@ -1,0 +1,73 @@
+name: Native
+
+# The C ABI's CMake package on macOS and Windows (#41). Linux runs the same
+# check (crates/openbim-ifc-capi/scripts/check-cmake.py) in the gate's
+# `bindings` section on every pull request, so this workflow only adds the
+# two platforms whose linkers and loaders differ: the macOS @rpath trap
+# (axiolid/kernel#113) and Windows DLL lookup.
+#
+# Cost: two jobs, and only where they can find something.
+# - pull_request: only when the change touches the C ABI crate, the crates
+#   it links, the lockfile or this file.
+# - push to main: every merge except prose, because a change to any linked
+#   crate can break a native link that no path filter would notice.
+#
+# This is a separate workflow on purpose. Path filters skip a whole run, so
+# its checks are absent on most pull requests; it must never be a required
+# check, and the "Standalone IFC gate" verdict in ci.yml does not depend on
+# it. release.yml builds and tests the shipped archives itself.
+on:
+  pull_request:
+    paths:
+      - "crates/openbim-ifc-capi/**"
+      - "crates/openbim-ifc-binding-core/**"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - ".github/workflows/native.yml"
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  cmake:
+    name: CMake package (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Rust 1.88
+        uses: dtolnay/rust-toolchain@688313b0823df1393bcebb1b4add0438a6d36884 # 1.88.0
+        with:
+          toolchain: 1.88.0
+          # rust-toolchain.toml asks for these; installing them here saves
+          # rustup doing it on the first cargo call.
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
+      - name: Cache Rust build
+        # Dependencies only. Only main saves, so a pull request can read the
+        # cache but never write into it.
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: native-${{ matrix.os }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Source-tree, installed and archived consumers, shared and static
+        run: python crates/openbim-ifc-capi/scripts/check-cmake.py

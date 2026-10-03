@@ -5,6 +5,8 @@
 #   <crate>-v<version>  ->  crates.io (unless publish = false)
 #                            + npm   for openbim-ifc-wasm  (@openbim/ifc)
 #                            + PyPI  for openbim-ifc-py    (openbim-ifc)
+#                            + GitHub release archives for a crate with a
+#                              CMakeLists.txt: openbim-ifc-capi (#41)
 #
 # npm, PyPI and crates.io use trusted publishing (OIDC). Each publish job runs
 # in the environment named after its registry (`crates.io`, `npmjs.com`,
@@ -56,6 +58,7 @@ jobs:
       crates_io: ${{ steps.plan.outputs.crates_io }}
       npm: ${{ steps.plan.outputs.npm }}
       pypi: ${{ steps.plan.outputs.pypi }}
+      native: ${{ steps.plan.outputs.native }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -308,3 +311,100 @@ jobs:
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           skip-existing: true
+
+  # The C ABI ships as prebuilt archives, not through a registry (#41): per
+  # platform, the `cmake --install` tree of crates/openbim-ifc-capi -- header,
+  # static and shared library, and the openbim_ifc CMake package. Each is
+  # built and then proven by check-cmake.py, which unpacks the archive in a
+  # fresh place and runs the C and C++ smoke test against it, shared and
+  # static. Built cold, without a cache, because the archives ship.
+  native-archives:
+    name: C library (${{ matrix.target }})
+    needs: plan
+    if: needs.plan.outputs.native == 'true'
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          # The oldest hosted images, so the libraries ask the least of a
+          # consumer's glibc.
+          - { target: x86_64-unknown-linux-gnu, os: ubuntu-22.04 }
+          - { target: aarch64-unknown-linux-gnu, os: ubuntu-22.04-arm }
+          - { target: x86_64-apple-darwin, os: macos-15-intel }
+          - { target: aarch64-apple-darwin, os: macos-15 }
+          - { target: x86_64-pc-windows-msvc, os: windows-latest }
+    runs-on: ${{ matrix.os }}
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Rust 1.88
+        uses: dtolnay/rust-toolchain@688313b0823df1393bcebb1b4add0438a6d36884 # 1.88.0
+        with:
+          toolchain: 1.88.0
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Build, pack and test the archive
+        run: python crates/openbim-ifc-capi/scripts/check-cmake.py --archive-dir dist
+      - name: Require the archive this runner was meant to build
+        shell: bash
+        env:
+          STEM: openbim-ifc-capi-v${{ needs.plan.outputs.version }}-${{ matrix.target }}
+        run: ls "dist/$STEM.tar.gz" 2>/dev/null || ls "dist/$STEM.zip"
+      - name: Upload archive
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+  github-release:
+    name: Attach C library archives to the GitHub release
+    needs: [plan, native-archives]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release and upload its assets
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download archives
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: native-*
+          path: dist
+          merge-multiple: true
+      - name: Checksum the archives
+        working-directory: dist
+        run: |
+          # One archive per native-archives matrix entry.
+          [ "$(ls | wc -l)" -eq 5 ] || { echo "::error::expected 5 archives:"; ls; exit 1; }
+          sha256sum -- * > SHA256SUMS
+          cat SHA256SUMS
+      - name: Create the release and attach the archives
+        # The release notes are the crate's changelog section for this
+        # version. An existing release (a re-run) keeps its notes; --clobber
+        # replaces assets a failed run left half-uploaded.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          CRATE: ${{ needs.plan.outputs.crate }}
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          manifest="$(grep -lx "name = \"$CRATE\"" crates/*/Cargo.toml)"
+          changelog="$(dirname "$manifest")/CHANGELOG.md"
+          awk -v v="$VERSION" '
+            index($0, "## [" v "]") == 1 { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' "$changelog" > notes.md
+          [ -s notes.md ] || { echo "::error::no $VERSION section in $changelog"; exit 1; }
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --verify-tag --title "$CRATE $VERSION" --notes-file notes.md
+          fi
+          gh release upload "$TAG" dist/* --clobber
