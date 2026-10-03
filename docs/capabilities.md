@@ -313,6 +313,16 @@ The dispatcher keeps coverage as data so it is auditable from one table
 | `IfcRationalBSplineSurfaceWithKnots` | <span class="status-implemented">Implemented</span> |
 | `IfcPointOnCurve` | <span class="status-implemented">Implemented</span> |
 | `IfcPointOnSurface` | <span class="status-implemented">Implemented</span> |
+| `IFCCURVESEGMENT` | <span class="status-partial">Partial</span> — 3 authored form(s) refused; see [variants](#partially-supported-variants) |
+| `IFCGRADIENTCURVE` | <span class="status-partial">Partial</span> — 4 authored form(s) refused; see [variants](#partially-supported-variants) |
+| `IFCCLOTHOID` | <span class="status-partial">Planned</span> — an IfcSpiral is unbounded (-inf < u < inf) and the neutral intrinsic curve needs a finite arc length; it lowers exactly as the ParentCurve of an IfcCurveSegment |
+| `IFCSECONDORDERPOLYNOMIALSPIRAL` | <span class="status-partial">Planned</span> — an IfcSpiral is unbounded (-inf < u < inf) and the neutral intrinsic curve needs a finite arc length; it lowers exactly as the ParentCurve of an IfcCurveSegment |
+| `IFCTHIRDORDERPOLYNOMIALSPIRAL` | <span class="status-partial">Planned</span> — an IfcSpiral is unbounded (-inf < u < inf) and the neutral intrinsic curve needs a finite arc length; it lowers exactly as the ParentCurve of an IfcCurveSegment |
+| `IFCSEVENTHORDERPOLYNOMIALSPIRAL` | <span class="status-partial">Planned</span> — an IfcSpiral is unbounded (-inf < u < inf) and the neutral intrinsic curve needs a finite arc length; it lowers exactly as the ParentCurve of an IfcCurveSegment |
+| `IFCCOSINESPIRAL` | <span class="status-partial">Planned</span> — an IfcCosineSpiral or IfcSineSpiral law depends on the length L of the IfcCurveSegment using it; it lowers exactly only as the ParentCurve of an IfcCurveSegment |
+| `IFCSINESPIRAL` | <span class="status-partial">Planned</span> — an IfcCosineSpiral or IfcSineSpiral law depends on the length L of the IfcCurveSegment using it; it lowers exactly only as the ParentCurve of an IfcCurveSegment |
+| `IFCPOLYNOMIALCURVE` | <span class="status-partial">Planned</span> — an IfcPolynomialCurve is unbounded (-inf < u < inf) and the neutral vocabulary has no unbounded polynomial curve; bounded by an IfcCurveSegment it needs an arc-length trim (#90) |
+| `IFCSEGMENTEDREFERENCECURVE` | <span class="status-partial">Planned</span> — IfcSegmentedReferenceCurve adds cant (a roll of the section about the centreline); the pinned neutral curve vocabulary has no roll law to carry it exactly (#93) |
 
 <!-- CAPABILITIES:GEOMETRY:END -->
 
@@ -333,6 +343,17 @@ Those are listed with their reasoning in
 
 | Family | Variant | Status | Rationale |
 | --- | --- | --- | --- |
+| `IFCCURVESEGMENT` | ParentCurve is an IfcLine, IfcCircle or 2D IfcPolyline, measured by IfcLengthMeasure | <span class="status-implemented">Admitted</span> | a line, arc or polyline cut by arc length and placed rigidly is elementary: a polyline or an angle-trimmed circle |
+| `IFCCURVESEGMENT` | ParentCurve is an IfcSpiral subtype, measured by IfcLengthMeasure | <span class="status-implemented">Admitted</span> | the spiral's curvature law, rebased to the segment in closed form, on a planar intrinsic curve; nothing is integrated |
+| `IFCCURVESEGMENT` | SegmentLength is zero (the closing segment of a layout) | <span class="status-implemented">Admitted</span> | its placement exactly: a planar intrinsic curve of length zero |
+| `IFCCURVESEGMENT` | ParentCurve is an IfcPolynomialCurve | <span class="status-partial">Refused</span> | an IfcPolynomialCurve trimmed by arc length: the end parameter inverts a non-elementary arc-length integral and the neutral vocabulary has no arc-length trim (#90) |
+| `IFCCURVESEGMENT` | SegmentStart or SegmentLength is an IfcParameterValue | <span class="status-partial">Refused</span> | SegmentStart/SegmentLength given as IfcParameterValue: IFC4.3 ADD2 defines no parametric space for IfcCurveSegment parents yet (informal proposition 1 requires IfcLengthMeasure) |
+| `IFCCURVESEGMENT` | Placement is an IfcAxis2PlacementLinear | <span class="status-partial">Refused</span> | an IfcAxis2PlacementLinear placement belongs to an IfcSegmentedReferenceCurve (cant); the neutral vocabulary has no roll law to carry it (#93) |
+| `IFCGRADIENTCURVE` | horizontal IfcCurveSegments over lines, arcs and spirals; vertical IfcCurveSegments over IfcLine or a degree-2 IfcPolynomialCurve that keeps its start tangent | <span class="status-implemented">Admitted</span> | one intrinsic plan with a piecewise curvature law plus a piecewise polynomial elevation law: Curve3::Elevated, exact |
+| `IFCGRADIENTCURVE` | a vertical IfcCircle or IfcClothoid segment | <span class="status-partial">Refused</span> | neither is polynomial in plan distance and the pinned ElevationLaw has only polynomial pieces (#258) |
+| `IFCGRADIENTCURVE` | a vertical parabola with no following segment, closing segment or EndPoint | <span class="status-partial">Refused</span> | its end abscissa inverts a non-elementary arc-length integral (#90) |
+| `IFCGRADIENTCURVE` | a heading kink, a closed-form position gap, or a profile that does not span the base curve | <span class="status-partial">Refused</span> | one plan curve and one elevation law cannot carry a kink or a gap, and an elevation law must cover the whole plan |
+| `IFCGRADIENTCURVE` | placed by a frame that tilts, scales or mirrors the vertical | <span class="status-partial">Refused</span> | a plan plus a height is carried only by frames that keep the vertical axis |
 | `IfcPcurve` | reference curve is an IfcPolyline | <span class="status-implemented">Admitted</span> | an ordered 2D point sequence needs no evaluation |
 | `IfcPcurve` | reference curve is an IfcIndexedPolyCurve with no explicit Segments, or only IfcLineIndex segments | <span class="status-implemented">Admitted</span> | reads identically to a plain ordered point sequence |
 | `IfcPcurve` | reference curve is an IfcLine, IfcCircle or IfcEllipse positioned by an IfcAxis2Placement2D | <span class="status-implemented">Admitted</span> | defining values are read verbatim in the surface's own (u, v) domain with no unit conversion |

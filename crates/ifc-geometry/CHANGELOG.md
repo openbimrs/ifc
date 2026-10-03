@@ -12,6 +12,37 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- IFC4X3 alignment curves lower exactly (#243). `IfcCurveSegment` lowers
+  for `IfcLine`, `IfcCircle`, 2D `IfcPolyline` and all six `IfcSpiral`
+  parents, placed by its `Placement` and cut by its `IfcLengthMeasure`
+  arc lengths: a polyline, an angle-trimmed circle, or a planar
+  `Curve3::Intrinsic` carrying the spiral's curvature law rebased to the
+  segment in closed form. A negative `SegmentLength` walks the parent
+  backwards; the zero-length closing segment is its placement, and a
+  composite drops it. `IfcCompositeCurve` now accepts `IfcCurveSegment`
+  members.
+- The spiral laws read the IFC4.3 terms: `sign(A_n) s^n / |A_n|^(n+1)` for
+  the clothoid and the second-, third- and seventh-order polynomial
+  spirals; `1/A_0 + cos(pi s/L)/A_1` (cosine) and
+  `1/A_0 + sign(A_1) s/A_1^2 + sin(2 pi s/L)/A_2` (sine), with `L` the
+  using segment's length. A present zero term is refused, not read as
+  absent.
+- `IfcGradientCurve` lowers to `Curve3::Elevated`: its `BaseCurve` as one
+  intrinsic plan with a piecewise curvature law, its vertical segments
+  (`IfcLine` grades, degree-2 `IfcPolynomialCurve` parabolas) as a
+  piecewise elevation law. Seams are checked in closed form: headings
+  everywhere, positions after a line or arc, parabola arc lengths.
+- Typed refusals, each in `dispatch::PLANNED` or `PARTIAL`: a spiral or
+  `IfcPolynomialCurve` on its own (unbounded); an `IfcPolynomialCurve`
+  parent trimmed by arc length and a parabola without a stated end (#90);
+  `IfcSegmentedReferenceCurve` and `IfcAxis2PlacementLinear` placements
+  (cant, #93); vertical arcs and clothoids (#258); `IfcParameterValue`
+  measures; plan kinks, gaps and profiles that do not span the plan.
+- Fixture `synthetic_ifc4x3_alignment_curves.ifc` and its generator
+  `tools/gen_ifc4x3_curve_fixtures.py`.
+
 ## [0.6.0] - 2026-10-02
 
 ### Changed (breaking)

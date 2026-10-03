@@ -110,7 +110,13 @@ fn every_concrete_ifc4_representation_item_is_classified() {
         }
     }
 
-    let implemented: BTreeSet<_> = IMPLEMENTED.iter().map(|name| (*name).to_owned()).collect();
+    // This ledger is IFC4's; IFC4X3-only families (#243) are not in it.
+    let ifc4: BTreeSet<_> = schema.entity_names().map(str::to_ascii_uppercase).collect();
+    let implemented: BTreeSet<_> = IMPLEMENTED
+        .iter()
+        .map(|name| (*name).to_owned())
+        .filter(|name| ifc4.contains(name))
+        .collect();
     assert!(
         implemented.is_disjoint(&classified),
         "root-exact and non-root classifications overlap"
@@ -123,7 +129,11 @@ fn every_concrete_ifc4_representation_item_is_classified() {
         "representation-item disposition drift: missing={missing:?}; extra={extra:?}"
     );
 
-    let planned: BTreeSet<_> = PLANNED.iter().map(|(name, _)| *name).collect();
+    let planned: BTreeSet<_> = PLANNED
+        .iter()
+        .map(|(name, _)| *name)
+        .filter(|name| ifc4.contains(*name))
+        .collect();
     let classified_planned: BTreeSet<_> = rows
         .iter()
         .filter(|row| row[1] == "planned-exact")
@@ -313,12 +323,12 @@ fn a_nested_failure_names_the_innermost_unlowerable_entity() {
     let inner = ifc_model::EntityId(1);
     let outer = ifc_model::EntityId(2);
     // Any family the dispatcher does not classify works as the inner gap. This
-    // deliberately uses a name from a LATER schema rather than a real planned
+    // deliberately uses a name no schema defines rather than a real planned
     // family, so implementing another family cannot silently defuse this test
-    // the way IFCSECTIONEDSPINE did once it started lowering.
+    // the way IFCSECTIONEDSPINE and IFCSEGMENTEDREFERENCECURVE did.
     model.insert(
         inner,
-        ifc_model::Entity::new("IFCSEGMENTEDREFERENCECURVE", vec![]),
+        ifc_model::Entity::new("IFCNOTYETDEFINEDREPRESENTATIONITEM", vec![]),
     );
     model.insert(
         outer,

@@ -102,6 +102,9 @@ const FAMILIES: &[(&str, BodyKind)] = &[
     ("IFCGEOMETRICCURVESET", BodyKind::GeometricSet),
     ("IFCPOINTONCURVE", BodyKind::Point),
     ("IFCPOINTONSURFACE", BodyKind::Point),
+    // IFC4X3 alignment curves the IFC4 subtype table cannot route (#243).
+    ("IFCCURVESEGMENT", BodyKind::Curve),
+    ("IFCGRADIENTCURVE", BodyKind::Curve),
 ];
 
 impl BodyKind {

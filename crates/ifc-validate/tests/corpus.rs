@@ -618,9 +618,9 @@ fn every_well_formed_bundled_schema_fixture_validates_clean() {
     // (#155), which `ifcopenshell.validate` also passes with zero issues.
     // 37 since #111: the aggregate checks found meshing_coverage.ifc's sliver
     // loop repeating points in a `LIST OF UNIQUE` and nested_mapped_item.ifc's
-    // empty `SET [1:?]`; both moved to DELIBERATELY_INVALID with reasons.
+    // empty `SET [1:?]`; both moved to DELIBERATELY_INVALID. 38 with #243's curves.
     assert_eq!(
-        checked, 37,
+        checked, 38,
         "all intended-clean fixtures must run; raw-header fail fixtures stay excluded"
     );
     assert!(

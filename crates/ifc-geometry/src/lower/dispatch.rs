@@ -109,6 +109,9 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCRATIONALBSPLINESURFACEWITHKNOTS",
     "IFCPOINTONCURVE",
     "IFCPOINTONSURFACE",
+    // IFC4X3 alignment geometry (#243): placed segments and centrelines.
+    "IFCCURVESEGMENT",
+    "IFCGRADIENTCURVE",
 ];
 
 /// Recognized representation items that are not lowered yet.
@@ -117,9 +120,27 @@ pub const IMPLEMENTED: &[&str] = &[
 /// report progress instead of a bare failure. Adding a family here is how a
 /// stub is declared; implementing it means moving the name to [`IMPLEMENTED`].
 ///
-/// Currently empty: every recognized representation item is lowered. A new
-/// unimplemented family is declared by adding it here.
-pub const PLANNED: &[(&str, &str)] = &[];
+/// The IFC4X3 spirals and `IfcPolynomialCurve` are unbounded on their own;
+/// they lower exactly as the `ParentCurve` of an `IfcCurveSegment`, which is
+/// where IFC4.3 uses them. The reasons are the runtime refusal texts.
+pub const PLANNED: &[(&str, &str)] = &[
+    ("IFCCLOTHOID", "an IfcSpiral is unbounded (-inf < u < inf) and the neutral intrinsic curve needs a \
+         finite arc length; it lowers exactly as the ParentCurve of an IfcCurveSegment"),
+    ("IFCSECONDORDERPOLYNOMIALSPIRAL", "an IfcSpiral is unbounded (-inf < u < inf) and the neutral intrinsic curve needs a \
+         finite arc length; it lowers exactly as the ParentCurve of an IfcCurveSegment"),
+    ("IFCTHIRDORDERPOLYNOMIALSPIRAL", "an IfcSpiral is unbounded (-inf < u < inf) and the neutral intrinsic curve needs a \
+         finite arc length; it lowers exactly as the ParentCurve of an IfcCurveSegment"),
+    ("IFCSEVENTHORDERPOLYNOMIALSPIRAL", "an IfcSpiral is unbounded (-inf < u < inf) and the neutral intrinsic curve needs a \
+         finite arc length; it lowers exactly as the ParentCurve of an IfcCurveSegment"),
+    ("IFCCOSINESPIRAL", "an IfcCosineSpiral or IfcSineSpiral law depends on the length L of the IfcCurveSegment \
+         using it; it lowers exactly only as the ParentCurve of an IfcCurveSegment"),
+    ("IFCSINESPIRAL", "an IfcCosineSpiral or IfcSineSpiral law depends on the length L of the IfcCurveSegment \
+         using it; it lowers exactly only as the ParentCurve of an IfcCurveSegment"),
+    ("IFCPOLYNOMIALCURVE", "an IfcPolynomialCurve is unbounded (-inf < u < inf) and the neutral vocabulary has no \
+         unbounded polynomial curve; bounded by an IfcCurveSegment it needs an arc-length trim (#90)"),
+    ("IFCSEGMENTEDREFERENCECURVE", "IfcSegmentedReferenceCurve adds cant (a roll of the section about the centreline); the \
+         pinned neutral curve vocabulary has no roll law to carry it exactly (#93)"),
+];
 
 /// A variant within a family that is admitted or refused independently.
 ///
@@ -224,6 +245,88 @@ pub const PARTIAL: &[Variant] = &[
                     neutral MasterRepresentation names S1 and S2 exactly",
     },
     Variant {
+        family: "IFCCURVESEGMENT",
+        variant: "ParentCurve is an IfcLine, IfcCircle or 2D IfcPolyline, \
+                  measured by IfcLengthMeasure",
+        support: Support::Admitted,
+        rationale: "a line, arc or polyline cut by arc length and placed rigidly \
+                    is elementary: a polyline or an angle-trimmed circle",
+    },
+    Variant {
+        family: "IFCCURVESEGMENT",
+        variant: "ParentCurve is an IfcSpiral subtype, measured by \
+                  IfcLengthMeasure",
+        support: Support::Admitted,
+        rationale: "the spiral's curvature law, rebased to the segment in closed \
+                    form, on a planar intrinsic curve; nothing is integrated",
+    },
+    Variant {
+        family: "IFCCURVESEGMENT",
+        variant: "SegmentLength is zero (the closing segment of a layout)",
+        support: Support::Admitted,
+        rationale: "its placement exactly: a planar intrinsic curve of length zero",
+    },
+    Variant {
+        family: "IFCCURVESEGMENT",
+        variant: "ParentCurve is an IfcPolynomialCurve",
+        support: Support::Refused,
+        rationale: "an IfcPolynomialCurve trimmed by arc length: the end parameter inverts a non-elementary \
+         arc-length integral and the neutral vocabulary has no arc-length trim (#90)",
+    },
+    Variant {
+        family: "IFCCURVESEGMENT",
+        variant: "SegmentStart or SegmentLength is an IfcParameterValue",
+        support: Support::Refused,
+        rationale: "SegmentStart/SegmentLength given as IfcParameterValue: IFC4.3 ADD2 defines no parametric \
+         space for IfcCurveSegment parents yet (informal proposition 1 requires IfcLengthMeasure)",
+    },
+    Variant {
+        family: "IFCCURVESEGMENT",
+        variant: "Placement is an IfcAxis2PlacementLinear",
+        support: Support::Refused,
+        rationale: "an IfcAxis2PlacementLinear placement belongs to an IfcSegmentedReferenceCurve (cant); \
+         the neutral vocabulary has no roll law to carry it (#93)",
+    },
+    Variant {
+        family: "IFCGRADIENTCURVE",
+        variant: "horizontal IfcCurveSegments over lines, arcs and spirals; \
+                  vertical IfcCurveSegments over IfcLine or a degree-2 \
+                  IfcPolynomialCurve that keeps its start tangent",
+        support: Support::Admitted,
+        rationale: "one intrinsic plan with a piecewise curvature law plus a \
+                    piecewise polynomial elevation law: Curve3::Elevated, exact",
+    },
+    Variant {
+        family: "IFCGRADIENTCURVE",
+        variant: "a vertical IfcCircle or IfcClothoid segment",
+        support: Support::Refused,
+        rationale: "neither is polynomial in plan distance and the pinned \
+                    ElevationLaw has only polynomial pieces (#258)",
+    },
+    Variant {
+        family: "IFCGRADIENTCURVE",
+        variant: "a vertical parabola with no following segment, closing \
+                  segment or EndPoint",
+        support: Support::Refused,
+        rationale: "its end abscissa inverts a non-elementary arc-length \
+                    integral (#90)",
+    },
+    Variant {
+        family: "IFCGRADIENTCURVE",
+        variant: "a heading kink, a closed-form position gap, or a profile \
+                  that does not span the base curve",
+        support: Support::Refused,
+        rationale: "one plan curve and one elevation law cannot carry a kink or \
+                    a gap, and an elevation law must cover the whole plan",
+    },
+    Variant {
+        family: "IFCGRADIENTCURVE",
+        variant: "placed by a frame that tilts, scales or mirrors the vertical",
+        support: Support::Refused,
+        rationale: "a plan plus a height is carried only by frames that keep \
+                    the vertical axis",
+    },
+    Variant {
         family: "IFCSURFACECURVE",
         variant: "MasterRepresentation is PCurveS2 with only one associated \
                   p-curve",
@@ -264,6 +367,18 @@ pub fn lower_representation_item(
             lower_half_space_node(session, id, frame)
         }
         "IFCMAPPEDITEM" => lower_mapped_item_node(session, id, frame),
+        // IFC4X3 curve families the IFC4 subtype table does not know, and
+        // `IfcCurveSegment`, an IfcSegment the curve module lowers.
+        "IFCCURVESEGMENT"
+        | "IFCGRADIENTCURVE"
+        | "IFCSEGMENTEDREFERENCECURVE"
+        | "IFCPOLYNOMIALCURVE"
+        | "IFCCLOTHOID"
+        | "IFCCOSINESPIRAL"
+        | "IFCSINESPIRAL"
+        | "IFCSECONDORDERPOLYNOMIALSPIRAL"
+        | "IFCTHIRDORDERPOLYNOMIALSPIRAL"
+        | "IFCSEVENTHORDERPOLYNOMIALSPIRAL" => lower_curve_node(session, id, frame),
         "IFCPOINTONCURVE" => lower_point_on_curve_node(session, id, frame),
         "IFCPOINTONSURFACE" => lower_point_on_surface_node(session, id, frame),
         "IFCFACETEDBREP"
