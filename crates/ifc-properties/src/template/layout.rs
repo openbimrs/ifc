@@ -19,7 +19,7 @@
 //! ```
 
 use ifc_model::{Entity, EntityId, Model, Value};
-use ifc_schema::{for_version, ifc4, Schema, SchemaVersion, TypeKind};
+use ifc_schema::{for_version, Schema, SchemaVersion, TypeKind};
 
 use crate::error::{PropertyAnomaly, TemplateError};
 use crate::exact_schema;
@@ -37,14 +37,14 @@ impl Layout {
     /// The header's single `FILE_SCHEMA`, when it names a bundled release;
     /// otherwise the IFC4 ADD2 TC1 baseline, so that a model built in memory
     /// without a header still reads. An IFC2X3 header binds the IFC2X3
-    /// table, which declares no templates, so nothing reads as one.
+    /// table, which declares no templates, so nothing reads as one. A build
+    /// without the IFC4 table (#306) falls back to the newest one it bundles.
     pub(crate) fn permissive(model: &Model) -> Self {
         let declared = match model.header().schema.as_slice() {
-            [token] => SchemaVersion::from_header_token(token)
-                .and_then(|version| for_version(version).ok().map(|schema| (version, schema))),
+            [token] => SchemaVersion::from_header_token(token),
             _ => None,
         };
-        let (version, schema) = declared.unwrap_or((SchemaVersion::Ifc4, ifc4()));
+        let (version, schema) = crate::baseline::table(declared);
         Self { version, schema }
     }
 

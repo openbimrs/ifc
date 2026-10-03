@@ -56,8 +56,8 @@ validate = ["openbim-ifc/validate"]
 unreachable = ["openbim-ifc/spatial", "openbim-ifc/geometry-select"]
 # Domain views (#123), each an owned-snapshot read of one facade domain.
 # Like the capabilities, each adds to a browser build, and an operation
-# whose feature is off refuses with `feature-disabled`. Every domain crate
-# links every release's schema table it reads.
+# whose feature is off refuses with `feature-disabled`. Each reads only
+# the schema tables of the releases enabled above (#306).
 # Property sets, quantities (type inheritance included) and exact units.
 properties = ["openbim-ifc/properties"]
 # The spatial containment tree.

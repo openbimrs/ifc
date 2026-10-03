@@ -42,7 +42,7 @@
 //!   the release that does not declare them.
 
 use ifc_model::{EntityId, Model};
-use ifc_schema::{ifc4, ifc4x3, Schema, SchemaVersion};
+use ifc_schema::{for_version, Schema, SchemaVersion};
 
 use crate::error::{GeorefError, GeorefResult};
 
@@ -76,8 +76,13 @@ impl<'m> GeorefView<'m> {
             }
         })?;
         let schema = match version {
-            SchemaVersion::Ifc4 => ifc4(),
-            SchemaVersion::Ifc4x3 => ifc4x3(),
+            // A verified release whose table this build leaves out (#306)
+            // is refused like an unverified one.
+            SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3 => {
+                for_version(version).map_err(|_| GeorefError::UnsupportedSchema {
+                    token: token.clone(),
+                })?
+            }
             // IFC2X3 predates these layouts; IFC4X1 and IFC4X2 are bundled
             // by ifc-schema but not verified here. Refused, never aliased.
             _ => {

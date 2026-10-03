@@ -74,13 +74,16 @@ ifc-structural = { workspace = true, optional = true }
 ifc-resource = { workspace = true, optional = true }
 ifc-systems = { workspace = true, optional = true }
 ifc-style = { workspace = true, optional = true }
-# ifc-validate, ifc-spatial and ifc-geometry take their releases from the
-# release features above (#306); the workspace turns their defaults off.
+# ifc-validate, ifc-spatial, ifc-geometry and the property,
+# classification, material, systems, cost and georef crates take their
+# releases from the release features below (#306); the workspace turns
+# their defaults off.
 ifc-validate = { workspace = true, optional = true }
 ifc-author = { workspace = true, optional = true }
 ifc-spatial = { workspace = true, optional = true }
 ifc-geometry = { workspace = true, optional = true, default-features = false }
-ifc-georef = { workspace = true, optional = true }
+# `transform` was the georef default before #306 turned defaults off.
+ifc-georef = { workspace = true, optional = true, features = ["transform"] }
 ifc-alignment = { workspace = true, optional = true }
 
 [features]
@@ -99,14 +102,17 @@ schema = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
 # One bundled IFC release each (#112). Any of them provides the schema API;
 # a release left out is refused by `schema::for_version` with
 # `schema::NotBundled`. A size-sensitive build (browser WASM) names only the
-# releases it ships. `validate`, `spatial` and `geometry-select` link only
-# the releases named here (#306): each release feature forwards to them.
-# The other domain features still link every release through their crates.
-ifc2x3 = ["schema-api", "ifc-schema/ifc2x3", "ifc-validate?/ifc2x3", "ifc-spatial?/ifc2x3", "ifc-geometry?/ifc2x3"]
-ifc4 = ["schema-api", "ifc-schema/ifc4", "ifc-validate?/ifc4", "ifc-spatial?/ifc4", "ifc-geometry?/ifc4"]
-ifc4x1 = ["schema-api", "ifc-schema/ifc4x1", "ifc-validate?/ifc4x1", "ifc-spatial?/ifc4x1", "ifc-geometry?/ifc4x1"]
-ifc4x2 = ["schema-api", "ifc-schema/ifc4x2", "ifc-validate?/ifc4x2", "ifc-spatial?/ifc4x2", "ifc-geometry?/ifc4x2"]
-ifc4x3 = ["schema-api", "ifc-schema/ifc4x3", "ifc-validate?/ifc4x3", "ifc-spatial?/ifc4x3", "ifc-geometry?/ifc4x3"]
+# releases it ships. The domains the language bindings carry -- `validate`,
+# `spatial`, `geometry-select`, `properties`, `classification`,
+# `material`, `systems`, `cost` and `georef` -- link only the releases
+# named here (#306): each release feature forwards to their crates, and
+# `spatial` and `properties` refuse to compile without one. The other
+# domain features still link every release through their crates.
+ifc2x3 = ["schema-api", "ifc-schema/ifc2x3", "ifc-validate?/ifc2x3", "ifc-spatial?/ifc2x3", "ifc-geometry?/ifc2x3", "ifc-properties?/ifc2x3", "ifc-classification?/ifc2x3", "ifc-material?/ifc2x3", "ifc-systems?/ifc2x3", "ifc-cost?/ifc2x3", "ifc-georef?/ifc2x3"]
+ifc4 = ["schema-api", "ifc-schema/ifc4", "ifc-validate?/ifc4", "ifc-spatial?/ifc4", "ifc-geometry?/ifc4", "ifc-properties?/ifc4", "ifc-classification?/ifc4", "ifc-material?/ifc4", "ifc-systems?/ifc4", "ifc-cost?/ifc4", "ifc-georef?/ifc4"]
+ifc4x1 = ["schema-api", "ifc-schema/ifc4x1", "ifc-validate?/ifc4x1", "ifc-spatial?/ifc4x1", "ifc-geometry?/ifc4x1", "ifc-properties?/ifc4x1", "ifc-classification?/ifc4x1", "ifc-material?/ifc4x1", "ifc-systems?/ifc4x1", "ifc-cost?/ifc4x1", "ifc-georef?/ifc4x1"]
+ifc4x2 = ["schema-api", "ifc-schema/ifc4x2", "ifc-validate?/ifc4x2", "ifc-spatial?/ifc4x2", "ifc-geometry?/ifc4x2", "ifc-properties?/ifc4x2", "ifc-classification?/ifc4x2", "ifc-material?/ifc4x2", "ifc-systems?/ifc4x2", "ifc-cost?/ifc4x2", "ifc-georef?/ifc4x2"]
+ifc4x3 = ["schema-api", "ifc-schema/ifc4x3", "ifc-validate?/ifc4x3", "ifc-spatial?/ifc4x3", "ifc-geometry?/ifc4x3", "ifc-properties?/ifc4x3", "ifc-classification?/ifc4x3", "ifc-material?/ifc4x3", "ifc-systems?/ifc4x3", "ifc-cost?/ifc4x3", "ifc-georef?/ifc4x3"]
 # The schema API (`Schema`, `SchemaVersion`, `schema::for_version`) without
 # choosing a release; every release feature implies it.
 schema-api = ["dep:ifc-schema", "ifc-template-catalog?/schema"]
