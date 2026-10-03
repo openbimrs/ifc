@@ -15,7 +15,8 @@ pub enum XmlLayout {
     /// The buildingSMART ifcXML configuration of ISO 10303-28 that the
     /// release XSD declares: entities nested and defined in place, `ref` /
     /// `href` references, inverse attributes, `-wrapper` typed values and
-    /// space-separated list attributes. Read only, always schema-strict.
+    /// space-separated list attributes. Reads and writes, always
+    /// schema-strict; written documents validate against the release XSD.
     Xsd,
 }
 
@@ -41,8 +42,8 @@ pub enum SchemaReading {
 /// Construct with [`XmlCodec::default`] for the lossless compatibility dialect,
 /// [`XmlCodec::strict`] for an exact namespace/release profile,
 /// [`XmlCodec::with_schema_and_profile`] for strict output with schema-correct
-/// attribute names, or [`XmlCodec::xsd`] to read the buildingSMART XSD
-/// configuration.
+/// attribute names, or [`XmlCodec::xsd`] to read and write the buildingSMART
+/// XSD configuration.
 #[derive(Debug, Clone, Default)]
 pub struct XmlCodec {
     profile: Option<XmlProfile>,
@@ -136,11 +137,17 @@ impl XmlCodec {
         }
     }
 
-    /// A reader of the buildingSMART XSD configuration of `profile`'s release.
+    /// A reader and writer of the buildingSMART XSD configuration of
+    /// `profile`'s release.
     ///
     /// `schema` must be that release's schema; a mismatch is refused when
-    /// reading. The document reads into the same [`Model`] as its STEP
-    /// form. Writing this layout is not implemented and is refused.
+    /// reading or writing. A document reads into the same [`Model`] as its
+    /// STEP form. A model writes as a document that validates against the
+    /// release XSD and reads back to the same model, its entities numbered
+    /// in model order; what the configuration cannot carry exactly is
+    /// refused with [`crate::XmlError::Unrepresentable`] or another typed
+    /// error, never written differently. The model's header must declare
+    /// the profile's schema token.
     #[cfg(feature = "schema")]
     #[must_use]
     pub fn xsd(schema: std::sync::Arc<ifc_schema::Schema>, profile: XmlProfile) -> Self {

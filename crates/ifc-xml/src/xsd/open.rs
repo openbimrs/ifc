@@ -93,6 +93,16 @@ impl State<'_> {
                         _ => return Err(self.unknown_xml_attribute(name, &format!("xsi:{local}"))),
                     }
                 }
+                // The aggregate attributes are global attribute declarations
+                // of the XSD, so a valid document qualifies them with the
+                // IFC namespace (`ifc:arraySize`); unqualified ones are read
+                // too.
+                ResolveResult::Bound(namespace)
+                    if self.profile.namespaces().contains(&namespace.as_ref())
+                        && matches!(local.as_str(), "arraySize" | "itemType" | "cType") =>
+                {
+                    out.plain.push((local, value));
+                }
                 _ => {
                     let qualified = attribute.key.as_ref().to_owned();
                     return Err(self.unknown_xml_attribute(name, &qualified));
@@ -457,6 +467,7 @@ impl State<'_> {
             levels: vec![typing::Level {
                 kind: AggregateKind::Set,
                 fixed: None,
+                count: (0, None),
             }],
             leaf: Leaf::Entity(inverse.entity.clone()),
             named: inverse.entity.clone(),

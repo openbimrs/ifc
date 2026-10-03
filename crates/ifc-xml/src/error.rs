@@ -184,6 +184,15 @@ pub enum XmlError {
         /// The given schema's name.
         schema: String,
     },
+    /// Model content the buildingSMART XSD configuration cannot carry
+    /// exactly: a value a reader would read back differently, or that the
+    /// release XSD would refuse. The XSD writer refuses it rather than write
+    /// a different model or an invalid document.
+    #[error("the XSD configuration cannot represent {construct}")]
+    Unrepresentable {
+        /// What cannot be written, in words.
+        construct: String,
+    },
     /// Valid content this reader or writer does not implement. Refused,
     /// never approximated.
     #[error("unsupported: {construct}")]

@@ -1,5 +1,10 @@
 //! The buildingSMART XSD configuration of ifcXML, read into the [`Model`]
-//! the STEP form of the same document reads into.
+//! the STEP form of the same document reads into, and written from it.
+//!
+//! Reading and writing share the resolved layouts of [`crate::typing`],
+//! including the form each attribute takes ([`XsdForm`]); the writer adds
+//! the configuration's choices EXPRESS does not fix (`config`) and its
+//! own rules (`write`).
 //!
 //! # The configuration
 //!
@@ -11,7 +16,10 @@
 //! - **Simple attributes are XML attributes.** An attribute whose declared
 //!   type is a simple type -- a measure, label, enumeration, boolean -- is an
 //!   XML attribute on the entity element. An aggregate of simple values is a
-//!   whitespace-separated list in one XML attribute, flattened when nested.
+//!   whitespace-separated list in one XML attribute, flattened when nested,
+//!   unless its inner sizes are not fixed or the configuration says
+//!   otherwise (`AddressLines`): then it is a container of `-wrapper`
+//!   values. The reader reads such an aggregate from either form.
 //! - **Entity-typed attributes are child elements that *are* the entity.**
 //!   `<OwnerHistory id="i1" ...>` defines the `IfcOwnerHistory` in place;
 //!   `xsi:type` names a subtype. `<OwnerHistory ref="i1" xsi:nil="true"/>`
@@ -20,7 +28,10 @@
 //!   are the items: entity elements named by their type, references, or
 //!   `<IfcLabel-wrapper>`-style typed values. A wrapper in a SELECT is the
 //!   STEP typed parameter `IFCLABEL(...)`; a wrapper in an aggregate of a
-//!   defined type is the bare value.
+//!   defined type is the bare value. A nested aggregate is flattened, with
+//!   `ifc:arraySize` for the inner sizes the schema does not fix (a global
+//!   attribute of the XSD, so namespace-qualified; read unqualified too), or
+//!   written as `Seq-...-wrapper` inner lists.
 //! - **Inverse attributes are child elements too.** `<IsDecomposedBy>` holds
 //!   the `IfcRelAggregates` whose `RelatingObject` is the enclosing entity.
 //!   The relationship omits that attribute; reading the inverse supplies it.
@@ -34,21 +45,30 @@
 //!   (an XSD restriction inherits attributes), so a value there is typed
 //!   and discarded; as a child element it is refused.
 //!
+//! - **The configuration leaves some attributes off.** It writes 23 inverse
+//!   attributes and leaves 21 explicit attributes off their relationship
+//!   (`config`); the reader fills those from the inverse, the writer
+//!   writes them into it.
+//!
 //! Content outside those rules is refused with a typed [`XmlError`], never
 //! read as a different model: an attribute the entity does not declare, a
 //! value its declared type does not admit, a nested aggregate whose inner
 //! sizes neither the schema nor an `arraySize` fixes, `pos`/`path` addressing,
 //! external `href`s.
 
+mod config;
 #[cfg(test)]
 mod conformance;
 mod finish;
 mod item;
 mod open;
 mod state;
+mod write;
+
+pub(crate) use write::write;
 
 use crate::error::XmlError;
-use crate::typing::{self, EntityLayout, InverseLayout, Layouts, Leaf, Lexical, Shape};
+use crate::typing::{self, EntityLayout, InverseLayout, Layouts, Leaf, Lexical, Shape, XsdForm};
 use crate::XmlProfile;
 use ifc_model::{Entity, EntityId, Model, Value};
 use ifc_schema::{AggregateKind, Schema};

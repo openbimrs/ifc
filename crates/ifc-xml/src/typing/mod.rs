@@ -31,6 +31,22 @@ pub(crate) struct Level {
     pub(crate) kind: AggregateKind,
     /// `Some(n)` when the level's size is fixed at `n` (`[n:n]`).
     pub(crate) fixed: Option<usize>,
+    /// How many items the level declares: at least, and at most when its
+    /// bounds are literals. An `ARRAY [l:u]` holds exactly `u - l + 1`.
+    pub(crate) count: (usize, Option<usize>),
+}
+
+/// The item count bounds of an aggregation level from its literal bounds.
+fn count(kind: AggregateKind, lower: Option<u64>, upper: Option<u64>) -> (usize, Option<usize>) {
+    let size = |bound: Option<u64>| bound.and_then(|bound| usize::try_from(bound).ok());
+    match (kind, size(lower), size(upper)) {
+        (AggregateKind::Array, Some(lower), Some(upper)) if upper >= lower => {
+            let items = upper - lower + 1;
+            (items, Some(items))
+        }
+        (AggregateKind::Array, _, _) => (0, None),
+        (_, lower, upper) => (lower.unwrap_or(0), upper),
+    }
 }
 
 /// What a declared type holds once its aggregation levels are removed.
@@ -39,9 +55,11 @@ pub(crate) enum Leaf {
     Integer,
     Real,
     Number,
-    /// `STRING`, with its width when declared `FIXED`.
+    /// `STRING`, with its width when declared `FIXED`, and its maximum
+    /// width when declared `STRING(n)` (fixed or not).
     Text {
         fixed: Option<usize>,
+        width: Option<usize>,
     },
     Boolean,
     Logical,
@@ -69,8 +87,10 @@ impl Leaf {
             Self::Integer => "INTEGER".into(),
             Self::Real => "REAL".into(),
             Self::Number => "NUMBER".into(),
-            Self::Text { fixed: Some(width) } => format!("STRING({width}) FIXED"),
-            Self::Text { fixed: None } => "STRING".into(),
+            Self::Text {
+                fixed: Some(width), ..
+            } => format!("STRING({width}) FIXED"),
+            Self::Text { .. } => "STRING".into(),
             Self::Boolean => "BOOLEAN".into(),
             Self::Logical => "LOGICAL".into(),
             Self::Binary => "BINARY".into(),
@@ -112,6 +132,27 @@ impl Shape {
         }
     }
 
+    /// The form the buildingSMART XSD configuration gives a value of this
+    /// shape when no configuration entry overrides it ([`FORM_OVERRIDES`]).
+    fn default_xsd_form(&self) -> XsdForm {
+        let Some((_, inner)) = self.levels.split_first() else {
+            return match self.leaf {
+                Leaf::Entity(_) => XsdForm::Entity,
+                Leaf::Select(_) => XsdForm::Select,
+                Leaf::Binary => XsdForm::Text,
+                _ => XsdForm::Attribute,
+            };
+        };
+        // Simple values aggregate into one whitespace-separated XML
+        // attribute, flattened when nested, as long as the inner sizes are
+        // fixed so the list can be split again.
+        if self.leaf.is_simple() && inner.iter().all(|level| level.fixed.is_some()) {
+            XsdForm::Attribute
+        } else {
+            XsdForm::Container(Items::Flat)
+        }
+    }
+
     /// The type a mismatch message names.
     pub(crate) fn describe(&self) -> String {
         let mut text = String::new();
@@ -134,6 +175,68 @@ impl Shape {
     }
 }
 
+/// How the XSD configuration writes an explicit attribute's value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum XsdForm {
+    /// An XML attribute: a simple value, or a whitespace-separated list of
+    /// simple values, flattened when nested.
+    Attribute,
+    /// A child element whose text is the value: a binary, as `xs:hexBinary`.
+    Text,
+    /// A child element that is the entity, or refers to it with `ref`.
+    Entity,
+    /// A child element holding the one item of a SELECT: an entity element
+    /// or a `-wrapper` typed value.
+    Select,
+    /// A child element holding the items of an aggregate.
+    Container(Items),
+}
+
+/// How a container element holds a nested aggregate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Items {
+    /// Every leaf item in order -- entity elements or `-wrapper` values --
+    /// with `arraySize` giving the inner sizes the schema does not fix.
+    Flat,
+    /// One `Seq-T-wrapper` per inner list, holding its items as text.
+    Seq,
+}
+
+/// Attributes whose XSD form departs from [`Shape::default_xsd_form`], as
+/// `(declaring entity, attribute, form)`. The configuration writes most
+/// string lists as list attributes, but these three as containers of
+/// `-wrapper` values; one nested index list as `Seq-` wrapped inner lists;
+/// and, in IFC4X3 ADD2, one nested index list whose inner sizes are not
+/// fixed as a flat list attribute, which cannot be split again. The
+/// `xsd::conformance` test checks every attribute's form against both XSDs.
+const FORM_OVERRIDES: &[(&str, &str, XsdForm)] = &[
+    (
+        "IfcClassification",
+        "ReferenceTokens",
+        XsdForm::Container(Items::Flat),
+    ),
+    (
+        "IfcPostalAddress",
+        "AddressLines",
+        XsdForm::Container(Items::Flat),
+    ),
+    (
+        "IfcTextStyleFontModel",
+        "FontFamily",
+        XsdForm::Container(Items::Flat),
+    ),
+    (
+        "IfcIndexedPolygonalFaceWithVoids",
+        "InnerCoordIndices",
+        XsdForm::Container(Items::Seq),
+    ),
+    (
+        "IfcTextureCoordinateIndicesWithVoids",
+        "InnerTexCoordIndices",
+        XsdForm::Attribute,
+    ),
+];
+
 /// Which layout's lexical rules type a text value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Lexical {
@@ -150,6 +253,10 @@ pub(crate) enum Lexical {
 pub(crate) struct SlotLayout {
     pub(crate) name: Arc<str>,
     pub(crate) shape: Shape,
+    /// Declared `OPTIONAL`.
+    pub(crate) optional: bool,
+    /// The form the XSD configuration writes the value in.
+    pub(crate) form: XsdForm,
     /// Redeclared `DERIVE` in the entity or one of its supertypes: the slot
     /// holds `*` and carries no value.
     pub(crate) derived: bool,
@@ -246,9 +353,18 @@ fn build_layout(schema: &Schema, name: &str) -> Result<EntityLayout, XmlError> {
     };
     let mut slots = Vec::new();
     for attribute in schema.attributes(name) {
+        let shape = attribute_shape(schema, attribute)?;
+        let form = FORM_OVERRIDES
+            .iter()
+            .find(|(declarer, overridden, _)| {
+                *overridden == attribute.name && schema.is_a(name, declarer)
+            })
+            .map_or_else(|| shape.default_xsd_form(), |(_, _, form)| *form);
         slots.push(SlotLayout {
             name: attribute.name.as_str().into(),
-            shape: attribute_shape(schema, attribute)?,
+            shape,
+            optional: attribute.optional,
+            form,
             derived: derived(&attribute.name),
         });
     }
@@ -291,6 +407,11 @@ pub(crate) fn attribute_shape(schema: &Schema, attribute: &Attribute) -> Result<
         .map(|aggregation| Level {
             kind: aggregation.kind,
             fixed: fixed_size(&aggregation.lower, &aggregation.upper),
+            count: count(
+                aggregation.kind,
+                aggregation.lower.as_integer(),
+                aggregation.upper.as_integer(),
+            ),
         })
         .collect();
     let leaf = resolve(schema, &attribute.type_name, &mut levels, 0)?;
@@ -384,16 +505,24 @@ fn aggregate_prefix<'e>(
     };
     let malformed = || unsupported(format!("aggregate type `{expression}` is malformed"));
     let rest = expression[keyword.len()..].trim_start();
-    let (fixed, rest) = if let Some(bounds) = rest.strip_prefix('[') {
+    let (fixed, items, rest) = if let Some(bounds) = rest.strip_prefix('[') {
         let close = bounds.find(']').ok_or_else(malformed)?;
         let (lower, upper) = bounds[..close].split_once(':').ok_or_else(malformed)?;
-        let fixed = match (lower.trim().parse::<usize>(), upper.trim().parse::<usize>()) {
-            (Ok(lower), Ok(upper)) if lower == upper => Some(lower),
+        let (lower, upper) = (
+            lower.trim().parse::<u64>().ok(),
+            upper.trim().parse::<u64>().ok(),
+        );
+        let fixed = match (lower, upper) {
+            (Some(lower), Some(upper)) if lower == upper => usize::try_from(lower).ok(),
             _ => None,
         };
-        (fixed, bounds[close + 1..].trim_start())
+        (
+            fixed,
+            count(kind, lower, upper),
+            bounds[close + 1..].trim_start(),
+        )
     } else {
-        (None, rest)
+        (None, (0, None), rest)
     };
     let rest = rest
         .strip_prefix("OF")
@@ -408,7 +537,11 @@ fn aggregate_prefix<'e>(
             rest = rest[qualifier.len()..].trim_start();
         }
     }
-    levels.push(Level { kind, fixed });
+    levels.push(Level {
+        kind,
+        fixed,
+        count: items,
+    });
     Ok(Some(rest))
 }
 
@@ -426,15 +559,13 @@ fn primitive(expression: &str) -> Option<Leaf> {
         "LOGICAL" => Leaf::Logical,
         "BINARY" => Leaf::Binary,
         "STRING" => {
-            let fixed = upper
-                .contains("FIXED")
-                .then(|| {
-                    let open = upper.find('(')?;
-                    let close = upper.find(')')?;
-                    upper.get(open + 1..close)?.trim().parse().ok()
-                })
-                .flatten();
-            Leaf::Text { fixed }
+            let width: Option<usize> = (|| {
+                let open = upper.find('(')?;
+                let close = upper.find(')')?;
+                upper.get(open + 1..close)?.trim().parse().ok()
+            })();
+            let fixed = width.filter(|_| upper.contains("FIXED"));
+            Leaf::Text { fixed, width }
         }
         _ => return None,
     };

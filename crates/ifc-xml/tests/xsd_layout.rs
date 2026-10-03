@@ -7,7 +7,7 @@
 //! schema, so a slot order is never restated from memory.
 #![cfg(feature = "schema")]
 
-use ifc_model::{Entity, EntityId, Model, Value};
+use ifc_model::{Entity, EntityId, Model, ModelError, Value};
 use ifc_schema::Schema;
 use ifc_xml::{XmlCodec, XmlError, XmlLayout, XmlProfile};
 use std::sync::Arc;
@@ -218,49 +218,41 @@ fn a_document_reads_into_the_model_of_its_step_form() {
          ENDSEC;\nEND-ISO-10303-21;\n"
     );
     let from_step = ifc_step::StepCodec.read_bytes(step.as_bytes()).unwrap();
-    let from_xml = read(&format!(
-        r#"<IfcPropertySet GlobalId="{GUID_A}" Name="Pset">
+    // `itemType`, `cType` and `arraySize` are global attributes of the XSD,
+    // so a valid document qualifies them (`ifc:itemType`); the unqualified
+    // spelling some exporters use is read too, to the same model.
+    for qualifier in ["ifc:", ""] {
+        let from_xml = read(&format!(
+            r#"<IfcPropertySet GlobalId="{GUID_A}" Name="Pset">
   <HasProperties>
     <IfcPropertySingleValue Name="Width">
       <NominalValue><IfcPositiveLengthMeasure-wrapper>0.25</IfcPositiveLengthMeasure-wrapper></NominalValue>
     </IfcPropertySingleValue>
     <IfcPropertyEnumeratedValue Name="Kind">
-      <EnumerationValues ifc:itemType="ifc:IfcValue" ifc:cType="list">
+      <EnumerationValues {qualifier}itemType="ifc:IfcValue" {qualifier}cType="list">
         <IfcLabel-wrapper>a</IfcLabel-wrapper>
         <IfcLabel-wrapper>1</IfcLabel-wrapper>
       </EnumerationValues>
     </IfcPropertyEnumeratedValue>
   </HasProperties>
 </IfcPropertySet>"#
-    ));
-    // `ifc:itemType` is namespace-qualified, which the XSD does not declare
-    // (its attributes are unqualified): refused, not ignored.
-    assert!(matches!(
-        from_xml.unwrap_err().root_cause(),
-        XmlError::UnknownAttribute { attribute, .. } if attribute == "ifc:itemType"
-    ));
-    let from_xml = read(&format!(
-        r#"<IfcPropertySet GlobalId="{GUID_A}" Name="Pset">
-  <HasProperties>
-    <IfcPropertySingleValue Name="Width">
-      <NominalValue><IfcPositiveLengthMeasure-wrapper>0.25</IfcPositiveLengthMeasure-wrapper></NominalValue>
-    </IfcPropertySingleValue>
-    <IfcPropertyEnumeratedValue Name="Kind">
-      <EnumerationValues itemType="ifc:IfcValue" cType="list">
-        <IfcLabel-wrapper>a</IfcLabel-wrapper>
-        <IfcLabel-wrapper>1</IfcLabel-wrapper>
-      </EnumerationValues>
-    </IfcPropertyEnumeratedValue>
-  </HasProperties>
-</IfcPropertySet>"#
-    ))
-    .unwrap();
-    assert_eq!(from_xml.len(), from_step.len());
-    for (id, expected) in from_step.iter() {
-        let found = from_xml.get(id).unwrap();
-        assert_eq!(found.type_name, expected.type_name, "{id}");
-        assert_eq!(found.attributes, expected.attributes, "{id}");
+        ))
+        .unwrap();
+        assert_eq!(from_xml.len(), from_step.len());
+        for (id, expected) in from_step.iter() {
+            let found = from_xml.get(id).unwrap();
+            assert_eq!(found.type_name, expected.type_name, "{id}");
+            assert_eq!(found.attributes, expected.attributes, "{id}");
+        }
     }
+    // Any other qualified attribute is one the XSD does not declare.
+    let refused = read(&format!(
+        r#"<IfcPropertySet GlobalId="{GUID_A}" ifc:Name="Pset"/>"#
+    ));
+    assert!(matches!(
+        refused.unwrap_err().root_cause(),
+        XmlError::UnknownAttribute { attribute, .. } if attribute == "ifc:Name"
+    ));
 }
 
 /// `-wrapper` values in a SELECT are typed parameters; a wrapper of the
@@ -728,13 +720,19 @@ fn the_namespace_and_schema_must_match_the_profile() {
     ));
 }
 
+/// The layout is read and written; an empty model writes the bare root,
+/// once its header declares the profile's schema.
 #[test]
-fn the_xsd_layout_is_read_only() {
+fn the_xsd_layout_writes_too() {
     use ifc_model::Codec;
     let codec = codec();
     assert_eq!(codec.layout(), XmlLayout::Xsd);
     let error = codec.write_bytes(&Model::new()).unwrap_err();
-    assert!(error.to_string().contains("unsupported"), "{error}");
+    assert!(matches!(error, ModelError::Write(_)), "{error}");
+    let mut model = Model::new();
+    model.header_mut().schema = vec!["IFC4".into()];
+    let bytes = codec.write_bytes(&model).unwrap();
+    assert_eq!(codec.read_bytes(&bytes).unwrap().len(), 0);
 }
 
 #[test]
