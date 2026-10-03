@@ -62,7 +62,7 @@ committed figure that moves that often only produces merge conflicts.
 | `openbim-ifc-binding-core` | <span class="status-implemented">Implemented</span> |  |
 | `openbim-ifc-capi` | <span class="status-partial">Partial</span> | [#123](https://github.com/openbimrs/ifc/issues/123), [#244](https://github.com/openbimrs/ifc/issues/244) |
 | `openbim-ifc-py` | <span class="status-partial">Partial</span> | [#123](https://github.com/openbimrs/ifc/issues/123), [#244](https://github.com/openbimrs/ifc/issues/244) |
-| `openbim-ifc-wasm` | <span class="status-partial">Partial</span> | [#40](https://github.com/openbimrs/ifc/issues/40), [#123](https://github.com/openbimrs/ifc/issues/123), [#244](https://github.com/openbimrs/ifc/issues/244) |
+| `openbim-ifc-wasm` | <span class="status-partial">Partial</span> | [#123](https://github.com/openbimrs/ifc/issues/123), [#244](https://github.com/openbimrs/ifc/issues/244) |
 
 <!-- CAPABILITIES:CENSUS:END -->
 

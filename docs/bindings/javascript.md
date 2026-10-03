@@ -2,22 +2,70 @@
 
 `@openbim/ifc` is the WebAssembly build of the IFC core
 ([`openbim-ifc-wasm`](/reference/crates/openbim-ifc-wasm)), published to npm
-with TypeScript declarations. It is tested under Node; a tested browser and
-bundler build is not published yet.
+with TypeScript declarations. The package carries three builds of one
+module, for Node, for bundlers and for browsers without a bundler, and each
+is tested from the packed tarball.
 
 ```bash
 npm install @openbim/ifc
 ```
 
-The package is CommonJS: `const { IfcModel } = require("@openbim/ifc");`,
-or a default import from ES modules.
+In Node the package is CommonJS: `const { IfcModel } = require("@openbim/ifc");`,
+or `import { IfcModel } from "@openbim/ifc"` from ES modules.
 
 The binding exposes the record model over STEP: parse, read and edit
 attributes, and write. Domain views such as property sets or the spatial tree
 ([#123](https://github.com/openbimrs/ifc/issues/123)), ifcXML, validation and
 checked transactions ([#244](https://github.com/openbimrs/ifc/issues/244)) are
-not bound yet; use the Rust crates for those. The browser and bundler build is
-[#40](https://github.com/openbimrs/ifc/issues/40).
+not bound yet; use the Rust crates for those.
+
+## Node, bundlers and browsers
+
+The package's `exports` map picks the build:
+
+| Import | Build | The wasm module loads |
+| --- | --- | --- |
+| `@openbim/ifc` in Node | CommonJS (`wasm-bindgen --target nodejs`) | on `require`, from disk |
+| `@openbim/ifc` in a bundler | ES module (`--target bundler`) | through the bundler |
+| `@openbim/ifc/web` | ES module (`--target web`) | when `init()` is awaited |
+
+The bundler build imports its `.wasm` file as an ES module, so the API is
+the same as in Node:
+
+<!-- SNIPPET:js-bundler-import -->
+
+```js
+import { IfcModel } from "@openbim/ifc"; // the bundler loads the wasm module
+```
+
+<!-- /SNIPPET -->
+
+webpack 5 bundles it with `experiments: { asyncWebAssembly: true }`, which
+is what the package test uses. Vite and Rollup need a wasm plugin such as
+`vite-plugin-wasm`.
+
+Without a bundler, or with one that cannot import wasm such as esbuild,
+import the `web` build and initialise it once before the first call:
+
+<!-- SNIPPET:js-web-init -->
+
+```js
+import init, { IfcModel } from "@openbim/ifc/web";
+
+await init(); // fetches openbim_ifc_wasm_bg.wasm from next to the module
+```
+
+<!-- /SNIPPET -->
+
+`init` also takes `{ module_or_path }`: a URL, a `Response`, the module's
+bytes or a compiled `WebAssembly.Module`. Serve `.wasm` files as
+`application/wasm` so the browser compiles while it downloads.
+
+The published module bundles the schema of every IFC release, most of its
+size; `wasm-opt -Oz` was measured, not applied, because it increases the
+gzip and brotli size. A build from source with
+`--no-default-features --features ifc4` carries one
+([#112](https://github.com/openbimrs/ifc/issues/112)).
 
 ## Read, edit and write
 
