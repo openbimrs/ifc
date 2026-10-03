@@ -12,6 +12,21 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
+  default, forward to `ifc-schema`, which this crate now depends on without
+  its default features (#306). Each links one release's table, so a
+  single-release build carries only that table: an IFC4-only browser
+  module with georeferencing (and the property sets it needs) shrinks from 1,583,507 to 990,688 bytes. The default
+  build links every release, as before.
+- `GeorefView::for_model` refuses an IFC4 or IFC4X3 file whose table the
+  build leaves out with `GeorefError::UnsupportedSchema`. The semantic
+  column (`--no-default-features`) therefore names its releases too, e.g.
+  `--no-default-features --features ifc4,ifc4x3`.
+
+Under 0.x, a minor release.
+
 ## [0.5.1] - 2026-10-03
 
 ### Added

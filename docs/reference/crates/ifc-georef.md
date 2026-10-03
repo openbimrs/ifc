@@ -30,6 +30,11 @@ products, reproject coordinates, or select a geometry backend.
 
 | Feature | Default | Enables |
 | --- | --- | --- |
+| `ifc2x3` | yes | `ifc-schema/ifc2x3` |
+| `ifc4` | yes | `ifc-schema/ifc4` |
+| `ifc4x1` | yes | `ifc-schema/ifc4x1` |
+| `ifc4x2` | yes | `ifc-schema/ifc4x2` |
+| `ifc4x3` | yes | `ifc-schema/ifc4x3` |
 | `transform` | yes | `dep:axiolid-core` |
 
 ## Depends on

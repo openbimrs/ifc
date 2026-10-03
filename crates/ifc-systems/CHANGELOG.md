@@ -12,6 +12,21 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
+  default, forward to `ifc-schema`, which this crate now depends on without
+  its default features (#306). Each links one release's table, so a
+  single-release build carries only that table: an IFC4-only browser
+  module with systems shrinks from 1,423,611 to 831,006 bytes. The default
+  build links every release, as before.
+- Authoring refuses a release the build leaves out with
+  `SystemAuthoringError::UnsupportedSchema` instead of panicking; reads
+  already refused it. A build without default features therefore has to
+  name the releases it reads.
+
+Under 0.x, a minor release.
+
 ## [0.3.1] - 2026-10-02
 
 ### Added

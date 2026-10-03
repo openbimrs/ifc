@@ -45,7 +45,20 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 Latest release, 0.7.0 (2026-10-03):
 
 `select::subtype` carries IFC4X3 ADD2 supertype chains (#293). Answers
-change for IFC4X3-only entity names, so the next release is a minor one.
+change for IFC4X3-only entity names, and a build without default features
+links fewer schema tables (#306), so the next release is a minor one.
+
+### Changed (breaking)
+
+- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
+  default, forward to `ifc-schema`, which this crate now depends on without
+  its default features (#306). Each links one release's table. The default
+  build links every release, as before, but a build without default
+  features (the kernel-free column, `openbim-ifc`'s `geometry-select`) now
+  links only the releases it names; release-bound authoring refuses the
+  others with `GeometryError::AuthoringSchemaUnbound`. Representation
+  selection reads no table and is unaffected. `lowering` still links
+  every release through `ifc-alignment`.
 
 ### Added
 
