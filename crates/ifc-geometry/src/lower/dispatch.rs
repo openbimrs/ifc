@@ -7,6 +7,22 @@
 //! never a silently substituted shape. This dispatcher is the single place
 //! that decides which IFC representation items are implemented, so coverage is
 //! auditable from one table instead of scattered across families.
+//!
+//! # Coverage is per release
+//!
+//! [`IMPLEMENTED`], [`PLANNED`] and [`PARTIAL`] together classify every
+//! concrete representation item of IFC4 ADD2 TC1 and IFC4X3 ADD2 that is a
+//! root item rather than nested input; `tests/schema_coverage.rs` and
+//! `tests/lower_dispatch_corpus.rs` derive both inventories from the schemas
+//! and fail on an unclassified family.
+//!
+//! # Subtypes
+//!
+//! Dispatch matches exact type names, because most subtypes change meaning
+//! (`IfcGradientCurve` is an `IfcCompositeCurve` whose segments are heights
+//! over a horizontal base curve). A subtype the supertype's lowering handles
+//! exactly is routed through [`SPECIALISATIONS`], which names the attributes
+//! it adds and why ignoring or checking them is exact.
 
 use axiolid_model::NodeId;
 use ifc_model::EntityId;
@@ -24,12 +40,15 @@ use crate::lower::curve::lower_curve_node;
 use crate::lower::halfspace::lower_half_space_node;
 use crate::lower::mapped::lower_mapped_item_node;
 use crate::lower::point::{lower_point_on_curve_node, lower_point_on_surface_node};
+use crate::lower::sectioned::{
+    lower_sectioned_solid_horizontal_node, lower_sectioned_surface_node,
+};
 use crate::lower::session::LoweringSession;
 use crate::lower::surface::lower_surface_node;
 use crate::lower::swept::{
-    lower_extruded_area_solid_node, lower_fixed_reference_sweep_node,
-    lower_revolved_area_solid_node, lower_sectioned_spine_node, lower_tapered_extrusion_node,
-    lower_tapered_revolution_node,
+    lower_directrix_derived_reference_sweep_node, lower_extruded_area_solid_node,
+    lower_fixed_reference_sweep_node, lower_revolved_area_solid_node, lower_sectioned_spine_node,
+    lower_tapered_extrusion_node, lower_tapered_revolution_node,
 };
 use crate::lower::tessellated::{lower_polygonal_face_set_node, lower_triangulated_face_set_node};
 use crate::select::is_a;
@@ -53,6 +72,8 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCBOXEDHALFSPACE",
     "IFCPOLYGONALBOUNDEDHALFSPACE",
     "IFCTRIANGULATEDFACESET",
+    // IFC4X3: routed through SPECIALISATIONS; voids and holes are refused.
+    "IFCTRIANGULATEDIRREGULARNETWORK",
     "IFCPOLYGONALFACESET",
     "IFCCSGSOLID",
     "IFCSWEPTDISKSOLID",
@@ -67,6 +88,8 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCEXTRUDEDAREASOLIDTAPERED",
     "IFCREVOLVEDAREASOLIDTAPERED",
     "IFCFIXEDREFERENCESWEPTAREASOLID",
+    // IFC4X3: tangent-only directrix; a tangent-plane directrix is refused.
+    "IFCDIRECTRIXDERIVEDREFERENCESWEPTAREASOLID",
     "IFCSECTIONEDSPINE",
     "IFCSHELLBASEDSURFACEMODEL",
     "IFCFACEBASEDSURFACEMODEL",
@@ -109,6 +132,9 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCRATIONALBSPLINESURFACEWITHKNOTS",
     "IFCPOINTONCURVE",
     "IFCPOINTONSURFACE",
+    // IFC4X3 alignment geometry (#243): placed segments and centrelines.
+    "IFCCURVESEGMENT",
+    "IFCGRADIENTCURVE",
 ];
 
 /// Recognized representation items that are not lowered yet.
@@ -116,10 +142,95 @@ pub const IMPLEMENTED: &[&str] = &[
 /// Each entry names the concrete reason so a caller building a viewer can
 /// report progress instead of a bare failure. Adding a family here is how a
 /// stub is declared; implementing it means moving the name to [`IMPLEMENTED`].
+/// The dispatcher reports the reason in its typed `Unsupported` refusal.
 ///
-/// Currently empty: every recognized representation item is lowered. A new
-/// unimplemented family is declared by adding it here.
-pub const PLANNED: &[(&str, &str)] = &[];
+/// Every entry is an IFC4X3 ADD2 family: every IFC4 ADD2 TC1 root item is
+/// lowered. Each reason is the runtime refusal text, which
+/// `tests/lower_dispatch_corpus.rs` keeps equal.
+///
+/// The IFC4X3 spirals and `IfcPolynomialCurve` are unbounded on their own;
+/// they lower exactly as the `ParentCurve` of an `IfcCurveSegment`, which is
+/// where IFC4.3 uses them.
+pub const PLANNED: &[(&str, &str)] = &[
+    // Alignment curves (IfcGeometryResource, IFC4X3); `lower::curve`.
+    ("IFCCLOTHOID", "an IfcSpiral is unbounded (-inf < u < inf) and the neutral intrinsic curve needs a \
+         finite arc length; it lowers exactly as the ParentCurve of an IfcCurveSegment"),
+    ("IFCSECONDORDERPOLYNOMIALSPIRAL", "an IfcSpiral is unbounded (-inf < u < inf) and the neutral intrinsic curve needs a \
+         finite arc length; it lowers exactly as the ParentCurve of an IfcCurveSegment"),
+    ("IFCTHIRDORDERPOLYNOMIALSPIRAL", "an IfcSpiral is unbounded (-inf < u < inf) and the neutral intrinsic curve needs a \
+         finite arc length; it lowers exactly as the ParentCurve of an IfcCurveSegment"),
+    ("IFCSEVENTHORDERPOLYNOMIALSPIRAL", "an IfcSpiral is unbounded (-inf < u < inf) and the neutral intrinsic curve needs a \
+         finite arc length; it lowers exactly as the ParentCurve of an IfcCurveSegment"),
+    ("IFCCOSINESPIRAL", "an IfcCosineSpiral or IfcSineSpiral law depends on the length L of the IfcCurveSegment \
+         using it; it lowers exactly only as the ParentCurve of an IfcCurveSegment"),
+    ("IFCSINESPIRAL", "an IfcCosineSpiral or IfcSineSpiral law depends on the length L of the IfcCurveSegment \
+         using it; it lowers exactly only as the ParentCurve of an IfcCurveSegment"),
+    ("IFCPOLYNOMIALCURVE", "an IfcPolynomialCurve is unbounded (-inf < u < inf) and the neutral vocabulary has no \
+         unbounded polynomial curve; bounded by an IfcCurveSegment it needs an arc-length trim (#90)"),
+    ("IFCSEGMENTEDREFERENCECURVE", "IfcSegmentedReferenceCurve adds cant (a roll of the section about the centreline); the \
+         pinned neutral curve vocabulary has no roll law to carry it exactly (#93)"),
+    // Sections along an alignment (IFC4X3); `lower::sectioned` raises these.
+    (
+        "IFCSECTIONEDSOLIDHORIZONTAL",
+        "kernel: sections stand at IfcAxis2PlacementLinear stations (a measure \
+         along the directrix plus offsets) and are swept horizontally with \
+         tag-matched linear interpolation; the neutral SectionedSpine takes only \
+         resolved section frames, and resolving a station is curve evaluation",
+    ),
+    (
+        "IFCSECTIONEDSURFACE",
+        "kernel: no neutral sectioned-surface relation exists; its open sections \
+         stand at IfcAxis2PlacementLinear stations along the directrix and are \
+         joined by tag, and the neutral SectionedSpine is a solid over area \
+         profiles",
+    ),
+    // Distance-along-curve geometry (IFC4X3).
+    (
+        "IFCOFFSETCURVEBYDISTANCES",
+        "offsets are stated at stations along the basis curve as \
+         IfcPointByDistanceExpression values; the neutral model has no \
+         distance-along-curve point or station-offset curve to hold them",
+    ),
+    (
+        "IFCPOINTBYDISTANCEEXPRESSION",
+        "a point at a distance along a basis curve, offset in that curve's \
+         frame; the neutral model has no distance-along-curve point relation",
+    ),
+    (
+        "IFCAXIS2PLACEMENTLINEAR",
+        "a frame located by an IfcPointByDistanceExpression; the neutral model \
+         has no distance-along-curve point relation to anchor it",
+    ),
+];
+
+/// A subtype the supertype's lowering handles exactly.
+///
+/// Routing a subtype to its supertype's lowerer is exact only when every
+/// attribute and rule the subtype adds either leaves the shape unchanged or
+/// is checked by that lowerer. `tests/schema_coverage.rs` asserts each row
+/// against the IFC4X3 schema: the subtype relation, the added attributes,
+/// and that both names are in [`IMPLEMENTED`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Specialisation {
+    /// The subtype as a STEP type name.
+    pub subtype: &'static str,
+    /// The supertype whose lowering it is routed to.
+    pub supertype: &'static str,
+    /// The explicit attributes the subtype declares, in schema order.
+    pub added_attributes: &'static [&'static str],
+    /// Why the supertype's lowering is exact for it.
+    pub rationale: &'static str,
+}
+
+/// Subtypes routed to their supertype's lowering.
+pub const SPECIALISATIONS: &[Specialisation] = &[Specialisation {
+    subtype: "IFCTRIANGULATEDIRREGULARNETWORK",
+    supertype: "IFCTRIANGULATEDFACESET",
+    added_attributes: &["Flags"],
+    rationale: "the face-set slots are unchanged; the lowerer checks Flags \
+                and refuses voids, holes and undocumented codes, so only \
+                breakline codes, which leave the triangles unchanged, lower",
+}];
 
 /// A variant within a family that is admitted or refused independently.
 ///
@@ -216,12 +327,134 @@ pub const PARTIAL: &[Variant] = &[
         rationale: "a base spline carries no authored knot vector to preserve",
     },
     Variant {
+        family: "IFCDIRECTRIXDERIVEDREFERENCESWEPTAREASOLID",
+        variant: "directrix defines only a tangent (no IfcCurveSegment, \
+                  segment-built or surface curve reachable)",
+        support: Support::Admitted,
+        rationale: "IFC4.3 gives it exactly the behaviour of \
+                    IfcFixedReferenceSweptAreaSolid in this case, so it lowers \
+                    to the same FixedReferenceSweep",
+    },
+    Variant {
+        family: "IFCDIRECTRIXDERIVEDREFERENCESWEPTAREASOLID",
+        variant: "directrix defines a tangent plane",
+        support: Support::Refused,
+        rationale: "kernel: the directrix defines a tangent plane (it is built from \
+                    IfcCurveSegment placements or lies on a surface), so the derived \
+                    reference adds that plane's rotation to FixedReference; the neutral \
+                    FixedReferenceSweep carries only a constant reference direction",
+    },
+    Variant {
+        family: "IFCTRIANGULATEDIRREGULARNETWORK",
+        variant: "every Flags value is a breakline code, 0 to 7",
+        support: Support::Admitted,
+        rationale: "a breakline marks an edge the triangulation already has, \
+                    so the triangle surface is the supertype's; the flags \
+                    are not carried into the mesh",
+    },
+    Variant {
+        family: "IFCTRIANGULATEDIRREGULARNETWORK",
+        variant: "a Flags value is -1 (hole) or -2 (void)",
+        support: Support::Refused,
+        rationale: "the triangle is excluded from the surface, and a hole may \
+                    fall back on another surface; the neutral mesh has no \
+                    face-exclusion or fall-back channel",
+    },
+    Variant {
+        family: "IFCTRIANGULATEDIRREGULARNETWORK",
+        variant: "a Flags value is outside -2 to 7",
+        support: Support::Refused,
+        rationale: "the documentation defines no meaning for it",
+    },
+    Variant {
         family: "IFCSURFACECURVE",
         variant: "MasterRepresentation is Curve3D, PCurveS1, or PCurveS2 with \
                   the named side present",
         support: Support::Admitted,
         rationale: "each side pairs a surface with its own p-curve, so the \
                     neutral MasterRepresentation names S1 and S2 exactly",
+    },
+    Variant {
+        family: "IFCCURVESEGMENT",
+        variant: "ParentCurve is an IfcLine, IfcCircle or 2D IfcPolyline, \
+                  measured by IfcLengthMeasure",
+        support: Support::Admitted,
+        rationale: "a line, arc or polyline cut by arc length and placed rigidly \
+                    is elementary: a polyline or an angle-trimmed circle",
+    },
+    Variant {
+        family: "IFCCURVESEGMENT",
+        variant: "ParentCurve is an IfcSpiral subtype, measured by \
+                  IfcLengthMeasure",
+        support: Support::Admitted,
+        rationale: "the spiral's curvature law, rebased to the segment in closed \
+                    form, on a planar intrinsic curve; nothing is integrated",
+    },
+    Variant {
+        family: "IFCCURVESEGMENT",
+        variant: "SegmentLength is zero (the closing segment of a layout)",
+        support: Support::Admitted,
+        rationale: "its placement exactly: a planar intrinsic curve of length zero",
+    },
+    Variant {
+        family: "IFCCURVESEGMENT",
+        variant: "ParentCurve is an IfcPolynomialCurve",
+        support: Support::Refused,
+        rationale: "an IfcPolynomialCurve trimmed by arc length: the end parameter inverts a non-elementary \
+         arc-length integral and the neutral vocabulary has no arc-length trim (#90)",
+    },
+    Variant {
+        family: "IFCCURVESEGMENT",
+        variant: "SegmentStart or SegmentLength is an IfcParameterValue",
+        support: Support::Refused,
+        rationale: "SegmentStart/SegmentLength given as IfcParameterValue: IFC4.3 ADD2 defines no parametric \
+         space for IfcCurveSegment parents yet (informal proposition 1 requires IfcLengthMeasure)",
+    },
+    Variant {
+        family: "IFCCURVESEGMENT",
+        variant: "Placement is an IfcAxis2PlacementLinear",
+        support: Support::Refused,
+        rationale: "an IfcAxis2PlacementLinear placement belongs to an IfcSegmentedReferenceCurve (cant); \
+         the neutral vocabulary has no roll law to carry it (#93)",
+    },
+    Variant {
+        family: "IFCGRADIENTCURVE",
+        variant: "horizontal IfcCurveSegments over lines, arcs and spirals; \
+                  vertical IfcCurveSegments over IfcLine or a degree-2 \
+                  IfcPolynomialCurve that keeps its start tangent",
+        support: Support::Admitted,
+        rationale: "one intrinsic plan with a piecewise curvature law plus a \
+                    piecewise polynomial elevation law: Curve3::Elevated, exact",
+    },
+    Variant {
+        family: "IFCGRADIENTCURVE",
+        variant: "a vertical IfcCircle or IfcClothoid segment",
+        support: Support::Refused,
+        rationale: "neither is polynomial in plan distance and the pinned \
+                    ElevationLaw has only polynomial pieces (#258)",
+    },
+    Variant {
+        family: "IFCGRADIENTCURVE",
+        variant: "a vertical parabola with no following segment, closing \
+                  segment or EndPoint",
+        support: Support::Refused,
+        rationale: "its end abscissa inverts a non-elementary arc-length \
+                    integral (#90)",
+    },
+    Variant {
+        family: "IFCGRADIENTCURVE",
+        variant: "a heading kink, a closed-form position gap, or a profile \
+                  that does not span the base curve",
+        support: Support::Refused,
+        rationale: "one plan curve and one elevation law cannot carry a kink or \
+                    a gap, and an elevation law must cover the whole plan",
+    },
+    Variant {
+        family: "IFCGRADIENTCURVE",
+        variant: "placed by a frame that tilts, scales or mirrors the vertical",
+        support: Support::Refused,
+        rationale: "a plan plus a height is carried only by frames that keep \
+                    the vertical axis",
     },
     Variant {
         family: "IFCSURFACECURVE",
@@ -244,6 +477,17 @@ pub fn lower_representation_item(
     frame: Transform,
 ) -> GeometryResult<NodeId> {
     let type_name = session.type_name(id)?;
+    // IFC4X3 sectioned surface, routed before the inheritance test so the
+    // named refusal holds whether or not the subtype table knows the type.
+    if type_name == "IFCSECTIONEDSURFACE" {
+        return lower_sectioned_surface_node(session, id);
+    }
+    // An exact specialisation lowers through its supertype's arm. The
+    // refusal below still names the entity's own type.
+    let routed = SPECIALISATIONS
+        .iter()
+        .find(|row| row.subtype == type_name)
+        .map_or(type_name.as_str(), |row| row.supertype);
     // Shape representations may legitimately contain bare curve and surface
     // items (Curve2D/Curve3D/SurfaceModel). Route by generated IFC inheritance
     // before the concrete solid table so plan and surface selections lower
@@ -254,7 +498,7 @@ pub fn lower_representation_item(
     if is_a(&type_name, "IFCSURFACE") {
         return lower_surface_node(session, id, frame);
     }
-    match type_name.as_str() {
+    match routed {
         "IFCEXTRUDEDAREASOLID" => lower_extruded_area_solid_node(session, id, frame),
         "IFCREVOLVEDAREASOLID" => lower_revolved_area_solid_node(session, id, frame),
         "IFCBOOLEANRESULT" | "IFCBOOLEANCLIPPINGRESULT" => {
@@ -264,6 +508,18 @@ pub fn lower_representation_item(
             lower_half_space_node(session, id, frame)
         }
         "IFCMAPPEDITEM" => lower_mapped_item_node(session, id, frame),
+        // IFC4X3 curve families the IFC4 subtype table does not know, and
+        // `IfcCurveSegment`, an IfcSegment the curve module lowers.
+        "IFCCURVESEGMENT"
+        | "IFCGRADIENTCURVE"
+        | "IFCSEGMENTEDREFERENCECURVE"
+        | "IFCPOLYNOMIALCURVE"
+        | "IFCCLOTHOID"
+        | "IFCCOSINESPIRAL"
+        | "IFCSINESPIRAL"
+        | "IFCSECONDORDERPOLYNOMIALSPIRAL"
+        | "IFCTHIRDORDERPOLYNOMIALSPIRAL"
+        | "IFCSEVENTHORDERPOLYNOMIALSPIRAL" => lower_curve_node(session, id, frame),
         "IFCPOINTONCURVE" => lower_point_on_curve_node(session, id, frame),
         "IFCPOINTONSURFACE" => lower_point_on_surface_node(session, id, frame),
         "IFCFACETEDBREP"
@@ -284,6 +540,10 @@ pub fn lower_representation_item(
         "IFCEXTRUDEDAREASOLIDTAPERED" => lower_tapered_extrusion_node(session, id, frame),
         "IFCREVOLVEDAREASOLIDTAPERED" => lower_tapered_revolution_node(session, id, frame),
         "IFCFIXEDREFERENCESWEPTAREASOLID" => lower_fixed_reference_sweep_node(session, id, frame),
+        "IFCDIRECTRIXDERIVEDREFERENCESWEPTAREASOLID" => {
+            lower_directrix_derived_reference_sweep_node(session, id, frame)
+        }
+        "IFCSECTIONEDSOLIDHORIZONTAL" => lower_sectioned_solid_horizontal_node(session, id),
         "IFCSECTIONEDSPINE" => lower_sectioned_spine_node(session, id, frame),
         "IFCSHELLBASEDSURFACEMODEL"
         | "IFCFACEBASEDSURFACEMODEL"
@@ -294,7 +554,7 @@ pub fn lower_representation_item(
         | "IFCRIGHTCIRCULARCYLINDER"
         | "IFCRIGHTCIRCULARCONE"
         | "IFCRECTANGULARPYRAMID" => lower_csg_primitive_node(session, id, frame),
-        other => Err(session.unsupported(id, other, detail_for(other))),
+        _ => Err(session.unsupported(id, &type_name, detail_for(&type_name))),
     }
 }
 

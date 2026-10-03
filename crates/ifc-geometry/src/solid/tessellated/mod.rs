@@ -31,9 +31,11 @@
 //! [`crate::resource::point`]. These views return its `EntityId`, and
 //! [`TessellatedFaceSet::coordinate_list`] resolves it into that module's view.
 
+pub mod irregular_network;
 pub mod polygonal;
 pub mod triangulated;
 
+pub use irregular_network::TriangulatedIrregularNetwork;
 pub use polygonal::{IndexedPolygonalFace, IndexedPolygonalFaceWithVoids, PolygonalFaceSet};
 pub use triangulated::TriangulatedFaceSet;
 
@@ -81,13 +83,16 @@ impl<'m> TessellatedItem<'m> {
         self.slots.type_name()
     }
 
-    /// Is this one of the two face sets rather than an indexed face?
+    /// Is this a concrete face set rather than an indexed face?
     ///
     /// `IfcIndexedPolygonalFace` is also an `IfcTessellatedItem`, so "is a
-    /// tessellated item" does not imply "has coordinates".
+    /// tessellated item" does not imply "has coordinates". The IFC4X3
+    /// `IfcTriangulatedIrregularNetwork` is an `IfcTriangulatedFaceSet`
+    /// subtype and carries the same `Coordinates`.
     pub fn is_face_set(&self) -> bool {
         let n = self.type_name();
         n.eq_ignore_ascii_case("IFCTRIANGULATEDFACESET")
+            || n.eq_ignore_ascii_case(irregular_network::TYPE)
             || n.eq_ignore_ascii_case("IFCPOLYGONALFACESET")
     }
 }

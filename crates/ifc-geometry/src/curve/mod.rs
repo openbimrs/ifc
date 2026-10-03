@@ -49,7 +49,7 @@
 //! Not in IFC4 ADD2 TC1. It was introduced in IFC4x3 for alignment geometry
 //! and has no view here; [`CurveKind::classify`] returns `None` for it, so a
 //! consumer meeting one in an IFC4x3 file gets an honest miss rather than a
-//! wrong shape.
+//! wrong shape. Lowering reads it directly (`lower::curve::segment`).
 //!
 //! # Coordinate and parameter units
 //!

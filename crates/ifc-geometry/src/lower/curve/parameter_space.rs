@@ -560,6 +560,17 @@ fn parameter_space_composite(
     let mut segments = Vec::with_capacity(segment_refs.len());
     for segment_ref in &segment_refs {
         let segment_entity = session.entity(id, *segment_ref)?;
+        if segment_entity
+            .type_name
+            .eq_ignore_ascii_case("IFCCURVESEGMENT")
+        {
+            return Err(session.unsupported(
+                *segment_ref,
+                "IFCCURVESEGMENT",
+                "an IfcCurveSegment in a surface's (u, v) domain: its arc-length measures \
+                 have no meaning in parameter space",
+            ));
+        }
         let segment = CompositeCurveSegment::new(*segment_ref, segment_entity);
         let parent = segment.parent_curve_ref()?;
         segments.push(CurveSegment {

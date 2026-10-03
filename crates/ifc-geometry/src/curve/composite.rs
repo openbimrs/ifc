@@ -103,10 +103,26 @@ impl TransitionCode {
     }
 }
 
+/// Refusal for an IFC4X3 `IfcCurveSegment` met where a composite segment is read.
+///
+/// IFC4X3 widens `IfcCompositeCurve.Segments` to `IfcSegment`, so a segment
+/// may be an `IfcCurveSegment` (`Transition`, `Placement`, `SegmentStart`,
+/// `SegmentLength`, `ParentCurve`). Reading it through the
+/// `IfcCompositeCurveSegment` slots would take `SegmentLength` for the parent
+/// curve, so the view refuses it by name. Every lowering path checks for an
+/// `IfcCurveSegment` before building this view (the curve lowering lowers it,
+/// sweep ranges, p-curves and profile boundaries refuse it with their own
+/// reason); the refusal is the backstop for any other caller.
+pub const CURVE_SEGMENT_UNREAD: &str = "an IfcCurveSegment is placed and trimmed by \
+     SegmentStart and SegmentLength and cannot be read as an \
+     IfcCompositeCurveSegment; lower it with lower::curve instead";
+
 /// A borrowed view of an `IfcCompositeCurveSegment`.
 ///
 /// Also covers `IfcReparametrisedCompositeCurveSegment`, whose extra
-/// `ParamLength` is read by [`Self::param_length`].
+/// `ParamLength` is read by [`Self::param_length`]. An IFC4X3
+/// `IfcCurveSegment` has a different slot layout; every slot read refuses it
+/// with [`CURVE_SEGMENT_UNREAD`].
 #[derive(Debug, Clone, Copy)]
 pub struct CompositeCurveSegment<'m> {
     slots: Slots<'m>,
@@ -130,14 +146,24 @@ impl<'m> CompositeCurveSegment<'m> {
     /// Frequently shared with other segments and other composite curves, which
     /// is precisely why [`Self::same_sense`] exists.
     pub fn parent_curve_ref(&self) -> GeometryResult<EntityId> {
+        self.refuse_curve_segment()?;
         self.slots
             .req_ref(segment_slot::PARENT_CURVE, "ParentCurve")
+    }
+
+    /// Refuse an IFC4X3 `IfcCurveSegment`, whose slots differ from ours.
+    fn refuse_curve_segment(&self) -> GeometryResult<()> {
+        if self.slots.entity().is_type("IFCCURVESEGMENT") {
+            return Err(self.slots.unsupported(CURVE_SEGMENT_UNREAD));
+        }
+        Ok(())
     }
 
     /// Is the segment traversed along the parent curve's own direction?
     ///
     /// `false` means reverse it before joining it to its neighbours.
     pub fn same_sense(&self) -> GeometryResult<bool> {
+        self.refuse_curve_segment()?;
         self.slots.req_bool(segment_slot::SAME_SENSE, "SameSense")
     }
 
@@ -166,6 +192,7 @@ impl<'m> CompositeCurveSegment<'m> {
     /// consumer that ignores it will evaluate the parent curve at the wrong
     /// parameters. Values must be positive.
     pub fn param_length(&self) -> GeometryResult<Option<f64>> {
+        self.refuse_curve_segment()?;
         let Some(value) = self.slots.opt_f64(segment_slot::PARAM_LENGTH) else {
             return Ok(None);
         };
@@ -267,6 +294,41 @@ mod tests {
                 Value::Ref(EntityId(20)),
             ],
         )
+    }
+
+    /// An IFC4X3 curve segment's slot 2 is `SegmentStart`, not
+    /// `ParentCurve`; reading it as one must be a named refusal.
+    #[test]
+    fn an_ifc4x3_curve_segment_is_refused_by_name_not_misread() {
+        let length = |v: f64| Value::Typed {
+            type_name: "IFCLENGTHMEASURE".into(),
+            value: Box::new(Value::Real(v)),
+        };
+        let e = Entity::new(
+            "IFCCURVESEGMENT",
+            vec![
+                Value::Enum("DISCONTINUOUS".into()),
+                Value::Ref(EntityId(10)),
+                length(0.0),
+                length(50.0),
+                Value::Ref(EntityId(20)),
+            ],
+        );
+        let view = CompositeCurveSegment::new(EntityId(7), &e);
+        for error in [
+            view.parent_curve_ref().map(|_| ()).unwrap_err(),
+            view.same_sense().map(|_| ()).unwrap_err(),
+            view.param_length().map(|_| ()).unwrap_err(),
+        ] {
+            assert!(
+                matches!(
+                    &error,
+                    crate::GeometryError::Unsupported { type_name, detail, .. }
+                        if type_name == "IFCCURVESEGMENT" && *detail == CURVE_SEGMENT_UNREAD
+                ),
+                "{error}"
+            );
+        }
     }
 
     fn composite(type_name: &str, segments: &[u64]) -> Entity {

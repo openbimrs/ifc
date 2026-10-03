@@ -539,4 +539,16 @@ pub mod section_slot {
     /// `IfcDerivedProfileDef.Label`, after `Operator`; inherited unchanged by
     /// `IfcMirroredProfileDef`.
     pub const DERIVED_LABEL: usize = 4;
+
+    // IfcOpenCrossProfileDef (IFC4X3), a direct IfcProfileDef subtype
+    /// `IfcOpenCrossProfileDef.HorizontalWidths`.
+    pub const OC_HORIZONTAL_WIDTHS: usize = 2;
+    /// `IfcOpenCrossProfileDef.Widths`, one per segment.
+    pub const OC_WIDTHS: usize = 3;
+    /// `IfcOpenCrossProfileDef.Slopes`, one per segment.
+    pub const OC_SLOPES: usize = 4;
+    /// `IfcOpenCrossProfileDef.Tags`, one per point.
+    pub const OC_TAGS: usize = 5;
+    /// `IfcOpenCrossProfileDef.OffsetPoint`.
+    pub const OC_OFFSET_POINT: usize = 6;
 }

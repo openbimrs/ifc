@@ -395,3 +395,39 @@ fn a_dangling_basis_curve_is_reported_as_missing() {
         "refusal must name the missing entity: {text}"
     );
 }
+
+/// An `IfcGradientCurve` basis curve resolves through its exact lowering.
+///
+/// `ifc_alignment::gradient_curve3` reads an `IfcAlignment`, so passing it
+/// the curve representation always refused. The committed fixture's profile
+/// is a 0.02 grade from 10 m over the first 80 m of a straight plan, so the
+/// station at 40 m is (40, 0, 10.8) with tangent (1, 0, 0.02) normalised.
+#[test]
+fn a_gradient_curve_basis_resolves_through_its_lowering() {
+    use ifc_model::Codec;
+    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../test/fixtures/synthetic-surfaces/synthetic_ifc4x3_alignment_curves.ifc");
+    let model = ifc_step::StepCodec
+        .read_path(&path)
+        .expect("fixture parses");
+    let gradient = model.ids_of_type("IFCGRADIENTCURVE")[0];
+    let expression = PointByDistance {
+        entity: EntityId(9_000),
+        distance_along: CurveMeasure::Length(40.0),
+        offset_lateral: None,
+        offset_vertical: None,
+        offset_longitudinal: None,
+        basis_curve: gradient,
+    };
+    let evaluator = ReferenceCurveEvaluator::default();
+    let transform =
+        derive_placement_transform(&model, &metres(), EntityId(9_001), &expression, &evaluator)
+            .expect("a gradient-curve basis must resolve");
+    let norm = (1.0f64 + 0.02 * 0.02).sqrt();
+    close(transform.origin[0], 40.0, "x");
+    close(transform.origin[1], 0.0, "y");
+    close(transform.origin[2], 10.8, "z");
+    close(transform.basis[0][0], 1.0 / norm, "tangent x");
+    close(transform.basis[0][1], 0.0, "tangent y");
+    close(transform.basis[0][2], 0.02 / norm, "tangent z");
+}

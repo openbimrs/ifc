@@ -41,7 +41,12 @@
 //! tessellated face sets, surfaces, curves, surface models, collections and
 //! mapped items. Every other concrete IFC4 representation item has a
 //! recorded disposition in `data/ifc4-representation-item-dispositions.tsv`
-//! (nested input, non-shape, or typed refusal). Input that cannot be lowered
+//! (nested input, non-shape, or typed refusal). IFC4X3 ADD2 adds 17
+//! representation items: `IfcCurveSegment`, `IfcGradientCurve`,
+//! `IfcDirectrixDerivedReferenceSweptAreaSolid` and
+//! `IfcTriangulatedIrregularNetwork` lower (each with named refused forms in
+//! `PARTIAL`), and the rest are in `PLANNED` with a named reason. Input that
+//! cannot be lowered
 //! exactly returns a typed [`crate::GeometryError`], such as
 //! [`crate::GeometryError::Unsupported`], rather than panicking or
 //! substituting approximate geometry.

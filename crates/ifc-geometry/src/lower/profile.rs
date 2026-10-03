@@ -48,6 +48,8 @@ pub const IMPLEMENTED_PROFILES: &[&str] = &[
     "IFCISHAPEPROFILEDEF",
     "IFCLSHAPEPROFILEDEF",
     "IFCMIRROREDPROFILEDEF",
+    // IFC4X3; an open profile, lowered by `lower_open_profile_node`.
+    "IFCOPENCROSSPROFILEDEF",
     "IFCRECTANGLEHOLLOWPROFILEDEF",
     "IFCRECTANGLEPROFILEDEF",
     "IFCROUNDEDRECTANGLEPROFILEDEF",
@@ -63,7 +65,7 @@ pub const IMPLEMENTED_PROFILES: &[&str] = &[
 /// it is the bare supertype: it declares only `ProfileType`, `ProfileName` and
 /// the curve slots its subtypes add. A file authoring one has supplied a
 /// profile *label*, not a section, so this is a permanent typed refusal rather
-/// than work awaiting a neutral contract. Every concrete subtype lowers.
+/// than work awaiting a neutral contract. Every concrete subtype is read.
 ///
 /// The refusal itself is raised by [`describe_profile`]; a unit test keeps its
 /// reason identical to the one stated here.
@@ -82,7 +84,8 @@ pub(crate) use crate::slots::profile_slot as slot;
 /// a corpus-shaped census reported full coverage while 13 families were absent.
 ///
 /// A reason starting with `kernel:` needs a change in `axiolid-profile`; the
-/// rest are IFC-side wiring.
+/// rest are IFC-side wiring. Every IFC4 ADD2 TC1 and IFC4X3 ADD2 profile
+/// family is read, so the table is empty.
 pub const UNLOWERED: &[(&str, &str)] = &[];
 
 /// Family label used for profile memoization.
@@ -149,7 +152,7 @@ fn build(
         // closing the curve would fabricate a face the file never described,
         // and silently sweeping it would produce a solid from a shape that
         // bounds no area. State that rather than emitting a generic gap.
-        ProfileParameters::ArbitraryOpen { .. } => {
+        ProfileParameters::ArbitraryOpen { .. } | ProfileParameters::OpenCross { .. } => {
             return Err(GeometryError::Unsupported {
                 entity: description.entity,
                 type_name: description.type_name.clone(),

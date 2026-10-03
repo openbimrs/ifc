@@ -612,15 +612,14 @@ fn every_well_formed_bundled_schema_fixture_validates_clean() {
         }
     }
 
-    // 38 since synthetic-coverage/meshing_coverage.ifc (#47), which is
-    // schema-valid: its collapsed loop is a geometry refusal, not a schema error.
-    // 39 since synthetic-surfaces/synthetic_space_boundary_face_surface.ifc
-    // (#155), which `ifcopenshell.validate` also passes with zero issues.
-    // 37 since #111: the aggregate checks found meshing_coverage.ifc's sliver
-    // loop repeating points in a `LIST OF UNIQUE` and nested_mapped_item.ifc's
-    // empty `SET [1:?]`; both moved to DELIBERATELY_INVALID with reasons.
+    // History: +1 meshing_coverage.ifc (#47), +1 synthetic_space_boundary_
+    // face_surface.ifc (#155), -2 in #111 (the aggregate checks found
+    // meshing_coverage.ifc repeating points in a `LIST OF UNIQUE` and
+    // nested_mapped_item.ifc an empty `SET [1:?]`; both moved to
+    // DELIBERATELY_INVALID with reasons), +2 for the #243 IFC4X3 fixtures
+    // (synthetic_ifc4x3_geometry_families.ifc, ..._alignment_curves.ifc).
     assert_eq!(
-        checked, 37,
+        checked, 39,
         "all intended-clean fixtures must run; raw-header fail fixtures stay excluded"
     );
     assert!(

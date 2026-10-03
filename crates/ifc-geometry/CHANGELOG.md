@@ -12,6 +12,102 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+IFC4X3 ADD2 geometry families (#243). Every concrete IFC4X3 representation
+item and profile is now lowered or refused with a named reason.
+
+### Added
+
+- IFC4X3 alignment curves lower exactly. `IfcCurveSegment` lowers
+  for `IfcLine`, `IfcCircle`, 2D `IfcPolyline` and all six `IfcSpiral`
+  parents, placed by its `Placement` and cut by its `IfcLengthMeasure`
+  arc lengths: a polyline, an angle-trimmed circle, or a planar
+  `Curve3::Intrinsic` carrying the spiral's curvature law rebased to the
+  segment in closed form. A negative `SegmentLength` walks the parent
+  backwards; the zero-length closing segment is its placement, and a
+  composite drops it. `IfcCompositeCurve` now accepts `IfcCurveSegment`
+  members.
+- The spiral laws read the IFC4.3 terms: `sign(A_n) s^n / |A_n|^(n+1)` for
+  the clothoid and the second-, third- and seventh-order polynomial
+  spirals; `1/A_0 + cos(pi s/L)/A_1` (cosine) and
+  `1/A_0 + sign(A_1) s/A_1^2 + sin(2 pi s/L)/A_2` (sine), with `L` the
+  using segment's length. A present zero term is refused, not read as
+  absent.
+- `IfcGradientCurve` lowers to `Curve3::Elevated`: its `BaseCurve` as one
+  intrinsic plan with a piecewise curvature law, its vertical segments
+  (`IfcLine` grades, degree-2 `IfcPolynomialCurve` parabolas) as a
+  piecewise elevation law. Seams are checked in closed form: headings
+  everywhere, positions after a line or arc, parabola arc lengths.
+- IFC4X3 `IfcOpenCrossProfileDef` lowers exactly through
+  `lower_open_profile_node` to an open polyline whose vertices are the
+  closed-form sums of its widths and slopes (horizontal or along-slope
+  widths, `OffsetPoint` honoured, slopes measured from +X towards +Y as the
+  IFC4.3 figure states). `describe_profile` reads it as the new
+  `ProfileParameters::OpenCross`, in metres and radians, refusing a
+  `Widths`/`Slopes` or `Tags` count mismatch, a negative width and a vertical
+  slope with horizontal widths. It bounds no area, so the area-profile path
+  refuses it, as for `IfcArbitraryOpenProfileDef`. `section_slot::OC_*` are
+  its slot constants.
+- IFC4X3 `IfcDirectrixDerivedReferenceSweptAreaSolid` lowers to the same
+  exact `FixedReferenceSweep` as its supertype when the directrix defines only
+  a tangent, which IFC4.3 says is the identical behaviour. A directrix that
+  defines a tangent plane (built from `IfcCurveSegment`s, such as
+  `IfcGradientCurve` and `IfcSegmentedReferenceCurve`, or lying on a surface)
+  is refused as `Unsupported` naming the missing neutral primitive, the
+  public `lower::swept::DIRECTRIX_DERIVED_TANGENT_PLANE`.
+- `IfcTriangulatedIrregularNetwork` (IFC4X3) lowers as a triangle mesh when
+  every `Flags` value is a breakline code (0 to 7). A void or hole triangle
+  (-2, -1) or an undocumented code is a typed `Unsupported` refusal; a
+  `Flags` list whose length differs from the triangle count is `Degenerate`.
+  `solid::tessellated::TriangulatedIrregularNetwork` is the borrowed view.
+  `BodyKind::classify` and `SolidKind::classify` report it as tessellated.
+- `lower::dispatch::SPECIALISATIONS` (and `Specialisation`): subtypes routed
+  to their supertype's lowering, each naming the attributes it adds. A test
+  checks every row against the IFC4X3 schema.
+- `tests/schema_coverage.rs` also enumerates IFC4X3 ADD2. Its inventory is
+  checked against the bundled table and `IFC4X3_ADD2.exp`. Every IFC4X3
+  representation item must be in `IMPLEMENTED`, in `PLANNED`, or have a
+  nested disposition. Every IFC4X3 profile must be read or in `UNLOWERED`.
+- Fixtures `synthetic_ifc4x3_alignment_curves.ifc` and
+  `synthetic_ifc4x3_geometry_families.ifc`, with their generators
+  `tools/gen_ifc4x3_curve_fixtures.py` and
+  `tools/gen_ifc4x3_geometry_fixtures.py`.
+
+### Changed
+
+- `lower::dispatch::PLANNED` lists the IFC4X3 representation items that are
+  not lowered, each with its runtime refusal text, instead of the generic
+  "representation item family is not lowered yet":
+  - a spiral or `IfcPolynomialCurve` on its own (unbounded; each lowers as
+    the `ParentCurve` of an `IfcCurveSegment`);
+  - `IfcSegmentedReferenceCurve` (cant has no neutral roll law, #93);
+  - `IfcSectionedSolidHorizontal` and `IfcSectionedSurface` (no neutral
+    sectioned sweep over curve-measure stations, nor a sectioned-surface
+    relation);
+  - `IfcOffsetCurveByDistances`, `IfcPointByDistanceExpression` and
+    `IfcAxis2PlacementLinear` (no neutral distance-along-curve relation).
+- Further typed refusals, recorded in `dispatch::PARTIAL`: an
+  `IfcPolynomialCurve` parent trimmed by arc length and a parabola without a
+  stated end (#90); `IfcAxis2PlacementLinear` segment placements (#93);
+  vertical arcs and clothoids (#258); `IfcParameterValue` measures; plan
+  kinks, gaps and profiles that do not span the plan.
+
+### Fixed
+
+- An `IfcCurveSegment` reached through a path that cannot lower it (a sweep
+  `StartParam`/`EndParam` range, a p-curve, a profile boundary) is refused
+  by name. Before, the `IfcCompositeCurveSegment` slots were read, so
+  `SegmentLength` was taken for `ParentCurve` and the result was a
+  misleading wrong-value-kind error. `curve::composite::CURVE_SEGMENT_UNREAD`
+  is the view's backstop refusal.
+- `constraint::placement::derive_placement_transform` resolves an
+  `IfcLinearPlacement` whose basis curve is an `IfcGradientCurve` through
+  the gradient-curve lowering. Before, it passed the curve to
+  `ifc_alignment::gradient_curve3`, which expects an `IfcAlignment`, so the
+  path always refused.
+- The `dispatch::PLANNED` documentation claimed every recognized
+  representation item is lowered. It now lists the IFC4X3 families that are
+  not.
+
 ## [0.6.0] - 2026-10-02
 
 ### Changed (breaking)

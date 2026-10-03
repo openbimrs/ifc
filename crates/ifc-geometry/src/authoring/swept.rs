@@ -343,9 +343,10 @@ pub fn axis1_placement(
 
 /// Stage an `IfcDirectrixDerivedReferenceSweptAreaSolid`.
 ///
-/// Shares the fixed-reference layout exactly, but the reference is
-/// *derived from* the directrix rather than held constant: the profile
-/// rotates with the curve as it sweeps. Same six slots, different
+/// Shares the fixed-reference layout exactly. It behaves like the
+/// fixed-reference sweep unless the directrix defines a tangent plane
+/// (an `IfcSegmentedReferenceCurve`, for instance): then that plane's
+/// rotation is added to the reference. Same six slots, different
 /// meaning, so it is its own entity rather than a flag.
 ///
 /// Only IFC4X3 declares it, and there the trim parameters are the SELECT

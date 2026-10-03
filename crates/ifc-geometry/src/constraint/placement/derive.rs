@@ -14,10 +14,13 @@ use axiolid_contracts::GeomError;
 use axiolid_core::Frame3;
 use axiolid_curve::Curve3;
 use axiolid_curve_evaluate_contract::{CurveEvaluator, CurveMeasure as KernelMeasure};
+use axiolid_model::GeometryNode;
 use ifc_alignment::{AlignmentUnits, CurveMeasure, PointByDistance};
 use ifc_model::{EntityId, Model};
 
 use crate::error::{GeometryError, GeometryResult};
+use crate::lower::curve::lower_curve_node;
+use crate::lower::session::LoweringSession;
 use crate::transform::Transform;
 use crate::units::UnitScale;
 
@@ -99,7 +102,11 @@ fn basis_curve3(
     // representation. Both name the same centreline, so both resolve; a
     // file that uses one is not less valid than one that uses the other.
     match entity.type_name.as_ref() {
-        "IFCALIGNMENT" | "IFCGRADIENTCURVE" => {
+        // The curve representation lowers exactly through the same path a
+        // representation item takes. `ifc_alignment::gradient_curve3` reads an
+        // `IfcAlignment` only, so handing it the curve always refused.
+        "IFCGRADIENTCURVE" => gradient_curve(model, units, basis),
+        "IFCALIGNMENT" => {
             ifc_alignment::gradient_curve3(model, basis, alignment_units).map_err(|_error| {
                 GeometryError::Unsupported {
                     entity: placement,
@@ -117,6 +124,24 @@ fn basis_curve3(
             type_name: other.to_owned(),
             detail: "deriving a placement frame needs an alignment centreline or a \
                      straight-segment polyline as basis curve",
+        }),
+    }
+}
+
+/// An `IfcGradientCurve` basis curve as its exact `Curve3::Elevated`, in metres.
+///
+/// A refusal names the gradient curve (or the nested entity) and its own
+/// reason, such as a vertical arc with no neutral elevation law.
+fn gradient_curve(model: &Model, units: &UnitScale, basis: EntityId) -> GeometryResult<Curve3> {
+    let mut session = LoweringSession::new(model, units);
+    let root = lower_curve_node(&mut session, basis, Transform::identity())?;
+    let lowered = session.finish(root)?;
+    match lowered.graph.get(lowered.root) {
+        Some(GeometryNode::Curve3(curve)) => Ok(curve.clone()),
+        _ => Err(GeometryError::Unsupported {
+            entity: basis,
+            type_name: "IFCGRADIENTCURVE".into(),
+            detail: "the gradient curve did not lower to a single neutral Curve3",
         }),
     }
 }

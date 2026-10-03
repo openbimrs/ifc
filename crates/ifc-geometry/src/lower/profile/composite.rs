@@ -58,6 +58,16 @@ use crate::units::UnitScale;
 /// files alike.
 const GAP_TOLERANCE: f64 = 1e-5;
 
+/// Refusal for an IFC4X3 `IfcCurveSegment` member of a profile boundary.
+///
+/// `lower::curve` lowers such a member as a placed, arc-length-trimmed piece
+/// (often a spiral on an intrinsic curve). A profile contour is built from
+/// `Line2` and `Circle2` pieces with parameter domains, which cannot hold an
+/// intrinsic curve, so the member is refused by name rather than misread.
+pub(crate) const CURVE_SEGMENT_BOUNDARY: &str = "an IfcCurveSegment member of a profile \
+     boundary: profile contours hold only line and circle pieces, and the \
+     segment's placed arc-length piece has no exact form among them";
+
 /// Maximum depth of composite-in-composite nesting.
 ///
 /// Real files nest at most one level. The bound exists because a hostile file
@@ -118,6 +128,13 @@ impl Walk<'_> {
         }
         for segment_ref in segment_refs {
             let segment_entity = self.entity(id, segment_ref)?;
+            if segment_entity.is_type("IFCCURVESEGMENT") {
+                return Err(GeometryError::Unsupported {
+                    entity: segment_ref,
+                    type_name: "IFCCURVESEGMENT".to_string(),
+                    detail: CURVE_SEGMENT_BOUNDARY,
+                });
+            }
             let segment = CompositeCurveSegment::new(segment_ref, segment_entity);
             if segment.is_reparametrised() {
                 return Err(GeometryError::Unsupported {
