@@ -11,7 +11,7 @@ WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from J
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.2.0 (2026-09-29) |
+| Latest release | 0.2.1 (2026-10-03) |
 | Registries | [npm `@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/openbim_ifc_wasm/index.html) |
 | Source | [`crates/openbim-ifc-wasm/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-wasm) |
@@ -60,13 +60,49 @@ suites here cover only the JS conversion itself.
 
 ## Changes
 
-Latest release, 0.2.0 (2026-09-29):
+Latest release, 0.2.1 (2026-10-03):
+
+### Added (#244)
+
+- `IfcModel.parseWithOptions(bytes, options)`: lenient reads
+  (`onMalformed: "skip"`, `checkReferences`, `acceptRealWithoutPoint`).
+- `model.header()` and `model.setHeader(header)`.
+- `model.validate(maxFindings?)`: a `ValidationReport` with sorted
+  findings.
+- `IfcModel.parseIfcXml(bytes, profile?)` and `model.writeIfcXml(profile?)`.
+- `model.unreachableProducts()`.
+- TypeScript types `ParseOptions`, `IfcHeader`, `ValidationReport`,
+  `ValidationFinding`, `UnreachableProduct`; `IfcErrorCode` gains `io`
+  (already thrown, previously missing from the type), `unsupported-profile`
+  and `feature-disabled`.
+- Default features `ifcxml`, `validate` and `unreachable`; a browser build
+  can leave each out, and its methods then throw `feature-disabled`. Their
+  cost after `wasm-bindgen`: the default package grows from 1,337,025 to
+  1,891,591 bytes; ifcXML adds 314,659, validation 161,630 and the
+  reachability lint 65,809. With all three left out the package is
+  1,349,493 bytes (744,356 -> 756,824 for an IFC4-only build).
+- Additive: a patch release.
 
 ### Added
 
-- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2`, `ifc4x3` (all
-  default, so the npm package is unchanged). A browser build with one
-  release, `--no-default-features --features ifc4`, is 699,687 bytes after
-  `wasm-bindgen` instead of 1,236,036 (#112).
+- Browser and bundler builds in the npm package (#40). `@openbim/ifc`
+  resolves to the CommonJS build under Node, as before, and to a
+  `wasm-bindgen --target bundler` ES module in a bundler;
+  `@openbim/ifc/web` is the `--target web` build for a browser without a
+  bundler (`await init()` first). Every existing import path still resolves.
+- `scripts/build-npm-pkg.sh` (was `build-node-pkg.sh`) builds all three
+  targets and checks the packed tarball from Node, a webpack 5 bundle, and
+  both browser builds in headless Chrome.
+
+### Changed
+
+- `wasm-opt -Oz` was measured, not applied, because it increases the gzip
+  and brotli size. With binaryen 132 on the default build the module went
+  from 1,337,025 to 1,295,241 bytes raw (-3.1%), but from 459,437 to
+  461,953 bytes under `gzip -9` and from 276,835 to 278,749 under brotli.
+  The bundled schema data, which wasm-opt cannot shrink, is 908,687 of the
+  1,337,025 bytes.
+- The tarball carries one copy of the module per target, so it grows from
+  about 0.5 MB to 1.4 MB packed; a consumer loads only one.
 
 Full history: [`crates/openbim-ifc-wasm/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-wasm/CHANGELOG.md)

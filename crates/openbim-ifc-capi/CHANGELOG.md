@@ -21,6 +21,8 @@ a release here does not imply a release of any other crate in the family.
 - The ABI version is 0.1.2: every export above is new, no `v0_1` symbol
   changed. Additive, so a patch release.
 
+## [0.1.0] - 2026-10-03
+
 ### Added (#244)
 
 - Lenient reads: `openbim_ifc_v0_1_model_parse_with_options`,
