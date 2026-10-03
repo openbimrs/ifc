@@ -274,9 +274,13 @@ def pkgconfig_consumers(build: Path, prefix: Path) -> None:
         warn = ["-Wall", "-Wextra", "-Werror"]
         c_out = build / f"smoke_c_{variant}"
         run(os.environ.get("CC", "cc"), "-std=c11", *warn, *flags, SMOKE, "-o", c_out, *libs)
+        # The same file as C++, under a .cpp name: clang rejects a trailing
+        # `-x none` with no input after it under -Werror.
+        cxx_source = build / "smoke.cpp"
+        shutil.copyfile(SMOKE, cxx_source)
         cxx_out = build / f"smoke_cxx_{variant}"
         run(os.environ.get("CXX", "c++"), "-std=c++17", *warn, *flags,
-            "-x", "c++", SMOKE, "-x", "none", "-o", cxx_out, *libs)
+            cxx_source, "-o", cxx_out, *libs)
         for smoke in (c_out, cxx_out):
             run(smoke)
             built[variant].append(smoke)

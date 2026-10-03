@@ -107,39 +107,16 @@ the DLL beside the executable on Windows). Windows needs MSVC.
 
 `scripts/check-cmake.py` builds a consumer
 (`tests/cmake-consumer/`) running the C smoke test against the source tree,
-the installed package and the unpacked archive, shared and static, then the
-pkg-config consumers below. The gate runs it on Linux, the `Native`
+the installed package and the unpacked archive, shared and static, then
+the same through pkg-config. The gate runs it on Linux, the `Native`
 workflow on macOS and Windows.
 
 ## pkg-config
 
-On Linux and macOS, `cmake --install` and the release archives also lay
-out `lib/pkgconfig/openbim_ifc.pc` (shared) and `openbim_ifc-static.pc`
-(static), for Make, Meson or autotools:
-
-```sh
-export PKG_CONFIG_PATH=<prefix>/lib/pkgconfig
-cc app.c $(pkg-config --cflags --libs openbim_ifc) -Wl,-rpath,<prefix>/lib
-cc app.c $(pkg-config --cflags --libs openbim_ifc-static)
-```
-
-In Meson: `dependency('openbim_ifc')` or `dependency('openbim_ifc-static')`.
-
-- **Two modules, not `Libs.private`.** `lib/` holds both libraries under
-  one name, so `-lopenbim_ifc_capi` links the shared one even under
-  `pkg-config --static`. The static module names the archive by path and
-  adds the same system libraries as `openbim_ifc::openbim_ifc_static`.
-- **Relocatable.** `prefix=${pcfiledir}/../..`: an unpacked archive works
-  wherever it lands. The version is the crate's, read by CMakeLists.txt.
-- **No runtime path.** As usual for pkg-config; macOS needs one for
-  `@rpath/libopenbim_ifc_capi.dylib`.
-- **Windows (MSVC) is CMake-only**: no `.pc` files there, and the check
-  skips them with a message.
-
-`check-cmake.py` builds the smoke test (C11 and C++17) from nothing but
-`pkg-config --cflags --libs`, both modules, against the installed tree and
-the unpacked archive; moved away, the shared builds must fail to start and
-the static ones must still run.
+Linux and macOS installs and archives also carry `openbim_ifc.pc` (shared)
+and `openbim_ifc-static.pc` (static, with the CMake static target's system
+libraries) in `lib/pkgconfig/`, relocatable via `${pcfiledir}`.
+Windows is CMake-only. See [the C guide](https://openbimrs.github.io/ifc/bindings/c#install-via-pkg-config).
 
 ## Build and test
 
