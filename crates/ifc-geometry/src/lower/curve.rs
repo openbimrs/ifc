@@ -58,7 +58,6 @@ mod composite_range;
 mod fixture;
 pub(crate) mod gradient;
 mod parameter_space;
-mod polynomial;
 pub(crate) mod segment;
 pub(crate) mod spiral;
 

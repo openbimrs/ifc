@@ -46,7 +46,7 @@ use axiolid_model::{
 };
 use ifc_model::{EntityId, Value};
 
-use super::{frame3, lower_curve_node, polynomial, spiral, transition};
+use super::{frame3, lower_curve_node, spiral, transition};
 use crate::curve::composite::CompositeCurveSegment;
 use crate::curve::polyline::Polyline;
 use crate::error::GeometryResult;
@@ -509,5 +509,6 @@ pub(super) fn composite_member(
     }))
 }
 
+pub(crate) mod polynomial;
 #[cfg(test)]
 mod tests;

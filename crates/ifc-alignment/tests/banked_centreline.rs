@@ -346,3 +346,28 @@ fn the_banked_curve_is_continuous_at_its_cant_seams() {
     assert!((point(30.0 - 1e-9) - point(30.0)).length() < 1e-8);
     assert!((point(30.0) - point(30.0 + 1e-9)).length() < 1e-8);
 }
+
+/// The committed fixture `synthetic_alignment_layout.ifc`: a 17.85 m plan,
+/// a 15 m profile and a 10 m cant layout. Its cant layout resolves, and the
+/// banked centreline is refused for the first thing that does not cover
+/// the plan -- the profile -- not invented past the authored data.
+#[test]
+fn the_committed_layout_fixture_is_refused_where_it_stops_short() {
+    use ifc_model::Codec;
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../test/fixtures/synthetic-surfaces/synthetic_alignment_layout.ifc");
+    let model = ifc_step::StepCodec
+        .read_path(&path)
+        .expect("fixture parses");
+    let alignment = *model
+        .ids_of_type("IFCALIGNMENT")
+        .first()
+        .expect("one alignment");
+    ifc_alignment::CantLayout::for_alignment(&model, alignment, metres()).expect("cant resolves");
+    let error = lower_segmented_reference_curve(&model, alignment, metres()).expect_err("short");
+    assert!(
+        matches!(&error, AlignmentError::Unsupported { type_name, detail, .. }
+            if type_name == "IfcAlignmentVertical" && detail.contains("whole plan")),
+        "{error:?}"
+    );
+}

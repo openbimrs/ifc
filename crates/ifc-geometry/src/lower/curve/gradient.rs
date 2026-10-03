@@ -69,8 +69,9 @@ use axiolid_model::{GeometryNode, NodeId};
 use ifc_alignment::{AlignmentUnits, SeamTolerance};
 use ifc_model::EntityId;
 
+use super::segment::polynomial;
 use super::segment::{circle_radius, read_segment, refuse_parent, segment_curvature, Segment};
-use super::{polynomial, spiral};
+use super::spiral;
 use crate::curve::composite::CompositeCurve;
 use crate::error::GeometryResult;
 use crate::lower::session::LoweringSession;

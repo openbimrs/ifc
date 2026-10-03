@@ -36,7 +36,7 @@ use ifc_model::EntityId;
 use crate::error::GeometryResult;
 use crate::lower::session::LoweringSession;
 
-use super::segment::Segment;
+use super::Segment;
 
 const TYPE: &str = "IFCPOLYNOMIALCURVE";
 
