@@ -8,4 +8,4 @@ import { smoke } from "./smoke-core.mjs";
 import { IfcModel } from "@openbim/ifc"; // the bundler loads the wasm module
 // docs:end
 
-export const result = smoke(IfcModel);
+export const result = await smoke(IfcModel);

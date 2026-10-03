@@ -48,7 +48,8 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | `material-templates` |  | Material views together with the property template catalogue. |
 | `occurrence` |  | [`ifc-occurrence`](./ifc-occurrence): Built element and distribution occurrence classes and their type pairing. |
 | `properties` |  | Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door and window operation geometry; together with `spatial`, element properties by spatial container. |
-| `property-catalog` |  | [`ifc-template-catalog`](./ifc-template-catalog): Versioned IFC PSD/QTO catalog definitions and correction overlays |
+| `property-catalog` |  | The PSD/QTO template catalogue (`ifc-template-catalog`), every edition embedded. |
+| `property-catalog-runtime` |  | The PSD/QTO template catalogue installed at runtime from pinned per-edition snapshot files; nothing embedded. |
 | `resource` |  | [`ifc-resource`](./ifc-resource): Construction resources: labour, equipment, material, crew, subcontract. |
 | `schedule` |  | [`ifc-schedule`](./ifc-schedule): IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage. |
 | `schema` |  | The schema API with every bundled release (IFC2X3, IFC4, IFC4X1, IFC4X2, IFC4X3). |

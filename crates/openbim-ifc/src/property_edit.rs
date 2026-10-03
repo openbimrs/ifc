@@ -45,8 +45,12 @@
 //! `property-catalog` feature, a set named in the release's PSD/QTO catalog
 //! (ADR 0017) is checked against its template too: set kind, value form,
 //! data type, enumeration members, quantity kind, and that a new property
-//! is one the template declares. Without the feature a `Pset_` or `Qto_`
-//! set cannot be checked and a Set on one is refused.
+//! is one the template declares. With `property-catalog-runtime` instead,
+//! the same check reads the catalog the host installed
+//! (`property_catalog::runtime::install`), and a Set on a `Pset_` or `Qto_`
+//! set is refused with [`PropertyEditFailure::CatalogNotLoaded`] until the
+//! release's edition is installed. Without either feature such a set cannot
+//! be checked and a Set on one is refused.
 //!
 //! # New records
 //!

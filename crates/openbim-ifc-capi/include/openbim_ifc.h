@@ -101,7 +101,7 @@
  * Result of every ABI call. `Ok` is zero; every failure is non-zero.
  *
  * The values from `Parse` to `FeatureDisabled`, `InvalidModel`, and
- * `MissingReference` to `MissingProperty`, are the binding errors shared
+ * `MissingReference` to `CatalogNotLoaded`, are the binding errors shared
  * with the JavaScript and Python bindings; the rest describe misuse of the
  * C boundary itself.
  */
@@ -205,6 +205,13 @@ enum OpenbimIfcStatus
    * (`missing-property`).
    */
   OPENBIM_IFC_STATUS_MISSING_PROPERTY = 26,
+  /**
+   * A property edit wrote to a `Pset_`/`Qto_` set before its release's
+   * catalog was loaded (`catalog-not-loaded`). This library embeds the
+   * catalog, so it never returns this; the value is reserved so every
+   * binding code has one.
+   */
+  OPENBIM_IFC_STATUS_CATALOG_NOT_LOADED = 27,
   /**
    * A Rust panic was contained at the boundary. Report it as a bug.
    */

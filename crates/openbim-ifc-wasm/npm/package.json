@@ -40,6 +40,8 @@
     "openbim_ifc_wasm_bg.wasm.d.ts",
     "bundler/",
     "web/",
+    "catalog/",
+    "catalog.mjs",
     "README.md"
   ],
   "engines": {

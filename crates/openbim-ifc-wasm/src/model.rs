@@ -246,6 +246,33 @@ impl IfcModel {
             .map_err(js_error)
     }
 
+    /// The file name of `release`'s PSD/QTO catalog snapshot, such as
+    /// `"ifc4x3-add2.bin"`; the package ships it as `catalog/<name>`.
+    /// `release` is a header schema token: `"IFC2X3"`, `"IFC4"` or
+    /// `"IFC4X3"` (`"IFC4X3_ADD2"`).
+    #[wasm_bindgen(js_name = catalogFile)]
+    pub fn catalog_file_js(release: &str) -> Result<String, JsValue> {
+        openbim_ifc_binding_core::catalog::file_name(release)
+            .map(str::to_owned)
+            .map_err(js_error)
+    }
+
+    /// Whether `release`'s catalog is loaded in this module instance, so a
+    /// write to its `Pset_`/`Qto_` sets can be checked.
+    #[wasm_bindgen(js_name = catalogLoaded)]
+    pub fn catalog_loaded_js(release: &str) -> Result<bool, JsValue> {
+        openbim_ifc_binding_core::catalog::is_loaded(release).map_err(js_error)
+    }
+
+    /// Load `release`'s catalog from the bytes of its snapshot file, checked
+    /// against the pinned SHA-256 (`invalid-value` otherwise). The
+    /// synchronous half of `IfcModel.loadCatalog`, for a host that reads
+    /// the file itself.
+    #[wasm_bindgen(js_name = loadCatalogBytes)]
+    pub fn load_catalog_bytes_js(release: &str, bytes: &[u8]) -> Result<(), JsValue> {
+        openbim_ifc_binding_core::catalog::load(release, bytes).map_err(js_error)
+    }
+
     /// Remove one property from the object's own set (`setProperties` with
     /// one edit).
     #[wasm_bindgen(js_name = removeProperty)]

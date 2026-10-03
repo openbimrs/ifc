@@ -4,8 +4,10 @@
 //! code; and a refused batch leaves the model byte-for-byte unchanged.
 //!
 //! The gate runs this file with the catalog (default features), with the
-//! writer but no catalog (`ifc4,properties-write`), and with neither
-//! (`ifc4`, and `ifc4,georef`, which reads property sets but cannot write).
+//! writer but no catalog (`ifc4,properties-write`), with a runtime catalog
+//! it never loads (`ifc4,property-catalog-runtime`; `tests/catalog.rs`
+//! loads one), and with neither (`ifc4`, and `ifc4,georef`, which reads
+//! property sets but cannot write).
 
 use openbim_ifc_binding_core::property_edit::PropertyEdit;
 use openbim_ifc_binding_core::value::Tagged;
@@ -197,11 +199,14 @@ mod with_properties {
         ];
         for (code, edits) in cases {
             // Pset_Families is a catalog-prefixed name; without the catalog
-            // its refusal is `feature-disabled`.
+            // its refusal is `feature-disabled`, and with a runtime catalog
+            // this file never loads, `catalog-not-loaded`.
             let expected = if cfg!(feature = "property-catalog")
                 || !edits.iter().any(|e| e.set.starts_with("Pset_"))
             {
                 code
+            } else if cfg!(feature = "property-catalog-runtime") {
+                "catalog-not-loaded"
             } else {
                 "feature-disabled"
             };
@@ -346,7 +351,7 @@ mod with_properties {
         );
     }
 
-    #[cfg(not(feature = "property-catalog"))]
+    #[cfg(not(any(feature = "property-catalog", feature = "property-catalog-runtime")))]
     #[test]
     fn a_catalog_set_needs_the_catalog() {
         let mut model = fixture();

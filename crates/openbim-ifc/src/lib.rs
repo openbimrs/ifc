@@ -118,8 +118,10 @@ pub use {
     },
 };
 
-/// Versioned external PSD/QTO template catalogs and correction profiles.
-#[cfg(feature = "property-catalog")]
+/// Versioned external PSD/QTO template catalogs and correction profiles:
+/// embedded (`property-catalog`), or installed at runtime from pinned
+/// snapshot bytes (`property-catalog-runtime`, its `runtime` module).
+#[cfg(any(feature = "property-catalog", feature = "property-catalog-runtime"))]
 pub use ifc_template_catalog as property_catalog;
 
 /// Tasks, sequencing, calendars.
@@ -299,7 +301,7 @@ pub use georeference::{georeferencing, GeoreferencingError};
 // release-bound writers of `ifc-properties` with the PSD/QTO catalog of
 // `ifc-template-catalog`, siblings under ADR 0003. The module gates itself
 // on `properties` with an inner `#![cfg]`; the catalog checks need
-// `property-catalog` too.
+// `property-catalog` or `property-catalog-runtime` too.
 mod property_edit;
 
 mod feature_report;
