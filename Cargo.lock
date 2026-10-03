@@ -833,7 +833,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-georef"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "axiolid-core",
  "ifc-model",

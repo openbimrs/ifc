@@ -51,7 +51,7 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 | --- | --- | --- | --- |
 | [`ifc-alignment`](./crates/ifc-alignment) | <span class="status-partial">Partial</span> | 0.5.0 | IFC4x3 linear positioning: alignments, referents, linear placement, spirals. |
 | [`ifc-geometry`](./crates/ifc-geometry) | <span class="status-partial">Partial</span> | 0.6.1 | IFC semantic views lowered into the format-neutral geometry DAG. |
-| [`ifc-georef`](./crates/ifc-georef) | <span class="status-implemented">Implemented</span> | 0.5.0 | Georeferencing: map conversion, coordinate reference systems, site placement. |
+| [`ifc-georef`](./crates/ifc-georef) | <span class="status-implemented">Implemented</span> | 0.5.1 | Georeferencing: map conversion, coordinate reference systems, site placement. |
 
 ## Language bindings
 
