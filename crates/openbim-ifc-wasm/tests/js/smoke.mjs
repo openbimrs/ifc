@@ -6,6 +6,7 @@
 //
 // Usage: IFC_WASM_PKG=<package-dir> node --test smoke.mjs
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import test from "node:test";
@@ -295,4 +296,134 @@ test("documented example: lenient read, header, validation and ifcXML", () => {
   assert.deepEqual(fromXml.header().author, ["Reviewer"]);
   assert.equal(errors.length, report.errors);
   assert.deepEqual(fromXml.ids(), model.ids());
+});
+
+// --- Domain views (#123) ----------------------------------------------------
+
+const fixtures = path.resolve(
+  path.dirname(new URL(import.meta.url).pathname),
+  "../../../../test/fixtures",
+);
+const openFixture = (name) =>
+  IfcModel.parse(readFileSync(path.join(fixtures, name)));
+
+/** A wall classified directly and through its type, with a layered type. */
+const CLASSIFIED = `ISO-10303-21;
+HEADER;FILE_DESCRIPTION((''),'2;1');FILE_NAME('','',(''),(''),'','','');FILE_SCHEMA(('IFC4'));ENDSEC;
+DATA;
+#2=IFCWALLTYPE('1YvctVUKr0kugbFTf53O9L',$,'WT',$,$,(#30),$,$,$,.SOLIDWALL.);
+#3=IFCWALL('2YvctVUKr0kugbFTf53O9L',$,'Wall',$,$,$,$,$,.STANDARD.);
+#30=IFCPROPERTYSET('3ZvctVUKr0kugbFTf53O9L',$,'Pset_WallCommon',$,(#31));
+#31=IFCPROPERTYSINGLEVALUE('IsExternal',$,IFCBOOLEAN(.T.),$);
+#4=IFCRELDEFINESBYTYPE('3YvctVUKr0kugbFTf53O9L',$,$,$,(#3),#2);
+#10=IFCCLASSIFICATION('CSI',$,$,'Uniclass 2015',$,$,$);
+#12=IFCCLASSIFICATIONREFERENCE($,'Ss_25_10','Wall systems',#10,$,$);
+#13=IFCRELASSOCIATESCLASSIFICATION('0ZvctVUKr0kugbFTf53O9L',$,$,$,(#3),#12);
+#20=IFCMATERIAL('Concrete',$,$);
+#22=IFCMATERIALLAYER(#20,0.2,.U.,'Core',$,$,$);
+#24=IFCMATERIALLAYERSET((#22),'WT-200',$);
+#26=IFCRELASSOCIATESMATERIAL('2ZvctVUKr0kugbFTf53O9L',$,$,$,(#2),#24);
+ENDSEC;
+END-ISO-10303-21;
+`;
+
+test("property sets resolve type inheritance with typed values", () => {
+  const model = openFixture("synthetic-properties/synthetic_properties.ifc");
+  const sets = model.propertySets(30n);
+  assert.deepEqual(
+    sets.map((set) => [set.name, set.source, set.sourceId]),
+    [
+      ["Pset_WallCommon", "occurrence", undefined],
+      ["Qto_WallBaseQuantities", "occurrence", undefined],
+      ["Pset_WallCommon", "type", 29n],
+    ],
+  );
+  assert.equal(sets[0].globalId, "0Mz9fPfwfBYBYTYsJjiw_L");
+  assert.deepEqual(sets[0].properties[0].value, {
+    kind: "typed",
+    type: "IFCBOOLEAN",
+    value: { kind: "bool", value: false },
+  });
+  const width = sets[1].properties[0];
+  assert.equal(width.typeName, "IFCQUANTITYLENGTH");
+  assert.equal(width.unit, 7n);
+  assert.deepEqual(width.value, {
+    kind: "typed",
+    type: "IFCLENGTHMEASURE",
+    value: { kind: "real", value: 200 },
+  });
+  const unit = model.resolveUnit("IFCLENGTHMEASURE", width.unit);
+  assert.equal(unit.fromProject, false);
+  assert.ok(Math.abs(unit.scale - 0.001) < 1e-15);
+  assert.equal(model.resolveUnit("IFCLENGTHMEASURE").fromProject, true);
+});
+
+test("the spatial tree, systems, cost and georeferencing cross as records", () => {
+  const tree = openFixture("synthetic-properties/synthetic_properties.ifc").spatialTree();
+  assert.deepEqual(
+    tree.nodes.map((node) => [node.id, node.kind]),
+    [[22n, "project"], [23n, "site"], [24n, "building"], [25n, "storey"]],
+  );
+  assert.deepEqual(tree.nodes[3].elements, [30n, 31n]);
+
+  const { systems } = openFixture("synthetic-systems/synthetic_systems.ifc").systems();
+  const heating = systems.find((system) => system.id === 14n);
+  assert.equal(heating.predefinedType, "HEATING");
+  assert.deepEqual(heating.servicedBuildings, [12n]);
+
+  const cost = openFixture("synthetic-cost-schedule/synthetic_cost_schedule.ifc").cost();
+  assert.deepEqual(cost.schedules[0].items, [38n, 42n, 44n]);
+  const setup = cost.items.find((item) => item.id === 44n).values[0];
+  assert.equal(setup.operator, "ADD");
+  assert.deepEqual(setup.components[0].appliedValue, {
+    kind: "typed",
+    type: "IFCMONETARYMEASURE",
+    value: { kind: "real", value: 320 },
+  });
+
+  const [map] = openFixture("synthetic-surfaces/synthetic_conic_offset_bounded.ifc").georeferencing();
+  assert.equal(map.kind, "map-conversion");
+  assert.equal(map.targetCrs.name, "EPSG:25832");
+  assert.deepEqual(map.translation, [1, 2, 0.01]);
+});
+
+test("classification and material read through the type object", () => {
+  const bytes = new TextEncoder().encode(CLASSIFIED);
+  const log = [];
+  const console = { log: (...args) => log.push(args) };
+  // docs:snippet js-domain-views
+  const model = IfcModel.parse(bytes);
+  const [wall] = model.idsOfType("IfcWall");
+
+  // Property sets: the wall's own first, then its type's; values typed.
+  for (const set of model.propertySets(wall)) {
+    for (const p of set.properties) console.log(set.name, p.name, p.value);
+  }
+  const classes = model.classifications(wall); // [{ identification, system, ... }]
+  const material = model.material(wall); // { kind: "layer-set", layers, ... }
+  const tree = model.spatialTree(); // { nodes: [{ kind: "storey", elements }] }
+  // docs:end
+  assert.equal(classes[0].identification, "Ss_25_10");
+  assert.equal(classes[0].system.name, "Uniclass 2015");
+  assert.equal(material.kind, "layer-set");
+  assert.equal(material.source, "type");
+  assert.deepEqual(material.layers[0].isVentilated, { kind: "unknown" });
+  assert.equal(material.layers[0].material.name, "Concrete");
+  assert.equal(tree.nodes.length, 0);
+  assert.deepEqual(log, [
+    ["Pset_WallCommon", "IsExternal", { kind: "typed", type: "IFCBOOLEAN", value: { kind: "bool", value: true } }],
+  ]);
+});
+
+test("domain refusals carry the shared codes", () => {
+  const model = IfcModel.parse(new TextEncoder().encode(CLASSIFIED));
+  throwsCode(() => model.propertySets(999n), "missing-entity");
+  const ifc2x3 = IfcModel.parse(
+    new TextEncoder().encode(CLASSIFIED.replace("'IFC4'", "'IFC2X3'")),
+  );
+  throwsCode(() => ifc2x3.georeferencing(), "unsupported-schema");
+  const ifc4x1 = IfcModel.parse(
+    new TextEncoder().encode(CLASSIFIED.replace("'IFC4'", "'IFC4X1'")),
+  );
+  throwsCode(() => ifc4x1.propertySets(3n), "unsupported-schema");
 });

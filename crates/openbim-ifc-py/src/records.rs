@@ -144,3 +144,57 @@ pub fn unreachable_to_py<'py>(
     }
     Ok(list)
 }
+
+/// A domain record (#123) as a dict: `_record` names the frozen dataclass
+/// (`openbim_ifc.records`), every other key is a field. An IFC value is
+/// the tagged-encoding dict (it has `kind`), a list a list. One conversion
+/// for every domain, so no record can drift from the core's.
+pub fn record_to_py<'py>(
+    py: Python<'py>,
+    record: &openbim_ifc_binding_core::Record,
+) -> PyResult<Bound<'py, PyDict>> {
+    let dict = PyDict::new(py);
+    dict.set_item("_record", record.name)?;
+    for (name, field) in &record.fields {
+        dict.set_item(*name, field_to_py(py, field)?)?;
+    }
+    Ok(dict)
+}
+
+/// A list of domain records.
+pub fn records_to_py<'py>(
+    py: Python<'py>,
+    records: &[openbim_ifc_binding_core::Record],
+) -> PyResult<Bound<'py, PyList>> {
+    let list = PyList::empty(py);
+    for record in records {
+        list.append(record_to_py(py, record)?)?;
+    }
+    Ok(list)
+}
+
+fn field_to_py<'py>(
+    py: Python<'py>,
+    field: &openbim_ifc_binding_core::Field,
+) -> PyResult<Bound<'py, PyAny>> {
+    use openbim_ifc_binding_core::Field;
+    use pyo3::IntoPyObjectExt;
+    Ok(match field {
+        Field::Null => py.None().into_bound(py),
+        Field::Id(id) => id.into_bound_py_any(py)?,
+        Field::Bool(value) => value.into_bound_py_any(py)?,
+        Field::Count(count) => count.into_bound_py_any(py)?,
+        Field::Int(value) => value.into_bound_py_any(py)?,
+        Field::Real(value) => value.into_bound_py_any(py)?,
+        Field::Text(text) => text.into_bound_py_any(py)?,
+        Field::Value(value) => crate::convert::to_py(py, value)?.into_any(),
+        Field::List(items) => {
+            let list = PyList::empty(py);
+            for item in items {
+                list.append(field_to_py(py, item)?)?;
+            }
+            list.into_any()
+        }
+        Field::Record(record) => record_to_py(py, record)?.into_any(),
+    })
+}

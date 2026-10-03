@@ -33,7 +33,12 @@ export type IfcErrorCode =
   | "unsupported-schema"
   | "io"
   | "unsupported-profile"
-  | "feature-disabled";
+  | "feature-disabled"
+  | "invalid-model"
+  | "missing-reference"
+  | "budget-exceeded"
+  | "unsupported"
+  | "wrong-entity-type";
 
 /** How `IfcModel.parseWithOptions` treats damaged input; omitted fields are strict. */
 export interface ParseOptions {

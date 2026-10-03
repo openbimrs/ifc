@@ -142,7 +142,7 @@ gate_features() {
 
     # `spatial` needs a release to classify containers from (#306), so its
     # combinations name one; ifc-spatial refuses to compile without.
-    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,ifc4" "--features step,schema-api" "--features step,geometry-select" "--features step,ifc4,validate" "--features step,ifc4,spatial,geometry-select" "--features step,properties,geometry-select" "--features step,ifc4,spatial,properties" "--all-features"; do
+    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,ifc4" "--features step,schema-api" "--features step,geometry-select" "--features step,ifc4,validate" "--features step,ifc4,spatial,geometry-select" "--features step,properties,geometry-select" "--features step,ifc4,spatial,properties" "--features step,georef,properties" "--all-features"; do
         # shellcheck disable=SC2086
         cargo build -p openbim-ifc $features
         # shellcheck disable=SC2086
@@ -163,6 +163,10 @@ gate_features() {
     # exact property resolution, so they exist only with both `spatial` and
     # `properties`.
     cargo test -p openbim-ifc --features step,schema,spatial,properties --test spatial_properties
+    # Every coordinate operation scaled by the project length unit (#123) joins
+    # `ifc-georef` and exact unit resolution, so it exists only with both
+    # `georef` and `properties`.
+    cargo test -p openbim-ifc --features step,georef,properties --test georeferencing
 
     # Per-release schema column (#112). `--all-features` always bundles every
     # release, so a single-release build is the only place the `NotBundled`
@@ -177,6 +181,10 @@ gate_features() {
     # with all three left out (their `feature-disabled` refusals), this one
     # reaches the XSD-profile refusal for a release left out of the build.
     cargo test -p openbim-ifc-binding-core --no-default-features --features ifc4,ifcxml
+    # The domain views (#123) are features too: the `ifc4` run above refuses
+    # all seven with `feature-disabled`; this one binds georeferencing alone,
+    # which brings property sets with it and leaves the other five out.
+    cargo test -p openbim-ifc-binding-core --no-default-features --features ifc4,georef
 
     # Validation, spatial classification and representation selection take
     # their releases from the build too (#306): each crate builds and tests

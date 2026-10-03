@@ -129,6 +129,24 @@ mod tests {
         assert_eq!(values[0].amount(), Some(1500.50));
     }
 
+    /// The applied value is read whole, typed wrapper included, so a
+    /// lossless consumer does not rebuild it from `amount` and `measure`.
+    #[test]
+    fn the_applied_value_is_read_as_authored() {
+        let model = model_with_cost();
+        let view = CostView::new(&model);
+        let item = view.items().next().unwrap();
+        let value = view.values_of(&item).remove(0);
+        assert_eq!(
+            value.applied_value(),
+            Some(&Value::Typed {
+                type_name: "IFCMONETARYMEASURE".into(),
+                value: Box::new(Value::Real(1500.50)),
+            })
+        );
+        assert_eq!(value.unit_basis_component(&model), None, "no basis stated");
+    }
+
     /// The view is a lens, not storage: dropping it cannot lose data.
     #[test]
     fn view_owns_nothing_and_model_is_unchanged() {

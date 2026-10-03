@@ -8,6 +8,20 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#123, domain views: read side)
+
+- `IfcModel.property_sets(id)`, `resolve_unit(measure_type, unit=None)`,
+  `spatial_tree()`, `classifications(id)`, `material(id)`, `systems()`,
+  `cost()` and `georeferencing()`, returning frozen dataclasses from the
+  new `openbim_ifc.domains` module (`PropertySet`, `Property`,
+  `SpatialTree`, `Classification`, `MaterialAssignment`, `Systems`,
+  `Cost`, `MapConversion`, ...), all exported from `openbim_ifc`.
+- Error codes `invalid-model`, `missing-reference`, `budget-exceeded`,
+  `unsupported` and `wrong-entity-type`.
+- Additive: a patch release.
+
+## [0.2.1] - 2026-10-03
+
 ### Added (#244)
 
 - `IfcModel.parse(data, options=...)` and `IfcModel.open(path, options=...)`

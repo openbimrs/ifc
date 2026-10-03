@@ -64,6 +64,10 @@ Records cross on the same tapes: the STEP header (`model_header`,
 results of `model_validate` and `model_unreachable_products` are a `LIST`
 of one `LIST` per finding or product; each export documents its fields.
 Lenient reads (`*_with_options`) take `OPENBIM_IFC_PARSE_*` flag bits.
+The domain views (#123: `model_property_sets`, `model_resolve_unit`,
+`model_spatial_tree`, `model_classifications`, `model_material`,
+`model_systems`, `model_cost`, `model_georeferencing`) return each record
+as a `LIST` of its fields in the core's order, listed on the docs site.
 
 ## CMake
 

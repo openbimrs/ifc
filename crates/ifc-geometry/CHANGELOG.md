@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-03
+
 `select::subtype` carries IFC4X3 ADD2 supertype chains (#293). Answers
 change for IFC4X3-only entity names, and a build without default features
 links fewer schema tables (#306), so the next release is a minor one.
@@ -722,7 +724,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.6.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.7.0...HEAD
+[0.7.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.7.0
 [0.6.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.6.1
 [0.6.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.6.0
 [0.5.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.5.0

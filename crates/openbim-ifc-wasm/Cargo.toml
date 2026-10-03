@@ -1,6 +1,6 @@
 [package]
 name = "openbim-ifc-wasm"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 rust-version = "1.88"
 license = "AGPL-3.0-or-later"
@@ -46,7 +46,15 @@ js-sys = "=0.3.105"
 # `--no-default-features --features ifc4,ifcxml` ships ifcXML but no
 # validation. A left-out capability's methods remain and throw
 # `feature-disabled`, so the TypeScript surface is the same in every build.
-default = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3", "ifcxml", "validate", "unreachable"]
+#
+# The domain views (#123) are default too: the npm package carries every
+# capability. Each is a feature the same way, and a build without one keeps
+# its methods, which throw `feature-disabled`.
+default = [
+    "ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3",
+    "ifcxml", "validate", "unreachable",
+    "properties", "spatial", "classification", "material", "systems", "cost", "georef",
+]
 ifc2x3 = ["openbim-ifc-binding-core/ifc2x3"]
 ifc4 = ["openbim-ifc-binding-core/ifc4"]
 ifc4x1 = ["openbim-ifc-binding-core/ifc4x1"]
@@ -58,6 +66,15 @@ ifcxml = ["openbim-ifc-binding-core/ifcxml"]
 validate = ["openbim-ifc-binding-core/validate"]
 # The viewer reachability lint; links only the enabled releases' tables.
 unreachable = ["openbim-ifc-binding-core/unreachable"]
+# Domain views (#123), one per facade domain.
+properties = ["openbim-ifc-binding-core/properties"]
+spatial = ["openbim-ifc-binding-core/spatial"]
+classification = ["openbim-ifc-binding-core/classification"]
+material = ["openbim-ifc-binding-core/material"]
+systems = ["openbim-ifc-binding-core/systems"]
+cost = ["openbim-ifc-binding-core/cost"]
+# Implies `properties`: the project length unit scales every operation.
+georef = ["openbim-ifc-binding-core/georef"]
 
 [lints]
 workspace = true

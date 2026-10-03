@@ -27,6 +27,29 @@ everything released before per-crate changelogs began.
   implies `schema` through `author`) are unchanged. Under 0.x, a minor
   release.
 
+### Added
+
+- `root_identity(model, schema, id)` and `RootIdentity` (behind
+  `schema-api`): the `GlobalId` and `Name` of an entity the given schema
+  declares an `IfcRoot`, read by attribute name, never guessed from a
+  slot (#123).
+- `georeferencing(model)` and `GeoreferencingError` (behind
+  `georef` + `properties`): every `IfcCoordinateOperation` resolved with
+  the project length unit, which `ifc-properties` resolves exactly; the
+  join the language bindings carry (#123).
+- Re-exports `Budget` from `ifc-model`, which bounded domain traversals
+  (a classification hierarchy) take.
+
+## [0.12.0] - 2026-10-03
+
+### Changed (breaking)
+
+- Behind `geometry`, the re-exported `ifc_geometry` is 0.7 (was 0.6). Its
+  `select::subtype` carries the IFC4X3 ADD2 supertype chains (#293), so
+  `is_a`, select membership and `BodyKind::classify` now answer for
+  IFC4X3-only entity names that previously classified as nothing; the new
+  `is_a_in`/`supertypes_of_in` answer for one named release.
+
 ## [0.11.0] - 2026-10-03
 
 ### Changed (breaking)
@@ -328,7 +351,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.11.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.12.0...HEAD
+[0.12.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.12.0
 [0.11.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.11.0
 [0.10.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.10.0
 [0.9.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.9.0

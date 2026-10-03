@@ -15,7 +15,7 @@ or `import { IfcModel } from "@openbim/ifc"` from ES modules.
 
 The binding exposes the record model over STEP -- parse, read and edit
 attributes, and write -- plus lenient reads, the file header, validation,
-ifcXML and the reachability lint (see
+ifcXML, the reachability lint and read-only domain views (see
 [Beyond the record model](#beyond-the-record-model)).
 
 ## Node, bundlers and browsers
@@ -141,11 +141,77 @@ about 170 KB with every release bundled (about 760 KB on an IFC4-only
 build, because the validator links every release's schema table), and the
 reachability lint about 65 KB.
 
-Not bound yet: checked multi-edit transactions (`Transaction`, `Applied`,
-`Conflict`), deferred until a host asks for them, and the domain views
-such as property sets or the spatial tree
-([#123](https://github.com/openbimrs/ifc/issues/123)), which come next as
-opt-in features. Use the Rust crates for those.
+### Domain views
+
+<!-- SNIPPET:js-domain-views -->
+
+```js
+const model = IfcModel.parse(bytes);
+const [wall] = model.idsOfType("IfcWall");
+
+// Property sets: the wall's own first, then its type's; values typed.
+for (const set of model.propertySets(wall)) {
+  for (const p of set.properties) console.log(set.name, p.name, p.value);
+}
+const classes = model.classifications(wall); // [{ identification, system, ... }]
+const material = model.material(wall); // { kind: "layer-set", layers, ... }
+const tree = model.spatialTree(); // { nodes: [{ kind: "storey", elements }] }
+```
+
+<!-- /SNIPPET -->
+
+The domain views of the Rust facade cross as plain snapshot objects, keyed
+by entity id (`bigint`) with the `globalId` where the entity has one. A
+view reads the model as it is at the call; edit the model and call again.
+
+- **Property sets.** `propertySets(id)` lists the object's own property
+  sets, quantity sets and predefined sets, then those its type object
+  holds; an occurrence property overrides an inherited one of the same set
+  and name. Each `Property` keeps its declared type in the tagged encoding
+  (`{ kind: "typed", type: "IFCLENGTHMEASURE", value: { kind: "real", ... } }`)
+  with its `kind` (`value`, `enumerated`, `list`, `bounded`, `table`,
+  `reference` or `complex`) and the `unit` it states.
+  `resolveUnit(measureType, unit?)` resolves that unit, or the project
+  default, exactly to SI. Read against IFC2X3, IFC4 or IFC4X3.
+- **Spatial tree.** `spatialTree()` returns every container (`kind`
+  `project` ... `space`) with its parent, children, contained and
+  referenced elements, plus orphans, dangling references and anomalies.
+- **Classification.** `classifications(id)` lists the object's own and its
+  type's classification references, each with its code, name, location,
+  the references above it and the system at the top.
+- **Material.** `material(id)` returns the one association that applies
+  (its own, or its type's): a material, list, layer, profile or constituent
+  set, or a set usage with its placement; `undefined` when there is none.
+- **Systems.** `systems()` lists every `IfcSystem` subtype the release has,
+  with members and served structures, and reports memberships it could
+  not honour.
+- **Cost.** `cost()` lists cost schedules and items with their nesting,
+  values (`appliedValue` tagged, `IFCMONETARYMEASURE` included), unit bases
+  and component trees; operators are reported, never evaluated.
+- **Georeferencing.** `georeferencing()` resolves every coordinate
+  operation (IFC4, IFC4X3) with the project length unit: the projected
+  CRS, the authored offsets, and the operation from project metres to map
+  metres.
+
+A release a view does not read is refused with `unsupported-schema`, the
+same code in every host; malformed or ambiguous data with
+`invalid-model`, a dangling reference with `missing-reference`, a cycle
+with `budget-exceeded`, a construct a view does not interpret with
+`unsupported`, and a query on an entity of the wrong kind with
+`wrong-entity-type`. Each domain is a cargo feature of
+`openbim-ifc-wasm` (`properties`, `spatial`, `classification`,
+`material`, `systems`, `cost`, `georef`), on by default; a left-out
+domain's methods throw `feature-disabled`. Measured after `wasm-bindgen`,
+without `wasm-opt`, over a build with every release and capability: the
+seven add 446 KB together (1.89 MB to 2.34 MB, 143 KB under `gzip -9`);
+property sets about 156 KB, spatial 16 KB, classification 57 KB,
+materials 83 KB, systems 56 KB, cost 37 KB, and georeferencing 55 KB on
+top of property sets, which it needs for the project length unit.
+
+Not bound yet: writing property sets (the second half of
+[#123](https://github.com/openbimrs/ifc/issues/123)) and checked
+multi-edit transactions (`Transaction`, `Applied`, `Conflict`), deferred
+until a host asks for them. Use the Rust crates for those.
 
 ## API
 
@@ -166,6 +232,14 @@ Generated from the `#[wasm_bindgen]` exports in
 | `model.setHeader(header: IfcHeader): void` | yes | Replace the STEP file header; every field is required. |
 | `model.validate(maxFindings: number \| undefined): ValidationReport` | yes | Validate against the schema the header declares; findings are sorted by severity, rule, entity and slot. `maxFindings` caps the report (default 10,000) and sets `truncated` when reached. |
 | `model.unreachableProducts(): UnreachableProduct[]` | yes | Products no viewer will draw (outside the spatial structure, or with geometry only in non-model contexts), with a stable `reason`. |
+| `model.propertySets(id: bigint): PropertySet[]` | yes | The property sets, quantity sets and predefined property sets that apply to object `id`: its own first, then those inherited from its type object, an occurrence property overriding an inherited one. Values keep their declared IFC type (`typed IFCLENGTHMEASURE(...)`). |
+| `model.resolveUnit(measureType: string, unit: bigint \| undefined): ResolvedUnit` | yes | The effective unit of a `measureType` value (`"IFCAREAMEASURE"`): `unit` when given (a property's stated unit), otherwise the project default, resolved exactly to SI. |
+| `model.spatialTree(): SpatialTree` | yes | The spatial containment tree: every container with its parent, sub-containers and contained elements. |
+| `model.classifications(id: bigint): Classification[]` | yes | The classifications that apply to object `id`: its own, then its type object's. |
+| `model.material(id: bigint): MaterialAssignment \| undefined` | yes | The material association that applies to object `id` (its own, or its type object's), or `undefined` when there is none. |
+| `model.systems(): Systems` | yes | Every system with its members and served structures, and the memberships the reader could not honour. |
+| `model.cost(): Cost` | yes | Every cost schedule and cost item, with values in the tagged encoding. |
+| `model.georeferencing(): MapConversion[]` | yes | Every coordinate operation (map conversion) resolved with the project length unit; empty when the model has none. |
 | `model.size: number` |  | Number of entities. |
 | `model.schema: string \| undefined` |  | The first `FILE_SCHEMA` token, e.g. `"IFC4"`, or `undefined`. |
 | `model.diagnostics(): string[]` |  | Non-fatal problems found while reading. |
@@ -208,7 +282,12 @@ export type IfcErrorCode =
   | "unsupported-schema"
   | "io"
   | "unsupported-profile"
-  | "feature-disabled";
+  | "feature-disabled"
+  | "invalid-model"
+  | "missing-reference"
+  | "budget-exceeded"
+  | "unsupported"
+  | "wrong-entity-type";
 
 /** How `IfcModel.parseWithOptions` treats damaged input; omitted fields are strict. */
 export interface ParseOptions {
