@@ -10,6 +10,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
 
 use crate::error::js_error;
+use crate::records;
 use crate::value::{from_js, to_js};
 
 mod types;
@@ -54,11 +55,86 @@ impl IfcModel {
         Core::parse(bytes).map(IfcModel).map_err(js_error)
     }
 
+    /// Parse a STEP file under explicit read options. With `onMalformed:
+    /// "skip"` a damaged record is dropped and reported by `diagnostics()`
+    /// instead of failing the read; omitted options are strict.
+    #[wasm_bindgen(js_name = parseWithOptions)]
+    pub fn parse_with_options_js(
+        bytes: &[u8],
+        #[wasm_bindgen(unchecked_param_type = "ParseOptions")] options: &JsValue,
+    ) -> Result<IfcModel, JsValue> {
+        let options = records::parse_options(options).map_err(js_error)?;
+        Core::parse_with(bytes, options)
+            .map(IfcModel)
+            .map_err(js_error)
+    }
+
+    /// Parse an ifcXML document: the library's lossless layout without a
+    /// profile, or the buildingSMART XSD layout of `"IFC4"` or
+    /// `"IFC4X3_ADD2"`.
+    #[wasm_bindgen(js_name = parseIfcXml)]
+    pub fn parse_ifcxml_js(bytes: &[u8], profile: Option<String>) -> Result<IfcModel, JsValue> {
+        Core::parse_ifcxml(bytes, profile.as_deref())
+            .map(IfcModel)
+            .map_err(js_error)
+    }
+
     /// Serialize as STEP bytes.
     #[wasm_bindgen(js_name = write)]
     pub fn write_js(&self) -> Result<Uint8Array, JsValue> {
         Ok(Uint8Array::from(
             self.0.write().map_err(js_error)?.as_slice(),
+        ))
+    }
+
+    /// Serialize as ifcXML bytes, in the layout `parseIfcXml` reads.
+    #[wasm_bindgen(js_name = writeIfcXml)]
+    pub fn write_ifcxml_js(&self, profile: Option<String>) -> Result<Uint8Array, JsValue> {
+        Ok(Uint8Array::from(
+            self.0
+                .write_ifcxml(profile.as_deref())
+                .map_err(js_error)?
+                .as_slice(),
+        ))
+    }
+
+    /// The STEP file header: description, name, time stamp, author,
+    /// organization, preprocessor, originating system, authorization and
+    /// schema tokens.
+    #[wasm_bindgen(js_name = header, unchecked_return_type = "IfcHeader")]
+    pub fn header_js(&self) -> JsValue {
+        records::header_to_js(&self.0.header())
+    }
+
+    /// Replace the STEP file header; every field is required.
+    #[wasm_bindgen(js_name = setHeader)]
+    pub fn set_header_js(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "IfcHeader")] header: &JsValue,
+    ) -> Result<(), JsValue> {
+        let header = records::header_from_js(header).map_err(js_error)?;
+        self.0.set_header(header);
+        Ok(())
+    }
+
+    /// Validate against the schema the header declares; findings are
+    /// sorted by severity, rule, entity and slot. `maxFindings` caps the
+    /// report (default 10,000) and sets `truncated` when reached.
+    #[wasm_bindgen(js_name = validate, unchecked_return_type = "ValidationReport")]
+    pub fn validate_js(
+        &self,
+        #[wasm_bindgen(js_name = maxFindings)] max_findings: Option<u32>,
+    ) -> Result<JsValue, JsValue> {
+        let report = self.0.validate(max_findings.map(index)).map_err(js_error)?;
+        Ok(records::report_to_js(&report))
+    }
+
+    /// Products no viewer will draw (outside the spatial structure, or with
+    /// geometry only in non-model contexts), with a stable `reason`.
+    #[wasm_bindgen(js_name = unreachableProducts, unchecked_return_type = "UnreachableProduct[]")]
+    pub fn unreachable_products_js(&self) -> Result<Array, JsValue> {
+        Ok(records::unreachable_to_js(
+            &self.0.unreachable_products().map_err(js_error)?,
         ))
     }
 

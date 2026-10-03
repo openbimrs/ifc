@@ -8,11 +8,10 @@ compiled wheels.
 pip install openbim-ifc
 ```
 
-The binding exposes the record model over STEP: parse, read and edit
-attributes, and write. Domain views such as property sets or the spatial tree
-([#123](https://github.com/openbimrs/ifc/issues/123)), ifcXML, validation and
-checked transactions ([#244](https://github.com/openbimrs/ifc/issues/244)) are
-not bound yet; use the Rust crates for those.
+The binding exposes the record model over STEP -- parse, read and edit
+attributes, and write -- plus lenient reads, the file header, validation,
+ifcXML and the reachability lint (see
+[Beyond the record model](#beyond-the-record-model)).
 
 ## Read, edit and write
 
@@ -41,6 +40,55 @@ unbounded, so 64-bit IFC integers need no special type.
 Every failure raises `openbim_ifc.IfcError`, whose `code` is shared with the
 JavaScript and C bindings.
 
+## Beyond the record model
+
+<!-- SNIPPET:py-beyond-records -->
+
+```python
+import dataclasses
+
+from openbim_ifc import IfcModel, ParseOptions
+
+# A damaged export: skip what cannot be read, and say what was skipped.
+model = IfcModel.parse(data, options=ParseOptions.lenient())
+skipped = model.diagnostics()  # one message per recovery
+
+header = model.header  # Header(name=..., author=(...), schema=(...), ...)
+model.set_header(dataclasses.replace(header, author=("Reviewer",)))
+
+report = model.validate()  # ValidationReport(conformant=..., findings=(...))
+errors = [f for f in report.findings if f.severity == "error"]
+
+xml = model.write_ifcxml()  # lossless ifcXML; or xsd_profile="IFC4"
+from_xml = IfcModel.parse_ifcxml(xml)
+```
+
+<!-- /SNIPPET -->
+
+- **Lenient reads.** `IfcModel.parse` and `IfcModel.open` take
+  `options=ParseOptions(...)`: `on_malformed="skip"`, `check_references`,
+  `accept_real_without_point`, or the `ParseOptions.lenient()` preset.
+  Every recovery is listed by `diagnostics()`.
+- **Header.** `model.header` is a frozen `Header` with every
+  `FILE_DESCRIPTION`, `FILE_NAME` and `FILE_SCHEMA` field;
+  `set_header()` replaces it.
+- **Validation.** `validate(max_findings=None)` checks the model against
+  the schema its header declares and returns a frozen `ValidationReport`:
+  counts by severity, `conformant`, `truncated`, and `ValidationFinding`s
+  sorted by severity, rule, entity and slot.
+- **ifcXML.** `write_ifcxml()` and `IfcModel.parse_ifcxml(data)` use this
+  library's lossless layout; `xsd_profile="IFC4"` or `"IFC4X3_ADD2"`
+  selects the buildingSMART XSD layout, which refuses with `write` what it
+  cannot carry exactly.
+- **Reachability.** `unreachable_products()` lists products no viewer will
+  draw as `UnreachableProduct`s with a stable `reason`.
+
+Not bound yet: checked multi-edit transactions (`Transaction`, `Applied`,
+`Conflict`), deferred until a host asks for them, and the domain views
+such as property sets or the spatial tree
+([#123](https://github.com/openbimrs/ifc/issues/123)), which come next as
+opt-in features. Use the Rust crates for those.
+
 ## API
 
 Generated from the `openbim_ifc` package source.
@@ -50,9 +98,15 @@ Generated from the `openbim_ifc` package source.
 | Member | Description |
 | --- | --- |
 | `IfcModel()` | An empty model. |
-| `IfcModel.parse(data: bytes) -> IfcModel` | Parse a STEP (`.ifc`) file from its bytes. |
-| `IfcModel.open(path: Union[str, os.PathLike[str]], *, mapped: bool = False) -> IfcModel` | Read a STEP (`.ifc`) file from disk. |
+| `IfcModel.parse(data: bytes, *, options: Optional[ParseOptions] = None) -> IfcModel` | Parse a STEP (`.ifc`) file from its bytes. |
+| `IfcModel.parse_ifcxml(data: bytes, *, xsd_profile: Optional[str] = None) -> IfcModel` | Parse an ifcXML document. |
+| `IfcModel.open(path: Union[str, os.PathLike[str]], *, mapped: bool = False, options: Optional[ParseOptions] = None) -> IfcModel` | Read a STEP (`.ifc`) file from disk. |
 | `model.write() -> bytes` | Serialize as STEP bytes. |
+| `model.write_ifcxml(*, xsd_profile: Optional[str] = None) -> bytes` | Serialize as ifcXML bytes, in the layout `parse_ifcxml` reads. |
+| `model.header: Header` | The STEP file header: description, name, time stamp, author, ... |
+| `model.set_header(header: Header) -> None` | Replace the STEP file header, e.g. with `dataclasses.replace`. |
+| `model.validate(max_findings: Optional[int] = None) -> ValidationReport` | Validate against the schema the header declares. |
+| `model.unreachable_products() -> List[UnreachableProduct]` | Products no viewer will draw, with a stable `reason`, in id order. |
 | `len(model) -> int` | Number of entities. |
 | `model.schema: Optional[str]` | The first `FILE_SCHEMA` token, e.g. `"IFC4"`, or `None`. |
 | `model.diagnostics() -> List[str]` | Non-fatal problems found while reading. |

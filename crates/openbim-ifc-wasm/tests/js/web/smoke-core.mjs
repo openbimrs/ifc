@@ -54,5 +54,16 @@ export function smoke(IfcModel) {
   }
   check(code === "missing-entity", `error code ${code}`);
 
+  // The default capabilities (#244) are compiled into every packaged target.
+  check(model.header().name === "smoke.ifc", "header");
+  const report = model.validate();
+  check(typeof report.conformant === "boolean" && Array.isArray(report.findings), "validate");
+  const fromXml = IfcModel.parseIfcXml(model.writeIfcXml());
+  check(fromXml.size === model.size, "ifcXML round trip");
+  check(Array.isArray(model.unreachableProducts()), "unreachableProducts");
+  const damaged = new TextEncoder().encode(FILE.replace("ENDSEC;\nEND", "#9=IFCWALL('x',,;\nENDSEC;\nEND"));
+  const lenient = IfcModel.parseWithOptions(damaged, { onMalformed: "skip" });
+  check(lenient.size === 3 && lenient.diagnostics().length === 1, "lenient read");
+
   return { schema: model.schema, size: model.size, walls: walls.length };
 }

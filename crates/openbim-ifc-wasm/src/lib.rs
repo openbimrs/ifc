@@ -19,6 +19,8 @@ mod error;
 #[cfg(target_arch = "wasm32")]
 mod model;
 #[cfg(target_arch = "wasm32")]
+mod records;
+#[cfg(target_arch = "wasm32")]
 mod value;
 
 #[cfg(target_arch = "wasm32")]

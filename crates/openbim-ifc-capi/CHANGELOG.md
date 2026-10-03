@@ -8,6 +8,25 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#244)
+
+- Lenient reads: `openbim_ifc_v0_1_model_parse_with_options`,
+  `_model_open_with_options` and `_model_open_mapped_with_options`, taking
+  `OPENBIM_IFC_PARSE_*` flag bits (`OPENBIM_IFC_PARSE_LENIENT` preset);
+  an unknown bit is `INVALID_VALUE`.
+- `openbim_ifc_v0_1_model_header` and `_model_set_header`: the STEP header
+  as a value tape of its ten fields in STEP order.
+- `openbim_ifc_v0_1_model_validate`: an `OpenbimIfcValidationSummary` and a
+  value tape of findings.
+- `openbim_ifc_v0_1_model_parse_ifcxml` and `_model_write_ifcxml`: the
+  native ifcXML layout, or the `IFC4` / `IFC4X3_ADD2` XSD layout.
+- `openbim_ifc_v0_1_model_unreachable_products`: a value tape of products
+  no viewer will draw.
+- `OPENBIM_IFC_STATUS_UNSUPPORTED_PROFILE` (17) and
+  `OPENBIM_IFC_STATUS_FEATURE_DISABLED` (18).
+- The ABI version is 0.1.1: every export above is new, no `v0_1` symbol
+  changed. Additive, so a patch release.
+
 ### Added (packaging)
 
 - A CMake package, `openbim_ifc` (#41): `find_package(openbim_ifc 0.1 CONFIG)`

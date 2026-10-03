@@ -6,6 +6,7 @@ import os
 from typing import Iterable, List, Optional, Tuple, Union
 
 from ._native import NativeModel
+from .records import Header, ParseOptions, UnreachableProduct, ValidationReport
 from .values import Value, from_wire, to_wire
 
 
@@ -14,7 +15,8 @@ class IfcModel:
 
     Failures raise :class:`openbim_ifc.IfcError`, whose ``code`` is one of
     ``parse``, ``write``, ``missing-entity``, ``invalid-value``,
-    ``out-of-range``, ``unsupported-schema`` or ``io``.
+    ``out-of-range``, ``unsupported-schema``, ``io``,
+    ``unsupported-profile`` or ``feature-disabled``.
 
     A parsed model decodes each entity the first time it is read: parsing
     checks every record but builds nothing, so opening a large file is fast
@@ -28,14 +30,37 @@ class IfcModel:
         self._native = NativeModel()
 
     @classmethod
-    def parse(cls, data: bytes) -> "IfcModel":
-        """Parse a STEP (``.ifc``) file from its bytes."""
+    def parse(cls, data: bytes, *, options: Optional[ParseOptions] = None) -> "IfcModel":
+        """Parse a STEP (``.ifc``) file from its bytes.
+
+        ``options`` relaxes the strict read, e.g. ``ParseOptions.lenient()``
+        skips damaged records; each one skipped is listed by
+        :meth:`diagnostics`.
+        """
         model = cls.__new__(cls)
-        model._native = NativeModel.parse(bytes(data))
+        model._native = NativeModel.parse(bytes(data), **(options or ParseOptions())._keywords())
         return model
 
     @classmethod
-    def open(cls, path: Union[str, "os.PathLike[str]"], *, mapped: bool = False) -> "IfcModel":
+    def parse_ifcxml(cls, data: bytes, *, xsd_profile: Optional[str] = None) -> "IfcModel":
+        """Parse an ifcXML document.
+
+        Without ``xsd_profile`` it reads this library's lossless layout; with
+        ``"IFC4"`` or ``"IFC4X3_ADD2"`` it reads the buildingSMART XSD layout
+        of that release.
+        """
+        model = cls.__new__(cls)
+        model._native = NativeModel.parse_ifcxml(bytes(data), xsd_profile)
+        return model
+
+    @classmethod
+    def open(
+        cls,
+        path: Union[str, "os.PathLike[str]"],
+        *,
+        mapped: bool = False,
+        options: Optional[ParseOptions] = None,
+    ) -> "IfcModel":
         """Read a STEP (``.ifc``) file from disk.
 
         Cheaper than ``IfcModel.parse(Path(path).read_bytes())``: the file is
@@ -49,16 +74,50 @@ class IfcModel:
         reads fail or return other content. Use it only for files that stay
         put, such as a read-only export.
 
+        ``options`` is as for :meth:`parse`.
+
         Raises :class:`openbim_ifc.IfcError` with ``code == "io"`` when the
         file cannot be read.
         """
         model = cls.__new__(cls)
-        model._native = NativeModel.open(path, mapped)
+        model._native = NativeModel.open(path, mapped, **(options or ParseOptions())._keywords())
         return model
 
     def write(self) -> bytes:
         """Serialize as STEP bytes."""
         return self._native.write()
+
+    def write_ifcxml(self, *, xsd_profile: Optional[str] = None) -> bytes:
+        """Serialize as ifcXML bytes, in the layout ``parse_ifcxml`` reads.
+
+        An XSD-layout write needs the header to declare the profile's schema
+        and refuses with ``write`` what the layout cannot carry.
+        """
+        return self._native.write_ifcxml(xsd_profile)
+
+    @property
+    def header(self) -> Header:
+        """The STEP file header: description, name, time stamp, author, ..."""
+        return Header._from_wire(self._native.header())
+
+    def set_header(self, header: Header) -> None:
+        """Replace the STEP file header, e.g. with ``dataclasses.replace``."""
+        if not isinstance(header, Header):
+            raise TypeError(f"expected an openbim_ifc.Header, got {type(header).__name__}")
+        self._native.set_header(header._to_wire())
+
+    def validate(self, max_findings: Optional[int] = None) -> ValidationReport:
+        """Validate against the schema the header declares.
+
+        Findings are sorted by severity, rule, entity and slot.
+        ``max_findings`` caps the report (default 10,000) and sets
+        ``truncated`` when reached.
+        """
+        return ValidationReport._from_wire(self._native.validate(max_findings))
+
+    def unreachable_products(self) -> List[UnreachableProduct]:
+        """Products no viewer will draw, with a stable ``reason``, in id order."""
+        return [UnreachableProduct(**row) for row in self._native.unreachable_products()]
 
     def __len__(self) -> int:
         return len(self._native)

@@ -12,7 +12,7 @@ use crate::status::{boundary, OpenbimIfcStatus, OpenbimIfcVersion};
 use crate::tape::{OpenbimIfcValueNode, Reader, Tape};
 
 /// ABI version implemented by this crate; also the `v0_1` symbol prefix.
-const ABI: (u16, u16, u16) = (0, 1, 0);
+const ABI: (u16, u16, u16) = (0, 1, 1);
 
 /// Opaque model handle. Zero is never a valid handle.
 pub type OpenbimIfcModel = u64;
@@ -22,7 +22,7 @@ pub type OpenbimIfcModel = u64;
 /// A [`BindingError`] is stored as the model's last error and mapped to its
 /// status; a successful call clears the last error, so the error a host
 /// reads always belongs to the call that just failed.
-fn with_model(
+pub(crate) fn with_model(
     handle: OpenbimIfcModel,
     operation: impl FnOnce(&mut IfcModel) -> Result<OpenbimIfcStatus, BindingError>,
 ) -> OpenbimIfcStatus {
@@ -45,7 +45,7 @@ fn with_model(
 }
 
 /// Status from a buffer helper, which already speaks the C protocol.
-fn done(status: OpenbimIfcStatus) -> Result<OpenbimIfcStatus, BindingError> {
+pub(crate) fn done(status: OpenbimIfcStatus) -> Result<OpenbimIfcStatus, BindingError> {
     Ok(status)
 }
 
@@ -359,7 +359,7 @@ pub unsafe extern "C" fn openbim_ifc_v0_1_entity_type(
 /// # Safety
 /// Each buffer must be null (with its capacity 0) or valid for its capacity
 /// in writes; both `out_*_required` valid for one write.
-unsafe fn fill_tape(
+pub(crate) unsafe fn fill_tape(
     tape: &Tape,
     nodes: *mut OpenbimIfcValueNode,
     node_capacity: usize,

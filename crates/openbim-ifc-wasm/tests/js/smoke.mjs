@@ -164,3 +164,135 @@ test("documented example: read, edit and write a file", () => {
     value: "Wall (checked)",
   });
 });
+
+// --- #244: lenient reads, header, validation, ifcXML, reachability --------
+
+const DAMAGED = FILE.replace(
+  "#6=IFCRELDEFINESBYPROPERTIES",
+  "#4=IFCWALL('x',,;\n#6=IFCRELDEFINESBYPROPERTIES",
+);
+const damagedBytes = new TextEncoder().encode(DAMAGED);
+
+test("a lenient read skips a damaged record and reports it", () => {
+  throwsCode(() => IfcModel.parse(damagedBytes), "parse");
+  throwsCode(() => IfcModel.parseWithOptions(damagedBytes, {}), "parse");
+  const model = IfcModel.parseWithOptions(damagedBytes, { onMalformed: "skip" });
+  assert.deepEqual(model.ids(), [1n, 2n, 3n, 5n, 6n]);
+  assert.equal(model.diagnostics().length, 1);
+  throwsCode(
+    () => IfcModel.parseWithOptions(damagedBytes, { onMalformed: "drop" }),
+    "invalid-value",
+  );
+  throwsCode(
+    () => IfcModel.parseWithOptions(damagedBytes, { checkReferences: 1 }),
+    "invalid-value",
+  );
+});
+
+test("the header reads every field and a replacement is written", () => {
+  const model = parse();
+  const header = model.header();
+  assert.deepEqual(header, {
+    description: ["ViewDefinition [CoordinationView]"],
+    implementationLevel: "2;1",
+    name: "smoke.ifc",
+    timeStamp: "2026-09-23T00:00:00",
+    author: ["a"],
+    organization: ["o"],
+    preprocessorVersion: "p",
+    originatingSystem: "s",
+    authorization: "",
+    schema: ["IFC4"],
+  });
+  model.setHeader({ ...header, name: "edited.ifc", author: ["Zoë"] });
+  const reparsed = IfcModel.parse(model.write());
+  assert.equal(reparsed.header().name, "edited.ifc");
+  assert.deepEqual(reparsed.header().author, ["Zoë"]);
+  throwsCode(() => model.setHeader({ ...header, name: 3 }), "invalid-value");
+  throwsCode(() => model.setHeader({ name: "x" }), "invalid-value");
+  assert.equal(model.header().name, "edited.ifc", "a refused header changes nothing");
+});
+
+test("validation returns structured findings", () => {
+  const model = parse();
+  model.remove(1n); // #6 now references a missing #1
+  const report = model.validate();
+  assert.equal(report.conformant, false);
+  assert.equal(report.truncated, false);
+  const finding = report.findings.find(
+    (f) => f.severity === "error" && f.entity === 6n,
+  );
+  assert.ok(finding, JSON.stringify(report.findings.map((f) => f.path)));
+  assert.equal(typeof finding.rule, "string");
+  assert.equal(typeof finding.message, "string");
+  assert.equal(report.errors, report.findings.filter((f) => f.severity === "error").length);
+  const capped = model.validate(1);
+  assert.equal(capped.findings.length, 1);
+  assert.equal(capped.truncated, true);
+  throwsCode(
+    () => IfcModel.parse(new TextEncoder().encode(FILE.replace("'IFC4'", "'IFC9'"))).validate(),
+    "unsupported-schema",
+  );
+});
+
+test("ifcXML round-trips in both layouts", () => {
+  const model = parse();
+  const native = IfcModel.parseIfcXml(model.writeIfcXml());
+  assert.deepEqual(native.ids(), model.ids());
+  for (const id of model.ids()) {
+    assert.deepEqual(native.attributes(id), model.attributes(id), `#${id}`);
+  }
+  // The XSD layout refuses what it cannot carry: `*` in IfcProject.Description.
+  throwsCode(() => model.writeIfcXml("IFC4"), "write");
+  const person = IfcModel.parse(
+    new TextEncoder().encode(
+      FILE.replace(/DATA;[\s\S]*ENDSEC;\nEND/, "DATA;\n#1=IFCPERSON($,'Doe',$,$,$,$,$,$);\nENDSEC;\nEND"),
+    ),
+  );
+  const xsd = person.writeIfcXml("IFC4");
+  assert.match(new TextDecoder().decode(xsd), /IFC4\/ADD2_TC1\/XML/);
+  const back = IfcModel.parseIfcXml(xsd, "IFC4");
+  assert.deepEqual(back.attributes(1n), person.attributes(1n));
+  throwsCode(() => model.writeIfcXml("IFC2X3"), "unsupported-profile");
+  throwsCode(() => IfcModel.parseIfcXml(new TextEncoder().encode("<a><b></a>")), "parse");
+});
+
+test("unreachable products carry a stable reason", () => {
+  const file = FILE.replace(
+    "#5=IFCWALL('1YvctVUKr0kugbFTf53O9L',$,'Wall',$,$,$,$,$,.STANDARD.);",
+    "#10=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-05,$,$);\n" +
+      "#11=IFCSHAPEREPRESENTATION(#10,'Body','SweptSolid',());\n" +
+      "#12=IFCPRODUCTDEFINITIONSHAPE($,$,(#11));\n" +
+      "#5=IFCWALL('1YvctVUKr0kugbFTf53O9L',$,'Wall',$,$,$,#12,$,.STANDARD.);",
+  );
+  const model = IfcModel.parse(new TextEncoder().encode(file));
+  const [product, ...rest] = model.unreachableProducts();
+  assert.equal(rest.length, 0);
+  assert.equal(product.id, 5n);
+  assert.equal(product.reason, "not-contained-in-spatial-structure");
+  assert.deepEqual(product.foundViews, []);
+  assert.equal(typeof product.message, "string");
+});
+
+test("documented example: lenient read, header, validation and ifcXML", () => {
+  const bytes = damagedBytes;
+  // docs:snippet js-beyond-records
+  // A damaged export: skip what cannot be read, and say what was skipped.
+  const model = IfcModel.parseWithOptions(bytes, { onMalformed: "skip" });
+  const skipped = model.diagnostics(); // one message per dropped record
+
+  const header = model.header(); // { name, timeStamp, author, schema, ... }
+  model.setHeader({ ...header, author: ["Reviewer"] });
+
+  const report = model.validate(); // { conformant, errors, findings, ... }
+  const errors = report.findings.filter((f) => f.severity === "error");
+  // each finding: { rule, entity, attributeName, path, message, ... }
+
+  const xml = model.writeIfcXml(); // lossless ifcXML; or writeIfcXml("IFC4")
+  const fromXml = IfcModel.parseIfcXml(xml);
+  // docs:end
+  assert.equal(skipped.length, 1);
+  assert.deepEqual(fromXml.header().author, ["Reviewer"]);
+  assert.equal(errors.length, report.errors);
+  assert.deepEqual(fromXml.ids(), model.ids());
+});

@@ -14,6 +14,13 @@ written back through Python is unchanged.
 
 from ._native import IfcError
 from .model import IfcModel
+from .records import (
+    Header,
+    ParseOptions,
+    UnreachableProduct,
+    ValidationFinding,
+    ValidationReport,
+)
 from .values import (
     Binary,
     Bool,
@@ -33,6 +40,11 @@ from .values import (
 __all__ = [
     "IfcError",
     "IfcModel",
+    "ParseOptions",
+    "Header",
+    "ValidationReport",
+    "ValidationFinding",
+    "UnreachableProduct",
     "Value",
     "Null",
     "Derived",

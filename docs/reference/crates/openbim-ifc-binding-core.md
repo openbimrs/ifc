@@ -38,6 +38,9 @@ view of `openbim-ifc`; if a binding needs more, the facade grows first.
 | `ifc4x1` | yes | `openbim-ifc/ifc4x1` |
 | `ifc4x2` | yes | `openbim-ifc/ifc4x2` |
 | `ifc4x3` | yes | `openbim-ifc/ifc4x3` |
+| `ifcxml` | yes | `openbim-ifc/ifcxml` |
+| `unreachable` | yes | `openbim-ifc/spatial`, `openbim-ifc/geometry-select` |
+| `validate` | yes | `openbim-ifc/validate` |
 
 ## Depends on
 

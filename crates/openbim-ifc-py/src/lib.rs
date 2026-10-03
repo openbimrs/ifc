@@ -11,6 +11,7 @@
 mod convert;
 mod error;
 mod model;
+mod records;
 
 use pyo3::prelude::*;
 
