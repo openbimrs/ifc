@@ -14,6 +14,19 @@ a release here does not imply a release of any other crate in the family.
   a status. This library embeds the catalog and never returns it. The ABI
   version is 0.1.4; no `v0_1` symbol changed. Additive, a patch release.
 
+### Added (#325, pkg-config)
+
+- `cmake --install` and the Linux and macOS release archives lay out
+  `lib/pkgconfig/openbim_ifc.pc` (shared library) and
+  `openbim_ifc-static.pc` (static archive plus the system libraries Rust's
+  standard library needs, as the CMake static target lists them). Both
+  resolve their paths from `${pcfiledir}`, so an unpacked archive works
+  anywhere, and carry the crate version. Windows (MSVC) stays CMake-only.
+- `scripts/check-cmake.py` builds and runs the C smoke test with
+  `pkg-config --cflags --libs` for both modules, against the installed
+  tree and the unpacked archive, on Linux and macOS. Additive, a patch
+  release.
+
 ## [0.1.1] - 2026-10-03
 
 ### Added (#123, property sets: write side)

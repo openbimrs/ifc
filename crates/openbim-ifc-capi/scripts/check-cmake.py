@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Build the openbim_ifc CMake package and prove a consumer can use it (#41).
+"""Build the openbim_ifc CMake package and prove a consumer can use it (#41),
+through CMake and through pkg-config (#325).
 
 Runs on Linux, macOS and Windows (CI) and in the gate:
 
@@ -16,6 +17,12 @@ Runs on Linux, macOS and Windows (CI) and in the gate:
    to start once its library is moved, and start again when the platform's
    library search path names the new place. Each proves it links what it
    claims to, and the second that the library is relocatable.
+4. pkg-config, on Linux and macOS, against the installed tree and again
+   against the unpacked archive: tests/c/smoke.c built as C11 and C++17 with
+   `pkg-config --cflags --libs openbim_ifc` and with `openbim_ifc-static`,
+   and run. With the tree moved away, the shared builds must fail to start
+   and the static ones must still run. Windows/MSVC is CMake-only and skips
+   this step.
 
 Usage:
     check-cmake.py [--build-type Release] [--archive-dir DIR]
@@ -27,6 +34,7 @@ import argparse
 import os
 import platform
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -38,6 +46,7 @@ from pathlib import Path
 CRATE = Path(__file__).resolve().parents[1]
 ROOT = CRATE.parents[1]
 CONSUMER = CRATE / "tests" / "cmake-consumer"
+SMOKE = CRATE / "tests" / "c" / "smoke.c"
 WINDOWS = platform.system() == "Windows"
 MACOS = platform.system() == "Darwin"
 
@@ -59,6 +68,9 @@ PACKAGE_FILES = [
     *SHARED_FILES,
     *STATIC_FILES,
 ]
+PKGCONFIG_MODULES = {"shared": "openbim_ifc", "static": "openbim_ifc-static"}
+if not WINDOWS:
+    PACKAGE_FILES += [f"lib/pkgconfig/{m}.pc" for m in PKGCONFIG_MODULES.values()]
 
 
 def run(*args: object, cwd: Path | None = None, check: bool = True) -> int:
@@ -134,6 +146,7 @@ def package(work: Path, build_type: str, archive_dir: Path | None) -> Path:
     missing = [f for f in PACKAGE_FILES if not (prefix / f).is_file()]
     if missing:
         raise SystemExit(f"install tree lacks {missing}")
+    pkgconfig_consumers(work / "pkgconfig-installed", prefix)
 
     stem = f"openbim-ifc-capi-v{crate_version()}-{host_triple()}"
     out = archive_dir or work / "dist"
@@ -160,6 +173,9 @@ def package(work: Path, build_type: str, archive_dir: Path | None) -> Path:
     else:
         with tarfile.open(archive) as tf:
             tf.extractall(unpacked, filter="data")
+    for pc in (unpacked / stem / "lib" / "pkgconfig").glob("*.pc"):
+        if str(prefix) in pc.read_text(encoding="utf-8"):
+            raise SystemExit(f"{pc.name} names the install prefix {prefix}")
     # The install prefix is gone before any consumer runs: nothing may
     # point back into it.
     shutil.rmtree(prefix)
@@ -217,6 +233,72 @@ def static_consumer(work: Path, build_type: str, prefix: Path) -> None:
     ctest(build, build_type)
 
 
+def pkg_config(prefix: Path, *args: str) -> str:
+    """pkg-config that sees only this prefix's .pc files."""
+    env = dict(os.environ)
+    env["PKG_CONFIG_LIBDIR"] = env["PKG_CONFIG_PATH"] = str(prefix / "lib" / "pkgconfig")
+    env.pop("PKG_CONFIG_SYSROOT_DIR", None)
+    print("+ pkg-config " + " ".join(args), flush=True)
+    return subprocess.run(["pkg-config", *args], env=env, capture_output=True,
+                          text=True, check=True).stdout.strip()
+
+
+def pkgconfig_consumers(build: Path, prefix: Path) -> None:
+    """Build and run the smoke test with nothing but pkg-config's flags (#325)."""
+    if WINDOWS:
+        print("pkg-config: skipped on Windows; the MSVC package is CMake-only")
+        return
+    if not shutil.which("pkg-config"):
+        raise SystemExit("pkg-config not found: install pkg-config or pkgconf "
+                         "(the pkg-config files are checked on Linux and macOS)")
+    build.mkdir(parents=True)
+    for module in PKGCONFIG_MODULES.values():
+        version = pkg_config(prefix, "--modversion", module)
+        if version != crate_version():
+            raise SystemExit(f"{module}.pc has version {version}, the crate {crate_version()}")
+        # ${pcfiledir}: the prefix is wherever the tree is now.
+        found = Path(pkg_config(prefix, "--variable=prefix", module)).resolve()
+        if found != prefix.resolve():
+            raise SystemExit(f"{module}.pc resolves its prefix to {found}, not {prefix}")
+
+    built: dict[str, list[Path]] = {"shared": [], "static": []}
+    for variant, module in PKGCONFIG_MODULES.items():
+        flags = shlex.split(pkg_config(prefix, "--cflags", module))
+        libs = shlex.split(pkg_config(prefix, "--libs", module))
+        if variant == "shared":
+            # pkg-config sets no runtime path, as for any library; the
+            # consumer names one (on macOS the install name is @rpath/...).
+            libs.append("-Wl,-rpath," + pkg_config(prefix, "--variable=libdir", module))
+        if MACOS:
+            libs.append("-Wl,-undefined,error")
+        warn = ["-Wall", "-Wextra", "-Werror"]
+        c_out = build / f"smoke_c_{variant}"
+        run(os.environ.get("CC", "cc"), "-std=c11", *warn, *flags, SMOKE, "-o", c_out, *libs)
+        cxx_out = build / f"smoke_cxx_{variant}"
+        run(os.environ.get("CXX", "c++"), "-std=c++17", *warn, *flags,
+            "-x", "c++", SMOKE, "-x", "none", "-o", cxx_out, *libs)
+        for smoke in (c_out, cxx_out):
+            run(smoke)
+            built[variant].append(smoke)
+
+    # With the tree gone, a shared build cannot start and a static one,
+    # which carries the library, still runs: each linked what it claims to.
+    moved = prefix.with_name(prefix.name + "-moved")
+    prefix.rename(moved)
+    try:
+        for smoke in built["shared"]:
+            if run(smoke, check=False) == 0:
+                raise SystemExit(f"{smoke.name} ran without its shared library: "
+                                 "openbim_ifc.pc does not link it dynamically")
+        for smoke in built["static"]:
+            if run(smoke, check=False) != 0:
+                raise SystemExit(f"{smoke.name} needs the installed tree: "
+                                 "openbim_ifc-static.pc does not link statically")
+    finally:
+        moved.rename(prefix)
+    print(f"pkg-config consumers against {prefix}, shared and static: ok")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -230,9 +312,10 @@ def main() -> int:
         work = Path(tmp)
         source_tree(work, args.build_type)
         prefix = package(work, args.build_type, archive_dir)
+        pkgconfig_consumers(work / "pkgconfig-unpacked", prefix)
         shared_consumer(work, args.build_type, prefix)
         static_consumer(work, args.build_type, prefix)
-    print("openbim_ifc CMake package: ok")
+    print("openbim_ifc CMake package and pkg-config files: ok")
     return 0
 
 

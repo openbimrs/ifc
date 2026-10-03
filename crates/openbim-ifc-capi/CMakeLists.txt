@@ -10,8 +10,10 @@
 # and `openbim_ifc::openbim_ifc_static` name one variant explicitly.
 #
 # Building this directory on its own and running `cmake --install` produces
-# the package: the header, both libraries and the config files under
-# lib/cmake/openbim_ifc. Release archives are exactly that install tree.
+# the package: the header, both libraries, the config files under
+# lib/cmake/openbim_ifc and, outside Windows, the pkg-config files
+# openbim_ifc.pc and openbim_ifc-static.pc under lib/pkgconfig (#325).
+# Release archives are exactly that install tree.
 cmake_minimum_required(VERSION 3.21)
 
 # One version, the crate's: the package can never disagree with the library.
@@ -192,6 +194,26 @@ if(OPENBIM_IFC_ENABLE_INSTALL)
     "${CMAKE_CURRENT_BINARY_DIR}/openbim_ifc-config.cmake" @ONLY)
   configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/openbim_ifc-config-version.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/openbim_ifc-config-version.cmake" @ONLY)
+  if(NOT WIN32)
+    # pkg-config (#325): one file per variant, as the CMake package has one
+    # target per variant. Static linking cannot hang off `Libs.private`:
+    # lib/ holds both libraries under one name, and `-lopenbim_ifc_capi`
+    # links the shared one even under `pkg-config --static`. Same system
+    # libraries as openbim_ifc::openbim_ifc_static, spelled as linker flags.
+    set(OPENBIM_IFC_PC_STATIC_LIBS)
+    foreach(_lib IN LISTS _openbim_ifc_static_deps)
+      if(_lib MATCHES "^-")
+        list(APPEND OPENBIM_IFC_PC_STATIC_LIBS "${_lib}")
+      else()
+        list(APPEND OPENBIM_IFC_PC_STATIC_LIBS "-l${_lib}")
+      endif()
+    endforeach()
+    list(JOIN OPENBIM_IFC_PC_STATIC_LIBS " " OPENBIM_IFC_PC_STATIC_LIBS)
+    configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/openbim_ifc.pc.in"
+      "${CMAKE_CURRENT_BINARY_DIR}/openbim_ifc.pc" @ONLY)
+    configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/openbim_ifc-static.pc.in"
+      "${CMAKE_CURRENT_BINARY_DIR}/openbim_ifc-static.pc" @ONLY)
+  endif()
 
   set(_profile_dir "${_openbim_ifc_artifacts}/$<IF:$<CONFIG:Debug>,debug,release>")
   install(FILES "${_openbim_ifc_header_dir}/openbim_ifc.h" DESTINATION include)
@@ -206,6 +228,13 @@ if(OPENBIM_IFC_ENABLE_INSTALL)
     "${CMAKE_CURRENT_BINARY_DIR}/openbim_ifc-config.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/openbim_ifc-config-version.cmake"
     DESTINATION lib/cmake/openbim_ifc)
+  if(NOT WIN32)
+    # Windows/MSVC stays CMake-only: no pkg-config there.
+    install(FILES
+      "${CMAKE_CURRENT_BINARY_DIR}/openbim_ifc.pc"
+      "${CMAKE_CURRENT_BINARY_DIR}/openbim_ifc-static.pc"
+      DESTINATION lib/pkgconfig)
+  endif()
   install(FILES
     "${_openbim_ifc_crate_dir}/../../LICENSE"
     "${_openbim_ifc_crate_dir}/../../NOTICE"
