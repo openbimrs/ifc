@@ -4,8 +4,9 @@
 //! the result. No IFC logic lives here.
 
 use js_sys::{Array, BigInt, Uint8Array};
+use openbim_ifc_binding_core::record::to_records;
 use openbim_ifc_binding_core::value::Tagged;
-use openbim_ifc_binding_core::{BindingError, IfcModel as Core};
+use openbim_ifc_binding_core::{BindingError, IfcModel as Core, ToRecord};
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
 
@@ -13,6 +14,7 @@ use crate::error::js_error;
 use crate::records;
 use crate::value::{from_js, to_js};
 
+mod domain_types;
 mod types;
 
 /// An IFC model: entities keyed by their `#id`, in file order.
@@ -136,6 +138,79 @@ impl IfcModel {
         Ok(records::unreachable_to_js(
             &self.0.unreachable_products().map_err(js_error)?,
         ))
+    }
+
+    /// The property sets, quantity sets and predefined property sets that
+    /// apply to object `id`: its own first, then those inherited from its
+    /// type object, an occurrence property overriding an inherited one.
+    /// Values keep their declared IFC type (`typed IFCLENGTHMEASURE(...)`).
+    #[wasm_bindgen(js_name = propertySets, unchecked_return_type = "PropertySet[]")]
+    pub fn property_sets_js(&self, id: u64) -> Result<Array, JsValue> {
+        let sets = self.0.property_sets(id).map_err(js_error)?;
+        Ok(records::records_to_js(&to_records(&sets)))
+    }
+
+    /// The effective unit of a `measureType` value (`"IFCAREAMEASURE"`):
+    /// `unit` when given (a property's stated unit), otherwise the project
+    /// default, resolved exactly to SI.
+    #[wasm_bindgen(js_name = resolveUnit, unchecked_return_type = "ResolvedUnit")]
+    pub fn resolve_unit_js(
+        &self,
+        #[wasm_bindgen(js_name = measureType)] measure_type: &str,
+        #[wasm_bindgen(unchecked_param_type = "bigint | undefined")] unit: Option<u64>,
+    ) -> Result<JsValue, JsValue> {
+        let unit = self.0.resolve_unit(measure_type, unit).map_err(js_error)?;
+        Ok(records::record_to_js(&unit.to_record()))
+    }
+
+    /// The spatial containment tree: every container with its parent,
+    /// sub-containers and contained elements.
+    #[wasm_bindgen(js_name = spatialTree, unchecked_return_type = "SpatialTree")]
+    pub fn spatial_tree_js(&self) -> Result<JsValue, JsValue> {
+        let tree = self.0.spatial_tree().map_err(js_error)?;
+        Ok(records::record_to_js(&tree.to_record()))
+    }
+
+    /// The classifications that apply to object `id`: its own, then its
+    /// type object's.
+    #[wasm_bindgen(js_name = classifications, unchecked_return_type = "Classification[]")]
+    pub fn classifications_js(&self, id: u64) -> Result<Array, JsValue> {
+        let classes = self.0.classifications(id).map_err(js_error)?;
+        Ok(records::records_to_js(&to_records(&classes)))
+    }
+
+    /// The material association that applies to object `id` (its own, or
+    /// its type object's), or `undefined` when there is none.
+    #[wasm_bindgen(js_name = material, unchecked_return_type = "MaterialAssignment | undefined")]
+    pub fn material_js(&self, id: u64) -> Result<JsValue, JsValue> {
+        let material = self.0.material(id).map_err(js_error)?;
+        Ok(material.map_or(JsValue::UNDEFINED, |material| {
+            records::record_to_js(&material.to_record())
+        }))
+    }
+
+    /// Every system with its members and served structures, and the
+    /// memberships the reader could not honour.
+    #[wasm_bindgen(js_name = systems, unchecked_return_type = "Systems")]
+    pub fn systems_js(&self) -> Result<JsValue, JsValue> {
+        let systems = self.0.systems().map_err(js_error)?;
+        Ok(records::record_to_js(&systems.to_record()))
+    }
+
+    /// Every cost schedule and cost item, with values in the tagged
+    /// encoding.
+    #[wasm_bindgen(js_name = cost, unchecked_return_type = "Cost")]
+    pub fn cost_js(&self) -> Result<JsValue, JsValue> {
+        let cost = self.0.cost().map_err(js_error)?;
+        Ok(records::record_to_js(&cost.to_record()))
+    }
+
+    /// Every coordinate operation (map conversion) resolved with the
+    /// project length unit; empty when the model has none.
+    #[wasm_bindgen(js_name = georeferencing, unchecked_return_type = "MapConversion[]")]
+    pub fn georeferencing_js(&self) -> Result<Array, JsValue> {
+        let maps = self.0.georeferencing().map_err(js_error)?;
+        Ok(records::records_to_js(&to_records(&maps)))
     }
 
     /// Number of entities.

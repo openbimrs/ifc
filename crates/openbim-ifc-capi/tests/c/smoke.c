@@ -177,6 +177,110 @@ static int capabilities(void) {
   return 0;
 }
 
+/* A wall whose type holds a property set and a layer set (#123). */
+static const char DOMAIN_TEXT[] =
+    "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n"
+    "FILE_NAME('','',(''),(''),'','','');\nFILE_SCHEMA(('IFC4'));\nENDSEC;\nDATA;\n"
+    "#2=IFCWALLTYPE('1YvctVUKr0kugbFTf53O9L',$,'WT',$,$,(#30),$,$,$,.SOLIDWALL.);\n"
+    "#3=IFCWALL('2YvctVUKr0kugbFTf53O9L',$,'Wall',$,$,$,$,$,.STANDARD.);\n"
+    "#4=IFCRELDEFINESBYTYPE('3YvctVUKr0kugbFTf53O9L',$,$,$,(#3),#2);\n"
+    "#20=IFCMATERIAL('Concrete',$,$);\n"
+    "#22=IFCMATERIALLAYER(#20,0.2,.U.,'Core',$,$,$);\n"
+    "#24=IFCMATERIALLAYERSET((#22),'WT-200',$);\n"
+    "#26=IFCRELASSOCIATESMATERIAL('2ZvctVUKr0kugbFTf53O9L',$,$,$,(#2),#24);\n"
+    "#30=IFCPROPERTYSET('3ZvctVUKr0kugbFTf53O9L',$,'Pset_WallCommon',$,(#31));\n"
+    "#31=IFCPROPERTYSINGLEVALUE('IsExternal',$,IFCBOOLEAN(.T.),$);\n"
+    "ENDSEC;\nEND-ISO-10303-21;\n";
+
+/* The domain example published on the docs site's C page. */
+static int documented_domains(const uint8_t *data, size_t len) {
+  // docs:snippet c-domain-views
+  OpenbimIfcModel model = 0;
+  if (openbim_ifc_v0_1_model_parse(data, len, &model, NULL, 0) != OPENBIM_IFC_STATUS_OK) {
+    return 1;
+  }
+
+  /* The property sets of wall #3, inherited ones included: a LIST of
+   * PropertySet records, each a LIST of its fields (see the table below). */
+  size_t sets = 0, nodes_needed = 0, strings_needed = 0;
+  openbim_ifc_v0_1_model_property_sets(model, 3, &sets, NULL, 0, &nodes_needed, NULL, 0,
+                                       &strings_needed);
+  OpenbimIfcValueNode *nodes =
+      (OpenbimIfcValueNode *)malloc(nodes_needed * sizeof(OpenbimIfcValueNode));
+  uint8_t *strings = (uint8_t *)malloc(strings_needed);
+  openbim_ifc_v0_1_model_property_sets(model, 3, &sets, nodes, nodes_needed, &nodes_needed,
+                                       strings, strings_needed, &strings_needed);
+  /* nodes[4] is the first set's name, nodes[6] its source ("type"). */
+  printf("%zu set(s); first: %.*s\n", sets, (int)nodes[4].str_len,
+         (const char *)strings + nodes[4].str_offset);
+  free(nodes);
+  free(strings);
+  openbim_ifc_v0_1_model_destroy(model);
+  // docs:end
+  return sets == 1 ? 0 : 1;
+}
+
+/* The domain views (#123): records cross as tapes with the shared codes. */
+static int domains(void) {
+  OpenbimIfcModel model = 0;
+  OK(openbim_ifc_v0_1_model_parse((const uint8_t *)DOMAIN_TEXT, strlen(DOMAIN_TEXT), &model,
+                                  NULL, 0));
+  OpenbimIfcValueNode nodes[256];
+  uint8_t strings[4096];
+  size_t count = 0, node_count = 0, string_len = 0;
+  OK(openbim_ifc_v0_1_model_property_sets(model, 3, &count, nodes, 256, &node_count,
+                                          strings, sizeof strings, &string_len));
+  CHECK(count == 1 && nodes[0].kind == OPENBIM_IFC_KIND_LIST, "one inherited set");
+  CHECK(nodes[1].kind == OPENBIM_IFC_KIND_LIST && nodes[1].child_count == 7,
+        "a PropertySet record has seven fields");
+  CHECK(nodes[2].kind == OPENBIM_IFC_KIND_REF && nodes[2].int_value == 30, "set id");
+  CHECK(nodes[6].str_len == 4 && memcmp(strings + nodes[6].str_offset, "type", 4) == 0,
+        "inherited from the type");
+  CHECK(nodes[7].kind == OPENBIM_IFC_KIND_REF && nodes[7].int_value == 2, "type object");
+  /* nodes[9] is the Property record; its value (field 6) is IFCBOOLEAN(.T.). */
+  CHECK(nodes[9].child_count == 14, "a Property record has fourteen fields");
+  CHECK(nodes[16].kind == OPENBIM_IFC_KIND_TYPED && nodes[17].kind == OPENBIM_IFC_KIND_BOOL &&
+            nodes[17].int_value == 1,
+        "the value keeps its type");
+
+  /* The material: one record; a layer set inherited from the type. */
+  OK(openbim_ifc_v0_1_model_material(model, 3, nodes, 256, &node_count, strings,
+                                     sizeof strings, &string_len));
+  CHECK(nodes[0].kind == OPENBIM_IFC_KIND_LIST && nodes[0].child_count == 14,
+        "a MaterialAssignment record");
+  OK(openbim_ifc_v0_1_model_material(model, 20, nodes, 256, &node_count, strings,
+                                     sizeof strings, &string_len));
+  CHECK(nodes[0].kind == OPENBIM_IFC_KIND_NULL, "no association is a NULL tape");
+
+  OK(openbim_ifc_v0_1_model_spatial_tree(model, nodes, 256, &node_count, strings,
+                                         sizeof strings, &string_len));
+  CHECK(nodes[0].kind == OPENBIM_IFC_KIND_LIST && nodes[0].child_count == 6,
+        "a SpatialTree record");
+  OK(openbim_ifc_v0_1_model_destroy(model));
+
+  /* The same refusal as every host: IFC2X3 has no georeferencing. */
+  static const char IFC2X3[] =
+      "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n"
+      "FILE_NAME('','',(''),(''),'','','');\nFILE_SCHEMA(('IFC2X3'));\nENDSEC;\nDATA;\n"
+      "#1=IFCWALL('0abc',$,'Wall',$,$,$,$,$);\nENDSEC;\nEND-ISO-10303-21;\n";
+  OK(openbim_ifc_v0_1_model_parse((const uint8_t *)IFC2X3, strlen(IFC2X3), &model, NULL, 0));
+  CHECK(openbim_ifc_v0_1_model_georeferencing(model, &count, nodes, 256, &node_count,
+                                              strings, sizeof strings, &string_len) ==
+            OPENBIM_IFC_STATUS_UNSUPPORTED_SCHEMA,
+        "georeferencing refuses IFC2X3");
+  char code[32];
+  size_t need = 0;
+  OK(openbim_ifc_v0_1_last_error_code(model, (uint8_t *)code, sizeof code, &need));
+  CHECK(strcmp(code, "unsupported-schema") == 0, "the shared code");
+  CHECK(openbim_ifc_v0_1_model_property_sets(model, 99, &count, nodes, 256, &node_count,
+                                             strings, sizeof strings, &string_len) ==
+            OPENBIM_IFC_STATUS_MISSING_ENTITY,
+        "a missing object");
+  OK(openbim_ifc_v0_1_model_destroy(model));
+
+  return documented_domains((const uint8_t *)DOMAIN_TEXT, strlen(DOMAIN_TEXT));
+}
+
 int main(void) {
   OpenbimIfcVersion version;
   OK(openbim_ifc_v0_1_version(&version));
@@ -322,6 +426,7 @@ int main(void) {
 
   CHECK(documented_example() == 0, "the documented example runs");
   CHECK(capabilities() == 0, "the #244 surface works from C");
+  CHECK(domains() == 0, "the domain views work from C");
 
   size_t live = 1;
   OK(openbim_ifc_v0_1_live_models(&live));

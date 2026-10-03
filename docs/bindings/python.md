@@ -10,7 +10,7 @@ pip install openbim-ifc
 
 The binding exposes the record model over STEP -- parse, read and edit
 attributes, and write -- plus lenient reads, the file header, validation,
-ifcXML and the reachability lint (see
+ifcXML, the reachability lint and read-only domain views (see
 [Beyond the record model](#beyond-the-record-model)).
 
 ## Read, edit and write
@@ -83,11 +83,64 @@ from_xml = IfcModel.parse_ifcxml(xml)
 - **Reachability.** `unreachable_products()` lists products no viewer will
   draw as `UnreachableProduct`s with a stable `reason`.
 
-Not bound yet: checked multi-edit transactions (`Transaction`, `Applied`,
-`Conflict`), deferred until a host asks for them, and the domain views
-such as property sets or the spatial tree
-([#123](https://github.com/openbimrs/ifc/issues/123)), which come next as
-opt-in features. Use the Rust crates for those.
+### Domain views
+
+<!-- SNIPPET:py-domain-views -->
+
+```python
+from openbim_ifc import IfcModel
+
+model = IfcModel.parse(data)
+(wall,) = model.ids_of_type("IfcWall")
+
+# Property sets: the wall's own first, then its type's; values typed.
+for pset in model.property_sets(wall):
+    for prop in pset.properties:
+        print(pset.name, prop.name, prop.value)
+
+classes = model.classifications(wall)  # (Classification(identification=...), ...)
+material = model.material(wall)  # MaterialAssignment(kind="layer-set", layers=(...))
+tree = model.spatial_tree()  # SpatialTree(nodes=(SpatialNode(kind=...), ...))
+```
+
+<!-- /SNIPPET -->
+
+The domain views of the Rust facade cross as frozen dataclasses, keyed by
+entity id with the `global_id` where the entity has one; lists are tuples
+and IFC values the classes of `openbim_ifc.values`. A view reads the
+model as it is at the call.
+
+- **Property sets.** `property_sets(id)` returns `PropertySet`s: the
+  object's own, then those its type object holds, an occurrence property
+  overriding an inherited one. Each `Property` keeps its declared type
+  (`Typed("IFCLENGTHMEASURE", Real(0.2))`), its `kind` and the `unit` it
+  states; `resolve_unit(measure_type, unit=None)` resolves that unit, or
+  the project default, exactly to SI. Read against IFC2X3, IFC4 or IFC4X3.
+- **Spatial tree.** `spatial_tree()` returns a `SpatialTree` of
+  `SpatialNode`s with parents, children, contained and referenced elements.
+- **Classification.** `classifications(id)` returns the object's own and
+  its type's `Classification`s, each with its code, name, location, the
+  references above it and the `ClassificationSystem` at the top.
+- **Material.** `material(id)` returns the one `MaterialAssignment` that
+  applies, its own or its type's, with layers, profiles or constituents and
+  a set usage's placement, or `None`.
+- **Systems.** `systems()` returns every `System` with members and served
+  structures, and the `SystemAnomaly`s it could not honour.
+- **Cost.** `cost()` returns the `CostSchedule`s and `CostItem`s with
+  nesting, `CostValue` trees (`applied_value` typed) and unit bases.
+- **Georeferencing.** `georeferencing()` returns a `MapConversion` per
+  coordinate operation (IFC4, IFC4X3), resolved with the project length
+  unit.
+
+Refusals raise `IfcError` with the codes every host shares:
+`unsupported-schema` for a release a view does not read, `invalid-model`,
+`missing-reference`, `budget-exceeded`, `unsupported` and
+`wrong-entity-type`. The wheel carries every domain.
+
+Not bound yet: writing property sets (the second half of
+[#123](https://github.com/openbimrs/ifc/issues/123)) and checked
+multi-edit transactions (`Transaction`, `Applied`, `Conflict`), deferred
+until a host asks for them. Use the Rust crates for those.
 
 ## API
 
@@ -107,6 +160,14 @@ Generated from the `openbim_ifc` package source.
 | `model.set_header(header: Header) -> None` | Replace the STEP file header, e.g. with `dataclasses.replace`. |
 | `model.validate(max_findings: Optional[int] = None) -> ValidationReport` | Validate against the schema the header declares. |
 | `model.unreachable_products() -> List[UnreachableProduct]` | Products no viewer will draw, with a stable `reason`, in id order. |
+| `model.property_sets(id: int) -> List[PropertySet]` | The property sets, quantity sets and predefined property sets of object `id`: its own first, then those its type object holds, an occurrence property overriding an inherited one of the same name. |
+| `model.resolve_unit(measure_type: str, unit: Optional[int] = None) -> ResolvedUnit` | The effective unit of a `measure_type` value (`"IFCAREAMEASURE"`): `unit` when given (a property's stated unit), otherwise the project default, resolved exactly to SI. |
+| `model.spatial_tree() -> SpatialTree` | The spatial containment tree: every container with its parent, sub-containers and contained elements. |
+| `model.classifications(id: int) -> List[Classification]` | The classifications of object `id`: its own, then its type's. |
+| `model.material(id: int) -> Optional[MaterialAssignment]` | The material association of object `id`, its own or its type's, or `None`. |
+| `model.systems() -> Systems` | Every system with its members and served structures, and the memberships the reader could not honour. |
+| `model.cost() -> Cost` | Every cost schedule and cost item; values as authored, typed. |
+| `model.georeferencing() -> List[MapConversion]` | Every coordinate operation resolved with the project length unit; empty when the model has none. |
 | `len(model) -> int` | Number of entities. |
 | `model.schema: Optional[str]` | The first `FILE_SCHEMA` token, e.g. `"IFC4"`, or `None`. |
 | `model.diagnostics() -> List[str]` | Non-fatal problems found while reading. |

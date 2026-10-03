@@ -65,5 +65,9 @@ export function smoke(IfcModel) {
   const lenient = IfcModel.parseWithOptions(damaged, { onMalformed: "skip" });
   check(lenient.size === 3 && lenient.diagnostics().length === 1, "lenient read");
 
+  // The domain views (#123) are compiled into every packaged target.
+  check(model.propertySets(5n).length === 0, "propertySets");
+  check(model.spatialTree().nodes.length === 1, "spatialTree");
+
   return { schema: model.schema, size: model.size, walls: walls.length };
 }

@@ -33,12 +33,19 @@ view of `openbim-ifc`; if a binding needs more, the facade grows first.
 
 | Feature | Default | Enables |
 | --- | --- | --- |
+| `classification` | yes | `openbim-ifc/classification` |
+| `cost` | yes | `openbim-ifc/cost` |
+| `georef` | yes | `properties`, `openbim-ifc/georef` |
 | `ifc2x3` | yes | `openbim-ifc/ifc2x3` |
 | `ifc4` | yes | `openbim-ifc/ifc4` |
 | `ifc4x1` | yes | `openbim-ifc/ifc4x1` |
 | `ifc4x2` | yes | `openbim-ifc/ifc4x2` |
 | `ifc4x3` | yes | `openbim-ifc/ifc4x3` |
 | `ifcxml` | yes | `openbim-ifc/ifcxml` |
+| `material` | yes | `openbim-ifc/material` |
+| `properties` | yes | `openbim-ifc/properties` |
+| `spatial` | yes | `openbim-ifc/spatial` |
+| `systems` | yes | `openbim-ifc/systems` |
 | `unreachable` | yes | `openbim-ifc/spatial`, `openbim-ifc/geometry-select` |
 | `validate` | yes | `openbim-ifc/validate` |
 

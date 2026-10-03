@@ -18,10 +18,18 @@
 //! operation whose feature is off still exists, so every host keeps one
 //! surface, and refuses with `feature-disabled`.
 
+pub mod classification;
+pub mod cost;
 mod error;
+pub mod georef;
 pub mod header;
+pub mod material;
 mod model;
 mod options;
+pub mod properties;
+pub mod record;
+pub mod spatial;
+pub mod systems;
 pub mod unreachable;
 pub mod validation;
 pub mod value;
@@ -30,5 +38,6 @@ mod xml;
 pub use error::BindingError;
 pub use model::IfcModel;
 pub use options::{OnMalformed, ParseOptions};
+pub use record::{Field, Record, ToRecord};
 pub use unreachable::UnreachableProduct;
 pub use validation::{ValidationFinding, ValidationReport, ValidationSummary};

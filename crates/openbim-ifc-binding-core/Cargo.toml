@@ -32,7 +32,11 @@ openbim-ifc = { workspace = true, default-features = false, features = ["step", 
 # Every bundled IFC release, as before #112, and every capability (#244).
 # The browser package turns defaults off and names the releases and
 # capabilities it ships (see openbim-ifc-wasm).
-default = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3", "ifcxml", "validate", "unreachable"]
+default = [
+    "ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3",
+    "ifcxml", "validate", "unreachable",
+    "properties", "spatial", "classification", "material", "systems", "cost", "georef",
+]
 ifc2x3 = ["openbim-ifc/ifc2x3"]
 ifc4 = ["openbim-ifc/ifc4"]
 ifc4x1 = ["openbim-ifc/ifc4x1"]
@@ -49,6 +53,25 @@ validate = ["openbim-ifc/validate"]
 # The viewer reachability lint: spatial containment plus representation
 # contexts, with no geometry kernel. Links every release's table, too.
 unreachable = ["openbim-ifc/spatial", "openbim-ifc/geometry-select"]
+# Domain views (#123), each an owned-snapshot read of one facade domain.
+# Like the capabilities, each adds to a browser build, and an operation
+# whose feature is off refuses with `feature-disabled`. Every domain crate
+# links every release's schema table it reads.
+# Property sets, quantities (type inheritance included) and exact units.
+properties = ["openbim-ifc/properties"]
+# The spatial containment tree.
+spatial = ["openbim-ifc/spatial"]
+# Classification references, inherited from the type object too.
+classification = ["openbim-ifc/classification"]
+# Material associations: layer, profile and constituent sets and usages.
+material = ["openbim-ifc/material"]
+# Distribution systems and their membership.
+systems = ["openbim-ifc/systems"]
+# Cost schedules, items and values.
+cost = ["openbim-ifc/cost"]
+# Map conversions and projected CRSs. The project length unit that scales
+# them is resolved by the property domain, so this implies `properties`.
+georef = ["properties", "openbim-ifc/georef"]
 
 [lints]
 workspace = true

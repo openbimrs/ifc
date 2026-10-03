@@ -1,6 +1,7 @@
 //! The native model class, wrapped by `openbim_ifc.IfcModel` in Python.
 
-use openbim_ifc_binding_core::{IfcModel, ParseOptions};
+use openbim_ifc_binding_core::record::to_records;
+use openbim_ifc_binding_core::{IfcModel, ParseOptions, ToRecord};
 use pyo3::prelude::*;
 use pyo3::types::{PyBool, PyBytes, PyDict, PyList};
 
@@ -163,6 +164,65 @@ impl NativeModel {
     fn unreachable_products<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyList>> {
         let products = self.inner.unreachable_products().map_err(py_err)?;
         records::unreachable_to_py(py, &products)
+    }
+
+    /// Property sets of `id`, its own then its type's, as record dicts.
+    fn property_sets<'py>(&self, py: Python<'py>, id: u64) -> PyResult<Bound<'py, PyList>> {
+        let sets = self.inner.property_sets(id).map_err(py_err)?;
+        records::records_to_py(py, &to_records(&sets))
+    }
+
+    /// The effective unit of a `measure_type` value, as a record dict.
+    #[pyo3(signature = (measure_type, unit = None))]
+    fn resolve_unit<'py>(
+        &self,
+        py: Python<'py>,
+        measure_type: &str,
+        unit: Option<u64>,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let unit = self
+            .inner
+            .resolve_unit(measure_type, unit)
+            .map_err(py_err)?;
+        records::record_to_py(py, &unit.to_record())
+    }
+
+    /// The spatial containment tree, as a record dict.
+    fn spatial_tree<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
+        let tree = self.inner.spatial_tree().map_err(py_err)?;
+        records::record_to_py(py, &tree.to_record())
+    }
+
+    /// Classifications of `id`, its own then its type's, as record dicts.
+    fn classifications<'py>(&self, py: Python<'py>, id: u64) -> PyResult<Bound<'py, PyList>> {
+        let classes = self.inner.classifications(id).map_err(py_err)?;
+        records::records_to_py(py, &to_records(&classes))
+    }
+
+    /// The material association of `id`, as a record dict, or `None`.
+    fn material<'py>(&self, py: Python<'py>, id: u64) -> PyResult<Option<Bound<'py, PyDict>>> {
+        let material = self.inner.material(id).map_err(py_err)?;
+        material
+            .map(|material| records::record_to_py(py, &material.to_record()))
+            .transpose()
+    }
+
+    /// Every system and the memberships not honoured, as a record dict.
+    fn systems<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
+        let systems = self.inner.systems().map_err(py_err)?;
+        records::record_to_py(py, &systems.to_record())
+    }
+
+    /// Every cost schedule and item, as a record dict.
+    fn cost<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
+        let cost = self.inner.cost().map_err(py_err)?;
+        records::record_to_py(py, &cost.to_record())
+    }
+
+    /// Every coordinate operation, resolved, as record dicts.
+    fn georeferencing<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyList>> {
+        let maps = self.inner.georeferencing().map_err(py_err)?;
+        records::records_to_py(py, &to_records(&maps))
     }
 
     fn __len__(&self) -> usize {

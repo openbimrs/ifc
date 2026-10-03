@@ -22,6 +22,7 @@
 //! let elements = ifc::ids_of_type_including_subtypes(&model, schema, "IfcElement");
 //! assert!(elements.is_empty());
 //! ```
+#![cfg(feature = "schema-api")]
 
 use ifc_model::{EntityId, Model};
 use ifc_schema::Schema;

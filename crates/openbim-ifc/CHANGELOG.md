@@ -12,6 +12,20 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `root_identity(model, schema, id)` and `RootIdentity` (behind
+  `schema-api`): the `GlobalId` and `Name` of an entity the given schema
+  declares an `IfcRoot`, read by attribute name, never guessed from a
+  slot (#123).
+- `georeferencing(model)` and `GeoreferencingError` (behind
+  `georef` + `properties`): every `IfcCoordinateOperation` resolved with
+  the project length unit, which `ifc-properties` resolves exactly; the
+  join the language bindings carry (#123).
+- Re-exports `Budget` from `ifc-model`, which bounded domain traversals
+  (a classification hierarchy) take.
+- Additive: a patch release.
+
 ## [0.11.0] - 2026-10-03
 
 ### Changed (breaking)

@@ -12,6 +12,15 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `CostValue::applied_value()`: the `AppliedValue` exactly as authored,
+  typed wrapper and integer payload intact, and
+  `CostValue::unit_basis_component(model)`: the rate basis's
+  `ValueComponent` likewise. `amount()` and `UnitBasis::value` still give
+  the number. For lossless consumers such as the language bindings (#123).
+- Additive: a patch release.
+
 ## [0.3.0] - 2026-09-29
 
 ### Added

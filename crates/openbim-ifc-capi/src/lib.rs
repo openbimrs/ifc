@@ -37,6 +37,7 @@
 
 mod buffer;
 mod checks;
+mod domains;
 mod errors;
 mod header;
 mod model;
@@ -48,6 +49,7 @@ pub mod tape;
 mod xml;
 
 pub use checks::*;
+pub use domains::*;
 pub use errors::*;
 pub use header::*;
 pub use model::*;
@@ -63,6 +65,8 @@ pub use xml::*;
 /// #49 for the measurements.
 #[cfg(test)]
 mod capability_tests;
+#[cfg(test)]
+mod domain_tests;
 
 #[cfg(feature = "rusty_alloc")]
 #[global_allocator]
