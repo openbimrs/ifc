@@ -7,6 +7,22 @@
 //! never a silently substituted shape. This dispatcher is the single place
 //! that decides which IFC representation items are implemented, so coverage is
 //! auditable from one table instead of scattered across families.
+//!
+//! # Coverage is per release
+//!
+//! [`IMPLEMENTED`], [`PLANNED`] and [`PARTIAL`] together classify every
+//! concrete representation item of IFC4 ADD2 TC1 and IFC4X3 ADD2 that is a
+//! root item rather than nested input; `tests/schema_coverage.rs` and
+//! `tests/lower_dispatch_corpus.rs` derive both inventories from the schemas
+//! and fail on an unclassified family.
+//!
+//! # Subtypes
+//!
+//! Dispatch matches exact type names, because most subtypes change meaning
+//! (`IfcGradientCurve` is an `IfcCompositeCurve` whose segments are heights
+//! over a horizontal base curve). A subtype the supertype's lowering handles
+//! exactly is routed through [`SPECIALISATIONS`], which names the attributes
+//! it adds and why ignoring or checking them is exact.
 
 use axiolid_model::NodeId;
 use ifc_model::EntityId;
@@ -53,6 +69,8 @@ pub const IMPLEMENTED: &[&str] = &[
     "IFCBOXEDHALFSPACE",
     "IFCPOLYGONALBOUNDEDHALFSPACE",
     "IFCTRIANGULATEDFACESET",
+    // IFC4X3: routed through SPECIALISATIONS; voids and holes are refused.
+    "IFCTRIANGULATEDIRREGULARNETWORK",
     "IFCPOLYGONALFACESET",
     "IFCCSGSOLID",
     "IFCSWEPTDISKSOLID",
@@ -116,10 +134,76 @@ pub const IMPLEMENTED: &[&str] = &[
 /// Each entry names the concrete reason so a caller building a viewer can
 /// report progress instead of a bare failure. Adding a family here is how a
 /// stub is declared; implementing it means moving the name to [`IMPLEMENTED`].
+/// The dispatcher reports the reason in its typed `Unsupported` refusal.
 ///
-/// Currently empty: every recognized representation item is lowered. A new
-/// unimplemented family is declared by adding it here.
-pub const PLANNED: &[(&str, &str)] = &[];
+/// Every entry is an IFC4X3 ADD2 family: every IFC4 ADD2 TC1 root item is
+/// lowered. Entries marked "in progress (#243)" are being lowered now.
+pub const PLANNED: &[(&str, &str)] = &[
+    // Alignment curves (IfcGeometryResource, IFC4X3).
+    ("IFCCLOTHOID", IN_PROGRESS),
+    ("IFCCOSINESPIRAL", IN_PROGRESS),
+    ("IFCSINESPIRAL", IN_PROGRESS),
+    ("IFCSECONDORDERPOLYNOMIALSPIRAL", IN_PROGRESS),
+    ("IFCTHIRDORDERPOLYNOMIALSPIRAL", IN_PROGRESS),
+    ("IFCSEVENTHORDERPOLYNOMIALSPIRAL", IN_PROGRESS),
+    ("IFCPOLYNOMIALCURVE", IN_PROGRESS),
+    ("IFCCURVESEGMENT", IN_PROGRESS),
+    ("IFCGRADIENTCURVE", IN_PROGRESS),
+    ("IFCSEGMENTEDREFERENCECURVE", IN_PROGRESS),
+    // Sweeps and sections along an alignment (IFC4X3).
+    ("IFCDIRECTRIXDERIVEDREFERENCESWEPTAREASOLID", IN_PROGRESS),
+    ("IFCSECTIONEDSOLIDHORIZONTAL", IN_PROGRESS),
+    ("IFCSECTIONEDSURFACE", IN_PROGRESS),
+    // Distance-along-curve geometry (IFC4X3).
+    (
+        "IFCOFFSETCURVEBYDISTANCES",
+        "offsets are stated at stations along the basis curve as \
+         IfcPointByDistanceExpression values; the neutral model has no \
+         distance-along-curve point or station-offset curve to hold them",
+    ),
+    (
+        "IFCPOINTBYDISTANCEEXPRESSION",
+        "a point at a distance along a basis curve, offset in that curve's \
+         frame; the neutral model has no distance-along-curve point relation",
+    ),
+    (
+        "IFCAXIS2PLACEMENTLINEAR",
+        "a frame located by an IfcPointByDistanceExpression; the neutral model \
+         has no distance-along-curve point relation to anchor it",
+    ),
+];
+
+/// Reason for a family another #243 change is lowering now.
+const IN_PROGRESS: &str = "in progress (#243)";
+
+/// A subtype the supertype's lowering handles exactly.
+///
+/// Routing a subtype to its supertype's lowerer is exact only when every
+/// attribute and rule the subtype adds either leaves the shape unchanged or
+/// is checked by that lowerer. `tests/schema_coverage.rs` asserts each row
+/// against the IFC4X3 schema: the subtype relation, the added attributes,
+/// and that both names are in [`IMPLEMENTED`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Specialisation {
+    /// The subtype as a STEP type name.
+    pub subtype: &'static str,
+    /// The supertype whose lowering it is routed to.
+    pub supertype: &'static str,
+    /// The explicit attributes the subtype declares, in schema order.
+    pub added_attributes: &'static [&'static str],
+    /// Why the supertype's lowering is exact for it.
+    pub rationale: &'static str,
+}
+
+/// Subtypes routed to their supertype's lowering.
+pub const SPECIALISATIONS: &[Specialisation] = &[Specialisation {
+    subtype: "IFCTRIANGULATEDIRREGULARNETWORK",
+    supertype: "IFCTRIANGULATEDFACESET",
+    added_attributes: &["Flags"],
+    rationale: "the face-set slots are unchanged; the lowerer checks Flags \
+                and refuses voids, holes and undocumented codes, so only \
+                breakline codes, which leave the triangles unchanged, lower",
+}];
 
 /// A variant within a family that is admitted or refused independently.
 ///
@@ -216,6 +300,28 @@ pub const PARTIAL: &[Variant] = &[
         rationale: "a base spline carries no authored knot vector to preserve",
     },
     Variant {
+        family: "IFCTRIANGULATEDIRREGULARNETWORK",
+        variant: "every Flags value is a breakline code, 0 to 7",
+        support: Support::Admitted,
+        rationale: "a breakline marks an edge the triangulation already has, \
+                    so the triangle surface is the supertype's; the flags \
+                    are not carried into the mesh",
+    },
+    Variant {
+        family: "IFCTRIANGULATEDIRREGULARNETWORK",
+        variant: "a Flags value is -1 (hole) or -2 (void)",
+        support: Support::Refused,
+        rationale: "the triangle is excluded from the surface, and a hole may \
+                    fall back on another surface; the neutral mesh has no \
+                    face-exclusion or fall-back channel",
+    },
+    Variant {
+        family: "IFCTRIANGULATEDIRREGULARNETWORK",
+        variant: "a Flags value is outside -2 to 7",
+        support: Support::Refused,
+        rationale: "the documentation defines no meaning for it",
+    },
+    Variant {
         family: "IFCSURFACECURVE",
         variant: "MasterRepresentation is Curve3D, PCurveS1, or PCurveS2 with \
                   the named side present",
@@ -244,6 +350,12 @@ pub fn lower_representation_item(
     frame: Transform,
 ) -> GeometryResult<NodeId> {
     let type_name = session.type_name(id)?;
+    // An exact specialisation lowers through its supertype's arm. The
+    // refusal below still names the entity's own type.
+    let routed = SPECIALISATIONS
+        .iter()
+        .find(|row| row.subtype == type_name)
+        .map_or(type_name.as_str(), |row| row.supertype);
     // Shape representations may legitimately contain bare curve and surface
     // items (Curve2D/Curve3D/SurfaceModel). Route by generated IFC inheritance
     // before the concrete solid table so plan and surface selections lower
@@ -254,7 +366,7 @@ pub fn lower_representation_item(
     if is_a(&type_name, "IFCSURFACE") {
         return lower_surface_node(session, id, frame);
     }
-    match type_name.as_str() {
+    match routed {
         "IFCEXTRUDEDAREASOLID" => lower_extruded_area_solid_node(session, id, frame),
         "IFCREVOLVEDAREASOLID" => lower_revolved_area_solid_node(session, id, frame),
         "IFCBOOLEANRESULT" | "IFCBOOLEANCLIPPINGRESULT" => {
@@ -294,7 +406,7 @@ pub fn lower_representation_item(
         | "IFCRIGHTCIRCULARCYLINDER"
         | "IFCRIGHTCIRCULARCONE"
         | "IFCRECTANGULARPYRAMID" => lower_csg_primitive_node(session, id, frame),
-        other => Err(session.unsupported(id, other, detail_for(other))),
+        _ => Err(session.unsupported(id, &type_name, detail_for(&type_name))),
     }
 }
 

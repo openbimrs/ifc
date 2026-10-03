@@ -6,7 +6,9 @@
 //! composite/derived/mirrored forms.
 
 use axiolid_profile::{Profile, SectionProfile};
-use ifc_geometry::lower::profile::{lower_profile, IMPLEMENTED_PROFILES, PLANNED_PROFILES};
+use ifc_geometry::lower::profile::{
+    lower_profile, IMPLEMENTED_PROFILES, PLANNED_PROFILES, UNLOWERED,
+};
 use ifc_geometry::units;
 use ifc_model::{Codec, EntityId, Model};
 use ifc_step::StepCodec;
@@ -37,23 +39,30 @@ fn profile_named(model: &Model, type_name: &str) -> Profile {
 
 /// The schema owns the profile-family inventory; adding a concrete subtype
 /// must force either an exact implementation or a named neutral blocker.
+///
+/// Both IFC4 ADD2 TC1 and IFC4X3 ADD2 are enumerated: IFC4X3 adds
+/// `IfcOpenCrossProfileDef`, which a single-release inventory never saw.
 #[test]
-fn every_concrete_ifc4_profile_family_has_an_executable_disposition() {
-    let schema = ifc_schema::ifc4();
-    let expected: std::collections::BTreeSet<_> = schema
-        .entity_names()
-        .filter(|name| {
-            schema.is_a(name, "IfcProfileDef")
-                && !schema.entity(name).expect("known entity").abstract_
-        })
-        .map(str::to_ascii_uppercase)
-        .collect();
+fn every_concrete_ifc4_and_ifc4x3_profile_family_has_an_executable_disposition() {
+    let mut expected = std::collections::BTreeSet::new();
+    for schema in [ifc_schema::ifc4(), ifc_schema::ifc4x3()] {
+        expected.extend(
+            schema
+                .entity_names()
+                .filter(|name| {
+                    schema.is_a(name, "IfcProfileDef")
+                        && !schema.entity(name).expect("known entity").abstract_
+                })
+                .map(str::to_ascii_uppercase),
+        );
+    }
     let implemented: std::collections::BTreeSet<_> = IMPLEMENTED_PROFILES
         .iter()
         .map(|name| (*name).to_owned())
         .collect();
     let planned: std::collections::BTreeSet<_> = PLANNED_PROFILES
         .iter()
+        .chain(UNLOWERED)
         .map(|(name, detail)| {
             assert!(!detail.is_empty(), "{name} has no neutral blocker");
             (*name).to_owned()

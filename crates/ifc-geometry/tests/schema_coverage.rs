@@ -11,6 +11,17 @@
 //! (`references/ifc-spec/ifc4-add2-tc1/IFC4.exp`), not written by hand, so it
 //! cannot drift toward what happens to be implemented.
 //!
+//! # IFC4X3 ADD2
+//!
+//! [`IFC4X3_ADDITIONS`] lists the concrete geometry, profile and placement
+//! entities IFC4X3 ADD2 adds; `schema_coverage/ifc4x3.rs` lists every other
+//! non-rooted entity it adds, with the crate that owns it. Both are checked
+//! against the bundled IFC4X3 table and, when `references/ifc-spec` is
+//! present, against `IFC4X3_ADD2.exp` itself. Naming is not enough for these:
+//! every IFC4X3 representation item must be in `dispatch::IMPLEMENTED` or
+//! `dispatch::PLANNED` (or be nested input with an IFC4 disposition row), and
+//! every IFC4X3 profile must be read or listed in `lower::profile::UNLOWERED`.
+//!
 //! # What "covered" means here
 //!
 //! That the crate names the entity: a typed view exists, or a dispatcher
@@ -21,6 +32,10 @@
 
 use std::collections::BTreeSet;
 use std::path::PathBuf;
+
+mod schema_coverage {
+    mod ifc4x3;
+}
 
 /// Every concrete (non-ABSTRACT) entity in IfcGeometryResource,
 /// IfcGeometricModelResource, IfcGeometricConstraintResource and
@@ -146,6 +161,34 @@ const CONCRETE_ENTITIES: &[&str] = &[
     "IfcZShapeProfileDef",
 ];
 
+/// Every concrete entity IFC4X3 ADD2 adds under `IfcRepresentationItem`,
+/// `IfcProfileDef` or `IfcObjectPlacement`.
+///
+/// Generated from `IFC4X3_ADD2.exp` against `IFC4.exp`: 19 entities. IFC4X3
+/// removes no concrete entity of the IFC4 inventory above and makes none
+/// abstract, so the two lists together are the IFC4X3 geometry inventory.
+const IFC4X3_ADDITIONS: &[&str] = &[
+    "IfcAxis2PlacementLinear",
+    "IfcClothoid",
+    "IfcCosineSpiral",
+    "IfcCurveSegment",
+    "IfcDirectrixDerivedReferenceSweptAreaSolid",
+    "IfcGradientCurve",
+    "IfcLinearPlacement",
+    "IfcOffsetCurveByDistances",
+    "IfcOpenCrossProfileDef",
+    "IfcPointByDistanceExpression",
+    "IfcPolynomialCurve",
+    "IfcSecondOrderPolynomialSpiral",
+    "IfcSectionedSolidHorizontal",
+    "IfcSectionedSurface",
+    "IfcSegmentedReferenceCurve",
+    "IfcSeventhOrderPolynomialSpiral",
+    "IfcSineSpiral",
+    "IfcThirdOrderPolynomialSpiral",
+    "IfcTriangulatedIrregularNetwork",
+];
+
 /// Read every Rust source file in the crate, **excluding test modules**.
 ///
 /// Test code names entities in fixtures, so counting it would let a crate
@@ -201,6 +244,7 @@ fn every_concrete_geometry_entity_is_covered() {
 
     let missing: BTreeSet<&str> = CONCRETE_ENTITIES
         .iter()
+        .chain(IFC4X3_ADDITIONS)
         .copied()
         .filter(|entity| !is_covered(entity, &source, &upper))
         .collect();
@@ -209,7 +253,7 @@ fn every_concrete_geometry_entity_is_covered() {
         missing.is_empty(),
         "{} of {} concrete geometry entities have no view in this crate:\n{}",
         missing.len(),
-        CONCRETE_ENTITIES.len(),
+        CONCRETE_ENTITIES.len() + IFC4X3_ADDITIONS.len(),
         missing
             .iter()
             .map(|m| format!("  {m}"))
@@ -475,13 +519,21 @@ fn every_concrete_profile_is_lowered_or_declared_unlowered() {
             .join("\n")
     );
 
+    // Not ends_with: IfcArbitraryProfileDefWithVoids has a suffix.
+    let is_profile = |e: &&str| e.contains("ProfileDef");
+    let ifc4x3_profiles = IFC4X3_ADDITIONS.iter().copied().filter(is_profile).count();
+    assert_eq!(ifc4x3_profiles, 1, "IFC4X3 adds IfcOpenCrossProfileDef");
     let profiles: Vec<&str> = CONCRETE_ENTITIES
         .iter()
+        .chain(IFC4X3_ADDITIONS)
         .copied()
-        // Not ends_with: IfcArbitraryProfileDefWithVoids has a suffix.
-        .filter(|e| e.contains("ProfileDef"))
+        .filter(is_profile)
         .collect();
-    assert_eq!(profiles.len(), 22, "IfcProfileResource concrete entities");
+    assert_eq!(
+        profiles.len(),
+        22 + ifc4x3_profiles,
+        "IfcProfileResource concrete entities"
+    );
 
     let mut missing = Vec::new();
     for entity in &profiles {
@@ -515,32 +567,17 @@ fn unlowered_table(source: &str) -> BTreeSet<String> {
         .find("pub const UNLOWERED:")
         .expect("profile lowerer declares an UNLOWERED table");
     let rest = &source[start..];
-    // The table ends at the first line that closes it, which is `];` for a
-    // multi-entry table and `)];` for a single-entry one.
-    // The table closes with `];`, `)];`, or `&[];` when it is empty. Matching
-    // only the multi-line forms made an empty table unparseable, which is the
-    // state the crate reaches once every family is lowered.
-    let end = rest
-        .lines()
-        .scan(0usize, |acc, line| {
-            let at = *acc;
-            *acc += line.len() + 1;
-            Some((at, line))
-        })
-        .find(|(_, line)| {
-            let t = line.trim();
-            t == "];" || t == ")];" || t.ends_with("= &[];")
-        })
-        .map(|(at, line)| at + line.len())
-        .expect("UNLOWERED table is closed");
-    source[start..start + end]
-        .lines()
-        .filter_map(|line| {
-            let t = line.trim();
-            let name = t.strip_prefix('"')?;
-            let (name, _) = name.split_once('"')?;
-            name.starts_with("IFC").then(|| name.to_string())
-        })
+    // The table closes at its first `];`, whatever its layout: `&[];` when
+    // empty, one line when rustfmt fits it, or one entry per line. Matching
+    // whole closing lines missed the one-line form, so the table is cut at
+    // the token and every `"IFC..."` literal inside it is a row.
+    let end = rest.find("];").expect("UNLOWERED table is closed");
+    rest[..end]
+        .split('"')
+        .skip(1)
+        .step_by(2)
+        .filter(|literal| literal.starts_with("IFC"))
+        .map(str::to_string)
         .collect()
 }
 

@@ -93,6 +93,8 @@ const FAMILIES: &[(&str, BodyKind)] = &[
     ("IFCPOLYGONALBOUNDEDHALFSPACE", BodyKind::HalfSpace),
     ("IFCBOUNDINGBOX", BodyKind::BoundingBox),
     ("IFCTRIANGULATEDFACESET", BodyKind::Tessellated),
+    // IFC4X3 subtype; lowered through `lower::dispatch::SPECIALISATIONS`.
+    ("IFCTRIANGULATEDIRREGULARNETWORK", BodyKind::Tessellated),
     ("IFCPOLYGONALFACESET", BodyKind::Tessellated),
     ("IFCSHELLBASEDSURFACEMODEL", BodyKind::SurfaceModel),
     ("IFCFACEBASEDSURFACEMODEL", BodyKind::SurfaceModel),

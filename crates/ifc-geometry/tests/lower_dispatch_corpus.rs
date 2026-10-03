@@ -25,8 +25,10 @@ use std::path::PathBuf;
 
 mod lower_dispatch_corpus {
     pub mod corpus;
+    pub mod probes;
 }
 use lower_dispatch_corpus::corpus::{collect_ifc, fixture_root, is_pinned_collapsed_loop};
+use lower_dispatch_corpus::probes::irregular_network;
 
 const DISPOSITIONS: &str = include_str!("../data/ifc4-representation-item-dispositions.tsv");
 
@@ -110,7 +112,13 @@ fn every_concrete_ifc4_representation_item_is_classified() {
         }
     }
 
-    let implemented: BTreeSet<_> = IMPLEMENTED.iter().map(|name| (*name).to_owned()).collect();
+    // IFC4X3-only registry names are classified by `tests/schema_coverage.rs`.
+    let in_ifc4 = |name: &str| schema.entity(name).is_some();
+    let implemented: BTreeSet<_> = IMPLEMENTED
+        .iter()
+        .filter(|name| in_ifc4(name))
+        .map(|name| (*name).to_owned())
+        .collect();
     assert!(
         implemented.is_disjoint(&classified),
         "root-exact and non-root classifications overlap"
@@ -123,7 +131,11 @@ fn every_concrete_ifc4_representation_item_is_classified() {
         "representation-item disposition drift: missing={missing:?}; extra={extra:?}"
     );
 
-    let planned: BTreeSet<_> = PLANNED.iter().map(|(name, _)| *name).collect();
+    let planned: BTreeSet<_> = PLANNED
+        .iter()
+        .map(|(name, _)| *name)
+        .filter(|name| in_ifc4(name))
+        .collect();
     let classified_planned: BTreeSet<_> = rows
         .iter()
         .filter(|row| row[1] == "planned-exact")
@@ -313,12 +325,12 @@ fn a_nested_failure_names_the_innermost_unlowerable_entity() {
     let inner = ifc_model::EntityId(1);
     let outer = ifc_model::EntityId(2);
     // Any family the dispatcher does not classify works as the inner gap. This
-    // deliberately uses a name from a LATER schema rather than a real planned
-    // family, so implementing another family cannot silently defuse this test
-    // the way IFCSECTIONEDSPINE did once it started lowering.
+    // deliberately uses a name no schema declares, so declaring or implementing
+    // a family cannot defuse this test the way IFCSECTIONEDSPINE (lowered) and
+    // IFCSEGMENTEDREFERENCECURVE (declared planned) once did.
     model.insert(
         inner,
-        ifc_model::Entity::new("IFCSEGMENTEDREFERENCECURVE", vec![]),
+        ifc_model::Entity::new("IFCNOSUCHREPRESENTATIONITEM", vec![]),
     );
     model.insert(
         outer,
@@ -747,6 +759,9 @@ fn declared_variant_support_matches_runtime_behaviour() {
             m.insert(EntityId(9), ent("IFCPCURVE", vec![rf(3), rf(6)]));
             ("IFCPCURVE", "reference curve is an IfcPolyline", m)
         },
+        irregular_network(&[1, 0], "every Flags value is a breakline code, 0 to 7"),
+        irregular_network(&[0, -2], "a Flags value is -1 (hole) or -2 (void)"),
+        irregular_network(&[8, 0], "a Flags value is outside -2 to 7"),
     ];
 
     for (family, variant, model) in probes {

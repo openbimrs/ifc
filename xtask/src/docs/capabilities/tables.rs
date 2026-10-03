@@ -34,6 +34,7 @@ pub(super) struct Lowering {
     partial: BTreeMap<String, Vec<Variant>>,
     profiles: Vec<String>,
     planned_profiles: Vec<(String, String)>,
+    unlowered_profiles: Vec<(String, String)>,
 }
 
 impl Lowering {
@@ -51,6 +52,7 @@ impl Lowering {
             partial: Self::variants(&dispatch, "PARTIAL")?,
             profiles: profile.strings("IMPLEMENTED_PROFILES")?,
             planned_profiles: profile.pairs("PLANNED_PROFILES")?,
+            unlowered_profiles: profile.pairs("UNLOWERED")?,
         })
     }
 
@@ -108,6 +110,12 @@ impl Lowering {
         ];
         for entity in &self.profiles {
             rows.push(format!("| `{}` | {IMPLEMENTED} |", self.name(entity)));
+        }
+        for (entity, reason) in &self.unlowered_profiles {
+            rows.push(format!(
+                "| `{}` | {PLANNED} \u{2014} {reason} |",
+                self.name(entity)
+            ));
         }
         for (entity, reason) in &self.planned_profiles {
             rows.push(format!(

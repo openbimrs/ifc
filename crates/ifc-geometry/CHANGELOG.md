@@ -12,6 +12,41 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `IfcTriangulatedIrregularNetwork` (IFC4X3) lowers as a triangle mesh when
+  every `Flags` value is a breakline code (0 to 7). A void or hole triangle
+  (-2, -1) or an undocumented code is a typed `Unsupported` refusal; a
+  `Flags` list whose length differs from the triangle count is `Degenerate`.
+  `solid::tessellated::TriangulatedIrregularNetwork` is the borrowed view.
+  `BodyKind::classify` and `SolidKind::classify` report it as tessellated.
+- `lower::dispatch::SPECIALISATIONS` (and `Specialisation`): subtypes routed
+  to their supertype's lowering, each naming the attributes it adds. A test
+  checks every row against the IFC4X3 schema.
+- `lower::dispatch::PLANNED` lists the 16 IFC4X3 ADD2 representation items
+  that are not lowered, each with its reason. Before, they were refused with
+  the generic "representation item family is not lowered yet". The spirals,
+  `IfcPolynomialCurve`, `IfcCurveSegment`, `IfcGradientCurve`,
+  `IfcSegmentedReferenceCurve`, `IfcDirectrixDerivedReferenceSweptAreaSolid`,
+  `IfcSectionedSolidHorizontal` and `IfcSectionedSurface` are "in progress
+  (#243)". `IfcOffsetCurveByDistances`, `IfcPointByDistanceExpression` and
+  `IfcAxis2PlacementLinear` wait on a neutral distance-along-curve relation.
+  `lower::profile::UNLOWERED` lists `IfcOpenCrossProfileDef`.
+- `tests/schema_coverage.rs` also enumerates IFC4X3 ADD2. Its inventory is
+  checked against the bundled table and `IFC4X3_ADD2.exp`. Every IFC4X3
+  representation item must be in `IMPLEMENTED`, in `PLANNED`, or have a
+  nested disposition. Every IFC4X3 profile must be read or in `UNLOWERED`.
+
+### Fixed
+
+- An IFC4X3 `IfcCompositeCurve` whose segments are `IfcCurveSegment` is
+  refused by name (`curve::composite::CURVE_SEGMENT_UNREAD`). Before, the
+  `IfcCompositeCurveSegment` slots were read, so `SegmentLength` was taken
+  for `ParentCurve` and the result was a misleading wrong-value-kind error.
+- The `dispatch::PLANNED` documentation claimed every recognized
+  representation item is lowered. It now states the IFC4X3 families that are
+  not.
+
 ## [0.6.0] - 2026-10-02
 
 ### Changed (breaking)

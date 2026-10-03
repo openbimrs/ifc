@@ -33,7 +33,8 @@ use crate::error::GeometryResult;
 use crate::lower::session::LoweringSession;
 use crate::resource::point::CartesianPointList3D;
 use crate::solid::tessellated::{
-    IndexedPolygonalFace, IndexedPolygonalFaceWithVoids, PolygonalFaceSet, TriangulatedFaceSet,
+    irregular_network, IndexedPolygonalFace, IndexedPolygonalFaceWithVoids, PolygonalFaceSet,
+    TriangulatedFaceSet, TriangulatedIrregularNetwork,
 };
 use crate::transform::Transform;
 
@@ -87,6 +88,9 @@ fn checked_index(
 }
 
 /// Lower an `IfcTriangulatedFaceSet` into [`GeometryNode::TriMesh`].
+///
+/// Also lowers the IFC4X3 subtype `IfcTriangulatedIrregularNetwork` when
+/// [`TriangulatedIrregularNetwork::admit`] accepts its flags.
 pub fn lower_triangulated_face_set_node(
     session: &mut LoweringSession<'_>,
     id: EntityId,
@@ -112,6 +116,13 @@ fn build_triangulated(
     let view = TriangulatedFaceSet::new(id, entity);
     let coordinates = view.coordinates()?;
     let triangles = view.triangles_0based()?;
+    // The IFC4X3 subtype adds per-triangle `Flags`; the dispatcher routes it
+    // here only because the triangle surface is the same when every flag is a
+    // breakline code. A void or hole changes it, so admission is checked
+    // before any node exists.
+    if entity.is_type(irregular_network::TYPE) {
+        TriangulatedIrregularNetwork::new(id, entity).admit(triangles.len())?;
+    }
     let normals = view.normals();
     let positions = positions(session, id, coordinates, frame)?;
 
