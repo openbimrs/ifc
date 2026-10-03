@@ -28,7 +28,8 @@ everything released before per-crate changelogs began.
   a tangent, which IFC4.3 says is the identical behaviour. A directrix that
   defines a tangent plane (built from `IfcCurveSegment`s, such as
   `IfcGradientCurve` and `IfcSegmentedReferenceCurve`, or lying on a surface)
-  is refused as `Unsupported` naming the missing neutral primitive (#243).
+  is refused as `Unsupported` naming the missing neutral primitive, the
+  public `lower::swept::DIRECTRIX_DERIVED_TANGENT_PLANE` (#243).
 - IFC4X3 `IfcSectionedSolidHorizontal` and `IfcSectionedSurface` are refused
   as `Unsupported` with a named reason instead of the generic "not lowered
   yet": their sections stand at `IfcAxis2PlacementLinear` stations along the

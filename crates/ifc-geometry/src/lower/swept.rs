@@ -176,7 +176,10 @@ pub fn lower_fixed_reference_sweep_node(
 ///   with the directrix's own frame, and composing that rotation here would
 ///   mean evaluating the curve.
 ///
-/// See [`defines_tangent_plane`] for which directrices count.
+/// Which directrices count: the directrix, or anything it references at any
+/// depth, is a segment-built curve (`IfcCurveSegment`, `IfcGradientCurve`,
+/// `IfcSegmentedReferenceCurve`, `IfcOffsetCurveByDistances`) or a curve on a
+/// surface.
 pub fn lower_directrix_derived_reference_sweep_node(
     session: &mut LoweringSession<'_>,
     id: EntityId,
@@ -193,8 +196,9 @@ pub fn lower_directrix_derived_reference_sweep_node(
     Ok(node)
 }
 
-/// Why an `IfcDirectrixDerivedReferenceSweptAreaSolid` is refused.
-pub(crate) const DIRECTRIX_DERIVED_TANGENT_PLANE: &str =
+/// Why an `IfcDirectrixDerivedReferenceSweptAreaSolid` is refused: the
+/// reason the dispatch registry states for its refused variant.
+pub const DIRECTRIX_DERIVED_TANGENT_PLANE: &str =
     "kernel: the directrix defines a tangent plane (it is built from \
      IfcCurveSegment placements or lies on a surface), so the derived \
      reference adds that plane's rotation to FixedReference; the neutral \
