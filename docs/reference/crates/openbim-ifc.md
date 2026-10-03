@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.11.0 (2026-10-03) |
+| Latest release | 0.12.0 (2026-10-03) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/ifc/index.html) · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -92,15 +92,14 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.11.0 (2026-10-03):
+Latest release, 0.12.0 (2026-10-03):
 
 ### Changed (breaking)
 
-- Behind `step`, the re-exported `ParseOptions` and `OnMalformed` are
-  `openbim-step` 0.11's (were 0.8's), through `ifc-step` (#288). 0.11 adds
-  `ParseOptions::accept_real_without_point`, included in
-  `ParseOptions::lenient()`: a lenient read keeps a REAL written without
-  its decimal point (`1E-05`) with a diagnostic instead of skipping its
-  record. Strict reads still refuse it.
+- Behind `geometry`, the re-exported `ifc_geometry` is 0.7 (was 0.6). Its
+  `select::subtype` carries the IFC4X3 ADD2 supertype chains (#293), so
+  `is_a`, select membership and `BodyKind::classify` now answer for
+  IFC4X3-only entity names that previously classified as nothing; the new
+  `is_a_in`/`supertypes_of_in` answer for one named release.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

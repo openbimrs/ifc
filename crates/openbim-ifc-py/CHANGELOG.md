@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-03
+
 ### Added (#244)
 
 - `IfcModel.parse(data, options=...)` and `IfcModel.open(path, options=...)`

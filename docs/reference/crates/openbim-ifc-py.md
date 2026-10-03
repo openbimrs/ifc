@@ -11,7 +11,7 @@ Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.2.0 (2026-09-29) |
+| Latest release | 0.2.1 (2026-10-03) |
 | Registries | [PyPI `openbim-ifc`](https://pypi.org/project/openbim-ifc/) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/openbim_ifc_py/index.html) |
 | Source | [`crates/openbim-ifc-py/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-py) |
@@ -40,21 +40,20 @@ This crate adds calling-convention glue only. IFC behaviour belongs in
 
 ## Changes
 
-Latest release, 0.2.0 (2026-09-29):
+Latest release, 0.2.1 (2026-10-03):
 
-### Changed
+### Added (#244)
 
-- Links every bundled IFC release explicitly through the binding core's
-  new release features; behaviour is unchanged.
-
-### Added (lazy loading)
-
-- `IfcModel.open(path, *, mapped=False)`: read a file straight into the
-  model with the GIL released; `mapped=True` memory-maps it (the file must
-  not change while the model lives). Failures raise `IfcError` with the
-  new code `io`.
-- Parsed models decode entities on first access (ADR 0015), so opening a
-  large file is several times faster and holds the file plus what was
-  touched. `IfcModel.parse` now copies its input once, not twice.
+- `IfcModel.parse(data, options=...)` and `IfcModel.open(path, options=...)`
+  take a frozen `ParseOptions` (`ParseOptions.lenient()` skips damaged
+  records); recoveries are listed by `diagnostics()`.
+- `IfcModel.header` (a frozen `Header`) and `set_header()`.
+- `IfcModel.validate(max_findings=None)`: a frozen `ValidationReport` of
+  `ValidationFinding`s.
+- `IfcModel.parse_ifcxml()` and `write_ifcxml()`, with an optional
+  `xsd_profile` (`"IFC4"`, `"IFC4X3_ADD2"`).
+- `IfcModel.unreachable_products()`: `UnreachableProduct` records.
+- Error codes `unsupported-profile` and `feature-disabled`.
+- Additive: a patch release.
 
 Full history: [`crates/openbim-ifc-py/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-py/CHANGELOG.md)
