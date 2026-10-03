@@ -430,8 +430,8 @@ test("domain refusals carry the shared codes", () => {
 
 test("property sets are written as one checked transaction", () => {
   const model = openFixture("synthetic-properties/synthetic_properties.ifc");
-  const label = (value) => ({ kind: "typed", type: "IFCLABEL", value: { kind: "text", value } });
   // docs:snippet js-domain-write
+  const label = (value) => ({ kind: "typed", type: "IFCLABEL", value: { kind: "text", value } });
   // Wall #31 inherits FireRating from its type: the write overrides it on
   // the wall and never changes the type's shared set.
   const result = model.setProperties([

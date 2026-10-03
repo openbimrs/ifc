@@ -377,3 +377,26 @@ fn writing_without_the_feature_refuses() {
         openbim_ifc_binding_core::BindingError::FeatureDisabled("properties-write")
     );
 }
+
+/// A release the build leaves out is refused typed, not read through
+/// another release's table (#306).
+#[cfg(all(feature = "properties-write", not(feature = "ifc2x3")))]
+#[test]
+fn a_release_left_out_of_the_build_is_refused() {
+    let text = "ISO-10303-21;
+HEADER;FILE_DESCRIPTION((''),'2;1');FILE_NAME('','',(''),(''),'','','');FILE_SCHEMA(('IFC2X3'));ENDSEC;
+DATA;
+#1=IFCOWNERHISTORY($,$,$,.ADDED.,$,$,$,0);
+#2=IFCBUILDINGELEMENTPROXY('2YvctVUKr0kugbFTf53O9L',#1,'P',$,$,$,$,$,$);
+ENDSEC;
+END-ISO-10303-21;
+";
+    let mut model = IfcModel::parse(text.as_bytes()).expect("parses");
+    assert_eq!(
+        refused(
+            &mut model,
+            vec![PropertyEdit::set(2, "Custom", "A", label("x"))]
+        ),
+        "unsupported-schema"
+    );
+}

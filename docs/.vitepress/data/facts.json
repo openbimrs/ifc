@@ -426,7 +426,7 @@
       ],
       "released": "0.1.0",
       "released_date": "2026-10-03",
-      "status": "partial",
+      "status": "implemented",
       "version": "0.1.0"
     },
     "openbim-ifc-py": {
@@ -441,7 +441,7 @@
       ],
       "released": "0.2.1",
       "released_date": "2026-10-03",
-      "status": "partial",
+      "status": "implemented",
       "version": "0.2.1"
     },
     "openbim-ifc-wasm": {
@@ -456,14 +456,14 @@
       ],
       "released": "0.2.1",
       "released_date": "2026-10-03",
-      "status": "partial",
+      "status": "implemented",
       "version": "0.2.1"
     }
   },
   "crates": {
     "by_status": {
-      "implemented": 26,
-      "partial": 5,
+      "implemented": 29,
+      "partial": 2,
       "scaffold": 0
     },
     "groups": [

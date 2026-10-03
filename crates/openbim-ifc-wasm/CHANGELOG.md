@@ -8,6 +8,19 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#123, property sets: write side)
+
+- `IfcModel.setProperties(edits)`, `setProperty(object, set, name, value,
+  setType?)` and `removeProperty(object, set, name)`, with the TypeScript
+  types `PropertyEdit` and `PropertyEditResult`; error codes
+  `template-violation` and `missing-property`.
+- Default features `properties-write` and `property-catalog`. The default
+  module grows from 2,343,181 to 6,282,871 bytes after `wasm-bindgen`
+  (796,234 to 1,855,125 under `gzip -9`): the writer about 205 KB, the
+  catalog 3.7 MB. A build without the catalog refuses a write to a
+  `Pset_`/`Qto_` set with `feature-disabled`.
+- Additive: a patch release.
+
 ### Changed (#306)
 
 - A build that names fewer releases now carries only their schema

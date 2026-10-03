@@ -78,6 +78,26 @@ crate directly.
   `wrong-entity-type` keep the domain crates' refusals distinct. All seven
   are default features of the core and the npm package, which carries
   every capability; writing property sets is the second half of #123.
+- *Amended 2026-10-03 (#123, write side):* the bindings write property
+  sets as one checked edit, the first write the domain layer carries. The
+  facade grows it first (`ifc::apply_property_edits`): a batch of edits,
+  each addressed by object, set name and property name as the read side
+  reports them, is planned against the model, staged on one
+  `Transaction` and committed, or refused with nothing written. The value
+  is the read side's tagged `value`. A value an occurrence inherits is
+  overridden on the occurrence, never changed on the type's shared set; a
+  set or property entity shared with other objects is copied before it
+  changes. Values are checked against the declared release and, for a
+  `Pset_`/`Qto_` set, the release's PSD/QTO catalog (ADR 0017); new sets
+  take the object's owner history and a name-based `GlobalId`, since no
+  randomness builds for every target. Hosts call it `setProperties` /
+  `set_properties` / `openbim_ifc_v0_1_model_set_properties` with one-edit
+  forms beside it; the C batch is a value tape the core reads, so the
+  three cannot read an edit differently. New codes `template-violation`
+  (C 25) and `missing-property` (26). The writer (`properties-write`) and
+  the catalog (`property-catalog`, 3.7 MB of a browser build) are
+  features of their own, default in every host; without the catalog a
+  write to a `Pset_`/`Qto_` set refuses with `feature-disabled`.
 
 ## Alternatives considered
 

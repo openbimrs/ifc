@@ -8,6 +8,16 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#123, property sets: write side)
+
+- `IfcModel.set_properties(edits)` over frozen `PropertyEdit`s
+  (`PropertyEdit.removal(...)` removes), returning a
+  `PropertyEditResult`; `set_property(object, set, name, value,
+  set_type=None)` and `remove_property(object, set, name)`. Error codes
+  `template-violation` and `missing-property`. The wheel carries the
+  PSD/QTO catalog.
+- Additive: a patch release.
+
 ### Added (#123, domain views: read side)
 
 - `IfcModel.property_sets(id)`, `resolve_unit(measure_type, unit=None)`,

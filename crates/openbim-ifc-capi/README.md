@@ -68,6 +68,9 @@ The domain views (#123: `model_property_sets`, `model_resolve_unit`,
 `model_spatial_tree`, `model_classifications`, `model_material`,
 `model_systems`, `model_cost`, `model_georeferencing`) return each record
 as a `LIST` of its fields in the core's order, listed on the docs site.
+Property sets are written as one checked transaction
+(`model_set_properties`, a batch on one tape, and `model_set_property`,
+`model_remove_property`); a refused batch changes nothing.
 
 ## CMake
 
@@ -132,5 +135,5 @@ global allocator is a build-time choice; the version is pinned exactly.
 
 ## Not yet
 
-Domain views (properties, quantities, geometry) and checked multi-edit
-transactions are not bound.
+Geometry and checked multi-edit transactions over arbitrary entities are
+not bound.

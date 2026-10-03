@@ -9,20 +9,17 @@ CommonJS for Node, an ES module for bundlers, and an ES module that loads
 in a browser without one. Each is tested from the packed tarball: Node,
 a webpack bundle, and headless Chrome.
 
-Documentation: [JavaScript guide](https://openbimrs.github.io/ifc/bindings/javascript)
-· [source and issues](https://github.com/openbimrs/ifc)
+Documentation: [JavaScript guide](https://openbimrs.github.io/ifc/bindings/javascript) · [source and issues](https://github.com/openbimrs/ifc)
 
 ## What it does
 
 - Parse a STEP file into a model; write a model back to STEP.
 - List entities, filter by exact type or by type including subtypes (using
-  the bundled IFC2X3, IFC4, IFC4X1, IFC4X2 or IFC4X3 schema the file
-  declares), read and
-  edit attributes, add and remove entities, find dangling references.
+  the bundled schema the file declares), read and edit attributes, add and
+  remove entities, find dangling references.
 - Keep every value **lossless** across the boundary: `$` vs `*`, `.U.` vs
   `.F.`, integer vs real, typed wrappers such as `IFCLENGTHMEASURE(2.5)`,
   and 64-bit integers (as `bigint`).
-
 - Read damaged files leniently (`IfcModel.parseWithOptions`), read and
   replace the STEP header, validate against the declared schema, read and
   write ifcXML (lossless or the buildingSMART XSD layout), and list
@@ -30,21 +27,25 @@ Documentation: [JavaScript guide](https://openbimrs.github.io/ifc/bindings/javas
 - Read the domain views as snapshot objects: property sets and quantities
   with type inheritance (`propertySets`, `resolveUnit`), the spatial tree,
   classifications, materials, systems, cost and georeferencing (#123).
+- Write property sets and quantities (`setProperties`) as one checked
+  transaction, checked against the release and its PSD/QTO catalog (#123).
 
 ## What it does not do (yet)
 
-- No property set writing (#123), no geometry, no checked multi-edit
-  transactions. These exist in the Rust crates; see ADR 0013.
+- No geometry, no checked multi-edit transactions over arbitrary entities.
+  These exist in the Rust crates; see ADR 0013.
 
 ## Smaller builds
 
-Validation, ifcXML, the reachability lint and the seven domain views are
-default cargo features (`validate`, `ifcxml`, `unreachable`, `properties`,
-`spatial`, `classification`, `material`, `systems`, `cost`, `georef`),
-like the IFC releases. A browser build can leave any of them out, e.g.
-`--no-default-features --features ifc4,ifcxml,spatial`; the left-out
-methods then throw `feature-disabled`. IFC4 alone is 759,820 bytes, with
-everything 1,750,572 ([sizes](https://openbimrs.github.io/ifc/bindings/javascript#module-size)).
+Validation, ifcXML, the reachability lint, the seven domain views, the
+property writer and its PSD/QTO catalog are default cargo features
+(`validate`, `ifcxml`, `unreachable`, `properties`, `spatial`,
+`classification`, `material`, `systems`, `cost`, `georef`,
+`properties-write`, `property-catalog`), like the IFC releases. A browser
+build can leave any of them out, e.g. `--no-default-features --features
+ifc4,ifcxml,spatial`; the left-out methods then throw `feature-disabled`.
+The catalog is the largest at 3.7 MB. IFC4 alone is 770,860 bytes, with
+everything but the catalog 1,963,827 ([sizes](https://openbimrs.github.io/ifc/bindings/javascript#module-size)).
 
 ## Example (Node)
 

@@ -62,8 +62,8 @@ unreachable = ["openbim-ifc/spatial", "openbim-ifc/geometry-select"]
 # Property sets, quantities (type inheritance included) and exact units.
 properties = ["openbim-ifc/properties"]
 # Their checked edit (#123): facade code over the crates `properties`
-# links, but at +213 KB (+66 KB gzip) of a browser build more than the read
-# side itself, so a read-only build can leave it out.
+# links, but about 205 KB (65 KB gzip) of a browser build, more than the
+# read side itself, so a read-only build can leave it out.
 properties-write = ["properties"]
 # The versioned PSD/QTO catalog (ADR 0017) property edits check `Pset_` and
 # `Qto_` sets against. It embeds the IFC2X3, IFC4 and IFC4X3 catalogs:

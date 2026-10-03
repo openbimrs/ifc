@@ -44,6 +44,8 @@ view of `openbim-ifc`; if a binding needs more, the facade grows first.
 | `ifcxml` | yes | `openbim-ifc/ifcxml` |
 | `material` | yes | `openbim-ifc/material` |
 | `properties` | yes | `openbim-ifc/properties` |
+| `properties-write` | yes | `properties` |
+| `property-catalog` | yes | `properties-write`, `openbim-ifc/property-catalog` |
 | `spatial` | yes | `openbim-ifc/spatial` |
 | `systems` | yes | `openbim-ifc/systems` |
 | `unreachable` | yes | `openbim-ifc/spatial`, `openbim-ifc/geometry-select` |
