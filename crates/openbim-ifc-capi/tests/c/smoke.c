@@ -171,10 +171,15 @@ int main(void) {
   OK(openbim_ifc_v0_1_model_destroy(again));
 
   /* Opening from a path: owned and mapped reads see the same file. */
-  char path[64];
+  char path[512];
   {
+    /* The platform's temporary directory: TMPDIR on Unix, TEMP on Windows. */
+    const char *dir = getenv("TMPDIR");
     FILE *file = NULL;
-    snprintf(path, sizeof path, "/tmp/openbim_ifc_smoke_%d.ifc", (int)rand());
+    if (dir == NULL || dir[0] == '\0') dir = getenv("TEMP");
+    if (dir == NULL || dir[0] == '\0') dir = "/tmp";
+    CHECK(strlen(dir) < sizeof path - 40, "temp directory path fits");
+    snprintf(path, sizeof path, "%s/openbim_ifc_smoke_%d.ifc", dir, (int)rand());
     file = fopen(path, "wb");
     CHECK(file != NULL, "temp file");
     CHECK(fwrite(FILE_TEXT, 1, sizeof FILE_TEXT - 1, file) == sizeof FILE_TEXT - 1,

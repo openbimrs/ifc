@@ -10,7 +10,7 @@
 #   lint      formatting, clippy, rustdoc, documentation and licensing gates
 #   test      workspace build and tests, architecture and context gates
 #   features  feature-column builds: kernel-free, compile, facade, browser WASM
-#   bindings  JavaScript, C and Python bindings against the real library
+#   bindings  JavaScript, C (and its CMake package) and Python bindings
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -199,6 +199,10 @@ gate_bindings() {
     # C11 and as C++17 must parse, read, edit, write and re-parse through the
     # real library.
     crates/openbim-ifc-capi/scripts/check-c.sh
+    # The CMake package (#41): source-tree, installed and packed-archive
+    # consumers, shared and static, run the same smoke test. macOS and
+    # Windows run it in .github/workflows/native.yml.
+    python3 crates/openbim-ifc-capi/scripts/check-cmake.py
 
     # Python (#39, ADR 0013): build the abi3 wheel with maturin, install it
     # into a throwaway uv venv, and run the Python smoke and corpus suites

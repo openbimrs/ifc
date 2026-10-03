@@ -77,9 +77,13 @@ fn install_table(workspace: &Workspace) -> Result<String, String> {
                 format!("[`{}`]({})", r.package, r.url),
                 format!("`npm install {}`", r.package),
             ),
-            Some(r) => (
+            Some(r) if r.kind == "PyPI" => (
                 format!("[`{}`]({})", r.package, r.url),
                 format!("`pip install {}`", r.package),
+            ),
+            Some(r) => (
+                format!("[`{}`]({}) (CMake, prebuilt archives)", r.package, r.url),
+                format!("`find_package({})`", r.package),
             ),
             None => (
                 format!("`{name}` (not published)"),
@@ -131,8 +135,11 @@ fn requirement(workspace: &Workspace, krate: &crate::workspace::Crate) -> Result
             format!("Python `{floor}`")
         }
         // Checked by crates/openbim-ifc-capi/scripts/check-c.sh, which builds the
-        // smoke test with `-std=c11` and `-std=c++17`.
-        "openbim-ifc-capi" => "a C11 or C++17 compiler, and Rust to build".to_owned(),
+        // smoke test with `-std=c11` and `-std=c++17`, and check-cmake.py,
+        // whose consumer requires CMake 3.21. Rust only builds from source.
+        "openbim-ifc-capi" => {
+            "a C11 or C++17 compiler and CMake 3.21; Rust to build from source".to_owned()
+        }
         _ => match &krate.rust_version {
             Some(version) => format!("Rust `{version}`"),
             None => return Err(format!("{}: set `rust-version`", krate.name)),

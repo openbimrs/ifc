@@ -315,7 +315,11 @@ def plan(tag: str) -> int:
     if package["version"] != version:
         print(f"{tag}: Cargo.toml says {package['version']}", file=sys.stderr)
         return 1
-    targets = {"crates_io": package.get("publish") != [], "npm": False, "pypi": False}
+    targets = {"crates_io": package.get("publish") != [], "npm": False, "pypi": False,
+               # A crate with a CMake package ships prebuilt archives on a
+               # GitHub release; CMakeLists.txt reads its version from
+               # Cargo.toml, so there is no second manifest to disagree.
+               "native": (Path(package["manifest_path"]).parent / "CMakeLists.txt").is_file()}
     if crate in EXTRA_REGISTRIES:
         registry, manifest = EXTRA_REGISTRIES[crate]
         declared = manifest_version(ROOT / manifest)

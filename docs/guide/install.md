@@ -11,7 +11,7 @@ one reads the same in the others.
 | Rust | [`openbim-ifc`](https://crates.io/crates/openbim-ifc) | 0.11.0 (2026-10-03) | `cargo add openbim-ifc` | Rust `1.88.0` | [`openbim-ifc`](/reference/crates/openbim-ifc) |
 | JavaScript / TypeScript | [`@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) | 0.2.0 (2026-09-29) | `npm install @openbim/ifc` | Node `>=18` | [`openbim-ifc-wasm`](/reference/crates/openbim-ifc-wasm) |
 | Python | [`openbim-ifc`](https://pypi.org/project/openbim-ifc/) | 0.2.0 (2026-09-29) | `pip install openbim-ifc` | Python `>=3.9` | [`openbim-ifc-py`](/reference/crates/openbim-ifc-py) |
-| C / C++ | `openbim-ifc-capi` (not published) | not released | build from source | a C11 or C++17 compiler, and Rust to build | [`openbim-ifc-capi`](/reference/crates/openbim-ifc-capi) |
+| C / C++ | `openbim-ifc-capi` (not published) | not released | build from source | a C11 or C++17 compiler and CMake 3.21; Rust to build from source | [`openbim-ifc-capi`](/reference/crates/openbim-ifc-capi) |
 
 <!-- INSTALL:TABLE:END -->
 
@@ -54,11 +54,13 @@ See [Python](/bindings/python).
 
 ## C and C++
 
-The C ABI is not packaged yet. Build it from a checkout and link the static
-or shared library against `crates/openbim-ifc-capi/include/openbim_ifc.h`:
+The C ABI is a CMake package, `openbim_ifc`. Unpack a prebuilt archive from
+an `openbim-ifc-capi-v*` [GitHub release](https://github.com/openbimrs/ifc/releases)
+or install it from a checkout, then:
 
-```bash
-cargo build -p openbim-ifc-capi --release
+```cmake
+find_package(openbim_ifc 0.1 CONFIG REQUIRED)
+target_link_libraries(app PRIVATE openbim_ifc::openbim_ifc)
 ```
 
-See [C and C++](/bindings/c).
+See [C and C++](/bindings/c#install-via-cmake).
