@@ -27,6 +27,7 @@ pub mod material;
 mod model;
 mod options;
 pub mod properties;
+pub mod property_edit;
 pub mod record;
 pub mod spatial;
 pub mod systems;

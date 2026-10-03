@@ -85,6 +85,34 @@ export interface ResolvedUnit {
   offset: number;
 }
 
+/**
+ * One edit for `IfcModel.setProperties`: write `value` to property `name` of
+ * set `set` on `object`, or, with `remove: true`, remove it. The value is the
+ * read side's `Property.value`: a typed `IfcValue` (or `{ kind: "null" }`), a
+ * `list` of them for an enumerated or list value, a typed measure for a
+ * quantity.
+ */
+export type PropertyEdit =
+  | {
+      object: bigint;
+      set: string;
+      name: string;
+      value: IfcValue;
+      /** `"IfcPropertySet"` or `"IfcElementQuantity"`, for a set the edit
+       * creates that neither the type object nor the catalog describes. */
+      setType?: string;
+      remove?: false;
+    }
+  | { object: bigint; set: string; name: string; remove: true };
+
+/** What a committed `setProperties` batch did. */
+export interface PropertyEditResult {
+  /** Per edit: the entity holding the property afterwards, if any. */
+  properties: (bigint | undefined)[];
+  created: bigint[];
+  removed: bigint[];
+}
+
 /** The containment tree, from `IfcModel.spatialTree`. */
 export interface SpatialTree {
   /** The release containers were classified against, e.g. `IFC4_ADD2_TC1`. */

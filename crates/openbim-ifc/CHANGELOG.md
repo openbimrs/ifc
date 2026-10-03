@@ -12,6 +12,25 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#123, property sets: write side)
+
+- `apply_property_edits` and `stage_property_edits` (feature
+  `properties`): a batch of `PropertyEdit`s (set or remove a value,
+  addressed by object, set name and property name) planned against the
+  model and staged on one `Transaction`, committed all or nothing. An
+  inherited value is overridden on the occurrence, never on the type's
+  shared set; a shared set or property entity is copied before it
+  changes; an emptied set is removed with its relationship. Values are
+  checked against the declared release (IFC2X3, IFC4, IFC4X3) and, with
+  `property-catalog`, a `Pset_`/`Qto_` set against the release's PSD/QTO
+  catalog; without it such a set is refused
+  (`PropertyEditFailure::CatalogUnavailable`). New sets and relationships
+  take the object's owner history and a name-based `GlobalId`. Types
+  `PropertyEdit`, `SetType`, `PropertyEditOutcome`,
+  `StagedPropertyEdits`, `PropertyEditError`, `PropertyEditFailure`.
+- Additive: on its own a patch release; this release is a minor one for
+  #306 anyway.
+
 ### Changed (breaking)
 
 - `validate`, `spatial`, `geometry-select`, `properties`,

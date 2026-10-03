@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
 
-from .values import Value, from_wire as _value_from_wire
+from .values import Value, from_wire as _value_from_wire, to_wire as _value_to_wire
 
 
 @dataclass(frozen=True)
@@ -435,6 +435,55 @@ class MapConversion:
     translation: Tuple[float, ...]
 
 
+
+@dataclass(frozen=True)
+class PropertyEdit:
+    """One edit for :meth:`IfcModel.set_properties`.
+
+    Writes ``value`` to property ``name`` of set ``set`` on ``object``, or,
+    built with :meth:`removal`, removes it. ``value`` is the read side's
+    :attr:`Property.value`: a ``Typed`` ``IfcValue`` (or ``Null()``), a
+    ``List`` of them for an enumerated or list value, a typed measure for a
+    quantity. ``set_type`` (``"IfcPropertySet"`` or ``"IfcElementQuantity"``)
+    names the entity of a set the edit creates that neither the type object
+    nor the catalog describes.
+    """
+
+    object: int
+    set: str
+    name: str
+    value: Optional[Value] = None
+    set_type: Optional[str] = None
+    remove: bool = False
+
+    @classmethod
+    def removal(cls, object: int, set: str, name: str) -> "PropertyEdit":
+        """An edit removing property ``name`` from ``object``'s own set."""
+        return cls(object, set, name, remove=True)
+
+    def _to_wire(self) -> Dict[str, Any]:
+        return {
+            "object": self.object,
+            "set": self.set,
+            "name": self.name,
+            "value": None if self.value is None else _value_to_wire(self.value),
+            "set_type": self.set_type,
+            "remove": self.remove,
+        }
+
+
+@dataclass(frozen=True)
+class PropertyEditResult:
+    """What a committed :meth:`IfcModel.set_properties` batch did.
+
+    ``properties`` holds, per edit, the entity holding the property
+    afterwards, or ``None`` when the batch leaves none.
+    """
+
+    properties: Tuple[Optional[int], ...]
+    created: Tuple[int, ...]
+    removed: Tuple[int, ...]
+
 _RECORDS = {
     cls.__name__: cls
     for cls in (
@@ -469,6 +518,7 @@ _RECORDS = {
         ProjectedCrs,
         LengthUnit,
         MapConversion,
+        PropertyEditResult,
     )
 }
 
@@ -488,4 +538,4 @@ def _from_wire(data: Any) -> Any:
     return data
 
 
-__all__ = sorted(_RECORDS)
+__all__ = sorted([*_RECORDS, "PropertyEdit"])

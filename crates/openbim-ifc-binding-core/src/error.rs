@@ -51,8 +51,17 @@ pub enum BindingError {
     /// than approximated.
     Unsupported(String),
     /// A domain query (#123) named an entity of a type the query does not
-    /// accept, such as the property sets of a cartesian point.
+    /// accept, such as the property sets of a cartesian point; or a property
+    /// edit named a set type the set does not have.
     WrongEntityType(String),
+    /// A property edit (#123) wrote a value its template refuses: the
+    /// release's PSD/QTO catalog entry for the set (data type, enumeration,
+    /// form, quantity kind, a property it does not declare), or the
+    /// property's own `IfcPropertyEnumeration`.
+    TemplateViolation(String),
+    /// A property edit (#123) removed a property the object does not state,
+    /// including one it only inherits from its type object.
+    MissingProperty(String),
 }
 
 impl BindingError {
@@ -73,6 +82,8 @@ impl BindingError {
             Self::BudgetExceeded(_) => "budget-exceeded",
             Self::Unsupported(_) => "unsupported",
             Self::WrongEntityType(_) => "wrong-entity-type",
+            Self::TemplateViolation(_) => "template-violation",
+            Self::MissingProperty(_) => "missing-property",
         }
     }
 }
@@ -102,6 +113,8 @@ impl fmt::Display for BindingError {
             Self::BudgetExceeded(detail) => write!(f, "budget exceeded: {detail}"),
             Self::Unsupported(detail) => write!(f, "unsupported: {detail}"),
             Self::WrongEntityType(detail) => write!(f, "wrong entity type: {detail}"),
+            Self::TemplateViolation(detail) => write!(f, "template violation: {detail}"),
+            Self::MissingProperty(detail) => write!(f, "missing property: {detail}"),
         }
     }
 }
@@ -131,6 +144,8 @@ mod tests {
         "budget-exceeded",
         "unsupported",
         "wrong-entity-type",
+        "template-violation",
+        "missing-property",
     ];
 
     /// One value of every variant, in declaration order.
@@ -150,6 +165,8 @@ mod tests {
             BindingError::BudgetExceeded(String::new()),
             BindingError::Unsupported(String::new()),
             BindingError::WrongEntityType(String::new()),
+            BindingError::TemplateViolation(String::new()),
+            BindingError::MissingProperty(String::new()),
         ];
         // Exhaustive on purpose: a new variant does not compile until it is
         // listed above, so its code cannot escape the snapshot.
@@ -168,7 +185,9 @@ mod tests {
                 | BindingError::MissingReference(_)
                 | BindingError::BudgetExceeded(_)
                 | BindingError::Unsupported(_)
-                | BindingError::WrongEntityType(_) => {}
+                | BindingError::WrongEntityType(_)
+                | BindingError::TemplateViolation(_)
+                | BindingError::MissingProperty(_) => {}
             }
         }
         all

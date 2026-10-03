@@ -6,9 +6,10 @@ use openbim_ifc_binding_core::BindingError;
 
 /// Result of every ABI call. `Ok` is zero; every failure is non-zero.
 ///
-/// The values from `Parse` to `FeatureDisabled`, and `InvalidModel` to
-/// `WrongEntityType`, are the binding errors shared with the JavaScript and
-/// Python bindings; the rest describe misuse of the C boundary itself.
+/// The values from `Parse` to `FeatureDisabled`, `InvalidModel`, and
+/// `MissingReference` to `MissingProperty`, are the binding errors shared
+/// with the JavaScript and Python bindings; the rest describe misuse of the
+/// C boundary itself.
 #[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OpenbimIfcStatus {
@@ -54,9 +55,15 @@ pub enum OpenbimIfcStatus {
     BudgetExceeded = 22,
     /// A domain view met a construct it does not interpret (`unsupported`).
     Unsupported = 23,
-    /// A domain query named an entity of a type it does not accept
-    /// (`wrong-entity-type`).
+    /// A domain query named an entity of a type it does not accept, or a
+    /// property edit a set type the set does not have (`wrong-entity-type`).
     WrongEntityType = 24,
+    /// A property edit wrote a value its PSD/QTO template or property
+    /// enumeration refuses (`template-violation`).
+    TemplateViolation = 25,
+    /// A property edit removed a property the object does not state
+    /// (`missing-property`).
+    MissingProperty = 26,
     /// A Rust panic was contained at the boundary. Report it as a bug.
     Panic = 255,
 }
@@ -78,6 +85,8 @@ impl From<&BindingError> for OpenbimIfcStatus {
             BindingError::BudgetExceeded(_) => Self::BudgetExceeded,
             BindingError::Unsupported(_) => Self::Unsupported,
             BindingError::WrongEntityType(_) => Self::WrongEntityType,
+            BindingError::TemplateViolation(_) => Self::TemplateViolation,
+            BindingError::MissingProperty(_) => Self::MissingProperty,
         }
     }
 }
@@ -164,6 +173,14 @@ mod tests {
             (
                 BindingError::WrongEntityType(String::new()),
                 OpenbimIfcStatus::WrongEntityType,
+            ),
+            (
+                BindingError::TemplateViolation(String::new()),
+                OpenbimIfcStatus::TemplateViolation,
+            ),
+            (
+                BindingError::MissingProperty(String::new()),
+                OpenbimIfcStatus::MissingProperty,
             ),
         ];
         for (error, status) in cases {

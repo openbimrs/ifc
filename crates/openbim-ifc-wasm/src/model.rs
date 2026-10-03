@@ -10,6 +10,7 @@ use openbim_ifc_binding_core::{BindingError, IfcModel as Core, ToRecord};
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
 
+use crate::edits;
 use crate::error::js_error;
 use crate::records;
 use crate::value::{from_js, to_js};
@@ -211,6 +212,50 @@ impl IfcModel {
     pub fn georeferencing_js(&self) -> Result<Array, JsValue> {
         let maps = self.0.georeferencing().map_err(js_error)?;
         Ok(records::records_to_js(&to_records(&maps)))
+    }
+
+    /// Write and remove property and quantity values as one checked
+    /// transaction: every edit, in order, or none, and a refused batch
+    /// leaves the model unchanged. A write's `value` is the read side's
+    /// `value`; an inherited value is overridden on the occurrence, never
+    /// changed on the shared type set.
+    #[wasm_bindgen(js_name = setProperties, unchecked_return_type = "PropertyEditResult")]
+    pub fn set_properties_js(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "PropertyEdit[]")] edits: &JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let edits = edits::edits_from_js(edits).map_err(js_error)?;
+        let result = self.0.set_properties(edits).map_err(js_error)?;
+        Ok(records::record_to_js(&result.to_record()))
+    }
+
+    /// Write one value (`setProperties` with one edit); returns the entity
+    /// holding it (`bigint`).
+    #[wasm_bindgen(js_name = setProperty)]
+    pub fn set_property_js(
+        &mut self,
+        object: u64,
+        set: &str,
+        name: &str,
+        #[wasm_bindgen(unchecked_param_type = "IfcValue")] value: &JsValue,
+        #[wasm_bindgen(js_name = setType)] set_type: Option<String>,
+    ) -> Result<u64, JsValue> {
+        let value = from_js(value).map_err(js_error)?;
+        self.0
+            .set_property(object, set, name, value, set_type)
+            .map_err(js_error)
+    }
+
+    /// Remove one property from the object's own set (`setProperties` with
+    /// one edit).
+    #[wasm_bindgen(js_name = removeProperty)]
+    pub fn remove_property_js(
+        &mut self,
+        object: u64,
+        set: &str,
+        name: &str,
+    ) -> Result<(), JsValue> {
+        self.0.remove_property(object, set, name).map_err(js_error)
     }
 
     /// Number of entities.

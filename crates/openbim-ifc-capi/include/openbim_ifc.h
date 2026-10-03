@@ -100,9 +100,10 @@
 /**
  * Result of every ABI call. `Ok` is zero; every failure is non-zero.
  *
- * The values from `Parse` to `FeatureDisabled`, and `InvalidModel` to
- * `WrongEntityType`, are the binding errors shared with the JavaScript and
- * Python bindings; the rest describe misuse of the C boundary itself.
+ * The values from `Parse` to `FeatureDisabled`, `InvalidModel`, and
+ * `MissingReference` to `MissingProperty`, are the binding errors shared
+ * with the JavaScript and Python bindings; the rest describe misuse of the
+ * C boundary itself.
  */
 enum OpenbimIfcStatus
 #if defined(__cplusplus) || __STDC_VERSION__ >= 202311L
@@ -190,10 +191,20 @@ enum OpenbimIfcStatus
    */
   OPENBIM_IFC_STATUS_UNSUPPORTED = 23,
   /**
-   * A domain query named an entity of a type it does not accept
-   * (`wrong-entity-type`).
+   * A domain query named an entity of a type it does not accept, or a
+   * property edit a set type the set does not have (`wrong-entity-type`).
    */
   OPENBIM_IFC_STATUS_WRONG_ENTITY_TYPE = 24,
+  /**
+   * A property edit wrote a value its PSD/QTO template or property
+   * enumeration refuses (`template-violation`).
+   */
+  OPENBIM_IFC_STATUS_TEMPLATE_VIOLATION = 25,
+  /**
+   * A property edit removed a property the object does not state
+   * (`missing-property`).
+   */
+  OPENBIM_IFC_STATUS_MISSING_PROPERTY = 26,
   /**
    * A Rust panic was contained at the boundary. Report it as a bug.
    */
@@ -778,6 +789,20 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_property_sets(OpenbimIfcModel model,
                                                       size_t *out_strings_required);
 
 /**
+ * Remove one property from `object`'s own set:
+ * [`openbim_ifc_v0_1_model_set_properties`] with one `REMOVE` edit.
+ *
+ * # Safety
+ * `set` and `name` valid for their lengths (null only for 0).
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_remove_property(OpenbimIfcModel model,
+                                                        uint64_t object,
+                                                        const uint8_t *set,
+                                                        size_t set_len,
+                                                        const uint8_t *name,
+                                                        size_t name_len);
+
+/**
  * The effective unit of a `measure_type` value (`IFCAREAMEASURE`, UTF-8,
  * `measure_len` bytes): `unit` when non-zero (a property's stated unit),
  * otherwise the project default. The tape is one `ResolvedUnit`: unit
@@ -825,6 +850,60 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_set_header(OpenbimIfcModel model,
                                                    size_t node_count,
                                                    const uint8_t *strings,
                                                    size_t string_len);
+
+/**
+ * Apply the edits on the tape as one checked transaction: all of them, in
+ * order, or none, and the model unchanged.
+ *
+ * `out_count` gets the number of edits. `out_properties` gets, per edit,
+ * the id of the entity holding the property afterwards, or 0 when the
+ * batch leaves none; with `properties_capacity` below the edit count the
+ * call returns `BufferTooSmall` and applies nothing.
+ *
+ * `InvalidArgument` or `InvalidValue` for a malformed tape;
+ * `MissingEntity`, `WrongEntityType`, `UnsupportedSchema`, `InvalidValue`,
+ * `TemplateViolation`, `MissingProperty`, `Unsupported`, `InvalidModel`,
+ * `FeatureDisabled` as the shared codes say.
+ *
+ * # Safety
+ * `nodes` valid for `node_count` reads and `strings` for `string_len`
+ * (either null when its length is 0); `out_properties` null with capacity
+ * 0, or valid for `properties_capacity` writes; `out_count` valid for one
+ * write.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_set_properties(OpenbimIfcModel model,
+                                                       const OpenbimIfcValueNode *nodes,
+                                                       size_t node_count,
+                                                       const uint8_t *strings,
+                                                       size_t string_len,
+                                                       uint64_t *out_properties,
+                                                       size_t properties_capacity,
+                                                       size_t *out_count);
+
+/**
+ * Write one value: [`openbim_ifc_v0_1_model_set_properties`] with one
+ * `SET` edit. `set` and `name` are UTF-8; the value is a one-value tape;
+ * `set_type` (`IfcPropertySet` or `IfcElementQuantity`) may be null with
+ * length 0. `out_id` gets the entity holding the property.
+ *
+ * # Safety
+ * `set`, `name` and `set_type` valid for their lengths (null only for 0);
+ * the tape as for `openbim_ifc_v0_1_entity_set_attribute`; `out_id` valid
+ * for one write.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_set_property(OpenbimIfcModel model,
+                                                     uint64_t object,
+                                                     const uint8_t *set,
+                                                     size_t set_len,
+                                                     const uint8_t *name,
+                                                     size_t name_len,
+                                                     const OpenbimIfcValueNode *nodes,
+                                                     size_t node_count,
+                                                     const uint8_t *strings,
+                                                     size_t string_len,
+                                                     const uint8_t *set_type,
+                                                     size_t set_type_len,
+                                                     uint64_t *out_id);
 
 /**
  * The spatial containment tree as one `SpatialTree` record: release

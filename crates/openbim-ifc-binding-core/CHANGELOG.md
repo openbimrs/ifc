@@ -8,6 +8,21 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#123, property sets: write side)
+
+- `IfcModel::set_properties` (one checked transaction over a batch of
+  `property_edit::PropertyEdit`s), with the one-edit forms
+  `set_property` and `remove_property`; `PropertyEditResult` (a
+  `Record`) names the entity holding each value afterwards.
+  `PropertyEdit::from_tagged` reads the C tape form.
+- Features `properties-write` (the writer, about 205 KB of a browser
+  build) and `property-catalog` (the PSD/QTO catalog, 3.7 MB), both
+  default. Without the first the methods refuse with `FeatureDisabled`;
+  without the catalog a write to a `Pset_`/`Qto_` set does.
+- `BindingError::TemplateViolation` (`template-violation`) and
+  `MissingProperty` (`missing-property`). `BindingError` is exhaustive, so
+  a breaking change: minor (internal, unreleased).
+
 ### Added (#123, domain views: read side)
 
 - Read-only domain views, each an owned snapshot keyed by entity id with

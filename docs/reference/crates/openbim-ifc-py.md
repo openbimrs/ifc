@@ -10,7 +10,7 @@ Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python
 
 | | |
 | --- | --- |
-| Status | <span class="status-partial">Partial</span> |
+| Status | <span class="status-implemented">Implemented</span> |
 | Latest release | 0.2.1 (2026-10-03) |
 | Registries | [PyPI `openbim-ifc`](https://pypi.org/project/openbim-ifc/) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/openbim_ifc_py/index.html) |

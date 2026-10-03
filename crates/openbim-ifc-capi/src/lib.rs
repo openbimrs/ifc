@@ -38,6 +38,7 @@
 mod buffer;
 mod checks;
 mod domains;
+mod edits;
 mod errors;
 mod header;
 mod model;
@@ -50,6 +51,7 @@ mod xml;
 
 pub use checks::*;
 pub use domains::*;
+pub use edits::*;
 pub use errors::*;
 pub use header::*;
 pub use model::*;

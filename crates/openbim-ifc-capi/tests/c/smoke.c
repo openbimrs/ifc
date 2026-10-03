@@ -281,6 +281,118 @@ static int domains(void) {
   return documented_domains((const uint8_t *)DOMAIN_TEXT, strlen(DOMAIN_TEXT));
 }
 
+/* One tape node; strings index into the caller's buffer. */
+static OpenbimIfcValueNode node(int32_t kind, uint32_t children, int64_t integer,
+                                uint64_t offset, uint64_t len) {
+  OpenbimIfcValueNode n;
+  memset(&n, 0, sizeof n);
+  n.kind = kind;
+  n.child_count = children;
+  n.int_value = integer;
+  n.str_offset = offset;
+  n.str_len = len;
+  return n;
+}
+
+/* The property-writing example published on the docs site's C page. */
+static int documented_writing(OpenbimIfcModel model) {
+  // docs:snippet c-domain-write
+  /* Wall #3 inherits IsExternal from its type: writing it on the wall
+   * creates an occurrence override; the type's shared set is unchanged.
+   * The value is a one-value tape: IFCBOOLEAN(.F.). */
+  const char *wrapper = "IFCBOOLEAN";
+  OpenbimIfcValueNode value[2];
+  memset(value, 0, sizeof value);
+  value[0].kind = OPENBIM_IFC_KIND_TYPED;
+  value[0].str_len = strlen(wrapper);
+  value[1].kind = OPENBIM_IFC_KIND_BOOL;
+  value[1].int_value = 0;
+  uint64_t property = 0;
+  OpenbimIfcStatus status = openbim_ifc_v0_1_model_set_property(
+      model, 3, (const uint8_t *)"Pset_WallCommon", 15, (const uint8_t *)"IsExternal", 10,
+      value, 2, (const uint8_t *)wrapper, strlen(wrapper), NULL, 0, &property);
+  // docs:end
+  return status == OPENBIM_IFC_STATUS_OK && property != 0 ? 0 : 1;
+}
+
+/* Writing property sets (#123): one checked transaction, shared codes. */
+static int property_edits(void) {
+  OpenbimIfcModel model = 0;
+  OK(openbim_ifc_v0_1_model_parse((const uint8_t *)DOMAIN_TEXT, strlen(DOMAIN_TEXT), &model,
+                                  NULL, 0));
+  CHECK(documented_writing(model) == 0, "the documented writing example runs");
+
+  /* A batch: SET Custom.Note = IFCLABEL('x'), then REMOVE Custom.Missing,
+   * which the wall does not state: the whole batch is refused. */
+  static const char STRINGS[] = "SETCustomNoteIFCLABELxREMOVECustomMissing";
+  OpenbimIfcValueNode batch[14];
+  batch[0] = node(OPENBIM_IFC_KIND_LIST, 2, 0, 0, 0);
+  batch[1] = node(OPENBIM_IFC_KIND_LIST, 6, 0, 0, 0);
+  batch[2] = node(OPENBIM_IFC_KIND_ENUM, 0, 0, 0, 3);
+  batch[3] = node(OPENBIM_IFC_KIND_REF, 0, 3, 0, 0);
+  batch[4] = node(OPENBIM_IFC_KIND_TEXT, 0, 0, 3, 6);
+  batch[5] = node(OPENBIM_IFC_KIND_TEXT, 0, 0, 9, 4);
+  batch[6] = node(OPENBIM_IFC_KIND_TYPED, 0, 0, 13, 8);
+  batch[7] = node(OPENBIM_IFC_KIND_TEXT, 0, 0, 21, 1);
+  batch[8] = node(OPENBIM_IFC_KIND_NULL, 0, 0, 0, 0);
+  batch[9] = node(OPENBIM_IFC_KIND_LIST, 4, 0, 0, 0);
+  batch[10] = node(OPENBIM_IFC_KIND_ENUM, 0, 0, 22, 6);
+  batch[11] = node(OPENBIM_IFC_KIND_REF, 0, 3, 0, 0);
+  batch[12] = node(OPENBIM_IFC_KIND_TEXT, 0, 0, 28, 6);
+  batch[13] = node(OPENBIM_IFC_KIND_TEXT, 0, 0, 34, 7);
+  size_t strings_len = strlen(STRINGS);
+
+  size_t before_len = 0, after_len = 0;
+  openbim_ifc_v0_1_model_write(model, NULL, 0, &before_len);
+  uint8_t *before = (uint8_t *)malloc(before_len);
+  OK(openbim_ifc_v0_1_model_write(model, before, before_len, &before_len));
+
+  uint64_t properties[2] = {0, 0};
+  size_t count = 0;
+  CHECK(openbim_ifc_v0_1_model_set_properties(model, batch, 14, (const uint8_t *)STRINGS,
+                                              strings_len, properties, 1, &count) ==
+            OPENBIM_IFC_STATUS_BUFFER_TOO_SMALL,
+        "a short id buffer is refused before anything is written");
+  CHECK(count == 2, "two edits");
+  CHECK(openbim_ifc_v0_1_model_set_properties(model, batch, 14, (const uint8_t *)STRINGS,
+                                              strings_len, properties, 2, &count) ==
+            OPENBIM_IFC_STATUS_MISSING_PROPERTY,
+        "the refused removal refuses the batch");
+  char code[32];
+  size_t need = 0;
+  OK(openbim_ifc_v0_1_last_error_code(model, (uint8_t *)code, sizeof code, &need));
+  CHECK(strcmp(code, "missing-property") == 0, "the shared code");
+  uint8_t *after = (uint8_t *)malloc(before_len + 1);
+  OK(openbim_ifc_v0_1_model_write(model, after, before_len + 1, &after_len));
+  CHECK(after_len == before_len && memcmp(before, after, before_len) == 0,
+        "a refused batch leaves the model unchanged");
+  free(before);
+  free(after);
+
+  /* The SET edit alone applies; its id comes back. */
+  batch[0].child_count = 1;
+  OK(openbim_ifc_v0_1_model_set_properties(model, batch, 9, (const uint8_t *)STRINGS, 22,
+                                           properties, 2, &count));
+  CHECK(count == 1 && properties[0] != 0, "the written property's id");
+
+  /* IsExternal is an IfcBoolean in the catalog's Pset_WallCommon. */
+  const char *real_wrapper = "IFCREAL";
+  OpenbimIfcValueNode real[2];
+  real[0] = node(OPENBIM_IFC_KIND_TYPED, 0, 0, 0, strlen(real_wrapper));
+  real[1] = node(OPENBIM_IFC_KIND_REAL, 0, 0, 0, 0);
+  real[1].real_value = 1.0;
+  uint64_t id = 0;
+  CHECK(openbim_ifc_v0_1_model_set_property(
+            model, 3, (const uint8_t *)"Pset_WallCommon", 15, (const uint8_t *)"IsExternal", 10,
+            real, 2, (const uint8_t *)real_wrapper, strlen(real_wrapper), NULL, 0, &id) ==
+            OPENBIM_IFC_STATUS_TEMPLATE_VIOLATION,
+        "the catalog's data type");
+  OK(openbim_ifc_v0_1_model_remove_property(model, 3, (const uint8_t *)"Pset_WallCommon", 15,
+                                            (const uint8_t *)"IsExternal", 10));
+  OK(openbim_ifc_v0_1_model_destroy(model));
+  return 0;
+}
+
 int main(void) {
   OpenbimIfcVersion version;
   OK(openbim_ifc_v0_1_version(&version));
@@ -427,6 +539,7 @@ int main(void) {
   CHECK(documented_example() == 0, "the documented example runs");
   CHECK(capabilities() == 0, "the #244 surface works from C");
   CHECK(domains() == 0, "the domain views work from C");
+  CHECK(property_edits() == 0, "property sets are written from C");
 
   size_t live = 1;
   OK(openbim_ifc_v0_1_live_models(&live));

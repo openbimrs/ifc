@@ -137,10 +137,59 @@ Refusals raise `IfcError` with the codes every host shares:
 `missing-reference`, `budget-exceeded`, `unsupported` and
 `wrong-entity-type`. The wheel carries every domain.
 
-Not bound yet: writing property sets (the second half of
-[#123](https://github.com/openbimrs/ifc/issues/123)) and checked
-multi-edit transactions (`Transaction`, `Applied`, `Conflict`), deferred
-until a host asks for them. Use the Rust crates for those.
+#### Writing property sets
+
+<!-- SNIPPET:py-domain-write -->
+
+```python
+from openbim_ifc import PropertyEdit, Real, Text, Typed
+
+# Wall #31 inherits FireRating from its type: the write overrides it
+# on the wall and never changes the type's shared set.
+result = model.set_properties([
+    PropertyEdit(31, "Pset_WallCommon", "FireRating", Typed("IFCLABEL", Text("F60"))),
+    PropertyEdit(30, "Qto_WallBaseQuantities", "Width", Typed("IFCLENGTHMEASURE", Real(250.0))),
+    PropertyEdit.removal(30, "Pset_WallCommon", "IsExternal"),
+])
+# result.properties: per edit, the entity now holding the value
+own = next(s for s in model.property_sets(31) if s.source == "occurrence" and s.name == "Pset_WallCommon")
+```
+
+<!-- /SNIPPET -->
+
+`set_properties(edits)` writes and removes property and quantity values as
+one checked transaction: every `PropertyEdit`, in order, or, when any is
+refused, none, and the model is unchanged. An edit addresses a property
+the way `property_sets` reports it, by object, set name and property
+name, and its `value` is that property's `value`: a `Typed` `IfcValue`, a
+`List` of them for an enumerated or list value, a typed measure for a
+quantity. `PropertyEdit.removal(object, set, name)` removes one;
+`set_property(object, set, name, value, set_type=None)` and
+`remove_property(object, set, name)` are the one-edit forms, and the
+result is a `PropertyEditResult` with the id now holding each value.
+
+A missing set is created with its relationship, the object's owner history
+and a name-based `GlobalId`; a removal that empties a set removes it. A
+value the occurrence inherits from its type is overridden on the
+occurrence and never changed on the type's shared set (pass the type
+object to change that), and a set or property shared with other objects is
+copied before it changes. As for the views, the edit refuses rather than
+writes when a value is not admissible: `invalid-value` when the declared
+release (IFC2X3, IFC4 or IFC4X3) has no such `IfcValue` member, the
+payload does not fit it, a quantity's measure is another, or a stated unit
+fixes another measure; `template-violation` when the release's PSD/QTO
+catalog entry for a `Pset_`/`Qto_` set (data type, enumeration, form,
+quantity kind, a property it does not declare) or the property's own
+enumeration refuses it; `missing-property` for a removal of a property the
+object does not state (one it only inherits included); `unsupported` for a
+bounded, table, reference or complex value; and `wrong-entity-type` for a
+set type that disagrees with the set. The wheel carries the PSD/QTO
+catalog; a build without its `property-catalog` feature refuses a write to
+a `Pset_`/`Qto_` set with `feature-disabled`.
+
+Not bound yet: checked multi-edit transactions over arbitrary entities
+(`Transaction`, `Applied`, `Conflict`), deferred until a host asks for
+them. Use the Rust crates for those.
 
 ## API
 
@@ -162,6 +211,9 @@ Generated from the `openbim_ifc` package source.
 | `model.unreachable_products() -> List[UnreachableProduct]` | Products no viewer will draw, with a stable `reason`, in id order. |
 | `model.property_sets(id: int) -> List[PropertySet]` | The property sets, quantity sets and predefined property sets of object `id`: its own first, then those its type object holds, an occurrence property overriding an inherited one of the same name. |
 | `model.resolve_unit(measure_type: str, unit: Optional[int] = None) -> ResolvedUnit` | The effective unit of a `measure_type` value (`"IFCAREAMEASURE"`): `unit` when given (a property's stated unit), otherwise the project default, resolved exactly to SI. |
+| `model.set_properties(edits: Iterable[PropertyEdit]) -> PropertyEditResult` | Write and remove property and quantity values as one checked transaction: every edit, in order, or none. |
+| `model.set_property(object: int, set: str, name: str, value: Value, *, set_type: Optional[str] = None) -> int` | Write one value (:meth:`set_properties` with one edit); returns the id of the entity holding it. |
+| `model.remove_property(object: int, set: str, name: str) -> None` | Remove one property from `object`'s own set (:meth:`set_properties` with one edit). |
 | `model.spatial_tree() -> SpatialTree` | The spatial containment tree: every container with its parent, sub-containers and contained elements. |
 | `model.classifications(id: int) -> List[Classification]` | The classifications of object `id`: its own, then its type's. |
 | `model.material(id: int) -> Optional[MaterialAssignment]` | The material association of object `id`, its own or its type's, or `None`. |

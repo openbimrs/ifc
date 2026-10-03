@@ -427,3 +427,63 @@ test("domain refusals carry the shared codes", () => {
   );
   throwsCode(() => ifc4x1.propertySets(3n), "unsupported-schema");
 });
+
+test("property sets are written as one checked transaction", () => {
+  const model = openFixture("synthetic-properties/synthetic_properties.ifc");
+  // docs:snippet js-domain-write
+  const label = (value) => ({ kind: "typed", type: "IFCLABEL", value: { kind: "text", value } });
+  // Wall #31 inherits FireRating from its type: the write overrides it on
+  // the wall and never changes the type's shared set.
+  const result = model.setProperties([
+    { object: 31n, set: "Pset_WallCommon", name: "FireRating", value: label("F60") },
+    {
+      object: 30n,
+      set: "Qto_WallBaseQuantities",
+      name: "Width",
+      value: { kind: "typed", type: "IFCLENGTHMEASURE", value: { kind: "real", value: 250 } },
+    },
+    { object: 30n, set: "Pset_WallCommon", name: "IsExternal", remove: true },
+  ]);
+  // result.properties: per edit, the entity now holding the value
+  const fireRating = model
+    .propertySets(31n)
+    .find((set) => set.source === "occurrence" && set.name === "Pset_WallCommon")
+    .properties.find((p) => p.name === "FireRating");
+  // docs:end
+  assert.equal(result.properties.length, 3);
+  assert.equal(result.properties[2], undefined);
+  assert.deepEqual(fireRating.value, label("F60"));
+  assert.deepEqual(model.attribute(35n, 2), label("F30"), "the type's value is unchanged");
+
+  // The values read back identically through STEP and ifcXML.
+  const values = (m) =>
+    m.propertySets(31n).flatMap((set) => set.properties.map((p) => [set.source, set.name, p.name, p.value]));
+  const expected = values(model);
+  assert.deepEqual(values(IfcModel.parse(model.write())), expected);
+  assert.deepEqual(values(IfcModel.parseIfcXml(model.writeIfcXml())), expected);
+
+  // Single-edit wrappers.
+  const id = model.setProperty(31n, "Custom", "Note", label("x"));
+  assert.equal(model.typeOf(id), "IFCPROPERTYSINGLEVALUE");
+  model.removeProperty(31n, "Custom", "Note");
+
+  // Every refusal has its code and leaves the model unchanged.
+  const before = model.write();
+  const refuses = (edits, code) => {
+    throwsCode(() => model.setProperties(edits), code);
+    assert.deepEqual(model.write(), before, code);
+  };
+  refuses([{ object: 31n, set: "Pset_WallCommon", name: "FireRating", value: { kind: "typed", type: "IFCREAL", value: { kind: "real", value: 1 } } }], "template-violation");
+  refuses([{ object: 31n, set: "Pset_WallCommon", name: "IsExternal", remove: true }], "missing-property");
+  refuses([{ object: 31n, set: "Custom", name: "A", value: { kind: "real", value: 1 } }], "invalid-value");
+  refuses(
+    [
+      { object: 31n, set: "Custom", name: "A", value: label("valid") },
+      { object: 999n, set: "Custom", name: "A", value: label("x") },
+    ],
+    "missing-entity",
+  );
+  refuses([{ object: 31n, set: "Custom", name: "A" }], "invalid-value");
+  const ifc4x1 = IfcModel.parse(new TextEncoder().encode(CLASSIFIED.replace("'IFC4'", "'IFC4X1'")));
+  throwsCode(() => ifc4x1.setProperty(3n, "Custom", "A", label("x")), "unsupported-schema");
+});

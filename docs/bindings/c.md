@@ -222,10 +222,70 @@ Refusals keep the codes every host shares, with new statuses
 read is `UNSUPPORTED_SCHEMA`. These exports make the ABI version 0.1.2;
 no `v0_1` symbol changed.
 
-Not bound yet: writing property sets (the second half of
-[#123](https://github.com/openbimrs/ifc/issues/123)) and checked
-multi-edit transactions (`Transaction`, `Applied`, `Conflict`), deferred
-until a host asks for them. Use the Rust crates for those.
+#### Writing property sets
+
+<!-- SNIPPET:c-domain-write -->
+
+```c
+/* Wall #3 inherits IsExternal from its type: writing it on the wall
+ * creates an occurrence override; the type's shared set is unchanged.
+ * The value is a one-value tape: IFCBOOLEAN(.F.). */
+const char *wrapper = "IFCBOOLEAN";
+OpenbimIfcValueNode value[2];
+memset(value, 0, sizeof value);
+value[0].kind = OPENBIM_IFC_KIND_TYPED;
+value[0].str_len = strlen(wrapper);
+value[1].kind = OPENBIM_IFC_KIND_BOOL;
+value[1].int_value = 0;
+uint64_t property = 0;
+OpenbimIfcStatus status = openbim_ifc_v0_1_model_set_property(
+    model, 3, (const uint8_t *)"Pset_WallCommon", 15, (const uint8_t *)"IsExternal", 10,
+    value, 2, (const uint8_t *)wrapper, strlen(wrapper), NULL, 0, &property);
+```
+
+<!-- /SNIPPET -->
+
+`openbim_ifc_v0_1_model_set_properties` writes and removes property and
+quantity values as one checked transaction: every edit, in order, or, when
+any is refused, none, and the model is unchanged. The batch is one tape, a
+`LIST` of edits, each a `LIST`:
+
+| Edit | Fields, in tape order |
+| --- | --- |
+| write | `ENUM SET`, object (`REF` or `INTEGER`), set name (`TEXT`), property name (`TEXT`), value (the `Property` value field, typed), set type (`TEXT` `IfcPropertySet`/`IfcElementQuantity`, or `NULL`; may be left off) |
+| removal | `ENUM REMOVE`, object, set name, property name |
+
+A batch is never run as a size query: the caller passes one `uint64_t` per
+edit, which gets the id of the entity holding the property afterwards (0
+when the batch leaves none), and a buffer shorter than the edit count is
+`BUFFER_TOO_SMALL` before anything is written.
+`openbim_ifc_v0_1_model_set_property` (a one-value tape) and
+`openbim_ifc_v0_1_model_remove_property` are the one-edit forms.
+
+A missing set is created with its relationship, the object's owner history
+and a name-based `GlobalId`; a removal that empties a set removes it. A
+value the occurrence inherits from its type is overridden on the
+occurrence and never changed on the type's shared set (pass the type
+object to change that), and a set or property shared with other objects is
+copied before it changes. As for the views, the edit refuses rather than
+writes when a value is not admissible: `invalid-value` when the declared
+release (IFC2X3, IFC4 or IFC4X3) has no such `IfcValue` member, the
+payload does not fit it, a quantity's measure is another, or a stated unit
+fixes another measure; `template-violation` (`TEMPLATE_VIOLATION`, 25)
+when the release's PSD/QTO catalog entry for a `Pset_`/`Qto_` set (data
+type, enumeration, form, quantity kind, a property it does not declare) or
+the property's own enumeration refuses it; `missing-property`
+(`MISSING_PROPERTY`, 26) for a removal of a property the object does not
+state (one it only inherits included); `unsupported` for a bounded, table,
+reference or complex value; and `wrong-entity-type` for a set type that
+disagrees with the set. These exports make the ABI version 0.1.3; no
+`v0_1` symbol changed. The library carries the PSD/QTO catalog; a build
+without the core's `property-catalog` feature refuses a write to a
+`Pset_`/`Qto_` set with `FEATURE_DISABLED`.
+
+Not bound yet: checked multi-edit transactions over arbitrary entities
+(`Transaction`, `Applied`, `Conflict`), deferred until a host asks for
+them. Use the Rust crates for those.
 
 ## API
 
@@ -659,6 +719,18 @@ than IFC2X3, IFC4 or IFC4X3), `InvalidModel`, `FeatureDisabled`.
 `out_count` valid for one write; otherwise as for
 `openbim_ifc_v0_1_entity_attribute`.
 
+#### `openbim_ifc_v0_1_model_remove_property`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_remove_property(OpenbimIfcModel model, uint64_t object, const uint8_t *set, size_t set_len, const uint8_t *name, size_t name_len);
+```
+
+Remove one property from `object`'s own set:
+`openbim_ifc_v0_1_model_set_properties` with one `REMOVE` edit.
+
+**Safety.**
+`set` and `name` valid for their lengths (null only for 0).
+
 #### `openbim_ifc_v0_1_model_resolve_unit`
 
 ```c
@@ -700,6 +772,47 @@ shape is `InvalidValue` and leaves the header unchanged.
 
 **Safety.**
 As for `openbim_ifc_v0_1_entity_set_attribute`.
+
+#### `openbim_ifc_v0_1_model_set_properties`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_set_properties(OpenbimIfcModel model, const OpenbimIfcValueNode *nodes, size_t node_count, const uint8_t *strings, size_t string_len, uint64_t *out_properties, size_t properties_capacity, size_t *out_count);
+```
+
+Apply the edits on the tape as one checked transaction: all of them, in
+order, or none, and the model unchanged.
+
+`out_count` gets the number of edits. `out_properties` gets, per edit,
+the id of the entity holding the property afterwards, or 0 when the
+batch leaves none; with `properties_capacity` below the edit count the
+call returns `BufferTooSmall` and applies nothing.
+
+`InvalidArgument` or `InvalidValue` for a malformed tape;
+`MissingEntity`, `WrongEntityType`, `UnsupportedSchema`, `InvalidValue`,
+`TemplateViolation`, `MissingProperty`, `Unsupported`, `InvalidModel`,
+`FeatureDisabled` as the shared codes say.
+
+**Safety.**
+`nodes` valid for `node_count` reads and `strings` for `string_len`
+(either null when its length is 0); `out_properties` null with capacity
+0, or valid for `properties_capacity` writes; `out_count` valid for one
+write.
+
+#### `openbim_ifc_v0_1_model_set_property`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_set_property(OpenbimIfcModel model, uint64_t object, const uint8_t *set, size_t set_len, const uint8_t *name, size_t name_len, const OpenbimIfcValueNode *nodes, size_t node_count, const uint8_t *strings, size_t string_len, const uint8_t *set_type, size_t set_type_len, uint64_t *out_id);
+```
+
+Write one value: `openbim_ifc_v0_1_model_set_properties` with one
+`SET` edit. `set` and `name` are UTF-8; the value is a one-value tape;
+`set_type` (`IfcPropertySet` or `IfcElementQuantity`) may be null with
+length 0. `out_id` gets the entity holding the property.
+
+**Safety.**
+`set`, `name` and `set_type` valid for their lengths (null only for 0);
+the tape as for `openbim_ifc_v0_1_entity_set_attribute`; `out_id` valid
+for one write.
 
 #### `openbim_ifc_v0_1_model_spatial_tree`
 
@@ -837,7 +950,9 @@ Write the ABI and crate versions.
 | `OPENBIM_IFC_STATUS_MISSING_REFERENCE` | 21 | A domain view followed a reference to an entity the file lacks (`missing-reference`). |
 | `OPENBIM_IFC_STATUS_BUDGET_EXCEEDED` | 22 | A domain view stopped at a cycle or its depth budget (`budget-exceeded`). |
 | `OPENBIM_IFC_STATUS_UNSUPPORTED` | 23 | A domain view met a construct it does not interpret (`unsupported`). |
-| `OPENBIM_IFC_STATUS_WRONG_ENTITY_TYPE` | 24 | A domain query named an entity of a type it does not accept (`wrong-entity-type`). |
+| `OPENBIM_IFC_STATUS_WRONG_ENTITY_TYPE` | 24 | A domain query named an entity of a type it does not accept, or a property edit a set type the set does not have (`wrong-entity-type`). |
+| `OPENBIM_IFC_STATUS_TEMPLATE_VIOLATION` | 25 | A property edit wrote a value its PSD/QTO template or property enumeration refuses (`template-violation`). |
+| `OPENBIM_IFC_STATUS_MISSING_PROPERTY` | 26 | A property edit removed a property the object does not state (`missing-property`). |
 | `OPENBIM_IFC_STATUS_PANIC` | 255 | A Rust panic was contained at the boundary. Report it as a bug. |
 
 <!-- API:C:END -->

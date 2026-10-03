@@ -207,10 +207,72 @@ property sets about 156 KB, spatial 16 KB, classification 57 KB,
 materials 83 KB, systems 56 KB, cost 37 KB, and georeferencing 55 KB on
 top of property sets, which it needs for the project length unit.
 
-Not bound yet: writing property sets (the second half of
-[#123](https://github.com/openbimrs/ifc/issues/123)) and checked
-multi-edit transactions (`Transaction`, `Applied`, `Conflict`), deferred
-until a host asks for them. Use the Rust crates for those.
+#### Writing property sets
+
+<!-- SNIPPET:js-domain-write -->
+
+```js
+const label = (value) => ({ kind: "typed", type: "IFCLABEL", value: { kind: "text", value } });
+// Wall #31 inherits FireRating from its type: the write overrides it on
+// the wall and never changes the type's shared set.
+const result = model.setProperties([
+  { object: 31n, set: "Pset_WallCommon", name: "FireRating", value: label("F60") },
+  {
+    object: 30n,
+    set: "Qto_WallBaseQuantities",
+    name: "Width",
+    value: { kind: "typed", type: "IFCLENGTHMEASURE", value: { kind: "real", value: 250 } },
+  },
+  { object: 30n, set: "Pset_WallCommon", name: "IsExternal", remove: true },
+]);
+// result.properties: per edit, the entity now holding the value
+const fireRating = model
+  .propertySets(31n)
+  .find((set) => set.source === "occurrence" && set.name === "Pset_WallCommon")
+  .properties.find((p) => p.name === "FireRating");
+```
+
+<!-- /SNIPPET -->
+
+`setProperties(edits)` writes and removes property and quantity values as
+one checked transaction: every edit, in order, or, when any is refused,
+none, and the model is unchanged. An edit addresses a property the way
+`propertySets` reports it, by object, set name and property name, and its
+`value` is that property's `value`: a typed `IfcValue`, a `list` of them
+for an enumerated or list value, a typed measure for a quantity, whose
+wrapper is dropped on write because the quantity's slot declares it.
+`setProperty(object, set, name, value, setType?)` and
+`removeProperty(object, set, name)` are the one-edit forms.
+
+- A missing property is added to the object's own set, and a missing set
+  is created with its `IfcRelDefinesByProperties` (or, for a type object,
+  added to its `HasPropertySets`), with the object's owner history and a
+  name-based `GlobalId`. A removal that empties a set removes the set.
+- A value the occurrence inherits from its type is overridden on the
+  occurrence, in the inherited property's form; the type's shared set is
+  never changed through an occurrence. Pass the type object to change it.
+- A set or property entity the object shares with others is copied for it
+  first; the others keep their value.
+
+Like the views, the edit refuses rather than writes when a value is not
+admissible: `invalid-value` when the declared release (IFC2X3, IFC4 or
+IFC4X3) has no such `IfcValue` member, the payload does not fit it, a
+quantity's measure is another, or a stated unit fixes another measure;
+`template-violation` when the release's PSD/QTO catalog entry for a
+`Pset_`/`Qto_` set (data type, enumeration, form, quantity kind, a
+property it does not declare) or the property's own enumeration refuses
+it; `missing-property` for a removal of a property the object does not
+state (one it only inherits included); `unsupported` for a bounded, table,
+reference or complex value; and `wrong-entity-type` for a set type that
+disagrees with the set. `properties-write` is a feature of its own
+(about 205 KB, 65 KB under `gzip -9`), and the catalog `property-catalog`
+another (3.7 MB, 0.99 MB), both on by default (see
+[module size](#module-size)); without the catalog a write to a
+`Pset_`/`Qto_` set throws `feature-disabled` rather than going unchecked.
+
+Not bound yet: checked multi-edit transactions over arbitrary entities
+(`Transaction`, `Applied`, `Conflict`), deferred until a host asks for
+them. Use the Rust crates for those.
 
 ## Module size
 
@@ -220,8 +282,9 @@ built with `cargo build -p openbim-ifc-wasm --target wasm32-unknown-unknown
 
 | Features | Raw | gzip -9 | brotli 11 |
 | --- | ---: | ---: | ---: |
-| default: five releases, every capability and domain | 2,343,181 | 796,234 | 516,930 |
-| `ifc4` | 759,820 | 321,132 | 259,956 |
+| default: five releases, every capability and domain, the writer and the catalog | 6,282,871 | 1,855,125 | 956,057 |
+| default before #123's writer | 2,343,181 | 796,234 | 516,930 |
+| `ifc4` | 770,860 | 325,602 | 263,064 |
 | `ifc4,validate` | 929,080 | 383,347 | 304,607 |
 | `ifc4,unreachable` | 830,095 | 346,589 | 278,763 |
 | `ifc4,ifcxml` | 1,074,540 | 430,635 | 342,298 |
@@ -232,9 +295,21 @@ built with `cargo build -p openbim-ifc-wasm --target wasm32-unknown-unknown
 | `ifc4,systems` | 831,006 | 346,749 | 278,506 |
 | `ifc4,cost` | 802,733 | 336,375 | 270,411 |
 | `ifc4,georef` (brings `properties`) | 990,688 | 406,569 | 323,150 |
+| `ifc4,properties-write` (brings `properties`) | 1,144,013 | 451,456 | 355,458 |
+| `ifc4,property-catalog` (brings `properties-write`) | 4,869,230 | 1,443,029 | 749,978 |
 | `ifc4` + the three capabilities | 1,303,035 | 510,415 | 398,226 |
 | `ifc4` + the seven domains | 1,266,205 | 487,576 | 378,385 |
-| `ifc4` + every capability and domain | 1,750,572 | 653,690 | 497,814 |
+| `ifc4` + every capability and domain | 1,760,329 | 656,425 | 499,492 |
+| the same + `properties-write` | 1,963,827 | 719,252 | 544,142 |
+| the same + `property-catalog` | 5,690,182 | 1,711,975 | 936,709 |
+
+The `ifc4` and the last three rows, and the default, were measured with
+the writer of [#123](https://github.com/openbimrs/ifc/issues/123); the
+other single-feature rows before it. Its methods stay in every build, as
+a left-out feature's do, which costs about 10 KB (`ifc4` was 759,820
+bytes). The writer itself adds about 205 KB (65 KB under `gzip -9`), and
+the PSD/QTO catalog, which embeds the IFC2X3, IFC4 and IFC4X3 catalogs
+whatever releases the build names, 3.7 MB (0.99 MB).
 
 Every capability and domain links only the schema tables of the releases
 the build names ([#306](https://github.com/openbimrs/ifc/issues/306)).
@@ -304,6 +379,9 @@ Generated from the `#[wasm_bindgen]` exports in
 | `model.systems(): Systems` | yes | Every system with its members and served structures, and the memberships the reader could not honour. |
 | `model.cost(): Cost` | yes | Every cost schedule and cost item, with values in the tagged encoding. |
 | `model.georeferencing(): MapConversion[]` | yes | Every coordinate operation (map conversion) resolved with the project length unit; empty when the model has none. |
+| `model.setProperties(edits: PropertyEdit[]): PropertyEditResult` | yes | Write and remove property and quantity values as one checked transaction: every edit, in order, or none, and a refused batch leaves the model unchanged. A write's `value` is the read side's `value`; an inherited value is overridden on the occurrence, never changed on the shared type set. |
+| `model.setProperty(object: bigint, set: string, name: string, value: IfcValue, setType: string \| undefined): bigint` | yes | Write one value (`setProperties` with one edit); returns the entity holding it (`bigint`). |
+| `model.removeProperty(object: bigint, set: string, name: string): void` | yes | Remove one property from the object's own set (`setProperties` with one edit). |
 | `model.size: number` |  | Number of entities. |
 | `model.schema: string \| undefined` |  | The first `FILE_SCHEMA` token, e.g. `"IFC4"`, or `undefined`. |
 | `model.diagnostics(): string[]` |  | Non-fatal problems found while reading. |

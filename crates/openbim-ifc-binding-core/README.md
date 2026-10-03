@@ -24,3 +24,10 @@ each domain operation (#123) returns owned snapshot structs, and the same
 data as a `Record`: a named, ordered list of fields that every host
 converts with one generic function. The records therefore cannot differ
 between JavaScript, Python and C.
+
+Property edits go the other way and are read once here too: each host
+builds the core's `PropertyEdit` from its own idiom, and the C batch is a
+value tape `PropertyEdit::from_tagged` reads, so a host cannot interpret
+an edit differently. The edit itself is the facade's
+`apply_property_edits`; this crate only maps its refusals to the shared
+codes.

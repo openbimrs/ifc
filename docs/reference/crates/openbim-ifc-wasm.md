@@ -10,7 +10,7 @@ WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from J
 
 | | |
 | --- | --- |
-| Status | <span class="status-partial">Partial</span> |
+| Status | <span class="status-implemented">Implemented</span> |
 | Latest release | 0.2.1 (2026-10-03) |
 | Registries | [npm `@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) |
 | API documentation | [rustdoc](/ifc/api/rustdoc/openbim_ifc_wasm/index.html) |
@@ -49,6 +49,8 @@ suites here cover only the JS conversion itself.
 | `ifcxml` | yes | `openbim-ifc-binding-core/ifcxml` |
 | `material` | yes | `openbim-ifc-binding-core/material` |
 | `properties` | yes | `openbim-ifc-binding-core/properties` |
+| `properties-write` | yes | `openbim-ifc-binding-core/properties-write` |
+| `property-catalog` | yes | `openbim-ifc-binding-core/property-catalog` |
 | `spatial` | yes | `openbim-ifc-binding-core/spatial` |
 | `systems` | yes | `openbim-ifc-binding-core/systems` |
 | `unreachable` | yes | `openbim-ifc-binding-core/unreachable` |

@@ -68,6 +68,10 @@ export function smoke(IfcModel) {
   // The domain views (#123) are compiled into every packaged target.
   check(model.propertySets(5n).length === 0, "propertySets");
   check(model.spatialTree().nodes.length === 1, "spatialTree");
+  const note = { kind: "typed", type: "IFCLABEL", value: { kind: "text", value: "x" } };
+  model.setProperty(5n, "Custom", "Note", note);
+  const written = model.propertySets(5n)[0].properties[0].value;
+  check(written.type === "IFCLABEL" && written.value.value === "x", "setProperty");
 
   return { schema: model.schema, size: model.size, walls: walls.length };
 }

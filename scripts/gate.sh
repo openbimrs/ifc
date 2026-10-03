@@ -167,6 +167,10 @@ gate_features() {
     # `ifc-georef` and exact unit resolution, so it exists only with both
     # `georef` and `properties`.
     cargo test -p openbim-ifc --features step,schema,georef,properties --test georeferencing
+    # Property edits (#123) check `Pset_`/`Qto_` sets against the PSD/QTO
+    # catalog when `property-catalog` is on; `--all-features` hides the
+    # refusal a build without it gives.
+    cargo test -p openbim-ifc --features step,schema,properties --test property_edit
 
     # Per-release schema column (#112). `--all-features` always bundles every
     # release, so a single-release build is the only place the `NotBundled`
@@ -185,6 +189,10 @@ gate_features() {
     # all seven with `feature-disabled`; this one binds georeferencing alone,
     # which brings property sets with it and leaves the other five out.
     cargo test -p openbim-ifc-binding-core --no-default-features --features ifc4,georef
+    # Writing property sets (#123) is a feature of its own, and the catalog
+    # another: this run writes without the catalog, with the IFC4 table
+    # alone, so an IFC2X3 file is refused as unbundled.
+    cargo test -p openbim-ifc-binding-core --no-default-features --features ifc4,properties-write
 
     # Every crate the bindings reach takes its releases from the build too
     # (#306): each builds and tests with one release; the binding core with

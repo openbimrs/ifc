@@ -8,6 +8,16 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#123, property sets: write side)
+
+- `openbim_ifc_v0_1_model_set_properties` (a batch as one value tape,
+  one id per edit back), `_model_set_property` and
+  `_model_remove_property`.
+- `OPENBIM_IFC_STATUS_TEMPLATE_VIOLATION` (25) and
+  `_MISSING_PROPERTY` (26).
+- The ABI version is 0.1.3: every export above is new, no `v0_1` symbol
+  changed. Additive, so a patch release.
+
 ### Added (#123, domain views: read side)
 
 - `openbim_ifc_v0_1_model_property_sets`, `_model_resolve_unit`,

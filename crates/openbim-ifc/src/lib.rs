@@ -107,9 +107,16 @@ pub use self::{
 #[cfg(feature = "cost")]
 pub use ifc_cost as cost;
 
-/// Property sets and quantities.
+/// Property sets and quantities, and their checked edit (`property_edit`
+/// below).
 #[cfg(feature = "properties")]
-pub use ifc_properties as properties;
+pub use {
+    ifc_properties as properties,
+    property_edit::{
+        apply_property_edits, stage_property_edits, PropertyEdit, PropertyEditError,
+        PropertyEditFailure, PropertyEditOutcome, SetType, StagedPropertyEdits,
+    },
+};
 
 /// Versioned external PSD/QTO template catalogs and correction profiles.
 #[cfg(feature = "property-catalog")]
@@ -287,6 +294,13 @@ pub use spatial_properties::{
 mod georeference;
 #[cfg(all(feature = "georef", feature = "properties"))]
 pub use georeference::{georeferencing, GeoreferencingError};
+
+// Writing property and quantity values (#123) joins the exact resolver and
+// release-bound writers of `ifc-properties` with the PSD/QTO catalog of
+// `ifc-template-catalog`, siblings under ADR 0003. The module gates itself
+// on `properties` with an inner `#![cfg]`; the catalog checks need
+// `property-catalog` too.
+mod property_edit;
 
 mod feature_report;
 mod io;

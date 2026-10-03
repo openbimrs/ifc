@@ -9,6 +9,7 @@
 //! `openbim-ifc`, shared binding behaviour in `openbim-ifc-binding-core`.
 
 mod convert;
+mod edits;
 mod error;
 mod model;
 mod records;
