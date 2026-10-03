@@ -53,7 +53,8 @@ js-sys = "=0.3.105"
 default = [
     "ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3",
     "ifcxml", "validate", "unreachable",
-    "properties", "spatial", "classification", "material", "systems", "cost", "georef",
+    "properties", "properties-write", "property-catalog",
+    "spatial", "classification", "material", "systems", "cost", "georef",
 ]
 ifc2x3 = ["openbim-ifc-binding-core/ifc2x3"]
 ifc4 = ["openbim-ifc-binding-core/ifc4"]
@@ -68,6 +69,12 @@ validate = ["openbim-ifc-binding-core/validate"]
 unreachable = ["openbim-ifc-binding-core/unreachable"]
 # Domain views (#123), one per facade domain.
 properties = ["openbim-ifc-binding-core/properties"]
+# Writing property sets (#123); a read-only build can leave it out.
+properties-write = ["openbim-ifc-binding-core/properties-write"]
+# The PSD/QTO catalog property edits check `Pset_` and `Qto_` sets against
+# (+3.7 MB, +0.99 MB gzip); without it, writing one throws
+# `feature-disabled`.
+property-catalog = ["openbim-ifc-binding-core/property-catalog"]
 spatial = ["openbim-ifc-binding-core/spatial"]
 classification = ["openbim-ifc-binding-core/classification"]
 material = ["openbim-ifc-binding-core/material"]

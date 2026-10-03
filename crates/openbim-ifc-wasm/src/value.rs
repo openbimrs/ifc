@@ -122,7 +122,7 @@ fn real(value: &JsValue) -> Result<f64, BindingError> {
 ///
 /// Accepting a number is a convenience for small literals; one outside
 /// ±(2^53 - 1) may already have lost precision, so it is refused.
-fn big_i64(value: &JsValue, what: &str) -> Result<i64, BindingError> {
+pub(crate) fn big_i64(value: &JsValue, what: &str) -> Result<i64, BindingError> {
     if let Some(big) = value.dyn_ref::<BigInt>() {
         return i64::try_from(big.clone())
             .map_err(|_| BindingError::OutOfRange(format!("{what} does not fit in 64 bits")));

@@ -6,6 +6,7 @@ use pyo3::prelude::*;
 use pyo3::types::{PyBool, PyBytes, PyDict, PyList};
 
 use crate::convert::{from_py, to_py};
+use crate::edits;
 use crate::error::py_err;
 use crate::records;
 
@@ -185,6 +186,41 @@ impl NativeModel {
             .resolve_unit(measure_type, unit)
             .map_err(py_err)?;
         records::record_to_py(py, &unit.to_record())
+    }
+
+    /// Apply property edits (dicts, see `edits`) as one checked
+    /// transaction; the `PropertyEditResult` record dict.
+    fn set_properties<'py>(
+        &mut self,
+        py: Python<'py>,
+        edits: &Bound<'py, PyAny>,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let edits = edits::edits_from_py(edits).map_err(py_err)?;
+        let result = self.inner.set_properties(edits).map_err(py_err)?;
+        records::record_to_py(py, &result.to_record())
+    }
+
+    /// Write one value; the id of the entity holding it.
+    #[pyo3(signature = (object, set, name, value, set_type = None))]
+    fn set_property(
+        &mut self,
+        object: u64,
+        set: &str,
+        name: &str,
+        value: &Bound<'_, PyAny>,
+        set_type: Option<String>,
+    ) -> PyResult<u64> {
+        let value = from_py(value).map_err(py_err)?;
+        self.inner
+            .set_property(object, set, name, value, set_type)
+            .map_err(py_err)
+    }
+
+    /// Remove one property from the object's own set.
+    fn remove_property(&mut self, object: u64, set: &str, name: &str) -> PyResult<()> {
+        self.inner
+            .remove_property(object, set, name)
+            .map_err(py_err)
     }
 
     /// The spatial containment tree, as a record dict.

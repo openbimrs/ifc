@@ -12,6 +12,8 @@ from .domains import (
     Cost,
     MapConversion,
     MaterialAssignment,
+    PropertyEdit,
+    PropertyEditResult,
     PropertySet,
     ResolvedUnit,
     SpatialTree,
@@ -29,7 +31,8 @@ class IfcModel:
     ``out-of-range``, ``unsupported-schema``, ``io``,
     ``unsupported-profile``, ``feature-disabled``, or, from a domain view,
     ``invalid-model``, ``missing-reference``, ``budget-exceeded``,
-    ``unsupported`` or ``wrong-entity-type``.
+    ``unsupported`` or ``wrong-entity-type``, or, from a property edit,
+    ``template-violation`` or ``missing-property``.
 
     A parsed model decodes each entity the first time it is read: parsing
     checks every record but builds nothing, so opening a large file is fast
@@ -148,6 +151,43 @@ class IfcModel:
         (``"IFCAREAMEASURE"``): ``unit`` when given (a property's stated
         unit), otherwise the project default, resolved exactly to SI."""
         return domains._from_wire(self._native.resolve_unit(measure_type, unit))
+
+    def set_properties(self, edits: Iterable[PropertyEdit]) -> PropertyEditResult:
+        """Write and remove property and quantity values as one checked
+        transaction: every edit, in order, or none.
+
+        A refused batch raises :class:`openbim_ifc.IfcError` and leaves the
+        model unchanged. A write's ``value`` is the read side's
+        :attr:`Property.value`. A value an occurrence inherits from its type
+        is overridden on the occurrence, never changed on the shared type
+        set; pass the type object's id to change that. Values are checked
+        against the declared release (IFC2X3, IFC4 or IFC4X3) and, for a
+        ``Pset_``/``Qto_`` set, its PSD/QTO catalog template.
+        """
+        wire = []
+        for edit in edits:
+            if not isinstance(edit, PropertyEdit):
+                raise TypeError(f"expected an openbim_ifc.PropertyEdit, got {type(edit).__name__}")
+            wire.append(edit._to_wire())
+        return domains._from_wire(self._native.set_properties(wire))
+
+    def set_property(
+        self,
+        object: int,
+        set: str,
+        name: str,
+        value: Value,
+        *,
+        set_type: Optional[str] = None,
+    ) -> int:
+        """Write one value (:meth:`set_properties` with one edit); returns
+        the id of the entity holding it."""
+        return self._native.set_property(object, set, name, to_wire(value), set_type)
+
+    def remove_property(self, object: int, set: str, name: str) -> None:
+        """Remove one property from ``object``'s own set
+        (:meth:`set_properties` with one edit)."""
+        self._native.remove_property(object, set, name)
 
     def spatial_tree(self) -> SpatialTree:
         """The spatial containment tree: every container with its parent,

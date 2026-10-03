@@ -32,6 +32,8 @@ from .domains import (
     ProjectedCrs,
     Property,
     PropertyBounds,
+    PropertyEdit,
+    PropertyEditResult,
     PropertyEnumeration,
     PropertySet,
     PropertyTable,
