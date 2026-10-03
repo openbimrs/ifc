@@ -143,7 +143,7 @@ fn the_ifc4x3_inventory_matches_the_bundled_schema() {
 }
 
 /// Locate `references/ifc-spec` in either checkout layout.
-fn spec_root() -> Option<PathBuf> {
+pub(super) fn spec_root() -> Option<PathBuf> {
     let crate_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     [
         "../../../../references/ifc-spec",
