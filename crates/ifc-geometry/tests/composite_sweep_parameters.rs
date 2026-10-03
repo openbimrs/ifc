@@ -604,6 +604,10 @@ fn a_full_turn_arc_in_a_composite_is_one_period() {
 /// The polyline bends at `(1,0,0)` from +X up to +Z. Cutting `0.5 -> 1.5`
 /// keeps 0.5 m either side of the corner, 1 m in all; dropping the corner
 /// vertex would sweep the 0.71 m chord instead.
+///
+/// The corner has no fillet radius. IFC's swept disk takes the polyline as
+/// written, and `axiolid-mesh-compile` 0.3.12 joins the legs with an exact
+/// half-angle mitre (axiolid/kernel#245); 0.3.9 to 0.3.11 refused it.
 #[test]
 fn a_cut_through_a_polyline_corner_keeps_the_corner() {
     let bent = |range| {
@@ -619,10 +623,13 @@ fn a_cut_through_a_polyline_corner_keeps_the_corner() {
     };
     let whole = single_volume(&bent((0.0, 2.0)));
     let middle = single_volume(&bent((0.5, 1.5)));
-    // Both sweeps contain the same mitred corner, so its small error is
-    // shared; 2 % separates 1 m (0.5) from the 0.71 m chord (0.35).
+    // A half-angle mitre gains on the outside of the bend exactly what it
+    // loses on the inside, so the tube's volume is its section area times
+    // the centreline length. Both sweeps share the corner and its section,
+    // so the ratio is the length ratio, 0.5, to rounding; the 0.71 m chord
+    // would give 0.35.
     assert!(
-        (middle / whole - 0.5).abs() < 0.02,
+        (middle / whole - 0.5).abs() < 1e-9,
         "corner kept: ratio {} vs 0.5",
         middle / whole
     );

@@ -12,6 +12,25 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+No public API changes. The reference backend's floor rises and input it
+refused now compiles, as with earlier kernel floors (0.3.1): the next release
+is a patch (0.8.1).
+
+### Changed
+
+- `compile-reference-backend` requires `axiolid-mesh-compile` 0.3.12 and
+  `axiolid-construct` 0.3.13 (axiolid/kernel#245, #315). An
+  `IfcCurveSegment` over a 2D `IfcPolynomialCurve` (the `CUBIC` transition,
+  #90) lowers to a Bezier trimmed at `TrimSelector::ArcLength`. 0.3.4 read
+  parameter selectors only and refused that trim by name; 0.3.12 resolves it
+  by quadrature, so the segment compiles. A swept disk whose polyline
+  directrix turns a sharp corner without a fillet radius compiles with an
+  exact half-angle mitre, so its volume is the section area times the
+  centreline length. 0.3.9 to 0.3.11 refused that corner, so a downstream
+  build that resolved them fresh refused such pipes. The kernel still
+  refuses three cases by name (axiolid/kernel#248): a sharp corner beside an
+  arc, a closed polyline, and `FilletRadius` equal to `Radius`.
+
 ## [0.8.0] - 2026-10-03
 
 Input this crate refused now lowers exactly, onto the Axiolid relations
