@@ -130,10 +130,10 @@
           "url": "https://crates.io/crates/ifc-geometry"
         }
       ],
-      "released": "0.6.1",
+      "released": "0.7.0",
       "released_date": "2026-10-03",
       "status": "partial",
-      "version": "0.6.1"
+      "version": "0.7.0"
     },
     "ifc-georef": {
       "description": "Georeferencing: map conversion, coordinate reference systems, site placement.",
@@ -400,10 +400,10 @@
           "url": "https://crates.io/crates/openbim-ifc"
         }
       ],
-      "released": "0.11.0",
+      "released": "0.12.0",
       "released_date": "2026-10-03",
       "status": "implemented",
-      "version": "0.11.0"
+      "version": "0.12.0"
     },
     "openbim-ifc-binding-core": {
       "description": "Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python).",
@@ -417,9 +417,15 @@
     "openbim-ifc-capi": {
       "description": "Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP files from C and C++.",
       "group": "binding",
-      "registries": [],
-      "released": null,
-      "released_date": null,
+      "registries": [
+        {
+          "package": "openbim_ifc",
+          "registry": "GitHub release",
+          "url": "https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.0"
+        }
+      ],
+      "released": "0.1.0",
+      "released_date": "2026-10-03",
       "status": "partial",
       "version": "0.1.0"
     },
@@ -433,10 +439,10 @@
           "url": "https://pypi.org/project/openbim-ifc/"
         }
       ],
-      "released": "0.2.0",
-      "released_date": "2026-09-29",
+      "released": "0.2.1",
+      "released_date": "2026-10-03",
       "status": "partial",
-      "version": "0.2.0"
+      "version": "0.2.1"
     },
     "openbim-ifc-wasm": {
       "description": "WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript.",
@@ -448,10 +454,10 @@
           "url": "https://www.npmjs.com/package/@openbim/ifc"
         }
       ],
-      "released": "0.2.0",
-      "released_date": "2026-09-29",
+      "released": "0.2.1",
+      "released_date": "2026-10-03",
       "status": "partial",
-      "version": "0.2.0"
+      "version": "0.2.1"
     }
   },
   "crates": {
