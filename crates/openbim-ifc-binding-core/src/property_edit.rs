@@ -159,8 +159,10 @@ impl IfcModel {
     /// only inherits), `unsupported` for a value form this writer does not
     /// write, `invalid-model` when the file's records prevent the edit, and
     /// `feature-disabled` without the `properties-write` feature, or without
-    /// `property-catalog` for a `Pset_` or `Qto_` set. The message names the
-    /// refused edit's position.
+    /// a catalog feature for a `Pset_` or `Qto_` set, and
+    /// `catalog-not-loaded` for such a set in a `property-catalog-runtime`
+    /// build before [`crate::catalog::load`] loaded its release. The message
+    /// names the refused edit's position.
     pub fn set_properties(
         &mut self,
         edits: Vec<PropertyEdit>,
@@ -325,6 +327,7 @@ mod write {
             F::WrongSetType(_) => BindingError::WrongEntityType(detail),
             F::Unsupported(_) => BindingError::Unsupported(detail),
             F::CatalogUnavailable(_) => BindingError::FeatureDisabled("property-catalog"),
+            F::CatalogNotLoaded { .. } => BindingError::CatalogNotLoaded(detail),
             // The model's own records: an object without the GlobalId or
             // owner history a new record needs, or a planned transaction
             // whose preflight found a reference the file keeps.

@@ -281,7 +281,10 @@ reference or complex value; and `wrong-entity-type` for a set type that
 disagrees with the set. These exports make the ABI version 0.1.3; no
 `v0_1` symbol changed. The library carries the PSD/QTO catalog; a build
 without the core's `property-catalog` feature refuses a write to a
-`Pset_`/`Qto_` set with `FEATURE_DISABLED`.
+`Pset_`/`Qto_` set with `FEATURE_DISABLED`. Status 27,
+`OPENBIM_IFC_STATUS_CATALOG_NOT_LOADED` (`catalog-not-loaded`), is the
+refusal of the npm build, which loads the catalog at runtime; this library
+embeds it, so it never returns 27. Adding it makes the ABI version 0.1.4.
 
 Not bound yet: checked multi-edit transactions over arbitrary entities
 (`Transaction`, `Applied`, `Conflict`), deferred until a host asks for
@@ -953,6 +956,7 @@ Write the ABI and crate versions.
 | `OPENBIM_IFC_STATUS_WRONG_ENTITY_TYPE` | 24 | A domain query named an entity of a type it does not accept, or a property edit a set type the set does not have (`wrong-entity-type`). |
 | `OPENBIM_IFC_STATUS_TEMPLATE_VIOLATION` | 25 | A property edit wrote a value its PSD/QTO template or property enumeration refuses (`template-violation`). |
 | `OPENBIM_IFC_STATUS_MISSING_PROPERTY` | 26 | A property edit removed a property the object does not state (`missing-property`). |
+| `OPENBIM_IFC_STATUS_CATALOG_NOT_LOADED` | 27 | A property edit wrote to a `Pset_`/`Qto_` set before its release's catalog was loaded (`catalog-not-loaded`). This library embeds the catalog, so it never returns this; the value is reserved so every binding code has one. |
 | `OPENBIM_IFC_STATUS_PANIC` | 255 | A Rust panic was contained at the boundary. Report it as a bug. |
 
 <!-- API:C:END -->

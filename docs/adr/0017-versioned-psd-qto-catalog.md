@@ -66,3 +66,28 @@ We will implement external PSD/QTO data in a separate `ifc-template-catalog` cra
 - `ifc-properties/`
 - `openbim-ifc/`
 - `ifc-model/tests/package_architecture.rs`
+
+## Amendments
+
+- *Amended 2026-10-03 (#317, #318): snapshot format 3 and runtime
+  catalogs.* The three bincode snapshots (3.65 MB) are replaced by one
+  container, `data/catalog.bin` (1.42 MB), holding every edition. The
+  change is a lossless format shift and nothing else: every set, member,
+  definition, translation, applicability selector and provenance field
+  decodes as before, which a test asserted against the old snapshots, for
+  every edition and both profiles, before they were removed; content
+  fingerprints taken from them stay pinned. Strings used more than once are
+  stored once in a table, strings used once stay inline, and each distinct
+  record is stored once across editions; each edition keeps its own
+  manifest, source digest and per-template provenance, so release identity
+  stays exact and nothing is shared by name. The container is not
+  compressed on top: no decompressor in every binary, and every channel the
+  crate ships through (crates.io, wheels, npm, HTTP) compresses already.
+  The generator maintains the container deterministically, and the SHA-256
+  of the container and of each per-edition file written from it is pinned
+  in the crate. A host that should not embed the catalog (the npm package)
+  installs an edition at runtime from its per-edition file (feature
+  `runtime`), and bytes that do not match the pin are refused. Standard
+  builds still read neither XML nor `references/`, and the network only
+  when a host fetches a per-edition file it ships itself.
+

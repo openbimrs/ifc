@@ -364,15 +364,68 @@ jobs:
           if-no-files-found: error
 
   github-release:
-    name: Attach C library archives to the GitHub release
-    needs: [plan, native-archives]
-    if: github.event_name == 'push'
+    # Every tag gets a GitHub release, whatever registry it went to: the
+    # crate's changelog section for this version plus links to where it was
+    # published. Runs once every publish job of the tag has succeeded or was
+    # skipped for this crate. Only the facade is marked Latest: with one tag
+    # stream per crate, "Latest" would otherwise follow whichever crate was
+    # released last.
+    name: GitHub release
+    needs: [plan, crates-io, npm, pypi, native-archives]
+    if: >-
+      always() && github.event_name == 'push' && needs.plan.result == 'success'
+      && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
     permissions:
-      contents: write # create the release and upload its assets
+      contents: write # create the release
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Create the release from the changelog section
+        # An existing release (a re-run) keeps its notes.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          CRATE: ${{ needs.plan.outputs.crate }}
+          VERSION: ${{ needs.plan.outputs.version }}
+          CRATES_IO: ${{ needs.plan.outputs.crates_io }}
+          NPM: ${{ needs.plan.outputs.npm }}
+          PYPI: ${{ needs.plan.outputs.pypi }}
+          NATIVE: ${{ needs.plan.outputs.native }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "release $TAG already exists"; exit 0
+          fi
+          manifest="$(grep -lx "name = \"$CRATE\"" crates/*/Cargo.toml)"
+          changelog="$(dirname "$manifest")/CHANGELOG.md"
+          # The section ends at the next version heading or the link references.
+          awk -v v="$VERSION" '
+            index($0, "## [" v "]") == 1 { on = 1; next }
+            on && (/^## \[/ || /^\[[^]]+\]: /) { exit }
+            on { print }
+          ' "$changelog" > notes.md
+          [ -n "$(tr -d '[:space:]' < notes.md)" ] || { echo "::error::no $VERSION section in $changelog"; exit 1; }
+          {
+            echo
+            [ "$CRATES_IO" = true ] && echo "**crates.io:** https://crates.io/crates/$CRATE/$VERSION"
+            [ "$NPM" = true ] && echo "**npm:** https://www.npmjs.com/package/@openbim/ifc/v/$VERSION"
+            [ "$PYPI" = true ] && echo "**PyPI:** https://pypi.org/project/openbim-ifc/$VERSION/"
+            [ "$NATIVE" = true ] && echo "**C library:** prebuilt CMake archives and \`SHA256SUMS\` are attached below."
+            true
+          } >> notes.md
+          latest=false
+          [ "$CRATE" = openbim-ifc ] && latest=true
+          gh release create "$TAG" --verify-tag --title "$CRATE $VERSION" \
+            --notes-file notes.md --latest="$latest"
+
+  native-assets:
+    name: Attach C library archives to the GitHub release
+    needs: [plan, native-archives, github-release]
+    if: github.event_name == 'push' && needs.plan.outputs.native == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # upload release assets
+    steps:
       - name: Download archives
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -386,25 +439,9 @@ jobs:
           [ "$(ls | wc -l)" -eq 5 ] || { echo "::error::expected 5 archives:"; ls; exit 1; }
           sha256sum -- * > SHA256SUMS
           cat SHA256SUMS
-      - name: Create the release and attach the archives
-        # The release notes are the crate's changelog section for this
-        # version. An existing release (a re-run) keeps its notes; --clobber
-        # replaces assets a failed run left half-uploaded.
+      - name: Attach the archives
+        # --clobber replaces assets a failed run left half-uploaded.
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-          CRATE: ${{ needs.plan.outputs.crate }}
-          VERSION: ${{ needs.plan.outputs.version }}
-        run: |
-          manifest="$(grep -lx "name = \"$CRATE\"" crates/*/Cargo.toml)"
-          changelog="$(dirname "$manifest")/CHANGELOG.md"
-          awk -v v="$VERSION" '
-            index($0, "## [" v "]") == 1 { on = 1; next }
-            on && /^## \[/ { exit }
-            on { print }
-          ' "$changelog" > notes.md
-          [ -s notes.md ] || { echo "::error::no $VERSION section in $changelog"; exit 1; }
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --verify-tag --title "$CRATE $VERSION" --notes-file notes.md
-          fi
-          gh release upload "$TAG" dist/* --clobber
+        run: gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"

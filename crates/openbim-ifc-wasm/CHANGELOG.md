@@ -8,6 +8,32 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (breaking, #318: the catalog is loaded lazily)
+
+- The module no longer embeds the PSD/QTO catalog: default feature
+  `property-catalog-runtime` replaces `property-catalog`. The default
+  module is 2,648,193 bytes after `wasm-bindgen` (894,392 under
+  `gzip -9`), was 6,282,871 (1,855,125).
+- The package ships the catalog as `catalog/ifc2x3-tc1.bin` (325,739
+  bytes), `catalog/ifc4-add2-tc1.bin` (1,015,315) and
+  `catalog/ifc4x3-add2.bin` (1,086,526), with the loader `catalog.mjs`.
+- `await IfcModel.loadCatalog(release?, { bytes?, baseUrl? })` loads one
+  release's edition (all three without a release): Node reads it from the
+  package, a browser or bundle fetches it relative to the module. Each is
+  checked against its pinned SHA-256 and kept for the module instance.
+  `IfcModel.catalogFile`, `catalogLoaded` and `loadCatalogBytes` are the
+  synchronous parts.
+- Until a release's catalog is loaded, a write to a `Pset_`/`Qto_` set
+  throws the new code `catalog-not-loaded`, never unchecked. A build with
+  `property-catalog` embeds the catalog (1.4 MB) and `loadCatalog` is a
+  no-op.
+- A write to a `Pset_`/`Qto_` set that 0.3.0 checked without a load now
+  needs `loadCatalog` first: a breaking change, a minor release under 0.x
+  (0.4.0).
+- TypeScript: `IfcModel.loadCatalog` (a namespace merged with the class),
+  `CatalogLoadOptions`; `IfcErrorCode` gains `template-violation`,
+  `missing-property` and `catalog-not-loaded`.
+
 ## [0.3.0] - 2026-10-03
 
 ### Added (#123, property sets: write side)

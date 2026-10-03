@@ -17,7 +17,14 @@
 //! validation) and `unreachable` (the viewer reachability lint). An
 //! operation whose feature is off still exists, so every host keeps one
 //! surface, and refuses with `feature-disabled`.
+//!
+//! Property edits check `Pset_`/`Qto_` sets against the PSD/QTO catalog
+//! ([`catalog`]): embedded with `property-catalog` (default), or loaded at
+//! runtime from pinned snapshot files with `property-catalog-runtime`, the
+//! npm package's choice, where a write before loading refuses with
+//! `catalog-not-loaded`.
 
+pub mod catalog;
 pub mod classification;
 pub mod cost;
 mod error;

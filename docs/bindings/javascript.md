@@ -265,10 +265,69 @@ it; `missing-property` for a removal of a property the object does not
 state (one it only inherits included); `unsupported` for a bounded, table,
 reference or complex value; and `wrong-entity-type` for a set type that
 disagrees with the set. `properties-write` is a feature of its own
-(about 205 KB, 65 KB under `gzip -9`), and the catalog `property-catalog`
-another (3.7 MB, 0.99 MB), both on by default (see
-[module size](#module-size)); without the catalog a write to a
-`Pset_`/`Qto_` set throws `feature-disabled` rather than going unchecked.
+(about 205 KB, 65 KB under `gzip -9`), on by default (see
+[module size](#module-size)). A `Pset_`/`Qto_` set is checked against the
+PSD/QTO catalog, which the module does not embed: load it first.
+
+#### Loading the PSD/QTO catalog
+
+<!-- SNIPPET:js-catalog-load -->
+
+```js
+// The module embeds no PSD/QTO catalog: load the release's edition once,
+// before the first write to a Pset_ or Qto_ set.
+await IfcModel.loadCatalog(model.schema); // reads catalog/ifc4-add2-tc1.bin
+```
+
+<!-- /SNIPPET -->
+
+The package ships the catalog as one file per edition, `catalog/<file>`
+beside the module, and the module embeds none of it
+([#318](https://github.com/openbimrs/ifc/issues/318)).
+`IfcModel.loadCatalog(release?, options?)` loads the edition a release
+reads: `"IFC2X3"` reads IFC2X3 TC1, `"IFC4"` IFC4 ADD2 TC1, and `"IFC4X3"`
+(or `"IFC4X3_ADD2"`) IFC4X3 ADD2, so `model.schema` names the right one;
+without a release it loads all three. Each file is checked against the
+SHA-256 the module pins, then kept for the module instance, so a second
+call, or a concurrent one, reads nothing.
+
+| Edition | File | Bytes | gzip -9 | brotli 11 |
+| --- | --- | ---: | ---: | ---: |
+| IFC2X3 TC1 | `catalog/ifc2x3-tc1.bin` | 325,739 | 105,577 | 87,767 |
+| IFC4 ADD2 TC1 | `catalog/ifc4-add2-tc1.bin` | 1,015,315 | 368,172 | 280,574 |
+| IFC4X3 ADD2 | `catalog/ifc4x3-add2.bin` | 1,086,526 | 401,730 | 308,355 |
+
+Where the bytes come from:
+
+- **Node** (either build) reads the file from the package directory.
+- **A browser** without a bundler fetches it relative to the module, as
+  `init()` fetches the wasm module.
+- **A bundler** finds each file as a `new URL("./catalog/...",
+  import.meta.url)` asset, emits it and fetches it from there. webpack 5
+  does, and the package check bundles with it; a bundler that does not
+  handle the pattern for a dependency needs `baseUrl`.
+- `{ baseUrl }` fetches `<baseUrl>/<file>` instead, for a CDN or a copy you
+  serve yourself; `{ bytes }` (a `Uint8Array` or `ArrayBuffer`, for one
+  release) reads nothing. `IfcModel.catalogFile(release)` names the file,
+  and `IfcModel.loadCatalogBytes(release, bytes)` is the synchronous load.
+
+The files are not compressed: serve them with HTTP compression (`gzip` or
+`brotli`; the sizes are above), as a static host does for `.wasm`.
+
+Until its release is loaded, a write to a `Pset_`/`Qto_` set throws
+`catalog-not-loaded` and nothing is written; it is never written
+unchecked. Removals and sets without that prefix need no catalog.
+`IfcModel.catalogLoaded(release)` tells whether a release is loaded. Bytes
+that do not match the pin (another edition's file, another version, a
+damaged download) throw `invalid-value` and load nothing; a file that
+cannot be read rejects with `io`, and a release without a catalog with
+`unsupported-schema`.
+
+A build with `property-catalog` instead of the default
+`property-catalog-runtime` embeds every edition (1.4 MB); `loadCatalog`
+is then a no-op. A build with neither throws `feature-disabled` for such a
+write. The Python and C bindings embed the catalog, so they need no
+loading.
 
 Not bound yet: checked multi-edit transactions over arbitrary entities
 (`Transaction`, `Applied`, `Conflict`), deferred until a host asks for
@@ -282,7 +341,9 @@ built with `cargo build -p openbim-ifc-wasm --target wasm32-unknown-unknown
 
 | Features | Raw | gzip -9 | brotli 11 |
 | --- | ---: | ---: | ---: |
-| default: five releases, every capability and domain, the writer and the catalog | 6,282,871 | 1,855,125 | 956,057 |
+| default: five releases, every capability and domain, the writer, the catalog loaded at runtime | 2,648,193 | 894,392 | 586,376 |
+| the same, the catalog embedded (`property-catalog`, format 3) | 4,062,769 | 1,439,501 | 977,880 |
+| default before #318: the catalog embedded, format 2 | 6,282,871 | 1,855,125 | 956,057 |
 | default before #123's writer | 2,343,181 | 796,234 | 516,930 |
 | `ifc4` | 770,860 | 325,602 | 263,064 |
 | `ifc4,validate` | 929,080 | 383,347 | 304,607 |
@@ -296,20 +357,34 @@ built with `cargo build -p openbim-ifc-wasm --target wasm32-unknown-unknown
 | `ifc4,cost` | 802,733 | 336,375 | 270,411 |
 | `ifc4,georef` (brings `properties`) | 990,688 | 406,569 | 323,150 |
 | `ifc4,properties-write` (brings `properties`) | 1,144,013 | 451,456 | 355,458 |
-| `ifc4,property-catalog` (brings `properties-write`) | 4,869,230 | 1,443,029 | 749,978 |
+| `ifc4,property-catalog` (brings `properties-write`) | 2,649,010 | 1,026,914 | 770,665 |
+| `ifc4,property-catalog-runtime` (brings `properties-write`) | 1,235,600 | 482,197 | 379,155 |
 | `ifc4` + the three capabilities | 1,303,035 | 510,415 | 398,226 |
 | `ifc4` + the seven domains | 1,266,205 | 487,576 | 378,385 |
 | `ifc4` + every capability and domain | 1,760,329 | 656,425 | 499,492 |
 | the same + `properties-write` | 1,963,827 | 719,252 | 544,142 |
-| the same + `property-catalog` | 5,690,182 | 1,711,975 | 936,709 |
+| the same + `property-catalog` | 3,470,078 | 1,296,903 | 959,002 |
+| the same + `property-catalog-runtime` | 2,055,520 | 751,465 | 566,302 |
 
 The `ifc4` and the last three rows, and the default, were measured with
 the writer of [#123](https://github.com/openbimrs/ifc/issues/123); the
 other single-feature rows before it. Its methods stay in every build, as
 a left-out feature's do, which costs about 10 KB (`ifc4` was 759,820
-bytes). The writer itself adds about 205 KB (65 KB under `gzip -9`), and
-the PSD/QTO catalog, which embeds the IFC2X3, IFC4 and IFC4X3 catalogs
-whatever releases the build names, 3.7 MB (0.99 MB).
+bytes). The writer itself adds about 205 KB (65 KB under `gzip -9`).
+
+The PSD/QTO catalog rows were measured with
+[#318](https://github.com/openbimrs/ifc/issues/318). Loaded at runtime,
+the default, the catalog adds 90 KB to the module (31 KB under `gzip -9`,
+22 KB under brotli): the snapshot decoder, the SHA-256 pin check and the
+writer's catalog checks; its data comes in the per-edition files of
+[Loading the PSD/QTO catalog](#loading-the-psd-qto-catalog), only the one a
+release needs. Embedded (`property-catalog`), it carries the IFC2X3, IFC4
+and IFC4X3 catalogs whatever releases the build names: 1.4 MB in the
+compact format of [#317](https://github.com/openbimrs/ifc/issues/317)
+(0.55 MB under `gzip -9`), where the bincode snapshots before it took
+3.7 MB (0.99 MB). Under brotli the two embedded formats are within 2% of
+each other: the compact format removes repetition that brotli's window
+already found.
 
 Every capability and domain links only the schema tables of the releases
 the build names ([#306](https://github.com/openbimrs/ifc/issues/306)).
@@ -381,6 +456,9 @@ Generated from the `#[wasm_bindgen]` exports in
 | `model.georeferencing(): MapConversion[]` | yes | Every coordinate operation (map conversion) resolved with the project length unit; empty when the model has none. |
 | `model.setProperties(edits: PropertyEdit[]): PropertyEditResult` | yes | Write and remove property and quantity values as one checked transaction: every edit, in order, or none, and a refused batch leaves the model unchanged. A write's `value` is the read side's `value`; an inherited value is overridden on the occurrence, never changed on the shared type set. |
 | `model.setProperty(object: bigint, set: string, name: string, value: IfcValue, setType: string \| undefined): bigint` | yes | Write one value (`setProperties` with one edit); returns the entity holding it (`bigint`). |
+| `IfcModel.catalogFile(release: string): string` | yes | The file name of `release`'s PSD/QTO catalog snapshot, such as `"ifc4x3-add2.bin"`; the package ships it as `catalog/<name>`. `release` is a header schema token: `"IFC2X3"`, `"IFC4"` or `"IFC4X3"` (`"IFC4X3_ADD2"`). |
+| `IfcModel.catalogLoaded(release: string): boolean` | yes | Whether `release`'s catalog is loaded in this module instance, so a write to its `Pset_`/`Qto_` sets can be checked. |
+| `IfcModel.loadCatalogBytes(release: string, bytes: Uint8Array): void` | yes | Load `release`'s catalog from the bytes of its snapshot file, checked against the pinned SHA-256 (`invalid-value` otherwise). The synchronous half of `IfcModel.loadCatalog`, for a host that reads the file itself. |
 | `model.removeProperty(object: bigint, set: string, name: string): void` | yes | Remove one property from the object's own set (`setProperties` with one edit). |
 | `model.size: number` |  | Number of entities. |
 | `model.schema: string \| undefined` |  | The first `FILE_SCHEMA` token, e.g. `"IFC4"`, or `undefined`. |
@@ -429,7 +507,33 @@ export type IfcErrorCode =
   | "missing-reference"
   | "budget-exceeded"
   | "unsupported"
-  | "wrong-entity-type";
+  | "wrong-entity-type"
+  | "template-violation"
+  | "missing-property"
+  | "catalog-not-loaded";
+
+/**
+ * Where `IfcModel.loadCatalog` reads a catalog snapshot from. By default
+ * Node reads `catalog/<file>` from the package directory, and a browser or
+ * bundle fetches it relative to the module (`new URL(..., import.meta.url)`).
+ */
+export interface CatalogLoadOptions {
+  /** The snapshot bytes themselves, for one release; nothing is read. */
+  bytes?: Uint8Array | ArrayBuffer;
+  /** A directory URL holding the `*.bin` files, used instead of the package's. */
+  baseUrl?: string | URL;
+}
+
+export declare namespace IfcModel {
+  /**
+   * Load the PSD/QTO catalog of `release` (`"IFC2X3"`, `"IFC4"`,
+   * `"IFC4X3"`), or of all three when omitted, into this module instance.
+   * Each edition is read once, checked against its pinned SHA-256 and
+   * cached; loading it again is a no-op. Until its release is loaded, a
+   * write to a `Pset_`/`Qto_` set throws `catalog-not-loaded`.
+   */
+  function loadCatalog(release?: string, options?: CatalogLoadOptions): Promise<void>;
+}
 
 /** How `IfcModel.parseWithOptions` treats damaged input; omitted fields are strict. */
 export interface ParseOptions {

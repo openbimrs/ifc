@@ -98,6 +98,20 @@ crate directly.
   the catalog (`property-catalog`, 3.7 MB of a browser build) are
   features of their own, default in every host; without the catalog a
   write to a `Pset_`/`Qto_` set refuses with `feature-disabled`.
+- *Amended 2026-10-03 (#318, runtime catalog):* the npm package no longer
+  embeds the PSD/QTO catalog. Its module is built with
+  `property-catalog-runtime`; the package ships one pinned snapshot file
+  per edition (`catalog/<edition>.bin`), and `await
+  IfcModel.loadCatalog(release?)` reads the one a release needs (Node
+  from the package directory, a browser or bundle relative to the module,
+  or bytes or a base URL the caller passes), checks it against its
+  SHA-256 and keeps it for the module instance. Until its release is
+  loaded, a write to a `Pset_`/`Qto_` set refuses with the new code
+  `catalog-not-loaded` (C 27), never unchecked; removals and other sets
+  need no catalog. Once loaded, the writer checks exactly as with the
+  embedded catalog. The C and Python bindings keep `property-catalog`
+  (embedded), so their behaviour and codes are unchanged; the core's
+  `catalog` module is the same surface in both builds.
 
 ## Alternatives considered
 

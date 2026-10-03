@@ -1,8 +1,11 @@
 // The round trip every packaged target must pass (#40).
 //
 // Plain ECMAScript, no Node or DOM API, so the same checks run in Node, in a
-// webpack bundle and in a browser. `smoke(IfcModel)` throws on the first
-// failed check and otherwise returns what it saw, for the caller to report.
+// webpack bundle and in a browser. `await smoke(IfcModel)` throws on the
+// first failed check and otherwise returns what it saw, for the caller to
+// report. It loads the PSD/QTO catalog the way each target does by default
+// (#318): Node from the package directory, a browser by fetching the file
+// next to the module, a bundle from the asset webpack emitted.
 // The full Node suites (../smoke.mjs, ../corpus.mjs) cover the API itself;
 // this proves each build loads its wasm module and calls into it.
 
@@ -24,7 +27,7 @@ function check(condition, what) {
   if (!condition) throw new Error(`smoke check failed: ${what}`);
 }
 
-export function smoke(IfcModel) {
+export async function smoke(IfcModel) {
   const model = IfcModel.parse(new TextEncoder().encode(FILE));
   check(model.schema === "IFC4", `schema ${model.schema}`);
   check(model.size === 3, `size ${model.size}`);
@@ -73,5 +76,23 @@ export function smoke(IfcModel) {
   const written = model.propertySets(5n)[0].properties[0].value;
   check(written.type === "IFCLABEL" && written.value.value === "x", "setProperty");
 
-  return { schema: model.schema, size: model.size, walls: walls.length };
+  // The catalog is loaded lazily (#318): a write to a Pset_ set before
+  // loading its release's edition is refused, never written unchecked.
+  const fireRating = { kind: "typed", type: "IFCLABEL", value: { kind: "text", value: "F90" } };
+  check(IfcModel.catalogLoaded("IFC4") === false, "no catalog before loading");
+  let refused;
+  try {
+    model.setProperty(5n, "Pset_WallCommon", "FireRating", fireRating);
+  } catch (error) {
+    refused = error;
+  }
+  check(refused?.code === "catalog-not-loaded", `refusal before loading: ${refused?.code}`);
+  check(String(refused.message).includes("loadCatalog"), "the refusal names loadCatalog");
+  await IfcModel.loadCatalog(model.schema);
+  check(IfcModel.catalogLoaded("IFC4") && !IfcModel.catalogLoaded("IFC4X3"), "one edition loaded");
+  model.setProperty(5n, "Pset_WallCommon", "FireRating", fireRating);
+  const pset = model.propertySets(5n).find((set) => set.name === "Pset_WallCommon");
+  check(pset?.properties[0].value.value.value === "F90", "Pset_ property written after loading");
+
+  return { schema: model.schema, size: model.size, walls: walls.length, catalog: "IFC4" };
 }

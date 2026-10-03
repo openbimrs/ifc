@@ -38,7 +38,33 @@ export type IfcErrorCode =
   | "missing-reference"
   | "budget-exceeded"
   | "unsupported"
-  | "wrong-entity-type";
+  | "wrong-entity-type"
+  | "template-violation"
+  | "missing-property"
+  | "catalog-not-loaded";
+
+/**
+ * Where `IfcModel.loadCatalog` reads a catalog snapshot from. By default
+ * Node reads `catalog/<file>` from the package directory, and a browser or
+ * bundle fetches it relative to the module (`new URL(..., import.meta.url)`).
+ */
+export interface CatalogLoadOptions {
+  /** The snapshot bytes themselves, for one release; nothing is read. */
+  bytes?: Uint8Array | ArrayBuffer;
+  /** A directory URL holding the `*.bin` files, used instead of the package's. */
+  baseUrl?: string | URL;
+}
+
+export declare namespace IfcModel {
+  /**
+   * Load the PSD/QTO catalog of `release` (`"IFC2X3"`, `"IFC4"`,
+   * `"IFC4X3"`), or of all three when omitted, into this module instance.
+   * Each edition is read once, checked against its pinned SHA-256 and
+   * cached; loading it again is a no-op. Until its release is loaded, a
+   * write to a `Pset_`/`Qto_` set throws `catalog-not-loaded`.
+   */
+  function loadCatalog(release?: string, options?: CatalogLoadOptions): Promise<void>;
+}
 
 /** How `IfcModel.parseWithOptions` treats damaged input; omitted fields are strict. */
 export interface ParseOptions {

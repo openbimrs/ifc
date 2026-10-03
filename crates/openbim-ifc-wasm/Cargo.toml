@@ -52,7 +52,7 @@ js-sys = "=0.3.105"
 default = [
     "ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3",
     "ifcxml", "validate", "unreachable",
-    "properties", "properties-write", "property-catalog",
+    "properties", "properties-write", "property-catalog-runtime",
     "spatial", "classification", "material", "systems", "cost", "georef",
 ]
 ifc2x3 = ["openbim-ifc-binding-core/ifc2x3"]
@@ -71,8 +71,13 @@ properties = ["openbim-ifc-binding-core/properties"]
 # Writing property sets (#123); a read-only build can leave it out.
 properties-write = ["openbim-ifc-binding-core/properties-write"]
 # The PSD/QTO catalog property edits check `Pset_` and `Qto_` sets against
-# (+3.7 MB, +0.99 MB gzip); without it, writing one throws
-# `feature-disabled`.
+# (#318). The default loads it at runtime: the module embeds none, the
+# package ships one snapshot file per edition (`catalog/*.bin`), and
+# `await IfcModel.loadCatalog(release)` reads one; a write to such a set
+# before that throws `catalog-not-loaded`. `property-catalog` embeds every
+# edition instead (+1.4 MB, +0.53 MB gzip), and `loadCatalog` is then a
+# no-op. Without either, writing one throws `feature-disabled`.
+property-catalog-runtime = ["openbim-ifc-binding-core/property-catalog-runtime"]
 property-catalog = ["openbim-ifc-binding-core/property-catalog"]
 spatial = ["openbim-ifc-binding-core/spatial"]
 classification = ["openbim-ifc-binding-core/classification"]
