@@ -77,7 +77,9 @@ export default defineConfig({
     // Content here is generated from crate source by scripts/sync-*.py, not
     // authored by third parties, so inline HTML is safe to enable.
     html: true,
-    math: true,
+    // No `math`: no page uses it, it needs the optional peer
+    // markdown-it-mathjax3 (a lockfile regenerated without it fails the
+    // build), and it would read STEP's `$` null markers as TeX delimiters.
     config: diagramPlugin,
   },
   sitemap: { hostname: 'https://openbimrs.github.io/ifc/' },
