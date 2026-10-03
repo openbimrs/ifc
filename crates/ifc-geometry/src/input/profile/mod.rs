@@ -30,6 +30,7 @@ mod outline;
 mod section;
 mod types;
 
+#[cfg(feature = "lowering")]
 pub(crate) use open_cross::vertices as open_cross_vertices;
 
 pub use outline::{profile_outline, ProfileOutline};
