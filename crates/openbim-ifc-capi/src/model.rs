@@ -12,7 +12,7 @@ use crate::status::{boundary, OpenbimIfcStatus, OpenbimIfcVersion};
 use crate::tape::{OpenbimIfcValueNode, Reader, Tape};
 
 /// ABI version implemented by this crate; also the `v0_1` symbol prefix.
-const ABI: (u16, u16, u16) = (0, 1, 1);
+const ABI: (u16, u16, u16) = (0, 1, 2);
 
 /// Opaque model handle. Zero is never a valid handle.
 pub type OpenbimIfcModel = u64;

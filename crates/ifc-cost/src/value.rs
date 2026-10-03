@@ -159,6 +159,22 @@ impl<'m> CostValue<'m> {
             .as_f64()
     }
 
+    /// `AppliedValue` exactly as the file states it, typed wrapper and all
+    /// (`IFCMONETARYMEASURE(1500.5)`), or `None` when it is unset.
+    ///
+    /// [`CostValue::amount`] and [`CostValue::measure`] split this into a
+    /// number and a type name; a caller that must carry the value without
+    /// loss, such as a language binding, reads it whole here: an
+    /// `IfcCountMeasure` stays an integer, and an `IfcMeasureWithUnit` or
+    /// `IfcReference` stays a reference (#123).
+    #[must_use]
+    pub fn applied_value(&self) -> Option<&'m Value> {
+        match self.entity.attribute(slot::APPLIED_VALUE)? {
+            Value::Null => None,
+            value => Some(value),
+        }
+    }
+
     /// The measure type wrapping the applied value, e.g. `IFCMONETARYMEASURE`.
     ///
     /// A cost value is not required to be monetary: `IfcAppliedValueSelect`
@@ -229,6 +245,23 @@ impl<'m> CostValue<'m> {
     #[must_use]
     pub fn is_composed(&self) -> bool {
         !self.component_refs().is_empty()
+    }
+
+    /// The `ValueComponent` of the rate basis exactly as the file states
+    /// it (`IFCVOLUMEMEASURE(1.)`), when [`CostValue::unit_basis`] resolves.
+    ///
+    /// [`UnitBasis::value`] is the same value as a number; this keeps its
+    /// declared type and an integer payload intact (#123).
+    #[must_use]
+    pub fn unit_basis_component<'a>(&self, model: &'a Model) -> Option<&'a Value> {
+        let id = match self.entity.attribute(slot::UNIT_BASIS)? {
+            Value::Ref(id) => *id,
+            _ => return None,
+        };
+        match model.get(id)?.attribute(0)? {
+            Value::Null => None,
+            value => Some(value),
+        }
     }
 
     /// The rate basis, if this value is a rate rather than a lump sum.

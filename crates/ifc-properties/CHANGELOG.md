@@ -12,6 +12,24 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
+  default, forward to `ifc-schema`, which this crate now depends on without
+  its default features (#306). Each links one release's table, so a
+  single-release build carries only that table: an IFC4-only browser
+  module with property sets shrinks from 1,519,870 to 926,986 bytes. The default
+  build links every release, as before.
+- A file declaring IFC2X3, IFC4 or IFC4X3 when the build leaves that
+  release out is refused by the exact reads with `UnsupportedSchema`
+  instead of panicking. Permissive reads (type objects in
+  `property_sets_by_object`, template reads) keep the IFC4 table as their
+  baseline and fall back to the newest bundled one in a build without it.
+  A build naming no release fails to compile with a message naming the
+  features, so a build without default features has to name one.
+
+Under 0.x, a minor release.
+
 ## [0.7.0] - 2026-10-02
 
 ### Added

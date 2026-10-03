@@ -32,7 +32,7 @@ ifc-schema = { workspace = true, features = ["default", "express"] }
 ifc-step.workspace = true
 # The corpus round trip checks that every strict-read refusal is a model the
 # schema's own type check rejects too.
-ifc-validate.workspace = true
+ifc-validate = { workspace = true, features = ["default"] }
 
 [features]
 default = ["schema"]

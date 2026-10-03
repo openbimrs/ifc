@@ -12,6 +12,29 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
+  default, forward to `ifc-schema`, which this crate now depends on without
+  its default features (#306). Each links one release's table, so a
+  single-release build carries only that table: an IFC4-only browser
+  module with cost shrinks from 1,395,402 to 802,733 bytes. The default
+  build links every release, as before.
+- A release the build leaves out is refused with `UnsupportedSchema`, as
+  an unbundled release already was. A build without default features
+  therefore has to name the releases it reads.
+
+Under 0.x, a minor release.
+
+### Added
+
+- `CostValue::applied_value()`: the `AppliedValue` exactly as authored,
+  typed wrapper and integer payload intact, and
+  `CostValue::unit_basis_component(model)`: the rate basis's
+  `ValueComponent` likewise. `amount()` and `UnitBasis::value` still give
+  the number. For lossless consumers such as the language bindings (#123).
+- Additive: a patch release.
+
 ## [0.3.0] - 2026-09-29
 
 ### Added

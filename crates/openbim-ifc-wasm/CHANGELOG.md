@@ -8,6 +8,47 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#306)
+
+- A build that names fewer releases now carries only their schema
+  tables whichever capabilities and domains it enables. IFC4 with every
+  capability and domain is 1,750,572 bytes after `wasm-bindgen` (was
+  2,342,546, the size of the five-release default); IFC4 with validation
+  929,080 (was 1,521,685), with property sets 926,986 (was 1,519,870).
+  The default package is unchanged in content: 2,343,181 bytes (+635),
+  796,234 under `gzip -9` (-611), 516,930 under brotli (-1,541).
+
+### Added (#303)
+
+- `scripts/bench-opt-level.sh` and `tools/bench-parse.mjs`: build the
+  module at `opt-level` 3, `"s"` and `"z"` and time `IfcModel.parse` in
+  Node, interleaved, with median and interquartile range. `"z"` cut the
+  brotli download by 14.5% but slowed parsing by 85-112%, so the release
+  profile stays at 3; the JavaScript guide records the run.
+
+### Added (#123, domain views: read side)
+
+- `model.propertySets(id)`, `model.resolveUnit(measureType, unit?)`,
+  `model.spatialTree()`, `model.classifications(id)`, `model.material(id)`,
+  `model.systems()`, `model.cost()` and `model.georeferencing()`: snapshot
+  objects keyed by `bigint` ids, IFC values in the tagged encoding.
+- TypeScript interfaces for every record (`PropertySet`, `Property`,
+  `SpatialTree`, `Classification`, `MaterialAssignment`, `Systems`, `Cost`,
+  `MapConversion`, ...); `IfcErrorCode` gains `invalid-model`,
+  `missing-reference`, `budget-exceeded`, `unsupported` and
+  `wrong-entity-type`.
+- Default features `properties`, `spatial`, `classification`, `material`,
+  `systems`, `cost` and `georef`: the npm package carries every capability.
+  A browser build can leave each out; its methods then throw
+  `feature-disabled`. Measured after `wasm-bindgen` over a build with every
+  release and capability (1,894,584 bytes): properties +155,575, spatial
+  +15,512, classification +57,311, material +83,494, systems +56,078, cost
+  +36,800, georef +210,702 (properties included); all seven 2,340,188
+  bytes (+445,604; +142,672 under `gzip -9`). An IFC4-only build grows
+  from 759,820 to 1,517,512 bytes with properties, because the property
+  resolver links every release's schema table.
+- Additive: a patch release.
+
 ## [0.2.1] - 2026-10-03
 
 ### Added (#244)

@@ -53,9 +53,11 @@ threads; the GIL serialises calls on it.
 
 The record model -- entities, attributes, the STEP codec, exact and
 subtype queries -- plus lenient reads (`ParseOptions`), the STEP header,
-validation, ifcXML and the reachability lint, each as frozen dataclasses.
-Domain views (properties, quantities, geometry) and checked multi-edit
-transactions are not bound yet.
+validation, ifcXML, the reachability lint and the read-only domain views
+(property sets and quantities, the spatial tree, classification, materials,
+systems, cost, georeferencing; #123), each as frozen dataclasses. Writing
+property sets, geometry and checked multi-edit transactions are not bound
+yet.
 
 ## Build from source
 

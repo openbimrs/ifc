@@ -12,6 +12,34 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `validate`, `spatial`, `geometry-select`, `properties`,
+  `classification`, `material`, `systems`, `cost` and `georef` link only
+  the releases the build names (#306): each release feature (`ifc2x3` ...
+  `ifc4x3`, and `schema` for all five) now forwards to their crates, which
+  no longer pull every release's table in through `ifc-schema`'s
+  defaults. An IFC4-only build with all of them carries the IFC4 table
+  alone. A build that enabled one of these features without a release
+  feature must now add one (or `schema`): `spatial` and `properties` fail
+  to compile without one, and the others refuse every file with their
+  unsupported- or unbundled-schema error. `full` and `domains` (which
+  implies `schema` through `author`) are unchanged. Under 0.x, a minor
+  release.
+
+### Added
+
+- `root_identity(model, schema, id)` and `RootIdentity` (behind
+  `schema-api`): the `GlobalId` and `Name` of an entity the given schema
+  declares an `IfcRoot`, read by attribute name, never guessed from a
+  slot (#123).
+- `georeferencing(model)` and `GeoreferencingError` (behind
+  `georef` + `properties`): every `IfcCoordinateOperation` resolved with
+  the project length unit, which `ifc-properties` resolves exactly; the
+  join the language bindings carry (#123).
+- Re-exports `Budget` from `ifc-model`, which bounded domain traversals
+  (a classification hierarchy) take.
+
 ## [0.12.0] - 2026-10-03
 
 ### Changed (breaking)

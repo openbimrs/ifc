@@ -12,6 +12,20 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
+  default, forward to `ifc-schema`, which this crate now depends on without
+  its default features (#306). Each links one release's table, so a build
+  naming only `ifc4` no longer carries the other four: an IFC4-only browser
+  module with validation shrinks from 1,518,692 to 926,023 bytes. The
+  default build links every release, as before. `ifc4` alone used to link
+  every release too; it now links IFC4's, and `validate_declared` refuses
+  a file declaring another release with `UnbundledSchema`. Under 0.x, a
+  minor release.
+- `validate_declared` is no longer gated on the `ifc4` feature: it exists
+  in every build and refuses a release the build does not bundle.
+
 ## [0.5.0] - 2026-10-02
 
 ### Added

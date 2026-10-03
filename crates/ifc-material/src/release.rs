@@ -202,12 +202,17 @@ impl<'m> Release<'m> {
     }
 
     /// The bound version and its bundled table.
+    ///
+    /// A release whose table this build leaves out (its release feature is
+    /// off, #306) is refused as unsupported.
     pub(crate) fn bound(self) -> MaterialResult<(SchemaVersion, &'static Schema)> {
         match self {
-            Self::Bound(version) => Ok((
-                version,
-                for_version(version).expect("every SchemaVersion has a bundled table"),
-            )),
+            Self::Bound(version) => match for_version(version) {
+                Ok(schema) => Ok((version, schema)),
+                Err(_) => Err(MaterialError::UnsupportedSchema {
+                    schema: version.header_tokens()[0].to_owned(),
+                }),
+            },
             Self::Multiple(schemas) => Err(MaterialError::MultipleSchemas { schemas }),
             Self::Unsupported(schema) => Err(MaterialError::UnsupportedSchema {
                 schema: schema.to_owned(),

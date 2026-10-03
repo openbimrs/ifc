@@ -24,7 +24,9 @@ pub enum BindingError {
     InvalidValue(String),
     /// An id or index was outside the range the model can represent.
     OutOfRange(String),
-    /// The file's header names no schema this crate bundles.
+    /// The file's header names no schema this crate bundles, or (from a
+    /// domain view, #123) a release the view is not verified for, such as
+    /// IFC4X1 for property sets or IFC2X3 for georeferencing.
     UnsupportedSchema(String),
     /// A file could not be opened or read.
     Io(String),
@@ -34,6 +36,23 @@ pub enum BindingError {
     /// The operation needs a binding feature this build left out, e.g.
     /// `validate` in a size-trimmed browser package.
     FeatureDisabled(&'static str),
+    /// A domain view (#123) refused the file's data: it contradicts the
+    /// schema, is ambiguous where the schema allows one answer, or cannot
+    /// prove an exact answer (a lenient read's skipped records).
+    InvalidModel(String),
+    /// A domain view (#123) followed a reference to an entity the file does
+    /// not contain.
+    MissingReference(String),
+    /// A domain view (#123) stopped at its traversal budget: a cycle, or
+    /// nesting deeper than it follows.
+    BudgetExceeded(String),
+    /// A domain view (#123) met a construct it does not interpret, such as
+    /// a coordinate operation with no project-to-map form; refused rather
+    /// than approximated.
+    Unsupported(String),
+    /// A domain query (#123) named an entity of a type the query does not
+    /// accept, such as the property sets of a cartesian point.
+    WrongEntityType(String),
 }
 
 impl BindingError {
@@ -49,6 +68,11 @@ impl BindingError {
             Self::Io(_) => "io",
             Self::UnsupportedProfile(_) => "unsupported-profile",
             Self::FeatureDisabled(_) => "feature-disabled",
+            Self::InvalidModel(_) => "invalid-model",
+            Self::MissingReference(_) => "missing-reference",
+            Self::BudgetExceeded(_) => "budget-exceeded",
+            Self::Unsupported(_) => "unsupported",
+            Self::WrongEntityType(_) => "wrong-entity-type",
         }
     }
 }
@@ -62,9 +86,9 @@ impl fmt::Display for BindingError {
             Self::MissingEntity(id) => write!(f, "no entity #{id}"),
             Self::InvalidValue(detail) => write!(f, "invalid IFC value: {detail}"),
             Self::OutOfRange(detail) => write!(f, "out of range: {detail}"),
-            Self::UnsupportedSchema(token) => {
-                write!(f, "no bundled schema for {token:?} in this build")
-            }
+            // The detail is the header token, or names why it is refused:
+            // not bundled in this build, or not read by a domain view.
+            Self::UnsupportedSchema(detail) => write!(f, "unsupported schema: {detail:?}"),
             Self::Io(detail) => write!(f, "cannot read file: {detail}"),
             Self::UnsupportedProfile(token) => write!(
                 f,
@@ -73,6 +97,11 @@ impl fmt::Display for BindingError {
             Self::FeatureDisabled(feature) => {
                 write!(f, "this build leaves out the `{feature}` feature")
             }
+            Self::InvalidModel(detail) => write!(f, "invalid model: {detail}"),
+            Self::MissingReference(detail) => write!(f, "missing reference: {detail}"),
+            Self::BudgetExceeded(detail) => write!(f, "budget exceeded: {detail}"),
+            Self::Unsupported(detail) => write!(f, "unsupported: {detail}"),
+            Self::WrongEntityType(detail) => write!(f, "wrong entity type: {detail}"),
         }
     }
 }
@@ -97,6 +126,11 @@ mod tests {
         "io",
         "unsupported-profile",
         "feature-disabled",
+        "invalid-model",
+        "missing-reference",
+        "budget-exceeded",
+        "unsupported",
+        "wrong-entity-type",
     ];
 
     /// One value of every variant, in declaration order.
@@ -111,6 +145,11 @@ mod tests {
             BindingError::Io(String::new()),
             BindingError::UnsupportedProfile(String::new()),
             BindingError::FeatureDisabled(""),
+            BindingError::InvalidModel(String::new()),
+            BindingError::MissingReference(String::new()),
+            BindingError::BudgetExceeded(String::new()),
+            BindingError::Unsupported(String::new()),
+            BindingError::WrongEntityType(String::new()),
         ];
         // Exhaustive on purpose: a new variant does not compile until it is
         // listed above, so its code cannot escape the snapshot.
@@ -124,7 +163,12 @@ mod tests {
                 | BindingError::UnsupportedSchema(_)
                 | BindingError::Io(_)
                 | BindingError::UnsupportedProfile(_)
-                | BindingError::FeatureDisabled(_) => {}
+                | BindingError::FeatureDisabled(_)
+                | BindingError::InvalidModel(_)
+                | BindingError::MissingReference(_)
+                | BindingError::BudgetExceeded(_)
+                | BindingError::Unsupported(_)
+                | BindingError::WrongEntityType(_) => {}
             }
         }
         all

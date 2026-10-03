@@ -19,7 +19,8 @@ group = "domain"
 
 [dependencies]
 ifc-model.workspace = true
-ifc-schema = { workspace = true, features = ["default"] }
+# No default features: the release features choose the tables (#306).
+ifc-schema.workspace = true
 
 [dev-dependencies]
 # `Schema::from_express` for tests that parse EXPRESS fixtures or the
@@ -28,6 +29,20 @@ ifc-schema = { workspace = true, features = ["default", "express"] }
 # Test-only: fixtures are STEP files, and parsing them is not a production
 # concern of this crate.
 ifc-step.workspace = true
+
+[features]
+default = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
+# One feature per bundled IFC release, forwarded to `ifc-schema` (#306).
+# Each links that release's schema table; a release left out is refused
+# with `UnsupportedSchema` where the crate binds the declared release. The
+# default keeps all five, as before; a size-sensitive build (browser WASM)
+# names only the releases it ships, and the `openbim-ifc` facade forwards
+# its own release features here.
+ifc2x3 = ["ifc-schema/ifc2x3"]
+ifc4 = ["ifc-schema/ifc4"]
+ifc4x1 = ["ifc-schema/ifc4x1"]
+ifc4x2 = ["ifc-schema/ifc4x2"]
+ifc4x3 = ["ifc-schema/ifc4x3"]
 
 [lints]
 workspace = true

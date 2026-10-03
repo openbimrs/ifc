@@ -249,11 +249,43 @@ impl IfcModel {
             .map_err(|refused| BindingError::UnsupportedSchema(format!("{token} ({refused})")))
     }
 
+    /// The `GlobalId` and `Name` of `id` when the declared release makes
+    /// it an `IfcRoot`; both `None` otherwise. Refused like
+    /// [`Self::declared_schema`]: a domain record never reads an identity
+    /// against a release the file did not declare.
+    #[cfg_attr(
+        not(any(
+            feature = "properties",
+            feature = "spatial",
+            feature = "classification",
+            feature = "material",
+            feature = "systems",
+            feature = "cost"
+        )),
+        allow(dead_code)
+    )]
+    pub(crate) fn identity(&self, id: u64) -> Result<Identity, BindingError> {
+        let schema = self.declared_schema()?;
+        Ok(ifc::root_identity(&self.inner, schema, EntityId(id))
+            .map(|identity| Identity {
+                global_id: identity.global_id.map(str::to_owned),
+                name: identity.name.map(str::to_owned),
+            })
+            .unwrap_or_default())
+    }
+
     fn entity(&self, id: u64) -> Result<&Entity, BindingError> {
         self.inner
             .get(EntityId(id))
             .ok_or(BindingError::MissingEntity(id))
     }
+}
+
+/// The identity attributes of an `IfcRoot` (see [`IfcModel::identity`]).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct Identity {
+    pub(crate) global_id: Option<String>,
+    pub(crate) name: Option<String>,
 }
 
 /// A STEP reader applying `options`.
