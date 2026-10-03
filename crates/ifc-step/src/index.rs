@@ -187,7 +187,7 @@ impl<'a> Index<'a> {
         let Some(position) = self.position(id) else {
             return Ok(None);
         };
-        let record = openbim_step::decode_record_borrowed(self.source, self.spans[position])?;
+        let record = parser::decode(self.source, self.spans[position])?;
         Ok(Some(parser::convert(record)?.1))
     }
 
@@ -241,7 +241,7 @@ impl<'a> Index<'a> {
         let mut model = Model::new();
         *model.header_mut() = self.header.clone();
         for position in positions {
-            let record = openbim_step::decode_record_borrowed(self.source, self.spans[position])?;
+            let record = parser::decode(self.source, self.spans[position])?;
             let (id, entity) = parser::convert(record)?;
             model.insert(id, entity);
         }

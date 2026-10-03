@@ -81,7 +81,7 @@ fn set_relationships_refuse_empty_and_self_membership() {
         "a context cannot declare itself"
     );
     assert!(
-        serve_buildings(&mut tx, GUID_A, parent, &[]).is_err(),
+        serve_buildings(&mut tx, &model, GUID_A, parent, &[]).is_err(),
         "a system must serve something"
     );
     assert!(
@@ -240,6 +240,9 @@ fn each_set_writer_stages_its_own_type() {
     let parent = element(&mut tx);
     let child = element(&mut tx);
 
+    let system = tx.create(Entity::new("IFCSYSTEM", vec![Value::Null; 5]));
+    let building = tx.create(Entity::new("IFCBUILDING", vec![Value::Null; 12]));
+
     let staged = [
         (
             cover_elements(&mut tx, GUID_A, parent, &[child]),
@@ -251,7 +254,9 @@ fn each_set_writer_stages_its_own_type() {
         ),
         (declare(&mut tx, GUID_A, parent, &[child]), "IFCRELDECLARES"),
         (
-            serve_buildings(&mut tx, GUID_A, parent, &[child]),
+            // Checked against the declared release (#286): an IfcSystem
+            // serving an IfcBuilding, not two walls.
+            serve_buildings(&mut tx, &model, GUID_A, system, &[building]),
             "IFCRELSERVICESBUILDINGS",
         ),
         (

@@ -21,7 +21,7 @@ use crate::relation::slots::{
     ADHERES_TO_ELEMENT, ASSIGNS_TO_ACTOR, ASSIGNS_TO_GROUP_BY_FACTOR, ASSIGNS_TO_PROCESS,
     ASSIGNS_TO_PRODUCT, ASSIGNS_TO_RESOURCE, ASSOCIATES_PROFILE_DEF, COVERS_ELEMENTS,
     COVERS_SPACES, DECLARES, DEFINES_BY_OBJECT, FILLS_ELEMENT, FLOW_CONTROL_ELEMENTS, POSITIONS,
-    PROJECTS_ELEMENT, SERVICES_BUILDINGS, VOIDS_ELEMENT,
+    PROJECTS_ELEMENT, VOIDS_ELEMENT,
 };
 
 /// Stage an `IfcRelCoversBldgElements`: finishes applied to an element.
@@ -110,26 +110,6 @@ pub fn define_by_object(
     defined: &[EntityId],
 ) -> SpatialAuthoringResult<EntityId> {
     super::relate(tx, DEFINES_BY_OBJECT, global_id, defining, defined)
-}
-
-/// Stage an `IfcRelServicesBuildings`: which spatial elements a system serves.
-///
-/// IFC4 and IFC4X3 only: it writes their layout and leaves
-/// `OwnerHistory` `$`, which IFC2X3 requires. In IFC2X3 use
-/// [`serve_buildings_with_owner_history`](super::serve_buildings_with_owner_history), which binds the model's declared
-/// release.
-///
-/// # Errors
-///
-/// Refuses a malformed GlobalId, an empty building set, and the
-/// system listed among the buildings it serves.
-pub fn serve_buildings(
-    tx: &mut Transaction,
-    global_id: &str,
-    system: EntityId,
-    buildings: &[EntityId],
-) -> SpatialAuthoringResult<EntityId> {
-    super::relate(tx, SERVICES_BUILDINGS, global_id, system, buildings)
 }
 
 /// Stage an `IfcRelFlowControlElements`: controls bound to a flow element.

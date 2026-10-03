@@ -73,6 +73,16 @@ pub(crate) fn bind(model: &Model) -> SpatialAuthoringResult<Release> {
 }
 
 impl Release {
+    /// The bound release.
+    pub(crate) const fn version(self) -> SchemaVersion {
+        self.version
+    }
+
+    /// The bound release's table.
+    pub(crate) const fn schema(self) -> &'static Schema {
+        self.schema
+    }
+
     /// Build `entity`'s record in this release's layout from values named
     /// by their IFC4 attribute names.
     ///
@@ -244,7 +254,7 @@ pub(crate) fn stage(
 }
 
 /// The type `target` will have once `tx` commits, or `None` if absent.
-fn projected_type(tx: &Transaction, model: &Model, target: EntityId) -> Option<String> {
+pub(super) fn projected_type(tx: &Transaction, model: &Model, target: EntityId) -> Option<String> {
     for edit in tx.edits().iter().rev() {
         match edit {
             Edit::Remove { id } if *id == target => return None,
