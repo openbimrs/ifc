@@ -27,6 +27,19 @@ pub enum StepError {
         offset: usize,
     },
 
+    /// A REAL token has no decimal point (`1E-05`).
+    ///
+    /// ISO 10303-21 requires the point, so a strict read refuses the token.
+    /// A lenient read ([`crate::StepCodec::lenient`]) reads it as the REAL
+    /// it spells and reports a diagnostic.
+    #[error("syntax error at byte {offset}: REAL `{token}` has no decimal point (ISO 10303-21 requires one)")]
+    RealWithoutDecimalPoint {
+        /// Byte offset of the token in the source.
+        offset: usize,
+        /// The token as written.
+        token: String,
+    },
+
     /// The model contains a REAL value Part 21 cannot represent.
     #[error("entity #{entity} slot {slot} contains a non-finite REAL")]
     NonFiniteReal {
@@ -65,6 +78,13 @@ impl From<StepError> for ModelError {
             StepError::MissingEntityId { offset } => ModelError::Syntax {
                 offset,
                 detail: "entity record without an id".into(),
+            },
+            StepError::RealWithoutDecimalPoint { offset, token } => ModelError::Syntax {
+                offset,
+                detail: format!(
+                    "REAL `{token}` has no decimal point (ISO 10303-21 requires one; \
+                     a lenient read accepts it)"
+                ),
             },
             StepError::NonFiniteReal { entity, slot } => ModelError::Write(format!(
                 "entity #{entity} slot {slot} contains a non-finite REAL"

@@ -12,6 +12,30 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- `serve_buildings` takes the `&Model`, binds its declared release and
+  checks its targets (#286), as `ifc_systems::serve_buildings` does (#277).
+  It accepted any targets: per the EXPRESS sources `RelatingSystem` must be
+  an `IfcSystem` and `RelatedBuildings` a `SET [1:?] OF
+  IfcSpatialStructureElement` (IFC2X3 TC1) or `OF IfcSpatialElement` (IFC4
+  ADD2 TC1, IFC4X3 ADD2). Without the model it could not see either end.
+  Like the other release-bound plain writers it refuses IFC2X3, which
+  requires `OwnerHistory`, with `AuthoringRequired`; use
+  `serve_buildings_with_owner_history` there. IFC4 and IFC4X3 records are
+  unchanged, slot for slot.
+- **Behaviour change:** `serve_buildings` and
+  `serve_buildings_with_owner_history` now refuse, staging nothing, input
+  they used to write: a system that is missing (`MissingReference`) or not
+  an `IfcSystem` (`WrongReferenceType`), a building that is missing or not
+  admitted by the declared release's `RelatedBuildings`
+  (`WrongReferenceType`; an `IfcSpatialZone` is admitted in IFC4 and IFC4X3,
+  not in IFC2X3), a repeated building (`Invalid`, the attribute is a
+  `SET`), and a second relationship for a system that already services
+  buildings in the model or on the transaction (`Invalid`;
+  `IfcSystem.ServicesBuildings` is `SET [0:1]`). The writers moved to
+  `authoring::services`; the public paths are unchanged.
+
 ## [0.3.0] - 2026-09-29
 
 ### Added

@@ -7,7 +7,7 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
-use crate::StepError;
+use crate::{real_point, StepError};
 use ifc_model::{Diagnostic, Entity, EntityId, Model, Value};
 use openbim_step::{OnMalformed, Parameter, ParseOptions, StandardHeader};
 
@@ -16,6 +16,70 @@ use openbim_step::{OnMalformed, Parameter, ParseOptions, StandardHeader};
 type Text<'a> = Cow<'a, str>;
 
 pub(crate) fn parse(input: &[u8], options: ParseOptions) -> Result<Model, StepError> {
+    if options.on_malformed_record == OnMalformed::Skip {
+        // Recovery reads a REAL written without its decimal point (#285);
+        // see `real_point`. Nothing is rewritten when no token needs it.
+        let missing = real_point::find(input);
+        if !missing.is_empty() {
+            let repaired = real_point::repair(input, &missing);
+            let mut model = parse_exact(&repaired, options, &|offset| {
+                real_point::original_offset(&missing, offset)
+            })?;
+            for entry in &missing {
+                model.push_diagnostic(Diagnostic::warning(
+                    entry.token.clone(),
+                    format!(
+                        "read REAL `{}` without the decimal point ISO 10303-21 requires",
+                        real_point::text(input, entry)
+                    ),
+                ));
+            }
+            return Ok(model);
+        }
+        return parse_exact(input, options, &|offset| offset);
+    }
+    parse_exact(input, options, &|offset| offset)
+        .map_err(|error| named_real(input, 0..input.len(), error))
+}
+
+/// Decodes the record framed by `span` under the strict policy, as the
+/// lazy reader and [`crate::Index`] do.
+pub(crate) fn decode(
+    input: &[u8],
+    span: openbim_step::Span,
+) -> Result<openbim_step::DataRecord<Text<'_>>, StepError> {
+    openbim_step::decode_record_borrowed(input, span)
+        .map_err(|error| named_real(input, span.start..span.end, error.into()))
+}
+
+/// A strict refusal at a REAL without a decimal point inside
+/// `input[within]`, named as such; any other error unchanged.
+fn named_real(input: &[u8], within: std::ops::Range<usize>, error: StepError) -> StepError {
+    let StepError::Syntax { offset, .. } = error else {
+        return error;
+    };
+    let Some(window) = input.get(within.clone()) else {
+        return error;
+    };
+    match real_point::find(window)
+        .into_iter()
+        .find(|missing| within.start + missing.token.start == offset)
+    {
+        Some(missing) => StepError::RealWithoutDecimalPoint {
+            offset,
+            token: real_point::text(window, &missing),
+        },
+        None => error,
+    }
+}
+
+/// Parses `input` as given; `original` maps a diagnostic offset back to the
+/// caller's bytes when `input` is a repaired copy.
+fn parse_exact(
+    input: &[u8],
+    options: ParseOptions,
+    original: &dyn Fn(usize) -> usize,
+) -> Result<Model, StepError> {
     // Records are converted as they arrive rather than collected first.
     // openbim_step::parse_with builds a Vec of every DataRecord, so the
     // generic records and the converted model are both fully resident at
@@ -39,7 +103,7 @@ pub(crate) fn parse(input: &[u8], options: ParseOptions) -> Result<Model, StepEr
     // appended after the records rather than interleaved with them.
     for diagnostic in &diagnostics {
         model.push_diagnostic(Diagnostic::warning(
-            diagnostic.span().start..diagnostic.span().end,
+            original(diagnostic.span().start)..original(diagnostic.span().end),
             diagnostic.detail(),
         ));
     }

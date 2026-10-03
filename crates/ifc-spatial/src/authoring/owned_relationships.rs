@@ -26,7 +26,7 @@ use crate::relation::slots::{
     ASSIGNS_TO_PRODUCT, ASSIGNS_TO_RESOURCE, ASSOCIATES_PROFILE_DEF, CONNECTS_ELEMENTS,
     CONNECTS_WITH_REALIZING, COVERS_ELEMENTS, COVERS_SPACES, DECLARES, DEFINES_BY_OBJECT,
     FILLS_ELEMENT, FLOW_CONTROL_ELEMENTS, INTERFERES_ELEMENTS, POSITIONS, PROJECTS_ELEMENT,
-    SERVICES_BUILDINGS, VOIDS_ELEMENT,
+    VOIDS_ELEMENT,
 };
 
 pub(super) fn refs(ids: &[EntityId]) -> Value {
@@ -175,12 +175,6 @@ set_valued!(
     /// release, with a caller-supplied `IfcOwnerHistory`. IFC2X3 declares no
     /// `IfcRelDefinesByObject` (`EntityNotInSchema`).
     define_by_object_with_owner_history, define_by_object, DEFINES_BY_OBJECT, defining, defined
-);
-set_valued!(
-    /// [`serve_buildings`](super::serve_buildings) in the model's declared
-    /// release, with a caller-supplied `IfcOwnerHistory`, which IFC2X3
-    /// requires.
-    serve_buildings_with_owner_history, serve_buildings, SERVICES_BUILDINGS, system, buildings
 );
 set_valued!(
     /// [`control_flow_element`](super::control_flow_element) in the model's

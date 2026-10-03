@@ -39,6 +39,7 @@ use crate::relation::slots::{RelSlots, AGGREGATES, CONTAINED_IN};
 
 mod boundary;
 mod relationships;
+mod services;
 
 pub use boundary::{
     connect_path_elements, connect_path_elements_with_owner_history, create_space_boundary,
@@ -58,8 +59,7 @@ pub use owned_relationships::{
     cover_elements_with_owner_history, cover_spaces_with_owner_history, declare_with_owner_history,
     define_by_object_with_owner_history, fill_element_with_owner_history,
     interfere_elements_with_owner_history, position_products_with_owner_history,
-    project_element_with_owner_history, serve_buildings_with_owner_history,
-    void_element_with_owner_history,
+    project_element_with_owner_history, void_element_with_owner_history,
 };
 
 use crate::tree::SpatialKind;
@@ -68,8 +68,9 @@ pub use relationships::{
     adhere_to_element, assign_to_actor, assign_to_group_by_factor, assign_to_process,
     assign_to_product, assign_to_resource, associate_profile_def, control_flow_element,
     cover_elements, cover_spaces, declare, define_by_object, fill_element, position_products,
-    project_element, serve_buildings, void_element,
+    project_element, void_element,
 };
+pub use services::{serve_buildings, serve_buildings_with_owner_history};
 
 /// Authored fields shared by the spatial containers.
 ///

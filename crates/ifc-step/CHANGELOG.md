@@ -12,6 +12,24 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- Lenient reading (`StepCodec::lenient`, `OnMalformed::Skip`) accepts a
+  REAL written without its decimal point (`1E-05`, `-2E3`, `3e+2`), as
+  buildingSMART's IFC4.x alignment test files do (#285). ISO 10303-21
+  requires the point (`REAL = [sign] digit {digit} "." {digit}
+  [exponent]`); the meaning of such a token is not in doubt, so the read
+  takes it as the REAL it spells and reports one located model diagnostic
+  per token instead of skipping the record. Text in strings, binary
+  literals and comments is never touched; a token that is not a number
+  (`1E`, `1EE2`) is still skipped as a malformed record. The writer still
+  always emits the point.
+- `StepError::RealWithoutDecimalPoint { offset, token }`: a strict read
+  (lazy or eager, and `Index::entity`) refuses such a token as before, now
+  with an error naming it; through `Codec` it surfaces as
+  `ModelError::Syntax` at the token's offset with the token in the detail.
+  `StepError` is `#[non_exhaustive]`, so this is not breaking.
+
 ## [0.4.0] - 2026-09-29
 
 ## [0.3.0] - 2026-09-26
