@@ -421,13 +421,13 @@
         {
           "package": "openbim_ifc",
           "registry": "GitHub release",
-          "url": "https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.2.0"
+          "url": "https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.1"
         }
       ],
-      "released": "0.2.0",
+      "released": "0.1.1",
       "released_date": "2026-10-03",
       "status": "implemented",
-      "version": "0.2.0"
+      "version": "0.1.1"
     },
     "openbim-ifc-py": {
       "description": "Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python.",

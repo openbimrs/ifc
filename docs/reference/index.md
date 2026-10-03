@@ -58,6 +58,6 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
 | [`openbim-ifc-binding-core`](./crates/openbim-ifc-binding-core) | <span class="status-implemented">Implemented</span> | not released | Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python). |
-| [`openbim-ifc-capi`](./crates/openbim-ifc-capi) | <span class="status-implemented">Implemented</span> | 0.2.0 | Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP files from C and C++. |
+| [`openbim-ifc-capi`](./crates/openbim-ifc-capi) | <span class="status-implemented">Implemented</span> | 0.1.1 | Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP files from C and C++. |
 | [`openbim-ifc-py`](./crates/openbim-ifc-py) | <span class="status-implemented">Implemented</span> | 0.3.0 | Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python. |
 | [`openbim-ifc-wasm`](./crates/openbim-ifc-wasm) | <span class="status-implemented">Implemented</span> | 0.3.0 | WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript. |
