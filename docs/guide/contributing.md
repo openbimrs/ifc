@@ -246,6 +246,7 @@ runs once, in CI; the release does not run it again:
 | any crate without `publish = false` | crates.io |
 | `openbim-ifc-wasm` | npm only (`@openbim/ifc`) |
 | `openbim-ifc-py` | PyPI only (`openbim-ifc`): Linux, macOS and Windows wheels plus an sdist |
+| `openbim-ifc-capi` | GitHub release only: per-platform archives of its CMake package (header, static and shared library), plus `SHA256SUMS` |
 
 The version in `crates/openbim-ifc-wasm/npm/package.json` or
 `crates/openbim-ifc-py/pyproject.toml` must equal the crate's. `--set --apply`

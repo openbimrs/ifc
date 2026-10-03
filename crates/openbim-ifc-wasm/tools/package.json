@@ -1,0 +1,9 @@
+{
+  "name": "openbim-ifc-wasm-tools",
+  "private": true,
+  "description": "Build and test tooling for the @openbim/ifc npm package; never published.",
+  "type": "module",
+  "devDependencies": {
+    "webpack": "5.111.1"
+  }
+}

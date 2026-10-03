@@ -109,9 +109,9 @@ const FAMILIES: &[(&str, BodyKind)] = &[
     ("IFCGEOMETRICCURVESET", BodyKind::GeometricSet),
     ("IFCPOINTONCURVE", BodyKind::Point),
     ("IFCPOINTONSURFACE", BodyKind::Point),
-    // IFC4X3 alignment curves the IFC4 subtype table cannot route (#243).
+    // IFC4X3: an IfcSegment, not an IfcCurve, so inheritance does not route
+    // it; it lowers as a curve (#243).
     ("IFCCURVESEGMENT", BodyKind::Curve),
-    ("IFCGRADIENTCURVE", BodyKind::Curve),
 ];
 
 impl BodyKind {
@@ -192,5 +192,33 @@ mod tests {
         assert_eq!(BodyKind::classify("IFCADVANCEDFACE"), Some(BodyKind::Face));
         assert_eq!(BodyKind::classify("IFCMAPPEDITEM"), None);
         assert_eq!(BodyKind::classify("IFCWALL"), None);
+    }
+
+    /// IFC4X3-only curves and surfaces classify by inheritance too (#293);
+    /// before the subtype table carried IFC4X3 chains they had no kind.
+    #[test]
+    fn ifc4x3_curves_and_surfaces_classify_by_inheritance() {
+        for curve in [
+            "IFCCLOTHOID",
+            "IFCCOSINESPIRAL",
+            "IFCSINESPIRAL",
+            "IFCSECONDORDERPOLYNOMIALSPIRAL",
+            "IFCTHIRDORDERPOLYNOMIALSPIRAL",
+            "IFCSEVENTHORDERPOLYNOMIALSPIRAL",
+            "IFCPOLYNOMIALCURVE",
+            "IFCOFFSETCURVEBYDISTANCES",
+            "IFCSEGMENTEDREFERENCECURVE",
+            "IFCGRADIENTCURVE",
+        ] {
+            assert_eq!(BodyKind::classify(curve), Some(BodyKind::Curve), "{curve}");
+        }
+        assert_eq!(
+            BodyKind::classify("IFCSECTIONEDSURFACE"),
+            Some(BodyKind::Surface)
+        );
+        // An IfcCurveSegment is an IfcSegment, not an IfcCurve; it keeps its
+        // named row.
+        assert_eq!(BodyKind::classify("IFCCURVESEGMENT"), Some(BodyKind::Curve));
+        assert!(!crate::select::is_a("IFCCURVESEGMENT", "IFCCURVE"));
     }
 }

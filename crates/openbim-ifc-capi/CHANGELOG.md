@@ -27,6 +27,25 @@ a release here does not imply a release of any other crate in the family.
 - The ABI version is 0.1.1: every export above is new, no `v0_1` symbol
   changed. Additive, so a patch release.
 
+### Added (packaging)
+
+- A CMake package, `openbim_ifc` (#41): `find_package(openbim_ifc 0.1 CONFIG)`
+  or `add_subdirectory(crates/openbim-ifc-capi)` defines
+  `openbim_ifc::openbim_ifc` (shared, or static with
+  `OPENBIM_IFC_LINKAGE=STATIC`) and the explicit
+  `openbim_ifc::openbim_ifc_shared` / `openbim_ifc::openbim_ifc_static`.
+  `cmake --install` lays out the header, both libraries and the config.
+- Prebuilt archives of that install tree on each `openbim-ifc-capi-v*` GitHub
+  release: Linux and macOS (x86_64, aarch64) and Windows (x86_64, MSVC), with
+  `SHA256SUMS`.
+
+### Changed (packaging)
+
+- The shared library records its bare name: ELF `SONAME`
+  `libopenbim_ifc_capi.so`, Mach-O install name
+  `@rpath/libopenbim_ifc_capi.dylib`. A consumer no longer stores the path the
+  library was built at, so the library can be installed and moved.
+
 ### Changed
 
 - Links every bundled IFC release explicitly through the binding core's

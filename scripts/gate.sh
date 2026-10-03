@@ -10,7 +10,7 @@
 #   lint      formatting, clippy, rustdoc, documentation and licensing gates
 #   test      workspace build and tests, architecture and context gates
 #   features  feature-column builds: kernel-free, compile, facade, browser WASM
-#   bindings  JavaScript, C and Python bindings against the real library
+#   bindings  JavaScript, C (and its CMake package) and Python bindings
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -189,13 +189,15 @@ gate_features() {
 }
 
 gate_bindings() {
-    # JavaScript bindings (#34, ADR 0013): build the wasm module with the
-    # pinned wasm-bindgen CLI and run the Node smoke and corpus suites against
-    # it, so the binding is proven to work from JS, not just to compile.
+    # JavaScript bindings (#34, #40, ADR 0013): build the npm package's three
+    # targets with the pinned wasm-bindgen CLI, run the Node
+    # smoke and corpus suites, then check the packed tarball from Node, a
+    # webpack bundle and headless Chrome, so the binding is proven to work
+    # from JS, not just to compile.
     if [[ -n "${IFC_SKIP_JS:-}" ]]; then
         echo "warning: IFC_SKIP_JS set; JS binding suites NOT run" >&2
     else
-        crates/openbim-ifc-wasm/scripts/build-node-pkg.sh
+        crates/openbim-ifc-wasm/scripts/build-npm-pkg.sh
     fi
 
     # C ABI (#38, ADR 0013): the committed header must match the exports (the
@@ -203,6 +205,10 @@ gate_bindings() {
     # C11 and as C++17 must parse, read, edit, write and re-parse through the
     # real library.
     crates/openbim-ifc-capi/scripts/check-c.sh
+    # The CMake package (#41): source-tree, installed and packed-archive
+    # consumers, shared and static, run the same smoke test. macOS and
+    # Windows run it in .github/workflows/native.yml.
+    python3 crates/openbim-ifc-capi/scripts/check-cmake.py
 
     # Python (#39, ADR 0013): build the abi3 wheel with maturin, install it
     # into a throwaway uv venv, and run the Python smoke and corpus suites

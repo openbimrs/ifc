@@ -508,18 +508,10 @@ pub fn lower_representation_item(
             lower_half_space_node(session, id, frame)
         }
         "IFCMAPPEDITEM" => lower_mapped_item_node(session, id, frame),
-        // IFC4X3 curve families the IFC4 subtype table does not know, and
-        // `IfcCurveSegment`, an IfcSegment the curve module lowers.
-        "IFCCURVESEGMENT"
-        | "IFCGRADIENTCURVE"
-        | "IFCSEGMENTEDREFERENCECURVE"
-        | "IFCPOLYNOMIALCURVE"
-        | "IFCCLOTHOID"
-        | "IFCCOSINESPIRAL"
-        | "IFCSINESPIRAL"
-        | "IFCSECONDORDERPOLYNOMIALSPIRAL"
-        | "IFCTHIRDORDERPOLYNOMIALSPIRAL"
-        | "IFCSEVENTHORDERPOLYNOMIALSPIRAL" => lower_curve_node(session, id, frame),
+        // `IfcCurveSegment` is an IfcSegment, not an IfcCurve, so the
+        // inheritance test above does not route it; the curve module lowers
+        // it. The IFC4X3 curves themselves route by inheritance (#293).
+        "IFCCURVESEGMENT" => lower_curve_node(session, id, frame),
         "IFCPOINTONCURVE" => lower_point_on_curve_node(session, id, frame),
         "IFCPOINTONSURFACE" => lower_point_on_surface_node(session, id, frame),
         "IFCFACETEDBREP"
@@ -560,11 +552,19 @@ pub fn lower_representation_item(
 
 /// The documented reason a recognized family is not lowered yet.
 fn detail_for(type_name: &str) -> &'static str {
+    planned_detail(type_name).unwrap_or("representation item family is not lowered yet")
+}
+
+/// The documented [`PLANNED`] reason for a family, if it has one.
+///
+/// Shared with the curve lowerer: once the subtype table routes
+/// an IFC4X3 curve there by inheritance (#293), the ledger's reason must
+/// still be the one reported.
+pub(crate) fn planned_detail(type_name: &str) -> Option<&'static str> {
     PLANNED
         .iter()
         .find(|(name, _)| *name == type_name)
         .map(|(_, detail)| *detail)
-        .unwrap_or("representation item family is not lowered yet")
 }
 
 #[cfg(test)]

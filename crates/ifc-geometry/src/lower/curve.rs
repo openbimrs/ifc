@@ -178,7 +178,13 @@ fn build(
         other if spiral::is_spiral(other) => {
             Err(session.unsupported(id, other, spiral::standalone_reason(other)))
         }
-        other => Err(session.unsupported(id, other, "curve family")),
+        // `IfcOffsetCurveByDistances` and any other planned IFC4X3 curve the
+        // subtype table now routes here keep the dispatch ledger's reason.
+        other => Err(session.unsupported(
+            id,
+            other,
+            crate::lower::dispatch::planned_detail(other).unwrap_or("curve family"),
+        )),
     }
 }
 

@@ -58,8 +58,8 @@ model's declared release one by one.
 ## Bindings and packaging
 
 JavaScript, Python and C bindings ship from this repository (see
-[install](/guide/install)). Broader platform coverage, a tested browser build
-and CMake packaging are tracked in
+[install](/guide/install)); the npm package carries tested Node, bundler and
+browser builds. Broader platform coverage and CMake packaging are tracked in
 [#34](https://github.com/openbimrs/ifc/issues/34).
 
 ## Scale

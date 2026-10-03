@@ -1,7 +1,7 @@
 //! EXPRESS `SELECT` and defined types of the IFC geometry schema.
 //!
-//! Subtype answers come from tables generated for one schema version, named
-//! by [`subtype::TABLE_SCHEMA_VERSION`].
+//! Subtype answers come from tables generated for IFC4 ADD2 TC1 and IFC4X3
+//! ADD2, listed in [`subtype::VERIFIED_SCHEMA_VERSIONS`].
 //!
 //! # Why selects need real code
 //!
@@ -26,6 +26,8 @@
 pub mod aggregate_selects;
 pub mod entity_selects;
 pub mod subtype;
+mod subtype_ifc4;
+mod subtype_ifc4x3;
 mod subtype_profile;
 
 pub use aggregate_selects::{
@@ -36,4 +38,6 @@ pub use aggregate_selects::{
 pub use entity_selects::{
     Axis2Placement, BooleanOperand, CsgSelect, SolidOrShell, TrimmingSelect, VectorOrDirection,
 };
-pub use subtype::{is_a, known_entities, supertypes_of};
+pub use subtype::{
+    is_a, is_a_in, known_entities, known_entities_in, supertypes_of, supertypes_of_in,
+};

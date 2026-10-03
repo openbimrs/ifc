@@ -35,6 +35,7 @@ use std::path::PathBuf;
 
 mod schema_coverage {
     mod ifc4x3;
+    mod subtype;
 }
 
 /// Every concrete (non-ABSTRACT) entity in IfcGeometryResource,
@@ -453,6 +454,17 @@ fn the_compiled_subtype_table_agrees_with_the_schema() {
         "IFCRECTANGULARTRIMMEDSURFACE",
     ] {
         assert!(is_a(surface, "IFCSURFACE"), "{surface} is a surface");
+    }
+
+    // IFC4X3 ADD2 additions (#293); every chain is compared with
+    // `IFC4X3_ADD2.exp` in `schema_coverage/subtype.rs`.
+    for (entity, ancestor) in [
+        ("IFCCLOTHOID", "IFCCURVE"),
+        ("IFCGRADIENTCURVE", "IFCCOMPOSITECURVE"),
+        ("IFCTRIANGULATEDIRREGULARNETWORK", "IFCTESSELLATEDFACESET"),
+        ("IFCOPENCROSSPROFILEDEF", "IFCPROFILEDEF"),
+    ] {
+        assert!(is_a(entity, ancestor), "{entity} is a {ancestor}");
     }
 
     // Cross-family negatives: the table must not over-match.

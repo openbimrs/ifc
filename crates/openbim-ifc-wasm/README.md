@@ -4,9 +4,10 @@ WebAssembly bindings for [`openbim-ifc`](https://crates.io/crates/openbim-ifc):
 read, edit and write IFC STEP (`.ifc`) files from JavaScript and TypeScript,
 in Node or a browser.
 
-Published to npm as `@openbim/ifc`, a CommonJS build for Node. Browser
-bundling works in principle (the crate builds for `wasm32-unknown-unknown`)
-but has no tested recipe yet.
+Published to npm as `@openbim/ifc`, with three builds of the same module:
+CommonJS for Node, an ES module for bundlers, and an ES module that loads
+in a browser without one. Each is tested from the packed tarball: Node,
+a webpack bundle, and headless Chrome.
 
 Documentation: [JavaScript guide](https://openbimrs.github.io/ifc/bindings/javascript)
 · [source and issues](https://github.com/openbimrs/ifc)
@@ -68,6 +69,33 @@ writeFileSync("house-edited.ifc", model.write());
 Ids are `bigint`s. Attribute slots are 0-based positions in the entity's
 EXPRESS declaration.
 
+## Browsers and bundlers
+
+| Import | Build | Loads the wasm module |
+| --- | --- | --- |
+| `@openbim/ifc` in Node (`require` or `import`) | CommonJS | synchronously, from disk |
+| `@openbim/ifc` in a bundler | ES module (`--target bundler`) | through the bundler |
+| `@openbim/ifc/web` | ES module (`--target web`) | when you call `init()` |
+
+A bundler resolves `@openbim/ifc` to the bundler build, which imports the
+`.wasm` file as an ES module. webpack 5 supports that with
+`experiments: { asyncWebAssembly: true }`; Vite and Rollup need a wasm
+plugin (for example `vite-plugin-wasm`). The API is the same as in Node.
+
+Without a bundler, or with one that cannot import wasm (esbuild), use the
+`web` build and initialise it once before the first call:
+
+```js
+import init, { IfcModel } from "@openbim/ifc/web";
+
+await init(); // fetches openbim_ifc_wasm_bg.wasm from next to the module
+const model = IfcModel.parse(new Uint8Array(await file.arrayBuffer()));
+```
+
+`init` also accepts `{ module_or_path }`: a URL, a `Response`, the bytes or
+a compiled `WebAssembly.Module`. Serve `.wasm` as `application/wasm` so the
+browser can compile it while it downloads.
+
 ## Values
 
 Every attribute value is an object with a `kind`:
@@ -101,8 +129,18 @@ refused edit leaves the model unchanged.
 
 ```sh
 cargo install wasm-bindgen-cli --version 0.2.128 --locked
-crates/openbim-ifc-wasm/scripts/build-node-pkg.sh   # builds pkg/ and runs the JS smoke test
+crates/openbim-ifc-wasm/scripts/build-npm-pkg.sh   # builds pkg/ and tests every target
 ```
+
+The script builds the module once, binds it for each target, runs the Node
+suites, and checks the packed tarball from Node, webpack and headless Chrome
+(`CHROME_BIN` names the browser if it is not on `PATH`). webpack comes pinned
+from `tools/package-lock.json`.
+
+`wasm-opt -Oz` was measured, not applied, because it increases the gzip and
+brotli size: with binaryen 132 the module went from 1,337,025 to 1,295,241
+bytes raw, but from 459,437 to 461,953 bytes under `gzip -9` and from
+276,835 to 278,749 under brotli.
 
 ## License
 

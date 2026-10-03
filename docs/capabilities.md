@@ -40,7 +40,7 @@ committed figure that moves that often only produces merge conflicts.
 | `ifc-control` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-cost` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-element-type` | <span class="status-implemented">Implemented</span> |  |
-| `ifc-geometry` | <span class="status-partial">Partial</span> | [#243](https://github.com/openbimrs/ifc/issues/243) |
+| `ifc-geometry` | <span class="status-partial">Partial</span> | [#19](https://github.com/openbimrs/ifc/issues/19) |
 | `ifc-georef` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-material` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-model` | <span class="status-implemented">Implemented</span> | [#105](https://github.com/openbimrs/ifc/issues/105) |
@@ -60,9 +60,9 @@ committed figure that moves that often only produces merge conflicts.
 | `ifc-xml` | <span class="status-implemented">Implemented</span> |  |
 | `openbim-ifc` | <span class="status-implemented">Implemented</span> |  |
 | `openbim-ifc-binding-core` | <span class="status-implemented">Implemented</span> |  |
-| `openbim-ifc-capi` | <span class="status-partial">Partial</span> | [#41](https://github.com/openbimrs/ifc/issues/41), [#123](https://github.com/openbimrs/ifc/issues/123) |
+| `openbim-ifc-capi` | <span class="status-partial">Partial</span> | [#123](https://github.com/openbimrs/ifc/issues/123) |
 | `openbim-ifc-py` | <span class="status-partial">Partial</span> | [#123](https://github.com/openbimrs/ifc/issues/123) |
-| `openbim-ifc-wasm` | <span class="status-partial">Partial</span> | [#40](https://github.com/openbimrs/ifc/issues/40), [#123](https://github.com/openbimrs/ifc/issues/123) |
+| `openbim-ifc-wasm` | <span class="status-partial">Partial</span> | [#123](https://github.com/openbimrs/ifc/issues/123) |
 
 <!-- CAPABILITIES:CENSUS:END -->
 
@@ -88,7 +88,8 @@ Every concrete `IfcRepresentationItem` subtype in IFC4 ADD2 TC1 and IFC4X3 ADD2 
 | Round-trip of entities the build does not understand | <span class="status-implemented">Implemented</span> | `crates/openbim-ifc/tests/costing_roundtrip.rs` (runs with no domain crate compiled) |
 | STEP (`.ifc`) read and write | <span class="status-implemented">Implemented</span> | `ifc-step`; deterministic model order, finite scalar safeguards, generic syntax delegated to `openbim-step` |
 | ifcXML read and write | <span class="status-implemented">Implemented</span> | `ifc-xml`: its own lossless layout, read and written, typed from the schema when one is given (`SchemaReading::Strict`), under an exact release namespace with a strict profile (not valid against the XSD; an opt-in `xmllint` check pins the departures); the buildingSMART XSD configuration of IFC4 ADD2 TC1 and IFC4X3 ADD2, read and written (`XmlCodec::xsd`), its rules checked against both release XSDs and its IFC4 output validated against `IFC4.xsd` (opt-in `xmllint` check); content either layout cannot carry exactly is a typed error |
-| IFC-JSON | <span class="status-absent">Absent</span> | Would be a third `Codec` impl; no crate exists |
+| IFC-JSON | <span class="status-absent">Absent</span> | Not planned ([#122](https://github.com/openbimrs/ifc/issues/122)): buildingSMART's ifcJSON never became a standard; see [ADR 0020](/adr/0020-ifc5-is-a-separate-family) |
+| IFC5 / IFCX | <span class="status-absent">Absent</span> | Out of scope here: a different data model, developed as its own family in [openbimrs/ifcx](https://github.com/openbimrs/ifcx) ([ADR 0020](/adr/0020-ifc5-is-a-separate-family)); the `IFC5` schema token is refused with a typed error |
 | EXPRESS schema metadata, subtype queries | <span class="status-implemented">Implemented</span> | `ifc-schema` |
 | GlobalId base-64 encode/decode | <span class="status-implemented">Implemented</span> | `ifc-model::guid` |
 | Spatial containment tree traversal | <span class="status-implemented">Implemented</span> | `ifc-spatial::SpatialTree`; facade feature `spatial`. See below. |
@@ -594,6 +595,8 @@ contracts.
 - Vendored ISO or buildingSMART schema payloads
   (the [contributing guide](/guide/contributing#standards-material)).
 - Any C++ in the dependency graph.
+- IFC5 / IFCX and a JSON serialisation of the EXPRESS releases
+  ([ADR 0020](/adr/0020-ifc5-is-a-separate-family)).
 
 ## How to verify a claim on this page
 

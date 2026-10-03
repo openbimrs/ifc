@@ -19,7 +19,7 @@ pub(crate) struct Release {
 
 /// A registry a crate is published to.
 pub(crate) struct Registry {
-    /// `crates.io`, `npm` or `PyPI`.
+    /// `crates.io`, `npm`, `PyPI` or `GitHub release`.
     pub(crate) kind: &'static str,
     /// The package name there, which need not equal the crate name.
     pub(crate) package: String,
@@ -40,16 +40,17 @@ pub(crate) fn latest(workspace: &Workspace, krate: &Crate) -> Result<Option<Rele
 }
 
 /// Registries the crate is published to: crates.io unless `publish = false`,
-/// plus npm and PyPI when their manifests exist. These are the same files the
+/// plus npm and PyPI when their manifests exist, and the GitHub release's
+/// prebuilt archives when it has a CMake package. These are the same files the
 /// release workflow publishes from (`scripts/release-crate.py`).
 ///
 /// Empty for a crate that has never been released: a manifest that *could*
 /// publish is not a package anyone can install, and a link to it would 404.
 pub(crate) fn registries(workspace: &Workspace, krate: &Crate) -> Vec<Registry> {
     let mut out = Vec::new();
-    if latest(workspace, krate).ok().flatten().is_none() {
+    let Some(release) = latest(workspace, krate).ok().flatten() else {
         return out;
-    }
+    };
     if krate.publish {
         out.push(Registry {
             kind: "crates.io",
@@ -79,7 +80,31 @@ pub(crate) fn registries(workspace: &Workspace, krate: &Crate) -> Vec<Registry> 
             package: name,
         });
     }
+    // A CMake package ships as prebuilt archives on the crate's GitHub
+    // release (release.yml, `native-archives`).
+    if let Some(name) = std::fs::read_to_string(dir.join("CMakeLists.txt"))
+        .ok()
+        .and_then(|text| cmake_project_name(&text))
+    {
+        out.push(Registry {
+            kind: "GitHub release",
+            url: format!(
+                "https://github.com/openbimrs/ifc/releases/tag/{}-v{}",
+                krate.name, release.version
+            ),
+            package: name,
+        });
+    }
     out
+}
+
+/// The name in a `CMakeLists.txt`'s `project(<name> ...)` call.
+fn cmake_project_name(text: &str) -> Option<String> {
+    text.lines().find_map(|line| {
+        let args = line.trim().strip_prefix("project(")?;
+        let name = args.split(|c: char| c.is_whitespace() || c == ')').next()?;
+        (!name.is_empty()).then(|| name.to_owned())
+    })
 }
 
 /// `name = "…"` in the `[project]` table of a `pyproject.toml`.
@@ -105,6 +130,18 @@ fn project_name(text: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cmake_project_name_is_the_first_project_argument() {
+        let text =
+            "cmake_minimum_required(VERSION 3.21)\nproject(openbim_ifc VERSION 1.0 LANGUAGES C)\n";
+        assert_eq!(cmake_project_name(text).as_deref(), Some("openbim_ifc"));
+        assert_eq!(
+            cmake_project_name("project(solo)\n").as_deref(),
+            Some("solo")
+        );
+        assert_eq!(cmake_project_name("# project(x)\n"), None);
+    }
 
     #[test]
     fn pyproject_name_is_read_from_project_table() {
