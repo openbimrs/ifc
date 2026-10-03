@@ -12,6 +12,45 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+`select::subtype` carries IFC4X3 ADD2 supertype chains (#293). Answers
+change for IFC4X3-only entity names, so the next release is a minor one.
+
+### Added
+
+- `select::is_a_in`, `supertypes_of_in` and `known_entities_in` answer for
+  one named release, and `VERIFIED_SCHEMA_VERSIONS` lists the releases they
+  answer verbatim: IFC4 ADD2 TC1 and IFC4X3 ADD2.
+  `tables_are_verified_for(Ifc4x3)` is now `true`.
+- The IFC4X3 rows are a delta over the IFC4 tables: the 19 concrete
+  geometry, profile and placement entities IFC4X3 adds, the abstract
+  supertypes they introduce (`IfcSpiral`, `IfcSegment`, `IfcOffsetCurve`,
+  `IfcDirectrixCurveSweptAreaSolid`, `IfcSectionedSolid`), and the IFC4X3
+  chains of the four IFC4 entities IFC4X3 re-parents.
+  `tests/schema_coverage.rs` compares every chain, per release, with
+  `IFC4.exp` and `IFC4X3_ADD2.exp`.
+
+### Changed
+
+- The release-neutral `is_a` and `supertypes_of` now resolve IFC4X3-only
+  entities with their IFC4X3 chain: `is_a("IFCCLOTHOID", "IFCCURVE")`,
+  `is_a("IFCGRADIENTCURVE", "IFCCOMPOSITECURVE")`,
+  `is_a("IFCTRIANGULATEDIRREGULARNETWORK", "IFCTESSELLATEDFACESET")` and
+  `is_a("IFCOPENCROSSPROFILEDEF", "IFCPROFILEDEF")` were `false` and are
+  `true`. Every answer for an entity IFC4 declares is unchanged, including
+  the four IFC4X3 re-parents (`IfcOffsetCurve2D`, `IfcOffsetCurve3D`,
+  `IfcFixedReferenceSweptAreaSolid`, `IfcSurfaceCurveSweptAreaSolid`), which
+  keep their IFC4 chain unless a caller asks `is_a_in(Ifc4x3, ..)`.
+- Visible effects: the select resolvers (`GeometricSetSelect`,
+  `BooleanOperand`, `PointOrVertexPoint`, ...) accept IFC4X3-only members
+  instead of reporting a wrong type. `BodyKind::classify` returns `Curve`
+  for the six `IfcSpiral` subtypes, `IfcPolynomialCurve`,
+  `IfcOffsetCurveByDistances` and `IfcSegmentedReferenceCurve`, and
+  `Surface` for `IfcSectionedSurface`, so body description lists those
+  items instead of refusing them. Lowering is unchanged: those families
+  still lower, or refuse with the `dispatch::PLANNED` reason, as before.
+  Where-rules that test inheritance (dimensionality, swept-area rules) now
+  also apply to the IFC4X3 subtypes the schema makes them inherit.
+
 ## [0.6.1] - 2026-10-03
 
 IFC4X3 ADD2 geometry families (#243). Every concrete IFC4X3 representation
