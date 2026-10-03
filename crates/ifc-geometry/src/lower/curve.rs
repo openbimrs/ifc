@@ -5,9 +5,11 @@
 //! Covers `IfcPolyline`, `IfcLine`, `IfcCircle`, `IfcTrimmedCurve`,
 //! `IfcCompositeCurve`, and the explicit-knot
 //! `IfcBSplineCurveWithKnots` / `IfcRationalBSplineCurveWithKnots`
-//! subtypes. Convention-only `IfcBSplineCurve` and other families report a
-//! typed `Unsupported` naming the entity, so a gap is a diagnostic rather
-//! than a wrong shape.
+//! subtypes, plus the IFC4X3 alignment curves: `IfcCurveSegment`
+//! (`segment.rs`, spiral laws in `spiral.rs`) and `IfcGradientCurve`
+//! (`gradient.rs`). Convention-only `IfcBSplineCurve` and other families
+//! report a typed `Unsupported` naming the entity, so a gap is a diagnostic
+//! rather than a wrong shape.
 //!
 //! # Trim parameters are not all lengths
 //!
@@ -52,7 +54,12 @@ use crate::resource::point::{CartesianPoint, CartesianPointList2D, CartesianPoin
 use crate::transform::Transform;
 
 mod composite_range;
+#[cfg(test)]
+mod fixture;
+pub(crate) mod gradient;
 mod parameter_space;
+pub(crate) mod segment;
+pub(crate) mod spiral;
 
 use parameter_space::parameter_reference_curve;
 
@@ -160,6 +167,16 @@ fn build(
         | "IFCOUTERBOUNDARYCURVE" => composite(session, id, frame),
         "IFCBSPLINECURVEWITHKNOTS" | "IFCRATIONALBSPLINECURVEWITHKNOTS" => {
             bspline(session, id, frame)
+        }
+        // IFC4X3: placed segments, alignment centrelines, standalone parents.
+        "IFCCURVESEGMENT" => segment::lower_segment(session, id, frame),
+        "IFCGRADIENTCURVE" => gradient::gradient_curve(session, id, frame),
+        "IFCSEGMENTEDREFERENCECURVE" => gradient::segmented_reference_curve(session, id),
+        "IFCPOLYNOMIALCURVE" => {
+            Err(session.unsupported(id, &type_name, segment::STANDALONE_POLYNOMIAL))
+        }
+        other if spiral::is_spiral(other) => {
+            Err(session.unsupported(id, other, spiral::standalone_reason(other)))
         }
         other => Err(session.unsupported(id, other, "curve family")),
     }
@@ -593,7 +610,19 @@ fn composite(
     }
 
     let mut segments = Vec::with_capacity(segment_refs.len());
-    for segment_ref in &segment_refs {
+    for (index, segment_ref) in segment_refs.iter().enumerate() {
+        // IFC4X3 composites may hold placed `IfcCurveSegment`s instead.
+        if session.type_name(*segment_ref)? == "IFCCURVESEGMENT" {
+            let last = index + 1 == segment_refs.len();
+            segments.extend(segment::composite_member(
+                session,
+                id,
+                *segment_ref,
+                last,
+                frame,
+            )?);
+            continue;
+        }
         let segment_entity = session.entity(id, *segment_ref)?;
         let segment = CompositeCurveSegment::new(*segment_ref, segment_entity);
         let parent = segment.parent_curve_ref()?;
@@ -604,6 +633,9 @@ fn composite(
             same_sense: segment.same_sense()?,
             transition: transition(segment.transition()?),
         });
+    }
+    if segments.is_empty() {
+        return Err(session.degenerate(id, "IFCCOMPOSITECURVE", "no segment of positive length"));
     }
     session.node_for(
         id,

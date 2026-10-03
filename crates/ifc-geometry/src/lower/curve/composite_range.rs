@@ -219,6 +219,16 @@ fn segments(
     let mut out = Vec::with_capacity(refs.len());
     for segment_ref in refs {
         let entity = session.entity(sweep, segment_ref)?;
+        // An IFC4X3 `IfcCurveSegment` is measured in arc length, not in the
+        // ISO 10303-42 composite parameter this range is written in.
+        if entity.type_name.eq_ignore_ascii_case("IFCCURVESEGMENT") {
+            return Err(session.unsupported(
+                sweep,
+                sweep_type,
+                "a StartParam/EndParam range over a composite of IfcCurveSegments: their \
+                 parameter space is undefined in IFC4.3 ADD2",
+            ));
+        }
         let view = CompositeCurveSegment::new(segment_ref, entity);
         let parent = view.parent_curve_ref()?;
         let (native_length, piece) = parametric_span(session, sweep, sweep_type, parent, depth)?;

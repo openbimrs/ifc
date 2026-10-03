@@ -109,10 +109,13 @@ impl TransitionCode {
 /// may be an `IfcCurveSegment` (`Transition`, `Placement`, `SegmentStart`,
 /// `SegmentLength`, `ParentCurve`). Reading it through the
 /// `IfcCompositeCurveSegment` slots would take `SegmentLength` for the parent
-/// curve, so the view refuses it by name.
+/// curve, so the view refuses it by name. Every lowering path checks for an
+/// `IfcCurveSegment` before building this view (the curve lowering lowers it,
+/// sweep ranges, p-curves and profile boundaries refuse it with their own
+/// reason); the refusal is the backstop for any other caller.
 pub const CURVE_SEGMENT_UNREAD: &str = "an IfcCurveSegment is placed and trimmed by \
-     SegmentStart and SegmentLength, not read as an IfcCompositeCurveSegment; \
-     IFC4X3 curve segments are not lowered yet (#243)";
+     SegmentStart and SegmentLength and cannot be read as an \
+     IfcCompositeCurveSegment; lower it with lower::curve instead";
 
 /// A borrowed view of an `IfcCompositeCurveSegment`.
 ///

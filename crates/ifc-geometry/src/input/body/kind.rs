@@ -72,6 +72,11 @@ const FAMILIES: &[(&str, BodyKind)] = &[
     ("IFCREVOLVEDAREASOLID", BodyKind::Revolution),
     ("IFCREVOLVEDAREASOLIDTAPERED", BodyKind::TaperedRevolution),
     ("IFCFIXEDREFERENCESWEPTAREASOLID", BodyKind::DirectrixSweep),
+    // IFC4X3 subtype with the same slots.
+    (
+        "IFCDIRECTRIXDERIVEDREFERENCESWEPTAREASOLID",
+        BodyKind::DirectrixSweep,
+    ),
     ("IFCSURFACECURVESWEPTAREASOLID", BodyKind::DirectrixSweep),
     ("IFCSWEPTDISKSOLID", BodyKind::SweptDisk),
     ("IFCSWEPTDISKSOLIDPOLYGONAL", BodyKind::SweptDisk),
@@ -104,6 +109,9 @@ const FAMILIES: &[(&str, BodyKind)] = &[
     ("IFCGEOMETRICCURVESET", BodyKind::GeometricSet),
     ("IFCPOINTONCURVE", BodyKind::Point),
     ("IFCPOINTONSURFACE", BodyKind::Point),
+    // IFC4X3 alignment curves the IFC4 subtype table cannot route (#243).
+    ("IFCCURVESEGMENT", BodyKind::Curve),
+    ("IFCGRADIENTCURVE", BodyKind::Curve),
 ];
 
 impl BodyKind {

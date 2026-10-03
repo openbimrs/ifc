@@ -48,6 +48,8 @@ pub const IMPLEMENTED_PROFILES: &[&str] = &[
     "IFCISHAPEPROFILEDEF",
     "IFCLSHAPEPROFILEDEF",
     "IFCMIRROREDPROFILEDEF",
+    // IFC4X3; an open profile, lowered by `lower_open_profile_node`.
+    "IFCOPENCROSSPROFILEDEF",
     "IFCRECTANGLEHOLLOWPROFILEDEF",
     "IFCRECTANGLEPROFILEDEF",
     "IFCROUNDEDRECTANGLEPROFILEDEF",
@@ -63,8 +65,7 @@ pub const IMPLEMENTED_PROFILES: &[&str] = &[
 /// it is the bare supertype: it declares only `ProfileType`, `ProfileName` and
 /// the curve slots its subtypes add. A file authoring one has supplied a
 /// profile *label*, not a section, so this is a permanent typed refusal rather
-/// than work awaiting a neutral contract. Every concrete IFC4 subtype lowers;
-/// IFC4X3 additions that do not yet are listed in [`UNLOWERED`].
+/// than work awaiting a neutral contract. Every concrete subtype is read.
 ///
 /// The refusal itself is raised by [`describe_profile`]; a unit test keeps its
 /// reason identical to the one stated here.
@@ -83,9 +84,9 @@ pub(crate) use crate::slots::profile_slot as slot;
 /// a corpus-shaped census reported full coverage while 13 families were absent.
 ///
 /// A reason starting with `kernel:` needs a change in `axiolid-profile`; the
-/// rest are IFC-side wiring. Every IFC4 ADD2 TC1 profile family is lowered;
-/// the entries are IFC4X3 ADD2 families.
-pub const UNLOWERED: &[(&str, &str)] = &[("IFCOPENCROSSPROFILEDEF", "in progress (#243)")];
+/// rest are IFC-side wiring. Every IFC4 ADD2 TC1 and IFC4X3 ADD2 profile
+/// family is read, so the table is empty.
+pub const UNLOWERED: &[(&str, &str)] = &[];
 
 /// Family label used for profile memoization.
 const PROFILE: &str = "profile";

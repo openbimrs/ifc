@@ -14,17 +14,18 @@ The file carries one valid instance of each IFC4X3-only family that
   curve of an `IfcCurveSegment`;
 - a horizontal `IfcCompositeCurve`, an `IfcGradientCurve` over it, and an
   `IfcSegmentedReferenceCurve` over that;
-- `IfcDirectrixDerivedReferenceSweptAreaSolid`,
+- `IfcDirectrixDerivedReferenceSweptAreaSolid` along a 3D polyline (a
+  tangent-only directrix, the admitted form), and
   `IfcSectionedSolidHorizontal` and `IfcSectionedSurface` (with
   `IfcOpenCrossProfileDef` sections) along the gradient curve;
 - `IfcOffsetCurveByDistances` with `IfcPointByDistanceExpression` offsets;
 - an `IfcTriangulatedIrregularNetwork` whose flags are non-negative (one
   breakline, no void or hole), the admitted form.
 
-Every standalone composite curve has exactly one segment whose transition is
-DISCONTINUOUS: the schema's `CurveContinuous` rule requires exactly one
-discontinuous segment on an open curve, and a single segment cannot claim a
-continuity its neighbours do not have.
+Every composite curve has exactly one segment whose transition is
+DISCONTINUOUS, its last: the schema's `CurveContinuous` rule requires exactly
+one on an open curve. The spiral gallery curves are a single segment each;
+the alignment layouts end in the zero-length closing segment.
 
 Metres and radians, as alignment exporters write them. Entity ids, GUIDs and
 the header timestamp are fixed, so regeneration is byte-stable.
@@ -32,6 +33,7 @@ the header timestamp are fixed, so regeneration is byte-stable.
 Run:  python3 tools/gen_ifc4x3_geometry_fixtures.py test/fixtures/synthetic-surfaces
 """
 
+import math
 import pathlib
 import sys
 import uuid
@@ -104,36 +106,64 @@ def spirals(f):
     return [composite(f, [segment(f, parent, 50.0)]) for parent in parents]
 
 
-def alignment_curves(f):
-    """Horizontal line, a parabolic gradient over it, a constant cant over that."""
-    line = f.create_entity("IfcLine", Pnt=pt(f, (0.0, 0.0)),
-                           Dir=f.create_entity("IfcVector", Orientation=dr(f, (1.0, 0.0)),
-                                               Magnitude=1.0))
-    horizontal = composite(f, [segment(f, line, 40.0)])
+def parabola_arc(g, c, x):
+    """Arc length of z = g t + c t^2 over [0, x], in closed form."""
+    def primitive(w):
+        return (w * math.sqrt(1.0 + w * w) + math.asinh(w)) / 2.0
+    return (primitive(g + 2.0 * c * x) - primitive(g)) / (2.0 * c)
 
-    # Height over distance: z = 10 + 0.02 d + 0.0005 d^2.
+
+def tangent(grade):
+    """Unit (distance, height) direction of a grade."""
+    norm = math.sqrt(1.0 + grade * grade)
+    return (1.0 / norm, grade / norm)
+
+
+def alignment_curves(f):
+    """Horizontal line, a parabolic gradient over it, a constant cant over that.
+
+    Written the way `tools/gen_ifc4x3_curve_fixtures.py` and IfcOpenShell's
+    alignment API write them: each vertical segment is placed at
+    (distance along, height) with its start tangent as `RefDirection`, the
+    parabola's `SegmentLength` is its closed-form arc length, and every
+    layout ends in the zero-length closing segment IFC4.3 requires.
+    """
+    def line():
+        return f.create_entity(
+            "IfcLine", Pnt=pt(f, (0.0, 0.0)),
+            Dir=f.create_entity("IfcVector", Orientation=dr(f, (1.0, 0.0)), Magnitude=1.0))
+
+    plan_line = line()
+    horizontal = composite(f, [
+        segment(f, plan_line, 40.0, "CONTSAMEGRADIENT"),
+        segment(f, plan_line, 0.0, placement=place2(f, (40.0, 0.0))),
+    ])
+
+    # Height over distance: z = 10 + 0.02 d + 0.0005 d^2 over 0..40 m.
+    grade, curvature, run = 0.02, 0.0005, 40.0
     parabola = f.create_entity(
         "IfcPolynomialCurve", Position=place2(f),
-        CoefficientsX=[0.0, 1.0], CoefficientsY=[10.0, 0.02, 0.0005])
+        CoefficientsX=[0.0, 1.0], CoefficientsY=[10.0, grade, curvature])
+    end_height = 10.0 + grade * run + curvature * run * run
+    end_grade = grade + 2.0 * curvature * run
     gradient = f.create_entity(
         "IfcGradientCurve",
-        Segments=[segment(f, parabola, 40.0)],
+        Segments=[
+            segment(f, parabola, parabola_arc(grade, curvature, run), "CONTSAMEGRADIENT",
+                    place2(f, (0.0, 10.0), tangent(grade))),
+            segment(f, line(), 0.0,
+                    placement=place2(f, (run, end_height), tangent(end_grade))),
+        ],
         SelfIntersect=False, BaseCurve=horizontal)
 
-    cant_line = f.create_entity("IfcLine", Pnt=pt(f, (0.0, 0.0)),
-                                Dir=f.create_entity("IfcVector",
-                                                    Orientation=dr(f, (1.0, 0.0)),
-                                                    Magnitude=1.0))
-    cant = f.create_entity(
-        "IfcCurveSegment",
-        Transition="DISCONTINUOUS",
-        Placement=place3(f),
-        SegmentStart=length(f, 0.0),
-        SegmentLength=length(f, 40.0),
-        ParentCurve=cant_line)
+    cant_line = line()
     reference = f.create_entity(
         "IfcSegmentedReferenceCurve",
-        Segments=[cant], SelfIntersect=False, BaseCurve=gradient)
+        Segments=[
+            segment(f, cant_line, run, "CONTSAMEGRADIENT", place3(f)),
+            segment(f, cant_line, 0.0, placement=place3(f, (run, 0.0, 0.0))),
+        ],
+        SelfIntersect=False, BaseCurve=gradient)
     return horizontal, gradient, reference
 
 
@@ -158,11 +188,15 @@ def open_cross(f, name, slope):
 
 
 def swept_items(f, directrix):
+    # A 3D polyline defines only a tangent, the case IFC4.3 gives exactly the
+    # supertype's behaviour; an IfcCurveSegment-built directrix such as the
+    # gradient curve defines a tangent plane and is refused.
+    polyline = f.create_entity("IfcPolyline", Points=[
+        pt(f, (0.0, 0.0, 10.0)), pt(f, (20.0, 0.0, 10.4)), pt(f, (40.0, 5.0, 10.8))])
     derived = f.create_entity(
         "IfcDirectrixDerivedReferenceSweptAreaSolid",
         SweptArea=rectangle(f, "slab"), Position=place3(f),
-        Directrix=directrix,
-        StartParam=length(f, 0.0), EndParam=length(f, 40.0),
+        Directrix=polyline,
         FixedReference=dr(f, (0.0, 0.0, 1.0)))
     solid = f.create_entity(
         "IfcSectionedSolidHorizontal",
