@@ -9,6 +9,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-04
+
 ### Added (#330, schema-checked entity creation)
 
 - `IfcModel.Author(ops)`: `AuthorOp`s built with `AuthorOp.Create`,

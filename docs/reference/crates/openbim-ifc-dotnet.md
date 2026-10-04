@@ -11,7 +11,7 @@ The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned 
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.1.0 (2026-10-04) |
+| Latest release | 0.1.1 (2026-10-04) |
 | Registries | [NuGet `OpenBim.Ifc`](https://www.nuget.org/packages/OpenBim.Ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_dotnet/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-dotnet/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-dotnet) |
@@ -44,38 +44,19 @@ The behaviour is tested from C# against the packed `.nupkg` by
 
 ## Changes
 
-Latest release, 0.1.0 (2026-10-04):
+Latest release, 0.1.1 (2026-10-04):
 
-### Added (#327)
+### Added (#330, schema-checked entity creation)
 
-- The `OpenBim.Ifc` NuGet package: C# over the versioned C ABI of
-  `openbim-ifc-capi` (`openbim_ifc_v0_1_*`, ABI 0.1.5 or later), for
-  `net8.0` and `netstandard2.0` (.NET Framework 4.6.2 and later), with the
-  native library for `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`,
-  `osx-x64` and `osx-arm64`. Build targets copy the Windows libraries into
-  a .NET Framework project's output, and the assembly loads them from next
-  to itself.
-- `IfcModel`, an `IDisposable` over a `SafeHandle`: `Parse`, `Open`
-  (owned or memory-mapped), `ParseIfcXml`, `Write`, `WriteIfcXml`,
-  `Count`, `Schema`, `Diagnostics`, `Ids`, `IdsOfType`,
-  `IdsOfTypeIncludingSubtypes`, `TypeOf`, `Attributes`, `Attribute`,
-  `SetAttribute`, `Add`, `Remove` and `DanglingReferences`.
-- Attributes by name (#326): `AttributeNames` (`AttributeInfo` records),
-  `AttributeByName` and `SetAttributeByName`, with the codes
-  `unknown-attribute` and `derived-attribute`.
-- The #244 surface: `ParseOptions` (`Lenient`), the `Header` record, read
-  and replaced; `Validate` with a `ValidationReport`; ifcXML in the native
-  and XSD layouts; `UnreachableProducts`.
-- The #123 domain views as C# records: `PropertySets`, `ResolveUnit`,
-  `SpatialTree`, `Classifications`, `Material`, `Systems`, `Cost` and
-  `Georeferencing`; and writing property sets as one checked transaction
-  (`SetProperties` with `PropertyEdit`s, `SetProperty`, `RemoveProperty`),
-  checked against the PSD/QTO catalog the native library embeds.
-- `Value`, a closed record hierarchy keeping `$` and `*`, `.U.` and
-  `.F.`, integer and real, and typed wrappers distinct; `EquatableList<T>`
-  so records compare by value.
-- `IfcException`, carrying the stable error `Code` every binding shares and
-  the C ABI's `IfcStatus`.
-- `IfcLibrary.Version` and `IfcLibrary.LiveModels`.
+- `IfcModel.Author(ops)`: `AuthorOp`s built with `AuthorOp.Create`,
+  `Edit`, `Remove`, `Project`, `Spatial`, `Product`, `TypeObject`,
+  `AssignType`, `Contain`, `Aggregate`, `Placement` and `OwnerHistory`,
+  applied as one checked transaction; returns per operation the id it
+  produced (null for a removal). `IfcModel.Handle(index)` /
+  `HandleBase` name the entity an earlier operation produced.
+  `CreateEntity(type, attributes)` and `RemoveWithRelationships(id)` are
+  one-operation batches. `IfcStatus.MissingAttribute` (30) and
+  `StillReferenced` (31). Needs the C ABI 0.1.6. Additive: a patch
+  release.
 
 Full history: [`crates/openbim-ifc-dotnet/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-dotnet/CHANGELOG.md)

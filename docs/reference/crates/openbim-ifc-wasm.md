@@ -11,7 +11,7 @@ WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from J
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.0 (2026-10-04) |
+| Latest release | 0.4.1 (2026-10-04) |
 | Registries | [npm `@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_wasm/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-wasm/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-wasm) |
@@ -64,41 +64,18 @@ suites here cover only the JS conversion itself.
 
 ## Changes
 
-Latest release, 0.4.0 (2026-10-04):
+Latest release, 0.4.1 (2026-10-04):
 
-### Added (#326, attributes by name)
+### Added (#330, schema-checked entity creation)
 
-- `IfcModel.attributeNames(id)` (`AttributeInfo[]` in slot order),
-  `attributeByName(id, name)` and `setAttributeByName(id, name, value)`,
-  resolved against the release the header declares; names match
-  case-insensitively. `IfcErrorCode` gains `unknown-attribute` and
-  `derived-attribute`. Additive; this release is breaking for #318
-  anyway.
-
-### Changed (breaking, #318: the catalog is loaded lazily)
-
-- The module no longer embeds the PSD/QTO catalog: default feature
-  `property-catalog-runtime` replaces `property-catalog`. The default
-  module is 2,648,193 bytes after `wasm-bindgen` (894,392 under
-  `gzip -9`), was 6,282,871 (1,855,125).
-- The package ships the catalog as `catalog/ifc2x3-tc1.bin` (325,739
-  bytes), `catalog/ifc4-add2-tc1.bin` (1,015,315) and
-  `catalog/ifc4x3-add2.bin` (1,086,526), with the loader `catalog.mjs`.
-- `await IfcModel.loadCatalog(release?, { bytes?, baseUrl? })` loads one
-  release's edition (all three without a release): Node reads it from the
-  package, a browser or bundle fetches it relative to the module. Each is
-  checked against its pinned SHA-256 and kept for the module instance.
-  `IfcModel.catalogFile`, `catalogLoaded` and `loadCatalogBytes` are the
-  synchronous parts.
-- Until a release's catalog is loaded, a write to a `Pset_`/`Qto_` set
-  throws the new code `catalog-not-loaded`, never unchecked. A build with
-  `property-catalog` embeds the catalog (1.4 MB) and `loadCatalog` is a
-  no-op.
-- A write to a `Pset_`/`Qto_` set that 0.3.0 checked without a load now
-  needs `loadCatalog` first: a breaking change, a minor release under 0.x
-  (0.4.0).
-- TypeScript: `IfcModel.loadCatalog` (a namespace merged with the class),
-  `CatalogLoadOptions`; `IfcErrorCode` gains `template-violation`,
-  `missing-property` and `catalog-not-loaded`.
+- `IfcModel.author(ops)`: `AuthorOp` objects (`{ op: "product", type,
+  container, placement, typeObject, attributes, ... }`) applied as one
+  checked transaction, returning `AuthoringResult` (`ids` per operation,
+  `created`, `removed`); `IfcModel.handle(index)` names the entity an
+  earlier operation produced. `createEntity(typeName, attributes)` and
+  `removeWithRelationships(id)` are one-operation batches. Fresh
+  `GlobalId`s derive from a seed drawn from `Math.random`. Feature
+  `author` (default). `IfcErrorCode` gains `missing-attribute` and
+  `still-referenced`. Additive: a patch release.
 
 Full history: [`crates/openbim-ifc-wasm/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-wasm/CHANGELOG.md)

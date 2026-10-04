@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.14.0 (2026-10-04) |
+| Latest release | 0.15.0 (2026-10-04) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -94,46 +94,43 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.14.0 (2026-10-04):
+Latest release, 0.15.0 (2026-10-04):
 
 ### Changed (breaking)
 
-- Behind `property-catalog`, the re-exported `property_catalog` is
-  `ifc-template-catalog` 0.4 (was 0.3): one compact snapshot container
-  replaces the per-edition bincode files, with new `snapshot` and `runtime`
-  modules (#317). The new `property-catalog-runtime` feature checks
-  property writes against a catalog supplied at run time (#318).
+- Behind `geometry`, the re-exported `ifc_geometry` is 0.9 (was 0.8): IFC4X3
+  stations, linear placements, offset curves by distances and sectioned
+  solids/surfaces lower exactly (#307), and an `IfcParameterValue`
+  distance on an alignment centreline is refused instead of being read as
+  plan distance (#347).
 
-### Added (#326, attributes by name)
+### Added (#330, checked authoring)
 
-- `attribute_slots(schema, type_name)` and `attribute_slot(schema,
-  type_name, name)` (feature `schema-api`): an entity type's explicit
-  attribute slots in Part 21 order, inherited first, as `AttributeSlot`
-  (index, name, declared type, `optional`, `aggregate`, `derived`,
-  `declared_by`). `INVERSE` and new `DERIVE` attributes hold no slot and
-  are not listed; an inherited attribute a subtype redeclares as derived
-  is marked `derived`. Names match ASCII case-insensitively, as EXPRESS
-  identifiers do; answers use the schema's spelling.
-- `attribute_by_name(model, schema, id, name)` and
-  `set_attribute_by_name(model, schema, id, name, value)`: read and write
-  by name against the schema the caller passes. The write refuses a
-  derived slot and checks everything before its one write.
-  `NamedAttributeError` (`#[non_exhaustive]`): `MissingEntity`,
-  `UnknownEntity`, `UnknownAttribute`, `DerivedAttribute`.
-- Additive: a patch release.
-
-### Added (#318, runtime PSD/QTO catalog)
-
-- Feature `property-catalog-runtime`: property edits check `Pset_`/`Qto_`
-  sets against a catalog the host installs at runtime
-  (`property_catalog::runtime::install`) instead of the embedded one; until
-  the release's edition is installed such an edit is refused with the new
-  `PropertyEditFailure::CatalogNotLoaded { set, edition }` and nothing is
-  written. With `property-catalog` too, the embedded catalog is used.
-  `property-catalog` now enables `ifc-template-catalog/embedded`
-  explicitly. The embedded catalog shrinks from 3.7 MB to 1.4 MB with the
-  catalog's compact format (#317).
-- Additive (`PropertyEditFailure` is `#[non_exhaustive]`): a patch
-  release on its own.
+- Feature `authoring`: `ifc-author` without choosing a release (`author`
+  now means `authoring` plus `schema`, as before), and the checked
+  authoring batch. `apply_authoring(model, schema, ops, seed)` runs
+  `AuthorOp`s in order against the model as the operations before them
+  leave it and commits them as one transaction, or refuses with
+  `AuthoringError` (the operation's position and an `AuthoringFailure`)
+  and changes nothing; `stage_authoring` plans without committing.
+- `AuthorOp` (`#[non_exhaustive]`): `Create` an entity by type and named
+  attributes, `Edit` named attributes, `Remove` an entity with the
+  relationships that reference it, and the builders `Project`, `Spatial`
+  (aggregated under its parent), `Product` (placed, contained and typed),
+  `TypeObject`, `AssignType`, `Contain`, `Aggregate`, `Placement` (an
+  `IfcLocalPlacement` over an `IfcAxis2Placement3D`) and `OwnerHistory`
+  (through `ifc-author`'s writers). Every record is built by name through
+  `ifc-author`'s `EntityBuilder` against the declared release, then its
+  references are resolved (type checked with `Schema::accepts_type`) and
+  its aggregates held to their declared bounds; a supplied `GlobalId`
+  another entity holds is refused; an object is contained, aggregated or
+  typed once, and a model holds one `IfcProject`.
+- An `IfcRoot` created without a `GlobalId` gets a name-based one over a
+  seed (`fresh_seed()`, from the OS on native targets) and its id; a fixed
+  seed reproduces a file. `OwnerHistory` is never invented.
+- `authoring_handle(i)` / `HANDLE_BASE` (2^62): an operation names the
+  entity an earlier one produced; `AuthoringOutcome::ids` reports the ids.
+- Additive: a patch release. The property edit's name-based `GlobalId`
+  moved into a shared module unchanged (a test pins its output).
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

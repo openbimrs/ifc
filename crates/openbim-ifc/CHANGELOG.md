@@ -12,6 +12,16 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-10-04
+
+### Changed (breaking)
+
+- Behind `geometry`, the re-exported `ifc_geometry` is 0.9 (was 0.8): IFC4X3
+  stations, linear placements, offset curves by distances and sectioned
+  solids/surfaces lower exactly (#307), and an `IfcParameterValue`
+  distance on an alignment centreline is refused instead of being read as
+  plan distance (#347).
+
 ### Added (#330, checked authoring)
 
 - Feature `authoring`: `ifc-author` without choosing a release (`author`
@@ -443,7 +453,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.14.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.15.0...HEAD
+[0.15.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.15.0
 [0.14.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.14.0
 [0.13.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.13.0
 [0.12.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.12.0

@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-04
+
 ### Added (#332, Pythonic access)
 
 - A pure-Python layer over the existing calls, with no new native
