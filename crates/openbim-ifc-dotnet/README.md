@@ -68,11 +68,13 @@ The record model -- entities, attributes by position and by name, the
 STEP codec, exact and subtype queries -- plus lenient reads (`ParseOptions`), the STEP header,
 validation, ifcXML, the reachability lint, the read-only domain views
 (property sets and quantities, the spatial tree, classification,
-materials, systems, cost, georeferencing) as C# records, and writing
+materials, systems, cost, georeferencing) as C# records, writing
 property sets and quantities as one checked transaction
-(`SetProperties`), checked against the embedded PSD/QTO catalog. Geometry
-and checked multi-edit transactions over arbitrary entities are not bound
-yet.
+(`SetProperties`), checked against the embedded PSD/QTO catalog, and
+creating entities as one checked transaction (`Author` with `AuthorOp`s:
+entities by type and named attributes, the spatial structure, placed,
+contained and typed products, removal with relationships). Geometry is
+not bound yet.
 
 ## Build from source
 

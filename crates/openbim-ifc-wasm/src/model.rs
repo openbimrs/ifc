@@ -10,6 +10,7 @@ use openbim_ifc_binding_core::{BindingError, IfcModel as Core, ToRecord};
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
 
+use crate::authoring;
 use crate::edits;
 use crate::error::js_error;
 use crate::records;
@@ -422,6 +423,73 @@ impl IfcModel {
     #[wasm_bindgen(js_name = remove)]
     pub fn remove_js(&mut self, id: u64) -> Result<(), JsValue> {
         self.0.remove(id).map_err(js_error)
+    }
+
+    /// Apply authoring operations as one checked transaction against the
+    /// release the header declares: every operation, in order, or none, and
+    /// a refused batch leaves the model unchanged. An operation names the
+    /// entity an earlier one produced by `IfcModel.handle(index)`.
+    /// `result.ids` holds, per operation, the id of the entity it produced.
+    #[wasm_bindgen(js_name = author, unchecked_return_type = "AuthoringResult")]
+    pub fn author_js(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "AuthorOp[]")] ops: &JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let ops = authoring::ops_from_js(ops).map_err(js_error)?;
+        let result = self
+            .0
+            .author_seeded(ops, authoring::seed())
+            .map_err(js_error)?;
+        Ok(records::record_to_js(&result.to_record()))
+    }
+
+    /// Create one entity of `typeName` from named attributes, checked
+    /// against the declared release (`author` with one `create`); an
+    /// `IfcRoot` without a `GlobalId` gets one. Returns its id (`bigint`).
+    #[wasm_bindgen(js_name = createEntity)]
+    pub fn create_entity_js(
+        &mut self,
+        #[wasm_bindgen(js_name = typeName)] type_name: &str,
+        #[wasm_bindgen(unchecked_param_type = "Record<string, IfcValue>")] attributes: &JsValue,
+    ) -> Result<u64, JsValue> {
+        let attributes = if attributes.is_undefined() || attributes.is_null() {
+            Tagged::List(Vec::new())
+        } else {
+            authoring::attributes(attributes).map_err(js_error)?
+        };
+        let op = authoring::single(
+            "create",
+            vec![
+                ("type", Tagged::Text(type_name.to_owned())),
+                ("attributes", attributes),
+            ],
+        )
+        .map_err(js_error)?;
+        let result = self
+            .0
+            .author_seeded(vec![op], authoring::seed())
+            .map_err(js_error)?;
+        result
+            .ids
+            .first()
+            .copied()
+            .flatten()
+            .ok_or_else(|| js_error(BindingError::InvalidModel("nothing was created".into())))
+    }
+
+    /// Remove entity `id` with its relationships, leaving nothing dangling
+    /// (`author` with one `remove`); refused with `still-referenced` while
+    /// an entity other than a relationship needs it.
+    #[wasm_bindgen(js_name = removeWithRelationships)]
+    pub fn remove_with_relationships_js(&mut self, id: u64) -> Result<(), JsValue> {
+        self.0.remove_with_relationships(id).map_err(js_error)
+    }
+
+    /// The handle of the entity operation `index` of an `author` batch
+    /// produces, usable wherever a later operation takes an id (`bigint`).
+    #[wasm_bindgen(js_name = handle)]
+    pub fn handle_js(index: u32) -> u64 {
+        openbim_ifc_binding_core::authoring::HANDLE_BASE + u64::from(index)
     }
 
     /// Every `[from, to]` pair (`bigint`s) where `to` does not exist.

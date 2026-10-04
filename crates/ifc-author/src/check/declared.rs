@@ -98,12 +98,22 @@ fn shape_of(schema: &Schema, type_name: &str, depth: u8) -> Shape {
     if depth == 0 {
         return Shape::Unresolved;
     }
-    match type_name.to_ascii_uppercase().as_str() {
-        "REAL" | "INTEGER" | "NUMBER" => return Shape::Number,
-        "STRING" => return Shape::Text,
-        "BOOLEAN" | "LOGICAL" => return Shape::Logical,
-        "BINARY" => return Shape::Binary,
-        _ => {}
+    // A built-in type may carry a width: `IfcLabel = STRING(255)`,
+    // `IfcGloballyUniqueId = STRING(22) FIXED`, `BINARY(32)`. The keyword
+    // decides the shape, so it is read up to the first non-letter.
+    let keyword = type_name
+        .split(|c: char| !c.is_ascii_alphabetic())
+        .next()
+        .unwrap_or_default();
+    let rest = type_name[keyword.len()..].trim_start();
+    if rest.is_empty() || rest.starts_with('(') {
+        match keyword.to_ascii_uppercase().as_str() {
+            "REAL" | "INTEGER" | "NUMBER" => return Shape::Number,
+            "STRING" => return Shape::Text,
+            "BOOLEAN" | "LOGICAL" => return Shape::Logical,
+            "BINARY" => return Shape::Binary,
+            _ => {}
+        }
     }
     // An entity name is a reference. Checked before defined types because IFC
     // declares both in the same namespace.

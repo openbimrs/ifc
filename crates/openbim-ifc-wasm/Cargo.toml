@@ -54,6 +54,7 @@ default = [
     "ifcxml", "validate", "unreachable",
     "properties", "properties-write", "property-catalog-runtime",
     "spatial", "classification", "material", "systems", "cost", "georef",
+    "author",
 ]
 ifc2x3 = ["openbim-ifc-binding-core/ifc2x3"]
 ifc4 = ["openbim-ifc-binding-core/ifc4"]
@@ -84,6 +85,9 @@ classification = ["openbim-ifc-binding-core/classification"]
 material = ["openbim-ifc-binding-core/material"]
 systems = ["openbim-ifc-binding-core/systems"]
 cost = ["openbim-ifc-binding-core/cost"]
+# Schema-checked entity creation (#330): `author`, `createEntity`,
+# `removeWithRelationships`.
+author = ["openbim-ifc-binding-core/author"]
 # Implies `properties`: the project length unit scales every operation.
 georef = ["openbim-ifc-binding-core/georef"]
 

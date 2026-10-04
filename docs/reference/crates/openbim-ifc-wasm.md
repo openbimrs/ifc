@@ -38,6 +38,7 @@ suites here cover only the JS conversion itself.
 
 | Feature | Default | Enables |
 | --- | --- | --- |
+| `author` | yes | `openbim-ifc-binding-core/author` |
 | `classification` | yes | `openbim-ifc-binding-core/classification` |
 | `cost` | yes | `openbim-ifc-binding-core/cost` |
 | `georef` | yes | `openbim-ifc-binding-core/georef` |

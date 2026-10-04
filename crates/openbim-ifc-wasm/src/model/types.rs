@@ -43,7 +43,9 @@ export type IfcErrorCode =
   | "missing-property"
   | "catalog-not-loaded"
   | "unknown-attribute"
-  | "derived-attribute";
+  | "derived-attribute"
+  | "missing-attribute"
+  | "still-referenced";
 
 /**
  * Where `IfcModel.loadCatalog` reads a catalog snapshot from. By default

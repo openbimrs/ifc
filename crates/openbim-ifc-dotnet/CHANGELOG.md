@@ -9,6 +9,19 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#330, schema-checked entity creation)
+
+- `IfcModel.Author(ops)`: `AuthorOp`s built with `AuthorOp.Create`,
+  `Edit`, `Remove`, `Project`, `Spatial`, `Product`, `TypeObject`,
+  `AssignType`, `Contain`, `Aggregate`, `Placement` and `OwnerHistory`,
+  applied as one checked transaction; returns per operation the id it
+  produced (null for a removal). `IfcModel.Handle(index)` /
+  `HandleBase` name the entity an earlier operation produced.
+  `CreateEntity(type, attributes)` and `RemoveWithRelationships(id)` are
+  one-operation batches. `IfcStatus.MissingAttribute` (30) and
+  `StillReferenced` (31). Needs the C ABI 0.1.6. Additive: a patch
+  release.
+
 ## [0.1.0] - 2026-10-04
 
 ### Added (#327)

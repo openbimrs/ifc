@@ -37,6 +37,7 @@ default = [
     "ifcxml", "validate", "unreachable",
     "properties", "properties-write", "property-catalog",
     "spatial", "classification", "material", "systems", "cost", "georef",
+    "author",
 ]
 ifc2x3 = ["openbim-ifc/ifc2x3"]
 ifc4 = ["openbim-ifc/ifc4"]
@@ -87,6 +88,11 @@ material = ["openbim-ifc/material"]
 systems = ["openbim-ifc/systems"]
 # Cost schedules, items and values.
 cost = ["openbim-ifc/cost"]
+# Schema-checked entity creation (#330): entities by type and named
+# attributes, the spatial, product, type and placement builders, and
+# removal with relationships, as one checked batch. Checks against the
+# enabled releases' tables only.
+author = ["openbim-ifc/authoring"]
 # Map conversions and projected CRSs. The project length unit that scales
 # them is resolved by the property domain, so this implies `properties`.
 georef = ["properties", "openbim-ifc/georef"]

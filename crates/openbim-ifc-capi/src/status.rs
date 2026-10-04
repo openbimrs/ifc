@@ -7,7 +7,7 @@ use openbim_ifc_binding_core::BindingError;
 /// Result of every ABI call. `Ok` is zero; every failure is non-zero.
 ///
 /// The values from `Parse` to `FeatureDisabled`, `InvalidModel`, and
-/// `MissingReference` to `DerivedAttribute`, are the binding errors shared
+/// `MissingReference` to `StillReferenced`, are the binding errors shared
 /// with the JavaScript and Python bindings; the rest describe misuse of the
 /// C boundary itself.
 #[repr(i32)]
@@ -75,6 +75,12 @@ pub enum OpenbimIfcStatus {
     /// A by-name attribute write named a slot the entity's type derives,
     /// written `*` (`derived-attribute`).
     DerivedAttribute = 29,
+    /// An authoring batch left a required attribute of the declared
+    /// release unset (`missing-attribute`).
+    MissingAttribute = 30,
+    /// An authoring batch removed an entity that an entity other than a
+    /// relationship still references (`still-referenced`).
+    StillReferenced = 31,
     /// A Rust panic was contained at the boundary. Report it as a bug.
     Panic = 255,
 }
@@ -101,6 +107,8 @@ impl From<&BindingError> for OpenbimIfcStatus {
             BindingError::CatalogNotLoaded(_) => Self::CatalogNotLoaded,
             BindingError::UnknownAttribute(_) => Self::UnknownAttribute,
             BindingError::DerivedAttribute(_) => Self::DerivedAttribute,
+            BindingError::MissingAttribute(_) => Self::MissingAttribute,
+            BindingError::StillReferenced(_) => Self::StillReferenced,
         }
     }
 }
@@ -207,6 +215,14 @@ mod tests {
             (
                 BindingError::DerivedAttribute(String::new()),
                 OpenbimIfcStatus::DerivedAttribute,
+            ),
+            (
+                BindingError::MissingAttribute(String::new()),
+                OpenbimIfcStatus::MissingAttribute,
+            ),
+            (
+                BindingError::StillReferenced(String::new()),
+                OpenbimIfcStatus::StillReferenced,
             ),
         ];
         for (error, status) in cases {

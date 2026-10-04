@@ -22,7 +22,10 @@ from typing import Optional as _Optional, Union as _Union
 
 from ._native import IfcError
 from .domains import (
+    HANDLE_BASE,
     AttributeInfo,
+    AuthorOp,
+    AuthoringResult,
     Classification,
     ClassificationSystem,
     Cost,
@@ -56,6 +59,7 @@ from .domains import (
     SystemAnomaly,
     Systems,
     UnitBasis,
+    handle,
 )
 from .entity import Assignable, Entity, PlainValue, PropertyValue
 from .model import IfcModel
@@ -103,6 +107,10 @@ __all__ = [
     "PropertyValue",
     "Assignable",
     "AttributeInfo",
+    "AuthorOp",
+    "AuthoringResult",
+    "HANDLE_BASE",
+    "handle",
     "ParseOptions",
     "Header",
     "ValidationReport",

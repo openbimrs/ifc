@@ -65,10 +65,10 @@ or a `Real`, `"x"` a `Text` or an `Enum`, and the binding does not guess.
 
 ## Errors
 
-Every failure raises `IfcError` with a stable `code`: `parse`, `write`,
-`missing-entity`, `invalid-value`, `out-of-range`, `unsupported-schema`,
-`io`, `unsupported-profile` or `feature-disabled`. The codes are shared with the JavaScript and C bindings; a code is
-never renamed or reused.
+Every failure raises `IfcError` with a stable `code` (`parse`,
+`missing-entity`, `invalid-value`, `unsupported-schema`, ...; the Python
+guide lists them all). The codes are shared with the JavaScript and C
+bindings; a code is never renamed or reused.
 
 ## Threads
 
@@ -83,8 +83,10 @@ validation, ifcXML, the reachability lint and the read-only domain views
 (property sets and quantities, the spatial tree, classification, materials,
 systems, cost, georeferencing; #123), each as frozen dataclasses,
 writing property sets and quantities as one checked transaction
-(`set_properties`), and the Pythonic layer over them (#332). Geometry
-and checked multi-edit transactions over arbitrary entities are not bound
+(`set_properties`), the Pythonic layer over them (#332), and creating
+entities as one checked transaction (`author` with `AuthorOp`s: entities
+by type and named attributes, the spatial structure, placed, contained and
+typed products, removal with relationships; #330). Geometry is not bound
 yet.
 
 ## Build from source

@@ -14,7 +14,7 @@ leave the native layer, so each call reads the model as it is then.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
 from .values import Value, from_wire as _value_from_wire, to_wire as _value_to_wire
 
@@ -506,6 +506,215 @@ class AttributeInfo:
     declared_by: str
 
 
+#: The first id of the handle range (2**62): ``HANDLE_BASE + i`` names the
+#: entity operation ``i`` of an :meth:`IfcModel.author` batch produced.
+HANDLE_BASE = 1 << 62
+
+
+def handle(index: int) -> int:
+    """The handle of the entity operation ``index`` of an
+    :meth:`IfcModel.author` batch produces, usable wherever a later
+    operation of the batch takes an id, attribute values included."""
+    if not isinstance(index, int) or isinstance(index, bool) or not 0 <= index < HANDLE_BASE:
+        raise ValueError(f"a handle index is a non-negative int, not {index!r}")
+    return HANDLE_BASE + index
+
+
+@dataclass(frozen=True)
+class AuthorOp:
+    """One operation of :meth:`IfcModel.author`, built with the class
+    methods below.
+
+    Ids are entity ids or :func:`handle` values. ``attributes`` map
+    attribute names (any case) to :mod:`openbim_ifc.values` values. A
+    builder writes the ``owner_history`` it is given on every record it
+    creates; none is invented, and IFC2X3, which requires one, refuses a
+    record without.
+    """
+
+    op: str
+    fields: Tuple[Tuple[str, Any], ...] = ()
+
+    @classmethod
+    def _of(cls, op: str, **fields: Any) -> "AuthorOp":
+        return cls(op, tuple((key, value) for key, value in fields.items() if value is not None))
+
+    @classmethod
+    def create(cls, type_name: str, attributes: Optional[Mapping[str, Value]] = None) -> "AuthorOp":
+        """One entity of ``type_name`` from named attributes; an ``IfcRoot``
+        without a ``GlobalId`` gets one."""
+        return cls._of("create", type=type_name, attributes=attributes)
+
+    @classmethod
+    def edit(cls, entity: int, attributes: Mapping[str, Value]) -> "AuthorOp":
+        """Replace named attributes; the whole entity is checked again."""
+        return cls._of("edit", entity=entity, attributes=attributes)
+
+    @classmethod
+    def remove(cls, entity: int) -> "AuthorOp":
+        """Remove an entity with the relationships that reference it."""
+        return cls._of("remove", entity=entity)
+
+    @classmethod
+    def project(
+        cls,
+        attributes: Optional[Mapping[str, Value]] = None,
+        *,
+        owner_history: Optional[int] = None,
+    ) -> "AuthorOp":
+        """The model's one ``IfcProject``."""
+        return cls._of("project", attributes=attributes, owner_history=owner_history)
+
+    @classmethod
+    def spatial(
+        cls,
+        type_name: str,
+        parent: int,
+        attributes: Optional[Mapping[str, Value]] = None,
+        *,
+        placement: Optional[int] = None,
+        owner_history: Optional[int] = None,
+    ) -> "AuthorOp":
+        """A spatial element aggregated under ``parent``
+        (``IfcRelAggregates``)."""
+        return cls._of(
+            "spatial",
+            type=type_name,
+            parent=parent,
+            attributes=attributes,
+            placement=placement,
+            owner_history=owner_history,
+        )
+
+    @classmethod
+    def product(
+        cls,
+        type_name: str,
+        attributes: Optional[Mapping[str, Value]] = None,
+        *,
+        container: Optional[int] = None,
+        placement: Optional[int] = None,
+        type_object: Optional[int] = None,
+        owner_history: Optional[int] = None,
+    ) -> "AuthorOp":
+        """A product, contained in ``container``
+        (``IfcRelContainedInSpatialStructure``) and typed by
+        ``type_object`` (``IfcRelDefinesByType``)."""
+        return cls._of(
+            "product",
+            type=type_name,
+            attributes=attributes,
+            container=container,
+            placement=placement,
+            type_object=type_object,
+            owner_history=owner_history,
+        )
+
+    @classmethod
+    def type_object(
+        cls,
+        type_name: str,
+        attributes: Optional[Mapping[str, Value]] = None,
+        *,
+        owner_history: Optional[int] = None,
+    ) -> "AuthorOp":
+        """A type object (``IfcWallType``, ...)."""
+        return cls._of("type_object", type=type_name, attributes=attributes, owner_history=owner_history)
+
+    @classmethod
+    def assign_type(
+        cls, type_object: int, objects: Sequence[int], *, owner_history: Optional[int] = None
+    ) -> "AuthorOp":
+        """``IfcRelDefinesByType``; an object already typed is refused."""
+        return cls._of("assign_type", type_object=type_object, objects=list(objects), owner_history=owner_history)
+
+    @classmethod
+    def contain(
+        cls, structure: int, elements: Sequence[int], *, owner_history: Optional[int] = None
+    ) -> "AuthorOp":
+        """``IfcRelContainedInSpatialStructure``; an element already
+        contained is refused."""
+        return cls._of("contain", structure=structure, elements=list(elements), owner_history=owner_history)
+
+    @classmethod
+    def aggregate(
+        cls, parent: int, parts: Sequence[int], *, owner_history: Optional[int] = None
+    ) -> "AuthorOp":
+        """``IfcRelAggregates``; a part already aggregated is refused."""
+        return cls._of("aggregate", parent=parent, parts=list(parts), owner_history=owner_history)
+
+    @classmethod
+    def placement(
+        cls,
+        *,
+        relative_to: Optional[int] = None,
+        location: Optional[Sequence[float]] = None,
+        axis: Optional[Sequence[float]] = None,
+        ref_direction: Optional[Sequence[float]] = None,
+    ) -> "AuthorOp":
+        """An ``IfcLocalPlacement``; ``axis`` and ``ref_direction`` both or
+        neither."""
+        return cls._of(
+            "placement",
+            relative_to=relative_to,
+            location=None if location is None else list(location),
+            axis=None if axis is None else list(axis),
+            ref_direction=None if ref_direction is None else list(ref_direction),
+        )
+
+    @classmethod
+    def owner_history(
+        cls,
+        *,
+        organization: str,
+        application_name: str,
+        application_version: str,
+        application_identifier: str,
+        creation_date: int,
+        person_identification: Optional[str] = None,
+        family_name: Optional[str] = None,
+        given_name: Optional[str] = None,
+        change_action: Optional[str] = None,
+        last_modified_date: Optional[int] = None,
+    ) -> "AuthorOp":
+        """An ``IfcOwnerHistory`` with its person, organization and
+        application, through ``ifc-author``."""
+        return cls._of(
+            "owner_history",
+            organization=organization,
+            application_name=application_name,
+            application_version=application_version,
+            application_identifier=application_identifier,
+            creation_date=creation_date,
+            person_identification=person_identification,
+            family_name=family_name,
+            given_name=given_name,
+            change_action=change_action,
+            last_modified_date=last_modified_date,
+        )
+
+    def _to_wire(self) -> Dict[str, Any]:
+        wire: Dict[str, Any] = {"op": self.op}
+        for key, value in self.fields:
+            if key == "attributes":
+                value = {name: _value_to_wire(item) for name, item in value.items()}
+            wire[key] = value
+        return wire
+
+
+@dataclass(frozen=True)
+class AuthoringResult:
+    """What a committed :meth:`IfcModel.author` batch did.
+
+    ``ids`` holds, per operation, the id of the entity it produced, or
+    ``None`` for a removal.
+    """
+
+    ids: Tuple[Optional[int], ...]
+    created: Tuple[int, ...]
+    removed: Tuple[int, ...]
+
+
 _RECORDS = {
     cls.__name__: cls
     for cls in (
@@ -542,6 +751,7 @@ _RECORDS = {
         MapConversion,
         PropertyEditResult,
         AttributeInfo,
+        AuthoringResult,
     )
 }
 
@@ -561,4 +771,4 @@ def _from_wire(data: Any) -> Any:
     return data
 
 
-__all__ = sorted([*_RECORDS, "PropertyEdit"])
+__all__ = sorted([*_RECORDS, "PropertyEdit", "AuthorOp", "HANDLE_BASE", "handle"])

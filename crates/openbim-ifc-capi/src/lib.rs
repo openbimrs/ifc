@@ -36,6 +36,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 mod attributes;
+mod authoring;
 mod buffer;
 mod checks;
 mod domains;
@@ -51,6 +52,7 @@ pub mod tape;
 mod xml;
 
 pub use attributes::*;
+pub use authoring::*;
 pub use checks::*;
 pub use domains::*;
 pub use edits::*;

@@ -33,6 +33,7 @@ view of `openbim-ifc`; if a binding needs more, the facade grows first.
 
 | Feature | Default | Enables |
 | --- | --- | --- |
+| `author` | yes | `openbim-ifc/authoring` |
 | `classification` | yes | `openbim-ifc/classification` |
 | `cost` | yes | `openbim-ifc/cost` |
 | `georef` | yes | `properties`, `openbim-ifc/georef` |

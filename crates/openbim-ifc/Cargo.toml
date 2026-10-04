@@ -28,6 +28,8 @@ group = "facade"
 # here; bundles and the two geometry sizes do. `xtask docs --check` fails
 # when a feature has neither.
 [package.metadata.openbim.features]
+author = "Schema-checked authoring (`authoring`) with every bundled release (`schema`)."
+authoring = "Schema-checked authoring (`ifc-author`) and the checked authoring batch (`apply_authoring`), against the releases the build names."
 codecs = "Both codecs: STEP and ifcXML."
 domains = "Every domain view, plus authoring and spatial traversal."
 full = "Everything: codecs, schema tables, every domain, catalogues, geometry, georeferencing and alignment."
@@ -153,7 +155,11 @@ style = ["dep:ifc-style"]
 # file with `UnbundledSchema`.
 validate = ["dep:ifc-validate"]
 # Authoring resolves slots from the schema tables, so it implies `schema`.
-author = ["dep:ifc-author", "schema"]
+author = ["authoring", "schema"]
+# The checked authoring batch (#330, `apply_authoring`) and `ifc-author`,
+# without choosing a release: it checks against the tables of the releases
+# a build names, as the language bindings do (#306).
+authoring = ["dep:ifc-author", "schema-api"]
 # Containment traversal reads the record graph, classifying spatial containers
 # from the declared release's schema table. Needs `schema` or one of the
 # release features `ifc2x3`, `ifc4`, `ifc4x3`: without a table nothing would

@@ -8,6 +8,22 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#330, schema-checked entity creation)
+
+- `openbim_ifc_v0_1_model_author`: a value tape `LIST` of operations, each
+  `LIST(ENUM op, TEXT field, value, ...)`, applied as one checked
+  transaction; one id per operation comes back (0 for a removal), and a
+  short id buffer is `BufferTooSmall` before anything is written.
+  `openbim_ifc_v0_1_model_create_entity` (a type and a `LIST` of
+  `(TEXT name, value)` pairs) and
+  `openbim_ifc_v0_1_entity_remove_with_relationships` are one-operation
+  batches. `OPENBIM_IFC_HANDLE_BASE` (2^62) plus an operation's position
+  names the entity it produced.
+- `OPENBIM_IFC_STATUS_MISSING_ATTRIBUTE` (30) and `_STILL_REFERENCED`
+  (31).
+- The ABI version is 0.1.6: every export above is new, no `v0_1` symbol
+  changed. Additive, a patch release.
+
 ## [0.1.2] - 2026-10-04
 
 ### Added (#326, attributes by name)

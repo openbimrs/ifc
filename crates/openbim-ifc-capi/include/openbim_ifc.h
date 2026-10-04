@@ -14,6 +14,12 @@
 #include <stdlib.h>
 
 /**
+ * The first id of the handle range (2^62): `OPENBIM_IFC_HANDLE_BASE + i`
+ * names the entity operation `i` of a batch produced.
+ */
+#define OPENBIM_IFC_HANDLE_BASE 4611686018427387904
+
+/**
  * Binary digits in the string range.
  */
 #define OPENBIM_IFC_KIND_BINARY 7
@@ -101,7 +107,7 @@
  * Result of every ABI call. `Ok` is zero; every failure is non-zero.
  *
  * The values from `Parse` to `FeatureDisabled`, `InvalidModel`, and
- * `MissingReference` to `DerivedAttribute`, are the binding errors shared
+ * `MissingReference` to `StillReferenced`, are the binding errors shared
  * with the JavaScript and Python bindings; the rest describe misuse of the
  * C boundary itself.
  */
@@ -222,6 +228,16 @@ enum OpenbimIfcStatus
    * written `*` (`derived-attribute`).
    */
   OPENBIM_IFC_STATUS_DERIVED_ATTRIBUTE = 29,
+  /**
+   * An authoring batch left a required attribute of the declared
+   * release unset (`missing-attribute`).
+   */
+  OPENBIM_IFC_STATUS_MISSING_ATTRIBUTE = 30,
+  /**
+   * An authoring batch removed an entity that an entity other than a
+   * relationship still references (`still-referenced`).
+   */
+  OPENBIM_IFC_STATUS_STILL_REFERENCED = 31,
   /**
    * A Rust panic was contained at the boundary. Report it as a bug.
    */
@@ -447,6 +463,16 @@ OpenbimIfcStatus openbim_ifc_v0_1_entity_attributes(OpenbimIfcModel model,
 OpenbimIfcStatus openbim_ifc_v0_1_entity_remove(OpenbimIfcModel model, uint64_t id);
 
 /**
+ * Remove entity `id` with its relationships: it is taken out of every
+ * relationship holding it, and a relationship left without an end goes
+ * too. Unlike `openbim_ifc_v0_1_entity_remove`, nothing is left dangling:
+ * `StillReferenced` while an entity other than a relationship needs `id`,
+ * `MissingEntity` when there is none.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_entity_remove_with_relationships(OpenbimIfcModel model,
+                                                                   uint64_t id);
+
+/**
  * Set attribute `index` of entity `id` from a one-value tape. Writing past
  * the end pads the gap with `$`.
  *
@@ -529,6 +555,40 @@ OpenbimIfcStatus openbim_ifc_v0_1_last_error_message(OpenbimIfcModel model,
 OpenbimIfcStatus openbim_ifc_v0_1_live_models(size_t *out_count);
 
 /**
+ * Apply the operations on the tape as one checked transaction against the
+ * release the header declares: all of them, in order, or none, and the
+ * model unchanged.
+ *
+ * `out_count` gets the number of operations. `out_ids` gets, per
+ * operation, the id of the entity it produced, or 0 for a removal; with
+ * `ids_capacity` below the operation count the call returns
+ * `BufferTooSmall` and applies nothing.
+ *
+ * `UnsupportedSchema` for an unbundled release or an undeclared type;
+ * `UnknownAttribute`, `DerivedAttribute`, `MissingAttribute`;
+ * `InvalidValue` for a value of the wrong type, form or cardinality, a
+ * duplicate `GlobalId`, a malformed tape or handle, or a placement the
+ * schema cannot hold; `WrongEntityType` for an abstract type, a builder's
+ * type of the wrong kind or a reference the attribute does not accept;
+ * `MissingEntity`, `MissingReference`; `InvalidModel` for a second
+ * containment, decomposition, typing or `IfcProject`; `StillReferenced`
+ * for a removal an entity other than a relationship still needs.
+ *
+ * # Safety
+ * `nodes` valid for `node_count` reads and `strings` for `string_len`
+ * (either null when its length is 0); `out_ids` null with capacity 0, or
+ * valid for `ids_capacity` writes; `out_count` valid for one write.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_author(OpenbimIfcModel model,
+                                               const OpenbimIfcValueNode *nodes,
+                                               size_t node_count,
+                                               const uint8_t *strings,
+                                               size_t string_len,
+                                               uint64_t *out_ids,
+                                               size_t ids_capacity,
+                                               size_t *out_count);
+
+/**
  * The classifications of `object`: a `LIST` of `Classification` records,
  * its own then its type object's; `out_count` gets their number.
  * `Classification`: relationship (`REF`), global id, source, type object,
@@ -578,6 +638,27 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_cost(OpenbimIfcModel model,
  * `out_model` must be null or valid for one write.
  */
 OpenbimIfcStatus openbim_ifc_v0_1_model_create(OpenbimIfcModel *out_model);
+
+/**
+ * Create one entity of `type_name` (UTF-8, any case) from named
+ * attributes: a batch of one `CREATE`. The tape is one `LIST` of
+ * `LIST(TEXT name, value)` pairs (an empty `LIST` for none). An `IfcRoot`
+ * without a `GlobalId` gets a fresh one. `out_id` gets the new id.
+ *
+ * Refusals as for [`openbim_ifc_v0_1_model_author`].
+ *
+ * # Safety
+ * `type_name` valid for `type_len` reads; the tape as for
+ * [`openbim_ifc_v0_1_model_author`]; `out_id` valid for one write.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_create_entity(OpenbimIfcModel model,
+                                                      const uint8_t *type_name,
+                                                      size_t type_len,
+                                                      const OpenbimIfcValueNode *nodes,
+                                                      size_t node_count,
+                                                      const uint8_t *strings,
+                                                      size_t string_len,
+                                                      uint64_t *out_id);
 
 /**
  * Every dangling reference as `(from, to)` pairs, flattened: element

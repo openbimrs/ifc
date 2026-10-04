@@ -8,6 +8,25 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#330, schema-checked entity creation)
+
+- Feature `author` (default): `IfcModel::author(ops)` and
+  `author_seeded(ops, seed)` apply `AuthorOp`s as one checked transaction
+  through the facade's `apply_authoring`, against the release the header
+  declares, returning `AuthoringResult` (a `ToRecord`: per-operation
+  `ids`, `created`, `removed`). Single calls `create_entity(type,
+  attributes)` and `remove_with_relationships(id)` are one-operation
+  batches. Without the feature each refuses with `feature-disabled`.
+- Module `authoring`: `OPS` (every operation and its fields, in snake and
+  camel case, with a `FieldKind`), `op_spec`, `AuthorOp::from_tagged` (the
+  tape form every host converts to), `HANDLE_BASE` and `handle(index)`.
+- `BindingError::MissingAttribute` (`missing-attribute`) and
+  `StillReferenced` (`still-referenced`); `invalid-model` now also covers
+  an authoring batch that would give an object a second containment,
+  decomposition or type, or the model a second `IfcProject`.
+  `BindingError` is exhaustive, so a breaking change: minor (internal,
+  unreleased).
+
 ### Added (#326, attributes by name)
 
 - `IfcModel::attribute_names(id)` (the `AttributeInfo` records, a

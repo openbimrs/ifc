@@ -177,6 +177,35 @@ crate directly.
   or `bool` is refused rather than guessed. Subtype tests and type
   filters use `ids_of_type_including_subtypes`, so the layer holds no
   schema knowledge of its own.
+- *Amended 2026-10-04 (#330, entity creation):* the bindings create
+  entities, the first checked multi-edit transaction over arbitrary
+  entities they carry. The facade grows it first (`ifc::apply_authoring`,
+  feature `authoring`): a batch of operations runs in order against the
+  model as the ones before it leave it and is committed as one
+  `Transaction`, or refused with nothing written. Every record is built
+  by attribute name through `ifc-author`'s `EntityBuilder` against the
+  release the header declares, then its references are resolved to an
+  accepted type and its aggregates held to their declared bounds. The
+  builders are facade compositions over that one checked create (project,
+  spatial element aggregated under its parent, product placed, contained
+  and typed, type object and assignment, containment, aggregation, local
+  placement, an owner history through `ifc-author`'s writers), and
+  removal takes an entity out of every relationship; `ifc-spatial`'s
+  writers lay out IFC4 unless given an owner history, so they were not
+  the base. An operation names an earlier one's entity by a handle, an id
+  in a reserved range (2^62 plus its position), so references cross every
+  host as plain ids and `REF` values with no new value kind. Each host
+  converts its operation objects field by field, guided by the core's
+  `OPS` table, into one tape form the core reads (the C batch element),
+  as with the property edit's tape. A new `IfcRoot` gets a name-based
+  `GlobalId` over a per-batch seed: the operating system's on native
+  targets, `Math.random` in the browser, where the module has none;
+  `OwnerHistory` is never invented. Hosts call it `author` / `Author` /
+  `openbim_ifc_v0_1_model_author`, with `createEntity` and
+  `removeWithRelationships` (in each host's spelling) as one-operation
+  forms. New codes `missing-attribute` (C 30) and `still-referenced`
+  (31); a second containment, decomposition, typing or `IfcProject` is
+  `invalid-model`.
 
 ## Alternatives considered
 

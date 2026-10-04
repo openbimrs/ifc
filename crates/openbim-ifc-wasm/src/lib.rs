@@ -15,6 +15,8 @@
 //! suites here cover only the JS conversion itself.
 
 #[cfg(target_arch = "wasm32")]
+mod authoring;
+#[cfg(target_arch = "wasm32")]
 mod edits;
 #[cfg(target_arch = "wasm32")]
 mod error;

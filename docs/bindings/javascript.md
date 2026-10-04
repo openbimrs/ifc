@@ -349,6 +349,77 @@ Not bound yet: checked multi-edit transactions over arbitrary entities
 (`Transaction`, `Applied`, `Conflict`), deferred until a host asks for
 them. Use the Rust crates for those.
 
+## Creating entities
+
+<!-- SNIPPET:js-authoring -->
+
+```js
+const h = IfcModel.handle; // h(i): the entity operation i of the batch produces
+const result = model.author([
+  { op: "project", attributes: { Name: text("Demo") } }, // 0
+  { op: "placement" }, // 1: at the origin
+  { op: "spatial", type: "IfcSite", parent: h(0), placement: h(1) }, // 2
+  { op: "spatial", type: "IfcBuilding", parent: h(2) }, // 3
+  { op: "placement", relativeTo: h(1) }, // 4
+  { op: "spatial", type: "IfcBuildingStorey", parent: h(3), placement: h(4) }, // 5
+  { op: "typeObject", type: "IfcWallType", attributes: { PredefinedType: token("STANDARD") } }, // 6
+  { op: "placement", relativeTo: h(4), location: [1, 2, 0] }, // 7
+  {
+    op: "product",
+    type: "IfcWall",
+    container: h(5), // IfcRelContainedInSpatialStructure
+    placement: h(7),
+    typeObject: h(6), // IfcRelDefinesByType
+    attributes: { Name: text("Wall") },
+  },
+]);
+const wall = result.ids[8]; // a bigint; every IfcRoot got a GlobalId
+```
+
+<!-- /SNIPPET -->
+
+`model.author(ops)` creates and edits entities as one checked transaction
+against the release the header declares: every operation, in order, or, when
+any is refused, none, and the model is unchanged. An operation names the
+entity an earlier operation of the same batch produced by
+`IfcModel.handle(index)` (a `bigint`), anywhere an id goes, attribute values
+included, and the result holds per operation the id its entity received.
+`createEntity(typeName, attributes)` and `removeWithRelationships(id)` are
+the one-operation forms. A model built from nothing needs a header naming
+its release first (`setHeader`).
+
+| Operation | What it writes |
+| --- | --- |
+| `create` | one entity by `type` and named `attributes` |
+| `edit` | named `attributes` of `entity`; the whole entity is checked again |
+| `remove` | removes `entity` and takes it out of every relationship; a relationship left without an end goes too |
+| `project` | the model's one `IfcProject` |
+| `spatial` | a spatial element of `type` and its `IfcRelAggregates` under `parent` |
+| `product` | a product, its `IfcRelContainedInSpatialStructure` in `container` and its `IfcRelDefinesByType` by `typeObject` |
+| `typeObject` | a type object (`IfcWallType`, ...) |
+| `assignType`, `contain`, `aggregate` | one relationship; an object already related is refused |
+| `placement` | an `IfcLocalPlacement` over an `IfcAxis2Placement3D` at `location`, relative to `relativeTo`; `axis` and `refDirection` both or neither |
+| `ownerHistory` | an `IfcOwnerHistory` with its person, organization and application |
+
+Every record is built by attribute name through `ifc-author` against the
+declared release, and refused with the shared codes: a type the release does
+not declare (`unsupported-schema`) or an abstract one (`wrong-entity-type`);
+an unknown name (`unknown-attribute`); a value of the wrong type or form, or
+an aggregate outside its declared bounds (`invalid-value`); a required
+attribute left unset (`missing-attribute`); a derived one set
+(`derived-attribute`); a reference to an entity that does not exist
+(`missing-reference`) or of a type the attribute does not accept
+(`wrong-entity-type`). An object is contained, aggregated and typed once and
+a model holds one `IfcProject` (`invalid-model`); a removal an entity other
+than a relationship still needs is `still-referenced`.
+
+An `IfcRoot` created without a `GlobalId` gets a fresh one. `OwnerHistory`
+is never invented: a builder writes the one it is given on every record it
+creates, and IFC2X3, which requires it, refuses a record without
+(`missing-attribute`). The module has no entropy of its own, so the seed
+fresh `GlobalId`s derive from is drawn from `Math.random`; the TypeScript
+declarations type every operation as `AuthorOp`.
+
 ## Module size
 
 Size of the module after `wasm-bindgen` (0.2.128), without `wasm-opt`,
@@ -491,6 +562,10 @@ Generated from the `#[wasm_bindgen]` exports in
 | `model.setAttributeByName(id: bigint, name: string, value: IfcValue): IfcValue` | yes | Set attribute `name` of entity `id`; returns the previous value. A derived attribute is refused (`derived-attribute`). |
 | `model.add(typeName: string, attributes: IfcValue[]): bigint` | yes | Append an entity; returns its id (`bigint`). |
 | `model.remove(id: bigint): void` | yes | Remove entity `id`, leaving references to it dangling. |
+| `model.author(ops: AuthorOp[]): AuthoringResult` | yes | Apply authoring operations as one checked transaction against the release the header declares: every operation, in order, or none, and a refused batch leaves the model unchanged. An operation names the entity an earlier one produced by `IfcModel.handle(index)`. `result.ids` holds, per operation, the id of the entity it produced. |
+| `model.createEntity(typeName: string, attributes: Record<string, IfcValue>): bigint` | yes | Create one entity of `typeName` from named attributes, checked against the declared release (`author` with one `create`); an `IfcRoot` without a `GlobalId` gets one. Returns its id (`bigint`). |
+| `model.removeWithRelationships(id: bigint): void` | yes | Remove entity `id` with its relationships, leaving nothing dangling (`author` with one `remove`); refused with `still-referenced` while an entity other than a relationship needs it. |
+| `IfcModel.handle(index: number): bigint` |  | The handle of the entity operation `index` of an `author` batch produces, usable wherever a later operation takes an id (`bigint`). |
 | `model.danglingReferences(): [bigint, bigint][]` |  | Every `[from, to]` pair (`bigint`s) where `to` does not exist. |
 
 Attribute values and error codes are typed by the package's `.d.ts`:
@@ -531,7 +606,9 @@ export type IfcErrorCode =
   | "missing-property"
   | "catalog-not-loaded"
   | "unknown-attribute"
-  | "derived-attribute";
+  | "derived-attribute"
+  | "missing-attribute"
+  | "still-referenced";
 
 /**
  * Where `IfcModel.loadCatalog` reads a catalog snapshot from. By default

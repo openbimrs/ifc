@@ -67,6 +67,8 @@ pub fn compiled_features() -> Vec<&'static str> {
     features.push("validate");
     #[cfg(feature = "author")]
     features.push("author");
+    #[cfg(feature = "authoring")]
+    features.push("authoring");
     #[cfg(feature = "spatial")]
     features.push("spatial");
     #[cfg(feature = "geometry-select")]

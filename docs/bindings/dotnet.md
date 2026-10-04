@@ -248,6 +248,74 @@ library embeds; the refusals are those of the other bindings
 Not bound yet: geometry, and checked multi-edit transactions over
 arbitrary entities. Use the Rust crates for those.
 
+## Creating entities
+
+<!-- SNIPPET:dotnet-authoring -->
+
+```csharp
+// IfcModel.Handle(i): the entity operation i of the batch produces.
+var ids = model.Author(new[]
+{
+    AuthorOp.Project(new Dictionary<string, Value> { ["Name"] = new Value.Text("Demo") }), // 0
+    AuthorOp.Placement(), // 1: at the origin
+    AuthorOp.Spatial("IfcSite", IfcModel.Handle(0), placement: IfcModel.Handle(1)), // 2
+    AuthorOp.Spatial("IfcBuilding", IfcModel.Handle(2)), // 3
+    AuthorOp.Placement(relativeTo: IfcModel.Handle(1)), // 4
+    AuthorOp.Spatial("IfcBuildingStorey", IfcModel.Handle(3), placement: IfcModel.Handle(4)), // 5
+    AuthorOp.TypeObject("IfcWallType", new Dictionary<string, Value> { ["PredefinedType"] = new Value.Enum("STANDARD") }), // 6
+    AuthorOp.Placement(relativeTo: IfcModel.Handle(4), location: (1, 2, 0)), // 7
+    AuthorOp.Product(
+        "IfcWall",
+        new Dictionary<string, Value> { ["Name"] = new Value.Text("Wall") },
+        container: IfcModel.Handle(5), // IfcRelContainedInSpatialStructure
+        placement: IfcModel.Handle(7),
+        typeObject: IfcModel.Handle(6)), // IfcRelDefinesByType
+});
+var wall = ids[8]!.Value; // every IfcRoot got a GlobalId
+```
+
+<!-- /SNIPPET -->
+
+`model.Author(ops)`, with `AuthorOp` built by its factory methods, creates
+and edits entities as one checked transaction against the release the header
+declares: every operation, in order, or, when any is refused, none, and the
+model is unchanged. An operation names the entity an earlier operation of
+the same batch produced by `IfcModel.Handle(index)`, anywhere an id goes,
+attribute values included, and the result holds per operation the id its
+entity received. `CreateEntity(type, attributes)` and
+`RemoveWithRelationships(id)` are the one-operation forms. A model built
+from nothing needs a header naming its release first (assign `Header`).
+
+| Operation | What it writes |
+| --- | --- |
+| `Create` | one entity by `type` and named `attributes` |
+| `Edit` | named `attributes` of `entity`; the whole entity is checked again |
+| `Remove` | removes `entity` and takes it out of every relationship; a relationship left without an end goes too |
+| `Project` | the model's one `IfcProject` |
+| `Spatial` | a spatial element of `type` and its `IfcRelAggregates` under `parent` |
+| `Product` | a product, its `IfcRelContainedInSpatialStructure` in `container` and its `IfcRelDefinesByType` by `typeObject` |
+| `TypeObject` | a type object (`IfcWallType`, ...) |
+| `AssignType`, `Contain`, `Aggregate` | one relationship; an object already related is refused |
+| `Placement` | an `IfcLocalPlacement` over an `IfcAxis2Placement3D` at `location`, relative to `relativeTo`; `axis` and `refDirection` both or neither |
+| `OwnerHistory` | an `IfcOwnerHistory` with its person, organization and application |
+
+Every record is built by attribute name through `ifc-author` against the
+declared release, and refused with the shared codes: a type the release does
+not declare (`unsupported-schema`) or an abstract one (`wrong-entity-type`);
+an unknown name (`unknown-attribute`); a value of the wrong type or form, or
+an aggregate outside its declared bounds (`invalid-value`); a required
+attribute left unset (`missing-attribute`); a derived one set
+(`derived-attribute`); a reference to an entity that does not exist
+(`missing-reference`) or of a type the attribute does not accept
+(`wrong-entity-type`). An object is contained, aggregated and typed once and
+a model holds one `IfcProject` (`invalid-model`); a removal an entity other
+than a relationship still needs is `still-referenced`.
+
+An `IfcRoot` created without a `GlobalId` gets a fresh one. `OwnerHistory`
+is never invented: a builder writes the one it is given on every record it
+creates, and IFC2X3, which requires it, refuses a record without
+(`missing-attribute`).
+
 ## How it is tested
 
 The package is tested as NuGet installs it: `check-dotnet.py` packs the
@@ -278,6 +346,11 @@ Generated from the `OpenBim.Ifc` C# source.
 | `IReadOnlyList<PropertySet> PropertySets(ulong id)` | The property sets, quantity sets and predefined property sets of object `id`: its own first, then those its type object holds, an occurrence property overriding an inherited one of the same name. |
 | `ResolvedUnit ResolveUnit(string measureType, ulong? unit = null)` | The effective unit of a `measureType` value (`IFCAREAMEASURE`): `unit` when given (a property's stated unit), otherwise the project default, resolved exactly to SI. |
 | `IReadOnlyList<ulong?> SetProperties(IEnumerable<PropertyEdit> edits)` | Write and remove property and quantity values as one checked transaction: every edit, in order, or none and the model unchanged. |
+| `const ulong HandleBase = 4611686018427387904UL { get; }` | The first id of the handle range (2^62): `HandleBase + i` names the entity operation `i` of an `Author` batch produced. |
+| `static ulong Handle(int index) =>` | The handle of the entity operation `index` of an `Author` batch produces, usable wherever a later operation takes an id. |
+| `IReadOnlyList<ulong?> Author(IEnumerable<AuthorOp> ops)` | Apply authoring operations as one checked transaction against the release the header declares: every operation, in order, or none and the model unchanged. |
+| `ulong CreateEntity(string type, IEnumerable<KeyValuePair<string, Value>>? attributes = null)` | Create one entity of `type` from named attributes, checked against the declared release (`Author` with one `AuthorOp.Create`); returns its id. |
+| `void RemoveWithRelationships(ulong id)` | Remove entity `id` with the relationships that reference it, leaving nothing dangling; refused with `still-referenced` while an entity other than a relationship needs it. |
 | `ulong SetProperty(ulong obj, string set, string name, Value value, string? setType = null)` | Write one value (`SetProperties` with one edit); returns the id of the entity holding it. |
 | `void RemoveProperty(ulong obj, string set, string name)` | Remove one property from `obj`'s own set (`SetProperties` with one edit). |
 | `SpatialTree SpatialTree()` | The spatial containment tree: every container with its parent, sub-containers and contained elements. |

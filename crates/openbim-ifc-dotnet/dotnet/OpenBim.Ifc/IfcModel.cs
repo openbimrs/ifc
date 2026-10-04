@@ -302,6 +302,73 @@ public sealed unsafe class IfcModel : IDisposable
         return properties.Take(checked((int)count)).Select(id => id == 0 ? (ulong?)null : id).ToList();
     }
 
+    /// <summary>The first id of the handle range (2^62): <c>HandleBase + i</c> names the entity operation <c>i</c> of an <see cref="Author"/> batch produced.</summary>
+    public const ulong HandleBase = 4611686018427387904UL;
+
+    /// <summary>The handle of the entity operation <paramref name="index"/> of an <see cref="Author"/> batch produces, usable wherever a later operation takes an id.</summary>
+    public static ulong Handle(int index) =>
+        index >= 0 ? HandleBase + (ulong)index : throw new ArgumentOutOfRangeException(nameof(index));
+
+    /// <summary>Apply authoring operations as one checked transaction against the release the header declares: every operation, in order, or none and the model unchanged.</summary>
+    /// <remarks>
+    /// Returns, per operation, the id of the entity it produced, or null for a
+    /// removal. An operation names the entity an earlier one produced by
+    /// <see cref="Handle"/>. Refusals carry the shared codes:
+    /// <c>unknown-attribute</c>, <c>derived-attribute</c>,
+    /// <c>missing-attribute</c>, <c>invalid-value</c>, <c>wrong-entity-type</c>,
+    /// <c>missing-entity</c>, <c>missing-reference</c>, <c>invalid-model</c>,
+    /// <c>still-referenced</c>, <c>unsupported-schema</c>.
+    /// </remarks>
+    public IReadOnlyList<ulong?> Author(IEnumerable<AuthorOp> ops)
+    {
+        var list = (ops ?? throw new ArgumentNullException(nameof(ops))).ToList();
+        var tape = new TapeWriter();
+        tape.WriteListHead(list.Count);
+        foreach (var op in list)
+        {
+            (op ?? throw new ArgumentException("an operation is null", nameof(ops))).Write(tape);
+        }
+        var nodes = tape.Nodes;
+        var strings = tape.Strings;
+        var produced = new ulong[list.Count];
+        nuint count = 0;
+        using var lease = handle.Acquire();
+        fixed (ValueNode* n = nodes)
+        fixed (byte* s = strings)
+        fixed (ulong* ids = produced)
+        {
+            Calls.Check(lease.Model, NativeMethods.openbim_ifc_v0_1_model_author(lease.Model, n, (nuint)nodes.Length, s, (nuint)strings.Length, ids, (nuint)produced.Length, &count));
+        }
+        return produced.Take(checked((int)count)).Select(id => id == 0 ? (ulong?)null : id).ToList();
+    }
+
+    /// <summary>Create one entity of <paramref name="type"/> from named attributes, checked against the declared release (<see cref="Author"/> with one <see cref="AuthorOp.Create"/>); returns its id.</summary>
+    public ulong CreateEntity(string type, IEnumerable<KeyValuePair<string, Value>>? attributes = null)
+    {
+        var typeBytes = Calls.Encode(type);
+        var pairs = (attributes ?? Array.Empty<KeyValuePair<string, Value>>())
+            .Select(pair => (Value)new Value.List(new Value.Text(pair.Key), pair.Value));
+        var tape = TapeWriter.Of(new Value.List(pairs));
+        var nodes = tape.Nodes;
+        var strings = tape.Strings;
+        ulong id = 0;
+        using var lease = handle.Acquire();
+        fixed (byte* t = typeBytes)
+        fixed (ValueNode* n = nodes)
+        fixed (byte* s = strings)
+        {
+            Calls.Check(lease.Model, NativeMethods.openbim_ifc_v0_1_model_create_entity(lease.Model, t, (nuint)typeBytes.Length, n, (nuint)nodes.Length, s, (nuint)strings.Length, &id));
+        }
+        return id;
+    }
+
+    /// <summary>Remove entity <paramref name="id"/> with the relationships that reference it, leaving nothing dangling; refused with <c>still-referenced</c> while an entity other than a relationship needs it.</summary>
+    public void RemoveWithRelationships(ulong id)
+    {
+        using var lease = handle.Acquire();
+        Calls.Check(lease.Model, NativeMethods.openbim_ifc_v0_1_entity_remove_with_relationships(lease.Model, id));
+    }
+
     /// <summary>Write one value (<see cref="SetProperties"/> with one edit); returns the id of the entity holding it.</summary>
     public ulong SetProperty(ulong obj, string set, string name, Value value, string? setType = null)
     {
