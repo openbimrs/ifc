@@ -9,6 +9,30 @@
 //! into a curve, a measure and an offset, then asks an injected
 //! [`CurveEvaluator`] for the frame. It never picks an evaluator, and
 //! `ifc-geometry` links no implementation.
+//!
+//! # What an `IfcParameterValue` means here
+//!
+//! `IfcPointByDistanceExpression.DistanceAlong` is an `IfcCurveMeasureSelect`:
+//! a length, or a parameter of the basis curve (IFC4.3 ADD2 8.9.3.48). A
+//! parameter is only as defined as the basis curve's parameterisation:
+//!
+//! - `IfcPolyline` counts one per segment (8.9.3.51), and so does a
+//!   line-only `IfcIndexedPolyCurve` (see the `polyline` submodule); the
+//!   neutral polyline uses the same convention, so the parameter crosses
+//!   unchanged. Only where every segment is one unit long does it equal a
+//!   length.
+//! - `IfcGradientCurve` takes the parameter of its `BaseCurve` (8.9.3.34.1),
+//!   an `IfcCompositeCurve` of `IfcCurveSegment`s. A composite accumulates
+//!   the parametric ranges of its parent curves (8.9.3.20.1, after
+//!   ISO 10303-42), which are not lengths (an `IfcCircle` counts its angle,
+//!   8.9.3.18.1; an `IfcClothoid` `u = s / (A sqrt(pi))`, 8.9.3.19.1), while
+//!   `IfcCurveSegment` (8.9.3.28.1) states that no parametric space is yet
+//!   defined for its parent curves and measures segments by length. The
+//!   parameter of an alignment centreline is therefore undefined, and is
+//!   refused by name rather than handed to an evaluator, whose own parameter
+//!   on that curve is plan distance (axiolid ADR 0082), a different quantity.
+//!   An `IfcAlignment` basis names the same centreline and is refused alike.
+//!   This matches the station lowering, which refuses a parameter too.
 
 use axiolid_contracts::GeomError;
 use axiolid_core::Frame3;
@@ -36,7 +60,8 @@ mod polyline;
 ///
 /// - the basis curve is not one this bridge can lower to a `Curve3`
 /// - the evaluator reports it cannot measure distance on that curve
-/// - the authored value is a parameter but the caller wanted a distance
+/// - the authored value is an `IfcParameterValue` on a basis curve whose
+///   IFC parameterisation is undefined (an alignment centreline)
 /// - roll is undefined because the tangent is vertical
 pub fn derive_placement_transform(
     model: &Model,
@@ -105,6 +130,14 @@ fn basis_curve3(
         // The curve representation lowers exactly through the same path a
         // representation item takes. `ifc_alignment::gradient_curve3` reads an
         // `IfcAlignment` only, so handing it the curve always refused.
+        // Refused before lowering: the answer does not depend on the curve.
+        "IFCGRADIENTCURVE" | "IFCALIGNMENT" if parameter_requested => {
+            Err(GeometryError::Unsupported {
+                entity: basis,
+                type_name: entity.type_name.to_string(),
+                detail: UNDEFINED_ALIGNMENT_PARAMETER,
+            })
+        }
         "IFCGRADIENTCURVE" => gradient_curve(model, units, basis),
         "IFCALIGNMENT" => {
             ifc_alignment::gradient_curve3(model, basis, alignment_units).map_err(|_error| {
@@ -127,6 +160,14 @@ fn basis_curve3(
         }),
     }
 }
+
+/// Why an `IfcParameterValue` along an alignment centreline is refused.
+///
+/// See the module documentation for the IFC4.3 ADD2 clauses.
+const UNDEFINED_ALIGNMENT_PARAMETER: &str =
+    "an IfcParameterValue DistanceAlong on an alignment centreline: the parameter \
+     space of a composite of IfcCurveSegments is undefined in IFC4.3 ADD2; state an \
+     IfcLengthMeasure";
 
 /// An `IfcGradientCurve` basis curve as its exact `Curve3::Elevated`, in metres.
 ///

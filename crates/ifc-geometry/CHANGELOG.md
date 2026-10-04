@@ -13,8 +13,9 @@ everything released before per-crate changelogs began.
 ## [Unreleased]
 
 Input this crate refused now lowers exactly onto the station relations of
-axiolid-model 0.3.5 (ADR 0082). Behaviour changes and API is added, so the
-next release is a minor one (0.9.0).
+axiolid-model 0.3.5 (ADR 0082), and a parameter along an alignment that a
+newer evaluator answered is refused. Behaviour changes and API is added, so
+the next release is a minor one (0.9.0).
 
 ### Added
 
@@ -73,8 +74,36 @@ next release is a minor one (0.9.0).
   `CorrespondingSectionPositions` and `SectionsSameType`, positions off
   the directrix or out of order, mixed tagging, and branching breaklines.
 
+### Fixed
+
+- `constraint::placement::derive::derive_placement_transform` refuses an
+  `IfcParameterValue` `DistanceAlong` on an `IfcGradientCurve` or
+  `IfcAlignment` basis curve by name (`GeometryError::Unsupported` on the
+  basis curve) and no longer hands it to the injected `CurveEvaluator`
+  (#347). IFC4.3 ADD2 does not define that parameter: a gradient curve takes
+  its `BaseCurve`'s (8.9.3.34.1), a composite accumulates the parametric
+  ranges of its parent curves (8.9.3.20.1), which are angles for a circle
+  (8.9.3.18.1) and `u = s / (A sqrt(pi))` for a clothoid (8.9.3.19.1), and
+  `IfcCurveSegment` says no parametric space is yet defined for its parent
+  curves (8.9.3.28.1). The station lowering above refuses it the same way.
+  A parameter on an `IfcPolyline` or line-only `IfcIndexedPolyCurve`, where
+  IFC counts one per segment (8.9.3.51), is unchanged.
+- Released 0.3.0 through 0.8.1 passed that parameter through as the
+  evaluator's native parameter. With `axiolid-evaluate` up to 0.3.5 the
+  reference evaluator refused it, so nothing was placed. With
+  `axiolid-evaluate` 0.3.6 (released 2026-10-04), which any of those
+  releases resolves to, it reads the parameter as plan distance (axiolid
+  ADR 0082) and answers: a product placed by an `IfcParameterValue` along an
+  alignment lands at that plan distance, a position IFC does not give it.
+  Another injected evaluator received the same undefined value. Upgrade to
+  get the refusal.
+
 ### Changed
 
+- `Cargo.lock` takes `axiolid-construct` 0.3.15, `axiolid-mesh-compile`
+  0.3.14 and, dev-only, `axiolid-evaluate` 0.3.6 and `axiolid-reference`
+  0.3.7. The workspace minimums below stay: nothing here relies on the new
+  versions.
 - The workspace requires `axiolid-model` 0.3.5. With
   `compile-reference-backend` it requires `axiolid-mesh-compile` 0.3.13 and
   `axiolid-construct` 0.3.14, which resolve and mesh the station relations.
