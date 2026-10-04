@@ -21,7 +21,7 @@ use ifc_model::EntityId;
 use crate::error::{GeometryError, GeometryResult};
 // The frame is kernel-free, so lowering and body description compose the
 // same model space from one function.
-use crate::input::context::product_representation_frame;
+use crate::input::context::representation_frame_resolved;
 // Moved to `input::product`: it never needed the kernel. Re-exported so
 // the pre-existing `lower::context::geometric_products` path still resolves.
 pub use crate::input::product::geometric_products;
@@ -52,8 +52,15 @@ pub fn lower_product_representation(
     product: EntityId,
     purpose: RepresentationPurpose,
 ) -> GeometryResult<Option<NodeId>> {
-    let Some(world) =
-        product_representation_frame(session.model(), session.units(), product, purpose)?
+    // The session says how an `IfcLinearPlacement` resolves: from its cache,
+    // or through the caller's evaluator (#353).
+    let Some(world) = representation_frame_resolved(
+        session.model(),
+        session.units(),
+        product,
+        purpose,
+        session.linear_resolution(),
+    )?
     else {
         return Ok(None);
     };

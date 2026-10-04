@@ -168,6 +168,34 @@ pub enum GeometryError {
         cause: Box<GeometryError>,
     },
 
+    /// An `IfcLinearPlacement`'s cached `CartesianPosition` disagrees with
+    /// the position its `RelativePlacement` derives (#354).
+    ///
+    /// Raised only when the caller supplied a curve evaluator and kept the
+    /// default `CachedPositionPolicy::Verify`. IFC4.3 makes the cache "an
+    /// optional fallback" for the linear expression, so a cache farther than
+    /// the model's tolerance from it is stale or wrong, and placing the
+    /// product by either would be a guess. Positions are world coordinates in
+    /// metres.
+    #[cfg(feature = "compile")]
+    #[error(
+        "{placement} (IFCLINEARPLACEMENT): the cached CartesianPosition {cached:?} is {distance} m \
+         from the position {derived:?} its RelativePlacement derives, beyond the model's \
+         tolerance of {tolerance} m"
+    )]
+    CachedPlacementMismatch {
+        /// The `IfcLinearPlacement`.
+        placement: EntityId,
+        /// The cached location, in metres.
+        cached: [f64; 3],
+        /// The derived location, in metres.
+        derived: [f64; 3],
+        /// Their distance, in metres.
+        distance: f64,
+        /// The tolerance it exceeds, in metres.
+        tolerance: f64,
+    },
+
     /// The geometry is structurally impossible.
     ///
     /// A degenerate direction, a zero-radius circle, a self-referencing
@@ -245,6 +273,8 @@ impl GeometryError {
             Self::CompilationRefused { entity, .. } => Some(*entity),
             #[cfg(feature = "compile")]
             Self::NotASolid { entity, .. } => Some(*entity),
+            #[cfg(feature = "compile")]
+            Self::CachedPlacementMismatch { placement, .. } => Some(*placement),
             // The opening is what failed; `host` stays readable on the variant.
             Self::OpeningNotSubtracted { opening, .. } => Some(*opening),
             Self::Units(_)

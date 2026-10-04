@@ -33,36 +33,319 @@
 //!   on that curve is plan distance (axiolid ADR 0082), a different quantity.
 //!   An `IfcAlignment` basis names the same centreline and is refused alike.
 //!   This matches the station lowering, which refuses a parameter too.
+//!
+//! # The derived frame (#355)
+//!
+//! IFC4.3 ADD2 fixes the frame, so it is built here from the evaluator's
+//! point and unit tangent alone, never from the evaluator's own axis
+//! labelling (the contract and the reference provider disagree on which of
+//! `y` and `z` is up):
+//!
+//! - `x` is the tangent: `IfcAxis2PlacementLinear.RefDirection` defaults to
+//!   it (8.9.3.4), and `OffsetLongitudinal` runs along it.
+//! - `y` is the horizontal left, `normalise(Z x tangent)`:
+//!   `IfcPointByDistanceExpression.OffsetLateral` is horizontal and
+//!   "positive values indicate to the left of the basis curve".
+//! - `z = x x y` is up, perpendicular to the tangent in its vertical plane:
+//!   that is where `OffsetVertical` points, and what `Axis` defaults to,
+//!   "the normal vector of the basis curve that lies within the vertical
+//!   plane containing the RefDirection".
+//!
+//! Explicit `Axis`/`RefDirection` on the placement are components in that
+//! `(tangent, left, up)` frame (8.9.3.4), the reading the station lowering
+//! uses too, and [`derive_linear_placement_transform`] composes them.
+//!
+//! # Which distance
+//!
+//! `DistanceAlong` on an alignment centreline is plan distance (an
+//! `IfcGradientCurve` takes its `BaseCurve`'s measure, 8.9.3.34.1), and arc
+//! length along a straight-segment curve. An evaluator states which
+//! distance it measures per curve ([`CurveEvaluator::distance_convention`]);
+//! one that measures something else is refused rather than trusted.
+//!
+//! # Checking a cached position (#354)
+//!
+//! `IfcLinearPlacement.CartesianPosition` is, in IFC4.3's words, "an
+//! optional fallback for the RelativePlacement attribute" for importers that
+//! do not support linear placement. The linear expression is authoritative.
+//! When a caller supplies an evaluator, [`CachedPositionPolicy`] decides what
+//! happens to a cached position; see there.
 
 use axiolid_contracts::GeomError;
 use axiolid_core::Frame3;
 use axiolid_curve::Curve3;
-use axiolid_curve_evaluate_contract::{CurveEvaluator, CurveMeasure as KernelMeasure};
+use axiolid_curve_evaluate_contract::{
+    CurveEvaluator, CurveMeasure as KernelMeasure, DistanceConvention,
+};
 use axiolid_model::GeometryNode;
-use ifc_alignment::{AlignmentUnits, CurveMeasure, PointByDistance};
-use ifc_model::{EntityId, Model};
+use ifc_alignment::{AlignmentUnits, CurveMeasure, LinearPlacement, PointByDistance};
+use ifc_model::{EntityId, Model, Value};
 
 use crate::error::{GeometryError, GeometryResult};
+use crate::input::context::all_contexts;
 use crate::lower::curve::lower_curve_node;
 use crate::lower::session::LoweringSession;
+use crate::resource::direction::resolve_unit;
 use crate::transform::Transform;
 use crate::units::UnitScale;
 
 mod polyline;
 
-/// Resolve an `IfcLinearPlacement` by evaluating its basis curve.
+/// What lowering does with an `IfcLinearPlacement`'s cached
+/// `CartesianPosition` when the caller supplies a [`CurveEvaluator`] (#354).
+///
+/// Without an evaluator nothing changes: the cache is used as it is, and a
+/// placement without one is refused. With one, an uncached placement is
+/// derived, and a cached one is handled by this policy.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum CachedPositionPolicy {
+    /// Derive the position from the linear expression and compare the cache
+    /// with it. The default.
+    ///
+    /// - The cache's location within the model's tolerance (see
+    ///   [`cached_position_tolerance`]) of the derived origin: the DERIVED
+    ///   frame is used, because the linear expression is authoritative.
+    /// - Beyond it: [`GeometryError::CachedPlacementMismatch`] naming the
+    ///   placement and both positions. A stale cache, e.g. after the
+    ///   alignment was edited, would otherwise place the product silently
+    ///   wrong, and a caller who supplied an evaluator can derive the truth.
+    /// - A derivation the bridge refuses (an `IfcParameterValue` on an
+    ///   alignment, a basis curve it cannot lower) is that refusal: a cache
+    ///   that cannot be checked is not checked.
+    ///
+    /// Only the location is compared. The cache's axes are not: IFC defaults
+    /// `Axis` to the curve normal in the vertical plane, tilted with the
+    /// grade, and exporters that write the cache with a plumb `Z` are not
+    /// stale.
+    #[default]
+    Verify,
+    /// Use a cached position as it is, without deriving or comparing; derive
+    /// only placements that have no cache.
+    ///
+    /// For a model whose caches are trusted, or whose linear expressions
+    /// this bridge cannot derive (an `IfcParameterValue` on an alignment is
+    /// refused by name, #347) while the cache still places the product as
+    /// the exporter computed it.
+    Trust,
+}
+
+/// A caller-supplied evaluator and what to do with a cached position.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Derivation<'e> {
+    pub(crate) evaluator: &'e dyn CurveEvaluator,
+    pub(crate) cached: CachedPositionPolicy,
+}
+
+/// Resolve an `IfcLinearPlacement` with an evaluator, in metres.
+///
+/// `resolved` is the placement as `ifc-alignment` read it, in FILE units;
+/// `cached` its `CartesianPosition`, if any; `cached_transform` turns that
+/// into a transform in metres.
+pub(crate) fn resolve_linear(
+    model: &Model,
+    units: &UnitScale,
+    placement: EntityId,
+    resolved: &LinearPlacement,
+    cached: Option<Transform>,
+    derivation: Derivation<'_>,
+) -> GeometryResult<Transform> {
+    if let (Some(cached), CachedPositionPolicy::Trust) = (cached, derivation.cached) {
+        return Ok(cached);
+    }
+    let derived = linear_transform(model, units, placement, resolved, derivation.evaluator)?;
+    if let Some(cached) = cached {
+        check_cache(model, units, placement, &cached, &derived)?;
+    }
+    Ok(derived)
+}
+
+/// Refuse a cached position farther than the model's tolerance from the
+/// derived one.
+fn check_cache(
+    model: &Model,
+    units: &UnitScale,
+    placement: EntityId,
+    cached: &Transform,
+    derived: &Transform,
+) -> GeometryResult<()> {
+    let precision = cached_position_tolerance(model, units)?;
+    let [a, b] = [cached.origin, derived.origin];
+    let distance = ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt();
+    // The floating-point rounding term the alignment seams use
+    // (`ifc_alignment::SeamTolerance`): 1e-9 relative, floor 1.
+    let magnitude = a.iter().chain(b.iter()).fold(1.0f64, |m, v| m.max(v.abs()));
+    let tolerance = precision.max(1e-9 * magnitude);
+    if distance.is_finite() && distance <= tolerance {
+        return Ok(());
+    }
+    Err(GeometryError::CachedPlacementMismatch {
+        placement,
+        cached: a,
+        derived: b,
+        distance,
+        tolerance,
+    })
+}
+
+/// The tolerance a cached `CartesianPosition` is checked at, in metres
+/// (#354).
+///
+/// IFC defines `IfcGeometricRepresentationContext.Precision` as "the
+/// tolerance under which two given points are still assumed to be
+/// identical", so that is the tolerance: the coarsest `Precision` any 3D
+/// root context declares (sub-contexts derive theirs from it), in the
+/// project length unit and converted to metres. A model that declares none
+/// gets IFC's own default, `1.E-5` project units, which is what
+/// `IfcGeometricRepresentationSubContext.Precision` derives to without a
+/// parent value (`NVL(ParentContext.Precision, 1.E-5)`, IFC4 ADD2 TC1).
+///
+/// # Errors
+///
+/// A declared `Precision` that is not a finite positive number is
+/// [`GeometryError::Degenerate`] naming the context: a check against it
+/// would accept or refuse everything.
+pub fn cached_position_tolerance(model: &Model, units: &UnitScale) -> GeometryResult<f64> {
+    /// IFC4 ADD2 TC1 `IfcGeometricRepresentationSubContext.Precision`.
+    const IFC_DEFAULT_PRECISION: f64 = 1e-5;
+    let mut coarsest: Option<f64> = None;
+    for context in all_contexts(model) {
+        if context.is_sub_context() || context.coordinate_space_dimension(model) != Some(3) {
+            continue;
+        }
+        let Some(precision) = context.precision(model) else {
+            continue;
+        };
+        if !(precision.is_finite() && precision > 0.0) {
+            return Err(GeometryError::Degenerate {
+                entity: context.id(),
+                type_name: "IFCGEOMETRICREPRESENTATIONCONTEXT".into(),
+                detail: format!(
+                    "Precision {precision} is not a finite positive tolerance, so a cached \
+                     position cannot be checked against it"
+                ),
+            });
+        }
+        coarsest = Some(coarsest.map_or(precision, |c: f64| c.max(precision)));
+    }
+    Ok(units.length(coarsest.unwrap_or(IFC_DEFAULT_PRECISION)))
+}
+
+/// Resolve an `IfcLinearPlacement` from its linear expression alone, in
+/// metres, ignoring any cached `CartesianPosition`.
+///
+/// Reads `RelativePlacement`: its `IfcPointByDistanceExpression` through
+/// [`derive_placement_transform`], and its optional `Axis`/`RefDirection`,
+/// composed in the `(tangent, left, up)` frame (module documentation).
+///
+/// # Errors
+///
+/// As [`derive_placement_transform`]; a malformed placement (wrong types,
+/// `Axis` without `RefDirection`) is [`GeometryError::Unsupported`] naming
+/// it, a missing direction [`GeometryError::MissingEntity`], and parallel
+/// axes [`GeometryError::Degenerate`].
+pub fn derive_linear_placement_transform(
+    model: &Model,
+    units: &UnitScale,
+    placement: EntityId,
+    evaluator: &dyn CurveEvaluator,
+) -> GeometryResult<Transform> {
+    let resolved = resolve_in_file_units(model, units, placement)?;
+    linear_transform(model, units, placement, &resolved, evaluator)
+}
+
+/// Read an `IfcLinearPlacement` through `ifc-alignment`, keeping lengths in
+/// file units: [`derive_placement_transform`] converts them itself.
+pub(crate) fn resolve_in_file_units(
+    model: &Model,
+    units: &UnitScale,
+    placement: EntityId,
+) -> GeometryResult<LinearPlacement> {
+    let file_units = AlignmentUnits {
+        length_to_metres: 1.0,
+        angle_to_radians: units.angle_to_radians,
+    };
+    ifc_alignment::resolve_linear_placement(model, placement, file_units).map_err(|_error| {
+        GeometryError::Unsupported {
+            entity: placement,
+            type_name: "IFCLINEARPLACEMENT".into(),
+            detail: "linear placement is malformed; ifc-alignment refused it",
+        }
+    })
+}
+
+/// The derived frame of `resolved`, with explicit axes applied, in metres.
+fn linear_transform(
+    model: &Model,
+    units: &UnitScale,
+    placement: EntityId,
+    resolved: &LinearPlacement,
+    evaluator: &dyn CurveEvaluator,
+) -> GeometryResult<Transform> {
+    let base = derive_placement_transform(
+        model,
+        units,
+        placement,
+        &resolved.relative_placement,
+        evaluator,
+    )?;
+    if !resolved.has_explicit_axes {
+        return Ok(base);
+    }
+    let (axis, ref_direction) = explicit_axes(model, placement)?;
+    let local =
+        Transform::from_axes([0.0; 3], Some(axis), Some(ref_direction)).ok_or_else(|| {
+            GeometryError::Degenerate {
+                entity: placement,
+                type_name: "IFCLINEARPLACEMENT".into(),
+                detail: "IfcAxis2PlacementLinear Axis and RefDirection are parallel (WR2)".into(),
+            }
+        })?;
+    Ok(base.compose(&local))
+}
+
+/// `RelativePlacement.Axis` and `.RefDirection`, as unit components.
+fn explicit_axes(model: &Model, placement: EntityId) -> GeometryResult<([f64; 3], [f64; 3])> {
+    // IFC4X3_ADD2: IfcLinearPlacement.RelativePlacement is slot 1;
+    // IfcAxis2PlacementLinear has Location, Axis, RefDirection at 0..2.
+    let reference = |owner: EntityId, slot: usize| -> GeometryResult<EntityId> {
+        model
+            .get(owner)
+            .and_then(|entity| entity.attributes.get(slot))
+            .and_then(Value::as_ref_id)
+            .ok_or(GeometryError::Unsupported {
+                entity: owner,
+                type_name: "IFCAXIS2PLACEMENTLINEAR".into(),
+                detail: "IfcAxis2PlacementLinear states Axis and RefDirection only in part",
+            })
+    };
+    let linear = reference(placement, 1)?;
+    let axis = resolve_unit(model, linear, reference(linear, 1)?)?;
+    let ref_direction = resolve_unit(model, linear, reference(linear, 2)?)?;
+    Ok((axis, ref_direction))
+}
+
+/// Resolve an `IfcPointByDistanceExpression` by evaluating its basis curve.
 ///
 /// `evaluator` supplies the capability; this function supplies the IFC
-/// reading and the unit handling. The distance is converted to metres
-/// before it crosses the boundary, because the kernel is unitless.
+/// reading and the unit handling. `expression` is in FILE units (read it
+/// with `ifc_alignment` and a length factor of 1, as
+/// [`derive_linear_placement_transform`] does); the distance and offsets are
+/// converted to metres before they cross the boundary, because the kernel is
+/// unitless.
+///
+/// The frame is `(tangent, left, up)` and the offsets follow IFC4.3: see
+/// the module documentation. The placement's own `Axis`/`RefDirection` are
+/// not read here; [`derive_linear_placement_transform`] applies them.
 ///
 /// Refuses, rather than approximating, when:
 ///
 /// - the basis curve is not one this bridge can lower to a `Curve3`
-/// - the evaluator reports it cannot measure distance on that curve
+/// - the evaluator reports it cannot measure distance on that curve, or
+///   measures a different distance than IFC states for it
 /// - the authored value is an `IfcParameterValue` on a basis curve whose
 ///   IFC parameterisation is undefined (an alignment centreline)
-/// - roll is undefined because the tangent is vertical
+/// - the tangent is vertical, so there is no horizontal left
 pub fn derive_placement_transform(
     model: &Model,
     units: &UnitScale,
@@ -71,7 +354,7 @@ pub fn derive_placement_transform(
     evaluator: &dyn CurveEvaluator,
 ) -> GeometryResult<Transform> {
     let parameter_requested = matches!(expression.distance_along, CurveMeasure::Parameter(_));
-    let curve = basis_curve3(
+    let (curve, convention) = basis_curve3(
         model,
         units,
         placement,
@@ -83,7 +366,20 @@ pub fn derive_placement_transform(
     // means. Carry that across rather than collapsing it to a number: a
     // parameter passed as a distance places the product plausibly wrong.
     let at = match expression.distance_along {
-        CurveMeasure::Length(value) => KernelMeasure::Distance(units.length(value)),
+        CurveMeasure::Length(value) => {
+            // A distance is only as good as the evaluator's agreement on
+            // which distance it is (the contract says to consult this).
+            if evaluator.distance_convention(&curve) != convention {
+                return Err(GeometryError::Unsupported {
+                    entity: placement,
+                    type_name: "IFCLINEARPLACEMENT".into(),
+                    detail: "the evaluator measures a different distance along this basis \
+                             curve than IFC states (plan distance on an alignment, arc \
+                             length on a polyline)",
+                });
+            }
+            KernelMeasure::Distance(units.length(value))
+        }
         CurveMeasure::Parameter(value) => KernelMeasure::Parameter(value),
     };
 
@@ -95,7 +391,12 @@ pub fn derive_placement_transform(
             detail: refusal_detail(&error),
         })?;
 
-    Ok(offset_frame(frame, expression, units))
+    offset_frame(&frame, expression, units).ok_or(GeometryError::Unsupported {
+        entity: placement,
+        type_name: "IFCLINEARPLACEMENT".into(),
+        detail: "the basis curve is vertical there, so OffsetLateral has no horizontal \
+                 direction and the placement no roll",
+    })
 }
 
 /// The basis curve as a neutral `Curve3`.
@@ -114,7 +415,7 @@ fn basis_curve3(
     placement: EntityId,
     basis: EntityId,
     parameter_requested: bool,
-) -> GeometryResult<Curve3> {
+) -> GeometryResult<(Curve3, DistanceConvention)> {
     let entity = model.get(basis).ok_or(GeometryError::MissingEntity {
         referrer: placement,
         missing: basis,
@@ -138,20 +439,25 @@ fn basis_curve3(
                 detail: UNDEFINED_ALIGNMENT_PARAMETER,
             })
         }
-        "IFCGRADIENTCURVE" => gradient_curve(model, units, basis),
-        "IFCALIGNMENT" => {
-            ifc_alignment::gradient_curve3(model, basis, alignment_units).map_err(|_error| {
-                GeometryError::Unsupported {
-                    entity: placement,
-                    type_name: entity.type_name.to_string(),
-                    detail: "basis curve does not compose an exact centreline",
-                }
-            })
-        }
-        "IFCPOLYLINE" => polyline::polyline(model, units, basis, entity),
-        "IFCINDEXEDPOLYCURVE" => {
-            polyline::indexed_polycurve(model, units, basis, entity, parameter_requested)
-        }
+        "IFCGRADIENTCURVE" => Ok((
+            gradient_curve(model, units, basis)?,
+            DistanceConvention::PlanDistance,
+        )),
+        "IFCALIGNMENT" => ifc_alignment::gradient_curve3(model, basis, alignment_units)
+            .map(|curve| (curve, DistanceConvention::PlanDistance))
+            .map_err(|_error| GeometryError::Unsupported {
+                entity: placement,
+                type_name: entity.type_name.to_string(),
+                detail: "basis curve does not compose an exact centreline",
+            }),
+        "IFCPOLYLINE" => Ok((
+            polyline::polyline(model, units, basis, entity)?,
+            DistanceConvention::ArcLength3d,
+        )),
+        "IFCINDEXEDPOLYCURVE" => Ok((
+            polyline::indexed_polycurve(model, units, basis, entity, parameter_requested)?,
+            DistanceConvention::ArcLength3d,
+        )),
         other => Err(GeometryError::Unsupported {
             entity: placement,
             type_name: other.to_owned(),
@@ -187,29 +493,42 @@ fn gradient_curve(model: &Model, units: &UnitScale, basis: EntityId) -> Geometry
     }
 }
 
-/// Apply the authored lateral, vertical and longitudinal offsets.
+/// The IFC frame at the evaluated point, with the authored offsets applied.
 ///
-/// The frame axes carry the convention: `x` is the tangent, `z` is right,
-/// `y` is up. Offsets are applied along those axes, so a lateral offset
-/// moves across the carriageway regardless of heading.
-fn offset_frame(frame: Frame3, expression: &PointByDistance, units: &UnitScale) -> Transform {
+/// Built from `frame.origin` and the unit tangent `frame.x` only (module
+/// documentation): `left = normalise(Z x tangent)`, `up = tangent x left`.
+/// `OffsetLateral` moves along `left`, `OffsetVertical` along `up` and
+/// `OffsetLongitudinal` along the tangent. `None` when the tangent is
+/// vertical and `left` is undefined.
+fn offset_frame(
+    frame: &Frame3,
+    expression: &PointByDistance,
+    units: &UnitScale,
+) -> Option<Transform> {
+    let tangent = [frame.x.x, frame.x.y, frame.x.z];
+    let horizontal = (tangent[0] * tangent[0] + tangent[1] * tangent[1]).sqrt();
+    if !horizontal.is_finite() || horizontal <= 1e-12 {
+        return None;
+    }
+    // Z x tangent = (-t.y, t.x, 0).
+    let left = [-tangent[1] / horizontal, tangent[0] / horizontal, 0.0];
+    let up = [
+        tangent[1] * left[2] - tangent[2] * left[1],
+        tangent[2] * left[0] - tangent[0] * left[2],
+        tangent[0] * left[1] - tangent[1] * left[0],
+    ];
+
     let lateral = units.length(expression.offset_lateral.unwrap_or(0.0));
     let vertical = units.length(expression.offset_vertical.unwrap_or(0.0));
     let longitudinal = units.length(expression.offset_longitudinal.unwrap_or(0.0));
-
-    let origin = [
-        frame.origin.x + frame.z.x * lateral + frame.y.x * vertical + frame.x.x * longitudinal,
-        frame.origin.y + frame.z.y * lateral + frame.y.y * vertical + frame.x.y * longitudinal,
-        frame.origin.z + frame.z.z * lateral + frame.y.z * vertical + frame.x.z * longitudinal,
-    ];
-    Transform {
-        basis: [
-            [frame.x.x, frame.x.y, frame.x.z],
-            [frame.y.x, frame.y.y, frame.y.z],
-            [frame.z.x, frame.z.y, frame.z.z],
-        ],
+    let point = [frame.origin.x, frame.origin.y, frame.origin.z];
+    let origin = std::array::from_fn(|i| {
+        point[i] + left[i] * lateral + up[i] * vertical + tangent[i] * longitudinal
+    });
+    Some(Transform {
+        basis: [tangent, left, up],
         origin,
-    }
+    })
 }
 
 /// Name why the evaluator declined.

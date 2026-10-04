@@ -12,6 +12,20 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- Behind `geometry`, the re-exported `ifc_geometry` gains, under
+  `geometry::lower`, `lower_product_net_with` and `NetOptions` (#351): a
+  Reference View opening with only a `Reference` representation can be
+  taken as already applied to its host's Body, listed in
+  `NetLowering::taken_as_applied`. With `ifc-geometry`'s `compile` feature
+  it also gains the evaluator-taking linear placement (#353,
+  `LoweringSession::with_curve_evaluator`,
+  `product_world_transform_with_evaluator`) and the cached-position check
+  (#354, `CachedPositionPolicy`), and the derived frame follows IFC4.3
+  (#355). When `ifc-geometry` 0.10 is released, the re-export moves to it,
+  which makes the next release here a minor one.
+
 ## [0.15.0] - 2026-10-04
 
 ### Changed (breaking)
