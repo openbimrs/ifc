@@ -117,10 +117,8 @@ pkg-config against the source tree, install and archive (gate on Linux,
 
 ## pkg-config
 
-Linux and macOS installs and archives also carry `openbim_ifc.pc` (shared)
-and `openbim_ifc-static.pc` (static, with the CMake static target's system
-libraries) in `lib/pkgconfig/`, relocatable via `${pcfiledir}`.
-Windows is CMake-only. See [the C guide](https://openbimrs.github.io/ifc/bindings/c#install-via-pkg-config).
+Linux and macOS installs and archives carry relocatable `openbim_ifc.pc`
+(shared) and `openbim_ifc-static.pc` in `lib/pkgconfig/`; Windows is CMake-only. See [the C guide](https://openbimrs.github.io/ifc/bindings/c#install-via-pkg-config).
 
 ## Build and test
 
