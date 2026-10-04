@@ -8,6 +8,9 @@ authors = ["point-grey"]
 repository = "https://github.com/openbimrs/ifc"
 description = "Property sets, quantities, and unit resolution. No geometry."
 readme = "README.md"
+# The property bench compiles in the `ifc-step` baseline harness by path,
+# which a published archive cannot reach; it is a workspace tool only.
+exclude = ["benches/"]
 
 # Published on the docs site by `cargo run -p xtask -- docs`.
 [package.metadata.openbim]
@@ -29,6 +32,12 @@ ifc-schema = { workspace = true, features = ["default", "express"] }
 # Test-only: fixtures are STEP files, and parsing them is not a production
 # concern of this crate.
 ifc-step.workspace = true
+
+# Property-resolution benchmarks (#352). `cargo bench` measures;
+# `cargo test --bench properties` is the CI smoke run. See benchmarks/README.md.
+[[bench]]
+name = "properties"
+harness = false
 
 [features]
 default = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]

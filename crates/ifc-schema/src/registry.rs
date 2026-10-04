@@ -66,6 +66,31 @@ pub struct Schema {
     /// subtypes, sorted. Derived once: `EntityDef` records only the upward
     /// edge, and scanning every declaration per query is quadratic.
     children: HashMap<String, Vec<String>>,
+    /// Per entity, parallel to `entities`: its supertype chain and its
+    /// positional attribute slots, precomputed (#352). Both are pure
+    /// functions of the declarations, so they are derived once here and
+    /// [`Self::is_a`], [`Self::supertypes`] and [`Self::attributes`] read
+    /// them instead of walking the declarations on every call.
+    lineage: Vec<Lineage>,
+}
+
+/// One entity's precomputed supertype chain and attribute layout.
+#[derive(Debug, Clone, Default)]
+struct Lineage {
+    /// [`Schema::supertypes`], nearest parent first.
+    supertypes: Box<[Ancestor]>,
+    /// [`Schema::attributes`] as `(entity index, attribute index)` pairs
+    /// into `Schema::entities`, in Part 21 positional order.
+    slots: Box<[(u32, u32)]>,
+}
+
+/// One member of a supertype chain.
+#[derive(Debug, Clone)]
+enum Ancestor {
+    /// A declared entity, by index into `Schema::entities`.
+    Declared(usize),
+    /// A supertype the schema names but never declares, as written.
+    Undeclared(Box<str>),
 }
 
 /// Equal when the name and the declarations, in order, are equal.
@@ -100,14 +125,65 @@ impl Schema {
             // `SUBTYPE OF (a, a)` is illegal but must not double-report.
             names.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
         }
-        Self {
+        let mut schema = Self {
             name: name.into(),
             entities,
             types,
             entity_index,
             type_index,
             children,
+            lineage: Vec::new(),
+        };
+        schema.lineage = (0..schema.entities.len())
+            .map(|index| schema.derive_lineage(index))
+            .collect();
+        schema
+    }
+
+    /// Walks one entity's supertype chain and attribute layout, once.
+    ///
+    /// These are the walks `supertypes` and `attributes` ran per call
+    /// before #352, unchanged: the same visiting order, the same
+    /// first-reached-wins rule and the same depth bound, so every answer
+    /// read from the precomputed tables is the answer the walk gave.
+    fn derive_lineage(&self, index: usize) -> Lineage {
+        let name = self.entities[index].name.as_str();
+        let mut seen = HashSet::new();
+        seen.insert(name.to_ascii_uppercase());
+        let mut supertypes = Vec::new();
+        self.collect_supertypes(name, 0, &mut seen, &mut supertypes);
+        let mut seen = HashSet::new();
+        let mut slots = Vec::new();
+        self.collect_attributes(name, 0, &mut seen, &mut slots);
+        Lineage {
+            supertypes: supertypes.into_boxed_slice(),
+            slots: slots.into_boxed_slice(),
         }
+    }
+
+    /// The index into `entities` of the declaration for `name`.
+    ///
+    /// Case-folded without allocating: an upper-case name (the Part 21
+    /// spelling) is looked up as given, and a short mixed-case one is
+    /// folded on the stack.
+    fn entity_position(&self, name: &str) -> Option<usize> {
+        with_folded(name, |key| self.entity_index.get(key).copied())
+    }
+
+    /// The precomputed lineage of `name`, when it is declared.
+    fn lineage_of(&self, name: &str) -> Option<&Lineage> {
+        self.entity_position(name).map(|index| &self.lineage[index])
+    }
+
+    fn ancestor_name<'s>(&'s self, ancestor: &'s Ancestor) -> &'s str {
+        match ancestor {
+            Ancestor::Declared(index) => self.entities[*index].name.as_str(),
+            Ancestor::Undeclared(name) => name,
+        }
+    }
+
+    fn slot(&self, (entity, attribute): (u32, u32)) -> &Attribute {
+        &self.entities[entity as usize].attributes[attribute as usize]
     }
 
     /// Parses EXPRESS source into a schema.
@@ -163,17 +239,14 @@ impl Schema {
     /// The entity declaration for `name`, if the schema declares one.
     #[must_use]
     pub fn entity(&self, name: &str) -> Option<&EntityDef> {
-        self.entity_index
-            .get(&name.to_ascii_uppercase())
-            .map(|&index| &self.entities[index])
+        self.entity_position(name)
+            .map(|index| &self.entities[index])
     }
 
     /// The type declaration for `name`, if the schema declares one.
     #[must_use]
     pub fn type_def(&self, name: &str) -> Option<&TypeDef> {
-        self.type_index
-            .get(&name.to_ascii_uppercase())
-            .map(|&index| &self.types[index])
+        with_folded(name, |key| self.type_index.get(key).copied()).map(|index| &self.types[index])
     }
 
     /// Every entity declaration, in source order.
@@ -199,6 +272,15 @@ impl Schema {
     /// Unknown declarations and cyclic aliases fail closed.
     #[must_use]
     pub fn accepts_type(&self, declared: &str, candidate: &str) -> bool {
+        // Two distinct entities: the walk below would record the pair as
+        // seen and answer `is_a` at once, so answer it without the walk's
+        // allocations. This is the common case for an entity-typed slot.
+        if !declared.eq_ignore_ascii_case(candidate)
+            && self.entity_position(declared).is_some()
+            && self.entity_position(candidate).is_some()
+        {
+            return self.is_a(candidate, declared);
+        }
         self.accepts_type_inner(declared, candidate, &mut HashSet::new(), 32)
     }
 
@@ -256,12 +338,14 @@ impl Schema {
     /// would silently satisfy every check made against it.
     #[must_use]
     pub fn is_a(&self, name: &str, ancestor: &str) -> bool {
-        if name.eq_ignore_ascii_case(ancestor) {
-            return self.entity(name).is_some();
-        }
-        self.supertypes(name)
-            .iter()
-            .any(|super_name| super_name.eq_ignore_ascii_case(ancestor))
+        let Some(lineage) = self.lineage_of(name) else {
+            return false;
+        };
+        name.eq_ignore_ascii_case(ancestor)
+            || lineage.supertypes.iter().any(|super_name| {
+                self.ancestor_name(super_name)
+                    .eq_ignore_ascii_case(ancestor)
+            })
     }
 
     /// The supertype chain above `name`, nearest parent first.
@@ -271,19 +355,23 @@ impl Schema {
     /// but cannot be walked past. Terminates on a malformed cyclic schema.
     #[must_use]
     pub fn supertypes(&self, name: &str) -> Vec<&str> {
-        let mut seen = HashSet::new();
-        seen.insert(name.to_ascii_uppercase());
-        let mut out = Vec::new();
-        self.collect_supertypes(name, 0, &mut seen, &mut out);
-        out
+        self.lineage_of(name)
+            .map(|lineage| {
+                lineage
+                    .supertypes
+                    .iter()
+                    .map(|ancestor| self.ancestor_name(ancestor))
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
-    fn collect_supertypes<'s>(
-        &'s self,
+    fn collect_supertypes(
+        &self,
         name: &str,
         depth: usize,
         seen: &mut HashSet<String>,
-        out: &mut Vec<&'s str>,
+        out: &mut Vec<Ancestor>,
     ) {
         if depth >= MAX_CHAIN_DEPTH {
             return;
@@ -295,12 +383,12 @@ impl Schema {
             if !seen.insert(supertype.to_ascii_uppercase()) {
                 continue;
             }
-            match self.entity(supertype) {
+            match self.entity_position(supertype) {
                 Some(parent) => {
-                    out.push(parent.name.as_str());
-                    self.collect_supertypes(&parent.name, depth + 1, seen, out);
+                    out.push(Ancestor::Declared(parent));
+                    self.collect_supertypes(&self.entities[parent].name, depth + 1, seen, out);
                 }
-                None => out.push(supertype.as_str()),
+                None => out.push(Ancestor::Undeclared(supertype.as_str().into())),
             }
         }
     }
@@ -308,8 +396,7 @@ impl Schema {
     /// Entities declaring `SUBTYPE OF (name)` directly, sorted by name.
     #[must_use]
     pub fn direct_subtypes(&self, name: &str) -> Vec<&str> {
-        self.children
-            .get(&name.to_ascii_uppercase())
+        with_folded(name, |key| self.children.get(key))
             .map(|names| names.iter().map(String::as_str).collect())
             .unwrap_or_default()
     }
@@ -344,32 +431,56 @@ impl Schema {
     /// [`EntityDef::is_derived`] on the owning entity to tell them apart.
     #[must_use]
     pub fn attributes(&self, name: &str) -> Vec<&Attribute> {
-        let mut seen = HashSet::new();
-        let mut out = Vec::new();
-        self.collect_attributes(name, 0, &mut seen, &mut out);
-        out
+        self.lineage_of(name)
+            .map(|lineage| lineage.slots.iter().map(|&slot| self.slot(slot)).collect())
+            .unwrap_or_default()
     }
 
-    fn collect_attributes<'s>(
-        &'s self,
+    /// How many positional slots [`Self::attributes`] lists for `name`;
+    /// `0` for an entity the schema does not declare.
+    ///
+    /// Read from the precomputed layout, without allocating.
+    #[must_use]
+    pub fn attribute_count(&self, name: &str) -> usize {
+        self.lineage_of(name)
+            .map_or(0, |lineage| lineage.slots.len())
+    }
+
+    /// The attribute at positional `slot` of `name`, as
+    /// `attributes(name).get(slot)` answers, without allocating.
+    #[must_use]
+    pub fn attribute_at(&self, name: &str, slot: usize) -> Option<&Attribute> {
+        let lineage = self.lineage_of(name)?;
+        lineage.slots.get(slot).map(|&at| self.slot(at))
+    }
+
+    fn collect_attributes(
+        &self,
         name: &str,
         depth: usize,
         seen: &mut HashSet<String>,
-        out: &mut Vec<&'s Attribute>,
+        out: &mut Vec<(u32, u32)>,
     ) {
         if depth > MAX_CHAIN_DEPTH {
             return;
         }
-        let Some(def) = self.entity(name) else {
+        let Some(index) = self.entity_position(name) else {
             return;
         };
+        let def = &self.entities[index];
         if !seen.insert(def.name.to_ascii_uppercase()) {
             return;
         }
         for supertype in &def.supertypes {
             self.collect_attributes(supertype, depth + 1, seen, out);
         }
-        out.extend(def.attributes.iter());
+        let owner = u32::try_from(index).expect("fewer than 2^32 entity declarations");
+        out.extend((0..def.attributes.len()).map(|attribute| {
+            (
+                owner,
+                u32::try_from(attribute).expect("fewer than 2^32 attributes"),
+            )
+        }));
     }
 
     /// Attribute names in positional order.
@@ -405,6 +516,29 @@ impl Schema {
         }
         current
     }
+}
+
+/// Longest name folded on the stack; a longer one is folded on the heap.
+const FOLD_BUFFER: usize = 128;
+
+/// Calls `f` with `name` upper-cased (ASCII), allocating only for a
+/// mixed-case name longer than [`FOLD_BUFFER`] bytes.
+///
+/// Upper-casing ASCII bytes leaves every other byte alone, so the folded
+/// buffer is valid UTF-8 whenever `name` is.
+fn with_folded<R>(name: &str, f: impl FnOnce(&str) -> R) -> R {
+    if !name.bytes().any(|byte| byte.is_ascii_lowercase()) {
+        return f(name);
+    }
+    if name.len() <= FOLD_BUFFER {
+        let mut buffer = [0u8; FOLD_BUFFER];
+        let folded = &mut buffer[..name.len()];
+        folded.copy_from_slice(name.as_bytes());
+        folded.make_ascii_uppercase();
+        let folded = std::str::from_utf8(folded).expect("ASCII folding keeps UTF-8 valid");
+        return f(folded);
+    }
+    f(&name.to_ascii_uppercase())
 }
 
 /// Deduplicates declarations by case-folded name (first position, last

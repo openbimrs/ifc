@@ -14,6 +14,13 @@ everything released before per-crate changelogs began.
 
 ### Changed
 
+- `spatial_properties` and the property-edit planner (`apply_property_edits`,
+  `stage_property_edits`) resolve through one `ifc_properties::PropertyIndex`
+  of the model instead of calling the exact resolver per element or per
+  edited object, so listing every element's properties, or a batch editing
+  many objects, is linear in the model (#352). Answers and refusals are
+  unchanged. `ifc::properties::PropertyIndex` is reachable through the
+  `properties` feature.
 - Behind `geometry`, the re-exported `ifc_geometry` gains, under
   `geometry::lower`, `lower_product_net_with` and `NetOptions` (#351): a
   Reference View opening with only a `Reference` representation can be
@@ -25,6 +32,8 @@ everything released before per-crate changelogs began.
   (#354, `CachedPositionPolicy`), and the derived frame follows IFC4.3
   (#355). When `ifc-geometry` 0.10 is released, the re-export moves to it,
   which makes the next release here a minor one.
+
+Semver of #352 alone: no public signature changes, a patch release.
 
 ## [0.15.0] - 2026-10-04
 

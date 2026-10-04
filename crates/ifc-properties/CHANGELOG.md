@@ -12,6 +12,34 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added
+
+- `PropertyIndex`: the exact resolver's view of one model, built once by
+  `PropertyIndex::build(&model)` and asked per object (#352). It validates
+  every `IfcRelDefinesByProperties` and `IfcRelDefinesByType` once and
+  records each object's assignments, so resolving every object is linear
+  in objects plus relationships instead of their product. Its
+  `exact_property`, `exact_properties`, `exact_properties_where`,
+  `exact_property_sets_where` and `exact_predefined_sets` answer exactly
+  what the free functions of the same name answer, refusals included, in
+  the same precedence. It borrows the model (ADR 0003), so the model
+  cannot be edited while an index exists; rebuild it after a commit.
+  Measured on a generated IFC4 model (`benches/properties`,
+  `benchmarks/baseline.md`): one property for every one of 100,000 walls
+  takes 2.0 s instead of about 31 hours (extrapolated; 10,000 walls:
+  195 ms instead of 814 s), scaling ten-fold per ten-fold more walls.
+
+### Changed
+
+- The free functions scan the relationships for the one queried object
+  through the same code, so their answers are unchanged (a dump of every
+  answer over the fixture corpus and the new equivalence models is
+  byte-identical before and after); with `ifc-schema`'s precomputed
+  tables a single call is several times cheaper, but it still validates
+  every relationship of the file, as it must.
+
+Semver: one new public type, nothing changed or removed: a patch release.
+
 ## [0.8.0] - 2026-10-03
 
 ### Changed (breaking)

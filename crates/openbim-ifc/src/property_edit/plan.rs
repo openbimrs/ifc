@@ -9,7 +9,7 @@
 use std::collections::BTreeMap;
 
 use ifc_model::{EntityId, Model, ReverseIndex, Value};
-use ifc_properties::{exact_schema, ExactPropertyError, QuantityKind};
+use ifc_properties::{exact_schema, ExactPropertyError, PropertyIndex, QuantityKind};
 
 use super::checks::{
     agree, check_set_template, check_template, default_form, describe_payload, same_value,
@@ -97,6 +97,10 @@ pub(super) struct Planner<'m> {
     pub(super) model: &'m Model,
     pub(super) release: Release,
     reverse: Option<ReverseIndex>,
+    /// The property assignments of the model as it was, scanned on first
+    /// use (#352). It borrows `model` like the planner does, so it cannot
+    /// outlive the planning: the plan is staged and committed afterwards.
+    properties: Option<PropertyIndex<'m>>,
     pub(super) holders: BTreeMap<EntityId, Holder>,
     pub(super) sets: Vec<SetDraft>,
     index: BTreeMap<(EntityId, String), usize>,
@@ -124,6 +128,7 @@ impl<'m> Planner<'m> {
             model,
             release: Release { version, schema },
             reverse: None,
+            properties: None,
             holders: BTreeMap::new(),
             sets: Vec::new(),
             index: BTreeMap::new(),
@@ -163,7 +168,11 @@ impl<'m> Planner<'m> {
 
     fn holder(&mut self, object: EntityId) -> Result<&Holder, PropertyEditFailure> {
         if !self.holders.contains_key(&object) {
-            let holder = Holder::read(self.model, self.release, object)?;
+            let model = self.model;
+            let properties = self
+                .properties
+                .get_or_insert_with(|| PropertyIndex::build(model));
+            let holder = Holder::read(model, self.release, properties, object)?;
             self.holders.insert(object, holder);
         }
         Ok(&self.holders[&object])

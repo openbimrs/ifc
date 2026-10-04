@@ -39,19 +39,19 @@ impl Release {
     /// The position and declaration of `entity`'s attribute `name` in this
     /// release, or `None` when the release does not declare it.
     pub(super) fn attribute(self, entity: &str, name: &str) -> Option<(usize, &'static Attribute)> {
-        self.schema
-            .attributes(entity)
-            .into_iter()
-            .enumerate()
-            .find(|(_, attribute)| attribute.name.eq_ignore_ascii_case(name))
+        (0..self.schema.attribute_count(entity)).find_map(|slot| {
+            self.schema
+                .attribute_at(entity, slot)
+                .filter(|attribute| attribute.name.eq_ignore_ascii_case(name))
+                .map(|attribute| (slot, attribute))
+        })
     }
 
     /// Whether `candidate` is a legal member of attribute `slot` of `entity`,
     /// as this release declares it.
     pub(super) fn slot_accepts(self, entity: &str, slot: usize, candidate: &str) -> bool {
         self.schema
-            .attributes(entity)
-            .get(slot)
+            .attribute_at(entity, slot)
             .is_some_and(|attribute| self.schema.accepts_type(&attribute.type_name, candidate))
     }
 }

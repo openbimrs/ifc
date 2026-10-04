@@ -165,3 +165,93 @@ Observations for orientation, not claims:
 - `model.traverse` and `model.reverse_index` grow faster than linearly
   between small and large (234x and 275x for 100x the entities); cache
   misses are the likely reason, unverified.
+
+## Property resolution (#352)
+
+The exact property resolver over every wall of the generated IFC4 workload
+(`crates/ifc-properties/benches/properties`, see the
+[README](README.md#property-resolution)), before and after the relation
+index and the precomputed schema chains of #352.
+
+**Quiet-window measurement.** Every run started with the 1-minute load below
+3 and ended below 4 (`run-baseline.sh`'s gate); one `before` attempt at
+`props-10k` ended at 4.00, was discarded and repeated. Another agent was
+building on the machine during the session; the gate held the runs until
+it was quiet.
+
+### Environment
+
+- date: 2026-10-04, 13:03-15:22 UTC
+- machine: Intel Xeon w7-3565X, 20 cores, 63 GiB RAM, shared VM; pinned
+  with `taskset -c 12-19` (8 logical CPUs)
+- OS: Debian GNU/Linux 13 (trixie), kernel 6.12.105+deb13-cloud-amd64,
+  glibc malloc
+- toolchain: rustc 1.88.0 (6b00bc388 2025-06-23); `cargo bench` profile
+  (opt-level 3, thin LTO, 1 codegen unit)
+- **after**: commit 8589bea7 (the run script reports it dirty: only the
+  changelogs and these notes were uncommitted)
+- **before**: `main` at 652104d1 with this bench copied in and
+  `PropertyIndex` replaced by a shim whose methods call the free functions
+  once per object, which is what a caller had to do before #352; the
+  same workload, answers and checksums
+- plans: after, 3 warm-up + 20 samples (`props-100k`: 2 + 10); before,
+  1 + 5 at `props-1k`, 0 + 3 for `per_call.100` at `props-10k` and
+  `props-100k`; 3 processes a side, except the single before sample of
+  `every_object` at `props-10k`
+- loads (1 min, before/after each process): after 1.21-2.71; before
+  1.18-2.94; all below the gate
+
+### Results
+
+Medians in milliseconds; the checksums of every `before` row equal the
+`after` row's, so both resolved the same answers.
+
+| workload | bench | before | after | after/before |
+| --- | --- | ---: | ---: | ---: |
+| props-1k (1,000 walls) | `exact_property.every_object` | 9,054 | 18.03 | 0.002 |
+| props-1k | `exact_properties.every_object` | 9,204 | 47.19 | 0.005 |
+| props-1k | `exact_property.per_call.100` | 935 | 93.67 | 0.100 |
+| props-10k (10,000 walls) | `exact_property.every_object` | 813,965 (1 sample) | 195 | 0.0002 |
+| props-10k | `exact_property.per_call.100` | 10,696 | 1,140 | 0.107 |
+| props-100k (100,000 walls) | `exact_property.every_object` | ~113,000,000 (extrapolated, ~31 h) | 2,017 | |
+| props-100k | `exact_property.per_call.100` | 113,310 | 17,405 | 0.154 |
+
+`benchmarks/baseline.py compare` over the same runs calls every comparable
+row "faster" (the `props-10k` `every_object` row has one before sample and
+is reported from the run itself):
+
+| workload | bench | base median ms | new median ms | new/base | verdict |
+| --- | --- | ---: | ---: | ---: | --- |
+| props-1k (1000 walls) | properties.exact_property.every_object | 9054 | 18.03 | 0.002 | faster |
+| props-1k (1000 walls) | properties.exact_properties.every_object | 9204 | 47.19 | 0.005 | faster |
+| props-1k (1000 walls) | properties.exact_property.per_call.100 | 935 | 93.67 | 0.100 | faster |
+| props-100k (100000 walls) | properties.exact_property.per_call.100 | 113310 | 17405 | 0.154 | faster |
+| props-10k (10000 walls) | properties.exact_property.per_call.100 | 10696 | 1140 | 0.107 | faster |
+
+After #352, the rest of the pooled table:
+
+| workload | bench | median ms | IQR ms | run medians ms | heap retained MB | heap peak MB |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| props-1k | `index.build` | 1.03 | 1.02..1.04 | 1.03..1.04 | 0.16 | 0.19 |
+| props-10k | `index.build` | 12.54 | 12.47..12.61 | 12.48..12.60 | 1.34 | 1.60 |
+| props-10k | `exact_properties.every_object` | 495 | 489..498 | 489..498 | 9.77 | 11.10 |
+| props-100k | `index.build` | 207 | 193..219 | 190..221 | 11.30 | 13.37 |
+| props-100k | `exact_properties.every_object` | 4,945 | 4,543..5,057 | 4,547..5,245 | 97.66 | 108.96 |
+
+### Reading the numbers
+
+- **Linear after, quadratic before.** One property for every wall: after,
+  18 ms -> 195 ms -> 2,017 ms for 10^3 -> 10^4 -> 10^5 walls (x10.8, x10.3);
+  before, 9.1 s -> 814 s for 10^3 -> 10^4 (x90), and about 31 hours
+  extrapolated for 10^5 from the measured per-call cost (1.13 s per wall x
+  100,000). Every property of every wall scales the same way after
+  (47 ms -> 495 ms -> 4.9 s).
+- **The per-call path is still linear in the file**, as it must be: a
+  free function validates every relationship. It is 6.5-10x cheaper than
+  before because `is_a`, `supertypes` and `attributes` no longer rebuild
+  their chains (`per_call.100`: x0.10 at 10^3 and 10^4 walls, x0.15 at
+  10^5), but 100 calls on the 10^5 model still take 17 s. Loops belong on
+  the index.
+- **The index is small and cheap.** Building it costs about a tenth of
+  resolving one property for every object (207 ms at 10^5 walls, 11 MB
+  retained: object ids and their set ids).

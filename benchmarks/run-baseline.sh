@@ -20,6 +20,10 @@
 #   samples takes up to two seconds plus setup, so 20 would take ~10 min
 #   IFC_BENCH_DATA: where generated synthetic files go (default out-dir/data)
 #   PROVISIONAL=1: skip the load gate and label the result provisional
+#   PACKAGE=ifc-step, BENCH=baseline: the bench target to run; the property
+#   benchmarks (#352) are PACKAGE=ifc-properties BENCH=properties with
+#   SCALES="props-1k props-10k props-100k"
+#   BENCH_ARGS: further arguments for every run, e.g. "--bench-only NAME,..."
 #
 # Output: out-dir/run<R>-<scale>.{json,md}, out-dir/environment.txt and
 # out-dir/summary.md (benchmarks/baseline.py summarize over every run).
@@ -31,6 +35,9 @@ data="${IFC_BENCH_DATA:-$out/data}"
 runs="${RUNS:-3}"
 scales="${SCALES:-fixtures small crossover large}"
 cpus="${CPUS:-12-19}"
+package="${PACKAGE:-ifc-step}"
+bench_name="${BENCH:-baseline}"
+bench_args="${BENCH_ARGS:-}"
 max_load="${MAX_LOAD:-3}"
 end_max_load="${END_MAX_LOAD:-4}"
 wait_s="${WAIT:-60}"
@@ -38,12 +45,12 @@ max_waits="${MAX_WAITS:-120}"
 attempts="${ATTEMPTS:-3}"
 mkdir -p "$out" "$out/discarded" "$data"
 
-bin="$(cd "$root" && cargo bench -p ifc-step --bench baseline --no-run --message-format=json |
-    python3 -c '
-import json, sys
+bin="$(cd "$root" && cargo bench -p "$package" --bench "$bench_name" --no-run --message-format=json |
+    BENCH_NAME="$bench_name" python3 -c '
+import json, os, sys
 for line in sys.stdin:
     m = json.loads(line)
-    if m.get("reason") == "compiler-artifact" and m["target"]["name"] == "baseline" and m.get("executable"):
+    if m.get("reason") == "compiler-artifact" and m["target"]["name"] == os.environ["BENCH_NAME"] and m.get("executable"):
         print(m["executable"])
 ')"
 [[ -x "$bin" ]] || { echo "error: bench binary not found" >&2; exit 1; }
@@ -57,6 +64,7 @@ for line in sys.stdin:
     echo "os: $(. /etc/os-release && echo "$PRETTY_NAME"), kernel $(uname -r)"
     echo "rustc: $(cd "$root" && rustc -V)"
     echo "profile: bench (release: opt-level 3, thin LTO, 1 codegen unit)"
+    echo "bench: $package/$bench_name $bench_args"
     echo "load gate: start below $max_load, discard above $end_max_load at end"
     [[ -n "${PROVISIONAL:-}" ]] && echo "PROVISIONAL: load gate off"
 } >"$out/environment.txt"
@@ -92,9 +100,9 @@ for ((run = 1; run <= runs; run++)); do
         for ((attempt = 1; ; attempt++)); do
             wait_quiet
             echo "== $name (attempt $attempt, load $(load1))" >&2
-            # shellcheck disable=SC2046 # the plan is a word list
+            # shellcheck disable=SC2046,SC2086 # the plan and arguments are word lists
             taskset -c "$cpus" "$bin" --bench --scale "$scale" --data-dir "$data" \
-                --json "$out/$name.json" $(plan "$scale") >"$out/$name.md"
+                --json "$out/$name.json" $(plan "$scale") $bench_args >"$out/$name.md"
             end="$(load1)"
             if [[ -n "${PROVISIONAL:-}" ]] || below "$end" "$end_max_load"; then
                 break

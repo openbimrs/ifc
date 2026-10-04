@@ -12,6 +12,29 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- `Schema::is_a`, `supertypes` and `attributes` read a supertype chain and
+  a positional attribute layout precomputed per entity when the schema is
+  assembled, instead of walking the declarations on every call (#352).
+  `is_a` no longer allocates, and no case-folded lookup (`entity`,
+  `type_def`, `direct_subtypes`) allocates for a name of up to 128 bytes.
+  The answers are unchanged: the tables are built by the walks they
+  replace, and `tests/precomputed_lineage.rs` compares every entity of
+  every bundled release, under three spellings, against a frozen copy of
+  the old walks, and `is_a` for every ordered pair.
+- `accepts_type` answers two distinct declared entities with `is_a`
+  directly, without the select walk's allocations; the answer is the one
+  the walk gave.
+
+### Added
+
+- `Schema::attribute_count(name)` and `Schema::attribute_at(name, slot)`:
+  `attributes(name).len()` and `attributes(name).get(slot)` without
+  allocating (#352).
+
+Semver: additive, same answers: a patch release.
+
 ## [0.3.1] - 2026-10-03
 
 ### Changed
