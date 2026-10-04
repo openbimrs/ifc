@@ -74,7 +74,7 @@ pub use exact::{
     ExactComplexValue, ExactEntityRef, ExactEnumeratedValue, ExactEnumeration, ExactLogical,
     ExactPredefinedSet, ExactProperty, ExactPropertyEntry, ExactPropertyError,
     ExactPropertySetEntry, ExactReferenceValue, ExactResolution, ExactSource, ExactTableRow,
-    ExactTableValue, ExactTypedValue, ExactUnit, ExactUnitError, ExactValue,
+    ExactTableValue, ExactTypedValue, ExactUnit, ExactUnitError, ExactValue, PropertyIndex,
 };
 /// The IFC release an exact resolution binds to (re-exported from `ifc-schema`).
 pub use ifc_schema::SchemaVersion;

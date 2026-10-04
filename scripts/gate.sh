@@ -107,6 +107,9 @@ gate_test() {
     # equivalence and probe assertion. It proves the harness builds, runs
     # and agrees with itself; it judges no timing (benchmarks/README.md).
     cargo test -p ifc-step --bench baseline
+    # The same for the property-resolution benchmarks (#352): the smoke
+    # scale, every equivalence assertion against the per-query functions.
+    cargo test -p ifc-properties --bench properties
 
     cargo test -p ifc-model --test package_architecture
     cargo test -p ifc-model --test progressive_context

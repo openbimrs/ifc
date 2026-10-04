@@ -13,7 +13,7 @@ pub(super) fn require_exact_slots(
     entity_id: EntityId,
     entity: &Entity,
 ) -> Result<(), ExactPropertyError> {
-    let expected = schema.attributes(entity.type_name.as_ref()).len();
+    let expected = schema.attribute_count(entity.type_name.as_ref());
     let actual = entity.attributes.len();
     if actual != expected {
         return Err(ExactPropertyError::MalformedEntitySlots {

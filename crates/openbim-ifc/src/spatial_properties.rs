@@ -45,7 +45,7 @@
 //!
 //! # Honest answers per element
 //!
-//! Properties come from [`exact_properties`] (or [`exact_properties_where`]),
+//! Properties come from [`exact_properties`](ifc_properties::exact_properties) (or [`exact_properties_where`](ifc_properties::exact_properties_where)),
 //! so an empty list is a proven absence and an error is the file failing to
 //! prove its answer. A model-level refusal (diagnostics, missing or foreign
 //! schema) is returned once by [`spatial_properties`], because no element
@@ -58,8 +58,7 @@ mod members;
 
 use ifc_model::{EntityId, Model};
 use ifc_properties::{
-    exact_properties, exact_properties_where, exact_schema, ExactPropertyEntry, ExactPropertyError,
-    SchemaVersion,
+    exact_schema, ExactPropertyEntry, ExactPropertyError, PropertyIndex, SchemaVersion,
 };
 use ifc_spatial::{SpatialKind, SpatialTree};
 
@@ -130,7 +129,7 @@ pub struct ElementProperties<'v> {
     /// How it belongs to the container.
     pub membership: SpatialMembership,
     /// Every property, quantity and predefined-set attribute, occurrence
-    /// sets first, then inherited ones, as [`exact_properties`] orders them.
+    /// sets first, then inherited ones, as [`exact_properties`](ifc_properties::exact_properties) orders them.
     /// Empty is a proven absence; an error is this element's alone.
     pub properties: Result<Vec<ExactPropertyEntry>, ExactPropertyError>,
 }
@@ -140,14 +139,18 @@ pub struct ElementProperties<'v> {
 /// Built by [`spatial_properties`]. Borrows the model; it owns only the
 /// spatial tree and the per-container member lists (ids and borrowed type
 /// names). Properties are resolved lazily, element by element, as
-/// [`ContainerElements::elements`] is iterated.
+/// [`ContainerElements::elements`] is iterated, from one
+/// [`PropertyIndex`] of the model built here, so listing every element's
+/// properties is linear in the model (#352).
 #[derive(Debug, Clone)]
 pub struct SpatialProperties<'m> {
-    model: &'m Model,
     schema: SchemaVersion,
     tree: SpatialTree,
     containers: Vec<members::Slot<'m>>,
     dangling_parts: Vec<(EntityId, EntityId)>,
+    /// The model's property assignments, scanned once, so resolving every
+    /// element is linear in the model (#352).
+    properties: PropertyIndex<'m>,
 }
 
 /// One container and the elements listed under it.
@@ -157,7 +160,7 @@ pub struct ContainerElements<'v> {
     /// The container.
     pub container: SpatialContainer<'v>,
     members: &'v [ElementMember<'v>],
-    model: &'v Model,
+    properties: &'v PropertyIndex<'v>,
 }
 
 /// Group `model`'s elements by spatial container, for exact property
@@ -178,11 +181,11 @@ pub fn spatial_properties(model: &Model) -> Result<SpatialProperties<'_>, ExactP
     let tree = SpatialTree::build(model);
     let (containers, dangling_parts) = members::collect(model, &tree);
     Ok(SpatialProperties {
-        model,
         schema,
         tree,
         containers,
         dangling_parts,
+        properties: PropertyIndex::build(model),
     })
 }
 
@@ -227,7 +230,7 @@ impl<'m> SpatialProperties<'m> {
         ContainerElements {
             container: slot.container,
             members: &slot.members,
-            model: self.model,
+            properties: &self.properties,
         }
     }
 }
@@ -241,14 +244,14 @@ impl<'v> ContainerElements<'v> {
 
     /// Each element with every property it carries, resolved on demand.
     pub fn elements(&self) -> impl Iterator<Item = ElementProperties<'v>> + 'v {
-        let model = self.model;
+        let properties = self.properties;
         self.members
             .iter()
-            .map(move |member| resolved(member, exact_properties(model, member.element)))
+            .map(move |member| resolved(member, properties.exact_properties(member.element)))
     }
 
     /// Each element with the properties the two selectors pick, as
-    /// [`exact_properties_where`] selects them, resolved on demand.
+    /// [`exact_properties_where`](ifc_properties::exact_properties_where) selects them, resolved on demand.
     ///
     /// A rule that asks about some sets only is not refused by an
     /// unsupported member of a set it does not ask about.
@@ -261,14 +264,10 @@ impl<'v> ContainerElements<'v> {
         S: FnMut(&str) -> bool + 'v,
         P: FnMut(&str) -> bool + 'v,
     {
-        let model = self.model;
+        let index = self.properties;
         self.members.iter().map(move |member| {
-            let properties = exact_properties_where(
-                model,
-                member.element,
-                &mut select_set,
-                &mut select_property,
-            );
+            let properties =
+                index.exact_properties_where(member.element, &mut select_set, &mut select_property);
             resolved(member, properties)
         })
     }

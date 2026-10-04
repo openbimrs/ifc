@@ -39,7 +39,7 @@ use std::{collections::BTreeSet, sync::Arc};
 use ifc_model::{Entity, EntityId, Model, Value};
 use ifc_schema::TypeKind;
 
-use super::assignment::assigned_sets;
+use super::assignment::{assigned_sets, Relations};
 use super::composite::{entity_target, enum_accepts};
 use super::refs::text_at;
 use super::release::{validate_model, Release};
@@ -165,6 +165,18 @@ pub fn exact_predefined_sets(
     entity: &str,
 ) -> Result<Vec<ExactPredefinedSet>, ExactPropertyError> {
     let release = validate_model(model)?;
+    predefined_sets_in(model, release, None, object, entity)
+}
+
+/// [`exact_predefined_sets`] once the model is bound to `release`, from a
+/// scan of every relationship when one is given.
+pub(super) fn predefined_sets_in(
+    model: &Model,
+    release: Release,
+    relations: Option<&Relations>,
+    object: EntityId,
+    entity: &str,
+) -> Result<Vec<ExactPredefinedSet>, ExactPropertyError> {
     let schema = release.schema;
     let predefined = schema.entity(entity).is_some()
         && schema.is_a(entity, "IFCPROPERTYSETDEFINITION")
@@ -176,7 +188,7 @@ pub fn exact_predefined_sets(
             schema: release.version,
         });
     }
-    let assigned = assigned_sets(model, release, object)?;
+    let assigned = assigned_sets(model, release, relations, object)?;
     let mut sources = vec![(ExactSource::Occurrence, &assigned.occurrence_sets)];
     if let Some((type_id, sets)) = &assigned.type_sets {
         sources.push((ExactSource::Type(*type_id), sets));

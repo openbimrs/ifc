@@ -26,7 +26,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use ifc_model::{EntityId, Model};
 
-use super::assignment::assigned_sets;
+use super::assignment::{assigned_sets, Relations};
 use super::release::{validate_model, Release};
 use super::set::load_source_set;
 use super::{ExactProperty, ExactPropertyError, ExactSource};
@@ -116,10 +116,30 @@ where
     P: FnMut(&str) -> bool,
 {
     let release = validate_model(model)?;
-    let assigned = assigned_sets(model, release, object)?;
+    properties_where_in(
+        model,
+        release,
+        None,
+        object,
+        &mut select_set,
+        &mut select_property,
+    )
+}
+
+/// [`exact_properties_where`] once the model is bound to `release`, from a
+/// scan of every relationship when one is given.
+pub(super) fn properties_where_in(
+    model: &Model,
+    release: Release,
+    relations: Option<&Relations>,
+    object: EntityId,
+    select_set: &mut dyn FnMut(&str) -> bool,
+    select_property: &mut dyn FnMut(&str) -> bool,
+) -> Result<Vec<ExactPropertyEntry>, ExactPropertyError> {
+    let assigned = assigned_sets(model, release, relations, object)?;
     let mut selector = Selector {
-        set: &mut select_set,
-        property: &mut select_property,
+        set: select_set,
+        property: select_property,
     };
     let mut entries = collect(
         model,
@@ -269,13 +289,25 @@ where
     S: FnMut(&str) -> bool,
 {
     let release = validate_model(model)?;
-    let assigned = assigned_sets(model, release, object)?;
+    property_sets_where_in(model, release, None, object, &mut select_set)
+}
+
+/// [`exact_property_sets_where`] once the model is bound to `release`, from
+/// a scan of every relationship when one is given.
+pub(super) fn property_sets_where_in(
+    model: &Model,
+    release: Release,
+    relations: Option<&Relations>,
+    object: EntityId,
+    select_set: &mut dyn FnMut(&str) -> bool,
+) -> Result<Vec<ExactPropertySetEntry>, ExactPropertyError> {
+    let assigned = assigned_sets(model, release, relations, object)?;
     let mut entries = list_sets(
         model,
         release,
         &assigned.occurrence_sets,
         ExactSource::Occurrence,
-        &mut select_set,
+        select_set,
     )?;
     if let Some((type_id, sets)) = &assigned.type_sets {
         entries.extend(list_sets(
@@ -283,7 +315,7 @@ where
             release,
             sets,
             ExactSource::Type(*type_id),
-            &mut select_set,
+            select_set,
         )?);
     }
     Ok(entries)

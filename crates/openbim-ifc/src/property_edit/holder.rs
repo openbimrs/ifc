@@ -11,7 +11,7 @@
 use std::collections::BTreeMap;
 
 use ifc_model::{EntityId, Model, ReverseIndex, Value};
-use ifc_properties::{exact_properties, ExactSource, SchemaVersion};
+use ifc_properties::{ExactSource, PropertyIndex, SchemaVersion};
 use ifc_schema::Schema;
 
 use super::edit::PropertyEditFailure;
@@ -106,12 +106,18 @@ impl Holder {
     pub(super) fn read(
         model: &Model,
         release: Release,
+        properties: &PropertyIndex<'_>,
         id: EntityId,
     ) -> Result<Self, PropertyEditFailure> {
         let entity = model
             .get(id)
             .ok_or(PropertyEditFailure::MissingEntity(id))?;
-        let entries = exact_properties(model, id).map_err(PropertyEditFailure::Resolve)?;
+        // `properties` was built from `model`: the same answer as
+        // `exact_properties(model, id)`, without rescanning every
+        // relationship for each object of a batch (#352).
+        let entries = properties
+            .exact_properties(id)
+            .map_err(PropertyEditFailure::Resolve)?;
         let is_type = release.schema.is_a(&entity.type_name, "IFCTYPEOBJECT");
         let mut holder = Self {
             id,

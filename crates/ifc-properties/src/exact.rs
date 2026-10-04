@@ -21,6 +21,7 @@ mod assignment;
 mod complex;
 mod composite;
 mod enumerate;
+mod index;
 mod material;
 mod measure;
 mod predefined;
@@ -37,16 +38,17 @@ use std::{fmt, sync::Arc};
 use ifc_model::{EntityId, Model};
 use ifc_schema::SchemaVersion;
 
-use assignment::assigned_sets;
+use assignment::{assigned_sets, Relations};
 pub use enumerate::{
     exact_properties, exact_properties_where, exact_property_sets_where, ExactPropertyEntry,
     ExactPropertySetEntry,
 };
+pub use index::PropertyIndex;
 pub use material::{
     exact_material_properties_where, exact_material_property, exact_material_property_sets_where,
 };
 pub use predefined::{exact_predefined_sets, ExactPredefinedSet};
-use release::validate_model;
+use release::{validate_model, Release};
 use set::find_property;
 pub use unit::{exact_unit, ExactUnit, ExactUnitError};
 pub use values::{
@@ -523,7 +525,20 @@ pub fn exact_property(
     property_name: &str,
 ) -> Result<ExactResolution, ExactPropertyError> {
     let release = validate_model(model)?;
-    let assigned = assigned_sets(model, release, object)?;
+    property_in(model, release, None, object, set_name, property_name)
+}
+
+/// [`exact_property`] once the model is bound to `release`, from a scan of
+/// every relationship when one is given.
+fn property_in(
+    model: &Model,
+    release: Release,
+    relations: Option<&Relations>,
+    object: EntityId,
+    set_name: Option<&str>,
+    property_name: &str,
+) -> Result<ExactResolution, ExactPropertyError> {
+    let assigned = assigned_sets(model, release, relations, object)?;
     let occurrence = find_property(
         model,
         release,
