@@ -12,6 +12,33 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-10-04
+
+Backport of the #347 fix to the 0.8 line; 0.9.0 carries it too.
+
+### Fixed
+
+- `constraint::placement::derive::derive_placement_transform` refuses an
+  `IfcParameterValue` `DistanceAlong` on an `IfcGradientCurve` or
+  `IfcAlignment` basis curve by name (`GeometryError::Unsupported` on the
+  basis curve) and no longer hands it to the injected `CurveEvaluator`
+  (#347). IFC4.3 ADD2 does not define that parameter: a gradient curve takes
+  its `BaseCurve`'s (8.9.3.34.1), a composite accumulates the parametric
+  ranges of its parent curves (8.9.3.20.1), which are angles for a circle
+  (8.9.3.18.1) and `u = s / (A sqrt(pi))` for a clothoid (8.9.3.19.1), and
+  `IfcCurveSegment` says no parametric space is yet defined for its parent
+  curves (8.9.3.28.1). A parameter on an `IfcPolyline` or line-only
+  `IfcIndexedPolyCurve`, where IFC counts one per segment (8.9.3.51), is
+  unchanged.
+- Released 0.3.0 through 0.8.1 passed that parameter through as the
+  evaluator's native parameter. With `axiolid-evaluate` up to 0.3.5 the
+  reference evaluator refused it, so nothing was placed. With
+  `axiolid-evaluate` 0.3.6 (released 2026-10-04), which any of those
+  releases resolves to, it reads the parameter as plan distance (axiolid
+  ADR 0082) and answers: a product placed by an `IfcParameterValue` along an
+  alignment lands at that plan distance, a position IFC does not give it.
+  Upgrade to get the refusal. Lines before 0.8 get no backport.
+
 ## [0.8.1] - 2026-10-04
 
 No public API changes. The reference backend's floor rises and input it
@@ -771,7 +798,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.8.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.8.2...HEAD
+[0.8.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.8.2
 [0.8.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.8.1
 [0.8.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.8.0
 [0.7.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.7.0

@@ -11,6 +11,7 @@ use axiolid_evaluate::ReferenceCurveEvaluator;
 use ifc_alignment::{CurveMeasure, PointByDistance};
 use ifc_geometry::constraint::placement::derive::derive_placement_transform;
 use ifc_geometry::units::UnitScale;
+use ifc_geometry::GeometryError;
 use ifc_model::{Entity, EntityId, Model, Value};
 use std::sync::Arc;
 
@@ -240,53 +241,132 @@ fn the_derived_frame_is_orthonormal() {
     }
 }
 
-/// A parameter is not a distance.
+/// A parameter is not a distance, and IFC defines it only on some curves.
 ///
-/// `IfcCurveMeasureSelect` lets the file say which it means, and the two
-/// must not be conflated: on a curve where they differ, passing one as the
-/// other places the product somewhere wrong but entirely plausible.
+/// `IfcCurveMeasureSelect` lets the file say which it means. An alignment
+/// centreline (`IfcGradientCurve`, or the `IfcAlignment` naming it) takes
+/// the parameter of its composite of `IfcCurveSegment`s, which IFC4.3 ADD2
+/// leaves undefined (8.9.3.34.1, 8.9.3.20.1, 8.9.3.28.1), so a parameter
+/// there is refused by name. It is never handed to the evaluator, whose
+/// parameter on that curve is plan distance (axiolid ADR 0082): from
+/// axiolid-evaluate 0.3.6 that answers, and on this clothoid it would land
+/// on the 40 m station exactly. The refusal holds on a straight plan too,
+/// where the numbers would happen to agree: it is about meaning, not size.
 #[test]
-fn a_parameter_is_not_silently_read_as_a_distance() {
-    let (model, alignment) = alignment_model_with("CLOTHOID", 300.0);
+fn a_parameter_on_an_alignment_centreline_is_refused_by_name() {
     let evaluator = ReferenceCurveEvaluator::default();
-
-    let at = |measure| PointByDistance {
+    let at = |basis_curve, measure| PointByDistance {
         entity: EntityId(9_000),
         distance_along: measure,
         offset_lateral: None,
         offset_vertical: None,
         offset_longitudinal: None,
-        basis_curve: alignment,
+        basis_curve,
     };
 
-    let by_distance = derive_placement_transform(
-        &model,
-        &metres(),
-        EntityId(9_001),
-        &at(CurveMeasure::Length(40.0)),
-        &evaluator,
-    );
-    let by_parameter = derive_placement_transform(
-        &model,
-        &metres(),
-        EntityId(9_001),
-        &at(CurveMeasure::Parameter(40.0)),
-        &evaluator,
-    );
+    let refused = |model: &Model, basis: EntityId, type_name: &str| {
+        let error = derive_placement_transform(
+            model,
+            &metres(),
+            EntityId(9_001),
+            &at(basis, CurveMeasure::Parameter(40.0)),
+            &evaluator,
+        )
+        .expect_err("an alignment parameter is undefined in IFC4.3 ADD2");
+        match &error {
+            GeometryError::Unsupported {
+                entity,
+                type_name: named,
+                detail,
+            } => {
+                assert_eq!(*entity, basis, "names the basis curve: {error}");
+                assert_eq!(named, type_name, "names its type: {error}");
+                assert!(detail.contains("IfcParameterValue"), "says why: {error}");
+            }
+            other => panic!("expected Unsupported, got {other:?}"),
+        }
+    };
 
-    // Whatever each resolves to, the two must not be treated as the same
-    // request. Equal results would mean the select type was collapsed.
-    match (by_distance, by_parameter) {
-        (Ok(distance), Ok(parameter)) => assert_ne!(
-            distance.origin, parameter.origin,
-            "a parameter and a length must not resolve identically"
-        ),
-        (Ok(_), Err(_)) | (Err(_), Ok(_)) => {}
-        (Err(left), Err(right)) => assert_eq!(
-            format!("{left}"),
-            format!("{right}"),
-            "both routes refused, which is acceptable"
-        ),
+    for plan in ["CLOTHOID", "LINE"] {
+        let end_radius = if plan == "LINE" { 0.0 } else { 300.0 };
+        let (model, alignment) = alignment_model_with(plan, end_radius);
+        derive_placement_transform(
+            &model,
+            &metres(),
+            EntityId(9_001),
+            &at(alignment, CurveMeasure::Length(40.0)),
+            &evaluator,
+        )
+        .unwrap_or_else(|error| panic!("a length on the {plan} plan answers: {error}"));
+        refused(&model, alignment, "IFCALIGNMENT");
+    }
+
+    use ifc_model::Codec;
+    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../test/fixtures/synthetic-surfaces/synthetic_ifc4x3_alignment_curves.ifc");
+    let model = ifc_step::StepCodec
+        .read_path(&path)
+        .expect("fixture parses");
+    let gradient = model.ids_of_type("IFCGRADIENTCURVE")[0];
+    refused(&model, gradient, "IFCGRADIENTCURVE");
+}
+
+/// Where IFC does define the parameter, it is honoured as a parameter.
+///
+/// `IfcPolyline` counts one per segment (IFC4.3 ADD2 8.9.3.51). With unit
+/// segments the parameter and the length coincide; with 10 m segments
+/// u = 1.5 is the middle of the second leg, not 1.5 m along the first.
+#[test]
+fn a_polyline_parameter_counts_segments_not_metres() {
+    let evaluator = ReferenceCurveEvaluator::default();
+    let polyline = |points: &[[f64; 2]]| {
+        let mut model = Model::new();
+        let mut refs = Vec::new();
+        for (i, [x, y]) in points.iter().enumerate() {
+            let id = EntityId(i as u64 + 1);
+            let coordinates = Value::List(vec![Value::Real(*x), Value::Real(*y)]);
+            model.insert(id, Entity::new("IFCCARTESIANPOINT", vec![coordinates]));
+            refs.push(Value::Ref(id));
+        }
+        model.insert(
+            EntityId(100),
+            Entity::new("IFCPOLYLINE", vec![Value::List(refs)]),
+        );
+        model
+    };
+    let origin = |model: &Model, measure| {
+        let expression = PointByDistance {
+            entity: EntityId(9_000),
+            distance_along: measure,
+            offset_lateral: None,
+            offset_vertical: None,
+            offset_longitudinal: None,
+            basis_curve: EntityId(100),
+        };
+        derive_placement_transform(model, &metres(), EntityId(9_001), &expression, &evaluator)
+            .expect("inside the polyline")
+            .origin
+    };
+
+    // Unit legs: (0,0) -> (1,0) -> (1,1). Both land at (1, 0.5).
+    let unit = polyline(&[[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]);
+    let by_parameter = origin(&unit, CurveMeasure::Parameter(1.5));
+    let by_length = origin(&unit, CurveMeasure::Length(1.5));
+    for (axis, expected) in [1.0, 0.5, 0.0].into_iter().enumerate() {
+        close(by_parameter[axis], expected, "parameter on unit legs");
+        close(by_length[axis], expected, "length on unit legs");
+    }
+
+    // 10 m legs: (0,0) -> (10,0) -> (10,10). u = 1.5 is (10, 5); 1.5 m is
+    // (1.5, 0).
+    let long = polyline(&[[0.0, 0.0], [10.0, 0.0], [10.0, 10.0]]);
+    let by_parameter = origin(&long, CurveMeasure::Parameter(1.5));
+    let by_length = origin(&long, CurveMeasure::Length(1.5));
+    for (axis, expected) in [10.0, 5.0, 0.0].into_iter().enumerate() {
+        close(by_parameter[axis], expected, "parameter on 10 m legs");
+    }
+    for (axis, expected) in [1.5, 0.0, 0.0].into_iter().enumerate() {
+        close(by_length[axis], expected, "length on 10 m legs");
     }
 }
 

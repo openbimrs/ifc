@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.8.1 (2026-10-04) |
+| Latest release | 0.8.2 (2026-10-04) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -42,25 +42,31 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.8.1 (2026-10-04):
+Latest release, 0.8.2 (2026-10-04):
 
-No public API changes. The reference backend's floor rises and input it
-refused now compiles, as with earlier kernel floors (0.3.1): the next release
-is a patch (0.8.1).
+Backport of the #347 fix to the 0.8 line; 0.9.0 carries it too.
 
-### Changed
+### Fixed
 
-- `compile-reference-backend` requires `axiolid-mesh-compile` 0.3.12 and
-  `axiolid-construct` 0.3.13 (axiolid/kernel#245, #315). An
-  `IfcCurveSegment` over a 2D `IfcPolynomialCurve` (the `CUBIC` transition,
-  #90) lowers to a Bezier trimmed at `TrimSelector::ArcLength`. 0.3.4 read
-  parameter selectors only and refused that trim by name; 0.3.12 resolves it
-  by quadrature, so the segment compiles. A swept disk whose polyline
-  directrix turns a sharp corner without a fillet radius compiles with an
-  exact half-angle mitre, so its volume is the section area times the
-  centreline length. 0.3.9 to 0.3.11 refused that corner, so a downstream
-  build that resolved them fresh refused such pipes. The kernel still
-  refuses three cases by name (axiolid/kernel#248): a sharp corner beside an
-  arc, a closed polyline, and `FilletRadius` equal to `Radius`.
+- `constraint::placement::derive::derive_placement_transform` refuses an
+  `IfcParameterValue` `DistanceAlong` on an `IfcGradientCurve` or
+  `IfcAlignment` basis curve by name (`GeometryError::Unsupported` on the
+  basis curve) and no longer hands it to the injected `CurveEvaluator`
+  (#347). IFC4.3 ADD2 does not define that parameter: a gradient curve takes
+  its `BaseCurve`'s (8.9.3.34.1), a composite accumulates the parametric
+  ranges of its parent curves (8.9.3.20.1), which are angles for a circle
+  (8.9.3.18.1) and `u = s / (A sqrt(pi))` for a clothoid (8.9.3.19.1), and
+  `IfcCurveSegment` says no parametric space is yet defined for its parent
+  curves (8.9.3.28.1). A parameter on an `IfcPolyline` or line-only
+  `IfcIndexedPolyCurve`, where IFC counts one per segment (8.9.3.51), is
+  unchanged.
+- Released 0.3.0 through 0.8.1 passed that parameter through as the
+  evaluator's native parameter. With `axiolid-evaluate` up to 0.3.5 the
+  reference evaluator refused it, so nothing was placed. With
+  `axiolid-evaluate` 0.3.6 (released 2026-10-04), which any of those
+  releases resolves to, it reads the parameter as plan distance (axiolid
+  ADR 0082) and answers: a product placed by an `IfcParameterValue` along an
+  alignment lands at that plan distance, a position IFC does not give it.
+  Upgrade to get the refusal. Lines before 0.8 get no backport.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
