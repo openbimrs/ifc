@@ -3,10 +3,11 @@ name: Native
 # The C ABI's CMake package on macOS and Windows (#41). Linux runs the same
 # check (crates/openbim-ifc-capi/scripts/check-cmake.py) in the gate's
 # `bindings` section on every pull request, so this workflow only adds the
-# two platforms whose linkers and loaders differ: the macOS @rpath trap
-# (axiolid/kernel#113) and Windows DLL lookup.
+# platforms whose linkers and loaders differ: the macOS @rpath trap
+# (axiolid/kernel#113) and Windows DLL lookup, on x64 and on Arm, whose
+# archive the release builds for the NuGet package's win-arm64 (#327).
 #
-# Cost: two jobs, and only where they can find something.
+# Cost: three jobs, and only where they can find something.
 # - pull_request: only when the change touches the C ABI crate, the crates
 #   it links, the lockfile or this file.
 # - push to main: every merge except prose, because a change to any linked
@@ -43,7 +44,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, windows-latest]
+        os: [macos-15, windows-latest, windows-11-arm]
     runs-on: ${{ matrix.os }}
     env:
       MACOSX_DEPLOYMENT_TARGET: "11.0"

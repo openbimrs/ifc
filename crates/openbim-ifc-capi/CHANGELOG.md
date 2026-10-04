@@ -8,6 +8,12 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#327, packaging)
+
+- A prebuilt archive for Windows on Arm (`aarch64-pc-windows-msvc`), the
+  sixth on each release. The OpenBim.Ifc NuGet package takes its native
+  libraries from these archives. The library is unchanged.
+
 ### Added (#318)
 
 - `OPENBIM_IFC_STATUS_CATALOG_NOT_LOADED` (27), so every binding code has

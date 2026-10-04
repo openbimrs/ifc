@@ -59,7 +59,7 @@ cargo add openbim-ifc
 ```
 
 The [install guide](https://openbimrs.github.io/ifc/guide/install) lists the
-JavaScript, Python and C packages too. The library target is named `ifc`:
+JavaScript, Python, C and .NET packages too. The library target is named `ifc`:
 
 ```rust
 use ifc::{Model, StepCodec};

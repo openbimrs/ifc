@@ -89,7 +89,7 @@ library needs.
 
 - **Prebuilt.** Each release attaches
   `openbim-ifc-capi-v<version>-<target>.tar.gz` (`.zip` on Windows) for
-  Linux and macOS (x86_64 and aarch64) and Windows (x86_64, MSVC), plus
+  Linux, macOS and Windows (MSVC), each on x86_64 and aarch64, plus
   `SHA256SUMS`. Unpack one anywhere and pass its directory as
   `CMAKE_PREFIX_PATH`.
 - **Installed from a checkout.** `cmake -S crates/openbim-ifc-capi -B build`,

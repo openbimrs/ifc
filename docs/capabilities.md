@@ -61,6 +61,7 @@ committed figure that moves that often only produces merge conflicts.
 | `openbim-ifc` | <span class="status-implemented">Implemented</span> |  |
 | `openbim-ifc-binding-core` | <span class="status-implemented">Implemented</span> |  |
 | `openbim-ifc-capi` | <span class="status-implemented">Implemented</span> |  |
+| `openbim-ifc-dotnet` | <span class="status-implemented">Implemented</span> |  |
 | `openbim-ifc-py` | <span class="status-implemented">Implemented</span> |  |
 | `openbim-ifc-wasm` | <span class="status-implemented">Implemented</span> |  |
 
@@ -76,7 +77,7 @@ Every concrete `IfcRepresentationItem` subtype in IFC4 ADD2 TC1 and IFC4X3 ADD2 
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:BEGIN -->
 
-0 of 31 crates are scaffolds.
+0 of 32 crates are scaffolds.
 
 <!-- CAPABILITIES:SCAFFOLDCOUNT:END -->
 

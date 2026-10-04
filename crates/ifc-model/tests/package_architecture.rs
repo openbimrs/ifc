@@ -553,6 +553,29 @@ fn bindings_reach_ifc_only_through_the_binding_core() {
     }
 }
 
+/// The .NET package (#327) is C# over the C ABI's shared library: it reaches
+/// IFC at run time through `openbim-ifc-capi`, never through a Rust
+/// dependency. Its crate carries the package's version and tests only.
+const DOTNET: &str = "openbim-ifc-dotnet";
+
+#[test]
+fn the_dotnet_package_reaches_ifc_only_through_the_c_abi() {
+    let package = metadata()
+        .packages
+        .into_iter()
+        .find(|package| package.name.as_str() == DOTNET)
+        .unwrap_or_else(|| panic!("{DOTNET} is missing"));
+    let dependencies: Vec<_> = package
+        .dependencies
+        .iter()
+        .map(|d| d.name.as_str())
+        .collect();
+    assert!(
+        dependencies.is_empty(),
+        "{DOTNET} depends on {dependencies:?}; it binds the C ABI from C# (ADR 0013)"
+    );
+}
+
 #[test]
 fn the_binding_core_depends_on_the_facade_and_no_host() {
     let dependencies = package_dependencies(BINDING_CORE).expect("binding core is a member");

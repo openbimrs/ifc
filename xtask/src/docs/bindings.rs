@@ -1,18 +1,20 @@
-//! The install table and the three bindings' API references.
+//! The install table and the four bindings' API references.
 //!
 //! Each reference is read from the binding's own declaration of its surface:
-//! the `#[wasm_bindgen]` exports, the public Python module, and the
+//! the `#[wasm_bindgen]` exports, the public Python module, the
 //! cbindgen-generated C header (itself staleness-tested by
-//! `crates/openbim-ifc-capi/tests/header.rs`). A new export reaches the docs with no
-//! edit to any page.
+//! `crates/openbim-ifc-capi/tests/header.rs`), and the public C# of the .NET
+//! package. A new export reaches the docs with no edit to any page.
 //!
 //! ## Internal split
 //!
 //! - `js.rs`: the JavaScript/TypeScript surface of `openbim-ifc-wasm`.
 //! - `python.rs`: the `openbim_ifc` Python package, read with Python's `ast`.
 //! - `c.rs`: `crates/openbim-ifc-capi/include/openbim_ifc.h`.
+//! - `dotnet.rs`: `IfcModel` and `Value` of the `OpenBim.Ifc` package.
 
 mod c;
+mod dotnet;
 mod js;
 mod python;
 
@@ -27,11 +29,13 @@ pub(super) fn generate(workspace: &Workspace) -> Result<Vec<Output>, String> {
     let js = js::reference(workspace)?;
     let python = python::reference(workspace)?;
     let c = c::reference(workspace)?;
+    let dotnet = dotnet::reference(workspace)?;
     [
         ("docs/guide/install.md", "INSTALL:TABLE", install),
         ("docs/bindings/javascript.md", "API:JS", js),
         ("docs/bindings/python.md", "API:PYTHON", python),
         ("docs/bindings/c.md", "API:C", c),
+        ("docs/bindings/dotnet.md", "API:DOTNET", dotnet),
     ]
     .into_iter()
     .map(|(page, region, body)| {
@@ -59,6 +63,7 @@ fn install_table(workspace: &Workspace) -> Result<String, String> {
         ("openbim-ifc-wasm", "JavaScript / TypeScript"),
         ("openbim-ifc-py", "Python"),
         ("openbim-ifc-capi", "C / C++"),
+        ("openbim-ifc-dotnet", "C# / .NET"),
     ] {
         let krate = crates
             .iter()
@@ -80,6 +85,10 @@ fn install_table(workspace: &Workspace) -> Result<String, String> {
             Some(r) if r.kind == "PyPI" => (
                 format!("[`{}`]({})", r.package, r.url),
                 format!("`pip install {}`", r.package),
+            ),
+            Some(r) if r.kind == "NuGet" => (
+                format!("[`{}`]({})", r.package, r.url),
+                format!("`dotnet add package {}`", r.package),
             ),
             Some(r) => (
                 format!("[`{}`]({}) (CMake, prebuilt archives)", r.package, r.url),
@@ -139,6 +148,27 @@ fn requirement(workspace: &Workspace, krate: &crate::workspace::Crate) -> Result
         // whose consumer requires CMake 3.21. Rust only builds from source.
         "openbim-ifc-capi" => {
             "a C11 or C++17 compiler and CMake 3.21; Rust to build from source".to_owned()
+        }
+        // The target frameworks the package is built for, as the project
+        // declares them; netstandard2.0 is what .NET Framework hosts load.
+        "openbim-ifc-dotnet" => {
+            let project = read(super::release::NUGET_PROJECT).ok_or_else(|| {
+                format!(
+                    "{}/{} is unreadable",
+                    krate.dir,
+                    super::release::NUGET_PROJECT
+                )
+            })?;
+            let frameworks = project
+                .split("<TargetFrameworks>")
+                .nth(1)
+                .and_then(|rest| rest.split("</TargetFrameworks>").next())
+                .ok_or("the .NET project declares no <TargetFrameworks>")?;
+            frameworks
+                .split(';')
+                .map(|framework| format!("`{}`", framework.trim()))
+                .collect::<Vec<_>>()
+                .join(" or ")
         }
         _ => match &krate.rust_version {
             Some(version) => format!("Rust `{version}`"),

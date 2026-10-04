@@ -36,8 +36,8 @@ features:
     details: ifc-geometry answers what an IFC entity means geometrically and lowers it into the format-neutral Axiolid DAG. Meshing is an opt-in feature with a swappable backend; the default build compiles no kernel at all.
     link: /architecture/axiolid-boundary
     linkText: The Axiolid boundary
-  - title: Rust, JavaScript, Python and C
-    details: One core, published to crates.io, npm and PyPI, with a versioned C ABI. A file read in one language reads the same in the others, down to the difference between $ and *.
+  - title: Rust, JavaScript, Python, C and .NET
+    details: One core, published to crates.io, npm, PyPI and NuGet, with a versioned C ABI. A file read in one language reads the same in the others, down to the difference between $ and *.
     link: /guide/install
     linkText: Install
 ---

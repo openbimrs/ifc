@@ -1,0 +1,20 @@
+<Project>
+  <!-- OpenBim.Ifc for .NET Framework projects (net462 and later, e.g. Revit,
+       Navisworks or Tekla add-ins). NuGet copies the native library from
+       runtimes/<rid>/native/ only when the project names a
+       RuntimeIdentifier; an AnyCPU add-in names none. These items copy the
+       Windows libraries into the output under the same relative paths, where
+       the assembly's loader looks for them next to itself. -->
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == ''">
+    <None Include="$(MSBuildThisFileDirectory)../../runtimes/win-x64/native/openbim_ifc_capi.dll"
+          Condition="Exists('$(MSBuildThisFileDirectory)../../runtimes/win-x64/native/openbim_ifc_capi.dll')"
+          Link="runtimes/win-x64/native/openbim_ifc_capi.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)../../runtimes/win-arm64/native/openbim_ifc_capi.dll"
+          Condition="Exists('$(MSBuildThisFileDirectory)../../runtimes/win-arm64/native/openbim_ifc_capi.dll')"
+          Link="runtimes/win-arm64/native/openbim_ifc_capi.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          Visible="false" />
+  </ItemGroup>
+</Project>

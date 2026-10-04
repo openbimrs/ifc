@@ -429,6 +429,15 @@
       "status": "implemented",
       "version": "0.1.1"
     },
+    "openbim-ifc-dotnet": {
+      "description": "The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned C ABI.",
+      "group": "binding",
+      "registries": [],
+      "released": null,
+      "released_date": null,
+      "status": "implemented",
+      "version": "0.1.0"
+    },
     "openbim-ifc-py": {
       "description": "Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python.",
       "group": "binding",
@@ -462,7 +471,7 @@
   },
   "crates": {
     "by_status": {
-      "implemented": 29,
+      "implemented": 30,
       "partial": 2,
       "scaffold": 0
     },
@@ -522,6 +531,7 @@
         "crates": [
           "openbim-ifc-binding-core",
           "openbim-ifc-capi",
+          "openbim-ifc-dotnet",
           "openbim-ifc-py",
           "openbim-ifc-wasm"
         ],
@@ -529,6 +539,6 @@
         "title": "Language bindings"
       }
     ],
-    "total": 31
+    "total": 32
   }
 }

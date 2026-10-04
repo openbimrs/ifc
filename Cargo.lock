@@ -1179,6 +1179,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "openbim-ifc-dotnet"
+version = "0.1.0"
+
+[[package]]
 name = "openbim-ifc-py"
 version = "0.3.0"
 dependencies = [

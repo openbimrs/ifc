@@ -13,7 +13,7 @@
 //! which this module fills with those lines, dedented, in a fenced block.
 //! A page can therefore only show code a test compiles and runs.
 //!
-//! The lint half: a `rust`/`python`/`js`/`ts`/`c` fence outside a snippet
+//! The lint half: a `rust`/`python`/`js`/`ts`/`c`/`csharp` fence outside a snippet
 //! region fails, so hand-written code cannot creep back. ADRs are exempt
 //! because they are immutable records of their time.
 
@@ -31,6 +31,7 @@ const SOURCES: &[&str] = &[
     "crates/openbim-ifc-wasm/tests/js",
     "crates/openbim-ifc-py/tests/python",
     "crates/openbim-ifc-capi/tests/c",
+    "crates/openbim-ifc-dotnet/dotnet/OpenBim.Ifc.Tests",
 ];
 
 const LINTED: &[&str] = &[
@@ -44,6 +45,8 @@ const LINTED: &[&str] = &[
     "typescript",
     "c",
     "cpp",
+    "csharp",
+    "cs",
 ];
 
 struct Snippet {
@@ -297,6 +300,7 @@ fn language(path: &Path) -> Option<&'static str> {
         "py" => Some("python"),
         "js" | "mjs" => Some("js"),
         "c" => Some("c"),
+        "cs" => Some("csharp"),
         _ => None,
     }
 }

@@ -1,0 +1,8 @@
+<Project>
+  <!-- Build output goes to dotnet/artifacts/ (ignored), never next to the
+       sources: the docs snippet scan walks the test sources. -->
+  <PropertyGroup>
+    <UseArtifactsOutput>true</UseArtifactsOutput>
+    <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
+  </PropertyGroup>
+</Project>
