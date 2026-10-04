@@ -115,6 +115,9 @@ class Authoring(unittest.TestCase):
         # docs:end
         self.assertIsInstance(result, AuthoringResult)
         self.assertEqual(model.type_of(wall), "IFCWALL")
+        # The ids a batch returns are what the entity layer (#332) wraps.
+        self.assertEqual(model[wall].Name, "Wall")
+        self.assertTrue(model[wall].is_a("IfcBuildingElement"))
         self.assertEqual(len(model.attribute_by_name(wall, "GlobalId").value), 22)
         report = model.validate()
         self.assertEqual(report.errors + report.evaluation_errors, 0, report.findings)

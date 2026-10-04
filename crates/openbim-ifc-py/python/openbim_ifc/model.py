@@ -22,11 +22,12 @@ from .domains import (
     SpatialTree,
     Systems,
 )
+from .entity import ModelAccess
 from .records import Header, ParseOptions, UnreachableProduct, ValidationReport
 from .values import Value, from_wire, to_wire
 
 
-class IfcModel:
+class IfcModel(ModelAccess):
     """An IFC model: entities keyed by their ``#id``, in file order.
 
     Failures raise :class:`openbim_ifc.IfcError`, whose ``code`` is one of
@@ -43,6 +44,9 @@ class IfcModel:
     A parsed model decodes each entity the first time it is read: parsing
     checks every record but builds nothing, so opening a large file is fast
     and memory holds the file plus what has been touched.
+
+    ``model[id]``, ``by_id``, ``by_type``, ``iter(model)`` and ``id in model``
+    give :class:`openbim_ifc.Entity` views (:mod:`openbim_ifc.entity`).
     """
 
     __slots__ = ("_native",)

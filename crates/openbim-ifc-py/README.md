@@ -31,6 +31,27 @@ attributes included; `attribute_names(id)` lists them in slot order with
 their `optional` and `derived` flags. `attribute(id, index)` and
 `set_attribute(id, index, value)` address a slot by position.
 
+## Entities, plain values, property sets
+
+A pure-Python layer over those calls reads like IfcOpenShell:
+
+```python
+import openbim_ifc
+from openbim_ifc import Text
+
+model = openbim_ifc.open("model.ifc")
+for wall in model.by_type("IfcWall"):          # subtypes included
+    print(wall.Name, wall.psets["Pset_WallCommon"]["IsExternal"])
+wall.Name = Text("Renamed")                     # set_attribute_by_name
+frame = model.to_dataframe("IfcWall")           # pip install 'openbim-ifc[pandas]'
+```
+
+Reads give plain Python values; a typed wrapper's type name, `*` and `.U.`
+(both `None`) and the text/enum distinction are lost there, and
+`wall.raw("Name")` keeps them. `wall.psets` and `wall.qtos` are read-only
+mappings with type values inherited; write with `wall.set_property(...)`.
+The package is typed (`py.typed`) and checked with `mypy --strict`.
+
 ## Values
 
 Attribute values are frozen dataclasses, one per STEP form: `Null` (`$`),
@@ -62,10 +83,11 @@ validation, ifcXML, the reachability lint and the read-only domain views
 (property sets and quantities, the spatial tree, classification, materials,
 systems, cost, georeferencing; #123), each as frozen dataclasses,
 writing property sets and quantities as one checked transaction
-(`set_properties`), and creating entities as one checked transaction
-(`author` with `AuthorOp`s: entities by type and named attributes, the
-spatial structure, placed, contained and typed products, removal with
-relationships; #330). Geometry is not bound yet.
+(`set_properties`), the Pythonic layer over them (#332), and creating
+entities as one checked transaction (`author` with `AuthorOp`s: entities
+by type and named attributes, the spatial structure, placed, contained and
+typed products, removal with relationships; #330). Geometry is not bound
+yet.
 
 ## Build from source
 
