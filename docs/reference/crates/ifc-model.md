@@ -13,7 +13,7 @@ The IFC entity graph: storage and structural queries, free of domain semantics a
 | Status | <span class="status-implemented">Implemented</span> |
 | Latest release | 0.3.1 (2026-10-02) |
 | Registries | [crates.io `ifc-model`](https://crates.io/crates/ifc-model) |
-| API documentation | [rustdoc](/ifc/api/rustdoc/ifc_model/index.html) · [docs.rs](https://docs.rs/ifc-model) |
+| API documentation | [rustdoc](/api/rustdoc/ifc_model/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-model) |
 | Source | [`crates/ifc-model/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-model) |
 
 ## Overview

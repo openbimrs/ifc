@@ -14,7 +14,7 @@ Distribution systems, ports, and connectivity between elements.
 | Latest release | 0.4.0 (2026-10-03) |
 | Registries | [crates.io `ifc-systems`](https://crates.io/crates/ifc-systems) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `systems` |
-| API documentation | [rustdoc](/ifc/api/rustdoc/ifc_systems/index.html) · [docs.rs](https://docs.rs/ifc-systems) |
+| API documentation | [rustdoc](/api/rustdoc/ifc_systems/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-systems) |
 | Source | [`crates/ifc-systems/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-systems) |
 
 ## Overview

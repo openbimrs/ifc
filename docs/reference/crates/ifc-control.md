@@ -14,7 +14,7 @@ Bounded IFC control semantics: permits, project orders, action requests, and per
 | Latest release | 0.3.1 (2026-10-02) |
 | Registries | [crates.io `ifc-control`](https://crates.io/crates/ifc-control) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `control` |
-| API documentation | [rustdoc](/ifc/api/rustdoc/ifc_control/index.html) · [docs.rs](https://docs.rs/ifc-control) |
+| API documentation | [rustdoc](/api/rustdoc/ifc_control/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-control) |
 | Source | [`crates/ifc-control/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-control) |
 
 ## Overview

@@ -2,7 +2,8 @@
 
 [`openbim-ifc-capi`](/reference/crates/openbim-ifc-capi) is a versioned C
 ABI over the IFC core, usable from C, C++, or anything with a C FFI. It
-ships as a CMake package, `openbim_ifc`, rather than through a registry.
+ships as a CMake package, `openbim_ifc`, with pkg-config files on Linux and
+macOS, rather than through a registry.
 
 The binding exposes the record model over STEP -- parse, read and edit
 attributes, and write -- plus lenient reads, the file header, validation,
@@ -30,7 +31,8 @@ There are three ways to get the package:
   [GitHub release](https://github.com/openbimrs/ifc/releases) attaches
   `openbim-ifc-capi-v<version>-<target>.tar.gz` (`.zip` on Windows) for Linux
   and macOS (x86_64 and aarch64) and Windows (x86_64), with a `SHA256SUMS`
-  file. Each holds the header, both libraries and the CMake config. Unpack it
+  file. Each holds the header, both libraries, the CMake config and, on
+  Linux and macOS, the [pkg-config files](#install-via-pkg-config). Unpack it
   anywhere and pass that directory as `CMAKE_PREFIX_PATH`.
 - **Install from a checkout.** This needs Rust, which CMake drives:
 
@@ -61,6 +63,64 @@ and the gate fails when the committed copy is stale. Without CMake,
 The gate builds a CMake consumer that runs the C smoke test against the
 source tree, the installed package and an unpacked archive, shared and
 static, on Linux; CI repeats it on macOS and Windows.
+
+## Install via pkg-config
+
+For Make, Meson, autotools or a plain compiler call, `cmake --install` and
+the Linux and macOS release archives also lay out two pkg-config files in
+`lib/pkgconfig/`:
+
+| Module | Links | Extra flags |
+| --- | --- | --- |
+| `openbim_ifc` | the shared library, `-lopenbim_ifc_capi` | -- |
+| `openbim_ifc-static` | the static archive, by path | the system libraries Rust's standard library needs |
+
+They are two modules, not one with `Libs.private`, because `lib/` holds
+both libraries under one name: `-lopenbim_ifc_capi` would pick the shared
+one even under `pkg-config --static`. The static module lists the same
+system libraries as the CMake target `openbim_ifc::openbim_ifc_static`
+(`-lgcc_s -lutil -lrt -lpthread -lm -ldl` on Linux, `-lc -lm` on macOS).
+Both files take their paths from their own location (`${pcfiledir}`), so an
+archive works wherever it is unpacked, and carry the crate version.
+
+Point pkg-config at the tree:
+
+```bash
+export PKG_CONFIG_PATH=/opt/openbim-ifc/lib/pkgconfig
+pkg-config --modversion openbim_ifc
+```
+
+With Make:
+
+```make
+CFLAGS += $(shell pkg-config --cflags openbim_ifc)
+LDLIBS += $(shell pkg-config --libs openbim_ifc)
+# Static instead:
+# LDLIBS += $(shell pkg-config --libs openbim_ifc-static)
+```
+
+With Meson:
+
+```meson
+openbim_ifc = dependency('openbim_ifc', version: '>=0.1')
+# or dependency('openbim_ifc-static')
+executable('app', 'app.c', dependencies: openbim_ifc)
+```
+
+pkg-config sets no runtime path. A program linked against the shared
+library finds it through the system's library path, `LD_LIBRARY_PATH` /
+`DYLD_LIBRARY_PATH`, or an rpath you add. On macOS the install name is
+`@rpath/libopenbim_ifc_capi.dylib`, so a program needs an rpath there, for
+example `-Wl,-rpath,$(pkg-config --variable=libdir openbim_ifc)`.
+
+Windows (MSVC) is CMake-only: the install tree and the `.zip` archive carry
+no pkg-config files.
+
+The same check script builds the smoke test, as C11 and C++17, from
+nothing but `pkg-config --cflags --libs` for both modules, against the
+installed tree and the unpacked archive, on Linux in the gate and on macOS
+in CI. With the tree moved away, the shared builds must fail to start and
+the static ones must still run.
 
 ## Read an entity
 

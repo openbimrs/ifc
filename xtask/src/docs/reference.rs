@@ -231,7 +231,12 @@ fn page(krate: &Crate, facts: &Facts, facade_table: Option<&str>) -> Result<Stri
     }
     let mut api = Vec::new();
     if let Some((lib, _)) = &krate.lib {
-        api.push(format!("[rustdoc](/ifc/api/rustdoc/{lib}/index.html)"));
+        // Base-relative (VitePress prepends `base`) and a full page load: rustdoc
+        // is copied into the site after the build, so the client router has no
+        // route for it.
+        api.push(format!(
+            "[rustdoc](/api/rustdoc/{lib}/index.html){{target=\"_self\"}}"
+        ));
     }
     if krate.publish && facts.release.is_some() {
         api.push(format!("[docs.rs](https://docs.rs/{})", krate.name));

@@ -14,7 +14,7 @@ Structural analysis model: members, connections, actions, reactions, loads.
 | Latest release | 0.4.0 (2026-10-02) |
 | Registries | [crates.io `ifc-structural`](https://crates.io/crates/ifc-structural) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `structural` |
-| API documentation | [rustdoc](/ifc/api/rustdoc/ifc_structural/index.html) · [docs.rs](https://docs.rs/ifc-structural) |
+| API documentation | [rustdoc](/api/rustdoc/ifc_structural/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-structural) |
 | Source | [`crates/ifc-structural/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-structural) |
 
 ## Overview

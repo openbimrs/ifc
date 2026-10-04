@@ -9,9 +9,9 @@ The conventions follow Axiolid's C ABI (its ADR 0040), so a host can load
 both the same way.
 
 It is not distributed through a registry. Use it from CMake (see
-[CMake](#cmake)), either from a prebuilt archive attached to each
-`openbim-ifc-capi-v*` GitHub release or from a checkout, which builds it
-with cargo.
+[CMake](#cmake)) or pkg-config (see [pkg-config](#pkg-config)), either from
+a prebuilt archive attached to each `openbim-ifc-capi-v*` GitHub release or
+from a checkout, which builds it with cargo.
 
 - C binding guide and API: [openbimrs.github.io/ifc/bindings/c](https://openbimrs.github.io/ifc/bindings/c)
 - Reference page: [openbimrs.github.io/ifc](https://openbimrs.github.io/ifc/reference/crates/openbim-ifc-capi)
@@ -116,8 +116,16 @@ the DLL beside the executable on Windows). Windows needs MSVC.
 
 `scripts/check-cmake.py` builds a consumer
 (`tests/cmake-consumer/`) running the C smoke test against the source tree,
-the installed package and the unpacked archive, shared and static. The gate
-runs it on Linux, the `Native` workflow on macOS and Windows.
+the installed package and the unpacked archive, shared and static, then
+the same through pkg-config. The gate runs it on Linux, the `Native`
+workflow on macOS and Windows.
+
+## pkg-config
+
+Linux and macOS installs and archives also carry `openbim_ifc.pc` (shared)
+and `openbim_ifc-static.pc` (static, with the CMake static target's system
+libraries) in `lib/pkgconfig/`, relocatable via `${pcfiledir}`.
+Windows is CMake-only. See [the C guide](https://openbimrs.github.io/ifc/bindings/c#install-via-pkg-config).
 
 ## Build and test
 
