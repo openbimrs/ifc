@@ -835,7 +835,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-geometry"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "axiolid-construct",
  "axiolid-contracts",
@@ -999,7 +999,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-template-catalog"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "bincode",
  "ifc-schema",
@@ -1131,7 +1131,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "openbim-ifc"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "ifc-alignment",
  "ifc-approval",
@@ -1170,7 +1170,7 @@ dependencies = [
 
 [[package]]
 name = "openbim-ifc-capi"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "cbindgen",
  "openbim-ifc-binding-core",
@@ -1184,7 +1184,7 @@ version = "0.1.0"
 
 [[package]]
 name = "openbim-ifc-py"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "openbim-ifc-binding-core",
  "pyo3",
@@ -1194,7 +1194,7 @@ dependencies = [
 
 [[package]]
 name = "openbim-ifc-wasm"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "js-sys",
  "openbim-ifc-binding-core",

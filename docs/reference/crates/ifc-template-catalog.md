@@ -11,7 +11,7 @@ Versioned IFC PSD/QTO catalog definitions and correction overlays
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.1 (2026-10-02) |
+| Latest release | 0.4.0 (2026-10-04) |
 | Registries | [crates.io `ifc-template-catalog`](https://crates.io/crates/ifc-template-catalog) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `property-catalog`, `property-catalog-runtime` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_template_catalog/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-template-catalog) |
@@ -40,15 +40,46 @@ and quantity instances remain in `ifc-properties`.
 
 ## Changes
 
-Latest release, 0.3.1 (2026-10-02):
+Latest release, 0.4.0 (2026-10-04):
 
-### Security
+### Changed (#317)
 
-- With the `xml` feature, require `quick-xml` 0.42 (was 0.37), which fixes
-  RUSTSEC-2026-0194 (quadratic duplicate-attribute check on one start tag)
-  and RUSTSEC-2026-0195 (unbounded namespace-declaration allocation in
-  `NsReader`); both are denial of service on untrusted input (#267). PSD and
-  QTO import reads the same values as before: references are resolved, and
-  literal tabs and line breaks in attributes and text are kept.
+- The embedded snapshots are one container, `data/catalog.bin` (snapshot
+  format 3), instead of three bincode files: 1,423,604 bytes instead of
+  3,648,573 (547,657 instead of 966,507 under `gzip -9`). Strings used more
+  than once are stored once in a table, strings used once stay inline, and
+  each distinct property, quantity and set record is stored once across
+  editions; each edition keeps its manifest, source digest and
+  per-template provenance. Lossless: every edition decodes, in the official
+  and the corrected profile, to exactly the catalogs format 2 did, which a
+  test asserted against the old files before they were removed; content
+  fingerprints taken from them stay pinned in `tests/snapshot.rs`.
+- The first lookup of an edition decodes that edition only.
+- The generator (`ifc-template-catalog-generate`) writes one edition into
+  the container and keeps the others; the hidden `generation` module and
+  the format-2 codec are gone.
+
+### Added (#317, #318)
+
+- Module `snapshot`: `encode` (a container or a per-edition file,
+  deterministic), `decode_edition`, `decode_all`, `editions`, `file_name`,
+  the pins `CONTAINER_SHA256` and `pinned_sha256`, `EDITIONS`,
+  `FORMAT_VERSION` and `EncodeError`. `ArchiveError` is public there and
+  gains `MissingEdition`.
+- Feature `runtime`, module `runtime`: `install` an edition from its
+  per-edition file or the container, checked against the pinned SHA-256
+  (`RuntimeCatalogError::DigestMismatch` otherwise), then `load_catalog`
+  in the official or corrected profile, `is_installed` and
+  `decode_verified`; an edition not installed is
+  `RuntimeCatalogError::NotInstalled`. Builds for wasm32; `embedded` stays
+  the default.
+- Example `export_snapshots` writes the per-edition files and checks each
+  pin; the npm package ships them.
+
+### Semver
+
+- A new public module, feature and error variant, and a changed data
+  layout under `data/`: a minor release (0.4.0). The API callers used
+  (`embedded::*`, `Catalog`, the definitions) is unchanged.
 
 Full history: [`crates/ifc-template-catalog/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-template-catalog/CHANGELOG.md)

@@ -11,7 +11,7 @@ Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.0 (2026-10-03) |
+| Latest release | 0.3.1 (2026-10-04) |
 | Registries | [PyPI `openbim-ifc`](https://pypi.org/project/openbim-ifc/) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_py/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-py/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-py) |
@@ -40,28 +40,14 @@ This crate adds calling-convention glue only. IFC behaviour belongs in
 
 ## Changes
 
-Latest release, 0.3.0 (2026-10-03):
+Latest release, 0.3.1 (2026-10-04):
 
-### Added (#123, property sets: write side)
+### Added (#326, attributes by name)
 
-- `IfcModel.set_properties(edits)` over frozen `PropertyEdit`s
-  (`PropertyEdit.removal(...)` removes), returning a
-  `PropertyEditResult`; `set_property(object, set, name, value,
-  set_type=None)` and `remove_property(object, set, name)`. Error codes
-  `template-violation` and `missing-property`. The wheel carries the
-  PSD/QTO catalog.
-- Additive: a patch release.
-
-### Added (#123, domain views: read side)
-
-- `IfcModel.property_sets(id)`, `resolve_unit(measure_type, unit=None)`,
-  `spatial_tree()`, `classifications(id)`, `material(id)`, `systems()`,
-  `cost()` and `georeferencing()`, returning frozen dataclasses from the
-  new `openbim_ifc.domains` module (`PropertySet`, `Property`,
-  `SpatialTree`, `Classification`, `MaterialAssignment`, `Systems`,
-  `Cost`, `MapConversion`, ...), all exported from `openbim_ifc`.
-- Error codes `invalid-model`, `missing-reference`, `budget-exceeded`,
-  `unsupported` and `wrong-entity-type`.
-- Additive: a patch release.
+- `IfcModel.attribute_names(id)` (frozen `AttributeInfo` records in slot
+  order), `attribute_by_name(id, name)` and `set_attribute_by_name(id,
+  name, value)`, resolved against the release the header declares; names
+  match case-insensitively. Error codes `unknown-attribute` and
+  `derived-attribute`. Additive: a patch release.
 
 Full history: [`crates/openbim-ifc-py/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-py/CHANGELOG.md)

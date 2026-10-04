@@ -11,8 +11,8 @@ Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP file
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.1.1 (2026-10-03) |
-| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.1) |
+| Latest release | 0.1.2 (2026-10-04) |
+| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.2) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_capi/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-capi/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-capi) |
 
@@ -65,29 +65,42 @@ than altering a `v0_1_` one.
 
 ## Changes
 
-Latest release, 0.1.1 (2026-10-03):
+Latest release, 0.1.2 (2026-10-04):
 
-### Added (#123, property sets: write side)
+### Added (#326, attributes by name)
 
-- `openbim_ifc_v0_1_model_set_properties` (a batch as one value tape,
-  one id per edit back), `_model_set_property` and
-  `_model_remove_property`.
-- `OPENBIM_IFC_STATUS_TEMPLATE_VIOLATION` (25) and
-  `_MISSING_PROPERTY` (26).
-- The ABI version is 0.1.3: every export above is new, no `v0_1` symbol
-  changed. Additive, so a patch release.
+- `openbim_ifc_v0_1_entity_attribute_names` (a tape `LIST` of
+  `AttributeInfo` records), `_entity_attribute_by_name` and
+  `_entity_set_attribute_by_name`, resolved against the release the header
+  declares; names are UTF-8, matched case-insensitively.
+- `OPENBIM_IFC_STATUS_UNKNOWN_ATTRIBUTE` (28) and `_DERIVED_ATTRIBUTE`
+  (29).
+- The ABI version is 0.1.5: every export above is new, no `v0_1` symbol
+  changed. Additive, a patch release.
 
-### Added (#123, domain views: read side)
+### Added (#327, packaging)
 
-- `openbim_ifc_v0_1_model_property_sets`, `_model_resolve_unit`,
-  `_model_spatial_tree`, `_model_classifications`, `_model_material`,
-  `_model_systems`, `_model_cost` and `_model_georeferencing`: each domain
-  record as a value tape, a `LIST` of its fields in the shared core's
-  order; no Rust allocation crosses the ABI.
-- `OPENBIM_IFC_STATUS_INVALID_MODEL` (19), `_MISSING_REFERENCE` (21),
-  `_BUDGET_EXCEEDED` (22), `_UNSUPPORTED` (23) and `_WRONG_ENTITY_TYPE`
-  (24).
-- The ABI version is 0.1.2: every export above is new, no `v0_1` symbol
-  changed. Additive, so a patch release.
+- A prebuilt archive for Windows on Arm (`aarch64-pc-windows-msvc`), the
+  sixth on each release. The OpenBim.Ifc NuGet package takes its native
+  libraries from these archives. The library is unchanged.
+
+### Added (#318)
+
+- `OPENBIM_IFC_STATUS_CATALOG_NOT_LOADED` (27), so every binding code has
+  a status. This library embeds the catalog and never returns it. The ABI
+  version is 0.1.4; no `v0_1` symbol changed. Additive, a patch release.
+
+### Added (#325, pkg-config)
+
+- `cmake --install` and the Linux and macOS release archives lay out
+  `lib/pkgconfig/openbim_ifc.pc` (shared library) and
+  `openbim_ifc-static.pc` (static archive plus the system libraries Rust's
+  standard library needs, as the CMake static target lists them). Both
+  resolve their paths from `${pcfiledir}`, so an unpacked archive works
+  anywhere, and carry the crate version. Windows (MSVC) stays CMake-only.
+- `scripts/check-cmake.py` builds and runs the C smoke test with
+  `pkg-config --cflags --libs` for both modules, against the installed
+  tree and the unpacked archive, on Linux and macOS. Additive, a patch
+  release.
 
 Full history: [`crates/openbim-ifc-capi/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-capi/CHANGELOG.md)

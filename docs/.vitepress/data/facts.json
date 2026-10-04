@@ -130,10 +130,10 @@
           "url": "https://crates.io/crates/ifc-geometry"
         }
       ],
-      "released": "0.8.0",
-      "released_date": "2026-10-03",
+      "released": "0.8.1",
+      "released_date": "2026-10-04",
       "status": "partial",
-      "version": "0.8.0"
+      "version": "0.8.1"
     },
     "ifc-georef": {
       "description": "Georeferencing: map conversion, coordinate reference systems, site placement.",
@@ -355,10 +355,10 @@
           "url": "https://crates.io/crates/ifc-template-catalog"
         }
       ],
-      "released": "0.3.1",
-      "released_date": "2026-10-02",
+      "released": "0.4.0",
+      "released_date": "2026-10-04",
       "status": "implemented",
-      "version": "0.3.1"
+      "version": "0.4.0"
     },
     "ifc-validate": {
       "description": "Schema conformance: WHERE rules, cardinality, GUID and reference integrity.",
@@ -400,10 +400,10 @@
           "url": "https://crates.io/crates/openbim-ifc"
         }
       ],
-      "released": "0.13.0",
-      "released_date": "2026-10-03",
+      "released": "0.14.0",
+      "released_date": "2026-10-04",
       "status": "implemented",
-      "version": "0.13.0"
+      "version": "0.14.0"
     },
     "openbim-ifc-binding-core": {
       "description": "Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python).",
@@ -421,20 +421,26 @@
         {
           "package": "openbim_ifc",
           "registry": "GitHub release",
-          "url": "https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.1"
+          "url": "https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.2"
         }
       ],
-      "released": "0.1.1",
-      "released_date": "2026-10-03",
+      "released": "0.1.2",
+      "released_date": "2026-10-04",
       "status": "implemented",
-      "version": "0.1.1"
+      "version": "0.1.2"
     },
     "openbim-ifc-dotnet": {
       "description": "The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned C ABI.",
       "group": "binding",
-      "registries": [],
-      "released": null,
-      "released_date": null,
+      "registries": [
+        {
+          "package": "OpenBim.Ifc",
+          "registry": "NuGet",
+          "url": "https://www.nuget.org/packages/OpenBim.Ifc"
+        }
+      ],
+      "released": "0.1.0",
+      "released_date": "2026-10-04",
       "status": "implemented",
       "version": "0.1.0"
     },
@@ -448,10 +454,10 @@
           "url": "https://pypi.org/project/openbim-ifc/"
         }
       ],
-      "released": "0.3.0",
-      "released_date": "2026-10-03",
+      "released": "0.3.1",
+      "released_date": "2026-10-04",
       "status": "implemented",
-      "version": "0.3.0"
+      "version": "0.3.1"
     },
     "openbim-ifc-wasm": {
       "description": "WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript.",
@@ -463,10 +469,10 @@
           "url": "https://www.npmjs.com/package/@openbim/ifc"
         }
       ],
-      "released": "0.3.0",
-      "released_date": "2026-10-03",
+      "released": "0.4.0",
+      "released_date": "2026-10-04",
       "status": "implemented",
-      "version": "0.3.0"
+      "version": "0.4.0"
     }
   },
   "crates": {

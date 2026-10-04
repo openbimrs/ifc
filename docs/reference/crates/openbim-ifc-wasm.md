@@ -11,7 +11,7 @@ WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from J
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.0 (2026-10-03) |
+| Latest release | 0.4.0 (2026-10-04) |
 | Registries | [npm `@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_wasm/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-wasm/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-wasm) |
@@ -63,60 +63,41 @@ suites here cover only the JS conversion itself.
 
 ## Changes
 
-Latest release, 0.3.0 (2026-10-03):
+Latest release, 0.4.0 (2026-10-04):
 
-### Added (#123, property sets: write side)
+### Added (#326, attributes by name)
 
-- `IfcModel.setProperties(edits)`, `setProperty(object, set, name, value,
-  setType?)` and `removeProperty(object, set, name)`, with the TypeScript
-  types `PropertyEdit` and `PropertyEditResult`; error codes
-  `template-violation` and `missing-property`.
-- Default features `properties-write` and `property-catalog`. The default
-  module grows from 2,343,181 to 6,282,871 bytes after `wasm-bindgen`
-  (796,234 to 1,855,125 under `gzip -9`): the writer about 205 KB, the
-  catalog 3.7 MB. A build without the catalog refuses a write to a
-  `Pset_`/`Qto_` set with `feature-disabled`.
-- Additive: a patch release.
+- `IfcModel.attributeNames(id)` (`AttributeInfo[]` in slot order),
+  `attributeByName(id, name)` and `setAttributeByName(id, name, value)`,
+  resolved against the release the header declares; names match
+  case-insensitively. `IfcErrorCode` gains `unknown-attribute` and
+  `derived-attribute`. Additive; this release is breaking for #318
+  anyway.
 
-### Changed (#306)
+### Changed (breaking, #318: the catalog is loaded lazily)
 
-- A build that names fewer releases now carries only their schema
-  tables whichever capabilities and domains it enables. IFC4 with every
-  capability and domain is 1,750,572 bytes after `wasm-bindgen` (was
-  2,342,546, the size of the five-release default); IFC4 with validation
-  929,080 (was 1,521,685), with property sets 926,986 (was 1,519,870).
-  The default package is unchanged in content: 2,343,181 bytes (+635),
-  796,234 under `gzip -9` (-611), 516,930 under brotli (-1,541).
-
-### Added (#303)
-
-- `scripts/bench-opt-level.sh` and `tools/bench-parse.mjs`: build the
-  module at `opt-level` 3, `"s"` and `"z"` and time `IfcModel.parse` in
-  Node, interleaved, with median and interquartile range. `"z"` cut the
-  brotli download by 14.5% but slowed parsing by 85-112%, so the release
-  profile stays at 3; the JavaScript guide records the run.
-
-### Added (#123, domain views: read side)
-
-- `model.propertySets(id)`, `model.resolveUnit(measureType, unit?)`,
-  `model.spatialTree()`, `model.classifications(id)`, `model.material(id)`,
-  `model.systems()`, `model.cost()` and `model.georeferencing()`: snapshot
-  objects keyed by `bigint` ids, IFC values in the tagged encoding.
-- TypeScript interfaces for every record (`PropertySet`, `Property`,
-  `SpatialTree`, `Classification`, `MaterialAssignment`, `Systems`, `Cost`,
-  `MapConversion`, ...); `IfcErrorCode` gains `invalid-model`,
-  `missing-reference`, `budget-exceeded`, `unsupported` and
-  `wrong-entity-type`.
-- Default features `properties`, `spatial`, `classification`, `material`,
-  `systems`, `cost` and `georef`: the npm package carries every capability.
-  A browser build can leave each out; its methods then throw
-  `feature-disabled`. Measured after `wasm-bindgen` over a build with every
-  release and capability (1,894,584 bytes): properties +155,575, spatial
-  +15,512, classification +57,311, material +83,494, systems +56,078, cost
-  +36,800, georef +210,702 (properties included); all seven 2,340,188
-  bytes (+445,604; +142,672 under `gzip -9`). An IFC4-only build grows
-  from 759,820 to 1,517,512 bytes with properties, because the property
-  resolver links every release's schema table.
-- Additive: a patch release.
+- The module no longer embeds the PSD/QTO catalog: default feature
+  `property-catalog-runtime` replaces `property-catalog`. The default
+  module is 2,648,193 bytes after `wasm-bindgen` (894,392 under
+  `gzip -9`), was 6,282,871 (1,855,125).
+- The package ships the catalog as `catalog/ifc2x3-tc1.bin` (325,739
+  bytes), `catalog/ifc4-add2-tc1.bin` (1,015,315) and
+  `catalog/ifc4x3-add2.bin` (1,086,526), with the loader `catalog.mjs`.
+- `await IfcModel.loadCatalog(release?, { bytes?, baseUrl? })` loads one
+  release's edition (all three without a release): Node reads it from the
+  package, a browser or bundle fetches it relative to the module. Each is
+  checked against its pinned SHA-256 and kept for the module instance.
+  `IfcModel.catalogFile`, `catalogLoaded` and `loadCatalogBytes` are the
+  synchronous parts.
+- Until a release's catalog is loaded, a write to a `Pset_`/`Qto_` set
+  throws the new code `catalog-not-loaded`, never unchecked. A build with
+  `property-catalog` embeds the catalog (1.4 MB) and `loadCatalog` is a
+  no-op.
+- A write to a `Pset_`/`Qto_` set that 0.3.0 checked without a load now
+  needs `loadCatalog` first: a breaking change, a minor release under 0.x
+  (0.4.0).
+- TypeScript: `IfcModel.loadCatalog` (a namespace merged with the class),
+  `CatalogLoadOptions`; `IfcErrorCode` gains `template-violation`,
+  `missing-property` and `catalog-not-loaded`.
 
 Full history: [`crates/openbim-ifc-wasm/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-wasm/CHANGELOG.md)
