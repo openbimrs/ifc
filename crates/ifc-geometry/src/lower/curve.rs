@@ -3,13 +3,12 @@
 //! # Scope
 //!
 //! Covers `IfcPolyline`, `IfcLine`, `IfcCircle`, `IfcTrimmedCurve`,
-//! `IfcCompositeCurve`, and the explicit-knot
-//! `IfcBSplineCurveWithKnots` / `IfcRationalBSplineCurveWithKnots`
-//! subtypes, plus the IFC4X3 alignment curves: `IfcCurveSegment`
-//! (`segment.rs`, spiral laws in `spiral.rs`) and `IfcGradientCurve`
-//! (`gradient.rs`). Convention-only `IfcBSplineCurve` and other families
-//! report a typed `Unsupported` naming the entity, so a gap is a diagnostic
-//! rather than a wrong shape.
+//! `IfcCompositeCurve`, the explicit-knot `IfcBSplineCurveWithKnots` /
+//! `IfcRationalBSplineCurveWithKnots`, and the IFC4X3 curves:
+//! `IfcCurveSegment` (`segment.rs`, spiral laws in `spiral.rs`),
+//! `IfcGradientCurve` (`gradient.rs`) and `IfcOffsetCurveByDistances`
+//! (`lower::station`). Other families report a typed `Unsupported` naming
+//! the entity, so a gap is a diagnostic rather than a wrong shape.
 //!
 //! # Trim parameters are not all lengths
 //!
@@ -47,6 +46,7 @@ use crate::curve::polyline::{IndexedPolyCurve, PolySegment, Polyline};
 use crate::curve::trimmed::{TrimmedCurve, TrimmingPreference};
 use crate::error::GeometryResult;
 use crate::lower::session::LoweringSession;
+use crate::lower::station::offset::offset_curve_by_distances;
 use crate::lower::surface::lower_surface_node;
 use crate::resource::direction::resolve_unit;
 use crate::resource::placement::axis_placement_transform;
@@ -172,14 +172,14 @@ fn build(
         "IFCCURVESEGMENT" => segment::lower_segment(session, id, frame),
         "IFCGRADIENTCURVE" => gradient::gradient_curve(session, id, frame),
         "IFCSEGMENTEDREFERENCECURVE" => gradient::segmented_reference_curve(session, id),
+        "IFCOFFSETCURVEBYDISTANCES" => offset_curve_by_distances(session, id, frame),
         "IFCPOLYNOMIALCURVE" => {
             Err(session.unsupported(id, &type_name, segment::STANDALONE_POLYNOMIAL))
         }
         other if spiral::is_spiral(other) => {
             Err(session.unsupported(id, other, spiral::standalone_reason(other)))
         }
-        // `IfcOffsetCurveByDistances` and any other planned IFC4X3 curve the
-        // subtype table now routes here keep the dispatch ledger's reason.
+        // Any planned IFC4X3 curve routed here keeps the ledger's reason.
         other => Err(session.unsupported(
             id,
             other,

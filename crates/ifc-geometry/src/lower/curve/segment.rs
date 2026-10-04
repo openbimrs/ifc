@@ -64,8 +64,9 @@ pub(crate) const PARAMETER_MEASURE: &str =
 
 /// Why an `IfcAxis2PlacementLinear` placement is refused.
 pub(crate) const LINEAR_PLACEMENT: &str =
-    "an IfcAxis2PlacementLinear placement stands at a distance along a basis curve; the neutral \
-     model has no distance-along-curve point relation to anchor it (#307)";
+    "an IfcAxis2PlacementLinear placement stands at a station along a basis curve; the station \
+     itself lowers (#307), but the neutral model places a curve only by a resolved transform \
+     and has no curve placed in a station's frame (#311)";
 
 /// Why an `IfcPolynomialCurve` met on its own is refused.
 pub(crate) const STANDALONE_POLYNOMIAL: &str =

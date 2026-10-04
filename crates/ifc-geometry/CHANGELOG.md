@@ -12,6 +12,78 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+Input this crate refused now lowers exactly onto the station relations of
+axiolid-model 0.3.5 (ADR 0082). Behaviour changes and API is added, so the
+next release is a minor one (0.9.0).
+
+### Added
+
+- IFC4X3 stations (#307), stored exactly, never evaluated:
+  - `IfcPointByDistanceExpression` lowers to `GeometryNode::CurveStation`.
+  - `IfcAxis2PlacementLinear` lowers to `GeometryNode::OrientedCurveStation`.
+    `Axis` and `RefDirection` pass through as components in the curve's
+    (tangent, left, up) frame, which is how IFC4.3 ADD2 8.9.3.4 reads them.
+  - `IfcOffsetCurveByDistances` lowers to `CurveRelation::OffsetByStations`.
+    Offsets that stop short of the ends continue unchanged to them, as
+    8.9.3.42.3 states, through added stations when the basis states its
+    length.
+  - `IfcSectionedSolidHorizontal` lowers to
+    `SolidOperation::SectionsAtStations`, and `IfcSectionedSurface` to
+    `SurfaceRelation::OpenSectionsAtStations`, with the
+    `IfcOpenCrossProfileDef.Tags` as section tags (matched as sets, an
+    open section forwards or reversed).
+  - New entry points: `lower::lower_point_by_distance_node` and
+    `lower::lower_axis2_placement_linear_node` (module `lower::station`).
+  - The five families move from `dispatch::PLANNED` to `IMPLEMENTED`, with
+    `PARTIAL` rows for their refusals. `BodyKind::classify` gives
+    `IfcSectionedSolidHorizontal` `SectionedSpine` and the two station items
+    `Point`.
+- The conventions match IFC4.3 ADD2 exactly, so nothing is converted:
+  - `DistanceAlong` is plan distance on an `IfcGradientCurve` (its
+    parameter is the BaseCurve's, 8.9.3.34.1) and arc length elsewhere.
+  - `OffsetLateral` is positive to the left.
+  - `OffsetVertical` is perpendicular to the tangent in its vertical plane
+    (`StationFrame::Section`).
+  - `OffsetLongitudinal` runs along the tangent.
+- Section profile axes follow the documented upstream fix, not the printed
+  ADD2 sentences: profile Y = `Axis`, normal = `RefDirection`, profile
+  X = `Axis x RefDirection` (the left lateral by default). The sources are
+  buildingSMART/IFC4.x-IF#147, IFC4.x-development#1010 and #1151, PRs
+  #1162 and #1163, and `IfcOpenCrossProfileDef` 8.15.3.15.1. 8.8.3.35.1
+  says profile X is `RefDirection`, and 8.8.3.37.1 says X is
+  `Directrix x Axis`, to the right. #344 tracks the upstream change.
+
+### Refused by name
+
+- `DistanceAlong` as `IfcParameterValue`, and a distance before the start
+  or beyond a stated length.
+- A station on a tangent discontinuity of its basis, and a run of
+  sections or offsets across one. IFC lets the previous segment's tangent
+  govern (8.9.3.48.3) and mitres sections (8.8.3.35.1). The neutral
+  evaluators read the next segment's tangent and do not mitre. Seams are
+  read from stored data: polyline corners, and elevation-law breaks where
+  the grade jumps. A basis whose seams cannot be located is refused: a
+  curve relation, or a B-spline with a knot of multiplicity at least its
+  degree.
+- A frame that scales, mirrors or tilts the vertical. WR2 (parallel
+  axes). 2D axis directions.
+- On an offset curve: offsets short of an unbounded or unstated end, a
+  non-zero `OffsetLongitudinal`, and a member on another basis.
+- On the sections: the WHERE rules `NoLongitudinalOffsets`, `NoOffsets`,
+  `CorrespondingSectionPositions` and `SectionsSameType`, positions off
+  the directrix or out of order, mixed tagging, and branching breaklines.
+
+### Changed
+
+- The workspace requires `axiolid-model` 0.3.5. With
+  `compile-reference-backend` it requires `axiolid-mesh-compile` 0.3.13 and
+  `axiolid-construct` 0.3.14, which resolve and mesh the station relations.
+  Dev-only: `axiolid-evaluate` 0.3.5 and `axiolid-reference` 0.3.6.
+- An `IfcCurveSegment` placed by an `IfcAxis2PlacementLinear` is still
+  refused. Its station lowers now, but no neutral relation places a curve
+  in a station's frame (#311). `IFCSEGMENTEDREFERENCECURVE` stays in
+  `PLANNED` (#311).
+
 ## [0.8.1] - 2026-10-04
 
 No public API changes. The reference backend's floor rises and input it

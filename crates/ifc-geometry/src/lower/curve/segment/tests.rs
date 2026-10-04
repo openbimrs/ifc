@@ -305,7 +305,7 @@ fn unsupported_segment_forms_are_typed_refusals() {
     let segment = b.segment(linear, length(0.0), length(1.0), line);
     let error = lower(&b.model, segment).expect_err("linear placement");
     assert!(error.is_unsupported(), "{error}");
-    assert!(error.to_string().contains("#307"), "{error}");
+    assert!(error.to_string().contains("#311"), "{error}");
 
     // An untyped measure is malformed, not a gap.
     let mut b = Builder::new();

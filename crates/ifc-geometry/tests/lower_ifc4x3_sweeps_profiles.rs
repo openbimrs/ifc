@@ -4,14 +4,14 @@
 //! are hand-computed here. `IfcDirectrixDerivedReferenceSweptAreaSolid`
 //! lowers as its supertype when the directrix defines only a tangent and is
 //! refused by name when it defines a tangent plane. `IfcSectionedSolidHorizontal`
-//! and `IfcSectionedSurface` are refused by name.
+//! and `IfcSectionedSurface` lower onto stations; `tests/stations.rs` covers
+//! them.
 
 #![cfg(feature = "lowering")]
 use axiolid_curve::Curve2;
 use axiolid_model::{GeometryNode, SolidOperation};
 use ifc_geometry::lower::{
-    lower_open_profile_node, lower_profile, lower_representation_item, lower_surface_node,
-    LoweringSession,
+    lower_open_profile_node, lower_profile, lower_representation_item, LoweringSession,
 };
 use ifc_geometry::transform::Transform;
 use ifc_geometry::{GeometryError, UnitScale};
@@ -404,89 +404,4 @@ fn a_directrix_derived_sweep_on_a_surface_curve_is_refused_by_name() {
     put(&mut model, 44, "IFCPOLYLINE", vec![refs(&[42, 43])]);
     put(&mut model, 20, "IFCPCURVE", vec![r(41), r(44)]);
     assert_tangent_plane_refusal(lower_item(&model, 1));
-}
-
-/// A sectioned sweep at id 1 of `kind`, over two linear stations.
-fn sectioned(kind: &str) -> Model {
-    let mut model = sweep("IFCFIXEDREFERENCESWEPTAREASOLID");
-    let length = |v: f64| Value::Typed {
-        type_name: "IFCLENGTHMEASURE".into(),
-        value: Box::new(n(v)),
-    };
-    for (expression, placement, along) in [(50, 51, 0.0), (52, 53, 2.0)] {
-        put(
-            &mut model,
-            expression,
-            "IFCPOINTBYDISTANCEEXPRESSION",
-            vec![length(along), Value::Null, Value::Null, Value::Null, r(20)],
-        );
-        put(
-            &mut model,
-            placement,
-            "IFCAXIS2PLACEMENTLINEAR",
-            vec![r(expression), Value::Null, Value::Null],
-        );
-    }
-    let attributes = if kind == "IFCSECTIONEDSURFACE" {
-        put(
-            &mut model,
-            10,
-            "IFCOPENCROSSPROFILEDEF",
-            vec![
-                Value::Enum("CURVE".into()),
-                Value::Null,
-                Value::Bool(true),
-                reals(&[3.5]),
-                reals(&[-0.025]),
-                Value::Null,
-                Value::Null,
-            ],
-        );
-        vec![r(20), refs(&[51, 53]), refs(&[10, 10])]
-    } else {
-        vec![r(20), refs(&[2, 2]), refs(&[51, 53])]
-    };
-    put(&mut model, 1, kind, attributes);
-    model
-}
-
-/// `IfcSectionedSolidHorizontal` is refused with the missing primitive named.
-#[test]
-fn a_sectioned_solid_horizontal_is_refused_by_name() {
-    let model = sectioned("IFCSECTIONEDSOLIDHORIZONTAL");
-    let error = lower_item(&model, 1).expect_err("no exact neutral carrier");
-    assert!(error.is_unsupported(), "{error}");
-    assert_eq!(error.entity(), Some(EntityId(1)));
-    let text = error.to_string();
-    assert!(
-        text.contains("IFCSECTIONEDSOLIDHORIZONTAL") && text.contains("SectionedSpine"),
-        "{text}"
-    );
-}
-
-/// `IfcSectionedSurface` is refused by name through both entry points.
-///
-/// It is an `IfcSurface`, so a caller may hold it as a representation item
-/// or as a surface reference; both must give the same named refusal.
-#[test]
-fn a_sectioned_surface_is_refused_by_name() {
-    let model = sectioned("IFCSECTIONEDSURFACE");
-    let units = UnitScale::default();
-    let as_item = lower_item(&model, 1).expect_err("no sectioned-surface relation");
-    let mut session = LoweringSession::new(&model, &units);
-    let as_surface = lower_surface_node(&mut session, EntityId(1), Transform::identity())
-        .expect_err("no sectioned-surface relation");
-    for error in [as_item, as_surface] {
-        assert!(error.is_unsupported(), "{error}");
-        assert_eq!(error.entity(), Some(EntityId(1)));
-        let text = error.to_string();
-        assert!(
-            text.contains("IFCSECTIONEDSURFACE") && text.contains("sectioned-surface relation"),
-            "{text}"
-        );
-    }
-    // Its open cross section itself is exact.
-    let vertices = open_cross_vertices(&model, &units);
-    let rise = 3.5 * (-0.025f64).tan();
-    assert_vertices(&vertices, &[[0.0, 0.0], [3.5, rise]]);
 }

@@ -60,16 +60,16 @@ openbim-step = "=0.11.0"
 # concrete CPU/GPU execution providers.
 axiolid-core = { version = "0.3.0" }
 axiolid-mesh = { version = "0.3.0" }
-axiolid-model = { version = "0.3.4" }
+axiolid-model = { version = "0.3.5" }
 axiolid-primitive = { version = "0.3.0" }
 axiolid-profile = { version = "0.3.0" }
 axiolid-surface = { version = "0.3.0" }
-axiolid-reference = { version = "0.3.0" }
+axiolid-reference = { version = "0.3.6" }
 # Dev-only: the worked example indexing product bounds (#36). The index is
 # Axiolid's; this repository only produces the boxes it consumes.
 axiolid-spatial = { version = "0.3.0" }
 axiolid-curve = { version = "0.3.3" }
-axiolid-evaluate = { version = "0.3.4" }
+axiolid-evaluate = { version = "0.3.5" }
 axiolid-curve-evaluate-contract = { version = "0.3.0" }
 axiolid-topology = { version = "0.3.0" }
 # Execution provider. Only ifc-geometry's opt-in `compile` feature may use
@@ -77,15 +77,19 @@ axiolid-topology = { version = "0.3.0" }
 axiolid-contracts = { version = "0.3.1" }
 # 0.3.12 resolves `TrimSelector::ArcLength` (the CUBIC transition, #90) and
 # mitres a sharp swept-disk polyline corner exactly; 0.3.9 to 0.3.11 refused
-# that corner (axiolid/kernel#245, #315).
-axiolid-mesh-compile = { version = "0.3.12" }
+# that corner (axiolid/kernel#245, #315). 0.3.13 resolves stations and meshes
+# the station-placed sections and offset curves (axiolid/kernel#241, #246;
+# #307).
+axiolid-mesh-compile = { version = "0.3.13" }
 axiolid-mesh-compile-contract = { version = "0.3.1" }
 axiolid-mesh-boolean-boolmesh = { version = "0.3.0" }
 # Not used directly: `axiolid-mesh-compile` reaches it. Pinned here only to
 # raise the floor to the release whose fixes the compiled results depend on
 # (axiolid/kernel#164 half-space frame origin, #166 downward extrusion,
-# #169 swept-disk frame along a bent path, #245 half-angle corner mitre).
-axiolid-construct = { version = "0.3.13" }
+# #169 swept-disk frame along a bent path, #245 half-angle corner mitre),
+# and to the release `axiolid-mesh-compile` 0.3.13 builds its stationed
+# lofts with (0.3.14).
+axiolid-construct = { version = "0.3.14" }
 
 # No default features: the default `runtime-rng` pulls getrandom 0.3, which
 # does not build on wasm32-unknown-unknown. Members opt into a seed source
