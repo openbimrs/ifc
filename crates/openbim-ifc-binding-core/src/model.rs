@@ -274,7 +274,7 @@ impl IfcModel {
             .unwrap_or_default())
     }
 
-    fn entity(&self, id: u64) -> Result<&Entity, BindingError> {
+    pub(crate) fn entity(&self, id: u64) -> Result<&Entity, BindingError> {
         self.inner
             .get(EntityId(id))
             .ok_or(BindingError::MissingEntity(id))

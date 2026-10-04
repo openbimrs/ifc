@@ -101,7 +101,7 @@
  * Result of every ABI call. `Ok` is zero; every failure is non-zero.
  *
  * The values from `Parse` to `FeatureDisabled`, `InvalidModel`, and
- * `MissingReference` to `CatalogNotLoaded`, are the binding errors shared
+ * `MissingReference` to `DerivedAttribute`, are the binding errors shared
  * with the JavaScript and Python bindings; the rest describe misuse of the
  * C boundary itself.
  */
@@ -212,6 +212,16 @@ enum OpenbimIfcStatus
    * binding code has one.
    */
   OPENBIM_IFC_STATUS_CATALOG_NOT_LOADED = 27,
+  /**
+   * A by-name attribute access named no explicit attribute of the
+   * entity's type in the declared release (`unknown-attribute`).
+   */
+  OPENBIM_IFC_STATUS_UNKNOWN_ATTRIBUTE = 28,
+  /**
+   * A by-name attribute write named a slot the entity's type derives,
+   * written `*` (`derived-attribute`).
+   */
+  OPENBIM_IFC_STATUS_DERIVED_ATTRIBUTE = 29,
   /**
    * A Rust panic was contained at the boundary. Report it as a bug.
    */
@@ -365,6 +375,55 @@ OpenbimIfcStatus openbim_ifc_v0_1_entity_attribute(OpenbimIfcModel model,
                                                    size_t *out_strings_required);
 
 /**
+ * Attribute `name` (UTF-8, `name_len` bytes, any case, e.g. `Name`) of
+ * entity `id` as a value tape; `NULL` when the record stops before its
+ * slot.
+ *
+ * `MissingEntity`, `UnknownAttribute`, `UnsupportedSchema` as for
+ * [`openbim_ifc_v0_1_entity_attribute_names`].
+ *
+ * # Safety
+ * `name` valid for `name_len` reads; otherwise as for
+ * `openbim_ifc_v0_1_entity_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_entity_attribute_by_name(OpenbimIfcModel model,
+                                                           uint64_t id,
+                                                           const uint8_t *name,
+                                                           size_t name_len,
+                                                           OpenbimIfcValueNode *nodes,
+                                                           size_t node_capacity,
+                                                           size_t *out_nodes_required,
+                                                           uint8_t *strings,
+                                                           size_t string_capacity,
+                                                           size_t *out_strings_required);
+
+/**
+ * Every explicit attribute of entity `id` in slot order, inherited first:
+ * a `LIST` of `AttributeInfo` records, their number in `out_count`.
+ * `AttributeInfo`: name (`TEXT`, the schema's spelling), index
+ * (`INTEGER`, the slot), type name (`TEXT`), optional (`BOOL`), aggregate
+ * (`BOOL`), derived (`BOOL`: written `*`, not writable), declared by
+ * (`TEXT`, the entity introducing it). `INVERSE` attributes hold no slot
+ * and are not listed.
+ *
+ * `MissingEntity`; `UnsupportedSchema` when the header names no bundled
+ * release or the release does not declare the entity's type.
+ *
+ * # Safety
+ * `out_count` valid for one write; otherwise as for
+ * `openbim_ifc_v0_1_entity_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_entity_attribute_names(OpenbimIfcModel model,
+                                                         uint64_t id,
+                                                         size_t *out_count,
+                                                         OpenbimIfcValueNode *nodes,
+                                                         size_t node_capacity,
+                                                         size_t *out_nodes_required,
+                                                         uint8_t *strings,
+                                                         size_t string_capacity,
+                                                         size_t *out_strings_required);
+
+/**
  * Every attribute of entity `id`, back to back on one tape, plus how many
  * top-level values it holds.
  *
@@ -402,6 +461,27 @@ OpenbimIfcStatus openbim_ifc_v0_1_entity_set_attribute(OpenbimIfcModel model,
                                                        size_t node_count,
                                                        const uint8_t *strings,
                                                        size_t string_len);
+
+/**
+ * Set attribute `name` (UTF-8, any case) of entity `id` from a one-value
+ * tape. Every check runs before the write, so a refusal changes nothing.
+ *
+ * `DerivedAttribute` for a slot the entity's type derives (written `*`);
+ * otherwise as for [`openbim_ifc_v0_1_entity_attribute_by_name`] and
+ * `openbim_ifc_v0_1_entity_set_attribute`.
+ *
+ * # Safety
+ * `name` valid for `name_len` reads; the tape as for
+ * `openbim_ifc_v0_1_entity_set_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_entity_set_attribute_by_name(OpenbimIfcModel model,
+                                                               uint64_t id,
+                                                               const uint8_t *name,
+                                                               size_t name_len,
+                                                               const OpenbimIfcValueNode *nodes,
+                                                               size_t node_count,
+                                                               const uint8_t *strings,
+                                                               size_t string_len);
 
 /**
  * The type name of entity `id`, upper-case, NUL-terminated.

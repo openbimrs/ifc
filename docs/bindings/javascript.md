@@ -76,14 +76,30 @@ const model = IfcModel.parse(bytes); // bytes: the .ifc file as a Uint8Array
 const schema = model.schema; // "IFC4"
 
 for (const wall of model.idsOfType("IfcWall")) {
-  const name = model.attribute(wall, 2); // { kind: "text", value: "Wall" }
-  model.setAttribute(wall, 2, { kind: "text", value: `${name.value} (checked)` });
+  // Names resolve against the release the header declares.
+  const name = model.attributeByName(wall, "Name"); // { kind: "text", value: "Wall" }
+  model.setAttributeByName(wall, "Name", { kind: "text", value: `${name.value} (checked)` });
 }
 
 const out = model.write(); // a Uint8Array, ready to save
 ```
 
 <!-- /SNIPPET -->
+
+Attributes are addressed by name or by position. `attributeByName(id,
+"Name")` and `setAttributeByName(id, "Name", value)` resolve the name
+against the release the file's header declares, so the same code reads
+`IfcTask.Status` from slot 6 of an IFC2X3 file and slot 7 of an IFC4 one.
+`attributeNames(id)` lists every explicit attribute in slot order,
+inherited first, as `{ name, index, typeName, optional, aggregate,
+derived, declaredBy }`. Names match case-insensitively and come back in
+the schema's spelling. `INVERSE` attributes hold no slot and are unknown
+names (`unknown-attribute`). A slot the entity's type derives is listed
+with `derived: true`, reads as stored (`{ kind: "derived" }`) and refuses
+a write (`derived-attribute`). An entity type the declared release does
+not have, or a release the build leaves out, is `unsupported-schema`.
+`attribute(id, index)` and `setAttribute(id, index, value)` stay the raw,
+release-independent slot access.
 
 Entity ids are `bigint`, because IFC ids exceed JavaScript's safe integer
 range in real files. Attribute values use a tagged encoding that keeps
@@ -470,6 +486,9 @@ Generated from the `#[wasm_bindgen]` exports in
 | `model.attributes(id: bigint): IfcValue[]` | yes | Every attribute of entity `id`, as tagged values. |
 | `model.attribute(id: bigint, slot: number): IfcValue` | yes | Attribute `index` of entity `id`, as a tagged value. |
 | `model.setAttribute(id: bigint, slot: number, value: IfcValue): IfcValue` | yes | Set attribute `index` of entity `id`; returns the previous value. |
+| `model.attributeNames(id: bigint): AttributeInfo[]` | yes | Every explicit attribute of entity `id` in slot order, inherited first, as the release the header declares defines them. |
+| `model.attributeByName(id: bigint, name: string): IfcValue` | yes | Attribute `name` of entity `id` (case-insensitive, e.g. `"Name"`), resolved against the declared release, as a tagged value. |
+| `model.setAttributeByName(id: bigint, name: string, value: IfcValue): IfcValue` | yes | Set attribute `name` of entity `id`; returns the previous value. A derived attribute is refused (`derived-attribute`). |
 | `model.add(typeName: string, attributes: IfcValue[]): bigint` | yes | Append an entity; returns its id (`bigint`). |
 | `model.remove(id: bigint): void` | yes | Remove entity `id`, leaving references to it dangling. |
 | `model.danglingReferences(): [bigint, bigint][]` |  | Every `[from, to]` pair (`bigint`s) where `to` does not exist. |
@@ -510,7 +529,9 @@ export type IfcErrorCode =
   | "wrong-entity-type"
   | "template-violation"
   | "missing-property"
-  | "catalog-not-loaded";
+  | "catalog-not-loaded"
+  | "unknown-attribute"
+  | "derived-attribute";
 
 /**
  * Where `IfcModel.loadCatalog` reads a catalog snapshot from. By default
@@ -593,6 +614,24 @@ export interface UnreachableProduct {
   /** Target views the geometry was found in instead, for the second reason. */
   foundViews: string[];
   message: string;
+}
+
+/** One explicit attribute of an entity, from `IfcModel.attributeNames`. */
+export interface AttributeInfo {
+  /** The declared name in the schema's spelling, e.g. `GlobalId`. */
+  name: string;
+  /** Its slot: the `index` of `attribute` and `setAttribute`. */
+  index: number;
+  /** The declared type, or an aggregate's element type. */
+  typeName: string;
+  /** `{ kind: "null" }` is a valid value. */
+  optional: boolean;
+  /** A `LIST`, `SET`, `BAG` or `ARRAY`. */
+  aggregate: boolean;
+  /** Derived for this entity: written `*`, refused by `setAttributeByName`. */
+  derived: boolean;
+  /** The entity that declares the attribute, e.g. `IfcRoot`. */
+  declaredBy: string;
 }
 ```
 

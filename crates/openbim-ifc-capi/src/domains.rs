@@ -23,13 +23,13 @@ use crate::status::{boundary, OpenbimIfcStatus};
 use crate::tape::{OpenbimIfcValueNode, Tape};
 
 /// The output side every domain export shares.
-struct Out {
-    nodes: *mut OpenbimIfcValueNode,
-    node_capacity: usize,
-    out_nodes_required: *mut usize,
-    strings: *mut u8,
-    string_capacity: usize,
-    out_strings_required: *mut usize,
+pub(crate) struct Out {
+    pub(crate) nodes: *mut OpenbimIfcValueNode,
+    pub(crate) node_capacity: usize,
+    pub(crate) out_nodes_required: *mut usize,
+    pub(crate) strings: *mut u8,
+    pub(crate) string_capacity: usize,
+    pub(crate) out_strings_required: *mut usize,
 }
 
 impl Out {
@@ -37,7 +37,7 @@ impl Out {
     ///
     /// # Safety
     /// The buffers as for `openbim_ifc_v0_1_entity_attribute`.
-    unsafe fn write(&self, value: &Tagged) -> Result<OpenbimIfcStatus, BindingError> {
+    pub(crate) unsafe fn write(&self, value: &Tagged) -> Result<OpenbimIfcStatus, BindingError> {
         let tape = Tape::encode(value);
         // SAFETY: forwarded caller contract.
         done(unsafe {
@@ -76,7 +76,7 @@ unsafe fn list(
 ///
 /// # Safety
 /// As for [`list`].
-unsafe fn list_export(
+pub(crate) unsafe fn list_export(
     model: OpenbimIfcModel,
     out_count: *mut usize,
     out: Out,

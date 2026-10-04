@@ -8,6 +8,14 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#326, attributes by name)
+
+- `IfcModel.attribute_names(id)` (frozen `AttributeInfo` records in slot
+  order), `attribute_by_name(id, name)` and `set_attribute_by_name(id,
+  name, value)`, resolved against the release the header declares; names
+  match case-insensitively. Error codes `unknown-attribute` and
+  `derived-attribute`. Additive: a patch release.
+
 ## [0.3.0] - 2026-10-03
 
 ### Added (#123, property sets: write side)

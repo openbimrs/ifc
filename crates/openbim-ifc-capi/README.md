@@ -39,6 +39,15 @@ from a checkout, which builds it with cargo.
 - **Threads.** Calls on different models run in parallel; calls on the same
   model are serialised.
 
+## Attributes by name
+
+`openbim_ifc_v0_1_entity_attribute_by_name` and
+`_entity_set_attribute_by_name` resolve a UTF-8 attribute name
+(case-insensitive) against the release the header declares, inherited
+attributes included; `_entity_attribute_names` lists every explicit
+attribute in slot order as a tape of records. An unknown name is
+`UNKNOWN_ATTRIBUTE`, a write to a derived (`*`) slot `DERIVED_ATTRIBUTE`.
+
 ## Values: tapes
 
 An attribute value is a tree (`(#1,#2)`, `IFCLABEL('x')`), so it crosses
@@ -99,24 +108,17 @@ library needs.
   targets. `OPENBIM_IFC_CARGO_FEATURES` passes crate features (for example
   `rusty_alloc`).
 
-The shared library records its bare name (ELF `SONAME`, Mach-O install
-name `@rpath/libopenbim_ifc_capi.dylib`), so it can be moved with the
-application. CMake gives a consumer's build tree the runtime path; an
-installed application sets its own (`INSTALL_RPATH` on Linux and macOS,
-the DLL beside the executable on Windows). Windows needs MSVC.
-
-`scripts/check-cmake.py` builds a consumer
-(`tests/cmake-consumer/`) running the C smoke test against the source tree,
-the installed package and the unpacked archive, shared and static, then
-the same through pkg-config. The gate runs it on Linux, the `Native`
-workflow on macOS and Windows.
+The shared library records its bare name (`SONAME`, `@rpath/…dylib`), so
+it moves with the application; runtime paths and Windows (MSVC) are in
+[the C guide](https://openbimrs.github.io/ifc/bindings/c).
+`scripts/check-cmake.py` runs the C smoke test through CMake and
+pkg-config against the source tree, install and archive (gate on Linux,
+`Native` workflow on macOS and Windows).
 
 ## pkg-config
 
-Linux and macOS installs and archives also carry `openbim_ifc.pc` (shared)
-and `openbim_ifc-static.pc` (static, with the CMake static target's system
-libraries) in `lib/pkgconfig/`, relocatable via `${pcfiledir}`.
-Windows is CMake-only. See [the C guide](https://openbimrs.github.io/ifc/bindings/c#install-via-pkg-config).
+Linux and macOS installs and archives carry relocatable `openbim_ifc.pc`
+(shared) and `openbim_ifc-static.pc` in `lib/pkgconfig/`; Windows is CMake-only. See [the C guide](https://openbimrs.github.io/ifc/bindings/c#install-via-pkg-config).
 
 ## Build and test
 

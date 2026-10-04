@@ -194,8 +194,9 @@ class DocumentedExample(unittest.TestCase):
         schema = model.schema  # "IFC4"
 
         for wall in model.ids_of_type("IfcWall"):
-            name = model.attribute(wall, 2)  # Text(value='Wall')
-            model.set_attribute(wall, 2, Text(f"{name.value} (checked)"))
+            # Names resolve against the release the header declares.
+            name = model.attribute_by_name(wall, "Name")  # Text(value='Wall')
+            model.set_attribute_by_name(wall, "Name", Text(f"{name.value} (checked)"))
 
         data = model.write()  # bytes, ready to save
         # docs:end
