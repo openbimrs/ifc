@@ -555,7 +555,11 @@ jobs:
   native-assets:
     name: Attach C library archives to the GitHub release
     needs: [plan, native-archives, github-release]
-    if: github.event_name == 'push' && needs.plan.outputs.native == 'true'
+    # always(): github-release depends on publish jobs that a C library tag
+    # skips, and without it GitHub skips every job downstream of a skip.
+    if: >-
+      always() && github.event_name == 'push' && needs.plan.outputs.native == 'true'
+      && needs.native-archives.result == 'success' && needs.github-release.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write # upload release assets
