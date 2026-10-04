@@ -1,9 +1,10 @@
 name: Native
 
-# The C ABI's CMake package on macOS and Windows (#41). Linux runs the same
-# check (crates/openbim-ifc-capi/scripts/check-cmake.py) in the gate's
-# `bindings` section on every pull request, so this workflow only adds the
-# platforms whose linkers and loaders differ: the macOS @rpath trap
+# The C ABI's CMake package on macOS and Windows (#41), and its pkg-config
+# files on macOS (#325). Linux runs the same check
+# (crates/openbim-ifc-capi/scripts/check-cmake.py) in the gate's `bindings`
+# section on every pull request, so this workflow only adds the platforms
+# whose linkers and loaders differ: the macOS @rpath trap
 # (axiolid/kernel#113) and Windows DLL lookup, on x64 and on Arm, whose
 # archive the release builds for the NuGet package's win-arm64 (#327).
 #
@@ -70,5 +71,13 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - name: Source-tree, installed and archived consumers, shared and static
+      - name: Provide pkg-config
+        # check-cmake.py also builds the smoke test from the pkg-config files
+        # (#325) and fails without pkg-config; Windows is CMake-only.
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          command -v pkg-config && exit 0
+          if command -v brew; then brew install pkgconf; else sudo apt-get update && sudo apt-get install -y pkg-config; fi
+      - name: Source-tree, installed and archived consumers (CMake and pkg-config), shared and static
         run: python crates/openbim-ifc-capi/scripts/check-cmake.py

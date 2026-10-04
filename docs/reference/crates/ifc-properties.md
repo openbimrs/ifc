@@ -14,7 +14,7 @@ Property sets, quantities, and unit resolution. No geometry.
 | Latest release | 0.8.0 (2026-10-03) |
 | Registries | [crates.io `ifc-properties`](https://crates.io/crates/ifc-properties) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties` |
-| API documentation | [rustdoc](/ifc/api/rustdoc/ifc_properties/index.html) · [docs.rs](https://docs.rs/ifc-properties) |
+| API documentation | [rustdoc](/api/rustdoc/ifc_properties/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-properties) |
 | Source | [`crates/ifc-properties/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-properties) |
 
 ## Overview

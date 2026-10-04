@@ -13,7 +13,7 @@ WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from J
 | Status | <span class="status-implemented">Implemented</span> |
 | Latest release | 0.3.0 (2026-10-03) |
 | Registries | [npm `@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) |
-| API documentation | [rustdoc](/ifc/api/rustdoc/openbim_ifc_wasm/index.html) |
+| API documentation | [rustdoc](/api/rustdoc/openbim_ifc_wasm/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-wasm/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-wasm) |
 
 ## Overview

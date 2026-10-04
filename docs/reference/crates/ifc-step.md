@@ -14,7 +14,7 @@ STEP physical file (ISO 10303-21) codec for the IFC model.
 | Latest release | 0.5.0 (2026-10-03) |
 | Registries | [crates.io `ifc-step`](https://crates.io/crates/ifc-step) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `step` |
-| API documentation | [rustdoc](/ifc/api/rustdoc/ifc_step/index.html) · [docs.rs](https://docs.rs/ifc-step) |
+| API documentation | [rustdoc](/api/rustdoc/ifc_step/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-step) |
 | Source | [`crates/ifc-step/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-step) |
 
 ## Overview

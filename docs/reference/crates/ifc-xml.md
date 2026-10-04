@@ -14,7 +14,7 @@ ifcXML (ISO 10303-28) codec for the IFC model.
 | Latest release | 0.4.1 (2026-10-03) |
 | Registries | [crates.io `ifc-xml`](https://crates.io/crates/ifc-xml) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `ifcxml` |
-| API documentation | [rustdoc](/ifc/api/rustdoc/ifc_xml/index.html) · [docs.rs](https://docs.rs/ifc-xml) |
+| API documentation | [rustdoc](/api/rustdoc/ifc_xml/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-xml) |
 | Source | [`crates/ifc-xml/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-xml) |
 
 ## Overview

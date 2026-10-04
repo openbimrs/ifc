@@ -14,7 +14,7 @@ IFC4x3 linear positioning: alignments, referents, linear placement, spirals.
 | Latest release | 0.6.0 (2026-10-03) |
 | Registries | [crates.io `ifc-alignment`](https://crates.io/crates/ifc-alignment) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `alignment` |
-| API documentation | [rustdoc](/ifc/api/rustdoc/ifc_alignment/index.html) · [docs.rs](https://docs.rs/ifc-alignment) |
+| API documentation | [rustdoc](/api/rustdoc/ifc_alignment/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-alignment) |
 | Source | [`crates/ifc-alignment/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-alignment) |
 
 ## Overview

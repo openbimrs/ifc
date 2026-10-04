@@ -13,7 +13,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | Status | <span class="status-implemented">Implemented</span> |
 | Latest release | 0.13.0 (2026-10-03) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
-| API documentation | [rustdoc](/ifc/api/rustdoc/ifc/index.html) · [docs.rs](https://docs.rs/openbim-ifc) |
+| API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
 
 ## Overview

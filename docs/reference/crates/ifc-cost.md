@@ -14,7 +14,7 @@ Cost semantics as a borrowed view over the IFC model.
 | Latest release | 0.4.0 (2026-10-03) |
 | Registries | [crates.io `ifc-cost`](https://crates.io/crates/ifc-cost) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `cost` |
-| API documentation | [rustdoc](/ifc/api/rustdoc/ifc_cost/index.html) · [docs.rs](https://docs.rs/ifc-cost) |
+| API documentation | [rustdoc](/api/rustdoc/ifc_cost/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-cost) |
 | Source | [`crates/ifc-cost/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-cost) |
 
 ## Overview
