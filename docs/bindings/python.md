@@ -57,6 +57,204 @@ unbounded, so 64-bit IFC integers need no special type.
 Every failure raises `openbim_ifc.IfcError`, whose `code` is shared with the
 JavaScript and C bindings.
 
+## Entities, plain values and property sets
+
+The calls above are exact and id-based. A pure-Python layer over them gives
+the access Python users expect: entities as objects, plain Python values,
+property sets as mappings, and a pandas export. It adds no IFC semantics:
+every read and write is one of the calls above.
+
+<!-- SNIPPET:py-entities -->
+
+```python
+import openbim_ifc
+
+model = openbim_ifc.open(path)  # IfcModel.open(path)
+
+for wall in model.by_type("IfcWall"):  # subtypes included
+    print(wall.id, wall.type, wall.Name, wall.GlobalId)
+
+wall = model[31]  # or model.by_id(31); 31 in model is True
+history = wall.OwnerHistory  # a reference: Entity #5
+placement = wall.ObjectPlacement  # $: None
+exact = wall.raw("Name")  # Text('Wall B'), the lossless value
+assert wall.is_a("IfcBuildingElement") and not wall.is_a("IfcSlab")
+```
+
+<!-- /SNIPPET -->
+
+`openbim_ifc.open(path)` is `IfcModel.open(path)`. `model[id]` and
+`model.by_id(id)` return an `Entity`: a light view holding the model and
+the id, no data, so every read sees the model as it is then. `model[id]`
+raises `KeyError` for an absent id, `by_id` raises `IfcError`
+(`missing-entity`). `entity.id`, `entity.type` (upper-case, `"IFCWALL"`)
+and `entity.model` describe it; two views are equal, and hash alike, when
+they name the same id of the same model. `entity.is_a("IfcWall")` is true
+for the type and its subtypes, per the file's schema.
+
+`entity.Name` reads through `attribute_by_name`, so names resolve against
+the declared release and match case-insensitively (`entity.name` works
+too). An unknown name, an `INVERSE` attribute included, raises
+`AttributeError`, chained from the `unknown-attribute` `IfcError`, so
+`hasattr` and `getattr(entity, name, default)` work. `entity.get(name)`
+is the same read with a precise return type (`PlainValue`; `entity.Name`
+is typed `Any`), raising `IfcError` itself. `entity.raw(name)` returns the
+exact tagged value.
+
+### What a plain value keeps
+
+| Tagged value | Plain value | Lossy? |
+| --- | --- | --- |
+| `Null()` (`$`) | `None` | no |
+| `Derived()` (`*`) | `None` | yes: same as `$` |
+| `Unknown()` (`.U.`) | `None` | yes: same as `$` |
+| `Bool(b)` | `b` | no |
+| `Integer(i)`, `Real(r)` | `int`, `float` | no: the Python type keeps it |
+| `Text(s)` | `s` | no |
+| `Enum(s)` | `s` | yes: same as text |
+| `Binary(h)` | `Binary(h)`, unchanged | no: no plain form without decoding |
+| `Ref(id)` | `Entity` of the same model | no |
+| `List(items)` | `tuple` of plain values | no |
+| `Typed(t, v)` | the plain value of `v` | yes: the type name (`IFCLABEL`, `IFCLENGTHMEASURE`) is dropped |
+
+A plain value carries no unit: a quantity reads as the number the file
+states, in the unit it states (`200.0` for a width in millimetres). Use
+`entity.raw(name)` for the exact attribute value, and
+`entity.property_sets()` (the records of `property_sets`) for a
+property's declared type and unit, which `resolve_unit` resolves.
+
+### Writing
+
+<!-- SNIPPET:py-entity-write -->
+
+```python
+from openbim_ifc import Text
+
+wall = model[31]
+wall.Name = Text("Wall B (checked)")  # set_attribute_by_name
+wall.Description = None  # $
+wall.OwnerHistory = model[5]  # a reference
+# wall.Name = "x" raises TypeError: Text or Enum? The binding does not guess.
+old = wall.set("Name", Text("Wall B"))  # returns the old tagged value
+```
+
+<!-- /SNIPPET -->
+
+`entity.Name = value` writes through `set_attribute_by_name`, and
+`entity.set(name, value)` does the same and returns the old tagged value.
+A write takes a tagged value, an `Entity` (a reference; one from another
+model is refused with `ValueError`), `None` (`$`), or a tuple or list of
+these (an aggregate). A bare `str`, `int`, `float` or `bool` raises
+`TypeError`: `"x"` could be a `Text` or an `Enum`, `1` an `Integer` or a
+`Real`, and the binding does not guess. A refused write changes nothing;
+an unknown name raises `AttributeError`, a derived one `IfcError`
+(`derived-attribute`). The view's own members (`id`, `type`, ...) cannot be
+assigned.
+
+### Iteration and filtering
+
+<!-- SNIPPET:py-iteration -->
+
+```python
+count = len(model)  # entities
+present = 31 in model  # True; an Entity of this model works too
+every = list(model)  # Entity views, in file order
+walls = model.by_type("IfcBuildingElement")  # IfcWall #30, #31
+exact = model.by_type("IfcBuildingElement", include_subtypes=False)  # []
+```
+
+<!-- /SNIPPET -->
+
+`model.by_type(name)` returns the entities of a type and its subtypes in
+file order; `include_subtypes=False` keeps the exact type. `len(model)`
+counts entities, `id in model` takes an id or an `Entity`, and
+`iter(model)` yields every entity. A type name the schema lacks gives
+`[]` and `is_a` gives `False`; neither raises.
+
+### Property sets as mappings
+
+<!-- SNIPPET:py-psets -->
+
+```python
+from openbim_ifc import Text, Typed
+
+wall = model[30]
+common = wall.psets["Pset_WallCommon"]
+external = common["IsExternal"]  # False: the wall's own value
+rating = common["FireRating"]  # 'F30', inherited from its type
+width = wall.qtos["Qto_WallBaseQuantities"]["Width"]  # 200.0, in its stated unit
+
+wall.set_property("Pset_WallCommon", "FireRating", Typed("IFCLABEL", Text("F60")))
+assert wall.psets["Pset_WallCommon"]["FireRating"] == "F60"  # a fresh snapshot
+```
+
+<!-- /SNIPPET -->
+
+`entity.psets` maps each property set (and predefined property set) name
+to a read-only mapping of property name to value, built from
+`property_sets`: the object's own values and those its type object holds,
+an occurrence value overriding an inherited one. `entity.qtos` holds the
+quantity sets (`IfcElementQuantity`) the same way. Both are snapshots
+taken at access; read them again after a write. Values are plain: a
+single, enumerated (a tuple of the selected values), list or reference
+property gives its plain value; a complex property or quantity, a mapping
+of its members; a bounded or table value, which has no single plain form,
+its exact `Property` record. The mappings cannot be assigned to: write
+with `entity.set_property(set, name, value, set_type=None)` and
+`entity.remove_property(set, name)`, which are `set_property` and
+`remove_property` on that entity, one checked transaction each.
+
+### pandas
+
+<!-- SNIPPET:py-dataframe -->
+
+```python
+frame = model.to_dataframe("IfcWall")  # needs openbim-ifc[pandas]
+# index: id; columns: type, GlobalId, Name, then "Set.Property"
+external = frame["Pset_WallCommon.IsExternal"]  # #30 False, #31 True
+```
+
+<!-- /SNIPPET -->
+
+`model.to_dataframe(type="IfcProduct", *, psets=True, qtos=True,
+attributes=("GlobalId", "Name"), include_subtypes=True)` builds one row per
+entity `by_type` returns, indexed by id (`id`), with a `type` column, a
+column per attribute and a `"Set.Property"` column per property and
+quantity any row has; a row without one holds pandas' missing marker.
+Cells are the plain values above. pandas is the optional extra
+`openbim-ifc[pandas]` (`pip install 'openbim-ifc[pandas]'`), imported only
+by this call; without it the call raises `ImportError` naming the extra.
+
+### Types
+
+The package ships inline types and `py.typed`; the snippets on this page
+pass `mypy --strict`, which the Python test run checks. `entity.Name` is
+`Any`, since attributes vary per entity; `entity.get(name)` is
+`PlainValue`, `entity.psets` a `Mapping[str, Mapping[str,
+PropertyValue]]`, and a write takes an `Assignable`.
+
+### From IfcOpenShell
+
+The table maps IfcOpenShell's documented Python API
+([`ifcopenshell.file`](https://docs.ifcopenshell.org/autoapi/ifcopenshell/file/index.html),
+[`entity_instance`](https://docs.ifcopenshell.org/autoapi/ifcopenshell/entity_instance/index.html),
+[`util.element`](https://docs.ifcopenshell.org/autoapi/ifcopenshell/util/element/index.html))
+to this package.
+
+| IfcOpenShell | openbim_ifc | Differences |
+| --- | --- | --- |
+| `ifcopenshell.open(path)` | `openbim_ifc.open(path)` | STEP only; ifcXML is `IfcModel.parse_ifcxml(data)` |
+| `model.by_type("IfcWall")` | `model.by_type("IfcWall")` | Both include subtypes; this returns a list, and `[]` for a type the schema lacks, where IfcOpenShell raises |
+| `model.by_type("IfcWall", include_subtypes=False)` | the same | |
+| `model.by_id(42)` | `model.by_id(42)` or `model[42]` | An absent id raises `IfcError` (`missing-entity`) or `KeyError`, not `RuntimeError` |
+| `entity.Name` | `entity.Name` | A select or defined-type value comes back as its payload, not a wrapper; `.U.` reads `None`; see the table above |
+| `entity.Name = "x"` | `entity.Name = Text("x")` | A bare `str` is refused: the value says what it is |
+| `entity.id()`, `entity.is_a()` | `entity.id`, `entity.type` | `id` is a property; the type name is upper-case (`IFCWALL`) |
+| `entity.is_a("IfcWall")` | `entity.is_a("IfcWall")` | |
+| `ifcopenshell.util.element.get_psets(entity)` | `entity.psets` and `entity.qtos` | `get_psets` returns property and quantity sets together unless `psets_only` or `qtos_only` is passed; here they are separate. Sets carry no `"id"` key (`entity.property_sets()` has every id) and are read-only |
+| `get_psets(entity, should_inherit=False)` | `entity.property_sets()`, keeping `source == "occurrence"` | |
+| `ifcopenshell.api.pset.edit_pset(...)` | `entity.set_property(set, name, value)` | One property per call, a checked transaction; `model.set_properties` batches |
+
 ## Beyond the record model
 
 <!-- SNIPPET:py-beyond-records -->
@@ -253,6 +451,30 @@ Generated from the `openbim_ifc` package source.
 | `model.add(type_name: str, attributes: Iterable[Value]) -> int` | Append an entity; returns its new id. |
 | `model.remove(id: int) -> None` | Remove entity `id`, leaving references to it dangling. |
 | `model.dangling_references() -> List[Tuple[int, int]]` | Every `(from, to)` pair where `to` does not exist. |
+| `model.by_id(id: int) -> Entity` | Entity `#id` as an :class:`Entity`; raises :class:`openbim_ifc.IfcError` (`missing-entity`) when absent. |
+| `model[id] -> Entity` | `model[id]`: :meth:`by_id`, raising `KeyError` when absent. |
+| `id in model -> bool` | `id in model` (an `int`) or `entity in model`. |
+| `iter(model) -> Iterator[Entity]` | `iter(model)`: every entity as an :class:`Entity`, in file order. |
+| `model.by_type(type_name: str, *, include_subtypes: bool = True) -> list[Entity]` | Every entity of `type_name` (case-insensitive) as an :class:`Entity`, in file order; with `include_subtypes=False` only those of exactly that type. A name the schema lacks gives `[]`. |
+| `model.to_dataframe(type: str = 'IfcProduct', *, psets: bool = True, qtos: bool = True, attributes: Sequence[str] = ('GlobalId', 'Name'), include_subtypes: bool = True) -> pandas.DataFrame` | A pandas `DataFrame` of the entities :meth:`by_type` returns: one row per entity, indexed by id, with a `type` column, one column per name in `attributes`, and one `"Set.Property"` column per property (`psets`) and quantity (`qtos`) any row has. |
+
+An `Entity` (from `model[id]`, `by_id`, `by_type` or `iter(model)`) also reads and writes every IFC attribute by name, `wall.Name`:
+
+| Member | Description |
+| --- | --- |
+| `entity.id: int` | The entity's `#id`. |
+| `entity.model: IfcModel` | The model the entity belongs to. |
+| `entity.type: str` | The upper-case type name, e.g. `"IFCWALL"`. |
+| `entity.is_a(type_name: str) -> bool` | Whether the entity is a `type_name` or a subtype of it, per the file's schema; case-insensitive. A name the schema lacks is `False`. |
+| `entity.get(name: str) -> PlainValue` | Attribute `name` as a plain value; `entity.Name` with the precise type. Raises :class:`openbim_ifc.IfcError` as :meth:`IfcModel.attribute_by_name` does. |
+| `entity.raw(name: str) -> Value` | Attribute `name` as the exact tagged value, e.g. `Typed("IFCLABEL", Text("W1"))` or `Derived()`. |
+| `entity.set(name: str, value: Assignable) -> Value` | Write attribute `name` (`entity.Name = value`); returns the old tagged value. A refused write changes nothing. |
+| `entity.attribute_names() -> list[AttributeInfo]` | Every explicit attribute, in slot order, as :meth:`IfcModel.attribute_names` lists them. |
+| `entity.property_sets() -> list[PropertySet]` | The exact records :meth:`IfcModel.property_sets` returns. |
+| `entity.psets: Mapping[str, Mapping[str, PropertyValue]]` | Property sets and predefined property sets by name, each a read-only mapping of property name to :data:`PropertyValue`. |
+| `entity.qtos: Mapping[str, Mapping[str, PropertyValue]]` | Quantity sets (`IfcElementQuantity`) by name, as :attr:`psets`. |
+| `entity.set_property(set: str, name: str, value: Value, *, set_type: Optional[str] = None) -> int` | Write one property or quantity value: :meth:`IfcModel.set_property` on this entity. `value` is exact, e.g. `Typed("IFCLABEL", Text("F60"))`. Returns the id of the entity holding it. |
+| `entity.remove_property(set: str, name: str) -> None` | Remove one property from the entity's own set: :meth:`IfcModel.remove_property`. |
 
 Attribute values are frozen dataclasses in `openbim_ifc` (from `openbim_ifc.values`):
 
