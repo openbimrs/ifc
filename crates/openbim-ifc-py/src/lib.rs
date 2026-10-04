@@ -8,6 +8,7 @@
 //! This crate adds calling-convention glue only. IFC behaviour belongs in
 //! `openbim-ifc`, shared binding behaviour in `openbim-ifc-binding-core`.
 
+mod authoring;
 mod convert;
 mod edits;
 mod error;

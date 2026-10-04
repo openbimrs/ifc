@@ -330,9 +330,10 @@ fn csharp_records() -> BTreeMap<String, Vec<String>> {
 const RENAMED: &[(&str, &str)] = &[("IfcSystem", "System"), ("SystemsView", "Systems")];
 
 /// Core records with no C# record: the C ABI returns no `PropertyEditResult`
-/// (`set_properties` writes one id per edit instead); `PropertyEdit` is
-/// C# input, not a tape record; `Example` is the core's own unit test.
-const NOT_DECODED: &[&str] = &["PropertyEditResult", "Example"];
+/// or `AuthoringResult` (`set_properties` and `author` write one id per edit
+/// or operation instead); `PropertyEdit` is C# input, not a tape record;
+/// `Example` is the core's own unit test.
+const NOT_DECODED: &[&str] = &["PropertyEditResult", "AuthoringResult", "Example"];
 
 #[test]
 fn every_domain_record_has_the_cores_fields_in_order() {

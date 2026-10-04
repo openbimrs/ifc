@@ -8,6 +8,18 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#330, schema-checked entity creation)
+
+- `IfcModel.author(ops)`: `AuthorOp` objects (`{ op: "product", type,
+  container, placement, typeObject, attributes, ... }`) applied as one
+  checked transaction, returning `AuthoringResult` (`ids` per operation,
+  `created`, `removed`); `IfcModel.handle(index)` names the entity an
+  earlier operation produced. `createEntity(typeName, attributes)` and
+  `removeWithRelationships(id)` are one-operation batches. Fresh
+  `GlobalId`s derive from a seed drawn from `Math.random`. Feature
+  `author` (default). `IfcErrorCode` gains `missing-attribute` and
+  `still-referenced`. Additive: a patch release.
+
 ## [0.4.0] - 2026-10-04
 
 ### Added (#326, attributes by name)

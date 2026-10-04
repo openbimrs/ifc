@@ -189,13 +189,23 @@ pub use ifc_style as style;
 #[cfg(feature = "validate")]
 pub use ifc_validate as validate;
 
-/// Schema-checked construction and editing of entities.
-#[cfg(feature = "author")]
-pub use ifc_author as author;
-
-/// Build or edit an entity by naming attributes rather than positioning them.
-#[cfg(feature = "author")]
-pub use ifc_author::{EntityBuilder, EntityEditor};
+// Schema-checked construction and editing of entities: `ifc-author` as
+// `author`, its builder and editor by attribute name, and the checked
+// authoring batch (#330), which joins that builder with the declared
+// release's table and the model's references and relationships, for the
+// language bindings and any caller that builds a model from nothing. The
+// module gates itself on `authoring` with an inner `#![cfg]`.
+mod authoring;
+#[cfg(feature = "authoring")]
+pub use {
+    authoring::{
+        apply_authoring, authoring_handle, fresh_seed, stage_authoring, AuthorOp, AuthoringError,
+        AuthoringFailure, AuthoringOutcome, NamedValues, OwnerHistoryOp, StagedAuthoring,
+        HANDLE_BASE,
+    },
+    ifc_author as author,
+    ifc_author::{EntityBuilder, EntityEditor},
+};
 
 /// Containment and objectified relationship traversal.
 #[cfg(feature = "spatial")]
@@ -309,6 +319,9 @@ pub use georeference::{georeferencing, GeoreferencingError};
 // on `properties` with an inner `#![cfg]`; the catalog checks need
 // `property-catalog` or `property-catalog-runtime` too.
 mod property_edit;
+
+// Name-based `GlobalId`s, shared by the property edit and authoring.
+mod name_guid;
 
 mod feature_report;
 mod io;

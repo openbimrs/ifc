@@ -244,3 +244,34 @@ fn a_refused_insert_does_not_touch_the_model() {
         .expect_err("refused");
     assert!(model.is_empty(), "nothing was written");
 }
+
+/// A built-in with a width (`STRING(255)`, `STRING(22) FIXED`) is the same
+/// shape as the bare keyword (#330): IFC4 declares `IfcLabel = STRING(255)`,
+/// and a number there was accepted as unresolvable.
+#[test]
+fn a_width_does_not_hide_the_builtin_shape() {
+    let schema = Schema::from_express(
+        "SCHEMA IFC4;
+         TYPE IfcLabel = STRING(255); END_TYPE;
+         TYPE IfcGloballyUniqueId = STRING(22) FIXED; END_TYPE;
+         ENTITY IfcRoot;
+           GlobalId : IfcGloballyUniqueId;
+           Name : OPTIONAL IfcLabel;
+         END_ENTITY;
+         END_SCHEMA;",
+    );
+    let refused = EntityBuilder::new(&schema, "IfcRoot")
+        .text("GlobalId", GUID)
+        .set("Name", Value::Integer(3))
+        .build()
+        .unwrap_err();
+    assert!(
+        matches!(refused, AuthorError::TypeMismatch { ref attribute, .. } if attribute == "Name"),
+        "{refused:?}"
+    );
+    EntityBuilder::new(&schema, "IfcRoot")
+        .text("GlobalId", GUID)
+        .text("Name", "Wall")
+        .build()
+        .expect("a string fits STRING(255)");
+}

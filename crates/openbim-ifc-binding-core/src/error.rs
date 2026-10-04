@@ -38,7 +38,10 @@ pub enum BindingError {
     FeatureDisabled(&'static str),
     /// A domain view (#123) refused the file's data: it contradicts the
     /// schema, is ambiguous where the schema allows one answer, or cannot
-    /// prove an exact answer (a lenient read's skipped records).
+    /// prove an exact answer (a lenient read's skipped records). Or an
+    /// authoring batch (#330) would leave the model contradicting the
+    /// schema: a second `IfcProject`, or an object contained, aggregated or
+    /// typed twice.
     InvalidModel(String),
     /// A domain view (#123) followed a reference to an entity the file does
     /// not contain.
@@ -73,6 +76,12 @@ pub enum BindingError {
     /// A by-name attribute write (#326) named a slot the entity's type
     /// derives: the file writes it `*` and it holds no value to set.
     DerivedAttribute(String),
+    /// An authoring batch (#330) left a required attribute of the declared
+    /// release unset, such as IFC2X3's `OwnerHistory`.
+    MissingAttribute(String),
+    /// An authoring batch (#330) removed an entity that an entity other
+    /// than a relationship still references; remove or edit that first.
+    StillReferenced(String),
 }
 
 impl BindingError {
@@ -98,6 +107,8 @@ impl BindingError {
             Self::CatalogNotLoaded(_) => "catalog-not-loaded",
             Self::UnknownAttribute(_) => "unknown-attribute",
             Self::DerivedAttribute(_) => "derived-attribute",
+            Self::MissingAttribute(_) => "missing-attribute",
+            Self::StillReferenced(_) => "still-referenced",
         }
     }
 }
@@ -136,6 +147,8 @@ impl fmt::Display for BindingError {
             ),
             Self::UnknownAttribute(detail) => write!(f, "unknown attribute: {detail}"),
             Self::DerivedAttribute(detail) => write!(f, "derived attribute: {detail}"),
+            Self::MissingAttribute(detail) => write!(f, "missing attribute: {detail}"),
+            Self::StillReferenced(detail) => write!(f, "still referenced: {detail}"),
         }
     }
 }
@@ -170,6 +183,8 @@ mod tests {
         "catalog-not-loaded",
         "unknown-attribute",
         "derived-attribute",
+        "missing-attribute",
+        "still-referenced",
     ];
 
     /// One value of every variant, in declaration order.
@@ -194,6 +209,8 @@ mod tests {
             BindingError::CatalogNotLoaded(String::new()),
             BindingError::UnknownAttribute(String::new()),
             BindingError::DerivedAttribute(String::new()),
+            BindingError::MissingAttribute(String::new()),
+            BindingError::StillReferenced(String::new()),
         ];
         // Exhaustive on purpose: a new variant does not compile until it is
         // listed above, so its code cannot escape the snapshot.
@@ -217,7 +234,9 @@ mod tests {
                 | BindingError::MissingProperty(_)
                 | BindingError::CatalogNotLoaded(_)
                 | BindingError::UnknownAttribute(_)
-                | BindingError::DerivedAttribute(_) => {}
+                | BindingError::DerivedAttribute(_)
+                | BindingError::MissingAttribute(_)
+                | BindingError::StillReferenced(_) => {}
             }
         }
         all

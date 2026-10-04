@@ -393,6 +393,327 @@ static int property_edits(void) {
   return 0;
 }
 
+/* ---- Schema-checked creation (#330) ------------------------------------ */
+
+/* A growing value tape: pre-order nodes plus one string buffer. */
+typedef struct {
+  OpenbimIfcValueNode nodes[512];
+  size_t count;
+  char strings[8192];
+  size_t len;
+} Tape;
+
+static void t_push(Tape *t, int32_t kind, uint32_t children, int64_t integer, double real,
+                   const char *text) {
+  OpenbimIfcValueNode *n = &t->nodes[t->count++];
+  memset(n, 0, sizeof *n);
+  n->kind = kind;
+  n->child_count = children;
+  n->int_value = integer;
+  n->real_value = real;
+  if (text != NULL) {
+    size_t len = strlen(text);
+    n->str_offset = t->len;
+    n->str_len = len;
+    memcpy(t->strings + t->len, text, len);
+    t->len += len;
+  }
+}
+static void t_list(Tape *t, uint32_t n) { t_push(t, OPENBIM_IFC_KIND_LIST, n, 0, 0.0, NULL); }
+static void t_text(Tape *t, const char *s) { t_push(t, OPENBIM_IFC_KIND_TEXT, 0, 0, 0.0, s); }
+static void t_enum(Tape *t, const char *s) { t_push(t, OPENBIM_IFC_KIND_ENUM, 0, 0, 0.0, s); }
+static void t_ref(Tape *t, uint64_t id) {
+  t_push(t, OPENBIM_IFC_KIND_REF, 0, (int64_t)id, 0.0, NULL);
+}
+static void t_int(Tape *t, int64_t v) { t_push(t, OPENBIM_IFC_KIND_INTEGER, 0, v, 0.0, NULL); }
+static void t_real(Tape *t, double v) { t_push(t, OPENBIM_IFC_KIND_REAL, 0, 0, v, NULL); }
+static void t_reals(Tape *t, double x, double y, double z) {
+  t_list(t, 3);
+  t_real(t, x);
+  t_real(t, y);
+  t_real(t, z);
+}
+/* The handle of operation `i`'s entity. */
+static uint64_t handle(uint64_t i) { return OPENBIM_IFC_HANDLE_BASE + i; }
+/* An operation with `fields` name/value pairs; the caller writes them. */
+static void t_op(Tape *t, const char *name, uint32_t fields) {
+  t_list(t, 1 + 2 * fields);
+  t_enum(t, name);
+}
+/* A `create` of `type` with `attributes` (name, value) pairs to follow. */
+static void t_create(Tape *t, const char *type, uint32_t attributes) {
+  t_op(t, "CREATE", 2);
+  t_text(t, "type");
+  t_text(t, type);
+  t_text(t, "attributes");
+  t_list(t, attributes);
+}
+static void t_pair(Tape *t, const char *name) {
+  t_list(t, 2);
+  t_text(t, name);
+}
+
+static uint8_t *write_step(OpenbimIfcModel model, size_t *len) {
+  openbim_ifc_v0_1_model_write(model, NULL, 0, len);
+  uint8_t *bytes = (uint8_t *)malloc(*len);
+  if (openbim_ifc_v0_1_model_write(model, bytes, *len, len) != OPENBIM_IFC_STATUS_OK) {
+    free(bytes);
+    return NULL;
+  }
+  return bytes;
+}
+
+/* The single-call example published on the docs site's C page. */
+static int documented_authoring(OpenbimIfcModel model) {
+  // docs:snippet c-authoring
+  /* Create an IfcBuildingElementProxy named "Proxy": the attributes are a
+   * LIST of (TEXT name, value) pairs, checked against the release the
+   * header declares; the GlobalId is generated. */
+  static const char names[] = "NameProxy";
+  OpenbimIfcValueNode attributes[4];
+  memset(attributes, 0, sizeof attributes);
+  attributes[0].kind = OPENBIM_IFC_KIND_LIST;
+  attributes[0].child_count = 1;
+  attributes[1].kind = OPENBIM_IFC_KIND_LIST;
+  attributes[1].child_count = 2;
+  attributes[2].kind = OPENBIM_IFC_KIND_TEXT; /* "Name" */
+  attributes[2].str_len = 4;
+  attributes[3].kind = OPENBIM_IFC_KIND_TEXT; /* "Proxy" */
+  attributes[3].str_offset = 4;
+  attributes[3].str_len = 5;
+  const char type[] = "IfcBuildingElementProxy";
+  uint64_t proxy = 0;
+  OpenbimIfcStatus status = openbim_ifc_v0_1_model_create_entity(
+      model, (const uint8_t *)type, strlen(type), attributes, 4, (const uint8_t *)names,
+      strlen(names), &proxy);
+  // docs:end
+  return status == OPENBIM_IFC_STATUS_OK && proxy != 0 ? 0 : 1;
+}
+
+/* Build a model from nothing in one batch, add a property set, validate,
+ * and round-trip it through STEP and ifcXML. */
+static int authoring(void) {
+  OpenbimIfcModel model = 0;
+  OK(openbim_ifc_v0_1_model_create(&model));
+  static Tape t;
+  memset(&t, 0, sizeof t);
+
+  /* The header: ten fields, all empty but the schema, which the XSD
+   * layout's header carries as well as STEP's. */
+  t_list(&t, 10);
+  t_list(&t, 0);
+  t_text(&t, "");
+  t_text(&t, "");
+  t_text(&t, "");
+  t_list(&t, 0);
+  t_list(&t, 0);
+  t_text(&t, "");
+  t_text(&t, "");
+  t_text(&t, "");
+  t_list(&t, 1);
+  t_text(&t, "IFC4");
+  OK(openbim_ifc_v0_1_model_set_header(model, t.nodes, t.count, (const uint8_t *)t.strings,
+                                       t.len));
+  memset(&t, 0, sizeof t);
+
+  t_list(&t, 15);
+  /* 0..4: a length unit and the 3D model context. */
+  t_create(&t, "IfcSIUnit", 2);
+  t_pair(&t, "UnitType");
+  t_enum(&t, "LENGTHUNIT");
+  t_pair(&t, "Name");
+  t_enum(&t, "METRE");
+  t_create(&t, "IfcUnitAssignment", 1);
+  t_pair(&t, "Units");
+  t_list(&t, 1);
+  t_ref(&t, handle(0));
+  t_create(&t, "IfcCartesianPoint", 1);
+  t_pair(&t, "Coordinates");
+  t_reals(&t, 0.0, 0.0, 0.0);
+  t_create(&t, "IfcAxis2Placement3D", 1);
+  t_pair(&t, "Location");
+  t_ref(&t, handle(2));
+  t_create(&t, "IfcGeometricRepresentationContext", 4);
+  t_pair(&t, "ContextType");
+  t_text(&t, "Model");
+  t_pair(&t, "CoordinateSpaceDimension");
+  t_int(&t, 3);
+  t_pair(&t, "Precision");
+  t_real(&t, 1e-5);
+  t_pair(&t, "WorldCoordinateSystem");
+  t_ref(&t, handle(3));
+  /* 5: the project. */
+  t_op(&t, "PROJECT", 1);
+  t_text(&t, "attributes");
+  t_list(&t, 3);
+  t_pair(&t, "Name");
+  t_text(&t, "Demo");
+  t_pair(&t, "UnitsInContext");
+  t_ref(&t, handle(1));
+  t_pair(&t, "RepresentationContexts");
+  t_list(&t, 1);
+  t_ref(&t, handle(4));
+  /* 6..11: site, building and storey, each placed in its parent. */
+  t_op(&t, "PLACEMENT", 0);
+  t_op(&t, "SPATIAL", 3);
+  t_text(&t, "type");
+  t_text(&t, "IfcSite");
+  t_text(&t, "parent");
+  t_ref(&t, handle(5));
+  t_text(&t, "placement");
+  t_ref(&t, handle(6));
+  t_op(&t, "PLACEMENT", 1);
+  t_text(&t, "relative_to");
+  t_ref(&t, handle(6));
+  t_op(&t, "SPATIAL", 3);
+  t_text(&t, "type");
+  t_text(&t, "IfcBuilding");
+  t_text(&t, "parent");
+  t_ref(&t, handle(7));
+  t_text(&t, "placement");
+  t_ref(&t, handle(8));
+  t_op(&t, "PLACEMENT", 1);
+  t_text(&t, "relative_to");
+  t_ref(&t, handle(8));
+  t_op(&t, "SPATIAL", 4);
+  t_text(&t, "type");
+  t_text(&t, "IfcBuildingStorey");
+  t_text(&t, "parent");
+  t_ref(&t, handle(9));
+  t_text(&t, "placement");
+  t_ref(&t, handle(10));
+  t_text(&t, "attributes");
+  t_list(&t, 1);
+  t_pair(&t, "Name");
+  t_text(&t, "Level 0");
+  /* 12: the wall type. */
+  t_op(&t, "TYPE_OBJECT", 2);
+  t_text(&t, "type");
+  t_text(&t, "IfcWallType");
+  t_text(&t, "attributes");
+  t_list(&t, 1);
+  t_pair(&t, "PredefinedType");
+  t_enum(&t, "STANDARD");
+  /* 13, 14: the wall, placed in the storey, contained and typed. */
+  t_op(&t, "PLACEMENT", 2);
+  t_text(&t, "relative_to");
+  t_ref(&t, handle(10));
+  t_text(&t, "location");
+  t_reals(&t, 1.0, 2.0, 0.0);
+  t_op(&t, "PRODUCT", 5);
+  t_text(&t, "type");
+  t_text(&t, "IfcWall");
+  t_text(&t, "container");
+  t_ref(&t, handle(11));
+  t_text(&t, "placement");
+  t_ref(&t, handle(13));
+  t_text(&t, "type_object");
+  t_ref(&t, handle(12));
+  t_text(&t, "attributes");
+  t_list(&t, 1);
+  t_pair(&t, "Name");
+  t_text(&t, "Wall");
+
+  uint64_t ids[15];
+  size_t count = 0;
+  CHECK(openbim_ifc_v0_1_model_author(model, t.nodes, t.count, (const uint8_t *)t.strings,
+                                      t.len, ids, 14, &count) ==
+            OPENBIM_IFC_STATUS_BUFFER_TOO_SMALL,
+        "a short id buffer is refused before anything is written");
+  CHECK(count == 15, "fifteen operations");
+  OK(openbim_ifc_v0_1_model_author(model, t.nodes, t.count, (const uint8_t *)t.strings, t.len,
+                                   ids, 15, &count));
+  uint64_t storey = ids[11], wall = ids[14];
+  CHECK(wall != 0 && storey != 0, "the wall and the storey");
+  CHECK(documented_authoring(model) == 0, "the documented authoring example runs");
+
+  /* A property set through the #316 call: IFCLABEL('W-01'). */
+  static const char label[] = "IFCLABELW-01";
+  OpenbimIfcValueNode value[2];
+  value[0] = node(OPENBIM_IFC_KIND_TYPED, 0, 0, 0, 8);
+  value[1] = node(OPENBIM_IFC_KIND_TEXT, 0, 0, 8, 4);
+  uint64_t property = 0;
+  OK(openbim_ifc_v0_1_model_set_property(model, wall, (const uint8_t *)"ACME_WallData", 13,
+                                         (const uint8_t *)"Mark", 4, value, 2,
+                                         (const uint8_t *)label, strlen(label), NULL, 0,
+                                         &property));
+
+  OpenbimIfcValidationSummary summary;
+  memset(&summary, 0, sizeof summary);
+  size_t nodes_needed = 0, strings_needed = 0;
+  openbim_ifc_v0_1_model_validate(model, 0, &summary, NULL, 0, &nodes_needed, NULL, 0,
+                                  &strings_needed);
+  CHECK(summary.errors == 0 && summary.evaluation_errors == 0, "the model validates clean");
+
+  /* STEP and ifcXML (native and XSD) round trips give the same file. */
+  size_t step_len = 0, again_len = 0;
+  uint8_t *step = write_step(model, &step_len);
+  CHECK(step != NULL, "written");
+  OpenbimIfcModel again = 0;
+  OK(openbim_ifc_v0_1_model_parse(step, step_len, &again, NULL, 0));
+  uint8_t *rewritten = write_step(again, &again_len);
+  CHECK(again_len == step_len && memcmp(rewritten, step, step_len) == 0, "STEP round trip");
+  free(rewritten);
+  OK(openbim_ifc_v0_1_model_destroy(again));
+  const char *profiles[] = {"", "IFC4"};
+  for (int i = 0; i < 2; i++) {
+    size_t profile_len = strlen(profiles[i]), xml_len = 0;
+    const uint8_t *profile = profile_len ? (const uint8_t *)profiles[i] : NULL;
+    openbim_ifc_v0_1_model_write_ifcxml(model, profile, profile_len, NULL, 0, &xml_len);
+    uint8_t *xml = (uint8_t *)malloc(xml_len);
+    OK(openbim_ifc_v0_1_model_write_ifcxml(model, profile, profile_len, xml, xml_len,
+                                           &xml_len));
+    OK(openbim_ifc_v0_1_model_parse_ifcxml(xml, xml_len, profile, profile_len, &again, NULL,
+                                           0));
+    free(xml);
+    rewritten = write_step(again, &again_len);
+    CHECK(again_len == step_len && memcmp(rewritten, step, step_len) == 0,
+          "ifcXML round trip");
+    free(rewritten);
+    OK(openbim_ifc_v0_1_model_destroy(again));
+  }
+
+  /* A refused batch leaves the model byte-identical: a second wall is
+   * fine, but the first one is already contained. */
+  memset(&t, 0, sizeof t);
+  t_list(&t, 2);
+  t_op(&t, "PRODUCT", 2);
+  t_text(&t, "type");
+  t_text(&t, "IfcWall");
+  t_text(&t, "container");
+  t_ref(&t, storey);
+  t_op(&t, "CONTAIN", 2);
+  t_text(&t, "structure");
+  t_ref(&t, storey);
+  t_text(&t, "elements");
+  t_list(&t, 1);
+  t_ref(&t, wall);
+  CHECK(openbim_ifc_v0_1_model_author(model, t.nodes, t.count, (const uint8_t *)t.strings,
+                                      t.len, ids, 15, &count) ==
+            OPENBIM_IFC_STATUS_INVALID_MODEL,
+        "a second containment is refused");
+  char code[32];
+  size_t need = 0;
+  OK(openbim_ifc_v0_1_last_error_code(model, (uint8_t *)code, sizeof code, &need));
+  CHECK(strcmp(code, "invalid-model") == 0, "the shared code");
+  uint8_t *after = write_step(model, &again_len);
+  CHECK(again_len == step_len && memcmp(after, step, step_len) == 0,
+        "a refused batch leaves the model unchanged");
+  free(after);
+  free(step);
+
+  /* Removal with relationships; a removal something still needs. */
+  CHECK(openbim_ifc_v0_1_entity_remove_with_relationships(model, ids[10]) ==
+            OPENBIM_IFC_STATUS_STILL_REFERENCED,
+        "the storey's placement is still needed");
+  OK(openbim_ifc_v0_1_entity_remove_with_relationships(model, wall));
+  CHECK(openbim_ifc_v0_1_entity_remove_with_relationships(model, wall) ==
+            OPENBIM_IFC_STATUS_MISSING_ENTITY,
+        "removed");
+  OK(openbim_ifc_v0_1_model_destroy(model));
+  return 0;
+}
+
 /* The by-name example published on the docs site's C page. */
 static int documented_by_name(OpenbimIfcModel model) {
   // docs:snippet c-attribute-by-name
@@ -642,6 +963,7 @@ int main(void) {
   CHECK(domains() == 0, "the domain views work from C");
   CHECK(property_edits() == 0, "property sets are written from C");
   CHECK(named_attributes() == 0, "attributes are read and written by name from C");
+  CHECK(authoring() == 0, "a model is built from nothing from C");
 
   size_t live = 1;
   OK(openbim_ifc_v0_1_live_models(&live));

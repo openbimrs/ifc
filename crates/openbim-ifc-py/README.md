@@ -44,10 +44,10 @@ or a `Real`, `"x"` a `Text` or an `Enum`, and the binding does not guess.
 
 ## Errors
 
-Every failure raises `IfcError` with a stable `code`: `parse`, `write`,
-`missing-entity`, `invalid-value`, `out-of-range`, `unsupported-schema`,
-`io`, `unsupported-profile` or `feature-disabled`. The codes are shared with the JavaScript and C bindings; a code is
-never renamed or reused.
+Every failure raises `IfcError` with a stable `code` (`parse`,
+`missing-entity`, `invalid-value`, `unsupported-schema`, ...; the Python
+guide lists them all). The codes are shared with the JavaScript and C
+bindings; a code is never renamed or reused.
 
 ## Threads
 
@@ -60,10 +60,12 @@ The record model -- entities, attributes, the STEP codec, exact and
 subtype queries -- plus lenient reads (`ParseOptions`), the STEP header,
 validation, ifcXML, the reachability lint and the read-only domain views
 (property sets and quantities, the spatial tree, classification, materials,
-systems, cost, georeferencing; #123), each as frozen dataclasses, and
+systems, cost, georeferencing; #123), each as frozen dataclasses,
 writing property sets and quantities as one checked transaction
-(`set_properties`). Geometry and checked multi-edit transactions over
-arbitrary entities are not bound yet.
+(`set_properties`), and creating entities as one checked transaction
+(`author` with `AuthorOp`s: entities by type and named attributes, the
+spatial structure, placed, contained and typed products, removal with
+relationships; #330). Geometry is not bound yet.
 
 ## Build from source
 

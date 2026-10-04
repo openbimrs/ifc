@@ -73,6 +73,8 @@ writeFileSync("house-edited.ifc", model.write());
 
 Ids are `bigint`s. Names resolve against the release the header declares;
 `attribute(id, index)` addresses a slot by its 0-based position instead.
+`author(ops)` creates entities, the spatial structure and placed, typed
+products as one checked batch, refused whole or applied whole.
 
 ## Browsers and bundlers
 
@@ -125,10 +127,8 @@ The TypeScript declarations export this union as `IfcValue`.
 ## Errors
 
 Every failure throws an `Error` with `name === "IfcError"` and a stable
-`code`: `parse`, `write`, `missing-entity`, `invalid-value`,
-`out-of-range`, `unsupported-schema`, `io`, `unsupported-profile` or
-`feature-disabled`; a code is never renamed or reused. A
-refused edit leaves the model unchanged.
+`code` (the `IfcErrorCode` type lists them); a code is never renamed or
+reused. A refused edit leaves the model unchanged.
 
 ## Building
 

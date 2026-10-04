@@ -594,3 +594,161 @@ test("the catalog loads per release, from bytes or a base URL, checked against i
   // Every edition is loaded now; loading all again is a no-op.
   await IfcModel.loadCatalog();
 });
+
+// --- #330: schema-checked entity creation ---------------------------------
+
+/** An empty model whose header names the release creation checks against. */
+function emptyModel(schema = "IFC4") {
+  const model = new IfcModel();
+  model.setHeader({ ...model.header(), schema: [schema] });
+  return model;
+}
+
+const text = (value) => ({ kind: "text", value });
+const token = (value) => ({ kind: "enum", value });
+const ref = (id) => ({ kind: "ref", id });
+const reals = (...values) => ({ kind: "list", items: values.map((value) => ({ kind: "real", value })) });
+
+test("documented example: a model built from nothing", () => {
+  const model = emptyModel("IFC4");
+  // docs:snippet js-authoring
+  const h = IfcModel.handle; // h(i): the entity operation i of the batch produces
+  const result = model.author([
+    { op: "project", attributes: { Name: text("Demo") } }, // 0
+    { op: "placement" }, // 1: at the origin
+    { op: "spatial", type: "IfcSite", parent: h(0), placement: h(1) }, // 2
+    { op: "spatial", type: "IfcBuilding", parent: h(2) }, // 3
+    { op: "placement", relativeTo: h(1) }, // 4
+    { op: "spatial", type: "IfcBuildingStorey", parent: h(3), placement: h(4) }, // 5
+    { op: "typeObject", type: "IfcWallType", attributes: { PredefinedType: token("STANDARD") } }, // 6
+    { op: "placement", relativeTo: h(4), location: [1, 2, 0] }, // 7
+    {
+      op: "product",
+      type: "IfcWall",
+      container: h(5), // IfcRelContainedInSpatialStructure
+      placement: h(7),
+      typeObject: h(6), // IfcRelDefinesByType
+      attributes: { Name: text("Wall") },
+    },
+  ]);
+  const wall = result.ids[8]; // a bigint; every IfcRoot got a GlobalId
+  // docs:end
+  assert.equal(model.typeOf(wall), "IFCWALL");
+  assert.equal(model.attributeByName(wall, "GlobalId").value.length, 22);
+  const report = model.validate();
+  assert.equal(report.errors + report.evaluationErrors, 0, JSON.stringify(report.findings));
+});
+
+/** The host test's model: units, a context, project, site, building and
+ * storey, a wall type, and a placed wall contained in the storey and typed. */
+function building(model) {
+  const h = IfcModel.handle;
+  return model.author([
+    { op: "create", type: "IfcSIUnit", attributes: { UnitType: token("LENGTHUNIT"), Name: token("METRE") } },
+    { op: "create", type: "IfcUnitAssignment", attributes: { Units: { kind: "list", items: [ref(h(0))] } } },
+    { op: "create", type: "IfcCartesianPoint", attributes: { Coordinates: reals(0, 0, 0) } },
+    { op: "create", type: "IfcAxis2Placement3D", attributes: { Location: ref(h(2)) } },
+    {
+      op: "create",
+      type: "IfcGeometricRepresentationContext",
+      attributes: {
+        ContextType: text("Model"),
+        CoordinateSpaceDimension: { kind: "integer", value: 3n },
+        Precision: { kind: "real", value: 1e-5 },
+        WorldCoordinateSystem: ref(h(3)),
+      },
+    },
+    {
+      op: "project",
+      attributes: {
+        Name: text("Demo"),
+        UnitsInContext: ref(h(1)),
+        RepresentationContexts: { kind: "list", items: [ref(h(4))] },
+      },
+    },
+    { op: "placement" },
+    { op: "spatial", type: "IfcSite", parent: h(5), placement: h(6) },
+    { op: "placement", relativeTo: h(6) },
+    { op: "spatial", type: "IfcBuilding", parent: h(7), placement: h(8) },
+    { op: "placement", relativeTo: h(8) },
+    { op: "spatial", type: "IfcBuildingStorey", parent: h(9), placement: h(10), attributes: { Name: text("Level 0") } },
+    { op: "typeObject", type: "IfcWallType", attributes: { PredefinedType: token("STANDARD") } },
+    { op: "placement", relativeTo: h(10), location: [1, 2, 0], axis: [0, 0, 1], refDirection: [1, 0, 0] },
+    { op: "product", type: "IfcWall", container: h(11), placement: h(13), typeObject: h(12), attributes: { Name: text("Wall") } },
+  ]).ids;
+}
+
+test("a model built from nothing validates and round-trips through STEP and ifcXML", () => {
+  const model = emptyModel();
+  const ids = building(model);
+  const wall = ids[14];
+  // A property set through the #316 call; no catalog needed for a custom set.
+  model.setProperty(wall, "ACME_WallData", "Mark", { kind: "typed", type: "IFCLABEL", value: text("W-01") });
+  const report = model.validate();
+  assert.equal(report.errors + report.evaluationErrors, 0, JSON.stringify(report.findings));
+
+  const step = model.write();
+  assert.deepEqual(IfcModel.parse(step).write(), step);
+  for (const profile of [undefined, "IFC4"]) {
+    const back = IfcModel.parseIfcXml(model.writeIfcXml(profile), profile);
+    assert.deepEqual(back.write(), step, `ifcXML ${profile ?? "native"}`);
+  }
+});
+
+test("a refused batch leaves the model byte-identical", () => {
+  const model = emptyModel();
+  const ids = building(model);
+  const before = model.write();
+  throwsCode(
+    () =>
+      model.author([
+        { op: "product", type: "IfcWall", container: ids[11] },
+        { op: "contain", structure: ids[11], elements: [ids[14]] },
+      ]),
+    "invalid-model",
+  );
+  assert.deepEqual(model.write(), before);
+});
+
+test("createEntity and removeWithRelationships are one-operation batches", () => {
+  const model = emptyModel();
+  const ids = building(model);
+  const proxy = model.createEntity("IfcBuildingElementProxy", { Name: text("Proxy") });
+  assert.equal(model.typeOf(proxy), "IFCBUILDINGELEMENTPROXY");
+  throwsCode(() => model.removeWithRelationships(ids[10]), "still-referenced");
+  model.removeWithRelationships(ids[14]);
+  assert.deepEqual(model.idsOfType("IfcRelContainedInSpatialStructure"), []);
+  assert.deepEqual(model.danglingReferences(), []);
+});
+
+test("authoring refusals carry the shared codes", () => {
+  const model = emptyModel();
+  const ids = building(model);
+  const refuse = (ops, code) => {
+    const before = model.write();
+    throwsCode(() => model.author(ops), code);
+    assert.deepEqual(model.write(), before, code);
+  };
+  refuse([{ op: "create", type: "IfcWal" }], "unsupported-schema");
+  refuse([{ op: "create", type: "IfcElement" }], "wrong-entity-type");
+  refuse([{ op: "create", type: "IfcWall", attributes: { Nmae: text("x") } }], "unknown-attribute");
+  refuse([{ op: "create", type: "IfcWallType" }], "missing-attribute");
+  refuse([{ op: "create", type: "IfcWall", attributes: { Name: { kind: "integer", value: 3n } } }], "invalid-value");
+  refuse([{ op: "create", type: "IfcWall", attributes: { ObjectPlacement: ref(99999n) } }], "missing-reference");
+  refuse([{ op: "edit", entity: 99999n, attributes: {} }], "missing-entity");
+  refuse([{ op: "edit", entity: ids[0], attributes: { Dimensions: { kind: "null" } } }], "derived-attribute");
+  refuse([{ op: "project" }], "invalid-model");
+  refuse([{ op: "remove", entity: ids[10] }], "still-referenced");
+  // JavaScript-side conversion: the operation and its fields.
+  refuse([{ op: "build" }], "invalid-value");
+  refuse([{ op: "create", type: "IfcWall", colour: "red" }], "invalid-value");
+  refuse([{ op: "placement", axis: [0, 0, 1] }], "invalid-value");
+  refuse([{ op: "placement", location: [1, 2] }], "invalid-value");
+  refuse([{ op: "contain", structure: ids[11], elements: "all" }], "invalid-value");
+  refuse("not an array", "invalid-value");
+  // A handle names an earlier operation.
+  refuse([{ op: "create", type: "IfcWall", attributes: { ObjectPlacement: ref(IfcModel.handle(0)) } }], "invalid-value");
+  // An IFC2X3 project needs an owner history.
+  throwsCode(() => emptyModel("IFC2X3").author([{ op: "project" }]), "missing-attribute");
+  throwsCode(() => new IfcModel().author([{ op: "project" }]), "unsupported-schema");
+});

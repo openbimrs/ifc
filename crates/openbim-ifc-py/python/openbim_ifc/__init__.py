@@ -14,7 +14,10 @@ written back through Python is unchanged.
 
 from ._native import IfcError
 from .domains import (
+    HANDLE_BASE,
     AttributeInfo,
+    AuthorOp,
+    AuthoringResult,
     Classification,
     ClassificationSystem,
     Cost,
@@ -48,6 +51,7 @@ from .domains import (
     SystemAnomaly,
     Systems,
     UnitBasis,
+    handle,
 )
 from .model import IfcModel
 from .records import (
@@ -77,6 +81,10 @@ __all__ = [
     "IfcError",
     "IfcModel",
     "AttributeInfo",
+    "AuthorOp",
+    "AuthoringResult",
+    "HANDLE_BASE",
+    "handle",
     "ParseOptions",
     "Header",
     "ValidationReport",

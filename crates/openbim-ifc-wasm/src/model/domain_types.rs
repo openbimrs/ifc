@@ -113,6 +113,79 @@ export interface PropertyEditResult {
   removed: bigint[];
 }
 
+/** Attribute values by name, for `IfcModel.author` and `createEntity`. */
+export type NamedAttributes = Record<string, IfcValue>;
+
+/** Three coordinates or direction ratios. */
+export type Triple = [number, number, number];
+
+/**
+ * One operation of `IfcModel.author`. Every id is a `bigint`: an entity's
+ * id or `IfcModel.handle(index)`, the entity an earlier operation of the
+ * batch produced. Builders take the `ownerHistory` they write on every
+ * record they create; none is invented.
+ */
+export type AuthorOp =
+  /** One entity by type and named attributes. */
+  | { op: "create"; type: string; attributes?: NamedAttributes }
+  /** Replace named attributes; the whole entity is checked again. */
+  | { op: "edit"; entity: bigint; attributes: NamedAttributes }
+  /** Remove an entity with the relationships that reference it. */
+  | { op: "remove"; entity: bigint }
+  /** The model's one `IfcProject`. */
+  | { op: "project"; attributes?: NamedAttributes; ownerHistory?: bigint }
+  /** A spatial element aggregated under `parent` (`IfcRelAggregates`). */
+  | {
+      op: "spatial";
+      type: string;
+      parent: bigint;
+      attributes?: NamedAttributes;
+      placement?: bigint;
+      ownerHistory?: bigint;
+    }
+  /** A product, contained in `container` and typed by `typeObject`. */
+  | {
+      op: "product";
+      type: string;
+      container?: bigint;
+      attributes?: NamedAttributes;
+      placement?: bigint;
+      typeObject?: bigint;
+      ownerHistory?: bigint;
+    }
+  /** A type object (`IfcWallType`, ...). */
+  | { op: "typeObject"; type: string; attributes?: NamedAttributes; ownerHistory?: bigint }
+  /** `IfcRelDefinesByType`. */
+  | { op: "assignType"; typeObject: bigint; objects: bigint[]; ownerHistory?: bigint }
+  /** `IfcRelContainedInSpatialStructure`. */
+  | { op: "contain"; structure: bigint; elements: bigint[]; ownerHistory?: bigint }
+  /** `IfcRelAggregates`. */
+  | { op: "aggregate"; parent: bigint; parts: bigint[]; ownerHistory?: bigint }
+  /** An `IfcLocalPlacement`; `axis` and `refDirection` both or neither. */
+  | { op: "placement"; relativeTo?: bigint; location?: Triple; axis?: Triple; refDirection?: Triple }
+  /** An `IfcOwnerHistory` with its person, organization and application. */
+  | {
+      op: "ownerHistory";
+      personIdentification?: string;
+      familyName?: string;
+      givenName?: string;
+      organization: string;
+      applicationName: string;
+      applicationVersion: string;
+      applicationIdentifier: string;
+      changeAction?: string;
+      creationDate: bigint | number;
+      lastModifiedDate?: bigint | number;
+    };
+
+/** What a committed `IfcModel.author` batch did. */
+export interface AuthoringResult {
+  /** Per operation, the id of the entity it produced; `undefined` for a removal. */
+  ids: (bigint | undefined)[];
+  created: bigint[];
+  removed: bigint[];
+}
+
 /** The containment tree, from `IfcModel.spatialTree`. */
 export interface SpatialTree {
   /** The release containers were classified against, e.g. `IFC4_ADD2_TC1`. */

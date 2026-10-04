@@ -12,6 +12,35 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#330, checked authoring)
+
+- Feature `authoring`: `ifc-author` without choosing a release (`author`
+  now means `authoring` plus `schema`, as before), and the checked
+  authoring batch. `apply_authoring(model, schema, ops, seed)` runs
+  `AuthorOp`s in order against the model as the operations before them
+  leave it and commits them as one transaction, or refuses with
+  `AuthoringError` (the operation's position and an `AuthoringFailure`)
+  and changes nothing; `stage_authoring` plans without committing.
+- `AuthorOp` (`#[non_exhaustive]`): `Create` an entity by type and named
+  attributes, `Edit` named attributes, `Remove` an entity with the
+  relationships that reference it, and the builders `Project`, `Spatial`
+  (aggregated under its parent), `Product` (placed, contained and typed),
+  `TypeObject`, `AssignType`, `Contain`, `Aggregate`, `Placement` (an
+  `IfcLocalPlacement` over an `IfcAxis2Placement3D`) and `OwnerHistory`
+  (through `ifc-author`'s writers). Every record is built by name through
+  `ifc-author`'s `EntityBuilder` against the declared release, then its
+  references are resolved (type checked with `Schema::accepts_type`) and
+  its aggregates held to their declared bounds; a supplied `GlobalId`
+  another entity holds is refused; an object is contained, aggregated or
+  typed once, and a model holds one `IfcProject`.
+- An `IfcRoot` created without a `GlobalId` gets a name-based one over a
+  seed (`fresh_seed()`, from the OS on native targets) and its id; a fixed
+  seed reproduces a file. `OwnerHistory` is never invented.
+- `authoring_handle(i)` / `HANDLE_BASE` (2^62): an operation names the
+  entity an earlier one produced; `AuthoringOutcome::ids` reports the ids.
+- Additive: a patch release. The property edit's name-based `GlobalId`
+  moved into a shared module unchanged (a test pins its output).
+
 ## [0.14.0] - 2026-10-04
 
 ### Changed (breaking)

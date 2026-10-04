@@ -12,6 +12,15 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#330)
+
+- A built-in type with a width (`STRING(255)`, `STRING(22) FIXED`,
+  `BINARY(32)`) is the shape of its keyword. IFC4 and IFC4X3 declare
+  `IfcLabel = STRING(255)`, so a number set as an `IfcLabel` was accepted
+  as unresolvable; it is now refused with `TypeMismatch`, as a number
+  where a bare `STRING` is declared always was. A bug fix: a patch
+  release.
+
 ## [0.3.0] - 2026-09-29
 
 ### Changed (breaking)

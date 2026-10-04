@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import os
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import Iterable, List, Mapping, Optional, Tuple, Union
 
 from ._native import NativeModel
 from . import domains
 from .domains import (
     AttributeInfo,
+    AuthorOp,
+    AuthoringResult,
     Classification,
     Cost,
     MapConversion,
@@ -35,7 +37,8 @@ class IfcModel:
     ``unsupported`` or ``wrong-entity-type``, or, from a property edit,
     ``template-violation`` or ``missing-property``, or, from an attribute
     named rather than numbered, ``unknown-attribute`` or
-    ``derived-attribute``.
+    ``derived-attribute``, or, from authoring, ``missing-attribute`` or
+    ``still-referenced``.
 
     A parsed model decodes each entity the first time it is read: parsing
     checks every record but builds nothing, so opening a large file is fast
@@ -286,6 +289,36 @@ class IfcModel:
     def remove(self, id: int) -> None:
         """Remove entity ``id``, leaving references to it dangling."""
         self._native.remove(id)
+
+    def author(self, ops: Iterable[AuthorOp]) -> AuthoringResult:
+        """Apply authoring operations as one checked transaction against
+        the release the header declares: every operation, in order, or none.
+
+        A refused batch raises :class:`openbim_ifc.IfcError` and leaves the
+        model unchanged. An operation names the entity an earlier one
+        produced by :func:`openbim_ifc.handle`; ``result.ids`` holds, per
+        operation, the id the produced entity received.
+        """
+        wire = []
+        for op in ops:
+            if not isinstance(op, AuthorOp):
+                raise TypeError(f"expected an openbim_ifc.AuthorOp, got {type(op).__name__}")
+            wire.append(op._to_wire())
+        return domains._from_wire(self._native.author(wire))
+
+    def create_entity(self, type_name: str, attributes: Optional[Mapping[str, Value]] = None) -> int:
+        """Create one entity of ``type_name`` from named attributes, checked
+        against the declared release (:meth:`author` with one
+        :meth:`AuthorOp.create`); returns its id."""
+        wire = {name: to_wire(value) for name, value in (attributes or {}).items()}
+        return self._native.create_entity(type_name, wire)
+
+    def remove_with_relationships(self, id: int) -> None:
+        """Remove entity ``id`` with the relationships that reference it,
+        leaving nothing dangling (:meth:`author` with one
+        :meth:`AuthorOp.remove`). Raises ``still-referenced`` while an
+        entity other than a relationship needs it."""
+        self._native.remove_with_relationships(id)
 
     def dangling_references(self) -> List[Tuple[int, int]]:
         """Every ``(from, to)`` pair where ``to`` does not exist."""

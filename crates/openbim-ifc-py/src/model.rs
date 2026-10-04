@@ -5,6 +5,7 @@ use openbim_ifc_binding_core::{IfcModel, ParseOptions, ToRecord};
 use pyo3::prelude::*;
 use pyo3::types::{PyBool, PyBytes, PyDict, PyList};
 
+use crate::authoring;
 use crate::convert::{from_py, to_py};
 use crate::edits;
 use crate::error::py_err;
@@ -372,6 +373,34 @@ impl NativeModel {
 
     fn remove(&mut self, id: u64) -> PyResult<()> {
         self.inner.remove(id).map_err(py_err)
+    }
+
+    /// Apply authoring operations as one checked transaction.
+    fn author<'py>(
+        &mut self,
+        py: Python<'py>,
+        ops: &Bound<'py, PyAny>,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let ops = authoring::ops_from_py(ops).map_err(py_err)?;
+        let result = self.inner.author(ops).map_err(py_err)?;
+        records::record_to_py(py, &result.to_record())
+    }
+
+    /// Create one entity from named attributes; its id.
+    fn create_entity(&mut self, type_name: &str, attributes: &Bound<'_, PyAny>) -> PyResult<u64> {
+        let pairs = authoring::attribute_pairs(attributes).map_err(py_err)?;
+        self.inner.create_entity(type_name, pairs).map_err(py_err)
+    }
+
+    /// Remove an entity with its relationships.
+    fn remove_with_relationships(&mut self, id: u64) -> PyResult<()> {
+        self.inner.remove_with_relationships(id).map_err(py_err)
+    }
+
+    /// The handle of operation `index`'s entity.
+    #[staticmethod]
+    fn handle(index: u64) -> PyResult<u64> {
+        openbim_ifc_binding_core::authoring::handle(index).map_err(py_err)
     }
 
     fn dangling_references(&self) -> Vec<(u64, u64)> {

@@ -8,6 +8,18 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#330, schema-checked entity creation)
+
+- `IfcModel.author(ops)`: `AuthorOp`s built with `AuthorOp.create`,
+  `.edit`, `.remove`, `.project`, `.spatial`, `.product`, `.type_object`,
+  `.assign_type`, `.contain`, `.aggregate`, `.placement` and
+  `.owner_history`, applied as one checked transaction and returning
+  `AuthoringResult`; `openbim_ifc.handle(index)` (and `HANDLE_BASE`) names
+  the entity an earlier operation produced. `create_entity(type_name,
+  attributes)` and `remove_with_relationships(id)` are one-operation
+  batches. New codes `missing-attribute` and `still-referenced`. Additive:
+  a patch release.
+
 ## [0.3.1] - 2026-10-04
 
 ### Added (#326, attributes by name)

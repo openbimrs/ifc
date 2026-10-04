@@ -31,6 +31,11 @@ maps the facade's refusals to the shared codes (`unknown-attribute`,
 `derived-attribute`, `unsupported-schema`) and carries each slot as an
 `AttributeInfo` record, so the three hosts list the same names.
 
+Entity creation (#330) is one checked batch too: each host converts its
+operation objects field by field, guided by the core's `OPS` table, into
+the tape form `AuthorOp::from_tagged` reads, and the facade's
+`apply_authoring` runs them, so no host reads an operation differently.
+
 Property edits go the other way and are read once here too: each host
 builds the core's `PropertyEdit` from its own idiom, and the C batch is a
 value tape `PropertyEdit::from_tagged` reads, so a host cannot interpret

@@ -24,6 +24,11 @@
 //! `unknown-attribute` (or `derived-attribute` for a write to a `*` slot)
 //! rather than guessed.
 //!
+//! Entities are created by type and named attributes (#330, feature
+//! `author`), alone or with the spatial, product, type and placement
+//! builders in one checked batch ([`IfcModel::author`]); a refused batch
+//! leaves the model unchanged.
+//!
 //! Property edits check `Pset_`/`Qto_` sets against the PSD/QTO catalog
 //! ([`catalog`]): embedded with `property-catalog` (default), or loaded at
 //! runtime from pinned snapshot files with `property-catalog-runtime`, the
@@ -31,6 +36,7 @@
 //! `catalog-not-loaded`.
 
 mod attribute;
+pub mod authoring;
 pub mod catalog;
 pub mod classification;
 pub mod cost;
@@ -51,6 +57,7 @@ pub mod value;
 mod xml;
 
 pub use attribute::AttributeInfo;
+pub use authoring::{AuthorOp, AuthoringResult};
 pub use error::BindingError;
 pub use model::IfcModel;
 pub use options::{OnMalformed, ParseOptions};

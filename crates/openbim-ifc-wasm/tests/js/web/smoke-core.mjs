@@ -96,5 +96,31 @@ export async function smoke(IfcModel) {
   const pset = model.propertySets(5n).find((set) => set.name === "Pset_WallCommon");
   check(pset?.properties[0].value.value.value === "F90", "Pset_ property written after loading");
 
+  // Schema-checked creation (#330): a storey and a contained wall, built
+  // from nothing, validate clean and survive ifcXML.
+  const built = new IfcModel();
+  built.setHeader({ ...built.header(), schema: ["IFC4"] });
+  const h = IfcModel.handle;
+  const { ids } = built.author([
+    { op: "project", attributes: { Name: { kind: "text", value: "P" } } },
+    { op: "placement" },
+    { op: "spatial", type: "IfcSite", parent: h(0), placement: h(1) },
+    { op: "spatial", type: "IfcBuildingStorey", parent: h(2) },
+    { op: "typeObject", type: "IfcWallType", attributes: { PredefinedType: { kind: "enum", value: "STANDARD" } } },
+    { op: "placement", relativeTo: h(1), location: [1, 2, 0] },
+    { op: "product", type: "IfcWall", container: h(3), placement: h(5), typeObject: h(4) },
+  ]);
+  check(built.typeOf(ids[6]) === "IFCWALL", "author");
+  const builtReport = built.validate();
+  check(builtReport.errors + builtReport.evaluationErrors === 0, "authored model validates");
+  check(IfcModel.parseIfcXml(built.writeIfcXml()).size === built.size, "authored ifcXML");
+  let authorRefusal;
+  try {
+    built.author([{ op: "project" }]);
+  } catch (error) {
+    authorRefusal = error.code;
+  }
+  check(authorRefusal === "invalid-model", `a second project: ${authorRefusal}`);
+
   return { schema: model.schema, size: model.size, walls: walls.length, catalog: "IFC4" };
 }
