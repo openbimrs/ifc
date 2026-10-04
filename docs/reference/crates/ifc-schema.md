@@ -11,7 +11,7 @@ IFC schema as data: entity table, supertype chain, attribute names.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.1 (2026-10-03) |
+| Latest release | 0.3.2 (2026-10-04) |
 | Registries | [crates.io `ifc-schema`](https://crates.io/crates/ifc-schema) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties`, `schema-api` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_schema/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-schema) |
@@ -36,15 +36,29 @@ IFC schema as data: entity table, supertype chain, attribute names.
 
 ## Changes
 
-Latest release, 0.3.1 (2026-10-03):
+Latest release, 0.3.2 (2026-10-04):
 
 ### Changed
 
-- The `express` and `generation` features use the workspace's
-  `openbim-step` pin, `=0.11.0` (was its own `=0.10.0`), shared with
-  `ifc-step`, so a build with `express` links one `openbim-step` (#288).
-  0.11 changed no EXPRESS extraction: the bundled tables still match the
-  fetched schemas. No `openbim-step` type is part of this crate's API, and
-  the default build links none.
+- `Schema::is_a`, `supertypes` and `attributes` read a supertype chain and
+  a positional attribute layout precomputed per entity when the schema is
+  assembled, instead of walking the declarations on every call (#352).
+  `is_a` no longer allocates, and no case-folded lookup (`entity`,
+  `type_def`, `direct_subtypes`) allocates for a name of up to 128 bytes.
+  The answers are unchanged: the tables are built by the walks they
+  replace, and `tests/precomputed_lineage.rs` compares every entity of
+  every bundled release, under three spellings, against a frozen copy of
+  the old walks, and `is_a` for every ordered pair.
+- `accepts_type` answers two distinct declared entities with `is_a`
+  directly, without the select walk's allocations; the answer is the one
+  the walk gave.
+
+### Added
+
+- `Schema::attribute_count(name)` and `Schema::attribute_at(name, slot)`:
+  `attributes(name).len()` and `attributes(name).get(slot)` without
+  allocating (#352).
+
+Semver: additive, same answers: a patch release.
 
 Full history: [`crates/ifc-schema/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-schema/CHANGELOG.md)

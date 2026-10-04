@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-04
+
 ### Changed
 
 - `Schema::is_a`, `supertypes` and `attributes` read a supertype chain and

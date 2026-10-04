@@ -824,7 +824,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-geometry"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "axiolid-construct",
  "axiolid-contracts",
@@ -894,7 +894,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-properties"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -921,7 +921,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-schema"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "ahash",
  "bincode",
@@ -1121,7 +1121,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "openbim-ifc"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "ifc-alignment",
  "ifc-approval",

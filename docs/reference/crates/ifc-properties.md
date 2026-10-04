@@ -11,7 +11,7 @@ Property sets, quantities, and unit resolution. No geometry.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.8.0 (2026-10-03) |
+| Latest release | 0.8.1 (2026-10-04) |
 | Registries | [crates.io `ifc-properties`](https://crates.io/crates/ifc-properties) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_properties/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-properties) |
@@ -44,24 +44,34 @@ standard Psets are data here rather than hand-written tables.
 
 ## Changes
 
-Latest release, 0.8.0 (2026-10-03):
+Latest release, 0.8.1 (2026-10-04):
 
-### Changed (breaking)
+### Added
 
-- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
-  default, forward to `ifc-schema`, which this crate now depends on without
-  its default features (#306). Each links one release's table, so a
-  single-release build carries only that table: an IFC4-only browser
-  module with property sets shrinks from 1,519,870 to 926,986 bytes. The default
-  build links every release, as before.
-- A file declaring IFC2X3, IFC4 or IFC4X3 when the build leaves that
-  release out is refused by the exact reads with `UnsupportedSchema`
-  instead of panicking. Permissive reads (type objects in
-  `property_sets_by_object`, template reads) keep the IFC4 table as their
-  baseline and fall back to the newest bundled one in a build without it.
-  A build naming no release fails to compile with a message naming the
-  features, so a build without default features has to name one.
+- `PropertyIndex`: the exact resolver's view of one model, built once by
+  `PropertyIndex::build(&model)` and asked per object (#352). It validates
+  every `IfcRelDefinesByProperties` and `IfcRelDefinesByType` once and
+  records each object's assignments, so resolving every object is linear
+  in objects plus relationships instead of their product. Its
+  `exact_property`, `exact_properties`, `exact_properties_where`,
+  `exact_property_sets_where` and `exact_predefined_sets` answer exactly
+  what the free functions of the same name answer, refusals included, in
+  the same precedence. It borrows the model (ADR 0003), so the model
+  cannot be edited while an index exists; rebuild it after a commit.
+  Measured on a generated IFC4 model (`benches/properties`,
+  `benchmarks/baseline.md`): one property for every one of 100,000 walls
+  takes 2.0 s instead of about 31 hours (extrapolated; 10,000 walls:
+  195 ms instead of 814 s), scaling ten-fold per ten-fold more walls.
 
-Under 0.x, a minor release.
+### Changed
+
+- The free functions scan the relationships for the one queried object
+  through the same code, so their answers are unchanged (a dump of every
+  answer over the fixture corpus and the new equivalence models is
+  byte-identical before and after); with `ifc-schema`'s precomputed
+  tables a single call is several times cheaper, but it still validates
+  every relationship of the file, as it must.
+
+Semver: one new public type, nothing changed or removed: a patch release.
 
 Full history: [`crates/ifc-properties/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-properties/CHANGELOG.md)
