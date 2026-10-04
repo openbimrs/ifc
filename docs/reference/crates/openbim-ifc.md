@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.15.0 (2026-10-04) |
+| Latest release | 0.16.0 (2026-10-04) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -94,43 +94,29 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.15.0 (2026-10-04):
+Latest release, 0.16.0 (2026-10-04):
 
-### Changed (breaking)
+### Changed
 
-- Behind `geometry`, the re-exported `ifc_geometry` is 0.9 (was 0.8): IFC4X3
-  stations, linear placements, offset curves by distances and sectioned
-  solids/surfaces lower exactly (#307), and an `IfcParameterValue`
-  distance on an alignment centreline is refused instead of being read as
-  plan distance (#347).
+- `spatial_properties` and the property-edit planner (`apply_property_edits`,
+  `stage_property_edits`) resolve through one `ifc_properties::PropertyIndex`
+  of the model instead of calling the exact resolver per element or per
+  edited object, so listing every element's properties, or a batch editing
+  many objects, is linear in the model (#352). Answers and refusals are
+  unchanged. `ifc::properties::PropertyIndex` is reachable through the
+  `properties` feature.
+- Behind `geometry`, the re-exported `ifc_geometry` gains, under
+  `geometry::lower`, `lower_product_net_with` and `NetOptions` (#351): a
+  Reference View opening with only a `Reference` representation can be
+  taken as already applied to its host's Body, listed in
+  `NetLowering::taken_as_applied`. With `ifc-geometry`'s `compile` feature
+  it also gains the evaluator-taking linear placement (#353,
+  `LoweringSession::with_curve_evaluator`,
+  `product_world_transform_with_evaluator`) and the cached-position check
+  (#354, `CachedPositionPolicy`), and the derived frame follows IFC4.3
+  (#355). When `ifc-geometry` 0.10 is released, the re-export moves to it,
+  which makes the next release here a minor one.
 
-### Added (#330, checked authoring)
-
-- Feature `authoring`: `ifc-author` without choosing a release (`author`
-  now means `authoring` plus `schema`, as before), and the checked
-  authoring batch. `apply_authoring(model, schema, ops, seed)` runs
-  `AuthorOp`s in order against the model as the operations before them
-  leave it and commits them as one transaction, or refuses with
-  `AuthoringError` (the operation's position and an `AuthoringFailure`)
-  and changes nothing; `stage_authoring` plans without committing.
-- `AuthorOp` (`#[non_exhaustive]`): `Create` an entity by type and named
-  attributes, `Edit` named attributes, `Remove` an entity with the
-  relationships that reference it, and the builders `Project`, `Spatial`
-  (aggregated under its parent), `Product` (placed, contained and typed),
-  `TypeObject`, `AssignType`, `Contain`, `Aggregate`, `Placement` (an
-  `IfcLocalPlacement` over an `IfcAxis2Placement3D`) and `OwnerHistory`
-  (through `ifc-author`'s writers). Every record is built by name through
-  `ifc-author`'s `EntityBuilder` against the declared release, then its
-  references are resolved (type checked with `Schema::accepts_type`) and
-  its aggregates held to their declared bounds; a supplied `GlobalId`
-  another entity holds is refused; an object is contained, aggregated or
-  typed once, and a model holds one `IfcProject`.
-- An `IfcRoot` created without a `GlobalId` gets a name-based one over a
-  seed (`fresh_seed()`, from the OS on native targets) and its id; a fixed
-  seed reproduces a file. `OwnerHistory` is never invented.
-- `authoring_handle(i)` / `HANDLE_BASE` (2^62): an operation names the
-  entity an earlier one produced; `AuthoringOutcome::ids` reports the ids.
-- Additive: a patch release. The property edit's name-based `GlobalId`
-  moved into a shared module unchanged (a test pins its output).
+Semver of #352 alone: no public signature changes, a patch release.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

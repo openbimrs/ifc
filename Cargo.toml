@@ -26,14 +26,14 @@ missing_docs = "deny"
 # The crates the bindings reach (validate, spatial, geometry, properties,
 # classification, material, systems, cost, georef) do the same (#306):
 # their release features forward to ifc-schema's, and the facade chooses.
-ifc-schema = { path = "crates/ifc-schema", version = "0.3.0", default-features = false }
-openbim-ifc = { path = "crates/openbim-ifc", version = "0.15.0", default-features = false }
+ifc-schema = { path = "crates/ifc-schema", version = "0.3.2", default-features = false }
+openbim-ifc = { path = "crates/openbim-ifc", version = "0.16.0", default-features = false }
 openbim-ifc-binding-core = { path = "crates/openbim-ifc-binding-core", version = "0.1.0", default-features = false }
 ifc-step = { path = "crates/ifc-step", version = "0.5.0" }
 ifc-xml = { path = "crates/ifc-xml", version = "0.4.0" }
 ifc-model = { path = "crates/ifc-model", version = "0.3.0" }
-ifc-geometry = { path = "crates/ifc-geometry", version = "0.9.0", default-features = false }
-ifc-properties = { path = "crates/ifc-properties", version = "0.8.0", default-features = false }
+ifc-geometry = { path = "crates/ifc-geometry", version = "0.10.0", default-features = false }
+ifc-properties = { path = "crates/ifc-properties", version = "0.8.1", default-features = false }
 ifc-template-catalog = { path = "crates/ifc-template-catalog", version = "0.4.0", default-features = false }
 ifc-cost = { path = "crates/ifc-cost", version = "0.4.0", default-features = false }
 ifc-schedule = { path = "crates/ifc-schedule", version = "0.4.0" }

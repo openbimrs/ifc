@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-04
+
 Product lowering gains two opt-ins: Reference View openings taken as applied
 (#351) and an injected curve evaluator for linear placements (#353), which
 also checks a cached position (#354). The derived linear-placement frame now
@@ -947,7 +949,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.9.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.10.0...HEAD
+[0.10.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.10.0
 [0.9.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.9.0
 [0.8.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.8.1
 [0.8.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.8.0

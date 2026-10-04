@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-10-04
+
 ### Changed
 
 - `spatial_properties` and the property-edit planner (`apply_property_edits`,
@@ -476,7 +478,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.15.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.16.0...HEAD
+[0.16.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.16.0
 [0.15.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.15.0
 [0.14.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.14.0
 [0.13.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.13.0
