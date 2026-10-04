@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-04
+
 ### Added (#326, attributes by name)
 
 - `openbim_ifc_v0_1_entity_attribute_names` (a tape `LIST` of

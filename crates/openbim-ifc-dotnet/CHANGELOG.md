@@ -9,6 +9,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-04
+
 ### Added (#327)
 
 - The `OpenBim.Ifc` NuGet package: C# over the versioned C ABI of

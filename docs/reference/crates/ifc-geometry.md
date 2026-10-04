@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.8.0 (2026-10-03) |
+| Latest release | 0.8.1 (2026-10-04) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -42,30 +42,25 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.8.0 (2026-10-03):
+Latest release, 0.8.1 (2026-10-04):
 
-Input this crate refused now lowers exactly, onto the Axiolid relations
-of axiolid-curve 0.3.3 and axiolid-model 0.3.4: behaviour changes, so the
-next release is a minor one (0.8.0).
+No public API changes. The reference backend's floor rises and input it
+refused now compiles, as with earlier kernel floors (0.3.1): the next release
+is a patch (0.8.1).
 
 ### Changed
 
-- An `IfcCurveSegment` over a 2D `IfcPolynomialCurve` (the `CUBIC`
-  transition) lowers to its exact Bezier, placed rigidly and trimmed at
-  `TrimSelector::ArcLength(SegmentLength)`, instead of refusing (#90). A
-  non-zero `SegmentStart`, a backwards walk, a 3D polynomial, and one with
-  no degree-one coordinate to bound the trim stay refused by name.
-- An `IfcGradientCurve` whose base curve holds such a segment has a
-  `Curve2::Chain` plan: the polynomial is a parametric piece read by arc
-  length (#90).
-- A vertical `IfcCircle` segment in an `IfcGradientCurve` lowers to
-  `ElevationLaw::CircularArc`, and a vertical `IfcSpiral` (the
-  `IfcClothoid`) to `ElevationLaw::Intrinsic`, its extent read from the
-  next segment's start (#258).
-- `dispatch::PLANNED` keeps `IFCPOLYNOMIALCURVE` (unbounded on its own; it
-  lowers as an `IfcCurveSegment` parent) and `IFCSEGMENTEDREFERENCECURVE`,
-  now citing #311: the roll law exists, but the geometric form states cant
-  through stations (#307) and parent curves with no normative mapping. An
-  `IfcAxis2PlacementLinear` placement now cites #307.
+- `compile-reference-backend` requires `axiolid-mesh-compile` 0.3.12 and
+  `axiolid-construct` 0.3.13 (axiolid/kernel#245, #315). An
+  `IfcCurveSegment` over a 2D `IfcPolynomialCurve` (the `CUBIC` transition,
+  #90) lowers to a Bezier trimmed at `TrimSelector::ArcLength`. 0.3.4 read
+  parameter selectors only and refused that trim by name; 0.3.12 resolves it
+  by quadrature, so the segment compiles. A swept disk whose polyline
+  directrix turns a sharp corner without a fillet radius compiles with an
+  exact half-angle mitre, so its volume is the section area times the
+  centreline length. 0.3.9 to 0.3.11 refused that corner, so a downstream
+  build that resolved them fresh refused such pipes. The kernel still
+  refuses three cases by name (axiolid/kernel#248): a sharp corner beside an
+  arc, a closed polyline, and `FilletRadius` equal to `Radius`.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)

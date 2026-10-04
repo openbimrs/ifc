@@ -12,6 +12,16 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-10-04
+
+### Changed (breaking)
+
+- Behind `property-catalog`, the re-exported `property_catalog` is
+  `ifc-template-catalog` 0.4 (was 0.3): one compact snapshot container
+  replaces the per-edition bincode files, with new `snapshot` and `runtime`
+  modules (#317). The new `property-catalog-runtime` feature checks
+  property writes against a catalog supplied at run time (#318).
+
 ### Added (#326, attributes by name)
 
 - `attribute_slots(schema, type_name)` and `attribute_slot(schema,
@@ -404,7 +414,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.13.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.14.0...HEAD
+[0.14.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.14.0
 [0.13.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.13.0
 [0.12.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.12.0
 [0.11.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.11.0

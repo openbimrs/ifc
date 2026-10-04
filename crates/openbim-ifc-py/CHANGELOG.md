@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-04
+
 ### Added (#326, attributes by name)
 
 - `IfcModel.attribute_names(id)` (frozen `AttributeInfo` records in slot

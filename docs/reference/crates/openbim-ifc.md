@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.13.0 (2026-10-03) |
+| Latest release | 0.14.0 (2026-10-04) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -93,53 +93,46 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.13.0 (2026-10-03):
-
-### Added (#123, property sets: write side)
-
-- `apply_property_edits` and `stage_property_edits` (feature
-  `properties`): a batch of `PropertyEdit`s (set or remove a value,
-  addressed by object, set name and property name) planned against the
-  model and staged on one `Transaction`, committed all or nothing. An
-  inherited value is overridden on the occurrence, never on the type's
-  shared set; a shared set or property entity is copied before it
-  changes; an emptied set is removed with its relationship. Values are
-  checked against the declared release (IFC2X3, IFC4, IFC4X3) and, with
-  `property-catalog`, a `Pset_`/`Qto_` set against the release's PSD/QTO
-  catalog; without it such a set is refused
-  (`PropertyEditFailure::CatalogUnavailable`). New sets and relationships
-  take the object's owner history and a name-based `GlobalId`. Types
-  `PropertyEdit`, `SetType`, `PropertyEditOutcome`,
-  `StagedPropertyEdits`, `PropertyEditError`, `PropertyEditFailure`.
-- Additive: on its own a patch release; this release is a minor one for
-  #306 anyway.
+Latest release, 0.14.0 (2026-10-04):
 
 ### Changed (breaking)
 
-- `validate`, `spatial`, `geometry-select`, `properties`,
-  `classification`, `material`, `systems`, `cost` and `georef` link only
-  the releases the build names (#306): each release feature (`ifc2x3` ...
-  `ifc4x3`, and `schema` for all five) now forwards to their crates, which
-  no longer pull every release's table in through `ifc-schema`'s
-  defaults. An IFC4-only build with all of them carries the IFC4 table
-  alone. A build that enabled one of these features without a release
-  feature must now add one (or `schema`): `spatial` and `properties` fail
-  to compile without one, and the others refuse every file with their
-  unsupported- or unbundled-schema error. `full` and `domains` (which
-  implies `schema` through `author`) are unchanged. Under 0.x, a minor
-  release.
+- Behind `property-catalog`, the re-exported `property_catalog` is
+  `ifc-template-catalog` 0.4 (was 0.3): one compact snapshot container
+  replaces the per-edition bincode files, with new `snapshot` and `runtime`
+  modules (#317). The new `property-catalog-runtime` feature checks
+  property writes against a catalog supplied at run time (#318).
 
-### Added
+### Added (#326, attributes by name)
 
-- `root_identity(model, schema, id)` and `RootIdentity` (behind
-  `schema-api`): the `GlobalId` and `Name` of an entity the given schema
-  declares an `IfcRoot`, read by attribute name, never guessed from a
-  slot (#123).
-- `georeferencing(model)` and `GeoreferencingError` (behind
-  `georef` + `properties`): every `IfcCoordinateOperation` resolved with
-  the project length unit, which `ifc-properties` resolves exactly; the
-  join the language bindings carry (#123).
-- Re-exports `Budget` from `ifc-model`, which bounded domain traversals
-  (a classification hierarchy) take.
+- `attribute_slots(schema, type_name)` and `attribute_slot(schema,
+  type_name, name)` (feature `schema-api`): an entity type's explicit
+  attribute slots in Part 21 order, inherited first, as `AttributeSlot`
+  (index, name, declared type, `optional`, `aggregate`, `derived`,
+  `declared_by`). `INVERSE` and new `DERIVE` attributes hold no slot and
+  are not listed; an inherited attribute a subtype redeclares as derived
+  is marked `derived`. Names match ASCII case-insensitively, as EXPRESS
+  identifiers do; answers use the schema's spelling.
+- `attribute_by_name(model, schema, id, name)` and
+  `set_attribute_by_name(model, schema, id, name, value)`: read and write
+  by name against the schema the caller passes. The write refuses a
+  derived slot and checks everything before its one write.
+  `NamedAttributeError` (`#[non_exhaustive]`): `MissingEntity`,
+  `UnknownEntity`, `UnknownAttribute`, `DerivedAttribute`.
+- Additive: a patch release.
+
+### Added (#318, runtime PSD/QTO catalog)
+
+- Feature `property-catalog-runtime`: property edits check `Pset_`/`Qto_`
+  sets against a catalog the host installs at runtime
+  (`property_catalog::runtime::install`) instead of the embedded one; until
+  the release's edition is installed such an edit is refused with the new
+  `PropertyEditFailure::CatalogNotLoaded { set, edition }` and nothing is
+  written. With `property-catalog` too, the embedded catalog is used.
+  `property-catalog` now enables `ifc-template-catalog/embedded`
+  explicitly. The embedded catalog shrinks from 3.7 MB to 1.4 MB with the
+  catalog's compact format (#317).
+- Additive (`PropertyEditFailure` is `#[non_exhaustive]`): a patch
+  release on its own.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)
