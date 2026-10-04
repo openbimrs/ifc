@@ -11,8 +11,8 @@ Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP file
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.1.2 (2026-10-04) |
-| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.2) |
+| Latest release | 0.1.3 (2026-10-04) |
+| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.3) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_capi/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-capi/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-capi) |
 
@@ -65,42 +65,22 @@ than altering a `v0_1_` one.
 
 ## Changes
 
-Latest release, 0.1.2 (2026-10-04):
+Latest release, 0.1.3 (2026-10-04):
 
-### Added (#326, attributes by name)
+### Added (#330, schema-checked entity creation)
 
-- `openbim_ifc_v0_1_entity_attribute_names` (a tape `LIST` of
-  `AttributeInfo` records), `_entity_attribute_by_name` and
-  `_entity_set_attribute_by_name`, resolved against the release the header
-  declares; names are UTF-8, matched case-insensitively.
-- `OPENBIM_IFC_STATUS_UNKNOWN_ATTRIBUTE` (28) and `_DERIVED_ATTRIBUTE`
-  (29).
-- The ABI version is 0.1.5: every export above is new, no `v0_1` symbol
+- `openbim_ifc_v0_1_model_author`: a value tape `LIST` of operations, each
+  `LIST(ENUM op, TEXT field, value, ...)`, applied as one checked
+  transaction; one id per operation comes back (0 for a removal), and a
+  short id buffer is `BufferTooSmall` before anything is written.
+  `openbim_ifc_v0_1_model_create_entity` (a type and a `LIST` of
+  `(TEXT name, value)` pairs) and
+  `openbim_ifc_v0_1_entity_remove_with_relationships` are one-operation
+  batches. `OPENBIM_IFC_HANDLE_BASE` (2^62) plus an operation's position
+  names the entity it produced.
+- `OPENBIM_IFC_STATUS_MISSING_ATTRIBUTE` (30) and `_STILL_REFERENCED`
+  (31).
+- The ABI version is 0.1.6: every export above is new, no `v0_1` symbol
   changed. Additive, a patch release.
-
-### Added (#327, packaging)
-
-- A prebuilt archive for Windows on Arm (`aarch64-pc-windows-msvc`), the
-  sixth on each release. The OpenBim.Ifc NuGet package takes its native
-  libraries from these archives. The library is unchanged.
-
-### Added (#318)
-
-- `OPENBIM_IFC_STATUS_CATALOG_NOT_LOADED` (27), so every binding code has
-  a status. This library embeds the catalog and never returns it. The ABI
-  version is 0.1.4; no `v0_1` symbol changed. Additive, a patch release.
-
-### Added (#325, pkg-config)
-
-- `cmake --install` and the Linux and macOS release archives lay out
-  `lib/pkgconfig/openbim_ifc.pc` (shared library) and
-  `openbim_ifc-static.pc` (static archive plus the system libraries Rust's
-  standard library needs, as the CMake static target lists them). Both
-  resolve their paths from `${pcfiledir}`, so an unpacked archive works
-  anywhere, and carry the crate version. Windows (MSVC) stays CMake-only.
-- `scripts/check-cmake.py` builds and runs the C smoke test with
-  `pkg-config --cflags --libs` for both modules, against the installed
-  tree and the unpacked archive, on Linux and macOS. Additive, a patch
-  release.
 
 Full history: [`crates/openbim-ifc-capi/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-capi/CHANGELOG.md)

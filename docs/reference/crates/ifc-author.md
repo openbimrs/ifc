@@ -11,7 +11,7 @@ Schema-checked IFC authoring: construct entities by attribute name with arity an
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.0 (2026-09-29) |
+| Latest release | 0.3.1 (2026-10-04) |
 | Registries | [crates.io `ifc-author`](https://crates.io/crates/ifc-author) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `authoring` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_author/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-author) |
@@ -28,27 +28,15 @@ Schema-checked IFC authoring: construct entities by attribute name with arity an
 
 ## Changes
 
-Latest release, 0.3.0 (2026-09-29):
+Latest release, 0.3.1 (2026-10-04):
 
-### Changed (breaking)
+### Fixed (#330)
 
-- `PersonDraft`, `OrganizationDraft`, `ApplicationDraft` and
-  `OwnerHistoryDraft` are `#[non_exhaustive]` (#214), so a later release can
-  add a field without another break. Struct literals no longer compile
-  outside the crate: build each with `new(...)` and field-named setters,
-  `PersonDraft::new()`, `OrganizationDraft::new(name)`,
-  `ApplicationDraft::new(developer, version, full_name, identifier)` and
-  `OwnerHistoryDraft::new(owning_user, owning_application, creation_date)`
-  (then e.g. `.change_action("ADDED")`). Fields stay public.
-
-### Changed
-
-- Links no bundled schema table itself: every entry point takes the
-  `Schema` from the caller. A consumer that used a table through this
-  crate's dependency (`ifc_schema::ifc4()`) enables it on its own
-  `ifc-schema` dependency (default features bundle every release).
-- A type declaration form `ifc-schema` adds later resolves as unresolved
-  (no refusal on shape, no form claim) instead of failing to compile;
-  follows `ifc_schema::TypeKind` becoming `#[non_exhaustive]`.
+- A built-in type with a width (`STRING(255)`, `STRING(22) FIXED`,
+  `BINARY(32)`) is the shape of its keyword. IFC4 and IFC4X3 declare
+  `IfcLabel = STRING(255)`, so a number set as an `IfcLabel` was accepted
+  as unresolvable; it is now refused with `TypeMismatch`, as a number
+  where a bare `STRING` is declared always was. A bug fix: a patch
+  release.
 
 Full history: [`crates/ifc-author/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-author/CHANGELOG.md)

@@ -10,13 +10,13 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`openbim-ifc`](./crates/openbim-ifc) | <span class="status-implemented">Implemented</span> | 0.14.0 | Facade for the openBIM IFC crates: pick codecs and domains as features. |
+| [`openbim-ifc`](./crates/openbim-ifc) | <span class="status-implemented">Implemented</span> | 0.15.0 | Facade for the openBIM IFC crates: pick codecs and domains as features. |
 
 ## Model, codecs, schema, authoring and validation
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`ifc-author`](./crates/ifc-author) | <span class="status-implemented">Implemented</span> | 0.3.0 | Schema-checked IFC authoring: construct entities by attribute name with arity and type validation. |
+| [`ifc-author`](./crates/ifc-author) | <span class="status-implemented">Implemented</span> | 0.3.1 | Schema-checked IFC authoring: construct entities by attribute name with arity and type validation. |
 | [`ifc-model`](./crates/ifc-model) | <span class="status-implemented">Implemented</span> | 0.3.1 | The IFC entity graph: storage and structural queries, free of domain semantics and serialization. |
 | [`ifc-schema`](./crates/ifc-schema) | <span class="status-implemented">Implemented</span> | 0.3.1 | IFC schema as data: entity table, supertype chain, attribute names. |
 | [`ifc-step`](./crates/ifc-step) | <span class="status-implemented">Implemented</span> | 0.5.0 | STEP physical file (ISO 10303-21) codec for the IFC model. |
@@ -50,7 +50,7 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
 | [`ifc-alignment`](./crates/ifc-alignment) | <span class="status-partial">Partial</span> | 0.6.0 | IFC4x3 linear positioning: alignments, referents, linear placement, spirals. |
-| [`ifc-geometry`](./crates/ifc-geometry) | <span class="status-partial">Partial</span> | 0.8.1 | IFC semantic views lowered into the format-neutral geometry DAG. |
+| [`ifc-geometry`](./crates/ifc-geometry) | <span class="status-partial">Partial</span> | 0.9.0 | IFC semantic views lowered into the format-neutral geometry DAG. |
 | [`ifc-georef`](./crates/ifc-georef) | <span class="status-implemented">Implemented</span> | 0.6.0 | Georeferencing: map conversion, coordinate reference systems, site placement. |
 
 ## Language bindings
@@ -58,7 +58,7 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
 | [`openbim-ifc-binding-core`](./crates/openbim-ifc-binding-core) | <span class="status-implemented">Implemented</span> | not released | Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python). |
-| [`openbim-ifc-capi`](./crates/openbim-ifc-capi) | <span class="status-implemented">Implemented</span> | 0.1.2 | Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP files from C and C++. |
-| [`openbim-ifc-dotnet`](./crates/openbim-ifc-dotnet) | <span class="status-implemented">Implemented</span> | 0.1.0 | The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned C ABI. |
-| [`openbim-ifc-py`](./crates/openbim-ifc-py) | <span class="status-implemented">Implemented</span> | 0.3.1 | Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python. |
-| [`openbim-ifc-wasm`](./crates/openbim-ifc-wasm) | <span class="status-implemented">Implemented</span> | 0.4.0 | WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript. |
+| [`openbim-ifc-capi`](./crates/openbim-ifc-capi) | <span class="status-implemented">Implemented</span> | 0.1.3 | Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP files from C and C++. |
+| [`openbim-ifc-dotnet`](./crates/openbim-ifc-dotnet) | <span class="status-implemented">Implemented</span> | 0.1.1 | The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned C ABI. |
+| [`openbim-ifc-py`](./crates/openbim-ifc-py) | <span class="status-implemented">Implemented</span> | 0.3.2 | Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python. |
+| [`openbim-ifc-wasm`](./crates/openbim-ifc-wasm) | <span class="status-implemented">Implemented</span> | 0.4.1 | WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript. |

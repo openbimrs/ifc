@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.8.1 (2026-10-04) |
+| Latest release | 0.9.0 (2026-10-04) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -42,25 +42,107 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.8.1 (2026-10-04):
+Latest release, 0.9.0 (2026-10-04):
 
-No public API changes. The reference backend's floor rises and input it
-refused now compiles, as with earlier kernel floors (0.3.1): the next release
-is a patch (0.8.1).
+Input this crate refused now lowers exactly onto the station relations of
+axiolid-model 0.3.5 (ADR 0082), and a parameter along an alignment that a
+newer evaluator answered is refused. Behaviour changes and API is added, so
+the next release is a minor one (0.9.0).
+
+### Added
+
+- IFC4X3 stations (#307), stored exactly, never evaluated:
+  - `IfcPointByDistanceExpression` lowers to `GeometryNode::CurveStation`.
+  - `IfcAxis2PlacementLinear` lowers to `GeometryNode::OrientedCurveStation`.
+    `Axis` and `RefDirection` pass through as components in the curve's
+    (tangent, left, up) frame, which is how IFC4.3 ADD2 8.9.3.4 reads them.
+  - `IfcOffsetCurveByDistances` lowers to `CurveRelation::OffsetByStations`.
+    Offsets that stop short of the ends continue unchanged to them, as
+    8.9.3.42.3 states, through added stations when the basis states its
+    length.
+  - `IfcSectionedSolidHorizontal` lowers to
+    `SolidOperation::SectionsAtStations`, and `IfcSectionedSurface` to
+    `SurfaceRelation::OpenSectionsAtStations`, with the
+    `IfcOpenCrossProfileDef.Tags` as section tags (matched as sets, an
+    open section forwards or reversed).
+  - New entry points: `lower::lower_point_by_distance_node` and
+    `lower::lower_axis2_placement_linear_node` (module `lower::station`).
+  - The five families move from `dispatch::PLANNED` to `IMPLEMENTED`, with
+    `PARTIAL` rows for their refusals. `BodyKind::classify` gives
+    `IfcSectionedSolidHorizontal` `SectionedSpine` and the two station items
+    `Point`.
+- The conventions match IFC4.3 ADD2 exactly, so nothing is converted:
+  - `DistanceAlong` is plan distance on an `IfcGradientCurve` (its
+    parameter is the BaseCurve's, 8.9.3.34.1) and arc length elsewhere.
+  - `OffsetLateral` is positive to the left.
+  - `OffsetVertical` is perpendicular to the tangent in its vertical plane
+    (`StationFrame::Section`).
+  - `OffsetLongitudinal` runs along the tangent.
+- Section profile axes follow the documented upstream fix, not the printed
+  ADD2 sentences: profile Y = `Axis`, normal = `RefDirection`, profile
+  X = `Axis x RefDirection` (the left lateral by default). The sources are
+  buildingSMART/IFC4.x-IF#147, IFC4.x-development#1010 and #1151, PRs
+  #1162 and #1163, and `IfcOpenCrossProfileDef` 8.15.3.15.1. 8.8.3.35.1
+  says profile X is `RefDirection`, and 8.8.3.37.1 says X is
+  `Directrix x Axis`, to the right. #344 tracks the upstream change.
+
+### Refused by name
+
+- `DistanceAlong` as `IfcParameterValue`, and a distance before the start
+  or beyond a stated length.
+- A station on a tangent discontinuity of its basis, and a run of
+  sections or offsets across one. IFC lets the previous segment's tangent
+  govern (8.9.3.48.3) and mitres sections (8.8.3.35.1). The neutral
+  evaluators read the next segment's tangent and do not mitre. Seams are
+  read from stored data: polyline corners, and elevation-law breaks where
+  the grade jumps. A basis whose seams cannot be located is refused: a
+  curve relation, or a B-spline with a knot of multiplicity at least its
+  degree.
+- A frame that scales, mirrors or tilts the vertical. WR2 (parallel
+  axes). 2D axis directions.
+- On an offset curve: offsets short of an unbounded or unstated end, a
+  non-zero `OffsetLongitudinal`, and a member on another basis.
+- On the sections: the WHERE rules `NoLongitudinalOffsets`, `NoOffsets`,
+  `CorrespondingSectionPositions` and `SectionsSameType`, positions off
+  the directrix or out of order, mixed tagging, and branching breaklines.
+
+### Fixed
+
+- `constraint::placement::derive::derive_placement_transform` refuses an
+  `IfcParameterValue` `DistanceAlong` on an `IfcGradientCurve` or
+  `IfcAlignment` basis curve by name (`GeometryError::Unsupported` on the
+  basis curve) and no longer hands it to the injected `CurveEvaluator`
+  (#347). IFC4.3 ADD2 does not define that parameter: a gradient curve takes
+  its `BaseCurve`'s (8.9.3.34.1), a composite accumulates the parametric
+  ranges of its parent curves (8.9.3.20.1), which are angles for a circle
+  (8.9.3.18.1) and `u = s / (A sqrt(pi))` for a clothoid (8.9.3.19.1), and
+  `IfcCurveSegment` says no parametric space is yet defined for its parent
+  curves (8.9.3.28.1). The station lowering above refuses it the same way.
+  A parameter on an `IfcPolyline` or line-only `IfcIndexedPolyCurve`, where
+  IFC counts one per segment (8.9.3.51), is unchanged.
+- Released 0.3.0 through 0.8.1 passed that parameter through as the
+  evaluator's native parameter. With `axiolid-evaluate` up to 0.3.5 the
+  reference evaluator refused it, so nothing was placed. With
+  `axiolid-evaluate` 0.3.6 (released 2026-10-04), which any of those
+  releases resolves to, it reads the parameter as plan distance (axiolid
+  ADR 0082) and answers: a product placed by an `IfcParameterValue` along an
+  alignment lands at that plan distance, a position IFC does not give it.
+  Another injected evaluator received the same undefined value. Upgrade to
+  get the refusal.
 
 ### Changed
 
-- `compile-reference-backend` requires `axiolid-mesh-compile` 0.3.12 and
-  `axiolid-construct` 0.3.13 (axiolid/kernel#245, #315). An
-  `IfcCurveSegment` over a 2D `IfcPolynomialCurve` (the `CUBIC` transition,
-  #90) lowers to a Bezier trimmed at `TrimSelector::ArcLength`. 0.3.4 read
-  parameter selectors only and refused that trim by name; 0.3.12 resolves it
-  by quadrature, so the segment compiles. A swept disk whose polyline
-  directrix turns a sharp corner without a fillet radius compiles with an
-  exact half-angle mitre, so its volume is the section area times the
-  centreline length. 0.3.9 to 0.3.11 refused that corner, so a downstream
-  build that resolved them fresh refused such pipes. The kernel still
-  refuses three cases by name (axiolid/kernel#248): a sharp corner beside an
-  arc, a closed polyline, and `FilletRadius` equal to `Radius`.
+- `Cargo.lock` takes `axiolid-construct` 0.3.15, `axiolid-mesh-compile`
+  0.3.14 and, dev-only, `axiolid-evaluate` 0.3.6 and `axiolid-reference`
+  0.3.7. The workspace minimums below stay: nothing here relies on the new
+  versions.
+- The workspace requires `axiolid-model` 0.3.5. With
+  `compile-reference-backend` it requires `axiolid-mesh-compile` 0.3.13 and
+  `axiolid-construct` 0.3.14, which resolve and mesh the station relations.
+  Dev-only: `axiolid-evaluate` 0.3.5 and `axiolid-reference` 0.3.6.
+- An `IfcCurveSegment` placed by an `IfcAxis2PlacementLinear` is still
+  refused. Its station lowers now, but no neutral relation places a curve
+  in a station's frame (#311). `IFCSEGMENTEDREFERENCECURVE` stays in
+  `PLANNED` (#311).
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)

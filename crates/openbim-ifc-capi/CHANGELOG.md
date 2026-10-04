@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-04
+
 ### Added (#330, schema-checked entity creation)
 
 - `openbim_ifc_v0_1_model_author`: a value tape `LIST` of operations, each
