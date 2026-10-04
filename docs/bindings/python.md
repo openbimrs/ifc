@@ -406,6 +406,78 @@ Not bound yet: checked multi-edit transactions over arbitrary entities
 (`Transaction`, `Applied`, `Conflict`), deferred until a host asks for
 them. Use the Rust crates for those.
 
+## Creating entities
+
+<!-- SNIPPET:py-authoring -->
+
+```python
+from openbim_ifc import AuthorOp, Enum, Text, handle
+
+result = model.author(
+    [
+        AuthorOp.project({"Name": Text("Demo")}),  # 0
+        AuthorOp.placement(),  # 1: at the origin
+        AuthorOp.spatial("IfcSite", handle(0), placement=handle(1)),  # 2
+        AuthorOp.spatial("IfcBuilding", handle(2)),  # 3
+        AuthorOp.placement(relative_to=handle(1)),  # 4
+        AuthorOp.spatial("IfcBuildingStorey", handle(3), placement=handle(4)),  # 5
+        AuthorOp.type_object("IfcWallType", {"PredefinedType": Enum("STANDARD")}),  # 6
+        AuthorOp.placement(relative_to=handle(4), location=(1, 2, 0)),  # 7
+        AuthorOp.product(
+            "IfcWall",
+            {"Name": Text("Wall")},
+            container=handle(5),  # IfcRelContainedInSpatialStructure
+            placement=handle(7),
+            type_object=handle(6),  # IfcRelDefinesByType
+        ),
+    ]
+)
+wall = result.ids[8]  # every IfcRoot got a GlobalId
+```
+
+<!-- /SNIPPET -->
+
+`model.author(ops)`, with `AuthorOp` built by its class methods, creates and
+edits entities as one checked transaction against the release the header
+declares: every operation, in order, or, when any is refused, none, and the
+model is unchanged. An operation names the entity an earlier operation of
+the same batch produced by `openbim_ifc.handle(index)`, anywhere an id goes,
+attribute values included, and the result holds per operation the id its
+entity received. `create_entity(type_name, attributes)` and
+`remove_with_relationships(id)` are the one-operation forms. A model built
+from nothing needs a header naming its release first (`set_header`).
+
+| Operation | What it writes |
+| --- | --- |
+| `create` | one entity by `type` and named `attributes` |
+| `edit` | named `attributes` of `entity`; the whole entity is checked again |
+| `remove` | removes `entity` and takes it out of every relationship; a relationship left without an end goes too |
+| `project` | the model's one `Ifc_project` |
+| `spatial` | a spatial element of `type` and its `Ifc_rel_aggregates` under `parent` |
+| `product` | a product, its `Ifc_rel_contained_in_spatial_structure` in `container` and its `Ifc_rel_defines_by_type` by `type_object` |
+| `type_object` | a type object (`Ifc_wall_type`, ...) |
+| `assign_type`, `contain`, `aggregate` | one relationship; an object already related is refused |
+| `placement` | an `Ifc_local_placement` over an `Ifc_axis2Placement3D` at `location`, relative to `relative_to`; `axis` and `ref_direction` both or neither |
+| `owner_history` | an `Ifc_owner_history` with its person, organization and application |
+
+Every record is built by attribute name through `ifc-author` against the
+declared release, and refused with the shared codes: a type the release does
+not declare (`unsupported-schema`) or an abstract one (`wrong-entity-type`);
+an unknown name (`unknown-attribute`); a value of the wrong type or form, or
+an aggregate outside its declared bounds (`invalid-value`); a required
+attribute left unset (`missing-attribute`); a derived one set
+(`derived-attribute`); a reference to an entity that does not exist
+(`missing-reference`) or of a type the attribute does not accept
+(`wrong-entity-type`). An object is contained, aggregated and typed once and
+a model holds one `IfcProject` (`invalid-model`); a removal an entity other
+than a relationship still needs is `still-referenced`.
+
+An `IfcRoot` created without a `GlobalId` gets a fresh one. `OwnerHistory`
+is never invented: a builder writes the one it is given on every record it
+creates, and IFC2X3, which requires it, refuses a record without
+(`missing-attribute`). The ids the batch returns are the ones `model[id]`
+wraps as an `Entity`.
+
 ## API
 
 Generated from the `openbim_ifc` package source.
@@ -450,6 +522,9 @@ Generated from the `openbim_ifc` package source.
 | `model.set_attribute_by_name(id: int, name: str, value: Value) -> Value` | Set attribute `name` of entity `id`; returns the old value. A derived attribute raises `derived-attribute`, an unknown name `unknown-attribute`, and a refused write changes nothing. |
 | `model.add(type_name: str, attributes: Iterable[Value]) -> int` | Append an entity; returns its new id. |
 | `model.remove(id: int) -> None` | Remove entity `id`, leaving references to it dangling. |
+| `model.author(ops: Iterable[AuthorOp]) -> AuthoringResult` | Apply authoring operations as one checked transaction against the release the header declares: every operation, in order, or none. |
+| `model.create_entity(type_name: str, attributes: Optional[Mapping[str, Value]] = None) -> int` | Create one entity of `type_name` from named attributes, checked against the declared release (:meth:`author` with one :meth:`AuthorOp.create`); returns its id. |
+| `model.remove_with_relationships(id: int) -> None` | Remove entity `id` with the relationships that reference it, leaving nothing dangling (:meth:`author` with one :meth:`AuthorOp.remove`). Raises `still-referenced` while an entity other than a relationship needs it. |
 | `model.dangling_references() -> List[Tuple[int, int]]` | Every `(from, to)` pair where `to` does not exist. |
 | `model.by_id(id: int) -> Entity` | Entity `#id` as an :class:`Entity`; raises :class:`openbim_ifc.IfcError` (`missing-entity`) when absent. |
 | `model[id] -> Entity` | `model[id]`: :meth:`by_id`, raising `KeyError` when absent. |

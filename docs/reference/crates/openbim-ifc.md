@@ -26,7 +26,8 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | --- | --- | --- |
 | `alignment` |  | [`ifc-alignment`](./ifc-alignment): IFC4x3 linear positioning: alignments, referents, linear placement, spirals. |
 | `approval` |  | [`ifc-approval`](./ifc-approval): Bounded IFC4 approval resource semantics. |
-| `author` |  | [`ifc-author`](./ifc-author): Schema-checked IFC authoring: construct entities by attribute name with arity and type validation. |
+| `author` |  | Schema-checked authoring (`authoring`) with every bundled release (`schema`). |
+| `authoring` |  | Schema-checked authoring (`ifc-author`) and the checked authoring batch (`apply_authoring`), against the releases the build names. |
 | `classification` |  | [`ifc-classification`](./ifc-classification): Classification systems, document references, libraries, external references. |
 | `codecs` |  | Both codecs: STEP and ifcXML. |
 | `constraint` |  | [`ifc-constraint`](./ifc-constraint): Bounded IFC4 metric, objective, and constraint relationships. |

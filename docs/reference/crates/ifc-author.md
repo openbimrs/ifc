@@ -13,7 +13,7 @@ Schema-checked IFC authoring: construct entities by attribute name with arity an
 | Status | <span class="status-implemented">Implemented</span> |
 | Latest release | 0.3.0 (2026-09-29) |
 | Registries | [crates.io `ifc-author`](https://crates.io/crates/ifc-author) |
-| Via the facade | [`openbim-ifc`](./openbim-ifc) feature `author` |
+| Via the facade | [`openbim-ifc`](./openbim-ifc) feature `authoring` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_author/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-author) |
 | Source | [`crates/ifc-author/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-author) |
 

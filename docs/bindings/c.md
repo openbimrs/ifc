@@ -400,6 +400,82 @@ Not bound yet: checked multi-edit transactions over arbitrary entities
 (`Transaction`, `Applied`, `Conflict`), deferred until a host asks for
 them. Use the Rust crates for those.
 
+## Creating entities
+
+<!-- SNIPPET:c-authoring -->
+
+```c
+/* Create an IfcBuildingElementProxy named "Proxy": the attributes are a
+ * LIST of (TEXT name, value) pairs, checked against the release the
+ * header declares; the GlobalId is generated. */
+static const char names[] = "NameProxy";
+OpenbimIfcValueNode attributes[4];
+memset(attributes, 0, sizeof attributes);
+attributes[0].kind = OPENBIM_IFC_KIND_LIST;
+attributes[0].child_count = 1;
+attributes[1].kind = OPENBIM_IFC_KIND_LIST;
+attributes[1].child_count = 2;
+attributes[2].kind = OPENBIM_IFC_KIND_TEXT; /* "Name" */
+attributes[2].str_len = 4;
+attributes[3].kind = OPENBIM_IFC_KIND_TEXT; /* "Proxy" */
+attributes[3].str_offset = 4;
+attributes[3].str_len = 5;
+const char type[] = "IfcBuildingElementProxy";
+uint64_t proxy = 0;
+OpenbimIfcStatus status = openbim_ifc_v0_1_model_create_entity(
+    model, (const uint8_t *)type, strlen(type), attributes, 4, (const uint8_t *)names,
+    strlen(names), &proxy);
+```
+
+<!-- /SNIPPET -->
+
+`openbim_ifc_v0_1_model_author` creates and edits entities as one checked
+transaction against the release the header declares: every operation, in
+order, or, when any is refused, none, and the model is unchanged. An
+operation names the entity an earlier operation of the same batch produced
+by `OPENBIM_IFC_HANDLE_BASE` plus its position, anywhere an id goes,
+attribute values included, and the result holds per operation the id its
+entity received. `openbim_ifc_v0_1_model_create_entity` and
+`openbim_ifc_v0_1_entity_remove_with_relationships` are the one-operation
+forms. A model built from nothing needs a header naming its release first
+(`openbim_ifc_v0_1_model_set_header`).
+
+| Operation | What it writes |
+| --- | --- |
+| `CREATE` | one entity by `type` and named `attributes` |
+| `EDIT` | named `attributes` of `entity`; the whole entity is checked again |
+| `REMOVE` | removes `entity` and takes it out of every relationship; a relationship left without an end goes too |
+| `PROJECT` | the model's one `Ifc_project` |
+| `SPATIAL` | a spatial element of `type` and its `Ifc_rel_aggregates` under `parent` |
+| `PRODUCT` | a product, its `Ifc_rel_contained_in_spatial_structure` in `container` and its `Ifc_rel_defines_by_type` by `type_object` |
+| `TYPE_OBJECT` | a type object (`Ifc_wall_type`, ...) |
+| `ASSIGN_TYPE`, `CONTAIN`, `AGGREGATE` | one relationship; an object already related is refused |
+| `PLACEMENT` | an `Ifc_local_placement` over an `Ifc_axis2Placement3D` at `location`, relative to `relative_to`; `axis` and `ref_direction` both or neither |
+| `OWNER_HISTORY` | an `Ifc_owner_history` with its person, organization and application |
+
+Every record is built by attribute name through `ifc-author` against the
+declared release, and refused with the shared codes: a type the release does
+not declare (`unsupported-schema`) or an abstract one (`wrong-entity-type`);
+an unknown name (`unknown-attribute`); a value of the wrong type or form, or
+an aggregate outside its declared bounds (`invalid-value`); a required
+attribute left unset (`missing-attribute`); a derived one set
+(`derived-attribute`); a reference to an entity that does not exist
+(`missing-reference`) or of a type the attribute does not accept
+(`wrong-entity-type`). An object is contained, aggregated and typed once and
+a model holds one `IfcProject` (`invalid-model`); a removal an entity other
+than a relationship still needs is `still-referenced`.
+
+An `IfcRoot` created without a `GlobalId` gets a fresh one. `OwnerHistory`
+is never invented: a builder writes the one it is given on every record it
+creates, and IFC2X3, which requires it, refuses a record without
+(`missing-attribute`). The batch is one value tape: a `LIST` of operations,
+each a `LIST` of an `ENUM` naming it, then alternating field names (`TEXT`,
+snake case) and values. Ids are `REF`s, points and directions a `LIST` of
+three `REAL`s, attributes a `LIST` of `LIST(TEXT name, value)` pairs; a
+`NULL` value is an absent field. One id per operation comes back (0 for a
+removal), and an id buffer shorter than the batch is `BUFFER_TOO_SMALL`
+before anything is written.
+
 ## API
 
 Generated from `crates/openbim-ifc-capi/include/openbim_ifc.h`.
@@ -492,6 +568,18 @@ OpenbimIfcStatus openbim_ifc_v0_1_entity_remove(OpenbimIfcModel model, uint64_t 
 
 Remove entity `id`; references to it are left dangling.
 
+#### `openbim_ifc_v0_1_entity_remove_with_relationships`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_entity_remove_with_relationships(OpenbimIfcModel model, uint64_t id);
+```
+
+Remove entity `id` with its relationships: it is taken out of every
+relationship holding it, and a relationship left without an end goes
+too. Unlike `openbim_ifc_v0_1_entity_remove`, nothing is left dangling:
+`StillReferenced` while an entity other than a relationship needs `id`,
+`MissingEntity` when there is none.
+
 #### `openbim_ifc_v0_1_entity_set_attribute`
 
 ```c
@@ -569,6 +657,36 @@ Number of live models, for leak checks.
 **Safety.**
 `out_count` must be null or valid for one write.
 
+#### `openbim_ifc_v0_1_model_author`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_author(OpenbimIfcModel model, const OpenbimIfcValueNode *nodes, size_t node_count, const uint8_t *strings, size_t string_len, uint64_t *out_ids, size_t ids_capacity, size_t *out_count);
+```
+
+Apply the operations on the tape as one checked transaction against the
+release the header declares: all of them, in order, or none, and the
+model unchanged.
+
+`out_count` gets the number of operations. `out_ids` gets, per
+operation, the id of the entity it produced, or 0 for a removal; with
+`ids_capacity` below the operation count the call returns
+`BufferTooSmall` and applies nothing.
+
+`UnsupportedSchema` for an unbundled release or an undeclared type;
+`UnknownAttribute`, `DerivedAttribute`, `MissingAttribute`;
+`InvalidValue` for a value of the wrong type, form or cardinality, a
+duplicate `GlobalId`, a malformed tape or handle, or a placement the
+schema cannot hold; `WrongEntityType` for an abstract type, a builder's
+type of the wrong kind or a reference the attribute does not accept;
+`MissingEntity`, `MissingReference`; `InvalidModel` for a second
+containment, decomposition, typing or `IfcProject`; `StillReferenced`
+for a removal an entity other than a relationship still needs.
+
+**Safety.**
+`nodes` valid for `node_count` reads and `strings` for `string_len`
+(either null when its length is 0); `out_ids` null with capacity 0, or
+valid for `ids_capacity` writes; `out_count` valid for one write.
+
 #### `openbim_ifc_v0_1_model_classifications`
 
 ```c
@@ -614,6 +732,23 @@ Create an empty model and write its handle to `out_model`.
 
 **Safety.**
 `out_model` must be null or valid for one write.
+
+#### `openbim_ifc_v0_1_model_create_entity`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_create_entity(OpenbimIfcModel model, const uint8_t *type_name, size_t type_len, const OpenbimIfcValueNode *nodes, size_t node_count, const uint8_t *strings, size_t string_len, uint64_t *out_id);
+```
+
+Create one entity of `type_name` (UTF-8, any case) from named
+attributes: a batch of one `CREATE`. The tape is one `LIST` of
+`LIST(TEXT name, value)` pairs (an empty `LIST` for none). An `IfcRoot`
+without a `GlobalId` gets a fresh one. `out_id` gets the new id.
+
+Refusals as for `openbim_ifc_v0_1_model_author`.
+
+**Safety.**
+`type_name` valid for `type_len` reads; the tape as for
+`openbim_ifc_v0_1_model_author`; `out_id` valid for one write.
 
 #### `openbim_ifc_v0_1_model_dangling_references`
 
@@ -1124,6 +1259,8 @@ Write the ABI and crate versions.
 | `OPENBIM_IFC_STATUS_CATALOG_NOT_LOADED` | 27 | A property edit wrote to a `Pset_`/`Qto_` set before its release's catalog was loaded (`catalog-not-loaded`). This library embeds the catalog, so it never returns this; the value is reserved so every binding code has one. |
 | `OPENBIM_IFC_STATUS_UNKNOWN_ATTRIBUTE` | 28 | A by-name attribute access named no explicit attribute of the entity's type in the declared release (`unknown-attribute`). |
 | `OPENBIM_IFC_STATUS_DERIVED_ATTRIBUTE` | 29 | A by-name attribute write named a slot the entity's type derives, written `*` (`derived-attribute`). |
+| `OPENBIM_IFC_STATUS_MISSING_ATTRIBUTE` | 30 | An authoring batch left a required attribute of the declared release unset (`missing-attribute`). |
+| `OPENBIM_IFC_STATUS_STILL_REFERENCED` | 31 | An authoring batch removed an entity that an entity other than a relationship still references (`still-referenced`). |
 | `OPENBIM_IFC_STATUS_PANIC` | 255 | A Rust panic was contained at the boundary. Report it as a bug. |
 
 <!-- API:C:END -->

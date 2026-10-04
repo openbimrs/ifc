@@ -28,6 +28,8 @@ group = "facade"
 # here; bundles and the two geometry sizes do. `xtask docs --check` fails
 # when a feature has neither.
 [package.metadata.openbim.features]
+author = "Schema-checked authoring (`authoring`) with every bundled release (`schema`)."
+authoring = "Schema-checked authoring (`ifc-author`) and the checked authoring batch (`apply_authoring`), against the releases the build names."
 codecs = "Both codecs: STEP and ifcXML."
 domains = "Every domain view, plus authoring and spatial traversal."
 full = "Everything: codecs, schema tables, every domain, catalogues, geometry, georeferencing and alignment."
