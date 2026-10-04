@@ -8,6 +8,17 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#326, attributes by name)
+
+- `openbim_ifc_v0_1_entity_attribute_names` (a tape `LIST` of
+  `AttributeInfo` records), `_entity_attribute_by_name` and
+  `_entity_set_attribute_by_name`, resolved against the release the header
+  declares; names are UTF-8, matched case-insensitively.
+- `OPENBIM_IFC_STATUS_UNKNOWN_ATTRIBUTE` (28) and `_DERIVED_ATTRIBUTE`
+  (29).
+- The ABI version is 0.1.5: every export above is new, no `v0_1` symbol
+  changed. Additive, a patch release.
+
 ### Added (#327, packaging)
 
 - A prebuilt archive for Windows on Arm (`aarch64-pc-windows-msvc`), the

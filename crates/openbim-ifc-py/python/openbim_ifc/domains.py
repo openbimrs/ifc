@@ -484,6 +484,28 @@ class PropertyEditResult:
     created: Tuple[int, ...]
     removed: Tuple[int, ...]
 
+@dataclass(frozen=True)
+class AttributeInfo:
+    """One explicit attribute of an entity, from
+    :meth:`IfcModel.attribute_names`, as the release the header declares
+    defines it.
+
+    ``name`` is the schema's spelling (``GlobalId``); ``index`` its slot,
+    the ``index`` of :meth:`IfcModel.attribute`. ``type_name`` is the
+    declared type, or an aggregate's element type. A ``derived`` attribute
+    is written ``*`` and :meth:`IfcModel.set_attribute_by_name` refuses it.
+    ``declared_by`` names the entity that introduces it (``IfcRoot``).
+    """
+
+    name: str
+    index: int
+    type_name: str
+    optional: bool
+    aggregate: bool
+    derived: bool
+    declared_by: str
+
+
 _RECORDS = {
     cls.__name__: cls
     for cls in (
@@ -519,6 +541,7 @@ _RECORDS = {
         LengthUnit,
         MapConversion,
         PropertyEditResult,
+        AttributeInfo,
     )
 }
 

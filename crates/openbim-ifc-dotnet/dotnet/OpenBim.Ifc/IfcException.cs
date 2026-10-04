@@ -14,8 +14,9 @@ namespace OpenBim.Ifc;
 /// <c>io</c>, <c>unsupported-profile</c>, <c>feature-disabled</c>, from a
 /// domain view <c>invalid-model</c>, <c>missing-reference</c>,
 /// <c>budget-exceeded</c>, <c>unsupported</c> and <c>wrong-entity-type</c>,
-/// and from a property edit <c>template-violation</c> and
-/// <c>missing-property</c>. A status that only the C boundary has carries
+/// from a property edit <c>template-violation</c> and
+/// <c>missing-property</c>, and from a by-name attribute access
+/// <c>unknown-attribute</c> and <c>derived-attribute</c>. A status that only the C boundary has carries
 /// its own name (<c>panic</c>, <c>invalid-argument</c>, ...).
 /// </remarks>
 public sealed class IfcException : Exception
@@ -54,6 +55,8 @@ public sealed class IfcException : Exception
         IfcStatus.TemplateViolation => "template-violation",
         IfcStatus.MissingProperty => "missing-property",
         IfcStatus.CatalogNotLoaded => "catalog-not-loaded",
+        IfcStatus.UnknownAttribute => "unknown-attribute",
+        IfcStatus.DerivedAttribute => "derived-attribute",
         IfcStatus.NullPointer => "null-pointer",
         IfcStatus.InvalidArgument => "invalid-argument",
         IfcStatus.InvalidHandle => "invalid-handle",
@@ -66,5 +69,5 @@ public sealed class IfcException : Exception
     /// <summary>Whether the C ABI records this status as the model's last
     /// error: the shared binding errors do, boundary misuse does not.</summary>
     internal static bool IsBindingError(IfcStatus status) =>
-        status is >= IfcStatus.Parse and <= IfcStatus.CatalogNotLoaded and not IfcStatus.NoValue;
+        status is >= IfcStatus.Parse and <= IfcStatus.DerivedAttribute and not IfcStatus.NoValue;
 }

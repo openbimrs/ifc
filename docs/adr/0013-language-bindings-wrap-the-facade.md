@@ -112,6 +112,25 @@ crate directly.
   embedded catalog. The C and Python bindings keep `property-catalog`
   (embedded), so their behaviour and codes are unchanged; the core's
   `catalog` module is the same surface in both builds.
+- *Amended 2026-10-03 (#326, attributes by name):* the bindings read and
+  write an entity's attributes by name as well as by position. The facade
+  grows it first (`ifc::attribute_slots`, `attribute_by_name`,
+  `set_attribute_by_name`): a name resolves to its slot in the release the
+  header declares, never another, so `IfcTask.Status` is slot 6 of an
+  IFC2X3 file and slot 7 of an IFC4 one. The slots are the explicit
+  attributes in Part 21 order, inherited first; `INVERSE` attributes hold
+  none. Names match ASCII case-insensitively, as EXPRESS identifiers do,
+  and come back in the schema's spelling. An inherited attribute a
+  subtype redeclares as derived is listed `derived`, reads as stored
+  (`*`) and refuses a write. Hosts call it `attributeNames` /
+  `attributeByName` / `setAttributeByName`, `attribute_names` /
+  `attribute_by_name` / `set_attribute_by_name`, and
+  `openbim_ifc_v0_1_entity_attribute_names` / `_entity_attribute_by_name`
+  / `_entity_set_attribute_by_name`, beside the positional calls, which
+  stay raw slot access. An entity type the declared release lacks is
+  `unsupported-schema`; new codes `unknown-attribute` (C 28) and
+  `derived-attribute` (29). A Pythonic object layer (`wall.Name`, #332)
+  builds on these calls.
 - *Amended 2026-10-04 (#327, .NET):* .NET hosts (Revit, Navisworks,
   Tekla, Dynamo) get the `OpenBim.Ifc` NuGet package: C# P/Invoke over
   the versioned C ABI (`openbim_ifc_v0_1_*`) and nothing else, the one
@@ -131,7 +150,9 @@ crate directly.
   an `IDisposable` over a `SafeHandle`; `Value` is a closed record
   hierarchy with value equality; `IfcException` carries the shared `Code`
   and the C status; domain records are positional C# records decoded from
-  the tape by one generic function, as the core intends. Two names differ
+  the tape by one generic function, as the core intends; attributes by
+  name (#326) are `AttributeNames`, `AttributeByName` and
+  `SetAttributeByName`. Two names differ
   from the other hosts: the core's `System` record is `IfcSystem` and
   `Systems` is `SystemsView`, since C# forbids or penalises the originals.
   The package lives in a thin crate, `openbim-ifc-dotnet`, with no Rust

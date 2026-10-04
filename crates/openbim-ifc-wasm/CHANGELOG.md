@@ -8,6 +8,15 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#326, attributes by name)
+
+- `IfcModel.attributeNames(id)` (`AttributeInfo[]` in slot order),
+  `attributeByName(id, name)` and `setAttributeByName(id, name, value)`,
+  resolved against the release the header declares; names match
+  case-insensitively. `IfcErrorCode` gains `unknown-attribute` and
+  `derived-attribute`. Additive; this release is breaking for #318
+  anyway.
+
 ### Changed (breaking, #318: the catalog is loaded lazily)
 
 - The module no longer embeds the PSD/QTO catalog: default feature

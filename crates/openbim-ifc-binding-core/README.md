@@ -25,6 +25,12 @@ data as a `Record`: a named, ordered list of fields that every host
 converts with one generic function. The records therefore cannot differ
 between JavaScript, Python and C.
 
+Attributes by name (#326) resolve through the facade's
+`attribute_slots`, against the release the header declares; this crate
+maps the facade's refusals to the shared codes (`unknown-attribute`,
+`derived-attribute`, `unsupported-schema`) and carries each slot as an
+`AttributeInfo` record, so the three hosts list the same names.
+
 Property edits go the other way and are read once here too: each host
 builds the core's `PropertyEdit` from its own idiom, and the C batch is a
 value tape `PropertyEdit::from_tagged` reads, so a host cannot interpret

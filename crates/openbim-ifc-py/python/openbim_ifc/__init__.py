@@ -14,6 +14,7 @@ written back through Python is unchanged.
 
 from ._native import IfcError
 from .domains import (
+    AttributeInfo,
     Classification,
     ClassificationSystem,
     Cost,
@@ -75,6 +76,7 @@ from .values import (
 __all__ = [
     "IfcError",
     "IfcModel",
+    "AttributeInfo",
     "ParseOptions",
     "Header",
     "ValidationReport",

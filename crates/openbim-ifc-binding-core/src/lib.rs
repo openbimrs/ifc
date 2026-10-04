@@ -18,12 +18,19 @@
 //! operation whose feature is off still exists, so every host keeps one
 //! surface, and refuses with `feature-disabled`.
 //!
+//! Attributes are read and written by position or by name
+//! ([`IfcModel::attribute_by_name`]); a name resolves against the release
+//! the header declares, inherited attributes included, and is refused with
+//! `unknown-attribute` (or `derived-attribute` for a write to a `*` slot)
+//! rather than guessed.
+//!
 //! Property edits check `Pset_`/`Qto_` sets against the PSD/QTO catalog
 //! ([`catalog`]): embedded with `property-catalog` (default), or loaded at
 //! runtime from pinned snapshot files with `property-catalog-runtime`, the
 //! npm package's choice, where a write before loading refuses with
 //! `catalog-not-loaded`.
 
+mod attribute;
 pub mod catalog;
 pub mod classification;
 pub mod cost;
@@ -43,6 +50,7 @@ pub mod validation;
 pub mod value;
 mod xml;
 
+pub use attribute::AttributeInfo;
 pub use error::BindingError;
 pub use model::IfcModel;
 pub use options::{OnMalformed, ParseOptions};

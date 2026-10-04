@@ -153,8 +153,9 @@ test("documented example: read, edit and write a file", () => {
   const schema = model.schema; // "IFC4"
 
   for (const wall of model.idsOfType("IfcWall")) {
-    const name = model.attribute(wall, 2); // { kind: "text", value: "Wall" }
-    model.setAttribute(wall, 2, { kind: "text", value: `${name.value} (checked)` });
+    // Names resolve against the release the header declares.
+    const name = model.attributeByName(wall, "Name"); // { kind: "text", value: "Wall" }
+    model.setAttributeByName(wall, "Name", { kind: "text", value: `${name.value} (checked)` });
   }
 
   const out = model.write(); // a Uint8Array, ready to save
@@ -164,6 +165,61 @@ test("documented example: read, edit and write a file", () => {
     kind: "text",
     value: "Wall (checked)",
   });
+});
+
+// --- #326: attributes by name ----------------------------------------------
+
+test("attributes resolve by name against the declared release", () => {
+  const model = parse();
+  const names = model.attributeNames(5n);
+  assert.deepEqual(names[0], {
+    name: "GlobalId",
+    index: 0,
+    typeName: "IfcGloballyUniqueId",
+    optional: false,
+    aggregate: false,
+    derived: false,
+    declaredBy: "IfcRoot",
+  });
+  assert.deepEqual(names.map((attribute) => attribute.name).slice(-2), ["Tag", "PredefinedType"]);
+  assert.deepEqual(model.attributeByName(5n, "predefinedtype"), { kind: "enum", value: "STANDARD" });
+  const previous = model.setAttributeByName(5n, "Name", { kind: "text", value: "Renamed" });
+  assert.deepEqual(previous, { kind: "text", value: "Wall" });
+  assert.deepEqual(model.attribute(5n, 2), { kind: "text", value: "Renamed" });
+
+  // The IFC2X3 task keeps Status one slot earlier than IFC4's.
+  const task = (schema, data) =>
+    IfcModel.parse(new TextEncoder().encode(FILE.replace("'IFC4'", `'${schema}'`).replace(
+      "#1=IFCPROJECT", `${data}\n#1=IFCPROJECT`,
+    )));
+  const ifc2x3 = task("IFC2X3", "#9=IFCTASK('3YvctVUKr0kugbFTf53O9L',$,'T',$,$,'T1','Planned','W',.F.,1);");
+  const ifc4 = task("IFC4", "#9=IFCTASK('3YvctVUKr0kugbFTf53O9L',$,'T',$,$,'T1',$,'Planned','W',.F.,1,$,$);");
+  for (const [model, slot] of [[ifc2x3, 6], [ifc4, 7]]) {
+    assert.deepEqual(model.attributeByName(9n, "Status"), { kind: "text", value: "Planned" });
+    assert.equal(model.attributeNames(9n).find((a) => a.name === "Status").index, slot);
+  }
+
+  const before = model.write();
+  throwsCode(() => model.attributeByName(5n, "IsDefinedBy"), "unknown-attribute");
+  throwsCode(() => model.setAttributeByName(5n, "Nmae", { kind: "null" }), "unknown-attribute");
+  throwsCode(() => model.attributeNames(99n), "missing-entity");
+  throwsCode(() => ifc4.attributeByName(9n, "TaskId"), "unknown-attribute");
+  const unit = model.add("IfcSIUnit", [
+    { kind: "derived" },
+    { kind: "enum", value: "LENGTHUNIT" },
+    { kind: "null" },
+    { kind: "enum", value: "METRE" },
+  ]);
+  assert.equal(model.attributeNames(unit)[0].derived, true);
+  const withUnit = model.write();
+  throwsCode(() => model.setAttributeByName(unit, "Dimensions", { kind: "null" }), "derived-attribute");
+  assert.deepEqual(model.write(), withUnit, "a refused write changes nothing");
+  assert.notDeepEqual(before, withUnit);
+  throwsCode(
+    () => IfcModel.parse(new TextEncoder().encode(FILE.replace("'IFC4'", "'IFC9'")))
+      .attributeByName(5n, "Name"),
+    "unsupported-schema",
+  );
 });
 
 // --- #244: lenient reads, header, validation, ifcXML, reachability --------

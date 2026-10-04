@@ -393,6 +393,107 @@ static int property_edits(void) {
   return 0;
 }
 
+/* The by-name example published on the docs site's C page. */
+static int documented_by_name(OpenbimIfcModel model) {
+  // docs:snippet c-attribute-by-name
+  /* Read and write #1's Name by name: the slot comes from the release the
+   * header declares, so the same call works for IFC2X3, IFC4 and IFC4X3. */
+  OpenbimIfcValueNode value[4];
+  uint8_t text[64];
+  size_t value_nodes = 0, text_len = 0;
+  const char name[] = "Name";
+  if (openbim_ifc_v0_1_entity_attribute_by_name(model, 1, (const uint8_t *)name,
+                                                strlen(name), value, 4, &value_nodes,
+                                                text, sizeof text,
+                                                &text_len) != OPENBIM_IFC_STATUS_OK) {
+    return 1;
+  }
+  printf("Name: %.*s\n", (int)value[0].str_len, (const char *)text + value[0].str_offset);
+
+  /* The new value is a one-value tape: TEXT at offset 0 of `renamed`. */
+  const char renamed[] = "Renamed";
+  OpenbimIfcValueNode edit;
+  memset(&edit, 0, sizeof edit);
+  edit.kind = OPENBIM_IFC_KIND_TEXT;
+  edit.str_len = strlen(renamed);
+  OpenbimIfcStatus status = openbim_ifc_v0_1_entity_set_attribute_by_name(
+      model, 1, (const uint8_t *)name, strlen(name), &edit, 1,
+      (const uint8_t *)renamed, strlen(renamed));
+  // docs:end
+  return status == OPENBIM_IFC_STATUS_OK ? 0 : 1;
+}
+
+/* Attributes by name (#326). Returns 0 on success. */
+static int named_attributes(void) {
+  OpenbimIfcModel model = 0;
+  OK(openbim_ifc_v0_1_model_parse((const uint8_t *)FILE_TEXT, strlen(FILE_TEXT),
+                                  &model, NULL, 0));
+  /* IfcWall in IFC4: nine slots, each a LIST of seven fields. */
+  OpenbimIfcValueNode nodes[128];
+  uint8_t strings[1024];
+  size_t count = 0, node_count = 0, string_len = 0;
+  OK(openbim_ifc_v0_1_entity_attribute_names(model, 1, &count, nodes, 128, &node_count,
+                                             strings, sizeof strings, &string_len));
+  CHECK(count == 9 && nodes[0].kind == OPENBIM_IFC_KIND_LIST && nodes[0].child_count == 9,
+        "nine attribute records");
+  CHECK(nodes[1].kind == OPENBIM_IFC_KIND_LIST && nodes[1].child_count == 7, "seven fields");
+  CHECK(nodes[2].kind == OPENBIM_IFC_KIND_TEXT && nodes[2].str_len == 8 &&
+            memcmp(strings + nodes[2].str_offset, "GlobalId", 8) == 0,
+        "first name in schema spelling");
+  CHECK(nodes[3].kind == OPENBIM_IFC_KIND_INTEGER && nodes[3].int_value == 0, "its slot");
+  CHECK(nodes[7].kind == OPENBIM_IFC_KIND_BOOL && nodes[7].int_value == 0, "not derived");
+
+  CHECK(documented_by_name(model) == 0, "the documented by-name example runs");
+  OK(openbim_ifc_v0_1_entity_attribute(model, 1, 2, nodes, 128, &node_count, strings,
+                                       sizeof strings, &string_len));
+  CHECK(nodes[0].kind == OPENBIM_IFC_KIND_TEXT && nodes[0].str_len == 7 &&
+            memcmp(strings + nodes[0].str_offset, "Renamed", 7) == 0,
+        "the write landed in slot 2");
+
+  /* Case-insensitive; the description slot holds `*`. */
+  const char description[] = "DESCRIPTION";
+  OK(openbim_ifc_v0_1_entity_attribute_by_name(model, 1, (const uint8_t *)description,
+                                               strlen(description), nodes, 128, &node_count,
+                                               strings, sizeof strings, &string_len));
+  CHECK(nodes[0].kind == OPENBIM_IFC_KIND_DERIVED, "a `*` reads as stored");
+
+  const char inverse[] = "IsDefinedBy";
+  CHECK(openbim_ifc_v0_1_entity_attribute_by_name(model, 1, (const uint8_t *)inverse,
+                                                  strlen(inverse), nodes, 128, &node_count,
+                                                  strings, sizeof strings, &string_len) ==
+            OPENBIM_IFC_STATUS_UNKNOWN_ATTRIBUTE,
+        "an inverse attribute has no slot");
+  char code[64];
+  size_t need = 0;
+  OK(openbim_ifc_v0_1_last_error_code(model, (uint8_t *)code, sizeof code, &need));
+  CHECK(strcmp(code, "unknown-attribute") == 0, "shared code");
+
+  /* IfcSIUnit derives Dimensions: refused, nothing written. */
+  static const char UNIT[] = "LENGTHUNITMETRE";
+  OpenbimIfcValueNode unit[4] = {
+      node(OPENBIM_IFC_KIND_DERIVED, 0, 0, 0, 0),
+      node(OPENBIM_IFC_KIND_ENUM, 0, 0, 0, 10),
+      node(OPENBIM_IFC_KIND_NULL, 0, 0, 0, 0),
+      node(OPENBIM_IFC_KIND_ENUM, 0, 0, 10, 5),
+  };
+  uint64_t si = 0;
+  const char si_type[] = "IFCSIUNIT";
+  OK(openbim_ifc_v0_1_entity_add(model, (const uint8_t *)si_type, strlen(si_type), 4, unit, 4,
+                                 (const uint8_t *)UNIT, strlen(UNIT), &si));
+  const char dimensions[] = "Dimensions";
+  OpenbimIfcValueNode null_value = node(OPENBIM_IFC_KIND_NULL, 0, 0, 0, 0);
+  CHECK(openbim_ifc_v0_1_entity_set_attribute_by_name(model, si, (const uint8_t *)dimensions,
+                                                      strlen(dimensions), &null_value, 1,
+                                                      NULL, 0) ==
+            OPENBIM_IFC_STATUS_DERIVED_ATTRIBUTE,
+        "a derived slot is refused");
+  OK(openbim_ifc_v0_1_entity_attribute(model, si, 0, nodes, 128, &node_count, strings,
+                                       sizeof strings, &string_len));
+  CHECK(nodes[0].kind == OPENBIM_IFC_KIND_DERIVED, "the refused write changed nothing");
+  OK(openbim_ifc_v0_1_model_destroy(model));
+  return 0;
+}
+
 int main(void) {
   OpenbimIfcVersion version;
   OK(openbim_ifc_v0_1_version(&version));
@@ -540,6 +641,7 @@ int main(void) {
   CHECK(capabilities() == 0, "the #244 surface works from C");
   CHECK(domains() == 0, "the domain views work from C");
   CHECK(property_edits() == 0, "property sets are written from C");
+  CHECK(named_attributes() == 0, "attributes are read and written by name from C");
 
   size_t live = 1;
   OK(openbim_ifc_v0_1_live_models(&live));

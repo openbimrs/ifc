@@ -5,7 +5,7 @@
 // tests/conformance.rs checks those declarations against the core's.
 //
 // A field's C# type says how to read it: ulong is a REF (an entity id), long
-// an INTEGER, double a REAL, bool a BOOL, string a TEXT, Value any IFC value
+// or int (a count or slot) an INTEGER, double a REAL, bool a BOOL, string a TEXT, Value any IFC value
 // as it is, EquatableList<T> a LIST of T, and any other type a nested record.
 // A nullable field reads NULL as null.
 
@@ -46,6 +46,10 @@ internal static class RecordDecoder
         if (type == typeof(ulong))
         {
             return value.ExpectRef();
+        }
+        if (type == typeof(int))
+        {
+            return value is Value.Integer count ? checked((int)count.Value) : throw value.Mismatch("INTEGER");
         }
         if (type == typeof(long))
         {

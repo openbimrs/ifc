@@ -372,6 +372,41 @@ impl IfcModel {
         ))
     }
 
+    /// Every explicit attribute of entity `id` in slot order, inherited
+    /// first, as the release the header declares defines them.
+    #[wasm_bindgen(js_name = attributeNames, unchecked_return_type = "AttributeInfo[]")]
+    pub fn attribute_names_js(&self, id: u64) -> Result<Array, JsValue> {
+        let names = self.0.attribute_names(id).map_err(js_error)?;
+        Ok(records::records_to_js(&to_records(&names)))
+    }
+
+    /// Attribute `name` of entity `id` (case-insensitive, e.g. `"Name"`),
+    /// resolved against the declared release, as a tagged value.
+    #[wasm_bindgen(js_name = attributeByName, unchecked_return_type = "IfcValue")]
+    pub fn attribute_by_name_js(&self, id: u64, name: &str) -> Result<JsValue, JsValue> {
+        Ok(to_js(
+            &self.0.attribute_by_name(id, name).map_err(js_error)?,
+        ))
+    }
+
+    /// Set attribute `name` of entity `id`; returns the previous value. A
+    /// derived attribute is refused (`derived-attribute`).
+    #[wasm_bindgen(js_name = setAttributeByName, unchecked_return_type = "IfcValue")]
+    pub fn set_attribute_by_name_js(
+        &mut self,
+        id: u64,
+        name: &str,
+        #[wasm_bindgen(unchecked_param_type = "IfcValue")] value: &JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let value = from_js(value).map_err(js_error)?;
+        Ok(to_js(
+            &self
+                .0
+                .set_attribute_by_name(id, name, value)
+                .map_err(js_error)?,
+        ))
+    }
+
     /// Append an entity; returns its id (`bigint`).
     #[wasm_bindgen(js_name = add)]
     pub fn add_js(

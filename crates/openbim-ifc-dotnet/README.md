@@ -64,8 +64,8 @@ parallel.
 
 ## Scope
 
-The record model -- entities, attributes, the STEP codec, exact and
-subtype queries -- plus lenient reads (`ParseOptions`), the STEP header,
+The record model -- entities, attributes by position and by name, the
+STEP codec, exact and subtype queries -- plus lenient reads (`ParseOptions`), the STEP header,
 validation, ifcXML, the reachability lint, the read-only domain views
 (property sets and quantities, the spatial tree, classification,
 materials, systems, cost, georeferencing) as C# records, and writing

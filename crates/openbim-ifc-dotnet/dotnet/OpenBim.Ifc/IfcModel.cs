@@ -503,9 +503,6 @@ public sealed unsafe class IfcModel : IDisposable
         }).All();
     }
 
-    // TODO(#326): bind reading and writing attributes by name once the C ABI
-    // exports them (pull request #337), as the other bindings do.
-
     /// <summary>Attribute <paramref name="index"/> of entity <paramref name="id"/>; <see cref="Value.Null"/> past the end.</summary>
     public Value Attribute(ulong id, int index)
     {
@@ -531,6 +528,51 @@ public sealed unsafe class IfcModel : IDisposable
         fixed (byte* s = strings)
         {
             Calls.Check(lease.Model, NativeMethods.openbim_ifc_v0_1_entity_set_attribute(lease.Model, id, (nuint)index, n, (nuint)nodes.Length, s, (nuint)strings.Length));
+        }
+        return old;
+    }
+
+    /// <summary>Every explicit attribute of entity <paramref name="id"/> in slot order, inherited first, as the release the header declares defines them; <c>INVERSE</c> attributes hold no slot and are not listed.</summary>
+    public IReadOnlyList<AttributeInfo> AttributeNames(ulong id)
+    {
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return RecordDecoder.DecodeList<AttributeInfo>(Tape(m, (n, nc, nr, s, sc, sr) =>
+        {
+            nuint count;
+            return NativeMethods.openbim_ifc_v0_1_entity_attribute_names(m, id, &count, n, nc, nr, s, sc, sr);
+        }).One());
+    }
+
+    /// <summary>Attribute <paramref name="name"/> of entity <paramref name="id"/>, matched case-insensitively (<c>Name</c>) and resolved against the declared release; <see cref="Value.Null"/> when the record stops before its slot.</summary>
+    public Value AttributeByName(ulong id, string name)
+    {
+        var bytes = Calls.Encode(name);
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return Tape(m, (n, nc, nr, s, sc, sr) =>
+        {
+            fixed (byte* text = bytes)
+            {
+                return NativeMethods.openbim_ifc_v0_1_entity_attribute_by_name(m, id, text, (nuint)bytes.Length, n, nc, nr, s, sc, sr);
+            }
+        }).One();
+    }
+
+    /// <summary>Set attribute <paramref name="name"/> of entity <paramref name="id"/>; returns the old value. A derived attribute is refused with <c>derived-attribute</c>, an unknown name with <c>unknown-attribute</c>, and a refused write changes nothing.</summary>
+    public Value SetAttributeByName(ulong id, string name, Value value)
+    {
+        var old = AttributeByName(id, name);
+        var bytes = Calls.Encode(name);
+        var tape = TapeWriter.Of(value);
+        var nodes = tape.Nodes;
+        var strings = tape.Strings;
+        using var lease = handle.Acquire();
+        fixed (byte* text = bytes)
+        fixed (ValueNode* n = nodes)
+        fixed (byte* s = strings)
+        {
+            Calls.Check(lease.Model, NativeMethods.openbim_ifc_v0_1_entity_set_attribute_by_name(lease.Model, id, text, (nuint)bytes.Length, n, (nuint)nodes.Length, s, (nuint)strings.Length));
         }
         return old;
     }

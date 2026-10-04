@@ -63,6 +63,36 @@ lists included, and print in STEP form. No host value converts
 implicitly: `3` could be an integer or a real, and `"x"` a text or an
 enumeration.
 
+### Attributes by name
+
+<!-- SNIPPET:dotnet-by-name -->
+
+```csharp
+using var model = IfcModel.Parse(data);
+var wall = model.IdsOfType("IfcWall").Single();
+
+// Slots as the declared release (here IFC4) defines them, inherited first.
+foreach (var attribute in model.AttributeNames(wall))
+{
+    System.Console.WriteLine($"{attribute.Index} {attribute.Name}: {attribute.TypeName}");
+    // 0 GlobalId: IfcGloballyUniqueId, 1 OwnerHistory: IfcOwnerHistory, 2 Name: IfcLabel, ...
+}
+
+var name = model.AttributeByName(wall, "name"); // any case: 'Wall'
+model.SetAttributeByName(wall, "Name", new Value.Text("Renamed"));
+```
+
+<!-- /SNIPPET -->
+
+`AttributeNames(id)` lists an entity's explicit attributes as
+`AttributeInfo` records, in slot order with inherited ones first, as the
+release its header declares defines them: `IfcTask.Status` is slot 6 in
+an IFC2X3 file and slot 7 in an IFC4 one. `AttributeByName` and
+`SetAttributeByName` match a name case-insensitively; the positional
+calls stay raw slot access. An unknown name is refused with
+`unknown-attribute`, a write to a slot the entity's type derives (written
+`*`) with `derived-attribute`, and a refused write changes nothing.
+
 ## Errors
 
 <!-- SNIPPET:dotnet-errors -->
@@ -266,6 +296,9 @@ Generated from the `OpenBim.Ifc` C# source.
 | `IReadOnlyList<Value> Attributes(ulong id)` | Every attribute of entity `id`, in declaration order. |
 | `Value Attribute(ulong id, int index)` | Attribute `index` of entity `id`; `Value.Null` past the end. |
 | `Value SetAttribute(ulong id, int index, Value value)` | Set attribute `index` of entity `id`, padding a gap past the end with `$`; returns the old value. |
+| `IReadOnlyList<AttributeInfo> AttributeNames(ulong id)` | Every explicit attribute of entity `id` in slot order, inherited first, as the release the header declares defines them; `INVERSE` attributes hold no slot and are not listed. |
+| `Value AttributeByName(ulong id, string name)` | Attribute `name` of entity `id`, matched case-insensitively (`Name`) and resolved against the declared release; `Value.Null` when the record stops before its slot. |
+| `Value SetAttributeByName(ulong id, string name, Value value)` | Set attribute `name` of entity `id`; returns the old value. A derived attribute is refused with `derived-attribute`, an unknown name with `unknown-attribute`, and a refused write changes nothing. |
 | `ulong Add(string typeName, IEnumerable<Value> attributes)` | Append an entity of `typeName`; returns its new id. |
 | `void Remove(ulong id)` | Remove entity `id`, leaving references to it dangling. |
 | `IReadOnlyList<DanglingReference> DanglingReferences()` | Every reference to an id the model does not contain. |

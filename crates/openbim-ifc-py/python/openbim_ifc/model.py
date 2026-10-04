@@ -8,6 +8,7 @@ from typing import Iterable, List, Optional, Tuple, Union
 from ._native import NativeModel
 from . import domains
 from .domains import (
+    AttributeInfo,
     Classification,
     Cost,
     MapConversion,
@@ -32,7 +33,9 @@ class IfcModel:
     ``unsupported-profile``, ``feature-disabled``, or, from a domain view,
     ``invalid-model``, ``missing-reference``, ``budget-exceeded``,
     ``unsupported`` or ``wrong-entity-type``, or, from a property edit,
-    ``template-violation`` or ``missing-property``.
+    ``template-violation`` or ``missing-property``, or, from an attribute
+    named rather than numbered, ``unknown-attribute`` or
+    ``derived-attribute``.
 
     A parsed model decodes each entity the first time it is read: parsing
     checks every record but builds nothing, so opening a large file is fast
@@ -257,6 +260,24 @@ class IfcModel:
     def set_attribute(self, id: int, index: int, value: Value) -> Value:
         """Set attribute ``index`` of entity ``id``; returns the old value."""
         return from_wire(self._native.set_attribute(id, index, to_wire(value)))
+
+    def attribute_names(self, id: int) -> List[AttributeInfo]:
+        """Every explicit attribute of entity ``id`` in slot order,
+        inherited first, as the release the header declares defines them.
+        ``INVERSE`` attributes hold no slot and are not listed."""
+        return list(domains._from_wire(self._native.attribute_names(id)))
+
+    def attribute_by_name(self, id: int, name: str) -> Value:
+        """Attribute ``name`` of entity ``id``, matched case-insensitively
+        (``"Name"``) and resolved against the declared release; ``Null``
+        when the record stops before its slot."""
+        return from_wire(self._native.attribute_by_name(id, name))
+
+    def set_attribute_by_name(self, id: int, name: str, value: Value) -> Value:
+        """Set attribute ``name`` of entity ``id``; returns the old value.
+        A derived attribute raises ``derived-attribute``, an unknown name
+        ``unknown-attribute``, and a refused write changes nothing."""
+        return from_wire(self._native.set_attribute_by_name(id, name, to_wire(value)))
 
     def add(self, type_name: str, attributes: Iterable[Value]) -> int:
         """Append an entity; returns its new id."""

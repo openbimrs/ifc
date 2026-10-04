@@ -18,8 +18,8 @@ public class SmokeTests
         var version = IfcLibrary.Version;
         Assert.Equal(0, version.Abi.Major);
         Assert.Equal(1, version.Abi.Minor);
-        // Writing property sets arrived with ABI 0.1.3.
-        Assert.True(version.Abi.Build >= 3, $"ABI {version.Abi}");
+        // Attributes by name arrived with ABI 0.1.5.
+        Assert.True(version.Abi.Build >= 5, $"ABI {version.Abi}");
     }
 
     [Fact]

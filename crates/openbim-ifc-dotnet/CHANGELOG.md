@@ -12,7 +12,7 @@ a release here does not imply a release of any other crate in the family.
 ### Added (#327)
 
 - The `OpenBim.Ifc` NuGet package: C# over the versioned C ABI of
-  `openbim-ifc-capi` (`openbim_ifc_v0_1_*`, ABI 0.1.3 or later), for
+  `openbim-ifc-capi` (`openbim_ifc_v0_1_*`, ABI 0.1.5 or later), for
   `net8.0` and `netstandard2.0` (.NET Framework 4.6.2 and later), with the
   native library for `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`,
   `osx-x64` and `osx-arm64`. Build targets copy the Windows libraries into
@@ -23,6 +23,9 @@ a release here does not imply a release of any other crate in the family.
   `Count`, `Schema`, `Diagnostics`, `Ids`, `IdsOfType`,
   `IdsOfTypeIncludingSubtypes`, `TypeOf`, `Attributes`, `Attribute`,
   `SetAttribute`, `Add`, `Remove` and `DanglingReferences`.
+- Attributes by name (#326): `AttributeNames` (`AttributeInfo` records),
+  `AttributeByName` and `SetAttributeByName`, with the codes
+  `unknown-attribute` and `derived-attribute`.
 - The #244 surface: `ParseOptions` (`Lenient`), the `Header` record, read
   and replaced; `Validate` with a `ValidationReport`; ifcXML in the native
   and XSD layouts; `UnreachableProducts`.

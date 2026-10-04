@@ -12,6 +12,24 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#326, attributes by name)
+
+- `attribute_slots(schema, type_name)` and `attribute_slot(schema,
+  type_name, name)` (feature `schema-api`): an entity type's explicit
+  attribute slots in Part 21 order, inherited first, as `AttributeSlot`
+  (index, name, declared type, `optional`, `aggregate`, `derived`,
+  `declared_by`). `INVERSE` and new `DERIVE` attributes hold no slot and
+  are not listed; an inherited attribute a subtype redeclares as derived
+  is marked `derived`. Names match ASCII case-insensitively, as EXPRESS
+  identifiers do; answers use the schema's spelling.
+- `attribute_by_name(model, schema, id, name)` and
+  `set_attribute_by_name(model, schema, id, name, value)`: read and write
+  by name against the schema the caller passes. The write refuses a
+  derived slot and checks everything before its one write.
+  `NamedAttributeError` (`#[non_exhaustive]`): `MissingEntity`,
+  `UnknownEntity`, `UnknownAttribute`, `DerivedAttribute`.
+- Additive: a patch release.
+
 ### Added (#318, runtime PSD/QTO catalog)
 
 - Feature `property-catalog-runtime`: property edits check `Pset_`/`Qto_`
