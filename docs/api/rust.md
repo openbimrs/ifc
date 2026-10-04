@@ -172,8 +172,10 @@ the file size.
 
 `crates/ifc-step/tests/scale.rs` holds a full parse of a large synthetic model
 under 10x the input size in resident memory, so a regression fails the
-gate. `benchmarks/README.md` records comparative measurements against
-IfcOpenShell, with the machine and method they were taken on.
+gate. [`benchmarks/README.md`](https://github.com/openbimrs/ifc/blob/main/benchmarks/README.md)
+records comparative measurements against IfcOpenShell, and the committed
+[read, write, lookup and memory baseline](https://github.com/openbimrs/ifc/blob/main/benchmarks/baseline.md),
+each with the machine and method it was taken on.
 
 ## Other languages
 

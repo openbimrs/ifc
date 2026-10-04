@@ -102,6 +102,12 @@ gate_test() {
     fi
     rm -rf "$authored_dump"
 
+    # Smoke run of the codec and entity-graph baselines (#14, #119): the
+    # tiny synthetic scale and one fixture, three samples each, every
+    # equivalence and probe assertion. It proves the harness builds, runs
+    # and agrees with itself; it judges no timing (benchmarks/README.md).
+    cargo test -p ifc-step --bench baseline
+
     cargo test -p ifc-model --test package_architecture
     cargo test -p ifc-model --test progressive_context
     cargo test -p ifc-model --test module_reachability
