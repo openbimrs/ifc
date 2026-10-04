@@ -1,6 +1,6 @@
 # Install
 
-The IFC stack is published for four languages. They all share one Rust core
+The IFC stack is published for five languages. They all share one Rust core
 (ADR [0013](/adr/0013-language-bindings-wrap-the-facade)), so a file read in
 one reads the same in the others.
 
@@ -12,6 +12,7 @@ one reads the same in the others.
 | JavaScript / TypeScript | [`@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) | 0.3.0 (2026-10-03) | `npm install @openbim/ifc` | Node `>=18` | [`openbim-ifc-wasm`](/reference/crates/openbim-ifc-wasm) |
 | Python | [`openbim-ifc`](https://pypi.org/project/openbim-ifc/) | 0.3.0 (2026-10-03) | `pip install openbim-ifc` | Python `>=3.9` | [`openbim-ifc-py`](/reference/crates/openbim-ifc-py) |
 | C / C++ | [`openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.1) (CMake, prebuilt archives) | 0.1.1 (2026-10-03) | `find_package(openbim_ifc)` | a C11 or C++17 compiler and CMake 3.21; Rust to build from source | [`openbim-ifc-capi`](/reference/crates/openbim-ifc-capi) |
+| C# / .NET | `openbim-ifc-dotnet` (not published) | not released | build from source | `netstandard2.0` or `net8.0` | [`openbim-ifc-dotnet`](/reference/crates/openbim-ifc-dotnet) |
 
 <!-- INSTALL:TABLE:END -->
 
@@ -64,3 +65,13 @@ target_link_libraries(app PRIVATE openbim_ifc::openbim_ifc)
 ```
 
 See [C and C++](/bindings/c#install-via-cmake).
+
+## .NET
+
+```bash
+dotnet add package OpenBim.Ifc
+```
+
+One package for .NET 8 and for .NET Framework 4.6.2 and later (through
+`netstandard2.0`), with the native library for Windows, Linux and macOS on
+x64 and Arm inside. See [C# and .NET](/bindings/dotnet).

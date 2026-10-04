@@ -1,0 +1,81 @@
+name: .NET
+
+# The OpenBim.Ifc NuGet package (#327) on Linux, macOS and Windows: build the
+# C ABI library for the runner, pack the .nupkg, install it from a local feed
+# into a fresh project and run the C# suite there
+# (crates/openbim-ifc-dotnet/scripts/check-dotnet.py). Windows x64 runs it on
+# .NET Framework 4.8 too; Windows on Arm proves the win-arm64 toolchain the
+# release relies on.
+#
+# The gate's `test` section already holds the C# declarations to the C header
+# and the shared records on every pull request
+# (crates/openbim-ifc-dotnet/tests/conformance.rs), without a .NET SDK. This
+# workflow adds the behaviour, and only where it can change:
+# - pull_request: when the change touches the .NET package, the C ABI, the
+#   crates it links, the lockfile or this file.
+# - push to main: every merge except prose, as for the Native workflow.
+#
+# Path filters skip a whole run, so its checks are absent on most pull
+# requests; it must never be a required check, and the "Standalone IFC gate"
+# verdict in ci.yml does not depend on it. release.yml packs and tests the
+# published package itself, on every runtime it ships.
+on:
+  pull_request:
+    paths:
+      - "crates/openbim-ifc-dotnet/**"
+      - "crates/openbim-ifc-capi/**"
+      - "crates/openbim-ifc-binding-core/**"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - ".github/workflows/dotnet.yml"
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dotnet-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  package:
+    name: OpenBim.Ifc (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15, windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.os }}
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Rust 1.88
+        uses: dtolnay/rust-toolchain@688313b0823df1393bcebb1b4add0438a6d36884 # 1.88.0
+        with:
+          toolchain: 1.88.0
+          # rust-toolchain.toml asks for these; installing them here saves
+          # rustup doing it on the first cargo call.
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
+      - name: Cache Rust build
+        # Dependencies only. Only main saves, so a pull request can read the
+        # cache but never write into it.
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: dotnet-${{ matrix.os }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "8.0.x"
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Build, pack, and test the package from a fresh project
+        run: python crates/openbim-ifc-dotnet/scripts/check-dotnet.py

@@ -29,8 +29,8 @@ There are three ways to get the package:
 
 - **Prebuilt archive.** Every `openbim-ifc-capi-v*`
   [GitHub release](https://github.com/openbimrs/ifc/releases) attaches
-  `openbim-ifc-capi-v<version>-<target>.tar.gz` (`.zip` on Windows) for Linux
-  and macOS (x86_64 and aarch64) and Windows (x86_64), with a `SHA256SUMS`
+  `openbim-ifc-capi-v<version>-<target>.tar.gz` (`.zip` on Windows) for Linux,
+  macOS and Windows, each on x86_64 and aarch64, with a `SHA256SUMS`
   file. Each holds the header, both libraries, the CMake config and, on
   Linux and macOS, the [pkg-config files](#install-via-pkg-config). Unpack it
   anywhere and pass that directory as `CMAKE_PREFIX_PATH`.

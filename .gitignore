@@ -26,3 +26,6 @@ crates/openbim-ifc-wasm/pkg/
 # Python bytecode (openbim-ifc-py)
 __pycache__/
 *.pyc
+
+# .NET build output of crates/openbim-ifc-dotnet (Directory.Build.props)
+crates/openbim-ifc-dotnet/dotnet/artifacts/

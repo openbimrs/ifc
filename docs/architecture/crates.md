@@ -82,6 +82,7 @@ changes; the [capability matrix](/capabilities) says what each implements.
 | --- | --- | --- | --- |
 | [`openbim-ifc-binding-core`](/reference/crates/openbim-ifc-binding-core) | <span class="status-implemented">Implemented</span> | [`openbim-ifc`](/reference/crates/openbim-ifc) | Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python). |
 | [`openbim-ifc-capi`](/reference/crates/openbim-ifc-capi) | <span class="status-implemented">Implemented</span> | [`openbim-ifc-binding-core`](/reference/crates/openbim-ifc-binding-core) | Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP files from C and C++. |
+| [`openbim-ifc-dotnet`](/reference/crates/openbim-ifc-dotnet) | <span class="status-implemented">Implemented</span> | — | The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned C ABI. |
 | [`openbim-ifc-py`](/reference/crates/openbim-ifc-py) | <span class="status-implemented">Implemented</span> | [`openbim-ifc-binding-core`](/reference/crates/openbim-ifc-binding-core) | Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python. |
 | [`openbim-ifc-wasm`](/reference/crates/openbim-ifc-wasm) | <span class="status-implemented">Implemented</span> | [`openbim-ifc-binding-core`](/reference/crates/openbim-ifc-binding-core) | WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript. |
 

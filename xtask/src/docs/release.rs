@@ -19,7 +19,7 @@ pub(crate) struct Release {
 
 /// A registry a crate is published to.
 pub(crate) struct Registry {
-    /// `crates.io`, `npm`, `PyPI` or `GitHub release`.
+    /// `crates.io`, `npm`, `PyPI`, `NuGet` or `GitHub release`.
     pub(crate) kind: &'static str,
     /// The package name there, which need not equal the crate name.
     pub(crate) package: String,
@@ -40,7 +40,7 @@ pub(crate) fn latest(workspace: &Workspace, krate: &Crate) -> Result<Option<Rele
 }
 
 /// Registries the crate is published to: crates.io unless `publish = false`,
-/// plus npm and PyPI when their manifests exist, and the GitHub release's
+/// plus npm, PyPI and NuGet when their manifests exist, and the GitHub release's
 /// prebuilt archives when it has a CMake package. These are the same files the
 /// release workflow publishes from (`scripts/release-crate.py`).
 ///
@@ -80,6 +80,16 @@ pub(crate) fn registries(workspace: &Workspace, krate: &Crate) -> Vec<Registry> 
             package: name,
         });
     }
+    if let Some(name) = std::fs::read_to_string(dir.join(NUGET_PROJECT))
+        .ok()
+        .and_then(|text| package_id(&text))
+    {
+        out.push(Registry {
+            kind: "NuGet",
+            url: format!("https://www.nuget.org/packages/{name}"),
+            package: name,
+        });
+    }
     // A CMake package ships as prebuilt archives on the crate's GitHub
     // release (release.yml, `native-archives`).
     if let Some(name) = std::fs::read_to_string(dir.join("CMakeLists.txt"))
@@ -96,6 +106,17 @@ pub(crate) fn registries(workspace: &Workspace, krate: &Crate) -> Vec<Registry> 
         });
     }
     out
+}
+
+/// The project of a crate shipped as a NuGet package (`openbim-ifc-dotnet`).
+pub(crate) const NUGET_PROJECT: &str = "dotnet/OpenBim.Ifc/OpenBim.Ifc.csproj";
+
+/// The `<PackageId>` of a `.csproj`.
+fn package_id(text: &str) -> Option<String> {
+    let start = text.find("<PackageId>")? + "<PackageId>".len();
+    let end = start + text[start..].find("</PackageId>")?;
+    let id = text[start..end].trim();
+    (!id.is_empty()).then(|| id.to_owned())
 }
 
 /// The name in a `CMakeLists.txt`'s `project(<name> ...)` call.
@@ -141,6 +162,13 @@ mod tests {
             Some("solo")
         );
         assert_eq!(cmake_project_name("# project(x)\n"), None);
+    }
+
+    #[test]
+    fn package_id_is_read_from_the_csproj() {
+        let text = "<Project>\n  <PropertyGroup>\n    <PackageId>OpenBim.Ifc</PackageId>\n";
+        assert_eq!(package_id(text).as_deref(), Some("OpenBim.Ifc"));
+        assert_eq!(package_id("<Project />"), None);
     }
 
     #[test]

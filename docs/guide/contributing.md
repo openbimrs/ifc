@@ -247,22 +247,25 @@ runs once, in CI; the release does not run it again:
 | `openbim-ifc-wasm` | npm only (`@openbim/ifc`) |
 | `openbim-ifc-py` | PyPI only (`openbim-ifc`): Linux, macOS and Windows wheels plus an sdist |
 | `openbim-ifc-capi` | GitHub release only: per-platform archives of its CMake package (header, static and shared library), plus `SHA256SUMS` |
+| `openbim-ifc-dotnet` | NuGet only (`OpenBim.Ifc`): one package carrying the shared library of every C library archive, built and tested on each runtime before it is pushed |
 
-The version in `crates/openbim-ifc-wasm/npm/package.json` or
-`crates/openbim-ifc-py/pyproject.toml` must equal the crate's. `--set --apply`
+The version in `crates/openbim-ifc-wasm/npm/package.json`,
+`crates/openbim-ifc-py/pyproject.toml` or
+`crates/openbim-ifc-dotnet/dotnet/OpenBim.Ifc/OpenBim.Ifc.csproj` must
+equal the crate's. `--set --apply`
 bumps it together with `Cargo.toml`, and refuses if the two were already
 out of step. The workflow refuses a tag that disagrees with any manifest. Every publish step
 skips a version that is already live, so re-running a partly failed
 release finishes it.
 
 Each publish job runs in the environment named after its registry:
-`crates.io`, `npmjs.com` or `pypi.org`. Each asks for a reviewer's
+`crates.io`, `npmjs.com`, `pypi.org` or `nuget.org`. Each asks for a reviewer's
 approval, and only release tags (`*-v*`) and `main` (for rehearsals) may
 deploy to them. Only admins may create, move or delete release tags. A
 deployment links to the version it published on that registry.
 
-- npm, PyPI and crates.io: trusted publishing (OIDC), no long-lived
-  token. Each registry trusts exactly `release.yml` and its own
+- npm, PyPI, NuGet and crates.io: trusted publishing (OIDC), no
+  long-lived token. Each registry trusts exactly `release.yml` and its own
   environment; renaming either breaks publishing until the registry
   settings are changed to match.
 - crates.io is configured per crate: in each crate's crates.io settings,
@@ -272,6 +275,11 @@ deployment links to the version it published on that registry.
   `crates.io` environment's `CARGO_REGISTRY_TOKEN` secret and warns
   whenever trusted publishing is refused. Keep the secret for new crates;
   a warning for an existing crate means its trusted publisher is missing.
+- NuGet: the policy belongs to the `openbimrs` organization on nuget.org
+  and covers every package id, so it trusts a first push too.
+  `NuGet/login` exchanges the job's OIDC token for an API key valid one
+  hour; it needs the nuget.org account the policy names, which the
+  `nuget.org` environment holds as its `NUGET_USER` variable.
 - npm: the first version of a new scoped package must be published by hand
   (npm cannot attach a trusted publisher to a package that does not exist
   yet); every later version comes from `release.yml`.

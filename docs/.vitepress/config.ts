@@ -31,6 +31,7 @@ function bindingsSidebar() {
         { text: 'JavaScript and TypeScript', link: '/bindings/javascript' },
         { text: 'Python', link: '/bindings/python' },
         { text: 'C and C++', link: '/bindings/c' },
+        { text: 'C# and .NET', link: '/bindings/dotnet' },
       ],
     },
   ]

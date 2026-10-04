@@ -1,0 +1,31 @@
+[package]
+name = "openbim-ifc-dotnet"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+license = "AGPL-3.0-or-later"
+authors = ["point-grey"]
+repository = "https://github.com/openbimrs/ifc"
+description = "The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned C ABI."
+keywords = ["ifc", "bim", "dotnet", "nuget", "openbim"]
+categories = ["api-bindings", "parser-implementations"]
+# Shipped as the `OpenBim.Ifc` NuGet package (dotnet/), not as a crate. The
+# crate holds no binding code: it gives the package a version, a changelog
+# and a release tag the release tooling already understands, and its tests
+# check the C# declarations against the C header and the shared records.
+publish = false
+
+# Published on the docs site by `cargo run -p xtask -- docs`.
+[package.metadata.openbim]
+# implemented | partial | scaffold -- a judgement, never inferred from size.
+# `gaps`: the open issues behind the status; a partial crate names one.
+status = "implemented"
+# core | domain | geometry | facade | binding
+group = "binding"
+
+# No dependencies, by design (ADR 0013): the package reaches IFC only
+# through the C ABI's shared library at run time, never through a Rust
+# dependency. The architecture test pins this.
+
+[lints]
+workspace = true

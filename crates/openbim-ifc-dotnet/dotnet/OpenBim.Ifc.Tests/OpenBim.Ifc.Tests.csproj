@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The C# suite, run against the PACKED OpenBim.Ifc package: it references
+       the package, never the project, so it tests what NuGet installs.
+       scripts/check-dotnet.py copies this project to a fresh directory,
+       points it at a local feed holding the .nupkg, and runs it. On Windows
+       x64 it runs on .NET Framework 4.8 too, which loads the netstandard2.0
+       assembly and the native library the package's build targets copy. -->
+  <PropertyGroup>
+    <TargetFrameworks>net8.0</TargetFrameworks>
+    <TargetFrameworks Condition="'$(OS)' == 'Windows_NT' and '$(PROCESSOR_ARCHITECTURE)' == 'AMD64'">net8.0;net48</TargetFrameworks>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <OpenBimIfcVersion Condition="'$(OpenBimIfcVersion)' == ''">0.1.0</OpenBimIfcVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net48'">
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenBim.Ifc" Version="[$(OpenBimIfcVersion)]" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

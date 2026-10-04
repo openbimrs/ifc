@@ -19,7 +19,7 @@ Usage:
     scripts/release-crate.py <crate>                   # current/published versions
     scripts/release-crate.py <crate> --set 0.2.1       # dry run: what would this cost?
     scripts/release-crate.py <crate> --set 0.2.1 --apply  # bump manifests+changelog
-                                                       # (incl. the npm/PyPI manifest)
+                                                       # (incl. the npm/PyPI/NuGet manifest)
     scripts/release-crate.py <crate> --publish         # tag; CI publishes
     scripts/release-crate.py <crate> --publish --local # publish from here
     scripts/release-crate.py <tag> --plan              # registries for a tag
@@ -259,12 +259,13 @@ def apply_bump(crate: str, new: str) -> None:
 EXTRA_REGISTRIES = {
     "openbim-ifc-wasm": ("npm", "crates/openbim-ifc-wasm/npm/package.json"),
     "openbim-ifc-py": ("pypi", "crates/openbim-ifc-py/pyproject.toml"),
+    "openbim-ifc-dotnet": ("nuget", "crates/openbim-ifc-dotnet/dotnet/OpenBim.Ifc/OpenBim.Ifc.csproj"),
 }
 TAG = re.compile(r"^(?P<crate>[a-z0-9][a-z0-9-]*)-v(?P<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)$")
 
 
 def registry_manifest_bump(crate: str, old: str, new: str) -> tuple[Path, str] | None:
-    """The npm/PyPI manifest of `crate` rewritten from `old` to `new`.
+    """The npm/PyPI/NuGet manifest of `crate` rewritten from `old` to `new`.
 
     `plan` refuses a tag whose registry manifest disagrees with Cargo.toml,
     so a bump that left it behind produced a release that could not be
@@ -283,10 +284,13 @@ def registry_manifest_bump(crate: str, old: str, new: str) -> tuple[Path, str] |
             "bring them in step before bumping")
     text = path.read_text(encoding="utf-8")
     if path.suffix == ".json":
-        pattern = r'("version"\s*:\s*)"%s"' % re.escape(old)
+        pattern, replacement = r'("version"\s*:\s*)"%s"' % re.escape(old), r'\g<1>"%s"' % new
+    elif path.suffix == ".csproj":
+        pattern = r"(<Version>)%s(</Version>)" % re.escape(old)
+        replacement = r"\g<1>%s\g<2>" % new
     else:
-        pattern = r'(?m)^(version = )"%s"' % re.escape(old)
-    updated, count = re.subn(pattern, r'\g<1>"%s"' % new, text, count=1)
+        pattern, replacement = r'(?m)^(version = )"%s"' % re.escape(old), r'\g<1>"%s"' % new
+    updated, count = re.subn(pattern, replacement, text, count=1)
     if count != 1:
         raise SystemExit(f"could not rewrite version in {relative}")
     return path, updated
@@ -296,6 +300,11 @@ def manifest_version(path: Path) -> str:
     text = path.read_text(encoding="utf-8")
     if path.suffix == ".json":
         return json.loads(text)["version"]
+    if path.suffix == ".csproj":
+        found = re.search(r"<Version>([^<]+)</Version>", text)
+        if not found:
+            raise SystemExit(f"no <Version> in {path}")
+        return found.group(1)
     found = re.search(r'^version = "([^"]+)"', text, re.MULTILINE)
     if not found:
         raise SystemExit(f"no version in {path}")
@@ -321,6 +330,7 @@ def plan(tag: str) -> int:
         print(f"{tag}: Cargo.toml says {package['version']}", file=sys.stderr)
         return 1
     targets = {"crates_io": package.get("publish") != [], "npm": False, "pypi": False,
+               "nuget": False,
                # A crate with a CMake package ships prebuilt archives on a
                # GitHub release; CMakeLists.txt reads its version from
                # Cargo.toml, so there is no second manifest to disagree.
@@ -364,7 +374,7 @@ def publish(crate: str, local: bool) -> int:
 
     Pushing `<crate>-v<version>` triggers `.github/workflows/release.yml`,
     which gates the tagged commit and publishes to every registry the crate
-    targets (crates.io, and npm or PyPI for the bindings). `local` is the
+    targets (crates.io, and npm, PyPI or NuGet for the bindings). `local` is the
     fallback when CI cannot publish: it runs `cargo publish` here instead,
     from a detached worktree at the tag so the VCS SHA embedded in the
     .crate is deterministic and the working tree stays free for other work.

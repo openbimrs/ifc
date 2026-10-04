@@ -17,7 +17,8 @@ use crate::workspace::Workspace;
 
 /// File types that can carry a marker; generated and vendored data cannot.
 const PATTERNS: &[&str] = &[
-    "*.rs", "*.py", "*.sh", "*.mjs", "*.js", "*.ts", "*.c", "*.h", "*.toml", "*.yml", "*.yaml",
+    "*.rs", "*.py", "*.sh", "*.mjs", "*.js", "*.ts", "*.c", "*.h", "*.cs", "*.toml", "*.yml",
+    "*.yaml",
 ];
 
 /// The marker words, built so this file does not match itself.

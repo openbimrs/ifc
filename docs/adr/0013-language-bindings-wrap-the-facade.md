@@ -131,6 +131,38 @@ crate directly.
   `unsupported-schema`; new codes `unknown-attribute` (C 28) and
   `derived-attribute` (29). A Pythonic object layer (`wall.Name`, #332)
   builds on these calls.
+- *Amended 2026-10-04 (#327, .NET):* .NET hosts (Revit, Navisworks,
+  Tekla, Dynamo) get the `OpenBim.Ifc` NuGet package: C# P/Invoke over
+  the versioned C ABI (`openbim_ifc_v0_1_*`) and nothing else, the one
+  binding that reaches the core through another binding's boundary. The
+  row of the alternatives table against thin layers over the C ABI was
+  about hosts with a safe Rust binding generator; .NET has none that
+  covers .NET Framework, and the C ABI already holds the conventions a
+  host needs, so a second Rust host crate would add a toolchain and no
+  semantics. The C# adds calling-convention glue only; a capability the
+  C ABI lacks goes into the C ABI first, for every host. The package
+  targets `netstandard2.0` (.NET Framework 4.6.2 and later) and `net8.0`
+  and carries the C ABI's shared library per runtime identifier
+  (`win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64`,
+  `osx-arm64`), taken from the C ABI's release archives rather than built
+  twice; build targets copy the Windows libraries into a .NET Framework
+  project, and the assembly loads them from next to itself. The model is
+  an `IDisposable` over a `SafeHandle`; `Value` is a closed record
+  hierarchy with value equality; `IfcException` carries the shared `Code`
+  and the C status; domain records are positional C# records decoded from
+  the tape by one generic function, as the core intends; attributes by
+  name (#326) are `AttributeNames`, `AttributeByName` and
+  `SetAttributeByName`. Two names differ
+  from the other hosts: the core's `System` record is `IfcSystem` and
+  `Systems` is `SystemsView`, since C# forbids or penalises the originals.
+  The package lives in a thin crate, `openbim-ifc-dotnet`, with no Rust
+  dependency (an architecture test pins that): it gives the package a
+  version, a changelog, a release tag and a reference page through the
+  existing tooling, and its tests hold the C# declarations to the C header
+  and the C# records to the core's, field by field, in the gate without a
+  .NET SDK. The package's own suite runs against the packed `.nupkg` from
+  a fresh project, on every runtime before a release publishes it, through
+  NuGet trusted publishing.
 
 ## Alternatives considered
 
