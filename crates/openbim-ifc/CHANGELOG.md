@@ -12,6 +12,18 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- `spatial_properties` and the property-edit planner (`apply_property_edits`,
+  `stage_property_edits`) resolve through one `ifc_properties::PropertyIndex`
+  of the model instead of calling the exact resolver per element or per
+  edited object, so listing every element's properties, or a batch editing
+  many objects, is linear in the model (#352). Answers and refusals are
+  unchanged. `ifc::properties::PropertyIndex` is reachable through the
+  `properties` feature.
+
+Semver: no public signature changes: a patch release.
+
 ## [0.15.0] - 2026-10-04
 
 ### Changed (breaking)
