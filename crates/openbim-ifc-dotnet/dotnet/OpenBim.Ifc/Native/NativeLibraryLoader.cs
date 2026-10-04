@@ -15,6 +15,7 @@
 // an application that ships the library its own way keeps it.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 
@@ -61,22 +62,56 @@ internal static class NativeLibraryLoader
         : "lib" + NativeMethods.Library + ".so";
 
     /// <summary>Candidate paths next to this assembly, most specific first.</summary>
-    internal static string[] Candidates()
+    internal static List<string> Candidates()
     {
-        var location = typeof(NativeLibraryLoader).Assembly.Location;
-        if (string.IsNullOrEmpty(location))
-        {
-            return Array.Empty<string>();
-        }
-        var directory = Path.GetDirectoryName(location) ?? string.Empty;
         var rid = RuntimeIdentifier;
-        return rid is null
-            ? new[] { Path.Combine(directory, FileName) }
-            : new[]
+        var candidates = new List<string>();
+        foreach (var directory in Directories())
+        {
+            if (rid is not null)
             {
-                Path.Combine(directory, "runtimes", rid, "native", FileName),
-                Path.Combine(directory, FileName),
-            };
+                candidates.Add(Path.Combine(directory, "runtimes", rid, "native", FileName));
+            }
+            candidates.Add(Path.Combine(directory, FileName));
+        }
+        return candidates;
+    }
+
+    /// <summary>Where this assembly was loaded from, where it was installed
+    /// (a shadow-copying host such as a .NET Framework test runner loads a
+    /// copy from elsewhere), and the application's base directory.</summary>
+    private static IEnumerable<string> Directories()
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var assembly = typeof(NativeLibraryLoader).Assembly;
+        var paths = new List<string?> { assembly.Location };
+#if !NET5_0_OR_GREATER
+        try
+        {
+            var codeBase = assembly.CodeBase;
+            if (!string.IsNullOrEmpty(codeBase) && Uri.TryCreate(codeBase, UriKind.Absolute, out var uri) && uri.IsFile)
+            {
+                paths.Add(uri.LocalPath);
+            }
+        }
+        catch (NotSupportedException)
+        {
+            // A dynamic or in-memory assembly has no code base.
+        }
+#endif
+        foreach (var path in paths)
+        {
+            var directory = string.IsNullOrEmpty(path) ? null : Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(directory) && seen.Add(directory!))
+            {
+                yield return directory!;
+            }
+        }
+        var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+        if (!string.IsNullOrEmpty(baseDirectory) && seen.Add(baseDirectory.TrimEnd(Path.DirectorySeparatorChar)))
+        {
+            yield return baseDirectory;
+        }
     }
 
 #if NET5_0_OR_GREATER

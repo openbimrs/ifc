@@ -13,7 +13,7 @@ The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned 
 | Status | <span class="status-implemented">Implemented</span> |
 | Latest release | not released (`main` is 0.1.0) |
 | Registries | not published yet; build from source |
-| API documentation | [rustdoc](/ifc/api/rustdoc/openbim_ifc_dotnet/index.html) |
+| API documentation | [rustdoc](/api/rustdoc/openbim_ifc_dotnet/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-dotnet/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-dotnet) |
 
 ## Overview

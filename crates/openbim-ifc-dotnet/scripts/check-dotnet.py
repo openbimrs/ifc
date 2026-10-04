@@ -212,9 +212,14 @@ def test(feed: Path, work: Path, version: str) -> None:
     # not stand in for the one just packed.
     packages = work / "packages"
     shutil.rmtree(packages, ignore_errors=True)
-    run("dotnet", "test", consumer / "OpenBim.Ifc.Tests.csproj", "-c", "Release",
-        f"-p:RestorePackagesPath={packages}", f"-p:OpenBimIfcVersion={version}",
-        "--logger", "console;verbosity=normal")
+    try:
+        run("dotnet", "test", consumer / "OpenBim.Ifc.Tests.csproj", "-c", "Release",
+            f"-p:RestorePackagesPath={packages}", f"-p:OpenBimIfcVersion={version}",
+            "--logger", "console;verbosity=normal")
+    finally:
+        # Where each test build found the native library, for a failed load.
+        for found in sorted((consumer / "bin").rglob("*openbim_ifc_capi*")):
+            print(f"native library in test output: {found.relative_to(consumer)}")
 
 
 def main() -> int:
