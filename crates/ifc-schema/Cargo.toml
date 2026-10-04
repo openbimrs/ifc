@@ -64,6 +64,10 @@ required-features = ["express", "ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
 
 # These exercise every bundled table.
 [[test]]
+name = "precomputed_lineage"
+required-features = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
+
+[[test]]
 name = "subtypes"
 required-features = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
 
