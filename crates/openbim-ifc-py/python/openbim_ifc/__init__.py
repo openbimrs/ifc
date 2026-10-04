@@ -8,9 +8,17 @@ from ``*``, ``.U.`` from ``.F.``, integer from real, and typed wrappers such
 as ``IFCLENGTHMEASURE(2.5)`` from their payload -- so a file read and
 written back through Python is unchanged.
 
->>> from openbim_ifc import IfcModel
->>> model = IfcModel.parse(open("model.ifc", "rb").read())  # doctest: +SKIP
+An :class:`Entity` view reads and writes attributes by name with plain
+Python values (``wall.Name``), and ``wall.psets`` maps property sets
+(:mod:`openbim_ifc.entity`).
+
+>>> import openbim_ifc
+>>> model = openbim_ifc.open("model.ifc")  # doctest: +SKIP
+>>> walls = model.by_type("IfcWall")  # doctest: +SKIP
 """
+
+import os as _os
+from typing import Optional as _Optional, Union as _Union
 
 from ._native import IfcError
 from .domains import (
@@ -49,6 +57,7 @@ from .domains import (
     Systems,
     UnitBasis,
 )
+from .entity import Assignable, Entity, PlainValue, PropertyValue
 from .model import IfcModel
 from .records import (
     Header,
@@ -73,9 +82,26 @@ from .values import (
     Value,
 )
 
+
+
+def open(
+    path: _Union[str, "_os.PathLike[str]"],
+    *,
+    mapped: bool = False,
+    options: _Optional[ParseOptions] = None,
+) -> IfcModel:
+    """Read a STEP (``.ifc``) file from disk: :meth:`IfcModel.open`."""
+    return IfcModel.open(path, mapped=mapped, options=options)
+
+
 __all__ = [
+    "open",
     "IfcError",
     "IfcModel",
+    "Entity",
+    "PlainValue",
+    "PropertyValue",
+    "Assignable",
     "AttributeInfo",
     "ParseOptions",
     "Header",

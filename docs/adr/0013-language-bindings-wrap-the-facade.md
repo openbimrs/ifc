@@ -163,6 +163,20 @@ crate directly.
   .NET SDK. The package's own suite runs against the packed `.nupkg` from
   a fresh project, on every runtime before a release publishes it, through
   NuGet trusted publishing.
+- *Amended 2026-10-04 (#332, Pythonic access):* the Python package adds
+  a pure-Python layer over its calls, in the package's Python sources and
+  with no native surface: `Entity` views (`model[id]`, `by_type`,
+  `wall.Name` through `attribute_by_name`/`set_attribute_by_name`),
+  property sets as read-only mappings over `property_sets`, and an
+  optional pandas export. Its reads fold values into plain Python ones,
+  the mapping the alternatives table rejects as the boundary encoding; it
+  stays a convenience above that boundary, documented value by value as
+  lossy where it is (`*` and `.U.` read `None`, enums `str`, typed
+  wrappers their payload), and the exact tagged value is one call away
+  (`raw`). Writes still take tagged values: a bare `str`, `int`, `float`
+  or `bool` is refused rather than guessed. Subtype tests and type
+  filters use `ids_of_type_including_subtypes`, so the layer holds no
+  schema knowledge of its own.
 
 ## Alternatives considered
 

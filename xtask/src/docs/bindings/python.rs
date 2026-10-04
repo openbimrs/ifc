@@ -11,9 +11,12 @@ use crate::workspace::Workspace;
 
 const MODEL: &str = "crates/openbim-ifc-py/python/openbim_ifc/model.py";
 const VALUES: &str = "crates/openbim-ifc-py/python/openbim_ifc/values.py";
+const ENTITY: &str = "crates/openbim-ifc-py/python/openbim_ifc/entity.py";
 
 /// Prints `{name, kind, params, returns, doc}` per public member of
-/// `IfcModel`, and `{name, fields, doc}` per value dataclass.
+/// `IfcModel` (its own, then those of its `ModelAccess` base in
+/// `entity.py`) and of `Entity`, and `{name, fields, doc}` per value
+/// dataclass.
 const SCRIPT: &str = r#"
 import ast, json, sys
 
@@ -36,21 +39,25 @@ def params(fn):
             out.append(text + (" = " + ast.unparse(default) if default is not None else ""))
     return out
 
-model = ast.parse(open(sys.argv[1]).read())
-members = []
-for node in model.body:
-    if isinstance(node, ast.ClassDef) and node.name == "IfcModel":
-        for fn in node.body:
-            if not isinstance(fn, ast.FunctionDef):
-                continue
-            decorators = [ast.unparse(d) for d in fn.decorator_list]
-            kind = "classmethod" if "classmethod" in decorators else \
-                   "property" if "property" in decorators else "method"
-            members.append({
-                "name": fn.name, "kind": kind, "params": params(fn),
-                "returns": ann(fn.returns) if fn.returns else None,
-                "doc": ast.get_docstring(fn) or "",
-            })
+def members_of(path, cls):
+    out = []
+    for node in ast.parse(open(path).read()).body:
+        if isinstance(node, ast.ClassDef) and node.name == cls:
+            for fn in node.body:
+                if not isinstance(fn, ast.FunctionDef):
+                    continue
+                decorators = [ast.unparse(d) for d in fn.decorator_list]
+                kind = "classmethod" if "classmethod" in decorators else \
+                       "property" if "property" in decorators else "method"
+                out.append({
+                    "name": fn.name, "kind": kind, "params": params(fn),
+                    "returns": ann(fn.returns) if fn.returns else None,
+                    "doc": ast.get_docstring(fn) or "",
+                })
+    return out
+
+members = members_of(sys.argv[1], "IfcModel") + members_of(sys.argv[3], "ModelAccess")
+entity = members_of(sys.argv[3], "Entity")
 
 values = []
 for node in ast.parse(open(sys.argv[2]).read()).body:
@@ -59,7 +66,7 @@ for node in ast.parse(open(sys.argv[2]).read()).body:
                   for s in node.body if isinstance(s, ast.AnnAssign)]
         values.append({"name": node.name, "fields": fields, "doc": ast.get_docstring(node) or ""})
 
-print(json.dumps({"members": members, "values": values}))
+print(json.dumps({"members": members, "entity": entity, "values": values}))
 "#;
 
 pub(super) fn reference(workspace: &Workspace) -> Result<String, String> {
@@ -68,6 +75,7 @@ pub(super) fn reference(workspace: &Workspace) -> Result<String, String> {
         .arg(SCRIPT)
         .arg(workspace.root.join(MODEL))
         .arg(workspace.root.join(VALUES))
+        .arg(workspace.root.join(ENTITY))
         .output()
         .map_err(|error| format!("python3 is needed to read the Python API: {error}"))?;
     if !output.status.success() {
@@ -105,6 +113,9 @@ pub(super) fn reference(workspace: &Workspace) -> Result<String, String> {
         let signature = match (name.as_str(), text(member, "kind").as_str()) {
             ("__init__", _) => format!("IfcModel({})", params.join(", ")),
             ("__len__", _) => format!("len(model){returns}"),
+            ("__getitem__", _) => format!("model[id]{returns}"),
+            ("__contains__", _) => format!("id in model{returns}"),
+            ("__iter__", _) => format!("iter(model){returns}"),
             (dunder, _) if dunder.starts_with('_') => continue,
             (_, "classmethod") => format!("IfcModel.{name}({}){returns}", params.join(", ")),
             (_, "property") => format!("model.{name}{}", returns.replacen(" ->", ":", 1)),
@@ -115,6 +126,50 @@ pub(super) fn reference(workspace: &Workspace) -> Result<String, String> {
             _ => summary(&text(member, "doc")),
         };
         rows.push(format!("| `{}` | {doc} |", signature.replace('|', "\\|")));
+    }
+
+    let mut entity = vec![
+        String::new(),
+        "An `Entity` (from `model[id]`, `by_id`, `by_type` or `iter(model)`) also reads \
+         and writes every IFC attribute by name, `wall.Name`:"
+            .to_owned(),
+        String::new(),
+        "| Member | Description |".to_owned(),
+        "| --- | --- |".to_owned(),
+    ];
+    for member in json["entity"].as_array().into_iter().flatten() {
+        let name = text(member, "name");
+        if name.starts_with('_') {
+            continue;
+        }
+        let params: Vec<&str> = member["params"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|p| p.as_str())
+            .collect();
+        let signature = match text(member, "kind").as_str() {
+            "property" => format!(
+                "entity.{name}{}",
+                member["returns"]
+                    .as_str()
+                    .map(|r| format!(": {r}"))
+                    .unwrap_or_default()
+            ),
+            _ => format!(
+                "entity.{name}({}){}",
+                params.join(", "),
+                member["returns"]
+                    .as_str()
+                    .map(|r| format!(" -> {r}"))
+                    .unwrap_or_default()
+            ),
+        };
+        entity.push(format!(
+            "| `{}` | {} |",
+            signature.replace('|', "\\|"),
+            summary(&text(member, "doc"))
+        ));
     }
 
     let mut values = vec![
@@ -140,8 +195,9 @@ pub(super) fn reference(workspace: &Workspace) -> Result<String, String> {
         ));
     }
     Ok(format!(
-        "{}\n{}",
+        "{}\n{}\n{}",
         rows.join("\n").replace("``", "`"),
+        entity.join("\n").replace("``", "`"),
         values.join("\n")
     ))
 }

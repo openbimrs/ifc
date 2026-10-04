@@ -8,6 +8,29 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#332, Pythonic access)
+
+- A pure-Python layer over the existing calls, with no new native
+  surface: `openbim_ifc.open(path)`; `model[id]`, `model.by_id(id)`,
+  `model.by_type(name, include_subtypes=True)`, `iter(model)` and
+  `id in model`, returning `Entity` views (new module
+  `openbim_ifc.entity`). An `Entity` reads attributes by name as plain
+  Python values (`wall.Name`, `wall.get(name)`), keeps the exact tagged
+  value reachable (`wall.raw(name)`), writes through
+  `set_attribute_by_name` (`wall.Name = Text("x")`, `wall.set(...)`;
+  bare `str`/`int`/`float`/`bool` refused), compares and hashes by id,
+  and offers `is_a(type)` with subtypes, `psets` and `qtos` as read-only
+  mappings over `property_sets`, and `set_property`/`remove_property`.
+  The plain conversion is lossy for `*` and `.U.` (both `None`), enums
+  (`str`) and typed wrappers (payload only); the Python guide tabulates it.
+- `IfcModel.to_dataframe(type="IfcProduct", psets=True, qtos=True, ...)`
+  behind the new optional extra `openbim-ifc[pandas]`, imported lazily.
+- Types: `Entity`, `PlainValue`, `PropertyValue` and `Assignable` are
+  exported; the test run checks a typed example and the guide's snippets
+  with `mypy --strict`.
+- Additive: a patch release. `iter(model)` and `in`, which raised
+  `TypeError` before, now work; no existing call changes.
+
 ## [0.3.1] - 2026-10-04
 
 ### Added (#326, attributes by name)

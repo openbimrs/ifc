@@ -15,10 +15,18 @@ done
 
 uv venv --quiet --python "${PYTHON:-python3}" "$work/venv"
 
-# A real release wheel, installed the way a user would get it.
+# A real release wheel, installed the way a user would get it, with the
+# `pandas` extra, plus mypy and the pandas stubs for the typing check
+# (#332). Pinned so a new release cannot change the verdict unseen.
 maturin build --quiet --release --manifest-path "$crate_dir/Cargo.toml" --out "$work/dist"
-uv pip install --quiet --python "$work/venv/bin/python" "$work"/dist/*.whl
+wheel="$(ls "$work"/dist/*.whl)"
+uv pip install --quiet --python "$work/venv/bin/python" "$wheel[pandas]" \
+    "pandas==3.0.6" "pandas-stubs==3.0.5.260914" "mypy==2.4.0"
 ls "$work"/dist
+
+# The extras are installed, so the suites that would skip without them
+# (the pandas export, mypy --strict) must run.
+export OPENBIM_IFC_REQUIRE_EXTRAS=1
 
 # Run from outside the source tree so the tests import the installed wheel,
 # not the python/ sources beside them. No pipe: the exit status is the verdict.
