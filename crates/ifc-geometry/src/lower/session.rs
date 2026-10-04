@@ -168,6 +168,14 @@ pub struct LoweringSession<'a> {
     /// see node kinds before the graph is frozen. Recording them at push time
     /// costs one small entry per node and avoids re-walking the builder.
     shapes: BTreeMap<NodeId, NodeShape>,
+    /// Every atomic curve appended, kept for station lowering (#307).
+    ///
+    /// A station names a distance along its basis, and IFC gives a station
+    /// on a tangent discontinuity the PREVIOUS segment's tangent while the
+    /// neutral evaluators read the next one. Seeing where the basis's seams
+    /// are, and its stated length, needs the curve's stored data, which the
+    /// append-only builder does not hand back.
+    curves: BTreeMap<NodeId, AtomicCurve>,
     /// What to do with a collapsed poly-loop face (#46).
     face_policy: DegenerateFacePolicy,
 }
@@ -188,6 +196,25 @@ pub(crate) enum NodeShape {
     Solid,
     /// Anything else: curves, surfaces, profiles, points.
     Other,
+}
+
+/// An appended atomic curve, 2D or 3D, as stored.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum AtomicCurve {
+    /// A `GeometryNode::Curve2`.
+    Two(axiolid_curve::Curve2),
+    /// A `GeometryNode::Curve3`.
+    Three(axiolid_curve::Curve3),
+}
+
+impl AtomicCurve {
+    fn of(node: &GeometryNode) -> Option<Self> {
+        match node {
+            GeometryNode::Curve2(curve) => Some(Self::Two(curve.clone())),
+            GeometryNode::Curve3(curve) => Some(Self::Three(curve.clone())),
+            _ => None,
+        }
+    }
 }
 
 impl NodeShape {
@@ -229,6 +256,7 @@ impl<'a> LoweringSession<'a> {
             provenance: ProvenanceMap::default(),
             texture_maps: None,
             shapes: BTreeMap::new(),
+            curves: BTreeMap::new(),
             face_policy: DegenerateFacePolicy::default(),
         }
     }
@@ -296,12 +324,16 @@ impl<'a> LoweringSession<'a> {
     pub fn node(&mut self, node: GeometryNode) -> GeometryResult<NodeId> {
         let source = self.active.last().copied();
         let shape = NodeShape::of(&node);
+        let curve = AtomicCurve::of(&node);
         let id = self
             .builder
             .push(node)
             .map_err(|error| graph_error(source.unwrap_or(EntityId(0)), error))?;
         self.nodes += 1;
         self.shapes.insert(id, shape);
+        if let Some(curve) = curve {
+            self.curves.insert(id, curve);
+        }
         if let Some(source) = source {
             self.provenance.record(id, source);
         }
@@ -311,12 +343,16 @@ impl<'a> LoweringSession<'a> {
     /// Append one node, attributing any graph fault to `entity`.
     pub fn node_for(&mut self, entity: EntityId, node: GeometryNode) -> GeometryResult<NodeId> {
         let shape = NodeShape::of(&node);
+        let curve = AtomicCurve::of(&node);
         let id = self
             .builder
             .push(node)
             .map_err(|error| graph_error(entity, error))?;
         self.nodes += 1;
         self.shapes.insert(id, shape);
+        if let Some(curve) = curve {
+            self.curves.insert(id, curve);
+        }
         self.provenance.record(id, entity);
         Ok(id)
     }
@@ -324,6 +360,12 @@ impl<'a> LoweringSession<'a> {
     /// The structural kind of an appended node; `None` for a foreign id.
     pub(crate) fn shape(&self, node: NodeId) -> Option<&NodeShape> {
         self.shapes.get(&node)
+    }
+
+    /// The stored data of an appended atomic curve; `None` for any other
+    /// node, a curve relation included.
+    pub(crate) fn atomic_curve(&self, node: NodeId) -> Option<&AtomicCurve> {
+        self.curves.get(&node)
     }
 
     /// Source attribution accumulated so far.

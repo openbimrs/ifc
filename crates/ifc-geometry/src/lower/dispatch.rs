@@ -44,6 +44,7 @@ use crate::lower::sectioned::{
     lower_sectioned_solid_horizontal_node, lower_sectioned_surface_node,
 };
 use crate::lower::session::LoweringSession;
+use crate::lower::station::{lower_axis2_placement_linear_node, lower_point_by_distance_node};
 use crate::lower::surface::lower_surface_node;
 use crate::lower::swept::{
     lower_directrix_derived_reference_sweep_node, lower_extruded_area_solid_node,
@@ -135,6 +136,13 @@ pub const IMPLEMENTED: &[&str] = &[
     // IFC4X3 alignment geometry (#243): placed segments and centrelines.
     "IFCCURVESEGMENT",
     "IFCGRADIENTCURVE",
+    // IFC4X3 stations (#307): exact onto Axiolid's station relations
+    // (ADR 0082); `lower::station` and `lower::sectioned`.
+    "IFCPOINTBYDISTANCEEXPRESSION",
+    "IFCAXIS2PLACEMENTLINEAR",
+    "IFCOFFSETCURVEBYDISTANCES",
+    "IFCSECTIONEDSOLIDHORIZONTAL",
+    "IFCSECTIONEDSURFACE",
 ];
 
 /// Recognized representation items that are not lowered yet.
@@ -170,38 +178,6 @@ pub const PLANNED: &[(&str, &str)] = &[
     ("IFCSEGMENTEDREFERENCECURVE", "IfcSegmentedReferenceCurve states cant through segments placed at stations along its base \
          curve and parent curves with no normative mapping to a cant law; the business cant layout \
          lowers to a banked curve through ifc-alignment (#311)"),
-    // Sections along an alignment (IFC4X3); `lower::sectioned` raises these.
-    (
-        "IFCSECTIONEDSOLIDHORIZONTAL",
-        "kernel: sections stand at IfcAxis2PlacementLinear stations (a measure \
-         along the directrix plus offsets) and are swept horizontally with \
-         tag-matched linear interpolation; the neutral SectionedSpine takes only \
-         resolved section frames, and resolving a station is curve evaluation",
-    ),
-    (
-        "IFCSECTIONEDSURFACE",
-        "kernel: no neutral sectioned-surface relation exists; its open sections \
-         stand at IfcAxis2PlacementLinear stations along the directrix and are \
-         joined by tag, and the neutral SectionedSpine is a solid over area \
-         profiles",
-    ),
-    // Distance-along-curve geometry (IFC4X3).
-    (
-        "IFCOFFSETCURVEBYDISTANCES",
-        "offsets are stated at stations along the basis curve as \
-         IfcPointByDistanceExpression values; the neutral model has no \
-         distance-along-curve point or station-offset curve to hold them",
-    ),
-    (
-        "IFCPOINTBYDISTANCEEXPRESSION",
-        "a point at a distance along a basis curve, offset in that curve's \
-         frame; the neutral model has no distance-along-curve point relation",
-    ),
-    (
-        "IFCAXIS2PLACEMENTLINEAR",
-        "a frame located by an IfcPointByDistanceExpression; the neutral model \
-         has no distance-along-curve point relation to anchor it",
-    ),
 ];
 
 /// A subtype the supertype's lowering handles exactly.
@@ -428,8 +404,9 @@ pub const PARTIAL: &[Variant] = &[
         family: "IFCCURVESEGMENT",
         variant: "Placement is an IfcAxis2PlacementLinear",
         support: Support::Refused,
-        rationale: "an IfcAxis2PlacementLinear placement stands at a distance along a basis curve; the neutral \
-         model has no distance-along-curve point relation to anchor it (#307)",
+        rationale: "an IfcAxis2PlacementLinear placement stands at a station along a basis curve; the station \
+         itself lowers (#307), but the neutral model places a curve only by a resolved transform \
+         and has no curve placed in a station's frame (#311)",
     },
     Variant {
         family: "IFCGRADIENTCURVE",
@@ -467,6 +444,96 @@ pub const PARTIAL: &[Variant] = &[
                     the vertical axis",
     },
     Variant {
+        family: "IFCPOINTBYDISTANCEEXPRESSION",
+        variant: "DistanceAlong is an IfcLengthMeasure on the basis curve, clear of \
+                  its tangent discontinuities",
+        support: Support::Admitted,
+        rationale: "a CurveStation: distance (plan distance on a gradient curve, arc \
+                    length otherwise) and the lateral (left), vertical and \
+                    longitudinal offsets, in the same frame IFC4.3 ADD2 8.9.3.48 \
+                    states",
+    },
+    Variant {
+        family: "IFCPOINTBYDISTANCEEXPRESSION",
+        variant: "DistanceAlong is an IfcParameterValue",
+        support: Support::Refused,
+        rationale: "IFC4.3 ADD2 gives most basis curves no parameterisation a \
+                    distance can be read from, and a neutral station is a distance",
+    },
+    Variant {
+        family: "IFCPOINTBYDISTANCEEXPRESSION",
+        variant: "DistanceAlong on a tangent discontinuity of the basis curve, or \
+                  on a basis whose discontinuities cannot be located (a curve \
+                  relation, a B-spline with a multiple knot)",
+        support: Support::Refused,
+        rationale: "IFC lets the previous segment's tangent govern there \
+                    (8.9.3.48.3); the neutral station reads the next one's",
+    },
+    Variant {
+        family: "IFCAXIS2PLACEMENTLINEAR",
+        variant: "Axis and RefDirection absent, or 3D and not parallel",
+        support: Support::Admitted,
+        rationale: "an OrientedCurveStation: the ratios are components in the \
+                    curve's (tangent, left, up) frame, Axis exact and RefDirection \
+                    orthogonalised against it, as 8.9.3.4 states",
+    },
+    Variant {
+        family: "IFCAXIS2PLACEMENTLINEAR",
+        variant: "Location is refused as an IfcPointByDistanceExpression",
+        support: Support::Refused,
+        rationale: "the placement is its station; see IFCPOINTBYDISTANCEEXPRESSION",
+    },
+    Variant {
+        family: "IFCOFFSETCURVEBYDISTANCES",
+        variant: "OffsetValues along its own BasisCurve, spanning it or on a basis \
+                  with a stated length, clear of tangent discontinuities",
+        support: Support::Admitted,
+        rationale: "OffsetByStations, linear between the offsets; a span short of the \
+                    ends is carried on unchanged to them by added stations, as \
+                    8.9.3.42.3 states",
+    },
+    Variant {
+        family: "IFCOFFSETCURVEBYDISTANCES",
+        variant: "offsets short of an unbounded or unstated end, a non-zero \
+                  OffsetLongitudinal, a member on another basis, or a run over a \
+                  tangent discontinuity",
+        support: Support::Refused,
+        rationale: "the neutral offset curve stops at its last station, IFC states \
+                    no law for a longitudinal offset along a curve, and no join at \
+                    a kink",
+    },
+    Variant {
+        family: "IFCSECTIONEDSOLIDHORIZONTAL",
+        variant: "area sections at positions along the Directrix, clear of its \
+                  tangent discontinuities",
+        support: Support::Admitted,
+        rationale: "SectionsAtStations in the curve's frame, matched by ring and \
+                    index; RefDirection is the profile normal and Axis profile Y \
+                    (IFC4.x-IF#147, IFC4.x-development#1010)",
+    },
+    Variant {
+        family: "IFCSECTIONEDSOLIDHORIZONTAL",
+        variant: "positions off the Directrix, or spanning a tangent discontinuity",
+        support: Support::Refused,
+        rationale: "a station measures along its own basis, and IFC mitres at a \
+                    kink (8.8.3.35.1) where the neutral sections turn with the frame",
+    },
+    Variant {
+        family: "IFCSECTIONEDSURFACE",
+        variant: "open sections tagged throughout or not at all, with one tag set",
+        support: Support::Admitted,
+        rationale: "OpenSectionsAtStations joined by tag, forwards or reversed; \
+                    profile X to the left as IfcOpenCrossProfileDef states \
+                    (8.15.3.15.1, #344)",
+    },
+    Variant {
+        family: "IFCSECTIONEDSURFACE",
+        variant: "mixed tagging or branching breaklines (sections with different \
+                  Tags)",
+        support: Support::Refused,
+        rationale: "the neutral surface joins one tag set through every section",
+    },
+    Variant {
         family: "IFCSURFACECURVE",
         variant: "MasterRepresentation is PCurveS2 with only one associated \
                   p-curve",
@@ -490,7 +557,7 @@ pub fn lower_representation_item(
     // IFC4X3 sectioned surface, routed before the inheritance test so the
     // named refusal holds whether or not the subtype table knows the type.
     if type_name == "IFCSECTIONEDSURFACE" {
-        return lower_sectioned_surface_node(session, id);
+        return lower_sectioned_surface_node(session, id, frame);
     }
     // An exact specialisation lowers through its supertype's arm. The
     // refusal below still names the entity's own type.
@@ -545,7 +612,9 @@ pub fn lower_representation_item(
         "IFCDIRECTRIXDERIVEDREFERENCESWEPTAREASOLID" => {
             lower_directrix_derived_reference_sweep_node(session, id, frame)
         }
-        "IFCSECTIONEDSOLIDHORIZONTAL" => lower_sectioned_solid_horizontal_node(session, id),
+        "IFCSECTIONEDSOLIDHORIZONTAL" => lower_sectioned_solid_horizontal_node(session, id, frame),
+        "IFCPOINTBYDISTANCEEXPRESSION" => lower_point_by_distance_node(session, id, frame),
+        "IFCAXIS2PLACEMENTLINEAR" => lower_axis2_placement_linear_node(session, id, frame),
         "IFCSECTIONEDSPINE" => lower_sectioned_spine_node(session, id, frame),
         "IFCSHELLBASEDSURFACEMODEL"
         | "IFCFACEBASEDSURFACEMODEL"

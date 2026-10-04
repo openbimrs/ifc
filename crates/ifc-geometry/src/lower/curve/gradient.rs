@@ -53,8 +53,9 @@
 //! Axiolid now has a banked curve to carry cant, and `ifc-alignment` lowers
 //! the business cant layout onto it. The geometric form is still refused:
 //! its segments stand at stations along the base curve
-//! (`IfcAxis2PlacementLinear`, #307) or carry cant in placement axes, and
-//! IFC4.3 ADD2 gives no normative mapping from a segment's `ParentCurve` to
+//! (`IfcAxis2PlacementLinear`; a station lowers since #307, but no neutral
+//! relation places a curve in a station's frame) or carry cant in placement
+//! axes, and IFC4.3 ADD2 gives no normative mapping from a segment's `ParentCurve` to
 //! the cant law ("the superelevation rate of change is directly
 //! proportionate to the curve segment parent curve curvature gradient").
 //! Reading one would be a guess.
@@ -205,7 +206,7 @@ impl Tolerance {
 }
 
 /// The frame is rigid and keeps world Z as its Z.
-fn keeps_vertical(frame: &Transform) -> bool {
+pub(crate) fn keeps_vertical(frame: &Transform) -> bool {
     const EPSILON: f64 = 1e-12;
     let [x, y, z] = frame.basis;
     let near = |v: [f64; 3], w: [f64; 3]| v.iter().zip(w).all(|(a, b)| (a - b).abs() <= EPSILON);

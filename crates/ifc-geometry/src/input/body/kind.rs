@@ -32,7 +32,8 @@ pub enum BodyKind {
     /// `IfcSweptDiskSolid` or `IfcSweptDiskSolidPolygonal`: a circular disk
     /// swept along a curve.
     SweptDisk,
-    /// `IfcSectionedSpine`: cross sections interpolated along a spine.
+    /// `IfcSectionedSpine` or the IFC4X3 `IfcSectionedSolidHorizontal`:
+    /// cross sections interpolated along a spine.
     SectionedSpine,
     /// A faceted or advanced boundary representation, with or without voids.
     Brep,
@@ -60,7 +61,9 @@ pub enum BodyKind {
     Curve,
     /// Any `IfcSurface`.
     Surface,
-    /// `IfcPointOnCurve` or `IfcPointOnSurface`.
+    /// `IfcPointOnCurve` or `IfcPointOnSurface`, or the IFC4X3
+    /// `IfcPointByDistanceExpression` and `IfcAxis2PlacementLinear` (a
+    /// point, and a point with a frame, at a station along a curve).
     Point,
 }
 
@@ -81,6 +84,8 @@ const FAMILIES: &[(&str, BodyKind)] = &[
     ("IFCSWEPTDISKSOLID", BodyKind::SweptDisk),
     ("IFCSWEPTDISKSOLIDPOLYGONAL", BodyKind::SweptDisk),
     ("IFCSECTIONEDSPINE", BodyKind::SectionedSpine),
+    // IFC4X3 (#307): sections at stations along a directrix.
+    ("IFCSECTIONEDSOLIDHORIZONTAL", BodyKind::SectionedSpine),
     ("IFCFACETEDBREP", BodyKind::Brep),
     ("IFCFACETEDBREPWITHVOIDS", BodyKind::Brep),
     ("IFCADVANCEDBREP", BodyKind::Brep),
@@ -109,6 +114,9 @@ const FAMILIES: &[(&str, BodyKind)] = &[
     ("IFCGEOMETRICCURVESET", BodyKind::GeometricSet),
     ("IFCPOINTONCURVE", BodyKind::Point),
     ("IFCPOINTONSURFACE", BodyKind::Point),
+    // IFC4X3 stations (#307).
+    ("IFCPOINTBYDISTANCEEXPRESSION", BodyKind::Point),
+    ("IFCAXIS2PLACEMENTLINEAR", BodyKind::Point),
     // IFC4X3: an IfcSegment, not an IfcCurve, so inheritance does not route
     // it; it lowers as a curve (#243).
     ("IFCCURVESEGMENT", BodyKind::Curve),

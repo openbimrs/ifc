@@ -172,14 +172,17 @@ fn build(
         "IFCCURVESEGMENT" => segment::lower_segment(session, id, frame),
         "IFCGRADIENTCURVE" => gradient::gradient_curve(session, id, frame),
         "IFCSEGMENTEDREFERENCECURVE" => gradient::segmented_reference_curve(session, id),
+        "IFCOFFSETCURVEBYDISTANCES" => {
+            crate::lower::station::offset::offset_curve_by_distances(session, id, frame)
+        }
         "IFCPOLYNOMIALCURVE" => {
             Err(session.unsupported(id, &type_name, segment::STANDALONE_POLYNOMIAL))
         }
         other if spiral::is_spiral(other) => {
             Err(session.unsupported(id, other, spiral::standalone_reason(other)))
         }
-        // `IfcOffsetCurveByDistances` and any other planned IFC4X3 curve the
-        // subtype table now routes here keep the dispatch ledger's reason.
+        // Any planned IFC4X3 curve the subtype table now routes here keeps
+        // the dispatch ledger's reason.
         other => Err(session.unsupported(
             id,
             other,
