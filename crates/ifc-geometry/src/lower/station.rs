@@ -43,7 +43,7 @@
 //! continuous is therefore refused by name, as is a run of stations
 //! (sections, an offset curve) that spans one: Axiolid interpolates in the
 //! frame at each distance, which turns at a kink without the half-angle mitre
-//! 8.8.3.35.1 asks for. See [`seams`] for how seams are found from stored
+//! 8.8.3.35.1 asks for. The `seams` module states how seams are found from stored
 //! data. "Within precision limits" is the model's declared `Precision`.
 //!
 //! # Frames
