@@ -38,7 +38,10 @@ pub use curve::lower_curve_node;
 pub use dispatch::lower_representation_item;
 pub use halfspace::lower_half_space_node;
 pub use mapped::{lower_mapped_item_node, lower_representation};
-pub use net::{lower_product_net, NetLowering, Subtraction};
+pub use net::{
+    lower_product_net, lower_product_net_with, AppliedReason, NetLowering, NetOptions,
+    ReferenceOnlyOpenings, Subtraction, TakenAsApplied,
+};
 pub use point::{lower_point_on_curve_node, lower_point_on_surface_node};
 pub use profile::{lower_open_profile_node, lower_profile, lower_profile_node};
 pub use provenance::ProvenanceMap;

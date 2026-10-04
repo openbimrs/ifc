@@ -12,6 +12,79 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+Product lowering gains two opt-ins: Reference View openings taken as applied
+(#351) and an injected curve evaluator for linear placements (#353), which
+also checks a cached position (#354). The derived linear-placement frame now
+follows IFC4.3 (#355), which changes `derive_placement_transform`'s output.
+API is added and behaviour changes, so the next release is a minor one
+(0.10.0).
+
+### Added
+
+- Net lowering of hosts whose IFC4 Reference View openings carry no Body
+  (#351). `lower::lower_product_net_with(session, product, NetOptions)`,
+  with `NetOptions::default().with_reference_only_openings(
+  ReferenceOnlyOpenings::TakeAsApplied)`, lists an `IfcOpeningElement` whose
+  representations are all `Reference` in the new
+  `NetLowering::taken_as_applied` (`TakenAsApplied { opening, relation,
+  reason: AppliedReason::ReferenceRepresentationOnly }`) and subtracts
+  nothing for it; a host whose openings are all taken as applied lowers to
+  its gross Body. IFC4 ADD2 TC1 `IfcOpeningElement`: a `'Reference'`
+  representation "is not subtracted, it is provided in addition to the hole
+  in the Body shape representation of the voided element", and its
+  Reference View concept says it "shall not be used to subtract the
+  opening". `lower_product_net` is unchanged and still refuses such a host
+  (ADR 0014, amended). An opening with no representation, one with another
+  representation beside `Reference`, a `Reference`-only `IfcVoidingFeature`
+  and an opening whose Body does not lower are refused whatever the option.
+- Evaluator-taking product lowering (#353), feature `compile`:
+  `LoweringSession::with_curve_evaluator(&dyn CurveEvaluator)` places an
+  `IfcLinearPlacement` without a cached `CartesianPosition` by deriving it
+  from its `RelativePlacement` through the caller's evaluator, for every
+  entry point that takes the session (`lower_product_items`,
+  `lower_product_representation`, `lower_product_net` and its openings).
+  The same for callers without a session:
+  `product_world_transform_with_evaluator`,
+  `product_representation_frame_with_evaluator`, and
+  `constraint::placement::derive::derive_linear_placement_transform` for one
+  placement. An `IfcParameterValue` on an alignment centreline is refused
+  by name (#347). Without an evaluator nothing changes: the cache is read,
+  and a placement without one is refused.
+- Cached-position check (#354), feature `compile`: with an evaluator, a
+  cached `CartesianPosition` is compared with the derived location under
+  `CachedPositionPolicy::Verify` (the default). Farther apart than the
+  model's tolerance is the new `GeometryError::CachedPlacementMismatch {
+  placement, cached, derived, distance, tolerance }`; within it, the
+  derived frame is used, since IFC4.3 makes the cache "an optional
+  fallback" for the linear expression. Only the location is compared.
+  `CachedPositionPolicy::Trust` (`LoweringSession::
+  with_cached_position_policy`) uses a cache as it is and derives only
+  uncached placements, for a model whose expressions this bridge cannot
+  derive. The tolerance, `derive::cached_position_tolerance`, is the
+  coarsest `Precision` of the model's 3D contexts, which IFC defines as
+  "the tolerance under which two given points are still assumed to be
+  identical", in the project length unit and converted to metres; IFC's
+  default of 1e-5 project units when none is declared; floored at
+  floating-point rounding (1e-9 relative, as the alignment seams).
+- `LoweringSession::derives_linear_placements`.
+
+### Changed
+
+- `derive_placement_transform` builds the IFC4.3 frame from the evaluator's
+  point and tangent (#355): axes `(tangent, left, up)`, where `left` is the
+  horizontal `Z x tangent` and `up` is perpendicular to the tangent in its
+  vertical plane. A positive `OffsetLateral` now moves LEFT, as
+  `IfcPointByDistanceExpression` states; it moved right, and the product's
+  local Z lay along the lateral. `derive_linear_placement_transform` also
+  composes an explicit `IfcAxis2PlacementLinear.Axis`/`RefDirection` in that
+  frame (8.9.3.4), which was ignored.
+- `derive_placement_transform` refuses a distance when the evaluator's
+  `distance_convention` for the basis curve is not the one IFC states:
+  plan distance on an `IfcGradientCurve` or `IfcAlignment`, arc length on a
+  polyline. The reference evaluator agrees on all of them.
+- The refusal of an uncached `IfcLinearPlacement` names the evaluator-taking
+  entry points.
+
 ## [0.9.0] - 2026-10-04
 
 Input this crate refused now lowers exactly onto the station relations of

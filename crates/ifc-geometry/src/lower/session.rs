@@ -34,6 +34,9 @@ use std::collections::BTreeMap;
 use axiolid_model::{GeometryGraphBuilder, GeometryNode, GraphError, NodeId};
 use ifc_model::{EntityId, Model};
 
+#[cfg(feature = "compile")]
+use crate::constraint::placement::CachedPositionPolicy;
+use crate::constraint::placement::LinearResolution;
 use crate::error::{GeometryError, GeometryResult};
 use crate::lower::{LoweredGeometry, ProvenanceMap};
 use crate::slots::Slots;
@@ -178,6 +181,12 @@ pub struct LoweringSession<'a> {
     curves: BTreeMap<NodeId, AtomicCurve>,
     /// What to do with a collapsed poly-loop face (#46).
     face_policy: DegenerateFacePolicy,
+    /// How a product's `IfcLinearPlacement` is resolved (#353).
+    linear: LinearResolution<'a>,
+    /// What to do with a cached `CartesianPosition` once an evaluator is
+    /// supplied (#354).
+    #[cfg(feature = "compile")]
+    cached_positions: CachedPositionPolicy,
 }
 
 /// The structural kind of a node, as net lowering needs it.
@@ -258,7 +267,57 @@ impl<'a> LoweringSession<'a> {
             shapes: BTreeMap::new(),
             curves: BTreeMap::new(),
             face_policy: DegenerateFacePolicy::default(),
+            linear: LinearResolution::cache_only(),
+            #[cfg(feature = "compile")]
+            cached_positions: CachedPositionPolicy::default(),
         }
+    }
+
+    /// Derive an uncached `IfcLinearPlacement` through `evaluator` (#353).
+    ///
+    /// Builder-style, like [`Self::with_face_policy`], so every product
+    /// entry point that takes the session -- `lower_product_items`,
+    /// `lower_product_representation`, `lower_product_net` and its openings'
+    /// own placements -- places products along an alignment the same way.
+    /// Without it, a session reads only the cached `CartesianPosition` and
+    /// refuses a placement without one, as before. The evaluator is the
+    /// caller's: this crate links no implementation (ADR 0004, ADR 0012).
+    ///
+    /// A cached position is then checked against the derived one unless
+    /// [`Self::with_cached_position_policy`] says to trust it (#354).
+    #[cfg(feature = "compile")]
+    #[must_use]
+    pub fn with_curve_evaluator(
+        mut self,
+        evaluator: &'a dyn axiolid_curve_evaluate_contract::CurveEvaluator,
+    ) -> Self {
+        self.linear = LinearResolution::derive(evaluator, self.cached_positions);
+        self
+    }
+
+    /// Set what an evaluator-taking session does with a cached
+    /// `CartesianPosition` (#354). Without an evaluator it has no effect.
+    #[cfg(feature = "compile")]
+    #[must_use]
+    pub fn with_cached_position_policy(mut self, policy: CachedPositionPolicy) -> Self {
+        self.cached_positions = policy;
+        if let Some(derivation) = &mut self.linear.derivation {
+            derivation.cached = policy;
+        }
+        self
+    }
+
+    /// Whether this session derives linear placements through an evaluator.
+    pub fn derives_linear_placements(&self) -> bool {
+        #[cfg(feature = "compile")]
+        return self.linear.derivation.is_some();
+        #[cfg(not(feature = "compile"))]
+        false
+    }
+
+    /// How this session resolves a product's `IfcLinearPlacement`.
+    pub(crate) fn linear_resolution(&self) -> LinearResolution<'a> {
+        self.linear
     }
 
     /// Set what lowering does with a collapsed poly-loop face (#46).

@@ -70,6 +70,12 @@ const REFUSED: &[(&str, &str, &str)] = &[
         "`*` in an explicit attribute, which only a derived one can hold",
     ),
     (
+        "synthetic-lowering/reference_view_openings.ifc",
+        "a second relationship in `IfcWall.HasOpenings`",
+        "wall W3 is voided by two openings; the XSD configuration nests one \
+         IfcRelVoidsElement under IfcWall.HasOpenings",
+    ),
+    (
         "nurbs/invalid_abstract_base_splines.ifc",
         "`IfcBSplineCurve` is abstract",
         "instances of an abstract entity, which the XSD declares abstract",
