@@ -12,8 +12,10 @@ and the heap figures. Runs whose checksums disagree are refused: they did
 different work.
 
 `compare` pools each side the same way and prints new/base for the
-median. A change is called only when the two interquartile ranges do not
-overlap; otherwise the row reads "within noise". It never judges a
+median. A change is called only when both the pooled interquartile ranges
+and the ranges of per-run medians separate; otherwise the row reads
+"within noise". With fewer than three runs a side the verdict is marked
+indicative: a single process's IQR understates run-to-run noise. It never judges a
 threshold: it is for a person reading a change, not for CI.
 
 Standard library only.
@@ -143,12 +145,17 @@ def compare(args):
             continue
         sb, sn = summary(b["ms"]), summary(n["ms"])
         ratio = sn["median"] / sb["median"]
-        if sn["p75"] < sb["p25"]:
+        # Both the pooled IQRs and the ranges of per-run medians must
+        # separate: one process's IQR understates run-to-run noise.
+        rb, rn = b["run_medians"], n["run_medians"]
+        if sn["p75"] < sb["p25"] and max(rn) < min(rb):
             verdict = "faster"
-        elif sn["p25"] > sb["p75"]:
+        elif sn["p25"] > sb["p75"] and min(rn) > max(rb):
             verdict = "slower"
         else:
             verdict = "within noise"
+        if min(len(rb), len(rn)) < 3:
+            verdict += " (fewer than 3 runs a side: indicative only)"
         print(
             f"| {workload} | {bench} | {fmt(sb['median'])} | {fmt(sn['median'])} | "
             f"{ratio:.3f} | {verdict} |"

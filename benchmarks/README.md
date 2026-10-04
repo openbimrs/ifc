@@ -150,9 +150,13 @@ the same machine, both in a quiet window, then:
 benchmarks/baseline.py compare --base base-out/run*.json --new new-out/run*.json
 ```
 
-It prints new/base per benchmark and calls a change only when the two
-interquartile ranges do not overlap; otherwise the row reads "within
-noise". The committed [`baseline.md`](baseline.md) is the reference for
+It prints new/base per benchmark and calls a change only when both the
+pooled interquartile ranges and the ranges of per-run medians separate;
+otherwise the row reads "within noise". Use at least three runs a side:
+within one process the IQR is tight, but separate processes of the same
+build differed by up to ~12% on the reads and the write (see the probe
+section of [`baseline.md`](baseline.md)), and with fewer runs the verdict is
+marked indicative. The committed [`baseline.md`](baseline.md) is the reference for
 this machine; a number from another machine compares against a fresh base
 run there, never against the committed table. A claim of a speedup needs
 that comparison in the pull request, not a green gate.

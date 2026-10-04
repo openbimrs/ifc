@@ -110,5 +110,9 @@ for ((run = 1; run <= runs; run++)); do
     done
 done
 
-python3 "$root/benchmarks/baseline.py" summarize "$out"/run*-*.json >"$out/summary.md"
+files=()
+for scale in $scales; do
+    for ((run = 1; run <= runs; run++)); do files+=("$out/run$run-$scale.json"); done
+done
+python3 "$root/benchmarks/baseline.py" summarize "${files[@]}" >"$out/summary.md"
 echo "summary: $out/summary.md"
