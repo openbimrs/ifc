@@ -64,10 +64,16 @@ browser builds. Broader platform coverage and CMake packaging are tracked in
 
 ## Scale
 
-Lazy reads keep large files cheap, and the benchmark suite measures parsing and
-lookup. Memory and lookup baselines for the entity graph are tracked in
-[#14](https://github.com/openbimrs/ifc/issues/14); a cross-backend geometry
-benchmark in [#31](https://github.com/openbimrs/ifc/issues/31).
+Lazy reads keep large files cheap. A committed harness measures the STEP
+codec (eager, lazy and mapped reads, `decode_all`, write) and the entity
+graph (construction, lookup, iteration, by-type queries, traversal, heap
+retained and peak) at three synthetic scales and on redistributable
+fixtures; the
+[baseline](https://github.com/openbimrs/ifc/blob/main/benchmarks/baseline.md)
+records the machine, load and method it was taken with, and
+[`benchmarks/README.md`](https://github.com/openbimrs/ifc/blob/main/benchmarks/README.md)
+how to compare a change against it. A cross-backend geometry benchmark is
+tracked in [#31](https://github.com/openbimrs/ifc/issues/31).
 
 ## Proposing work
 

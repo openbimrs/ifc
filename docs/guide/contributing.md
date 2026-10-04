@@ -138,7 +138,9 @@ asserts a minimum match count.
 
 **A performance claim needs a measurement:** a committed benchmark definition,
 the baseline environment, and a measured comparison. A green correctness gate is
-not one.
+not one. For the codec and the entity graph, run the
+[baseline harness](https://github.com/openbimrs/ifc/blob/main/benchmarks/README.md#codec-and-entity-graph-baselines)
+on the base and on the change and put its comparison in the pull request.
 
 ## ADRs
 

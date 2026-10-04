@@ -956,6 +956,7 @@ dependencies = [
  "ifc-model",
  "memmap2",
  "openbim-step",
+ "sha2",
  "thiserror",
 ]
 
