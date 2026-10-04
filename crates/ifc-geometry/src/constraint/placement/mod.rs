@@ -26,6 +26,9 @@ pub(crate) mod linear;
 #[cfg(feature = "compile")]
 pub mod derive;
 
+#[cfg(feature = "compile")]
+pub use derive::CachedPositionPolicy;
+
 use crate::constraint::local::PlacementResolver;
 use crate::error::{GeometryError, GeometryResult};
 use crate::input::product::Product;
@@ -60,7 +63,80 @@ pub fn product_world_transform(
     product: EntityId,
 ) -> GeometryResult<Transform> {
     let mut resolver = PlacementResolver::new();
-    resolve_with(&mut resolver, model, units, product)
+    resolve_with(
+        &mut resolver,
+        model,
+        units,
+        product,
+        LinearResolution::cache_only(),
+    )
+}
+
+/// [`product_world_transform`], deriving an `IfcLinearPlacement` through a
+/// caller-supplied evaluator (#353).
+///
+/// A linear placement without a cached `CartesianPosition` is derived from
+/// its `RelativePlacement` with
+/// [`derive_linear_placement_transform`](derive::derive_linear_placement_transform);
+/// one with a cache is handled by `cached` ([`CachedPositionPolicy`], #354).
+/// Every other placement resolves exactly as [`product_world_transform`]
+/// does, and the evaluator is never called for it.
+///
+/// # Errors
+///
+/// As [`product_world_transform`], plus the derivation's refusals (an
+/// `IfcParameterValue` on an alignment centreline is refused by name, #347)
+/// and [`GeometryError::CachedPlacementMismatch`] for a stale cache under
+/// [`CachedPositionPolicy::Verify`].
+#[cfg(feature = "compile")]
+pub fn product_world_transform_with_evaluator(
+    model: &Model,
+    units: &UnitScale,
+    product: EntityId,
+    evaluator: &dyn axiolid_curve_evaluate_contract::CurveEvaluator,
+    cached: CachedPositionPolicy,
+) -> GeometryResult<Transform> {
+    let mut resolver = PlacementResolver::new();
+    resolve_with(
+        &mut resolver,
+        model,
+        units,
+        product,
+        LinearResolution::derive(evaluator, cached),
+    )
+}
+
+/// How an `IfcLinearPlacement` is resolved: from its cache only, or, with
+/// the `compile` feature, through a caller-supplied evaluator.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct LinearResolution<'e> {
+    #[cfg(feature = "compile")]
+    pub(crate) derivation: Option<derive::Derivation<'e>>,
+    #[cfg(not(feature = "compile"))]
+    cache_only: std::marker::PhantomData<&'e ()>,
+}
+
+impl<'e> LinearResolution<'e> {
+    /// The cached `CartesianPosition` or a refusal; no evaluation.
+    pub(crate) fn cache_only() -> Self {
+        Self {
+            #[cfg(feature = "compile")]
+            derivation: None,
+            #[cfg(not(feature = "compile"))]
+            cache_only: std::marker::PhantomData,
+        }
+    }
+
+    /// Derive through `evaluator`, treating a cache by `cached`.
+    #[cfg(feature = "compile")]
+    pub(crate) fn derive(
+        evaluator: &'e dyn axiolid_curve_evaluate_contract::CurveEvaluator,
+        cached: CachedPositionPolicy,
+    ) -> Self {
+        Self {
+            derivation: Some(derive::Derivation { evaluator, cached }),
+        }
+    }
 }
 
 /// World transforms for many products, sharing one placement cache.
@@ -80,18 +156,25 @@ pub fn products_world_transforms(
     products
         .into_iter()
         .map(|product| {
-            let resolved = resolve_with(&mut resolver, model, units, product);
+            let resolved = resolve_with(
+                &mut resolver,
+                model,
+                units,
+                product,
+                LinearResolution::cache_only(),
+            );
             (product, resolved)
         })
         .collect()
 }
 
 /// Shared body: resolve one product against a caller-owned resolver.
-fn resolve_with(
+pub(crate) fn resolve_with(
     resolver: &mut PlacementResolver,
     model: &Model,
     units: &UnitScale,
     product: EntityId,
+    linear: LinearResolution<'_>,
 ) -> GeometryResult<Transform> {
     let entity = model.get(product).ok_or(GeometryError::MissingEntity {
         referrer: product,
@@ -104,9 +187,10 @@ fn resolve_with(
     // IfcLocalPlacement walk cannot resolve. Route by type before it.
     #[cfg(feature = "lowering")]
     if linear::is_linear_placement(model, placement) {
-        let file_units = linear::linear_placement_transform(model, units, placement)?;
-        return Ok(file_units.to_metres(units));
+        return linear::linear_placement_transform(model, units, placement, linear);
     }
+    #[cfg(not(feature = "lowering"))]
+    let _ = linear;
     let file_units = resolver.world_transform(model, placement)?;
     Ok(file_units.to_metres(units))
 }

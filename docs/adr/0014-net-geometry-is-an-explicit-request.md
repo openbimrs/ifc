@@ -5,6 +5,7 @@
 - **Deciders:** openbimrs contributors
 - **Supersedes:** —
 - **Amends:** [ADR 0012](/adr/0012-geometry-backends-are-swappable) — adds a second compile entry point with the same backend seam
+- **Amended:** 2026-10-04 — a Reference View opening may be taken as already applied, on explicit request (#351)
 
 ## Context
 
@@ -86,6 +87,32 @@ separate net entry point:
   how many exporters author opening bodies, so those subtractions were
   refused (never inverted). Fixed in 0.3.1 (axiolid/kernel#166), now the
   workspace floor.
+
+## Amendment (2026-10-04): Reference View openings taken as applied (#351)
+
+IFC4 Reference View exports author an `IfcOpeningElement` with only a
+`Reference` representation against a host whose `Body` already has the hole.
+IFC4 ADD2 TC1 (`IfcOpeningElement`, entity definition) says such a
+representation "is not subtracted, it is provided in addition to the hole in
+the Body shape representation of the voided element", and the Reference View
+concept on the same page that it "shall not be used to subtract the opening".
+Refusing the host for it left 691 outcomes on 36 hosts in three real models
+unmeasured (axioval/engine#218).
+
+**The amended rule:** `lower_product_net` is unchanged and still refuses.
+`lower_product_net_with(session, product, NetOptions)` with
+`ReferenceOnlyOpenings::TakeAsApplied` lists such an opening in
+`NetLowering::taken_as_applied` (opening, relation, reason) and subtracts
+nothing for it. Taking the exporter's word for the hole is a decision about
+the file a caller makes, like asking for net geometry at all, so it is
+explicit too. Nothing is dropped silently: every opening is either
+subtracted or listed. Only an opening whose every representation is
+`Reference` qualifies; one with no representation, or with any other
+representation beside it, is refused as before.
+
+This is the options argument the alternatives table rejected for the gross
+entry point; here it selects between two readings of one return contract
+that both callers already handle, not between gross and net.
 
 ## Relation to existing code
 

@@ -106,6 +106,11 @@ pub use input::context::{
     all_contexts, context_of, plan_contexts, product_representation_frame, RepresentationContext,
     TargetView,
 };
+// The evaluator-taking forms (#353): opt-in with the other providers.
+#[cfg(feature = "compile")]
+pub use constraint::placement::{product_world_transform_with_evaluator, CachedPositionPolicy};
+#[cfg(feature = "compile")]
+pub use input::context::product_representation_frame_with_evaluator;
 // Geometry-shaping material inputs only. Material identity, quantities, and
 // association policy remain owned by `ifc-material`.
 pub use input::material_usage::{

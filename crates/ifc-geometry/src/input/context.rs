@@ -25,7 +25,8 @@
 
 use ifc_model::{Entity, EntityId, Model, Value};
 
-use crate::constraint::product_world_transform;
+use crate::constraint::local::PlacementResolver;
+use crate::constraint::placement::{resolve_with, LinearResolution};
 use crate::error::{GeometryError, GeometryResult};
 use crate::resource::placement::axis_placement_transform;
 use crate::slots::Slots;
@@ -382,10 +383,54 @@ pub fn product_representation_frame(
     product: EntityId,
     purpose: RepresentationPurpose,
 ) -> GeometryResult<Option<Transform>> {
+    representation_frame_resolved(
+        model,
+        units,
+        product,
+        purpose,
+        LinearResolution::cache_only(),
+    )
+}
+
+/// [`product_representation_frame`], deriving an `IfcLinearPlacement`
+/// through a caller-supplied evaluator (#353), as
+/// [`crate::constraint::placement::product_world_transform_with_evaluator`]
+/// does.
+///
+/// # Errors
+///
+/// As [`product_representation_frame`] and
+/// [`crate::constraint::placement::product_world_transform_with_evaluator`].
+#[cfg(feature = "compile")]
+pub fn product_representation_frame_with_evaluator(
+    model: &Model,
+    units: &UnitScale,
+    product: EntityId,
+    purpose: RepresentationPurpose,
+    evaluator: &dyn axiolid_curve_evaluate_contract::CurveEvaluator,
+    cached: crate::constraint::placement::CachedPositionPolicy,
+) -> GeometryResult<Option<Transform>> {
+    representation_frame_resolved(
+        model,
+        units,
+        product,
+        purpose,
+        LinearResolution::derive(evaluator, cached),
+    )
+}
+
+/// Shared body of the representation-frame entry points.
+pub(crate) fn representation_frame_resolved(
+    model: &Model,
+    units: &UnitScale,
+    product: EntityId,
+    purpose: RepresentationPurpose,
+    linear: LinearResolution<'_>,
+) -> GeometryResult<Option<Transform>> {
     let Some(representation) = select_product_representation(model, product, purpose)? else {
         return Ok(None);
     };
-    let placement = product_world_transform(model, units, product)?;
+    let placement = resolve_with(&mut PlacementResolver::new(), model, units, product, linear)?;
     // Model space is the context's frame; the product's chain is expressed
     // inside it, so the context frame composes above the placement.
     Ok(Some(

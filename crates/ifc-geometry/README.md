@@ -6,6 +6,14 @@ items into the format-neutral Axiolid geometry DAG. It does not triangulate or
 execute booleans; the opt-in `compile` features hand the lowered DAG to a
 swappable backend.
 
+Products along an alignment are placed from a cached `CartesianPosition`, or,
+with the `compile` feature, by deriving their `IfcLinearPlacement` through a
+`CurveEvaluator` the caller injects (`LoweringSession::with_curve_evaluator`),
+which also checks a cached position against the derivation. Net geometry
+(`lower::lower_product_net`) subtracts every opening's Body, and can take an
+IFC4 Reference View opening that has only a `Reference` representation as
+already applied (`lower_product_net_with`).
+
 ```bash
 cargo add ifc-geometry
 ```

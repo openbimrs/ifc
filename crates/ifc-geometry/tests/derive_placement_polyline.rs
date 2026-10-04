@@ -123,17 +123,18 @@ fn assert_vec(actual: [f64; 3], expected: [f64; 3], what: &str) {
 /// Plan L: (0,0) -> (10,0) -> (10,20), 30 m long.
 const L_PATH: [&[f64]; 3] = [&[0.0, 0.0], &[10.0, 0.0], &[10.0, 20.0]];
 
-/// The frame at 15 m along the L, offset 2 right, 1 up, 0.5 ahead.
+/// The frame at 15 m along the L, offset 2 left, 1 up, 0.5 ahead.
 ///
 /// 15 m is 10 m of the first leg plus 5 m of the second, so the centreline
-/// point is (10, 5, 0) heading +Y. right = (0,1,0) x (0,0,1) = (1,0,0);
-/// up = right x tangent = (0,0,1). Origin = (10,5,0) + 2*right + 1*up +
-/// 0.5*tangent = (12, 5.5, 1).
+/// point is (10, 5, 0) heading +Y. IFC4.3: a positive `OffsetLateral` is to
+/// the LEFT, left = Z x tangent = (0,0,1) x (0,1,0) = (-1,0,0); up =
+/// tangent x left = (0,0,1) (#355). Origin = (10,5,0) + 2*left + 1*up +
+/// 0.5*tangent = (8, 5.5, 1). The axes are (tangent, left, up).
 fn assert_l_frame(transform: &Transform) {
     assert_vec(transform.basis[0], [0.0, 1.0, 0.0], "tangent");
-    assert_vec(transform.basis[1], [0.0, 0.0, 1.0], "up");
-    assert_vec(transform.basis[2], [1.0, 0.0, 0.0], "right");
-    assert_vec(transform.origin, [12.0, 5.5, 1.0], "origin");
+    assert_vec(transform.basis[1], [-1.0, 0.0, 0.0], "left");
+    assert_vec(transform.basis[2], [0.0, 0.0, 1.0], "up");
+    assert_vec(transform.origin, [8.0, 5.5, 1.0], "origin");
 }
 
 const L_OFFSETS: [Option<f64>; 3] = [Some(2.0), Some(1.0), Some(0.5)];
@@ -176,8 +177,9 @@ fn a_polyline_parameter_counts_one_per_segment() {
 /// A sloped 3D segment: (0,0,0) -> (3,0,4), 5 m long.
 ///
 /// At 2.5 m the point is (1.5, 0, 2), tangent (0.6, 0, 0.8).
-/// right = t x Z = (0, -0.6, 0), normalised (0, -1, 0);
-/// up = right x t = (-0.8, 0, 0.6).
+/// left = Z x t = (0, 0.6, 0), normalised (0, 1, 0);
+/// up = t x left = (-0.8, 0, 0.6): perpendicular to the tangent in its
+/// vertical plane, where IFC4.3 puts `OffsetVertical` and the default `Axis`.
 #[test]
 fn a_sloped_3d_indexed_polycurve_derives_the_hand_computed_frame() {
     let model = indexed_model(&[&[0.0, 0.0, 0.0], &[3.0, 0.0, 4.0]], None);
@@ -185,8 +187,8 @@ fn a_sloped_3d_indexed_polycurve_derives_the_hand_computed_frame() {
         .expect("2.5 m along a 5 m segment");
     assert_vec(transform.origin, [1.5, 0.0, 2.0], "origin");
     assert_vec(transform.basis[0], [0.6, 0.0, 0.8], "tangent");
-    assert_vec(transform.basis[1], [-0.8, 0.0, 0.6], "up");
-    assert_vec(transform.basis[2], [0.0, -1.0, 0.0], "right");
+    assert_vec(transform.basis[1], [0.0, 1.0, 0.0], "left");
+    assert_vec(transform.basis[2], [-0.8, 0.0, 0.6], "up");
 }
 
 /// Without `Segments` the indexed curve is its points in order.

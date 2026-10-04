@@ -179,30 +179,34 @@ fn a_placement_without_a_cached_position_is_derived_from_the_curve() {
             .expect("a stated distance on a composed centreline must resolve");
 
     // Independent values: Fresnel quadrature for the plan point, grade for
-    // the height, reference-up construction for the axes.
+    // the height. The axes follow IFC4.3 (#355): the tangent, the horizontal
+    // left (Z x tangent, where a positive OffsetLateral points) and up
+    // (tangent x left, where OffsetVertical points).
     let tangent = [
         0.999_444_596_579_483_1,
         0.026_658_175_183_230_975,
         0.019_996_001_199_600_14,
     ];
-    let right = [0.026_663_506_285_210_72, -0.999_644_465_513_903_8, 0.0];
+    let left = [-0.026_663_506_285_210_72, 0.999_644_465_513_903_8, 0.0];
 
     close(transform.basis[0][0], tangent[0], "tangent x");
     close(transform.basis[0][1], tangent[1], "tangent y");
     close(transform.basis[0][2], tangent[2], "tangent z");
-    close(transform.basis[2][0], right[0], "right x");
-    close(transform.basis[2][1], right[1], "right y");
-    close(transform.basis[2][2], right[2], "right z");
+    close(transform.basis[1][0], left[0], "left x");
+    close(transform.basis[1][1], left[1], "left y");
+    close(transform.basis[1][2], left[2], "left z");
 
-    // Origin: centreline point, offset 3.5 along right and 1.2 along up.
+    // Origin: centreline point, offset 3.5 along left and 1.2 along up.
     let centre = [39.997_155_649_197_39, 0.355_537_495_999_310_67, 10.8];
     let up = [
-        right[1] * tangent[2] - right[2] * tangent[1],
-        right[2] * tangent[0] - right[0] * tangent[2],
-        right[0] * tangent[1] - right[1] * tangent[0],
+        tangent[1] * left[2] - tangent[2] * left[1],
+        tangent[2] * left[0] - tangent[0] * left[2],
+        tangent[0] * left[1] - tangent[1] * left[0],
     ];
+    assert!(up[2] > 0.99, "up points up: {up:?}");
     for axis in 0..3 {
-        let expected = centre[axis] + right[axis] * 3.5 + up[axis] * 1.2;
+        close(transform.basis[2][axis], up[axis], "up");
+        let expected = centre[axis] + left[axis] * 3.5 + up[axis] * 1.2;
         close(transform.origin[axis], expected, "origin");
     }
 }
