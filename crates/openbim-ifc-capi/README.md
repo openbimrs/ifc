@@ -108,17 +108,12 @@ library needs.
   targets. `OPENBIM_IFC_CARGO_FEATURES` passes crate features (for example
   `rusty_alloc`).
 
-The shared library records its bare name (ELF `SONAME`, Mach-O install
-name `@rpath/libopenbim_ifc_capi.dylib`), so it can be moved with the
-application. CMake gives a consumer's build tree the runtime path; an
-installed application sets its own (`INSTALL_RPATH` on Linux and macOS,
-the DLL beside the executable on Windows). Windows needs MSVC.
-
-`scripts/check-cmake.py` builds a consumer
-(`tests/cmake-consumer/`) running the C smoke test against the source tree,
-the installed package and the unpacked archive, shared and static, then
-the same through pkg-config. The gate runs it on Linux, the `Native`
-workflow on macOS and Windows.
+The shared library records its bare name (`SONAME`, `@rpath/…dylib`), so
+it moves with the application; runtime paths and Windows (MSVC) are in
+[the C guide](https://openbimrs.github.io/ifc/bindings/c).
+`scripts/check-cmake.py` runs the C smoke test through CMake and
+pkg-config against the source tree, install and archive (gate on Linux,
+`Native` workflow on macOS and Windows).
 
 ## pkg-config
 
