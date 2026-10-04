@@ -283,7 +283,10 @@ pub(crate) fn read(value: &Tagged) -> Result<Fields, BindingError> {
             ))
         })?;
         if args.iter().any(|(name, _)| *name == field.name) {
-            return Err(invalid(format!("`{}.{}` is given twice", spec.name, field.name)));
+            return Err(invalid(format!(
+                "`{}.{}` is given twice",
+                spec.name, field.name
+            )));
         }
         if matches!(pair[1], Tagged::Null) {
             continue;

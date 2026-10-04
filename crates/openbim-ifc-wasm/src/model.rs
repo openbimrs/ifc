@@ -459,7 +459,10 @@ impl IfcModel {
         };
         let op = authoring::single(
             "create",
-            vec![("type", Tagged::Text(type_name.to_owned())), ("attributes", attributes)],
+            vec![
+                ("type", Tagged::Text(type_name.to_owned())),
+                ("attributes", attributes),
+            ],
         )
         .map_err(js_error)?;
         let result = self

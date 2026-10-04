@@ -153,7 +153,11 @@ impl IfcModel {
                 .map_err(convert::error)?;
             let ids = |ids: Vec<ifc::EntityId>| ids.into_iter().map(|id| id.0).collect();
             Ok(AuthoringResult {
-                ids: outcome.ids.into_iter().map(|id| id.map(|id| id.0)).collect(),
+                ids: outcome
+                    .ids
+                    .into_iter()
+                    .map(|id| id.map(|id| id.0))
+                    .collect(),
                 created: ids(outcome.created),
                 removed: ids(outcome.removed),
             })

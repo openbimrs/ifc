@@ -90,9 +90,8 @@ fn structural(name: &str, mut fields: Fields) -> Result<AuthorOp, BindingError> 
         _ => Vec::new(),
     };
     let owner_history = id(&mut fields, "owner_history");
-    let mut required = |key: &str| {
-        id(&mut fields, key).ok_or_else(|| invalid(format!("`{name}` needs `{key}`")))
-    };
+    let mut required =
+        |key: &str| id(&mut fields, key).ok_or_else(|| invalid(format!("`{name}` needs `{key}`")));
     Ok(match name {
         "create" => AuthorOp::Create {
             type_name,

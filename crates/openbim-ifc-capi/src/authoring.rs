@@ -26,9 +26,7 @@ use crate::tape::{OpenbimIfcValueNode, Reader};
 /// names the entity operation `i` of a batch produced.
 pub const OPENBIM_IFC_HANDLE_BASE: u64 = 4_611_686_018_427_387_904;
 
-const _: () = assert!(
-    OPENBIM_IFC_HANDLE_BASE == openbim_ifc_binding_core::authoring::HANDLE_BASE
-);
+const _: () = assert!(OPENBIM_IFC_HANDLE_BASE == openbim_ifc_binding_core::authoring::HANDLE_BASE);
 
 /// Apply the operations on the tape as one checked transaction against the
 /// release the header declares: all of them, in order, or none, and the

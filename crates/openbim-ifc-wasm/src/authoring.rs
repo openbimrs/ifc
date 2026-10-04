@@ -100,7 +100,12 @@ fn field_value(kind: FieldKind, value: &JsValue) -> Result<Tagged, String> {
     Ok(match kind {
         FieldKind::Text => Tagged::Text(value.as_string().ok_or("must be a string")?),
         FieldKind::Id => id(value)?,
-        FieldKind::Ids => Tagged::List(array(value)?.iter().map(|v| id(&v)).collect::<Result<_, _>>()?),
+        FieldKind::Ids => Tagged::List(
+            array(value)?
+                .iter()
+                .map(|v| id(&v))
+                .collect::<Result<_, _>>()?,
+        ),
         FieldKind::Reals => Tagged::List(
             array(value)?
                 .iter()

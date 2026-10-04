@@ -225,9 +225,10 @@ fn resolve_value(
 ) -> Result<(), AuthoringFailure> {
     match value {
         Value::Ref(id) => real(id),
-        Value::List(items) => items.iter_mut().try_for_each(|item| resolve_value(item, real)),
+        Value::List(items) => items
+            .iter_mut()
+            .try_for_each(|item| resolve_value(item, real)),
         Value::Typed { value, .. } => resolve_value(value, real),
         _ => Ok(()),
     }
 }
-
