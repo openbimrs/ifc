@@ -15,7 +15,7 @@ use crate::edits;
 use crate::error::js_error;
 use crate::geometry;
 use crate::records;
-use crate::value::{from_js, to_js};
+use crate::value::{self, from_js, to_js};
 
 mod domain_types;
 mod geometry_types;
@@ -189,6 +189,28 @@ impl IfcModel {
     pub fn property_sets_js(&self, id: u64) -> Result<Array, JsValue> {
         let sets = self.0.property_sets(id).map_err(js_error)?;
         Ok(records::records_to_js(&to_records(&sets)))
+    }
+
+    /// The property sets of each of `ids`, in that order, or, with no ids,
+    /// of every object definition (`IfcObjectDefinition` and its subtypes)
+    /// in file order, in one pass (#358): the file's property
+    /// relationships are validated once for the call, so resolving every
+    /// object is linear in the model. Each `ObjectPropertySets` holds
+    /// exactly what `propertySets` returns for its object, or, in
+    /// `refusal`, the code and message it throws; only a refusal of the
+    /// whole model throws. No index outlives the call.
+    #[wasm_bindgen(js_name = propertySetsMany, unchecked_return_type = "ObjectPropertySets[]")]
+    pub fn property_sets_many_js(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "bigint[] | BigUint64Array | undefined")]
+        ids: &JsValue,
+    ) -> Result<Array, JsValue> {
+        let ids = geometry::ids(ids).map_err(js_error)?;
+        let many = self
+            .0
+            .property_sets_many(ids.as_deref())
+            .map_err(js_error)?;
+        Ok(records::records_to_js(&to_records(&many)))
     }
 
     /// The effective unit of a `measureType` value (`"IFCAREAMEASURE"`):
@@ -431,20 +453,31 @@ impl IfcModel {
 
     /// Set attribute `name` of entity `id`; returns the previous value. A
     /// derived attribute is refused (`derived-attribute`).
+    ///
+    /// An `IfcValue` object is written exactly. A plain value (#342) is
+    /// coerced against the attribute's declared type in the declared
+    /// release: a string to a label (bare) or the enumeration item it
+    /// names, a safe-integer number or a bigint to an `INTEGER` or `REAL`
+    /// as declared, any other number to a `REAL`, a boolean to a `BOOLEAN`
+    /// or `LOGICAL`, an array to an aggregate element by element, `null`
+    /// to `$`; in a SELECT, the one member that takes it as a typed
+    /// parameter. Refused with `type-mismatch` when it does not fit and
+    /// `ambiguous-value` when several SELECT members take it.
     #[wasm_bindgen(js_name = setAttributeByName, unchecked_return_type = "IfcValue")]
     pub fn set_attribute_by_name_js(
         &mut self,
         id: u64,
         name: &str,
-        #[wasm_bindgen(unchecked_param_type = "IfcValue")] value: &JsValue,
+        #[wasm_bindgen(unchecked_param_type = "IfcValue | IfcPlainValue")] value: &JsValue,
     ) -> Result<JsValue, JsValue> {
-        let value = from_js(value).map_err(js_error)?;
-        Ok(to_js(
-            &self
-                .0
-                .set_attribute_by_name(id, name, value)
-                .map_err(js_error)?,
-        ))
+        let previous = if value::is_tagged(value) {
+            let value = from_js(value).map_err(js_error)?;
+            self.0.set_attribute_by_name(id, name, value)
+        } else {
+            let value = value::plain_from_js(value).map_err(js_error)?;
+            self.0.set_attribute_by_name_plain(id, name, value)
+        };
+        Ok(to_js(&previous.map_err(js_error)?))
     }
 
     /// Append an entity; returns its id (`bigint`).

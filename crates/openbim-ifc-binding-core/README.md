@@ -31,6 +31,20 @@ maps the facade's refusals to the shared codes (`unknown-attribute`,
 `derived-attribute`, `unsupported-schema`) and carries each slot as an
 `AttributeInfo` record, so the three hosts list the same names.
 
+Plain host values written by name (#342) are coerced here, once, against
+the declared type the facade's `attribute_type` resolves: each host only
+maps its own scalars, sequences and entity handles to `Plain`, so `"x"`
+becomes the same label, enumeration item or typed SELECT member in every
+host, and the same value is refused with `type-mismatch` or
+`ambiguous-value` everywhere. The `coerce` module states the rules.
+
+Property sets of many objects (#358) resolve through one
+`PropertyIndex` built inside `property_sets_many` and dropped before it
+returns. The binding model owns its `Model` and edits it through `&mut
+self`, so an index kept between calls would need invalidating on every
+mutation path; building it per call makes staleness impossible instead,
+at the cost of one linear scan per batch.
+
 Entity creation (#330) is one checked batch too: each host converts its
 operation objects field by field, guided by the core's `OPS` table, into
 the tape form `AuthorOp::from_tagged` reads, and the facade's

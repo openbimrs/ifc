@@ -94,13 +94,16 @@ pub use ifc_schema as schema;
 // Whether an entity is an `IfcRoot`, and where its `GlobalId` and `Name`
 // sit, are the same model/schema join, for every binding and report that
 // keys by GlobalId (#123), and so is the slot an attribute name occupies in
-// the declared release (#326). The modules gate themselves on `schema-api`
-// with an inner `#![cfg]`.
+// the declared release (#326), and the declared type of that attribute,
+// which the bindings coerce plain host values against (#342). The modules
+// gate themselves on `schema-api` with an inner `#![cfg]`.
+mod declared_type;
 mod identity;
 mod named_attribute;
 mod subtype_query;
 #[cfg(feature = "schema-api")]
 pub use self::{
+    declared_type::{attribute_type, declared_type, DeclaredType, SimpleType},
     identity::{root_identity, RootIdentity},
     named_attribute::{
         attribute_by_name, attribute_slot, attribute_slots, set_attribute_by_name, AttributeSlot,

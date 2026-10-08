@@ -68,4 +68,50 @@ public class AttributeTests
         Assert.Equal(IfcStatus.DerivedAttribute, derived.Status);
         Assert.Equal(before, model.Write());
     }
+
+    [Fact]
+    public void PlainValuesAreCoercedAgainstTheDeclaredType()
+    {
+        var data = Fixtures.Bytes(Fixtures.File);
+        // docs:snippet dotnet-plain
+        using var model = IfcModel.Parse(data);
+        model.SetAttributeByNamePlain(1, "Name", "Renamed"); // IfcLabel: 'Renamed'
+        model.SetAttributeByNamePlain(1, "PredefinedType", "shear"); // IfcWallTypeEnum: .SHEAR.
+        // A Value is written exactly; an ambiguous SELECT member is refused.
+        model.SetAttributeByNamePlain(2, "NominalValue", new Value.Typed("IFCLABEL", new Value.Text("x")));
+        // docs:end
+
+        Assert.Equal(new Value.Text("Renamed"), model.AttributeByName(1, "Name"));
+        Assert.Equal(new Value.Enum("SHEAR"), model.AttributeByName(1, "PredefinedType"));
+        Assert.Equal(new Value.Typed("IFCLABEL", new Value.Text("x")), model.AttributeByName(2, "NominalValue"));
+
+        var point = model.Add("IfcCartesianPoint", new Value[] { new Value.List(new Value[] { new Value.Real(0) }) });
+        model.SetAttributeByNamePlain(point, "Coordinates", new object[] { 1, 2.5, 3L });
+        Assert.Equal(
+            new Value.List(new Value[] { new Value.Real(1), new Value.Real(2.5), new Value.Real(3) }),
+            model.AttributeByName(point, "Coordinates"));
+        var style = model.Add("IfcCurveStyle", new Value[] { new Value.Text("c") });
+        model.SetAttributeByNamePlain(style, "CurveWidth", "by layer");
+        Assert.Equal(
+            new Value.Typed("IFCDESCRIPTIVEMEASURE", new Value.Text("by layer")),
+            model.AttributeByName(style, "CurveWidth"));
+        model.SetAttributeByNamePlain(1, "Description", null);
+        Assert.Equal(new Value.Null(), model.AttributeByName(1, "Description"));
+
+        var before = model.Write();
+        var mismatch = Assert.Throws<IfcException>(() => model.SetAttributeByNamePlain(1, "PredefinedType", "CURVED"));
+        Assert.Equal("type-mismatch", mismatch.Code);
+        Assert.Equal(IfcStatus.TypeMismatch, mismatch.Status);
+        var ambiguous = Assert.Throws<IfcException>(() => model.SetAttributeByNamePlain(2, "NominalValue", "x"));
+        Assert.Equal("ambiguous-value", ambiguous.Code);
+        Assert.Equal(IfcStatus.AmbiguousValue, ambiguous.Status);
+        Assert.Contains("IfcLabel", ambiguous.Message);
+        Assert.Equal("type-mismatch",
+            Assert.Throws<IfcException>(() => model.SetAttributeByNamePlain(1, "Name", 3)).Code);
+        Assert.Equal("missing-reference",
+            Assert.Throws<IfcException>(() => model.SetAttributeByNamePlain(1, "ObjectPlacement", new EntityHandle(99))).Code);
+        Assert.Equal("type-mismatch",
+            Assert.Throws<IfcException>(() => model.SetAttributeByNamePlain(1, "ObjectPlacement", new EntityHandle(point))).Code);
+        Assert.Equal(before, model.Write());
+    }
 }

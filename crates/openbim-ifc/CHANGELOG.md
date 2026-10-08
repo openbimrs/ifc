@@ -12,6 +12,22 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#342, declared attribute types)
+
+- Behind `schema-api`: `declared_type(schema, type_text)` resolves an
+  EXPRESS type token against a release's tables to a `DeclaredType`:
+  `Simple` (`SimpleType`: `INTEGER`, `REAL`, `NUMBER`, `STRING`,
+  `BOOLEAN`, `LOGICAL`, `BINARY`, widths dropped), `Entity`,
+  `Enumeration` (with its items), `Defined` (with what it aliases, an
+  aggregate included: `IfcCompoundPlaneAngleMeasure`), `Select` (every
+  member resolved, nested SELECTs included), `Aggregate`, or `Unresolved`
+  for a token the tables do not declare; bounded, so a cyclic alias ends
+  `Unresolved`. `attribute_type(schema, entity, name)` gives an
+  attribute's slot and declared type with its own aggregation levels
+  outermost.
+
+Semver: additive, a patch release.
+
 ## [0.17.0] - 2026-10-08
 
 ### Added (#328, geometry in the bindings, ADR 0021)

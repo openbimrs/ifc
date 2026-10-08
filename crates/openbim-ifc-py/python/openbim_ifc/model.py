@@ -15,6 +15,7 @@ from .domains import (
     Cost,
     MapConversion,
     MaterialAssignment,
+    ObjectPropertySets,
     PropertyEdit,
     PropertyEditResult,
     PropertySet,
@@ -22,7 +23,7 @@ from .domains import (
     SpatialTree,
     Systems,
 )
-from .entity import ModelAccess
+from .entity import Assignable, ModelAccess, _plain_wire
 from .geometry import ProductMesh, ProductPlacement
 from .records import Header, ParseOptions, UnreachableProduct, ValidationReport
 from .values import Value, from_wire, to_wire
@@ -39,8 +40,9 @@ class IfcModel(ModelAccess):
     ``unsupported`` or ``wrong-entity-type``, or, from a property edit,
     ``template-violation`` or ``missing-property``, or, from an attribute
     named rather than numbered, ``unknown-attribute`` or
-    ``derived-attribute``, or, from authoring, ``missing-attribute`` or
-    ``still-referenced``.
+    ``derived-attribute``, or, from a plain value written by name,
+    ``type-mismatch`` or ``ambiguous-value``, or, from authoring,
+    ``missing-attribute`` or ``still-referenced``.
 
     A parsed model decodes each entity the first time it is read: parsing
     checks every record but builds nothing, so opening a large file is fast
@@ -156,6 +158,24 @@ class IfcModel(ModelAccess):
         release the header declares (IFC2X3, IFC4 or IFC4X3).
         """
         return list(domains._from_wire(self._native.property_sets(id)))
+
+    def property_sets_many(
+        self, ids: Optional[Iterable[int]] = None
+    ) -> List[ObjectPropertySets]:
+        """:meth:`property_sets` of each of ``ids``, in that order, or, with
+        ``None``, of every object definition (``IfcObjectDefinition`` and
+        its subtypes) in file order, in one pass.
+
+        The file's property relationships are validated once for the whole
+        call rather than once per object, so resolving every object is
+        linear in the model. Each :class:`ObjectPropertySets` holds exactly
+        what :meth:`property_sets` returns for its object, or, in
+        ``refusal``, the code and message it raises; only a refusal of the
+        whole model (``unsupported-schema``) raises. No index outlives the
+        call, so a call after an edit sees the edit.
+        """
+        selection = None if ids is None else list(ids)
+        return list(domains._from_wire(self._native.property_sets_many(selection)))
 
     def resolve_unit(self, measure_type: str, unit: Optional[int] = None) -> ResolvedUnit:
         """The effective unit of a ``measure_type`` value
@@ -303,6 +323,30 @@ class IfcModel(ModelAccess):
         A derived attribute raises ``derived-attribute``, an unknown name
         ``unknown-attribute``, and a refused write changes nothing."""
         return from_wire(self._native.set_attribute_by_name(id, name, to_wire(value)))
+
+    def set_attribute_by_name_plain(self, id: int, name: str, value: Assignable) -> Value:
+        """Set attribute ``name`` of entity ``id`` from a plain Python value,
+        coerced against the attribute's declared type in the declared
+        release; returns the old tagged value. ``wall.Name = "x"`` calls
+        this.
+
+        A ``str`` becomes a label (written bare, ``'x'``) or the enumeration
+        item it names in any case (``.STANDARD.``); an ``int`` an
+        ``INTEGER`` or a ``REAL`` as declared; a ``float`` a ``REAL``; a
+        ``bool`` a ``BOOLEAN`` or ``LOGICAL``; a list or tuple an aggregate,
+        element by element; an :class:`openbim_ifc.Entity` a reference,
+        checked to exist and to be of an accepted type; ``None`` ``$``. In a
+        SELECT the one member that takes the value is written as its typed
+        parameter (``IFCDESCRIPTIVEMEASURE('by layer')``). A tagged value
+        (``Text``, ``Enum``, ``Typed``, ...) is written exactly as given.
+
+        Raises ``type-mismatch`` for a value that does not fit,
+        ``ambiguous-value`` when several SELECT members would take it (the
+        message names them; pass a ``Typed`` value instead), and otherwise
+        as :meth:`set_attribute_by_name`. A refused write changes nothing.
+        """
+        wire = _plain_wire(value, self)
+        return from_wire(self._native.set_attribute_by_name_plain(id, name, wire))
 
     def add(self, type_name: str, attributes: Iterable[Value]) -> int:
         """Append an entity; returns its new id."""

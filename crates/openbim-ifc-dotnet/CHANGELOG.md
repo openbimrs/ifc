@@ -9,6 +9,19 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#358, #342)
+
+- `IfcModel.PropertySetsMany(ids)`: `ObjectPropertySets` (object, sets,
+  `PropertyRefusal`) per id, or per object definition when null, resolved
+  in one pass; each exactly what `PropertySets` answers.
+- `IfcModel.SetAttributeByNamePlain(id, name, value)`: a plain .NET value
+  (`string`, integers, `double`, `bool`, a sequence, `EntityHandle`,
+  `null`, or a `Value` written exactly) coerced against the attribute's
+  declared type; `IfcStatus.TypeMismatch` (32) and `AmbiguousValue` (33).
+  Needs the C ABI 0.1.8.
+
+Semver: additive, a patch release.
+
 ## [0.1.2] - 2026-10-08
 
 ### Added (#328, geometry, ADR 0021)

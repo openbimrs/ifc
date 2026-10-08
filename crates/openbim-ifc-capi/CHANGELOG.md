@@ -8,6 +8,22 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#358, #342)
+
+- `openbim_ifc_v0_1_model_property_sets_many(model, ids, id_count, ...)`:
+  a tape `LIST` of `ObjectPropertySets` records (object, sets, refusal
+  `[code, message]` or `NULL`), one per id, or with null `ids` and count 0
+  one per object definition; one pass through one property index, each
+  record exactly the per-object call's answer.
+- `openbim_ifc_v0_1_entity_set_attribute_by_name_plain`: the value tape
+  read as plain host values and coerced against the attribute's declared
+  type; `OPENBIM_IFC_KIND_EXACT` (12, valid only there) marks a value
+  written exactly.
+- `OPENBIM_IFC_STATUS_TYPE_MISMATCH` (32) and `_AMBIGUOUS_VALUE` (33).
+- ABI version 0.1.8; no `v0_1` symbol changed.
+
+Semver: additive, a patch release.
+
 ## [0.1.4] - 2026-10-08
 
 ### Added (#328, geometry, ADR 0021)

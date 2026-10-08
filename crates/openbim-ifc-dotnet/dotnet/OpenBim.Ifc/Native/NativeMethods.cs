@@ -62,6 +62,7 @@ internal static class Kind
     public const int Ref = 9;
     public const int List = 10;
     public const int Typed = 11;
+    public const int Exact = 12;
 }
 
 /// <summary>The <c>OPENBIM_IFC_PARSE_*</c> flag bits.</summary>
@@ -106,6 +107,9 @@ internal static unsafe partial class NativeMethods
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_entity_set_attribute_by_name(ulong model, ulong id, byte* name, nuint name_len, ValueNode* nodes, nuint node_count, byte* strings, nuint string_len);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_entity_set_attribute_by_name_plain(ulong model, ulong id, byte* name, nuint name_len, ValueNode* nodes, nuint node_count, byte* strings, nuint string_len);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_entity_type(ulong model, ulong id, byte* buffer, nuint capacity, nuint* out_required);
@@ -202,6 +206,9 @@ internal static unsafe partial class NativeMethods
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_model_property_sets(ulong model, ulong @object, nuint* out_count, ValueNode* nodes, nuint node_capacity, nuint* out_nodes_required, byte* strings, nuint string_capacity, nuint* out_strings_required);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_model_property_sets_many(ulong model, ulong* ids, nuint id_count, nuint* out_count, ValueNode* nodes, nuint node_capacity, nuint* out_nodes_required, byte* strings, nuint string_capacity, nuint* out_strings_required);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_model_remove_property(ulong model, ulong @object, byte* set, nuint set_len, byte* name, nuint name_len);

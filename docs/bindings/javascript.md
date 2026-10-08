@@ -86,7 +86,10 @@ const schema = model.schema; // "IFC4"
 for (const wall of model.idsOfType("IfcWall")) {
   // Names resolve against the release the header declares.
   const name = model.attributeByName(wall, "Name"); // { kind: "text", value: "Wall" }
-  model.setAttributeByName(wall, "Name", { kind: "text", value: `${name.value} (checked)` });
+  // A plain value is coerced against the declared type (IfcLabel: text).
+  model.setAttributeByName(wall, "Name", `${name.value} (checked)`);
+  // An IfcWallTypeEnum item, in any case; an IfcValue is written exactly.
+  model.setAttributeByName(wall, "PredefinedType", "partitioning");
 }
 
 const out = model.write(); // a Uint8Array, ready to save
@@ -108,6 +111,20 @@ a write (`derived-attribute`). An entity type the declared release does
 not have, or a release the build leaves out, is `unsupported-schema`.
 `attribute(id, index)` and `setAttribute(id, index, value)` stay the raw,
 release-independent slot access.
+
+`setAttributeByName` takes an `IfcValue`, written exactly, or a plain
+value (#342), coerced against the attribute's declared type: a string
+becomes a label (written bare, `'x'`) or the enumeration item it names in
+any case (`.STANDARD.`); a `bigint` or a safe-integer `number` an
+`INTEGER`, or a `REAL` where one is declared; any other `number` a `REAL`;
+a boolean a `BOOLEAN` or `LOGICAL`; an array an aggregate, element by
+element, an `IfcValue` in it exact; `null` `$`. In a SELECT, the one member
+that takes the value is written as its typed parameter
+(`IFCDESCRIPTIVEMEASURE('by layer')`). A value that does not fit throws
+`type-mismatch`; one several SELECT members take (`"x"` for `IfcValue`)
+throws `ambiguous-value`, naming them: write the exact `IfcValue` then. A
+reference is written exactly as `{ kind: "ref", id }`; JavaScript has no
+entity handle to check.
 
 Entity ids are `bigint`, because IFC ids exceed JavaScript's safe integer
 range in real files. Attribute values use a tagged encoding that keeps
@@ -183,6 +200,19 @@ const tree = model.spatialTree(); // { nodes: [{ kind: "storey", elements }] }
 
 <!-- /SNIPPET -->
 
+<!-- SNIPPET:js-property-sets-many -->
+
+```js
+const every = model.propertySetsMany(); // every object definition, one pass
+const walls = model.propertySetsMany([30n, 31n]); // or the ids given, in order
+for (const { object, sets, refusal } of walls) {
+  // refusal: the code and message propertySets(object) would throw
+  console.log(object, refusal?.code ?? sets.map((set) => set.name));
+}
+```
+
+<!-- /SNIPPET -->
+
 The domain views of the Rust facade cross as plain snapshot objects, keyed
 by entity id (`bigint`) with the `globalId` where the entity has one. A
 view reads the model as it is at the call; edit the model and call again.
@@ -196,6 +226,13 @@ view reads the model as it is at the call; edit the model and call again.
   `reference` or `complex`) and the `unit` it states.
   `resolveUnit(measureType, unit?)` resolves that unit, or the project
   default, exactly to SI. Read against IFC2X3, IFC4 or IFC4X3.
+  `propertySetsMany(ids?)` (#358) answers for many objects, or with no
+  ids every object definition, in one call: the file's property
+  relationships are validated once for the call rather than once per
+  object, so a pass over every object is linear in the model where a loop
+  of `propertySets` is quadratic. Each `ObjectPropertySets` holds exactly
+  what `propertySets` returns for its object, or the `refusal` (`code`,
+  `message`) it throws; no index outlives the call.
 - **Spatial tree.** `spatialTree()` returns every container (`kind`
   `project` ... `space`) with its parent, children, contained and
   referenced elements, plus orphans, dangling references and anomalies.
@@ -706,6 +743,7 @@ Generated from the `#[wasm_bindgen]` exports in
 | `model.productPlacements(ids: bigint[] \| BigUint64Array \| undefined): ProductPlacement[]` | yes | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or, without, for every product with a shape. A product that cannot be placed is a record with a typed `refusal`; the call itself throws only `unsupported-schema` or `feature-disabled` (feature `placements`). |
 | `model.productMeshes(ids: bigint[] \| BigUint64Array \| undefined): ProductMesh[]` | yes | Each product's Body as triangles from the reference backend: `positions` (`Float32Array`, metres, relative to `transform`) and `indices` (`Uint32Array`), for `ids` or, without, every product with a shape. A product that cannot be meshed has a typed `refusal`. Opt-in: a build without the `mesh` feature (the npm package's default entry) throws `feature-disabled`; import `@openbim/ifc/mesh` for it. |
 | `model.propertySets(id: bigint): PropertySet[]` | yes | The property sets, quantity sets and predefined property sets that apply to object `id`: its own first, then those inherited from its type object, an occurrence property overriding an inherited one. Values keep their declared IFC type (`typed IFCLENGTHMEASURE(...)`). |
+| `model.propertySetsMany(ids: bigint[] \| BigUint64Array \| undefined): ObjectPropertySets[]` | yes | The property sets of each of `ids`, in that order, or, with no ids, of every object definition (`IfcObjectDefinition` and its subtypes) in file order, in one pass (#358): the file's property relationships are validated once for the call, so resolving every object is linear in the model. Each `ObjectPropertySets` holds exactly what `propertySets` returns for its object, or, in `refusal`, the code and message it throws; only a refusal of the whole model throws. No index outlives the call. |
 | `model.resolveUnit(measureType: string, unit: bigint \| undefined): ResolvedUnit` | yes | The effective unit of a `measureType` value (`"IFCAREAMEASURE"`): `unit` when given (a property's stated unit), otherwise the project default, resolved exactly to SI. |
 | `model.spatialTree(): SpatialTree` | yes | The spatial containment tree: every container with its parent, sub-containers and contained elements. |
 | `model.classifications(id: bigint): Classification[]` | yes | The classifications that apply to object `id`: its own, then its type object's. |
@@ -731,7 +769,7 @@ Generated from the `#[wasm_bindgen]` exports in
 | `model.setAttribute(id: bigint, slot: number, value: IfcValue): IfcValue` | yes | Set attribute `index` of entity `id`; returns the previous value. |
 | `model.attributeNames(id: bigint): AttributeInfo[]` | yes | Every explicit attribute of entity `id` in slot order, inherited first, as the release the header declares defines them. |
 | `model.attributeByName(id: bigint, name: string): IfcValue` | yes | Attribute `name` of entity `id` (case-insensitive, e.g. `"Name"`), resolved against the declared release, as a tagged value. |
-| `model.setAttributeByName(id: bigint, name: string, value: IfcValue): IfcValue` | yes | Set attribute `name` of entity `id`; returns the previous value. A derived attribute is refused (`derived-attribute`). |
+| `model.setAttributeByName(id: bigint, name: string, value: IfcValue \| IfcPlainValue): IfcValue` | yes | Set attribute `name` of entity `id`; returns the previous value. A derived attribute is refused (`derived-attribute`). |
 | `model.add(typeName: string, attributes: IfcValue[]): bigint` | yes | Append an entity; returns its id (`bigint`). |
 | `model.remove(id: bigint): void` | yes | Remove entity `id`, leaving references to it dangling. |
 | `model.author(ops: AuthorOp[]): AuthoringResult` | yes | Apply authoring operations as one checked transaction against the release the header declares: every operation, in order, or none, and a refused batch leaves the model unchanged. An operation names the entity an earlier one produced by `IfcModel.handle(index)`. `result.ids` holds, per operation, the id of the entity it produced. |
@@ -758,6 +796,21 @@ export type IfcValue =
   | { kind: "list"; items: IfcValue[] }
   | { kind: "typed"; type: string; value: IfcValue };
 
+/**
+ * A plain value for `IfcModel.setAttributeByName` (#342), coerced against
+ * the attribute's declared type: a string (a label, or the enumeration
+ * item it names), a number or bigint (an integer, or a real), a boolean,
+ * `null` (`$`), or an array of these or of `IfcValue`s (an aggregate). An
+ * `IfcValue` is written exactly.
+ */
+export type IfcPlainValue =
+  | string
+  | number
+  | bigint
+  | boolean
+  | null
+  | ReadonlyArray<IfcPlainValue | IfcValue>;
+
 /** The `code` of an `IfcError`. */
 export type IfcErrorCode =
   | "parse"
@@ -780,7 +833,9 @@ export type IfcErrorCode =
   | "unknown-attribute"
   | "derived-attribute"
   | "missing-attribute"
-  | "still-referenced";
+  | "still-referenced"
+  | "type-mismatch"
+  | "ambiguous-value";
 
 /**
  * Where `IfcModel.loadCatalog` reads a catalog snapshot from. By default

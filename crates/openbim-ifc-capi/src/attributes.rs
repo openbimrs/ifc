@@ -5,6 +5,10 @@
 //! schema does. The positional exports (`openbim_ifc_v0_1_entity_attribute`,
 //! `openbim_ifc_v0_1_entity_set_attribute`) are unchanged; these resolve a
 //! name to its slot first, in the shared core.
+//!
+//! `openbim_ifc_v0_1_entity_set_attribute_by_name_plain` (#342) reads its
+//! tape as plain host values and coerces them against the attribute's
+//! declared type; the shared core's `coerce` module states the rules.
 
 use openbim_ifc_binding_core::record::to_records;
 
@@ -138,6 +142,61 @@ pub unsafe extern "C" fn openbim_ifc_v0_1_entity_set_attribute_by_name(
         with_model(model, |m| {
             let value = Reader::new(nodes, strings).single()?;
             m.set_attribute_by_name(id, name, value)?;
+            done(OpenbimIfcStatus::Ok)
+        })
+    })
+}
+
+/// Set attribute `name` (UTF-8, any case) of entity `id` from a one-value
+/// tape of plain values, coerced against the attribute's declared type in
+/// the declared release (#342); returns as
+/// [`openbim_ifc_v0_1_entity_set_attribute_by_name`] does.
+///
+/// `TEXT` is a string, `INTEGER` an integer, `REAL` a float, `BOOL` a
+/// boolean, `REF` an entity handle, `LIST` a sequence of plain values,
+/// `NULL` unset. A string becomes a label (bare) or the enumeration item it
+/// names; an integer an `INTEGER` or `REAL` as declared; a reference is
+/// checked to exist and fit; in a SELECT, the one member that takes the
+/// value is written as a typed parameter. An `EXACT` node's child, and
+/// `DERIVED`, `UNKNOWN`, `BINARY`, `ENUM` and `TYPED` nodes, are written as
+/// given.
+///
+/// `TypeMismatch` for a value that does not fit, `AmbiguousValue` for one
+/// several SELECT members take, `MissingReference` for a reference to a
+/// missing entity, `Unsupported` for a declared type the tables do not
+/// resolve; otherwise as for
+/// [`openbim_ifc_v0_1_entity_set_attribute_by_name`]. A refusal changes
+/// nothing.
+///
+/// # Safety
+/// As for [`openbim_ifc_v0_1_entity_set_attribute_by_name`].
+#[no_mangle]
+pub unsafe extern "C" fn openbim_ifc_v0_1_entity_set_attribute_by_name_plain(
+    model: OpenbimIfcModel,
+    id: u64,
+    name: *const u8,
+    name_len: usize,
+    nodes: *const OpenbimIfcValueNode,
+    node_count: usize,
+    strings: *const u8,
+    string_len: usize,
+) -> OpenbimIfcStatus {
+    boundary(|| {
+        // SAFETY: caller contract above.
+        let inputs = unsafe {
+            (
+                text(name, name_len),
+                slice(nodes, node_count),
+                bytes(strings, string_len),
+            )
+        };
+        let (name, nodes, strings) = match inputs {
+            (Ok(a), Ok(b), Ok(c)) => (a, b, c),
+            (Err(status), ..) | (_, Err(status), _) | (.., Err(status)) => return status,
+        };
+        with_model(model, |m| {
+            let value = Reader::new(nodes, strings).plain_single()?;
+            m.set_attribute_by_name_plain(id, name, value)?;
             done(OpenbimIfcStatus::Ok)
         })
     })

@@ -82,6 +82,15 @@ pub enum BindingError {
     /// An authoring batch (#330) removed an entity that an entity other
     /// than a relationship still references; remove or edit that first.
     StillReferenced(String),
+    /// A plain host value written by name (#342) does not fit the
+    /// attribute's declared type in the declared release: a string for an
+    /// integer, a name no enumeration item has, a reference to an entity
+    /// of a type the attribute does not accept.
+    TypeMismatch(String),
+    /// A plain host value written by name (#342) fits more than one member
+    /// of the attribute's SELECT, such as a string for `IfcValue`; the
+    /// detail names the candidates. Wrap the value explicitly instead.
+    AmbiguousValue(String),
 }
 
 impl BindingError {
@@ -109,6 +118,8 @@ impl BindingError {
             Self::DerivedAttribute(_) => "derived-attribute",
             Self::MissingAttribute(_) => "missing-attribute",
             Self::StillReferenced(_) => "still-referenced",
+            Self::TypeMismatch(_) => "type-mismatch",
+            Self::AmbiguousValue(_) => "ambiguous-value",
         }
     }
 }
@@ -149,6 +160,11 @@ impl fmt::Display for BindingError {
             Self::DerivedAttribute(detail) => write!(f, "derived attribute: {detail}"),
             Self::MissingAttribute(detail) => write!(f, "missing attribute: {detail}"),
             Self::StillReferenced(detail) => write!(f, "still referenced: {detail}"),
+            Self::TypeMismatch(detail) => write!(f, "type mismatch: {detail}"),
+            Self::AmbiguousValue(detail) => write!(
+                f,
+                "ambiguous value: {detail}; pass an explicit typed value instead"
+            ),
         }
     }
 }
@@ -185,6 +201,8 @@ mod tests {
         "derived-attribute",
         "missing-attribute",
         "still-referenced",
+        "type-mismatch",
+        "ambiguous-value",
     ];
 
     /// One value of every variant, in declaration order.
@@ -211,6 +229,8 @@ mod tests {
             BindingError::DerivedAttribute(String::new()),
             BindingError::MissingAttribute(String::new()),
             BindingError::StillReferenced(String::new()),
+            BindingError::TypeMismatch(String::new()),
+            BindingError::AmbiguousValue(String::new()),
         ];
         // Exhaustive on purpose: a new variant does not compile until it is
         // listed above, so its code cannot escape the snapshot.
@@ -236,7 +256,9 @@ mod tests {
                 | BindingError::UnknownAttribute(_)
                 | BindingError::DerivedAttribute(_)
                 | BindingError::MissingAttribute(_)
-                | BindingError::StillReferenced(_) => {}
+                | BindingError::StillReferenced(_)
+                | BindingError::TypeMismatch(_)
+                | BindingError::AmbiguousValue(_) => {}
             }
         }
         all

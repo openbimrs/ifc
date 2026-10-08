@@ -331,6 +331,40 @@ public sealed unsafe class IfcModel : IDisposable
         }).One());
     }
 
+    /// <summary>
+    /// <see cref="PropertySets"/> of each of <paramref name="ids"/>, in that
+    /// order, or, when null, of every object definition
+    /// (<c>IfcObjectDefinition</c> and its subtypes) in file order, in one
+    /// pass (#358).
+    /// </summary>
+    /// <remarks>
+    /// The file's property relationships are validated once for the call
+    /// rather than once per object, so resolving every object is linear in
+    /// the model. Each <see cref="ObjectPropertySets"/> holds exactly what
+    /// <see cref="PropertySets"/> returns for its object, or, in
+    /// <see cref="ObjectPropertySets.Refusal"/>, the code and message it
+    /// throws; only a refusal of the whole model throws. No index outlives
+    /// the call, so a call after an edit sees the edit.
+    /// </remarks>
+    public IReadOnlyList<ObjectPropertySets> PropertySetsMany(IReadOnlyList<ulong>? ids = null)
+    {
+        var selection = ids?.ToArray();
+        if (selection is { Length: 0 })
+        {
+            return Array.Empty<ObjectPropertySets>();
+        }
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return RecordDecoder.DecodeList<ObjectPropertySets>(Tape(m, (n, nc, nr, s, sc, sr) =>
+        {
+            nuint count;
+            fixed (ulong* p = selection)
+            {
+                return NativeMethods.openbim_ifc_v0_1_model_property_sets_many(m, p, (nuint)(selection?.Length ?? 0), &count, n, nc, nr, s, sc, sr);
+            }
+        }).One());
+    }
+
     /// <summary>The effective unit of a <paramref name="measureType"/> value (<c>IFCAREAMEASURE</c>): <paramref name="unit"/> when given (a property's stated unit), otherwise the project default, resolved exactly to SI.</summary>
     public ResolvedUnit ResolveUnit(string measureType, ulong? unit = null)
     {
@@ -738,6 +772,42 @@ public sealed unsafe class IfcModel : IDisposable
         fixed (byte* s = strings)
         {
             Calls.Check(lease.Model, NativeMethods.openbim_ifc_v0_1_entity_set_attribute_by_name(lease.Model, id, text, (nuint)bytes.Length, n, (nuint)nodes.Length, s, (nuint)strings.Length));
+        }
+        return old;
+    }
+
+    /// <summary>
+    /// Set attribute <paramref name="name"/> of entity <paramref name="id"/>
+    /// from a plain .NET value, coerced against the attribute's declared type
+    /// in the declared release (#342); returns the old value.
+    /// </summary>
+    /// <remarks>
+    /// A <c>string</c> becomes a label (written bare) or the enumeration item
+    /// it names in any case; an integer an <c>INTEGER</c> or a <c>REAL</c> as
+    /// declared; a <c>double</c> a <c>REAL</c>; a <c>bool</c> a
+    /// <c>BOOLEAN</c> or <c>LOGICAL</c>; a sequence an aggregate, element by
+    /// element; an <see cref="EntityHandle"/> a reference, checked to exist
+    /// and to be of an accepted type; <c>null</c> <c>$</c>. In a SELECT the
+    /// one member that takes the value is written as its typed parameter. A
+    /// <see cref="Value"/>, nested in a sequence too, is written exactly.
+    /// Refused with <c>type-mismatch</c> when the value does not fit and
+    /// <c>ambiguous-value</c> when several SELECT members take it;
+    /// otherwise as <see cref="SetAttributeByName"/>. A refused write
+    /// changes nothing.
+    /// </remarks>
+    public Value SetAttributeByNamePlain(ulong id, string name, object? value)
+    {
+        var old = AttributeByName(id, name);
+        var bytes = Calls.Encode(name);
+        var tape = TapeWriter.OfPlain(value);
+        var nodes = tape.Nodes;
+        var strings = tape.Strings;
+        using var lease = handle.Acquire();
+        fixed (byte* text = bytes)
+        fixed (ValueNode* n = nodes)
+        fixed (byte* s = strings)
+        {
+            Calls.Check(lease.Model, NativeMethods.openbim_ifc_v0_1_entity_set_attribute_by_name_plain(lease.Model, id, text, (nuint)bytes.Length, n, (nuint)nodes.Length, s, (nuint)strings.Length));
         }
         return old;
     }

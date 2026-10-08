@@ -21,12 +21,13 @@ use crate::tape::OpenbimIfcValueNode;
 /// Opaque handle to a compiled mesh set. Zero is never a valid handle.
 pub type OpenbimIfcMeshes = u64;
 
-/// The product selection: null with `id_count` 0 is every product with a
-/// shape; otherwise `id_count` ids.
+/// An id selection: null with `id_count` 0 is the call's default (every
+/// product with a shape, every object definition); otherwise `id_count`
+/// ids.
 ///
 /// # Safety
 /// `ids`, if non-null, valid for `id_count` reads.
-unsafe fn selection<'a>(
+pub(crate) unsafe fn selection<'a>(
     ids: *const u64,
     id_count: usize,
 ) -> Result<Option<&'a [u64]>, OpenbimIfcStatus> {

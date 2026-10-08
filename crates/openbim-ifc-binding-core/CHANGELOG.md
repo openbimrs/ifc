@@ -8,6 +8,37 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#358, property sets of many objects)
+
+- `IfcModel::property_sets_many(ids)`: `property_sets` of each id, or with
+  `None` of every `IfcObjectDefinition`, through one
+  `ifc::properties::PropertyIndex` built for the call, so the file's
+  property relationships are validated once and a pass over every object
+  is linear rather than quadratic. Each `ObjectPropertySets` record
+  (object, sets, refusal) holds exactly the per-object answer, a refusal
+  as `PropertyRefusal` (code, message); only a refusal of the whole model
+  fails the call. The index never outlives the call, so nothing can go
+  stale after an edit; `property_sets` is unchanged.
+- Bench `property_sets` (`benchmarks/README.md`), smoke-run by the gate.
+
+### Added (#342, plain values coerced against the declared type)
+
+- `Plain` (null, bool, integer, real, text, entity handle, list, or an
+  `Exact` tagged value) and `IfcModel::set_attribute_by_name_plain` /
+  `coerce_attribute`: a plain host value coerced against the attribute's
+  declared type in the declared release (`ifc::attribute_type`). A string
+  to a label (bare) or an enumeration item (any case); an integer to
+  `INTEGER`, or to `REAL` when exact; a real to `REAL`; a bool to
+  `BOOLEAN`/`LOGICAL`; a list element by element; a handle to a reference
+  checked to exist (`missing-reference`) and fit; in a SELECT the one
+  member that takes the value, as a typed parameter. The rules are in the
+  `coerce` module docs.
+- Codes `type-mismatch` (the value does not fit) and `ambiguous-value`
+  (several SELECT members take it; the message names them).
+
+Semver: additive (internal crate, not published); `BindingError` gains two
+variants.
+
 ### Added (#328, geometry, ADR 0021)
 
 - Feature `placements` (default): `IfcModel::product_placements(ids)`,

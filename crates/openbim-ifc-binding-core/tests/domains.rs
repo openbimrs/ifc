@@ -217,6 +217,159 @@ mod properties {
         let refused = ifc4x1.property_sets(30).unwrap_err();
         assert_eq!(refused.code(), "unsupported-schema", "{refused}");
     }
+
+    /// One answer of `property_sets_many`, as the per-object call's result.
+    fn answer(
+        record: &openbim_ifc_binding_core::properties::ObjectPropertySets,
+    ) -> Result<Vec<openbim_ifc_binding_core::properties::PropertySet>, (String, String)> {
+        match &record.refusal {
+            None => Ok(record.sets.clone()),
+            Some(refusal) => {
+                assert!(record.sets.is_empty());
+                Err((refusal.code.clone(), refusal.message.clone()))
+            }
+        }
+    }
+
+    fn per_object(
+        model: &IfcModel,
+        id: u64,
+    ) -> Result<Vec<openbim_ifc_binding_core::properties::PropertySet>, (String, String)> {
+        model
+            .property_sets(id)
+            .map_err(|error| (error.code().to_owned(), error.to_string()))
+    }
+
+    /// The batch (#358) answers every id exactly as the per-object call
+    /// does, refusals included, in the order asked.
+    #[test]
+    fn many_objects_answer_as_one_object_each() {
+        let model = fixture("synthetic-properties/synthetic_properties.ifc");
+        let mut ids = model.ids();
+        ids.push(9999);
+        ids.reverse();
+        let many = model.property_sets_many(Some(&ids)).unwrap();
+        assert_eq!(many.len(), ids.len());
+        let mut refused = 0;
+        for (record, &id) in many.iter().zip(&ids) {
+            assert_eq!(record.object, id);
+            assert_eq!(answer(record), per_object(&model, id), "#{id}");
+            refused += usize::from(record.refusal.is_some());
+        }
+        assert!(refused > 1, "points, units and the missing id are refused");
+        assert!(
+            many.iter().any(|r| r.sets.len() > 1),
+            "some object has sets"
+        );
+        assert_eq!(model.property_sets_many(Some(&[])).unwrap(), vec![]);
+    }
+
+    /// With no ids: every object definition, objects and type objects, in
+    /// file order, and none of them refused.
+    #[test]
+    fn every_object_definition_is_the_default_selection() {
+        let model = fixture("synthetic-properties/synthetic_properties.ifc");
+        let every = model.property_sets_many(None).unwrap();
+        let expected = model
+            .ids_of_type_including_subtypes("IfcObjectDefinition")
+            .unwrap();
+        assert!(expected.contains(&30));
+        assert_eq!(every.iter().map(|r| r.object).collect::<Vec<_>>(), expected);
+        for record in &every {
+            assert_eq!(answer(record), per_object(&model, record.object));
+            assert!(record.refusal.is_none(), "{record:?}");
+        }
+    }
+
+    /// The same in IFC2X3 and IFC4X3: occurrence and type sets alike.
+    #[cfg(all(feature = "ifc2x3", feature = "ifc4x3"))]
+    #[test]
+    fn many_objects_answer_alike_in_every_release() {
+        let wall = |schema: &str, wall: &str, wall_type: &str| {
+            format!(
+                "ISO-10303-21;
+HEADER;FILE_DESCRIPTION((''),'2;1');FILE_NAME('','',(''),(''),'','','');FILE_SCHEMA(('{schema}'));ENDSEC;
+DATA;
+#1={wall};
+#2={wall_type};
+#3=IFCRELDEFINESBYTYPE('3YvctVUKr0kugbFTf53O9L',$,$,$,(#1),#2);
+#4=IFCPROPERTYSINGLEVALUE('IsExternal',$,IFCBOOLEAN(.T.),$);
+#5=IFCPROPERTYSET('4YvctVUKr0kugbFTf53O9L',$,'Pset_WallCommon',$,(#4));
+#6=IFCRELDEFINESBYPROPERTIES('5YvctVUKr0kugbFTf53O9L',$,$,$,(#1),#5);
+#7=IFCPROPERTYSINGLEVALUE('FireRating',$,IFCLABEL('F30'),$);
+#8=IFCPROPERTYSET('6YvctVUKr0kugbFTf53O9L',$,'Pset_WallCommon',$,(#7));
+ENDSEC;
+END-ISO-10303-21;
+"
+            )
+        };
+        for (schema, wall_entity, type_entity) in [
+            (
+                "IFC2X3",
+                "IFCWALL('1YvctVUKr0kugbFTf53O9L',$,'W',$,$,$,$,$)",
+                "IFCWALLTYPE('2YvctVUKr0kugbFTf53O9L',$,'T',$,$,(#8),$,$,$,.STANDARD.)",
+            ),
+            (
+                "IFC4X3_ADD2",
+                "IFCWALL('1YvctVUKr0kugbFTf53O9L',$,'W',$,$,$,$,$,.STANDARD.)",
+                "IFCWALLTYPE('2YvctVUKr0kugbFTf53O9L',$,'T',$,$,(#8),$,$,$,.STANDARD.)",
+            ),
+        ] {
+            let text = wall(schema, wall_entity, type_entity);
+            let model = IfcModel::parse(text.as_bytes()).expect("parses");
+            let ids = model.ids();
+            let many = model.property_sets_many(Some(&ids)).unwrap();
+            for (record, &id) in many.iter().zip(&ids) {
+                assert_eq!(answer(record), per_object(&model, id), "{schema} #{id}");
+            }
+            let wall_sets = &many[0].sets;
+            assert_eq!(wall_sets.len(), 2, "{schema}: own set and the type's");
+            assert_eq!(wall_sets[1].source, "type");
+        }
+    }
+
+    /// A model refused as a whole is refused once, with the per-object code.
+    #[test]
+    fn a_refused_model_refuses_the_batch() {
+        let text = std::fs::read_to_string(format!(
+            "{}/../../test/fixtures/synthetic-properties/synthetic_properties.ifc",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap();
+        let ifc4x1 = declaring(&text, "IFC4X1");
+        assert_eq!(
+            ifc4x1.property_sets_many(Some(&[30])).unwrap_err().code(),
+            ifc4x1.property_sets(30).unwrap_err().code()
+        );
+        assert_eq!(
+            ifc4x1.property_sets_many(None).unwrap_err().code(),
+            "unsupported-schema"
+        );
+    }
+
+    /// No index survives a call, so a batch after an edit sees the edit.
+    #[cfg(feature = "properties-write")]
+    #[test]
+    fn a_batch_after_an_edit_sees_the_edit() {
+        use openbim_ifc_binding_core::property_edit::PropertyEdit;
+        let mut model = fixture("synthetic-properties/synthetic_properties.ifc");
+        let before = model.property_sets_many(Some(&[30])).unwrap();
+        model
+            .set_properties(vec![PropertyEdit::set(
+                30,
+                "ACME_Batch",
+                "Mark",
+                Tagged::Typed {
+                    type_name: "IFCLABEL".into(),
+                    value: Box::new(Tagged::Text("B-1".into())),
+                },
+            )])
+            .unwrap();
+        let after = model.property_sets_many(Some(&[30])).unwrap();
+        assert_eq!(after[0].sets.len(), before[0].sets.len() + 1);
+        assert_eq!(answer(&after[0]), per_object(&model, 30));
+        assert!(after[0].sets.iter().any(|set| set.name == "ACME_Batch"));
+    }
 }
 
 #[cfg(not(feature = "properties"))]
@@ -225,6 +378,10 @@ fn properties_without_the_feature_refuse() {
     let model = IfcModel::empty();
     assert_eq!(
         model.property_sets(1),
+        Err(BindingError::FeatureDisabled("properties"))
+    );
+    assert_eq!(
+        model.property_sets_many(None),
         Err(BindingError::FeatureDisabled("properties"))
     );
     assert_eq!(

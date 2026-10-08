@@ -65,6 +65,27 @@ class PropertySet:
 
 
 @dataclass(frozen=True)
+class PropertyRefusal:
+    """Why one object's property sets were refused in
+    :meth:`IfcModel.property_sets_many`: the :class:`openbim_ifc.IfcError`
+    ``code`` and message :meth:`IfcModel.property_sets` raises for it."""
+
+    code: str
+    message: str
+
+
+@dataclass(frozen=True)
+class ObjectPropertySets:
+    """One object's answer in :meth:`IfcModel.property_sets_many`: its
+    sets, exactly as :meth:`IfcModel.property_sets` returns them, or the
+    ``refusal`` that call raises (``sets`` then empty)."""
+
+    object: int
+    sets: Tuple[PropertySet, ...]
+    refusal: Optional[PropertyRefusal]
+
+
+@dataclass(frozen=True)
 class PropertyEnumeration:
     """An ``IfcPropertyEnumeration``: the values an enumerated property permits."""
 
@@ -720,6 +741,8 @@ _RECORDS = {
     for cls in (
         Property,
         PropertySet,
+        PropertyRefusal,
+        ObjectPropertySets,
         PropertyEnumeration,
         PropertyBounds,
         PropertyTableRow,

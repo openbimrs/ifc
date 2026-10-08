@@ -14,7 +14,7 @@
 //! ABI.
 
 use openbim_ifc_binding_core::value::{Kind, Tagged, MAX_NESTING};
-use openbim_ifc_binding_core::BindingError;
+use openbim_ifc_binding_core::{BindingError, Plain};
 
 /// Kind codes. Plain integers, not a Rust enum, so an unknown value from C
 /// is rejected rather than read as an invalid discriminant.
@@ -41,6 +41,10 @@ pub const OPENBIM_IFC_KIND_REF: i32 = 9;
 pub const OPENBIM_IFC_KIND_LIST: i32 = 10;
 /// Typed wrapper; type name in the string range, one child follows.
 pub const OPENBIM_IFC_KIND_TYPED: i32 = 11;
+/// Only in a plain value (`openbim_ifc_v0_1_entity_set_attribute_by_name_plain`,
+/// #342): one child follows and is written exactly as given, never
+/// coerced. Refused in every other tape.
+pub const OPENBIM_IFC_KIND_EXACT: i32 = 12;
 
 /// One node of a value tape. Fields a kind does not use are zero.
 #[repr(C)]
@@ -169,6 +173,57 @@ impl<'a> Reader<'a> {
         let value = self.value(0)?;
         self.finish()?;
         Ok(value)
+    }
+
+    /// Decode exactly one plain value (#342), then require the tape to be
+    /// used up.
+    ///
+    /// `null`, `bool`, `integer`, `real`, `text`, `ref` and `list` nodes
+    /// are plain host values, coerced against the declared type; an
+    /// `exact` node's child, and the kinds with no plain form (`derived`,
+    /// `unknown`, `binary`, `enum`, `typed`), are written as given.
+    pub fn plain_single(mut self) -> Result<Plain, BindingError> {
+        let value = self.plain(0)?;
+        self.finish()?;
+        Ok(value)
+    }
+
+    fn plain(&mut self, depth: usize) -> Result<Plain, BindingError> {
+        if depth > MAX_NESTING {
+            return Err(invalid(format!("nesting deeper than {MAX_NESTING}")));
+        }
+        let node = *self
+            .nodes
+            .get(self.next)
+            .ok_or_else(|| invalid("tape ends before the value does"))?;
+        match node.kind {
+            OPENBIM_IFC_KIND_LIST => {
+                Self::no_string(&node)?;
+                self.next += 1;
+                let mut items = Vec::new();
+                for _ in 0..node.child_count {
+                    items.push(self.plain(depth + 1)?);
+                }
+                Ok(Plain::List(items))
+            }
+            OPENBIM_IFC_KIND_EXACT => {
+                Self::no_string(&node)?;
+                if node.child_count != 0 {
+                    return Err(invalid("an exact node has one child and no child count"));
+                }
+                self.next += 1;
+                Ok(Plain::Exact(self.value(depth + 1)?))
+            }
+            _ => Ok(match self.value(depth)? {
+                Tagged::Null => Plain::Null,
+                Tagged::Bool(b) => Plain::Bool(b),
+                Tagged::Integer(i) => Plain::Integer(i),
+                Tagged::Real(r) => Plain::Real(r),
+                Tagged::Text(s) => Plain::Text(s),
+                Tagged::Ref(id) => Plain::Ref(id),
+                exact => Plain::Exact(exact),
+            }),
+        }
     }
 
     /// Decode `count` values back to back, then require the tape used up.

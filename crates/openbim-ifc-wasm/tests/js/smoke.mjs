@@ -155,7 +155,10 @@ test("documented example: read, edit and write a file", () => {
   for (const wall of model.idsOfType("IfcWall")) {
     // Names resolve against the release the header declares.
     const name = model.attributeByName(wall, "Name"); // { kind: "text", value: "Wall" }
-    model.setAttributeByName(wall, "Name", { kind: "text", value: `${name.value} (checked)` });
+    // A plain value is coerced against the declared type (IfcLabel: text).
+    model.setAttributeByName(wall, "Name", `${name.value} (checked)`);
+    // An IfcWallTypeEnum item, in any case; an IfcValue is written exactly.
+    model.setAttributeByName(wall, "PredefinedType", "partitioning");
   }
 
   const out = model.write(); // a Uint8Array, ready to save
@@ -220,6 +223,44 @@ test("attributes resolve by name against the declared release", () => {
       .attributeByName(5n, "Name"),
     "unsupported-schema",
   );
+});
+
+// --- #342: plain values coerced against the declared type ------------------
+
+test("plain values are coerced against the declared type", () => {
+  const model = parse();
+  model.setAttributeByName(5n, "Name", "W");
+  assert.deepEqual(model.attributeByName(5n, "Name"), { kind: "text", value: "W" });
+  model.setAttributeByName(5n, "PredefinedType", "Shear");
+  assert.deepEqual(model.attributeByName(5n, "PredefinedType"), { kind: "enum", value: "SHEAR" });
+  model.setAttributeByName(5n, "Description", null);
+  assert.deepEqual(model.attributeByName(5n, "Description"), { kind: "null" });
+  const point = model.add("IfcCartesianPoint", [{ kind: "list", items: [{ kind: "real", value: 0 }] }]);
+  model.setAttributeByName(point, "Coordinates", [1, 2.5, 3n]);
+  assert.deepEqual(model.attributeByName(point, "Coordinates"), {
+    kind: "list",
+    items: [{ kind: "real", value: 1 }, { kind: "real", value: 2.5 }, { kind: "real", value: 3 }],
+  });
+  const style = model.add("IfcCurveStyle", [{ kind: "text", value: "c" }]);
+  model.setAttributeByName(style, "CurveWidth", "by layer");
+  assert.deepEqual(model.attributeByName(style, "CurveWidth"), {
+    kind: "typed",
+    type: "IFCDESCRIPTIVEMEASURE",
+    value: { kind: "text", value: "by layer" },
+  });
+  // An IfcValue in an array is exact; a tagged object as before.
+  model.setAttributeByName(point, "Coordinates", [{ kind: "real", value: 4 }, 5]);
+  assert.deepEqual(model.attributeByName(point, "Coordinates").items[1], { kind: "real", value: 5 });
+
+  const before = model.write();
+  throwsCode(() => model.setAttributeByName(5n, "Name", 1), "type-mismatch");
+  throwsCode(() => model.setAttributeByName(5n, "PredefinedType", "CURVED"), "type-mismatch");
+  throwsCode(() => model.setAttributeByName(style, "CurveWidth", 2.5), "ambiguous-value");
+  throwsCode(() => model.setAttributeByName(2n, "NominalValue", "x"), "ambiguous-value");
+  throwsCode(() => model.setAttributeByName(point, "Coordinates", [Number.NaN]), "invalid-value");
+  throwsCode(() => model.setAttributeByName(5n, "Name", undefined), "invalid-value");
+  assert.deepEqual(model.write(), before, "a refused write changes nothing");
+  assert.match(new TextDecoder().decode(before), /IFCDESCRIPTIVEMEASURE\('by layer'\)/);
 });
 
 // --- #244: lenient reads, header, validation, ifcXML, reachability --------
@@ -469,6 +510,39 @@ test("classification and material read through the type object", () => {
   assert.deepEqual(log, [
     ["Pset_WallCommon", "IsExternal", { kind: "typed", type: "IFCBOOLEAN", value: { kind: "bool", value: true } }],
   ]);
+});
+
+test("property sets of many objects answer as one object each", () => {
+  const model = openFixture("synthetic-properties/synthetic_properties.ifc");
+  // docs:snippet js-property-sets-many
+  const every = model.propertySetsMany(); // every object definition, one pass
+  const walls = model.propertySetsMany([30n, 31n]); // or the ids given, in order
+  for (const { object, sets, refusal } of walls) {
+    // refusal: the code and message propertySets(object) would throw
+    console.log(object, refusal?.code ?? sets.map((set) => set.name));
+  }
+  // docs:end
+  assert.deepEqual(walls[0].sets, model.propertySets(30n));
+  assert.deepEqual(
+    every.map((answer) => answer.object),
+    model.idsOfTypeIncludingSubtypes("IfcObjectDefinition"),
+  );
+  const ids = [...model.ids(), 9999n].reverse();
+  const many = model.propertySetsMany(BigUint64Array.from(ids));
+  assert.equal(many.length, ids.length);
+  for (const [i, answer] of many.entries()) {
+    assert.equal(answer.object, ids[i]);
+    try {
+      assert.deepEqual(answer.sets, model.propertySets(ids[i]));
+      assert.equal(answer.refusal, undefined);
+    } catch (error) {
+      if (error.name !== "IfcError") throw error;
+      assert.deepEqual(answer.refusal, { code: error.code, message: error.message });
+      assert.deepEqual(answer.sets, []);
+    }
+  }
+  assert.deepEqual(model.propertySetsMany([]), []);
+  throwsCode(() => model.propertySetsMany(["x"]), "invalid-value");
 });
 
 test("domain refusals carry the shared codes", () => {

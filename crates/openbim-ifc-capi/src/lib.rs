@@ -77,6 +77,8 @@ mod capability_tests;
 mod domain_tests;
 #[cfg(test)]
 mod geometry_tests;
+#[cfg(test)]
+mod plain_tests;
 
 #[cfg(feature = "rusty_alloc")]
 #[global_allocator]

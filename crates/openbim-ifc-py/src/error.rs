@@ -9,7 +9,7 @@ create_exception!(
     _native,
     IfcError,
     PyException,
-    "A failed IFC operation. `code` is stable across bindings: parse, write, missing-entity, invalid-value, out-of-range, unsupported-schema, io, unsupported-profile, feature-disabled, invalid-model, missing-reference, budget-exceeded, unsupported, wrong-entity-type, template-violation, missing-property, catalog-not-loaded (JavaScript only: this package embeds the catalog), unknown-attribute, derived-attribute."
+    "A failed IFC operation. `code` is stable across bindings: parse, write, missing-entity, invalid-value, out-of-range, unsupported-schema, io, unsupported-profile, feature-disabled, invalid-model, missing-reference, budget-exceeded, unsupported, wrong-entity-type, template-violation, missing-property, catalog-not-loaded (JavaScript only: this package embeds the catalog), unknown-attribute, derived-attribute, missing-attribute, still-referenced, type-mismatch, ambiguous-value."
 );
 
 /// Raise `error` as an `IfcError` with `.code` set.

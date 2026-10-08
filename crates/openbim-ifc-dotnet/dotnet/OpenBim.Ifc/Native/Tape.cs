@@ -84,6 +84,66 @@ internal sealed class TapeWriter
         }
     }
 
+    /// <summary>A tape of one plain value (#342).</summary>
+    internal static TapeWriter OfPlain(object? value)
+    {
+        var tape = new TapeWriter();
+        tape.WritePlain(value);
+        return tape;
+    }
+
+    /// <summary>
+    /// Append a plain host value: <c>null</c>, a <c>bool</c>, an integer
+    /// type, <c>float</c>, <c>double</c> or <c>decimal</c>, a <c>string</c>,
+    /// an <see cref="EntityHandle"/>, a sequence of these, or a
+    /// <see cref="Value"/>, written under an <c>EXACT</c> node.
+    /// </summary>
+    internal void WritePlain(object? value)
+    {
+        switch (value)
+        {
+            case null:
+                nodes.Add(new ValueNode { Kind = Kind.Null });
+                break;
+            case Value exact:
+                nodes.Add(new ValueNode { Kind = Kind.Exact });
+                Write(exact);
+                break;
+            case bool b:
+                nodes.Add(new ValueNode { Kind = Kind.Bool, IntValue = b ? 1 : 0 });
+                break;
+            case sbyte or byte or short or ushort or int or uint or long:
+                nodes.Add(new ValueNode { Kind = Kind.Integer, IntValue = Convert.ToInt64(value, System.Globalization.CultureInfo.InvariantCulture) });
+                break;
+            case ulong u:
+                nodes.Add(new ValueNode { Kind = Kind.Integer, IntValue = u <= long.MaxValue ? (long)u : throw new ArgumentOutOfRangeException(nameof(value), "an integer above 2^63 - 1") });
+                break;
+            case float or double or decimal:
+                nodes.Add(new ValueNode { Kind = Kind.Real, RealValue = Convert.ToDouble(value, System.Globalization.CultureInfo.InvariantCulture) });
+                break;
+            case string text:
+                WriteString(Kind.Text, text);
+                break;
+            case EntityHandle entity:
+                // The C ABI carries ids as int64; a larger one is refused there.
+                nodes.Add(new ValueNode { Kind = Kind.Ref, IntValue = unchecked((long)entity.Id) });
+                break;
+            case System.Collections.IEnumerable items:
+                var head = nodes.Count;
+                nodes.Add(new ValueNode { Kind = Kind.List });
+                uint count = 0;
+                foreach (var item in items)
+                {
+                    WritePlain(item);
+                    count++;
+                }
+                nodes[head] = new ValueNode { Kind = Kind.List, ChildCount = count };
+                break;
+            default:
+                throw new ArgumentException("not a plain value or an OpenBim.Ifc value: " + value!.GetType(), nameof(value));
+        }
+    }
+
     /// <summary>Append a node of <paramref name="kind"/> holding <paramref name="text"/>.</summary>
     internal void WriteString(int kind, string text)
     {

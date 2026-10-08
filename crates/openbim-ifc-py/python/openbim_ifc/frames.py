@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
-from .entity import _sets
+from ._native import IfcError
+from .entity import _split
 
 if TYPE_CHECKING:
     import pandas
@@ -41,12 +42,25 @@ def to_dataframe(
         raise ValueError(f"attributes {attributes!r} repeat a name or name the {TYPE_COLUMN!r} column")
     ids: List[int] = []
     rows: List[Dict[str, Any]] = []
-    for entity in model.by_type(type_name, include_subtypes=include_subtypes):
+    entities = model.by_type(type_name, include_subtypes=include_subtypes)
+    # Every row's sets in one pass (#358): linear in the model, not
+    # quadratic as one `property_sets` call per row would be.
+    many = (
+        model.property_sets_many([entity.id for entity in entities])
+        if psets or qtos
+        else []
+    )
+    for index, entity in enumerate(entities):
         row: Dict[str, Any] = {TYPE_COLUMN: entity.type}
         for name in attributes:
             row[name] = entity.get(name)
         if psets or qtos:
-            own_psets, own_qtos = _sets(model, entity.id)
+            answer = many[index]
+            if answer.refusal is not None:
+                error = IfcError(answer.refusal.message)
+                setattr(error, "code", answer.refusal.code)
+                raise error
+            own_psets, own_qtos = _split(model, answer.sets)
             for wanted, sets in ((psets, own_psets), (qtos, own_qtos)):
                 if not wanted:
                     continue

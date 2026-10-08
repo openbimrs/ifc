@@ -8,6 +8,19 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#358, #342)
+
+- `IfcModel.propertySetsMany(ids?)`: one `ObjectPropertySets` (object,
+  sets, refusal) per id, or per object definition, in one pass; each
+  exactly what `propertySets` answers.
+- `setAttributeByName` also takes a plain value (`IfcPlainValue`: a
+  string, number, bigint, boolean, `null` or array), coerced against the
+  attribute's declared type; an `IfcValue` is written exactly as before.
+  `IfcErrorCode` gains `type-mismatch` and `ambiguous-value`.
+
+Semver: additive (a plain value used to be refused with `invalid-value`),
+a patch release.
+
 ## [0.4.2] - 2026-10-08
 
 ### Added (#369, the npm mesh entry)

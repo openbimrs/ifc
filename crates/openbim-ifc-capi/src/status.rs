@@ -7,7 +7,7 @@ use openbim_ifc_binding_core::BindingError;
 /// Result of every ABI call. `Ok` is zero; every failure is non-zero.
 ///
 /// The values from `Parse` to `FeatureDisabled`, `InvalidModel`, and
-/// `MissingReference` to `StillReferenced`, are the binding errors shared
+/// `MissingReference` to `AmbiguousValue`, are the binding errors shared
 /// with the JavaScript and Python bindings; the rest describe misuse of the
 /// C boundary itself.
 #[repr(i32)]
@@ -81,6 +81,12 @@ pub enum OpenbimIfcStatus {
     /// An authoring batch removed an entity that an entity other than a
     /// relationship still references (`still-referenced`).
     StillReferenced = 31,
+    /// A plain value written by name does not fit the attribute's declared
+    /// type (`type-mismatch`).
+    TypeMismatch = 32,
+    /// A plain value written by name fits several members of the
+    /// attribute's SELECT; write it exactly instead (`ambiguous-value`).
+    AmbiguousValue = 33,
     /// A Rust panic was contained at the boundary. Report it as a bug.
     Panic = 255,
 }
@@ -109,6 +115,8 @@ impl From<&BindingError> for OpenbimIfcStatus {
             BindingError::DerivedAttribute(_) => Self::DerivedAttribute,
             BindingError::MissingAttribute(_) => Self::MissingAttribute,
             BindingError::StillReferenced(_) => Self::StillReferenced,
+            BindingError::TypeMismatch(_) => Self::TypeMismatch,
+            BindingError::AmbiguousValue(_) => Self::AmbiguousValue,
         }
     }
 }
@@ -223,6 +231,14 @@ mod tests {
             (
                 BindingError::StillReferenced(String::new()),
                 OpenbimIfcStatus::StillReferenced,
+            ),
+            (
+                BindingError::TypeMismatch(String::new()),
+                OpenbimIfcStatus::TypeMismatch,
+            ),
+            (
+                BindingError::AmbiguousValue(String::new()),
+                OpenbimIfcStatus::AmbiguousValue,
             ),
         ];
         for (error, status) in cases {

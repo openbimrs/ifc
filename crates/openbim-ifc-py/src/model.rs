@@ -6,7 +6,7 @@ use pyo3::prelude::*;
 use pyo3::types::{PyBool, PyBytes, PyDict, PyList};
 
 use crate::authoring;
-use crate::convert::{from_py, to_py};
+use crate::convert::{from_py, plain_from_py, to_py};
 use crate::edits;
 use crate::error::py_err;
 use crate::records;
@@ -218,6 +218,22 @@ impl NativeModel {
         records::records_to_py(py, &to_records(&sets))
     }
 
+    /// Property sets of many objects in one pass (#358): one
+    /// `ObjectPropertySets` record dict per id, or per object definition
+    /// when `ids` is `None`. Releases the GIL while it resolves.
+    #[pyo3(signature = (ids = None))]
+    fn property_sets_many<'py>(
+        &self,
+        py: Python<'py>,
+        ids: Option<Vec<u64>>,
+    ) -> PyResult<Bound<'py, PyList>> {
+        let inner = &self.inner;
+        let many = py
+            .detach(|| inner.property_sets_many(ids.as_deref()))
+            .map_err(py_err)?;
+        records::records_to_py(py, &to_records(&many))
+    }
+
     /// The effective unit of a `measure_type` value, as a record dict.
     #[pyo3(signature = (measure_type, unit = None))]
     fn resolve_unit<'py>(
@@ -398,6 +414,25 @@ impl NativeModel {
             &self
                 .inner
                 .set_attribute_by_name(id, name, value)
+                .map_err(py_err)?,
+        )
+    }
+
+    /// Set attribute `name` from a plain Python value, coerced against its
+    /// declared type (#342); the previous value as a tagged dict.
+    fn set_attribute_by_name_plain<'py>(
+        &mut self,
+        py: Python<'py>,
+        id: u64,
+        name: &str,
+        value: &Bound<'py, PyAny>,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let value = plain_from_py(value).map_err(py_err)?;
+        to_py(
+            py,
+            &self
+                .inner
+                .set_attribute_by_name_plain(id, name, value)
                 .map_err(py_err)?,
         )
     }
