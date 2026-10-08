@@ -24,19 +24,16 @@ Documentation: [JavaScript guide](https://openbimrs.github.io/ifc/bindings/javas
   replace the STEP header, validate against the declared schema, read and
   write ifcXML (lossless or the buildingSMART XSD layout), list products
   no viewer will draw, and place each product (`productPlacements`).
-- Mesh each product (`productMeshes`, #328) from the package's mesh entry,
-  `@openbim/ifc/mesh` (`/mesh/bundler`, `/mesh/web`; #369): the same API
-  with the reference geometry backend linked in, 2.2 MB more module. The
-  default entry throws `feature-disabled` for it.
+- Mesh each product (`productMeshes`) from the mesh entry, `@openbim/ifc/mesh`
+  (#369), 2.2 MB larger; the default entry throws `feature-disabled`.
 - Read the domain views as snapshot objects: property sets and quantities
   with type inheritance (`propertySets`, `resolveUnit`), the spatial tree,
   classifications, materials, systems, cost and georeferencing (#123).
 - Write property sets and quantities (`setProperties`) as one checked
   transaction; `await IfcModel.loadCatalog(release)` loads its PSD/QTO catalog.
 
-## What it does not do (yet)
-
-- No checked multi-edit transactions over arbitrary entities (ADR 0013).
+Not bound yet: checked multi-edit transactions over arbitrary entities
+(ADR 0013).
 
 ## Smaller builds
 
@@ -140,10 +137,9 @@ cargo install wasm-bindgen-cli --version 0.2.128 --locked
 crates/openbim-ifc-wasm/scripts/build-npm-pkg.sh   # builds pkg/ and tests every target
 ```
 
-The script builds the module twice, the default features and the default
-plus `mesh` (into `pkg/mesh/`), binds each for each target, runs the Node
-suites, and checks both entries from the packed tarball in Node, webpack and
-headless Chrome (`CHROME_BIN` names the browser if it is not on `PATH`). webpack comes pinned
+The script builds both modules (default; `mesh` into `pkg/mesh/`), binds each
+per target, runs the Node suites, and checks the packed tarball in Node,
+webpack and headless Chrome (`CHROME_BIN` names it if not on `PATH`). webpack comes pinned
 from `tools/package-lock.json`.
 
 Neither `wasm-opt -Oz` nor `opt-level = "z"` is applied (the guide has
