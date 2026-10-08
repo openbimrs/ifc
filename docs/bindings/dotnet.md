@@ -9,6 +9,8 @@ carries the C ABI's native library for every platform it supports.
 dotnet add package OpenBim.Ifc
 ```
 
+Task-sized recipes are in the [.NET cookbook](/cookbook/dotnet).
+
 The binding exposes the record model over STEP -- parse, read and edit
 attributes, and write -- plus lenient reads, the file header, validation,
 ifcXML, the reachability lint, the domain views and writing property sets

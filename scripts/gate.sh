@@ -295,6 +295,23 @@ gate_bindings() {
         # Both entries, the default and the mesh entry (#328, #369), whose
         # Node suite also runs the browser example's scene code.
         crates/openbim-ifc-wasm/scripts/build-npm-pkg.sh
+
+        # The docs site's TypeScript reference and browser playground (#331)
+        # are built from this package. With the docs toolchain installed and
+        # the site built (the lint section builds it), TypeDoc must render
+        # the package's declarations without a warning, and the playground
+        # must work in headless Chrome against a copy of the site. Without
+        # either they are skipped, as the docs build is; the Pages workflow
+        # always runs both.
+        if [ -d node_modules ] && [ -f docs/.vitepress/dist/playground.html ]; then
+            typedoc_out="$(mktemp -d)"
+            npx --no-install typedoc --options docs/scripts/typedoc.json --out "$typedoc_out" \
+                || { rm -rf "$typedoc_out"; exit 1; }
+            rm -rf "$typedoc_out"
+            node docs/scripts/check-playground.mjs docs/.vitepress/dist crates/openbim-ifc-wasm/pkg
+        else
+            echo "TypeDoc reference and playground check skipped (no node_modules or no built site)"
+        fi
     fi
 
     # C ABI (#38, ADR 0013): the committed header must match the exports (the

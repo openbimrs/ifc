@@ -8,6 +8,8 @@ compiled wheels.
 pip install openbim-ifc
 ```
 
+Task-sized recipes are in the [Python cookbook](/cookbook/python).
+
 The binding exposes the record model over STEP -- parse, read and edit
 attributes, and write -- plus lenient reads, the file header, validation,
 ifcXML, the reachability lint and read-only domain views (see
@@ -580,7 +582,9 @@ wraps as an `Entity`.
 
 ## API
 
-Generated from the `openbim_ifc` package source.
+Generated from the `openbim_ifc` package source. The
+[pdoc reference](/api/pdoc/openbim_ifc.html){target="_self"} documents every
+class, record and function of the package with its docstring and types.
 
 <!-- API:PYTHON:BEGIN -->
 

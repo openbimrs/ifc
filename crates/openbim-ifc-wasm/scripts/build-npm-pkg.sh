@@ -22,8 +22,9 @@ Two release builds of the wasm module, each bound three times by
 # each against the SHA-256 the module pins; and npm/catalog.mjs, the loader
 # behind `IfcModel.loadCatalog`, installed on each target's IfcModel below.
 #
-# Then the Node smoke, corpus and geometry suites run against <out> (the
-# geometry suite against <out>/mesh too), and
+# Then the Node smoke, corpus, geometry and cookbook suites run against
+# <out> (the geometry suite against <out>/mesh too; the cookbook's mesh
+# recipe reads <out>/mesh itself), and
 # tools/check-package.mjs packs <out> as npm would publish it and checks each
 # target of both entries from that tarball: Node `require` and `import`, a
 # webpack bundle, and both browser builds in headless Chrome (#40, #369).
@@ -33,6 +34,10 @@ Two release builds of the wasm module, each bound three times by
 # or worse, generates glue for a different ABI. This script refuses early and
 # names the version to install. webpack comes pinned from
 # tools/package-lock.json.
+#
+# IFC_NPM_BUILD_ONLY=1 stops after the package is assembled, before any
+# suite: the Pages workflow builds the package for the docs site's API
+# reference and playground (#331), and the gate has already tested it.
 #
 # No wasm-opt pass: measured with binaryen 132 on this module (#40), -Oz cut
 # the raw size 3.1% but grew it 0.5% under gzip -9 and 0.7% under brotli,
@@ -64,7 +69,9 @@ if [[ "$crate_version" != "$npm_version" ]]; then
     exit 1
 fi
 
-(cd "$crate_dir/tools" && npm ci --no-audit --no-fund --loglevel=error)
+if [[ -z "${IFC_NPM_BUILD_ONLY:-}" ]]; then
+    (cd "$crate_dir/tools" && npm ci --no-audit --no-fund --loglevel=error)
+fi
 
 target_dir="${CARGO_TARGET_DIR:-$root/target}"
 module="$target_dir/wasm32-unknown-unknown/release/openbim_ifc_wasm.wasm"
@@ -138,8 +145,13 @@ cp "$crate_dir/npm/package.json" "$crate_dir/npm/catalog.mjs" "$crate_dir/README
 (cd "$root" && cargo run --quiet --release -p ifc-template-catalog --features runtime \
     --example export_snapshots -- "$out/catalog")
 
+if [[ -n "${IFC_NPM_BUILD_ONLY:-}" ]]; then
+    echo "built $out (IFC_NPM_BUILD_ONLY set; suites NOT run)"
+    exit 0
+fi
+
 IFC_WASM_PKG="$out" node --test "$crate_dir/tests/js/smoke.mjs" "$crate_dir/tests/js/corpus.mjs" \
-    "$crate_dir/tests/js/geometry.mjs"
+    "$crate_dir/tests/js/geometry.mjs" "$crate_dir/tests/js/cookbook.mjs"
 # The mesh entry's meshes, refusals and the viewer example's scene code; the
 # packaged smoke below covers the rest of its surface and its catalog.
 IFC_WASM_PKG="$out/mesh" IFC_WASM_MESH=1 node --test "$crate_dir/tests/js/geometry.mjs"

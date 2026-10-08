@@ -1,0 +1,19 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "@openbim/ifc",
+  "entryPoints": ["../../crates/openbim-ifc-wasm/pkg/openbim_ifc_wasm.d.ts"],
+  "tsconfig": "./typedoc.tsconfig.json",
+  "out": "../.vitepress/dist/api/typedoc",
+  "readme": "none",
+  "disableSources": true,
+  "excludePrivate": true,
+  "githubPages": false,
+  "titleLink": "/ifc/",
+  "navigationLinks": {
+    "Docs": "/ifc/",
+    "JavaScript guide": "/ifc/bindings/javascript",
+    "Cookbook": "/ifc/cookbook/javascript",
+    "GitHub": "https://github.com/openbimrs/ifc"
+  },
+  "treatWarningsAsErrors": true
+}

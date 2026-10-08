@@ -11,6 +11,9 @@
   },
   "devDependencies": {
     "mermaid": "^11.17.2",
+    "playwright-core": "1.64.0",
+    "typedoc": "0.28.20",
+    "typescript": "6.0.3",
     "vitepress": "2.0.0-alpha.19"
   },
   "overrides": {

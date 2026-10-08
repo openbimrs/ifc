@@ -1,5 +1,8 @@
 name: Pages
 
+# A pull request builds and checks the site (the references, the playground
+# in headless Chrome, the leakage check) without deploying it; a push to
+# main deploys it.
 on:
   push:
     branches: [main]
@@ -21,6 +24,38 @@ on:
       # Coverage manifests the coverage page counts.
       - 'crates/*/data/**'
       - '.github/workflows/pages.yml'
+      # The playground's samples, viewer and the package build script (#331).
+      - 'test/fixtures/**'
+      - 'crates/*/examples/**'
+      - 'crates/*/scripts/**'
+      # The API reference is generated from doc comments, so a source-only
+      # change still alters the published site.
+      - '**/src/**'
+      - '**/Cargo.toml'
+      - 'Cargo.lock'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'CHANGELOG.md'
+      # Each crate owns its changelog and the docs page is assembled from all
+      # of them, so any one of them changing must rebuild the site.
+      - 'crates/*/CHANGELOG.md'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'xtask/**'
+      # Binding surfaces and the tests the binding pages quote.
+      - 'crates/*/tests/**'
+      - 'crates/*/include/**'
+      - 'crates/*/npm/package.json'
+      - 'crates/*/pyproject.toml'
+      - 'crates/openbim-ifc-py/python/**'
+      # Coverage manifests the coverage page counts.
+      - 'crates/*/data/**'
+      - '.github/workflows/pages.yml'
+      # The playground's samples, viewer and the package build script (#331).
+      - 'test/fixtures/**'
+      - 'crates/*/examples/**'
+      - 'crates/*/scripts/**'
       # The API reference is generated from doc comments, so a source-only
       # change still alters the published site.
       - '**/src/**'
@@ -30,12 +65,10 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: pages-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -50,9 +83,29 @@ jobs:
         with:
           python-version: '3.12'
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+        if: github.event_name != 'pull_request'
       - uses: dtolnay/rust-toolchain@688313b0823df1393bcebb1b4add0438a6d36884 # 1.88.0
         with:
           toolchain: 1.88.0
+          # The npm package the TypeScript reference and the playground are
+          # built from (#331).
+          targets: wasm32-unknown-unknown
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: pages
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Install wasm-bindgen CLI
+        # Must equal the `wasm-bindgen` pin in crates/openbim-ifc-wasm/Cargo.toml;
+        # build-npm-pkg.sh refuses a mismatch.
+        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+        with:
+          tool: wasm-bindgen-cli@0.2.128
+      - name: Install maturin and pdoc
+        # pdoc renders the installed wheel; pandas lets it resolve the type
+        # hints the package imports only for type checking. Pinned as in
+        # crates/openbim-ifc-py/scripts/check-python.sh.
+        run: python -m pip install "maturin==1.13.3" "pdoc==16.0.0" "pandas==3.0.6"
       - name: Cache IFC EXPRESS schemas
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -78,6 +131,28 @@ jobs:
         run: |
           mkdir -p docs/.vitepress/dist/api/rustdoc
           cp -r target/doc/. docs/.vitepress/dist/api/rustdoc/
+      # The JavaScript reference and the playground use the npm package
+      # built from this commit, so the site documents and runs main, not the
+      # last release (#331). Its suites ran in the gate.
+      - name: Build the npm package
+        env:
+          IFC_NPM_BUILD_ONLY: "1"
+        run: crates/openbim-ifc-wasm/scripts/build-npm-pkg.sh
+      - name: Build the TypeScript API reference at /api/typedoc/
+        # From the package's generated .d.ts; TypeDoc is pinned in
+        # package.json and fails on any warning.
+        run: npx --no-install typedoc --options docs/scripts/typedoc.json
+      - name: Build the Python API reference at /api/pdoc/
+        run: |
+          maturin build --release --manifest-path crates/openbim-ifc-py/Cargo.toml --out "$RUNNER_TEMP/wheels"
+          python -m pip install "$RUNNER_TEMP"/wheels/*.whl
+          python -m pdoc --no-show-source --footer-text "openbim-ifc" -o docs/.vitepress/dist/api/pdoc openbim_ifc
+          test -f docs/.vitepress/dist/api/pdoc/openbim_ifc.html
+      - name: Install the playground's module at /playground-files/
+        run: node docs/scripts/playground.mjs crates/openbim-ifc-wasm/pkg docs/.vitepress/dist
+      - name: Check the playground in headless Chrome
+        # The hosted image ships Google Chrome; playwright-core drives it.
+        run: node docs/scripts/check-playground.mjs docs/.vitepress/dist
       - name: Reject standards material from the published site
         run: python3 scripts/check-leakage.py docs/.vitepress/dist
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
@@ -85,6 +160,10 @@ jobs:
           path: docs/.vitepress/dist
 
   deploy:
+    if: github.event_name != 'pull_request'
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
