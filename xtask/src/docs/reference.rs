@@ -249,7 +249,12 @@ fn page(krate: &Crate, facts: &Facts, facade_table: Option<&str>) -> Result<Stri
         dir = krate.dir
     ));
 
-    if let Some((_, path)) = &krate.lib {
+    if let Some(path) = krate
+        .lib
+        .as_ref()
+        .map(|(_, path)| path)
+        .or(krate.bin.as_ref())
+    {
         let overview = crate_docs::overview(path)?;
         if !overview.is_empty() {
             out.extend([

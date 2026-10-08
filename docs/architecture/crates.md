@@ -86,6 +86,12 @@ changes; the [capability matrix](/capabilities) says what each implements.
 | [`openbim-ifc-py`](/reference/crates/openbim-ifc-py) | <span class="status-implemented">Implemented</span> | [`openbim-ifc-binding-core`](/reference/crates/openbim-ifc-binding-core) | Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python. |
 | [`openbim-ifc-wasm`](/reference/crates/openbim-ifc-wasm) | <span class="status-implemented">Implemented</span> | [`openbim-ifc-binding-core`](/reference/crates/openbim-ifc-binding-core) | WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript. |
 
+### Command-line tool
+
+| Crate | Status | Depends on | Description |
+| --- | --- | --- | --- |
+| [`openbim-ifc-cli`](/reference/crates/openbim-ifc-cli) | <span class="status-partial">Partial</span> | [`openbim-ifc`](/reference/crates/openbim-ifc) | The openbim-ifc command: validate, convert and inspect IFC files (STEP and ifcXML) from a shell or CI. |
+
 <!-- CRATES:MAP:END -->
 
 ## Not in this repository

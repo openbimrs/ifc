@@ -334,7 +334,11 @@ def plan(tag: str) -> int:
                # A crate with a CMake package ships prebuilt archives on a
                # GitHub release; CMakeLists.txt reads its version from
                # Cargo.toml, so there is no second manifest to disagree.
-               "native": (Path(package["manifest_path"]).parent / "CMakeLists.txt").is_file()}
+               "native": (Path(package["manifest_path"]).parent / "CMakeLists.txt").is_file(),
+               # A crate with a binary target ships prebuilt binaries, a
+               # SHA256SUMS and a Homebrew formula on its GitHub release
+               # (#329): openbim-ifc-cli.
+               "cli": any("bin" in target["kind"] for target in package["targets"])}
     if crate in EXTRA_REGISTRIES:
         registry, manifest = EXTRA_REGISTRIES[crate]
         declared = manifest_version(ROOT / manifest)

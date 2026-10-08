@@ -21,6 +21,13 @@ versions and toolchain floors on this page are the ones the packages
 declare. The install commands take no version and resolve to the newest
 release.
 
+## Command line
+
+The `openbim-ifc` command validates, converts and inspects files without
+writing code: prebuilt binaries for Linux, macOS and Windows, an install
+script, `cargo install openbim-ifc-cli` and a Homebrew formula. See
+[Command line](/guide/cli).
+
 ## Rust
 
 Depend on the [`openbim-ifc`](/reference/crates/openbim-ifc) facade and

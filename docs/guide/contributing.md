@@ -250,6 +250,7 @@ runs once, in CI; the release does not run it again:
 | `openbim-ifc-py` | PyPI only (`openbim-ifc`): Linux, macOS and Windows wheels plus an sdist |
 | `openbim-ifc-capi` | GitHub release only: per-platform archives of its CMake package (header, static and shared library), plus `SHA256SUMS` |
 | `openbim-ifc-dotnet` | NuGet only (`OpenBim.Ifc`): one package carrying the shared library of every C library archive, built and tested on each runtime before it is pushed |
+| `openbim-ifc-cli` | crates.io (`cargo install openbim-ifc-cli`) and the GitHub release: the `openbim-ifc` binary for Linux (static musl, x86_64 and aarch64), macOS (x86_64, arm64) and Windows (x86_64), each smoke-tested and installed through `install.sh` before upload, plus `SHA256SUMS`, `install.sh` and the Homebrew formula `openbim-ifc.rb`, pushed to `openbimrs/homebrew-tap` when the `HOMEBREW_TAP_TOKEN` secret is set ([Homebrew](/guide/cli#homebrew)) |
 
 The version in `crates/openbim-ifc-wasm/npm/package.json`,
 `crates/openbim-ifc-py/pyproject.toml` or

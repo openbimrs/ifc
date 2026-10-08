@@ -429,6 +429,15 @@
       "status": "implemented",
       "version": "0.1.4"
     },
+    "openbim-ifc-cli": {
+      "description": "The openbim-ifc command: validate, convert and inspect IFC files (STEP and ifcXML) from a shell or CI.",
+      "group": "tool",
+      "registries": [],
+      "released": null,
+      "released_date": null,
+      "status": "partial",
+      "version": "0.1.0"
+    },
     "openbim-ifc-dotnet": {
       "description": "The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned C ABI.",
       "group": "binding",
@@ -478,7 +487,7 @@
   "crates": {
     "by_status": {
       "implemented": 30,
-      "partial": 2,
+      "partial": 3,
       "scaffold": 0
     },
     "groups": [
@@ -543,8 +552,15 @@
         ],
         "key": "binding",
         "title": "Language bindings"
+      },
+      {
+        "crates": [
+          "openbim-ifc-cli"
+        ],
+        "key": "tool",
+        "title": "Command-line tool"
       }
     ],
-    "total": 32
+    "total": 33
   }
 }
