@@ -28,6 +28,7 @@ use crate::slots::Slots;
 use crate::units::UnitScale;
 
 mod composite;
+mod indexed;
 mod open;
 mod sections;
 pub use open::lower_open_profile_node;
@@ -222,6 +223,8 @@ fn operator_2d(operator: &ProfileOperator) -> Transform2 {
 /// `IfcPolyline` is one ring of straight edges. `IfcCompositeCurve` chains
 /// polylines, trimmed circles and lines, and nested composites (#43); it is
 /// lowered in `composite`, which refuses gaps rather than bridging them.
+/// `IfcIndexedPolyCurve` lines and three-point arcs (#335) are lowered in
+/// `indexed`, which refuses an open curve rather than closing it.
 fn curve_to_contour(model: &Model, id: EntityId, units: &UnitScale) -> GeometryResult<Contour> {
     let entity = model.get(id).ok_or(GeometryError::MissingEntity {
         referrer: id,
@@ -231,11 +234,13 @@ fn curve_to_contour(model: &Model, id: EntityId, units: &UnitScale) -> GeometryR
     match type_name.as_str() {
         "IFCPOLYLINE" => {}
         "IFCCOMPOSITECURVE" => return composite::composite_contour(model, id, units),
+        "IFCINDEXEDPOLYCURVE" => return indexed::indexed_contour(model, id, units),
         _ => {
             return Err(GeometryError::Unsupported {
                 entity: id,
                 type_name,
-                detail: "profile boundaries lower IfcPolyline and IfcCompositeCurve only",
+                detail: "profile boundaries lower IfcPolyline, IfcCompositeCurve and \
+                         IfcIndexedPolyCurve only",
             })
         }
     }

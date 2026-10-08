@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Generate the product-lowering fixtures for #351, #353, #354, #357, #362
-and #363.
+"""Generate the product-lowering fixtures for #335, #336, #351, #353, #354,
+#357, #362 and #363.
 
-Six small files, each one edge case of `crates/ifc-geometry`'s product
+Nine small files, each one edge case of `crates/ifc-geometry`'s product
 lowering. No licence-clean public corpus isolates these cases, so they are
 generated; the output is our own data. Metres and radians, fixed GUIDs and
 time stamp: regeneration is byte-stable.
@@ -88,6 +88,36 @@ frame:
   (sqrt(65.25), 5).
 - `BRACKET`: an `IfcLocalPlacement` at (1, 0, 2) relative to
   `A1_OFFSET`'s grid placement (#363).
+
+`indexed_profile_boundaries.ifc` (IFC4) and
+`indexed_profile_boundaries_ifc4x3.ifc` (IFC4X3_ADD2, whose arc point lists
+carry a `TagList`) state arbitrary profiles bounded by `IfcIndexedPolyCurve`s
+(#335), each next to the `IfcPolyline` or `IfcCompositeCurve` that states the
+same outline. Every profile is extruded 1 m by its own proxy, named as the
+profile, so a compiled volume is the profile's area:
+
+- `INDEXED_D`: the square [-1, 1]^2 whose right edge is the half circle
+  through (1, -1), (2, 0), (1, 1): `IfcLineIndex`, `IfcArcIndex`,
+  `IfcLineIndex`, anticlockwise. Area 4 + pi/2.
+- `COMPOSITE_D`: the same as an `IfcCompositeCurve`: two polylines and an
+  `IfcTrimmedCurve` on an `IfcCircle` about (1, 0), trimmed at Cartesian
+  points.
+- `INDEXED_D_CLOCKWISE`, `COMPOSITE_D_CLOCKWISE`: the same, clockwise; the
+  composite's arc has `SenseAgreement` FALSE.
+- `INDEXED_POLYLINE`: a 2 x 1 rectangle, no `Segments`, closed by repeating
+  its first point. `POLYLINE`: the same as an `IfcPolyline`.
+- `INDEXED_WITH_VOIDS`: an `IfcArbitraryProfileDefWithVoids`: the 4 x 4
+  square about the origin as one `IfcLineIndex`, and a unit circle of two
+  `IfcArcIndex` segments as its void. Area 16 - pi.
+
+`curve_bounded_plane_composite.ifc` (IFC4, #336). Two `IfcCurveBoundedPlane`
+bodies whose boundaries are `IfcCompositeCurve`s of `IfcPolyline` segments:
+
+- `SEGMENTS_WITH_HOLE`: a 4 x 3 outer boundary of three segments, the middle
+  one authored backwards with `SameSense` FALSE, and a 1 x 1 hole of two
+  segments at (1, 1). Area 11.
+- `ONE_REVERSED_SEGMENT`: one segment, `SameSense` FALSE, wrapping a
+  clockwise closed polyline, on a plane at z = 5. Area 12.
 
 Run:  python3 tools/gen_lowering_fixtures.py test/fixtures/synthetic-lowering
 """
@@ -553,6 +583,166 @@ def cache_check():
     ])
 
 
+def spatial_root(f, label):
+    """Project, context, Body sub-context and site of a profile fixture."""
+    ctx = context(f, 1e-5)
+    body_ctx = f.create_entity(
+        "IfcGeometricRepresentationSubContext", ContextIdentifier="Body",
+        ContextType="Model", ParentContext=ctx, TargetView="MODEL_VIEW")
+    project = f.create_entity("IfcProject", GlobalId=guid(label + "/project"),
+                              Name=label, UnitsInContext=units(f),
+                              RepresentationContexts=[ctx])
+    site = f.create_entity("IfcSite", GlobalId=guid(label + "/site"), Name="Site",
+                           ObjectPlacement=local(f))
+    f.create_entity("IfcRelAggregates", GlobalId=guid(label + "/aggregates"),
+                    RelatingObject=project, RelatedObjects=[site])
+    return body_ctx, site
+
+
+def contain(f, label, site, products):
+    f.create_entity("IfcRelContainedInSpatialStructure", GlobalId=guid(label + "/contained"),
+                    RelatingStructure=site, RelatedElements=products)
+
+
+# The D shape of `tests/composite_profile_compile.rs`: the square [-1, 1]^2
+# whose right edge is a half circle of radius 1 about (1, 0). Area 4 + pi/2.
+D_POINTS = [(-1.0, -1.0), (1.0, -1.0), (2.0, 0.0), (1.0, 1.0), (-1.0, 1.0)]
+
+
+def point_list(f, points, tags=None):
+    arguments = {"CoordList": [[float(x), float(y)] for x, y in points]}
+    if tags is not None:
+        arguments["TagList"] = tags
+    return f.create_entity("IfcCartesianPointList2D", **arguments)
+
+
+def indexed(f, points, segments=None, tags=None):
+    """An `IfcIndexedPolyCurve`; `segments` are ("line" | "arc", 1-based indices)."""
+    return f.create_entity(
+        "IfcIndexedPolyCurve", Points=point_list(f, points, tags),
+        Segments=None if segments is None else [
+            f.create_entity("IfcLineIndex" if kind == "line" else "IfcArcIndex", indices)
+            for kind, indices in segments],
+        SelfIntersect=False)
+
+
+def polyline2(f, points):
+    return f.create_entity("IfcPolyline", Points=[point2(f, p) for p in points])
+
+
+def composite(f, parts):
+    """An `IfcCompositeCurve` of (parent, SameSense) segments."""
+    return f.create_entity("IfcCompositeCurve", Segments=[
+        f.create_entity("IfcCompositeCurveSegment", Transition="CONTINUOUS",
+                        SameSense=same_sense, ParentCurve=parent)
+        for parent, same_sense in parts], SelfIntersect=False)
+
+
+def d_arc(f, start, end, sense):
+    """The D's half circle about (1, 0), trimmed at Cartesian points."""
+    circle = f.create_entity(
+        "IfcCircle", Position=f.create_entity("IfcAxis2Placement2D",
+                                              Location=point2(f, (1.0, 0.0))),
+        Radius=1.0)
+    return f.create_entity("IfcTrimmedCurve", BasisCurve=circle,
+                           Trim1=[point2(f, start)], Trim2=[point2(f, end)],
+                           SenseAgreement=sense, MasterRepresentation="CARTESIAN")
+
+
+def extruded(f, profile, x):
+    """`profile` extruded 1 m up from (x, 0, 0), so the volume is its area."""
+    return f.create_entity(
+        "IfcExtrudedAreaSolid", SweptArea=profile, Position=place3(f, (x, 0.0, 0.0)),
+        ExtrudedDirection=direction(f, (0.0, 0.0, 1.0)), Depth=1.0)
+
+
+def profile_boundaries(schema):
+    """#335: arbitrary profiles bounded by `IfcIndexedPolyCurve`s, each next
+    to the `IfcPolyline` or `IfcCompositeCurve` it must lower like."""
+    label = "indexed-profile-" + schema
+    f = ifcopenshell.file(schema=schema)
+    body_ctx, site = spatial_root(f, label)
+    tags = ["A", "B", "C", "D", "E"] if schema != "IFC4" else None
+
+    def closed(curve):
+        return f.create_entity("IfcArbitraryClosedProfileDef", ProfileType="AREA",
+                               OuterCurve=curve)
+
+    d_ccw = [("line", (1, 2)), ("arc", (2, 3, 4)), ("line", (4, 5, 1))]
+    d_cw = [("line", (1, 5, 4)), ("arc", (4, 3, 2)), ("line", (2, 1))]
+    square = [(0.0, 0.0), (2.0, 0.0), (2.0, 1.0), (0.0, 1.0), (0.0, 0.0)]
+    ring = [(-2.0, -2.0), (2.0, -2.0), (2.0, 2.0), (-2.0, 2.0)]
+    circle = [(1.0, 0.0), (0.0, 1.0), (-1.0, 0.0), (0.0, -1.0)]
+    profiles = [
+        ("INDEXED_D", closed(indexed(f, D_POINTS, d_ccw, tags))),
+        ("COMPOSITE_D", closed(composite(f, [
+            (polyline2(f, D_POINTS[0:2]), True),
+            (d_arc(f, (1.0, -1.0), (1.0, 1.0), True), True),
+            (polyline2(f, D_POINTS[3:5] + D_POINTS[0:1]), True)]))),
+        ("INDEXED_D_CLOCKWISE", closed(indexed(f, D_POINTS, d_cw, tags))),
+        ("COMPOSITE_D_CLOCKWISE", closed(composite(f, [
+            (polyline2(f, [D_POINTS[0], D_POINTS[4], D_POINTS[3]]), True),
+            (d_arc(f, (1.0, 1.0), (1.0, -1.0), False), True),
+            (polyline2(f, [D_POINTS[1], D_POINTS[0]]), True)]))),
+        ("INDEXED_POLYLINE", closed(indexed(f, square))),
+        ("POLYLINE", closed(polyline2(f, square))),
+        ("INDEXED_WITH_VOIDS", f.create_entity(
+            "IfcArbitraryProfileDefWithVoids", ProfileType="AREA",
+            OuterCurve=indexed(f, ring, [("line", (1, 2, 3, 4, 1))]),
+            InnerCurves=[indexed(f, circle, [("arc", (1, 2, 3)), ("arc", (3, 4, 1))])])),
+    ]
+    products = []
+    for index, (name, profile) in enumerate(profiles):
+        profile.ProfileName = name
+        products.append(f.create_entity(
+            "IfcBuildingElementProxy", GlobalId=guid(label + "/" + name), Name=name,
+            ObjectPlacement=local(f),
+            Representation=shape(f, [rep(f, body_ctx, "Body", "SweptSolid",
+                                         [extruded(f, profile, 10.0 * index)])])))
+    contain(f, label, site, products)
+    return f
+
+
+def curve_bounded_plane_composite():
+    """#336: `IfcCurveBoundedPlane`s bounded by composites of polylines."""
+    label = "curve-bounded-composite"
+    f = ifcopenshell.file(schema="IFC4")
+    body_ctx, site = spatial_root(f, label)
+
+    def plane(z):
+        return f.create_entity("IfcPlane", Position=place3(f, (0.0, 0.0, z)))
+
+    # 4 x 3 with a 1 x 1 hole: area 11. The middle outer segment is authored
+    # backwards and read with SameSense FALSE.
+    outer = composite(f, [
+        (polyline2(f, [(0.0, 0.0), (4.0, 0.0), (4.0, 1.0)]), True),
+        (polyline2(f, [(4.0, 3.0), (4.0, 1.0)]), False),
+        (polyline2(f, [(4.0, 3.0), (0.0, 3.0), (0.0, 0.0)]), True)])
+    hole = composite(f, [
+        (polyline2(f, [(1.0, 1.0), (2.0, 1.0), (2.0, 2.0)]), True),
+        (polyline2(f, [(2.0, 2.0), (1.0, 2.0), (1.0, 1.0)]), True)])
+    # One segment, SameSense FALSE, wrapping a clockwise closed polyline:
+    # read backwards it is the anticlockwise 4 x 3 rectangle, area 12.
+    reversed_ring = composite(f, [(polyline2(
+        f, [(0.0, 0.0), (0.0, 3.0), (4.0, 3.0), (4.0, 0.0), (0.0, 0.0)]), False)])
+    surfaces = [
+        ("SEGMENTS_WITH_HOLE", f.create_entity(
+            "IfcCurveBoundedPlane", BasisSurface=plane(0.0), OuterBoundary=outer,
+            InnerBoundaries=[hole])),
+        ("ONE_REVERSED_SEGMENT", f.create_entity(
+            "IfcCurveBoundedPlane", BasisSurface=plane(5.0),
+            OuterBoundary=reversed_ring, InnerBoundaries=[])),
+    ]
+    products = [
+        f.create_entity(
+            "IfcBuildingElementProxy", GlobalId=guid(label + "/" + name), Name=name,
+            ObjectPlacement=local(f),
+            Representation=shape(f, [rep(f, body_ctx, "Body", "Surface3D", [surface])]))
+        for name, surface in surfaces]
+    contain(f, label, site, products)
+    return f
+
+
 FIXTURES = {
     "reference_view_openings.ifc": reference_view,
     "linear_placement_uncached.ifc": uncached,
@@ -560,6 +750,9 @@ FIXTURES = {
     "linear_placement_alignment_frame.ifc": alignment_frame,
     "grid_placement.ifc": lambda: grid_file("IFC4"),
     "grid_placement_ifc4x3.ifc": lambda: grid_file("IFC4X3_ADD2"),
+    "indexed_profile_boundaries.ifc": lambda: profile_boundaries("IFC4"),
+    "indexed_profile_boundaries_ifc4x3.ifc": lambda: profile_boundaries("IFC4X3_ADD2"),
+    "curve_bounded_plane_composite.ifc": curve_bounded_plane_composite,
 }
 
 
