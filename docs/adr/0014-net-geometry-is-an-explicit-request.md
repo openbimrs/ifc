@@ -114,12 +114,34 @@ This is the options argument the alternatives table rejected for the gross
 entry point; here it selects between two readings of one return contract
 that both callers already handle, not between gross and net.
 
+## Amendment (2026-10-08): subtract in the host's frame (#388)
+
+Lowering both operands in world coordinates rounded an opening flush with
+its wall off the wall's faces by up to an ulp of the site's survey
+coordinates (5.6e6 m), and the reference kernel refused the result as
+touching itself along the opening's edges: 28 walls in one georeferenced
+model (axioval/engine#303).
+
+**The amended rule:** the net body is lowered in the host's frame. The
+host's Body is lowered without its world placement, each opening's Body by
+its placement relative to the host's, composed once along the
+`IfcLocalPlacement` chain the two share from their first common placement
+down, and the `Difference` nodes run there. One `Instance` with the host's
+world transform sits above `gross` and each subtraction's `body` and
+`result`, so the reported nodes stay in world coordinates. When an opening
+shares no such chain with its host, or its Body's context frame differs
+from the host's, the whole net body is lowered in world coordinates as
+before rather than guessed.
+
 ## Relation to existing code
 
 - `ifc-geometry/src/input/openings.rs` — kernel-free relation read; slot
   constants asserted in `tests/context_slots.rs` (ADR 0008 pattern).
 - `ifc-geometry/src/lower/net.rs` — graph construction and body splitting.
+- `ifc-geometry/src/lower/net/frame.rs` — the host's frame and each
+  opening's placement relative to it (#388).
 - `ifc-geometry/src/lower/session.rs` — `NodeShape` side table recorded at push.
 - `ifc-geometry/src/compile.rs` — net entry points and refusal attribution.
 - Tests: `tests/opening_subtraction_compile.rs` (analytic volumes),
-  `tests/opening_attribution.rs` (backend refusals named precisely).
+  `tests/opening_attribution.rs` (backend refusals named precisely),
+  `tests/net_host_frame.rs` (flush openings under georeferenced sites).
