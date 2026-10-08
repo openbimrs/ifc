@@ -21,6 +21,10 @@ use ifc_geometry::{
 };
 use ifc_model::{EntityId, Model};
 
+mod mesh;
+#[cfg(feature = "mesh")]
+pub use mesh::{product_meshes, ProductMesh};
+
 /// One product's world placement and selected Body representation.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]

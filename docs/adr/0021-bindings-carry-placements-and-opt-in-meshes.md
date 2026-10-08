@@ -133,7 +133,7 @@ four host APIs. The follow-up is
 
 ## Relation to existing code
 
-- `crates/openbim-ifc/src/product_geometry.rs`, `product_mesh.rs`; the
+- `crates/openbim-ifc/src/product_geometry.rs` and its `mesh` submodule; the
   facade feature `mesh`.
 - `crates/ifc-geometry/src/compile.rs`: the `Tolerance` and `TriMesh`
   re-exports.
