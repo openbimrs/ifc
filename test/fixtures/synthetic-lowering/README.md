@@ -17,3 +17,12 @@ python3 tools/gen_lowering_fixtures.py test/fixtures/synthetic-lowering
 | `linear_placement_alignment_frame.ifc` | IFC4X3_ADD2 | Blocks placed along an `IfcAlignment` placed off identity, with and without `PlacementRelTo` and a cached `CartesianPosition`, and brackets placed relative to two of those linear placements (#357, #363) | `crates/ifc-geometry/tests/placement_frames.rs` |
 | `grid_placement.ifc` | IFC4 | Blocks on `IfcGridPlacement`s: offsets, an `IfcDirection` and an intersection as `PlacementRefDirection`, a reversed axis, a curved axis, and a bracket placed relative to a grid placement (#362, #363) | `crates/ifc-geometry/tests/grid_placement.rs` |
 | `grid_placement_ifc4x3.ifc` | IFC4X3_ADD2 | The same grid in the IFC4X3 layout, whose `IfcGridPlacement` states `PlacementRelTo` (#362) | `crates/ifc-geometry/tests/grid_placement.rs` |
+| `indexed_profile_boundaries.ifc` | IFC4 | Arbitrary profiles bounded by `IfcIndexedPolyCurve`s, each beside the `IfcPolyline` or `IfcCompositeCurve` stating the same outline: a line-arc-line D shape anticlockwise and clockwise, a curve without `Segments`, and a void of two `IfcArcIndex` arcs (#335) | `crates/ifc-geometry/tests/indexed_profile_boundary.rs` |
+| `indexed_profile_boundaries_ifc4x3.ifc` | IFC4X3_ADD2 | The same profiles, the D shapes' point lists carrying a `TagList` (#335) | `crates/ifc-geometry/tests/indexed_profile_boundary.rs` |
+| `curve_bounded_plane_composite.ifc` | IFC4 | `IfcCurveBoundedPlane`s bounded by `IfcCompositeCurve`s of `IfcPolyline` segments: three outer segments, one with `SameSense` FALSE, around a two-segment hole, and one reversed segment wrapping a clockwise ring (#336) | `crates/ifc-geometry/tests/curve_bounded_composite_compile.rs` |
+
+The #335 refusals (an open curve with and without `Segments`, a collinear
+arc, an arc with coincident points, `SelfIntersect` TRUE, non-consecutive
+segments, a 3D point list and an open inner curve) each edit one record of
+`indexed_profile_boundaries.ifc` in memory: every item of a committed fixture
+must lower (`crates/ifc-geometry/tests/lower_dispatch_corpus.rs`).

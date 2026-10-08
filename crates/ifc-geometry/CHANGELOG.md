@@ -12,6 +12,43 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+Semver: profile boundaries this crate refused as `Unsupported` now lower,
+and a malformed `IfcIndexedPolyCurve` boundary is refused as `Degenerate`
+instead of `Unsupported`. No public item is added or removed, but behaviour
+changes, so the next release is a minor one (0.12.0).
+
+### Added
+
+- `IfcIndexedPolyCurve` as the `OuterCurve` and `InnerCurves` of
+  `IfcArbitraryClosedProfileDef` and `IfcArbitraryProfileDefWithVoids`
+  (#335), per IFC4 ADD2 TC1 and IFC4X3 ADD2: an `IfcLineIndex` becomes one
+  straight `Line2` edge per consecutive index pair, an `IfcArcIndex` the
+  exact `Circle2` through its three points with an angle domain, and a curve
+  without `Segments` one straight edge per consecutive point pair. Nothing
+  is chorded. The contour is the one the `IfcCompositeCurve` reader builds
+  for the same outline (a trimmed `IfcCircle` for the arc), so both lower to
+  the same `Profile`. Refused as `GeometryError::Degenerate`, naming the
+  curve: an open curve (closure by index with `Segments`, by coincident
+  first and last point within 1e-5 m without), segments that break WHERE
+  rule `Consecutive`, an arc whose points are collinear or coincident
+  within 1e-5 m, `SelfIntersect` TRUE, and a 3D point list. IFC says a
+  collinear arc "shall be treated as a polyline segment"; that fallback is
+  refused rather than taken. Other boundary curve families are still
+  `Unsupported`.
+
+### Fixed
+
+- `IfcCurveBoundedPlane` boundaries given as an `IfcCompositeCurve` of
+  polyline segments compile with `compile-reference-backend` (#336). They
+  lower unchanged, as a `CurveRelation::Composite` whose segments keep
+  their `SameSense`; `axiolid-mesh-compile` 0.3.12 refused that relation
+  ("is not a curve node"), and 0.3.13, the floor this crate already
+  requires, resolves `Composite` and `Trimmed` boundaries (axiolid/kernel#255).
+  No merge into one polyline is done here, so the segment structure stays
+  in the neutral graph. A test now pins it: three segments with one
+  reversed around a two-segment hole, and one reversed segment wrapping a
+  clockwise ring, compile to their exact areas.
+
 ## [0.11.0] - 2026-10-08
 
 Placement resolution covers every `IfcObjectPlacement` kind: linear

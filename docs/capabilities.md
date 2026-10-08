@@ -453,6 +453,15 @@ and any other boundary curve family is refused by name.
 therefore still refused when an extrusion or other area-based solid requests
 `lower_profile`.
 
+The boundary curves of `IfcArbitraryClosedProfileDef` and
+`IfcArbitraryProfileDefWithVoids` lower from `IfcPolyline`,
+`IfcCompositeCurve` (polylines, trimmed circles and lines, nested
+composites) and `IfcIndexedPolyCurve` (line and exact three-point arc
+segments, or one polyline without `Segments`). An open boundary, a
+collinear or coincident arc and `SelfIntersect` TRUE are refused as
+degenerate, never closed or chorded; other curve families are refused as
+unsupported.
+
 ### Curves and placement
 
 | Capability | Status | Module |
