@@ -15,6 +15,17 @@
 //! - An `IfcArcIndex` is "the start point of the circular arc, ... a point on
 //!   arc, ... the end point": the exact circle through the three points, as
 //!   one `Circle2` segment with an angle domain. Nothing is chorded here.
+//! - An `IfcArcIndex` whose three distinct points are collinear is, by the
+//!   schema's own words, a polyline: "The three points shall not be
+//!   co-linear. In case that this informal proposition is not maintained,
+//!   the arc segment shall be treated as a polyline segment." It lowers as
+//!   the straight path start -> mid -> end: one edge when the middle point
+//!   lies between the others, two when it does not.
+//!
+//! Coincidence and collinearity are judged "after taking the Precision
+//! factor into account, given by the applicable
+//! IfcGeometricRepresentationContext": the model's declared `Precision`
+//! (`constraint::tolerance`), `1.E-5` project units when none is declared.
 //!
 //! The edges are written exactly as the `IfcCompositeCurve` reader writes the
 //! same boundary (`super::composite`), so an indexed boundary and its
@@ -30,11 +41,8 @@
 //!   identical". A profile boundary "has to be a closed curve", so closing
 //!   one would add an edge the file never authored.
 //! - Segments that are not consecutive (WHERE rule `Consecutive`).
-//! - A degenerate arc: three collinear points ("The three points shall not
-//!   be co-linear"), or two of them coincident, within [`PRECISION`]. The
-//!   schema text goes on to say such an arc "shall be treated as a polyline
-//!   segment"; that fallback is not taken, because a collinear arc is a
-//!   broken export whose intent is unknown (#335).
+//! - An arc with two coincident points: no circle and no polyline segment is
+//!   defined, and the schema states no fallback for it.
 //! - `SelfIntersect` TRUE. The flag is "for information only", but it states
 //!   that the curve crosses itself, and "The OuterCurve shall not intersect".
 //! - A 3D point list (`OuterCurve.Dim = 2`).
@@ -46,18 +54,11 @@ use axiolid_curve::{Circle2, Curve2, Line2};
 use axiolid_profile::{Contour, ProfileSegment};
 use ifc_model::{EntityId, Model};
 
+use crate::constraint::tolerance::{model_precision_metres, points_coincide};
 use crate::curve::{IndexedPolyCurve, PolySegment};
 use crate::error::{GeometryError, GeometryResult};
 use crate::resource::point::CartesianPointList;
 use crate::units::UnitScale;
-
-/// How close two points may be and still be one point, in metres.
-///
-/// IFC's default model precision, `NVL(ParentContext.Precision, 1.E-5)`,
-/// and the gap tolerance of the composite reader. It applies to the
-/// coincidence and collinearity of an arc's points and to the closure of a
-/// curve without `Segments`; a curve with `Segments` closes by index.
-pub(crate) const PRECISION: f64 = 1e-5;
 
 const TYPE_NAME: &str = "IFCINDEXEDPOLYCURVE";
 
@@ -82,6 +83,7 @@ pub(super) fn indexed_contour(
     let points = points_2d(model, &view, units)?;
     let mut boundary = Boundary {
         id,
+        precision: model_precision_metres(model, units)?,
         segments: Vec::new(),
     };
 
@@ -121,14 +123,16 @@ pub(super) fn indexed_contour(
         let (Some(first), Some(last)) = (points.first(), points.last()) else {
             return Err(refuse(id, "the point list is empty"));
         };
-        let gap = first.distance(*last);
-        // A NaN gap (from a non-finite coordinate) must refuse, not pass.
-        if gap.is_nan() || gap > PRECISION || points.len() < 2 {
+        if points.len() < 2
+            || !points_coincide(boundary.precision, first.to_array(), last.to_array())
+        {
             return Err(refuse(
                 id,
                 format!(
-                    "the curve is open: its first and last points are {gap} m apart, over \
-                     the {PRECISION} m precision, and a profile boundary must be closed"
+                    "the curve is open: its first and last points are {} m apart, over the \
+                     model's {} m precision, and a profile boundary must be closed",
+                    first.distance(*last),
+                    boundary.precision
                 ),
             ));
         }
@@ -177,6 +181,8 @@ fn points_2d(
 /// Oriented contour segments, accumulated in traversal order.
 struct Boundary {
     id: EntityId,
+    /// The model's `Precision`, in metres.
+    precision: f64,
     segments: Vec<ProfileSegment>,
 }
 
@@ -202,7 +208,8 @@ impl Boundary {
         }
     }
 
-    /// The exact circular arc from `start` through `mid` to `end`.
+    /// The exact circular arc from `start` through `mid` to `end`, or the
+    /// polyline through them when they are collinear.
     ///
     /// The circle's frame is the profile's own axes about the circumcentre,
     /// so an angle parameter reads exactly as the composite reader reads a
@@ -211,10 +218,9 @@ impl Boundary {
     /// with it (anticlockwise) or against it (clockwise).
     fn arc(&mut self, start: Point2, mid: Point2, end: Point2) -> GeometryResult<()> {
         let chord = end - start;
-        if start.distance(mid) <= PRECISION
-            || mid.distance(end) <= PRECISION
-            || chord.length() <= PRECISION
-        {
+        let coincide =
+            |a: Point2, b: Point2| points_coincide(self.precision, a.to_array(), b.to_array());
+        if coincide(start, mid) || coincide(mid, end) || coincide(start, end) {
             return Err(refuse(
                 self.id,
                 "an IfcArcIndex has two coincident points, so no circle is defined",
@@ -225,13 +231,19 @@ impl Boundary {
         // The distance of the on-arc point from the chord: the arc's sagitta
         // seen from its middle point.
         let sagitta = turn.abs() / chord.length();
-        // A NaN sagitta (from overflow) must refuse, not pass.
-        if sagitta.is_nan() || sagitta <= PRECISION {
-            return Err(refuse(
-                self.id,
-                "an IfcArcIndex has three collinear points (the three points shall not be \
-                 co-linear), so no circle is defined",
-            ));
+        if sagitta.is_nan() {
+            return Err(refuse(self.id, "an IfcArcIndex's points are not finite"));
+        }
+        if sagitta <= self.precision {
+            // "In case that this informal proposition is not maintained, the
+            // arc segment shall be treated as a polyline segment."
+            let along = u.dot(chord) / chord.length_squared();
+            if (0.0..=1.0).contains(&along) {
+                self.lines(&[start, end]);
+            } else {
+                self.lines(&[start, mid, end]);
+            }
+            return Ok(());
         }
         let denominator = 2.0 * turn;
         let centre = start

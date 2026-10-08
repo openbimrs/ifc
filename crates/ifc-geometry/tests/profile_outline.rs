@@ -14,11 +14,13 @@ use ifc_step::StepCodec;
 /// - `#30`: a 200 mm wall mitred at 45 degrees, closed by repeating `#10`.
 /// - `#31`: the same outline closed by a distinct point at `#10`'s place.
 /// - `#32`: a 1000 x 600 plate with a 200 x 100 hole: an indexed outer curve
-///   without `Segments`, a polyline hole.
+///   without `Segments`, closed by repeating its first point, a polyline
+///   hole.
 /// - `#33`: an indexed outer curve of two consecutive `IfcLineIndex` runs
 ///   ending on its first index.
 /// - `#34`..`#39`: refusals (arc segment, non-consecutive runs, a circle, a
 ///   rectangle profile, a 3D point, two distinct vertices).
+/// - `#45`, `#46`: open indexed curves, without and with `Segments` (#335).
 const FILE: &str = "ISO-10303-21;
 HEADER;
 FILE_DESCRIPTION((''),'2;1');
@@ -43,7 +45,12 @@ DATA;
 #21=IFCPOLYLINE((#10,#11,#12,#13,#14));
 #22=IFCPOLYLINE((#15,#16,#17,#18,#15));
 #23=IFCCARTESIANPOINTLIST2D(((0.,0.),(1000.,0.),(1000.,600.),(0.,600.)));
-#24=IFCINDEXEDPOLYCURVE(#23,$,$);
+#24=IFCINDEXEDPOLYCURVE(#42,$,$);
+#42=IFCCARTESIANPOINTLIST2D(((0.,0.),(1000.,0.),(1000.,600.),(0.,600.),(0.,0.)));
+#43=IFCINDEXEDPOLYCURVE(#23,$,$);
+#44=IFCINDEXEDPOLYCURVE(#23,(IFCLINEINDEX((1,2,3,4))),$);
+#45=IFCARBITRARYCLOSEDPROFILEDEF(.AREA.,$,#43);
+#46=IFCARBITRARYCLOSEDPROFILEDEF(.AREA.,$,#44);
 #25=IFCINDEXEDPOLYCURVE(#23,(IFCLINEINDEX((1,2,3)),IFCLINEINDEX((3,4,1))),$);
 #26=IFCINDEXEDPOLYCURVE(#23,(IFCLINEINDEX((1,2)),IFCARCINDEX((2,3,4)),IFCLINEINDEX((4,1))),$);
 #27=IFCINDEXEDPOLYCURVE(#23,(IFCLINEINDEX((1,2)),IFCLINEINDEX((3,4))),$);
@@ -205,4 +212,18 @@ fn fewer_than_three_distinct_vertices_are_refused() {
         "{error:?}"
     );
     assert_eq!(refused_entity(&error), Some(EntityId(41)));
+}
+
+/// An open indexed curve is refused, as the profile lowering refuses it,
+/// rather than closed with an edge the file did not author (#335).
+#[test]
+fn an_open_indexed_curve_is_refused_not_closed() {
+    for (profile, curve) in [(45, 43), (46, 44)] {
+        let error = outline(profile).expect_err("an open curve bounds no area");
+        assert!(
+            matches!(&error, GeometryError::Degenerate { detail, .. } if detail.contains("open")),
+            "{error:?}"
+        );
+        assert_eq!(refused_entity(&error), Some(EntityId(curve)));
+    }
 }

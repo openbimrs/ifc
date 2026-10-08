@@ -19,10 +19,19 @@
 //! repeated. IFC closes a polyline by repeating its first point, and a closed
 //! indexed curve by ending on its first index; both are dropped here, as the
 //! profile lowering drops them, so the ring is the loop the kernel receives.
+//!
+//! An `IfcIndexedPolyCurve` must be closed in the schema's sense, as the
+//! profile lowering requires (#335): with `Segments`, the last index of the
+//! last segment is the first index of the first; without, the first and last
+//! points coincide within the model's `Precision`. An open one is
+//! [`GeometryError::Degenerate`], never closed with an edge the file did not
+//! author. (An `IfcPolyline` ring keeps its implicit closing edge, as the
+//! lowering gives it.)
 
 use ifc_model::{EntityId, Model};
 
 use super::{describe_profile, ProfileParameters};
+use crate::constraint::tolerance::{model_precision_metres, points_coincide};
 use crate::curve::{IndexedPolyCurve, PolySegment, Polyline};
 use crate::error::{GeometryError, GeometryResult};
 use crate::resource::point::CartesianPointList;
@@ -61,8 +70,9 @@ pub struct ProfileOutline {
 ///   [`GeometryError::Unsupported`];
 /// - an `IfcArcIndex` segment, as [`GeometryError::Unsupported`]: the
 ///   outline states straight edges only;
-/// - a 3D point, a ring of fewer than three distinct vertices, or indexed
-///   segments that do not join, as [`GeometryError::Degenerate`];
+/// - a 3D point, a ring of fewer than three distinct vertices, indexed
+///   segments that do not join, or an open `IfcIndexedPolyCurve`, as
+///   [`GeometryError::Degenerate`];
 /// - whatever [`describe_profile`] refuses for the profile itself.
 ///
 /// Kernel-free.
@@ -106,7 +116,31 @@ fn ring(model: &Model, units: &UnitScale, curve: EntityId) -> GeometryResult<Vec
     let type_name = entity.type_name.to_ascii_uppercase();
     let raw = match type_name.as_str() {
         "IFCPOLYLINE" => polyline(model, curve, entity)?,
-        "IFCINDEXEDPOLYCURVE" => indexed(model, curve, entity)?,
+        "IFCINDEXEDPOLYCURVE" => {
+            let (raw, closed) = indexed(model, curve, entity)?;
+            let closed = match closed {
+                Some(closed) => closed,
+                None => {
+                    let precision = model_precision_metres(model, units)?;
+                    let metres = |p: &[f64; 2]| [units.length(p[0]), units.length(p[1])];
+                    match (raw.first(), raw.last()) {
+                        (Some(first), Some(last)) if raw.len() >= 2 => {
+                            points_coincide(precision, metres(first), metres(last))
+                        }
+                        _ => false,
+                    }
+                }
+            };
+            if !closed {
+                return Err(GeometryError::Degenerate {
+                    entity: curve,
+                    type_name,
+                    detail: "the indexed curve is open, and a profile boundary must be closed"
+                        .to_owned(),
+                });
+            }
+            raw
+        }
         _ => {
             return Err(GeometryError::Unsupported {
                 entity: curve,
@@ -121,7 +155,13 @@ fn ring(model: &Model, units: &UnitScale, curve: EntityId) -> GeometryResult<Vec
         .map(|[x, y]| [units.length(x), units.length(y)])
         .collect();
     if let (Some(first), Some(last)) = (vertices.first(), vertices.last()) {
-        if vertices.len() >= 2 && distance(*first, *last) < SAME_VERTEX {
+        let same = if type_name == "IFCINDEXEDPOLYCURVE" {
+            // Closed, checked above: the last vertex is the first.
+            true
+        } else {
+            distance(*first, *last) < SAME_VERTEX
+        };
+        if vertices.len() >= 2 && same {
             vertices.pop();
         }
     }
@@ -162,7 +202,8 @@ fn polyline(
         .collect()
 }
 
-/// A line-only `IfcIndexedPolyCurve`'s path, in file units.
+/// A line-only `IfcIndexedPolyCurve`'s path, in file units, and whether it
+/// closes by index (`None` without `Segments`, where closure is by point).
 ///
 /// Without `Segments` the path is every point in list order. With them, each
 /// `IfcLineIndex` run must start where the previous one ended
@@ -171,7 +212,7 @@ fn indexed(
     model: &Model,
     curve: EntityId,
     entity: &ifc_model::Entity,
-) -> GeometryResult<Vec<[f64; 2]>> {
+) -> GeometryResult<(Vec<[f64; 2]>, Option<bool>)> {
     let view = IndexedPolyCurve::new(curve, entity);
     let list = match view.points(model)? {
         CartesianPointList::TwoD(list) => list.coordinates()?,
@@ -185,7 +226,7 @@ fn indexed(
         }
     };
     if !view.has_explicit_segments() {
-        return Ok(list);
+        return Ok((list, None));
     }
     let mut indices: Vec<usize> = Vec::new();
     for segment in view.segments(list.len())? {
@@ -211,7 +252,11 @@ fn indexed(
             }
         }
     }
-    Ok(indices.into_iter().map(|index| list[index]).collect())
+    let closed = indices.len() >= 2 && indices.first() == indices.last();
+    Ok((
+        indices.into_iter().map(|index| list[index]).collect(),
+        Some(closed),
+    ))
 }
 
 fn distance(a: [f64; 2], b: [f64; 2]) -> f64 {

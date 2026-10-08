@@ -21,8 +21,8 @@ python3 tools/gen_lowering_fixtures.py test/fixtures/synthetic-lowering
 | `indexed_profile_boundaries_ifc4x3.ifc` | IFC4X3_ADD2 | The same profiles, the D shapes' point lists carrying a `TagList` (#335) | `crates/ifc-geometry/tests/indexed_profile_boundary.rs` |
 | `curve_bounded_plane_composite.ifc` | IFC4 | `IfcCurveBoundedPlane`s bounded by `IfcCompositeCurve`s of `IfcPolyline` segments: three outer segments, one with `SameSense` FALSE, around a two-segment hole, and one reversed segment wrapping a clockwise ring (#336) | `crates/ifc-geometry/tests/curve_bounded_composite_compile.rs` |
 
-The #335 refusals (an open curve with and without `Segments`, a collinear
-arc, an arc with coincident points, `SelfIntersect` TRUE, non-consecutive
-segments, a 3D point list and an open inner curve) each edit one record of
-`indexed_profile_boundaries.ifc` in memory: every item of a committed fixture
+The #335 refusals (an open curve with and without `Segments`, an arc with
+coincident points, `SelfIntersect` TRUE, non-consecutive segments, a 3D
+point list and an open inner curve), and the collinear-arc and precision
+cases, each edit one record of `indexed_profile_boundaries.ifc` in memory: every item of a committed fixture
 must lower (`crates/ifc-geometry/tests/lower_dispatch_corpus.rs`).

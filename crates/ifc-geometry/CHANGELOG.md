@@ -13,8 +13,9 @@ everything released before per-crate changelogs began.
 ## [Unreleased]
 
 Semver: profile boundaries this crate refused as `Unsupported` now lower,
-and a malformed `IfcIndexedPolyCurve` boundary is refused as `Degenerate`
-instead of `Unsupported`. No public item is added or removed, but behaviour
+a malformed `IfcIndexedPolyCurve` boundary is refused as `Degenerate`
+instead of `Unsupported`, and `profile_outline` refuses open indexed
+curves it used to close. No public item is added or removed, but behaviour
 changes, so the next release is a minor one (0.12.0).
 
 ### Added
@@ -27,14 +28,27 @@ changes, so the next release is a minor one (0.12.0).
   without `Segments` one straight edge per consecutive point pair. Nothing
   is chorded. The contour is the one the `IfcCompositeCurve` reader builds
   for the same outline (a trimmed `IfcCircle` for the arc), so both lower to
-  the same `Profile`. Refused as `GeometryError::Degenerate`, naming the
-  curve: an open curve (closure by index with `Segments`, by coincident
-  first and last point within 1e-5 m without), segments that break WHERE
-  rule `Consecutive`, an arc whose points are collinear or coincident
-  within 1e-5 m, `SelfIntersect` TRUE, and a 3D point list. IFC says a
-  collinear arc "shall be treated as a polyline segment"; that fallback is
-  refused rather than taken. Other boundary curve families are still
-  `Unsupported`.
+  the same `Profile`. An `IfcArcIndex` whose three distinct points are
+  collinear lowers as the polyline start -> mid -> end (one edge when the
+  middle point lies between the others, two when not), as the schema
+  says: "the arc segment shall be treated as a polyline segment".
+  Coincidence and collinearity are judged within the model's declared
+  `Precision` (`1.E-5` project units when none is declared), "after taking
+  the Precision factor into account". Refused as
+  `GeometryError::Degenerate`, naming the curve: an open curve (closure by
+  index with `Segments`, by first and last point coinciding within the
+  `Precision` without), segments that break WHERE rule `Consecutive`, an arc
+  with two coincident points, `SelfIntersect` TRUE, and a 3D point list.
+  Other boundary curve families are still `Unsupported`.
+
+### Changed
+
+- `profile_outline` refuses an open `IfcIndexedPolyCurve` boundary as
+  `GeometryError::Degenerate`, as the profile lowering does (#335). It
+  closed one implicitly before, reporting a ring whose closing edge the file
+  never authored. Closure is the schema's: by index with `Segments`, by the
+  first and last point coinciding within the model's `Precision` without.
+  `IfcPolyline` rings are unchanged.
 
 ### Fixed
 

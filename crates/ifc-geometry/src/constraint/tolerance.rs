@@ -55,6 +55,25 @@ pub(crate) fn model_precision(model: &ifc_model::Model) -> GeometryResult<f64> {
     Ok(coarsest.unwrap_or(IFC_DEFAULT_PRECISION))
 }
 
+/// [`model_precision`] in metres: the tolerance under which two points of
+/// this model are "still assumed to be identical".
+pub(crate) fn model_precision_metres(
+    model: &ifc_model::Model,
+    units: &crate::units::UnitScale,
+) -> GeometryResult<f64> {
+    Ok(units.length(model_precision(model)?))
+}
+
+/// Do two 2D points, in metres, coincide within `precision`?
+///
+/// The tolerance is [`point_tolerance`]'s, so it never falls below
+/// floating-point rounding. A non-finite distance never coincides.
+pub(crate) fn points_coincide(precision: f64, a: [f64; 2], b: [f64; 2]) -> bool {
+    let (a, b) = ([a[0], a[1], 0.0], [b[0], b[1], 0.0]);
+    let gap = distance(a, b);
+    gap.is_finite() && gap <= point_tolerance(precision, a, b)
+}
+
 /// The tolerance two points at `a` and `b` are compared at: `precision`,
 /// floored at floating-point rounding (1e-9 relative to their magnitude,
 /// as the alignment seams use).

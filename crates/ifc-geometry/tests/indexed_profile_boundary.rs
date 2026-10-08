@@ -202,17 +202,89 @@ fn an_open_indexed_curve_is_refused_not_closed() {
     assert!(detail.contains("open"), "{detail}");
 }
 
-/// The schema would draw a collinear arc as a polyline; #335 refuses it.
-#[test]
-fn a_collinear_arc_is_refused_not_drawn_as_a_polyline() {
-    let model = edited(D_POINTS, &D_POINTS.replace("(2.,0.)", "(1.,0.)"));
-    let (entity, detail) = refusal(&model, "INDEXED_D");
-    assert_eq!(entity, EntityId(15));
-    assert!(detail.contains("collinear"), "{detail}");
+/// The straight edges of a lowered outer contour, as `[origin, end]` pairs;
+/// panics on a curved edge.
+fn straight_edges(profile: &ContourProfile) -> Vec<[[f64; 2]; 2]> {
+    profile
+        .outer
+        .segments
+        .iter()
+        .map(|segment| match &segment.curve {
+            Curve2::Line(line) => [
+                line.origin.to_array(),
+                (line.origin + line.direction).to_array(),
+            ],
+            other => panic!("expected only straight edges, got {other:?}"),
+        })
+        .collect()
+}
 
-    // Within the 1e-5 m precision of the chord is collinear too.
-    let model = edited(D_POINTS, &D_POINTS.replace("(2.,0.)", "(1.000001,0.)"));
-    assert!(refusal(&model, "INDEXED_D").1.contains("collinear"));
+/// "In case that this informal proposition is not maintained, the arc
+/// segment shall be treated as a polyline segment": a collinear arc lowers
+/// as the straight path start -> mid -> end.
+#[test]
+fn a_collinear_arc_is_treated_as_a_polyline_segment() {
+    // The middle point between the others: one edge, (1,-1) -> (1,1).
+    let model = edited(D_POINTS, &D_POINTS.replace("(2.,0.)", "(1.,0.)"));
+    assert_eq!(
+        straight_edges(&contour(&model, "INDEXED_D")),
+        [
+            [[-1.0, -1.0], [1.0, -1.0]],
+            [[1.0, -1.0], [1.0, 1.0]],
+            [[1.0, 1.0], [-1.0, 1.0]],
+            [[-1.0, 1.0], [-1.0, -1.0]],
+        ]
+    );
+
+    // The middle point beyond the end: two edges, out and back.
+    let model = edited(D_POINTS, &D_POINTS.replace("(2.,0.)", "(1.,2.)"));
+    assert_eq!(
+        straight_edges(&contour(&model, "INDEXED_D"))[1..3],
+        [[[1.0, -1.0], [1.0, 2.0]], [[1.0, 2.0], [1.0, 1.0]]]
+    );
+}
+
+/// Collinearity is judged "after taking the Precision factor into
+/// account": the context's 1e-5 m makes a 1e-6 m bulge straight, and a
+/// declared 1e-7 m keeps it an arc.
+#[test]
+fn collinearity_uses_the_model_precision() {
+    let bulge = D_POINTS.replace("(2.,0.)", "(1.000001,0.)");
+    let model = edited(D_POINTS, &bulge);
+    assert!(straight_edges(&contour(&model, "INDEXED_D")).len() == 4);
+
+    let context = "#3=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.0000000000000001E-05,#2,$);";
+    let original = text(IFC4);
+    assert_eq!(original.matches(context).count(), 1);
+    let fine = parse(&original.replace(D_POINTS, &bulge).replace(
+        context,
+        &context.replace("1.0000000000000001E-05", "1.E-07"),
+    ));
+    let arcs = contour(&fine, "INDEXED_D")
+        .outer
+        .segments
+        .iter()
+        .filter(|segment| matches!(segment.curve, Curve2::Circle(_)))
+        .count();
+    assert_eq!(arcs, 1, "a 1e-6 m bulge is an arc under a 1e-7 m precision");
+}
+
+/// Closure without `Segments` is judged within the model's precision too.
+#[test]
+fn closure_without_segments_uses_the_model_precision() {
+    let list = "#56=IFCCARTESIANPOINTLIST2D(((0.,0.),(2.,0.),(2.,1.),(0.,1.),(0.,0.)));";
+    let near = list.replace("(0.,0.)));", "(0.000001,0.)));");
+    let model = edited(list, &near);
+    assert_eq!(
+        contour(&model, "INDEXED_POLYLINE").outer.len(),
+        4,
+        "1e-6 m closes"
+    );
+
+    let model = edited(list, &list.replace("(0.,0.)));", "(0.0001,0.)));"));
+    let (entity, detail) = refusal(&model, "INDEXED_POLYLINE");
+    assert_eq!(entity, EntityId(57));
+    assert!(detail.contains("open"), "1e-4 m is open: {detail}");
 }
 
 #[test]
