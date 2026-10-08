@@ -30,6 +30,24 @@
       "types": "./web/openbim_ifc_wasm.d.ts",
       "default": "./web/openbim_ifc_wasm.js"
     },
+    "./mesh": {
+      "node": {
+        "types": "./mesh/openbim_ifc_wasm.d.ts",
+        "default": "./mesh/openbim_ifc_wasm.js"
+      },
+      "default": {
+        "types": "./mesh/bundler/openbim_ifc_wasm.d.ts",
+        "default": "./mesh/bundler/openbim_ifc_wasm.js"
+      }
+    },
+    "./mesh/bundler": {
+      "types": "./mesh/bundler/openbim_ifc_wasm.d.ts",
+      "default": "./mesh/bundler/openbim_ifc_wasm.js"
+    },
+    "./mesh/web": {
+      "types": "./mesh/web/openbim_ifc_wasm.d.ts",
+      "default": "./mesh/web/openbim_ifc_wasm.js"
+    },
     "./package.json": "./package.json",
     "./*": "./*"
   },
@@ -40,6 +58,7 @@
     "openbim_ifc_wasm_bg.wasm.d.ts",
     "bundler/",
     "web/",
+    "mesh/",
     "catalog/",
     "catalog.mjs",
     "README.md"

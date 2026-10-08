@@ -131,6 +131,22 @@ four host APIs. The follow-up is
 - A host that wants a different backend or tolerance has only the Rust API
   for now; the bindings fix the reference backend and one millimetre.
 
+## Amendments
+
+- *Amended 2026-10-08 (#369): the npm package carries a mesh entry.* The
+  package `@openbim/ifc` now ships a second module, the default features
+  plus `mesh`, as the subpath entry `@openbim/ifc/mesh` (`mesh/`,
+  `mesh/bundler/`, `mesh/web/`, with the default entry's conditional
+  exports). The default entry is unchanged, still without meshes, so an
+  application that does not import the mesh entry loads none of it; the
+  package grows from 3.9 MB to 9.2 MB packed. `mesh` stays opt-in in every
+  crate, and the wheel and the C library still leave it out. A second
+  package was the alternative: it would duplicate the catalog files and
+  their loader, and need its own trusted-publishing configuration and
+  version lockstep. `scripts/check-mesh.sh` is gone; the mesh entry's suites
+  run in `scripts/build-npm-pkg.sh`. Sizes are in
+  [Package size](/bindings/javascript#package-size).
+
 ## Relation to existing code
 
 - `crates/openbim-ifc/src/product_geometry.rs` and its `mesh` submodule; the
@@ -140,7 +156,8 @@ four host APIs. The follow-up is
 - `crates/openbim-ifc-binding-core/src/geometry.rs` and
   `tests/geometry.rs`; features `placements` and `mesh`.
 - `crates/openbim-ifc-wasm/src/geometry.rs`,
-  `examples/viewer/`, `tests/js/geometry.mjs`, `scripts/check-mesh.sh`.
+  `examples/viewer/`, `tests/js/geometry.mjs`, `scripts/build-npm-pkg.sh`
+  (the mesh entry, #369).
 - `crates/openbim-ifc-py/python/openbim_ifc/geometry.py`,
   `tests/python/test_geometry.py`.
 - `crates/openbim-ifc-capi/src/geometry.rs`, the `MESHES` registry,

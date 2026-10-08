@@ -4,10 +4,10 @@
 //
 // Usage: IFC_WASM_PKG=<package-dir> node --test geometry.mjs
 //
-// With IFC_WASM_MESH=1 the package must be a `--features mesh` build
-// (scripts/check-mesh.sh makes one) and the mesh tests run, together with
-// the browser example's scene code; without it, `productMeshes` must
-// throw `feature-disabled`, as the npm package does.
+// With IFC_WASM_MESH=1 the package must be a `--features mesh` build (the
+// npm package's mesh entry, `<pkg>/mesh`, #369) and the mesh tests run,
+// together with the browser example's scene code; without it,
+// `productMeshes` must throw `feature-disabled`, as the default entry does.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";

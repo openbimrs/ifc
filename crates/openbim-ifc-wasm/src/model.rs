@@ -168,7 +168,8 @@ impl IfcModel {
     /// `indices` (`Uint32Array`), for `ids` or, without, every product
     /// with a shape. A product that cannot be meshed has a typed
     /// `refusal`. Opt-in: a build without the `mesh` feature (the npm
-    /// package) throws `feature-disabled`.
+    /// package's default entry) throws `feature-disabled`; import
+    /// `@openbim/ifc/mesh` for it.
     #[wasm_bindgen(js_name = productMeshes, unchecked_return_type = "ProductMesh[]")]
     pub fn product_meshes_js(
         &self,

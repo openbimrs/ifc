@@ -4,6 +4,12 @@
   `productMeshes()` drawn with plain WebGL2. Build and serve it with
   ./build.sh, then open the URL it prints. `?file=<url>` loads another
   file; the file picker loads a local one.
+
+  viewer.mjs imports the npm package's mesh entry, `@openbim/ifc/mesh/web`
+  (#369). The import map below points it at the module ./build.sh builds
+  from this checkout; with the package installed, point it at
+  `<node_modules>/@openbim/ifc/mesh/web/openbim_ifc_wasm.js` instead, or let
+  a bundler resolve the bare specifier.
 -->
 <html lang="en">
 <meta charset="utf-8">
@@ -19,5 +25,8 @@
   <span id="status">loading...</span>
 </header>
 <canvas></canvas>
+<script type="importmap">
+{ "imports": { "@openbim/ifc/mesh/web": "./pkg/openbim_ifc_wasm.js" } }
+</script>
 <script type="module" src="./viewer.mjs"></script>
 </html>
