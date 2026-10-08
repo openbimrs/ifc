@@ -255,3 +255,79 @@ After #352, the rest of the pooled table:
 - **The index is small and cheap.** Building it costs about a tenth of
   resolving one property for every object (207 ms at 10^5 walls, 11 MB
   retained: object ids and their set ids).
+
+## Property sets through the bindings (#358)
+
+Every wall's property sets through the binding core
+(`crates/openbim-ifc-binding-core/benches/property_sets`, see the
+[README](README.md#property-sets-through-the-bindings)), on the #352
+workload: before, one `IfcModel::property_sets` call per wall, which is
+what every host loop (`propertySets`, `property_sets`, `Entity.psets`, the
+C call, `PropertySets`) had to do; after, one
+`IfcModel::property_sets_many` call. Both paths are in the same build, and
+the bench checks that they give the same answers before it times either.
+
+**Quiet-window measurement.** Each run started with the 1-minute load
+below 3 and ended below 4, as `run-baseline.sh` gates it. Two other agents
+were building on the machine during the session, and the gate held the
+runs until it was quiet. One `property_sets.every_object` attempt at
+`props-10k` ended at 5.86, was discarded and repeated.
+
+### Environment
+
+- date: 2026-10-08, 14:31-14:55 UTC
+- machine: Intel Xeon w7-3565X, 20 cores, 63 GiB RAM, shared VM; pinned
+  with `taskset -c 12-19` (8 logical CPUs)
+- OS: Debian GNU/Linux 13 (trixie), kernel 6.12.105+deb13-cloud-amd64,
+  glibc malloc
+- toolchain: rustc 1.88.0 (6b00bc388 2025-06-23); `cargo bench` profile
+  (opt-level 3, thin LTO, 1 codegen unit)
+- commit: 489d4398 (the run script reports it dirty: only these notes
+  were uncommitted)
+- plans:
+  - `property_sets_many`: 3 warm-up + 20 samples, `props-100k` 2 + 10;
+  - `property_sets.every_object`: 1 + 5 at `props-1k`, one sample at
+    `props-10k`;
+  - `per_call.100`: 1 + 5, `props-100k` 0 + 3;
+  - 3 processes a side, except the single runs at `props-10k`
+    (`every_object`) and `props-100k` (`per_call.100`).
+- loads (1 min, before and after each process): 2.12 to 2.74, every run
+  below the gate
+
+### Results
+
+Medians in milliseconds. The bench asserts that both paths give the same
+answers for the sampled walls (`every_object`: every wall).
+
+| workload | before: `property_sets` per wall | after: `property_sets_many` | after/before |
+| --- | ---: | ---: | ---: |
+| props-1k (1,000 walls) | 780 | 41.15 | 0.053 |
+| props-10k (10,000 walls) | 94,412 (1 sample) | 446 | 0.0047 |
+| props-100k (100,000 walls) | ~22,700,000 (extrapolated, ~6.3 h) | 4,864 | ~0.0002 |
+
+| workload | bench | median ms | IQR ms | run medians ms | heap retained MB | heap peak MB |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| props-1k | `property_sets_many.every_object` | 41.15 | 40.74..41.76 | 40.85..41.47 | 3.72 | 3.88 |
+| props-10k | `property_sets_many.every_object` | 446 | 442..488 | 441..496 | 37.17 | 38.51 |
+| props-100k | `property_sets_many.every_object` | 4,864 | 4,840..4,898 | 4,834..4,920 | 371.74 | 383.04 |
+| props-1k | `property_sets.per_call.100` | 83.63 | 82.56..85.98 | 81.61..84.39 | | |
+| props-10k | `property_sets.per_call.100` | 1,199 | 1,191..1,204 | 1,190..1,201 | | |
+| props-100k | `property_sets.per_call.100` | 22,704 | 22,666..22,908 | 22,704 (1 run) | | |
+
+### Reading the numbers
+
+- **Linear after, quadratic before.**
+  - The batch scales 41 ms, then 446 ms, then 4.9 s for 10^3, 10^4 and
+    10^5 walls (x10.8, x10.9).
+  - The per-wall loop takes 780 ms at 10^3 walls and 94 s at 10^4
+    (x121).
+  - At 10^5 walls the per-wall loop is extrapolated, not run: 227 ms per
+    call (`per_call.100` at 10^5) times 100,000 walls is about 6.3 hours.
+- **What one call costs.** One per-object call validates every property
+  relationship in the file. That is 0.84 ms, 12 ms and 227 ms per call at
+  the three scales, which grows with the file and not with the object. The
+  batch pays for the validation once, inside the call.
+- **Memory is the records.** The batch holds every answer as owned records
+  until it returns: 372 MB retained at 10^5 walls, with 3.7 property sets
+  per wall on average. A host that wants less at once can pass the ids in
+  chunks and still gets linear time, because each chunk is one pass.
