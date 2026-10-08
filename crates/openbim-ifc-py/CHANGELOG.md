@@ -8,6 +8,20 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#328, geometry, ADR 0021)
+
+- `IfcModel.product_placements(ids=None)`: `ProductPlacement` dataclasses
+  with `transform` (16 floats, column-major, metres), the selected Body
+  `representation` (`SelectedRepresentation`) and a typed `refusal`
+  (`GeometryRefusal`) per product.
+- `IfcModel.product_meshes(ids=None)`, compiled with the GIL released:
+  `ProductMesh` dataclasses with `positions` (`array('f')`, relative to
+  `transform`) and `indices` (`array('I')`). Cargo feature `mesh`,
+  opt-in: the published wheel raises `feature-disabled`; build with
+  `maturin build --release --features mesh`.
+
+Semver: additive, a patch release.
+
 ## [0.3.2] - 2026-10-04
 
 ### Added (#332, Pythonic access)

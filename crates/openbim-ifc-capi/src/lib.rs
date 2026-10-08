@@ -42,6 +42,7 @@ mod checks;
 mod domains;
 mod edits;
 mod errors;
+mod geometry;
 mod header;
 mod model;
 mod open;
@@ -57,6 +58,7 @@ pub use checks::*;
 pub use domains::*;
 pub use edits::*;
 pub use errors::*;
+pub use geometry::*;
 pub use header::*;
 pub use model::*;
 pub use open::*;
@@ -73,6 +75,8 @@ pub use xml::*;
 mod capability_tests;
 #[cfg(test)]
 mod domain_tests;
+#[cfg(test)]
+mod geometry_tests;
 
 #[cfg(feature = "rusty_alloc")]
 #[global_allocator]

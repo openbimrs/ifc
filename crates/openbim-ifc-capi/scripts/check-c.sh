@@ -24,3 +24,11 @@ system_libs="-lpthread -ldl -lm"
     -I "$crate_dir/include" "$crate_dir/tests/c/smoke.c" \
     -x none "$lib" $system_libs -o "$out/smoke_cxx"
 "$out/smoke_cxx"
+
+# The opt-in mesh build (#328): the same smoke test, now reaching the mesh
+# set instead of the `FeatureDisabled` refusal the default library gives.
+cargo build -p openbim-ifc-capi --release --features mesh
+"${CC:-cc}" -std=c11 -Wall -Wextra -Werror -pedantic \
+    -I "$crate_dir/include" "$crate_dir/tests/c/smoke.c" \
+    "$lib" $system_libs -o "$out/smoke_mesh"
+"$out/smoke_mesh"

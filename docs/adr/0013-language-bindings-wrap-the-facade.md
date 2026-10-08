@@ -206,6 +206,11 @@ crate directly.
   forms. New codes `missing-attribute` (C 30) and `still-referenced`
   (31); a second containment, decomposition, typing or `IfcProject` is
   `invalid-model`.
+- *Amended 2026-10-08 (#328, geometry):* the bindings carry each
+  product's world placement and selected Body by default and its mesh on
+  request, refused per product with typed records;
+  [ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes) records
+  the decision and why the serialised neutral representation waits.
 
 ## Alternatives considered
 

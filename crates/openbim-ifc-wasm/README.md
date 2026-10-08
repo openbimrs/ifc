@@ -22,8 +22,8 @@ Documentation: [JavaScript guide](https://openbimrs.github.io/ifc/bindings/javas
   and 64-bit integers (as `bigint`).
 - Read damaged files leniently (`IfcModel.parseWithOptions`), read and
   replace the STEP header, validate against the declared schema, read and
-  write ifcXML (lossless or the buildingSMART XSD layout), and list
-  products no viewer will draw.
+  write ifcXML (lossless or the buildingSMART XSD layout), list products
+  no viewer will draw, and place each product (`productPlacements`).
 - Read the domain views as snapshot objects: property sets and quantities
   with type inheritance (`propertySets`, `resolveUnit`), the spatial tree,
   classifications, materials, systems, cost and georeferencing (#123).
@@ -32,8 +32,8 @@ Documentation: [JavaScript guide](https://openbimrs.github.io/ifc/bindings/javas
 
 ## What it does not do (yet)
 
-- No geometry, no checked multi-edit transactions over arbitrary entities.
-  These exist in the Rust crates; see ADR 0013.
+- Meshes only from a `--features mesh` build (`productMeshes`, #328), and
+  no checked multi-edit transactions over arbitrary entities (ADR 0013).
 
 ## Smaller builds
 
@@ -44,8 +44,8 @@ property writer and its PSD/QTO catalog are default cargo features
 `properties-write`, `property-catalog-runtime`), like the IFC releases. A
 browser build can leave any of them out, e.g. `--no-default-features
 --features ifc4,ifcxml,spatial`; the left-out methods then throw
-`feature-disabled`. The default module is 2,648,193 bytes; IFC4 alone is
-770,860 ([sizes](https://openbimrs.github.io/ifc/bindings/javascript#module-size)).
+`feature-disabled`. The default module is 2,909,468 bytes; IFC4 alone is
+815,769 ([sizes](https://openbimrs.github.io/ifc/bindings/javascript#module-size)).
 
 ## Example (Node)
 

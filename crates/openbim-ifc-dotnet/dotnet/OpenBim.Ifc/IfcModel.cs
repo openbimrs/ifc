@@ -220,6 +220,104 @@ public sealed unsafe class IfcModel : IDisposable
         }).One());
     }
 
+    /// <summary>Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for <paramref name="ids"/> or, when null, every product with a shape, in id order (#328).</summary>
+    /// <remarks>A product that cannot be placed is a record with a typed <see cref="ProductPlacement.Refusal"/>, not an exception.</remarks>
+    public IReadOnlyList<ProductPlacement> ProductPlacements(IReadOnlyList<ulong>? ids = null)
+    {
+        var selection = ids?.ToArray();
+        if (selection is { Length: 0 })
+        {
+            return Array.Empty<ProductPlacement>();
+        }
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return RecordDecoder.DecodeList<ProductPlacement>(Tape(m, (n, nc, nr, s, sc, sr) =>
+        {
+            nuint count;
+            fixed (ulong* p = selection)
+            {
+                return NativeMethods.openbim_ifc_v0_1_model_product_placements(m, p, (nuint)(selection?.Length ?? 0), &count, n, nc, nr, s, sc, sr);
+            }
+        }).One());
+    }
+
+    /// <summary>Each product's Body as triangles from the reference backend, for <paramref name="ids"/> or, when null, every product with a shape, in id order (#328).</summary>
+    /// <remarks>A product that cannot be meshed has a typed <see cref="ProductMesh.Refusal"/>. Needs a native library built with the <c>mesh</c> feature; the packaged one throws <see cref="IfcException"/> with code <c>feature-disabled</c>.</remarks>
+    public IReadOnlyList<MeshedProduct> ProductMeshes(IReadOnlyList<ulong>? ids = null)
+    {
+        var selection = ids?.ToArray();
+        if (selection is { Length: 0 })
+        {
+            return Array.Empty<MeshedProduct>();
+        }
+        ulong meshes;
+        using (var lease = handle.Acquire())
+        {
+            var m = lease.Model;
+            fixed (ulong* p = selection)
+            {
+                Calls.Check(m, NativeMethods.openbim_ifc_v0_1_model_product_meshes(m, p, (nuint)(selection?.Length ?? 0), &meshes));
+            }
+        }
+        // A copy for the lambda: a captured local cannot have its address taken.
+        var set = meshes;
+        try
+        {
+            var status = Calls.Tape((n, nc, nr, s, sc, sr) =>
+            {
+                nuint count;
+                return NativeMethods.openbim_ifc_v0_1_meshes_records(set, &count, n, nc, nr, s, sc, sr);
+            }, out var tape);
+            if (status != IfcStatus.Ok)
+            {
+                throw Calls.Error(status, null);
+            }
+            var records = RecordDecoder.DecodeList<ProductMesh>(tape.One());
+            var result = new MeshedProduct[records.Count];
+            for (var i = 0; i < records.Count; i++)
+            {
+                result[i] = new MeshedProduct(records[i], MeshPositions(set, i), MeshIndices(set, i));
+            }
+            return result;
+        }
+        finally
+        {
+            NativeMethods.openbim_ifc_v0_1_meshes_destroy(set);
+        }
+    }
+
+    private static float[] MeshPositions(ulong meshes, int index)
+    {
+        nuint need;
+        var status = NativeMethods.openbim_ifc_v0_1_meshes_positions(meshes, (nuint)index, null, 0, &need);
+        if (status != IfcStatus.Ok && status != IfcStatus.BufferTooSmall)
+        {
+            throw Calls.Error(status, null);
+        }
+        var buffer = new float[checked((int)need)];
+        fixed (float* p = buffer)
+        {
+            status = NativeMethods.openbim_ifc_v0_1_meshes_positions(meshes, (nuint)index, p, (nuint)buffer.Length, &need);
+        }
+        return status == IfcStatus.Ok ? buffer : throw Calls.Error(status, null);
+    }
+
+    private static uint[] MeshIndices(ulong meshes, int index)
+    {
+        nuint need;
+        var status = NativeMethods.openbim_ifc_v0_1_meshes_indices(meshes, (nuint)index, null, 0, &need);
+        if (status != IfcStatus.Ok && status != IfcStatus.BufferTooSmall)
+        {
+            throw Calls.Error(status, null);
+        }
+        var buffer = new uint[checked((int)need)];
+        fixed (uint* p = buffer)
+        {
+            status = NativeMethods.openbim_ifc_v0_1_meshes_indices(meshes, (nuint)index, p, (nuint)buffer.Length, &need);
+        }
+        return status == IfcStatus.Ok ? buffer : throw Calls.Error(status, null);
+    }
+
     /// <summary>The property sets, quantity sets and predefined property sets of object <paramref name="id"/>: its own first, then those its type object holds, an occurrence property overriding an inherited one of the same name.</summary>
     /// <remarks>Values keep their declared IFC type. Resolved against the release the header declares (IFC2X3, IFC4 or IFC4X3).</remarks>
     public IReadOnlyList<PropertySet> PropertySets(ulong id)

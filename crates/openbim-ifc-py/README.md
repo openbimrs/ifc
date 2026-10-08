@@ -86,8 +86,9 @@ writing property sets and quantities as one checked transaction
 (`set_properties`), the Pythonic layer over them (#332), and creating
 entities as one checked transaction (`author` with `AuthorOp`s: entities
 by type and named attributes, the spatial structure, placed, contained and
-typed products, removal with relationships; #330). Geometry is not bound
-yet.
+typed products, removal with relationships; #330), and each product's
+world placement and Body (`product_placements`; meshes from a
+`--features mesh` wheel, #328).
 
 ## Build from source
 

@@ -1,0 +1,23 @@
+<!doctype html>
+<!--
+  Meshes from an IFC file in the browser (#328): the WebAssembly binding's
+  `productMeshes()` drawn with plain WebGL2. Build and serve it with
+  ./build.sh, then open the URL it prints. `?file=<url>` loads another
+  file; the file picker loads a local one.
+-->
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>openbim-ifc mesh viewer</title>
+<style>
+  html, body { margin: 0; height: 100%; font: 14px system-ui, sans-serif; }
+  canvas { display: block; width: 100%; height: calc(100% - 2.5em); touch-action: none; }
+  header { display: flex; gap: 1em; align-items: center; height: 2.5em; padding: 0 0.75em; }
+</style>
+<header>
+  <input type="file" accept=".ifc">
+  <span id="status">loading...</span>
+</header>
+<canvas></canvas>
+<script type="module" src="./viewer.mjs"></script>
+</html>

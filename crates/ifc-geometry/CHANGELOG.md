@@ -12,6 +12,16 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#328, geometry in the bindings)
+
+- `compile::Tolerance` and `compile::TriMesh` re-export the tolerance every
+  compile entry point takes and the mesh it returns, so a caller that
+  names no `axiolid-*` crate (the `openbim-ifc` facade's `mesh` feature)
+  can call them. Behind `compile`, as before.
+
+Semver: additive, a patch release (0.10.1). The `openbim-ifc` facade's
+`mesh` feature needs it.
+
 ## [0.10.0] - 2026-10-04
 
 Product lowering gains two opt-ins: Reference View openings taken as applied

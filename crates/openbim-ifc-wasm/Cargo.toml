@@ -54,7 +54,7 @@ default = [
     "ifcxml", "validate", "unreachable",
     "properties", "properties-write", "property-catalog-runtime",
     "spatial", "classification", "material", "systems", "cost", "georef",
-    "author",
+    "author", "placements",
 ]
 ifc2x3 = ["openbim-ifc-binding-core/ifc2x3"]
 ifc4 = ["openbim-ifc-binding-core/ifc4"]
@@ -88,6 +88,14 @@ cost = ["openbim-ifc-binding-core/cost"]
 # Schema-checked entity creation (#330): `author`, `createEntity`,
 # `removeWithRelationships`.
 author = ["openbim-ifc-binding-core/author"]
+# Geometry (#328, ADR 0021). `placements`: each product's world placement
+# and selected Body, kernel-free (`productPlacements`). `mesh`: triangles
+# per product through the reference backend (`productMeshes`), opt-in and
+# not in the npm package, since it links an execution provider (ADR 0004);
+# build it with `--features mesh`. Without it `productMeshes` throws
+# `feature-disabled`.
+placements = ["openbim-ifc-binding-core/placements"]
+mesh = ["openbim-ifc-binding-core/mesh"]
 # Implies `properties`: the project length unit scales every operation.
 georef = ["openbim-ifc-binding-core/georef"]
 

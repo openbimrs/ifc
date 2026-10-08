@@ -49,6 +49,8 @@ suites here cover only the JS conversion itself.
 | `ifc4x3` | yes | `openbim-ifc-binding-core/ifc4x3` |
 | `ifcxml` | yes | `openbim-ifc-binding-core/ifcxml` |
 | `material` | yes | `openbim-ifc-binding-core/material` |
+| `mesh` |  | `openbim-ifc-binding-core/mesh` |
+| `placements` | yes | `openbim-ifc-binding-core/placements` |
 | `properties` | yes | `openbim-ifc-binding-core/properties` |
 | `properties-write` | yes | `openbim-ifc-binding-core/properties-write` |
 | `property-catalog` |  | `openbim-ifc-binding-core/property-catalog` |

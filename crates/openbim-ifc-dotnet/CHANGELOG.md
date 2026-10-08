@@ -9,6 +9,20 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#328, geometry, ADR 0021)
+
+- `IfcModel.ProductPlacements(ids)`: `ProductPlacement` records with the
+  column-major `Transform`, the selected Body `Representation`
+  (`SelectedRepresentation`) and a typed `Refusal` (`GeometryRefusal`)
+  per product.
+- `IfcModel.ProductMeshes(ids)`: a `MeshedProduct` per product, its
+  `ProductMesh` record with `float[] Positions` and `uint[] Indices`;
+  needs a native library built with the C ABI's `mesh` feature, and the
+  packaged one throws `feature-disabled`. Declarations for the C ABI
+  0.1.7 exports.
+
+Semver: additive, a patch release.
+
 ## [0.1.1] - 2026-10-04
 
 ### Added (#330, schema-checked entity creation)

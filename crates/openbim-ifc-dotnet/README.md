@@ -73,8 +73,9 @@ property sets and quantities as one checked transaction
 (`SetProperties`), checked against the embedded PSD/QTO catalog, and
 creating entities as one checked transaction (`Author` with `AuthorOp`s:
 entities by type and named attributes, the spatial structure, placed,
-contained and typed products, removal with relationships). Geometry is
-not bound yet.
+contained and typed products, removal with relationships), and each
+product's world placement and Body (`ProductPlacements`; meshes from a
+native library built with `mesh`, #328).
 
 ## Build from source
 

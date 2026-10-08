@@ -349,6 +349,86 @@ Not bound yet: checked multi-edit transactions over arbitrary entities
 (`Transaction`, `Applied`, `Conflict`), deferred until a host asks for
 them. Use the Rust crates for those.
 
+## Geometry
+
+Geometry crosses at two levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)).
+`productPlacements(ids?)` is in every build: for each product with a
+shape (or for the `bigint` ids given), its world placement and the Body
+representation a viewer draws.
+
+<!-- SNIPPET:js-geometry-placements -->
+
+```js
+const model = IfcModel.parse(bytes);
+for (const product of model.productPlacements()) {
+  if (product.refusal) {
+    console.warn(product.id, product.refusal.code, product.refusal.message);
+    continue;
+  }
+  // A column-major 4x4 in metres: three.js reads it with Matrix4.fromArray.
+  const [x, y, z] = product.transform.slice(12, 15);
+  const body = product.representation; // undefined for an axis-only product
+  console.log(product.typeName, [x, y, z], body?.identifier, body?.representationType);
+}
+```
+
+<!-- /SNIPPET -->
+
+`transform` is a 4x4 column-major matrix in metres, the layout WebGL and
+three.js (`Matrix4.fromArray`) read; `representation` names the
+`IfcShapeRepresentation` selected as the Body (`identifier`,
+`representationType`) and its context (`contextType`,
+`contextIdentifier`, `targetView`), and is `undefined` for a product with
+an axis or footprint only. A product that cannot be placed or selected is
+not a thrown call: its record carries a `refusal` with a `code` --
+`unsupported`, `invalid-model`, `missing-reference` or `budget-exceeded`
+-- the `entity` at fault and a `message`, and every other product is
+still placed. The call itself throws only `unsupported-schema` and,
+without the `placements` feature, `feature-disabled`.
+
+`productMeshes(ids?)` adds triangles, compiled by the reference backend of
+`ifc-geometry` with a one-millimetre tolerance. It links a geometry
+kernel, so it is the cargo feature `mesh`, which the npm package leaves
+out: there it throws `feature-disabled`. Build the module with
+`--features mesh` to use it:
+
+<!-- SNIPPET:js-geometry-meshes -->
+
+```js
+const model = IfcModel.parse(bytes);
+for (const mesh of model.productMeshes()) {
+  if (mesh.refusal) {
+    console.log(mesh.id, mesh.refusal.code); // e.g. 65n "unsupported"
+    continue;
+  }
+  // positions: Float32Array, x y z per vertex in metres relative to
+  // mesh.transform; indices: Uint32Array, three per triangle.
+  console.log(mesh.typeName, mesh.positions.length / 3, mesh.indices.length / 3);
+}
+```
+
+<!-- /SNIPPET -->
+
+Each `ProductMesh` has `positions` (`Float32Array`, `x, y, z` per vertex)
+and `indices` (`Uint32Array`, three per triangle), copies owned by
+JavaScript, and its product's `transform`. Positions are relative to
+that transform, not world coordinates: a site surveyed kilometres from
+the origin keeps millimetres in the `f64` matrix that an `f32` vertex
+would lose. A product with no Body has empty arrays and no refusal; one
+whose lowering or compilation is refused carries the `refusal`, typed as
+above.
+
+`crates/openbim-ifc-wasm/examples/viewer/` draws a file's meshes with
+plain WebGL2 and no build step beyond the module: `build.sh --serve`
+builds the mesh module, serves the repository and prints the page's URL.
+Its `scene.mjs` subtracts one scene origin from every transform in `f64`
+before handing `f32` matrices to the GPU. Publishing the mesh build as an
+npm entry of its own is
+[#369](https://github.com/openbimrs/ifc/issues/369); the serialised
+neutral representation between the two levels waits for Axiolid to
+promise a stable format
+([#367](https://github.com/openbimrs/ifc/issues/367)).
+
 ## Creating entities
 
 <!-- SNIPPET:js-authoring -->
@@ -479,6 +559,28 @@ Before, each linked all five: `ifc4,validate` was 1,521,685 bytes and
 `ifc4` with everything was 2,342,546, the size of the five-release
 default.
 
+Geometry ([#328](https://github.com/openbimrs/ifc/issues/328)), measured
+on 2026-10-08 on the same toolchain; the default now includes
+`placements`:
+
+| Features | Raw | gzip -9 | brotli 11 |
+| --- | ---: | ---: | ---: |
+| default without `placements` | 2,867,002 | 963,660 | 629,682 |
+| default | 2,909,468 | 978,432 | 640,878 |
+| default + `mesh` | 5,052,660 | 1,735,307 | 1,150,357 |
+| `ifc4` | 815,769 | 342,047 | 274,746 |
+| `ifc4,placements` | 875,610 | 364,579 | 290,761 |
+| `ifc4,mesh` (brings `placements`) | 3,626,301 | 1,262,911 | 832,210 |
+| `ifc4` + every capability and domain | 2,018,760 | 736,249 | 552,157 |
+| the same + `placements` | 2,062,414 | 750,806 | 563,166 |
+| the same + `mesh` | 4,802,334 | 1,651,262 | 1,092,238 |
+
+Placements cost 42 KB in the default module (15 KB under `gzip -9`), less
+than in an IFC4-only one (60 KB) because the default's reachability lint
+already links representation selection. Meshes add the reference compiler
+and its boolean engine: 2.1 MB to the default (757 KB under `gzip -9`,
+509 KB under brotli), which is why the npm package leaves them out.
+
 `wasm-opt -Oz` is not applied: with binaryen 132 it cut the module
 measured in [#40](https://github.com/openbimrs/ifc/issues/40) from
 1,337,025 to 1,295,241 bytes raw but grew it from 459,437 to 461,953
@@ -533,6 +635,8 @@ Generated from the `#[wasm_bindgen]` exports in
 | `model.setHeader(header: IfcHeader): void` | yes | Replace the STEP file header; every field is required. |
 | `model.validate(maxFindings: number \| undefined): ValidationReport` | yes | Validate against the schema the header declares; findings are sorted by severity, rule, entity and slot. `maxFindings` caps the report (default 10,000) and sets `truncated` when reached. |
 | `model.unreachableProducts(): UnreachableProduct[]` | yes | Products no viewer will draw (outside the spatial structure, or with geometry only in non-model contexts), with a stable `reason`. |
+| `model.productPlacements(ids: bigint[] \| BigUint64Array \| undefined): ProductPlacement[]` | yes | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or, without, for every product with a shape. A product that cannot be placed is a record with a typed `refusal`; the call itself throws only `unsupported-schema` or `feature-disabled` (feature `placements`). |
+| `model.productMeshes(ids: bigint[] \| BigUint64Array \| undefined): ProductMesh[]` | yes | Each product's Body as triangles from the reference backend: `positions` (`Float32Array`, metres, relative to `transform`) and `indices` (`Uint32Array`), for `ids` or, without, every product with a shape. A product that cannot be meshed has a typed `refusal`. Opt-in: a build without the `mesh` feature (the npm package) throws `feature-disabled`. |
 | `model.propertySets(id: bigint): PropertySet[]` | yes | The property sets, quantity sets and predefined property sets that apply to object `id`: its own first, then those inherited from its type object, an occurrence property overriding an inherited one. Values keep their declared IFC type (`typed IFCLENGTHMEASURE(...)`). |
 | `model.resolveUnit(measureType: string, unit: bigint \| undefined): ResolvedUnit` | yes | The effective unit of a `measureType` value (`"IFCAREAMEASURE"`): `unit` when given (a property's stated unit), otherwise the project default, resolved exactly to SI. |
 | `model.spatialTree(): SpatialTree` | yes | The spatial containment tree: every container with its parent, sub-containers and contained elements. |

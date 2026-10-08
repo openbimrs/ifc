@@ -400,6 +400,74 @@ Not bound yet: checked multi-edit transactions over arbitrary entities
 (`Transaction`, `Applied`, `Conflict`), deferred until a host asks for
 them. Use the Rust crates for those.
 
+## Geometry
+
+Geometry crosses at two levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)).
+
+<!-- SNIPPET:c-geometry -->
+
+```c
+/* Level 1, in every build: each product's placement and Body as a tape of
+ * ProductPlacement records; null ids with count 0 select every product. */
+OpenbimIfcValueNode nodes[128];
+uint8_t strings[1024];
+size_t products = 0, node_count = 0, string_len = 0;
+openbim_ifc_v0_1_model_product_placements(model, NULL, 0, &products, nodes, 128,
+                                          &node_count, strings, sizeof strings, &string_len);
+/* nodes[5] is the first record's transform: a LIST of 16 REALs, a
+ * column-major 4x4 in metres; its translation is nodes[18..20]. */
+printf("%zu product(s); first at %g %g %g\n", products, nodes[18].real_value,
+       nodes[19].real_value, nodes[20].real_value);
+
+/* Level 3, in a library built with the `mesh` feature: compile once into
+ * a set, then copy each product's arrays out. */
+OpenbimIfcMeshes meshes = 0;
+if (openbim_ifc_v0_1_model_product_meshes(model, NULL, 0, &meshes) == OPENBIM_IFC_STATUS_OK) {
+  size_t need = 0;
+  openbim_ifc_v0_1_meshes_positions(meshes, 0, NULL, 0, &need);
+  float *positions = (float *)malloc(need * sizeof(float)); /* x y z, metres */
+  openbim_ifc_v0_1_meshes_positions(meshes, 0, positions, need, &need);
+  openbim_ifc_v0_1_meshes_indices(meshes, 0, NULL, 0, &need);
+  uint32_t *indices = (uint32_t *)malloc(need * sizeof(uint32_t)); /* 3 per triangle */
+  openbim_ifc_v0_1_meshes_indices(meshes, 0, indices, need, &need);
+  printf("%zu triangle(s)\n", need / 3);
+  free(positions);
+  free(indices);
+  openbim_ifc_v0_1_meshes_destroy(meshes);
+}
+```
+
+<!-- /SNIPPET -->
+
+`openbim_ifc_v0_1_model_product_placements` is in every build: for the
+`id_count` products in `ids`, or, with `ids` null and `id_count` 0, for
+every product with a shape, a tape of `ProductPlacement` records -- id,
+global id, type name, transform (a `LIST` of 16 `REAL`s, a column-major
+4x4 in metres, or `NULL`), representation (a `SelectedRepresentation`:
+id, identifier, representation type, context, context type, context
+identifier, target view; `NULL` for an axis-only product) and refusal (a
+`GeometryRefusal`: code, entity, message; or `NULL`). A product that
+cannot be placed is a record with a refusal coded `unsupported`,
+`invalid-model`, `missing-reference` or `budget-exceeded`, not a failed
+call.
+
+Meshes link a geometry kernel, so they are the cargo feature `mesh`,
+which the release archives leave out (`FEATURE_DISABLED`); build with
+`cargo build --release -p openbim-ifc-capi --features mesh` or CMake with
+`-DOPENBIM_IFC_CARGO_FEATURES=mesh`. Compiling is the expensive step, and
+every buffer is sized by a first call, so
+`openbim_ifc_v0_1_model_product_meshes` compiles once into a mesh set, an
+opaque non-zero `OpenbimIfcMeshes` handle that owns its data and outlives
+the model. `openbim_ifc_v0_1_meshes_records` returns its `ProductMesh`
+records (id, global id, type name, transform, vertex count, triangle
+count, refusal); `openbim_ifc_v0_1_meshes_positions` copies mesh `index`'s
+`float` positions (`x, y, z` per vertex, metres, relative to its
+transform) and `openbim_ifc_v0_1_meshes_indices` its `uint32_t` indices
+(three per triangle), each after the usual size query; an index past the
+set is `OUT_OF_RANGE`. `openbim_ifc_v0_1_meshes_destroy` frees the set. A
+product with no Body has no vertices and no refusal. These exports make
+the ABI version 0.1.7; no `v0_1` symbol changed.
+
 ## Creating entities
 
 <!-- SNIPPET:c-authoring -->
@@ -656,6 +724,60 @@ Number of live models, for leak checks.
 
 **Safety.**
 `out_count` must be null or valid for one write.
+
+#### `openbim_ifc_v0_1_meshes_destroy`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_meshes_destroy(OpenbimIfcMeshes meshes);
+```
+
+Destroy a mesh set. A stale or repeated handle is `InvalidHandle`.
+
+#### `openbim_ifc_v0_1_meshes_indices`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_meshes_indices(OpenbimIfcMeshes meshes, size_t index, uint32_t *buffer, size_t capacity, size_t *out_required);
+```
+
+Copy the triangle indices of mesh `index` -- three vertex indices per
+triangle -- into `buffer` (`capacity` values), after writing the count
+needed (3 x triangle count) to `out_required`. `OutOfRange` for an
+index past the set.
+
+**Safety.**
+As for `openbim_ifc_v0_1_meshes_positions`.
+
+#### `openbim_ifc_v0_1_meshes_positions`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_meshes_positions(OpenbimIfcMeshes meshes, size_t index, float *buffer, size_t capacity, size_t *out_required);
+```
+
+Copy the positions of mesh `index` -- `x, y, z` per vertex, metres,
+relative to its record's transform -- into `buffer` (`capacity`
+floats), after writing the count needed (3 x vertex count) to
+`out_required`. `OutOfRange` for an index past the set.
+
+**Safety.**
+As for the other buffer calls: `buffer` valid for `capacity` writes
+when non-null, `out_required` for one.
+
+#### `openbim_ifc_v0_1_meshes_records`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_meshes_records(OpenbimIfcMeshes meshes, size_t *out_count, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+The set's `ProductMesh` records as a tape, in the order compiled;
+`out_count` gets their number. `ProductMesh`: id (`REF`), global id,
+type name, transform (`LIST` of 16 `REAL`s, column-major, metres, or
+`NULL`), vertex count, triangle count (`INTEGER`s), refusal
+(`GeometryRefusal` or `NULL`). Empty arrays and no refusal is a
+product with no Body representation.
+
+**Safety.**
+`out_count` valid for one write; otherwise as for
+`openbim_ifc_v0_1_entity_attribute`.
 
 #### `openbim_ifc_v0_1_model_author`
 
@@ -999,6 +1121,52 @@ listed by `openbim_ifc_v0_1_model_diagnostic`.
 
 **Safety.**
 As `openbim_ifc_v0_1_model_parse`.
+
+#### `openbim_ifc_v0_1_model_product_meshes`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_product_meshes(OpenbimIfcModel model, const uint64_t *ids, size_t id_count, OpenbimIfcMeshes *out_meshes);
+```
+
+Compile the Body mesh of each of `ids` (`id_count` of them) or, with
+`ids` null and `id_count` 0, of every product with a shape, and write
+the new set's handle to `out_meshes`. Read it with
+`openbim_ifc_v0_1_meshes_records`, `_meshes_positions` and
+`_meshes_indices`; destroy it with `openbim_ifc_v0_1_meshes_destroy`.
+
+A product that cannot be meshed is a record with a refusal, not a
+failed call. `UnsupportedSchema`; `FeatureDisabled` in a library built
+without the `mesh` feature (the default build).
+
+**Safety.**
+`ids` valid for `id_count` reads when non-null; `out_meshes` valid for
+one write.
+
+#### `openbim_ifc_v0_1_model_product_placements`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_product_placements(OpenbimIfcModel model, const uint64_t *ids, size_t id_count, size_t *out_count, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+Each product's world placement and selected Body representation, for
+`ids` (`id_count` of them) or, with `ids` null and `id_count` 0, every
+product with a shape, in id order. The tape is a `LIST` of
+`ProductPlacement` records; `out_count` gets their number.
+`ProductPlacement`: id (`REF`), global id, type name, transform (`LIST`
+of 16 `REAL`s, a column-major 4x4 in metres, or `NULL`), representation
+(`SelectedRepresentation` or `NULL`), refusal (`GeometryRefusal` or
+`NULL`). `SelectedRepresentation`: id, identifier, representation type,
+context (`REF` or `NULL`), context type, context identifier, target
+view. `GeometryRefusal`: code (`unsupported`, `invalid-model`,
+`missing-reference` or `budget-exceeded`), entity (`REF` or `NULL`),
+message.
+
+A product that cannot be placed is a record with a refusal, not a
+failed call. `UnsupportedSchema`, `FeatureDisabled`.
+
+**Safety.**
+`ids` valid for `id_count` reads when non-null; `out_count` valid for
+one write; otherwise as for `openbim_ifc_v0_1_entity_attribute`.
 
 #### `openbim_ifc_v0_1_model_property_sets`
 

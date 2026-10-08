@@ -35,7 +35,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | `cost` |  | [`ifc-cost`](./ifc-cost): Cost semantics as a borrowed view over the IFC model. |
 | `domains` |  | Every domain view, plus authoring and spatial traversal. |
 | `element-type` |  | [`ifc-element-type`](./ifc-element-type): Element, resource, and process type definitions: the IfcTypeObject catalogue. |
-| `full` |  | Everything: codecs, schema tables, every domain, catalogues, geometry, georeferencing and alignment. |
+| `full` |  | Everything: codecs, schema tables, every domain, catalogues, geometry and meshes, georeferencing and alignment. |
 | `geometry` |  | Representation selection plus lowering into the neutral geometry DAG. |
 | `geometry-select` |  | Representation selection only: contexts, plan/body choice, placements and units, with no geometry kernel. |
 | `georef` |  | [`ifc-georef`](./ifc-georef): Georeferencing: map conversion, coordinate reference systems, site placement. |
@@ -47,6 +47,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | `ifcxml` |  | [`ifc-xml`](./ifc-xml): ifcXML (ISO 10303-28) codec for the IFC model. |
 | `material` |  | [`ifc-material`](./ifc-material): Material definitions: layer sets, profile sets, constituents, usage. |
 | `material-templates` |  | Material views together with the property template catalogue. |
+| `mesh` |  | Triangle meshes per product (`product_meshes`) through `ifc-geometry`'s reference compile backend: positions relative to each product's world placement, a typed refusal per product. Opt-in; links an execution provider (ADR 0004, ADR 0012). |
 | `occurrence` |  | [`ifc-occurrence`](./ifc-occurrence): Built element and distribution occurrence classes and their type pairing. |
 | `properties` |  | Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door and window operation geometry; together with `spatial`, element properties by spatial container. |
 | `property-catalog` |  | The PSD/QTO template catalogue (`ifc-template-catalog`), every edition embedded. |

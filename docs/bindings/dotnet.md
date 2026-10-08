@@ -245,8 +245,45 @@ library embeds; the refusals are those of the other bindings
 (`invalid-value`, `template-violation`, `missing-property`, `unsupported`,
 `wrong-entity-type`).
 
-Not bound yet: geometry, and checked multi-edit transactions over
-arbitrary entities. Use the Rust crates for those.
+Not bound yet: checked multi-edit transactions over arbitrary entities.
+Use the Rust crates for those.
+
+## Geometry
+
+Geometry crosses at two levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)).
+`ProductPlacements(ids)` returns, for each product with a shape (or for
+the ids given), its world placement and the Body representation a viewer
+draws.
+
+<!-- SNIPPET:dotnet-geometry -->
+
+```csharp
+using var model = IfcModel.Parse(data);
+foreach (var product in model.ProductPlacements())
+{
+    if (product.Refusal is { } refusal)
+    {
+        System.Console.WriteLine($"#{product.Id}: {refusal.Code} {refusal.Message}");
+        continue;
+    }
+    // A column-major 4x4 in metres; the translation is its last column.
+    var t = product.Transform!;
+    System.Console.WriteLine($"{product.TypeName} at {t[12]} {t[13]} {t[14]}, Body {product.Representation?.RepresentationType}");
+}
+```
+
+<!-- /SNIPPET -->
+
+`ProductPlacement.Transform` is a 4x4 column-major matrix in metres;
+`Representation` is a `SelectedRepresentation`, or null for a product
+with an axis or footprint only. A product that cannot be placed is a
+record with a `GeometryRefusal` (`Code` `unsupported`, `invalid-model`,
+`missing-reference` or `budget-exceeded`), not an exception.
+`ProductMeshes(ids)` returns a `MeshedProduct` per product: its
+`ProductMesh` record and `float[] Positions` (relative to its transform)
+and `uint[] Indices`. It needs a native library built with the C ABI's
+`mesh` feature; the packaged one throws `IfcException` with code
+`feature-disabled`.
 
 ## Creating entities
 
@@ -343,6 +380,8 @@ Generated from the `OpenBim.Ifc` C# source.
 | `Header Header { get; set; }` | The STEP file header; assign a changed copy (`with`) to replace it. |
 | `ValidationReport Validate(int? maxFindings = null)` | Validate against the schema the header declares; findings sorted by severity, rule, entity and slot. `maxFindings` caps the report (default 10,000). |
 | `IReadOnlyList<UnreachableProduct> UnreachableProducts()` | Products no viewer will draw, with a stable reason, in id order. |
+| `IReadOnlyList<ProductPlacement> ProductPlacements(IReadOnlyList<ulong>? ids = null)` | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or, when null, every product with a shape, in id order (#328). |
+| `IReadOnlyList<MeshedProduct> ProductMeshes(IReadOnlyList<ulong>? ids = null)` | Each product's Body as triangles from the reference backend, for `ids` or, when null, every product with a shape, in id order (#328). |
 | `IReadOnlyList<PropertySet> PropertySets(ulong id)` | The property sets, quantity sets and predefined property sets of object `id`: its own first, then those its type object holds, an occurrence property overriding an inherited one of the same name. |
 | `ResolvedUnit ResolveUnit(string measureType, ulong? unit = null)` | The effective unit of a `measureType` value (`IFCAREAMEASURE`): `unit` when given (a property's stated unit), otherwise the project default, resolved exactly to SI. |
 | `IReadOnlyList<ulong?> SetProperties(IEnumerable<PropertyEdit> edits)` | Write and remove property and quantity values as one checked transaction: every edit, in order, or none and the model unchanged. |

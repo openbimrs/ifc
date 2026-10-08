@@ -44,6 +44,11 @@ rusty_alloc = { version = "=2.2.1", optional = true, default-features = false }
 
 [features]
 default = []
+# Triangle meshes per product (#328, `IfcModel.product_meshes`) through the
+# reference compile backend. Opt-in: it links an execution provider (ADR
+# 0004), so the published wheel leaves it out and the method raises
+# `feature-disabled`. Build with `maturin build --release --features mesh`.
+mesh = ["openbim-ifc-binding-core/mesh"]
 # Route this extension's Rust allocations through rusty_alloc: reading
 # STEP into a model takes 18-35% less CPU time on seven real IFC files, at
 # 1-7% less peak memory (measured in #49). Build the wheel with

@@ -13,10 +13,12 @@ use wasm_bindgen::JsValue;
 use crate::authoring;
 use crate::edits;
 use crate::error::js_error;
+use crate::geometry;
 use crate::records;
 use crate::value::{from_js, to_js};
 
 mod domain_types;
+mod geometry_types;
 mod types;
 
 /// An IFC model: entities keyed by their `#id`, in file order.
@@ -140,6 +142,42 @@ impl IfcModel {
         Ok(records::unreachable_to_js(
             &self.0.unreachable_products().map_err(js_error)?,
         ))
+    }
+
+    /// Each product's world placement (a column-major 4x4 in metres) and
+    /// the Body representation a viewer draws, for `ids` or, without, for
+    /// every product with a shape. A product that cannot be placed is a
+    /// record with a typed `refusal`; the call itself throws only
+    /// `unsupported-schema` or `feature-disabled` (feature `placements`).
+    #[wasm_bindgen(js_name = productPlacements, unchecked_return_type = "ProductPlacement[]")]
+    pub fn product_placements_js(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "bigint[] | BigUint64Array | undefined")]
+        ids: &JsValue,
+    ) -> Result<Array, JsValue> {
+        let ids = geometry::ids(ids).map_err(js_error)?;
+        let placements = self
+            .0
+            .product_placements(ids.as_deref())
+            .map_err(js_error)?;
+        Ok(records::records_to_js(&to_records(&placements)))
+    }
+
+    /// Each product's Body as triangles from the reference backend:
+    /// `positions` (`Float32Array`, metres, relative to `transform`) and
+    /// `indices` (`Uint32Array`), for `ids` or, without, every product
+    /// with a shape. A product that cannot be meshed has a typed
+    /// `refusal`. Opt-in: a build without the `mesh` feature (the npm
+    /// package) throws `feature-disabled`.
+    #[wasm_bindgen(js_name = productMeshes, unchecked_return_type = "ProductMesh[]")]
+    pub fn product_meshes_js(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "bigint[] | BigUint64Array | undefined")]
+        ids: &JsValue,
+    ) -> Result<Array, JsValue> {
+        let ids = geometry::ids(ids).map_err(js_error)?;
+        let meshes = self.0.product_meshes(ids.as_deref()).map_err(js_error)?;
+        Ok(geometry::meshes_to_js(&meshes))
     }
 
     /// The property sets, quantity sets and predefined property sets that

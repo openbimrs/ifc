@@ -8,6 +8,25 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#328, geometry, ADR 0021)
+
+- `IfcModel.productPlacements(ids?)` (feature `placements`, default, so in
+  the npm package): `ProductPlacement` objects with `transform` (a
+  column-major 4x4 in metres, `Matrix4.fromArray`-ready), the selected
+  Body `representation` and a typed `refusal` per product. `ids` is a
+  `bigint[]` or `BigUint64Array`.
+- `IfcModel.productMeshes(ids?)` (feature `mesh`, opt-in, not in the npm
+  package, where it throws `feature-disabled`): `ProductMesh` objects with
+  `positions` (`Float32Array`, relative to `transform`) and `indices`
+  (`Uint32Array`). TypeScript declarations for both.
+- `examples/viewer/`: a WebGL2 page that draws a file's meshes with no
+  build step beyond the module (`build.sh --serve`);
+  `scripts/check-mesh.sh` builds the mesh module and runs
+  `tests/js/geometry.mjs` against it.
+
+Placements add 42 KB to the default module (15 KB gzip). Semver:
+additive, a patch release.
+
 ## [0.4.1] - 2026-10-04
 
 ### Added (#330, schema-checked entity creation)

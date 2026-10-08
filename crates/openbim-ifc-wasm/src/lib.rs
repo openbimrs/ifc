@@ -21,6 +21,8 @@ mod edits;
 #[cfg(target_arch = "wasm32")]
 mod error;
 #[cfg(target_arch = "wasm32")]
+mod geometry;
+#[cfg(target_arch = "wasm32")]
 mod model;
 #[cfg(target_arch = "wasm32")]
 mod records;

@@ -57,6 +57,7 @@ than altering a `v0_1_` one.
 
 | Feature | Default | Enables |
 | --- | --- | --- |
+| `mesh` |  | `openbim-ifc-binding-core/mesh` |
 | `rusty_alloc` |  | `dep:rusty_alloc-api`, `dep:rusty_alloc` |
 
 ## Depends on
