@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Generate the product-lowering fixtures for #351, #353 and #354.
+"""Generate the product-lowering fixtures for #351, #353, #354, #357, #362
+and #363.
 
-Three small files, each one edge case of `crates/ifc-geometry`'s product
+Six small files, each one edge case of `crates/ifc-geometry`'s product
 lowering. No licence-clean public corpus isolates these cases, so they are
 generated; the output is our own data. Metres and radians, fixed GUIDs and
 time stamp: regeneration is byte-stable.
@@ -44,6 +45,49 @@ left, (0, 1, 0), so 40 m with a lateral offset of 2 m is (40, 2, 10.8).
   `NEAR` 4e-6 m off in X (inside the precision), `OUTSIDE` 5e-5 m off in X
   (outside it) and `STALE` (60, 2, 11.2), 20 m off -- where the product sat
   before its alignment was edited, say.
+
+`linear_placement_alignment_frame.ifc` (IFC4X3_ADD2, #357, #363). The same
+centreline, carried by an `IfcAlignment` placed OFF identity: the site sits
+at (100, 0, 0), the alignment at (400, 300, 20) relative to it, turned a
+quarter left (its x along world +Y, its y along world -X). The context's
+`WorldCoordinateSystem` is a translation by (10, 20, 0). The station 40 m
+along, 2 m left, (40, 2, 10.8) in the alignment's frame, is therefore
+(498, 340, 30.8) in placement space and (508, 360, 30.8) after the WCS.
+
+- `REL_TO`: `PlacementRelTo` the alignment's placement, no cache.
+- `IMPLIED`: no `PlacementRelTo` (IFC4.3: then "established by the origin
+  of horizontal alignment of the referenced IfcAlignment Axis"), no cache.
+- `CACHED`: `PlacementRelTo` the alignment's placement, with the correct
+  `CartesianPosition` (40, 2, 10.8) relative to it.
+- `CACHED_IMPLIED`: no `PlacementRelTo`, the same cache.
+- `BRACKET_CACHED` and `BRACKET_DERIVED`: `IfcLocalPlacement`s at (1, 0, 3)
+  relative to the linear placements of `CACHED` and `REL_TO` (#363).
+
+`grid_placement.ifc` (IFC4) and `grid_placement_ifc4x3.ifc` (IFC4X3_ADD2,
+whose `IfcGridPlacement` carries the inherited `PlacementRelTo`, set to the
+grid's placement) state one grid (#362, #363). The storey is at (0, 0, 3);
+the grid at (10, 5, 0) relative to it, its x along (0.6, 0.8, 0). UAxes:
+`A` an `IfcPolyline` x = 0 running +y; `B` an `IfcPolyline` x = 6 running
++y with `SameSense` FALSE; `R` an `IfcTrimmedCurve` on an `IfcCircle` of
+radius 10 about the origin, 0 to pi/2. VAxes: `1` an `IfcLine` y = 0
+running +x; `2` an `IfcTrimmedCurve` on an `IfcLine` y = 8; `3` an
+`IfcOffsetCurve2D` of axis 1's line by 5 (y = 5). Products, in the grid's
+frame:
+
+- `A1_OFFSET`: A/1 with offsets (0.5, -0.25, 1.0): the offset curves are
+  x = -0.5 (left of +y) and y = -0.25, so (-0.5, -0.25, 1.0), x along A's
+  tangent (0, 1).
+- `B2_DIRECTION`: B/2, `PlacementRefDirection` the `IfcDirection`
+  (1, 1, 5): (6, 8, 0), x along (1, 1) / sqrt(2) (x and y ratios only).
+- `A1_TOWARDS_B2`: A/1, `PlacementRefDirection` the intersection B/2:
+  (0, 0, 0), x along (0.6, 0.8).
+- `B1_SAMESENSE`: B/1 with offsets (0.5, 0): B runs -y, so its left is +x
+  and the offset curve is x = 6.5: (6.5, 0, 0), x along (0, -1).
+- `R3_CURVED`: R/3 with offsets (0.5, 0): R runs anticlockwise, its left
+  is inward, so the offset curve has radius 9.5, and meets y = 5 at
+  (sqrt(65.25), 5).
+- `BRACKET`: an `IfcLocalPlacement` at (1, 0, 2) relative to
+  `A1_OFFSET`'s grid placement (#363).
 
 Run:  python3 tools/gen_lowering_fixtures.py test/fixtures/synthetic-lowering
 """
@@ -280,7 +324,7 @@ def centreline(f):
                                  SelfIntersect=False, BaseCurve=plan)
 
 
-def along(f, basis, measure, lateral=None, axis=None, ref=None, cached=None):
+def along(f, basis, measure, lateral=None, axis=None, ref=None, cached=None, rel_to=None):
     expression = f.create_entity(
         "IfcPointByDistanceExpression", DistanceAlong=measure, OffsetLateral=lateral,
         BasisCurve=basis)
@@ -288,8 +332,168 @@ def along(f, basis, measure, lateral=None, axis=None, ref=None, cached=None):
         "IfcAxis2PlacementLinear", Location=expression,
         Axis=direction(f, axis) if axis else None,
         RefDirection=direction(f, ref) if ref else None)
-    return f.create_entity("IfcLinearPlacement", RelativePlacement=relative,
+    return f.create_entity("IfcLinearPlacement", PlacementRelTo=rel_to,
+                           RelativePlacement=relative,
                            CartesianPosition=place3(f, cached) if cached else None)
+
+
+def block(f):
+    """A 1 m block centred on its local origin in plan, standing on it."""
+    return f.create_entity("IfcBlock", Position=place3(f, (-0.5, -0.5, 0.0)),
+                           XLength=1.0, YLength=1.0, ZLength=1.0)
+
+
+def proxy(f, label, name, placement, body_ctx):
+    return f.create_entity(
+        "IfcBuildingElementProxy", GlobalId=guid(label + "/" + name), Name=name,
+        ObjectPlacement=placement,
+        Representation=shape(f, [rep(f, body_ctx, "Body", "CSG", [block(f)])]))
+
+
+def alignment_frame():
+    """#357, #363: linear placements on an alignment placed off identity."""
+    label = "alignment-frame"
+    f = ifcopenshell.file(schema="IFC4X3_ADD2")
+    ctx = f.create_entity(
+        "IfcGeometricRepresentationContext", ContextType="Model",
+        CoordinateSpaceDimension=3, Precision=1e-5,
+        WorldCoordinateSystem=place3(f, (10.0, 20.0, 0.0)))
+    body_ctx = f.create_entity(
+        "IfcGeometricRepresentationSubContext", ContextIdentifier="Body",
+        ContextType="Model", ParentContext=ctx, TargetView="MODEL_VIEW")
+    project = f.create_entity("IfcProject", GlobalId=guid(label + "/project"),
+                              Name=label, UnitsInContext=units(f),
+                              RepresentationContexts=[ctx])
+    site_placement = local(f, (100.0, 0.0, 0.0))
+    site = f.create_entity("IfcSite", GlobalId=guid(label + "/site"), Name="Site",
+                           ObjectPlacement=site_placement)
+    plan, gradient = centreline(f)
+    alignment_placement = f.create_entity(
+        "IfcLocalPlacement", PlacementRelTo=site_placement,
+        RelativePlacement=place3(f, (400.0, 300.0, 20.0), axis=(0.0, 0.0, 1.0),
+                                 ref=(0.0, 1.0, 0.0)))
+    alignment = f.create_entity(
+        "IfcAlignment", GlobalId=guid(label + "/alignment"), Name="Alignment",
+        ObjectPlacement=alignment_placement,
+        Representation=shape(f, [rep(f, ctx, "FootPrint", "Curve2D", [plan]),
+                                 rep(f, ctx, "Axis", "Curve3D", [gradient])]))
+
+    def station(rel_to=None, cached=None):
+        return along(f, gradient, length(f, 40.0), 2.0, cached=cached, rel_to=rel_to)
+
+    rel_to = station(rel_to=alignment_placement)
+    cached = station(rel_to=alignment_placement, cached=(40.0, 2.0, 10.8))
+    contained = [
+        proxy(f, label, "REL_TO", rel_to, body_ctx),
+        proxy(f, label, "IMPLIED", station(), body_ctx),
+        proxy(f, label, "CACHED", cached, body_ctx),
+        proxy(f, label, "CACHED_IMPLIED", station(cached=(40.0, 2.0, 10.8)), body_ctx),
+        proxy(f, label, "BRACKET_CACHED", local(f, (1.0, 0.0, 3.0), cached), body_ctx),
+        proxy(f, label, "BRACKET_DERIVED", local(f, (1.0, 0.0, 3.0), rel_to), body_ctx),
+    ]
+    f.create_entity("IfcRelAggregates", GlobalId=guid(label + "/aggregates"),
+                    RelatingObject=project, RelatedObjects=[site])
+    f.create_entity("IfcRelAggregates", GlobalId=guid(label + "/alignment-aggregates"),
+                    RelatingObject=project, RelatedObjects=[alignment])
+    f.create_entity("IfcRelContainedInSpatialStructure", GlobalId=guid(label + "/contained"),
+                    RelatingStructure=site, RelatedElements=contained)
+    return f
+
+
+def point2(f, xy):
+    return f.create_entity("IfcCartesianPoint", Coordinates=[float(v) for v in xy])
+
+
+def line_through(f, origin, heading):
+    return f.create_entity(
+        "IfcLine", Pnt=point2(f, origin),
+        Dir=f.create_entity("IfcVector", Orientation=direction(f, heading), Magnitude=1.0))
+
+
+def grid_file(schema):
+    """#362, #363: one grid with straight, reversed, offset and curved axes."""
+    label = "grid-" + schema
+    f = ifcopenshell.file(schema=schema)
+    ctx = context(f, 1e-5)
+    body_ctx = f.create_entity(
+        "IfcGeometricRepresentationSubContext", ContextIdentifier="Body",
+        ContextType="Model", ParentContext=ctx, TargetView="MODEL_VIEW")
+    project = f.create_entity("IfcProject", GlobalId=guid(label + "/project"),
+                              Name=label, UnitsInContext=units(f),
+                              RepresentationContexts=[ctx])
+    site_placement = local(f)
+    site = f.create_entity("IfcSite", GlobalId=guid(label + "/site"), Name="Site",
+                           ObjectPlacement=site_placement)
+    building_placement = local(f, parent=site_placement)
+    building = f.create_entity("IfcBuilding", GlobalId=guid(label + "/building"),
+                               Name="Building", ObjectPlacement=building_placement)
+    storey_placement = local(f, (0.0, 0.0, 3.0), building_placement)
+    storey = f.create_entity("IfcBuildingStorey", GlobalId=guid(label + "/storey"),
+                             Name="Storey", ObjectPlacement=storey_placement,
+                             Elevation=3.0)
+    for parent, child in [(project, site), (site, building), (building, storey)]:
+        f.create_entity("IfcRelAggregates", GlobalId=guid(label + "/agg-" + child.Name),
+                        RelatingObject=parent, RelatedObjects=[child])
+
+    def axis(tag, curve, same_sense=True):
+        return f.create_entity("IfcGridAxis", AxisTag=tag, AxisCurve=curve,
+                               SameSense=same_sense)
+
+    def polyline(a, b):
+        return f.create_entity("IfcPolyline", Points=[point2(f, a), point2(f, b)])
+
+    def trimmed(basis, t1, t2):
+        return f.create_entity(
+            "IfcTrimmedCurve", BasisCurve=basis,
+            Trim1=[f.create_entity("IfcParameterValue", float(t1))],
+            Trim2=[f.create_entity("IfcParameterValue", float(t2))],
+            SenseAgreement=True, MasterRepresentation="PARAMETER")
+
+    line_1 = line_through(f, (0.0, 0.0), (1.0, 0.0))
+    circle = f.create_entity(
+        "IfcCircle", Position=f.create_entity("IfcAxis2Placement2D",
+                                              Location=point2(f, (0.0, 0.0))),
+        Radius=10.0)
+    a = axis("A", polyline((0.0, 0.0), (0.0, 20.0)))
+    b = axis("B", polyline((6.0, 0.0), (6.0, 20.0)), same_sense=False)
+    r = axis("R", trimmed(circle, 0.0, math.pi / 2.0))
+    one = axis("1", line_1)
+    two = axis("2", trimmed(line_through(f, (0.0, 8.0), (1.0, 0.0)), 0.0, 20.0))
+    three = axis("3", f.create_entity("IfcOffsetCurve2D", BasisCurve=line_1, Distance=5.0,
+                                      SelfIntersect=False))
+    grid_placement = f.create_entity(
+        "IfcLocalPlacement", PlacementRelTo=storey_placement,
+        RelativePlacement=place3(f, (10.0, 5.0, 0.0), axis=(0.0, 0.0, 1.0),
+                                 ref=(0.6, 0.8, 0.0)))
+    grid = f.create_entity("IfcGrid", GlobalId=guid(label + "/grid"), Name="Grid",
+                           ObjectPlacement=grid_placement, UAxes=[a, b, r],
+                           VAxes=[one, two, three])
+
+    def at(first, second, offsets):
+        return f.create_entity("IfcVirtualGridIntersection",
+                               IntersectingAxes=[first, second],
+                               OffsetDistances=[float(v) for v in offsets])
+
+    def on_grid(location, reference=None):
+        arguments = {"PlacementLocation": location, "PlacementRefDirection": reference}
+        if schema != "IFC4":
+            arguments["PlacementRelTo"] = grid_placement
+        return f.create_entity("IfcGridPlacement", **arguments)
+
+    a1 = on_grid(at(a, one, (0.5, -0.25, 1.0)))
+    contained = [grid]
+    for name, placement in [
+        ("A1_OFFSET", a1),
+        ("B2_DIRECTION", on_grid(at(b, two, (0.0, 0.0)), direction(f, (1.0, 1.0, 5.0)))),
+        ("A1_TOWARDS_B2", on_grid(at(a, one, (0.0, 0.0)), at(b, two, (0.0, 0.0)))),
+        ("B1_SAMESENSE", on_grid(at(b, one, (0.5, 0.0)))),
+        ("R3_CURVED", on_grid(at(r, three, (0.5, 0.0)))),
+        ("BRACKET", local(f, (1.0, 0.0, 2.0), a1)),
+    ]:
+        contained.append(proxy(f, label, name, placement, body_ctx))
+    f.create_entity("IfcRelContainedInSpatialStructure", GlobalId=guid(label + "/contained"),
+                    RelatingStructure=storey, RelatedElements=contained)
+    return f
 
 
 def alignment_file(label, precision, products):
@@ -353,6 +557,9 @@ FIXTURES = {
     "reference_view_openings.ifc": reference_view,
     "linear_placement_uncached.ifc": uncached,
     "linear_placement_cache_check.ifc": cache_check,
+    "linear_placement_alignment_frame.ifc": alignment_frame,
+    "grid_placement.ifc": lambda: grid_file("IFC4"),
+    "grid_placement_ifc4x3.ifc": lambda: grid_file("IFC4X3_ADD2"),
 }
 
 

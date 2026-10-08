@@ -9,13 +9,30 @@
 //!
 //! [`super::local::LocalPlacement`] composes stored transforms. A grid
 //! placement has no stored transform at all: the position is the intersection
-//! of two curves, which must be computed. That needs curve evaluation, which
-//! is the geometry kernel's job, so this module exposes the inputs and stops
-//! there.
+//! of two curves, which must be computed. The views here read the inputs;
+//! the placement chain walk ([`super::local::PlacementResolver`]) computes
+//! the frame (#362): straight axes in closed form, curved ones through a
+//! caller-supplied curve evaluator or a typed refusal.
+//!
+//! # Attribute layout differs by release
+//!
+//! IFC4.3 moved `PlacementRelTo` from `IfcLocalPlacement` up to
+//! `IfcObjectPlacement` ("IFC4.3.0.0-CHANGE In IFC 4.3 the PlacementRelTo
+//! attribute has been moved from IfcLocalPlacement to its supertype
+//! IfcObjectPlacement"), so an `IfcGridPlacement` has three attributes in
+//! IFC4X3 ADD2 (`PlacementRelTo`, `PlacementLocation`,
+//! `PlacementRefDirection`) and two in IFC2X3 TC1 and IFC4 ADD2 TC1
+//! (`PlacementLocation`, `PlacementRefDirection`). Both layouts are fixed
+//! length, so [`GridPlacement`] reads the layout from the instance's
+//! attribute count rather than guessing from `FILE_SCHEMA`.
 
 use crate::error::GeometryResult;
 use crate::slots::Slots;
 use ifc_model::{Entity, EntityId};
+
+#[cfg(feature = "compile")]
+mod curved;
+pub(crate) mod resolve;
 
 /// `IfcGridAxis` attribute slots.
 pub(crate) mod axis_slot {
@@ -35,12 +52,29 @@ pub(crate) mod intersection_slot {
     pub const OFFSET_DISTANCES: usize = 1;
 }
 
-/// `IfcGridPlacement` attribute slots.
+/// `IfcGridPlacement` attribute slots, IFC2X3 TC1 and IFC4 ADD2 TC1 layout.
+///
+/// IFC4X3 ADD2 prepends the inherited `PlacementRelTo`, shifting both by
+/// one; see [`GridPlacement`].
 pub(crate) mod placement_slot {
     /// `PlacementLocation`: the grid intersection.
     pub const PLACEMENT_LOCATION: usize = 0;
     /// `PlacementRefDirection`: optional direction reference.
     pub const PLACEMENT_REF_DIRECTION: usize = 1;
+    /// Attribute count of the IFC4X3 ADD2 layout, whose slot 0 is the
+    /// inherited `PlacementRelTo`.
+    pub const IFC4X3_ARITY: usize = 3;
+}
+
+/// `IfcGrid` attribute slots: after the seven `IfcProduct` attributes in
+/// IFC2X3 TC1, IFC4 ADD2 TC1 and IFC4X3 ADD2 alike.
+pub(crate) mod grid_slot {
+    /// `UAxes`.
+    pub const U_AXES: usize = 7;
+    /// `VAxes`.
+    pub const V_AXES: usize = 8;
+    /// `WAxes`, optional.
+    pub const W_AXES: usize = 9;
 }
 
 /// A borrowed view of an `IfcGridAxis`.
@@ -123,17 +157,24 @@ impl<'m> VirtualGridIntersection<'m> {
     }
 }
 
-/// A borrowed view of an `IfcGridPlacement`.
+/// A borrowed view of an `IfcGridPlacement`, in either release layout.
 #[derive(Debug, Clone, Copy)]
 pub struct GridPlacement<'m> {
     slots: Slots<'m>,
+    /// 1 for the IFC4X3 layout, whose slot 0 is `PlacementRelTo`; else 0.
+    shift: usize,
 }
 
 impl<'m> GridPlacement<'m> {
     /// Wrap an entity assumed to be an `IfcGridPlacement`.
+    ///
+    /// Three attributes is the IFC4X3 ADD2 layout; anything else is read as
+    /// the IFC2X3/IFC4 one (module documentation).
     pub fn new(id: EntityId, entity: &'m Entity) -> Self {
+        let shift = usize::from(entity.attributes.len() == placement_slot::IFC4X3_ARITY);
         Self {
             slots: Slots::new(id, entity),
+            shift,
         }
     }
 
@@ -142,10 +183,22 @@ impl<'m> GridPlacement<'m> {
         self.slots.id()
     }
 
+    /// The stated `PlacementRelTo`: only IFC4X3 declares it on a grid
+    /// placement, where it "will reference ... the ObjectPlacement of the
+    /// IfcGrid".
+    pub fn placement_rel_to(&self) -> Option<EntityId> {
+        if self.shift == 0 {
+            return None;
+        }
+        self.slots.opt_ref(0)
+    }
+
     /// The grid intersection this placement sits at.
     pub fn location(&self) -> GeometryResult<EntityId> {
-        self.slots
-            .req_ref(placement_slot::PLACEMENT_LOCATION, "PlacementLocation")
+        self.slots.req_ref(
+            placement_slot::PLACEMENT_LOCATION + self.shift,
+            "PlacementLocation",
+        )
     }
 
     /// Optional reference direction.
@@ -154,7 +207,8 @@ impl<'m> GridPlacement<'m> {
     /// `IfcVirtualGridIntersection` pointing at it. Returned as a raw id
     /// because the caller must dispatch on the target's type.
     pub fn ref_direction(&self) -> Option<EntityId> {
-        self.slots.opt_ref(placement_slot::PLACEMENT_REF_DIRECTION)
+        self.slots
+            .opt_ref(placement_slot::PLACEMENT_REF_DIRECTION + self.shift)
     }
 }
 
@@ -216,5 +270,23 @@ mod tests {
         let p = GridPlacement::new(EntityId(1), &e);
         assert_eq!(p.location().unwrap(), EntityId(9));
         assert_eq!(p.ref_direction(), None);
+        assert_eq!(p.placement_rel_to(), None);
+    }
+
+    /// IFC4X3 ADD2 prepends the inherited `PlacementRelTo`.
+    #[test]
+    fn the_ifc4x3_layout_reads_placement_rel_to_first() {
+        let e = Entity::new(
+            "IFCGRIDPLACEMENT",
+            vec![
+                Value::Ref(EntityId(7)),
+                Value::Ref(EntityId(9)),
+                Value::Ref(EntityId(11)),
+            ],
+        );
+        let p = GridPlacement::new(EntityId(1), &e);
+        assert_eq!(p.placement_rel_to(), Some(EntityId(7)));
+        assert_eq!(p.location().unwrap(), EntityId(9));
+        assert_eq!(p.ref_direction(), Some(EntityId(11)));
     }
 }

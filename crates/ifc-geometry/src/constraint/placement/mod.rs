@@ -37,8 +37,12 @@ use crate::units::UnitScale;
 
 /// The world transform for one product, in metres.
 ///
-/// Resolves the `IfcLocalPlacement` chain and converts the composed result
-/// once. A product with no `ObjectPlacement` is model-space, which the schema
+/// Resolves the placement chain -- `IfcLocalPlacement`, `IfcGridPlacement`
+/// and `IfcLinearPlacement` links alike (#357, #362, #363) -- and converts
+/// the composed result once. A linear placement reads its cached
+/// `CartesianPosition`, and curved grid axes are refused by name: both
+/// need a curve evaluator, which `product_world_transform_with_evaluator`
+/// (feature `compile`) takes. A product with no `ObjectPlacement` is model-space, which the schema
 /// allows, so it yields the identity rather than an error.
 ///
 /// Cyclic and over-deep chains are reported as errors rather than hanging or
@@ -73,14 +77,18 @@ pub fn product_world_transform(
 }
 
 /// [`product_world_transform`], deriving an `IfcLinearPlacement` through a
-/// caller-supplied evaluator (#353).
+/// caller-supplied evaluator (#353), and intersecting curved grid axes
+/// through it (#362).
 ///
 /// A linear placement without a cached `CartesianPosition` is derived from
 /// its `RelativePlacement` with
 /// [`derive_linear_placement_transform`](derive::derive_linear_placement_transform);
 /// one with a cache is handled by `cached` ([`CachedPositionPolicy`], #354).
-/// Every other placement resolves exactly as [`product_world_transform`]
-/// does, and the evaluator is never called for it.
+/// Either is composed with the frame its basis curve is stated in (#357).
+/// An `IfcGridPlacement` whose axes are not straight is intersected through
+/// the evaluator. Every other placement resolves exactly as
+/// [`product_world_transform`] does, and the evaluator is never called for
+/// it.
 ///
 /// # Errors
 ///
@@ -107,7 +115,8 @@ pub fn product_world_transform_with_evaluator(
 }
 
 /// How an `IfcLinearPlacement` is resolved: from its cache only, or, with
-/// the `compile` feature, through a caller-supplied evaluator.
+/// the `compile` feature, through a caller-supplied evaluator. The same
+/// evaluator intersects curved grid axes (#362).
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct LinearResolution<'e> {
     #[cfg(feature = "compile")]
@@ -183,15 +192,10 @@ pub(crate) fn resolve_with(
     let Some(placement) = Product::new(product, entity).object_placement() else {
         return Ok(Transform::identity());
     };
-    // IFC4x3 places linear elements by distance along a curve, which the
-    // IfcLocalPlacement walk cannot resolve. Route by type before it.
-    #[cfg(feature = "lowering")]
-    if linear::is_linear_placement(model, placement) {
-        return linear::linear_placement_transform(model, units, placement, linear);
-    }
-    #[cfg(not(feature = "lowering"))]
-    let _ = linear;
-    let file_units = resolver.world_transform(model, placement)?;
+    // Every IfcObjectPlacement kind resolves through the one walk (#363):
+    // local, grid (#362) and linear (#357) placements, each as a product's
+    // own placement or as another's PlacementRelTo.
+    let file_units = resolver.resolve(model, units, placement, linear)?;
     Ok(file_units.to_metres(units))
 }
 
