@@ -8,7 +8,15 @@ for scripts and code scanning. Pure Rust, one static binary, over the
 ```sh
 cargo install openbim-ifc-cli          # or: cargo binstall openbim-ifc-cli
 curl -fsSL https://raw.githubusercontent.com/openbimrs/ifc/main/crates/openbim-ifc-cli/install.sh | sh
+nix run github:openbimrs/ifc -- --version
 ```
+
+```powershell
+irm https://raw.githubusercontent.com/openbimrs/ifc/main/crates/openbim-ifc-cli/install.ps1 | iex
+```
+
+Each release also attaches Debian packages (`openbim-ifc_<version>_amd64.deb`,
+`_arm64.deb`) and a Homebrew formula.
 
 ```sh
 openbim-ifc validate model.ifc                     # exit 1 on findings

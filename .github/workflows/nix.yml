@@ -1,0 +1,68 @@
+name: Nix
+
+# The Nix flake of the openbim-ifc command (#377): `nix flake check` (which
+# builds the package and runs it on a fixture) and `nix build
+# .#openbim-ifc`, then the built command's --version, on x86_64 and aarch64
+# Linux and on Apple silicon. The Linux x86_64 job also evaluates every
+# system's outputs, so an Intel macOS evaluation error shows up without an
+# Intel runner.
+#
+# Like native.yml and cli.yml, it is path-filtered on pull requests and
+# therefore never a required check; the "Standalone IFC gate" verdict does
+# not depend on it.
+# - pull_request: only when the change touches the flake, the CLI crate,
+#   the lockfile, the toolchain pin or this file.
+# - push to main: every merge except prose, because a change to any crate
+#   the command builds from can break the flake's build.
+on:
+  pull_request:
+    paths:
+      - "flake.nix"
+      - "flake.lock"
+      - "crates/openbim-ifc-cli/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - ".github/workflows/nix.yml"
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nix-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  flake:
+    name: Nix flake (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Nix
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+        with:
+          github_access_token: ${{ github.token }}
+      - name: Evaluate every system's outputs
+        if: matrix.os == 'ubuntu-24.04'
+        run: nix flake check --all-systems --no-build
+      - name: nix flake check
+        run: nix flake check --print-build-logs
+      - name: nix build .#openbim-ifc
+        run: nix build --print-build-logs .#openbim-ifc
+      - name: Run the built command
+        run: |
+          version="$(sed -n 's/^version = "\(.*\)"$/\1/p' crates/openbim-ifc-cli/Cargo.toml | head -n 1)"
+          reported="$(./result/bin/openbim-ifc --version)"
+          [ "$reported" = "openbim-ifc $version" ] || { echo "::error::nix build gave '$reported', expected openbim-ifc $version"; exit 1; }
+          [ "$(nix run . -- --version)" = "openbim-ifc $version" ]
+          ./result/bin/openbim-ifc info test/fixtures/synthetic-properties/synthetic_properties.ifc

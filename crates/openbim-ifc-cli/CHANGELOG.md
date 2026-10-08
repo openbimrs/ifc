@@ -40,4 +40,26 @@ documents) is this crate's public interface.
   (x86_64), with `SHA256SUMS`; `install.sh` and a Homebrew formula
   generated for the release; `cargo binstall` metadata.
 
+### Added (#376, #377, #378)
+
+- Debian packages `openbim-ifc_<version>_amd64.deb` and `_arm64.deb` on
+  each release, packed from the same static binaries by
+  `scripts/package.py deb` (the binary in `/usr/bin`, the README and the
+  licence in `/usr/share/doc/openbim-ifc/`, no dependencies) and listed in
+  `SHA256SUMS`; `scripts/check-deb.sh` inspects them and installs, runs and
+  removes them with `dpkg` on Ubuntu 22.04 (x86_64 and aarch64) in CI and
+  in every release build. No apt repository.
+- A Nix flake at the repository root: `packages.<system>.openbim-ifc`
+  (and `default`) built from source with the pinned toolchain and
+  `Cargo.lock`, and `apps.<system>.default`, so
+  `nix run github:openbimrs/ifc -- --version` works on x86_64 and aarch64
+  Linux and macOS; checked in `.github/workflows/nix.yml`.
+- `install.ps1` for Windows (`irm .../install.ps1 | iex`): picks the x64 or
+  Arm64 archive, refuses a checksum mismatch, installs to
+  `%LOCALAPPDATA%\Programs\openbim-ifc\bin` (or `-Prefix`) and offers to
+  add it to the user `PATH`; honours `OPENBIM_IFC_BASE_URL` like
+  `install.sh`. `scripts/check-install.ps1` tests it on Windows in CI and in
+  every release build, and the release attaches it.
+- A Windows Arm64 binary (`aarch64-pc-windows-msvc`) on each release.
+
 Semver: a new crate, first release 0.1.0.

@@ -20,6 +20,67 @@ It refuses to install when the checksum does not match. Without `--version`
 it installs the newest `openbim-ifc-cli` release; `--print-target` shows the
 archive it would choose.
 
+### Windows
+
+In PowerShell (Windows PowerShell 5.1 or PowerShell 7), the install script
+does the same for Windows x64 and Arm64: it checks the `.zip` against
+`SHA256SUMS` with `Get-FileHash`, refuses a mismatch, installs
+`openbim-ifc.exe` to `%LOCALAPPDATA%\Programs\openbim-ifc\bin` and offers to
+add that directory to your user `PATH`:
+
+```powershell
+irm https://raw.githubusercontent.com/openbimrs/ifc/main/crates/openbim-ifc-cli/install.ps1 | iex
+```
+
+With options, run it as a script block:
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/openbimrs/ifc/main/crates/openbim-ifc-cli/install.ps1))) -Version 0.1.0 -Prefix C:\Tools\openbim-ifc -AddToPath
+```
+
+`-Version`, `-Prefix`, `-AddToPath` (no question asked), `-NoModifyPath`
+and `-PrintTarget` mirror `install.sh`; under `irm | iex` the environment
+variables `OPENBIM_IFC_VERSION`, `OPENBIM_IFC_PREFIX` and
+`OPENBIM_IFC_NO_MODIFY_PATH=1` set them instead. Both scripts download
+from `OPENBIM_IFC_BASE_URL` when it is set (a mirror, or a `file://`
+directory in tests), with one directory per release tag.
+
+### Debian and Ubuntu
+
+Each release attaches a Debian package per architecture,
+`openbim-ifc_<version>_amd64.deb` and `openbim-ifc_<version>_arm64.deb`.
+It holds the static binary as `/usr/bin/openbim-ifc`, the README and the
+licence in `/usr/share/doc/openbim-ifc/`, and depends on nothing. Download
+it, check it against `SHA256SUMS`, and install it with apt or dpkg:
+
+```bash
+sha256sum --check --ignore-missing SHA256SUMS
+sudo apt install ./openbim-ifc_0.1.0_amd64.deb
+sudo apt remove openbim-ifc
+```
+
+There is no apt repository yet, so `apt upgrade` does not see new
+releases; install the next `.deb` the same way.
+
+### Nix
+
+The repository is a Nix flake. It builds the command from source with the
+pinned toolchain (`rust-toolchain.toml`) and `Cargo.lock`, on x86_64 and
+aarch64 Linux and macOS:
+
+```bash
+nix run github:openbimrs/ifc -- validate model.ifc
+nix run github:openbimrs/ifc/openbim-ifc-cli-v0.1.0 -- --version   # a release
+nix profile install github:openbimrs/ifc                           # onto PATH
+```
+
+The package is `packages.<system>.openbim-ifc` (also `default`), the app
+`apps.<system>.default`; `nix develop` opens a shell with the repository's
+Rust toolchain. A nixpkgs package may follow once the command has had a few
+releases.
+
+### Rust, Homebrew and archives
+
 With a Rust toolchain:
 
 ```bash
@@ -43,11 +104,24 @@ yourself:
 | Linux aarch64 (static) | `openbim-ifc-v<version>-aarch64-unknown-linux-musl.tar.gz` |
 | macOS Intel | `openbim-ifc-v<version>-x86_64-apple-darwin.tar.gz` |
 | macOS Apple silicon | `openbim-ifc-v<version>-aarch64-apple-darwin.tar.gz` |
-| Windows x86_64 | `openbim-ifc-v<version>-x86_64-pc-windows-msvc.zip` |
+| Windows x64 | `openbim-ifc-v<version>-x86_64-pc-windows-msvc.zip` |
+| Windows Arm64 | `openbim-ifc-v<version>-aarch64-pc-windows-msvc.zip` |
+| Debian, Ubuntu x86_64 | `openbim-ifc_<version>_amd64.deb` |
+| Debian, Ubuntu aarch64 | `openbim-ifc_<version>_arm64.deb` |
 
 ```bash
 sha256sum --check --ignore-missing SHA256SUMS
 ```
+
+On Windows, compare `(Get-FileHash openbim-ifc-v<version>-x86_64-pc-windows-msvc.zip).Hash`
+with its line in `SHA256SUMS`.
+
+Every one of these is tested before a release publishes it: each binary
+is installed through `install.sh` or `install.ps1` from a local copy of its
+archive, a corrupted `SHA256SUMS` must be refused, and each `.deb` is
+installed with `dpkg`, run and removed on Ubuntu 22.04 (x86_64 and
+aarch64). Pull requests run the same scripts in `.github/workflows/cli.yml`,
+and `.github/workflows/nix.yml` builds the flake.
 
 ## Commands
 

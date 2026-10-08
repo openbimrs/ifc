@@ -9,9 +9,10 @@
 #                            + NuGet for openbim-ifc-dotnet (OpenBim.Ifc, #327)
 #                            + GitHub release archives for a crate with a
 #                              CMakeLists.txt: openbim-ifc-capi (#41)
-#                            + GitHub release binaries, SHA256SUMS and a
+#                            + GitHub release binaries, Debian packages,
+#                              SHA256SUMS, install.sh, install.ps1 and a
 #                              Homebrew formula for a crate with a binary
-#                              target: openbim-ifc-cli (#329)
+#                              target: openbim-ifc-cli (#329, #376, #378)
 #
 # npm, PyPI, NuGet and crates.io use trusted publishing (OIDC). Each publish
 # job runs in the environment named after its registry (`crates.io`,
@@ -399,9 +400,12 @@ jobs:
   # The openbim-ifc command (#329) ships as one prebuilt binary per platform
   # on the openbim-ifc-cli GitHub release, beside its crates.io package.
   # Linux binaries are static (musl), so they run on any distribution. Each
-  # is built cold, smoke-tested, packed by package.py into the archive
-  # install.sh downloads, and, outside Windows, installed through install.sh
-  # from a local mirror of that archive (check-install.sh).
+  # is built cold, smoke-tested, packed by package.py into the archive the
+  # installers download, and installed from a local mirror of that archive:
+  # through install.sh on Linux and macOS (check-install.sh), through
+  # install.ps1 on Windows (check-install.ps1, #378). On Linux the same
+  # binary is also packed as a .deb, inspected, installed with dpkg, run and
+  # removed (check-deb.sh, #376). A rehearsal runs all of it.
   cli-binaries:
     name: CLI binary (${{ matrix.target }})
     needs: plan
@@ -415,6 +419,7 @@ jobs:
           - { target: x86_64-apple-darwin, os: macos-15-intel }
           - { target: aarch64-apple-darwin, os: macos-15 }
           - { target: x86_64-pc-windows-msvc, os: windows-latest }
+          - { target: aarch64-pc-windows-msvc, os: windows-11-arm }
     runs-on: ${{ matrix.os }}
     env:
       MACOSX_DEPLOYMENT_TARGET: "11.0"
@@ -459,10 +464,57 @@ jobs:
         env:
           TARGET: ${{ matrix.target }}
         run: crates/openbim-ifc-cli/scripts/check-install.sh "target/$TARGET/release/openbim-ifc"
+      - name: Install through install.ps1
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          TARGET: ${{ matrix.target }}
+        run: crates/openbim-ifc-cli/scripts/check-install.ps1 -Binary "target/$env:TARGET/release/openbim-ifc.exe"
+      - name: Pack, inspect, install and remove the .deb
+        # --out dist: the .deb this checks is the one uploaded below.
+        if: runner.os == 'Linux'
+        env:
+          TARGET: ${{ matrix.target }}
+        run: crates/openbim-ifc-cli/scripts/check-deb.sh --install --out dist "target/$TARGET/release/openbim-ifc"
       - name: Upload archive
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cli-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+  # Everything the openbim-ifc-cli release attaches, assembled and checked
+  # before anything is published, so a rehearsal proves it too: one archive
+  # per cli-binaries entry and one .deb per Linux entry, their SHA256SUMS,
+  # the Homebrew formula filled from it, and both install scripts.
+  # cli-assets uploads exactly this set.
+  cli-assemble:
+    name: Assemble the CLI release assets
+    needs: [plan, cli-binaries]
+    if: needs.plan.outputs.cli == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download archives
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: cli-*
+          path: dist
+          merge-multiple: true
+      - name: Checksum the archives and packages and write the Homebrew formula
+        # Six archives and two .deb files. The formula takes each platform's
+        # checksum from SHA256SUMS and refuses a missing one.
+        run: |
+          python3 crates/openbim-ifc-cli/scripts/package.py checksums dist --expect 8
+          python3 crates/openbim-ifc-cli/scripts/package.py formula --sums dist/SHA256SUMS --out dist/openbim-ifc.rb
+          cp crates/openbim-ifc-cli/install.sh crates/openbim-ifc-cli/install.ps1 dist/
+          ls -l dist
+      - name: Upload the release assets
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          # Not cli-*: the download above must never pick it up on a re-run.
+          name: release-assets-cli
           path: dist/*
           if-no-files-found: error
 
@@ -582,7 +634,7 @@ jobs:
     # stream per crate, "Latest" would otherwise follow whichever crate was
     # released last.
     name: GitHub release
-    needs: [plan, crates-io, npm, pypi, nuget-pack, nuget-test, nuget, native-archives, cli-binaries]
+    needs: [plan, crates-io, npm, pypi, nuget-pack, nuget-test, nuget, native-archives, cli-binaries, cli-assemble]
     if: >-
       always() && github.event_name == 'push' && needs.plan.result == 'success'
       && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
@@ -629,7 +681,7 @@ jobs:
             [ "$PYPI" = true ] && echo "**PyPI:** https://pypi.org/project/openbim-ifc/$VERSION/"
             [ "$NUGET" = true ] && echo "**NuGet:** https://www.nuget.org/packages/OpenBim.Ifc/$VERSION"
             [ "$NATIVE" = true ] && echo "**C library:** prebuilt CMake archives and \`SHA256SUMS\` are attached below."
-            [ "$CLI" = true ] && echo "**Binaries:** Linux (static), macOS and Windows archives, \`SHA256SUMS\` and the Homebrew formula are attached below. Install: \`curl -fsSL https://raw.githubusercontent.com/openbimrs/ifc/$TAG/crates/openbim-ifc-cli/install.sh | sh -s -- --version $VERSION\`"
+            [ "$CLI" = true ] && echo "**Binaries:** Linux (static), macOS and Windows (x64, Arm64) archives, Debian packages (amd64, arm64), \`SHA256SUMS\` and the Homebrew formula are attached below. Install on Linux or macOS: \`curl -fsSL https://raw.githubusercontent.com/openbimrs/ifc/$TAG/crates/openbim-ifc-cli/install.sh | sh -s -- --version $VERSION\`; on Windows: \`& ([scriptblock]::Create((irm https://raw.githubusercontent.com/openbimrs/ifc/$TAG/crates/openbim-ifc-cli/install.ps1))) -Version $VERSION\`; on Debian or Ubuntu: \`sudo apt install ./openbim-ifc_${VERSION}_amd64.deb\`"
             true
           } >> notes.md
           latest=false
@@ -671,31 +723,23 @@ jobs:
 
   cli-assets:
     name: Attach CLI binaries to the GitHub release
-    needs: [plan, cli-binaries, github-release]
+    needs: [plan, cli-assemble, github-release]
     # always(): as for native-assets, github-release depends on jobs this
     # tag skips.
     if: >-
       always() && github.event_name == 'push' && needs.plan.outputs.cli == 'true'
-      && needs.cli-binaries.result == 'success' && needs.github-release.result == 'success'
+      && needs.cli-assemble.result == 'success' && needs.github-release.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write # upload release assets
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Download archives
+      - name: Download the assembled assets
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: cli-*
+          name: release-assets-cli
           path: dist
-          merge-multiple: true
-      - name: Checksum the archives and write the Homebrew formula
-        # One archive per cli-binaries matrix entry. The formula takes each
-        # platform's checksum from SHA256SUMS and refuses a missing one.
-        run: |
-          python3 crates/openbim-ifc-cli/scripts/package.py checksums dist --expect 5
-          python3 crates/openbim-ifc-cli/scripts/package.py formula --sums dist/SHA256SUMS --out dist/openbim-ifc.rb
-          cp crates/openbim-ifc-cli/install.sh dist/install.sh
       - name: Attach the archives
         # --clobber replaces assets a failed run left half-uploaded.
         env:
