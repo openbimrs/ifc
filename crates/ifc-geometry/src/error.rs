@@ -196,6 +196,89 @@ pub enum GeometryError {
         tolerance: f64,
     },
 
+    /// The two straight axes of an `IfcVirtualGridIntersection` are parallel,
+    /// so they have no intersection to place anything at (#362).
+    ///
+    /// IFC4.3 ADD2 `IfcGrid`, informal proposition: "Grid axes, which are
+    /// referenced in different lists of axes (UAxes, VAxes, WAxes) shall not
+    /// be parallel." Their offset curves are parallel too, whatever the
+    /// `OffsetDistances`.
+    #[error("{intersection} (IFCVIRTUALGRIDINTERSECTION): grid axes {} and {} are parallel", axes[0], axes[1])]
+    GridAxesParallel {
+        /// The `IfcVirtualGridIntersection`.
+        intersection: EntityId,
+        /// Its `IntersectingAxes`.
+        axes: [EntityId; 2],
+    },
+
+    /// The curved axes of an `IfcVirtualGridIntersection` meet nowhere
+    /// within their extent, or more than once (#362).
+    ///
+    /// `IfcVirtualGridIntersection.IntersectingAxes` are "two grid axes which
+    /// intersects at exactly one intersection"; picking one of two crossings,
+    /// or the nearest miss, would be a guess.
+    #[error("{intersection} (IFCVIRTUALGRIDINTERSECTION): grid axes {} and {} {detail}", axes[0], axes[1])]
+    GridAxesDoNotIntersect {
+        /// The `IfcVirtualGridIntersection`.
+        intersection: EntityId,
+        /// Its `IntersectingAxes`.
+        axes: [EntityId; 2],
+        /// Whether they miss or meet more than once.
+        detail: &'static str,
+    },
+
+    /// An `IfcGridAxis` that no `IfcGrid` lists, so it has no grid frame to
+    /// be placed in (#362).
+    ///
+    /// `IfcGridAxis` WR2: the axis is used by exactly one of `UAxes`,
+    /// `VAxes`, `WAxes` of one `IfcGrid`, whose `ObjectPlacement` positions
+    /// it ("The grid axis is positioned within the XY plane of the position
+    /// coordinate system defined by the IfcGrid").
+    #[error("grid axis {axis} belongs to no IfcGrid, so it has no placement frame")]
+    GridAxisWithoutGrid {
+        /// The `IfcGridAxis`.
+        axis: EntityId,
+    },
+
+    /// The axes one `IfcGridPlacement` names belong to different grids
+    /// (#362).
+    ///
+    /// `IfcVirtualGridIntersection`, informal proposition: both
+    /// `IntersectingAxes` "shall be two IfcGridAxis defined by the same
+    /// IfcGrid"; the same holds for the `PlacementRefDirection`
+    /// intersection. Two grids are two frames, and choosing one is a guess.
+    #[error("{intersection}: its grid axes belong to different grids, {} and {}", grids[0], grids[1])]
+    GridAxesInDifferentGrids {
+        /// The `IfcVirtualGridIntersection` (or the `IfcGridPlacement`
+        /// whose two intersections disagree).
+        intersection: EntityId,
+        /// The two grids.
+        grids: [EntityId; 2],
+    },
+
+    /// A placement's stated `PlacementRelTo` disagrees with the frame IFC4.3
+    /// ADD2 says it references (#357, #362).
+    ///
+    /// An `IfcLinearPlacement` "references the IfcObjectPlacement of the
+    /// IfcLinearPositioningElement through IfcLinearPlacement.PlacementRelTo"
+    /// (concept Product Linear Placement), and an `IfcGridPlacement`
+    /// references "the ObjectPlacement of the IfcGrid by means of
+    /// IfcObjectPlacement.PlacementRelTo". When the stated frame and the one
+    /// the basis curve's alignment (or the axes' grid) is placed in resolve
+    /// to different transforms, either answer would be a guess.
+    #[error(
+        "{placement}: PlacementRelTo {stated} resolves to a different frame than {implied}, the \
+         placement of the alignment or grid it is defined on"
+    )]
+    PlacementRelToConflict {
+        /// The `IfcLinearPlacement` or `IfcGridPlacement`.
+        placement: EntityId,
+        /// Its `PlacementRelTo`.
+        stated: EntityId,
+        /// The `ObjectPlacement` of the alignment or grid it is defined on.
+        implied: EntityId,
+    },
+
     /// The geometry is structurally impossible.
     ///
     /// A degenerate direction, a zero-radius circle, a self-referencing
@@ -269,6 +352,11 @@ impl GeometryError {
             | Self::ChainTooDeep { entity, .. }
             | Self::AggregateTooLarge { entity, .. }
             | Self::Degenerate { entity, .. } => Some(*entity),
+            Self::GridAxesParallel { intersection, .. }
+            | Self::GridAxesDoNotIntersect { intersection, .. }
+            | Self::GridAxesInDifferentGrids { intersection, .. } => Some(*intersection),
+            Self::GridAxisWithoutGrid { axis } => Some(*axis),
+            Self::PlacementRelToConflict { placement, .. } => Some(*placement),
             #[cfg(feature = "compile")]
             Self::CompilationRefused { entity, .. } => Some(*entity),
             #[cfg(feature = "compile")]
