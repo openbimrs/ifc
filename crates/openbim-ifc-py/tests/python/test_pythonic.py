@@ -13,7 +13,9 @@ from typing import Any, Iterator, Optional
 
 import openbim_ifc
 from openbim_ifc import (
+    Assignable,
     Binary,
+    Bool,
     Derived,
     Entity,
     Enum,
@@ -165,23 +167,59 @@ class Writes(unittest.TestCase):
         from openbim_ifc import Text
 
         wall = model[31]
-        wall.Name = Text("Wall B (checked)")  # set_attribute_by_name
+        wall.Name = "Wall B (checked)"  # IfcLabel: written 'Wall B (checked)'
+        wall.PredefinedType = "standard"  # IfcWallTypeEnum: written .STANDARD.
         wall.Description = None  # $
-        wall.OwnerHistory = model[5]  # a reference
-        # wall.Name = "x" raises TypeError: Text or Enum? The binding does not guess.
-        old = wall.set("Name", Text("Wall B"))  # returns the old tagged value
+        wall.OwnerHistory = model[5]  # a reference, checked to be an IfcOwnerHistory
+        old = wall.set("Name", Text("Wall B"))  # exact; returns the old tagged value
         # docs:end
         self.assertEqual(old, Text("Wall B (checked)"))
+        self.assertEqual(wall.raw("PredefinedType"), Enum("STANDARD"))
         self.assertEqual(wall.raw("Description"), Null())
         self.assertEqual(wall.raw("OwnerHistory"), Ref(5))
+
+    def test_plain_values_follow_the_declared_type(self) -> None:
+        model = IfcModel.parse(FORMS)
+        wall, prop, point, texture = model[1], model[3], model[4], model[5]
+        wall.Name = "W"
+        self.assertEqual(wall.raw("Name"), Text("W"))
+        self.assertIn(b"IFCWALL('0YvctVUKr0kugbFTf53O9L',$,'W',", model.write())
+        wall.PredefinedType = "Partitioning"
+        self.assertEqual(wall.raw("PredefinedType"), Enum("PARTITIONING"))
+        point.Coordinates = [1, 2.5]  # LIST OF IfcLengthMeasure: reals
+        self.assertEqual(point.raw("Coordinates"), List((Real(1.0), Real(2.5))))
+        texture.Width = 4  # IfcInteger
+        self.assertEqual(texture.raw("Width"), Integer(4))
+        texture.RepeatS = True  # IfcBoolean
+        self.assertEqual(texture.raw("RepeatS"), Bool(True))
+        # A tagged value is written exactly as given, a SELECT included.
+        prop.NominalValue = Typed("IFCLABEL", Text("x"))
+        self.assertEqual(prop.raw("NominalValue"), Typed("IFCLABEL", Text("x")))
+        model[7].RelatingPropertyDefinition = model[8]  # an entity in a SELECT
+        self.assertEqual(model[7].raw("RelatingPropertyDefinition"), Ref(8))
 
     def test_refusals_change_nothing(self) -> None:
         model = fixture()
         wall = model[31]
         before = model.write()
-        for bare in ("x", 1, 1.0, True, b"x", ["x"]):
-            with self.assertRaises(TypeError, msg=repr(bare)):
-                wall.Name = bare  # type: ignore[assignment]
+        cases: list[tuple[Assignable, str]] = [
+            (1, "type-mismatch"),  # a number is no label
+            (True, "type-mismatch"),
+            (["x"], "type-mismatch"),  # nor a list
+        ]
+        for bare, expected in cases:
+            with self.assertRaises(IfcError, msg=repr(bare)) as caught:
+                wall.Name = bare
+            self.assertEqual(caught.exception.code, expected)
+        with self.assertRaises(IfcError) as caught:
+            wall.PredefinedType = "CURVED"
+        self.assertEqual(caught.exception.code, "type-mismatch")
+        self.assertIn("IfcWallTypeEnum", str(caught.exception))
+        with self.assertRaises(IfcError) as caught:
+            wall.OwnerHistory = model[30]  # a wall is no IfcOwnerHistory
+        self.assertEqual(caught.exception.code, "type-mismatch")
+        with self.assertRaises(TypeError):
+            wall.Name = b"x"  # type: ignore[assignment]
         with self.assertRaises(ValueError):
             wall.OwnerHistory = fixture()[5]
         with self.assertRaises(AttributeError) as unknown:
@@ -197,14 +235,29 @@ class Writes(unittest.TestCase):
         self.assertEqual(caught.exception.code, "derived-attribute")
         self.assertEqual(model.write(), before)
 
+    def test_an_ambiguous_select_asks_for_a_wrapper(self) -> None:
+        model = IfcModel.parse(FORMS)
+        prop = model[3]  # NominalValue: IfcValue
+        with self.assertRaises(IfcError) as caught:
+            prop.NominalValue = "x"
+        self.assertEqual(caught.exception.code, "ambiguous-value")
+        for member in ("IfcLabel", "IfcText", "IfcIdentifier"):
+            self.assertIn(member, str(caught.exception))
+        self.assertEqual(prop.raw("NominalValue"), Typed("IFCLOGICAL", Unknown()), "unchanged")
+
     def test_aggregates_write_as_lists(self) -> None:
         model = IfcModel.parse(FORMS)
         point = model[4]
         point.Coordinates = (Real(0.0), Real(1.0), Real(2.0))
         self.assertEqual(point.raw("Coordinates"), List((Real(0.0), Real(1.0), Real(2.0))))
         relation = model[7]
-        relation.RelatedObjects = [model[1], model[4]]
+        # An Entity is checked against SET OF IfcObjectDefinition; an
+        # exact Ref is written as given.
+        relation.RelatedObjects = [model[1], Ref(4)]
         self.assertEqual(relation.raw("RelatedObjects"), List((Ref(1), Ref(4))))
+        with self.assertRaises(IfcError) as caught:
+            relation.RelatedObjects = [model[1], model[4]]
+        self.assertEqual(caught.exception.code, "type-mismatch")
 
 
 class Iteration(unittest.TestCase):

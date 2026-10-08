@@ -256,6 +256,23 @@ static int domains(void) {
                                          sizeof strings, &string_len));
   CHECK(nodes[0].kind == OPENBIM_IFC_KIND_LIST && nodes[0].child_count == 6,
         "a SpatialTree record");
+
+  /* Many objects in one pass (#358): the wall's one inherited set, a
+   * refusal for the material, which carries no property sets. */
+  const uint64_t objects[2] = {3, 20};
+  OK(openbim_ifc_v0_1_model_property_sets_many(model, objects, 2, &count, nodes, 256,
+                                               &node_count, strings, sizeof strings,
+                                               &string_len));
+  CHECK(count == 2 && nodes[0].child_count == 2, "one record per object");
+  CHECK(nodes[1].kind == OPENBIM_IFC_KIND_LIST && nodes[1].child_count == 3,
+        "an ObjectPropertySets record has three fields");
+  CHECK(nodes[2].kind == OPENBIM_IFC_KIND_REF && nodes[2].int_value == 3, "the object");
+  CHECK(nodes[3].kind == OPENBIM_IFC_KIND_LIST && nodes[3].child_count == 1, "one set");
+  /* Every object definition when ids is NULL and the count 0. */
+  OK(openbim_ifc_v0_1_model_property_sets_many(model, NULL, 0, &count, nodes, 256,
+                                               &node_count, strings, sizeof strings,
+                                               &string_len));
+  CHECK(count == 2, "the wall type and the wall");
   OK(openbim_ifc_v0_1_model_destroy(model));
 
   /* The same refusal as every host: IFC2X3 has no georeferencing. */
@@ -744,6 +761,25 @@ static int documented_by_name(OpenbimIfcModel model) {
   return status == OPENBIM_IFC_STATUS_OK ? 0 : 1;
 }
 
+/* The plain-value example published on the docs site's C page. */
+static int documented_plain(OpenbimIfcModel model) {
+  // docs:snippet c-attribute-plain
+  /* A plain TEXT for an enumeration attribute: coerced against the declared
+   * type (IfcWallTypeEnum) and written .STANDARD.; a label would be written
+   * as text, a SELECT member as its typed parameter. */
+  const char attribute[] = "PredefinedType";
+  const char item[] = "standard";
+  OpenbimIfcValueNode value;
+  memset(&value, 0, sizeof value);
+  value.kind = OPENBIM_IFC_KIND_TEXT;
+  value.str_len = strlen(item);
+  OpenbimIfcStatus status = openbim_ifc_v0_1_entity_set_attribute_by_name_plain(
+      model, 1, (const uint8_t *)attribute, strlen(attribute), &value, 1,
+      (const uint8_t *)item, strlen(item));
+  // docs:end
+  return status == OPENBIM_IFC_STATUS_OK ? 0 : 1;
+}
+
 /* Attributes by name (#326). Returns 0 on success. */
 static int named_attributes(void) {
   OpenbimIfcModel model = 0;
@@ -811,6 +847,31 @@ static int named_attributes(void) {
   OK(openbim_ifc_v0_1_entity_attribute(model, si, 0, nodes, 128, &node_count, strings,
                                        sizeof strings, &string_len));
   CHECK(nodes[0].kind == OPENBIM_IFC_KIND_DERIVED, "the refused write changed nothing");
+
+  /* Plain values (#342): a string names an enumeration item, in any case. */
+  CHECK(documented_plain(model) == 0, "the documented plain-value example runs");
+  OK(openbim_ifc_v0_1_entity_attribute(model, 1, 8, nodes, 128, &node_count, strings,
+                                       sizeof strings, &string_len));
+  CHECK(nodes[0].kind == OPENBIM_IFC_KIND_ENUM && nodes[0].str_len == 8 &&
+            memcmp(strings + nodes[0].str_offset, "STANDARD", 8) == 0,
+        "the item, as the schema spells it");
+  static const char CURVED[] = "curved";
+  OpenbimIfcValueNode plain = node(OPENBIM_IFC_KIND_TEXT, 0, 0, 0, strlen(CURVED));
+  const char predefined[] = "PredefinedType";
+  CHECK(openbim_ifc_v0_1_entity_set_attribute_by_name_plain(
+            model, 1, (const uint8_t *)predefined, strlen(predefined), &plain, 1,
+            (const uint8_t *)CURVED, strlen(CURVED)) == OPENBIM_IFC_STATUS_TYPE_MISMATCH,
+        "no IfcWallTypeEnum item is CURVED");
+  OK(openbim_ifc_v0_1_last_error_code(model, (uint8_t *)code, sizeof code, &need));
+  CHECK(strcmp(code, "type-mismatch") == 0, "shared code");
+  /* IfcPropertySingleValue.NominalValue is IfcValue: a string fits many. */
+  static const char VALUE[] = "x";
+  OpenbimIfcValueNode ambiguous = node(OPENBIM_IFC_KIND_TEXT, 0, 0, 0, 1);
+  const char nominal[] = "NominalValue";
+  CHECK(openbim_ifc_v0_1_entity_set_attribute_by_name_plain(
+            model, 2, (const uint8_t *)nominal, strlen(nominal), &ambiguous, 1,
+            (const uint8_t *)VALUE, 1) == OPENBIM_IFC_STATUS_AMBIGUOUS_VALUE,
+        "an ambiguous SELECT member is refused");
   OK(openbim_ifc_v0_1_model_destroy(model));
   return 0;
 }

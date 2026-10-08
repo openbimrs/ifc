@@ -37,12 +37,10 @@ A pure-Python layer over those calls reads like IfcOpenShell:
 
 ```python
 import openbim_ifc
-from openbim_ifc import Text
-
 model = openbim_ifc.open("model.ifc")
 for wall in model.by_type("IfcWall"):          # subtypes included
     print(wall.Name, wall.psets["Pset_WallCommon"]["IsExternal"])
-wall.Name = Text("Renamed")                     # set_attribute_by_name
+wall.Name = "Renamed"                           # coerced: IfcLabel, written 'Renamed'
 frame = model.to_dataframe("IfcWall")           # pip install 'openbim-ifc[pandas]'
 ```
 
@@ -60,8 +58,13 @@ Attribute values are frozen dataclasses, one per STEP form: `Null` (`$`),
 (`IFCLENGTHMEASURE(2.5)`). They keep every distinction IFC makes, so a
 file read and written back through Python is unchanged.
 
-Bare Python values are refused with `TypeError`: `3` could be an `Integer`
-or a `Real`, `"x"` a `Text` or an `Enum`, and the binding does not guess.
+The calls that take these values write them exactly. A by-name write of
+a bare Python value (`wall.Name = "x"`, `set_attribute_by_name_plain`)
+is coerced against the attribute's declared type instead: `"x"` becomes a
+label or an enumeration item, `3` an `Integer` or a `Real`, as the
+attribute declares; a value the declaration cannot settle, such as a
+string several SELECT members take, raises `ambiguous-value` rather than
+guess.
 
 ## Errors
 

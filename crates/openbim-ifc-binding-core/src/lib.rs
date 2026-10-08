@@ -22,7 +22,15 @@
 //! ([`IfcModel::attribute_by_name`]); a name resolves against the release
 //! the header declares, inherited attributes included, and is refused with
 //! `unknown-attribute` (or `derived-attribute` for a write to a `*` slot)
-//! rather than guessed.
+//! rather than guessed. A by-name write also takes a plain host value
+//! ([`Plain`], #342), coerced against the attribute's declared type
+//! ([`coerce`]): a string to a label or an enumeration item, an integer to
+//! an `INTEGER` or a `REAL`, refused with `type-mismatch` when it does not
+//! fit and `ambiguous-value` when several SELECT members would take it.
+//!
+//! Property sets resolve per object ([`IfcModel::property_sets`]) or for
+//! many objects in one pass ([`IfcModel::property_sets_many`], #358), which
+//! validates the file's property relationships once rather than per object.
 //!
 //! Entities are created by type and named attributes (#330, feature
 //! `author`), alone or with the spatial, product, type and placement
@@ -46,6 +54,7 @@ mod attribute;
 pub mod authoring;
 pub mod catalog;
 pub mod classification;
+pub mod coerce;
 pub mod cost;
 mod error;
 pub mod geometry;
@@ -66,6 +75,7 @@ mod xml;
 
 pub use attribute::AttributeInfo;
 pub use authoring::{AuthorOp, AuthoringResult};
+pub use coerce::Plain;
 pub use error::BindingError;
 pub use geometry::{GeometryRefusal, ProductMesh, ProductPlacement, SelectedRepresentation};
 pub use model::IfcModel;

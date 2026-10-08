@@ -8,7 +8,7 @@ use js_sys::{Array, BigInt, Object, Reflect};
 use wasm_bindgen::{JsCast, JsValue};
 
 use openbim_ifc_binding_core::value::{Kind, Tagged, MAX_NESTING};
-use openbim_ifc_binding_core::BindingError;
+use openbim_ifc_binding_core::{BindingError, Plain};
 
 fn invalid(detail: impl Into<String>) -> BindingError {
     BindingError::InvalidValue(detail.into())
@@ -98,6 +98,59 @@ fn from_js_at(value: &JsValue, depth: usize) -> Result<Tagged, BindingError> {
             value: Box::new(from_js_at(&get(value, "value")?, depth + 1)?),
         },
     })
+}
+
+/// Whether `value` is a tagged value (an object other than an array),
+/// which a write takes exactly; anything else is a plain value (#342).
+pub(crate) fn is_tagged(value: &JsValue) -> bool {
+    value.is_object() && !Array::is_array(value)
+}
+
+/// Decode a plain JS value for a coerced write (#342): `null`, a boolean,
+/// a `bigint` or a safe-integer `number` (an integer), any other finite
+/// `number` (a float), a string, an array of plain values, or a tagged
+/// object, written exactly.
+pub(crate) fn plain_from_js(value: &JsValue) -> Result<Plain, BindingError> {
+    plain_at(value, 0)
+}
+
+fn plain_at(value: &JsValue, depth: usize) -> Result<Plain, BindingError> {
+    if depth > MAX_NESTING {
+        return Err(invalid(format!("nesting deeper than {MAX_NESTING}")));
+    }
+    if value.is_null() {
+        return Ok(Plain::Null);
+    }
+    if let Some(flag) = value.as_bool() {
+        return Ok(Plain::Bool(flag));
+    }
+    if value.is_bigint() {
+        return Ok(Plain::Integer(big_i64(value, "a bigint")?));
+    }
+    if let Some(number) = value.as_f64() {
+        const MAX_SAFE: f64 = 9_007_199_254_740_991.0;
+        if number.fract() == 0.0 && number.abs() <= MAX_SAFE {
+            #[allow(clippy::cast_possible_truncation)] // Integral and within 2^53.
+            return Ok(Plain::Integer(number as i64));
+        }
+        return Ok(Plain::Real(number));
+    }
+    if let Some(text) = value.as_string() {
+        return Ok(Plain::Text(text));
+    }
+    if Array::is_array(value) {
+        return Array::from(value)
+            .iter()
+            .map(|item| plain_at(&item, depth + 1))
+            .collect::<Result<_, _>>()
+            .map(Plain::List);
+    }
+    if value.is_object() {
+        return Ok(Plain::Exact(from_js_at(value, depth)?));
+    }
+    Err(invalid(
+        "expected null, a boolean, a number, a bigint, a string, an array or an IfcValue",
+    ))
 }
 
 fn string(object: &JsValue, key: &str) -> Result<String, BindingError> {

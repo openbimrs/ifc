@@ -13,6 +13,7 @@ from openbim_ifc import (
     IfcError,
     IfcModel,
     MaterialAssignment,
+    ObjectPropertySets,
     PropertySet,
     Real,
     Typed,
@@ -74,6 +75,38 @@ class Domains(unittest.TestCase):
         self.assertAlmostEqual(unit.scale, 0.001)
         with self.assertRaises(dataclasses.FrozenInstanceError):
             sets[0].name = "changed"
+
+    def test_property_sets_many_answer_as_one_object_each(self):
+        model = fixture("synthetic-properties/synthetic_properties.ifc")
+        # docs:snippet py-property-sets-many
+        every = model.property_sets_many()  # every object definition, one pass
+        walls = model.property_sets_many([30, 31])  # or the ids given, in order
+        external = {
+            answer.object: [p.value for s in answer.sets for p in s.properties if p.name == "IsExternal"]
+            for answer in walls
+        }
+        # docs:end
+        self.assertTrue(all(isinstance(a, ObjectPropertySets) for a in every))
+        self.assertEqual([a.object for a in every], model.ids_of_type_including_subtypes("IfcObjectDefinition"))
+        self.assertEqual(sorted(external), [30, 31])
+        ids = model.ids() + [9999]
+        for answer, id in zip(model.property_sets_many(reversed(ids)), reversed(ids)):
+            self.assertEqual(answer.object, id)
+            try:
+                expected = model.property_sets(id)
+            except IfcError as error:
+                self.assertEqual(answer.sets, ())
+                self.assertEqual((answer.refusal.code, answer.refusal.message), (error.code, str(error)))
+            else:
+                self.assertIsNone(answer.refusal)
+                self.assertEqual(list(answer.sets), expected)
+        self.assertEqual(model.property_sets_many([]), [])
+        ifc4x1 = IfcModel.parse(
+            open(os.path.join(FIXTURES, "synthetic-properties/synthetic_properties.ifc"), "rb")
+            .read()
+            .replace(b"FILE_SCHEMA(('IFC4'))", b"FILE_SCHEMA(('IFC4X1'))")
+        )
+        self.assertCode("unsupported-schema", ifc4x1.property_sets_many)
 
     def test_spatial_tree_systems_cost_and_georeferencing(self):
         tree = fixture("synthetic-properties/synthetic_properties.ifc").spatial_tree()

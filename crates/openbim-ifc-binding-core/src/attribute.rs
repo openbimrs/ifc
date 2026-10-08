@@ -64,7 +64,7 @@ impl ToRecord for AttributeInfo {
     }
 }
 
-fn refused(error: NamedAttributeError) -> BindingError {
+pub(crate) fn refused(error: NamedAttributeError) -> BindingError {
     match error {
         NamedAttributeError::MissingEntity(EntityId(id)) => BindingError::MissingEntity(id),
         NamedAttributeError::UnknownEntity { .. } => {

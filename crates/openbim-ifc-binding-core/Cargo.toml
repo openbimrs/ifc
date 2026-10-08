@@ -28,6 +28,15 @@ group = "binding"
 # bundled tables (#112).
 openbim-ifc = { workspace = true, default-features = false, features = ["step", "schema-api"] }
 
+# Property sets of every object through the bindings (#358). `cargo bench`
+# measures; `cargo test --bench property_sets` is the CI smoke run. It
+# compiles in the #352 property bench's generator and the `ifc-step`
+# baseline harness by path. See benchmarks/README.md.
+[[bench]]
+name = "property_sets"
+harness = false
+required-features = ["properties"]
+
 [features]
 # Every bundled IFC release, as before #112, and every capability (#244).
 # The browser package turns defaults off and names the releases and

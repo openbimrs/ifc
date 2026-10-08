@@ -8,6 +8,31 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#358, property sets of many objects)
+
+- `IfcModel.property_sets_many(ids=None)`: one `ObjectPropertySets`
+  (object, sets, `PropertyRefusal`) per id, or per object definition, in
+  one pass (the GIL released), each exactly what `property_sets` answers.
+  `to_dataframe` resolves its rows through it, so it is linear in the
+  model.
+
+### Changed (#342, plain values coerced against the declared type)
+
+- `wall.Name = "x"` works: `Entity` writes and the new
+  `IfcModel.set_attribute_by_name_plain` coerce a plain `str`, `int`,
+  `float`, `bool`, list or tuple against the attribute's declared type
+  (a label written bare, an enumeration item in any case, a typed SELECT
+  member when exactly one takes it). Bare values no longer raise
+  `TypeError`; a value that does not fit raises `type-mismatch`, one
+  several SELECT members take `ambiguous-value`. Tagged values are still
+  written exactly.
+- An `Entity` written as a reference is now checked to be of a type the
+  attribute accepts (`type-mismatch`); write `Ref(id)` to bypass the
+  check.
+
+Semver: a behaviour change for writes that were refused (bare values) or
+unchecked (an `Entity` of the wrong type): a minor release under 0.x.
+
 ## [0.3.3] - 2026-10-08
 
 ### Added (#328, geometry, ADR 0021)

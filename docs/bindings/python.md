@@ -131,25 +131,42 @@ property's declared type and unit, which `resolve_unit` resolves.
 from openbim_ifc import Text
 
 wall = model[31]
-wall.Name = Text("Wall B (checked)")  # set_attribute_by_name
+wall.Name = "Wall B (checked)"  # IfcLabel: written 'Wall B (checked)'
+wall.PredefinedType = "standard"  # IfcWallTypeEnum: written .STANDARD.
 wall.Description = None  # $
-wall.OwnerHistory = model[5]  # a reference
-# wall.Name = "x" raises TypeError: Text or Enum? The binding does not guess.
-old = wall.set("Name", Text("Wall B"))  # returns the old tagged value
+wall.OwnerHistory = model[5]  # a reference, checked to be an IfcOwnerHistory
+old = wall.set("Name", Text("Wall B"))  # exact; returns the old tagged value
 ```
 
 <!-- /SNIPPET -->
 
-`entity.Name = value` writes through `set_attribute_by_name`, and
-`entity.set(name, value)` does the same and returns the old tagged value.
-A write takes a tagged value, an `Entity` (a reference; one from another
-model is refused with `ValueError`), `None` (`$`), or a tuple or list of
-these (an aggregate). A bare `str`, `int`, `float` or `bool` raises
-`TypeError`: `"x"` could be a `Text` or an `Enum`, `1` an `Integer` or a
-`Real`, and the binding does not guess. A refused write changes nothing;
-an unknown name raises `AttributeError`, a derived one `IfcError`
-(`derived-attribute`). The view's own members (`id`, `type`, ...) cannot be
-assigned.
+`entity.Name = value` writes through `set_attribute_by_name_plain`
+(#342), and `entity.set(name, value)` does the same and returns the old
+tagged value. A plain value is coerced against the attribute's declared
+type in the release the header declares:
+
+| Plain value | Declared type | Written |
+| --- | --- | --- |
+| `str` | `STRING`, through any defined type (`IfcLabel`) | text, bare: `'x'` |
+| `str` | an enumeration | the item it names, in any case: `.STANDARD.` |
+| `int` | `INTEGER` / `REAL` | an integer / a real (exact within 2^53) |
+| `float` | `REAL` | a real |
+| `bool` | `BOOLEAN`, `LOGICAL` | `.T.` / `.F.` |
+| tuple or list | an aggregate | each element coerced against the element type |
+| `Entity` | an entity type, or a SELECT of them | a reference, once it exists and is of an accepted type |
+| `None` | any | `$` |
+| any of the above | a SELECT | the one member that takes it, as a typed parameter: `IFCDESCRIPTIVEMEASURE('by layer')` |
+
+A value that does not fit raises `IfcError` with `type-mismatch` (a
+number for a label, a name no enumeration item has, a wall where a
+placement is declared), one that several SELECT members take
+`ambiguous-value` naming them (`"x"` for `IfcValue` is a label, a text, an
+identifier, ...): pass the exact value then, `Typed("IFCLABEL",
+Text("x"))`. A tagged value is always written exactly as given, nested in a
+list too, and an `Entity` from another model is refused with `ValueError`.
+A refused write changes nothing; an unknown name raises `AttributeError`, a
+derived one `IfcError` (`derived-attribute`). The view's own members (`id`,
+`type`, ...) cannot be assigned.
 
 ### Iteration and filtering
 
@@ -316,6 +333,27 @@ for pset in model.property_sets(wall):
 classes = model.classifications(wall)  # (Classification(identification=...), ...)
 material = model.material(wall)  # MaterialAssignment(kind="layer-set", layers=(...))
 tree = model.spatial_tree()  # SpatialTree(nodes=(SpatialNode(kind=...), ...))
+```
+
+<!-- /SNIPPET -->
+
+`property_sets(id)` resolves one object. For many, or all, ask once:
+`property_sets_many(ids)` (#358) validates the file's property
+relationships once for the call instead of once per object, so a pass over
+every object is linear in the model where a loop of `property_sets` is
+quadratic. Each answer is exactly the per-object call's, or its refusal
+as `code` and `message`; no index outlives the call, so a call after an
+edit sees the edit. `to_dataframe` uses it.
+
+<!-- SNIPPET:py-property-sets-many -->
+
+```python
+every = model.property_sets_many()  # every object definition, one pass
+walls = model.property_sets_many([30, 31])  # or the ids given, in order
+external = {
+    answer.object: [p.value for s in answer.sets for p in s.properties if p.name == "IsExternal"]
+    for answer in walls
+}
 ```
 
 <!-- /SNIPPET -->
@@ -559,6 +597,7 @@ Generated from the `openbim_ifc` package source.
 | `model.validate(max_findings: Optional[int] = None) -> ValidationReport` | Validate against the schema the header declares. |
 | `model.unreachable_products() -> List[UnreachableProduct]` | Products no viewer will draw, with a stable `reason`, in id order. |
 | `model.property_sets(id: int) -> List[PropertySet]` | The property sets, quantity sets and predefined property sets of object `id`: its own first, then those its type object holds, an occurrence property overriding an inherited one of the same name. |
+| `model.property_sets_many(ids: Optional[Iterable[int]] = None) -> List[ObjectPropertySets]` | :meth:`property_sets` of each of `ids`, in that order, or, with `None`, of every object definition (`IfcObjectDefinition` and its subtypes) in file order, in one pass. |
 | `model.resolve_unit(measure_type: str, unit: Optional[int] = None) -> ResolvedUnit` | The effective unit of a `measure_type` value (`"IFCAREAMEASURE"`): `unit` when given (a property's stated unit), otherwise the project default, resolved exactly to SI. |
 | `model.set_properties(edits: Iterable[PropertyEdit]) -> PropertyEditResult` | Write and remove property and quantity values as one checked transaction: every edit, in order, or none. |
 | `model.set_property(object: int, set: str, name: str, value: Value, *, set_type: Optional[str] = None) -> int` | Write one value (:meth:`set_properties` with one edit); returns the id of the entity holding it. |
@@ -584,6 +623,7 @@ Generated from the `openbim_ifc` package source.
 | `model.attribute_names(id: int) -> List[AttributeInfo]` | Every explicit attribute of entity `id` in slot order, inherited first, as the release the header declares defines them. `INVERSE` attributes hold no slot and are not listed. |
 | `model.attribute_by_name(id: int, name: str) -> Value` | Attribute `name` of entity `id`, matched case-insensitively (`"Name"`) and resolved against the declared release; `Null` when the record stops before its slot. |
 | `model.set_attribute_by_name(id: int, name: str, value: Value) -> Value` | Set attribute `name` of entity `id`; returns the old value. A derived attribute raises `derived-attribute`, an unknown name `unknown-attribute`, and a refused write changes nothing. |
+| `model.set_attribute_by_name_plain(id: int, name: str, value: Assignable) -> Value` | Set attribute `name` of entity `id` from a plain Python value, coerced against the attribute's declared type in the declared release; returns the old tagged value. `wall.Name = "x"` calls this. |
 | `model.add(type_name: str, attributes: Iterable[Value]) -> int` | Append an entity; returns its new id. |
 | `model.remove(id: int) -> None` | Remove entity `id`, leaving references to it dangling. |
 | `model.author(ops: Iterable[AuthorOp]) -> AuthoringResult` | Apply authoring operations as one checked transaction against the release the header declares: every operation, in order, or none. |
@@ -607,7 +647,7 @@ An `Entity` (from `model[id]`, `by_id`, `by_type` or `iter(model)`) also reads a
 | `entity.is_a(type_name: str) -> bool` | Whether the entity is a `type_name` or a subtype of it, per the file's schema; case-insensitive. A name the schema lacks is `False`. |
 | `entity.get(name: str) -> PlainValue` | Attribute `name` as a plain value; `entity.Name` with the precise type. Raises :class:`openbim_ifc.IfcError` as :meth:`IfcModel.attribute_by_name` does. |
 | `entity.raw(name: str) -> Value` | Attribute `name` as the exact tagged value, e.g. `Typed("IFCLABEL", Text("W1"))` or `Derived()`. |
-| `entity.set(name: str, value: Assignable) -> Value` | Write attribute `name` (`entity.Name = value`); returns the old tagged value. A refused write changes nothing. |
+| `entity.set(name: str, value: Assignable) -> Value` | Write attribute `name` (`entity.Name = value`); returns the old tagged value. A plain value is coerced against the declared type (:meth:`openbim_ifc.IfcModel.set_attribute_by_name_plain`); a tagged one is written as given. A refused write changes nothing. |
 | `entity.attribute_names() -> list[AttributeInfo]` | Every explicit attribute, in slot order, as :meth:`IfcModel.attribute_names` lists them. |
 | `entity.property_sets() -> list[PropertySet]` | The exact records :meth:`IfcModel.property_sets` returns. |
 | `entity.psets: Mapping[str, Mapping[str, PropertyValue]]` | Property sets and predefined property sets by name, each a read-only mapping of property name to :data:`PropertyValue`. |

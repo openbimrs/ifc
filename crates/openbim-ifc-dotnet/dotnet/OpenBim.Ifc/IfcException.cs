@@ -59,6 +59,8 @@ public sealed class IfcException : Exception
         IfcStatus.DerivedAttribute => "derived-attribute",
         IfcStatus.MissingAttribute => "missing-attribute",
         IfcStatus.StillReferenced => "still-referenced",
+        IfcStatus.TypeMismatch => "type-mismatch",
+        IfcStatus.AmbiguousValue => "ambiguous-value",
         IfcStatus.NullPointer => "null-pointer",
         IfcStatus.InvalidArgument => "invalid-argument",
         IfcStatus.InvalidHandle => "invalid-handle",
@@ -71,5 +73,5 @@ public sealed class IfcException : Exception
     /// <summary>Whether the C ABI records this status as the model's last
     /// error: the shared binding errors do, boundary misuse does not.</summary>
     internal static bool IsBindingError(IfcStatus status) =>
-        status is >= IfcStatus.Parse and <= IfcStatus.StillReferenced and not IfcStatus.NoValue;
+        status is >= IfcStatus.Parse and <= IfcStatus.AmbiguousValue and not IfcStatus.NoValue;
 }

@@ -40,6 +40,13 @@
 #define OPENBIM_IFC_KIND_ENUM 8
 
 /**
+ * Only in a plain value (`openbim_ifc_v0_1_entity_set_attribute_by_name_plain`,
+ * #342): one child follows and is written exactly as given, never
+ * coerced. Refused in every other tape.
+ */
+#define OPENBIM_IFC_KIND_EXACT 12
+
+/**
  * Integer in `int_value`.
  */
 #define OPENBIM_IFC_KIND_INTEGER 4
@@ -107,7 +114,7 @@
  * Result of every ABI call. `Ok` is zero; every failure is non-zero.
  *
  * The values from `Parse` to `FeatureDisabled`, `InvalidModel`, and
- * `MissingReference` to `StillReferenced`, are the binding errors shared
+ * `MissingReference` to `AmbiguousValue`, are the binding errors shared
  * with the JavaScript and Python bindings; the rest describe misuse of the
  * C boundary itself.
  */
@@ -238,6 +245,16 @@ enum OpenbimIfcStatus
    * relationship still references (`still-referenced`).
    */
   OPENBIM_IFC_STATUS_STILL_REFERENCED = 31,
+  /**
+   * A plain value written by name does not fit the attribute's declared
+   * type (`type-mismatch`).
+   */
+  OPENBIM_IFC_STATUS_TYPE_MISMATCH = 32,
+  /**
+   * A plain value written by name fits several members of the
+   * attribute's SELECT; write it exactly instead (`ambiguous-value`).
+   */
+  OPENBIM_IFC_STATUS_AMBIGUOUS_VALUE = 33,
   /**
    * A Rust panic was contained at the boundary. Report it as a bug.
    */
@@ -513,6 +530,40 @@ OpenbimIfcStatus openbim_ifc_v0_1_entity_set_attribute_by_name(OpenbimIfcModel m
                                                                size_t node_count,
                                                                const uint8_t *strings,
                                                                size_t string_len);
+
+/**
+ * Set attribute `name` (UTF-8, any case) of entity `id` from a one-value
+ * tape of plain values, coerced against the attribute's declared type in
+ * the declared release (#342); returns as
+ * [`openbim_ifc_v0_1_entity_set_attribute_by_name`] does.
+ *
+ * `TEXT` is a string, `INTEGER` an integer, `REAL` a float, `BOOL` a
+ * boolean, `REF` an entity handle, `LIST` a sequence of plain values,
+ * `NULL` unset. A string becomes a label (bare) or the enumeration item it
+ * names; an integer an `INTEGER` or `REAL` as declared; a reference is
+ * checked to exist and fit; in a SELECT, the one member that takes the
+ * value is written as a typed parameter. An `EXACT` node's child, and
+ * `DERIVED`, `UNKNOWN`, `BINARY`, `ENUM` and `TYPED` nodes, are written as
+ * given.
+ *
+ * `TypeMismatch` for a value that does not fit, `AmbiguousValue` for one
+ * several SELECT members take, `MissingReference` for a reference to a
+ * missing entity, `Unsupported` for a declared type the tables do not
+ * resolve; otherwise as for
+ * [`openbim_ifc_v0_1_entity_set_attribute_by_name`]. A refusal changes
+ * nothing.
+ *
+ * # Safety
+ * As for [`openbim_ifc_v0_1_entity_set_attribute_by_name`].
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_entity_set_attribute_by_name_plain(OpenbimIfcModel model,
+                                                                     uint64_t id,
+                                                                     const uint8_t *name,
+                                                                     size_t name_len,
+                                                                     const OpenbimIfcValueNode *nodes,
+                                                                     size_t node_count,
+                                                                     const uint8_t *strings,
+                                                                     size_t string_len);
 
 /**
  * The type name of entity `id`, upper-case, NUL-terminated.
@@ -1069,6 +1120,37 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_property_sets(OpenbimIfcModel model,
                                                       uint8_t *strings,
                                                       size_t string_capacity,
                                                       size_t *out_strings_required);
+
+/**
+ * The property sets of each of `ids` (`id_count` of them), in that
+ * order, or, with `ids` null and `id_count` 0, of every object definition
+ * (`IfcObjectDefinition` and its subtypes) in file order, resolved in one
+ * pass through one property index (#358): a `LIST` of
+ * `ObjectPropertySets` records, their number in `out_count`.
+ * `ObjectPropertySets`: object (`REF`), sets (`LIST` of `PropertySet`, as
+ * for [`openbim_ifc_v0_1_model_property_sets`]; empty when refused),
+ * refusal (`PropertyRefusal` or `NULL`: code (`TEXT`, the shared binding
+ * code), message (`TEXT`)). Each record is exactly what the per-object
+ * call answers for that id, its refusal included.
+ *
+ * Refused as a whole only for the model: `UnsupportedSchema`,
+ * `InvalidModel` (a lenient read with skipped records),
+ * `FeatureDisabled`; `NullPointer` for null `ids` with a non-zero count.
+ *
+ * # Safety
+ * `ids` valid for `id_count` reads when non-null; `out_count` valid for
+ * one write; otherwise as for `openbim_ifc_v0_1_entity_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_property_sets_many(OpenbimIfcModel model,
+                                                           const uint64_t *ids,
+                                                           size_t id_count,
+                                                           size_t *out_count,
+                                                           OpenbimIfcValueNode *nodes,
+                                                           size_t node_capacity,
+                                                           size_t *out_nodes_required,
+                                                           uint8_t *strings,
+                                                           size_t string_capacity,
+                                                           size_t *out_strings_required);
 
 /**
  * Remove one property from `object`'s own set:

@@ -14,6 +14,24 @@
 //! leniently with skipped records with `invalid-model`, since an exact
 //! answer cannot be proven from an incomplete file.
 //!
+//! # Many objects in one call (#358)
+//!
+//! [`IfcModel::property_sets`] validates every `IfcRelDefinesByProperties`
+//! and `IfcRelDefinesByType` of the file on each call, because a malformed
+//! one could hide an assignment; a host loop over every object is then
+//! quadratic. [`IfcModel::property_sets_many`] builds one
+//! `ifc::properties::PropertyIndex` for the call, so the validation runs
+//! once and the whole pass is linear in objects plus relationships. Its
+//! answer for each object is exactly the per-object call's: the same sets,
+//! or the same refusal, as an [`ObjectPropertySets`] record.
+//!
+//! The index never outlives the call. It borrows the model, which the
+//! binding owns and mutates through `&mut self`, so no index can be held
+//! across an edit and no answer can come from a model state other than
+//! the one the call sees: there is no cache to invalidate. The per-object
+//! call keeps the free resolver for the same reason; to resolve many
+//! objects, ask for them together.
+//!
 //! The records are shaped for the checked edit of part 2 of #123: a
 //! property is addressed by its object, set name and property name, and its
 //! `value` is exactly the tagged value an edit would write back.
@@ -86,6 +104,40 @@ pub struct Property {
     pub quality: Option<String>,
     /// `complex`: its members, each resolved as a property.
     pub members: Vec<Property>,
+}
+
+/// The answer for one object of [`IfcModel::property_sets_many`]: its
+/// sets, or why the per-object call would refuse it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ObjectPropertySets {
+    /// The object's entity id.
+    pub object: u64,
+    /// Its sets, as [`IfcModel::property_sets`] returns them; empty when
+    /// refused.
+    pub sets: Vec<PropertySet>,
+    /// The refusal [`IfcModel::property_sets`] would return for it.
+    pub refusal: Option<PropertyRefusal>,
+}
+
+/// Why one object's property sets were refused: the shared binding code
+/// and message of the error the per-object call returns.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PropertyRefusal {
+    /// The binding error code: `missing-entity`, `wrong-entity-type`,
+    /// `invalid-model`, `missing-reference`, `budget-exceeded`,
+    /// `unsupported`, ...
+    pub code: String,
+    /// The error's message.
+    pub message: String,
+}
+
+impl From<&BindingError> for PropertyRefusal {
+    fn from(error: &BindingError) -> Self {
+        Self {
+            code: error.code().to_owned(),
+            message: error.to_string(),
+        }
+    }
 }
 
 /// An `IfcPropertyEnumeration`.
@@ -165,6 +217,34 @@ impl IfcModel {
         }
     }
 
+    /// [`Self::property_sets`] of each of `objects`, in the order given,
+    /// or, with `None`, of every object definition (`IfcObjectDefinition`
+    /// and its subtypes: objects and type objects) in file order, resolved
+    /// through one property index in time linear in objects plus
+    /// relationships (#358).
+    ///
+    /// Each record holds exactly what the per-object call answers: its
+    /// sets, or its refusal (`missing-entity`, `wrong-entity-type`,
+    /// `invalid-model`, ...) as code and message. Refused as a whole only
+    /// when the model is: `unsupported-schema` for a release other than
+    /// IFC2X3, IFC4 or IFC4X3, `invalid-model` for a lenient read with
+    /// skipped records, and `feature-disabled` without the `properties`
+    /// feature.
+    pub fn property_sets_many(
+        &self,
+        objects: Option<&[u64]>,
+    ) -> Result<Vec<ObjectPropertySets>, BindingError> {
+        #[cfg(feature = "properties")]
+        {
+            read::property_sets_many(self, objects)
+        }
+        #[cfg(not(feature = "properties"))]
+        {
+            let _ = objects;
+            Err(BindingError::FeatureDisabled("properties"))
+        }
+    }
+
     /// The effective unit of a value of `measure_type` (`IFCAREAMEASURE`):
     /// `unit` when given (a property's stated unit), otherwise the project
     /// default for that measure, resolved exactly to SI.
@@ -203,6 +283,31 @@ impl ToRecord for PropertySet {
                 ("source", Field::Text(self.source.clone())),
                 ("source_id", Field::id(self.source_id)),
                 ("properties", Field::records(&self.properties)),
+            ],
+        )
+    }
+}
+
+impl ToRecord for ObjectPropertySets {
+    fn to_record(&self) -> Record {
+        Record::new(
+            "ObjectPropertySets",
+            vec![
+                ("object", Field::Id(self.object)),
+                ("sets", Field::records(&self.sets)),
+                ("refusal", Field::record(self.refusal.as_ref())),
+            ],
+        )
+    }
+}
+
+impl ToRecord for PropertyRefusal {
+    fn to_record(&self) -> Record {
+        Record::new(
+            "PropertyRefusal",
+            vec![
+                ("code", Field::Text(self.code.clone())),
+                ("message", Field::Text(self.message.clone())),
             ],
         )
     }
@@ -316,11 +421,15 @@ impl ToRecord for ResolvedUnit {
 pub(crate) mod read {
     use ifc::properties::{
         exact_properties, exact_unit, ExactComplexMember, ExactLogical, ExactProperty,
-        ExactPropertyError, ExactSource, ExactTypedValue, ExactUnitError, ExactValue,
+        ExactPropertyEntry, ExactPropertyError, ExactSource, ExactTypedValue, ExactUnitError,
+        ExactValue, PropertyIndex,
     };
     use ifc::EntityId;
 
-    use super::{Bounds, Enumeration, Property, PropertySet, ResolvedUnit, Table};
+    use super::{
+        Bounds, Enumeration, ObjectPropertySets, Property, PropertyRefusal, PropertySet,
+        ResolvedUnit, Table,
+    };
     use crate::value::Tagged;
     use crate::{BindingError, IfcModel};
 
@@ -328,10 +437,55 @@ pub(crate) mod read {
         model: &IfcModel,
         object: u64,
     ) -> Result<Vec<PropertySet>, BindingError> {
+        sets_of(model, object, |id| exact_properties(&model.inner, id))
+    }
+
+    pub(super) fn property_sets_many(
+        model: &IfcModel,
+        objects: Option<&[u64]>,
+    ) -> Result<Vec<ObjectPropertySets>, BindingError> {
+        let index = PropertyIndex::build(&model.inner);
+        // A refusal of the whole model is every object's answer; say it
+        // once.
+        index.schema().map_err(property_error)?;
+        let every;
+        let objects = match objects {
+            Some(objects) => objects,
+            None => {
+                every = model.ids_of_type_including_subtypes("IfcObjectDefinition")?;
+                &every
+            }
+        };
+        Ok(objects
+            .iter()
+            .map(
+                |&object| match sets_of(model, object, |id| index.exact_properties(id)) {
+                    Ok(sets) => ObjectPropertySets {
+                        object,
+                        sets,
+                        refusal: None,
+                    },
+                    Err(error) => ObjectPropertySets {
+                        object,
+                        sets: Vec::new(),
+                        refusal: Some(PropertyRefusal::from(&error)),
+                    },
+                },
+            )
+            .collect())
+    }
+
+    /// One object's sets, from the exact entries `resolve` gives: the free
+    /// resolver or an index, which answer alike.
+    fn sets_of(
+        model: &IfcModel,
+        object: u64,
+        resolve: impl FnOnce(EntityId) -> Result<Vec<ExactPropertyEntry>, ExactPropertyError>,
+    ) -> Result<Vec<PropertySet>, BindingError> {
         if !model.inner.contains(EntityId(object)) {
             return Err(BindingError::MissingEntity(object));
         }
-        let entries = exact_properties(&model.inner, EntityId(object)).map_err(property_error)?;
+        let entries = resolve(EntityId(object)).map_err(property_error)?;
         let mut sets: Vec<PropertySet> = Vec::new();
         for entry in entries {
             let property = &entry.property;

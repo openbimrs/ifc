@@ -155,6 +155,58 @@ pub unsafe extern "C" fn openbim_ifc_v0_1_model_property_sets(
     }
 }
 
+/// The property sets of each of `ids` (`id_count` of them), in that
+/// order, or, with `ids` null and `id_count` 0, of every object definition
+/// (`IfcObjectDefinition` and its subtypes) in file order, resolved in one
+/// pass through one property index (#358): a `LIST` of
+/// `ObjectPropertySets` records, their number in `out_count`.
+/// `ObjectPropertySets`: object (`REF`), sets (`LIST` of `PropertySet`, as
+/// for [`openbim_ifc_v0_1_model_property_sets`]; empty when refused),
+/// refusal (`PropertyRefusal` or `NULL`: code (`TEXT`, the shared binding
+/// code), message (`TEXT`)). Each record is exactly what the per-object
+/// call answers for that id, its refusal included.
+///
+/// Refused as a whole only for the model: `UnsupportedSchema`,
+/// `InvalidModel` (a lenient read with skipped records),
+/// `FeatureDisabled`; `NullPointer` for null `ids` with a non-zero count.
+///
+/// # Safety
+/// `ids` valid for `id_count` reads when non-null; `out_count` valid for
+/// one write; otherwise as for `openbim_ifc_v0_1_entity_attribute`.
+#[no_mangle]
+pub unsafe extern "C" fn openbim_ifc_v0_1_model_property_sets_many(
+    model: OpenbimIfcModel,
+    ids: *const u64,
+    id_count: usize,
+    out_count: *mut usize,
+    nodes: *mut OpenbimIfcValueNode,
+    node_capacity: usize,
+    out_nodes_required: *mut usize,
+    strings: *mut u8,
+    string_capacity: usize,
+    out_strings_required: *mut usize,
+) -> OpenbimIfcStatus {
+    // SAFETY: caller contract above.
+    let ids = match unsafe { crate::geometry::selection(ids, id_count) } {
+        Ok(ids) => ids,
+        Err(status) => return status,
+    };
+    let out = Out {
+        nodes,
+        node_capacity,
+        out_nodes_required,
+        strings,
+        string_capacity,
+        out_strings_required,
+    };
+    // SAFETY: caller contract above.
+    unsafe {
+        list_export(model, out_count, out, |m| {
+            Ok(to_records(&m.property_sets_many(ids)?))
+        })
+    }
+}
+
 /// The effective unit of a `measure_type` value (`IFCAREAMEASURE`, UTF-8,
 /// `measure_len` bytes): `unit` when non-zero (a property's stated unit),
 /// otherwise the project default. The tape is one `ResolvedUnit`: unit

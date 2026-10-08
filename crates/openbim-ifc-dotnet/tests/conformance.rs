@@ -165,7 +165,7 @@ fn every_status_kind_and_flag_has_the_headers_value() {
     );
 
     let kinds = c_constants(&header, "OPENBIM_IFC_KIND_");
-    assert_eq!(kinds.len(), 12);
+    assert_eq!(kinds.len(), 13);
     let native = csharp("Native/NativeMethods.cs");
     assert_eq!(
         csharp_constants(&native, "internal static class Kind"),

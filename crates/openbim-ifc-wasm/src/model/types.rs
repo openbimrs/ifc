@@ -23,6 +23,21 @@ export type IfcValue =
   | { kind: "list"; items: IfcValue[] }
   | { kind: "typed"; type: string; value: IfcValue };
 
+/**
+ * A plain value for `IfcModel.setAttributeByName` (#342), coerced against
+ * the attribute's declared type: a string (a label, or the enumeration
+ * item it names), a number or bigint (an integer, or a real), a boolean,
+ * `null` (`$`), or an array of these or of `IfcValue`s (an aggregate). An
+ * `IfcValue` is written exactly.
+ */
+export type IfcPlainValue =
+  | string
+  | number
+  | bigint
+  | boolean
+  | null
+  | ReadonlyArray<IfcPlainValue | IfcValue>;
+
 /** The `code` of an `IfcError`. */
 export type IfcErrorCode =
   | "parse"
@@ -45,7 +60,9 @@ export type IfcErrorCode =
   | "unknown-attribute"
   | "derived-attribute"
   | "missing-attribute"
-  | "still-referenced";
+  | "still-referenced"
+  | "type-mismatch"
+  | "ambiguous-value";
 
 /**
  * Where `IfcModel.loadCatalog` reads a catalog snapshot from. By default

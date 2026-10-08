@@ -26,6 +26,24 @@ public sealed record PropertySet(
     EquatableList<Property> Properties);
 
 /// <summary>
+/// One object's answer from <see cref="IfcModel.PropertySetsMany"/> (#358):
+/// exactly what <see cref="IfcModel.PropertySets"/> returns for it, or the
+/// refusal it throws.
+/// </summary>
+/// <param name="Object">The object's entity id.</param>
+/// <param name="Sets">Its sets, as <see cref="IfcModel.PropertySets"/> returns them; empty when refused.</param>
+/// <param name="Refusal">The code and message <see cref="IfcModel.PropertySets"/> throws for it.</param>
+public sealed record ObjectPropertySets(
+    ulong Object,
+    EquatableList<PropertySet> Sets,
+    PropertyRefusal? Refusal);
+
+/// <summary>Why one object's property sets were refused.</summary>
+/// <param name="Code">The shared error code, as <see cref="IfcException.Code"/>.</param>
+/// <param name="Message">The error's message.</param>
+public sealed record PropertyRefusal(string Code, string Message);
+
+/// <summary>
 /// One property, quantity or predefined-set attribute. <see cref="Value"/>
 /// keeps the declared type, e.g. <c>IFCLENGTHMEASURE(0.2)</c>, and is
 /// exactly what a <see cref="PropertyEdit"/> writes back.

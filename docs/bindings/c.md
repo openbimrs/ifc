@@ -203,6 +203,41 @@ type the declared release does not have is
 `openbim_ifc_v0_1_entity_attribute` and `_entity_set_attribute` are
 unchanged.
 
+`openbim_ifc_v0_1_entity_set_attribute_by_name_plain` (#342) takes the
+same one-value tape, read as plain host values coerced against the
+attribute's declared type: a `TEXT` becomes a label (written bare) or the
+enumeration item it names in any case; an `INTEGER` an `INTEGER`, or a
+`REAL` where one is declared; a `REAL` a `REAL`; a `BOOL` a `BOOLEAN` or
+`LOGICAL`; a `REF` a reference, once the entity exists
+(`OPENBIM_IFC_STATUS_MISSING_REFERENCE`) and is of an accepted type; a
+`LIST` an aggregate, element by element; `NULL` `$`. In a SELECT, the one
+member that takes the value is written as its typed parameter. An
+`OPENBIM_IFC_KIND_EXACT` node (12, valid only here) is followed by one
+value written exactly as given, as are `DERIVED`, `UNKNOWN`, `BINARY`,
+`ENUM` and `TYPED` nodes. A value that does not fit is
+`OPENBIM_IFC_STATUS_TYPE_MISMATCH` (32, `type-mismatch`), one several
+SELECT members take `OPENBIM_IFC_STATUS_AMBIGUOUS_VALUE` (33,
+`ambiguous-value`; the message names them).
+
+<!-- SNIPPET:c-attribute-plain -->
+
+```c
+/* A plain TEXT for an enumeration attribute: coerced against the declared
+ * type (IfcWallTypeEnum) and written .STANDARD.; a label would be written
+ * as text, a SELECT member as its typed parameter. */
+const char attribute[] = "PredefinedType";
+const char item[] = "standard";
+OpenbimIfcValueNode value;
+memset(&value, 0, sizeof value);
+value.kind = OPENBIM_IFC_KIND_TEXT;
+value.str_len = strlen(item);
+OpenbimIfcStatus status = openbim_ifc_v0_1_entity_set_attribute_by_name_plain(
+    model, 1, (const uint8_t *)attribute, strlen(attribute), &value, 1,
+    (const uint8_t *)item, strlen(item));
+```
+
+<!-- /SNIPPET -->
+
 ## Beyond the record model
 
 <!-- SNIPPET:c-beyond-records -->
@@ -289,6 +324,7 @@ query runs the read.
 | Export | Tape |
 | --- | --- |
 | `openbim_ifc_v0_1_model_property_sets(model, object, &count, ...)` | `LIST` of `PropertySet`, the object's own then its type's |
+| `openbim_ifc_v0_1_model_property_sets_many(model, ids, id_count, &count, ...)` | `LIST` of `ObjectPropertySets`, one per id in order; null `ids` with count 0: every object definition. One pass through one property index (#358): linear where a loop of the call above is quadratic |
 | `openbim_ifc_v0_1_model_resolve_unit(model, measure, len, unit, ...)` | one `ResolvedUnit`; `unit` 0 is the project default |
 | `openbim_ifc_v0_1_model_spatial_tree(model, ...)` | one `SpatialTree` |
 | `openbim_ifc_v0_1_model_classifications(model, object, &count, ...)` | `LIST` of `Classification` |
@@ -306,6 +342,7 @@ query runs the read.
 | `PropertyEnumeration` | id, name, values (`LIST` of tagged values) |
 | `PropertyBounds` | lower, upper, set point (tagged values, `NULL` when unstated) |
 | `PropertyTable` | rows (`LIST` of `[defining, defined]`), expression, defining unit, defined unit, interpolation |
+| `ObjectPropertySets` | object, sets (`LIST` of `PropertySet`, empty when refused), refusal (`[code, message]` or `NULL`: what `_model_property_sets` returns for the object) |
 | `ResolvedUnit` | unit, from project (`BOOL`), dimensions (seven `INTEGER`s), scale, offset |
 | `SpatialTree` | release, roots, nodes (`LIST` of `SpatialNode`), orphans, dangling (`LIST` of `[relation, target]`), anomalies (`LIST` of `[kind, relation, subject, kept]`) |
 | `SpatialNode` | id, global id, name, type name, kind, parent, children, elements, referenced |
@@ -677,6 +714,36 @@ otherwise as for `openbim_ifc_v0_1_entity_attribute_by_name` and
 **Safety.**
 `name` valid for `name_len` reads; the tape as for
 `openbim_ifc_v0_1_entity_set_attribute`.
+
+#### `openbim_ifc_v0_1_entity_set_attribute_by_name_plain`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_entity_set_attribute_by_name_plain(OpenbimIfcModel model, uint64_t id, const uint8_t *name, size_t name_len, const OpenbimIfcValueNode *nodes, size_t node_count, const uint8_t *strings, size_t string_len);
+```
+
+Set attribute `name` (UTF-8, any case) of entity `id` from a one-value
+tape of plain values, coerced against the attribute's declared type in
+the declared release (#342); returns as
+`openbim_ifc_v0_1_entity_set_attribute_by_name` does.
+
+`TEXT` is a string, `INTEGER` an integer, `REAL` a float, `BOOL` a
+boolean, `REF` an entity handle, `LIST` a sequence of plain values,
+`NULL` unset. A string becomes a label (bare) or the enumeration item it
+names; an integer an `INTEGER` or `REAL` as declared; a reference is
+checked to exist and fit; in a SELECT, the one member that takes the
+value is written as a typed parameter. An `EXACT` node's child, and
+`DERIVED`, `UNKNOWN`, `BINARY`, `ENUM` and `TYPED` nodes, are written as
+given.
+
+`TypeMismatch` for a value that does not fit, `AmbiguousValue` for one
+several SELECT members take, `MissingReference` for a reference to a
+missing entity, `Unsupported` for a declared type the tables do not
+resolve; otherwise as for
+`openbim_ifc_v0_1_entity_set_attribute_by_name`. A refusal changes
+nothing.
+
+**Safety.**
+As for `openbim_ifc_v0_1_entity_set_attribute_by_name`.
 
 #### `openbim_ifc_v0_1_entity_type`
 
@@ -1190,6 +1257,31 @@ than IFC2X3, IFC4 or IFC4X3), `InvalidModel`, `FeatureDisabled`.
 `out_count` valid for one write; otherwise as for
 `openbim_ifc_v0_1_entity_attribute`.
 
+#### `openbim_ifc_v0_1_model_property_sets_many`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_property_sets_many(OpenbimIfcModel model, const uint64_t *ids, size_t id_count, size_t *out_count, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+The property sets of each of `ids` (`id_count` of them), in that
+order, or, with `ids` null and `id_count` 0, of every object definition
+(`IfcObjectDefinition` and its subtypes) in file order, resolved in one
+pass through one property index (#358): a `LIST` of
+`ObjectPropertySets` records, their number in `out_count`.
+`ObjectPropertySets`: object (`REF`), sets (`LIST` of `PropertySet`, as
+for `openbim_ifc_v0_1_model_property_sets`; empty when refused),
+refusal (`PropertyRefusal` or `NULL`: code (`TEXT`, the shared binding
+code), message (`TEXT`)). Each record is exactly what the per-object
+call answers for that id, its refusal included.
+
+Refused as a whole only for the model: `UnsupportedSchema`,
+`InvalidModel` (a lenient read with skipped records),
+`FeatureDisabled`; `NullPointer` for null `ids` with a non-zero count.
+
+**Safety.**
+`ids` valid for `id_count` reads when non-null; `out_count` valid for
+one write; otherwise as for `openbim_ifc_v0_1_entity_attribute`.
+
 #### `openbim_ifc_v0_1_model_remove_property`
 
 ```c
@@ -1429,6 +1521,8 @@ Write the ABI and crate versions.
 | `OPENBIM_IFC_STATUS_DERIVED_ATTRIBUTE` | 29 | A by-name attribute write named a slot the entity's type derives, written `*` (`derived-attribute`). |
 | `OPENBIM_IFC_STATUS_MISSING_ATTRIBUTE` | 30 | An authoring batch left a required attribute of the declared release unset (`missing-attribute`). |
 | `OPENBIM_IFC_STATUS_STILL_REFERENCED` | 31 | An authoring batch removed an entity that an entity other than a relationship still references (`still-referenced`). |
+| `OPENBIM_IFC_STATUS_TYPE_MISMATCH` | 32 | A plain value written by name does not fit the attribute's declared type (`type-mismatch`). |
+| `OPENBIM_IFC_STATUS_AMBIGUOUS_VALUE` | 33 | A plain value written by name fits several members of the attribute's SELECT; write it exactly instead (`ambiguous-value`). |
 | `OPENBIM_IFC_STATUS_PANIC` | 255 | A Rust panic was contained at the boundary. Report it as a bug. |
 
 <!-- API:C:END -->

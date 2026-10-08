@@ -110,6 +110,9 @@ gate_test() {
     # The same for the property-resolution benchmarks (#352): the smoke
     # scale, every equivalence assertion against the per-query functions.
     cargo test -p ifc-properties --bench properties
+    # And through the bindings (#358): the batch against the per-object
+    # call, every answer compared before any timing.
+    cargo test -p openbim-ifc-binding-core --bench property_sets
 
     cargo test -p ifc-model --test package_architecture
     cargo test -p ifc-model --test progressive_context

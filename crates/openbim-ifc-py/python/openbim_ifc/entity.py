@@ -65,6 +65,7 @@ from .values import (
     Typed,
     Unknown,
     Value,
+    to_wire,
 )
 
 if TYPE_CHECKING:
@@ -82,12 +83,16 @@ list or reference property; a read-only mapping of a complex property's
 members; the exact :class:`Property` record of a bounded or table value,
 which has no single plain form."""
 
-Assignable = Union[Value, "Entity", None, Tuple["Assignable", ...], list["Assignable"]]
-"""What an attribute write takes: a tagged value, an :class:`Entity` (a
-reference), ``None`` (``$``), or a tuple or list of these (an aggregate).
-Bare ``str``, ``int``, ``float`` and ``bool`` are refused: ``"x"`` could be
-``Text`` or ``Enum``, ``1`` ``Integer`` or ``Real``, and the binding does not
-guess."""
+Assignable = Union[
+    Value, "Entity", None, bool, int, float, str, Tuple["Assignable", ...], list["Assignable"]
+]
+"""What an attribute write takes: a plain ``str``, ``int``, ``float`` or
+``bool``, coerced against the attribute's declared type (#342); an
+:class:`Entity` (a reference); ``None`` (``$``); a tuple or list of these
+(an aggregate); or a tagged value, written exactly as given. See
+:meth:`openbim_ifc.IfcModel.set_attribute_by_name_plain` for the rules: a
+value the declaration cannot settle (a string several SELECT members
+take) raises ``ambiguous-value`` rather than guess."""
 
 _QUANTITY_SET = "IFCELEMENTQUANTITY"
 
@@ -113,23 +118,23 @@ def plain(value: Value, model: "IfcModel") -> PlainValue:
     raise TypeError(f"expected an openbim_ifc value, got {type(value).__name__}")
 
 
-def _assignable(value: Assignable, model: "IfcModel") -> Value:
-    """The tagged value an attribute write stores; refuses anything that
-    would need a guess."""
-    if value is None:
-        return Null()
+def _plain_wire(value: Assignable, model: "IfcModel") -> Any:
+    """The native layer's plain form of ``value``: Python scalars and lists
+    as they are, an :class:`Entity` as a plain reference, a tagged value as
+    its exact wire dict."""
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
     if isinstance(value, Entity):
         if value.model is not model:
             raise ValueError(f"{value!r} belongs to another model")
-        return Ref(value.id)
+        return {"plain": "ref", "id": value.id}
     if isinstance(value, (tuple, list)):
-        return List(tuple(_assignable(item, model) for item in value))
+        return [_plain_wire(item, model) for item in value]
     if isinstance(value, (Null, Derived, Bool, Unknown, Integer, Real, Text, Binary, Enum, Ref, List, Typed)):
-        return value
+        return to_wire(value)
     raise TypeError(
-        f"cannot write a bare {type(value).__name__}: wrap it in the value it is, "
-        "e.g. Text('x'), Enum('ELEMENT'), Real(1.0), Integer(1), Bool(True) or "
-        "Typed('IFCLABEL', Text('x'))"
+        f"cannot write a {type(value).__name__}: expected None, bool, int, float, str, "
+        "an Entity, a list or tuple of these, or an openbim_ifc value"
     )
 
 
@@ -146,7 +151,12 @@ Sets = Mapping[str, Mapping[str, PropertyValue]]
 
 
 def _sets(model: "IfcModel", id: int) -> Tuple[Sets, Sets]:
-    """``(psets, qtos)`` of object ``id``, from one ``property_sets`` call.
+    """``(psets, qtos)`` of object ``id``, from one ``property_sets`` call."""
+    return _split(model, model.property_sets(id))
+
+
+def _split(model: "IfcModel", sets: Sequence[PropertySet]) -> Tuple[Sets, Sets]:
+    """``(psets, qtos)`` of one object's ``property_sets`` records.
 
     The native call lists the object's own sets first and leaves out an
     inherited property the occurrence overrides; sets of one name merge,
@@ -154,7 +164,7 @@ def _sets(model: "IfcModel", id: int) -> Tuple[Sets, Sets]:
     """
     psets: Dict[str, Dict[str, PropertyValue]] = {}
     qtos: Dict[str, Dict[str, PropertyValue]] = {}
-    for pset in model.property_sets(id):
+    for pset in sets:
         target = qtos if pset.type_name == _QUANTITY_SET else psets
         values = target.setdefault(pset.name, {})
         for prop in pset.properties:
@@ -170,7 +180,8 @@ class Entity:
     """One entity of a model, read and written by attribute name.
 
     ``wall.Name`` reads attribute ``Name`` as a plain value (see
-    :data:`PlainValue`) and ``wall.Name = Text("W1")`` writes it, both
+    :data:`PlainValue`) and ``wall.Name = "W1"`` writes it, coerced against
+    the declared type (``Text("W1")`` writes exactly), both
     through the model's ``attribute_by_name``/``set_attribute_by_name``, so
     names match ASCII case-insensitively against the declared release. An
     unknown name raises ``AttributeError``, chained from the
@@ -224,8 +235,11 @@ class Entity:
 
     def set(self, name: str, value: Assignable) -> Value:
         """Write attribute ``name`` (``entity.Name = value``); returns the
-        old tagged value. A refused write changes nothing."""
-        return self._model.set_attribute_by_name(self._id, name, _assignable(value, self._model))
+        old tagged value. A plain value is coerced against the declared
+        type (:meth:`openbim_ifc.IfcModel.set_attribute_by_name_plain`);
+        a tagged one is written as given. A refused write changes
+        nothing."""
+        return self._model.set_attribute_by_name_plain(self._id, name, value)
 
     def attribute_names(self) -> list[AttributeInfo]:
         """Every explicit attribute, in slot order, as

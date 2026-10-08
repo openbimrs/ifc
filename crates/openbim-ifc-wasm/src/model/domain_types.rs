@@ -23,6 +23,21 @@ export interface PropertySet {
   properties: Property[];
 }
 
+/** One object's answer from `IfcModel.propertySetsMany` (#358). */
+export interface ObjectPropertySets {
+  object: bigint;
+  /** Exactly what `propertySets` returns for the object; empty when refused. */
+  sets: PropertySet[];
+  /** The code and message `propertySets` throws for the object. */
+  refusal: PropertyRefusal | undefined;
+}
+
+/** Why one object's property sets were refused. */
+export interface PropertyRefusal {
+  code: IfcErrorCode;
+  message: string;
+}
+
 /** One property, quantity or predefined-set attribute. */
 export interface Property {
   id: bigint;

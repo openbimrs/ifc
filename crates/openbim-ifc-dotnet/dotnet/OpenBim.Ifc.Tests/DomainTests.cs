@@ -61,6 +61,30 @@ public class DomainTests
     }
 
     [Fact]
+    public void ManyObjectsAnswerAsOneObjectEach()
+    {
+        using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.Domain));
+        // docs:snippet dotnet-property-sets-many
+        var every = model.PropertySetsMany(); // every object definition, one pass
+        foreach (var answer in model.PropertySetsMany(new ulong[] { 3, 20 }))
+        {
+            // Refusal: the code and message PropertySets(answer.Object) would throw.
+            System.Console.WriteLine($"#{answer.Object}: {answer.Refusal?.Code ?? answer.Sets.Count + " set(s)"}");
+        }
+        // docs:end
+
+        Assert.Equal(new ulong[] { 2, 3 }, every.Select(answer => answer.Object));
+        var many = model.PropertySetsMany(new ulong[] { 3, 20, 99 });
+        Assert.Equal(model.PropertySets(3).ToList(), many[0].Sets.ToList());
+        Assert.Null(many[0].Refusal);
+        Assert.Equal("wrong-entity-type", many[1].Refusal!.Code);
+        Assert.Empty(many[1].Sets);
+        var missing = Assert.Throws<IfcException>(() => model.PropertySets(99));
+        Assert.Equal(new PropertyRefusal(missing.Code, missing.Message), many[2].Refusal);
+        Assert.Empty(model.PropertySetsMany(System.Array.Empty<ulong>()));
+    }
+
+    [Fact]
     public void TheMaterialIsTheTypesLayerSet()
     {
         using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.Domain));

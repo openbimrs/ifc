@@ -5,7 +5,7 @@
 //! input is an `invalid-value` [`BindingError`], never a panic or a guess.
 
 use openbim_ifc_binding_core::value::{Kind, Tagged, MAX_NESTING};
-use openbim_ifc_binding_core::BindingError;
+use openbim_ifc_binding_core::{BindingError, Plain};
 use pyo3::prelude::*;
 use pyo3::types::{PyBool, PyDict, PyFloat, PyInt, PyList, PyString, PyTuple};
 
@@ -88,6 +88,68 @@ fn from_py_at(value: &Bound<'_, PyAny>, depth: usize) -> Result<Tagged, BindingE
             value: Box::new(from_py_at(&field(dict, "value")?, depth + 1)?),
         },
     })
+}
+
+/// Decode a plain Python value for a coerced write (#342): `None`, `bool`,
+/// `int`, `float`, `str`, a list or tuple of plain values, an entity handle
+/// as `{"plain": "ref", "id": n}`, or a tagged dict, written exactly.
+pub fn plain_from_py(value: &Bound<'_, PyAny>) -> Result<Plain, BindingError> {
+    plain_at(value, 0)
+}
+
+fn plain_at(value: &Bound<'_, PyAny>, depth: usize) -> Result<Plain, BindingError> {
+    if depth > MAX_NESTING {
+        return Err(invalid(format!("nesting deeper than {MAX_NESTING}")));
+    }
+    if value.is_none() {
+        return Ok(Plain::Null);
+    }
+    // `bool` before `int`: it is an `int` subclass, and `True` is no 1.
+    if let Ok(flag) = value.cast::<PyBool>() {
+        return Ok(Plain::Bool(flag.is_true()));
+    }
+    if value.is_instance_of::<PyInt>() {
+        return Ok(Plain::Integer(integer(value, "an int")?));
+    }
+    if value.is_instance_of::<PyFloat>() {
+        let number: f64 = value.extract().map_err(|_| invalid("a float"))?;
+        return Ok(Plain::Real(number));
+    }
+    if let Ok(text) = value.cast::<PyString>() {
+        return Ok(Plain::Text(text.to_string()));
+    }
+    let items = value
+        .cast::<PyList>()
+        .map(|l| l.iter().collect::<Vec<_>>())
+        .or_else(|_| value.cast::<PyTuple>().map(|t| t.iter().collect()));
+    if let Ok(items) = items {
+        return Ok(Plain::List(
+            items
+                .iter()
+                .map(|item| plain_at(item, depth + 1))
+                .collect::<Result<_, _>>()?,
+        ));
+    }
+    let dict = value.cast::<PyDict>().map_err(|_| {
+        invalid(format!(
+            "cannot write a {}: expected None, bool, int, float, str, a list, an Entity or a value",
+            value
+                .get_type()
+                .name()
+                .map_or_else(|_| "value".to_owned(), |name| name.to_string())
+        ))
+    })?;
+    if dict.contains("plain").unwrap_or(false) {
+        let tag = string(dict, "plain")?;
+        if tag != "ref" {
+            return Err(invalid(format!("unknown plain tag {tag:?}")));
+        }
+        let id = integer(&field(dict, "id")?, "ref `id`")?;
+        return Ok(Plain::Ref(
+            u64::try_from(id).map_err(|_| invalid("ref `id` must be positive"))?,
+        ));
+    }
+    Ok(Plain::Exact(from_py_at(value, depth)?))
 }
 
 fn field<'py>(dict: &Bound<'py, PyDict>, key: &str) -> Result<Bound<'py, PyAny>, BindingError> {

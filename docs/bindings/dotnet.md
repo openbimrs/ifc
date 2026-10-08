@@ -93,6 +93,30 @@ calls stay raw slot access. An unknown name is refused with
 `unknown-attribute`, a write to a slot the entity's type derives (written
 `*`) with `derived-attribute`, and a refused write changes nothing.
 
+`SetAttributeByNamePlain(id, name, value)` (#342) takes a plain .NET
+value and coerces it against the attribute's declared type: a `string`
+becomes a label (written bare) or the enumeration item it names in any
+case; an integer an `INTEGER`, or a `REAL` where one is declared; a
+`double` a `REAL`; a `bool` a `BOOLEAN` or `LOGICAL`; a sequence an
+aggregate, element by element; an `EntityHandle` a reference, once the
+entity exists and is of an accepted type; `null` `$`. In a SELECT, the one
+member that takes the value is written as its typed parameter. A `Value`,
+nested in a sequence too, is written exactly. A value that does not fit
+throws `type-mismatch` (`IfcStatus.TypeMismatch`), one several SELECT
+members take `ambiguous-value` (`IfcStatus.AmbiguousValue`), naming them.
+
+<!-- SNIPPET:dotnet-plain -->
+
+```csharp
+using var model = IfcModel.Parse(data);
+model.SetAttributeByNamePlain(1, "Name", "Renamed"); // IfcLabel: 'Renamed'
+model.SetAttributeByNamePlain(1, "PredefinedType", "shear"); // IfcWallTypeEnum: .SHEAR.
+// A Value is written exactly; an ambiguous SELECT member is refused.
+model.SetAttributeByNamePlain(2, "NominalValue", new Value.Typed("IFCLABEL", new Value.Text("x")));
+```
+
+<!-- /SNIPPET -->
+
 ## Errors
 
 <!-- SNIPPET:dotnet-errors -->
@@ -181,6 +205,19 @@ var classes = model.Classifications(wall); // [Classification { Identification =
 
 <!-- /SNIPPET -->
 
+<!-- SNIPPET:dotnet-property-sets-many -->
+
+```csharp
+var every = model.PropertySetsMany(); // every object definition, one pass
+foreach (var answer in model.PropertySetsMany(new ulong[] { 3, 20 }))
+{
+    // Refusal: the code and message PropertySets(answer.Object) would throw.
+    System.Console.WriteLine($"#{answer.Object}: {answer.Refusal?.Code ?? answer.Sets.Count + " set(s)"}");
+}
+```
+
+<!-- /SNIPPET -->
+
 The domain views of the Rust facade cross the C ABI as value tapes and
 arrive as C# records, keyed by entity id with the `GlobalId` where the
 entity has one; lists are `EquatableList<T>`, and IFC values the cases of
@@ -192,6 +229,11 @@ at the call.
   overriding an inherited one. `ResolveUnit(measureType, unit)` resolves a
   property's unit, or the project default, exactly to SI. Read against
   IFC2X3, IFC4 or IFC4X3.
+  `PropertySetsMany(ids)` (#358) answers for many objects, or with null
+  every object definition, in one pass through one property index: linear
+  in the model where a loop of `PropertySets` is quadratic. Each
+  `ObjectPropertySets` holds exactly what `PropertySets` returns for its
+  object, or the `PropertyRefusal` (code, message) it throws.
 - **Spatial tree.** `SpatialTree()` returns a `SpatialTree` of
   `SpatialNode`s with parents, children, contained and referenced elements.
 - **Classification.** `Classifications(id)` returns the object's own and
@@ -383,6 +425,7 @@ Generated from the `OpenBim.Ifc` C# source.
 | `IReadOnlyList<ProductPlacement> ProductPlacements(IReadOnlyList<ulong>? ids = null)` | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or, when null, every product with a shape, in id order (#328). |
 | `IReadOnlyList<MeshedProduct> ProductMeshes(IReadOnlyList<ulong>? ids = null)` | Each product's Body as triangles from the reference backend, for `ids` or, when null, every product with a shape, in id order (#328). |
 | `IReadOnlyList<PropertySet> PropertySets(ulong id)` | The property sets, quantity sets and predefined property sets of object `id`: its own first, then those its type object holds, an occurrence property overriding an inherited one of the same name. |
+| `IReadOnlyList<ObjectPropertySets> PropertySetsMany(IReadOnlyList<ulong>? ids = null)` | `PropertySets` of each of `ids`, in that order, or, when null, of every object definition (`IfcObjectDefinition` and its subtypes) in file order, in one pass (#358). |
 | `ResolvedUnit ResolveUnit(string measureType, ulong? unit = null)` | The effective unit of a `measureType` value (`IFCAREAMEASURE`): `unit` when given (a property's stated unit), otherwise the project default, resolved exactly to SI. |
 | `IReadOnlyList<ulong?> SetProperties(IEnumerable<PropertyEdit> edits)` | Write and remove property and quantity values as one checked transaction: every edit, in order, or none and the model unchanged. |
 | `const ulong HandleBase = 4611686018427387904UL { get; }` | The first id of the handle range (2^62): `HandleBase + i` names the entity operation `i` of an `Author` batch produced. |
@@ -411,6 +454,7 @@ Generated from the `OpenBim.Ifc` C# source.
 | `IReadOnlyList<AttributeInfo> AttributeNames(ulong id)` | Every explicit attribute of entity `id` in slot order, inherited first, as the release the header declares defines them; `INVERSE` attributes hold no slot and are not listed. |
 | `Value AttributeByName(ulong id, string name)` | Attribute `name` of entity `id`, matched case-insensitively (`Name`) and resolved against the declared release; `Value.Null` when the record stops before its slot. |
 | `Value SetAttributeByName(ulong id, string name, Value value)` | Set attribute `name` of entity `id`; returns the old value. A derived attribute is refused with `derived-attribute`, an unknown name with `unknown-attribute`, and a refused write changes nothing. |
+| `Value SetAttributeByNamePlain(ulong id, string name, object? value)` | Set attribute `name` of entity `id` from a plain .NET value, coerced against the attribute's declared type in the declared release (#342); returns the old value. |
 | `ulong Add(string typeName, IEnumerable<Value> attributes)` | Append an entity of `typeName`; returns its new id. |
 | `void Remove(ulong id)` | Remove entity `id`, leaving references to it dangling. |
 | `IReadOnlyList<DanglingReference> DanglingReferences()` | Every reference to an id the model does not contain. |
