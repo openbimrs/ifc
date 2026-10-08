@@ -30,6 +30,7 @@ use crate::input::representation::{
 };
 use crate::lower::dispatch::lower_representation_item;
 use crate::lower::session::LoweringSession;
+use crate::transform::Transform;
 
 pub use crate::constraint::product_world_transform;
 pub use crate::input::representation::select_shape_representation;
@@ -64,6 +65,21 @@ pub fn lower_product_representation(
     else {
         return Ok(None);
     };
+    lower_product_representation_in(session, product, purpose, world)
+}
+
+/// Select and lower a product representation with every item placed by
+/// `frame` instead of the product's world frame.
+///
+/// Net lowering (#388) lowers a host's Body in the host's own frame and
+/// each opening's relative to it, then places the result once. `frame` is
+/// in metres and already includes whatever context frame applies.
+pub(crate) fn lower_product_representation_in(
+    session: &mut LoweringSession<'_>,
+    product: EntityId,
+    purpose: RepresentationPurpose,
+    frame: Transform,
+) -> GeometryResult<Option<NodeId>> {
     let Some(representation) = select_product_representation(session.model(), product, purpose)?
     else {
         return Ok(None);
@@ -79,7 +95,7 @@ pub fn lower_product_representation(
     let items = Representation::new(representation, entity).items()?;
     let mut roots = Vec::with_capacity(items.len());
     for item in items {
-        roots.push(lower_representation_item(session, item, world)?);
+        roots.push(lower_representation_item(session, item, frame)?);
     }
     match roots.len() {
         0 => Ok(None),

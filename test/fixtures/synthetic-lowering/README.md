@@ -20,6 +20,7 @@ python3 tools/gen_lowering_fixtures.py test/fixtures/synthetic-lowering
 | `indexed_profile_boundaries.ifc` | IFC4 | Arbitrary profiles bounded by `IfcIndexedPolyCurve`s, each beside the `IfcPolyline` or `IfcCompositeCurve` stating the same outline: a line-arc-line D shape anticlockwise and clockwise, a curve without `Segments`, and a void of two `IfcArcIndex` arcs (#335) | `crates/ifc-geometry/tests/indexed_profile_boundary.rs` |
 | `indexed_profile_boundaries_ifc4x3.ifc` | IFC4X3_ADD2 | The same profiles, the D shapes' point lists carrying a `TagList` (#335) | `crates/ifc-geometry/tests/indexed_profile_boundary.rs` |
 | `curve_bounded_plane_composite.ifc` | IFC4 | `IfcCurveBoundedPlane`s bounded by `IfcCompositeCurve`s of `IfcPolyline` segments: three outer segments, one with `SameSense` FALSE, around a two-segment hole, and one reversed segment wrapping a clockwise ring (#336) | `crates/ifc-geometry/tests/curve_bounded_composite_compile.rs` |
+| `flush_openings_site_placements.ifc` | IFC4 | A wall with two openings flush with both its faces, under four site placements (at the origin or at (600 000, 5 600 000, 200), turned 2.3 degrees or not), plus that wall with openings placed relative to the site, as two solids, and with absolutely placed openings (#388) | `crates/ifc-geometry/tests/net_host_frame.rs` |
 
 The #335 refusals (an open curve with and without `Segments`, an arc with
 coincident points, `SelfIntersect` TRUE, non-consecutive segments, a 3D
