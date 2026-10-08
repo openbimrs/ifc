@@ -86,10 +86,13 @@ diff -u "$work/expected" "$work/files" || fail "unexpected files in $deb"
 if awk '$1 ~ /^d/ && $2 != "root/root" { found = 1 } END { exit !found }' "$work/contents"; then
     fail "a directory is not owned by root"
 fi
-dpkg-deb --fsys-tarfile "$deb" | tar -xO ./usr/bin/openbim-ifc | cmp -s - "$binary" ||
-    fail "the packaged binary differs from $binary"
-dpkg-deb --fsys-tarfile "$deb" | tar -xO ./usr/share/doc/openbim-ifc/copyright |
-    grep -q "GNU AFFERO GENERAL PUBLIC LICENSE" || fail "copyright lacks the licence text"
+# Unpacked to files: a reader stopping early (grep -q) would make tar fail
+# on SIGPIPE under pipefail.
+mkdir "$work/unpacked"
+dpkg-deb --extract "$deb" "$work/unpacked"
+cmp -s "$work/unpacked/usr/bin/openbim-ifc" "$binary" || fail "the packaged binary differs from $binary"
+grep -q "GNU AFFERO GENERAL PUBLIC LICENSE" "$work/unpacked/usr/share/doc/openbim-ifc/copyright" ||
+    fail "copyright lacks the licence text"
 
 # 3. Install, run, remove.
 if [[ "$install" == true ]]; then
