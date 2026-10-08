@@ -76,6 +76,12 @@ const REFUSED: &[(&str, &str, &str)] = &[
          IfcRelVoidsElement under IfcWall.HasOpenings",
     ),
     (
+        "synthetic-lowering/flush_openings_site_placements.ifc",
+        "a second relationship in `IfcWall.HasOpenings`",
+        "every wall is voided by two openings (#388); the XSD configuration \
+         nests one IfcRelVoidsElement under IfcWall.HasOpenings",
+    ),
+    (
         "nurbs/invalid_abstract_base_splines.ifc",
         "`IfcBSplineCurve` is abstract",
         "instances of an abstract entity, which the XSD declares abstract",
