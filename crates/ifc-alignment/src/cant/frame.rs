@@ -15,8 +15,11 @@
 //!
 //! Inside a `VIENNESEBEND` the standard states `psi` itself, so `D` and the
 //! frame come from that angle law and the rails sit `D/2` either side of a
-//! rotation point that stays put; a rotation point that moves through a
-//! bend is refused, as the banked centreline refuses it (#312).
+//! rotation point that stays put (#312), or a held rail stays and the other
+//! sits `D` from it (#364). A rotation point that moves with neither rail
+//! held is refused, as the banked centreline refuses it; the banked
+//! centreline also refuses the held-rail bend, whose rotation point is an
+//! angle form its pivot law cannot carry yet.
 //!
 //! The frame is the section rotated by `psi` about the centreline tangent,
 //! right-handed: in the basis `(t, n, u)` -- `t` the unit 3D tangent of the
@@ -101,7 +104,8 @@ impl CantLayout {
     ///
     /// Refuses a distance outside the profile's span, a segment whose cant
     /// cannot be evaluated exactly (including the inside of a Viennese bend
-    /// whose rotation point moves, [`AlignmentError::Unsupported`]), and a
+    /// whose rotation point moves with neither rail held,
+    /// [`AlignmentError::Unsupported`]), and a
     /// cant exceeding the `RailHeadDistance` (`|D| > b`, no real bank
     /// angle).
     pub fn frame_at_distance(&self, distance_along: f64) -> AlignmentResult<CantFrame> {

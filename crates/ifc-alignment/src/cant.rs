@@ -12,8 +12,8 @@ mod frame;
 mod layout;
 mod segment;
 
-pub(crate) use evaluate::MOVING_VIENNESE_PIVOT;
 pub use evaluate::{cant_at, CantAtStation};
+pub(crate) use evaluate::{viennese_rotation, VienneseRotation, HELD_RAIL_ANGLE_PIVOT};
 pub use frame::CantFrame;
 pub use layout::CantLayout;
 pub use segment::{read_cant_segment, CantSegment, CantSegmentType};
