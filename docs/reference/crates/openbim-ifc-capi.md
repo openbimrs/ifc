@@ -11,8 +11,8 @@ Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP file
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.1.3 (2026-10-04) |
-| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.3) |
+| Latest release | 0.1.4 (2026-10-08) |
+| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.4) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_capi/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-capi/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-capi) |
 
@@ -66,22 +66,23 @@ than altering a `v0_1_` one.
 
 ## Changes
 
-Latest release, 0.1.3 (2026-10-04):
+Latest release, 0.1.4 (2026-10-08):
 
-### Added (#330, schema-checked entity creation)
+### Added (#328, geometry, ADR 0021)
 
-- `openbim_ifc_v0_1_model_author`: a value tape `LIST` of operations, each
-  `LIST(ENUM op, TEXT field, value, ...)`, applied as one checked
-  transaction; one id per operation comes back (0 for a removal), and a
-  short id buffer is `BufferTooSmall` before anything is written.
-  `openbim_ifc_v0_1_model_create_entity` (a type and a `LIST` of
-  `(TEXT name, value)` pairs) and
-  `openbim_ifc_v0_1_entity_remove_with_relationships` are one-operation
-  batches. `OPENBIM_IFC_HANDLE_BASE` (2^62) plus an operation's position
-  names the entity it produced.
-- `OPENBIM_IFC_STATUS_MISSING_ATTRIBUTE` (30) and `_STILL_REFERENCED`
-  (31).
-- The ABI version is 0.1.6: every export above is new, no `v0_1` symbol
-  changed. Additive, a patch release.
+- `openbim_ifc_v0_1_model_product_placements(model, ids, id_count, ...)`:
+  a tape of `ProductPlacement` records (id, global id, type name,
+  transform as 16 `REAL`s or `NULL`, `SelectedRepresentation` or `NULL`,
+  `GeometryRefusal` or `NULL`); null `ids` with count 0 selects every
+  product with a shape.
+- Meshes, cargo feature `mesh` (opt-in; the release archives return
+  `FeatureDisabled`): `openbim_ifc_v0_1_model_product_meshes` compiles
+  once into an `OpenbimIfcMeshes` handle, read with
+  `openbim_ifc_v0_1_meshes_records` (a tape of `ProductMesh` records),
+  `_meshes_positions` (`float`), `_meshes_indices` (`uint32_t`) and freed
+  with `_meshes_destroy`. The set owns its data and outlives the model.
+- ABI version 0.1.7; no `v0_1` symbol changed.
+
+Semver: additive, a patch release.
 
 Full history: [`crates/openbim-ifc-capi/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-capi/CHANGELOG.md)

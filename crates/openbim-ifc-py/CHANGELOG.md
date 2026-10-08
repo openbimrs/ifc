@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-10-08
+
 ### Added (#328, geometry, ADR 0021)
 
 - `IfcModel.product_placements(ids=None)`: `ProductPlacement` dataclasses

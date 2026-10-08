@@ -11,7 +11,7 @@ The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned 
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.1.1 (2026-10-04) |
+| Latest release | 0.1.2 (2026-10-08) |
 | Registries | [NuGet `OpenBim.Ifc`](https://www.nuget.org/packages/OpenBim.Ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_dotnet/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-dotnet/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-dotnet) |
@@ -44,19 +44,20 @@ The behaviour is tested from C# against the packed `.nupkg` by
 
 ## Changes
 
-Latest release, 0.1.1 (2026-10-04):
+Latest release, 0.1.2 (2026-10-08):
 
-### Added (#330, schema-checked entity creation)
+### Added (#328, geometry, ADR 0021)
 
-- `IfcModel.Author(ops)`: `AuthorOp`s built with `AuthorOp.Create`,
-  `Edit`, `Remove`, `Project`, `Spatial`, `Product`, `TypeObject`,
-  `AssignType`, `Contain`, `Aggregate`, `Placement` and `OwnerHistory`,
-  applied as one checked transaction; returns per operation the id it
-  produced (null for a removal). `IfcModel.Handle(index)` /
-  `HandleBase` name the entity an earlier operation produced.
-  `CreateEntity(type, attributes)` and `RemoveWithRelationships(id)` are
-  one-operation batches. `IfcStatus.MissingAttribute` (30) and
-  `StillReferenced` (31). Needs the C ABI 0.1.6. Additive: a patch
-  release.
+- `IfcModel.ProductPlacements(ids)`: `ProductPlacement` records with the
+  column-major `Transform`, the selected Body `Representation`
+  (`SelectedRepresentation`) and a typed `Refusal` (`GeometryRefusal`)
+  per product.
+- `IfcModel.ProductMeshes(ids)`: a `MeshedProduct` per product, its
+  `ProductMesh` record with `float[] Positions` and `uint[] Indices`;
+  needs a native library built with the C ABI's `mesh` feature, and the
+  packaged one throws `feature-disabled`. Declarations for the C ABI
+  0.1.7 exports.
+
+Semver: additive, a patch release.
 
 Full history: [`crates/openbim-ifc-dotnet/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-dotnet/CHANGELOG.md)

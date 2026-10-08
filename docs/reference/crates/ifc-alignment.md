@@ -11,7 +11,7 @@ IFC4x3 linear positioning: alignments, referents, linear placement, spirals.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.6.0 (2026-10-03) |
+| Latest release | 0.7.0 (2026-10-08) |
 | Registries | [crates.io `ifc-alignment`](https://crates.io/crates/ifc-alignment) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `alignment` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_alignment/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-alignment) |
@@ -33,50 +33,64 @@ consumers should never compile spiral curve laws.
 
 ## Changes
 
-Latest release, 0.6.0 (2026-10-03):
+Latest release, 0.7.0 (2026-10-08):
 
-Input this crate refused now lowers exactly, onto the Axiolid relations
-of axiolid-curve 0.3.3 and axiolid-model 0.3.4 (kernel#238, #239, #240),
-and `HorizontalPlan::curve` can now be a `Curve2::Chain`: behaviour
-changes, so the next release is a minor one (0.6.0).
+Behaviour fixes with no API change, but a patch release is not enough:
+input that evaluated before is now refused (a Viennese bend whose
+rotation point moves with neither rail held), and the banked lowering's
+refusal reasons change, so the next release is a minor one (0.7.0).
 
 ### Added
 
-- `lower_segmented_reference_curve` lowers an alignment with cant to an
-  exact `Curve3::Banked` instead of refusing it, and
-  `segmented_reference_curve3` returns that curve directly (#93). The cant
-  law is `D = left - right` and the pivot `(left + right) / 2`, one
-  `CantPiece` per cant segment in the IFC4.3 base formula (the Helmert
-  transition as its two halves, the Viennese bend as its bank angle);
-  the section rolls about the 3D tangent by `arcsin(D / b)`
-  (`BankConvention::TangentRotation`, the reading IFC4.3 ADD2 states).
+- `cant_at`, `CantLayout::cant_at_distance` and so
+  `CantLayout::frame_at_distance` evaluate a `VIENNESEBEND` that rotates
+  about a held rail (#364): when one rail has the same height at both ends
+  (compared at the precision the rotation points are compared at), that
+  rail stays and the other is the held rail `+- D(xi)`, with
+  `D = b sin(psi(xi))` from the bend's angle law. Rotation about the low
+  rail, the usual case in rail practice, now evaluates inside the bend:
+  from `D = 0` to `0.15 m` on `b = 1.5 m` about the right rail, the left
+  rail mid-bend is 0.0750942 m.
+
+### Fixed
+
+- `cant_at`, `CantLayout::cant_at_distance` and so
+  `CantLayout::frame_at_distance` evaluate a `VIENNESEBEND` for the
+  section's cant `D = left - right`, as IFC4.3 ADD2 writes it
+  (`IfcAlignmentCantSegmentTypeEnum`, 8.7.2.1): `psi = arcsin(D / b)`,
+  `psi(xi) = psi1 + dpsi xi^4 (35 - 84 xi + 70 xi^2 - 20 xi^3)`,
+  `D = b sin(psi)`, with the rails `e +- D / 2` about a rotation point
+  `e = (left + right) / 2` that stays put (#312). They no longer blend
+  each rail's height as if it were a cant: rotating about the centreline
+  from `D = 0` to `0.15 m` on `b = 1.5 m`, the cant mid-bend is now
+  0.0750942 m, not 0.0750235 m. Inside a bend `CantFrame` now agrees with
+  the banked centreline (`Curve3::Banked`) and with the horizontal
+  Viennese-bend law, which already used `D`.
 
 ### Changed
 
-- A `CUBIC` horizontal segment lowers on every path (#90): per segment and
-  in the composite as its exact cubic Bezier trimmed at
-  `TrimSelector::ArcLength(SegmentLength)`, and in the plan as a
-  `ChainPiece2::Parametric` read by arc length, which makes
-  `lower_horizontal_plan` return a `Curve2::Chain` for a layout holding
-  one. The seam after a `CUBIC` reports its position (and heading) as
-  `SeamCheck::Authored`.
-- A vertical `CIRCULARARC` lowers to `ElevationLaw::CircularArc` from
-  `StartHeight`, `StartGradient` and the signed `RadiusOfCurvature`, on
-  the per-segment path as the circle itself trimmed by angle (#258). A
-  radius turning against the authored grades, or an arc turning vertical
-  before its end, is `InvalidSegment`.
-- A profile starting before the plan rebases a straddling circular arc
-  exactly, as it already rebased a polynomial piece.
-
-### Still refused, by name
-
-- A vertical `CLOTHOID`: its segment states neither end curvature
-  (`RadiusOfCurvature` is defined for arcs and parabolas only), so its
-  law is undetermined.
-- A `CUBIC` that starts curved: IFC4.3 defines only `y = x^3 / (6 R L)`
-  leaving a straight.
-- A pivot that moves through a Viennese bend (Axiolid's
-  `BankError::AngleInPivot`), a cant layout that does not span the plan,
-  and `|D| > b`.
+- Inside a `VIENNESEBEND` whose rotation point moves with neither rail
+  held, cant evaluation now returns `AlignmentError::Unsupported`, as the
+  banked lowering does: the standard states the bend for the section's
+  cant angle only, so these rails are not determined. The authored
+  start and end values still evaluate, so the horizontal Viennese-bend
+  law, which reads the cant at its own ends, is unaffected where those
+  meet the cant bend's ends. `CantLayout`
+  compares the two rotation points at the model's declared precision, as
+  the banked lowering does, so `CantLayout::resolve` of a layout holding a
+  Viennese bend now also refuses a malformed
+  `IfcGeometricRepresentationContext.Precision`. `cant_at` alone compares
+  them to floating-point rounding.
+- A Viennese bend's `|D| > b` check applies to the cant `D`, not to each
+  rail's height.
+- `lower_segmented_reference_curve` / `segmented_reference_curve3` refuse
+  the same Viennese bends as before, now with two distinct
+  `AlignmentError::Unsupported` reasons: a held rail (the low rail, say),
+  whose rotation point `held -+ b sin(psi) / 2` is an angle form that
+  Axiolid's height-form pivot law cannot carry (`BankError::AngleInPivot`)
+  until `axiolid-curve` has an angle-form pivot (#364); and a pivot that
+  moves with neither rail held, as `cant_at` gives. For a held-rail
+  Viennese bend the section frame therefore has a value where the banked
+  curve refuses; everywhere else they agree.
 
 Full history: [`crates/ifc-alignment/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-alignment/CHANGELOG.md)

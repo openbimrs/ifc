@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.10.0 (2026-10-04) |
+| Latest release | 0.11.0 (2026-10-08) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -42,79 +42,83 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.10.0 (2026-10-04):
+Latest release, 0.11.0 (2026-10-08):
 
-Product lowering gains two opt-ins: Reference View openings taken as applied
-(#351) and an injected curve evaluator for linear placements (#353), which
-also checks a cached position (#354). The derived linear-placement frame now
-follows IFC4.3 (#355), which changes `derive_placement_transform`'s output.
-API is added and behaviour changes, so the next release is a minor one
-(0.10.0).
+Placement resolution covers every `IfcObjectPlacement` kind: linear
+placements compose with their alignment's frame (#357), grid placements
+resolve (#362), and any placement may be relative to a linear or grid one
+(#363). Error variants are added and resolved positions change for
+off-identity alignments and grid-placed products, so the next release is a
+minor one (0.11.0).
 
 ### Added
 
-- Net lowering of hosts whose IFC4 Reference View openings carry no Body
-  (#351). `lower::lower_product_net_with(session, product, NetOptions)`,
-  with `NetOptions::default().with_reference_only_openings(
-  ReferenceOnlyOpenings::TakeAsApplied)`, lists an `IfcOpeningElement` whose
-  representations are all `Reference` in the new
-  `NetLowering::taken_as_applied` (`TakenAsApplied { opening, relation,
-  reason: AppliedReason::ReferenceRepresentationOnly }`) and subtracts
-  nothing for it; a host whose openings are all taken as applied lowers to
-  its gross Body. IFC4 ADD2 TC1 `IfcOpeningElement`: a `'Reference'`
-  representation "is not subtracted, it is provided in addition to the hole
-  in the Body shape representation of the voided element", and its
-  Reference View concept says it "shall not be used to subtract the
-  opening". `lower_product_net` is unchanged and still refuses such a host
-  (ADR 0014, amended). An opening with no representation, one with another
-  representation beside `Reference`, a `Reference`-only `IfcVoidingFeature`
-  and an opening whose Body does not lower are refused whatever the option.
-- Evaluator-taking product lowering (#353), feature `compile`:
-  `LoweringSession::with_curve_evaluator(&dyn CurveEvaluator)` places an
-  `IfcLinearPlacement` without a cached `CartesianPosition` by deriving it
-  from its `RelativePlacement` through the caller's evaluator, for every
-  entry point that takes the session (`lower_product_items`,
-  `lower_product_representation`, `lower_product_net` and its openings).
-  The same for callers without a session:
-  `product_world_transform_with_evaluator`,
-  `product_representation_frame_with_evaluator`, and
-  `constraint::placement::derive::derive_linear_placement_transform` for one
-  placement. An `IfcParameterValue` on an alignment centreline is refused
-  by name (#347). Without an evaluator nothing changes: the cache is read,
-  and a placement without one is refused.
-- Cached-position check (#354), feature `compile`: with an evaluator, a
-  cached `CartesianPosition` is compared with the derived location under
-  `CachedPositionPolicy::Verify` (the default). Farther apart than the
-  model's tolerance is the new `GeometryError::CachedPlacementMismatch {
-  placement, cached, derived, distance, tolerance }`; within it, the
-  derived frame is used, since IFC4.3 makes the cache "an optional
-  fallback" for the linear expression. Only the location is compared.
-  `CachedPositionPolicy::Trust` (`LoweringSession::
-  with_cached_position_policy`) uses a cache as it is and derives only
-  uncached placements, for a model whose expressions this bridge cannot
-  derive. The tolerance, `derive::cached_position_tolerance`, is the
-  coarsest `Precision` of the model's 3D contexts, which IFC defines as
-  "the tolerance under which two given points are still assumed to be
-  identical", in the project length unit and converted to metres; IFC's
-  default of 1e-5 project units when none is declared; floored at
-  floating-point rounding (1e-9 relative, as the alignment seams).
-- `LoweringSession::derives_linear_placements`.
+- `IfcGridPlacement` resolution (#362), in `product_world_transform`,
+  `products_world_transforms`, `PlacementResolver::world_transform` and
+  product lowering. Per IFC4.3 ADD2: the location is the intersection of
+  the two axes' offset curves, `OffsetDistances[1..2]` to the LEFT of each
+  axis ("anti-clockwise rotation through 90 degrees from the tangent"),
+  reverted by `IfcGridAxis.SameSense`, and `OffsetDistances[3]` along the
+  grid's Z; the x-axis is the first axis's tangent, an `IfcDirection`'s x
+  and y ratios, or the direction towards a second
+  `IfcVirtualGridIntersection`; z is the grid's Z; all of it in the frame of
+  the `IfcGrid` that lists the axes, whose `ObjectPlacement` composes above.
+  Straight axes (`IfcLine`, a collinear `IfcPolyline`, an `IfcTrimmedCurve`
+  on a line, an `IfcOffsetCurve2D` of one) intersect in closed form. Curved
+  axes (`IfcCircle`, `IfcEllipse`, a bent `IfcPolyline`, an
+  `IfcTrimmedCurve` on a conic with parameter trims, an `IfcOffsetCurve2D`
+  of one) intersect through the caller's `CurveEvaluator`
+  (`LoweringSession::with_curve_evaluator`,
+  `product_world_transform_with_evaluator`, feature `compile`); without
+  one they are refused as `Unsupported` naming the axis curve. Both the
+  IFC2X3/IFC4 layout of `IfcGridPlacement` and IFC4X3's, which prepends the
+  inherited `PlacementRelTo`, are read; `GridPlacement::placement_rel_to`
+  is new.
+- `GeometryError::GridAxesParallel { intersection, axes }`,
+  `GridAxesDoNotIntersect { intersection, axes, detail }` (curved axes that
+  miss within their extent or meet more than once),
+  `GridAxisWithoutGrid { axis }`, `GridAxesInDifferentGrids { intersection,
+  grids }`, and `PlacementRelToConflict { placement, stated, implied }`: a
+  stated `PlacementRelTo` that resolves to a different frame than the
+  alignment's or grid's `ObjectPlacement` IFC4.3 says it references. A grid
+  without `ObjectPlacement` is `MissingAttribute`.
 
 ### Changed
 
-- `derive_placement_transform` builds the IFC4.3 frame from the evaluator's
-  point and tangent (#355): axes `(tangent, left, up)`, where `left` is the
-  horizontal `Z x tangent` and `up` is perpendicular to the tangent in its
-  vertical plane. A positive `OffsetLateral` now moves LEFT, as
-  `IfcPointByDistanceExpression` states; it moved right, and the product's
-  local Z lay along the lateral. `derive_linear_placement_transform` also
-  composes an explicit `IfcAxis2PlacementLinear.Axis`/`RefDirection` in that
-  frame (8.9.3.4), which was ignored.
-- `derive_placement_transform` refuses a distance when the evaluator's
-  `distance_convention` for the basis curve is not the one IFC states:
-  plan distance on an `IfcGradientCurve` or `IfcAlignment`, arc length on a
-  polyline. The reference evaluator agrees on all of them.
-- The refusal of an uncached `IfcLinearPlacement` names the evaluator-taking
-  entry points.
+- An `IfcLinearPlacement` is placed in the frame its basis curve is stated
+  in (#357), through both the cached `CartesianPosition` and the derived
+  path: its `PlacementRelTo` when stated, otherwise the `ObjectPlacement` of
+  the `IfcAlignment` (or other product) whose representation carries the
+  basis curve. IFC4.3 ADD2 concept Product Linear Placement: "each product
+  placement that uses Product Linear Placement references the
+  IfcObjectPlacement of the IfcLinearPositioningElement through
+  IfcLinearPlacement.PlacementRelTo"; `IfcObjectPlacement.PlacementRelTo`:
+  "If it is omitted, then in the case of linear placement it is
+  established by the origin of horizontal alignment of the referenced
+  IfcAlignment Axis". `CartesianPosition`, a fallback for
+  `RelativePlacement`, is read relative to the same frame. Products on an
+  alignment placed off identity used to be placed as if the alignment sat
+  at the origin, and `CachedPositionPolicy::Verify` refused their correct
+  caches; both are fixed. `CachedPlacementMismatch` reports world
+  positions. The context's `WorldCoordinateSystem` is still applied once,
+  by the representation frame. `derive_linear_placement_transform` returns
+  the frame in the basis curve's coordinates, as before; its documentation
+  now says so.
+- `PlacementResolver::world_transform` walks `PlacementRelTo` through
+  local, grid and linear placements alike (#363), caching each and keeping
+  the cycle and depth refusals across mixed chains. A local placement
+  relative to a linear placement used to be `WrongEntityType`, and one
+  relative to a grid placement `Unsupported`. An entity that is no
+  `IfcObjectPlacement` reports `expected: "IfcObjectPlacement"`.
+
+### Added (#328, geometry in the bindings)
+
+- `compile::Tolerance` and `compile::TriMesh` re-export the tolerance every
+  compile entry point takes and the mesh it returns, so a caller that
+  names no `axiolid-*` crate (the `openbim-ifc` facade's `mesh` feature)
+  can call them. Behind `compile`, as before.
+
+Semver: additive; it ships with the minor release above (0.11.0), which
+the `openbim-ifc` facade's `mesh` feature needs.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
